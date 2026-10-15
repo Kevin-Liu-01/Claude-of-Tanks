@@ -47,6 +47,8 @@ interface RangedPolygon {
   points: number[];
   y0: number;
   y1: number;
+  /** A deck's drawn top (collision.ts collisionPartTopAt), local to the structure. */
+  tp?: number[];
 }
 
 /** Construction-only view; consumers must not retain geometry/component scratch. */
@@ -90,6 +92,10 @@ export interface StructureCollisionRuntimeBand {
   minY: number;
   maxY: number;
   parts: SimpleCollisionShape[];
+  /** The ground-contact band's trailing deck parts (structureDecks): roofs and upper tops a hull stands on. */
+  decks?: number;
+  /** The band's top without its decks (what a record laid out before the decks join it stands to). */
+  groundMaxY?: number;
 }
 
 interface StructureCollisionBand
@@ -751,7 +757,82 @@ function rangeRectangles(rectangles: number[][], source: RangedPolygon[]): Range
 }
 
 function rangedShape(item: RangedPolygon): SimpleCollisionShape {
-  return { ...polygonShape(item.points), y0: item.y0, y1: item.y1 };
+  const shape = { ...polygonShape(item.points), y0: item.y0, y1: item.y1 } as Extract<SimpleCollisionShape, { kind: 'convex' }>;
+  if (item.tp) shape.tp = item.tp;
+  return shape;
+}
+
+// ---- decks (physics stream F2, 2026-10-13; the owner: "if they land on top of buildings or other weird objects") ------
+// A building's movement record was its ground-contact band alone: the solids that reach the ground, roofs excluded (an
+// eave over the street is no wall at a hull's height). A hull landing on a roof stood on its walls' tops, and over the
+// rooms between them on nothing: it fell into the building (the census: 312 of 1,286 roof runs inside a drawn building,
+// flat roofs, pitched roofs, the drawn tops). Decks carry what a hull stands on up there: every roof covering and every
+// solid that stands clear of the ground with a top a hull can rest on, each piece of its plan with its own vertical
+// extent (a hull on the street passes under it, one on the roof stands on it) and a drawn top, the planes of its upward
+// faces (collision.ts collisionPartTopAt): a gable is the lower of its two pitches, a flat roof one level plane. Decks
+// are parts of the contact record (so every consumer that places it carries them), flagged by their drawn tops and
+// counted by the band's `decks`; the footprint certification and the destruction's footprint leave them out.
+/** A deck piece smaller than this (m², in plan) is trim: a ledge, a sill, a chimney cap. */
+const DECK_MIN_AREA = 0.6;
+/** An upward face: its normal at most ~78 degrees off vertical. */
+const DECK_UP_NY = 0.2;
+
+/**
+ * The decks of a structure: every roof covering and every solid clear of the ground, face by face — its upward faces
+ * grouped by the plane they lie in (a gable's two pitches, a hip's four, a flat roof's one), each group's plan merged
+ * into convex pieces, each piece under its own plane (structure-local, largest first). A face plane bounds its own piece
+ * exactly, so the top is the drawn surface, eaves to ridge, dormer and valley alike (one envelope of a whole roof's planes
+ * floated over dormers and valleys). Faces wound downward (a slab's underside) are left out unless a solid has no other.
+ */
+function structureDecks(solids: LocalSolid[], contact: ReadonlySet<LocalSolid>): RangedPolygon[] {
+  const decks: RangedPolygon[] = [];
+  for (const solid of solids) {
+    if (contact.has(solid)) continue;
+    // (either winding: a face is taken by the plane it lies in, and a piece another face of the solid covers from above
+    // at its centre — a slab's underside, a lower face under an upper one — is left out)
+    const groups = new Map<string, { a: number; b: number; c: number; projected: number[][] }>();
+    for (const t of solid.triangles) {
+      const ux = t[3] - t[0], uy = t[4] - t[1], uz = t[5] - t[2];
+      const vx = t[6] - t[0], vy = t[7] - t[1], vz = t[8] - t[2];
+      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const length = Math.hypot(nx, ny, nz);
+      if (length < 1e-9) continue;
+      if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      if (ny < DECK_UP_NY * length) continue;
+      const a = -nx / ny, b = -nz / ny, c = t[1] - a * t[0] - b * t[2];
+      const key = `${Math.round(a * 1e3)},${Math.round(b * 1e3)},${Math.round(c * 1e2)}`;
+      let group = groups.get(key);
+      if (!group) groups.set(key, group = { a, b, c, projected: [] });
+      const projected = [t[0], t[2], t[3], t[5], t[6], t[8]];
+      if (Math.abs(polygonArea(projected)) >= 1e-6) group.projected.push(projected);
+    }
+    const pieces: Array<{ points: number[]; a: number; b: number; c: number; ox: number; oz: number; at: number; top: number }> = [];
+    for (const { a, b, c, projected } of groups.values()) {
+      // (a dense scanned face group skips the quadratic merge: its plan's hull stands for it)
+      const merged = projected.length > DENSE_SOURCE_LIMIT
+        ? [convexHull2(projected.flatMap((t) => [[t[0], t[1]], [t[2], t[3]], [t[4], t[5]]] as Array<[number, number]>))]
+        : mergeProjectedTriangles(projected);
+      for (const points of merged) {
+        if (Math.abs(polygonArea(points)) < DECK_MIN_AREA || points.length > 2 * PACKED_POLYGON_VERTICES) continue;
+        let ox = 0, oz = 0, top = -Infinity;
+        for (let i = 0; i < points.length; i += 2) {
+          ox += points[i]; oz += points[i + 1];
+          top = Math.max(top, a * points[i] + b * points[i + 1] + c);
+        }
+        ox /= points.length / 2; oz /= points.length / 2;
+        pieces.push({ points, a, b, c, ox, oz, at: a * ox + b * oz + c, top });
+      }
+    }
+    for (const piece of pieces) {
+      const covered = pieces.some((other) => other !== piece && other.a * piece.ox + other.b * piece.oz + other.c > piece.at + 0.01
+        && pointInPolygon(piece.ox, piece.oz, other.points));
+      if (covered) continue;
+      // about the piece's centroid; its height rounded up a millimetre (never under the drawn face)
+      const tp = [piece.ox, piece.oz, Math.round(piece.a * 1e4) / 1e4, Math.round(piece.b * 1e4) / 1e4, Math.ceil(piece.at * 1000 + 1) / 1000];
+      decks.push({ points: piece.points, y0: solid.minY, y1: Math.min(solid.maxY, piece.top + 0.002), tp });
+    }
+  }
+  return decks.sort((a, b) => Math.abs(polygonArea(b.points)) - Math.abs(polygonArea(a.points)));
 }
 
 function boundsOf(polygons: number[][]) {
@@ -1141,12 +1222,16 @@ function collectSolids(buckets: StructureGeometryBuckets) {
   return solids;
 }
 
+/** The solids that bear on the ground: the ground-contact band's (roof coverings never). */
+function contactBandSolids(solids: LocalSolid[]): LocalSolid[] {
+  return solids.filter((solid) => !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
+}
+
 function deriveContactBand<T extends StructureCollisionRuntimeBand>(
   solids: LocalSolid[],
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
 ): T {
-  const contactSolids = solids.filter((solid) =>
-    !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
+  const contactSolids = contactBandSolids(solids);
   if (!contactSolids.length) throw new Error('structure has no ground-contact collision solids');
   return createBand(
     contactSolids,
@@ -1224,8 +1309,24 @@ function deriveRuntimeCollisionBands(solids: LocalSolid[]): StructureCollisionRu
   // One extraction owns these immutable projections across contact/shell bands.
   // The cache ends here; no geometry-keyed or global residency spans calls.
   const projectedCache = new Map<LocalSolid, number[][]>();
-  return deriveCollisionBands(solids, (active, minY, maxY, ground) =>
+  const profile = deriveCollisionBands(solids, (active, minY, maxY, ground) =>
     makeRuntimeBand(active, minY, maxY, ground, projectedCache));
+  addDecks(profile.contact, solids);
+  return profile;
+}
+
+/** The decks ride on the contact band (structureDecks), within its part limit, the largest first. */
+function addDecks(contact: StructureCollisionRuntimeBand, solids: LocalSolid[]): StructureCollisionRuntimeBand {
+  const room = PART_LIMIT - contact.parts.length;
+  if (room <= 0) return contact;
+  const decks = structureDecks(solids, new Set(contactBandSolids(solids))).slice(0, room);
+  if (decks.length) contact.groundMaxY = contact.maxY;
+  for (const deck of decks) {
+    contact.parts.push(rangedShape(deck));
+    contact.maxY = Math.max(contact.maxY, deck.y1);
+  }
+  if (decks.length) contact.decks = decks.length;
+  return contact;
 }
 
 /**
@@ -1255,7 +1356,8 @@ export function deriveRuntimeStructureShellBands(buckets: StructureGeometryBucke
 export function deriveRuntimeStructureContactBand(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeBand {
-  return deriveContactBand(collectSolids(buckets), makeRuntimeBand);
+  const solids = collectSolids(buckets);
+  return addDecks(deriveContactBand(solids, makeRuntimeBand), solids);
 }
 
 /** Same collision result, exposing the already-extracted solids to cosmetic admission. */
@@ -1283,7 +1385,9 @@ export function certifyStructureCollisionProfile(
   };
   const contactSolids = solids.filter((solid) =>
     !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
-  const contact = scoreSolids(contactSolids, profile.contact);
+  // (the decks are no part of the ground-contact footprint: scored without them)
+  const contactParts = profile.contact.parts.slice(0, profile.contact.parts.length - (profile.contact.decks ?? 0));
+  const contact = scoreSolids(contactSolids, { ...profile.contact, parts: contactParts });
   // shell bands hold height-clipped strips: score them against the same band pieces the runtime selects, with the
   // same sub-threshold trim shed (a 14 cm post is not published, so it is not owed either)
   const shell = profile.shell.map((band) => {
@@ -1298,6 +1402,17 @@ export function certifyStructureCollisionProfile(
     shell,
     minimumScore: Math.min(contact.score, ...shell.map((receipt) => receipt.score)),
   };
+}
+
+/** A drawn top (collision.ts collisionPartTopAt) placed: local (lx, lz) -> (x + lx c + lz s, z - lx s + lz c), up by baseY. */
+function placeTopPlanes(tp: readonly number[], x: number, z: number, c: number, s: number, baseY: number): number[] {
+  const out = [x + tp[0] * c + tp[1] * s, z - tp[0] * s + tp[1] * c];
+  for (let i = 2; i + 2 < tp.length; i += 3) {
+    const a = tp[i], b = tp[i + 1];
+    // world gradient: dlx/dX = c, dlz/dX = s, dlx/dZ = -s, dlz/dZ = c
+    out.push(a * c + b * s, -a * s + b * c, tp[i + 2] + baseY);
+  }
+  return out;
 }
 
 function transformParts(
@@ -1330,22 +1445,32 @@ function transformParts(
       points[index] = x + lx * c + lz * s;
       points[index + 1] = z - lx * s + lz * c;
     }
-    return { ...polygonShape(points), ...extent(part) };
+    const shape = { ...polygonShape(points), ...extent(part) } as Extract<SimpleCollisionShape, { kind: 'convex' }>;
+    // a deck's drawn top: its origin placed and its gradients turned with the plan, its heights on the base (a band
+    // placed without a base keeps local heights, so its decks keep their flat tops)
+    if (part.tp && baseY !== undefined) shape.tp = placeTopPlanes(part.tp, x, z, c, s, baseY);
+    return shape;
   });
 }
 
-/** `baseY` (the structure's ground height) lets every part keep its own world-space vertical extent. */
+/** `baseY` (the structure's ground height) lets every part keep its own world-space vertical extent. A band's decks
+ * (structureDecks) are held apart on the record (`deckParts`) until mergeStructureDecks joins them: while the props are
+ * laid out, every placement reads the ground band as it did before decks existed. */
 export function applyStructureCollisionBand(
   record: CollisionRecord, band: StructureCollisionRuntimeBand,
   x: number, z: number, yaw: number, baseY?: number,
 ) {
-  setCompoundShape(record, transformParts(band.parts, x, z, yaw, baseY));
+  const decks = band.decks ?? 0;
+  setCompoundShape(record, transformParts(decks ? band.parts.slice(0, band.parts.length - decks) : band.parts, x, z, yaw, baseY));
+  if (decks && baseY !== undefined) record.deckParts = transformParts(band.parts.slice(band.parts.length - decks), x, z, yaw, baseY);
+  else delete record.deckParts;
   return record;
 }
 
 /**
  * Add a band's parts to a record that already carries a compound (a consumer with a fixed record allocation packs
- * surplus bands into its last record; per-part vertical extents keep every strip at its own height).
+ * surplus bands into its last record; per-part vertical extents keep every strip at its own height). Its decks are held
+ * apart, as applyStructureCollisionBand holds them.
  */
 export function mergeStructureCollisionBand(
   record: CollisionRecord, band: StructureCollisionRuntimeBand,
@@ -1354,12 +1479,42 @@ export function mergeStructureCollisionBand(
   const existing = record.shape2
     ? record.shape2.kind === 'compound' ? record.shape2.parts : [record.shape2]
     : [];
-  const merged = [...existing, ...transformParts(band.parts, x, z, yaw, baseY)];
+  const decks = band.decks ?? 0;
+  const merged = [...existing, ...transformParts(decks ? band.parts.slice(0, band.parts.length - decks) : band.parts, x, z, yaw, baseY)];
+  if (decks) record.deckParts = [...(record.deckParts ?? []), ...transformParts(band.parts.slice(band.parts.length - decks), x, z, yaw, baseY)];
   const priorMin = record.min[1], priorMax = record.max[1];
   setCompoundShape(record, merged);
   record.min[1] = Math.min(priorMin, baseY + band.minY);
-  record.max[1] = Math.max(priorMax, baseY + band.maxY);
+  record.max[1] = Math.max(priorMax, baseY + (band.groundMaxY ?? band.maxY));
   return record;
+}
+
+/**
+ * Join every record's held decks to its shape (physics stream F2): the props' last step, once the world is laid out —
+ * a building's movement record then carries its roofs as floor-only parts (world/collision.ts collisionPartIsDeck), its
+ * top raised to theirs. Records with none are left as they are. Colliders never keep decks (their shells are the bands').
+ */
+export function mergeStructureDecks(obstacles: readonly CollisionRecord[], colliders: readonly CollisionRecord[] = []): number {
+  let merged = 0;
+  for (const record of obstacles) {
+    const decks = record.deckParts;
+    if (!decks) continue;
+    delete record.deckParts;
+    if (!decks.length) continue;
+    const shape = record.shape2;
+    const parts = shape ? (shape.kind === 'compound' ? shape.parts : [shape]) : [];
+    const minY = record.min[1];
+    let maxY = record.max[1];
+    for (const deck of decks) if (deck.y1 !== undefined && deck.y1 > maxY) maxY = deck.y1;
+    // (a ground band of one part carries no extent of its own: it takes the record's, as it did on its own)
+    const ground = parts.map((part) => (part.y0 === undefined && part.y1 === undefined ? { ...part, y0: minY, y1: record.max[1] } : part));
+    setCompoundShape(record, [...ground, ...decks]);
+    record.min[1] = minY;
+    record.max[1] = maxY;
+    merged++;
+  }
+  for (const record of colliders) delete record.deckParts;
+  return merged;
 }
 
 export function appendStructureCollisionBand(
@@ -1368,7 +1523,7 @@ export function appendStructureCollisionBand(
 ) {
   const record: CollisionRecord = {
     min: [x, baseY + band.minY, z],
-    max: [x, baseY + band.maxY, z],
+    max: [x, baseY + (band.groundMaxY ?? band.maxY), z],
   };
   applyStructureCollisionBand(record, band, x, z, yaw, baseY);
   list.push(record);

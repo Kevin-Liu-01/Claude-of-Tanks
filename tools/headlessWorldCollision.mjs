@@ -48,7 +48,12 @@ export function packCollisionRecord(record) {
   const packExtent = (value) => (value.y0 !== undefined && value.y1 !== undefined
     && (Math.abs(value.y0 - record.min[1]) > 0.001 || Math.abs(value.y1 - record.max[1]) > 0.001)
     ? [n(value.y0), n(value.y1)] : []);
-  const packShape = (value) => value.kind === 'obb'
+  // a convex part with a drawn top (physics stream, 2026-10-13: world/collision.ts collisionPartTopAt) is tagged 'p': its
+  // extent, the planes' origin, their count, each plane's three numbers, then its corners
+  const packShape = (value) => value.kind === 'convex' && value.tp
+    ? ['p', n(value.y0 ?? record.min[1]), n(value.y1 ?? record.max[1]), n(value.tp[0]), n(value.tp[1]), (value.tp.length - 2) / 3,
+      ...value.tp.slice(2).map(n), ...value.points.map(n)]
+    : value.kind === 'obb'
     ? ['o', n(value.cx), n(value.cz), n(value.hw), n(value.hl), n(value.yaw), ...packExtent(value)]
     : value.kind === 'circle'
       ? ['c', n(value.cx), n(value.cz), n(value.r), ...packExtent(value)]

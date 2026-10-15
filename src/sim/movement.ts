@@ -439,6 +439,8 @@ export interface MovementHeightField {
   getDriveGroundType?(x: number, z: number): string;
   /** A support field's count of reads a record's top answered (structureSupport.ts recordReads; EDGE_CLIMB_*). */
   readonly recordReads?: number;
+  /** Whether the hull this field was begun for stands on a roof's deck (structureSupport.ts StandingDecks). */
+  readonly standingDeck?: boolean;
 }
 
 export type MovementCollisionResolver = (
@@ -741,12 +743,14 @@ let _wholeTrackOnGround = true;
 let _supportRate = 0;
 /** This step's climb cap for the whole-hull floor lift (EDGE_CLIMB_*; set by updateVerticalContact from the travel). */
 let _climbCapM = 0.25;
-/** Whether this step's hull is slow enough for an edge to be climbed at its pace (EDGE_EASE_MAX_MPS). */
+/** Whether this step's hull climbs an edge at its pace (EDGE_CLIMB_*: its support read a record's top). */
 let _edgeEase = false;
 /** The entity's climb pace hint this step (MovementEntity.climbPaceMps), set by updateTank. */
 let _climbPaceMps = 0;
 /** Whether this step's support solve stood the hull on a record's top somewhere (MovementHeightField.recordReads). */
 let _supportOnRecord = false;
+/** Whether the hull stands on a roof's deck this step (MovementHeightField.standingDeck; structureBoxSupportY). */
+let _standsOnDeck = false;
 /**
  * The outer track station the support rests on this step, when the tracks carry it rather than the belly, the fan or the
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
@@ -1003,12 +1007,11 @@ const EDGE_CLIMB_BASE_M = 0.04;
 const EDGE_CLIMB_GRADE = 1;
 /** The climb's ease in and out (m/s^2): its vertical speed changes by at most this much a second. */
 const EDGE_CLIMB_ACCEL_MPS2 = 60;
-/**
- * Over this speed a floor that outruns the climb is lifted as before (FLOOR_LIFT_MAX_M_PER_STEP a step): a hull at speed
- * meets faces, ramps and trench walls, not rock tiers, and easing its climb sank it into them (the stress matrix: body
- * penetration on Turbo's quarter-pipe and kicker, the Moon's bank hop). The field audit's rock jolts were all under it.
- */
-const EDGE_EASE_MAX_MPS = 7;
+// (physics stream, 2026-10-13; the coordinator: "the lift rate is capped by the track's climb speed, not stepped") the
+// ease holds at every speed: its cap grows with the pace (EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE x the step's travel), so a
+// fast hull climbs a record's edge as fast as its tracks roll up a 45-degree face. Over 7 m/s it was lifted 0.25 m a step
+// instead (the destruction stream's gate, for Turbo's quarter-pipe and kicker and the Moon's bank hop), and a hull
+// crossing a 0.8 m stone at 8-10 m/s jolted 0.15-0.19 m; eased it jolts 0.09-0.14 m.
 /** The most a floor's lift at a partial contact's leading station adds to the hull's pitch rate in one step (rad/s):
  * the turn is eased in, its angular acceleration bounded (15 rad/s^2), not thrown at once. */
 const STATION_TURN_STEP = 0.25;
@@ -1191,6 +1194,11 @@ function reachableTrackGroundAt(x: number, z: number): number {
   const across = dx * _trackForwardZ - dz * _trackForwardX;
   const line = _trackLineY + along * _trackRisePerM + across * _trackSinRoll;
   if (!(ground - line > FACE_CLIMB_MAX_M)) return ground;
+  // (physics stream F4, 2026-10-13) a structure's top over the terrain is a floor by the support field's standing rule,
+  // as reachableGroundAt reads it: the sheer faces are the terrain's. Scanned on the terrain, a roof's deck a metre over a
+  // level hull's track line was the top of a sheer face whose foot was the street under the building: a hull set down
+  // level on a 30-degree roof read its uphill half 10 m down, fitted a nose-up attitude and was thrown 3-16 m off it.
+  if (_reachTerrainH !== _reachBaseH && ground > _reachTerrainH!(x, z) + 1e-4) return ground;
   const foot = sheerFaceFoot(_reachTerrainH!, x, z, ground, _reachRootX, _reachRootZ);
   return foot < ground ? foot : ground;
 }
@@ -1362,6 +1370,10 @@ const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const LAUNCH_SPEED_CAP_MPS = 45; // ruleset launches never push the run speed past this
 const KNOCK_TRANSLATION_GAIN = 2.2; // impact shove → decaying translation impulse (≈ knock × 0.29 m of displacement)
+/** The tracks' grip against a shove, as a friction coefficient (applyShellKnock): a step's worth of it is absorbed. */
+const KNOCK_GRIP_MU = 0.5;
+/** The smallest calibre share a shove is reckoned at (shellKnockMps): a 5 mm round's; a 12.7 mm round knocks with its own. */
+const KNOCK_CALIBRE_FLOOR = 0.05;
 const JUMP_AIRTIME_GRACE_S = 0.05;
 // round 30 (owner 2026-09-20: the jump should "be a lot more powerful, and work even when you're not on ground"):
 // an airborne hull may fire its jump again once this much flight has passed since the last lift — a rocket boost
@@ -1825,6 +1837,11 @@ function structureBoxSupportY(
   // (the ground the hull can reach, hAt, as every sample reads it: a roof the root has left behind is a wall, not a
   // floor, so a hull off a roof's edge falls; a terrain-only field has no structure to stand on)
   if (!contact || terrainAt === supportAt) return -Infinity;
+  // (physics stream F4, 2026-10-13) a hull whose root stands on a roof's deck rests on its tracks there, the roof read as
+  // terrain is (structureSupport.ts StandingDecks): the box is for a hull whose tracks have left the roof. Set down on a
+  // 40-degree roof, its box corner struck the roof behind it before its tracks settled, the strike tipped it, a tipping
+  // hull holds nothing but sliding friction, and it slid off a roof it holds as terrain (the friction angle is 42 degrees).
+  if (_standsOnDeck) return -Infinity;
   const rect = tankContactRect(spec);
   const y = (contact.bottomYM || 0) + BOX_CORNER_LIFT_M;
   let supportY = -Infinity;
@@ -2516,7 +2533,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   _climbCapM = Math.min(FLOOR_LIFT_MAX_M_PER_STEP, EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE * pace * dt);
   // (a record's top under the hull: a rock's tier, a roof; a terrain face — a trench's far wall — lifts as before: easing
   // a low hull's climb out of a Moon trench sank it 0.54 m into the wall)
-  _edgeEase = pace <= EDGE_EASE_MAX_MPS && _supportOnRecord;
+  _edgeEase = _supportOnRecord;
   const rideVBefore = ride.v;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
@@ -3660,6 +3677,9 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
   if (diveV * excess > 0) suspension.cv += diveV;
 }
 
+/** Where guardDepthAt last read the ground (world x, z). */
+let _guardGroundX = 0;
+let _guardGroundZ = 0;
 /** The ground over (+) or under (−) one end guard's height at an attitude (the reachable ground: beginReachableGround). */
 function guardDepthAt(guards: readonly number[], index: number, state: TankState, pitch: number, roll: number): number {
   const cosRoll = Math.cos(roll), sinRoll = Math.sin(roll);
@@ -3671,6 +3691,7 @@ function guardDepthAt(guards: readonly number[], index: number, state: TankState
   const cosYaw = Math.cos(state.yaw), sinYaw = Math.sin(state.yaw);
   const worldX = state.pos.x + rolledX * cosYaw + pitchedZ * sinYaw;
   const worldZ = state.pos.z - rolledX * sinYaw + pitchedZ * cosYaw;
+  _guardGroundX = worldX; _guardGroundZ = worldZ;
   return reachableGroundAt(worldX, worldZ) - (state.pos.y + rolledY * cosNegPitch - localZ * sinNegPitch);
 }
 
@@ -3691,6 +3712,7 @@ function restDrawnEndsOnGround(
   terrainAt: HeightSampler,
   seatPitch: number,
   seatRoll: number,
+  dt: number,
 ): void {
   const hold = state._hold;
   const suspension = state._susp;
@@ -3734,13 +3756,19 @@ function restDrawnEndsOnGround(
   // share: an end the seat itself leaves in the ground is the support solve's)
   const leftPitch = hold.p + suspension.d * SUSP_VIS_P;
   const leftRoll = hold.r;
-  let residual = 0;
+  let residual = 0, onRecord = false;
   for (let index = 0; index + 2 < guards.length; index += 3) {
     const drawn = guardDepthAt(guards, index, state, seatPitch + leftPitch, seatRoll + leftRoll);
     if (!(drawn > residual)) continue;
+    const x = _guardGroundX, z = _guardGroundZ;
     const extra = drawn - Math.max(0, guardDepthAt(guards, index, state, seatPitch, seatRoll));
-    if (extra > residual) residual = extra;
+    if (extra > residual) { residual = extra; onRecord = hAt(x, z) > terrainAt(x, z) + 1e-4; }
   }
+  // (physics stream, 2026-10-13) an end resting on a record's top — a stone's drawn surface, which a turned end can reach
+  // across its edge up to the hull's climb over the ground beside it — is climbed onto at the climb's pace (EDGE_CLIMB_*),
+  // as the tracks are: lifting the root by the whole depth at once threw a reversing T-90M 0.93 m up a boulder's flank
+  // in one step
+  if (onRecord) residual = Math.min(residual, EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE * Math.max(Math.abs(state.speed), _climbPaceMps) * dt);
   if (residual > 0) {
     state.pos.y += residual;
     state._ride.y += residual;
@@ -4082,10 +4110,17 @@ function groundIsPlanar(count: number): boolean {
   const det = czz * cxx - czx * czx;
   if (!(det > 1e-9)) return false;
   const a = (czh * cxx - cxh * czx) / det, b = (cxh * czz - czh * czx) / det;
+  // (physics stream F4, 2026-10-13) a plane steeper than a wall (WALL_GRADE_FULL) is no ground a hull lies on: two track
+  // lines either side of a roof's edge, one on the roof and one 7.5 m down the mansard under it, are always coplanar,
+  // and the hull, its centre of mass a metre and a half inside the edge, rolled toward the 64-degree "face" between them
+  if (a * a + b * b > WALL_GRADE_FULL * WALL_GRADE_FULL) return false;
   const residual = (chh - a * czh - b * cxh) / count;
   return residual < PLANAR_RESIDUAL_M * PLANAR_RESIDUAL_M;
 }
 
+/** A hull this slow and turning this little stands at rest on its contacts (updateTerrainFitAndPerch's latch). */
+const REST_FIT_SPEED_MPS = 0.05;
+const REST_FIT_YAW_RATE = 0.02;
 const FIT_ALL_LOADED = 0;
 const FIT_PARTIAL = 1;
 const FIT_NONE_LOADED = 2;
@@ -4299,8 +4334,29 @@ function updateTerrainFitAndPerch(
       // pivoting on an edge, the hull slides on its own belly (EDGE_BAND_M): the grade the slope pull reads is its pitch
       terr.pitch = _contactFit.edge ? state._spring.pitch : _contactFit.pitch;
       terr.roll = _contactFit.roll;
+      // (physics stream F4(b), 2026-10-14; the coordinator: "a contact latch") a hull at rest on part of its contacts with
+      // its centre of mass over them (no tip) stands as it is: a rigid body on the contacts that carry it has nothing to
+      // turn it. The plane of the near samples sprang a hull perched on a roof's parapet nose-down off its perch, its tail
+      // lifted, the tip set it back, and it flipped between the two every few ticks for as long as it stood (±3 mrad)
+      if (_contactFit.tipPitch === 0 && _contactFit.tipRoll === 0 && Math.abs(state.speed) < REST_FIT_SPEED_MPS &&
+          Math.abs(state.yawRate || 0) < REST_FIT_YAW_RATE) {
+        terr.pitch = state._spring.pitch;
+        terr.roll = state._spring.roll;
+      }
       terr.tipPitch = _contactFit.tipPitch;
       terr.tipRoll = _contactFit.tipRoll;
+      return;
+    }
+  } else if (!groundedAtStart && !Number.isFinite(state._body.restSupportY) && !state._body.tumbling && !state.overturned) {
+    // (physics stream F4, 2026-10-13) a hull in flight comes down on the ground it lands on, the samples within the
+    // droop's reach of its highest contact, not on the plane of all of them: one landing on a roof's edge with a corner
+    // over the street (15 m under it) fitted a 90-degree pitch and roll from that corner, and the landing spring turned
+    // it over at 9 rad/s off the roof. Ground that is one plane under the whole hull keeps the full fit, bit for bit.
+    const gravityScale = clamp(Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1, 0.1, 3);
+    if (contactAwareFit(spec, state, samples, halfWidth, gravityScale) === FIT_PARTIAL) {
+      terr.fitPitch = _contactFit.pitch;
+      terr.pitch = _contactFit.pitch;
+      terr.roll = _contactFit.roll;
       return;
     }
   }
@@ -4519,6 +4575,11 @@ function supportCacheIsFresh(
   rigidGear: boolean,
 ): boolean {
   const cache = state._sup;
+  // (physics stream, 2026-10-13) a hull still climbing onto its floor is not parked: a cached solve reads no record, so
+  // the edge climb's ease (EDGE_CLIMB_*, which a record read arms) dropped out after one step and a hull stopped against
+  // a stone was lifted onto its top 0.25 m a step, 0.5 m in three
+  const ride = state._ride;
+  if (ride && ride.y < cache.floorY - 0.001) return false;
   return Math.abs(state.pos.x - cache.x) < 0.004 &&
     Math.abs(state.pos.z - cache.z) < 0.004 &&
     Math.abs(wrapAngle(state.yaw - cache.yaw)) < 0.0012 &&
@@ -5181,6 +5242,7 @@ export function updateTank(
   // must re-solve immediately with the yield zeroed, not sit on a stale
   // yielded height with rigid wheels in the dirt.
   const recordReadsBefore = heightField.recordReads ?? 0;
+  _standsOnDeck = heightField.standingDeck === true;
   solveSupportHeight(
     entity,
     hAt,
@@ -5216,7 +5278,7 @@ export function updateTank(
     state.fallImpactMps *= landingFaceShare(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
   }
   limitDiveToTravel(entity, spec, state);
-  restDrawnEndsOnGround(spec, state, hAt, terrainAt, pitchEff + _stationTurn.angle, rollEff);
+  restDrawnEndsOnGround(spec, state, hAt, terrainAt, pitchEff + _stationTurn.angle, rollEff, dt);
   // Off a whole-track seat (a trench crossed, a crest, an edge) the dive is no longer the suspension's to keep apart from
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
   // a heavy hull nosing into an assault trench's far wall was thrown out of it and stalled nose-up on the wall.
@@ -5338,24 +5400,38 @@ export function requestTankJump(
  * knock you"): metres per second from calibre squared, shell speed and the victim's mass, times the ruleset scale.
  */
 export function shellKnockMps(caliberMm: number, shellSpeedMps: number, massTons: number, scale = 1): number {
-  const cal = clamp((caliberMm || 105) / 105, 0.3, 2.2);
+  // (physics stream F4, 2026-10-13; the coordinator: "a 12.7 mm round should knock with its own momentum") under the
+  // reference calibre a round's shove goes with its momentum, its mass the cube of its calibre; from 105 mm up the square
+  // stands as tuned. The 0.3 floor gave a 12.7 mm round the shove of a 31 mm shell, and an enemy's roof gun walked a
+  // hull parked on it along at 6-44 mm/s.
+  const cal = clamp((caliberMm || 105) / 105, KNOCK_CALIBRE_FLOOR, 2.2);
+  const calibre = cal < 1 ? cal * cal * cal : cal * cal;
   const speed = clamp((shellSpeedMps || 800) / 900, 0.3, 2.0);
   const mass = massTons > 0 ? clamp(45 / massTons, 0.4, 2.5) : 1;
-  return Math.min(9, 1.3 * cal * cal * speed * mass * Math.max(0, scale));
+  return Math.min(9, 1.3 * calibre * speed * mass * Math.max(0, scale));
 }
 
 /** Apply an impact shove along the shell's world direction: a decaying translation impulse (the hull is shoved,
  * the drivetrain speed is untouched so a hit never becomes a lasting drive input — balance duels stay stable),
  * an attitude rock, and for heavy shoves a lift of the ride. */
-export function applyShellKnock(state: TankState, dirX: number, dirY: number, dirZ: number, knockMps: number): void {
+export function applyShellKnock(
+  state: TankState, dirX: number, dirY: number, dirZ: number, knockMps: number, gravityScale = 1,
+): void {
   if (!(knockMps > 0)) return;
   const h = Math.hypot(dirX, dirZ) || 1;
   const kx = dirX / h, kz = dirZ / h;
   const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
   const along = kx * fx + kz * fz;
   const spr = state._spring;
-  spr.recoilVX += kx * knockMps * KNOCK_TRANSLATION_GAIN;
-  spr.recoilVZ += kz * knockMps * KNOCK_TRANSLATION_GAIN;
+  // (physics stream F4, 2026-10-13; the coordinator: "static friction") a grounded hull's tracks hold it against a shove
+  // up to their grip over a step (KNOCK_GRIP_MU g dt, 8 cm/s at 1 g): only the excess moves it; a hull in flight takes the
+  // whole shove. A hull hit by machine-gun rounds stays where it stands (a hull stacked on an enemy whose roof gun fired
+  // into it crept off it at 6-44 mm/s); a cannon's 1.2-9 m/s shove keeps all but those 8 cm/s.
+  const grip = state.grounded === false ? 0
+    : KNOCK_GRIP_MU * GRAVITY * clamp(Number.isFinite(gravityScale) ? gravityScale : 1, 0.1, 3) * SIM_DT;
+  const shove = Math.max(0, knockMps - grip);
+  spr.recoilVX += kx * shove * KNOCK_TRANSLATION_GAIN;
+  spr.recoilVZ += kz * shove * KNOCK_TRANSLATION_GAIN;
   // in flight a hit turns the hull by its rigid-body share, as a shot fired in flight does (fireRecoil): the rock is the
   // suspension's, and at Mars and Moon gravity a hit at the top of a boost spun the hull onto its back before it came
   // down, the air barely damping the spin (physics lane, 2026-10-03; Moon field audit)

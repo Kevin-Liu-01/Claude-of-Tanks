@@ -27,7 +27,7 @@ const complete = (r, kind) => !!r && (r[kind] ?? []).length > 0 && r[kind].every
 const ready = () => {
   const films = join(renders, 'films');
   if (!existsSync(films)) return [];
-  return readdirSync(films).filter((id) => /^s\d\d-/.test(id)).sort().filter((id) => complete(receipt(join(films, id)), 'films')
+  return readdirSync(films).filter((id) => /^s\d{2,3}-/.test(id)).sort().filter((id) => complete(receipt(join(films, id)), 'films')
     && complete(receipt(join(renders, 'stills', id)), 'stills'));
 };
 // done when its landscape loop is newer than the take's render and its 4K still is delivered. The render's time is its

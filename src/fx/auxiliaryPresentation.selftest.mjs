@@ -39,7 +39,8 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const C = {
       rand: Math.random, groundY: () => 0,
       media: (m) => puffs.push({ birth: clock.now + m.birthOffset, x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz,
-        drag: m.drag, windK: m.windK, life: m.life, size1: m.size1, density: m.density, medium: m.medium }),
+        drag: m.drag, windK: m.windK, life: m.life, size0: m.size0, size1: m.size1, growExp: m.growExp, density: m.density,
+        r0: m.r0, medium: m.medium, aspect: m.aspect, fadeIn: m.fadeIn, fadeOut: m.fadeOut, heat: m.heat, cool: m.cool }),
       chunk() {}, flash: (o) => flashes.push(clock.now + o.birthOffset), fire() {}, sparks: (o) => sparks.push(clock.now + o.birthOffset),
       jet() {}, shockRing() {}, lightPulse() {}, glow() {}, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: {},
@@ -72,11 +73,26 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   assert.ok(at60.puffs.length > 40, `a salvo draws a wall of puffs (${at60.puffs.length})`);
   assert.deepEqual(at20.puffs.map(key).sort(), at60.puffs.map(key).sort(), 'the same puffs at 20 fps as at 60 fps');
   assert.deepEqual(at144.puffs.map(key).sort(), at60.puffs.map(key).sort(), 'the same puffs at 144 fps as at 60 fps');
-  // every puff is born inside the screen's life and none outlives it
+  // every puff is born inside the screen's life; (fx 8l, wave 354a: "a full-bodied wall at 15 s that's gone at 18 s, a
+  // hard switch-off", the coordinator: a cosmetic haze lingering 10-20 s past the sight block, the gameplay duration
+  // untouched) only a thin haze outlives it, and by at most 20 s
   for (const p of at60.puffs) {
     assert.ok(p.birth >= screen.born - 1e-6, 'no puff before the launch');
-    assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 1e-6, 'no puff outlives the screen');
+    assert.ok(p.birth <= screen.born + SMOKE_DURATION_S + 1e-6, 'no puff born after the screen');
+    const end = p.birth + p.life - (screen.born + SMOKE_DURATION_S);
+    if (end > 0.65) assert.ok(p.density <= 0.3 && end <= 20 + 1e-6, `only a thin haze outlives the screen (+${end.toFixed(1)} s, density ${p.density})`);
     assert.ok(Number.isFinite(p.x + p.y + p.z + p.vx + p.vy + p.vz + p.life + p.size1), 'finite records');
+  }
+  // (EF.03, the SSOT rule: visible smoke may not outlast the 18 s sight block by more than its fade) whatever lives past
+  // the sight block is already fading by its end: no veil holds its density after the screen stops blocking
+  for (const p of at60.puffs) {
+    if (p.birth + p.life <= screen.born + SMOKE_DURATION_S + 0.65) continue;
+    assert.ok(p.birth + p.fadeOut * p.life <= screen.born + SMOKE_DURATION_S + 1e-6,
+      `past the sight block a puff only fades (its fade from +${(p.birth + p.fadeOut * p.life - screen.born).toFixed(1)} s)`);
+  }
+  {
+    const tail = at60.puffs.filter((p) => p.birth + p.life > screen.born + SMOKE_DURATION_S + 8);
+    assert.ok(tail.length >= smokeBankCount(screen) && tail.some((p) => p.windK >= 0.5), `a haze lingers past the sight block and drifts with the wind (${tail.length})`);
   }
   // the dense wall settles inside the simulation's envelope: each lobe's resting place (born at the burst, its offset
   // v/k) lies within the full-grown bank radius of some bank's centre
@@ -102,7 +118,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const crowded = run(salvo('m1a1'), 1 / 60);
   const perBank = crowded.puffs.length / smokeBankCount(salvo('m1a1'));
   assert.ok(perBank < at60.puffs.length / banks, `crowded banks share their lobes (${perBank.toFixed(1)} vs ${(at60.puffs.length / banks).toFixed(1)} a bank)`);
-  assert.ok(crowded.puffs.length <= 520, `a whole 24-tube screen stays bounded (${crowded.puffs.length} puffs over 18 s)`);
+  assert.ok(crowded.puffs.length <= 480, `a whole 24-tube screen stays bounded (${crowded.puffs.length} puffs over 18 s)`);
   // (r2, wave 311) the launch: a white puff at every bank's tube as its grenade leaves
   for (const sc of [screen, salvo('m1a1')]) {
     const r = run(sc, 1 / 60);
@@ -134,22 +150,161 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     }
     assert.ok(gap <= 3, `${id}: the wall's widest uncovered stretch inside the envelope is ${gap.toFixed(1)} m`);
   }
-  // (r2, wave 311: "see-through by 15 s") the fade follows the simulation's sight-blocking density: every lobe holds to
-  // 13.5 s and is gone by 16.6 s (the density's blocking floor); a thin haze tail drifts on inside the envelope and
-  // ends with the screen
+  // (r2, wave 311: "see-through by 15 s"; fx 8l, wave 354a: "a hard switch-off") the fade follows the simulation's
+  // sight-blocking density with a long visual decay: every lobe holds dense past 12 s, erodes from 11-12 s (the crowns,
+  // the wall's top, first), is most of the way through its erosion by the blocking floor (16.6 s) and gone by 18.4 s;
+  // a thin haze tail drifts on inside the envelope and outlives the screen by at most HAZE_LINGER_S
   {
-    const holdAge = 13.4, blockEnd = 16.6;
+    const holdAge = 12.9, blockEnd = 16.6;
     const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
     assert.ok(lobes.every((p) => p.birth + p.life >= screen.born + holdAge), 'every lobe holds while the density does');
-    assert.ok(lobes.every((p) => p.birth + p.life <= screen.born + blockEnd + 1e-6), 'and none outlasts the blocking');
-    const hazes = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.2);
+    assert.ok(lobes.every((p) => p.birth + p.life <= screen.born + 18.4 + 1e-6), 'and its last wisps are gone by 18.4 s');
+    // (the haze's near-constant drift: drag 0.05; fx 9's drifting bodies, drag 0.02, fade in over 0.7 of their life)
+    const hazes = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.2 && p.fadeIn !== 0.7);
     assert.ok(hazes.length >= banks, `a haze tail in every bank (${hazes.length})`);
     for (const p of hazes) {
       assert.ok(p.birth >= screen.born + 13 - 1e-6 && p.density <= 0.4, 'the tail is thin and late');
-      assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 1e-6, 'it ends with the screen');
+      assert.ok(p.birth + p.life <= screen.born + SMOKE_DURATION_S + 9 + 1e-6, 'it outlives the screen by at most 9 s');
       const inside = Array.from({ length: banks }, (_, b) => { smokeVolume(screen, p.birth, b - 2, vol, () => 0); return [vol.x, vol.z, vol.radius]; })
         .some(([cx, cz, rr]) => Math.hypot(p.x - cx, p.z - cz) <= rr);
       assert.ok(inside, 'the tail is born inside the drifting envelope');
+    }
+  }
+  // (fx 8m, wave 337: "strings of hard-edged near-white balls", "a necklace of balls round partial blobs" until ~4 s, "a
+  // flat grey mass", "no visible strike or bounce at the wall")
+  {
+    // the trails are threads: every wisp in flight and every streamer puff along a pellet's arc has a neighbour of its
+    // own trail closer than its own full size
+    const near = (list, gap) => list.every((p) => list.some((q) => q !== p && Math.abs(q.birth - p.birth) <= gap
+      && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) <= p.size1));
+    const wisps = at60.puffs.filter((p) => p.windK === 0.6 && p.drag === 1.5);
+    const streamers = at60.puffs.filter((p) => p.windK === 0.5 && p.drag === 1.2);
+    assert.ok(wisps.length > 0 && near(wisps, 0.046), `the grenades' trails are threads, not dotted lines (${wisps.length} wisps)`);
+    assert.ok(streamers.length > 0 && near(streamers, 0.051), `the pellets' streamers are ropes, not beads (${streamers.length})`);
+    // the bloom swells with the simulation's growth: every lobe is at 85 % of its size 2.4 s after its birth, from a
+    // body already two metres across, fading in out of the pop
+    const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
+    for (const p of lobes) {
+      const g = 1 - Math.pow(1 - Math.min(1, 2.4 / p.life), p.growExp);
+      assert.ok(p.size0 >= 2 && p.size0 + (p.size1 - p.size0) * g >= 0.85 * p.size1, `a lobe swells with the bank (${p.size0} m at birth, growth ${g.toFixed(2)} by 2.4 s)`);
+    }
+    // the wall is modelled: its crowns (settling over 3.5 m) the sunlit white, brighter than any of its feet (under 2.5 m)
+    const settle = (p) => p.y + p.vy / p.drag;
+    const crowns = lobes.filter((p) => settle(p) > 3.5), feet = lobes.filter((p) => settle(p) < 2.5);
+    assert.ok(crowns.length >= banks && feet.length >= banks, `crowns and feet in every bank (${crowns.length}, ${feet.length})`);
+    assert.ok(Math.min(...crowns.map((p) => p.r0)) > Math.max(...feet.map((p) => p.r0)), 'the crowns are brighter than the feet');
+    // a grenade striking a wall: a receipt with one bounce (sim/smokeBallistics.ts: the launch's seven numbers, then the
+    // time it left the wall, where and its velocity after) strikes once, there, then; the dust leaves the face
+    const g = 9.81, tb = 0.6, src = screen.canisters[0];
+    const bx = src[0] + src[3] * tb, by = src[1] + src[4] * tb - 0.5 * g * tb * tb, bz = src[2] + src[5] * tb;
+    const ivx = src[3], ivy = src[4] - g * tb, ivz = src[5], ih = Math.hypot(ivx, ivz);
+    const nx = -ivx / ih, nz = -ivz / ih, into = ivx * nx + ivz * nz;
+    const avx = 0.7 * (ivx - into * nx) - 0.35 * into * nx, avz = 0.7 * (ivz - into * nz) - 0.35 * into * nz;
+    const bounced = [...src.slice(0, 7), tb, bx, by, bz, avx, ivy * 0.7, avz];
+    const struck = { ...screen, canisters: [bounced, ...screen.canisters.slice(1)] };
+    const r = run(struck, 1 / 60);
+    const strikes = r.puffs.filter((p) => p.windK === 0.4 || p.windK === 0.45);
+    assert.equal(strikes.length, 3, `one strike at the wall: a dust kick and the grenade's own puff (${strikes.length} puffs)`);
+    // (fx 9, wave 404: "no strip shows a grenade ... dropping back outside") the struck grenade trails its fuse's thread
+    // from the knock down to where it rests
+    const drop = r.puffs.filter((p) => p.windK === 0.6 && p.drag === 1.5 && p.birth > struck.born + tb + 1e-6 && p.birth <= struck.born + bounced[6] + 1e-6);
+    assert.ok(drop.length >= 2, `its thread follows the drop back from the wall (${drop.length} wisps)`);
+    for (const p of strikes) {
+      assert.ok(Math.abs(p.birth - (struck.born + tb)) < 1e-6, 'the strike is born when the grenade leaves the wall');
+      // (fx 8r, the w5 film: "white puffs sit against the house face") born off the face, in front of it, never half inside
+      const off = (p.x - bx) * nx + (p.z - bz) * nz;
+      assert.ok(Math.hypot(p.x - bx, p.y - by, p.z - bz) < 1.0 && off > 0.3, `and where it struck, off the face (${off.toFixed(2)} m out)`);
+      if (p.windK === 0.4) assert.ok(p.vx * nx + p.vz * nz > 0, 'its dust is thrown off the face, never into the wall');
+    }
+    assert.ok(at60.puffs.every((p) => p.windK !== 0.4 && p.windK !== 0.45), 'a screen whose grenades struck nothing strikes nothing');
+  }
+  // (fx 8r, the w5 film: "a row of separate white puffs along the line before it merges", "white puffs against the house
+  // face") the pops are low, wide and fade in; a skirt of low puffs closes each bank's stretch within a second of its
+  // landing; nothing in the open asks for a wider soft-depth feather; by a wall the puffs fade into it more softly
+  {
+    const pops = at60.puffs.filter((p) => p.windK === 0.15);
+    assert.ok(pops.length > 0 && pops.every((p) => p.vy <= 1.6 && p.aspect >= 1.3 && p.fadeIn >= 0.1),
+      'a grenade\'s pop spreads low and wide and fades in: no round white ball');
+    const skirts = at60.puffs.filter((p) => p.windK === 0.1);
+    for (let b = 0; b < banks; b++) {
+      smokeVolume(screen, screen.born + 6, b - 2, vol, () => 0);
+      const mine = skirts.filter((p) => Math.hypot(p.x - vol.x, p.z - vol.z) <= vol.radius + 1.5);
+      assert.ok(mine.length >= 1, `every bank's stretch has its skirt (bank ${b}: ${mine.length})`);
+    }
+    assert.ok(skirts.length >= banks, `the row's skirt (${skirts.length} puffs over ${banks} banks)`);
+    for (const p of skirts) {
+      const g = 1 - Math.pow(1 - Math.min(1, 1 / p.life), p.growExp);
+      assert.ok(g >= 0.79 && p.size1 >= 1.6, `a skirt swells to most of its size within a second (${g.toFixed(2)})`);
+      assert.ok(p.y >= 0.9 && p.y <= 1.5 && p.life <= 4.7 && p.density <= 0.85, 'low, brief and soft');
+    }
+    // the skirt is born within half a second of each landing: the row closes before the lobes have travelled out to it
+    const firstLobe = Math.min(...at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1).map((p) => p.birth));
+    const firstSkirt = Math.min(...skirts.map((p) => p.birth));
+    assert.ok(firstSkirt - firstLobe < 0.5, 'the skirt comes with the bloom');
+    assert.ok(at60.puffs.every((p) => !(p.heat === 0 && p.cool < 0)), 'in the open no puff asks for a wider feather');
+    // by a house's wall (the smoke-collision staging: x 10..18, z -4..4, walls to 5 m; a Leopard 8 m short of it)
+    const { createHeadlessCollisionWorld } = await import('../world/headlessCollisionWorld.ts');
+    const UP = new THREE.Vector3(0, 1, 0);
+    const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => UP, maxY: 0, minY: 0 };
+    const box = { b: [10, 0, -4, 18, 5, 4], k: 'structure' };
+    const world = createHeadlessCollisionWorld({ heightField: flat, manifest: { obstacles: [box], colliders: [box] } });
+    const t = { id: 'leo2a6', team: 'player', spec: { id: 'leo2a6', dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
+      state: { pos: { x: 2, y: 0, z: 0 }, yaw: Math.PI / 2, turretYaw: 0, visualPitch: 0, visualRoll: 0 }, combat: {} };
+    assert.ok(requestAuxiliary(t, 'smoke', 3, () => 0, world), 'a salvo at a house');
+    const walled = run(t.combat.auxiliary.smoke, 1 / 60);
+    const byWall = walled.puffs.filter((p) => p.heat === 0 && p.cool < 0);
+    assert.ok(byWall.length >= 4 && byWall.every((p) => -p.cool > 1 && -p.cool <= 3),
+      `by the wall the puffs fade into it more softly (${byWall.length} puffs, feather x${Math.max(...byWall.map((p) => -p.cool)).toFixed(1)})`);
+    const far = walled.puffs.filter((p) => p.windK === 0 && p.drag >= 1 && Math.max(10 - (p.x + p.vx / p.drag), 0) > 5);
+    assert.ok(far.every((p) => p.cool >= 0), 'away from it, the feather they always had');
+    // (fx 9, waves 404/405: "the cloud stops in a dead-straight vertical edge exactly on the house corner", "the house's
+    // front wall shows through ... as a crisp, pale rectangle", "small puffs sit right in the window openings") a salvo
+    // fired at the house's corner from the south-west: the screen meets the walls the way smoke does
+    const t2 = { ...t, state: { ...t.state, pos: { x: 3, y: 0, z: -7 }, yaw: Math.PI / 2 - 0.5 }, combat: {} };
+    assert.ok(requestAuxiliary(t2, 'smoke', 3, () => 0, world), 'a salvo at the house\'s corner');
+    const corner = run(t2.combat.auxiliary.smoke, 1 / 60);
+    const H = { x0: 10, x1: 18, z0: -4, z1: 4 };
+    const dist = (x, z) => Math.hypot(Math.max(H.x0 - x, 0, x - H.x1), Math.max(H.z0 - z, 0, z - H.z1));
+    const inHouse = (x, z) => x > H.x0 && x < H.x1 && z > H.z0 && z < H.z1;
+    assert.ok(corner.puffs.every((p) => !inHouse(p.x, p.z)), 'no puff is born inside the house');
+    const rest = corner.puffs.filter((p) => p.windK === 0 && p.drag >= 1).map((p) => ({ ...p, d: dist(p.x + p.vx / p.drag, p.z + p.vz / p.drag) }));
+    // each lobe its own standoff off the wall (never at it: the soft depth fade printed the wall's outline and windows
+    // into a puff held there), the wall-held ones ragged (never one line), thinning over the last metre or so
+    const held = rest.filter((p) => p.d < 2.5).map((p) => p.d).sort((a, b) => a - b);
+    assert.ok(held.length >= 3 && held[0] >= 0.55, `the lobes stand off the wall (${held.length} by it, the nearest ${held[0]?.toFixed(2)} m)`);
+    assert.ok(held[held.length - 1] - held[0] >= 0.5, `a ragged edge, not one line (${held[0].toFixed(2)}-${held[held.length - 1].toFixed(2)} m)`);
+    assert.ok(rest.filter((p) => p.d < 1.5).every((p) => p.density < 0.9), 'thinning over the last metre or so before the wall');
+    // and the screen comes round the corner: lobes past it, behind the west face's line, outside the house
+    assert.ok(rest.filter((p) => { const x = p.x + p.vx / p.drag, z = p.z + p.vz / p.drag; return x > H.x0 && !inHouse(x, z) && p.d < 6; }).length >= 3,
+      'the screen comes round the house\'s corner');
+  }
+  // (fx 9, wave 403: "after 15 s the whole bank fades evenly over about 5 s; it should erode from its crowns and flanks
+  // over tens of seconds") the wall erodes by role — its crowns first (~8.5 s), the row's flanks next (~10 s), its core
+  // last (~13.5 s) — and each eroding crown and flank sheds a thin wisp the scene's wind carries off for 12-18 s
+  {
+    const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
+    const settle = (p) => p.y + p.vy / p.drag;
+    const erodeAt = (p) => p.birth + p.fadeOut * p.life - screen.born;
+    const crowns = lobes.filter((p) => settle(p) > 3.5), feet = lobes.filter((p) => settle(p) < 2.5);
+    const crownErode = Math.max(...crowns.map(erodeAt)), feetErode = feet.map(erodeAt);
+    assert.ok(crownErode < 11, `the crowns erode first (by ${crownErode.toFixed(1)} s)`);
+    assert.ok(Math.min(...feetErode) <= 11 && Math.max(...feetErode) >= 13,
+      `the row's flanks before its core (${Math.min(...feetErode).toFixed(1)}-${Math.max(...feetErode).toFixed(1)} s)`);
+    assert.ok(crownErode < Math.max(...feetErode), 'the core holds longest');
+    assert.ok(crowns.every((p) => p.birth + p.life - screen.born <= 16) && feet.every((p) => p.birth + p.life - screen.born >= 16.4),
+      'the crowns gone by 16 s, the feet holding past the blocking floor');
+    // (fx 9, wave 403: "a nearly frozen footprint from 8 s to 15 s") in the open the wall's bodies drift on the
+    // simulation's own breeze for their whole lives, as the blocking volume does
+    const { SMOKE_WIND_X, SMOKE_WIND_Z } = await import('../sim/smokeScreen.ts');
+    const drifting = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.05 && p.fadeIn === 0.7);
+    assert.ok(drifting.length >= banks && drifting.every((p) => Math.hypot(p.vx - SMOKE_WIND_X, p.vz - SMOKE_WIND_Z) < 0.06 && p.vy < 0.12),
+      `the bodies drift on the breeze (${drifting.length})`);
+    const eroding = at60.puffs.filter((p) => p.windK >= 0.75 && p.drag === 0.6 && p.life >= 11.9);
+    assert.ok(eroding.length >= crowns.length, `each eroding crown and flank sheds a wisp (${eroding.length})`);
+    for (const p of eroding) {
+      const b = p.birth - screen.born;
+      assert.ok(b >= 7 && b <= 15 && p.density <= 0.3, `a thin wisp torn off as the wall thins (${b.toFixed(1)} s, density ${p.density.toFixed(2)})`);
+      assert.ok(b + p.life <= SMOKE_DURATION_S + 20 + 1e-6, 'gone within 20 s of the sight block');
     }
   }
   // reset forgets the screens: a rematch draws nothing old
@@ -161,5 +316,5 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const before = rec.puffs.length;
   fx.reset(); clock.now += 1; fx.update();
   assert.equal(rec.puffs.length, before, 'reset drops every screen');
-  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, reset passed`);
+  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, low wide pops and the row's skirt, wall feathers, the walls met as smoke meets them (standoff, ragged, thinning, round the corner), erosion by role with wind-borne wisps, bodies drifting on the breeze, reset passed`);
 }

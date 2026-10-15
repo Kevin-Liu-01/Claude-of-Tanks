@@ -32,6 +32,8 @@ const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistan
     horizonRingGeometrySteps: function* () { return null; },
   });
   function horizonRingSupplyFor() { return null; }
+  // (the horizons stream, 2026-10-13, HL-3) and the Hinterland's supplied build: none here either
+  function hinterlandSupplyFor() { return null; }
   function* createSplatMaterialSteps() {
     return { material: new THREE.MeshStandardMaterial(), textures: new Set() };
   }

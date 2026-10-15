@@ -10,6 +10,8 @@ import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.t
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
 const SANDSTONE = rgb(0xb59a7c);
+/** A fountain's jets and ripples: water catching the light (a pale grey-blue on the vertex-coloured metal bucket). */
+const WATER_JET = rgb(0xc8d4dc);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 
@@ -58,9 +60,49 @@ function marktFountain(sink: PartSink, R: number, base: number): ReturnType<Land
   revolve(sink, 'stone', 0, 0, [[0.66, 0.5], [0.66, 1.25], [0.54, 1.38], [0.4, 1.48], [0.33, 1.62], [0.29, shaftTop - 0.3], [0.38, shaftTop - 0.2],
     [0.52, shaftTop], [0.52, shaftTop + 0.18], [0, shaftTop + 0.19]], 8, {}, oct);
   figure(sink, shaftTop + 0.18, 1.85, SANDSTONE, shade(SANDSTONE, 0.78), 'robe');
+  // (the looks lane, 2026-10-13; LOOKS-BRIEF item 3: "the water is a flat blue disc ... wants a sandstone basin with
+  // carved panels ... and spout jets") each of the trough's eight faces a sunk panel in a moulded frame, a ringed boss
+  // on four of them; the pedestal's acanthus band; the water's surface rings where the jets land
+  const apothem = Ro * Math.cos(oct);
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4 + Math.PI / 8 + oct, c = Math.sin(a), s = Math.cos(a), tu: Vec3 = [s, 0, -c];
+    const side = 2 * Ro * Math.sin(oct), pw = side * 0.62, ph = 0.42, cy = 0.52;
+    const at = (u: number, y: number, o: number): Vec3 => [c * (apothem + o) + tu[0] * u, y, s * (apothem + o) + tu[2] * u];
+    // the frame: four mouldings proud of the face round the sunk field
+    for (const [u0, u1, y0, y1] of [[-pw / 2, pw / 2, cy - ph / 2 - 0.05, cy - ph / 2], [-pw / 2, pw / 2, cy + ph / 2, cy + ph / 2 + 0.05],
+      [-pw / 2 - 0.05, -pw / 2, cy - ph / 2 - 0.05, cy + ph / 2 + 0.05], [pw / 2, pw / 2 + 0.05, cy - ph / 2 - 0.05, cy + ph / 2 + 0.05]] as const) {
+      sink.quad('stone', at(u0, y0, 0.035), at(u1, y0, 0.035), at(u1, y1, 0.035), at(u0, y1, 0.035), { decor: true });
+      sink.quad('stone', at(u0, y1, 0.0), at(u1, y1, 0.0), at(u1, y1, 0.035), at(u0, y1, 0.035), { decor: true });
+    }
+    if (k % 2 === 0) {
+      // a boss in the field: the town's arms in a ring
+      const r0 = 0.13, n = 8;
+      for (let i = 0; i < n; i++) {
+        const t0 = i / n * Math.PI * 2, t1 = (i + 1) / n * Math.PI * 2;
+        sink.quad('stone', at(Math.cos(t0) * r0, cy + Math.sin(t0) * r0, 0.05), at(Math.cos(t1) * r0, cy + Math.sin(t1) * r0, 0.05),
+          at(Math.cos(t1) * r0, cy + Math.sin(t1) * r0, 0.0), at(Math.cos(t0) * r0, cy + Math.sin(t0) * r0, 0.0), { decor: true });
+      }
+      sink.polygon('stone', Array.from({ length: n }, (_, i) => at(Math.cos(i / n * Math.PI * 2) * r0, cy + Math.sin(i / n * Math.PI * 2) * r0, 0.05)), { decor: true });
+    }
+  }
+  revolve(sink, 'stone', 0, 0, [[0.7, 1.1], [0.74, 1.16], [0.7, 1.24]], 8, { decor: true }, oct);
   for (let k = 0; k < 4; k++) {
     const a = k * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
     bar(sink, 'structureMetal', [c * 0.6, 1.05, s * 0.6], [c * 1.15, 0.98, s * 1.15], 0.05, { colour: IRON, decor: true });
+    // the jet: an arc of water from the spout's mouth to the trough, pale and catching the light, and its ring of ripples
+    let prev: Vec3 = [c * 1.17, 0.97, s * 1.17];
+    for (let i = 1; i <= 6; i++) {
+      const t = i / 6, d = 1.17 + t * 0.55, y = 0.97 + 0.12 * t - 0.36 * t * t;
+      const p: Vec3 = [c * d, y, s * d];
+      bar(sink, 'structureMetal', prev, p, 0.032 - t * 0.008, { colour: WATER_JET, decor: true });
+      prev = p;
+    }
+    const rc: Vec3 = [c * 1.72, 0.735, s * 1.72];
+    for (let i = 0; i < 10; i++) {
+      const t0 = i / 10 * Math.PI * 2, t1 = (i + 1) / 10 * Math.PI * 2, r1 = 0.16, r2 = 0.22;
+      sink.quad('structureMetal', [rc[0] + Math.cos(t0) * r1, rc[1], rc[2] + Math.sin(t0) * r1], [rc[0] + Math.cos(t0) * r2, rc[1], rc[2] + Math.sin(t0) * r2],
+        [rc[0] + Math.cos(t1) * r2, rc[1], rc[2] + Math.sin(t1) * r2], [rc[0] + Math.cos(t1) * r1, rc[1], rc[2] + Math.sin(t1) * r1], { colour: WATER_JET, decor: true });
+    }
   }
   return { parts: sink.finish(), tints: { stone: [1.04, 0.95, 0.85] } };
 }

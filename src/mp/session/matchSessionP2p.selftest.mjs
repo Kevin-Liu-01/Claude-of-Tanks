@@ -108,12 +108,15 @@ async function joinedClient({ tier = 'desktop', playerId = 'me' } = {}) {
   let ticks = 0;
   const pump = setInterval(() => { session.update(performance.now(), 1 / 60); ticks++; }, 16);
   await until(() => !!session.match?.welcome, 'the host seat welcomed', 10_000);
-  await until(() => transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'match_report').length >= 2, 'two reports', 10_000);
+  // (plan step 8, 2026-10-13: the elected host's tab reports 'loading' from the match_start until its actor reports — the
+  // first reports may be those; the actor's own phase follows)
+  await until(() => transport.outbound.some((envelope) => envelope.payload?.command?.type === 'match_report' && ['countdown', 'playing'].includes(envelope.payload.command.phase)), 'a countdown or playing report', 10_000);
   const reports = transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'match_report').map((envelope) => envelope.payload.command);
   assert.equal(reports[0].phase, 'loading');
   assert.equal(reports[0].matchId, matchId);
   assert.equal(reports[0].generation, 1);
-  assert.ok(['countdown', 'playing'].includes(reports[1].phase));
+  assert.ok(reports.slice(1).some((report) => ['countdown', 'playing'].includes(report.phase)), 'the phase follows the loading reports');
+  assert.ok(reports.every((report) => report.matchId === matchId && report.generation === 1));
   assert.equal(session.p2p.role, 'host');
   assert.equal(session.p2p.generation, 1);
   // the room moved on (generation 2, another host): the next report is refused host_only → this seat steps down to a peer

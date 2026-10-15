@@ -102,6 +102,9 @@ export interface ActiveRoomAdapter {
 }
 
 export interface PlayMenuOptions {
+  /** The version refusal's Refresh button (location.reload by default; receipts inject it). The banner is checked in a
+   *  real browser by tools/mp-refusal-banner-check.mjs (in view at 1024x640, Refresh reloads, Rejoin hidden). */
+  reloadPage?: () => void;
   maps?: PlayMenuMap[];
   vehicles?: PlayMenuVehicle[];
   getSelection(): PlayMenuSelection;
@@ -170,6 +173,12 @@ const ENTRY_REFUSAL_KEYS: Readonly<Record<string, string>> = Object.freeze({
   build_host_older: 'playMenu.entryRefusal.buildHostOlder',
   build_host_newer: 'playMenu.entryRefusal.buildHostNewer',
 });
+
+/**
+ * Refusals only a page refresh resolves (2026-10-14, deploy 223's MP window: an old tab's "Refresh the page to join"
+ * sat in the lobby status line, out of view at 1024x640, under a Rejoin battle that could only be refused again).
+ */
+const VERSION_REFUSAL_CODES: ReadonlySet<string> = new Set(['build_mismatch', 'build_host_older', 'build_host_newer']);
 
 /** Warm only code implied by an explicit garage mode selection. */
 export function preloadPlayMode(_mode: PlayMode): Promise<null> {
@@ -405,6 +414,14 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .room-failure-actions{display:flex;flex-wrap:wrap;gap:10px}
 .cot-play .room-failure button.action{min-height:44px;height:auto;white-space:normal;line-height:1.35}
 .cot-play .room-failure:focus-visible{outline:2px solid #ffcc89}
+.cot-play .version-refusal{margin:14px 0 2px;padding:16px 18px;
+  border:1px solid #e0a35a;border-left:5px solid #ffc06b;background:#2a2014;color:#fff2de;
+  box-shadow:0 12px 30px rgba(0,0,0,.55);display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center}
+.cot-play .version-refusal[hidden]{display:none!important}
+.cot-play .version-refusal h3{margin:0;font-size:18px;line-height:1.25;grid-column:1}
+.cot-play .version-refusal p{margin:0;color:#f0dcc0;font-size:13px;line-height:1.55;grid-column:1}
+.cot-play .version-refusal button.action{grid-column:2;grid-row:1 / span 2;min-height:44px;height:auto;white-space:nowrap}
+.cot-play .version-refusal:focus-visible{outline:2px solid #ffcc89}
 
 .cot-play .panel{display:flex;flex-direction:column;width:min(860px,96vw);padding:24px;
   scrollbar-width:thin;scrollbar-color:#65737d #0b1117;color-scheme:dark;overscroll-behavior:contain;}
@@ -716,6 +733,7 @@ export function createPlayMenu({
   isVehicleAllowed = () => true,
   getCamoName = (camo) => camo || t('camoPattern.factory'),
   getVehicleName = (specId) => specId,
+  reloadPage = () => { location.reload(); },
 }: PlayMenuOptions): PlayMenuRuntime {
   ensureFonts();
   ensureStyle(STYLE_ID, CSS);
@@ -770,7 +788,11 @@ export function createPlayMenu({
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
-    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2></header>
+    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
+    <section class="version-refusal" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
+      <h3 id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</h3><p data-version-text></p>
+      <button class="action" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button>
+    </section></header>
     <p class="lead">${t('playMenu.lead')}</p>
     <div class="modes">
       <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>${t('playMenu.private.kicker')}</i><b>${t('playMenu.private.title')}</b><span class="mode-desc">${t('playMenu.private.desc')}</span></button>
@@ -1030,6 +1052,19 @@ export function createPlayMenu({
   const readyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="ready"]');
   const startBtn = requiredElement<HTMLButtonElement>(root, '[data-action="start"]');
   const rejoinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="rejoin"]');
+  const versionBanner = requiredElement<HTMLElement>(root, '.version-refusal');
+  const versionText = requiredElement<HTMLElement>(versionBanner, '[data-version-text]');
+  const refreshBtn = requiredElement<HTMLButtonElement>(versionBanner, '[data-action="refresh-page"]');
+  /** A refusal only a refresh resolves (VERSION_REFUSAL_CODES): its banner stands, and Rejoin battle stays hidden. */
+  let versionRefusal: string | null = null;
+  function setVersionRefusal(text: string | null): void {
+    versionRefusal = text;
+    versionText.textContent = text ?? '';
+    versionBanner.hidden = !text;
+    if (text) rejoinBtn.hidden = true;
+    if (text && root.classList.contains('show')) versionBanner.focus({ preventScroll: false });
+  }
+  refreshBtn.addEventListener('click', () => reloadPage());
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '[data-action="leave"]');
   const createBtn = requiredElement<HTMLButtonElement>(root, '[data-action="create"]');
   const joinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="join"]');
@@ -1436,6 +1471,7 @@ export function createPlayMenu({
     } = {},
   ): void {
     if (!keepRequest) requestGeneration++;
+    setVersionRefusal(null); // leaving the room ends its refusal
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
     if (activeRoom && !skipTransportClose) activeRoom.leave(reason);
@@ -1582,7 +1618,7 @@ export function createPlayMenu({
       || (next.gameMode === 'frontline_assault' && !!campaignOperationById(next.campaignOperationId));
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
-    rejoinBtn.hidden = !canRejoinBattle(next);
+    rejoinBtn.hidden = !canRejoinBattle(next) || !!versionRefusal;
     const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
     const everyoneReady = activePlayers.length > 0 &&
       activePlayers.every((candidate) => candidate.ready && candidate.specId);
@@ -1890,7 +1926,7 @@ export function createPlayMenu({
     hide(false);
   });
   rejoinBtn.addEventListener('click', () => {
-    if (state && canRejoinBattle(state)) beginNetworkHandoff(state, role);
+    if (state && canRejoinBattle(state) && !versionRefusal) beginNetworkHandoff(state, role);
   });
   function startRound(): boolean {
     if (!state || role !== 'host' || state.phase !== 'waiting') return false;
@@ -2026,6 +2062,7 @@ export function createPlayMenu({
     unsubscribeState = null;
     activeRoom = null;
     session = null;
+    setVersionRefusal(null);
     state = null;
     role = null;
     handedOff = false;
@@ -2074,6 +2111,8 @@ export function createPlayMenu({
     if (!showCurrentRoom()) return false;
     const key = code ? ENTRY_REFUSAL_KEYS[code] : undefined;
     const text = key ? t(key) : notice;
+    // a version refusal is a banner at the top of the menu with Refresh, and Rejoin battle goes (it can only be refused again)
+    if (code && VERSION_REFUSAL_CODES.has(code) && text) { setStatus(''); setVersionRefusal(text); return true; }
     if (text) setStatus(text, true);
     return true;
   }

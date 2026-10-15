@@ -289,6 +289,8 @@ function mapFixture(fine, fail = false) {
     // supplied to the terrain build through the ring's hook (horizonRingPrefetch.ts, horizonRingHook.ts): none here
     worldBuildConfig: () => urban, getDeviceTier: () => 'desktop',
     startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
+    // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland instead of the ring; this map keeps the ring
+    selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
     createHeightField() { assert.equal(fine, false); events.push('sync-field'); return field; },
     async createHeightFieldAsync(_seed, _config, tick) {
       assert.equal(fine, true); events.push('field-start');

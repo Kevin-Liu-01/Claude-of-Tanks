@@ -3,7 +3,7 @@
  * rules (stale, far-ahead, pre-handshake handled by the actor), an adaptive
  * 1..3 tick jitter buffer, held-input expiry and edge sequences applied once.
  */
-import { ACTION_BIT_MASK, CONTROL_FLAGS, NO_TICK } from '../../src/mp/wire/constants.ts';
+import { ACTION_BIT_MASK, CONTROL_FLAGS, HELD_INPUT_LEASE_TICKS, NO_TICK } from '../../src/mp/wire/constants.ts';
 import type { ControlFrame, InputMessage } from '../../src/mp/wire/messages.ts';
 import {
   dequantizeAimDistance, dequantizeAimPitch, dequantizeAngle, dequantizeControlAxis,
@@ -11,7 +11,7 @@ import {
 import type { AuthoritativePlayerInput } from '../../src/sim/authoritativeMatch.ts';
 
 const RING = 64;
-const HELD_INPUT_LEASE_TICKS = 30;   // v1: 500 ms without a fresh frame releases the controls
+// HELD_INPUT_LEASE_TICKS (wire constants, shared with the seat's prediction): 500 ms without a fresh frame releases the controls
 const ACTION_REPEAT_WINDOW_TICKS = 30; // bits applied at the previous actionSeq within 500 ms are not applied again
 const ADAPT_WINDOW = 60;             // frames per adaptation decision (about one second at 60 Hz)
 const LATE_RATE_GROW = 0.05;

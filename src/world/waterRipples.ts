@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, presetLightWorld } from '../engine/quality.ts';
 import type { WaterDisturbance } from './shallowWater.ts';
 
 /**
@@ -232,7 +232,8 @@ export function createWaterRippleField(
   options: WaterRippleOptions = {},
 ): WaterRippleField | null {
   if (!renderer || typeof renderer.setRenderTarget !== 'function' || typeof renderer.render !== 'function') return null;
-  if ((options.tier ?? getDeviceTier()) === 'mobile') return null;
+  // (Ultra Low, 2026-10-13: the light world build keeps the sheet's procedural wake, as on the phones)
+  if ((options.tier ?? getDeviceTier()) === 'mobile' || presetLightWorld()) return null;
   const windowM = options.windowM ?? WATER_RIPPLE_WINDOW_M;
   const texels = options.texels ?? WATER_RIPPLE_TEXELS;
   const dx = windowM / texels;

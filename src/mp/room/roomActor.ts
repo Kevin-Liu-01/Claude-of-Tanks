@@ -38,10 +38,10 @@ import {
   parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomRelayPayload, readRoomSignalPayload, utf8ByteLength,
 } from './protocol.ts';
 import type {
-  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode,
+  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedDetail, RoomHostChangedPayload, RoomHostPassedOver, RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode,
   RoomRelayPayload, RoomResult, RoomSelection, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
-import { electHost } from './p2pMatchHost.ts';
+import { electHost, explainElection } from './p2pMatchHost.ts';
 import type { P2pHostReport, P2pMatchHost } from './p2pMatchHost.ts';
 import {
   abortStart, applyRoomCommand, finishMatch, joinRoom, markMatchPlaying, migrateAdminIfAbsent, planStart, recordMatch,
@@ -939,10 +939,14 @@ export class RoomActor {
   }
 
   /** `host_changed` to every seat; the host's own copy carries the per-match secret. */
-  private sendHostChanged(reason: RoomHostChangedPayload['reason'], resumeTick: number): void {
+  private sendHostChanged(reason: RoomHostChangedPayload['reason'], resumeTick: number, detail?: RoomHostChangedDetail,
+    passedOver: readonly RoomHostPassedOver[] = []): void {
     const room = this.room;
     if (!room || !room.match || !room.host.hostId) return;
-    const payload: RoomHostChangedPayload = { hostId: room.host.hostId, generation: room.host.generation, resumeTick, reason };
+    const payload: RoomHostChangedPayload = {
+      hostId: room.host.hostId, generation: room.host.generation, resumeTick, reason,
+      ...(detail ? { detail } : {}), ...(passedOver.length ? { passedOver: passedOver.map((entry) => ({ ...entry })) } : {}),
+    };
     const hostSocket = this.socketOfPlayer.get(room.host.hostId) ?? null;
     for (const [socketId, socket] of this.sockets) {
       if (!socket.playerId) continue;
@@ -1012,7 +1016,7 @@ export class RoomActor {
    * match at all (no host thread, a failed boot, a Garage return that stopped its actor) — with nobody left the match
    * ends `lost` now, where the peers used to wait out the 30 s report budget for the same end.
    */
-  private migrateHost(now: number, reason: RoomHostChangedPayload['reason'], unable = false): void {
+  private migrateHost(now: number, reason: RoomHostChangedPayload['reason'], unable = false, detail?: RoomHostChangedDetail): void {
     const room = this.room;
     const p2p = this.p2p;
     const old = this.runningP2pHostId();
@@ -1031,14 +1035,17 @@ export class RoomActor {
     const resumeTick = this.hostReport && this.hostReport.generation === room.host.generation ? this.hostReport.tick : 0;
     const next = p2p.migrate(old, skip);
     if (!next) { this.loseMatch(now, old, reason); return; }
+    // (2026-10-13) who the ladder passed over and why: in the log and on every seat's host_changed
+    const passedOver = explainElection(room, next.hostId, old, skip);
     this.hostReport = null;
     this.hostReportDueAt = now + ROOM_MATCH_REPORT_STALE_AFTER_MS;
     this.hostLeaseAt = null;
     room.revision++;
     this.touch(now);
     this.persist();
-    this.log('info', 'host migrated', { from: old, to: next.hostId, generation: next.generation, resumeTick, reason });
-    this.sendHostChanged(reason, resumeTick);
+    this.log('info', 'host migrated', { from: old, to: next.hostId, generation: next.generation, resumeTick, reason,
+      ...(detail ? { detail } : {}), ...(passedOver.length ? { passedOver: passedOver.map((entry) => `${entry.playerId}:${entry.why}`).join(',') } : {}) });
+    this.sendHostChanged(reason, resumeTick, detail, passedOver);
     this.broadcastState();
   }
 
@@ -1168,11 +1175,11 @@ export class RoomActor {
     if (this.room && this.hostLeaseAt !== null && now >= this.hostLeaseAt) {
       this.hostLeaseAt = null;
       const hostId = this.runningP2pHostId();
-      if (hostId && !this.socketOfPlayer.has(hostId)) this.migrateHost(now, 'timeout');
+      if (hostId && !this.socketOfPlayer.has(hostId)) this.migrateHost(now, 'timeout', false, 'socket_lease');
     }
     if (this.room && this.hostReportDueAt !== null && now >= this.hostReportDueAt) {
       this.hostReportDueAt = null;
-      if (this.runningP2pHostId()) this.migrateHost(now, 'timeout');
+      if (this.runningP2pHostId()) this.migrateHost(now, 'timeout', false, 'report_deadline');
     }
     if (this.room && !this.p2p && this.nextPollAt !== null && now >= this.nextPollAt) {
       this.nextPollAt = null;

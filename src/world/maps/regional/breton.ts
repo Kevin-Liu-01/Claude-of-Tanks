@@ -671,7 +671,7 @@ export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   },
   wear: 0.25,
   // the yards: granite walls round a kitchen garden and a granite outhouse, a gate (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'granary', shedSize: [3.9, 4.3], garden: true },
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'granary', shedSize: [3.9, 4.3], garden: true },
 });
 
 export type { Vec3 };

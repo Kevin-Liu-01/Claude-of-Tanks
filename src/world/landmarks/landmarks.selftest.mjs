@@ -209,15 +209,27 @@ for (const kind of KINDS) {
 }
 
 // ---------------------------------------------------------------------------------------------------------- gates
+/** A deck over a passage stands at least this high (m): where the arch's shell over it does (below), far over the step a
+ * hull at the passage's ground could take onto it. */
+const PASSAGE_CLEAR_M = 3;
 for (const kind of ['kolkhozArch', 'townGate', 'triumphalArch', 'torii', 'parkGate']) check(`${kind} passage`, () => {
   const { parts } = build(kind, {});
   const contact = deriveRuntimeStructureCollisionProfile(parts).contact;
   const record = { min: [-100, -10, -100], max: [100, 100, 100] };
   // the passage's centreline from the front to the back of the footprint (a road runs through it)
   const [, hl] = landmarkFootprint({ kind, x: 0, z: 0 });
+  // (physics stream F2, 2026-10-14) the band's trailing decks are the arch's tops a hull stands on (structureDecks):
+  // floor-only, they meet no hull driving under them; over the passage each stands where the arch does
+  const decks = contact.decks ?? 0;
+  const ground = contact.parts.slice(0, contact.parts.length - decks), tops = contact.parts.slice(contact.parts.length - decks);
   for (let z = -hl; z <= hl; z += 0.25) {
     for (const x of [-1.2, 0, 1.2]) {
-      assert.ok(!contact.parts.some((part) => pointInsideCollisionRecord(record, part, x, z)), `${kind}: the passage at (${x}, ${z.toFixed(2)}) is clear of every ground-contact part`);
+      assert.ok(!ground.some((part) => pointInsideCollisionRecord(record, part, x, z)), `${kind}: the passage at (${x}, ${z.toFixed(2)}) is clear of every ground-contact part`);
+      for (const deck of tops) {
+        if (pointInsideCollisionRecord(record, deck, x, z)) {
+          assert.ok(deck.y0 >= PASSAGE_CLEAR_M, `${kind}: the deck over the passage at (${x}, ${z.toFixed(2)}) stands ${deck.y0.toFixed(2)} m up, where the arch does`);
+        }
+      }
     }
   }
   const shell = deriveRuntimeStructureCollisionProfile(parts).shell;
@@ -311,7 +323,8 @@ check('churchyard grounds', () => {
     const [hw, hl] = landmarkFootprint({ kind: 'churchyard', x: 0, z: 0, params });
     const { destructibles = [], parts } = build('churchyard', params);
     for (const d of destructibles) assert.ok(Math.abs(d.x) <= hw && Math.abs(d.z) <= hl, `${JSON.stringify(params)}: ${d.kind} at (${d.x.toFixed(2)}, ${d.z.toFixed(2)}) inside the footprint`);
-    const gates = destructibles.filter((d) => d.kind === 'gate');
+    // (a fence family's own gate since the looks lane's gates, 2026-10-13: gate, gatepicket, gatewattle, gatestone, gateadobe)
+    const gates = destructibles.filter((d) => /^gate/.test(d.kind));
     assert.equal(gates.length, params.holyGate === false ? 1 : 0, `${JSON.stringify(params)}: a plain gate only without the holy gateway`);
     if (params.holyGate !== false) assert.ok(!hasStructure(parts) || deriveRuntimeStructureCollisionProfile(parts).contact.parts.length >= 1, 'the holy gateway stands');
     assert.ok(destructibles.filter((d) => d.kind === resolved.fence).length >= 8, `${JSON.stringify(params)}: the fence runs round the open sides`);

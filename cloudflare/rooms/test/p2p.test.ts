@@ -159,8 +159,8 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect((await guest.request('room_ping')).type).toBe('room_pong');
     expect(await alarmAfter('ROOM14', ROOM_HOST_DISCONNECT_GRACE_MS)).toBe(true);
     const guestChanged = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload as unknown as RoomHostChangedPayload;
-    expect(guestChanged).toEqual({ hostId: 'guest', generation: 2, resumeTick: 300, reason: 'timeout', hostSecret: derivedSecret(matchId) });
-    expect((await watcher.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload).toEqual({ hostId: 'guest', generation: 2, resumeTick: 300, reason: 'timeout' });
+    expect(guestChanged).toEqual({ hostId: 'guest', generation: 2, resumeTick: 300, reason: 'timeout', detail: 'socket_lease', hostSecret: derivedSecret(matchId) });
+    expect((await watcher.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload).toEqual({ hostId: 'guest', generation: 2, resumeTick: 300, reason: 'timeout', detail: 'socket_lease' });
     const migrated = (await guest.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).host.generation === 2)).payload.room as RoomSnapshot;
     expect(migrated.host.hostId).toBe('guest');
     expect(migrated.phase).toBe('playing');
@@ -218,14 +218,14 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect((await guest.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 120 })).type).toBe('room_ack');
     expect((await guest.command({ type: 'host_decline', declined: true })).type).toBe('room_ack');
     const declined = (await third!.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload as unknown as RoomHostChangedPayload;
-    expect(declined).toEqual({ hostId: 'third', generation: 2, resumeTick: 120, reason: 'declined', hostSecret: derivedSecret(matchId) });
+    expect(declined).toEqual({ hostId: 'third', generation: 2, resumeTick: 120, reason: 'declined', passedOver: [{ playerId: 'admin', why: 'declined' }], hostSecret: derivedSecret(matchId) });
     expect((await admin.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload.hostSecret).toBeUndefined();
     expect((await storedState('ROOM15')).steppedDown).toEqual(['guest']);
     // the new host declines with no WILLING successor left (P1 kept it and stalled its peers for the 30 s report
     // budget): the admin — declined, but the last resort — takes over at once; the guest, which stepped down, is skipped
     expect((await third!.command({ type: 'host_decline', declined: true })).type).toBe('room_ack');
     const lastResort = (await admin.next((message) => message.type === 'host_changed' && message.payload.generation === 3)).payload as unknown as RoomHostChangedPayload;
-    expect(lastResort).toEqual({ hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', hostSecret: derivedSecret(matchId) });
+    expect(lastResort).toEqual({ hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', passedOver: [{ playerId: 'guest', why: 'stepped_down' }], hostSecret: derivedSecret(matchId) });
     expect((await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 3)).payload.hostSecret).toBeUndefined();
     expect((await storedState('ROOM15')).steppedDown).toEqual(['guest', 'third']);
     // every commander has stepped down: the admin's own decline finds nobody — it keeps hosting, no fourth election
@@ -236,7 +236,7 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     // the host leaves: at once, by the full ladder — the guest, lowest joinedAt of the declined, stepped down or not
     expect((await admin.request('room_leave')).type).toBe('room_ack');
     const left = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 4)).payload as unknown as RoomHostChangedPayload;
-    expect(left).toEqual({ hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', hostSecret: derivedSecret(matchId) });
+    expect(left).toEqual({ hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', passedOver: [{ playerId: 'third', why: 'ranked_lower' }], hostSecret: derivedSecret(matchId) });
     expect((await watcher.next((message) => message.type === 'host_changed' && message.payload.generation === 4)).payload.hostSecret).toBeUndefined();
     expect(room(watcher).phase).toBe('playing');
     expect(room(watcher).adminId).toBe('guest');
@@ -477,7 +477,7 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     await dropSocket(admin);
     expect(await alarmAfter('ROOM23', ROOM_HOST_DISCONNECT_GRACE_MS)).toBe(true);
     const elected = (await guest.next((message) => message.type === 'host_changed' && message.payload.generation === 2)).payload as unknown as RoomHostChangedPayload;
-    expect(elected).toEqual({ hostId: 'guest', generation: 2, resumeTick: 90, reason: 'timeout', hostSecret: derivedSecret(matchId) });
+    expect(elected).toEqual({ hostId: 'guest', generation: 2, resumeTick: 90, reason: 'timeout', detail: 'socket_lease', hostSecret: derivedSecret(matchId) });
     expect((await storedState('ROOM23')).hostReportDueAt).not.toBeNull();
     // its client answers at once: elected but unable — the match is lost now, not after the 30 s report budget
     expect((await guest.command({ type: 'host_decline', declined: true, unable: true })).type).toBe('room_ack');

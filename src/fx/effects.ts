@@ -24,7 +24,7 @@ import type { TrackSurface } from '../world/trackSurface.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
-import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
+import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, aerialTracerBrightness, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -42,10 +42,14 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } 
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { battleLightTintFromRig } from './sceneLightTint.ts';
+import { addLocalPoint, addLocalSpot, beginLocalLights, endLocalLights, localLightsCompiled, localLightsForPreset,
+  setLocalLightsCompiled } from './localLights.ts';
+import { refreshWorldWind, worldWind } from './worldWind.ts';
+import { mapTintHex, setMapGroundAlbedo } from './mapPalette.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, exhaustSpacing, craterEjecta, dustSurge, fragmentStrike,
-  groundBurst, isExplosive, kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
+  groundBurst, isExplosive, kineticStrike, killDust, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
   smolderPuff as mediaSmolderPuff, trackSkirt, trackSkirtSpacing, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
@@ -67,7 +71,7 @@ import type { StructureDamageSeam, StructureMaterialInfo } from '../world/struct
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, onPresetChange, resolvePresetName } from '../engine/quality.ts';
 
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
@@ -233,6 +237,10 @@ interface LightState {
   /** the light's own decay (a pulse may set a shorter one for itself: a ground burst's 0.2 s) */
   baseDur: number;
   basePow: number;
+  /** (fx 9: 8t) the pooled explosion light's reach for the pulse in flight (13 m unless the pulse sets its own) */
+  range?: number;
+  /** (the combat review 10-13) the pulse's hot hue, cooling toward LIGHT_COOL_HEX as it fades */
+  hotHex?: number;
 }
 
 interface ShockRingState {
@@ -520,6 +528,8 @@ export interface FxRuntime {
     caliberMm: number,
   ): void;
   impactDecalStats(): object;
+  /** (EF.10) compile the local light loop in or out (the preset decides; a cost A/B flips it). True when it changed. */
+  setLocalLights(on: boolean): boolean;
   clearVehicleDecals(visual: FxDecalVisual): void;
   destruction(
     pos: THREE.Vector3,
@@ -547,6 +557,12 @@ export interface FxRuntime {
   composeFiringMoment(moment: FiringMoment): void;
   composeExplosionMoment(moment: ExplosionMoment): void;
   cinematicPort(): FxCinematicPort;
+  /**
+   * (fx 8n) The Studio plays its battle-quality smoke salvos (screens published on its bus as the battle's own
+   * 'auxiliary:smokeScreens') on its timeline's clock (seconds) instead of the match clock; null returns the
+   * presentation to the match clock, and resetAll does too. False where there is no smoke presentation to drive.
+   */
+  setAuxiliaryClock(clock: (() => number) | null): boolean;
 }
 
 declare global {
@@ -642,6 +658,11 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // with quadratic decay, so the r5 "20 m road wash" cannot return.
 const MUZZLE_LIGHT_PEAK = 460;
 const MUZZLE_LIGHT_RANGE = 12;
+/** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
+ *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
+const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
+/** a wreck fire's reach on its own smoke (m, x the column's scale): the lit underside only a few metres round the flames */
+const LOCAL_FIRE_REACH_M = 5;
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
 // the fireball sprites were at their VISUAL peak (composed ageS 0.6) — the
 // scene read as "fire barely influences lighting". 1.6 s + pow 1.6 keeps a
@@ -680,6 +701,21 @@ const EXPLOSION_LIGHT_S = 1.9;
 const EXPLOSION_LIGHT_PEAK = 520;
 /** The explosion light's kill orange (effects r5: 0xff9a52 -> 0xff7f38); a burst's pulse may carry its own hue. */
 const EXPLOSION_LIGHT_HEX = 0xff7f38;
+/** (fx 8) a media kill's light pool: the fireball's warm yellow-orange, not the long orange of the kill light */
+const KILL_POOL_LIGHT_HEX = 0xffa458;
+/** (fx 9: 8t, wave 405's critics on both arms: "the flat orange ground ellipse at 0.0 s") a plain kill's fire lights the
+ *  hull and the ground round it in a small, brief, paler pool, the light low over the deck: the pooled explosion light's
+ *  13 m reach from 3.2 m over the hull tinted a ~12 m disc of ground orange */
+const PLAIN_KILL_LIGHT = Object.freeze({ hex: 0xffc890, peakK: 0.1, durS: 0.25, rangeM: 11, overDeckM: 1.8 });
+/** an ammunition cook-off keeps its pool, shortened and a little nearer */
+const COOKOFF_LIGHT = Object.freeze({ peakK: 0.3, durS: 0.5, rangeM: 20 });
+/** (the combat review 10-13: "the blast light paints a flat, saturated red-orange disc on the ground ... it reads like a
+ *  decal, not light; it needs inverse-square-like falloff, a colour temperature that cools as it fades, and no visible
+ *  edge") a pulse's ground light is capped: the ground straight under the light never takes more than LIGHT_GROUND_CAP x
+ *  the sun's irradiance (the flat, clipped centre of the disc), its reach is at least LIGHT_REACH_K x its height (the
+ *  window's edge falls where the inverse square has already faded it to a few per cent), and its hue cools from the
+ *  pulse's own toward a deep ember red as it fades. */
+const LIGHT_GROUND_CAP = 2.0, LIGHT_REACH_K = 4.5, LIGHT_COOL_HEX = 0xb83a14;
 // 40 (was 30) + a 35 s smolder tail (r7: "battlefield shows no lasting
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
@@ -698,7 +734,11 @@ const COLUMN_TICK_S = 0.05;
 // Wind shear on the column (unit XZ dir * strength): higher puffs get more
 // lateral velocity so the column visibly bends downwind instead of rising as
 // a laser-straight stack. Matches the world wind's general drift direction.
-const COLUMN_WIND_X = 0.82, COLUMN_WIND_Z = 0.28;
+// (EF.12, MASTER 94: one world wind) the pooled smoke's lean and drift: the presentation's surface wind (worldWind.ts) at
+// the columns' own share of its speed (0.515: the fixed 1.6/0.55 lean gives the 0.82/0.28 the columns always had), set
+// every frame in update()
+const COLUMN_WIND_SHARE = 0.515;
+let COLUMN_WIND_X = 0.82, COLUMN_WIND_Z = 0.28;
 // PERF: cap concurrent smoke-column emitters. Late battle every wreck runs a
 // 30 s column at dozens of puffs/s; 5+ simultaneous columns is pure
 // fill-rate pile-up at retina resolutions (measured 25-28 ms frames in
@@ -1045,6 +1085,9 @@ function* createFxSteps(
   // smoke and debris take the scene's light (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), every
   // frame in update() below; the emissive pools (fire's core, sparks, flashes) never do
   particles.setLightTintShading(true);
+  // (EF.10) the local light loop compiles in only above Low and Ultra Low (a variant per preset, never a runtime branch)
+  setLocalLightsCompiled(localLightsForPreset(resolvePresetName()));
+  onPresetChange(() => { setLocalLightsCompiled(localLightsForPreset(resolvePresetName())); });
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
   // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
   // (the clock advances by render dt); frozen/stepped captures now hold and
@@ -1268,6 +1311,7 @@ function* createFxSteps(
   // effects r5: 24 -> 17 + hue 0xff9a52 -> 0xff7f38 (see EXPLOSION_LIGHT_PEAK)
   // effects r6: 17 -> 13 (the static-stain fix — see EXPLOSION_LIGHT_S)
   const explosionLight = new THREE.PointLight(EXPLOSION_LIGHT_HEX, 0, 13, 2);
+  const _lightCool = new THREE.Color(LIGHT_COOL_HEX);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
@@ -1311,6 +1355,11 @@ function* createFxSteps(
       const t = particles.getTime();
       v *= 0.80 + 0.13 * Math.sin(t * 15.3) + 0.07 * Math.sin(t * 7.7 + 1.3);
     }
+    // (the combat review 10-13) a pulse's colour temperature cools as it fades: its own hue at the peak, a deep ember red
+    // at its end (the wreck's fire flicker sets its own orange after)
+    if (state.light === explosionLight && state.hotHex !== undefined && k > 0) {
+      state.light.color.setHex(state.hotHex).lerp(_lightCool, Math.min(1, (1 - k) * 1.15));
+    }
     state.light.intensity = v;
   }
 
@@ -1322,10 +1371,28 @@ function* createFxSteps(
     durS?: number,
     pow?: number,
     hex?: number,
+    range?: number,
   ): void {
     state.light.position.copy(pos);
+    // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
+    if (state.light === explosionLight) {
+      state.range = range && range > 0 ? range : 13;
+      state.light.distance = state.range;
+    }
     // (fx round 7c) a burst's pulse carries its own hue; every other use of the explosion light keeps the kill orange
-    if (state.light === explosionLight) state.light.color.setHex(hex ?? EXPLOSION_LIGHT_HEX);
+    if (state.light === explosionLight) {
+      state.hotHex = hex ?? EXPLOSION_LIGHT_HEX;
+      state.light.color.setHex(state.hotHex);
+      // (the combat review 10-13) no flat clipped disc and no visible edge: the ground under the light takes at most
+      // LIGHT_GROUND_CAP x the sun (at least a dusk sun's worth, so a night flash still lights its ground), and the reach
+      // runs out where the inverse square has already faded the pool
+      const h = Math.max(1, pos.y - groundY(pos.x, pos.z));
+      const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
+      const sunI = Math.max(2, rig?.sunIntensity ?? 4.5);
+      peak = Math.min(peak, LIGHT_GROUND_CAP * sunI * h * h);
+      state.range = Math.max(state.range ?? 13, LIGHT_REACH_K * h);
+      state.light.distance = state.range;
+    }
     state.bornAt = particles.getTime() - ageS;
     state.peak = peak;
     state.dur = durS && durS > 0 ? durS : state.baseDur;
@@ -1787,7 +1854,9 @@ function* createFxSteps(
     printGeo.setAttribute('aSurface', printSurface);
     printGeo.setIndex(idx);
   }
-  const printUniforms = { uTime: { value: 0 }, uMap: { value: printTex } };
+  // (EF.09, MASTER 18: "snow prints and the water wake glow at night") the prints and the wake's foam take the battle
+  // pools' light tint (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), set every frame in update()
+  const printUniforms = { uTime: { value: 0 }, uMap: { value: printTex }, uTint: { value: new THREE.Color(1, 1, 1) } };
   const printMat = new THREE.ShaderMaterial({
     uniforms: printUniforms,
     vertexShader: `
@@ -1811,6 +1880,7 @@ function* createFxSteps(
       }`,
     fragmentShader: `
       uniform sampler2D uMap;
+      uniform vec3 uTint;
       varying vec2 vUv;
       varying float vFade;
       varying float vWater;
@@ -1832,7 +1902,7 @@ function* createFxSteps(
         vec3 color = mix(vec3(0.055, 0.05, 0.042), vec3(0.74, 0.84, 0.84), vWater);
         if (vSurface > 1.5) color = vSurface > 2.5
           ? vec3(0.37, 0.43, 0.49) : vec3(0.16, 0.12, 0.075);
-        gl_FragColor = vec4(color, a);
+        gl_FragColor = vec4(color * uTint, a);
       }`,
     transparent: true,
     depthWrite: false,
@@ -2065,10 +2135,32 @@ function* createFxSteps(
   }
 
   const _pulseV = new THREE.Vector3();
+  // (EF.03 cost, 10-13: a 24-rocket salvo's bursts cost +1.4 ms presented at its peak, its media bodies +21-43 %) the
+  // salvo governor, deterministic (the coordinator: "decide by burst count per cell per second, never by frame time"):
+  // the ground is cut into 25 m cells; the bursts of the last second are kept in a ring (time on the fx clock, cell), and
+  // a burst landing in a cell that already took two or more in that second pools its cloud (blastRecipes.groundBurst
+  // reads the crowding through C.crowd: from the third burst on, fully pooled by the eighth)
+  const CROWD_SLOTS = 48, CROWD_S = 1.0, CROWD_CELL_M = 25;
+  const crowdT = new Float64Array(CROWD_SLOTS).fill(-1e9), crowdCell = new Int32Array(CROWD_SLOTS);
+  let crowdNext = 0;
+  function burstCrowd(x: number, z: number): number {
+    const now = particles.getTime();
+    const cell = (Math.floor(x / CROWD_CELL_M) & 0xffff) * 65536 + (Math.floor(z / CROWD_CELL_M) & 0xffff);
+    let n = 0;
+    for (let i = 0; i < CROWD_SLOTS; i++) {
+      const age = now - crowdT[i];
+      if (age >= 0 && age <= CROWD_S && crowdCell[i] === cell) n++;
+    }
+    crowdT[crowdNext] = now; crowdCell[crowdNext] = cell;
+    crowdNext = (crowdNext + 1) % CROWD_SLOTS;
+    return Math.min(1, Math.max(0, (n - 1) / 6));
+  }
   const blast: BlastContext | null = vol && chunks ? {
+    crowd: (x: number, z: number) => burstCrowd(x, z),
     rand: () => rng(),
     groundY: (x: number, z: number) => groundY(x, z),
-    media: (p) => vol.emit(p),
+    // a billow body born low over the ground softens its silhouette further (volumeMedia's `low`)
+    media: (p) => { p.low = p.medium === 'billow' && p.y - groundY(p.x, p.z) < 1.5; vol.emit(p); },
     chunk: (p) => chunks.emit(p),
     flash: (o) => particles.emit('flash', o),
     fire: (o) => particles.emit('fire', o),
@@ -3105,8 +3197,11 @@ function* createFxSteps(
     burn: boolean,
     dk: number,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = burn ? 1 : 3;
+    // (fx 8o, wave 356) a plain kill (no ammunition explosion): two small flashes, not the cook-off's bulb
+    const count = burn ? 1 : plain ? 2 : 3;
+    if (plain) dk *= 0.55;
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
       const v = 2 + rng() * 4;
@@ -3114,12 +3209,14 @@ function* createFxSteps(
       _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
       _puffO.vel[1] = Math.abs(Math.cos(b)) * v + 2;
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      _puffO.life = 0.1 + rng() * 0.1;
-      _puffO.size0 = (1.4 + rng()) * dk; _puffO.size1 = (3.2 + rng() * 1.2) * dk;
+      // (the combat review 10-13: "white-outs at the kill: the hit flash blooms the hero to pure white for several
+      // frames") two to four frames, smaller and warmer, its bloom share capped
+      _puffO.life = 0.04 + rng() * 0.03;
+      _puffO.size0 = (1.1 + rng() * 0.8) * dk; _puffO.size1 = (2.4 + rng() * 0.9) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
       // (b6: a white bulb on a kill's first frame) a hot yellow flash, not white
-      col3(0xffe2a8, _puffO.col0); col3(0xffa040, _puffO.col1);
-      _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+      col3(0xffcf8a, _puffO.col0); col3(0xff9038, _puffO.col1);
+      _puffO.alpha = 0.7; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
       particles.emit('flash', _puffO);
     }
   }
@@ -3165,22 +3262,29 @@ function* createFxSteps(
     fireS: number,
     dk: number,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = rack ? 12 : (burn ? 6 : 9);
+    // (fx 8o, wave 356: "a flat orange hit-flash disc at 0.20-0.50 s" on a plain kill) a plain kill licks three short
+    // tongues out of its media fireball, whose own heat and inner glow carry the flash with volume and falloff
+    // (the combat review 10-13: "clusters of round orange cotton balls") fewer, shorter, smaller tongues: the fire stays
+    // at the hull and is gone into smoke within half a second
+    const count = rack ? 7 : (burn ? 5 : plain ? 3 : 5);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
-      const v = (3.0 + rng() * 4.2) * fireS;
+      const v = (2.2 + rng() * 3.0) * fireS;
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.0 * fireS;
       _puffO.pos[1] = cy + (rng() - 0.55) * 1.0;
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.0 * fireS;
       _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
       _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.45 + 0.9;
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      _puffO.life = 0.7 + rng() * 1.0;
-      _puffO.size0 = (1.8 + rng() * 1.0) * fireS * dk; _puffO.size1 = (4.2 + rng() * 2.0) * fireS * dk;
+      // (fx 8i, wave 334a killcam: "a cream-salmon exposure wash at 0.4 s") smaller, shorter tongues: the media
+      // fireball carries the body, these only lick out of it
+      _puffO.life = plain ? 0.18 + rng() * 0.2 : 0.22 + rng() * 0.25;
+      _puffO.size0 = (1.1 + rng() * 0.6) * fireS * dk; _puffO.size1 = (2.0 + rng() * 1.0) * fireS * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
-      col3(0xffd865, _puffO.col0); col3(0xe6520f, _puffO.col1);
-      _puffO.alpha = 0.34 + rng() * 0.18; _puffO.grav = 1.0;
+      col3(0xffd865, _puffO.col0); col3(0xd8420a, _puffO.col1);
+      _puffO.alpha = 0.3 + rng() * 0.14; _puffO.grav = 1.0;
       _puffO.birthOffset = i < count / 3
         ? birthOffset - rng() * 0.25
         : birthOffset + rng() * 0.35;
@@ -3299,20 +3403,24 @@ function* createFxSteps(
     rack: boolean,
     burn: boolean,
     birthOffset: number,
+    plain = false,
   ): void {
-    const skirtCount = burn ? 4 : 10;
+    // (fx 8o, wave 356: "a flat orange hit-flash disc at 0.20-0.50 s" on a plain kill) a plain kill's fire licks out of
+    // the hull in three short tongues, not a cook-off's ring of flame jetting along the ground
+    const skirtCount = burn ? 4 : plain ? 3 : 10;
+    const skirtK = plain ? 0.6 : 1;
     for (let i = 0; i < skirtCount; i++) {
       const a = rng() * Math.PI * 2;
       const r = 1.2 + rng() * 1.0;
       _puffO.pos[0] = pos.x + Math.cos(a) * r; _puffO.pos[1] = gy + 0.9 + rng() * 0.4; _puffO.pos[2] = pos.z + Math.sin(a) * r;
-      _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3);
+      _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3) * skirtK;
       _puffO.vel[1] = 1.2 + rng() * 1.2;
-      _puffO.vel[2] = Math.sin(a) * (3.5 + rng() * 3);
-      _puffO.life = 0.55 + rng() * 0.5;
-      _puffO.size0 = 0.8 + rng() * 0.4; _puffO.size1 = 2.2 + rng() * 0.8;
+      _puffO.vel[2] = Math.sin(a) * (3.5 + rng() * 3) * skirtK;
+      _puffO.life = (0.55 + rng() * 0.5) * skirtK;
+      _puffO.size0 = (0.8 + rng() * 0.4) * skirtK; _puffO.size1 = (2.2 + rng() * 0.8) * skirtK;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
       col3(0xffc040, _puffO.col0); col3(0xff4a08, _puffO.col1);
-      _puffO.alpha = 0.55; _puffO.grav = 1.5; _puffO.birthOffset = birthOffset - rng() * 0.15;
+      _puffO.alpha = plain ? 0.4 : 0.55; _puffO.grav = 1.5; _puffO.birthOffset = birthOffset - rng() * 0.15;
       particles.emit('fire', _puffO);
     }
     const ringFireCount = rack ? 4 : 0;
@@ -3323,11 +3431,13 @@ function* createFxSteps(
       _puffO.vel[0] = (rng() - 0.5) * 0.4;
       _puffO.vel[1] = 0.8 + rng() * 0.6;
       _puffO.vel[2] = (rng() - 0.5) * 0.4;
-      _puffO.life = 1.5 + rng() * 1.3;
-      _puffO.size0 = 0.9 + rng() * 0.4; _puffO.size1 = 1.6 + rng() * 0.7;
+      // (fx 8i, wave 334a killcam: "salmon sprite puffs inside the smoke at 1.8-3.0 s") the ring fire's flames are
+      // brief licks that end deep orange, not slow cards fading through salmon inside the smoke for seconds
+      _puffO.life = 0.6 + rng() * 0.5;
+      _puffO.size0 = 0.8 + rng() * 0.4; _puffO.size1 = 1.3 + rng() * 0.5;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
-      col3(0xffd070, _puffO.col0); col3(0xff5a10, _puffO.col1);
-      _puffO.alpha = 0.75; _puffO.grav = 1.2;
+      col3(0xffd070, _puffO.col0); col3(0xd23c08, _puffO.col1);
+      _puffO.alpha = 0.6; _puffO.grav = 1.2;
       _puffO.birthOffset = birthOffset - rng() * 0.4 + i * 0.45;
       particles.emit('fire', _puffO);
     }
@@ -3523,8 +3633,10 @@ function* createFxSteps(
     rack: boolean,
     burn: boolean,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = rack ? 30 : (burn ? 5 : 14);
+    // (fx 8o) a plain kill throws a few small pieces, not a cook-off's shower
+    const count = rack ? 30 : (burn ? 5 : plain ? 6 : 14);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.85;
@@ -3554,8 +3666,9 @@ function* createFxSteps(
     rack: boolean,
     burn: boolean,
     birthOffset: number,
+    plain = false,
   ): void {
-    const count = rack ? 5 : (burn ? 0 : 2);
+    const count = rack ? 5 : (burn || plain ? 0 : 2);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.5;
@@ -3741,31 +3854,51 @@ function* createFxSteps(
   ): void {
     const rack = cause === 'ammorack';
     const burn = cause === 'fire';
+    // (fx 8o, wave 356's critics: a plain kill's blast "far too big for a kill without an ammunition explosion") a plain
+    // kill on the media tier: a short flash venting from the hull, no blast wave, a few small pieces; the Studio's shell
+    // burst on open ground (cause 'shot', shellBurst) keeps its blast
+    const plain = cause === 'shot' && !shellBurst && !!blast;
     const gy = groundY(pos.x, pos.z);
     const cy = Math.max(pos.y, gy) + 1.2;
     // distance-compensated spectacle (r7: a 244 m kill read as a ~40 px
     // orange puff) — scale the big volumetric cards up with camera distance
     const dk = distBoost(pos.x, cy, pos.z);
-    emitDestructionFlash(pos, cy, burn, dk, birthOffset);
+    emitDestructionFlash(pos, cy, burn, dk, birthOffset, plain);
     if (blast) {
       // destruction-fx lane: the fireball body, the eruption and the column's first seconds are simulated media; the
       // additive fire, the hull fire, the debris and the light stay the battle's
-      emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : 1, dk, birthOffset);
-      killFireball(blast, pos.x, cy, pos.z, rack, birthOffset);
-      emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset);
-      // a hull's blast goes up more than out: a modest skirt (round 2's ring hid the hull for seconds)
-      dustSurge(blast, pos.x, gy, pos.z, burn ? 0.6 : 0.65 * Math.cbrt(cookOffChargeKg(55)), classifyTerrain(heightField, pos.x, pos.z),
-        birthOffset);
-      spawnScorch(pos.x, pos.z, (burn ? 3.6 : 5.4) + rng() * 1.4);
-      if (!burn) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
-      sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 16 : (burn ? 5 : 10), 18, 0.85, 0xffc470, 0.55, 0.05, 0.034, birthOffset, 0.35);
-      emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset);
-      emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset);
+      emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : plain ? 0.55 : 1, dk, birthOffset, plain);
+      killFireball(blast, pos.x, cy, pos.z, rack ? 'ammorack' : burn ? 'fire' : plain ? 'shot' : 'burst', birthOffset);
+      emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset, plain);
+      // a hull's blast goes up more than out: a modest skirt (round 2's ring hid the hull for seconds); (fx 8o, wave 356:
+      // "a flat, lingering dust sheet at 3-4 s") a kill's dust rolls up into billows and thins (killDust); the shell
+      // burst's stays the ground burst's skirt
+      const surface = classifyTerrain(heightField, pos.x, pos.z);
+      if (shellBurst) dustSurge(blast, pos.x, gy, pos.z, 0.65 * Math.cbrt(cookOffChargeKg(55)), surface, birthOffset);
+      else killDust(blast, pos.x, gy, pos.z, rack ? 0.65 * Math.cbrt(cookOffChargeKg(55)) : burn ? 0.6 : 0.8, surface, birthOffset);
+      spawnScorch(pos.x, pos.z, (burn ? 3.6 : plain ? 3.4 : 5.4) + rng() * 1.4);
+      if (rack || shellBurst) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
+      sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 16 : (burn ? 5 : plain ? 6 : 10), 18, 0.85, 0xffc470, 0.55, 0.05, 0.034, birthOffset, 0.35);
+      emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset, plain);
+      emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset, plain);
       if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
       // (wave 266: a flat orange disc flooded the ground round the hull, five times the sun under the light) the fireball
       // is what glows; the light it throws on the ground is a warm pool that dies with it
-      flashLight(lightStates[1], _sv.set(pos.x, cy + 4.2, pos.z),
-        EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset));
+      // (fx 8, the killcam critics after 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s") the pool dies with the
+      // fireball's own heat — under a second, a warm yellow-orange — instead of the kill light's 1.9 s orange decay; the
+      // hull fire's own flicker carries the light after it
+      // (fx 9: 8t, wave 405: "the flat orange ground ellipse at 0.0 s") a plain kill's pool small, brief, paler and low
+      // over the deck (the falloff reads round the hull, never a flat disc on the ground); a cook-off keeps its own,
+      // shortened and nearer
+      if (plain) {
+        flashLight(lightStates[1], _sv.set(pos.x, cy + PLAIN_KILL_LIGHT.overDeckM, pos.z),
+          EXPLOSION_LIGHT_PEAK * PLAIN_KILL_LIGHT.peakK, Math.max(0, -birthOffset), PLAIN_KILL_LIGHT.durS, 2.2,
+          PLAIN_KILL_LIGHT.hex, PLAIN_KILL_LIGHT.rangeM);
+      } else {
+        flashLight(lightStates[1], _sv.set(pos.x, cy + 4.0, pos.z),
+          EXPLOSION_LIGHT_PEAK * (burn ? 0.15 : rack ? COOKOFF_LIGHT.peakK : 0.22), Math.max(0, -birthOffset),
+          burn ? 0.9 : rack ? COOKOFF_LIGHT.durS : 0.7, 2.2, KILL_POOL_LIGHT_HEX, rack ? COOKOFF_LIGHT.rangeM : 20);
+      }
       // the column takes hold out of the fireball's soot over the first seconds (round 2 backdated it, so a column stood
       // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)
       const colScale = (burn ? 1.45 : 1.3) * dk;
@@ -4096,6 +4229,65 @@ function* createFxSteps(
     columns.length = live;
   }
 
+  // (EF.10, MASTER 19: "headlights and fires light the smoke") the local lights the smoke and dust take, every frame
+  // (localLights.ts): the night pool's headlight spots, the muzzle flash, the explosion light (a burst's pulse, which the
+  // volume media light themselves, or the latest wreck's fire) and the other burning wrecks' fires. By day the fires
+  // and flashes light their smoke at a third (the sun outshines them); a headlight burns only at night.
+  let nightPool: THREE.Object3D | null | undefined;
+  let nightPoolLookedAt = -1e9;
+  const _wreckFire = new THREE.Color(EXPLOSION_LIGHT_HEX);
+  function writeLocalLights(): void {
+    beginLocalLights();
+    // Low and Ultra Low compile the loop out: nothing reads the slots
+    if (!localLightsCompiled()) { endLocalLights(); return; }
+    const now = particles.getTime();
+    const scene = engineCtx.scene ?? null;
+    if (scene && !nightPool && now - nightPoolLookedAt > 2) {
+      nightPool = scene.getObjectByName('night-light-pool') ?? null;
+      nightPoolLookedAt = now;
+    }
+    if (nightPool) {
+      const kids = nightPool.children;
+      for (let i = 0; i < kids.length; i++) {
+        const L = kids[i] as THREE.SpotLight;
+        if (!L.isSpotLight || !(L.intensity > 0)) continue;
+        const p = L.position, t = L.target.position;
+        addLocalSpot(p.x, p.y, p.z, L.distance || 42, L.color, LOCAL_HEADLIGHT_GAIN, t.x - p.x, t.y - p.y, t.z - p.z,
+          Math.cos(L.angle), Math.cos(L.angle * (1 - L.penumbra)));
+      }
+    }
+    const nightK = 0.35 + 0.65 * tracers.darkLevel();
+    if (muzzleLight.intensity > 0) {
+      const p = muzzleLight.position;
+      addLocalPoint(p.x, p.y, p.z, MUZZLE_LIGHT_RANGE * 1.5, muzzleLight.color,
+        LOCAL_FLASH_GAIN * nightK * muzzleLight.intensity / MUZZLE_LIGHT_PEAK);
+    }
+    const blastState = lightStates[1];
+    // (the coordinator on round 2's night cook-off: "the whole column is lit, as if by day ... a warm firelit underside
+    // only within a few metres of the flames") a wreck's fire lights its smoke from the flames themselves (1.2 m over the
+    // hull, not the pooled light's 3.4 m) and only a few metres round them (LOCAL_FIRE_REACH_M x the column's scale);
+    // a burst's pulse keeps its own reach (the pooled puffs take it; the media light their pulse themselves)
+    if (explosionLight.intensity > 0) {
+      const p = explosionLight.position, pulse = lightAge(blastState) < blastState.dur;
+      if (pulse) {
+        addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
+          nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
+      } else {
+        addLocalPoint(p.x, p.y - 2.2, p.z, LOCAL_FIRE_REACH_M * 1.3, explosionLight.color,
+          nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / 12);
+      }
+    }
+    // the other burning wrecks (the explosion light rides the latest column)
+    for (let i = columns.length - 2; i >= 0; i--) {
+      const col = columns[i];
+      if (col.flame === false || !(col.ttl > 0)) continue;
+      const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
+      if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
+        LOCAL_FIRE_GAIN * nightK * flicker * col.scale)) break;
+    }
+    endLocalLights();
+  }
+
   function updateClockDrivenLights(): void {
     for (const st of lightStates) applyLight(st);
     for (const ring of shockRings) applyShockRing(ring);
@@ -4126,8 +4318,9 @@ function* createFxSteps(
       ) * col.scale * (blast ? 0.45 : 1);
       return;
     }
-    if (lightAge(explosionState) < explosionState.dur && explosionLight.distance !== 13) {
-      explosionLight.distance = 13;
+    const pulseRange = explosionState.range ?? 13;
+    if (lightAge(explosionState) < explosionState.dur && explosionLight.distance !== pulseRange) {
+      explosionLight.distance = pulseRange;
     }
   }
 
@@ -4571,9 +4764,10 @@ function* createFxSteps(
       widthScale *= 1 + 2.6 * alignment;
       brightness *= 1 + 0.9 * alignment;
     }
-    const width = aerial ? aerialTracerWidth(aerial, cameraDistance, camera.projectionMatrix.elements[5])
+    const dark = tracers.darkLevel();
+    const width = aerial ? aerialTracerWidth(aerial, cameraDistance, camera.projectionMatrix.elements[5], dark)
       : Math.min(preset.width * widthScale, 0.15);
-    if (aerial) brightness = aerial.brightness;
+    if (aerial) brightness = aerialTracerBrightness(aerial, dark);
     writeTracer(
       tracerIndex,
       _v2.x, _v2.y, _v2.z,
@@ -4654,7 +4848,7 @@ function* createFxSteps(
       if (!guided && !aerial) { tracers.write(shell); continue; }
       const preset = aerial ?? TRACER_PRESETS[tracerId ?? 'AP'];
       const speed = shell.vel.length();
-      const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0) : Math.min(
+      const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0, tracers.darkLevel()) : Math.min(
         THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
         Math.max(shell.distM || 0, 0.08),
       );
@@ -4663,7 +4857,7 @@ function* createFxSteps(
       // (fx 9a) a missile or rocket draws its own look; the gunship's keep their gimbal-readable ribbon
       if (guided && !aerial) { tracerCount = writeMissile(shell, tracerCount); continue; }
       if (guided) {
-        tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5]) : 0);
+        tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5], tracers.darkLevel()) : 0);
         if (tracerCount >= MAX_TRACERS) continue;
       }
       tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount, aerial);
@@ -4895,18 +5089,19 @@ function* createFxSteps(
   }
 
   function updateDryDustColors(groundType: string): void {
+    // (EF.12) the dry table in the map's own ground colour (mapPalette.ts; the table's own with no light model)
     if (groundType === 'hard') {
-      dustColor0 = 0xa79d8c;
-      dustColor1 = 0x8f887b;
+      dustColor0 = mapTintHex(0xa79d8c);
+      dustColor1 = mapTintHex(0x8f887b);
       return;
     }
     if (groundType === 'soft') {
-      dustColor0 = 0x6d675a;
-      dustColor1 = 0x5c574c;
+      dustColor0 = mapTintHex(0x6d675a);
+      dustColor1 = mapTintHex(0x5c574c);
       return;
     }
-    dustColor0 = 0xa8a189;
-    dustColor1 = 0x8e8a6c;
+    dustColor0 = mapTintHex(0xa8a189);
+    dustColor1 = mapTintHex(0x8e8a6c);
   }
 
   function emitTrackKick(
@@ -5108,6 +5303,8 @@ function* createFxSteps(
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
     // (2026-10-09: the pillbox is concrete — it fell through to 'wood' and broke into splinters and wood dust)
     if (/^wall|rubble|small-rock|^bunker$|pillbox/.test(kind)) return 'masonry';
+    // (the looks lane: the stone and mud walls' gates break as their piers do)
+    if (/^gatestone$|^gateadobe$/.test(kind)) return 'masonry';
     if (/^sandbag/.test(kind)) return 'sandbag';
     if (/truck|jeep/.test(kind)) return 'vehicle';
     if (kind === 'tent') return 'canvas';
@@ -5563,8 +5760,11 @@ function* createFxSteps(
     }
   }
 
+  // (fx 8n) the Studio's timeline clock while it plays smoke salvos (setAuxiliaryClock), else the match clock
+  let auxiliaryClock: (() => number) | null = null;
   const auxiliary = auxiliaryEntities && auxiliaryTime ? createAuxiliaryPresentation(group, {
-    entities: auxiliaryEntities, time: auxiliaryTime, ground: groundY, visible: auxiliaryVisible,
+    entities: auxiliaryEntities, time: () => (auxiliaryClock ? auxiliaryClock() : auxiliaryTime()), ground: groundY,
+    visible: auxiliaryVisible,
     // atmospherics lane: the smoke screen on the media layer (desktop tiers; null on the phone tier)
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
@@ -5698,6 +5898,12 @@ function* createFxSteps(
       liveAtgmCount = 0;
       writeGuidedBody(pos, dir);
       commitAtgmInstances();
+      // (EF.04, the Kornet probe 10-13: the first launch still compiled one program in its frame — the projectile
+      // tracers' own: the solo warm's update ran with no shells, so the tracer mesh drew nothing in the covered render)
+      // one motor glow, as a launch draws it, so the tracers' program compiles with the others; the next update clears it
+      tracers.begin();
+      tracers.glow(pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, pos.x, pos.y, pos.z, 0.6, 2, WIRE_RGB, 0.5, WIRE_RGB, 0.2, 1);
+      tracers.end();
       // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
       // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
       if (ribbons && vol) {
@@ -5728,6 +5934,19 @@ function* createFxSteps(
       resolvePendingHe();
       tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
       if (!cinematicTintOwner) battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);
+      // (EF.12) one world wind: the columns lean and drift with the media and the clouds over them
+      refreshWorldWind((engineCtx.scene?.userData ?? null) as Parameters<typeof refreshWorldWind>[0]);
+      COLUMN_WIND_X = worldWind.x * COLUMN_WIND_SHARE; COLUMN_WIND_Z = worldWind.z * COLUMN_WIND_SHARE;
+      // (EF.12) the map's ground colour for the earth dust (the grounded light model's ground albedo)
+      setMapGroundAlbedo((engineCtx.scene?.userData?.lightModel as { groundAlbedo?: ArrayLike<number> } | undefined)?.groundAlbedo);
+      // (EF.09, MASTER 18) the unlit marks and bodies take the same light: the hull scars, the track prints and the wake's
+      // foam, and a missile's painted body (its motor's flare stays emissive)
+      {
+        const tint = particles.sharing.uLightTint.value;
+        printUniforms.uTint.value.copy(tint);
+        impactDecals.material.color.copy(tint);
+        atgmBodyMat.color.copy(tint);
+      }
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
@@ -5750,6 +5969,7 @@ function* createFxSteps(
       updateClockDrivenLights();
       sweepImpactDecals(dt);
       updateWreckLight();
+      writeLocalLights();
       advanceTimedFx(tickDt);
       sweepShellsThroughProps(shells);
       let tracerCount = writeLiveShellTracers(shells, camera);
@@ -6369,6 +6589,7 @@ function* createFxSteps(
 
     /** @returns {object} live impact-decal counters (probes/perf gates) */
     impactDecalStats() { return impactDecals.stats(); },
+    setLocalLights(on: boolean) { return setLocalLightsCompiled(on); },
 
     /**
      * Clear one vehicle's impact decals; the per-battle warm
@@ -6771,6 +6992,7 @@ function* createFxSteps(
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll(options?: { running?: boolean }) {
       replaySuppressed = false;
+      auxiliaryClock = null;
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       vol?.reset();
@@ -6826,6 +7048,11 @@ function* createFxSteps(
       impactDecals.clearAll();
       resetEquipmentDamage();
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
+    },
+
+    setAuxiliaryClock(clock: (() => number) | null): boolean {
+      auxiliaryClock = clock;
+      return auxiliary !== null;
     },
 
     cinematicPort(): FxCinematicPort {

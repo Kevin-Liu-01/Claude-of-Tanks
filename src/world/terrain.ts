@@ -24,6 +24,7 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
 import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 // The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
 import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
+import { hinterlandSupplyFor } from './hinterlandHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -308,6 +309,9 @@ interface LandformConfig {
   /** Final authored surface; original fields still define road/water/pad support initialization. */
   relief?: PlayableRelief;
   _relief?: PreparedPlayableRelief;
+  /** The world-plan box [minX, maxX, minZ, maxZ] outside which the form adds exactly nothing (landformSupportBounds);
+   * absent when it cannot be bounded. */
+  _bounds?: readonly [number, number, number, number] | null;
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
@@ -1065,8 +1069,11 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
   const t: TerrainSettings = { ...DEFAULT_TERRAIN, ...(cfg?.terrain ?? {}) };
   t.landforms = (t.landforms || []).map((form) => {
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
-    if (form.relief) return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) };
-    return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
+    const prepared: LandformConfig = form.relief
+      ? { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) }
+      : { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
+    prepared._bounds = landformSupportBounds(prepared);
+    return prepared;
   });
   const village = { ...DEFAULT_TERRAIN.village, ...(t.village || {}) };
   const spawnsSrc = (cfg && cfg.spawns) || DEFAULT_SPAWNS;
@@ -1171,6 +1178,54 @@ function raiseMounds(x: number, z: number, h: number,
 }
 
 /** Pure analytical height contribution for an authored tactical landform. */
+/**
+ * The world-plan box outside which sampleLandformHeight is exactly zero for a prepared form (its _c/_s set), with a metre
+ * of margin; null when the form cannot be bounded (an authored relief, or edges that do not close). Each kind's bound is
+ * read off its own formula: a gorge's and a smooth ridge's end and side weights are 1 - smoothstep(a, b, |v|) with a < b,
+ * zero from b on; a smooth knoll's or basin's weight is zero from q = 1; the geology knoll returns 0 past
+ * (1 + outline)(1 + reach) + 0.01 of its radii, and the geology ridge past width (1 + outline) + 0.5 across (and, nosed,
+ * as far past its nose's centre along). (2026-10-13, the perf stream: every height sample used to visit every landform.)
+ */
+export function landformSupportBounds(form: LandformConfig): [number, number, number, number] | null {
+  if (form._relief) return null;
+  let ex: number, ez: number;
+  if (form.kind === 'gorge') {
+    const length = form.length || 700, w = form.width || 90;
+    if (!(length > 0) || !(w > 0)) return null;
+    ex = length * 0.5;
+    if (!form.wall && !form.meander) ez = w;
+    else {
+      const foot = form.wall ? form.wall[0] : .65, top = form.wall ? form.wall[1] : 1;
+      if (!(top > foot)) return null;
+      // the wander only moves both edges inward (by up to the meander), never past w * top
+      ez = w * top + Math.max(0, -(form.meander || 0));
+    }
+  } else if (form.kind === 'ridge') {
+    const half = Math.max(1, (form.length || 100) * 0.5), width = Math.max(1, form.width || 45);
+    ex = half; ez = width;
+    if (form.geology) {
+      const outline = Math.max(0, Math.min(0.35, form.geology.outline ?? 0));
+      ez = width * (1 + outline) + 0.5;
+      if (form.geology.cliffEnd === 'nose') ex = Math.max(half, Math.max(0, half - width * (1 + outline)) + ez);
+    }
+  } else {
+    const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+    let reachQ = 1;
+    if (form.geology) {
+      const geology = form.geology;
+      const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+      const fans = geology.fans && geology.gullies && (form.height || 0) > 0 ? geology.fans : null;
+      const reach = fans ? Math.max(0.05, Math.min(0.6, fans.reach ?? 0.3)) : 0;
+      reachQ = (1 + outline) * (1 + reach) + 0.01;
+    }
+    ex = rx * reachQ; ez = rz * reachQ;
+  }
+  const c = Math.abs(form._c ?? 1), s = Math.abs(form._s ?? 0);
+  const hx = c * ex + s * ez + 1, hz = s * ex + c * ez + 1;
+  if (!Number.isFinite(hx) || !Number.isFinite(hz)) return null;
+  return [form.x - hx, form.x + hx, form.z - hz, form.z + hz];
+}
+
 export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
   if (phase === 'authored-relief' && form._relief) return (form.height || 0) * samplePlayableRelief(form._relief, x, z);
@@ -1708,6 +1763,9 @@ function* heightFieldBuildSteps(
     let unionTop = 0;
     for (let li = 0; li < T.landforms.length; li++) {
       const form = T.landforms[li];
+      // outside its support box a form adds exactly zero (landformSupportBounds): skipping it leaves h as it was
+      const bounds = form._bounds;
+      if (bounds && (x < bounds[0] || x > bounds[1] || z < bounds[2] || z > bounds[3])) continue;
       const corridorScale = form.corridorScale ?? 0.62;
       const settlementScale = form.settlementScale ?? 0.45;
       const wetScale = form.wetScale ?? 0.30;
@@ -4149,6 +4207,11 @@ uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
 uniform float uDetailGain; // the map-revival lane: the detail normal's strength (splat.detailNormal, default 1)
+// Ultra Low (2026-10-13; quality.ts terrainLite): 1 = the splat's cheapest variant — one ground sampling instead of the
+// anti-tiling pair, the far variant from 56 m, the layers' measured means past ~150 m (a noise-broken edge, inside the
+// haze), detail normals within 40 m and no 0-48 m micro-detail pass. A uniform branch: every other preset keeps its
+// program and its picture exactly
+uniform float uTerrainLite;
 uniform float uRoadFromG;  // the map-revival lane: 1 when the carriageway is packed from the base layer (splat.roadLayer 'ground')
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
@@ -4269,6 +4332,7 @@ float gBedWob = 0.0; // ground lane: the beds' wander in metres of height (set w
 // gNoiseLog is log2 of the fragment's footprint in noise texels at scale 1 (set once in splatCompute); a field read
 // at scale s sits at level log2(footprint × s × 256), the level the hardware would pick for an isotropic footprint.
 float gNoiseLog = 0.0;
+float gLiteMean = 0.0; // Ultra Low: 1 where a layer sample is its measured mean (set in splatCompute)
 vec4 nz(vec2 p, float s, vec2 o) { return textureLod(uNoise, p * s + o, max(0.0, gNoiseLog + log2(s))); }
 // Ground lane (2026-10-03, the gauntlet's "moiré of concentric arcs in the grass"): a tiled texture read at a world
 // period P is a periodic signal however well its mip chain is filtered — once one period spans only a few pixels of the
@@ -4324,6 +4388,7 @@ vec2 cellHash2(vec2 p) {
 // the flat normal a layer's normal tile averages to (x, z perturbation 0; the packed third channel is unused)
 const vec4 NRM_MEAN = vec4(0.5, 0.5, 0.5, 1.0);
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb, vec4 mean) {
+  if (gLiteMean > 0.5) return mean; // Ultra Low past ~150 m: the layer's measured mean, no fetch
   // Terrain v2: the near tap is skipped once the far variant owns the fragment (df ~ 1 past ~160 m), and the far
   // variant's deep-mip tile-mean tap is the layer's measured mean (a uniform) — one fetch at range instead of three.
   if (df < 0.004) return texture2D(t, uv, mb);
@@ -4696,6 +4761,7 @@ void splatCompute() {
   gDwX = dFdx(wp.xz); gDwY = dFdy(wp.xz); // ground lane (farmland): its axes, for stripeVis
   gFarVis = tileVis(18.0);
   float df = smoothstep(45.0, 160.0, effDist);
+  if (uTerrainLite > 0.5) df = smoothstep(28.0, 56.0, effDist); // Ultra Low: one tap per sampling past 56 m
   // Round 35 (owner 2026-09-21, "stuff in background should never be flat"): a wall is seen face-on, so its texels
   // stay dense on screen far longer than a grazing floor's — the near variant holds twice as far on steep faces
   // (the fur-under-a-low-sun fix lives in gSplatSteepAtt, not here, and stays as it was).
@@ -4733,6 +4799,12 @@ void splatCompute() {
   // ~10-20 m n1w patches are aperiodic at exactly the scale the detail tiles
   // repeat, so neither sampling's period can line up across more than a tile
   gTileMix = smoothstep(0.36, 0.64, n1w);
+  if (uTerrainLite > 0.5) {
+    // Ultra Low: each warped patch takes one of the two samplings whole (no second fetch in the crossovers), and the
+    // layers read their means past ~150 m, the edge broken by the same patches so it never draws a ring
+    gTileMix = step(0.5, gTileMix);
+    gLiteMean = step(130.0 + 40.0 * n1w, effDist);
+  }
   float slope = 1.0 - clamp(wn.y, 0.0, 1.0);
   // Ground lane (2026-10-03, wave 11, Sunscar Oasis from the air: "the mesa cliff faces in the background carry the same
   // horizontal sand-dune ripple texture as the desert floor"): on a sand map without the landform gate the ring's
@@ -5094,6 +5166,7 @@ void splatCompute() {
   // normals are not fetched at all — at a quarter metre a texel they are sub-pixel there, the geometric normal and the
   // coarse relief terms below carry the shading (SPLAT_NORMAL_FRAG had already faded them to a third).
   bool nrmOn = farM < 0.98;
+  if (uTerrainLite > 0.5 && effDist > 40.0) nrmOn = false; // Ultra Low: detail normals within 40 m only
   float keepS = 1.0 - steepW;                      // what the steep wall projection leaves of everything below it
   float keepR = keepS * (1.0 - fR);                 // ... and the rock above the water and the soil
   float keepM = keepR * (1.0 - fMs);
@@ -5108,7 +5181,7 @@ void splatCompute() {
     // "camo carpet" read. Re-sample the same layer at a ~2.3x coarser scale and
     // blend it in over ~35 m noise patches: the characteristic pattern scale
     // now wanders across the map instead of stamping uniformly.
-    float scMix = smoothstep(0.40, 0.78, nz(uvW, 0.0071, vec2(0.23, 0.51)).g);
+    float scMix = smoothstep(0.40, 0.78, nz(uvW, 0.0071, vec2(0.23, 0.51)).g) * (1.0 - uTerrainLite);
     if (scMix > 0.003) {
       a = mix(a, groundSamp(uAlbG, uMeanG, uv * 0.1043, df, mipB), scMix * 0.7);
       if (nrmOn) n = mix(n, groundNrm(uNrmG, uv * 0.1043, df, mipB), scMix * 0.7);
@@ -6667,7 +6740,7 @@ void splatCompute() {
     }
   }
   // 0-48 m detail pass: layered micro normals + albedo speckle + road gravel
-  float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
+  float dNear = (1.0 - smoothstep(18.0, 48.0, camDist)) * (1.0 - uTerrainLite); // Ultra Low: no micro-detail pass
   if (dNear > 0.001) {
     vec3 dn = texture2D(uNrmD, uv * 1.07).xyz * 2.0 - 1.0;
     dn.xy *= tileVis(0.935); // ground lane: the 0.93 m clod tile fades before it beats against the pixels
@@ -7647,6 +7720,10 @@ function* createSplatMaterialSteps(
   // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
   const landTier = { value: landUseTierOf(resolvePresetName()) };
   const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
+  // Ultra Low (2026-10-13): the splat's cheapest variant from the live preset (both Ultra Low presets end in 'ultralow';
+  // read inline: the streaming receipts evaluate these steps in a sandbox that supplies only resolvePresetName)
+  const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
+  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
   const groundClock = { value: 0 };
@@ -7663,6 +7740,7 @@ function* createSplatMaterialSteps(
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
   mat.addEventListener('dispose', () => { offLandTier(); });
+  mat.addEventListener('dispose', () => { offLiteTerrain(); }); // Ultra Low (2026-10-13)
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
   // (horizonAutumnGround.bindAutumnHorizonGround). The program has no unit to spare for the atlas (see the fragment's
   // uRingDraw note): the M normal's uniform object is shared here so the ring bands' draw can point that unit at the
@@ -7696,6 +7774,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uLandBake = { value: maskStack.bake };
     shader.uniforms.uRoadClass = { value: maskStack.road };
     shader.uniforms.uLandTier = landTier;
+    shader.uniforms.uTerrainLite = liteTerrain; // Ultra Low (quality.ts terrainLite)
     shader.uniforms.uLandRot = { value: new THREE.Vector2(Math.cos(landUse.landA[1]), Math.sin(landUse.landA[1])) };
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uNoise = { value: noiseTex };
@@ -8601,7 +8680,23 @@ function* terrainBuildSteps(
   // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
   // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
   const ringSource = horizonRingSupplyFor(cfg);
+  // (the horizons stream, 2026-10-13, HL-3) a migrated map — its file's `hinterland` block, or a lab draft under
+  // ?hinterland=1 — takes the Hinterland in place of the old ring: the world build supplies it (hinterlandHook.ts) and it
+  // stands where the ring stood, the terrain's first child; the battlefield, its collision and the authority are untouched
+  const hinterlandSource = hinterlandSupplyFor(cfg);
+  function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
+    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField });
+    let step = steps.next();
+    while (!step.done) {
+      yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+      step = steps.next();
+    }
+    group.add(step.value as THREE.Object3D);
+    group.children.unshift(group.children.pop()!);
+    yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true];
+  }
   function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
+    if (hinterlandSource) { yield* hinterlandStage(); return; }
     let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
     if (ringSource && !ringPipeline) {
       const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {
@@ -8728,7 +8823,7 @@ function* terrainBuildSteps(
       }
     }
   }
-  if (ringSource) group.userData.finishHorizonRing = horizonRingStage;
+  if (ringSource || hinterlandSource) group.userData.finishHorizonRing = horizonRingStage;
   else yield* horizonRingStage();
   // ground lane (2026-10-08, crater-render-spec §B): the chunks for the battle's ground overlay — the world installs
   // terrainCraterMesh.ts on them (syncGroundOverlay / adoptTerrainGeometry hooks below; its lattice constants are this

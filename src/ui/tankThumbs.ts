@@ -24,6 +24,7 @@ import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram, type TopMaskProgramPreparation } from './topMaskProgramWarm.ts';
+import { applyTopMaskCoverage } from './topMaskCoverage.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
 let errorGuardInstalled = false;
@@ -60,6 +61,8 @@ export interface TankMaskSpec {
     gunBarrel?: {
       lengthM?: number;
     };
+    /** A casemate (Strv 103): rig_turret stays empty by design, the gun is fused into the hull (profiles/casemate.ts). */
+    turretless?: boolean;
   };
 }
 
@@ -441,10 +444,11 @@ export function ensureTankThumbs(_specs: RuntimeValue, _opts: RuntimeValue = {})
 //
 // Render specifics:
 //  - Uses the game's own renderer via a WebGLRenderTarget (no second GL
-//    context). Materials render UNLIT/black — only alpha coverage is read —
-//    which also keeps the shadow-proxy meshes out (their colorWrite:false is
-//    respected; a scene.overrideMaterial would have painted their fat
-//    stand-in boxes into the mask).
+//    context). Only alpha coverage is read, so each mesh draws with a
+//    coverage-only stand-in of its material (topMaskCoverage.ts: side, alpha
+//    inputs, colour-write and depth state kept per mesh). Shadow-proxy meshes
+//    stay out (their colorWrite:false is kept; a scene.overrideMaterial would
+//    have painted their fat stand-in boxes into the mask).
 //  - Camera: y-down ortho with up=+Z, so the mask is nose-up with the
 //    vehicle's RIGHT side on the image's right (screen-x = -world-x — the
 //    same handedness the live top-down view has).
@@ -842,6 +846,14 @@ function maskCanvasFromPixels(pixels: Uint8Array): MaskCanvasResult | null {
   return { canvas: big, bounds };
 }
 
+/** A transparent layer canvas the size of every cached mask layer (a turretless build's turret layer). */
+function emptyMaskCanvas(): HTMLCanvasElement {
+  const output = document.createElement('canvas');
+  output.width = MASK_SIZE;
+  output.height = MASK_SIZE;
+  return output;
+}
+
 function downscaleMask(source: HTMLCanvasElement): HTMLCanvasElement {
   const output = document.createElement('canvas');
   output.width = MASK_SIZE;
@@ -949,6 +961,9 @@ async function renderMaskEntry(
   const turretG = root.getObjectByName('rig_turret');
   if (!hullG || !turretG) { scene.remove(root); return null; }
   const passes: PendingMaskPass[] = [];
+  // Alpha coverage is all a pass reads: draw it with coverage-only stand-ins, not the tank's real materials, so the
+  // masks link a few shared basic programs instead of ~38 physical ones (topMaskCoverage.ts).
+  const restoreMaterials = applyTopMaskCoverage(root);
   try {
   // neutral articulation for the canonical masks
   turretG.rotation.y = 0;
@@ -983,7 +998,13 @@ async function renderMaskEntry(
   const hull = completedMaskPass(await hullPass.completion);
   const turret = completedMaskPass(await turretPass.completion);
   sourceLifetime?.assertAlive();
-  if (!hull || !turret) return null;
+  // (2026-10-13, the MP stream) a turretless build whose rig_turret holds nothing (the Strv 103 and 103A casemates: the
+  // gun is fused into the hull, profiles/casemate.ts) renders an empty turret pass. The entry used to come back null and
+  // the HUD damage panel ran without a mask for those two, retrying and failing every match; such a build now gets an
+  // empty turret layer. A turretless build with turret content (UDES 03, JPz E-100) keeps its rendered layer, and an
+  // empty pass on a turreted build still fails as before.
+  const turretless = !!(spec.armor && spec.armor.turretless);
+  if (!hull || (!turret && !turretless)) return null;
 
   // plan-space layout facts for the panel (meters)
   const hullCx = (hull.minX + hull.maxX) / 2;
@@ -997,12 +1018,17 @@ async function renderMaskEntry(
       radiusM: Math.hypot((hull.maxX - hull.minX) / 2, (hull.maxZ - hull.minZ) / 2),
       widthM: hull.maxX - hull.minX, lengthM: hull.maxZ - hull.minZ,
     },
-    turret: {
+    turret: turret ? {
       canvas: turret.canvas, camX: tp[0], camZ: tp[2], halfM: turretHalf,
       // swept radius about the pivot (canvas center)
       radiusM: Math.max(
         Math.hypot(turret.minX - tp[0], turret.minZ - tp[2]),
         Math.hypot(turret.maxX - tp[0], turret.maxZ - tp[2])),
+    } : {
+      // turretless: nothing turns; the radius runs from the pivot to the hull's (fused gun's) front, so a damaged gun's
+      // state line on the panel still runs the length of the real barrel
+      canvas: emptyMaskCanvas(), camX: tp[0], camZ: tp[2], halfM: turretHalf,
+      radiusM: Math.max(0, hull.maxZ - tp[2]),
     },
     pivot: [tp[0], tp[2]],
     pxPerM: MASK_SIZE / (hullHalf * 2), // hull layer scale (turret differs)
@@ -1011,6 +1037,7 @@ async function renderMaskEntry(
     // Compile/render/source failures must join every submitted writer before
     // clone disposal, cache publication, or the next tank can reuse pixels.
     await Promise.all(passes.map((pass) => pass.completion));
+    restoreMaterials();
     hullG.visible = true;
     turretG.visible = true;
     scene.remove(root);

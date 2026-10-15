@@ -79,13 +79,17 @@ function mullions(sink: PartSink, face: Face, y0: number, y1: number, step: numb
   for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, s * (face.width / 2 - 0.12), (y0 + y1) / 2, 0.08, 0.24, y1 - y0, 0.1, { decor: true, colour });
 }
 
-/** A punched window of a concrete facade: the pane (or its siege state) and a slim sill. (u, y) its bottom-centre. */
-function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number): void {
+/**
+ * A punched window of a concrete facade: the pane (or its siege state) and a slim sill. (u, y) its bottom-centre. The
+ * soot of a burnt window stops at `roof` (the buildings stream, 2026-10-13, the integrity check: on a top floor it stood
+ * up to 0.7 m over the roof's edge, a sheet in the air with its back to the street behind).
+ */
+function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number, roof = Infinity): void {
   const roll = look();
   if (roll < 0.1) { unhcrSheet(sink, face, u, y, w, h, look); return; }
   if (roll < 0.2) {
     facePanel(sink, 'dark', face, u, y + h / 2, 0.01, w, h, { decor: true });
-    sootBand(sink, 'plaster3', face, u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, y + h + 1.4);
+    sootBand(sink, 'plaster3', face, u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, Math.min(y + h + 1.4, roof));
     return;
   }
   facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, 0.012, w, h, { decor: true, window: face.out });
@@ -237,7 +241,8 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
           facePanel(sink, isBurnt ? 'dark' : look() < 0.85 ? 'glass' : 'dark', face, 0, y + 1.2, 0.01, lw, 2.2, { decor: true, window: face.out });
           faceBox(sink, concrete, face, 0, y - 0.05, 0.45, lw + 0.6, 0.15, 0.9, { decor: true });
           faceBox(sink, 'structureMetal', face, 0, y + 0.5, 0.88, lw + 0.6, 0.95, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(colour, 0.9 + look() * 0.2) });
-          if (isBurnt) sootBand(sink, concrete, face, -lw / 2, lw / 2, y + 2.3, y + fh + 1.0);
+          // (soot stops at the roof's edge: on the top floor it stood a metre over it)
+          if (isBurnt) sootBand(sink, concrete, face, -lw / 2, lw / 2, y + 2.3, Math.min(y + fh + 1.0, top));
           continue;
         }
         const n = Math.max(1, Math.floor((face.width - 0.6) / 2.4));
@@ -245,8 +250,8 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
           const u = -face.width / 2 + 0.3 + (face.width - 0.6) * (k + 0.5) / n;
           if (isBurnt) {
             facePanel(sink, 'dark', face, u, y + 1.5, 0.01, 1.3, 1.3, { decor: true });
-            sootBand(sink, concrete, face, u - 0.85, u + 0.85, y + 2.15, y + fh + 0.8);
-          } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06);
+            sootBand(sink, concrete, face, u - 0.85, u + 0.85, y + 2.15, Math.min(y + fh + 0.8, top));
+          } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06, top);
         }
       }
       if (look() < 0.35) sink.dressing(mobile, () => shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone'));
@@ -366,14 +371,14 @@ const slabBlock: RegionalBuilder = (ctx) => {
         const u = -W / 2 + bw * (k + 0.5), isBurnt = burnt.has(k * 100 + f);
         facePanel(sink, isBurnt ? 'dark' : look() < 0.9 ? 'glass' : 'curtain', front, u, y + 1.2, 0.01, bw - 0.5, 2.2, { decor: true, window: [0, 0, 1] });
         faceBox(sink, 'structureMetal', front, u, y + 0.52, 0.97, bw - 0.12, 0.96, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(paint, 0.88 + look() * 0.22) });
-        if (isBurnt) sootBand(sink, concrete, front, u - bw / 2 + 0.2, u + bw / 2 - 0.2, y + 2.3, y + fh + 1.1);
+        if (isBurnt) sootBand(sink, concrete, front, u - bw / 2 + 0.2, u + bw / 2 - 0.2, y + 2.3, Math.min(y + fh + 1.1, top));
       }
       for (let k = 0; k <= bays; k++) faceBox(sink, concrete, front, -W / 2 + bw * k, y + fh / 2, 0.5, 0.14, fh, 1.0, { decor: true, fine: true });
       // the back: kitchen windows, the stair glazing
       for (let k = 0; k < bays; k++) {
         const u = -W / 2 + bw * (k + 0.5);
         if (k % 4 === 2) continue;
-        panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06);
+        panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06, top);
       }
     }
     for (let k = 2; k < bays; k += 4) facePanel(sink, 'glass', back, -W / 2 + bw * (k + 0.5), (gH + top) / 2, 0.02, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
@@ -404,7 +409,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
     const pf: Face = { origin: [0, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
     for (let f = 0; f < 3; f++) for (let k = 0; k < Math.max(2, Math.floor(W / 2.6)); k++) {
       const n = Math.max(2, Math.floor(W / 2.6)), u = -W / 2 + W * (k + 0.5) / n;
-      panelWindow(sink, pf, u, 0.9 + f * 3.4, 1.5, 1.4, look, 0.04);
+      panelWindow(sink, pf, u, 0.9 + f * 3.4, 1.5, 1.4, look, 0.04, bh);
     }
     sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
     // the cores

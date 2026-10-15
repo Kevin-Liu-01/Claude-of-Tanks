@@ -167,6 +167,9 @@ interface StudioGameState {
   tanks: StudioPoolTank[];
 }
 
+/** A smoke salvo's screen as the battle's auxiliary systems publish it. */
+type StudioSmokeScreen = NonNullable<NonNullable<AuxiliaryEntity['combat']['auxiliary']>['smoke']>;
+
 interface StudioFxRuntime {
   bindBus(bus: ReturnType<typeof createBus>): void;
   resetAll(options?: { running?: boolean }): void;
@@ -192,6 +195,8 @@ interface StudioFxRuntime {
   exhaust(position: THREE.Vector3, intensity: number, sooty: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null,
     birthOffset?: number): void;
   cinematicPort(): FxCinematicPort;
+  /** (fx 8n) The battle's smoke presentation on the Studio's clock (effects.ts setAuxiliaryClock); resetAll clears it. */
+  setAuxiliaryClock?(clock: (() => number) | null): boolean;
 }
 
 interface StudioLightingRuntime {
@@ -261,6 +266,8 @@ interface StudioActorInput {
   authoredRecoilAgeS?: number | null;
   authoredSmoking?: boolean;
   authoredBurning?: boolean;
+  /** a siege vehicle's sight-line elevation through its hydropneumatic aim (setHydropneumaticAim), degrees */
+  suspensionAimDeg?: number | null;
 }
 
 interface StudioActorPatch extends StudioActorInput {
@@ -306,6 +313,8 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   authoredBurning: boolean;
   authoredRecoilAgeS: number | null;
   authoredSuspensionAimPitch: number | null;
+  /** the requested sight-line elevation behind authoredSuspensionAimPitch (degrees), what state() saves */
+  authoredSuspensionAimDeg: number | null;
   smoking: boolean;
   burning: boolean;
   timelineX: number;
@@ -367,6 +376,8 @@ interface StudioEffectParams {
   isPlayer?: boolean;
   kind?: string;
   normal?: readonly number[];
+  /** an impact's offset from its anchor (m, world axes): a hit on a hull's face, not its centre */
+  offset?: readonly number[];
   off?: boolean;
   pop?: boolean;
   radiusM?: number;
@@ -1079,6 +1090,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       st.yawRate = 0;
     }
     a.authoredSuspensionAimPitch = st.suspensionAimPitch;
+    a.authoredSuspensionAimDeg = targetDeg;
     // Running-gear conformance is visually damped. Advance it independently
     // after the simulation settles so wheels and track bands reach the same
     // final ground course before a still or recording begins.
@@ -1218,6 +1230,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       authoredBurning: authored.burning,
       authoredRecoilAgeS: authored.recoilAgeS,
       authoredSuspensionAimPitch: null,
+      authoredSuspensionAimDeg: null,
       smoking: false,
       burning: false,
       timelineX: x,
@@ -1684,6 +1697,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function releaseStudioFx(): void {
     cinematics?.dispose();
     cinematics = null;
+    // (fx 8n) the battle-quality salvos' screens go with the Studio's FX (fx.resetAll has dropped their presentation)
+    studioScreens.length = 0;
     fxSettings = normalizeStudioFx(null);
     trackAdapters.clear();
   }
@@ -1795,8 +1810,34 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return out;
   }
 
+  /** (fx 8n) The battle-quality salvos' screens, published to the battle's own smoke presentation on the Studio's bus. */
+  const studioScreens: StudioSmokeScreen[] = [];
+  /**
+   * (fx 8n, wave 337: the Studio's battle quality is the game's exact look, and its smoke was the cinematic emitter's) the
+   * actor's salvo as the battle fires it, drawn by the battle's own smoke presentation (the media screen: the same
+   * schedule, recipes and puffs a player sees) on the Studio's timeline clock. False for a vehicle without launchers or
+   * where the battle has no smoke presentation (the caller falls back to the cinematic emitter).
+   */
+  function battleSmokeScreen(a: StudioActor): boolean {
+    if (!fx.setAuxiliaryClock?.(() => clockMs / 1000)) return false;
+    const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
+    const entity = {
+      id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
+    } as unknown as AuxiliaryEntity;
+    if (!requestAuxiliary(entity, 'smoke', clockMs / 1000, ground)) return false;
+    const screen = entity.combat.auxiliary?.smoke;
+    if (!screen?.canisters?.length) return false;
+    ensureFxBus();
+    studioScreens.push(screen);
+    fxBus.emit('auxiliary:smokeScreens', { screens: studioScreens.slice() });
+    return true;
+  }
+
   function fireSmokeScreen({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
+    // battle quality: the game's own screen (the vehicle's real launchers, the battle's duration and density); the
+    // cinematic quality (and a vehicle without launchers) keeps the cinematic emitter and its count/duration/density
+    if (!cinematicFor(params) && battleSmokeScreen(actor)) return true;
     salvoWalls = null;
     const salvo = smokeSalvo(actor, Math.round(fxParam('smoke_screen', 'count', params.count)));
     ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, SMOKE_WIND_X, SMOKE_WIND_Z,
@@ -1936,6 +1977,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     normal: readonly [number, number, number],
   ): boolean {
     const { id, actor, position, params } = execution;
+    // destruction-fx (2026-10-08): an offset from the anchor (m, world axes), so a strip can land a hit on a hull's face
+    // rather than at its centre (the anchor of an actor's effects)
+    const offset = params.offset;
+    if (Array.isArray(offset) && offset.length === 3 && offset.every((v) => Number.isFinite(v))) {
+      position.x += offset[0]; position.y += offset[1]; position.z += offset[2];
+    }
     const impactNormal = params.normal || normal;
     _v2.set(impactNormal[0], impactNormal[1], impactNormal[2]).normalize();
     const kind = params.kind || defaultKind;
@@ -2748,7 +2795,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
         }
       }
-      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus)
+      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus); its ground
+      // on the timeline's clock, so a collapsed structure's heap rises as the battle's does (terrainDeformation)
+      studioGround?.setTime(clockMs / 1000);
       studioSim?.step();
       // continuous per-actor emitters. Live battle quality keeps one pulse
       // per step; a film's sub-sample steps pulse once per 1/60 s timeline
@@ -2899,6 +2948,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.length = 0;
     // a scene's hulls are already running: no engine cold-start cough at every load (atmospherics r2, wave 311)
     fx.resetAll({ running: true });
+    studioScreens.length = 0;
     // The fx clock restarts with the timeline: replays (seek, load, film) must
     // not inherit the page's history in clock-phased shading.
     fx.resetClock(0);
@@ -4528,6 +4578,37 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- scene JSON --------------------------------------------------------------
+  /** One actor as the scene JSON records it (state()'s actors; studioSuspensionAim.selftest round-trips it). */
+  function actorStateJson(a: StudioActor) {
+    return {
+      id: a.specId,
+      ...(a.name ? { name: a.name } : {}),
+      pos: [r2(a.pose.x), r2(a.pose.z)],
+      facingDeg: r2(a.pose.facingDeg),
+      turretDeg: r2(a.pose.turretDeg),
+      gunDeg: r2(a.pose.gunDeg),
+      ...(a.camo ? { camo: a.camo } : {}),
+      camoSeed: a.camoSeed,
+      state: a.stateName,
+      ...(a.stateName !== a.authoredStateName
+        ? { authoredState: a.authoredStateName }
+        : {}),
+      ...(a.stateAgeS != null ? { stateAgeS: a.stateAgeS } : {}),
+      ...(a.stateAgeS !== a.authoredStateAgeS
+        ? { authoredStateAgeS: a.authoredStateAgeS }
+        : {}),
+      ...(a.recoilAgeS != null ? { recoilAgeS: a.recoilAgeS } : {}),
+      ...(a.recoilAgeS !== a.authoredRecoilAgeS
+        ? { authoredRecoilAgeS: a.authoredRecoilAgeS }
+        : {}),
+      ...(a.authoredSuspensionAimDeg != null ? { suspensionAimDeg: r2(a.authoredSuspensionAimDeg) } : {}),
+      ...(a.smoking && a.stateName !== 'engine-smoking' ? { smoking: true } : {}),
+      ...(a.burning && a.stateName !== 'burning' ? { burning: true } : {}),
+      ...(a.smoking !== a.authoredSmoking ? { authoredSmoking: a.authoredSmoking } : {}),
+      ...(a.burning !== a.authoredBurning ? { authoredBurning: a.authoredBurning } : {}),
+    };
+  }
+
   /** @returns {object} round-trippable scene JSON (docs/STUDIO.md schema). */
   function stateJson() {
     const w = getWorld();
@@ -4540,32 +4621,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       productionFormat,
       ...(studioFxState(fxSettings) ? { fx: studioFxState(fxSettings) } : {}),
       seed: sceneMeta.seed || 5000,
-      actors: actors.map((a) => ({
-        id: a.specId,
-        ...(a.name ? { name: a.name } : {}),
-        pos: [r2(a.pose.x), r2(a.pose.z)],
-        facingDeg: r2(a.pose.facingDeg),
-        turretDeg: r2(a.pose.turretDeg),
-        gunDeg: r2(a.pose.gunDeg),
-        ...(a.camo ? { camo: a.camo } : {}),
-        camoSeed: a.camoSeed,
-        state: a.stateName,
-        ...(a.stateName !== a.authoredStateName
-          ? { authoredState: a.authoredStateName }
-          : {}),
-        ...(a.stateAgeS != null ? { stateAgeS: a.stateAgeS } : {}),
-        ...(a.stateAgeS !== a.authoredStateAgeS
-          ? { authoredStateAgeS: a.authoredStateAgeS }
-          : {}),
-        ...(a.recoilAgeS != null ? { recoilAgeS: a.recoilAgeS } : {}),
-        ...(a.recoilAgeS !== a.authoredRecoilAgeS
-          ? { authoredRecoilAgeS: a.authoredRecoilAgeS }
-          : {}),
-        ...(a.smoking && a.stateName !== 'engine-smoking' ? { smoking: true } : {}),
-        ...(a.burning && a.stateName !== 'burning' ? { burning: true } : {}),
-        ...(a.smoking !== a.authoredSmoking ? { authoredSmoking: a.authoredSmoking } : {}),
-        ...(a.burning !== a.authoredBurning ? { authoredBurning: a.authoredBurning } : {}),
-      })),
+      actors: actors.map(actorStateJson),
       effects: effectLog.map((e) => ({ ...e, params: { ...e.params } })),
       storyboard: getStoryboard(),
       camera: getCamera(),
@@ -4601,8 +4657,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     resetFx(sceneMeta.seed);
     await yieldForFrameBudget();
     for (const cfg of json.actors || []) {
-      addActor(cfg);
+      const a = addActor(cfg);
       await yieldForFrameBudget();
+      // a siege vehicle's aim is part of its pose: the scene's sight-line elevation runs the real hydropneumatic aim, so
+      // the pitched hull and its loaded track runs round-trip through state() (the home page's suspension still)
+      if (Number.isFinite(cfg.suspensionAimDeg)) setHydropneumaticAim(a, Number(cfg.suspensionAimDeg));
     }
   }
 

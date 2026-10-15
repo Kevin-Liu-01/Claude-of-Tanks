@@ -15,8 +15,8 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 418 sound-effect assets, 684 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 19.8 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 13 crew radio packs × 109 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -393,7 +393,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 109 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 119 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -596,7 +596,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 109 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 119 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  13 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -773,6 +773,112 @@ crew-lines.json ─┐                    crew-voices.json
   `sfxLoudness.selftest.mjs`. The battle set now pins every prop sound (17 more
   assets, about 8 MB decoded on desktop and 3 MB on mobile), so no first crush
   of a battle is silent while it decodes.
+- **2026-10-13, destruction round 1 (AU.03).** The owner (10-12): "a lot of
+  stuff like destructions and impacts ... so its not quiet all the time". The
+  gap list (every bus event against the engine's subscriptions) found buildings
+  breaking as brick whatever they were, section falls (`structure:breach`) silent,
+  set pieces breaking as wooden crates, a hull's crash and landing a coin toss
+  between rock and wall, and every missile family on one launch bank. 38 new
+  assets and `turret_land` re-rolled to four variants (6,288 credits): a wall
+  giving way and a building coming down in each of six materials (brick, stone,
+  timber, concrete, plaster or adobe, sheet steel), read from the structure's
+  damage anatomy (`world.structureDamage(id).anatomy.rubble`, the same shares
+  the fx dust uses; main.ts hands the mixer the world through `getWorld`); a roof
+  caving in and a storey dropping; a round through brick or mud-brick, an HE
+  burst on masonry, big windows going, heavy pieces landing on the heap; distant
+  collapses, breaches, building strikes and ground strikes crossfaded in by range
+  (`STRUCTURE_FAR`: 180–560 m in, 320–820 m out); heavy plant, an aircraft
+  fuselage, a lorry, the village well, the monument's crack and fall and the coal
+  heaps; a hull landing and a hull ramming steel (`tank:impact` now carries the
+  struck record's kind from the solo step); a far ammunition blast; and four
+  launches (tube, soft eject, rail, gun barrel) chosen by the round's name, then
+  its launch profile (`weaponAudio.missileLaunchFor`, the fx lane's families).
+  The long debris sounds use a new `debris` preset (56 kbps mono). The report
+  banks moved to `weaponAudio.ts`, and `weaponCoverage.selftest.mjs` walks every
+  playable vehicle's rounds and roof stations (220 vehicles, 643 rounds, 75
+  stations, the M551A1 TTS's 30 mm among them) to a shipped report. The
+  payload cap rose from 20 to 28 MB for this and the next rounds.
+- **2026-10-13, crew lines for the silent stretches (AU.04, AU.05).** Ten lines
+  in all 13 languages (23 takes per pack, 11,226 credits): between fights the
+  commander keeps the crew watching (`quiet_scan`, `quiet_hold`, `quiet_move`,
+  the gunner's `quiet_crew`, `objective_push` in the objective modes, and
+  `hull_status` after damage), a building coming down within 160 m
+  (`building_down`), the front's aircraft passing within 900 m
+  (`aircraft_overhead`, half the time), the far guns (`artillery_far`, a quarter
+  of the time) and pulling up in cover within 8 s of a hit (`in_cover`). The
+  quiet calls come from `QUIET_RADIO` in the engine: only once nothing over
+  118 dB has sounded for 25 s and the net has been silent as long, at most one
+  every 50–85 s, in turn rather than at random (their own seeded stream), each
+  flavour that yields to any real call, so the radio never becomes "way too much
+  audio". The first take of a new library voice in each language hit a 409
+  (`already_running`, the voice added twice at once); re-running the line fills
+  it from the cache.
+- **2026-10-13, ambience variety and the known limits (AU.06, AU.07).** 19 new
+  spots and three beds regenerated (6,155 credits). The far war
+  (`environmentScenes.ts` `WAR_SPOTS`: a tank column, a brew-up, a machine-gun
+  duel, mortars, a town coming down, an engine behind a hill, each recorded a
+  kilometre or more away) joins every scene whose distant-war bed plays, at half
+  the place's own spot weight, so about a third of the spots are the war's; each
+  place adds its own life (cattle, sheep, horses, a rooster, goats, camels, loose
+  shutters and roofing, falling branches, ravens, howler monkeys, a hornbill, a
+  cold wind). The jungle and mangrove beds were 99 % 6–12 kHz insect hiss; asked
+  for water, leaves and animals with insects only faint and low, they come back
+  at 71 % and 75 % there with the rest from 3–6 kHz drips and under 3 kHz water
+  and frogs. The oasis bed's loop seam stepped 2.8 dB; the new take steps
+  0.15 dB. The first press anywhere loads the engine, so its own click was
+  silent. The facade now transfers the mixer module and decodes the
+  interface's press sounds at boot idle after the first frame, with no audio
+  device (`prepareInterfaceSounds` → `assetLibrary.predecodeAssets`, an
+  OfflineAudioContext); the engine built at the first press starts with them
+  (the library's `seed`), so that press plays at once. A press that beats the
+  decode waits for it at most 120 ms and is dropped after that: a late click
+  reads as input lag, worse than silence (`interfacePress.selftest.mjs`).
+- **2026-10-13, variety round.** 31 of the most frequent impacts, breaks,
+  fires and collisions shipped one or two variants (the ground strikes, glass,
+  crates, containers, sandbags, fences, cars, falling trees, debris, the HE and
+  tank blasts, the wreck's creak, hull knocks). Each now ships two or three: the
+  shipped takes kept by pin (`sfx-picks.json`) and the best new take added
+  (2,073 credits); snow strikes stay at two (every new take sat 9-21 LU under
+  the impact preset). The loudness receipt now covers 26 of them; five keep
+  older variants outside their preset (two ground strikes, the snow, the wire
+  snag's and the metal debris's true peaks) and stay unrecorded as before.
+  With the roof stations armed on 75 vehicles, machine-gun rounds strike walls,
+  wrecks, cars and timber all battle, and every one landed as a puff of dirt:
+  `bullet_masonry`, `bullet_metal` and `bullet_wood` (180 credits) now sound by
+  what was struck (a building by its walls, a prop by its kind, hard ground as
+  stone), with no ricochet whine. A hull shoving a burnt-out wreck strikes dead
+  steel (`hit_metal`), not a live tank's ram.
+  The field nets and garnish on 75 hulls (`ghillieSuit.ts`, which marks their
+  meshes `userData.fieldSuit`) rustle as the hull moves: the engine walks a
+  hull's visual once to find a suit, and the vehicle rig plays
+  `net_rustle_loop` (200 credits) under the running gear by speed, on every
+  suited hull in the near LOD, a touch nearer on our own.
+  A collapse's rubble is rigid bodies (`fx/rubbleBodies.ts`, deploy 223): the
+  debris pool reports each hard landing through `fx/clock.ts`
+  `emitDebrisLanding`, and a piece of 20 kg or more landing at 2.5 m/s or more
+  thuds where it lands (`rubble_chunk_land`, louder for heavier and faster
+  pieces, one per 0.15 s at most). The one-line report sits on
+  `item/audio-rubble-hook` (from `item/destruct-all`).
+  A burst's near miss on a parked vehicle (`props.ts` `blastNear`: dented, its
+  glass blown, shoved) is heard: past a strength of 0.3 the world reports it on
+  the destroyed-prop seam with `nearMiss`, and the engine plays the glass and a
+  steel dent by its strength, one per 0.1 s (a car park's worth from one shell
+  is one sound), never the car crushed.
+  Measured on `tools/audio-mix-balance.mjs` (2026-10-13, this branch at
+  06f2c6e96, `report.json`): bed −35.3 dBFS; a brick house collapsing at 40 m
+  19.9 dB over it and 0.7 dB over a near cannon's loudest 100 ms (the guns still
+  lead within 2 dB), at 450 m 5.9 dB over it on its distant recording; a wall
+  giving way at 40 m 19.9 dB; a tube launch at 30 m 24.6 dB (its sustained roar;
+  the new launch banks are 2 dB quieter than the old `atgm_launch`). The existing
+  checks: cannon 19.1 / 9.5 / 6.3 dB at 15 / 150 / 400 m, our gun 19.3, radio
+  17.2 over the bed and 1.9 under a near cannon, 4.5 starts/s, garage −31.4 dBFS.
+  The 150 m cannon sat 0.5 dB under its 10 dB gate, inherited from main (a CPU
+  A/B of the engine on both trees gave identical bed loops, spot rate and shot
+  voices). A6 then gave the 125 mm its distant thunder from 20 m (`farFadeM`
+  [20, 450], was [100, 450]) and its crack a longer reach (`gun_125_close`
+  refM 56, was 35): the next probe (6d7a1ebd4) read the 150 m shot 2.3 dB
+  louder (the CPU estimate was 2.29), 10.9 dB over a bed that ran 0.9 dB louder
+  than the run before, 15 m −0.5 dB and 400 m +0.5 dB, GREEN.
 
 ### Cost
 
@@ -872,12 +978,16 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
   reuses the cache, but regenerating without it produces different takes.
 - The renderings were written for each army's register and checked by
   speech-to-text, not by native speakers or veterans; corrections go in
-  `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
-  Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
-  the transcriber spells differently.
-- The first garage click loads the engine, so that click itself is silent.
-- The oasis bed's loop seam steps 2.8 dB and the jungle and mangrove beds are
-  mostly insect hiss; every take generated for them was like that.
+  `crew-lines.json`. The two takes flagged until 2026-10-13 are re-rolled: the
+  near-miss call's delivery no longer asks for an exhale (the Chinese pack
+  rebuilt with it), and the Hebrew goal call is two words in both takes ("גול
+  נכבש", "שער לטובתנו"). Homophones the transcriber spells differently remain
+  flagged and are harmless (the Chinese "近失弹" heard as "进食蛋").
+- A press before the boot-idle warm has run (the first frame plus an idle
+  slot) stays silent; one that finds its sound still decoding waits at most
+  120 ms.
+- The jungle and mangrove beds still carry most of their energy above 6 kHz
+  (drips, leaves and faint insects; 71 % and 75 %, down from 99 %).
 - Bells ring only from towers the world has placed: Verdant's church, Saltwind's
   campanile and the Podhale belfry arrive with the landmarks lane, and a map
   without a tower in earshot stays silent. The front's flyover event does not

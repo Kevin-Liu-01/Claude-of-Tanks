@@ -149,6 +149,22 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   // finished uninterrupted (audioEngine updateThink).
   think_step_by_step: Object.freeze({ ...V(0, 600, 'reasoning', 1.5), yields: true }),
   step_by_step_reply: Object.freeze({ ...V(0, 600, 'reasoning', 1.5), yields: true }),
+  // Between fights (AU.04, 2026-10-13; the owner: "so its not quiet all the time"): the commander keeps the crew
+  // watching in the serious register. Flavour that yields to any real call, spoken only after a long quiet on the net
+  // and in the battle (audioEngine QUIET_RADIO), at most one a minute or so.
+  quiet_scan: Object.freeze({ ...V(0, 50, 'quiet', 1.5, 40), yields: true }),
+  quiet_hold: Object.freeze({ ...V(0, 80, 'quiet', 1.5, 40), yields: true }),
+  quiet_move: Object.freeze({ ...V(0, 80, 'quiet', 1.5, 40), yields: true }),
+  quiet_crew: Object.freeze({ ...V(0, 80, 'quiet', 1.5, 40), yields: true }),
+  objective_push: Object.freeze({ ...V(0, 90, 'quiet', 1.5, 40), yields: true }),
+  // what the damage left us, once the shooting stops (not a survival call: low_hp is that)
+  hull_status: Object.freeze({ ...V(0, 150, 'quiet', 1.5, 40), yields: true }),
+  // the world around us: a building coming down near us, the front's aircraft and its distant guns
+  building_down: V(1, 25, 'world', 1.4, 15),
+  aircraft_overhead: Object.freeze({ ...V(0, 90, 'world', 1.5, 15), yields: true }),
+  artillery_far: Object.freeze({ ...V(0, 120, 'world', 1.5, 15), yields: true }),
+  // we stop in cover just after a hit
+  in_cover: V(1, 30, 'cover', 3.0),
 });
 
 /** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */

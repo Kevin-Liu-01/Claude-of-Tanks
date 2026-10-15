@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
-import { getDeviceTier, resolvePresetName, type PresetName } from '../engine/quality.ts';
+import { getDeviceTier, presetLightWorld, resolvePresetName, type PresetName } from '../engine/quality.ts';
 import {
   OCEAN_FFT_SIZE, OCEAN_QUAD_VERTEX, oceanPassPlan, oceanStageShader, type OceanSpectrumTexels, type OceanState,
 } from './oceanSpectrum.ts';
@@ -59,10 +59,13 @@ export function oceanFrameStride(preset: PresetName): number {
   return preset === 'high' || preset === 'ultra' ? 1 : 2;
 }
 
-/** Whether a renderer can host the field: a real render surface, float colour buffers, not the mobile tier. */
+/**
+ * Whether a renderer can host the field: a real render surface, float colour buffers, not the mobile tier and not the
+ * light world build (Ultra Low, 2026-10-13: the sheet keeps its procedural wake, as on the phones).
+ */
 export function oceanFieldSupported(renderer: OceanRenderer | null | undefined, tier = getDeviceTier()): boolean {
   if (!renderer || typeof renderer.setRenderTarget !== 'function' || typeof renderer.render !== 'function') return false;
-  if (tier === 'mobile') return false;
+  if (tier === 'mobile' || presetLightWorld()) return false;
   return renderer.extensions?.has('EXT_color_buffer_float') === true;
 }
 

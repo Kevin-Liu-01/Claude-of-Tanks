@@ -106,8 +106,8 @@ import {
   type NavigationWreck,
 } from '../sim/botRoutePlanner.ts';
 import {
-  pushHullFromHull, createHullFootprint, hullFootprint,
-  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
+  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
+  hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
@@ -271,6 +271,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     _impactAccumT?: number;
     /** Destruction: the structure record this hull met hard this tick (a crash prices a ram on it). */
     _ramRecord?: CollisionRecord | null;
+    /** What the hull last struck hard this step (a record kind, 'structure', 'cliff'): the crash's sound (audio). */
+    _struckKind?: string | null;
     /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick. */
     _ramKeep?: number;
     _modeTargetX?: number;
@@ -1620,17 +1622,22 @@ function shouldCrushObstacle(
   self: SoloEntity,
   obstacle: SoloObstacle,
   speed: number,
+  spanBottom: number,
   pushX: number,
   pushZ: number,
 ): boolean {
-  // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts)
+  const state = self.state;
+  // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts);
+  // it is judged before the load from above (integ/224: a hull that comes down on a pillbox does not crush it)
   if (isFortifiedCoverRecord(obstacle)) {
     const length = Math.hypot(pushX, pushZ);
     if (length <= 1e-9) return false;
-    const state = self.state;
     const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
     return game._fortified?.ram(obstacle, self.spec.weightTons, closing, game.timeS) ?? false;
   }
+  // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove; the authority's rule)
+  if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
+      obstacleContactBottom())) return true;
   if (speed > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
   if (Math.abs(self.input.throttle || 0) <= 0.35) return false;
   if (game.timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
@@ -1704,7 +1711,7 @@ function resolveObstacleCollisions(
     _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
     const clearBottom = foot.clearBottom;
-    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
+    if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
     const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
     const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
     const deltaX = foot.centerX - closestX;
@@ -1727,7 +1734,7 @@ function resolveObstacleCollisions(
       clearBottom,
     )) continue;
     if (obstacle.crushable && self &&
-        shouldCrushObstacle(game, self, obstacle, selfSpeed, outPush.x - beforeX, outPush.z - beforeZ)) {
+        shouldCrushObstacle(game, self, obstacle, selfSpeed, spanBottom, outPush.x - beforeX, outPush.z - beforeZ)) {
       queueCrush(obstacle, self, pendingCrush);
       outPush.x = beforeX;
       outPush.z = beforeZ;
@@ -1745,6 +1752,7 @@ function resolveObstacleCollisions(
     }
     pushed = true;
     _hardObstacles[hardCount++] = obstacle;
+    if (self) self._struckKind = obstacle.structureIdx !== undefined ? 'structure' : obstacle.kind ?? null;
     if (self && obstacle.structureIdx !== undefined && !self._ramRecord) self._ramRecord = obstacle;
   }
   // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
@@ -1754,7 +1762,7 @@ function resolveObstacleCollisions(
     foot.centerZ = centerZ + outPush.z - startZ;
     _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
-    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
+    if (hullPassesRecordTop(obstacle, spanBottom, foot.clearBottom)) continue;
     pushHullFromObstacle(_obstacleCenter, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth, obstacle, outPush,
       spanBottom, spanTop, foot.clearBottom);
   }
@@ -2158,7 +2166,7 @@ function knockEntityFromShell(entity: SoloEntity, shell: DamageShell): void {
   const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
   const knock = shellKnockMps(shell.spec.caliberMm, speed, entity.spec.weightTons, entity.modeShellKnockScale ?? 1);
   if (!(knock > 0)) return;
-  applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock);
+  applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, entity.modeGravityScale ?? 1);
 }
 
 function resolveTankShellImpact(
@@ -2233,6 +2241,7 @@ function crushLightCoverAlong(world: SoloWorld, bus: EventBus, shell: DamageShel
     _lightCoverHit.dist = distance;
     _lightCoverHit.point.copy(shell.prevPos).addScaledVector(_seg, distance);
     _lightCoverHit.record = record as SoloObstacle;
+    // (integ/224: the sweep never visits a pillbox, dense cover that stops the round, so no fortified ledger here)
     crushWorldPropFromShell(world, bus, shell, _lightCoverHit, null);
   });
   _lightCoverHit.record = null;
@@ -2533,6 +2542,8 @@ function publishHullImpact(
     pos: [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z],
     // impact physics (2026-09-25): what the blow was and what it cost, for the HUD, the audio and the report
     cause: kind,
+    // what it struck, for the crash's sound (2026-10-13; a landing struck the ground)
+    struck: kind === 'impact' ? entity._struckKind ?? null : null,
     hard: true,
     damage,
     destroyed: !!result?.destroyed,
@@ -2585,6 +2596,7 @@ function resolveTankImpacts(
     });
     if (result || (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S)) {
       entity._lastImpactT = game.timeS;
+      if (state.impactSource === IMPACT_SOURCE_CLIFF) entity._struckKind = 'cliff';
       publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
     }
     // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
@@ -2678,6 +2690,7 @@ function stepTankMovement(
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
     const { throttle, steer, brake, aimLocked } = entity.input;
     if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+    entity._struckKind = null;
     entity._ramRecord = null;
     entity._ramKeep = undefined;
     try { updateTank(entity, support, SIM_DT, collider.collide); }

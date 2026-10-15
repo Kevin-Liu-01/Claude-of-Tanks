@@ -224,7 +224,8 @@ function recordPoints(record: CollisionRecord, out: Array<[number, number]>): vo
     out.push([record.min[0], record.min[2]], [record.max[0], record.min[2]],
       [record.max[0], record.max[2]], [record.min[0], record.max[2]]);
   } else if (shape.kind === 'compound') {
-    for (const part of shape.parts) shapePoints(part, out);
+    // (a deck — a roof a hull stands on, world/structureCollision.ts structureDecks — is no part of the footprint)
+    for (const part of shape.parts) if (!(part.kind === 'convex' && part.tp)) shapePoints(part, out);
   } else {
     shapePoints(shape, out);
   }

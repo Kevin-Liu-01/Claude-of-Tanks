@@ -92,6 +92,10 @@ function createTerrainCraterMesh(chunks: readonly CraterMeshChunk[], lattice: Cr
   let overlay: TerrainDeformation | null = null;
   let appliedCount = 0;
   let appliedRevision = 0;
+  /** The overlay's growth revision last applied, and each stamp's rise when its ground was last patched (a rising heap,
+   * terrainDeformation RUBBLE_GROW_S: re-patched while it rises, the rest left alone). */
+  let appliedGrowth = 0;
+  const stampRise: number[] = [];
   // the lattice offsets of one patch region (one row of lattice samples per lattice z), grown as needed
   let grid = new Float64Array(64 * 64);
   let gx0 = 0, gz0 = 0, gw = 0;
@@ -270,6 +274,8 @@ function createTerrainCraterMesh(chunks: readonly CraterMeshChunk[], lattice: Cr
         if (touched.size) restoreAll();
         overlay = next;
         appliedCount = 0;
+        appliedGrowth = next ? next.growthRevision : 0;
+        stampRise.length = 0;
         appliedRevision = next ? next.revision - next.stamps.length : 0;
         stats.applied = 0; stats.vertices = 0;
       }
@@ -283,10 +289,20 @@ function createTerrainCraterMesh(chunks: readonly CraterMeshChunk[], lattice: Cr
         appliedCount = 0;
         stats.applied = 0;
       }
-      for (let i = appliedCount; i < length; i++) applyStamp(ov, i);
+      for (let i = appliedCount; i < length; i++) { applyStamp(ov, i); stampRise[i] = ov.stampGrowth(i); }
       appliedCount = length;
       appliedRevision = ov.revision;
       stats.applied = length;
+      // a heap still rising: its ground re-patched as it rises (its own bounds only)
+      if (ov.growthRevision !== appliedGrowth) {
+        appliedGrowth = ov.growthRevision;
+        for (let i = 0; i < appliedCount; i++) {
+          const rise = ov.stampGrowth(i);
+          if (rise === stampRise[i]) continue;
+          stampRise[i] = rise;
+          applyStamp(ov, i);
+        }
+      }
     },
     adopt(chunkIndex, level) {
       const ov = overlay;

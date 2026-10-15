@@ -4260,22 +4260,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     _dbg.reloadReady = fireGate.reloadReady;
     _dbg.rangeOk = fireGate.rangeReady;
     _dbg.dispersionOk = fireGate.dispersionReady;
-    _dbg.dispGateT = +dispGateT.toFixed(1);
+    _dbg.dispGateT = dispGateT;
     _dbg.alignOk = fireGate.aligned;
     _dbg.penGateOk = penGateOk;
     _dbg.slot = chosenSlot;
     _dbg.friendlyBlocked = !!risk;
     _dbg.friendlyBlockKind = risk?.kind ?? null;
     _dbg.friendlyBlockId = risk?.allyId ?? null;
-    _dbg.penRatio = +cachedPenRatio.toFixed(2);
-    _dbg.yawErrMrad = +(fireGate.yawError * 1000).toFixed(1);
-    _dbg.pitchErrMrad = +(fireGate.pitchError * 1000).toFixed(1);
+    _dbg.penRatio = cachedPenRatio;
+    _dbg.yawErrMrad = fireGate.yawError * 1000;
+    _dbg.pitchErrMrad = fireGate.pitchError * 1000;
     _dbg.distM = Math.round(fireGate.distance);
     _dbg.gunLaneClear = gunLaneClear;
     _dbg.gunLaneChecks = gunLaneChecks;
     _dbg.gunLaneMoves = gunLaneMoves;
     // round 62 pacing: the ammunition economy
-    _dbg.hitChance = +hitChance.toFixed(2);
+    _dbg.hitChance = hitChance;
     _dbg.conserving = conserving;
     _dbg.heWorth = heWorth;
     _dbg.heBurst = Math.round(heBurstBest);
@@ -4397,6 +4397,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     publishFireDebug(friendlyRisk);
   }
   const _dbg: Record<string, AiDebugValue> = {};
+  /** Fire-gate fields kept raw by publishFireDebug and rounded when read (2026-10-13, the MP stream: the authority's
+   * tick rounded them through toFixed strings for every bot, every tick, for a probe that reads them rarely). */
+  const FIRE_DEBUG_DIGITS: Readonly<Record<string, number>> = { dispGateT: 1, penRatio: 2, yawErrMrad: 1, pitchErrMrad: 1, hitChance: 2 };
+  function fireDebugView(): Record<string, AiDebugValue> {
+    const view = { ..._dbg };
+    for (const key in FIRE_DEBUG_DIGITS) {
+      const value = view[key];
+      if (typeof value === 'number') view[key] = +value.toFixed(FIRE_DEBUG_DIGITS[key]);
+    }
+    return view;
+  }
 
   // ---- state machine -------------------------------------------------------
 
@@ -6386,7 +6397,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       ordersTaken,
       targetTrackLagS: +targetTrackLagS.toFixed(3),
       targetLeadScale: +targetLeadScale.toFixed(3),
-      ..._dbg,
+      ...fireDebugView(),
     }),
     state: mode,
   };

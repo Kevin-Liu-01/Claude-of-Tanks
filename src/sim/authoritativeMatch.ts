@@ -91,8 +91,8 @@ import type {
   WorldSnapshot,
 } from './worldSnapshot.ts';
 import {
-  pushHullFromHull, createHullFootprint, hullFootprint,
-  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
+  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
+  hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -1203,17 +1203,22 @@ export function createAuthoritativeMatch({
   function obstacleIsPressedThrough(
     entity: AuthoritativeEntity,
     obstacle: AuthoritativeObstacle,
+    spanBottom: number,
     pushX: number,
     pushZ: number,
   ): boolean {
-    // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts)
+    const state = entity.state;
+    // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts);
+    // it is judged before the load from above (integ/224: a hull that comes down on a pillbox does not crush it)
     if (isFortifiedCoverRecord(obstacle)) {
       const length = Math.hypot(pushX, pushZ);
       if (length <= 1e-9) return false;
-      const state = entity.state;
       const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
       return fortified.ram(obstacle, entity.spec.weightTons, closing, timeS);
     }
+    // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove)
+    if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
+        obstacleContactBottom())) return true;
     if (Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
     if (Math.abs(entity.input.throttle || 0) <= 0.35) return false;
     if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
@@ -1268,15 +1273,17 @@ export function createAuthoritativeMatch({
       if (obstacle.crushed) continue;
       foot.centerX = centerX + outPush.x - startX;
       foot.centerZ = centerZ + outPush.z - startZ;
-      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
-      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      const clearBottom = foot.clearBottom;
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
+      // (the plan reject first, then the underside it costs to read: either rejects the record alone, physics stream
+      // 2026-10-13, the MP stream's tick profile; the underside's plane, _underPlane, is the push's for this record alone)
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
       const dx = foot.centerX - closestX;
       const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
+      const clearBottom = foot.clearBottom;
+      if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
@@ -1284,7 +1291,7 @@ export function createAuthoritativeMatch({
         obstacle, outPush, spanBottom, spanTop, clearBottom,
       );
       if (!pushed) continue;
-      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle, outPush.x - beforeX, outPush.z - beforeZ)) {
+      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle, spanBottom, outPush.x - beforeX, outPush.z - beforeZ)) {
         // destruction (docs/DESTRUCTION.md §4.4): a structure this ram brings down yields, as a crushed prop does
         if (obstacle.structureIdx !== undefined && destruction.enabled) {
           const keep = structureYield(entity, obstacle, outPush.x - beforeX, outPush.z - beforeZ);
@@ -1312,7 +1319,7 @@ export function createAuthoritativeMatch({
       foot.centerZ = centerZ + outPush.z - startZ;
       _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
       const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
+      if (hullPassesRecordTop(obstacle, spanBottom, foot.clearBottom)) continue;
       pushHullFromObstacle(
         _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
         obstacle, outPush, spanBottom, spanTop, foot.clearBottom,
@@ -1339,6 +1346,14 @@ export function createAuthoritativeMatch({
     if (closing > 0) pendingRams.push({ a: entity, b: other, closing, nx, nz, vAn, vBn, vertical: false });
   }
 
+  /** The most any hull's contact rect reaches from its root (its half-diagonal and its centre's offset), over every hull,
+   * for the movement step (advanceTankMovement); Infinity outside it (no bound, no early rejection). */
+  let pairReachMaxM = Infinity;
+  function pairReachOf(entity: AuthoritativeEntity): number {
+    const rect = tankContactRect(entity.spec);
+    return Math.hypot(rect.halfLength, rect.halfWidth) + Math.abs(rect.centerX) + Math.abs(rect.centerZ);
+  }
+
   function collideWithEntities(
     entity: AuthoritativeEntity,
     centerX: number,
@@ -1353,8 +1368,16 @@ export function createAuthoritativeMatch({
   ): void {
     // Match the local simulation's exact-shell OBB contact. Shared geometry
     // keeps private rooms and solo from disagreeing at rectangular shoulders.
+    // (physics stream, 2026-10-13, the MP stream's tick profile: this pair loop was a fifth of the movement step) a hull
+    // whose root lies further than the two rects' half-diagonals and the other's rect offset can meet none of them: the
+    // movement step's bound over every hull (pairReachMaxM) rejects it before its rect, trig and hypot are read, exactly
+    // where the full test below would reject it too
+    const ownReach = Math.hypot(halfL, halfW) + pairReachMaxM;
+    const ownReach2 = ownReach * ownReach;
     for (const other of entities) {
       if (other === entity || other.modeActive === false || !other.state) continue;
+      const rootDX = centerX - other.state.pos.x, rootDZ = centerZ - other.state.pos.z;
+      if (rootDX * rootDX + rootDZ * rootDZ > ownReach2) continue;
       const otherRect = tankContactRect(other.spec);
       const otherHalfW = otherRect.halfWidth;
       const otherHalfL = otherRect.halfLength;
@@ -2054,7 +2077,7 @@ export function createAuthoritativeMatch({
   function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {
     const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
     const knock = shellKnockMps(shell.spec.caliberMm, speed, target.spec.weightTons, target.modeShellKnockScale ?? 1);
-    if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock);
+    if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, target.modeGravityScale ?? 1);
   }
 
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
@@ -2362,6 +2385,16 @@ export function createAuthoritativeMatch({
       ? worldCollision.getObstacles.bind(worldCollision) : undefined,
   });
   function advanceTankMovement(dt: number): void {
+    let reach = 0;
+    for (const entity of entities) if (entity.state && entity.spec) reach = Math.max(reach, pairReachOf(entity));
+    pairReachMaxM = reach;
+    try {
+      advanceEachTankMovement(dt);
+    } finally {
+      pairReachMaxM = Infinity;
+    }
+  }
+  function advanceEachTankMovement(dt: number): void {
     for (const entity of entities) {
       // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
@@ -2469,6 +2502,8 @@ export function createAuthoritativeMatch({
     // past the ruleset's post-verdict hold the field stands still (snapshots keep publishing the frozen state)
     if (endingHoldExpired(ruleset, resultTimeS, timeS)) return;
     timeS += dt;
+    // the match's ground on the match's clock: a collapsed structure's heap rises over RUBBLE_GROW_S (terrainDeformation)
+    ground.setTime(timeS);
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
     for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell, aerialWorld);

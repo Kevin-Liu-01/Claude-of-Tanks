@@ -202,6 +202,8 @@ function checkSourceContract(text) {
     // the map-revival lane (2026-10-11, the Moon and Mars round 2): the detail normal's strength (splat.detailNormal) and
     // the carriageway's layer (splat.roadLayer: 1 packs it from the base layer) — two scalars, no sampler
     'uDetailGain', 'uRoadFromG',
+    // Ultra Low (2026-10-13): the splat's cheapest variant from the live preset (quality.ts terrainLite; scalar, no sampler)
+    'uTerrainLite',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -329,3 +331,22 @@ assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'u
 assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v54', 'world-terrain-splat-v53')));
 assert.throws(() => checkSourceContract(source.replace('uniform sampler2D uMask, uNoise;', 'uniform sampler2D uMask, uNoise, uRingRelief;')), 'a seventeenth sampler is refused');
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity, the land-use cover share and nine mutation controls PASS; no GPU/art/performance claim');
+// Ultra Low (2026-10-13): uTerrainLite follows the live preset (both Ultra Low presets), is released with the material,
+// and every lite term is a uniform branch — the other presets keep their program and their picture
+{
+  const text = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const c = (x) => x.replace(/\s+/g, ' ');
+  assert.ok(c(text).includes(c("const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };")), 'the lite flag reads the live preset');
+  assert.ok(c(text).includes(c("const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });")), 'and follows its changes');
+  assert.ok(text.includes("mat.addEventListener('dispose', () => { offLiteTerrain(); });"), 'the lite subscription ends with the material');
+  assert.equal(landUseTierOf('ultralow'), 0, 'Ultra Low reads the land use bake alone, as Low does');
+  assert.equal(landUseTierOf('mobile-ultralow'), 0);
+  for (const line of [
+    'if (gLiteMean > 0.5) return mean;',
+    'if (uTerrainLite > 0.5) df = smoothstep(28.0, 56.0, effDist);',
+    'gTileMix = step(0.5, gTileMix);',
+    'if (uTerrainLite > 0.5 && effDist > 40.0) nrmOn = false;',
+    'float dNear = (1.0 - smoothstep(18.0, 48.0, camDist)) * (1.0 - uTerrainLite);',
+  ]) assert.equal(text.split(line).length, 2, `the lite term, once: ${line}`);
+}
+console.log('terrainMaterialOwnership: Ultra Low lite terrain contract passed');

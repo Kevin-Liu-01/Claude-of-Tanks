@@ -77,6 +77,8 @@ function fixture({ text = source, observe = null } = {}) {
     function* buildHorizonRingSteps() { return new THREE.Group(); }
     // (2026-10-08, the ring worker) no ring supply in a sandbox build: the ring builds where it stands
     function horizonRingSupplyFor() { return null; }
+    // (the horizons stream, 2026-10-13, HL-3) and the Hinterland's supplied build: none here either
+    function hinterlandSupplyFor() { return null; }
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     ${declarations}

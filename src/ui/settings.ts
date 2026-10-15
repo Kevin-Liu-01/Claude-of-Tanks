@@ -75,6 +75,8 @@ const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   high: 'settings.preset.high',
   medium: 'settings.preset.medium',
   low: 'settings.preset.low',
+  ultralow: 'settings.preset.ultraLow', // 2026-10-13: below Low (quality.ts)
+  'mobile-ultralow': 'settings.preset.mobileUltraLow',
   'mobile-low': 'settings.preset.mobileLow',
   mobile: 'settings.preset.mobile',
   'mobile-high': 'settings.preset.mobileHigh',

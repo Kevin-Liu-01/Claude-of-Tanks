@@ -321,12 +321,12 @@ const presentationManifest = {
   generatedAt: '2026-08-19',
   renderer: manifest.renderer,
   firstPartyRuntimeOnly: true,
-  review: 'Compatibility subset of the authoritative showcase-r1 library',
+  review: 'Compatibility subset kept for the manual\'s interface figures; the site fifty (site50-r14) is the authoritative library since showcase-r1 retired',
   battleShotCount: ownerPicks.length,
   studioShotCount: studio.shots.length,
   interfaceShotCount: interfaces.length,
   totalShotCount: presentationShots.length,
-  authoritativeManifest: '/media/showcase-r1/manifest.json',
+  authoritativeManifest: '/media/site50-r14/manifest.json',
   shots: presentationShots,
 };
 writeFileSync(join(PRESENTATION_OUT, 'manifest.json'), `${JSON.stringify(presentationManifest, null, 2)}\n`);

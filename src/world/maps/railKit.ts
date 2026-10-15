@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { markWorldLantern } from '../worldNightEmissionGeometry.ts';
 import {
-  box, gablePrism as createGablePrism, jitterUV, pitchRoofPlane, scaleUV, slabBox,
+  box, gableAttic, gablePrism as createGablePrism, gableSlabSeat, jitterUV, pitchRoofPlane, scaleUV, slabBox,
 } from '../propGeometry.ts';
 import {
   INDUSTRIAL_CLADDING,
@@ -104,12 +104,14 @@ export function makeWarehouse(
     if (steelClad) { paintHex(shell, local, snowClad ? WAREHOUSE_CLADDING_HEX_SNOW : WAREHOUSE_CLADDING_HEX, 1, 0.03); shell.userData.uvJitter = 'consume'; }
     wallBucket.push(shell);
   }
-  const slope = Math.hypot(w / 2 + 0.4, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the hall closed under them; the
+  // slabs stood 5 cm over the wall tops and buried the skylights)
+  const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13), ang = seat.pitch;
+  parts.dark.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.13, d + 0.7, 0.35);
+    const slab = box(seat.length, 0.13, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.06, 0);
+    slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
     // ridge skylights: two glazed strips a metre down each roof plane
     for (const sz of [-d * 0.22, d * 0.2]) {
@@ -637,12 +639,13 @@ export function makeBoatshed(
   buckets.wood.push(jitterUV(hall, rng));
   buckets.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH + 0.2, d / 2 - 0.15));
   buckets.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH + 0.2, -d / 2 + 0.15));
-  const slope = Math.hypot(w / 2 + 0.4, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the loft closed under them)
+  const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.11);
+  buckets.wood.push(gableAttic(w, roofH, d).translate(0, wallH + 0.2, 0));
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.11, d + 0.7, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + 0.2), wallH + 0.2 + roofH / 2 + 0.05, 0);
+    const slab = box(seat.length, 0.11, d + 0.7, 0.35);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    slab.translate(-side * seat.out, wallH + 0.2 + seat.up, 0);
     buckets.roof.push(slab);
   }
   // slipway mouth (dark opening) + ramp planks on the street face
@@ -727,11 +730,13 @@ export function makeTerrace(
   for (const sx of [-1, 1]) {
     walls.push(gablePrism(layout.depth, roofH, 0.32).rotateY(Math.PI / 2).translate(sx * (W / 2 - 0.16), wallH, zc));
   }
-  const slope = Math.hypot(half + over, roofH + 0.1), ang = Math.atan2(roofH + 0.1, half + over);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the roof space closed under them)
+  const seat = gableSlabSeat(half, roofH, over, thick);
+  walls.push(gableAttic(layout.depth, roofH, W).rotateY(Math.PI / 2).translate(0, wallH, zc));
   for (const side of [-1, 1] as const) {
-    const slab = slabBox(W + 2 * verge, thick, slope + 0.15, 0.35);
-    pitchRoofPlane(slab, 'z', side, ang, 'gable');
-    buckets.roof.push(slab.translate(0, wallH + roofH / 2 + thick / 2, zc + side * (half / 2 + over / 2)));
+    const slab = slabBox(W + 2 * verge, thick, seat.length, 0.35);
+    pitchRoofPlane(slab, 'z', side, seat.pitch, 'gable');
+    buckets.roof.push(slab.translate(0, wallH + seat.up, zc + side * seat.out));
   }
   buckets.roof.push(slabBox(W + 2 * verge, thick + 0.01, 0.34, 0.5).translate(0, wallH + roofH + 0.04, zc));
   // the stacks: one on the ridge at each party wall, one inside each end gable

@@ -228,9 +228,21 @@ void main() {
     float soot = explosive * ( ( 1.0 - smoothstep( 0.0, 0.6, qw ) ) * 0.7 + halo * ( hesh ? 0.75 : 0.55 ) )
       * ( 0.75 + 0.25 * fine ) * ( 0.35 + 0.65 * fresh );
     col = mix( col, vec3( 0.016, 0.014, 0.012 ), clamp( soot, 0.0, 0.85 ) );
+    // (fx 9c, the owner: "hit marks all look better") an explosive's fragment field: fine pits peppered over the apron and
+    // past it where the casing's fragments struck the ground — on rock and road pale pulverized chips round each pit
+    vec2 fp = wp * 4.2 + so * 1.3;
+    vec2 fi = floor( fp ), ff = fract( fp ) - 0.5;
+    vec2 fo = vec2( h21( fi + 4.1 ), h21( fi + 8.8 ) ) - 0.5;
+    float fd = length( ff - fo * 0.6 );
+    float fragF = explosive * step( 0.84, h21( fi + 17.3 ) ) * smoothstep( 0.85, 1.25, qw ) * ( 1.0 - smoothstep( 1.85, 2.35, q ) );
+    float frag = fragF * ( 1.0 - smoothstep( 0.05, 0.11, fd ) );
+    float chip = surf == 4 ? fragF * smoothstep( 0.09, 0.13, fd ) * ( 1.0 - smoothstep( 0.13, 0.2, fd ) ) : 0.0;
+    col = mix( col, soil * 0.32, frag * 0.85 );
+    col = mix( col, soil * 2.2 + vec3( 0.04 ), chip * 0.6 );
     a = max( max( pit, wall ), crest * 0.97 );
     a = max( a, apron * ( 0.92 - 0.25 * ( 1.0 - fresh ) ) );
     a = max( a, max( pock, soot ) * 0.9 );
+    a = max( a, max( frag * 0.85, chip * 0.55 ) );
     // a faint stain over the whole apron ties its lumps together (broken by the grain: no clean edge)
     a = max( a, apronT * 0.3 * smoothstep( 0.25, 0.6, fine ) );
   }

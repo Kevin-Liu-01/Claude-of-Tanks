@@ -12,6 +12,8 @@
 //   - the furniture of a churchyard: graves under their crosses.
 import { PartSink, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 
+import { GATE_WIDTH, gateKindForFence } from '../maps/gateKit.ts';
+
 /** The ground over the piece's base at a point of its frame (LandmarkBuildContext.ground; flat when absent). */
 export type GroundAt = ((lx: number, lz: number) => number) | undefined;
 
@@ -22,9 +24,10 @@ export interface GroundsDestructible { kind: string; x: number; z: number; yawDe
 const MODULE_LENGTH: Readonly<Record<string, number>> = Object.freeze({
   fenceplank: 2.5, fencepicket: 2.5, fencewattle: 2.5, fencerail: 2.5, wallstone: 3.08, walladobe: 3.06, barbedwire: 2.64,
 });
-/** The gate module's span between its hinge post (its origin) and its latch post along its +z (inhabitKit.ts bGate), and
- * the gap left for it. */
-const GATE_SPAN = 1.75, GATE_GAP = 2.3;
+/** The gate module's span from its hanging post (its origin) to its shutting post along its +z (maps/gateKit.ts: a fence
+ * family's gate fills a fence module, the looks lane 2026-10-13; the farm gate it replaced spanned 1.75 m), and the gap
+ * left for it. */
+const GATE_SPAN = GATE_WIDTH.gate, GATE_GAP = 2.3;
 
 export interface FenceRunOptions {
   /** a gate's gap centred this far along the run (m) */
@@ -61,9 +64,10 @@ export function fenceRun(out: GroundsDestructible[], kind: string, a: readonly [
     }
   }
   if (gap > 0 && opts.gate) {
-    // the gate hangs from its hinge post: its origin at the gap's near side, its posts centred in the gap
-    const scale = Math.min(1.15, Math.max(0.85, (gap - 0.4) / GATE_SPAN)), t = opts.gateAt! - GATE_SPAN * scale / 2;
-    out.push({ kind: opts.gate, x: a[0] + ux * t, z: a[1] + uz * t, yawDeg, scale });
+    // the gate hangs from its hinge post: its origin at the gap's near side, its posts at the gap's two sides; a farm
+    // 'gate' asked of a fence family is that family's own (a picket wicket in pickets, a woven gate in wattle)
+    const scale = Math.min(1.15, Math.max(0.85, gap / GATE_SPAN)), t = opts.gateAt! - GATE_SPAN * scale / 2;
+    out.push({ kind: opts.gate === 'gate' ? gateKindForFence(kind) : opts.gate, x: a[0] + ux * t, z: a[1] + uz * t, yawDeg, scale });
   }
 }
 

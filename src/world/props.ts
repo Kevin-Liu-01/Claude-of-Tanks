@@ -84,6 +84,8 @@ import {
 import { paintStructureDetailBuffers, type StructureDetailBuffers } from './structureDetailTile.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
+import { GATE_KINDS, GATE_WIDTH, buildGate, gateKindForFence, gateStoneOf, gateStyleFor, type GateKind } from './maps/gateKit.ts'; // the looks lane: every fence family's own gate
+import { TIMBER_WELLS, buildMonument, buildWell, monumentFormFor, wellFormFor, wellStoneOf } from './maps/wellKit.ts'; // the looks lane: each place's well and monument
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
@@ -166,10 +168,12 @@ const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
 export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'bunker']);
 import {
-  appendStructureCollisionBand, applyStructureCollisionBand,
+  appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
-  deriveRuntimeStructureContactBand,
+  deriveRuntimeStructureContactBand, deriveRuntimeStructureShellBands,
 } from './structureCollision.ts';
+import { structureShellPoolFor } from './structureShellPool.ts';
+import { unpackStructureShellWire } from './structureShellWire.ts';
 import {
   attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES, letGroundCoverLap,
   type GroundCoverSolidProfile,
@@ -179,7 +183,7 @@ import {
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
 import {
-  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry,
+  box, gableAttic, gablePrism, gableSlabSeat, jitterUV, makeTelephonePoleDistanceGeometry,
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
@@ -870,6 +874,8 @@ interface PropsBuildSlice {
   wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
   /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
+  /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
+  structureShells?: Promise<void>;
   stage?: string;
 }
 
@@ -880,6 +886,8 @@ interface PropsAwaitTiming {
 }
 
 interface PropsBuildDetail {
+  /** (Plan W) the structure shell pool's counts (absent when every structure derived inline) */
+  structureShells?: { posted: number; answered: number; failed: number; packMs: number };
   sliceCount: number;
   synchronousMs: number;
   maxSliceMs: number;
@@ -897,6 +905,9 @@ interface PropsBuildDetail {
     wreckCheckpoints: PropsAwaitTiming;
     builderImports: PropsAwaitTiming;
     wreckBakes: PropsAwaitTiming;
+    /** (Plan W) the pacing ticks while the build waited at the join for the shell pool, and the waits themselves */
+    structureShells: PropsAwaitTiming;
+    structureShellWaits: PropsAwaitTiming;
     wreckRowsLimit: number;
     wreckRowsDropped: number;
     wreckRows: Array<{ specId: string; startMs: number; endMs: number;
@@ -980,6 +991,8 @@ export interface PropsRuntime {
   structureSpans: Map<number, StructureSpan[]>;
   /** Every props-bucket material with the mesh that draws it (world.patchStructureMaterials). */
   structureMaterials: StructureMaterialEntry[];
+  /** (Plan W) the shell pool's counts for this build, null when every structure derived inline */
+  structureShellStats?: { posted: number; answered: number; failed: number; packMs: number } | null;
   _buildDetail?: PropsBuildDetail;
 }
 
@@ -1870,15 +1883,15 @@ function makeCottage(
   parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
-  // roof slabs
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  // roof slabs (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the attic closed
+  // under them; the slabs stood 20 cm over the wall tops along both eaves)
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.12);
   for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
-    parts.roof.push(slab);
+    const slab = slabBox(seat.length, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
+  parts[wallBucket].push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   // r2: ridge cap — the bare slab junction read as an extruded cardboard fold
   parts.roof.push(slabBox(0.34, 0.13, d + over * 2, 0.5).translate(0, wallH + roofH + 0.04, 0));
   // r2: chimney with cap slab + clay pot (was a bare stub most shots missed)
@@ -1930,14 +1943,14 @@ function makeBarn(rng: Rng, buckets: PropsBuckets): StructureDimensions {
   parts.wood.push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH, d / 2 - 0.15));
   parts.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH, -d / 2 + 0.15));
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the loft closed under them)
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.14);
   for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, 0.14, d + over * 2, 0.35); // r2: real tile rows
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.07, 0);
-    parts.roof.push(slab);
+    const slab = slabBox(seat.length, 0.14, d + over * 2, 0.35); // r2: real tile rows
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
+  parts.wood.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   parts.dark.push(box(2.6, 2.9, 0.10).translate(0, 1.45, d / 2 + 0.08)); // big barn door
   parts.wood.push(box(2.9, 3.1, 0.06).translate(0, 1.55, d / 2 + 0.02));
   // r2 terrain_environment: the barn was a featureless dark box (critique).
@@ -2145,15 +2158,17 @@ function addRowhouseRoof(
     parts[wallBucket].push(gablePrism(w, roofH, 0.32)
       .translate(0, wallH, -d / 2 + 0.16));
   }
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const angle = Math.atan2(roofH + 0.1, w / 2 + over);
-  if (!flatRoof) for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, 0.13, d + over * 2, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, angle, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
-    parts.roof.push(slab);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the attic closed under them)
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.13);
+  if (!flatRoof) {
+    for (const side of [-1, 1]) {
+      const slab = slabBox(seat.length, 0.13, d + over * 2, 0.35);
+      pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+      parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
+    }
+    parts[wallBucket].push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   }
-  return angle;
+  return seat.pitch;
 }
 
 function addRowhouseFacadeRelief(
@@ -3471,6 +3486,8 @@ export async function createPropsAsync(
     wreckCheckpoints: { count: 0, totalMs: 0, maxMs: 0 },
     builderImports: { count: 0, totalMs: 0, maxMs: 0 },
     wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
+    structureShells: { count: 0, totalMs: 0, maxMs: 0 },
+    structureShellWaits: { count: 0, totalMs: 0, maxMs: 0 },
     wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
   };
   const wreckFallbacks = { count: 0, missing: 0 };
@@ -3520,6 +3537,17 @@ export async function createPropsAsync(
         if (ahead) {
           try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
         }
+      }
+      if (step?.structureShells) {
+        // (Plan W) the pool's workers finish the structures' shells; the loading screen keeps its pacing meanwhile
+        const startedAt = performance.now();
+        let settled = false;
+        void step.structureShells.then(() => { settled = true; });
+        while (!settled) {
+          await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
+          if (!settled) await observeTick(awaitTimings.structureShells);
+        }
+        recordPropsAwait(awaitTimings.structureShellWaits, startedAt);
       }
       if (step?.tankBuilder && !wreckWorker) {
         const startedAt = performance.now();
@@ -3593,6 +3621,7 @@ export async function createPropsAsync(
       awaitTimings,
       ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
       ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
+      ...(runtime.structureShellStats ? { structureShells: runtime.structureShellStats } : {}),
       ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
         reason: describePropsFailure(wreckWorkerFailure) } } : {}),
     };
@@ -3668,6 +3697,19 @@ function closeIncompletePropsBuild(
   // IteratorClose cleanup must not replace the failed import/tick/build.
   try { iterator.return?.(); } catch (_) { /* retain the original failure */ }
 }
+
+/** A pooled structure's place in the colliders until joinStructureShells (Plan W): any read of it before then throws. */
+function pendingShellRecord(id: string): CollisionRecord {
+  return new Proxy({} as CollisionRecord, {
+    get(_target, key) {
+      if (typeof key === 'symbol') return undefined;
+      throw new Error(`${id}: structure shell record read (${key}) before the build joined the pool`);
+    },
+    set(_target, key) { throw new Error(`${id}: structure shell record written (${String(key)}) before the build joined the pool`); },
+  });
+}
+/** How long the async build waits at the join for the pool's answers before deriving the rest itself (ms). */
+const STRUCTURE_SHELL_WAIT_MS = 15000;
 
 function* propsBuildSteps(
   heightField: HeightField,
@@ -4298,6 +4340,49 @@ ${snowCap ? `
   // stack's own slabs, refitDestructibleColliders)
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
+  /** The gate kinds this map can hang (gateKit.ts): the timber families everywhere, the stone and mud walls' on a kit. */
+  function gateTypes(): Record<string, PropsDestructibleMeta> {
+    const style = gateStyleFor(regionalArchitecture?.id, mapId);
+    const ctx = { style, stone: gateStoneOf(regionalArchitecture), render: { damp: regionalArchitecture?.weather?.damp ?? 0.3 } };
+    const out: Record<string, PropsDestructibleMeta> = {};
+    for (const kind of GATE_KINDS) {
+      const mat = kind === 'gatestone' ? 'regionalStone' : kind === 'gateadobe' ? 'regionalPlaster' : 'structureWood';
+      if (!mats[mat]) continue; // (the stone and mud gates ride a kit's vertex-coloured surfaces: kit maps only)
+      out[kind] = {
+        ...DESTRUCTIBLE_TYPES.gate, mat,
+        build: (rng: () => number) => { DESTRUCTIBLE_TYPES.gate.build(rng).dispose(); return buildGate(kind as GateKind, ctx, false); },
+        broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.gate.broken!(rng).dispose(); return buildGate(kind as GateKind, ctx, true); },
+      };
+    }
+    return out;
+  }
+  /** The well and the monument of this map's place (wellKit.ts): a timber form on the structure wood, a stone one on the
+   *  kit's vertex-coloured stone; a map whose place builds neither keeps the destruction stream's. */
+  function wellTypes(): Record<string, PropsDestructibleMeta> {
+    const out: Record<string, PropsDestructibleMeta> = {};
+    const ctx = { stone: wellStoneOf(regionalArchitecture) };
+    const wf = wellFormFor(regionalArchitecture?.id, mapId);
+    if (wf) {
+      const timber = TIMBER_WELLS.has(wf), mat = timber ? 'structureWood' : 'regionalStone';
+      if (mats[mat]) {
+        out.well = {
+          ...DESTRUCTIBLE_TYPES.well, mat,
+          build: (rng: () => number) => { DESTRUCTIBLE_TYPES.well.build(rng).dispose(); return buildWell(wf, ctx, false); },
+          broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.well.broken!(rng).dispose(); return buildWell(wf, ctx, true); },
+        };
+      }
+    }
+    const mf = monumentFormFor(regionalArchitecture?.id, mapId);
+    if (mf) {
+      const mat = mats.regionalStone ? 'regionalStone' : 'stone';
+      out.monument = {
+        ...DESTRUCTIBLE_TYPES.monument, mat,
+        build: (rng: () => number) => { DESTRUCTIBLE_TYPES.monument.build(rng).dispose(); return buildMonument(mf, ctx, false); },
+        broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.monument.broken!(rng).dispose(); return buildMonument(mf, ctx, true); },
+      };
+    }
+    return out;
+  }
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     // (b45; the coordinator, launch night: some two thousand triangles a stack is a desktop prop) a phone keeps the
     // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
@@ -4345,6 +4430,14 @@ ${snowCap ? `
       build: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.build(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, false); },
       broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.broken!(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, true); },
     } } : {}),
+    // the looks lane (2026-10-13; the owner: "gate structures ... need brand new looks"): each fence family's own gate in
+    // its region's build (maps/gateKit.ts) — the field gate, the picket wicket, the woven fence's gate on the structure
+    // wood; the stone wall's gate on the kit's stone, the mud wall's on its render. The farm gate's numbers, class and
+    // contact; its legacy builder still runs first (it draws nothing from the stream), so every later pool keeps its shape
+    ...gateTypes(),
+    // the looks lane (2026-10-13; LOOKS-BRIEF item 5): the village well and the square's monument as the map's place built
+    // them (maps/wellKit.ts), on the destruction stream's contract; the legacy builders still run first (their draws)
+    ...wellTypes(),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
@@ -4514,7 +4607,8 @@ ${snowCap ? `
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
-          if (!underBridgeDeck(ax, az)) addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
+          // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
+          if (!underBridgeDeck(ax, az)) addDestructible(gateKindForFence(kind), ax, gy - 0.06, az, yaw, 1);
           gated = true;
         }
         openRun = false;
@@ -4655,9 +4749,24 @@ ${snowCap ? `
     });
     structureDamage.set(structureIdx, { builder, style, anatomy });
   }
+  // Plan W (2026-10-13, the perf stream): in the browser's async build a structure's shell bands — 84 % of its collision
+  // derivation — are derived in the pool's workers while the build goes on (structureShellPool.ts). The contact band, the
+  // placement, the feature link and the anatomy stand as before; the shell records join the colliders at
+  // joinStructureShells, in each structure's own place in the list, before anything reads them (the Plan A reader
+  // audit: the map kits' clearance scans in dressMapExtras and after, the parked-vehicle seats, the destruction table).
+  // A structure whose packet moves or reads its records before then (a carriageway building, a foundry donor, the
+  // wharf's fishery) derives everything here, as every structure does in the Node builds.
+  const shellPool = structureShellPoolFor(sourceApplication.worker === true);
+  let shellsJoined = false;
+  interface PendingShells {
+    structureIdx: number; job: number; placeholder: CollisionRecord; id: string;
+    x: number; baseY: number; z: number; yaw: number; contact: CollisionRecord;
+  }
+  const pendingShells: PendingShells[] = [];
   function addStructureCollision(
-    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
+    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number, profileNow = false,
   ) {
+    if (shellPool && !shellsJoined && !profileNow) return addPooledStructureCollision(id, tmp, x, baseY, z, yaw);
     let profile;
     try {
       profile = deriveRuntimeStructureCollisionProfile(tmp);
@@ -4681,6 +4790,73 @@ ${snowCap ? `
     structurePlacements.set(structureIdx, { feature: null, contact, contactMinY: profile.contact.minY });
     describeStructureAt(structureIdx, id, tmp, x, baseY, z, yaw, [contact], shells);
     return profile;
+  }
+  /** addStructureCollision with the shells in the pool: the contact band now, a placeholder in the colliders' order. */
+  function addPooledStructureCollision(
+    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
+  ): null {
+    let contactBand;
+    try {
+      contactBand = deriveRuntimeStructureContactBand(tmp);
+    } catch (error) {
+      throw new Error(`${id}: unable to derive structure collision`, { cause: error });
+    }
+    const structureIdx = structureSerial++;
+    const contact = appendStructureCollisionBand(obstacles, contactBand, x, baseY, z, yaw);
+    contact.kind = 'structure';
+    contact.structureIdx = structureIdx;
+    const placeholder = pendingShellRecord(id);
+    colliders.push(placeholder);
+    const job = shellPool!.post(tmp);
+    for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) {
+      geometry.userData.structureIdx = structureIdx;
+    }
+    structurePlacements.set(structureIdx, { feature: null, contact, contactMinY: contactBand.minY });
+    // the anatomy is the same but for its mass class, which reads the shells: joinStructureShells sets it
+    describeStructureAt(structureIdx, id, tmp, x, baseY, z, yaw, [contact], []);
+    pendingShells.push({ structureIdx, job, placeholder, id, x, baseY, z, yaw, contact });
+    return null;
+  }
+  /**
+   * The pooled structures' shell records take their placeholders' places in the colliders (the order the inline build
+   * gives them), each built as addStructureCollision builds them; an answer that has not arrived is derived here from
+   * the geometry the pool kept. The anatomy's mass class is then read from the structure's records, as
+   * describeStructureAt reads it. After the join every structure derives inline.
+   */
+  function joinStructureShells(): void {
+    if (!shellPool || shellsJoined) return;
+    shellsJoined = true;
+    const replacements = new Map<CollisionRecord, CollisionRecord[]>();
+    for (const pending of pendingShells) {
+      let bands = shellPool.take(pending.job);
+      if (!bands) {
+        try {
+          bands = deriveRuntimeStructureShellBands(unpackStructureShellWire(shellPool.wire(pending.job)));
+        } catch (error) {
+          throw new Error(`${pending.id}: unable to derive structure collision`, { cause: error });
+        }
+      }
+      const shells: CollisionRecord[] = [];
+      for (const band of bands) {
+        const shell = appendStructureCollisionBand(shells, band, pending.x, pending.baseY, pending.z, pending.yaw);
+        shell.kind = 'structure';
+        shell.structureIdx = pending.structureIdx;
+      }
+      replacements.set(pending.placeholder, shells);
+      const described = structureDamage.get(pending.structureIdx);
+      const state = described ? createStructureDamage([pending.contact], shells).structures[0] : null;
+      if (described && state) described.anatomy.massClass = state.massClass;
+    }
+    const joined: CollisionRecord[] = [];
+    for (const record of colliders) {
+      const shells = replacements.get(record);
+      if (shells) for (const shell of shells) joined.push(shell);
+      else joined.push(record);
+    }
+    colliders.length = 0;
+    for (const record of joined) colliders.push(record);
+    pendingShells.length = 0;
+    shellPool.dispose();
   }
   /** The building just pushed onto the features is the structure just placed (its placement reads back from it). */
   function linkStructureFeature(): void {
@@ -4835,7 +5011,7 @@ ${snowCap ? `
    * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
   const CARRIAGEWAY_CORE = 3.5, CARRIAGEWAY_CLEARANCE = 4.25;
   type CarriagewayPacket = {
-    kind: string; buckets: PropsBuckets; profile: ReturnType<typeof addStructureCollision>; records: CollisionRecord[];
+    kind: string; buckets: PropsBuckets; profile: NonNullable<ReturnType<typeof addStructureCollision>>; records: CollisionRecord[];
     feature: (typeof buildingFeatures)[number]; placement: PlacedRadius; source: { x: number; y: number; z: number; rot: number };
     w: number; d: number; chimneys: [number, number, number][];
   };
@@ -4853,6 +5029,23 @@ ${snowCap ? `
       d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
     }
     return { w, d };
+  }
+  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
+   * rectangles, each grown by half the gap. */
+  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
+    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
+    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
+    for (const angle of axes) {
+      const ux = Math.cos(angle), uz = -Math.sin(angle);
+      const reach = (f: typeof a) => {
+        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
+        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
+        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
+      };
+      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
+      if (separation > reach(a) + reach(b)) return false;
+    }
+    return true;
   }
   function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
     rot: number): { w: number; d: number } | null {
@@ -4878,6 +5071,30 @@ ${snowCap ? `
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
+    // (the buildings stream, 2026-10-13, the weird-buildings survey) a block-fill building, or a road building with no
+    // frontage site, stands clear of the buildings already standing. Its site was cleared by its centre alone
+    // (isRoadBuildingSiteClear), so a large plan building
+    // could stand into the row beside it (Steinburg's factory, 3 m into the shelled house at its north end, the house's
+    // gable through its roof). One whose footprint meets a standing building's moves by the least distance that clears
+    // it (rings of 0.5 m out to 8 m), on the block fill's own terms; with no such place it stays. No draws move.
+    if (fromRoad && !roadSite && !explicitStructure) {
+      const reach = footprintOf(tmp, info);
+      const meets = (x: number, z: number): boolean => buildingFeatures.some((other) =>
+        footprintsMeet({ x, z, w: reach.w, d: reach.d, rot }, other, 0.5));
+      if (meets(px, pz)) {
+        let clear: { x: number; z: number; fit: ReturnType<typeof groundFit> } | null = null;
+        for (let ring = 1; ring <= 16 && !clear; ring++) {
+          for (let k = 0; k < 24 && !clear; k++) {
+            const a = k * Math.PI / 12, x = px + Math.cos(a) * ring * 0.5, z = pz + Math.sin(a) * ring * 0.5;
+            if (meets(x, z) || noVeg(x, z) || heightField._roadDist(x, z) < 11 || conflictsTacticalReservation(x, z)) continue;
+            if (!buildingFootprintClearsRoads({ x, z, rot }, reach.w, reach.d, roads, CARRIAGEWAY_CLEARANCE)) continue;
+            const moved = groundFit(x, z, info.w, info.d, rot);
+            if (moved.spread <= P.maxSpread) clear = { x, z, fit: moved };
+          }
+        }
+        if (clear) { px = clear.x; pz = clear.z; fit = clear.fit; }
+      }
+    }
     jitterBuildingUvs(tmp, stream);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
@@ -4993,7 +5210,10 @@ ${snowCap ? `
       return true;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
-    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
+    // (Plan W) a building whose packet moves or reads its records below derives them all now
+    const packetNow = !!carriageway || (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
+      || !!(foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot, packetNow);
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
@@ -5008,13 +5228,13 @@ ${snowCap ? `
     }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
-      carriagewayPackets.push({ kind: structureId, buckets: tmp, profile,
+      carriagewayPackets.push({ kind: structureId, buckets: tmp, profile: profile!,
         records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
         placement: placedB[placedB.length - 1], source: { x: px, y: fit.y + 0.05, z: pz, rot }, w: carriageway.w, d: carriageway.d,
         chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
     }
     if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId)) {
-      foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile,
+      foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile: profile!,
         source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
         feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
@@ -5079,7 +5299,10 @@ ${snowCap ? `
         entry.x, entry.z, entry.rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
-    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+    // (Plan W) a building whose packet moves or reads its records below derives them all now
+    const packetNow = !!carriageway
+      || !!(foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure));
+    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot, packetNow);
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
@@ -5088,14 +5311,14 @@ ${snowCap ? `
     linkStructureFeature();
     placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
-      carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile,
+      carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile: profile!,
         records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
         placement: placedB[placedB.length - 1], source: { x: entry.x, y: fit.y + 0.05, z: entry.z, rot: entry.rot },
         w: carriageway.w, d: carriageway.d, chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
     }
     // Ironworks' service court relocates its donors after the plan stands, as it does for a generated plan
     if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure)) {
-      foundryDonors.push({ planIndex: entry.planIndex, kind: entry.structure, buckets: tmp, profile,
+      foundryDonors.push({ planIndex: entry.planIndex, kind: entry.structure, buckets: tmp, profile: profile!,
         source: { x: entry.x, y: fit.y + 0.05, z: entry.z, yaw: entry.rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
         feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
@@ -5468,23 +5691,6 @@ ${snowCap ? `
   // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
   // strongpoint. A map can author the place instead (props.roadClearanceTargets), checked alike. Its geometry,
   // collision bands, footprint record and chimney tops move with it.
-  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
-   * rectangles, each grown by half the gap. */
-  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
-    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
-    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
-    for (const angle of axes) {
-      const ux = Math.cos(angle), uz = -Math.sin(angle);
-      const reach = (f: typeof a) => {
-        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
-        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
-        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
-      };
-      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
-      if (separation > reach(a) + reach(b)) return false;
-    }
-    return true;
-  }
   function moveBuildingsOffCarriageways(): void {
     for (const packet of carriagewayPackets) {
       const { source, w, d } = packet;
@@ -5532,7 +5738,7 @@ ${snowCap ? `
       for (const geometries of Object.values(packet.buckets)) for (const geometry of geometries) geometry.applyMatrix4(transform);
       [packet.profile.contact, ...packet.profile.shell].forEach((band, i) => {
         const record = packet.records[i];
-        record.min[1] = y + band.minY; record.max[1] = y + band.maxY;
+        record.min[1] = y + band.minY; record.max[1] = y + (band.groundMaxY ?? band.maxY);
         applyStructureCollisionBand(record, band, target.x, target.z, source.rot, y);
       });
       Object.assign(packet.feature, { x: target.x, z: target.z });
@@ -8853,7 +9059,13 @@ ${snowCap ? `
         const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
         addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
       }
-      if (plan.gate && yard.gate) addDestructible(yard.gate, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
+      if (plan.gate && yard.gate) {
+        // (the looks lane) a family gate fills its slot from the slot's start (gateKit.ts: its hanging post or pier at
+        // z = 0, the gap to z = width); the farm gate stood at the slot's middle, half over the next module
+        const half = ((GATE_WIDTH as Record<string, number>)[yard.gate] ?? 0) / 2;
+        const gx = plan.gate.x - Math.sin(plan.gate.yaw) * half, gz = plan.gate.z - Math.cos(plan.gate.yaw) * half;
+        addDestructible(yard.gate, gx, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, gz, plan.gate.yaw, 1);
+      }
       if (plan.shed && yard.shed && style.builders[yard.shed]) {
         const { x, z, yaw, w: sw, d: sd } = plan.shed;
         const fit = groundFit(x, z, sw, sd, yaw);
@@ -9810,6 +10022,10 @@ ${snowCap ? `
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
   const animatedDressing: AnimatedDressing[] = [];
+  // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
+  // below scan every record); the async build waits here for the pool's workers
+  if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
+  joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
@@ -10616,6 +10832,8 @@ ${snowCap ? `
               cx: part.cx * record.sc,
               cz: part.cz * record.sc,
               points: part.points.map((value) => value * record.sc),
+              // (a deck's drawn top scales with it: its origin and heights, its gradients as they are)
+              ...(part.tp ? { tp: part.tp.map((value, i) => (i < 2 || (i - 2) % 3 === 2 ? value * record.sc : value)) } : {}),
               ...scaledExtent(part),
             }),
       };
@@ -11381,6 +11599,8 @@ ${snowCap ? `
         const d = Math.max(0, Math.hypot(rec.x - x, rec.z - z) - rec.r * 0.6);
         const strength = Math.pow(Math.max(0, 1 - d / reach), 1.2);
         if (strength > 0.05) crushPress.blast(idx, x, y, z, strength);
+        // (the audio stream, P7) a real near miss is heard: the glass going and the body denting (audioEngine onProp)
+        if (strength > 0.3) emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y + 0.5 * rec.h, rec.z], cause: 'blast', nearMiss: strength });
       }
     }
   }
@@ -11532,13 +11752,15 @@ ${snowCap ? `
   // of the camera (3D, to the cell's box), hidden 15 m past it (hysteresis); the preset re-read once a second. At High
   // (900-1080 rows) a 7 cm frame is half a pixel at ~120 m.
   const FINE_DETAIL_M: Readonly<Record<string, number>> = {
-    ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+    ultra: 180, high: 120, medium: 90, low: 70, ultralow: 40, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+    'mobile-ultralow': 35, // Ultra Low (2026-10-13): the joinery within 40 m (a 7 cm frame is a pixel at 0.8 CSS px there)
   };
   // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
   // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
   // top stone's 5 cm step is under half a pixel at 80 m (the cost hold's chase view read 100 m's near cells).
   const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
-    ultra: 110, high: 80, medium: 65, low: 50, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+    ultra: 110, high: 80, medium: 65, low: 50, ultralow: 30, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+    'mobile-ultralow': 20, // Ultra Low (2026-10-13): the wall's far form (the same wall, the same cover) from 30 m
   };
   // (b17; gauntlet wave 121, Saltwind's walls "a smooth extruded strip ... mortared, not dry-stone") within a nearer
   // distance still a cell draws its stone form (fieldWorks.ts buildFieldWallFineSteps: every stone, its joints, the
@@ -11549,7 +11771,7 @@ ${snowCap ? `
   // (at High a stone is ten pixels tall at 30 m, a cell's box within 30 m of the camera is one to four cells, 20-25 k
   // triangles each on Saltwind: the mid form takes over past it)
   const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = {
-    ultra: 45, high: 30, medium: 22, low: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0,
+    ultra: 45, high: 30, medium: 22, low: 0, ultralow: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0, 'mobile-ultralow': 0,
   };
   /** A frame's share of the stone form being built (ms). */
   const FIELD_WALL_STONE_BUDGET_MS = 2;
@@ -11799,7 +12021,11 @@ ${snowCap ? `
     if (entry.feature) { placement.x = entry.feature.x; placement.z = entry.feature.z; placement.yaw = entry.feature.rot; }
     placement.y = entry.contact.min[1] - entry.contactMinY;
   }
+  // (physics stream F2) the buildings' decks join their movement records now the world is laid out: every placement above
+  // read the ground band alone, as before decks existed (structureCollision.ts mergeStructureDecks)
+  mergeStructureDecks(obstacles, colliders);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
+  joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),
@@ -11808,5 +12034,7 @@ ${snowCap ? `
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles, waterContacts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
-    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors } };
+    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors },
+    // (Plan W) last, so the runtime's return still opens `{ group, obstacles, colliders,` (destructibleAuthority's anchor)
+    structureShellStats: shellPool ? { ...shellPool.stats } : null };
 }

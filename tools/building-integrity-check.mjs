@@ -275,12 +275,14 @@ if (fromJson) { /* rows read */ } else if (source === 'maps' && fromDump) {
 
 // ------------------------------------------------------------------------------------------------ kits
 if (source === 'kits' && !fromJson) {
-  const { runKitCensus, GATE_PROFILE } = await import('./building-integrity-kits.mjs');
-  // --profile=gate: the selftest's census (one seed, coarser views, each authored set piece once), its ledger's rows
+  const { runKitCensus, GATE_PROFILE, KIT_VIEW_OPTIONS } = await import('./building-integrity-kits.mjs');
+  // --profile=gate: the selftest's census (one seed, coarser views, each authored set piece once), its ledger's rows.
+  // --px=<m> [--res=<n>]: finer views (with --images, to see where a finding sits)
   const gateProfile = opt('profile', '') === 'gate';
+  const fine = opt('px', '') ? { viewOptions: { ...KIT_VIEW_OPTIONS, pxM: Number(opt('px', '')), maxRes: Number(opt('res', '480')) } } : {};
   await runKitCensus({ kits: list('kits'), builders: list('builders'),
     seeds: gateProfile ? GATE_PROFILE.seeds : (opt('seeds', '11,29') || '11,29').split(',').map(Number),
-    ...(gateProfile ? { viewOptions: GATE_PROFILE.viewOptions, dedupeLandmarks: true } : {}),
+    ...(gateProfile ? { viewOptions: GATE_PROFILE.viewOptions, dedupeLandmarks: true } : fine),
     generic: !flag('no-generic'), landmarks: !flag('no-landmarks'), only: opt('only', ''),
     onRow: (row) => { rows.push(row); if (flag('verbose')) printRow(row); }, packParts, analyseBuilding, severity, summarise,
     images: opt('images', '') ? (stem, rasters) => writeRasters(opt('images', ''), stem, rasters) : null });

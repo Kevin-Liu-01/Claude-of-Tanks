@@ -19,7 +19,7 @@ import { createDeferredDeadline } from './deferredDeadline.ts';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
 // read inside the bake functions (post-renderer), never at module eval.
-import { getDeviceTier, texSize } from './quality.ts';
+import { getDeviceTier, getPreset, onPresetChange, texSize } from './quality.ts';
 import { enforceEnvValidity } from './deviceDiag.ts';
 import {
   ATMOSPHERE_SKY_GLSL,
@@ -1751,7 +1751,9 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     // round 68: the volumetric layer takes the low deck's place (the cirrus veil stays); it owns the ground's
     // cloud shadows where it casts them, so the aerial pass's screen-space patchiness turns off there
     if (volumetricClouds) {
-      const layerPreset = atmosphereState.active && preset.cloudOpacity > 0.01 ? deriveCloudLayerPreset(preset) : null;
+      // (Ultra Low, 2026-10-13: the quality preset's volumetricClouds false keeps the baked decks — the phone sky)
+      const layerPreset = atmosphereState.active && preset.cloudOpacity > 0.01 && getPreset().volumetricClouds !== false
+        ? deriveCloudLayerPreset(preset) : null;
       volumetricClouds.setPreset(layerPreset);
       if (volumetricClouds.active) {
         clouds.visible = false;
@@ -1777,6 +1779,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     cloudsFar.material.uniforms.uOff.value.set(0.31 + ox * 0.5, 0.77 + oz * 0.5);
   };
   updateCloudDecks();
+  // Ultra Low (2026-10-13): a quality change swaps the marched layer and the baked decks live
+  onPresetChange(updateCloudDecks);
 
   let pmrem: THREE.PMREMGenerator | null = null;
   /**

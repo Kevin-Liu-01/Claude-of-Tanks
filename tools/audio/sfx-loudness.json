@@ -1,4 +1,27 @@
 {
+ "aircraft_crush": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3179e43afcd464db3681e7b506ba44851a74df68c8ccbba62fe0ec0588bd004f",
+    "bytes": 36789,
+    "durS": 2.9,
+    "mMax": -12.3,
+    "integrated": -15.5,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "8a319a87ee7962744a62ed859d4218d6eec738aacc7d61a3e60e41897dc0b319",
+    "bytes": 33842,
+    "durS": 2.77,
+    "mMax": -14.9,
+    "integrated": -19.2,
+    "truePeak": -0.1
+   }
+  ]
+ },
  "amb_adriatic": {
   "group": "ambience",
   "preset": "ambience",
@@ -26,6 +49,74 @@
     "mMax": -12.3,
     "integrated": -21.3,
     "truePeak": -1.6
+   }
+  ]
+ },
+ "amb_jungle": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "eca688e9cc1345a8c7743e1669c673ffbf4b450298c22855f83284727d640303",
+    "bytes": 195423,
+    "durS": 20.091,
+    "mMax": -18.1,
+    "integrated": -21,
+    "truePeak": -6.9
+   }
+  ]
+ },
+ "amb_mangrove": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "ee8727d2122d496b3de67eb02a41bff507a5b0eb7e86b0938c029041ea3c5e2a",
+    "bytes": 191993,
+    "durS": 20.091,
+    "mMax": -18.9,
+    "integrated": -20.9,
+    "truePeak": -8.1
+   }
+  ]
+ },
+ "amb_oasis": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "b466e0ad63759e4e63e9b1f3d727ea1b6ee38f146449a3ecac489b6c856a9584",
+    "bytes": 184613,
+    "durS": 20.091,
+    "mMax": -14.6,
+    "integrated": -21.4,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "ammo_explode_far": {
+  "group": "destruction",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "81f708915fb1a93d48b5311a3e5ba0e648d39e35487289a4ae9b6e9b746c88a8",
+    "bytes": 41412,
+    "durS": 5.5,
+    "mMax": -14.4,
+    "integrated": -20.2,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "13dc5b4a35e23cab35e53e3cb2a35f0680e5cdfc19d0830cd0e673b063bc50df",
+    "bytes": 42012,
+    "durS": 5.5,
+    "mMax": -14,
+    "integrated": -20.3,
+    "truePeak": -1.7
    }
   ]
  },
@@ -75,6 +166,169 @@
    }
   ]
  },
+ "blast_masonry": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bb80289cf210fb9b9a5ca8545ab9c781a71f39832b84b90b48dd9f1423450f81",
+    "bytes": 29607,
+    "durS": 3,
+    "mMax": -10.7,
+    "integrated": -15.8,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "906071e845b85f09889cec241548d5b77c22ea537aafb06654976317f310dad8",
+    "bytes": 28182,
+    "durS": 3,
+    "mMax": -10.4,
+    "integrated": -18.5,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "bullet_masonry": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "de1e472152289c39e6cd19bf008f42d014a1013cca5a54a873e834d839d7c375",
+    "bytes": 3965,
+    "durS": 0.245,
+    "mMax": -12.3,
+    "integrated": -13.9,
+    "truePeak": 0.6
+   },
+   {
+    "sha256": "941fb501a7fd832d708029481cad4fb63b8d7d17e0b9c54811891aefdceffcf4",
+    "bytes": 1741,
+    "durS": 0.072,
+    "mMax": -16.9,
+    "integrated": -17,
+    "truePeak": 0
+   },
+   {
+    "sha256": "be61f57b6b209ed0f53368f33e406c0967c0f3bfd5d3bd02c1f41b301a3de5aa",
+    "bytes": 2666,
+    "durS": 0.147,
+    "mMax": -15.3,
+    "integrated": -15.3,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "aa8a41edffd4afef4e309088f8d1142814505b09eb950cd5ee2cd20e48aa91ce",
+    "bytes": 2003,
+    "durS": 0.082,
+    "mMax": -16.4,
+    "integrated": -16.5,
+    "truePeak": 0
+   }
+  ]
+ },
+ "bullet_metal": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3fa70381a7900c8a8da8c36076af662b4bc8ea4edf711fbd89623560ae940616",
+    "bytes": 9942,
+    "durS": 1,
+    "mMax": -12.2,
+    "integrated": -14.2,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "a75d35122bae29dd67aec4d5572a38b18d3a6b6f6b89605ddacbbb0ffe245c52",
+    "bytes": 10009,
+    "durS": 1,
+    "mMax": -13.1,
+    "integrated": -15.3,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "084f8d22b76d427db779ad7781a6b3451cc97787ecec7f84f08915660f3d832e",
+    "bytes": 10157,
+    "durS": 1,
+    "mMax": -11,
+    "integrated": -14.2,
+    "truePeak": 0
+   },
+   {
+    "sha256": "8107980e90f17d4c65b0fc0af95c09ef58999859611f18b0ff7120974d3c8607",
+    "bytes": 9796,
+    "durS": 1,
+    "mMax": -11.2,
+    "integrated": -14.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "bullet_wood": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0a047b7b9ec6731d51683a2923593602d914da1183f1a7e2205fac761d00a11d",
+    "bytes": 9753,
+    "durS": 1,
+    "mMax": -11.5,
+    "integrated": -14.3,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "4199b2236cde5d76330d65e814942065524dfe4a023c7355e98e87ee732aab2b",
+    "bytes": 11133,
+    "durS": 1,
+    "mMax": -13.8,
+    "integrated": -16.3,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "54a64742eba98e35b420032ef26729973942e34170e68d292ad2d7ed35c5f8d8",
+    "bytes": 2093,
+    "durS": 0.092,
+    "mMax": -16.3,
+    "integrated": -16.3,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "67a13a623dfbe35f8b0f84df29a8d8db382c75bb9f83f8f69e8f6d76a9c2b0da",
+    "bytes": 10010,
+    "durS": 1,
+    "mMax": -13,
+    "integrated": -14.6,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "burnout_blast": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b3af7b06f0852d2b05a86870181cececd07c26ce08bdf5b9e8dded8174a6312e",
+    "bytes": 33168,
+    "durS": 3.48,
+    "mMax": -10.4,
+    "integrated": -13.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "83404df226913c85b42b969805597891e2c660db34a27e76467f6ffadca82364",
+    "bytes": 32686,
+    "durS": 3.48,
+    "mMax": -10.6,
+    "integrated": -14.1,
+    "truePeak": -0.8
+   }
+  ]
+ },
  "can_knock": {
   "group": "props",
   "preset": "impact",
@@ -98,6 +352,37 @@
    }
   ]
  },
+ "car_crush": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a383fa99496400abd52b30f3e9c8ead906e2a48d2c062cd4db09b3f512f363b2",
+    "bytes": 26995,
+    "durS": 2.48,
+    "mMax": -10,
+    "integrated": -12.7,
+    "truePeak": -2.3
+   },
+   {
+    "sha256": "a206414c4a6c427ca2222bc2fadbed436052933b9b77d44368cb0ca9103aab51",
+    "bytes": 25033,
+    "durS": 2.48,
+    "mMax": -10.1,
+    "integrated": -13.1,
+    "truePeak": -2
+   },
+   {
+    "sha256": "e67d03928d1005bdf3e8f9a8eb6da5f5bc68866245b6d298e33d2ed0ea01660f",
+    "bytes": 22166,
+    "durS": 2.094,
+    "mMax": -10.1,
+    "integrated": -12.9,
+    "truePeak": -2.8
+   }
+  ]
+ },
  "cart_break": {
   "group": "props",
   "preset": "impact",
@@ -118,6 +403,461 @@
     "mMax": -12.1,
     "integrated": -14.1,
     "truePeak": -0.4
+   }
+  ]
+ },
+ "coal_crunch": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8378a5224c43da43b632ae538680a256f523c19c945bfa9fcad3c90d8604ea36",
+    "bytes": 19404,
+    "durS": 1.96,
+    "mMax": -10.7,
+    "integrated": -13.1,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "b0dcde1c64b494da35a5c236dcbbe4b10edbe00d6997ad1500b5bcca12351709",
+    "bytes": 20432,
+    "durS": 2,
+    "mMax": -10.7,
+    "integrated": -14.1,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "collapse_brick": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a3851adbb5de329ebc8c6b4777e6b9beaeda353ad5154ce8670b68abb05f5304",
+    "bytes": 38206,
+    "durS": 5.8,
+    "mMax": -11.2,
+    "integrated": -18.8,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "3a5b5767189062c27f51823ddcb5a1d92028c8b81d8f438da4129251218c4433",
+    "bytes": 38262,
+    "durS": 5.954,
+    "mMax": -12.2,
+    "integrated": -15.7,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "collapse_concrete": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "11b9cdd466169b0c8ea26b4b7e38b56b5cfed9029bd689819c40ee6249b42c0d",
+    "bytes": 32217,
+    "durS": 5.08,
+    "mMax": -11.1,
+    "integrated": -15,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "1add7c4fe03cc955a2e625f80a219ae635a964cc9382fb39d3f7471f752284e6",
+    "bytes": 37262,
+    "durS": 5.774,
+    "mMax": -11.6,
+    "integrated": -18.8,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "collapse_far": {
+  "group": "buildings",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f708ff10972f04a5281938211d98105fe3b22767ba5d6af2479beac70135c21",
+    "bytes": 35414,
+    "durS": 5.28,
+    "mMax": -14,
+    "integrated": -20.5,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "3559ee00741f94283360c1baa1584892f35038dc0b54d552403fb9c369618a04",
+    "bytes": 41213,
+    "durS": 5.5,
+    "mMax": -14,
+    "integrated": -19.4,
+    "truePeak": -2.7
+   }
+  ]
+ },
+ "collapse_plaster": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a3b4f26561848703f9726b1966de0905f7d61e58cfc5b68146ba97d811d2c6bd",
+    "bytes": 34808,
+    "durS": 4.996,
+    "mMax": -13.9,
+    "integrated": -16.7,
+    "truePeak": 0
+   },
+   {
+    "sha256": "36aed873612dbacacc2ef88c846fb108efdfde9590e59682efde7b12d97eb880",
+    "bytes": 36543,
+    "durS": 4.998,
+    "mMax": -16.1,
+    "integrated": -20.8,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "collapse_steel": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "11e7eab4ec7965ffe9348e7c1ef49413fa10ce9a0c8f9531e23cd5100bae3410",
+    "bytes": 29612,
+    "durS": 4.478,
+    "mMax": -11,
+    "integrated": -14.6,
+    "truePeak": -1.3
+   },
+   {
+    "sha256": "be3eeedf9b9a5dc81f8ad89cd1086db91afcdf659032849063cb29e92076f68f",
+    "bytes": 32992,
+    "durS": 5,
+    "mMax": -11.1,
+    "integrated": -13.2,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "collapse_stone": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "51faaa70a6fe1a34a10c3c44c5c08c6714f09ff8046ede6a2080397d91ca7140",
+    "bytes": 41999,
+    "durS": 6,
+    "mMax": -11.7,
+    "integrated": -16.9,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "e84337abb6c23a4949ba588fa9e9b595073512727e11b536d53a1bd6eeaa8038",
+    "bytes": 40462,
+    "durS": 6,
+    "mMax": -11.2,
+    "integrated": -15.6,
+    "truePeak": 0
+   }
+  ]
+ },
+ "collapse_timber": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "cd1d0e58ebe31e159d33b3d8bb387b26a5c4e6ea34eacd402d46a3d9d09c78ae",
+    "bytes": 28575,
+    "durS": 4.66,
+    "mMax": -11.4,
+    "integrated": -16.6,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "186a6c3b3f24e6a7667e596c0e52ef11e28059e58efa7a102fcac95d0382b411",
+    "bytes": 30123,
+    "durS": 4.32,
+    "mMax": -13.5,
+    "integrated": -19.6,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "container_crush": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "92aba82b31ced5b2805e61ef6f8a6f5d90942bd97b4ea1f15913eaf9ba7e0a83",
+    "bytes": 20667,
+    "durS": 2,
+    "mMax": -10.7,
+    "integrated": -15.9,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "1352436d44f61efecc5ee3651655100b234880474e9cd3f735bb34d398d5b47f",
+    "bytes": 19564,
+    "durS": 1.88,
+    "mMax": -10.9,
+    "integrated": -16.2,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "3275352d466e1fc7c15666ccc7812beec61eac74f0eecb683713e87856af0f58",
+    "bytes": 20822,
+    "durS": 2,
+    "mMax": -12.2,
+    "integrated": -17.6,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "crate_break": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "eb0511ff854470cf76bd61a17b47461d4c4cbedc295c62763e95c77404cda440",
+    "bytes": 12632,
+    "durS": 1.2,
+    "mMax": -10.7,
+    "integrated": -13.9,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "daadf264d152233c5efd4f63f5e3a472b2458112313bd8c9aff27b97b835d0c1",
+    "bytes": 12576,
+    "durS": 1.2,
+    "mMax": -11.3,
+    "integrated": -15.5,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "cb05ec9ce1e826ded8186dc2d37cb39bf1fbcf288233c1405ea709c36b8a6d8a",
+    "bytes": 13535,
+    "durS": 1.2,
+    "mMax": -10.3,
+    "integrated": -13.6,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "debris_dirt": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7be01b35605a8bc6f33d2756f45172e5ad1b6f8efba5a4e5f61815ec59212091",
+    "bytes": 37747,
+    "durS": 2.988,
+    "mMax": -13.2,
+    "integrated": -15.7,
+    "truePeak": 0.8
+   },
+   {
+    "sha256": "d66867349a731d394c37a884f5b61ed2034220409e374b2cb7022d65c0cdbd92",
+    "bytes": 36696,
+    "durS": 2.882,
+    "mMax": -15.4,
+    "integrated": -17.7,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "00d8d46bf336dda8cda21ab7a342dd3f4745bb84ab7e4228810c86cd0a565813",
+    "bytes": 32107,
+    "durS": 2.78,
+    "mMax": -14.4,
+    "integrated": -17.2,
+    "truePeak": 0.7
+   }
+  ]
+ },
+ "expl_far": {
+  "group": "impacts",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dabbd8b1ee7d5e765d148d7b32f0eb3a33ac1562344f713f8095b1f4be58db42",
+    "bytes": 29933,
+    "durS": 4,
+    "mMax": -14.2,
+    "integrated": -21.1,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "554ec04f6599fce20fcac55fed95c640c6ead433f35de35d2c4f09f678956f33",
+    "bytes": 30095,
+    "durS": 4,
+    "mMax": -14.3,
+    "integrated": -21.2,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "d1bcff6e52d6c7d61aae0e6c5c09c83218689b6023a3ffcb2e56c887da57b9d7",
+    "bytes": 29949,
+    "durS": 4,
+    "mMax": -14.2,
+    "integrated": -22,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "expl_he_large": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "08a30fc9bcc9a255034d84903f2bed5cba2991cd821ce38b1176fb5b2f531d89",
+    "bytes": 38388,
+    "durS": 4.06,
+    "mMax": -10,
+    "integrated": -13.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "03a48e2fb36cd0cfb636bb219b52b247a6f3f9a9ef77b1b6ddc13bd7e4ed10ad",
+    "bytes": 44360,
+    "durS": 5,
+    "mMax": -10.3,
+    "integrated": -13.8,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "f4eea2ecb810a350e2dfe11908d452bf030c1d590be1c3f293d24d0dc8dec1a9",
+    "bytes": 37762,
+    "durS": 4.16,
+    "mMax": -10.4,
+    "integrated": -13.6,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "fence_metal": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "80187100c719ac74acd0132050df450d18108950be0c9ea1623e398c02addbf1",
+    "bytes": 13902,
+    "durS": 1.48,
+    "mMax": -10.8,
+    "integrated": -15.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "9e50ff1db69e8d5fc62cb77654966eec1ac3d9a37ca96fc0c03be4d3431e7b3f",
+    "bytes": 14003,
+    "durS": 1.48,
+    "mMax": -11.3,
+    "integrated": -15.6,
+    "truePeak": 0.3
+   },
+   {
+    "sha256": "373720896977abe23603739bf40a5bcb45e9321adc5f4b426bca168c2ceba57c",
+    "bytes": 14734,
+    "durS": 1.48,
+    "mMax": -10.6,
+    "integrated": -15,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "fence_wood": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6c99604d0b1c130af997303bb5182d837e74295cbebd5046899087e2f16ae177",
+    "bytes": 15717,
+    "durS": 1.48,
+    "mMax": -11.5,
+    "integrated": -16.6,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "214c7fc56c0d1620db5140f30597e729c27dacb964347bfc9484424d2821a652",
+    "bytes": 15667,
+    "durS": 1.48,
+    "mMax": -10.5,
+    "integrated": -12.9,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "659a115b36ce88884a15b98e4b6a98045f2d85f693a25643196019e6d53030c7",
+    "bytes": 17479,
+    "durS": 1.48,
+    "mMax": -10.1,
+    "integrated": -15.3,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "fire_ignite": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0d735646cc4d9bf8a2fa5538d27453f365e500a86e1d2ee78ab3e3f1f1a54600",
+    "bytes": 14577,
+    "durS": 1.42,
+    "mMax": -12.6,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "0835c78fe9e4aaa5c88e6489d0c4beccfe507dd33e90352087fcea9073831b62",
+    "bytes": 18257,
+    "durS": 1.798,
+    "mMax": -11.6,
+    "integrated": -14.3,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "46c1530056dc9a0b0a4b41e63088f7b364e9e7a819c70481b50d4f874f0e336e",
+    "bytes": 20697,
+    "durS": 2,
+    "mMax": -11.7,
+    "integrated": -14.7,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "floor_fall": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "06977d367d2c07b444cdc766cc705c54edda71f6d83881333064e459d17e2766",
+    "bytes": 20006,
+    "durS": 2.24,
+    "mMax": -13.2,
+    "integrated": -16.2,
+    "truePeak": 0
+   },
+   {
+    "sha256": "9e85d7688f460b9b8aa4ec4d78bfd2636d78bb83889c2aded069d8d58a5334c7",
+    "bytes": 21362,
+    "durS": 2.276,
+    "mMax": -13.1,
+    "integrated": -18.6,
+    "truePeak": -0.2
    }
   ]
  },
@@ -182,6 +922,516 @@
    }
   ]
  },
+ "glass_cascade": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "adce617078c899ab0de0c88540807419b60d79eb9855fdadf4597bebbbfa3eae",
+    "bytes": 23194,
+    "durS": 2.2,
+    "mMax": -10,
+    "integrated": -12.9,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "9954f2b41055c310d65e4d99675cc0822f6c24496080330109a7ca169a8769fe",
+    "bytes": 22791,
+    "durS": 2.2,
+    "mMax": -10,
+    "integrated": -11.9,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "glass_shatter": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "15985636950277d28bc3e4fb8d6701a3c47782548f7964a0cd783bfe7384022d",
+    "bytes": 16046,
+    "durS": 1.48,
+    "mMax": -10,
+    "integrated": -12.9,
+    "truePeak": -2.1
+   },
+   {
+    "sha256": "c0838db2fd23949eb8a406b8a9d334aeddbdec1cb60f07da4f6ecb041ff69dd7",
+    "bytes": 16322,
+    "durS": 1.48,
+    "mMax": -10,
+    "integrated": -12.5,
+    "truePeak": -2.5
+   },
+   {
+    "sha256": "964da077d76a2ed0580b5e5fa1fcd4e4823026db23054a40301f28184b6212ad",
+    "bytes": 16504,
+    "durS": 1.48,
+    "mMax": -10,
+    "integrated": -12.2,
+    "truePeak": -2.3
+   }
+  ]
+ },
+ "ground_metal": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7780ec648e56d296896202eaab788bf40860f6fa4c4ec54f44091f85dea7b7fc",
+    "bytes": 19845,
+    "durS": 1.76,
+    "mMax": -11.9,
+    "integrated": -16.6,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "bdbbebf7680211c1de82819163ceae4bb2ba981961725e9fc8eeac5bb233d7a5",
+    "bytes": 11182,
+    "durS": 1,
+    "mMax": -13.5,
+    "integrated": -18.6,
+    "truePeak": 0
+   },
+   {
+    "sha256": "c44ec3c2a5a25f81f8510d5ae326d7df28b5b0f26a9737f60d9c9b90ffc867b2",
+    "bytes": 12092,
+    "durS": 1.08,
+    "mMax": -11.9,
+    "integrated": -17.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "ground_mud": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0803e31a1384073258b5dc75408dcc0f7625bca3f1371db42dd8360e9601dc0d",
+    "bytes": 9955,
+    "durS": 0.62,
+    "mMax": -16.7,
+    "integrated": -19.8,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "2f5367f2aac7deb08ed7938cfec08a244b32770a388fc76c500977864b7341ca",
+    "bytes": 4650,
+    "durS": 0.28,
+    "mMax": -16.2,
+    "integrated": -18.9,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "fb6fbe51e135026df66b1c1614397366119233c3d25eb2f67875483b975788db",
+    "bytes": 7478,
+    "durS": 0.62,
+    "mMax": -13.4,
+    "integrated": -15.6,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "ground_sand": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "41bdfeb53872a0511a907d7cc5e0d4c5dd0880202eb331d577d88922513f1d0f",
+    "bytes": 12338,
+    "durS": 1.22,
+    "mMax": -12.2,
+    "integrated": -15.5,
+    "truePeak": 0
+   },
+   {
+    "sha256": "210e344fcaadceeef1c77141f6f7f2f2de14bb4de51f34817c294b3d96eaaf3c",
+    "bytes": 15248,
+    "durS": 1.54,
+    "mMax": -10.9,
+    "integrated": -14.2,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "5868e3edb02d4f176d62790df143cd73c1b2a7d95150836b6993c312fcdee48f",
+    "bytes": 11370,
+    "durS": 1.1,
+    "mMax": -12.3,
+    "integrated": -15,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "ground_wood": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "81362cad015429d90a92488c68704be288ee48904897793869a3540170359edd",
+    "bytes": 17135,
+    "durS": 1.6,
+    "mMax": -13.1,
+    "integrated": -16.7,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "6b9a0dba4f595c7082fa4408e55e5bce862e91db4591b36b1a3eb6f58e8d90e1",
+    "bytes": 18242,
+    "durS": 1.6,
+    "mMax": -13.5,
+    "integrated": -17.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "027422bee31a819f243d11e4be10b4329be43f547e21fc8638acabd53976661b",
+    "bytes": 17175,
+    "durS": 1.34,
+    "mMax": -14.1,
+    "integrated": -18.1,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "hedgehog_clang": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7a103f8c7e733f3d80312359cc593a371814abc50fa9db3de1cc8c1c08184297",
+    "bytes": 14630,
+    "durS": 1.48,
+    "mMax": -14.8,
+    "integrated": -18.4,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "809351f6b60f8bdbcae3bd9343e458d43f01453b9a2caaa75b5aba27986b839a",
+    "bytes": 16098,
+    "durS": 1.48,
+    "mMax": -13.9,
+    "integrated": -19.1,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "hit_metal": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0d5761753b25ee2ed0083b20d590020e5213528f39e1fa3b037311fd43fe1f52",
+    "bytes": 14299,
+    "durS": 1.48,
+    "mMax": -12.3,
+    "integrated": -16.3,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "8efde229c2d69a7df55ecba63dc4f0b04290b71c30efb4e8a5b74d6892b3786d",
+    "bytes": 14528,
+    "durS": 1.48,
+    "mMax": -10.6,
+    "integrated": -13.5,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "hit_rock": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8740aa1872a4bcad5556e2260fc6ac233dc56070a3c62a4f87082fed1b5f4c65",
+    "bytes": 11309,
+    "durS": 1.06,
+    "mMax": -12.6,
+    "integrated": -16.3,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "3dd951aca59a9218ee528a6f7e6e28befa5a2471bc8eadc43736fac96be58d84",
+    "bytes": 12070,
+    "durS": 1.2,
+    "mMax": -12.1,
+    "integrated": -17.3,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "518c73e59961825b506d5441676c988fedfd38fff6c4a961810a36c86572f20c",
+    "bytes": 11334,
+    "durS": 1.06,
+    "mMax": -10.9,
+    "integrated": -14.8,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "hit_wall": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b64c08923455f5112f69870f2ba1502155809dcbd41cbc102814923c6640895f",
+    "bytes": 15594,
+    "durS": 1.48,
+    "mMax": -10.2,
+    "integrated": -14.8,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "7009455a93835f81a879ca1bf595ae4aa3e6d44c9c5956a5f0b5226b2f169f21",
+    "bytes": 14262,
+    "durS": 1.48,
+    "mMax": -11.1,
+    "integrated": -15,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "412900b1bff4838f80c5c2a03a65453a65f339e63963eaa4f659acfce4bf5db1",
+    "bytes": 13012,
+    "durS": 1.138,
+    "mMax": -10.6,
+    "integrated": -14.3,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "hull_land": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9765f222e9e1d4a5ec2cccbeba589d0f7c9fab8f709bce816c7ff6a940c40de3",
+    "bytes": 16183,
+    "durS": 1.6,
+    "mMax": -12.2,
+    "integrated": -16.7,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "58dc4516cf7d917ca903bf00b5934b6e9fe3ce782431198f5792142afa9e0abf",
+    "bytes": 17231,
+    "durS": 1.6,
+    "mMax": -13.4,
+    "integrated": -17.1,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "a0ee7893db4367074fed6ff38bad06803c6e3ad2558e455d67573be3d0642693",
+    "bytes": 15766,
+    "durS": 1.6,
+    "mMax": -13.2,
+    "integrated": -18.1,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "impact_far_building": {
+  "group": "impacts",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9508e791dd567d6219f93edf14ae7d5cd786f49e3734d4a1dd3e79df706240e7",
+    "bytes": 13951,
+    "durS": 2.06,
+    "mMax": -15.3,
+    "integrated": -22.3,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "740d14f5f7b35d6275469b937cde960c1c730a8cbf071601a89b8d3909db9d10",
+    "bytes": 16873,
+    "durS": 2.48,
+    "mMax": -15.8,
+    "integrated": -21.7,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "impact_far_ground": {
+  "group": "impacts",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9441034704b5eb8f2a7de041cdd179af01236bbfc5a4b4d4d5a893c8d83330cb",
+    "bytes": 16404,
+    "durS": 2.2,
+    "mMax": -15.4,
+    "integrated": -20.9,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "d37943e9684c402aab177678f6a41d05463d8a46e113dac1f6814d971d23017b",
+    "bytes": 16013,
+    "durS": 2.2,
+    "mMax": -14.2,
+    "integrated": -18.5,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "launch_far": {
+  "group": "weapons",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "88e398a557642128c595dd813cd004feb95b189fc22fa7c16468c024c8a68cdd",
+    "bytes": 16019,
+    "durS": 2.38,
+    "mMax": -14.3,
+    "integrated": -20.1,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "271d576c9e2dd3aad9fe946aa9dce5c1b673f9932b86d0f02c551759482b11e8",
+    "bytes": 15787,
+    "durS": 2.62,
+    "mMax": -14,
+    "integrated": -16.6,
+    "truePeak": -2.7
+   }
+  ]
+ },
+ "launch_gun": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8ff0ee7f96eafe2ebd955c75a2f75aeda20d16bfcbb1a3589788cc5c03ac8e0f",
+    "bytes": 28148,
+    "durS": 3,
+    "mMax": -10,
+    "integrated": -14.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "4caa454b6d0a6bca83ad486e1752d64d044dece25ee5cf8515a7ee759a4ec399",
+    "bytes": 25774,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -14.2,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "950b1acaadc4733e1e79d463ac63e2ff33fb9cf13afd6cd2e1042f9ad4db712e",
+    "bytes": 25817,
+    "durS": 3,
+    "mMax": -9.5,
+    "integrated": -14.3,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "launch_rail": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3b9696eb6b9d5a1b4e65f7b5a76ad40f4a53ef732f463d1f48b8f415e02a0232",
+    "bytes": 27053,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -12.3,
+    "truePeak": -2.3
+   },
+   {
+    "sha256": "d831279daafeffe53e2c563ccd12a9c82a5bdadc5c8e14f0b33951e5f49c5afd",
+    "bytes": 27376,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -11.5,
+    "truePeak": -1.7
+   },
+   {
+    "sha256": "2641ac070ae54257c90ac822991696daf0d6b5c6a3cfc56e4cf5548bca14e401",
+    "bytes": 27631,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -12.3,
+    "truePeak": -1.5
+   }
+  ]
+ },
+ "launch_soft": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b09a346277ec8c53635f71ad30385c4ec4910e24ec3edb54495d251663e9a808",
+    "bytes": 28122,
+    "durS": 3,
+    "mMax": -10.7,
+    "integrated": -14.5,
+    "truePeak": 0
+   },
+   {
+    "sha256": "a13f822610b4088a3fae666fd8d985d5bbb1b6a951f2877e3c981a236bf74b24",
+    "bytes": 26381,
+    "durS": 2.9,
+    "mMax": -9.7,
+    "integrated": -13,
+    "truePeak": 0
+   },
+   {
+    "sha256": "69e926f1a0cfbc5e9d6c6301d4d4884b5647079b5127fe46821febef9dd54a72",
+    "bytes": 27970,
+    "durS": 3,
+    "mMax": -10.6,
+    "integrated": -16.1,
+    "truePeak": 0.6
+   }
+  ]
+ },
+ "launch_tube": {
+  "group": "weapons",
+  "preset": "weapon-close",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8b6037095bfedc3e4f96b5b71165e897a09f4ea28f847ed315edab1e8add4374",
+    "bytes": 27235,
+    "durS": 3,
+    "mMax": -10,
+    "integrated": -14.4,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "b48e09f80fcd4f440e8fc4f197cb1aa3f3b00ce13567b911df7d7ebea20a929c",
+    "bytes": 28067,
+    "durS": 3,
+    "mMax": -9,
+    "integrated": -13.4,
+    "truePeak": -1
+   },
+   {
+    "sha256": "b0fdf2bb7389627e2e32eb602e188d2c2c162ca8ab195c25f882e4b0f3a280f7",
+    "bytes": 26988,
+    "durS": 3,
+    "mMax": -9.1,
+    "integrated": -12.8,
+    "truePeak": -0.4
+   }
+  ]
+ },
  "layer_creek": {
   "group": "ambience",
   "preset": "ambience",
@@ -212,6 +1462,68 @@
    }
   ]
  },
+ "machine_wreck": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "21a6f41085a889c9ba1d3c9fe81a18453a8d8991d910ba07422ea58f1e88409e",
+    "bytes": 34655,
+    "durS": 3.48,
+    "mMax": -9.9,
+    "integrated": -12.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "7f8177ff11eaaa2267913fc4f5855586ac3a0c7b5e12a0582b1ebeff8973c17f",
+    "bytes": 33804,
+    "durS": 3.48,
+    "mMax": -9.9,
+    "integrated": -14.2,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "cf717d969f9ac22f8b81d8a52dd15cf6acb029984ecdbca5d73a5c474ee1f9d7",
+    "bytes": 34465,
+    "durS": 3.48,
+    "mMax": -10,
+    "integrated": -15.3,
+    "truePeak": -2.6
+   }
+  ]
+ },
+ "metal_creak": {
+  "group": "destruction",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "61f1b1bd59cc88e80d2b6eb24ebbbfb6130a068be97e8b06febeb1b56665aac8",
+    "bytes": 22953,
+    "durS": 3,
+    "mMax": -14,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "8cb8b98cda582956e987fd078c4b82dac531fe3d580679db86c25403085f0d1c",
+    "bytes": 16207,
+    "durS": 2.18,
+    "mMax": -14.3,
+    "integrated": -18.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "d5c85f8258f66898e7b67fc8aad24744e4ac32165cc49a3c6c2087d14a5861cb",
+    "bytes": 18376,
+    "durS": 2.32,
+    "mMax": -14,
+    "integrated": -18.5,
+    "truePeak": -1.4
+   }
+  ]
+ },
  "metal_topple": {
   "group": "props",
   "preset": "impact",
@@ -232,6 +1544,21 @@
     "mMax": -10,
     "integrated": -14.4,
     "truePeak": -1
+   }
+  ]
+ },
+ "net_rustle_loop": {
+  "group": "vehicle",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a67d27ada2a421337028244a3e46ab39255cbee29aa78255f21e286e2c1acc19",
+    "bytes": 39463,
+    "durS": 5.091,
+    "mMax": -15.5,
+    "integrated": -18.5,
+    "truePeak": -0.5
    }
   ]
  },
@@ -327,6 +1654,168 @@
    }
   ]
  },
+ "ram_light": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "254c5229040445c665637ad483e57c708bdcaa699b9e1c8c542f036a0346bcf9",
+    "bytes": 11614,
+    "durS": 1.16,
+    "mMax": -12,
+    "integrated": -15.5,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "42d3d99a273341579d63606146a1b29a0e18c6bb7915bb4aaca7a501bf48f20d",
+    "bytes": 11642,
+    "durS": 1.2,
+    "mMax": -12.3,
+    "integrated": -16.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "c2a37d5c4fda2a5a43c1d2e615f248f227f25a0120063eb4b0c05bd0bdbc4f70",
+    "bytes": 12482,
+    "durS": 1.158,
+    "mMax": -11.2,
+    "integrated": -14.7,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "roof_fall": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6269a1cbdd2ece596e7da42e88601c72f1f6657a7db540e566458b1f998aacb2",
+    "bytes": 25515,
+    "durS": 3.48,
+    "mMax": -13.9,
+    "integrated": -17,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "b94e65025e9b5a93944702917dc742d995ede53608e8058af40bdcdef40cf1f1",
+    "bytes": 16047,
+    "durS": 2.434,
+    "mMax": -14.1,
+    "integrated": -18,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "rubble_chunk_land": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "65ad7a1086eb54db197666fa471d21c12aedf7858bf6a2628e4c0746dae8416b",
+    "bytes": 13759,
+    "durS": 1.2,
+    "mMax": -14.6,
+    "integrated": -18.6,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "9c5e2b355d67809037cb3aa04c9da8de7e4f1f88d30dbc1f7553fcfbee37a5dd",
+    "bytes": 14366,
+    "durS": 1.2,
+    "mMax": -16.4,
+    "integrated": -21.7,
+    "truePeak": 0.4
+   }
+  ]
+ },
+ "sandbag_thump": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "343d7d1883822e67e955b8e4610d0663590195964d04896a018658d487a390ad",
+    "bytes": 7279,
+    "durS": 0.674,
+    "mMax": -16.6,
+    "integrated": -20.6,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "9a1663c63b54a45cd8887348935698f9ecd5b127e644f292936493667afefef8",
+    "bytes": 15129,
+    "durS": 1.48,
+    "mMax": -15.6,
+    "integrated": -19.6,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "36bc0089618b9d341dec35bf84a6773881e9bb39712ce4e61d79add040d88b68",
+    "bytes": 7066,
+    "durS": 0.678,
+    "mMax": -15.6,
+    "integrated": -19.4,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "shell_hit_adobe": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c54256cdb5fac318c0074429bee00d1a73dcd15118e943d4c9b34b3a54b89a46",
+    "bytes": 16733,
+    "durS": 1.76,
+    "mMax": -13.7,
+    "integrated": -17.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "f146fe68231346db694fe4442eb1fcf08b5af0b521268da5210869aa36a9bb84",
+    "bytes": 18541,
+    "durS": 1.76,
+    "mMax": -13.7,
+    "integrated": -20.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "shell_hit_masonry": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d2d148ffc759ab2b7e2fcab9cd17989293f9e65ca4fd676315d13560a99c9c6f",
+    "bytes": 16865,
+    "durS": 1.76,
+    "mMax": -12.6,
+    "integrated": -17.7,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "0e1a15801fc909516e666f56e04c8c53ddd6319796b0542de8f30a7a67f0fdb6",
+    "bytes": 11612,
+    "durS": 0.96,
+    "mMax": -13.7,
+    "integrated": -17.8,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "839210e9e097a0e2b0fac32670a0698f0cab87ce926f263cc5140520e8d992e3",
+    "bytes": 10087,
+    "durS": 0.82,
+    "mMax": -14.3,
+    "integrated": -18.5,
+    "truePeak": -0.1
+   }
+  ]
+ },
  "spot_boat_creak": {
   "group": "spots",
   "preset": "spot",
@@ -347,6 +1836,257 @@
     "mMax": -19.1,
     "integrated": -21.6,
     "truePeak": -2.8
+   }
+  ]
+ },
+ "spot_branch_fall": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4ea30b6657240aab550b416f6d3f5da3fc786582803ca95f6ba2abf6682e6d2d",
+    "bytes": 20246,
+    "durS": 2.92,
+    "mMax": -23.8,
+    "integrated": -28.8,
+    "truePeak": -2.5
+   },
+   {
+    "sha256": "2f4620fea87b8ae1c6cb61f7a84ade19dabb7f326685972649f0676764d5d6b2",
+    "bytes": 18113,
+    "durS": 2.746,
+    "mMax": -22.3,
+    "integrated": -25.5,
+    "truePeak": -1.7
+   }
+  ]
+ },
+ "spot_camel": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c4da05fe973a5dc618b82913e295c6ee0f7d34a8c535a10d520b17ec053771cc",
+    "bytes": 20875,
+    "durS": 2.86,
+    "mMax": -18.1,
+    "integrated": -21.3,
+    "truePeak": -7.8
+   }
+  ]
+ },
+ "spot_cattle": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c84e9723df1a4572cc010d2a3a7229acba37e208b0f799effee950f72ac487b9",
+    "bytes": 20272,
+    "durS": 2.84,
+    "mMax": -18,
+    "integrated": -19.4,
+    "truePeak": -9.4
+   },
+   {
+    "sha256": "22b0a78bd52cf1762f56ffaf20cf602d67b2ed2f42a79d24e828f9e6ea706e74",
+    "bytes": 15243,
+    "durS": 2.224,
+    "mMax": -18,
+    "integrated": -19.9,
+    "truePeak": -8.6
+   }
+  ]
+ },
+ "spot_far_brewup": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "89b8c1345f0c821f04220fa3d23c39438916042334ff9609dcdbfa0c0ea14cbc",
+    "bytes": 24016,
+    "durS": 4.48,
+    "mMax": -20.4,
+    "integrated": -26,
+    "truePeak": -6.4
+   },
+   {
+    "sha256": "f3d6caae2863d7658a53a0e223c55ee9db6ab5a7d8d5c49f4e857924f2817610",
+    "bytes": 27254,
+    "durS": 5,
+    "mMax": -18,
+    "integrated": -25.7,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "spot_far_collapse": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c0532e69dcda9a36c5a283795e67e2e161f080d5de5abcfe37df50b2dd98bc4a",
+    "bytes": 34827,
+    "durS": 4.762,
+    "mMax": -17.8,
+    "integrated": -21,
+    "truePeak": -2.6
+   }
+  ]
+ },
+ "spot_far_engine": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fa3d1c0cb3f09ae7ea57b62d64f77d87029d673fa1438d707048cc8dbd7ddaed",
+    "bytes": 26989,
+    "durS": 4.92,
+    "mMax": -18,
+    "integrated": -19.9,
+    "truePeak": -8
+   },
+   {
+    "sha256": "2e6e72518a547ced0528004501da5364495d9dc4f387bbb8f14fe2b15c137cc4",
+    "bytes": 28128,
+    "durS": 4.86,
+    "mMax": -18.3,
+    "integrated": -22.3,
+    "truePeak": -4.5
+   }
+  ]
+ },
+ "spot_far_mg_duel": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "497f6af67ce8c2df7f027a8bd196113578d721ab63f646dc0acbc502d1c6c037",
+    "bytes": 18734,
+    "durS": 3.84,
+    "mMax": -18.6,
+    "integrated": -20,
+    "truePeak": -6.6
+   },
+   {
+    "sha256": "9385744de90882976a6934966d2047663d6ec924e665d3897a29ab3d77a360bf",
+    "bytes": 24159,
+    "durS": 4.38,
+    "mMax": -18,
+    "integrated": -19.5,
+    "truePeak": -4
+   }
+  ]
+ },
+ "spot_far_mortar": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "488784925c9deb4ac212f103454679149953dd2c6e5424fdf7d56d6c9dfca5ce",
+    "bytes": 26706,
+    "durS": 4.502,
+    "mMax": -19.4,
+    "integrated": -20.7,
+    "truePeak": -2.4
+   },
+   {
+    "sha256": "b0ccc4b0abfb4725ba37927e3287e10a66270f8c6f77368edff0e4a532879cac",
+    "bytes": 30159,
+    "durS": 4.506,
+    "mMax": -21.5,
+    "integrated": -22.5,
+    "truePeak": -2.8
+   }
+  ]
+ },
+ "spot_far_tank_column": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "71c1a8fc4a87248de62b58730ee57eee5c990f8966d1c7c418ecad52a8df64cb",
+    "bytes": 35365,
+    "durS": 5.96,
+    "mMax": -18,
+    "integrated": -19.4,
+    "truePeak": -5.7
+   },
+   {
+    "sha256": "e6466b190a9635e682c5ac812eedb640e0395efe8aa33ff5b7dd58622baee61a",
+    "bytes": 33551,
+    "durS": 5.808,
+    "mMax": -18.2,
+    "integrated": -21.3,
+    "truePeak": -5.4
+   }
+  ]
+ },
+ "spot_goats": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "81b5a324c1398d45bda3d9c804fcdcfd069815cb84cea8f916d6f34dde673abd",
+    "bytes": 16013,
+    "durS": 2.59,
+    "mMax": -18.2,
+    "integrated": -20.5,
+    "truePeak": -8.2
+   }
+  ]
+ },
+ "spot_hornbill": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "09d2068ae6f194d704d3dc0f6b05b6bcde0481949323df8c3d8c40275b28ffc1",
+    "bytes": 17410,
+    "durS": 2.772,
+    "mMax": -18.1,
+    "integrated": -21,
+    "truePeak": -6.4
+   }
+  ]
+ },
+ "spot_horse": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "54527833968ea159bd54e2d87fcfa096d8eda93c54fd7ed88c7e58a7c315af24",
+    "bytes": 15447,
+    "durS": 2.392,
+    "mMax": -18,
+    "integrated": -20.6,
+    "truePeak": -11.2
+   }
+  ]
+ },
+ "spot_monkeys": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9e2ec1c0b5f6d7bd5472d3903b1d43d866e39791fae1590e5ad39a1fdbfc0a5b",
+    "bytes": 25445,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -22.6,
+    "truePeak": -8.7
    }
   ]
  },
@@ -373,6 +2113,174 @@
    }
   ]
  },
+ "spot_raven": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e1c8b8bfb4a7e2ac4d196d1d36c5b9e14ca5b33bf3005e7dfb6b0e61b03b8224",
+    "bytes": 10198,
+    "durS": 1.64,
+    "mMax": -18.8,
+    "integrated": -20.3,
+    "truePeak": -4.9
+   },
+   {
+    "sha256": "068f27ec0706ec9cbfd4170324d5535a892b59b10ed0f63bde922fad3daac83f",
+    "bytes": 9859,
+    "durS": 1.474,
+    "mMax": -18.5,
+    "integrated": -21.2,
+    "truePeak": -8.2
+   }
+  ]
+ },
+ "spot_rooster": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f73acb91ba31636a023c7423205f3f81439183cbcf2638f6ec7f618e8cb78ee2",
+    "bytes": 18430,
+    "durS": 2.3,
+    "mMax": -18,
+    "integrated": -20.8,
+    "truePeak": -8.9
+   }
+  ]
+ },
+ "spot_sheep": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d516f310db891234e47f1a088d9fb57d4e18c804b03d02241a6407f7b4d71489",
+    "bytes": 19192,
+    "durS": 2.96,
+    "mMax": -18,
+    "integrated": -19.4,
+    "truePeak": -8.6
+   }
+  ]
+ },
+ "spot_shutter_bang": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "880ba4bcffd0e1eea8c7e773b0a9670699967adfdcd314799583a13746cdbb81",
+    "bytes": 17259,
+    "durS": 2.96,
+    "mMax": -19.2,
+    "integrated": -21.2,
+    "truePeak": -2.8
+   },
+   {
+    "sha256": "e38e6deda83938aaa80d406b53ed9ed2af873ac723ef8a10d2fa560f20483594",
+    "bytes": 13102,
+    "durS": 2.26,
+    "mMax": -21.8,
+    "integrated": -24.6,
+    "truePeak": -2.9
+   }
+  ]
+ },
+ "spot_tin_roof": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f6153d9df098a663965c9b6da1fb659a4d07cbd8522763124b809123de6858e6",
+    "bytes": 17739,
+    "durS": 3,
+    "mMax": -19.4,
+    "integrated": -24,
+    "truePeak": -2.9
+   },
+   {
+    "sha256": "7adf50763a19f3d2fd6970bf8295c5ae105aa694df8d91798de6891e7a880b65",
+    "bytes": 18359,
+    "durS": 3,
+    "mMax": -18.7,
+    "integrated": -21.8,
+    "truePeak": -2.9
+   }
+  ]
+ },
+ "spot_wind_howl": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "21bcc54a2cac83187cce458a01dd025cf992eb17cef991745ea38fd466266f3a",
+    "bytes": 23840,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -20.1,
+    "truePeak": -5.9
+   },
+   {
+    "sha256": "f134f90dda0085b328f2fbb52fc36d4047c3d12d7152acab725acca0b237ed8e",
+    "bytes": 24765,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -19.1,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "stone_crack": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b8a309d135aecb35e939c61fa9179cc7df9b504474a56f9e4aa1be788a178f47",
+    "bytes": 15358,
+    "durS": 1.48,
+    "mMax": -16,
+    "integrated": -20,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "95ab595f2752c671542b340a7ecb65284f5bc511b96167d4854bb9a184aac5dd",
+    "bytes": 15600,
+    "durS": 1.48,
+    "mMax": -13.7,
+    "integrated": -16.2,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "stone_fall": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5a0f878f367aa383212867102baf669fcd146dde93093b4c8335e7aa3cc4bcbf",
+    "bytes": 18038,
+    "durS": 2,
+    "mMax": -15,
+    "integrated": -18.9,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "cc9874b26b468845d80bd0bb4e8fd50342e20da6e4ff2fa30f0d966520aa1028",
+    "bytes": 19488,
+    "durS": 2,
+    "mMax": -16.3,
+    "integrated": -19.2,
+    "truePeak": -0.7
+   }
+  ]
+ },
  "straw_crush": {
   "group": "props",
   "preset": "impact",
@@ -396,6 +2304,68 @@
    }
   ]
  },
+ "tank_explode": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e13fd801307929033a9a5f6a471bc715b8e3250703e093a2bd705fd4f1a483d9",
+    "bytes": 45356,
+    "durS": 5,
+    "mMax": -10.2,
+    "integrated": -14.1,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "2ccd85bbd91e775b673986cd6d0f8f7fc131d956d7704d8ef244dcd13a360efc",
+    "bytes": 46368,
+    "durS": 5,
+    "mMax": -10,
+    "integrated": -13.3,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "aef90ffe0f1d659c515327b24e0d2ccaae3181cbdfc8a9d754d05c3c25d84fb5",
+    "bytes": 51071,
+    "durS": 5,
+    "mMax": -10.1,
+    "integrated": -13.8,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "tank_explode_ammo": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8fa7b275d0bbc90558aa9214a210d53c56a1c533edbe6abfa7aed620e1542ab6",
+    "bytes": 51209,
+    "durS": 6,
+    "mMax": -10.1,
+    "integrated": -14.5,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "cddb7fcfacc1536a6cb173455a07603c9a9a922495734f84d3fb45eac2f16419",
+    "bytes": 53316,
+    "durS": 6,
+    "mMax": -10.6,
+    "integrated": -13.9,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "30ac56f5725542955826d15551abda77952f076269e3fd33aa1c7ac7fd8e315e",
+    "bytes": 54481,
+    "durS": 6,
+    "mMax": -10.4,
+    "integrated": -15.5,
+    "truePeak": -0.6
+   }
+  ]
+ },
  "tent_collapse": {
   "group": "props",
   "preset": "impact",
@@ -416,6 +2386,401 @@
     "mMax": -13.4,
     "integrated": -15.9,
     "truePeak": 0.6
+   }
+  ]
+ },
+ "tree_fall": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "049279f58a8427ffe5f5fa83c43061f119d5906c8f80abd3e9bb8d1fe890fd56",
+    "bytes": 29291,
+    "durS": 2.944,
+    "mMax": -13.5,
+    "integrated": -18.5,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "f86b6b50346757c81ed27ebd3a657d4cd75d92dd88fb261effd607ab75ca4a29",
+    "bytes": 29208,
+    "durS": 2.92,
+    "mMax": -13.9,
+    "integrated": -18.2,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "a3fdc8195df33c5b2f3c9add127e8b48c792382b91572cff13474e0b562d10c7",
+    "bytes": 25271,
+    "durS": 2.63,
+    "mMax": -15.7,
+    "integrated": -19.9,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "truck_crush": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "92a60720a18126940b352faa0681acb8ca1d5813824bbf1381a0ee1ecec36d07",
+    "bytes": 31856,
+    "durS": 2.82,
+    "mMax": -10.2,
+    "integrated": -13.1,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "2feb5510c10855705b504045db741e6203d4bbcc44915104f30b3f91cd1ceb2c",
+    "bytes": 28597,
+    "durS": 2.72,
+    "mMax": -10.8,
+    "integrated": -13.4,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "988cf83c4bf7ffe27b44555d161ff923854924dc07c1205c6c4e0b71bdefae88",
+    "bytes": 31973,
+    "durS": 2.94,
+    "mMax": -10.3,
+    "integrated": -13.9,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "turret_land": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9dcb9f4fa533b6f80ed5799bfac27527756571e431d8537db895f736bfd14837",
+    "bytes": 20568,
+    "durS": 2,
+    "mMax": -10.1,
+    "integrated": -13.2,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "6e006c6ec0fb2625a4f9cad5dea6a9377b3d415742b85b72749302ecb53a62e7",
+    "bytes": 22811,
+    "durS": 2,
+    "mMax": -12.3,
+    "integrated": -17.2,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "657b8e2cb9d852b9734697155c0254a160bdb22b24a1986104ae6b7af5d2db5b",
+    "bytes": 20760,
+    "durS": 1.72,
+    "mMax": -11.1,
+    "integrated": -16,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "d61aeabb648dda71df72a2fabef9d2ccc8a7ebf71c0c745f81c77c756e9be253",
+    "bytes": 20122,
+    "durS": 1.74,
+    "mMax": -10.6,
+    "integrated": -14.1,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "wall_break_brick": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "924bb38571a30486a5619fcd67cbc244afc8fc217ed048dd4c2084239198b69b",
+    "bytes": 26233,
+    "durS": 2.56,
+    "mMax": -15.6,
+    "integrated": -19.9,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "2c393794556c283cc7a7e6b2fc3959a2a85aa5eb110599e0e6a96525dcd332e0",
+    "bytes": 20075,
+    "durS": 1.936,
+    "mMax": -16.1,
+    "integrated": -19.1,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "68620ac540bdb9455298e592cd6a72a36fc703970b2817fad4ffc31fc429989f",
+    "bytes": 24110,
+    "durS": 2.334,
+    "mMax": -14.5,
+    "integrated": -19,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "wall_break_concrete": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6c8221b1bf6091704bdf560dcbc1b56199de97bf70109a22ebc5dfa7664fe7c1",
+    "bytes": 24741,
+    "durS": 1.898,
+    "mMax": -15.6,
+    "integrated": -23.2,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "1a61b75046820953d9aec786fdaee2211863cd6c5a0a6b3731649dcd21e7b59a",
+    "bytes": 16213,
+    "durS": 1.462,
+    "mMax": -15.3,
+    "integrated": -19.9,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "83073cb81c97095e81894f48e361e7f24e5b789c43ddee79d06f0dcc3dff3424",
+    "bytes": 25233,
+    "durS": 2.02,
+    "mMax": -14,
+    "integrated": -21.5,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "wall_break_far": {
+  "group": "buildings",
+  "preset": "weapon-far",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dac0e4e074e82f9678d1b0489c1480ed71306dcc227c1c06626e9965f01c73ca",
+    "bytes": 22658,
+    "durS": 3,
+    "mMax": -14.5,
+    "integrated": -21.5,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "208b7a0f2721a40a1d2c12cd99b628d2027ffe0c200c2425d31397353e689bc4",
+    "bytes": 23060,
+    "durS": 3,
+    "mMax": -14.5,
+    "integrated": -21.3,
+    "truePeak": -1
+   }
+  ]
+ },
+ "wall_break_plaster": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "217faf1d3f488e0982c2cee73e049421361f172cd8a1e73d477cc93b46040a01",
+    "bytes": 26699,
+    "durS": 2.28,
+    "mMax": -14.5,
+    "integrated": -17.7,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "925cfdcefff812d6e684a1e4373d574f56b0a915c75f3f1f45c17558f56f3ba6",
+    "bytes": 28005,
+    "durS": 2.56,
+    "mMax": -13.7,
+    "integrated": -17.8,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "f19b7e287103abe5659b0f7e75225ce3dd352102730f904074d995ccf3d18054",
+    "bytes": 24320,
+    "durS": 2.38,
+    "mMax": -12.2,
+    "integrated": -15.7,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "wall_break_steel": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9c2611b03963463324413986953bcad3ae58360f856e97fc3e636e3bd1e6c131",
+    "bytes": 24056,
+    "durS": 2.4,
+    "mMax": -10.1,
+    "integrated": -15.8,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "a6a59dfc774a0d6c20927c4bca85d1c05ab18751a55f7a86da2323308b3b4ffe",
+    "bytes": 22339,
+    "durS": 2.3,
+    "mMax": -10.1,
+    "integrated": -13.3,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "23dbfaca90da1ec1a0481475577e4b8709ef17647e32821c281221d42f6191ec",
+    "bytes": 22121,
+    "durS": 2.28,
+    "mMax": -10,
+    "integrated": -13.1,
+    "truePeak": -1.4
+   }
+  ]
+ },
+ "wall_break_stone": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "2d3d8813318d62ad4045a2615e7aa64f4f864be4b642dad5bdd3b9a6cbd2d47b",
+    "bytes": 29754,
+    "durS": 2.76,
+    "mMax": -11.3,
+    "integrated": -16.1,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "bc80bb877a398c6bdd006a7f63e4ecb788fadcd1d96a78689b2665336975e1fd",
+    "bytes": 31833,
+    "durS": 2.76,
+    "mMax": -11.4,
+    "integrated": -15.2,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "fffde2e54f00e0e8eac9a378c763186a1bf895a0c6ac6fc1a8b7e2022c83c522",
+    "bytes": 30536,
+    "durS": 2.76,
+    "mMax": -11.5,
+    "integrated": -15.4,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "wall_break_timber": {
+  "group": "buildings",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "954aff8eff94c6f76cac65d37f3160eb8eb63f8f1ee6eaa0793eddb6a17b026b",
+    "bytes": 25088,
+    "durS": 2.4,
+    "mMax": -10,
+    "integrated": -14.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "3a7d4e52a5348b85a0587682deb18dd1099495be52f57769625758722875522e",
+    "bytes": 23438,
+    "durS": 2.4,
+    "mMax": -10,
+    "integrated": -14,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "5064a95166662d28744b1273b7a1010de3eb546861b197cfebb9987abd707b4b",
+    "bytes": 25463,
+    "durS": 2.4,
+    "mMax": -9.9,
+    "integrated": -13.2,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "water_big": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c5cab95ca92a8b50780057cc55006c8d1274433d0fd0bfd5689f482cb3978752",
+    "bytes": 25103,
+    "durS": 2.36,
+    "mMax": -10.7,
+    "integrated": -13.6,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "1d89fec9ecfb04be3333ab2fc5f839a12ade9d1527c2e9e10ae249f54630b71a",
+    "bytes": 24888,
+    "durS": 2.48,
+    "mMax": -10.1,
+    "integrated": -13.9,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "1af0ce16cc4789c4cefe2c5f94be566933570e866c23426c31892200993e89f8",
+    "bytes": 23726,
+    "durS": 2.36,
+    "mMax": -12.4,
+    "integrated": -14,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "water_small": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f8307ebb9e43a26986c2b41fb5cc20372344ed6393fdc92937b1f226b8d20cdf",
+    "bytes": 12375,
+    "durS": 1,
+    "mMax": -13.9,
+    "integrated": -18.3,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "4591c95ac743c9838c48c7b12452770c94bf7431aab536a24afac603ee0b4931",
+    "bytes": 11394,
+    "durS": 1,
+    "mMax": -11.9,
+    "integrated": -14.8,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "49f8ee910e19ca57bf7146f1b2f7932d3f1660cba0ea334ac711f25e781f3538",
+    "bytes": 10164,
+    "durS": 0.94,
+    "mMax": -13.1,
+    "integrated": -15.9,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "well_break": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fdfbda271a4d89857a437f01dd359d572480036c36dae7e0f81db3b6706f5331",
+    "bytes": 27551,
+    "durS": 2.48,
+    "mMax": -12.2,
+    "integrated": -17.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "22cfc1de5312e43e097a32a000e0e6cbcbb5df82187f1197ba59f046fc6f7d5d",
+    "bytes": 28537,
+    "durS": 2.48,
+    "mMax": -10.4,
+    "integrated": -13.8,
+    "truePeak": 0
    }
   ]
  }

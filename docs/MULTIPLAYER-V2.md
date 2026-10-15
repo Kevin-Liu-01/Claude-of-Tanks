@@ -1688,6 +1688,21 @@ owner, the un-re-armed lease and the admission migration, the lease across a lea
 `a80a8b8c3`: `roomPolicy` "the first seat to join an emptied room owns it", `roomClient` "timeout: the refused resume ends
 the client").
 
+**Why the room elected whom (2026-10-13, the MP stream; MP-SINCE-0930 plan step 7b — a rooms Worker change, deployed
+only through `node tools/release.mjs workers <sha> --only=rooms` on the coordinator's word).** Production's slow entries
+re-elected at match start and, when the creator left, handed the match to C instead of B; the room logged the reason
+(left / declined / timeout) only to a 10 %-sampled Worker log, and `timeout` covered two different deadlines. Every
+`host_changed` now carries, beside the unchanged `reason`, `detail` on a timeout — `socket_lease` (the host's room socket
+stayed away past its grace) or `report_deadline` (a connected host sent no report inside the budget: a host still deep in
+its own entry) — and `passedOver`, the commanders the ladder did not choose and why (`declined`: a `host_decline`, sticky
+for the match, so a seat that declined while its own entry loaded stays passed over; `stepped_down`; `disconnected`;
+`ranked_lower`). The actor's log line carries both; the signaling double mirrors them. Compatibility: `reason` keeps its
+four values and both fields are optional, so an older client reads the message unchanged and a newer client of an older
+room reads neither. Receipts: `roomActor.selftest` (a guest that declined during its entry is passed over when the host's
+socket drops, the third seat hosts — `socket_lease`; the new host's silence is `report_deadline`; the validation of both
+fields and an older room's message), `cloudflare/rooms` `test/p2p.test.ts` under the Workers runtime (24/24), the
+lifecycle proofs, `mp-p2p-headless`, `mp-world-events-audit`.
+
 ### 13.12 UI states and syncing walked (lane `mp/ui-sync-check`, 2026-09-30)
 
 **The owner's request**: "double check UI states and syncing." Three headless Chromes (puppeteer, `nice -n 19`, one probe
@@ -2072,6 +2087,83 @@ booted from it), `matchClient.selftest` (retained across a reset). The audit jud
 the boot — the newer of the keyframe (opened with the room's host secret) and the newest frame, plus every fall the old
 host sent it — everything known is restored, nothing beyond the old host's list is invented, and the revision counts the
 restored falls within the old host's.
+
+### 13.17 A loading host keeps the match (MP stream, plan step 8, 2026-10-13)
+
+**Why.** The room replaces a p2p host whose reports stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (30 s), counted from its
+election, and an elected host's actor boots only after its presentation has built the world (`MatchSession.enterMatch`:
+`createPresentation`, then `openPeerToPeer`). A slow entry (a cold program compile, a busy machine) cost the match its
+host before it began, and the peers a migration onto a seat that was loading too (MP-SINCE-0930 MP-S03; the rooms Worker
+now says why: `host_changed.detail` `report_deadline`).
+
+**What.** From the match_start until its actor's first report, the elected host's tab reports `loading` (tick 0) every
+`ROOM_MATCH_REPORT_INTERVAL_MS`, for at most `ENTRY_REPORT_CEILING_MS` (150 s: the slowest measured entries fit). A tab
+whose main thread is wedged sends nothing and is replaced as before; the reports stop at the actor's own report, on
+`host_only`, and when the room elects another seat. Only a fresh match's host: a running match's re-entry still declines
+so a peer with the keyframe resumes, and that seat withdraws the decline (`host_decline { declined: false }`) once it is
+welcomed, so a later election may name it again. Client-only: the room already accepts `loading` reports.
+
+**Also.** `matchHostCore.boot` honours a stop that arrived during the world load (the same branch carries
+`fix/mp-host-stop-race`): a seat leaving mid-load no longer leaves a running actor in a Node host.
+
+Receipts: `matchSessionEntryReports.selftest` (the real session against a scripted room socket: reports through a slow
+entry and their stop at the actor's report; the ceiling, `host_only` and a new election; none from a peer or a running
+match; the re-entry decline withdrawn at the welcome; no actor after a mid-load leave; bounded memory),
+`matchSessionP2p.selftest` (accepts the loading reports ahead of the actor's phase).
+
+### 13.18 Host choice by headroom (MP stream, plan step 10, 2026-10-13)
+
+**Why.** Every packet of a p2p match crosses the host tab's main thread, and every seat skips control ticks below
+15 fps; the room elects the admin (else the senior willing commander) without knowing how each tab runs.
+
+**What.** While it waits in the room, a tab reads its own foreground display frames (`browserComposition`'s pump →
+`MatchSession.observeFrame` → `hostHeadroom.ts`): p50 frame time over about four seconds past 33 ms (under 30 fps) makes
+it decline to host as a preference (`host_decline { declined: true }`, not `unable`: the room names a willing seat and
+keeps this one as the last resort); under 25 ms (over 40 fps) it offers again (`declined: false`). Never during a match
+(a hosting seat's decline hands the match on mid-battle), never from a seat that cannot host, and off with
+`p2p.hostHeadroom: false`. Client-only: the room's ladder already honours a preference decline. Not done: capping the
+host tab's render quality while it hosts (perf's quality tiers).
+
+Receipt: `hostHeadroom.selftest` (the monitor's verdicts, window and hysteresis; the real session against a scripted room
+socket: the decline and its withdrawal, none in a match, none from the mobile tier, none with the option off).
+
+### 13.19 A host that goes hands its match on at once (MP stream, plan step 11, 2026-10-13)
+
+**Why.** A hosting tab that closed, reloaded or navigated away left its peers to the room's socket lease: on the e2e of
+2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
+
+**What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session. A seat hosting a running
+match, with another seat willing to host (connected, a commander, not declined), sends `host_decline { declined: true }`
+on the room socket inside the event (synchronous, nothing awaited), once, and steps down at once: its actor stops and the
+seat is a peer. The room elects the willing seat at once (its declined path); a preference decline that finds no
+candidate after all leaves this seat hosting, and its lease runs as before (roomActor.selftest: "every commander has
+stepped down … it keeps hosting"). With no willing successor (a solo room with bots, every other seat declined, unable or
+gone) nothing is sent: the lease and the resume hold run as on main, so the same player can come back. A page entering
+the back-forward cache (`pagehide` with `persisted`) is handled the same way; restored, it is a peer of whoever the room
+elected and never hosts on its own. Leaving the match afterwards does not decline twice; the hand-off is per round.
+
+Receipt: `matchSessionHandOff.selftest` (the real session hosting through the in-process host against a scripted room
+socket; cases "hands on and steps down" (the decline leaves before anything is awaited, once; the back-forward-cache
+restore follows the new host), "sole host keeps the lease" (the other seat declined, gone or spectating, or a solo room:
+nothing sent, still hosting), per round, none from a peer or the lobby, no actor outlives its core).
+
+### 13.20 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
+
+**Why.** A seat whose main thread stalls (a long frame, a busy phone, a backgrounded tab) skips the ticks it missed:
+`InputStream.dueTicks` samples only the newest four once it is more than eight behind. The authority gets no control for
+those ticks: it holds the last one for `HELD_INPUT_LEASE_TICKS` (30 ticks, 500 ms; now a shared wire constant) and then
+releases drive and fire, keeping aim (`server/match/inputBuffer.ts`). The prediction did neither: the live predictor
+jumped over the gap (the hull resumed from where the stall began), and a replay through the gap held the last control
+for its whole length. The next authority row corrected the hull by the gap: 2.1 m after a 0.3 s stall at speed; with
+the gap stepped but held throughout, 1.5 m after 1 s.
+
+**What.** `MatchClient.sampleInputs` hands the skipped ticks to `LocalPredictor.skipTicks`, which steps them (up to 3 s)
+with the held control until the lease ends and the released control after it; `replay` applies the same rule to any gap
+in the seat's own controls (`controlAt` answers the newest earlier control). The authority is unchanged.
+
+Receipt: `predictionStall.selftest` (the real sampler, the real authority input buffer and the real predictor on one
+movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
+against 2.1 m and 1.5 m for the two old behaviours).
 
 ## 10. Decisions for the owner
 

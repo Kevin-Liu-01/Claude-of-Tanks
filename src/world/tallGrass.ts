@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getDeviceTier, getPreset } from '../engine/quality.ts';
+import { getDeviceTier, getPreset, presetLightWorld } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
@@ -476,7 +476,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     shared.uGrassTip.value.set(biome.tip[0], biome.tip[1], biome.tip[2]);
     shared.uGrassDry.value.set(biome.dry[0], biome.dry[1], biome.dry[2]);
   }
-  const pressure = biome && tier !== 'mobile' ? createGroundPressureField(options.renderer, { tier }) : null;
+  // (Ultra Low, 2026-10-13: the light world build stands its sward untrampled, as on the phones)
+  const pressure = biome && tier !== 'mobile' && !presetLightWorld() ? createGroundPressureField(options.renderer, { tier }) : null;
   if (pressure) { shared.uPress = pressure.stateUniform; shared.uPressParams.value = pressure.params; }
   const materials: THREE.MeshLambertMaterial[] = [];
   function makeMaterial(fade: readonly [number, number, number, number], programKey: string, far: boolean): THREE.MeshLambertMaterial {

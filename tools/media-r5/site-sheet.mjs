@@ -21,7 +21,7 @@ for (const [i, m] of meta.entries()) {
   const still = [join(deliver, m.id, `${m.id}.webp`), join(deliver, m.id, `${m.id}.jpg`)].find(existsSync);
   if (still) { g.drawImage(await loadImage(readFileSync(still)), x, y + cap, tw - 3, th); shown++; }
   else { g.fillStyle = '#1b2026'; g.fillRect(x, y + cap, tw - 3, th); }
-  g.fillStyle = '#ffd27a'; g.fillText(`${String(m.n).padStart(2, '0')}  ${m.id.replace(/^s\d\d-/, '')}`, x + 6, y + 16);
+  g.fillStyle = '#ffd27a'; g.fillText(`${String(m.n).padStart(2, '0')}  ${m.id.replace(/^s\d{2,3}-/, '')}`, x + 6, y + 16);
 }
 writeFileSync(out, c.toBuffer('image/jpeg', 86));
 console.log(`${out}: ${shown}/${meta.length} delivered`);

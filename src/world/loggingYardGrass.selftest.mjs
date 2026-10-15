@@ -33,6 +33,7 @@ function compile(legacy) {
     'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork',
     'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
+      const lightDesk = false; // (Ultra Low, 2026-10-13) the light-world vegetation is a desktop preset's; the default here
       ${section('const HALF = 512;', 'function treePositionNoise(')}
       const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation }, deferFarGrass = false;
       const L = heightField._layout, noVeg = heightField._noVeg, _c = new THREE.Color();

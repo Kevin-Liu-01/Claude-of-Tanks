@@ -14,7 +14,11 @@
 // by the triangle's normal (the solid on its left), and a cell is inside when the signed crossings on both sides of it
 // say so (an open sheet's crossings disagree and fill nothing). Deterministic: no randomness, fixed sampling.
 import * as THREE from 'three';
-import { pointInsideCollisionRecord, rayCollisionRecord } from '../src/world/collision.ts';
+import * as collision from '../src/world/collision.ts';
+
+const { pointInsideCollisionRecord, rayCollisionRecord } = collision;
+/** A part's top under (x, z): its drawn top where the tree gives parts one (collision.ts collisionPartTopAt). */
+const partTopAt = collision.collisionPartTopAt ?? ((record, part) => part?.y1 ?? record.max[1]);
 
 /** The ground a stone's rise is read over, as the settle reads it (rockCollision.ts rockGroundAt; inlined so the audit
  * also measures a tree from before the stones' own colliders): the rendered triangles a hull meets, else the 1 m grid. */
@@ -273,7 +277,9 @@ export function colliderRaster(region, ground, band, record, out = null) {
     if (occupied[cell]) continue;
     const x = x0 + (i + 0.5) * h, z = z0 + (j + 0.5) * h, g = ground[cell];
     for (const part of parts) {
-      const y0 = part?.y0 ?? record.min[1], y1 = part?.y1 ?? record.max[1];
+      const y0 = part?.y0 ?? record.min[1];
+      // (a drawn top stands the part only up to the stone's surface over this cell)
+      const y1 = part?.tp ? partTopAt(record, part, x, z) : part?.y1 ?? record.max[1];
       if (!(y1 > g + band[0] && y0 < g + band[1])) continue;
       if (pointInsideCollisionRecord(record, part, x, z)) { occupied[cell] = 1; break; }
     }
@@ -808,14 +814,22 @@ function auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid,
   return rows;
 }
 
-/** Build the soup and audit one map's world; returns { rows } with one row per measured object. */
-export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity, recordKinds = null }) {
+/** The props' solid triangles in a soup (every mesh a hull or a shell meets: classifyPropsMesh). */
+export function buildPropsSoup(dressing) {
   const soup = new TriangleSoup(4);
   dressing.group.updateMatrixWorld(true);
   dressing.group.traverse((mesh) => {
     const family = classifyPropsMesh(mesh);
     if (family) addMeshTriangles(soup, mesh, family);
   });
+  return soup;
+}
+
+/** Build the soup (or take one built by buildPropsSoup) and audit one map's world; returns { rows } with one row per
+ * measured object. */
+export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity, recordKinds = null,
+  soup: builtSoup = null }) {
+  const soup = builtSoup ?? buildPropsSoup(dressing);
   const solidFamilies = new Set(soup.families.map((_, i) => i));
   const solidAccept = (t) => solidFamilies.has(soup.family[t]);
   const obstacleGrid = createObstacleGrid([...dressing.obstacles, ...flora.treeObstacles]);

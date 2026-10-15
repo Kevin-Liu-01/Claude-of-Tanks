@@ -12,9 +12,9 @@
     },
     "home": {
       "requests": 8,
-      "raw": 48451,
-      "gzip": 16493,
-      "brotli": 14236
+      "raw": 63837,
+      "gzip": 22243,
+      "brotli": 19308
     },
     "docs": {
       "requests": 13,

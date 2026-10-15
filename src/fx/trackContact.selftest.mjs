@@ -62,6 +62,8 @@ function recipeFixture(surface, ground, method = body('dust'), freeze = false, w
       getWaterDepthAt: () => 0, getHeightAt: () => -3.25 },
     engineCtx: { camera: null }, _camV: new THREE.Vector3(), _c0: new THREE.Color(),
     COLUMN_WIND_X: .82, COLUMN_WIND_Z: .28,
+    // (EF.12) no map ground set: the dry table's own colours
+    mapTintHex: (hex) => hex,
     _puffO: { pos: [0, 0, 0], vel: [0, 0, 0], col0: [0, 0, 0], col1: [0, 0, 0] },
     _debO: { pos: [0, 0, 0], vel: [0, 0, 0], axis: [0, 0, 0] },
     particles: { emit: (pool, options) => { owners.add(options); emitted.push({ pool, ...structuredClone(options) }); } },

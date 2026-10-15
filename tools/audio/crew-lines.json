@@ -4296,8 +4296,8 @@
         "Punkt dla nas."
       ],
       "he": [
-        "גול.",
-        "שער."
+        "גול נכבש.",
+        "שער לטובתנו."
       ]
     },
     {
@@ -5211,7 +5211,7 @@
     {
       "id": "near_miss",
       "role": "driver",
-      "delivery": "exhale, steady",
+      "delivery": "steady, low, relieved",
       "context": "An enemy shell just missed us.",
       "en-US": [
         "Close one.",
@@ -5946,6 +5946,625 @@
       ],
       "he": [
         "שלב אחד: לכוון. שלב שתיים: אש."
+      ]
+    },
+    {
+      "id": "quiet_scan",
+      "role": "commander",
+      "delivery": "calm, low, attentive",
+      "context": "A quiet stretch: no contact and no fire for a while; the commander keeps the crew watching (serious, not chatty).",
+      "en-US": [
+        "Scanning the sector.",
+        "Eyes on the treeline.",
+        "Nothing in sight. Stay sharp.",
+        "Check your sectors."
+      ],
+      "en-GB": [
+        "Scanning my arc.",
+        "Eyes on the treeline.",
+        "Nothing seen. Stay alert.",
+        "Watch your arcs."
+      ],
+      "de": [
+        "Beobachte meinen Sektor.",
+        "Augen auf den Waldrand.",
+        "Nichts in Sicht. Wachsam bleiben.",
+        "Sektoren überwachen."
+      ],
+      "ru": [
+        "Осматриваю сектор.",
+        "Наблюдать за опушкой.",
+        "Целей не вижу. Не расслабляться.",
+        "Следить за секторами."
+      ],
+      "uk": [
+        "Оглядаю сектор.",
+        "Спостерігати за узліссям.",
+        "Цілей не бачу. Пильнувати.",
+        "Стежити за секторами."
+      ],
+      "zh": [
+        "观察责任区。",
+        "注意林线。",
+        "未发现目标，保持警惕。",
+        "各自盯住扇区。"
+      ],
+      "fr": [
+        "J'observe mon secteur.",
+        "Surveillez la lisière.",
+        "Rien en vue. Restez vigilants.",
+        "Surveillez vos secteurs."
+      ],
+      "sv": [
+        "Spanar i sektorn.",
+        "Ögonen på skogsbrynet.",
+        "Inget i sikte. Var vaksamma.",
+        "Bevaka era sektorer."
+      ],
+      "ja": [
+        "担当区域、監視中。",
+        "林縁を警戒。",
+        "目標なし。警戒を続けろ。",
+        "各自、担当区域を確認。"
+      ],
+      "ko": [
+        "담당 구역 관측 중.",
+        "숲 가장자리 주시.",
+        "표적 없음. 경계 유지.",
+        "각자 담당 구역 확인."
+      ],
+      "it": [
+        "Osservo il settore.",
+        "Occhi sul limitare del bosco.",
+        "Niente in vista. Restate all'erta.",
+        "Controllate i vostri settori."
+      ],
+      "pl": [
+        "Obserwuję sektor.",
+        "Obserwować skraj lasu.",
+        "Nic nie widać. Czujność.",
+        "Pilnować sektorów."
+      ],
+      "he": [
+        "סורק את הגזרה.",
+        "עיניים על קו העצים.",
+        "אין כלום בעין. להישאר ערניים.",
+        "לבדוק גזרות."
+      ]
+    },
+    {
+      "id": "quiet_hold",
+      "role": "commander",
+      "delivery": "calm, measured",
+      "context": "A quiet stretch while our tank stands still.",
+      "en-US": [
+        "Holding here. Watch the front.",
+        "Hold position. Keep scanning."
+      ],
+      "en-GB": [
+        "Holding here. Watch your front.",
+        "Hold this position. Keep observing."
+      ],
+      "de": [
+        "Wir halten hier. Front beobachten.",
+        "Stellung halten. Weiter beobachten."
+      ],
+      "ru": [
+        "Стоим здесь. Наблюдать вперёд.",
+        "Держим позицию. Продолжать наблюдение."
+      ],
+      "uk": [
+        "Стоїмо тут. Спостерігати вперед.",
+        "Тримаємо позицію. Продовжувати спостереження."
+      ],
+      "zh": [
+        "原地待命，注意正面。",
+        "保持阵位，继续观察。"
+      ],
+      "fr": [
+        "On tient ici. Surveillez l'avant.",
+        "Tenez la position. Continuez d'observer."
+      ],
+      "sv": [
+        "Vi håller här. Bevaka framåt.",
+        "Håll ställningen. Fortsätt spana."
+      ],
+      "ja": [
+        "ここで待機。前方を警戒。",
+        "陣地保持。監視を続けろ。"
+      ],
+      "ko": [
+        "여기서 대기. 전방 주시.",
+        "진지 유지. 계속 관측."
+      ],
+      "it": [
+        "Restiamo qui. Occhi avanti.",
+        "Mantenere la posizione. Continuate a osservare."
+      ],
+      "pl": [
+        "Stoimy tutaj. Obserwować przedpole.",
+        "Utrzymać pozycję. Obserwować dalej."
+      ],
+      "he": [
+        "מחזיקים כאן. עיניים קדימה.",
+        "להחזיק עמדה. להמשיך לסרוק."
+      ]
+    },
+    {
+      "id": "quiet_move",
+      "role": "commander",
+      "delivery": "steady",
+      "context": "A quiet stretch while we are on the move.",
+      "en-US": [
+        "Steady, driver. Watch the flanks.",
+        "Keep moving. Eyes open."
+      ],
+      "en-GB": [
+        "Steady, driver. Watch the flanks.",
+        "Keep moving. Eyes open."
+      ],
+      "de": [
+        "Ruhig, Fahrer. Flanken beobachten.",
+        "Weiterfahren. Augen offen."
+      ],
+      "ru": [
+        "Механик, ровнее. Следить за флангами.",
+        "Продолжаем движение. Смотреть в оба."
+      ],
+      "uk": [
+        "Механіку, рівніше. Стежити за флангами.",
+        "Продовжуємо рух. Дивитися в оба."
+      ],
+      "zh": [
+        "驾驶员，保持平稳，注意两翼。",
+        "继续前进，保持观察。"
+      ],
+      "fr": [
+        "Doucement, pilote. Surveillez les flancs.",
+        "On continue. Ouvrez l'œil."
+      ],
+      "sv": [
+        "Lugnt, förare. Bevaka flankerna.",
+        "Fortsätt framåt. Håll ögonen öppna."
+      ],
+      "ja": [
+        "操縦手、落ち着いて。側面警戒。",
+        "前進を続けろ。目を離すな。"
+      ],
+      "ko": [
+        "조종수, 침착하게. 측면 주시.",
+        "계속 이동. 경계 늦추지 마."
+      ],
+      "it": [
+        "Calmo, pilota. Occhio ai fianchi.",
+        "Continuiamo. Occhi aperti."
+      ],
+      "pl": [
+        "Spokojnie, kierowca. Obserwować flanki.",
+        "Jedziemy dalej. Oczy otwarte."
+      ],
+      "he": [
+        "בנחת, נהג. עיניים לאגפים.",
+        "ממשיכים לנוע. עיניים פתוחות."
+      ]
+    },
+    {
+      "id": "quiet_crew",
+      "role": "gunner",
+      "delivery": "low, matter-of-fact",
+      "context": "A quiet stretch: the gunner reports he is ready and has no target.",
+      "en-US": [
+        "Gun ready. No target.",
+        "Loaded. Waiting on a target.",
+        "Sights clear."
+      ],
+      "en-GB": [
+        "Gun ready. No target.",
+        "Loaded. Awaiting a target.",
+        "Sights clear."
+      ],
+      "de": [
+        "Waffe bereit. Kein Ziel.",
+        "Geladen. Warte auf Ziel.",
+        "Visier frei."
+      ],
+      "ru": [
+        "Орудие готово. Целей нет.",
+        "Заряжено. Жду цель.",
+        "В прицеле чисто."
+      ],
+      "uk": [
+        "Гармата готова. Цілей немає.",
+        "Заряджено. Чекаю ціль.",
+        "У прицілі чисто."
+      ],
+      "zh": [
+        "火炮就绪，没有目标。",
+        "已装填，等待目标。",
+        "瞄准镜内无目标。"
+      ],
+      "fr": [
+        "Canon prêt. Pas de cible.",
+        "Chargé. J'attends une cible.",
+        "Rien dans le viseur."
+      ],
+      "sv": [
+        "Kanonen klar. Inget mål.",
+        "Laddat. Väntar på mål.",
+        "Siktet är tomt."
+      ],
+      "ja": [
+        "砲、準備よし。目標なし。",
+        "装填済み。目標待ち。",
+        "照準内、異常なし。"
+      ],
+      "ko": [
+        "포 준비 완료. 표적 없음.",
+        "장전 완료. 표적 대기.",
+        "조준경 이상 없음."
+      ],
+      "it": [
+        "Cannone pronto. Nessun bersaglio.",
+        "Carico. In attesa di un bersaglio.",
+        "Mirino libero."
+      ],
+      "pl": [
+        "Działo gotowe. Brak celu.",
+        "Załadowane. Czekam na cel.",
+        "W celowniku czysto."
+      ],
+      "he": [
+        "תותח מוכן. אין מטרה.",
+        "טעון. ממתין למטרה.",
+        "הכוונת נקייה."
+      ]
+    },
+    {
+      "id": "hull_status",
+      "role": "commander",
+      "delivery": "steady, grim",
+      "context": "A quiet stretch after we took damage; we are still fighting.",
+      "en-US": [
+        "Hull's holding. We keep fighting.",
+        "Damage is light. Carry on."
+      ],
+      "en-GB": [
+        "Hull's holding. We fight on.",
+        "Damage is light. Carry on."
+      ],
+      "de": [
+        "Die Wanne hält. Wir kämpfen weiter.",
+        "Nur leichte Schäden. Weitermachen."
+      ],
+      "ru": [
+        "Корпус держит. Продолжаем бой.",
+        "Повреждения лёгкие. Работаем дальше."
+      ],
+      "uk": [
+        "Корпус тримає. Продовжуємо бій.",
+        "Пошкодження легкі. Працюємо далі."
+      ],
+      "zh": [
+        "车体还顶得住，继续战斗。",
+        "损伤轻微，继续执行。"
+      ],
+      "fr": [
+        "La caisse tient. On continue le combat.",
+        "Dégâts légers. On continue."
+      ],
+      "sv": [
+        "Skrovet håller. Vi strider vidare.",
+        "Lätta skador. Fortsätt."
+      ],
+      "ja": [
+        "車体はもつ。戦闘続行。",
+        "損傷軽微。続行する。"
+      ],
+      "ko": [
+        "차체 버틴다. 전투 계속.",
+        "경미한 손상. 계속 간다."
+      ],
+      "it": [
+        "Lo scafo regge. Continuiamo a combattere.",
+        "Danni leggeri. Avanti così."
+      ],
+      "pl": [
+        "Kadłub wytrzymuje. Walczymy dalej.",
+        "Lekkie uszkodzenia. Kontynuujemy."
+      ],
+      "he": [
+        "הגוף מחזיק. ממשיכים להילחם.",
+        "נזק קל. ממשיכים."
+      ]
+    },
+    {
+      "id": "building_down",
+      "role": "commander",
+      "delivery": "clipped",
+      "context": "A building collapses near us.",
+      "en-US": [
+        "Building down.",
+        "That house just came down."
+      ],
+      "en-GB": [
+        "Building down.",
+        "That house has come down."
+      ],
+      "de": [
+        "Gebäude eingestürzt.",
+        "Das Haus ist eingestürzt."
+      ],
+      "ru": [
+        "Здание рухнуло.",
+        "Дом обвалился."
+      ],
+      "uk": [
+        "Будівля обвалилася.",
+        "Будинок завалився."
+      ],
+      "zh": [
+        "建筑倒塌。",
+        "那栋房子塌了。"
+      ],
+      "fr": [
+        "Bâtiment effondré.",
+        "La maison vient de s'effondrer."
+      ],
+      "sv": [
+        "Byggnad rasade.",
+        "Huset rasade just."
+      ],
+      "ja": [
+        "建物、倒壊。",
+        "あの家が崩れた。"
+      ],
+      "ko": [
+        "건물 붕괴.",
+        "저 집이 무너졌다."
+      ],
+      "it": [
+        "Edificio crollato.",
+        "Quella casa è appena crollata."
+      ],
+      "pl": [
+        "Budynek runął.",
+        "Ten dom się zawalił."
+      ],
+      "he": [
+        "בניין קרס.",
+        "הבית הזה קרס."
+      ]
+    },
+    {
+      "id": "aircraft_overhead",
+      "role": "driver",
+      "delivery": "calm",
+      "context": "The front's aircraft fly over the battlefield.",
+      "en-US": [
+        "Aircraft overhead.",
+        "Planes passing over."
+      ],
+      "en-GB": [
+        "Aircraft overhead.",
+        "Aircraft passing over."
+      ],
+      "de": [
+        "Flugzeuge über uns.",
+        "Flieger im Überflug."
+      ],
+      "ru": [
+        "Авиация над нами.",
+        "Самолёты проходят над нами."
+      ],
+      "uk": [
+        "Авіація над нами.",
+        "Літаки проходять над нами."
+      ],
+      "zh": [
+        "头顶有飞机。",
+        "飞机通过上空。"
+      ],
+      "fr": [
+        "Avions au-dessus.",
+        "Appareils en survol."
+      ],
+      "sv": [
+        "Flyg ovanför.",
+        "Flygplan passerar över."
+      ],
+      "ja": [
+        "上空に航空機。",
+        "航空機、上空通過。"
+      ],
+      "ko": [
+        "상공에 항공기.",
+        "항공기 상공 통과."
+      ],
+      "it": [
+        "Aerei sopra di noi.",
+        "Velivoli in sorvolo."
+      ],
+      "pl": [
+        "Samoloty nad nami.",
+        "Lotnictwo przelatuje nad nami."
+      ],
+      "he": [
+        "מטוסים מעלינו.",
+        "מטוסים חולפים מעלינו."
+      ]
+    },
+    {
+      "id": "artillery_far",
+      "role": "loader",
+      "delivery": "low",
+      "context": "Artillery fires far off beyond the battle.",
+      "en-US": [
+        "Artillery, far off.",
+        "Heavy guns in the distance."
+      ],
+      "en-GB": [
+        "Artillery, well off.",
+        "Heavy guns in the distance."
+      ],
+      "de": [
+        "Artillerie, weit weg.",
+        "Schwere Geschütze in der Ferne."
+      ],
+      "ru": [
+        "Артиллерия, далеко.",
+        "Тяжёлые орудия вдалеке."
+      ],
+      "uk": [
+        "Артилерія, далеко.",
+        "Важкі гармати вдалині."
+      ],
+      "zh": [
+        "远处有炮兵射击。",
+        "远方重炮。"
+      ],
+      "fr": [
+        "Artillerie, au loin.",
+        "Pièces lourdes au loin."
+      ],
+      "sv": [
+        "Artilleri, långt bort.",
+        "Tungt artilleri i fjärran."
+      ],
+      "ja": [
+        "遠くで砲兵射撃。",
+        "遠方に重砲。"
+      ],
+      "ko": [
+        "멀리서 포병 사격.",
+        "원거리 중포 소리."
+      ],
+      "it": [
+        "Artiglieria, lontana.",
+        "Pezzi pesanti in lontananza."
+      ],
+      "pl": [
+        "Artyleria, daleko.",
+        "Ciężkie działa w oddali."
+      ],
+      "he": [
+        "ארטילריה, רחוק.",
+        "תותחים כבדים במרחק."
+      ]
+    },
+    {
+      "id": "objective_push",
+      "role": "commander",
+      "delivery": "firm",
+      "context": "A quiet stretch in an objective mode (flags, zones, the front line): the commander points the crew at the objective.",
+      "en-US": [
+        "Push to the objective.",
+        "Move on the objective."
+      ],
+      "en-GB": [
+        "Push on to the objective.",
+        "Move on the objective."
+      ],
+      "de": [
+        "Zum Ziel vorstoßen.",
+        "Auf das Angriffsziel vorrücken."
+      ],
+      "ru": [
+        "Выдвигаемся к объекту.",
+        "Вперёд, к объекту."
+      ],
+      "uk": [
+        "Висуваємося до об'єкта.",
+        "Вперед, до об'єкта."
+      ],
+      "zh": [
+        "向目标推进。",
+        "向目标区域前进。"
+      ],
+      "fr": [
+        "On pousse vers l'objectif.",
+        "En avant vers l'objectif."
+      ],
+      "sv": [
+        "Tryck på mot målet.",
+        "Framåt mot målet."
+      ],
+      "ja": [
+        "目標へ前進。",
+        "目標地点へ向かえ。"
+      ],
+      "ko": [
+        "목표로 전진.",
+        "목표 지점으로 이동."
+      ],
+      "it": [
+        "Avanziamo sull'obiettivo.",
+        "Muoviamo verso l'obiettivo."
+      ],
+      "pl": [
+        "Naprzód, na cel.",
+        "Ruszamy na obiekt."
+      ],
+      "he": [
+        "להתקדם ליעד.",
+        "נעים אל היעד."
+      ]
+    },
+    {
+      "id": "in_cover",
+      "role": "commander",
+      "delivery": "clipped, tense",
+      "context": "We pull up and stop in cover right after taking a hit.",
+      "en-US": [
+        "In cover. Hold here.",
+        "Hull down. Holding."
+      ],
+      "en-GB": [
+        "In cover. Hold here.",
+        "Hull down. Holding."
+      ],
+      "de": [
+        "In Deckung. Hier halten.",
+        "In Stellung. Halten."
+      ],
+      "ru": [
+        "В укрытии. Стоим.",
+        "Корпус укрыт. Держимся."
+      ],
+      "uk": [
+        "В укритті. Стоїмо.",
+        "Корпус укрито. Тримаємося."
+      ],
+      "zh": [
+        "已进入掩体，就地坚守。",
+        "车体隐蔽，坚守。"
+      ],
+      "fr": [
+        "À couvert. On tient ici.",
+        "Caisse défilée. On tient."
+      ],
+      "sv": [
+        "I skydd. Håll här.",
+        "Skrovet i skydd. Vi håller."
+      ],
+      "ja": [
+        "遮蔽よし。ここで保持。",
+        "車体遮蔽。持ちこたえろ。"
+      ],
+      "ko": [
+        "엄폐 완료. 여기서 버틴다.",
+        "차체 엄폐. 유지."
+      ],
+      "it": [
+        "Al coperto. Teniamo qui.",
+        "Scafo defilato. Teniamo."
+      ],
+      "pl": [
+        "W ukryciu. Stoimy tu.",
+        "Kadłub ukryty. Trzymamy się."
+      ],
+      "he": [
+        "במחסה. מחזיקים כאן.",
+        "גוף במחסה. מחזיקים."
       ]
     }
   ]

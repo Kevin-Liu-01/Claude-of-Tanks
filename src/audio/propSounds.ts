@@ -49,6 +49,12 @@ const WOOD_TOPPLE = recipe(layer('pole_snap', 0, -3), layer('pole_fall', TOPPLE_
 const STEEL_TOPPLE = recipe(layer('fence_metal', 0, -3), layer('metal_topple', TOPPLE_LAND_S, -1, 0.06));
 /** A loose steel drum, churn, bin, bucket, can or bottle knocked about: a hollow clang and a short roll. */
 const KNOCK = recipe(layer('can_knock', 0, -3));
+/** A lorry: its cab folds, its frame groans (2026-10-13; it crushed as a sedan). */
+const TRUCK = recipe(layer('truck_crush'));
+/** Heavy plant and rolling stock wrecked (the set pieces, PR.01): the frame buckles, hydraulics burst, steel comes down. */
+const MACHINE = recipe(layer('machine_wreck'), layer('debris_metal', 0.4, -6, 0.2));
+/** A stone shaft (the square's monument): it cracks at its base, then lands on the topple's beat. */
+const STONE_TOPPLE = recipe(layer('stone_crack', 0, -2), layer('stone_fall', TOPPLE_LAND_S, 0, 0.06));
 
 /**
  * Every world kind (src/world/maps/inhabitKit.ts DESTRUCTIBLE_TYPES, sceneryKit.ts SCENERY_DESTRUCTIBLE_TYPES,
@@ -64,6 +70,8 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // bBarrel is a coopered wooden barrel (staves and hoops), not a steel drum
   barrel: WOOD_SMASH,
   fenceplank: WOOD_FENCE, fencepicket: WOOD_FENCE, fencewattle: WOOD_FENCE, fencerail: WOOD_FENCE, gate: WOOD_FENCE,
+  // (the looks lane: each fence family's own gate, maps/gateKit.ts; the stone and mud walls' gates go as their piers)
+  gatepicket: WOOD_FENCE, gatewattle: WOOD_FENCE, gatestone: STONE, gateadobe: MASONRY,
   // straw
   bale: STRAW, stook: STRAW, haystack: STRAW, strawstack: STRAW,
   // carts: the haycart's load goes down under its wheels
@@ -79,10 +87,19 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   drumred: recipe(layer('fuel_drum_blast'), layer('container_crush', 0, -8)),
   // masonry and concrete
   walladobe: MASONRY, wallstone: STONE, barrier: STONE, tomb: STONE, bildstock: STONE, bunker: HUT,
-  // (destruction stream, 2026-10-13) the village well's curb and roof, the square's obelisk; the rail yard's coal pile
-  well: MASONRY, monument: STONE, 'coal-heap': recipe(layer('sandbag_thump')),
   // vehicles of every era (the map-vehicles lane's fleets keep these eight roles)
-  truck: CAR, jeep: CAR, sedan: CAR, wagon: CAR, pickup: CAR, van: CAR, truckbox: CAR, truckflatbed: CAR,
+  jeep: CAR, sedan: CAR, wagon: CAR, pickup: CAR, van: CAR,
+  // the lorries: a heavy cab and frame (2026-10-13)
+  truck: TRUCK, truckbox: TRUCK, truckflatbed: TRUCK,
+  // --- the authored vehicle set pieces (PR.01, item/07-setpiece-break: maps/setPieceDestructibles.ts
+  // setPieceDestructibleKind): Copper Mesa's haul trucks and dozer, the tractor, Whiteout's over-snow carriers, the
+  // tram; the transport aircraft's aluminium skin; the light lunar rover crushes as a light car does. Until this the regex
+  // guess broke a 100-ton haul truck as a wooden crate.
+  setpiece_haulpak: MACHINE, setpiece_d8h: MACHINE, setpiece_stz3: MACHINE, setpiece_bv206: MACHINE, setpiece_snocat: MACHINE,
+  setpiece_k2tram: MACHINE, setpiece_an26: recipe(layer('aircraft_crush'), layer('debris_metal', 0.5, -8, 0.2)),
+  setpiece_lrv: recipe(layer('car_crush', 0, -4)),
+  // --- the village well, the square's monument and the rail yard's coal heaps (223, destruct-s7-small-props)
+  well: recipe(layer('well_break')), monument: STONE_TOPPLE, 'coal-heap': recipe(layer('coal_crunch')),
   // wire and bags
   barbedwire: recipe(layer('wire_snag')),
   sandbagbig: recipe(layer('sandbag_thump')), sandbagsmall: recipe(layer('sandbag_thump')), sandbagwall: recipe(layer('sandbag_thump')),

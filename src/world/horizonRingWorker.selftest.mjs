@@ -275,7 +275,9 @@ const bind = terrainSource.indexOf('bindAutumnHorizonGround(horizonMesh, mat, sp
 assert.ok(rows > 0 && ring > rows && bind > ring, 'terrain.ts builds the ring after the chunk rows, then binds it');
 assert.ok(terrainSource.includes('group.children.unshift(group.children.pop()!);'), 'the ring stays the terrain\'s first child');
 assert.ok(terrainSource.includes('ringSource.remember(ringPipeline);'), 'a ring built where it stands is kept');
-assert.match(terrainSource, /if \(ringSource\) group\.userData\.finishHorizonRing = horizonRingStage;\s*else yield\* horizonRingStage\(\);/,
+// (2026-10-13, HL-3: a map migrated to the Hinterland is a supplied build too — its stage, in the ring's place, waits
+// for the world build's end the same way)
+assert.match(terrainSource, /if \(ringSource \|\| hinterlandSource\) group\.userData\.finishHorizonRing = horizonRingStage;\s*else yield\* horizonRingStage\(\);/,
   'a supplied build leaves the ring stage for the world build\'s end; any other build makes it after the chunks');
 assert.match(terrainSource, /ringPipeline = ringSource\.take\(\);\s*if \(ringPipeline\) break;/,
   'the stage takes the worker\'s pipeline the moment it arrives');

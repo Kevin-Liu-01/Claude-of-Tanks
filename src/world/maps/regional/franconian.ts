@@ -13,6 +13,7 @@ import {
   bindFachwerk, hessianDialect, houseUvOffset, roofFor, stateFor, withPalette, type FachwerkPalette,
 } from './hessian.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { FRANCONIAN_CIVIC } from './franconianCivic.ts';
 
 export const FRANCONIAN_PALETTE: FachwerkPalette = Object.freeze({
   // Franconian framing runs to oxblood and deep brown, the doors to green and red (the facades lane, round 6; wave 241 on
@@ -206,6 +207,9 @@ function townFront(sink: PartSink, frame: HouseFrame, streetFace: 'front' | 'lef
 export const FRANCONIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   rowhouse: withPalette(FRANCONIAN_PALETTE, townHouse),
   ...bindFachwerk(FRANCONIAN_PALETTE, ['tavern', 'schoolhouse', 'cornershop', 'ruin', 'church', 'depot', 'cottage', 'farmhouse', 'barn']),
+  // (the looks lane, 2026-10-13: Steinburg's uncovered types — the wall tower, the sandstone chapel, the fire station with
+  // its hose tower, the works with its chimney; franconianCivic.ts)
+  ...Object.fromEntries(Object.entries(FRANCONIAN_CIVIC).map(([id, builder]) => [id, withPalette(FRANCONIAN_PALETTE, builder)])),
 });
 
 export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
@@ -228,7 +232,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   builders: FRANCONIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds
   // (yards.ts; a map opts in: props `churchyard: true`; the facades lane, 2026-10-06)
-  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true, keepFront: true },
+  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: false, graves: true, keepFront: true },
   // render in cream, ochre and pale pink; roofs from a few fresher red ones through brown to the grey-brown and dark
   // patina of old tiles (the cooler multipliers take the red out as well as the light)
   weather: {
@@ -239,7 +243,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   },
   wear: 0.25,
   // the yards of the outlying farms: sandstone walls round a kitchen garden, a gate (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: null, garden: true },
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: true },
 });
 
 export type { RegionalParts, RegionalBuildContext };

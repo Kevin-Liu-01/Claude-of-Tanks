@@ -34,6 +34,9 @@ export const PRESETS = {
   'weapon-far': { mono: true, mMax: -14, peak: -1, maxS: 5.5, tailDb: -50, fadeOutS: 0.25, highpass: 30, opusKbps: 56 },
   tail: { mono: true, mMax: -16, peak: -2, maxS: 4.5, tailDb: -50, fadeOutS: 0.4, fadeInS: 0.03, highpass: 35, opusKbps: 56 },
   impact: { mono: true, mMax: -10, peak: -1, maxS: 6, tailDb: -54, fadeOutS: 0.15, highpass: 25, opusKbps: 80 },
+  // Long debris (collapses, cascades): an impact's level, a longer fade, and a compact rate (it is noise: Opus keeps
+  // it at 56 kbps), so the destruction banks do not double the payload (audio stream, 2026-10-13).
+  debris: { mono: true, mMax: -11, peak: -1, maxS: 7, tailDb: -54, fadeOutS: 0.35, highpass: 25, opusKbps: 56 },
   foley: { mono: true, mMax: -14, peak: -1, maxS: 6, tailDb: -52, fadeOutS: 0.08, highpass: 40, opusKbps: 64 },
   oneshot: { mono: true, mMax: -12, peak: -1, maxS: 8, tailDb: -52, fadeOutS: 0.12, highpass: 30, opusKbps: 64 },
   spot: { mono: true, mMax: -18, peak: -3, maxS: 6, tailDb: -48, fadeOutS: 0.2, highpass: 60, opusKbps: 48 },

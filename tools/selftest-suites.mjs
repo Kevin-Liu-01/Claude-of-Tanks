@@ -40,6 +40,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
     'src/fx/aerialTracers.selftest.mjs',
+    'src/fx/timeOfDayMarks.selftest.mjs',
+    'src/fx/localLights.selftest.mjs',
+    'src/fx/worldWindPalette.selftest.mjs',
+    'src/fx/salvoGovernor.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
@@ -287,11 +291,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-production/campaignArtwork.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
+    'src/game/studioSuspensionAim.selftest.mjs',
     'src/game/studioFxSettings.selftest.mjs',
     'src/game/studioTrackDust.selftest.mjs',
     'src/fx/cinematicFx.selftest.mjs',
     'src/fx/cinematicShotBlast.selftest.mjs',
     'src/fx/shellBurstColumn.selftest.mjs',
+    'src/fx/killLight.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
     // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
@@ -735,6 +741,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',
+    'src/ui/topMaskCoverage.selftest.mjs',
     'src/ui/equipmentPreview.selftest.mjs',
     'src/ui/camoSwatchAccess.selftest.mjs',
     'src/ui/customCamoStudioAccess.selftest.mjs',
@@ -986,6 +993,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/audioMath.selftest.mjs',
     'src/audio/vehicleAudioProfiles.selftest.mjs',
     'src/audio/weaponAudio.selftest.mjs',
+    'src/audio/weaponCoverage.selftest.mjs',
     'src/audio/vehicleAudioModel.selftest.mjs',
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',
@@ -998,6 +1006,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
+    'src/audio/interfacePress.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
@@ -1013,6 +1022,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/recovery.selftest.mjs',
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
+    'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/wire/matchBuild.selftest.mjs',
@@ -1067,6 +1077,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
     'src/mp/session/matchSessionP2p.selftest.mjs',
+    'src/mp/session/matchSessionEntryReports.selftest.mjs', // 2026-10-13 MP plan step 8: the loading host reports until its actor does
+    'src/mp/session/hostHeadroom.selftest.mjs', // 2026-10-13 MP plan step 10: a slow tab declines to host while it waits in the room
+    'src/mp/session/matchSessionHandOff.selftest.mjs', // 2026-10-13 MP plan step 11: a hosting tab going away hands its match on at once
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',
@@ -1099,6 +1112,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
     'server/collisionManifestCodec.selftest.mjs',
+    // 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check)
+    'server/collisionManifestIndex.selftest.mjs',
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',
@@ -1141,6 +1156,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
     'tools/physics-torture.selftest.mjs',
+    // 2026-10-13 (physics stream): a stone under its drawn top is climbed or stops a hull by its face grade and height
+    'tools/rock-drawn-top.selftest.mjs',
+    // 2026-10-13 (physics stream F2): a roof rides its building's movement record as a floor-only deck
+    'tools/roof-decks.selftest.mjs',
+    // 2026-10-14 (physics stream F4(b)): a hull at rest on a roof holds its attitude (no flipping between plane fits)
+    'tools/roof-rest.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
@@ -1280,6 +1301,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
+    'src/vehicles/wreckBurn.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/wheelPaintFloor.selftest.mjs',
@@ -1343,6 +1365,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-probe-runtime.selftest.mjs',
     'tools/map-metrics.selftest.mjs',
     'tools/map-layout-metrics.selftest.mjs',
+    // the horizons stream (2026-10-13, HB-1a): the horizon envelope reproduces H1's ring skylines (Verdant 1.72°, Titan 12.25°, Polders 0.71°)
+    'tools/horizon-envelope.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
     'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
@@ -1448,6 +1472,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
+    'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
@@ -1569,6 +1594,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/titanGorgeHorizon.selftest.mjs',
     'src/world/copperQuarrySurface.selftest.mjs',
     'src/world/playableRelief.selftest.mjs',
+    'src/world/landformSupportBounds.selftest.mjs', // the perf stream (2026-10-13): a height sample skips landforms outside their support
     'src/world/assaultTrenchTerrain.selftest.mjs',
     'src/world/badlandsRelief.selftest.mjs',
     'src/world/redrockMaterial.selftest.mjs',
@@ -1601,6 +1627,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/borderLandform.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
     'src/world/borderFarmsteads.selftest.mjs',
+    // the horizons stream (2026-10-13, HL-0): the Hinterland's spec, its 26 regions and its field (dark: no map has a block)
+    'src/world/hinterland/hinterlandField.selftest.mjs',
+    // ... (HL-1) its pipeline: the outland plan on the Polders draft, roads run on, yards level, waters as coasts, the bake
+    'src/world/hinterland/hinterlandPlan.selftest.mjs',
+    // ... (HL-2) its landform primitives and far sectors: the stair, the tables, the sheer jebel, the massif's summits, snow and belts
+    'src/world/hinterland/hinterlandLandforms.selftest.mjs',
+    // ... (HL-3) its mesh: the depth compression and curvature, the CDLOD selection, the worker's answer and the hook
+    'src/world/hinterland/hinterlandMesh.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
@@ -1628,6 +1662,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
     'src/world/kitConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
+    'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
     'src/world/structureCollisionMergeKeys.selftest.mjs',
@@ -1641,6 +1676,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wrecks.selftest.mjs',
     // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
     'src/world/maps/propFracture.selftest.mjs',
+    'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
@@ -1746,6 +1782,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
+    // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
+    'tools/marketing-shots/home-shots.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'src/vehicles/profiles/t90ATurretSeat.selftest.mjs',

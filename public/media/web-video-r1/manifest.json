@@ -40,9 +40,9 @@
       "source": "/media/site50-r14/films/reel.mp4"
     },
     {
-      "path": "studio-knockout-mobile.mp4",
-      "bytes": 416505,
-      "source": "/media/landing-r1/studio-leclerc-knockout.mp4"
+      "path": "home-studio-mobile.mp4",
+      "bytes": 352806,
+      "source": "/media/site50-r14/home/features/studio.mp4"
     }
   ]
 }

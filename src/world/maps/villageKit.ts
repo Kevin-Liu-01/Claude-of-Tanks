@@ -10,8 +10,9 @@
 
 import * as THREE from 'three';
 import {
-  box, gablePrism, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
+  box, gableAttic, gablePrism, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from '../propGeometry.ts';
+import { markCutCorner } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 
@@ -48,16 +49,16 @@ function gableRoof(
   over: number,
   thick = 0.12,
 ): number {
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  // (the buildings stream, 2026-10-13) each slab's underside on the gable's own slope, the attic closed under them
+  const seat = gableSlabSeat(w / 2, roofH, over, thick);
   for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, thick, d + over * 2, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + thick / 2, 0);
-    parts.roof.push(slab);
+    const slab = slabBox(seat.length, thick, d + over * 2, 0.35);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
+  parts.wood.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   parts.roof.push(slabBox(0.34, thick + 0.01, d + over * 2, 0.5).translate(0, wallH + roofH + 0.04, 0));
-  return ang;
+  return seat.pitch;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +247,8 @@ export function makeChapel(rng: () => number, buckets: GeometryBuckets): Structu
     }
   }
   // small cross finial on the rear gable
-  parts.dark.push(box(0.07, 0.7, 0.07).translate(0, wallH + roofH + 0.55, -d / 2 + 0.2));
+  // (its stem down into the ridge: the slabs now meet the gable's apex, a few centimetres under their old line)
+  parts.dark.push(box(0.07, 0.9, 0.07).translate(0, wallH + roofH + 0.45, -d / 2 + 0.2));
   parts.dark.push(box(0.34, 0.07, 0.07).translate(0, wallH + roofH + 0.72, -d / 2 + 0.2));
   pushParts(buckets, parts);
   return { w: w + 0.4, d: d + 0.4, h: wallH + roofH + bgH };
@@ -450,14 +452,26 @@ export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): Struc
   const hLo = 2.0, hHi = 2.8;
   const parts = newParts();
   parts.stone.push(box(w + 0.2, 0.6, d + 0.2).translate(0, -0.12, 0));
-  // slat back + side walls (open +x front); a rotated top board closes the
-  // mono-pitch triangle on each side wall (visual only)
-  parts.wood.push(box(0.10, hLo, d).translate(-w / 2, hLo / 2 + 0.1, 0));
+  // slat back + side walls (open +x front); a rotated top board on each side wall
+  // (the buildings stream, 2026-10-13, the integrity check: the back wall stopped 11 cm under the roof, and each side
+  // wall's triangle under the mono-pitch stood open, sky through the shed from either side) the back wall runs up to the
+  // roof's underside, and each side's triangle is boarded up to it (new parts, so no placement-stream draws)
+  const pitch = Math.atan2(hHi - hLo, w + 0.7);
+  const under = (x: number): number => (hLo + hHi) / 2 + 0.22 + (x - 0.1) * Math.tan(pitch) - 0.055 / Math.cos(pitch) + 0.02;
+  const backH = under(-w / 2 - 0.05) - 0.1;
+  parts.wood.push(box(0.10, backH, d).translate(-w / 2, backH / 2 + 0.1, 0));
   for (const s of [-1, 1]) {
     parts.wood.push(box(w, hLo, 0.10).translate(0, hLo / 2 + 0.1, s * d / 2));
     const wg = box(Math.hypot(w, hHi - hLo), 0.10, 0.10, 0.6);
     wg.rotateZ(Math.atan2(hHi - hLo, w));
     parts.wood.push(wg.translate(0, hLo + (hHi - hLo) / 2 + 0.1, s * d / 2));
+    const infill = new THREE.Shape();
+    infill.moveTo(-w / 2, hLo + 0.08); infill.lineTo(w / 2, hLo + 0.08);
+    infill.lineTo(w / 2, under(w / 2)); infill.lineTo(-w / 2, under(-w / 2)); infill.closePath();
+    const board = new THREE.ExtrudeGeometry(infill, { depth: 0.08, bevelEnabled: false });
+    scaleUV(board, 0.6, 0.6);
+    board.userData.uvJitter = 'none';
+    parts.wood.push(board.translate(0, 0, s * d / 2 - 0.04));
   }
   // corner posts + mono-pitch roof
   for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
@@ -553,6 +567,31 @@ export function makeMinaret(rng: () => number, buckets: GeometryBuckets): Struct
 
 /** Urban corner shop: 2-story block, chamfered corner entrance, display
  * glass on both street faces, signboard + string course. */
+/**
+ * The corner shop's cut corner (+x, +z): its legs along each face, and a point `out` metres in front of the cut face's
+ * middle (the face looks along (1, 0, 1) / sqrt 2).
+ */
+const CORNER_CUT = 0.86;
+function onCornerCut(w: number, d: number, out: number): [number, number] {
+  const k = out / Math.SQRT2;
+  return [w / 2 - CORNER_CUT / 2 + k, d / 2 - CORNER_CUT / 2 + k];
+}
+/** A plan polygon (x, z) extruded from y0 up to y1: the cap faces up and down, the sides out. */
+function planSolid(points: ReadonlyArray<readonly [number, number]>, y0: number, y1: number, uvScale = 0.5): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  points.forEach(([x, z], i) => (i ? shape.lineTo(x, -z) : shape.moveTo(x, -z)));
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: y1 - y0, bevelEnabled: false });
+  geometry.rotateX(-Math.PI / 2).translate(0, y0, 0);
+  return scaleUV(geometry, uvScale, uvScale);
+}
+/** The shop's plan inset by `inset` from its walls, its +x +z corner cut. */
+function cornerShopPlan(w: number, d: number, inset = 0): Array<[number, number]> {
+  // (the cut line moved in by `inset` meets the inset faces CORNER_CUT - inset (2 - sqrt 2) from their corner)
+  const x = w / 2 - inset, z = d / 2 - inset, c = CORNER_CUT - inset * (2 - Math.SQRT2);
+  return [[-x, -z], [x, -z], [x, z - c], [x - c, z], [-x, z]];
+}
+
 function addCornerShopEntrance(
   parts: BuildingParts,
   wallBucket: string,
@@ -560,18 +599,27 @@ function addCornerShopEntrance(
   d: number,
   wallH: number,
 ): void {
-  const chamfer = box(2.3, wallH, 0.9);
-  chamfer.rotateY(-Math.PI / 4);
-  parts[wallBucket].push(chamfer.translate(w / 2 - 0.75, wallH / 2, d / 2 - 0.75));
+  // (the buildings stream, 2026-10-13, the weird-buildings survey: the entrance's chamfer was a slab turned across the
+  // shop's full corner, so its ends stuck out of both faces as wedges and the door and sign, turned the other way, stood
+  // inside the wall) the body's corner is cut (makeCornerShop); on the cut face, a pier of the wall, the door with its
+  // leaf, the sign over it
+  const turn = Math.PI / 4, face = CORNER_CUT * Math.SQRT2;
+  const pier = box(face, wallH, 0.06);
+  pier.rotateY(turn);
+  const [px, pz] = onCornerCut(w, d, 0.03);
+  parts[wallBucket].push(pier.translate(px, wallH / 2, pz));
   const door = box(1.15, 2.35, 0.14);
-  door.rotateY(-Math.PI / 4);
-  parts.wood.push(door.translate(w / 2 - 0.42, 1.2, d / 2 - 0.42));
+  door.rotateY(turn);
+  const [dx, dz] = onCornerCut(w, d, 0.07);
+  parts.wood.push(door.translate(dx, 1.2, dz));
   const leaf = box(0.92, 2.15, 0.07);
-  leaf.rotateY(-Math.PI / 4);
-  parts.dark.push(leaf.translate(w / 2 - 0.38, 1.15, d / 2 - 0.38));
-  const sign = box(2.1, 0.55, 0.12);
-  sign.rotateY(-Math.PI / 4);
-  parts.wood.push(sign.translate(w / 2 - 0.50, 2.85, d / 2 - 0.50));
+  leaf.rotateY(turn);
+  const [lx, lz] = onCornerCut(w, d, 0.125);
+  parts.dark.push(leaf.translate(lx, 1.15, lz));
+  const sign = box(face - 0.02, 0.55, 0.12);
+  sign.rotateY(turn);
+  const [sx, sz] = onCornerCut(w, d, 0.06);
+  parts.wood.push(sign.translate(sx, 2.85, sz));
 }
 
 function addCornerShopDisplays(parts: BuildingParts, w: number, d: number): void {
@@ -607,8 +655,10 @@ function addCornerShopUpperWindows(
   for (const face of [0, 1]) {
     const along = face === 0 ? w : d;
     const count = Math.max(2, Math.round(along / 2.5));
+    // (spaced along the face's length short of the cut corner: the last sill stood past the cut)
+    const run = along - CORNER_CUT;
     for (let k = 0; k < count; k++) {
-      const position = -along / 2 + (k + 0.5) * (along / count);
+      const position = -along / 2 + (k + 0.5) * (run / count);
       if (rng() < 0.12) continue;
       const pane = box(0.05, 1.2, 0.8);
       const sill = box(0.2, 0.10, 1.05);
@@ -636,16 +686,29 @@ function addCornerShopParapet(
   wallH: number,
 ): void {
   const parapetHeight = 0.7;
-  const y = wallH + parapetHeight / 2;
-  parts[wallBucket].push(box(w, parapetHeight, 0.22).translate(0, y, d / 2 - 0.11));
+  const y = wallH + parapetHeight / 2, c = CORNER_CUT;
+  // (the front and right parapets and the front coping stop at the cut corner, the cut carries its own run; the roof
+  // deck's corner is cut with the walls: they ran on over the cut face, a parapet and a slab's corner in the air)
+  parts[wallBucket].push(box(w - c, parapetHeight, 0.22).translate(-c / 2, y, d / 2 - 0.11));
   parts[wallBucket].push(box(w, parapetHeight, 0.22).translate(0, y, -d / 2 + 0.11));
-  parts[wallBucket].push(box(0.22, parapetHeight, d).translate(w / 2 - 0.11, y, 0));
+  parts[wallBucket].push(box(0.22, parapetHeight, d - c).translate(w / 2 - 0.11, y, -c / 2));
   parts[wallBucket].push(box(0.22, parapetHeight, d).translate(-w / 2 + 0.11, y, 0));
-  parts.stone.push(box(w + 0.14, 0.10, 0.32)
-    .translate(0, wallH + parapetHeight + 0.05, d / 2 - 0.11));
+  parts.stone.push(box(w + 0.07 - c, 0.10, 0.32)
+    .translate(-(0.07 + c) / 2, wallH + parapetHeight + 0.05, d / 2 - 0.11));
   parts.stone.push(box(w + 0.14, 0.10, 0.32)
     .translate(0, wallH + parapetHeight + 0.05, -d / 2 + 0.11));
-  parts.roof.push(slabBox(w - 0.3, 0.08, d - 0.3, 0.3).translate(0, wallH + 0.1, 0));
+  const deck = planSolid(cornerShopPlan(w, d, 0.15), wallH + 0.06, wallH + 0.14, 0.3);
+  parts.roof.push(deck);
+  // the cut corner's parapet and coping, each mitred to the ends of the front and side runs it joins (new parts: no
+  // placement-stream draws)
+  const X = w / 2, Z = d / 2;
+  const cutParapet = planSolid([[X - c, Z], [X, Z - c], [X - 0.22, Z - c], [X - c, Z - 0.22]], wallH, wallH + parapetHeight);
+  const o = 0.05 * Math.SQRT2;
+  const cutCoping = planSolid([[X - c, Z + o], [X + o, Z - c], [X - 0.27, Z - c], [X - c, Z - 0.27]],
+    wallH + parapetHeight, wallH + parapetHeight + 0.10);
+  for (const g of [cutParapet, cutCoping]) g.userData.uvJitter = 'none';
+  parts[wallBucket].push(cutParapet);
+  parts.stone.push(cutCoping);
 }
 
 export function makeCornerShop(
@@ -657,15 +720,23 @@ export function makeCornerShop(
   const wallH = 6.6, roofH = 0.7;
   const parts = newParts();
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
-  parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  // the body with its +x +z corner cut for the entrance (the buildings stream, 2026-10-13: it was a full box)
+  parts[wallBucket].push(planSolid(cornerShopPlan(w, d), 0, wallH));
   addCornerShopEntrance(parts, wallBucket, w, d, wallH);
   addCornerShopDisplays(parts, w, d);
-  // string course + upper windows
-  parts.stone.push(box(w + 0.16, 0.14, 0.10).translate(0, 3.3, d / 2 + 0.04));
-  parts.stone.push(box(0.10, 0.14, d + 0.16).translate(w / 2 + 0.04, 3.3, 0));
+  // string course + upper windows (each run stops at the cut corner, which carries its own: they crossed it in the air)
+  const c = CORNER_CUT;
+  parts.stone.push(box(w + 0.08 - c, 0.14, 0.10).translate(-(0.08 + c) / 2, 3.3, d / 2 + 0.04));
+  parts.stone.push(box(0.10, 0.14, d + 0.08 - c).translate(w / 2 + 0.04, 3.3, -(0.08 + c) / 2));
+  const [cx, cz] = onCornerCut(w, d, 0.04);
+  const cutCourse = box(c * Math.SQRT2 + 0.1, 0.14, 0.10).rotateY(Math.PI / 4).translate(cx, 3.3, cz);
+  cutCourse.userData.uvJitter = 'none';
+  parts.stone.push(cutCourse);
   addCornerShopUpperWindows(rng, parts, w, d);
   addCornerShopParapet(parts, wallBucket, w, d, wallH);
   pushParts(buckets, parts);
+  // the exterior pass (props.ts addCatalogExterior) keeps the cut corner's courses, pier, downpipe and gutter on the walls
+  markCutCorner(buckets, CORNER_CUT);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
 

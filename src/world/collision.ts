@@ -36,10 +36,151 @@ type Bounds3 = [number, number, number];
 export type SimpleCollisionShape =
   | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number; y0?: number; y1?: number }
   | { kind: 'circle'; cx: number; cz: number; r: number; y0?: number; y1?: number }
-  | { kind: 'convex'; cx: number; cz: number; points: number[]; y0?: number; y1?: number };
+  | { kind: 'convex'; cx: number; cz: number; points: number[]; y0?: number; y1?: number; tp?: number[] };
+
+/**
+ * A convex part's drawn top (physics stream, 2026-10-13; the owner: "for tanks on rocks, fix all hitboxes and tank
+ * interactions with them"): `tp` = [ox, oz, a0, b0, c0, a1, b1, c1, ...], its top at (x, z) the lowest of the planes
+ * a·(x − ox) + b·(z − oz) + c and never over its y1 — a stone's own surface, the envelope of its support planes
+ * (rockCollision.ts stoneCapPlanes), within centimetres of what is drawn. A hull stands on it wherever that top is within
+ * its step of its underside, as on terrain, and meets it as a wall only in its section a step over its underside
+ * (collisionPartSection): a dome it can climb is climbed, a boulder's flank too tall for its step stops it — the physics of
+ * the stone's own shape, not stair columns standing up to 0.8 m over it at their rims. Absent, the part's top is flat.
+ */
+export function collisionPartTopAt(
+  record: Pick<CollisionRecord, 'max'>, part: SimpleCollisionShape | null | undefined, x: number, z: number,
+): number {
+  const y1 = part?.y1 ?? record.max[1];
+  const tp = part && part.kind === 'convex' ? part.tp : undefined;
+  if (!tp) return y1;
+  const dx = x - tp[0], dz = z - tp[1];
+  let top = y1;
+  for (let i = 2; i + 2 < tp.length; i += 3) {
+    const y = tp[i] * dx + tp[i + 1] * dz + tp[i + 2];
+    if (y < top) top = y;
+  }
+  return top;
+}
+
+/**
+ * The most a hull's tracks climb over their own plane (m) up a face no steeper than HULL_CLIMB_GRADE, as against the step
+ * they take up any face (HULL_STEP_UP_M): a tracked hull climbs a 0.8-1 m obstacle whose face its tracks ride up.
+ */
+export const HULL_CLIMB_M = 0.9;
+/** The steepest face (rise per metre, 45 degrees) a hull's tracks ride up past their step: steeper is a wall. */
+export const HULL_CLIMB_GRADE = 1;
+/** The climb allowance a gentle plane of a drawn top gives (collisionPartClimbAt). */
+const CLIMB_ALLOWANCE_M = HULL_CLIMB_M - 0.55; // (HULL_STEP_UP_M, declared below)
+
+/**
+ * A drawn top's climb surface under (x, z) (physics stream, 2026-10-13; the coordinator: "encode 'climbable' as a physical
+ * rule (face grade plus total height against the hull's step and climb ability), not a size cutoff"): the lowest of its
+ * planes, each face no steeper than HULL_CLIMB_GRADE lowered by the climb past the step (HULL_CLIMB_M − HULL_STEP_UP_M).
+ * Where it stands a step or more over a hull's track plane the stone is a wall (pushHullFromObstacle cuts the same
+ * surface, collisionPartSection's `climb`); everywhere else its top is a floor the hull climbs onto at its pace
+ * (structureSupport.ts) — a dome, a low stone's rounded top, a boulder's gentle flank are climbed up to 0.9 m, a face
+ * steeper than 45 degrees stops a hull a step up it. A part with no drawn top climbs at its flat top.
+ */
+export function collisionPartClimbAt(
+  record: Pick<CollisionRecord, 'max'>, part: SimpleCollisionShape | null | undefined, x: number, z: number,
+): number {
+  const y1 = part?.y1 ?? record.max[1];
+  const tp = part && part.kind === 'convex' ? part.tp : undefined;
+  if (!tp) return y1;
+  const dx = x - tp[0], dz = z - tp[1];
+  let climb = y1 - CLIMB_ALLOWANCE_M;
+  for (let i = 2; i + 2 < tp.length; i += 3) {
+    const a = tp[i], b = tp[i + 1];
+    const y = a * dx + b * dz + tp[i + 2] - (a * a + b * b <= HULL_CLIMB_GRADE * HULL_CLIMB_GRADE ? CLIMB_ALLOWANCE_M : 0);
+    if (y < climb) climb = y;
+  }
+  return climb;
+}
+
+const _sectionA: number[] = [];
+const _sectionB: number[] = [];
+/**
+ * The outline of a top-planed part where its drawn top stands at `height` or over (a convex polygon: the part's outline
+ * clipped by each plane's half-plane), into `out`; false when nothing of it stands that high. With `climb`, each face no
+ * steeper than HULL_CLIMB_GRADE (and the flat top) is lowered by it first: the section of the climb surface
+ * (collisionPartClimbAt). Allocation-free.
+ */
+export function collisionPartSection(
+  part: Extract<SimpleCollisionShape, { kind: 'convex' }>, height: number, out: number[],
+  slopeX = 0, slopeZ = 0, originX = 0, originZ = 0, from: readonly number[] | null = null, climb = 0,
+): boolean {
+  // (the threshold may be a plane: height + slopeX·(x − originX) + slopeZ·(z − originZ), a tilted hull's underside; and
+  // the cut may start from an earlier section, `from`, to cut it again against another plane)
+  const tp = part.tp;
+  if (slopeX === 0 && slopeZ === 0 && (part.y1 ?? Infinity) < height) { out.length = 0; return false; }
+  let poly = _sectionA;
+  poly.length = 0;
+  const start = from ?? part.points;
+  for (let i = 0; i < start.length; i++) poly.push(start[i]);
+  out.length = 0;
+  if (tp) {
+    const ox = tp[0], oz = tp[1];
+    let next = _sectionB;
+    // each plane less the threshold plane, about the planes' origin: (a − slopeX)·dx + (b − slopeZ)·dz + c' >= 0
+    const c0 = height + slopeX * (ox - originX) + slopeZ * (oz - originZ);
+    const y1 = part.y1;
+    for (let i = 2; i <= tp.length && poly.length >= 6; i += 3) {
+      // (the last pass is the part's own flat top, y1)
+      const flat = i + 2 >= tp.length;
+      if (flat && y1 === undefined) break;
+      const pa = flat ? 0 : tp[i], pb = flat ? 0 : tp[i + 1];
+      const lower = climb && pa * pa + pb * pb <= HULL_CLIMB_GRADE * HULL_CLIMB_GRADE ? climb : 0;
+      const a = pa - slopeX, b = pb - slopeZ, c = (flat ? y1! : tp[i + 2]) - lower - c0;
+      next.length = 0;
+      const n = poly.length;
+      for (let k = 0; k < n; k += 2) {
+        const px = poly[k], pz = poly[k + 1], qx = poly[(k + 2) % n], qz = poly[(k + 3) % n];
+        const sp = a * (px - ox) + b * (pz - oz) + c, sq = a * (qx - ox) + b * (qz - oz) + c;
+        if (sp >= 0) next.push(px, pz);
+        if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); next.push(px + (qx - px) * t, pz + (qz - pz) * t); }
+      }
+      const swap = poly; poly = next; next = swap;
+    }
+  }
+  if (poly.length < 6) return false;
+  for (let i = 0; i < poly.length; i++) out.push(poly[i]);
+  return true;
+}
+
+/** A deck's floor stands this far over its record's foot or more (a stone's drawn top stands from it). */
+const DECK_RAISED_M = 0.5;
+/**
+ * Is this part of a record a raised deck (physics stream F2, world/structureCollision.ts structureDecks): a drawn top
+ * that stands clear of the record's foot — a roof a hull stands on, which the walls under it meet from the side — and so
+ * a floor to the support and no wall to the push?
+ */
+export function collisionPartIsDeck(record: Pick<CollisionRecord, 'min' | 'crushable' | 'kind'>, part: SimpleCollisionShape): boolean {
+  // (a building's, placed or pooled, alone: a wreck's turret stands on its hull under a drawn top too, and is steel the
+  // push meets)
+  return part.kind === 'convex' && !!part.tp && !record.crushable && part.y0 !== undefined
+    && part.y0 > record.min[1] + DECK_RAISED_M && record.kind !== 'tank-wreck' && record.kind !== 'tram-wreck';
+}
+
+/** setConvexShape with a drawn top (collisionPartTopAt) and its own vertical extent. */
+export function setConvexTopShape(rec: CollisionRecord, points: number[], tp: number[], y0: number, y1: number) {
+  setConvexShape(rec, points);
+  const shape = rec.shape2;
+  if (shape && shape.kind === 'convex') { shape.tp = tp; shape.y0 = y0; shape.y1 = y1; }
+  return rec;
+}
 
 /** A hull whose track bottom clears a part's top by this much passes over it (the record-level rule uses 0.5 too). */
 const OVERPASS_CLEARANCE_M = 0.5;
+/** The track plane of the hull hullUndersideOver last read over a record (its height at the footprint's centre and its
+ * rise per world metre in x and z): a drawn top's wall section is cut against it point by point (pushHullFromObstacle). */
+const _underPlane = { valid: false, y: 0, cx: 0, cz: 0, slopeX: 0, slopeZ: 0, frontLift: 0, rearLift: 0 };
+/** The track plane's height under (x, z) for the hull hullUndersideOver last read, or NaN when it read none. */
+export function hullUndersideAt(x: number, z: number): number {
+  return _underPlane.valid ? _underPlane.y + _underPlane.slopeX * (x - _underPlane.cx) + _underPlane.slopeZ * (z - _underPlane.cz) : NaN;
+}
+/** A top-planed part's wall section (collisionPartSection), reused by the push. */
+const _sectionPoints: number[] = [];
+const _sectionShape: Extract<SimpleCollisionShape, { kind: 'convex' }> = { kind: 'convex', cx: 0, cz: 0, points: _sectionPoints };
 /** A hull whose body top stays this far under a part's bottom passes beneath it (an overhang, a bridge deck). */
 const UNDERPASS_CLEARANCE_M = 0.15;
 /**
@@ -61,6 +202,67 @@ export function hullPassesObstacleTop(
   if (clearBottom > top + OVERPASS_CLEARANCE_M) return true;
   // crushable cover (sandbags, fences, light walls) is pushed and crushed as before, never mounted
   return standable && top - bottom >= HULL_STANDABLE_HEIGHT_M && spanBottom > top - HULL_STEP_UP_M;
+}
+
+/** A hull coming down onto what it meets faster than this (m/s, its fall less its ground's own) loads it from above
+ * (crushableLoadedFromAbove). */
+export const CRUSH_FALL_MPS = 1;
+/** A hull's underside within this of a part's top, and this far over its bottom, rests on it (crushableLoadedFromAbove):
+ * a floor slab or a berm a hull rolls against at ground level is met from the side. */
+const CRUSH_BEAR_M = 0.25;
+
+/**
+ * A crushable record a hull comes onto from above bears the hull's weight, and gives way under it (physics stream,
+ * 2026-10-13; the owner: "if they land on top of buildings or other weird objects! all physics engine stuff i want to
+ * account for"). Crushable cover — a car, a crate, a sandbag stack, a shed — is never a floor (structureSupport.ts): it is
+ * crushed by a hull's travel (its speed past the record's crushMin, or a held press). A hull that meets it coming down
+ * (`fallMps`, its fall less the ground's: a hull landing on a car, or dropping into a shed's open bay and meeting its
+ * benches) or resting on the part it meets (its underside within CRUSH_BEAR_M of the part's top and that far over its
+ * bottom: driven down onto it, perched over it on a rock) is not travelling into its side but loading it from above, and its
+ * weight crushes it whatever its speed: the tank-world census found every hull dropped on a crushable record falling into
+ * it and shoved out sideways a metre a step. A hull at ground level against a berm, a floor slab or a wall's foot meets
+ * them from the side, as before.
+ */
+export function crushableLoadedFromAbove(
+  record: Pick<CollisionRecord, 'crushable' | 'min' | 'max'>, spanBottom: number, fallMps = 0, contactTop = record.max[1],
+  contactBottom = record.min[1],
+): boolean {
+  if (!record.crushable) return false;
+  if (fallMps > CRUSH_FALL_MPS) return true;
+  return spanBottom > contactTop - CRUSH_BEAR_M && spanBottom > contactBottom + CRUSH_BEAR_M;
+}
+
+/** The part the last pushHullFromObstacle call found the hull overlapping with the lowest top: its top and bottom (a
+ * compound record's low parts under a hull beside its tall ones: crushableLoadedFromAbove reads the part it bears on). */
+let _contactTop = -Infinity;
+let _contactBottom = -Infinity;
+export function obstacleContactTop(): number {
+  return _contactTop;
+}
+export function obstacleContactBottom(): number {
+  return _contactBottom;
+}
+
+/** Does the record carry a drawn top (a stone: collisionPartTopAt)? */
+export function collisionRecordHasDrawnTop(record: CollisionRecord): boolean {
+  const shape = record.shape2;
+  if (!shape) return false;
+  if (shape.kind === 'convex') return !!shape.tp;
+  if (shape.kind !== 'compound') return false;
+  for (const part of shape.parts) if (part.kind === 'convex' && part.tp) return true;
+  return false;
+}
+
+/**
+ * hullPassesObstacleTop for a whole record (the solvers' broad test before the push). A record with a drawn top is
+ * stood on or met point by point (pushHullFromObstacle cuts its wall section against the hull's track plane), so the
+ * standing rule's lowest-point shortcut does not pass it: only a hull clear over its top does (physics stream,
+ * 2026-10-13; the tank-world census: a hull whose nose row alone reached a stone read it as stood on, crept a metre into
+ * it, and was shoved back out each time a track row arrived, every half second).
+ */
+export function hullPassesRecordTop(record: CollisionRecord, spanBottom: number, clearBottom = spanBottom): boolean {
+  if (!record.crushable && collisionRecordHasDrawnTop(record)) return clearBottom > record.max[1] + OVERPASS_CLEARANCE_M;
+  return hullPassesObstacleTop(spanBottom, record.max[1], record.min[1], !record.crushable, clearBottom);
 }
 
 /**
@@ -86,11 +288,17 @@ export function hullUndersideOver(record: CollisionRecord, foot: HullFootprint, 
   if (centerX + reachX < record.min[0] || centerX - reachX > record.max[0]
     || centerZ + reachZ < record.min[2] || centerZ - reachZ > record.max[2]) {
     foot.clearBottom = rootY;
+    _underPlane.valid = false;
     return rootY;
   }
   // the track rows decide when any lies over the record (the tracks are what stand on it); only a nose or tail row
   // alone over it decides by clearing its top
   const centerY = rootY + foot.centerRise;
+  // (the track plane itself, for a drawn top's wall section: collisionPartSection against the plane under each point)
+  _underPlane.valid = true; _underPlane.y = centerY; _underPlane.cx = centerX; _underPlane.cz = centerZ;
+  _underPlane.slopeX = foot.riseAlong * forwardX + foot.riseAcross * rightX;
+  _underPlane.slopeZ = foot.riseAlong * forwardZ + foot.riseAcross * rightZ;
+  _underPlane.frontLift = Math.max(0, foot.frontLift); _underPlane.rearLift = Math.max(0, foot.rearLift);
   let tracks = Infinity, ends = Infinity, endsTrack = Infinity;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfLength;
@@ -214,6 +422,9 @@ export interface CollisionRecord {
   min: Bounds3;
   max: Bounds3;
   shape2?: CollisionShape;
+  /** A building's decks held apart while the world is laid out (world/structureCollision.ts applyStructureCollisionBand),
+   * joined to its shape by mergeStructureDecks when the props are built: placement reads the ground band alone. */
+  deckParts?: SimpleCollisionShape[];
   crushable?: boolean;
   crushMin?: number;
   crushKeep?: number;
@@ -544,7 +755,9 @@ export function collisionFootprintContainsPoint(
       && z >= record.min[2] - margin && z <= record.max[2] + margin;
   }
   if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, margin);
-  return shape.parts.some((part) => simpleFootprintContainsPoint(part, x, z, margin));
+  // (physics stream F2, 2026-10-14) a raised deck — a roof a hull stands on — is a floor only, no footprint: its eaves
+  // over a carriageway or a yard are no building standing there (the bots' parking and leg ends, the layout metrics)
+  return shape.parts.some((part) => !collisionPartIsDeck(record, part) && simpleFootprintContainsPoint(part, x, z, margin));
 }
 
 function rayCircleEntry2(
@@ -781,6 +994,62 @@ function testObbAxis(
  * Tight hull-OBB vs environment-footprint push-out. Adds the minimum
  * translation to `outPush`; returns false when separated.
  */
+/** A pitched hull's end-plate probe (endPlateLean): its section, its strip and whether it pushed this call. */
+const _leanPoints: number[] = [];
+const _leanShape: Extract<SimpleCollisionShape, { kind: 'convex' }> = { kind: 'convex', cx: 0, cz: 0, points: _leanPoints };
+const _leanPos = { x: 0, z: 0 };
+const _leanBest = { overlap: Infinity, nx: 0, nz: 0 };
+let _leanHit = false;
+let _leanPushX = 0, _leanPushZ = 0;
+/** Under this sine of pitch (3 degrees) an end plate leans past its footprint by under a few centimetres. */
+const LEAN_MIN_SIN = 0.05;
+/**
+ * A pitched hull's end plate against a drawn top (physics stream, 2026-10-13; the coordinator: "add an upper-hull probe
+ * against wall parts ... so the push holds the hull's upper front too, not just its footprint at track level"). The
+ * footprint is the hull's at its track plane; pitched by p, the plate at its end leans past it by its height over that
+ * plane times sin p — forward for a hull nosing down, back for one reared up. A T-90M driven down a 18-degree slope into a
+ * 2.4 m boulder stopped with its footprint at the boulder's foot and its glacis 1.1 m inside the stone. The plate is
+ * probed at its lip (the shell's lift over the track plane at that end) and halfway from there to the hull's top: the
+ * strip each leans over, against the stone's climb surface's section at that height over the track plane (the wall the
+ * footprint meets, carried out by the lean: a plate rides up a face the tracks climb), pushes the hull off by the
+ * overlap (the larger of the two; the caller takes it or the footprint's own push, whichever is larger). True when it
+ * meets the stone.
+ */
+function endPlateLean(
+  part: Extract<SimpleCollisionShape, { kind: 'convex' }>, pos: Position2, fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, spanTop: number,
+): boolean {
+  _leanHit = false; _leanPushX = 0; _leanPushZ = 0;
+  const u = _underPlane;
+  const rise = u.slopeX * fx + u.slopeZ * fz;
+  const sin = rise / Math.sqrt(1 + rise * rise);
+  if (Math.abs(sin) < LEAN_MIN_SIN) return false;
+  const dir = sin < 0 ? 1 : -1;
+  const lip = sin < 0 ? u.frontLift : u.rearLift;
+  const height = Math.max(lip, spanTop - u.y);
+  let pushX = 0, pushZ = 0;
+  for (let k = 0; k < 2; k++) {
+    const h = k === 0 ? lip : 0.5 * (lip + height);
+    const reach = h * Math.abs(sin);
+    if (reach < 0.02) continue;
+    if (!collisionPartSection(part, u.y + h, _leanPoints, u.slopeX, u.slopeZ, u.cx, u.cz, null, CLIMB_ALLOWANCE_M)) continue;
+    let sx = 0, sz = 0;
+    for (let i = 0; i < _leanPoints.length; i += 2) { sx += _leanPoints[i]; sz += _leanPoints[i + 1]; }
+    _leanShape.cx = sx / (_leanPoints.length / 2); _leanShape.cz = sz / (_leanPoints.length / 2);
+    // the strip the plate leans over: past the footprint's end, the reach long, the hull wide
+    _leanPos.x = pos.x + fx * dir * (halfL + reach * 0.5);
+    _leanPos.z = pos.z + fz * dir * (halfL + reach * 0.5);
+    _leanBest.overlap = Infinity; _leanBest.nx = 0; _leanBest.nz = 0;
+    if (!overlapsConvexObstacle(_leanShape, _leanPos, fx, fz, rx, rz, reach * 0.5, halfW, _leanBest)) continue;
+    const x = _leanBest.nx * _leanBest.overlap, z = _leanBest.nz * _leanBest.overlap;
+    if (x * x + z * z > pushX * pushX + pushZ * pushZ) { pushX = x; pushZ = z; }
+  }
+  if (pushX === 0 && pushZ === 0) return false;
+  _leanPushX = pushX; _leanPushZ = pushZ;
+  _leanHit = true;
+  return true;
+}
+
 export function pushHullFromObstacle(
   pos: Position2,
   fx: number, fz: number, rx: number, rz: number,
@@ -796,35 +1065,83 @@ export function pushHullFromObstacle(
     const startX = outPush.x;
     const startZ = outPush.z;
     let hit = false;
+    let lowest = Infinity, lowestBottom = -Infinity;
     for (const part of sh.parts) {
+      // (physics stream F2) a raised deck — a roof a hull stands on, world/structureCollision.ts structureDecks — is a
+      // floor only: it is met from the side by the solids under it, the walls of the ground-contact band
+      if (collisionPartIsDeck(ob, part)) continue;
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
-      if (part.y1 !== undefined
-        && hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable, clearBottom)) continue;
+      if (part.y1 !== undefined && (part.kind === 'convex' && part.tp && !ob.crushable
+        ? clearBottom > part.y1 + OVERPASS_CLEARANCE_M
+        : hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable, clearBottom))) continue;
       if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
       _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
+      _compoundRec.crushable = ob.crushable;
       _compoundPos.x = pos.x + outPush.x - startX;
       _compoundPos.z = pos.z + outPush.z - startZ;
+      const partTop = _compoundRec.max[1], partBottom = _compoundRec.min[1];
       if (pushHullFromObstacle(
         _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop, clearBottom,
-      )) hit = true;
+      )) { hit = true; if (partTop < lowest) { lowest = partTop; lowestBottom = partBottom; } }
     }
+    _contactTop = hit ? lowest : -Infinity;
+    _contactBottom = hit ? lowestBottom : -Infinity;
     return hit;
   }
   if (sh?.kind === 'circle') {
-    return pushHullFromCircle(pos, fx, fz, rx, rz, halfL, halfW, sh, outPush);
+    const hit = pushHullFromCircle(pos, fx, fz, rx, rz, halfL, halfW, sh, outPush);
+    _contactTop = hit ? ob.max[1] : -Infinity;
+    _contactBottom = hit ? ob.min[1] : -Infinity;
+    return hit;
   }
 
   const best = _pushBest;
   best.overlap = Infinity; best.nx = 0; best.nz = 0;
-  const overlaps = sh?.kind === 'convex'
-    ? overlapsConvexObstacle(sh, pos, fx, fz, rx, rz, halfL, halfW, best)
+  let convex = sh?.kind === 'convex' ? sh : null;
+  if (convex && convex.tp && !ob.crushable) {
+    // a drawn top (collisionPartTopAt): a wall only where it stands more than the hull's step over its underside there
+    // (against the track plane under each point when the caller read it, a tilted hull's front on the stone and its tail
+    // off it; else the underside's lowest point over the record)
+    const u = _underPlane;
+    // — of its climb surface (collisionPartClimbAt): a face the tracks ride up is climbed to HULL_CLIMB_M, a steeper
+    // one stops the hull a step up it. (A nose or tail plate allowed 0.9 m up any face, tried and dropped 2026-10-13,
+    // pitched hulls up 2 m boulders nose first: each lift raised the plane the next was read against.)
+    const cut = u.valid
+      ? collisionPartSection(convex, u.y + HULL_STEP_UP_M, _sectionPoints, u.slopeX, u.slopeZ, u.cx, u.cz, null, CLIMB_ALLOWANCE_M)
+      : collisionPartSection(convex, spanBottom + HULL_STEP_UP_M, _sectionPoints, 0, 0, 0, 0, null, CLIMB_ALLOWANCE_M);
+    // a pitched hull's end plate leans past its footprint at track level (the bow of a hull nosing down a slope into a
+    // boulder, the stern of one reared up it): the strip it leans over meets the stone where the stone stands over the
+    // plate there (endPlateLean)
+    const lean = u.valid ? endPlateLean(convex, pos, fx, fz, rx, rz, halfL, halfW, spanTop) : (_leanHit = false);
+    if (!cut) {
+      if (lean) {
+        outPush.x += _leanPushX; outPush.z += _leanPushZ;
+        _contactTop = ob.max[1]; _contactBottom = ob.min[1]; return true;
+      }
+      _contactTop = -Infinity; _contactBottom = -Infinity; return false;
+    }
+    let sx = 0, sz = 0;
+    for (let i = 0; i < _sectionPoints.length; i += 2) { sx += _sectionPoints[i]; sz += _sectionPoints[i + 1]; }
+    _sectionShape.points = _sectionPoints;
+    _sectionShape.cx = sx / (_sectionPoints.length / 2); _sectionShape.cz = sz / (_sectionPoints.length / 2);
+    convex = _sectionShape;
+  }
+  const overlaps = convex
+    ? overlapsConvexObstacle(convex, pos, fx, fz, rx, rz, halfL, halfW, best)
     : overlapsBoxObstacle(ob, sh?.kind === 'obb' ? sh : null,
       pos, fx, fz, rx, rz, halfL, halfW, best);
-  if (!overlaps) return false;
-  outPush.x += best.nx * best.overlap;
-  outPush.z += best.nz * best.overlap;
+  const leaned = convex === _sectionShape && _leanHit;
+  if (!overlaps && !leaned) { _contactTop = -Infinity; _contactBottom = -Infinity; return false; }
+  if (leaned && (!overlaps || _leanPushX * _leanPushX + _leanPushZ * _leanPushZ > best.overlap * best.overlap)) {
+    outPush.x += _leanPushX; outPush.z += _leanPushZ;
+  } else {
+    outPush.x += best.nx * best.overlap;
+    outPush.z += best.nz * best.overlap;
+  }
+  _contactTop = ob.max[1];
+  _contactBottom = ob.min[1];
   return true;
 }
 
@@ -1636,6 +1953,29 @@ const _marchNormal: MutableVector3Like = {
   set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
 };
 const byMarchKey = (a: CollisionRecord, b: CollisionRecord): number => _marchKey.get(a)! - _marchKey.get(b)!;
+/** Where a ray enters a record's footprint box in plan (its xz slab; 0 from inside, Infinity when it misses it). */
+function footprintEntry(origin: Vector3Like, dir: Vector3Like, r: CollisionRecord): number {
+  let t0 = 0, t1 = Infinity;
+  if (Math.abs(dir.x) < 1e-12) {
+    if (origin.x < r.min[0] || origin.x > r.max[0]) return Infinity;
+  } else {
+    const inv = 1 / dir.x;
+    let a = (r.min[0] - origin.x) * inv, b = (r.max[0] - origin.x) * inv;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+  }
+  if (Math.abs(dir.z) < 1e-12) {
+    if (origin.z < r.min[2] || origin.z > r.max[2]) return Infinity;
+  } else {
+    const inv = 1 / dir.z;
+    let a = (r.min[2] - origin.z) * inv, b = (r.max[2] - origin.z) * inv;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+  }
+  return t0 <= t1 ? t0 : Infinity;
+}
 
 /**
  * nearestColliderHit over everything one broad-phase box around the whole ray finds — the world raycasts' prop phase
@@ -1695,6 +2035,22 @@ export function nearestColliderHitAlongRay(
     if (t1 >= maxDist || running <= t1) break;
     t0 = t1;
   }
+  // (physics stream, 2026-10-13, the MP stream's tick profile: the final pass judged every record the march found a second
+  // time, half the ray's narrow phase) no hit at all: the whole box meets nothing either
+  if (!(running < Infinity)) {
+    _marchFresh.length = 0;
+    return nearestColliderHit(_marchFresh, origin, dir, maxDist, outNormal, out);
+  }
+  // only a record whose footprint box the ray enters at or before the nearest hit can meet it as near (the point of a hit
+  // at t lies inside the record's box, so the box is entered at t or before); a structure with openings is judged as a
+  // whole and kept. The rest cannot change the winner, its normal or a tie's order.
+  let kept = 0;
+  const reachLimit = running + MARCH_PAD_M;
+  for (let i = 0; i < _marchUnion.length; i++) {
+    const r = _marchUnion[i];
+    if (r.openings || footprintEntry(origin, dir, r) <= reachLimit) _marchUnion[kept++] = r;
+  }
+  _marchUnion.length = kept;
   // the whole box's visitation order: the first cell of the record inside the box (z-major), then its cell slot
   const inv = order.inv;
   const cx0 = Math.floor(minX * inv), cz0 = Math.floor(minZ * inv);
