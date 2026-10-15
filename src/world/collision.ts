@@ -163,6 +163,10 @@ export function collisionPartIsDeck(record: Pick<CollisionRecord, 'min' | 'crush
 
 /** Each building record's roofs that rise over a part of its ground-contact band (bandRoofTopAt), cached. */
 const _bandRoofs = new WeakMap<object, SimpleCollisionShape[] | null>();
+/** Does this building record have a roof over part of its ground-contact band (bandRoofTopAt)? */
+export function recordHasBandRoofs(record: CollisionRecord): boolean {
+  return bandRoofsOf(record) !== null;
+}
 function bandRoofsOf(record: CollisionRecord): SimpleCollisionShape[] | null {
   const cached = _bandRoofs.get(record);
   if (cached !== undefined) return cached;
@@ -201,6 +205,37 @@ export function bandRoofTopAt(record: CollisionRecord, part: SimpleCollisionShap
     if (top > best) best = top;
   }
   return best;
+}
+
+/**
+ * How far the hull's underside lies under a band part's top over that part, the top read under each point as the
+ * building's roof where its roof covers it (bandRoofTopAt), on hullUndersideOver's grid and by its rule: the deepest of
+ * the track rows over the part, or, when none is, of the nose and tail rows lifted by the plates the tracks run under
+ * (less the step they count against themselves); the track plane is the caller's hullUndersideOver (hullUndersideAt), or
+ * `spanBottom` without one. -Infinity when no grid point is over the part.
+ */
+export function bandUndersideDepth(
+  record: CollisionRecord, part: SimpleCollisionShape, pos: Position2, fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, spanBottom: number,
+): number {
+  const bandTop = part.y1 ?? record.max[1];
+  let tracks = -Infinity, ends = -Infinity;
+  for (let i = 0; i < 5; i++) {
+    const along = (i * 0.5 - 1) * halfL;
+    const end = i === 0 || i === 4;
+    const lift = !_underPlane.valid ? 0 : i === 4 ? _underPlane.frontLift - HULL_STEP_UP_M : i === 0 ? _underPlane.rearLift - HULL_STEP_UP_M : 0;
+    for (let j = 0; j < 3; j++) {
+      const across = (j - 1) * halfW;
+      const x = pos.x + fx * along + rx * across, z = pos.z + fz * along + rz * across;
+      if (!pointInsideCollisionRecord(record, part, x, z)) continue;
+      const roof = bandRoofTopAt(record, part, x, z);
+      const top = roof > -Infinity && roof < bandTop ? roof : bandTop;
+      const plane = hullUndersideAt(x, z);
+      const depth = top - (Number.isFinite(plane) ? plane : spanBottom);
+      if (end) { if (depth - lift > ends) ends = depth - lift; } else if (depth > tracks) tracks = depth;
+    }
+  }
+  return tracks > -Infinity ? tracks : ends;
 }
 
 /** setConvexShape with a drawn top (collisionPartTopAt) and its own vertical extent. */
@@ -1122,11 +1157,9 @@ export function pushHullFromObstacle(
         : hullPassesObstacleTop(spanBottom, partTop, part.y0 ?? ob.min[1], !ob.crushable, clearBottom)) continue;
       // (and the walls under the roof the hull stands on, no more than a step over it)
       if (onRoof && !(part.kind === 'convex' && part.tp) && partTop <= roofTop + HULL_STEP_UP_M) continue;
-      // (and a band under its roof, where the hull is over that roof: the band's top there is the roof's)
-      if (!(part.kind === 'convex' && part.tp)) {
-        const roof = bandRoofTopAt(ob, part, pos.x, pos.z);
-        if (roof > -Infinity && roof < partTop && (Number.isFinite(centreUnder) ? centreUnder : spanBottom) > roof - HULL_STEP_UP_M) continue;
-      }
+      // (and a band under its building's roof, read point by point under the hull: the band's top there is the roof's)
+      if (!(part.kind === 'convex' && part.tp) && bandRoofsOf(ob)
+        && bandUndersideDepth(ob, part, pos, fx, fz, rx, rz, halfL, halfW, spanBottom) <= HULL_STEP_UP_M) continue;
       if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
       _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
