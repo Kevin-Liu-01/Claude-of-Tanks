@@ -12,7 +12,9 @@ const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).ma
  strv122_x:7.62,merkava4_trophy:7.62,merkava4_x:7.62,leo2a6_ua:7.62,ua_challenger2:7.62};
 const vector=a=>new THREE.Vector3(...a);
 for(const [id,caliber] of Object.entries(requested)){
- const kit=AUXILIARY_INVENTORY[id];assert.equal(kit.guns.length,1,id+' has one controlled station');
+ // VH.14 (2026-10-15): every drawn roof gun works, so a Challenger 2 whose loader also carries a GPMG has two
+ // stations; the first (heaviest, the one stepRoofGun drives) is of the requested calibre
+ const kit=AUXILIARY_INVENTORY[id];assert.ok(kit.guns.length>=1,id+' has a controlled station');
  const g=kit.guns[0];assert.equal(g.caliberMm,caliber,id);
  const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true});
  const mount=tank.root.getObjectByName(g.name),pitch=mount?.getObjectByName('auxiliaryWeaponPitch');

@@ -244,7 +244,8 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
     frontalKe, `${id}: dedicated wedge protection`);
   assert.equal(spec.armor.turretless, true, `${id}: fixed-gun hit model`);
   assert.equal(spec.armor.turretPlates.length, 0, `${id}: no phantom turret surface`);
-  assert.ok(spec.armor.modules.every((box) => box.turretLocal === false),
+  // VH.14 (2026-10-15): the UDES 03's hull MG is a working station; its roofGun module rides the gun (roofGunFollow)
+  assert.ok(spec.armor.modules.every((box) => box.roofGunFollow || box.turretLocal === false),
     `${id}: modules live in the hull frame`);
   assert.ok(spec.armor.crew.every((box) => box.turretLocal === false),
     `${id}: crew lives in the hull frame`);

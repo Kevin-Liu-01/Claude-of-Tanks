@@ -139,7 +139,7 @@ function extendYawCircle(min:number[],max:number[],gun:RoofGun,x:number,y:number
     max[axis]=Math.max(max[axis]!,gun.position[axis]!+center[axis]!+extent);
   }
 }
-function roofPartSweep(gun:RoofGun,part:Bounds,id?:string):Bounds {
+function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [number,number]|undefined=gun.yawArc):Bounds {
   const policy=auxiliaryWeaponProfile(gun.caliberMm,id),range=policy.depressionRad+policy.elevationRad;
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
   const radial=Math.hypot(...part.min.map((v,i)=>Math.max(Math.abs(v),Math.abs(part.max[i]!))));
@@ -168,12 +168,17 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string):Bounds {
     const normal=rotateQuaternion([0,sign,0],gun.rotation);
     planes.push({indices:[],normal,constant:-normal.reduce((sum,v,k)=>sum+v*gun.position[k]!,0)-(sign>0?maxY:-minY)-padding});
   }
-  // VH.14: a station with a traverse arc (gun.yawArc, station-local yaw) sweeps only that sector. Its box shrinks to
-  // the union of the parts' corners over the arc's yaws (0.04 rad apart, each widened by the chord between samples) and
-  // every pitch, within the full circle's box; the circle's planes still bound it (the sector lies inside the circle).
-  if(gun.yawArc){
-    const [lo,hi]=gun.yawArc,yawSteps=Math.max(1,Math.ceil((hi-lo)/.04));
+  // VH.14: a station with a traverse arc (yawArc, station-local yaw: the gun's, or one stretch of it) sweeps only that
+  // sector. Its box shrinks to the union of the parts' corners over the arc's yaws (0.04 rad apart, each widened by the
+  // chord between samples) and every pitch, within the full circle's box; the circle's planes still bound it (the sector
+  // lies inside the circle).
+  if(yawArc){
+    const [lo,hi]=yawArc,yawSteps=Math.max(1,Math.ceil((hi-lo)/.04));
     const arcMin=[Infinity,Infinity,Infinity],arcMax=[-Infinity,-Infinity,-Infinity];
+    // the bearing the arc leaves out (its excluded wedge's middle, station-local): one more face, at the sweep's farthest
+    // reach along it, cuts the wedge's chord off the circle (a seat behind a station that never turns there is clear)
+    const out=(lo+hi)/2+Math.PI,ox=Math.sin(out),oz=Math.cos(out);
+    let reachOut=-Infinity;
     for(let i=0;i<=steps;i++){
       const pitch=-policy.depressionRad+range*i/steps,c=Math.cos(pitch),s=Math.sin(pitch);
       for(const [x,y,z]of corners){
@@ -181,7 +186,8 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string):Bounds {
         const reach=Math.hypot(lx,lz),half=(hi-lo)/yawSteps/2,chord=reach*(1-Math.cos(half))+reach*Math.sin(half);
         for(let k=0;k<=yawSteps;k++){
           const yaw=lo+(hi-lo)*k/yawSteps,cy=Math.cos(yaw),sy=Math.sin(yaw);
-          const p=rotateQuaternion([lx*cy+lz*sy,ly,-lx*sy+lz*cy],gun.rotation);
+          const sx=lx*cy+lz*sy,sz=-lx*sy+lz*cy,p=rotateQuaternion([sx,ly,sz],gun.rotation);
+          reachOut=Math.max(reachOut,sx*ox+sz*oz+chord);
           for(let axis=0;axis<3;axis++){
             arcMin[axis]=Math.min(arcMin[axis]!,gun.position[axis]!+p[axis]!-chord-padding);
             arcMax[axis]=Math.max(arcMax[axis]!,gun.position[axis]!+p[axis]!+chord+padding);
@@ -190,6 +196,8 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string):Bounds {
       }
     }
     for(let axis=0;axis<3;axis++){min[axis]=Math.max(min[axis]!,arcMin[axis]!);max[axis]=Math.min(max[axis]!,arcMax[axis]!);}
+    const normal=rotateQuaternion([ox,0,oz],gun.rotation);
+    planes.push({indices:[],normal,constant:-normal.reduce((sum,v,k)=>sum+v*gun.position[k]!,0)-reachOut-padding});
   }
   return {min,max,faces:planes,sweepRadius};
 }
@@ -198,8 +206,14 @@ function roofGunSweeps(spec: MissionCarrierSpec): {owner:Frame;bounds:Bounds}[] 
   // Local pitch samples include an angular chord bound between samples; each
   // transformed yaw circle has analytic extrema, covering continuous motion.
   const cached=roofSweepsCache.get(spec);if(cached)return cached;
-  const result=(auxiliaryCapabilities(spec)?.guns??[]).flatMap(gun=>(gun.collisionParts??[])
-    .map(part=>({owner:gun.owner,bounds:roofPartSweep(gun,part,spec.id)})));
+  // VH.14: an arc station's sweep is a run of boxes, one per 20 degrees of its arc (each the parts' corners over that
+  // stretch), so a seat in the arc's gap or beside its ends stays clear; a full-traverse station keeps one circle
+  const result=(auxiliaryCapabilities(spec)?.guns??[]).flatMap(gun=>(gun.collisionParts??[]).flatMap(part=>{
+    if(!gun.yawArc)return [{owner:gun.owner,bounds:roofPartSweep(gun,part,spec.id)}];
+    const [lo,hi]=gun.yawArc,chunks=Math.max(1,Math.ceil((hi-lo)/.35));
+    return Array.from({length:chunks},(_,k)=>({owner:gun.owner,
+      bounds:roofPartSweep(gun,part,spec.id,[lo+(hi-lo)*k/chunks,lo+(hi-lo)*(k+1)/chunks])}));
+  }));
   roofSweepsCache.set(spec,result);return result;
 }
 interface ClearanceStock { hull:Bounds[];turret:Bounds[];guns:ReturnType<typeof roofGunSweeps> }

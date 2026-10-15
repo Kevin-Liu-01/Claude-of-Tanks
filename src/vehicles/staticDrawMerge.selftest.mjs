@@ -32,7 +32,8 @@ const GARAGE = { camoSeed: 4200, quality: 'ai', staticPreview: true, batchStatic
 // turret, turretDetail and turretFittingPaint (the tubes); at range turretDetail now detaches.
 const PINNED = {
   ua_m1a1_x: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
-  leo2a7v_x: { saved: 2, owners: { rig_hull: 1, leo2a7v_xRoofMachineGun: 1 } },
+  // VH.14 (2026-10-15): the roof MG is a working station, so its can-and-rounds fold rides the gun's own pitch rig
+  leo2a7v_x: { saved: 2, owners: { rig_hull: 1, auxiliaryWeaponPitch: 1 } },
   challenger_3x: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
   // 2026-10-06 (main's M1A1 mantlet and throat rebuild, ce9f55959..030b3ff96): the m1a2 turretDark bucket is now created after
   // turretCloth, so turret and turretDetail formed one contiguous layer run and merged; round 4's matte discharger tubes

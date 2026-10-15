@@ -100,9 +100,10 @@ export function censusEquipment(root) {
     if (!['pintleMG', 'openYokeRws'].includes(type)) { dressing++; return; }
     let stock = false;
     object.traverse(child => {
-      // Nested unrelated fittings cannot validate an empty outer marker.
+      // Nested unrelated fittings cannot validate an empty outer marker. The weapon's own pitch rig (a working station's
+      // auxiliaryWeapon group, VH.14) is the weapon itself: its receiver, barrel and feed count as the weapon's stock.
       for (let ancestor=child; ancestor && ancestor!==object; ancestor=ancestor.parent)
-        if (ancestor.userData?.fittingRoot) return;
+        if (ancestor.userData?.fittingRoot && ancestor.userData.fitting !== 'auxiliaryWeapon') return;
       if (rendersStock(child)) stock = true;
     });
     if (stock) mg++; else invalidWeaponMarkers++;

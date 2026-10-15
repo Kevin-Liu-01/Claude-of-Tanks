@@ -13,19 +13,21 @@ export interface AuxiliaryWeaponProfile {
   elevationRad: number;
   /**
    * VH.14 balance (2026-10-15, the coordinator's check on ~110 vehicles gaining working roof guns): the station engages
-   * a vehicle only when its round's penetration at that range is at least this multiple of the thinnest line-of-sight
-   * main armour the vehicle turns towards the station (src/sim/auxiliarySystems.ts exposedArmourMm: a defeatable flank
-   * or rear counts, a front it cannot defeat does not). A gun that cannot hurt the vehicle where it can strike it holds
-   * its fire instead of revealing its own vehicle by its flash.
+   * a vehicle only when at least `engageShare` of the main armour the vehicle turns towards the station is defeated by
+   * its round's penetration at that range divided by this ratio (src/sim/auxiliarySystems.ts defeatableShare: a thin
+   * flank or rear counts by its size, a heavy front with a thin sight box does not). A gun that cannot hurt the vehicle
+   * where it strikes it holds its fire instead of revealing its own vehicle by its flash.
    */
   engagePenRatio: number;
+  /** The share of the presented main armour (by presented area) the round must defeat before the station engages. */
+  engageShare: number;
 }
 
 const heavy: AuxiliaryWeaponProfile = {
   shell: {type:'AP', name:'12.7×99 mm M2 AP', caliberMm:12.7, velocityMps:850,
     pen100Mm:26, pen1000Mm:12, pen2000Mm:5, dmg:8, moduleDmg:3},
   rangeM:240, shotIntervalS:.12, burstRounds:5, burstPauseS:1.4,
-  yawRateRadS:1.7, pitchRateRadS:1, depressionRad:.18, elevationRad:.75, engagePenRatio:1,
+  yawRateRadS:1.7, pitchRateRadS:1, depressionRad:.18, elevationRad:.75, engagePenRatio:1, engageShare:.25,
 };
 const rifle: AuxiliaryWeaponProfile = {
   ...heavy,
@@ -67,7 +69,7 @@ const rh202:AuxiliaryWeaponProfile={
   shell:{type:'AP',name:'20×139 mm DM63 APDS-T',caliberMm:20,velocityMps:1100,
     pen100Mm:45,pen1000Mm:28,pen2000Mm:12,dmg:14,moduleDmg:6},
   rangeM:320,shotIntervalS:.10,burstRounds:5,burstPauseS:1.6,
-  yawRateRadS:1.4,pitchRateRadS:.9,depressionRad:.14,elevationRad:.9,engagePenRatio:1,
+  yawRateRadS:1.4,pitchRateRadS:.9,depressionRad:.14,elevationRad:.9,engagePenRatio:1,engageShare:.25,
 };
 
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm

@@ -73,19 +73,23 @@ export function thinnestVerticalArmourMm(spec: { armor?: AuxiliaryArmour | null 
   return thinnest;
 }
 const facePlates = new WeakMap<object, Float64Array>();
-/** VH.14 balance: the vertical main plates (outward normal within 60 degrees of level; plates run counter-clockwise seen
- * from outside) as rows [unit normal x, unit normal z, KE mm, owner (0 hull, 1 turret)], cached per armour table. */
-function verticalMainPlates(armour: AuxiliaryArmour): Float64Array {
+/** VH.14 balance: every main plate (plates run counter-clockwise seen from outside) as a row [unit outward normal x,
+ * unit outward normal z, KE mm, owner (0 hull, 1 turret), area m²], cached per armour table. */
+function mainPlates(armour: AuxiliaryArmour): Float64Array {
   const known = facePlates.get(armour);
   if (known) return known;
   const rows: number[] = [];
   for (const [owner, plates] of [[0, armour.hullPlates], [1, armour.turretPlates]] as const) for (const plate of plates ?? []) {
     const v = plate.verts, mm = plate.keMm ?? plate.physicalMm;
     if (!v || v.length < 3 || (plate.kind && plate.kind !== 'main') || !Number.isFinite(mm)) continue;
-    const ux = v[1]![0]! - v[0]![0]!, uy = v[1]![1]! - v[0]![1]!, uz = v[1]![2]! - v[0]![2]!;
-    const wx = v[2]![0]! - v[0]![0]!, wy = v[2]![1]! - v[0]![1]!, wz = v[2]![2]! - v[0]![2]!;
-    const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx, length = Math.hypot(nx, ny, nz);
-    if (length > 1e-12 && Math.abs(ny) / length < .5) rows.push(nx / length, nz / length, mm!, owner);
+    // the polygon's area vector (half the sum of its edge cross products): its direction is the outward normal
+    let ax = 0, ay = 0, az = 0;
+    for (let i = 0; i < v.length; i++) {
+      const a = v[i]!, b = v[(i + 1) % v.length]!;
+      ax += a[1]! * b[2]! - a[2]! * b[1]!; ay += a[2]! * b[0]! - a[0]! * b[2]!; az += a[0]! * b[1]! - a[1]! * b[0]!;
+    }
+    const twice = Math.hypot(ax, ay, az);
+    if (twice > 1e-12) rows.push(ax / twice, az / twice, mm!, owner, twice / 2);
   }
   const table = Float64Array.from(rows);
   facePlates.set(armour, table);
@@ -93,30 +97,34 @@ function verticalMainPlates(armour: AuxiliaryArmour): Float64Array {
 }
 /**
  * VH.14 balance (the coordinator's check, 2026-10-15: no roof gun spends its fire on a vehicle it cannot hurt): the
- * thinnest line-of-sight main armour a level round from (fromX, fromZ) meets on the target's vertical plates turned
- * towards it (hull plates by the hull's yaw, turret plates by the turret's too; obliquity under 78 degrees): KE mm over
- * the cosine. A flank or rear the round can defeat counts; a front it cannot does not. 0 for a target without an armour
- * table (a soft target, always engaged); the thinnest vertical plate when none faces the shooter. Pure over the spec and
- * the two positions and yaws, so both authorities agree.
+ * share of the main armour a target presents to a level round from (fromX, fromZ) that a round of `penMm` defeats.
+ * Each plate turned towards the shooter (hull plates by the hull's yaw, turret plates by the turret's too; obliquity
+ * under 78 degrees) counts by its presented area (area times the cosine) and is defeated when its line-of-sight
+ * thickness (KE mm over the cosine) is at most `penMm`. A thin flank or rear counts by its size; a sight box's thin
+ * face on a heavy front does not make the front a target. 1 for a target without an armour table (a soft target, always
+ * engaged). Pure over the spec and the two positions and yaws, so both authorities agree.
  */
-export function exposedArmourMm(target: AuxiliaryEntity, fromX: number, fromZ: number): number {
+export function defeatableShare(target: AuxiliaryEntity, fromX: number, fromZ: number, penMm: number): number {
   const armour = target.spec.armor;
-  if (!armour) return 0;
-  const plates = verticalMainPlates(armour);
+  if (!armour) return 1;
+  const plates = mainPlates(armour);
   const s = target.state, dx = fromX - s.pos.x, dz = fromZ - s.pos.z, reach = Math.hypot(dx, dz);
-  if (!plates.length || reach < 1e-6) return thinnestVerticalArmourMm(target.spec);
-  let best = Infinity;
+  if (!plates.length || reach < 1e-6) return thinnestVerticalArmourMm(target.spec) <= penMm ? 1 : 0;
+  let presented = 0, defeated = 0;
   for (let owner = 0; owner < 2; owner++) {
     const yaw = s.yaw + (owner ? s.turretYaw : 0), c = Math.cos(yaw), n = Math.sin(yaw);
     // the shooter's bearing in the plate owner's frame (the inverse of the owner's yaw about +Y)
     const lx = (dx * c - dz * n) / reach, lz = (dx * n + dz * c) / reach;
-    for (let i = 0; i < plates.length; i += 4) {
+    for (let i = 0; i < plates.length; i += 5) {
       if (plates[i + 3] !== owner) continue;
       const facing = plates[i]! * lx + plates[i + 1]! * lz;
-      if (facing > .2) best = Math.min(best, plates[i + 2]! / facing);
+      if (facing <= .2) continue;
+      const seen = plates[i + 4]! * facing;
+      presented += seen;
+      if (plates[i + 2]! / facing <= penMm) defeated += seen;
     }
   }
-  return best === Infinity ? thinnestVerticalArmourMm(target.spec) : best;
+  return presented > 0 ? defeated / presented : (thinnestVerticalArmourMm(target.spec) <= penMm ? 1 : 0);
 }
 export const SMOKE_COOLDOWN_S = 28;
 export const ROOF_GUN_SHELL: DamageShellSpec = auxiliaryWeaponProfile(12.7).shell;
@@ -221,13 +229,14 @@ function depressionAt(gun: RoofGunMount, yaw: number, weapon: number): number {
 }
 /** VH.14 balance: the station's weapon and range test for selectRoofTarget (module scratch, one scan at a time). */
 let engageWeapon: AuxiliaryWeaponProfile | null = null;
-/** selectRoofTarget's filter for a station: a target its round can hurt from here (the weapon profile's
- * engagePenRatio over the armour the target turns towards it, exposedArmourMm) and, with a traverse arc, a bearing inside
- * it. */
+/** selectRoofTarget's filter for a station: a target its round can hurt from here (at least the weapon profile's
+ * engageShare of the armour the target turns towards it defeated at its penetration over engagePenRatio, defeatableShare)
+ * and, with a traverse arc, a bearing inside it. */
 function stationAccepts(target: AuxiliaryEntity): boolean {
   if (engageWeapon) {
     const distance = Math.hypot(target.state.pos.x - origin.x, target.state.pos.z - origin.z);
-    if (penAtDistanceMm(engageWeapon.shell, distance) < exposedArmourMm(target, origin.x, origin.z) * engageWeapon.engagePenRatio) return false;
+    const pen = penAtDistanceMm(engageWeapon.shell, distance) / engageWeapon.engagePenRatio;
+    if (defeatableShare(target, origin.x, origin.z, pen) < engageWeapon.engageShare) return false;
   }
   return withinStationArc(target);
 }

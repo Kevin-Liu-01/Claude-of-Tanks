@@ -147,9 +147,10 @@ const engineCtx = {
 };
 // one hull per weapon grammar: crew pintle guns (M1A1), the American RWS (M1A2), open-yoke stations (CV90, Type 89,
 // VT-4A1), a measured source station (T-72B3M), the field roof weapon (Griffin 50), exact source-measured guns (Sabra,
-// BMP-3M Dragun, Ares, Merkava Barak), the Tagil tower (T-90MS), an IFV's gun steel (M2A2 Bradley)
+// BMP-3M Dragun, Ares, Merkava Barak), the Tagil tower (T-90MS). (VH.14, 2026-10-15: the M2A2 Bradley's stowed M240,
+// this list's IFV gun steel, is gone with every decorative gun; the CV90's open-yoke station is the IFV case.)
 const IDS = ['m1a1', 'm1a2', 'cv90', 'type89_light_tiger', 'vt4a1', 't72b3m', 'griffin50_x', 'sabra_mk2_x',
-  'bmp3m_dragun125_x', 'ares_apc_x', 'merkava4_barak', 't90ms', 'm2a2_bradley'];
+  'bmp3m_dragun125_x', 'ares_apc_x', 'merkava4_barak', 't90ms'];
 const isWeaponMesh = (o) => {
   for (let q = o; q; q = q.parent) {
     const fitting = q.userData?.fitting;
