@@ -7,7 +7,7 @@
 // concrete bands under flat roofs, the windows in ribbons; the airport fire station with its hose tower; a Rozhnovsky
 // water tower; shelled concrete shells. Burnt-out and boarded windows come from the house grammar's wear pass.
 import { PartSink, faceBox, facePanel, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedFace, wallPolygon, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedBox, holedFace, recordShaft, wallPolygon, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -318,10 +318,19 @@ const controlTower: RegionalBuilder = (ctx) => {
   // the cab and its roof stay within 0.6 m of the plot (the plot guard allows 0.8)
   const Hs = 12.5 + rng() * 3, C = Math.min(S + 1.1, Math.min(ctx.info.w, ctx.info.d) + 0.4), Hc = 3.0;
   const wall: RegionalBucket = ctx.wallBucket === 'stone' || rng() < 0.4 ? 'stone' : 'plaster';
-  sink.span(wall, -S / 2, -0.4, -S / 2, S / 2, Hs, S / 2);
+  // (props census #5, lane B 2026-10-15) the shaft's door and its stair windows cut through it (they were laid on a solid
+  // span), the units at the back of the reveals; the tower recorded as a shaft body (the cab its crown)
+  const stair: number[] = [];
+  for (let y = 3.6; y < Hs - 2; y += 3.0) stair.push(y);
+  holedBox(sink, wall, -S / 2, -S / 2, S / 2, S / 2, -0.4, Hs,
+    { front: [{ u0: -0.55, u1: 0.55, y0: 0, y1: 2.3 }, ...stair.map((y) => ({ u0: -0.35, u1: 0.35, y0: y, y1: y + 1.2 }))] }, 0.35, 0.3);
+  recordShaft(sink, 0, 0, S, Hs + Hc + 0.7, wall);
   const front: Face = { origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S };
-  doorUnit(sink, front, 0, 0, 1.1, 2.3, { leaf: pick(rng, STEEL_DOORS), frame: { bucket: 'stone', width: 0.14, out: 0.05 }, steps: { bucket: 'stone' }, leafKind: 'glazed' }, 0.15);
-  for (let y = 3.6; y < Hs - 2; y += 3.0) windowUnit(sink, front, 0, y, 0.7, 1.2, STAIR_WINDOW, rng, 0.25);
+  sink.recess = 0.3;
+  try {
+    doorUnit(sink, front, 0, 0, 1.1, 2.3, { leaf: pick(rng, STEEL_DOORS), frame: { bucket: 'stone', width: 0.14, out: 0.05 }, steps: { bucket: 'stone' }, leafKind: 'glazed' }, 0.15);
+    for (const y of stair) windowUnit(sink, front, 0, y, 0.7, 1.2, STAIR_WINDOW, rng, 0.25);
+  } finally { sink.recess = 0; }
   // the cab: floor slab, the dark core (its collision), raked panes and mullions, the roof slab
   sink.span('stone', -C / 2 - 0.15, Hs, -C / 2 - 0.15, C / 2 + 0.15, Hs + 0.35, C / 2 + 0.15);
   const y0 = Hs + 0.35, y1 = y0 + Hc;
