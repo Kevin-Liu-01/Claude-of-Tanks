@@ -1488,6 +1488,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/deltaPlasterPalette.selftest.mjs',
     'src/world/liquidSurfaceDetail.selftest.mjs',
     'src/world/iceSurfaceDetail.selftest.mjs',
+    'src/world/iceCracks.selftest.mjs',
     'src/world/vegetationLighting.selftest.mjs',
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
