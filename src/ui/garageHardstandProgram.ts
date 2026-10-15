@@ -368,6 +368,7 @@ export function garageHardstandGradedHook(
   grain: THREE.Texture | null,
   grainStrength: number,
   detail?: { readonly uniform: { value: THREE.Texture | null }; readonly kind: GarageHardstandDetailKind } | null,
+  wet?: { readonly mask: THREE.Texture | null; readonly amount: number } | null,
 ): (shader: { vertexShader: string; fragmentShader: string; uniforms: Record<string, THREE.IUniform> }) => void {
   return (shader) => {
   if (!shader.vertexShader.includes('#include <begin_vertex>') || !shader.fragmentShader.includes('#include <alphamap_fragment>')
@@ -381,6 +382,10 @@ export function garageHardstandGradedHook(
   shader.uniforms.hardstandDetailParams = {
     value: params ? new THREE.Vector3(1 / params.tileM, params.normal, params.albedo) : new THREE.Vector3(1, 0, 0),
   };
+  // standing water (Monsoon's puddles, garage round 7): the yard's wet mask on the floor's own UVs polishes the puddles
+  // flat and glossy, and the amount dampens the whole yard; every other floor reads it at zero (the same program)
+  shader.uniforms.hardstandWetMask = { value: wet?.mask ?? grain };
+  shader.uniforms.hardstandWet = { value: wet?.mask ? wet.amount : 0 };
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', `#include <common>
 attribute float hardstandBlend;
@@ -403,6 +408,8 @@ uniform sampler2D hardstandGrain;
 uniform float hardstandGrainStrength;
 uniform sampler2D hardstandDetail;
 uniform vec3 hardstandDetailParams;
+uniform sampler2D hardstandWetMask;
+uniform float hardstandWet;
 float hardstandHash(vec2 p) {
   p = fract(p * vec2(0.1031, 0.1030));
   p += dot(p, p.yx + 33.33);
@@ -419,11 +426,20 @@ float hardstandNoise(vec2 p) {
 diffuseColor.rgb *= mix(vec3(1.0), texture2D(hardstandGrain, vHardstandGround * ${(1 / GARAGE_HARDSTAND_GRAIN_TILE_M).toFixed(4)}).rgb * 2.0,
   hardstandGrainStrength);
 vec4 hardstandDetailTexel = texture2D(hardstandDetail, vHardstandGround * hardstandDetailParams.x);
-diffuseColor.rgb *= mix(1.0, hardstandDetailTexel.b * 2.0, hardstandDetailParams.z);`)
+diffuseColor.rgb *= mix(1.0, hardstandDetailTexel.b * 2.0, hardstandDetailParams.z);
+#ifdef USE_MAP
+float hardstandWater = hardstandWet * texture2D(hardstandWetMask, vMapUv).r;
+#else
+float hardstandWater = 0.0;
+#endif
+diffuseColor.rgb *= 1.0 - 0.2 * hardstandWater;`)
+    .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+roughnessFactor = mix(roughnessFactor * (1.0 - 0.28 * hardstandWet), 0.06, hardstandWater);`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 {
   vec2 hardstandSlope = (hardstandDetailTexel.rg * 2.0 - 1.0) * hardstandDetailParams.y;
   normal = normalize(normal + vHardstandAxisX * hardstandSlope.x + vHardstandAxisZ * hardstandSlope.y);
+  normal = normalize(mix(normal, nonPerturbedNormal, hardstandWater * 0.92)); // standing water lies flat
 }`)
     .replace('#include <alphamap_fragment>', `#include <alphamap_fragment>
 {

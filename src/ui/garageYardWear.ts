@@ -92,6 +92,78 @@ function px(xM: number, zM: number): [number, number] {
   return [((xM + APRON_W_M / 2) / APRON_W_M) * CANVAS_W, ((zM + APRON_D_M / 2) / APRON_D_M) * CANVAS_H];
 }
 
+/**
+ * Monsoon's standing water (garage round 7, place-truth; the critic panel, 2026-10-14: "a dry, sunny dirt yard with no
+ * wet sheen, puddles"): the laterite yard's puddles in the view's frame (side, depth, radius m, squash, along the view's
+ * depth axis or across it), most in the camera's foreground and beside the hero, two lying in the hull ruts.
+ * Each is a main pool and two lobes. The albedo darkens them under a dried rim; the wet mask (garageHardstandWetMask)
+ * lets the graded floor program polish them flat and glossy.
+ */
+const MONSOON_PUDDLES: ReadonlyArray<readonly [number, number, number, number, boolean]> = [
+  [-4.6, -9.2, 1.7, 0.55, true], [3.9, -10.6, 1.15, 0.6, false], [6.8, -7.2, 1.9, 0.5, true], [-8.2, -5.4, 1.35, 0.6, false],
+  [1.2, -12.4, 0.85, 0.7, true], [-1.9, -7.6, 0.6, 0.7, false], [9.2, -2.8, 1.45, 0.55, true], [-10.6, 1.2, 1.7, 0.5, false],
+  [10.8, 3.6, 1.2, 0.6, true], [-6.2, 6.8, 1.0, 0.65, false], [5.2, 8.2, 1.5, 0.55, true], [-1.4, 9.8, 0.9, 0.7, false],
+  // the ruts the hulls leave between the causeway and the turntable, water lying in them
+  [-2.4, -11.6, 0.7, 0.32, true], [2.2, -13.0, 0.6, 0.3, true],
+];
+
+interface PuddleLobe { readonly x: number; readonly z: number; readonly r: number; readonly squash: number; readonly angle: number }
+
+function monsoonPuddleLobes(): PuddleLobe[] {
+  const lobes: PuddleLobe[] = [];
+  MONSOON_PUDDLES.forEach(([side, depth, r, squash, alongDepth], index) => {
+    // the apron canvas is in the pack's x/z (garageViewPoint: x = (side - depth) / sqrt 2, z = -(side + depth) / sqrt 2)
+    const x = (side - depth) * Math.SQRT1_2, z = -(side + depth) * Math.SQRT1_2;
+    const angle = alongDepth ? Math.PI / 4 : -Math.PI / 4;
+    lobes.push({ x, z, r, squash, angle });
+    for (const k of [0, 1]) {
+      const turn = angle + (index * 2.4 + k * 2.2), reach = r * (0.55 + 0.1 * k);
+      lobes.push({ x: x + Math.cos(turn) * reach, z: z + Math.sin(turn) * reach * squash, r: r * (0.55 - 0.1 * k), squash, angle: angle + 0.4 * (k - 0.5) });
+    }
+  });
+  return lobes;
+}
+
+/**
+ * The yard's wet mask (garageHardstandGradedHook's standing water): white in the puddles, a faint damp halo round them,
+ * on the apron canvas's frame and wrapping. Null for every dry yard and in plain Node.
+ */
+export function garageHardstandWetMask(style: GarageHardstandStyle): THREE.CanvasTexture | null {
+  if (style !== 'earth-wet' || typeof document === 'undefined') return null;
+  const scale = 0.25;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(CANVAS_W * scale);
+  canvas.height = Math.round(CANVAS_H * scale);
+  const g = canvas.getContext('2d');
+  if (!g) return null;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  for (const lobe of monsoonPuddleLobes()) {
+    const [x, y] = px(lobe.x, lobe.z);
+    for (const [reach, core, halo] of [[1.5, 0.3, 0.0], [1.0, 1.0, 0.85]] as const) {
+      const r = Math.max(1, lobe.r * reach * PX_PER_M * scale);
+      g.save();
+      g.translate(x * scale, y * scale);
+      g.rotate(lobe.angle);
+      g.scale(1, lobe.squash);
+      const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
+      grad.addColorStop(0, `rgba(255,255,255,${core})`);
+      grad.addColorStop(0.62, `rgba(255,255,255,${halo})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad;
+      g.globalCompositeOperation = 'lighten';
+      g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.wrapS = THREE.MirroredRepeatWrapping;
+  texture.wrapT = THREE.MirroredRepeatWrapping;
+  texture.userData.garageHardstandWetMask = style;
+  return texture;
+}
+
 const rgba = (c: readonly [number, number, number], a: number): string =>
   `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a.toFixed(3)})`;
 
@@ -480,12 +552,12 @@ function drawHardstand(
       break;
     }
     case 'earth-wet': {
-      // monsoon laterite: puddles with darker wet ground and lighter dried rims, gravel worked into the ruts
-      for (let i = 0; i < 22; i++) {
-        const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M, r = 0.5 + rng() * 1.8;
-        if (Math.hypot(xM, zM) < 6.6) continue;
-        blotWrapped(xM, zM, r * 1.3, 'rgba(176,132,96,0.22)', 'rgba(176,132,96,0.07)', 0.45 + rng() * 0.3);
-        blotWrapped(xM, zM, r, 'rgba(40,34,30,0.5)', 'rgba(52,40,32,0.26)', 0.45 + rng() * 0.3);
+      // monsoon laterite: the puddles (MONSOON_PUDDLES) dark under lighter dried rims, the wet ground darker round them,
+      // gravel worked into the ruts
+      for (const lobe of monsoonPuddleLobes()) {
+        blot(lobe.x, lobe.z, lobe.r * 1.5, 'rgba(96,68,48,0.26)', 'rgba(96,68,48,0.08)', lobe.squash, lobe.angle);
+        blot(lobe.x, lobe.z, lobe.r * 1.18, 'rgba(176,132,96,0.2)', 'rgba(176,132,96,0.06)', lobe.squash, lobe.angle);
+        blot(lobe.x, lobe.z, lobe.r, 'rgba(38,33,29,0.62)', 'rgba(48,38,31,0.4)', lobe.squash, lobe.angle);
       }
       aggregate(2600, ['150,140,128', '60,44,34'], [0.6, 2.8], [0.1, 0.28], 0.85);
       break;
