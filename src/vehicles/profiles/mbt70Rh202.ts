@@ -12,7 +12,8 @@ import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 /** Turret-local datums: the yaw ring sits on the commander's station top (x 0.62, z -0.66). */
-export function addMbt70Rh202(P: TankBuilderPort, top: number): THREE.Group {
+type Rh202Port = Pick<TankBuilderPort, 'add' | 'addEquipment' | 'forEachBucketPart' | 'turretG'> & { readonly q?: boolean };
+export function addMbt70Rh202(P: Rh202Port, top: number): THREE.Group {
   const { box, cylX, cylY, cylZ, xform } = KIT;
   const x = 0.62, z = -0.66, axisY = top + 0.20;
   const station = beginAuxiliaryStation(P, { name: 'mbt70Rh202Station', caliberMm: 20,
