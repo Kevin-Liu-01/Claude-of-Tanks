@@ -143,7 +143,7 @@ vec3 hlStrataAt( vec3 w, vec3 n, float eY, float eA, out float ledge ) {
   float hb = w.y + ( hlNoise( q * 0.00038 + vec2( 3.1, -7.7 ) ) - 0.5 ) * 650.0 + ( hlNoise( q * 0.0011 + vec2( -5.3, 2.9 ) ) - 0.5 ) * 160.0
     + 26.0 * smoothstep( 0.49, 0.51, hlNoise( q * 0.0009 + vec2( 9.3, 1.1 ) ) ) + dot( q, vec2( 0.8, 0.6 ) ) * uHlStrata.w;
   float F = floor( hb / 180.0 ), local = hb - F * 180.0;
-  float massive = step( 0.62, hlHash( vec2( F, 2.71 ) ) );
+  float massive = step( 0.72, hlHash( vec2( F, 2.71 ) ) );
   float T = massive > 0.5 ? mix( 40.0, 90.0, hlHash( vec2( F, 5.3 ) ) ) : exp( mix( 1.386, 2.708, hlHash( vec2( F, 8.9 ) ) ) );
   float ph = local / T + 0.18 * sin( local / ( 2.3 * T ) + F );
   float k = floor( ph ) + F * 97.0, fr = fract( ph );
@@ -151,11 +151,12 @@ vec3 hlStrataAt( vec3 w, vec3 n, float eY, float eA, out float ledge ) {
   float crisp = 1.0 - smoothstep( 0.3, 0.7, e );
   float tone = massive > 0.5 ? 0.38 + 0.18 * hlHash( vec2( k, 7.13 ) ) : 0.55 + 0.45 * hlHash( vec2( k, 7.13 ) );
   // the joint under each bed (~1.5 m), the bench's snow on a thin bed's top (0.3–3 m, broken along the strike)
-  float jw = min( 0.3, 1.5 / T );
+  float jw = min( 0.3, 2.2 / T );
   float joint = 1.0 - smoothstep( jw * 0.4, jw + e, fr );
   float lw = min( 0.4, mix( 0.3, 3.0, hlHash( vec2( k, 3.71 ) ) ) / T );
   float run = smoothstep( 0.46, 0.56, 0.55 * hlNoise( q * 0.02 + vec2( k * 3.1, k * 1.7 ) ) + 0.45 * hlNoise( q * 0.08 + vec2( k * 5.3, k * 2.9 ) ) );
-  float hold = smoothstep( 0.47, 0.6, n.y ) * ( 1.0 - massive * 0.85 );
+  // (a bench holds snow on a face to ~70°; a massive band only on its top, thinner)
+  float hold = smoothstep( 0.32, 0.5, n.y ) * ( 1.0 - massive * 0.6 );
   ledge = smoothstep( 1.0 - lw - e, 1.0 - lw + e, fr ) * run * hold * uHlStrata.z * crisp;
   // the varnish down the fall line (across the strike, a few metres; faded where a pixel holds several)
   vec2 sd = normalize( vec2( -n.z, n.x ) + vec2( 1e-4, 0.0 ) );
@@ -163,7 +164,7 @@ vec3 hlStrataAt( vec3 w, vec3 n, float eY, float eA, out float ledge ) {
   float streak = smoothstep( 0.55, 0.85, hlNoise( vec2( a, hb / 140.0 ) ) ) * ( 1.0 - smoothstep( 0.3, 0.8, eA / 9.0 ) );
   // (the faces past ~60° bare and dark: the light spire reads against them)
   float bare = 1.0 - 0.3 * smoothstep( 0.55, 0.45, n.y );
-  vec3 rockC = uHlRock.rgb * 0.7 * bare * mix( 0.7, tone * ( 1.0 - 0.55 * joint ), crisp ) * ( 1.0 - 0.4 * streak );
+  vec3 rockC = uHlRock.rgb * 0.62 * bare * mix( 0.7, tone * ( 1.0 - 0.7 * joint ), crisp ) * ( 1.0 - 0.4 * streak );
   vec3 snowC = vec3( 0.72, 0.79, 0.88 );
   return mix( mix( rockC, snowC, ( 1.0 - crisp ) * uHlStrata.z * hold * 0.12 ), snowC, ledge );
 }
