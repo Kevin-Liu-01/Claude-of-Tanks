@@ -52,7 +52,8 @@ function localRay(owner,origin,direction,objects){
 function weaponStock(mg){
  const pitch=mg.children.find(o=>o.name==='auxiliaryWeaponPitch');
  if(!pitch)return mg.getObjectByName('browningDerivedMachineGunBody');
- const stock=pitch.children.find(o=>o.name==='fitting_auxiliaryWeapon_dark');
+ // VH.14 (2026-10-15): a working crew-served MAG pitches the same receiver/barrel stock under its body name
+ const stock=pitch.children.find(o=>o.name==='fitting_auxiliaryWeapon_dark'||o.name==='browningDerivedMachineGunBody');
  assert.ok(stock?.isMesh,'remote MAG receiver/barrel pitches inside its own fitting');return stock;
 }
 function barrelContinuous(mg,scale){
@@ -109,7 +110,9 @@ function verifySeats(tank,id){
    assert.throws(()=>assertContact(arm,turret,'detached radar arm',new T.Vector3(side*.20,0,0)),/finite receiving/);
   }
  }
- const mgs=[];rig.traverse(o=>{if(o.name==='fitting_browningDerived_mag')mgs.push(o)});
+ // VH.14 (2026-10-15): the Mk 3 X's two MAGs are named stations (merkava3dXCommanderMag/LoaderMag), so the MAG
+ // fittings are found by their class, not their default name
+ const mgs=[];rig.traverse(o=>{if(o.userData.fittingRoot&&o.userData.weaponClass==='mag'&&o.userData.browningDerivedStandard)mgs.push(o)});
  assert.equal(mgs.length,id==='merkava3d_x'?2:1,'all original MAG assemblies retained');
  for(const mg of mgs){
   assert.ok(mg.parent===rig,'roof weapons yaw with their receiving stock');

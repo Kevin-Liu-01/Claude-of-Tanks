@@ -3812,9 +3812,41 @@ function collectKeepOut(group: THREE.Group): DecorKeepOut[] {
   const m = new THREE.Matrix4(), v = new THREE.Vector3();
   const cells = new Map<string, [number, number]>();
   const CELL = 0.1;
+  // VH.14: a crew-served roof gun made a working station carries its gun, feed and can on a pitch rig of their own, so
+  // the fitting's slot meshes are split in two. Its feet are read per fitting slot over the whole station, as the fixed
+  // fitting's merged slot meshes were, so the decor's keep-out (and its loads' seats) do not move.
+  const crew = new Set<THREE.Object3D>();
+  group.traverse((o) => { if (o.userData?.crewServed && o.userData.fittingRoot && KEEP_OUT_FITTINGS[o.userData.fitting]) crew.add(o); });
+  const crewOwned = (o: THREE.Object3D): boolean => { for (let p: THREE.Object3D | null = o; p; p = p.parent) if (crew.has(p)) return true; return false; };
+  for (const root of crew) {
+    const rule = KEEP_OUT_FITTINGS[root.userData.fitting]!, bySlot = new Map<string, THREE.Mesh[]>();
+    root.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !o.geometry?.getAttribute('position') || o.visible === false) return;
+      const slot = String(o.userData.fittingSlot ?? o.uuid);
+      bySlot.set(slot, [...(bySlot.get(slot) ?? []), o]);
+    });
+    for (const meshes of bySlot.values()) {
+      let minY = Infinity;
+      for (const mesh of meshes) {
+        const pos = mesh.geometry.getAttribute('position'); m.multiplyMatrices(inv, mesh.matrixWorld);
+        for (let i = 0; i < pos.count; i++) minY = Math.min(minY, v.fromBufferAttribute(pos, i).applyMatrix4(m).y);
+      }
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const mesh of meshes) {
+        const pos = mesh.geometry.getAttribute('position'); m.multiplyMatrices(inv, mesh.matrixWorld);
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          if (v.y > minY + rule.foot) continue;
+          x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
+        }
+      }
+      if (x0 <= x1) out.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, r: Math.min(rule.maxR, Math.hypot(x1 - x0, z1 - z0) / 2 + rule.clear) });
+    }
+  }
   group.traverse((o) => {
     if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || !o.geometry || o.visible === false) return;
     if ((o.name || '').startsWith('rig_decor')) return;
+    if (crew.size && crewOwned(o)) return;
     const fitting = typeof o.userData.fitting === 'string' ? KEEP_OUT_FITTINGS[o.userData.fitting] : undefined;
     const structural = KEEP_OUT_STRUCTURE_RE.test(o.name || '');
     if (!fitting && !structural) return;
@@ -4009,6 +4041,10 @@ const GUN_BODY_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2'
  * lead's.
  */
 const GUN_BODY_EXEMPT: ReadonlySet<string> = new Set(['smoke', 'aamg']);
+function crewServedAncestor(o: THREE.Object3D): boolean {
+  for (let p: THREE.Object3D | null = o.parent; p; p = p.parent) if (p.userData?.crewServed) return true;
+  return false;
+}
 function collectGunBodies(group: THREE.Group): THREE.Box3[] {
   const out: THREE.Box3[] = [];
   group.updateWorldMatrix(true, true);
@@ -4016,7 +4052,9 @@ function collectGunBodies(group: THREE.Group): THREE.Box3[] {
   group.traverse((o) => {
     if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || !o.geometry?.getAttribute('position')) return;
     if (o.visible === false || (o.name || '').startsWith('rig_decor')) return;
-    if (typeof o.userData.fitting !== 'string' || !GUN_BODY_FITTINGS.has(o.userData.fitting)) return;
+    // VH.14: a working crew station's gun rides its pitch rig as an auxiliary weapon; its body is the fixed gun's body
+    const crewGun = o.userData.fitting === 'auxiliaryWeapon' && crewServedAncestor(o);
+    if (!crewGun && (typeof o.userData.fitting !== 'string' || !GUN_BODY_FITTINGS.has(o.userData.fitting))) return;
     const toFrame = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
     for (const b of connectedPieceBoxes(o, toFrame)) out.push(b.expandByScalar(0.01));
   });

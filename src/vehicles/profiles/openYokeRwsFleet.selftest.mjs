@@ -23,6 +23,9 @@ const TARGETS = Object.freeze({
     variant: 'korean-twin', mount: [0.70, 0.70, -0.68],
     sizeStandard: 'k2b-compact-tower', scale: 1.14, towerRiseM: 0.12,
     minimumWidth: 0.74, minimumHeight: 0.66,
+    // VH.14 (coordinator ruling 2026-10-14): the K2B's second roof RWS (a MAG) was decorative and is gone; the
+    // tower is its only roof gun
+    soleRoofWeapon: true,
   }),
   kf51b: Object.freeze({
     variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],
@@ -177,7 +180,9 @@ for (const [id, expected] of Object.entries(TARGETS)) {
         otherWeaponFittings.push(node);
       }
     });
-    if (!expected.replacesCommanderGun && expectedWeaponRole === 'auxiliary') {
+    if (expected.soleRoofWeapon) {
+      assert.equal(otherWeaponFittings.length, 0, `${id}: the tower is the only roof weapon`);
+    } else if (!expected.replacesCommanderGun && expectedWeaponRole === 'auxiliary') {
       assert.ok(otherWeaponFittings.length >= 1,
         `${id}: auxiliary tower supplements the original roof weapon`);
     }

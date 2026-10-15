@@ -38,7 +38,12 @@ for(const quality of['high','low']) {
     }
     close(hit([.4723,3.6,-3.4117],[0,-1,0])?.point.y,3.3952,.0001,'source raised tapered cupola, not the former flat lid');
     const weapon=tank.root.getObjectByName('jpze100XEnclosedCupolaWeapon');
-    assert.equal(weapon.parent.name,'rig_hull','actual cupola weapon belongs to the fixed hull, not the cannon traverse');
+    // VH.14 (2026-10-15): the cupola's MG 42 is a working station; the station, not the gun, hangs off the hull rig
+    const cupolaStation=weapon.parent?.parent;
+    assert.equal(weapon.parent.name,'auxiliaryWeaponPitch','the cupola weapon elevates in its working station');
+    assert.equal(cupolaStation?.name,'jpze100XCupolaStation');
+    assert.equal(cupolaStation.parent.name,'rig_hull','actual cupola weapon belongs to the fixed hull, not the cannon traverse');
+    assert.equal(cupolaStation.userData.caliberMm,7.92,'the MG 42 station is calibre-true');
     assert.equal(weapon.userData.fittingRoot,true);
     assert.equal(weapon.userData.fitting,'pintleMG');
     const receiver=tank.root.getObjectByName('jpze100XCupolaReceiver');
