@@ -171,3 +171,72 @@ export function buildMooringBuoy(coast: DriftCoast, r: number, v: readonly numbe
   g.userData.buoy = true;
   return g;
 }
+
+// ------------------------------------------------------------------------------------------------- mooring stake
+/** A driven mooring stake 0.7 m long centred on the origin (the old box's frame): a round pole sharpened into the mud,
+ *  its head broomed by the maul, the line's hitch two turns round it just under the head (where the kit ties the line,
+ *  0.3 m over the centre). Timber (no colours). */
+export function mooringStakeGeometry(): BG {
+  const pole = new THREE.CylinderGeometry(0.042, 0.05, 0.62, 7, 1, false);
+  pole.translate(0, 0.04, 0);
+  const point = new THREE.CylinderGeometry(0.05, 0.012, 0.08, 7, 1, false);
+  point.translate(0, -0.31, 0);
+  const broom = new THREE.CylinderGeometry(0.05, 0.043, 0.03, 7, 1, false);
+  broom.translate(0, 0.36, 0);
+  const parts: BG[] = [pole, point, broom];
+  for (const dy of [0.28, 0.31]) {
+    const turn = new THREE.TorusGeometry(0.052, 0.014, 4, 9);
+    turn.rotateX(Math.PI / 2);
+    turn.translate(0, dy, 0);
+    parts.push(turn);
+  }
+  return merged(parts);
+}
+
+// -------------------------------------------------------------------------------------------------- ford markers
+export type FordStyle = 'gauge' | 'bamboo';
+export function fordStyleForMap(mapId: string): FordStyle { return mapId === 'delta' ? 'bamboo' : 'gauge'; }
+
+const GAUGE_RED = rgb(0xa8261e), GAUGE_WHITE = rgb(0xdedbd2), POST_DARK = rgb(0x3b3127), BAMBOO = rgb(0xb5a26a),
+  BAMBOO_NODE = rgb(0x7d6b40), RAG = rgb(0xb3321f);
+
+/**
+ * A ford marker standing on the ground at (x, y, z), driven 25 cm in, from five unit draws `v` (the old post's turn
+ * and UV jitter): its turn, lean and height. A 'gauge' is the depth post of a European ford: a square post painted in
+ * red and white 20 cm bands over its top metre, dark and weed-stained below, capped; a 'bamboo' is the Bengal pole:
+ * a bamboo culm with its nodes and a red rag tied at its head. Vertex-coloured, one geometry.
+ */
+export function fordMarker(style: FordStyle, x: number, y: number, z: number, v: readonly number[]): BG {
+  const [turn, leanA, leanB, tall] = v;
+  let g: BG;
+  if (style === 'bamboo') {
+    const h = 2.0 + tall * 0.5;
+    const pole = new THREE.CylinderGeometry(0.03, 0.038, h + 0.25, 7, 8, false);
+    pole.translate(0, (h + 0.25) / 2 - 0.25, 0);
+    paintBy(pole, (_x, py) => (Math.abs(((py + 0.25) % 0.36) - 0.0) < 0.03 ? BAMBOO_NODE : BAMBOO), 0.15, 51);
+    // the rag: a strip knotted under the head, hanging and twisting off downwind
+    const rag = new THREE.BufferGeometry();
+    const p = [0.03, h - 0.12, 0, 0.03, h - 0.2, 0, 0.36, h - 0.24, 0.05, 0.34, h - 0.36, 0.07];
+    rag.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    rag.setAttribute('uv', new THREE.Float32BufferAttribute(new Array(8).fill(0), 2));
+    rag.setIndex([0, 1, 2, 2, 1, 3, 0, 2, 1, 2, 3, 1]);
+    rag.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    paintBy(rag, () => RAG, 0.2, 52);
+    g = merged([pole, rag]);
+  } else {
+    const h = 1.45 + tall * 0.2;
+    const post = new THREE.BoxGeometry(0.14, h + 0.25, 0.14, 1, 9, 1);
+    post.translate(0, (h + 0.25) / 2 - 0.25, 0);
+    paintBy(post, (_x, py) => (py < h - 1.0 ? POST_DARK : Math.floor((h - py) / 0.2) % 2 ? GAUGE_WHITE : GAUGE_RED), 0.1, 53);
+    const cap = new THREE.BoxGeometry(0.18, 0.04, 0.18);
+    cap.translate(0, h + 0.02, 0);
+    paintBy(cap, () => POST_DARK, 0.1, 54);
+    g = merged([post, cap]);
+  }
+  g.rotateY(turn * Math.PI);
+  g.rotateX((leanA - 0.5) * 0.08);
+  g.rotateZ((leanB - 0.5) * 0.08);
+  g.translate(x, y, z);
+  g.userData.fordMarker = style;
+  return g;
+}

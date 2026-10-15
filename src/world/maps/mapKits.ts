@@ -48,8 +48,11 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { buildDriftLog, buildMooringBuoy, driftCoastForMap, type DriftCoast } from './waterside.ts';
-import { buildGangway, buildJetty, buildRivaSteps, ironBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
+import { dressReedClump, reedFormForMap, type ReedForm } from './reedBeds.ts';
+import {
+  buildDriftLog, buildMooringBuoy, driftCoastForMap, fordMarker, fordStyleForMap, mooringStakeGeometry, type DriftCoast, type FordStyle,
+} from './waterside.ts';
+import { buildGangway, buildJetty, buildRivaSteps, ironBollard, timberBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -186,7 +189,8 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
-> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; jettyForm?: JettyForm; coast?: DriftCoast };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; jettyForm?: JettyForm; coast?: DriftCoast; reedForm?: ReedForm;
+  fordStyle?: FordStyle };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -973,7 +977,10 @@ function addWinterShoreReeds(
     const x = lake.x + Math.cos(angle) * radius;
     const z = lake.z + Math.sin(angle) * radius;
     if (!isDressingPointClear(heightField, x, z, 480, 6)) continue;
+    const from = buckets.straw.length;
     winterReedClump(buckets, rng, heightField, x, z);
+    dressReedClump('frost', buckets.straw, from, buckets.baked); // #16 r2: frost-killed, snow on their heads
+
   }
 }
 
@@ -1142,7 +1149,8 @@ export function dressMapExtras({
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees), jettyForm: jettyFormForMap(mapId ?? ''), coast: driftCoastForMap(mapId ?? '') };
+    trunks: trunksOf(trees), jettyForm: jettyFormForMap(mapId ?? ''), coast: driftCoastForMap(mapId ?? ''),
+    reedForm: reedFormForMap(mapId ?? ''), fordStyle: fordStyleForMap(mapId ?? '') };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1337,7 +1345,8 @@ function mooringStake(buckets: DressingBuckets, heightField: DressingHeightField
   const jitter = Math.sin(x * 12.9898 + z * 78.233) * 0.5;
   const sx = head[0] + ux * 1.7 - uz * 0.35 * jitter, sz = head[2] + uz * 1.7 + ux * 0.35 * jitter;
   const ground = heightField.getHeightAt(sx, sz);
-  const stake = box(0.08, 0.7, 0.08, 1.2);
+  // #16 r2 (Lane C, 2026-10-14): a round driven stake, its head broomed, the line's hitch round it (waterside.ts)
+  const stake = mooringStakeGeometry();
   stake.rotateZ(0.12 * jitter);
   stake.translate(sx, ground + 0.2, sz);
   buckets.wood.push(stake);
@@ -1639,12 +1648,12 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
   for (const end of [-1, 1]) {
     const along = plan.boat!.along + end * JETTY_SPAN_M / 2;
     const px = plan.x + dx * along + ax * side * 0.60, pz = plan.z + dz * along + az * side * 0.60;
-    const post = box(0.20, 0.55, 0.20, 1.2);
-    post.rotateY((rng() - 0.5) * 0.4);
-    post.translate(px, top + 0.275, pz);
-    jitterUV(post, rng);
-    // #16 r2: a riva's bollards are cast iron (the timber post's draws spent all the same)
+    // #16 r2 (Lane C, 2026-10-14): a round timber post with its rope groove (jettyKit.ts), a riva's in cast iron; the
+    // old box post's turn and UV draws are spent all the same
+    rng();
     const iron = form === 'riva' && buckets.baked;
+    const post = timberBollard(px, top, pz);
+    jitterUV(post, rng);
     if (iron) { post.dispose(); buckets.baked!.push(ironBollard(px, top, pz)); } else buckets.wood.push(post);
     // the line: from the bollard's top to the hull's near gunwale at that end
     const hullAlong = plan.boat!.along + end * boat.L * 0.42;
@@ -1752,6 +1761,7 @@ function addRiverBankReeds(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  form: ReedForm = 'phragmites',
 ): void {
   for (const m of links) {
     const clumps = 2 + ((rng() * 3) | 0);
@@ -1761,7 +1771,10 @@ function addRiverBankReeds(
       const x = m.x + Math.cos(a) * rr, z = m.z + Math.sin(a) * rr;
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
       if (heightField._roadDist(x, z) < 6) continue;
+      const from = buckets.straw.length;
       reedClump(buckets, rng, heightField, x, z);
+      // #16 r2 (Lane C, 2026-10-14): the region's reed on the culms just laid (reedBeds.ts: no draw, no query)
+      dressReedClump(form, buckets.straw, from, buckets.baked);
     }
   }
 }
@@ -1852,6 +1865,7 @@ function addFordMarkerPair(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  style: FordStyle = 'gauge',
 ): void {
   const [previousX, previousZ] = previous;
   const [x, z] = current;
@@ -1865,13 +1879,17 @@ function addFordMarkerPair(
     const markerZ = z + lateralZ * 4.6 * side;
     if (Math.max(Math.abs(markerX), Math.abs(markerZ)) > 470) continue;
     const markerY = heightField.getHeightAt(markerX, markerZ);
-    const post = box(0.16, 1.5, 0.16, 1.6);
-    post.rotateY(rng() * Math.PI);
-    post.translate(markerX, markerY + 0.72, markerZ);
-    buckets.wood.push(jitterUV(post, rng));
-    const tip = box(0.19, 0.22, 0.19, 1.0);
-    tip.translate(markerX, markerY + 1.45, markerZ);
-    buckets.plaster.push(tip);
+    // #16 r2 (Lane C, 2026-10-14): the region's ford marker (waterside.ts: a banded depth gauge, a Bengal bamboo pole
+    // with its rag), its turn, lean and height from the old post's five draws; painted (the post and its plaster cap
+    // where a kit has no painted bucket)
+    const v = [rng(), rng(), rng(), rng(), rng()];
+    if (buckets.baked) buckets.baked.push(fordMarker(style, markerX, markerY, markerZ, v));
+    else {
+      const post = box(0.16, 1.5, 0.16, 1.6);
+      post.rotateY(v[0] * Math.PI);
+      post.translate(markerX, markerY + 0.72, markerZ);
+      buckets.wood.push(post);
+    }
   }
 }
 
@@ -1881,6 +1899,7 @@ function addRiverFordMarkers(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  style: FordStyle = 'gauge',
 ): void {
   for (const nodes of roads) {
     let prev = false;
@@ -1888,19 +1907,19 @@ function addRiverFordMarkers(
       const [nx, nz] = nodes[i];
       const now = isInRiver(links, nx, nz);
       if (now !== prev && i > 0) {
-        addFordMarkerPair(nodes[i - 1], nodes[i], heightField, rng, buckets);
+        addFordMarkerPair(nodes[i - 1], nodes[i], heightField, rng, buckets, style);
       }
       prev = now;
     }
   }
 }
 
-function dressAutumnRiver({ L, heightField, rng, buckets }: FocusedDressingContext): void {
+function dressAutumnRiver({ L, heightField, rng, buckets, reedForm, fordStyle }: FocusedDressingContext): void {
   const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
   if (links.length < 3) return;
-  addRiverBankReeds(links, heightField, rng, buckets);
+  addRiverBankReeds(links, heightField, rng, buckets, reedForm);
   addRuinedRiverBridge(links, heightField, rng, buckets);
-  addRiverFordMarkers(L.roads, links, heightField, rng, buckets);
+  addRiverFordMarkers(L.roads, links, heightField, rng, buckets, fordStyle);
 }
 
 // =============================================================================
@@ -2169,7 +2188,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   const { L, heightField, rng, buckets } = ctx;
   const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
   if (links.length < 3) return;
-  addRiverBankReeds(links, heightField, rng, buckets);
+  addRiverBankReeds(links, heightField, rng, buckets, ctx.reedForm);
   // round 61: the bridge stands on the deck plane terrain.ts resolved for the station authored crossing: 'bridge';
   // a river without one keeps the round-1 ruin
   const decks = heightField.bridgeDecks ?? [];
@@ -2177,12 +2196,12 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   if (!decks.length) addRuinedRiverBridge(links, heightField, rng, buckets);
   // ford posts on every lane that wades the river; a lane a deck carries crosses dry-shod
   addRiverFordMarkers(L.roads.filter((_road, index) => !decks.some((deck) => deck.route === index)),
-    links, heightField, rng, buckets);
+    links, heightField, rng, buckets, ctx.fordStyle);
   addWeirAndMill(links, decks[0] ?? null, heightField, rng, buckets, ctx);
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [], jettyForm = 'estacade' }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [], jettyForm = 'estacade', reedForm }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   // Authored landing budget is independent of channel interpolation density.
@@ -2213,7 +2232,7 @@ function dressLakeRiverLandings(
     // round 3: the hauled-out boat's stake and line, after the landing's timber (its receipts walk the piles from the
     // landing's first piece)
     if (hauled) mooringStake(buckets, heightField, hauled.hull, landing.boatX, landing.boatZ, landing.boatYaw, hauled.halfLength);
-    if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets);
+    if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets, reedForm);
     shore?.keepOut.push({ x: landing.boatX, z: landing.boatZ, r: 4.2 });
     if (landing.shore) registerShoreLanding(shore, landing.shore);
     else {

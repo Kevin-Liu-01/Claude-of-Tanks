@@ -606,3 +606,19 @@ export function buildGangway(wood: BG[], x0: number, z0: number, ang: number, gr
   wood.push(merged);
   return merged;
 }
+
+/** A timber mooring post standing on the deck at (x, y, z): a round post 0.55 m tall, its head chamfered and a rope's
+ *  groove worn round it under the head. Untextured UVs (the caller jitters them as it did the old box post). */
+export function timberBollard(x: number, y: number, z: number): BG {
+  const parts = [
+    roundMember([0, y, 0], [0, y + 0.36, 0], 0.105, 0.1, 8),
+    roundMember([0, y + 0.36, 0], [0, y + 0.42, 0], 0.085, 0.085, 8, true),
+    roundMember([0, y + 0.42, 0], [0, y + 0.52, 0], 0.1, 0.1, 8, true),
+    roundMember([0, y + 0.52, 0], [0, y + 0.55, 0], 0.1, 0.075, 8),
+  ];
+  const merged = mergeGeometries(parts, false)!;
+  for (const g of parts) g.dispose();
+  merged.translate(x, 0, z);
+  merged.userData.jetty = 'bollard';
+  return merged;
+}
