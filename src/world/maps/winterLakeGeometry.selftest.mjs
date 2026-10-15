@@ -299,9 +299,7 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
     assert.ok(built.buckets.straw.length > 0, `${mapId}/${seed}: the authored reed/head population exists`);
     const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
     assert.deepEqual(names.filter(name => built.buckets[name].length),
-      // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood; #16 r2 (Lane C, 2026-10-14): the frost-killed reeds'
-      // snow caps and drifts are in the plaster with the lake's snow berms (reedBeds.ts), no bucket more
-      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw'] : ['plaster', 'wood', 'straw'],
+      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw'] : ['plaster', 'wood', 'straw'], // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood
       'kit reuses the already-populated plaster draw; its obsolete stone batch is eliminated');
     let mapBerms = 0, mapWedges = 0;
     for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
