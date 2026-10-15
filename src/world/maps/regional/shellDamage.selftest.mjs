@@ -394,8 +394,10 @@ for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse
   const parts = buildRegionalParts(style, { structureId: bid, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
     wallBucket: 'plaster', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'shell', snowCap: false, tier: 'desktop' }, streamFrom(seed * 3 + 5));
   if (!regionalKitPlanOf(parts)?.houses?.length) { assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`); continue; }
-  const a = describeStructure({ structureIdx: 2, mapId: 'shell', builder: bid, style: sid, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house' });
-  assert.ok(a.kit !== 'default' && isSheetBody(a), `${id}: the sheet hall's house plan breaks by the sheet kit (${a.kit})`);
+  // (its stages run as a shell's are: validated, exercised, the sheet's breach checked — and it counts as a sheet hall)
+  const before = sheetShells;
+  describeAndRun(`${id} (sheet hall)`, bid, sid, parts);
+  assert.ok(sheetShells > before, `${id}: the sheet hall's house plan breaks by the sheet kit`);
 }
 assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetShells})`);
 // the shafts read as shafts and topple (shaft.ts)
