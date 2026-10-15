@@ -186,7 +186,10 @@ assert.equal(smokeBlocks([screen], { x: 0, y: 1.8, z: 0 }, { x: 30, y: 1.8, z: 0
     }
     return box;
   };
-  const records = real.getObstacles().filter((r) => r.structureIdx != null).map((r) => footprint(r))
+  // (the maps lane, 2026-10-14: Verdant's set pieces — the station hall, the arch, the water towers on their trestles, the
+  // mills — are no house: the canister passes the station's open end doorway and between a trestle's legs as it should;
+  // a set piece's records carry structureRole 'setpiece', shard gr 1)
+  const records = real.getObstacles().filter((r) => r.structureIdx != null && r.structureRole !== 'setpiece').map((r) => footprint(r))
     .filter((b) => b.x1 - b.x0 > 4 && b.z1 - b.z0 > 4);
   let tried = 0, struck = 0, entered = 0;
   const started = performance.now();
