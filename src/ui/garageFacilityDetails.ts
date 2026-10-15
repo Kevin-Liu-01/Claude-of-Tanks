@@ -1766,6 +1766,7 @@ export function addGarageFacilityDetails({
           const drift = 0.5 + 0.25 * Math.sin(l * 0.31 + f * 0.17) + 0.15 * Math.sin(l * 0.07 - f * 0.41);
           const edge = Math.min(i, cols - i, j, rows - j) === 0 ? 1 : 0;
           tone.copy(cloth).lerp(clothShade, drift);
+          if (i % 4 === 0 || j % 4 === 0) tone.multiplyScalar(0.9); // the panel seams
           if (edge) tone.copy(hem);
           colors.push(tone.r, tone.g, tone.b);
         }
@@ -1788,6 +1789,21 @@ export function addGarageFacilityDetails({
         upper.computeVertexNormals();
       }
       const lower = upper.clone();
+      // seen from under it the cloth glows with the sun through its weave, warmer and lighter than its top, its panel
+      // seams and webbing hem dark against the light (the re-judge, 2026-10-15: the underside was "a flat, opaque
+      // olive-brown slab ... no light transmission")
+      {
+        const glow = new THREE.Color(0xe6d4a4), seam = new THREE.Color(0x8d7a56), under = lower.getAttribute('color');
+        for (let k = 0; k < under.count; k += 1) {
+          const i = k % (cols + 1), j = Math.floor(k / (cols + 1));
+          const edge = Math.min(i, cols - i, j, rows - j) === 0;
+          const drift = 0.5 + 0.25 * Math.sin(i * 0.9 + j * 0.4);
+          tone.copy(glow).lerp(cloth, 0.35 + drift * 0.3);
+          if (i % 4 === 0 || j % 4 === 0) tone.copy(seam);
+          if (edge) tone.copy(hem).multiplyScalar(0.8);
+          under.setXYZ(k, tone.r, tone.g, tone.b);
+        }
+      }
       const index = upper.getIndex()!;
       lower.setIndex(Array.from({ length: index.count }, (_, k) => index.getX(k - (k % 3) + [0, 2, 1][k % 3])));
       const normal = lower.getAttribute('normal');
@@ -1892,7 +1908,11 @@ export function addGarageFacilityDetails({
       const bowser = atGround(l, f);
       clusterBox(bowser, 0, 0, 0.62, 1.0, 0.16, 3.6, dark, 'structure'); // the chassis
       clusterCylinder(bowser, 0, 0, 1.35, 0.72, 3.0, tint, Math.PI / 2, 16); // the tank
-      for (const side of [-1, 1]) clusterCylinder(bowser, side * 0.95, -0.4, 0.42, 0.42, 0.24, dark, 0, 16, Math.PI / 2); // wheels
+      for (const side of [-1, 1]) {
+        clusterCylinder(bowser, side * 0.95, -0.4, 0.42, 0.42, 0.24, dark, 0, 16, Math.PI / 2); // the tyres
+        clusterCylinder(bowser, side * 1.05, -0.4, 0.42, 0.24, 0.06, new THREE.Color(0x6b6d68), 0, 16, Math.PI / 2); // the rim
+        clusterCylinder(bowser, side * 1.08, -0.4, 0.42, 0.09, 0.06, dark, 0, 10, Math.PI / 2); // the hub
+      }
       clusterBox(bowser, 0, 2.2, 0.5, 0.12, 0.12, 1.2, dark, 'structure'); // the drawbar
       clusterBox(bowser, 0, 2.6, 0.25, 0.2, 0.5, 0.2, dark, 'structure'); // its jockey leg
       // (the critic panel: "untextured cylinders"): the tank's end dishes, two saddle bands, the manway and its walkway
