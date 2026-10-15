@@ -149,7 +149,7 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
         buckets.plaster.push(jitterUV(plate, rng));
       }
       // the reed bed: in its stretch, a few clumps along the station's reach, at the waterline
-      const clumps = bed > 0.2 ? 2 + ((rng() * 3) | 0) : 0;
+      const clumps = bed > 0.08 ? 2 + ((rng() * 3) | 0) : 0;
       if (!clumps) continue;
       for (let c = 0; c < clumps; c++) {
         const along = (rng() - 0.5) * s.r * 0.6, out = -0.3 + rng() * 1.3;
@@ -157,7 +157,7 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
         const kind = rng() < 0.55 ? 'cattail' : 'sedge';
         const ok = clear(cx, cz) && inBand(edge(cx, cz));
         if (kind === 'cattail') {
-          const n = 6 + ((rng() * 7) | 0);
+          const n = 5 + ((rng() * 5) | 0);
           let frozen = 0;
           for (let k = 0; k < n; k++) {
             const h = 1.15 + rng() * 0.75, w = 0.016 + rng() * 0.008;
@@ -186,9 +186,12 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
             }
             if (d < 0.15) frozen++;
             // the stand's long blades from the feet of its first stems
+            // (the stand's mass is its leaves: two long blades arching from each of its first three stems' feet)
             if (k < 3) {
-              const bl = blade('winter-cattail-leaf', 0.8 + h * 0.4, 0.028, 0.55 + k * 0.2, twist + k * 2.4, (k - 1) * 0.3);
-              buckets.straw.push(bl.translate(fx, y + 0.02, fz));
+              for (let j = 0; j < 2; j++) {
+                const bl = blade('winter-cattail-leaf', 0.75 + h * 0.5 - j * 0.2, 0.034, 0.35 + k * 0.18 + j * 0.25, twist + k * 2.1 + j * 2.9, (j - 0.5) * 0.5);
+                buckets.straw.push(bl.translate(fx, y + 0.02, fz));
+              }
             }
           }
           if (ok && frozen) {
