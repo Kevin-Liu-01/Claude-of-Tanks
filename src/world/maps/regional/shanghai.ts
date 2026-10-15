@@ -802,8 +802,26 @@ const guildHall: RegionalBuilder = (ctx) => {
     sink.span(wall, gw / 2, -0.4, D / 2 - t, W / 2, wallH, D / 2);
     sink.span(wall, -gw / 2, gateH, D / 2 - t, gw / 2, wallH, D / 2);
     sink.span(wall, -W / 2, -0.4, -D / 2, W / 2, wallH, -D / 2 + t);
-    sink.span(wall, -W / 2, -0.4, -D / 2 + t, -W / 2 + t, wallH, D / 2 - t);
-    sink.span(wall, W / 2 - t, -0.4, -D / 2 + t, W / 2, wallH, D / 2 - t);
+    // the side walls' leak windows (louchuang, props census #13, lane B 2026-10-15; the judges: "three faces are blank"):
+    // square openings through the wall, each with its tile lattice across it, the court seen through them
+    const lw = 1.0, ly0 = 2.0, lz0 = -D / 2 + t, lz1 = D / 2 - t, nL = Math.max(1, Math.floor((lz1 - lz0 - 1.6) / 3.2));
+    const leakZ = Array.from({ length: nL }, (_, k) => lz0 + (lz1 - lz0) * (k + 0.5) / nL);
+    const lattice = { colour: shade(TILE_COPING, 1.25), decor: true };
+    for (const sx of [-1, 1]) {
+      const x0 = sx < 0 ? -W / 2 : W / 2 - t, x1 = x0 + t;
+      sink.span(wall, x0, -0.4, lz0, x1, ly0, lz1);
+      sink.span(wall, x0, ly0 + lw, lz0, x1, wallH, lz1);
+      let from = lz0;
+      for (const z of leakZ) {
+        sink.span(wall, x0, ly0, from, x1, ly0 + lw, z - lw / 2);
+        from = z + lw / 2;
+        for (const k of [1, 2]) {
+          sink.span('stone', x0 + t * 0.3, ly0, z - lw / 2 + lw * k / 3 - 0.03, x1 - t * 0.3, ly0 + lw, z - lw / 2 + lw * k / 3 + 0.03, lattice);
+          sink.span('stone', x0 + t * 0.3, ly0 + lw * k / 3 - 0.03, z - lw / 2, x1 - t * 0.3, ly0 + lw * k / 3 + 0.03, z + lw / 2, lattice);
+        }
+      }
+      sink.span(wall, x0, ly0, from, x1, ly0 + lw, lz1);
+    }
     const cap = { ...SHADOWED, colour: TILE_COPING };
     sink.span('structureMetal', -W / 2 - 0.05, wallH, D / 2 - t - 0.08, W / 2 + 0.05, wallH + 0.14, D / 2 + 0.08, cap);
     sink.span('structureMetal', -W / 2 - 0.05, wallH, -D / 2 - 0.08, W / 2 + 0.05, wallH + 0.14, -D / 2 + t + 0.08, cap);
@@ -814,9 +832,13 @@ const guildHall: RegionalBuilder = (ctx) => {
     const hf: Face = { origin: [0, 0, hz1], u: [1, 0, 0], out: [0, 0, 1], width: 2 * hx };
     const cols = Math.max(3, Math.round(2 * hx / 2.4)), bay = (2 * hx - 0.6) / cols, dw = bay - 0.5;
     const bayU = (k: number): number => -hx + 0.3 + (k + 0.5) * bay;
+    // (the judges: "the hall has no plinth") the hall on its stone terrace, a step down to the court before its doors
+    const apron = Math.min(1.3, (D / 2 - t - hz1) * 0.45), deck = 0.45;
+    sink.span('stone', -hx - 0.6, -0.4, hz0 - 0.4, hx + 0.6, deck, hz1 + apron);
+    sink.span('stone', -1.6, -0.4, hz1 + apron, 1.6, deck / 2, hz1 + apron + 0.35);
     sink.span('plaster', -hx, -0.4, hz0, hx, hallH, hz1 - 0.3);
     holedPolygon(sink, 'plaster', hf, [[-hx, -0.4], [hx, -0.4], [hx, hallH], [-hx, hallH]],
-      Array.from({ length: cols }, (_, k) => ({ u0: bayU(k) - dw / 2, u1: bayU(k) + dw / 2, y0: 0.1, y1: 3.1 })), 0.3, 0.26);
+      Array.from({ length: cols }, (_, k) => ({ u0: bayU(k) - dw / 2, u1: bayU(k) + dw / 2, y0: deck + 0.05, y1: deck + 2.85 })), 0.3, 0.26);
     const roof: RoofSpec = { kind: 'hip', pitchDeg: 31, eave: 1.05, verge: 1.05, thickness: 0.2, bucket: 'roof', ridge: null, hipPitchDeg: 36 };
     const rg = roofGeometry(hz1 - hz0, 2 * hx, hallH, roof);
     const hzc = (hz0 + hz1) / 2;
@@ -842,11 +864,11 @@ const guildHall: RegionalBuilder = (ctx) => {
     // the hall's front: red columns under the eave, the lattice doors shut at the back of their cuts between them
     for (let k = 0; k <= cols; k++) {
       const u = -hx + 0.3 + k * bay;
-      sink.cylinder('structureWood', facePoint(hf, u, 0, 0.75), 'y', hallH, 0.2, 8, { colour: CHINA_RED, decor: true, shadow: true });
+      sink.cylinder('structureWood', facePoint(hf, u, deck, 0.75), 'y', hallH - deck, 0.2, 8, { colour: CHINA_RED, decor: true, shadow: true });
       if (k < cols) {
         const cu = bayU(k);
-        faceBox(sink, 'structureWood', hf, cu, 1.6, -0.22, dw, 3.0, 0.05, { colour: shade(CHINA_RED, 0.75), decor: true });
-        if (!mobile) for (let j = 0; j < 4; j++) faceBox(sink, 'structureWood', hf, cu, 0.6 + j * 0.7, -0.18, dw - 0.1, 0.04, 0.03, { colour: GILT, decor: true, fine: true });
+        faceBox(sink, 'structureWood', hf, cu, deck + 1.45, -0.22, dw, 2.8, 0.05, { colour: shade(CHINA_RED, 0.75), decor: true });
+        if (!mobile) for (let j = 0; j < 4; j++) faceBox(sink, 'structureWood', hf, cu, deck + 0.45 + j * 0.65, -0.18, dw - 0.1, 0.04, 0.03, { colour: GILT, decor: true, fine: true });
       }
     }
     faceBox(sink, 'structureWood', hf, 0, hallH - 0.4, 0.78, 2 * hx, 0.5, 0.26, { colour: shade(CHINA_RED, 0.6), decor: true, shadow: true });

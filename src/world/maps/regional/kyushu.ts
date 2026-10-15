@@ -701,11 +701,23 @@ const worksOffice: RegionalBuilder = (ctx) => {
       roof: { kind: 'hip', pitchDeg: 26, eave: 0.7, verge: 0.7, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'wood',
       openings, chimneys: [], gutters: { colour: rgb(0x5a5a58) }, verge: null, reveal: 0.1, rafters: CEDAR_DARK,
     }, dialectOf(rng, rgb(0x5a6a72), 0.4));
-    // clapboard lines across the walls, the porch on two posts with its own small gable
-    const b = frame.bodies[1];
+    // the clapboard's laps along the walls, each course stopping at the casings of the openings it meets (props census
+    // #13, lane B 2026-10-15; the judges: "the strips cross every window and bar the door"), the porch on two posts with
+    // its own small gable
+    const b = frame.bodies[1], lap = { colour: rgb(0x7a7268), decor: true, fine: true };
     for (const name of ['front', 'back', 'left', 'right'] as const) {
       const f = frame.faces[name];
-      for (let y = 0.7; y < b.y1; y += 0.42) faceBox(sink, 'structureWood', f, 0, y, 0.025, f.width, 0.03, 0.03, { colour: rgb(0x7a7268), decor: true, fine: true });
+      const cuts = openings.filter((o) => o.face === name).map((o) => {
+        const y0 = frame.bodies[o.storey].y0 + o.y0;
+        return { u0: o.u - o.w / 2 - 0.12, u1: o.u + o.w / 2 + 0.12, y0: y0 - 0.14, y1: y0 + o.h + 0.1 };
+      });
+      for (let y = 0.7; y < b.y1; y += 0.42) {
+        const across = cuts.filter((c) => y > c.y0 && y < c.y1).sort((p, q) => p.u0 - q.u0);
+        let from = -f.width / 2;
+        const run = (to: number) => { if (to - from > 0.08) faceBox(sink, 'structureWood', f, (from + to) / 2, y, 0.025, to - from, 0.03, 0.03, lap); };
+        for (const c of across) { run(c.u0); from = Math.max(from, c.u1); }
+        run(f.width / 2);
+      }
     }
     for (const s of [-1, 1]) sink.span('structureWood', s * 1.3 - 0.1, 0, D / 2 + 2.4 - 0.1, s * 1.3 + 0.1, 2.8, D / 2 + 2.4 + 0.1, { colour: CEDAR_GREY });
     const porch: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.2, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
