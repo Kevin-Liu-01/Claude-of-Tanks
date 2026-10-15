@@ -307,7 +307,10 @@ const conveyor: RegionalBuilder = (ctx) => {
       panel(side * gw / 2, 0, 1.0, SHEET);
       panel(side * gw / 2, 1.75, H, shade(SHEET, 1.05));
       // the window band set back between the sheets: the glazing and its mullions, the sill and head rails
-      sink.member('glass', G(0, side * (gw / 2 - 0.06), 1.375), G(len, side * (gw / 2 - 0.06), 1.375), 0.75, 0.01, [side, 0, 0], { decor: true, exposed: true }, 0);
+      // (in lengths of at most 8 m: the integrity gate reads a 1 cm pane's edge 18 m long as a sliver)
+      for (let k = 0, nG = Math.ceil(len / 8); k < nG; k++) {
+        sink.member('glass', G(len * k / nG, side * (gw / 2 - 0.06), 1.375), G(len * (k + 1) / nG, side * (gw / 2 - 0.06), 1.375), 0.75, 0.01, [side, 0, 0], { decor: true, exposed: true }, 0);
+      }
       if (!mobile) {
         for (let s = 0.6; s < len; s += 1.2) sink.member('structureMetal', G(s, side * (gw / 2 - 0.04), 1.0), G(s, side * (gw / 2 - 0.04), 1.75), 0.05, 0.04, [side, 0, 0], { colour: TRUSS, decor: true, fine: true }, 0);
       }
