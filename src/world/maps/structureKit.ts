@@ -477,11 +477,17 @@ function addGableRoof(
   out.roof.push(slab(0.34, 0.14, d + over * 2).translate(0, wallH + roofH + 0.04, 0));
 }
 
-/** (the garage critic, 2026-10-15) Parts a builder adds inside `body` are new to the placement stream: no uv jitter. */
+/**
+ * (the garage critic, 2026-10-15) Parts a builder adds inside `body` are dressing new to the building: no uv jitter (the
+ * placement stream's draws stay the building's) and no collision part (its footprint, its decks and every placement
+ * that reads them stay what they were).
+ */
 function freshParts(out: StructureParts, body: () => void): void {
   const before = new Map(Object.entries(out).map(([k, v]) => [k, v.length]));
   body();
-  for (const [k, list] of Object.entries(out)) for (let i = before.get(k) ?? 0; i < list.length; i++) list[i].userData.uvJitter = 'none';
+  for (const [k, list] of Object.entries(out)) {
+    for (let i = before.get(k) ?? 0; i < list.length; i++) { list[i].userData.uvJitter = 'none'; list[i].userData.noCollision = true; }
+  }
 }
 
 function addWindow(
@@ -584,16 +590,18 @@ export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   }
   const tx = 4.0, towerH = 11.8;
   out.stone.push(box(3.0, towerH, 3.0).translate(tx, towerH / 2, -3.7));
+  for (const face of [-1, 1]) out.dark.push(box(1.65, 2.1, 0.08).translate(tx, towerH - 2.1, -3.7 + face * 1.52));
   // (the garage critic, 2026-10-15, Steinburg: "an untextured grey box tower") the hose tower's drying loft opened on all
-  // four faces in louvred openings — a frame, the dark of the loft, the louvre boards — under a cornice; a slit window
-  // lights the stair above the station's roof; the station's flanks and back lit by windows
+  // four faces in louvred openings — a frame, the dark of the loft (the two openings it had keep their panels: their
+  // draws), the louvre boards — under a cornice; a slit window lights the stair above the station's roof; the station's
+  // flanks and back lit by windows
   freshParts(out, () => {
     for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
       const cx = tx + nx * 1.52, cz = -3.7 + nz * 1.52, alongX = nz !== 0, y = towerH - 2.1;
       const frameBox = (fw: number, fh: number, oy: number, ox: number): THREE.BufferGeometry =>
         (alongX ? box(fw, fh, 0.14) : box(0.14, fh, fw)).translate(cx + (alongX ? ox : 0), y + oy, cz + (alongX ? 0 : ox));
       out.stone.push(frameBox(1.95, 0.16, 1.13, 0), frameBox(1.95, 0.16, -1.13, 0), frameBox(0.16, 2.1, 0, -0.9), frameBox(0.16, 2.1, 0, 0.9));
-      out.dark.push((alongX ? box(1.65, 2.1, 0.06) : box(0.06, 2.1, 1.65)).translate(cx - nx * 0.06, y, cz - nz * 0.06));
+      if (!alongX) out.dark.push(box(0.06, 2.1, 1.65).translate(cx - nx * 0.06, y, cz));
       for (let k = 0; k < 6; k++) {
         const louvre = alongX ? box(1.62, 0.05, 0.22) : box(0.22, 0.05, 1.62);
         if (alongX) louvre.rotateX(nz * 0.6); else louvre.rotateZ(-nx * 0.6);
