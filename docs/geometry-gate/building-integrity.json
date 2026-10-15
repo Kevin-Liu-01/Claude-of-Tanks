@@ -583,7 +583,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 3.105,
-   "gapM2": 0,
+   "gapM2": 0.828,
    "invertedM2": 0
   },
   "savoyard/tavern": {
@@ -3013,7 +3013,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 148.056,
    "invertedM2": 0
   },
   "sarajevo/parkingdeck": {
@@ -3031,7 +3031,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 3.445,
    "invertedM2": 0
   },
   "sarajevo/warehouse": {
@@ -3710,5 +3710,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-15T07:55:20.282Z"
+ "updatedAt": "2026-10-15T21:38:59.082Z"
 }
