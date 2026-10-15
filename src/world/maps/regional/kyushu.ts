@@ -7,7 +7,7 @@
 // sheds stained yellow with their retorts and brick stacks; the village fire brigade's post and its fire lookout
 // (hinomi-yagura) with the alarm bell; the small Shinto shrine behind its torii; the works office of painted
 // clapboard; and the burnt-out farmsteads.
-import { PartSink, bodyFaces, faceBox, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, bodyFaces, faceBox, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -207,6 +207,38 @@ function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: nu
   // the kura's mark: a crest plate on the gable (the family's mon), a dark disc high on the front
   const front = frame.faces.front;
   if (rng() < 0.7) faceBox(sink, 'structureWood', front, 0, frame.eaveY + 0.9, 0.04, 0.7, 0.7, 0.03, { colour: rgb(0x2a2a2c), decor: true });
+  kuraWeathering(sink, frame, w, d, h);
+}
+
+/**
+ * (the maps lane, 2026-10-15, Caldera's blind critics: the kura read as "clean, noisy" white boxes) A kura's weather: the
+ * rain's grey streaks down the shikkui from under the eaves, a few to a wall, their lengths and widths the storehouse's
+ * own (a stream of its own, so the kit's draws are as before). With the render coat (kuraCoat) the walls read as one
+ * coat of lime plaster that the weather has marked.
+ */
+function kuraWeathering(sink: PartSink, frame: HouseFrame, w: number, d: number, h: number): void {
+  const g = streamFrom(Math.round(w * 977 + d * 131 + h * 17));
+  const top = frame.eaveY - 0.08;
+  for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const f = frame.faces[name];
+    for (let k = 0, n = 2 + Math.floor(g() * 4); k < n; k++) {
+      const u = (g() - 0.5) * (f.width - 0.8), len = 0.8 + g() * 2.2, wd = 0.12 + g() * 0.35;
+      faceBox(sink, SHIKKUI, f, u, top - len / 2, 0.003, wd, len, 0.004, { colour: shade(rgb(0xb4b0a6), 0.9 + g() * 0.15), decor: true });
+    }
+  }
+}
+
+/** The kura's render as one coat: the shikkui's UVs at the limewash scale (landmarks/kit.ts smoothRender's law), where
+ *  the shared print at its own density read as noise on a white wall. */
+const KURA_COAT_UV = 0.006;
+function kuraCoat(parts: RegionalParts): RegionalParts {
+  for (const geometry of parts[SHIKKUI] ?? []) {
+    const uv = geometry.getAttribute('uv');
+    if (!uv) continue;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * KURA_COAT_UV, uv.getY(i) * KURA_COAT_UV);
+    uv.needsUpdate = true;
+  }
+  return parts;
 }
 
 function facePt(f: Face, u: number, y: number, o: number): Vec3 {
@@ -224,7 +256,7 @@ const kuraRow: RegionalBuilder = (ctx) => {
     const x = R.cx - L / 2 + (k + 0.5) * L / n;
     sink.placed(0, x, 0, R.cz - 0.1, () => kuraBody(sink, rng, w, d, 4.6 + rng() * 1.2));
   }
-  return sink.finish();
+  return kuraCoat(sink.finish());
 };
 
 /** The naya (a shed plot): a timber barn, board walls on a stone footing, a tin gable roof, open bays with straw. */
@@ -347,7 +379,7 @@ const works: RegionalBuilder = (ctx) => {
   if (rng() < 0.4) {
     const Dk = Math.max(12, R.D - 0.8);
     sink.placed(0, R.cx, 0, R.cz, () => kuraBody(sink, rng, W, Dk, 7.0));
-    return sink.finish();
+    return kuraCoat(sink.finish());
   }
   const D = Math.max(10, R.D - 3.0);
   const H = 7.5, board = pick(rng, CEDAR), tin = pick(rng, TIN);
