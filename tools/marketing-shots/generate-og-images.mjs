@@ -21,7 +21,7 @@ export const OG_IMAGE_CARDS = [
   ['private-room', 'PRIVATE BATTLE', 'public/media/site50-r14/stills/s16-street-duel.webp', '50% 50%'],
   ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/site50-r14/stills/s33-water-tower-close.webp', '50% 50%'],
   ['docs-build', 'BUILD WORKFLOW', 'public/media/showcase-r2/17_live_player_hud.webp', '50% 48%'],
-  ['docs-models', 'MODEL & ICON PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
+  ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
   ['docs-simulation', 'COMBAT SIMULATION', 'public/media/showcase-r2/24_live_killcam_impact.webp', '50% 46%'],
   ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/site50-r14/stills/s05-barn-advance-close.webp', '50% 50%'],
   ['docs-rendering', 'RENDERING & LIGHTING', 'public/media/site50-r14/stills/s44-oasis-sunset.webp', '50% 50%'],
