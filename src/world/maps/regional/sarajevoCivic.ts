@@ -465,9 +465,12 @@ const catholicChurch: RegionalBuilder = (ctx) => {
     const door = choose(rng(), DOOR_LEAVES);
     const openings: Opening[] = [];
     for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, nl, { w: 0.9, h: 3.6, sill: 1.8, spacing: 2.4, margin: 1.2 })) openings.push(o);
+    // (props census #13, lane B 2026-10-15; the judges: "the east end is a blank gable wall") the tall east window over
+    // the altar, cut through the east wall under its pointed head, its glass in four lights
+    openings.push({ face: 'back', storey: 0, kind: 'window', u: 0, w: Math.min(1.8, nw * 0.24), y0: 1.6, h: Math.min(nh - 2.6, 5.0) });
     const dialect: HouseDialect = {
       window: (s, face, o, y0) => {
-        windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'two', frame: DARK_FRAME }, look, 0.1);
+        windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: o.w > 1.2 ? 'cross' : 'two', frame: DARK_FRAME }, look, 0.1);
         archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.14, 2);
       },
       door: () => {},
@@ -498,8 +501,20 @@ const catholicChurch: RegionalBuilder = (ctx) => {
       const f: Face = { origin: [ox * tw / 2, 0, tzc + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
       archHead(sink, f, 0, th - 1.4, tw * 0.15, 'stone', 0.12, 2);
       if (oz === 1) {
-        sink.polygon('structureWood', Array.from({ length: 10 }, (_, j) => facePoint(f, Math.cos(j / 10 * Math.PI * 2) * 0.6, th - 5.2 + Math.sin(j / 10 * Math.PI * 2) * 0.6, 0.03)),
-          { decor: true, colour: rgb(0xd8d2c0) });
+        // the clock: its dial in a stone ring, the twelve hour marks, the hands and the boss (the judges: "the tower's
+        // clock is a painted 10-gon cream plate")
+        const cy = th - 5.2, at = (r: number, a: number, o: number): Vec3 => facePoint(f, Math.cos(a) * r, cy + Math.sin(a) * r, o);
+        sink.polygon('structureWood', Array.from({ length: 12 }, (_, j) => at(0.6, j / 12 * Math.PI * 2, 0.03)), { decor: true, colour: rgb(0xd8d2c0) });
+        for (let j = 0; j < 12; j++) {
+          const a0 = j / 12 * Math.PI * 2, a1 = (j + 1) / 12 * Math.PI * 2;
+          sink.quad('stone', at(0.6, a0, 0.1), at(0.76, a0, 0.1), at(0.76, a1, 0.1), at(0.6, a1, 0.1), { decor: true });
+          sink.quad('stone', at(0.6, a1, 0.1), at(0.6, a1, 0.0), at(0.6, a0, 0.0), at(0.6, a0, 0.1), { decor: true, shade: 0.7 });
+          sink.quad('stone', at(0.76, a0, 0.1), at(0.76, a0, 0.0), at(0.76, a1, 0.0), at(0.76, a1, 0.1), { decor: true, shade: 0.85 });
+          faceBox(sink, 'structureMetal', f, Math.cos(a0) * 0.5, cy + Math.sin(a0) * 0.5, 0.045, 0.05, 0.05, 0.03, { colour: IRON, decor: true, fine: true });
+        }
+        sink.member('structureMetal', facePoint(f, 0, cy, 0.05), facePoint(f, 0.12, cy + 0.42, 0.05), 0.05, 0.02, f.out, { colour: IRON, decor: true, exposed: true }, 0);
+        sink.member('structureMetal', facePoint(f, 0, cy, 0.07), facePoint(f, -0.3, cy - 0.12, 0.07), 0.06, 0.02, f.out, { colour: IRON, decor: true, exposed: true }, 0);
+        faceBox(sink, 'structureMetal', f, 0, cy, 0.06, 0.1, 0.1, 0.06, { colour: IRON, decor: true });
       }
       faceBox(sink, 'stone', f, 0, th - 0.15, 0.1, tw + 0.25, 0.3, 0.2, { decor: true });
     }
