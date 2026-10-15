@@ -9,7 +9,7 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, wallPolygon, windowRhythm,
   type FaceName, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -409,14 +409,21 @@ const tower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const S = Math.max(3.2, Math.min(ctx.info.w, ctx.info.d) - 0.4), H = Math.max(6.8, ctx.info.h - 2.4);
   sink.span('stone', -S / 2 - 0.15, -0.4, -S / 2 - 0.15, S / 2 + 0.15, 0.5, S / 2 + 0.15);
-  sink.span('stone', -S / 2, 0.5, -S / 2, S / 2, H, S / 2);
+  // (props census #5, lane B 2026-10-15) the door and the two lights cut through the granite shaft (they were laid on a
+  // solid span), the units at the back of their reveals; the tower recorded as a shaft body under its slate cap
+  const lt = { u0: -0.25, u1: 0.25, y0: H - 2.2, y1: H - 1.2 };
+  holedBox(sink, 'stone', -S / 2, -S / 2, S / 2, S / 2, 0.5, H, { front: [{ u0: -0.475, u1: 0.475, y0: 0.5, y1: 2.5 }, lt], right: [lt] }, 0.4, 0.34);
+  recordShaft(sink, 0, 0, S, H + 0.15 + S * 0.95, 'stone');
   sink.span('stone', -S / 2 - 0.12, H - 0.1, -S / 2 - 0.12, S / 2 + 0.12, H + 0.15, S / 2 + 0.12);
   sink.cylinder('roof', [0, H + 0.15, 0], 'y', S * 0.95, S * 0.74, 4, {}, 0.04, true, Math.PI / 4);
   const st = stateFor(ctx);
-  for (const [face, k] of [[{ origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S } as Face, 0], [{ origin: [S / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: S } as Face, 1]] as const) {
-    windowUnit(sink, face, 0, H - 2.2, 0.5, 1.0, { ...st.window, shutters: null }, st.rng, 0.3);
-    if (k === 0) doorUnit(sink, face, 0, 0.5, 0.95, 2.0, { leaf: st.paint, frame: { bucket: 'stone', width: 0.24, out: 0.06 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.5);
-  }
+  sink.recess = 0.34;
+  try {
+    for (const [face, k] of [[{ origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S } as Face, 0], [{ origin: [S / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: S } as Face, 1]] as const) {
+      windowUnit(sink, face, 0, H - 2.2, 0.5, 1.0, { ...st.window, shutters: null }, st.rng, 0.3);
+      if (k === 0) doorUnit(sink, face, 0, 0.5, 0.95, 2.0, { leaf: st.paint, frame: { bucket: 'stone', width: 0.24, out: 0.06 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.5);
+    }
+  } finally { sink.recess = 0; }
   return sink.finish();
 };
 
