@@ -2880,9 +2880,11 @@ export function createGarageDressing(
       put(G.caster, mat.steelDark, wheelX, 0.06, wheelZ,
         0, 0, Math.PI / 2, 1, jack, false);
     }
+    // 2.2 m further toward the bay's flank, wholly out of the Garage camera's frame (the garage critic panel, 2026-10-14:
+    // "a trailer is half cut off by the right frame edge (winter, coastal, monsoon, badlands)")
     addServiceRoadWheelDolly(
       legacyVerdantRoot, 't90a_burlak', roadWheelTires, roadWheelDiscs,
-      12.4, -15.0, -0.55 + Math.PI / 2,
+      14.6, -17.2, -0.55 + Math.PI / 2,
     );
 
     addBayGrime(legacyVerdantRoot, 15.6, -13.2, 13, 0.4);
