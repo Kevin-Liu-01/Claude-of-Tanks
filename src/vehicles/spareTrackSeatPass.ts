@@ -270,8 +270,10 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       const cm = Math.round(c0.clone().applyQuaternion(result.pose.quat).add(result.pose.pos)
         .distanceTo(c0.clone().applyQuaternion(run.hint.quat).add(run.hint.pos)) * 1000) / 10;
       const deg = Math.round(result.pose.quat.angleTo(run.hint.quat) * 1800 / Math.PI) / 10;
+      const h = seatReceipt(run.site, run.frame, run.source, 'authored', result.hint);
       report.runs.push({ ...seatReceipt(run.site, run.frame, run.source, 'reseated', result.measure),
-        moved: { reason: result.hint.reason, cm, deg } });
+        moved: { reason: result.hint.reason, cm, deg, authored: { support: h.support, air: h.air, maxEmbedCm: h.maxEmbedCm,
+          clearCm: h.clearCm, cutCm: h.cutCm, sweepCm: h.sweepCm, exposure: h.exposure } } });
     } else {
       removeRun(a, run);
       const { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } =

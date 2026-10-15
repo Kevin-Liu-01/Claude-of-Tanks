@@ -385,6 +385,45 @@ export class SeatSoup {
     return true;
   }
 
+  /** The farthest hit along the ray within [0, far] on triangles of `owner` (the run's own underside), or -1. */
+  deepestOwn(origin: THREE.Vector3, dir: THREE.Vector3, far: number, owner: number): number {
+    if (!this.count || !owner) return -1;
+    const ox = origin.x, oy = origin.y, oz = origin.z, dx = dir.x, dy = dir.y, dz = dir.z;
+    const ix = 1 / dx, iy = 1 / dy, iz = 1 / dz;
+    let deepest = -1, sp = 0;
+    this.stack[sp++] = 0;
+    while (sp) {
+      const node = this.stack[--sp];
+      const b = node * 6;
+      let t0 = 0, t1 = far;
+      let ta = (this.nodeBox[b] - ox) * ix, tb = (this.nodeBox[b + 3] - ox) * ix;
+      if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+      if (t0 > t1) continue;
+      ta = (this.nodeBox[b + 1] - oy) * iy; tb = (this.nodeBox[b + 4] - oy) * iy;
+      if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+      if (t0 > t1) continue;
+      ta = (this.nodeBox[b + 2] - oz) * iz; tb = (this.nodeBox[b + 5] - oz) * iz;
+      if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+      if (t0 > t1 || t1 <= deepest) continue;
+      const left = this.nodeLeft[node];
+      if (left >= 0) {
+        if (sp + 2 <= this.stack.length) { this.stack[sp++] = left + 1; this.stack[sp++] = left; }
+        continue;
+      }
+      const end = this.nodeStart[node] + this.nodeCount[node];
+      for (let i = this.nodeStart[node]; i < end; i++) {
+        const t = this.order[i];
+        if (this.owner[t] !== owner) continue;
+        const d = this.intersect(t, ox, oy, oz, dx, dy, dz);
+        if (d >= 0 && d <= far && d > deepest) deepest = d;
+      }
+    }
+    return deepest;
+  }
+
   private intersect(t: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): number {
     const o = t * 9, tr = this.tri;
     const ax = tr[o], ay = tr[o + 1], az = tr[o + 2];
@@ -596,7 +635,8 @@ export interface SeatMeasure {
 
 /** Seater thresholds (stricter than the receipt, which gates at support 50 %, air 20 %, cut 5 cm, sweep 2 cm). */
 export const SEAT_RULES = Object.freeze({
-  supportMin: 0.8, airMax: 0.1, gapP90Max: 0.012, gapTolM: 0.012, linkEmbedMax: 0.01, normalMaxDeg: 20,
+  supportMin: 0.8, airMax: 0.1, gapP90Max: 0.012, gapTolM: 0.012, linkEmbedMax: 0.01, authoredEmbedMax: 0.01,
+  normalMaxDeg: 20,
   airReachM: 0.3, cutTolM: 0.01, sweepClearM: 0.03, exposureMin: 0.3, exposureReachM: 0.8,
   // a run the solver moves is new visible stowage: it must sit clearly in the open and clearly out of the way
   movedSweepClearM: 0.06, movedExposureMin: 0.5,
@@ -647,15 +687,20 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   const out: SeatMeasure = { ok: false, reason: null, support: 0, air: 0, gapP90: 0, maxEmbed: 0, forbidden: 0,
     forbiddenRole: null, spreadDeg: 0, clear: Infinity, clearRole: null, cut: 0, sweep: Infinity, exposure: 1 };
   const fail = (reason: string): boolean => { if (!out.reason) out.reason = reason; return !full; };
+  const embedTol = moved ? R.linkEmbedMax : R.authoredEmbedMax;
   const ax = runAxes(shape);
   const base = shape.box.min.getComponent(ax.n);
   const top = shape.box.max.getComponent(ax.n);
   const n = _nrm.set(0, 0, 0).setComponent(ax.n, 1).applyQuaternion(pose.quat).normalize().clone();
   const lift = top - base + 0.04;
   const designHost = base + shape.embedM;
-  // ---- R1-R3: the probe grid from outside the run, along -n
+  // ---- R1-R3: the probe grid from outside the run, along -n. Each column's gap is measured from the run's own
+  // underside in that column (its feet, rails or link backs; the base plane where the run is not in the soup) down to
+  // the first other surface (where the run is not in the soup, from its link backs: the design host plane plus the
+  // standoff): a rigid run rests where the gap closes, and a surface above its underside sinks into it.
   const gaps: number[] = [];
   let supported = 0, air = 0, forbidden = 0, total = 0, maxEmbed = -Infinity, spread = 0;
+  const noOwnBottom = lift - shape.embedM - shape.standoffM;  // probe start to the link backs of a run not in the soup
   for (const fu of U_FRACTIONS) {
     for (const fv of V_FRACTIONS) {
       total++;
@@ -664,10 +709,12 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
       const start = _world.addScaledVector(n, lift - shape.embedM);
       _dir.copy(n).negate();
       const reach = lift + R.airReachM;
+      const own = env.soup.deepestOwn(start, _dir, lift + 0.005, owner);
+      const bottom = own >= 0 ? own : noOwnBottom;
       if (!env.soup.raycast(start, _dir, reach, owner, false, _hit)) { air++; gaps.push(R.airReachM); continue; }
-      const d = _hit.t - (lift - shape.embedM);         // + host below the design plane, - host above it
+      const d = _hit.t - bottom;                        // + air under the run's underside, - host above it
       if (d > R.airReachM) { air++; gaps.push(R.airReachM); continue; }
-      const embed = -d - shape.standoffM;               // how far the host rises into the links
+      const embed = -d;                                 // how far the host rises into the run
       if (embed > maxEmbed) maxEmbed = embed;
       gaps.push(Math.max(0, d));
       if (!_hit.host) {
@@ -676,7 +723,7 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
         continue;
       }
       const angle = Math.acos(Math.min(1, Math.max(-1, _hit.n.dot(n)))) * 180 / Math.PI;
-      if (d <= R.gapTolM && embed <= R.linkEmbedMax && angle <= R.normalMaxDeg) {
+      if (d <= shape.standoffM + R.gapTolM && embed <= embedTol && angle <= R.normalMaxDeg) {
         supported++;
         if (angle > spread) spread = angle;
       }
@@ -690,10 +737,10 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.maxEmbed = Number.isFinite(maxEmbed) ? maxEmbed : 0;
   out.spreadDeg = spread;
   if (forbidden > 0 && fail(`host:${out.forbiddenRole}`)) return out;
-  if (out.maxEmbed > R.linkEmbedMax && fail('sunk')) return out;
+  if (out.maxEmbed > embedTol && fail('sunk')) return out;
   if (out.air > R.airMax && fail('air')) return out;
   if (out.support < R.supportMin && fail('support')) return out;
-  if (out.gapP90 > R.gapP90Max && fail('gap')) return out;
+  if (out.gapP90 > shape.standoffM + R.gapP90Max && fail('gap')) return out;
   // ---- R4: static clearance from forbidden roles, and no host surface into the links
   _m.compose(pose.pos, pose.quat, UNIT);
   _mi.copy(_m).invert();
@@ -1033,7 +1080,7 @@ export interface SpareTrackSeatReceipt {
   support: number; air: number; gapP90Cm: number; maxEmbedCm: number; clearCm: number | null; cutCm: number;
   sweepCm: number | null; exposure: number;
   /** A re-seated run: why its authored seat failed, and how far the solver moved and turned it. */
-  moved?: { reason: string | null; cm: number; deg: number };
+  moved?: { reason: string | null; cm: number; deg: number; authored?: Record<string, number | null> };
 }
 
 export function seatReceipt(site: string, frame: 'hull' | 'turret', source: SpareTrackSeatReceipt['source'],
