@@ -102,8 +102,9 @@ for (const [bucket, geometries] of Object.entries(buckets)) {
 }
 // #16 r2 (Lane C, 2026-10-14): Mangrove's three landings are the Ca Mau pole landings in their members (jettyKit.ts
 // 'stilts': leaning poles, lashed bearers and runners, rough boards, the handrail, sway braces, the tide sleeves) —
-// about 2,500 triangles a landing where the old kit's piles and slabs were 168; the bound moves from 8,000 to 12,000
-assert.ok(triangles <= 12000, `landing kit stays bounded, got ${triangles} triangles`);
+// about 2,500 triangles a landing where the old kit's piles and slabs were 168; and the bank's reeds are the Ca Mau
+// nipa over its sedge (reedBeds.ts: three pinnate fronds a clump, ~350 triangles): the bound moves from 8,000 to 16,000
+assert.ok(triangles <= 16000, `landing kit stays bounded, got ${triangles} triangles`);
 console.log(`riverLandings.selftest: Mangrove's landings ${triangles} triangles`);
 const repeated = build();
 assert.deepEqual(repeated.receipts, receipts, 'landing placement and support receipts are deterministic');

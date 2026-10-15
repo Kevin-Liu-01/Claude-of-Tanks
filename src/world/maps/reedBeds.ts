@@ -122,7 +122,7 @@ function blade(s: Sheet, c: Culm, at: number, dx: number, dz: number, len: numbe
  *  at every station, raked forward and drooping (gaps between them: a pinnate frond, not a sheet), some dry. */
 function frond(s: Sheet, base: THREE.Vector3, az: number, len: number, salt: number): void {
   const ux = Math.cos(az), uz = Math.sin(az), sx = -uz, sz = ux;
-  const stations = 11;
+  const stations = 8;
   const at = (t: number) => new THREE.Vector3(base.x + ux * len * 0.7 * t, base.y + len * (1.0 * t - 0.62 * t * t), base.z + uz * len * 0.7 * t);
   // the rachis: a thin flat strip seen from above and below
   for (let k = 0; k < stations; k++) {

@@ -90,7 +90,8 @@ for (const form of ['estacade', 'stage', 'brygge', 'riva', 'stilts']) {
     assert.ok(Math.abs(f.deckTop - (y + JETTY_DECK_TOP_OVER_Y)) < 1e-12);
     assert.deepEqual([f.deck.minT, f.deck.maxT, f.deck.minS, f.deck.maxS], [-0.025, f.end + 0.025, -JETTY_HALF_WIDTH_M, JETTY_HALF_WIDTH_M]);
     let decked = 0, samples = 0;
-    for (let t = 0; t <= f.end; t += 0.37) for (const s of [-0.5, 0.1, 0.55]) {
+    // (the lines clear of the stage planks' joints at ±0.107, ±0.321, ±0.536 m)
+    for (let t = 0; t <= f.end; t += 0.37) for (const s of [-0.43, 0.02, 0.43]) {
       const [, h] = column(solid, x0 + dx * t - dz * s, z0 + dz * t + dx * s);
       samples++;
       if (h >= f.deckTop - 0.005 && h <= f.deckTop + 0.6) decked++;
