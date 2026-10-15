@@ -134,7 +134,7 @@ export function buildVerdantFloorAlbedo({ halfWidthM, shutterX }: FloorFrame, se
   for (let x = shutterX[0] - 0.4; x <= shutterX[1] + 0.4; x += 0.35) spot(x, halfWidthM - 0.62, 0.55, 0.86, 0.5, 0);
   // sealed saw-cut joints: a dark sealant core with a worn light arris on one side
   const out = new Uint8Array(S * S * 4);
-  const base = [88, 86, 81];
+  const base = [74, 72, 68]; // a step darker than a fresh pour: the hero keeps its contrast against the floor (v3 stills)
   for (let y = 0; y < S; y++) {
     const jy = y % slab;
     const nearY = Math.min(jy, slab - jy);

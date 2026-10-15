@@ -496,7 +496,7 @@ export function createGarageStage(
     albedo.needsUpdate = true;
     const finish = new THREE.MeshStandardMaterial({
       map: albedo, normalMap: outdoorSeedNormal, normalScale: new THREE.Vector2(0.45, 0.45),
-      roughness: 0.46, metalness: 0.04, emissive: 0x14120e, emissiveIntensity: 0.5,
+      roughness: 0.54, metalness: 0.04, emissive: 0x14120e, emissiveIntensity: 0.5,
       transparent: true, depthWrite: false,
     });
     engineCtx?.setupShadowMaterial?.(finish, garageHardstandGradedHook(null, 0,
