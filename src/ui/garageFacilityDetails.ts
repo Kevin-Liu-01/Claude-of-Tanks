@@ -2587,7 +2587,10 @@ export function addGarageFacilityDetails({
       const craneSide = basin.side + basin.halfWidth + 4.7;
       const craneDepth = middle - 2.0;
       const quay: FacilityCluster = { ...onPaving(craneSide, craneDepth), yaw: quayYaw };
-      const portalBlue = new THREE.Color(0x3f6f78), houseTone = new THREE.Color(0x8a9497), roofTone = new THREE.Color(0x4f5658);
+      // the harbour's blue weathered by salt (the re-judge, 2026-10-15: "flat untextured cyan-blue ... no rivets, rust or
+      // grime"): a duller paint, rust run down the legs from their joints, grime at their feet
+      const portalBlue = new THREE.Color(0x4d666b), houseTone = new THREE.Color(0x8a9497), roofTone = new THREE.Color(0x4f5658);
+      const rustRun = new THREE.Color(0x6e4630), grime = new THREE.Color(0x343a3b);
       // low enough for the whole crane to stand inside the hero frame (the re-judge, 2026-10-15: "crane is cropped"): a
       // 5.6 m portal, a 14 m jib luffed down to 22 degrees
       const gauge = 5.0, legX = 3.2, portalY = 5.6;
@@ -2606,6 +2609,8 @@ export function addGarageFacilityDetails({
         for (const dx of [-0.7, 0.7]) clusterCylinder(quay, lz, lx + dx, 0.32, 0.3, 0.22, iron, 0, 16, Math.PI / 2);
         for (const df of [-0.22, 0.22]) clusterBox(quay, lz, lx + df, 0.8 + (portalY - 0.8) / 2, 0.5, portalY - 0.8, 0.05, portalBlue, 'structure');
         clusterBox(quay, lz, lx, 0.8 + (portalY - 0.8) / 2, 0.035, portalY - 0.8, 0.44, portalBlue, 'structure');
+        for (const df of [-0.25, 0.25]) clusterBox(quay, lz, lx + df, portalY - 1.6, 0.52, 1.6 + Math.abs(df) * 2, 0.02, rustRun, 'painted'); // rust runs
+        clusterBox(quay, lz, lx, 1.15, 0.54, 0.7, 0.48, grime, 'painted'); // grime at the leg's foot
       }
       for (const lz of [-gauge / 2, gauge / 2]) {
         clusterBeam(quay, [lz, -legX, 1.2], [lz, legX, portalY - 0.6], 0.16, portalBlue, 'structure');
