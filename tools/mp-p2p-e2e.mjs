@@ -89,6 +89,9 @@ const forceRelay = argValue('ice', '') === 'relay';
 const distDir = argValue('dist', '') ? resolve(argValue('dist', '')) : '';
 const shootS = Number(argValue('shoot', 0));
 const profileS = Number(argValue('profile', 0));
+// --a2-profile (2026-10-14, the 224 returning-tab Garage freeze): a CPU profile of the returning tab from its first byte to
+// its Garage, saved as a2-garage.cpuprofile, with its heaviest self-time frames in report.a2Profile
+const a2Profile = process.argv.includes('--a2-profile');
 
 function freePort() {
   return new Promise((resolvePort, reject) => {
@@ -730,6 +733,9 @@ try {
     await waitFor(pages.a, (mode) => document.querySelector(`.cot-play [data-game-mode="${mode}"]`)?.classList.contains('on'), `A game mode ${gameModeOption}`, 15_000, { args: [gameModeOption] });
   }
   if (mapOption) {
+    // (2026-10-14) since the play menu syncs the host's Garage pick into the room (syncGarageSelection: set_map), the
+    // Garage's own battlefield is set first, or the room's map snaps back to it
+    await pages.a.evaluate((mapId) => { window.__DEBUG?.garage?.setSelectedMap?.(mapId); }, mapOption).catch(() => {});
     await pages.a.evaluate((mapId) => {
       const select = document.querySelector('.cot-play [data-control="map"]');
       if (select && select.value !== mapId) { select.value = mapId; select.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -953,6 +959,17 @@ try {
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport({ ...testViewport, width: 320, height: 200 })));
   step('b-c-shrunk', { viewport: '320x200' });
   pages.a2 = await contextA.newPage();
+  let a2ProfileSession = null;
+  if (a2Profile) {
+    // the same origin first (the renderer the invite will use), then the sampler, then the invite
+    await pages.a2.goto(new URL('/humans.txt', invite).href, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => {});
+    a2ProfileSession = await pages.a2.createCDPSession().catch(() => null);
+    if (a2ProfileSession) {
+      await a2ProfileSession.send('Profiler.enable').catch(() => {});
+      await a2ProfileSession.send('Profiler.setSamplingInterval', { interval: 1000 }).catch(() => {});
+      await a2ProfileSession.send('Profiler.start').catch(() => {});
+    }
+  }
   await pages.a2.setViewport(testViewport);
   observe(pages.a2, 'A2');
   await pages.a2.evaluateOnNewDocument(installPageRecorder, forceRelay);
@@ -963,6 +980,30 @@ try {
   void pages.a2.waitForFunction(inBattle, { timeout: 420_000, polling: 100 }).then(() => { report.rejoinTiming.revealedAfterMs = elapsedMs() - a2OpenedAtMs; }).catch(() => {});
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
   report.rejoinTiming.garageAfterMs = elapsedMs() - a2OpenedAtMs;
+  if (a2ProfileSession) {
+    const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
+    if (profile) {
+      await writeFile(join(outputDir, 'a2-garage.cpuprofile'), JSON.stringify(profile));
+      const self = new Map();
+      const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+      const parentOf = new Map();
+      for (const node of profile.nodes) for (const child of node.children ?? []) parentOf.set(child, node.id);
+      const label = (node) => `${node.callFrame.functionName || '(anon)'} ${(node.callFrame.url || '').replace(/^https?:\/\/[^/]+/, '')}:${node.callFrame.lineNumber + 1}`;
+      for (let i = 0; i < profile.samples.length; i++) {
+        const ms = (profile.timeDeltas[i + 1] ?? profile.timeDeltas[i] ?? 0) / 1000;
+        const node = byId.get(profile.samples[i]);
+        if (!node) continue;
+        // the frame and its three callers: a native wait reads with the JS that made it
+        const chain = [label(node)];
+        let up = parentOf.get(node.id);
+        for (let depth = 0; depth < 3 && up !== undefined; depth++) { chain.push(label(byId.get(up))); up = parentOf.get(up); }
+        const key = chain.join(' < ');
+        self.set(key, (self.get(key) ?? 0) + ms);
+      }
+      report.a2Profile = { garageAfterMs: report.rejoinTiming.garageAfterMs, top: [...self].sort((x, y) => y[1] - x[1]).slice(0, 25).map(([frame, ms]) => ({ ms: Math.round(ms), frame })) };
+    }
+    await a2ProfileSession.detach().catch(() => {});
+  }
   step('a2-garage-ready');
   // The resumed seat returns one of two ways, both the product's: the room re-delivers match_start to it and the session
   // re-enters the running match on its own (the loader covers the lobby at once), or the lobby is up with Rejoin battle.
