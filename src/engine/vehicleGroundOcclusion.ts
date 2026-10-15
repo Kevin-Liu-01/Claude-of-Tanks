@@ -160,7 +160,18 @@ export const GROUND_AO_OCC_MAX = 0.35;
  * the broad share keeps itself whole (GROUND_AO_WALL_SOFT → 1): at 0.35 and 0.7 the winter hulls' under-hull shade read 0.84–0.86
  * of the open snow and lifted off it.
  */
-export const GROUND_AO_OCC_MAX_SNOW = 0.8;
+export const GROUND_AO_OCC_MAX_SNOW = 0.85;
+/**
+ * 2026-10-15 (the blind critics on r5b vs the r2 law, −0.31, the coordinator's VERDICT): r5's terms added three artefacts
+ * and nothing the critics preferred — on snow a thin pale hard-edged rim along the track feet that lifted the tracks off
+ * the snow (the contact blend's packed snow, and the berm's lit lip), a crisp-cornered polygon of shade beside the runs (the
+ * shoe band's sun line, tinted blue on snow) and, on Verdant, a hard dark diagonal wedge below a run (the same band under
+ * a low sun: the owner's "dark rectangle" family). So the shoe band, the berm and the contact blend ship OFF (their levers,
+ * GROUND_AO_BAND / _BERM / _BLEND = 1, keep them for an A/B frame): nothing lightens a track's foot, nothing projects past
+ * its footprint. The snow cap is the r2 law's 0.85 again (r5's 0.8 lifted the snow under a belly), whole from two thirds
+ * of a receiver's snow cover (GROUND_AO_SNOW_SATURATE: the terrain's partial levels read as snow, not as lightened ground).
+ */
+export const GROUND_AO_SNOW_SATURATE = 1.5;
 /*
  * 2026-10-14 (the engine-cs lane; media wave f1, 27 of 63 "hull hovers: no contact shadow" notes on Frosthollow and
  * Whiteout): the cap is a floor on the RATIO of the light a receiver keeps, and the slab it answers was dark ground; in
@@ -236,14 +247,12 @@ export const GROUND_AO_CORE_FLAT = 0.4;
 export const GROUND_AO_CORE_GAP_M = 0.03;
 /**
  * 2026-10-14 (the engine-cs lane; media wave f1: "hull hovers: no contact shadow under the tracks" on Frosthollow and
- * Whiteout): on snow a run's foot stands sunk in a groove of packed snow, and the cascades' bias leaves it lit. By the
- * receiver's own snow cover the core is whole out to GROUND_AO_CORE_FULL_SNOW_M from a face and gone at
- * GROUND_AO_CORE_W_SNOW_M (a line still, a few centimetres wider), over the rim's vertical reach (the ground under a sunk
- * or lifted run on uneven snow) rather than GROUND_AO_CORE_GAP_M. Past the cap like the core: on snow the cap's ratio
- * leaves the crease too little to read.
+ * Whiteout): on snow a run's foot stands in packed snow, and the cascades' bias leaves it lit. By the receiver's own snow
+ * cover the core holds while the ground lies within GROUND_AO_CORE_GAP_SNOW_M of the run's lower edge (uneven snow), its
+ * width round 4's. (2026-10-15, the blind critics: the wider groove over the rim's whole vertical reach drew a strip up a
+ * slope beside the runs — a polygon of shade; the core stays a line.)
  */
-export const GROUND_AO_CORE_FULL_SNOW_M = 0.02;
-export const GROUND_AO_CORE_W_SNOW_M = 0.09;
+export const GROUND_AO_CORE_GAP_SNOW_M = 0.06;
 /**
  * Round 4: the shoe band's own sun shadow. The cascades' depth bias lifts a hull's shadow off its contact, so on a run's
  * shade side the crease stood sunlit. The band — the run's lower edge to GROUND_AO_BAND_H_M over it, along the ground run
@@ -500,16 +509,12 @@ function runFootAt(x: number, z: number, h: VehicleGroundHull, runs?: VehicleGro
 export function contactCoreOcclusion(q: Vec3Like, h: VehicleGroundHull, runs?: VehicleGroundRuns | null, scale = 1, snow = 0): number {
   const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
   const sn = clamp01(snow);
-  // (2026-10-14) on snow (the receiver's own cover) the groove's ends and the rim's vertical reach
-  const full = GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M + (GROUND_AO_CORE_FULL_SNOW_M - GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M) * sn;
-  const w = 1 - smoothstep(full, GROUND_AO_CORE_W_M + (GROUND_AO_CORE_W_SNOW_M - GROUND_AO_CORE_W_M) * sn, -laneD);
+  const w = 1 - smoothstep(GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M, GROUND_AO_CORE_W_M, -laneD);
   const ends = smoothstep(0, GROUND_AO_CONTACT_EDGE_M, Math.min(q.z - h.fz0, h.fz1 - q.z));
   if (w <= 0 || ends <= 0) return 0;
   const dv = q.y - runFootAt(q.x, q.z, h, runs);
-  const near = 1 - smoothstep(0, GROUND_AO_CORE_GAP_M, Math.abs(dv));
-  const vert = dv >= 0 ? 1 - smoothstep(0, GROUND_AO_CONTACT_RISE_M, dv)
-    : 1 - smoothstep(GROUND_AO_CONTACT_FULL_M, GROUND_AO_CONTACT_GAP_M, -dv);
-  return GROUND_AO_CORE_MAX * scale * w * ends * (near + (vert - near) * sn);
+  // (2026-10-14) on snow (the receiver's own cover) a little more vertical tolerance: uneven packed snow
+  return GROUND_AO_CORE_MAX * scale * w * ends * (1 - smoothstep(0, GROUND_AO_CORE_GAP_M + (GROUND_AO_CORE_GAP_SNOW_M - GROUND_AO_CORE_GAP_M) * sn, Math.abs(dv)));
 }
 
 /**
@@ -540,12 +545,12 @@ export function mapSnowWeight(groundAlbedo: number): number {
 
 /** The joint cap for a receiver of snow cover `snow` (contact r2: its own): GROUND_AO_OCC_MAX (or the lever's), GROUND_AO_OCC_MAX_SNOW on snow. */
 export function groundOcclusionCap(snow: number, cap = GROUND_AO_OCC_MAX): number {
-  return cap + (GROUND_AO_OCC_MAX_SNOW - cap) * clamp01(snow);
+  return cap + (GROUND_AO_OCC_MAX_SNOW - cap) * clamp01(snow * GROUND_AO_SNOW_SATURATE);
 }
 
 /** The broad share's softening outside the footprint for a receiver of snow cover `snow`: GROUND_AO_WALL_SOFT, whole on snow. */
 export function groundWallSoft(snow: number, soft = GROUND_AO_WALL_SOFT): number {
-  return soft + (1 - soft) * clamp01(snow);
+  return soft + (1 - soft) * clamp01(snow * GROUND_AO_SNOW_SATURATE);
 }
 
 /**
@@ -854,9 +859,9 @@ export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUn
     uVehGroundB: { value: rows(4) },
     uVehGroundR: { value: Array.from({ length: GROUND_AO_MAX_HULLS * 4 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
-    uVehGroundR4: { value: new THREE.Vector4(1, 1, 0, 1) },
+    uVehGroundR4: { value: new THREE.Vector4(1, 0, 0, 1) },
     uVehGroundR5: { value: new THREE.Vector4(GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0) },
-    uVehGroundR6: { value: new THREE.Vector4(1, 0, GROUND_AO_GEAR_CAP, 1) },
+    uVehGroundR6: { value: new THREE.Vector4(1, 0, GROUND_AO_GEAR_CAP, 0) },
     uVehGroundSnow: { value: 0 },
     uVehKeyLight: { value: 0 },
     uVehKeyLightP: { value: Array.from({ length: GROUND_AO_KEY_LIGHTS }, () => new THREE.Vector4()) },
@@ -1151,13 +1156,14 @@ export function updateVehicleGroundOcclusionUniforms(
   // round's terms and the joint cap on one frame; contact r2: the berm, the wall's softening and the cap follow each
   // receiver's own snow cover in the GLSL, the grime the map's lever)
   const mapSnow = mapSnowWeight(groundAlbedo);
-  u.uVehGroundR4.value.set(Math.max(lightTune('GROUND_AO_CORE', 1), 0), lightTune('GROUND_AO_BAND', 1) > 0 ? 1 : 0,
-    Math.max(lightTune('GROUND_AO_BERM', 1), 0), (1 - mapSnow) * Math.max(lightTune('GROUND_AO_GRIME', 1), 0));
+  // (2026-10-15, the blind critics) the band and the berm ship off: their levers bring them back for an A/B frame
+  u.uVehGroundR4.value.set(Math.max(lightTune('GROUND_AO_CORE', 1), 0), lightTune('GROUND_AO_BAND', 0) > 0 ? 1 : 0,
+    Math.max(lightTune('GROUND_AO_BERM', 0), 0), (1 - mapSnow) * Math.max(lightTune('GROUND_AO_GRIME', 1), 0));
   u.uVehGroundR5.value.set(clamp01(lightTune('GROUND_AO_WALL_SOFT', GROUND_AO_WALL_SOFT)), lightTune('GROUND_AO_NORMAL_GUARD', 1) > 0 ? 1 : 0,
     clamp01(lightTune('GROUND_AO_OCC_CAP', GROUND_AO_OCC_MAX)), 0);
   // (round 5; QA: __LIGHT_TUNE.GROUND_AO_COOL / _SHOE_SKIP / _GEAR_CAP / _BLEND compare the round's terms on one frame)
   u.uVehGroundR6.value.set(Math.max(lightTune('GROUND_AO_COOL', 1), 0), lightTune('GROUND_AO_SHOE_SKIP', 0) > 0 ? 1 : 0,
-    clamp01(lightTune('GROUND_AO_GEAR_CAP', GROUND_AO_GEAR_CAP)), Math.max(lightTune('GROUND_AO_BLEND', 1), 0));
+    clamp01(lightTune('GROUND_AO_GEAR_CAP', GROUND_AO_GEAR_CAP)), Math.max(lightTune('GROUND_AO_BLEND', 0), 0)); // (the blend ships off)
   u.uVehGroundSnow.value = clamp01(lightTune('GROUND_AO_SNOW', snowLaw));
   let n = 0;
   if (enabled && roots) {
@@ -1367,6 +1373,8 @@ ${GLSL_HULL_EDGES}
       float sunVis = cotSunVisOf( alpha );
       // (2026-10-14, contact r2) the receiver's own snow cover weighs the snow law (the terrain's, in the scene alpha)
       float snowW = uVehGroundSnow * cotSnowOf( alpha );
+      // (2026-10-15) the cap and the softening take snow whole from two thirds of its cover (GROUND_AO_SNOW_SATURATE)
+      float snowS = clamp( snowW * ${f(GROUND_AO_SNOW_SATURATE)}, 0.0, 1.0 );
       // what a blocked direction keeps of its darkening: one minus the occluder's own light over the sky's (first-order
       // interreflection) — the belly lit by the open ground it glimpses, a wall by half sky and half ground
       float aUp = uContactAmb.x + uContactAmb.z + uContactAmb.w * max( uContactFillDir.y, 0.0 );
@@ -1443,7 +1451,7 @@ ${GLSL_HULL_EDGES}
         // share softened outside the footprint, from its edge out (the rim and the core hold the contact)
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
-        ho *= mix( 1.0, mix( uVehGroundR5.x, 1.0, snowW ), smoothstep( 0.0, ${f(2 * GROUND_AO_EDGE_M)}, sd ) );
+        ho *= mix( 1.0, mix( uVehGroundR5.x, 1.0, snowS ), smoothstep( 0.0, ${f(2 * GROUND_AO_EDGE_M)}, sd ) );
         // the track's contact (2026-10-09, round 3): a soft rim hugging the drawn run — whole in the shoes' lane, gone a
         // spread outside its faces (squared), by the receiver's height against the run's lower edge as drawn (the wraps'
         // ramp past the ground run): the ground under a lifted run gone a gap under it, a blade or the ground standing into
@@ -1460,11 +1468,10 @@ ${GLSL_HULL_EDGES}
           ho = max( ho, ${f(GROUND_AO_CONTACT_MAX)} * lane * vert );
           // (round 4) the crease: a core a few centimetres either side of the shoes' faces, at the run's lower edge;
           // (2026-10-14) on snow the groove of packed snow the foot stands in: wider, over the rim's vertical reach
-          float cw = 1.0 - smoothstep( mix( ${f(GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M)}, ${f(GROUND_AO_CORE_FULL_SNOW_M)}, snowW ),
-            mix( ${f(GROUND_AO_CORE_W_M)}, ${f(GROUND_AO_CORE_W_SNOW_M)}, snowW ), -laneD );
+          float cw = 1.0 - smoothstep( ${f(GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M)}, ${f(GROUND_AO_CORE_W_M)}, -laneD );
           occCore = max( occCore, ${f(GROUND_AO_CORE_MAX)} * uVehGroundR4.x * cw
             * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) )
-            * mix( 1.0 - smoothstep( 0.0, ${f(GROUND_AO_CORE_GAP_M)}, abs( dv ) ), vert, snowW ) );
+            * ( 1.0 - smoothstep( 0.0, mix( ${f(GROUND_AO_CORE_GAP_M)}, ${f(GROUND_AO_CORE_GAP_SNOW_M)}, snowW ), abs( dv ) ) ) );
         }
         vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside );
         // (contact r2) the FX lamps this hull shadows on a lit receiver (the lamp in the hull frame)
@@ -1513,7 +1520,7 @@ ${GLSL_HULL_EDGES}
       // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly; (round 4)
       // the contact line's core by the larger, past the cap (a few centimetres wide: a line, never a slab)
       // (round 5) a card in the running gear: its cap up to the gear's; (contact r2) on the receiver's own snow the snow's
-      float cap = mix( uVehGroundR5.z, ${f(GROUND_AO_OCC_MAX_SNOW)}, snowW );
+      float cap = mix( uVehGroundR5.z, ${f(GROUND_AO_OCC_MAX_SNOW)}, snowS );
       float occ = max( min( 1.0 - vis, mix( cap, max( cap, uVehGroundR6.z ), gearW ) ), occCore ) * fade;
       // (round 4) the sun share's loss: the band's shadow, the berm's slopes (a lit lip gains: negative)
       float sunCut = ( 1.0 - ( 1.0 - band ) * bermGain ) * fade;

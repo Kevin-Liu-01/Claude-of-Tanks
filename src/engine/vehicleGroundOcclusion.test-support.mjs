@@ -106,6 +106,9 @@ export async function vehicleGroundGlslCases() {
   // slopes on the sun share; `hulls` the receiver in each hull's frame, `ambShare` the pixel's, `snowW` its own snow weight
   // (contact r2); `keys` (contact r2, one hull at the origin): the lamps (world = hull frame), their irradiance E and the
   // pixel's T and A — the lamps' cut and the shares over T + A + ΣE (groundShadeWithKeyLights)
+  // the round-4 levers the shipped module packs: the band (R4.y) and the berm (R4.z)
+  const levers = (() => { const u = M.createVehicleGroundOcclusionUniforms(); M.updateVehicleGroundOcclusionUniforms(u, [], true, 0.25);
+    return { band: u.uVehGroundR4.value.y, berm: u.uVehGroundR4.value.z }; })();
   const shade = (hulls, n, card, ambShare, sun, snowW, strengths, runs = null, keys = null) => {
     const per = [], cores = [];
     let band = 0, berm = 1, gear = 0;
@@ -116,8 +119,9 @@ export async function vehicleGroundGlslCases() {
       gear = Math.max(gear, M.gearWeight(q, T90M, card));
       per.push(M.vehicleGroundOcclusionLocal(q, n, T90M, strengths, card, runs, M.groundWallSoft(snowW)));
       cores.push(M.contactCoreOcclusion(q, T90M, runs, 1, snowW));
-      band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
-      berm *= M.snowBermGain(q, n, T90M, sun, snowW, runs);
+      // (2026-10-15) the band and the berm by the levers the module packs (shipped off since the blind critics on r5b)
+      if (levers.band > 0) band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
+      berm *= M.snowBermGain(q, n, T90M, sun, snowW * levers.berm, runs);
       if (keys && !card) {
         // (the r2 final capture) a contact occlusion of the lamp: under and round the footprint, capped
         const kw = M.keyLightReach(q, T90M);

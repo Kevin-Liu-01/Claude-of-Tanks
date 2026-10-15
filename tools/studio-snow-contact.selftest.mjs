@@ -9,9 +9,9 @@
 //    RENDERED ground (heightField.getContactHeightAt).
 // 2. The renderer was. On the same built hulls (measureVehicleGroundHull) the ground occlusion's ordinary joint cap
 //    (round 4's 0.35) leaves the snow under a belly 0.65 of its sky; on snowy terrain (contact r2: the snow cover each
-//    receiver's scene alpha carries, sceneAlpha.ts) the cap lifts (the belly keeps 0.2, about the geometry's own share) and
-//    the run's foot stands in a groove (round 4's core, wider and over the rim's vertical reach), while bare ground keeps
-//    the ordinary law exactly.
+//    receiver's scene alpha carries, sceneAlpha.ts) the cap lifts (the belly keeps 0.15, about the geometry's own share) and
+//    the run's foot keeps round 4's dark line (a little more vertical tolerance; 2026-10-15: no wider groove, the blind
+//    critics' strip), while bare ground keeps the ordinary law exactly.
 import assert from 'node:assert/strict';
 import { installCanvasFixture } from '../src/vehicles/canvasFixture.test-support.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
@@ -86,12 +86,13 @@ for (const t of TAKES) {
     const r3 = (n) => before[n].toFixed(2), now = (n) => after[n].toFixed(2);
     if (process.env.COT_SNOW_CONTACT_PRINT) console.log(t.take, k, JSON.stringify({ before, after }));
     assert.ok(Math.abs(before.belly - (1 - GROUND_AO_OCC_MAX)) < 1e-9, `${t.take}: the ordinary law keeps the cap's ${(1 - GROUND_AO_OCC_MAX).toFixed(2)} under the belly`);
-    assert.ok(Math.abs(after.belly - (1 - GROUND_AO_OCC_MAX_SNOW)) < 1e-9 && after.gap <= 0.25,
+    assert.ok(Math.abs(after.belly - (1 - GROUND_AO_OCC_MAX_SNOW)) < 1e-9 && after.gap <= 0.2,
       `${t.take} k ${k}: the snow under the belly reads shaded (${now('belly')}, between the runs ${now('gap')})`);
-    assert.ok(after.face <= 0.26 && after.groove < before.groove - 0.1,
-      `${t.take} k ${k}: a dark line at the run's foot, a groove 5 cm out (${now('face')}, ${now('groove')}; ordinary ${r3('face')}, ${r3('groove')})`);
+    // (2026-10-15, the blind critics on r5b) a dark line at the run's foot, never a groove or band reaching out from it
+    assert.ok(after.face <= 0.26 && after.groove <= before.groove + 1e-9 && after.groove > after.face + 0.2,
+      `${t.take} k ${k}: a dark line at the run's foot, none 5 cm out (${now('face')}, ${now('groove')}; ordinary ${r3('face')}, ${r3('groove')})`);
     assert.ok(after.face >= 0.2 && after.belly >= 0.14, `${t.take} k ${k}: never black`);
-    assert.ok(after.out30 > after.groove && after.out100 >= after.out30 - 0.02, `${t.take} k ${k}: lighter away from the run (no band)`);
+    assert.ok(after.out30 > after.face && after.out100 >= after.out30 - 0.02, `${t.take} k ${k}: lighter away from the run (no band)`);
     rows.push(`${t.actor.id} k ${k}: belly ${r3('belly')}→${now('belly')}, between the runs ${r3('gap')}→${now('gap')}, face ${r3('face')}→${now('face')}, 5 cm out ${r3('groove')}→${now('groove')}, 0.3 m out ${now('out30')}`);
     // ordinary ground: the same hull, the same points, weight 0 — the round-4/5 law (its cap, its core, its softening) to the bit
     const ordinary = vehicleGroundStrengths(0.25, k);
