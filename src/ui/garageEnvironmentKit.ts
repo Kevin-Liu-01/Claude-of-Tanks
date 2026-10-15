@@ -2139,7 +2139,11 @@ export function buildGarageEnvironment(
         ? texturedMaterial('snow', { color: 0xf1f5f7, roughness: 0.9 })
         : variant.architecture === 'shade_depot' || variant.architecture === 'recovery_yard'
           ? texturedMaterial('plaster', { color: new THREE.Color(recipe.buildingTint).multiplyScalar(0.78), roughness: 1 })
-          : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
+          // Steinburg's clay is weathered and sooted down, not the frame's most saturated plane over the tank (the
+          // re-judge, 2026-10-15): a cool grey multiplier draws its orange toward brown
+          : variant.architecture === 'brick_arsenal'
+            ? texturedMaterial('roof', { color: 0x8c949b, roughness: 0.96 })
+            : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
       case 'wood': return texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
