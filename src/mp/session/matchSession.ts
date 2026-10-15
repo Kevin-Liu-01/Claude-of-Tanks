@@ -32,7 +32,7 @@ import type { Transport, Unsubscribe } from '../transport/transport.ts';
 import { CLOSE_REASON, TICK_MS, VERDICT } from '../wire/index.ts';
 import type { CloseReasonId, VerdictId, WelcomeMessage } from '../wire/index.ts';
 import type { RoomClient } from '../room/roomClient.ts';
-import { parseP2pMatchUrl, ROOM_MATCH_REPORT_INTERVAL_MS } from '../room/protocol.ts';
+import { parseP2pMatchUrl, ROOM_HOST_UNREACHABLE_AFTER_MS, ROOM_HOST_UNREACHABLE_REPEAT_MS, ROOM_MATCH_REPORT_INTERVAL_MS } from '../room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomSnapshot } from '../room/protocol.ts';
 import { createMatchHost } from '../host/matchHost.ts';
 import { createHostHeadroomMonitor } from './hostHeadroom.ts';
@@ -222,6 +222,14 @@ export class MatchSession {
   private headroom: HostHeadroomMonitor | null = null;
   /** The elected host's entry reports while its world loads (null when none run). */
   private entryReports: { stop(reason: string): void } | null = null;
+  // host-loss evidence (§13.22): when this peer last heard its host (a snapshot accepted), its last claim, its claims
+  private hostHeardAt = 0;
+  private hostHeardCount = -1;
+  private lastUpdateAt = 0;
+  private hostClaimAt = Number.NEGATIVE_INFINITY;
+  private hostClaims = 0;
+  /** The host generation this seat was last welcomed by (a lost link clears the client's welcome; this stays). */
+  private welcomedGeneration = -1;
   /** The host generation this seat's link (or host) runs; an election with a newer one is a migration (P1: compare generations, never the reason). */
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
@@ -403,6 +411,7 @@ export class MatchSession {
     client.onWelcome((welcome) => {
       if (this.matchClient !== client) return;
       if (this.migrationActive) this.endMigration('welcomed');
+      this.welcomedGeneration = this.room.generation;
       this.withdrawReentryDecline();
       void Promise.resolve(presentation.onWelcome?.(welcome)).then(() => {
         if (this.matchClient === client && !round.spectator && presentation.prediction) client.enablePrediction(presentation.prediction);
@@ -824,8 +833,38 @@ export class MatchSession {
   /** One display frame: pump the host (when this seat hosts) and the match client; the bound presentation receives the frame. */
   update(nowMs: number, elapsedS: number): MatchFrame | null {
     this.host?.pump(nowMs);
-    return this.matchClient ? this.matchClient.update(nowMs, elapsedS) : null;
+    const frame = this.matchClient ? this.matchClient.update(nowMs, elapsedS) : null;
+    this.watchHostSilence(nowMs);
+    return frame;
   }
+
+  /**
+   * Host-loss evidence (2026-10-14, the MP stream; §13.22): a peer welcomed by the current host that has accepted no
+   * snapshot for ROOM_HOST_UNREACHABLE_AFTER_MS tells the room (`host_unreachable`), again every
+   * ROOM_HOST_UNREACHABLE_REPEAT_MS while the silence lasts. The room acts on it only when the host's room socket is gone
+   * too — a crashed or killed host tab then costs its peers the claim's 1.5 s rather than the 8 s socket lease. A page
+   * that itself stalled (a frame gap over 500 ms) restarts the count: its silence is its own, not the host's.
+   */
+  private watchHostSilence(nowMs: number): void {
+    const client = this.matchClient;
+    const stalled = nowMs - this.lastUpdateAt > 500;
+    this.lastUpdateAt = nowMs;
+    const count = client?.snapshotsAcceptedCount ?? -1;
+    if (!client || this.host || !this.peerTransport || this.currentPhase !== 'match' || this.migrationActive
+        || this.welcomedGeneration !== this.room.generation || this.room.phase !== 'joined' || stalled || count !== this.hostHeardCount) {
+      this.hostHeardCount = count;
+      this.hostHeardAt = nowMs;
+      return;
+    }
+    const silentMs = nowMs - this.hostHeardAt;
+    if (silentMs < ROOM_HOST_UNREACHABLE_AFTER_MS || nowMs - this.hostClaimAt < ROOM_HOST_UNREACHABLE_REPEAT_MS) return;
+    this.hostClaimAt = nowMs;
+    this.hostClaims++;
+    void this.room.reportHostUnreachable(this.room.generation, silentMs).catch(() => { /* a room that predates the claim */ });
+  }
+
+  /** Diagnostics: `host_unreachable` claims this seat sent (§13.22). */
+  get hostUnreachableClaims(): number { return this.hostClaims; }
 
   /** Leave the match (the seat stays in the room) and release the presentation. A hosting seat hands the match on. */
   async leaveMatch(reason = 'leave', closeReason: CloseReasonId = CLOSE_REASON.CLIENT_LEAVE): Promise<void> {
