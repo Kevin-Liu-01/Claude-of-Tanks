@@ -239,8 +239,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x829a9b, buildingTint: 0xc8d2cd,
     structures: [
       at(makeFishery, 'working fishery', -36, -6, 0.78),
-      at(makeLighthouse, 'harbor lighthouse', -30, -30, 0.84),
-      at(makeBoatshed, 'harbor boatshed', -7, -36, 0.72),
+      // off the hero's axis to the far left (it rose out of the turret: the garage critic panel, 2026-10-14)
+      at(makeLighthouse, 'harbor lighthouse', -45.25, 5.66, 0.84),
+      at(makeBoatshed, 'harbor boatshed', 6.36, -40.3, 0.72), // beyond the crane's new berth
       at(makeShed, 'drydock service bay', 18, -34, 0.78),
       at(makeBoatshed, 'breakwater boatshed', 36, -14, 0.62),
       at(makeNetYard, 'rigging and net yard', 40, -11, 0.66),

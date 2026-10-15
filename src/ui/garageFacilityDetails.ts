@@ -126,8 +126,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     naval_drydock: {
       logistics: [[-34, 15], [18, -25]],
       parts: [[-32, -8], [4, -35]], floods: [[-39, 4], [39, 4]],
-      // the drydock crane stands on the quay, short of the shore (2026-10-11: the sea opens behind it)
-      feature: [0, 24], featureRadius: [11, 6],
+      // the drydock crane stands on the quay, short of the shore (2026-10-11: the sea opens behind it), travelled along its
+      // rails to the frame's right third so its portal and jib stand clear of the hero's turret (the garage critic panel,
+      // 2026-10-14: "the coastal lighthouse rising out of the turret ... set the gantry on crane rails")
+      feature: [17, 22], featureRadius: [9, 6],
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
@@ -2452,7 +2454,7 @@ export function addGarageFacilityDetails({
       clusterBox(quay, 0, 0, portalY + 0.2, gauge + 1.0, 0.4, 2 * legX + 1.0, portalBlue, 'structure'); // the deck
       clusterCylinder(quay, 0, 0, portalY + 0.55, 1.8, 0.3, iron, 0, 16); // the slewing ring
       // the slewing house: machinery house, roof, vents, cab, A-frame, counterweight
-      const slew = 0.55; // the jib points out toward the sea, a little toward the frame's right
+      const slew = -0.6; // the jib points out toward the sea and away from the hero (its hook clear of the turret)
       const house = { ...quay, yaw: quayYaw + Math.PI + slew };
       const houseY = portalY + 0.7;
       clusterBox(house, 0, -0.6, houseY + 1.4, 3.6, 2.8, 5.2, houseTone, 'painted');
