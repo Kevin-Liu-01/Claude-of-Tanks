@@ -149,6 +149,16 @@ export interface HouseSpec {
    * over the render); null for none
    */
   skirt?: { bucket: RegionalBucket; colour?: Rgb; tint?: Rgb } | null;
+  /**
+   * the face pass for a hand-built body (props census BS-3, lane B 2026-10-14; the 10-12 plan: "give hand-built bodies the
+   * same face pass"): the builder lays its own roof (a chala's curved hips, a Naga thatch with its horns, a flat earth roof
+   * on vigas), so the house lays none — no covering, gables, verges, rafter feet or gutters — but still builds its walls
+   * cut by their openings in reveals, the units in them, the sill shadows and runs, the eave's rain shadow, the foot's
+   * grime, the plinth and its water table, the render's spall and the war wear, and registers its plan, so the damage
+   * reads the body as a house. `roof` still describes the covering the builder lays (its eave, pitch and kind) for the
+   * rain shadow and the damage anatomy
+   */
+  ownRoof?: boolean;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -1092,7 +1102,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   });
   // the roof and gables in the top body's frame
   const moveRoof = (fn: () => void) => (Math.abs(roofCx) < 1e-6 && Math.abs(roofCz) < 1e-6 ? fn() : sink.placed(0, roofCx, 0, roofCz, fn));
-  moveRoof(() => {
+  if (!spec.ownRoof) moveRoof(() => {
     emitRoof(sink, rg, spec.roof, spec.roofColour);
     if (roofPatch) emitRoofPatch(sink, rg, spec.roof, roofPatch);
     if (rg.gable) {
@@ -1207,7 +1217,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     }
   }
   // rafter feet under the eaves overhang, every 0.8 m along both eaves (dressing)
-  if (spec.rafters && (rg.kind === 'gable' || rg.kind === 'halfhip' || rg.kind === 'hip') && spec.roof.eave >= 0.25) {
+  if (!spec.ownRoof && spec.rafters && (rg.kind === 'gable' || rg.kind === 'halfhip' || rg.kind === 'hip') && spec.roof.eave >= 0.25) {
     const e = spec.roof.eave, c = spec.rafters;
     moveRoof(() => {
       const n = Math.max(2, Math.round((rg.ridgeHalf > 0 ? 2 * rg.halfD : 2 * rg.halfD) / 0.8));
@@ -1222,7 +1232,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     });
   }
   // gutters and downpipes on the eaves sides (+x, -x)
-  if (spec.gutters && spec.roof.kind !== 'flat') {
+  if (!spec.ownRoof && spec.gutters && spec.roof.kind !== 'flat') {
     const colour = spec.gutters.colour;
     const ex = rg.s + spec.roof.eave - 0.06, gy = eaveY - spec.roof.eave * rg.tanP - 0.1;
     const gz = roofD / 2 + (rg.kind === 'gable' ? spec.roof.verge : spec.roof.verge) - 0.05;
