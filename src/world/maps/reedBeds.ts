@@ -117,25 +117,31 @@ function blade(s: Sheet, c: Culm, at: number, dx: number, dz: number, len: numbe
   s.tri2(v[1][0], v[2][0], v[1][1]);
 }
 
-/** A nipa frond rising from (x, y, z) toward azimuth `az`: the rachis arching up and over, leaflets either side. */
+/** A nipa frond rising from (x, y, z) toward azimuth `az`: the rachis arching up and over, a narrow leaflet off each side
+ *  at every station, raked forward and drooping (gaps between them: a pinnate frond, not a sheet), some dry. */
 function frond(s: Sheet, base: THREE.Vector3, az: number, len: number, salt: number): void {
-  const ux = Math.cos(az), uz = Math.sin(az);
-  const stations = 7;
-  const at = (t: number) => new THREE.Vector3(base.x + ux * len * 0.75 * t, base.y + len * (0.95 * t - 0.62 * t * t), base.z + uz * len * 0.75 * t);
-  const ribL: number[] = [], ribR: number[] = [];
-  for (let k = 0; k <= stations; k++) {
+  const ux = Math.cos(az), uz = Math.sin(az), sx = -uz, sz = ux;
+  const stations = 11;
+  const at = (t: number) => new THREE.Vector3(base.x + ux * len * 0.7 * t, base.y + len * (1.0 * t - 0.62 * t * t), base.z + uz * len * 0.7 * t);
+  // the rachis: a thin flat strip seen from above and below
+  for (let k = 0; k < stations; k++) {
+    const p = at(k / stations), q = at((k + 1) / stations), w = 0.035 * (1 - k / stations) + 0.01;
+    const a = s.vertex(p.x + sx * w, p.y, p.z + sz * w, NIPA, true), b = s.vertex(p.x - sx * w, p.y, p.z - sz * w, NIPA, true);
+    const c = s.vertex(q.x + sx * w, q.y, q.z + sz * w, NIPA, true), d = s.vertex(q.x - sx * w, q.y, q.z - sz * w, NIPA, true);
+    s.tri2(a, c, b); s.tri2(b, c, d);
+  }
+  for (let k = 2; k <= stations; k++) {
     const t = k / stations, p = at(t);
-    // the leaflets: a swept pair at each station (longest mid-frond), drooping, dry at the tips of the old fronds
-    const leaf = len * 0.28 * Math.sin(Math.PI * Math.min(1, 0.15 + t)) * (k === 0 ? 0 : 1);
-    const tone = hash(k, salt) > 0.82 ? NIPA_DRY : NIPA;
-    const sx = -uz, sz = ux;
-    ribL.push(s.vertex(p.x + sx * leaf + ux * leaf * 0.35, p.y - leaf * 0.45, p.z + sz * leaf + uz * leaf * 0.35, tone, true));
-    ribR.push(s.vertex(p.x - sx * leaf + ux * leaf * 0.35, p.y - leaf * 0.45, p.z - sz * leaf + uz * leaf * 0.35, tone, true));
-    const mid = s.vertex(p.x, p.y + 0.02, p.z, NIPA, true);
-    if (k > 0) {
-      const prevMid = mid - 3; // (the previous station's mid vertex: three vertices per station)
-      s.tri2(prevMid, mid, ribL[k]); s.tri2(prevMid, ribL[k - 1], ribL[k]);
-      s.tri2(prevMid, ribR[k], mid); s.tri2(prevMid, ribR[k - 1], ribR[k]);
+    const leaf = len * 0.3 * Math.sin(Math.PI * Math.min(1, 0.12 + t * 0.95));
+    const tone = hash(k, salt) > 0.84 ? NIPA_DRY : NIPA;
+    for (const side of [1, -1]) {
+      // a leaflet: a narrow blade from the rachis, raked toward the tip and drooping, pointed at its end
+      const ex = p.x + (sx * side * 0.85 + ux * 0.45) * leaf, ez = p.z + (sz * side * 0.85 + uz * 0.45) * leaf, ey = p.y - leaf * 0.5;
+      const mx = (p.x + ex) / 2, mz = (p.z + ez) / 2, my = (p.y + ey) / 2 + leaf * 0.08, hw = 0.045;
+      const r0 = s.vertex(p.x + ux * hw, p.y, p.z + uz * hw, tone, true), r1 = s.vertex(p.x - ux * hw, p.y, p.z - uz * hw, tone, true);
+      const m0 = s.vertex(mx + ux * hw, my, mz + uz * hw, tone, true), m1 = s.vertex(mx - ux * hw, my, mz - uz * hw, tone, true);
+      const e = s.vertex(ex, ey, ez, tone, true);
+      s.tri2(r0, m0, r1); s.tri2(r1, m0, m1); s.tri2(m0, e, m1);
     }
   }
 }
@@ -172,13 +178,13 @@ export function dressReedClump(form: ReedForm, straw: readonly BG[], from: numbe
     const lean = Math.atan2(c.tip.z - c.base.z, c.tip.x - c.base.x) + (hash(k, salt) - 0.5);
     const lx = Math.cos(lean), lz = Math.sin(lean);
     if (form === 'phragmites') {
-      if (c.tall) spindle(s, c.tip, lx, lz, 0.32, 0.05, 0.55, PANICLE, PANICLE_TIP);
+      if (c.tall) spindle(s, c.tip, lx, lz, 0.4, 0.065, 0.55, PANICLE, PANICLE_TIP);
       for (const side of [0, 1]) {
         const a = lean + (side ? 2.1 : -2.3) + hash(k + 11 * side, salt);
         blade(s, c, 0.35 + 0.3 * hash(k + 5 + side, salt), Math.cos(a), Math.sin(a), c.height * 0.38, 0.012, BLADE_AUTUMN);
       }
     } else if (form === 'kash') {
-      if (c.tall || hash(k, salt + 3) < 0.35) spindle(s, c.tip, lx, lz, 0.42, 0.07, 0.35, KASH, KASH);
+      if (c.tall || hash(k, salt + 3) < 0.35) spindle(s, c.tip, lx, lz, 0.6, 0.1, 0.3, KASH, KASH);
       const a = lean + 2.4 + hash(k + 21, salt);
       blade(s, c, 0.3, Math.cos(a), Math.sin(a), c.height * 0.45, 0.008, BLADE_GREEN);
     } else if (form === 'nipa') {
