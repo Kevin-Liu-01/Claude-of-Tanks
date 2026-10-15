@@ -47,8 +47,15 @@ export function choose<T>(r: number, list: readonly T[]): T {
  */
 export function unhcrSheet(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number): void {
   const sag = 0.02 + look() * 0.03;
-  facePanel(sink, 'structureMetal', face, u, y + h / 2, 0.025 + sag, w + 0.08, h + 0.08, { ...DECOR, colour: UNHCR_WHITE });
-  if (h > 0.7) facePanel(sink, 'structureMetal', face, u, y + h * (0.42 + look() * 0.2), 0.03 + sag, w + 0.06, Math.min(0.22, h * 0.14), { ...DECOR, colour: UNHCR_BLUE });
+  // (props census #9: the agency's band is printed on the sheet, the sheet in three runs in one plane with the blue
+  // across its middle — a blue panel laid on the white read as a dark opening on it)
+  const o = 0.025 + sag, s0 = y - 0.04, s1 = y + h + 0.04, white = { ...DECOR, colour: UNHCR_WHITE };
+  if (h > 0.7) {
+    const bc = y + h * (0.42 + look() * 0.2), bh = Math.min(0.22, h * 0.14), b0 = bc - bh / 2, b1 = bc + bh / 2;
+    facePanel(sink, 'structureMetal', face, u, (s0 + b0) / 2, o, w + 0.08, b0 - s0, white);
+    facePanel(sink, 'structureMetal', face, u, bc, o, w + 0.08, bh, { ...DECOR, colour: UNHCR_BLUE });
+    facePanel(sink, 'structureMetal', face, u, (b1 + s1) / 2, o, w + 0.08, s1 - b1, white);
+  } else facePanel(sink, 'structureMetal', face, u, y + h / 2, o, w + 0.08, h + 0.08, white);
   const batten: Rgb = [0.42, 0.35, 0.27];
   // (the battens nailed to the wall: on its face, the sheet held proud by them)
   faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });

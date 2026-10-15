@@ -15,7 +15,7 @@
 // Collision: every tower's structure is a few prisms (the cores, the slabs, the podium), so its shell bands merge; the
 // facades are dressing.
 import { PartSink, faceBox, facePanel, normalize3, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { holedBox, holedPolygon } from './house.ts';
+import { holedBox, holedPolygon, type HoleRect, type Stain } from './house.ts';
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -144,20 +144,31 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
   }
 }
 
+/** The weathering pass's damp breaks (weather.ts): a tall wall's narrow edges are split there (holedPolygon). */
+const DAMP_BREAKS = [0.35, 1.0, 1.8] as const;
+
+/** A burnt opening's soot as a stain of the wall it is cut through (holedPolygon's): darkest at the head, fading up. */
+function sootStain(u0: number, u1: number, y0: number, y1: number): Stain {
+  return { u0, u1, y0, y1, bottom: 0.34, top: 0.9 };
+}
+
 /**
  * A punched window of a concrete facade: the pane (or its siege state) and a slim sill. (u, y) its bottom-centre. The
  * soot of a burnt window stops at `roof` (the buildings stream, 2026-10-13, the integrity check: on a top floor it stood
  * up to 0.7 m over the roof's edge, a sheet in the air with its back to the street behind).
  */
-function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number, roof = Infinity): void {
+function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number, roof = Infinity,
+  cut?: { reveal: number; stains: Stain[] }): void {
   const roll = look();
   if (roll < 0.1) { unhcrSheet(sink, face, u, y, w, h, look); return; }
   if (roll < 0.2) {
+    // (an opening cut through the wall has its own dark behind it, and its soot is the wall's: no plates)
+    if (cut) { cut.stains.push(sootStain(u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, Math.min(y + h + 1.4, roof))); return; }
     facePanel(sink, 'dark', face, u, y + h / 2, 0.01, w, h, { decor: true });
     sootBand(sink, 'plaster3', face, u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, Math.min(y + h + 1.4, roof));
     return;
   }
-  facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, 0.012, w, h, { decor: true, window: face.out });
+  facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, cut ? -cut.reveal + 0.016 : 0.012, w, h, { decor: true, window: face.out });
   faceBox(sink, 'plaster3', face, u, y - 0.04, 0.05, w + 0.12, 0.08, 0.1, { decor: true, fine: true });
 }
 
@@ -274,56 +285,78 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
     const top = 1.0 + floors * fh;
     const concrete = 'plaster3' as const;
     const paint = choose(rng(), PANEL_PAINTS), paint2 = choose(rng(), PANEL_PAINTS);
-    // the two slabs (structure) and the roof's parapet, lift rooms
-    const slabs = [rect(-W / 2, -armW / 2, W / 2, armW / 2), rect(-armW / 2, -D / 2, armW / 2, D / 2)];
-    for (const plan of slabs) planPrism(sink, concrete, plan, -0.4, top);
+    // (props census #9) the cross built as walls with their openings cut through them round a core (it was two solid
+    // slabs with the windows and the loggias painted on): the arm ends' walls a loggia deep, the arms' sides a window's
+    const hx = W / 2, hz = D / 2, a = armW / 2, cut = 0.4, deepEnd = 1.2;
+    planPrism(sink, concrete, rect(-hx + deepEnd, -a + cut, hx - deepEnd, a - cut), -0.4, top);
+    planPrism(sink, concrete, rect(-a + cut, -hz + deepEnd, a - cut, hz - deepEnd), -0.4, top);
     sink.span(concrete, -armW / 2 - 0.5, top, -armW / 2 - 0.5, armW / 2 + 0.5, top + 2.6, armW / 2 + 0.5);
-    // the faces of the cross: the arm ends (loggias) and the arms' sides (windows)
-    const hx = W / 2, hz = D / 2, a = armW / 2;
-    const faces: Array<{ face: Face; end: boolean; colour: Rgb }> = [];
-    const add = (x0: number, z0: number, x1: number, z1: number, end: boolean, colour: Rgb) => {
+    // the faces of the cross: the arm ends (loggias) and the arms' sides (windows); a side's wall stops at the arm end's
+    // wall (`conv`: its convex end, -1 the start, 1 the end), the arm end's runs across the arm
+    const faces: Array<{ face: Face; end: boolean; colour: Rgb; s0: number; s1: number }> = [];
+    const add = (x0: number, z0: number, x1: number, z1: number, conv: -1 | 0 | 1, colour: Rgb) => {
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 0.5) return;
       const u: Vec3 = [(x1 - x0) / len, 0, (z1 - z0) / len];
-      faces.push({ face: { origin: [(x0 + x1) / 2, 0, (z0 + z1) / 2], u, out: [-u[2], 0, u[0]], width: len }, end, colour });
+      faces.push({ face: { origin: [(x0 + x1) / 2, 0, (z0 + z1) / 2], u, out: [-u[2], 0, u[0]], width: len }, end: conv === 0, colour,
+        s0: -len / 2 + (conv === -1 ? deepEnd : 0), s1: len / 2 - (conv === 1 ? deepEnd : 0) });
     };
     // counter-clockwise round the cross seen from above
-    add(-a, hz, a, hz, true, paint); add(a, hz, a, a, false, paint); add(a, a, hx, a, false, paint);
-    add(hx, a, hx, -a, true, paint2); add(hx, -a, a, -a, false, paint2); add(a, -a, a, -hz, false, paint2);
-    add(a, -hz, -a, -hz, true, paint); add(-a, -hz, -a, -a, false, paint); add(-a, -a, -hx, -a, false, paint);
-    add(-hx, -a, -hx, a, true, paint2); add(-hx, a, -a, a, false, paint2); add(-a, a, -a, hz, false, paint2);
+    add(-a, hz, a, hz, 0, paint); add(a, hz, a, a, -1, paint); add(a, a, hx, a, 1, paint);
+    add(hx, a, hx, -a, 0, paint2); add(hx, -a, a, -a, -1, paint2); add(a, -a, a, -hz, 1, paint2);
+    add(a, -hz, -a, -hz, 0, paint); add(-a, -hz, -a, -a, -1, paint); add(-a, -a, -hx, -a, 1, paint);
+    add(-hx, -a, -hx, a, 0, paint2); add(-hx, a, -a, a, -1, paint2); add(-a, a, -a, hz, 1, paint2);
     const burnt = new Set<number>();
     for (let k = 0; k < 3 + Math.floor(rng() * 4); k++) burnt.add(Math.floor(rng() * faces.length) * 100 + Math.floor(rng() * floors));
-    faces.forEach(({ face, end, colour }, fi) => {
+    const endRev = deepEnd - 0.06, sideRev = cut - 0.1;
+    faces.forEach(({ face, end, colour, s0, s1 }, fi) => {
+      const holes: HoleRect[] = [], stains: Stain[] = [], keep: Array<{ u0: number; u1: number; y0: number; y1: number }> = [];
+      // the entrance's glazed screen in the first arm end's ground storey (under its canopy)
+      if (fi === 0) {
+        const ew = Math.min(face.width - 0.6, 3.2);
+        holes.push({ u0: -ew / 2, u1: ew / 2, y0: 0.2, y1: 2.4 });
+        facePanel(sink, 'glass', face, 0, 1.3, -endRev + 0.016, ew, 2.2, { decor: true, window: face.out });
+        faceBox(sink, concrete, face, 0, 2.7, 0.9, Math.min(face.width, 4.4), 0.2, 1.8, { decor: true });
+      }
       for (let f = 0; f < floors; f++) {
         const y = 1.0 + f * fh;
-        if (f > 0) faceBox(sink, concrete, face, 0, y - 0.05, 0.03, face.width, 0.14, 0.06, { decor: true, fine: true });
+        if (f > 0) {
+          faceBox(sink, concrete, face, 0, y - 0.05, 0.03, face.width, 0.14, 0.06, { decor: true, fine: true });
+          keep.push({ u0: -face.width, u1: face.width, y0: y - 0.12, y1: y + 0.02 });
+        }
         const isBurnt = burnt.has(fi * 100 + f);
         if (end && f > 0) {
-          // the loggia: the dark recess, the slab, the coloured parapet panel
+          // the loggia: its recess cut a bay deep (the balcony door at its back, or the dark), the slab, the coloured
+          // parapet panel
           const lw = Math.min(face.width - 0.8, 3.6);
-          facePanel(sink, isBurnt ? 'dark' : look() < 0.85 ? 'glass' : 'dark', face, 0, y + 1.2, 0.01, lw, 2.2, { decor: true, window: face.out });
+          holes.push({ u0: -lw / 2, u1: lw / 2, y0: y + 0.03, y1: y + 2.45 });
+          if (!isBurnt && look() < 0.85) facePanel(sink, 'glass', face, 0, y + 1.24, -endRev + 0.016, lw, 2.42, { decor: true, window: face.out });
           faceBox(sink, concrete, face, 0, y - 0.05, 0.45, lw + 0.6, 0.15, 0.9, { decor: true });
           faceBox(sink, 'structureMetal', face, 0, y + 0.5, 0.88, lw + 0.6, 0.95, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(colour, 0.9 + look() * 0.2) });
           // (soot stops at the roof's edge: on the top floor it stood a metre over it)
-          if (isBurnt) sootBand(sink, concrete, face, -lw / 2, lw / 2, y + 2.3, Math.min(y + fh + 1.0, top));
+          if (isBurnt) stains.push(sootStain(-lw / 2, lw / 2, y + 2.45, Math.min(y + fh + 1.0, top)));
           continue;
         }
-        const n = Math.max(1, Math.floor((face.width - 0.6) / 2.4));
+        if (end) continue;
+        // the windows across the side's own wall
+        const n = Math.floor((s1 - s0 - 0.6) / 2.4);
         for (let k = 0; k < n; k++) {
-          const u = -face.width / 2 + 0.3 + (face.width - 0.6) * (k + 0.5) / n;
-          if (isBurnt) {
-            facePanel(sink, 'dark', face, u, y + 1.5, 0.01, 1.3, 1.3, { decor: true });
-            sootBand(sink, concrete, face, u - 0.85, u + 0.85, y + 2.15, Math.min(y + fh + 0.8, top));
-          } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06, top);
+          const u = s0 + 0.3 + (s1 - s0 - 0.6) * (k + 0.5) / n;
+          holes.push({ u0: u - 0.65, u1: u + 0.65, y0: y + 0.85, y1: y + 2.15 });
+          if (isBurnt) stains.push(sootStain(u - 0.85, u + 0.85, y + 2.15, Math.min(y + fh + 0.8, top)));
+          else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06, top, { reveal: sideRev, stains });
         }
       }
-      if (look() < 0.35) sink.dressing(mobile, () => shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone'));
+      holedPolygon(sink, concrete, face, [[s0, -0.4], [s1, -0.4], [s1, top], [s0, top]], holes, end ? deepEnd : cut, end ? endRev : sideRev, {}, stains,
+        DAMP_BREAKS);
+      // a shell's strike: the render knocked off round it (on the wall, clear of the openings and the slab joints)
+      if (look() < 0.35) {
+        const cu = (look() - 0.5) * face.width * 0.5, cy = 1.0 + fh * (2 + look() * (floors - 4)), r = 0.5 + look() * 0.4;
+        const clear = [...holes, ...keep];
+        sink.dressing(mobile, () => shellPocks(sink, face, { u0: Math.max(s0 + 0.2, cu - 3 * r), u1: Math.min(s1 - 0.2, cu + 3 * r), y0: cy - 3 * r, y1: Math.min(top - 0.3, cy + 3 * r) },
+          8 + Math.floor(look() * 8), clear, look, concrete));
+      }
     });
-    // the ground storey: the entrance's glazed screen under a canopy
-    const entry = faces[0].face;
-    facePanel(sink, 'glass', entry, 0, 1.3, 0.04, Math.min(entry.width - 0.6, 3.2), 2.2, { decor: true, window: entry.out });
-    faceBox(sink, concrete, entry, 0, 2.7, 0.9, Math.min(entry.width, 4.4), 0.2, 1.8, { decor: true });
   });
   return sink.finish();
 }

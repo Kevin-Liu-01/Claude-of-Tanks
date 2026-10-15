@@ -1513,36 +1513,71 @@ export function wallPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, 
  * A convex wall polygon (a gable) with rectangular openings cut through it (HouseDialect.gableOpenings): the polygon
  * sliced at the openings' sills and heads, each slice cut at their jambs, every piece its own prism `depth` deep — the
  * pieces' sides at an opening are its jambs, head and sill, the full depth of the wall; the room behind is the dark
- * quad holedFace sets at the reveal's back, which the unit then stands in front of.
+ * quad holedFace sets at the reveal's back, which the unit then stands in front of. `stains` shade the wall itself as
+ * holedFace's do (props census #9: a burnt window's soot is the wall darkened over it, never a plate laid on it): the
+ * pieces split again at their edges, each row of a stained piece's corners its own shade. `edgeBreaks` split the
+ * polygon's own edges at those heights (a tall wall a cut deep: its 0.4 m edge in one quad, the weathering's damp
+ * breaks cut its diagonal 2 cm from the corner, a sliver 40 m long).
  */
 export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Array<[number, number]>, holes: readonly HoleRect[],
-  depth: number, reveal: number, opts: EmitOptions = {}): void {
+  depth: number, reveal: number, opts: EmitOptions = {}, stains: readonly Stain[] = [], edgeBreaks: readonly number[] = []): void {
   const ys = poly.map(([, y]) => y), lo = Math.min(...ys), hi = Math.max(...ys);
   const hs = holes.filter((h) => h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05 && h.y0 > lo - 1e-6 && h.y1 < hi);
-  const cuts = [...new Set(hs.flatMap((h) => [h.y0, h.y1]))].sort((a, b) => a - b);
+  const ss = stains.map((t) => ({ ...t, y0c: Math.max(t.y0, lo), y1c: Math.min(t.y1, hi) })).filter((t) => t.u1 - t.u0 > 0.05 && t.y1c - t.y0c > 0.05);
+  const stainAt = (t: (typeof ss)[number], yy: number) => t.bottom + (t.top - t.bottom) * Math.min(1, Math.max(0, (yy - t.y0) / (t.y1 - t.y0)));
+  const cuts = [...new Set([...hs.flatMap((h) => [h.y0, h.y1]), ...ss.flatMap((t) => [t.y0c, t.y1c])])].sort((a, b) => a - b);
   const levels = [lo, ...cuts.filter((y) => y > lo + 1e-4 && y < hi - 1e-4), hi];
-  const pieces: Array<Array<[number, number]>> = [];
+  const pieces: Array<{ pc: Array<[number, number]>; lo?: number; hi?: number; midY?: number }> = [];
   for (let i = 0; i + 1 < levels.length; i++) {
     const ya = levels[i], yb = levels[i + 1];
     const band = clipFace(clipFace(poly, [0, -1, -ya]), [0, 1, yb]);
     if (band.length < 3) continue;
     const through = hs.filter((h) => h.y0 <= ya + 1e-6 && h.y1 >= yb - 1e-6).sort((a, b) => a.u0 - b.u0);
+    const live = ss.filter((t) => t.y0c <= ya + 1e-6 && t.y1c >= yb - 1e-6);
+    const marks = [...new Set(live.flatMap((t) => [t.u0, t.u1]))].sort((a, b) => a - b);
+    const push = (pc: Array<[number, number]>) => {
+      if (!live.length) { pieces.push({ pc }); return; }
+      const stained = (q: Array<[number, number]>) => {
+        const us = q.map(([u]) => u), mid = (Math.min(...us) + Math.max(...us)) / 2;
+        const inStain = live.filter((t) => mid > t.u0 && mid < t.u1);
+        if (!inStain.length) { pieces.push({ pc: q }); return; }
+        pieces.push({ pc: q, lo: inStain.reduce((v, t) => v * stainAt(t, ya), 1), hi: inStain.reduce((v, t) => v * stainAt(t, yb), 1), midY: (ya + yb) / 2 });
+      };
+      let rest = pc;
+      for (const x of marks) {
+        const left = clipFace(rest, [1, 0, x]);
+        if (left.length >= 3) stained(left);
+        rest = clipFace(rest, [-1, 0, -x]);
+        if (rest.length < 3) return;
+      }
+      stained(rest);
+    };
     let rest = band;
     for (const h of through) {
       const left = clipFace(rest, [1, 0, h.u0]);
-      if (left.length >= 3) pieces.push(left);
+      if (left.length >= 3) push(left);
       rest = clipFace(rest, [-1, 0, -h.u1]);
     }
-    if (rest.length >= 3) pieces.push(rest);
+    if (rest.length >= 3) push(rest);
   }
   // the faces: each piece's front (the slices meet inside the wall: no faces between them; its back is the attic's,
   // which the dark behind each opening hides), the polygon's own edges round its outside and the openings' jambs, heads
   // and sills through its depth (wallPolygon's prism, holed)
   const P = (u: number, y: number, o: number): Vec3 => facePoint(face, u, y, o);
-  for (const piece of pieces) sink.polygon(bucket, piece.map(([u, y]) => P(u, y, 0)), opts);
+  const k0 = opts.shade ?? 1;
+  for (const { pc, lo: sl, hi: sh, midY } of pieces) {
+    sink.polygon(bucket, pc.map(([u, y]) => P(u, y, 0)), sl === undefined ? opts : { ...opts, shadeAt: (q) => k0 * (q[1] < midY! ? sl : sh!) });
+  }
   for (let i = 0; i < poly.length; i++) {
     const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length];
-    sink.quad(bucket, P(ub, yb, 0), P(ua, ya, 0), P(ua, ya, -depth), P(ub, yb, -depth), opts);
+    const ts = edgeBreaks.filter((y) => y > Math.min(ya, yb) + 1e-4 && y < Math.max(ya, yb) - 1e-4).map((y) => (y - ya) / (yb - ya)).sort((a, b) => a - b);
+    if (!ts.length) { sink.quad(bucket, P(ub, yb, 0), P(ua, ya, 0), P(ua, ya, -depth), P(ub, yb, -depth), opts); continue; }
+    const at = (t: number): [number, number] => [ua + (ub - ua) * t, ya + (yb - ya) * t];
+    const stops = [0, ...ts, 1];
+    for (let k = 0; k + 1 < stops.length; k++) {
+      const [u0, y0] = at(stops[k]), [u1, y1] = at(stops[k + 1]);
+      sink.quad(bucket, P(u1, y1, 0), P(u0, y0, 0), P(u0, y0, -depth), P(u1, y1, -depth), opts);
+    }
   }
   const back = -reveal - 0.004;
   for (const h of hs) {
