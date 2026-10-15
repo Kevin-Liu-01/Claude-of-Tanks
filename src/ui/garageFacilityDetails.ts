@@ -2255,21 +2255,102 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('drydock-heavy-lift');
       servicePurposeTags.add('saltwater-recovery');
-      addPortalCrane(featureSide, featureDepth + 1.4, 19, 7.3,
-        new THREE.Color(0x437c86));
-      // the crane rails run the quay's length and stop at its edge (the shore falls away behind)
-      addTrackOnCluster(featureCluster, -5.5, -1, 16);
-      addTrackOnCluster(featureCluster, 5.5, -1, 16);
-      for (const offset of [-8, 8]) {
-        clusterCylinder(featureCluster, offset, -4, 0.56,
-          0.46, 1.10, dark, 0, 12);
-        clusterCylinder(featureCluster, offset, -4, 1.08,
-          0.16, 0.24, accent, 0, 10);
+      // Saltmere's quay crane (garage round 7, 2026-10-14; props census #20, garage:naval_drydock grade 1: a box portal
+      // in teal paint). A travelling portal jib crane on the quay rails: four I-section legs braced in pairs on rail
+      // bogies, a portal deck, a slewing machinery house with its windows and roof vents, the driver's cab at its front,
+      // an A-frame over it, a lattice jib luffed out toward the sea with its head sheave, and the hook block on its falls;
+      // a counterweight box at the back. Along the quay edge: a granite coping and bollards with real heads;
+      // keel and bilge blocks stacked ready on timber bearers; a capstan.
+      // the quay runs along the shore, which lies at a constant depth in the view (shapeQuayAndShore): the crane's rails
+      // run along it, its jib slews out over the sea
+      const quayAt = cameraPoint(featureSide, featureDepth + 1.0), quayIn = cameraPoint(featureSide, featureDepth);
+      const quayYaw = Math.atan2(quayIn.x - quayAt.x, quayIn.z - quayAt.z);
+      const quay: FacilityCluster = { ...fixedCluster(featureSide, featureDepth + 1.0), yaw: quayYaw + Math.PI / 2 };
+      const portalBlue = new THREE.Color(0x3f6f78), houseTone = new THREE.Color(0x8a9497), roofTone = new THREE.Color(0x4f5658);
+      const granite = new THREE.Color(0x8d8c86), timberC = new THREE.Color(0x5a4532), iron = new THREE.Color(0x26292b);
+      const gauge = 6.0, legX = 3.2, portalY = 7.2;
+      // the quay rails the crane travels on (two rails, laid along the quay)
+      addTrackOnCluster(quay, -gauge / 2 - 0.0, 0, 20);
+      addTrackOnCluster(quay, gauge / 2, 0, 20);
+      // the portal: four I-section legs on bogies, braced in pairs, a deck on top
+      for (const lx of [-legX, legX]) for (const lz of [-gauge / 2, gauge / 2]) {
+        clusterBox(quay, lz, lx, 0.55, 0.9, 0.5, 2.0, iron, 'structure'); // the bogie
+        for (const dx of [-0.7, 0.7]) clusterCylinder(quay, lz, lx + dx, 0.32, 0.3, 0.22, iron, 0, 16, Math.PI / 2);
+        for (const df of [-0.22, 0.22]) clusterBox(quay, lz, lx + df, 0.8 + (portalY - 0.8) / 2, 0.5, portalY - 0.8, 0.05, portalBlue, 'structure');
+        clusterBox(quay, lz, lx, 0.8 + (portalY - 0.8) / 2, 0.035, portalY - 0.8, 0.44, portalBlue, 'structure');
       }
-      addPoweredWinch(featureCluster, -6.1, -3.9, new THREE.Color(0x3e7c88));
-      addPoweredWinch(featureCluster, 6.1, -3.9, new THREE.Color(0x3e7c88));
-      addSafetyRail(featureCluster, 0, 4.2, 15.5);
-      addTurningRollStation(featureCluster, 0, 0, new THREE.Color(0x477d82));
+      for (const lz of [-gauge / 2, gauge / 2]) {
+        clusterBeam(quay, [lz, -legX, 1.2], [lz, legX, portalY - 0.6], 0.16, portalBlue, 'structure');
+        clusterBeam(quay, [lz, legX, 1.2], [lz, -legX, portalY - 0.6], 0.16, portalBlue, 'structure');
+        clusterBox(quay, lz, 0, portalY - 0.3, 0.5, 0.6, 2 * legX + 0.5, portalBlue, 'structure');
+      }
+      clusterBox(quay, 0, 0, portalY + 0.2, gauge + 1.0, 0.4, 2 * legX + 1.0, portalBlue, 'structure'); // the deck
+      clusterCylinder(quay, 0, 0, portalY + 0.55, 1.8, 0.3, iron, 0, 16); // the slewing ring
+      // the slewing house: machinery house, roof, vents, cab, A-frame, counterweight
+      const slew = 0.55; // the jib points out toward the sea, a little toward the frame's right
+      const house = { ...quay, yaw: quayYaw + Math.PI + slew };
+      const houseY = portalY + 0.7;
+      clusterBox(house, 0, -0.6, houseY + 1.4, 3.6, 2.8, 5.2, houseTone, 'painted');
+      clusterBox(house, 0, -0.6, houseY + 2.9, 3.8, 0.2, 5.4, roofTone, 'painted');
+      for (const dz of [-2.0, -0.6, 0.8]) for (const side of [-1, 1]) clusterBox(house, side * 1.81, dz, houseY + 1.9, 0.04, 0.6, 0.8, iron, 'painted'); // windows
+      for (const dz of [-1.8, -0.2]) clusterBox(house, 0, dz, houseY + 3.15, 0.8, 0.3, 0.8, roofTone, 'painted'); // roof vents
+      clusterBox(house, 1.2, 2.4, houseY + 1.6, 1.3, 1.8, 1.4, houseTone, 'painted'); // the cab
+      clusterBox(house, 1.2, 3.12, houseY + 1.85, 1.1, 1.0, 0.04, new THREE.Color(0x2a3438), 'painted'); // its glazing
+      clusterBox(house, 0, -3.8, houseY + 1.2, 3.2, 2.0, 1.4, new THREE.Color(0x5a5f60), 'painted'); // the counterweight
+      for (const side of [-1, 1]) {
+        clusterBeam(house, [side * 1.2, 1.4, houseY + 3.0], [side * 0.4, -0.4, houseY + 6.6], 0.22, portalBlue, 'structure');
+        clusterBeam(house, [side * 1.2, -2.6, houseY + 3.0], [side * 0.4, -0.4, houseY + 6.6], 0.22, portalBlue, 'structure');
+      }
+      // the lattice jib: two chord pairs laced, luffed to 52 degrees from its heel at the house front
+      const heel = [0, 2.0, houseY + 0.6] as const;
+      const luff = THREE.MathUtils.degToRad(52), jibLen = 19;
+      const tip = [0, heel[1] + Math.cos(luff) * jibLen, heel[2] + Math.sin(luff) * jibLen] as const;
+      for (const side of [-1, 1]) {
+        for (const up of [-1, 1]) {
+          const off = (t: number): [number, number, number] => {
+            const w = (1 - t) * 0.75 + 0.2, h = (1 - t) * 0.55 + 0.18;
+            return [side * w, heel[1] + (tip[1] - heel[1]) * t - up * h * Math.sin(luff), heel[2] + (tip[2] - heel[2]) * t + up * h * Math.cos(luff)];
+          };
+          clusterBeam(house, off(0), off(1), 0.12, portalBlue, 'structure');
+          if (up > 0) for (let k = 0; k < 10; k += 1) {
+            const a = off(k / 10), b = off((k + 1) / 10);
+            const other = (t: number): [number, number, number] => {
+              const w = (1 - t) * 0.75 + 0.2, h = (1 - t) * 0.55 + 0.18;
+              return [side * w, heel[1] + (tip[1] - heel[1]) * t + h * Math.sin(luff), heel[2] + (tip[2] - heel[2]) * t - h * Math.cos(luff)];
+            };
+            clusterBeam(house, k % 2 ? a : other(k / 10), k % 2 ? other((k + 1) / 10) : b, 0.05, portalBlue, 'structure');
+          }
+        }
+      }
+      clusterCylinder(house, 0, tip[1], tip[2], 0.45, 0.4, iron, 0, 16, Math.PI / 2); // the head sheave
+      clusterBeam(house, [0, -0.4, houseY + 6.6], [0, tip[1], tip[2]], 0.04, iron, 'structure'); // the luffing ropes
+      const hookY = 3.4;
+      for (const dx of [-0.15, 0.15]) clusterBox(house, dx, tip[1], (tip[2] + hookY) / 2, 0.03, tip[2] - hookY, 0.03, iron, 'structure');
+      clusterBox(house, 0, tip[1], hookY - 0.25, 0.6, 0.5, 0.4, new THREE.Color(0xb88a2a), 'painted');
+      heavyLiftSystems += 1;
+      operationalMachines += 1;
+      structuralConnections += 58;
+      servicePurposeTags.add('portal-jib-crane');
+      // the quay edge: a granite coping and bollards with real heads along the top of the bank
+      const edge: FacilityCluster = { ...fixedCluster(featureSide, featureDepth + 7.2), yaw: quayYaw };
+      clusterBox(edge, 0, 0, 0.12, 30, 0.24, 0.9, granite, 'masonry');
+      for (const lat of [-12, -4, 4, 12]) {
+        clusterCylinder(edge, lat, 0.15, 0.5, 0.2, 0.6, iron, 0, 16);
+        clusterCylinder(edge, lat, 0.15, 0.85, 0.3, 0.12, iron, 0, 16); // the head
+      }
+      // keel and bilge blocks stacked on bearers by the crane, and a capstan
+      const blocks = fixedCluster(featureSide - 9.5, featureDepth - 2.5);
+      for (let course = 0; course < 4; course += 1) for (let k = 0; k < 3; k += 1) {
+        clusterBox(blocks, (k - 1) * 1.1, 0, 0.15 + course * 0.3, 0.9, 0.28, course % 2 ? 2.2 : 1.8, course % 2 ? timberC : new THREE.Color(0x46372a), 'equipment');
+        looseParts += 1;
+      }
+      const capstan = fixedCluster(featureSide + 10.5, featureDepth + 6.5);
+      clusterCylinder(capstan, 0, 0, 0.45, 0.42, 0.9, iron, 0, 16);
+      clusterCylinder(capstan, 0, 0, 0.95, 0.52, 0.12, iron, 0, 16);
+      operationalMachines += 1;
+      addPoweredWinch(fixedCluster(featureSide - 11.5, featureDepth + 3.0), 0, 0, new THREE.Color(0x3e7c88));
+      addSafetyRail(fixedCluster(featureSide + 11.0, featureDepth - 3.5), 0, 0, 7.5);
+      addTurningRollStation(fixedCluster(featureSide + 10.0, featureDepth - 8.5), 0, 0, new THREE.Color(0x477d82));
   };
   const addRailRoundhouse = (): void => {
       environmentSpecificAssemblies += 1;
