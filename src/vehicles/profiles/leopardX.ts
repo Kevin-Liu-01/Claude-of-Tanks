@@ -955,6 +955,11 @@ function a7CurvedWhip(P:TankBuilderPort,d:Datum,x:number,bottom:number,top:numbe
   const shaft=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),40,.0167,8,false);
   shaft.scale(1.287,1,1);
   equip(P,d,'turretDark',shaft,x,0,0);
+  // 2026-10-14 (the sealed-hull dump on leo2a7v_x: 11 of its open px at 256 were these whips' open tube ends, seen down
+  // the tube from above): a whip ends in its rounded tip, not an open tube.
+  const tip=new THREE.SphereGeometry(.0167,8,6);tip.scale(1.287,1,1);
+  const end=points[points.length-1]!;
+  equip(P,d,'turretDark',tip,x,end.y,end.z);
 }
 
 function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
