@@ -3,7 +3,11 @@ import { BufferGeometry, Float32BufferAttribute } from 'three';
 const SEGMENTS = 24;
 const RINGS = 4;
 
-/** Shallow wind-shaped snow, with a buried rim instead of a sphere silhouette. */
+/**
+ * Shallow wind-shaped snow, with a buried rim instead of a sphere silhouette. (props lane A, #19, 2026-10-14: wind
+ * builds a drift long and low on its windward side and carries its ridge downwind to a steeper lee face: the drift's
+ * local +along is downwind, mapKits.ts WINTER_WIND_YAW's (cos, -sin).)
+ */
 export function createSnowDrift(
   field: { getHeightAt(x: number, z: number): number },
   x: number, z: number, along: number, across: number, height: number, yaw: number,
@@ -27,7 +31,10 @@ export function createSnowDrift(
     for (let ring = 1; ring <= RINGS; ring++) {
       const t = ring / RINGS;
       const id = 1 + (ring - 1) * SEGMENTS + segment;
-      const py = centerY + (rimY - centerY) * t + height * (1 - t) ** 2 - 0.025 * t;
+      // the windward (along < 0) slope long and low, the lee (along > 0) held up to a steeper face near the rim
+      const lee = Math.min(1, Math.max(0, (Math.cos(angle) + 0.3) / 0.9)), w = lee * lee * (3 - 2 * lee);
+      const profile = (1 - t) ** 2.2 * (1 - w) + (1 - t ** 3.2) * w;
+      const py = centerY + (rimY - centerY) * t + height * profile - 0.025 * t;
       position.set([x + dx * t, py, z + dz * t], id * 3);
       uv.set([(x + dx * t) * 0.3, (z + dz * t) * 0.3], id * 2);
       const next = (segment + 1) % SEGMENTS;
