@@ -50,6 +50,9 @@ const DRAFT: HinterlandConfig = {
       geology: { erosion: 0.8, gullies: 0.7, snow: { lineM: 0 } }, cover: { bare: true } },
     { kind: 'ridge', at: { azDeg: 148, distM: 1450 }, heightM: 190, lengthM: 1300, widthM: 520, strikeDeg: 148, name: 'the Variselle spur',
       geology: { erosion: 0.75, gullies: 0.6, snow: { lineM: 0 } }, cover: { bare: true } },
+    // (round 5, the critics: "lower the foreground snow mound so the church nave and house bases show" — the knoll's west
+    // shoulder at ~730 m stood 15-20 m between the edge-n eye and the west houses, hiding 10-17 m of them)
+    { kind: 'valley', at: { azDeg: 350, distM: 735 }, heightM: 14, lengthM: 320, widthM: 200, strikeDeg: 90, name: 'the hollow before Les Tavernettes' },
     // west: Mont Froid and the Petit Mont-Cenis; east: the slopes up to the Lamet
     // (round 4, the coordinator on edge-w: "Mont Froid reads as a flat-topped table mountain" — its summit stands just
     // north of the west view's middle, a shoulder either side, the crest falling from it to both ends)
