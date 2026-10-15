@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SET_PIECE_MASS, setPieceDestructibleKind, setPieceDestructibleTypes, isDenseSetPieceKind } from './setPieceDestructibles.ts';
-import { SET_PIECE_SIZE } from './vehicleSetPieces.ts';
+import { SET_PIECE_SIZE, buildSetPiece } from './vehicleSetPieces.ts';
 import { DENSE_SET_PIECE_KINDS, shellPassesThroughCollisionRecord } from '../collision.ts';
 
 const types = setPieceDestructibleTypes();
@@ -47,4 +47,27 @@ assert.match(src('../../sim/authoritativeMatch.ts'), /function resolveWorldShell
 assert.match(src('../../sim/authoritativeMatch.ts'), /function destroyShellObstacle\([^)]*\): void \{\s*const obstacle = obstacleForWorldHit\(worldHit\);\s*if \(!obstacle\?\.crushable\) return;/);
 assert.match(src('./mapKits.ts'), /if \(!piece\.wrecked && ctx\.setPieceDestructible\) \{ ctx\.setPieceDestructible\(piece\); continue; \}/);
 assert.match(src('../props.ts'), /setPieceDestructible: \(piece\) => \{ setPieceRecords\.push\(piece\); \}/);
+// (Lane C, #8 r2; the r2 rule, draws +0) an intact set piece draws in the baked bucket as a span its hidden pool mirrors:
+// the span collapses when its instance is hidden and returns when it is shown
+{
+  const { HiddenSpanPiece, bindClutterBatch } = await import('../crushableClutter.ts');
+  const { mergeGeometries } = await import('three/examples/jsm/utils/BufferGeometryUtils.js');
+  const a = buildSetPiece('lrv').toNonIndexed(), b = buildSetPiece('d8h').toNonIndexed();
+  for (const g of [a, b]) for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+  const span = new HiddenSpanPiece();
+  span.ownPiece(b);
+  const merged = mergeGeometries([a, b], false);
+  bindClutterBatch([a, b], merged);
+  const pos = merged.getAttribute('position'), first = a.getAttribute('position').count, n = b.getAttribute('position').count;
+  const home = Array.from(pos.array.slice(first * 3, (first + n) * 3));
+  span.setHidden(true);
+  for (let i = first; i < first + n; i++) assert.ok(pos.getX(i) === home[0] && pos.getY(i) === home[1] && pos.getZ(i) === home[2], 'hidden: collapsed onto its first vertex');
+  assert.equal(pos.getX(0), a.getAttribute('position').getX(0), 'the other piece untouched');
+  span.setHidden(false);
+  assert.deepEqual(Array.from(pos.array.slice(first * 3, (first + n) * 3)), home, 'shown: home again');
+  const props = src('../props.ts');
+  assert.match(props, /const spans = setPieceSpans\.get\(kind\);\s*if \(spans\) \{\s*imI\.visible = false;/, 'the set pieces\' intact pools draw nothing');
+  assert.match(props, /spans\[index\]\?\.setHidden\(Math\.abs\(matrix\.determinant\(\)\) < 1e-9\);/, 'and mirror every hide and show onto the baked span');
+  assert.match(props, /const g = intact\.clone\(\)\.applyMatrix4\(pool\.mats4\[rec\.slot\]\);\s*buckets\.baked\.push\(g\);/, 'each intact piece in the baked bucket at its instance pose');
+}
 console.log(`setPieceDestructibles: ${Object.keys(types).length} set-piece kinds breakable (${[...DENSE_SET_PIECE_KINDS].length} heavy: stop a round and are wrecked by it; the rover crushed and shot through like a car)`);

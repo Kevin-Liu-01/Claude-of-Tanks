@@ -11,7 +11,7 @@ import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightE
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
-import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
+import { CrushableClutter, HiddenSpanPiece, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -4350,6 +4350,9 @@ ${snowCap ? `
   const looseRecords: LooseDestructibleRecord[] = []; // physics-class records; sleeping records cost no update work
   const activeLoose: LooseDestructibleRecord[] = []; // only awake records, bounded by the local interaction area
   const dPools = new Map<string, DestructiblePool>(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
+  // (Lane C, #8 r2) a set piece kind's intact instances, as spans in the baked bucket (by slot): the pool's own intact
+  // mesh stays hidden and mirrors its instances' hide and show onto them
+  const setPieceSpans = new Map<string, HiddenSpanPiece[]>();
   const wallSpans = new Map<DestructibleRecord, WallSpan>();
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
@@ -10108,6 +10111,8 @@ ${snowCap ? `
   joinStructureShells();
   // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
   const setPieceRecords: VehicleSetPiece[] = [];
+  // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
+  const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
@@ -10119,11 +10124,27 @@ ${snowCap ? `
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
   landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
-  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners
+  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners.
+  // (Lane C, #8 r2; the coordinator: the r2 rule, draws +0) each intact piece draws in the baked bucket at its pool
+  // instance's own pose, as a span that hides when the instance is hidden (setPieceSpans, finalizeDestructiblePool): its
+  // kind's pool keeps the matrices, the crush and burn copy and the broken state, and draws nothing until a break
   for (const piece of setPieceRecords) {
-    addDestructible(setPieceDestructibleKind(piece.kind), piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z,
-      (piece.yawDeg * Math.PI) / 180, 1);
+    const kind = setPieceDestructibleKind(piece.kind);
+    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, (piece.yawDeg * Math.PI) / 180, 1);
+    const pool = dPools.get(kind);
+    if (!pool || rec.slot < 0) continue;
+    let intact = setPieceIntact.get(kind);
+    if (!intact) { intact = pool.meta.build(mulberry32(0x5e7b1ece)); setPieceIntact.set(kind, intact); }
+    const g = intact.clone().applyMatrix4(pool.mats4[rec.slot]);
+    buckets.baked.push(g);
+    const span = new HiddenSpanPiece();
+    span.ownPiece(g);
+    let slots = setPieceSpans.get(kind);
+    if (!slots) { slots = []; setPieceSpans.set(kind, slots); }
+    slots[rec.slot] = span;
   }
+  for (const g of setPieceIntact.values()) g.dispose();
+  setPieceIntact.clear();
   landmarkFurniture = false;
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
@@ -11174,6 +11195,19 @@ ${snowCap ? `
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
+    // (Lane C, #8 r2) a set piece kind draws its intact instances in the baked bucket (setPieceSpans): this mesh draws
+    // nothing and mirrors every hide (a zero-scale matrix: a break, the crush copy taking the prop) and show (a restore,
+    // a rematch) onto the instance's span there
+    const spans = setPieceSpans.get(kind);
+    if (spans) {
+      imI.visible = false;
+      const setMatrix = imI.setMatrixAt.bind(imI);
+      imI.setMatrixAt = (index: number, matrix: THREE.Matrix4) => {
+        setMatrix(index, matrix);
+        spans[index]?.setHidden(Math.abs(matrix.determinant()) < 1e-9);
+        return imI;
+      };
+    }
     if (meta.broken) {
       // (destruction core, 2026-10-09; the owner: "destructible objects/props: not looking good") the light dressing's broken
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
