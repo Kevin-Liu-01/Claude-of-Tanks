@@ -18,8 +18,8 @@ import * as THREE from 'three';
 import type { FractureMaterial } from '../destructionKit.ts';
 import type { FractureRole } from '../fractureAnatomy.ts';
 
-export type Rng = () => number;
-export type V3 = readonly [number, number, number];
+type Rng = () => number;
+type V3 = readonly [number, number, number];
 
 /** structureKit's members and paint, bound to one build's parts and stream. */
 export interface HutTools {
@@ -41,11 +41,11 @@ export interface HutTools {
   rng: Rng;
 }
 
-export type Cladding = 'batten' | 'lap' | 'log' | 'mat' | 'sheet' | 'render' | 'panel';
-export type Covering = 'felt' | 'sheet' | 'thatch' | 'tile' | 'shingle' | 'slab';
-export type Footing = 'pads' | 'plinth' | 'sunk' | 'staddle';
+type Cladding = 'batten' | 'lap' | 'log' | 'mat' | 'sheet' | 'render' | 'panel';
+type Covering = 'felt' | 'sheet' | 'thatch' | 'tile' | 'shingle' | 'slab';
+type Footing = 'pads' | 'plinth' | 'sunk' | 'staddle';
 
-export interface HutPaint {
+interface HutPaint {
   /** the cladding's three tones (a board, a sheet, a log a course takes one) */
   wall: readonly [number, number, number];
   /** casings, corner boards, barge boards and fascia */
@@ -62,7 +62,7 @@ export interface HutPaint {
   dado?: number;
 }
 
-export interface HutDialect {
+interface HutDialect {
   cladding: Cladding;
   covering: Covering;
   footing: Footing;
@@ -86,9 +86,9 @@ export interface HutDialect {
   paint: HutPaint;
 }
 
-export type FaceId = 'front' | 'back' | 'left' | 'right';
+type FaceId = 'front' | 'back' | 'left' | 'right';
 
-export interface HutOpening {
+interface HutOpening {
   face: FaceId;
   /** its middle along the face, seen from outside left to right, metres from the face's middle */
   u: number;
@@ -99,7 +99,7 @@ export interface HutOpening {
   kind: 'door' | 'window' | 'slit' | 'garage' | 'louvre';
 }
 
-export interface HutForm {
+interface HutForm {
   /** the light family it builds (the merge's id) */
   id: string;
   w: number;
@@ -130,7 +130,7 @@ export interface HutForm {
 }
 
 /** What a build knows of itself once its frame stands: the kind's gear is placed from it. */
-export interface HutFrame {
+interface HutFrame {
   form: HutForm;
   dialect: HutDialect;
   /** the floor's height over the ground */
@@ -142,7 +142,7 @@ export interface HutFrame {
   face(id: FaceId): Face;
 }
 
-export interface Face {
+interface Face {
   id: FaceId;
   /** outward normal */
   n: V3;
@@ -636,7 +636,7 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
 // ------------------------------------------------------------------------------------------------------------- build
 
 /** Build a hut of `form` in `dialect`; returns its frame for the kind's gear. */
-export function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
+function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
   const mass = d.cladding === 'render', parapet = mass && form.roof === 'skillion' ? form.parapet ?? 0 : 0;
   // (a parapet's roof lies inside its walls)
   d = { ...d, eave: parapet ? -0.3 : form.eave ?? d.eave, verge: parapet ? -0.3 : form.verge ?? d.verge };
@@ -838,7 +838,7 @@ function roofTop(form: HutForm, d: HutDialect, top: number, x: number, z: number
 // ---------------------------------------------------------------------------------------------------------- the gear
 
 /** A ladder from the ground up to `y` on `face` at `u`, its head `from` metres off the face, its foot `out` further. */
-export function ladder(k: HutTools, f: Face, u: number, y: number, out: number, color: number, round = false, from = 0): void {
+function ladder(k: HutTools, f: Face, u: number, y: number, out: number, color: number, round = false, from = 0): void {
   const len = Math.hypot(y, out), lean = Math.atan2(out, y);
   k.tag('fitting', `ladder|${f.id}|${u}`, 'timber');
   for (const s of [-1, 1]) {
@@ -856,7 +856,7 @@ export function ladder(k: HutTools, f: Face, u: number, y: number, out: number, 
 }
 
 /** A stack of split billets against a face, their end grain out (one body a course). */
-export function woodpile(k: HutTools, f: Face, u: number, len: number, courses: number, y: number, color: number): void {
+function woodpile(k: HutTools, f: Face, u: number, len: number, courses: number, y: number, color: number): void {
   k.tag('fitting', `woodpile|${f.id}|${u}`, 'timber');
   for (let r = 0; r < courses; r++) {
     const n = Math.max(2, Math.round(len / 0.2) - r);
@@ -866,7 +866,7 @@ export function woodpile(k: HutTools, f: Face, u: number, len: number, courses: 
 
 
 /** A course of sandbags a bag deep along a line from (x0, z0) to (x1, z1), `courses` high, each course a half bag along. */
-export function sandbags(k: HutTools, x0: number, z0: number, x1: number, z1: number, courses: number, color = 0x8e7f5e): void {
+function sandbags(k: HutTools, x0: number, z0: number, x1: number, z1: number, courses: number, color = 0x8e7f5e): void {
   k.tag('fitting', `bags|${x0.toFixed(1)}|${z0.toFixed(1)}`, 'earth');
   const len = Math.hypot(x1 - x0, z1 - z0), yaw = Math.atan2(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.58));
   for (let r = 0; r < courses; r++) {
@@ -936,7 +936,7 @@ function block(k: HutTools, x: number, y: number, z: number, color: number): voi
 // ------------------------------------------------------------------------------------------------------------ forms
 
 type Gear = (k: HutTools, h: HutFrame) => void;
-export interface HutVariant { form: HutForm; gear?: Gear }
+interface HutVariant { form: HutForm; gear?: Gear }
 
 const win = (face: FaceId, u: number, w = 0.7, h = 0.6, y = 1.0): HutOpening => ({ face, u, y, w, h, kind: 'window' });
 const door = (face: FaceId, u: number, w = 0.9, h = 1.9): HutOpening => ({ face, u, y: 0, w, h, kind: 'door' });
@@ -945,7 +945,7 @@ const door = (face: FaceId, u: number, w = 0.9, h = 1.9): HutOpening => ({ face,
  * The kinds' forms (inside each family's footprint and height, structureKit's lightMeta rows): a kit's entry may change
  * any number and replace the gear.
  */
-export const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
+const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
   // the field hut: a gabled one-room hut, its door and a window a side, a stove pipe, the woodpile against the back
   fieldhut: {
     form: { id: 'fieldhut', w: 3.7, d: 5.0, wallH: 2.15, lift: 0, roof: 'gable', rise: 1.25,
@@ -1270,7 +1270,7 @@ const chimney = (x: number, z: number): Gear => (k, h) => {
 
 const both = (...gs: Array<Gear | undefined>): Gear => (k, h) => { for (const g of gs) g?.(k, h); };
 
-export interface RegionalHut {
+interface RegionalHut {
   dialect?: Partial<Omit<HutDialect, 'paint'>> & { paint?: Partial<HutPaint> };
   form?: Partial<HutForm>;
   /** replaces the kind's gear (`extra` adds to it) */
