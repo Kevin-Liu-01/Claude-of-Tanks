@@ -162,6 +162,9 @@ export interface HinterlandField {
   readonly features: HinterlandPlanFeatures;
   /** The map's land use as it runs on past the edge (its own profile, or the region's). */
   readonly landUse: LandUseProfile | null;
+  /** 0..1 on a hedge's line past the edge (the land use's hedged boundaries, the border's hedgerows near the edge) —
+   * coverAt's hedge without the rest of the cover (the near band's hedge trees ask it on a fine lattice). */
+  hedgeAt(x: number, z: number): number;
   /** The same field with the planner's features levelled in (term 3). */
   withFeatures(features: HinterlandPlanFeatures): HinterlandField;
 }
@@ -738,8 +741,19 @@ export function createHinterlandField(
     return out;
   }
 
+  const hedgeSample: LandFieldSample = createLandFieldSample();
+  function hedgeAt(x: number, z: number): number {
+    const edgeOut = edgeOutOf(x, z);
+    if (edgeOut <= 0) return 0;
+    if (landUse && spec.outland.fields > 0) {
+      landUseAt(landUse, x, z, hedgeSample);
+      if (hedgeSample.active > 0) return hedgeSample.hedge * Math.min(1, spec.outland.hedges * 1.4);
+    }
+    return ground.getBorderHedgeAt && edgeOut < HINTERLAND_NEAR_HOLD_M ? ground.getBorderHedgeAt(x, z) : 0;
+  }
+
   const field: HinterlandField = {
-    spec, seed, datumAt, baseHeightAt, heightAt, displayHeightAt, waterAt, coverAt, geologyAt, features, landUse,
+    spec, seed, datumAt, baseHeightAt, heightAt, displayHeightAt, waterAt, coverAt, geologyAt, hedgeAt, features, landUse,
     get lastDisplayBase() { return lastDisplayBase; },
     withFeatures: (next) => createHinterlandField(spec, seed, ground, { ...options, features: next }),
   };

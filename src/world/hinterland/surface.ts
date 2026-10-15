@@ -6,7 +6,7 @@
 // the region's rock, its snow, its water, its woods' floor and canopy, its settlement ground and roads) and a flags byte
 // the land material reads for its roughness, its water and its canopy. Classes come from the field's cover with the
 // slope taken from the baked heights themselves (no further height queries).
-import { LAND_CROP_ALBEDO, type LandCropId } from '../landUse.ts';
+import { LAND_CROP_ALBEDO, createLandFieldSample, landUseAt, type LandCropId } from '../landUse.ts';
 import { HL_COVER, createHinterlandCover, createHinterlandGeology, createHinterlandWater, type HinterlandField } from './field.ts';
 import { hash12, noise2 } from './noise.ts';
 import type { HinterlandLevel } from './pyramid.ts';
@@ -214,6 +214,58 @@ export function raiseHinterlandCanopy(
       }
     }
   }
+}
+
+/**
+ * The near band's hedge trees (Verdant's hedgerows and shelterbelts, a bocage's banks; HZ Verdant): the land use's
+ * hedged boundaries out to `withinM`. A coarse lattice (`stepM`) asks the land use once a point and steps each point
+ * near a field's edge onto that edge along the grid's axis (its signed offsets sU, sV), keeps it where the edge is
+ * hedged (field.hedgeAt) and the cover there is open land (not water, a wood, a road or a yard), one tree a 6 m cell —
+ * standards of the region's species, 9–16 m (poplars taller). Hedged regions only; beyond the band the far country's
+ * shelterbelts carry them (far.ts). (A 3.5 m lattice asking every point cost the worker 2.7 s on Verdant.)
+ */
+export function plantHinterlandHedges(
+  field: HinterlandField, groundAt: (x: number, z: number) => number, { withinM = 1750, stepM = 7 } = {},
+): import('./wire.ts').HinterlandGroundedTree[] {
+  const veg = field.spec.region.vegetation, landUse = field.landUse;
+  // (the hedged countries only: a polder's tree rows are its dykes' crowns, planned with them)
+  if (!landUse || field.spec.outland.hedges <= 0 || !veg.species.length || (veg.habit !== 'shelterbelt' && veg.habit !== 'hedgerow')) return [];
+  let total = 0;
+  for (const [, w] of veg.species) total += w;
+  const leafBase = HINTERLAND_SEASON_LEAF[field.spec.season] ?? 1;
+  const cu = Math.cos(landUse.heading), su = Math.sin(landUse.heading);
+  const sample = createLandFieldSample(), cover = createHinterlandCover();
+  const seen = new Set<number>();
+  const out: import('./wire.ts').HinterlandGroundedTree[] = [];
+  const plant = (x: number, z: number): void => {
+    if (Math.max(Math.abs(x), Math.abs(z)) < 530 || Math.hypot(x, z) > withinM) return;
+    const key = (Math.round(x / 6) + 8192) * 16384 + (Math.round(z / 6) + 8192);
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (field.hedgeAt(x, z) < 0.5) return;
+    field.coverAt(x, z, cover);
+    if (cover.cls !== HL_COVER.field && cover.cls !== HL_COVER.pasture) return;
+    let u = hash12(x * 0.013 + 2.2, z * 0.017 - 4.1) * total, name = veg.species[0][0];
+    for (const [sp, wt] of veg.species) { u -= wt; if (u <= 0) { name = sp; break; } }
+    const conifer = CONIFERS.has(name), poplar = name === 'poplar';
+    const age = hash12(x * 0.021 - 1.7, z * 0.019 + 3.3);
+    const leaf = conifer ? 1 : Math.max(0, Math.min(1, leafBase + (hash12(x * 0.07, z * 0.05) - 0.5) * 0.5 * (1 - Math.abs(leafBase - 0.5))));
+    out.push({
+      x, z, species: name, heightM: (poplar ? 14 : 9) + (poplar ? 8 : 7) * age, crownM: poplar ? 1.6 + 1.2 * age : conifer ? 2.2 + 1.2 * age : 2.8 + 2.4 * age,
+      tone: hash12(z * 0.031, x * 0.029), form: conifer ? 'conifer' : poplar ? 'columnar' : 'broad', leaf, y: groundAt(x, z),
+    });
+  };
+  const n = Math.ceil(withinM / stepM);
+  for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
+    const x = i * stepM, z = j * stepM;
+    if (Math.max(Math.abs(x), Math.abs(z)) < 520 || Math.hypot(x, z) > withinM + stepM) continue;
+    landUseAt(landUse, x, z, sample);
+    if (!(sample.active > 0)) continue;
+    // (onto the nearer edge across u, then across v: the line lies at the grid coordinate less the signed offset)
+    if (Math.abs(sample.sU) < stepM) plant(x - sample.sU * cu, z - sample.sU * su);
+    if (Math.abs(sample.sV) < stepM) plant(x + sample.sV * su, z - sample.sV * cu);
+  }
+  return out;
 }
 
 /**
