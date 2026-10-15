@@ -201,6 +201,23 @@ export interface DoorStyle {
  * A door: leaf recessed in its frame, optional transom and steps up from the ground to the storey floor `floorY`.
  * (u, y) is the bottom-centre of the opening; `ground` is the local ground height under the threshold (0).
  */
+/**
+ * A roller door in a cut opening (props census #13): its drum's box over the head, its guides down the jambs, the slatted
+ * curtain run down to `open` of the height (0 shut, 1 up in its drum) at the back of the reveal (sink.recess), the hall's
+ * dark under it. (u, y): the opening's bottom middle.
+ */
+export function rollerDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, open: number, curtain: Rgb, frame: Rgb, mobile = false): void {
+  const r = sink.recess, back = r > 0 ? -r + 0.06 : 0.05;
+  faceBox(sink, 'structureMetal', face, u, y + h + 0.32, 0.22, w + 0.4, 0.62, 0.44, { colour: shade(curtain, 0.85) });
+  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * (w / 2 + 0.06), y + h / 2, 0.06, 0.12, h, 0.12, { colour: frame, decor: true });
+  const down = h * (1 - Math.max(0, Math.min(1, open)));
+  if (down > 0.05) {
+    faceBox(sink, 'structureMetal', face, u, y + h - down / 2, back, w, down, 0.04, { colour: curtain });
+    if (!mobile) for (let yy = y + h - 0.12; yy > y + h - down; yy -= 0.12) faceBox(sink, 'structureMetal', face, u, yy, back + 0.025, w, 0.015, 0.01, { colour: shade(curtain, 0.78), decor: true, fine: true });
+    faceBox(sink, 'structureMetal', face, u, y + h - down + 0.04, back + 0.03, w, 0.08, 0.06, { colour: shade(curtain, 0.7), decor: true });
+  }
+}
+
 export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: DoorStyle, floorY = y): void {
   const leafH = style.transom ? h - 0.42 : h;
   const lc = { colour: style.leaf, decor: true, uv: UV_MEMBER };

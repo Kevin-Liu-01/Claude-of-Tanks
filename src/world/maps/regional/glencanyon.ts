@@ -9,7 +9,7 @@
 // shingled gables with their carports, the fire station with its hose tower, the water tower on its legs.
 import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
-import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
@@ -546,24 +546,34 @@ const civicHall: RegionalBuilder = (ctx) => {
 /** The gate-hoist house (a factory plot): a concrete crane bay with high clerestories, roller doors, the monorail. */
 const hoistHouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
   // the crane bay fills the old factory's reach (its bounds)
   const R = reach(ctx), W = Math.max(6, R.W - 0.8), D = Math.max(8, R.D - 0.8), H = 12 + rng() * 2;
+  // (props census #13, lane B 2026-10-14; the judges: "a concrete span box, its bay doors dark plates with a sheet over
+  // them, the clerestory glass laid on") the house grammar: the bay's concrete walls on their plinth, the two road
+  // doors cut through the front with their roller curtains part raised in the reveals, the clerestory's lights cut along
+  // both sides between the expressed columns, the flat roof behind its parapet; the monorail out over the front
   sink.placed(0, R.cx, 0, R.cz, () => {
-  sink.span(CONCRETE, -W / 2, -0.5, -D / 2, W / 2, H, D / 2);
-  sink.band(CONCRETE, -W / 2 - 0.2, H - 0.8, -D / 2 - 0.2, W / 2 + 0.2, H + 0.5, D / 2 + 0.2, { decor: true });
-  for (const side of [-1, 1]) {
-    const f: Face = { origin: [side * W / 2, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D };
-    for (let u = -D / 2 + 1.6; u < D / 2 - 1.2; u += 2.8) faceBox(sink, 'glass', f, u, H - 2.6, 0.012, 2.0, 1.6, 0.02, { decor: true });
-    for (let u = -D / 2; u <= D / 2; u += 2.8) faceBox(sink, CONCRETE, f, u, H / 2, 0.15, 0.5, H, 0.3, { decor: true });
-  }
-  const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  for (const u of [-W * 0.22, W * 0.22]) {
-    faceBox(sink, 'dark', front, u, 3.1, 0.005, 3.6, 6.0, 0.02, { decor: true });
-    faceBox(sink, 'structureMetal', front, u, 3.1 + 1.6, 0.04, 3.6, 2.8, 0.05, { colour: STEEL_GREY, decor: true });
-  }
-  sink.span('structureMetal', -0.2, H - 1.6, D / 2 - 1.0, 0.2, H - 1.1, D / 2 + 2.4, { colour: rgb(0xc9a24a), decor: true });
-  sink.span('structureMetal', -0.5, H - 2.4, D / 2 + 1.7, 0.5, H - 1.6, D / 2 + 2.2, { colour: rgb(0xc9a24a), decor: true });
+    const openings: Opening[] = [];
+    for (const u of [-W * 0.22, W * 0.22]) openings.push({ face: 'front', storey: 0, kind: 'gate', u, w: Math.min(3.6, W * 0.4), y0: 0, h: 6.0 });
+    for (const face of ['right', 'left'] as const) for (let u = -D / 2 + 1.6; u < D / 2 - 1.2; u += 2.8) openings.push({ face, storey: 0, kind: 'window', u, w: 2.0, y0: H - 3.4, h: 1.6 });
+    const dialect: HouseDialect = {
+      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: STEEL_GREY, frameWidth: 0.06, frameOut: 0.03, bars: 'six', surround: null, sill: null, shutters: null }, look, 0.2),
+      door: (s, face, o, y0) => rollerDoor(s, face, o.u, y0 + o.y0, o.w, o.h, 0.2 + look() * 0.5, STEEL_GREY, shade(STEEL_GREY, 0.7), mobile),
+    };
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: CONCRETE }, storeys: [{ h: H - 0.3, wall: CONCRETE }],
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.3, bucket: CONCRETE, parapet: 0.6 }, gableBucket: CONCRETE,
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
+    }, dialect);
+    // the expressed frame: the columns between the lights, the band of the crane girder's line
+    for (const name of ['right', 'left'] as const) {
+      const f = frame.faces[name];
+      for (let u = -D / 2; u <= D / 2 + 1e-6; u += 2.8) faceBox(sink, CONCRETE, f, Math.max(-D / 2 + 0.25, Math.min(D / 2 - 0.25, u)), (H - 0.3) / 2 + 0.3, 0.15, 0.5, H - 0.3, 0.3, { decor: true }, 'caps');
+    }
+    sink.band(CONCRETE, -W / 2 - 0.2, H - 3.9, -D / 2 - 0.2, W / 2 + 0.2, H - 3.6, D / 2 + 0.2, { decor: true });
+    sink.span('structureMetal', -0.2, H - 1.6, D / 2 - 1.0, 0.2, H - 1.1, D / 2 + 2.4, { colour: rgb(0xc9a24a), decor: true });
+    sink.span('structureMetal', -0.5, H - 2.4, D / 2 + 1.7, 0.5, H - 1.6, D / 2 + 2.2, { colour: rgb(0xc9a24a), decor: true });
   });
   return sink.finish();
 };
