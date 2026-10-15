@@ -9,7 +9,7 @@ import {
   SHADOW_NORMAL_BIAS_MAX_M,
   SHADOW_NORMAL_BIAS_MIN_M,
   SHADOW_OPACITY,
-  shadowDepthBiasForTexel,
+  shadowDepthBiasForTexel, shadowDepthBiasBackFace,
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
@@ -69,20 +69,22 @@ function checkPreset(name, expectedCascades) {
     assert.ok(normalBias <= SHADOW_NORMAL_BIAS_MAX_M, `${name} cascade ${index} normal bias stays below the detachment ceiling`);
     assert.ok(normalBias >= previousNormalBias, `${name} cascade ${index} does not lose receiver separation with distance`);
     previousNormalBias = normalBias;
-    // the depth bias: the PCF reach's acne bound for a face 70 degrees from the sun, in [2 cm, 0.40 m], written in the
-    // light's normalised depth
+    // the depth bias: (2026-10-14, SKY shadows r2a P1b) the closed casters' back faces are in the map — 1.5 texels along
+    // the sun in [2 cm, 0.40 m] (shadowDepthBiasBackFace), written in the light's normalised depth
     const range = shadow.camera.far - shadow.camera.near;
-    const bound = shadowDepthBiasForTexel(texel, cascade.radius, cascade.normalBias);
+    const bound = shadowDepthBiasBackFace(texel);
     const expected = Math.max(LEGACY_BIAS, -bound / range);
     assert.ok(Math.abs(cascade.bias - expected) <= 1e-15, `${name} cascade ${index} carries the acne-bound depth bias, never past the old one`);
     const depthBias = -cascade.bias * range;
     assert.ok(Math.abs(cascade.depthBiasM - depthBias) < 1e-4, `${name} cascade ${index} reports it in metres`);
     assert.ok(depthBias >= SHADOW_DEPTH_BIAS_MIN_M - 1e-12 && cascade.bias >= LEGACY_BIAS,
       `${name} cascade ${index} depth bias stays within [2 cm, the old 0.40 m]: no shadow stands further from its caster than before`);
-    const reach = (0.95 * cascade.radius + 1) * texel;
+    // (2026-10-14, SKY shadows r2a P1b: the front-face acne bound went with the back faces in the map — a lit face stands
+    // its caster's thickness in front of its stored depth; the DoubleSide and alpha-tested casters keep a caster-side
+    // polygon offset, pinned below)
     if (cascade.bias > LEGACY_BIAS) {
-      assert.ok(cascade.normalBias + depthBias * Math.cos(theta) >= reach * Math.sin(theta) - 1e-9,
-        `${name} cascade ${index}: no PCF tap self-shadows a caster face ${SHADOW_ACNE_FREE_INCIDENCE_DEG} degrees from the sun`);
+      assert.ok(Math.abs(depthBias - Math.max(SHADOW_DEPTH_BIAS_MIN_M, 1.5 * texel)) < 1e-6,
+        `${name} cascade ${index}: the back-face bias is 1.5 of its texels (${(depthBias / texel).toFixed(2)})`);
     }
     assert.ok(depthBias / texel <= 6, `${name} cascade ${index} depth bias stays within six of its texels (${(depthBias / texel).toFixed(2)})`);
     worstTexels = Math.max(worstTexels, depthBias / texel);
@@ -170,3 +172,11 @@ assert.equal(blendVisibility(1, 0, 1), 0,
     'a closed deck (half the cut or more) takes the deck table');
 }
 console.log(`shadowStability.selftest: texel snapping, cascade-scaled biases on the live rig (worst ${worstTexels.toFixed(2)} texels), and weighted overlap pass\n  ${rows.join('\n  ')}`);
+// 2026-10-14 (SKY shadows r2a P1b): the DoubleSide / alpha-tested casters' depth draws take a caster-side polygon offset
+// (their front faces are in the map); a FrontSide closed caster's draw takes none (no slope-scaled offset on the shared
+// depth materials: it would push the stored back faces away and widen the seam)
+{
+  const src = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(src, /const guard = !legacy && \(depthMaterial\.side === THREE\.DoubleSide \|\| depthMaterial\.alphaTest > 0\);/, 'the guard keys on the depth draw\'s side and alpha test');
+  assert.equal(src.split('guardDoubleSidedDepth(depthMaterial);').length - 1, 2, 'both shadow hooks (meshes and batched meshes) guard their draws');
+}

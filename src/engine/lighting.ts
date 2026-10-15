@@ -594,9 +594,9 @@ function patchShadowDepthPacking(): void {
   const batchedBefore = THREE.BatchedMesh.prototype.onBeforeShadow;
   THREE.BatchedMesh.prototype.onBeforeShadow = function (renderer, object, camera, shadowCamera, geometry, depthMaterial, group) {
     batchedBefore.call(this, renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
-    guardDoubleSidedDepth(depthMaterial);
     if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
     else if (!depthKindsRequested) requestDepthKinds();
+    guardDoubleSidedDepth(depthMaterial);
   };
   THREE.Mesh.prototype.onAfterShadow = afterHook;
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
