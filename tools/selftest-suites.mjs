@@ -1041,6 +1041,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/hostStopRace.selftest.mjs', // 2026-10-13 the MP stream: a core stopped during its world load starts no actor
+    'src/mp/host/hostStandby.selftest.mjs', // 2026-10-14 the MP stream: a standby host thread boots on the world it prepared (§13.21)
+    'src/sim/preparedAuthorityGround.selftest.mjs', // 2026-10-14 the MP stream: a prepared navigation ground plays digest for digest as a fresh one (§13.21)
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
@@ -1070,6 +1072,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
     'tools/mp-p2p-headless.selftest.mjs',
+    'tools/mp-p2p-headless-crash.selftest.mjs', // 2026-10-14 the MP stream: a crashed host's peers elect at once on their evidence (§13.22)
     'tools/mp-world-events-audit.selftest.mjs',
     // 2026-10-02 (ghost-crunch lane): the audit's ghost findings as deterministic authority → presentation scenarios.
     'tools/mp-world-events-scenarios.selftest.mjs',

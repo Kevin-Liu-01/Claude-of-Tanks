@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { RoomActor } from './roomActor.ts';
 import { createP2pMatchHost } from './p2pMatchHost.ts';
 import {
-  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_HOST_UNREACHABLE_AFTER_MS, ROOM_HOST_UNREACHABLE_TTL_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
   ROOM_RATE_MAX_MESSAGES, ROOM_RELAY_ROOM_LIMIT, ROOM_RELAY_SEAT_LIMIT, ROOM_RELAY_WINDOW_MS, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SIGNAL_MAX_BYTES,
   ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
   isRoomHostChangedPayload, readRoomSnapshot,
@@ -1242,6 +1242,44 @@ const relayCode = (h, socket, requestId) => { const m = relayOf(h, socket, reque
   big.now += ROOM_RELAY_WINDOW_MS;
   await big.send(lastSeat, 'room_relay', {}, 'bn');
   assert.equal(relayCode(big, lastSeat, 'bn'), 'room_relay', 'the room\'s next window grants again');
+}
+
+// ---- host-loss evidence (2026-10-14, the MP stream; MULTIPLAYER-V2 §13.22): the host's room socket gone AND a peer that
+// hears nothing from it is a crashed or killed host tab: elected at once, not after the 8 s lease. A claim with the host's
+// socket alive (a busy host page), a socket gone with no claim (a blip), the host's own claim, a stale generation, a short
+// silence and a spectator's claim change nothing; a claim made before the drop counts within its window and not after
+{
+  const { h, matchId } = await startedP2pRoom({ third: true });
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 300 });
+  h.drain('g'); h.drain('t'); h.drain('w');
+  const claim = (socket, fields = {}) => h.command(socket, { type: 'host_unreachable', generation: 1, silentMs: ROOM_HOST_UNREACHABLE_AFTER_MS, ...fields });
+  assert.equal((await claim('g')).type, 'room_ack', 'acknowledged');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin', 'the host\'s socket is alive: a silence alone (a busy host page) elects nobody');
+  for (const [socket, fields, why] of [['a', {}, 'the host itself'], ['t', { generation: 7 }, 'another generation'], ['t', { silentMs: 400 }, 'a short silence'], ['w', {}, 'a spectator']]) {
+    assert.equal((await claim(socket, fields)).type, 'room_ack', `${why}: acknowledged`);
+  }
+  assert.equal((await claim('g', { silentMs: -1 })).type, 'error', 'a malformed claim is refused');
+  await h.advance(ROOM_HOST_UNREACHABLE_TTL_MS + 100);
+  h.actor.handleClose('a');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin', 'the guest\'s claim aged out and the others never counted: the lease runs (a blip)');
+  assert.equal(h.last('g', 'host_changed') ?? null, null);
+  await claim('t');
+  assert.deepEqual(h.last('t', 'host_changed')?.payload, { hostId: 'guest', generation: 2, resumeTick: 300, reason: 'timeout', detail: 'socket_lease',
+    passedOver: [{ playerId: 'third', why: 'ranked_lower' }] }, 'a fresh claim with the socket gone: elected at once (the detail older tabs know)');
+  assert.ok(isRoomHostChangedPayload(h.last('g', 'host_changed').payload), 'the payload validates for every tab');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS + 100);
+  assert.equal(h.actor.snapshot.host.generation, 2, 'the lease that follows elects nobody again');
+}
+{
+  // the claim first (the host's page froze), then its socket drops within the window: elected at once
+  const { h, matchId } = await startedP2pRoom({ third: true });
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 120 });
+  h.drain('g'); h.drain('t');
+  await h.command('t', { type: 'host_unreachable', generation: 1, silentMs: 2400 });
+  await h.advance(1000);
+  h.actor.handleClose('a');
+  assert.equal(h.actor.snapshot.host.hostId, 'guest', 'the drop follows a fresh claim: no lease');
+  assert.equal(h.last('g', 'host_changed').payload.detail, 'socket_lease');
 }
 
 console.log('roomActor: PASS');

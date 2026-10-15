@@ -753,6 +753,52 @@ function segmentWorldHit(
  * Player records are `{id,specId,team}` with optional test/tooling `spawn`.
  * IDs are match identities and may never be inferred from `specId`.
  */
+/**
+ * A standby host's prepared match ground (2026-10-14, the MP stream; docs/MULTIPLAYER-V2.md §13.21). The bot navigation
+ * grid is the dearest part of an authority's creation (1.2 s of a 1.8 s creation on Verdant: the edge steepness and hull
+ * edge passes, 39 ms on 2026-09-30) and depends only on the world: a seat that may host builds it — with the match's
+ * deformation overlay and deformed field, which its refresh reads — on the pristine world it prepared, and the first
+ * authority created on that world takes it, once, instead of building the same grid while every seat waits for the
+ * elected host. Only for the world object it was built from, with the same obstacles and query; never shared.
+ */
+interface PreparedMatchGround {
+  base: HeightField;
+  obstacles: readonly AuthoritativeObstacle[];
+  query: AuthoritativeWorldCollision['queryObstacles'] | null;
+  ground: ReturnType<typeof createTerrainDeformation>;
+  heightField: HeightField;
+  navigation: ReturnType<typeof createBotNavigationGrid>;
+}
+const preparedMatchGround = new WeakMap<AuthoritativeWorldCollision, PreparedMatchGround>();
+
+/** Build the bot navigation grid (and its ground) for the next authority on `worldCollision` (§13.21). */
+export function prepareAuthorityGround(worldCollision: AuthoritativeWorldCollision): void {
+  const base = worldCollision.heightField;
+  if (!base || preparedMatchGround.has(worldCollision)) return;
+  const obstacles = typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : [];
+  const ground = createTerrainDeformation();
+  const heightField = createDeformedHeightField(base, ground);
+  const navigation = createBotNavigationGrid({
+    heightField, queryObstacles: worldCollision.queryObstacles || null, getObstacles: () => obstacles as AuthoritativeObstacle[],
+  });
+  preparedMatchGround.set(worldCollision, { base, obstacles, query: worldCollision.queryObstacles || null, ground, heightField, navigation });
+}
+
+/** Whether a prepared ground waits for the next authority on this world (the receipt's probe). */
+export function hasPreparedAuthorityGround(worldCollision: AuthoritativeWorldCollision): boolean {
+  return preparedMatchGround.has(worldCollision);
+}
+
+/** The prepared ground for this world, taken once, when it still matches what the authority reads; else null. */
+function takePreparedGround(worldCollision: AuthoritativeWorldCollision | null, obstacles: readonly AuthoritativeObstacle[]): PreparedMatchGround | null {
+  if (!worldCollision) return null;
+  const prepared = preparedMatchGround.get(worldCollision) ?? null;
+  if (!prepared) return null;
+  preparedMatchGround.delete(worldCollision);
+  const query = worldCollision.queryObstacles || null;
+  return prepared.base === worldCollision.heightField && prepared.obstacles === obstacles && prepared.query === query ? prepared : null;
+}
+
 export function createAuthoritativeMatch({
   players = [],
   mapId = 'verdant',
@@ -779,9 +825,13 @@ export function createAuthoritativeMatch({
   const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
   // destruction (docs/DESTRUCTION.md §7): the match's ground is the shared field plus this match's overlay (rubble
   // mounds, craters); the base is never touched, so a shared terrain carries no stamp into another match
-  const ground = createTerrainDeformation();
   const baseHeightField = suppliedHeightField || shared!.heightField;
-  const heightField = createDeformedHeightField(baseHeightField, ground);
+  // §13.21: a standby host's ground and navigation grid, built on this very world before the election (null otherwise)
+  const preparedGround = suppliedHeightField
+    ? takePreparedGround(worldCollision, worldCollision && typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : [])
+    : null;
+  const ground = preparedGround?.ground ?? createTerrainDeformation();
+  const heightField = preparedGround?.heightField ?? createDeformedHeightField(baseHeightField, ground);
   const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
@@ -979,7 +1029,7 @@ export function createAuthoritativeMatch({
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
-    ? createBotNavigationGrid({
+    ? preparedGround?.navigation ?? createBotNavigationGrid({
       heightField,
       queryObstacles: worldCollision?.queryObstacles || null,
       getObstacles: () => staticObstacles,
