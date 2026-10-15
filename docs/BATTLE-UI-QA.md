@@ -317,6 +317,64 @@ Type checking, focused garage/mobile/modal/help tests and the public build also
 passed. These are Chromium touch emulations, not physical iOS/Safari tests.
 Receipts: `.qa-dev/garage-mobile-complete` and `.qa-dev/garage-related-*`.
 
+## Touch action dock (2026-10-14)
+
+Owner: "find a better way to show the stuff u can do row on mobile". The row is
+`.cot-vehicle-controls` (special action, jump, drone, missile, smoke, lights,
+roof gun); on touch it is now the action dock. Owners: `src/ui/touchActionDock.ts`
+(placement, cooldown sweep), `battleHudLayout.ts` (measures the fixed controls,
+applies it), `battleHudLayout.css` (tiles), `hud.ts` (writes `--cd`).
+
+**What was wrong** (production HUD fixture, Chromium touch emulation, M1A3 kit in
+Mars: five controls):
+
+- It was the desktop text strip at 44 px: 9 px labels, 13 px icons, keyboard
+  keycaps (E/F/G) that mean nothing on glass, and a sideways scroll under a hidden
+  scrollbar. 360×640 and 390×844 cut off *Auto gun*; 667×375 cut off two controls,
+  320×568 three; any seven-control kit lost two to five. Nothing showed that more
+  existed.
+- Portrait placed it above the ammo selector: y 416 on 390×844, the middle of the
+  screen over the aim pad, far from both thumbs; on 360×640 it took the left kill
+  feed's whole lane (zero rows).
+- Cooldown was only a text swap ("12s"); smoke charges were hidden.
+- Landscape squeezed it between the drive gauge and auto-aim; it fit five at
+  844×390, not six or seven.
+
+**Alternatives considered**
+
+1. *Thumb arc around FIRE*: the genre habit, but the right thumb's arc already
+   holds FIRE, scope, auto-aim, the second FIRE, the consumables and the ammo
+   selector; seven more buttons there either overlap them or push them away, and
+   FIRE is a drag-to-aim gesture that crowding turns into mis-taps.
+2. *Icon tiles with cooldown sweeps and captions, placed by search* (chosen).
+3. *Collapsible tray behind one button*: smallest footprint, but smoke and jump
+   become two taps in a fight, and a closed tray hides every cooldown.
+
+The tiles win on both counts asked for: every control is one tap and always
+visible, and the tile reads at a glance (22 px icon, caption, sweep). Long-press
+labels were dropped because these controls act on touch-down (so they work while
+the other thumb steers); a caption stays under each icon instead.
+
+**Design**: 48 px tiles (6 px gap) in the row's own order, the first control at
+the top left (so the jump-first rule is whatever order the row has); one row when
+it fits, otherwise wrapped (at most three rows), never scrolled. The dock goes to
+the free spot nearest the point between the joystick and FIRE with 8 px clearance
+from every fixed control, the open ammo drawer and the safe-area edges. On screens
+too crowded for that (320×568) it steps down to 44 px tiles, then gives up the open
+drawer, never a fixed control. A cooldown sweeps a shadow off the tile while the
+caption counts seconds (smoke, drone, missile launcher, special action); smoke
+charges are a corner badge. The centre notices, the gun-limit warning (when the
+dock covers its place under the reticle) and the portrait countdown stack above
+the dock; side feeds end above the notices while one shows. Desktop is unchanged.
+
+Rendered five-control docks: 360×640 at (26, 358), 390×844 at (56, 537), 844×390
+at (297, 287), 667×375 at (208, 230), all one row of 264×48; seven controls are
+3×3 in portrait and one row in landscape. Receipts: `touchActionDock.selftest.mjs`
+(the layout code reproduces each rendered dock from the measured control rects in
+`touchActionDock.fixture.json`, clearance/size/order for 1–7 controls, a seeded
+property sweep) and the no-scroll/48 px check in `tools/battle-hud-layout.browser.mjs`.
+Re-measure the fixture when a fixed touch control moves.
+
 ## Font delivery — 2026-10-01
 
 The game uses `font-display: swap`: a slow self-hosted font must replace the

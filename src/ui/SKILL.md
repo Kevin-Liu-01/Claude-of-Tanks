@@ -144,6 +144,9 @@ components. Run `battleHudLayout.selftest.mjs` and the rendered matrix in
 <!-- agent-docs:fill:tasks -->
 Inspect the live rendered surface, locate event/callback ownership, change the
 smallest screen module, then run its selftest and browser verification.
+On touch the vehicle-controls row is the action dock: `touchActionDock.ts` searches
+its spot from the measured fixed controls (48 px tiles in row order, wrapped, never
+scrolled); re-measure `touchActionDock.fixture.json` when a touch control moves.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
