@@ -7876,6 +7876,14 @@ them placed, scattered over a 200 m sand lot: "a handful of boxes over an open l
 - *Measured* (map-layout-metrics on the recaptured shard; every band holds): orphan buildings 0.031, the middle third's
   cover 0.444 -> 0.482, the weakest sector 0.179 -> 0.208, the sightline median 114 -> 106 m, long sightlines 0.096 ->
   0.076, rotational symmetry 1.045. Census [1726, 1431, 248] -> [2295, 1941, 248].
+- *The blind critics* (2026-10-15, FAIL -0.74: the wide view won, the close views lost) and the fixes
+  (`regional/wadirum.ts`, `badlands.ts`, a 2-line co-held `props.ts` switch): the block houses' and souq rows' render at
+  the limewash UV scale (one coat, the weathering showing, where the print read as camouflage noise); every house's dish
+  on its mast, split air conditioners with their drains, a downpipe and an electricity meter (the "blank box walls"); the
+  souq's open fronts the shop's back wall in shade with display racks of goods under the half-drawn shutter (the "flat
+  black cut-outs"); the fort's twin a souq row and the back row's store a house (no corrugated steel stores in the
+  village); no firewood stacks or woodpiles in a treeless desert (inhabit `firewood: 0`, `woodpiles: 0`). Census
+  [2295, 1941, 248] -> [2239, 1936, 248]; the brief holds (orphan 0.031, symmetry 1.018).
 
 ## Acceptance is visual and measured
 
