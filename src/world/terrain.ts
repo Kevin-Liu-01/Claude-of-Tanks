@@ -57,8 +57,8 @@ import { createBorderLandform, resolveBorderLandform, type BorderLandformSetting
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
-import { compilePaddies, inPaddy, levelPaddies, paddyCanals, paddyWaterLevelAt, paddyWaterQuads, resolvePaddyFloors, type PaddyConfig,
-  type PaddyWaterQuad } from './paddies.ts';
+import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
+  resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
@@ -655,6 +655,12 @@ export interface HeightField {
   _landUseProfile?: LandUseProfile | null;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
+  /** (2026-10-15, the paddies' look pass) Trees and shrubs keep off a paddy's water, bund and bank (paddies.ts
+   *  inPaddyClearing); only on a map with paddies. */
+  _treeClearAt?(x: number, z: number): boolean;
+  /** (the paddies' look pass) The rice hill a paddy plants nearest (x, z), null off its planted water (paddies.ts
+   *  paddyRiceAt); the tall-grass tier grows its rice there. Only on a map with paddies. */
+  _paddyRiceAt?(x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null;
   /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt, 0..1) — present only on a
    * map whose ground profile floors its village in cinder; the tall grass and the tufts keep to them inside the yard. */
   _yardWeedsAt?(x: number, z: number): number;
@@ -2913,6 +2919,11 @@ function* heightFieldBuildSteps(
   }
 
   function getWaterDepthAt(x: number, z: number): number {
+    // (the paddies' look pass) a paddy's water stands its own quarter metre, not the map's river depth
+    if (compiledPaddies !== null && liquidDepthM) {
+      const level = paddyWaterLevelAt(compiledPaddies, x, z);
+      if (level === level) return Math.min(PADDY_DEPTH_M, shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM));
+    }
     return liquidDepthM ? shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM) : 0;
   }
 
@@ -3121,6 +3132,8 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    ...(compiledPaddies !== null ? { _treeClearAt: (x: number, z: number): boolean => inPaddyClearing(compiledPaddies, x, z),
+      _paddyRiceAt: (x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null => paddyRiceAt(compiledPaddies, x, z, out) } : {}),
     // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
     // ground profile asks it; `?ground=legacy` keeps the even carpet
     ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {

@@ -7,8 +7,8 @@
 // each paddy's twin turned 180 degrees about the char; (4) the terrain's wiring.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PADDY_BANK_M, PADDY_BUND_H, PADDY_BUND_M, PADDY_FREEBOARD_M, compilePaddies, inPaddy, levelPaddies, paddyCanals,
-  resolvePaddyFloors } from './paddies.ts';
+import { PADDY_BANK_M, PADDY_BUND_H, PADDY_BUND_M, PADDY_CLEAR_M, PADDY_DEPTH_M, PADDY_FREEBOARD_M, PADDY_RICE_HILL_M,
+  PADDY_RICE_ROW_M, compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, resolvePaddyFloors } from './paddies.ts';
 import { canalWetness, carveCanals, compileCanals } from './canals.ts';
 import { createHeightField } from './terrain.ts';
 import { shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -39,7 +39,9 @@ const canals = compileCanals(water), depth = 0.6;
 assert.equal(canalWetness(canals, 0, 13), 1, 'wet two metres inside an end');
 assert.equal(canalWetness(canals, 0, 16.5), 0, 'dry past an end (no half circle of water beyond the bund)');
 near(carveCanals(canals, 0, 14.6, 2, depth, 0), carveCanals(canals, 9.6, 0, 2, depth, 0), 1e-9, 'the shelf ramps in at the ends as at the sides');
-near(carveCanals(canals, 0, 0, 2, depth, 0), 2 - PADDY_FREEBOARD_M - depth, 1e-9, 'the bed a water depth under the level');
+// (2026-10-15, the look pass: "about 25 cm depth") a paddy's own quarter metre, whatever the map's river depth
+near(carveCanals(canals, 0, 0, 2, depth, 0), 2 - PADDY_FREEBOARD_M - PADDY_DEPTH_M, 1e-9, 'the bed a paddy\'s depth under the level');
+assert.equal(PADDY_DEPTH_M, 0.25);
 assert.throws(() => compileCanals([{ path: [[0, 0], [1, 0], [2, 1]], widthM: 4, level: 0, ends: 'square' }]), /straight two-point path/);
 
 // ---- (3) Jade River Delta on its finished terrain
@@ -112,10 +114,63 @@ for (const p of paddies) {
   }
 }
 
+// ---- (3b) the look pass (2026-10-15; the coordinator: "muddy water, rice shoots, about 25 cm depth, cleared banks, no tree
+//      in the water"): a quarter metre of water over every bed; the clearing round each paddy (no tree or shrub on its water,
+//      bund, bank or working strip); the rice planted in rows over the water, none on the bund; the tall-grass tier grows it
+{
+  for (const p of paddies) {
+    const level = field.getPaddyWaterLevelAt(p.x, p.z);
+    near(level - field.getHeightAt(p.x, p.z), PADDY_DEPTH_M, 1e-6, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): a quarter metre of water over the mud`);
+    near(field.getWaterDepthAt(p.x, p.z), PADDY_DEPTH_M, 1e-6, 'the wading depth the vehicles read is the paddy\'s');
+  }
+  const cp = compilePaddies(paddies);
+  resolvePaddyFloors(cp, (x, z) => field.getHeightAt(x, z));
+  const p0 = paddies[0], y0 = p0.yawDeg * Math.PI / 180, c0 = Math.cos(y0), s0 = Math.sin(y0);
+  const at = (a, b) => [p0.x + s0 * a + c0 * b, p0.z + c0 * a - s0 * b];
+  // (off the paddy's end: its row's neighbours stand beside it, across its width)
+  assert.ok(inPaddyClearing(cp, ...at(p0.lengthM / 2 + PADDY_CLEAR_M - 0.2, 0)) && !inPaddyClearing(cp, ...at(p0.lengthM / 2 + PADDY_CLEAR_M + 0.2, 0)),
+    `the clearing reaches ${PADDY_CLEAR_M.toFixed(1)} m past the water`);
+  assert.ok(field._treeClearAt(...at(p0.lengthM / 2 + 10, 0)) && !field._treeClearAt(...at(p0.lengthM / 2 + PADDY_CLEAR_M + 3, 0)), 'the height field publishes the clearing');
+  const seat = { x: 0, z: 0, depthM: 0, level: 0 };
+  const seats = new Set();
+  let onWater = 0;
+  for (let a = -p0.lengthM / 2 + 1; a < p0.lengthM / 2 - 1; a += 0.37) for (let b = -p0.widthM / 2 + 1; b < p0.widthM / 2 - 1; b += 0.29) {
+    const r = paddyRiceAt(cp, ...at(a, b), seat);
+    if (!r) continue;
+    onWater++;
+    // the seat in the paddy's own frame lies on the planting lattice: rows across the width, hills along them
+    const dx = r.x - p0.x, dz = r.z - p0.z, bb = dx * c0 - dz * s0, aa = dx * s0 + dz * c0;
+    const offNode = (v) => { const f = ((v % 1) + 1.5) % 1; return Math.min(f, 1 - f); };
+    near(offNode(bb / PADDY_RICE_ROW_M), 0, 1e-6, 'a hill on its row'); near(offNode(aa / PADDY_RICE_HILL_M), 0, 1e-6, 'at its spacing');
+    near(r.depthM, PADDY_DEPTH_M, 1e-12, 'rooted a quarter metre under the water');
+    seats.add(`${r.x.toFixed(3)},${r.z.toFixed(3)}`);
+  }
+  assert.ok(onWater > 1000 && seats.size > 1000, `the water is planted (${seats.size} hills seen)`);
+  assert.equal(paddyRiceAt(cp, ...at(0, p0.widthM / 2 + PADDY_BUND_M / 2), seat), null, 'nothing planted on the bund');
+  assert.equal(paddyRiceAt(cp, ...at(0, p0.widthM / 2 - 0.5), seat), null, 'nor in the stride inside it');
+  // the tall-grass tier grows the rice: hills on the water rooted on the bed and standing out of it, young rice green
+  const { createTallGrass } = await import('./tallGrass.ts');
+  const THREE = await import('three');
+  const grass = createTallGrass(field, { mapId: 'delta', tier: 'desktop', qualityScale: () => 1 });
+  const eye = new THREE.Vector3(p0.x, field.getHeightAt(p0.x, p0.z) + 2, p0.z);
+  for (let i = 0; i < 2000; i++) { grass.update(1 / 60, eye); const st = grass.getState(); if (st.near.publishes && !st.near.pending && st.far.publishes && !st.far.pending) break; }
+  const m = grass.near.instanceMatrix.array, bl = grass.near.geometry.getAttribute('aBlade').array;
+  let rice = 0, tall = 0;
+  for (let i = 0; i < grass.near.count; i++) {
+    const x = m[i * 16 + 12], z = m[i * 16 + 14];
+    if (!paddyRiceAt(cp, x, z, seat)) continue;
+    rice++;
+    if (bl[i * 4 + 1] > PADDY_DEPTH_M + 0.3) tall++;
+    near(m[i * 16 + 13], field.getHeightAt(x, z), 0.05, 'a hill rooted on the mud (the tier reads the fast height)');
+  }
+  assert.ok(rice > 2000 && tall === rice, `rice hills on the water, every one standing out of it (${rice})`);
+  grass.dispose();
+}
+
 // ---- (4) the terrain's wiring
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 assert.match(terrain, /if \(compiledPaddies !== null && roadsOn && padsOn\) h = levelPaddies\(compiledPaddies, x, z, h\);\n\s*if \(compiledCanals !== null && roadsOn && padsOn\) \{/,
   'the paddies are levelled on final queries, just before the canals (their water) are carved');
 assert.match(terrain, /resolvePaddyFloors\(compiledPaddies, \(x, z\) => heightAt\(x, z, true, true\)\);\n\s*compiledCanals = compileCanals\(\[\.\.\.\(T\.canals \?\? \[\]\), \.\.\.paddyCanals\(compiledPaddies\)\]\);/,
   'the floors resolve on the finished ground, then their water joins the canals');
-console.log(`paddies.selftest: terraces, bunds and banks; square-ended water; Delta's ${paddies.length} paddies level, wet bund to bund and paired about the char (${samples} bed samples)`);
+console.log(`paddies.selftest: terraces, bunds and banks; square-ended water; Delta's ${paddies.length} paddies level, wet bund to bund and paired about the char (${samples} bed samples); the look pass: a quarter metre of water, the clearing, the rice in rows`);

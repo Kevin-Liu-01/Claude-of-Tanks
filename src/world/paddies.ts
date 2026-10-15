@@ -32,6 +32,15 @@ export const PADDY_FREEBOARD_M = 0.05;
 const PADDY_SHELF_M = 0.8;
 /** The bund's inner face from the waterline (rise over run). */
 const PADDY_BANK_SLOPE = 1;
+/** (2026-10-15, the look pass; the coordinator: "muddy water, rice shoots, about 25 cm depth, cleared banks, no tree in
+ *  the water") a flooded paddy stands a quarter metre deep over its levelled mud (it read as a dark pond at the map's
+ *  0.64 m river depth). */
+export const PADDY_DEPTH_M = 0.25;
+/** No tree or shrub stands within this distance of a paddy's water: its bund, its bank and a working strip round it
+ *  (a paddy is cleared farmland, not a pond in the forest). */
+export const PADDY_CLEAR_M = PADDY_BUND_M + PADDY_BANK_M + 4;
+/** The rice: rows across the paddy (along its width) this far apart, hills along a row this far apart (metres). */
+export const PADDY_RICE_ROW_M = 0.5, PADDY_RICE_HILL_M = 0.42;
 
 interface PaddyFrame { c: number; s: number; hw: number; hl: number }
 
@@ -119,7 +128,7 @@ export function paddyCanals(compiled: CompiledPaddies): CanalConfig[] {
     return {
       path: [[p.x - f.s * f.hl, p.z - f.c * f.hl], [p.x + f.s * f.hl, p.z + f.c * f.hl]],
       widthM: p.widthM, level: floors[i] - PADDY_FREEBOARD_M, ends: 'square', bankSlope: PADDY_BANK_SLOPE,
-      shelfM: PADDY_SHELF_M, name: `paddy ${i}`,
+      shelfM: PADDY_SHELF_M, depthM: PADDY_DEPTH_M, name: `paddy ${i}`,
     };
   });
 }
@@ -163,4 +172,34 @@ export function inPaddy(compiled: CompiledPaddies, x: number, z: number): boolea
     if (signedDistance(compiled.paddies[i], compiled.frames[i], x, z) < PADDY_BUND_M + 0.5) return true;
   }
   return false;
+}
+
+/** (the look pass) Whether (x, z) lies within PADDY_CLEAR_M of a paddy's water: trees and shrubs keep off. */
+export function inPaddyClearing(compiled: CompiledPaddies, x: number, z: number): boolean {
+  for (let i = 0; i < compiled.paddies.length; i++) {
+    if (signedDistance(compiled.paddies[i], compiled.frames[i], x, z) < PADDY_CLEAR_M) return true;
+  }
+  return false;
+}
+
+/** A rice hill under a paddy's water: its seat (the planting lattice's node nearest (x, z), rows across the width) and
+ *  the water's depth over the floor there; null off the water or within a stride of the bund (the edge left unplanted). */
+export interface PaddyRiceSeat { x: number; z: number; depthM: number; level: number }
+export function paddyRiceAt(compiled: CompiledPaddies, x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null {
+  const floors = compiled.floors;
+  if (floors === null) return null;
+  for (let i = 0; i < compiled.paddies.length; i++) {
+    const p = compiled.paddies[i], f = compiled.frames[i];
+    const dx = x - p.x, dz = z - p.z;
+    const b = dx * f.c - dz * f.s, a = dx * f.s + dz * f.c; // across (width), along (length)
+    if (Math.abs(b) > f.hw - 0.9 || Math.abs(a) > f.hl - 0.9) continue;
+    const bs = (Math.round(b / PADDY_RICE_ROW_M + 0.5) - 0.5) * PADDY_RICE_ROW_M;
+    const as = (Math.round(a / PADDY_RICE_HILL_M + 0.5) - 0.5) * PADDY_RICE_HILL_M;
+    out.x = p.x + f.c * bs + f.s * as;
+    out.z = p.z - f.s * bs + f.c * as;
+    out.level = floors[i] - PADDY_FREEBOARD_M;
+    out.depthM = PADDY_DEPTH_M;
+    return out;
+  }
+  return null;
 }

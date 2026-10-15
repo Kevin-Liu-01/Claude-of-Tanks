@@ -4230,6 +4230,11 @@ function* vegetationBuildSteps(
   // candidate away from them pays four comparisons
   const avoidBounds = veg.avoid?.length ? veg.avoid.reduce((b, av) => [Math.min(b[0], av.x - av.r), Math.max(b[1], av.x + av.r),
     Math.min(b[2], av.z - av.r), Math.max(b[3], av.z + av.r)], [Infinity, -Infinity, Infinity, -Infinity]) : null;
+  // (2026-10-15, the paddies' look pass; the coordinator: "cleared banks, no tree in the water") a paddy's water, bund,
+  // bank and a working strip round it grow no tree or shrub (terrain _treeClearAt, paddies.ts inPaddyClearing); the
+  // grass keeps the banks
+  const treeClearAt = heightField._treeClearAt ?? null;
+  const inTreeClear = (x: number, z: number): boolean => treeClearAt !== null && treeClearAt(x, z);
   function inAvoid(x: number, z: number): boolean {
     if (!veg.avoid) return false;
     if (avoidBounds && (x < avoidBounds[0] || x > avoidBounds[1] || z < avoidBounds[2] || z > avoidBounds[3])) return false;
@@ -5899,7 +5904,7 @@ function* vegetationBuildSteps(
   }
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
-    if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
+    if (inAvoid(x, z) || inTreeClear(x, z) || overTreeCeiling(x, z)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -7573,7 +7578,7 @@ function* vegetationBuildSteps(
     const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
-      if (inAvoid(x, z)) return;
+      if (inAvoid(x, z) || inTreeClear(x, z)) return;
       if (br() > veg.bushCount) return; // per-map density scale
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
@@ -7613,7 +7618,7 @@ function* vegetationBuildSteps(
             const bx = tx + (x - tx) / dl * out, bz = tz + (z - tz) / dl * out;
             if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
               && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
-              && !inAvoid(bx, bz)) {
+              && !inAvoid(bx, bz) && !inTreeClear(bx, bz)) {
               x = bx; z = bz;
             }
           }
@@ -7799,7 +7804,7 @@ function* vegetationBuildSteps(
       };
       /** The bush admission (roads, soft ground, water, slopes, spawns, the village, structures) inside the bound. */
       const admitted = (x: number, z: number, sc: number, bound: number): boolean => {
-        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) return false;
+        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z) || inTreeClear(x, z)) return false;
         // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
         if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) return false;
         if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;

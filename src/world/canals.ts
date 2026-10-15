@@ -25,6 +25,9 @@ export interface CanalConfig {
    *  only): the water is the rectangle the path and the width span, its shelf ramping at the ends as at the sides —
    *  a flooded paddy's basin (2026-10-12, item 4) or a dock. */
   ends?: 'round' | 'square';
+  /** The water's depth over the bed, metres (default: the map's liquid depth, carveCanals' depthM) — a flooded paddy's
+   *  quarter metre (2026-10-15, the paddies' look pass). */
+  depthM?: number;
   name?: string;
 }
 
@@ -35,6 +38,8 @@ interface CompiledCanal {
   half: number; level: number; slope: number; shelf: number; reach: number;
   /** Square ends (a straight two-point path): the segment's length. 0 for round ends. */
   squareLen: number;
+  /** The canal's own water depth (NaN: the map's). */
+  depth: number;
 }
 
 export interface CompiledCanals {
@@ -64,7 +69,8 @@ export function compileCanals(configs: readonly CanalConfig[] | undefined): Comp
     const shelf = c.shelfM ?? Math.min(2, c.widthM / 4);
     const reach = half + MAX_BANK_RISE_M / slope;
     canals.push({ ax, az, dx, dz, len2, minX: minX - reach, maxX: maxX + reach, minZ: minZ - reach, maxZ: maxZ + reach,
-      half, level: c.level, slope, shelf: Math.min(shelf, half), reach, squareLen: c.ends === 'square' ? Math.sqrt(len2[0]) : 0 });
+      half, level: c.level, slope, shelf: Math.min(shelf, half), reach, squareLen: c.ends === 'square' ? Math.sqrt(len2[0]) : 0,
+      depth: c.depthM !== undefined && c.depthM > 0 ? c.depthM : NaN });
   }
   return { canals };
 }
@@ -105,7 +111,7 @@ export function carveCanals(compiled: CompiledCanals, x: number, z: number, h: n
   for (const c of compiled.canals) {
     const d = canalDistance(c, x, z);
     if (!(d < c.reach)) continue;
-    const bed = c.level - depthM;
+    const bed = c.level - (c.depth === c.depth ? c.depth : depthM);
     let profile: number;
     if (d <= c.half - c.shelf) profile = bed;
     else if (d <= c.half) profile = bed + (c.level - bed) * ((d - (c.half - c.shelf)) / Math.max(1e-6, c.shelf));

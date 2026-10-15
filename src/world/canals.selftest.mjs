@@ -43,7 +43,15 @@ const take = (inserted, original = '') => {
 };
 take("import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';\n");
 // (2026-10-12, item 4) the paddies ride on the canals (their water is square-ended canals): they come out with them
-take("import { compilePaddies, inPaddy, levelPaddies, paddyCanals, paddyWaterLevelAt, paddyWaterQuads, resolvePaddyFloors, type PaddyConfig,\n  type PaddyWaterQuad } from './paddies.ts';\n");
+take("import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,\n"
+  + "  resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';\n");
+// (2026-10-15, the paddies' look pass) the trees' clearing, the rice and the paddy's own depth
+take(source.slice(source.indexOf("  /** (2026-10-15, the paddies' look pass) Trees and shrubs keep off a paddy's water, bund and bank (paddies.ts"),
+  source.indexOf('  _paddyRiceAt?(x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null;\n') + '  _paddyRiceAt?(x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null;\n'.length));
+take(source.slice(source.indexOf("    // (the paddies' look pass) a paddy's water stands its own quarter metre, not the map's river depth"),
+  source.indexOf('    return liquidDepthM ? shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM) : 0;\n  }\n\n  /** Round 47')));
+take(source.slice(source.indexOf("    ...(compiledPaddies !== null ? { _treeClearAt: (x: number, z: number): boolean => inPaddyClearing(compiledPaddies, x, z),"),
+  source.indexOf("paddyRiceAt(compiledPaddies, x, z, out) } : {}),\n") + "paddyRiceAt(compiledPaddies, x, z, out) } : {}),\n".length));
 take("  /** (2026-10-12, item 4) A paddy's water level over its water and bund, NaN elsewhere; only on a map with paddies. */\n"
   + "  getPaddyWaterLevelAt?(x: number, z: number): number;\n"
   + "  /** (item 4) Each paddy's own level water surface (paddies.ts paddyWaterQuads); only on a map with paddies. */\n"
