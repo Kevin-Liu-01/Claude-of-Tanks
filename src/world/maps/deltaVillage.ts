@@ -18,23 +18,13 @@ const charSite = (structure: string, u: number, v: number, face: readonly [numbe
   return [{ structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yaw.toFixed(1), terrace: true },
     { structure: twin, x: +tx.toFixed(2), z: +tz.toFixed(2), yawDeg: +tyaw.toFixed(1), terrace: true }];
 };
-/** A homestead (bari): houses round a courtyard at (u, v), facing it, the granary beside them. */
-const bari = (u: number, v: number, houses: number, turn: number) => {
-  const out = [] as ReturnType<typeof charSite>;
-  for (let k = 0; k < houses; k++) {
-    const a = turn + (k / 4) * Math.PI * 2;
-    out.push(...charSite(k === 0 ? 'farmhouse' : 'cottage', u + Math.cos(a) * 10, v + Math.sin(a) * 10, [u, v]));
-  }
-  out.push(...charSite('granary', u + Math.cos(turn + Math.PI * 1.25) * 12, v + Math.sin(turn + Math.PI * 1.25) * 12, [u, v]));
-  return out;
-};
 // the char's spine past the haat: its dry ground runs from 32 m wide at the haat's end to a few metres at its tip, its
 // middle line drifting from 12 m to 2 m south-west of the axis (the river's banks, measured on the height field)
 const spine = (u: number) => -12 + Math.min(1, Math.max(0, (u - 70) / 48)) * 10;
 export const CHAR_VILLAGE = [
   // the haat: the bazaar's sheds facing the square across its north-east and south-west sides, the brick shops and stalls
   // on its corners (the cross road keeps its course past the square's south-east side)
-  ...charSite('marketRow', 24, 38, [24, 0]), ...charSite('marketRow', 40, 36, [40, 0]), ...charSite('cornershop', 44, 19, [0, 0]),
+  ...charSite('marketRow', 24, 38, [24, 0]), ...charSite('marketRow', 40, 36, [40, 0]), ...charSite('cornershop', 44, 17.5, [0, 0]),
   ...charSite('market', 40, -30, [0, 0]),
   // the village mosque by the haat, across the square from the temple
   ...charSite('chapel', 54, -22, [0, 0], 'depot'),
