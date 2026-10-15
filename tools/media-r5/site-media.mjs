@@ -6,6 +6,7 @@
 // manifest.json records every file's source, bytes and sha256; archive.json is the visual archive's library.
 //
 //   node tools/media-r5/site-media.mjs --root=<tree> [--only=stills,loops,proxies,reels,frames,films,fleet,scenes,home] [--force]
+//     [--skip-web=media/site50-r14/loops/<id>.webm,...]
 //   node tools/media-r5/site-media.mjs --root=<tree> --plan       what each slot ships, and what is missing
 // --fallback lets an older round stand in for a take the round has not delivered yet (drafts only: the manifest marks
 // it, and the shipped build has every take from the picks' round, each with its sound).
@@ -48,6 +49,9 @@ const PROXIES = join(ROOT, 'public/media/web-video-r1');
 const BASE_URL = `/media/${PICKS.collection}`;
 const only = arg('only')?.split(',');
 const force = flag('force');
+// --skip-web=<public path>[,...]: web videos left on their earlier encode for this run (a file awaiting a ruling on its
+// floor or cap), recorded so a full run keeps them
+const skipWeb = new Set(arg('skip-web')?.split(',').filter(Boolean) ?? []);
 const fallback = flag('fallback');
 const plan = flag('plan');
 const TMP = join(MEDIA, 'shots/media-r5/tmp/site-media-build');
@@ -75,16 +79,26 @@ const HOME_STUDIO_PROXY = 'home-studio-mobile.mp4';
 // file is encoded again when its source is newer, its settings change, or --force.
 const WEB = Object.freeze({
   loop: { codec: 'vp9', size: [1920, 1080], audio: 'keep', floor: 93, capFloor: 90, crfs: [34, 36, 38, 40, 42, 44, 46], capKbps: 8000 },
-  loop960: { codec: 'vp9', size: [960, 540], audio: 'none', floor: 90, crfs: [36, 39, 42, 45, 48, 51], capKbps: 2000 },
+  // (the 960 px loops play in the manual's archive dialog; s05's barn advance reached 88.9 at the 2 Mbit/s cap, so a
+  // 960 px loop at its cap holds 85)
+  loop960: { codec: 'vp9', size: [960, 540], audio: 'none', floor: 90, capFloor: 85, crfs: [36, 39, 42, 45, 48, 51], capKbps: 2000 },
   // the reel (the home page's third section, a full-bleed film under a shade, loaded before the first scroll): 900p VP9
   // under 4.3 Mbit/s, about 14.5 MB for 28 s (VMAF 93 at 1080p needed about 20 MB; the coordinator's ruling)
-  reel: { codec: 'vp9', size: [1600, 900], audio: 'none', floor: 93, capFloor: 90, crfs: [38, 40, 42, 44, 46], capKbps: 4300 },
-  // its H.264 twin at the same size and cap, for a browser that plays no VP9 (the page's fallback source)
-  reelMp4: { codec: 'h264', size: [1600, 900], audio: 'none', floor: 93, capFloor: 85, crfs: [20, 22, 24, 26, 28], capKbps: 4300 },
+  // (2026-10-14: at the cap it holds 86.9, worst frame 61; the coordinator: its size is the budget, ship it at the cap,
+  // marked capped)
+  // (and at its cap the encoder's effort is the picture: a second pass at -cpu-used 1 held 91.5 where 4 held 86.9, the
+  // dissolves' worst frames 61-74 where they had dropped to 61, at the same 14.4 MB; one rung, CRF 40, at the cap)
+  reel: { codec: 'vp9', size: [1600, 900], audio: 'none', floor: 93, shipAtCap: true, crfs: [40], capKbps: 4300, cpuUsed: 1 },
+  // its H.264 twin at the same size and cap, for a browser that plays no VP9 (the page's fallback source; 84.2 at the cap)
+  reelMp4: { codec: 'h264', size: [1600, 900], audio: 'none', floor: 93, shipAtCap: true, crfs: [20, 22, 24, 26, 28], capKbps: 4300 },
 });
+// a loop's own cap where the loops' 8 Mbit/s cannot hold its picture (the coordinator, 2026-10-14: s04's column under fire,
+// smoke and fire over the frame, held 86.4 at 8 Mbit/s; uncapped, CRF 40 holds 93 at 9.5 Mbit/s, about 7.1 MB)
+const WEB_LOOP_CAPS = Object.freeze({ 's04-column-under-fire': 10000 });
 const WEB_RECORD = join(MEDIA, 'tools/media-r5/site-media/web-encodes.json');
 const webRecord = existsSync(WEB_RECORD) ? JSON.parse(readFileSync(WEB_RECORD, 'utf8')) : {};
 let webChanged = false;
+const webMisses = [];
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1 << 26 });
 const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const want = (part) => !only || only.includes(part);
@@ -241,15 +255,35 @@ const copy = (out, source, extra) => make(out, source, (tmp) => copyFileSync(sou
 /** A web video (WEB's settings): encoded when stale (see WEB), recorded with its rate and VMAF either way. */
 function webMake(out, source, settings, extra = {}) {
   const key = relative(join(ROOT, 'public'), out).split('\\').join('/'), prev = webRecord[key];
+  if (skipWeb.has(key)) {
+    console.log(`[site-media] ${key}: skipped (--skip-web), its earlier encode kept`);
+    if (existsSync(out)) record(out, source, { ...extra, webSkipped: true });
+    return;
+  }
   const stale = force || !existsSync(out) || statSync(out).mtimeMs < statSync(source).mtimeMs || !prev
     || JSON.stringify(prev.settings) !== JSON.stringify(settings) || prev.bytes !== statSync(out).size;
   mkdirSync(dirname(out), { recursive: true });
   if (stale) {
     const tmp = `${out}.tmp${out.slice(out.lastIndexOf('.'))}`;
-    const r = webEncode({ src: source, out: tmp, ...settings });
+    let r;
+    try { r = webEncode({ src: source, out: tmp, ...settings }); } catch (error) {
+      if (!/no CRF on the ladder/.test(String(error?.message))) throw error;
+      // a floor the ladder cannot reach under its cap stops this file, not the run (2026-10-14: s04's loop held 86.4 at
+      // 8 Mbit/s, under the capped floor of 90): the file keeps its earlier encode, recorded so a full run does not
+      // prune it, until its settings change; the run ends non-zero with the misses listed
+      rmSync(`${tmp}.ladder`, { recursive: true, force: true });
+      const why = String(error.message).slice(String(error.message).indexOf('no CRF'));
+      webMisses.push(`${key}: ${why}`);
+      console.error(`[site-media] ${key}: ${why}`);
+      if (existsSync(out)) record(out, source, { ...extra, webFloorMissed: true });
+      return;
+    }
     renameSync(tmp, out);
     webRecord[key] = { settings, source: rel(source), crf: r.crf, kbps: r.kbps, vmaf: r.vmaf, bytes: r.bytes, tried: r.tried, ...(r.capped ? { capped: true } : {}) };
     webChanged = true;
+    // saved at once: a later file's failure must not cost the encodes already made (2026-10-14: a 960 px loop's miss
+    // ended a run before its record was written, and the two loops before it had to encode again)
+    saveWebRecord();
     console.log(`[site-media] ${key}: CRF ${r.crf}, ${r.kbps} kbit/s, VMAF ${r.vmaf.mean} (worst frame ${r.vmaf.min})${r.capped ? ' at the cap' : ''}, ${(r.bytes / 1048576).toFixed(2)} MB (tried ${r.tried.map(([c, k, v]) => `crf ${c}: ${k} kbit/s ${v}`).join(', ')})`);
   }
   const w = webRecord[key];
@@ -282,7 +316,7 @@ function buildLoops() {
     if (!d?.hd || !d.poster) continue;
     const take = { take: id, round: d.round };
     // from the delivery's 1080p master with its sound (WEB.loop), not its own VP9: that ran at 22-32 Mbit/s
-    webMake(join(OUT, 'loops', `${id}.webm`), d.hd, WEB.loop, take);
+    webMake(join(OUT, 'loops', `${id}.webm`), d.hd, WEB_LOOP_CAPS[id] ? { ...WEB.loop, capKbps: WEB_LOOP_CAPS[id] } : WEB.loop, take);
     copy(join(OUT, 'loops', `${id}.jpg`), d.poster, take);
     if (PICKS.docs.archiveLoops.includes(id)) webMake(join(OUT, 'loops', `${id}-960.webm`), d.hd, WEB.loop960, take);
   }
@@ -608,6 +642,7 @@ function main() {
   if (want('home')) buildHome();
   const proxies = want('proxies') ? buildProxies() : null;
   saveWebRecord();
+  if (webMisses.length) { console.error(`[site-media] ${webMisses.length} web encode(s) missed their floor:\n  ${webMisses.join('\n  ')}`); process.exitCode = 1; }
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of
   // takes no slot names any more, and the stage copies the draft's collection forward

@@ -883,15 +883,6 @@
    "crossfadeS": 0.5
   },
   {
-   "path": "media/site50-r14/films/reel.mp4",
-   "bytes": 28871113,
-   "sha256": "a7b0e32bc83a5706a15c84c015ae587a8aec021e0a09dc4890db55cf74664b51",
-   "width": 1920,
-   "height": 1080,
-   "fps": 30,
-   "seconds": 28.067,
-   "audio": null,
-   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.mp4",
    "film": "reel",
    "takes": [
     "s20-road-return-fire",
@@ -900,7 +891,50 @@
     "s24-ice-duel",
     "s06-farm-charge"
    ],
-   "crossfadeS": 0.5
+   "crossfadeS": 0.5,
+   "path": "media/site50-r14/films/reel.webm",
+   "bytes": 15094482,
+   "sha256": "1f8f12df1beee97350e34c787255c12f5867da0ea2f30485bc47256c9741fe89",
+   "width": 1600,
+   "height": 900,
+   "fps": 30,
+   "seconds": 28.066,
+   "audio": false,
+   "source": "shots/media-r5/tmp/site-media-build/reel-master.mp4",
+   "encode": {
+    "crf": 40,
+    "kbps": 4302,
+    "vmaf": 91.49,
+    "vmafMin": 60.94,
+    "capped": true
+   }
+  },
+  {
+   "path": "media/site50-r14/films/reel.mp4",
+   "bytes": 15493259,
+   "sha256": "4f8ce908bab5f1f2991693f48bba1c1de398c077169b77c0b64d2077815995e6",
+   "width": 1600,
+   "height": 900,
+   "fps": 30,
+   "seconds": 28.067,
+   "audio": false,
+   "source": "shots/media-r5/tmp/site-media-build/reel-master.mp4",
+   "film": "reel",
+   "takes": [
+    "s20-road-return-fire",
+    "s23-village-crossroads",
+    "s33-water-tower",
+    "s24-ice-duel",
+    "s06-farm-charge"
+   ],
+   "crossfadeS": 0.5,
+   "encode": {
+    "crf": 24,
+    "kbps": 4416,
+    "vmaf": 84.17,
+    "vmafMin": 54.72,
+    "capped": true
+   }
   },
   {
    "path": "media/site50-r14/films/trailer.jpg",
@@ -5290,29 +5324,43 @@
   },
   {
    "path": "media/site50-r14/loops/s04-column-under-fire.webm",
-   "bytes": 23763137,
-   "sha256": "fcebd8e4185221ed7dcbf6c5cb5bd7cd296b711b029db0911b7267f31f613b5b",
+   "bytes": 7741899,
+   "sha256": "e4561aa99af69eba66ffc02f56760bcd075f77a1da3fe453f55d4ae9eb05a7b9",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.mp4",
    "take": "s04-column-under-fire",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 36,
+    "kbps": 10207,
+    "vmaf": 90.64,
+    "vmafMin": 70.78,
+    "capped": true
+   }
   },
   {
    "path": "media/site50-r14/loops/s05-barn-advance-960.webm",
-   "bytes": 3081883,
-   "sha256": "bd836727db9d076bf32f7f8b7f64690d3658959808feca2ad8b62d6b03f41b52",
+   "bytes": 1478914,
+   "sha256": "cef2eb7c20b22851dbcdbe129c594e40546abeb042d3975a06e78ab1e174b58c",
    "width": 960,
    "height": 540,
    "fps": 30,
    "seconds": 6,
-   "audio": null,
+   "audio": false,
    "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
    "take": "s05-barn-advance",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 42,
+    "kbps": 1967,
+    "vmaf": 88.13,
+    "vmafMin": 71.78,
+    "capped": true
+   }
   },
   {
    "path": "media/site50-r14/loops/s05-barn-advance.jpg",
@@ -5324,29 +5372,41 @@
   },
   {
    "path": "media/site50-r14/loops/s05-barn-advance.webm",
-   "bytes": 17026515,
-   "sha256": "7087bb0ee601f98546b7ae5b6ff779a29231eae969d88195f1b9c86439dc78b6",
+   "bytes": 5236359,
+   "sha256": "e942968b6885e502bbe1d9a99acdd625a1560f2142cc5ddf5c2115d5271582a2",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
    "take": "s05-barn-advance",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 42,
+    "kbps": 6870,
+    "vmaf": 93.93,
+    "vmafMin": 76.21
+   }
   },
   {
    "path": "media/site50-r14/loops/s07-lake-shellfire-960.webm",
-   "bytes": 1673733,
-   "sha256": "625d3f1993ab70722b676a7de0667ddbd0ca02dd5c0ab525212e3f74c9964744",
+   "bytes": 1147804,
+   "sha256": "bbdf9ea4ff6e4a7ed33f8e4c4844562a80fa905266f772f1737c8000e8962797",
    "width": 960,
    "height": 540,
    "fps": 30,
    "seconds": 6,
-   "audio": null,
+   "audio": false,
    "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.mp4",
    "take": "s07-lake-shellfire",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 42,
+    "kbps": 1526,
+    "vmaf": 91.75,
+    "vmafMin": 77.13
+   }
   },
   {
    "path": "media/site50-r14/loops/s07-lake-shellfire.jpg",
@@ -5358,29 +5418,42 @@
   },
   {
    "path": "media/site50-r14/loops/s07-lake-shellfire.webm",
-   "bytes": 8672734,
-   "sha256": "911ff0d977f3691b6589edbdddfd45da3be49cd90c3f4c892f82e00098f6e4dd",
+   "bytes": 2967217,
+   "sha256": "66125a3805e407e8026ef632f0fd382a5dd65793df3211b93e2dc986036eb46d",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.mp4",
    "take": "s07-lake-shellfire",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 44,
+    "kbps": 3849,
+    "vmaf": 93.04,
+    "vmafMin": 78.03
+   }
   },
   {
    "path": "media/site50-r14/loops/s18-street-knockout-960.webm",
-   "bytes": 2782958,
-   "sha256": "78c46e5bb3967e5b2c9c45dc84302a65854fde4ddbad594dbb45ddb0542e8386",
+   "bytes": 1497042,
+   "sha256": "9476327ae7827ac2e21cf74cbb71ddeac8319d27e91fa4a1f04e2b7ff1841b01",
    "width": 960,
    "height": 540,
    "fps": 30,
    "seconds": 6,
-   "audio": null,
+   "audio": false,
    "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.mp4",
    "take": "s18-street-knockout",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 39,
+    "kbps": 1991,
+    "vmaf": 88.33,
+    "vmafMin": 75.48,
+    "capped": true
+   }
   },
   {
    "path": "media/site50-r14/loops/s18-street-knockout.jpg",
@@ -5392,16 +5465,22 @@
   },
   {
    "path": "media/site50-r14/loops/s18-street-knockout.webm",
-   "bytes": 16446720,
-   "sha256": "3a37ee425b280f20ada8895f6345cbd88d6db77bca24d1c82b7dc683d6210708",
+   "bytes": 5806035,
+   "sha256": "3a24437f8e7fc52f2ad0a9a9723453c3dead6a3034c0f470a67c8932a6a1a701",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.mp4",
    "take": "s18-street-knockout",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 38,
+    "kbps": 7642,
+    "vmaf": 93.5,
+    "vmafMin": 78.53
+   }
   },
   {
    "path": "media/site50-r14/loops/s20-road-return-fire.jpg",
@@ -5413,16 +5492,22 @@
   },
   {
    "path": "media/site50-r14/loops/s20-road-return-fire.webm",
-   "bytes": 16725990,
-   "sha256": "9a2038d4ea72e1851ebd57ccf6ed5089bfe7ec1e63a007217657b349714369f8",
+   "bytes": 5722120,
+   "sha256": "5920125b07ffbd3081c2eaf28943455c59fe45c46bb62bb6b334dd57df125aa2",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.mp4",
    "take": "s20-road-return-fire",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 40,
+    "kbps": 7524,
+    "vmaf": 93.31,
+    "vmafMin": 78.07
+   }
   },
   {
    "path": "media/site50-r14/loops/s21-fields-assault.jpg",
@@ -5434,16 +5519,22 @@
   },
   {
    "path": "media/site50-r14/loops/s21-fields-assault.webm",
-   "bytes": 19257900,
-   "sha256": "1bf3fae3dde7ee5c026dd9aac9c1317e473f2122b53d556a4eb7ecb4e9519b04",
+   "bytes": 5667442,
+   "sha256": "17c73a14353ff7c10075361ce5919ba00c024d4eacde494167729d96d168f39e",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault.mp4",
    "take": "s21-fields-assault",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 42,
+    "kbps": 7452,
+    "vmaf": 93.01,
+    "vmafMin": 77.07
+   }
   },
   {
    "path": "media/site50-r14/loops/s23-village-crossroads.jpg",
@@ -5455,16 +5546,22 @@
   },
   {
    "path": "media/site50-r14/loops/s23-village-crossroads.webm",
-   "bytes": 15365236,
-   "sha256": "2f9775608284483de65167a21e937ff0a1fa55fc4fd1c6b9121183b72ec4628a",
+   "bytes": 5026653,
+   "sha256": "e0d4fc03cd2f27e524a71e6865b0e5f297d37575aaad65bc80f1e1567a8e28b9",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads.mp4",
    "take": "s23-village-crossroads",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 44,
+    "kbps": 6597,
+    "vmaf": 93.76,
+    "vmafMin": 77.67
+   }
   },
   {
    "path": "media/site50-r14/loops/s24-ice-duel.jpg",
@@ -5476,29 +5573,41 @@
   },
   {
    "path": "media/site50-r14/loops/s24-ice-duel.webm",
-   "bytes": 12997726,
-   "sha256": "771448017c77313b744de37ca9425bd2b7dc040e470c579d66454605840f7050",
+   "bytes": 5151491,
+   "sha256": "72b896efe915b736b2b0fc6af3863bf1ec9fa353a0d93d2d539f60a4827e57b4",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.mp4",
    "take": "s24-ice-duel",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 38,
+    "kbps": 6769,
+    "vmaf": 93.5,
+    "vmafMin": 82.46
+   }
   },
   {
    "path": "media/site50-r14/loops/s26-minaret-fire-960.webm",
-   "bytes": 2448079,
-   "sha256": "75e371eae6d42bd0c16b6b7a0ceaf552541736a12486fa09d5b336939d9a2ff2",
+   "bytes": 1380114,
+   "sha256": "d47af0d2f242a3a58c5298dca76dd4f056d6a3f64aa2de8ce4e2de553b7d82da",
    "width": 960,
    "height": 540,
    "fps": 30,
    "seconds": 6,
-   "audio": null,
+   "audio": false,
    "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.mp4",
    "take": "s26-minaret-fire",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 42,
+    "kbps": 1835,
+    "vmaf": 90.75,
+    "vmafMin": 75.9
+   }
   },
   {
    "path": "media/site50-r14/loops/s26-minaret-fire.jpg",
@@ -5510,16 +5619,22 @@
   },
   {
    "path": "media/site50-r14/loops/s26-minaret-fire.webm",
-   "bytes": 12261047,
-   "sha256": "b598132dc667a3b3e67782124652641c841c41f3f8b50341868012fa0bad2cbc",
+   "bytes": 4296931,
+   "sha256": "c6dd9b2018c8779028c5bb99bd920f698767e1a9290b000b4c9478427edbbfce",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.mp4",
    "take": "s26-minaret-fire",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 44,
+    "kbps": 5622,
+    "vmaf": 93.82,
+    "vmafMin": 75.09
+   }
   },
   {
    "path": "media/site50-r14/loops/s27-caravanserai-kill.jpg",
@@ -5531,16 +5646,22 @@
   },
   {
    "path": "media/site50-r14/loops/s27-caravanserai-kill.webm",
-   "bytes": 16291532,
-   "sha256": "7ea0e630ba5d6ff8332e316a4bf3ea143dd6a635ef7571c6c2f0aa1be9e4eef5",
+   "bytes": 6212871,
+   "sha256": "d784d379c4249f726b42994486f647c1bef7c2c605312e8db6d0131fbd2bcb44",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill.mp4",
    "take": "s27-caravanserai-kill",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 38,
+    "kbps": 8173,
+    "vmaf": 94.23,
+    "vmafMin": 80.52
+   }
   },
   {
    "path": "media/site50-r14/loops/s33-water-tower.jpg",
@@ -5552,16 +5673,23 @@
   },
   {
    "path": "media/site50-r14/loops/s33-water-tower.webm",
-   "bytes": 19980872,
-   "sha256": "cfa603214e0fe8d6611a9fd3a32bafee7136ef28023955575f73d4b94beda694",
+   "bytes": 5914015,
+   "sha256": "5660952ce248e27989efd8f01861d100112e9d1bf6b418287631b834cc2f9f27",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.mp4",
    "take": "s33-water-tower",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 40,
+    "kbps": 7765,
+    "vmaf": 91,
+    "vmafMin": 74.1,
+    "capped": true
+   }
   },
   {
    "path": "media/site50-r14/loops/s34-furnace-salvo.jpg",
@@ -5573,16 +5701,22 @@
   },
   {
    "path": "media/site50-r14/loops/s34-furnace-salvo.webm",
-   "bytes": 8982574,
-   "sha256": "c155cf30ac394530d47c7348659c1864695042efb2a2f271c1e294adc565b9b9",
+   "bytes": 3137584,
+   "sha256": "f43225b777d45b4b780a9947b84bad324575c637c86477f7a28bbdfcf2249bc4",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo.mp4",
    "take": "s34-furnace-salvo",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 44,
+    "kbps": 4079,
+    "vmaf": 93.31,
+    "vmafMin": 74.85
+   }
   },
   {
    "path": "media/site50-r14/loops/s39-lakeside-village.jpg",
@@ -5594,16 +5728,22 @@
   },
   {
    "path": "media/site50-r14/loops/s39-lakeside-village.webm",
-   "bytes": 14433550,
-   "sha256": "d4b1b2d8366749e40ec50af648053be6f7ba33f311f2c6ff95df3586d60097d0",
+   "bytes": 4936772,
+   "sha256": "636ab5aa6d95ea532c6aace3996d3b0170a7b90af90426a7b453314eeebca1c5",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.008,
-   "audio": "opus",
-   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village.webm",
+   "seconds": 6.001,
+   "audio": true,
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village.mp4",
    "take": "s39-lakeside-village",
-   "round": "shots/media-r5/site50/deliver-r14"
+   "round": "shots/media-r5/site50/deliver-r14",
+   "encode": {
+    "crf": 42,
+    "kbps": 6474,
+    "vmaf": 93.49,
+    "vmafMin": 74.2
+   }
   },
   {
    "path": "media/site50-r14/reels/s01-main-street-push.mp4",
