@@ -914,9 +914,12 @@ export const COMBAT_TABLE = [
   // (review 4: a stone well stood in the lower foreground at the knockout and a house edge came in from the right at the
   // end; the coordinator: the lens 4 m to its left. Its left is +side in the travel frame: the first try at -4 moved it
   // right, the well to the frame's centre and the house nearer (review 4b). At +4 the T-90M's knockout fireball stood
-  // in front of the T-72B3M for 300 ms; +3 is the farthest left that keeps it clear, the wires off the frame's top)
+  // in front of the T-72B3M for 300 ms; +3, the farthest left that keeps it clear, barely moved the well, review 4c.
+  // A search of the whole fight's shift x the lens's side (tmp/s229-search.mjs, review 4's features) found the well out
+  // of the lens's view over the hero with the fight 20 m back along its run and the lens as it was: 17 of 140 stagings
+  // pass with no well, and this one moves least; the take ends at 5.2 s like s226 and s228, the house at its end gone)
   [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
-    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0, foe1Out: 24, camSide: 3 }],
+    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, -20], { geo: 'race', turn: 0, foe1Out: 24, durMs: 5200 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
     [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
   [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
