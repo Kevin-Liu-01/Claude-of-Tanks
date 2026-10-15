@@ -452,6 +452,9 @@ const fireStation: RegionalBuilder = (ctx) => {
   const openings: Opening[] = [];
   for (let k = 0; k < bays; k++) openings.push({ face: 'front', storey: 0, kind: 'gate', u: -W / 2 + 0.6 + (k + 0.5) * ((W - 1.2) / bays), w: bayW, y0: 0, h: 3.8 });
   for (const face of ['left', 'right'] as const) openings.push(...windowRhythm(face, 0, D, { w: 1.2, h: 1.0, sill: 2.0, spacing: 2.8, margin: 1.2 }));
+  // (props census #13, lane B 2026-10-15; the judges: "the back elevation is blank") the back's windows, clear of the
+  // hose tower's corner
+  openings.push(...windowRhythm('back', 0, W, { w: 1.2, h: 1.0, sill: 2.0, spacing: 2.8, margin: 1.2, avoid: [[-W / 2, -W / 2 + 3.4]] }));
   const dialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, OFFICE_WINDOW, rng, 0.3),
     // the red roller doors: a solid leaf at the back of the reveal (it closes the bay for the collision), its slats
@@ -463,29 +466,62 @@ const fireStation: RegionalBuilder = (ctx) => {
     },
   };
   sink.placed(0, 0, 0, -0.6, () => {
-    buildHouse(sink, {
+    const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.2, out: 0.04, bucket: 'stone' }, storeys: [{ h: 4.8, wall }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.3, bucket: 'stone', parapet: 0.5 }, gableBucket: wall,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.16,
     }, dialect);
+    // (the judges: "the flat roof has no coping, drains or plant") the parapet's coping, the downpipes from its scuppers
+    // down the long walls, the ventilation plant and its stack on the roof
+    const ex = W / 2 + 0.2, ez = D / 2 + 0.2, pt = 0.22, top = frame.eaveY + 0.3 + 0.5, cope = { decor: true, shade: 0.92 };
+    for (const sz of [-1, 1]) sink.span('stone', -ex - 0.04, top, sz > 0 ? ez - pt - 0.04 : -ez - 0.04, ex + 0.04, top + 0.07, sz > 0 ? ez + 0.04 : -ez + pt + 0.04, cope);
+    for (const sx of [-1, 1]) sink.span('stone', sx > 0 ? ex - pt - 0.04 : -ex - 0.04, top, -ez + pt + 0.04, sx > 0 ? ex + 0.04 : -ex + pt + 0.04, top + 0.07, ez - pt - 0.04, cope);
+    const pipe = { colour: rgb(0x6a6e6c), decor: true };
+    for (const sx of [-1, 1]) for (const z of [D / 2 - 0.8, -D / 2 + (sx > 0 ? 3.6 : 0.8)]) {
+      const x = sx * (W / 2 + 0.07);
+      sink.cylinder('structureMetal', [x, 0.05, z], 'y', frame.eaveY + 0.05, 0.055, 6, pipe);
+      sink.span('structureMetal', x - 0.11, frame.eaveY - 0.05, z - 0.13, x + 0.11, frame.eaveY + 0.25, z + 0.13, pipe);
+      sink.span('structureMetal', Math.min(x, x + sx * 0.25) - 0.05, 0.02, z - 0.06, Math.max(x, x + sx * 0.25) + 0.05, 0.14, z + 0.06, pipe);
+    }
+    const ry = frame.eaveY + 0.3, plant = rgb(0x8a8e8a);
+    sink.span('structureMetal', -1.4, ry, D / 2 - 3.6, 0.4, ry + 0.95, D / 2 - 2.4, { colour: plant });
+    for (let y = ry + 0.2; y < ry + 0.85; y += 0.16) sink.span('structureMetal', -1.36, y, D / 2 - 2.42, 0.36, y + 0.03, D / 2 - 2.36, { colour: shade(plant, 0.7), decor: true, fine: true });
+    sink.cylinder('structureMetal', [-2.2, ry, D / 2 - 3.0], 'y', 1.6, 0.2, 8, { colour: shade(plant, 0.85), decor: true });
+    sink.cylinder('structureMetal', [-2.2, ry + 1.6, D / 2 - 3.0], 'y', 0.25, 0.32, 8, { colour: shade(plant, 0.75), decor: true }, 0.05, true);
     // the hose tower at the back corner, a body of its own (it topples in its courses when the station falls): a slim
-    // block shaft, its drying loft's openings cut through all four faces under the cap (were dark plates painted on a
-    // solid shaft), the louvres across them with their ends in the jambs, the hoses' dark behind; a flat cap
-    const tx = W / 2 - 1.6, tz = -D / 2 + 1.6, th = Math.max(11, Math.min(14, ctx.info.h - 1));
+    // block shaft, its drying loft's openings cut through all four faces (were dark plates painted on a solid shaft),
+    // the louvres across them with their ends in the jambs, the hoses' dark behind; over it the watch room (the judges:
+    // "and the hostomel watch room"), glazed on every side, on its gallery with the rail, under a flat cap
+    const tx = W / 2 - 1.6, tz = -D / 2 + 1.6, th = Math.max(11, Math.min(14, ctx.info.h - 1)), wr = 2.6;
     const loft: HouseDialect = {
       window: (s, face, o, y0) => {
-        for (let y = y0 + o.y0 + 0.1; y < y0 + o.y0 + o.h - 0.1; y += 0.3) {
-          faceBox(s, 'structureMetal', face, o.u, y, -0.14, o.w + 0.08, 0.06, 0.16, { colour: RIB, decor: true });
+        if (o.kind === 'loft') {
+          for (let y = y0 + o.y0 + 0.1; y < y0 + o.y0 + o.h - 0.1; y += 0.3) {
+            faceBox(s, 'structureMetal', face, o.u, y, -0.14, o.w + 0.08, 0.06, 0.16, { colour: RIB, decor: true });
+          }
+          return;
         }
+        const ym = y0 + o.y0 + o.h / 2, r = s.recess, fc = { colour: rgb(0xb9bcb7), decor: true, fine: true };
+        facePanel(s, 'glass', face, o.u, ym, -r + 0.012, o.w, o.h, { decor: true, window: face.out });
+        faceBox(s, 'structureWood', face, o.u, ym, -r + 0.03, 0.05, o.h, 0.04, fc, 'caps');
+        faceBox(s, 'structureWood', face, o.u, ym + 0.25, -r + 0.03, o.w, 0.05, 0.04, fc, 'ends');
       },
       door: () => undefined,
     };
+    const sides = ['front', 'right', 'back', 'left'] as const;
     sink.placed(0, tx, 0, tz, () => buildHouse(sink, {
-      w: 2.8, d: 2.8, plinth: null, storeys: [{ h: th, wall }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.3, bucket: 'stone' },
-      openings: (['front', 'right', 'back', 'left'] as const).map((face): Opening => ({ face, storey: 0, kind: 'loft', u: 0, w: 1.4, y0: th - 2.5, h: 1.8 })),
+      w: 2.8, d: 2.8, plinth: null, storeys: [{ h: th - 0.5, wall }, { h: wr, wall }],
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.3, bucket: 'stone' },
+      openings: [...sides.map((face): Opening => ({ face, storey: 0, kind: 'loft', u: 0, w: 1.4, y0: th - 3.0, h: 1.8 })),
+        ...sides.map((face): Opening => ({ face, storey: 1, kind: 'window', u: 0, w: 1.6, y0: 0.8, h: 1.3 }))],
       chimneys: [], gutters: null, verge: null, reveal: 0.25, rafters: null, spall: null,
     }, loft));
+    const gy = th - 0.5, rail = { colour: RIB, decor: true, exposed: true };
+    sink.span('stone', tx - 1.9, gy - 0.14, tz - 1.9, tx + 1.9, gy, tz + 1.9, { decor: true });
+    for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
+      sink.member('structureMetal', [tx + ax * 1.85, gy + 1.0, tz + az * 1.85], [tx + bx * 1.85, gy + 1.0, tz + bz * 1.85], 0.05, 0.05, [0, 1, 0], rail, 0);
+      sink.member('structureMetal', [tx + ax * 1.85, gy, tz + az * 1.85], [tx + ax * 1.85, gy + 1.0, tz + az * 1.85], 0.05, 0.05, [1, 0, 0], rail, 0);
+    }
   });
   return sink.finish();
 };
