@@ -121,8 +121,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     brick_arsenal: {
       logistics: [[-35, 3], [17, -26]],
       parts: [[-24, 14], [3, -35]], floods: [[-38, 2], [38, 6]],
-      // the Zeughaus straddles the boulevard (GA.06 Steinburg, 2026-10-14): 28.6 x 8.6 m plus its dock
-      feature: [0.2, 31], featureRadius: [14, 6.5],
+      // the Zeughaus straddles the boulevard (GA.06 Steinburg, 2026-10-14): 28.6 x 8.6 m plus its dock; 7 m further back
+      // at the yard's level, its roofline and gables against the sky over the hero (the garage critic panel, 2026-10-14)
+      feature: [0.2, 38], featureRadius: [14, 6.5],
+      yardLevel: [[0, 21, 13, 10]],
     },
     naval_drydock: {
       logistics: [[-34, 15], [18, -25]],
@@ -1428,9 +1430,13 @@ export function addGarageFacilityDetails({
         [lateral + offset, longitudinal, 2.55],
         0.14, safety, 'painted');
     }
-    for (let plate = 0; plate < 5; plate += 1) {
-      clusterBox(cluster, lateral - 1.75 + plate * 0.88, longitudinal, 1.30,
-        0.68, 2.15, 0.10, plate % 2 ? tint : steel, 'equipment', -0.05 + plate * 0.025);
+    // the plates stand upright in the comb's slots, mill-scale grey and rust-brown, thick enough to read as plate, not
+    // as cards (the garage critic panel, 2026-10-14: "salmon rectangles stand at random angles like placeholder cards")
+    for (let slot = 0; slot < 9; slot += 1) clusterBox(cluster, lateral - 2.2 + slot * 0.55, longitudinal, 0.5, 0.05, 0.6, 1.9, steel, 'structure');
+    for (let plate = 0; plate < 7; plate += 1) {
+      const height = 1.7 + (plate % 3) * 0.25;
+      clusterBox(cluster, lateral - 1.93 + plate * 0.55 + (plate % 2) * 0.08, longitudinal + (plate % 2 ? 0.08 : -0.06), 0.2 + height / 2,
+        0.035, height, 1.55 - (plate % 2) * 0.2, plate % 3 === 1 ? tint.clone().multiplyScalar(0.68) : new THREE.Color(0x4b4f52), 'equipment');
       looseParts += 1;
     }
     structuralConnections += 14;
@@ -1658,10 +1664,13 @@ export function addGarageFacilityDetails({
       const head = gate.spring + gate.half * Math.sqrt(Math.max(0, 1 - x * x));
       if (storey + 2.2 - head > 0.02) clusterSurface(range, 'brick', (a + b) / 2, front + 0.3, (head + storey + 2.2) / 2, b - a, storey + 2.2 - head, wallT + 0.6);
     }
-    for (let v = 0; v <= 10; v += 1) { // the gate's round arch: rusticated sandstone voussoirs and a keystone
-      const angle = Math.PI * v / 10;
-      clusterBox(range, Math.cos(angle) * (gate.half + 0.25), face + 0.62, gate.spring + Math.sin(angle) * (gate.half + 0.25), 0.62, 0.42, 0.1,
-        v === 5 ? sandstoneDark : sandstone, 'masonry', angle - Math.PI / 2);
+    // the gate's round arch: a continuous ring of 21 sandstone voussoirs touching, alternately long and short, and a
+    // keystone (the critic panel: "the gate arch voussoirs have gaps")
+    for (let v = 0; v <= 20; v += 1) {
+      const angle = Math.PI * v / 20, r = gate.half + 0.25;
+      const chord = 2 * r * Math.sin(Math.PI / 40) + 0.03;
+      clusterBox(range, Math.cos(angle) * r, face + 0.62, gate.spring + Math.sin(angle) * r, chord, v === 10 ? 0.62 : v % 2 ? 0.42 : 0.52, 0.1,
+        v === 10 ? sandstoneDark : sandstone, 'masonry', angle - Math.PI / 2);
     }
     for (const side of [-1, 1]) {
       // the gate's jambs and the pavilion's rusticated pilasters
@@ -1717,7 +1726,13 @@ export function addGarageFacilityDetails({
           clusterSurface(range, 'timber', door.lateral + side * door.half / 2, front - 0.08, door.top / 2, door.half - 0.02, door.top - 0.04, 0.08);
         }
       }
-      if (open) clusterBox(range, door.lateral, front - wallT / 2 - 0.4, door.top / 2, 2 * door.half, door.top, 0.05, dark, 'painted'); // the store's dark
+      if (open) {
+        // the store behind: its brick reveals, a dim back wall 2.4 m in and a stack of crates, not a black card
+        for (const side of [-1, 1]) clusterSurface(range, 'brick', door.lateral + side * (door.half + 0.1), front - wallT / 2 - 1.2, door.top / 2, 0.2, door.top, 2.4);
+        clusterBox(range, door.lateral, front - wallT / 2 - 2.4, door.top / 2, 2 * door.half + 0.4, door.top, 0.05, new THREE.Color(0x3a322c), 'painted');
+        clusterBox(range, door.lateral - 0.4, front - wallT / 2 - 1.9, 0.45, 0.9, 0.9, 0.8, oak, 'equipment');
+        clusterBox(range, door.lateral - 0.35, front - wallT / 2 - 1.9, 1.2, 0.7, 0.6, 0.7, oak.clone().multiplyScalar(1.2), 'equipment');
+      }
     });
     // --- dressings: plinth, string course, cornice, quoins -------------------------------------------------------------
     clusterBox(range, 0, face + 0.06, 0.4, 2 * halfW + wallT + 0.2, 0.8, 0.14, sandstoneDark, 'masonry');
@@ -1749,8 +1764,19 @@ export function addGarageFacilityDetails({
       const pitch = Math.atan2(ridgeY - eaveY, halfD + 0.4);
       const slope = Math.hypot(halfD + 0.4, ridgeY - eaveY);
       for (const sign of [-1, 1]) {
-        clusterSurface(range, 'roofing', 0, sign * (halfD + 0.4) / 2, (eaveY + ridgeY) / 2, 2 * halfW + 0.2, 0.08, slope + 0.1,
+        // plain clay tiles on the pack's roof bucket (the critic panel: "a modern standing-seam roof on a 19th-century
+        // building ... slate or Biberschwanz tile")
+        clusterSurface(range, 'tiles', 0, sign * (halfD + 0.4) / 2, (eaveY + ridgeY) / 2, 2 * halfW + 0.2, 0.08, slope + 0.1,
           { rotationX: sign * pitch });
+        // the gutter along the eaves and two downpipes to the plinth
+        clusterCylinder(range, 0, sign * (halfD + 0.45), eaveY - 0.12, 0.09, 2 * halfW + 0.4, iron, 0, 10, Math.PI / 2);
+        if (sign > 0) for (const lateral of [-halfW + 0.6, halfW - 0.6]) clusterCylinder(range, lateral, halfD + 0.45, eaveY / 2, 0.06, eaveY - 0.2, iron, 0, 10);
+      }
+      // two chimney stacks on the ridge, corbelled caps and pots
+      for (const lateral of [-7.5, 7.5]) {
+        clusterSurface(range, 'brick', lateral, -0.6, ridgeY + 0.7, 0.9, 2.2, 0.7);
+        clusterBox(range, lateral, -0.6, ridgeY + 1.85, 1.1, 0.16, 0.9, sandstone, 'masonry');
+        for (const dl of [-0.2, 0.2]) clusterCylinder(range, lateral + dl, -0.6, ridgeY + 2.15, 0.11, 0.45, new THREE.Color(0x7a4a34), 0, 10);
       }
       clusterBox(range, 0, 0, ridgeY + 0.08, 2 * halfW + 0.3, 0.16, 0.3, sandstoneDark, 'masonry'); // ridge tiles
       // dormers on the front slope: cheeks, a pitched roof, a sash
@@ -1758,9 +1784,13 @@ export function addGarageFacilityDetails({
         const dormer = at(lateral, front - 1.4);
         const base = eaveY + 1.4 * Math.tan(pitch);
         for (const side of [-1, 1]) clusterSurface(dormer, 'brick', side * 0.85, 0.2, base + 0.8, 0.14, 1.6, 1.6);
-        clusterBox(dormer, 0, 0.98, base + 0.85, 1.4, 1.5, 0.08, oak, 'painted');
-        clusterBox(dormer, 0, 0.93, base + 0.85, 1.2, 1.3, 0.012, pane, 'painted');
-        for (const side of [-1, 1]) clusterSurface(dormer, 'roofing', side * 0.55, 0.3, base + 1.85, 1.3, 0.06, 2.0, { rotationZ: -side * 0.6 });
+        // a glazed casement pair set in the dormer's cheeks: frame, mullion, two transoms, the lights behind
+        for (const side of [-1, 1]) clusterBox(dormer, side * 0.66, 0.96, base + 0.85, 0.08, 1.5, 0.1, oak, 'painted');
+        for (const y of [base + 0.14, base + 1.56, base + 1.1, base + 0.6]) clusterBox(dormer, 0, 0.96, y, 1.3, 0.07, 0.08, oak, 'painted');
+        clusterBox(dormer, 0, 0.96, base + 0.85, 0.06, 1.4, 0.08, oak, 'painted');
+        clusterBox(dormer, 0, 0.9, base + 0.85, 1.24, 1.36, 0.012, new THREE.Color(0x2b3236), 'painted');
+        clusterBox(dormer, 0, 1.0, base + 0.08, 1.5, 0.08, 0.2, sandstone, 'masonry'); // its sill
+        for (const side of [-1, 1]) clusterSurface(dormer, 'tiles', side * 0.55, 0.3, base + 1.85, 1.3, 0.06, 2.0, { rotationZ: -side * 0.6 });
       }
       // the pavilion's gable over the eaves, with a round window
       const gableTop = eaveY + 3.0;
@@ -1788,9 +1818,14 @@ export function addGarageFacilityDetails({
         clusterBox(range, dockL0 - 0.6, face + dockOut - 0.35 - step * 0.32, (step + 0.5) * dockH / 4, 1.2, dockH / 4, 0.32, sandstone, 'masonry');
       }
       for (const lateral of [dockL0 + 0.6, cx, dockL1 - 0.6]) {
-        clusterBeam(range, [lateral, face, storey - 0.6], [lateral, face + dockOut, storey - 0.1], 0.08, iron, 'structure'); // the bracket
-        clusterBeam(range, [lateral, face, storey - 1.4], [lateral, face + 1.4, storey - 0.4], 0.06, iron, 'structure'); // its strut
+        clusterBox(range, lateral, face + 0.02, storey - 1.0, 0.3, 1.2, 0.04, iron, 'structure'); // the wall plate, bolted
+        for (const y of [storey - 0.5, storey - 1.5]) clusterCylinder(range, lateral, face + 0.05, y, 0.04, 0.05, iron, Math.PI / 2, 8);
+        clusterBeam(range, [lateral, face + 0.04, storey - 0.6], [lateral, face + dockOut, storey - 0.1], 0.08, iron, 'structure'); // the bracket
+        clusterBeam(range, [lateral, face + 0.04, storey - 1.4], [lateral, face + 1.4, storey - 0.4], 0.06, iron, 'structure'); // its strut
       }
+      for (const along of [0.9, 1.9]) clusterBox(range, cx, face + along, storey - 0.18 + along * 0.06, len + 0.2, 0.08, 0.08, iron, 'structure'); // purlins
+      clusterCylinder(range, cx, face + dockOut + 0.2, storey - 0.12, 0.07, len + 0.4, iron, 0, 10, Math.PI / 2); // the gutter
+      clusterCylinder(range, dockL1 + 0.15, face + dockOut + 0.2, (storey - 0.12) / 2, 0.05, storey - 0.12, iron, 0, 10); // its downpipe
       clusterSurface(range, 'roofing', cx, face + dockOut / 2, storey - 0.3, len + 0.4, 0.05, dockOut + 0.3, { rotationX: 0.18 });
       clusterBox(range, cx, face + dockOut + 0.12, storey - 0.55, len + 0.4, 0.16, 0.08, iron, 'painted'); // the valance
     }
@@ -2444,7 +2479,7 @@ export function addGarageFacilityDetails({
       // enclosure. Use a low, grounded loading magazine here instead of a
       // second roof frame competing with those real map buildings.
       // the Zeughaus across the boulevard's last stretch (from (1, 28) toward (-4, 47)); its yard equipment in front
-      addZeughaus(featureSide, featureDepth, [1.0, 28 - 1.0]);
+      addZeughaus(featureSide, featureDepth, [featureSide, featureDepth - 6]);
       addPoweredWinch(fixedCluster(featureSide - 9.5, featureDepth - 8.2), 0, 0, new THREE.Color(0x9a6542));
       addPartsPallet(fixedCluster(featureSide - 12.5, featureDepth - 6.0), 0, 0, 3);
       addSafetyRail(fixedCluster(featureSide + 9.0, featureDepth - 7.6), 0, 0, 8.5);
