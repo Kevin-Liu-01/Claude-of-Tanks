@@ -1383,7 +1383,7 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
   franconian: { guardpost: groundPost(), checkpointhut: {}, transformershed: {}, motorpool: {}, servicegarage: { form: flat() } },
   arctic: { motorpool: {}, servicegarage: {} },
   longleaf: { leanto: {}, huntingblind: { form: { lift: 2.8 } }, fishershack: {}, stilthouse: { form: { lift: 1.2, veranda: 1.6 } } },
-  tselina: { longhouse: { form: { stove: undefined }, extra: chimney(1.4, -3.0) } },
+  tselina: { longhouse: { form: { stove: undefined }, extra: chimney(1.4, -3.0) }, motorpool: {} },
   // the Jamuna's chars
   bengal: {
     // the char homestead: galvanised sheet walls on its earthen plinth above the flood line, the yard-side veranda
