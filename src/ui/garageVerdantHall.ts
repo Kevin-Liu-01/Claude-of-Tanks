@@ -68,6 +68,8 @@ const TONE = Object.freeze({
   upstandStain: 0x5b5852,
   drain: 0x1e1f1e,
   grating: 0x4a4d4c,
+  primer: 0x6a3d30, // red-oxide primer left at the columns' feet, where the finish coat was never carried down
+  scuff: 0x7d817e,
 });
 
 const UPSTAND_H = 1.2;
@@ -153,8 +155,15 @@ export function buildVerdantHallParts(halfWidth: number, wallHeight: number): Ve
       const w = 0.08 + depth / 2;
       steel.setColor(TONE.base);
       addColumnBase(steel, u, w, { plate: depth + 0.12, grout: depth + 0.24 });
+      // the column's foot in primer, the finish above it, and a band of worn paint at forklift height (the garage critic
+      // panel, 2026-10-14: "columns read as box posts ... primer at the base and scuffs at forklift height")
+      const section = { flange: plan.bearing ? 0.3 : 0.25, depth };
+      steel.setColor(TONE.primer);
+      addISectionColumn(steel, u, w, 0.07, 0.62, section);
+      steel.setColor(TONE.scuff);
+      addISectionColumn(steel, u, w, 0.62, 0.9, section);
       steel.setColor(TONE.column);
-      addISectionColumn(steel, u, w, 0.07, wallHeight - 0.1, { flange: plan.bearing ? 0.3 : 0.25, depth });
+      addISectionColumn(steel, u, w, 0.9, wallHeight - 0.1, section);
       columns += 1;
       if (plan.bearing && !corner) {
         // the knee brace from the column into the truss's bottom chord (8.66 m), a gusset at each end
@@ -173,6 +182,18 @@ export function buildVerdantHallParts(halfWidth: number, wallHeight: number): Ve
         steel.box([u, 6.5, w + depth / 2 + 0.45], [0.06, 0.06, 0.95]);
         steel.beam([u, 6.05, w + depth / 2], [u, 6.47, w + depth / 2 + 0.8], 0.045);
         steel.setColor(TONE.column);
+      }
+    }
+    // --- rod X-bracing in both end bays of a bearing wall, on the columns' inner flanges, with a turnbuckle at each
+    // crossing's middle (the critic panel: "rod X-bracing in one end bay")
+    if (plan.bearing && columnU.length > 2) {
+      steel.setColor(TONE.frame);
+      const wb = 0.08 + 0.4 + 0.03;
+      for (const [ua, ub] of [[columnU[0], columnU[1]], [columnU[columnU.length - 2], columnU[columnU.length - 1]]] as const) {
+        const y0 = UPSTAND_H + 0.2, y1 = 8.3; // under the high glazing band
+        steel.beam([ua + 0.15, y0, wb], [ub - 0.15, y1, wb], 0.028);
+        steel.beam([ua + 0.15, y1, wb], [ub - 0.15, y0, wb], 0.028);
+        steel.box([(ua + ub) / 2, (y0 + y1) / 2, wb], [0.06, 0.22, 0.06]);
       }
     }
     // --- girts: channels between the columns, cut where an opening crosses them -----------------------------------------
@@ -373,6 +394,9 @@ function buildExterior(mesh: HallMesh, HW: number): void {
       }
     }
   };
+  // a hedgerow round the apron 22 m out, seen under the shutter with the woods over it (the garage critic panel,
+  // 2026-10-14: "show a 3D exterior through it: apron, hedgerow, field, treeline")
+  woods(22, 1.3, 2.6, 0x2c3a22, 0x3b4c2b, 5.3);
   woods(150, 9, 17, 0x27341f, 0x34452a, 3.1);
   woods(330, 12, 24, 0x4a5a50, 0x56665b, 8.7);
 }
