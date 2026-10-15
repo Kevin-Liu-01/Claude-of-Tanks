@@ -32,6 +32,18 @@ for (let v = 0; v < p.length / 3; v++) {
 const count = p.length / 3;
 assert.equal(outward, count, 'every face turns out from the dome');
 assert.ok(proud / count >= 0.8, `the skin stands proud of the ground over most of it (${(proud / count * 100).toFixed(1)} %)`);
+// (the blind critics, 2026-10-15, second pass: "from 45 m up the near dome's face splits into thin vertical sliver fins",
+// "a dark blotchy eye") the wall's top runs on round the dome — neighbouring rays' tops within 2.5 m, no column standing
+// as a fin over the next — and the skin runs unbroken, no capped slot opening into the shade behind it
+const { top } = desk.wall;
+let worstStep = 0, slots = 0;
+for (let j = 0; j < top.length; j++) {
+  const a = top[j], b = top[(j + 1) % top.length];
+  if (Number.isFinite(a) && Number.isFinite(b)) worstStep = Math.max(worstStep, Math.abs(a - b));
+  if (Number.isFinite(a) !== Number.isFinite(b)) slots++;
+}
+assert.ok(worstStep <= 2.5, `neighbouring columns end together (worst step ${worstStep.toFixed(2)} m)`);
+assert.equal(slots, 0, 'the skin runs unbroken round the wall');
 assert.ok(desk.triangles <= 14000, `a desktop's skin within budget (${desk.triangles} triangles)`);
 assert.ok(phone.triangles < desk.triangles * 0.7, `a phone builds fewer (${phone.triangles})`);
-console.log(`jebelSkin.selftest: ${desk.triangles} triangles (phone ${phone.triangles}), ${desk.rays.walled}/${desk.rays.total} rays walled, ${(proud / count * 100).toFixed(1)} % proud, normals out`);
+console.log(`jebelSkin.selftest: ${desk.triangles} triangles (phone ${phone.triangles}), ${desk.rays.walled}/${desk.rays.total} rays walled, ${(proud / count * 100).toFixed(1)} % proud, normals out; worst top step ${worstStep.toFixed(2)} m, no slot`);

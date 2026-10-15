@@ -38,6 +38,8 @@ export interface JebelSkinBuild {
   triangles: number;
   /** The wall's rays that carry skin, of all rays. */
   rays: { walled: number; total: number };
+  /** Each ray's wall top and foot as the skin draws them (NaN: no wall on that ray), round the dome counter-clockwise. */
+  wall: { top: Float32Array; foot: Float32Array };
 }
 
 const _c = new THREE.Color();
@@ -96,6 +98,64 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
     if (kt < 0 || kf < 0 || (kf - kt) * step > (tp - ft) / 0.6) continue;
     top[j] = tp; foot[j] = ft;
   }
+  // (the blind critics, 2026-10-15, second pass: "from 45 m up the near dome's face splits into thin vertical sliver fins",
+  // "a dark blotchy eye") each ray's wall top is where its own ground stops falling steeply, so neighbouring rays ended
+  // metres apart and the skin's columns stood as a staircase of fins along the shoulder, the slots between their ends
+  // open into the shade behind. The wall is regularised round the dome: a run of walled rays too short to carry a column
+  // is dropped (it stood as a lone fin, capped both sides); along each run the top takes the least top within W_SM rays,
+  // then the mean of those (so it never rises past a ray's own wall top), and the foot the mean of its neighbours' (within
+  // 2 m of its own).
+  {
+    const MIN_RUN = 10, W_SM = 7;
+    const isWalled = (j: number): boolean => Number.isFinite(top[j]);
+    let start = -1;
+    for (let j = 0; j < rays; j++) if (!isWalled(j) && isWalled((j + 1) % rays)) { start = (j + 1) % rays; break; }
+    // the runs, each a list of consecutive walled rays (the whole ring when no ray is bare)
+    const runs: number[][] = [];
+    if (start < 0) { if (isWalled(0)) runs.push(Array.from({ length: rays }, (_, j) => j)); }
+    else {
+      let cur: number[] = [];
+      for (let d = 0; d < rays; d++) {
+        const j = (start + d) % rays;
+        if (isWalled(j)) cur.push(j); else if (cur.length) { runs.push(cur); cur = []; }
+      }
+      if (cur.length) runs.push(cur);
+    }
+    const ring = start < 0;
+    for (const run of runs) {
+      if (run.length < MIN_RUN) { for (const j of run) { top[j] = NaN; foot[j] = NaN; } continue; }
+      const n = run.length, at = (i: number): number => (ring ? ((i % n) + n) % n : Math.min(n - 1, Math.max(0, i)));
+      const lowTop = run.map((_, i) => { let m = Infinity; for (let d = -W_SM; d <= W_SM; d++) m = Math.min(m, top[run[at(i + d)]]); return m; });
+      const t2 = run.map((_, i) => { let a = 0; for (let d = -W_SM; d <= W_SM; d++) a += lowTop[at(i + d)]; return a / (2 * W_SM + 1); });
+      const f2 = run.map((_, i) => { let a = 0; for (let d = -W_SM; d <= W_SM; d++) a += foot[run[at(i + d)]]; return a / (2 * W_SM + 1); });
+      // (a wall kept at least 3 m high: a ray the smoothing would leave shorter takes its foot lower, into the talus, so the
+      // run stays whole and opens no new slot)
+      run.forEach((j, i) => {
+        const tp = Math.min(t2[i], top[j]);
+        top[j] = tp; foot[j] = Math.min(Math.max(f2[i], foot[j] - 2), tp - 3);
+      });
+    }
+  }
+  // the narrow slots left (a gully a few rays wide the cleft rule turned down: its ground falls as a ramp) bridged: the
+  // skin runs across on the radii of the walls either side, so no capped slot opens into the shade behind (the critics'
+  // "dark eye"); `across[j]` holds the two walled rays and the share between them
+  const across: Array<[number, number, number] | null> = new Array(rays).fill(null);
+  for (let j = 0; j < rays; j++) {
+    if (Number.isFinite(top[j])) continue;
+    let a = -1, b = -1;
+    for (let d = 1; d <= 4 && a < 0; d++) if (Number.isFinite(top[(j - d + rays) % rays]) && !across[(j - d + rays) % rays]) a = (j - d + rays) % rays;
+    for (let d = 1; d <= 4 && b < 0; d++) if (Number.isFinite(top[(j + d) % rays])) b = (j + d) % rays;
+    if (a < 0 || b < 0) continue;
+    const da = (j - a + rays) % rays, db = (b - j + rays) % rays;
+    if (da + db > 5) continue;
+    const t = da / (da + db);
+    across[j] = [a, b, t];
+  }
+  for (let j = 0; j < rays; j++) {
+    const x = across[j];
+    if (!x) continue;
+    top[j] = Math.min(top[x[0]], top[x[1]]); foot[j] = Math.max(foot[x[0]], foot[x[1]]);
+  }
   /** The radius on ray j where its ground falls through y between its crest and its foot (NaN: none). */
   const edge = (j: number, y: number): number => {
     const row = j * stride;
@@ -107,7 +167,7 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
   // the joints: along the wall's middle radius, a column every colMin..colMax metres, each with its own depth and tone
   let walled = 0, rRef = 0;
   for (let j = 0; j < rays; j++) if (Number.isFinite(top[j])) { walled++; rRef += edge(j, (top[j] + foot[j]) / 2) || 0; }
-  if (walled < 6) return { geometry: null, triangles: 0, rays: { walled, total: rays } };
+  if (walled < 6) return { geometry: null, triangles: 0, rays: { walled, total: rays }, wall: { top, foot } };
   rRef /= walled;
   const circ = Math.PI * 2 * Math.max(4, rRef);
   const joints: number[] = [0];
@@ -138,7 +198,8 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
     if (!Number.isFinite(top[j])) return null;
     const yy = clamp(y, foot[j] - SINK, top[j] + SHOULDER);
     const yr = clamp(yy, foot[j], top[j]);
-    let r = edge(j, yr);
+    const bridge = across[j];
+    let r = bridge ? edge(bridge[0], yr) * (1 - bridge[2]) + edge(bridge[1], yr) * bridge[2] : edge(j, yr);
     if (!Number.isFinite(r)) return null;
     const over = Math.max(0, yy - top[j]) / SHOULDER;
     if (yy < foot[j]) r += (foot[j] - yy) * 0.8;
@@ -230,7 +291,7 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
       }
     }
   }
-  if (!pos.length) return { geometry: null, triangles: 0, rays: { walled, total: rays } };
+  if (!pos.length) return { geometry: null, triangles: 0, rays: { walled, total: rays }, wall: { top, foot } };
   const geometry = new THREE.BufferGeometry();
   const P = new Float32Array(pos);
   geometry.setAttribute('position', new THREE.BufferAttribute(P, 3));
@@ -240,5 +301,5 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
   geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(tex), 2));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return { geometry, triangles: P.length / 9, rays: { walled, total: rays } };
+  return { geometry, triangles: P.length / 9, rays: { walled, total: rays }, wall: { top, foot } };
 }
