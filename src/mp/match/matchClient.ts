@@ -274,6 +274,9 @@ export class MatchClient {
   private ownPlayerId = '';
   private ownRow: EntityRow | null = null;
   private ownViewer: ViewerState | null = null;
+  /** The newest own authority row since the last frame (reused: no allocation per snapshot). */
+  private readonly pendingAuthority: { tick: number; row: EntityRow; viewer: ViewerState | null } = { tick: NO_TICK, row: null as unknown as EntityRow, viewer: null };
+  private hasPendingAuthority = false;
   private ownAuthorityTick = -1;
   private ownAuthorityAtMs: number | null = null;
   private lastAuthorityAtMs: number | null = null;
@@ -467,6 +470,7 @@ export class MatchClient {
     this.observeRates(nowMs);
     const live = this.welcomeMessage !== null && this.transport.state === 'open' && this.recovery.current !== 'failed';
     this.predictedShot = null;
+    this.reconcilePending();
     if (live) {
       this.sampleInputs(nowMs, elapsedS);
       this.maintainPings(nowMs);
@@ -608,6 +612,7 @@ export class MatchClient {
 
   /** A new socket: the server holds no baseline and expects a fresh HELLO. */
   private resetForNewSocket(): void {
+    this.hasPendingAuthority = false;
     this.snapshots.reset();
     this.interpolator.clear();
     this.events.clear();
@@ -856,11 +861,22 @@ export class MatchClient {
       weaponBlocked: gunRed,
     }, nowMs);
     this.ensurePredictor();
-    this.predictor?.reconcile(
-      { tick: frame.tick, row, viewer: this.ownViewer },
-      this.controlAt,
-      this.inputStream.lastSampledTick,
-    );
+    // 2026-10-15 (the MP stream): reconciled at the next frame, the newest row only (reconcilePending). The rows a stalled
+    // tab received arrive in a burst — before its waking frame or after it — and each one older than the replay window
+    // rewound the hull and replayed only the window's newest ticks, leaving it behind by the rest: metres per row at speed
+    // (the e2e seat-pause probe, 2.8 m after 0.3 s, 7.8 m and a hard snap after 0.7 s). The newest row supersedes them.
+    const pending = this.pendingAuthority;
+    pending.tick = frame.tick;
+    pending.row = row;
+    pending.viewer = this.ownViewer;
+    this.hasPendingAuthority = true;
+  }
+
+  /** The newest own authority row since the last frame, reconciled once (the frame's first step, before the sampler). */
+  private reconcilePending(): void {
+    if (!this.hasPendingAuthority) return;
+    this.hasPendingAuthority = false;
+    this.predictor?.reconcile(this.pendingAuthority, this.controlAt, this.inputStream.lastSampledTick);
   }
 
   private readonly controlAt = (tick: number): PredictionControl | null => this.inputStream.controlAt(tick);
