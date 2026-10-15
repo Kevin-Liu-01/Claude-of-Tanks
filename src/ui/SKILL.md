@@ -110,15 +110,23 @@ ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses
 the hull or turret, a light, calm value stands behind the turret line, and a
 signature facility sits in a third of the frame or frames the hero. Per Garage:
-- Sirocco: the shade depot at view (20, 22), the water tower beyond it, the container line low behind the hero.
-- Saltmere: the quay crane travelled to (17, 22), its jib slewed to sea; the lighthouse to the far left.
-- Redrock: the recovery yard and its gantry at (17, 14.5).
-- Frosthollow: the bunker square to the view at side 9.5, its portal beside the turret, its light facade behind it.
+- Sirocco: the shade depot at view (20, 22), the water tower beyond it, the container line low behind the hero; the
+  guard tower and its HESCO line in the left third at (-15.5, 17).
+- Saltmere: the graving dock in the right third (centre line side 14.6, head 14.5, mouth 33.8), the crane on its rails
+  along the dock's far side, its jib slewed down the dock to sea; the lighthouse to the far left.
+- Redrock: the recovery yard and its gantry at (17, 14.5); the guard tower and sandbag wall at (-15.5, 17); the
+  warehouse off the turret at (9, 44), smaller.
+- Frosthollow: the bunker square to the view at side 9.5, its portal beside the turret, its light facade behind it; the
+  spruce right of the turret; the chalet left of it at (-10, 44), the chapel whole in the right third at (24, 30).
 - Glacier: a 68 m cliff across the frame, the tunnel mouth beside the turret at side 8.5.
-- Ironworks: the crane bay square, its column lines 25.6 m apart framing the hero; crab and booth racked right.
-- Monsoon: the covered bay square, its column lines 24 m apart framing the hero.
-- Steinburg: the Zeughaus 7 m back at the yard's level, its roofline against the sky; the fire station off the left.
+- Ironworks: the crane bay square, its column lines 25.6 m apart framing the hero; crab and booth racked right; the
+  6 m of back wall behind the turret plain sheeting.
+- Monsoon: the covered bay square, its column lines 24 m apart framing the hero; the banana and bamboo in the thirds.
+- Steinburg: the Zeughaus 7 m back at the yard's level, its roofline against the sky; the fire station off the left;
+  the yard piece on the forecourt at (9, 17.5).
 - Cinder: the engine shed at the yard's level; its bracket signals gone, the water crane off the facade.
+Ground that must stay clear of scatter (Saltmere's dock) answers through its own predicate in the kit; anything the
+kit lays down by sampling the ground (groves, tufts) asks it first.
 The shared turntable dimensions, ground elevations, and terrain exclusion live
 in `garagePresentationPose.ts`. Keep terrain and hardstands below the complete
 platform base, including one terrain-cell safety margin. Recolor the existing
