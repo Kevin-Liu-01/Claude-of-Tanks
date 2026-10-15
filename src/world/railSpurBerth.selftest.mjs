@@ -89,18 +89,36 @@ for (const id of MAP_IDS) {
   if (!clear.length) continue;
   const [withLine, without] = await Promise.all([buildInChild(id, 'with'), buildInChild(id, 'without')]);
   const berth = railSpurBerthClearances(clear);
+  // (the buildings lane, 2026-10-11: a field stack never stands on the berth — haystackStand moves one whose reach meets
+  // it to its next level stand, props.ts; the maps lane, 2026-10-14, carries that into this receipt) a stack is checked
+  // as a set: the ones only the line-less build holds reached the berth, the ones only the line's build holds clear it,
+  // as many of each; every other record keeps its place
+  const STACKS = new Set(['stog', 'plast', 'hooiberg', 'diemen', 'stook', 'bale']);
+  const centre = (record) => [(record.b[0] + record.b[3]) / 2, (record.b[2] + record.b[5]) / 2, Math.max(record.b[3] - record.b[0], record.b[5] - record.b[2]) / 2];
   for (const list of ['obstacles', 'colliders']) {
+    const stacksWith = withLine[list].filter((r) => STACKS.has(r.k)), stacksWithout = without[list].filter((r) => STACKS.has(r.k));
+    const others = { with: withLine[list].filter((r) => !STACKS.has(r.k)), without: without[list].filter((r) => !STACKS.has(r.k)) };
+    assert.equal(stacksWith.length, stacksWithout.length, `${id}: the line keeps every field stack in its ${list} (moved, not lost)`);
+    const inWith = new Set(stacksWith.map(key)), inWithout = new Set(stacksWithout.map(key));
+    for (const r of stacksWithout) if (!inWith.has(key(r))) {
+      const [x, z, rr] = centre(r);
+      assert.ok(overlapsStructureClearance(berth, x, z, rr + 1), `${id}: a moved stack had reached the berth (${x.toFixed(1)}, ${z.toFixed(1)})`);
+    }
+    for (const r of stacksWith) if (!inWithout.has(key(r))) {
+      const [x, z, rr] = centre(r);
+      assert.ok(!overlapsStructureClearance(berth, x, z, rr), `${id}: a moved stack clears the berth (${x.toFixed(1)}, ${z.toFixed(1)})`);
+    }
     // the records the line keeps: the same, in the same order; the ones it removes: trees on the berth
     const kept = new Map();
-    for (const record of withLine[list]) kept.set(key(record), (kept.get(key(record)) ?? 0) + 1);
+    for (const record of others.with) kept.set(key(record), (kept.get(key(record)) ?? 0) + 1);
     const removed = [];
     let at = 0;
-    for (const record of without[list]) {
+    for (const record of others.without) {
       const k = key(record), n = kept.get(k) ?? 0;
-      if (n > 0) { kept.set(k, n - 1); assert.equal(key(withLine[list][at]), k, `${id}: ${list}[${at}] in its place`); at++; continue; }
+      if (n > 0) { kept.set(k, n - 1); assert.equal(key(others.with[at]), k, `${id}: ${list}[${at}] in its place`); at++; continue; }
       removed.push(record);
     }
-    assert.equal(at, withLine[list].length, `${id}: the line adds no ${list} record`);
+    assert.equal(at, others.with.length, `${id}: the line adds no ${list} record`);
     for (const record of removed) {
       assert.equal(record.k, 'tree', `${id}: the line removes only trees from the ${list} (${record.k})`);
       const x = (record.b[0] + record.b[3]) / 2, z = (record.b[2] + record.b[5]) / 2, r = Math.max(record.b[3] - record.b[0], record.b[5] - record.b[2]) / 2;
