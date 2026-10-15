@@ -744,8 +744,6 @@ let _blockedSpeed = 0;
  * ground that falls away under a moving hull is still a fall (no faster than gravity).
  */
 let _rotationDrop = 0;
-/** The support this turn of the hull raised at the contact it rests on (writeSupportCache; updateVerticalContact). */
-let _rotationRise = 0;
 /** Whether this tick's fit found every track sample carrying the hull (no edge, no drop under it): only then does a
  * grade it runs down carry its tracks with it (constrainLoadedRide). */
 let _wholeTrackOnGround = true;
@@ -2614,12 +2612,6 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       // 0.9 m in one step and again each time the corner crossed back, the ground's rate took the steps, and the hull
       // left the eave at 2.6 m/s.
       if (solverRise > SUPPORT_STEP_M) ride.supportY += solverRise;
-      // (physics stream F9, 2026-10-14; the coordinator: "the turn's lift is position, not speed") and the rise the hull's
-      // own turn makes at the contact it rests on — a hull rolling back level about its low track, lying onto a face — is
-      // no ground moving under it either: the floor and the springs lift the root, and the ground's rate does not carry it
-      // on when the turn stops. An E-100 rolling level from 29 degrees on Autumn's roof was thrown off it at 3.4 m/s, an
-      // Abrams set on a 62-degree roof at 8.6 m/s.
-      else if (_rotationRise > 0) ride.supportY += Math.min(_rotationRise, Math.max(0, solverRise));
     }
     const groundVStart = ride.groundV;
     updateRideSupportVelocity(ride, supportY, dt);
@@ -4769,7 +4761,6 @@ function writeSupportCache(
     const lift = (contactX * (samples.sinRoll * samples.cosPitch - Math.sin(cache.roll) * Math.cos(cache.pitch))
       + contactZ * (samples.sinPitch - Math.sin(cache.pitch)));
     _rotationDrop = lift > 0 ? lift : 0;
-    _rotationRise = lift < 0 ? -lift : 0;
   }
   cache.x = state.pos.x;
   cache.z = state.pos.z;
@@ -5343,7 +5334,6 @@ export function updateTank(
   state.slopeBlocked = false;
   _blockedSpeed = 0;
   _rotationDrop = 0;
-  _rotationRise = 0;
   _supportRate = 0;
   _tippedThisTick = false;
   _wholeTrackOnGround = true;
