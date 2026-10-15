@@ -19,8 +19,8 @@
       "concealers": 1289
     },
     "winter": {
-      "bytes": 2155488,
-      "sha256": "742c8ddc5a976e66667d75a4d85447d6eeb246219dfffaf834a04cac2d352a45",
+      "bytes": 2160331,
+      "sha256": "aff357cf4e70d784909b0f4a2249ab6eff7670cabec9d450a1ff409b07e7dc85",
       "obstacles": 6685,
       "colliders": 6593,
       "concealers": 5626
@@ -47,10 +47,10 @@
       "concealers": 5837
     },
     "steppe": {
-      "bytes": 1582361,
-      "sha256": "86d6aa6c92e6ef6258a4cfc3f8c456dc48df9135c133dd1fa459d3a9ec9cdf7b",
+      "bytes": 1622178,
+      "sha256": "9afd1779d358bce9672fa3dd32caae33b0ebf714d42616bf18b19b1548d32e88",
       "obstacles": 2033,
-      "colliders": 1891,
+      "colliders": 1895,
       "concealers": 812
     },
     "railyard": {
@@ -68,8 +68,8 @@
       "concealers": 8087
     },
     "fjord": {
-      "bytes": 2353116,
-      "sha256": "747766204e7bb45eb8861727c2606dde1d2b08a49889e9476512af33414b8009",
+      "bytes": 2370786,
+      "sha256": "807a62d34d6bbc4a0bf212299b6ca53704482c2eb99d9a7ac3dddabc7c291b48",
       "obstacles": 6766,
       "colliders": 6735,
       "concealers": 6836
@@ -103,17 +103,17 @@
       "concealers": 1139
     },
     "caldera": {
-      "bytes": 1863142,
-      "sha256": "fa6eb920e4518dbef21aeddb68517f9db59139d3b7f506250808a45eb45154a5",
+      "bytes": 1896406,
+      "sha256": "71353fb6d3c2750b2f1b7e2073339831ab60c3c551c06a2f021c525c0323bb27",
       "obstacles": 2519,
-      "colliders": 2410,
+      "colliders": 2426,
       "concealers": 1080
     },
     "foundry": {
-      "bytes": 2162908,
-      "sha256": "135602dca26960a6611cb7c2d2794e5106009ae6b5a8f86cee9a96912624a611",
+      "bytes": 2251142,
+      "sha256": "9b377856858c483ca3fd9349485fa0ae46aa760ee163608400776456216883fd",
       "obstacles": 3873,
-      "colliders": 4321,
+      "colliders": 4357,
       "concealers": 2727
     },
     "ruinspires": {
@@ -253,8 +253,8 @@
         "concealers": 1289
       },
       "winter": {
-        "bytes": 2237649,
-        "sha256": "fd095307d27e793b15638225798e6721b02fe3df3f7fafe18bd3c06d82e6f9e2",
+        "bytes": 2242492,
+        "sha256": "fb3e33ba6c170f100212d2b59c00fa3523978745bfb684f212b3f2ce7b0a5ef5",
         "obstacles": 6809,
         "colliders": 6689,
         "concealers": 5695
@@ -281,10 +281,10 @@
         "concealers": 5611
       },
       "steppe": {
-        "bytes": 1839788,
-        "sha256": "9166c17f0c8d6bf77c2013ad1124eeaff35e65bcdfd29f8ce7ae9b1d1e0e14a4",
+        "bytes": 1879662,
+        "sha256": "bd4a033538a109a07cdaed11b77ca329493c4346c3955437d3b0f716d80af83e",
         "obstacles": 2252,
-        "colliders": 1985,
+        "colliders": 1989,
         "concealers": 842
       },
       "railyard": {
@@ -302,8 +302,8 @@
         "concealers": 8058
       },
       "fjord": {
-        "bytes": 2465697,
-        "sha256": "b7cfca6d60177a702a32caad15d54b74222a7a08687593ff6755345e928d6200",
+        "bytes": 2483367,
+        "sha256": "0326ec877012ee23dc2a013d247f6dc79e5c7071c544e18db88b252ac86aceb7",
         "obstacles": 6839,
         "colliders": 6760,
         "concealers": 6836
@@ -337,17 +337,17 @@
         "concealers": 1139
       },
       "caldera": {
-        "bytes": 2046788,
-        "sha256": "2b99b0b2cc000907b95717262ef3c868622bdf263e0b03911c3dd1b8943f1322",
+        "bytes": 2080038,
+        "sha256": "e3ba6c61dece88813337f975c23c1f84b327d1d0ff13be779ed95ed7fa40babe",
         "obstacles": 2642,
-        "colliders": 2462,
+        "colliders": 2478,
         "concealers": 1080
       },
       "foundry": {
-        "bytes": 2162908,
-        "sha256": "135602dca26960a6611cb7c2d2794e5106009ae6b5a8f86cee9a96912624a611",
+        "bytes": 2251142,
+        "sha256": "9b377856858c483ca3fd9349485fa0ae46aa760ee163608400776456216883fd",
         "obstacles": 3873,
-        "colliders": 4321,
+        "colliders": 4357,
         "concealers": 2727
       },
       "ruinspires": {
