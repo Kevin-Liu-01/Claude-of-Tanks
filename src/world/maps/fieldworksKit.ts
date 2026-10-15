@@ -897,14 +897,19 @@ function buildWireRun(spec: WireSpec, o: Rng, torn: boolean): THREE.BufferGeomet
       const R = 0.3, cy = R + 0.01;
       const pts = coil(-1.25, 1.25, R, cy, 7, 6, torn, seed);
       if (spec.form === 'razor') {
-        // the razor tape: a flat bright strip (both its faces), a blade at each piece
+        // the razor tape: one continuous flat bright strip (both its faces; each point's edges shared by the pieces
+        // either side of it), a blade at each piece
+        const edges = pts.map((a, i) => {
+          const prev = pts[Math.max(0, i - 1)], next = pts[Math.min(pts.length - 1, i + 1)];
+          const radial = v3(a.x, a.y - cy, 0).normalize();
+          const w = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(next, prev).normalize(), radial).normalize().multiplyScalar(0.0125);
+          return { lo: a.clone().sub(w), hi: a.clone().add(w), radial };
+        });
         for (let i = 0; i + 1 < pts.length; i++) {
-          const a = pts[i], b = pts[i + 1], radial = v3(a.x, a.y - cy, 0).normalize();
-          const w = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(b, a).normalize(), radial).normalize().multiplyScalar(0.0125);
-          const a0 = a.clone().sub(w), a1 = a.clone().add(w), b0 = b.clone().sub(w), b1 = b.clone().add(w);
+          const { lo: a0, hi: a1, radial } = edges[i], { lo: b0, hi: b1 } = edges[i + 1];
           m.tri(a0, a1, b1, wireCol); m.tri(a0, b1, b0, wireCol);
           m.tri(a0, b1, a1, wireCol); m.tri(a0, b0, b1, wireCol);
-          const tip = a.clone().lerp(b, 0.5).addScaledVector(radial, 0.035);
+          const tip = pts[i].clone().lerp(pts[i + 1], 0.5).addScaledVector(radial, 0.035);
           m.tri(a1, b1, tip, wireCol); m.tri(a1, tip, b1, wireCol);
         }
       } else {
