@@ -45,6 +45,8 @@ export interface RuinSpec {
   /** the charred frame's colour (joists, rafters) */
   timber: Rgb;
   chimney?: { x: number; z: number; w: number; h: number; bucket: RegionalBucket; colour?: Rgb } | null;
+  /** the hearth against a wall's inside (its centre along the face, its width): its firebox cut into it */
+  hearth?: { face: FaceName; u: number; w: number } | null;
   /** a concrete or block shell's reinforcement: bars curling out of its broken heads in this rust */
   rebar?: Rgb;
   mobile: boolean;
@@ -242,6 +244,14 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
     holedPolygon(sink, c.bucket, cf, [[-c.w / 2, foot], [c.w / 2, foot], [c.w / 2, c.h], [-c.w / 2, c.h]],
       [{ u0: -Math.min(0.45, c.w / 2 - 0.15), u1: Math.min(0.45, c.w / 2 - 0.15), y0: floor + 0.05, y1: floor + 0.8 }], 0.4, 0.36, cc);
     sink.span(c.bucket, c.x - c.w / 2 - 0.06, c.h, c.z - c.w / 2 - 0.06, c.x + c.w / 2 + 0.06, c.h + 0.12, c.z + c.w / 2 + 0.06, { ...cc, shade: 0.55 });
+  }
+  // the hearth against a wall's inside, its firebox cut into its front, the soot-dark back of the box behind
+  if (spec.hearth) {
+    const hf = faces[spec.hearth.face], hw = spec.hearth.w, deep = 0.55, mantel = floor + 1.9;
+    const front: Face = { origin: facePoint(hf, spec.hearth.u, 0, -t - deep), u: [-hf.u[0], -hf.u[1], -hf.u[2]], out: [-hf.out[0], -hf.out[1], -hf.out[2]], width: hw };
+    holedPolygon(sink, spec.wall, front, [[-hw / 2, foot], [hw / 2, foot], [hw / 2, mantel], [-hw / 2, mantel]],
+      [{ u0: -hw / 2 + 0.25, u1: hw / 2 - 0.25, y0: floor + 0.1, y1: floor + 1.15 }], deep, deep - 0.06, wallOpts);
+    faceBox(sink, 'stone', front, 0, mantel + 0.06, 0.08, hw + 0.2, 0.12, 0.16, { ...(spec.colour ? { colour: shade(spec.colour, 1.1) } : {}), decor: true });
   }
   sink.dressing(spec.mobile, () => {
     const charred = { colour: spec.timber, decor: true, exposed: true } as const;
