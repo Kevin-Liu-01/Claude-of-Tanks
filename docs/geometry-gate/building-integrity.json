@@ -654,7 +654,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.493,
+   "insideM2": 2.748,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -879,7 +879,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.43,
+   "insideM2": 3.036,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -978,7 +978,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.071,
+   "insideM2": 4.268,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1320,7 +1320,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.086,
+   "insideM2": 0.602,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2265,7 +2265,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.819,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2463,7 +2463,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.171,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2472,7 +2472,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.168,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2751,7 +2751,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.72,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -3699,7 +3699,16 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "franconian/warehouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.163,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-15T05:30:04.252Z"
+ "updatedAt": "2026-10-15T07:55:20.282Z"
 }
