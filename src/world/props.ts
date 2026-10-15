@@ -190,7 +190,10 @@ import { bakeTankWreckSteps, seatHulk, wreckRemnantPaint, type WreckBake } from 
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import type { RollingStockKind } from './maps/rollingStock.ts';
-import { rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
+import {
+  rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes, TRAM_K2_KIND,
+  tramDestructibleTypes,
+} from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
@@ -4448,6 +4451,7 @@ ${snowCap ? `
     ...setPieceDestructibleTypes(mobileProps),
     // (Lane C, #24) the spurs' rolling stock, breakable (maps/setPieceDestructibles.ts)
     ...rollingStockDestructibleTypes(mobileProps),
+    ...tramDestructibleTypes(mobileProps),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
@@ -10117,6 +10121,7 @@ ${snowCap ? `
   const setPieceRecords: VehicleSetPiece[] = [];
   // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
   const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
+  const tramRecords: { x: number; z: number; yaw: number }[] = [];
   // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   dressMapExtras({
@@ -10126,6 +10131,7 @@ ${snowCap ? `
     clutter: (clutter) => pendingClutter.push(clutter),
     setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
     rollingStockDestructible: (stock) => { rollingStockRecords.push(stock); },
+    tramDestructible: (tram) => { tramRecords.push(tram); },
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
@@ -10166,6 +10172,10 @@ ${snowCap ? `
       rec.y = stock.y;
     }
     bakeIntactSpan(kind, rec);
+  }
+  // (Lane C, #24) Sarajevo's burnt K2s on their track, seated on their wheels
+  for (const tram of tramRecords) {
+    bakeIntactSpan(TRAM_K2_KIND, addDestructible(TRAM_K2_KIND, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1));
   }
   for (const g of setPieceIntact.values()) g.dispose();
   setPieceIntact.clear();

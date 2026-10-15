@@ -92,3 +92,23 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------------- the trams
+// (Lane C, #24) Sarajevo's burnt trams (sarajevoStreets.ts) as the Tatra K2s they were: a burnt-out K2 standing on the
+// track (vehicleSetPieces.ts k2tram 'burnt'), heavy cover, that a gun round or a hard ram collapses (its 'collapsed'
+// state: the bodies crushed down onto the frame, slewed at the joint).
+
+/** The destructible kind a burnt K2 registers as. */
+export const TRAM_K2_KIND = 'tram_k2';
+
+export function tramDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
+  const size = SET_PIECE_SIZE.k2tram;
+  return {
+    [TRAM_K2_KIND]: {
+      cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
+      r: Math.hypot(size.hw, size.hl), h: size.h, hw: size.hw, hl: size.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
+      build: () => buildSetPiece('k2tram', { wrecked: true, coarse: mobile }),
+      broken: () => buildSetPiece('k2tram', { wrecked: true, collapsed: true, coarse: mobile }),
+    },
+  };
+}

@@ -342,8 +342,18 @@ const LAMP_LENS = material('lamp', [0.72, 0.72, 0.68], 0.07, 0.65, 0, 0.1);
  * plan with a wrap-round windscreen, a band of passenger windows between narrow pillars, folding doors on the right,
  * the pantograph on the front body's roof, in the city's red and cream.
  */
-function k2tram(mesh: VehicleMesh, coarse: boolean): void {
+function k2tram(mesh: VehicleMesh, coarse: boolean, state: 'intact' | 'burnt' | 'collapsed' = 'intact'): void {
   const y0 = 0.82, sill = 1.55, head = 2.6, eave = 2.95, roofR = 0.16;
+  // (Lane C, #24; the owner: "trams and wagons" break) a collapsed tram: its bodies crushed down onto the frame to half
+  // their height, slewed at the joint and rolled, its bogies driven down under it; a burnt one stands with its pantograph
+  // wrecked (the burn itself is the weathering's)
+  const collapsed = state === 'collapsed';
+  const bodyFrame = (half: 1 | -1, emit: () => void): void => {
+    if (!collapsed) { emit(); return; }
+    mesh.push().translate(0, y0 - 0.22, 0).rotateY(half * 0.05).rotateZ(0.09).scale(1.06, 0.5, 1).translate(0, -y0, 0);
+    emit();
+    mesh.pop();
+  };
   const body = (zF: number, zB: number, nose: 'front' | 'back' | 'none') => {
     const r = 0.85, hw = 1.25, tumble = 0.07;
     const flat = zF - zB - 2 * r, windows = 7;
@@ -363,12 +373,13 @@ function k2tram(mesh: VehicleMesh, coarse: boolean): void {
     });
     void flat;
   };
-  body(10.2, 0.38, 'front');
-  body(-0.38, -10.2, 'back');
-  // the joint: a bellows between the bodies, its turntable under them
-  mesh.box(0, (y0 + eave) / 2 + 0.05, 0, 2.3, eave - y0 - 0.2, 0.8, RUBBER_DARK, coarse ? 0 : 0.05);
+  bodyFrame(1, () => body(10.2, 0.38, 'front'));
+  bodyFrame(-1, () => body(-0.38, -10.2, 'back'));
+  // the joint: a bellows between the bodies, its turntable under them (burnt through on a wreck)
+  if (state === 'intact') mesh.box(0, (y0 + eave) / 2 + 0.05, 0, 2.3, eave - y0 - 0.2, 0.8, RUBBER_DARK, coarse ? 0 : 0.05);
   // the bogies: frames, wheels on their axles, the motors between
   for (const bz of [7.0, 0, -7.0]) {
+    if (collapsed) mesh.push().translate(0, -0.12, 0).rotateZ(0.05);
     mesh.box(0, 0.52, bz, 1.9, 0.32, 2.3, BLACK_STEEL, coarse ? 0 : 0.03);
     for (const az of [-0.95, 0.95]) for (const side of [1, -1]) {
       mesh.push().translate(side * 0.72, 0.35, bz + az).scale(side, 1, 1);
@@ -376,8 +387,10 @@ function k2tram(mesh: VehicleMesh, coarse: boolean): void {
       mesh.pop();
     }
     mesh.box(0, 0.62, bz, 1.1, 0.34, 0.5, BLACK_STEEL, 0);
+    if (collapsed) mesh.pop();
   }
   // the ends: the destination box over the windscreen, the headlamps and the tail lamps, the fenders
+  bodyFrame(1, () => {
   for (const end of [1, -1]) {
     const z = end * 10.2;
     mesh.box(0, 2.78, z - end * 0.12, 1.2, 0.24, 0.12, DARK, 0.02);
@@ -393,14 +406,16 @@ function k2tram(mesh: VehicleMesh, coarse: boolean): void {
       for (const dz of [-w / 4, w / 4]) mesh.box(1.27, 2.0, zc + dz, 0.01, 0.9, w / 2 - 0.08, GLASS, 0);
     });
   }
-  // the pantograph folded down on the front body, its base and the roof's resistor boxes
+  // the pantograph folded down on the front body (a wreck's wrenched up and over), its base and the resistor boxes
   mesh.box(0, eave + 0.12, 5.0, 1.0, 0.1, 1.2, BLACK_STEEL, 0.02);
+  const wreck = state !== 'intact';
   for (const sx of [1, -1]) {
-    beam(mesh, [sx * 0.4, eave + 0.18, 4.6], [sx * 0.35, eave + 0.45, 5.6], 0.04, 0.04, BLACK_STEEL);
-    beam(mesh, [sx * 0.35, eave + 0.45, 5.6], [sx * 0.35, eave + 0.3, 4.2], 0.035, 0.035, BLACK_STEEL);
+    beam(mesh, [sx * 0.4, eave + 0.18, 4.6], [sx * 0.35 + (wreck ? 0.25 : 0), eave + (wreck ? 1.0 : 0.45), wreck ? 5.0 : 5.6], 0.04, 0.04, BLACK_STEEL);
+    beam(mesh, [sx * 0.35 + (wreck ? 0.25 : 0), eave + (wreck ? 1.0 : 0.45), wreck ? 5.0 : 5.6], [sx * 0.35 + (wreck ? 0.6 : 0), eave + (wreck ? 0.75 : 0.3), wreck ? 3.9 : 4.2], 0.035, 0.035, BLACK_STEEL);
   }
-  beam(mesh, [-0.7, eave + 0.32, 4.2], [0.7, eave + 0.32, 4.2], 0.05, 0.05, ALU_DULL);
+  beam(mesh, wreck ? [0.25, eave + 0.78, 3.9] : [-0.7, eave + 0.32, 4.2], wreck ? [1.25, eave + 0.7, 4.0] : [0.7, eave + 0.32, 4.2], 0.05, 0.05, ALU_DULL);
   mesh.box(0, eave + 0.18, -3.0, 1.3, 0.22, 2.6, TRAM_ROOF, coarse ? 0 : 0.03);
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------- the STZ-3
@@ -573,13 +588,13 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
 // ---------------------------------------------------------------------------------------------------- dispatch
 
 /** Build one set piece, whole or wrecked, in the painted bucket's streams. */
-export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coarse?: boolean; seed?: number } = {}): THREE.BufferGeometry {
+export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coarse?: boolean; seed?: number; collapsed?: boolean } = {}): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
   const coarse = !!opts.coarse;
   mesh.coarse = coarse;
   let wheels: { z: number; y: number; r: number }[] = [];
   if (kind === 'lrv') { lrv(mesh, coarse, !!opts.wrecked); wheels = [{ z: 1.145, y: 0.41, r: 0.41 }, { z: -1.145, y: 0.41, r: 0.41 }]; }
-  else if (kind === 'k2tram') { k2tram(mesh, coarse); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
+  else if (kind === 'k2tram') { k2tram(mesh, coarse, opts.collapsed ? 'collapsed' : opts.wrecked ? 'burnt' : 'intact'); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
   else if (kind === 'stz3') { stz3(mesh, coarse); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
   else if (kind === 'bv206') bv206(mesh, coarse, 'orange', !!opts.wrecked);
