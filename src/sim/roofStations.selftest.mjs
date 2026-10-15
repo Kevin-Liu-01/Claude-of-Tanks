@@ -9,7 +9,8 @@ import { createTank } from '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
-import { auxiliaryShot, auxiliaryState, createAuxiliaryState, requestAuxiliary, roofStationCount, stepRoofGun, stepRoofStation, thinnestVerticalArmourMm } from './auxiliarySystems.ts';
+import { auxiliaryShot, auxiliaryState, createAuxiliaryState, exposedArmourMm, requestAuxiliary, roofStationCount, stepRoofGun, stepRoofStation, thinnestVerticalArmourMm } from './auxiliarySystems.ts';
+import { penAtDistanceMm } from './ballistics.ts';
 import { stationDepression, stationProbe } from '../../tools/roof-station-arcs.mjs';
 
 const ID = 'm551a1_tts', kit = AUXILIARY_INVENTORY[ID];
@@ -120,14 +121,15 @@ function run({ shooter, context }, seconds = 12) {
   }
   tank.dispose();
 }
-// 8. VH.14 balance (the coordinator's check, 2026-10-15): a station engages only a vehicle its round can hurt somewhere
-//    (penetration at the range over the target's thinnest vertical main plate, the profile's engagePenRatio). The K1's
-//    12.7 mm K6 engages a BMP-2 (16 mm flanks) at 100 m; its 7.62 mm M60 never engages a vehicle (no hull in the fleet
-//    is under 15 mm); neither engages an Abrams.
+// 8. VH.14 balance (the coordinator's check, 2026-10-15): a station engages only a vehicle its round can hurt where it
+//    strikes it (penetration at the range over the thinnest line-of-sight main armour the target turns towards the
+//    station, exposedArmourMm, times the profile's engagePenRatio). The K1's 12.7 mm K6 engages a BMP-2 seen from behind
+//    at 100 m; its 7.62 mm M60 never engages a vehicle (no hull in the fleet is under 15 mm); neither engages an Abrams;
+//    and no MBT is engaged head-on.
 {
-  const duel = (targetId, distanceM) => {
+  const duel = (targetId, distanceM, targetYaw = 0) => {
     const shooter = { id: 'k1', team: 'blue', spec: TANK_SPECS.k1a1, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
-    const target = { id: 'enemy', team: 'red', spec: TANK_SPECS[targetId], state: { pos: { x: 0, y: 0, z: distanceM }, yaw: 0, turretYaw: 0 }, combat: {} };
+    const target = { id: 'enemy', team: 'red', spec: TANK_SPECS[targetId], state: { pos: { x: 0, y: 0, z: distanceM }, yaw: targetYaw, turretYaw: 0 }, combat: {} };
     const context = { entities: [shooter, target], visible: () => true, clear: () => true }, shots = [0, 0];
     for (let i = 0; i < 8 * 60; i++) {
       if (stepRoofGun(shooter, i / 60, 1 / 60, context)) shots[0]++;
@@ -141,5 +143,16 @@ function run({ shooter, context }, seconds = 12) {
   const [k6, m60] = duel('bmp2', 100);
   assert.ok(k6 > 0 && m60 === 0, `vs a BMP-2 at 100 m the K6 fires (${k6}), the M60 holds (${m60})`);
   assert.deepEqual(duel('m1a2', 100), [0, 0], 'neither gun wastes fire (and its flash) on an Abrams');
+  // aspect: the rule reads the plates turned towards the station, hull plates by the hull's yaw, turret plates by the
+  // turret's too; a target that turns its front to the K6 is engaged only if that front is defeatable
+  const pen100 = penAtDistanceMm(auxiliaryWeaponProfile(12.7).shell, 100), at = (spec, yaw, turretYaw = 0) =>
+    exposedArmourMm({ spec, state: { pos: { x: 0, y: 0, z: 100 }, yaw, turretYaw } }, 0, 0);
+  const bmp2Rear = at(TANK_SPECS.bmp2, 0), bmp2Front = at(TANK_SPECS.bmp2, Math.PI);
+  assert.ok(bmp2Rear <= pen100, `the BMP-2's rear (${bmp2Rear.toFixed(1)} mm) is defeatable at 100 m (${pen100} mm)`);
+  if (bmp2Front > pen100) assert.equal(duel('bmp2', 100, Math.PI)[0], 0, 'a BMP-2 head-on is not engaged');
+  const headOn = Object.values(TANK_SPECS).filter((spec) => spec.role === 'mbt' && at(spec, Math.PI) <= pen100).map((spec) => spec.id);
+  assert.deepEqual(headOn, [], 'no MBT is engaged head-on by a 12.7 mm station at 100 m');
+  // a turret traversed broadside exposes the turret's flank: the turret plates follow the turret's yaw
+  assert.ok(at(TANK_SPECS.bmp2, Math.PI, Math.PI / 2) <= at(TANK_SPECS.bmp2, Math.PI) + 1e-9, 'turret plates follow the turret');
 }
 console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt');

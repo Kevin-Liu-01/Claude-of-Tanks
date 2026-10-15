@@ -13,9 +13,10 @@ export interface AuxiliaryWeaponProfile {
   elevationRad: number;
   /**
    * VH.14 balance (2026-10-15, the coordinator's check on ~110 vehicles gaining working roof guns): the station engages
-   * a vehicle only when its round's penetration at that range is at least this multiple of the vehicle's thinnest
-   * vertical main-armour plate (src/sim/auxiliarySystems.ts thinnestVerticalArmourMm). A gun that cannot hurt a
-   * vehicle anywhere it can strike it holds its fire instead of revealing its own vehicle by its flash.
+   * a vehicle only when its round's penetration at that range is at least this multiple of the thinnest line-of-sight
+   * main armour the vehicle turns towards the station (src/sim/auxiliarySystems.ts exposedArmourMm: a defeatable flank
+   * or rear counts, a front it cannot defeat does not). A gun that cannot hurt the vehicle where it can strike it holds
+   * its fire instead of revealing its own vehicle by its flash.
    */
   engagePenRatio: number;
 }
