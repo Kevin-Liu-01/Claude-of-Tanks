@@ -176,28 +176,30 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short'][data-cot-orientation='landscape'] .cot-prebattle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short']:not(.cot-touch-layout) .cot-prebattle{width:240px}
 
-/* TOUCH ACTION DOCK (touchActionDock.ts places it): the row becomes 48 px icon tiles (44 px on the most crowded
-   phones, --hud-systems-tile) in its own order, wrapped at --hud-systems-columns instead of scrolled sideways. Each tile keeps a caption under the icon; the smoke charges
+body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}
+/* TOUCH ACTION DOCK (touchActionDock.ts places it; body[data-hud-dock] while placed, else the strip above): the row
+   becomes 48 px icon tiles (44 px on the most crowded phones, --hud-systems-tile) in its own order, wrapped at
+   --hud-systems-columns instead of scrolled sideways. Each tile keeps a caption under the icon; the smoke charges
    read as a corner badge; a cooldown (--cd, 1 -> 0, written by hud.ts) sweeps a shadow off the tile while the
    caption counts the seconds. Keycaps mean nothing on glass. Offsets are reset because the special-action
    button carries touch placement rules from before it joined the row. */
-body.cot-touch-layout .cot-vehicle-controls{display:grid;grid-template-columns:repeat(var(--hud-systems-columns,4),var(--hud-systems-tile,48px));grid-auto-rows:var(--hud-systems-tile,48px);gap:6px;width:max-content;max-width:none;padding:0;overflow:visible}
-body.cot-touch-layout .cot-vehicle-controls>button{position:relative!important;inset:auto!important;width:var(--hud-systems-tile,48px)!important;height:var(--hud-systems-tile,48px)!important;min-width:var(--hud-systems-tile,48px)!important;max-width:var(--hud-systems-tile,48px);min-height:var(--hud-systems-tile,48px);grid-template-columns:minmax(0,1fr);grid-template-rows:24px 12px;align-content:center;justify-items:center;gap:2px;padding:4px 2px 5px;overflow:hidden;touch-action:none;border:1px solid rgba(205,219,229,.34);border-bottom:2px solid rgba(205,219,229,.42);border-radius:6px!important;background:linear-gradient(180deg,rgba(29,38,45,.94),rgba(7,11,15,.92));color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);text-shadow:0 1px 2px #000;font:800 9px/12px var(--hud-font,system-ui);letter-spacing:.02em;text-transform:uppercase;transition:border-color 90ms ease,color 90ms ease}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls{display:grid;grid-template-columns:repeat(var(--hud-systems-columns,4),var(--hud-systems-tile,48px));grid-auto-rows:var(--hud-systems-tile,48px);gap:6px;width:max-content;max-width:none;padding:0;overflow:visible}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button{position:relative!important;inset:auto!important;width:var(--hud-systems-tile,48px)!important;height:var(--hud-systems-tile,48px)!important;min-width:var(--hud-systems-tile,48px)!important;max-width:var(--hud-systems-tile,48px);min-height:var(--hud-systems-tile,48px);grid-template-columns:minmax(0,1fr);grid-template-rows:24px 12px;align-content:center;justify-items:center;gap:2px;padding:4px 2px 5px;overflow:hidden;touch-action:none;border:1px solid rgba(205,219,229,.34);border-bottom:2px solid rgba(205,219,229,.42);border-radius:6px!important;background:linear-gradient(180deg,rgba(29,38,45,.94),rgba(7,11,15,.92));color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);text-shadow:0 1px 2px #000;font:800 9px/12px var(--hud-font,system-ui);letter-spacing:.02em;text-transform:uppercase;transition:border-color 90ms ease,color 90ms ease}
 /* Touch placement rules for the special action (some !important) predate the row; its offsets must not shift a tile. */
-body.cot-touch-layout .cot-vehicle-controls>button.cot-special{inset:auto!important}
-body.cot-touch-layout .cot-vehicle-controls>button::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background:conic-gradient(rgba(2,6,9,.74) calc(var(--cd,0) * 360deg),transparent 0)}
-body.cot-touch-layout .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;position:relative;z-index:1}
-body.cot-touch-layout .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
-body.cot-touch-layout .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;position:relative;z-index:1;max-width:44px;overflow:hidden;text-overflow:ellipsis;font:800 9px/12px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:0;text-transform:none;text-align:center}
-body.cot-touch-layout .cot-vehicle-controls>button .sk{display:none}
-body.cot-touch-layout .cot-vehicle-controls .system-status{display:block;grid-area:auto;position:absolute;z-index:2;top:3px;right:3px;font:800 8px/1 var(--hud-font,system-ui);letter-spacing:0;opacity:1}
-body.cot-touch-layout .cot-vehicle-controls .system-status:empty{display:none}
-body.cot-touch-layout .cot-vehicle-controls>button.active{color:#ffd27a;border-color:#f0ad45;background:radial-gradient(circle at 50% 35%,rgba(120,83,28,.92),rgba(42,27,10,.96) 70%);box-shadow:0 0 14px rgba(240,150,40,.4),inset 0 1px 4px rgba(255,225,170,.2)}
-body.cot-touch-layout .cot-vehicle-controls>button:active:not(:disabled){border-color:#f0ad45;color:#ffd27a}
-body.cot-touch-layout .cot-vehicle-controls>button:disabled{opacity:.5}
-body.cot-touch-layout .cot-vehicle-controls>button.cooling{opacity:1}
-body.cot-touch-layout .cot-vehicle-controls>button.cooling .si{opacity:.5}
-body.cot-touch-layout .cot-vehicle-controls>button.cooling .sl{color:#ffd27a;font-size:11px}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-special{inset:auto!important}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background:conic-gradient(rgba(2,6,9,.74) calc(var(--cd,0) * 360deg),transparent 0)}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;position:relative;z-index:1}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;position:relative;z-index:1;max-width:44px;overflow:hidden;text-overflow:ellipsis;font:800 9px/12px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:0;text-transform:none;text-align:center}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button .sk{display:none}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls .system-status{display:block;grid-area:auto;position:absolute;z-index:2;top:3px;right:3px;font:800 8px/1 var(--hud-font,system-ui);letter-spacing:0;opacity:1}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls .system-status:empty{display:none}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.active{color:#ffd27a;border-color:#f0ad45;background:radial-gradient(circle at 50% 35%,rgba(120,83,28,.92),rgba(42,27,10,.96) 70%);box-shadow:0 0 14px rgba(240,150,40,.4),inset 0 1px 4px rgba(255,225,170,.2)}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button:active:not(:disabled){border-color:#f0ad45;color:#ffd27a}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button:disabled{opacity:.5}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling{opacity:1}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling .si{opacity:.5}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling .sl{color:#ffd27a;font-size:11px}
 /* Where the touch dock covers the gun-limit warning's place under the reticle, the warning sits on the dock. */
 body[data-hud-aim-docked] .cot-aim-warning{top:var(--hud-aim-warning-dock-top)}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}

@@ -128,6 +128,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const dockObstacles: TouchDockRect[] = [];
   const dockSoft: TouchDockRect[] = [];
   let safeProbe: HTMLElement | null = null;
+  // Short landscape shows the pre-battle countdown in the centre lane the dock may want. Its box is remembered from
+  // the countdown that opens every battle (per viewport size), so the dock keeps clear of it without moving when it ends.
+  let countdownSlot: { width: number; height: number; box: TouchDockRect } | null = null;
   function placeDock(row: HTMLElement, width: number, height: number): TouchDockPlacement | null {
     let count = 0;
     for (const child of row.children) if (child.getClientRects().length) count++;
@@ -148,6 +151,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (node.classList.contains('fire') && !node.classList.contains('alt')) fire = box;
       dockObstacles.push({ x: box.left, y: box.top, w: box.width, h: box.height });
     }
+    const countdown = width > height ? read('.cot-prebattle.on') : null;
+    if (countdown) countdownSlot = { width, height, box: { x: countdown.left, y: countdown.top, w: countdown.width, h: countdown.height } };
+    if (width > height && countdownSlot?.width === width && countdownSlot.height === height) dockSoft.push(countdownSlot.box);
     if (!safeProbe) {
       safeProbe = document.createElement('div');
       safeProbe.setAttribute('aria-hidden', 'true');
@@ -166,12 +172,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (value) document.body.style.setProperty(property, value);
       else document.body.style.removeProperty(property);
     }
+    // No spot even relaxed: the strip styles apply again (the attribute is not observed, so this cannot loop).
+    if (document.body.hasAttribute('data-hud-dock') !== !!placement) document.body.toggleAttribute('data-hud-dock', !!placement);
     return placement;
   }
-  // The portrait countdown keeps its place under the minimap unless the dock is there; then it sits above the dock.
-  function portraitCountdownTop(dock: TouchDockPlacement): number {
-    const height = read('.cot-prebattle')?.height || 112;
-    return 255 < dock.y + dock.h + 8 && 255 + height > dock.y - 8 ? Math.max(12, dock.y - 8 - height) : 255;
+  // The portrait countdown keeps its place under the minimap unless the dock is there; then it takes the first of
+  // below or above the dock that clears the dock and the fixed controls, else keeps its place.
+  function portraitCountdownTop(dock: TouchDockPlacement, width: number): number {
+    const box = read('.cot-prebattle');
+    const h = box?.height || 112, w = box?.width || 228, x = (width - w) / 2;
+    const clear = (y: number) => [dock, ...dockObstacles].every(o =>
+      !(x < o.x + o.w + 4 && x + w > o.x - 4 && y < o.y + o.h + 4 && y + h > o.y - 4));
+    for (const y of [255, dock.y + dock.h + 8, dock.y - 8 - h]) if (y >= 12 && clear(y)) return y;
+    return 255;
   }
   function refresh() {
     frame = 0;
@@ -365,7 +378,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
-      'portrait-countdown-top': dock ? portraitCountdownTop(dock) : systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
+      'portrait-countdown-top': dock ? portraitCountdownTop(dock, width) : systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'aim-warning-dock-top': aimDocked && dock ? dock.y - 8 - aimHeight : 0,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,

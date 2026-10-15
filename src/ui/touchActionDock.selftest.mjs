@@ -60,9 +60,9 @@ for (const viewport of VIEWPORTS) {
     if (count === 5 && viewport.measuredDock5) assert.deepEqual({ x: dock.x, y: dock.y, w: dock.w, h: dock.h }, viewport.measuredDock5, `${name}: matches the rendered dock`);
     if (count <= viewport.singleRowUpTo) assert.equal(dock.rows, 1, `${name}: ${count} controls stay one row`);
     assert.ok(dock.rows <= 3, `${name}: never more than three rows`);
-    if (viewport.height > 600 || viewport.width > 600) {
+    if (viewport.owner) {
       assert.equal(dock.tile, TOUCH_ACTION_TILE_PX, `${name}: full 48 px tiles`);
-      // Thumb reach: below the top HUD band (the 320 px phone is allowed its one free band under the minimap).
+      // Thumb reach: below the top HUD band.
       assert.ok(dock.y >= viewport.height * .35, `${name}: ${count} controls stay in the thumbs' half (${dock.y})`);
     }
   }
@@ -126,14 +126,16 @@ assert.equal(sweep(Number.NaN), 0);
 // Styles: the dock is touch-only; the desktop strip keeps its 74 x 32 text cells and its own placement.
 assert.match(css, /\.cot-vehicle-controls>button\{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:74px!important;height:32px!important;/,
   'the desktop strip is unchanged');
-const touchRules = css.match(/body\.cot-touch-layout \.cot-vehicle-controls[^{]*\{[^}]*\}/g) || [];
-assert.ok(touchRules.length >= 8, 'the dock styles are scoped to the touch layout');
-assert.match(css, /body\.cot-touch-layout \.cot-vehicle-controls\{display:grid;grid-template-columns:repeat\(var\(--hud-systems-columns,4\),var\(--hud-systems-tile,48px\)\);grid-auto-rows:var\(--hud-systems-tile,48px\);gap:6px;[^}]*overflow:visible\}/,
+const touchRules = css.match(/body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls[^{]*\{[^}]*\}/g) || [];
+assert.ok(touchRules.length >= 12, 'the dock styles are scoped to a placed touch dock');
+assert.ok(css.includes('body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}'),
+  'with no spot for a dock the touch strip keeps its former 44 px styles');
+assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls\{display:grid;grid-template-columns:repeat\(var\(--hud-systems-columns,4\),var\(--hud-systems-tile,48px\)\);grid-auto-rows:var\(--hud-systems-tile,48px\);gap:6px;[^}]*overflow:visible\}/,
   'touch tiles wrap on the dock grid and never scroll');
-assert.match(css, /body\.cot-touch-layout \.cot-vehicle-controls>button\{[^}]*width:var\(--hud-systems-tile,48px\)!important;height:var\(--hud-systems-tile,48px\)!important;min-width:var\(--hud-systems-tile,48px\)!important/);
-assert.match(css, /body\.cot-touch-layout \.cot-vehicle-controls>button\.cot-special\{inset:auto!important\}/, 'older special-action offsets never shift a tile');
-assert.match(css, /body\.cot-touch-layout \.cot-vehicle-controls \.system-status\{display:block;grid-area:auto;position:absolute;/, 'the charge badge sits in the tile corner, not the caption row');
-assert.match(css, /body\.cot-touch-layout \.cot-vehicle-controls>button \.sk\{display:none\}/, 'no keycaps on touch');
+assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls>button\{[^}]*width:var\(--hud-systems-tile,48px\)!important;height:var\(--hud-systems-tile,48px\)!important;min-width:var\(--hud-systems-tile,48px\)!important/);
+assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls>button\.cot-special\{inset:auto!important\}/, 'older special-action offsets never shift a tile');
+assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls \.system-status\{display:block;grid-area:auto;position:absolute;/, 'the charge badge sits in the tile corner, not the caption row');
+assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls>button \.sk\{display:none\}/, 'no keycaps on touch');
 assert.match(css, /conic-gradient\(rgba\(2,6,9,\.74\) calc\(var\(--cd,0\) \* 360deg\),transparent 0\)/, 'cooldowns sweep');
 for (const rule of touchRules) {
   assert.doesNotMatch(rule, /(?:^|[;{])order:|grid-auto-flow:[^;}]*dense|row-reverse|column-reverse|direction:rtl/,
