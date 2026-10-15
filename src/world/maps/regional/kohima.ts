@@ -48,22 +48,64 @@ const bungalow: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** One shop: plank walls on a low plinth, shutters across the shop front, a tin roof and its awning (`awning` deep). */
+/** A board wall's runs on a face, broken at its openings (each [u0, u1] cleared by 5 cm). */
+function boardRuns(sink: PartSink, face: Face, y0: number, y1: number, colour: Rgb, gaps: ReadonlyArray<readonly [number, number]>): void {
+  let u = -face.width / 2 + 0.05;
+  for (const [g0, g1] of [...gaps].sort((p, q) => p[0] - q[0])) {
+    if (g0 - 0.05 > u + 0.2) boardWall(sink, face, u, g0 - 0.05, y0, y1, colour);
+    u = Math.max(u, g1 + 0.05);
+  }
+  if (face.width / 2 - 0.05 > u + 0.2) boardWall(sink, face, u, face.width / 2 - 0.05, y0, y1, colour);
+}
+
+/**
+ * One shop: plank walls on a low plinth, its front open as a shopfront with the shutters hinged up as an awning
+ * (`awning` deep), a tin roof. (Props census BS-3, lane B 2026-10-14; the 10-12 plan's face pass, its first adopter: the
+ * walls were a span box with the shop front a dark plate laid on it.) The house grammar's walls, cut by the shopfront
+ * and the back door in their reveals, the counter in the front and the shutters over it, the gables boarded under the tin;
+ * the boards run on the walls between the openings.
+ */
 function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D: number, awning: number): void {
   const rng = ctx.rng;
   const plank = pick(rng, WEATHERED_PLANK), roofColour = pick(rng, TIN);
-  sink.span('stone', x - W / 2 - 0.1, -0.3, -D / 2 - 0.1, x + W / 2 + 0.1, 0.45, D / 2 + 0.1);
-  sink.span('structureWood', x - W / 2, 0.45, -D / 2, x + W / 2, 3.2, D / 2, { colour: shade(plank, 0.9) });
-  const faces: Face[] = [{ origin: [x, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { origin: [x + W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
-    { origin: [x, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { origin: [x - W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D }];
-  if (ctx.tier !== 'mobile') for (const f of faces) boardWall(sink, f, -f.width / 2 + 0.05, f.width / 2 - 0.05, 0.5, 3.15, plank);
-  // the shop front: a wide dark opening, plank shutters hinged up as an awning
-  faceBox(sink, 'dark', faces[0], 0, 1.65, 0.04, W - 1.2, 2.2, 0.02, { decor: true });
-  faceBox(sink, 'structureWood', faces[0], 0, 2.95, awning / 2 + 0.05, W - 1.0, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
-  const roof = tin(26);
-  // (the integrity check, 2026-10-12: sky through the roof's open ends) the gables boarded under the tin
-  const rg = roofGeometry(W, D, 3.2, roof);
-  sink.placed(0, x, 0, 0, () => { emitRoof(sink, rg, roof, roofColour); closeGables(sink, rg, 'structureWood', { colour: shade(plank, 0.85) }); });
+  const front = W - 1.2;
+  const openings: Opening[] = [
+    { face: 'front', storey: 0, kind: 'shopfront', u: 0, w: front, y0: 0, h: 2.2 },
+    { face: 'back', storey: 0, kind: 'door', u: W * 0.2, w: 0.85, y0: 0, h: 2.0 },
+  ];
+  const dialect: HouseDialect = {
+    window: () => {},
+    door: (s, face, o, y0) => {
+      if (o.kind !== 'shopfront') {
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0);
+        return;
+      }
+      // the counter across the front at the riser's top, the shutters hinged up from the head as the awning
+      faceBox(s, 'structureWood', face, o.u, y0 + 0.55, 0.1, o.w + 0.1, 0.06, 0.45, { colour: shade(plank, 1.05), decor: true });
+      faceBox(s, 'structureWood', face, o.u, y0 + o.h + 0.03, awning / 2 + 0.05, o.w + 0.2, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
+      for (const sx of [-1, 1]) s.member('structureWood', [face.origin[0] + face.u[0] * (o.u + sx * (o.w / 2)), y0 + o.h - 0.6, face.origin[2] + face.u[2] * (o.u + sx * (o.w / 2))],
+        [face.origin[0] + face.u[0] * (o.u + sx * (o.w / 2)) + face.out[0] * awning, y0 + o.h, face.origin[2] + face.u[2] * (o.u + sx * (o.w / 2)) + face.out[2] * awning],
+        0.05, 0.05, [face.u[0], 0, face.u[2]], { colour: shade(plank, 0.8), decor: true, exposed: true }, 0);
+    },
+  };
+  sink.placed(0, x, 0, 0, () => {
+    sink.paint = shade(plank, 0.9);
+    try {
+      const frame = buildHouse(sink, {
+        w: W, d: D, plinth: { h: 0.45, out: 0.1, bucket: 'stone' }, storeys: [{ h: 2.75, wall: 'structureWood' }],
+        // (the tea shop's hearth: a brick stack through the tin at the back)
+        roof: tin(26), roofColour, gableBucket: 'structureWood', openings, chimneys: [{ x: W * 0.28, z: -D * 0.22, sx: 0.42, sz: 0.42, above: 0.7, bucket: 'stone', cap: 'slab' }],
+        gutters: null, verge: null, reveal: 0.08, spall: null,
+      }, dialect);
+      if (ctx.tier !== 'mobile') {
+        const y0 = frame.floors[0] + 0.05, y1 = frame.eaveY - 0.05;
+        boardRuns(sink, frame.faces.front, y0, y1, plank, [[-front / 2, front / 2]]);
+        boardRuns(sink, frame.faces.back, y0, y1, plank, [[-W * 0.2 - 0.43, -W * 0.2 + 0.43]]);
+        boardRuns(sink, frame.faces.left, y0, y1, plank, []);
+        boardRuns(sink, frame.faces.right, y0, y1, plank, []);
+      }
+    } finally { sink.paint = null; }
+  });
 }
 
 /** A bazaar shop: one shop on its plot. */
@@ -121,20 +163,39 @@ const nagaHouse: RegionalBuilder = (ctx) => {
   const plot = plotAxes(ctx.info);
   const W = Math.max(5.6, Math.min(8, plot.w - (plot.turned ? 2.0 : 1.6))), D = Math.max(7, Math.min(14, plot.d - (plot.turned ? 2.2 : 0.4)));
   const plank = pick(rng, WEATHERED_PLANK);
+  // (props census BS-3, lane B 2026-10-14: its walls a span box with the door laid on; 334 triangles, 1.2 a m² of wall)
+  // the house grammar's plank walls on the stone terrace, the door cut low in the front and a shuttered hatch in a side,
+  // the thatch sweeping low over them with the front gable boarded under it; the boards run between the openings
+  const du = -W * 0.15;
+  const openings: Opening[] = [
+    { face: 'front', storey: 0, kind: 'door', u: du, w: 0.8, y0: 0, h: 1.6 },
+    { face: 'right', storey: 0, kind: 'window', u: D * 0.18, w: 0.55, y0: 0.75, h: 0.45 },
+  ];
+  const dialect: HouseDialect = {
+    window: (s2, face, o, y0) => windowUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(plank, 0.7), frameWidth: 0.06, frameOut: 0.03, bars: 'none', surround: null, sill: null,
+      shutters: { colour: shade(plank, 0.8), kind: 'plank', closed: 0.6 } }, rng, 0.2),
+    door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0),
+  };
+  // the thatch: steep, deep eaves sweeping down to near a metre off the ground
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
   alongPlot(sink, plot.turned, () => {
-    sink.span('stone', -W / 2 - 0.8, -0.4, -D / 2 - 0.8, W / 2 + 0.8, 0.5, D / 2 + 0.8);
-    sink.span('structureWood', -W / 2, 0.5, -D / 2, W / 2, 2.2, D / 2, { colour: shade(plank, 0.9) });
-    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    if (ctx.tier !== 'mobile') boardWall(sink, front, -W / 2 + 0.05, W / 2 - 0.05, 0.55, 2.15, plank);
-    doorUnit(sink, front, -W * 0.15, 0.5, 0.8, 1.6, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: null, leafKind: 'plank' });
-    // the thatch: steep, deep eaves sweeping down to near a metre off the ground
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
-    const rg = roofGeometry(W, D, 2.2, roof);
-    emitRoof(sink, rg, roof);
-    // the front gable boarded up under the thatch
-    if (rg.gable) wallPolygon(sink, 'structureWood', front, rg.gable.map(([u, y]): [number, number] => [u * 0.98, y - 0.04]), 0.06, { colour: shade(plank, 0.82) });
+    sink.paint = shade(plank, 0.9);
+    let frame;
+    try {
+      frame = buildHouse(sink, {
+        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
+      }, dialect);
+      if (ctx.tier !== 'mobile') {
+        const y0 = frame.floors[0] + 0.05, y1 = frame.eaveY - 0.05;
+        boardRuns(sink, frame.faces.front, y0, y1, plank, [[du - 0.4, du + 0.4]]);
+        boardRuns(sink, frame.faces.right, y0, y1, plank, [[D * 0.18 - 0.28, D * 0.18 + 0.28]]);
+        boardRuns(sink, frame.faces.back, y0, y1, plank, []);
+        boardRuns(sink, frame.faces.left, y0, y1, plank, []);
+      }
+    } finally { sink.paint = null; }
     // the crossed horns (kika) over the front gable
-    const z = D / 2 + roof.verge - 0.1, apex = rg.ridgeTopY;
+    const z = D / 2 + roof.verge - 0.1, apex = frame.roof.ridgeTopY;
     for (const side of [-1, 1]) {
       // (the connectivity sweep) the horns are the bargeboards run on up past the apex: each from down the verge, on the
       // thatch, so the pair cross in their heads' last third
