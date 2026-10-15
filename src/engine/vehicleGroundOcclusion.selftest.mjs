@@ -17,7 +17,7 @@ import {
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
   hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_KEY_REACH_M, GROUND_AO_KEY_MAX, keyLightReach, GROUND_AO_KEY_LIGHTS, GROUND_AO_KEY_INSIDE_M,
-  groundShadeWithKeyLights, hullBlocksKeyLight, keyLightIrradiance, GROUND_AO_KEY_SOFT_M, GROUND_AO_CORE_FULL_SNOW_M, GROUND_AO_CORE_W_SNOW_M,
+  groundShadeWithKeyLights, hullBlocksKeyLight, keyLightIrradiance, GROUND_AO_KEY_SOFT_M, GROUND_AO_CORE_GAP_SNOW_M, GROUND_AO_SNOW_SATURATE,
   GROUND_AO_BAND_H_M, GROUND_AO_BAND_PEN_M, GROUND_AO_BAND_PEN_PER_M, GROUND_AO_BAND_REACH_M, GROUND_AO_BERM_H_M, GROUND_AO_BERM_W_M,
   GROUND_AO_CORE_FLAT, GROUND_AO_CORE_GAP_M, GROUND_AO_CORE_MAX, GROUND_AO_CORE_W_M, GROUND_AO_GRIME_H_M, GROUND_AO_GRIME_LANE_M, GROUND_AO_GRIME_MAX,
   GROUND_AO_SNOW_ALBEDO, GROUND_AO_WALL_SOFT, contactCoreOcclusion, shoeBandSunShadow, snowBermGain, mapSnowWeight, vehicleGrime,
@@ -354,70 +354,49 @@ assert.ok(combineVehicleGroundOcclusion([vehicleGroundOcclusionLocal({ x: 0, y: 
 let snowReport = '';
 // ---- 5c. (2026-10-14, the engine-cs lane; media wave f1: 27 of 63 "hull hovers: no contact shadow" notes on the snow maps,
 // "bright snow beneath the track runs"; the Studio support seats every drawn run within ±3 cm of the rendered ground,
-// tools/studio-contact-gap.mjs) on snow the cap keeps the light ordinary ground keeps under its own, and the run's foot
-// stands in a groove: round 4's core, wider and over the rim's vertical reach. Ordinary ground keeps round 4/5's law to the bit.
+// tools/studio-contact-gap.mjs) on snow the cap is the r2 law's 0.85, and the run's foot keeps round 4's core with a little
+// more vertical tolerance (uneven packed snow). (2026-10-15, the blind critics on r5b: no wider groove — it drew a strip up a
+// slope — and the cap whole from two thirds of a receiver's cover.) Ordinary ground keeps round 4/5's law to the bit.
 {
   // (contact r2, 2026-10-14) the snow weight is each receiver's own snow cover, which the terrain writes into the scene
   // alpha (sceneAlpha.ts, terrain.ts cotSnowCover; pinned by sceneAlpha.selftest): the block weighs the law by it, so a
   // snowfield on any map takes it and bare ground — or any pixel that is not snowy terrain — keeps the ordinary law
   assert.ok(VEHICLE_GROUND_OCCLUSION_GLSL.includes('float snowW = uVehGroundSnow * cotSnowOf( alpha );'), 'the receiver\'s own snow cover');
+  assert.ok(VEHICLE_GROUND_OCCLUSION_GLSL.includes(`float snowS = clamp( snowW * ${GROUND_AO_SNOW_SATURATE.toFixed(4)}, 0.0, 1.0 );`)
+    && VEHICLE_GROUND_OCCLUSION_GLSL.includes(`float cap = mix( uVehGroundR5.z, ${GROUND_AO_OCC_MAX_SNOW.toFixed(4)}, snowS );`), 'the cap saturates at two thirds');
   assert.ok(!/uVehGroundSnow \* vert|, uVehGroundSnow \) \)|uVehGroundR6\.x, 0\.0, 1\.0/.test(VEHICLE_GROUND_OCCLUSION_GLSL), 'no map-wide weight left in the law');
-  // the cap by the weight; the absolute floor: snow under its cap keeps the light ordinary ground keeps under its own
   near(groundOcclusionCap(0), GROUND_AO_OCC_MAX, 1e-15, 'ordinary ground: round 4\'s cap');
-  near(groundOcclusionCap(1), GROUND_AO_OCC_MAX_SNOW, 1e-15, 'snow');
-  const floorOrdinary = (1 - GROUND_AO_OCC_MAX) * GROUND_AO_DEFAULT_ALBEDO, floorSnow = (1 - GROUND_AO_OCC_MAX_SNOW) * 0.8;
-  assert.ok(Math.abs(floorSnow / floorOrdinary - 1) < 0.1, `the same light kept in absolute terms (${floorSnow.toFixed(3)} vs ${floorOrdinary.toFixed(3)})`);
+  near(groundOcclusionCap(1), GROUND_AO_OCC_MAX_SNOW, 1e-15, 'snow'); near(groundOcclusionCap(2 / 3), GROUND_AO_OCC_MAX_SNOW, 1e-12, 'whole from two thirds');
+  assert.ok(groundOcclusionCap(1 / 3) > GROUND_AO_OCC_MAX && groundOcclusionCap(1 / 3) < GROUND_AO_OCC_MAX_SNOW, 'a third: between');
+  assert.equal(GROUND_AO_OCC_MAX_SNOW, 0.85, 'the r2 law\'s snow cap (r5\'s 0.8 lifted the snow under a belly)');
   const bellyLaw = vehicleGroundOcclusionLocal({ x: 0, y: 0, z: 0 }, UP, T, snow, false, null, groundWallSoft(1));
-  assert.ok(bellyLaw > GROUND_AO_OCC_MAX_SNOW && bellyLaw - GROUND_AO_OCC_MAX_SNOW < 0.1,
+  assert.ok(bellyLaw > GROUND_AO_OCC_MAX_SNOW && bellyLaw - GROUND_AO_OCC_MAX_SNOW < 0.05,
     `a snowy belly's own share (${bellyLaw.toFixed(3)}) a little over the snow cap: the cap a guard near the geometry's own share`);
   near(combineVehicleGroundOcclusion([bellyLaw], 10, 0, groundOcclusionCap(1)), GROUND_AO_OCC_MAX_SNOW, 1e-12, 'on snow the snow cap');
   near(combineVehicleGroundOcclusion([bellyLaw], 10, 0, groundOcclusionCap(0)), GROUND_AO_OCC_MAX, 1e-12, 'off snow round 4\'s');
-  // ordinary ground to the bit: weight 0 is round 4's cap, its core, its softening
   for (const per of [[0.2], [0.99], [0.45, 0.45], [0.3, 0.1, 0.8], []]) for (const d of [0, 10, 55, 70]) {
     assert.equal(combineVehicleGroundOcclusion(per, d, 0.2, groundOcclusionCap(0)), combineVehicleGroundOcclusion(per, d, 0.2), `round 4's combine at ${per} ${d} m`);
   }
-  for (const [, p] of UNION_POINTS) {
-    const q = { x: p[0], y: p[1], z: p[2] };
-    assert.equal(contactCoreOcclusion(q, T, null, 1, 0), contactCoreOcclusion(q, T), 'round 4\'s core off snow');
-  }
   for (let x = T.xi - 0.1; x <= T.xo + 0.1; x += 0.007) for (const y of [-0.05, 0, 0.02, 0.06]) {
-    assert.equal(contactCoreOcclusion({ x, y, z: 0.3 }, T, null, 1, 0), contactCoreOcclusion({ x, y, z: 0.3 }, T), 'to the bit');
+    assert.equal(contactCoreOcclusion({ x, y, z: 0.3 }, T, null, 1, 0), contactCoreOcclusion({ x, y, z: 0.3 }, T), 'round 4\'s core off snow, to the bit');
   }
   assert.equal(groundWallSoft(0), GROUND_AO_WALL_SOFT);
-  // the groove: round 4's core on the snow's own cover — whole within a face's few centimetres, gone by GROUND_AO_CORE_W_SNOW_M,
-  // a line not a band
+  // the core on snow: round 4's width (a line), a little more vertical tolerance; nothing past a few centimetres out
   const K = (x, z = 0, y = 0, runs = null) => contactCoreOcclusion({ x, y, z }, T, runs, 1, 1);
-  near(K(T.xo + 0.005), GROUND_AO_CORE_MAX, 1e-12, 'whole at the outer face');
-  near(K(T.xi - 0.005), GROUND_AO_CORE_MAX, 1e-12, 'and the inner');
-  near(K(T.xo + GROUND_AO_CORE_FULL_SNOW_M), GROUND_AO_CORE_MAX, 1e-12, 'whole over the groove\'s width');
-  near(K(T.xo + 0.5 * (GROUND_AO_CORE_FULL_SNOW_M + GROUND_AO_CORE_W_SNOW_M)), 0.5 * GROUND_AO_CORE_MAX, 1e-12, 'half midway');
-  assert.equal(K(T.xo + GROUND_AO_CORE_W_SNOW_M), 0, 'gone a few centimetres out');
-  assert.ok(GROUND_AO_CORE_W_SNOW_M <= 0.1 && GROUND_AO_CORE_W_SNOW_M < GROUND_AO_CONTACT_SPREAD_M && GROUND_AO_CORE_MAX < 0.8,
-    'a line, never black, inside the rim\'s branch');
-  {
-    let worst = 0;
-    for (let x = T.xo - 0.05, prev = null; x <= T.xo + 0.15; x += 0.001) { const v = K(x); if (prev !== null) worst = Math.max(worst, Math.abs(v - prev)); prev = v; }
-    assert.ok(worst < 0.03, `the groove is soft: worst 1 mm change ${worst.toFixed(4)}`);
-  }
-  assert.ok(K(T.xo + 0.005, T.fz1 + 0.01) === 0 && K(T.xo + 0.005, T.fz1 - 0.01) < GROUND_AO_CORE_MAX, 'its ends at the hull\'s');
-  // over the rim's vertical reach: snow standing 5 cm up a sunk run's face is still in the groove (round 4's core: none)
-  assert.ok(K(T.xo + 0.005, 0, 0.05) > 0.85 * GROUND_AO_CORE_MAX && contactCoreOcclusion({ x: T.xo + 0.005, y: 0.05, z: 0 }, T) === 0,
-    'the groove up a sunk run\'s face');
-  // by the run's drawn lower edge: a lifted run leaves no groove under it, a foot over the wrap's ramp none either
+  for (let x = T.xi - 0.08; x <= T.xo + 0.08; x += 0.003) assert.equal(K(x), contactCoreOcclusion({ x, y: 0, z: 0 }, T), 'round 4\'s width on snow');
+  assert.equal(K(T.xo + GROUND_AO_CORE_W_M), 0, 'gone a core width out');
+  assert.ok(K(T.xo + 0.005, 0, 0.035) > 0.2 && contactCoreOcclusion({ x: T.xo + 0.005, y: 0.035, z: 0 }, T) === 0, 'a little more vertical tolerance on snow');
+  assert.equal(K(T.xo + 0.005, 0, GROUND_AO_CORE_GAP_SNOW_M), 0, 'none past it (no strip up a slope)');
+  assert.ok(GROUND_AO_CORE_GAP_SNOW_M <= 0.08, 'centimetres');
   const lifted = { left: Array(GROUND_AO_RUN_KNOTS).fill(0.13), right: Array(GROUND_AO_RUN_KNOTS).fill(0.13) };
-  assert.equal(K(T.xo + 0.005, 0, 0, lifted), 0, 'no groove under a run 13 cm over the ground');
-  assert.equal(K(T.xo + 0.005, T.cz1 + GROUND_AO_CONTACT_GAP_M / T.sf), 0, 'none where the front wrap has lifted off');
-  // past the cap by the larger: a few centimetres out the groove, 0.3 m out the law alone (the rim's spread is untouched)
+  assert.equal(K(T.xo + 0.005, 0, 0, lifted), 0, 'no core under a run 13 cm over the ground');
   const local = (x, z, w) => vehicleGroundOcclusionLocal({ x, y: 0, z }, UP, T, snow, false, null, groundWallSoft(w));
   const at = (x, z = 0, w = 1) => combineVehicleGroundOcclusion([local(x, z, w)], 10, contactCoreOcclusion({ x, y: 0, z }, T, null, 1, w),
     groundOcclusionCap(w));
-  near(at(T.xo + 0.05), Math.max(Math.min(local(T.xo + 0.05, 0, 1), GROUND_AO_OCC_MAX_SNOW), K(T.xo + 0.05)), 1e-12, '5 cm out');
   near(at(T.xo + 0.3), Math.min(local(T.xo + 0.3, 0, 1), GROUND_AO_OCC_MAX_SNOW), 1e-12, 'the law 0.3 m out');
-  assert.ok(at(T.xo + 0.05) > at(T.xo + 0.05, 0, 0) + 0.1,
-    `the snow's groove keeps ${(1 - at(T.xo + 0.05)).toFixed(3)} of its sky 5 cm out (ordinary ground: ${(1 - at(T.xo + 0.05, 0, 0)).toFixed(3)})`);
+  assert.ok(at(0) >= at(0, 0, 0), 'never lighter under a belly on snow than on ordinary ground');
   snowReport = `the snow law on each receiver's own cover (a snowy belly keeps ${(1 - GROUND_AO_OCC_MAX_SNOW).toFixed(2)} of its sky, ordinary `
-    + `ground ${(1 - GROUND_AO_OCC_MAX).toFixed(2)}; the groove 5 cm out ${(1 - at(T.xo + 0.05)).toFixed(3)}, ordinary ${(1 - at(T.xo + 0.05, 0, 0)).toFixed(3)}; `
-    + `round 4's law to the bit off snow)`;
+    + `ground ${(1 - GROUND_AO_OCC_MAX).toFixed(2)}; the core a line on snow; round 4's law to the bit off snow)`;
 }
 
 // ---- 5b. (2026-10-10, round 3) a card's sun: all ambient only in the hull's own shadow — the ray toward the sun meets its
@@ -623,7 +602,7 @@ assert.ok(g.includes(`if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {`) && g.includ
   && (g.match(/cotVgKeyBlock\( q, vec3\( dot\( m0\.xyz, L[01] \) \+ m0\.w, dot\( m1\.xyz, L[01] \) \+ m1\.w, dot\( m2\.xyz, L[01] \) \+ m2\.w \), b0, b1, b2, sd \)/g) ?? []).length === 2,
   'each hull tests the lamps in its own frame on a lit receiver near its footprint (its signed distance passed in)');
 assert.match(g, new RegExp(`uniform vec4 uVehKeyLightP\\[ ${GROUND_AO_KEY_LIGHTS} \\];`));
-assert.ok(g.includes(`float cap = mix( uVehGroundR5.z, ${f4(GROUND_AO_OCC_MAX_SNOW)}, snowW );`)
+assert.ok(g.includes(`float cap = mix( uVehGroundR5.z, ${f4(GROUND_AO_OCC_MAX_SNOW)}, snowS );`)
   && g.includes('float occ = max( min( 1.0 - vis, mix( cap, max( cap, uVehGroundR6.z ), gearW ) ), occCore ) * fade;'),
   'the hulls\' joint share capped once (the cap a lever, GROUND_AO_OCC_MAX shipped; on the receiver\'s own snow the snow\'s — contact r2; round 5: a card in the running gear up to its cap); the core past it');
 assert.ok(g.includes('float cotVgSunShadow( vec3 q, vec3 s, vec4 b0, vec4 b1, vec4 b2 ) {')
@@ -882,11 +861,10 @@ assert.ok(CONTACT_SHADOW_GLSL.includes('vec3 cotNormalAtGuarded( vec2 uv, vec3 P
 for (const piece of [
   'uniform vec4 uVehGroundR4;', 'uniform vec4 uVehGroundR5;',
   'N = cotNormalAtGuarded( uv, P, normalize( m1.xyz ), uVehGroundR5.y > 0.5 ? dist : 1e6 );',
-  `ho *= mix( 1.0, mix( uVehGroundR5.x, 1.0, snowW ), smoothstep( 0.0, ${f4(2 * GROUND_AO_EDGE_M)}, sd ) );`,
-  `float cw = 1.0 - smoothstep( mix( ${f4(GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M)}, ${f4(GROUND_AO_CORE_FULL_SNOW_M)}, snowW ),`,
-  `mix( ${f4(GROUND_AO_CORE_W_M)}, ${f4(GROUND_AO_CORE_W_SNOW_M)}, snowW ), -laneD );`,
+  `ho *= mix( 1.0, mix( uVehGroundR5.x, 1.0, snowS ), smoothstep( 0.0, ${f4(2 * GROUND_AO_EDGE_M)}, sd ) );`,
+  `float cw = 1.0 - smoothstep( ${f4(GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M)}, ${f4(GROUND_AO_CORE_W_M)}, -laneD );`,
   `occCore = max( occCore, ${f4(GROUND_AO_CORE_MAX)} * uVehGroundR4.x * cw`,
-  `* mix( 1.0 - smoothstep( 0.0, ${f4(GROUND_AO_CORE_GAP_M)}, abs( dv ) ), vert, snowW ) );`,
+  `* ( 1.0 - smoothstep( 0.0, mix( ${f4(GROUND_AO_CORE_GAP_M)}, ${f4(GROUND_AO_CORE_GAP_SNOW_M)}, snowW ), abs( dv ) ) ) );`,
   'float beyond = abs( q.x ) - b2.w;', 'float toward = -sign( q.x ) * sR.x;',
   `float top = b0.w + cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], zHit, b3 ) + ${f4(GROUND_AO_BAND_H_M)};`,
   'float berm = uVehGroundR4.z * snowW;', `if ( berm > 0.0 && beyond > 0.0 && beyond < ${f4(GROUND_AO_BERM_W_M)} ) {`,
@@ -902,11 +880,15 @@ assert.ok(g.indexOf('float sd = dOut') < g.indexOf('if ( lane > 0.0 ) {') && g.i
 // snow), the grime never on a snow map (the map's lever)
 const u4 = createVehicleGroundOcclusionUniforms();
 updateVehicleGroundOcclusionUniforms(u4, [], true, 0.8);
-assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 1, 1, 0], 'a snow map: the berm\'s lever, no grime');
+assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 0, 0, 0], 'a snow map: the core, no band, no berm (2026-10-15: shipped off), no grime');
 assert.deepEqual(u4.uVehGroundR5.value.toArray(), [GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0],
   'the softening, the guard and the shipped cap on any map (the snow\'s by each receiver\'s cover in the GLSL)');
 updateVehicleGroundOcclusionUniforms(u4, [], true, 0.25);
-assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 1, 1, 1], 'grass: the grime, the berm\'s lever (no snow, no berm)');
+assert.deepEqual(u4.uVehGroundR4.value.toArray(), [1, 0, 0, 1], 'grass: the core and the grime; the band and the berm shipped off');
+globalThis.__LIGHT_TUNE = { GROUND_AO_BAND: 1, GROUND_AO_BERM: 1, GROUND_AO_BLEND: 1 };
+updateVehicleGroundOcclusionUniforms(u4, [], true, 0.25);
+assert.ok(u4.uVehGroundR4.value.y === 1 && u4.uVehGroundR4.value.z === 1 && u4.uVehGroundR6.value.w === 1, 'their levers bring them back (A/B)');
+delete globalThis.__LIGHT_TUNE; updateVehicleGroundOcclusionUniforms(u4, [], true, 0.25);
 assert.deepEqual(u4.uVehGroundR5.value.toArray(), [GROUND_AO_WALL_SOFT, 1, GROUND_AO_OCC_MAX, 0], 'grass: the softening, the guard and the shipped cap');
 // (round 4, the other side) on snow the cap rises and the broad share stays whole; on grass, sand and dark ground they are the
 // round's (contact r2: by the receiver's own snow cover)
@@ -995,10 +977,10 @@ assert.ok(g.indexOf('float cotVehicleContactSample(') > g.indexOf('float cotVehi
 // the levers: shipped (no cast off snow, no shoe skip, the gear's cap, the blend on); snow's cast
 const u5 = createVehicleGroundOcclusionUniforms();
 updateVehicleGroundOcclusionUniforms(u5, [], true, 0.25);
-assert.deepEqual(u5.uVehGroundR6.value.toArray(), [1, 0, GROUND_AO_GEAR_CAP, 1],
-  'the cast\'s lever (on the receiver\'s own snow: contact r2), no skip, the gear cap, the blend');
+assert.deepEqual(u5.uVehGroundR6.value.toArray(), [1, 0, GROUND_AO_GEAR_CAP, 0],
+  'the cast\'s lever (on the receiver\'s own snow: contact r2), no skip, the gear cap; the blend shipped off (2026-10-15)');
 updateVehicleGroundOcclusionUniforms(u5, [], true, 0.8);
-assert.deepEqual(u5.uVehGroundR6.value.toArray(), [1, 0, GROUND_AO_GEAR_CAP, 1], 'the same on a snow map');
+assert.deepEqual(u5.uVehGroundR6.value.toArray(), [1, 0, GROUND_AO_GEAR_CAP, 0], 'the same on a snow map');
 // the wiring: the blend on the hulls' own pixels after their grime, before the ground; the ground's shade as a colour
 assert.ok(post.includes('vgW = cotVehicleContactSample( vgP, vgAt, vgQ, vgRgb );')
   && post.indexOf('vgW = cotVehicleContactSample(') > post.indexOf('texel.rgb *= cotVehicleGrime(')
