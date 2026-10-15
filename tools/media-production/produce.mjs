@@ -4,18 +4,18 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createCaptureLock } from '../capture-lock.mjs';
+import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
 import { MAP_IDS } from '../../src/world/maps/catalog.ts';
 import { waterScene, frameScene, MAP_SUN_MODES } from './recipes.mjs';
 import { productionPreset } from '../../src/game/studioProduction.ts';
 import { STUDIO_TIMES } from '../../src/game/studioLight.ts';
 import { digest, sourceDigest, verifyFile, contactSheet, writeReviewPage, promoCard, saveReviewCapture } from './pipeline.mjs';
 
-const help = `npm run media:capture -- --task=all|maps|shore|landscape|settlements|video --maps=id,id --times=${STUDIO_TIMES.join(',')} --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0\nMaps task: --sun=${MAP_SUN_MODES.join('|')} sets the sun's bearing against each overview camera (back = backlit). --port=5378 serves the capture on another port.`;
+const help = `npm run media:capture -- --task=all|maps|shore|landscape|settlements|video --maps=id,id --times=${STUDIO_TIMES.join(',')} --formats=landscape,portrait,square --out=shots/production-current --resume=true\nOptional: --scene=scene.json OR --preset=steel-pursuit|desert-crossfire|coast-recon --fps=24|30|60 --frames=240 --width=1920 --start-ms=0\nMaps task: --sun=${MAP_SUN_MODES.join('|')} sets the sun's bearing against each overview camera (back = backlit). --port=5378 serves the capture on another port. --ticket-stamp=<ms> joins the capture queue at that place.`;
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
 const args = Object.fromEntries(process.argv.slice(2).map(arg => {
   const match = /^--([a-z-]+)=(.+)$/.exec(arg);
-  if (!match || !['task','maps','out','times','width','fps','frames','resume','scene','formats','preset','start-ms','sun','port'].includes(match[1])) throw Error(help);
+  if (!match || !['task','maps','out','times','width','fps','frames','resume','scene','formats','preset','start-ms','sun','port','ticket-stamp'].includes(match[1])) throw Error(help);
   return [match[1], match[2]];
 }));
 const task = args.task ?? 'all';
@@ -138,7 +138,8 @@ async function films(page, row) {
   }
 }
 const lock=createCaptureLock(); let server,browser;
-await lock.acquire(45*60*1000);
+// --ticket-stamp joins the capture queue at that place, as cinema.mjs's does (the media lane's slot, one ticket at a time)
+await lock.acquire(45*60*1000, args['ticket-stamp'] ? { ticket: ticketAt(Number(args['ticket-stamp'])) } : undefined);
 let interrupted=false;
 const stop=()=>{interrupted=true;void browser?.close().catch(()=>{});};
 process.once('SIGINT',stop);process.once('SIGTERM',stop);

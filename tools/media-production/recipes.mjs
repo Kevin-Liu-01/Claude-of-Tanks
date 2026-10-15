@@ -20,9 +20,15 @@ export function sunForCamera(camera, mode = 'map') {
 export function mapScene(world, timeOfDay = 'day', sun = 'map') {
   // Saltwind's old inland-facing overview cropped its defining bay out of the
   // picture. Look seaward from the village ridge for public map artwork.
-  const { pos, look } = world.mapId === 'saltwind'
-    ? { pos: [120, 170, 280], look: [-260, 2, -15] }
-    : world.config.shot;
+  // Fjord's village now stands on the shore east of its authored overview camera,
+  // which frames an empty field (2026-10-14): the artwork looks across the village
+  // from above the west road, a house near-left, the fjord, its headland and the
+  // peaks behind (media's interim framing until fjord.ts's shot is re-authored).
+  const OVERVIEWS = {
+    saltwind: { pos: [120, 170, 280], look: [-260, 2, -15] },
+    fjord: { pos: [80, 26, -130], look: [470, 0, 120] },
+  };
+  const { pos, look } = OVERVIEWS[world.mapId] ?? world.config.shot;
   const seat = ([x, y, z]) => [x, world.heightField.getHeightAt(x, z) + y, z];
   const camera = { pos: seat([pos[0],pos[1]+24,pos[2]]), lookAt: seat(look), fov: 55 };
   const light = sunForCamera(camera, sun);
