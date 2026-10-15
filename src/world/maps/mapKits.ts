@@ -48,6 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
+import { buildDriftLog, buildMooringBuoy, driftCoastForMap, type DriftCoast } from './waterside.ts';
 import { buildGangway, buildJetty, buildRivaSteps, ironBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
@@ -185,7 +186,7 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
-> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; jettyForm?: JettyForm };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; jettyForm?: JettyForm; coast?: DriftCoast };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -1141,7 +1142,7 @@ export function dressMapExtras({
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees), jettyForm: jettyFormForMap(mapId ?? '') };
+    trunks: trunksOf(trees), jettyForm: jettyFormForMap(mapId ?? ''), coast: driftCoastForMap(mapId ?? '') };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1470,6 +1471,7 @@ function addCoastalDriftwood(
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
   strand: StrandContext | null = null,
+  coast: DriftCoast = 'breton',
 ): void {
   const driftCount = Math.round(lake.r * 0.14);
   // Round 56 (2026-09-24): on a shore that authors a shelf the logs lie in the strand's wrack band (strandWrack.ts)
@@ -1486,8 +1488,11 @@ function addCoastalDriftwood(
     if (!isDressingPointClear(heightField, x, z, 470, 6)) continue;
     const length = 1.6 + rng() * 2.6;
     const yaw = angle + Math.PI / 2 + (rng() - 0.5) * 0.8;
-    const log = box(length, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
-    jitterUV(log, rng);
+    // #16 r2 (Lane C, 2026-10-14): a sea-worn stem of the coast (waterside.ts), its form from the four draws the old
+    // box's UV jitter took; bleached in the painted bucket (the timber one where a kit has none)
+    const stemR = (0.16 + rng() * 0.12 + 0.16 + rng() * 0.12) / 4;
+    const v = [rng(), rng(), rng(), rng()];
+    const log = buildDriftLog(coast, length, stemR, v);
     if (onStrand) {
       const band = strandBandAt(heightField, lake, angle);
       if (!band) { log.dispose(); continue; }
@@ -1505,7 +1510,9 @@ function addCoastalDriftwood(
     _groundQuat.setFromUnitVectors(_groundRight, _groundNormal);
     log.applyQuaternion(_groundQuat);
     log.translate(x, pose.y, z);
-    buckets.wood.push(log);
+    log.userData.driftwood = true;
+    if (buckets.baked) buckets.baked.push(log);
+    else { log.deleteAttribute('color'); buckets.wood.push(log); }
     groundingReceipts?.push({
       kind: 'driftwood', x, y: pose.y, z, relief: pose.relief,
       baseClearance: -0.03, start: pose.start, end: pose.end,
@@ -1519,6 +1526,7 @@ function addCoastalBuoys(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  coast: DriftCoast = 'breton',
 ): void {
   const buoyCount = big ? 5 : 2;
   for (let i = 0; i < buoyCount; i++) {
@@ -1527,12 +1535,15 @@ function addCoastalBuoys(
     const x = lake.x + Math.cos(angle) * radius;
     const z = lake.z + Math.sin(angle) * radius;
     if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
-    const buoy = new THREE.SphereGeometry(0.32 + rng() * 0.12, 8, 6);
-    scaleUV(buoy, 1.5, 1);
+    // #16 r2 (Lane C, 2026-10-14): a mooring buoy of the coast's paint on its chain (waterside.ts), its scheme, chain
+    // and list from the four draws the old sphere's UV jitter took
+    const r = 0.32 + rng() * 0.12;
+    const v = [rng(), rng(), rng(), rng()];
     const waterline = heightField.getWaterSurfaceHeightAt?.(x, z)
       ?? heightField.getHeightAt(x, z) + (heightField.getWaterDepthAt?.(x, z) ?? 0);
-    buoy.translate(x, waterline + 0.16, z);
-    buckets.plaster.push(jitterUV(buoy, rng));
+    const buoy = buildMooringBuoy(coast, r, v, x, waterline, heightField.getHeightAt(x, z), z);
+    if (buckets.baked) buckets.baked.push(buoy);
+    else { buoy.deleteAttribute('color'); buckets.plaster.push(buoy); }
   }
 }
 
@@ -1715,7 +1726,7 @@ function addCoastalJetty(
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks, jettyForm,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks, jettyForm, coast = 'breton',
 }: FocusedDressingContext): void {
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
   // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
@@ -1726,8 +1737,8 @@ function dressCoastalShore({
   for (const lake of L.lakes || []) {
     const big = lake.r >= 110;
     addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore, boats, trunks);
-    addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand);
-    addCoastalBuoys(lake, big, heightField, rng, buckets);
+    addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand, coast);
+    addCoastalBuoys(lake, big, heightField, rng, buckets, coast);
     if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated, boats, jettyForm);
   }
 }
