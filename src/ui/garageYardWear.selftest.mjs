@@ -5,11 +5,13 @@ import {
   GARAGE_HARDSTAND_STYLES,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
+  garageHardstandDetailKind,
   garageHardstandKind,
   garageHardstandNormal,
   garageHardstandNormalKind,
 } from './garageYardWear.ts';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
+import { garageHardstandDetailData } from './garageHardstandProgram.ts';
 import { GARAGE_PLATFORM_GEOMETRY } from '../game/garagePresentationPose.ts';
 
 // 2026-10-10 (the owner: "more detailed ... better textures"; wave 357: "giant bevelled castle flagstones", "car-park
@@ -75,11 +77,27 @@ assert.match(kit, /if \(!terrace\.label\.startsWith\('fleet-service-'\)\) contin
   'worked ground lies on the fleet exhibit pads: the core on the datum, the margin draped');
 assert.match(kit, /const PAD_RINGS = \[\[0, 1\], \[0\.5, 1\], \[0\.68, 1\], \[0\.84, 0\.45\], \[1, 0\]\] as const;/,
   'each pad thins out over its outer third');
-assert.match(kit, /const edge = Math\.min\(14\.5 - Math\.abs\(x\), 12 - Math\.abs\(z\)\) \/ GARAGE_HARDSTAND_FEATHER_M;/,
+assert.match(kit, /const edge = \(APRON_HALF_M - Math\.max\(Math\.abs\(x\), Math\.abs\(z\)\)\) \/ GARAGE_HARDSTAND_FEATHER_M;/,
   'the apron thins out over its outer metres instead of stopping at a cut');
+// GA.03 (the garage critic panel, 2026-10-14: "the graded pad ends in a hard diagonal with raw grass or scrub in the lower
+// left"): the canonical camera stands about 18 m out on the view axis and its frame's foot meets the ground about 13.5 m
+// short of the turntable, 3.3 m either side of the axis; the apron must hold those points (and a larger hull's camera,
+// 3 m further out) a full feather inside its edge
+{
+  const half = Number(kit.match(/const APRON_HALF_M = (\d+(?:\.\d+)?);/)?.[1]);
+  assert.ok(half > 0, 'the apron names its half-size');
+  const toWorld = (side, depth) => [Math.SQRT1_2 * (side - depth), -Math.SQRT1_2 * (side + depth)];
+  for (const [side, depth] of [[-3.3, -13.5], [3.3, -13.5], [-4, -16.5], [4, -16.5], [-15.8, 4.9], [15.8, 4.9]]) {
+    const [x, z] = toWorld(side, depth);
+    assert.ok(half - Math.max(Math.abs(x), Math.abs(z)) >= 2.4 - 1e-6,
+      `the frame's ground at view (${side}, ${depth}) lies on worked ground (world ${x.toFixed(1)}, ${z.toFixed(1)})`);
+  }
+  assert.match(kit, /uvs\.setXY\(index, positions\.getX\(index\) \/ 29 \+ 0\.5, 0\.5 - positions\.getZ\(index\) \/ 24\);/,
+    'the larger apron keeps the 29 x 24 m texel layout (read mirrored beyond it)');
+}
 assert.match(kit, /const rise = 1 - THREE\.MathUtils\.smoothstep\(ground, 0\.18, APRON_RISE_LIMIT_M - 0\.01\);/,
   'the apron is gone before the ground climbs to the rise limit, so no crossing line shows on a slope');
-assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
+assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength,\s*hardstandDetail\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
   'the graded floor blends over the terrain on its own keyed program after the cascade hook, with the shared grain');
 assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
 const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
@@ -90,6 +108,32 @@ assert.match(program, /diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, vHardstandB
 // multiplies into the yard's 35 px/m layout, neutral on average so it fades with distance
 assert.match(program, /export const GARAGE_HARDSTAND_GRAIN_TILE_M = 2;/, 'the grain repeats every 2 m');
 assert.match(program, /diffuseColor\.rgb \*= mix\(vec3\(1\.0\), texture2D\(hardstandGrain, vHardstandGround \* \$\{/, 'the grain multiplies into the albedo in the ground plane');
+// GA.03 (the garage critic panel, 2026-10-14: "a detail layer per ground type ... a detail normal map and 16x anisotropic
+// filtering"): every floor folds its ground type's relief into the albedo and the normal in the ground plane, on the same
+// program everywhere; the reliefs are level and x1 on average (their mips fade out with distance)
+assert.match(program, /vec4 hardstandDetailTexel = texture2D\(hardstandDetail, vHardstandGround \* hardstandDetailParams\.x\);/,
+  'the detail is sampled in the ground plane at its own scale');
+assert.match(program, /normal = normalize\(normal \+ vHardstandAxisX \* hardstandSlope\.x \+ vHardstandAxisZ \* hardstandSlope\.y\);/,
+  'the detail relief tilts the floor normal');
+assert.match(kit, /const floorAnisotropy = \(engineCtx\.anisotropy \?\? 4\) >= 8 \? 16 : \(engineCtx\.anisotropy \?\? 4\);/,
+  'the floor filters at 16x where the device allows it');
+assert.equal(garageHardstandDetailKind('slab-urban'), 'concrete');
+assert.equal(garageHardstandDetailKind('earth-sand'), 'sand');
+assert.equal(garageHardstandDetailKind('earth-snow'), 'snow');
+assert.equal(garageHardstandDetailKind('earth-slag'), 'gravel');
+assert.equal(garageHardstandDetailKind('earth-dust'), 'earth');
+for (const kind of ['concrete', 'earth', 'sand', 'snow', 'gravel']) {
+  const data = garageHardstandDetailData(kind);
+  let r = 0, g = 0, b = 0, spread = 0;
+  const n = data.length / 4;
+  for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
+  r /= n; g /= n; b /= n;
+  for (let i = 0; i < data.length; i += 4) spread += Math.abs(data[i] - 128) + Math.abs(data[i + 1] - 128);
+  spread /= n;
+  assert.ok(Math.abs(r - 128) < 3 && Math.abs(g - 128) < 3, `${kind}: the relief is level on average (${r.toFixed(1)}, ${g.toFixed(1)})`);
+  assert.ok(Math.abs(b - 128) < 4, `${kind}: the albedo factor is x1 on average (${b.toFixed(1)})`);
+  assert.ok(spread > 4, `${kind}: the relief carries real slopes (${spread.toFixed(1)})`);
+}
 const stage = await readFile(new URL('./garageStage.ts', import.meta.url), 'utf8');
 assert.match(stage, /addOutdoorSeed\('hardstand-graded'/, 'the stage compiles the graded floor\'s program with the outdoor seeds');
 // 2026-10-11, waves 393 and 398 ("repeated tread decals", "confetti speckle"): curved compacted wheel paths and clumped
