@@ -2588,9 +2588,10 @@ export function addGarageFacilityDetails({
           const at = cameraPoint(side, depth), toward = cameraPoint(side, depth - 1);
           return { x: at.x, z: at.z, baseY: groundAtWorld(at.x, at.z), yaw: Math.atan2(toward.x - at.x, toward.z - at.z) };
         };
-        const bag = new THREE.Color(0xa88468), bagDark = new THREE.Color(0x8c6c54);
+        // pale khaki against the red earth (ticket 6: reddish bags were "barely legible" on Redrock's ground)
+        const bag = new THREE.Color(0xc4b48e), bagDark = new THREE.Color(0xa99a76);
         addGuardTower(facing(towerSide, towerDepth), bag, new THREE.Color(0x5e4632));
-        const fill = new THREE.Color(0xa47658), mesh = new THREE.Color(0x56514a);
+        const fill = new THREE.Color(0xbba57e), mesh = new THREE.Color(0x6a6660);
         for (const side of [-19.6, -11.4]) { // a HESCO cell either side of the tower
           const cell = facing(side, towerDepth + 0.4);
           clusterBox(cell, 0, 0, 0.68, 1.04, 1.36, 1.04, fill, 'painted');
@@ -2599,7 +2600,7 @@ export function addGarageFacilityDetails({
         }
         for (const [from, to] of [[-26.0, -20.4], [-10.6, -6.0]] as const) {
           const run = facing((from + to) / 2, towerDepth + 0.4), length = to - from;
-          for (let course = 0; course < 4; course += 1) {
+          for (let course = 0; course < 6; course += 1) {
             const bags = Math.floor(length / 0.58);
             for (let k = 0; k < bags; k += 1) {
               const l = -length / 2 + 0.29 + k * 0.58 + (course % 2) * 0.29;
