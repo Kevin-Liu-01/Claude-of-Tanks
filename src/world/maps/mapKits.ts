@@ -30,8 +30,6 @@ import {
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
-// #24 r2 (Lane C, 2026-10-14): the rail yard's stores in their members
-import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
 import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
 import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock, type RollingStockKind } from './rollingStock.ts';
@@ -49,6 +47,7 @@ import {
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
+import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts'; // #24 r2: the yard's stores
 import { dressSarajevo } from './sarajevoStreets.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
