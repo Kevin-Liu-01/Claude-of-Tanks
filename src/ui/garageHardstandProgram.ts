@@ -81,7 +81,7 @@ export function garageHardstandGrainTexture(anisotropy = 4): THREE.DataTexture |
  * low-frequency blotch ... a detail layer per ground type ... a detail normal map and 16x anisotropic filtering"): one
  * tileable relief per kind of ground, sampled in the ground plane at a real scale and folded into both the albedo and the
  * normal, so the floor holds its surface at the camera's grazing angle:
- *   - concrete: a broomed finish (fine streaks one way), exposed aggregate and pits, a crazing network of hairlines;
+ *   - concrete: a fine float finish, exposed aggregate and pits, a crazing network of hairlines;
  *   - earth: compacted fines with embedded pebbles and grit, small desiccation cracks;
  *   - sand: wind ripples with sharp lee crests over loose grains;
  *   - snow: wind-cut sastrugi ridges and hollows, a fine glitter of crystals;
@@ -208,9 +208,10 @@ export function garageHardstandDetailData(kind: GarageHardstandDetailKind): Uint
   const pxPerM = S / GARAGE_HARDSTAND_DETAIL[kind].tileM;
   if (kind === 'concrete') {
     // the broomed finish: streaks along x (long, thin cells), then a faint trowel undulation
-    // (only fine scales: the yard's own canvas carries the broad tone; a coarse octave here read as soft blotches)
-    octave(height, 8, 128, 0.22);
-    octave(height, 16, 256, 0.12);
+    // (only fine scales: the yard's own canvas carries the broad tone; a coarse octave here read as soft blotches; and
+    // isotropic: the broom finish's long streak cells read as stretched streaks at grazing angles, the re-judge)
+    octave(height, 64, 64, 0.14);
+    octave(height, 128, 128, 0.08);
     octave(height, 32, 32, 0.1);
     octave(albedo, 32, 32, 0.035);
     // exposed aggregate and pits: many small, few larger, light and dark stones flush with the surface
