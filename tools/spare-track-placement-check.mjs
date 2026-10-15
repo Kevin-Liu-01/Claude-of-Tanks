@@ -1649,9 +1649,22 @@ function classifyRun(b) {
 
 // ------------------------------------------------------------------ coverage (UNCOVERED)
 // Parts in a spare-link bucket that are not links: allowlisted with their reason (the census's track-material non-links).
+// Each entry names the authoring function and file (any line), read 2026-10-15 off the census's non-link sites.
 const NON_LINK_TRACK_PARTS = [
-  { site: /t90\.ts|t72|kontakt/i, why: 'K-5 / Kontakt ERA tiles drawn in the track steel (not links)' },
-  { site: /chieftain/i, why: 'Chieftain corner flaps and skirt plates in the track steel (not links)' },
+  { site: /^abramsBustleRackTurretStage\d@profiles\/abrams\.ts:/, why: 'Abrams bustle-rack dressing in the track steel' },
+  { site: /^addRoofConformingPlate@profiles\/abrams\.ts:/, why: 'Abrams roof-conforming plates' },
+  { site: /^turretHatch@profiles\/abrams\.ts:/, why: 'Abrams hatch rings' },
+  { site: /^(tejasRoofKit\w*|buildTejasFamilyTurretCourse\d+)@profiles\/abrams\.ts:/, why: 'Tejas-family roof rings and fittings' },
+  { site: /^addT90RadialArmorBelt@profiles\/t90\.ts:/, why: 'T-90 radial ERA belt (K-5 cassettes)' },
+  { site: /^addTerminatorStation@profiles\/afvFamily\.ts:/, why: 'BMPT station ring base' },
+  { site: /^build(BV|Kursk)RunningGearAndSkirts@profiles\/ukraine\.ts:/, why: 'Ukrainian skirt strips' },
+  { site: /^buildKurskHull@profiles\/ukraine\.ts:/, why: 'Kontakt-5 glacis cassettes' },
+  { site: /^buildLeo2A5HullStage[18]@profiles\/leopard\.ts:/, why: 'Leopard 2A5 board slivers and deck panel' },
+  { site: /^buildT80Line(HullStage2|RunningGearStage1)@profiles\/t80\.ts:/, why: 'T-80 skirt panels and bow flaps' },
+  { site: /^buildType10Native2026HullStage1@modern3\.ts:/, why: 'Type 10 idler rims' },
+  { site: /^chieftain(5|Mk10)Build@profiles\/uk\.ts:/, why: 'Chieftain corner flaps' },
+  { site: /^merkava(BasketTurretStage8|ChassisHullCourse\d+)@profiles\/merkava\.ts:/, why: 'Merkava basket curtains and rack voids' },
+  { site: /^turretLoadout@profiles\/nationalPoland\.ts:/, why: 'PT-91 bustle stowage blocks' },
 ];
 function coverageOf(res) {
   const out = [];
@@ -1676,19 +1689,25 @@ function coverageOf(res) {
   return out;
 }
 
-/** Source lint: a spare-link mention in profile code that is neither a registered helper call nor allowlisted. */
-const LINT_RE = /spare.?(track|link)|track.?(link|shoe)/i;
-const LINT_OK = /FITTINGS\.spareTrackLinks|spareTrackStrip|withSpareTrackRun|spareTrackRunTag|spareTrackPart|spareTrackLinksPerRack|\bspareTracks\b|designFamily|'spareTrackLinks'|spare.?(track|link)s?\s*[:=]\s*(true|false|\d)/;
+/**
+ * Source lint: a spare-link helper in profile code (a function named for spare links or track links, defined or
+ * called) that is not one of the registered placement routes. Loose parts in the *Track buckets are caught at run time
+ * (coverage above); this catches a new hand-drawn helper before it ever builds.
+ */
+const LINT_RE = /\b\w*spare_?(link|track)\w*\s*\(/i;
+const LINT_OK = /^(FITTINGS\.spareTrackLinks|spareTrackStrip|withSpareTrackRun|spareTrackRunTag|spareTrackPart|fittingSpareTrackLinks)$/;
+const LINT_FILES_OK = new Map([['arieteXPhotoDraft.ts', 'retired photo draft, built only by its own selftests']]);
 function sourceLint() {
   const dir = path.join(WT, 'src/vehicles/profiles');
   const out = [];
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.ts')).sort()) {
-    const L = fs.readFileSync(path.join(dir, f), 'utf8').split('\n');
-    L.forEach((line, i) => {
+    if (LINT_FILES_OK.has(f)) continue;
+    fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach((line, i) => {
       const code = line.replace(/\/\/.*$/, '').replace(/^\s*\*.*$/, '');
-      if (!LINT_RE.test(code) || LINT_OK.test(code)) return;
-      if (/^\s*(import|export)\b/.test(code)) return;
-      out.push(`profiles/${f}:${i + 1}: ${code.trim().slice(0, 100)}`);
+      for (const m of code.matchAll(/\b([\w.]*spare_?(?:link|track)\w*)\s*\(/gi)) {
+        if (LINT_OK.test(m[1].replace(/^KIT\./, ''))) continue;
+        out.push(`profiles/${f}:${i + 1}: ${m[1]}(`);
+      }
     });
   }
   return out;
