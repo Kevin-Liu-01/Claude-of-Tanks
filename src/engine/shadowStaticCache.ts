@@ -37,7 +37,7 @@
 import * as THREE from 'three';
 import type { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { shadowCasterCascadesOf, shadowCasterDynamicMaskOf } from './renderLayers.ts';
-import { csmSliceFromM, csmSliceToM } from './shadowCascadeFade.ts';
+import { csmSliceFromM, csmSliceToM } from './renderLayers.ts'; // (the fade law, shadowCascadeFade.ts, through its one import path)
 
 type ShadowRender = (lights: THREE.Object3D[], scene: THREE.Scene, camera: THREE.Camera) => void;
 

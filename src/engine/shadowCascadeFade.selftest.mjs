@@ -38,6 +38,17 @@ assert.match(cache, /csmSliceFromM\(from, 0, span, csm\.fade\)/, 'the held poses
 assert.match(cache, /csmSliceToM\(to, 0, span, csm\.fade\)/, 'the held poses read it (far end)');
 assert.doesNotMatch(cache + here('./shadowCasterProfiles.ts'), /0\.125 \* (x|from|to) \* /, 'no second copy of three\'s quadratic law');
 
+// ---- one import path (2026-10-15): renderLayers.ts re-exports the law; imported from three chunks of different reach it
+// had become a chunk of its own, one up-front request over the game page's budget
+{
+  const { readdirSync } = await import('node:fs');
+  const dir = new URL('../', import.meta.url);
+  const importers = [];
+  const walk = (u) => { for (const e of readdirSync(u, { withFileTypes: true })) { const c = new URL(e.name + (e.isDirectory() ? '/' : ''), u); if (e.isDirectory()) walk(c); else if (/\.ts$/.test(e.name) && /from '\.\/shadowCascadeFade\.ts'|from '\.\.\/engine\/shadowCascadeFade\.ts'/.test(readFileSync(c, 'utf8'))) importers.push(e.name); } };
+  walk(dir);
+  assert.deepEqual(importers, ['renderLayers.ts'], 'only renderLayers.ts imports the law (the rest import it from there)');
+}
+
 // ---- High's table
 assert.deepEqual([...PRESETS.high.shadowSplitsM], [30, 89, 320]);
 assert.deepEqual([...PRESETS.high.shadowMapSizes], [2048, 2048, 4096, 1024]);
