@@ -4506,12 +4506,21 @@ export function* attachTankDecorationsSteps(
         return false;
       }
 
+      // critic panel 2026-10-15 (owner-markup round): stock a builder removed and reserved with its buckets (fieldChest.ts
+      // reserveDecorVolume) still sets those buckets' reach, so the sweep and every station measured from it stay put
+      const reserved = (turretG.userData.decorReservedBoxes ?? []) as DecorReservedBox[];
+      const toObject = new THREE.Matrix4(), held = new THREE.Box3(), heldMax = new THREE.Vector3();
       function appendTargetSamples(object: SurfaceMesh): void {
         if (belongsToGunRig(object)) return;
         if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
         if (!object.geometry.boundingBox) return;
         bb.copy(object.geometry.boundingBox);
         m.multiplyMatrices(inv, object.matrixWorld);
+        for (const [min, max, buckets] of reserved) {
+          if (!buckets?.includes(object.name)) continue;
+          toObject.copy(m).invert();
+          bb.union(held.set(v.fromArray(min), heldMax.fromArray(max)).applyMatrix4(toObject));
+        }
         for (const x of [bb.min.x, bb.max.x]) {
           for (const y of [bb.min.y, bb.max.y]) {
             for (const z of [bb.min.z, bb.max.z]) {

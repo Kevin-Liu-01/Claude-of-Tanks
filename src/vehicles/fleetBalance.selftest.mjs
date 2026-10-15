@@ -209,7 +209,6 @@ const missileVelocityByVehicle = new Map([
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([
-  ['kurganets25_x/Bulat guided missile', 240],
   ['object695_x/9M-695 Blast', 380], ['ztz100_prototype/HJ-P9 Blast', 320],
 ]);
 for (const id of SAVED_TANK_IDS) {

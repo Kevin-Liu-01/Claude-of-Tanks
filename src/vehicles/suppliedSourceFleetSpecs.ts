@@ -127,22 +127,14 @@ function applySourceArmament(spec: FleetTankSpec): void {
   applyFleetLauncherMuzzles(spec);
 }
 
-/** The supplied Epokha turret has four Kornet and eight visible Bulat tubes.
- * Keep the primary balance channel and expose both launchers in three slots.
- * Bulat's 70 mm nominal caliber is game tuning: the publisher gives no exact
- * caliber. Its soft-target effect reuses the peer HE round, with the existing
- * guided channel's motion, cycle and sound; this is not a thermobaric model. */
+/** The supplied Epokha turret's four Kornet tubes, two in each twin housing on the turret flanks: the primary balance
+ * channel and the Kornet launcher in two slots. Coordinator ruling 2026-10-15 (owner markup 10-14): the source's
+ * rear-roof bundle of eight Bulat tubes is not on the real Kurganets-25, so the bundle and its Bulat channel are gone. */
 function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   const guided = spec.gun.shells.find(round => round.guided);
-  const highExplosive = spec.gun.shells.find(round => round.type === 'HE' && !round.guided);
-  if (!guided || !highExplosive) throw new Error('Kurganets requires both declared missile and HE balance channels');
+  if (!guided) throw new Error('Kurganets requires its declared missile balance channel');
   const kornet = { ...structuredClone(guided), name: 'Kornet guided missile', count: 4, launcherTubes: 4 };
-  const bulat = {
-    ...structuredClone(highExplosive), name: 'Bulat guided missile', caliberMm: 70,
-    guided: true, count: 8, launcherTubes: 8, velocityMps: guided.velocityMps,
-    reloadS: guided.reloadS, soundProfile: guided.soundProfile,
-  };
-  spec.gun.shells = [spec.gun.shells[0], kornet, bulat];
+  spec.gun.shells = [spec.gun.shells[0], kornet];
 }
 
 /** The supplied K21 carries two auxiliary launch canisters. Missile damage,

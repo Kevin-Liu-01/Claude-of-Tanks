@@ -185,7 +185,7 @@ function addKurganetsTurret(P: TankBuilderPort): void {
         const a = Math.PI / 8 + i / 8 * Math.PI * 2;
         // (in the turret's own paint: a dark bucket reaching this low would lower the turret's skirt line the decor's
         // sweep guard reads over the whole bustle, and push the hull's rear loads off their rack)
-        P.add('turret', box(.022, .26, .022), Math.sin(a) * 1.017, .172, Math.cos(a) * 1.017, -Math.cos(a) * .35, 0, Math.sin(a) * .35);
+        P.add('turret', box(.022, .26, .022), Math.sin(a) * 1.017, .173, Math.cos(a) * 1.017, -Math.cos(a) * .35, 0, Math.sin(a) * .35);
     }
     addKurganetsTurretSides(P);
     addKurganetsOpticalCase(P);
@@ -197,39 +197,14 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     localTurret(P, 'turretDetail', box(.729, .055, 1.28), -.648, 3.126, -2.040);
     localTurret(P, 'turretDetail', box(.443, .022, .651), .033, 3.15, -1.917);
     localTurret(P, 'turretDetail', cylY(.20, .20, .07, 24), .577, 3.114, -1.433);
-    addKurganetsBulatLauncher(P);
-}
-/**
- * The rear-roof launcher of the eight Bulat missiles (suppliedSourceFleetSpecs.ts applyKurganetsLaunchers: shell slot 2,
- * eight tubes; fleetLauncherMuzzles.ts launches them from these mouths). Owner markup 2026-10-14 ("actual tank equipment
- * ... in lieu of random thingies") on the source's open bundle of bare tubes on braced feet with crossbars: it read as
- * loose junk, and the round removed it, which left the Bulat channel firing from eight mouths in empty air. The weapon
- * is real, so the bundle becomes a real launcher: one closed armoured launch container (the tubes inside it) on the
- * same two feet, its eight rimmed mouths at the measured tube exits, lifting lugs on its lid. Same footprint and reach
- * as the bundle (x 0.41-0.97, rear face z -3.30), so the turret's sweep and the decor's stations do not move.
- */
-function addKurganetsBulatLauncher(P: TankBuilderPort): void {
-    weaponAssembly(P, () => {
-        // the two braced feet on the roof
-        for (const x of [.44, .92]) localTurret(P, 'turretDetail', box(.04, .27, .38), x, 3.14, -2.56);
-        // the container: walls round the two rows of tubes (3 over 5), the front face just behind the tube exits
-        localTurret(P, 'turretDetail', box(.557, .29, .881), .688, 3.38, -2.8605);
-        // side stiffeners and the lid's seam
-        for (const x of [.4065, .9695]) for (const y of [3.30, 3.46]) localTurret(P, 'turretDetail', box(.012, .028, .82), x, y, -2.86);
-        localTurret(P, 'turretDark', box(.53, .008, .86), .688, 3.528, -2.8605);
-        // the eight mouths: a rim and a dark recessed seal per tube, at the measured exits (row 3.291: three; 3.463: five)
-        for (const [y, xs] of [[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const) {
-            for (const x of xs) {
-                localTurret(P, 'turretDetail', cylZ(.049, .008, P.q ? 16 : 8), x, y, -2.418);
-                localTurret(P, 'turretDark', cylZ(.040, .010, P.q ? 16 : 8), x, y, -2.4205);
-            }
-        }
-        // lifting lugs on the lid
-        for (const x of [.52, .856]) localTurret(P, 'turretDark', box(.04, .03, .06), x, 3.54, -2.86);
-    });
-    // a launcher is no shelf: the decor keeps its loads off the container and clear above its lid (turret frame,
-    // pivot 0, 2.21, -1.27; fieldChest.ts reserveDecorVolume), as it did off the open bundle
-    reserveDecorVolume(P.turretG, [.4095, 1.025, -2.031], [.9665, 1.60, -1.15]);
+    // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies") on the rear-roof bundle of eight
+    // small tubes: coordinator ruling 2026-10-15, the real Kurganets-25 carries no rear-roof launcher, so the bundle and
+    // its Bulat channel are gone (suppliedSourceFleetSpecs.ts applyKurganetsLaunchers); the vehicle's anti-tank weapon is
+    // its four Kornet in the two twin housings on the turret flanks. The decor keeps the volume the bundle stood in, and
+    // the turret reach it set in its two buckets, so its loads keep their seats (fieldChest.ts reserveDecorVolume;
+    // turret frame, pivot 0, 2.21, -1.27: the feet, tubes and crossbars, and the tube caps).
+    reserveDecorVolume(P.turretG, [.4095, .795, -2.031], [.9665, 1.4025, -1.066], ['turretDetail']);
+    reserveDecorVolume(P.turretG, [.444, 1.046, -1.9775], [.928, 1.288, -1.9625], ['turretDark']);
 }
 // Object_29 has four different stepped fittings, not a symmetric pair of
 // generic whips. These independent axial calipers preserve their real stations.
