@@ -122,7 +122,8 @@ import {
   vehicleShadowCaster,
 } from './maps/vehicleContactShadow.ts';
 import {
-  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons, VEHICLE_SLIDE_MAX_M,
+  CART_RELOCATE_MAX_M, CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
+  VEHICLE_RELOCATE_MAX_M, VEHICLE_SLIDE_MAX_M,
   type FootprintPolygon,
 } from './parkedVehicleSeparation.ts';
 import {
@@ -10442,9 +10443,10 @@ ${snowCap ? `
     const stones = rockSeats.flatMap((seat) => stonePlan(seat, seat.rec));
     const nearOf = new Map<DestructibleRecord, Near[]>();
     const crushRecords = crushableFootprints();
-    for (const cart of carts) {
+    // (Lane C, 2026-10-14) what stands within a cart's reach, gathered again over a further reach for its relocation
+    const gatherNear = (cart: DestructibleRecord, slide: number): void => {
       const near: Near[] = [];
-      const type = LOCAL_TYPES[cart.kind], reach = slideOf(cart) + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 6;
+      const type = LOCAL_TYPES[cart.kind], reach = slide + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 6;
       const x0 = cart.x - reach, x1 = cart.x + reach, z0 = cart.z - reach, z1 = cart.z + reach;
       for (const list of [obstacles, trees] as const) {
         for (const ob of list) {
@@ -10463,7 +10465,8 @@ ${snowCap ? `
         near.push({ ob, polys: null, parked: null });
       }
       nearOf.set(cart, near);
-    }
+    };
+    for (const cart of carts) gatherNear(cart, slideOf(cart));
     // the cart's body at a seat against what stands near it: a vehicle or a cart keeps the parked clearance, the rest
     // a hand's breadth; `seen` collects each meeting's way out
     // round 5 (wave 278: the Frosthollow horn sled "jammed against the birch trunk where it couldn't have been drawn"): a
@@ -10561,6 +10564,26 @@ ${snowCap ? `
       }
       return false;
     };
+    const seatMeets = (cart: DestructibleRecord): string[] => {
+      const out = new Set<string>();
+      for (const slot of deploymentSlots) if (Math.hypot(cart.x - slot.x, cart.z - slot.z) < DEPLOYMENT_CLEAR_M + cart.r) out.add('deployment clearing');
+      const body = bodyAt(cart, cart.x, cart.z), lanes = [...approachAt(cart, cart.x, cart.z), ...dressingAt(cart, cart.x, cart.z)];
+      for (const n of nearOf.get(cart)!) {
+        if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
+        const kind = (n.ob as { kind?: string }).kind;
+        const label = n.parked ? `${cartKinds.has(n.parked.kind) ? 'cart' : 'vehicle'} (${n.parked.kind})` : n.stone ? 'stone'
+          : buildings.has(n.ob) ? `building (${owners.get(n.ob)?.kind ?? destructibles.find((d) => d.ob === n.ob)?.kind ?? 'kit'})`
+            : kind ?? (n.ob.max[1] - n.ob.min[1] > 0.5 ? 'solid' : 'low solid');
+        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE
+          : cartKinds.has(cart.kind) && tall(n.ob) ? (cart.kind === 'handcart' ? 0.12 : 0.5) : CART_CLEARANCE;
+        for (const poly of n.polys ?? shapePolygons(n.ob)) {
+          if (polygonGap(body, poly).gap < clearance) { out.add(label); continue; }
+          if (!n.parked && (tall(n.ob) || n.stone) && lanes.some((lane) => polygonGap(lane, poly).gap < 0)) out.add(`${label}: its way out`);
+        }
+      }
+      if (groundBad(cart, cart.x, cart.z)) out.add('ground (steep or humped)');
+      return [...out];
+    };
     group.userData.cartSeats = seatCartsClear(carts, {
       blocked: (cart, x, z) => meets(cart, x, z) || groundBad(cart, x, z),
       away: (cart) => {
@@ -10591,6 +10614,14 @@ ${snowCap ? `
       move: (cart, x, z) => relocateParkedVehicleRecord(destructibleContext, cart, x, z),
       drop: (cart) => dropParkedVehicleRecord(destructibleContext, cart),
       maxSlide: slideOf,
+      // (Lane C, 2026-10-14; the coordinator: the owner wants lived-in maps) what its seat meets, by kind; a seat that
+      // met a rail bed, a building or another vehicle or cart was invalid (left out), anything else (a stone, rubble, a
+      // kerb, a pole, a fence) is relocated within a further reach on its own lot before it is left out
+      why: (cart) => seatMeets(cart),
+      // (an overlap only: a building in its way out does not make the seat itself invalid)
+      relocateReach: (cart, why) => (why.some((w) => /^(rail-bed|building|structure|vehicle|cart)/.test(w) && !w.endsWith(': its way out')) ? 0
+        : vehicleKinds.has(cart.kind) ? VEHICLE_RELOCATE_MAX_M : CART_RELOCATE_MAX_M),
+      prepareRelocation: (cart, reach) => gatherNear(cart, reach),
     });
   }
   seatCartRecords();
