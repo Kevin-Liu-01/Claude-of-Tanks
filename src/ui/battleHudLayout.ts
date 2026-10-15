@@ -125,7 +125,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // would chase each other.
   const dockObstacleSelector = '.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,'
     + '.cot-dp,.cot-drive,.cot-minimap,.cot-top,.cot-mode-status.show,.cot-net,.cot-cons,.cot-shells';
+  // Fixed touch controls and instruments, then the lanes only the dock keeps clear of (the open ammo drawer, the
+  // landscape countdown and notices); the countdown and notices themselves are placed against the fixed ones.
   const dockObstacles: TouchDockRect[] = [];
+  let fixedObstacleCount = 0;
   let safeProbe: HTMLElement | null = null;
   // Landscape shows the pre-battle countdown in the centre lane the dock may want. Its box is remembered from the
   // countdown that opens every battle (per viewport size; estimated until then), so the dock keeps clear of it
@@ -135,22 +138,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let count = 0;
     for (const child of row.children) if (child.getClientRects().length) count++;
     dockObstacles.length = 0;
-    let joy: DOMRect | null = null, fire: DOMRect | null = null;
+    let joy: DOMRect | null = null, fire: DOMRect | null = null, drawer: TouchDockRect | null = null;
     for (const node of document.querySelectorAll<HTMLElement>(dockObstacleSelector)) {
       if (!node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') continue;
       const box = node.getBoundingClientRect();
       if (box.width < 1 || box.height < 1) continue;
       if (node.classList.contains('cot-shells')) {
-        // The touch ammo selector opens leftwards, 56 px per further slot (hudAmmunitionPresentation.ts): the dock
-        // keeps clear of the open drawer too, unless the screen is too crowded for that.
+        // The touch ammo selector opens leftwards, 56 px per further slot (hudAmmunitionPresentation.ts).
         let slots = 0;
         for (const slot of node.children) if (slot.classList.contains('cot-shell') && slot.getClientRects().length) slots++;
-        if (slots > 1) dockObstacles.push({ x: box.left - 56 * (slots - 1), y: box.top, w: 56 * (slots - 1), h: box.height });
+        if (slots > 1) drawer = { x: box.left - 56 * (slots - 1), y: box.top, w: 56 * (slots - 1), h: box.height };
       }
       if (node.classList.contains('joy')) joy = box;
       if (node.classList.contains('fire') && !node.classList.contains('alt')) fire = box;
       dockObstacles.push({ x: box.left, y: box.top, w: box.width, h: box.height });
     }
+    fixedObstacleCount = dockObstacles.length;
+    if (drawer) dockObstacles.push(drawer);
     if (width > height) {
       const countdown = read('.cot-prebattle.on');
       if (countdown) countdownSlot = { width, height, box: { x: countdown.left, y: countdown.top, w: countdown.width, h: countdown.height } };
@@ -185,11 +189,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     return placement;
   }
   // The portrait countdown keeps its place under the minimap unless the dock is there; then it takes the first of
-  // below or above the dock that clears the dock and the fixed controls, else keeps its place.
+  // below or above the dock that clears the dock and the fixed controls (a shell drawer opened over it is the
+  // player's own, passing gesture), else keeps its place.
   function portraitCountdownTop(dock: TouchDockPlacement, width: number): number {
     const box = read('.cot-prebattle');
     const h = box?.height || 112, w = box?.width || 228, x = (width - w) / 2;
-    const clear = (y: number) => [dock, ...dockObstacles].every(o =>
+    const clear = (y: number) => [dock, ...dockObstacles.slice(0, fixedObstacleCount)].every(o =>
       !(x < o.x + o.w + 4 && x + w > o.x - 4 && y < o.y + o.h + 4 && y + h > o.y - 4));
     for (const y of [255, dock.y + dock.h + 8, dock.y - 8 - h]) if (y >= 12 && clear(y)) return y;
     return 255;

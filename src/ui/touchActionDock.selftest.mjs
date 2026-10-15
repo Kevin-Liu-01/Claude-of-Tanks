@@ -138,7 +138,8 @@ assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-control
 assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls>button\.cot-special\{inset:auto!important\}/, 'older special-action offsets never shift a tile');
 assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls \.system-status\{display:block;grid-area:auto;position:absolute;/, 'the charge badge sits in the tile corner, not the caption row');
 assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls>button \.sk\{display:none\}/, 'no keycaps on touch');
-assert.match(css, /conic-gradient\(rgba\(2,6,9,\.74\) calc\(var\(--cd,0\) \* 360deg\),transparent 0\)/, 'cooldowns sweep');
+assert.match(css, /conic-gradient\(transparent calc\(\(1 - var\(--cd,0\)\) \* 360deg\),rgba\(2,6,9,\.74\) 0\)/, 'cooldowns sweep the shadow off clockwise');
+assert.match(css, /button\.cooling::before\{[^}]*conic-gradient\(#ffc46b calc\(\(1 - var\(--cd,0\)\) \* 360deg\)/, 'and fill an amber ring');
 for (const rule of touchRules) {
   assert.doesNotMatch(rule, /(?:^|[;{])order:|grid-auto-flow:[^;}]*dense|row-reverse|column-reverse|direction:rtl/,
     'the dock never reorders the row: the first control in the row (jump-first is its own rule) stays first');
