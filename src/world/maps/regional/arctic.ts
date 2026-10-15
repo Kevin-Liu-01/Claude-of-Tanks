@@ -8,9 +8,9 @@
 // sheds on skids; a module stripped and left to the wind.
 import {
   LocalFrame, PartSink, faceBox, facePoint, rgb, shade,
-  type Face, type Rgb, type Vec3,
+  type EmitOptions, type Face, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, holedShaft, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 // (props census #3, lane B 2026-10-14: the radar tower and the Jamesway hut live in arcticYard.ts, the industrial yard's)
@@ -43,7 +43,8 @@ const hashPlot = (ctx: RegionalBuildContext): number => { const v = ctx.variant;
 export const WINDOW: WindowStyle = {
   frame: STEEL_DARK, frameWidth: 0.06, frameOut: 0.03, bars: 'none',
   surround: { bucket: 'structureMetal', width: 0.08, out: 0.03, colour: STEEL },
-  sill: { bucket: 'structureMetal', out: 0.06, colour: STEEL }, shutters: null,
+  // (the sill is the steel drip flashing: it stands well proud of the skin)
+  sill: { bucket: 'structureMetal', out: 0.1, colour: STEEL }, shutters: null,
 };
 
 /**
@@ -140,13 +141,27 @@ function rustStream(seed: number): () => number {
   let a = (Math.floor(seed * 1000) ^ 0x5bd1e995) >>> 0;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-function rustStreaks(sink: PartSink, face: Face, top: number, look: () => number, per = 0.35): void {
+function rustStreaks(sink: PartSink, face: Face, top: number, look: () => number, per = 0.35, holes: readonly HoleRect[] = []): void {
   const n = Math.max(1, Math.round(face.width * per));
   for (let k = 0; k < n; k++) {
-    const u = (look() - 0.5) * (face.width - 0.6), len = 0.5 + look() * 1.8, w = 0.03 + look() * 0.05;
-    faceBox(sink, 'structureMetal', face, u, top - len / 2, 0.005, w, len, 0.008,
-      { colour: shade(RUST, 0.8 + look() * 0.4), decor: true, fine: true });
+    const u = (look() - 0.5) * (face.width - 0.6), run = 0.5 + look() * 1.8, w = 0.03 + look() * 0.05;
+    const colour = shade(RUST, 0.8 + look() * 0.4);
+    // (a run a dozen times as long as it is wide at the least: a short dark tab reads as a slot, never as a rust run)
+    const len = Math.max(run, 14 * w);
+    // a run stops at the head of an opening cut under it (it ran round it; never across the cut); cut short, a stub is
+    // left out (a dark tab over the head would read as a slot)
+    let foot = top - len;
+    for (const h of holes) if (u + w / 2 > h.u0 - 0.02 && u - w / 2 < h.u1 + 0.02 && h.y1 > foot && h.y0 < top) foot = Math.max(foot, h.y1 + 0.01);
+    if (top - foot >= (foot > top - len ? Math.max(0.12, 14 * w) : 0.12)) faceBox(sink, 'structureMetal', face, u, (top + foot) / 2, 0.005, w, top - foot, 0.008, { colour, decor: true, fine: true });
   }
+}
+
+/** The cuts of a house's openings on one face, in its frame (for the rust runs to stop at). */
+function openingCuts(frame: HouseFrame, openings: readonly Opening[], name: 'front' | 'back' | 'left' | 'right'): HoleRect[] {
+  return openings.filter((o) => o.face === name).map((o) => {
+    const y = frame.bodies[o.storey].y0 + o.y0;
+    return { u0: o.u - o.w / 2, u1: o.u + o.w / 2, y0: y, y1: y + o.h };
+  });
 }
 
 function dialect(rng: () => number, paint: Paint): HouseDialect {
@@ -179,7 +194,7 @@ export function boxFace(x0: number, z0: number, x1: number, z1: number, side: 'n
  * the coloured fascia band, a flat roof; `floor` is the height of its underside above the ground.
  */
 function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, floor: number, h: number, paint: Paint,
-  band: Paint, mobile: boolean, piles = true): void {
+  band: Paint, mobile: boolean, piles = true, holes: Partial<Record<'n' | 's' | 'e' | 'w', readonly HoleRect[]>> = {}): void {
   if (piles) {
     const stepZ = Math.max(2.4, (z1 - z0 - 0.4) / Math.max(1, Math.round((z1 - z0 - 0.4) / 3)));
     for (const x of [x0 + 0.25, x1 - 0.25]) {
@@ -216,21 +231,34 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
       sink.polygon('plaster', [b, c, g], { decor: true });
     }
   }
-  sink.span(paint, x0, floor, z0, x1, floor + h, z1);
+  // the box, its doors and windows cut through its skin (MODULE_CUT; they were laid on a solid box)
+  if (Object.values(holes).some((l) => l && l.length)) {
+    holedShaft(sink, paint, x0, z0, x1, z1, floor, floor + h, { front: holes.s, back: holes.n, right: holes.e, left: holes.w }, MODULE_CUT, MODULE_REVEAL + 0.02);
+  } else sink.span(paint, x0, floor, z0, x1, floor + h, z1);
   sink.span(band, x0 - 0.03, floor + h - 0.5, z0 - 0.03, x1 + 0.03, floor + h - 0.1, z1 + 0.03);
   sink.span('roof', x0 - 0.12, floor + h, z0 - 0.12, x1 + 0.12, floor + h + 0.22, z1 + 0.12);
   if (mobile) return;
   // the panel seams down every face
   const seam = { colour: shade(PAINT_RGB[paint], 0.8), decor: true, fine: true } as const;
   for (const side of ['n', 's', 'e', 'w'] as const) {
-    const f = boxFace(x0, z0, x1, z1, side);
-    for (let u = -f.width / 2 + 1.2; u < f.width / 2 - 0.3; u += 1.2) faceBox(sink, 'structureMetal', f, u, floor + (h - 0.5) / 2, 0.01, 0.04, h - 0.55, 0.02, seam, 'caps');
+    const f = boxFace(x0, z0, x1, z1, side), cuts = holes[side] ?? [];
+    // a seam or a collar runs up the skin round the cuts (the pieces under and over an opening it crosses)
+    const upFace = (u: number, w: number, y0: number, y1: number, o: number, d: number, opts: EmitOptions) => {
+      const across = cuts.filter((c) => u + w / 2 > c.u0 - 0.03 && u - w / 2 < c.u1 + 0.03).sort((a, b) => a.y0 - b.y0);
+      let from = y0;
+      for (const c of across) {
+        if (c.y0 - 0.03 - from > 0.05) faceBox(sink, 'structureMetal', f, u, (from + c.y0 - 0.03) / 2, o, w, c.y0 - 0.03 - from, d, opts, 'caps');
+        from = Math.max(from, c.y1 + 0.03);
+      }
+      if (y1 - from > 0.05) faceBox(sink, 'structureMetal', f, u, (from + y1) / 2, o, w, y1 - from, d, opts, 'caps');
+    };
+    for (let u = -f.width / 2 + 1.2; u < f.width / 2 - 0.3; u += 1.2) upFace(u, 0.04, floor + 0.025, floor + h - 0.525, 0.01, 0.02, seam);
     // (round 3: "a long train of joined modules") the joint between one module and the next, every 4.2 m, a steel
     // collar proud of the skin; and the rust run from under the eaves
     if (piles && (side === 'e' || side === 'w')) {
-      for (let u = -f.width / 2 + 4.2; u < f.width / 2 - 1.0; u += 4.2) faceBox(sink, 'structureMetal', f, u, floor + h / 2, 0.04, 0.16, h + 0.1, 0.08, { colour: STEEL, decor: true }, 'caps');
+      for (let u = -f.width / 2 + 4.2; u < f.width / 2 - 1.0; u += 4.2) upFace(u, 0.16, floor - 0.05, floor + h + 0.05, 0.04, 0.08, { colour: STEEL, decor: true });
     }
-    if (piles) rustStreaks(sink, f, floor + h - 0.55, rustStream(x0 * 3.1 + z0 * 7.7 + x1 + z1 * 0.37 + side.charCodeAt(0)), 0.25);
+    if (piles) rustStreaks(sink, f, floor + h - 0.55, rustStream(x0 * 3.1 + z0 * 7.7 + x1 + z1 * 0.37 + side.charCodeAt(0)), 0.25, cuts);
   }
 }
 
@@ -263,13 +291,22 @@ function stair(sink: PartSink, face: Face, u: number, floor: number, mobile: boo
   }
 }
 
-/** A small window and a steel door on a module face (no hole: the module's insulated box carries them). */
+/**
+ * A small window and a steel door in a module's skin: cut through it (module's `holes`: MODULE_WINDOW / MODULE_DOOR give
+ * the cut at (u, y)), the pane and the leaf at the back of the reveal, the door's frame round the cut on the face.
+ */
+const MODULE_CUT = 0.16, MODULE_REVEAL = 0.12;
+const MODULE_WINDOW = (u: number, y: number): HoleRect => ({ u0: u - 0.45, u1: u + 0.45, y0: y, y1: y + 0.7 });
+const MODULE_DOOR = (u: number, y: number): HoleRect => ({ u0: u - 0.5, u1: u + 0.5, y0: y, y1: y + 2.1 });
 function moduleWindow(sink: PartSink, face: Face, u: number, y: number, rng: () => number): void {
-  windowUnit(sink, face, u, y, 0.9, 0.7, WINDOW, rng, 0.5);
+  sink.recess = MODULE_REVEAL;
+  try { windowUnit(sink, face, u, y, 0.9, 0.7, WINDOW, rng, 0.5); } finally { sink.recess = 0; }
 }
 function moduleDoor(sink: PartSink, face: Face, u: number, y: number): void {
-  faceBox(sink, 'structureMetal', face, u, y + 1.05, 0.04, 1.0, 2.1, 0.06, { colour: STEEL, decor: true });
-  faceBox(sink, 'structureMetal', face, u, y + 1.05, 0.02, 1.16, 2.24, 0.04, { colour: STEEL_DARK, decor: true });
+  faceBox(sink, 'structureMetal', face, u, y + 1.05, -MODULE_REVEAL + 0.025, 1.0, 2.1, 0.04, { colour: STEEL, decor: true });
+  const fo = { colour: STEEL_DARK, decor: true };
+  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * 0.54, y + 1.085, 0.02, 0.08, 2.17, 0.04, fo);
+  faceBox(sink, 'structureMetal', face, u, y + 2.135, 0.02, 1.0, 0.07, 0.04, fo);
 }
 
 /** A white sphere of stacked frustums (the radome) on its ring beam, `y` the ring beam's top. */
@@ -304,8 +341,20 @@ const moduleTrain: RegionalBuilder = (ctx) => {
     const floor = 2.1, h = 3.0, gap = 1.2, mw = (W - gap) / 2;
     const ax0 = -W / 2, ax1 = -W / 2 + mw, bx0 = W / 2 - mw, bx1 = W / 2;
     // the rows stop short of the plot's +z edge: the stairs to their doors stand in front of them
-    module(sink, ax0, -D / 2, ax1, D / 2 - 1.6, floor, h, paint, band, mobile);
-    module(sink, bx0, -D / 2, bx1, D / 2 - 2.4, floor, h, paint, band, mobile);
+    // the doors at the rows' ends, windows down the long faces between the modules' joints (two to a module)
+    const winUs = (width: number): number[] => {
+      const us: number[] = [];
+      for (let a = -width / 2; a < width / 2 - 1.5; a += 4.2) {
+        const b = Math.min(width / 2, a + 4.2), mid = (a + b) / 2;
+        if (b - a >= 3.2) us.push(mid - 1.0, mid + 1.0); else us.push(mid);
+      }
+      return us;
+    };
+    const lenA = D / 2 - 1.6 + D / 2, lenB = D / 2 - 2.4 + D / 2, doorA = -(ax1 - ax0) * 0.18, doorB = -(bx1 - bx0) * 0.18;
+    module(sink, ax0, -D / 2, ax1, D / 2 - 1.6, floor, h, paint, band, mobile, true,
+      { s: [MODULE_DOOR(doorA, floor)], w: winUs(lenA).map((u) => MODULE_WINDOW(u, floor + 1.25)) });
+    module(sink, bx0, -D / 2, bx1, D / 2 - 2.4, floor, h, paint, band, mobile, true,
+      { s: [MODULE_DOOR(doorB, floor)], e: winUs(lenB).map((u) => MODULE_WINDOW(u, floor + 1.25)) });
     // the covered link between the rows
     module(sink, ax1 - 0.05, -1.4, bx0 + 0.05, 1.4, floor, h - 0.4, paint, band, mobile, false);
     // the upper control level over the north end of the second row, and the radome over it
@@ -314,11 +363,11 @@ const moduleTrain: RegionalBuilder = (ctx) => {
     const top = floor + h + 0.22 + 2.7 + 0.22;
     if (look() < 0.7) radome(sink, (bx0 + bx1) / 2, top + 0.4, (uz0 + uz1) / 2, clamp(mw * 0.62, 2.6, 4.6), 16);
     else for (const s of [-1, 1]) sink.member('structureMetal', [(bx0 + bx1) / 2 + s * 1.2, top, (uz0 + uz1) / 2], [(bx0 + bx1) / 2 + s * 1.2, top + 5.5, (uz0 + uz1) / 2], 0.08, 0.08, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true });
-    // the doors at the rows' ends with their stairs, windows down the long faces
+    // the doors with their stairs, the windows
     const sa = boxFace(ax0, -D / 2, ax1, D / 2 - 1.6, 's'), sb = boxFace(bx0, -D / 2, bx1, D / 2 - 2.4, 's');
     for (const f of [sa, sb]) { moduleDoor(sink, f, -f.width * 0.18, floor); stair(sink, f, -f.width * 0.18, floor, mobile); }
-    for (const f of [boxFace(ax0, -D / 2, ax1, D / 2 - 1.6, 'w'), boxFace(bx0, -D / 2, bx1, D / 2 - 2.4, 'e')]) {
-      for (let u = -f.width / 2 + 1.6; u < f.width / 2 - 1.2; u += 2.6) moduleWindow(sink, f, u, floor + 1.25, rng);
+    for (const [f, len] of [[boxFace(ax0, -D / 2, ax1, D / 2 - 1.6, 'w'), lenA], [boxFace(bx0, -D / 2, bx1, D / 2 - 2.4, 'e'), lenB]] as const) {
+      for (const u of winUs(len)) moduleWindow(sink, f, u, floor + 1.25, rng);
     }
     // the roof's vents and stacks
     if (!mobile) {
@@ -456,7 +505,8 @@ const tropo: RegionalBuilder = (ctx) => {
     sink.member('structureMetal', [cx + 0.35, fy - 0.45, fz + 0.5], [cx + 0.35, 0.9, tz + 0.5], 0.14, 0.1, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true });
     // the transmitter module beside the feed tower at the front, clear of the face, on its piles, its door and stair
     const mz1 = z1 - 1.6, mz0 = mz1 - 2.8, mx0 = cx + bw / 2 - 5.9, mx1 = cx + bw / 2 - 1.7;
-    module(sink, mx0, mz0, mx1, mz1, 1.1, 2.8, 'plaster', 'plaster2', mobile);
+    const modW = mx1 - mx0;
+    module(sink, mx0, mz0, mx1, mz1, 1.1, 2.8, 'plaster', 'plaster2', mobile, true, { s: [MODULE_DOOR(-modW * 0.25, 1.1), MODULE_WINDOW(modW * 0.2, 2.3)] });
     const mf = boxFace(mx0, mz0, mx1, mz1, 's');
     moduleDoor(sink, mf, -mf.width * 0.25, 1.1);
     stair(sink, mf, -mf.width * 0.25, 1.1, mobile);
@@ -487,12 +537,13 @@ const garage: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.6, wall: paint }], roof, gableBucket: paint, openings,
       chimneys: [{ x: -W * 0.25, z: -D * 0.3, sx: 0.3, sz: 0.3, above: 1.4, bucket: 'structureMetal', cap: 'none' }],
-      gutters: null, verge: null, reveal: 0.08, spall: null,
+      gutters: null, verge: null, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
-      rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3);
+      rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,
+        openingCuts(frame, openings, name));
     }
     // the apron along the doors
     sink.span('stone', W / 2, -0.3, -D / 2, W / 2 + apron, 0.08, D / 2);
@@ -559,12 +610,13 @@ const warehouse: RegionalBuilder = (ctx) => {
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 9, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 6.4, wall: paint }], roof, gableBucket: paint, openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.08, spall: null,
+      chimneys: [], gutters: null, verge: null, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
-      rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3);
+      rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,
+        openingCuts(frame, openings, name));
     }
     sink.span('stone', -W / 2, -0.3, D / 2, W / 2, 0.08, D / 2 + apron);
     // the band of the station's colour round the eaves

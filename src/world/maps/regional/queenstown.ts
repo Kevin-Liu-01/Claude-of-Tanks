@@ -7,8 +7,8 @@
 // corrugated iron; a water tank on its timber trestle; and the town: the Empire Hotel or the company's office, two
 // storeys of brick behind a two-storey verandah of cast-iron lace; rows of weatherboard cottages under corrugated iron,
 // each with its bullnose verandah, its brick chimney and its picket fence; and the stripped frames of abandoned ones.
-import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { PartSink, faceBox, facePanel, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, emitRoof, holedPolygon, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
@@ -60,7 +60,8 @@ function rustBy(base: Rgb, y0: number, y1: number, foot: number, head = 0): (p: 
  * each strip its own run of rust up from the sheets' feet, a few with a stain down from the lap at the top. Dressing a
  * hair proud of the clad wall, so the wall's collision is untouched.
  */
-function rustSkin(sink: PartSink, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, base: Rgb, look: () => number): void {
+function rustSkin(sink: PartSink, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, base: Rgb, look: () => number,
+  cuts: ReadonlyArray<{ face: number; u0: number; u1: number; y0: number; y1: number } | null> = []): void {
   const faces: Face[] = [
     { origin: [(x0 + x1) / 2, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: x1 - x0 },
     { origin: [x1, 0, (z0 + z1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: z1 - z0 },
@@ -71,8 +72,18 @@ function rustSkin(sink: PartSink, x0: number, y0: number, z0: number, x1: number
     const n = Math.max(2, Math.min(12, Math.round(f.width / 1.4)));
     for (let k = 0; k < n; k++) {
       const u = -f.width / 2 + (k + 0.5) * f.width / n;
-      faceBox(sink, 'structureMetal', f, u, (y0 + y1) / 2, 0.008, f.width / n, y1 - y0, 0.004,
-        { colour: base, colourAt: rustBy(base, y0, y1, 0.18 + look() * 0.5, look() < 0.35 ? 0.2 + look() * 0.35 : 0), decor: true });
+      const opts = { colour: base, colourAt: rustBy(base, y0, y1, 0.18 + look() * 0.5, look() < 0.35 ? 0.2 + look() * 0.35 : 0), decor: true };
+      // (a sheet over a band cut through the wall — the clerestory's glazing — stops round it: below, above, beside)
+      const pu0 = u - f.width / n / 2, pu1 = u + f.width / n / 2;
+      const c = cuts.find((h) => h && h.face === faces.indexOf(f) && h.u0 < pu1 && h.u1 > pu0) ?? null;
+      const piece = (a: number, b: number, ya: number, yb: number) => {
+        if (b - a > 0.01 && yb - ya > 0.01) faceBox(sink, 'structureMetal', f, (a + b) / 2, (ya + yb) / 2, 0.008, b - a, yb - ya, 0.004, opts);
+      };
+      if (!c) { piece(pu0, pu1, y0, y1); continue; }
+      piece(pu0, pu1, y0, c.y0);
+      piece(pu0, pu1, c.y1, y1);
+      piece(pu0, Math.min(pu1, c.u0), c.y0, c.y1);
+      piece(Math.max(pu0, c.u1), pu1, c.y0, c.y1);
     }
   }
 }
@@ -328,17 +339,29 @@ const concentrator: RegionalBuilder = (ctx) => {
     const sec = D / 3;
     steps.forEach(([, h], k) => {
       const z0 = -D / 2 + k * sec, z1 = z0 + sec;
-      sink.span('structureMetal', -W / 2, 0.6, z0, W / 2, h, z1, { colour: shade(sheet, 1 - k * 0.04) });
-      rustSkin(sink, -W / 2, 0.6, z0, W / 2, h, z1, shade(sheet, 1 - k * 0.04), ctx.variant);
+      // the sides' glazing bands cut through the cladding into the mill's dark (were glass laid on solid sheet): the
+      // glass and its mullions at the back of the reveal, a flashing over the sill
+      const band = { u0: -(sec - 1.4) / 2, u1: (sec - 1.4) / 2, y0: h - 2.1, y1: h - 1.1 }, cut = 0.2, back = 0.15;
+      const sides: Face[] = [1, -1].map((side) => ({ origin: [side * W / 2, 0, (z0 + z1) / 2], u: [0, 0, -side], out: [side, 0, 0], width: sec }));
+      sink.span('structureMetal', -W / 2 + cut, 0.6, z0, W / 2 - cut, h, z1, { colour: shade(sheet, 1 - k * 0.04) });
+      for (const f of sides) {
+        holedPolygon(sink, 'structureMetal', f, [[-sec / 2, 0.6], [sec / 2, 0.6], [sec / 2, h], [-sec / 2, h]], [band], cut, back + 0.02,
+          { colour: shade(sheet, 1 - k * 0.04) });
+      }
+      rustSkin(sink, -W / 2, 0.6, z0, W / 2, h, z1, shade(sheet, 1 - k * 0.04), ctx.variant, [{ face: 1, ...band }, { face: 3, ...band }]);
       // the monitor roof: a raised clerestory along the section's ridge under its own low gable
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
       sink.placed(0, 0, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(W, sec, h, roof), roof));
       const rg = roofGeometry(W, sec, h, roof);
       sink.span('structureMetal', -1.2, rg.ridgeY - 0.3, z0 + 0.6, 1.2, rg.ridgeY + 1.2, z1 - 0.6, { colour: shade(sheet, 0.9) });
       sink.placed(0, 0, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(2.4, sec - 1.2, rg.ridgeY + 1.2, roof), roof));
-      for (const side of [-1, 1]) {
-        const f: Face = { origin: [side * W / 2, 0, (z0 + z1) / 2], u: [0, 0, -side], out: [side, 0, 0], width: sec };
-        faceBox(sink, 'glass', f, 0, h - 1.6, 0.012, sec - 1.4, 1.0, 0.02, { decor: true });
+      for (const f of sides) {
+        facePanel(sink, 'glass', f, 0, h - 1.6, -back + 0.012, sec - 1.4, 1.0, { decor: true, window: f.out });
+        const nm = Math.max(2, Math.round((sec - 1.4) / 1.3));
+        for (let j = 1; j < nm; j++) {
+          faceBox(sink, 'structureMetal', f, band.u0 + (band.u1 - band.u0) * j / nm, h - 1.6, -back + 0.035, 0.05, 1.0, 0.04, { colour: shade(sheet, 0.6), decor: true, fine: true }, 'caps');
+        }
+        faceBox(sink, 'structureMetal', f, 0, band.y0 - 0.03, 0.04, sec - 1.3, 0.06, 0.08, { colour: shade(sheet, 0.8), decor: true });
       }
     });
     // the conveyor gallery up to the top section's back
