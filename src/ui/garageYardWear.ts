@@ -336,7 +336,9 @@ function drawHardstand(
    */
   const toward = Math.atan2(approach.x, approach.z);
   const dir = (angle: number): [number, number] => [Math.sin(angle), Math.cos(angle)];
-  const rutDark = earth ? (snow ? '86,90,92' : '42,30,22') : '26,24,22';
+  // packed snow under tracks is a compacted blue-grey with grit, read against the white (the re-judge, 2026-10-15: "no
+  // ... packed track ruts")
+  const rutDark = earth ? (snow ? '104,112,122' : '42,30,22') : '26,24,22';
   const berm = snow ? '246,250,252' : style === 'earth-sand' ? '232,212,176' : style === 'earth-dust' ? '214,160,124' : '';
   const wheelPath = (
     p0: readonly [number, number], p1: readonly [number, number], p2: readonly [number, number],
@@ -368,12 +370,27 @@ function drawHardstand(
       }
     };
     // soft compacted bands rather than ruled lines (wave 408: "faint painted circle arcs")
+    const press = snow ? 1.5 : 1; // snow takes a deeper, plainer print
     for (const side of [-1, 1]) {
       const offset = side * gauge / 2;
-      stroke(offset, width * 2.3, rutDark, strength * 0.24);
-      stroke(offset, width, rutDark, strength * 0.5);
-      stroke(offset + side * width * 0.12, width * 0.45, rutDark, strength * 0.22);
-      if (berm) stroke(offset + side * (width * 1.05), width * 0.7, berm, strength * 0.3);
+      stroke(offset, width * 2.3, rutDark, strength * 0.24 * press);
+      stroke(offset, width, rutDark, strength * 0.5 * press);
+      stroke(offset + side * width * 0.12, width * 0.45, rutDark, strength * 0.22 * press);
+      if (berm) stroke(offset + side * (width * 1.05), width * 0.7, berm, strength * 0.3 * press);
+      // the track links' grousers printed across the band
+      if (earth) {
+        g.lineCap = 'butt';
+        g.lineWidth = Math.max(1, 0.05 * PX_PER_M);
+        for (let i = 2; i < samples.length - 2; i++) {
+          const t = i / (samples.length - 1);
+          const fade = Math.min(1, t / 0.2, (1 - t) / 0.2);
+          const [x, z, nx, nz] = samples[i];
+          const [ax, ay] = px(x + nx * (offset - width * 0.45), z + nz * (offset - width * 0.45));
+          const [bx, by] = px(x + nx * (offset + width * 0.45), z + nz * (offset + width * 0.45));
+          g.strokeStyle = `rgba(${rutDark},${(strength * 0.3 * press * fade).toFixed(3)})`;
+          g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        }
+      }
     }
   };
   const [ax, az] = dir(toward);
@@ -589,7 +606,7 @@ function drawHardstand(
     case 'earth-snow': {
       // packed snow: glazed ice where it melted and froze, grit and soot, drifts banked at the edges and the podium
       scatter(40, 0.5, 1.8, 'rgba(176,196,214,0.32)', 'rgba(176,196,214,0.1)', [0.4, 0.8]);
-      scatter(50, 0.4, 1.4, 'rgba(118,112,104,0.18)', 'rgba(118,112,104,0.05)');
+      scatter(24, 0.3, 1.0, 'rgba(118,112,104,0.1)', 'rgba(118,112,104,0.03)'); // grit, not grey smears (the re-judge)
       aggregate(1600, ['80,78,74'], [0.5, 1.8], [0.06, 0.18], 0.85);
       drifts('250,252,255', 0.6, 2.8, true);
       break;
