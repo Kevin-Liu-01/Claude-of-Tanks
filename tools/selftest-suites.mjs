@@ -53,6 +53,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/droneRecallWire.selftest.mjs',
     'src/fx/droneRecallReturn.selftest.mjs',
     'src/ui/droneControlState.selftest.mjs',
+    // 2026-10-15: the Returning cue wins the cascade on the desktop strip, the touch strip and the touch action dock
+    'src/ui/droneReturningCascade.selftest.mjs',
     'src/engine/aerialCamera.selftest.mjs',
     'src/sim/sixModesAuthority.selftest.mjs',
   'src/mp/host/sixModesMigration.selftest.mjs',

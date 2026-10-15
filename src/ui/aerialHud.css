@@ -53,6 +53,13 @@
    than refused, so it keeps full strength in the amber of a drone in use, and its drone keeps settling down onto the pad
    while the countdown runs to the relaunch. */
 .cot-vehicle-controls>.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
+/* The touch action dock (body.cot-touch-layout[data-hud-dock], battleHudLayout.css) restates every tile's colour and
+   shadow at (0,3,2), dims a cooling tile's icon to half at (0,5,2) and rings a tile in the open More panel at (0,5,2),
+   and its cooldown shade (::after) covers an inset underline. On the dock the cue outranks all of them at (0,6,2): the
+   amber icon at full strength, an amber bottom edge (the border, outside the shade) and an amber ring and glow.
+   droneReturningCascade.selftest.mjs resolves the winning declarations on desktop, the touch strip and the dock. */
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;border-bottom-color:#efb84e;box-shadow:0 4px 13px rgba(0,0,0,.4),0 0 0 1px rgba(239,184,78,.5),0 0 10px rgba(239,184,78,.32)}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning] .si{opacity:1}
 .cot-drone-control[data-phase=returning] .si svg{animation:drone-homing 1.2s cubic-bezier(.3,.6,.4,1) infinite}
 @keyframes drone-homing{0%{transform:translateY(-3px);opacity:.45}70%,100%{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){
