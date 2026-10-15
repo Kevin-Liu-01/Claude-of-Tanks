@@ -30,14 +30,6 @@ const GASKET = material('rubber', [0.025, 0.025, 0.025], 0.85, 0, 0, 0.6);
 const SEAT = material('interior', linearHex(0x2f2a24), 0.85, 0, 0, 0.6);
 const ENGINE = material('under', [0.05, 0.048, 0.045], 0.7, 0.3, 0, 1);
 
-/** A wheel (axis along x) at (x, y, z): tyre, rim and hub. */
-function wheel(mesh: VehicleMesh, x: number, y: number, z: number, r: number, w: number, coarse: boolean, tyre: Mat = RUBBER, rim: Mat = STEEL_M): void {
-  mesh.push().translate(x, y, z);
-  mesh.lathe([[r * 0.62, -w / 2], [r * 0.95, -w / 2], [r, -w * 0.3], [r, w * 0.3], [r * 0.95, w / 2], [r * 0.62, w / 2]], coarse ? 12 : 18, () => tyre, { flip: true });
-  mesh.lathe([[0.0001, -w * 0.42], [r * 0.62, -w * 0.42], [r * 0.62, w * 0.42], [0.0001, w * 0.42]], coarse ? 8 : 12, () => rim);
-  mesh.pop();
-}
-
 /** A track belt round its end wheels at x: the belt along z from the rear wheel (zr, radius rr) to the front (zf, rf). */
 function belt(mesh: VehicleMesh, x: number, width: number, zr: number, rr: number, yr: number, zf: number, rf: number, yf: number, coarse: boolean, m: Mat,
   roadWheels = true): void {
