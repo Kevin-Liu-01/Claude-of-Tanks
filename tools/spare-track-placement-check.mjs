@@ -84,8 +84,9 @@ function parseStack(stack) {
   }
   return out;
 }
-const FACTORY_FILES = /^vehicles\/(tankFactoryCore|tankFactory)\.ts$/;
-const PLUMBING_FN = /^(add|addEquipment|addHatch|addCupola|addExternalArmor|addModuleVisual|addMudguard|partCensus|<anon>)$/;
+// the seat solver's tagging ports (withSpareTrackRun, withSeatRole) forward a profile's P.add: plumbing, not a site
+const FACTORY_FILES = /^vehicles\/(tankFactoryCore|tankFactory|spareTrackSeat)\.ts$/;
+const PLUMBING_FN = /^(add|addEquipment|addHatch|addCupola|addExternalArmor|addModuleVisual|addMudguard|partCensus|<anon>|Proxy\.<anonymous>)$/;
 function authorOf(chain) {
   // innermost profile frame (outside the factory); a KIT helper of the factory called on the way is named `via`
   const si = chain.findIndex((f) => !FACTORY_FILES.test(f.file));
