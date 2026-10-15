@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type VehicleMaterial } from './vehicleMesh.ts';
 import { cabLoft, roundLamp, type CabFace } from './vehicleCoachwork.ts';
 import { bv206, dozer, haulpak, snocat } from './vehicleSetPiecesWorks.ts';
+import { keepStreams } from '../geometryStreams.ts';
 
 type Mat = VehicleMaterial;
 
@@ -588,7 +589,7 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   else if (kind === 'haulpak') haulpak(mesh, coarse, true, !!opts.wrecked);
   else throw new Error(`buildSetPiece: ${kind} is not built yet`);
   const lunar = kind === 'lrv';
-  const g = mesh.build(vehicleWeathering({
+  const built = mesh.build(vehicleWeathering({
     // (round 4, wave 260: "no… dust coating") the regolith thrown up by the wheels lies grey over all of it below the
     // seats, thickest low
     dirtRgb: linearHex(lunar ? 0x5c5b58 : 0x3a3228), dirt: lunar ? 0.62 : 0.6, dirtTop: lunar ? 0.95 : 0.9,
@@ -596,7 +597,9 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
     // (Lane C, #8 r2) nothing burns in vacuum: the rover's wreck is crushed and broken, not charred
     burnt: !!opts.wrecked && !lunar, wheels, seed: opts.seed ?? 3, voxelAo: !coarse,
   }));
-  g.deleteAttribute('surf');
+  // (225 gate: the pools draw this geometry, so it is built without the surface stream rather than trimmed of it —
+  // deleteAttribute leaves the attributes object in V8's dictionary mode; geometryStreams.ts)
+  const g = keepStreams(built, Object.keys(built.attributes).filter((name) => name !== 'surf'));
   g.computeBoundingBox();
   const lift = -g.boundingBox!.min.y;
   if (Math.abs(lift) > 1e-6) g.translate(0, lift, 0);
