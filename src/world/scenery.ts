@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
+import { buildJebelSkin } from './jebelSkin.ts'; // the maps lane, 2026-10-14 (MA.12)
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
@@ -399,6 +400,19 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const built = buildBedrock({ geology: hill.geology, x: hill.x, z: hill.z, radius: hill.radius, minGrade: hill.minGrade, beds: hill.beds, crown: hill.crown, tone: hill.tone },
       ground, noise, mulberry32(ctx.seed + 17101 + 131 * hi), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'no flank steeper than the hulls climb'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- jebel skins (the maps lane, 2026-10-14, MA.12): a dome's jointed face over its wall; one stream each, no mass
+  for (const [si, skin] of (scenery.jebelSkins ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'bedrock', kind: 'sandstone jebel skin', name: skin.name ?? null, x: skin.x, z: skin.z, status: 'placed' };
+    const built = buildJebelSkin(skin, ground, noise, mulberry32(ctx.seed + 19301 + 131 * si), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall steeper than the skin asks'); continue; }
     rockPieces.push(built.geometry);
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;

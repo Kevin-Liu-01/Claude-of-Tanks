@@ -136,6 +136,9 @@ export interface SceneryConfig {
   rocks?: readonly SceneryRock[];
   rockFields?: readonly SceneryRockField[];
   bedrock?: readonly SceneryBedrock[];
+  /** The maps lane (2026-10-14, MA.12): a jebel's jointed face drawn over a dome's wall (jebelSkin.ts); no mass. */
+  jebelSkins?: readonly { x: number; z: number; radius: number; tone: readonly [number, number, number]; minGrade?: number;
+    columnM?: readonly [number, number]; bulgeM?: number; name?: string }[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;
