@@ -405,27 +405,21 @@ const coopWarehouse: RegionalBuilder = (ctx) => {
   // the shed fills the old warehouse's reach (its bounds): its back on the back edge, its loading dock to the front
   const R = reach(ctx), W = Math.max(10, R.W - 0.4), D = Math.max(14, R.D - 1.8), H = 6.4;
   const livery = pick(rng, [rgb(0xd8d2bc), rgb(0xb8c4c8), rgb(0xc9c0a8)]);
+  // (props census #4, lane B 2026-10-14; the judges: "270 triangles: a span box, a dark plate and a sheet plate for the
+  // door, glass squares stuck on") the shared sheet hall (hall.ts): the co-op's sheet on its raised floor, the sliding
+  // leaves over the cut door onto the store's floor and frames, its lights under the eaves, a back door; the green
+  // sign board, the canopy on its brackets over the loading dock at a lorry's bed height
   sink.placed(0, R.cx, 0, R.z0 + 0.25 + D / 2, () => {
-    sink.span(CEMENT, -W / 2 - 0.1, -0.4, -D / 2 - 0.1, W / 2 + 0.1, 0.9, D / 2 + 0.1);
-    sink.span('structureMetal', -W / 2, 0.9, -D / 2, W / 2, H, D / 2, { colour: livery });
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 18, eave: 0.5, verge: 0.4, thickness: 0.07, bucket: 'structureMetal', ridge: 'saddle' };
-    const rg = roofGeometry(W, D, H, roof);
-    emitRoof(sink, rg, roof, pick(rng, [rgb(0x5f6f78), rgb(0x8a3a2e), rgb(0x4f6a52)]));
-    if (rg.gable) for (const z of [D / 2, -D / 2]) {
-      const pts: Vec3[] = rg.gable.map(([u, y]) => [u, y, z] as Vec3);
-      sink.prism('structureMetal', z > 0 ? [...pts].reverse() : pts, [0, 0, z > 0 ? -1 : 1], 0.06, { colour: livery });
-    }
+    const dw = Math.min(4.4, W * 0.4);
+    sheetHall(sink, { w: W, d: D, eave: H, pitchDeg: 18, kerb: 0.9, livery, doorLivery: shade(livery, 0.85), trim: shade(livery, 0.7), doors: 'sliding', doorW: dw, doorH: 4.0,
+      open: 0.3 + ctx.variant() * 0.4, backDoor: W * 0.3, clerestory: true, roofLights: false, ridgeVent: false, gutters: true, mobile: ctx.tier === 'mobile',
+      roof: { bucket: 'structureMetal', colour: pick(rng, [rgb(0x5f6f78), rgb(0x8a3a2e), rgb(0x4f6a52)]) } }, ctx.variant);
     const f: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    faceBox(sink, 'dark', f, 0, 0.9 + 2.0, 0.005, Math.min(4.4, W * 0.4), 4.0, 0.02, { decor: true });
-    faceBox(sink, 'structureMetal', f, -Math.min(4.4, W * 0.4) / 4, 0.9 + 2.0, 0.03, Math.min(4.4, W * 0.4) / 2, 4.0, 0.04, { colour: shade(livery, 0.85), decor: true });
     faceBox(sink, 'structureMetal', f, 0, H - 0.6, 0.02, W * 0.6, 0.45, 0.03, { colour: rgb(0x2f7a4a), decor: true });
     sink.span('structureMetal', -3.0, 5.0, D / 2, 3.0, 5.12, D / 2 + 1.4, { colour: shade(livery, 0.9), decor: true, shadow: true });
+    for (const sx of [-2.6, 2.6]) sink.member('structureMetal', [sx, 4.2, D / 2], [sx, 5.0, D / 2 + 1.2], 0.08, 0.08, [1, 0, 0], { colour: shade(livery, 0.7), decor: true, exposed: true }, 0);
     // the loading dock under the canopy, at a lorry's bed height
     sink.span(CEMENT, -3.2, -0.3, D / 2, 3.2, 1.0, D / 2 + 1.2);
-    for (const side of [-1, 1]) {
-      const sf: Face = { origin: [side * W / 2, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D };
-      for (let u = -D / 2 + 2.4; u < D / 2 - 2; u += 4.0) faceBox(sink, 'glass', sf, u, H - 1.2, 0.012, 1.4, 0.8, 0.02, { decor: true });
-    }
   });
   return sink.finish();
 };
