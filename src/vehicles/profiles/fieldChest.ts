@@ -61,3 +61,26 @@ export function fieldChestParts(w: number, h: number, d: number, options: FieldC
   }
   return { paint, dark };
 }
+
+/**
+ * One M2A1 ammunition can (the .50-calibre can US crews stack in a bustle rack): 0.305 m long (X), 0.155 m wide (Z),
+ * 0.19 m tall, floor on y = 0. The lid's rubber-sealed rim, the folding carry handle on the lid, the latch lever on the
+ * +X end and a pressed rib round the body. The coarse level keeps body and lid.
+ */
+export function ammoCanParts(high = true): FieldChestParts {
+  const L = 0.305, W = 0.155, H = 0.19, lid = 0.028, body = H - lid;
+  const paint: THREE.BufferGeometry[] = [
+    xform(box(L, body, W), 0, body / 2, 0),
+    xform(box(L + 0.008, lid, W + 0.008), 0, body + lid / 2, 0),
+  ];
+  const dark: THREE.BufferGeometry[] = [];
+  if (!high) return { paint, dark };
+  paint.push(xform(box(L + 0.004, 0.012, W + 0.004), 0, body * 0.45, 0));
+  // folding carry handle: two hinge lugs and the bar between them, lying flat on the lid
+  for (const x of [-0.05, 0.05]) dark.push(xform(box(0.016, 0.012, 0.022), x, H + 0.006, 0));
+  dark.push(xform(cylX(0.006, 0.10, 6), 0, H + 0.008, 0.016));
+  // the latch lever folded down the +X end, its hinge pin at the lid line
+  dark.push(xform(box(0.010, 0.10, 0.06), L / 2 + 0.008, body - 0.04, 0));
+  dark.push(xform(cylZ(0.007, 0.07, 6), L / 2 + 0.006, body + 0.004, 0));
+  return { paint, dark };
+}
