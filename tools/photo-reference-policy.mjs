@@ -1,4 +1,5 @@
 // Explicit photographic targets only. Missing/failed 3D references never opt in.
+import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
 export const PHOTO_REFERENCE_IDS=Object.freeze(['marder2','cv9040c','dardo','lrmv_lynx','borsuk','amx10p','amx10p_25']);
 export const PHOTO_REFERENCE_PACKET='docs/references/photos/ifvs-20260925.json';
 export function isPhotoReference(id){return PHOTO_REFERENCE_IDS.includes(id);}
@@ -7,8 +8,11 @@ export function photoTarget(id,packet){
     ||packet.comparisonPurpose!=='photographic-reference'
     ||packet.numerical3DComparison!=='unverified'||packet.dimensionToleranceFraction!==.03
     ||Object.keys(packet.targets??{}).length!==PHOTO_REFERENCE_IDS.length)return null;
-  if(!PHOTO_REFERENCE_IDS.every(key=>Object.hasOwn(packet.targets,key)))return null;
-  const target=packet.targets[id];
+  // The packet keeps the ids it was written under (docs/references, unstamped = schema 1): read its targets in
+  // today's ids (tankIdAliases.ts, SSOT 2.19).
+  const targets=Object.fromEntries(Object.entries(packet.targets??{}).map(([key,value])=>[resolveTankId(key,packet.tankIdSchema),value]));
+  if(!PHOTO_REFERENCE_IDS.every(key=>Object.hasOwn(targets,key)))return null;
+  const target=targets[id];
   if(!target.authority||!target.envelopeBasis||!target.sources?.length
     ||!target.sources.every(url=>typeof url==='string'&&url.startsWith('https://'))
     ||!['widthM','overallLengthM','tallestM','caliberMm','crew'].every(k=>Number.isFinite(target[k])&&target[k]>0)
