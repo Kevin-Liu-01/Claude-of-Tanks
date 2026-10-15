@@ -106,8 +106,8 @@ assert.match(dressing,
 assert.match(dressing, /foregroundOfVerdantScaffold = true/,
   'the Burlak assembly must remain in front of Verdant scaffold uprights');
 assert.match(dressing,
-  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak',[\s\S]*12\.4, -15\.0, -0\.55 \+ Math\.PI \/ 2/,
-  'Burlak must carry four exact fleet road wheels on a connected service dolly');
+  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak',[\s\S]*14\.6, -17\.2, -0\.55 \+ Math\.PI \/ 2/,
+  'Burlak must carry four exact fleet road wheels on a connected service dolly, out of the Garage camera\'s frame');
 assert.match(workshopLayout,
   /id: 'burlak_gantry', role: 'heavy-lift', x: 18\.8, z: -10\.3, yaw: -0\.55/,
   'outdoor service structures must follow the Burlak assembly final pose');
