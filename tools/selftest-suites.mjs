@@ -1157,6 +1157,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/roof-hops.selftest.mjs',
     // 2026-10-14 (physics stream F8): roof falls: the edge under the box is a contact, walls under the roof are passed
     'tools/roof-falls.selftest.mjs',
+    // 2026-10-14 (physics stream F9): a hull set level on a steep face lies onto it, no snap, never over
+    'tools/steep-plane.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
