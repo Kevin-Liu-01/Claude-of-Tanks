@@ -28,6 +28,8 @@ export interface HallSpec {
   doorW: number;
   doorH: number;
   open: number;
+  /** the apron doors' centres along the front (default one, centred) */
+  doorAt?: readonly number[];
   /** a personnel door in the back gable at u (null: none); one in a side wall at u (null: none) */
   backDoor: number | null;
   sideDoor?: number | null;
@@ -54,7 +56,7 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   const { w, d, eave } = spec;
   const wall = eave - spec.kerb;
   const openings: Opening[] = [];
-  if (spec.doors !== 'none') openings.push({ face: 'front', storey: 0, kind: 'gate', u: 0, w: spec.doorW, y0: 0, h: Math.min(spec.doorH, wall - 0.5) });
+  if (spec.doors !== 'none') for (const u of spec.doorAt ?? [0]) openings.push({ face: 'front', storey: 0, kind: 'gate', u, w: spec.doorW, y0: 0, h: Math.min(spec.doorH, wall - 0.5) });
   if (spec.backDoor !== null) openings.push({ face: 'back', storey: 0, kind: 'door', u: spec.backDoor, w: 1.0, y0: 0, h: 2.2 });
   if (spec.sideDoor !== undefined && spec.sideDoor !== null) openings.push({ face: 'right', storey: 0, kind: 'door', u: spec.sideDoor, w: 1.0, y0: 0, h: 2.2 });
   if (spec.openSide) {

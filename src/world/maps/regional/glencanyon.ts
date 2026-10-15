@@ -8,9 +8,10 @@
 // offices of painted block and its steel warehouses; and Page itself: ranch houses of stucco and block under shallow
 // shingled gables with their carports, the fire station with its hose tower, the water tower on its legs.
 import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { sheetHall } from './hall.ts';
 import { latticeFrame } from './lattice.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
@@ -665,26 +666,15 @@ const steelWarehouse: RegionalBuilder = (ctx) => {
   // the shed fills the old warehouse's reach (its bounds): its back on the back edge, its dock to the front edge
   const R = reach(ctx), W = Math.max(8, R.W - 0.4), D = Math.max(10, R.D - 2.0), H = 5.6;
   const livery = pick(rng, [rgb(0xd8d2c0), rgb(0xb8c0bc), rgb(0xc9b896), rgb(0xa9b2ae)]);
+  // (props census #4, lane B 2026-10-14; the judges: "188 triangles: a span box, its roller doors a dark plate and a sheet
+  // plate laid on it, a glass strip") the shared sheet hall (hall.ts): the Bureau's profiled steel on its slab, two roller
+  // doors in cut openings under their drums onto the store's floor and frames, the lights under the eaves, a side door,
+  // gutters, roof lights and the ridge vent; the dock along the front
   sink.placed(0, R.cx, 0, R.z0 + 0.2 + D / 2, () => {
-    sink.span(CONCRETE, -W / 2 - 0.1, -0.4, -D / 2 - 0.1, W / 2 + 0.1, 0.25, D / 2 + 0.1);
-    sink.span('structureMetal', -W / 2, 0.25, -D / 2, W / 2, H, D / 2, { colour: livery });
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 8, eave: 0.4, verge: 0.3, thickness: 0.07, bucket: 'structureMetal', ridge: 'saddle' };
-    const rg = roofGeometry(W, D, H, roof);
-    emitRoof(sink, rg, roof, shade(livery, 1.02));
-    if (rg.gable) for (const z of [D / 2, -D / 2]) {
-      const pts: Vec3[] = rg.gable.map(([u, yy]) => [u, yy, z] as Vec3);
-      sink.prism('structureMetal', z > 0 ? [...pts].reverse() : pts, [0, 0, z > 0 ? -1 : 1], 0.06, { colour: livery });
-    }
-    const f: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
     const dw = Math.min(3.8, W * 0.36);
-    for (const u of [-W * 0.24, W * 0.24]) {
-      faceBox(sink, 'dark', f, u, 2.45, 0.005, dw, 4.4, 0.02, { decor: true });
-      faceBox(sink, 'structureMetal', f, u, 2.45 + 1.0, 0.03, dw, 2.4, 0.04, { colour: STEEL_GREY, decor: true });
-    }
-    for (const side of [-1, 1]) {
-      const sf: Face = { origin: [side * W / 2, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D };
-      faceBox(sink, 'glass', sf, 0, H - 0.8, 0.012, D - 3, 0.6, 0.02, { decor: true });
-    }
+    sheetHall(sink, { w: W, d: D, eave: H + 0.85, pitchDeg: 8, kerb: 1.1, livery, doorLivery: STEEL_GREY, trim: shade(livery, 0.7), doors: 'roller', doorW: dw, doorH: 4.4,
+      open: 0.25 + rng() * 0.5, doorAt: [-W * 0.24, W * 0.24], backDoor: W * 0.3, sideDoor: null, clerestory: true, roofLights: true, ridgeVent: true, gutters: true,
+      mobile: ctx.tier === 'mobile', roof: { bucket: 'structureMetal', colour: shade(livery, 1.02) } }, ctx.variant);
     sink.span(CONCRETE, -W / 2, -0.3, D / 2, W / 2, 1.1, D / 2 + 1.6);
   });
   return sink.finish();
