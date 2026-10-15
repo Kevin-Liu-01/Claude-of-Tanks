@@ -165,7 +165,7 @@ export const valveTower: LandmarkBuilder = (ctx) => {
       archSurround(sink, 'stone', f, h, 0.16, 0.06, { keystone: true, sill: !isDoor });
       if (isDoor) {
         plankDoor(sink, f, 0, door.y0, door.w - 0.04, door.spring - door.y0, IRON_GREEN, -reveal + 0.05);
-        for (const y of [door.y0 + 0.45, door.spring - 0.45]) faceBox(sink, 'structureMetal', f, -0.05, y, -reveal + 0.07, door.w - 0.2, 0.07, 0.02, { colour: IRON, decor: true, fine: true });
+        for (const y of [door.y0 + 0.45, door.spring - 0.45]) faceBox(sink, 'structureWood', f, -0.05, y, -reveal + 0.07, door.w - 0.2, 0.07, 0.02, { colour: IRON, decor: true, fine: true });
       } else archWindow(sink, f, h, reveal, FRAME_WHITE, false, { coarse: true });
       continue;
     }
@@ -187,7 +187,7 @@ export const valveTower: LandmarkBuilder = (ctx) => {
       revolve(sink, 'roof', 0, zT, [[r0 + (r1 - r0) * t0, y0 + (y1 - y0) * t0], [r0 + (r1 - r0) * t1, y0 + (y1 - y0) * t1]], N, { shade: (j + k) % 2 ? 0.9 : 1 }, phase);
     }
   }
-  revolve(sink, 'structureMetal', 0, zT, [[rr * 0.9 + 0.04, roofY + 0.5], [rr * 0.9 + 0.04, roofY + 0.62]], N, { colour: shade(STEEL_GREY, 0.8), decor: true }, phase);
+  revolve(sink, 'structureWood', 0, zT, [[rr * 0.9 + 0.04, roofY + 0.5], [rr * 0.9 + 0.04, roofY + 0.62]], N, { colour: shade(STEEL_GREY, 0.8), decor: true }, phase);
   const fy = roofY + R * 1.38;
   // (the finial comes off at the first damage: props lane A, E12)
   piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
@@ -223,17 +223,18 @@ export const valveTower: LandmarkBuilder = (ctx) => {
   for (const sx of [-1, 1]) {
     sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.75, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
   }
-  // the valve gear on the bridge's end before the door: two cast-iron headstocks, their hand wheels and spindles
+  // the valve gear on the bridge's end before the door: two cast-iron headstocks, their hand wheels and spindles (the
+  // iron painted in the timber bucket the door already draws: no new batch on the reservoir, the cost census)
   for (const sx of [-1, 1]) {
     const x = sx * (W / 2 - 0.75), z = zFace - 1.3;
-    revolve(sink, 'structureMetal', x, z, [[0.22, deckY], [0.1, deckY + 0.3], [0.09, deckY + 0.85], [0.14, deckY + 0.95], [0.001, deckY + 1.0]], 6, { colour: IRON_GREEN });
+    revolve(sink, 'structureWood', x, z, [[0.22, deckY], [0.1, deckY + 0.3], [0.09, deckY + 0.85], [0.14, deckY + 0.95], [0.001, deckY + 1.0]], 6, { colour: IRON_GREEN });
     const wy = deckY + 1.05, wr = 0.32;
     for (let k = 0; k < 6; k++) {
       const a0 = k * Math.PI / 3, a1 = (k + 1) * Math.PI / 3;
-      bar(sink, 'structureMetal', [x + Math.cos(a0) * wr, wy, z + Math.sin(a0) * wr], [x + Math.cos(a1) * wr, wy, z + Math.sin(a1) * wr], 0.035, { colour: IRON, decor: true });
+      bar(sink, 'structureWood', [x + Math.cos(a0) * wr, wy, z + Math.sin(a0) * wr], [x + Math.cos(a1) * wr, wy, z + Math.sin(a1) * wr], 0.035, { colour: IRON, decor: true });
     }
-    for (const a of [0, Math.PI / 2]) bar(sink, 'structureMetal', [x - Math.cos(a) * wr, wy, z - Math.sin(a) * wr], [x + Math.cos(a) * wr, wy, z + Math.sin(a) * wr], 0.025, { colour: IRON, decor: true, fine: true });
-    sink.span('structureMetal', x - 0.025, wy, z - 0.025, x + 0.025, wy + 0.35, z + 0.025, { colour: STEEL_GREY, decor: true });
+    for (const a of [0, Math.PI / 2]) bar(sink, 'structureWood', [x - Math.cos(a) * wr, wy, z - Math.sin(a) * wr], [x + Math.cos(a) * wr, wy, z + Math.sin(a) * wr], 0.025, { colour: IRON, decor: true, fine: true });
+    sink.span('structureWood', x - 0.025, wy, z - 0.025, x + 0.025, wy + 0.35, z + 0.025, { colour: STEEL_GREY, decor: true });
   }
   return { parts: finishLandmark(sink) };
 };

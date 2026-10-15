@@ -102,7 +102,7 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
   for (const u of [-1.6, 1.6]) {
     sink.span('structureMetal', cx + u - 0.35, 0.3, -hd / 2 - 0.75, cx + u + 0.35, head - 1.2, -hd / 2, { colour: SPOUT, decor: true });
     sink.span('structureMetal', cx + u - 0.55, base, -hd / 2 - 1.05, cx + u + 0.55, 1.4, -hd / 2, { colour: shade(SPOUT, 0.85) });
-    for (let y = 3; y < head - 2; y += 4.4) sink.span('structureMetal', cx + u - 0.42, y, -hd / 2 - 0.82, cx + u + 0.42, y + 0.12, -hd / 2, { colour: shade(SPOUT, 0.8), decor: true, fine: true });
+    for (let y = 3; y < head - 2; y += 4.4) sink.span('structureMetal', cx + u - 0.42, y, -hd / 2 - 0.82, cx + u + 0.42, y + 0.12, -hd / 2, { colour: shade(SPOUT, 0.8), decor: true });
   }
   // the loading spout leaning out over the track side (the connectivity sweep: its end hung in air: its hoist cable from
   // high on the head house to the spout's end, and the drop spout hanging from that end)
@@ -123,16 +123,16 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
     sink.span(concrete, rx1 - 0.3, 1.2, z - 0.18, rx1, ry, z + 0.18, { decor: true });
   }
   sink.span('structureMetal', rx0 + 0.6, 0.0, -1.6, rx1 - 0.6, 0.04, 1.6, { colour: rgb(0x1e1f20), decor: true });
-  for (let z = -1.4; z < 1.5; z += 0.28) sink.span('structureMetal', rx0 + 0.6, 0.04, z - 0.03, rx1 - 0.6, 0.07, z + 0.03, { colour: IRON, decor: true, fine: true });
+  for (let z = -1.4; z < 1.5; z += 0.28) sink.span('structureMetal', rx0 + 0.6, 0.04, z - 0.03, rx1 - 0.6, 0.07, z + 0.03, { colour: IRON, decor: true });
   // the cat ladder up the battery's end silo to its top, caged above head height
   const lx = x0 - 0.35, lz = -rows * r + r;
   for (const dz of [-0.24, 0.24]) bar(sink, 'structureMetal', [lx, 1.2, lz + dz], [lx, H + 1.0, lz + dz], 0.05, { colour: IRON, decor: true });
-  for (let y = 1.5; y < H + 0.6; y += 0.35) bar(sink, 'structureMetal', [lx, y, lz - 0.24], [lx, y, lz + 0.24], 0.03, { colour: IRON, decor: true, fine: true });
+  for (let y = 1.5; y < H + 0.6; y += 0.35) bar(sink, 'structureMetal', [lx, y, lz - 0.24], [lx, y, lz + 0.24], 0.03, { colour: IRON, decor: true });
   for (let y = 3.5; y < H + 0.6; y += 2.4) {
     // (each hoop from stile to stile: the connectivity receipt)
-    bar(sink, 'structureMetal', [lx, y, lz - 0.24], [lx - 0.7, y, lz - 0.38], 0.03, { colour: IRON, decor: true, fine: true });
-    bar(sink, 'structureMetal', [lx - 0.7, y, lz - 0.38], [lx - 0.7, y, lz + 0.38], 0.03, { colour: IRON, decor: true, fine: true });
-    bar(sink, 'structureMetal', [lx - 0.7, y, lz + 0.38], [lx, y, lz + 0.24], 0.03, { colour: IRON, decor: true, fine: true });
+    bar(sink, 'structureMetal', [lx, y, lz - 0.24], [lx - 0.7, y, lz - 0.38], 0.03, { colour: IRON, decor: true });
+    bar(sink, 'structureMetal', [lx - 0.7, y, lz - 0.38], [lx - 0.7, y, lz + 0.38], 0.03, { colour: IRON, decor: true });
+    bar(sink, 'structureMetal', [lx - 0.7, y, lz + 0.38], [lx, y, lz + 0.24], 0.03, { colour: IRON, decor: true });
   }
   // the harvest's lorries waiting in the yard before the silos (`trucks`, the props' destructible truck, a hull crushes)
   const trucks = Math.max(0, Math.min(4, Math.round(Number(ctx.params.trucks) || 0)));
