@@ -33,6 +33,7 @@ import {
 import {
   addGarageFacilityDetails,
   garageTerraceAtDatum,
+  garageTunnelBore,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
 import {
@@ -1429,6 +1430,27 @@ export function buildGarageEnvironment(
   // Service islands win over the graded road wherever the two intentionally
   // meet, keeping every gantry foot and real fleet exhibit on its own datum.
   shapeFacilityTerraces();
+  // Glacier's tunnel (the re-judge, 2026-10-15: "a flat-topped snow-white band at floor level" at the bore's far end, the
+  // hill's ground standing up through the floor): the ground in the bore and a terrain diagonal (3.4 m) beyond its walls
+  // is lowered to the mouth's level, under the floor slab, all of it inside the cliff (garageRockKit.ts)
+  const carveTunnelBore = (): void => {
+    const bore = garageTunnelBore(variant);
+    if (!bore) return;
+    const mouth = cameraPoint(bore.side, bore.depth0);
+    const floorY = samplePatch(patch, heights, mouth.x, mouth.z) + 0.04;
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const { side, depth } = garageWorldPointToView(x, z);
+        if (Math.abs(side - bore.side) < bore.half + 3.4 && depth > bore.depth0 + 0.3 && depth < bore.depth0 + bore.length + 1.8) {
+          const index = row * patch.width + column;
+          heights[index] = Math.min(heights[index], floorY);
+        }
+      }
+    }
+  };
+  carveTunnelBore();
 
   // The podium is a physical object with its bottom at y=0. Re-apply one
   // canonical circular exclusion after every structure/facility terrace has
