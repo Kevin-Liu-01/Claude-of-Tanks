@@ -39,15 +39,17 @@ interface Soup {
 
 const linear = (hex: number): THREE.Color => new THREE.Color(hex);
 
-function triangle(soup: Soup, a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, color: THREE.Color): void {
+function triangle(soup: Soup, a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, color: THREE.Color,
+  colorB: THREE.Color = color, colorC: THREE.Color = color): void {
   const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
   if (n.lengthSq() < 1e-12) return;
   n.normalize();
-  for (const p of [a, b, c]) {
+  const colors = [color, colorB, colorC];
+  [a, b, c].forEach((p, i) => {
     soup.positions.push(p.x, p.y, p.z);
     soup.normals.push(n.x, n.y, n.z);
-    soup.colors.push(color.r, color.g, color.b);
-  }
+    soup.colors.push(colors[i].r, colors[i].g, colors[i].b);
+  });
 }
 
 /** Build a cliff face (and its tunnel) as one world-space, flat-shaded, vertex-coloured geometry. */
@@ -87,14 +89,15 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
   const crest = (u: number): number => height * (0.78 + 0.22 * fbm(u * 0.09 + 3, 1.7)) * (1 - 0.35 * Math.pow(Math.abs(u) / half, 3));
   // the face's set-back at (u, y) within stratum s at fraction t up it
   const setBack = (u: number, y: number, s: number, t: number): number => {
-    const curl = -depth * 0.8 * Math.pow(Math.abs(u) / half, 2.2) * (0.8 + 0.4 * fbm(y * 0.2, 4.1));
+    const curl = -depth * 0.45 * Math.pow(Math.abs(u) / half, 3) * (0.8 + 0.4 * fbm(y * 0.2, 4.1));
     const batter = -0.2 * y;
     const lean = -0.45 * (1 - t);
     // joint blocks: the stratum breaks into blocks 1.6-3.2 m wide, each standing proud or set back as a whole
     const blockWidth = 1.6 + hash(s, 7) * 1.6;
     const block = Math.floor(u / blockWidth + hash(s, 3) * 3);
-    const jointed = (hash(block, s) - 0.5) * 1.1;
-    const rough = (fbm(u * 0.22 + s * 1.7, y * 0.22) - 0.5) * 1.8 + (fbm(u * 0.9 + 11, y * 0.9 + s) - 0.5) * 0.45;
+    const jointed = (hash(block, s) - 0.5) * 0.45;
+    const rough = (fbm(u * 0.12 + 3.1, y * 0.15) - 0.5) * 2.6 + (fbm(u * 0.3 + s * 1.7, y * 0.3) - 0.5) * 0.9
+      + (fbm(u * 0.9 + 11, y * 0.9 + s) - 0.5) * 0.3;
     return curl + batter + lean + jointed + rough;
   };
   const inOpening = (u: number, y: number, margin = 0): boolean => {
@@ -103,13 +106,19 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     if (y < opening.spring) return du < opening.half + margin;
     return Math.hypot(du, y - opening.spring) < opening.half + margin;
   };
-  const strataTones = options.strata.map(linear);
+  // the strata pulled halfway to their mean so the bands read as one rock, coloured per vertex from smooth noise so
+  // neighbouring facets blend (a colour per facet read as pixels in the GPU stills)
+  const mean = options.strata.map(linear).reduce((acc, c) => acc.add(c), new THREE.Color(0, 0, 0)).multiplyScalar(1 / options.strata.length);
+  const strataTones = options.strata.map((hex) => linear(hex).lerp(mean, 0.5));
   const snow = linear(options.snow);
+  const snowShade = linear(0xc9d3da);
   const tone = (s: number, u: number, y: number, n: THREE.Vector3): THREE.Color => {
-    if (n.y > 0.55) return snow.clone().lerp(linear(0xc9d3da), fbm(u * 0.8, y * 0.8) * 0.5);
+    if (n.y > 0.55) return snow.clone().lerp(snowShade, fbm(u * 0.8, y * 0.8) * 0.5);
     const base = strataTones[s % strataTones.length].clone();
-    base.multiplyScalar(0.86 + fbm(u * 0.6 + 9, y * 0.9) * 0.28);
-    if (y - frame.groundAt(u, 0) < 1.2) base.multiplyScalar(0.8); // the wet, dark foot
+    base.multiplyScalar(0.84 + fbm(u * 0.18 + 9, y * 0.22) * 0.32);
+    // dark streaks where water runs down the face, and the wet foot
+    base.multiplyScalar(1 - Math.pow(fbm(u * 0.7 + 21, y * 0.05), 3) * 0.35);
+    if (y < 1.2) base.multiplyScalar(0.8 + y / 6);
     return base;
   };
   const us = Array.from({ length: columns + 1 }, (_, k) => -half + (k / columns) * width);
@@ -134,10 +143,11 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
         const mu = (us[k] + us[k + 1]) / 2, my = (a.y + c.y) / 2 - (ground[k] + ground[k + 1]) / 2;
         if (inOpening(mu, my, -0.15)) continue;
         n.subVectors(b, a).cross(new THREE.Vector3().subVectors(d, a)).normalize();
-        const color = tone(s, mu, my, n);
+        const at = (p: THREE.Vector3, k0: number): THREE.Color => tone(s, us[k0], p.y - ground[k0], n);
+        const ca = at(a, k), cb = at(b, k + 1), cc = at(c, k + 1), cd = at(d, k);
         // seen from the yard (+w): a -> b runs +u, so counter-clockwise is a, b, c and a, c, d
-        triangle(soup, a, b, c, color);
-        triangle(soup, a, c, d, color);
+        triangle(soup, a, b, c, ca, cb, cc);
+        triangle(soup, a, c, d, ca, cc, cd);
       }
       // the ledge between this stratum's top and the next one's foot: upward, snow-laden
       if (s < strata - 1) {
@@ -152,7 +162,8 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
   // the crest slopes back into the hill under snow
   for (let k = 0; k < columns; k += 1) {
     const topA = face(k, strata - 1, 2), topB = face(k + 1, strata - 1, 2);
-    const backA = world(us[k] * 0.92, topA.y + 1.4, -depth), backB = world(us[k + 1] * 0.92, topB.y + 1.4, -depth);
+    // the crest slopes up and back into the hill
+    const backA = world(us[k] * 0.96, topA.y + depth * 0.45, -depth), backB = world(us[k + 1] * 0.96, topB.y + depth * 0.45, -depth);
     triangle(soup, topA, topB, backB, snow);
     triangle(soup, topA, backB, backA, snow);
   }

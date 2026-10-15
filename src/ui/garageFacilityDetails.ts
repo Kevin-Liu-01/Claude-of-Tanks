@@ -2309,7 +2309,7 @@ export function addGarageFacilityDetails({
       // a sculpted face in strata with snow on its ledges (garageRockKit.ts), a shotcrete-lined horseshoe tunnel 14 m
       // deep on steel arch ribs with lagging over the crown, a vent duct and a row of lamps down it to a bulkhead with a
       // lit door, a board-formed concrete portal collar, the blast door's rail and guide frame, a drainage channel
-      // across the mouth and avalanche fences on the slope above. Squared on the road's last stretch into the hill.
+      // across the mouth. Squared on the road's last stretch into the hill.
       const mouthSide = -3.6, mouthDepth = 24.5;
       const origin = cameraPoint(mouthSide, mouthDepth);
       const roadIn = cameraPoint(mouthSide + 4 / 17, mouthDepth - 1); // back down the road toward (0, 10)
@@ -2323,7 +2323,7 @@ export function addGarageFacilityDetails({
         x: origin.x, z: origin.z, yaw,
         groundAt: (u, w) => { const at = toWorld(u, w); return Math.min(groundAtWorld(at.x, at.z), mouthY + 0.2 + Math.abs(u) * 0.05); },
       }, {
-        width: 30, height: 12.5, depth: 9, seed: 0x6a1c,
+        width: 40, height: 14, depth: 14, seed: 0x6a1c,
         strata: [0x6c6f70, 0x5a5e60, 0x7a7972, 0x63676a, 0x55595b],
         snow: 0xe6ecf0,
         opening: { u: 0, half: half + 0.25, spring, length: tunnelLength, lining: 0x8a8984 },
@@ -2380,14 +2380,6 @@ export function addGarageFacilityDetails({
       // a drainage channel across the mouth: a dark run with a grating over it
       clusterBox(portal, 0, 2.2, 0.03, 2 * half + 2.2, 0.03, 0.42, dark, 'painted');
       for (let i = 0; i < 26; i += 1) clusterBox(portal, -half - 1.0 + i * ((2 * half + 2.0) / 25), 2.2, 0.06, 0.04, 0.03, 0.42, ribSteel, 'structure');
-      // avalanche fences on the slope above the portal: posts with net panels between, two rows
-      for (const [row, y, w] of [[0, 10.4, -3.2], [1, 11.6, -5.4]] as const) {
-        for (let i = -3; i <= 3; i += 1) {
-          const u = i * 3.0 + (row ? 1.5 : 0);
-          clusterBeam(portal, [u, w, y - 0.6], [u, w + 0.5, y + 2.6], 0.09, ribSteel, 'structure');
-          if (i < 3) clusterBox(portal, u + 1.5, w + 0.3, y + 1.0, 2.9, 2.4, 0.03, new THREE.Color(0x4a4f52), 'painted', 0, -0.2);
-        }
-      }
       structuralConnections += 40;
       // the yard's kit stands in front of the portal, clear of the road
       addPoweredWinch(fixedCluster(featureSide - 11.5, featureDepth - 9.5), 0, 0, new THREE.Color(0x758692));
