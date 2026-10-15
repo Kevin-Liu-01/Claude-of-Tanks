@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 // (b45: a rebuilt kind spends its legacy builder's draws exactly)
 import { spentDraws } from './brokenDraws.ts';
+import { jitterUV } from '../propGeometry.ts';
 import type { DestructiblePropType } from './inhabitKit.ts';
 
 type Rng = () => number;
@@ -435,7 +436,7 @@ export function bBarbedWireBroken(rng: Rng): THREE.BufferGeometry {
 // --- the family's seams in props.ts ---------------------------------------------------------------------------------
 /** A field work's drawn part and the props bucket it rides. */
 export interface FieldworksPart {
-  bucket: 'dark' | 'baked';
+  bucket: 'dark' | 'baked' | 'stone';
   geometry: THREE.BufferGeometry;
 }
 
@@ -1341,6 +1342,79 @@ export function buildAaGun(mapId: string): { base: THREE.BufferGeometry; head: T
     block(head, 1.1, 0.05, 0.55, 0, -0.38, -0.12, paint);
   }
   return { base: base.geometry(), head: head.geometry() };
+}
+
+// --- the camp's fire ring (site:camp-fire-ring: props.ts placeSupplyCamps, 2.6 m and 1.4 m off the camp's tent) -------
+//
+// Field stones in a ring half sunk in the ground (rounded and irregular, each its own, on the map's stone), the ash bed
+// inside with the fire's last logs charred across it; over it the cook's tripod and its pot until the 1960s, a steel
+// grate on a later camp. The stones draw the props stream exactly as the old ring's boxes did (their count, size, print
+// and turn); the rest draws nothing.
+
+/** The camps that cooked over a tripod: the maps set before 1960 (periodClutterKit.ts MAP_SETTING_YEAR). */
+const TRIPOD_CAMPS: ReadonlySet<string> = new Set(['blackglass', 'fjord', 'longleaf', 'verdant', 'autumn', 'monsoon', 'polders',
+  'reservoir', 'alpine', 'foundry', 'winter', 'steppe']);
+
+/** The fire ring at (x, y, z) (the ground under it) on `mapId`'s camp: its parts, the stones from `rng` as before. */
+export function buildCampFireRing(mapId: string, x: number, y: number, z: number, rng: Rng): FieldworksPart[] {
+  const parts: FieldworksPart[] = [];
+  const stoneCount = 5 + ((rng() * 3) | 0);
+  const seed = (Math.imul(Math.round(x * 10), 73856093) ^ Math.imul(Math.round(z * 10), 19349663)) | 0;
+  for (let k = 0; k < stoneCount; k++) {
+    const angle = (k / stoneCount) * Math.PI * 2;
+    const size = 0.22 + rng() * 0.1;
+    // a field stone: a coarse rounded solid, each vertex pushed its own way (shared corners alike: no cracks)
+    const stone = new THREE.IcosahedronGeometry(0.5, 0);
+    const pa = stone.getAttribute('position');
+    for (let i = 0; i < pa.count; i++) {
+      const vx = pa.getX(i), vy = pa.getY(i), vz = pa.getZ(i), d = 0.78 + vnoise3(vx * 3 + k * 7, vy * 3, vz * 3 + seed * 1e-6, seed) * 0.42;
+      pa.setXYZ(i, vx * d * size, vy * d * 0.17, vz * d * size * 0.9);
+    }
+    stone.computeVertexNormals();
+    jitterUV(stone, rng);
+    stone.rotateY(rng() * Math.PI);
+    stone.translate(x + Math.cos(angle) * 0.55, y + 0.045, z + Math.sin(angle) * 0.55);
+    parts.push({ bucket: 'stone', geometry: stone });
+  }
+  // the ash bed and the charred logs across it, the tripod and its pot or the grate (no draws)
+  const m = new SteelMesh();
+  const ash = (q: V): Rgb3 => mulRgb(hexLin(0x3a3634), 0.6 + vnoise3(q.x * 9, 0, q.z * 9, seed) * 0.6);
+  for (let k = 0; k < 9; k++) {
+    const a0 = (k / 9) * Math.PI * 2, a1 = ((k + 1) / 9) * Math.PI * 2;
+    m.tri(v3(0, 0.03, 0), v3(Math.cos(a1) * 0.44, 0.005, Math.sin(a1) * 0.44), v3(Math.cos(a0) * 0.44, 0.005, Math.sin(a0) * 0.44), ash);
+  }
+  const char = (q: V): Rgb3 => mulRgb(hexLin(0x1e1a16), 0.8 + vnoise3(q.x * 13, q.y * 13, q.z * 13, seed + 1) * 0.5);
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI + (seed % 7) * 0.3;
+    rodCol(m, v3(Math.cos(a) * 0.32, 0.035, Math.sin(a) * 0.32), v3(-Math.cos(a) * 0.12, 0.09, -Math.sin(a) * 0.12), 0.04, char);
+  }
+  const iron = (q: V): Rgb3 => mulRgb(hexLin(0x2c2a28), 0.85 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed + 2) * 0.3);
+  if (TRIPOD_CAMPS.has(mapId)) {
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + 0.4;
+      rodCol(m, v3(Math.cos(a) * 0.62, -0.03, Math.sin(a) * 0.62), v3(0, 1.05, 0), 0.018, (q) => mulRgb(POLE_WOOD, 0.85 + vnoise3(q.x * 7, q.y * 7, q.z * 7, seed + 3) * 0.3));
+    }
+    wireTube(m, [v3(0, 1.03, 0), v3(0, 0.5, 0)], 0.004, iron);
+    const pot = new SteelMesh(); pot.round(0.13, -0.1, 0.1, 8, iron);
+    const pg = pot.geometry(); pg.rotateX(-Math.PI / 2); pg.translate(0, 0.42, 0); appendGeo(m, pg);
+  } else {
+    for (const zz of [-0.15, -0.05, 0.05, 0.15]) rodCol(m, v3(-0.4, 0.2, zz), v3(0.4, 0.2, zz), 0.008, iron);
+    for (const [gx, gz] of [[-0.38, -0.2], [0.38, -0.2], [-0.38, 0.2], [0.38, 0.2]]) rodCol(m, v3(gx, 0, gz), v3(gx, 0.2, gz), 0.01, iron);
+  }
+  const g = m.geometry(); g.translate(x, y, z);
+  parts.push({ bucket: 'baked', geometry: g });
+  return parts;
+}
+
+/** A rod from a to b (a 5-sided round, its colour by `col`). */
+function rodCol(m: SteelMesh, a: V, b: V, r: number, col: (q: V, n: V) => Rgb3): void {
+  const len = a.distanceTo(b), g = new SteelMesh();
+  g.round(r, -len / 2, len / 2, 5, col, 0, 0, false);
+  const geo = g.geometry();
+  geo.lookAt(new THREE.Vector3().subVectors(b, a));
+  const mid = a.clone().add(b).multiplyScalar(0.5);
+  geo.translate(mid.x, mid.y, mid.z);
+  appendGeo(m, geo);
 }
 
 // ---------------------------------------------------------------------------------------------- sandbag stacks

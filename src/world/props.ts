@@ -70,7 +70,7 @@ import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import {
-  AMMOBOX_LEGACY, bSandbagBroken, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, fieldworksTypes,
+  AMMOBOX_LEGACY, bSandbagBroken, buildCampFireRing, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, fieldworksTypes,
   paintBurlap,
 } from './maps/fieldworksKit.ts'; // #10 fieldworks
 import {
@@ -6599,17 +6599,9 @@ ${snowCap ? `
         angle + Math.PI + (vrng() - 0.5) * 0.5, 0.9 + vrng() * 0.15);
     };
     const placeCampFireRing = (cx: number, cz: number): void => {
-      const stoneCount = 5 + ((vrng() * 3) | 0);
+      // (props census #10) the ring as the map's camps built it (maps/fieldworksKit.ts): its stones on the old draws
       const y = heightField.getHeightAt(cx + 2.6, cz + 1.4);
-      for (let stoneIndex = 0; stoneIndex < stoneCount; stoneIndex++) {
-        const angle = (stoneIndex / stoneCount) * Math.PI * 2;
-        const stone = box(0.22 + vrng() * 0.1, 0.18, 0.2, 1.4);
-        jitterUV(stone, vrng);
-        stone.rotateY(vrng() * Math.PI);
-        stone.translate(cx + 2.6 + Math.cos(angle) * 0.55,
-          y + 0.08, cz + 1.4 + Math.sin(angle) * 0.55);
-        buckets.stone.push(stone);
-      }
+      for (const part of buildCampFireRing(mapId, cx + 2.6, y, cz + 1.4, vrng)) buckets[part.bucket].push(part.geometry);
     };
     const placeCampCargo = (cx: number, cz: number): void => {
       scatterDestructibles('firewood', cx, cz, 1, 2.2, 4.5);
