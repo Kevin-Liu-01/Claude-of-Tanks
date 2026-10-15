@@ -11364,8 +11364,9 @@ ${snowCap ? `
     },
     // canvas drapes and drags as cloth (wave 352: "canvas never reads as cloth")
     cloth: (kind) => kind === 'tent' || (dPools.get(kind)?.meta.mat as string | undefined) === 'canvas',
-    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it
-    burns: (kind) => dPools.get(kind)?.meta.mat === 'vehicle',
+    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it;
+    // (Lane C, #8 r2) nothing burns in the Moon's vacuum (the audio's atmosphere there is 'vacuum' too): its rovers break
+    burns: (kind) => mapId !== 'moon' && dPools.get(kind)?.meta.mat === 'vehicle',
     onBurn: (x, y, z, heightM) => emitBreakFx('vehicleburn', x, y + 0.3, z, 0, 0, heightM),
   });
 

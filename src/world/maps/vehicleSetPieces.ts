@@ -168,37 +168,52 @@ function webbing(mesh: VehicleMesh, o: Vec3, du: Vec3, dv: Vec3, sag: Vec3, stra
  * frames, the control console and the T-handle controller between them, the battery covers forward, the umbrella
  * high-gain antenna, the helical low-gain antenna and the TV camera on the front, and the tool pallet astern.
  */
-function lrv(mesh: VehicleMesh, coarse: boolean): void {
+function lrv(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const R = 0.41, wheelZ = 1.145, wheelX = 0.915, frameY = 0.62;
+  // (Lane C, #8 r2: the census judge, "intact at the bar ... it fails only on the destroyed state", a recolour) the wreck:
+  // crushed under a hull or broken by a round, in vacuum (nothing burns): the chassis down on its splayed wheels, its
+  // forward section folded up at the hinge behind the battery covers, the front left wheel torn off and lying flat, the
+  // others squashed out of round and cambered out, the high-gain dish down on the regolith, the masts bent
+  const drop = wrecked ? frameY - 0.36 : 0;
   // the wheels: the mesh tyre, its chevrons, the hub drive inside
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
-    mesh.push().translate(sx * wheelX, R, sz * wheelZ).scale(sx, 1, 1);
-    // (round 4, wave 260: "solid dark wheel discs… no wire-mesh wheels") the woven tyre: bright wire and the dark of
-    // its weave's gaps in a fine check round the tread, the shoulders and the side walls down to the hub (one grey on
-    // mobile); the hub a small spun disc inside it
-    const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
-      [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
-    const tyreSegs = coarse ? 14 : 64;
-    mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
-      const a = (j / tyreSegs) * Math.PI * 2;
-      out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
-    }, (i, j) => (coarse ? WIRE_MESH : (i + j) % 2 ? WIRE_BRIGHT : WIRE_GAP), { closeV: true, creaseI: [3, 4, 7, 8], flip: true });
-    if (!coarse) {
-      for (let k = 0; k < 18; k++) {
-        mesh.push().rotateX((k / 18) * Math.PI * 2);
-        mesh.dressing(() => {
-          mesh.box(0.04, R + 0.005, 0, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
-          mesh.box(-0.04, R + 0.005, 0.02, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
-        });
-        mesh.pop();
+    const torn = wrecked && sx > 0 && sz > 0;
+    if (torn) mesh.push().translate(sx * (wheelX + 0.85), 0.115, sz * wheelZ + 0.35).rotateY(0.6).rotateZ(-Math.PI / 2);
+    else if (wrecked) mesh.push().translate(sx * (wheelX + 0.06), R * 0.66, sz * wheelZ).rotateZ(-sx * 0.32).scale(sx, 0.66, 1.05);
+    else mesh.push().translate(sx * wheelX, R, sz * wheelZ).scale(sx, 1, 1);
+    // (the torn wheel lies on the regolith beside the wreck: dressing, outside the record and the collision)
+    const wheelParts = (): void => {
+      // (round 4, wave 260: "solid dark wheel discs… no wire-mesh wheels") the woven tyre: bright wire and the dark of
+      // its weave's gaps in a fine check round the tread, the shoulders and the side walls down to the hub (one grey on
+      // mobile); the hub a small spun disc inside it
+      const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
+        [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
+      const tyreSegs = coarse ? 14 : 64;
+      mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
+        const a = (j / tyreSegs) * Math.PI * 2;
+        out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
+      }, (i, j) => (coarse ? WIRE_MESH : (i + j) % 2 ? WIRE_BRIGHT : WIRE_GAP), { closeV: true, creaseI: [3, 4, 7, 8], flip: true });
+      if (!coarse) {
+        for (let k = 0; k < 18; k++) {
+          mesh.push().rotateX((k / 18) * Math.PI * 2);
+          mesh.dressing(() => {
+            mesh.box(0.04, R + 0.005, 0, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
+            mesh.box(-0.04, R + 0.005, 0.02, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
+          });
+          mesh.pop();
+        }
       }
-    }
-    // the spoke ring and the hub drive
-    mesh.lathe([[0.0001, 0.07], [R * 0.43, 0.05], [R * 0.43, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU, { flip: true });
-    mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
+      // the spoke ring and the hub drive
+      mesh.lathe([[0.0001, 0.07], [R * 0.43, 0.05], [R * 0.43, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU, { flip: true });
+      mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
+    };
+    if (torn) mesh.dressing(wheelParts); else wheelParts();
     mesh.pop();
-    // the double wishbone up to the chassis
-    for (const dy of [0.08, -0.06]) beam(mesh, [sx * (wheelX - 0.2), R + dy, sz * wheelZ], [sx * 0.55, frameY - 0.05 + dy * 0.5, sz * (wheelZ - 0.35)], 0.03, 0.03, ALU_DULL);
+    if (torn) continue; // its wishbones and fender went with it
+    // the double wishbone up to the chassis (wrecked: from the squashed hub up to the dropped frame)
+    const hubY = wrecked ? R * 0.66 : R, fy = frameY - drop;
+    for (const dy of [0.08, -0.06]) beam(mesh, [sx * (wheelX - 0.2), hubY + dy * (wrecked ? 0.5 : 1), sz * wheelZ], [sx * 0.55, fy - 0.05 + dy * 0.5, sz * (wheelZ - 0.35)], 0.03, 0.03, ALU_DULL);
+    if (wrecked) continue; // the fenders crushed flat with the chassis (below)
     // the fender over the wheel, its forward extension
     const arc: Vec3[] = [];
     for (let k = 0; k <= 8; k++) {
@@ -207,15 +222,41 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
     }
     mesh.sweep(arc, [[-0.13, 0], [0.13, 0], [0.13, 0.008], [-0.13, 0.008]], () => FENDER, { closedSection: true, creases: [0, 1, 2, 3] });
   }
+  // the chassis and all it carries (wrecked: dropped onto the splayed wheels and rolled a little; its forward section,
+  // ahead of the hinge at z 0.75, folded up)
+  mesh.push();
+  if (wrecked) mesh.translate(0, -drop, 0).rotateZ(0.05);
+  const hingeZ = 0.75;
+  const forward = (emit: () => void): void => {
+    if (!wrecked) { emit(); return; }
+    mesh.push().translate(0, frameY, hingeZ).rotateX(-0.42).rotateY(0.08).translate(0, -frameY, -hingeZ);
+    emit();
+    mesh.pop();
+  };
   // the chassis: the outer frame, the cross members, the floor panels
-  for (const sx of [1, -1]) tubeRod(mesh, [sx * 0.55, frameY, -1.5], [sx * 0.55, frameY, 1.5], 0.025, ALU);
-  for (const z of [-1.5, -0.75, 0, 0.75, 1.5]) tubeRod(mesh, [-0.55, frameY, z], [0.55, frameY, z], 0.022, ALU);
-  mesh.box(0, frameY - 0.03, 0, 1.08, 0.015, 2.9, ALU_DULL, 0);
-  // the battery covers forward (dust covers with their radiator mirrors on top)
   for (const sx of [1, -1]) {
-    mesh.box(sx * 0.27, frameY + 0.12, 1.15, 0.48, 0.22, 0.6, WHITE_PAINT, coarse ? 0 : 0.02);
-    mesh.box(sx * 0.27, frameY + 0.235, 1.15, 0.42, 0.01, 0.5, ALU, 0);
+    tubeRod(mesh, [sx * 0.55, frameY, -1.5], [sx * 0.55, frameY, hingeZ], 0.025, ALU);
+    forward(() => tubeRod(mesh, [sx * 0.55, frameY, hingeZ], [sx * 0.55, frameY, 1.5], 0.025, ALU));
   }
+  for (const z of [-1.5, -0.75, 0, 0.75, 1.5]) {
+    if (z > hingeZ) forward(() => tubeRod(mesh, [-0.55, frameY, z], [0.55, frameY, z], 0.022, ALU));
+    else tubeRod(mesh, [-0.55, frameY, z], [0.55, frameY, z], 0.022, ALU);
+  }
+  mesh.box(0, frameY - 0.03, (-1.45 + hingeZ) / 2, 1.08, 0.015, hingeZ + 1.45, ALU_DULL, 0);
+  forward(() => mesh.box(0, frameY - 0.03, (hingeZ + 1.45) / 2, 1.08, 0.015, 1.45 - hingeZ, ALU_DULL, 0));
+  // wrecked: the fenders crushed flat on the frame's corners
+  if (wrecked) for (const sx of [1, -1]) for (const sz of [1, -1]) {
+    if (sx > 0 && sz > 0) continue;
+    const emit = () => mesh.box(sx * (wheelX - 0.05), frameY + 0.02, sz * wheelZ, 0.26, 0.012, 0.7, FENDER, 0);
+    if (sz > 0) forward(emit); else emit();
+  }
+  // the battery covers forward (dust covers with their radiator mirrors on top)
+  forward(() => {
+    for (const sx of [1, -1]) {
+      mesh.box(sx * 0.27, frameY + 0.12, 1.15, 0.48, 0.22, 0.6, WHITE_PAINT, coarse ? 0 : 0.02);
+      mesh.box(sx * 0.27, frameY + 0.235, 1.15, 0.42, 0.01, 0.5, ALU, 0);
+    }
+  });
   // the seats: tube frames, webbing pans and backs, a little reclined (round 4, wave 260: "plate seats": the straps
   // slung between the frame's rails, sagging; the frames' rails round them)
   for (const sx of [1, -1]) {
@@ -240,36 +281,52 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
   tubeRod(mesh, [0, frameY + 0.34, 0.32], [0, frameY + 0.52, 0.34], 0.022, DARK);
   tubeRod(mesh, [-0.08, frameY + 0.53, 0.345], [0.08, frameY + 0.53, 0.345], 0.018, DARK);
   // the communications relay unit forward of the console, under the camera's mast, in its gold foil blanket
-  foilBox(mesh, 0, frameY + 0.17, 1.27, 0.4, 0.3, 0.3, 17);
-  // the TV camera on its mast at the front, the high-gain dish and the low-gain helix either side
-  tubeRod(mesh, [0, frameY, 1.45], [0, frameY + 0.72, 1.45], 0.02, ALU);
-  mesh.box(0, frameY + 0.8, 1.45, 0.16, 0.14, 0.26, WHITE_PAINT, coarse ? 0 : 0.015);
-  tubeRod(mesh, [-0.35, frameY, 1.38], [-0.35, frameY + 0.95, 1.38], 0.018, ALU);
-  mesh.push().translate(-0.35, frameY + 1.0, 1.4).rotateX(-0.6);
-  const dish: [number, number][] = [];
-  // (round 4, wave 260: "a dark flat dish") the umbrella's silvered mesh pale and deeper, its eight ribs and the rim
-  for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
-  mesh.push().rotateZ(Math.PI / 2);
-  mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
-  // (round 5, wave 278: "an opaque brown disc for its dish") the umbrella's back as pale as its face: it is the same
-  // silvered mesh, and the shadowed underside read brown
-  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => DISH_MESH, { flip: true });
-  if (!coarse) mesh.dressing(() => {
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
-      for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 + 0.006, Math.cos(a) * r, Math.sin(a) * r]);
-      mesh.tube(rib, 0.006, 3, ALU_DULL, { caps: false });
+  forward(() => foilBox(mesh, 0, frameY + 0.17, 1.27, 0.4, 0.3, 0.3, 17));
+  // the TV camera on its mast at the front (wrecked: bent over), the high-gain dish and the low-gain helix either side
+  forward(() => {
+    if (wrecked) {
+      tubeRod(mesh, [0, frameY, 1.45], [0.05, frameY + 0.4, 1.47], 0.02, ALU);
+      tubeRod(mesh, [0.05, frameY + 0.4, 1.47], [0.32, frameY + 0.58, 1.5], 0.02, ALU);
+      mesh.box(0.4, frameY + 0.62, 1.5, 0.16, 0.14, 0.26, WHITE_PAINT, 0);
+    } else {
+      tubeRod(mesh, [0, frameY, 1.45], [0, frameY + 0.72, 1.45], 0.02, ALU);
+      mesh.box(0, frameY + 0.8, 1.45, 0.16, 0.14, 0.26, WHITE_PAINT, coarse ? 0 : 0.015);
     }
+    tubeRod(mesh, [-0.35, frameY, 1.38], [-0.35, frameY + (wrecked ? 0.35 : 0.95), 1.38], 0.018, ALU);
   });
-  mesh.pop();
-  mesh.pop();
-  tubeRod(mesh, [0.35, frameY, 1.38], [0.35, frameY + 0.85, 1.38], 0.03, ALU_DULL, 8);
+  // the dish on its mast (wrecked: snapped off and lying face down on the regolith beside the rover, its rim on the
+  // ground; this frame is the chassis', dropped by drop and rolled, so the ground there stands at +drop + 0.06)
+  const dishParts = (): void => {
+    if (wrecked) mesh.push().translate(-1.15, drop + 0.06 + 0.38, 1.55).rotateZ(-0.05).rotateX(2.75);
+    else mesh.push().translate(-0.35, frameY + 1.0, 1.4).rotateX(-0.6);
+    const dish: [number, number][] = [];
+    // (round 4, wave 260: "a dark flat dish") the umbrella's silvered mesh pale and deeper, its eight ribs and the rim
+    for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
+    mesh.push().rotateZ(Math.PI / 2);
+    mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
+    // (round 5, wave 278: "an opaque brown disc for its dish") the umbrella's back as pale as its face: it is the same
+    // silvered mesh, and the shadowed underside read brown
+    mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => DISH_MESH, { flip: true });
+    if (!coarse) mesh.dressing(() => {
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
+        for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 + 0.006, Math.cos(a) * r, Math.sin(a) * r]);
+        mesh.tube(rib, 0.006, 3, ALU_DULL, { caps: false });
+      }
+    });
+    mesh.pop();
+    mesh.pop();
+  };
+  // (the dish down on the regolith is dressing, outside the record and the collision)
+  if (wrecked) mesh.dressing(dishParts); else dishParts();
+  forward(() => tubeRod(mesh, [0.35, frameY, 1.38], wrecked ? [0.55, frameY + 0.55, 1.2] : [0.35, frameY + 0.85, 1.38], 0.03, ALU_DULL, 8));
   // the tool pallet astern: the hand tool carrier's frame, the sample bags and the gnomon's case
   mesh.box(0, frameY + 0.12, -1.3, 0.9, 0.22, 0.4, ALU_DULL, coarse ? 0 : 0.01);
   for (const [x, z, w] of [[-0.25, -1.25, 0.22], [0.05, -1.3, 0.18], [0.3, -1.22, 0.2]] as const) {
     mesh.box(x, frameY + 0.36, z, w, 0.26, 0.2, x > 0.2 ? GOLD : WHITE_PAINT, coarse ? 0 : 0.02);
   }
-  tubeRod(mesh, [-0.4, frameY, -1.5], [-0.42, frameY + 0.85, -1.52], 0.012, ALU);
+  tubeRod(mesh, [-0.4, frameY, -1.5], wrecked ? [-0.75, frameY + 0.5, -1.6] : [-0.42, frameY + 0.85, -1.52], 0.012, ALU);
+  mesh.pop();
 }
 
 // ---------------------------------------------------------------------------------------------------- the K2 tram
@@ -521,7 +578,7 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   const coarse = !!opts.coarse;
   mesh.coarse = coarse;
   let wheels: { z: number; y: number; r: number }[] = [];
-  if (kind === 'lrv') { lrv(mesh, coarse); wheels = [{ z: 1.145, y: 0.41, r: 0.41 }, { z: -1.145, y: 0.41, r: 0.41 }]; }
+  if (kind === 'lrv') { lrv(mesh, coarse, !!opts.wrecked); wheels = [{ z: 1.145, y: 0.41, r: 0.41 }, { z: -1.145, y: 0.41, r: 0.41 }]; }
   else if (kind === 'k2tram') { k2tram(mesh, coarse); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
   else if (kind === 'stz3') { stz3(mesh, coarse); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
@@ -536,7 +593,8 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
     // seats, thickest low
     dirtRgb: linearHex(lunar ? 0x5c5b58 : 0x3a3228), dirt: lunar ? 0.62 : 0.6, dirtTop: lunar ? 0.95 : 0.9,
     dustRgb: linearHex(lunar ? 0x8a8884 : 0x6a5e50), dust: lunar ? 0.72 : 0.15, rust: lunar ? 0 : 0.5,
-    burnt: !!opts.wrecked, wheels, seed: opts.seed ?? 3, voxelAo: !coarse,
+    // (Lane C, #8 r2) nothing burns in vacuum: the rover's wreck is crushed and broken, not charred
+    burnt: !!opts.wrecked && !lunar, wheels, seed: opts.seed ?? 3, voxelAo: !coarse,
   }));
   g.deleteAttribute('surf');
   g.computeBoundingBox();
