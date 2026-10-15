@@ -72,6 +72,8 @@ interface TallGrassOptions {
   releaseMaterial?: ((material: THREE.Material) => void) | null;
   /** Candidate admissions per update while a ring is incomplete (cold rings take TALL_GRASS.coldCandidatesPerUpdate). */
   candidatesPerUpdate?: number;
+  /** (GND-02) The wild sward's candidate factor; defaults to TALL_GRASS.swardRestore (receipts: 1 is the pre-fix law). */
+  swardRestore?: number;
 }
 
 export interface TallGrassRingState {
@@ -147,8 +149,19 @@ export const TALL_GRASS = Object.freeze({
   cacheCells: 720,  // the 529-cell far ring plus recently visited columns; bounded and larger than the active ring
   // a 12 m column of near cells (~4.7 k candidates at density 1) refills in ~40 frames at this budget — ahead of a
   // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
-  candidatesPerUpdate: 120,
-  coldCandidatesPerUpdate: 2400,
+  // (GND-02, 2026-10-14: the wild sward's restored candidates below come with a budget raised by the same factor, so a
+  // column refills in the same ~40 frames and a cold ring in the same few)
+  candidatesPerUpdate: 172,
+  coldCandidatesPerUpdate: 3432,
+  /**
+   * GND-02 (2026-10-14; the owner, 10-08: "where did grass go"): the wild sward's candidates per cell. PR #9's tussock law
+   * (a64e2cbee, 15902ec48: `keep *= 0.30 + 0.70 * …` below) gathered the sward into clumps by throwing away a third of
+   * it, so every map stood 27-43 % thinner than deploy 205 at the same poses. The rings draw this many times the
+   * candidates on a non-reed biome, so the tussocks keep their gaps and the sward its 205 density (the Node census:
+   * Steppe, Amberford and Orchard within a few per cent of 205; tallGrassDensity.selftest pins it). A sown field's crop
+   * keeps its own density (admit divides it back out); the reeds never thinned and take 1.
+   */
+  swardRestore: 1.43,
   progressiveCells: 12,
   /** Quads up a blade before the tip triangle: two (five vertices, three triangles) — a third segment cost 40 % more
    * triangles for a bend no 1–4 px strip can show. */
@@ -519,6 +532,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const near = makeRing(TALL_GRASS.near, geometries[0], false, 0x1a2b);
   const far = makeRing(TALL_GRASS.far, geometries[1], true, 0x3c4d);
   const enabled = !!biome && tier !== 'mobile';
+  // (GND-02) the wild sward's restored candidates: every non-reed biome (TALL_GRASS.swardRestore)
+  const swardRestore = biome && biome.kind !== 'reed' ? options.swardRestore ?? TALL_GRASS.swardRestore : 1;
   group.visible = enabled;
 
   const heightAt = (x: number, z: number): number =>
@@ -647,6 +662,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       }
     }
     let cropTint: readonly [number, number, number] | null = null;
+    let sown = false; // (GND-02) inside a sown field: its crop and weeds keep their own density
     let pastureDry = -1;
     if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
       field._landUseAt(x, z, _field);
@@ -701,6 +717,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           const crop = _field.crop;
           if (!_field.sward) return; // a plough, turned red earth, a paddy's water
           if (_field.cropKeep >= 0) keep = _field.cropKeep; // a sown field has no bare dirt patches
+          sown = crop !== LAND_CROP.pasture;
           heightScale *= _field.cropHeight;
           // the crop's own colour (landUse.ts LAND_CROP_ALBEDO, measured: ripe wheat 0.30/0.22/0.075, barley
           // 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13 …) as a multiplier on THIS biome's
@@ -747,6 +764,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= 0.40 + 0.60 * smoothstep(0.25, 0.70, swardNoise(x, z, 2.3, 0x51a7));
       heightScale *= 0.70 + 0.60 * swardNoise(x, z, 6.5, 0x2c3d);
     }
+    if (sown) keep /= swardRestore; // (GND-02) the restored candidates are the wild sward's alone
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
@@ -776,7 +794,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   }
 
   function beginCell(ring: Ring, ix: number, iz: number, density: number): void {
-    const candidates = Math.round(ring.perM2 * ring.cellM * ring.cellM * Math.min(density, 1.3));
+    const candidates = Math.round(ring.perM2 * ring.cellM * ring.cellM * Math.min(density, 1.3) * swardRestore);
     ring.building = { ix, iz, rng: mulberry32(cellSeed(seed ^ ring.salt, ix, iz)), done: 0, total: candidates, list: [] };
   }
 
