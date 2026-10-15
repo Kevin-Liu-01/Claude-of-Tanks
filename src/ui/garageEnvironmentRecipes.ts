@@ -193,8 +193,10 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'snow', terrainTint: 0xe1eaec, hardstandTint: 0xb8c1c3, buildingTint: 0xc2c8c6,
     structures: [
       at(makeRangerLodge, 'winter ranger lodge', -36, -6, 0.82),
-      at(makeAlpine, 'snow service chalet', -30, -30, 0.78),
-      at(makeChapel, 'frost chapel', -7, -36, 0.72),
+      // (the re-judge, 2026-10-15: the chalet stood square behind the turret, the chapel half cut by the frame's right
+      // edge): the chalet left of the turret (view side -10, depth 44), the chapel whole in the right third (24, 30)
+      at(makeAlpine, 'snow service chalet', -38.18, -24.04, 0.78),
+      at(makeChapel, 'frost chapel', -4.24, -38.18, 0.72),
       at(makeLogCabin, 'snowline cabin', 18, -34, 0.66),
       at(makeWoodshed, 'winter stores', 36, -14, 0.68),
       at(makeOnionChurch, 'frostline chapel', 40, -11, 0.56),
@@ -206,7 +208,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     horizonStyle: 'rolling', horizonHeightM: 10.2,
     approach: {
       style: 'snow-road', label: 'ploughed recovery road', surface: 'snow', width: 7.4,
-      waypoints: [[0, 10], [-3, 26], [2, 46]], lanes: [-2.2, 2.2],
+      waypoints: [[0, 9], [3, 15], [6.5, 21], [9.5, 26.5]], lanes: [-2.2, 2.2], // to the bunker's portal
     },
     terrainProfile: 'actual Frosthollow spawn excerpt with snowbank relief',
     serviceFrame: 'snowbound lodge yard and sheltered repair chalet',
