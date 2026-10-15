@@ -216,6 +216,12 @@ export default {
       { kind: 'townGate', x: -51.839, z: 100.564, yawDeg: 2, ground: 'veto', name: 'the north gate', params: { passage: 8.2, wallsLeft: 5.67, wallsRight: 9.35, height: 22 } },
       { kind: 'townGate', x: -48.339, z: -101.256, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 8.2, wallsLeft: 3.87, wallsRight: 11.21, height: 22 } },
       { kind: 'fountain', x: -62, z: 47, yawDeg: 6, ground: 'veto', name: 'the Marktbrunnen before the church', params: { style: 'markt', radius: 2.6 } },
+      // (the maps lane, 2026-10-15, the Verdant process; the blind critics: "no hill, castle or church mass": the Burgberg
+      // carried two 9 m wall towers and a chapel) the castle's mass — the keep (Bergfried) on the rock's crown, five
+      // stages of sandstone to its corbelled parapet and tiled cap, 31 m; the palace range (Palas) along the court's south
+      // side, three storeys under a half-hipped roof, its stair tower to the court — each in the town's Franconian kit
+      { kind: 'houseRow', x: 153, z: 8, yawDeg: 200, ground: 'reserve', name: 'the castle keep', params: { kit: 'franconian', structure: 'bergfried', count: 1, width: 10, depth: 10 } },
+      { kind: 'houseRow', x: 152, z: -10, yawDeg: 0, ground: 'reserve', name: 'the castle palace range', params: { kit: 'franconian', structure: 'palas', count: 1, width: 19, depth: 13 } },
     ],
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
@@ -244,9 +250,9 @@ export default {
       { structure: 'rowhouse', x: -94, z: 272, yawDeg: 180 },
       { structure: 'rowhouse', x: -20, z: 270, yawDeg: 180 },
       { structure: 'cottage', x: -136, z: 222, yawDeg: 0 },
-      // the castle on the Burgberg: the keep, a second tower on the ring's south-east corner, the chapel by the keep (a
-      // church's 23 m nave spreads past the plot law on the rock's crown)
-      { structure: 'tower', x: 156, z: 12, yawDeg: 0 },
+      // the castle on the Burgberg: a wall tower on the ring's south-east corner, the chapel by the keep (a church's 23 m
+      // nave spreads past the plot law on the rock's crown); (the maps lane, 2026-10-15) the keep and the palace range are
+      // set pieces now (landmarks above), the wall tower that stood for the keep gone
       { structure: 'tower', x: 166, z: -12, yawDeg: 18 },
       { structure: 'chapel', x: 145, z: 18, yawDeg: 96 },
       // the farmsteads on the castle rock's lower slopes, one in each valley
@@ -254,7 +260,7 @@ export default {
       { structure: 'farmhouse', x: 152, z: -136, yawDeg: 10 },
       { structure: 'barn', x: 160, z: 114, yawDeg: 170 },
       { structure: 'farmhouse', x: 152, z: 136, yawDeg: 170 },
-      { structure: 'ruin', x: 140, z: -4, yawDeg: 30 },
+      { structure: 'ruin', x: 136, z: 8, yawDeg: 30 }, // (2026-10-15: off the palace range's court, was 140, -4)
       // the town church on the market square's north side (the map-revival lane, 2026-10-06; wave 150 found the church
       // on bare ground): its tower and west door face the square, its front square to the apron's turned north edge
       // (yawDeg 6) and 4 m off the paving (the layout brief keeps every solid 3.5 m out of a road's core, and an apron is
