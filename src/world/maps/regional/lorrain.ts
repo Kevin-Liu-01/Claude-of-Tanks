@@ -833,5 +833,6 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   // colour ratio: the two procedural renders share one relief, so one draw and one shadow caster fewer
   foldThirdPlaster: true,
   // the gardens behind the houses: a low stone wall, a gate, the woodshed in a corner, the kitchen garden (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'woodshed', shedSize: [3.4, 2.8], garden: true },
+  // (the 225 gate, 2026-10-15: gateKit — each fence family hangs its own gate) the dry-stone yard's stone gate posts
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'woodshed', shedSize: [3.4, 2.8], garden: true },
 });
