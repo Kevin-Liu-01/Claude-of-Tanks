@@ -2414,14 +2414,17 @@ export function createGarageDressing(
         -6.2 + plate * 1.15, 1.30, 19.4, 0.90, 2.15, 0.10,
         0, -0.06 + plate * 0.025, false);
     }
-    for (const x of [3.5, 7.5]) {
+    // the turning rolls and their shell stand east of the roller shutter's sightline from the Garage camera (the
+    // garage critic panel, 2026-10-14: "the shutter doesn't read ... move the screen and bowser off its axis"): seen
+    // from the hero's camera the opening spans x -0.5..4.5 at this depth
+    for (const x of [5.5, 9.5]) {
       factoryPut(mat.steelMid, x, 0.46, 19.3, 1.05, 0.72, 1.85);
       for (const zOffset of [-0.56, 0.56]) {
         factoryCylinderPut(mat.rubber, x, 0.78, 19.3 + zOffset,
           0.34, 0.56, Math.PI / 2);
       }
     }
-    factoryCylinderPut(mat.olive, 5.5, 1.72, 19.3,
+    factoryCylinderPut(mat.olive, 7.5, 1.72, 19.3,
       1.02, 5.55, 0, Math.PI / 2);
     const cageCenterX = 14.1;
     for (const xOffset of [-2.35, 2.35]) {
