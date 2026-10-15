@@ -331,18 +331,23 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-03, the gauntlet's wave 27: the deck's kilometre-scale relief as fp14's dk3 shot it — cells 0.9 → 1, cellM
   // 1300 → 2400, undulatus 0.35 → 0.7)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 1, cellM: 2400, undulatus: 0.7, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050 },
+  // 2026-10-14 (the SKY lane; the garage critics: Cinder's garage sky "a plain pale gradient with no clouds", the owner's
+  // fair-weather-cumulus rule): the closed industrial deck gives way to a junction's hazy summer cumulus — Verdant's type,
+  // fuller in the smoky air (coverage 0.45, base 1100 m, 800 m deep, a few towers), the works' glow kept on the bases
+  // at night; the coal smoke stays in the haze and the sky grade's smog band, not in a ceiling
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.45, baseM: 1100, thicknessM: 800, towers: 0.15, streets: 0.3, cirrus: 0.2, nightGlow: 0.85, nightGlowHex: 0xffa050 },
   sky: {
-    // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
-    // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill
+    // (2026-10-14: the flat overcast went with the deck — the sky.ts deck auto-detect no longer trips: a hazy high sun,
+    // the turbidity 9 -> 6.5 of a smoky summer day, the fill lowered toward a sunlit yard's; the phones' baked deck takes
+    // Verdant's cumulus deck in a smoke-warmed white)
     sunElevationDeg: 42, sunAzimuthDeg: 115,
-    turbidity: 9, rayleigh: 2.4, mieCoefficient: 0.0025, mieDirectionalG: 0.72,
-    // round 76 (2026-09-26, the deck pass): the flat overcast is the deck's now — the fog (the fleet's heaviest) a
-    // quarter thinner and mixed less toward its grey, so the far yard keeps its contrast under the closed deck
-    fogDensity: 0.00060, fogTintHex: 0x9aa0a6, fogMix: 0.72, envIntensity: 0.30,
-    cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xa39f98,
-    cloudAltM: 300, cloudHazeK: 0.00013, cloudUvM: 2200,
-    sunIntensity: 1.35, sunColorHex: 0xd9dad6, hemiIntensity: 0.85,
+    turbidity: 6.5, rayleigh: 1.9, mieCoefficient: 0.004, mieDirectionalG: 0.78,
+    // round 76 (2026-09-26, the deck pass): the fog (the fleet's heaviest) a quarter thinner; 2026-10-14: mixed a little
+    // less toward its grey under the open sky
+    fogDensity: 0.00060, fogTintHex: 0x9aa0a6, fogMix: 0.62, envIntensity: 0.24,
+    cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xefebe4,
+    cloudAltM: 620, cloudHazeK: 0.00014, cloudUvM: 3200,
+    sunIntensity: 3.6, sunColorHex: 0xfbe9d0, hemiIntensity: 0.4,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x736f69 },
     // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a rail junction's coal smoke — a brown-grey smog band, a dulled blue over it
