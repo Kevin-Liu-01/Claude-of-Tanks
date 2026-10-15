@@ -73,17 +73,24 @@ function rustSkin(sink: PartSink, x0: number, y0: number, z0: number, x1: number
     for (let k = 0; k < n; k++) {
       const u = -f.width / 2 + (k + 0.5) * f.width / n;
       const opts = { colour: base, colourAt: rustBy(base, y0, y1, 0.18 + look() * 0.5, look() < 0.35 ? 0.2 + look() * 0.35 : 0), decor: true };
-      // (a sheet over a band cut through the wall — the clerestory's glazing — stops round it: below, above, beside)
+      // (a sheet over openings cut through the wall — the clerestory's glazing, a door — stops round them: the panel in
+      // bands at the cuts' sills and heads, each band's runs between the cuts across it)
       const pu0 = u - f.width / n / 2, pu1 = u + f.width / n / 2;
-      const c = cuts.find((h) => h && h.face === faces.indexOf(f) && h.u0 < pu1 && h.u1 > pu0) ?? null;
+      const fi = faces.indexOf(f);
+      const mine = cuts.filter((h): h is NonNullable<typeof h> => !!h && h.face === fi && h.u0 < pu1 && h.u1 > pu0);
       const piece = (a: number, b: number, ya: number, yb: number) => {
         if (b - a > 0.01 && yb - ya > 0.01) faceBox(sink, 'structureMetal', f, (a + b) / 2, (ya + yb) / 2, 0.008, b - a, yb - ya, 0.004, opts);
       };
-      if (!c) { piece(pu0, pu1, y0, y1); continue; }
-      piece(pu0, pu1, y0, c.y0);
-      piece(pu0, pu1, c.y1, y1);
-      piece(pu0, Math.min(pu1, c.u0), c.y0, c.y1);
-      piece(Math.max(pu0, c.u1), pu1, c.y0, c.y1);
+      const ys = [...new Set([y0, y1, ...mine.flatMap((h) => [Math.max(y0, Math.min(y1, h.y0)), Math.max(y0, Math.min(y1, h.y1))])])].sort((p, q) => p - q);
+      for (let i = 0; i + 1 < ys.length; i++) {
+        const ya = ys[i], yb = ys[i + 1];
+        let from = pu0;
+        for (const h of mine.filter((c) => c.y0 <= ya + 1e-6 && c.y1 >= yb - 1e-6).sort((p, q) => p.u0 - q.u0)) {
+          piece(from, Math.min(pu1, h.u0), ya, yb);
+          from = Math.max(from, h.u1);
+        }
+        piece(from, pu1, ya, yb);
+      }
     }
   }
 }
@@ -323,8 +330,9 @@ const headframe: RegionalBuilder = (ctx) => {
 
 /**
  * The concentrator (a factory plot): three corrugated sections stepping down the reach, tallest at the back, each
- * under a monitor roof louvred along its sides; the sides' glazing bands cut through the cladding; the bucket
- * elevator's casing up the top section's back; on a wide reach the thickener in its own yard beside the front section,
+ * under a monitor roof louvred along its sides; the sides' glazing bands cut through the cladding, the street front's
+ * wagon door, man door and glazing band (the casing buried in the top section is gone); on a wide reach the thickener in
+ * its own yard beside the front section,
  * its rake bridge from the mill to the feed well with the drive head over it and the launder along it, the wet ring
  * round the tank.
  */
@@ -349,9 +357,30 @@ const concentrator: RegionalBuilder = (ctx) => {
       // glass and its mullions at the back of the reveal, a flashing over the sill
       const band = { u0: -(sec - 1.4) / 2, u1: (sec - 1.4) / 2, y0: h - 2.1, y1: h - 1.1 }, cut = 0.2, back = 0.15;
       const sides: Face[] = [1, -1].map((side) => ({ origin: [side > 0 ? x1 : x0, 0, (z0 + z1) / 2], u: [0, 0, -side], out: [side, 0, 0], width: sec }));
-      sink.span('structureMetal', x0 + cut, 0.6, z0, x1 - cut, h, z1, { colour: tone });
+      // the street front (the front section's gable end): the ore-wagon door, the man door and the glazing band cut
+      // through it (props census #13, lane B 2026-10-15; the judges: "there are no doors and no openings ... blank gables")
+      const street = k === 2, ff: Face = { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: wk - 2 * cut };
+      const wagon = { u0: -wk * 0.18 - Math.min(1.8, wk * 0.15), u1: -wk * 0.18 + Math.min(1.8, wk * 0.15), y0: 0.6, y1: 4.2 };
+      const man = { u0: wk * 0.3 - 0.5, u1: wk * 0.3 + 0.5, y0: 0.6, y1: 2.75 };
+      const fband = { u0: -wk / 2 + 1.0, u1: wk / 2 - 1.0, y0: h - 2.1, y1: h - 1.1 };
+      const frontCuts = street ? [wagon, man, fband] : [];
+      sink.span('structureMetal', x0 + cut, 0.6, z0, x1 - cut, h, street ? z1 - cut : z1, { colour: tone });
       for (const f of sides) holedPolygon(sink, 'structureMetal', f, [[-sec / 2, 0.6], [sec / 2, 0.6], [sec / 2, h], [-sec / 2, h]], [band], cut, back + 0.02, { colour: tone });
-      rustSkin(sink, x0, 0.6, z0, x1, h, z1, tone, ctx.variant, [{ face: 1, ...band }, { face: 3, ...band }]);
+      if (street) {
+        const hw = wk / 2 - cut;
+        holedPolygon(sink, 'structureMetal', ff, [[-hw, 0.6], [hw, 0.6], [hw, h], [-hw, h]], frontCuts, cut, back + 0.02, { colour: tone });
+        // the wagon door's sheet leaf and the man door's steel leaf at the back of their cuts, the band's glass
+        const leaf = shade(sheet, 0.72);
+        faceBox(sink, 'structureMetal', ff, (wagon.u0 + wagon.u1) / 2, (wagon.y0 + wagon.y1) / 2, -back + 0.03, wagon.u1 - wagon.u0, wagon.y1 - wagon.y0, 0.04, { colour: leaf, decor: true });
+        for (let x = wagon.u0 + 0.25; x < wagon.u1 - 0.1; x += 0.3) faceBox(sink, 'structureMetal', ff, x, (wagon.y0 + wagon.y1) / 2, -back + 0.06, 0.06, wagon.y1 - wagon.y0, 0.02, { colour: shade(leaf, 0.8), decor: true, fine: true }, 'caps');
+        faceBox(sink, 'structureMetal', ff, (man.u0 + man.u1) / 2, (man.y0 + man.y1) / 2, -back + 0.03, 1.0, man.y1 - man.y0, 0.04, { colour: STEEL, decor: true });
+        facePanel(sink, 'glass', ff, 0, h - 1.6, -back + 0.012, fband.u1 - fband.u0, 1.0, { decor: true, window: ff.out });
+        const nm = Math.max(2, Math.round((fband.u1 - fband.u0) / 1.3));
+        for (let j = 1; j < nm; j++) faceBox(sink, 'structureMetal', ff, fband.u0 + (fband.u1 - fband.u0) * j / nm, h - 1.6, -back + 0.035, 0.05, 1.0, 0.04, { colour: shade(sheet, 0.6), decor: true, fine: true }, 'caps');
+        faceBox(sink, 'structureMetal', ff, 0, fband.y0 - 0.03, 0.04, fband.u1 - fband.u0 + 0.1, 0.06, 0.08, { colour: shade(sheet, 0.8), decor: true });
+      }
+      // (the rust skin's front panels are laid in the front face's own frame: u along +x from the section's middle)
+      rustSkin(sink, x0, 0.6, z0, x1, h, z1, tone, ctx.variant, [{ face: 1, ...band }, { face: 3, ...band }, ...frontCuts.map((c) => ({ face: 0, ...c }))]);
       // the monitor roof: a raised clerestory along the section's ridge under its own low gable, its sides louvred: the
       // louvre bands cut through its cladding, the blades across them, the mill's dark behind (it was a solid box)
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
@@ -376,8 +405,6 @@ const concentrator: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureMetal', f, 0, band.y0 - 0.03, 0.04, sec - 1.3, 0.06, 0.08, { colour: shade(sheet, 0.8), decor: true });
       }
     });
-    // the bucket elevator's casing up the top section's back
-    sink.member('structureMetal', [0, 1.0, -D / 2 - 0.2], [0, 13.5, -D / 2 + 1.0], 1.6, 1.4, [1, 0, 0], { colour: shade(sheet, 0.85), decor: true, exposed: true }, 0);
     if (yard > 0) {
       // the thickener in its yard: the concrete tank, its copper rim, the slurry, the copper-green stain on the apron
       const tx = W / 2 - yard / 2, tz = D / 2 - sec / 2, rt = Math.min(2.3, yard / 2 - 0.35, sec / 2 - 0.35), top = 2.7;
