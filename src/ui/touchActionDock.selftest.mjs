@@ -78,11 +78,14 @@ function checkDock(name, { width, height, hard, soft, lanes = [], keep, insets =
   assert.equal(dock.tiles[0].x, dock.x, `${name}: the first control is the leftmost tile`);
   assert.equal(dock.tiles[0].y + tile, dock.y + dock.h, `${name}: the first control is on the bottom row`);
   assert.ok(dock.rows <= 3, `${name}: three rows at most`);
-  // A reserved lane is given up only when nothing at all (not even a lone More tile) clears it.
+  // A reserved lane is given up only when nothing at all (not even a lone More tile) clears it, and then says so.
   if (dock.tiles.some((r) => lanes.some((o) => overlaps(r, o, clearanceOf(tile) - 1e-6)))) {
+    assert.equal(dock.inLane, true, `${name}: a dock in a reserved lane says so (data-hud-dock-lane lifts the notices over it)`);
+    lanesGivenUp.add(name.split(' ')[0]);
+  }
+  if (dock.inLane) {
     assert.equal(placeTouchActionDock({ width, height, count, obstacles: hard, soft: [...soft, ...lanes], keepOut: keep, anchor, insets }), null,
       `${name}: the dock stands in a reserved lane only when no placement clears the lanes`);
-    lanesGivenUp.add(name.split(' ')[0]);
   }
 }
 const lanesGivenUp = new Set();
@@ -358,6 +361,9 @@ assert.match(hud, /--hud-layer-controls:24;--hud-layer-score:30;/, 'the score pl
 assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls \.system-status\{display:block;grid-area:auto;position:absolute;/, 'the charge badge sits in the tile corner, not the caption row');
 assert.match(css, /body\.cot-touch-layout\[data-hud-dock\] \.cot-vehicle-controls>button \.sk\{display:none\}/, 'no keycaps on touch');
 assert.match(css, /conic-gradient\(transparent calc\(\(1 - var\(--cd,0\)\) \* 360deg\),rgba\(2,6,9,\.74\) 0\)/, 'cooldowns sweep the shadow off clockwise');
+assert.match(css, /body\.cot-touch-layout\[data-hud-dock\]\[data-hud-dock-lane\] :is\(\.cot-sixth,\.cot-alert,\.cot-prebattle\)\{z-index:calc\(var\(--hud-layer-controls\) \+ 1\)\}/,
+  'a notice shown in the lane a dock stands in reads over it');
+assert.match(layout, /toggleAttribute\('data-hud-dock-lane', !!placement\?\.inLane\)/, 'the page marks a dock standing in a lane');
 assert.match(css, /button\.cooling::before\{[^}]*conic-gradient\(#ffc46b calc\(\(1 - var\(--cd,0\)\) \* 360deg\)/, 'and fill an amber ring');
 for (const rule of dockRules) {
   assert.doesNotMatch(rule, /(?:^|[;{])order:|grid-auto-flow:[^;}]*dense|row-reverse|column-reverse|direction:rtl/,

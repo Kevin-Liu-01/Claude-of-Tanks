@@ -384,7 +384,10 @@ the crosshair; 326 px down on 340 px phones; under the minimap on landscape
 phones), and in landscape the pre-battle countdown (the stylesheet's own box
 until the first countdown is measured) and the centre notices' lane. Only a screen
 with no room even for a lone More tile clear of those lanes (568×320 and 568×256)
-stands the dock in a lane. The aim keep-out (2 px hairline, dock and More panel
+stands the dock in a lane; there (`data-hud-dock-lane`) a notice or the countdown
+shown in that lane draws over the More tile for its few seconds and a tap still
+reaches the tile through it. At 300–340 px tall the notices' lane is their two
+boxes (detection, then the alert under it), not their common box. The aim keep-out (2 px hairline, dock and More panel
 alike, never relaxed) is everything the reticle canvas draws around the screen
 centre, where touch aim raycasts, in the battle sight and the scope, at every ring
 radius from rest (11 px) to full bloom (15% of the shorter side): the full-bloom
@@ -425,14 +428,18 @@ objective shown):
 | 667×375 (+zh) | 2 + More (3) | 2 + More (4) | 2 + More (5) | left of the reticle, above the joystick |
 | 320×568 | 1 + More (4) | 1 + More (5) | 1 + More (6) | by the thumbs |
 | 568×256 | More (5) | More (6) | More (7) | in the notices' lane, left of the reticle |
-| 568×320 | 1 + More (4) | 1 + More (5) | 1 + More (6) | in the notices' lane, left of the reticle |
-| 844×300 | 2 + More (3) | 2 + More (4) | 2 + More (5) | left of the reticle |
+| 568×320 | 1 + More (4) | 1 + More (5) | 1 + More (6) | a column left of the reticle, beside the notices |
+| 844×300 | 3 + More (2) | 3 + More (3) | 3 + More (4) | 2×2 right of the reticle |
 | 932×430 | 48px row | 48px row | 48px row | by the thumbs |
 | 1024×768, 768×1024 | 48px row | 48px row | 48px row | by the thumbs |
 
 Keeping the scope's readouts and arms clear (2026-10-15) cost room on the smaller
 screens: before it, 667×375 and 844×300 held five tiles by the thumbs and the
-portrait phones docked just under the reticle, over the scope's zoom plate.
+portrait phones docked just under the reticle, over the scope's zoom plate. Touch
+portrait centre notices now take the lane at the side feeds' start (under the touch
+chrome and the minimap), never pushed down by kill rows onto the crosshair or the
+controls; above the dock when it is in the way and there is room, else below it;
+the side feeds end above them while one shows.
 
 Receipts: `touchActionDock.selftest.mjs` places 1–7 controls on every touch case
 of the browser receipt, with and without an objective and with the landscape

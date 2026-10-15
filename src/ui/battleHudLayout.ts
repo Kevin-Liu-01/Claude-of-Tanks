@@ -327,6 +327,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     } else setDockOpen(false);
     // No spot for even one tile: the strip styles apply again (the attribute is not observed, so this cannot loop).
     if (document.body.hasAttribute('data-hud-dock') !== !!placement) document.body.toggleAttribute('data-hud-dock', !!placement);
+    // Standing in a notices' lane (568 x 256): a notice shown there draws over the dock (battleHudLayout.css).
+    if (document.body.hasAttribute('data-hud-dock-lane') !== !!placement?.inLane) document.body.toggleAttribute('data-hud-dock-lane', !!placement?.inLane);
     return placement;
   }
   // The portrait countdown keeps its place under the minimap unless the dock is there; then it takes the first of

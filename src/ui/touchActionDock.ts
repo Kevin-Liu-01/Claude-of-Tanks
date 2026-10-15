@@ -47,6 +47,9 @@ export interface TouchDockPlacement extends TouchDockRect {
   readonly more: boolean;
   /** One rect per control behind More, in the row's order (empty when everything fits). */
   readonly flyout: readonly TouchDockRect[];
+  /** The dock stands in a reserved lane: no room at all cleared the lanes (568 x 256). A notice shown there draws over
+   *  it, and a tap still reaches the tile through the notice. */
+  readonly inLane: boolean;
 }
 
 interface TouchDockInput {
@@ -220,7 +223,12 @@ export function touchReservedLanes({ width, height, objectiveBottom, scoreBottom
     lanes.push(countdown ?? touchCountdownEstimate(width, height, objectiveBottom));
     const y = height <= 340 ? Math.max(objectiveBottom + 16, scoreBottom + 52) : Math.max(objectiveBottom + 8, height * .12);
     if (height <= 299) lanes.push({ x: 122, y, w: 278, h: Math.max(sixthHeight, 30) });
-    else lanes.push({ x: width / 2 - 124, y, w: 248, h: sixthHeight + 8 + 34 });
+    else if (height <= 340) {
+      // Detection min(214, 100vw - 28) wide, the alert (180 at most) 8 px under it, each centred: two boxes, not
+      // their 248 px common box, so a tile can stand in the corner they leave (568 x 320).
+      const sixthW = Math.min(214, width - 28);
+      lanes.push({ x: (width - sixthW) / 2, y, w: sixthW, h: sixthHeight }, { x: width / 2 - 90, y: y + sixthHeight + 8, w: 180, h: 34 });
+    } else lanes.push({ x: width / 2 - 124, y, w: 248, h: sixthHeight + 8 + 34 });
   }
   return lanes;
 }
@@ -335,15 +343,15 @@ export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement 
   // Clear of the reserved lanes first, down to a lone More tile; only a screen without room even for that stands the
   // dock in a lane (never on a control, an instrument, the reticle's footprint or the gun-limit warning's place).
   const reserved = input.lanes ?? [];
-  for (const dockLanes of reserved.length ? [[obstacles, soft, reserved], [obstacles, soft]] : [[obstacles, soft]]) {
-    const placed = placeTiers(input, n, dockLanes, keep, ax, ay);
+  for (const [tier, dockLanes] of (reserved.length ? [[obstacles, soft, reserved], [obstacles, soft]] : [[obstacles, soft]]).entries()) {
+    const placed = placeTiers(input, n, dockLanes, keep, ax, ay, tier > 0);
     if (placed) return placed;
   }
   return null;
 }
 
 function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (readonly TouchDockRect[])[],
-  keep: readonly TouchDockKeepOut[], ax: number, ay: number): TouchDockPlacement | null {
+  keep: readonly TouchDockKeepOut[], ax: number, ay: number, inLane: boolean): TouchDockPlacement | null {
   const { width, height, obstacles, insets } = input;
   for (let slots = n; slots >= 1; slots--) {
     // 48 px tiles near the thumbs beat 44 px ones; a 44 px row by the thumbs beats a 48 px block across the screen.
@@ -362,7 +370,7 @@ function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (reado
       const w = extent(block.columns, step.tile), h = extent(block.rows, step.tile);
       const rect = { x: block.x, y: block.y, w, h };
       if (slots === n) {
-        return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: n, more: false, flyout: [] };
+        return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: n, more: false, flyout: [], inLane };
       }
       // More: the last slot. The rest open beside it, clear of the touch controls, the dock and the aim keep-out; on a
       // screen too crowded even for that, clear of the dock and the aim keep-out alone.
@@ -373,7 +381,7 @@ function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (reado
         ?? searchBlock(width, height, insets, hidden, step.tile, step.clearance, [[rect]], keep, mx, my);
       if (!panel) continue;
       return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: slots - 1, more: true,
-        flyout: blockTiles(panel, hidden, step.tile) };
+        flyout: blockTiles(panel, hidden, step.tile), inLane };
     }
   }
   return null;

@@ -210,6 +210,9 @@ body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling{opacit
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;padding:2px;background:conic-gradient(#ffc46b calc((1 - var(--cd,0)) * 360deg),rgba(255,196,107,.18) 0);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling .si{opacity:.5}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling .sl{color:#ffd27a;font-size:11px}
+/* A dock standing in the notices' lane (touchActionDock.ts inLane, 568 x 256 only): a notice or the countdown shown there
+   reads over it for its few seconds; it takes no pointer, so a tap still reaches the tile beneath. */
+body.cot-touch-layout[data-hud-dock][data-hud-dock-lane] :is(.cot-sixth,.cot-alert,.cot-prebattle){z-index:calc(var(--hud-layer-controls) + 1)}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}

@@ -41,13 +41,22 @@ function measure(state){
      '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',
      '.cot-touch.on .mobile-chrome'];
   const rects=collectVisibleRects(selectors);
-  const failures=[];
+  const failures=[],laneOverlaps=[];
   for(let i=0;i<rects.length;i++){
     const a=rects[i];
     if(a.x<-.5||a.y<-.5||a.right>innerWidth+.5||a.bottom>innerHeight+.5)failures.push(`offscreen: ${a.name}`);
     for(const b of rects.slice(i+1)){
-      if(Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1)
-        failures.push(`${a.name} overlaps ${b.name}`);
+      if(!(Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1))continue;
+      // A dock standing in the notices' lane (touchActionDock.ts inLane: no room at all cleared it, 568 x 256): a notice
+      // or the countdown shown there must read over the dock and let a tap through to it; anything else still fails.
+      const pair=[a.name,b.name];
+      const notice=pair.find(n=>/^cot-(sixth|alert|prebattle)\b/.test(n));
+      if(document.body.hasAttribute?.('data-hud-dock-lane')&&notice&&pair.includes('cot-vehicle-controls')){
+        const el=document.querySelector(`.${notice.split(' ').join('.')}`),row=document.querySelector('.cot-vehicle-controls');
+        const over=el&&Number(getComputedStyle(el).zIndex)>Number(getComputedStyle(row).zIndex)&&getComputedStyle(el).pointerEvents==='none';
+        if(over){laneOverlaps.push(`${notice} over the dock in its lane`);continue;}
+      }
+      failures.push(`${a.name} overlaps ${b.name}`);
     }
   }
   if(!rects.length) failures.push('no visible UI checked');
@@ -60,7 +69,7 @@ function measure(state){
       timing:animation.effect?.getComputedTiming(),
     })),
   })):undefined;
-  return {failures,rects,body:document.body.dataset,ammoTransitions};
+  return {failures,rects,body:document.body.dataset,ammoTransitions,laneOverlaps};
 }
 // The touch action dock's one rule (src/ui/touchActionDock.ts), on every touch screen and state where the row shows:
 // docked (never the old scrolling strip), a box that cannot scroll, every visible tile (More and an open More panel
