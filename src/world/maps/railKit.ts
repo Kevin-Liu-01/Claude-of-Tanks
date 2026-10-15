@@ -658,7 +658,10 @@ export function makeStack(
   plinth.translate(0, 0.7, -0.2);
   buckets.stone.push(jitterUV(plinth, rng));
   // the plinth's front: the piers each side of the inlet's recess and the lintel over it, the door at its back
-  for (const sx of [-1, 1]) buckets.stone.push(boxAt(1.15, 1.6, 0.4, sx * 1.025, 0.7, 1.4, 0.7));
+  // (the piers stop a centimetre under the plinth's top, under the cornice: the Ironworks service court seats a stack
+  // donor on its one plinth (foundryServiceSupport's census); full height, the piers read as two more and the court
+  // refused the stack, so the whole court stayed unbuilt)
+  for (const sx of [-1, 1]) buckets.stone.push(boxAt(1.15, 1.59, 0.4, sx * 1.025, 0.695, 1.4, 0.7));
   buckets.stone.push(boxAt(0.9, 0.35, 0.4, 0, 1.325, 1.4, 0.7));
   buckets.dark.push(boxAt(0.86, 1.2, 0.04, 0, 0.5, 1.22));
   buckets.stone.push(boxAt(3.44, 0.3, 3.44, 0, 0.05, 0, 0.7));
