@@ -10,6 +10,7 @@ import './tankFactory.ts';
 import { AUXILIARY_INVENTORY } from './auxiliaryInventory.generated.ts';
 import { INERT_DRAWN_WEAPONS } from './inertDrawnWeapons.generated.ts';
 import { NO_ROOF_WEAPON, carriesNoRoofWeapon } from './roofWeaponPolicy.ts';
+import { ROOF_STATION_ARCS } from './roofStationArcs.ts';
 import { roofEquipmentVerdict } from '../../tools/source-equipment-policy.mjs';
 import { auxiliaryRowJson, createAuxiliaryState } from '../sim/auxiliarySystems.ts';
 
@@ -43,6 +44,15 @@ for (const [id, kit] of Object.entries(AUXILIARY_INVENTORY)) {
   const bytes = new TextEncoder().encode(auxiliaryRowJson(aux)).length;
   assert.ok(bytes <= 512, `${id}: ${kit.guns.length} roof stations need ${bytes} bytes of the row's 512`);
   if (bytes > widest[1]) widest = [id, bytes];
+}
+
+// The drone-stand arcs (src/vehicles/roofStationArcs.ts) each name a working station of their vehicle, and the inventory
+// carries them (a station's own authored arc would take precedence; none of these has one).
+for (const [id, arcs] of Object.entries(ROOF_STATION_ARCS)) for (const [name, arc] of Object.entries(arcs)) {
+  const gun = AUXILIARY_INVENTORY[id]?.guns.find((g) => g.name === name);
+  assert.ok(gun, `${id}: ${name} is a working station`);
+  assert.deepEqual(gun.yawArc, arc, `${id}: ${name} traverses inside its drone-stand arc`);
+  assert.ok(arc[0] < 0 && arc[1] > 0, `${id}: ${name}'s arc holds its rest bearing`);
 }
 
 const standard = readFileSync(new URL('../../docs/BUILD-STANDARD.md', import.meta.url), 'utf8');

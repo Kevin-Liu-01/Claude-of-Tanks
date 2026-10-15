@@ -19,7 +19,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { merkavaDishedFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { FITTINGS, KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';

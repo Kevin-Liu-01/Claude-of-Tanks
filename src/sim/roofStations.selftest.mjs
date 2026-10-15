@@ -9,7 +9,7 @@ import { createTank } from '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
-import { auxiliaryShot, auxiliaryState, createAuxiliaryState, requestAuxiliary, roofStationCount, stepRoofGun, stepRoofStation } from './auxiliarySystems.ts';
+import { auxiliaryShot, auxiliaryState, createAuxiliaryState, requestAuxiliary, roofStationCount, stepRoofGun, stepRoofStation, thinnestVerticalArmourMm } from './auxiliarySystems.ts';
 import { stationDepression, stationProbe } from '../../tools/roof-station-arcs.mjs';
 
 const ID = 'm551a1_tts', kit = AUXILIARY_INVENTORY[ID];
@@ -20,8 +20,9 @@ assert.equal(cannon.name, 'm551a1TtsRemoteAutocannon', 'guns[0] is the 30 mm (th
 assert.equal(mg.name, 'm551a1TtsRoofM2', 'guns[1] is the roof M2 the owner placed');
 for (const gun of [cannon, mg]) assert.ok(gun.yawArc && gun.yawArc[0] < 0 && gun.yawArc[1] > 0, `${gun.name}: a traverse arc round its rest bearing`);
 assert.ok(cannon.depressionByYaw?.length, 'the 30 mm carries the turret front depression table');
-// One-station vehicles have no extra station state and no arc.
-for (const id of ['m1a2', 'abramsx', 'm1a2_tusk']) {
+// One-station vehicles have no extra station state and no arc. (VH.14: the Abrams loaders' M240s now work, so the
+// controls are vehicles with one real roof weapon.)
+for (const id of ['abramsx', 'k2_x', 't90m']) {
   assert.equal(AUXILIARY_INVENTORY[id].guns.length, 1, `${id}: one station`);
   assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations, undefined, `${id}: no extra station state`);
   assert.equal(AUXILIARY_INVENTORY[id].guns[0].yawArc, undefined, `${id}: full traverse`);
@@ -119,4 +120,26 @@ function run({ shooter, context }, seconds = 12) {
   }
   tank.dispose();
 }
-console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock');
+// 8. VH.14 balance (the coordinator's check, 2026-10-15): a station engages only a vehicle its round can hurt somewhere
+//    (penetration at the range over the target's thinnest vertical main plate, the profile's engagePenRatio). The K1's
+//    12.7 mm K6 engages a BMP-2 (16 mm flanks) at 100 m; its 7.62 mm M60 never engages a vehicle (no hull in the fleet
+//    is under 15 mm); neither engages an Abrams.
+{
+  const duel = (targetId, distanceM) => {
+    const shooter = { id: 'k1', team: 'blue', spec: TANK_SPECS.k1a1, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
+    const target = { id: 'enemy', team: 'red', spec: TANK_SPECS[targetId], state: { pos: { x: 0, y: 0, z: distanceM }, yaw: 0, turretYaw: 0 }, combat: {} };
+    const context = { entities: [shooter, target], visible: () => true, clear: () => true }, shots = [0, 0];
+    for (let i = 0; i < 8 * 60; i++) {
+      if (stepRoofGun(shooter, i / 60, 1 / 60, context)) shots[0]++;
+      if (stepRoofStation(shooter, 1, i / 60, 1 / 60, context)) shots[1]++;
+    }
+    return shots;
+  };
+  const k1 = AUXILIARY_INVENTORY.k1a1.guns;
+  assert.deepEqual(k1.map((g) => g.caliberMm), [12.7, 7.62], 'the K1 carries its K6 and M60 stations, heaviest first');
+  assert.ok(thinnestVerticalArmourMm(TANK_SPECS.bmp2) <= 16 && thinnestVerticalArmourMm(TANK_SPECS.m1a2) > 26, 'armour reads');
+  const [k6, m60] = duel('bmp2', 100);
+  assert.ok(k6 > 0 && m60 === 0, `vs a BMP-2 at 100 m the K6 fires (${k6}), the M60 holds (${m60})`);
+  assert.deepEqual(duel('m1a2', 100), [0, 0], 'neither gun wastes fire (and its flash) on an Abrams');
+}
+console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt');

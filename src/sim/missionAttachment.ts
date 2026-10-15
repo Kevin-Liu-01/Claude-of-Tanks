@@ -168,6 +168,29 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string):Bounds {
     const normal=rotateQuaternion([0,sign,0],gun.rotation);
     planes.push({indices:[],normal,constant:-normal.reduce((sum,v,k)=>sum+v*gun.position[k]!,0)-(sign>0?maxY:-minY)-padding});
   }
+  // VH.14: a station with a traverse arc (gun.yawArc, station-local yaw) sweeps only that sector. Its box shrinks to
+  // the union of the parts' corners over the arc's yaws (0.04 rad apart, each widened by the chord between samples) and
+  // every pitch, within the full circle's box; the circle's planes still bound it (the sector lies inside the circle).
+  if(gun.yawArc){
+    const [lo,hi]=gun.yawArc,yawSteps=Math.max(1,Math.ceil((hi-lo)/.04));
+    const arcMin=[Infinity,Infinity,Infinity],arcMax=[-Infinity,-Infinity,-Infinity];
+    for(let i=0;i<=steps;i++){
+      const pitch=-policy.depressionRad+range*i/steps,c=Math.cos(pitch),s=Math.sin(pitch);
+      for(const [x,y,z]of corners){
+        const lx=(x!+gun.pivot[0]!)*gun.scale[0]!,ly=(y!*c+z!*s+gun.pivot[1]!)*gun.scale[1]!,lz=(-y!*s+z!*c+gun.pivot[2]!)*gun.scale[2]!;
+        const reach=Math.hypot(lx,lz),half=(hi-lo)/yawSteps/2,chord=reach*(1-Math.cos(half))+reach*Math.sin(half);
+        for(let k=0;k<=yawSteps;k++){
+          const yaw=lo+(hi-lo)*k/yawSteps,cy=Math.cos(yaw),sy=Math.sin(yaw);
+          const p=rotateQuaternion([lx*cy+lz*sy,ly,-lx*sy+lz*cy],gun.rotation);
+          for(let axis=0;axis<3;axis++){
+            arcMin[axis]=Math.min(arcMin[axis]!,gun.position[axis]!+p[axis]!-chord-padding);
+            arcMax[axis]=Math.max(arcMax[axis]!,gun.position[axis]!+p[axis]!+chord+padding);
+          }
+        }
+      }
+    }
+    for(let axis=0;axis<3;axis++){min[axis]=Math.max(min[axis]!,arcMin[axis]!);max[axis]=Math.min(max[axis]!,arcMax[axis]!);}
+  }
   return {min,max,faces:planes,sweepRadius};
 }
 const roofSweepsCache=new WeakMap<MissionCarrierSpec,{owner:Frame;bounds:Bounds}[]>();

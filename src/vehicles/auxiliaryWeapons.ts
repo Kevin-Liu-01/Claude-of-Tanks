@@ -11,13 +11,20 @@ export interface AuxiliaryWeaponProfile {
   pitchRateRadS: number;
   depressionRad: number;
   elevationRad: number;
+  /**
+   * VH.14 balance (2026-10-15, the coordinator's check on ~110 vehicles gaining working roof guns): the station engages
+   * a vehicle only when its round's penetration at that range is at least this multiple of the vehicle's thinnest
+   * vertical main-armour plate (src/sim/auxiliarySystems.ts thinnestVerticalArmourMm). A gun that cannot hurt a
+   * vehicle anywhere it can strike it holds its fire instead of revealing its own vehicle by its flash.
+   */
+  engagePenRatio: number;
 }
 
 const heavy: AuxiliaryWeaponProfile = {
   shell: {type:'AP', name:'12.7×99 mm M2 AP', caliberMm:12.7, velocityMps:850,
     pen100Mm:26, pen1000Mm:12, pen2000Mm:5, dmg:8, moduleDmg:3},
   rangeM:240, shotIntervalS:.12, burstRounds:5, burstPauseS:1.4,
-  yawRateRadS:1.7, pitchRateRadS:1, depressionRad:.18, elevationRad:.75,
+  yawRateRadS:1.7, pitchRateRadS:1, depressionRad:.18, elevationRad:.75, engagePenRatio:1,
 };
 const rifle: AuxiliaryWeaponProfile = {
   ...heavy,
@@ -43,6 +50,9 @@ function ammunition(profile:AuxiliaryWeaponProfile,name:string): AuxiliaryWeapon
 const b32Heavy=ammunition(heavy,'12.7×108 mm B-32 API');
 const b32Rifle=ammunition(rifle,'7.62×54R mm B-32 API');
 const type54=ammunition(heavy,'12.7×108 mm Type 54 API');
+// VH.14 (calibre-true roof weapons): the NSVT, Kord and DShK the Soviet-family hulls now fire, and the QJC-88 and Type 54
+// the Chinese hulls fire, take their own 12.7×108 mm cartridge's name (game numbers unchanged)
+const b32Nsvt=ammunition(heavy,'12.7×108 mm B-32 API');
 const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
 // 2026-10-09 (owner order: the Griffin 50 mm's old roof M2 is back, now its working roof gun): the 1.28-scale gun's
 // 1.5 m barrel sweeps low over the roof's raised service plates from its elevated cradle, so it depresses 4.6 degrees,
@@ -56,7 +66,7 @@ const rh202:AuxiliaryWeaponProfile={
   shell:{type:'AP',name:'20×139 mm DM63 APDS-T',caliberMm:20,velocityMps:1100,
     pen100Mm:45,pen1000Mm:28,pen2000Mm:12,dmg:14,moduleDmg:6},
   rangeM:320,shotIntervalS:.10,burstRounds:5,burstPauseS:1.6,
-  yawRateRadS:1.4,pitchRateRadS:.9,depressionRad:.14,elevationRad:.9,
+  yawRateRadS:1.4,pitchRateRadS:.9,depressionRad:.14,elevationRad:.9,engagePenRatio:1,
 };
 
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm
@@ -85,6 +95,12 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   vt4a1:type54,ztz100_x:type54,
   griffin50_x:griffinRoofM2,
   mbt70:rh202,
+  t62mv1:b32Nsvt,t62mv1_x:b32Nsvt,t64bv1:b32Nsvt,ua_t64bv:b32Nsvt,t72bu:b32Nsvt,t72bu_x:b32Nsvt,t72b3_x:b32Nsvt,
+  t72b3m_x:b32Nsvt,t72b_1987_x:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91_twardy:b32Nsvt,pt91m:b32Nsvt,
+  t80:b32Nsvt,t80b:b32Nsvt,t80bv:b32Nsvt,t80u:b32Nsvt,t80u_x:b32Nsvt,ua_t80bv:b32Nsvt,ua_t80u_kursk:b32Nsvt,
+  t84:b32Nsvt,t90_x:b32Nsvt,t90a:b32Nsvt,t90a_burlak:b32Nsvt,t90a_burlak_x:b32Nsvt,t90a_vladimir:b32Nsvt,
+  t90m:b32Nsvt,t90sm:b32Nsvt,
+  type59:type54,type99a:type54,ztz85_iii:type54,ztz99a2:type54,ztz99a2_prototype:type54,
 };
 
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {

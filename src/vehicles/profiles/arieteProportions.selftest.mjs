@@ -160,9 +160,11 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
 
   const equipment = turret.userData.arieteEquipmentReceipt;
   if (id === 'ariete_c1') {
-    assert.equal(equipment.manualPintles, 2, 'C1 carries two manual machine-gun stations');
-    assert.ok(turret.getObjectByName('arieteC1CommanderMg'), 'C1 commander MG is present');
-    assert.ok(turret.getObjectByName('arieteC1LoaderMg'), 'C1 loader MG is present');
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle): the Ariete's AA MG 42/59 is the
+    // loader's, a working station; the commander's cupola carries none
+    assert.equal(equipment.manualPintles, 1, 'C1 carries the loader\'s manual machine-gun station');
+    assert.equal(turret.getObjectByName('arieteC1CommanderMg'), undefined, 'no C1 commander MG');
+    assert.ok(turret.getObjectByName('arieteC1LoaderMg')?.userData.remoteControlled, 'C1 loader MG is a working station');
     assert.equal(turret.getObjectByName('arieteC2RemoteRws'), undefined,
       'C1 does not inherit the C2 remote tower');
   } else {

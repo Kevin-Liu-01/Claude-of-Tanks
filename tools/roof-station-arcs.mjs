@@ -3,7 +3,8 @@
 // beside it — another station, an antenna mast, a stowage box. The authority turns a station with a yawArc only inside
 // it (src/sim/auxiliarySystems.ts), so the arc must hold every pose the station can take: each yaw is tested at the
 // weapon profile's full depression, level and full elevation, along the barrel's axis and four lines a barrel radius off
-// it, against every turret-owned triangle outside the station's own moving stock (other stations at rest included).
+// it, against every triangle of its own rig (the turret, or the hull for a hull station) outside the station's own
+// moving stock (other stations at rest included).
 //
 //   node tools/roof-station-arcs.mjs --ids=m551a1_tts [--step=1] [--json]
 //
@@ -19,12 +20,18 @@ export function barrelSweepRadius(caliberMm) { return Math.max(.03, caliberMm / 
 
 function stationsOf(root) {
   const turret = root.getObjectByName('rig_turret'), out = [];
-  turret?.traverse((o) => {
+  root.traverse((o) => {
     if (o.userData.primaryWeapon || !o.userData.remoteControlled || o.userData.firingAxis !== '+Z' || o.userData.hasWeapon === false) return;
     if (!o.userData.auxiliaryPivot || !Number.isFinite(o.userData.muzzleLocalZ)) return;
     out.push(o);
   });
   return { turret, stations: out };
+}
+
+/** The rig a station turns with (VH.14: hull-owned stations on turretless vehicles sweep against the hull's stock). */
+function ownerRig(root, station) {
+  for (let p = station; p; p = p.parent) if (p.name === 'rig_turret') return p;
+  return root.getObjectByName('rig_hull') ?? root;
 }
 
 /** Turret triangles in one station's yaw frame (rest pose), skipping that station's own moving stock. */
@@ -69,8 +76,7 @@ function segmentHits(tris, i, ox, oy, oz, dx, dy, dz, len) {
 /** A clearance probe for one station: probe(yawRad, pitchRad) is true when the barrel at that pose touches stock. */
 export function stationProbe(root, station) {
   root.updateMatrixWorld(true);
-  const { turret } = stationsOf(root);
-  const tris = obstacleTriangles(turret, station);
+  const tris = obstacleTriangles(ownerRig(root, station), station);
   const pivot = new THREE.Vector3(...station.userData.auxiliaryPivot);
   const muzzle = new THREE.Vector3(...(station.userData.auxiliaryMuzzle ?? [0, station.userData.barrelAxisLocalY, station.userData.muzzleLocalZ]));
   const radius = barrelSweepRadius(station.userData.caliberMm || 12.7);
@@ -136,8 +142,49 @@ export function stationDepression(root, station, limits, yawsDeg) {
   });
 }
 
+/**
+ * VH.14 (2026-10-15): the traverse that keeps each roof station's sweep out of its vehicle's drone stand. With a seat
+ * record (the stand's frame and seat) and the inventory's stations, each yaw of each station (1 degree apart) is
+ * tested alone (src/sim/missionAttachment.ts missionAttachmentMotionClear, a one-yaw arc, every other station's stock
+ * left out); the arc is the widest clear interval round the rest bearing less `marginDeg`. Pure data: no tank is built.
+ * Returns {stationName: [lo, hi] radians} for the stations whose full circle meets the stand, or null where the rest
+ * bearing itself does.
+ */
+export async function dockClearArcs(id, seat, { marginDeg = 2 } = {}) {
+  const { AUXILIARY_INVENTORY } = await import('../src/vehicles/auxiliaryInventory.generated.ts');
+  const { missionAttachmentMotionClear } = await import('../src/sim/missionAttachment.ts');
+  const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
+  await import('../src/vehicles/tankFactory.ts');
+  const kit = AUXILIARY_INVENTORY[id], out = {};
+  if (!kit) return out;
+  const saved = kit.guns.map((g) => ({ parts: g.collisionParts, arc: g.yawArc }));
+  try {
+    for (let i = 0; i < kit.guns.length; i++) {
+      kit.guns.forEach((g, k) => { g.collisionParts = k === i ? saved[k].parts : []; delete g.yawArc; });
+      const clear = (arc) => { kit.guns[i].yawArc = arc; return missionAttachmentMotionClear({ ...TANK_SPECS[id] }, seat); };
+      if (clear([-Math.PI, Math.PI])) continue;
+      const blocked = new Set();
+      for (let deg = -180; deg < 180; deg++) if (!clear([deg * Math.PI / 180, deg * Math.PI / 180])) blocked.add(deg);
+      if (blocked.has(0)) { out[kit.guns[i].name] = null; continue; }
+      let lo = 0, hi = 0;
+      while (lo > -359 && !blocked.has(((lo - 1 + 540) % 360) - 180)) lo--;
+      while (hi < 359 && !blocked.has(((hi + 1 + 540) % 360) - 180)) hi++;
+      out[kit.guns[i].name] = [(lo + marginDeg) * Math.PI / 180, (hi - marginDeg) * Math.PI / 180].map((r) => Math.round(r * 1e4) / 1e4);
+    }
+  } finally {
+    kit.guns.forEach((g, k) => { g.collisionParts = saved[k].parts; if (saved[k].arc) g.yawArc = saved[k].arc; else delete g.yawArc; });
+  }
+  return out;
+}
+
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) {
+if (isMain && process.argv.includes('--dock')) {
+  const arg = (n, f) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.slice(n.length + 3) : f; };
+  const { MISSION_ATTACHMENT_SEATS } = await import('../src/sim/missionAttachmentSeats.generated.ts');
+  for (const id of arg('ids', '').split(',').filter(Boolean)) {
+    console.log(id, JSON.stringify(await dockClearArcs(id, MISSION_ATTACHMENT_SEATS[id])));
+  }
+} else if (isMain) {
   const arg = (n, f) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.slice(n.length + 3) : f; };
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
   const { auxiliaryWeaponProfile } = await import('../src/vehicles/auxiliaryWeapons.ts');

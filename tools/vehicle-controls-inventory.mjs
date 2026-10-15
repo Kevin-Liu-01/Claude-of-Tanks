@@ -5,6 +5,8 @@ import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { smokeSocketsFor } from '../src/vehicles/vehicleAuxiliaryGeometry.ts';
 // 2026-10-08: each launcher's tubes fan across its side's arc as the real launchers do (src/vehicles/smokeFan.ts)
 import { fanSmokeMounts } from '../src/vehicles/smokeFan.ts';
+// VH.14 (2026-10-15): stations whose full circle met the drone stand traverse inside a measured arc
+import { ROOF_STATION_ARCS } from '../src/vehicles/roofStationArcs.ts';
 const check=process.argv.includes('--check');
 // Functional smoke pins (2026-10-07, coordinator ruling on the tank-accessories lane): a decor rebuild must not change
 // a vehicle's gameplay counts. Round 2 moved the decor smoke banks into the functional decor group, so the M2A2
@@ -53,7 +55,7 @@ for(const id of ALL_TANK_IDS){
      if(!box.isEmpty())collisionParts.push({min:round(box.min.toArray()),max:round(box.max.toArray())});
     });
    }
-   guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray(),...(o.userData.yawArc?{yawArc:o.userData.yawArc.map(v=>Math.round(v*1e4)/1e4)}:{}),...(o.userData.depressionByYaw?{depressionByYaw:o.userData.depressionByYaw.map(([y,d])=>[Math.round(y*1e4)/1e4,Math.round(d*1e4)/1e4])}:{})});
+   guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray(),...((o.userData.yawArc??ROOF_STATION_ARCS[id]?.[o.name])?{yawArc:(o.userData.yawArc??ROOF_STATION_ARCS[id][o.name]).map(v=>Math.round(v*1e4)/1e4)}:{}),...(o.userData.depressionByYaw?{depressionByYaw:o.userData.depressionByYaw.map(([y,d])=>[Math.round(y*1e4)/1e4,Math.round(d*1e4)/1e4])}:{})});
   }
  });
  // The working roof gun is a vehicle's heaviest station. The sim, the presentation, combat anatomy, bots and the HUD

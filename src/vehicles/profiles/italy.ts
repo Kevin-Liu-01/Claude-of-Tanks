@@ -825,8 +825,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       rotatingShoulderModules: 4,
       rotatingApuAssembly: true,
     } : {
-      roofWeaponStations: 2,
-      manualPintles: 2,
+      // VH.14: the C1's one roof gun is the loader's AA MG 42/59 (the commander's cupola gun is gone)
+      roofWeaponStations: 1,
+      manualPintles: 1,
       remoteControlled: false,
       rotatingShoulderModules: 4,
       rotatingApuAssembly: false,

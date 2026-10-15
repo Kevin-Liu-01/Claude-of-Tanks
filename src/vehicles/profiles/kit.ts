@@ -1525,10 +1525,17 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     fitting.userData.remoteControlled=true;
     fitting.userData.barrelAxisLocalY=context.trunY;
     // the muzzle device's front plus its 11 mm marker (machineGunGeometry.ts addPintleBarrel / muzzleMarker) on the drawn
-    // barrel: a remote station's datum barrel by default (unchanged), a crew-served gun's crew barrel, or an override
-    fitting.userData.muzzleLocalZ=context.trunZ+.10*context.s+context.barrelLength+context.cls.flashL*context.s+.011;
-    if (!opts.remoteControlled) fitting.userData.crewServed=true;
+    // barrel: a remote station's datum barrel (its published expression, unchanged to the last bit), a crew-served gun's
+    // crew barrel, or a remote station drawing the crew barrel (datumBarrel false)
+    const datumBarrel=opts.remoteControlled&&opts.datumBarrel!==false;
+    fitting.userData.muzzleLocalZ=datumBarrel
+      ? context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011
+      : context.trunZ+.10*context.s+context.barrelLength+context.cls.flashL*context.s+.011;
     attachAuxiliaryWeapon(fitting,weapon,opts,context.recY,0,context.recZ);
+    if (!opts.remoteControlled) {
+      fitting.userData.crewServed=true;
+      nameWorkingStation(fitting,'browningDerivedMachineGunBody','browningDerivedMachineGunMount');
+    }
     return fitting;
   }
   addPintleMgReceiver(context);
@@ -1761,8 +1768,27 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     fitting.userData.barrelAxisLocalY = layout.trunY;
     fitting.userData.muzzleLocalZ = layout.trunZ + .10 * layout.s + layout.barrelLength + layout.cls.flashL * layout.s + .011;
     attachAuxiliaryWeapon(fitting, weapon, opts, layout.recY, 0, layout.recZ);
+    const m2 = layout.classKey === 'm2';
+    nameWorkingStation(fitting, m2 ? 'americanM2HBBody' : 'americanM240Body', m2 ? 'americanM2HBMount' : 'americanM240Mount',
+      m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox');
   }
   return fitting;
+}
+
+/**
+ * VH.14: a working crew station's names follow its parts. The gun body is the pitching weapon's steel (its receiver and
+ * barrel), the mount's steel keeps a mount name, and the can (when the construction names it) rides the gun; the
+ * fixed construction's receipts read these names (americanModernization, awSecondWaveGeometry).
+ */
+function nameWorkingStation(fitting: THREE.Group, body: string, mount: string, ammo?: string): void {
+  for (const child of fitting.children) if (child.userData.fittingSlot === 'dark') child.name = mount;
+  const pitch = fitting.getObjectByName('auxiliaryWeaponPitch');
+  for (const child of pitch?.children ?? []) {
+    if (child.userData.fittingSlot === 'dark') { child.name = body; child.userData.appearanceRole = 'machineGun'; }
+    else if (ammo && child.userData.fittingSlot === MG_AMMO_CAN_SLOT) {
+      child.name = ammo; child.userData.appearanceRole = 'ammoBox'; child.userData.staticMergeShareable = true;
+    }
+  }
 }
 
 /**

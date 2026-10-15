@@ -2,7 +2,8 @@ import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type Smoke
 import { smokeClip, smokeScreenSummary } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities, type AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
-import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
+import { auxiliaryWeaponProfile, type AuxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
+import { penAtDistanceMm } from './ballistics.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import type { DamageShellSpec, CombatState } from './damage.ts';
 import type { SpottingTank } from './spotting.ts';
@@ -35,11 +36,41 @@ export interface AuxiliaryState {
 export interface AuxiliaryEntity {
   id: string;
   team: string;
-  spec: { id: string; dims?: { heightM: number }; armor?: { turretPivot?: readonly number[] } | null };
+  spec: { id: string; dims?: { heightM: number }; armor?: AuxiliaryArmour | null };
   state: { pos: { x: number; y: number; z: number }; yaw: number; turretYaw: number; visualPitch?: number; visualRoll?: number; roofGunYaw?: number; roofGunPitch?: number };
   combat: { destroyed?: boolean; auxiliary?: AuxiliaryState; modules?: CombatState['modules'] };
   modeActive?: boolean;
   aerial?: SpottingTank['aerial'];
+}
+/** The armour fields the roof gun reads (VH.14): the turret pivot and the main plates' polygons and KE thickness. */
+interface AuxiliaryArmourPlate { readonly verts?: readonly (readonly number[])[]; readonly keMm?: number; readonly physicalMm?: number;
+  readonly kind?: string }
+interface AuxiliaryArmour { turretPivot?: readonly number[]; readonly hullPlates?: readonly AuxiliaryArmourPlate[];
+  readonly turretPlates?: readonly AuxiliaryArmourPlate[] }
+const thinnestFace = new WeakMap<object, number>();
+/**
+ * VH.14 balance: a vehicle's thinnest vertical main-armour plate (side or rear, normal within 60 degrees of level),
+ * nominal KE millimetres: the best face a roof gun's round can meet. 0 for a target without an armour table or a
+ * vertical main plate (a soft target: always engaged, as every target was before). Cached per armour table; pure over
+ * the spec, so both authorities agree.
+ */
+export function thinnestVerticalArmourMm(spec: { armor?: AuxiliaryArmour | null }): number {
+  const armour = spec.armor;
+  if (!armour) return 0;
+  const known = thinnestFace.get(armour);
+  if (known !== undefined) return known;
+  let thinnest = Infinity;
+  for (const plates of [armour.hullPlates, armour.turretPlates]) for (const plate of plates ?? []) {
+    const v = plate.verts, mm = plate.keMm ?? plate.physicalMm;
+    if (!v || v.length < 3 || (plate.kind && plate.kind !== 'main') || !Number.isFinite(mm)) continue;
+    const ux = v[1]![0]! - v[0]![0]!, uy = v[1]![1]! - v[0]![1]!, uz = v[1]![2]! - v[0]![2]!;
+    const wx = v[2]![0]! - v[0]![0]!, wy = v[2]![1]! - v[0]![1]!, wz = v[2]![2]! - v[0]![2]!;
+    const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx, length = Math.hypot(nx, ny, nz);
+    if (length > 1e-12 && Math.abs(ny) / length < .5) thinnest = Math.min(thinnest, mm!);
+  }
+  if (thinnest === Infinity) thinnest = 0;
+  thinnestFace.set(armour, thinnest);
+  return thinnest;
 }
 export const SMOKE_COOLDOWN_S = 28;
 export const ROOF_GUN_SHELL: DamageShellSpec = auxiliaryWeaponProfile(12.7).shell;
@@ -142,7 +173,18 @@ function depressionAt(gun: RoofGunMount, yaw: number, weapon: number): number {
   for (let i = 1; i < table.length; i++) if (yaw <= table[i]![0]) return Math.min(weapon, table[i - 1]![1], table[i]![1]);
   return Math.min(weapon, table[table.length - 1]![1]);
 }
-/** selectRoofTarget's filter for a station with a traverse arc: the target's bearing from the mount lies inside it. */
+/** VH.14 balance: the station's weapon and range test for selectRoofTarget (module scratch, one scan at a time). */
+let engageWeapon: AuxiliaryWeaponProfile | null = null;
+/** selectRoofTarget's filter for a station: a target its round can hurt from here (the weapon profile's
+ * engagePenRatio over the target's thinnest vertical armour) and, with a traverse arc, a bearing inside it. */
+function stationAccepts(target: AuxiliaryEntity): boolean {
+  if (engageWeapon) {
+    const distance = Math.hypot(target.state.pos.x - origin.x, target.state.pos.z - origin.z);
+    if (penAtDistanceMm(engageWeapon.shell, distance) < thinnestVerticalArmourMm(target.spec) * engageWeapon.engagePenRatio) return false;
+  }
+  return withinStationArc(target);
+}
+/** The traverse-arc half of stationAccepts: the target's bearing from the mount lies inside the station's arc. */
 function withinStationArc(target: AuxiliaryEntity): boolean {
   if (!arcMount?.yawArc) return true;
   arcLocal.set(target.state.pos.x, target.state.pos.y + (target.spec.dims?.heightM ?? 2.5) * .5, target.state.pos.z).applyMatrix4(inverse);
@@ -225,8 +267,9 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   origin.copy(pivot).multiply(mountScale).applyMatrix4(base);
   const arc = gun.yawArc;
   arcMount = arc ? gun : null;
-  const target = selectRoofTarget(entity, context, profile.rangeM, origin, arc ? withinStationArc : undefined);
-  arcMount = null;
+  engageWeapon = profile;
+  const target = selectRoofTarget(entity, context, profile.rangeM, origin, stationAccepts);
+  arcMount = null; engageWeapon = null;
   if(!target)return false;
   direction.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z).sub(origin);
   localTarget.copy(origin).add(direction).applyMatrix4(inverse);
