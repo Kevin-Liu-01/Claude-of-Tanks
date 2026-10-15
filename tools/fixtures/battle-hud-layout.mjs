@@ -136,7 +136,7 @@ function controls(count) {
 // (the fixture has no camera, so the aim point is the screen centre and the ring's px size follows dispersionRadM and
 // distM), the readouts at their widest: x25.0, a 1500 m range, a twelve-round magazine reloading (rack, +8, 13 s) or
 // a round being chosen (SWITCHING). repaint() paints one more frame of the same view.
-const restingAim = {...frame.aim};
+const restingAim = {...frame.aim}, restingTime = frame.timeS;
 function reticle({sight='battle', bloom='full', readout='magazine'}={}) {
   hud.setMode(sight==='scope'?'sniper':'battle');
   Object.assign(frame.aim, {zoom:sight==='scope'?25:1, distM:1500, dispersionRadM:bloom==='full'?1e4:1e-4,
@@ -146,7 +146,7 @@ function reticle({sight='battle', bloom='full', readout='magazine'}={}) {
   for(let i=0;i<150;i++){frame.timeS+=1/60;hud.update(frame);}
 }
 function repaint() { frame.aim.distM+=.3; frame.timeS+=1/60; hud.update(frame); }
-function restAim() { for(const key of Object.keys(frame.aim))if(!(key in restingAim))delete frame.aim[key]; Object.assign(frame.aim,restingAim); hud.setMode('battle'); hud.update(frame); }
+function restAim() { for(const key of Object.keys(frame.aim))if(!(key in restingAim))delete frame.aim[key]; Object.assign(frame.aim,restingAim); frame.timeS=restingTime; hud.setMode('battle'); hud.update(frame); }
 // The drone tile while a recalled drone flies home (droneControlState.ts reads returnS; item/drone-recall).
 function droneReturning() { player.aerial = {kind:'drone', active:false, cooldownS:14, recallS:0, returnS:5}; hud.update(frame); }
 window.__HUD_LAYOUT = {multiplayer,state, roster, controls, hud, bus, touch, settings, hit, frame, tanks, input,

@@ -423,7 +423,8 @@ try {
           errors.push(...footprintIssues.map(issue=>`${label}: open More panel: ${issue}`));
           if(!open.length)errors.push(`${label}: More opened no panel`);
           if(readout==='magazine')await page.screenshot({path:resolve(out,`${name}-${count}-scope-more-open.png`)});
-          await page.evaluate(()=>document.body.toggleAttribute('data-hud-dock-open',false));
+          await press(page.locator('.cot-vehicle-controls > .cot-dock-more'));
+          if(await page.evaluate(()=>document.body.hasAttribute('data-hud-dock-open')))errors.push(`${label}: a second tap on More did not close the panel`);
         }
         if(bloom==='full'&&readout==='magazine')await page.screenshot({path:resolve(out,`${name}-${count}-${sight}.png`)});
         reports.push({name,...page.viewportSize(),touch,locale,state:`reticle-${count}-${sight}-${bloom}-${readout}`,failures:[...result.outside,...result.covered],rects:[],inks:result.inks});
