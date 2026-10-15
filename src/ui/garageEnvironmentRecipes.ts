@@ -157,8 +157,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // a water tower, not a minaret, behind the hero (2026-10-10, waves 338, 357, 377: the round white tower with
       // its balcony and cap read as "a lighthouse standing among the dunes" in every frame)
       at(makeWaterTower, 'wadi water tower', -30, -30, 0.7),
-      at(makeShed, 'forward shade bay', -7, -36, 0.82),
-      at(makeDepot, 'wadi supply depot', 18, -34, 0.68),
+      // flat-roofed and containerised (wave 398: "no European pitched-roof houses in desert or alpine sites")
+      at(makeContainerRow, 'forward container line', -7, -36, 0.62),
+      at(MARKET_BUILDERS.compound, 'wadi supply compound', 18, -34, 0.5),
       at(makeCaravanserai, 'outer adobe court', 36, -14, 0.56),
       at(makeBathhouse, 'wadi crew hammam', 40, -11, 0.66),
       at(makeMinaret, 'outer-route watchtower', 6, 38, 0.58),
@@ -312,15 +313,16 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   rock_cavern: {
     terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8, buildingTint: 0xb8b6aa,
     structures: [
-      at(makeRangerLodge, 'glacier lodge', -36, -6, 0.8),
-      at(makeAlpine, 'pass chalet', -30, -30, 0.78),
-      at(makeChapel, 'ridge chapel', -7, -36, 0.72),
+      // a military pass station of steel sheds, containers and a plant house (wave 398: no chalets, chapels or domes)
+      at(makeWarehouse, 'glacier vehicle store', -36, -6, 0.6),
+      at(makeContainerRow, 'pass container line', -30, -30, 0.55),
+      at(makeFireStation, 'pass plant house', -7, -36, 0.5),
       at(makeShed, 'pass service shelter', 18, -34, 0.72),
-      at(makeLogCabin, 'glacier outpost', 36, -14, 0.62),
-      at(makeOnionChurch, 'high-pass memorial', 40, -11, 0.52),
-      at(makeRangerLodge, 'avalanche patrol lodge', 6, 38, 0.62),
-      at(makeAlpine, 'cliff rescue chalet', -41, 23, 0.56),
-      at(makeChapel, 'high-pass rescue chapel', 31, 31, 0.52),
+      at(makeContainerRow, 'glacier outpost containers', 36, -14, 0.45),
+      at(makeWaterTower, 'high-pass water tank', 40, -11, 0.6),
+      at(makeWarehouse, 'avalanche patrol garage', 6, 38, 0.5),
+      at(makeDepot, 'cliff rescue depot', -41, 23, 0.5),
+      at(makeContainerRow, 'high-pass rescue containers', 31, 31, 0.5),
     ],
     treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
     horizonStyle: 'alpine', horizonHeightM: 13.2,
