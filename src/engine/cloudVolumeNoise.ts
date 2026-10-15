@@ -190,75 +190,109 @@ function volumeTarget(size: number, name: string): THREE.WebGL3DRenderTarget {
   return rt;
 }
 
+/** The bake's three programs, built before any draw, and the draws (cloudVolumeBake). */
+interface CloudVolumeBake {
+  /**
+   * The shape, detail and turbulence programs. The layer's warmAsync links them in parallel (renderer.compileAsync, an
+   * offscreen target, no tone mapping) before bake() draws with them, so no draw reads their link on the main thread.
+   */
+  readonly materials: readonly THREE.RawShaderMaterial[];
+  /** Draw the three textures (one draw per volume slice: 128 + 32 + 1). Restores the renderer's target and state. */
+  bake(renderer: THREE.WebGLRenderer): CloudVolumeTextures;
+  /** Free the programs and the quad (the textures belong to the caller). */
+  dispose(): void;
+}
+
 /**
- * Bake the three textures with `renderer` (one draw per volume slice: 128 + 32 + 1). Restores the renderer's target and
- * state. Deterministic for a given seed.
+ * The bake as a job: its programs first, its draws later (2026-10-14, the SKY lane: the MP stream's warmAsync link,
+ * extended to the Clouds 2.0 bake). Deterministic for a given seed.
  */
-export function bakeCloudVolumes(renderer: THREE.WebGLRenderer, seed = CLOUD_VOLUME_SEED): CloudVolumeTextures {
+export function cloudVolumeBake(seed = CLOUD_VOLUME_SEED): CloudVolumeBake {
   const camera = new THREE.Camera();
   const geometry = new THREE.PlaneGeometry(2, 2);
-  const make = (fragmentShader: string, uniforms: Record<string, THREE.IUniform>): THREE.RawShaderMaterial => new THREE.RawShaderMaterial({
-    glslVersion: THREE.GLSL3,
+  const make = (name: string, fragmentShader: string, uniforms: Record<string, THREE.IUniform>): THREE.RawShaderMaterial => new THREE.RawShaderMaterial({
+    name, glslVersion: THREE.GLSL3,
     vertexShader: `precision highp float;\nin vec3 position;\n${QUAD_VERTEX}`,
     fragmentShader, uniforms, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
   });
-  const shapeMat = make(SHAPE_FRAGMENT, { uLayer: { value: 0 }, uSeed: { value: seed } });
-  const detailMat = make(DETAIL_FRAGMENT, { uLayer: { value: 0 }, uSeed: { value: seed } });
-  const turbMat = make(TURBULENCE_FRAGMENT, { uSeed: { value: seed }, uTexels: { value: CLOUD_TURBULENCE_TEXELS } });
-  const mesh = new THREE.Mesh(geometry, shapeMat);
-  mesh.frustumCulled = false;
-  const shape = volumeTarget(CLOUD_SHAPE_TEXELS, 'clouds-shape-128');
-  const detail = volumeTarget(CLOUD_DETAIL_TEXELS, 'clouds-detail-32');
-  const turbulence = new THREE.WebGLRenderTarget(CLOUD_TURBULENCE_TEXELS, CLOUD_TURBULENCE_TEXELS, {
-    format: THREE.RGBAFormat, type: THREE.UnsignedByteType, depthBuffer: false, stencilBuffer: false,
-    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping,
-    generateMipmaps: false,
-  });
-  turbulence.texture.name = 'clouds-turbulence-128';
-  turbulence.texture.colorSpace = THREE.NoColorSpace;
-  const prevTarget = renderer.getRenderTarget();
-  const prevFace = renderer.getActiveCubeFace(), prevMip = renderer.getActiveMipmapLevel();
-  const prevXr = renderer.xr.enabled, prevToneMapping = renderer.toneMapping, prevAutoClear = renderer.autoClear;
-  try {
-    renderer.xr.enabled = false;
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.autoClear = false;
-    const slices = (rt: THREE.WebGL3DRenderTarget, material: THREE.RawShaderMaterial): void => {
-      mesh.material = material;
-      const n = rt.depth;
-      for (let layer = 0; layer < n; layer++) {
-        material.uniforms.uLayer.value = (layer + 0.5) / n;
-        renderer.setRenderTarget(rt, layer);
-        renderer.render(mesh, camera);
+  const shapeMat = make('VolumetricCloudBakeShape', SHAPE_FRAGMENT, { uLayer: { value: 0 }, uSeed: { value: seed } });
+  const detailMat = make('VolumetricCloudBakeDetail', DETAIL_FRAGMENT, { uLayer: { value: 0 }, uSeed: { value: seed } });
+  const turbMat = make('VolumetricCloudBakeTurbulence', TURBULENCE_FRAGMENT, { uSeed: { value: seed }, uTexels: { value: CLOUD_TURBULENCE_TEXELS } });
+  const bake = (renderer: THREE.WebGLRenderer): CloudVolumeTextures => {
+    const mesh = new THREE.Mesh(geometry, shapeMat);
+    mesh.frustumCulled = false;
+    const shape = volumeTarget(CLOUD_SHAPE_TEXELS, 'clouds-shape-128');
+    const detail = volumeTarget(CLOUD_DETAIL_TEXELS, 'clouds-detail-32');
+    const turbulence = new THREE.WebGLRenderTarget(CLOUD_TURBULENCE_TEXELS, CLOUD_TURBULENCE_TEXELS, {
+      format: THREE.RGBAFormat, type: THREE.UnsignedByteType, depthBuffer: false, stencilBuffer: false,
+      minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping,
+      generateMipmaps: false,
+    });
+    turbulence.texture.name = 'clouds-turbulence-128';
+    turbulence.texture.colorSpace = THREE.NoColorSpace;
+    const prevTarget = renderer.getRenderTarget();
+    const prevFace = renderer.getActiveCubeFace(), prevMip = renderer.getActiveMipmapLevel();
+    const prevXr = renderer.xr.enabled, prevToneMapping = renderer.toneMapping, prevAutoClear = renderer.autoClear;
+    try {
+      renderer.xr.enabled = false;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.autoClear = false;
+      const slices = (rt: THREE.WebGL3DRenderTarget, material: THREE.RawShaderMaterial): void => {
+        mesh.material = material;
+        const n = rt.depth;
+        for (let layer = 0; layer < n; layer++) {
+          material.uniforms.uLayer.value = (layer + 0.5) / n;
+          renderer.setRenderTarget(rt, layer);
+          renderer.render(mesh, camera);
+        }
+      };
+      slices(shape, shapeMat);
+      slices(detail, detailMat);
+      mesh.material = turbMat;
+      renderer.setRenderTarget(turbulence);
+      renderer.render(mesh, camera);
+      renderer.setRenderTarget(prevTarget, prevFace, prevMip);
+      // the volumes' mip chains, built once: a far cloud's footprint spans many texels, and sampled at level 0 its billows
+      // aliased into a shimmer the history could not settle
+      const gl = renderer.getContext() as WebGL2RenderingContext;
+      for (const rt of [shape, detail]) {
+        const glTexture = (renderer.properties.get(rt.texture) as { __webglTexture?: WebGLTexture }).__webglTexture;
+        if (!glTexture) continue;
+        renderer.state.bindTexture(gl.TEXTURE_3D, glTexture);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.generateMipmap(gl.TEXTURE_3D);
+        renderer.state.unbindTexture();
+        rt.texture.minFilter = THREE.LinearMipmapLinearFilter;
       }
-    };
-    slices(shape, shapeMat);
-    slices(detail, detailMat);
-    mesh.material = turbMat;
-    renderer.setRenderTarget(turbulence);
-    renderer.render(mesh, camera);
-    renderer.setRenderTarget(prevTarget, prevFace, prevMip);
-    // the volumes' mip chains, built once: a far cloud's footprint spans many texels, and sampled at level 0 its billows
-    // aliased into a shimmer the history could not settle
-    const gl = renderer.getContext() as WebGL2RenderingContext;
-    for (const rt of [shape, detail]) {
-      const glTexture = (renderer.properties.get(rt.texture) as { __webglTexture?: WebGLTexture }).__webglTexture;
-      if (!glTexture) continue;
-      renderer.state.bindTexture(gl.TEXTURE_3D, glTexture);
-      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.generateMipmap(gl.TEXTURE_3D);
-      renderer.state.unbindTexture();
-      rt.texture.minFilter = THREE.LinearMipmapLinearFilter;
+    } finally {
+      renderer.xr.enabled = prevXr;
+      renderer.toneMapping = prevToneMapping;
+      renderer.autoClear = prevAutoClear;
+      renderer.setRenderTarget(prevTarget, prevFace, prevMip);
     }
+    return { shape: shape.texture, detail: detail.texture, turbulence: turbulence.texture, targets: [shape, detail, turbulence] };
+  };
+  return {
+    materials: [shapeMat, detailMat, turbMat],
+    bake,
+    dispose(): void {
+      geometry.dispose();
+      shapeMat.dispose();
+      detailMat.dispose();
+      turbMat.dispose();
+    },
+  };
+}
+
+/**
+ * Bake the three textures with `renderer` at once (programs and draws together). Restores the renderer's target and
+ * state. Deterministic for a given seed.
+ */
+export function bakeCloudVolumes(renderer: THREE.WebGLRenderer, seed = CLOUD_VOLUME_SEED): CloudVolumeTextures {
+  const job = cloudVolumeBake(seed);
+  try {
+    return job.bake(renderer);
   } finally {
-    renderer.xr.enabled = prevXr;
-    renderer.toneMapping = prevToneMapping;
-    renderer.autoClear = prevAutoClear;
-    renderer.setRenderTarget(prevTarget, prevFace, prevMip);
-    geometry.dispose();
-    shapeMat.dispose();
-    detailMat.dispose();
-    turbMat.dispose();
+    job.dispose();
   }
-  return { shape: shape.texture, detail: detail.texture, turbulence: turbulence.texture, targets: [shape, detail, turbulence] };
 }

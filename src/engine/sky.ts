@@ -1677,8 +1677,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     if (volumetricClouds) {
       if (cloudNoisePromise && !cloudNoiseSettled) await cloudNoisePromise;
       if (!volumetricClouds.noiseReady) ensureCloudNoise();
+      // (2026-10-14) a parallel link, submitted before the next frame can draw the layer and awaited without blocking the
+      // main thread (volumetricClouds.ts warmAsync)
+      const linking = volumetricClouds.warmAsync();
       if (tick) await tick();
-      volumetricClouds.warm();
+      await linking;
     }
     if (!cirrusBaked) {
       cirrusBaked = true;

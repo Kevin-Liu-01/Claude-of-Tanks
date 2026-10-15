@@ -129,6 +129,83 @@ function channelMean(bytes, channel) {
   for (let i = channel; i < bytes.length; i += 4) sum += bytes[i];
   return sum / (bytes.length / 4) / 255;
 }
+// ---- 2026-10-14 (the MP stream's fix of the 224 returning tab's Garage freeze — warm()'s 1 × 1 renders read the
+// ray-march program's link synchronously, 104-163 s in one main-thread task — carried to Clouds 2.0 by the SKY lane):
+// warmAsync submits every program the warm draws for a parallel link at the quad's variant (an offscreen target, no tone
+// mapping, no XR): the tier's trace (syncTier first), the resolve, the Beer shadow map's, the shade map's and, before the
+// first bake, the three noise-volume bakes; the layer draws nothing while they link (and bakes nothing on the main
+// thread); the volumes are baked and warm() runs once they are linked; without compileAsync it is warm() at once
+{
+  const layer = Object.create(VolumetricCloudLayer.prototype);
+  const calls = [];
+  let finishCompile = null;
+  const renderer = {
+    xr: { enabled: true }, toneMapping: THREE.ACESFilmicToneMapping, autoClear: true,
+    getRenderTarget: () => 'screen', getActiveCubeFace: () => 0, getActiveMipmapLevel: () => 0,
+    setRenderTarget: (target) => { if (target === 'trace-target' || target === 'screen') calls.push(['target', target]); },
+    render: (mesh) => calls.push(['draw', mesh.material.name]),
+    getContext: () => ({}), properties: { get: () => ({}) }, state: { bindTexture() {}, unbindTexture() {} },
+    compileAsync: (scene) => {
+      calls.push(['compile', scene.children.map((mesh) => mesh.material.name), renderer.toneMapping, renderer.xr.enabled]);
+      return new Promise((resolve) => { finishCompile = resolve; });
+    },
+  };
+  let warmed = 0, bound = 0;
+  Object.assign(layer, {
+    renderer, preset: {}, atmosphere: { active: true }, noise: { weather: {}, streets: {}, blue: {}, local: {} }, volumes: null,
+    trace: 'trace-target', traceMaterial: new THREE.ShaderMaterial({ name: 'trace' }), resolveMaterial: new THREE.ShaderMaterial({ name: 'resolve' }),
+    bsmMaterial: new THREE.ShaderMaterial({ name: 'bsm' }), shadeMaterial: new THREE.ShaderMaterial({ name: 'shade' }),
+    linkPending: null, dome: { visible: true }, sceneDepthReady: true,
+    syncTier() { calls.push(['tier']); }, bindNoise() { bound++; }, warm() { warmed++; }, dropCloudShade() {},
+  });
+  assert.equal(layer.active, true);
+  const pending = layer.warmAsync();
+  assert.deepEqual(calls, [
+    ['tier'], ['target', 'trace-target'],
+    ['compile', ['trace', 'resolve', 'bsm', 'shade', 'VolumetricCloudBakeShape', 'VolumetricCloudBakeDetail', 'VolumetricCloudBakeTurbulence'], THREE.NoToneMapping, false],
+    ['target', 'screen'],
+  ], 'every program the warm draws, and the volume bakes, submitted at the quad\'s variant (the tier first), the renderer restored');
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.xr.enabled, true);
+  assert.equal(layer.warmAsync(), pending, 'one link in flight');
+  layer.beforeSceneRender(renderer, {}, 0.016, 4, 4);
+  assert.equal(layer.dome.visible, false, 'nothing draws while the programs link (a draw would read their link synchronously)');
+  assert.equal(layer.sceneDepthReady, false);
+  assert.equal(layer.volumes, null, 'nor does a linking layer bake its volumes on the main thread');
+  assert.equal(calls.filter(([k]) => k === 'draw').length, 0);
+  assert.equal(warmed, 0, 'warm() waits for the link');
+  finishCompile();
+  await pending;
+  const draws = calls.filter(([k]) => k === 'draw').map(([, name]) => name);
+  assert.deepEqual([draws.filter((n) => n === 'VolumetricCloudBakeShape').length, draws.filter((n) => n === 'VolumetricCloudBakeDetail').length,
+    draws.filter((n) => n === 'VolumetricCloudBakeTurbulence').length], [CLOUD_SHAPE_TEXELS, CLOUD_DETAIL_TEXELS, 1], 'the volumes baked once linked');
+  assert.ok(layer.volumes?.shape && layer.volumes.detail && layer.volumes.turbulence && bound === 1, 'and bound');
+  assert.equal(warmed, 1, 'warm() runs once the programs are linked');
+  assert.equal(layer.linkPending, null);
+  // baked volumes: the next link submits the layer's programs alone
+  calls.length = 0;
+  const again = layer.warmAsync();
+  assert.deepEqual(calls.find(([k]) => k === 'compile')[1], ['trace', 'resolve', 'bsm', 'shade'], 'the bakes only before the first bake');
+  finishCompile();
+  await again;
+  assert.equal(warmed, 2);
+  for (const rt of layer.volumes.targets) rt.dispose();
+  // a renderer without compileAsync: warm() at once
+  delete renderer.compileAsync;
+  await layer.warmAsync();
+  assert.equal(warmed, 3);
+  // an inactive layer submits nothing
+  layer.preset = null;
+  renderer.compileAsync = () => { throw new Error('nothing to compile'); };
+  await layer.warmAsync();
+  assert.equal(warmed, 3);
+  // the early-out reads the link before the volumes (the order the coordinator's ruling fixed)
+  const src = readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8');
+  assert.match(src, /if \(!preset \|\| !this\.active \|\| renderer !== this\.renderer \|\| this\.linkPending \|\| !this\.ensureVolumes\(\)\) \{/);
+  assert.match(readFileSync(new URL('./sky.ts', import.meta.url), 'utf8'), /const linking = volumetricClouds\.warmAsync\(\);\s*if \(tick\) await tick\(\);\s*await linking;/,
+    'the sky\'s chunked warm submits the link before its next frame and awaits it');
+}
+
 // ---- the GPU volumes (cloudVolumeNoise.ts): their sizes, a tileable lattice (every lattice index wraps before it is
 // hashed, every hash integer-only) and the GLSL ES rule that the modulus of a negative int is undefined (the wrap adds
 // the period before its second modulus)

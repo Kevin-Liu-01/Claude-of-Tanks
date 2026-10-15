@@ -45,7 +45,7 @@ import {
   CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
   applyCloudWeatherPreset, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
-import { bakeCloudVolumes, type CloudVolumeTextures } from './cloudVolumeNoise.ts';
+import { bakeCloudVolumes, cloudVolumeBake, type CloudVolumeTextures } from './cloudVolumeNoise.ts';
 import { cloudBsmSlices, cloudDeckTau, cloudGroundLight, cloudStackOf, packCloudStack } from './cloudLayers.ts';
 import {
   CLOUD2_BSM_FRAGMENT, CLOUD2_RESOLVE_FRAGMENT, CLOUD2_SHADE_FRAGMENT, cloud2TraceFragment, type Cloud2TraceDefines,
@@ -713,6 +713,11 @@ export class VolumetricCloudLayer {
   private frame = 0;
   private traces = 0;
   private rebuild = 16;
+  /**
+   * The layer's programs linking in parallel (warmAsync); the layer does not draw until they are linked, so no frame
+   * reads their link synchronously (2026-10-14, the MP stream: the 224 returning tab's Garage freeze).
+   */
+  private linkPending: Promise<void> | null = null;
   private since = 0;
   private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
   private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
@@ -1338,7 +1343,9 @@ export class VolumetricCloudLayer {
     if (hazeDatum !== undefined && Number.isFinite(hazeDatum)) this.hazeDatum = hazeDatum;
     if (sceneDepth !== undefined) this.lastSceneDepth = sceneDepth;
     const preset = this.preset;
-    if (!preset || !this.active || renderer !== this.renderer || !this.ensureVolumes()) {
+    // (2026-10-14) programs still linking in parallel: no draw this frame (a draw would read their link synchronously);
+    // ensureVolumes() after it, so a linking layer never bakes its volumes on the main thread
+    if (!preset || !this.active || renderer !== this.renderer || this.linkPending || !this.ensureVolumes()) {
       this.dome.visible = false;
       this.sceneDepthReady = false;
       this.dropCloudShade();
@@ -1707,6 +1714,71 @@ export class VolumetricCloudLayer {
     const rgba = new Uint8Array(w * h * 4);
     this.renderer.readRenderTargetPixels(this.copyTarget, 0, 0, w, h, rgba);
     return { width: w, height: h, rgba };
+  }
+
+  /**
+   * The layer's programs submitted for a parallel link and awaited without blocking the main thread, then the volumes
+   * baked and `warm()` (2026-10-14: the MP stream's fix of the 224 returning tab's Garage freeze — warm()'s 1 × 1 renders
+   * read the ray-march program's link synchronously, 104-163 s in one main-thread task while the browser's one GPU
+   * process compiled two battle tabs' programs — carried to Clouds 2.0 by the SKY lane). The programs: the quality
+   * tier's trace (syncTier first, so the program linked is the one drawn), the resolve, the Beer shadow map's, the shade
+   * map's, and — before the first bake — the three noise-volume bakes (cloudVolumeBake), all at the quad's variant (an
+   * offscreen target, no tone mapping, no XR). Until the link completes the layer draws nothing (beforeSceneRender),
+   * which only ever happens under the boot's or the battle entry's cover. Without KHR_parallel_shader_compile it is
+   * warm() at once, as before.
+   */
+  warmAsync(): Promise<void> {
+    if (this.linkPending) return this.linkPending;
+    if (!this.active) return Promise.resolve();
+    const renderer = this.renderer as THREE.WebGLRenderer & { compileAsync?: THREE.WebGLRenderer['compileAsync'] };
+    if (typeof renderer.compileAsync !== 'function') { this.warm(); return Promise.resolve(); }
+    this.syncTier();
+    const bake = this.volumes ? null : cloudVolumeBake();
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const materials: THREE.Material[] = [this.traceMaterial, this.resolveMaterial, this.bsmMaterial, this.shadeMaterial, ...(bake?.materials ?? [])];
+    for (const material of materials) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+    }
+    // the variant the quad renders: an offscreen target (its output space) without tone mapping, as renderQuad sets it
+    const prevTarget = renderer.getRenderTarget();
+    const prevFace = renderer.getActiveCubeFace(), prevMip = renderer.getActiveMipmapLevel();
+    const prevXr = renderer.xr.enabled, prevToneMapping = renderer.toneMapping;
+    let compiled: Promise<unknown>;
+    try {
+      renderer.xr.enabled = false;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.setRenderTarget(this.trace);
+      compiled = renderer.compileAsync(scene, camera);
+    } catch (error) {
+      compiled = Promise.reject(error);
+    } finally {
+      renderer.xr.enabled = prevXr;
+      renderer.toneMapping = prevToneMapping;
+      renderer.setRenderTarget(prevTarget, prevFace, prevMip);
+    }
+    const pending: Promise<void> = compiled.then(() => undefined, () => undefined).then(() => {
+      if (this.linkPending === pending) this.linkPending = null;
+      geometry.dispose();
+      if (bake) {
+        // the bake's programs are linked: its draws read no link synchronously (a failed bake leaves ensureVolumes to retry)
+        if (!this.volumes) {
+          try {
+            this.volumes = bake.bake(this.renderer);
+            this.bindNoise();
+          } catch (error) {
+            console.warn('[clouds] the noise volumes could not be baked', error);
+          }
+        }
+        bake.dispose();
+      }
+      this.warm();
+    });
+    this.linkPending = pending;
+    return pending;
   }
 
   /** Compile the programs and bake the volumes under a loading cover (a 1 × 1 trace and resolve; the dome compiles with the scene). */
