@@ -74,14 +74,16 @@ const KOHIMA_TOWN = [
   ...[[176, -40], [190, -64], [172, -88], [200, -100], [186, -124], [214, -76], [206, -140], [226, -112], [232, -54], [244, -88]].flatMap(([u, v]) => kohLot('farmhouse', u, v, 'south')),
   // the mission church facing the town's square from the north, and the square framed: the Deputy Commissioner's garden
   // west of it (landmarks), a shelled house south of it
-  kohSite('chapel', 82, -82, 'south', 0),
-  kohSite('ruin', 2, -84, 'north', 0.5),
+  kohSite('chapel', 96, -82, 'south', 0),
+  kohSite('ruin', -12, -84, 'north', 0.5),
   // the east terraces between the bazaar's back lane and the channel's bank, north of the bend
   ...[120, 138, 156, 174, 192, 210].flatMap((u) => kohLot('bathhouse', u, 60, 'west')),
   // the upper terraces west, toward the spur
   ...[100, 124, 148, 172].flatMap((u) => kohLot('bathhouse', u, -134, 'east')),
   ...[[118, -160], [142, -168], [166, -158], [96, -172]].flatMap(([u, v]) => kohLot('farmhouse', u, v, 'east')),
-];
+// the square's zone disc (matchObjectiveLayouts: the middle zone at (-60, 24), its 30 m footprint clear of every solid)
+// keeps a 46 m ring free of the town's buildings and their yards
+].filter((site) => Math.hypot(site.x + 60, site.z - 24) >= 46);
 
 export default {
   id: 'monsoon',
@@ -95,6 +97,9 @@ export default {
       [[350, -450], [294, -286], [264, -104], [288, 72], [242, 250], [180, 450]],
       [[-356, -172], [-214, -132], [-76, -60], [62, -18], [208, -66], [264, -104], [322, -146]],
       [[-310, 204], [-164, 168], [-18, 210], [120, 274], [238, 328]],
+      // (the maps lane, 2026-10-14: Kohima's terrace road, from the bazaar up past the bungalows' terraces and the
+      // Angami village to the north road)
+      [[25.2, 44.6], [-11.8, 63.9], [-55.5, 90.7], [-69.5, 134.2], [-73.7, 175.8], [-76.8, 201.8]],
     ] },
     marshes: [
       ...floodChannel,
