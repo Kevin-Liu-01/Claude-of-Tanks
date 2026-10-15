@@ -56,7 +56,7 @@ type SurfaceMaps = Readonly<{ color: THREE.Texture | null; normal: THREE.Texture
 interface FacilityBuildOptions {
   readonly buckets: GeometryBuckets;
   readonly engineCtx: Readonly<{
-    setupShadowMaterial?(material: THREE.Material): void;
+    setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
   }>;
   readonly surfaceMaps?: Readonly<Record<
     PrimitiveInstance['materialClass'],
@@ -140,8 +140,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // 2026-10-14: "the coastal lighthouse rising out of the turret ... set the gantry on crane rails")
       // the drydock itself in the frame's right third, its mouth on the shore (the re-judge, 2026-10-15: "the hero frame
       // shows no drydock"), the crane on its rails beside it
-      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it)
-      feature: [23.6, 22], featureRadius: [2.4, 4.5],
+      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it), 2.4 m further
+      // out since the dry dock's floor cut reaches 5.95 m from its centre line (garage r8): its samples clear the cut
+      feature: [26.0, 22], featureRadius: [2.4, 4.5],
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
@@ -4345,7 +4346,7 @@ export function addGarageFacilityDetails({
     });
     material.name = `garage-facility:${renderClass.name}`;
     // the working yard's grime and weathered paint on every part (rejudge6, 2026-10-15: "sterile, toy-like props")
-    engineCtx.setupShadowMaterial?.(material, garageFacilityGrimeHook());
+    engineCtx.setupShadowMaterial?.(material, garageFacilityGrimeHook() as THREE.Material['onBeforeCompile']);
     material.customProgramCacheKey = () => GARAGE_FACILITY_GRIME_KEY;
     materials.push(material);
     if (instances.length) {

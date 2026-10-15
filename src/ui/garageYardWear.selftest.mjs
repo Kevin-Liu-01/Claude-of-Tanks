@@ -109,7 +109,7 @@ assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparen
 assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
 const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
 assert.match(program, /attribute float hardstandBlend;/, 'each vertex carries its share of worked ground');
-assert.match(program, /diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, vHardstandBlend \+ \(hardstandBreak - 0\.5\) \* 0\.72\);/,
+assert.match(program, /float hardstandEdge = vHardstandBlend \+ \(hardstandBreak - 0\.5\) \* 0\.72;\s*[\s\S]{0,260}diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, hardstandEdge\);/,
   'the margin is broken by noise, not a ruled line');
 // round 5d-2 (waves 408 and 419: "a blurry, smeared texture", "stretched low-resolution image"): a shared 256 px/m grain
 // multiplies into the yard's 35 px/m layout, neutral on average so it fades with distance
