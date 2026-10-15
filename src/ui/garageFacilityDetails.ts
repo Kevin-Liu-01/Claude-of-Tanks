@@ -2131,48 +2131,6 @@ export function addGarageFacilityDetails({
       width * 0.56, 0.18, 0.95, timber, 'equipment');
   };
 
-  const addPortalCrane = (
-    centerSide: number,
-    centerDepth: number,
-    width: number,
-    height: number,
-    craneColor: THREE.Color,
-  ): void => {
-    const cluster = fixedCluster(centerSide, centerDepth);
-    heavyLiftSystems += 1;
-    operationalMachines += 1;
-    structuralConnections += 22;
-    servicePurposeTags.add('connected-portal-crane');
-    for (const side of [-width / 2, width / 2]) {
-      for (const longitudinal of [-3.6, 3.6]) {
-        clusterBox(cluster, side, longitudinal, 0.15,
-          1.05, 0.30, 1.05, dark, 'masonry');
-        clusterBox(cluster, side, longitudinal, height / 2,
-          0.46, height, 0.46, steel, 'structure');
-      }
-      clusterBox(cluster, side, 0, height - 0.18,
-        0.52, 0.36, 7.7, steel, 'structure');
-    }
-    for (const longitudinal of [-3.6, 3.6]) {
-      clusterBox(cluster, 0, longitudinal, height,
-        width + 0.7, 0.48, 0.52, craneColor, 'painted');
-      for (const sideSign of [-1, 1]) {
-        const outer = sideSign * width / 2;
-        clusterBeam(cluster,
-          [outer, longitudinal, height - 2.35],
-          [outer - sideSign * 1.85, longitudinal, height - 0.20],
-          0.20, safety, 'painted');
-      }
-    }
-    clusterBox(cluster, 0, -0.45, height - 0.35,
-      width - 1.1, 0.34, 0.44, safety, 'painted');
-    clusterBox(cluster, 1.15, -0.45, height - 0.68,
-      0.82, 0.44, 0.72, dark, 'equipment');
-    clusterCylinder(cluster, 1.15, -0.45, height - 2.2,
-      0.035, 2.65, steel, 0, 8);
-    clusterBox(cluster, 1.15, -0.45, height - 3.58,
-      0.48, 0.22, 0.18, steel, 'equipment', 0.45);
-  };
 
   const addRecoveryCrane = (centerSide: number, centerDepth: number): void => {
     const cluster = fixedCluster(centerSide, centerDepth);
@@ -3095,6 +3053,7 @@ export function addGarageFacilityDetails({
     // grey, dirty patent glazing, not a sky-blue mirror (the garage critic panel, 2026-10-14: "blue skylights")
     glazing: { maps: undefined, color: new THREE.Color(0x3b3f40), roughness: 0.42, metalness: 0.18, normalScale: 0 },
     tiles: { maps: undefined, color: roofing.clone(), roughness: 0.9, metalness: 0.0, normalScale: 0 }, // (routed to the roof bucket)
+    setts: { maps: undefined, color: new THREE.Color(0x9a9c98), roughness: 0.94, metalness: 0.0, normalScale: 0 }, // (routed to the route bucket)
   });
   // Contact shadows (2026-10-11, wave 394: "add contact shadow under every figure and prop"): every box that stands on
   // the ground with a footprint of a crate or larger gets a soft dark blot a little wider than itself, on one draw.
