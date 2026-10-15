@@ -243,4 +243,19 @@ assert.match(shader.vertexShader, /aClutterLod > 0\.5 && aClutterLod < 2\.5/);
 assert.match(shader.vertexShader, /vColor\.rgb \*=/);
 assert.throws(() => clutterLodHook({ vertexShader: '#include <common>\n#include <begin_vertex>' }), /color_vertex/);
 
-console.log(`clutterKit selftest: ${KINDS.length} kinds x ${MAPS.length} maps and 9 yard families, ${forms} regional forms pass r2Standard; legacy draws spent; caps 300/60 (lean 120); worst map ${worst.mapId} +${worst.delta} triangles (cap +${MAX_DELTA}); street furniture worst ${worstStreet.mapId} +${worstStreet.delta} (cap +${STREET_MAX_DELTA}); farmyard worst ${worstFarm.mapId} +${worstFarm.delta} (cap +${FARM_MAX_DELTA}) PASS`);
+// (the coordinator's ruling, 2026-10-14: a map vehicle is worth more than a clutter band) every regional form's seat
+// footprint is its kind's as the map placed it before the form (props.ts destructibleFootprint builds footprintBuild):
+// the same geometry, bit for bit, as the pre-form kind builds on the seat checks' stream
+const seatStream = (seed) => { let a = seed | 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+let seats = 0;
+for (const mapId of MAPS) {
+  const period = periodClutterTypes(mapId);
+  for (const [kind, t] of Object.entries(clutterTypes(mapId, false))) {
+    assert.equal(typeof t.footprintBuild, 'function', `${mapId} ${kind}: its seat footprint`);
+    const own = t.footprintBuild(), before = (period[kind] ?? DESTRUCTIBLE_TYPES[kind]).build(seatStream(0x0f0f7));
+    assert.deepEqual(own.getAttribute('position').array, before.getAttribute('position').array, `${mapId} ${kind}: the seat footprint is the pre-form kind's`);
+    own.dispose(); before.dispose(); seats++;
+  }
+}
+
+console.log(`clutterKit selftest: ${KINDS.length} kinds x ${MAPS.length} maps and 9 yard families, ${forms} regional forms pass r2Standard; legacy draws spent; caps 300/60 (lean 120); ${seats} seat footprints the pre-form kinds'; worst map ${worst.mapId} +${worst.delta} triangles (cap +${MAX_DELTA}); street furniture worst ${worstStreet.mapId} +${worstStreet.delta} (cap +${STREET_MAX_DELTA}); farmyard worst ${worstFarm.mapId} +${worstFarm.delta} (cap +${FARM_MAX_DELTA}) PASS`);
