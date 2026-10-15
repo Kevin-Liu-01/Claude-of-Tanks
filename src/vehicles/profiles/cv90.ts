@@ -19,7 +19,7 @@ import {
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
-import { hatchParts } from './fieldChest.ts';
+import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -379,7 +379,7 @@ function buildCv90(P: CvBuilderPort): void {
 // Tier X CV90 Mk IV — independently authored heavy hull and mission turret.
 
 function buildCv90MkivHull(P: CvBuilderPort): void {
-  const { box, cylX, cylY, cylZ } = KIT;
+  const { box, cylY, cylZ } = KIT;
   // The heavier hull uses its own bow stations. Terminate the belly at
   // the glacis break instead of carrying a square full-height box through it.
   const belly = sectionSolid([
@@ -405,7 +405,8 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   ]));
   P.add('hullDark', box(2.12, 1.09, 0.050), 0, 1.14, -3.69);
   P.add('hull', box(1.92, 0.91, 0.055), 0, 1.14, -3.725);
-  for (const x of [-0.74, -0.25, 0.25, 0.74]) P.add('hullDark', cylX(0.052, 0.16, 12), x, 1.66, -3.76);
+  // critic panel 2026-10-15: the four bare cylinders over the door were the fuel drums' band mounts and read as spools
+  // on a rail once the drums went; they go with them.
   for (const side of [-1, 1]) {
     P.addEquipment('hull', box(0.38, 0.46, 0.34), side * 1.30, 1.48, -3.50);
     P.add('hullDark', box(0.23, 0.24, 0.022), side * 1.30, 1.46, -3.744);
@@ -433,6 +434,10 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   }
   P.add('hullDark', box(0.16, 0.12, 0.030), 0, 0.46, -3.525);
   P.add('hullDark', cylY(0.032, 0.032, 0.10, 12), 0, 0.46, -3.585);
+  // critic panel 2026-10-15: the decor's rear-rack tray hung off the door and its loads moved once the drums were gone.
+  // The decor keeps out of the envelope the drums stood in (fieldChest.ts reserveDecorVolume; hull frame), so the
+  // door stays clear and its loads keep their seats.
+  reserveDecorVolume(P.hullG, [-1.86, 0.775, -4.215], [1.86, 2.025, -3.605]);
   for (const x of [-0.96, 0.96]) {
     P.addEquipment('hull', box(0.30, 0.28, 0.24), x, 1.91, -3.78);
     P.addModuleVisual('optics', 'hullGlass', box(0.15, 0.075, 0.014),

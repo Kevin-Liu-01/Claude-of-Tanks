@@ -1,3 +1,4 @@
+import { reserveDecorVolume } from './fieldChest.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // First-party source-measured Kurganets-25 Epokha turret. Coordinates are
@@ -170,14 +171,19 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     const recessHeight = 3.04864 - 2.71465;
     P.add('turret', new THREE.PlaneGeometry(.48, recessHeight), 0,
         2.71465 - pivot.y + recessHeight / 2, joinZ);
-    P.add('turret', cylY(1.01, 1.01, .25, P.q ? 36 : 20), 0, .17, 0);
-    // Owner markup 2026-10-14 on this drum's bare flank: it reads as the turret ring it is. A splash-guard lip at its
-    // foot, the dark race seam under the turret floor and a ring of race-bolt heads.
-    P.add('turret', cylY(1.055, 1.07, .035, P.q ? 36 : 20), 0, .0625, 0);
-    P.add('turretDark', cylY(1.016, 1.016, .016, P.q ? 36 : 20, true), 0, .27, 0);
-    if (P.q) for (let i = 0; i < 28; i++) {
-        const a = i / 28 * Math.PI * 2;
-        P.add('turretDark', cylX(.012, .016, 6), Math.sin(a) * 1.012, .215, Math.cos(a) * 1.012, 0, a + Math.PI / 2, 0);
+    // Owner markup 2026-10-14 on the bare drum flank under the module (critic panel 10-15: dressing the drum did not
+    // answer the mark): the module's base is the faceted armoured collar the Epokha stands on, eight sloped plates round
+    // the ring (narrower at the top), their welded corner seams, and the splash-guard lip at its foot. Same height and
+    // footprint as the old drum.
+    const collar = cylY(.97, 1.06, .25, 8);
+    collar.rotateY(Math.PI / 8);
+    P.add('turret', collar, 0, .17, 0);
+    P.add('turret', cylY(1.075, 1.09, .035, 8).rotateY(Math.PI / 8), 0, .0625, 0);
+    for (let i = 0; i < 8; i++) {
+        // the corners lie at pi/8 + i pi/4 (the collar's eight corners, turned an eighth); each seam leans inward along
+        // its sloped edge (radius 1.06 at the foot to 0.97 at the top: 0.35 rad)
+        const a = Math.PI / 8 + i / 8 * Math.PI * 2;
+        P.add('turretDark', box(.022, .26, .022), Math.sin(a) * 1.017, .17, Math.cos(a) * 1.017, -Math.cos(a) * .35, 0, Math.sin(a) * .35);
     }
     addKurganetsTurretSides(P);
     addKurganetsOpticalCase(P);
@@ -192,7 +198,9 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies", on this rack's tubes and straps):
     // the source's raised rear-roof bundle of eight small tubes duplicated the vehicle's real anti-tank weapon, the two
     // twin Kornet canister housings on the turret flanks (addKurganetsTurretSides), and is removed; the roof behind the
-    // sights stays clear for the masts.
+    // sights stays clear for the masts. Critic panel 2026-10-15: the decor keeps out of the volume the bundle stood in,
+    // so its loads keep their seats (fieldChest.ts reserveDecorVolume; turret frame, pivot 0, 2.21, -1.27).
+    reserveDecorVolume(P.turretG, [.40, .89, -1.99], [.96, 1.41, -1.13]);
 }
 // Object_29 has four different stepped fittings, not a symmetric pair of
 // generic whips. These independent axial calipers preserve their real stations.

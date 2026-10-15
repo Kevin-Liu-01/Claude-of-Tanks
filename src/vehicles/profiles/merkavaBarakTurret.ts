@@ -1,7 +1,7 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import {KIT, FITTINGS} from './kit.ts';
-import {fieldChestParts} from './fieldChest.ts';
+import {fieldChestParts, reserveDecorVolume} from './fieldChest.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -193,6 +193,9 @@ function basketStowage(P: TankBuilderPort): void {
   const cans = FITTINGS.jerryCans({mats: P.mats, count: 2, gap: .04, seed: 404, rotation: [0, Math.PI, 0]});
   cans.position.set(.16, floor - Y, -3.32 - Z);
   P.turretG.add(cans);
+  // critic panel 2026-10-15: the basket floor stays this stowage's (the spheres stood here), so the decor's loads keep
+  // their seats (fieldChest.ts reserveDecorVolume; turret frame)
+  reserveDecorVolume(P.turretG, [-.94, floor - Y, -3.56 - Z], [.94, floor + .5 - Y, -3.02 - Z]);
 }
 
 function basketFringe(P: TankBuilderPort): void {

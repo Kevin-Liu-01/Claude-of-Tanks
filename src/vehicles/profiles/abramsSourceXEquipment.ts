@@ -796,6 +796,8 @@ function bustleRackStowage(C: EquipmentContext): void {
   for (const [i, [x, y, z, yaw]] of SOURCE_CONTAINER_SEATS.entries()) {
     const can = jerrycanParts(0.95, [-1, 1], high);
     const paint = [can.body, ...can.stamps, can.spine, ...can.grips];
+    // issue stowage in the army's drab, never the camouflage (critic panel 2026-10-15; fieldChest.ts issued)
+    for (const g of paint) g.userData.issueDrab = true;
     for (const [k, g] of paint.entries()) emit(C, `BustleCan${i}_${k}`, g.rotateY(Math.PI / 2 + yaw), [x, y + .002, z]);
     if (can.spout) emit(C, `BustleCan${i}_Spout`, can.spout.rotateY(Math.PI / 2 + yaw), [x, y + .002, z], 'turret', 'turretDark');
   }

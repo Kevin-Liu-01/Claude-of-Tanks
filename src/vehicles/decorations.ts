@@ -1416,9 +1416,11 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
     accent: [0.28, 0.31, 0.27], fuelA: [0.34, 0.35, 0.25], fuelB: [0.26, 0.31, 0.23],
     toolCan: [0.30, 0.34, 0.25],
   },
+  // critic panel 2026-10-15 (merkava4_barak: the basket's issue cans olive, the rear rack's pair sand): IDF fuel cans
+  // take the IDF issue olive (weaponFinish.ts ammoDrabFor, 0x55553a) and its darker second can
   israeli: {
     canvas: 0x80765f, burlap: 0x918064, steel: 0x3a3b38, net: 0x6d7058,
-    accent: [0.38, 0.36, 0.28], fuelA: [0.44, 0.40, 0.27], fuelB: [0.36, 0.36, 0.25],
+    accent: [0.38, 0.36, 0.28], fuelA: [0.333, 0.333, 0.227], fuelB: [0.29, 0.29, 0.2],
     waterA: [0.3, 0.28, 0.2], waterB: [0.26, 0.245, 0.18],
   },
   italian: {
@@ -3954,6 +3956,11 @@ function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: b
     }
     if (screens && o instanceof THREE.Mesh && o.name === `${frame}OpenLattice`) lattice.push(...connectedPieceBoxes(o, toFrame(o)));
   });
+  // critic panel 2026-10-15 (owner-markup round): the volumes a builder reserved where it replaced marked stock
+  // (fieldChest.ts reserveDecorVolume), so the decor's loads stand where they stood before the change
+  for (const [min, max] of (group.userData.decorReservedBoxes ?? []) as [number, number, number][][]) {
+    out.push(new THREE.Box3(new THREE.Vector3(...min), new THREE.Vector3(...max)));
+  }
   // per side, the screen: the lattice pieces reaching within FIELD_SCREEN_FACE_BAND of that side's outermost bar (the
   // face bars and the standoffs out to them), one band box
   for (const side of [-1, 1]) {
