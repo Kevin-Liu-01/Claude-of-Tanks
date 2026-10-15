@@ -871,7 +871,12 @@ const waterTank: RegionalBuilder = (ctx) => {
     for (let k = 0; k < 5; k++) {
       const a = look() * Math.PI * 2, len = 0.8 + look() * 1.6, top = legH + 0.3 + tankH * (0.5 + look() * 0.5);
       const f: Face = { origin: [Math.cos(a) * (tankR + 0.012), 0, Math.sin(a) * (tankR + 0.012)], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 1 };
-      faceBox(sink, 'structureMetal', f, 0, top - len / 2, 0.004, 0.12 + look() * 0.1, len, 0.004, { colour: shade(RUSTY, 0.9 + look() * 0.2), decor: true, fine: true });
+      // (props census #5: a streak 12-22 cm wide read as a dark plate on the tank) the rust runs down in threads under 5 cm
+      // wide, the streak's width their spread
+      const spread = 0.12 + look() * 0.1, colour = shade(RUSTY, 0.9 + look() * 0.2);
+      for (const [du, k] of [[-0.5, 1], [0, 0.8], [0.5, 0.6]] as const) {
+        faceBox(sink, 'structureMetal', f, du * spread, top - len * k / 2, 0.004, 0.035, len * k, 0.004, { colour, decor: true, fine: true });
+      }
     }
     sink.cylinder('structureMetal', [0, legH + 0.3 + tankH, 0], 'y', 0.6, tankR + 0.06, 24, { colour: shade(steel, 0.9) }, 0.3);
     sink.cylinder('structureMetal', [0, legH + 0.9 + tankH, 0], 'y', 0.35, 0.18, 8, { colour: shade(steel, 0.8), decor: true }, 0.12);
