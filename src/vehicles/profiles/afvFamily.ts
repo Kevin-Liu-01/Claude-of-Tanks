@@ -214,7 +214,7 @@ function addBMP3Turret(P: AfvBuilderPort): void {
     P.add('turretDetail', box(0.10, 0.06, 0.46), side * 0.85, 0.69, -0.70,
       0, 0, side * 0.03);
   }
-  roofMG(P, 0.40, 0.80, -0.30, 3101, 'mag', 0.03, 0.72);
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   // §5.349 RESIDUE (§5.265 orphan-flap law, rebuilt-instrument find): the MG
   // chain had real air at BOTH ends — ring bottom 0.7625 hung 5 cm over the
   // crown slab (~0.71) and the pintle foot (0.87) hung 1.3 cm over the ring
@@ -415,7 +415,7 @@ function addTerminatorStation(P: AfvBuilderPort): void {
   P.add('turret', box(0.22, 0.03, 0.26), 0.14, 0.795, 0.12);
   P.add('turretDark', box(0.05, 0.012, 0.10), -0.18, 0.815, 0.10);            // lid latches
   P.add('turretDark', box(0.05, 0.012, 0.10), 0.14, 0.815, 0.10);
-  roofMG(P, -0.30, 0.82, -0.35, 3300, 'nsvt', -0.04, 0.72);
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   smokePair(P, 0.82, 0.58, -0.48, 4, 3310);
   // Whips re-seated on REAL structure (the r2-class "standing on air behind
   // the casemate" island): wing shelves off the casemate rear corners carry
@@ -507,7 +507,7 @@ function addBWP1Station(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.28, d: 0.34, h: 0.23, fill: 0.60, rails: 3, seed: 3398,
   }), 0, 0.56, -0.82);
-  roofMG(P, -0.42, 0.77, -0.26, 3400, 'mag', -0.05, 0.75);
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   smokePair(P, 0.83, 0.57, 0.05, 4, 3410);
   radioPair(P, 0.66, -0.72, 3420, 0.78);
   P.decal('turret', 'number', 'BWP-1', 0.19, [-1.02, 0.41, -0.32], -Math.PI / 2);
@@ -616,7 +616,7 @@ function addMarderCastTurret(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 0.90, d: 0.28, h: 0.20, fill: 0.66, rails: 3, seed: 3497,
   }), 0, 0.47, -0.86);
-  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mg3', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   for (const sde of [-1, 1]) {
     P.add('turret', box(0.12, 0.20, 0.34), sde * 0.60, 0.30, -0.44, 0, 0, sde * 0.10); // smoke collar seats
     mount(P, 'turret', FITTINGS.smokeBank({
@@ -1212,10 +1212,7 @@ function buildBMP3(P: AfvBuilderPort): void {
                                                                                 //   read ~70% under-massed)
   radioPair(P, 0.30, -0.85, 3830, 0.68);                                       // whips share the sight-tower
                                                                                 //   z-band (p95 dims discipline)
-  roofMG(P, 0.36, 0.16, -0.85, 3840, 'nsvt', 0.04, 0.50);                      // §B3 MG law — co-located with the
-                                                                                //   sight tower's z-band so the two
-                                                                                //   tall features share the same
-                                                                                //   <=5 p95-excluded columns
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   P.decal('turret', 'number', '331', 0.22, [1.02, 0.26, -0.15], Math.PI / 2, 0, 0.03);
   P.decal('turret', 'number', '331', 0.22, [-1.02, 0.26, -0.15], -Math.PI / 2, 0, -0.03);
   // ---- triple gun plant: 100 mm 2A70 + 30 mm 2A72 LEFT + PKT --------------

@@ -57,6 +57,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/roofStations.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
+    'src/vehicles/roofWeaponPolicy.selftest.mjs',
     'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
