@@ -278,13 +278,18 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     // (round 5) the side facing the map: its headwall — a cliff band rising from just above the apron, the face above it
     // lifted with it — and its couloirs, cut down through the band over their debris fans
     if (facing) {
-      const side = smoothstep(0, 0.3 * f.halfW, v * facing);
+      // (the facing side and its crest whole, the lift easing out down the back: a band on the face alone stood the
+      // face in front of the summit and hid it)
+      const side = smoothstep(-0.6 * f.halfW, 0, v * facing);
       if (side > 0) {
         if (headwallH > 0) {
+          // (the band stands behind the summit's middle third of the face, falling away along the strike — one dark wall,
+          // not a curtain across the whole view: round 5's first sheet stood the band 28° high from end to end)
           const tc = 0.36 + 0.035 * noise2(u / 520 + ox, oz * 0.7);
-          h += headwallH * side * smoothstep(tc, tc + 0.06, t);
+          const mid = 1 - smoothstep(0.1, 0.26, Math.abs(u - uPeak) / f.halfL);
+          h += headwallH * side * mid * smoothstep(tc, tc + 0.06, t);
         }
-        if (couloirAt.length) h += side * couloirRelief(u, t);
+        if (couloirAt.length && v * facing > 0) h += couloirRelief(u, t);
       }
     }
     return Math.max(0, h);
@@ -293,13 +298,15 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   function couloirRelief(u: number, t: number): number {
     const H = Math.abs(cfg.heightM) || 1;
     let r = 0;
-    for (const uc of couloirAt) {
+    for (const uc0 of couloirAt) {
+      // (a couloir wanders down the face, ±20 m: a line ruled straight read as a waterfall)
+      const uc = uc0 + 20 * noise2(t * 7 + uc0 * 0.01, oz);
       const d = Math.abs(u - uc);
-      // the throat: a V ~45 m each side, 34 m deep, from the headwall's foot to near the crest, tapering at both ends
-      if (d < 46 && t > 0.33 && t < 0.9) r -= (34 / H) * (1 - d / 46) * smoothstep(0.33, 0.4, t) * (1 - smoothstep(0.78, 0.9, t));
-      // the fan: a cone of debris ~170 m across at the throat's foot, 22 m at its apex
-      const fanT = 0.3, dv = (t - fanT) * f.halfW, dd = Math.hypot(d, dv);
-      if (dd < 170 && t < 0.38) r += (22 / H) * (1 - dd / 170) ** 1.6;
+      // the throat: a V ~32 m each side, 26 m deep, from the headwall's foot to near the crest, tapering at both ends
+      if (d < 32 && t > 0.33 && t < 0.88) r -= (26 / H) * (1 - d / 32) * smoothstep(0.33, 0.4, t) * (1 - smoothstep(0.76, 0.88, t));
+      // the fan: a cone of debris ~130 m across at the throat's foot, 16 m at its apex
+      const fanT = 0.3, dv = (t - fanT) * f.halfW, dd = Math.hypot(u - uc0, dv);
+      if (dd < 130 && t < 0.38) r += (16 / H) * (1 - dd / 130) ** 1.6;
     }
     return r;
   }
@@ -325,7 +332,11 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     if (facing && couloirAt.length && v * facing > 0) {
       const t = 1 - q;
       // (marked over 1: the geology fills a couloir's throat with snow, not every erosion gully's)
-      for (const uc of couloirAt) if (Math.abs(u - uc) < 40 && t > 0.34 && t < 0.88) g = Math.max(g, 2 - Math.abs(u - uc) / 40);
+      // (its snow broken by rock steps down the throat, narrower than the cut)
+      for (const uc0 of couloirAt) {
+        const uc = uc0 + 20 * noise2(t * 7 + uc0 * 0.01, oz), d = Math.abs(u - uc);
+        if (d < 20 && t > 0.34 && t < 0.86 && noise2(t * 23 + uc0 * 0.03, ox) > -0.35) g = Math.max(g, 2 - d / 20);
+      }
     }
     return g;
   };

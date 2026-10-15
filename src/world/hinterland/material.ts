@@ -182,7 +182,7 @@ vec3 hlShoulderAt( vec3 w, vec3 n, vec3 alb, float eQ ) {
   vec3 scree = uHlRock.rgb * ( 1.35 + 0.25 * ( hlNoise( q * 0.35 ) - 0.5 ) * grain + 0.2 * ( hlNoise( q * 0.05 ) - 0.5 ) );
   return mix( scree, vec3( 0.72, 0.79, 0.88 ), snow * uHlStrata.z );
 }
-`;`;
+`;
   const albedo = /* glsl */`{
     vec4 hlS = hlSurfaceAt( vHlWorld.xz );
     vec3 hlAlb = pow( hlS.rgb, vec3( 2.2 ) );

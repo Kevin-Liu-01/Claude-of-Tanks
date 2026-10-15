@@ -34,9 +34,9 @@ const DRAFT: HinterlandConfig = {
     // (round 5, the critics on 4c: the ring's one close dark steep wall with the light spire before it beat the
     // pyramid at edge-n — the wall a fifth taller, a dark headwall ~300 m over its apron behind Les Tavernettes, five
     // snow-filled couloirs down it over their debris fans, an offset summit block with a gendarme on its crest)
-    { kind: 'massif', at: { azDeg: 0, distM: 1850 }, heightM: 1000, lengthM: 5000, widthM: 2000, strikeDeg: 90, name: 'the cirque wall',
+    { kind: 'massif', at: { azDeg: 0, distM: 1850 }, heightM: 820, lengthM: 5000, widthM: 2000, strikeDeg: 90, name: 'the cirque wall',
       geology: { snow: { lineM: 0 }, gullies: 0.9 }, cover: { forest: [0, 160] },
-      peak: { along: 0.08, share: 0.42, asym: 1.5, gendarme: true, tent: false }, headwall: { heightM: 300 }, couloirs: 5 },
+      peak: { along: 0.02, share: 0.22, asym: 1.5, gendarme: true, tent: false }, headwall: { heightM: 120 }, couloirs: 4 },
     { kind: 'massif', at: { azDeg: 330, distM: 2300 }, heightM: 700, lengthM: 2600, widthM: 2000, strikeDeg: 60, name: 'the Ronce shoulder',
       geology: { snow: { lineM: 0 }, gullies: 0.9, erosion: 0.9 }, cover: { forest: [0, 140] } },
     { kind: 'massif', at: { azDeg: 342, distM: 6400 }, heightM: 1520, lengthM: 7400, widthM: 6200, strikeDeg: 70, name: 'Pointe de Ronce',
