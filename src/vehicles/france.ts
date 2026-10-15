@@ -11,7 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.ts';
-import { withSpareTrackRun } from './spareTrackSeat.ts';
+import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
@@ -420,6 +420,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hullDark', box(0.70, 0.025, 0.040), 0.52, 1.48, -3.372);
     P.add('hullDark', box(0.030, 0.34, 0.040), 0.12, 1.29, -3.372);
   for (const xc2 of [0.28, 0.72]) P.add('hullDetail', box(0.055, 0.10, 0.042), xc2, 1.25, -3.374); // door handles/latches survive rear camera
+  // VEH-13: the louvre field, the radiator/service field and its bays' slats are grilles to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.72, 0.022, 0.042), 0.52, 1.17 + k * 0.065, -3.376); // right service-door louvre field
   P.add('hullDark', box(0.42, 0.20, 0.038), 1.10, 1.12, -3.374);               // outer transmission service cover
   for (const xc2 of [-1.38, -1.18, 0.98, 1.20, 1.40]) P.add('hullDetail', box(0.035, 0.24, 0.040), xc2, 1.10, -3.376); // full-width rear partition rhythm
@@ -433,6 +435,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (const yy of [1.15 + yo, 1.50 + yo]) P.add('hullDetail', box(w * 0.92, 0.018, 0.010), xc2, yy, -3.384);
   }
   for (const xc2 of [-1.39, -0.58, 0.31, 1.20]) P.add('hullDetail', box(0.030, 0.50, 0.010), xc2, 1.34, -3.384); // unequal service-bay dividers
+  });
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.20, 0.12, 0.040), s * 1.30, 1.50, -3.374);          // taillight clusters
     P.add('hullDetail', box(0.24, 0.025, 0.044), s * 1.30, 1.575, -3.376);      // light guards

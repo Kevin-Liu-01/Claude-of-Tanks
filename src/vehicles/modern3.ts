@@ -5005,10 +5005,13 @@ function buildType89Hull(P: Modern3BuilderPort) {
   P.add('hull', box(0.56, 0.06, 0.56), 0.78, 1.70, 1.95, 0.499, 0, 0);        // hatch plinth on the plane
   P.add('hullDark', box(0.50, 0.02, 0.48), 0.78, 1.74, 1.94, 0.499, 0, 0);
   for (let k = 0; k < 3; k++) periscope(P, 'hullDetail', 0.56 + k * 0.22, 1.87, 1.58, (1 - k) * 0.10);
+  // VEH-13: the engine louvres and their frame are a grille to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
   P.add('hull', box(1.10, 0.055, 1.05), -0.62, 1.505, 2.30, 0.499, 0, 0);     // louvre frame on the plane
   for (let k = 0; k < 5; k++) {
     P.add('hullDark', box(1.00, 0.02, 0.13), -0.62, 1.325 + k * 0.0927, 2.64 - k * 0.17, 0.499, 0, 0);
-  }
+  }  });
+
   P.add('hullDark', box(0.03, 0.26, 0.72), -1.44, 1.50, 0.10);                 // exhaust cowl LEFT flank
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.045, 0.05, 0.64), -1.445, 1.40 + k * 0.10, 0.10);
   P.add('hullDetail', box(0.72, 0.025, 0.035), -0.35, 1.28, 2.72, 0.499, -0.20, 0); // splash rail V on the plane
