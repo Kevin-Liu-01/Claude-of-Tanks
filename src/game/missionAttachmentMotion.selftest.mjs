@@ -94,7 +94,7 @@ for(const id of['m1a2','abramsx','leo2a7v']){
   const body=world.children[0],actual=new Matrix4();body.getMatrixAt(0,actual);const actualPosition=new Vector3(),actualOrientation=new Quaternion();actual.decompose(actualPosition,actualOrientation,new Vector3());
   assert.ok(actualPosition.distanceTo(shell.pos)<.00011,'no bob displaces payload during launch');// Inside the carrier's kit envelope the airframe holds the dock's exact attitude; above it the climb trims and leans (bounded).
   if(droneLaunchHeight(age)<=DRONE_CLIMB.clearM)assert.ok(actualOrientation.angleTo(orientation)<1e-3,'airborne kit retains the real dock orientation until clear');
-  else assert.ok(actualOrientation.angleTo(orientation)<.25,'above the carrier the climb leans and trims within bounds');
+  else assert.ok(actualOrientation.angleTo(orientation)<.36,'above the carrier the climb leans and trims within bounds (round 5: a readable lean)');
  }
  clearMissionAttachment(tank.root);tank.dispose();
 }

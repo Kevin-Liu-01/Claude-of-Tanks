@@ -13,10 +13,10 @@ import { DRONE_AIRFRAME_SCALE } from '../sim/missionAttachment.ts';
  */
 export const DRONE_DESIGNS = {
  USA:{name:'Kestrel',charge:0x5d6046,wrap:0x2a2e33,payload:'pg7',link:'radio'},
- Russia:{name:'Korshun',charge:0x4d5a3b,wrap:0x2c3a52,payload:'pg7',link:'fiber'},
- USSR:{name:'Korshun',charge:0x4d5a3b,wrap:0x2c3a52,payload:'pg7',link:'fiber'},
+ Russia:{name:'Korshun',charge:0x4d5a3b,wrap:0x232a35,payload:'pg7',link:'fiber'},
+ USSR:{name:'Korshun',charge:0x4d5a3b,wrap:0x232a35,payload:'pg7',link:'fiber'},
  Germany:{name:'Falke',charge:0x52573f,wrap:0x2b2d30,payload:'pg7',link:'radio'},
- Britain:{name:'Merlin',charge:0x575c43,wrap:0x27313d,payload:'pg7',link:'radio'},
+ Britain:{name:'Merlin',charge:0x575c43,wrap:0x232830,payload:'pg7',link:'radio'},
  France:{name:'Crecerelle',charge:0x5a5d48,wrap:0x2a2c30,payload:'pg7',link:'radio'},
  China:{name:'Feng',charge:0x56604a,wrap:0x30302c,payload:'pg7',link:'radio'},
  Japan:{name:'Hayabusa',charge:0x585e47,wrap:0x2f3236,payload:'pg7',link:'radio'},
@@ -25,7 +25,7 @@ export const DRONE_DESIGNS = {
  Poland:{name:'Sokol',charge:0x50593f,wrap:0x2a3038,payload:'pg7',link:'radio'},
  Italy:{name:'Nibbio',charge:0x5f5e44,wrap:0x2f302d,payload:'pg7',link:'radio'},
  Korea:{name:'Mae',charge:0x535f4c,wrap:0x2b3035,payload:'pg7',link:'radio'},
- Ukraine:{name:'Sokil',charge:0x5a5a3a,wrap:0x2a3a4a,payload:'pg7',link:'radio'},
+ Ukraine:{name:'Sokil',charge:0x5a5a3a,wrap:0x232b34,payload:'pg7',link:'radio'},
 } as const;
 export type DroneNation=keyof typeof DRONE_DESIGNS;
 /** Field paint of the carrier-mounted dock per service: the steel takes the vehicle fleet's own colour, not the drone's. */
@@ -51,7 +51,7 @@ const MOTORS = [[-1,-1],[-1,1],[1,-1],[1,1]] as const;
 const CARBON_PLATE = 0x25282c, TPU = 0x18191b, PCB = 0x1c3a2b, WIRE = 0x141516, WIRE_RED = 0x6e1f17,
  WIRE_WHITE = 0xcfccc2, RUBBER = 0x121314, STRAP = 0x151617, BUCKLE = 0x8e3024, COPPER = 0x5a3a24, STEEL = 0x7d8084,
  BLACK_ANODE = 0x1b1d20, BELL = 0x2b2e33, BELL_RING = 0x8f9399, VENT = 0x0a0b0c, FIBER = 0xd8d4c6, HAZARD = 0xb8902a,
- PROP = 0x3a3f45, PROP_TIP = 0xb0b4b8;
+ PROP = 0x2f3338, PROP_TIP = 0x8c9095;
 const DUST = 0x6e6556, MUD = 0x4a4337;
 
 type Color3 = readonly [number, number, number];
@@ -294,7 +294,8 @@ function addBattery(b:AirframeBuckets,design:DroneDesign,base:number,front=.13,r
  const section = new THREE.Shape([[-half + cut, base],[half - cut, base],[half, base + cut],[half, top - cut],[half - cut, top],[-half + cut, top],[-half, top - cut],[-half, base + cut]].map(([x, y]) => new THREE.Vector2(x, y)));
  const pack = new THREE.ExtrudeGeometry(section, { depth, bevelEnabled: false }).translate(0, 0, rear);
  b.carbon.add(pack, design.wrap);
- b.carbon.add(box(half * 2 + .002, top - base - .03, .05, 0, (base + top) / 2, z + depth * .18), 0x7d7b70);
+ // round 5 (critics: "toy-bright batteries"): a dull printed label band, not a bright stripe
+ b.carbon.add(box(half * 2 + .002, top - base - .03, .05, 0, (base + top) / 2, z + depth * .18), 0x3f3e39);
  for (const sz of [rear + .08, front - .08]) {
   b.carbon.add(box(half * 2 + .012, .006, .028, 0, top + .003, sz), STRAP);
   for (const sx of [-1, 1]) b.carbon.add(box(.006, top - base + .012, .028, sx * (half + .006), (base + top) / 2, sz), STRAP);
@@ -302,9 +303,9 @@ function addBattery(b:AirframeBuckets,design:DroneDesign,base:number,front=.13,r
  }
  b.carbon.add(rod(.0075, [-.058, base + .03, rear - .003], [-.058, base + .012, rear - .032], 6), WIRE_RED);
  b.carbon.add(rod(.0075, [-.026, base + .03, rear - .003], [-.026, base + .012, rear - .032], 6), WIRE);
- b.carbon.add(box(.05, .022, .03, -.042, base + .011, rear - .046), 0xb39634);
+ b.carbon.add(box(.05, .022, .03, -.042, base + .011, rear - .046), 0x7a6a33);
  b.carbon.add(rod(.003, [half - .012, top - .01, rear - .002], [half + .008, base + .034, rear + .018], 4), WIRE_WHITE);
- b.carbon.add(box(.01, .026, .014, half + .009, base + .028, rear + .03), 0xd2cfc6);
+ b.carbon.add(box(.01, .026, .014, half + .009, base + .028, rear + .03), 0x8c8981);
 }
 
 /** Pilot camera: a micro body in printed TPU side plates at the nose, tilted up for forward flight. */
@@ -396,15 +397,18 @@ export interface DroneModelKit {
 /** Wide twisted three-blade propeller: broad planform with a rounded tip, washout from root to tip, a light tip band
  * that reads in motion, round hub and nut. */
 function createRotor(radius:number):THREE.BufferGeometry {
+ // Round 5 (critics: "props look like planks"): a slimmer swept blade — widest a quarter of the way out, tapering to a
+ // narrow rounded tip, the chord's centre swept back along the rotation as it goes out.
  const bucket = new Bucket(), stations = [0, .08, .18, .3, .45, .6, .75, .86, .93, 1], band = 7;
- const chord = (f:number) => f < .3 ? .05 + f / .3 * .046 : f < .86 ? .096 - (f - .3) / .56 * .03 : .066 - (f - .86) / .14 * .042;
+ const chord = (f:number) => f < .25 ? .044 + f / .25 * .034 : f < .86 ? .078 - (f - .25) / .61 * .03 : .048 - (f - .86) / .14 * .03;
+ const sweep = (f:number) => -.045 * f * f;
  const pitch = (f:number) => (17 - 8 * f) * Math.PI / 180, root = .023;
  for (let blade = 0; blade < 3; blade++) {
   const rings:number[][][] = [];
   for (const f of stations) {
    const r = root + (radius - root) * f, c = chord(f), t = Math.max(.0022, .0078 * (1 - f)), a = pitch(f), ca = Math.cos(a), sa = Math.sin(a);
-   const local = [[.36 * c, 0],[.05 * c, t * .5],[-.64 * c, 0],[.05 * c, -t * .3]];
-   rings.push(local.map(([zc, yc]) => [r, yc! * ca + zc! * sa, -yc! * sa + zc! * ca]));
+   const local = [[.36 * c, 0],[.05 * c, t * .5],[-.64 * c, 0],[.05 * c, -t * .3]], back = sweep(f);
+   rings.push(local.map(([zc, yc]) => [r, yc! * ca + (zc! + back) * sa, -yc! * sa + (zc! + back) * ca]));
   }
   for (const [from, to, hex] of [[0, band, PROP],[band, rings.length - 1, PROP_TIP]] as const) {
    const positions:number[] = [];
@@ -425,9 +429,12 @@ function createRotor(radius:number):THREE.BufferGeometry {
  * tips and reads against dark kit and bright sky alike, and three faint blade passages. `strength` scales its opacity
  * (the faint disc shows over slowing or quickening blades). */
 function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
- const radial = [.03, .06, .14 * radius / .29, .5 * radius, .84 * radius, .9 * radius, .965 * radius, radius], segments = 48;
- const alpha = (r:number) => strength * (r < .06 ? .12 : r < .84 * radius ? .24 + .1 * (r / radius) : r < .965 * radius ? .64 : 0);
- const shade = (r:number) => r < .84 * radius ? .28 : .62;
+ // Round 5 (critics: "pale, glassy and lighter than what's behind them, with hard rims; they vanish against bright
+ // boxes and sand"): the blur of dark props is a dark translucent tint, densest where the blades sweep fastest, with a
+ // barely lighter tip band and a soft outer edge (alpha falls to nothing over the last 7 % of the radius).
+ const radial = [.03, .06, .14 * radius / .29, .5 * radius, .84 * radius, .93 * radius, .965 * radius, radius], segments = 48;
+ const alpha = (r:number) => strength * (r < .06 ? .1 : r < .84 * radius ? .26 + .08 * (r / radius) : r < .93 * radius ? .36 : .36 * Math.max(0, (radius - r) / (.07 * radius)));
+ const shade = (r:number) => r < .84 * radius ? .07 : r < .93 * radius ? .13 : .1;
  const positions:number[] = [], colors:number[] = [];
  for (let s = 0; s < segments; s++) for (let k = 0; k < radial.length - 1; k++) {
   const a0 = s / segments * Math.PI * 2, a1 = (s + 1) / segments * Math.PI * 2, r0 = radial[k]!, r1 = radial[k + 1]!;
@@ -440,7 +447,7 @@ function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
  // Round 4b (critics, wave 411c: from a camera at dock height the discs vanished edge-on before touchdown): a thin
  // blurred ribbon at the tip circle, 3.2 cm of authoring height (inside the rotor stock's y band), so a spinning disc
  // seen side-on is a translucent line across its span, never nothing.
- const ribbonR = .985 * radius, ribbonH = .016, ribbonAlpha = .3 * strength, ribbonTone = .28;
+ const ribbonR = .955 * radius, ribbonH = .016, ribbonAlpha = .3 * strength, ribbonTone = .09;
  const ribbonMask = new Array(positions.length / 3).fill(0);
  for (let s = 0; s < segments; s++) {
   const a0 = s / segments * Math.PI * 2, a1 = (s + 1) / segments * Math.PI * 2;
@@ -513,7 +520,7 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  // (round 4: dusted legs read pale, a camera drone's).
  weatherVertexColors(body, .3, -1, 1, MUD);
  weatherVertexColors(plateGeometry, .12, -1);
- weatherVertexColors(equipment, .3, -.14);
+ weatherVertexColors(equipment, .12, -.14);
  weatherVertexColors(metal, .2, -1, 1, MUD);
  for (const geometry of [body, plateGeometry, equipment, metal, lens]) geometry.scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotor = createRotor(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
@@ -527,7 +534,8 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  const twill = createCarbonTwill(), twillSheen = createCarbonTwill(true);
  const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughnessMap: twillSheen, roughness: .8, metalness: .04 });
  const equipmentMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .8, metalness: .02 });
- const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .6, metalness: .35 });
+ // round 5 (critics: "a glossy blue cast"): bells and hardware machined but matte enough not to mirror the blue sky
+ const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .68, metalness: .24 });
  const lensMaterial = new THREE.MeshStandardMaterial({ color: 0x2f4a56, emissive: 0x0b1f28, roughness: .08, metalness: .55 });
  const rotorMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .55, metalness: .02, side: THREE.DoubleSide });
  const blurMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, transparent: true, depthWrite: false, roughness: .7, metalness: 0, side: THREE.DoubleSide });

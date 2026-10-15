@@ -8,7 +8,7 @@ type ReceiverId = 'pt91_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 'ua_t80u_modern';
 type Vec3 = readonly [number, number, number];
 export interface MissionReceiverPart {
   readonly role: 'roof-post' | 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return'
-    | 'bearer-plate' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset'
+    | 'bearer-plate' | 'bearer-flange' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset'
     | 'side-rail-clamp' | 'cage-post' | 'cage-tie';
   readonly size: Vec3;
   readonly center: Vec3;
@@ -43,13 +43,27 @@ export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> 
  * out-turned lips, and the clamp bolts through each web between the feet. Every member lies inside the solid bearer it
  * replaces, the envelope the native clearance audit certified, and nothing but the bar comes within 10 mm of a foot pad.
  */
-function bearerParts(size: Vec3, center: Vec3, footXs: readonly number[]): MissionReceiverPart[] {
+/** A welded bearer under one pair of dock feet. `open` (round 5, the M1A1 SA: critics read the full-width top plates as
+ * "plain grey planks ... a floating bench"): full-width top plates only where the feet bear, and between and beyond
+ * them two narrow top flanges over the webs and spine, so the bearer reads as an open steel channel. */
+function bearerParts(size: Vec3, center: Vec3, footXs: readonly number[], open = false): MissionReceiverPart[] {
   const [length, height, width] = size, [cx, cy, cz] = center, top = cy + height / 2, bottom = cy - height / 2;
   const bar = .014, web = .006, webZ = width / 2 - .018, channel = height - bar + .002;
-  const parts: MissionReceiverPart[] = [
-    { role: 'bearer-plate', size: [length, bar, width], center: [cx, top - bar / 2, cz] },
-    { role: 'bearer-spine', size: [length - .01, channel, .016], center: [cx, bottom + channel / 2, cz] },
-  ];
+  const parts: MissionReceiverPart[] = [];
+  if (!open) parts.push({ role: 'bearer-plate', size: [length, bar, width], center: [cx, top - bar / 2, cz] });
+  else {
+    // The pads (x +-.0475 round each foot) stand on full plates 13 cm long. Edge flanges run between and beyond them,
+    // each ending 5 mm inside a plate (welded to it) and short of the dock foot's own envelope, whose sides they would
+    // otherwise cut (the native dock clearance pads every foot by 6 mm).
+    const plateHalf = .065, flangeStop = .06, ends = [-length / 2, ...[...footXs].sort((m, n) => m - n).flatMap(fx => [fx - flangeStop, fx + flangeStop]), length / 2];
+    for (const fx of footXs) parts.push({ role: 'bearer-plate', size: [plateHalf * 2, bar, width], center: [cx + fx, top - bar / 2, cz] });
+    for (let k = 0; k + 1 < ends.length; k += 2) {
+      const x0 = ends[k]!, x1 = ends[k + 1]!;
+      if (x1 - x0 < .01) continue;
+      for (const side of [-1, 1]) parts.push({ role: 'bearer-flange', size: [x1 - x0, bar, .022], center: [cx + (x0 + x1) / 2, top - bar / 2, cz + side * (width / 2 - .011)] });
+    }
+  }
+  parts.push({ role: 'bearer-spine', size: [length - .01, channel, .016], center: [cx, bottom + channel / 2, cz] });
   for (const side of [-1, 1]) {
     const z = cz + side * webZ;
     parts.push({ role: 'bearer-web', size: [length - .004, channel, web], center: [cx, bottom + channel / 2, z] });
@@ -131,7 +145,7 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       members.push({ role: 'corner-gusset', size: [.04, .04, .012],
         center: [outerX + .031, bottom + .030, z] });
       const span = seat.x + .175 - outerX;
-      members.push(...bearerParts([span, .028, .116], [(seat.x + .175 + outerX) / 2, seat.topY - .014, z], feet.map(x => x - (seat.x + .175 + outerX) / 2)));
+      members.push(...bearerParts([span, .028, .116], [(seat.x + .175 + outerX) / 2, seat.topY - .014, z], feet.map(x => x - (seat.x + .175 + outerX) / 2), true));
     }
     members.push({ role: 'cage-tie', size: [.018, .02, .18 + .022], center: [postX, tieY, seat.z] });
     return [...sockets, ...clamps, ...members];

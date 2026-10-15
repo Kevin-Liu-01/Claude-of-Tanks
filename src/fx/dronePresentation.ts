@@ -174,7 +174,9 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     }
     if(r.phase==='descent'){
       // The carrier may move: the column is tracked; the last metres ease into the landing's first pose.
-      desired.set((handoffAt.x-r.pos.x)*4,-Math.min(6,Math.max(1.2,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4);
+      // round 5: down the column at no less than the landing's hand-over speed, so the landing continues the descent
+      // instead of a stop at the hand-over (droneArrival.ts handoffSpeed)
+      desired.set((handoffAt.x-r.pos.x)*4,-Math.min(6,Math.max(DRONE_ARRIVAL.handoffSpeed,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4);
       r.vel.lerp(desired,1-Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.pos.y<=handoffAt.y+.04){
         r.pos.copy(handoffAt);r.vel.set(0,0,0);r.phase='handoff';r.phaseT=0;

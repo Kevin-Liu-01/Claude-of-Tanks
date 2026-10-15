@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Group, Vector3, Euler, Mesh, BoxGeometry, MeshBasicMaterial, InstancedMesh, Matrix4, Ray } from 'three';
 import { syncMissionAttachment, clearMissionAttachment, missionHoldDownOpen } from './missionAttachmentVisual.ts';
-import { DRONE_ARRIVAL, droneArrivalHeight } from '../fx/droneArrival.ts';
+import { DRONE_ARRIVAL, droneArrivalHeight, droneArrivalAttitude } from '../fx/droneArrival.ts';
 import { poseDroneRotor } from '../fx/droneModel.ts';
 import { Object3D, Quaternion } from 'three';
 import { missionAttachmentFor, missionAttachmentTurretPivot, missionCradleVolumes, missionAirframeVolumes, DRONE_DOCK_HEIGHT_M } from '../sim/missionAttachment.ts';
@@ -66,14 +66,23 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
 // Resupply landing: on the not-ready -> ready edge the next airframe settles down the dock's launch column (vertical, never
 // sideways into the carrier's kit), brakes into a short hover, touches down and spools its props to the parked pose.
 {
- // Round 4: braking down the column, a hover with centimetre corrections, the set-down. It rises only by those
- // corrections, inside the hover, and never digs into the pads.
- const hoverU0=DRONE_ARRIVAL.hoverAtS/DRONE_ARRIVAL.descentS,hoverU1=DRONE_ARRIVAL.setDownAtS/DRONE_ARRIVAL.descentS;
- for(let u=0;u<1;u+=.01){const a=droneArrivalHeight(u),b=droneArrivalHeight(u+.01),hovering=u>=hoverU0-1e-9&&u+.01<=hoverU1+1e-9;
-  assert.ok(b>=0&&(b<=a+1e-12||(hovering&&b-a<.012)),'the descent never climbs (beyond the hover\'s corrections) or digs in');}
- assert.equal(droneArrivalHeight(0),DRONE_ARRIVAL.heightM);assert.equal(droneArrivalHeight(1),0,'touchdown exactly on the pads');
+ // Round 5: braking down the column from the hand-over speed into a dip below the hover point, the catch, a hover with
+ // corrections, the set-down to a gentle contact. It rises only in the catch and the hover (centimetres), never digs in.
+ const A=DRONE_ARRIVAL,riseU0=A.brakeEndS/A.descentS,riseU1=A.setDownAtS/A.descentS;
+ for(let u=0;u<1;u+=.01){const a=droneArrivalHeight(u),b=droneArrivalHeight(u+.01),catching=u>=riseU0-1e-9&&u<=riseU1+1e-9;
+  assert.ok(b>=0&&(b<=a+1e-12||(catching&&b-a<.012)),'the descent never climbs (beyond the catch and the hover\'s corrections) or digs in');}
+ assert.equal(droneArrivalHeight(0),A.heightM);assert.equal(droneArrivalHeight(1),0,'touchdown exactly on the pads');
  const slope=(u,h=1e-5)=>(droneArrivalHeight(u+h)-droneArrivalHeight(u-h))/(2*h);
- assert.ok(Math.abs(slope(hoverU0))<1e-3&&Math.abs(slope(hoverU1))<1e-2&&Math.abs(slope(1-1e-4))<1e-2,'braking into the hover, the set-down and touchdown arrive without a velocity jump');
+ // the landing starts at the flight home's own descent speed (no stop at the hand-over) and touches at a walking pace
+ assert.ok(Math.abs(slope(1e-4)/A.descentS+A.handoffSpeed)<.05,'the landing starts at the hand-over speed');
+ assert.ok(Math.abs(slope(riseU0)/A.descentS)<.02&&Math.abs(slope(A.catchEndS/A.descentS)/A.descentS)<.02&&Math.abs(slope(riseU1)/A.descentS)<.05,'braking, the catch and the set-down join without a velocity jump');
+ assert.ok(Math.abs(slope(1-1e-4)/A.descentS+A.contactSpeed)<.05,'the skids touch at the contact speed');
+ const dip=droneArrivalHeight(A.brakeEndS/A.descentS);assert.ok(Math.abs(dip-(A.hoverM-A.dipM))<1e-9&&droneArrivalHeight(A.catchEndS/A.descentS)>dip+.07,'brakes a little late: a dip below the hover point and a catch');
+ // the hover's corrections show (centimetres in height, degrees in attitude) and the airframe is level on the pads
+ let hoverSpan=0,maxTilt=0;const att={pitch:0,yaw:0,roll:0};
+ for(let t=A.catchEndS;t<A.setDownAtS;t+=.01){const h=droneArrivalHeight(t/A.descentS);hoverSpan=Math.max(hoverSpan,Math.abs(h-A.hoverM));droneArrivalAttitude(t/A.descentS,att);maxTilt=Math.max(maxTilt,Math.abs(att.pitch),Math.abs(att.roll));}
+ assert.ok(hoverSpan>.012&&hoverSpan<.04&&maxTilt>.045&&maxTilt<.12,`visible hover corrections (${(hoverSpan*100).toFixed(1)} cm, ${(maxTilt*57.3).toFixed(1)} deg)`);
+ droneArrivalAttitude(1,att);assert.ok(Math.abs(att.pitch)<1e-9&&Math.abs(att.roll)<1e-9&&Math.abs(att.yaw)<1e-9,'level and aligned on the pads');
  const spec=TANK_SPECS.m1a2,root=new Group(),turret=new Group();turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));root.add(turret);
  const view={kind:'drone',active:false,cooldownS:0},dt=1/60;
  syncMissionAttachment(root,spec,view,false,dt);
@@ -107,7 +116,7 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
   syncMissionAttachment(root,spec,view,false,dt);frames++;
   assert.ok(frames<400,'the landing ends');
  }
- assert.ok(Math.abs(frames*dt-(DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS))<2*dt,'descent and spool-down take their authored time');
+ assert.ok(Math.abs(frames*dt-(DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS+DRONE_ARRIVAL.pauseS))<2*dt,'descent, spool-down and the pause before the clamps take their authored time');
  assert.ok(spoolFrames>30&&detail.visible,'the parked airframe returns after the spool-down');
  assert.ok(blendFrames>=Math.floor(DRONE_ARRIVAL.blendS/dt)-1,'the discs fade over the showing blades for their authored time');
  assert.equal(stepsSeen.length,5,'five fading discs, one after another');
@@ -124,7 +133,7 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
  view.active=false;view.cooldownS=5;syncMissionAttachment(root,spec,view,false,dt);assert.equal(drone.visible,false,'empty cradle through the next cooldown');
  view.cooldownS=0;syncMissionAttachment(root,spec,view,false,dt);
  assert.ok(arrival.visible&&arrival.position.y===DRONE_ARRIVAL.heightM,'the next resupply lands from the top again');
- for(let i=0;i<200;i++)syncMissionAttachment(root,spec,view,false,dt);
+ for(let i=0,n=Math.ceil((DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS+DRONE_ARRIVAL.pauseS)/dt)+20;i<n;i++)syncMissionAttachment(root,spec,view,false,dt);
  assert.ok(!arrival.visible&&detail.visible,'ready frames after a landing never restart it');
  // A destroyed carrier and its revival: the payload is gone with the wreck and lands again on the revived hull.
  syncMissionAttachment(root,spec,view,true,dt);assert.equal(drone.visible,false);

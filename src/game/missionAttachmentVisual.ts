@@ -56,6 +56,7 @@ function poseArrival(arrival: Arrival, t: number): void {
   }
   // On the pads: the discs hold until the skids are down, fade as the blades show, and the blades slow to the parked
   // angle (droneArrival.ts: about a second and a half).
+  // after the spin-down the props rest at the parked angle through the pause before the clamps close
   const s = t - descentS, phase = droneSpinDownPhase(s);
   const spin = droneSpinDownAngle((s - DRONE_ARRIVAL.discS) / (spoolS - DRONE_ARRIVAL.discS));
   const steps = arrival.kit.rotorBlurSteps, disc = phase === 'discs' ? arrival.kit.rotorBlur : phase === 'blend' ? steps[droneSpinDownFadeStep(s, steps.length)]! : null;
@@ -234,7 +235,8 @@ export function syncMissionAttachment(tankRoot:THREE.Object3D,spec:MissionCarrie
   if(!present)mount.arriveT=-1;
   else if(mount.arriveT>=0&&!started)mount.arriveT+=Math.max(0,dt);
   mount.ready=ready;
-  const landing=mount.arriveT>=0&&mount.arriveT<DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS;
+  // the landing holds through the pause after the props stop (round 5: a beat before the clamps move)
+  const landing=mount.arriveT>=0&&mount.arriveT<DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS+DRONE_ARRIVAL.pauseS;
   if(!landing)mount.arriveT=-1;
   if(landing&&!mount.arrival&&mount.lease){mount.arrival=createArrival(mount.lease.kit);mount.drone.add(mount.arrival.group);}
   if(mount.arrival){mount.arrival.group.visible=landing;if(landing)poseArrival(mount.arrival,mount.arriveT);}

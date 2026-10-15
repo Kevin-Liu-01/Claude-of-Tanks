@@ -2,17 +2,22 @@
  * The landing on a carrier's dock, shared by the dock's own animation (game/missionAttachmentVisual.ts) and the
  * airframe flying home (fx/dronePresentation.ts), which hands over at the landing's first pose. Presentation only.
  *
- * Round 4 (critics, 2026-10-11): the airframe comes straight down the dock's certified launch column from `heightM`
- * with its rotors at speed and brakes with a nose-up flare into a short hover `hoverM` above the pads, where a pilot's
- * small quick corrections show, then sets down on its skids. The discs hold until the skids touch; then the props spin
- * down where the eye can follow them: discs for `discS`, then the disc fading in five steps over `blendS` while the
- * slowing blades show through it (round 4b: one faint step read as discs-then-stopped in 0.1 s stills), then blades
- * slowing to the exact angle the parked airframe holds them, 1.6 s in all. The clamps close after.
+ * Round 5 (critics, waves 411c/416/420: "one smooth eased curve onto the roof", "on a rail, no corrections", "stops
+ * dead at about 1 m/s"): the airframe arrives down the dock's certified column at the flight home's own speed
+ * (`handoffSpeed`, no stop at the hand-over), brakes hard with a nose-up flare and a little late, dips below its hover
+ * point and catches itself, holds a hover above the pads through visible corrections (height, attitude and heading
+ * trims; never a step sideways out of the column), then sets down and touches at a walking pace, level on the pads.
+ * The discs hold until the skids touch; then the props spin down where the eye can follow them: discs for `discS`,
+ * the disc fading in five steps over `blendS` while the slowing blades show through it, then blades slowing to the
+ * exact angle the parked airframe holds them, 1.6 s in all; after a short pause (`pauseS`) the clamps close.
  */
 export const DRONE_ARRIVAL = Object.freeze({
-  descentS: 1.7, spoolS: 1.6, discS: .15, blendS: .75, heightM: 2.4, hoverM: .3,
-  /** Within the descent (seconds): braking ends and the hover begins; the hover ends and the set-down begins. */
-  hoverAtS: .95, setDownAtS: 1.35,
+  descentS: 2.95, spoolS: 1.6, discS: .15, blendS: .75, pauseS: .3, heightM: 2.4, hoverM: .46,
+  /** Vertical speed (m/s) at the hand-over: the flight home descends the column at it, the landing starts at it. */
+  handoffSpeed: 3.2,
+  /** Within the descent (seconds): braking ends (a dip of `dipM` below the hover point), the catch back up ends, the
+   * hover ends and the set-down begins; the skids touch at `contactSpeed` (m/s). */
+  brakeEndS: 1.15, catchEndS: 1.5, setDownAtS: 2.3, dipM: .08, contactSpeed: .22,
 });
 /** Prop angle through the blade phase of the spin-down (u from 0 to 1): three full turns that slow to rest, ending
  * exactly on the parked pose (a whole number of turns), quick at first and visibly slowing. */
@@ -31,35 +36,43 @@ export function droneSpinDownFadeStep(s:number, steps:number):number {
 }
 
 const smooth = (x:number) => x * x * (3 - 2 * x);
-/** The hover's small quick corrections (metres), zero with zero slope where the hover begins and ends. */
-function hoverCorrection(tau:number, span:number):number {
-  const k = Math.min(1, Math.max(0, tau / span));
-  // Three corrections in the hover (a whole number of half-waves across it keeps the ends flat).
-  return .011 * Math.sin(6 * Math.PI * k) * Math.sin(Math.PI * k);
+const clamp01 = (x:number) => Math.min(1, Math.max(0, x));
+/** Cubic Hermite from (h0, v0) to (h1, v1) over `span` seconds, at `tau` seconds in (velocities in m/s). */
+function hermite(tau:number, span:number, h0:number, v0:number, h1:number, v1:number):number {
+  const s = clamp01(tau / span), s2 = s * s, s3 = s2 * s;
+  return (2 * s3 - 3 * s2 + 1) * h0 + (s3 - 2 * s2 + s) * span * v0 + (-2 * s3 + 3 * s2) * h1 + (s3 - s2) * span * v1;
 }
-/** Height above the pads at a descent fraction: braking down the column to the hover, the hover's corrections, the
- * set-down. Continuous in height and speed; it rises only by the hover's centimetre corrections. */
+/** The hover's corrections (metres): two catches of about 2 cm, zero with zero slope where the hover begins and ends. */
+function hoverCorrection(tau:number, span:number):number {
+  const k = clamp01(tau / span);
+  return .021 * Math.sin(4 * Math.PI * k) * Math.sin(Math.PI * k);
+}
+/** Height above the pads at a descent fraction: braking down the column from the hand-over speed into a dip below the
+ * hover point, the catch, the hover's corrections, the set-down to a gentle contact. Continuous in height and speed. */
 export function droneArrivalHeight(u: number): number {
-  const { heightM, hoverM, descentS, hoverAtS, setDownAtS } = DRONE_ARRIVAL, t = Math.min(1, Math.max(0, u)) * descentS;
-  if (t < hoverAtS) return hoverM + (heightM - hoverM) * (1 - t / hoverAtS) ** 2;
-  if (t < setDownAtS) return hoverM + hoverCorrection(t - hoverAtS, setDownAtS - hoverAtS);
-  return hoverM * (1 - smooth((t - setDownAtS) / (descentS - setDownAtS)));
+  const A = DRONE_ARRIVAL, t = clamp01(u) * A.descentS, dipAt = A.hoverM - A.dipM;
+  if (t < A.brakeEndS) return hermite(t, A.brakeEndS, A.heightM, -A.handoffSpeed, dipAt, 0);
+  if (t < A.catchEndS) return dipAt + A.dipM * smooth((t - A.brakeEndS) / (A.catchEndS - A.brakeEndS));
+  if (t < A.setDownAtS) return A.hoverM + hoverCorrection(t - A.catchEndS, A.setDownAtS - A.catchEndS);
+  return Math.max(0, hermite(t - A.setDownAtS, A.descentS - A.setDownAtS, A.hoverM, 0, 0, -A.contactSpeed));
 }
 
 /** Attitude in the dock frame (Euler YXZ: pitch about x, yaw about y, roll about z) at a descent fraction: the airframe
- * yaws into the cradle's line, flares nose-up as it brakes, trims in small quick corrections through the hover, and is
- * level and aligned on the pads. Positive pitch puts the nose down. */
+ * yaws into the cradle's line as it brakes, flares nose-up through the braking and the catch, trims through the hover
+ * in visible quick corrections (a few degrees each axis), steadies through the set-down and is level and aligned on the
+ * pads. Positive pitch puts the nose down. */
 export function droneArrivalAttitude(u: number, out: { pitch: number; yaw: number; roll: number }): typeof out {
-  const { descentS, hoverAtS, setDownAtS } = DRONE_ARRIVAL, x = Math.min(1, Math.max(0, u)), t = x * descentS;
-  const settle = 1 - smooth(Math.min(1, t / descentS));
-  // The flare: builds through the braking, peaks as the hover begins, gone before the set-down.
-  const flare = t < hoverAtS ? smooth(Math.max(0, (t - .35) / (hoverAtS - .35))) : 1 - smooth(Math.min(1, (t - hoverAtS) / (setDownAtS - hoverAtS)));
-  // Quick small corrections, strongest in the hover, fading to level on the pads.
-  const hover = t >= hoverAtS && t < setDownAtS ? Math.sin(Math.PI * (t - hoverAtS) / (setDownAtS - hoverAtS)) : 0;
-  const trim = .35 * settle + .65 * hover;
-  out.pitch = -.1 * flare + (.022 * Math.sin(t * 13.7) + .01 * Math.sin(t * 23.1 + 1)) * trim;
-  out.yaw = .32 * settle * settle + .01 * Math.sin(t * 9.3) * hover;
-  out.roll = (.03 * Math.sin(t * 11.9 + 1) + .012 * Math.sin(t * 19.7)) * trim;
+  const A = DRONE_ARRIVAL, t = clamp01(u) * A.descentS;
+  const align = 1 - smooth(clamp01(t / A.brakeEndS));
+  // The flare: builds through the braking, held into the catch, level again as the hover settles.
+  const flare = t < A.brakeEndS ? smooth(clamp01((t - .35) / (A.brakeEndS - .35))) : 1 - smooth(clamp01((t - A.brakeEndS) / (A.catchEndS + .15 - A.brakeEndS)));
+  // Corrections: strongest through the hover, small on the way down, gone at contact.
+  const hoverK = t >= A.catchEndS && t < A.setDownAtS ? Math.sin(Math.PI * (t - A.catchEndS) / (A.setDownAtS - A.catchEndS)) : 0;
+  const setDownK = t >= A.setDownAtS ? 1 - smooth(clamp01((t - A.setDownAtS) / (A.descentS - A.setDownAtS))) : 0;
+  const trim = .3 * align + hoverK + .35 * setDownK;
+  out.pitch = -.11 * flare + (.058 * Math.sin(t * 7.3 + .4) + .02 * Math.sin(t * 17.1 + 1)) * trim;
+  out.yaw = .32 * align * align + (.04 * Math.sin(t * 4.1 + .7)) * hoverK;
+  out.roll = (.068 * Math.sin(t * 6.1 + 1) + .022 * Math.sin(t * 15.7)) * trim;
   return out;
 }
 
