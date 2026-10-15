@@ -682,9 +682,14 @@ function srcText(body) {
 }
 const SPARE_TEXT_RE = /spare|\blinks?\b/i;
 // spare links drawn into ordinary buckets with no semantic marker (found by reading the profiles)
+// (trees older than the registration: registered courses carry userData.spareTrackRun and never reach this list)
 const ADHOC_SITES = [
   { file: 'vehicles/profiles/leopardX.ts', from: 257, to: 259, why: 'bowFittings(spareTracks) links in hullDark/hullDetail' },
-  ...(process.env.V_SITES ? JSON.parse(process.env.V_SITES) : []),
+  // the four sites the verifier found the census missed (2026-10-15, verify/sites.json), main 5ab143d57 lines
+  { file: 'vehicles/profiles/type10XBow.ts', from: 5, to: 20, why: 'Type 10 bow link bodies and pins' },
+  { file: 'vehicles/profiles/arieteXSuppliedHullEquipment.ts', from: 10, to: 20, why: 'Ariete forward link carry' },
+  { file: 'vehicles/profiles/abramsSourceXUkraineKit.ts', from: 234, to: 234, why: 'Ukrainian M1 rear-deck track shoes' },
+  { file: 'vehicles/profiles/merkavaX.ts', from: 286, to: 289, why: 'Merkava 3D basket link stacks' },
 ];
 
 // ------------------------------------------------------------------ bundles
@@ -1127,7 +1132,8 @@ function analyse(id) {
       let alt = null;
       if (B.source === 'adhoc' || B.source === 'strip' || process.env.V_ALT_ALL === '1') {
         const nn = support.normal; const a = supportOf({ ...B, normalHint: [-nn[0], -nn[1], -nn[2]] }, grid, bodies);
-        alt = { normal: a.normal, sup: a.supportedShare, gap: a.gapShare, air: a.overhangShare, hidden: a.hiddenShare, hiddenIn: a.hiddenIn, host: a.host?.label };
+        alt = { normal: a.normal, sup: a.supportedShare, gap: a.gapShare, air: a.overhangShare, hidden: a.hiddenShare, hiddenIn: a.hiddenIn, host: a.host?.label,
+          hosts: a.hosts, beneath: a.beneath, hostClassShares: a.hostClassShares, beneathClassShares: a.beneathClassShares, medianGapM: a.medianGapM };
       }
       // VERIFY: turret-mounted bundles swept by turret traverse against everything on the hull (column-top model)
       let traverse = null;
@@ -1499,6 +1505,9 @@ const FALSE_TAGS = [
   ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'light'],
 ];
 const LABEL_RE = /^(\w+)<(?:(.+?)<-)?(.+?)@(.+?):(\d+)>$/;
+// Turret-traverse readings the audit verified as artefacts of the column-top model (a hull part above the run's level,
+// read as solid down to the deck): the traverse there is not judged.
+const TRAVERSE_ARTEFACTS = new Map([['cv90_mkiv', 'a thin hull rail at y 2.13 above the run (verified 2026-10-15)']]);
 const SRC_V = new Map();
 function srcLinesV(f) {
   if (!SRC_V.has(f)) {
@@ -1549,7 +1558,7 @@ function tagsOf(entry) {
     if (!rx.test(src)) continue;
     if (tag === 'light' && NOT_LIGHT.test(src)) continue;
     if (tag === 'softload' && label.includes('stowageRack')) continue;
-    if (file && FALSE_TAGS.some(([f, c, t]) => f === file && t === tag && code.startsWith(c))) continue;
+    if (file && FALSE_TAGS.some(([f, c, t]) => f === file && t === tag && code.includes(c))) continue;
     out.add(tag);
   }
   if (label.startsWith('decor:cargo') || label.startsWith('decor:bag')) out.add('softload');
@@ -1565,9 +1574,16 @@ const cm = (x) => `${(x * 100).toFixed(1)} cm`;
 function classifyRun(b) {
   // outward face: adhoc/strip runs are measured from both faces; the face resting on something is the run's own
   let s = b.support;
-  if (b.alt && b.alt.sup > s.supportedShare + 0.15 && b.alt.air <= s.overhangShare) {
+  // the outward face is the one resting on a host with its top in the open: better support, or as good support with far
+  // less of its top hidden (the AMX 40's rear-plate links read from the face pressed against the plate)
+  const altBetter = b.alt && ((b.alt.sup > s.supportedShare + 0.15 && b.alt.air <= s.overhangShare)
+    || (b.alt.sup >= s.supportedShare - 0.05 && b.alt.air <= s.overhangShare + 0.05
+      && (b.alt.hidden ?? 0) < (s.hiddenShare ?? 0) - 0.3));
+  if (altBetter) {
     s = { ...s, supportedShare: b.alt.sup, gapShare: b.alt.gap, overhangShare: b.alt.air, hiddenShare: b.alt.hidden, hiddenIn: b.alt.hiddenIn,
-      normal: b.alt.normal, flipped: true };
+      normal: b.alt.normal, flipped: true,
+      ...(b.alt.hosts ? { hosts: b.alt.hosts, beneath: b.alt.beneath, hostClassShares: b.alt.hostClassShares,
+        beneathClassShares: b.alt.beneathClassShares, medianGapM: b.alt.medianGapM } : {}) };
   }
   const inter = b.intersections || {}, near = b.near || {}, sw = b.sweep || {};
   const hidden = s.hiddenShare || 0, buried = hidden > 0.5;
@@ -1637,7 +1653,7 @@ function classifyRun(b) {
     if (classes.has('ON_GUN') && !(why.ON_GUN || []).some((w) => !w.startsWith('the '))) {
       classes.delete('ON_GUN'); classes.add('IN_SWEEP'); notes.push('ON_GUN was sweep-only');
     }
-    const t = b.traverse;
+    const t = TRAVERSE_ARTEFACTS.has(b.__id) ? null : b.traverse;
     if (t && (t.depthM || 0) > 0.02) {
       const self = t.turretSelfWithin15cmM;
       if (self == null || self < 0.01) { classes.add('IN_SWEEP'); add('IN_SWEEP', `traverse ${cm(t.depthM)} yaw ${t.yawDeg} into ${t.with}`); }
@@ -1716,6 +1732,25 @@ function sourceLint() {
 }
 
 // ------------------------------------------------------------------ main
+// --reclassify=<in.jsonl> --jsonl=<out.jsonl>: classify stored measurements again (no builds)
+const RECLASSIFY = arg('reclassify', null);
+if (RECLASSIFY) {
+  const out = arg('jsonl', `${RECLASSIFY}.reclassified.jsonl`);
+  fs.writeFileSync(out, '');
+  for (const line of fs.readFileSync(RECLASSIFY, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    const o = JSON.parse(line);
+    if (!o.raw) continue;
+    const runs = o.raw.bundles.map((b) => {
+      const c = classifyRun({ ...b, __id: o.id });
+      return { index: b.index, site: b.bundle, source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes,
+        primary: c.primary, why: Object.fromEntries(Object.entries(c.why).filter(([k]) => c.classes.includes(k))), notes: c.notes };
+    });
+    fs.appendFileSync(out, JSON.stringify({ id: o.id, inputHash: o.inputHash, runs, uncovered: coverageOf(o.raw) }) + '\n');
+  }
+  console.log(`[spare-track] reclassified ${RECLASSIFY} -> ${out}`);
+  process.exit(0);
+}
 const JSONL = arg('jsonl', null);
 const JSON_OUT = arg('json', null);
 const CROPS = arg('crops', null);
@@ -1751,7 +1786,7 @@ for (const id of ids) {
   if (res.unchanged) { results[id] = ledger.rows[id]; if (!QUIET) console.log(`${id}	unchanged (${res.inputHash})`); continue; }
   const { _bodies, _bundles, _visual, _MM, ...clean } = res;
   const runs = clean.bundles.map((b) => {
-    const c = classifyRun(b);
+    const c = classifyRun({ ...b, __id: id });
     return { index: b.index, site: b.bundle, source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes, primary: c.primary,
       why: Object.fromEntries(Object.entries(c.why).filter(([k]) => c.classes.includes(k))), notes: c.notes,
       measures: { support: b.support.supportedShare, gap: b.support.gapShare, air: b.support.overhangShare,
