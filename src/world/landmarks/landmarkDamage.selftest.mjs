@@ -204,6 +204,13 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.computeVertexNormals();
+    { let top = -Infinity, at = null; for (let i = 0; i < pos.length; i += 3) if (pos[i + 1] > top) { top = pos[i + 1]; at = [pos[i], pos[i + 2]]; }
+      console.log('[probe]', kind, 'w', a.w, 'd', a.d, 'h', a.h, 'laid top', top.toFixed(2), 'at', at.map((v) => v.toFixed(1)).join(',')); }
+    // and it lies down (the E12 film: a mast's guys swung up into the air, a billboard stood on its edge, a lookout's
+    // frame lay as tall as its foot is wide): nothing of its fall stands over four metres
+    let top = -Infinity;
+    for (let i = 1; i < pos.length; i += 3) top = Math.max(top, pos[i]);
+    assert.ok(top <= 4, `${kind}: its fall lies down (up to ${top.toFixed(2)} m)`);
     const floating = r2.floatingMembers(r2.toParts(g), { groundM: 0.05, contactM: 0.07 });
     assert.deepEqual(floating.map((f) => f.min), [], `${kind}: nothing of its fall left in the air`);
     assert.ok(out.pushed.every((p) => p[4] < 0.3 || Math.hypot(p[16], p[17], p[18]) > 1e-3), `${kind}: every chip above the ground is thrown`);

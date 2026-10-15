@@ -173,7 +173,10 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
     pose = { r, px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: dx * out, ty: 0, tz: dz * out };
   } else {
     // tumbled off its seat (a drop) or tipped where it stood (a slump)
-    const tilt = fall === 'drop' ? 0.5 + rng() * 1.4 : 0.14 + rng() * 0.3, ta = rng() * Math.PI * 2;
+    // (the E12 film: a lookout's roof dropped on its edge, five metres up) a dropped piece wider than it is tall lands near
+    // flat; a tall one goes down on its side
+    const tallish = p.max[1] - p.min[1] > Math.max(p.max[0] - p.min[0], p.max[2] - p.min[2]);
+    const tilt = fall === 'drop' ? (tallish ? 0.9 + rng() * 0.6 : 0.12 + rng() * 0.3) : 0.14 + rng() * 0.3, ta = rng() * Math.PI * 2;
     pose = { r: rotation(Math.cos(ta), 0, Math.sin(ta), tilt), px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: 0, ty: 0, tz: 0 };
     if (fall === 'drop') { const out = 0.3 + rng() * 1.2; pose.tx = dx * out; pose.tz = dz * out; }
   }
@@ -450,6 +453,43 @@ function breachLandmark(a: StructureDamageAnatomy, hole: BreachSpec, out: Damage
   return res;
 }
 
+/** How high a fallen frame may lie over its ground: one that would stand higher is crushed down to it, all alike. */
+const LIE_TOP_M = 3;
+/**
+ * The way a lattice frame goes over: along the blow (dx, dz), unless the frame's plan above its hinge is a long, thin
+ * wall (its long axis over 2.5 times its short one: a billboard's face, a gantry) — then across it, on the side the blow
+ * came from.
+ */
+function frameFallAxis(plan: LandmarkPlan, hinge: number, dx: number, dz: number): [number, number] {
+  let n = 0, mx = 0, mz = 0, sxx = 0, szz = 0, sxz = 0;
+  for (const p of plan.pieces) {
+    if (p.at !== 'collapse' || p.kind !== 'lattice') continue;
+    for (const run of p.runs) for (let i = 0; i < run.pos.length; i += 3) {
+      if (run.pos[i + 1] <= hinge) continue;
+      const x = run.pos[i], z = run.pos[i + 2];
+      n++; mx += x; mz += z; sxx += x * x; szz += z * z; sxz += x * z;
+    }
+  }
+  if (n < 3) return [dx, dz];
+  mx /= n; mz /= n;
+  const cxx = sxx / n - mx * mx, czz = szz / n - mz * mz, cxz = sxz / n - mx * mz;
+  const tr = cxx + czz, det = cxx * czz - cxz * cxz, disc = Math.sqrt(Math.max(0, tr * tr / 4 - det));
+  const big = tr / 2 + disc, small = Math.max(1e-6, tr / 2 - disc);
+  if (big / small < 2.5 * 2.5) return [dx, dz];
+  // the short axis (the eigenvector of the smaller eigenvalue), turned to the blow's side
+  let ax = cxz, az = small - cxx;
+  if (Math.hypot(ax, az) < 1e-9) { ax = small - czz; az = cxz; }
+  if (Math.hypot(ax, az) < 1e-9) return [dx, dz];
+  const l = Math.hypot(ax, az), sign = ax * dx + az * dz < 0 ? -1 : 1;
+  return [sign * ax / l, sign * az / l];
+}
+/** A slack guy's height over the ground it lies on (its wire's own girth). */
+const SLACK_M = 0.03;
+/** The frame's turn as it goes over along (dx, dz): the normals of what it laid down. */
+function pose0(dx: number, dz: number): Pose {
+  return { r: rotation(dz, 0, -dx, TOPPLE_LIE), px: 0, py: 0, pz: 0, tx: 0, ty: 0, tz: 0 };
+}
+
 function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
   const plan = landmarkPlanOf(a);
   const res: DamageStageResult = { cuts: [], hides: [] };
@@ -461,44 +501,89 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   const gl = given ? Math.hypot(given[0], given[1]) : 0;
   // a frame that toppled lies along its line, bent at its hinge as the mask laid it down; every other piece where it rests
   const H = Math.max(1, a.h), hinge = Math.min(TOPPLE_HINGE_M, H * 0.2);
+  // (the E12 film: the troposcatter's face, toppled along its own plane, stood on its edge fifteen metres high) a frame
+  // whose plan is a long, thin wall (a billboard's face) goes over across it, toward the side the blow pushed it
+  const [fdx, fdz] = gl > 1e-3 ? frameFallAxis(plan, hinge, given![0] / gl, given![1] / gl) : [0, 0];
+  const dx = fdx, dz = fdz, e = Math.max(a.w, a.d) / 2;
+  const c = Math.cos(TOPPLE_LIE), s = Math.sin(TOPPLE_LIE);
+  const far = 1.25 * Math.max(a.w, a.d) / 2 + 0.5;
+  // the frame's pieces that go over, each cut at the hinge (a piece anchored out past the frame's plan — a mast's guys —
+  // whole), laid in a second pass: the frame buckles as one
+  const frames: Array<{ p: KeptPiece; cut: KeptPiece; standing: Float32Array[]; reach: boolean; drop: number; top: number }> = [];
+  const bendWith = (standing: Float32Array[]) => (x: number, y: number, z: number, o: number[], run = -1, vertex = -1): boolean => {
+    // (the mask's topple: over the leading edge of its foot at the hinge, sunk by the hinge as it lands)
+    const q = y - hinge;
+    if (q <= 0) { o[0] = x; o[1] = y - (run < 0 ? 0 : standing[run][vertex]); o[2] = z; return false; }
+    const along = x * dx + z * dz, s0 = along - e, lx = x - dx * along, lz = z - dz * along;
+    const s1 = s0 * c + q * s, q1 = q * c - s0 * s;
+    o[0] = lx + dx * (s1 + e); o[1] = q1; o[2] = lz + dz * (s1 + e);
+    return true;
+  };
   for (const p of plan.pieces) {
-    // (a piece an earlier stage took lies where that stage laid it: laid again there, the two copies agree)
-    if (plan.lattice && gl > 1e-3 && p.at === 'collapse' && p.max[1] > hinge) {
-      // (a frame's members break at the hinge; a piece anchored out past the frame's plan — a mast's guys — bends whole,
-      // its feet on their anchors, as it did before the cut)
-      let reach = false;
-      const far = 1.25 * Math.max(a.w, a.d) / 2 + 0.5;
-      for (const run of p.runs) for (let i = 0; i < run.pos.length && !reach; i += 3) {
-        const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
-        if (y - pieceGroundAt(p.ground, x, z) <= 0.4 && Math.hypot(x, z) > far) reach = true;
+    if (!(plan.lattice && gl > 1e-3 && p.at === 'collapse' && p.max[1] > hinge)) continue;
+    let reach = false;
+    for (const run of p.runs) for (let i = 0; i < run.pos.length && !reach; i += 3) {
+      const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
+      if (y - pieceGroundAt(p.ground, x, z) <= 0.4 && Math.hypot(x, z) > far) reach = true;
+    }
+    const cut: KeptPiece = reach ? p : { ...p, runs: p.runs.map((r) => splitRunAt(r, hinge)) };
+    const standing = reach ? cut.runs.map((r) => new Float32Array(r.pos.length / 3))
+      : standingVertices(cut.runs, (x, z) => pieceGroundAt(p.ground, x, z), hinge);
+    // what went over: its lowest point on the ground where it lies, and how high it then stands
+    let low = Infinity, high = -Infinity;
+    const o = [0, 0, 0], bend = bendWith(standing);
+    if (!reach) for (const [ri, run] of cut.runs.entries()) for (let i = 0; i < run.pos.length; i += 3) {
+      if (!bend(run.pos[i], run.pos[i + 1], run.pos[i + 2], o, ri, i / 3)) continue;
+      const up = o[1] - pieceGroundAt(p.ground, o[0], o[2]);
+      low = Math.min(low, up); high = Math.max(high, up);
+    }
+    const drop = Number.isFinite(low) ? low + EMBED_M : 0;
+    frames.push({ p, cut, standing, reach, drop, top: Number.isFinite(high) ? high - drop : 0 });
+  }
+  // (the E12 film: a fire lookout's frame lay on its side as tall as its foot is wide, ten metres) a frame that went over
+  // buckles where it lands, all of it alike (what rests on another piece still rests on it): crushed to LIE_TOP_M
+  const crush = Math.min(1, LIE_TOP_M / Math.max(1e-3, ...frames.filter((f) => !f.reach).map((f) => f.top)));
+  for (const { p, cut, standing, reach, drop } of frames) {
+    const bend = bendWith(standing);
+    if (reach) {
+      // (the E12 film: a guy bent whole with the frame swung its run behind the hinge up into the air, its far half
+      // standing over the heap) a guy goes slack as the frame it holds goes over: from its anchor on the ground to where
+      // its end on the frame now lies, every point of it at its share of the way, on the ground under it
+      let ax = 0, az = 0, na = 0, minR = Infinity;
+      for (const run of cut.runs) for (let i = 0; i < run.pos.length; i += 3) {
+        const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2], r = Math.hypot(x, z);
+        if (y - pieceGroundAt(p.ground, x, z) <= 0.4 && r > far) { ax += x; az += z; na++; }
+        minR = Math.min(minR, r);
       }
-      const cut: KeptPiece = reach ? p : { ...p, runs: p.runs.map((r) => splitRunAt(r, hinge)) };
-      const standing = reach ? cut.runs.map((r) => new Float32Array(r.pos.length / 3))
-        : standingVertices(cut.runs, (x, z) => pieceGroundAt(p.ground, x, z), hinge);
-      const dx = given![0] / gl, dz = given![1] / gl, e = Math.max(a.w, a.d) / 2;
-      const c = Math.cos(TOPPLE_LIE), s = Math.sin(TOPPLE_LIE);
-      // (the mask's topple: over the leading edge of its foot at the hinge, sunk by the hinge as it lands)
-      const bend = (x: number, y: number, z: number, o: number[], run = -1, vertex = -1): boolean => {
-        const q = y - hinge;
-        if (q <= 0) { o[0] = x; o[1] = y - (run < 0 ? 0 : standing[run][vertex]); o[2] = z; return false; }
-        const along = x * dx + z * dz, s0 = along - e, lx = x - dx * along, lz = z - dz * along;
-        const s1 = s0 * c + q * s, q1 = q * c - s0 * s;
-        o[0] = lx + dx * (s1 + e); o[1] = q1; o[2] = lz + dz * (s1 + e);
+      let mx = 0, mz = 0, nm = 0;
+      for (const run of cut.runs) for (let i = 0; i < run.pos.length; i += 3) {
+        if (Math.hypot(run.pos[i], run.pos[i + 2]) <= minR + 0.3) { mx += run.pos[i]; mz += run.pos[i + 2]; nm++; }
+      }
+      ax /= Math.max(1, na); az /= Math.max(1, na); mx /= Math.max(1, nm); mz /= Math.max(1, nm);
+      const span = Math.max(0.5, Math.hypot(mx - ax, mz - az)), ga = pieceGroundAt(p.ground, ax, az), end = [0, 0, 0];
+      const slack = (x: number, y: number, z: number, o: number[]): boolean => {
+        const t = Math.min(1, Math.hypot(x - ax, z - az) / span);
+        // the height on the frame this run of wire makes fast at, and where that point of the frame now lies
+        bend(mx, ga + (y - ga) / Math.max(t, 0.05), mz, end);
+        o[0] = ax + (end[0] - ax) * t; o[2] = az + (end[2] - az) * t;
+        o[1] = pieceGroundAt(p.ground, o[0], o[2]) + SLACK_M;
         return true;
       };
-      // what went over: its lowest point on the ground where it lies
-      let low = Infinity;
-      const o = [0, 0, 0];
-      for (const [ri, run] of cut.runs.entries()) for (let i = 0; i < run.pos.length; i += 3) {
-        if (bend(run.pos[i], run.pos[i + 1], run.pos[i + 2], o, ri, i / 3)) low = Math.min(low, o[1] - pieceGroundAt(p.ground, o[0], o[2]));
-      }
-      const drop = Number.isFinite(low) ? low + EMBED_M : 0;
-      const pose: Pose = { r: rotation(dz, 0, -dx, TOPPLE_LIE), px: 0, py: 0, pz: 0, tx: 0, ty: 0, tz: 0 };
-      if (layPiece(cut, pose, out, (x, y, z, q, ri, v) => { const t = bend(x, y, z, q, ri, v); if (t) q[1] -= drop; return t; })) {
-        res.hides.push({ section: null, partClass: null, piece: p.name });
-      }
+      if (layPiece(cut, pose0(dx, dz), out, slack)) res.hides.push({ section: null, partClass: null, piece: p.name });
       continue;
     }
+    if (layPiece(cut, pose0(dx, dz), out, (x, y, z, q, ri, v) => {
+      const t = bend(x, y, z, q, ri, v);
+      if (t) { q[1] -= drop; const g = pieceGroundAt(p.ground, q[0], q[2]); q[1] = g + (q[1] - g) * crush; }
+      return t;
+    })) {
+      res.hides.push({ section: null, partClass: null, piece: p.name });
+    }
+  }
+  const laid = new Set(frames.map((f) => f.p));
+  for (const p of plan.pieces) {
+    // (a piece an earlier stage took lies where that stage laid it: laid again there, the two copies agree)
+    if (laid.has(p)) continue;
     // (a tank an earlier stage ruptured keeps that hole; one left to the fall ruptures now)
     if (p.kind === 'tank') { if (p.at === 'collapse') rupture(a, p, 0, 0, out, res); continue; }
     detach(a, plan, p, out, res);
