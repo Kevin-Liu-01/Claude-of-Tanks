@@ -10,6 +10,7 @@ import {
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { facadeOn, trimRun, windowHead } from './facade.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const GREENS: readonly Rgb[] = [0x2f6a46, 0x3c7a52, 0x2a5a40].map(rgb);
@@ -296,25 +297,24 @@ const tarShed: RegionalBuilder = (ctx) => {
 /** A shelled brick farmhouse: the gable standing with its stack, the roof gone, rubble inside. */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(7.4, ctx.info.d - 0.3), t = 0.35;
-  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, -W / 2 + t, D / 2], [W / 2 - t, -D / 2, W / 2, D / 2], [-W / 2 + t, -D / 2, W / 2 - t, -D / 2 + t]] as const) {
-    const along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-    for (let k = 0; k < 4; k++) {
-      if (rng() < 0.25) continue;
-      const a = k / 4, b = (k + 1) / 4, top = 0.8 + rng() * 2.0;
-      if (along) sink.span('stone', x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1);
-      else sink.span('stone', x0, -0.3, z0 + (z1 - z0) * a, x1, top, z0 + (z1 - z0) * b);
-    }
-  }
   const apex = 2.9 + (W / 2) * Math.tan(50 * Math.PI / 180);
-  const f: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  const gable: Vec3[] = [[-W / 2, -0.3, D / 2 - t], [W / 2, -0.3, D / 2 - t], [W * 0.18, apex - W * 0.18 * 1.2, D / 2 - t], [-W * 0.3, 2.9 + W * 0.2, D / 2 - t]];
-  sink.prism('stone', gable, [0, 0, 1], t);
+  // (props census #7, lane B 2026-10-14; the judges: "slices of span boxes, the gable's window a dark plate") the ruin
+  // grammar: the farmhouse's own brick walls broken low with a gap or two, the steep gable standing to its stack with
+  // its window and the door under it cut through, the hearth against its inside, the pantiles slid in over the heaps
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'window', u: -0.9, w: 0.9, y0: 0.95, h: 1.3 },
+    { face: 'front', storey: 0, kind: 'door', u: W * 0.25, w: 0.95, y0: 0, h: 2.1 }];
+  for (const face of ['right', 'left'] as const) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * 2, w: 0.9, y0: 0.9, h: 1.2 });
+  const low = (): RuinHead => ({ a: 0.8 + rng() * 2.0, b: 0.8 + rng() * 2.0, at: 0.15 + rng() * 0.7, dip: rng() < 0.5 ? 0.8 : 0.3, ragged: 0.3 });
+  ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: null, storeys: [2.7], openings,
+    heads: { front: { a: 2.9, b: 2.9, at: 0.42, dip: -(apex - 2.9) / 2.9, ragged: 0.15 }, right: low(), left: low(), back: low() }, stub: 0.4,
+    lintel: { bucket: 'stone' }, roof: { bucket: 'roof', piece: [0.4, 0.3, 0.02] }, timber: rgb(0x2b2621), hearth: { face: 'front', u: 0.6, w: 1.3 },
+    mobile: ctx.tier === 'mobile',
+  }, rng, look);
+  // the stack on the gable
   sink.span('stone', -0.45, 2.4, D / 2 - t, 0.35, apex + 0.7, D / 2);
-  faceBox(sink, 'dark', f, -0.9, 1.6, 0.005, 0.9, 1.3, 0.02, { decor: true });
-  sink.span('stone', -W * 0.3, -0.2, -D * 0.2, W * 0.25, 0.8, D * 0.25, { decor: true });
-  sink.span('roof', -W * 0.2, 0.75, -D * 0.1, W * 0.15, 0.95, D * 0.12, { decor: true });
   return sink.finish();
 };
 
