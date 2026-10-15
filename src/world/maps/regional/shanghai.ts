@@ -27,7 +27,7 @@
 // mix is drawn from the build stream. Every building fills its base's measured reach (ctx.bounds); a street row keeps its
 // front to the plot's.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, recordBody, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -822,6 +822,9 @@ const guildHall: RegionalBuilder = (ctx) => {
       }
       sink.span(wall, x0, ly0, from, x1, ly0 + lw, lz1);
     }
+    // (props census #13, lane B 2026-10-15) the street wall a body of its own for the damage reading, breaking into its own
+    // heap beside the hall's (the guild hall went down to the default kit's bounding-box spalls)
+    recordBody(sink, 0, D / 2 - t / 2, W, t, wallH, wall);
     const cap = { ...SHADOWED, colour: TILE_COPING };
     sink.span('structureMetal', -W / 2 - 0.05, wallH, D / 2 - t - 0.08, W / 2 + 0.05, wallH + 0.14, D / 2 + 0.08, cap);
     sink.span('structureMetal', -W / 2 - 0.05, wallH, -D / 2 - 0.08, W / 2 + 0.05, wallH + 0.14, -D / 2 + t + 0.08, cap);
@@ -837,6 +840,7 @@ const guildHall: RegionalBuilder = (ctx) => {
     sink.span('stone', -hx - 0.6, -0.4, hz0 - 0.4, hx + 0.6, deck, hz1 + apron);
     sink.span('stone', -1.6, -0.4, hz1 + apron, 1.6, deck / 2, hz1 + apron + 0.35);
     sink.span('plaster', -hx, -0.4, hz0, hx, hallH, hz1 - 0.3);
+    recordBody(sink, 0, (hz0 + hz1) / 2, 2 * hx, hz1 - hz0, hallH, 'plaster');
     holedPolygon(sink, 'plaster', hf, [[-hx, -0.4], [hx, -0.4], [hx, hallH], [-hx, hallH]],
       Array.from({ length: cols }, (_, k) => ({ u0: bayU(k) - dw / 2, u1: bayU(k) + dw / 2, y0: deck + 0.05, y1: deck + 2.85 })), 0.3, 0.26);
     const roof: RoofSpec = { kind: 'hip', pitchDeg: 31, eave: 1.05, verge: 1.05, thickness: 0.2, bucket: 'roof', ridge: null, hipPitchDeg: 36 };

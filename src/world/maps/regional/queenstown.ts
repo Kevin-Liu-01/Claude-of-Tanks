@@ -8,7 +8,7 @@
 // storeys of brick behind a two-storey verandah of cast-iron lace; rows of weatherboard cottages under corrugated iron,
 // each with its bullnose verandah, its brick chimney and its picket fence; and the stripped frames of abandoned ones.
 import { PartSink, faceBox, facePanel, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, recordBody, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
@@ -381,6 +381,9 @@ const concentrator: RegionalBuilder = (ctx) => {
       }
       // (the rust skin's front panels are laid in the front face's own frame: u along +x from the section's middle)
       rustSkin(sink, x0, 0.6, z0, x1, h, z1, tone, ctx.variant, [{ face: 1, ...band }, { face: 3, ...band }, ...frontCuts.map((c) => ({ face: 0, ...c }))]);
+      // (props census #13, lane B 2026-10-15) the section a body of its own for the damage reading: the steps break one by
+      // one into their own heaps (the mill went down to the default kit's bounding-box spalls)
+      recordBody(sink, cx, (z0 + z1) / 2, wk, sec, h, 'structureMetal');
       // the monitor roof: a raised clerestory along the section's ridge under its own low gable, its sides louvred: the
       // louvre bands cut through its cladding, the blades across them, the mill's dark behind (it was a solid box)
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
@@ -409,6 +412,7 @@ const concentrator: RegionalBuilder = (ctx) => {
       // the thickener in its yard: the concrete tank, its copper rim, the slurry, the copper-green stain on the apron
       const tx = W / 2 - yard / 2, tz = D / 2 - sec / 2, rt = Math.min(2.3, yard / 2 - 0.35, sec / 2 - 0.35), top = 2.7;
       sink.cylinder(CONCRETE, [tx, 0.3, tz], 'y', top - 0.3, rt, 18, {}, rt, true);
+      recordBody(sink, tx, tz, 2 * rt, 2 * rt, top, CONCRETE);
       sink.cylinder('structureMetal', [tx, top - 0.2, tz], 'y', 0.18, rt + 0.03, 18, { colour: COPPER, decor: true }, rt + 0.03, true);
       const ring = (r: number, y: number): Vec3[] => Array.from({ length: 18 }, (_, j) => [tx + Math.cos(-j / 18 * Math.PI * 2) * r, y, tz + Math.sin(-j / 18 * Math.PI * 2) * r]);
       sink.polygon('structureMetal', ring(rt - 0.2, top + 0.005), { colour: rgb(0x5d6458), decor: true });

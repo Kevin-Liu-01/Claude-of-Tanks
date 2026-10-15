@@ -1012,23 +1012,29 @@ export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {
 }
 
 /**
- * Record a shaft the builder draws by other means (a round minaret, a blast furnace, a stove) as a square tower body of
- * its girth for the damage reading, drawing nothing: the house grammar runs into a scratch sink at the sink's own
- * placement, so the plan carries a house `girth` square and `height` tall at (cx, cz) and damage.ts takes it for a tower
- * body (towerBody: it topples in its courses beside the main body; it went down with the hall). A no-op outside
- * withHousePlans. (Props census #13, lane B 2026-10-15.)
+ * Record a body the builder draws by other means (a sheet-clad section of a works, a court wall, a hall of spans) as a
+ * house of its box for the damage reading, drawing nothing: the house grammar runs into a scratch sink at the sink's own
+ * placement, so the plan carries a house `w` x `d` x `height` at (cx, cz) and damage.ts reads it as a body of its own
+ * (it breaks and falls into its own heap; such builds went down to the default kit's bounding-box spalls). A `shaft`
+ * (a round minaret, a blast furnace, a stove) is a tower body (towerBody: it topples in its courses) and never the main
+ * one. A no-op outside withHousePlans. (Props census #13, lane B 2026-10-15.)
  */
-export function recordShaft(sink: PartSink, cx: number, cz: number, girth: number, height: number, wall: RegionalBucket): void {
+export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d: number, height: number, wall: RegionalBucket, shaft = false): void {
   if (!planSink) return;
   const scratch = new PartSink(sink.uvOffset), pl = sink.placement();
   const spec: HouseSpec = {
-    w: girth, d: girth, plinth: null, storeys: [{ h: height - 0.1, wall }], roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: wall },
+    w, d, plinth: null, storeys: [{ h: height - 0.1, wall }], roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: wall },
     openings: [], chimneys: [], gutters: null, verge: null, reveal: 0, rafters: null, spall: null,
   };
   const none: HouseDialect = { window: () => undefined, door: () => undefined };
   const lay = () => scratch.placed(0, cx, 0, cz, () => { buildHouse(scratch, spec, none); });
   if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay();
-  planSink[planSink.length - 1].shaft = true;
+  if (shaft) planSink[planSink.length - 1].shaft = true;
+}
+
+/** A round or polygonal shaft recorded as a square tower body of its girth (recordBody). */
+export function recordShaft(sink: PartSink, cx: number, cz: number, girth: number, height: number, wall: RegionalBucket): void {
+  recordBody(sink, cx, cz, girth, girth, height, wall, true);
 }
 
 /** Dress one face with the member capture pointed at it (a no-op outside withHousePlans). */
