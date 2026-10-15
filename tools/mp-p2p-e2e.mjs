@@ -152,8 +152,15 @@ function installPageRecorder(forceRelay = false) {
   // and the smoothness sampler: every other hull's presented pose frame to frame — a step well past what its own speed
   // explains is a visible snap (a first sight or a hull coming out of the fog is not: the previous frame must have shown it)
   const frames = window.__MP_E2E_FRAMES = { count: 0, track: false, deltas: [], last: null };
-  const smooth = window.__MP_E2E_SMOOTH = { on: false, ownId: null, frames: 0, hullFrames: 0, snaps: [], last: new Map() };
+  // (2026-10-14, corrected) this callback runs before the game's own in the frame, so it reads the pose the PREVIOUS frame
+  // presented: a step spans the interval before the last one. With irregular frames (a host's long frame then a short one)
+  // the step must be judged against both intervals, or a long interval's honest motion reads as a snap in the short one.
+  const smooth = window.__MP_E2E_SMOOTH = { on: false, ownId: null, frames: 0, hullFrames: 0, snaps: [], last: new Map(), prevDt: 0, lastNow: null };
   const sampleSmooth = (now) => {
+    const frameDt = smooth.lastNow === null ? 0 : now - smooth.lastNow;
+    const spanS = Math.max(frameDt, smooth.prevDt) / 1000;
+    smooth.prevDt = frameDt;
+    smooth.lastNow = now;
     const tanks = window.__DEBUG?.game?.tankById;
     if (!tanks?.forEach) return;
     smooth.frames++;
@@ -166,7 +173,7 @@ function installPageRecorder(forceRelay = false) {
       seen.add(key);
       const prior = smooth.last.get(key);
       if (shown && prior && prior.shown) {
-        const dt = (now - prior.at) / 1000;
+        const dt = Math.max((now - prior.at) / 1000, spanS);
         const step = Math.hypot(p.x - prior.x, p.z - prior.z);
         const expected = Math.max(Math.abs(Number(entity.state.speed) || 0), prior.speed) * dt;
         smooth.hullFrames++;
@@ -344,7 +351,7 @@ const trackFrames = (page, on, ownId = null) => page.evaluate((enable, own) => {
   if (!frames || !smooth) return null;
   if (enable) {
     frames.deltas = []; frames.last = null; frames.track = true;
-    smooth.snaps = []; smooth.last = new Map(); smooth.frames = 0; smooth.hullFrames = 0; smooth.ownId = own; smooth.on = true;
+    smooth.snaps = []; smooth.last = new Map(); smooth.frames = 0; smooth.hullFrames = 0; smooth.ownId = own; smooth.prevDt = 0; smooth.lastNow = null; smooth.on = true;
     return null;
   }
   frames.track = false; smooth.on = false;
