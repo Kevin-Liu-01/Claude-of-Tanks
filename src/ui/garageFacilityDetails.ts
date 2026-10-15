@@ -2502,6 +2502,7 @@ export function addGarageFacilityDetails({
         for (const df of [-1.6, 1.6]) clusterCylinder(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 0.98, 0.32, 0.22, soot, 0, 16, Math.PI / 2);
       }
       for (const df of [-0.75, 0.75]) clusterBox(bay, 0, craneF + df, runwayY + 1.45, 2 * halfSpan - 0.8, 1.0, 0.55, craneYellow, 'painted');
+      const crabU = 10.4; // racked over to the bay's right, the ladle hanging clear of the hero's outline
       // (the re-judge, 2026-10-15: "flat yellow and black boxes ... no I- or box-girder flanges, end carriages, trolley,
       // hook block, festoon cable or capacity plate"): the box girders' flange plates and stiffeners, a crab rail on
       // each, the capacity plate on the near girder, the festoon cable's loops on its wire along the bridge, the
@@ -2523,7 +2524,6 @@ export function addGarageFacilityDetails({
         for (const df of [-2.15, 2.15]) clusterBox(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 1.25, 0.5, 0.4, 0.12, soot, 'structure'); // buffers
         clusterBox(bay, side * (halfSpan - 0.95), craneF - 1.2, runwayY + 1.55, 0.5, 0.5, 0.6, soot, 'structure'); // the long-travel drive
       }
-      const crabU = 10.4; // racked over to the bay's right, the ladle hanging clear of the hero's outline
       clusterBox(bay, crabU, craneF, runwayY + 2.25, 2.4, 0.6, 2.4, craneYellow, 'painted');
       clusterCylinder(bay, crabU, craneF, runwayY + 2.0, 0.55, 1.8, soot, 0, 16, Math.PI / 2);
       clusterBox(bay, crabU + 0.9, craneF + 0.7, runwayY + 2.75, 0.8, 0.5, 0.7, soot, 'structure'); // the hoist motor
