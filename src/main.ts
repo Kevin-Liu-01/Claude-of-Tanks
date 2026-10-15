@@ -3002,7 +3002,10 @@ const battleFrame = createBattleFrameRuntime({
         missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
-    rollout: () => bus.emit('battle:rollout', {}),
+    // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)
+    rollout: (late = false) => bus.emit('battle:rollout', late ? { late: true } : {}),
+    // the running count's whole seconds (the audio ticks 3, 2, 1)
+    second: (seconds: number) => bus.emit('battle:countdown', { seconds }),
   },
   presentation: {
     captureSoloPose: battlePresentation.captureSoloPoses,

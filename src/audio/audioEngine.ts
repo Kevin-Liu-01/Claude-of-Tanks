@@ -321,6 +321,9 @@ const UI_SET = [
   'ui_slider', 'ui_ready', 'sting_garage', 'loading_bed_loop',
 ];
 
+/** The battle loader's bed (loadingOn). */
+const LOADING_BED = 'loading_bed_loop';
+
 /** The crew radio's keyed elements and net static, decoded from boot like the interface. */
 const RADIO_SET = ['radio_interference', 'radio_key_in', 'radio_key_out', 'radio_static_loop'];
 
@@ -348,6 +351,23 @@ const MODE_SET = [
   'mode_horde_siren', 'mode_horde_all_clear', 'mode_frontline_barrage', 'mode_juggernaut', 'mode_infected_outbreak',
   'mode_turbo_horn', 'mode_gungame_armory', 'cache_drop',
 ];
+
+/**
+ * The loops a hull's rig may start the moment it exists (vehicleRig.ts, beside its engine bands and track loops): the
+ * running gear's extras, the drivetrain whines, and our own turret drive, gun servo and cabin. Part of a battle's
+ * presence set (presenceAssets): heard from the countdown's first frame.
+ */
+const RIG_LOOPS = [
+  'track_squeal_loop', 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop',
+  'gear_whine_loop', 'turbo_whistle_loop', 'electric_drive_loop',
+  'turret_hydraulic_loop', 'turret_electric_loop', 'elevation_servo_loop', 'interior_hum_loop', 'interior_rattle_loop',
+];
+
+/** How long our start-up waits for its recording before the bank fades in without it (a cold first battle). */
+const START_WAIT_S = 1;
+
+/** The countdown ticks its last whole seconds (3, 2, 1); the horn is the rollout's. */
+const COUNTDOWN_TICK_S = 3;
 
 /**
  * Each mode opens on its own sound (2026-10-02), field sounds rather than music: the Horde's air-raid siren, the
@@ -1775,7 +1795,8 @@ export function createAudio({
   function preloadVehicle(identity: VehicleAudioIdentity): void {
     if (!library) return;
     const ids: string[] = ['idle', 'low', 'mid', 'high', 'start', 'stop'].map((b) => `engine_${identity.engine}_${b}`);
-    void library.load(ids);
+    // our hull is heard from the countdown's first frame: ahead of the battle's combat banks
+    void library.load(ids, { front: true });
   }
 
   /** QA override (debug surface only): audition one crew pack in any battle. */
@@ -2056,7 +2077,8 @@ export function createAudio({
       pool?.stop((v) => doomed.has(v), 0.4);
     }
     wrecks.length = 0;
-    pool?.stop((v) => v.end === Infinity, 0.4);
+    // every world loop, never the loader's bed: a solo battle starts behind the loader, which keeps its sound to the reveal
+    pool?.stop((v) => v.end === Infinity && !(loadingActive && v.id === LOADING_BED), 0.4);
     probeSolo = null;
   }
 
@@ -2425,6 +2447,7 @@ export function createAudio({
         radio?.setRadioDamage(0);
         applyScene();
         startEngineSoon = true;
+        startEngineUntil = -1;
       } else if (next !== 'battle' && prev === 'battle') {
         // Leaving from the pause menu or a kill-cam must not carry their mix into the next battle.
         paused = false;
@@ -2444,10 +2467,13 @@ export function createAudio({
       }
       chooseSnapshot();
     });
-    on<undefined>('battle:rollout', () => {
-      if (phase !== 'battle' || battleOver) return;
+    // The battle rolls out once (a second edge never sounds the horn twice). A client that joins a running battle (a late
+    // join, a rejoin, a host migration: `late`) rolls out with no cues: it never saw the count.
+    on<{ late?: boolean } | undefined>('battle:rollout', (e) => {
+      if (phase !== 'battle' || battleOver || rolledOut) return;
       rolledOut = true;
       resetQuietRadio();
+      if (e?.late) { logSound('battle:rollout', { late: true }); return; }
       const mode = getGameMode?.() || 'standard';
       if (mode !== 'realistic') {
         const opener = MODE_OPENER[mode] ?? 'sting_battle';
@@ -2457,6 +2483,12 @@ export function createAudio({
       if (latestPlayer?.aerial?.kind !== 'gunship') play('hatch', hullOptions({ gainDb: -4, delayS: 0.15 }));
       play('ui_countdown_go', { gainDb: -6 });
       say('battle_start', { delayS: 0.5 });
+    });
+    // The count's last whole seconds tick (the frame owner reports each whole second once, never while PREPARING holds it).
+    on<{ seconds?: number }>('battle:countdown', (e) => {
+      const seconds = e?.seconds;
+      if (phase !== 'battle' || battleOver || rolledOut || typeof seconds !== 'number' || seconds < 1 || seconds > COUNTDOWN_TICK_S) return;
+      play('ui_countdown_tick', { gainDb: -8 });
     });
     on<{ result?: ResultKind }>('battle:ended', (e) => {
       if (battleOver) return;
@@ -2508,6 +2540,8 @@ export function createAudio({
 
   let volumeEvents = 0;
   let startEngineSoon = false;
+  /** When our start-up stops waiting for its recording (ctx time; -1 until our rig first asks). */
+  let startEngineUntil = -1;
   let lastPlayerYaw: number | null = null;
   let latestPlayer: AudioEntity | null = null;
 
@@ -2564,8 +2598,13 @@ export function createAudio({
         updateAerial(list, shells, dt);
         trackOwnSystems();
         if (startEngineSoon && playerId) {
+          // The starter fires with our rig's first frame, the countdown's; on a cold first battle its recording may still
+          // be decoding (the front lane has it next), so it is asked again briefly, the bank held down, before giving up.
           const rig = rigs.get(playerId);
-          if (rig) { rig.startEngine(); startEngineSoon = false; }
+          if (rig) {
+            if (startEngineUntil < 0) startEngineUntil = now + START_WAIT_S;
+            if (rig.startEngine() || now >= startEngineUntil) startEngineSoon = false;
+          }
         }
         updateTeamCounts();
       }
@@ -2595,6 +2634,39 @@ export function createAudio({
     auxLights = lights;
   }
 
+  /** The battle's planned roster (spec ids), as last given: every warm of the battle (its phase edge, a late mixer) keeps it. */
+  let battleRoster: readonly string[] = [];
+
+  /**
+   * What a battle sounds like before anything happens (2026-10-14, the owner: the tanks and the world were silent through
+   * the countdown): the roster's powertrains, the map's beds, the running gear and the hull's machinery loops, and the
+   * countdown's own cues. Ordered as they are heard: each powertrain's start-up and idle, the beds, the slow running
+   * gear, then the rest.
+   */
+  function presenceAssets(mapId: string, mode: string): string[] {
+    const ids = new Set<string>();
+    const families = new Set<string>();
+    for (const specId of battleRoster) families.add(resolveVehicleAudioIdentity({ id: specId }).engine);
+    // one band of every family when the roster is unknown (our own hull's whole bank follows once indexed: preloadVehicle)
+    if (!families.size) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
+    for (const family of families) for (const band of ['start', 'idle']) ids.add(`engine_${family}_${band}`);
+    const scene = sceneForMap(mapId);
+    ids.add(scene.bed);
+    if (scene.layer) ids.add(scene.layer.asset);
+    if (scene.war > 0) ids.add('amb_distant_battle');
+    for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) ids.add(`tracks_${cls}_${s}_slow`);
+    for (const family of families) for (const band of ['low', 'mid', 'high', 'stop']) ids.add(`engine_${family}_${band}`);
+    for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) ids.add(`tracks_${cls}_${s}_fast`);
+    for (const id of RIG_LOOPS) ids.add(id);
+    // the aircraft modes fly from their first second
+    if (mode === 'drone' || mode === 'ac130') for (const id of AERIAL_SET) ids.add(id);
+    ids.add('ui_countdown_tick');
+    if (mode !== 'realistic') ids.add(MODE_OPENER[mode] ?? 'sting_battle');
+    ids.add('hatch');
+    ids.add('ui_countdown_go');
+    return [...ids];
+  }
+
   /**
    * Decode and pin a battle's sound set: every report bank, the combat,
    * hull, interface and mode sets, the map's scene, running gear and the
@@ -2602,10 +2674,18 @@ export function createAudio({
    * unknown). Runs at every battle phase edge whatever the entry path (solo
    * loader, multiplayer, debug start), so no first shot is silent while its
    * bank decodes; the solo loader also awaits it before the reveal.
+   *
+   * The presence set (presenceAssets) decodes first, in the library's front lane: the countdown is heard from its first
+   * frame, never after the six decode slots have worked through the combat banks queued ahead of it (a cold Verdant entry
+   * queues about 670 files: our idle was the 638th, the map's bed the 603rd; now the 7th and the 12th).
    */
-  function warmBattle(roster?: readonly string[]): Promise<void> {
+  function warmBattle(): Promise<void> {
     if (!library) return Promise.resolve();
-    const ids = new Set<string>(CORE_BATTLE);
+    const mapId = getMapId?.() || 'verdant';
+    const mode = getGameMode?.() || 'standard';
+    const presence = presenceAssets(mapId, mode);
+    const ids = new Set<string>(presence);
+    for (const id of CORE_BATTLE) ids.add(id);
     for (const id of UI_SET) ids.add(id);
     for (const id of PLAYER_HULL) ids.add(id);
     for (const id of MODE_SET) ids.add(id);
@@ -2613,29 +2693,19 @@ export function createAudio({
     for (const id of Object.values(WEAPON_CLOSE)) ids.add(id);
     // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
     for (const id of propSoundAssets()) ids.add(id);
-    const mapId = getMapId?.() || 'verdant';
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
-    for (const specId of roster || []) {
-      const identity = resolveVehicleAudioIdentity({ id: specId });
-      for (const band of ['idle', 'low', 'mid', 'high', 'start', 'stop']) ids.add(`engine_${identity.engine}_${band}`);
-    }
-    // The mode's opener plays at rollout, decoded by then; the aircraft modes fly from their first second.
-    const mode = getGameMode?.() || 'standard';
-    if (MODE_OPENER[mode]) ids.add(MODE_OPENER[mode]);
-    if (mode === 'drone' || mode === 'ac130') { for (const id of AERIAL_SET) ids.add(id); aerialWarmed = true; }
-    // A battle always has some running gear on the ground under it.
-    for (const cls of ['light', 'heavy']) for (const s of ['earth', 'hard']) for (const v of ['slow', 'fast']) ids.add(`tracks_${cls}_${s}_${v}`);
-    if (!roster?.length) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
+    // The mode's opener plays at rollout, decoded by then (presence); the aircraft modes fly from their first second.
+    if (mode === 'drone' || mode === 'ac130') aerialWarmed = true;
     // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops).
     library.pin(ids, true);
-    return library.load(ids);
+    return Promise.all([library.load(presence, { front: true }), library.load(ids)]).then(() => {});
   }
 
   function loadingOn(on: boolean): void {
     if (!mixer || !pool) return;
     if (on && !loadingActive) {
       loadingActive = true;
-      loading = loopRig('loading_bed_loop');
+      loading = loopRig(LOADING_BED);
       play('ui_deploy', { gainDb: -3 });
       logSound('loading:start');
     } else if (!on && loadingActive) {
@@ -2784,9 +2854,11 @@ export function createAudio({
     },
     loadingOn,
     warmBattleEvents(roster) {
+      // kept for the battle's later warms (its phase edge, a mixer adopted late), which name no roster
+      if (roster?.length) battleRoster = [...roster];
       if (!library) return;
       // Battle entry waits for the decode, but never longer than the loader's patience.
-      return Promise.race([warmBattle(roster), new Promise<void>((resolve) => setTimeout(resolve, 3500))]);
+      return Promise.race([warmBattle(), new Promise<void>((resolve) => setTimeout(resolve, 3500))]);
     },
     ambientOn(on) {
       ambientWanted = !!on;
