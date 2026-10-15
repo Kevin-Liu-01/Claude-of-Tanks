@@ -7,8 +7,8 @@
 // saman (adobe) or white silicate brick on a brick plinth under low asbestos-cement sheet roofs, the gable to the street,
 // the glazed veranda at the back, window frames painted blue or green in white board surrounds — and the two-family
 // brick houses of the estate's streets; the club with its portico, pediment and star; the Rozhnovsky water tower of welded
-// steel; the boiler house's banded steel stack; the fuel store's tanks on their saddles and the brigades' living wagons
-// on sledge runners; the reed-thatched or sheet-roofed sheep barns (koshary) of the steppe herds; a shelled house.
+// steel; the boiler house's banded steel stack; the reed-thatched or sheet-roofed sheep barns (koshary) of the steppe
+// herds; a shelled house.
 import {
   PartSink, faceBox, facePanel, facePoint, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
@@ -775,73 +775,9 @@ const boilerStack: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The fuel store: horizontal tanks on concrete saddles inside the containment bund that fills the lot, the pump kiosk. */
-function fuelDepot(ctx: RegionalBuildContext): RegionalParts {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant;
-  const fp = footprint(ctx);
-  onLot(sink, fp, (Wl, Ll) => {
-    const W = Wl, L = Ll, t = 0.3, hb = 0.95;
-    // the bund: a low concrete wall round the lot
-    for (const [x0, z0, x1, z1] of [[-W / 2, -L / 2, W / 2, -L / 2 + t], [-W / 2, L / 2 - t, W / 2, L / 2], [-W / 2, -L / 2 + t, -W / 2 + t, L / 2 - t], [W / 2 - t, -L / 2 + t, W / 2, L / 2 - t]] as const) {
-      sink.span('plaster2', x0, -0.3, z0, x1, hb, z1);
-    }
-    const r = clamp((W - 1.4) * 0.17, 0.9, 1.4), tankL = clamp(W - 1.4, 3.5, 8.0);
-    const kioskL = 2.6, room = L - 0.8 - kioskL;
-    const n = Math.max(2, Math.min(4, Math.floor(room / (2 * r + 0.8))));
-    const pitch = room / n;
-    for (let k = 0; k < n; k++) {
-      const z = -L / 2 + 0.4 + pitch * (k + 0.5), c = shade(SILVER, 0.92 + rng() * 0.12);
-      for (const x of [-tankL * 0.3, tankL * 0.3]) sink.span('plaster2', x - 0.35, -0.3, z - r * 0.8, x + 0.35, r * 0.75, z + r * 0.8);
-      sink.cylinder('structureMetal', [-tankL / 2, r + 0.3, z], 'x', tankL, r, 14, { colour: c });
-      sink.cylinder('structureMetal', [tankL / 2, r + 0.3, z], 'x', 0.25, r * 0.98, 14, { colour: shade(c, 0.95), decor: true }, r * 0.7);
-      sink.cylinder('structureMetal', [-tankL / 2 - 0.25, r + 0.3, z], 'x', 0.25, r * 0.7, 14, { colour: shade(c, 0.95), decor: true }, r * 0.98);
-      sink.cylinder('structureMetal', [tankL * 0.18, 2 * r + 0.28, z], 'y', 0.22, 0.28, 8, { colour: shade(c, 0.85), decor: true });
-    }
-    const kz = L / 2 - 0.4 - kioskL / 2;
-    sink.span('stone', -1.2, -0.3, kz - 1.0, 1.2, 2.4, kz + 1.0);
-    const kr: RoofSpec = { kind: 'shed', pitchDeg: 8, eave: 0.25, verge: 0.2, thickness: 0.07, bucket: 'roof', ridge: null };
-    sink.placed(0, 0, 0, kz, () => { emitRoof(sink, roofGeometry(2.4, 2.0, 2.4, kr), kr); shedGables(sink, 2.4, 2.0, 2.4, Math.tan(8 * Math.PI / 180), 'stone'); });
-    sink.span('structureMetal', 1.4, 0, kz - 0.3, 1.9, 1.6, kz + 0.3, { colour: RED, decor: true });
-    faceBox(sink, 'structureWood', { origin: [0, 0, kz + 1.0], u: [1, 0, 0], out: [0, 0, 1], width: 2.4 }, -0.4, 0.95, 0.02, 0.8, 1.9, 0.04, { colour: pick(look, PAINTS), decor: true });
-  });
-  return sink.finish();
-}
-
-/** The brigade's living wagons (vagonchiki) over the lot: plank or sheet boxes on sledge runners, doors, steps, stove pipes. */
-function wagons(ctx: RegionalBuildContext): RegionalParts {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant;
-  const fp = footprint(ctx);
-  onLot(sink, fp, (Wl, Ll) => {
-    const rows = Wl >= 5.6 ? 2 : 1, per = Math.max(1, Math.min(3, Math.round(Ll / 6.4)));
-    const gapZ = 0.6, gapX = 0.5;
-    const ww = rows === 2 ? (Wl - gapX) / 2 : Wl, wl = (Ll - (per - 1) * gapZ) / per, wh = 2.4;
-    for (let i = 0; i < rows; i++) for (let k = 0; k < per; k++) {
-      const x = rows === 2 ? (i ? 1 : -1) * (ww + gapX) / 2 : 0, z = -Ll / 2 + wl / 2 + k * (wl + gapZ);
-      const c = pick(rng, [rgb(0x5a7a52), rgb(0x46607a), rgb(0x8a6a3a), rgb(0x7a3e30), rgb(0x9aa0a0)]);
-      for (const sx of [-1, 1]) sink.span('structureWood', x + sx * (ww / 2 - 0.3) - 0.12, -0.2, z - wl / 2, x + sx * (ww / 2 - 0.3) + 0.12, 0.3, z + wl / 2, { colour: PLANK });
-      sink.span('structureMetal', x - ww / 2 + 0.05, 0.3, z - wl / 2 + 0.3, x + ww / 2 - 0.05, 0.3 + wh, z + wl / 2 - 0.3, { colour: c });
-      const roof: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.08, verge: 0.12, thickness: 0.06, bucket: 'structureMetal', ridge: null };
-      sink.placed(0, x, 0, z, () => emitRoof(sink, roofGeometry(ww - 0.1, wl - 0.6, 0.3 + wh, roof), roof, shade(c, 0.85)));
-      const end: Face = { origin: [x, 0, z + wl / 2 - 0.3], u: [1, 0, 0], out: [0, 0, 1], width: ww };
-      faceBox(sink, 'structureWood', end, -ww * 0.2, 1.3, 0.02, 0.75, 1.75, 0.04, { colour: shade(c, 0.7), decor: true });
-      for (let s = 0; s < 2; s++) faceBox(sink, 'structureWood', end, -ww * 0.2, 0.12 + s * 0.15, 0.15 + (1 - s) * 0.15, 0.8, 0.06, 0.15, { colour: PLANK, decor: true });
-      // (2026-10-11, kitConnectivity: the treads floated) their two stringers, from the ground up to the door's sill
-      for (const su of [-0.37, 0.37]) {
-        const ux = x - ww * 0.2 + su, zf = z + wl / 2 - 0.3;
-        sink.member('structureWood', [ux, -0.04, zf + 0.4], [ux, 0.33, zf + 0.02], 0.04, 0.12, [1, 0, 0], { colour: PLANK, decor: true, exposed: true }, 0);
-      }
-      const side: Face = { origin: [x + ww / 2 - 0.05, 0, z], u: [0, 0, -1], out: [1, 0, 0], width: wl };
-      for (const u of [-wl * 0.25, wl * 0.25]) facePanel(sink, paneBucket(look, 0.5), side, u, 1.75, 0.015, 0.7, 0.6, { decor: true, window: [1, 0, 0] });
-      sink.cylinder('structureMetal', [x - ww * 0.25, 0.3 + wh, z - wl * 0.3], 'y', 0.9, 0.07, 6, { colour: rgb(0x2a2a2a), decor: true });
-    }
-  });
-  return sink.finish();
-}
-
-/** The container lots: the fuel store or the brigade's wagons. */
-const containerRow: RegionalBuilder = (ctx) => (ctx.rng() < 0.5 ? fuelDepot(ctx) : wagons(ctx));
+// (the 225 gate, 2026-10-15: the steppe is 1958, before the ISO box; its container rows are the rail kit's period freight,
+// maps/periodFreight.ts FREIGHT_MIX.steppe, as periodFreight.selftest names it: the kit's fuel store and living wagons that
+// stood on those lots went with the rule)
 
 // ---------------------------------------------------------------------------------------------------------- farm
 
@@ -967,7 +903,6 @@ export const TSELINA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   shed: implementShed,
   watertower: rozhnovsky,
   stack: boilerStack,
-  containerRow,
   barn: koshara,
   granary: store,
   ruin: ruinedHouse,
@@ -1004,5 +939,6 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   // the settlers' yards: a picket fence round the kitchen garden (ogorod), a gate, the shed in its corner (yards.ts)
   // (gauntlet wave 106, round 2: "Western cottages") wattle fences (pleten) round the settlers' yards, not white pickets;
   // (board fences turned the bots' battles a minute shorter on the pacing receipt's seeds — the wattle holds the band)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: 'gate', shed: 'granary', shedSize: [3.6, 3.0], garden: true },
+  // (the 225 gate, 2026-10-15: gateKit — each fence family hangs its own gate) the wattle yard's wattle hurdle gate
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: 'gatewattle', shed: 'granary', shedSize: [3.6, 3.0], garden: true },
 });
