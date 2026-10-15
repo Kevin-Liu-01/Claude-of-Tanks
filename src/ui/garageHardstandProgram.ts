@@ -94,7 +94,7 @@ export type GarageHardstandDetailKind = 'concrete' | 'earth' | 'sand' | 'snow' |
 /** Metres per repeat, normal strength and albedo strength of each detail kind. */
 export const GARAGE_HARDSTAND_DETAIL: Readonly<Record<GarageHardstandDetailKind,
   { readonly tileM: number; readonly normal: number; readonly albedo: number }>> = Object.freeze({
-  concrete: Object.freeze({ tileM: 2.5, normal: 0.55, albedo: 0.75 }),
+  concrete: Object.freeze({ tileM: 2.5, normal: 0.85, albedo: 0.9 }),
   earth: Object.freeze({ tileM: 3, normal: 0.7, albedo: 0.8 }),
   sand: Object.freeze({ tileM: 4, normal: 0.85, albedo: 0.55 }),
   snow: Object.freeze({ tileM: 5, normal: 0.6, albedo: 0.5 }),
