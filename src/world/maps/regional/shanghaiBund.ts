@@ -19,8 +19,8 @@ import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, roofGeometry, type 
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, breach, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect,
-  sandbags, soot, uvOffset,
+  BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect,
+  sandbags, uvOffset,
 } from './shanghaiParts.ts';
 import { decoTower, stationHall } from './skyline.ts';
 
@@ -97,7 +97,8 @@ function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile
   keep: ReadonlyArray<{ u0: number; u1: number; y0: number; y1: number }> = []): void {
   sink.dressing(mobile, () => {
     pocks(sink, face, -face.width / 2 + 0.4, face.width / 2 - 0.4, 0.4, Math.min(h, 12), (heavy ? 24 : 6) + Math.floor(look() * 10), look, keep);
-    if (heavy && look() < 0.6) breach(sink, face, (look() - 0.5) * face.width * 0.6, 4 + look() * Math.max(1, h - 6), 0.8 + look() * 0.6, look);
+    // (props census #9: a heavy face's breaches are cut into its wall by its builder; the draws are kept)
+    if (heavy && look() < 0.6) { look(); look(); look(); }
   });
 }
 
@@ -321,7 +322,7 @@ const bundBank: RegionalBuilder = (ctx) => {
         }
         if (face.width / 2 - 0.1 > cur) runs.push([cur, face.width / 2 - 0.1]);
         // (a joint's 1 cm lids along a 30 m run were slivers: the front and its ends only)
-        for (const [r0, r1] of runs) if (r1 - r0 > 0.1) faceBox(sink, 'dark', face, (r0 + r1) / 2, y, 0.008, r1 - r0, 0.05, 0.01, { decor: true, fine: true }, 'caps');
+        for (const [r0, r1] of runs) if (r1 - r0 > 0.1) faceBox(sink, 'dark', face, (r0 + r1) / 2, y, 0.005, r1 - r0, 0.05, 0.01, { decor: true, fine: true }, 'caps');
       }
       faceBox(sink, 'plaster3', face, 0, ground, 0.08, face.width, 0.28, 0.16, { decor: true, fineSides: true });
     });
@@ -396,7 +397,10 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
     const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 6, 30);
     const brick = rng() < 0.4, wall: RegionalBucket = brick ? 'stone' : 'plaster3';
     const floors = Math.max(2, Math.round((H - 0.8) / 3.3)), fh = (H - 0.8) / floors, roofY = floors * fh;
-    sink.span(wall, -W / 2, -0.4, -D / 2, W / 2, roofY, D / 2);
+    // (props census #9) the warehouse built as walls round a core with its windows, its breaches and its loading doors
+    // cut through them (they were dark plates and panes laid on a solid span, the breaches dark stars, the soot a plate):
+    // the panes at the back of the reveals, the sandbags packed in the openings, the soot the attacked wall's own stain
+    const rev = 0.29;
     sink.span(wall, -W / 2, roofY, -D / 2, W / 2, roofY + 0.9, -D / 2 + 0.25, SHADOWED);
     sink.span(wall, -W / 2, roofY, D / 2 - 0.25, W / 2, roofY + 0.9, D / 2, SHADOWED);
     sink.span(wall, -W / 2, roofY, -D / 2 + 0.25, -W / 2 + 0.25, roofY + 0.9, D / 2 - 0.25, SHADOWED);
@@ -405,8 +409,9 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
     if (tower) {
       sink.span(wall, -bw / 2, roofY, D / 2 - 4.2, bw / 2, roofY + 3.6, D / 2);
       const tf: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: bw };
-      faceBox(sink, 'structureMetal', tf, 0, roofY + 2.2, 0.03, bw - 1.0, 0.9, 0.04, { colour: rgb(0x3a3733), decor: true });
-      faceBox(sink, 'structureMetal', tf, 0, roofY + 2.2, 0.06, bw - 1.6, 0.42, 0.01, { colour: WHITE_TRIM, decor: true, fine: true });
+      // (the name board 12 cm deep: a board laid on the wall read as a dark plate)
+      faceBox(sink, 'structureMetal', tf, 0, roofY + 2.2, 0.06, bw - 1.0, 0.9, 0.12, { colour: rgb(0x3a3733), decor: true });
+      faceBox(sink, 'structureMetal', tf, 0, roofY + 2.2, 0.125, bw - 1.6, 0.42, 0.01, { colour: WHITE_TRIM, decor: true, fine: true });
     }
     // which face took the attack: the one looking most nearly toward -x of the world (a look choice from the pose)
     const yaw = ctx.yaw ?? Math.PI / 2;
@@ -417,6 +422,9 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
       if (wx < best) { best = wx; attacked = i; }
     });
     const frame = rgb(brick ? 0x5d3a2e : 0x8f8b84);
+    const front = faces[0], docks = [-1, 1].map((side) => side * W * 0.3);
+    const holes: HoleRect[][] = faces.map(() => []), units: Array<() => void> = [];
+    const sunk = (face: Face): Face => ({ ...face, origin: [face.origin[0] - face.out[0] * (rev - 0.02), 0, face.origin[2] - face.out[2] * (rev - 0.02)] });
     faces.forEach((face, fi) => {
       const hit = fi === attacked;
       const n = Math.max(1, Math.round((face.width - 0.8) / 3.0)), pitch = (face.width - 0.8) / n;
@@ -424,27 +432,42 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
         const y = f2 * fh;
         for (let k = 0; k < n; k++) {
           const u = -face.width / 2 + 0.4 + pitch * (k + 0.5), r = look();
-          const gw = pitch - 1.0, gh = fh * 0.5;
+          const gw = pitch - 1.0, gh = fh * 0.5, y0 = y + fh * 0.3;
           if (fi === 0 && tower && Math.abs(u) < bw / 2) continue;
-          if (r < (hit ? 0.55 : 0.2)) {
-            facePanel(sink, 'dark', face, u, y + fh * 0.55, 0.012, gw, gh, DEC);
-            if (look() < 0.5) sandbags(sink, face, u, y + fh * 0.3, gw, gh * 0.6, look);
-          } else facePanel(sink, r < 0.85 ? 'glass' : 'curtain', face, u, y + fh * 0.55, 0.012, gw, gh, { decor: true, window: face.out });
-          if (hit && look() < 0.35) sink.dressing(mobile, () => breach(sink, face, u + (look() - 0.5) * pitch, y + fh * 0.5, 0.5 + look() * 0.5, look));
+          // (the loading doors take the front's ground storey where they stand)
+          if (fi === 0 && f2 === 0 && docks.some((du) => Math.abs(u - du) < 1.5 + gw / 2 + 0.2)) continue;
+          const shot = r < (hit ? 0.55 : 0.2), bags = shot && look() < 0.5;
+          // a shell's breach: the opening blown wider, its rubble at the wall's foot
+          const breached = hit && look() < 0.35;
+          holes[fi].push(breached ? { u0: u - gw / 2 - 0.2, u1: u + gw / 2 + 0.2, y0: y0 - 0.3, y1: y0 + gh + 0.3 } : { u0: u - gw / 2, u1: u + gw / 2, y0, y1: y0 + gh });
+          if (breached) {
+            sink.dressing(mobile, () => {
+              for (let j = 0; j < 3; j++) {
+                const sz = 0.18 + look() * 0.22;
+                faceBox(sink, 'stone', face, u + (look() - 0.5) * gw, sz / 2, 0.3 + look() * 0.8, sz * 1.4, sz, sz * 1.2, { decor: true });
+              }
+            });
+          } else if (bags) units.push(() => sandbags(sink, sunk(face), u, y0, gw, gh * 0.6, look));
+          else if (!shot) units.push(() => facePanel(sink, r < 0.85 ? 'glass' : 'curtain', face, u, y0 + gh / 2, -rev + 0.016, gw, gh, { decor: true, window: face.out }));
         }
-        // the floor's slab edge across the face
-        faceBox(sink, wall, face, 0, y + fh - 0.12, 0.08, face.width, 0.3, 0.16, { decor: true, fineSides: true });
       }
-      for (let k = 0; k <= n; k++) faceBox(sink, 'structureMetal', face, -face.width / 2 + 0.4 + pitch * k, roofY / 2, 0.1, 0.5, roofY, 0.2, { colour: frame, decor: true, fineSides: true });
-      if (hit) scars(sink, face, roofY, look, mobile, true);
     });
-    // the loading bays on the street front
-    const front = faces[0];
-    for (const side of [-1, 1]) {
-      facePanel(sink, 'dark', front, side * W * 0.3, 1.5, 0.02, 3.0, 3.0, DEC);
-      faceBox(sink, 'structureWood', front, side * W * 0.3, 0.5, 0.6, 3.6, 1.0, 1.2, { colour: rgb(0x4a4038), decor: true });
-    }
-    if (!mobile) soot(sink, faces[attacked], -faces[attacked].width * 0.3, faces[attacked].width * 0.1, roofY * 0.5, roofY);
+    for (const du of docks) holes[0].push({ u0: du - 1.5, u1: du + 1.5, y0: 0, y1: 3.0 });
+    const names = ['front', 'right', 'back', 'left'] as const;
+    const fa = faces[attacked];
+    holedBox(sink, wall, -W / 2, -D / 2, W / 2, D / 2, -0.4, roofY, { front: holes[0], right: holes[1], back: holes[2], left: holes[3] }, 0.35, rev, {},
+      { stains: mobile ? {} : { [names[attacked]]: [{ u0: -fa.width * 0.3, u1: fa.width * 0.1, y0: roofY * 0.5, y1: roofY, bottom: 1, top: 0.4 }] } });
+    for (const unit of units) unit();
+    faces.forEach((face, fi) => {
+      const n = Math.max(1, Math.round((face.width - 0.8) / 3.0)), pitch = (face.width - 0.8) / n;
+      // the floors' slab edges across the face, the frame's posts
+      for (let f2 = 0; f2 < floors; f2++) faceBox(sink, wall, face, 0, f2 * fh + fh - 0.12, 0.08, face.width, 0.3, 0.16, { decor: true, fineSides: true });
+      for (let k = 0; k <= n; k++) faceBox(sink, 'structureMetal', face, -face.width / 2 + 0.4 + pitch * k, roofY / 2, 0.1, 0.5, roofY, 0.2, { colour: frame, decor: true, fineSides: true });
+      if (fi === attacked) scars(sink, face, roofY, look, mobile, true, holes[fi]);
+    });
+    // the loading bays on the street front: their doorways open, the docks in front (clear of the wall: their backs
+    // close them over the doorways)
+    for (const du of docks) faceBox(sink, 'structureWood', front, du, 0.5, 0.605, 3.6, 1.0, 1.2, { colour: rgb(0x4a4038), decor: true });
     if (look() < 0.5) faceBox(sink, 'structureMetal', front, 0, 0.6, 0.6, Math.min(W * 0.3, 7), 1.2, 1.1, { colour: CHAR, decor: true });
   });
   return sink.finish();
