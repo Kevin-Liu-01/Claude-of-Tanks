@@ -7,8 +7,8 @@
 // runs on their concrete saddles; the visitor centre with its round overlook, or the town's school; the Bureau's field
 // offices of painted block and its steel warehouses; and Page itself: ranch houses of stucco and block under shallow
 // shingled gables with their carports, the fire station with its hose tower, the water tower on its legs.
-import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, holedBox, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -203,17 +203,19 @@ const powerhouse: RegionalBuilder = (ctx) => {
   const W = Math.max(8, R.W - 0.8), hallD = Math.min(13, PD * 0.55), H = 16 + rng() * 2;
   sink.placed(0, R.cx, 0, R.cz, () => {
   const zf = PD / 2 - 0.15, zb = zf - hallD;
-  sink.span(CONCRETE, -W / 2, -0.5, zb, W / 2, H, zf);
-  const front: Face = { origin: [0, 0, zf], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  const n = Math.max(1, Math.round(W / 4.4));
+  // (props census #9) the tall slot windows cut through the hall's front between the pilasters, the glazing and its
+  // steel transoms at the back of the cuts (they were laid on a solid span)
+  const n = Math.max(1, Math.round(W / 4.4)), sw = (W - 0.7) / n - 1.5, rev = 0.36;
+  const slots = sw > 0.6 ? Array.from({ length: n }, (_, k) => -W / 2 + 0.35 + (W - 0.7) * (k + 0.5) / n) : [];
+  const front = holedBox(sink, CONCRETE, -W / 2, zb, W / 2, zf, -0.5, H, { front: slots.map((um) => ({ u0: um - sw / 2, u1: um + sw / 2, y0: 3.4, y1: H - 2.6 })) },
+    0.42, rev).front;
   for (let k = 0; k <= n; k++) {
     const u = -W / 2 + 0.35 + (W - 0.7) * k / n;
     faceBox(sink, CONCRETE, front, u, H / 2 + 0.1, 0.2, 0.7, H + 0.2, 0.4, { decor: true });
-    const sw = (W - 0.7) / n - 1.5;
-    if (k < n && sw > 0.6) {
-      const um = -W / 2 + 0.35 + (W - 0.7) * (k + 0.5) / n;
-      faceBox(sink, 'glass', front, um, 3.4 + (H - 6.0) / 2, 0.012, sw, H - 6.0, 0.02, { decor: true });
-      for (let m = 1; m < 6; m++) faceBox(sink, 'structureMetal', front, um, 3.4 + (H - 6.0) * m / 6, 0.03, sw, 0.07, 0.03, { colour: STEEL_GREY, decor: true, fine: true });
+    if (k < n && slots.length) {
+      const um = slots[k];
+      faceBox(sink, 'glass', front, um, 3.4 + (H - 6.0) / 2, -rev + 0.02, sw, H - 6.0, 0.02, { decor: true });
+      for (let m = 1; m < 6; m++) faceBox(sink, 'structureMetal', front, um, 3.4 + (H - 6.0) * m / 6, -rev + 0.05, sw, 0.07, 0.03, { colour: STEEL_GREY, decor: true, fine: true });
     }
   }
   // the fascia band and the parapet
@@ -493,22 +495,30 @@ const civicHall: RegionalBuilder = (ctx) => {
     const W = Math.max(5, PW - 10), D = Math.max(5, Math.min(14, PD - 7)), H = 5.4;
     const x0 = RR.x0 + 0.4 + W / 2, z0 = RR.z0 + 0.3 + D / 2;
     sink.placed(0, x0, 0, z0, () => {
-      sink.span(CONCRETE, -W / 2, -0.5, -D / 2, W / 2, H, D / 2 - 2.0);
-      // the glass wall to the view under the slab, its mullions
-      const f: Face = { origin: [0, 0, D / 2 - 2.0], u: [1, 0, 0], out: [0, 0, 1], width: W };
-      facePanel(sink, 'glass', f, 0, H / 2, 0.02, W - 1.0, H - 0.6, { decor: true });
-      for (let u = -W / 2 + 0.5; u <= W / 2 - 0.5; u += 2.2) faceBox(sink, 'structureMetal', f, u, H / 2, 0.06, 0.12, H - 0.6, 0.1, { colour: rgb(0x4a4c4e), decor: true, fine: true });
+      // (props census #9) the glass wall to the view under the slab cut through the hall's front, the glazing and its
+      // mullions at the back of the cut (they were laid on a solid span)
+      const rev = 0.34;
+      const f = holedBox(sink, CONCRETE, -W / 2, -D / 2, W / 2, D / 2 - 2.0, -0.5, H, { front: [{ u0: -(W - 1.0) / 2, u1: (W - 1.0) / 2, y0: 0.3, y1: H - 0.3 }] },
+        0.4, rev).front;
+      facePanel(sink, 'glass', f, 0, H / 2, -rev + 0.02, W - 1.0, H - 0.6, { decor: true });
+      for (let u = -W / 2 + 0.5; u <= W / 2 - 0.5; u += 2.2) faceBox(sink, 'structureMetal', f, u, H / 2, -rev + 0.08, 0.12, H - 0.6, 0.1, { colour: rgb(0x4a4c4e), decor: true, fine: true });
       sink.span(CONCRETE, -W / 2 - 0.3, H, -D / 2 - 0.3, W / 2 + 1.5, H + 0.8, D / 2 + 1.0);
       faceBox(sink, 'structureWood', { origin: [0, 0, D / 2 + 1.0], u: [1, 0, 0], out: [0, 0, 1], width: W }, 0, H + 0.4, 0.015, W * 0.5, 0.3, 0.02, { colour: rgb(0x2e3a44), decor: true });
     });
     // the overlook drum at the east end and its roof ring
     const dr = Math.max(2.4, Math.min(4.2, (RR.x1 - (x0 + W / 2)) / 2 + 0.3)), dx = RR.x1 - dr - 0.35, dz = z0;
-    sink.cylinder(CONCRETE, [dx, -0.5, dz], 'y', 8.0, dr, 20, {});
-    sink.cylinder(CONCRETE, [dx, 7.5, dz], 'y', 0.6, dr + 0.4, 20, { decor: true }, dr + 0.4);
+    // (props census #9) its band of windows a ribbon set back round the drum (ten panes were laid on its wall): the drum
+    // below and above it, the glass 0.3 m in with the room's dark behind it, ten piers between the lights
+    sink.cylinder(CONCRETE, [dx, -0.5, dz], 'y', 5.3, dr, 20, {});
+    sink.cylinder(CONCRETE, [dx, 6.4, dz], 'y', 1.1, dr, 20, {});
+    sink.cylinder('glass', [dx, 4.8, dz], 'y', 1.6, dr - 0.3, 20, { decor: true }, dr - 0.3, false);
+    sink.cylinder('dark', [dx, 4.8, dz], 'y', 1.6, dr - 0.34, 20, { decor: true }, dr - 0.34, false);
     for (let k = 0; k < 10; k++) {
-      const a = k / 10 * Math.PI * 2;
-      faceBox(sink, 'glass', { origin: [dx + Math.cos(a) * dr, 0, dz + Math.sin(a) * dr], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 2 }, 0, 5.6, 0.01, 1.6, 1.6, 0.02, { decor: true });
+      const a = (k + 0.5) / 10 * Math.PI * 2;
+      faceBox(sink, CONCRETE, { origin: [dx + Math.cos(a) * dr, 0, dz + Math.sin(a) * dr], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 2 },
+        0, 5.6, -0.17, 0.32, 1.6, 0.34, {});
     }
+    sink.cylinder(CONCRETE, [dx, 7.5, dz], 'y', 0.6, dr + 0.4, 20, { decor: true }, dr + 0.4);
     // the flag plaza: three poles and a low planter wall along the front edge
     for (let k = 0; k < 3; k++) sink.cylinder('structureMetal', [RR.cx - PW * 0.25 + k * 2.4, 0, RR.z1 - 1.6], 'y', 10, 0.07, 8, { colour: WHITE, decor: true }, 0.04);
     sink.span(CONCRETE, RR.x0 + 0.4, -0.2, RR.z1 - 0.8, RR.cx + PW * 0.1, 0.6, RR.z1 - 0.25);
