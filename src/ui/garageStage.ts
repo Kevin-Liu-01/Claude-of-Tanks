@@ -218,14 +218,14 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
     : /^BAY\b/.test(upper)
       ? '#4d8fb8'
       : /SERVICE|RELikt|TEARDOWN/i.test(upper)
-        ? '#66a17a'
+        ? '#6f8f78' // a worn, greyed green (the re-judge, 2026-10-15: the TEARDOWN sign was saturated)
         : '#c9a22c';
   const inkBright = /NO SMOKING|FLAMMABLE|FIRE/.test(upper)
     ? '#e06a5c'
     : /^BAY\b/.test(upper)
       ? '#68a8ce'
       : /SERVICE|RELikt|TEARDOWN/i.test(upper)
-        ? '#7fba8f'
+        ? '#86a28d'
         : '#d8b23a';
   const draw = () => {
     g.fillStyle = '#23282c';

@@ -1847,6 +1847,10 @@ export function createGarageDressing(
           color *= scanline * grille * flicker * vignette;
           color += color * rollingGlow;
           color *= vec3(0.95, 1.02, 0.98);
+          // dimmed and drained toward grey beside the hero (the re-judge, 2026-10-15: the two screens were "the brightest
+          // and most saturated rectangles in the frame after the tank")
+          float luma = dot(color, vec3(0.299, 0.587, 0.114));
+          color = mix(vec3(luma), color, 0.55) * 0.62;
           gl_FragColor = vec4(color, 1.0);
           #include <colorspace_fragment>
         }
