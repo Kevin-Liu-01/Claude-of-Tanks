@@ -3507,8 +3507,10 @@ export function createGarageDressing(
   // Reusing one optimized static graph preserves the real models and complete
   // 360-degree composition without retaining ten copies of their geometry.
   chunks.push(function finalizeSharedMaintenanceBays() {
-    // the pulled power pack on its stand in the yard beside the hero (shared by every Garage; nobody at it)
-    addPowerPackOnStand(bayKitRoot('yard', { x: 0, z: 0, yaw: 0 }, legacyVerdantRoot), 3.4, -11.4, 0.55);
+    // the pulled power pack on its stand beside the hero, in Verdant only: each outdoor yard sets its own regional kit on
+    // the same floor (garageFacilityDetails.ts addRegionalYardPiece; the garage critic panel, 2026-10-14: "the same black
+    // tool cart sits in the same spot in all nine yards")
+    addPowerPackOnStand(bayKitRoot('yard', { x: 0, z: 0, yaw: 0 }, verdantKit('yard_power_pack')), 3.4, -11.4, 0.55);
     group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.verdantOriginalExhibitCount = 5;
     group.userData.verdantOriginalExhibitIds = [
