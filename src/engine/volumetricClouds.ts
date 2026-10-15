@@ -860,7 +860,7 @@ export class VolumetricCloudLayer {
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
         uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(defs.lightEvery, 0.15, defs.sunSteps, defs.exitT) },
-        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
+        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uBsmLowSun: { value: new THREE.Vector2(1, 0.3) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -923,6 +923,15 @@ export class VolumetricCloudLayer {
           if (k === 1) continue;
           const v = this.medium[key].value as THREE.Vector4;
           stack.lanes.forEach((lane, i) => { if (lane.flat < 0.5) v.setComponent(i, v.getComponent(i) * k); });
+        }
+        // QA (2026-10-14, the SKY lane: Frosthollow's deck read smeared, its blue gaps' edges blocky): a deck lane's footprint
+        // ramp, cover, extinction, core, shape and detail scaled (the convective lanes keep theirs)
+        const deckKnobs: Array<[string, string]> = [['CLOUD_DECK_FILTER', 'uLayerFilter'], ['CLOUD_DECK_COVER', 'uLayerCover'], ['CLOUD_DECK_DENSITY', 'uLayerDensity'], ['CLOUD_DECK_CORE', 'uLayerCore'], ['CLOUD_DECK_SHAPE', 'uLayerShape'], ['CLOUD_DECK_DETAIL', 'uLayerDetail']];
+        for (const [knob, key] of deckKnobs) {
+          const k = lightTune(knob, 1);
+          if (k === 1) continue;
+          const v = this.medium[key].value as THREE.Vector4;
+          stack.lanes.forEach((lane, i) => { if (lane.flat >= 0.5) v.setComponent(i, v.getComponent(i) * k); });
         }
         // QA (the cost lab): CLOUD_ALOFT 0 draws the main lane alone (the lanes aloft without density)
         if (lightTune('CLOUD_ALOFT', 1) === 0) {
@@ -1411,6 +1420,7 @@ export class VolumetricCloudLayer {
     t.uStepGrowth.value = budget.growth * lightTune('CLOUD_STEP_GROWTH', 1);
     m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
+    (t.uBsmLowSun.value as THREE.Vector2).set(lightTune('CLOUD_BSM_LOWSUN', 1), lightTune('CLOUD_BSM_LOWSUN_UP', 0.3));
     // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale) and a
     // closing deck's ground return
     (t.uDeckTune.value as THREE.Vector3).set(lightTune('CLOUD_DECK_LOCAL_TAU', 1), lightTune('CLOUD_DECK_GROUND', 1),

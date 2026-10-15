@@ -505,6 +505,10 @@ uniform float uDeckLobe;
 // to half, keeps its grey base). (Round 5's mottle — the point's own noise thickening the column — barely showed on the
 // GPU, its variants off and doubled near identical: dropped, no dead cost.)
 uniform vec3 uDeckTune;
+// 2026-10-14 (the SKY lane, QA: the blind A/B's sunsets read dark, muddy and nearly empty): the Beer map's share of a
+// sample's optical depth under a low sun — x its weight at the horizon, y the sun's height (sine) from which it is whole
+// (the map's front-and-mean model carries a low sun's kilometres of slant, gaps included, into every cloud behind)
+uniform vec2 uBsmLowSun;
 uniform float uDebug;
 // the scene's depth the last frame left (a layer ends at a surface past the dome)
 uniform sampler2D tSceneDepth;
@@ -744,7 +748,8 @@ void main() {
 					float bsm = cl2BsmDepth( p, run );
 					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
 					// (a far tower's interior stays a cloud's, never lit through)
-					od += bsm >= 0.0 ? bsm : sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
+					od += ( bsm >= 0.0 ? bsm : sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 ) )
+						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
 				}
 				lit++;
 				// [ported] the multiple-scattering octaves (a = b = c = 1/2 per octave)
