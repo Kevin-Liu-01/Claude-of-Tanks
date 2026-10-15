@@ -1,4 +1,4 @@
-import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { beginAuxiliaryStation, stationFromGun } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { drainTankBuild, tankProfileCheckpoint, type TankProfileBuild } from '../tankBuildCooperation.ts';
 // First-party sparse reconstruction of the owner's SEP v2 equipment study.
@@ -569,7 +569,10 @@ function localCommanderStation(C: EquipmentContext, a1: boolean): void {
   for (const s of [-1, 1]) box(C, `${label}WeaponEar${s}`, [.035, .172, .112],
     [-.507216 + s * .071, 2.723, -.014]);
   box(C, `${label}WeaponCradle`, [.177, .028, .184], [-.507216, 2.794, -.014]);
-  sourceM2(C, `${label}CommanderM2`, [-.507216, 2.863, .050], 'turret');
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the commander's M2 is a working station, pitching on
+  // the cradle ears' trunnion (y 2.80, z -0.014) and turning about it
+  stationFromGun(sourceM2(C, `${label}CommanderM2`, [-.507216, 2.863, .050], 'turret'),
+    { name: `abramsSourceX${label}Station`, caliberMm: 12.7, pivot: [0, -.063, -.064], muzzle: [0, 0, 1.279] });
 }
 
 function shieldPanel(C: EquipmentContext, name: string, a: XYZ, b: XYZ, bottom: number, top: number): void {
@@ -746,6 +749,8 @@ function loaderWeapon(C: EquipmentContext, shields: boolean): void {
   group.name = 'abramsSourceX_LoaderM240';
   group.userData.sourceOwner = 'Object_102';
   C.P.turretG.add(group);
+  // VH.14: the loader's M240 is a working station on its skate pintle (pitching on the receiver's trunnion)
+  stationFromGun(group, { name: 'abramsSourceXLoaderStation', caliberMm: 7.62, muzzle: [0, .011, .696] });
   if (!shields) return;
   for(const part of sourceLoaderShields())emit(C,part.name,part.geometry,[0,0,0],'turret',part.glass?'turretGlass':'turret');
   shieldPanel(C, 'CommanderShieldInboard', [-.075, 0, .041], [-.286, 0, -.395], 2.678275, 3.146435);

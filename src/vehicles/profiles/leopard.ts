@@ -3794,10 +3794,12 @@ function buildLeo2A6(P: TankBuilderPort) {
     // is deliberately sunk into the local roof slope; its two-tone MAG-class
     // silhouette replaces the old collection of unmarked hand-built pieces.
     {
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6,
-        rotation: [0, Math.PI, 0],
+        rotation: [0, Math.PI, 0], working: true,
       });
+      mg.name = 'leo2LoaderMg3';
       // Sink the canonical foot 12 cm into the sloped plate: its post still
       // emerges visibly, while the receiver/cap stays inside the measured
       // Leopard 2A6 roof-height envelope.
@@ -5061,97 +5063,24 @@ export function buildLeo2A5(builder: object) {
   // r3 POST-WARP: whole assembly dropped ~0.045 with the 2.697→2.653 line.
   const buildLeo2A5MarkingsStage2 = (): void => {
     {
-      const { box, cylY, cylZ } = KIT;
+      const { cylY } = KIT;
       // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent: activate the original station,
       // don't remove it; the coordinator's ruling on the lane's audit): on leo2a5_a5nl the loader's gun is the hull's
       // working roof weapon, a remote-controlled MAG on its loader-ring pintle with the post as its stock, and the A5NL's
-      // duplicate open-yoke tower is gone. Gameplay: functional roof guns stay 1 (12.7 -> 7.62 mm). Every other A5 keeps
-      // the certified exact loader gun below.
-      if (P.spec.id === 'leo2a5_a5nl') {
-        const finishLoaderStation = captureAuxiliaryStock(P, 'leo2a5_loader_machine_gun');
-        P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
-        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
-          remoteControlled: true, seed: 5087 });
-        loaderMg.name = 'leo2a5_loader_machine_gun';
-        loaderMg.position.set(-0.50, 0.81, -0.06);
-        P.turretG.add(loaderMg);
-        finishLoaderStation();
-      } else {
-        P.add('turretDetail', cylY(0.018, 0.018, 0.10, 8), -0.52, 0.815, -0.10);  // pintle post on the loader ring
-        // VISUAL r6 3a (owner-law-mandatory MG READ): the r5 verdict measured the
-        // barrel at 1.5 px — no gun read in any view. Upscaled to the MG-physics
-        // floor (barrel Ø 0.038 = 2.1 px at the 54 px/m side rigs, receiver
-        // MASS): every top stays under the certified 2.638/2.653 lines (receiver
-        // 2.635w, barrel 2.645w, hider ends 0.49L inside the 0.79w col).
-        // The loader gun predates KIT.fittings, but its source-measured receiver
-        // is already the real visible load-bearing core of the assembly.  Keep
-        // that exact certified mesh and register it as the fitting root instead
-        // of adding a second generic gun or a marker-only escape hatch.
-        {
-          const exactLoaderMg = new THREE.Group();
-          const receiverGeometry = box(0.075, 0.062, 0.46);
-          const receiver = new THREE.Mesh(receiverGeometry, P.mats.dark);
-          receiver.position.set(-0.50, 0.824, 0.02);
-          receiver.castShadow = true;
-          receiver.receiveShadow = true;
-          receiver.userData.appearanceRole = 'machineGun';
-          exactLoaderMg.add(receiver);
-          exactLoaderMg.userData.hasConnectedFeed = true;
-          exactLoaderMg.userData.hasEngineeredCradle = true;
-          exactLoaderMg.userData.weaponClass = 'mag58';
-          FITTINGS.markExact(exactLoaderMg, 'pintleMG');
-          exactLoaderMg.name = 'leo2a5_loader_machine_gun';
-          P.turretG.add(exactLoaderMg);
-          P.disposables.push(receiverGeometry);
-        }
-        // barrel flat-forward (an AA-elevated cut was tried and REVERTED: a
-        // diagonal rod above the 2.6564 anchor lights a STAIRCASE of side
-        // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
-        // generalizes: any above-anchor member must fit ONE column of z).
-        P.add('turretDark', cylZ(0.019, 0.40, 8), -0.50, 0.846, 0.27);            // barrel to 0.77w (clear of the 0.86 col)
-        for (const z of [0.12, 0.20, 0.28]) {
-          P.add('turretDark', cylZ(0.023, 0.018, 12), -0.50, 0.846, z);           // jacket reinforcing rings
-        }
-        P.add('turretDark', box(0.045, 0.045, 0.07), -0.50, 0.846, 0.455);        // flash hider (stays inside 0.79w)
-        P.add('turretDark', box(0.068, 0.012, 0.39), -0.50, 0.861, 0.02);         // hinged receiver top cover
-        P.add('turretDark', box(0.012, 0.045, 0.25), -0.457, 0.824, 0.01);        // removable receiver side plate
-        P.add('turretDark', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);         // neutral gunmetal ammo box
-        P.add('turretDark', box(0.10, 0.010, 0.13), -0.615, 0.872, -0.02);        // ammo lid
-        for (let i = 0; i < 5; i++) {
-          const t = i / 4;
-          P.add('turretDark', box(0.022, 0.020, 0.018),
-            -0.590 + t * 0.070, 0.850 - Math.sin(t * Math.PI) * 0.010,
-            0.030 + t * 0.035, 0, 0, -0.10 + t * 0.14);                           // connected feed
-        }
-        P.add('turretDark', box(0.024, 0.11, 0.18), -0.50, 0.80, -0.21);          // grip frame + stock
-        for (const side of [-1, 1]) {
-          P.add('turretDark', box(0.018, 0.060, 0.018), -0.50 + side * 0.034,
-            0.798, -0.305, -0.18, 0, side * 0.08);                                // paired spade grips
-        }
-        P.add('turretDark', box(0.03, 0.032, 0.03), -0.50, 0.852, 0.10);          // rear sight block (top 0.868L < the 0.873 anchor line)
-      }
-      // VISUAL r6 3a STOWED MG3 on the certified mount (top 2.55w) — the ref's
-      // own spare gun reads from rear/left. Laid TRANSVERSE (along x) so the
-      // rear/top rigs see the full 0.55 m run at 146 px/m while the side rig
-      // sees only rows the mount already owns (barrel 2.512..2.550w, receiver
-      // top 2.55w exact — zero new silhouette).
-      P.add('turretDark', box(0.30, 0.05, 0.068), 0.30, 0.745, -1.55, 0, -0.25, 0); // receiver angled off the mount (top 0.77L = mount top)
-      // barrel DIAGONAL across the bustle roof (ry -0.6): a transverse cut
-      // read as one more horizontal line among the stern rails — the
-      // diagonal-on-roof pose is the identity cue the ref's own stowed MG3
-      // carries (rear/top/close-roof reads; zero height: tip rides the
-      // 0.735L slice-5 roofline, tops hold the mount's 0.77L line).
-      P.add('turretDark', KIT.cylZ(0.019, 0.38, 8), 0.023, 0.751, -1.313, 0, -0.6, 0);
-      P.add('turretDark', box(0.05, 0.042, 0.042), -0.10, 0.751, -1.145, 0, -0.6, 0);  // flash hider at the diagonal tip
-      P.add('turretDetail', box(0.024, 0.012, 0.05), -0.038, 0.762, -1.222, 0, -0.6, 0); // front sight + gas block
-      P.add('turretDark', box(0.16, 0.036, 0.03), 0.315, 0.742, -1.505, 0, -0.25, 0);  // grip frame under
-      // r8 3a MG READ HARDENING (critic order — make the delivered read
-      // unambiguous): receiver/grip MASS mid-rod on the diagonal stowed MG3
-      // (the top/rear 2x reads want a lump, not a bare rod). Below the anchor
-      // line (top 0.7695 < the 0.77L mount-top law); pale cover rides via the
-      // mgPale overlay block. Dark grip hangs under the receiver.
-      P.add('turretDark', box(0.055, 0.030, 0.115), 0.023, 0.7545, -1.313, 0, -0.6, 0); // receiver mass mid-rod
-      P.add('turretDark', box(0.020, 0.026, 0.045), 0.055, 0.732, -1.360, 0, -0.6, 0);  // pistol grip under
+      // duplicate open-yoke tower is gone. Gameplay: functional roof guns stay 1 (12.7 -> 7.62 mm).
+      // 2026-10-14 (VH.14, the coordinator's ruling "roof weapons match the real vehicle and every drawn gun works"):
+      // every A5 host's loader gun is a working station on its loader-ring pintle — the A5NL's remote-controlled MAG
+      // (above), the others' crew MAG with its grips and sights — and the exact receiver with its hand-built barrel,
+      // which could not turn, and the spare MG3 laid across the bustle are gone.
+      const finishLoaderStation = captureAuxiliaryStock(P, 'leo2a5_loader_machine_gun');
+      P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
+      const a5nl = P.spec.id === 'leo2a5_a5nl';
+      const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
+        remoteControlled: a5nl, working: !a5nl, seed: 5087 });
+      loaderMg.name = 'leo2a5_loader_machine_gun';
+      loaderMg.position.set(-0.50, 0.81, -0.06);
+      P.turretG.add(loaderMg);
+      finishLoaderStation();
     }
     // hatch/PERI cluster at the POST-WARP 2.653 line (see peri note): left
     // block spans the loader zone (warped ref side band 2.639-2.695, front
@@ -6880,7 +6809,9 @@ export function buildLeo2A4(builder: object) {
     // loader MG3 on its pintle at the hatch rim — the §B3 census fitting
     // (the mg3 class since 2026-10-08, round 5: the MG3's perforated jacket and muzzle booster; two-tone per MG PHYSICS).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
+      mg.name = 'leo2LoaderMg3';
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }
@@ -7469,7 +7400,9 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // under the 2.6664 grace line (EMES hood keeps the anchor).
     P.add('turret', cylY(0.075, 0.095, 0.055, P.q ? 16 : 12), -0.40, 0.795, -0.05); // mount collar
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0], working: true });
+      mg.name = 'leo2LoaderMg3';
       mg.position.set(-0.40, 0.70, -0.05);
       P.turretG.add(mg);
     }
@@ -7887,7 +7820,9 @@ function buildLeo2Proto(P: TankBuilderPort) {
   }
   // loader MG3 pintle at the hatch rim (§B3 census weapon, the mg3 class since 2026-10-08, round 5)
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0] });
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0], working: true });
+    mg.name = 'leo2LoaderMg3';
     // mount LOW (0.54): the mag receiver band spans several side columns —
     // at a 0.65 mount it wrote heightM p95 2.59 (dims -27.7); at 0.54 the
     // receiver rides ~2.48 and the p95 falls back to the cupola crown.
@@ -7961,9 +7896,10 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // + bolt heads retire (buried inside the restored base, torus top was
   // coplanar with the base-plate top = z-fight).
   P.add('turret', cylY(0.31, 0.31, 0.016, P.q ? 20 : 14), 0.02, 0.658, -1.58); // OWS mount-ring flange
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the owner's station is a working remote station
   leoFLW200(P, { x: 0.02, y: 0.65, z: -1.58, s: 1.1, gunY: 0.46, gunScale: 0.92,
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
-    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
+    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17, automatic: true });
 
   // Owner-directed replacement: a finite, clipped welded shield with a
   // real recoil passage and split journals, seated in the original gun frame.
@@ -12298,10 +12234,12 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       // beside the hatch.
       P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, 0.86, -0.30);
       P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, 0.91, -0.30);
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
-        scale: 0.96, seed: 15, shield: true, ammo: true,
+        scale: 0.96, seed: 15, shield: true, ammo: true, working: true,
       });
+      mg.name = 'leo1LoaderMg3';
       mg.position.set(-0.45, 0.91, -0.30);
       mg.rotation.y = 0.34;
       P.turretG.add(mg);
@@ -13445,9 +13383,11 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     // hardware line, inside the print's own 2.55-2.66 bustle band).
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.30, 0.645, -2.62);
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.86, 0.645, -2.62);
-    {
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Ukrainian 2A6's MAG on this bustle mount is its
+    // remote station; on the 2A6M the MG3 laid here was a spare gun beside its remote station, and it is gone.
+    if (P.spec.id === 'leo2a6_ua') {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: P.spec.id==='leo2a6_ua' ? 'mag' : 'mg3', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
+        mats: P.mats, cls: 'mag', remoteControlled: true, tone: 'two-tone', scale: 0.66, elev: 0,
         shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
       });
       mg.position.set(-0.58, 0.67, -2.62);
@@ -14384,7 +14324,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // 6763d7cc0: true to calibre and reference): Canada's C6 is the FN MAG, so this gun takes the MAG class (round 5 had
     // given the German crew guns' MG3 class to this Canadian mark too).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's C6)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
+      mg.name = 'leo2LoaderC6';
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }

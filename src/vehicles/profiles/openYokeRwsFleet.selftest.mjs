@@ -193,8 +193,9 @@ for (const [id, expected] of Object.entries(TARGETS)) {
         `${id}: full-size tower replaces the compact commander station`);
       const retainedLoaderGuns = [];
       turretRig.traverse((node) => {
+        // VH.14 (2026-10-14): the loader's crew gun is the calibre-true M240 on the American installation
         if (node.userData?.fittingRoot
-          && node.userData.americanWeaponStandard === 'sheridan-m2hb-v2') {
+          && node.userData.americanWeaponStandard === 'american-m240-v1') {
           retainedLoaderGuns.push(node);
         }
       });

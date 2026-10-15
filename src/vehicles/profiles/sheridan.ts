@@ -1443,6 +1443,7 @@ function addSheridanCommanderStation(
       x, 0.980, 0.072, -0.30, 0, 0);
   }
   if (isTts) return;
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's M2)
   const m2 = FITTINGS.americanM2({
     mats: P.mats,
     tone: 'dark',
@@ -1451,7 +1452,9 @@ function addSheridanCommanderStation(
     elev: 0,
     ring: { r: 0.235, stubs: 4 },
     seed: 551,
+    working: true,
   });
+  m2.name = 'm551CommanderM2';
   m2.position.set(-0.498, 0.965, 0.290);
   m2.userData.sourceVehicle = 'm551_sheridan';
   P.turretG.add(m2);
@@ -1556,7 +1559,10 @@ function addSheridanLoaderStation(
     ammo: station.ammo,
     ring: { r: 0.21, stubs: 3 },
     seed: 552,
+    // VH.14: the requested loader's gun (the M60 crews fitted at the loader's hatch) is a working station
+    working: true,
   });
+  mg.name = 'm551LoaderMg';
   mg.scale.set(0.92, 0.72, 0.92);
   mg.position.set(station.x, 0.805, station.z + 0.13);
   P.turretG.add(mg);

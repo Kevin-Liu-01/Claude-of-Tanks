@@ -490,7 +490,7 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     // true scale, its 50-round box and belt on the left, instead of a 0.72 NSVT.
     mount(P, 'turret', FITTINGS.pintleMG({
       mats: P.mats, cls: 'qjc88', tone: 'two-tone', scale: 1.0,
-      ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944,
+      ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     }), [0.48, 0.82 + roofLift, -0.62]);
     P.addEquipment('turret', box(0.48, 0.30, 0.44), 0.72, 0.82 + roofLift, -1.06);
     P.addEquipment('turret', box(0.46, 0.36, 0.42), 0.72, 1.12 + roofLift, -1.06,

@@ -367,7 +367,8 @@ function buildDragunRoofWeapon(P: TankBuilderPort): void {
     const t = P.turretG.position;
     const [sx, sy, sz] = DRAGUN_ROOF_GPMG_SOCKET;
     equipment(P, 'turret', 'Dark', cylY(.034, .040, .03, P.q ? 14 : 10), sx, sy - .015, sz);
-    const group = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', remoteWeapon: true, ammo: true, tone: 'two-tone', seed: 1253 });
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the module's remote GPMG)
+    const group = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', remoteControlled: true, ammo: true, tone: 'two-tone', seed: 1253 });
     group.position.set(sx, sy - t.y, sz - t.z);
     group.name = 'dragunSourceRoofWeapon';
     group.userData.sourceOwner = 'Object_14';

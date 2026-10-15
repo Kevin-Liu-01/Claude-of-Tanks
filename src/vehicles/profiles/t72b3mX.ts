@@ -7,6 +7,7 @@ import {KIT} from './kit.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T72B3M_X_SOURCE_DATUMS} from '../t72b3mXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addT72B3MSideMounts,T72B3M_DECK_FRONT_Z} from './t72b3mXSideMounts.ts';
@@ -273,6 +274,8 @@ function machineGun(P:TankBuilderPort):void {
   // original world-space receiver and barrel remain fixed at the source pose.
   for(const child of group.children)if(child instanceof THREE.Mesh)child.geometry.applyQuaternion(q.clone().invert());
   group.quaternion.copy(q);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts); it rests level on its bearing
+  stationFromDrawnGun(group,{name:'t72b3mXRoofKord',caliberMm:12.7});
 }
 
 function mainGun(P:TankBuilderPort):void {

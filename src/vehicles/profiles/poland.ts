@@ -605,9 +605,10 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // box hung outboard (the NSV feeds from either side; inboard the box would sit in the dome) and the mount's
   // collimator inboard, so the box, its belt and the long receiver read from the hero and turret-top cameras.
   P.add('turretDark', cylY(0.16, 0.19, 0.09, 16), 1.00, 0.585, -0.30);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's NSVT)
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
-    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 },
+    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 }, working: true,
   }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
 
   // PCO SKO-1M/Drawa-T sight suite (gunner right-front, hooded) + commander
@@ -1193,6 +1194,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     const rwsWeapon = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
       ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020, feed: 'right',
+      remoteControlled: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     });
     rwsWeapon.name = 'pl01_rws_weapon';
     mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);

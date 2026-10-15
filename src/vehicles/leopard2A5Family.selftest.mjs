@@ -42,8 +42,8 @@ for (const id of family) for (const quality of ['high', 'low']) for (let k = 0; 
   const camoSeed = 4000 + k * 397;
   let tank;
   assert.doesNotThrow(() => { tank = createTank(id, null, { quality, camoSeed, proceduralOnly: true }); }, `${id} ${quality} seed ${camoSeed} builds`);
-  // A roof machine gun with visible geometry on every build: the certified exact loader gun (A5, Strv 122), the A5NL's
-  // working remote station, or the source-X variants' own roof weapons.
+  // A roof machine gun with visible geometry on every build: the working loader gun (A5, Strv 122; a crew MAG since
+  // VH.14), the A5NL's working remote station, or the source-X variants' own roof weapons.
   let guns = 0;
   tank.root.traverse((o) => {
     if (!o.userData?.fittingRoot || o.userData.fitting !== 'pintleMG') return;
@@ -52,7 +52,8 @@ for (const id of family) for (const quality of ['high', 'low']) for (let k = 0; 
     if (meshes > 0) guns++;
   });
   assert.ok(guns > 0, `${id} ${quality}: a roof machine gun is built with visible geometry`);
-  if (id === 'leo2a5' || id === 'strv122') assert.ok(tank.root.getObjectByName('leo2a5_loader_machine_gun'), `${id}: the exact loader gun`);
+  // VH.14 (2026-10-14): every A5 host's loader gun is a working station (the exact receiver could not turn)
+  if (id === 'leo2a5' || id === 'strv122') assert.ok(tank.root.getObjectByName('leo2a5_loader_machine_gun')?.userData.remoteControlled, `${id}: the working loader gun`);
   tank.dispose();
   builds++;
 }

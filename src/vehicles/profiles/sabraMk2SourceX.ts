@@ -284,7 +284,8 @@ function buildSabraCupolaWeapon(P: TankBuilderPort, py: number, pz: number): voi
   const socket=SABRA_CUPOLA_M2_SOCKET;
   // The boss foot sits 4 mm into the sloping roof plate (2.524-2.544 m under its footprint).
   turretEquipment(P,'turretDetail',cylY(.047,.056,.06,P.q?16:10),socket[0],socket[1]-.03,socket[2]);
-  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',tone:'two-tone',ammo:true,seed:2741});
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',tone:'two-tone',ammo:true,seed:2741,working:true});
   roofGun.position.set(socket[0],socket[1]-py,socket[2]-pz);
   roofGun.name='sabraSourceCupolaWeapon';
   P.turretG.add(roofGun);

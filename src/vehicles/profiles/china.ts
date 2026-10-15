@@ -514,7 +514,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.06,
-    ammo: true, rotation: [0, 0.55, 0], seed: 8560,
+    ammo: true, rotation: [0, 0.55, 0], seed: 8560, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   }), 0.55, 0.845, -0.45);
 
   // smoke banks: 2x4 on the upper cheek flanks (Type 85 signature)
@@ -966,7 +966,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.12,
-    ammo: true, rotation: [0, 0.10, 0], seed: 9960,
+    ammo: true, rotation: [0, 0.10, 0], seed: 9960, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   }), 0.52, 1.00, -0.79);
   P.add('turret', cylY(0.24, 0.25, 0.045, seg), -0.50, 0.9125, -0.55);
   P.add('turretDark', torus(0.245, 0.013, seg), -0.50, 0.935, -0.55);
@@ -1168,7 +1168,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.08,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed: 9990,
+    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed: 9990, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   }), 0.52, 0.89, -0.88);
   for (const s of [-1, 1]) {
     P.addEquipment('turret', box(0.17, 0.08, 0.15), s * 0.96, 0.84, 0.10);
@@ -1445,7 +1445,7 @@ function buildType59(P: ChinaBuilderPort): void {
   {
     const dshk = FITTINGS.pintleMG({
       mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.08,
-      ammo: true, shield: true, barrelBridge: true,
+      ammo: true, shield: true, barrelBridge: true, working: true,
       rotation: [0, -0.04, 0], seed: 6,
     });
     dshk.name = 'type59RoofDShK';
@@ -1453,18 +1453,9 @@ function buildType59(P: ChinaBuilderPort): void {
     dshk.position.set(0.55, 1.021, 0.36);
     P.turretG.add(dshk);
   }
-  P.addEquipment('turretDetail', box(0.16, 0.035, 0.30), -0.605, 1.105, 0.02);
-  {
-    const commanderMG = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mag', scale: 1.12, tone: 'two-tone', elev: 0.06,
-      ammo: true, shield: false, barrelBridge: true,
-      rotation: [0, 0.05, 0], seed: 59,
-    });
-    commanderMG.name = 'type59CommanderCupolaMG';
-    commanderMG.userData.cupolaSeat = 'commander';
-    commanderMG.position.set(-0.605, 1.111, 0.13);
-    P.turretG.add(commanderMG);
-  }
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Type 59's
+  // one roof gun is the loader's 12.7 mm Type 54 (DShK) AA gun; the commander's cupola carries none, so its GPMG and
+  // bridge plate are gone.
   // paired four-tube smoke banks on the dome shoulders (dark pads bridge
   // the bank bodies onto the casting skin).
   for (const s of [-1, 1]) {

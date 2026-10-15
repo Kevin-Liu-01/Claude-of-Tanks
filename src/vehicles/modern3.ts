@@ -921,12 +921,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.addEquipment('turret', cylY(0.052, 0.058, 0.055, 12), -0.740, 0.749, 1.108);      // rounded pivot over the receiver joint
     P.add('turretDark', box(0.115, 0.048, 0.025), -0.548, 0.748, 1.066);       // recessed receiver face
     P.add('turretGlass', box(0.052, 0.032, 0.014), -0.548, 0.750, 1.080);      // small forward sensor window
-    // Retain the standard fitting marker at sub-visible scale inside the
-    // measured receiver so mandatory equipment census remains machine-readable.
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', scale: 0.12,
-      seed: 12, elev: 0, ammo: false, rotation: [0, 0, 0] });
-    mg.position.set(-0.548, 0.744, 1.0025);
-    P.turretG.add(mg);
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the sub-visible census marker that sat inside this
+    // measured receiver is gone; the K2's roof gun is the loader's K6 on its working station.
     // antenna mounts FOLDED (heightM p95 law: the pano head + mast own the
     // whole spike budget) — base drums + rods CLIPPED FLAT to the roof
     // (critic r1: the pitched floating rods read as sail fins).
@@ -1462,15 +1458,18 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     // load path; no side-wall stilt or empty-air bridge remains.
     P.add('turret', cylY(0.255, 0.275, 0.045, 18), 0.58, 0.710, -0.62);
     P.add('turretDetail', torus(0.235, 0.014, 22), 0.58, 0.735, -0.62);
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): both crew guns are working stations
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 14,
-      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 } });
+      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 }, working: true });
+    mg.name = 'k1CommanderK6';
     mg.position.set(0.58, 0.734, -0.62);
     P.turretG.add(mg);
     // The loader's 7.62 is seated on its hatch ring as well. Its smaller
     // receiver stays below the K6 datum and retains a visible three-stub base.
     P.add('turretDetail', torus(0.185, 0.011, 18), -0.52, 0.685, -0.55);
     const mg2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 15,
-      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 } });
+      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 }, working: true });
+    mg2.name = 'k1LoaderM60';
     mg2.position.set(-0.52, 0.690, -0.55);
     P.turretG.add(mg2);
     // the print's whip antenna (x +0.40, z_w −1.21, top 3.97 = §B7 cap)
@@ -2092,7 +2091,9 @@ function buildType10Native2026(
     P.add('turretDetail', box(0.055, 0.264, 0.242), 1.309, 0.594, -0.055);        // wall bracket
     P.add('turretDetail', box(0.242, 0.0385, 0.286), 1.276, 0.484, -0.055);       // swing platform
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Type 10's roof M2 is a working station
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0], working: true });
+      mg.name = 'type10RoofM2';
       mg.position.set(1.32, 0.5038, -0.055);
       P.turretG.add(mg);
       const smL = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.044, len: 0.242, splay: -0.75, pitch: -0.45, seed: 5 });
@@ -3431,18 +3432,8 @@ export function buildBradley(P: Modern3BuilderPort) {
                                                                                   //   (r4: east edge -1.175 -> -1.145
                                                                                   //   so the -1.16 col reads the 2.175
                                                                                   //   step, not a half-lit boundary)
-      // pintle M240 stowed on the bustle rail (§B3 MANDATORY MG — kept inside
-      // the print's own 2.9-band so the heightM p95 budget is untouched)
-      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the bustle stowage cloth (feed-side collision census).
-      const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', scale: 0.85, tone: 'two-tone', elev: 0.03,
-        ammo: true, rotation: [0, -0.45, 0], seed: 12, feed: 'right',
-      });
-      mg.position.set(0.15, 0.31, -0.68);                                         // (90-ladder y 0.52 -> 0.31: the MG
-      P.turretG.add(mg);                                                          //   crown at 2.585 owned the front
-                                                                                  //   -0.02/-0.06 cols +0.13 over the
-                                                                                  //   ref's 2.456 left-roof line — §C
-                                                                                  //   pintle allowance is 0.4 pt)
+      // VH.14 (coordinator ruling 2026-10-14): the Bradley carries no roof machine gun (roofWeaponPolicy.ts); the M240
+      // stowed on the bustle rail for the old roof-MG census is gone.
       // 2x4 smoke launchers on the turret front corners (§6.5)
       for (const s of [-1, 1]) {
         const bank = FITTINGS.smokeBank({
@@ -4344,18 +4335,8 @@ export function buildBMP2(P: Modern3BuilderPort) {
   // side apex 2.476 at z -0.07..+0.01) — raised seat, apex 2.47 < ref 2.476,
   // aligned with the ref's own spike columns (heightM p95 law).
   {
-    // r3: MG re-seated z +0.06 (apex on the +0.114-mapped spike band, proc
-    // 0.08..0.155) and re-aimed AFT (stowed) — the r2 forward-right yaw ran
-    // the barrel tip to proc z 0.19..0.31 / x -0.20 at 2.44-2.46, printing
-    // +0.06..+0.25 on three side cols AND the front x -0.226 col (the
-    // roof-stack saddle order's east face). Aft barrel hides inside the
-    // 2.39 Konkurs band.
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mag', scale: 0.58, tone: 'two-tone', elev: 0.02,
-      ammo: true, rotation: [0, Math.PI, 0], seed: 6,
-    });
-    mg.position.set(-0.42, 0.68, 0.06);                                         // apex 2.47 on the mapped spike
-    P.turretG.add(mg);                                                          // columns; the sight housing below
+    // VH.14 (coordinator ruling 2026-10-14): the BMP-2 carries its 30 mm 2A42, a coaxial PKT and the Konkurs, and no
+    // roof machine gun (roofWeaponPolicy.ts); the stowed MG the old census added is gone.
     // gunner day-sight housing: carries the ref's tall LEFT stack west flank
     // (front 2.42-2.44 over x -0.56..-0.32; top dropped 2.4575 -> 2.4425 to
     // the ref's own 2.443 shoulder, z re-seated +0.08)
@@ -5212,19 +5193,12 @@ function buildType89Turret(P: Modern3BuilderPort) {
   // the cone to the face; 35mm-class disc)
   muzzleBore(P, 3.45, 0.070, 0.025, 12, 0.0655);
   P.muzzleZ = 3.45;                                                            // true muzzle anchor (world 3.90)
-  // coax Type 74 7.62 LEFT of the main gun: dark port ring + a recessed
-  // FITTINGS 'mag' body behind it — the census MG (§B3 mg>=1; spz_puma
-  // unmanned-turret precedent — the real vehicle has NO roof pintle)
+  // coax Type 74 7.62 LEFT of the main gun: dark port ring and the barrel stub
+  // (the real vehicle has NO roof pintle)
   P.add('turretDark', cylZ(0.030, 0.02, 10), -0.32, 0.26, 0.705);
   P.add('turretDark', cylZ(0.013, 0.16, 8), -0.32, 0.26, 0.77);
-  {
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mag', scale: 0.5, tone: 'dark', elev: 0.0,
-      ammo: false, seed: 15,
-    });
-    mg.position.set(-0.32, 0.12, 0.42);                                        // buried at the face — barrel stub
-    P.turretG.add(mg);                                                         //   reads at the port only
-  }
+  // VH.14 (coordinator ruling 2026-10-14): the census gun buried behind the port is gone — the Type 89 carries no roof
+  // weapon (roofWeaponPolicy.ts) and its coaxial 7.62 reads at the port above.
 }
 
 function buildType89(P: Modern3BuilderPort) {

@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addArieteXLaunchers, addArieteXRearStowage } from './arieteXEquipment.ts';
 import { addArieteXOpticalHead, addArieteXRoofFurniture } from './arieteXPhotoDetails.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -205,7 +206,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.024, .54, 16), x, 2.813, z + .49);
   mg.add('turretDetail', box(.11, .13, .16), x - .10, 2.78, z + .06);
   mg.add('turretDark', box(.09, .07, .16), x, 2.775, z - .16);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'arieteXRoofMg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {

@@ -64,24 +64,6 @@ function radioPair(P: ProceduralBuilderPort, y: number, z: number, seed: number,
   }
 }
 
-function roofWeapon(
-  P: ProceduralBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  seed: number,
-  scale = 0.82,
-  yaw = 0,
-): void {
-  P.add('turret', KIT.box(0.50, 0.075, 0.46), x, y, z);
-  P.add('turretDark', KIT.box(0.39, 0.020, 0.35), x, y + 0.048, z);
-  P.add('turret', KIT.cylY(0.20, 0.22, 0.075, 18), x, y + 0.09, z);
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mg3', tone: 'two-tone', scale, elev: 0.11,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
-  }), x, y + 0.11, z, [0, yaw, 0]);
-}
-
 function gunPlant(P: ProceduralBuilderPort, width: number, depth: number, coaxX = 0.31): void {
   P.addGunExtra(KIT.box(width, 0.52, 0.26), 0, -0.015, 0.39);
   P.addGunExtra(KIT.cylZ(0.21, depth, 20, 0.17), 0, 0, 0.70);
@@ -116,7 +98,7 @@ function addOTCOPackage(P: ProceduralBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 2.14, d: 0.48, h: 0.30, fill: 0.62, rails: 3, seed: 2420,
   }), 0, 0.48, -2.34);
-  roofWeapon(P, 0.48, 0.86, -0.72, 2430, 0.82, 0.04);
+  // VH.14 (coordinator ruling 2026-10-14): one roof MG3, the loader's; the commander's-side second gun is gone
   radioPair(P, 0.72, -2.40, 2440, 1.05);
   gunPlant(P, 0.78, 0.39);
   P.decal('turret', 'number', 'OTCO', 0.20, [-1.47, 0.39, -0.72], -Math.PI / 2);

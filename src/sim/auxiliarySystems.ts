@@ -1,5 +1,5 @@
 import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type SmokePoint, type SmokeWorld, type SmokeWorldHit } from './smokeBallistics.ts';
-import { smokeClip } from './smokeScreen.ts';
+import { smokeClip, smokeScreenSummary } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities, type AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
@@ -44,6 +44,16 @@ export interface AuxiliaryEntity {
 export const SMOKE_COOLDOWN_S = 28;
 export const ROOF_GUN_SHELL: DamageShellSpec = auxiliaryWeaponProfile(12.7).shell;
 const stationState = (): AuxiliaryStationState => ({ gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0 });
+/** VH.14: the vehicle row's auxiliary JSON (server/match/entityRows.ts). Fractional numbers travel to the millimetre,
+ * milliradian and millisecond — the presentation reads aim, bursts and the smoke screen's seat, nothing finer — so a
+ * vehicle with several working roof stations stays inside the row's 512-byte field (src/mp/wire/rows.ts);
+ * roofStations.selftest pins the worst case of every vehicle in the inventory. */
+export function auxiliaryRowJson(aux: AuxiliaryState): string {
+  return JSON.stringify({ ...aux, smoke: aux.smoke ? smokeScreenSummary(aux.smoke) : null }, wireNumber);
+}
+function wireNumber(_key: string, value: unknown): unknown {
+  return typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * 1000) / 1000 : value;
+}
 export function createAuxiliaryState(spec: { id?: string }): AuxiliaryState {
   const guns = auxiliaryCapabilities(spec)?.guns;
   return {
@@ -228,7 +238,9 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   const turn=arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
   const step=state.gunYaw+Math.max(-dt*handling*profile.yawRateRadS,Math.min(dt*handling*profile.yawRateRadS,turn));
   const nextYaw=arc?Math.min(arc[1],Math.max(arc[0],step)):wrap(step);
-  if(arc&&!stationTraverseClear(entity,gun,nextYaw))return false;
+  // VH.14: every multi-station roof (the Abrams' commander and loader, a Merkava's two roof guns) keeps the interlock,
+  // not only the arc-limited TTS stations: a station holds rather than sweep its barrel through another's
+  if(!stationTraverseClear(entity,gun,nextYaw))return false;
   state.gunYaw=nextYaw;
   state.gunPitch+=Math.max(-dt*handling*profile.pitchRateRadS,Math.min(dt*handling*profile.pitchRateRadS,pitch));
   // crossing the shallow sector depressed, the barrel lifts clear of the roof first

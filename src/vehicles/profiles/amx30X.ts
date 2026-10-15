@@ -8,6 +8,7 @@ import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { blindTube } from './measuredPrimitives.ts';
 import { addAmx30XAftReturn } from './amx30XAftReturn.ts';
 
@@ -221,7 +222,8 @@ function roof(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.01045, .174, 16), -1.1255, 2.7551, .9345);
   mg.add('turretDark', box(.09, .027, .15), -1.1252, 2.784, .123);
   mg.add('turretDetail', box(.262, .0201, .448), -.9464, 2.783, .0921);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'amx30XRoofGpmg', caliberMm: 7.62 });
   // Round night sight: actual forward-facing aperture, with its support leg.
   equipment(P, 'turretDetail', box(.050, .180, .08), -.894, 2.725, .49);
   equipment(P, 'turretDetail', blindTube(.14165,.119,.249,.135,28), -.89409, 2.86170, .435735);

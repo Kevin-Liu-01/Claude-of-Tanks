@@ -8,6 +8,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
 import {type90RoadWheelCore} from '../nationWheelConstructions.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -260,7 +261,8 @@ function roofWeapon(P:TankBuilderPort):void {
   w.add('turretDetail',box(.042066,.021078,.126212),.157666,2.848436,.472848);
   for(const x of [.01579,.15242])w.add('turretDetail',box(.031467,.126049,.031403),x,2.921999,-.086284);
   for(const z of [.073425,.541338])w.add('turretDetail',box(.031578,.031547,.031703),.084077,3.000798,z);
-  w.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(w.finish(),{name:'type90XRoofM2',caliberMm:12.7});
 }
 
 function smokeBank(P:TankBuilderPort,side:number):void {

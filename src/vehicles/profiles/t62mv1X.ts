@@ -9,6 +9,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T62MV1_X_ERA_ZONE_NAMES} from '../t62mv1XArmor.ts';
 import {addT62MV1Sight} from './t62mv1XSight.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -186,7 +187,8 @@ function machineGun(P:TankBuilderPort):void {
   gun.add('turretDark',cylZ(.016,.255,20),-.590,2.504,1.34);
   gun.add('turretDark',blindTube(.033,.017,.047,.032,20),-.590,2.501,1.485);
   gun.add('turretDetail',box(.013,.132,.025),-.590,2.539,1.316);
-  gun.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(gun.finish(),{name:'t62mv1XRoofDshk',caliberMm:12.7});
 }
 
 function gunAssembly(P:TankBuilderPort):void {

@@ -60,11 +60,13 @@ function commanderWeapon(P: TankBuilderPort): void {
   // 2026-10-07 (tank-accessories round 4): the K2's station weapon is the crewless remote form (solenoid, the
   // station's right-hand feed, no crew sights) since round 3; the copy takes that same form as a fixed fitting
   // (remoteWeapon), so it stays the K2's complete stock without becoming a counted roof gun.
+  // 2026-10-14 (VH.14, the coordinator's ruling "every drawn gun works"): the commander's station is a working remote
+  // station (remoteControlled), no longer a fixed copy.
   const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
-    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042, remoteWeapon: true });
+    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042, remoteControlled: true });
   gun.scale.setScalar(.70 / S);
   gun.name = 'arieteC2CommanderK2';
-  gun.userData.roofWeapon = { donor: 'k2_x', relativeScale: .70, decorative: true };
+  gun.userData.roofWeapon = { donor: 'k2_x', relativeScale: .70 };
   gun.position.set(x, 2.092 - SOURCE.turretPivot[1], z - SOURCE.turretPivot[2]);
   gun.rotation.y = .28;
   P.turretG.add(gun);

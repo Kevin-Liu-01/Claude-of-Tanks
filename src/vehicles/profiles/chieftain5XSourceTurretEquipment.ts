@@ -174,7 +174,9 @@ function commanderMachineGun(P: TankBuilderPort, pivot: Point): void {
   // Receipt collectors stub the port with bucket adders only; the fitting
   // needs the family materials and the turret group of a real build.
   if (!P.mats || !P.turretG) return;
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: .96, ammo: true, shield: false, ring: false, seed: 5179 });
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's L37)
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: .96, ammo: true, shield: false, ring: false, seed: 5179,
+    working: true });
   mg.name = 'chieftain5CommanderGpmg';
   const x = -.476844 + .372, y = 2.4680245 + .052, z = -.45533 + .118;
   mg.position.set(x - pivot[0], y - pivot[1], z - pivot[2]);

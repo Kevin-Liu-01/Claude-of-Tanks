@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { chieftain5CastTurret, chieftain5CastMantlet } from './chieftain5XCast.ts';
 import { addChieftain5XAuxiliaryMounts } from './chieftain5XAuxiliaryMounts.ts';
@@ -287,7 +288,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.021, .520, 16), x, 2.808, z + .45);
   mg.add('turretDetail', box(.126, .17, .18), x + .118, 2.780, z - .035);
   mg.add('turretDark', box(.072, .068, .188), x, 2.783, z - .210);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'chieftainXDraftGpmg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {

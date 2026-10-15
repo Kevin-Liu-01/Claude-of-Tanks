@@ -335,8 +335,10 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
   // 2026-10-08 (owner, 6763d7cc0): `automatic` makes the gun a working remote station (the 2A5M's original 7.62 mm)
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): where it is not the remote station it is the working
+  // crew-served loader's gun
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
-    tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
+    working: !automatic, tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
@@ -1009,8 +1011,9 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
   // Full, unscaled-height pintle seats directly on the hatch flank. The
   // source rail remains alongside the barrel, not pierced by it; there is
   // no added tall pedestal above the already complete pintle assembly.
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,sourceScale:true,
-    tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905});
+    tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905,working:true});
   weapon.name='leo2a6m_xRoofMachineGun';
   weapon.scale.set(1,1,1.75);
   weapon.position.set(-.80-d.turretPivot[0],2.546-d.turretPivot[1],.12-d.turretPivot[2]);

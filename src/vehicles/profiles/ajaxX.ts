@@ -4,7 +4,7 @@ import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts'
 // Independent procedural reconstruction of the owner's long-skirt Ajax fit.
 import { BoxGeometry, Mesh, Quaternion, Vector3 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { KIT, FITTINGS } from './kit.ts';
+import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { mirrorX } from './europeSourcePrimitives.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
@@ -205,7 +205,7 @@ function turret(P:TankBuilderPort):void {
   turretHatches(P, add);
   panoramicSight(P, add);
   portSight(P, add);
-  roofMachineGun(P, add);
+  // VH.14 (coordinator ruling 2026-10-14): the turreted Ajax carries no roof machine gun (roofWeaponPolicy.ts)
   gunReceiverShoulders(P);
   const gunDatum={x:0,y:2.506,z:.67};
   const shroud=(z:number,left:number,right:number,bottom:number,top:number,roofRight:number,shoulder:number):SolidSection=>{
@@ -444,16 +444,6 @@ function portSight(_P: TankBuilderPort, add: EquipmentAdder): void {
   // side walls and a sloping top seated on the sight's rear housing.
   for(const x of [-.675,-.346])add('turretDetail',box(.028,.228,.310),x,2.914,-.739,-.29);
   add('turretDetail',box(.356,.027,.334),-.510,3.010,-.731,-.29);
-}
-
-function roofMachineGun(P: TankBuilderPort, add: EquipmentAdder): void {
-  const p=P.turretG.position;
-  // Remote roof MG has a visible fork-to-pedestal load path.
-  add('turretDetail',cylY(.10,.15,.39,P.q?24:14),.71,2.89,-1.02);
-  for(const x of [.60,.82])add('turretDetail',box(.045,.18,.28),x,3.01,-1.02);
-  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',tone:'two-tone',ammo:true,seed:4017});
-  roofGun.position.set(.71-p.x,2.985-p.y,-1.01-p.z);
-  P.turretG.add(roofGun);
 }
 
 function gunReceiverShoulders(P: TankBuilderPort): void {

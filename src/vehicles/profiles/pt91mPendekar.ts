@@ -7,6 +7,7 @@ import {sampleArmorRay} from './armorFaceSampling.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 
 const YAW=new THREE.Vector3(...T72BU_X_DATUMS.turretPivot);
@@ -131,7 +132,9 @@ function roof(P:TankBuilderPort,shell:THREE.BufferGeometry):void{
  mg.add('turretDark',box(.065,.055,.12),-.6575,gunY-.015,.14);
  mg.add('turretDark',box(.12,.03,.08),-.58,gunY+.071,.23);
  mg.add('turretDark',cylZ(.035,.10,12),-.58,gunY,1.01);
- mg.finish().name='pt91mCommandMG';
+ const commandMg=mg.finish();commandMg.name='pt91mCommandMG';
+ // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+ stationFromDrawnGun(commandMg,{name:'pt91mCommandMgStation',caliberMm:12.7});
  P.turretG.userData.pt91mRoofEquipmentReceipt={revision:'t72bu-pendekar-roof-r1',cupolas:2,periscopeBlocks:12,mainSight:'boxed-recessed',panorama:true,metMast:true};
  P.topY=Math.max(my+.844,gunY+.10)-YAW.y;
 }

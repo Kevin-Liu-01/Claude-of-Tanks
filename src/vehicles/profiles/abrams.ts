@@ -7,6 +7,7 @@ import {pushConvexQuad} from '../factoryGeometry.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { sweptTube } from '../accessoryPrimitives.ts';
+import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 // Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
 // Authored against TRUE-AXIS ortho mask traces (docs/references/profiles/*
 // re-extracted after the v6 camera fix, plus scratch probe curves decoded to
@@ -2342,7 +2343,12 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
   installationVariant, yaw = 0, elevation = 0.035, barrelLength = 0.68,
   ring = false,
 }: BrowningOptions): THREE.Group {
+  // VH.14 (coordinator ruling 2026-10-14; the owner's field-equipment standard, roof weapons calibre-true and working):
+  // every Abrams loader's crew-served gun is the 7.62 mm M240 on its skate, LGS or LAGS mount (the M2HB is the
+  // commander's), and it is a working station the roof-gun control drives.
   const gun = FITTINGS.americanM2({
+    cls: 'mag',
+    working: true,
     mats: P.mats,
     scale,
     shield,
@@ -2357,7 +2363,7 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
   });
   gun.position.set(x, y, z);
   gun.rotation.y = yaw;
-  gun.name = `fitting_abramsM2HB_${installationVariant}`;
+  gun.name = `fitting_abramsLoaderM240_${installationVariant}`;
   gun.userData.hostVariant = P.spec.id;
   gun.userData.sourceVehicle = 'm551_sheridan';
   P.turretG.add(gun);
@@ -2371,7 +2377,7 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
       y,
       z,
       scale,
-      americanWeaponStandard: 'sheridan-m2hb-v2',
+      americanWeaponStandard: gun.userData.americanWeaponStandard,
     }),
   ]);
   return gun;
@@ -3072,7 +3078,7 @@ function tejasRoofKit(
         const receiverY = baseY + datum.receiverY;
         if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
         loaderWeaponReceipt = {
-          station: tallStation ? 'sepv2-loader-m2hb' : 'sepv3-loader-m2hb',
+          station: tallStation ? 'sepv2-loader-m240' : 'sepv3-loader-m240',
           x: loaderX,
           pintleZ: baseZ,
           pintleBottomY: baseY,
@@ -3081,7 +3087,7 @@ function tejasRoofKit(
           cradleTopY: baseY + datum.cradleTopY,
           receiverBottomY: baseY + datum.receiverBottomY,
           receiverY,
-          americanWeaponStandard: 'sheridan-m2hb-v2',
+          americanWeaponStandard: loaderGun.userData.americanWeaponStandard,
           shieldVariant: tallStation ? 'armored' : 'low',
         };
       };
@@ -3134,7 +3140,7 @@ function tejasRoofKit(
           // round 5: measured on the built gun (the shared Browning construction at true scale)
           const datum = loaderGun.userData.mountDatum;
           loaderWeaponReceipt = {
-            station: 'm1a2-loader-m2hb',
+            station: 'm1a2-loader-m240',
             x: loaderX,
             pintleZ,
             pintleBottomY,
@@ -3143,7 +3149,7 @@ function tejasRoofKit(
             cradleTopY: pintleBottomY + datum.cradleTopY,
             receiverBottomY: pintleBottomY + datum.receiverBottomY,
             receiverY: pintleBottomY + datum.receiverY,
-            americanWeaponStandard: 'sheridan-m2hb-v2',
+            americanWeaponStandard: loaderGun.userData.americanWeaponStandard,
             shieldVariant: 'split',
           };
         }
@@ -5529,12 +5535,21 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           fit.position.set(x, y, z);
           P.turretG.add(fit);
         };
+        // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the
+        // floor slots that held a stowed crew gun for the old "every vehicle shows a roof MG" census hold a row of M2A1
+        // ammunition cans (profiles/fieldChest.ts) across the rack; the loader's M240 on its mount is the working gun.
+        const rackCans = (xs: readonly number[], y: number, z: number): void => {
+          for (const x of xs) {
+            const can = ammoCanParts(!!P.q);
+            for (const g of can.paint) P.addEquipment('turret', g, x, y, z);
+            for (const g of can.dark) P.addEquipment('turretDark', g, x, y, z);
+          }
+        };
         if (vid === 'm1a1') {
           // M1A1: stowed M2 across the rack (muzzle to x 0.878, grazing the
           // 0.60 crate top) + a tow-cable run mounted along the left wall band.
           const buildTejasFamilyHullCourse19 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', seed: 11,
-              elev: 0.08, ammo: false, rotation: [0, 1.51, 0] }), -0.05, rkY, -3.14);
+            rackCans([-0.37, -0.05, 0.27], rkY, -3.14);
             // re-cert order 1 DELIVERED (r5 graduate-change loop): the F1 cable now
             // rides the LEFT SKIRT TOP LEDGE in the HULL frame. The deferred
             // failure is understood — the r4 attempt kept the verdict's hull-frame
@@ -5565,8 +5580,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           // M1A1HA: stowed M2 WITH SHIELD + a spare-link strip flat on the
           // freed floor (tops 2.00 — under the stowed barrel line).
           const buildTejasFamilyHullCourse20 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', seed: 12,
-              elev: 0.08, ammo: false, shield: true, rotation: [0, 1.51, 0] }), -0.05, rkY, -3.14);
+            rackCans([-0.40, -0.08], rkY, -3.14);
             seat(FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.40, seed: 5,
               rotation: [0, Math.PI / 2, 0] }), 0.30, rkY + 0.035, -3.22);
             // §B3.2 (2026-08-06) — RIGHT skirt-ledge tow cable: the m1a1 LEFT
@@ -5591,8 +5605,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           // TEJAS/TUSK: CROWS identity + stowed loader's M240 (muzzle resting
           // at the right duffel edge) + an antenna base pot by the rear post.
           const buildTejasFamilyTurretCourse12 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 13,
-              elev: 0.06, rotation: [0, 1.45, 0] }), -0.21, rkY, -3.14);
+            rackCans([-0.37, -0.05], rkY, -3.14);
             seat(FITTINGS.antennaWhip({ mats: P.mats, h: 0.20, r: 0.010, slot: 'dark',
               seed: 9 }), -1.00, rkY, -3.40);
             if (vid === 'm1a2') {
@@ -5630,8 +5643,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           // 0.727 <= the 0.73 fill class; bedroll crown 0.823 under the
           // 0.8475 rail line.
           const buildTejasFamilyTurretCourse13 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 14,
-              elev: 0.06, rotation: [0, 1.45, 0] }), -0.21, rkY, -3.14);
+            rackCans([-0.53, -0.21], rkY, -3.14);
             P.add('turret', box(0.46, 0.41, 0.30), 0.38, 0.522, -3.14);          // rigid ammo crate
             P.add('turretDetail', box(0.42, 0.012, 0.115), 0.38, 0.732, -3.215); // lid slats
             P.add('turretDetail', box(0.42, 0.012, 0.115), 0.38, 0.732, -3.075);
@@ -5646,8 +5658,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           // the right rear post — the M1A2C loadout keeps the loader M240 on
           // the skate (station branch) and the §H.4 systems kit above.
           const buildTejasFamilyAssemblyCourse1 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 17,
-              elev: 0.06, rotation: [0, -1.45, 0] }), 0.72, rkY, -3.14);
+            rackCans([0.48, 0.80], rkY, -3.14);
             seat(FITTINGS.antennaWhip({ mats: P.mats, h: 0.20, r: 0.010, slot: 'dark',
               seed: 15 }), 0.95, rkY, -3.38);
           };
@@ -6223,11 +6234,13 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // angles. Sunk into a lashed stowage tray (frame rails + strap licks =
     // the §B3 connected read); stack tops now ~1.81 vs the 1.775 louver
     // line (+0.03 class).
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the AbramsX's
+    // weapon is its remote station; the tray holds a flat steel tool chest (profiles/fieldChest.ts) under the lashings
+    // instead of a stowed M240 kept for the old roof-MG census.
     {
-      const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 47,
-        elev: 0.02, ammo: false, rotation: [0, 1.55, 0] });
-      mag.position.set(-1.02, 1.585, -3.02);
-      P.hullG.add(mag);
+      const chest = fieldChestParts(0.50, 0.058, 0.20, { high: !!P.q, front: -1, handles: false });
+      for (const g of chest.paint) P.addEquipment('hull', g, -1.02, 1.745, -3.02);
+      for (const g of chest.dark) P.addEquipment('hullDark', g, -1.02, 1.745, -3.02);
       P.add('hullDetail', box(0.56, 0.035, 0.022), -1.02, 1.758, -3.135);  // tray rail
       P.add('hullDetail', box(0.56, 0.035, 0.022), -1.02, 1.758, -2.905);  // tray rail
       P.add('hullDetail', box(0.022, 0.035, 0.25), -1.30, 1.758, -3.02);   // tray end

@@ -8,6 +8,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addLeclercXRearFittings } from './leclercXRearFittings.ts';
 import { leclercWheelSolids } from './leclercXWheels.ts';
@@ -273,7 +274,8 @@ function roofEquipment(P: TankBuilderPort): void {
   mg.add('turretDark', box(.080, .072, .265), .90, 2.475, .460);
   mg.add('turretDark', cylZ(.019, .48, 20), .90, 2.479, .8125);
   mg.add('turretDark', cylZ(.006, .006, 16), .90, 2.479, 1.055);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'leclercXRoofGpmg', caliberMm: 7.62 });
 }
 
 function rearRack(P: TankBuilderPort): void {

@@ -20,6 +20,7 @@ import { merkavaDishedFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { FITTINGS, KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -3602,7 +3603,17 @@ function merkavaMG(
   rod: MachineGunRod | null = null,
 ): void {
   const { box, cylY, cylZ } = KIT;
-  markMerkavaMachineGunFitting(P, 'mag58', wide ? 'wideRoof' : 'roof');
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the
+  // commander's and loader's 7.62 mm MAG are working stations. The bearing, spindle, bridge and fork turn on the
+  // pintle; the receiver, feed, can and barrel pitch on the trunnion pins (the factory mounts the marked stock,
+  // auxiliaryStation.ts). The muzzle is the barrel's front (addMerkavaMachineGunBarrel).
+  const rodY = wide ? rod?.dy ?? 0.246 : 0.26;
+  const muzzleZ = wide ? (rod?.dz ?? 0.51) + (rod?.len ?? 0.74) / 2 : 0.675;
+  const index = P.turretG.children.filter((child) => child.name.startsWith('merkavaRoofMag')).length + 1;
+  const station = beginAuxiliaryStation(P, { name: `merkavaRoofMag${index}`, caliberMm: 7.62,
+    yaw: [x, y, z], pivot: [x, y + 0.247 * s, z + 0.015 * s], muzzle: [x, y + rodY * s, z + muzzleZ * s] });
+  Object.assign(station.root.userData, { browningDerivedStandard: 'cot-browning-family-v2-exact', weaponClass: 'mag58',
+    machineGunFinish: 'gunmetal', sourceMeasuredMachineGun: true, crewServed: true, merkavaMount: wide ? 'wideRoof' : 'roof' });
   const receiverW = (wide ? 0.15 : 0.09) * s;
   const receiverH = 0.09 * s;
   const receiverL = 0.44 * s;
@@ -3620,6 +3631,7 @@ function merkavaMG(
     P.add('turretDark', cylY(0.026 * s, 0.026 * s, 0.025 * s, 10),
       x + side * (wide ? 0.105 : 0.065) * s, y + 0.247 * s, z + 0.015 * s);
   }
+  station.mark('yaw');
 
   P.add('turretDark', box(receiverW, receiverH, receiverL), x, y + 0.24 * s, z);
   // Receiver top cover, removable side plate, rear buffer and charging handle
@@ -3667,6 +3679,7 @@ function merkavaMG(
     addMerkavaWideMachineGunBody(P, x, y, z, s);
   }
   addMerkavaMachineGunBarrel(P, x, y, z, s, wide, rod);
+  station.mark('pitch');
 }
 
 // Long pintle MG lying along the plinth band with OPEN AIR under the barrel
@@ -7269,18 +7282,9 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     if (!sourceOracleTurret) applyMerkavaTurretKit(P, p, t);
     merkavaSourceFinish(P, p, t);
 
-    // The owner Merkava marks predate the fittings census and used hand-built
-    // receiver fragments that could not participate in the standard's mounted
-    // weapon audit.  Seat one complete, marker-bearing commander's MAG on the
-    // actual roof plane for each playable mark.
-    if (['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(P.spec.id)) {
-      const roofMG = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.84,
-        ammo: true, elev: 0.08, seed: 7400 + P.spec.id.length,
-      });
-      roofMG.position.set(-0.56, V((p.shellTopY ?? p.gunAxisY + 0.45) - 0.025), L(-0.12));
-      P.turretG.add(roofMG);
-    }
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the owner
+    // marks' hand-built commander's and loader's MAGs are working stations now (merkavaMG), so the census MAG once
+    // seated beside them for the mounted-weapon audit, a third roof gun, is gone.
 
     if (P.spec.id === 'merkava4b') {
       // Close the two small fender-root pockets at the projected prow.  These
@@ -9744,17 +9748,15 @@ function merkavaSourceFinish(
     const cmdTop = hatch(cmd.x, cmd.z, cmd.r, cmd.top - 0.075, { raise: 0.075, periscopes: 6 });
     const loadTop = hatch(load.x, load.z, load.r, load.top - 0.065, { raise: 0.065, periscopes: 4 });
     // The supplied Mk.3C/D roofs carry independent commander and loader
-    // pintles in addition to the low centerline weapon.  Seat each receiver
-    // on its hatch crown so the three weapons read as equipment, not rods
-    // floating above the casting.
+    // pintles. Seat each receiver on its hatch crown so the weapons read as
+    // equipment, not rods floating above the casting.
     merkavaMG(P, cmd.x, V(cmdTop - 0.030), L(cmd.z + 0.03), isD ? 1.16 : 1.20, true,
       { dy: 0.19, dz: 0.59, len: 0.98 });
     merkavaMG(P, load.x, V(loadTop - 0.030), L(load.z + 0.02), isD ? 1.08 : 1.10, true,
       { dy: 0.18, dz: 0.57, len: 0.92 });
-    // Source-readable coaxial roof weapon, planted on a closed cradle.
-    const gunRoof = Math.min(capWorld - 0.11, roofAt(-0.72));
-    P.add('turret', box(0.30, 0.060, 0.32), 0.12, V(gunRoof + 0.015), L(-0.70), 0, 0.04, 0);
-    merkavaMG(P, 0.12, V(gunRoof + 0.025), L(-0.64), 0.92, true, { dy: 0.20, dz: 0.58, len: 0.88 });
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Mk 3's
+    // third gun is its 12.7 mm M2 over the main gun, laid with the gun (the Mk 3D X carries it on its gun rig); the 7.62
+    // stand-in on a fixed roof cradle here could neither lay with the gun nor turn as a roof station, so it is gone.
     sight(isD ? -0.70 : 0.04, -1.02, Math.min(capWorld - 0.20, roofAt(-1.02)), 0.25, 0.22, 0.24, isD ? -0.08 : 0.06);
     deckRod([[-0.98, roofAt(-2.44), -2.44], [-0.30, roofAt(-2.67), -2.67], [0.44, roofAt(-2.72), -2.72], [0.92, roofAt(-2.48), -2.48]], 'turretDark', 0.024);
     for (const s of [-1, 1]) {
