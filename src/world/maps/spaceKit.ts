@@ -606,7 +606,7 @@ function roverGarage(T: HutTools, world: SpaceWorld): void {
       T.tag('post', `post${sx}${z}`, 'metal');
       T.put(T.cylinder(0.12, 0.14, 4.6, 8).translate(sx * 5.6, 0.12 + 2.3, z), P.frame);
     }
-    T.tag('plate', 'canopy-frame', 'metal');
+    T.tag('roof', 'canopy-frame', 'metal'); // (the canopy's frame comes down with its blanket, as one roof)
     for (const sx of [-1, 1]) T.put(strut(T, [sx * 5.6, 4.75, -7.2], [sx * 5.6, 4.75, 7.2], 0.16), P.frame);
     for (const z of [-6.8, -2.3, 2.3, 6.8]) T.put(strut(T, [-5.7, 4.85, z], [5.7, 4.85, z], 0.12), P.frame);
     T.tag('roof', 'canopy', 'metal');
@@ -767,9 +767,9 @@ function greenhouse(T: HutTools, world: SpaceWorld): void {
       p.setXYZ(i, x * belly, yy, zz < 0 ? zz * 0.02 : zz * belly);
     }
     pillow.computeVertexNormals();
-    sectors(pillow, 2, -Math.PI / 2).forEach((h, j) => {
+    sectors(pillow, 12, -Math.PI / 2).forEach((h, j) => {
       h.rotateX(-Math.PI / 2);
-      T.tag('sheet', `pillow${k}${j}`, 'glass');
+      T.tag('roof', `pillow${k}${j}`, 'canvas'); // (the film is the house's roof: it comes down flat where it stood, together)
       T.put(h.translate(0, y0, (z0 + z1) / 2), 0xa8c8c0, 0.03);
     });
   }

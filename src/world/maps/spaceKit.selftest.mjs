@@ -3,8 +3,8 @@
 //     same count) and as Mars does (structureKit spaceCraft), the two forms differing;
 //   - each form names its pieces for the wreck (an anatomy that checks against its build, 48 pieces at most), stands
 //     inside its record, nothing floating, its footing on the ground;
-//   - its settled wreck is no raft (a quarter of the intact's height at least), within 1.5 x its triangles, and covers
-//     its plan;
+//   - its settled wreck is no raft (a quarter of the intact's height at least), no higher than it stood (1 m), within 1.5 x
+//     its triangles, and covers its plan;
 //   - no painted opening: every glowing pane sits in a frame (an aperture's vertices are never on the hull's surface).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -50,6 +50,12 @@ for (const kind of SPACE_KINDS) {
     assert.ok(heightP90(w) >= 0.25 * heightP90(f) || heightP90(w) >= 0.6, `${label}: its wreck no raft`);
     assert.ok(w.getAttribute('position').count <= 1.5 * f.getAttribute('position').count, `${label}: its wreck within 1.5 x`);
     assert.ok(plan(w) >= 0.6 * plan(f), `${label}: its wreck covers its plan`);
+    // (2026-10-15: the greenhouse's film and the rover garage's canopy heaped 15 m and 10 m high over 5 m stations) the
+    // heap no higher than the station stood, give or take a piece leaning on it
+    for (const seed of [4242, 7, 99]) {
+      const top = new THREE.Box3().setFromBufferAttribute(settleLightWreck(f, a, seed).getAttribute('position')).max.y;
+      assert.ok(top <= b.max.y + 1.0, `${label}: its wreck (seed ${seed}) ${top.toFixed(2)} m high, the station ${b.max.y.toFixed(2)} m`);
+    }
   }
   // the generic build is the Moon's, the legacy builder's draws spent first (the same count as the legacy alone)
   const r1 = counted(9);
