@@ -49,6 +49,9 @@ Before publishing:
    (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
    that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
    (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
+   Since 2026-10-14 (shard codec v3) the capture writes the newest exact encoding (server/collisionManifestCodec.ts);
+   `node tools/transcode-collision-manifests.mjs [--check]` re-encodes the committed shards without building a world, each
+   decoded back bit for bit before the index is rewritten.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
