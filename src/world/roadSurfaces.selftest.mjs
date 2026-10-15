@@ -55,7 +55,7 @@ assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.cliffbridge, town).town
 assert.deepEqual(pavedSurfaceUniforms(undefined, town).extra, [1, 0, 0, 0], 'no config: tone 1, no town street class, no lines or fills');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.urban, town).extra, [0.92, 2, 1, 0], 'Steinburg: setts inside the kerbed town, centre lines past it');
 assert.deepEqual(pavedSurfaceUniforms(MAP_PAVED_SURFACES.ruinspires, town).extra.slice(2), [1, 1], 'Ruinspires: centre lines and shell-hole fills');
-assert.equal(pavedSurfaceUniforms(MAP_PAVED_SURFACES.foundry, town).extra[0], 0.55, 'Ironworks: sooty setts');
+assert.equal(pavedSurfaceUniforms(MAP_PAVED_SURFACES.foundry, town).extra[0], 0.62, 'Ironworks: sooty setts');
 // (r4 frames: Kestrel's concrete lane class read smoother than its own slab print — it keeps the print, roads and aprons)
 assert.equal(MAP_PAVED_SURFACES.airfield, undefined, 'Kestrel keeps its airfield slabs');
 

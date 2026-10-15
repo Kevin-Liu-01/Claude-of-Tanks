@@ -65,10 +65,12 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
   // the creek, setts (MAP_PATH_SURFACES). (R2: no tram line — distance-field rails bent round every junction)
   blackglass: Object.freeze({ street: 'asphalt', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 0.6, cracks: 0.8, covers: 0.6,
     puddles: 0.5, tone: 0.85 }),
-  // Ironworks (Völklingen, 1945): the works' and the town's streets in setts. (Ground lane, 2026-10-15: `townOnly` kept
-  // the setts to the village rect, and the ironworks' own yard roads round the map's centre — main's sett print there —
-  // fell to a plain brown carriageway in the R1c pixel pairs; the works are paved, so every street is)
-  foundry: Object.freeze({ street: 'cobble', square: 'cobble', tone: 0.55 }),
+  // Ironworks (Völklingen, 1945): the works town's streets in setts, the roads beyond it cinder and earth. (Ground lane,
+  // 2026-10-15: the "missing setts" of the first R1c pairs were inside the town rect — its procedural setts reading as a
+  // plain brown band beside main's print under R1c's uniforms; main itself paves none of Ironworks. The setts now read
+  // (roadSurfaceShader.ts: darker grit joints, wider, held further out, the domes' relief), and the stone is the sooty
+  // basalt's 0.62)
+  foundry: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 0.62 }),
   // Monsoon Ridge (Kohima, 1944): no paved street of its own — the tone and wear of its metalled road (MAP_PATH_SURFACES)
   // only: a dark tar macadam, few cracks, no covers (R2, the first frames: a pale modern grey band)
   monsoon: Object.freeze({ tone: 0.70, patches: 0.6, cracks: 0.3, covers: 0 }),

@@ -276,28 +276,30 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             float sc = (sq.y + cr.x * swd) / swd, si = floor(sc);
             vec2 sh = cellHash2(vec2(ci, si + 311.0));
             vec2 sf = vec2(fract(course) * 0.17, fract(sc) * swd);
-            float jw = 0.007 + 0.005 * sh.y;
+            // (ground lane, 2026-10-15: Ironworks' setts read as a plain brown band — dust-coloured hairline joints, gone past
+            // 9 m) sand-and-grit joints a centimetre and more, dark, held to 40 m; each stone ±18 %, its dome lit
+            float jw = 0.010 + 0.006 * sh.y;
             float jC = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, min(sf.x, 0.17 - sf.x))) * vC;
             float jL = (1.0 - smoothstep(jw, jw + 0.004 + 0.6 * fwP, min(sf.y, swd - sf.y))) * vL;
             // (r4 frames: a square's joints along the view still ruled it in fine stripes 20–50 m out — a corduroy) the joints'
             // dust lightens them toward the stones' own tone with distance
-            jointS = max(jC, jL) * (1.0 - 0.7 * smoothstep(9.0, 32.0, camDist));
-            vec3 stone = vec3(0.150, 0.146, 0.139) * (0.88 + 0.24 * sh.x)
+            jointS = max(jC, jL) * (1.0 - 0.5 * smoothstep(12.0, 40.0, camDist));
+            vec3 stone = vec3(0.150, 0.146, 0.139) * (0.82 + 0.36 * sh.x)
               * mix(vec3(1.0), sh.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), 0.6 * fract(sh.x * 3.7));
             stone *= 1.0 - 0.12 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil)
-            vec3 jointC = mix(mix(stone * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
+            vec3 jointC = mix(mix(stone * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
             float lost = step(0.992, sh.y) * svs;
-            vec3 settMean = mix(vec3(0.150, 0.146, 0.139), jointC, 0.20) * (1.0 - 0.10 * wheelW);
+            vec3 settMean = mix(vec3(0.150, 0.146, 0.139), jointC, 0.26) * (1.0 - 0.10 * wheelW);
             col = mix(mix(settMean, stone, sv), jointC, jointS);
             col = mix(col, jointC * 0.6, lost);
             vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
             vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
-            pN = ((st2.x * 0.55 + tilt.x) * al + (st2.y * 0.55 + tilt.y) * pr) * (1.0 - jointS) * (1.0 - lost) * svs;
+            pN = ((st2.x * 0.80 + tilt.x) * al + (st2.y * 0.80 + tilt.y) * pr) * (1.0 - jointS) * (1.0 - lost) * svs;
           } else {
             // (roads lane R1 cost, 2026-10-10: past both sets of joints' resolution — a wide paved view's far half, where the
             // v3 series measured the paving's cost — the stones' limit at once: no per-sett hash, the same mean tone)
-            vec3 jointM = mix(mix(vec3(0.150, 0.146, 0.139) * 0.42, uMeanD.rgb * 0.55, 0.5), uMeanG.rgb * 0.62, mossy * 0.6);
-            col = mix(vec3(0.150, 0.146, 0.139), jointM, 0.20) * (1.0 - 0.10 * wheelW);
+            vec3 jointM = mix(mix(vec3(0.150, 0.146, 0.139) * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
+            col = mix(vec3(0.150, 0.146, 0.139), jointM, 0.26) * (1.0 - 0.10 * wheelW);
           }
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;
           if (fr) col *= 1.0 - 0.14 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
