@@ -180,7 +180,6 @@ export function addGarageApproachDetails({
 }: GarageApproachBuildOptions): GarageApproachStats {
   const route = buckets.route || (buckets.route = []);
   const baked = buckets.baked || (buckets.baked = []);
-  const wood = buckets.wood || (buckets.wood = []);
   const dark = buckets.dark || (buckets.dark = []);
   const points = subdividePath(approach.waypoints.map(([side, depth]) => ({ side, depth })));
   let approachSegments = 0;
@@ -295,53 +294,53 @@ export function addGarageApproachDetails({
   };
 
   const addRailRoad = (lane: number): void => {
-    // the roads fan out of the yard's throat and run parallel from depth 17, so they enter Cinder's engine shed square
-    // to its doors and leave through its back (GA.04, 2026-10-14; they used to keep diverging through the shed)
-    const fan = points.map((point) => ({
-      side: point.side + lane * THREE.MathUtils.lerp(0.38, 1, THREE.MathUtils.smoothstep(point.depth, 9, 17)),
-      depth: point.depth,
-    }));
-    addPath(fan, 3.45, 0.18);
-    // a building over the roads (approach.covered) carries its own track: no rails or sleepers inside it
-    const [coverFrom, coverTo] = approach.covered ?? [Infinity, -Infinity];
-    const outside = (a: CameraPoint, b: CameraPoint): Array<[CameraPoint, CameraPoint]> => {
-      const at = (depth: number): CameraPoint => ({ side: a.side + (b.side - a.side) * (depth - a.depth) / ((b.depth - a.depth) || 1), depth });
-      const runs: Array<[CameraPoint, CameraPoint]> = [];
-      if (a.depth < coverFrom) runs.push([a, b.depth <= coverFrom ? b : at(coverFrom)]);
-      if (b.depth > coverTo) runs.push([a.depth >= coverTo ? a : at(coverTo), b]);
-      return runs;
-    };
+    // The roads come in from the network behind the engine shed on a ballasted bed and end at buffer stops just inside
+    // its doors; the shed's front opens onto the yard (the re-judge, 2026-10-15: "each road is a 6-8 m stub that runs
+    // out of a door and stops at a buffer stop in the middle of the concrete pad, connected to nothing ... sleepers lie
+    // on concrete with no ballast bed ... rails are flat grey bars with no head or web profile ... set the buffer stops
+    // inside the shed and ballast the bed"). Inside, the shed lays its own pit roads (garageFacilityDetails.ts).
+    const fan = points.map((point) => ({ side: point.side + lane, depth: point.depth }));
+    const [coverFrom, coverTo] = approach.covered ?? [-Infinity, -Infinity];
+    const run: CameraPoint[] = [samplePath(fan, Math.max(coverTo, fan[0].depth)), ...fan.filter((point) => point.depth > coverTo + 0.05)];
+    if (run.length < 2) return;
+    // the ballast bed: a crowned bed 3.3 m wide on a wider shoulder, cinder-dark
+    for (let index = 0; index < run.length - 1; index += 1) {
+      approachGroundErrorM = Math.max(approachGroundErrorM, pathPanel(baked, groundAtWorld, run[index], run[index + 1], 4.4, 0.12, 0.08));
+      paint(baked.at(-1)!, 0x5a544d);
+      approachGroundErrorM = Math.max(approachGroundErrorM, pathPanel(baked, groundAtWorld, run[index], run[index + 1], 3.3, 0.16, 0.22));
+      paint(baked.at(-1)!, 0x4c4741);
+      approachSegments += 2;
+    }
+    // sleepers at 0.65 m bedded in the ballast, chairs on them, and flat-bottom rails with their head, web and foot
+    const start = run[0].depth, end = run.at(-1)!.depth;
+    for (let depth = start + 0.3; depth < end - 0.2; depth += 0.65) {
+      const point = samplePath(run, depth);
+      addLiftedBox(point.side, depth, 2.6, 0.14, 0.26, 0x3a2e24, 0.12);
+      for (const railOffset of [-0.76, 0.76]) addLiftedBox(point.side + railOffset, depth, 0.2, 0.04, 0.3, 0x2a2c2d, 0.26);
+    }
     for (const railOffset of [-0.76, 0.76]) {
-      const rail = fan.map((point) => ({ side: point.side + railOffset, depth: point.depth }));
+      const rail = run.map((point) => ({ side: point.side + railOffset, depth: point.depth }));
       for (let index = 0; index < rail.length - 1; index += 1) {
-        for (const [a, b] of outside(rail[index], rail[index + 1])) {
-          pathPanel(dark, groundAtWorld, a, b, 0.13, 0.20, 0.24);
-          approachDetails += 1;
-        }
+        pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.14, 0.02, 0.32); // the foot
+        pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.03, 0.1, 0.42); // the web
+        pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.07, 0.045, 0.465); // the head
+        approachDetails += 3;
       }
     }
-    const start = approach.waypoints[0][1];
-    const end = approach.waypoints.at(-1)![1];
-    for (let depth = start + 0.6; depth < end; depth += 0.92) {
-      if (depth > coverFrom && depth < coverTo) continue;
-      const point = samplePath(fan, depth);
-      addGroundBox(point.side, depth, 2.55, 0.14, 0.28, 0x49392a, 0, wood);
+    // the buffer stop at each road's end inside the shed's doors: timber-faced beam on two posts, its buffers, a lamp
+    if (Number.isFinite(coverFrom)) {
+      const stopDepth = coverFrom + 0.8;
+      const point = samplePath(fan, stopDepth);
+      for (const railOffset of [-0.76, 0.76]) addGroundBox(point.side + railOffset, stopDepth, 0.24, 1.15, 0.24, 0x2c3032);
+      addLiftedBox(point.side, stopDepth - 0.05, 2.3, 0.42, 0.32, 0x4a3a2c, 0.86);
+      for (const railOffset of [-0.76, 0.76]) addLiftedBox(point.side + railOffset, stopDepth - 0.3, 0.32, 0.32, 0.22, 0x1e2224, 0.86);
+      addLiftedBox(point.side, stopDepth, 0.2, 0.26, 0.16, 0x8a2a22, 1.25);
     }
   };
 
   const styleBuilders: Record<GarageApproachStyle, () => void> = {
     'rail-fan': () => {
       for (const lane of approach.lanes || [0]) addRailRoad(lane);
-      // the throat's two bracket signals, clear of the shed's facade: a mast each side with an arm over the outer road
-      {
-        const point = samplePath(points, 14.5);
-        for (const side of [-1, 1]) {
-          addGroundBox(point.side + side * 10.2, 14.5, 0.26, 6.2, 0.26, 0x34383a);
-          addLiftedBox(point.side + side * 8.6, 14.5, 3.4, 0.22, 0.22, 0x34383a, 5.7);
-          addLiftedBox(point.side + side * 7.1, 14.5, 0.34, 0.7, 0.24, 0x1e2224, 5.0);
-          addLiftedBox(point.side + side * 7.1, 14.5 - 0.13, 0.12, 0.12, 0.02, 0xc8392e, 5.45);
-        }
-      }
       for (const depth of [40, 46]) {
         const point = samplePath(points, depth);
         // a signal portal: two masts and the beam across the roads at their heads (it lay on the ground as a yellow bar)

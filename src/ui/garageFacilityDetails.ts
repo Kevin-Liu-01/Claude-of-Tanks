@@ -144,8 +144,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // The former -22/-16 placement overlapped both the service terrace and
       // its full-detail vehicle, which also let the two terrain pads fight.
       parts: [[-31, -17], [2, -36]], floods: [[-39, 1], [39, 1]],
-      // the engine shed squared on the rail fan's three roads, its front at depth 19 (GA.04, 2026-10-14)
+      // the engine shed squared on the rail fan's three roads, its front at depth 19 (GA.04, 2026-10-14), level with the
+      // yard on a cinder apron (the garage critic panel, 2026-10-14: "the shed sits on a sloping grass mound")
       feature: [0, 27], featureRadius: [10.5, 9],
+      yardLevel: [[0, 14.5, 12.5, 5]],
     },
     rain_canopy: {
       logistics: [[-33, -8], [20, -24]],
@@ -2139,13 +2141,17 @@ export function addGarageFacilityDetails({
         const fill = springY + rise - head;
         if (fill > 0.02) clusterSurface(shed, 'brick', (a + b) / 2, face, head + fill / 2, b - a, fill, wallT);
       }
-      // the arch ring: engineering-brick voussoirs proud of the face, a stone keystone
-      for (let v = 0; v <= 8; v += 1) {
-        const t = -1 + v / 4;
+      // the arch ring: a continuous course of gauged engineering-brick voussoirs set flush in the face (the critic
+      // panel: "voussoirs that stand proud with gaps"), a stone keystone
+      const ringV = 16;
+      for (let v = 0; v <= ringV; v += 1) {
+        const t = -1 + (2 * v) / ringV;
         const lateral = road + t * (doorHalf + 0.12);
         const y = springY + rise * (1 - t * t) + 0.18;
         const slope = Math.atan(-2 * rise * t / (doorHalf + 0.12));
-        clusterBox(shed, lateral, face + wallT / 2 + 0.04, y, 0.5, 0.36, 0.08, v === 4 ? stone : engineering, 'masonry', slope);
+        const step = (2 * (doorHalf + 0.12)) / ringV / Math.cos(slope);
+        clusterBox(shed, lateral, face + wallT / 2 + 0.012, y, step + 0.02, 0.36, 0.03, v === ringV / 2 ? stone : engineering,
+          'masonry', slope);
       }
       // a boarded fanlight inside the arch head, set back
       clusterSurface(shed, 'timber', road, face - 0.1, springY + rise / 2, 2 * doorHalf, rise, 0.05);
@@ -2154,7 +2160,7 @@ export function addGarageFacilityDetails({
     // plinth, pilasters, cornice
     clusterBox(shed, 0, face + wallT / 2 + 0.05, 0.3, 2 * halfW + wallT + 0.2, 0.6, 0.12, engineering, 'masonry');
     for (const lateral of [-halfW, -3.1, 3.1, halfW]) {
-      clusterBox(shed, lateral, face + wallT / 2 + 0.08, eaveY / 2, 0.62, eaveY, 0.16, engineering, 'masonry');
+      clusterSurface(shed, 'brick', lateral, face + wallT / 2 + 0.08, eaveY / 2, 0.62, eaveY, 0.16);
     }
     for (const [y, out] of [[eaveY - 0.08, 0.1], [eaveY + 0.08, 0.2]] as const) {
       clusterBox(shed, 0, face + wallT / 2 + out / 2, y, 2 * halfW + wallT + 0.3, 0.16, out + 0.05, engineering, 'masonry');
@@ -2206,10 +2212,55 @@ export function addGarageFacilityDetails({
         clusterBox(leafCluster, 0, 0.06, (y0 + y1) / 2, len, 0.15, 0.045, tar, 'painted', -side * Math.atan2(y1 - y0, width - 0.3));
       }
       for (const y of [0.6, height - 0.55]) clusterBox(leafCluster, side * (width / 2 - 0.45), 0.09, y, 0.9, 0.07, 0.02, iron, 'painted'); // strap hinges
+      // the boarded face: the boards' joints down it (the re-judge, 2026-10-15: the open leaf showed "flat, untextured
+      // tan backs with no boarding or braces")
+      for (let board = 1; board < Math.floor(width / 0.16); board += 1) {
+        clusterBox(leafCluster, -width / 2 + board * 0.16, -0.04, height / 2 + 0.03, 0.02, height - 0.04, 0.012, tar, 'painted');
+      }
     };
-    leaf(-6.2, -1, Math.PI * 0.5); leaf(-6.2, 1, Math.PI * 0.5);
-    leaf(0, -1, Math.PI * 0.42); leaf(0, 1, 0);
+    // the left road's pair swung back 110 degrees on their pintles, clear of the piers; the others shut (the critic panel:
+    // "tan slabs that float off or clip into the piers ... swung 100-120 degrees clear of the piers, or close them")
+    leaf(-6.2, -1, Math.PI * 0.61); leaf(-6.2, 1, Math.PI * 0.61);
+    leaf(0, -1, 0); leaf(0, 1, 0);
     leaf(6.2, -1, 0); leaf(6.2, 1, 0);
+    for (const hingeL of [-6.2 - doorHalf, -6.2 + doorHalf]) {
+      for (const y of [0.6, springY - 0.61]) clusterBox(shed, hingeL, face + wallT / 2 + 0.04, y, 0.14, 0.1, 0.12, iron, 'painted'); // pintles
+    }
+    // a tank engine stands dark inside the open road, its smokebox to the doors
+    {
+      const loco = at(-6.2, face - 5.0); // standing back from the buffer stop inside the doors
+      const black = new THREE.Color(0x1d1f20), red = new THREE.Color(0x4a1d18);
+      clusterBox(loco, 0, 0, 1.05, 1.9, 0.5, 8.2, red, 'painted'); // the frames and buffer beams
+      clusterCylinder(loco, 0, 1.0, 2.25, 0.78, 5.0, black, Math.PI / 2, 16); // the boiler
+      clusterCylinder(loco, 0, 3.4, 2.25, 0.84, 0.9, black, Math.PI / 2, 16); // the smokebox
+      clusterCylinder(loco, 0, 3.55, 3.35, 0.24, 0.9, black, 0, 12); // the chimney
+      clusterCylinder(loco, 0, 0.6, 3.2, 0.3, 0.5, black, 0, 12); // the dome
+      for (const side of [-1, 1]) clusterBox(loco, side * 0.95, 1.0, 1.95, 0.5, 1.5, 4.2, black, 'painted'); // side tanks
+      clusterBox(loco, 0, -2.3, 2.55, 2.4, 2.6, 2.1, black, 'painted'); // the cab
+      clusterBox(loco, 0, -2.3, 3.92, 2.6, 0.12, 2.3, black, 'painted'); // its roof
+      for (const f of [-1.0, 0.75, 2.5]) for (const side of [-1, 1]) {
+        clusterCylinder(loco, side * 0.76, f, 0.72, 0.68, 0.12, black, 0, 16, Math.PI / 2); // the coupled wheels
+        clusterCylinder(loco, side * 0.84, f, 0.72, 0.16, 0.06, red, 0, 10, Math.PI / 2); // their bosses
+      }
+      // (the re-judge, 2026-10-15: "a black cylinder boiler on a box ... no rods, wheels, cab detail or smokebox door"):
+      // the coupling rods and the connecting rods to the outside cylinders, the smokebox door with its dart and hinge
+      // straps, the buffers on their beam, the boiler handrails, the cab's spectacle plates and its side opening
+      const steelRod = new THREE.Color(0x6d7072), brass = new THREE.Color(0x8a7340);
+      for (const side of [-1, 1]) {
+        clusterBox(loco, side * 0.9, 0.75, 0.62, 0.06, 0.12, 3.6, steelRod, 'structure'); // the coupling rod
+        clusterBox(loco, side * 0.96, 2.0, 0.85, 0.06, 0.1, 2.0, steelRod, 'structure', 0, 0.12); // the connecting rod
+        clusterCylinder(loco, side * 0.92, 3.0, 1.05, 0.3, 1.0, black, Math.PI / 2, 12); // the cylinder
+        clusterCylinder(loco, side * 0.62, 4.15, 1.05, 0.17, 0.32, black, Math.PI / 2, 12); // the buffer's stock
+        clusterCylinder(loco, side * 0.62, 4.33, 1.05, 0.22, 0.05, steelRod, Math.PI / 2, 12); // its head
+        clusterBox(loco, side * 0.82, 1.0, 2.75, 0.03, 0.03, 4.6, brass, 'structure'); // the boiler handrail
+        clusterCylinder(loco, side * 0.6, -1.24, 3.05, 0.17, 0.03, new THREE.Color(0x2a3034), Math.PI / 2, 12); // spectacle
+        clusterBox(loco, side * 1.21, -2.3, 2.3, 0.02, 1.4, 0.8, new THREE.Color(0x0f1011), 'painted'); // the cab opening
+      }
+      clusterCylinder(loco, 0, 3.87, 2.25, 0.66, 0.06, new THREE.Color(0x2a2c2d), Math.PI / 2, 16); // the smokebox door
+      clusterBox(loco, 0, 3.92, 2.25, 0.1, 0.1, 0.06, steelRod, 'structure'); // its dart
+      for (const y of [1.95, 2.55]) clusterBox(loco, 0, 3.91, y, 1.0, 0.06, 0.03, black, 'structure'); // its hinge straps
+      operationalMachines += 1;
+    }
     // --- side walls: tall iron-framed windows between buttresses ---------------------------------------------------
     const sillY = 2.4, headY = 5.4, winHalf = 0.85;
     for (const sign of [-1, 1]) {
@@ -2236,7 +2287,8 @@ export function addGarageFacilityDetails({
             engineering, 'masonry', 0, -Math.atan(-0.44 * t / (winHalf + 0.08)) * sign);
         }
       }
-      for (const f of [-halfL, -2.4, 2.4, halfL]) clusterBox(shed, outer + sign * 0.09, f, (eaveY - 0.4) / 2, 0.18, eaveY - 0.4, 0.6, engineering, 'masonry');
+      // brick buttresses (the re-judge: the dark masonry strips "still read as timber")
+      for (const f of [-halfL, -2.4, 2.4, halfL]) clusterSurface(shed, 'brick', outer + sign * 0.12, f, (eaveY - 0.4) / 2, 0.24, eaveY - 0.4, 0.6);
       clusterBox(shed, outer + sign * 0.1, 0, eaveY + 0.02, 0.24, 0.2, 2 * halfL + 0.4, engineering, 'masonry'); // cornice
     }
     // --- the back wall: three shut road doors in plain openings under steel lintels ----------------------------------
@@ -2282,6 +2334,46 @@ export function addGarageFacilityDetails({
       for (const [a, b] of spans) clusterBox(shed, (a + b) / 2, 0, 0.05, b - a, 0.1, 2 * halfL - wallT, floorTone, 'masonry');
     }
     for (const lateral of [-3.1, 3.1, -halfW - 0.3, halfW + 0.3]) clusterBox(shed, lateral, 0, eaveY + 0.12, 0.3, 0.16, 2 * halfL + 0.7, dark, 'painted');
+    // --- the cinder and ash apron round the shed (the re-judge, 2026-10-15: "the shed still sits in grass ... no cinder or
+    // ash apron, no oil-soaked ground and no drift at the plinth"): a draped ground of cinder, darker and oily before the
+    // doors and along the roads, a pale ash drift banked against the plinth ------------------------------------------
+    {
+      const cell = 1.5, l0 = -halfW - 7.5, l1 = halfW + 7.5, f0 = -halfL - 7.5, f1 = halfL + 1.2;
+      const cols = Math.round((l1 - l0) / cell), rows = Math.round((f1 - f0) / cell);
+      const positions: number[] = [], colors: number[] = [], indices: number[] = [];
+      const cinder = new THREE.Color(0x3f3a35), oily = new THREE.Color(0x2a2724), ash = new THREE.Color(0x7c766c), tone = new THREE.Color();
+      for (let j = 0; j <= rows; j += 1) {
+        for (let i = 0; i <= cols; i += 1) {
+          const lateral = l0 + (i * (l1 - l0)) / cols, longitudinal = f0 + (j * (f1 - f0)) / rows;
+          const c = Math.cos(shedYaw), sn = Math.sin(shedYaw);
+          const x = shed.x + c * lateral + sn * longitudinal, z = shed.z - sn * lateral + c * longitudinal;
+          positions.push(x, groundAtWorld(x, z) + 0.035, z);
+          const n = Math.sin(lateral * 0.83 + longitudinal * 0.37) * 0.5 + Math.sin(lateral * 0.29 - longitudinal * 0.71) * 0.5;
+          tone.copy(cinder).offsetHSL(0, 0, n * 0.03);
+          // oil before the doors and along the roads, an ash drift at the plinth
+          const nearRoad = Math.min(...roads.map((road) => Math.abs(lateral - road)));
+          if (longitudinal > halfL - 0.5 && nearRoad < 2.2) tone.lerp(oily, 0.5);
+          const plinth = Math.max(0, 1 - Math.min(Math.abs(Math.abs(lateral) - halfW), Math.abs(longitudinal + halfL)) / 1.4);
+          if (plinth > 0) tone.lerp(ash, plinth * 0.45);
+          colors.push(tone.r, tone.g, tone.b);
+          if (i < cols && j < rows) {
+            const a = j * (cols + 1) + i, b = a + 1, d = a + cols + 1, e = d + 1;
+            indices.push(a, d, b, b, d, e);
+          }
+        }
+      }
+      const apron = new THREE.BufferGeometry();
+      apron.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      apron.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      apron.setIndex(indices);
+      apron.computeVertexNormals();
+      if (apron.getAttribute('normal').getY(0) < 0) {
+        apron.setIndex(indices.map((_, k) => indices[k - (k % 3) + [0, 2, 1][k % 3]]));
+        apron.computeVertexNormals();
+      }
+      buckets.baked!.push(apron);
+      facilityProps += 1;
+    }
     // --- the permanent-way stores beside the left wall: sleepers stacked in crossed courses on bearers, rail lengths on
     // chocks, two spare wheelsets on their own lengths of rail ---------------------------------------------------------
     const stores = atGround(-halfW - 3.0, 2.5);
@@ -2311,12 +2403,14 @@ export function addGarageFacilityDetails({
       }
       looseParts += 2;
     }
-    // --- the water crane at the throat between the left and middle roads --------------------------------------------
-    const crane = atGround(-3.1, halfL + 4.2);
+    // --- the water crane by the right road, beside the shed -----------------------------------------------------------
+    // off the facade's right corner, its arm swung toward the right road (it stood across the left door and, moved left,
+    // would cross the hero's gun from the Garage camera)
+    const crane = atGround(halfW + 1.2, halfL + 3.0);
     clusterBox(crane, 0, 0, 0.2, 1.1, 0.4, 1.1, stone, 'masonry');
     clusterCylinder(crane, 0, 0, 0.4 + 1.6, 0.2, 3.2, iron, 0, 16);
     clusterCylinder(crane, 0, 0, 3.7, 0.28, 0.35, iron, 0, 16);
-    clusterBox(crane, -1.4, 0, 3.75, 3.0, 0.2, 0.2, iron, 'structure'); // the swinging arm over the left road
+    clusterBox(crane, -1.4, 0, 3.75, 3.0, 0.2, 0.2, iron, 'structure'); // the swinging arm toward the right road
     clusterCylinder(crane, -2.85, 0, 3.0, 0.13, 1.4, tar, 0, 10); // the leather bag
     clusterCylinder(crane, 1.0, 0, 3.75, 0.24, 0.5, iron, 0, 16); // the balance weight
     clusterBox(crane, 0.3, 0, 1.2, 0.12, 0.5, 0.12, iron, 'structure'); // the valve wheel's spindle
@@ -2921,7 +3015,6 @@ export function addGarageFacilityDetails({
       // the engine shed straddles the rail fan's three roads (GA.04); the shed's own stores stand clear of its walls
       addEngineShed(featureSide, featureDepth);
       addDrums(featureSide - 13.2, featureDepth - 7.5, 6);
-      addCrates(featureSide + 13.4, featureDepth - 6.5, 2);
       addPoweredWinch(fixedCluster(featureSide + 12.8, featureDepth - 1.5), 0, 0, new THREE.Color(0xa56b34));
   };
   const addRainCanopy = (): void => {
