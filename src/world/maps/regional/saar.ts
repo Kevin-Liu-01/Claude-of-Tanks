@@ -136,6 +136,66 @@ const blastFurnace: RegionalBuilder = (ctx) => {
       }
       if (!mobile) for (let y = 3; y < sh - 1; y += 3.5) ring(sink, sx, y, stz, sr, 0.2);
     }
+    // (props census #13, lane B 2026-10-15; the judges: "the stoves and furnace are bare cylinders (no plate seams,
+    // platforms, railings, ladders)") the furnace's working platform round its stack and the charging platform's rail;
+    // the stack's and each stove's plate seams; each stove's ladder up its outer side to its top platform and rail
+    const deck = { colour: TRUSS, decor: true, exposed: true }, rail = { colour: OXIDE, decor: true, exposed: true };
+    const seam = { colour: shade(PLATE, 0.78), decor: true, fine: true, exposed: true };
+    // (a deck a closed disc through the shaft it rings, as the bands are: its plate meets the shell all round)
+    const ringDeck = (cx: number, cz: number, y: number, r1: number) => {
+      const n = 12;
+      sink.cylinder('structureMetal', [cx, y, cz], 'y', 0.08, r1 + 0.03, n, deck, r1 + 0.03, true);
+      for (let k = 0; k < n; k++) {
+        const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2, rr = r1 * Math.cos(Math.PI / n) - 0.03;
+        const P = (r: number, a: number, yy: number): Vec3 => [cx + Math.cos(a) * r, yy, cz + Math.sin(a) * r];
+        sink.member('structureMetal', P(rr, a0, y + 0.08), P(rr, a0, y + 1.1), 0.05, 0.05, [Math.cos(a0), 0, Math.sin(a0)], rail, 0);
+        sink.member('structureMetal', P(rr, a0, y + 1.08), P(rr, a1, y + 1.08), 0.05, 0.05, [0, 1, 0], rail, 0);
+      }
+    };
+    const stackR = (y: number): number => fr * (1.05 - 0.33 * Math.max(0, Math.min(1, (y - ch - 1.2) / (fh - ch - 1.2))));
+    const py = ch + 1.2 + (fh - ch - 1.2) * 0.45;
+    ringDeck(0, fz, py, stackR(py) + 1.2);
+    for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
+      const e = fr * 0.72 + 0.66;
+      sink.member('structureMetal', [ax * e, top + 1.3, fz + az * e], [bx * e, top + 1.3, fz + bz * e], 0.05, 0.05, [0, 1, 0], rail, 0);
+      sink.member('structureMetal', [ax * e, top + 0.3, fz + az * e], [ax * e, top + 1.32, fz + az * e], 0.05, 0.05, [ax, 0, 0], rail, 0);
+    }
+    // (seams and stiles in lengths of 4 m at most: a long thin member is a sliver to the integrity gate)
+    const lengths = (y0: number, y1: number): Array<[number, number]> => {
+      const n = Math.max(1, Math.ceil((y1 - y0) / 4));
+      return Array.from({ length: n }, (_, i) => [y0 + (y1 - y0) * i / n, y0 + (y1 - y0) * (i + 1) / n]);
+    };
+    if (!mobile) for (let k = 0; k < 12; k++) {
+      const a = (k + 0.5) / 12 * Math.PI * 2;
+      for (const [y0, y1] of lengths(ch + 1.3, fh - 0.2)) {
+        sink.member('structureMetal', [Math.cos(a) * (stackR(y0) + 0.01), y0, fz + Math.sin(a) * (stackR(y0) + 0.01)],
+          [Math.cos(a) * (stackR(y1) + 0.01), y1, fz + Math.sin(a) * (stackR(y1) + 0.01)], 0.05, 0.025, [Math.cos(a), 0, Math.sin(a)], seam, 0);
+      }
+    }
+    for (const sd of [-1, 1]) {
+      const sx = sd * (sr + 0.3);
+      if (!mobile) for (let k = 0; k < 8; k++) {
+        const a = (k + 0.5) / 8 * Math.PI * 2;
+        for (const [y0, y1] of lengths(0.4, sh - 0.15)) {
+          sink.member('structureMetal', [sx + Math.cos(a) * (sr + 0.01), y0, stz + Math.sin(a) * (sr + 0.01)], [sx + Math.cos(a) * (sr + 0.01), y1, stz + Math.sin(a) * (sr + 0.01)],
+            0.05, 0.025, [Math.cos(a), 0, Math.sin(a)], seam, 0);
+        }
+      }
+      const lx = sx + sd * (sr + 0.28);
+      for (const dz of [-0.22, 0.22]) for (const [y0, y1] of lengths(0, sh - 0.05)) sink.member('structureMetal', [lx, y0, stz + dz], [lx, y1, stz + dz], 0.05, 0.05, [sd, 0, 0], rail, 0);
+      if (!mobile) for (let y = 0.3; y < sh - 0.2; y += 0.3) sink.span('structureMetal', lx - 0.02, y - 0.015, stz - 0.22, lx + 0.02, y + 0.015, stz + 0.22, { colour: OXIDE, decor: true, fine: true });
+    }
+    // the stoves' shared top platform (one deck through both shells, clear of the furnace) and its rail
+    {
+      const y = sh - 0.1, xe = 2 * sr + 0.3 + 0.9, z0 = stz - sr - 0.9, z1 = Math.min(stz + sr + 0.9, fz - stackR(y) - 0.25);
+      sink.span('structureMetal', -xe, y, z0, xe, y + 0.08, z1, deck);
+      const c: Array<[number, number]> = [[-xe + 0.03, z0 + 0.03], [xe - 0.03, z0 + 0.03], [xe - 0.03, z1 - 0.03], [-xe + 0.03, z1 - 0.03]];
+      for (let k = 0; k < 4; k++) {
+        const [ax, az] = c[k], [bx, bz] = c[(k + 1) % 4];
+        sink.member('structureMetal', [ax, y + 1.08, az], [bx, y + 1.08, bz], 0.05, 0.05, [0, 1, 0], rail, 0);
+        sink.member('structureMetal', [ax, y + 0.08, az], [ax, y + 1.1, az], 0.05, 0.05, [1, 0, 0], rail, 0);
+      }
+    }
     sink.member('structureMetal', [-(sr + 0.3), 9.5, stz + sr], [0, 9.5, fz - fr - 0.4], 1.0, 1.0, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true }, 0);
     for (let k = 0; k < 8; k++) {
       const a0 = k / 8 * Math.PI * 2, a1 = (k + 1) / 8 * Math.PI * 2, rr = fr + 1.0;
