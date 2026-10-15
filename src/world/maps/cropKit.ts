@@ -20,7 +20,11 @@ import { mulberry32, type HeightField, type TerrainLayout } from '../terrain.ts'
 
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 /** The crop settings of a map's props (props.ts PropsSettings: cropFields, cropForm). */
-interface PropsSettings { cropFields: number; cropForm?: 'harvest' | 'wet-upright' | 'grain' }
+interface PropsSettings { cropFields: number; cropForm?: CropForm; architecture?: string }
+/** A crop card's form: the three biome forms a map names (props.ts PropsSettings.cropForm) and the regional ones its kit
+ *  stands for (REGION_CROP). */
+type CropForm = 'harvest' | 'wet-upright' | 'grain' | RegionalCrop;
+type RegionalCrop = 'maize' | 'sunflower' | 'beet' | 'brassica';
 /** What the crop fields take from the props build. */
 export interface CropFieldsHost {
   heightField: HeightField;
@@ -60,9 +64,172 @@ function cropAttributeNormal(shader: MaterialShader): void {
     '#include <normal_fragment_begin>', normalChunk);
 }
 
+// ------------------------------------------------------------------------------------------- the regional crops
+// (props lane A, #18b, 2026-10-14; WORKLIST.md #18: "Crops: wheat/rye (verdant, steppe), sunflower/maize where Ukrainian
+// or US, beet/potato rows (polders), rice on wet maps, stubble with stooks on the harvest map ... crops as volume
+// (crossed or instanced tuft cards closing the canopy within ~40 m)")
+
+/** A map with no crop form of its own grows its kit's country's crop: maize in the Fulda Gap and on the Louisiana
+ *  Maneuvers, sunflowers round Ronda, beet and potatoes in the Scheldt polders, cauliflower and artichokes in the Léon,
+ *  rice on the Mekong, the ripe grain of the Eifel, the Chouf and the Dalmatian hinterland. */
+const REGION_CROP: Readonly<Record<string, CropForm>> = Object.freeze({
+  hessian: 'maize', longleaf: 'maize', andalusian: 'sunflower', polder: 'beet', breton: 'brassica', mekong: 'wet-upright',
+  eifel: 'grain', chouf: 'grain', dalmatian: 'grain',
+});
+/** The crop form a map's fields take: its own, else its kit's (none: the legacy wheat). */
+export function regionalCropForm(P: { cropForm?: CropForm; architecture?: string }): CropForm | undefined {
+  return P.cropForm ?? (P.architecture ? REGION_CROP[P.architecture] : undefined);
+}
+
+type Ctx = CanvasRenderingContext2D;
+/** A leaf off a stalk at (x, y): out by `reach` (signed: its side), up by `rise`, its tip drooping by `droop`, `w` wide. */
+function strapLeaf(c: Ctx, x: number, y: number, reach: number, rise: number, droop: number, w: number): void {
+  c.beginPath();
+  c.moveTo(x, y);
+  c.quadraticCurveTo(x + reach * 0.45, y - rise - w, x + reach, y - rise + droop);
+  c.quadraticCurveTo(x + reach * 0.45, y - rise + w, x, y + w * 0.6);
+  c.fill();
+}
+/**
+ * A regional crop's plant on the card (256 px high: the row's height), from its stalk's nine draws (paintBiomeCrop
+ * keeps the draws and their order: the plot stream after the atlas is exact). Admitted sparser than grain: a maize or
+ * sunflower plant stands a hand or two from the next, a beet or a cauliflower a rosette of broad leaves on the ground.
+ */
+function paintRegionalCrop(c: Ctx, form: RegionalCrop, x: number, growth: number, bend: number, lum: number, hue: number,
+  girth: number, headHue: number, headWidth: number, headLength: number): void {
+  if (form === 'maize') {
+    if (growth < 0.95) return;
+    // late summer maize: a stout cane, strap leaves arching off it both ways (the lowest drying), a tassel, an ear in its husk
+    const hgt = 256 * (0.8 + headLength * 0.16), lean = (bend - 0.5) * 12, at = (t: number) => [x + lean * t * t, 258 - hgt * t] as const;
+    _col.setHSL(0.2 + hue * 0.06, 0.36, lum + 0.06);
+    c.strokeStyle = c.fillStyle = _col.getStyle();
+    c.lineWidth = 3.4 + girth * 1.8;
+    c.beginPath(); c.moveTo(x, 258); c.quadraticCurveTo(x + lean * 0.2, 258 - hgt * 0.5, x + lean, 258 - hgt); c.stroke();
+    for (let k = 0; k < 7; k++) {
+      const t = 0.14 + k * 0.1, [lx, ly] = at(t), side = (k + (headHue > 0.5 ? 1 : 0)) % 2 ? 1 : -1;
+      const dry = k < 2 ? 0.55 : 0;
+      _col.setHSL(0.2 + hue * 0.06 - dry * 0.08, 0.36 - dry * 0.12, lum + 0.04 + dry * 0.06);
+      c.fillStyle = _col.getStyle();
+      strapLeaf(c, lx, ly, side * (46 + girth * 26 + (k % 3) * 8), 10 + headWidth * 12, 18 + k * 3, 3.2 + girth * 1.2);
+    }
+    if (headWidth > 0.35) {
+      // the ear, two-thirds down, in its pale husk with the silk out of its tip
+      const [ex, ey] = at(0.48), side = headHue > 0.5 ? -1 : 1;
+      _col.setHSL(0.16, 0.3, lum + 0.12);
+      c.fillStyle = _col.getStyle();
+      c.beginPath(); c.ellipse(ex + side * 5, ey - 8, 3.4, 11, side * 0.4, 0, Math.PI * 2); c.fill();
+      _col.setHSL(0.07, 0.45, 0.2);
+      c.strokeStyle = _col.getStyle(); c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(ex + side * 9, ey - 17); c.lineTo(ex + side * 12, ey - 21); c.stroke();
+    }
+    // the tassel
+    const [tx, ty] = at(1);
+    _col.setHSL(0.12, 0.42, lum + 0.14);
+    c.strokeStyle = _col.getStyle(); c.lineWidth = 0.9;
+    c.beginPath();
+    for (let a = -2; a <= 2; a++) { c.moveTo(tx, ty); c.quadraticCurveTo(tx + a * 4, ty - 8, tx + a * 7, ty - 4 + Math.abs(a) * 3); }
+    c.stroke();
+    return;
+  }
+  if (form === 'sunflower') {
+    if (growth < 0.95) return;
+    // a sunflower in bloom: a stout green stem, broad heart leaves off it, its head nodding east (to the card's right)
+    const hgt = 256 * (0.66 + headLength * 0.22), lean = (bend - 0.5) * 10, top = 258 - hgt;
+    _col.setHSL(0.24 + hue * 0.04, 0.34, lum + 0.04);
+    c.strokeStyle = c.fillStyle = _col.getStyle();
+    c.lineWidth = 2.4 + girth * 1.6;
+    c.beginPath(); c.moveTo(x, 258); c.quadraticCurveTo(x + lean * 0.3, 258 - hgt * 0.6, x + lean + 3, top + 6); c.stroke();
+    for (let k = 0; k < 5; k++) {
+      const t = 0.22 + k * 0.12, ly = 258 - hgt * t, lx = x + lean * t * t, side = k % 2 ? 1 : -1, w = 9 + girth * 6 - k;
+      _col.setHSL(0.24 + hue * 0.04, 0.4, lum + 0.02 + (k % 2) * 0.03);
+      c.fillStyle = _col.getStyle();
+      c.beginPath(); c.ellipse(lx + side * (w * 0.9), ly + 3, w, w * 0.62, side * 0.5, 0, Math.PI * 2); c.fill();
+    }
+    // (the card's texel is a centimetre across and seven tall: a head a hand and a half across is an upright oval here)
+    const hx = x + lean + 6, hy = top + 10, r = 9 + headWidth * 4;
+    // the ray florets round the disc, then the dark disc
+    _col.setHSL(0.125 + headHue * 0.02, 0.85, 0.44 + lum * 0.3);
+    c.fillStyle = _col.getStyle();
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      c.beginPath(); c.ellipse(hx + Math.cos(a) * (r + 3), hy + Math.sin(a) * (r + 3) * 1.35, 3.6, 1.8, a, 0, Math.PI * 2); c.fill();
+    }
+    _col.setHSL(0.07, 0.5, 0.11 + headHue * 0.04);
+    c.fillStyle = _col.getStyle();
+    c.beginPath(); c.ellipse(hx, hy, r, r * 1.35, 0.1, 0, Math.PI * 2); c.fill();
+    return;
+  }
+  // a rosette on the ground: sugar beet (glossy dark green ovals on red-veined stalks) or a cauliflower's broad, waxy
+  // blue-green leaves round its curd. (The card's texel is a centimetre across and two millimetres tall at a knee-high
+  // row: a leaf a hand broad and a span long is a narrow upright oval here.)
+  if (growth < 0.88) return;
+  const beet = form === 'beet', hgt = 256 * (0.62 + headLength * 0.3), n = 5 + Math.floor(girth * 4);
+  for (let k = 0; k < n; k++) {
+    const a = (k / Math.max(1, n - 1) - 0.5) * 0.7 + (bend - 0.5) * 0.15, len = hgt * (0.55 + ((k * 7 + Math.floor(headHue * 10)) % 5) * 0.1);
+    const r = len * 0.5, w = (beet ? 5 : 7.5) + headWidth * 3;
+    const cx = x + Math.sin(a) * r * 1.6, cy = 258 - Math.cos(a) * r;
+    _col.setHSL(beet ? 0.28 + hue * 0.05 : 0.4 + hue * 0.06, beet ? 0.5 : 0.18, lum + (beet ? 0.02 : 0.14) + (k % 2) * 0.03);
+    c.fillStyle = _col.getStyle();
+    c.beginPath(); c.ellipse(cx, cy, w, r, a * 0.6, 0, Math.PI * 2); c.fill();
+    // its midrib: a beet's red, a cauliflower's pale
+    _col.setHSL(beet ? 0.97 : 0.3, beet ? 0.5 : 0.12, beet ? 0.24 + lum * 0.3 : 0.5);
+    c.strokeStyle = _col.getStyle(); c.lineWidth = beet ? 1.4 : 1.1;
+    c.beginPath(); c.moveTo(x, 258); c.lineTo(x + Math.sin(a) * len * 1.4, 258 - Math.cos(a) * len * 0.85); c.stroke();
+  }
+  if (!beet && headWidth > 0.5) {
+    // the curd in the middle of the leaves
+    _col.setHSL(0.13, 0.25, 0.62);
+    c.fillStyle = _col.getStyle();
+    c.beginPath(); c.ellipse(x, 258 - hgt * 0.4, 8 + girth * 3, 22, 0, 0, Math.PI * 2); c.fill();
+  }
+}
+
+/**
+ * The volume of a regional crop's row (no draws: every number from the row's own stations): a maize or sunflower row
+ * crossed at each station by a card across it a metre wide (the canopy closes when the rows are seen end on), a beet or
+ * cauliflower row flanked by two lower rows a stride either side (the drills between the cards). Only spans the row
+ * itself emits (its supported spans) get them.
+ */
+function cropVolume(form: RegionalCrop, pos: number[], uv: number[], col: number[], idx: number[], dx: number, dz: number): void {
+  const stations = pos.length / 6, px = -dz, pz = dx;
+  const spans = new Set<number>();
+  for (let k = 0; k < idx.length; k += 6) spans.add(idx[k] / 2);
+  const tall = form === 'maize' || form === 'sunflower';
+  if (tall) {
+    const w = form === 'maize' ? 0.5 : 0.45;
+    for (let i = 0; i < stations; i++) {
+      if (!spans.has(i) && !spans.has(i - 1)) continue;
+      const x = pos[i * 6], g = pos[i * 6 + 1], z = pos[i * 6 + 2], top = pos[i * 6 + 4], base = pos.length / 3;
+      for (const sd of [-1, 1]) pos.push(x + px * w * sd, g, z + pz * w * sd, x + px * w * sd, top * 0.97 + g * 0.03, z + pz * w * sd);
+      const u0 = (i * 0.37) % 1, u1 = u0 + w * 2 * 0.8;
+      uv.push(u0, 0, u0, 1, u1, 0, u1, 1);
+      const shade = col[i * 6] * 0.94;
+      for (let k = 0; k < 4; k++) col.push(shade, shade, shade);
+      idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+    }
+    return;
+  }
+  for (const off of [-0.85, 0.85]) {
+    const base = pos.length / 3;
+    for (let i = 0; i < stations; i++) {
+      const x = pos[i * 6] + px * off, g = pos[i * 6 + 1], z = pos[i * 6 + 2] + pz * off, top = g + (pos[i * 6 + 4] - g) * 0.85;
+      pos.push(x, g, z, x, top, z);
+      uv.push(uv[i * 4] + off * 0.31, 0, uv[i * 4] + off * 0.31, 1);
+      const shade = col[i * 6] * (off < 0 ? 0.92 : 1.04);
+      col.push(shade, shade, shade, shade, shade, shade);
+    }
+    for (const sp of spans) {
+      const b0 = base + sp * 2, b1 = base + (sp + 1) * 2;
+      idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+    }
+  }
+}
+
 /** Build the map's standing crop fields into the host's group (none when its props place no crop fields). */
 export function placeCropFieldsOf(host: CropFieldsHost): void {
-  const { heightField, P, L, noVeg, seed, aniso, engineCtx, group, autumnCropRows } = host;
+  const { heightField, L, noVeg, seed, aniso, engineCtx, group, autumnCropRows } = host;
+  // (#18b) a map with no crop form of its own grows its kit's country's crop
+  const P = { ...host.P, cropForm: regionalCropForm(host.P) };
   const v = L.village;
   const cropLandSample = {} as Parameters<NonNullable<HeightField['_landUseAt']>>[2];
   function placeCropFields(): void {
@@ -150,6 +317,10 @@ export function placeCropFieldsOf(host: CropFieldsHost): void {
       // plants without changing the following plot/row placement stream.
       if (wet && growth < .60) continue;
       if (form === 'grain') { paintGrainStalk(cctx, x, growth, bend, lum, hue, girth, headHue, headWidth, headLength); continue; }
+      if (form === 'maize' || form === 'sunflower' || form === 'beet' || form === 'brassica') {
+        paintRegionalCrop(cctx, form, x, growth, bend, lum, hue, girth, headHue, headWidth, headLength);
+        continue;
+      }
       const standing = wet || growth > .88;
       const hgt = biomeCropHeight(wet, standing, growth, headLength);
       const lean = biomeCropLean(wet, standing, bend);
@@ -241,6 +412,10 @@ export function placeCropFieldsOf(host: CropFieldsHost): void {
       cctx.fill();
     }
     const cid = cctx.getImageData(0, 0, cs, cs);
+    // (#18b: each regional crop's own mean tone)
+    const flood = P.cropForm === 'wet-upright' ? [88, 112, 56] : P.cropForm === 'maize' ? [104, 112, 60]
+      : P.cropForm === 'sunflower' ? [98, 104, 50] : P.cropForm === 'beet' ? [72, 100, 50] : P.cropForm === 'brassica' ? [92, 110, 92]
+        : [126, 110, 66];
     for (let i = 0; i < cs * cs; i++) {
       const x = i % cs, y = Math.floor(i / cs);
       // Dense stalk bases formerly merged into luminous rectangular walls.
@@ -252,9 +427,9 @@ export function placeCropFieldsOf(host: CropFieldsHost): void {
       for (let channel = 0; channel < 3; channel++) cid.data[i * 4 + channel] *= rootShade;
       // Muted mean-tone flood prevents bright RGB fringes in transparent mips.
       if (cid.data[i * 4 + 3] < 24) {
-        cid.data[i * 4] = P.cropForm === 'wet-upright' ? 88 : 126;
-        cid.data[i * 4 + 1] = P.cropForm === 'wet-upright' ? 112 : 110;
-        cid.data[i * 4 + 2] = P.cropForm === 'wet-upright' ? 56 : 66;
+        cid.data[i * 4] = flood[0];
+        cid.data[i * 4 + 1] = flood[1];
+        cid.data[i * 4 + 2] = flood[2];
       }
     }
     cctx.putImageData(cid, 0, 0);
@@ -286,7 +461,7 @@ export function placeCropFieldsOf(host: CropFieldsHost): void {
   function appendCropRowGeometry(
     cropGeos: THREE.BufferGeometry[], crng: () => number,
     rx: number, rz: number, half: number, rowH: number, tintL: number,
-    dx: number, dz: number,
+    dx: number, dz: number, form?: CropForm,
   ): void {
     const nSt = Math.max(3, Math.ceil((half * 2) / 3.4));
     const pos: number[] = [], uv: number[] = [], idx: number[] = [], col: number[] = [];
@@ -313,6 +488,8 @@ export function placeCropFieldsOf(host: CropFieldsHost): void {
       }
     }
     if (idx.length === 0) return;
+    // (#18b) a regional crop's row in volume
+    if (form === 'maize' || form === 'sunflower' || form === 'beet' || form === 'brassica') cropVolume(form, pos, uv, col, idx, dx, dz);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
     geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
@@ -328,14 +505,16 @@ export function placeCropFieldsOf(host: CropFieldsHost): void {
   ): void {
     const rowPitch = 2.5 + crng() * 0.5;
     const nRows = Math.floor(pd / rowPitch);
-    const rowH = 1.05 + crng() * 0.2;
+    // (#18b) maize stands twice a man's waist, sunflowers over a man, beet and cauliflower to the knee
+    const rowH = (1.05 + crng() * 0.2) * (P.cropForm === 'maize' ? 2 : P.cropForm === 'sunflower' ? 1.6 : P.cropForm === 'beet' ? 0.42
+      : P.cropForm === 'brassica' ? 0.5 : 1);
     const tintL = 0.9 + crng() * 0.25;
     for (let row = 0; row < nRows; row++) {
       const offset = (row - (nRows - 1) / 2) * rowPitch;
       const rx = cx + px2 * offset, rz = cz + pz2 * offset;
       const half = pw * (0.44 + crng() * 0.08);
       const before = cropGeos.length;
-      appendCropRowGeometry(cropGeos, crng, rx, rz, half, rowH, tintL, dx, dz);
+      appendCropRowGeometry(cropGeos, crng, rx, rz, half, rowH, tintL, dx, dz, P.cropForm);
       if (autumnCropRows && cropGeos.length > before) {
         captureAutumnCropRow(autumnCropRows, cropGeos[before], cx, cz, dx, dz, row);
       }

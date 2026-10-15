@@ -1566,6 +1566,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/environmentSurfaceColor.selftest.mjs',
     'src/world/cropLighting.selftest.mjs',
     'src/world/cropBiomeIdentity.selftest.mjs',
+    'src/world/maps/cropKit.selftest.mjs', // 2026-10-14 props lane A (#18b): the regional crops (maize, sunflower, beet, cauliflower) on the wheat's plot stream
     'src/world/horizonResources.selftest.mjs',
     'src/world/horizonRelief.selftest.mjs',
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
