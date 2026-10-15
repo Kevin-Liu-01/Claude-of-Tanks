@@ -7858,6 +7858,15 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-15 — Steinburg: the ring's empty lots filled (MA.14, the maps lane)
+
+**The owner, 10-09: "really good but a bunch of empty areas, it looks like buildings should be in the town area."** The
+plot finder (1 m plan of the Node-built town: dry cells off the road cores, level, clear of every record) found the
+empty lots inside the ring wall and at the town's edges; twelve stand built now as Franconian row houses (`urban.ts`
+landmarks, kind houseRow: the rowhouse inside the ring, the cottage at the edges, one house each, 7.2 x 9 m), placed after
+every seeded pass, so nothing else in the town moves. (A Vorstadt outside the gates was tried and left out.) Census
+[2783, 5724, 2473] -> [2795, 6007, 2459]; the brief holds (orphan 0.06, symmetry 1.029).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
