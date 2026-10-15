@@ -79,6 +79,9 @@ const hostThrottle = Number(argValue('host-throttle', 0));
 const seatThrottle = Number(argValue('seat-throttle', 0));
 // the seat-pause probe (MP-SINCE-0930 plan step 9): B's main thread blocked for each duration while it drives
 const seatPauses = argValue('seat-pause', '').split(',').map(Number).filter((ms) => ms > 0 && ms <= 10_000);
+// --host-pause=<ms,...> (2026-10-15): the host's (A's) main thread blocked for each duration while B drives — the browser
+// host relays every peer's frames to its Worker on that thread, so its stall holds B's controls from the authority
+const hostPauses = argValue('host-pause', '').split(',').map(Number).filter((ms) => ms > 0 && ms <= 10_000);
 // --ice=relay (plan step 1's relay-only check): every peer connection on every page is built relay-only
 // (iceTransportPolicy 'relay'), so a link exists only through the TURN servers the room granted
 const forceRelay = argValue('ice', '') === 'relay';
@@ -995,6 +998,20 @@ try {
         lastPositionErrorM: round1(p1?.lastPositionErrorM ?? null), maxPositionErrorM: round1(p1?.maxPositionErrorM ?? null), maxRose: !!(p0 && p1 && p1.maxPositionErrorM > p0.maxPositionErrorM) });
     }
     step('seat-pause', { rows: report.seatPause });
+  }
+  if (hostPauses.length) {
+    report.hostPause = [];
+    for (const ms of hostPauses) {
+      const before = await pageCounters(pages.b, true);
+      await pages.a.evaluate((block) => { const end = performance.now() + block; while (performance.now() < end) { /* the host's frame and relay stop */ } }, ms).catch(() => {});
+      await sleep(3000);
+      const after = await pageCounters(pages.b, false);
+      const p0 = before?.predictor, p1 = after?.predictor;
+      report.hostPause.push({ pauseMs: ms, reconciliations: p0 && p1 ? p1.reconciliations - p0.reconciliations : null, hardSnaps: p0 && p1 ? p1.hardSnaps - p0.hardSnaps : null,
+        lastPositionErrorM: round1(p1?.lastPositionErrorM ?? null), maxPositionErrorM: round1(p1?.maxPositionErrorM ?? null), maxRose: !!(p0 && p1 && p1.maxPositionErrorM > p0.maxPositionErrorM),
+        maxCorrectionStepM: round1(p1?.maxCorrectionStepM ?? null), gapMaxMs: round1(after?.arrivals?.match?.gaps?.length ? Math.max(...after.arrivals.match.gaps) : null) });
+    }
+    step('host-pause', { rows: report.hostPause });
   }
   step('measured', { divergence: report.measure.divergence, fps: Object.fromEntries(Object.entries(report.measure.perPage).map(([label, row]) => [label, row?.fps ?? null])),
     skipped: Object.fromEntries(Object.entries(report.measure.perPage).map(([label, row]) => [label, row?.skippedTickPct ?? null])) });
