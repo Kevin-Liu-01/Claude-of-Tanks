@@ -113,7 +113,7 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       parts: [[-30, 15], [4, -34]], floods: [[-38, 4], [38, 3]],
       // the shade depot stands in the frame's right third, off the convoy road (the garage critic panel, 2026-10-14: "masts
       // rise out of the turret outline ... slide the depot, or move it to a third of the frame")
-      feature: [20, 22], featureRadius: [9, 6],
+      feature: [18, 22], featureRadius: [9, 6], // 2 m left of the old spot: the sail's right end stayed in frame (ticket 6)
     },
     repair_bunker: {
       logistics: [[-33, -7], [20, -24]],
