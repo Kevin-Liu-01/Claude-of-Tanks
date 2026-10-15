@@ -4,7 +4,7 @@
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, closeGables, emitRoof, holedBox, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -147,8 +147,11 @@ const church: RegionalBuilder = (ctx) => {
   }, dialect);
   // the belfry: a timber box on the front gable with a pyramid cap and a cross
   const z = D / 2 - 0.6, top = frame.roof.ridgeTopY;
-  sink.span('structureWood', -0.6, top - 0.8, z - 0.6, 0.6, top + 1.3, z + 0.6, { colour: WHITE });
-  faceBox(sink, 'dark', { origin: [0, 0, z + 0.6], u: [1, 0, 0], out: [0, 0, 1], width: 1.2 }, 0, top + 0.6, 0.005, 0.6, 0.8, 0.02, { decor: true });
+  // (props census #5, lane B 2026-10-15) the belfry's bell opening cut through its front (a dark plate on the box), the
+  // bell hung in it from its beam
+  holedBox(sink, 'structureWood', -0.6, z - 0.6, 0.6, z + 0.6, top - 0.8, top + 1.3, { front: [{ u0: -0.3, u1: 0.3, y0: top + 0.2, y1: top + 1.0 }] }, 0.18, 0.14,
+    { colour: WHITE });
+  sink.cylinder('structureMetal', [0, top + 0.5, z + 0.3], 'y', 0.42, 0.2, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.1);
   sink.cylinder('structureMetal', [0, top + 1.3, z], 'y', 1.3, 1.0, 4, { colour: TIN[0] }, 0.04, true, Math.PI / 4);
   sink.span('structureWood', -0.04, top + 2.5, z - 0.04, 0.04, top + 3.3, z + 0.04, { colour: WHITE, decor: true });
   sink.span('structureWood', -0.25, top + 3.0, z - 0.04, 0.25, top + 3.08, z + 0.04, { colour: WHITE, decor: true });
@@ -248,17 +251,23 @@ const bellTower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const S = Math.max(2.8, Math.min(3.6, Math.min(ctx.info.w, ctx.info.d) - 0.3)), H = Math.max(7.5, Math.min(9.4, ctx.info.h));
   const base = H * 0.5, bel = H * 0.82;
-  sink.span('stone', -S / 2, -0.4, -S / 2, S / 2, base, S / 2);
+  // (props census #5) the base's door and the belfry's four louvred openings cut through them (the leaf and dark
+  // plates with their slats were laid on solid spans), the leaf at the back of the door's reveal and the slats across
+  // the openings in theirs; the tower recorded as a shaft body
+  holedBox(sink, 'stone', -S / 2, -S / 2, S / 2, S / 2, -0.4, base, { front: [{ u0: -0.5, u1: 0.5, y0: 0, y1: 2.1 }] }, 0.35, 0.3);
+  recordShaft(sink, 0, 0, S, H + 0.75, 'stone');
   sink.span('stone', -S / 2 - 0.12, base - 0.05, -S / 2 - 0.12, S / 2 + 0.12, base + 0.2, S / 2 + 0.12, { decor: true });
   const T = S - 0.5;
-  sink.span('structureWood', -T / 2, base + 0.2, -T / 2, T / 2, bel, T / 2, { colour: WHITE });
-  for (const f of [{ origin: [0, 0, T / 2], u: [1, 0, 0], out: [0, 0, 1], width: T }, { origin: [T / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: T },
-    { origin: [0, 0, -T / 2], u: [-1, 0, 0], out: [0, 0, -1], width: T }, { origin: [-T / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: T }] as Face[]) {
-    faceBox(sink, 'dark', f, 0, bel - 0.85, 0.005, T * 0.5, 1.1, 0.02, { decor: true });
-    for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, bel - 1.3 + k * 0.28, 0.04, T * 0.52, 0.05, 0.06, { colour: GREEN_TRIM, decor: true });
+  const lv = { u0: -T * 0.25, u1: T * 0.25, y0: bel - 1.4, y1: bel - 0.3 };
+  const bf = holedBox(sink, 'structureWood', -T / 2, -T / 2, T / 2, T / 2, base + 0.2, bel, { front: [lv], right: [lv], back: [lv], left: [lv] }, 0.18, 0.14, { colour: WHITE });
+  for (const f of [bf.front, bf.right, bf.back, bf.left]) {
+    for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, bel - 1.3 + k * 0.28, -0.07, T * 0.5, 0.05, 0.06, { colour: GREEN_TRIM, decor: true }, 'ends');
   }
   const door: Face = { origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S };
-  doorUnit(sink, door, 0, 0, 1.0, 2.1, { leaf: rgb(0x6a4b33), frame: { bucket: 'stone', width: 0.2, out: 0.06, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' });
+  sink.recess = 0.3;
+  try {
+    doorUnit(sink, door, 0, 0, 1.0, 2.1, { leaf: rgb(0x6a4b33), frame: { bucket: 'stone', width: 0.2, out: 0.06, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' });
+  } finally { sink.recess = 0; }
   sink.cylinder('structureMetal', [0, bel, 0], 'y', H - bel, T * 0.78, 4, { colour: TIN[0] }, 0.04, true, Math.PI / 4);
   sink.span('structureWood', -0.04, H - 0.05, -0.04, 0.04, H + 0.75, 0.04, { colour: WHITE, decor: true });
   sink.span('structureWood', -0.24, H + 0.45, -0.04, 0.24, H + 0.53, 0.04, { colour: WHITE, decor: true });
