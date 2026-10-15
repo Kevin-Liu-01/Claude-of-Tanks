@@ -112,6 +112,11 @@ export interface HouseSpec {
   /** the gable triangles are timber framed */
   gableFramed?: boolean;
   openings: Opening[];
+  /**
+   * Shell breaches through the storey walls (props census #7): a ragged hole `r` across at (u, y over the storey's
+   * floor) on a face, cut through the wall into the dark of the room behind — never a dark plate on the wall.
+   */
+  breaches?: ReadonlyArray<{ face: FaceName; storey: number; u: number; y: number; r: number; seed: number; spall?: RegionalBucket }>;
   chimneys: ChimneySpec[];
   gutters?: { colour: Rgb } | null;
   /**
@@ -1093,8 +1098,12 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         if (o.kind === 'window' && o.state !== 'burnt') stains.push({ u0: h.u0 + 0.06, u1: h.u1 - 0.06, y0: h.y0 - 1.1, y1: h.y0, bottom: 1, top: 0.82 });
         if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
       });
+      // the shell breaches: each cut as its bounding square, the masonry restored round its ragged outline below
+      const brs = (spec.breaches ?? []).filter((br) => br.face === name && br.storey === i);
+      for (const br of brs) holes.push({ u0: br.u - br.r, u1: br.u + br.r, y0: b.y0 + br.y - br.r, y1: b.y0 + br.y + br.r });
       holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
-        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
+        [...own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), ...brs.map(() => 1)], i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
+      for (const br of brs) breachFill(sink, wall, face, br.u, b.y0 + br.y, br.r, Math.max(reveal, 0.12), reveal <= 0, br.seed, br.spall ?? null);
     }
     sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
     // the underside: a jetty's soffit, or the ground storey's base (seen where the ground falls away from it)
@@ -1381,6 +1390,57 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
     const back = r - 0.004;
     sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
   });
+}
+
+/**
+ * A shell breach's masonry (props census #7): the wall was cut through as the square round (u, y) ± r; the masonry
+ * between that square and the breach's ragged outline is restored in sectors through the wall's depth (their inner
+ * sides the breach's broken jambs), the render torn off in a wider ring on the face round it, and — on a wall with no
+ * reveal of its own — the room's dark behind it.
+ */
+function breachFill(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, r: number, depth: number, back: boolean, seed: number,
+  spall: RegionalBucket | null): void {
+  let a = seed >>> 0;
+  const rnd = (): number => { a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x9e3779b9) >>> 0; return (a & 0xffffff) / 0x1000000; };
+  const n = 12, inner: Array<[number, number]> = [];
+  for (let j = 0; j < n; j++) {
+    const t = (j / n) * Math.PI * 2, rr = r * (0.62 + rnd() * 0.3);
+    inner.push([u + Math.cos(t) * rr, y + Math.sin(t) * rr]);
+  }
+  // where a ray from the middle through an inner point leaves the square
+  const toSquare = (p: [number, number]): [number, number] => {
+    const dx = p[0] - u, dy = p[1] - y, k = r / Math.max(Math.abs(dx), Math.abs(dy), 1e-6);
+    return [u + dx * k, y + dy * k];
+  };
+  const corners: Array<[number, number]> = [[u + r, y + r], [u - r, y + r], [u - r, y - r], [u + r, y - r]];
+  const angle = (p: [number, number]): number => { const t = Math.atan2(p[1] - y, p[0] - u); return t < 0 ? t + Math.PI * 2 : t; };
+  for (let j = 0; j < n; j++) {
+    const p0 = inner[j], p1 = inner[(j + 1) % n], q0 = toSquare(p0), q1 = toSquare(p1);
+    const a0 = angle(q0), a1 = angle(q1) <= a0 ? angle(q1) + Math.PI * 2 : angle(q1);
+    const between = corners.filter((c) => { const t = angle(c); return (t > a0 && t < a1) || (t + Math.PI * 2 > a0 && t + Math.PI * 2 < a1); })
+      .sort((c, d) => ((angle(c) < a0 ? angle(c) + Math.PI * 2 : angle(c)) - (angle(d) < a0 ? angle(d) + Math.PI * 2 : angle(d))));
+    // the sector, counter-clockwise seen from outside: the inner chord, out along the ray, round the square, back in
+    const poly: Array<[number, number]> = [p0, q0, ...between, q1, p1];
+    const pts = poly.map(([pu, py]) => facePoint(face, pu, py, 0));
+    const inward: Vec3 = [-face.out[0], -face.out[1], -face.out[2]];
+    sink.prism(bucket, pts.reverse(), inward, depth, { shade: 0.82 });
+  }
+  if (back) sink.quad('dark', facePoint(face, u - r, y - r, -depth - 0.004), facePoint(face, u + r, y - r, -depth - 0.004), facePoint(face, u + r, y + r, -depth - 0.004),
+    facePoint(face, u - r, y + r, -depth - 0.004), { decor: true });
+  if (spall) {
+    // the render torn off round it: a ring of the masonry under it (decor), wider than the square
+    // (each ray's outer point past the square's edge on it: the ring never folds over a corner)
+    const out = inner.map((p) => {
+      const q = toSquare(p), dx = q[0] - u, dy = q[1] - y, d = Math.hypot(dx, dy), k = (d + r * (0.25 + rnd() * 0.35)) / d;
+      return [q, [u + dx * k, y + dy * k]] as const;
+    });
+    for (let j = 0; j < n; j++) {
+      const [i0, o0] = out[j], [i1, o1] = out[(j + 1) % n];
+      // counter-clockwise seen from outside: out along the first ray, round, back in along the next
+      sink.quad(spall, facePoint(face, i0[0], i0[1], 0.012), facePoint(face, o0[0], o0[1], 0.012), facePoint(face, o1[0], o1[1], 0.012),
+        facePoint(face, i1[0], i1[1], 0.012), { decor: true, shade: 0.78 });
+    }
+  }
 }
 
 /** A wall polygon (u, y pairs, counter-clockwise seen from outside) on a face, `depth` thick inward. */

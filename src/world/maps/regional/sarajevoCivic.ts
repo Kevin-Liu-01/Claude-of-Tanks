@@ -22,7 +22,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, COPPER, DARK_FRAME, DOOR_LEAVES, IRON, LEAD, TIMBER, ZINC,
-  archGlazing, archHead, choose, clampTo, fillOf, nisan, pediment, shellHole, shellPocks,
+  archGlazing, archHead, choose, clampTo, fillOf, nisan, pediment, shellPocks,
 } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -503,10 +503,18 @@ const marketHall: RegionalBuilder = (ctx) => {
         doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: door, frame: { bucket: 'stone', width: 0.2, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, frame.floors[o.storey] + o.y0);
       },
     };
+    // (props census #7, lane B 2026-10-14: the shell holes in the left side were dark plates on the render) two shells'
+    // breaches cut through the side wall clear of its windows, into the hall's dark
+    const breaches: Array<{ face: 'left'; storey: number; u: number; y: number; r: number; seed: number; spall: RegionalBucket }> = [];
+    for (let k = 0; k < 2; k++) {
+      const u = (look() - 0.5) * D * 0.7, y = hH * (0.45 + look() * 0.1) - 0.5, r = 0.4 + look() * 0.3;
+      const clear = openings.filter((o) => o.face === 'left').every((o) => Math.abs(o.u - u) > o.w / 2 + r + 0.15 || y + r + 0.15 < o.y0 || y - r - 0.15 > o.y0 + o.h);
+      if (clear) breaches.push({ face: 'left', storey: 0, u, y, r, seed: Math.floor(look() * 1e9), spall: 'stone' });
+    }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: hH, wall: 'plaster2' }],
       roof: { kind: 'gable', pitchDeg: 28, eave: 0.6, verge: 0.35, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'plaster2',
-      openings, chimneys: [], gutters: { colour: ZINC }, verge: null, reveal: 0.34, rafters: null, spall: 'stone',
+      openings, chimneys: [], gutters: { colour: ZINC }, verge: null, reveal: 0.34, rafters: null, spall: 'stone', breaches,
     }, dialect);
     const b = frame.bodies[0], rg = frame.roof;
     sink.band('stone', b.x0 - 0.2, hH - 0.15, b.z0 - 0.2, b.x1 + 0.2, hH + 0.4, b.z1 + 0.2, { decor: true });
@@ -538,10 +546,7 @@ const marketHall: RegionalBuilder = (ctx) => {
     const clockY = hH + (rg.ridgeY - hH) * 0.42;
     sink.polygon('structureWood', Array.from({ length: 12 }, (_, j) => facePoint(ff, Math.cos(j / 12 * Math.PI * 2) * 0.75, clockY + Math.sin(j / 12 * Math.PI * 2) * 0.75, 0.04)), { decor: true, colour: rgb(0xe0dccc) });
     faceBox(sink, 'structureMetal', ff, 0, clockY + 0.2, 0.06, 0.05, 0.5, 0.02, { colour: IRON, decor: true });
-    sink.dressing(mobile, () => {
-      const side = frame.faces.left;
-      for (let k = 0; k < 2; k++) shellHole(sink, side, (look() - 0.5) * D * 0.7, hH * (0.45 + look() * 0.1), 0.4 + look() * 0.3, look, 'stone');
-    });
+
   });
   return sink.finish();
 };
