@@ -2117,13 +2117,14 @@ export function buildGarageEnvironment(
       material.name = `garage:${key}`;
       const mesh = new THREE.Mesh(merged, material);
       mesh.name = `authored_structures_${key}`;
-      // Garage scenery is static and already carries textured/vertex-color
-      // contact definition. Keep it out of the live CSM caster set: compiling
-      // nine new bucket shadow programs on the first outdoor selection caused a
-      // half-second hitch, while cascade refreshes made fine station geometry
-      // shimmer. The hero tank and podium remain the only dynamic Garage
-      // casters; scenery still receives their stable contact shadow.
-      mesh.castShadow = false;
+      // Garage scenery is static and carries textured/vertex-colour contact definition; most of it stays out of the
+      // live CSM caster set (nine bucket shadow programs on the first outdoor selection once cost a half-second hitch,
+      // and fine station geometry shimmered under cascade refreshes). The three biggest masses cast (the re-judge,
+      // 2026-10-15: "the light is flat ... the shed casts no readable shadow ... the sail casts no shade"): the baked
+      // bucket (the sail, the rock faces, the mounds, the drifts), the brick and stone walls and the clay roofs. The
+      // night switch ABBA (02:20, A main / V GA.05 on GA.03 / C = V with these casters, A V C C V A A V C) measured
+      // C within noise of V: Sirocco cold 796 vs 790 ms, the winter yard 531 vs 536 ms, Verdant warm 55 vs 57 ms.
+      mesh.castShadow = key === 'baked' || key === 'stone' || key === 'roof';
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
