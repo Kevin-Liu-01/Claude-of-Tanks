@@ -167,7 +167,7 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     const t = r / 2;
     return world(us[k], ys[r], setBack(us[k], ys[r] - ground[k], s, t));
   };
-  const n = new THREE.Vector3();
+  const FACE_NORMAL = new THREE.Vector3(0, 0, 1);
   for (let s = 0; s < strata; s += 1) {
     for (let k = 0; k < columns; k += 1) {
       for (const r of [0, 1] as const) {
@@ -175,8 +175,10 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
         if (Math.abs(c.y - b.y) < 1e-3 && Math.abs(d.y - a.y) < 1e-3) continue; // above the crest
         const mu = (us[k] + us[k + 1]) / 2, my = (a.y + c.y) / 2 - (ground[k] + ground[k + 1]) / 2;
         if (inOpening(mu, my, -0.15)) continue;
-        n.subVectors(b, a).cross(new THREE.Vector3().subVectors(d, a)).normalize();
-        const at = (p: THREE.Vector3, k0: number): THREE.Color => tone(s, us[k0], p.y - ground[k0], n);
+        // the face's colour is a function of the vertex alone (stratum, u, height), never of the facet's normal, so
+        // neighbouring facets share their edges' colours (a snow rule on the facet's normal speckled the face with
+        // white squares: v3 stills); the snow lies on the ledges and the crest
+        const at = (p: THREE.Vector3, k0: number): THREE.Color => tone(s, us[k0], p.y - ground[k0], FACE_NORMAL);
         const ca = at(a, k), cb = at(b, k + 1), cc = at(c, k + 1), cd = at(d, k);
         // seen from the yard (+w): a -> b runs +u, so counter-clockwise is a, b, c and a, c, d
         triangle(soup, a, b, c, ca, cb, cc);
