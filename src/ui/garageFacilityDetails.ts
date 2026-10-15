@@ -2667,8 +2667,8 @@ export function addGarageFacilityDetails({
       operationalMachines += 1;
       structuralConnections += 58;
       servicePurposeTags.add('portal-jib-crane');
-      // a capstan on each pierhead for warping the caisson, a winch on the yard's side, the head's safety rail and a
-      // turning-roll station on the paving at the head's near corner
+      // a capstan on each pierhead for warping the caisson, a winch on the yard's side and the head's safety rail (a
+      // turning-roll station at the head's corner stood between the hero and the dock: CPU canonical, 2026-10-15)
       for (const sign of [-1, 1]) {
         const capstan = onPaving(basin.side + sign * (basin.halfWidth + 1.55), basin.depth1 + basin.caisson - 0.9);
         clusterCylinder(capstan, 0, 0, 0.45, 0.42, 0.9, iron, 0, 16);
@@ -2677,7 +2677,6 @@ export function addGarageFacilityDetails({
       operationalMachines += 1;
       addPoweredWinch(fixedCluster(basin.side - basin.halfWidth - basin.apronNear - 1.6, basin.depth0 + 4.0), 0, 0, new THREE.Color(0x3e7c88));
       addSafetyRail(onPaving(basin.side, basin.depth0 - 1.3), 0, 0, 2 * basin.halfWidth - 0.6, 'edge'); // along the head's edge
-      addTurningRollStation(onPaving(basin.side - basin.halfWidth - 2.0, basin.depth0 - 2.0), 0, 0, new THREE.Color(0x477d82));
   };
   const addRailRoundhouse = (): void => {
       environmentSpecificAssemblies += 1;
