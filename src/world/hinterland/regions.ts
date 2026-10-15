@@ -225,7 +225,9 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     // (the treeline 170 m over the col's datum: the woods on the valley sides round it, thinning to krummholz; dark
     // schist, its bands and cliffs against the snow — the coordinator on the first Glacier frames)
     geology: { rock: 'schist', rockHex: 0x4f4c49, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -400, maxSlopeDeg: 45, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 40, forestBandM: r([-1500, 170]), sand: 0, varnish: 0 },
-    far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0, air: 0.35 },
+    // (round 5, the critics: "make the far right peak and the back range lighter, bluer and lower in contrast than the
+    // near massif, which has the same value today" — the col's air a little less clear, its haze cooled, air.ts)
+    far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0, air: 0.5 },
   }),
   saharaOasis: region({
     id: 'saharaOasis', place: 'Southern Tunisia and Siwa: the cuesta and its scarp, ksour on the spurs, palm gardens at the springs, salt and erg',
