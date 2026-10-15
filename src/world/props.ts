@@ -10113,17 +10113,18 @@ ${snowCap ? `
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
   const animatedDressing: AnimatedDressing[] = [];
-  // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
-  // below scan every record); the async build waits here for the pool's workers
-  if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
-  joinStructureShells();
   // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
+  // (declared here, ahead of the join: the join stands immediately before the kits, structureShellPool.selftest)
   const setPieceRecords: VehicleSetPiece[] = [];
   // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
   const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
   const tramRecords: { kind: 'k2' | 'shanghai'; x: number; z: number; yaw: number }[] = [];
   // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
+  // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
+  // below scan every record); the async build waits here for the pool's workers
+  if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
+  joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
