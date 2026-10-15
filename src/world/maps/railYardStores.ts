@@ -26,6 +26,11 @@ function paint(g: BG, tone: readonly number[], grain: number, salt: number): BG 
   g.setAttribute('color', new THREE.BufferAttribute(c, 3));
   return g;
 }
+function bleachTops(g: BG): BG {
+  const n = g.attributes.normal, c = g.attributes.color;
+  for (let i = 0; i < n.count; i++) if (n.getY(i) > 0.5) c.setXYZ(i, c.getX(i) * 1.45, c.getY(i) * 1.42, c.getZ(i) * 1.38);
+  return g;
+}
 function merged(parts: BG[]): BG {
   const g = mergeGeometries(parts, false);
   for (const p of parts) p.dispose();
@@ -34,7 +39,7 @@ function merged(parts: BG[]): BG {
 }
 
 const FLANGE = rgb(0x6e5538), FLANGE_DARK = rgb(0x4a3a28), BARREL = rgb(0x8a7454), CABLE = rgb(0x1d1d1e), HOLE = rgb(0x121110),
-  CREOSOTE = rgb(0x2c2520), CREOSOTE_WORN = rgb(0x4b4239);
+  CREOSOTE = rgb(0x3a3027), CREOSOTE_WORN = rgb(0x5c5143);
 
 /**
  * A cable drum of flange radius `radius` standing on its flanges at the origin (its axle along x before `yaw`), from
@@ -59,40 +64,43 @@ export function cableDrum(radius: number, yaw: number, v: readonly number[]): BG
   // the cable wound on: a full reel to most of the flange, or part paid out down toward the barrel
   const wound = barrelR + (R * 0.9 - barrelR) * (left < 0.7 ? 1 : 0.35);
   parts.push(paint(axle(new THREE.CylinderGeometry(wound, wound, W - 0.16, 16, 1, false)), CABLE, 0.15, 65));
-  // the loose end: off the top of the winding, over and down to the ground in four runs
-  const a = (lie - 0.5) * 1.2, ex = (lie - 0.5) * (W - 0.4);
-  const pts = [[ex, R + wound, 0], [ex, R + wound * 0.6, wound * 0.9], [ex + Math.sin(a) * 0.3, 0.35, wound + 0.45], [ex + Math.sin(a) * 0.8, 0.04, wound + 1.2 + salt * 0.6]];
-  for (let k = 0; k + 1 < pts.length; k++) {
-    const p = new THREE.Vector3(...pts[k]), q = new THREE.Vector3(...pts[k + 1]), d = q.clone().sub(p), len = d.length();
-    const seg = new THREE.CylinderGeometry(0.025, 0.025, len + 0.02, 5, 1, true);
-    seg.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
-    seg.translate((p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2);
-    parts.push(paint(seg, CABLE, 0.15, 66 + k));
-  }
+  // the loose end: off the winding's front, hanging slack down the reel's face to the ground and lying there in a lazy
+  // curve (a heavy cable's own weight: no straight runs), a metre or so out
+  const a = (lie - 0.5) * 1.6, ex = (lie - 0.5) * (W - 0.4);
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(ex, R + wound * 0.55, wound * 0.84),
+    new THREE.Vector3(ex, R * 0.55, wound + 0.06),
+    new THREE.Vector3(ex + Math.sin(a) * 0.12, 0.08, wound + 0.22),
+    new THREE.Vector3(ex + Math.sin(a) * 0.45, 0.035, wound + 0.65 + salt * 0.25),
+    new THREE.Vector3(ex + Math.sin(a) * 0.5 + (salt - 0.5) * 0.5, 0.035, wound + 1.0 + salt * 0.45),
+  ], false, 'centripetal');
+  parts.push(paint(new THREE.TubeGeometry(curve, 14, 0.03, 6, false), CABLE, 0.15, 66));
   const g = merged(parts);
   g.rotateY(yaw);
   return g;
 }
 
 /**
- * A stack of creosoted sleepers on the ground at the origin: four courses of five sleepers (2.6 x 0.25 x 0.15 m) laid
- * close, each course across the one under it, the top course part taken; from the old stack's draws `v` (its UV
- * jitter): the stack's turn, how much of the top course is left, each sleeper's wear.
+ * A stack of creosoted sleepers on the ground at the origin: the permanent way's square crib, seven courses of eight
+ * sleepers (2.6 x 0.25 x 0.15 m) with a hand's gap between them, each course across the one under it so the stack is as
+ * wide as a sleeper is long, the top course part taken; from the old stack's draws `v` (its UV jitter): the stack's turn,
+ * how much of the top course is left, each sleeper's wear.
  */
 export function sleeperStack(v: readonly number[]): BG {
-  const turn = v[0] * Math.PI, keep = 2 + Math.floor(v[1] * 4), salt = Math.floor(v[2] * 1e6);
+  const turn = v[0] * Math.PI, keep = 3 + Math.floor(v[1] * 5), salt = Math.floor(v[2] * 1e6);
   const parts: BG[] = [];
-  const L = 2.6, H = 0.15, D = 0.25, gap = 0.08, per = 5, span = per * D + (per - 1) * gap;
-  for (let course = 0; course < 4; course++) {
-    const across = course % 2 === 1, n = course === 3 ? keep : per;
+  const L = 2.6, H = 0.15, D = 0.25, per = 8, gap = (L - per * D) / (per - 1), span = per * D + (per - 1) * gap, courses = 7;
+  for (let course = 0; course < courses; course++) {
+    const across = course % 2 === 1, n = course === courses - 1 ? keep : per;
     for (let k = 0; k < n; k++) {
       const off = -span / 2 + D / 2 + k * (D + gap);
       const s = new THREE.BoxGeometry(across ? D : L, H, across ? L : D);
       const lift = H / 2 + course * H;
-      // a sleeper's ends a hand out of line, its tone worn grey where it has lain in the weather
-      const jog = (hash(course * 7 + k, salt) - 0.5) * 0.12;
+      // a sleeper's ends a few centimetres out of line, its tone worn grey where it has lain in the weather
+      const jog = (hash(course * 11 + k, salt) - 0.5) * 0.06;
       s.translate(across ? off : jog, lift, across ? jog : off);
-      parts.push(paint(s, hash(course * 7 + k, salt + 1) < 0.3 ? CREOSOTE_WORN : CREOSOTE, 0.35, salt + course * 7 + k));
+      // (the top faces bleached grey by the sun and the rain)
+      parts.push(bleachTops(paint(s, hash(course * 11 + k, salt + 1) < 0.4 ? CREOSOTE_WORN : CREOSOTE, 0.35, salt + course * 11 + k)));
     }
   }
   const g = merged(parts);
@@ -134,19 +142,27 @@ export function bufferStopGeometry(v: readonly number[]): BG {
     parts.push(railMember([x, -0.1, 1.65], [x, beamY + 0.1, 0.12 + lean], frame, 72 + side));
     parts.push(railMember([x, 0.04, 0.0], [x, 0.04, 1.7], frame, 74 + side));
     parts.push(block(x - 0.18, x + 0.18, -0.2, 0.06, 1.45, 1.85, CONCRETE, 76 + side));
-    // the spring buffer: its housing on the beam, the plunger, the head toward the track
-    const h = new THREE.CylinderGeometry(0.15, 0.15, 0.2, 10, 1, false);
-    h.rotateX(Math.PI / 2); h.translate(side * 0.875, beamY, -0.25 + lean);
+    // the spring buffer, a wagon's own: its housing on the beam (with its flange), the plunger, the 45 cm head toward
+    // the track
+    const flange = block(side * 0.875 - 0.22, side * 0.875 + 0.22, beamY - 0.22, beamY + 0.22, -0.19 + lean, -0.15 + lean, BUFFER_BLACK, 77 + side);
+    parts.push(flange);
+    const h = new THREE.CylinderGeometry(0.17, 0.17, 0.35, 12, 1, false);
+    h.rotateX(Math.PI / 2); h.translate(side * 0.875, beamY, -0.365 + lean);
     parts.push(paint(h, BUFFER_BLACK, 0.2, 78 + side));
-    const plunger = new THREE.CylinderGeometry(0.09, 0.09, 0.2, 8, 1, false);
-    plunger.rotateX(Math.PI / 2); plunger.translate(side * 0.875, beamY, -0.45 + lean);
+    const plunger = new THREE.CylinderGeometry(0.1, 0.1, 0.14, 10, 1, false);
+    plunger.rotateX(Math.PI / 2); plunger.translate(side * 0.875, beamY, -0.6 + lean);
     parts.push(paint(plunger, frame, 0.2, 80 + side));
-    const head = new THREE.CylinderGeometry(0.22, 0.22, 0.04, 12, 1, false);
-    head.rotateX(Math.PI / 2); head.translate(side * 0.875, beamY, -0.57 + lean);
+    const head = new THREE.CylinderGeometry(0.225, 0.225, 0.05, 14, 1, false);
+    head.rotateX(Math.PI / 2); head.translate(side * 0.875, beamY, -0.69 + lean);
     parts.push(paint(head, BUFFER_BLACK, 0.2, 82 + side));
   }
-  // the back tie and the beam in its red and white bands
+  // the back tie and the beam in its red and white bands; over the beam's middle, on its post, the stop board (the
+  // German Sh 2: a red square in its white border, toward the track)
   parts.push(railMember([-0.72, 0.6, 0.95], [0.72, 0.6, 0.95], frame, 84));
+  parts.push(block(-0.035, 0.035, beamY + 0.19, beamY + 0.95, 0.0 + lean, 0.07 + lean, frame, 94));
+  parts.push(block(-0.32, 0.32, beamY + 0.42, beamY + 0.98, -0.02 + lean, 0.0 + lean, frame, 95));
+  parts.push(block(-0.31, 0.31, beamY + 0.43, beamY + 0.97, -0.03 + lean, -0.02 + lean, BEAM_WHITE, 96));
+  parts.push(block(-0.25, 0.25, beamY + 0.49, beamY + 0.91, -0.04 + lean, -0.03 + lean, BEAM_RED, 97));
   const bands = 7, W = 2.3;
   for (let k = 0; k < bands; k++) {
     const x0 = -W / 2 + (k * W) / bands, x1 = -W / 2 + ((k + 1) * W) / bands;
