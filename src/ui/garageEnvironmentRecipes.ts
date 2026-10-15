@@ -350,7 +350,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'rock', terrainTint: 0xb16d4f, hardstandTint: 0x8d6e5e, buildingTint: 0xb69678,
     structures: [
       at(makeCaravanserai, 'redrock compound', -36, -6, 0.74),
-      at(makeWarehouse, 'recovery warehouse', -30, -30, 0.74),
+      // the warehouse stood square behind the turret, its dark roof against the hero's outline (the re-judge, 2026-10-15):
+      // a smaller store right of it, its roof under the turret's line from the Garage camera (view side 9, depth 44)
+      at(makeWarehouse, 'recovery warehouse', -24.75, -37.48, 0.45),
       at(makeGantry, 'heavy lift gantry', -7, -36, 0.76),
       at(makeWaterTower, 'divide water tower', 18, -34, 0.68),
       at(makeContainerRow, 'salvage container line', 36, -14, 0.62),
