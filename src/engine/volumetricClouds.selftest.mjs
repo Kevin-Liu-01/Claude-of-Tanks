@@ -75,6 +75,57 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
   assert.equal(layer.settleForCapture(camera),false,'capture respects an intentionally frozen layer');
 }
 
+// ---- 2026-10-14 (the MP stream; the 224 returning tab's Garage boot froze 104-163 s inside warm(): its 1 × 1 renders
+// read the ray-march program's link synchronously while the browser's one GPU process compiled two battle tabs'
+// programs): warmAsync submits the quad programs for a parallel link with the quad's variant (an offscreen target, no
+// tone mapping), the layer draws nothing while they link, and warm() runs once they are linked; without compileAsync it
+// is warm() at once, as before
+{
+  const layer = Object.create(VolumetricCloudLayer.prototype);
+  const calls = [];
+  let finishCompile = null;
+  const renderer = {
+    xr: { enabled: true }, toneMapping: THREE.ACESFilmicToneMapping,
+    getRenderTarget: () => 'screen', getActiveCubeFace: () => 0, getActiveMipmapLevel: () => 0,
+    setRenderTarget: (target) => calls.push(['target', target]),
+    compileAsync: (scene) => {
+      calls.push(['compile', scene.children.map((mesh) => mesh.material.name), renderer.toneMapping, renderer.xr.enabled]);
+      return new Promise((resolve) => { finishCompile = resolve; });
+    },
+  };
+  let warmed = 0, dropped = 0;
+  Object.assign(layer, {
+    renderer, preset: {}, atmosphere: { active: true }, noise: { shape: {}, detail: {}, curl: {}, weather: {}, streets: {}, blue: {} },
+    trace: 'trace-target', traceMaterial: new THREE.ShaderMaterial({ name: 'trace' }), resolveMaterial: new THREE.ShaderMaterial({ name: 'resolve' }),
+    farShadeMaterial: new THREE.ShaderMaterial({ name: 'farShade' }), linkPending: null, dome: { visible: true }, sceneDepthReady: true,
+    warm() { warmed++; }, dropCloudShade() { dropped++; },
+  });
+  assert.equal(layer.active, true);
+  const pending = layer.warmAsync();
+  assert.deepEqual(calls, [['target', 'trace-target'], ['compile', ['trace', 'resolve', 'farShade'], THREE.NoToneMapping, false], ['target', 'screen']],
+    'the three quad programs submitted at the quad\'s variant (offscreen target, no tone mapping, no XR), the renderer restored');
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.xr.enabled, true);
+  assert.equal(layer.warmAsync(), pending, 'one link in flight');
+  layer.beforeSceneRender(renderer, {}, 0.016, 4, 4);
+  assert.equal(layer.dome.visible, false, 'nothing draws while the programs link (a draw would read their link synchronously)');
+  assert.equal(layer.sceneDepthReady, false);
+  assert.equal(warmed, 0, 'warm() waits for the link');
+  finishCompile();
+  await pending;
+  assert.equal(warmed, 1, 'warm() runs once the programs are linked');
+  assert.equal(layer.linkPending, null);
+  // a renderer without compileAsync: warm() at once
+  delete renderer.compileAsync;
+  await layer.warmAsync();
+  assert.equal(warmed, 2);
+  // an inactive layer submits nothing
+  layer.preset = null;
+  renderer.compileAsync = () => { throw new Error('nothing to compile'); };
+  await layer.warmAsync();
+  assert.equal(warmed, 2);
+}
+
 // ---- the noise bakes: deterministic bytes at the shipped sizes and at small sizes, tileable, well distributed
 assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_CURL_SIZE, CLOUD_BLUE_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 32, 32, 2068], 'the shipped sizes and seed');
 // 2026-10-01 (frozen pins retired): the sha256 pins of every bake at small and shipped sizes were change detectors of
