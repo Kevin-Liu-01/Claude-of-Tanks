@@ -276,9 +276,11 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
       ...(torn ? { tears: [{ ...torn, y: Math.max(torn.h / 2 + 0.3, Math.min(He - 1.0 - 1.4 - torn.h / 2, torn.y - 1.0)) }] } : {}) }, ctx.variant);
     if (torn) {
       const f = frame.faces[torn.face], u = torn.u, y = frame.floors[0] + Math.max(torn.h / 2 + 0.3, Math.min(He - 1.0 - 1.4 - torn.h / 2, torn.y - 1.0));
-      sink.quad('structureMetal', ...([[-0.7, 0.5], [0.7, 0.5], [0.8, -0.6], [-0.5, -0.9]].map(([du, dy]) => [
-        f.origin[0] + f.u[0] * (u + du) + f.out[0] * (0.05 - dy * 0.3), y + dy, f.origin[2] + f.u[2] * (u + du) + f.out[2] * (0.05 - dy * 0.3)] as Vec3)) as [Vec3, Vec3, Vec3, Vec3],
-        { colour: shade(livery, 0.7), decor: true });
+      // (the flap bent out of the tear: its painted face to the outside, its galvanised back 5 mm behind to the inside)
+      const flap = (back: number): [Vec3, Vec3, Vec3, Vec3] => [[-0.7, 0.5], [0.7, 0.5], [0.8, -0.6], [-0.5, -0.9]].map(([du, dy]) => [
+        f.origin[0] + f.u[0] * (u + du) + f.out[0] * (0.05 - dy * 0.3 - back), y + dy, f.origin[2] + f.u[2] * (u + du) + f.out[2] * (0.05 - dy * 0.3 - back)] as Vec3) as [Vec3, Vec3, Vec3, Vec3];
+      sink.quad('structureMetal', ...(flap(0).reverse() as [Vec3, Vec3, Vec3, Vec3]), { colour: shade(livery, 0.7), decor: true });
+      sink.quad('structureMetal', ...flap(0.005), { colour: rgb(0x8a8e90), decor: true });
     }
   });
   if (annex) {

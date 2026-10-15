@@ -122,10 +122,13 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   const back = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
   // (the inner walls cut where the outer ones are: through a light or a door the hall's space, not a wall behind it; a
   // light's cut opens to its lining's outer face, 2 cm round, so the lining's box closes the edge between the two sheets)
-  const holesOf = (name: 'left' | 'right' | 'back'): Array<[number, number, number, number]> => openings.filter((o) => o.face === name)
+  const holesOf = (name: 'left' | 'right' | 'back' | 'front'): Array<[number, number, number, number]> => openings.filter((o) => o.face === name)
     .map((o) => { const m = o.kind === 'window' ? 0.02 : 0; return [-(o.u + o.w / 2) - m, -(o.u - o.w / 2) + m, y0 + o.y0 - m, y0 + o.y0 + o.h + m] as [number, number, number, number]; });
   linerWall(sink, { origin: [0, 0, -iz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * ix }, -ix, ix, y0, eave - 0.05, holesOf('back'), back);
   sink.polygon('structureMetal', [[ix, eave - 0.05, -iz], [0, top(0), -iz], [-ix, eave - 0.05, -iz]], { colour: back, decor: true });
+  // (and the apron gable's inside round its doors: through an open side or a door the front wall's back showed)
+  linerWall(sink, { origin: [0, 0, iz], u: [-1, 0, 0], out: [0, 0, -1], width: 2 * ix }, -ix, ix, y0, eave - 0.05, holesOf('front'), back);
+  sink.polygon('structureMetal', [[-ix, eave - 0.05, iz], [0, top(0), iz], [ix, eave - 0.05, iz]], { colour: back, decor: true });
   // (an open-sided barn takes the day in: its inside a shade of its own sheet, and no liner behind its open side)
   const inside = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
   for (const s of [-1, 1]) {

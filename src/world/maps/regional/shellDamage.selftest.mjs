@@ -386,7 +386,17 @@ for (const style of ARCHITECTURE_STYLES) {
 }
 for (const id of ['polder/barn', 'siwa/adobe', 'shanghai/rowhouse']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
 // the sheet-clad halls read as shells and break by the sheet kit (sheet.ts: their sheet torn, their frame standing)
-for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse']) assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`);
+// (props census #4, lane B 2026-10-14: the shared sheet hall, hall.ts, lays them as house plans — the house kits' — whose
+// sheet walls still route every stage to the sheet kit)
+for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse', 'hostomel/depot', 'navajo/warehouse']) {
+  const [sid, bid] = id.split('/'), style = ARCHITECTURE_STYLES.find((s) => s.id === sid);
+  const [w, d, h, seed] = [10, 12, 7, 7];
+  const parts = buildRegionalParts(style, { structureId: bid, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+    wallBucket: 'plaster', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'shell', snowCap: false, tier: 'desktop' }, streamFrom(seed * 3 + 5));
+  if (!regionalKitPlanOf(parts)?.houses?.length) { assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`); continue; }
+  const a = describeStructure({ structureIdx: 2, mapId: 'shell', builder: bid, style: sid, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house' });
+  assert.ok(a.kit !== 'default' && isSheetBody(a), `${id}: the sheet hall's house plan breaks by the sheet kit (${a.kit})`);
+}
 assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetShells})`);
 // the shafts read as shafts and topple (shaft.ts)
 for (const id of ['saar/stack', 'ruhr/stack', 'saar/watertower']) assert.ok(shaftIds.has(id), `${id}: a shaft the kit reads (${[...shaftIds].join(', ')})`);
