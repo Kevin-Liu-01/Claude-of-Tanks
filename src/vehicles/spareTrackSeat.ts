@@ -964,8 +964,17 @@ function seatFromOutside(env: SeatEnv, shape: SeatRunShape, ax: Axes, quat: THRE
   }
   normal.normalize();
   if (normal.angleTo(n0) > 25 * Math.PI / 180) return null;
-  const turn = new THREE.Quaternion().setFromUnitVectors(n0, normal);
-  const q = turn.multiply(quat.clone());
+  // onto the plane without twisting the run in plan: its long axis keeps its heading, projected into the new plane
+  const u0 = new THREE.Vector3().setComponent(ax.u, 1).applyQuaternion(quat);
+  const u1 = u0.clone().addScaledVector(normal, -u0.dot(normal));
+  if (u1.lengthSq() < 1e-6) return null;
+  u1.normalize();
+  const v1 = new THREE.Vector3().crossVectors(normal, u1);
+  const cols: THREE.Vector3[] = [];
+  cols[ax.n] = normal; cols[ax.u] = u1; cols[ax.v] = v1;
+  const basis = new THREE.Matrix4().makeBasis(cols[0], cols[1], cols[2]);
+  if (basis.determinant() < 0) { v1.negate(); basis.makeBasis(cols[0], cols[1], cols[2]); }
+  const q = new THREE.Quaternion().setFromRotationMatrix(basis);
   // the base plane through the highest hit along the new normal
   let h = -Infinity;
   for (const p of hits) h = Math.max(h, p.dot(normal));
