@@ -280,12 +280,16 @@ export function addGarageApproachDetails({
     offset: number,
     color: number,
     height = 1.65,
+    clearOfHero = false,
   ): void => {
     const firstDepth = approach.waypoints[0][1] + spacing;
     const lastDepth = approach.waypoints.at(-1)![1] - 1;
     for (let depth = firstDepth; depth <= lastDepth; depth += spacing) {
       const point = samplePath(points, depth);
       for (const side of [-1, 1]) {
+        // a post never stands behind the hero's outline from the Garage camera (the re-judge, 2026-10-15: "one stands
+        // just behind the tank's engine deck")
+        if (clearOfHero && Math.abs((point.side + side * offset) / (depth + 18.1)) < 0.2) continue;
         addGroundBox(point.side + side * offset, depth, 0.12, height, 0.12, color);
         // the reflector band near the post's head, not a painted dash on the ground beside it (wave 398: "yellow lane
         // dashes")
@@ -368,7 +372,7 @@ export function addGarageApproachDetails({
       addRuts(approach.lanes || [-2.2, 2.2], 0x86949a, 0.46);
       addEdgeCourse(-approach.width / 2 - 0.45, 0xbec8ca, 0.68, 0.34);
       addEdgeCourse(approach.width / 2 + 0.45, 0xbec8ca, 0.68, 0.34);
-      addRoadsidePosts(5.8, approach.width / 2 + 1.0, 0xc14f36, 1.85);
+      addRoadsidePosts(5.8, approach.width / 2 + 1.0, 0x9a5c4a, 1.85, true); // weathered paint (the re-judge)
     },
     'urban-street': () => {
       addPath(points, approach.width, 0.16);

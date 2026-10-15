@@ -17,7 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
-import { buildEarthMound, buildRockFace } from './garageRockKit.ts';
+import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -2251,7 +2251,19 @@ export function addGarageFacilityDetails({
       // the earth cover behind the facade
       buckets.baked!.push(buildEarthMound({
         x: origin.x, z: origin.z, yaw, groundAt: (u, w) => { const p = toWorld(u, w); return groundAtWorld(p.x, p.z); },
-      }, { width: 2 * halfFace + 4, length: 15, height: faceH + 1.6, seed: 0x5b0c, snow: 0xe8eef1, earth: 0x5d5246 }));
+      }, { width: 2 * halfFace + 4, length: 15, height: faceH + 1.6, seed: 0x5b0c, snow: 0xe8eef1, earth: 0x5d5246, frontEarth: 1.8 }));
+      // what makes the cover read from the yard (the re-judge, 2026-10-15: "white on a near-white sky ... a flat grey
+      // concrete box"): its eaves wind-scoured to earth and turf over the facade (frontEarth), a snow cornice curling
+      // over the coping, and a stand of spruce under snow behind and beside it, dark against the sky (all of it right of
+      // the turret's outline from the Garage camera)
+      clusterCylinder(bunker, 0, 0.25, faceH + 0.55, 0.38, 2 * halfFace - 0.6, new THREE.Color(0xe6ecef), 0, 12, Math.PI / 2);
+      buckets.baked!.push(buildConifers({
+        x: origin.x, z: origin.z, yaw, groundAt: (u, w) => { const p = toWorld(u, w); return groundAtWorld(p.x, p.z); },
+      }, [
+        [0.0, -17.5, 11.5], [2.6, -20.5, 13.5], [3.6, -16.8, 10.2], [6.8, -18.6, 12.8], [9.8, -16.2, 11.0], [12.6, -19.0, 13.2],
+        [15.2, -15.6, 10.4], [17.8, -18.2, 12.0], [4.4, -24.0, 14.0], [8.4, -22.8, 13.6], [14.0, -23.2, 14.4],
+        [16.4, -9.5, 9.2], [18.6, -12.4, 10.8], [20.4, -6.8, 8.6],
+      ], 0x5f1c));
       // the facade: piers either side of the portal, a beam over it, a chamfered coping, the portal's lining
       for (const side of [-1, 1]) {
         const inner = side * portalHalf, outer = side * halfFace;
@@ -2282,8 +2294,15 @@ export function addGarageFacilityDetails({
           clusterCylinder(cb, 0, 0, 0.18 + course * 0.34, 0.16, 3.4, course % 2 ? log : logDark, Math.PI / 2, 10, 0);
           if (course % 2 === 0) for (const dl of [-0.9, 0.9]) clusterCylinder(cb, dl, 0, 0.35 + course * 0.34, 0.15, 1.6, logDark, 0, 10, Math.PI / 2);
         }
-        clusterBox(atGround(side * (halfFace + 3.5), 0.8), 0, 0, 0.35, 3.0, 0.7, 1.6, snowTone, 'painted', side * 0.25); // a drift
       }
+      // drifts banked against the facade and the wing walls (the re-judge: the old drift boxes read as "pale wedge and
+      // ramp polygons ... raw geometry"), clear of the portal and the personnel door
+      buckets.baked!.push(buildTalusApron({
+        x: origin.x, z: origin.z, yaw, groundAt: (u, w) => { const p = toWorld(u, w); return groundAtWorld(p.x, p.z); },
+      }, {
+        from: -halfFace - 6, to: halfFace + 6, reach: 3.2, height: 1.1, seed: 0x5d1f, snow: 0xe6ecef, rock: 0xc9d3d9,
+        gaps: [[-portalHalf - 0.6, portalHalf + 0.6], [-portalHalf - 4.4, -portalHalf - 0.8]], boulders: 0,
+      }));
       // vent stacks and periscope cowls through the cover
       for (const [u, w, h] of [[-4.5, -5.5, 2.6], [5.0, -8.0, 2.2]] as const) {
         const stack = atGround(u, w);
@@ -2309,7 +2328,7 @@ export function addGarageFacilityDetails({
       }
       structuralConnections += 40;
       // the yard's heated-component kit in front of the bunker, clear of the road
-      addServiceManifold(fixedCluster(featureSide + 9.5, featureDepth - 9.5), 0, 0, 5.2);
+      // (the teal pipe gantry is gone: the re-judge, "cut off by the top of the frame and has no clear purpose")
       addPoweredWinch(fixedCluster(featureSide - 11.0, featureDepth - 9.0), 0, 0, new THREE.Color(0x758b9a));
       addPartsPallet(fixedCluster(featureSide - 13.0, featureDepth - 3.0), 0, 0, 2);
       addHydrostaticInspectionDock(fixedCluster(featureSide + 13.0, featureDepth - 3.5), 0, 0, new THREE.Color(0x73848c));

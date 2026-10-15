@@ -258,6 +258,8 @@ export interface MoundOptions {
   readonly seed: number;
   readonly snow: number;
   readonly earth: number;
+  /** Metres of the cover's front edge (its eaves over the facade) left as exposed earth and turf, wind-scoured. */
+  readonly frontEarth?: number;
 }
 
 /**
@@ -305,7 +307,10 @@ export function buildEarthMound(frame: RockFrame, options: MoundOptions): THREE.
       const a = point(u0, w0), b = point(u1, w0), c = point(u1, w1), d = point(u0, w1);
       n.subVectors(b, a).cross(new THREE.Vector3().subVectors(d, a)).normalize();
       const steep = 1 - Math.abs(n.y);
-      const tone = steep > 0.55 + noise(i * 0.7, j * 0.7) * 0.2 ? earth.clone().lerp(snow, 0.25) : snow.clone().lerp(shade, steep * 0.6);
+      const scoured = (options.frontEarth ?? 0) > 0
+        && (j * (length + 0.8)) / rows < (options.frontEarth ?? 0) * (0.7 + noise(i * 0.9 + 5, 3.1) * 0.6);
+      const tone = scoured ? earth.clone().lerp(new THREE.Color(0x4a5236), 0.35 + noise(i * 1.3, j * 1.3) * 0.3)
+        : steep > 0.55 + noise(i * 0.7, j * 0.7) * 0.2 ? earth.clone().lerp(snow, 0.25) : snow.clone().lerp(shade, steep * 0.6);
       triangle(soup, a, b, c, tone);
       triangle(soup, a, c, d, tone);
     }
@@ -426,6 +431,66 @@ export function buildTalusApron(frame: RockFrame, options: TalusOptions): THREE.
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([...apron.positions, ...stones.positions], 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute([...apron.normals, ...stones.normals], 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute([...apron.colors, ...stones.colors], 3));
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/**
+ * Conifers under snow (Frosthollow, the re-judge 2026-10-15: the bunker's snow mound was "white on a near-white sky ...
+ * a darker treeline or rock band behind it", "conifers with snow load in the hero background"): each tree a trunk and
+ * three stacked eight-sided cones, dark spruce green with snow lying on the upper faces of each tier. Points are
+ * (u, w, height) in the frame. World space, vertex-coloured, for the pack's baked bucket.
+ */
+export function buildConifers(frame: RockFrame, trees: ReadonlyArray<readonly [number, number, number]>, seed: number): THREE.BufferGeometry {
+  const soup: Soup = { positions: [], normals: [], colors: [] };
+  const cos = Math.cos(frame.yaw), sin = Math.sin(frame.yaw);
+  let state = seed >>> 0;
+  const rand = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const needles = new THREE.Color(0x1f2e24), needlesDeep = new THREE.Color(0x17221b), bark = new THREE.Color(0x3a2c22);
+  const snow = new THREE.Color(0xe4eaee), snowShade = new THREE.Color(0xb9c6cf);
+  const sides = 8;
+  for (const [u, w, height] of trees) {
+    const x = frame.x + cos * u + sin * w, z = frame.z - sin * u + cos * w, ground = frame.groundAt(u, w) - 0.3;
+    const turn = rand() * Math.PI;
+    const green = needles.clone().lerp(needlesDeep, rand());
+    const ring = (y: number, r: number, k: number): THREE.Vector3 => {
+      const a = turn + (k / sides) * Math.PI * 2;
+      return new THREE.Vector3(x + Math.cos(a) * r, y, z + Math.sin(a) * r);
+    };
+    // the trunk below the lowest tier
+    for (let k = 0; k < sides; k += 2) {
+      const a0 = ring(ground, 0.22, k), a1 = ring(ground, 0.22, k + 2), b0 = ring(ground + height * 0.22, 0.16, k), b1 = ring(ground + height * 0.22, 0.16, k + 2);
+      triangle(soup, a0, b1, a1, bark); triangle(soup, a0, b0, b1, bark);
+    }
+    // three tiers, each a cone from a skirt to a tip above the next one's skirt
+    const tiers: Array<[number, number, number]> = [[0.16, 0.62, 0.3], [0.42, 0.84, 0.23], [0.64, 1.0, 0.15]];
+    for (const [from, to, radius] of tiers) {
+      const y0 = ground + height * from, y1 = ground + height * to, r = height * radius * (0.85 + rand() * 0.3);
+      const tip = new THREE.Vector3(x, y1, z);
+      for (let k = 0; k < sides; k += 1) {
+        const a = ring(y0 + (k % 2) * 0.12, r, k), b = ring(y0 + ((k + 1) % 2) * 0.12, r, k + 1);
+        // the snow lies on the cone's upper slopes: a white band from the skirt up, its shaded side greyer
+        const lit = Math.cos(turn + ((k + 0.5) / sides) * Math.PI * 2 - 0.6) > -0.2;
+        const mid = a.clone().lerp(tip, 0.45), midB = b.clone().lerp(tip, 0.45);
+        const cap = lit ? snow : snowShade;
+        triangle(soup, a, mid, b, green, cap, green);
+        triangle(soup, b, mid, midB, green, cap, cap);
+        triangle(soup, mid, tip, midB, cap, green, cap);
+        triangle(soup, a, b, new THREE.Vector3(x, y0 + 0.2, z), needlesDeep); // the skirt's underside
+      }
+    }
+  }
+  smoothNormals(soup);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(soup.positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(soup.normals, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(soup.colors, 3));
   geometry.computeBoundingSphere();
   return geometry;
 }
