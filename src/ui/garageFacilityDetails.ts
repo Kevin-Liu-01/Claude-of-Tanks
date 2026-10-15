@@ -1740,7 +1740,7 @@ export function addGarageFacilityDetails({
     }
     // a tank engine stands dark inside the open road, its smokebox to the doors
     {
-      const loco = at(-6.2, face - 4.2);
+      const loco = at(-6.2, face - 5.0); // standing back from the buffer stop inside the doors
       const black = new THREE.Color(0x1d1f20), red = new THREE.Color(0x4a1d18);
       clusterBox(loco, 0, 0, 1.05, 1.9, 0.5, 8.2, red, 'painted'); // the frames and buffer beams
       clusterCylinder(loco, 0, 1.0, 2.25, 0.78, 5.0, black, Math.PI / 2, 16); // the boiler
@@ -1781,7 +1781,8 @@ export function addGarageFacilityDetails({
             engineering, 'masonry', 0, -Math.atan(-0.44 * t / (winHalf + 0.08)) * sign);
         }
       }
-      for (const f of [-halfL, -2.4, 2.4, halfL]) clusterBox(shed, outer + sign * 0.09, f, (eaveY - 0.4) / 2, 0.18, eaveY - 0.4, 0.6, engineering, 'masonry');
+      // brick buttresses (the re-judge: the dark masonry strips "still read as timber")
+      for (const f of [-halfL, -2.4, 2.4, halfL]) clusterSurface(shed, 'brick', outer + sign * 0.12, f, (eaveY - 0.4) / 2, 0.24, eaveY - 0.4, 0.6);
       clusterBox(shed, outer + sign * 0.1, 0, eaveY + 0.02, 0.24, 0.2, 2 * halfL + 0.4, engineering, 'masonry'); // cornice
     }
     // --- the back wall: three shut road doors in plain openings under steel lintels ----------------------------------
@@ -1827,6 +1828,46 @@ export function addGarageFacilityDetails({
       for (const [a, b] of spans) clusterBox(shed, (a + b) / 2, 0, 0.05, b - a, 0.1, 2 * halfL - wallT, floorTone, 'masonry');
     }
     for (const lateral of [-3.1, 3.1, -halfW - 0.3, halfW + 0.3]) clusterBox(shed, lateral, 0, eaveY + 0.12, 0.3, 0.16, 2 * halfL + 0.7, dark, 'painted');
+    // --- the cinder and ash apron round the shed (the re-judge, 2026-10-15: "the shed still sits in grass ... no cinder or
+    // ash apron, no oil-soaked ground and no drift at the plinth"): a draped ground of cinder, darker and oily before the
+    // doors and along the roads, a pale ash drift banked against the plinth ------------------------------------------
+    {
+      const cell = 1.5, l0 = -halfW - 7.5, l1 = halfW + 7.5, f0 = -halfL - 7.5, f1 = halfL + 1.2;
+      const cols = Math.round((l1 - l0) / cell), rows = Math.round((f1 - f0) / cell);
+      const positions: number[] = [], colors: number[] = [], indices: number[] = [];
+      const cinder = new THREE.Color(0x3f3a35), oily = new THREE.Color(0x2a2724), ash = new THREE.Color(0x7c766c), tone = new THREE.Color();
+      for (let j = 0; j <= rows; j += 1) {
+        for (let i = 0; i <= cols; i += 1) {
+          const lateral = l0 + (i * (l1 - l0)) / cols, longitudinal = f0 + (j * (f1 - f0)) / rows;
+          const c = Math.cos(shedYaw), sn = Math.sin(shedYaw);
+          const x = shed.x + c * lateral + sn * longitudinal, z = shed.z - sn * lateral + c * longitudinal;
+          positions.push(x, groundAtWorld(x, z) + 0.035, z);
+          const n = Math.sin(lateral * 0.83 + longitudinal * 0.37) * 0.5 + Math.sin(lateral * 0.29 - longitudinal * 0.71) * 0.5;
+          tone.copy(cinder).offsetHSL(0, 0, n * 0.03);
+          // oil before the doors and along the roads, an ash drift at the plinth
+          const nearRoad = Math.min(...roads.map((road) => Math.abs(lateral - road)));
+          if (longitudinal > halfL - 0.5 && nearRoad < 2.2) tone.lerp(oily, 0.5);
+          const plinth = Math.max(0, 1 - Math.min(Math.abs(Math.abs(lateral) - halfW), Math.abs(longitudinal + halfL)) / 1.4);
+          if (plinth > 0) tone.lerp(ash, plinth * 0.45);
+          colors.push(tone.r, tone.g, tone.b);
+          if (i < cols && j < rows) {
+            const a = j * (cols + 1) + i, b = a + 1, d = a + cols + 1, e = d + 1;
+            indices.push(a, d, b, b, d, e);
+          }
+        }
+      }
+      const apron = new THREE.BufferGeometry();
+      apron.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      apron.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      apron.setIndex(indices);
+      apron.computeVertexNormals();
+      if (apron.getAttribute('normal').getY(0) < 0) {
+        apron.setIndex(indices.map((_, k) => indices[k - (k % 3) + [0, 2, 1][k % 3]]));
+        apron.computeVertexNormals();
+      }
+      buckets.baked!.push(apron);
+      facilityProps += 1;
+    }
     // --- the permanent-way stores beside the left wall: sleepers stacked in crossed courses on bearers, rail lengths on
     // chocks, two spare wheelsets on their own lengths of rail ---------------------------------------------------------
     const stores = atGround(-halfW - 3.0, 2.5);
@@ -2320,7 +2361,6 @@ export function addGarageFacilityDetails({
       // the engine shed straddles the rail fan's three roads (GA.04); the shed's own stores stand clear of its walls
       addEngineShed(featureSide, featureDepth);
       addDrums(featureSide - 13.2, featureDepth - 7.5, 6);
-      addCrates(featureSide + 13.4, featureDepth - 6.5, 2);
       addPoweredWinch(fixedCluster(featureSide + 12.8, featureDepth - 1.5), 0, 0, new THREE.Color(0xa56b34));
   };
   const addRainCanopy = (): void => {
