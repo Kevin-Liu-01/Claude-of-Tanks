@@ -87,15 +87,19 @@ interface Hole { u0: number; u1: number; y0: number; y1: number }
  */
 function brokenWall(sink: PartSink, bucket: RegionalBucket, face: Face, L: number, t: number, foot: number, tops: readonly number[], holes: readonly Hole[], opts: EmitOptions): void {
   const n = tops.length - 1, h0 = -L / 2;
+  // (a jamb's head is interpolated between the samples: it keeps clear of the damp band's cuts as they do)
   const topAt = (u: number): number => {
     const s = Math.max(0, Math.min(n, ((u - h0) / L) * n)), i = Math.min(n - 1, Math.floor(s)), f = s - i;
-    return tops[i] * (1 - f) + tops[i + 1] * f;
+    return clearOfBreaks(tops[i] * (1 - f) + tops[i + 1] * f);
   };
   const P = (u: number, y: number, o: number): V => facePoint(face, u, y, o);
   const outN = face.out, inN: V = [-outN[0], -outN[1], -outN[2]], uN: V = face.u, uNeg: V = [-uN[0], -uN[1], -uN[2]];
   const core = { ...opts, shade: (opts.shade ?? 1) * 0.78 };
-  const cuts = [...new Set([...Array.from({ length: n + 1 }, (_, k) => h0 + (L * k) / n),
-    ...holes.flatMap((h) => [h.u0, h.u1]).filter((u) => u > h0 + 0.01 && u < -h0 - 0.01)].map((u) => Math.round(u * 1000) / 1000))].sort((a, b) => a - b);
+  // (the strips' edges: the holes' jambs exactly, the head's samples where no jamb stands within 10 cm — a strip a few
+  // millimetres wide beside a jamb was slivers to the integrity gate)
+  const jambs = holes.flatMap((h) => [h.u0, h.u1]).filter((u) => u > h0 + 0.03 && u < -h0 - 0.03);
+  const cuts = [h0, -h0, ...jambs, ...Array.from({ length: n - 1 }, (_, k) => h0 + (L * (k + 1)) / n).filter((u) => jambs.every((j) => Math.abs(j - u) > 0.1))]
+    .sort((a, b) => a - b).filter((u, i, all) => i === 0 || u - all[i - 1] > 0.005);
   for (let i = 0; i + 1 < cuts.length; i++) {
     const ua = cuts[i], ub = cuts[i + 1];
     if (ub - ua < 0.01) continue;
@@ -140,10 +144,18 @@ function brokenWall(sink: PartSink, bucket: RegionalBucket, face: Face, L: numbe
   quadFacing(sink, bucket, [P(-h0, foot, 0), P(-h0, tops[n], 0), P(-h0, tops[n], -t), P(-h0, foot, -t)], uN, opts);
 }
 
+/** The weathering's wall-foot band cuts every wall at these heights (weather.ts DAMP_BREAKS): a head sampled a few
+ * millimetres off one leaves its strip a sliver at the cut, so each sample keeps 4 cm clear of them. */
+const BREAKS = [0.35, 1.0, 1.8];
+function clearOfBreaks(y: number): number {
+  for (const b of BREAKS) if (Math.abs(y - b) < 0.04) return y < b ? b - 0.04 : b + 0.04;
+  return y;
+}
+
 /** The head's samples over the ground for a face `L` long (n strips about 0.75 m each), from the spec's head. */
 function headTops(head: RuinHead | null | undefined, L: number, floor: number, stub: number, rng: () => number): number[] {
   const n = Math.max(3, Math.round(L / 0.75));
-  if (!head) return Array.from({ length: n + 1 }, () => floor + stub * (0.7 + rng() * 0.6));
+  if (!head) return Array.from({ length: n + 1 }, () => clearOfBreaks(floor + stub * (0.7 + rng() * 0.6)));
   // (a head breaks course by course, not in a saw: a slow wander along it, a broken course stepping it here and there,
   // and only a little jitter on that — the corners' quoins holding longest)
   const at = head.at ?? 0.5, dip = head.dip ?? 0, rag = head.ragged ?? 0.25;
@@ -155,7 +167,7 @@ function headTops(head: RuinHead | null | undefined, L: number, floor: number, s
     carry += steps[k];
     const wander = Math.sin(s * 5.1 + p1) * 0.22 + Math.sin(s * 11.3 + p2) * 0.1;
     const h = line * (1 - dip * (1 - Math.pow(d, 0.85))) + (wander + carry * 0.5) * rag * 2 + (rng() - 0.5) * rag * 0.4;
-    return floor + Math.max(stub, k === 0 || k === n ? Math.max(h, line * 0.9) : h);
+    return clearOfBreaks(floor + Math.max(stub, k === 0 || k === n ? Math.max(h, line * 0.9) : h));
   });
 }
 
@@ -202,6 +214,9 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
       }
     }
   }
+  // the floor: the rooms' fill to the floor's height, what the heaps and the fallen pieces lie on (the integrity gate:
+  // chunks on a floor that wasn't there floated over the ground)
+  sink.span('stone', -w / 2 + t, foot, -d / 2 + t, w / 2 - t, floor, d / 2 - t, { ...(spec.colour ? { colour: shade(spec.colour, 0.72) } : { shade: 0.72 }) });
   // the plinth course round the foot
   if (spec.plinth) {
     const p = spec.plinth, o = p.out, pc = p.colour ? { colour: p.colour } : {};
@@ -280,6 +295,8 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
         for (let k = 1; k < n; k += 2) {
           if (tp[k] < floor + 1.2 || look() < 0.4) continue;
           const u = -f.width / 2 + (f.width * k) / n, p = facePoint(f, u, tp[k] - 0.05, -t / 2);
+          // (not over an opening that broke through the head: no wall there for a bar to come out of)
+          if (spec.openings.some((o) => o.face === name && Math.abs(o.u - u) < o.w / 2 + 0.15)) continue;
           sink.member('structureWood', p, [p[0] + (look() - 0.5) * 0.5, p[1] + 0.4 + look() * 0.6, p[2] + (look() - 0.5) * 0.5], 0.025, 0.025, [0, 0, 1],
             { colour: spec.rebar, decor: true, exposed: true, fine: true }, 0);
         }
@@ -289,7 +306,7 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
     const chunk = spec.colour ? { colour: shade(spec.colour, 0.9), decor: true } : { decor: true };
     for (let k = 0; k < 10; k++) {
       const x = (look() - 0.5) * (w - 1.0), z = (look() - 0.5) * (d - 1.0), s = 0.25 + look() * 0.35;
-      sink.box(spec.wall, [x, restOn(x, z) + s * 0.3, z], [s * 0.6, s * 0.35, s * 0.45], chunk);
+      sink.box(spec.wall, [x, restOn(x, z) + s * 0.2, z], [s * 0.6, s * 0.35, s * 0.45], chunk);
     }
     if (spec.roof) {
       const [pw, pd, pt] = spec.roof.piece, rc = { ...(spec.roof.colour ? { colour: spec.roof.colour } : {}), decor: true };
@@ -300,8 +317,16 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
         const ax: V = [ca, 0, -sa], dz: V = [sa * Math.cos(tilt), Math.sin(tilt), ca * Math.cos(tilt)];
         const corner = (i: number, j: number): V => [x + ax[0] * i * pw / 2 + dz[0] * j * pd / 2, y + dz[1] * j * pd / 2, z + ax[2] * i * pw / 2 + dz[2] * j * pd / 2];
         const n = cross(sub(corner(1, -1), corner(-1, -1)), sub(corner(1, 1), corner(-1, -1)));
-        quadFacing(sink, spec.roof.bucket, [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], n[1] >= 0 ? n : [-n[0], -n[1], -n[2]], rc);
-        quadFacing(sink, spec.roof.bucket, [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)].map((p): V => [p[0], p[1] - pt, p[2]]), n[1] >= 0 ? [-n[0], -n[1], -n[2]] : n, rc);
+        const top = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], bot = top.map((p): V => [p[0], p[1] - pt, p[2]]);
+        quadFacing(sink, spec.roof.bucket, top, n[1] >= 0 ? n : [-n[0], -n[1], -n[2]], rc);
+        quadFacing(sink, spec.roof.bucket, bot, n[1] >= 0 ? [-n[0], -n[1], -n[2]] : n, rc);
+        // its edges, closing the piece (a thick slab's top would stand clear of its underside: the integrity gate)
+        const mid: V = [(top[0][0] + top[2][0]) / 2, (top[0][1] + top[2][1]) / 2 - pt / 2, (top[0][2] + top[2][2]) / 2];
+        for (let e = 0; e < 4; e++) {
+          const a = top[e], b = top[(e + 1) % 4], c = bot[(e + 1) % 4], d = bot[e];
+          const m: V = [(a[0] + b[0]) / 2 - mid[0], (a[1] + b[1]) / 2 - mid[1], (a[2] + b[2]) / 2 - mid[2]];
+          quadFacing(sink, spec.roof.bucket, [a, b, c, d], m, rc);
+        }
       }
       // the rafters: from a standing head down into the heap
       for (let k = 0; k < 3; k++) {
