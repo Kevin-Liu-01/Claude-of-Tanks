@@ -1155,6 +1155,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/roof-edge.selftest.mjs',
     // 2026-10-14 (physics stream F7a): roof pivots no longer hop: a support step is position, a rebound no launch
     'tools/roof-hops.selftest.mjs',
+    // 2026-10-14 (physics stream F8): roof falls: the edge under the box is a contact, walls under the roof are passed
+    'tools/roof-falls.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
