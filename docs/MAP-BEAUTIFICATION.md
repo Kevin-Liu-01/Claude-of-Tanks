@@ -7868,8 +7868,9 @@ kershef's rounded, battered blocks with palm-trunk beam ends (`regional/ksar.ts`
   backs read as "long blank grey-lavender concrete noise barriers" and the town as isolated buildings on bare sand. The
   fixes: the siwa kershef a warm tan (its old walls a shade browner); the souk rows' back wall battered mud buttresses
   at the party walls and ends, each stall's plank back door under a palm-trunk lintel or a shuttered hatch, a worn
-  crest; five kershef houses backing onto the souk across its back lane, fronts north (34 m and more off every zone).
-  Census [1587, 1660, 822] -> [1653, 1729, 822].
+  crest; two heaped kershef clusters backing onto the souk across its back lane, fronts north (34 m and more off every
+  zone; the town stays within its 32-lot ceiling). Census [1587, 1660, 822] -> [1586, 1721, 822]; the brief holds
+  (orphan 0.125, symmetry 1.012).
 
 ## Acceptance is visual and measured
 
