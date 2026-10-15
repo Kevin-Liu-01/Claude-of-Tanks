@@ -857,13 +857,15 @@ export function burningEmitter(
       const glow = glowShare(ctx, 1.0);
       for (let i = 0; i < src.length; i++) {
         const s = src[i];
-        // licks: born on the deck, rising fast, shrinking as they burn off
-        const licks = r() < 0.35 * k ? 2 : 1;
+        // licks: born on the deck, rising fast, shrinking as they burn off; (kill glow, 10-14: the media lane's combat
+        // review, a white-hot hold over a knocked-out hull at ~1.3 s) burning fuel and stowage are orange tongues, not a
+        // white-hot core: few white licks, and additive licks thin enough that thirty overlapping never sheet to white
+        const licks = r() < 0.25 * k ? 2 : 1;
         for (let j = 0; j < licks; j++) {
           puff(ctx, 'fire', s.x + (r() - 0.5) * s.size, s.y + r() * 0.25, s.z + (r() - 0.5) * s.size,
             (r() - 0.5) * 0.6 + WIND_X * 0.25, 1.6 + r() * 1.8, (r() - 0.5) * 0.6 + WIND_Z * 0.25,
-            0.38 + r() * 0.42, (0.9 + r() * 0.6) * s.size * (0.7 + 0.3 * k), (0.45 + r() * 0.35) * s.size,
-            r() < 0.25 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.85 + r() * 0.15, 3.4, off - r() * 0.03);
+            0.34 + r() * 0.36, (0.75 + r() * 0.45) * s.size * (0.7 + 0.3 * k), (0.4 + r() * 0.3) * s.size,
+            r() < 0.05 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.5 + r() * 0.2, 3.4, off - r() * 0.03);
         }
         // occasional tall tongue
         if (r() < 0.06 * k) {

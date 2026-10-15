@@ -45,6 +45,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/worldWindPalette.selftest.mjs',
     'src/fx/salvoGovernor.selftest.mjs',
     'src/fx/heLookV2.selftest.mjs',
+    'src/fx/killGlow.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
