@@ -740,7 +740,14 @@ try {
       const select = document.querySelector('.cot-play [data-control="map"]');
       if (select && select.value !== mapId) { select.value = mapId; select.dispatchEvent(new Event('change', { bubbles: true })); }
     }, mapOption);
-    await waitFor(pages.c, (mapId) => document.querySelector('.cot-play [data-control="map"]')?.value === mapId, `C sees map ${mapOption}`, 15_000, { args: [mapOption] });
+    if (live) {
+      await waitFor(pages.c, (mapId) => document.querySelector('.cot-play [data-control="map"]')?.value === mapId, `C sees map ${mapOption}`, 15_000, { args: [mapOption] });
+    } else {
+      // (2026-10-14) the room's own settings: a guest's first map control is no longer the lobby's on main
+      const roomMap = () => rooms.room(report.room.code)?.room?.settings?.mapId ?? null;
+      for (let waited = 0; roomMap() !== mapOption && waited < 15_000; waited += 100) await sleep(100);
+      if (roomMap() !== mapOption) throw new Error(`the room plays ${roomMap()}, not ${mapOption}`);
+    }
   }
   if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null });
   await activate(pages.c,'.cot-play [data-action="ready"]');
