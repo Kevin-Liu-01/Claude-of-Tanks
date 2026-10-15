@@ -2265,13 +2265,14 @@ export function initHud(bus: EventBus): HudRuntime {
     controlsRow.hidden=!player;
     const flight = player?.aerial;
     droneButton.hidden = flight?.kind !== 'drone';
-    // Owner 2026-10-14: the authority refuses a recall before the drone's feed and holds the dock while it flies home.
+    // Owner 2026-10-14: the authority refuses a recall before the drone's feed and holds the dock while the recalled
+    // airframe flies home and lands; the countdown below runs to the relaunch.
     const drone = droneControl(flight, canControl);
     droneButton.disabled = drone.disabled;
     droneButton.dataset.phase = drone.phase;
     droneButton.classList.toggle('active', !!flight?.active);
     droneButton.setAttribute('aria-pressed', String(!!flight?.active));
-    droneButton.querySelector('.sl')!.textContent = drone.label;
+    droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
 
     root.classList.toggle('aerial-active', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);

@@ -3989,7 +3989,6 @@
   "playMenu.matchMode.ac130.desc": "Protect vulnerable allied vehicles driving to extraction. Save at least half before they are destroyed or time runs out. All human players provide air support.",
   "systems.drone": "Drone",
   "systems.drone.return": "Return",
-  "systems.drone.returning": "Returning",
   "systems.drone.help": "Launch or return. W/S: forward/reverse. A/D: strafe. Space: climb. Look to steer; fly into an enemy to detonate.",
   "hud.modeStatus.juggernaut": "DESTROY THE JUGGERNAUT · {hp} / {max}",
   "hud.modeStatus.juggernautBoss": "SURVIVE · {hp} / {max}",

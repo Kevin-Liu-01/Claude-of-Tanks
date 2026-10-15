@@ -3989,7 +3989,6 @@
   "playMenu.matchMode.ac130.desc": "保护驶向撤离点的脆弱友军车辆。在友军被摧毁或时间耗尽前，救出至少一半。所有人类玩家提供空中支援。",
   "systems.drone": "无人机",
   "systems.drone.return": "返回坦克",
-  "systems.drone.returning": "返航中",
   "systems.drone.help": "发射或返回。W/S：前进/后退。A/D：横移。空格：上升。瞄准控制方向，撞击敌车引爆。",
   "hud.modeStatus.juggernaut": "击毁重装巨兽 · {hp} / {max}",
   "hud.modeStatus.juggernautBoss": "坚持生存 · {hp} / {max}",
