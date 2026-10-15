@@ -509,6 +509,8 @@ uniform vec3 uDeckTune;
 // sample's optical depth under a low sun — x its weight at the horizon, y the sun's height (sine) from which it is whole
 // (the map's front-and-mean model carries a low sun's kilometres of slant, gaps included, into every cloud behind)
 uniform vec2 uBsmLowSun;
+// 2026-10-14 (the SKY lane, QA knob CLOUD_ENTRY_JITTER): the share of a cloud entry's back-up the pixel's jitter takes
+uniform float uEntryJitter;
 uniform float uDebug;
 // the scene's depth the last frame left (a layer ends at a surface past the dome)
 uniform sampler2D tSceneDepth;
@@ -720,7 +722,11 @@ void main() {
 			float sigma = sigma4.x + sigma4.y + sigma4.z + sigma4.w;
 			if ( sigma > 1e-5 && prevSigma <= 1e-5 && fine == 0 ) {
 				// entering: back up half a stride and refine
-				t -= ds * 0.5;
+				// (2026-10-14, the SKY lane: the back-up by a fixed half stride anchored every ray's samples to its cloud's
+				// entry, so under a far ray's long strides the samples stood in layers parallel to a flat base — the blind
+				// A/B's "horizontal slice banding", worst under a low sun's steep light; the back-up now takes a per-pixel
+				// share of the stride, 0.25-0.75, and the history averages the layers away. QA: CLOUD_ENTRY_JITTER 0)
+				t -= ds * mix( 0.5, 0.25 + 0.5 * fract( jitter * 5.8309 + 0.2113 ), uEntryJitter );
 				fine = int( uFine.x );
 				lit = 0;
 				prevSigma = 0.0;
