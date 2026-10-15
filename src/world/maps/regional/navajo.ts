@@ -1024,7 +1024,22 @@ const equipmentShed: RegionalBuilder = (ctx) => {
   for (let k = 0; k < bays; k += 2) {
     const za = -D / 2 + 0.3 + (D - 0.6) * k / bays, zb = -D / 2 + 0.3 + (D - 0.6) * (k + 1) / bays;
     sink.span('straw', x0 + W - 1.4, 0.15, za + 0.15, x0 + W - 0.35, 1.5, zb - 0.15);
+    // (props census #4, lane B 2026-10-14: "the bale stack a straw box") its bales' courses and the joints between them
+    if (ctx.tier !== 'mobile') {
+      for (const y of [0.6, 1.05]) sink.span('straw', x0 + W - 1.42, y - 0.015, za + 0.13, x0 + W - 0.33, y + 0.015, zb - 0.13, { decor: true, shade: 0.78 });
+      for (let z = za + 0.15 + 0.9; z < zb - 0.3; z += 0.9) sink.span('straw', x0 + W - 0.36, 0.17, z - 0.015, x0 + W - 0.33, 1.48, z + 0.015, { decor: true, shade: 0.78 });
+    }
   }
+  // the frame inside the open shed: girts along the back wall and the ends, the sheet's laps outside, its rust at the foot
+  sink.dressing(ctx.tier === 'mobile', () => {
+    const girt = { colour: shade(pick(look, JUNIPER), 0.85), decor: true, uv: UV_MEMBER };
+    for (const y of [1.3, 2.6, 3.7]) {
+      sink.span('structureWood', x0 + 0.08, y - 0.06, -D / 2 + 0.1, x0 + 0.18, y + 0.06, D / 2 - 0.1, girt);
+      for (const z of [-D / 2 + 0.08, D / 2 - 0.18]) sink.span('structureWood', x0 + 0.1, y - 0.06, z, x0 + W - 0.3, y + 0.06, z + 0.1, girt);
+    }
+    for (let z = -D / 2 + 0.6; z < D / 2 - 0.2; z += 0.75) sink.span('structureMetal', x0 - 0.02, 0.15, z - 0.02, x0 + 0.005, H - 0.05, z + 0.02, { colour: shade(tin.colour, 0.82), decor: true, fine: true });
+    sink.span('structureMetal', x0 - 0.012, 0.15, -D / 2, x0 + 0.005, 0.6, D / 2, { colour: [tin.colour[0] * 0.6 + 0.18, tin.colour[1] * 0.55 + 0.1, tin.colour[2] * 0.5 + 0.06], decor: true });
+  });
   const n = Math.max(3, Math.round(D / 3.6));
   // (props census E4, lane B 2026-10-14: the front poles stopped 1.0 m under the roof, which rises to the open front)
   // the roof falls to the back wall; the front poles carry a juniper plate under its high eave, the poles up to it
