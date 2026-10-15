@@ -491,31 +491,59 @@ export interface SeatGunSlices {
 
 /** Build the gun's slices from gun-local geometry sources (the gun, gun-dark and mantlet buckets). */
 export function seatGunSlices(sources: readonly SeatSource[], step = 0.05): SeatGunSlices | null {
+  // every triangle is clipped into the 5 cm slabs it crosses: a barrel's side faces carry vertices only at their ends
+  const tris: number[] = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   let z0 = Infinity, z1 = -Infinity;
-  const v = new THREE.Vector3();
-  const visit = (fn: (p: THREE.Vector3) => void): void => {
-    for (const s of sources) {
-      const pos = s.geometry.getAttribute('position');
-      if (!pos) continue;
-      for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i);
-        if (s.matrix) v.applyMatrix4(s.matrix);
-        fn(v);
-      }
+  for (const s of sources) {
+    const pos = s.geometry.getAttribute('position');
+    if (!pos) continue;
+    const index = s.geometry.index;
+    const n = index ? index.count : pos.count;
+    for (let t = 0; t + 2 < n; t += 3) {
+      a.fromBufferAttribute(pos, index ? index.getX(t) : t);
+      b.fromBufferAttribute(pos, index ? index.getX(t + 1) : t + 1);
+      c.fromBufferAttribute(pos, index ? index.getX(t + 2) : t + 2);
+      if (s.matrix) { a.applyMatrix4(s.matrix); b.applyMatrix4(s.matrix); c.applyMatrix4(s.matrix); }
+      tris.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+      z0 = Math.min(z0, a.z, b.z, c.z); z1 = Math.max(z1, a.z, b.z, c.z);
     }
-  };
-  visit((p) => { if (p.z < z0) z0 = p.z; if (p.z > z1) z1 = p.z; });
+  }
   if (!(z1 > z0)) return null;
   const count = Math.max(1, Math.ceil((z1 - z0) / step) + 1);
   const bins = new Float32Array(count * 4).fill(NaN);
-  visit((p) => {
-    const k = Math.min(count - 1, Math.max(0, Math.floor((p.z - z0) / step)));
+  const put = (k: number, x: number, y: number): void => {
     const o = k * 4;
-    if (!(bins[o] <= p.x)) bins[o] = p.x;
-    if (!(bins[o + 1] >= p.x)) bins[o + 1] = p.x;
-    if (!(bins[o + 2] <= p.y)) bins[o + 2] = p.y;
-    if (!(bins[o + 3] >= p.y)) bins[o + 3] = p.y;
-  });
+    if (!(bins[o] <= x)) bins[o] = x;
+    if (!(bins[o + 1] >= x)) bins[o + 1] = x;
+    if (!(bins[o + 2] <= y)) bins[o + 2] = y;
+    if (!(bins[o + 3] >= y)) bins[o + 3] = y;
+  };
+  // Sutherland-Hodgman against one z plane, on flat [x, y, z] arrays
+  const clip = (poly: number[], z: number, keepAbove: boolean): number[] => {
+    const out: number[] = [];
+    const m = poly.length / 3;
+    for (let i = 0; i < m; i++) {
+      const p = i * 3, q = ((i + 1) % m) * 3;
+      const pin = keepAbove ? poly[p + 2] >= z : poly[p + 2] <= z, qin = keepAbove ? poly[q + 2] >= z : poly[q + 2] <= z;
+      if (pin) out.push(poly[p], poly[p + 1], poly[p + 2]);
+      if (pin !== qin) {
+        const f = (z - poly[p + 2]) / (poly[q + 2] - poly[p + 2]);
+        out.push(poly[p] + (poly[q] - poly[p]) * f, poly[p + 1] + (poly[q + 1] - poly[p + 1]) * f, z);
+      }
+    }
+    return out;
+  };
+  for (let t = 0; t < tris.length; t += 9) {
+    const tz0 = Math.min(tris[t + 2], tris[t + 5], tris[t + 8]), tz1 = Math.max(tris[t + 2], tris[t + 5], tris[t + 8]);
+    const k0 = Math.max(0, Math.floor((tz0 - z0) / step)), k1 = Math.min(count - 1, Math.floor((tz1 - z0) / step));
+    const tri = tris.slice(t, t + 9);
+    for (let k = k0; k <= k1; k++) {
+      if (k0 === k1) { for (let v = 0; v < 9; v += 3) put(k, tri[v], tri[v + 1]); break; }
+      const slab = clip(clip(tri, z0 + k * step, true), z0 + (k + 1) * step, false);
+      for (let v = 0; v < slab.length; v += 3) put(k, slab[v], slab[v + 1]);
+    }
+  }
   return { z0, step, bins, count };
 }
 
@@ -579,6 +607,61 @@ function profileAt(profile: SeatRadialProfile, r: number, low: boolean): number 
   return v;
 }
 
+/** The turret's lowest solid by turret angle and radius (turret frame), for the traverse exemption of turret runs. */
+export interface SeatAngularProfile { step: number; angBins: number; radBins: number; values: Float32Array }
+
+/** Lowest solid of `sources` (turret frame) per (angle about +Y, radius) bin, sampled 5 cm apart on every triangle. */
+export function seatAngularLow(sources: readonly SeatSource[], step = 0.02, angBins = 72, rMax = 6): SeatAngularProfile {
+  const radBins = Math.ceil(rMax / step) + 2;
+  const values = new Float32Array(angBins * radBins).fill(Infinity);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), p = new THREE.Vector3();
+  const put = (q: THREE.Vector3): void => {
+    const r = Math.hypot(q.x, q.z);
+    if (r > rMax) return;
+    const ai = ((Math.floor((Math.atan2(q.x, q.z) + Math.PI) / (Math.PI * 2) * angBins) % angBins) + angBins) % angBins;
+    const k = ai * radBins + Math.floor(r / step);
+    if (q.y < values[k]) values[k] = q.y;
+  };
+  for (const s of sources) {
+    if (ROLE_CODE[s.role] === IGNORE_CODE || s.role === 'gear' || s.role === 'suit' || s.role === 'run'
+      || s.role === 'decor' || s.owner) continue;
+    const pos = s.geometry.getAttribute('position');
+    if (!pos) continue;
+    const index = s.geometry.index;
+    const cnt = index ? index.count : pos.count;
+    for (let t = 0; t + 2 < cnt; t += 3) {
+      a.fromBufferAttribute(pos, index ? index.getX(t) : t);
+      b.fromBufferAttribute(pos, index ? index.getX(t + 1) : t + 1);
+      c.fromBufferAttribute(pos, index ? index.getX(t + 2) : t + 2);
+      if (s.matrix) { a.applyMatrix4(s.matrix); b.applyMatrix4(s.matrix); c.applyMatrix4(s.matrix); }
+      const k = Math.min(24, Math.ceil(Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)) / 0.05));
+      if (k <= 1) { put(a); put(b); put(c); continue; }
+      for (let i = 0; i <= k; i++) for (let j = 0; j <= k - i; j++) {
+        p.copy(a).multiplyScalar(1 - (i + j) / k).addScaledVector(b, i / k).addScaledVector(c, j / k);
+        put(p);
+      }
+    }
+  }
+  return { step, angBins, radBins, values };
+}
+
+/** The lowest turret solid near (turret angle `ang`, radius `r`), within `halfArc` metres of arc and 2 cm of radius. */
+function angularLowAt(P: SeatAngularProfile, r: number, ang: number, halfArc: number): number {
+  const span = Math.max(1, Math.ceil((halfArc / Math.max(r, 0.05)) / (Math.PI * 2) * P.angBins));
+  const a0 = Math.floor((ang + Math.PI) / (Math.PI * 2) * P.angBins);
+  const k0 = Math.floor(r / P.step);
+  let v = Infinity;
+  for (let da = -span; da <= span; da++) {
+    const ai = (((a0 + da) % P.angBins) + P.angBins) % P.angBins;
+    for (let k = k0 - 1; k <= k0 + 1; k++) {
+      if (k < 0 || k >= P.radBins) continue;
+      const x = P.values[ai * P.radBins + k];
+      if (x < v) v = x;
+    }
+  }
+  return v;
+}
+
 /** What moves round a run: the turret's traverse, the gun's pitch-by-yaw range, the casemate arc. */
 export interface SeatMotion {
   /** Turret pivot (hull frame); the turret's rest pose is a pure translation to it. */
@@ -597,6 +680,8 @@ export interface SeatMotion {
   turretLow: SeatRadialProfile | null;
   /** The hull's highest solid by radius (hull frame) for turret runs, built on demand. */
   hullHigh: (rMin: number, rMax: number, yFloor: number) => SeatRadialProfile | null;
+  /** The turret's own lowest solid by turret angle and radius (turret frame), built on demand. */
+  turretAngularLow: () => SeatAngularProfile | null;
 }
 
 // --------------------------------------------------------------------------------------------------------- the run
@@ -789,6 +874,8 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
       }
       return;
     }
+    // other decor is the decor's own overlap ledger's to keep apart (commit()); the box here is too coarse for it
+    if (role === 'decor') return;
     const need = ROLE_CLEAR_M(ROLE_CODE[role]) * T.clearScale;
     grown.copy(local).expandByScalar(need);
     if (!grown.intersectsTriangle(_tri)) return;
@@ -859,6 +946,7 @@ function runSamples(shape: SeatRunShape, ax: Axes, pose: SeatPose): THREE.Vector
 }
 
 const GUN_YAW_STEP = Math.PI / 180;
+const GUN_PITCH_STEP = Math.PI / 180;
 
 /** Minimum clearance (m) of the run from everything that moves round it (Infinity when nothing reaches it). */
 function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, owner: number): number {
@@ -884,8 +972,9 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
       if (M.turreted) for (let y = 0; y < Math.PI * 2; y += GUN_YAW_STEP) yaws.push(y);
       else for (let y = -M.arc; y <= M.arc + 1e-9; y += GUN_YAW_STEP) yaws.push(y);
       for (const yaw of yaws) {
-        const pitches = [M.pitchMin(yaw), 0, M.pitchMax];
-        for (const pitch of pitches) {
+        // every degree of the pitch range this yaw allows (a gun with a long sleeve can dip its tail as it lifts)
+        const lo = M.pitchMin(yaw);
+        for (let pitch = lo; pitch <= M.pitchMax + 1e-9; pitch += GUN_PITCH_STEP) {
           const c = gunClearanceAt(env, M, pts, yaw, pitch, true, owner);
           if (c < clear) clear = c;
         }
@@ -896,7 +985,7 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
     if (M.gun) {
       let lo = 0;
       for (let y = 0; y < Math.PI * 2; y += Math.PI / 36) lo = Math.min(lo, M.pitchMin(y));
-      for (let pitch = lo; pitch <= M.pitchMax + 1e-9; pitch += Math.PI / 180) {
+      for (let pitch = lo; pitch <= M.pitchMax + 1e-9; pitch += GUN_PITCH_STEP) {
         const c = gunClearanceAt(env, M, pts, 0, pitch, false, owner);
         if (c < clear) clear = c;
       }
@@ -914,7 +1003,10 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
           const r = Math.hypot(p.x, p.z);
           const hullTop = profileAt(high, r, false);
           if (!Number.isFinite(hullTop)) continue;
-          const own = M.turretLow ? profileAt(M.turretLow, r, true) : Infinity;
+          // the turret's own surface next to this point (15 cm of arc): if it already reaches the hull's top at this radius,
+          // the hull part is in the turret's way by itself (HOST_SWEEP), not the run's fault
+          const ang = M.turretAngularLow();
+          const own = ang ? angularLowAt(ang, r, Math.atan2(p.x, p.z), 0.15) + M.pivot.y : Infinity;
           if (own <= hullTop) continue;
           clear = Math.min(clear, p.y + M.pivot.y - hullTop);
         }
@@ -971,12 +1063,13 @@ function armourLimited(env: SeatEnv, M: SeatMotion, yaw: number, pitch: number, 
     const o = k * 4;
     if (Number.isNaN(G.bins[o])) continue;
     const gz = G.z0 + (k + 0.5) * G.step, gy = G.bins[o + 2], gx = (G.bins[o] + G.bins[o + 1]) / 2;
+    if (gz < 0.5) continue; // the breech and cradle ride inside the turret: only the gun out past its mantlet can be stopped
     // gun -> turret -> hull
     const ty = cp * gy + sp * gz + M.gunPivot.y, tz = -sp * gy + cp * gz + M.gunPivot.z, tx = gx + M.gunPivot.x;
     _g.set(cy * tx + sy * tz + M.pivot.x, ty + M.pivot.y, -sy * tx + cy * tz + M.pivot.z);
     _from.copy(_g); _from.y += 1.5;
     if (!env.soup.raycast(_from, _down, 1.5, owner, false, _hit2)) continue;
-    if (_hit2.host && _hit2.p.y > _g.y + 0.01) return true;
+    if (_hit2.host && _hit2.p.y > _g.y + 0.02) return true;
   }
   return false;
 }

@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  measureSeat, refineSeat, SeatSoup, seatRadialProfile, solveSpareTrackSeat, seatRoleForBucket,
+  measureSeat, refineSeat, SeatSoup, seatAngularLow, seatRadialProfile, solveSpareTrackSeat, seatRoleForBucket,
 } from './spareTrackSeat.ts';
 
 const UNIT = new THREE.Vector3(1, 1, 1);
@@ -126,6 +126,7 @@ const env = (sources, frame = 'hull', motion = null) => ({
     turretLow: seatRadialProfile(turretSrc.map((s) => ({ ...s, matrix: new THREE.Matrix4().makeTranslation(0, 1.4, 0) })),
       0, 0, true),
     hullHigh: () => seatRadialProfile(hullSrc, 0, 0, false, 0, 8, 0),
+    turretAngularLow: () => seatAngularLow(turretSrc),
   };
   const side = { box: new THREE.Box3(new THREE.Vector3(-0.2, -0.0405, -0.24), new THREE.Vector3(0.2, 0.05, 0.24)), axis: 1,
     embedM: 0, standoffM: 0.018 };

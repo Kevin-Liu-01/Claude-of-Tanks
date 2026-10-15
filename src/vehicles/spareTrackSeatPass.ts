@@ -11,8 +11,8 @@ import * as THREE from 'three';
 import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { casemateGunYawLimit } from './casemateGunPose.ts';
 import {
-  seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat, SeatSoup,
-  measureSeat,
+  seatAngularLow, seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat,
+  SeatSoup, measureSeat, type SeatAngularProfile,
   type SeatEnv, type SeatMeasure, type SeatMotion, type SeatPose, type SeatRadialProfile, type SeatRole, type SeatRunShape,
   type SeatSource, type SpareTrackRunTag, type SpareTrackSeatReceipt,
 } from './spareTrackSeat.ts';
@@ -95,6 +95,7 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
     turretLow = seatRadialProfile(moved(frames.turret, toHull, false), frames.pivot.x, frames.pivot.z, true);
   }
   let hullHigh: SeatRadialProfile | null | undefined;
+  let turretAngular: SeatAngularProfile | null | undefined;
   return {
     pivot: frames.pivot.clone(),
     gunPivot: frames.gunPivot.clone(),
@@ -110,6 +111,10 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
           frames.pivot.y - 1.2);
       }
       return hullHigh;
+    },
+    turretAngularLow: () => {
+      if (turretAngular === undefined) turretAngular = turreted ? seatAngularLow(frames.turret) : null;
+      return turretAngular;
     },
   };
 }
