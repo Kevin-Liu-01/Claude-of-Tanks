@@ -167,6 +167,17 @@ try {
         { timeout: 20000, polling: 200 },
       ).catch(() => console.warn('[shots] garage GLB queue did not settle within 20 s — capturing anyway'));
     }
+    // the damage panel's tank diagram draws once its masks and tints have loaded, after the fixed settle on a loaded
+    // machine (2026-10-15, the manual's 17 and 19: the HUD's diagram blank in both). Where the panel is on screen, wait
+    // (bounded) for its own readiness; on timeout capture anyway (never hang).
+    await page.waitForFunction(
+      `(() => {
+        const p = window.__DEBUG && window.__DEBUG.damagePanel;
+        if (!p || !p.root || !p.root.isConnected || p.root.offsetParent === null || typeof p.debugState !== 'function') return true;
+        return !!p.debugState().masksReady;
+      })()`,
+      { timeout: 10000, polling: 200 },
+    ).catch(() => console.warn(`[shots] ${view}: the damage panel's diagram was not ready within 10 s — capturing anyway`));
     await new Promise((r) => setTimeout(r, settleMs));
     const file = `${outDir}/${view}.png`;
     const renderState = await page.evaluate(() => {
