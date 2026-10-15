@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
-import {fieldChestParts} from './fieldChest.ts';
+import {fieldChestParts,reserveDecorVolume} from './fieldChest.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
@@ -302,6 +302,9 @@ function rearBasketStowage(P:TankBuilderPort):void {
   chest(.62,.30,.40,-.86,-2.40,-1);
   chest(.70,.30,.40,.70,-2.40,-1);
   chest(.50,.26,.40,-.16,-2.40,-1,false);
+  // critic panel 2026-10-15: the basket stays the chests' (the canvas loads stood here before), so the decor's loads
+  // keep the seats they had (fieldChest.ts reserveDecorVolume)
+  reserveDecorVolume(P.turretG,[-1.25-PIVOT[0],floor-PIVOT[1],-3.2-PIVOT[2]],[1.25-PIVOT[0],floor+.55-PIVOT[1],-2.18-PIVOT[2]]);
 }
 
 function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:number,d:number,glassZ:number):void {

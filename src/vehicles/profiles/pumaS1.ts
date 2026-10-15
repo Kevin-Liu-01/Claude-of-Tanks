@@ -509,67 +509,36 @@ function addTurret(P: PumaS1BuilderPort): void {
   // under its turntable, as the Puma's commander sight does, not on a 0.5 m slab.
   P.addEquipment('turret', KIT.cylY(0.25, 0.28, 0.20, 20), 0.62, 0.72, 0.52);
   P.addEquipment('turret', KIT.cylY(0.25, 0.27, 0.075, 18), 0.62, 0.855, 0.52);
-  const pumaRoofOptics = FITTINGS.openYokeRws({
-    mats: P.mats,
-    bodySlot: 'hull',
-    sizeStandard: 'k2b-compact-tower',
-    scale: 0.80,
-    towerRise: 0.10,
-    variant: 'korean-twin',
-    sensorHead: true,
-    sensorMount: 'roof',
-    weapon: false,
-    seed: 172,
-  });
-  pumaRoofOptics.name = 'pumaS1K2bStyleRoofOptics';
-  pumaRoofOptics.userData.hostVariant = 'spz_puma_s1';
-  pumaRoofOptics.userData.sensorRole = 'commander-panoramic';
-  mount(P, 'turret', pumaRoofOptics, 0.62, 0.88, 0.52, [0, -0.05, 0]);
+  // Critic panel 2026-10-15 on the owner markup: the sight column carries the commander's PERI RTWL head, the Puma's real
+  // stabilised panoramic periscope (an armoured box with its day, thermal and laser windows behind a brow), not an empty
+  // open-yoke station. Head 0.44 x 0.30 x 0.42 m on the turntable; the windows face forward.
+  {
+    const { box: b, cylY: cy, cylZ: cz } = KIT;
+    const hx = 0.62, hz = 0.52, base = 0.8925, headY = base + 0.15;
+    P.addEquipment('turret', cy(0.20, 0.22, 0.04, 20), hx, base + 0.02, hz);                     // azimuth bearing housing
+    P.addEquipment('turret', b(0.44, 0.30, 0.42), hx, headY, hz);                                 // armoured head
+    P.addEquipment('turret', b(0.40, 0.035, 0.38), hx, headY + 0.1675, hz);                      // roof plate
+    P.addEquipment('turret', b(0.48, 0.035, 0.16), hx, headY + 0.13, hz + 0.24, -0.18, 0, 0);    // armoured brow
+    for (const side of [-1, 1]) P.addEquipment('turret', b(0.03, 0.22, 0.12), hx + side * 0.21, headY - 0.01, hz + 0.24); // window cheeks
+    P.add('turretDark', b(0.38, 0.19, 0.02), hx, headY - 0.01, hz + 0.215);                      // window frame
+    P.addModuleVisual('optics', 'turretGlass', b(0.17, 0.12, 0.012), hx - 0.085, headY, hz + 0.228);      // day channel
+    P.addModuleVisual('optics', 'turretGlass', b(0.12, 0.12, 0.012), hx + 0.085, headY, hz + 0.228);      // thermal channel
+    P.addModuleVisual('optics', 'turretGlass', cz(0.028, 0.012, 14), hx + 0.085, headY - 0.085, hz + 0.228); // laser port
+    P.add('turretDark', b(0.36, 0.012, 0.012), hx, headY + 0.075, hz + 0.232);                   // wiper bar
+    for (const side of [-1, 1]) P.add('turretDark', b(0.025, 0.06, 0.05), hx + side * 0.235, headY + 0.05, hz - 0.08); // lifting lugs
+  }
   P.turretG.userData.pumaS1RoofOpticsReceipt = Object.freeze({
-    designFamily: pumaRoofOptics.userData.designFamily,
-    variant: pumaRoofOptics.userData.stationVariant,
-    mountLocal: Object.freeze([0.62, 0.88, 0.52]),
-    scale: pumaRoofOptics.userData.scale,
-    sizeStandard: pumaRoofOptics.userData.sizeStandard,
-    towerRiseM: pumaRoofOptics.userData.towerRise,
-    hasWeapon: pumaRoofOptics.userData.hasWeapon,
-    sensorMount: pumaRoofOptics.userData.sensorMount,
-    integratedSensorHead: pumaRoofOptics.userData.hasIntegratedSensorHead,
+    sight: 'PERI RTWL commander panoramic periscope',
+    mountLocal: Object.freeze([0.62, 0.8925, 0.52]),
+    headSizeM: Object.freeze([0.44, 0.30, 0.42]),
+    windows: 3,
+    hasWeapon: false,
     turretOwned: true,
   });
 
-  // A separate compact RCT30-inspired weapon station occupies the former RWS
-  // seat. Its offset firing line clears both the panoramic tower and the main
-  // cannon, while the arrow brow and faceted yoke are unique to Puma S1.
-  const pumaRoofRws = FITTINGS.openYokeRws({
-    mats: P.mats,
-    bodySlot: 'hull',
-    sizeStandard: 'puma-s1-compact-rws',
-    scale: 0.68,
-    towerRise: 0.08,
-    variant: 'puma-s1-compact',
-    ammoSide: 1,
-    sensorHead: false,
-    elev: 0.055,
-    caliberMm: 12.7,
-    weaponName: 'Puma S1 compact remote machine gun',
-    seed: 173,
-  });
-  pumaRoofRws.name = 'pumaS1CompactRoofRws';
-  pumaRoofRws.userData.hostVariant = 'spz_puma_s1';
-  mount(P, 'turret', pumaRoofRws, 0.42, 0.74, -0.90, [0, 0.04, 0]);
-  P.turretG.userData.pumaS1RoofRwsReceipt = Object.freeze({
-    designFamily: pumaRoofRws.userData.designFamily,
-    variant: pumaRoofRws.userData.stationVariant,
-    mountLocal: Object.freeze([0.42, 0.74, -0.90]),
-    scale: pumaRoofRws.userData.scale,
-    sizeStandard: pumaRoofRws.userData.sizeStandard,
-    towerRiseM: pumaRoofRws.userData.towerRise,
-    caliberMm: pumaRoofRws.userData.caliberMm,
-    visibleFeedBelt: pumaRoofRws.userData.hasVisibleFeedBelt,
-    integratedSensorHead: pumaRoofRws.userData.hasIntegratedSensorHead,
-    turretOwned: true,
-  });
+  // VH.14 (the coordinator's ruling: roof weapons match the real vehicle; critic panel 2026-10-15 on the owner markup's
+  // surface 5): the Puma S1 carries its 30 mm, a coaxial MG4 and MELLS and no roof weapon, so the compact 12.7 mm remote
+  // station that stood on the rear roof is gone.
 
   // Twin MELLS/Spike LR2 cells use square armored launch boxes like the Puma
   // S1 demonstrator.  The shallow square mouths are unmistakable from the
@@ -671,7 +640,7 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       gunCenterlineOffsetFromTurretM: 0.14,
       gunSideEquipmentPods: 2,
       gunSideOpticApertures: 4,
-      rotatingOpticAssembly: 'right-front-armored-yoke',
+      rotatingOpticAssembly: 'right-front-peri-rtwl',
       mellsLauncherArchitecture: 'twin-square-armored-cells-v1',
       turretFlankElectronicsBoxes: 2,
       roofElectronicsBoxes: 2,

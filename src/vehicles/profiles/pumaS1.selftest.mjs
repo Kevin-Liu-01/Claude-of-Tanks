@@ -124,7 +124,7 @@ try {
     gunCenterlineOffsetFromTurretM: 0.14,
     gunSideEquipmentPods: 2,
     gunSideOpticApertures: 4,
-    rotatingOpticAssembly: 'right-front-armored-yoke',
+    rotatingOpticAssembly: 'right-front-peri-rtwl',
     mellsLauncherArchitecture: 'twin-square-armored-cells-v1',
     turretFlankElectronicsBoxes: 2,
     roofElectronicsBoxes: 2,
@@ -132,50 +132,22 @@ try {
     monotonicArmorInset: true,
     concaveSurfaceCount: 0,
   });
-  const roofOptics = tank.root.getObjectByName('pumaS1K2bStyleRoofOptics');
-  assert.equal(roofOptics?.parent, turret,
-    'Puma S1 K2B-style panoramic station remains turret-owned');
-  assert.equal(roofOptics?.userData.hasWeapon, false,
-    'Puma roof optics station contains no secondary weapon');
-  assert.equal(roofOptics?.getObjectByName('openYokeRwsMachineGun'), undefined,
-    'Puma roof optics station contains no hidden barrel or receiver mesh');
-  let roofWeaponMesh = false;
-  roofOptics?.traverse((node) => {
-    if (node.userData.appearanceRole === 'machineGun') roofWeaponMesh = true;
-  });
-  assert.equal(roofWeaponMesh, false,
-    'Puma panoramic station has no descendant tagged as machine-gun geometry');
+  // Critic panel 2026-10-15 on the owner markup: the sight column carries the PERI RTWL head (no open-yoke station), and
+  // the Puma S1 carries no roof weapon (VH.14; its compact 12.7 mm remote station is gone)
+  assert.equal(tank.root.getObjectByName('pumaS1K2bStyleRoofOptics'), undefined, 'no open-yoke optics station');
+  assert.equal(tank.root.getObjectByName('pumaS1CompactRoofRws'), undefined, 'no roof weapon station');
   assert.deepEqual(turret.userData.pumaS1RoofOpticsReceipt, {
-    designFamily: 'abramsx-open-yoke-v1',
-    variant: 'korean-twin',
-    mountLocal: [0.62, 0.88, 0.52],
-    scale: 0.8,
-    sizeStandard: 'k2b-compact-tower',
-    towerRiseM: 0.1,
+    sight: 'PERI RTWL commander panoramic periscope',
+    mountLocal: [0.62, 0.8925, 0.52],
+    headSizeM: [0.44, 0.30, 0.42],
+    windows: 3,
     hasWeapon: false,
-    sensorMount: 'roof',
-    integratedSensorHead: true,
     turretOwned: true,
   });
-  const roofRws = tank.root.getObjectByName('pumaS1CompactRoofRws');
-  assert.equal(roofRws?.parent, turret,
-    'Puma S1 compact machine-gun station remains turret-owned');
-  assert.equal(roofRws?.userData.hasWeapon, true,
-    'Puma S1 compact station retains its independent machine gun');
-  assert.equal(roofRws?.userData.hasIntegratedSensorHead, false,
-    'Puma machine-gun station cannot duplicate or intersect the panoramic optics');
-  assert.deepEqual(turret.userData.pumaS1RoofRwsReceipt, {
-    designFamily: 'abramsx-open-yoke-v1',
-    variant: 'puma-s1-compact',
-    mountLocal: [0.42, 0.74, -0.90],
-    scale: 0.68,
-    sizeStandard: 'puma-s1-compact-rws',
-    towerRiseM: 0.08,
-    caliberMm: 12.7,
-    visibleFeedBelt: true,
-    integratedSensorHead: false,
-    turretOwned: true,
-  });
+  assert.equal(turret.userData.pumaS1RoofRwsReceipt, undefined, 'no roof weapon receipt');
+  let roofWeapons = 0;
+  tank.root.traverse((node) => { if (node.userData.fittingRoot && ['pintleMG', 'openYokeRws', 'weaponStationMount'].includes(node.userData.fitting)) roofWeapons++; });
+  assert.equal(roofWeapons, 0, 'the Puma S1 draws no roof weapon');
   assert.deepEqual(turret.userData.pumaS1MellsLauncherReceipt, {
     architecture: 'twin-square-armored-cells-v1',
     launchCells: 2,
@@ -183,9 +155,6 @@ try {
     mountSide: 'vehicle-left',
     turretOwned: true,
   }, 'Puma S1 MELLS launcher uses two square armored cells and no circular tubes');
-  assert.equal(new Box3().setFromObject(roofOptics).intersectsBox(
-    new Box3().setFromObject(roofRws)), false,
-  'Puma panoramic and machine-gun towers have physically separate envelopes');
   const gear = hull.userData.runningGearReceipts?.at(-1);
   assert.equal(gear?.wheelZs.length, 6, 'six road wheels are authored per side');
   assert.equal(gear?.xcLeft, 1.47, 'left Puma track lane is tucked beneath the attached skirt');

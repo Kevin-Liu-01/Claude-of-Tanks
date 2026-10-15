@@ -12,7 +12,7 @@ import { moldedBox } from '../accessoryPrimitives.ts';
 import { box, cylX, cylY, cylZ, xform } from '../factoryGeometry.ts';
 
 export interface FieldChestParts {
-  /** painted body, lid and pressed ribs */
+  /** painted body, lid and pressed ribs: issue stowage, in the army's own drab on rendered builds (issueDrab) */
   readonly paint: THREE.BufferGeometry[];
   /** hinges, latches and handles */
   readonly dark: THREE.BufferGeometry[];
@@ -39,7 +39,7 @@ export function fieldChestParts(w: number, h: number, d: number, options: FieldC
     xform(moldedBox(w + 0.014, lidH, d + 0.014, high ? 0.014 : 0, high ? 1 : 0, 0.006), 0, bodyH + lidH / 2, 0),
   ];
   const dark: THREE.BufferGeometry[] = [];
-  if (!high) return { paint, dark };
+  if (!high) return issued({ paint, dark });
   // pressed stiffening: two ribs along the lid and two across the front, a few millimetres proud
   for (const z of [-0.22, 0.22]) paint.push(xform(box(w * 0.86, 0.008, 0.03), 0, h + 0.004, z * d));
   for (const y of [0.33, 0.66]) paint.push(xform(box(w * 0.88, 0.02, 0.008), 0, y * bodyH, f * (d / 2 + 0.004)));
@@ -59,7 +59,7 @@ export function fieldChestParts(w: number, h: number, d: number, options: FieldC
     for (const z of [-0.07, 0.07]) dark.push(xform(box(0.026, 0.016, 0.014), s * (w / 2 + 0.013), bodyH * 0.62, z));
     dark.push(xform(cylZ(0.008, 0.16, 8), s * (w / 2 + 0.024), bodyH * 0.62, 0));
   }
-  return { paint, dark };
+  return issued({ paint, dark });
 }
 
 /**
@@ -74,7 +74,7 @@ export function ammoCanParts(high = true): FieldChestParts {
     xform(box(L + 0.008, lid, W + 0.008), 0, body + lid / 2, 0),
   ];
   const dark: THREE.BufferGeometry[] = [];
-  if (!high) return { paint, dark };
+  if (!high) return issued({ paint, dark });
   paint.push(xform(box(L + 0.004, 0.012, W + 0.004), 0, body * 0.45, 0));
   // folding carry handle: two hinge lugs and the bar between them, lying flat on the lid
   for (const x of [-0.05, 0.05]) dark.push(xform(box(0.016, 0.012, 0.022), x, H + 0.006, 0));
@@ -82,7 +82,17 @@ export function ammoCanParts(high = true): FieldChestParts {
   // the latch lever folded down the +X end, its hinge pin at the lid line
   dark.push(xform(box(0.010, 0.10, 0.06), L / 2 + 0.008, body - 0.04, 0));
   dark.push(xform(cylZ(0.007, 0.07, 6), L / 2 + 0.006, body + 0.004, 0));
-  return { paint, dark };
+  return issued({ paint, dark });
+}
+
+/**
+ * Critic panel 2026-10-15 on the owner markup: chests and cans took the hull's projected camouflage and vanished into
+ * the deck. Issue stowage is painted in the army's own solid drab (weaponFinish.ts ammoDrabFor: NATO olive, Warsaw Pact
+ * green-grey, PLA olive, IDF olive) on rendered builds, the factory's issue-drab group (tankFactoryCore mergeBucket).
+ */
+function issued(parts: FieldChestParts): FieldChestParts {
+  for (const g of parts.paint) g.userData.issueDrab = true;
+  return parts;
 }
 
 export interface HatchParts {
@@ -120,3 +130,16 @@ export function hatchParts(r: number, high = true, hinge: 1 | -1 = -1): HatchPar
   dark.push(xform(cylY(r + 0.008, r + 0.008, 0.010, seg, true), 0, coaming + 0.005, 0));
   return { lid, dark };
 }
+
+/**
+ * Critic panel 2026-10-15 on the owner-markup round: a geometry change reseated the decor's loads (decorations.ts seats
+ * them by probing the built surfaces, so new chest lids or a freed roof drew loads that had stood elsewhere). A builder
+ * that replaces marked stock reserves the volume the stock stood in, frame-local (the hull or turret group's own
+ * coordinates); the decor keeps out of it (collectFieldEquipment), so its loads stand where they stood and only the
+ * marked items change.
+ */
+export function reserveDecorVolume(group: THREE.Object3D, min: readonly [number, number, number], max: readonly [number, number, number]): void {
+  const boxes = (group.userData.decorReservedBoxes ??= []) as [number, number, number][][];
+  boxes.push([[...min], [...max]]);
+}
+
