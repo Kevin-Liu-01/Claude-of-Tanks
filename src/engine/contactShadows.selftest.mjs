@@ -206,8 +206,14 @@ assert.equal(contactShadowSunShare(0.8, 1, 0, amb, 0.9, 0), 0, 'no sun, no share
   assert.equal(u.tCotCloudShade.value, cloud.tCotCloudShade.value, 'the lit materials\' cloud map');
   assert.deepEqual(u.uCotCloudShade.value.toArray(), [10, 20, 1 / 12000, 1]);
   assert.deepEqual(u.uCotCloudSun.value.toArray(), cloud.uCotCloudSun.value.toArray());
+  // the QA lever: main's march for an A/B frame (its ramp, the binary hit, no fade)
+  globalThis.__LIGHT_TUNE = { CONTACT_R6: 0 };
+  updateContactShadowUniforms(u, camera, scene, true);
+  assert.ok(u.uContactSeam.value < 0 && u.uContactR6.value === 0, 'the lever restores main\'s march');
+  delete globalThis.__LIGHT_TUNE;
   delete scene.userData.cloudShadeUniforms; delete scene.userData.lightRig.contactSeamM;
   updateContactShadowUniforms(u, camera, scene, true);
+  assert.equal(u.uContactR6.value, 1, 'shipped on');
   const c = new THREE.Color(0xfff1dc);
   assert.ok(near(u.uContactSunLum.value, 4.2 * (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b), 1e-6), 'sun luminance = intensity × colour luma');
   assert.ok(near(u.uContactFillDir.value.length(), 1, 1e-6), 'the fill direction is unit');
@@ -225,12 +231,16 @@ assert.match(CONTACT_SHADOW_GLSL, /float s = \( float\( i \) \+ 0\.5 \) \/ 12\.0
 assert.doesNotMatch(CONTACT_SHADOW_GLSL, /gl_FragCoord|float jitter/, 'no screen-space dither streaks');
 assert.match(CONTACT_SHADOW_GLSL, /vec4 c = rayStart \+ rayDir \* rayDistance;/, 'clip vectors reused at every step');
 // (contact r6) the seam's length with the pixel floor under the cap, the soft hit, the strongest rung, the penumbra fade
-assert.ok(CONTACT_SHADOW_GLSL.includes('uniform float uContactSeam;') && CONTACT_SHADOW_GLSL.includes('float len = uContactSeam;'), 'the seam');
-assert.ok(CONTACT_SHADOW_GLSL.includes(`if ( floorDenominator > 0.0 ) len = max( len, ${CONTACT_SHADOW_MIN_PX.toFixed(4)} * rayStart.w / floorDenominator );`)
+assert.ok(CONTACT_SHADOW_GLSL.includes('uniform float uContactSeam;')
+  && CONTACT_SHADOW_GLSL.includes('float len = uContactSeam >= 0.0 ? uContactSeam : mix( 0.5500, 1.4000, smoothstep( 4.0000, 40.0000, dist ) );'),
+  'the seam (a negative one: main\'s ramp, the QA lever)');
+assert.ok(CONTACT_SHADOW_GLSL.includes('float soft = uContactR6 < 0.5 ? 1.0 :') && CONTACT_SHADOW_GLSL.includes('|| uContactR6 < 0.5 ? 1.0'),
+  'the lever restores the binary hit and drops the fade');
+assert.ok(CONTACT_SHADOW_GLSL.includes(`if ( floorDenominator > 0.0 && uContactSeam >= 0.0 ) len = max( len, ${CONTACT_SHADOW_MIN_PX.toFixed(4)} * rayStart.w / floorDenominator );`)
   && CONTACT_SHADOW_GLSL.indexOf('len = max( len,') < CONTACT_SHADOW_GLSL.indexOf('len = min( len, ( rayStart.w - uNear )')
   && CONTACT_SHADOW_GLSL.indexOf('len = min( len, ( rayStart.w - uNear )') < CONTACT_SHADOW_GLSL.indexOf(`len = min( len, ${CONTACT_SHADOW_MAX_SCREEN_PX.toFixed(4)} * rayStart.w / capDenominator );`),
   'the floor, then the near plane, then the cap');
-assert.ok(!/mix\( 0\.5500, 1\.4000,/.test(CONTACT_SHADOW_GLSL), 'no metre ramp of its own');
+assert.equal((CONTACT_SHADOW_GLSL.match(/mix\( 0\.5500, 1\.4000,/g) ?? []).length, 1, 'main\'s metre ramp only behind the lever');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`float soft = smoothstep( bias, bias + ${CONTACT_SHADOW_SOFT_RISE.toFixed(4)} * span, diff )`)
   && CONTACT_SHADOW_GLSL.includes(`* ( 1.0 - smoothstep( thick - ${CONTACT_SHADOW_SOFT_FALL.toFixed(4)} * span, thick, diff ) );`), 'the soft hit');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`best = max( best, support * soft * ( 1.0 - smoothstep( ${CONTACT_SHADOW_TAIL_FADE.toFixed(4)}, 1.0, u ) ) );`)
@@ -299,4 +309,4 @@ assert.doesNotMatch(renderer, /alpha:\s*true/, 'the canvas stays opaque: the alp
 const chunk = readFileSync(new URL('../../node_modules/three/src/renderers/shaders/ShaderChunk/opaque_fragment.glsl.js', import.meta.url), 'utf8');
 assert.ok(chunk.includes('gl_FragColor = vec4( outgoingLight, diffuseColor.a );'), 'the pinned Three chunk still writes alpha here');
 
-console.log('contactShadows.selftest: step table, the seam's length with its pixel floor (contact r6), range fade, occlusion, the soft hit and the strongest rung, the penumbra fade with the cloud divided out, sun share, uniforms, GLSL contract and the alpha carrier pinned');
+console.log('contactShadows.selftest: step table, the seam length with its pixel floor (contact r6), range fade, occlusion, the soft hit and the strongest rung, the penumbra fade with the cloud divided out, sun share, uniforms, GLSL contract and the alpha carrier pinned');

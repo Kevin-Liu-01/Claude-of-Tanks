@@ -46,6 +46,7 @@
 import * as THREE from 'three';
 import { SCENE_ALPHA_OPAQUE, SCENE_ALPHA_READ_GLSL, decodeSceneSunVis } from './sceneAlpha.ts';
 import { CLOUD_SHADE_PARS_GLSL, type CloudShadeUniforms } from './cloudShadeMap.ts';
+import { lightTune } from './lightModelCore.ts';
 
 export const CONTACT_SHADOW_STEPS = 12;
 export const CONTACT_SHADOW_MAX_SCREEN_PX = 8;
@@ -220,8 +221,10 @@ export interface ContactShadowUniforms extends CloudShadeUniforms {
   uContactAmb: THREE.IUniform<THREE.Vector4>;
   uContactFillDir: THREE.IUniform<THREE.Vector3>;
   uContactSunLum: THREE.IUniform<number>;
-  /** (contact r6) The march's length (m): the cascades' residual seam. */
+  /** (contact r6) The march's length (m): the cascades' residual seam; negative: main's 0.55-1.4 m ramp (the A/B lever). */
   uContactSeam: THREE.IUniform<number>;
+  /** (contact r6) The soft hit and the penumbra fade, on (1) or main's law (0) — QA: __LIGHT_TUNE.CONTACT_R6 = 0. */
+  uContactR6: THREE.IUniform<number>;
 }
 
 export function createContactShadowUniforms(): ContactShadowUniforms {
@@ -232,6 +235,7 @@ export function createContactShadowUniforms(): ContactShadowUniforms {
     uContactFillDir: { value: new THREE.Vector3(0, 1, 0) },
     uContactSunLum: { value: 4 },
     uContactSeam: { value: CONTACT_SHADOW_SEAM_M },
+    uContactR6: { value: 1 },
     // (contact r6) the lit materials' cloud share (cloudShadeMap.ts), copied each frame: the penumbra fade divides it out
     tCotCloudShade: { value: null },
     uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 0) },
@@ -290,7 +294,10 @@ export function updateContactShadowUniforms(
     } else u.uCotCloudShade.value.w = 0;
   }
   const rig = scene.userData.lightRig as PublishedLightRig | undefined;
-  if (u.uContactSeam) u.uContactSeam.value = Math.max(0, rig?.contactSeamM ?? CONTACT_SHADOW_SEAM_M);
+  // (QA: __LIGHT_TUNE.CONTACT_R6 = 0 restores main's march for an A/B frame: its length ramp, the binary hit, no fade)
+  const r6 = lightTune('CONTACT_R6', 1) > 0 ? 1 : 0;
+  if (u.uContactSeam) u.uContactSeam.value = r6 ? Math.max(0, rig?.contactSeamM ?? CONTACT_SHADOW_SEAM_M) : -1;
+  if (u.uContactR6) u.uContactR6.value = r6;
   if (!rig) return;
   const skyIrradiance = scene.userData.skyIrradiance as THREE.Color | undefined;
   const envIntensity = typeof scene.environmentIntensity === 'number' ? scene.environmentIntensity : 1;
@@ -321,6 +328,7 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
     uniform vec3 uContactFillDir;
     uniform float uContactSunLum;
     uniform float uContactSeam;
+    uniform float uContactR6;
 ${CLOUD_SHADE_PARS_GLSL}
     float cotDepthToDist( float d ) {
       return ( uNear * uFar ) / ( uFar - ( uFar - uNear ) * d );
@@ -362,7 +370,8 @@ ${SCENE_ALPHA_READ_GLSL}    // best-pair normal from the depth neighbours (the s
     }
     float cotContactOcclusion( vec3 P, vec3 N, float dist ) {
       // (contact r6) the cascades' residual seam, at least ${CONTACT_SHADOW_MIN_PX} pixels, at most ${CONTACT_SHADOW_MAX_SCREEN_PX}
-      float len = uContactSeam;
+      // (QA lever: a negative seam is main's 0.55-1.4 m ramp, its eight-pixel cap alone)
+      float len = uContactSeam >= 0.0 ? uContactSeam : mix( 0.5500, 1.4000, smoothstep( 4.0000, 40.0000, dist ) );
       vec3 start = P + N * ( 0.012 + dist * 0.0025 );
       vec4 rayStart = uContactViewProj * vec4( start, 1.0 );
       vec4 rayDir = uContactViewProj * vec4( uSunDir, 0.0 );
@@ -370,7 +379,7 @@ ${SCENE_ALPHA_READ_GLSL}    // best-pair normal from the depth neighbours (the s
       // Exact projected length, including perspective foreshortening and rays approaching the eye.
       float pixelSlope = length( ( rayDir.xy - rayStart.xy * ( rayDir.w / rayStart.w ) ) * 0.5 / uInvSize );
       float floorDenominator = pixelSlope - ${f(CONTACT_SHADOW_MIN_PX)} * rayDir.w;
-      if ( floorDenominator > 0.0 ) len = max( len, ${f(CONTACT_SHADOW_MIN_PX)} * rayStart.w / floorDenominator );
+      if ( floorDenominator > 0.0 && uContactSeam >= 0.0 ) len = max( len, ${f(CONTACT_SHADOW_MIN_PX)} * rayStart.w / floorDenominator );
       if ( rayDir.w < 0.0 ) len = min( len, ( rayStart.w - uNear ) / -rayDir.w );
       float capDenominator = pixelSlope - ${f(CONTACT_SHADOW_MAX_SCREEN_PX)} * rayDir.w;
       if ( capDenominator > 0.0 ) len = min( len, ${f(CONTACT_SHADOW_MAX_SCREEN_PX)} * rayStart.w / capDenominator );
@@ -414,7 +423,7 @@ ${SCENE_ALPHA_READ_GLSL}    // best-pair normal from the depth neighbours (the s
           if ( support > 0.0 ) {
             // (contact r6) the soft hit: by how far behind the surface the rung lies in its window (contactShadowSoftHit)
             float span = thick - bias;
-            float soft = smoothstep( bias, bias + ${f(CONTACT_SHADOW_SOFT_RISE)} * span, diff )
+            float soft = uContactR6 < 0.5 ? 1.0 : smoothstep( bias, bias + ${f(CONTACT_SHADOW_SOFT_RISE)} * span, diff )
               * ( 1.0 - smoothstep( thick - ${f(CONTACT_SHADOW_SOFT_FALL)} * span, thick, diff ) );
             best = max( best, support * soft * ( 1.0 - smoothstep( ${f(CONTACT_SHADOW_TAIL_FADE)}, 1.0, u ) ) );
             if ( soft >= 0.99 ) break;
@@ -436,7 +445,7 @@ ${SCENE_ALPHA_READ_GLSL}    // best-pair normal from the depth neighbours (the s
       // (contact r6) inside the cascades' own penumbra the term fades: v_csm is the alpha's visibility over the cloud's
       // share at this point (contactShadowPenumbraFade); under a deep cloud, main's law
       float cloud = cotCloudSun( P );
-      float penumbra = cloud < ${f(CONTACT_SHADOW_CLOUD_MIN)} ? 1.0
+      float penumbra = cloud < ${f(CONTACT_SHADOW_CLOUD_MIN)} || uContactR6 < 0.5 ? 1.0
         : smoothstep( ${f(CONTACT_SHADOW_PENUMBRA[0])}, ${f(CONTACT_SHADOW_PENUMBRA[1])}, clamp( sunVis / cloud, 0.0, 1.0 ) );
       float occ = cotContactOcclusion( P, N, dist ) * penumbra
         * ( 1.0 - smoothstep( ${f(CONTACT_SHADOW_RANGE_M - CONTACT_SHADOW_FADE_M)}, ${f(CONTACT_SHADOW_RANGE_M)}, dist ) );
