@@ -223,9 +223,18 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
   const lc = { colour: style.leaf, decor: true, uv: UV_MEMBER };
   // in a cut opening (sink.recess) the leaf hangs at the back of the reveal
   const r = sink.recess, lo = r > 0 ? -r + 0.022 : 0.012;
-  faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, { ...lc, fineSides: true });
+  // (props census #9) a glazed leaf in a cut opening is a frame round its light — the kick panel, the stiles and the top
+  // rail — with the glass in the leaf's plane and the room's dark behind it (a pane laid on a solid leaf read as painted)
+  const framed = style.leafKind === 'glazed' && r > 0;
+  if (!framed) faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, { ...lc, fineSides: true });
   // the leaf's panels and battens are fine joinery (EmitOptions.fine): the leaf itself reads at any range
-  if (style.leafKind === 'panel') {
+  if (framed) {
+    const g0 = 0.45, g1 = 0.87, gw = w * 0.6;
+    faceBox(sink, 'structureWood', face, u, y + leafH * g0 / 2, lo, w, leafH * g0, 0.04, { ...lc, fineSides: true });
+    faceBox(sink, 'structureWood', face, u, y + leafH * (g1 + 1) / 2, lo, w, leafH * (1 - g1), 0.04, { ...lc, fineSides: true });
+    for (const s of [-1, 1]) faceBox(sink, 'structureWood', face, u + s * (gw + w) / 4, y + leafH * (g0 + g1) / 2, lo, (w - gw) / 2, leafH * (g1 - g0), 0.04, { ...lc, fineSides: true });
+    faceBox(sink, 'glass', face, u, y + leafH * (g0 + g1) / 2, lo, gw + 0.02, leafH * (g1 - g0) + 0.02, 0.01, { decor: true });
+  } else if (style.leafKind === 'panel') {
     for (const t of [0.28, 0.72]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w * 0.7, leafH * 0.34, 0.02, { ...lc, fine: true });
   } else if (style.leafKind === 'plank') {
     for (const t of [0.15, 0.85]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w - 0.08, 0.09, 0.03, { ...lc, fine: true });
