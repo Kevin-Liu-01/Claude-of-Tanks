@@ -1013,38 +1013,6 @@ export function garageSheeting(kind: 'albedo' | 'normal', anisotropy = 4): THREE
 
 let sharedContactShadow: THREE.CanvasTexture | null = null;
 
-let sharedShade: THREE.CanvasTexture | null = null;
-
-/**
- * The shade a sail or a canopy throws on the ground (Sirocco, the re-judge 2026-10-15: "the sail casts no shade"): a flat
- * dark core to within a few per cent of its edge, then a short soft penumbra, laid on the cast outline's own UVs. Shared
- * by every Garage and never disposed by a pack.
- */
-export function garageShadeTexture(): THREE.CanvasTexture | null {
-  if (sharedShade) return sharedShade;
-  if (typeof document === 'undefined') return null;
-  const S = 64;
-  const canvas = document.createElement('canvas');
-  canvas.width = S;
-  canvas.height = S;
-  const g = canvas.getContext('2d');
-  if (!g) return null;
-  const image = g.createImageData(S, S);
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const edge = Math.min(x + 0.5, S - x - 0.5, y + 0.5, S - y - 0.5) / S; // 0 at the edge, 0.5 at the centre
-      const a = Math.min(1, edge / 0.07);
-      const i = (y * S + x) * 4;
-      image.data[i] = 0; image.data[i + 1] = 0; image.data[i + 2] = 0;
-      image.data[i + 3] = Math.round(255 * a * a * (3 - 2 * a));
-    }
-  }
-  g.putImageData(image, 0, 0);
-  sharedShade = new THREE.CanvasTexture(canvas);
-  sharedShade.userData.sharedGarageShade = true;
-  return sharedShade;
-}
-
 /**
  * A soft contact-shadow blot for kit standing on the ground (2026-10-11, wave 394: "add contact shadow under every
  * figure and prop"): dark at the centre, gone at the rim, with a squarer core so it suits crates as well as drums.
