@@ -131,7 +131,8 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // 2026-10-14: "the coastal lighthouse rising out of the turret ... set the gantry on crane rails")
       // the drydock itself in the frame's right third, its mouth on the shore (the re-judge, 2026-10-15: "the hero frame
       // shows no drydock"), the crane on its rails beside it
-      feature: [17, 22], featureRadius: [9, 6],
+      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it)
+      feature: [23.6, 22], featureRadius: [2.4, 4.5],
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
