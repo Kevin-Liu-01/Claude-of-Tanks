@@ -25,7 +25,7 @@ import {
   redDrumBroken, spoolBroken, spoolNear, wheelFar, wheelNear, type BottleForm, type BucketForm, type CanForm, type ChurnForm, type LaundryForm,
   type PotForm, type SpoolForm, type WheelForm,
 } from './clutterLooseForms.ts';
-import { MAP_SETTING_YEAR } from './periodClutterKit.ts';
+import { MAP_SETTING_YEAR, periodClutterTypes } from './periodClutterKit.ts';
 
 /** The vertex attribute that tags a clutter pool's near (1) and far (2) form, and a lean form drawn at every distance (3);
  *  untagged geometry reads 0. */
@@ -396,6 +396,16 @@ function kindStream(mapId: string, kind: string): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+/** props.ts's mulberry32, the stream its seat checks build a kind's footprint with (destructibleFootprint: 0x0f0f7). */
+function seatStream(seed: number): () => number {
+  let a = seed | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 const lin = (hex: Hex): Rgb => hexLin(hex);
 
 /** How far a standing kind's foot reaches under its seat: a pool instance stands level at its centre's height, so on a
@@ -419,6 +429,11 @@ function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: Destru
   const base = DESTRUCTIBLE_TYPES[kind] as DestructiblePropType;
   return {
     ...base, mat,
+    // (the coordinator's ruling on #2, 2026-10-14: "a map vehicle is worth more than a clutter band") the seat checks —
+    // a parked vehicle's or a cart's seat, a destructible's clearance of the road core (props.ts destructibleFootprint) —
+    // read the kind's footprint as the map placed it before its regional form: the form yields its seat to them, so
+    // every vehicle, cart and record stands where it stood
+    footprintBuild: () => (periodClutterTypes(mapId)[kind] ?? base).build(seatStream(0x0f0f7)),
     build: (rng) => {
       base.build(rng).dispose();
       const sk = base.cls === 'physics' ? 0 : SKIRT_M;
