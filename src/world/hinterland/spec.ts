@@ -84,6 +84,9 @@ export interface HinterlandWaterConfig {
   radiusM?: number;
   /** The water level (m, the map's datum). A flood fills every hollow under it inside its arc. */
   level?: number;
+  /** 0..1: a sea's ice cover — a polar sea's pack: snow-covered floes, grey new ice and dark leads between (HOR-05,
+   * Whiteout's Davis Strait); 0 open water. */
+  ice?: number;
   name?: string;
 }
 

@@ -5,5 +5,6 @@ import type { HinterlandConfig } from '../spec.ts';
 import alpine from './alpine.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
+import whiteout from './whiteout.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, polders, verdant });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, polders, verdant, whiteout });

@@ -103,6 +103,8 @@ export interface HinterlandWaterSample {
   level: number;
   /** HinterlandWaterConfig['kind'] index: 0 none, 1 sea, 2 lake, 3 river, 4 canal, 5 flood. */
   kind: number;
+  /** The sea's ice cover there (HinterlandWaterConfig.ice), 0 open water. */
+  ice?: number;
 }
 
 export function createHinterlandWater(): HinterlandWaterSample {
@@ -194,7 +196,7 @@ function regionLandUse(spec: HinterlandSpec, seed: number): LandUseProfile | nul
 /** A sea or a flood is a coast in the world, not a sector: the water lies past a coastline at `coastM` from the
  * centre, square to the normal bearing (the arc's middle), wandering along its length, and (a channel or an estuary)
  * a far shore `widthM` beyond it. A radial sector drew right-angle shores at its ends (D9). */
-interface ResolvedSea { nx: number; nz: number; coastM: number; wanderM: number; widthM: number; level: number; salt: number }
+interface ResolvedSea { nx: number; nz: number; coastM: number; wanderM: number; widthM: number; level: number; ice: number; salt: number }
 interface ResolvedLake { x: number; z: number; r: number; level: number; salt: number }
 interface ResolvedChannel { xs: Float64Array; zs: Float64Array; halfW: number; levels: Float64Array; minX: number; maxX: number; minZ: number; maxZ: number; kind: number }
 interface ResolvedFlood { nx: number; nz: number; level: number; fromM: number; salt: number }
@@ -326,7 +328,7 @@ export function createHinterlandField(
     const salt = 101 + index * 17;
     if (w.kind === 'sea') {
       const [nx, nz] = arcNormal(w.arc?.azDeg ?? [180, 180]);
-      seas.push({ nx, nz, coastM: w.coastM ?? 2400, wanderM: w.coastWanderM ?? 450, widthM: w.widthM ?? Infinity, level: w.level ?? -1, salt });
+      seas.push({ nx, nz, coastM: w.coastM ?? 2400, wanderM: w.coastWanderM ?? 450, widthM: w.widthM ?? Infinity, level: w.level ?? -1, ice: Math.max(0, Math.min(1, w.ice ?? 0)), salt });
     } else if (w.kind === 'lake' && w.at) {
       const p = hinterlandPoint(w.at);
       lakes.push({ x: p.x, z: p.z, r: w.radiusM ?? 300, level: w.level ?? baseNoWater(p.x, p.z) - 0.5, salt });
@@ -455,7 +457,7 @@ export function createHinterlandField(
 
   /** Term 6 applied to a base height: the floor under the water, and the water sample. */
   function waterInto(x: number, z: number, base: number, out: HinterlandWaterSample | null): number {
-    if (out) { out.wet = 0; out.level = 0; out.kind = 0; }
+    if (out) { out.wet = 0; out.level = 0; out.kind = 0; out.ice = 0; }
     const edgeOut = edgeOutOf(x, z);
     if (edgeOut <= 0) return base;
     let h = base;
@@ -475,7 +477,7 @@ export function createHinterlandField(
         const deep = Math.min(smoothstep(coast, coast + 1200, out_), Number.isFinite(sea.widthM) ? 1 - smoothstep(coast + sea.widthM - 1200, coast + sea.widthM, out_) : 1);
         const floor = sea.level - 1.5 - 4 * deep;
         h = h + (Math.min(h, floor) - h) * s;
-        if (out && h < sea.level && s > out.wet) { out.wet = smoothstep(0, 0.6, sea.level - h); out.level = sea.level; out.kind = 1; }
+        if (out && h < sea.level && s > out.wet) { out.wet = smoothstep(0, 0.6, sea.level - h); out.level = sea.level; out.kind = 1; out.ice = sea.ice; }
       }
     }
     for (const flood of floods) {
