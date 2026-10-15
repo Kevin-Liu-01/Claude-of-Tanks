@@ -2782,52 +2782,6 @@ export function addGarageFacilityDetails({
     structuralConnections += 64;
   };
 
-  const addShadeHall = (centerSide: number, width: number, depth: number,
-    roofColor: THREE.Color): void => {
-    const cluster = fixedCluster(centerSide, depth);
-    structuralConnections += 30;
-    // Three rigid portal bents, each with real footings, columns, crosshead
-    // and knee braces. Roof sheets sit on five purlins; fascia, gutter and a
-    // downpipe close the silhouette instead of leaving a floating slab.
-    for (const longitudinal of [-3.8, 0, 3.8]) {
-      for (const side of [-width / 2 + 0.4, width / 2 - 0.4]) {
-        clusterBox(cluster, side, longitudinal, 0.12,
-          0.88, 0.24, 0.88, dark, 'masonry');
-        clusterBox(cluster, side, longitudinal, 2.68,
-          0.34, 5.15, 0.34, steel, 'structure');
-        const inward = side < 0 ? 1 : -1;
-        clusterBeam(cluster,
-          [side, longitudinal, 3.56],
-          [side + inward * 1.48, longitudinal, 5.03],
-          0.20, safety, 'painted');
-      }
-      clusterBox(cluster, 0, longitudinal, 5.20,
-        width - 0.2, 0.34, 0.38, steel, 'structure');
-    }
-    for (const longitudinal of [-3.8, -1.9, 0, 1.9, 3.8]) {
-      clusterBox(cluster, 0, longitudinal, 5.40,
-        width, 0.18, 0.20, steel, 'structure');
-    }
-    // The roof is one run of trapezoidal sheeting over the purlins, falling gently to a gutter at the back (the redesign,
-    // 2026-10-11: the old flat colour strips read as boards); the back wall is clad to the eaves above a concrete upstand.
-    const hallPitch = 0.07;
-    clusterSurface(cluster, 'roofing', 0, 0, 5.58, width + 0.7, 0.05, 9.4, { rotationX: -hallPitch });
-    clusterBox(cluster, 0, 4.72, 5.9, width + 0.7, 0.24, 0.05, roofColor, 'painted');
-    clusterBox(cluster, 0, -4.72, 5.28, width + 0.7, 0.16, 0.18, dark, 'painted');
-    clusterBox(cluster, width / 2 - 0.20, 0, 5.22,
-      0.22, 0.22, 8.7, steel, 'structure');
-    clusterBox(cluster, width / 2 - 0.20, -4.75, 2.62,
-      0.12, 5.2, 0.12, dark, 'painted');
-    clusterSurface(cluster, 'render', 0, -4.22, 0.3, width - 0.4, 0.6, 0.26);
-    clusterSurface(cluster, 'sheeting', 0, -4.26, 0.6 + 2.25, width - 0.5, 4.5, 0.05);
-    for (const lateral of [-width * 0.30, -width * 0.10, width * 0.10, width * 0.30]) {
-      clusterBox(cluster, lateral, -4.18, 1.16,
-        0.08, 1.72, 0.06, lateral === width * 0.10 ? accent : steel, 'painted');
-    }
-    clusterBox(cluster, 0, -3.55, 0.76,
-      width * 0.56, 0.18, 0.95, timber, 'equipment');
-  };
-
 
   // The old scene used one identical, tightly packed prop template in all
   // nine environments. Each destination now owns a different perimeter
@@ -3050,7 +3004,6 @@ export function addGarageFacilityDetails({
     servicePurposeTags.add(KIT_PURPOSE[kit[index]]);
   });
   const [featureSide, featureDepth] = layout.feature;
-  const featureCluster = fixedCluster(featureSide, featureDepth);
 
   const addShadeDepot = (): void => {
       environmentSpecificAssemblies += 1;
