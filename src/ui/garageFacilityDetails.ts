@@ -16,7 +16,8 @@ import {
   LEOPARD_MOBILITY_FLOOR,
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
-import { garageContactShadowTexture } from './garageYardWear.ts';
+import { garageContactShadowTexture, garageShadeTexture } from './garageYardWear.ts';
+import { getGarageSkyPreset } from '../game/garageSkyPresets.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -272,6 +273,14 @@ export function addGarageFacilityDetails({
   let openingSightlineIntrusions = 0;
   /** Soft shade pools under high canopies (the contact-shadow decal's blots): matrices of unit quads on the ground. */
   const shadePools: THREE.Matrix4[] = [];
+  /** Cast shade outlines on the ground (a grid of points, row-major, with its column count), drawn with garageShadeTexture. */
+  const castShades: Array<{ readonly points: THREE.Vector3[]; readonly columns: number }> = [];
+  // the sun the Garage is lit by (the stage applies the same trimmed preset), for the shade the sails cast
+  const toSun = (() => {
+    const sky = getGarageSkyPreset(variant.mapId);
+    return new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - sky.sunElevationDeg),
+      THREE.MathUtils.degToRad(sky.sunAzimuthDeg));
+  })();
   const servicePurposeTags = new Set<string>();
   // Each Garage builds its service shelters its own way (2026-10-10, wave 357: "a tangle of flat navy, yellow and cyan
   // beams"): one regional frame paint and one roofing for every column, beam and roof sheet; safety yellow stays on
@@ -1788,12 +1797,21 @@ export function addGarageFacilityDetails({
       for (let k = 0; k < lowerPosition.count; k += 1) lowerPosition.setY(k, lowerPosition.getY(k) - 0.01);
       buckets.baked!.push(upper, lower);
       facilityProps += 1;
-      // the shade it throws: a soft pool on the sand under the sail
-      shadePools.push(new THREE.Matrix4().compose(
-        new THREE.Vector3(origin.x, baseY + 0.03, origin.z),
-        new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, yaw, 'YXZ')),
-        new THREE.Vector3(2 * halfW * 1.05, 2 * halfL * 1.15, 1),
-      ));
+      // the shade it throws (the re-judge, 2026-10-15: "the sail casts no shade"; the old soft pool lay straight under
+      // it, where no low sun puts it): the sail's own outline cast down the Garage sun's rays onto the sand, draped on it
+      {
+        const shadeCols = 15, shadeRows = 9, points: THREE.Vector3[] = [];
+        for (let j = 0; j <= shadeRows; j += 1) {
+          for (let i = 0; i <= shadeCols; i += 1) {
+            const l = -halfW + (2 * halfW * i) / shadeCols, f = -halfL + (2 * halfL * j) / shadeRows;
+            const x = origin.x + c * l + sn * f, z = origin.z - sn * l + c * f, y = sailY(l, f);
+            const drop = (y - groundAtWorld(x, z)) / Math.max(0.2, toSun.y);
+            const gx = x - toSun.x * drop, gz = z - toSun.z * drop;
+            points.push(new THREE.Vector3(gx, groundAtWorld(gx, gz) + 0.04, gz));
+          }
+        }
+        castShades.push({ points, columns: shadeCols + 1 });
+      }
     }
     // the edge cables between the masts, and the ridge cable across the middle
     // the edge cables in the hems, following the sail's edges
@@ -2525,6 +2543,28 @@ export function addGarageFacilityDetails({
       addPoweredWinch(fixedCluster(featureSide + 7.5, featureDepth - 10.5), 0, 0, new THREE.Color(0xb98536));
       addPartsPallet(fixedCluster(featureSide - 4.0, featureDepth + 9.0), 0, 0, 2);
       addTurningRollStation(fixedCluster(featureSide - 3.0, featureDepth - 10.0), 0, 0, new THREE.Color(0x8f6d43));
+      // the depot's perimeter on the yard's left (the re-judge, 2026-10-15: no tower, berm or sandbag wall in the hero
+      // frame; the critic panel: "HESCO or sandbag berms, a guard tower"): a HESCO line across the left third with the
+      // guard tower standing in its gap, clear of the turret and the gun, the plain caravanserai wall behind them
+      {
+        const towerSide = -15.5, towerDepth = 17.0;
+        const facing = (side: number, depth: number): FacilityCluster => {
+          const at = cameraPoint(side, depth), toward = cameraPoint(side, depth - 1);
+          return { x: at.x, z: at.z, baseY: groundAtWorld(at.x, at.z), yaw: Math.atan2(toward.x - at.x, toward.z - at.z) };
+        };
+        addGuardTower(facing(towerSide, towerDepth), new THREE.Color(0xb59a6c), new THREE.Color(0x6a5238));
+        const sand = new THREE.Color(0xc0a676), sandDark = new THREE.Color(0xa58c60), mesh = new THREE.Color(0x5e5a50);
+        for (const [from, to] of [[-27.5, -18.6], [-12.4, -6.2]] as const) {
+          for (let k = 0; k < Math.floor((to - from) / 1.08); k += 1) {
+            const cell = facing(from + 0.54 + k * 1.08, towerDepth + 0.4);
+            clusterBox(cell, 0, 0, 0.68, 1.04, 1.36, 1.04, k % 3 === 1 ? sandDark : sand, 'painted');
+            for (const dl of [-0.52, 0.52]) for (const df of [-0.52, 0.52]) clusterBox(cell, dl, df, 0.7, 0.03, 1.4, 0.03, mesh, 'structure');
+            for (const df of [-0.52, 0.52]) clusterBox(cell, 0, df, 1.38, 1.04, 0.03, 0.03, mesh, 'structure');
+            clusterBox(cell, 0, 0, 1.33, 0.98, 0.06, 0.98, sand.clone().multiplyScalar(1.06), 'masonry'); // the fill, slumped
+          }
+        }
+        environmentSpecificAssemblies += 1;
+      }
   };
   const addRepairBunker = (): void => {
       environmentSpecificAssemblies += 1;
@@ -3005,6 +3045,50 @@ export function addGarageFacilityDetails({
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
       meshes.push(mesh);
+    }
+  }
+  // cast shade (sails, canopies): one merged decal on the contact shadows' program (map + transparent basic), its own map
+  {
+    const texture = garageShadeTexture();
+    if (texture && castShades.length) {
+      const pieces = castShades.map(({ points, columns }) => {
+        const rows = points.length / columns;
+        const positions: number[] = [], uvs: number[] = [], index: number[] = [];
+        points.forEach((p, k) => {
+          positions.push(p.x, p.y, p.z);
+          uvs.push((k % columns) / (columns - 1), Math.floor(k / columns) / (rows - 1));
+        });
+        for (let j = 0; j < rows - 1; j += 1) {
+          for (let i = 0; i < columns - 1; i += 1) {
+            const a = j * columns + i, b = a + 1, d = a + columns, e = d + 1;
+            index.push(a, d, b, b, d, e, a, b, d, b, e, d); // both windings: the cast outline may come out mirrored
+          }
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.setIndex(index);
+        return geometry;
+      });
+      const merged = pieces.length === 1 ? pieces[0] : mergeGeometries(pieces, false);
+      if (merged) {
+        const material = new THREE.MeshBasicMaterial({
+          map: texture, color: 0x000000, transparent: true, opacity: 0.56, depthWrite: false,
+          polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+        });
+        material.name = 'garage-facility:cast-shade';
+        materials.push(material);
+        const mesh = new THREE.Mesh(merged, material);
+        mesh.name = 'garage_facility_cast_shade';
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+        mesh.renderOrder = 1;
+        mesh.geometry.computeBoundingBox();
+        mesh.geometry.computeBoundingSphere();
+        mesh.matrixAutoUpdate = false;
+        mesh.updateMatrix();
+        meshes.push(mesh);
+      }
     }
   }
   for (const [surface, geometries] of surfaceGeometries) {
