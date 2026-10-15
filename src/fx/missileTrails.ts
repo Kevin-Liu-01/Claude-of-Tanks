@@ -43,7 +43,7 @@ interface SceneDepthUniforms {
 export const TRAIL_SLOTS = 96;
 export const TRAIL_SEGS = 160;
 /** the trail looks the shader holds (each missile family one) */
-export const TRAIL_LOOKS = 24;
+const TRAIL_LOOKS = 24;
 const STRIDE = 16;
 /** a point every this many metres of flight at least (the caller's step may be longer for a fast round) */
 export const TRAIL_STEP_M = 2.5;
