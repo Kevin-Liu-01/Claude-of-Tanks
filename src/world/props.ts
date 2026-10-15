@@ -131,6 +131,7 @@ import {
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
+import { buildHardstandDressing } from './hardstandDressing.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
@@ -10639,6 +10640,9 @@ ${snowCap ? `
       yield { fine: true };
     }
   }
+  // (props lane A #19) the paved pads' render-only dressing — their concrete edge, gullies and patches, a runway's markings
+  // and edge lights — on the baked material, no step in the drive surface (hardstandDressing.ts)
+  { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed); if (pads) buckets.baked.push(pads); }
   yield* mergeMaterialBuckets();
   // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
   // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
