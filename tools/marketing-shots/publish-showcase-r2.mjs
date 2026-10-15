@@ -23,7 +23,17 @@ const reviewRawDir = resolve(ROOT, 'shots/showcase-r2/review-sheets');
 const config = JSON.parse(readFileSync(join(HERE, 'showcase-r2.json'), 'utf8'));
 const report = JSON.parse(readFileSync(reportFile, 'utf8'));
 
-if (report.totals?.images !== config.expectedCount
+// --only <id,...> (2026-10-15, the manual's partial re-capture): re-encode just those shots from --raw; every other
+// shot keeps its public webp and its manifest entry as published. The report (grade-showcase-r2.mjs --only) must pass
+// each of them.
+const only = option('only', null)?.split(',').map((id) => id.trim()).filter(Boolean) ?? null;
+const published = only ? JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf8')) : null;
+if (only) {
+  for (const id of only) {
+    if (!config.shots.some((shot) => shot.id === id)) throw new Error(`--only names no shot ${id}`);
+    if (!report.rows?.some((row) => row.id === id && row.passed)) throw new Error(`--only ${id}: no passing row in ${reportFile}`);
+  }
+} else if (report.totals?.images !== config.expectedCount
     || report.totals?.passed !== config.expectedCount
     || report.totals?.failed !== 0) {
   throw new Error(`R2 quality gate must be ${config.expectedCount}/${config.expectedCount}: ${JSON.stringify(report.totals)}`);
@@ -37,7 +47,7 @@ const preservedPublicFiles = new Set(config.shots
   .map((shot) => `${shot.id}.webp`));
 for (const directory of [outDir, processDir, reviewRawDir]) {
   for (const file of readdirSync(directory).filter((name) => /\.(?:png|webp)$/i.test(name))) {
-    if (directory === outDir && preservedPublicFiles.has(file)) continue;
+    if (directory === outDir && (preservedPublicFiles.has(file) || (only && !only.includes(file.replace(/\.webp$/i, ''))))) continue;
     rmSync(join(directory, file));
   }
 }
@@ -115,6 +125,11 @@ const mapFor = (shot) => {
 };
 
 const shots = config.shots.map((shot) => {
+  if (only && !only.includes(shot.id)) {
+    const kept = published.shots.find((entry) => entry.id === shot.id);
+    if (!kept) throw new Error(`--only: ${shot.id} has no published entry to keep`);
+    return kept;
+  }
   const quality = qualityById.get(shot.id);
   if (!quality?.passed) throw new Error(`Missing passing quality row for ${shot.id}`);
   const isMobile = shot.sourceType === 'mobile';

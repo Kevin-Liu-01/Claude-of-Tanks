@@ -511,13 +511,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 23.6731,
+          "meanLuma": 23.8789,
           "p05": 7.5788,
-          "p95": 59.1536,
-          "clippedBlack": 0.0143,
+          "p95": 57.5492,
+          "clippedBlack": 0.015,
           "clippedWhite": 0,
-          "meanSaturation": 0.3783,
-          "edgeMean": 3.4262
+          "meanSaturation": 0.376,
+          "edgeMean": 3.6857
         }
       }
     },
@@ -526,7 +526,7 @@
       "id": "12_gallery_armor",
       "src": "/media/showcase-r2/12_gallery_armor.webp",
       "title": "Tank Gallery armor inspection",
-      "alt": "Current Tank Gallery interface showing the Strv 122 armor diagnostic layer",
+      "alt": "Current Tank Gallery interface showing the Stridsvagn 121 armor diagnostic layer",
       "kind": "interface",
       "feature": "Tank Gallery",
       "map": "Tank Gallery",
@@ -543,13 +543,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 25.245,
+          "meanLuma": 25.6179,
           "p05": 7.5788,
-          "p95": 74.5562,
-          "clippedBlack": 0.0143,
+          "p95": 76.8098,
+          "clippedBlack": 0.0148,
           "clippedWhite": 0,
-          "meanSaturation": 0.3734,
-          "edgeMean": 3.8596
+          "meanSaturation": 0.3733,
+          "edgeMean": 4.0443
         }
       }
     },
@@ -558,7 +558,7 @@
       "id": "13_gallery_modules",
       "src": "/media/showcase-r2/13_gallery_modules.webp",
       "title": "Tank Gallery module inspection",
-      "alt": "Current Tank Gallery interface showing the Leclerc XLR internal modules",
+      "alt": "Current Tank Gallery interface showing the Leclerc SXXI internal modules",
       "kind": "interface",
       "feature": "Tank Gallery",
       "map": "Tank Gallery",
@@ -575,13 +575,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 23.946,
+          "meanLuma": 27.0665,
           "p05": 7.5788,
-          "p95": 59.5066,
-          "clippedBlack": 0.0147,
+          "p95": 74.8376,
+          "clippedBlack": 0.0152,
           "clippedWhite": 0,
-          "meanSaturation": 0.3729,
-          "edgeMean": 3.5797
+          "meanSaturation": 0.373,
+          "edgeMean": 3.9107
         }
       }
     },
@@ -606,13 +606,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 22.6329,
+          "meanLuma": 23.3085,
           "p05": 7.5788,
-          "p95": 52.3072,
-          "clippedBlack": 0.0151,
+          "p95": 52.5198,
+          "clippedBlack": 0.0152,
           "clippedWhite": 0,
-          "meanSaturation": 0.3705,
-          "edgeMean": 3.3938
+          "meanSaturation": 0.3737,
+          "edgeMean": 3.5121
         }
       }
     },
