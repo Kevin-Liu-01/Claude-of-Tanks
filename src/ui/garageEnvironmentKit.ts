@@ -1838,6 +1838,8 @@ export function buildGarageEnvironment(
         && Math.hypot((view.side - terrace.side) / terrace.radiusSide, (view.depth - terrace.depth) / terrace.radiusDepth) < 1.3
       ));
       if (onPad) return;
+      // nor in Saltmere's dock or through its granite paving
+      if (drydock && garageDrydockGround(drydock, view.side, view.depth, 0) !== null) return;
       const y = samplePatch(patch, heights, x, z);
       const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
       coverPosition.set(x, y + 0.01, z);
@@ -2254,6 +2256,9 @@ export function buildGarageEnvironment(
       // plane exclusion left alternate orbit angles looking unfinished even
       // though the environment owned enough vegetation for a complete ring.
       if (depth < 5 && Math.abs(side) < 16) return false;
+      // no grove in Saltmere's dock, on its paving or in its channel (a crown's reach round it)
+      if (drydock && [[0, 0], [3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5]].some(([ds, dd]) => (
+        garageDrydockGround(drydock, side + ds, depth + dd, 0) !== null))) return false;
       const nearStructure = structureRecords.some((record) => {
         const radius = Math.hypot(
           record.dimensions.w * record.placement.scale,
