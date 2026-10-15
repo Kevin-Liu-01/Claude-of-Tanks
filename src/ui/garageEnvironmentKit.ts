@@ -1977,6 +1977,69 @@ export function buildGarageEnvironment(
     root.add(mesh);
   };
   addStructureBaseShade();
+  // Sand and snow banked against the buildings' walls in the sand and snow yards (the re-judge, 2026-10-15, Sirocco: the
+  // plaster wall behind the gun had "no weathering, sand-drift line at the base"): a low drift along each wall's foot,
+  // deepest at the wall, thinning out a metre and a half from it, uneven along its run, in the baked bucket
+  const addStructureDrifts = (): void => {
+    const style = GARAGE_HARDSTAND_STYLES[variant.architecture];
+    const sand = style === 'earth-sand' || style === 'slab-sand';
+    const snow = style === 'earth-snow' || style === 'gravel-snow' || style === 'slab-snow';
+    if (!sand && !snow) return;
+    const light = new THREE.Color(sand ? 0xd8bf8e : 0xedf2f5), dark = new THREE.Color(sand ? 0xc4a470 : 0xd3dde4);
+    const open = new Set(['watertower', 'gantry', 'netyard', 'lighthouse', 'minaret', 'stack', 'parkingdeck']);
+    const positions: number[] = [], colors: number[] = [], tone = new THREE.Color();
+    let wobble = seed % 97;
+    for (const { placement, dimensions, x, z } of structureRecords) {
+      if (open.has(placement.catalogId)) continue;
+      const hw = dimensions.w * placement.scale / 2, hd = dimensions.d * placement.scale / 2;
+      const c = Math.cos(placement.yaw), sn = Math.sin(placement.yaw);
+      const at = (lx: number, lz: number, lift: number): [number, number, number] => {
+        const wx = x + c * lx + sn * lz, wz = z - sn * lx + c * lz;
+        return [wx, samplePatch(patch, heights, wx, wz) + lift, wz];
+      };
+      // each wall: its run from one corner to the other and its outward direction
+      const walls: Array<[[number, number], [number, number], [number, number]]> = [
+        [[-hw, hd], [hw, hd], [0, 1]], [[hw, -hd], [-hw, -hd], [0, -1]], [[hw, hd], [hw, -hd], [1, 0]], [[-hw, -hd], [-hw, hd], [-1, 0]],
+      ];
+      for (const [[ax, az], [bx, bz], [ox, oz]] of walls) {
+        const length = Math.hypot(bx - ax, bz - az), steps = Math.max(2, Math.round(length / 1.2));
+        const row = (k: number): Array<[number, number, number, number]> => {
+          const t = k / steps, px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
+          wobble += 1;
+          const depth = (sand ? 0.34 : 0.3) * (0.45 + 0.55 * Math.abs(Math.sin(wobble * 1.7 + t * 9))) * Math.min(1, t * steps, (1 - t) * steps);
+          const reach = 1.5 * (0.7 + 0.3 * Math.sin(wobble * 0.9));
+          return [0, 0.5, 1].map((r): [number, number, number, number] => {
+            const [wx, wy, wz] = at(px + ox * (r * reach - 0.05), pz + oz * (r * reach - 0.05), 0.02);
+            return [wx, wy + depth * Math.pow(1 - r, 1.5) - (r === 1 ? 0.03 : 0), wz, r];
+          });
+        };
+        let previous = row(0);
+        for (let k = 1; k <= steps; k += 1) {
+          const next = row(k);
+          for (let r = 0; r < 2; r += 1) {
+            const quad = [previous[r], next[r], next[r + 1], previous[r], next[r + 1], previous[r + 1]];
+            // face the sky whichever way the wall's run turns
+            const [p0, p1, p2] = quad;
+            const ux = p1[0] - p0[0], uz = p1[2] - p0[2], vx = p2[0] - p0[0], vz = p2[2] - p0[2];
+            const order = uz * vx - ux * vz >= 0 ? [0, 1, 2, 3, 4, 5] : [0, 2, 1, 3, 5, 4];
+            for (const i of order) {
+              positions.push(quad[i][0], quad[i][1], quad[i][2]);
+              tone.copy(light).lerp(dark, 0.25 + 0.5 * quad[i][3]);
+              colors.push(tone.r, tone.g, tone.b);
+            }
+          }
+          previous = next;
+        }
+      }
+    }
+    if (!positions.length) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    combined.baked!.push(geometry);
+  };
+  addStructureDrifts();
 
   const buildFacilityPresentation = () => {
     // The facility frames, panels and footings take the shared weathered steel, enamel and cast-concrete albedos
