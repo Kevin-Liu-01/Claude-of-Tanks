@@ -48,11 +48,18 @@ import * as THREE from 'three';
 import { lightTune } from './lightModelCore.ts';
 import { groundKeyLights } from './groundKeyLights.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
+import { NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';
 
-/** At most this many hulls (the shadow router's near selection: NEAR_VEHICLE_SHADOW_MAX). */
+/** At most this many hulls (the nearest of the shadow router's near selection, nearVehicleShadowDetail.ts). */
 export const GROUND_AO_MAX_HULLS = 4;
-/** The selection's range (m) and the fade over its last stretch. */
-export const GROUND_AO_RANGE_M = 70;
+/**
+ * The selection's range (m) and the fade over its last stretch. (Contact r6, 2026-10-14; the shadow-quality plan's C4:
+ * "the detail/proxy swap is hard ... and it happens where ground occlusion fades") the range is the near-detail range
+ * itself, imported, so the block has faded to nothing by the time a hull's shadow swaps to its proxy, whatever range
+ * the shadow pass sets (70 m today; the SKY lane's r2b takes it to 90 m with hysteresis): the two transitions never pop
+ * together.
+ */
+export const GROUND_AO_RANGE_M = NEAR_VEHICLE_SHADOW_RANGE_M;
 export const GROUND_AO_FADE_M = 20;
 /** A card pixel's assumed ambient share (its sun state is unknown: a meadow half in sun, half in shade). */
 export const GROUND_AO_CARD_AMBIENT_SHARE = 0.6;

@@ -760,6 +760,12 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
 }
 
 // ---- 10. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
+// (contact r6, 2026-10-14; the shadow-quality plan's C4) the block's range is the near-detail range itself: it has faded to
+// nothing where a hull's shadow swaps to its proxy, whatever range the shadow pass sets — the two never pop together
+assert.equal(GROUND_AO_RANGE_M, NEAR_VEHICLE_SHADOW_RANGE_M, 'the near-detail range, imported');
+assert.ok(GROUND_AO_FADE_M > 0 && GROUND_AO_FADE_M < GROUND_AO_RANGE_M && combineVehicleGroundOcclusion([0.99], NEAR_VEHICLE_SHADOW_RANGE_M, 0.75) === 0,
+  'faded out inside it: nothing at the swap');
+assert.ok(here('./vehicleGroundOcclusion.ts').includes("import { NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';"));
 const post = here('./post.ts'), lighting = here('./lighting.ts');
 assert.match(lighting, /scene\.userData\.nearVehicles = nearVehiclePolicy\.selected;/, 'the shadow router\'s near selection, updated in place');
 // (2026-10-14, the r5 port's cost cut) one branch for the near hulls' reach: a ground pixel shaded at its own point, a
