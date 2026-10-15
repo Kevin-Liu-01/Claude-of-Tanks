@@ -50,8 +50,9 @@ export function unhcrSheet(sink: PartSink, face: Face, u: number, y: number, w: 
   facePanel(sink, 'structureMetal', face, u, y + h / 2, 0.025 + sag, w + 0.08, h + 0.08, { ...DECOR, colour: UNHCR_WHITE });
   if (h > 0.7) facePanel(sink, 'structureMetal', face, u, y + h * (0.42 + look() * 0.2), 0.03 + sag, w + 0.06, Math.min(0.22, h * 0.14), { ...DECOR, colour: UNHCR_BLUE });
   const batten: Rgb = [0.42, 0.35, 0.27];
-  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.05, w + 0.16, 0.06, 0.04, { ...DECOR, colour: batten, fine: true });
-  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.05, w + 0.16, 0.06, 0.04, { ...DECOR, colour: batten, fine: true });
+  // (the battens nailed to the wall: on its face, the sheet held proud by them)
+  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });
+  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });
 }
 
 /**
