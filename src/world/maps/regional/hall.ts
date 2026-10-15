@@ -41,6 +41,8 @@ export interface HallSpec {
   gutters: boolean;
   /** dressing on desktop only */
   mobile: boolean;
+  /** shell holes the war tore in the sheet (face, centre u and y over the floor, width, height): open onto the inside */
+  tears?: ReadonlyArray<{ face: 'left' | 'right' | 'back'; u: number; y: number; w: number; h: number }>;
   /** the covering's bucket and paint (default the kit's roof bucket); a long side open in `bays` between posts (a naya) */
   roof?: { bucket: RegionalBucket; colour?: Rgb };
   openSide?: { face: 'left' | 'right'; bays: number; post: number; head: number } | null;
@@ -67,6 +69,7 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
       openings.push({ face: o.face, storey: 0, kind: 'loft', u: (u0 + u1) / 2, w: u1 - u0, y0: 0, h: wall - o.head });
     }
   }
+  for (const t of spec.tears ?? []) openings.push({ face: t.face, storey: 0, kind: 'loft', u: t.u, w: t.w, y0: t.y - t.h / 2, h: t.h });
   if (spec.clerestory) {
     for (const face of ['left', 'right'] as const) {
       for (let u = -d / 2 + 2.2; u < d / 2 - 1.6; u += 4.4) {
@@ -84,7 +87,18 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
       gableBucket: 'structureMetal', openings, chimneys: [], gutters: null, verge: null, reveal: 0, spall: null,
     }, {
       // the lights: translucent sheet in a thin aluminium frame
-      window: (s, face, o, y0) => o.kind === 'loft' ? undefined : windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(spec.trim, 1.3), frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null }, variant, 0.1),
+      // (the sheet has no reveal: the lights hang 13 cm inside the cut in their lined boxes, the hall's inside behind them —
+      // never a plate proud of the sheet over a hole)
+      window: (s, face, o, y0) => {
+        if (o.kind === 'loft') return;
+        s.recess = 0.13;
+        try { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(spec.trim, 1.3), frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null }, variant, 0.1); }
+        finally { s.recess = 0; }
+        // the cut's lining: the sheet's flashing round the opening, back to the light's frame
+        const c = { colour: shade(spec.trim, 1.15), decor: true };
+        for (const sx of [-1, 1]) faceBox(s, 'structureMetal', face, o.u + sx * (o.w / 2 + 0.01), y0 + o.y0 + o.h / 2, -0.055, 0.02, o.h + 0.04, 0.17, c);
+        for (const yy of [y0 + o.y0 - 0.01, y0 + o.y0 + o.h + 0.01]) faceBox(s, 'structureMetal', face, o.u, yy, -0.055, o.w, 0.02, 0.17, c);
+      },
       door: (s, face, o, y0) => {
         if (o.kind === 'gate') return hallDoors(s, face, o, y0, spec);
         doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: spec.doorLivery, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: spec.trim }, steps: null, leafKind: 'plank' }, y0 + o.y0);
@@ -96,13 +110,20 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   const ix = w / 2 - 0.06, iz = d / 2 - 0.06, top = (x: number) => eave + (w / 2 - Math.abs(x)) * tanP - 0.12;
   sink.quad('structureMetal', [-ix, y0 + 0.01, iz], [ix, y0 + 0.01, iz], [ix, y0 + 0.01, -iz], [-ix, y0 + 0.01, -iz], { colour: FLOOR, decor: true });
   const back = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
-  sink.quad('structureMetal', [-ix, y0, -iz], [ix, y0, -iz], [ix, eave - 0.05, -iz], [-ix, eave - 0.05, -iz], { colour: back, decor: true });
+  // (the inner walls cut where the outer ones are: through a light or a door the hall's space, not a wall behind it)
+  const holesOf = (name: 'left' | 'right' | 'back'): Array<[number, number, number, number]> => openings.filter((o) => o.face === name)
+    .map((o) => [-(o.u + o.w / 2), -(o.u - o.w / 2), y0 + o.y0, y0 + o.y0 + o.h] as [number, number, number, number]);
+  linerWall(sink, { origin: [0, 0, -iz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * ix }, -ix, ix, y0, eave - 0.05, holesOf('back'), back);
   sink.polygon('structureMetal', [[ix, eave - 0.05, -iz], [0, top(0), -iz], [-ix, eave - 0.05, -iz]], { colour: back, decor: true });
   // (an open-sided barn takes the day in: its inside a shade of its own sheet, and no liner behind its open side)
   const inside = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
   for (const s of [-1, 1]) {
     const x = s * ix, a: Vec3 = [x, y0, s > 0 ? -iz : iz], b: Vec3 = [x, y0, s > 0 ? iz : -iz];
-    if (!(spec.openSide && (spec.openSide.face === 'right') === (s > 0))) sink.quad('structureMetal', a, b, [b[0], eave - 0.05, b[2]], [a[0], eave - 0.05, a[2]], { colour: inside, decor: true });
+    if (!(spec.openSide && (spec.openSide.face === 'right') === (s > 0))) {
+      const lf: Face = { origin: [x, 0, 0], u: [0, 0, s > 0 ? 1 : -1], out: [-s, 0, 0], width: 2 * iz };
+      linerWall(sink, lf, -iz, iz, y0, eave - 0.05, holesOf(s > 0 ? 'right' : 'left'), inside);
+    }
+    void a; void b;
     // the roof's underside, each slope from the eave to the ridge
     const e: Vec3 = [x, eave - 0.05, -iz], f: Vec3 = [x, eave - 0.05, iz], r0: Vec3 = [0, top(0), iz], r1: Vec3 = [0, top(0), -iz];
     if (s > 0) sink.quad('structureMetal', e, f, r0, r1, { colour: shade(back, 1.2), decor: true });
@@ -159,6 +180,26 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
     }
   });
   return frame;
+}
+
+/**
+ * An inner wall's face (decor, facing into the hall) from (u0, y0) to (u1, y1), less its holes [u0, u1, y0, y1]: in
+ * columns between the holes' sides, each column the wall less the holes that cross it.
+ */
+function linerWall(sink: PartSink, face: Face, u0: number, u1: number, y0: number, y1: number, holes: ReadonlyArray<readonly [number, number, number, number]>, colour: Rgb): void {
+  const cuts = [...new Set([u0, u1, ...holes.flatMap((h) => [Math.max(u0, Math.min(u1, h[0])), Math.max(u0, Math.min(u1, h[1]))])])].sort((p, q) => p - q);
+  const p = (u: number, y: number): Vec3 => [face.origin[0] + face.u[0] * u, y, face.origin[2] + face.u[2] * u];
+  for (let i = 0; i + 1 < cuts.length; i++) {
+    const a = cuts[i], b = cuts[i + 1];
+    if (b - a < 1e-3) continue;
+    const mid = (a + b) / 2;
+    const gaps = holes.filter((h) => h[0] < mid && h[1] > mid).map((h) => [Math.max(y0, h[2]), Math.min(y1, h[3])] as [number, number]).sort((q, r) => q[0] - r[0]);
+    let y = y0;
+    for (const [g0, g1] of [...gaps, [y1, y1] as [number, number]]) {
+      if (g0 - y > 1e-3) sink.quad('structureMetal', p(a, y), p(b, y), p(b, g0), p(a, g0), { colour, decor: true });
+      y = Math.max(y, g1);
+    }
+  }
 }
 
 /** The apron doors over their cut opening: sliding leaves on their tracks under a head box, or a roller curtain. */

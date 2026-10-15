@@ -267,13 +267,15 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
   // with the sliding leaves on their tracks (one run part open onto the hangar's own floor, far wall and frames), the
   // band of lights under the eaves, a personnel door in the back gable, gutters, roof lights and the ridge vent
   const open = 0.3 + rng() * 0.4;
+  // shrapnel through the sheet: a torn panel on one long wall, cut through onto the hangar's inside, the sheet bent out
+  const torn = rng() < 0.6 ? { face: (rng() < 0.5 ? 'right' : 'left') as 'right' | 'left', u: (rng() - 0.5) * (D - 4), y: 2.2 + rng() * (He - 3.4), w: 1.4 + rng(), h: 1.0 + rng() * 0.8 } : null;
   sink.placed(0, cx, 0, zc, () => {
     const frame = sheetHall(sink, { w: W, d: D, eave: He, pitchDeg: pitch, kerb: 1.0, livery, doorLivery, trim: RIB, doors: 'sliding', doorW: W - 1.6, doorH: He - 1.6,
-      open, backDoor: W * 0.25, clerestory: true, roofLights: true, ridgeVent: true, gutters: true, mobile }, ctx.variant);
-    // shrapnel through the sheet: a torn panel on one long wall, dark behind it
-    if (rng() < 0.6) {
-      const f = rng() < 0.5 ? frame.faces.right : frame.faces.left, u = (rng() - 0.5) * (D - 4), y = 2.2 + rng() * (He - 3.4);
-      faceBox(sink, 'dark', f, u, y, 0.005, 1.4 + rng(), 1.0 + rng() * 0.8, 0.01, { decor: true });
+      open, backDoor: W * 0.25, clerestory: true, roofLights: true, ridgeVent: true, gutters: true, mobile,
+      // (the tear under the band of lights, over the kerb)
+      ...(torn ? { tears: [{ ...torn, y: Math.max(torn.h / 2 + 0.3, Math.min(He - 1.0 - 1.4 - torn.h / 2, torn.y - 1.0)) }] } : {}) }, ctx.variant);
+    if (torn) {
+      const f = frame.faces[torn.face], u = torn.u, y = frame.floors[0] + Math.max(torn.h / 2 + 0.3, Math.min(He - 1.0 - 1.4 - torn.h / 2, torn.y - 1.0));
       sink.quad('structureMetal', ...([[-0.7, 0.5], [0.7, 0.5], [0.8, -0.6], [-0.5, -0.9]].map(([du, dy]) => [
         f.origin[0] + f.u[0] * (u + du) + f.out[0] * (0.05 - dy * 0.3), y + dy, f.origin[2] + f.u[2] * (u + du) + f.out[2] * (0.05 - dy * 0.3)] as Vec3)) as [Vec3, Vec3, Vec3, Vec3],
         { colour: shade(livery, 0.7), decor: true });
