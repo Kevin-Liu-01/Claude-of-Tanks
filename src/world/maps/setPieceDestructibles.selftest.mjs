@@ -6,7 +6,9 @@
 // piece to the props. (2026-10-14, Lane C: re-applied on main 9c511dd48 as item/propsC-setpiece-break.)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
 import { SET_PIECE_MASS, setPieceDestructibleKind, setPieceDestructibleTypes, isDenseSetPieceKind } from './setPieceDestructibles.ts';
+import { rollingStockDestructibleTypes as stockTypes, tramDestructibleTypes } from './setPieceDestructibles.ts';
 import { SET_PIECE_SIZE, buildSetPiece } from './vehicleSetPieces.ts';
 import { DENSE_SET_PIECE_KINDS, shellPassesThroughCollisionRecord } from '../collision.ts';
 
@@ -68,7 +70,10 @@ assert.match(src('../props.ts'), /setPieceDestructible: \(piece\) => \{ setPiece
   const props = src('../props.ts');
   assert.match(props, /const spans = setPieceSpans\.get\(kind\);\s*if \(spans\) \{\s*imI\.visible = false;/, 'the set pieces\' intact pools draw nothing');
   assert.match(props, /spans\[index\]\?\.setHidden\(Math\.abs\(matrix\.determinant\(\)\) < 1e-9\);/, 'and mirror every hide and show onto the baked span');
-  assert.match(props, /const g = intact\.clone\(\)\.applyMatrix4\(pool\.mats4\[rec\.slot\]\);\s*buckets\.baked\.push\(g\);/, 'each intact piece in the baked bucket at its instance pose');
+  // (#24: Blackglass's Shanghai car in the regional metal its streets draw; every other kind in the baked bucket)
+  assert.match(props, /const g = intact\.clone\(\)\.applyMatrix4\(pool\.mats4\[rec\.slot\]\);\s*buckets\[bucket\]\.push\(g\);/, 'each intact piece in a drawn bucket at its instance pose');
+  assert.match(props, /kind === 'tram_shanghai' \? 'structureMetal' : 'baked'/);
+  assert.match(props, /if \(\/\^\(setpiece\|rolling\|tram\)_\/\.test\(kind\)\) material = mats\.baked;/, 'their pools draw with the baked material');
 }
 // (Lane C, #24; the owner: "trams and wagons" break) the spurs' rolling stock as heavy destructibles: every kind a type
 // with its own wreck (derailed onto the ballast, burnt, broken by kind), dense cover in the collision layer, the dressing
@@ -99,4 +104,11 @@ assert.match(src('../props.ts'), /setPieceDestructible: \(piece\) => \{ setPiece
   assert.match(props, /rollingStockDestructible: \(stock\) => \{ rollingStockRecords\.push\(stock\); \}/);
   assert.match(props, /const rec = addDestructible\(kind, stock\.x, stock\.y, stock\.z, stock\.yaw, 1, -stock\.pitch, 0\);/);
 }
+// (#8, #24 films) a round's kill chars a set piece's or a wagon's copy through its instance colour: their pools paint
+// every copy white; the burnt-out trams do not burn again — the press leaves them, and their break shows the collapse
+for (const [kind, type] of Object.entries(stockTypes())) {
+  const c = new THREE.Color(0, 0, 0); type.instancePaint(c, 0, 0, 0);
+  assert.deepEqual([c.r, c.g, c.b], [1, 1, 1], `${kind}: white copies`);
+}
+for (const [kind, type] of Object.entries(tramDestructibleTypes())) assert.equal(type.mat, 'baked', `${kind}: no second fire, the collapse`);
 console.log(`setPieceDestructibles: ${Object.keys(types).length} set-piece kinds breakable (${[...DENSE_SET_PIECE_KINDS].length} heavy: stop a round and are wrecked by it; the rover crushed and shot through like a car)`);

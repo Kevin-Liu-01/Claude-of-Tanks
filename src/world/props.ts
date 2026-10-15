@@ -11218,7 +11218,8 @@ ${snowCap ? `
     let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
     if (meta.mat === 'vehicle' && meta.instancePaint) material = vehicleSurfaceMaterial();
     // (item 7) a set piece's build carries its own painted vertex colours (the painted bucket's family), no paint atlas
-    if (kind.startsWith('setpiece_')) material = mats.baked;
+    // (Lane C, #24) and so does a wagon's or a tram's (rolling_*, tram_*)
+    if (/^(setpiece|rolling|tram)_/.test(kind)) material = mats.baked;
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.

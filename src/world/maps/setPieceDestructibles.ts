@@ -87,6 +87,9 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
     out[rollingStockDestructibleKind(kind)] = {
       cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
       r: Math.hypot(hw, hl), h, hw, hl, keep: ROLLING_STOCK_MASS.keep, crushMin: ROLLING_STOCK_MASS.crushMin, castShadow: true,
+      // a white instance colour on every copy, so a round's kill chars the copy through it (props.ts draws a wagon with
+      // the baked material, which multiplies its painted vertex colours by it: no change until the fire)
+      instancePaint: (out) => { out.setRGB(1, 1, 1); },
       build: () => lifted(buildRollingStock(kind, { coarse: mobile })),
       broken: () => lifted(buildRollingStock(kind, { wrecked: true, coarse: mobile })),
     };
@@ -97,7 +100,9 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
 // ---------------------------------------------------------------------------------------------------- the trams
 // (Lane C, #24) Sarajevo's burnt trams (sarajevoStreets.ts) as the Tatra K2s they were: a burnt-out K2 standing on the
 // track (vehicleSetPieces.ts k2tram 'burnt'), heavy cover, that a gun round or a hard ram collapses (its 'collapsed'
-// state: the bodies crushed down onto the frame, slewed at the joint).
+// state: the bodies crushed down onto the frame, slewed at the joint). A burnt-out car does not burn again: the trams
+// are no 'vehicle' to the crush press (it would char and crumple a copy of the burnt car and never show the collapse);
+// their break swaps to the collapsed build, drawn with the baked material.
 
 /** The destructible kind a tram registers as: Sarajevo's K2 or Blackglass's Shanghai car (tramShanghai.ts). */
 export type TramKind = 'k2' | 'shanghai';
@@ -107,14 +112,14 @@ export function tramDestructibleTypes(mobile = false): Record<string, Destructib
   const k2 = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE;
   return {
     [tramDestructibleKind('k2')]: {
-      cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
+      cls: 'break', mat: 'baked', contact: 'ob', collider: true,
       r: Math.hypot(k2.hw, k2.hl), h: k2.h, hw: k2.hw, hl: k2.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
       build: () => buildSetPiece('k2tram', { wrecked: true, coarse: mobile }),
       broken: () => buildSetPiece('k2tram', { wrecked: true, collapsed: true, coarse: mobile }),
     },
     // (Blackglass, 1937) the Shanghai Electric Construction Company's car, burnt out on its avenue
     [tramDestructibleKind('shanghai')]: {
-      cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
+      cls: 'break', mat: 'baked', contact: 'ob', collider: true,
       r: Math.hypot(sh.hw, sh.hl), h: sh.h, hw: sh.hw, hl: sh.hl, keep: 0.4, crushMin: 5.0, groundPose: true, castShadow: true,
       build: () => buildShanghaiTram('burnt', mobile),
       broken: () => buildShanghaiTram('collapsed', mobile),
