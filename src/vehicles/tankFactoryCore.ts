@@ -8375,7 +8375,9 @@ function* createTankOwnedSteps(
     root.userData.markingSeatPath = 'generated';
   } else {
     root.updateMatrixWorld(true);
-    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
+    // a re-solve (the generator) keeps the seats that still read as recorded (netting-225 seat stability)
+    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG,
+      solveMarkingSeats ? vehicleMarkingSeats(spec.id) : null);
     root.userData.markingSeatPath = 'surface-solver';
   }
   const decalGeo = new THREE.PlaneGeometry(1, 1);

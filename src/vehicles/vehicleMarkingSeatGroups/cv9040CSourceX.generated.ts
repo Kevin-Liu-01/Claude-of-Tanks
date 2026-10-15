@@ -29,7 +29,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.132283
+        "maximumSurfaceErrorM": 0.095776
       },
       {
         "kind": "insignia",
