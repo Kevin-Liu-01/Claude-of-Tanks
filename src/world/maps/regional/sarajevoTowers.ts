@@ -157,22 +157,17 @@ function sootStain(u0: number, u1: number, y0: number, y1: number): Stain {
 }
 
 /**
- * A punched window of a concrete facade: the pane (or its siege state) and a slim sill. (u, y) its bottom-centre. The
- * soot of a burnt window stops at `roof` (the buildings stream, 2026-10-13, the integrity check: on a top floor it stood
- * up to 0.7 m over the roof's edge, a sheet in the air with its back to the street behind).
+ * A punched window of a concrete facade, its opening cut through the wall `cut.reveal` deep (props census #9): the pane
+ * at the back of the reveal (or its siege state) and a slim sill. (u, y) its bottom-centre. A burnt window is the dark
+ * behind the cut with its soot a stain of the wall (`cut.stains`), stopping at `roof` (the buildings stream, 2026-10-13,
+ * the integrity check: on a top floor it stood up to 0.7 m over the roof's edge).
  */
-function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number, roof = Infinity,
-  cut?: { reveal: number; stains: Stain[] }): void {
+function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number, roof: number,
+  cut: { reveal: number; stains: Stain[] }): void {
   const roll = look();
   if (roll < 0.1) { unhcrSheet(sink, face, u, y, w, h, look); return; }
-  if (roll < 0.2) {
-    // (an opening cut through the wall has its own dark behind it, and its soot is the wall's: no plates)
-    if (cut) { cut.stains.push(sootStain(u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, Math.min(y + h + 1.4, roof))); return; }
-    facePanel(sink, 'dark', face, u, y + h / 2, 0.01, w, h, { decor: true });
-    sootBand(sink, 'plaster3', face, u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, Math.min(y + h + 1.4, roof));
-    return;
-  }
-  facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, cut ? -cut.reveal + 0.016 : 0.012, w, h, { decor: true, window: face.out });
+  if (roll < 0.2) { cut.stains.push(sootStain(u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, Math.min(y + h + 1.4, roof))); return; }
+  facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, -cut.reveal + 0.016, w, h, { decor: true, window: face.out });
   faceBox(sink, 'plaster3', face, u, y - 0.04, 0.05, w + 0.12, 0.08, 0.1, { decor: true, fine: true });
 }
 
