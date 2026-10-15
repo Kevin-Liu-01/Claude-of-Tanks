@@ -889,8 +889,10 @@ export const COMBAT_TABLE = [
   // shoulder its knockout fireball and smoke stood between the lens and the Challenger for the take's last 1.2 s; over
   // its left (k -1) they rise clear of it. s233's lens rises to 11 m over the knockout, above the T-90's smoke, where at
   // 7 m the smoke stood over the CV90 for 1.2 s)
+  // (and on HE look v2, review 4, 2026-10-14: by 5.8 s the dead hull sat under the kill fireball's white-hot glow; the
+  // coordinator: end earlier, not higher, so the take ends at 5.2 s, the knockout and the hull's landing in)
   [226, 'church-duel', 'A Challenger 3 and a T-80U trade rounds by the onion-domed church in the snow', S.wChurch, 'day', '1v1',
-    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', -1, ['foe0', 'hero'], 2.5, [0, 0], { camEnd: { lift: 4.2 } }],
+    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', -1, ['foe0', 'hero'], 2.5, [0, 0], { camEnd: { lift: 4.2 }, durMs: 5200 }],
   [227, 'oasis-duel', 'An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
     [CAST.sepv3], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
   // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine
@@ -901,15 +903,18 @@ export const COMBAT_TABLE = [
   // for the take's last 2 s, 900 stagings tried. The fight moves 62 m on, the AbramsX coming out of the street's end into
   // the square (62-80 m across from 65 to 130 m), the foes side by side there, the lens high behind them dropping as
   // the T-90M dies: the AbramsX head-on, nothing over any tank)
+  // (review 4: the same glow over the knocked-out T-90M at 5.8 s; ends at 5.2 s with s226)
   [228, 'street-1v2', 'An AbramsX takes on a T-90M and a T-72B3 down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
-    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'overwatch', -1, ['foe0', 'foe1', 'hero'], 0, [0, 62], { foeFormation: 'pair' }],
+    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'overwatch', -1, ['foe0', 'foe1', 'hero'], 0, [0, 62], { foeFormation: 'pair', durMs: 5200 }],
   // (s229 on 224's world, 2026-10-14: the 8 m shift put the 380 kV line across 43 % of the frame's top for 2.6 s; at the
   // set's anchor the race clears 224's ground and the line stays under a third. The village and the line lie the same
   // way: every placement that clears the line, the race turned 45°, puts the village behind the lens)
   // (and since the owner's word on 2026-10-14, "make sure tanks are still visible": the T-72B3M drove past the dead
   // T-90M's smoke column in the take's last 1.4 s, 11 m out from it; on a lane 24 m out it passes clear)
+  // (review 4: a stone well stood in the lower foreground at the knockout and a house edge came in from the right at the
+  // end; the coordinator: the lens 4 m to its left)
   [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
-    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0, foe1Out: 24 }],
+    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0, foe1Out: 24, camSide: -4 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
     [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
   [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
@@ -927,11 +932,14 @@ export const COMBAT_TABLE = [
  *  set's anchor onto clear ground; `turn` runs it that many degrees off the set's heading. */
 export function combatTake(row, over = {}) {
   const [n, id, title, set0, time, format, lineup, foes] = row;
-  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation, camEnd, foe1Lead = -9, foe1Out = 11 } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
+  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation, camEnd, camSide = 0, durMs = null, foe1Lead = -9, foe1Out = 11 } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
     speed: row[13], shift: row[14] ?? [0, 0], geo: 'front', turn: 0, foeFormation: 'pair', ...(row[15] ?? {}), ...over };
   // `camEnd` (2026-10-14, the coordinator on the 224 review: s226's lens climbed through a telephone line): the take's
   // own values for its lens's last key, the rest of the lens as DUEL has it
-  const cam = DUEL[lensName](D, k, hold).map((key) => (camEnd && key.tMs === 'end' ? { ...key, ...camEnd } : key));
+  // `camSide` (2026-10-14, review 4's s229): every key of the lens that many metres to its side (the hero frame's side;
+  // a lens ahead looking back has its left at -side); `durMs`: the take's own length, the lens's end key with it
+  const cam = DUEL[lensName](D, k, hold).map((key) => ({ ...key, ...(camEnd && key.tMs === 'end' ? camEnd : {}),
+    ...(camSide && Number.isFinite(key.side) ? { side: +(key.side + camSide).toFixed(2) } : {}) }));
   const anchor = shift[0] || shift[1] ? frame(set0.anchor, set0.heading).at(shift[0], shift[1]).map((v) => +v.toFixed(2)) : set0.anchor;
   const set = { ...set0, anchor, heading: ((set0.heading + turn) % 360 + 360) % 360 };
   const ids = { hero: lineup[0], ally1: lineup[1] ?? null, foe0: foes[0], foe1: foes[1] ?? null };
@@ -962,7 +970,7 @@ export function combatTake(row, over = {}) {
   const guns = [barrage(race ? H(k * (D + 26), 8) : foesSide ? H(lat * 0.5, -24) : H(lat, D + 26), format === '2v2' ? 1500 : format === '1v2' ? 1200 : 3000, 3, 10, { size: 'small' })];
   return [n, id, kind, title, { ...set, formation: lineup.length > 1 ? 'pair' : 'solo', count: lineup.length, lineup, enemies },
     { time, speed, sun: 'side', combat: format, lens: lensName, aim: fight.aim, effects: [...flare, ...guns, ...fight.effects], cam,
-      ...(race ? { routes } : {}), ...MOTION_RAIL },
+      ...(race ? { routes } : {}), ...MOTION_RAIL, ...(durMs ? { durMs } : {}) },
     { tMs: fight.still, exposureMs: 2 }];
 }
 export const COMBAT = COMBAT_TABLE.map((row) => combatTake(row));
