@@ -11,7 +11,11 @@
 // leo2a4_otco), so applying it twice to the same line renames a vehicle into
 // another one. The tool therefore only converts text that is still in the
 // previous schema:
-//   --initial  converts the whole tree once, on a clean tree that does not yet
+//   --initial  converts the whole tree once, generated files included (all are
+//              in the previous schema at that moment, so one pass is exact and
+//              every generator then runs on consistent inputs; a generator's
+//              own re-key-on-load only maps retired ids and cannot place a
+//              swap), on a clean tree that does not yet
 //              hold the rename. Commit the result with the trailer line
 //              `Tank-Id-Schema: <N>` (the rename commit, R). A dirty tree is
 //              refused, so a second run changes nothing.
@@ -109,6 +113,10 @@ const SKIP_EXACT = new Set([
   'src/vehicles/trackPatterns.ts', 'src/vehicles/wheelPatterns.ts', 'src/fx/projectileTracers.ts',
 ]);
 const GENERATED = /\.generated\.|tank-assets\.json$|fleet-geometry-ledger\.json$/;
+// Re-keyed by their own tools even in --initial: the asset manifest (tools/tank-id-rekey-assets.mjs, by display
+// name) and the geometry ledger (its digests hash the root name tank_<id>: tank:geometry:update).
+const REGENERATE_ONLY = /tank-assets\.json$|fleet-geometry-ledger\.json$/;
+const GENERATED_MAX_BYTES = 8 * 1024 * 1024;
 const BINARY_EXT = ['svg', 'png', 'webp', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'mov', 'glb', 'gltf', 'bin', 'wav', 'mp3',
   'ogg', 'opus', 'ktx2', 'woff', 'woff2', 'ttf', 'pdf', 'zip'];
 const PATHSPEC = ['--', '.', ...SKIP_PREFIX.map((p) => `:(exclude)${p}`), ':(exclude,glob)**/*.generated.*',
@@ -149,11 +157,11 @@ function rewriteLines(text, convert = () => true) {
   }
   return { out: lines.join('\n'), count };
 }
-const readText = (rel) => {
+const readText = (rel, limit = maxBytes) => {
   const path = join(root, rel);
   if (!existsSync(path)) return null;
   const size = statSync(path).size;
-  if (size > maxBytes) { skippedLarge.push(`${rel} (${(size / 1048576).toFixed(1)} MB)`); return null; }
+  if (size > limit) { skippedLarge.push(`${rel} (${(size / 1048576).toFixed(1)} MB)`); return null; }
   const text = readFileSync(path, 'utf8');
   return text.slice(0, 8000).includes('\0') ? null : text;
 };
@@ -189,14 +197,15 @@ if (initial) {
   writeFileSync(idsFile, `${[...pairs.keys()].join('\n')}\n`);
   let listed = '';
   try {
-    listed = git(['grep', '-I', '-F', '-l', '--threads', '4', '-f', idsFile, ...PATHSPEC]);
+    listed = git(['grep', '-I', '-F', '-l', '--threads', '4', '-f', idsFile,
+      ...PATHSPEC.filter((p) => p !== ':(exclude,glob)**/*.generated.*')]);
   } catch (error) {
     if (error.status !== 1) throw error; // 1 = no match
   }
   for (const rel of listed.split('\n').filter(Boolean)) {
     if (skipped(rel)) continue;
-    if (generated(rel)) { regenerate.add(rel); continue; }
-    const text = readText(rel);
+    if (REGENERATE_ONLY.test(rel)) { regenerate.add(rel); continue; }
+    const text = readText(rel, generated(rel) ? GENERATED_MAX_BYTES : maxBytes);
     if (text == null) continue;
     const { out, count } = rewriteLines(text);
     record(rel, count, out);

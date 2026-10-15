@@ -37,6 +37,7 @@ write('src/a.ts', [
   '// spacer one', '// spacer two', '// spacer three', '',
 ].join('\n'));
 write('src/b.ts', "export const PICK = 'leo2a6m';\n");
+write('src/seats.generated.ts', 'export const SEATS = {"leo2a6m":{"x":1},"leo2a6m_x":{"x":2}};\n');
 git('add', '-A'); git('commit', '-q', '-m', 'base');
 
 // ---- main: the rename commit
@@ -48,6 +49,8 @@ assert.equal(read('src/a.ts').split('\n')[0], "export const LIST = ['leo2a4_otco
 assert.match(read('src/a.ts'), /'leo2a6m-front-mudguard'/, 'a hyphenated slug keeps its spelling');
 assert.match(read('src/a.ts'), /OLD = 'leo2a6m'; \/\/ a schema-2 fixture/, 'a line marked tank-ids:keep keeps its ids');
 assert.equal(read('src/b.ts'), "export const PICK = 'leo2a4_otco';\n");
+assert.equal(read('src/seats.generated.ts'), 'export const SEATS = {"leo2a4_otco":{"x":1},"leo2a6m":{"x":2}};\n',
+  'the initial pass re-keys generated records once, swaps included');
 let before = snapshot();
 run = codemod('--apply', '--initial');
 assert.notEqual(run.status, 0, '--initial refuses a dirty tree');
