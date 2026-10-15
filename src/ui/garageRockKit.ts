@@ -136,7 +136,7 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
   const bench = (u: number, y: number, at: number, back: number, seedU: number): number => {
     const line = at + 0.12 * u + (fbm(u * 0.05 + seedU, 3.3) - 0.5) * 3.0;
     const reach = back * smooth((fbm(u * 0.06 + seedU * 2, 9.1) - 0.32) * 3);
-    return -reach * smooth((y - line) / 1.1);
+    return -reach * smooth((y - line) / 2.4); // a ledge a couple of metres deep, not a stripe (CPU canonical, 2026-10-15)
   };
   // the portal's cut: 1 within the headwall's reach of the opening, 0 three metres beyond it
   const cutShare = (u: number): number => (options.cut && opening
@@ -180,7 +180,7 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     base.multiplyScalar(1 - Math.pow(fbm(u * 0.7 + 21, y * 0.05), 3) * 0.35);
     if (y < 1.2) base.multiplyScalar(0.8 + y / 6);
     const slope = (formBack(u, y + 0.35) - formBack(u, y - 0.35)) / 0.7;
-    const lying = smooth((-slope - 0.75) / 0.9) * smooth((fbm(u * 0.35 + 4, y * 0.4) - 0.22) * 2.4);
+    const lying = smooth((-slope - 0.6) / 0.9) * smooth((fbm(u * 0.11 + 4, y * 0.16) - 0.3) * 2.2); // patches, broken along the ledge
     return lying > 0 ? base.lerp(snow.clone().lerp(snowShade, fbm(u * 0.8, y * 0.8) * 0.5), lying) : base;
   };
   const us = Array.from({ length: columns + 1 }, (_, k) => -half + (k / columns) * width);
