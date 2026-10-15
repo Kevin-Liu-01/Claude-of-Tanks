@@ -1598,6 +1598,11 @@ export class VolumetricCloudLayer {
   private frame = 0;
   private traces = 0;
   private rebuild = 16;
+  /**
+   * The layer's quad programs linking in parallel (warmAsync); the layer does not draw until they are linked, so no frame
+   * reads their link synchronously (2026-10-14, the MP stream: the 224 returning tab's Garage freeze).
+   */
+  private linkPending: Promise<void> | null = null;
   private since = 0;
   private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
   private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
@@ -2081,7 +2086,8 @@ export class VolumetricCloudLayer {
     if (hazeDatum !== undefined && Number.isFinite(hazeDatum)) this.hazeDatum = hazeDatum;
     if (sceneDepth !== undefined) this.lastSceneDepth = sceneDepth;
     const preset = this.preset;
-    if (!preset || !this.active || renderer !== this.renderer) {
+    // (2026-10-14) programs still linking in parallel: no draw this frame (a draw would read their link synchronously)
+    if (!preset || !this.active || renderer !== this.renderer || this.linkPending) {
       this.dome.visible = false;
       this.sceneDepthReady = false;
       this.dropCloudShade();
@@ -2393,6 +2399,54 @@ export class VolumetricCloudLayer {
     const rgba = new Uint8Array(w * h * 4);
     this.renderer.readRenderTargetPixels(this.copyTarget, 0, 0, w, h, rgba);
     return { width: w, height: h, rgba };
+  }
+
+  /**
+   * The layer's quad programs (trace, resolve, far shade) submitted for a parallel link and awaited without blocking the
+   * main thread, then `warm()` (2026-10-14, the MP stream). warm()'s 1 × 1 renders read the ray-march program's link
+   * synchronously: the 224 MP window's returning tab sat 104-163 s in one main-thread task there (its Garage boot's
+   * "vehicle" stage; reproduced locally at 87 s, 0.5 s in an uncontended run) while the browser's one GPU process compiled
+   * two battle tabs' programs. Until the link completes the layer draws nothing (beforeSceneRender), which only ever
+   * happens under the boot's or the battle entry's cover in practice. Without KHR_parallel_shader_compile the compile
+   * resolves at once and warm() links at its first render, as before.
+   */
+  warmAsync(): Promise<void> {
+    if (this.linkPending) return this.linkPending;
+    if (!this.active) return Promise.resolve();
+    const renderer = this.renderer as THREE.WebGLRenderer & { compileAsync?: THREE.WebGLRenderer['compileAsync'] };
+    if (typeof renderer.compileAsync !== 'function') { this.warm(); return Promise.resolve(); }
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    for (const material of [this.traceMaterial, this.resolveMaterial, this.farShadeMaterial]) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+    }
+    // the variant the quad renders: an offscreen target (its output space) without tone mapping, as renderQuad sets it
+    const prevTarget = renderer.getRenderTarget();
+    const prevFace = renderer.getActiveCubeFace(), prevMip = renderer.getActiveMipmapLevel();
+    const prevXr = renderer.xr.enabled, prevToneMapping = renderer.toneMapping;
+    let compiled: Promise<unknown>;
+    try {
+      renderer.xr.enabled = false;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.setRenderTarget(this.trace);
+      compiled = renderer.compileAsync(scene, camera);
+    } catch (error) {
+      compiled = Promise.reject(error);
+    } finally {
+      renderer.xr.enabled = prevXr;
+      renderer.toneMapping = prevToneMapping;
+      renderer.setRenderTarget(prevTarget, prevFace, prevMip);
+    }
+    const pending: Promise<void> = compiled.then(() => undefined, () => undefined).then(() => {
+      if (this.linkPending === pending) this.linkPending = null;
+      geometry.dispose();
+      this.warm();
+    });
+    this.linkPending = pending;
+    return pending;
   }
 
   /** Compile the three programs under a loading cover (a 1 × 1 trace and resolve; the dome compiles with the scene). */
