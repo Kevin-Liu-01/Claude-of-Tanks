@@ -52,6 +52,11 @@ export function setPieceDestructibleTypes(mobile = false): Record<string, Destru
       cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
       r: Math.hypot(size.hw, size.hl), h: size.h, hw: size.hw, hl: size.hl,
       keep: mass.keep, crushMin: mass.crushMin, groundPose: true, castShadow: true,
+      // (Lane C, #8 film) a white instance colour on every copy: the kill's burn chars the copy through it
+      // (propCrushPresentation tints the instance colour from its own to char over CHAR_S; a pool without instance
+      // colours kept its paint, and the haulpak stood yellow through its own fire). White leaves the build's painted
+      // vertex colours as they are (props.ts draws set pieces with the baked material, which multiplies them).
+      instancePaint: (out) => { out.setRGB(1, 1, 1); },
       // (Lane C, #8 r2) the phone tier draws the coarse builds (about half the triangles; the same footprint and record)
       build: () => buildSetPiece(kind, { coarse: mobile }),
       broken: () => buildSetPiece(kind, { wrecked: true, coarse: mobile }),
