@@ -161,13 +161,6 @@ function curtainFace(sink: PartSink, face: Face, y0: number, floors: number, fh:
   }
 }
 
-/** Mullions down a face: full-height strips every `step` metres (fine joinery). */
-function mullions(sink: PartSink, face: Face, y0: number, y1: number, step: number, colour: Rgb, inset = 0.25): void {
-  const w = face.width - 2 * inset, n = Math.max(1, Math.round(w / step));
-  for (let k = 1; k < n; k++) faceBox(sink, 'structureWood', face, -w / 2 + w * k / n, (y0 + y1) / 2, 0.09, 0.08, y1 - y0, 0.08, { decor: true, colour, fine: true });
-  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, s * (face.width / 2 - 0.12), (y0 + y1) / 2, 0.08, 0.24, y1 - y0, 0.1, { decor: true, colour });
-}
-
 /**
  * A punched window of a concrete facade: the pane (or its siege state) and a slim sill. (u, y) its bottom-centre. The
  * soot of a burnt window stops at `roof` (the buildings stream, 2026-10-13, the integrity check: on a top floor it stood
