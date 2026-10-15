@@ -157,22 +157,4 @@ for (let i = 0; i < 60; i++) {
   assert.ok(field.heightAt(p.x, p.z) < water.level, 'the floor lies under the water');
 }
 assert.ok(open >= 20 && offLevel < 1e-6, `the Westerschelde draws level (${open} open, ${offLevel.toFixed(4)} m off)`);
-// (round 4, Glacier) the roads keep to ground they can climb: the exits ran on straight up the cirque wall (137 %)
-let alpineRoads = 0;
-{
-  const alpine = buildHinterland(resolveHinterlandSpec({ id: 'alpine', terrain: { rimH: 30 }, hinterland: HINTERLAND_LAB_DRAFTS.alpine }), 1337, ground, { levels: LEVELS });
-  const hAt = (x, z) => samplePyramid(alpine.pyramid, x, z);
-  for (const r of alpine.plan.roads) {
-    alpineRoads++;
-    for (let i = 1; i < r.xs.length; i++) {
-      if (Math.max(Math.abs(r.xs[i]), Math.abs(r.zs[i])) < 600) continue;
-      let g = Infinity;
-      for (const back of [1, 2, 4]) {
-        const j = Math.max(0, i - back), run = Math.hypot(r.xs[i] - r.xs[j], r.zs[i] - r.zs[j]);
-        if (run > 1) g = Math.min(g, Math.abs(hAt(r.xs[i], r.zs[i]) - hAt(r.xs[j], r.zs[j])) / run);
-      }
-      assert.ok(g < 0.25, `the Glacier's ${r.kind} ${r.from} climbs ${(100 * g).toFixed(0)} % at (${r.xs[i].toFixed(0)}, ${r.zs[i].toFixed(0)})`);
-    }
-  }
-}
-console.log(`hinterlandPlan.selftest: ok — ${alpineRoads} Glacier roads on climbable ground; ${plan.settlements.length} settlements (${near.length} near), ${plan.buildings.length} buildings, ${plan.verticals.length} verticals, ${plan.roads.length} roads; build ${Math.round(a.ms.total)} ms`);
+console.log(`hinterlandPlan.selftest: ok — ${plan.settlements.length} settlements (${near.length} near), ${plan.buildings.length} buildings, ${plan.verticals.length} verticals, ${plan.roads.length} roads; build ${Math.round(a.ms.total)} ms`);

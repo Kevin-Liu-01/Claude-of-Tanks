@@ -11,7 +11,6 @@ import { HL_COVER, createHinterlandCover, createHinterlandGeology, createHinterl
 import { hash12, noise2 } from './noise.ts';
 import type { HinterlandLevel } from './pyramid.ts';
 import { HINTERLAND_SEASON_LEAF } from './spec.ts';
-import { hinterlandSnowCovered } from './regions.ts';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE } from './wire.ts';
 
 /** The flags byte: what the material treats apart. */
@@ -37,8 +36,7 @@ const CLASS_ALBEDO: Readonly<Record<number, readonly [number, number, number]>> 
   [HL_COVER.pasture]: [0.085, 0.145, 0.045],
   [HL_COVER.woods]: [0.035, 0.055, 0.026],
   [HL_COVER.scree]: [0.22, 0.21, 0.19],
-  // (a cool snow, as the battlefield's reads under the sky — the Glacier bird view's warm outland against a blue square)
-  [HL_COVER.snow]: [0.72, 0.79, 0.88],
+  [HL_COVER.snow]: [0.78, 0.8, 0.83],
   [HL_COVER.sand]: [0.42, 0.33, 0.21],
   [HL_COVER.water]: [0.03, 0.045, 0.05],
   [HL_COVER.settlement]: [0.13, 0.115, 0.095],
@@ -90,9 +88,6 @@ export function bakeHinterlandSurface(
   const out: HinterlandSurfaceLevel[] = [];
   const specs = surfaceLevelsFor(levels);
   const rockLinear = hexToLinear(field.spec.geology.rockHex);
-  // (a snow-covered place: its roads packed snow and its yards trodden snow, not a lowland's tarmac and earth)
-  const snowy = hinterlandSnowCovered(field.spec.geology);
-  const SNOW_ROAD: readonly [number, number, number] = [0.5, 0.54, 0.6], SNOW_YARD: readonly [number, number, number] = [0.56, 0.6, 0.66];
   // the woods' colour in the season: a broadleaf wood's crowns go grey-brown as its leaves fall, a conifer's keep
   let conifer = 0, total = 0;
   for (const [sp, w] of field.spec.region.vegetation.species) { total += w; if (CONIFERS.has(sp)) conifer += w; }
@@ -144,8 +139,6 @@ export function bakeHinterlandSurface(
           albedo = farFields([crop[0] * tone, crop[1] * tone, crop[2] * tone], x, z);
         } else {
           albedo = CLASS_ALBEDO[cover.cls] ?? CLASS_ALBEDO[HL_COVER.pasture];
-          if (snowy && (cover.cls === HL_COVER.road || cover.cls === HL_COVER.rail)) albedo = SNOW_ROAD;
-          else if (snowy && cover.cls === HL_COVER.settlement) albedo = SNOW_YARD;
           if (cover.cls === HL_COVER.pasture && cover.fieldId) {
             const tone = 0.85 + 0.3 * (((cover.fieldId * 2246822519) >>> 0) % 1000) / 1000;
             albedo = farFields([albedo[0] * tone, albedo[1] * tone, albedo[2] * tone], x, z);

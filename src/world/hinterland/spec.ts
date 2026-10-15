@@ -48,10 +48,6 @@ export interface HinterlandLandformConfig {
   cover?: { forest?: readonly [number, number]; bare?: boolean };
   /** A dike's crown: a road on it, a row of trees on it (species), and the crown's width (m). */
   crown?: { road?: boolean; trees?: string; widthM?: number };
-  /** A massif's main summit, authored: its place along the strike (-1..1 of the half-length) and its share of the
-   * height (default 0.5), a shoulder either side of it; the crest falls from it to both ends — a mountain with its
-   * summit and shoulders, not a table (round 4, Mont Froid from edge-w). */
-  peak?: { along: number; share?: number };
   name?: string;
 }
 
@@ -108,14 +104,7 @@ export interface HinterlandLandmarkConfig {
 
 export interface HinterlandTownConfig { azDeg: number; distM: number; size: 'small' | 'medium' | 'large'; name?: string }
 /** A village on a sightline; `towerM` its church tower's height (a landmark must clear the dyke rows before it). */
-export interface HinterlandVillageAt {
-  azDeg: number; distM: number; name?: string; towerM?: number;
-  /** Its buildings (default: the kit's village size). */
-  buildings?: number;
-  /** A near village's tower, read at a few hundred metres: slim (a ninth to an eleventh of its height wide each side),
-   * pale-rendered, its spire a third of it — not the far landmark's stout stage (a seventh). */
-  slim?: boolean;
-}
+export interface HinterlandVillageAt { azDeg: number; distM: number; name?: string; towerM?: number }
 
 /** The block a map file carries (B-architecture §4.0). */
 export interface HinterlandConfig {

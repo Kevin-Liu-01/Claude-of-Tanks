@@ -21,8 +21,7 @@ exception (`horizon.envelopeExceptions` or `hinterland.exceptions`) excuses its 
 | delta | ring | 1.17 / 1.44 | 6.20 | 1 | 4 | 3.62 | L0 | 0.00076 | 18 | 22 | ok | C1 C2 C4 C6 C7 |
 | badlands | ring | 6.91 / 8.67 | 84.60 | 0.67 | 15 | 2.91 | L0+jebels | 0.00036 | 2 | 0 | ok | C2 C3 C8 C9 |
 | monsoon | ring | 6.39 / 8.51 | 39 | 0.98 | 30 | 4.25 | L0.25 | 0.00088 | 5 | 44 | ok | C7 C9 |
-| alpine | ring | 8.24 / 10.45 | 41.10 | 1 | 24 | 4.23 | L1 | 0.00072 | 6 | 30 | ok | C1 C2 |
-| alpine | hinterland | 6.76 / 9.43 | 67.30 | 0.75 | 19 | 7.34 | 0.42 | 0.00072 | 5 | 30 | ok | inside |
+| alpine | ring | 8.91 / 11.57 | 52.80 | 0.98 | 38 | 3.98 | L1 | 0.00076 | 8 | 52 | ok | C1 C2 C7 C9 |
 | caldera | ring | 9.56 / 9.87 | 26.20 | 1 | 16 | 4.73 | L0.45 | 0.00082 | 0 | 28 | mixed (mesa/rolling/upland/mesa) | P1 C1 C7 C8 |
 | foundry | ring | 2.46 / 3.34 | 14.10 | 1 | 10 | 4.50 | L0.45 | 0.00052 | 18 | 26 | ok | C2 |
 | ruinspires | ring | 3.36 / 4.22 | 24 | 0.98 | 19 | 4.15 | L0.45 | 0.00068 | 0 | 32 | ok | C8 |
@@ -30,7 +29,6 @@ exception (`horizon.envelopeExceptions` or `hinterland.exceptions`) excuses its 
 | titan_gorge | ring | 12.25 / 11.90 | 39.80 | 1 | 23 | 5.25 | L0+jebels | 0.00046 | 0 | 54 | ok | C1 C2 C8 C9 |
 | skybridge | ring | 10.76 / 10.91 | 44.20 | 1 | 23 | 4.74 | L0+jebels | 0.0004 | 0 | 58 | ok | C1 C2 C8 C9 |
 | polders | ring | 0.71 / 0.71 | 6 | 0.91 | 4 | 3.33 | L0 | 0.00062 | 18 | 18 | ok | C1 C2 C3 C4 C6 C9 |
-| polders | hinterland | 1.32 / 1.10 | 4.90 | 0.42 | 56 | 3.81 | 0 | 0.00062 | 26 | 18 | ok | inside |
 | copper_mesa | ring | 8.34 / 9.47 | 45.40 | 0.99 | 29 | 4.10 | L0.25 | 0.00045 | 0 | 38 | ok | C1 C2 C8 |
 | airfield | ring | 1.11 / 1.82 | 5.30 | 1 | 5 | 4.51 | L0 | 0.00048 | 20 | 20 | ok | C1 C2 C4 C6 C9 |
 | oasis | ring | 1.43 / 2.09 | 20.30 | 0.76 | 8 | 3.47 | L0 | 0.00025 | 8 | 28 | ok | C1 C3 C6 |

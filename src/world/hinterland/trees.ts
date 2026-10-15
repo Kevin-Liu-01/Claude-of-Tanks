@@ -15,8 +15,6 @@ import { TREE_IMPOSTOR_ALPHA_TEST, type TreeImpostorLibrary } from '../treeImpos
 import type { HinterlandNearTrees } from './buildings.ts';
 import { samplePyramid } from './pyramid.ts';
 import { HINTERLAND_FORMS, HINTERLAND_TREE_STRIDE } from './wire.ts';
-import { HINTERLAND_DEPTH_GLSL, HINTERLAND_DEPTH_WRITE_GLSL, HINTERLAND_HAZE_DISTANCES_GLSL, HINTERLAND_WRITE_DEPTH } from './project.ts';
-import type { HinterlandAir } from './air.ts';
 
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 
@@ -121,33 +119,10 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
     side: THREE.DoubleSide, roughness: 1.0, metalness: 0.0,
   });
   material.envMapIntensity = HORIZON_FOREST_IMPOSTOR_SKY_FILL;
-  material.customProgramCacheKey = () => `hinterland-tree-impostor-v2-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
-  // (the land's written depth and haze law, project.ts: past the square the land writes a nearer depth, so its trees
-  // must too, or the land would stand in front of them; and they take the same haze for the distance it no longer covers)
-  const haze = outland.userData.hinterlandHaze as { sigma: number; air: HinterlandAir | null } | undefined;
-  const air = haze?.air ?? null;
-  const proj = new THREE.Matrix4();
-  const hazeUniforms: Record<string, THREE.IUniform> = { uHlProj: { value: proj }, uHlAir: { value: air?.clarity ?? 1 }, ...(air?.uniforms ?? {}) };
+  material.customProgramCacheKey = () => 'hinterland-tree-impostor-v1';
   options.setupMaterial(material, (shader) => {
     library.applyProgram(shader);
     applyCanopyDiffuseWrap(shader, HORIZON_FOREST_IMPOSTOR_WRAP, true, HORIZON_FOREST_IMPOSTOR_THIN);
-    Object.assign(shader.uniforms, hazeUniforms);
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>
-uniform float uHlAir;
-${HINTERLAND_DEPTH_GLSL}
-float hlHazeD = 0.0, hlDrawnR = 0.0;
-${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}`)
-      .replace('#include <fog_fragment>', `#include <fog_fragment>
-  {
-${HINTERLAND_HAZE_DISTANCES_GLSL}
-    float hlT = exp( -uHlAir * hinterlandSegmentDepth( hlHazeD, hlDrawnR ) );
-    #ifdef USE_FOG
-    if ( hlT < 0.999 ) gl_FragColor.rgb = mix( hlHazeTarget( fogColor ), gl_FragColor.rgb, hlT );
-    #endif
-  }`)
-      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-${HINTERLAND_DEPTH_WRITE_GLSL}`);
   });
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(), position = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0), color = new THREE.Color();
@@ -165,7 +140,6 @@ ${HINTERLAND_DEPTH_WRITE_GLSL}`);
     mesh.castShadow = false; mesh.receiveShadow = false;
     mesh.matrixAutoUpdate = false; mesh.frustumCulled = false;
     mesh.userData.aoExclude = true; // (alpha-tested: the GTAO prepass would composite the quads solid)
-    mesh.onBeforeRender = (_r, scene, camera) => { proj.copy(camera.projectionMatrix); air?.update(scene); };
     for (let j = 0; j < bucket.length; j++) {
       const tree = resolved[bucket[j]];
       quaternion.setFromAxisAngle(up, tree.yaw);

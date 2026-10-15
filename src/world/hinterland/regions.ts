@@ -79,8 +79,6 @@ export interface HinterlandFarDefault {
   distKm: readonly [number, number];
   /** Successive ridgelines (0–3) placed at authored distances behind the near frame. */
   layers: number;
-  /** The air's clarity for the far haze (1 the default; under 1 a clear mountain air, its ranges crisp at 10 km). */
-  air?: number;
   /** The canopy (m) standing on the far ground (the flat countries' skyline is their trees). */
   treesM: number;
 }
@@ -132,12 +130,6 @@ function region(def: HinterlandRegion): HinterlandRegion {
     geology: Object.freeze({ ...def.geology, strata: Object.freeze({ ...def.geology.strata }), snow: Object.freeze({ ...def.geology.snow }) }),
     far: Object.freeze({ ...def.far }),
   });
-}
-
-/** A snow-covered place (its snow line at or under 100 m below the map's ground: the Glacier's col, the Tatra's and
- * Hostomel's winters, the polar station): its roads packed snow, its yards trodden snow, its ledges holding snow. */
-export function hinterlandSnowCovered(geology: Pick<HinterlandGeology, 'snow'>): boolean {
-  return geology.snow.lineM <= -100;
 }
 
 export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandRegion>> = Object.freeze({
@@ -216,16 +208,11 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     land: 'upland', fields: 0.05, settlement: 'hillVillage',
     density: { villages: r([0, 1]), hamlets: r([2, 4]), farms: r([2, 4]), works: r([0, 1]), perVillage: r([8, 20]) },
     kit: 'savoyard', verticals: ['churchTower', 'pylonLine', 'mast'],
-    // (spruce first, as the battlefield's rim: the outland's woods continue its stands)
-    vegetation: { habit: 'forest', woods: 0.32, hedges: 0, species: [['spruce', 0.58], ['fir', 0.28], ['pine', 0.14]], canopyM: 20 },
+    vegetation: { habit: 'forest', woods: 0.32, hedges: 0, species: [['pine', 0.4], ['spruce', 0.32], ['fir', 0.28]], canopyM: 20 },
     outland: { riseM: r([40, 140]), wavelengthM: 600, flat: false },
-    // (the col stands above the treeline: the larch and pine belts only far down the valleys; April snow to the floor —
-    // its line 400 m under the outland's datum, so no near field shows green beside the battlefield's snow: the Glacier
-    // frames, 2026-10-14)
-    // (the treeline 170 m over the col's datum: the woods on the valley sides round it, thinning to krummholz; dark
-    // schist, its bands and cliffs against the snow — the coordinator on the first Glacier frames)
-    geology: { rock: 'schist', rockHex: 0x4f4c49, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -400, maxSlopeDeg: 45, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 40, forestBandM: r([-1500, 170]), sand: 0, varnish: 0 },
-    far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0, air: 0.35 },
+    // (the col stands above the treeline: the larch and pine belts only far down the valleys; April snow to the floor)
+    geology: { rock: 'schist', rockHex: 0x6f6c66, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -80, maxSlopeDeg: 48, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 44, forestBandM: r([-1500, -140]), sand: 0, varnish: 0 },
+    far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0 },
   }),
   saharaOasis: region({
     id: 'saharaOasis', place: 'Southern Tunisia and Siwa: the cuesta and its scarp, ksour on the spurs, palm gardens at the springs, salt and erg',

@@ -375,9 +375,7 @@ async function main(argv) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   console.log(TABLE_HEAD);
-  // (no top-level await: main imports hinterland-envelope.mjs, which imports this module back — awaited at the top
-  // level, this module never finishes evaluating and the cycle deadlocks: Node exits 13 on the first migrated map)
-  main(process.argv.slice(2)).catch((error) => { console.error(error); process.exitCode = 1; });
+  await main(process.argv.slice(2));
 }
 
 export { loadWorld, main as runEnvelope, TABLE_HEAD, fmtRow };
