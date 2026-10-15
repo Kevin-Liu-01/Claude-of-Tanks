@@ -29,6 +29,53 @@ const river = [
     [129.4, 149.3, 28]],
 ].flatMap((reach) => createMarshChannel(reach.map(station)));
 
+// The market village on the char (the maps lane, 2026-10-14; the owner: Jade River Delta among the maps to bring up,
+// built the way Verdant was). The char's village stood as a handful of buildings round the square. A Jamuna char's
+// market village is the haat round its square — the bazaar's long tin sheds and the brick shops facing it, the mosque
+// across the square from the temple — and round it the homesteads (bari): three or four tin houses on their raised
+// plinth round a swept courtyard, the rice granary beside them; the boat sheds at the ghats on both branches. The plan
+// is authored in the char's own frame (u along the char from the split toward the rejoin, v across it), and every site
+// has its rotation twin about the char's centre (-4, 14), as the river, the deployments and the objectives do.
+const CHAR_U = [0.702, 0.712] as const, CHAR_V = [0.712, -0.702] as const;
+const charSite = (structure: string, u: number, v: number, face: readonly [number, number], twin = structure) => {
+  const at = (uu: number, vv: number) => [-4 + uu * CHAR_U[0] + vv * CHAR_V[0], 14 + uu * CHAR_U[1] + vv * CHAR_V[1]];
+  const [x, z] = at(u, v), [tx, tz] = at(-u, -v);
+  // the front (local +z) toward the point `face` (char coordinates) — the square, a courtyard's middle
+  const [fx, fz] = at(face[0], face[1]), [tfx, tfz] = at(-face[0], -face[1]);
+  const yaw = Math.atan2(fx - x, fz - z) * 180 / Math.PI, tyaw = Math.atan2(tfx - tx, tfz - tz) * 180 / Math.PI;
+  return [{ structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yaw.toFixed(1), terrace: true },
+    { structure: twin, x: +tx.toFixed(2), z: +tz.toFixed(2), yawDeg: +tyaw.toFixed(1), terrace: true }];
+};
+/** A homestead (bari): houses round a courtyard at (u, v), facing it, the granary beside them. */
+const bari = (u: number, v: number, houses: number, turn: number) => {
+  const out = [] as ReturnType<typeof charSite>;
+  for (let k = 0; k < houses; k++) {
+    const a = turn + (k / 4) * Math.PI * 2;
+    out.push(...charSite(k === 0 ? 'farmhouse' : 'cottage', u + Math.cos(a) * 10, v + Math.sin(a) * 10, [u, v]));
+  }
+  out.push(...charSite('granary', u + Math.cos(turn + Math.PI * 1.25) * 12, v + Math.sin(turn + Math.PI * 1.25) * 12, [u, v]));
+  return out;
+};
+// the char's spine past the haat: its dry ground runs from 32 m wide at the haat's end to a few metres at its tip, its
+// middle line drifting from 12 m to 2 m south-west of the axis (the river's banks, measured on the height field)
+const spine = (u: number) => -12 + Math.min(1, Math.max(0, (u - 70) / 48)) * 10;
+const CHAR_VILLAGE = [
+  // the haat: the bazaar's sheds facing the square across its north-east and south-west sides, the brick shops and stalls
+  // on its corners (the cross road keeps its course past the square's south-east side)
+  ...charSite('marketRow', 24, 38, [24, 0]), ...charSite('marketRow', 40, 36, [40, 0]), ...charSite('cornershop', 44, 19, [0, 0]),
+  ...charSite('market', 40, -30, [0, 0]),
+  // the village mosque by the haat, across the square from the temple
+  ...charSite('chapel', 54, -22, [0, 0], 'depot'),
+  // the homesteads along the char's spine: two rows facing the lane down its middle while the char is wide, one row as it
+  // narrows; every fourth a big house, a granary behind every third
+  ...[70, 81, 92, 103].flatMap((u, i) => [
+    ...charSite(i % 4 === 0 ? 'farmhouse' : 'cottage', u, spine(u) - 8, [u, spine(u)]),
+    ...charSite(i % 4 === 2 ? 'farmhouse' : 'cottage', u + 5, spine(u) + 8, [u + 5, spine(u)]),
+    ...(i % 3 === 0 ? charSite('granary', u + 5, spine(u) - 17, [u, spine(u)]) : []),
+  ]),
+  ...[114, 124].flatMap((u) => charSite('cottage', u, spine(u), [u - 10, spine(u)])),
+];
+
 export default {
   id: 'delta',
   name: 'Jade River Delta',
@@ -127,10 +174,10 @@ export default {
       { kind: 'path', x: -44, z: -6, yawDeg: 45, name: "the temple's brick court", params: { length: 18, width: 18, surface: 'stone' } },
       { kind: 'bengalTemple', x: -44, z: -6, yawDeg: 45, name: 'the aat-chala temple by the market', params: { side: 9 } },
     ],
-    plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
-      'farmhouse', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
-      'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
-      'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
+    // (the maps lane, 2026-10-14: the plan is the char's own, CHAR_VILLAGE above; was the roadside plan's 26 entries
+    // ['marketRow', 'farmhouse', 'fishery', ...], most of which found no dry lot on the char)
+    plan: [],
+    plannedSites: CHAR_VILLAGE,
     destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
     tacticalBeats: [
       { id: 'western-levee-fort', role: 'brawl', x: -286, z: -72, yawDeg: -34,
