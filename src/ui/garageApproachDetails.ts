@@ -297,10 +297,9 @@ export function addGarageApproachDetails({
   const addRailRoad = (lane: number): void => {
     // the roads fan out of the yard's throat and run parallel from depth 17, so they enter Cinder's engine shed square
     // to its doors and leave through its back (GA.04, 2026-10-14; they used to keep diverging through the shed)
-    const fan = points.map((point) => ({
-      side: point.side + lane * THREE.MathUtils.lerp(0.38, 1, THREE.MathUtils.smoothstep(point.depth, 9, 17)),
-      depth: point.depth,
-    }));
+    // straight and square to the shed's doors from the yard's edge (the garage critic panel, 2026-10-14: "three straight
+    // roads square to the facade, one on each door centreline, on a level ballast bed"), each ending at a buffer stop
+    const fan = points.map((point) => ({ side: point.side + lane, depth: point.depth }));
     addPath(fan, 3.45, 0.18);
     // a building over the roads (approach.covered) carries its own track: no rails or sleepers inside it
     const [coverFrom, coverTo] = approach.covered ?? [Infinity, -Infinity];
@@ -332,14 +331,20 @@ export function addGarageApproachDetails({
   const styleBuilders: Record<GarageApproachStyle, () => void> = {
     'rail-fan': () => {
       for (const lane of approach.lanes || [0]) addRailRoad(lane);
-      // the throat's two bracket signals, clear of the shed's facade: a mast each side with an arm over the outer road
+      // the roads end at the yard's edge in buffer stops: two timber-faced steel posts, a beam with its two buffers and
+      // a red lamp, braced back (the bracket signals that stood across the shed's gable are gone, the critic panel)
       {
-        const point = samplePath(points, 14.5);
-        for (const side of [-1, 1]) {
-          addGroundBox(point.side + side * 10.2, 14.5, 0.26, 6.2, 0.26, 0x34383a);
-          addLiftedBox(point.side + side * 8.6, 14.5, 3.4, 0.22, 0.22, 0x34383a, 5.7);
-          addLiftedBox(point.side + side * 7.1, 14.5, 0.34, 0.7, 0.24, 0x1e2224, 5.0);
-          addLiftedBox(point.side + side * 7.1, 14.5 - 0.13, 0.12, 0.12, 0.02, 0xc8392e, 5.45);
+        const stopDepth = approach.waypoints[0][1] + 0.5;
+        const point = samplePath(points, stopDepth);
+        for (const lane of approach.lanes || [0]) {
+          const side = point.side + lane;
+          for (const rail of [-0.76, 0.76]) {
+            addGroundBox(side + rail, stopDepth, 0.24, 1.15, 0.24, 0x2c3032);
+            addGroundBox(side + rail, stopDepth + 0.95, 0.16, 0.16, 1.9, 0x2c3032);
+          }
+          addLiftedBox(side, stopDepth - 0.05, 2.3, 0.42, 0.32, 0x4a3a2c, 0.86);
+          for (const rail of [-0.76, 0.76]) addLiftedBox(side + rail, stopDepth - 0.3, 0.32, 0.32, 0.22, 0x1e2224, 0.86);
+          addLiftedBox(side, stopDepth, 0.2, 0.26, 0.16, 0x8a2a22, 1.25);
         }
       }
       for (const depth of [40, 46]) {

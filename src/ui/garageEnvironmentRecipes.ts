@@ -263,7 +263,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   },
   rail_roundhouse: {
     // cinder ballast ground, not a paved hillside (2026-10-10, wave 377: "a vast, empty cobbled slope")
-    terrainSurface: 'rock', terrainTint: 0x6e6860, hardstandTint: 0x6f6960, buildingTint: 0xa18f7b,
+    // soot-dark railway brick (the garage critic panel, 2026-10-14: "clean brick ... darker engineering brick")
+    terrainSurface: 'rock', terrainTint: 0x6e6860, hardstandTint: 0x6f6960, buildingTint: 0x86735f,
     structures: [
       at(makeWarehouse, 'freight warehouse', -38, -6, 0.78), // 1.4 m further out: clear of the engine shed (GA.04)
       // over the roads behind the engine shed (GA.04: 4.2 m further back, clear of the shed's terrace)
