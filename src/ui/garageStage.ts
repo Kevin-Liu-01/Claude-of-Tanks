@@ -567,13 +567,14 @@ export function createGarageStage(
     }
     // the shutter's wedge: daylight through the opening, widening and fading into the hall (the drain at its foot)
     const [sx0, sx1] = shutterSpan.x;
-    quad([[sx0 - 0.9, HW - 6.2], [sx1 + 0.9, HW - 6.2], [sx1 + 0.15, HW - 0.15], [sx0 - 0.15, HW - 0.15]], 1);
+    // (counter-clockwise seen from above: the first wedge faced down and was culled)
+    quad([[sx0 - 0.15, HW - 0.15], [sx1 + 0.15, HW - 0.15], [sx1 + 0.9, HW - 6.2], [sx0 - 0.9, HW - 6.2]], 1);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     track(geometry);
     const material = track(new THREE.MeshBasicMaterial({
-      map: soft, color: 0x55585c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      map: soft, color: 0x8c9094, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     }));
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = 'garage_verdant_daylight_on_floor';
