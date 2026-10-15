@@ -912,9 +912,11 @@ export const COMBAT_TABLE = [
   // (and since the owner's word on 2026-10-14, "make sure tanks are still visible": the T-72B3M drove past the dead
   // T-90M's smoke column in the take's last 1.4 s, 11 m out from it; on a lane 24 m out it passes clear)
   // (review 4: a stone well stood in the lower foreground at the knockout and a house edge came in from the right at the
-  // end; the coordinator: the lens 4 m to its left)
+  // end; the coordinator: the lens 4 m to its left. Its left is +side in the travel frame: the first try at -4 moved it
+  // right, the well to the frame's centre and the house nearer (review 4b). At +4 the T-90M's knockout fireball stood
+  // in front of the T-72B3M for 300 ms; +3 is the farthest left that keeps it clear, the wires off the frame's top)
   [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
-    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0, foe1Out: 24, camSide: -4 }],
+    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0, foe1Out: 24, camSide: 3 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
     [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
   [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
@@ -936,8 +938,9 @@ export function combatTake(row, over = {}) {
     speed: row[13], shift: row[14] ?? [0, 0], geo: 'front', turn: 0, foeFormation: 'pair', ...(row[15] ?? {}), ...over };
   // `camEnd` (2026-10-14, the coordinator on the 224 review: s226's lens climbed through a telephone line): the take's
   // own values for its lens's last key, the rest of the lens as DUEL has it
-  // `camSide` (2026-10-14, review 4's s229): every key of the lens that many metres to its side (the hero frame's side;
-  // a lens ahead looking back has its left at -side); `durMs`: the take's own length, the lens's end key with it
+  // `camSide` (2026-10-14, review 4's s229): every key of the lens that many metres to its side in the travel frame
+  // (+side is the lens's own left for s229's race lens, ahead of the hero looking back: measured on review 4b, where
+  // -4 moved it right); `durMs`: the take's own length, the lens's end key with it
   const cam = DUEL[lensName](D, k, hold).map((key) => ({ ...key, ...(camEnd && key.tMs === 'end' ? camEnd : {}),
     ...(camSide && Number.isFinite(key.side) ? { side: +(key.side + camSide).toFixed(2) } : {}) }));
   const anchor = shift[0] || shift[1] ? frame(set0.anchor, set0.heading).at(shift[0], shift[1]).map((v) => +v.toFixed(2)) : set0.anchor;
