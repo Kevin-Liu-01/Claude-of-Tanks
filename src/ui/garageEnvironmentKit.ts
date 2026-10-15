@@ -494,6 +494,20 @@ function atmospherePalette(weather: GarageVariant['weather']): GarageAtmosphereP
   }
 }
 
+/**
+ * Linear colours from sRGB hex, converted once (the backdrop and the built horizon paint ~10k vertices a build; a
+ * THREE.Color per vertex with its sRGB decode was a third of the build, the garage lane's profile of 2026-10-14).
+ */
+const HEX_COLORS = new Map<number, THREE.Color>();
+function hexColor(hex: number): THREE.Color {
+  let color = HEX_COLORS.get(hex);
+  if (!color) {
+    color = new THREE.Color(hex);
+    HEX_COLORS.set(hex, color);
+  }
+  return color;
+}
+
 function createBackdropGeometry(
   patch: GarageTerrainPatch,
   values: Float32Array,
@@ -612,39 +626,39 @@ function createBackdropGeometry(
     switch (style) {
       case 'alpine': {
         // a forested foot grows out of the snowfield, then rock bands and snow by height and slope
-        if (t < 0.16) return out.copy(terrainTone).lerp(new THREE.Color(0x2c3a31), t / 0.16 * (0.4 + n * 0.5));
+        if (t < 0.16) return out.copy(terrainTone).lerp(hexColor(0x2c3a31), t / 0.16 * (0.4 + n * 0.5));
         const snowLine = H * (0.42 + (n - 0.5) * 0.18);
-        if (y > snowLine && slope < 0.85) return out.setHex(0xe9eef2).lerp(new THREE.Color(0xa9b8c4), Math.min(1, slope * 0.8 + m * 0.2));
-        if (y > H * 0.24 || slope > 0.85) return out.setHex(m > 0.5 ? 0x6e7275 : 0x50565a).lerp(new THREE.Color(0x3d4245), n * 0.5);
-        return out.setHex(m > 0.45 ? 0x24322a : 0x34432f);
+        if (y > snowLine && slope < 0.85) return out.copy(hexColor(0xe9eef2)).lerp(hexColor(0xa9b8c4), Math.min(1, slope * 0.8 + m * 0.2));
+        if (y > H * 0.24 || slope > 0.85) return out.copy(hexColor(m > 0.5 ? 0x6e7275 : 0x50565a)).lerp(hexColor(0x3d4245), n * 0.5);
+        return out.copy(hexColor(m > 0.45 ? 0x24322a : 0x34432f));
       }
       case 'mesa': {
-        if (t < 0.36) return out.setHex(0x7d5240).lerp(new THREE.Color(0x9a6a4c), n * 0.6).lerp(new THREE.Color(0x5c3a2c), m * 0.25);
+        if (t < 0.36) return out.copy(hexColor(0x7d5240)).lerp(hexColor(0x9a6a4c), n * 0.6).lerp(hexColor(0x5c3a2c), m * 0.25);
         const band = Math.floor((y + 40) / 0.75 + n * 0.8) % 5;
         const strata = [0xa35f40, 0xc98a5e, 0x8a4a33, 0xd8a074, 0x9b5a3c][band];
         // desert varnish runs down the cliff in streaks
         const streak = Math.pow(noise(u * 61, 0.5), 3) * 0.5;
-        return out.setHex(strata).lerp(new THREE.Color(0x4a2c22), streak + Math.max(0, (n - 0.62)) * 0.6);
+        return out.copy(hexColor(strata)).lerp(hexColor(0x4a2c22), streak + Math.max(0, (n - 0.62)) * 0.6);
       }
-      case 'dune': return out.setHex(0xd7b585).lerp(new THREE.Color(0xc29a68), n * 0.7).lerp(new THREE.Color(0xe6caa0), m * 0.2);
+      case 'dune': return out.copy(hexColor(0xd7b585)).lerp(hexColor(0xc29a68), n * 0.7).lerp(hexColor(0xe6caa0), m * 0.2);
       case 'rolling': {
         if (snowy) {
           // snowbound hills: conifer woods and grey outcrops through the snow
-          if (n > 0.6 && t < 0.85) return out.setHex(m > 0.5 ? 0x26332c : 0x34423a);
-          if (slope > 0.7) return out.setHex(0x7d8486);
-          return out.setHex(0xe4ebef).lerp(new THREE.Color(0xc4d0d8), m * 0.5 + slope * 0.3);
+          if (n > 0.6 && t < 0.85) return out.copy(hexColor(m > 0.5 ? 0x26332c : 0x34423a));
+          if (slope > 0.7) return out.copy(hexColor(0x7d8486));
+          return out.copy(hexColor(0xe4ebef)).lerp(hexColor(0xc4d0d8), m * 0.5 + slope * 0.3);
         }
-        if (tropical) return out.setHex(n > 0.5 ? 0x24452a : 0x3e6a34).lerp(new THREE.Color(0x587c3a), m * 0.35);
-        return out.setHex(n > 0.58 ? 0x2f4a2b : 0x4f6d3c).lerp(new THREE.Color(0x6b7f4a), t * 0.25 + m * 0.15);
+        if (tropical) return out.copy(hexColor(n > 0.5 ? 0x24452a : 0x3e6a34)).lerp(hexColor(0x587c3a), m * 0.35);
+        return out.copy(hexColor(n > 0.58 ? 0x2f4a2b : 0x4f6d3c)).lerp(hexColor(0x6b7f4a), t * 0.25 + m * 0.15);
       }
       case 'coastal': {
-        if (slope > 0.75) return out.setHex(0x7f8580).lerp(new THREE.Color(0x5d6460), n * 0.5);
-        return out.setHex(n > 0.55 ? 0x41583f : 0x5a734e).lerp(new THREE.Color(0x6f7f56), m * 0.3);
+        if (slope > 0.75) return out.copy(hexColor(0x7f8580)).lerp(hexColor(0x5d6460), n * 0.5);
+        return out.copy(hexColor(n > 0.55 ? 0x41583f : 0x5a734e)).lerp(hexColor(0x6f7f56), m * 0.3);
       }
       default: {
         // town: allotments, scrub and rail embankments; steelworks and railway: moor, spoil and scrub
-        if (builtKind === 'town') return out.setHex(n > 0.55 ? 0x46573a : 0x5f6b48).lerp(new THREE.Color(0x6e6a5a), m * 0.4);
-        return out.setHex(n > 0.5 ? 0x4a4a3a : 0x5c5844).lerp(new THREE.Color(0x3c3832), m * 0.45).lerp(silhouette, 0.12);
+        if (builtKind === 'town') return out.copy(hexColor(n > 0.55 ? 0x46573a : 0x5f6b48)).lerp(hexColor(0x6e6a5a), m * 0.4);
+        return out.copy(hexColor(n > 0.5 ? 0x4a4a3a : 0x5c5844)).lerp(hexColor(0x3c3832), m * 0.45).lerp(silhouette, 0.12);
       }
     }
   };
@@ -731,7 +745,7 @@ function createBackdropGeometry(
         const angle = (segment / segments) * Math.PI * 2;
         positions.push(Math.cos(angle) * r, -2.3, Math.sin(angle) * r);
         const swell = noise(segment / segments * 31 + ringIndex * 0.21, 0.2 + ringIndex * 0.1);
-        colour.setHex(0x274f57).lerp(new THREE.Color(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.3)
+        colour.copy(hexColor(0x274f57)).lerp(hexColor(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.3)
           .lerp(horizon, Math.min(0.92, 0.12 + far * far * 0.85));
         colors.push(colour.r, colour.g, colour.b);
       }
@@ -803,7 +817,7 @@ function addBuiltHorizon(
     const base = positions.length / 3;
     for (const v of p) {
       // walls darken toward their feet (grime, the ground's shade)
-      colour.setHex(tone).multiplyScalar(lit * (v.y < 1 ? 0.72 : 1)).lerp(horizon, haze);
+      colour.copy(hexColor(tone)).multiplyScalar(lit * (v.y < 1 ? 0.72 : 1)).lerp(horizon, haze);
       positions.push(v.x, v.y, v.z); colors.push(colour.r, colour.g, colour.b);
     }
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
@@ -816,7 +830,7 @@ function addBuiltHorizon(
   const tri = (p: readonly THREE.Vector3[], tone: number, haze: number): void => {
     n.subVectors(p[1], p[0]).cross(new THREE.Vector3().subVectors(p[2], p[0])).normalize();
     const lit = 0.5 + 0.7 * Math.max(0, n.dot(sun)) + 0.12 * Math.max(0, n.y);
-    colour.setHex(tone).multiplyScalar(lit).lerp(horizon, haze);
+    colour.copy(hexColor(tone)).multiplyScalar(lit).lerp(horizon, haze);
     const base = positions.length / 3;
     for (const v of p) { positions.push(v.x, v.y, v.z); colors.push(colour.r, colour.g, colour.b); }
     indices.push(base, base + 1, base + 2);
