@@ -130,8 +130,9 @@ try {
       } finally { root.getClientRects=original; }
     });
     if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD or FIRE presses caused ${idleLayoutReads} layout measurements`);
-    async function check(state){
-      const result=await page.evaluate(measure,state);
+    // `state` names the report (with -6-controls / -7-controls when the kit grew); `base` is the fixture state.
+    async function check(state,base=state){
+      const result=await page.evaluate(measure,base);
       if(touch)result.failures.push(...await page.evaluate(dockIssues));
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
@@ -164,7 +165,7 @@ try {
         return failures;
       });
       result.failures.push(...feedChecks);
-      if(state==='feed-burst'){
+      if(base==='feed-burst'){
         const feedIssues=await page.evaluate(()=>{
           const failures=[];
           for(const host of document.querySelectorAll('.cot-kill-lane,.cot-si-toasthost')){
@@ -183,16 +184,16 @@ try {
         result.failures.push(...feedIssues);
       }
 
-      if(state.startsWith('mode-')) {
+      if(base.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
-        if(!detected||(state==='mode-standard'?!!objective:!objective||detected.y<objective.bottom+7))result.failures.push('detection must clear the objective by at least 7px');
+        if(!detected||(base==='mode-standard'?!!objective:!objective||detected.y<objective.bottom+7))result.failures.push('detection must clear the objective by at least 7px');
       }
-      if(state.startsWith('notifications')) {
+      if(base.startsWith('notifications')) {
         const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
         if(hexagons.length!==2||hexagons.some(shape=>!shape.startsWith('polygon(')||shape.split(',').length!==6)) result.failures.push('status notices must have six-sided outlines');
       }
-      if(state!=='settings'&&state!=='ended'){
+      if(base!=='settings'&&base!=='ended'){
         const decoration=await page.evaluate(()=>{
           const notice=document.querySelector('.cot-kill-lane.r .cot-kf');
           const style=notice?getComputedStyle(notice):null;
@@ -201,8 +202,8 @@ try {
         });
         if(decoration.left&& (parseFloat(decoration.left)!==0||parseFloat(decoration.right)<=0))
           result.failures.push('enemy kill notice must use the right border');
-        if(state.startsWith('mode-')&&decoration.mode!==state.slice(5))
-          result.failures.push(`expected objective ${state.slice(5)}, saw ${decoration.mode}`);
+        if(base.startsWith('mode-')&&decoration.mode!==base.slice(5))
+          result.failures.push(`expected objective ${base.slice(5)}, saw ${decoration.mode}`);
       }
       if(state==='notifications'||state==='combined'||state==='spectator'||state==='feed-burst'||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
@@ -317,7 +318,7 @@ try {
         const shown=await page.evaluate(count=>window.__HUD_LAYOUT.controls(count),count);
         await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
         await openDrawer(state);
-        await check(`${state}-${count}-controls`);
+        await check(`${state}-${count}-controls`,state);
         if(state==='idle'){
           if(shown!==count)errors.push(`${name}: expected ${count} vehicle controls, saw ${shown}`);
           await pressControls(['ui:selfRight','ui:specialAction','ui:drone',...count>6?['ui:shellSelect']:[],'ui:smoke','ui:lightsToggle','ui:roofGun'].join(','));
@@ -343,7 +344,9 @@ try {
           const scale=canvas.width/(canvas.clientWidth||innerWidth);
           // Boxes for glyphs, lines and fills; rings (arcs wider than 6 px: the dispersion ring and the reload sweep, taken
           // whole) as circles, so a ring's empty corners never read as ink.
-          let ink=[],path=[],circles=[];
+          // A path is kept as its segments (a stroke) and subpaths (a fill), never one box: the scope's four arms are one
+          // path, and their common box is mostly empty.
+          let ink=[],segs=[],subs=[],cur=null,start=null,circles=[];
           const point=(x,y)=>{const m=ctx.getTransform();return [(m.a*x+m.c*y+m.e)/scale,(m.b*x+m.d*y+m.f)/scale];};
           const lineScale=()=>{const m=ctx.getTransform();return Math.hypot(m.a,m.b)/scale;};
           const record=(points,pad,what)=>{
@@ -356,17 +359,19 @@ try {
           const full=(points)=>{const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);return Math.max(...xs)-Math.min(...xs)>=innerWidth*.9&&Math.max(...ys)-Math.min(...ys)>=innerHeight*.9;};
           const wraps={
             clearRect:(x,y,w,h)=>{if(w*scale>=canvas.width*.9)ink=[];},
-            beginPath:()=>{path=[];circles=[];},
-            moveTo:(x,y)=>path.push(point(x,y)),lineTo:(x,y)=>path.push(point(x,y)),
-            arc:(x,y,r)=>{if(r*lineScale()>6){const [cx,cy]=point(x,y);circles.push({cx,cy,r:r*lineScale()});}else path.push(point(x-r,y-r),point(x+r,y+r),point(x-r,y+r),point(x+r,y-r));},
-            ellipse:(x,y,rx,ry)=>path.push(point(x-rx,y-ry),point(x+rx,y+ry),point(x-rx,y+ry),point(x+rx,y-ry)),
-            quadraticCurveTo:(a,b,x,y)=>path.push(point(a,b),point(x,y)),
-            bezierCurveTo:(a,b,c,d,x,y)=>path.push(point(a,b),point(c,d),point(x,y)),
-            rect:(x,y,w,h)=>path.push(point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)),
-            roundRect:(x,y,w,h)=>path.push(point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)),
-            stroke:()=>{record(path,ctx.lineWidth*lineScale()/2+.5,'stroke');
+            beginPath:()=>{segs=[];subs=[];cur=null;start=null;circles=[];},
+            moveTo:(x,y)=>{cur=start=point(x,y);subs.push([cur]);},
+            lineTo:(x,y)=>{const p=point(x,y);if(!cur){cur=start=p;subs.push([p]);return;}segs.push([cur,p]);subs.at(-1).push(p);cur=p;},
+            closePath:()=>{if(cur&&start){segs.push([cur,start]);cur=start;}},
+            arc:(x,y,r)=>{if(r*lineScale()>6){const [cx,cy]=point(x,y);circles.push({cx,cy,r:r*lineScale()});}else{const box=[point(x-r,y-r),point(x+r,y+r),point(x-r,y+r),point(x+r,y-r)];segs.push(box);subs.push(box);}},
+            ellipse:(x,y,rx,ry)=>{const box=[point(x-rx,y-ry),point(x+rx,y+ry),point(x-rx,y+ry),point(x+rx,y-ry)];segs.push(box);subs.push(box);},
+            quadraticCurveTo:(a,b,x,y)=>{const p=point(x,y);segs.push([cur??p,point(a,b),p]);subs.at(-1)?.push(point(a,b),p);cur=p;},
+            bezierCurveTo:(a,b,c,d,x,y)=>{const p=point(x,y);segs.push([cur??p,point(a,b),point(c,d),p]);subs.at(-1)?.push(point(a,b),point(c,d),p);cur=p;},
+            rect:(x,y,w,h)=>{const box=[point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)];segs.push(box);subs.push(box);},
+            roundRect:(x,y,w,h)=>{const box=[point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)];segs.push(box);subs.push(box);},
+            stroke:()=>{for(const seg of segs)record(seg,ctx.lineWidth*lineScale()/2+.5,'stroke');
               for(const c of circles)ink.push({what:'ring',ring:true,cx:c.cx,cy:c.cy,r:c.r,pad:ctx.lineWidth*lineScale()/2,x0:c.cx-c.r,y0:c.cy-c.r,x1:c.cx+c.r,y1:c.cy+c.r});},
-            fill:()=>{if(!full(path))record(path,0,'fill');for(const c of circles)ink.push({what:'disc',ring:true,cx:c.cx,cy:c.cy,r:c.r/2,pad:c.r/2,x0:c.cx-c.r,y0:c.cy-c.r,x1:c.cx+c.r,y1:c.cy+c.r});},
+            fill:()=>{for(const sub of subs)if(sub.length&&!full(sub))record(sub,0,'fill');for(const c of circles)ink.push({what:'disc',ring:true,cx:c.cx,cy:c.cy,r:c.r/2,pad:c.r/2,x0:c.cx-c.r,y0:c.cy-c.r,x1:c.cx+c.r,y1:c.cy+c.r});},
             fillRect:(x,y,w,h)=>{const p=[point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)];if(!full(p))record(p,0,'fillRect');},
             strokeRect:(x,y,w,h)=>record([point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)],ctx.lineWidth*lineScale()/2,'strokeRect'),
             fillText:(text,x,y)=>{const m=ctx.measureText(text);record([point(x-m.actualBoundingBoxLeft,y-m.actualBoundingBoxAscent),point(x+m.actualBoundingBoxRight,y+m.actualBoundingBoxDescent)],0,`text ${text}`);},
@@ -464,8 +469,9 @@ try {
       } else swipes.push(`${name}/${count}: ${swipe?'no docked tile over the aim pad':'no aim pad'}`);
       // The drone tile while a recalled drone flies home (item/drone-recall's data-phase; on the dock its cue must win).
       if(count>=6){
+        await page.evaluate(()=>window.__HUD_LAYOUT.droneReturning());
+        await page.waitForTimeout(250); // the tiles' 90 ms colour and edge transitions
         const cue=await page.evaluate(()=>{
-          window.__HUD_LAYOUT.droneReturning();
           const tile=document.querySelector('.cot-drone-control');
           if(!tile||!tile.getClientRects().length)return null;
           const style=getComputedStyle(tile),icon=getComputedStyle(tile.querySelector('.si'));

@@ -170,13 +170,6 @@ export function touchReticleFootprint(width: number, height: number): TouchDockK
   return footprint;
 }
 
-/** Whether `rect` reaches into any keep-out (a disc or a rect). */
-export function touchKeepOutCovered(rect: TouchDockRect, keep: readonly TouchDockKeepOut[]): boolean {
-  return keep.some((k) => 'r' in k
-    ? Math.hypot(Math.max(rect.x - k.x, 0, k.x - rect.x - rect.w), Math.max(rect.y - k.y, 0, k.y - rect.y - rect.h)) < k.r
-    : rect.x < k.x + k.w && rect.x + rect.w > k.x && rect.y < k.y + k.h && rect.y + rect.h > k.y);
-}
-
 /** What neither the dock nor its More panel ever covers: the reticle's footprint and the gun-limit warning's place. */
 export function touchAimKeepOut(width: number, height: number, minimapBottom: number): TouchDockKeepOut[] {
   return [...touchReticleFootprint(width, height), touchAimWarningSlot(width, height, minimapBottom)];

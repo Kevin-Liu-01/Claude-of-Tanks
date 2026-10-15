@@ -1,7 +1,6 @@
 import { t } from './i18n.ts';
 import {
-  placeTouchActionDock, touchAimKeepOut, touchKeepOutCovered, touchReservedLanes, touchReticleFootprint,
-  type TouchDockPlacement, type TouchDockRect,
+  placeTouchActionDock, touchAimKeepOut, touchReservedLanes, type TouchDockPlacement, type TouchDockRect,
 } from './touchActionDock.ts';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
@@ -432,17 +431,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (touchAimWarningSlot), so it never moves, least of all onto the crosshair.
     const alertShown = read('.cot-alert.show');
     const centerStack = (read('.cot-sixth')?.height ?? 48) + (alertShown ? 8 + alertShown.height : 0);
-    // Above the dock between the side feeds' start and the dock; failing that, below it, unless that would put them on
-    // the reticle (a portrait dock above the crosshair): then above the dock from under the touch chrome, over the side
-    // feeds' lane (the feeds end above the notices while one shows).
+    const dockNoticeTop = dock && dock.y - 8 - centerStack >= Math.max(top + 8, leftAnchor, (touchChrome?.bottom ?? 0) + 8)
+      ? dock.y - 8 - centerStack : null;
+    // Touch portrait (2026-10-15): the centre notices take the lane at the side feeds' start, never pushed down by the
+    // feeds (on 320 x 568 and 360 x 640 a few kills put them on the crosshair, the drive gauge, the second FIRE and the
+    // gun-limit warning's place); above the dock where it is in the way and there is room, else below it. While one
+    // shows, the side feeds end above the notices.
     const noticeWidth = read('.cot-sixth')?.width ?? 248;
-    const aboveDock = dock ? dock.y - 8 - centerStack : 0;
-    const belowDockOnReticle = !!dock && touchKeepOutCovered({ x: (width - noticeWidth) / 2, y: dock.y + dock.h + 8,
-      w: noticeWidth, h: centerStack }, touchReticleFootprint(width, height));
-    const dockNoticeTop = dock && (aboveDock >= Math.max(top + 8, leftAnchor, (touchChrome?.bottom ?? 0) + 8)
-      || (belowDockOnReticle && aboveDock >= Math.max(top + 8, (touchChrome?.bottom ?? 0) + 8))) ? aboveDock : null;
-    const noticeFloor = dockNoticeTop !== null && (read('.cot-sixth.on') || alertShown)
-      ? dockNoticeTop - 8 : height;
+    const noticeX = (width - noticeWidth) / 2;
+    let portraitNoticeTop: number | null = null;
+    if (touch && width < height) {
+      const base = Math.max(top + 8, height * .12, (touchChrome?.bottom ?? 0) + 8, noticeX < sideWidth + 14 ? leftAnchor : 0);
+      const onDock = dock && base < dock.y + dock.h + 8 && base + centerStack > dock.y - 8
+        && noticeX < dock.x + dock.w && width - noticeX > dock.x;
+      portraitNoticeTop = !onDock || !dock ? base : dock.y - 8 - centerStack >= base ? dock.y - 8 - centerStack : dock.y + dock.h + 8;
+    }
+    const noticeShown = !!(read('.cot-sixth.on') || alertShown);
+    const noticeFloor = noticeShown && portraitNoticeTop !== null ? portraitNoticeTop - 8
+      : noticeShown && dockNoticeTop !== null ? dockNoticeTop - 8 : height;
     const leftBottom = Math.min(leftFloor(height, touch), noticeFloor,
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
     const countdown = read('.cot-prebattle.on');
@@ -497,6 +503,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && noticeLeft < dock.x + dock.w && width - noticeLeft > dock.x) {
       noticeTop = dockNoticeTop ?? dock.y + dock.h + 8;
     }
+    if (portraitNoticeTop !== null) noticeTop = portraitNoticeTop;
     const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
     if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
