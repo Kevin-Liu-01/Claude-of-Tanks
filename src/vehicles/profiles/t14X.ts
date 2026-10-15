@@ -563,7 +563,9 @@ function addCannon(P: TankBuilderPort): void {
     [-.33126, .15], [-.33126, -.151]];
   P.addGunExtra(sectionSolid([{ z: -.5232, ring }, { z: .035, ring }]));
   P.addGunExtra(cylZ(.1906, .13, 28, .17), 0, 0, .086);
-  KIT.buildGun(P, { len: 4.643, r: .085, baseR: .17, sleeve: true, collar: true });
+  // The tube runs to the measured muzzle face, Z5.64301 world (t14XGeometry). It ended 20 mm short (5.623) once the
+  // carved cannon bores (a28e4d8e6) stopped adding the factory's seated lip after buildGun's short tube.
+  KIT.buildGun(P, { len: 4.643, r: .085, baseR: .17, sleeve: true, collar: true, fullLengthTube: true });
   P.addEquipment('gunMount', box(.21, .045, .31), .055, .208, .23);
   // Muzzle-reference bracket and its short electrical guide: separate
   // source fixture, not an arbitrary attachment extending the barrel.

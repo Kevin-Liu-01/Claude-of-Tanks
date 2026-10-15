@@ -298,6 +298,8 @@ function antennas(P:TankBuilderPort):void {
 }
 
 function mainGun(P:TankBuilderPort):void {
+  // The muzzle section runs to the measured muzzle face, the muzzle/FX datum. It stopped 20 mm short (5.734625) for
+  // the factory's seated bore lip, which the carved cannon bores (a28e4d8e6) no longer add.
   const boot=sectionSolid([[1.650032,1.6965,2.285962],[1.80,1.686893,2.262163],
     [1.99,1.701462,2.232012],[2.112711,1.72384,2.21254]].map(([z,low,top])=>({z,
     ring:[[-.515009,low],[.472942,low],[.472942,top],[-.515009,top]] as [number,number][],
@@ -306,7 +308,7 @@ function mainGun(P:TankBuilderPort):void {
   gun(P,'gunMount',cylX(.180,.930,32),-.021034,1.997083,1.876);
   for(const [a,b,rr,rf]of[[2.106,2.396,.208,.208],[2.396,2.765,.208,.134],
     [2.765,3.302,.134,.131],[3.302,3.690,.149,.172],[3.690,3.961,.172,.102],
-    [3.961,5.541,.102,.095],[5.541,5.734625,.081,.081]])
+    [3.961,5.541,.102,.095],[5.541,TYPE90_X_DATUMS.muzzleZ,.081,.081]])
     gun(P,'gun',cylZ(rf,b-a,P.q?32:20,rr),0,1.997083,(a+b)/2);
   for(const z of [2.71,2.82,3.95])gun(P,'gun',cylZ(.139,.014,28),0,1.997083,z);
   gun(P,'gun',box(.074,.068,.162),-.076,1.997083,5.6075);

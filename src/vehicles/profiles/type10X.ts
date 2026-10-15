@@ -464,12 +464,15 @@ function rearAntennaMount(P:TankBuilderPort):void {
 }
 
 function mainGun(P:TankBuilderPort):void {
+  // The muzzle section runs to the measured muzzle face, the muzzle/FX datum (official 9.42 m overall). It stopped
+  // 20 mm short (5.60875) for the factory's seated bore lip, which the carved cannon bores (a28e4d8e6) no longer add
+  // (type10X: overall length 9.400 vs 9.42).
   gun(P,'gunMount',cylX(.216,.348,32),0,1.857,2.230);
   gun(P,'gunMount',box(.364,.385,.235),0,1.865,2.075);
   for(const [a,b,rr,rf]of[[2.216,2.424,.187,.154],[2.424,2.901,.154,.140],
     [2.901,3.16,.140,.125],[3.16,3.254,.125,.155],[3.254,3.784,.155,.155],
     [3.784,3.914,.155,.102],[3.914,5.186,.102,.102],
-    [5.186,5.456,.102,.092],[5.456,5.60875,.082,.082]])
+    [5.186,5.456,.102,.092],[5.456,TYPE10_X_DATUMS.muzzleZ,.082,.082]])
     gun(P,'gun',cylZ(rf,b-a,P.q?32:20,rr),0,1.851,(a+b)/2);
   for(const z of [2.90,3.0,3.10])gun(P,'gun',cylZ(.144,.017,28),0,1.851,z);
   for(const side of [-1,1]) {
