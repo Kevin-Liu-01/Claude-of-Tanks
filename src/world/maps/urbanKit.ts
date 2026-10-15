@@ -225,8 +225,8 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
     parts.wood.push(box(0.06, 0.06, win.w).translate(back + side * 0.05, win.y + win.h * 0.15, zz));
   }
   // the stand-ins: the draws of the windows the old build laid and this one does not, and of its laid-on loading door
-  // (the catalog's entry is the door), taken by small parts sealed in the plinth's margin by the wall's foot
-  for (let k = 0; k < 7 * (drawn - bays.length) + 1; k++) parts.stone.push(box(0.02, 0.02, 0.02).translate(w / 2 + 0.1, 0.2, -d / 2 + 0.5 + k * 0.05));
+  // (the catalog's entry is the door), taken by small parts sealed in the plinth under the core, each on the core's foot
+  for (let k = 0; k < 7 * (drawn - bays.length) + 1; k++) parts.stone.push(box(0.02, 0.02, 0.02).translate(0, 0, -d / 2 + t + 0.5 + k * 0.05));
   parts.wood.push(box(3.4, 0.7, 0.10).translate(-w * 0.12, 4.1, d / 2 + 0.08));
   // round brick chimney stack with a flared crown and its iron bands, its parts the shaft the damage reading falls apart
   // from the hall

@@ -326,14 +326,15 @@ export function settleCatalogCuts(tmp: GeometryBuckets): void {
     const n = m.side === 'pz' ? [0, 0, -1] : m.side === 'nz' ? [0, 0, 1] : m.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
     g.translate(n[0] * m.lift, 0, n[2] * m.lift);
   }
-  // the parts left out: each folded to a 2 cm stand-in sealed in the plinth's margin by the wall's foot (its draws kept)
+  // the parts left out: each folded to a 2 cm stand-in sealed in the plinth under the core, on the core's foot (its draws
+  // kept)
   let k = 0;
   for (const g of hidden) {
     const b = boxOf(g), c = new THREE.Vector3(), size = new THREE.Vector3();
     b.getCenter(c); b.getSize(size);
     g.translate(-c.x, -c.y, -c.z);
     g.scale(0.02 / Math.max(size.x, 1e-3), 0.02 / Math.max(size.y, 1e-3), 0.02 / Math.max(size.z, 1e-3));
-    g.translate(w / 2 + 0.1, 0.2, -d / 2 + 0.5 + (k++ % 400) * 0.05);
+    g.translate(0.3, 0, -d / 2 + t + 0.5 + (k++ % 300) * 0.05);
   }
 }
 
