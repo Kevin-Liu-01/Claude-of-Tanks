@@ -2439,7 +2439,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const kind = record.kind;
     return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall'
       || kind === 'small-rock' || kind === 'bunker'
-      || /^(setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)|rolling_(omm|g10|tank|v60|covered4|gondola4|tank4|tem1)|tram_k2)$/.test(kind ?? ''));
+      || /^(setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)|rolling_(omm|g10|tank|v60|covered4|gondola4|tank4|tem1)|tram_(k2|shanghai))$/.test(kind ?? ''));
   }
   /**
    * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —

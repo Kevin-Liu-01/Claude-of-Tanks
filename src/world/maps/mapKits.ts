@@ -179,8 +179,8 @@ interface DressingContext {
   /** (Lane C, #24) a spur's standing vehicle handed to the props as a destructible, its pose on the rails (y the ground
    *  under them, pitch along the track); omitted, the stock is baked with its static record as before. */
   rollingStockDestructible?: (stock: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }) => void;
-  /** (Lane C, #24) Sarajevo's burnt trams handed to the props as breakable K2 wrecks (sarajevoStreets.ts). */
-  tramDestructible?: (tram: { x: number; z: number; yaw: number }) => void;
+  /** (Lane C, #24) the burnt trams handed to the props as breakable wrecks (sarajevoStreets.ts, shanghaiStreets.ts). */
+  tramDestructible?: (tram: { kind: 'k2' | 'shanghai'; x: number; z: number; yaw: number }) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];

@@ -191,7 +191,7 @@ import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import type { RollingStockKind } from './maps/rollingStock.ts';
 import {
-  rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes, TRAM_K2_KIND,
+  rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes, tramDestructibleKind,
   tramDestructibleTypes,
 } from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
@@ -10121,7 +10121,7 @@ ${snowCap ? `
   const setPieceRecords: VehicleSetPiece[] = [];
   // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
   const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
-  const tramRecords: { x: number; z: number; yaw: number }[] = [];
+  const tramRecords: { kind: 'k2' | 'shanghai'; x: number; z: number; yaw: number }[] = [];
   // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   dressMapExtras({
@@ -10173,9 +10173,10 @@ ${snowCap ? `
     }
     bakeIntactSpan(kind, rec);
   }
-  // (Lane C, #24) Sarajevo's burnt K2s on their track, seated on their wheels
+  // (Lane C, #24) the burnt trams on their track (Sarajevo's K2s, Blackglass's Shanghai cars), seated on their wheels
   for (const tram of tramRecords) {
-    bakeIntactSpan(TRAM_K2_KIND, addDestructible(TRAM_K2_KIND, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1));
+    const kind = tramDestructibleKind(tram.kind);
+    bakeIntactSpan(kind, addDestructible(kind, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1));
   }
   for (const g of setPieceIntact.values()) g.dispose();
   setPieceIntact.clear();

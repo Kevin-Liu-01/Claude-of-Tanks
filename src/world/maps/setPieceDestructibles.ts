@@ -17,6 +17,7 @@
 import type { DestructiblePropType } from './inhabitKit.ts';
 import { buildSetPiece, SET_PIECE_SIZE, type SetPieceKind } from './vehicleSetPieces.ts';
 import { buildRollingStock, RAIL_HEAD_M, ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, type RollingStockKind } from './rollingStock.ts';
+import { buildShanghaiTram, SHANGHAI_TRAM_SIZE } from './tramShanghai.ts';
 
 /** The destructible kind a set piece registers as. */
 export function setPieceDestructibleKind(kind: SetPieceKind): string { return `setpiece_${kind}`; }
@@ -98,17 +99,25 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
 // track (vehicleSetPieces.ts k2tram 'burnt'), heavy cover, that a gun round or a hard ram collapses (its 'collapsed'
 // state: the bodies crushed down onto the frame, slewed at the joint).
 
-/** The destructible kind a burnt K2 registers as. */
-export const TRAM_K2_KIND = 'tram_k2';
+/** The destructible kind a tram registers as: Sarajevo's K2 or Blackglass's Shanghai car (tramShanghai.ts). */
+export type TramKind = 'k2' | 'shanghai';
+export function tramDestructibleKind(kind: TramKind): string { return `tram_${kind}`; }
 
 export function tramDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
-  const size = SET_PIECE_SIZE.k2tram;
+  const k2 = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE;
   return {
-    [TRAM_K2_KIND]: {
+    [tramDestructibleKind('k2')]: {
       cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
-      r: Math.hypot(size.hw, size.hl), h: size.h, hw: size.hw, hl: size.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
+      r: Math.hypot(k2.hw, k2.hl), h: k2.h, hw: k2.hw, hl: k2.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
       build: () => buildSetPiece('k2tram', { wrecked: true, coarse: mobile }),
       broken: () => buildSetPiece('k2tram', { wrecked: true, collapsed: true, coarse: mobile }),
+    },
+    // (Blackglass, 1937) the Shanghai Electric Construction Company's car, burnt out on its avenue
+    [tramDestructibleKind('shanghai')]: {
+      cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
+      r: Math.hypot(sh.hw, sh.hl), h: sh.h, hw: sh.hw, hl: sh.hl, keep: 0.4, crushMin: 5.0, groundPose: true, castShadow: true,
+      build: () => buildShanghaiTram('burnt', mobile),
+      broken: () => buildShanghaiTram('collapsed', mobile),
     },
   };
 }
