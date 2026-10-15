@@ -1545,10 +1545,20 @@ export function createGarageStage(
     floorMat.color.setHex(variant.floorTint).lerp(neutral, 0.42);
     wallMat.color.setHex(variant.wallTint).lerp(neutral, 0.34);
     const platformEdge = new THREE.Color(variant.accent).lerp(neutral, 0.12);
+    // outdoors the turntable's hazard band is worn paint, not a lit saturated stripe (the re-judge, 2026-10-15: "the cyan
+    // and black hazard ring is saturated; desaturate it to worn paint"): half the accent's saturation, a little darker,
+    // a third of the glow; Verdant's hall keeps its own
+    let edgeGlow = 1;
+    if (variant.id !== 'verdant_motor_pool') {
+      const hsl = { h: 0, s: 0, l: 0 };
+      platformEdge.getHSL(hsl);
+      platformEdge.setHSL(hsl.h, hsl.s * 0.5, hsl.l * 0.86);
+      edgeGlow = 0.35;
+    }
     podTopMat.color.setHex(variant.platformTint);
     podSideMat.color.copy(platformEdge);
-    podSideMat.emissive.copy(platformEdge);
-    rimRingMat.emissive.copy(platformEdge);
+    podSideMat.emissive.copy(platformEdge).multiplyScalar(edgeGlow);
+    rimRingMat.emissive.copy(platformEdge).multiplyScalar(edgeGlow);
     lampMat.color.setHex(variant.lightTint);
     lensMat.emissive.setHex(variant.lightTint);
     const architectureStats = architecture.setVariant(variant);
