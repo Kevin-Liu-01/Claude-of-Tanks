@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering } from './maps/vehicleMesh.ts';
 import { planGroundedObbPose } from './propPlacement.ts';
 import type { HeightField } from './terrain.ts';
+import { keepStreams } from './geometryStreams.ts';
 
 const STEEL = material('steel', [0.07, 0.064, 0.058], 0.7, 0.4, 0, 1);
 const STEEL_DARK = material('steel', [0.035, 0.032, 0.03], 0.75, 0.35, 0, 1);
@@ -60,11 +61,11 @@ function mulberry32(a: number): () => number {
 
 /** The toolkit mesh to the wreck merge's streams, its base on y = 0 (and its footprint's half extents). */
 function finish(mesh: VehicleMesh, seed: number): { geo: THREE.BufferGeometry; hw: number; hl: number } {
-  const geo = mesh.build(vehicleWeathering({
+  // (built fresh with its three streams, never trimmed: deleteAttribute leaves the attributes in V8's dictionary mode)
+  const geo = keepStreams(mesh.build(vehicleWeathering({
     dirtRgb: linearHex(0x2c2620), dirt: 0.5, dirtTop: 0.4, dustRgb: linearHex(0x4a4238), dust: 0.25, rust: 0.6,
     burnt: true, wheels: [], seed, voxelAo: false,
-  }));
-  for (const key of Object.keys(geo.attributes)) if (key !== 'position' && key !== 'normal' && key !== 'color') geo.deleteAttribute(key);
+  })), ['position', 'normal', 'color']);
   geo.computeBoundingBox();
   const b = geo.boundingBox!;
   geo.translate(0, -b.min.y, 0);
