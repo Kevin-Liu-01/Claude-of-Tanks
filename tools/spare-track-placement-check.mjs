@@ -1116,7 +1116,9 @@ function analyse(id) {
     visual.dispose();
     return { unchanged: true, id, inputHash, planAudit };
   }
-  const buildReceipt = Array.isArray(visual.root.userData.spareTrack) ? { runs: visual.root.userData.spareTrack.length,
+  // a hand-drawn course trimmed to the links that hold reports each kept link as `<site>#k`: one run here
+  const buildReceipt = Array.isArray(visual.root.userData.spareTrack) ? {
+    runs: new Set(visual.root.userData.spareTrack.map((r) => r.site.replace(/#\d+$/, ''))).size,
     rejected: (visual.root.userData.spareTrackRejected || []).length } : null;
   try {
     const { bodies, decorPieces, coverage, diag } = collect(visual, spec);
