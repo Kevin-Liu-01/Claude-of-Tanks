@@ -9,6 +9,7 @@
 // the track, y up from the rail head, in the painted bucket's streams.
 import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering } from './vehicleMesh.ts';
+import { keepStreams } from '../geometryStreams.ts';
 
 const GREEN = material('paint', linearHex(0x2f5a3c), 0.6, 0.05, 0, 1);
 const CREAM = material('paint', linearHex(0xd8ccae), 0.62, 0, 0, 1);
@@ -187,11 +188,12 @@ export function buildShanghaiTram(state: 'intact' | 'burnt' | 'collapsed', coars
     mesh.pop();
   }
   mesh.pop();
-  const g = mesh.build(vehicleWeathering({
+  const built = mesh.build(vehicleWeathering({
     dirtRgb: linearHex(0x2c2824), dirt: 0.55, dirtTop: 1.2, dustRgb: linearHex(0x4a4640), dust: 0.15, rust: wreck ? 0.6 : 0.3,
     burnt: wreck, wheels: [-4.0, -2.6, 2.6, 4.0].map((z) => ({ z, y: 0.33, r: 0.33 })), seed: 23, voxelAo: !coarse,
   }));
-  g.deleteAttribute('surf');
+  // (built fresh without the surface stream: the tram's pool draws it; geometryStreams.ts)
+  const g = keepStreams(built, Object.keys(built.attributes).filter((name) => name !== 'surf'));
   if (wreck) charWoodBody(g);
   g.computeBoundingBox();
   const lift = -g.boundingBox!.min.y;

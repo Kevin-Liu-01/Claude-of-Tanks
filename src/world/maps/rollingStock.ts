@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type VehicleMaterial } from './vehicleMesh.ts';
+import { keepStreams } from '../geometryStreams.ts';
 
 type Mat = VehicleMaterial;
 
@@ -1165,13 +1166,14 @@ export function buildRollingStock(kind: RollingStockKind, opts: { coarse?: boole
   };
   const r = kind === 'v60' ? 0.625 : kind === 'tem1' ? 0.525 : kind === 'covered4' || kind === 'gondola4' || kind === 'tank4' ? 0.475 : 0.5;
   const axles = AXLES[kind];
-  const g = mesh.build(vehicleWeathering({
+  const built = mesh.build(vehicleWeathering({
     dirtRgb: linearHex(0x2a2622), dirt: 0.75, dirtTop: 1.4, dustRgb: linearHex(0x3a3632), dust: 0.25,
     rust: kind === 'v60' ? 0.25 : 0.6, wheels: axles.map((z) => ({ z, y: r, r })), seed: (opts.seed ?? 7) + kind.length * 31, voxelAo: !coarse,
     burnt: wrecked,
   }));
-  // the painted bucket's streams (no surface stream: the props' baked material reads colours alone)
-  g.deleteAttribute('surf');
+  // the painted bucket's streams (no surface stream: the props' baked material reads colours alone), built fresh: a
+  // wagon's pools draw this geometry, and deleteAttribute leaves its attributes in V8's dictionary mode (geometryStreams.ts)
+  const g = keepStreams(built, Object.keys(built.attributes).filter((name) => name !== 'surf'));
   delete g.userData.bodyBox;
   delete g.userData.noCollisionVertices;
   return g;
