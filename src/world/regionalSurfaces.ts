@@ -216,7 +216,9 @@ export function paintLimeRender(s: number, seed: number): { px: Uint8ClampedArra
   for (let i = 0; i < n; i++) {
     const j = i * 4;
     const thin = smooth(0.95, 1.15, C[i]) * 0.55 + smooth(1.15, 2, C[i]) * 0.45;
-    const l = 0.46 + M[i] * 0.024 + G[i] * 0.008 - thin * 0.02;
+    // (the maps lane, 2026-10-15; the blind critics on Steinburg's walls at street distance: "frame-filling blotch-stained
+    // walls") the mottling and the worn coats at a little over half their contrast: a render's clouds, not stains
+    const l = 0.46 + M[i] * 0.013 + G[i] * 0.008 - thin * 0.012;
     _lime.setHSL(0.085 + thin * 0.006, 0.1 + thin * 0.04, clamp(l));
     px[j] = _lime.r * 255; px[j + 1] = _lime.g * 255; px[j + 2] = _lime.b * 255; px[j + 3] = 255;
     hgt[i] = clamp(0.5 + W[i] * 0.12 - thin * 0.04);

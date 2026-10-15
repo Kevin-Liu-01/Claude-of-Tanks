@@ -57,7 +57,10 @@ for (let i = 0; i < 108; i++) {
   // a battle-ready map ("rubble/destruction dressing too sparse"); ~1 in 3.5
   // interior slots is now a shelled ruin, clustering into visibly collapsed
   // blocks where the two cadences overlap
-  else if (i % 5 === 2 || i % 9 === 5) PLAN.push('ruin');
+  // (the maps lane, 2026-10-15, the Verdant process; the blind critics on Steinburg: "a town sitting flat on a plain with
+  // detached houses and grass between them", "lanes opening onto empty lots") a Franconian town's blocks stand closed:
+  // one interior plot in nine a shelled ruin, not one in three
+  else if (i % 9 === 5) PLAN.push('ruin');
   else PLAN.push('rowhouse');
 }
 
@@ -293,7 +296,10 @@ export default {
       wood: null,
       straw: null,
     },
-    ruinChance: 0.38, // r1: street-front collapse rate up (war-torn read)
+    // r1: street-front collapse rate up (war-torn read); (the maps lane, 2026-10-15) 0.38 -> 0.1: two street fronts in
+    // five stood collapsed, so the rows read as detached houses between rubble lots; the street walls now run closed,
+    // the odd shelled house breaking them
+    ruinChance: 0.1,
     townCraters: true, // shell holes pock the streets/squares inside the rect
     // r1 (content_breadth): darker, slightly warm-grey rubble — the old pale
     // near-white smooth boulders read as "grey tent blobs" in the foreground
