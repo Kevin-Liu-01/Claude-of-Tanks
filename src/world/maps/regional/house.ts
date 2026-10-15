@@ -104,7 +104,7 @@ export interface ChimneySpec {
 export interface HouseSpec {
   w: number;
   d: number;
-  plinth: { h: number; out: number; bucket: RegionalBucket } | null;
+  plinth: { h: number; out: number; bucket: RegionalBucket; /** its water table course (default on): a hall's kerb has none */ course?: boolean } | null;
   storeys: StoreySpec[];
   roof: RoofSpec;
   /** the wall bucket of the gable triangles (defaults to the top storey's wall) */
@@ -112,6 +112,8 @@ export interface HouseSpec {
   /** the gable triangles are timber framed */
   gableFramed?: boolean;
   openings: Opening[];
+  /** a hall open to its roof: the top storey has no attic floor at its eaves (its inside is seen up to the roof) */
+  hollow?: boolean;
   chimneys: ChimneySpec[];
   gutters?: { colour: Rgb } | null;
   /**
@@ -1024,7 +1026,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     // stone plinth under a stone ground storey, in the one stone print, read as the wall run down into the ground) the
     // plinth's water table: a dressed course along its top, 4.5 cm proud of it and a shade paler, its underside the
     // shadow line that parts the plinth from the wall, its top the doors' threshold. Decor (no collision), never cast
-    if (facadeGroundCraft() && p.h >= 0.2) {
+    if (facadeGroundCraft() && p.h >= 0.2 && p.course !== false) {
       const o = p.out + 0.045, t = Math.min(0.12, p.h * 0.3);
       sink.span(p.bucket, -spec.w / 2 - o, p.h - t, -spec.d / 2 - o, spec.w / 2 + o, p.h + 0.005, spec.d / 2 + o,
         { decor: true, tint: [1.1, 1.08, 1.05], shadeAt: (q: Vec3) => (q[1] < p.h - t + 0.001 ? 0.7 : 1) });
@@ -1096,7 +1098,9 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
         own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
     }
-    sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
+    // (a hollow body — a hall open to its roof — has no attic floor at its eaves: from inside, its back was all the
+    // integrity gate saw)
+    if (!spec.hollow || i < bodies.length - 1) sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
     // the underside: a jetty's soffit, or the ground storey's base (seen where the ground falls away from it)
     sink.quad(wall, [b.x0, b.y0, b.z0], [b.x1, b.y0, b.z0], [b.x1, b.y0, b.z1], [b.x0, b.y0, b.z1], { shade: 0.8 });
   });

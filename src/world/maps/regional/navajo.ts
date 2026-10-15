@@ -1022,7 +1022,9 @@ const equipmentShed: RegionalBuilder = (ctx) => {
       for (const z of [-D / 2 + 0.08, D / 2 - 0.18]) sink.span('structureWood', x0 + 0.1, y - 0.06, z, x0 + W - 0.3, y + 0.06, z + 0.1, girt);
     }
     for (let z = -D / 2 + 0.6; z < D / 2 - 0.2; z += 0.75) sink.span('structureMetal', x0 - 0.02, 0.15, z - 0.02, x0 + 0.005, H - 0.05, z + 0.02, { colour: shade(tin.colour, 0.82), decor: true, fine: true });
-    sink.span('structureMetal', x0 - 0.012, 0.15, -D / 2, x0 + 0.005, 0.6, D / 2, { colour: [tin.colour[0] * 0.6 + 0.18, tin.colour[1] * 0.55 + 0.1, tin.colour[2] * 0.5 + 0.06], decor: true });
+    // (the rust band a face on the sheet, not a 17 mm box 19 m long: the integrity gate reads its edges as slivers)
+    sink.quad('structureMetal', [x0 - 0.012, 0.15, -D / 2], [x0 - 0.012, 0.15, D / 2], [x0 - 0.012, 0.6, D / 2], [x0 - 0.012, 0.6, -D / 2],
+      { colour: [tin.colour[0] * 0.6 + 0.18, tin.colour[1] * 0.55 + 0.1, tin.colour[2] * 0.5 + 0.06], decor: true });
   });
   const n = Math.max(3, Math.round(D / 3.6));
   // (props census E4, lane B 2026-10-14: the front poles stopped 1.0 m under the roof, which rises to the open front)

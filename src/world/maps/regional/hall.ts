@@ -86,9 +86,9 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   sink.paint = spec.livery;
   try {
     frame = buildHouse(sink, {
-      w, d, plinth: spec.kerb > 0 ? { h: spec.kerb, out: 0.05, bucket: 'stone' } : null, storeys: [{ h: wall, wall: 'structureMetal' }],
+      w, d, plinth: spec.kerb > 0 ? { h: spec.kerb, out: 0.05, bucket: 'stone', course: false } : null, storeys: [{ h: wall, wall: 'structureMetal' }],
       roof: { kind: 'gable', pitchDeg: spec.pitchDeg, eave: 0.4, verge: 0.3, thickness: 0.1, bucket: spec.roof?.bucket ?? 'roof', ridge: 'saddle' }, ...(spec.roof?.colour ? { roofColour: spec.roof.colour } : {}),
-      gableBucket: 'structureMetal', openings, chimneys: [], gutters: null, verge: null, reveal: 0, spall: null,
+      gableBucket: 'structureMetal', openings, chimneys: [], gutters: null, verge: null, reveal: 0, spall: null, hollow: true,
     }, {
       // the lights: translucent sheet in a thin aluminium frame
       // (the sheet has no reveal: the lights hang 13 cm inside the cut in their lined boxes, the hall's inside behind them —
@@ -98,6 +98,9 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
         s.recess = 0.13;
         try { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(spec.trim, 1.3), frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null }, variant, 0.1); }
         finally { s.recess = 0; }
+        // the sheet's back, seen from the hall's floor (the pane a single face out to the yard)
+        const B = (uu: number, yy: number): Vec3 => facePoint(face, uu, yy, -0.118);
+        s.quad('glass', B(o.u + o.w / 2, y0 + o.y0), B(o.u - o.w / 2, y0 + o.y0), B(o.u - o.w / 2, y0 + o.y0 + o.h), B(o.u + o.w / 2, y0 + o.y0 + o.h), { decor: true });
         // the cut's lining: the sheet's flashing round the opening, back to the light's frame
         const c = { colour: shade(spec.trim, 1.15), decor: true };
         for (const sx of [-1, 1]) faceBox(s, 'structureMetal', face, o.u + sx * (o.w / 2 + 0.01), y0 + o.y0 + o.h / 2, -0.055, 0.02, o.h + 0.04, 0.17, c);
@@ -109,6 +112,10 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
         s.recess = 0.15;
         try { doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: spec.doorLivery, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: spec.trim }, steps: null, leafKind: 'plank' }, y0 + o.y0); }
         finally { s.recess = 0; }
+        // the leaf's back to the hall (a door unit seated in a wall leaves it out)
+        const B = (uu: number, yy: number): Vec3 => facePoint(face, uu, yy, -0.149);
+        s.quad('structureWood', B(o.u + o.w / 2, y0 + o.y0), B(o.u - o.w / 2, y0 + o.y0), B(o.u - o.w / 2, y0 + o.y0 + o.h), B(o.u + o.w / 2, y0 + o.y0 + o.h),
+          { colour: shade(spec.doorLivery, 0.85), decor: true });
         const c = { colour: shade(spec.trim, 1.15), decor: true };
         for (const sx of [-1, 1]) faceBox(s, 'structureMetal', face, o.u + sx * (o.w / 2 - 0.01), y0 + o.y0 + o.h / 2, -0.06, 0.02, o.h, 0.18, c);
         faceBox(s, 'structureMetal', face, o.u, y0 + o.y0 + o.h - 0.01, -0.06, o.w - 0.04, 0.02, 0.18, c);
@@ -133,7 +140,8 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   const inside = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
   for (const s of [-1, 1]) {
     const x = s * ix, a: Vec3 = [x, y0, s > 0 ? -iz : iz], b: Vec3 = [x, y0, s > 0 ? iz : -iz];
-    if (!(spec.openSide && (spec.openSide.face === 'right') === (s > 0))) {
+    // (an open side's liner too: its posts' and head's backs, the bays cut out of it)
+    {
       const lf: Face = { origin: [x, 0, 0], u: [0, 0, s > 0 ? 1 : -1], out: [-s, 0, 0], width: 2 * iz };
       linerWall(sink, lf, -iz, iz, y0, eave - 0.05, holesOf(s > 0 ? 'right' : 'left'), inside);
     }
@@ -142,6 +150,7 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
     const e: Vec3 = [x, eave - 0.05, -iz], f: Vec3 = [x, eave - 0.05, iz], r0: Vec3 = [0, top(0), iz], r1: Vec3 = [0, top(0), -iz];
     if (s > 0) sink.quad('structureMetal', e, f, r0, r1, { colour: shade(back, 1.2), decor: true });
     else sink.quad('structureMetal', f, e, r1, r0, { colour: shade(back, 1.2), decor: true });
+
   }
   const bays = Math.max(2, Math.round(d / 5));
   for (let k = 1; k < bays; k++) {
@@ -195,8 +204,11 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
       sink.span('structureMetal', -0.12, rt + 0.02, z0, 0.12, rt + 0.35, z1, { colour: INSIDE, decor: true });
       sink.span('structureMetal', -0.55, rt + 0.35, z0 - 0.1, 0.55, rt + 0.43, z1 + 0.1, { colour: shade(spec.livery, 0.9), decor: true });
       for (const z of [z0, z1]) sink.span('structureMetal', -0.37, rt + 0.02, z - 0.01, 0.37, rt + 0.35, z + 0.01, { colour: shade(spec.livery, 0.75), decor: true });
-      for (const s of [-1, 1]) for (const y of [rt + 0.09, rt + 0.18, rt + 0.27]) {
-        sink.span('structureMetal', s * 0.35 - 0.04, y, z0, s * 0.35 + 0.04, y + 0.015, z1, { colour: shade(spec.livery, 0.8), decor: true, fine: true });
+      // (the blades in lengths of at most 6 m: a 15 mm blade 17 m long is a sliver to the integrity gate)
+      const nb = Math.max(1, Math.ceil((z1 - z0) / 6));
+      for (const s of [-1, 1]) for (const y of [rt + 0.09, rt + 0.18, rt + 0.27]) for (let k = 0; k < nb; k++) {
+        const za = z0 + (z1 - z0) * k / nb, zb = z0 + (z1 - z0) * (k + 1) / nb;
+        sink.span('structureMetal', s * 0.35 - 0.04, y, za, s * 0.35 + 0.04, y + 0.015, zb, { colour: shade(spec.livery, 0.8), decor: true, fine: true });
       }
     }
   });
