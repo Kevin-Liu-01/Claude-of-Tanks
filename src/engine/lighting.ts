@@ -28,7 +28,7 @@ import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts'
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, pushCustomCascadeBreaks,
-} from './shadowCascadeFade.ts';
+} from './renderLayers.ts';
 import {
   SHADOW_TENT_DEFAULT, SHADOW_TENT_GLSL, THREE_PCF_GET_SHADOW, THREE_PCF_GET_SHADOW_RENAMED, shadowTentBiasRadius, shadowTentRadius,
   type ShadowTentTable,

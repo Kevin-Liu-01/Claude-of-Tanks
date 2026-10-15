@@ -24,7 +24,7 @@ import {
   forEachShadowCasterProfile, setShadowCasterDynamicMask, shadowCasterDynamicMaskOf, SHADOW_CASTER_ALL_CASCADES,
   type ShadowCasterProfile,
 } from './renderLayers.ts';
-import { csmSliceFromM } from './shadowCascadeFade.ts';
+import { csmSliceFromM } from './renderLayers.ts'; // (the fade law, shadowCascadeFade.ts, through its one import path)
 
 /** A ground shadow shorter than this many texels of a cascade's map cannot survive its PCF kernel. */
 export const SHADOW_FOOTPRINT_MIN_TEXELS = 2;
