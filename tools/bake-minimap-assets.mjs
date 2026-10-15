@@ -61,29 +61,59 @@ const browser = await puppeteer.launch({
   protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
-const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });
+
+// three.js's compileAsync poll (checkMaterialsReady) can read a material whose program a map switch on the same page
+// just disposed: "TypeError: Cannot read properties of undefined (reading 'isReady')" (2026-10-15, desert -> steppe and
+// winter -> whiteout). It is an engine race at the switch, not a bad plate, so that map is baked once more on a fresh
+// page. Only that error class is retried, once per map; any other browser error, or the race again, fails the bake.
+const COMPILE_RACE = /Cannot read properties of undefined \(reading 'isReady'\)/;
+const onlyCompileRace = (list) => list.length > 0 && list.every((text) => COMPILE_RACE.test(text));
+
 const errors = [];
-page.on('pageerror', (error) => errors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon')) {
-    errors.push(message.text());
+let page = null;
+async function openPage() {
+  if (page) await page.close();
+  errors.length = 0;
+  const fresh = await browser.newPage();
+  page = fresh;
+  await fresh.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });
+  fresh.on('pageerror', (error) => { if (page === fresh) errors.push(String(error)); });
+  fresh.on('console', (message) => {
+    if (page !== fresh) return;
+    if (message.type() === 'error' && !message.text().includes('favicon')) {
+      errors.push(message.text());
+    }
+    if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
+  });
+  await fresh.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await fresh.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+}
+async function bakeMap(mapId) {
+  try {
+    return await page.evaluate(async (id) => {
+      const dataUrl = await window.__DEBUG.bakeMinimapForMap(id);
+      return { dataUrl, mapId: window.__DEBUG.world?.mapId,
+        capture: window.__HUD_DEBUG.getMinimapState().capture };
+    }, mapId);
+  } catch (error) {
+    if (!COMPILE_RACE.test(String(error))) throw error;
+    errors.push(String(error)); // the race rejected the bake itself: same class, same single retry
+    return null;
   }
-  if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
-});
+}
 
 let failed = false;
 try {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await openPage();
   for (const id of maps) {
-    const result = await page.evaluate(async (mapId) => {
-      const dataUrl = await window.__DEBUG.bakeMinimapForMap(mapId);
-      return { dataUrl, mapId: window.__DEBUG.world?.mapId,
-        capture: window.__HUD_DEBUG.getMinimapState().capture };
-    }, id);
-    requireMinimapCapture(result, id);
+    let result = await bakeMap(id);
+    if (onlyCompileRace(errors)) {
+      console.warn(`[minimap-assets] ${id}: three.js compileAsync race at the map switch; one retry on a fresh page:\n${errors.join('\n')}`);
+      await openPage();
+      result = await bakeMap(id);
+    }
     if (errors.length) throw new Error(`Browser errors before ${id} export:\n${errors.join('\n')}`);
+    requireMinimapCapture(result, id);
     const { dataUrl } = result;
     const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
     await writeFile(resolve(outDir, `${id}.webp`), bytes);

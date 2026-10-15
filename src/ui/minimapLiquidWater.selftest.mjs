@@ -5,9 +5,13 @@
 // takyr in the map's own tones, ice on an iceLake map — with a keyline and no rim. Over all 33 battlefields:
 //   - a map without a liquid sheet (terrain.ts liquidWater: splat.seaLake without frozen marshes) paints no disc in its
 //     water colour and no waterline rim; its dry ground is ground-toned (not blue) and its ice is its palette's ice;
-//   - Kestrel Airfield: nothing water-coloured within 160 m of either team's pads, every one of its twenty bogs painted
-//     as soft ground (the real height field's mask, end to end);
-//   - on a map with a liquid sheet, every disc the world wets anywhere (a 4 m census inside its contour) is painted as
+//   - the world's own hand-off decides it: map.ts's water preamble and getMinimapFeatures, run from its source on each
+//     map's discs (createMap builds the whole world, 36-70 s in Node), hand the painters the split as liquidPatches and
+//     softPatches the right way round, with the wet layer's iceLake, sampled once per world;
+//   - Kestrel Airfield: the world hands all twenty bogs over as softPatches and none as liquidPatches, and from those
+//     features nothing is water-coloured within 160 m of either team's pads (the real height field's mask, end to end);
+//   - "wet" is what the world renders: a ramped mask of 0.015 and up (the water sheet discards below it, shallowWater.ts).
+//     On a map with a liquid sheet, every disc the world wets anywhere (a 4 m census inside its contour) is painted as
 //     water, and every disc painted as water is wet somewhere (to 1 m where the 4 m census misses a sliver). Height fields
 //     are built only for the liquid maps and Kestrel;
 //   - the painters read water only from liquidPatches, and drop the rim on request (the real shoreline painter, a fake
@@ -28,6 +32,16 @@ const planSource = await readFile(new URL('./studioPlanView.ts', import.meta.url
 const studioSource = await readFile(new URL('../game/studio.ts', import.meta.url), 'utf8');
 const mapSource = await readFile(new URL('../world/map.ts', import.meta.url), 'utf8');
 const terrainSource = await readFile(new URL('../world/terrain.ts', import.meta.url), 'utf8');
+const shallowWaterSource = await readFile(new URL('../world/shallowWater.ts', import.meta.url), 'utf8');
+
+// ---- "wet" is the rendered threshold: the sheet discards a fragment below it, and the CPU mask is the sheet's ramp ----
+assert.match(terrainSource,
+  /function getWaterMaskAt\(x: number, z: number\): number \{[^}]*return smoothstep\(waterRampStart, waterRampEnd, wetness\);\s*\}/,
+  'the CPU water mask is the material\'s ramped wetness, the quantity the sheet discards on');
+const wetnessDiscards = [...shallowWaterSource.matchAll(/if \(wet < ([\d.]+)\) discard;/g)];
+assert.equal(wetnessDiscards.length, 1, 'the water sheet has one wetness discard');
+const RENDERED_WET = Number(wetnessDiscards[0][1]);
+assert.equal(RENDERED_WET, 0.015, 'the water sheet draws a fragment at a ramped mask of 0.015 and up');
 
 // ---- the sources: one liquid rule, and water only from liquidPatches ----
 assert.match(terrainSource, /const liquidWater = !!cfg\?\.splat\?\.seaLake && !T\.frozenMarshes;/,
@@ -133,6 +147,30 @@ const WATERLINE_RIM = 'rgb(204,234,240)';
   assert.deepEqual(tints, [], 'no discs, no bands');
 }
 
+// ---- the world's hand-off, run from map.ts: its water preamble (layout, the memo, the iceLake switch) and its own
+// getMinimapFeatures, on a real height field. Props and vegetation feed only the roads/buildings/trees, so they are
+// empty here. A swap of liquidPatches and softPatches in map.ts repaints Kestrel's twenty bogs as water: this catches it.
+const preambleBegin = mapSource.indexOf('  const layout = heightField._layout;\n');
+const preambleEnd = mapSource.indexOf('\n', mapSource.indexOf('  const minimapIceLake = ', preambleBegin));
+const featuresBegin = mapSource.indexOf('    getMinimapFeatures: () => {', preambleEnd);
+const featuresEnd = mapSource.indexOf('\n    },\n', featuresBegin);
+assert.ok(preambleBegin >= 0 && preambleEnd > preambleBegin && featuresBegin > preambleEnd && featuresEnd > featuresBegin,
+  'map.ts: the world\'s minimap water preamble and getMinimapFeatures remain discoverable');
+const handOffSource = stripTypeScriptTypes(`${mapSource.slice(preambleBegin, preambleEnd)}
+const runtime = {
+${mapSource.slice(featuresBegin, featuresEnd)}
+    },
+};`);
+const assembleHandOff = new Function('splitMinimapWater', 'config', 'heightField', 'props', 'vegetation', `${handOffSource}\nreturn runtime;`);
+/** One world's minimap hand-off: getMinimapFeatures as map.ts runs it, and how many times it sampled the split. */
+function worldMinimap(config, heightField) {
+  let splits = 0;
+  const runtime = assembleHandOff(
+    (discs, waterMaskAt) => { splits++; return splitMinimapWater(discs, waterMaskAt); },
+    config, heightField, { features: { buildings: [], tacticalBeats: [] } }, { _clusters: [] });
+  return { getMinimapFeatures: runtime.getMinimapFeatures, splits: () => splits };
+}
+
 // ---- every battlefield ----
 const liquidMaps = [], dryMaps = [], iceMaps = [];
 const discCensus = { liquid: 0, soft: 0 };
@@ -151,7 +189,13 @@ for (const id of MAP_IDS) {
   assert.ok(samples <= discs.length * 337, `${id}: the split is bounded (${samples} samples for ${discs.length} discs)`);
   assert.equal(split.liquid.length + split.soft.length, discs.length, `${id}: every disc is classed once`);
   discCensus.liquid += split.liquid.length; discCensus.soft += split.soft.length;
-  const painted = paintMap({ liquidPatches: [...split.liquid], softPatches: [...split.soft], iceLake }, palette);
+  // the features the world hands the painters (a dry map's mask is 0 everywhere by the source rule above)
+  const world = worldMinimap(config, field ?? { _layout: layout, getWaterMaskAt: () => 0 });
+  const features = world.getMinimapFeatures();
+  assert.deepEqual(features.liquidPatches, split.liquid, `${id}: the world hands over its liquid discs as liquidPatches`);
+  assert.deepEqual(features.softPatches, split.soft, `${id}: the world hands over its dry discs as softPatches`);
+  assert.equal(features.iceLake, iceLake, `${id}: the world's iceLake is its wet layer's`);
+  const painted = paintMap(features, palette);
   const waterFills = painted.fills.filter((f) => f.style === palette.water);
   const rims = painted.shorelines.filter((s) => s.rim !== null);
   const softStyle = iceLake ? palette.ice : palette.bog, softKeyline = iceLake ? palette.iceStroke : palette.bogStroke;
@@ -179,21 +223,22 @@ for (const id of MAP_IDS) {
   assert.equal(waterFills[0].paths.length, split.liquid.length, `${id}: every liquid disc is painted as water`);
   assert.deepEqual(rims.map((s) => [s.rim, s.keyline, s.count]), [[WATERLINE_RIM, palette.waterStroke, split.liquid.length]],
     `${id}: the waterline rim follows the liquid discs only`);
-  // every disc the world wets anywhere (4 m census inside its contour) is water; every water disc is wet somewhere
+  // every disc the world visibly wets anywhere (4 m census inside its contour) is water; every water disc is visibly wet
+  // somewhere (wet = the rendered threshold, not merely a mask above 0)
   const liquidSet = new Set(split.liquid);
   const wetSomewhere = (disc, step) => {
     const reach = disc.r;
     for (let z = disc.z - reach; z <= disc.z + reach; z += step) {
       for (let x = disc.x - reach; x <= disc.x + reach; x += step) {
-        if (shorelineDistance(disc, x, z, 1) <= 1 && field.getWaterMaskAt(x, z) > 0) return true;
+        if (shorelineDistance(disc, x, z, 1) <= 1 && field.getWaterMaskAt(x, z) >= RENDERED_WET) return true;
       }
     }
     return false;
   };
   for (const disc of discs) {
     const wet4 = wetSomewhere(disc, 4);
-    if (wet4) assert.ok(liquidSet.has(disc), `${id}: the disc at (${disc.x.toFixed(0)}, ${disc.z.toFixed(0)}) holds water and is painted as water`);
-    else if (liquidSet.has(disc)) assert.ok(wetSomewhere(disc, 1), `${id}: the water disc at (${disc.x.toFixed(0)}, ${disc.z.toFixed(0)}) is wet somewhere`);
+    if (wet4) assert.ok(liquidSet.has(disc), `${id}: the disc at (${disc.x.toFixed(0)}, ${disc.z.toFixed(0)}) shows water and is painted as water`);
+    else if (liquidSet.has(disc)) assert.ok(wetSomewhere(disc, 1), `${id}: the water disc at (${disc.x.toFixed(0)}, ${disc.z.toFixed(0)}) shows water somewhere`);
   }
 }
 assert.deepEqual(iceMaps.sort(), ['alpine', 'whiteout', 'winter'], 'the frozen maps paint their lakes as ice');
@@ -214,10 +259,18 @@ assert.equal(liquidMaps.length, 12, `twelve liquid maps (${liquidMaps.join(', ')
   assert.equal(pads.length, 8, 'Kestrel: alpha\'s pad and bravo\'s seven');
   const discs = [...layout.marshes, ...layout.lakes];
   assert.equal(discs.length, 20, 'Kestrel: the twenty valley bogs');
-  const split = splitMinimapWater(discs, field.getWaterMaskAt);
-  assert.equal(split.liquid.length, 0, 'Kestrel: no bog holds liquid in the world');
+  // the world path: map.ts's own getMinimapFeatures on Kestrel's real height field
+  const world = worldMinimap(config, field);
+  const features = world.getMinimapFeatures();
+  assert.deepEqual(features.liquidPatches, [], 'Kestrel: the world hands over no bog as liquid water');
+  assert.deepEqual(features.softPatches, discs, 'Kestrel: the world hands over all twenty bogs, in order, as softPatches');
+  assert.deepEqual(features.waterOrSoft, discs, 'Kestrel: the footprint list still carries every disc');
+  assert.ok(features.softPatches.every((disc, i) => disc !== discs[i]), 'Kestrel: the features are copies, not the layout\'s own discs');
+  assert.equal(features.iceLake, false, 'Kestrel: its wet layer is not ice');
+  assert.deepEqual(world.getMinimapFeatures().softPatches, discs, 'Kestrel: a second read hands over the same split');
+  assert.equal(world.splits(), 1, 'Kestrel: the split is sampled once per world (the battle\'s audio re-reads the features)');
   const palette = { ...MM_PALETTE_DEFAULT, ...config.minimap };
-  const painted = paintMap({ liquidPatches: [...split.liquid], softPatches: [...split.soft], iceLake: !!config.splat?.iceLake }, palette);
+  const painted = paintMap(features, palette);
   assert.deepEqual(painted.fills.map((f) => [f.style, f.paths.length]), [[palette.bog, 20]], 'Kestrel: all twenty bogs painted as soft ground');
   const metresPerPixel = worldSize / mapSize;
   const waterLike = new Set([palette.water, palette.waterStroke, WATERLINE_RIM]);
