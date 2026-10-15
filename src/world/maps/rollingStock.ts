@@ -805,7 +805,7 @@ function g10(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   }, () => ROOF_GREY, {});
 }
 
-function tank(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
+function tank(mesh: VehicleMesh, coarse: boolean): void {
   const L = ROLLING_STOCK_LENGTH.tank, W = 2.6, frameHalf = 3.8, floorY = 1.25, R = 1.05, axisY = floorY + 0.2 + R;
   const r = 0.5;
   for (const z of [-2.25, 2.25]) { wheelset(mesh, z, r, false); axleBox(mesh, z, r, floorY - 0.02, 1.5); }
@@ -880,7 +880,7 @@ function roundedHood(mesh: VehicleMesh, coarse: boolean, z0: number, z1: number,
   }
 }
 
-function v60(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
+function v60(mesh: VehicleMesh, coarse: boolean): void {
   const L = ROLLING_STOCK_LENGTH.v60, W = ROLLING_STOCK_BODY.v60.w, frameHalf = 4.6, frameTop = 1.42;
   const r = 0.625;
   // three coupled axles on plain disc wheels, the jackshaft behind the last, the coupling rods outside
@@ -1152,8 +1152,8 @@ export function buildRollingStock(kind: RollingStockKind, opts: { coarse?: boole
   if (wrecked) mesh.push().translate(WRECK_SHIFT_M, -WRECK_DROP_M, 0).rotateZ(WRECK_LEAN).rotateX(0.02);
   if (kind === 'omm') omm(mesh, coarse, wrecked);
   else if (kind === 'g10') g10(mesh, coarse, wrecked);
-  else if (kind === 'tank') { tank(mesh, coarse, wrecked); if (wrecked) tankPuncture(mesh, coarse); }
-  else if (kind === 'v60') v60(mesh, coarse, wrecked);
+  else if (kind === 'tank') { tank(mesh, coarse); if (wrecked) tankPuncture(mesh, coarse); }
+  else if (kind === 'v60') v60(mesh, coarse);
   else if (kind === 'covered4') covered4(mesh, coarse);
   else if (kind === 'gondola4') gondola4(mesh, coarse);
   else if (kind === 'tank4') tank4(mesh, coarse);
