@@ -17,6 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
+import { buildTropicalPlants } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -2403,6 +2404,19 @@ export function addGarageFacilityDetails({
         clusterBox(bayC, l, f, 0.012, w, 0.01, d, new THREE.Color(0x3d4a48), 'painted');
       }
       structuralConnections += 52;
+      // the wet tropics round the yard (the re-judge, 2026-10-15: "no jungle belt, tall grass, banana or bamboo"): banana
+      // plants and bamboo clumps in the frame's thirds and behind the bathhouse side, none behind the hero's outline
+      {
+        const plants: Array<{ x: number; z: number; y: number; kind: 'banana' | 'bamboo'; size: number }> = [];
+        for (const [side, depth, kind, size] of [
+          [-14, 14, 'banana', 1.1], [-11.5, 17.5, 'banana', 0.9], [-22, 15, 'banana', 1.2], [14, 14, 'banana', 1.0],
+          [18, 16.5, 'banana', 1.15], [-17, 19.5, 'bamboo', 1.0], [21.5, 22, 'bamboo', 1.1], [-12.5, 38, 'bamboo', 1.2],
+        ] as const) {
+          const at = cameraPoint(side, depth);
+          plants.push({ x: at.x, z: at.z, y: groundAtWorld(at.x, at.z), kind, size });
+        }
+        buckets.baked!.push(buildTropicalPlants(plants, 0x7a1f));
+      }
       // the drainage pumps and the yard kit round the bay
       addServiceManifold(fixedCluster(-9.5, 13.5), 0, 0, 4.2);
       addPoweredWinch(fixedCluster(13.5, 17.0), 0, 0, new THREE.Color(0x4e8065));
