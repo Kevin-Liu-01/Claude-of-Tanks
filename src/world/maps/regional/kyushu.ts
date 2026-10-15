@@ -7,7 +7,7 @@
 // sheds stained yellow with their retorts and brick stacks; the village fire brigade's post and its fire lookout
 // (hinomi-yagura) with the alarm bell; the small Shinto shrine behind its torii; the works office of painted
 // clapboard; and the burnt-out farmsteads.
-import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -457,41 +457,60 @@ const works: RegionalBuilder = (ctx) => {
   const D = Math.max(10, R.D - 3.0);
   const H = 7.5, board = pick(rng, CEDAR), tin = pick(rng, TIN);
   sink.placed(0, R.cx, 0, R.z0 + 2.7 + D / 2, () => {
-  sink.span(STONE, -W / 2 - 0.05, -0.4, -D / 2 - 0.05, W / 2 + 0.05, 0.4, D / 2 + 0.05);
-  sink.span('structureWood', -W / 2, 0.4, -D / 2, W / 2, H, D / 2, { colour: board });
+  // (props census #13, lane B 2026-10-14; the judges: "a board box, its door a dark plate, the vents boards laid on it,
+  // the monitor a solid box") the house grammar: the shed's board walls on their stone footing, its door cut and hung
+  // with its leaves, the vent band under the eaves cut through the boards with its louvre slats in the cuts, the monitor
+  // open under its cap along the ridge
+  const vents = (width: number): number[] => Array.from({ length: 7 }, (_, k) => -width * 0.4 + k * width * 0.8 / 6);
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: 3.0, y0: 0, h: 3.4 }];
+  for (const [face, width] of [['front', W], ['back', W], ['left', D], ['right', D]] as const) {
+    for (const x of vents(width)) openings.push({ face, storey: 0, kind: 'loft', u: x, w: width * 0.8 / 6 - 0.15, y0: H - 0.4 - 1.3 - 0.375, h: 0.75 });
+  }
+  const slat = shade(board, 0.6);
+  const dialect: HouseDialect = {
+    window: (s, face, o, y0) => {
+      // the louvre slats across the cut, set in its depth, the shed's dark behind them
+      for (let y = y0 + o.y0 + 0.1; y < y0 + o.y0 + o.h - 0.05; y += 0.16) faceBox(s, 'structureWood', face, o.u, y, -0.08, o.w, 0.05, 0.1, { colour: slat, decor: true, fine: true });
+    },
+    door: (s, face, o, y0) => gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(board, 0.9), { bucket: 'structureWood', width: 0.14, out: 0.05, colour: shade(board, 0.7) }),
+  };
+  sink.paint = board;
+  let frame!: HouseFrame;
+  try {
+    frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: STONE }, storeys: [{ h: H - 0.4, wall: 'structureWood' }],
+      roof: { kind: 'gable', pitchDeg: 24, eave: 0.5, verge: 0.4, thickness: 0.07, bucket: 'structureMetal', ridge: null }, roofColour: tin, gableBucket: 'structureWood',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: null,
+    }, dialect);
+  } finally { sink.paint = null; }
   // the sulphur's crust on the boards (Caldera round 2, wave 114: "no retort, vents, steam or sulphur crust" — the old
   // even yellow band read as paint): blotches of every size crowding the foot and thinning up the wall, paler and
-  // darker yellows and the grey-white of the dried crust, and the window band under the eaves as slatted vents
-  // (Caldera round 3, wave 131: "a hard-edged, stair-stepped band of flat yellow rectangles that reads as a texture
-  // bug") the crust a skin of narrow strips, each yellow at the foot fading into the boards at its own height, the
-  // heights and yellows wandering slowly along the wall: a ragged soft edge, no steps
-  const faces = bodyFaces(W, D);
-  for (const f of [faces.front, faces.back, faces.left, faces.right]) {
+  // darker yellows and the grey-white of the dried crust (Caldera round 3, wave 131: "a hard-edged, stair-stepped band of
+  // flat yellow rectangles that reads as a texture bug") the crust a skin of narrow strips, each yellow at the foot fading
+  // into the boards at its own height, the heights and yellows wandering slowly along the wall: a ragged soft edge
+  for (const f of [frame.faces.front, frame.faces.back, frame.faces.left, frame.faces.right]) {
     const n = Math.max(4, Math.round(f.width / 0.45)), sw = f.width / n;
     const p1 = look() * 6.28, p2 = look() * 6.28, p3 = look() * 6.28;
     for (let k = 0; k < n; k++) {
       const u = -f.width / 2 + (k + 0.5) * sw;
       const hgt = 0.7 + 1.9 * (0.5 + 0.5 * Math.sin(u * 0.9 + p1)) * (0.55 + 0.45 * Math.sin(u * 0.37 + p2));
       const crust = shade(SULPHUR, 0.82 + 0.2 * Math.sin(u * 0.61 + p3)), top = 0.4 + hgt;
+      // (not over the door's cut)
+      if (f === frame.faces.front && Math.abs(u) < 1.5 + sw / 2) continue;
       faceBox(sink, 'structureWood', f, u, 0.4 + hgt / 2, 0.012, sw + 0.01, hgt, 0.01,
         { colour: crust, colourAt: (q) => (q[1] > top - 0.02 ? board : crust), decor: true });
     }
-    for (let x = -f.width * 0.4; x <= f.width * 0.4 + 1e-6; x += f.width * 0.8 / 6) {
-      faceBox(sink, 'structureWood', f, x, H - 1.3, 0.02, f.width * 0.8 / 6 - 0.15, 0.75, 0.04, { colour: shade(board, 0.6), decor: true, fine: true });
-    }
   }
-  const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  faceBox(sink, 'dark', front, 0, 0.4 + 1.7, 0.02, 3.0, 3.4, 0.03, { decor: true });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.5, verge: 0.4, thickness: 0.07, bucket: 'structureMetal', ridge: null };
-  const rg = roofGeometry(W, D, H, roof);
-  emitRoof(sink, rg, roof, tin);
-  if (rg.gable) for (const z of [D / 2, -D / 2]) {
-    const pts: Vec3[] = rg.gable.map(([u, y]) => [u, y, z] as Vec3);
-    sink.prism('structureWood', z > 0 ? [...pts].reverse() : pts, [0, 0, z > 0 ? -1 : 1], 0.06, { colour: board });
+  const rg = frame.roof;
+  // the roof monitor along the ridge: its kerb, the dark of the shed's roof space in its throat, louvre blades along each
+  // side under its own small gable, its end boards
+  const ry = rg.ridgeY, mz = D / 2 - 1;
+  sink.span('structureWood', -0.9, ry - 0.4, -mz, 0.9, ry + 0.02, mz, { colour: shade(board, 0.85) });
+  sink.span('dark', -0.45, ry + 0.02, -mz + 0.06, 0.45, ry + 0.9, mz - 0.06, { decor: true });
+  for (const z of [-mz, mz]) sink.span('structureWood', -0.9, ry + 0.02, z - 0.03, 0.9, ry + 0.9, z + 0.03, { colour: shade(board, 0.85) });
+  for (const sx of [-1, 1]) for (let y = ry + 0.12; y < ry + 0.85; y += 0.16) for (let k = 0, nb = Math.max(1, Math.ceil(2 * mz / 6)); k < nb; k++) {
+    sink.span('structureWood', sx * 0.9 - 0.04, y, -mz + 2 * mz * k / nb, sx * 0.9 + 0.04, y + 0.03, -mz + 2 * mz * (k + 1) / nb, { colour: shade(board, 0.7), decor: true, fine: true });
   }
-  // the roof monitor along the ridge: a raised slatted vent under its own small gable
-  const ry = rg.ridgeY;
-  sink.span('structureWood', -0.9, ry - 0.4, -D / 2 + 1, 0.9, ry + 0.9, D / 2 - 1, { colour: shade(board, 0.85) });
   const cap: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.3, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null };
   emitRoof(sink, roofGeometry(1.8, D - 2, ry + 0.9, cap), cap, tin);
   // the retorts behind the shed: a row of brick melting ovens on a stone bench, each with its iron door and its own
