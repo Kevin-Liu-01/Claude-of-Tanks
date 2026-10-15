@@ -164,7 +164,9 @@ assert.equal(blendVisibility(1, 0, 1), 0,
   assert.match(lightingSrc, /const share = model\?\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast \* model\.deckClosure\)\) : 0;/,
     'the share is the closed part of the deck (a deck with gaps casts its cells sharp)');
   assert.match(lightingSrc, /rigModel = model;\s*applyDeckPenumbra\(model\);/, 'every rig re-applies it');
-  assert.match(lightingSrc, /shadow\.radius = deckPenumbraRadius\(baseShadowRadius\[i\], deckShare, lightTune\('DECK_PENUMBRA', DECK_PENUMBRA_K\)\);/,
-    'a resized cascade keeps it');
+  // (2026-10-14, SKY shadows r2a: the deck widens the cascades' tents instead — shadowTent.ts, quality.ts shadowTentDeck)
+  assert.match(lightingSrc, /shadow\.radius = shadowTentBiasRadius\(tentFor\(i\)\);/, 'a resized cascade keeps its tent\'s bias radius');
+  assert.match(lightingSrc, /const tentFor = \(i: number\): number => \(deckShare >= 0\.5 \? tentDeckTable : tentTable\)\[Math\.min\(i, 3\)\];/,
+    'a closed deck (half the cut or more) takes the deck table');
 }
 console.log(`shadowStability.selftest: texel snapping, cascade-scaled biases on the live rig (worst ${worstTexels.toFixed(2)} texels), and weighted overlap pass\n  ${rows.join('\n  ')}`);
