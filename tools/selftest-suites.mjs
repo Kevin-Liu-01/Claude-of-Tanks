@@ -1674,6 +1674,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
+    'src/world/maps/utilityPoles.selftest.mjs', // 2026-10-14 props lane A (#21): each region's line (its pole, its timber, its conductors on its insulators)
     'src/world/wrecks.selftest.mjs',
     // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
     'src/world/maps/propFracture.selftest.mjs',
