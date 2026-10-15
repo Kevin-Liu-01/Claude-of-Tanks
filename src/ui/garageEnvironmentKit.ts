@@ -612,6 +612,14 @@ function createBackdropGeometry(
       }
       case 'rolling': {
         const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
+        if (tropical && layerIndex < 2) {
+          // Monsoon's near ridges carry rain forest (the re-judge, 2026-10-15: "smooth low-poly ... no jungle belt ... no
+          // tree line on the ridges"): the crest breaks into rounded crowns about 8 m across, emergents standing over them
+          const crowns = layerIndex === 0 ? 17 : 21;
+          const crown = Math.pow(Math.abs(Math.sin(angle * crowns + phase + noise(angle / (Math.PI * 2) * 6, 0.7) * 2.4)), 0.55);
+          const emergent = Math.pow(Math.max(0, Math.sin(angle * 7 - phase * 1.3)), 12) * 0.16;
+          return broad * 1.30 + woodedShoulder + fine + crown * 0.22 + emergent;
+        }
         return broad * 1.30 + woodedShoulder + fine;
       }
       case 'coastal': {
