@@ -264,7 +264,12 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
     }
     if (result.ok && result.pose) {
       applySeat(a, run, result.pose);
-      report.runs.push(seatReceipt(run.site, run.frame, run.source, 'reseated', result.measure));
+      const c0 = run.shape.box.getCenter(new THREE.Vector3());
+      const cm = Math.round(c0.clone().applyQuaternion(result.pose.quat).add(result.pose.pos)
+        .distanceTo(c0.clone().applyQuaternion(run.hint.quat).add(run.hint.pos)) * 1000) / 10;
+      const deg = Math.round(result.pose.quat.angleTo(run.hint.quat) * 1800 / Math.PI) / 10;
+      report.runs.push({ ...seatReceipt(run.site, run.frame, run.source, 'reseated', result.measure),
+        moved: { reason: result.hint.reason, cm, deg } });
     } else {
       removeRun(a, run);
       report.rejected.push({ site: run.site, frame: run.frame, source: run.source, reason: result.hint.reason ?? 'unseated' });

@@ -994,6 +994,8 @@ export interface SpareTrackSeatReceipt {
   seat: 'authored' | 'reseated' | 'decor';
   support: number; air: number; gapP90Cm: number; maxEmbedCm: number; clearCm: number | null; cutCm: number;
   sweepCm: number | null; exposure: number;
+  /** A re-seated run: why its authored seat failed, and how far the solver moved and turned it. */
+  moved?: { reason: string | null; cm: number; deg: number };
 }
 
 export function seatReceipt(site: string, frame: 'hull' | 'turret', source: SpareTrackSeatReceipt['source'],
