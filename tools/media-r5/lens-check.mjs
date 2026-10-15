@@ -25,9 +25,11 @@ export const FORE_ZONE = 0.03;
  *  second while the sightline test passed it, thin as it is): a cross, calvary, shrine, statue, monument, obelisk or
  *  grave in front of the hull counts toward the foreground's cover of it however low or crushable. */
 export const ROADSIDE_SHRINE = /cross|calvary|shrine|statue|monument|obelisk|grave/i;
-// a conductor counts across the frame's top where it is this many pixels across at 1080p or more (2026-10-14: at 2 px
-// the crane over s232's village counted the telephone line lying against the fields, which barely reads)
-const WIRE_TOP_PX = Number(process.env.WIRE_TOP_PX ?? 3);
+// a conductor counts across the frame's top where it draws this many pixels across at the filmed resolution, FILM_PX
+// high (the finals: 1080p films). (2026-10-14 the floor was 3 px, after the telephone line lying against s232's fields
+// barely read at 2; 2026-10-15, the coordinator after s229's review 6: the 380 kV line drew 1-3 px across the top of
+// every frame where the 3 px floor read it at 0.01 of the frame, so a conductor counts once it draws a pixel wide)
+const FILM_PX = Number(process.env.FILM_PX ?? 1080), WIRE_TOP_PX = Number(process.env.WIRE_TOP_PX ?? 1);
 /** A lens looking down more than this many degrees flattens a hull into its roof (composition wave c1). */
 export const STEEP_DEG = 30;
 
@@ -324,14 +326,14 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     }
     // the overhead wires (2026-10-14, the coordinator on the combat round's 224 review: s225 and s226 ended under a
     // telephone line): each conductor's polyline through the lens, cut at the near plane and clipped to the frame. A
-    // stretch reads as a line where it is a pixel or more across at 1080p (radius x 1080 / (depth x ty)); `wire` is the
+    // stretch reads as a line where it is a pixel or more across at FILM_PX (radius x FILM_PX / (depth x ty)); `wire` is the
     // longest single conductor reading 2 px or more across the frame's upper half, in frame widths, and `wireHero` the
     // kind of one reading at all that passes across the hull's visible box nearer the lens than the hull
     let wire = 0, wireKind = null, wireHero = null;
     const toLens = (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z]; return [d[0] * right[0] + d[1] * right[1] + d[2] * right[2], d[0] * up[0] + d[1] * up[1] + d[2] * up[2], d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2]]; };
     for (const w of model.wires ?? []) {
       const nx = Math.max(w.min[0], Math.min(cam.x, w.max[0])), ny = Math.max(w.min[1], Math.min(cam.y, w.max[1])), nz = Math.max(w.min[2], Math.min(cam.z, w.max[2]));
-      if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > w.r * 1080 / ty) continue;
+      if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > w.r * FILM_PX / ty) continue;
       let upper = 0;
       for (let i = 0; i + 1 < w.pts.length; i++) {
         let a = toLens(w.pts[i]), b = toLens(w.pts[i + 1]);
@@ -340,7 +342,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
           const f = (0.3 - a[2]) / (b[2] - a[2]), cut = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 0.3];
           if (a[2] <= 0.3) a = cut; else b = cut;
         }
-        const depth = (a[2] + b[2]) / 2, px = w.r * 1080 / (depth * ty);
+        const depth = (a[2] + b[2]) / 2, px = w.r * FILM_PX / (depth * ty);
         if (px < 1) continue;
         const s0 = [a[0] / a[2] / tx, a[1] / a[2] / ty], s1 = [b[0] / b[2] / tx, b[1] / b[2] / ty];
         const inFrame = clipSegment(s0, s1, -1, -1, 1, 1);
@@ -359,7 +361,9 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
   // inside: the share of samples with the lens inside a record (2026-10-08: the dolly zooms ran S12, S15 and S49's lenses
   // into rubble and walls for their last 0.2 s, and S30's through a longhouse, all under the 5 % blocked allowance; the
   // lens inside anything is never allowed)
-  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample };
+  // wiresUnbuilt: the dump strings a power line by the rule, not as built (wire-model.mjs; combat-check fails on it)
+  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample,
+    wiresUnbuilt: !!model.wiresUnbuilt };
 }
 
 /**

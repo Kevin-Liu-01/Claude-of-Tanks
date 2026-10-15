@@ -8,7 +8,8 @@
 //   insulator yoke of a tower (two crossarm pairs, the earth-wire peak) to the same yoke of the next, sagging span x
 //   0.04 as a parabola (the earth wire 0.8 of that), 0.055 m in radius (the earth wire 0.03). A dump with `pylons` (the
 //   scenery receipt, lab.mjs since 2026-10-14) gives the standing towers and the height they were built to, exactly;
-//   an older one gets the game's rule without the crowns: the authored height, raised until the lowest conductor in its
+//   an older one gets the game's rule without the crowns (powerWires without pylons; wiresOf refuses such a dump for a
+//   map with a power line, 2026-10-15): the authored height, raised until the lowest conductor in its
 //   sag clears the ground under the span by 12 m, at most 70 m (over a wood the true towers stand taller).
 // Pure: features and the map's source in, wires out ({ kind, r, pts: [[x, y, z], ...], min, max }).
 import { existsSync, readFileSync } from 'node:fs';
@@ -117,4 +118,17 @@ export function wiresOf(features, heightAt) {
   if (!features) return [];
   if (!cache.has(features)) cache.set(features, [...telephoneWires(features), ...powerWires(features.map, heightAt, 18, features.pylons ?? null)]);
   return cache.get(features);
+}
+
+const linesByMap = new Map();
+/**
+ * True for a dump whose map strings a power line but which holds no built towers (`pylons`, lab.mjs since 2026-10-14):
+ * its lines hang by the fallback rule, which put Frontier's 380 kV line at its authored 36 m where the towers stand 56 m
+ * (2026-10-15, the coordinator after s229's review 6: refresh the dump or fail). combat-check fails a take on such a
+ * dump; the builders still string the line by the rule.
+ */
+export function wiresUnbuilt(features) {
+  if (!features || features.pylons?.length) return false;
+  if (!linesByMap.has(features.map)) linesByMap.set(features.map, powerLinesOf(features.map).length > 0);
+  return linesByMap.get(features.map);
 }

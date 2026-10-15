@@ -25,7 +25,7 @@ import { SHOTS as SHOTS_DIR } from './paths.mjs';
 // fxCover / fxCoverMs / burstCap (owner 2026-10-14: "make sure tanks are still visible and its not just a ton of
 // explosions"; the coordinator: a nearer burst may cover a small share of a tank, beyond a flash of 0.2 s at most, and
 // the bursts burning at once are capped)
-const PASS = { together: 0.75, held: { 2: 2, 3: 2, 4: 3 }, heightShare: 0.05, clearM: 1.5, targetSight: 0.9, wireTop: Number(process.env.WIRE_TOP ?? 0.35),
+const PASS = { together: 0.75, hidden: Number(process.env.HIDDEN ?? 0.4), held: { 2: 2, 3: 2, 4: 3 }, heightShare: 0.05, clearM: 1.5, targetSight: 0.9, wireTop: Number(process.env.WIRE_TOP ?? 0.35),
   fxCover: Number(process.env.FX_COVER ?? 0.25), fxCoverMs: 200, burstCap: Number(process.env.BURST_CAP ?? 3) };
 const LOW_COVER_M = 1.2;
 
@@ -81,17 +81,23 @@ export function combatFrames(scene, model, { stepMs = 100, aspect = 16 / 9 } = {
     };
     const boxes = Object.entries(row.tanks).map(([name, q]) => ({ name, box: q.inFrame && q.seen && q.seen[2] > q.seen[0] && q.seen[3] > q.seen[1] ? q.seen : null, depth: q.viewDepth }));
     row.fx = fxCoverAt(fxBodies(fx, t, groundAt), boxes, { proj: proj3, tx, ty });
-    // the hero hidden by a nearer tank: the largest share of its visible box another hull's box covers
-    const h = row.tanks.hero;
-    row.heroBehind = 0;
-    if (h?.seen && h.seen[2] > h.seen[0] && h.seen[3] > h.seen[1]) {
-      const heroArea = (h.seen[2] - h.seen[0]) * (h.seen[3] - h.seen[1]);
-      for (const [name, o] of Object.entries(row.tanks)) {
-        if (name === 'hero' || !o.seen || o.depthM >= h.depthM) continue;
-        const ow = Math.min(o.seen[2], h.seen[2]) - Math.max(o.seen[0], h.seen[0]), oh = Math.min(o.seen[3], h.seen[3]) - Math.max(o.seen[1], h.seen[1]);
-        if (ow > 0 && oh > 0) row.heroBehind = Math.max(row.heroBehind, (ow * oh) / heroArea);
+    // every tank hidden by a nearer one (2026-10-15, s229's review 6: foe1 drove behind foe0 on the lens's line for 3.7 s
+    // of 5.2): per hull, the largest share of its visible box another hull's box nearer the lens covers; heroBehind is
+    // the hero's
+    row.hidden = {};
+    for (const [name, q] of Object.entries(row.tanks)) {
+      let worst = 0;
+      if (q.seen && q.seen[2] > q.seen[0] && q.seen[3] > q.seen[1]) {
+        const area = (q.seen[2] - q.seen[0]) * (q.seen[3] - q.seen[1]);
+        for (const [other, o] of Object.entries(row.tanks)) {
+          if (other === name || !o.seen || o.depthM >= q.depthM) continue;
+          const ow = Math.min(o.seen[2], q.seen[2]) - Math.max(o.seen[0], q.seen[0]), oh = Math.min(o.seen[3], q.seen[3]) - Math.max(o.seen[1], q.seen[1]);
+          if (ow > 0 && oh > 0) worst = Math.max(worst, (ow * oh) / area);
+        }
       }
+      row.hidden[name] = worst;
     }
+    row.heroBehind = row.hidden.hero ?? 0;
     rows.push(row);
   }
   return rows;
@@ -161,7 +167,12 @@ export function combatVerdict(scene, model, features = null) {
   const rows = combatFrames(scene, model), n = rows.length || 1, count = scene.actors.length;
   const at = (tMs) => rows.reduce((best, r) => (Math.abs(r.tMs - tMs) < Math.abs(best.tMs - tMs) ? r : best), rows[0]);
   const both = (r, a, b) => !!r && !!r.tanks[a]?.inFrame && !!r.tanks[b]?.inFrame;
-  const together = rows.filter((r) => both(r, 'hero', 'foe0')).length / n;
+  // together (2026-10-15, the coordinator after s229's review 6, where hero and foe0 in frame read 89 % and the film held
+  // the three together for 1.5 s of 5.2): every tank the take stages in frame and none hidden past PASS.hidden of its
+  // visible box by a nearer hull, for PASS.together of the take
+  const names = scene.actors.map((a) => a.name);
+  const together = rows.filter((r) => names.every((nm) => r.tanks[nm]?.inFrame && (r.hidden?.[nm] ?? 0) <= PASS.hidden)).length / n;
+  const pair = rows.filter((r) => both(r, 'hero', 'foe0')).length / n;
   const held = rows.reduce((s, r) => s + Object.values(r.tanks).filter((x) => x.inFrame).length, 0) / n;
   const mean = (name) => rows.reduce((s, r) => s + (r.tanks[name]?.share ?? 0), 0) / n;
   const nearest = Math.min(...rows.flatMap((r) => Object.values(r.tanks).map((x) => x.clear)));
@@ -170,13 +181,16 @@ export function combatVerdict(scene, model, features = null) {
   const lens = model ? lensReport(scene, model) : null, heroBlocked = lens ? lens.blocked : 0;
   const placement = model ? fightFaults(scene, model, rows, features) : [];
   const faults = [];
-  if (together < PASS.together) faults.push(`hero and foe0 together ${Math.round(together * 100)} %`);
+  if (together < PASS.together) faults.push(`every tank in frame and unhidden ${Math.round(together * 100)} % (hero and foe0 in frame ${Math.round(pair * 100)} %)`);
   for (const k of kos) if (!k.shown) faults.push(`${k.killer} on ${k.victim} at ${k.killMs} not both in frame`);
   if (held < (PASS.held[count] ?? 2) - 1e-9) faults.push(`holds ${held.toFixed(2)} of ${count}`);
   for (const name of ['hero', 'foe0']) if (mean(name) < PASS.heightShare) faults.push(`${name} ${(mean(name) * 100).toFixed(1)} % of the height`);
   if (nearest < PASS.clearM) faults.push(`lens ${nearest.toFixed(1)} m off a hull`);
   if (targetSight < PASS.targetSight) faults.push(`foe0 in sight ${Math.round(targetSight * 100)} %`);
   if (heroBlocked > 0.05) faults.push(`hero blocked ${Math.round(heroBlocked * 100)} %`);
+  // (2026-10-15, the coordinator after s229's review 6: a dump that lacks the built pylons fails rather than judge the
+  // lens against power lines hung by the rule)
+  if (lens?.wiresUnbuilt) faults.push(`the ${scene.map} dump lacks the built pylons: its power lines hang by the rule (re-dump it)`);
   if (lens?.inside) faults.push(`lens inside a record ${lens.inside} samples`);
   // a standing thing in front of the hero hiding a quarter of its visible box for 0.3 s or more, or a roadside shrine
   // hiding a twentieth of it or filling a tenth of the frame in front of it (lens-check's cover and shrine; the wayside
@@ -248,7 +262,7 @@ export function combatVerdict(scene, model, features = null) {
     + (wireMost > 0 ? `, wires up to ${Math.round(wireMost * 100)} % across the top` : '')
     + `, effects fill ${Math.round(fxFrame * 100)} % of the frame (${Math.round(fxFrameMost * 100)} % at most), ${burstsMost} bursts at once at most`;
   const heroFront = rows.reduce((sum, r) => sum + (r.tanks.hero?.front ?? 0), 0) / n;
-  return { ok: !faults.length, line, faults, rows, metrics: { together, held, count, hero: mean('hero'), foe0: mean('foe0'), nearest, targetSight, heroBlocked, heroFront,
+  return { ok: !faults.length, line, faults, rows, metrics: { together, pair, held, count, hero: mean('hero'), foe0: mean('foe0'), nearest, targetSight, heroBlocked, heroFront,
     fxFrame, fxFrameMost, burstsMost, fxRun } };
 }
 

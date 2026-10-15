@@ -5,7 +5,7 @@ import { COMBAT, COMBAT_TABLE, FLEET, OWNER_NINE, SHOTS, combatTake, siteScene }
 import { holdShot } from './setups.mjs';
 import { combatVerdict, knockouts } from './combat-check.mjs';
 import { worldModel } from './world-model.mjs';
-import { powerLinesOf, powerWires, telephoneWires } from './wire-model.mjs';
+import { powerLinesOf, powerWires, telephoneWires, wiresOf, wiresUnbuilt } from './wire-model.mjs';
 import { fxBodies, fxCoverAt } from './fx-cover.mjs';
 import { absoluteShots } from './lens-check.mjs';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
@@ -153,6 +153,27 @@ for (const shot of COMBAT) {
     assert.ok(!verdict.ok && verdict.faults.some((f) => /telephone wire/.test(f)), `s226 climbing through the wires fails (${verdict.faults.join('; ') || 'no fault'})`);
   }
 }
+// s229 as review 6 filmed it (2026-10-15: the fight 20 m back, foe1 24 m out and 9 m behind foe0, the race lens as keyed):
+// the film held the three together for 1.5 s of 5.2 and drew the 380 kV line across the top of every frame, where hero
+// and foe0 in frame read 100 % and the 3 px wire floor read the line at 0.01 of the frame. The coordinator's three fixes:
+// (a) every tank in frame and unhidden by a nearer hull, (b) a conductor counting once it draws a pixel at the filmed
+// resolution, (c) a take on a power-line map's dump without the built pylons failed
+{
+  const row = COMBAT_TABLE.find((r) => r[0] === 229);
+  const scene = siteScene(combatTake(row, { shift: [0, -20], turn: 0, foe1Out: 24, foe1Lead: -9, camSide: 0, camLift: 0 }));
+  const { model, features } = worldOf(scene.map);
+  if (model) {
+    const verdict = combatVerdict(scene, model, features), why = verdict.faults.join('; ') || 'no fault';
+    assert.ok(verdict.metrics.pair >= 0.75 && verdict.faults.some((f) => /every tank in frame and unhidden/.test(f)), `(a) s229 as review 6 filmed it: foe1 behind foe0 fails (${why})`);
+    assert.ok(verdict.faults.some((f) => /power line crosses 35 % of the frame's top/.test(f)), `(b) s229 as review 6 filmed it: the 380 kV line across the top fails (${why})`);
+    // (c) the same take on a Frontier dump without the built towers fails (its line hung by the rule), and a map that
+    // strings no power line needs none
+    const bare = { ...features, pylons: [] }, unbuilt = combatVerdict(scene, worldModel(bare), bare);
+    assert.ok(unbuilt.faults.some((f) => /lacks the built pylons/.test(f)), `(c) a Frontier dump without the built pylons fails (${unbuilt.faults.join('; ') || 'no fault'})`);
+    assert.ok(wiresOf(bare, (x, z) => model.heightAt(x, z)).some((w) => w.kind === 'power line'), '(c) the builders still string its line, by the rule');
+    assert.equal(wiresUnbuilt({ ...features, map: 'oasis', pylons: [] }), false, '(c) a map with no power line needs no pylons');
+  }
+}
 // the tanks in front of the fire (fx-cover.mjs, owner 2026-10-14): a straight-ahead lens at the origin (screen x = x/z,
 // y = y/z), a hull box 20 m off; a large burst at its peak 10 m off covers it, the same burst 30 m off is behind it, and a
 // tank's own knockout never covers it
@@ -167,4 +188,4 @@ for (const shot of COMBAT) {
   assert.equal(fxCoverAt(burst(10, 'foe0'), tank, view).cover.foe0.share, 0, "a tank's own knockout never covers it");
   assert.equal(fxCoverAt(burst(10), tank, view).bursts, 1, 'the burst in its fireball counts once');
 }
-console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown, the overhead wires strung and caught, the fire kept off the tanks`);
+console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown, the overhead wires strung and caught, review 6's s229 caught twice (foe1 hidden, the 380 kV line) and a take on a pylon-less dump failed, the fire kept off the tanks`);

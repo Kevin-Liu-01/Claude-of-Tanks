@@ -929,15 +929,23 @@ export const COMBAT_TABLE = [
     { geo: 'race', turn: -15, foe1Out: 14, foe1Lead: 4, camSide: 3, camLift: 5, durMs: 5200 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
     [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
+  // (2026-10-15, the stricter combat-check: the SEPv2 drove behind the SEPv3 on the race lens's line for 76 % of the take
+  // and the T-72B3M behind the T-90M for 58 %, all four in view and unhidden 24 %; tmp/combat-search2.mjs: the lens 5 m
+  // higher looks down past the near hulls, all four 97 %, a wire across the top at most 10 % of the frame)
   [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
-    [CAST.sepv3, CAST.sepv2], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', 1, ALL4, 6, [0, 8], { geo: 'race', turn: 0 }],
+    [CAST.sepv3, CAST.sepv2], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', 1, ALL4, 6, [0, 8], { geo: 'race', turn: 0, camLift: 5 }],
+  // (2026-10-15, the stricter combat-check: a conductor counting once it draws a pixel at 1080p, the village's telephone
+  // line crossed 54 % of the frame's top for 5.7 s from the high lens; no lens, side or turn near the set cleared it
+  // (tmp/combat-search2.mjs 232w, 0 of 288). The fight 21 m across and 6 m along does: all four 100 %, no wire)
   [232, 'village-2v2', 'A Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 in the Verdant village', S.vVillage, 'day', '2v2',
-    [CAST.leo2a6m, CAST.puma], [CAST.t90a, CAST.t72b3], 44, 3, 'high', -1, ALL4, 2, [3, 3]],
+    [CAST.leo2a6m, CAST.puma], [CAST.t90a, CAST.t72b3], 44, 3, 'high', -1, ALL4, 2, [24, 9]],
   // (off the fjord: the owner banned its broken-stratocumulus sky on every map, 2026-10-13. Verdant's road set has a
   // house beside the enemy line that filled the frame from either side, and the Frontier farm stands in woods; the
   // orchard village's sky is Verdant's fair-weather cumulus)
+  // (2026-10-15, the stricter combat-check: over the T-90's shoulder it covered the CV90 for 52 % of the take, all four in
+  // view and unhidden 48 %; tmp/combat-search2.mjs: the lens 2 m to its side clears it, all four 100 %, no wire)
   [233, 'orchard-2v2', 'A Strv 122 and a CV90 fight a T-90 and a T-72B3 through the orchard village in the morning', S.orVillage, 'morning', '2v2',
-    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0], { camEnd: { lift: 11 } }],
+    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0], { camEnd: { lift: 11 }, camSide: 2 }],
 ];
 /** One combat take from its table row; `over` replaces any of { lens, k, hold, speed, D, lat, shift, geo, turn }
  *  (combat-search.mjs). `shift` ([lat, along] m in the set's frame, the row's 15th field) moves the whole fight off the

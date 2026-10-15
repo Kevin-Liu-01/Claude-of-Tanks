@@ -6,7 +6,7 @@
 // (src/game/studioCrush.ts, the same plan the Studio makes), the slope and water under a hull, and whether a lens's
 // sightline crosses a record or a canopy. Pure: features in, answers out.
 import { createObstacleGrid, pushHullFromObstacle } from '../../src/world/collision.ts';
-import { wiresOf } from './wire-model.mjs';
+import { wiresOf, wiresUnbuilt } from './wire-model.mjs';
 
 /** The overrun speed of a crushable record without its own (state.ts CRUSH_MIN_MPS). */
 export const CRUSH_MIN_MPS = 6 / 3.6;
@@ -116,7 +116,9 @@ export function worldModel(features) {
   };
   const model = { records, query, heightAt, supportAt, slopeAt, wetAt, hullContacts, crushes, shrubs, queryShrubs, size: features.size,
     // the overhead wires (wire-model.mjs: the telephone line from the dump's poles, the map's high-voltage lines)
-    get wires() { return wiresOf(features, heightAt); } };
+    get wires() { return wiresOf(features, heightAt); },
+    // a power-line map's dump without the built towers (wire-model.mjs wiresUnbuilt): its lines hang by the rule
+    get wiresUnbuilt() { return wiresUnbuilt(features); } };
   models.set(features, model);
   return model;
 }
