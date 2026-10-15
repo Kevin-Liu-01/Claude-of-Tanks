@@ -21,6 +21,7 @@ import { KIT, type TankBuilderPort } from './tankFactoryCore.ts';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs.
 import { FITTINGS, muzzleBore } from './profiles/kit.ts';
+import { addMbt70Rh202 } from './profiles/mbt70Rh202.ts';
 import { buildM1A1BareHull } from './profiles/abrams.ts';
 import { foldedShoulderReturn } from './profiles/foldedShoulderReturn.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
@@ -1688,14 +1689,8 @@ function buildMBT70(P: Modern2BuilderPort) {
   P.addEquipment('turret', cylY(0.24, 0.27, 0.18, seg), 0.62, TH + 0.25, -0.72);
   P.addEquipment('turret', box(0.42, 0.28, 0.42), 0.62, TH + 0.46, -0.66);
   P.add('turretGlass', box(0.24, 0.13, 0.025), 0.62, TH + 0.48, -0.43);
-  {
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'm2', tone: 'dark', scale: 0.82, ammo: true,
-      elev: 0.02, rotation: [0, 0, 0], seed: 70,
-    });
-    mg.position.set(0.62, TH + 0.61, -0.66);
-    P.turretG.add(mg);
-  }
+  // 2026-10-14 (owner markup; coordinator ruling): the KPz 70's 20 mm Rh 202 remote station, not a .50-calibre M2
+  addMbt70Rh202(P, TH + 0.60);
   // Seat the gunner sight through a thin gasket directly on the roof.  Its
   // previous center left a visible 65 mm air gap beneath the marked housing.
   P.addEquipment('turretDark', box(0.30, 0.025, 0.30), -0.64,

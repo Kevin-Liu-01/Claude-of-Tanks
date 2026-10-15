@@ -49,6 +49,15 @@ const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
 // not the heavy mount's 10.3 (fieldEquipment.selftest's 360-degree sweep: at 6.9 degrees and 320 degrees of traverse
 // the muzzle entered a plate by 32 mm; 4.6 degrees keeps the 8 mm clearance everywhere).
 const griffinRoofM2:AuxiliaryWeaponProfile={...heavy,depressionRad:.08};
+// 2026-10-14 (owner markup on the MBT-70's M2; coordinator ruling: the KPz 70's calibre-true 20 mm Rh 202 station):
+// a 20 mm between the heavy MG and the 30 mm cannon in every game number. The Rh 202 fires about 1,000 rounds a
+// minute (0.10 s here, 5-round bursts) and its high mount elevates further than a roof MG.
+const rh202:AuxiliaryWeaponProfile={
+  shell:{type:'AP',name:'20×139 mm DM63 APDS-T',caliberMm:20,velocityMps:1100,
+    pen100Mm:45,pen1000Mm:28,pen2000Mm:12,dmg:14,moduleDmg:6},
+  rangeM:320,shotIntervalS:.10,burstRounds:5,burstPauseS:1.6,
+  yawRateRadS:1.4,pitchRateRadS:.9,depressionRad:.14,elevationRad:.9,
+};
 
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
@@ -75,6 +84,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t14_x:b32Rifle,t14:ubr6,
   vt4a1:type54,ztz100_x:type54,
   griffin50_x:griffinRoofM2,
+  mbt70:rh202,
 };
 
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {
