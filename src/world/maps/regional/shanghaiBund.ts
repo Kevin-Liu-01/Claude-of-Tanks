@@ -15,7 +15,7 @@
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
 // Collision: every landmark's structure is a few prisms (its podium, its tiers, its tower); the facades are dressing.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { emitRoof, roofGeometry, type RoofSpec } from './house.ts';
+import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -43,20 +43,32 @@ interface FacadeStyle {
   dark: number;
 }
 
-/** Dress one face from y0 to y1 in floors of fh with a facade style (dressing only). */
+/**
+ * Dress one face from y0 to y1 in floors of fh with a facade style (dressing only): the piers proud, the spandrel beams
+ * across each floor between the windows set back behind them, the glazing set back behind the beams (props census #9,
+ * the standard's frame: "columns and spandrel beams proud, infill set back"; the panes and the spandrel panels were laid
+ * flat on the face).
+ */
 function deco(sink: PartSink, face: Face, y0: number, y1: number, fh: number, st: FacadeStyle, look: () => number, inset = 0.35): void {
   const w = face.width - 2 * inset, floors = Math.floor((y1 - y0) / fh + 1e-6);
   if (w < 1 || floors < 1) return;
   const n = Math.max(1, Math.round(w / st.pitch)), pitch = w / n, gw = Math.max(0.3, pitch - st.pier);
+  const beamOut = st.pierOut * 0.7, beam = st.spandrel ? { colour: st.spandrel } : st.pierShade ? { shade: st.pierShade } : {};
+  const beamBucket = st.spandrel ? 'structureMetal' as const : st.pierBucket;
   for (let f = 0; f < floors; f++) {
     const y = y0 + f * fh;
     for (let k = 0; k < n; k++) {
       const u = -w / 2 + pitch * (k + 0.5), r = look();
       const bucket = r < st.dark ? 'dark' : r < st.dark + st.lit ? 'curtain' : 'glass';
       facePanel(sink, bucket, face, u, y + fh * 0.6, 0.012, gw, fh * 0.6, { decor: true, window: face.out });
-      if (st.spandrel) facePanel(sink, 'structureMetal', face, u, y + fh * 0.15, 0.014, gw, fh * 0.26, { decor: true, colour: st.spandrel });
     }
+    // the floor's spandrel beam under its windows (over the ones below), the piers standing proud of it
+    const b0 = Math.max(y0, y - fh * 0.1), b1 = y + fh * 0.3;
+    faceBox(sink, beamBucket, face, 0, (b0 + b1) / 2, beamOut / 2, w, b1 - b0, beamOut, { decor: true, ...beam });
   }
+  // the head beam over the top floor's windows
+  const top = y0 + floors * fh;
+  faceBox(sink, beamBucket, face, 0, top - fh * 0.05, beamOut / 2, w, fh * 0.1, beamOut, { decor: true, ...beam });
   const span = floors * fh, opts = { decor: true, fineSides: true, ...(st.pierShade ? { shade: st.pierShade } : {}) };
   for (let k = 0; k <= n; k++) faceBox(sink, st.pierBucket, face, -w / 2 + pitch * k, y0 + span / 2, st.pierOut / 2, st.pier, span, st.pierOut, opts);
 }
@@ -66,22 +78,25 @@ const tierFaces = (x0: number, x1: number, z0: number, z1: number): Face[] => pl
 
 /** The ground storey's shopfronts and doors along a podium face (dressing). */
 function podiumFront(sink: PartSink, face: Face, h: number, look: () => number, pierBucket: RegionalBucket, pierShade = 1): void {
+  // (props census #9) each shopfront set back between its piers under its bronze fascia, the piers and the fascia 0.22 m
+  // proud of the glass (they were 16 and 9 cm: the glass read laid on the wall)
   const w = face.width - 0.8, n = Math.max(1, Math.round(w / 3.2)), pitch = w / n;
   for (let k = 0; k < n; k++) {
     const u = -w / 2 + pitch * (k + 0.5), gh = Math.min(h - 1.0, 3.6);
     facePanel(sink, look() < 0.25 ? 'curtain' : 'glass', face, u, 0.3 + gh / 2, 0.012, pitch - 0.9, gh, { decor: true, window: face.out });
-    faceBox(sink, 'structureMetal', face, u, 0.3 + gh + 0.2, 0.05, pitch - 0.7, 0.3, 0.08, { colour: BRONZE, decor: true, fine: true });
+    faceBox(sink, 'structureMetal', face, u, 0.3 + gh + 0.2, 0.11, pitch - 0.7, 0.3, 0.22, { colour: BRONZE, decor: true, fine: true });
   }
-  for (let k = 0; k <= n; k++) faceBox(sink, pierBucket, face, -w / 2 + pitch * k, h / 2, 0.08, 0.7, h, 0.16, { decor: true, fineSides: true, shade: pierShade });
+  for (let k = 0; k <= n; k++) faceBox(sink, pierBucket, face, -w / 2 + pitch * k, h / 2, 0.12, 0.7, h, 0.24, { decor: true, fineSides: true, shade: pierShade });
 }
 
 /**
  * A face's war: shell pocks over its lower storeys, a breach, sandbags along its foot (dressing: a phone draws it as the
  * desktop does and keeps none of it, PartSink.dressing).
  */
-function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile: boolean, heavy = false): void {
+function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile: boolean, heavy = false,
+  keep: ReadonlyArray<{ u0: number; u1: number; y0: number; y1: number }> = []): void {
   sink.dressing(mobile, () => {
-    pocks(sink, face, -face.width / 2 + 0.4, face.width / 2 - 0.4, 0.4, Math.min(h, 12), (heavy ? 24 : 6) + Math.floor(look() * 10), look);
+    pocks(sink, face, -face.width / 2 + 0.4, face.width / 2 - 0.4, 0.4, Math.min(h, 12), (heavy ? 24 : 6) + Math.floor(look() * 10), look, keep);
     if (heavy && look() < 0.6) breach(sink, face, (look() - 0.5) * face.width * 0.6, 4 + look() * Math.max(1, h - 6), 0.8 + look() * 0.6, look);
   });
 }
@@ -154,10 +169,11 @@ const bankOfChina: RegionalBuilder = (ctx) => {
     const tfaces = tierFaces(-tx, tx, -tz, tz);
     for (const face of tfaces) {
       deco(sink, face, wingTop + 0.3, towerTop - 2.4, fh, gold, look, 0.4);
-      // the band of Chinese lattice under the roof
-      facePanel(sink, 'structureMetal', face, 0, towerTop - 1.2, 0.03, face.width - 0.6, 1.6, { colour: rgb(0x5a4a33), decor: true });
+      // the band of Chinese lattice under the roof (props census #9: a frieze 14 cm proud, its lattice on it; it was a
+      // panel laid on the wall)
+      faceBox(sink, 'structureMetal', face, 0, towerTop - 1.2, 0.07, face.width - 0.6, 1.6, 0.14, { colour: rgb(0x5a4a33), decor: true });
       if (!mobile) for (let k = 0; k < Math.round(face.width / 0.9); k++) {
-        faceBox(sink, 'plaster2', face, -face.width / 2 + 0.45 + k * 0.9, towerTop - 1.2, 0.06, 0.1, 1.5, 0.06, { decor: true, fine: true });
+        faceBox(sink, 'plaster2', face, -face.width / 2 + 0.45 + k * 0.9, towerTop - 1.2, 0.17, 0.1, 1.5, 0.06, { decor: true, fine: true });
       }
     }
     // the roof: a pyramid of green glazed tile on its eaves, the finial
@@ -183,7 +199,10 @@ const customsHouse: RegionalBuilder = (ctx) => {
     const granite: FacadeStyle = { pitch: 2.0, pier: 0.65, pierBucket: 'plaster3', pierOut: 0.2, spandrel: rgb(0x8c867b), lit: 0.22, dark: 0.06 };
     // the block with its front's middle recessed behind the columns
     const rec = Math.min(2.2, D * 0.12), pw = Math.min(W * 0.42, 11);
-    sink.span('plaster3', -W / 2, -0.4, -D / 2, W / 2, blockTop, D / 2 - rec);
+    // (props census #9) the recess's ground-storey glazing cut through the block's front, the glass at the back of the cut
+    // (it was laid on the block)
+    const grev = 0.34;
+    holedBox(sink, 'plaster3', -W / 2, -D / 2, W / 2, D / 2 - rec, -0.4, blockTop, { front: [{ u0: -(pw - 1.2) / 2, u1: (pw - 1.2) / 2, y0: 0.8, y1: 6.0 }] }, 0.4, grev);
     sink.span('plaster3', -W / 2, -0.4, D / 2 - rec, -pw / 2, blockTop, D / 2);
     sink.span('plaster3', pw / 2, -0.4, D / 2 - rec, W / 2, blockTop, D / 2);
     sink.span('plaster3', -W / 2 - 0.12, blockTop - 0.55, -D / 2 - 0.12, W / 2 + 0.12, blockTop, D / 2 + 0.12, SHADOWED);
@@ -196,7 +215,7 @@ const customsHouse: RegionalBuilder = (ctx) => {
     }
     const recess: Face = { origin: [0, 0, D / 2 - rec], u: [1, 0, 0], out: [0, 0, 1], width: pw };
     deco(sink, recess, 10.6, blockTop - 0.7, fh, granite, look, 0.3);
-    facePanel(sink, 'glass', recess, 0, 3.4, 0.02, pw - 1.2, 5.2, { decor: true, window: recess.out });
+    facePanel(sink, 'glass', recess, 0, 3.4, -grev + 0.02, pw - 1.2, 5.2, { decor: true, window: recess.out });
     const cols = 4;
     for (let k = 0; k < cols; k++) {
       const x = -pw / 2 + 0.9 + k * (pw - 1.8) / (cols - 1);
@@ -210,8 +229,9 @@ const customsHouse: RegionalBuilder = (ctx) => {
     for (const face of tierFaces(-tx, tx, tzc - tz, tzc + tz)) {
       deco(sink, face, blockTop + 0.4, clockY - 2.0, fh, granite, look, 0.4);
       faceBox(sink, 'structureMetal', face, 0, clockY, 0.04, Math.min(face.width * 0.62, 4), Math.min(face.width * 0.62, 4), 0.06, { colour: WHITE_TRIM, decor: true });
-      faceBox(sink, 'structureMetal', face, 0, clockY + 0.45, 0.09, 0.08, 0.95, 0.03, { colour: IRON, decor: true, fine: true });
-      faceBox(sink, 'structureMetal', face, 0.3, clockY, 0.09, 0.62, 0.08, 0.03, { colour: IRON, decor: true, fine: true });
+      // (the hands 5 cm wide: at 8 cm they read as dark plates on the dial)
+      faceBox(sink, 'structureMetal', face, 0, clockY + 0.45, 0.09, 0.05, 0.95, 0.03, { colour: IRON, decor: true, fine: true });
+      faceBox(sink, 'structureMetal', face, 0.3, clockY, 0.09, 0.62, 0.05, 0.03, { colour: IRON, decor: true, fine: true });
     }
     const step1 = shaftTop + Math.max(1, (H - shaftTop) * 0.35), step2 = step1 + Math.max(1, (H - shaftTop) * 0.25);
     sink.span('plaster3', -tx * 0.8, shaftTop, tzc - tz * 0.8, tx * 0.8, step1, tzc + tz * 0.8);
@@ -233,29 +253,78 @@ const bundBank: RegionalBuilder = (ctx) => {
     const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60);
     const kind = choose(rng(), ['dome', 'portico', 'turret'] as const);
     const ground = 5.0, sh = 4.0, top = ground + 2 * sh, rec = kind === 'portico' ? Math.min(1.6, D * 0.1) : 0, pw = Math.min(W * 0.5, 14);
-    sink.span('plaster3', -W / 2, -0.4, -D / 2, W / 2, top, D / 2 - rec);
-    if (rec > 0) {
-      sink.span('plaster3', -W / 2, -0.4, D / 2 - rec, -pw / 2, top, D / 2);
-      sink.span('plaster3', pw / 2, -0.4, D / 2 - rec, W / 2, top, D / 2);
-    }
-    // the cornice and the attic over it
-    sink.span('plaster3', -W / 2 - 0.15, top - 0.5, -D / 2 - 0.15, W / 2 + 0.15, top, D / 2 + 0.15, SHADOWED);
-    sink.span('plaster3', -W / 2 + 0.3, top, -D / 2 + 0.3, W / 2 - 0.3, top + 1.1, D / 2 - 0.3);
-    const faces = tierFaces(-W / 2, W / 2, -D / 2, D / 2);
+    // (props census #9) the block, its portico's wings and its turrets built as walls with their windows and doors cut
+    // through them, the units in the reveals (the windows, the doors and the recess's glazing were laid on solid spans)
+    const rev = 0.3, faces = tierFaces(-W / 2, W / 2, -D / 2, D / 2);
+    const holes: HoleRect[][] = faces.map(() => []);
+    const units: Array<() => void> = [];
+    const keystones: Array<[Face, number]> = [];
+    const doorW = 2.4;
     faces.forEach((face, fi) => {
-      // the rusticated ground storey's arched windows and the courses between, the piano nobile's tall windows
+      // the rusticated ground storey's arched windows, the piano nobile's tall windows over them
       const n = Math.max(1, Math.round((face.width - 1.2) / 3.0)), pitch = (face.width - 1.2) / n;
       for (let k = 0; k < n; k++) {
         const u = -face.width / 2 + 0.6 + pitch * (k + 0.5);
         if (fi === 0 && rec > 0 && Math.abs(u) < pw / 2 + 0.2) continue;
-        facePanel(sink, look() < 0.2 ? 'curtain' : 'glass', face, u, 2.3, 0.012, 1.5, 2.8, { decor: true, window: face.out });
-        faceBox(sink, 'plaster3', face, u, 3.85, 0.07, 0.5, 0.42, 0.14, { decor: true, fineSides: true });
-        for (let st = 0; st < 2; st++) windowUnit(sink, face, u, ground + st * sh + 0.7, 1.3, st === 0 ? 2.5 : 2.0, BUND_WINDOW, look, 0.25);
+        const pane = look() < 0.2 ? 'curtain' as const : 'glass' as const;
+        // (the bank's doors take the front's middle bay's ground storey)
+        if (!(fi === 0 && rec === 0 && Math.abs(u) < doorW / 2 + 0.85)) {
+          holes[fi].push({ u0: u - 0.75, u1: u + 0.75, y0: 0.9, y1: 3.7 });
+          units.push(() => facePanel(sink, pane, face, u, 2.3, -rev + 0.016, 1.5, 2.8, { decor: true, window: face.out }));
+          keystones.push([face, u]);
+        }
+        for (let st = 0; st < 2; st++) {
+          const y = ground + st * sh + 0.7, h = st === 0 ? 2.5 : 2.0;
+          holes[fi].push({ u0: u - 0.65, u1: u + 0.65, y0: y, y1: y + h });
+          units.push(() => windowUnit(sink, face, u, y, 1.3, h, BUND_WINDOW, look, 0.25));
+        }
       }
-      if (!mobile) for (const y of [1.25, 2.5, 3.75]) faceBox(sink, 'dark', face, 0, y, 0.008, face.width - 0.2, 0.05, 0.01, { decor: true, fine: true });
-      faceBox(sink, 'plaster3', face, 0, ground, 0.08, face.width, 0.28, 0.16, { decor: true, fineSides: true });
     });
     const front = faces[0];
+    if (rec === 0) holes[0].push({ u0: -doorW / 2, u1: doorW / 2, y0: 0.2, y1: 3.8 });
+    // the block: its front the recess's back where the portico stands (its windows outside the recess are the wings')
+    const recHoles: HoleRect[] = [];
+    if (rec > 0) {
+      recHoles.push({ u0: -(pw - 1.6) / 2, u1: (pw - 1.6) / 2, y0: 0.8, y1: 4.4 });
+      for (let st = 0; st < 2; st++) for (let k = 0; k < 5; k++) recHoles.push({ u0: -pw / 2 + 1.4 + k * (pw - 2.8) / 4 - 0.55, u1: -pw / 2 + 1.4 + k * (pw - 2.8) / 4 + 0.55, y0: ground + st * sh + 0.7, y1: ground + st * sh + 2.9 });
+    }
+    holedBox(sink, 'plaster3', -W / 2, -D / 2, W / 2, D / 2 - rec, -0.4, top, { front: rec > 0 ? recHoles : holes[0], right: holes[1], back: holes[2], left: holes[3] }, 0.4, rev);
+    if (rec > 0) {
+      // the portico's wings: their fronts holed, their cores back to the block
+      for (const side of [-1, 1]) {
+        const x0 = side < 0 ? -W / 2 : pw / 2, x1 = side < 0 ? -pw / 2 : W / 2, cx = (x0 + x1) / 2, ww = x1 - x0;
+        const wf: Face = { origin: [cx, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: ww };
+        sink.span('plaster3', x0, -0.4, D / 2 - rec, x1, top, D / 2 - 0.4);
+        holedPolygon(sink, 'plaster3', wf, [[-ww / 2, -0.4], [ww / 2, -0.4], [ww / 2, top], [-ww / 2, top]],
+          holes[0].filter((h) => (h.u0 + h.u1) / 2 * side > 0).map((h) => ({ ...h, u0: h.u0 - cx, u1: h.u1 - cx })), 0.4, rev, {}, [], DAMP_EDGE_BREAKS);
+      }
+      // the portico's floor over the recess's ground storey, the columns standing on it
+      sink.span('plaster3', -pw / 2, ground - 0.3, D / 2 - rec, pw / 2, ground, D / 2);
+    }
+    sink.recess = rev;
+    try { for (const unit of units) unit(); } finally { sink.recess = 0; }
+    for (const [face, u] of keystones) faceBox(sink, 'plaster3', face, u, 3.92, 0.07, 0.5, 0.42, 0.14, { decor: true, fineSides: true });
+    // the cornice and the attic over it
+    sink.span('plaster3', -W / 2 - 0.15, top - 0.5, -D / 2 - 0.15, W / 2 + 0.15, top, D / 2 + 0.15, SHADOWED);
+    sink.span('plaster3', -W / 2 + 0.3, top, -D / 2 + 0.3, W / 2 - 0.3, top + 1.1, D / 2 - 0.3);
+    faces.forEach((face, fi) => {
+      // the rustication's joints, broken at the openings (and at the portico's mouth); the ground storey's cornice
+      const gaps = [...(fi === 0 && rec > 0 ? [[-pw / 2, pw / 2]] : []), ...holes[fi].map((h): [number, number] => [h.u0, h.u1])].sort((p, q) => p[0] - q[0]);
+      if (!mobile) for (const y of [1.25, 2.5, 3.75]) {
+        let cur = -face.width / 2 + 0.1;
+        const runs: Array<[number, number]> = [];
+        for (const [g0, g1] of gaps) {
+          const hit = fi === 0 && rec > 0 && g0 === -pw / 2 ? true : holes[fi].some((h) => h.u0 === g0 && h.y0 < y + 0.03 && h.y1 > y - 0.03);
+          if (!hit) continue;
+          if (g0 - 0.02 > cur) runs.push([cur, g0 - 0.02]);
+          cur = Math.max(cur, g1 + 0.02);
+        }
+        if (face.width / 2 - 0.1 > cur) runs.push([cur, face.width / 2 - 0.1]);
+        // (a joint's 1 cm lids along a 30 m run were slivers: the front and its ends only)
+        for (const [r0, r1] of runs) if (r1 - r0 > 0.1) faceBox(sink, 'dark', face, (r0 + r1) / 2, y, 0.008, r1 - r0, 0.05, 0.01, { decor: true, fine: true }, 'caps');
+      }
+      faceBox(sink, 'plaster3', face, 0, ground, 0.08, face.width, 0.28, 0.16, { decor: true, fineSides: true });
+    });
     if (kind === 'portico') {
       const cols = 6;
       for (let k = 0; k < cols; k++) {
@@ -265,14 +334,23 @@ const bundBank: RegionalBuilder = (ctx) => {
       // the pediment over the columns, from 1.4 m back to the front's plane (counter-clockwise seen from the street)
       sink.prism('plaster3', [facePoint(front, -pw / 2, top, -1.4), facePoint(front, pw / 2, top, -1.4), facePoint(front, 0, top + 2.4, -1.4)], front.out, 1.4, SHADOWED);
       const recess: Face = { origin: [0, 0, D / 2 - rec], u: [1, 0, 0], out: [0, 0, 1], width: pw };
-      facePanel(sink, 'glass', recess, 0, 2.6, 0.02, pw - 1.6, 3.6, { decor: true, window: recess.out });
-      for (let st = 0; st < 2; st++) for (let k = 0; k < 5; k++) windowUnit(sink, recess, -pw / 2 + 1.4 + k * (pw - 2.8) / 4, ground + st * sh + 0.7, 1.1, 2.2, BUND_WINDOW, look, 0.25);
+      facePanel(sink, 'glass', recess, 0, 2.6, -rev + 0.016, pw - 1.6, 3.6, { decor: true, window: recess.out });
+      sink.recess = rev;
+      try {
+        for (let st = 0; st < 2; st++) for (let k = 0; k < 5; k++) windowUnit(sink, recess, -pw / 2 + 1.4 + k * (pw - 2.8) / 4, ground + st * sh + 0.7, 1.1, 2.2, BUND_WINDOW, look, 0.25);
+      } finally { sink.recess = 0; }
     } else if (kind === 'dome') {
-      // the drum and its windows, the dome in three courses, the lantern
+      // the drum and its windows (each set back in its surround, proud of the drum: they were panes laid on it), the
+      // dome in three courses, the lantern
       const r = Math.min(W, D) * 0.19, y0 = top + 1.1;
       sink.cylinder('plaster3', [0, y0, 0], 'y', 3.2, r, 16, SHADOWED);
       const drum = (a: number): Face => ({ origin: [Math.sin(a) * r, 0, Math.cos(a) * r], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 });
-      for (let k = 0; k < 8; k++) facePanel(sink, 'glass', drum((k / 8) * Math.PI * 2 + Math.PI / 8), 0, y0 + 1.6, 0.02, 0.8, 1.8, DEC);
+      for (let k = 0; k < 8; k++) {
+        const df = drum((k / 8) * Math.PI * 2 + Math.PI / 8);
+        facePanel(sink, 'glass', df, 0, y0 + 1.6, 0.02, 0.8, 1.8, DEC);
+        for (const s2 of [-1, 1]) faceBox(sink, 'plaster3', df, s2 * 0.49, y0 + 1.6, 0.09, 0.18, 2.16, 0.18, { decor: true, fineSides: true });
+        for (const s2 of [-1, 1]) faceBox(sink, 'plaster3', df, 0, y0 + 1.6 + s2 * 0.99, 0.09, 0.8, 0.18, 0.18, { decor: true }, 'ends');
+      }
       const copper = { colour: COPPER_GREEN, ...SHADOWED };
       sink.cylinder('structureMetal', [0, y0 + 3.2, 0], 'y', r * 0.38, r * 1.04, 16, copper, r * 0.9);
       sink.cylinder('structureMetal', [0, y0 + 3.2 + r * 0.38, 0], 'y', r * 0.34, r * 0.9, 16, copper, r * 0.62);
@@ -280,23 +358,25 @@ const bundBank: RegionalBuilder = (ctx) => {
       sink.cylinder('plaster3', [0, y0 + 3.2 + r, 0], 'y', 1.6, Math.max(0.35, r * 0.16), 8, SHADOWED);
       sink.cylinder('structureMetal', [0, y0 + 4.8 + r, 0], 'y', 0.9, Math.max(0.4, r * 0.18), 8, copper, 0.05);
     } else {
-      // the corner turrets on the front, their copper caps
+      // the corner turrets on the front, their windows cut through their walls, their copper caps
       const tw = Math.min(4.2, W * 0.16, D * 0.22);
       for (const side of [-1, 1]) {
         const x0 = side < 0 ? -W / 2 : W / 2 - tw, z0 = D / 2 - tw;
-        sink.span('plaster3', x0, top, z0, x0 + tw, top + 4.4, D / 2);
-        for (const face of tierFaces(x0, x0 + tw, z0, D / 2)) windowUnit(sink, face, 0, top + 1.6, 1.0, 1.8, BUND_WINDOW, look, 0.2);
+        const th: HoleRect[] = [{ u0: -0.5, u1: 0.5, y0: top + 1.6, y1: top + 3.4 }];
+        holedBox(sink, 'plaster3', x0, z0, x0 + tw, D / 2, top, top + 4.4, { front: th, right: th, back: th, left: th }, 0.3, 0.24);
+        sink.recess = 0.24;
+        try { for (const face of tierFaces(x0, x0 + tw, z0, D / 2)) windowUnit(sink, face, 0, top + 1.6, 1.0, 1.8, BUND_WINDOW, look, 0.2); } finally { sink.recess = 0; }
         pyramid(sink, 'structureMetal', x0 + tw / 2, z0 + tw / 2, tw / 2 + 0.2, tw / 2 + 0.2, top + 4.4, top + 7.8, { colour: COPPER_GREEN, ...SHADOWED });
       }
     }
-    // the bank's doors and its name over them, sandbags along the front
+    // the bank's doors (bronze, at the back of their opening) and its name over them, sandbags along the front
     if (kind !== 'portico') {
-      facePanel(sink, 'dark', front, 0, 2.0, 0.02, 2.4, 3.6, DEC);
+      faceBox(sink, 'structureMetal', front, 0, 2.0, -rev + 0.03, doorW, 3.6, 0.04, { colour: shade(BRONZE, 0.7), decor: true });
       faceBox(sink, 'structureMetal', front, 0, 4.25, 0.1, 4.2, 0.45, 0.04, { colour: BRONZE, decor: true });
       faceBox(sink, 'structureMetal', front, 0, 4.25, 0.13, 3.2, 0.2, 0.01, { colour: GILT, decor: true, fine: true });
     }
     if (look() < 0.6) sandbags(sink, front, 0, 0, Math.min(W * 0.4, 8), 1.4, look);
-    scars(sink, front, ground, look, mobile);
+    scars(sink, front, ground, look, mobile, false, [...holes[0], ...(rec > 0 ? [{ u0: -pw / 2, u1: pw / 2, y0: -1, y1: top }] : [])]);
   });
   return sink.finish();
 };
