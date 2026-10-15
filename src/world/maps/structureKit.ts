@@ -2600,8 +2600,10 @@ function makeServiceGarageCraft(rng: Rng): THREE.BufferGeometry {
  * gravel deck, the rooftop unit with its louvres and vents, downpipes at the corners, the wall unit, the lamp, the steps
  * and the condenser on its pad at the back.
  */
-function makeSecurityOfficeCraft(rng: Rng): THREE.BufferGeometry {
-  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.4, r = rng;
+function makeSecurityOfficeCraft(rng: Rng, style?: Palette): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = style ?? PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.4, r = rng;
+  // (a kit's office keeps within the family's footprint and its 0.4 m margin: its porch 1.1 m deep, its unit lower)
+  const porch = style ? 1.1 : 1.5, unit = style ? 0.7 : 0.8;
   const conc = 0x8a8780, pane = 0x58737b, frame = 0x2f3437, seam = 0x474e52, gravel = 0x6f7275;
   const pl = 0.45;
   colored(out, mbox(w + 0.3, pl, d + 0.3).translate(0, pl / 2, 0), conc, r, 0.04);
@@ -2618,7 +2620,7 @@ function makeSecurityOfficeCraft(rng: Rng): THREE.BufferGeometry {
     colored(out, mbox(0.36, 0.08, d + 0.34).translate(s * (w / 2 - 0.05), h + 0.59, 0), 0xb9bab4, r, 0.02);
   }
   colored(out, mslab(w - 0.1, 0.08, d - 0.1).translate(0, h + 0.04, 0), gravel, r, 0.06);
-  colored(out, mbox(1.6, 0.8, 1.2).translate(1.4, h + 0.48, -1.6), p[1], r, 0.03);
+  colored(out, mbox(1.6, unit, 1.2).translate(1.4, h + 0.08 + unit / 2, -1.6), p[1], r, 0.03);
   for (let k = 0; k < 5; k++) colored(out, mbox(1.4, 0.05, 0.04).translate(1.4, h + 0.2 + k * 0.13, -2.22), p[2], r, 0.02);
   for (const [x, z] of [[-1.8, 1.4], [-2.4, -2.6]] as const) colored(out, cylinder(0.11, 0.11, 0.7, 8).translate(x, h + 0.39, z), p[2], r, 0.02);
   // the windows: two at the front (the counter at the right one), two at the back with bars, two each side under awnings
@@ -2638,10 +2640,10 @@ function makeSecurityOfficeCraft(rng: Rng): THREE.BufferGeometry {
   colored(out, markWorldAperture(box(1.2, 0.3, 0.04), [0, 0, 1]).translate(0, pl + 2.53, d / 2 + 0.03), pane, r, 0.02);
   colored(out, mbox(1.44, 0.1, 0.14).translate(0, pl + 2.73, d / 2 + 0.07), frame, r, 0.02);
   colored(out, mbox(0.05, 0.16, 0.04).translate(0.45, pl + 1.05, d / 2 + 0.08), 0xb3b8b9, r, 0.02);
-  colored(out, pitchSkillionRoof(mroof(3.0, 0.12, 1.5), 'z', 1, 0.07).translate(0, 3.42, d / 2 + 0.75), p[1], r, 0.03);
-  for (const x of [-1.3, 1.3]) colored(out, mbox(0.12, 3.36, 0.12).translate(x, 1.68, d / 2 + 1.38), p[2], r, 0.02);
-  colored(out, mbox(3.04, 0.22, 0.05).translate(0, 3.33, d / 2 + 1.5), p[2], r, 0.02);
-  colored(out, mbox(1.8, 0.36, 0.04).translate(0, 3.6, d / 2 + 1.5), 0x2f4a5c, r, 0.02);
+  colored(out, pitchSkillionRoof(mroof(3.0, 0.12, porch), 'z', 1, 0.07).translate(0, 3.42, d / 2 + porch / 2), p[1], r, 0.03);
+  for (const x of [-1.3, 1.3]) colored(out, mbox(0.12, 3.36, 0.12).translate(x, 1.68, d / 2 + porch - 0.12), p[2], r, 0.02);
+  colored(out, mbox(3.04, 0.22, 0.05).translate(0, 3.33, d / 2 + porch), p[2], r, 0.02);
+  colored(out, mbox(1.8, 0.36, 0.04).translate(0, 3.6, d / 2 + porch), 0x2f4a5c, r, 0.02);
   colored(out, mbox(0.14, 0.2, 0.18).translate(0.95, 2.6, d / 2 + 0.09), 0xd8cf9a, r, 0.02);
   colored(out, mbox(1.6, pl, 0.7).translate(0, pl / 2, d / 2 + 0.5), conc, r, 0.04);
   // the downpipes at the corners from the parapet's scuppers, the wall unit, the condenser on its pad at the back
@@ -2940,10 +2942,10 @@ const RELAY_CONCRETE = 0x83847f, RELAY_ROOF = 0x70777b, RELAY_ROOF_RIB = 0x7d848
  * along), so no placement moves; the destructible lane supersedes the hut with a fracture-ready one later, and every
  * piece's triangles stay one run for it (userData.fracture).
  */
-function makeRelayStation(rng: Rng): THREE.BufferGeometry {
+function makeRelayStation(rng: Rng, style?: Palette): THREE.BufferGeometry {
   const paint = seatedStream(rng, RELAY_STREAM_DRAWS);
   const out: THREE.BufferGeometry[] = [], pieces: string[] = [];
-  const p = PAL.urbanSteel, w = RELAY_W, d = RELAY_D, h = RELAY_H, y0 = RELAY_PLINTH_TOP;
+  const p = style ?? PAL.urbanSteel, w = RELAY_W, d = RELAY_D, h = RELAY_H, y0 = RELAY_PLINTH_TOP;
   const put = (geo: THREE.BufferGeometry, color: number, piece: string, jitter = 0.04): THREE.BufferGeometry => {
     colored(out, geo, color, paint, jitter);
     pieces.push(piece);
@@ -2951,7 +2953,9 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
   };
   // the plinth: concrete from 0.6 m under the ground to a curb, flush with the walls' planes (its UVs drawn small, so the
   // sheet tile's ribs blur into a cast surface's mottle)
-  put(scaleUV(box(w, 0.6 + y0, d), 0.08, 0.08).translate(0, (y0 - 0.6) / 2, 0), RELAY_CONCRETE, 'hut-plinth', 0.05);
+  // (a kit's relay keeps within the family's band, its plinth sunk 4 cm; regionalArchitecture)
+  const sunk = style ? 0.04 : 0.6, hood = style ? 0.6 : 0.85;
+  put(scaleUV(box(w, sunk + y0, d), 0.08, 0.08).translate(0, (y0 - sunk) / 2, 0), RELAY_CONCRETE, 'hut-plinth', 0.05);
   // the wall core behind the sheets, and the trapezoidal sheets with their crests on the walls' planes
   put(mbox(w - 0.06, h - y0, d - 0.06).translate(0, y0 + (h - y0) / 2, 0), p[0], 'hut-walls');
   const sheetBase = new THREE.Color(), tone = new THREE.Color();
@@ -3051,9 +3055,9 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
     put(f(1.3, 0.07, 0.24, -1.2, 1.97, 0.12), RELAY_CONCRETE, 'hut-windows', 0.02);
     put(f(0.025, 0.8, 0.025, -1.2, 2.5, 0.12), 0x2a2d30, 'hut-windows', 0.02);
   }
-  put(pitchSkillionRoof(mroof(5.6, 0.1, 0.85), 'z', 1, 0.16).translate(0, 3.1, d / 2 + 0.425), p[1], 'hut-hood', 0.03);
-  put(box(5.64, 0.18, 0.05).translate(0, 2.98, d / 2 + 0.86), p[2], 'hut-hood', 0.02);
-  for (const x of [-2.6, 2.55]) put(bar([x, 2.6, d / 2 + 0.01], [x, 3.02, d / 2 + 0.78], 0.06, 0.06), p[2], 'hut-hood', 0.02);
+  put(pitchSkillionRoof(mroof(5.6, 0.1, hood), 'z', 1, 0.16).translate(0, 3.1, d / 2 + hood / 2), p[1], 'hut-hood', 0.03);
+  put(box(5.64, 0.18, 0.05).translate(0, style ? 3.1 - Math.tan(0.16) * hood / 2 - 0.08 : 2.98, d / 2 + hood + 0.01), p[2], 'hut-hood', 0.02);
+  for (const x of [-2.6, 2.55]) put(bar([x, 2.6, d / 2 + 0.01], [x, 3.02, d / 2 + hood - 0.07], 0.06, 0.06), p[2], 'hut-hood', 0.02);
   // the warning plate and the meter cabinet on the front by the entry box
   put(box(0.5, 0.36, 0.02).translate(-2.75, 2.2, d / 2 + 0.01), 0xd8b02a, 'hut-hood', 0.02);
   put(box(0.6, 0.9, 0.3).translate(-2.7, y0 + 0.45, d / 2 + 0.19), 0x4f5559, 'hut-hood', 0.02);
@@ -3076,8 +3080,10 @@ function makeRelayStationBroken(rng: Rng): THREE.BufferGeometry {
   return geometry;
 }
 
-function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
-  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6;
+function makeCornerOffice(rng: Rng, style?: Palette): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = style ?? PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6;
+  // (a kit's office keeps within the family's footprint and its 0.4 m margin: its canopy 0.85 m deep)
+  const canopy = style ? 0.85 : 1.25;
   colored(out, mbox(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, mslab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
   for (const y of [2.25, 4.75]) {
@@ -3090,10 +3096,10 @@ function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
     colored(out, mbox(0.18, 0.18, d + 0.10).translate(w / 2 + 0.04, y - 0.76, 0), p[1], _detailRng);
   }
   colored(out, mbox(1.5, 2.55, 0.12).translate(-2.55, 1.28, d / 2 + 0.06), p[2], rng);
-  colored(out, pitchSkillionRoof(mroof(3.2, 0.14, 1.25), 'z', 1, 0.07)
-    .translate(-2.55, 3.10, d / 2 + 0.53), p[1], rng);
+  colored(out, pitchSkillionRoof(mroof(3.2, 0.14, canopy), 'z', 1, 0.07)
+    .translate(-2.55, 3.10, d / 2 + canopy / 2 - 0.09), p[1], rng);
   for (const x of [-3.85, -1.25]) {
-    colored(out, mbox(0.13, 3.0, 0.13).translate(x, 1.5, d / 2 + 1.04), p[2], rng);
+    colored(out, mbox(0.13, 3.0, 0.13).translate(x, 1.5, d / 2 + canopy - 0.21), p[2], rng);
   }
   colored(out, mbox(2.5, 0.74, 2.2).translate(1.65, h + 0.49, -1.5), p[1], rng);
   // (the looks lane, 2026-10-13: the block's members, painted without a draw) the back and blind side's windows, the
@@ -3761,6 +3767,32 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
   const TENT_CRAFT: Readonly<Record<string, (rng: Rng, style: TentStyle) => THREE.BufferGeometry>> = {
     commandtent: makeCommandTentCraft, fieldhospital: makeFieldHospitalCraft, deserttent: makeDesertTentCraft,
   };
+  // (props #1) the offices and the relay hut in their kit's walls: the corner office and the relay draw as their family
+  // does (the same builder, its walls repainted), the security office spends its family's build first
+  const URBAN_STYLES: Readonly<Record<string, Palette>> = {
+    // Franconia's 1984 prefab beige, Kyushu's cream panels, the Saar's brick, Sarajevo's plaster, Glen Canyon's block,
+    // Shanghai's grey brick, Hostomel's silicate brick, the arctic station's red
+    franconian: [0xc4bfae, 0x9a9890, 0x4a4a48], kyushu: [0xc9c7b8, 0x8a8c8e, 0x5a5c5e], saar: [0x7a4232, 0x9a9890, 0x3a3a38],
+    sarajevo: [0xc8bba2, 0x8a8478, 0x5a4a3a], glencanyon: [0xb4ad9f, 0x8a8c88, 0x5a5650], shanghai: [0x6e6c68, 0x8a8a84, 0x3a3a38],
+    hostomel: [0xcfcac0, 0x8a8c88, 0x4a4a46], arctic: [0xa23a2c, 0xd8d8d0, 0x3a3a3a],
+  };
+  const URBAN_KINDS: Readonly<Record<string, readonly string[]>> = {
+    franconian: ['securityoffice', 'corneroffice', 'relaystation'], kyushu: ['securityoffice', 'relaystation'],
+    saar: ['securityoffice', 'corneroffice', 'relaystation'], sarajevo: ['securityoffice', 'corneroffice', 'relaystation'],
+    glencanyon: ['securityoffice', 'relaystation'], shanghai: ['corneroffice', 'relaystation'], hostomel: ['relaystation'],
+    arctic: ['relaystation'],
+  };
+  for (const [kit, kinds] of Object.entries(URBAN_KINDS)) {
+    const style = URBAN_STYLES[kit];
+    for (const kind of kinds) {
+      const meta = kind === 'relaystation'
+        ? variant(kind, style, (rng) => makeRelayStation(rng, style), 'metal', makeRelayStationBroken)
+        : kind === 'corneroffice'
+          ? variant(kind, style, (rng) => makeCornerOffice(rng, style), 'metal')
+          : variant(kind, style, (rng) => { B.securityoffice.build(rng).dispose(); return makeSecurityOfficeCraft(kindStream(`securityoffice@${kit}`), style); }, 'metal');
+      table[kit] = { ...(table[kit] ?? {}), [kind]: meta };
+    }
+  }
   // the Quonsets in their kit's sheet and ends, each keeping the arch's own wreck
   for (const [kit, style] of Object.entries(QUONSET_STYLES)) {
     if (HUT_KITS_PENDING.has(kit)) continue;
