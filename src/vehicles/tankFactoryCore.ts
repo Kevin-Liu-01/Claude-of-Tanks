@@ -124,6 +124,8 @@ export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abram
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
+import { seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -6551,19 +6553,26 @@ function spareTrackStrip(
   const steel = bucket.startsWith('turret') ? 'turretTrack' : 'hullTrack';
   const detail = bucket.startsWith('turret') ? 'turretDetail' : 'hullDetail';
   const runDepth = (links - 1) * 0.165 + 0.15;
+  // VEH-13 (2026-10-15): the strip is one registered rigid run; the seat pass (spareTrackSeatPass.ts) measures it on
+  // the finished armour and re-seats or drops it there.
+  const run = spareTrackRunTag({ site: 'strip', source: 'strip', rotation: [rx, ry, 0] });
+  const tagged = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+    geometry.userData.spareTrackRun = run;
+    return geometry;
+  };
   for (const localX of [-0.16, 0.16]) {
-    P.addEquipment(detail, xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0),
+    P.addEquipment(detail, tagged(xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0)),
       x, y, z, rx, ry, 0);
     for (const localZ of [-runDepth * 0.4, runDepth * 0.4]) {
-      P.addEquipment(detail, xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ),
+      P.addEquipment(detail, tagged(xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ)),
         x, y, z, rx, ry, 0);
     }
   }
   for (let k = 0; k < links; k++) {
     const localZ = (k - (links - 1) / 2) * 0.165;
-    P.addEquipment(steel, xform(box(0.5, 0.045, 0.15), 0, 0, localZ),
+    P.addEquipment(steel, tagged(xform(box(0.5, 0.045, 0.15), 0, 0, localZ)),
       x, y, z, rx, ry, 0);
-    P.addEquipment(steel, xform(box(0.44, 0.06, 0.05), 0, 0.02, localZ),
+    P.addEquipment(steel, tagged(xform(box(0.44, 0.06, 0.05), 0, 0.02, localZ)),
       x, y, z, rx, ry, 0);
   }
 }
@@ -6815,6 +6824,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // grey primer beside every camouflaged plate on the X studies. The buckets
   // keep their detail LOD, non-armor hit role and disposal ownership.
   hullDetail: ['hullG', 'hull'], hullDark: ['hullG', 'dark'],
+  // VEH-13 (2026-10-15): a main gun fixed in the hull (the Strv 103 family's printed L74) draws into its own buckets,
+  // same materials, armour role and LOD as `hull`/`hullDark` had: the spare-link seat solver and its receipt read it as
+  // the gun (the Strv 103A's decor run had seated on its barrel's crown facet as if on armour).
+  hullGun: ['hullG', 'hull'], hullGunDark: ['hullG', 'dark'],
   // Fixed painted hull fittings retain their detail LOD and non-armor role.
   hullPaintedDetail: ['hullG', 'hull'],
   // Fixed painted fender skins retain silhouette coverage, not detail LOD.
@@ -6905,7 +6918,7 @@ const CAMO_BUCKETS = new Set([
   'hullPaintedDetail', 'turretPaintedDetail',
   'hullOpenLattice', 'turretOpenLattice',
   'hullFixedPaintedBodywork',
-  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment', 'hullGun',
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
@@ -6927,7 +6940,7 @@ export function bucketMaterialKey(bucket: string): TankMaterialKey | null {
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set([
-  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR',
+  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR', 'hullGun',
   'hullFixedPaintedBodywork',
   'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
   'gunMountCanvasSkin',
@@ -7714,6 +7727,21 @@ function* createTankOwnedSteps(
     }
     smokeTubesForFittingPaint.clear();
   }
+  // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
+  // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is
+  // re-seated from outside nearby or removed, and both are recorded.
+  const rigByKey: Record<string, THREE.Object3D | undefined> = {
+    hullG, turretG, recoilG, gunG, barrel0G: barrelGs[0], barrel1G: barrelGs[1],
+  };
+  const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
+    .map(({ part }) => part));
+  const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
+  const spareTrackSeats = seatAuthoredSpareTracks({
+    spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart,
+    bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
+  });
+  root.userData.spareTrack = spareTrackSeats.runs;
+  root.userData.spareTrackRejected = spareTrackSeats.rejected;
   const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
@@ -8080,8 +8108,22 @@ function* createTankOwnedSteps(
       });
     }
   };
+  // VEH-13: the merged mesh keeps the vertex spans of parts whose seat role differs from their bucket's (grilles, ERA,
+  // launchers, registered spare links), so the decor's spare-link seats read them after the merge (decorations.ts).
+  const seatRoleRangesFor = (bucket: string, list: THREE.BufferGeometry[]): Array<{ start: number; count: number; role: SeatRole }> => {
+    const ranges: Array<{ start: number; count: number; role: SeatRole }> = [];
+    const base = seatRoleForBucket(bucket);
+    let vertexOffset = 0;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const role = seatRoleForPart(bucket, part, isEraPart(part));
+      if (role !== base && count) ranges.push({ start: vertexOffset, count, role });
+      vertexOffset += count;
+    }
+    return ranges;
+  };
   const combatHitboxRoleForBucket = (bucket: string): string => {
-    if (bucket === 'hull' || bucket === 'turret'
+    if (bucket === 'hull' || bucket === 'turret' || bucket === 'hullGun'
         || bucket === 'hullCupola' || bucket === 'turretCupola'
         || bucket === 'hullHatch' || bucket === 'turretHatch') return 'armor';
     if (bucket === 'hullExternalArmor' || bucket === 'turretExternalArmor') return 'externalArmor';
@@ -8148,10 +8190,11 @@ function* createTankOwnedSteps(
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
-      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
+      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
     recordAuthoredRanges(merged, authoredRanges);
+    const seatRanges = seatRoleRangesFor(bucket, list);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -8170,6 +8213,7 @@ function* createTankOwnedSteps(
     }
     const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
     tagMergedBucket(bucket, mesh);
+    if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>

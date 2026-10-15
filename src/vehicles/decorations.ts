@@ -77,6 +77,8 @@ import {
 } from './machineGunGeometry.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { decorSeatEnv, decorSeatMeasure } from './spareTrackSeatPass.ts';
+import { refineSeat, seatReceipt, type SeatEnv, type SeatMeasure, type SeatRunShape, type SpareTrackSeatReceipt } from './spareTrackSeat.ts';
 
 type Rng = () => number;
 type GeometryScale = number | readonly [number, number, number];
@@ -1147,6 +1149,15 @@ export function roofMountPosition(
 ): THREE.Vector3 {
   const minY = partsBBox(parts).min.y;
   return hit.p.clone().addScaledVector(hit.n.clone().normalize(), -embedM - minY);
+}
+
+/** The decor spare-link carrier's feet are set this far into the host (the glacis and turret-side slots). */
+const TRACK_EMBED_M = 0.006;
+/** A decor spare-link run's seat check at one slot station (VEH-13 S1, attachTankDecorationsSteps). */
+interface TrackSeater {
+  seat(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): { pos: THREE.Vector3; rot: THREE.Euler } | null;
+  committed(slot: string): void;
+  failed(): void;
 }
 
 function surfaceMountPosition(
@@ -4815,6 +4826,9 @@ export function* attachTankDecorationsSteps(
       return [c.r * 0.5 * 0.8 * 0.62, c.g * 0.56 * 0.78 * 0.62, c.b * 0.44 * 0.7 * 0.62];
     })();
     const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
+    // VEH-13: every decor geometry committed so far, per frame (frame coordinates), for the spare-link seat soups
+    const committedGeos: Record<DecorFrame, THREE.BufferGeometry[]> = { hull: [], turret: [] };
+    let seatEnvAt: ((frame: DecorFrame, region: THREE.Box3) => SeatEnv) | null = null;
     let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
     // round 4: whip feet, roof-gun mounts, hatches and cupolas of each frame, and the decor equipment seated so far
@@ -5217,6 +5231,7 @@ export function* attachTankDecorationsSteps(
         const map = (functional || RESIDENT_FAMILIES.has(p.mat) ? functionalBuckets : buckets)[frame];
         if (!map.has(p.mat)) map.set(p.mat, []);
         map.get(p.mat)!.push(p.geo);
+        committedGeos[frame].push(p.geo);
         resources.ownGeometry(p.geo);
       }
       if (parts.coarse) {
@@ -5378,6 +5393,51 @@ export function* attachTankDecorationsSteps(
       return null;
     };
 
+    // ---- VEH-13 S1 (2026-10-15): the decor's spare-link runs through the one seat solver (spareTrackSeat.ts) -------
+    // A slot still proposes its stations in its old order and poses each the old way, so a run that passed keeps its
+    // exact seat; the solver now judges each station (host, support, clearance, motion, exposure) before commit()'s
+    // own guards, tries the station's plane-fit pose when the single-ray pose fails on geometry, and the slot then walks
+    // its extended stations. R8: a frame that already carries an authored run takes no generic decor run.
+    function trackSeater(frame: DecorFrame, parts: DecorPartList, region: THREE.Box3): TrackSeater | false {
+      const receipts = (root.userData.spareTrack ??= []) as SpareTrackSeatReceipt[];
+      if (receipts.some((r) => r.frame === frame && r.source !== 'decor')) {
+        summary.skipped.push(['tracks', 'authored-run']);
+        return false;
+      }
+      seatEnvAt ??= decorSeatEnv(spec, hullG, turretG, false, committedGeos);
+      const env: SeatEnv = seatEnvAt(frame, region);
+      const box = partsBBox(parts);
+      let back = Infinity;
+      for (const p of parts) {
+        if (p.mat !== 'steel') continue;
+        if (!p.geo.boundingBox) p.geo.computeBoundingBox();
+        back = Math.min(back, p.geo.boundingBox!.min.z);
+      }
+      const shape: SeatRunShape = { box, axis: 2, embedM: TRACK_EMBED_M,
+        standoffM: Math.max(0, (Number.isFinite(back) ? back : box.min.z) - box.min.z - TRACK_EMBED_M) };
+      let last: SeatMeasure | null = null;
+      let firstMiss: string | null = null;
+      const miss = (why: string): null => { firstMiss ??= why; return null; };
+      return {
+        seat(_candidate, pos, rot) {
+          const quat = new THREE.Quaternion().setFromEuler(rot);
+          let m = decorSeatMeasure(env, shape, { pos, quat });
+          if (m.ok) { last = m; return { pos, rot }; }
+          if (!/^(support|gap|air|sunk|cut)/.test(m.reason ?? '')) return miss(`seat:${m.reason}`);
+          const refined = refineSeat(env, shape, { pos, quat });
+          if (!refined) return miss(`seat:${m.reason}`);
+          m = decorSeatMeasure(env, shape, refined);
+          if (!m.ok) return miss(`seat-fit:${m.reason}`);
+          last = m;
+          return { pos: refined.pos, rot: new THREE.Euler().setFromQuaternion(refined.quat, 'XYZ') };
+        },
+        committed(slot) {
+          if (last) receipts.push(seatReceipt(`decor:tracks:${slot}`, frame, 'decor', 'decor', last));
+        },
+        failed() { if (firstMiss) summary.skipped.push(['tracks', firstMiss]); },
+      };
+    }
+
     const SLOTS: Record<string, SlotPlacer> = {
       fleetCargo(args, parts, name) {
         // Fleet-wide cargo gets an authored preference followed by a few
@@ -5524,16 +5584,28 @@ export function* attachTankDecorationsSteps(
       glacis(args, parts, name) {
         const x = (args.side || 0) * W * (casemate ? 0.22 : 0.16);
         const embedM = 0.006;
+        const track = name === 'tracks' ? trackSeater('hull', parts, new THREE.Box3(
+          new THREE.Vector3(-W * 0.4, 0, L * 0.2), new THREE.Vector3(W * 0.4, H + 0.3, L / 2 + 0.6))) : null;
+        if (track === false) { disposePartList(parts); return false; }
+        const seatAt = (h: SurfaceHit, slot: 'glacis' | 'glacis-bow'): boolean => {
+          const candidate = clonePartList(parts);
+          let pos = surfaceMountPosition(candidate, h, embedM), rot = surfaceMountEuler(h.n);
+          if (track) {
+            const seat = track.seat(candidate, pos, rot);
+            if (!seat) { disposePartList(candidate); return false; }
+            ({ pos, rot } = seat);
+          }
+          if (!commit(name, candidate, 'hull', pos, rot, placedHull,
+            { attachment: { slot, supportPoint: h.p, supportNormal: h.n, embedM } })) return false;
+          track?.committed(slot);
+          disposePartList(parts);
+          return true;
+        };
         for (const zf of [0.36, 0.42, 0.3]) {
           const z = L * zf;
           const h = deckProbe(x, z);
           if (!h || h.n.y < 0.3 || h.n.y > 0.985 || Math.abs(h.n.x) > 0.4) continue;
-          const candidate = clonePartList(parts);
-          if (commit(name, candidate, 'hull', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedHull,
-            { attachment: { slot: 'glacis', supportPoint: h.p, supportNormal: h.n, embedM } })) {
-            disposePartList(parts);
-            return true;
-          }
+          if (seatAt(h, 'glacis')) return true;
         }
         // near-vertical bow plates (Tiger driver plate): hang the run flat
         // against the plate instead of lying on it, LOW (under the bow bore)
@@ -5541,12 +5613,20 @@ export function* attachTankDecorationsSteps(
           const y = H * yf;
           const h = hullP.zface(x, y, -1, L / 2 + 1.6);
           if (!h || h.n.z < 0.5) continue;
-          const candidate = clonePartList(parts);
-          if (commit(name, candidate, 'hull', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedHull,
-            { attachment: { slot: 'glacis-bow', supportPoint: h.p, supportNormal: h.n, embedM } })) {
-            disposePartList(parts);
-            return true;
+          if (seatAt(h, 'glacis-bow')) return true;
+        }
+        // VEH-13: the spare links' extended glacis stations (off the centreline gun, across the plate), any slope up to
+        // flat (the old 0.985 filter let the Strv 103A's 10 degree barrel facet through and kept its real 9 degree
+        // glacis out); the solver judges each.
+        if (track) {
+          for (const xf of [0, 0.16, -0.16, 0.22, -0.22, 0.30, -0.30]) {
+            for (const zf of [0.30, 0.36, 0.42]) {
+              const h = deckProbe(xf * W, L * zf);
+              if (!h || h.n.y < 0.3 || Math.abs(h.n.x) > 0.4) continue;
+              if (seatAt(h, 'glacis')) return true;
+            }
           }
+          track.failed();
         }
         disposePartList(parts);
         return false;
@@ -6013,16 +6093,42 @@ export function* attachTankDecorationsSteps(
       turretSidePlate(args, parts, name) {
         const side = args.side ?? 1;
         const embedM = 0.006;
-        for (const z of [0.05, -0.25]) {
-          const y = Math.max(0.2, pivotTopY() * 0.45);
+        const top = pivotTopY();
+        const track = name === 'tracks' ? trackSeater('turret', parts, new THREE.Box3(
+          new THREE.Vector3(side > 0 ? 0 : -(W / 2 + 0.4), -0.3, -1.5), new THREE.Vector3(side > 0 ? W / 2 + 0.4 : 0, top + 0.3, 1.0)))
+          : null;
+        if (track === false) { disposePartList(parts); return false; }
+        const seatAt = (y: number, z: number): boolean => {
           const h = turP.side(y, z, side, W / 2 + 1);
-          if (!h || Math.abs(h.n.x) < 0.6) continue;
+          if (!h || Math.abs(h.n.x) < 0.6) return false;
           const candidate = clonePartList(parts);
-          if (commit(name, candidate, 'turret', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedTurret,
-            { attachment: { slot: 'turret-side', supportPoint: h.p, supportNormal: h.n, embedM } })) {
-            disposePartList(parts);
-            return true;
+          let pos = surfaceMountPosition(candidate, h, embedM), rot = surfaceMountEuler(h.n);
+          if (track) {
+            const seat = track.seat(candidate, pos, rot);
+            if (!seat) { disposePartList(candidate); return false; }
+            ({ pos, rot } = seat);
           }
+          if (!commit(name, candidate, 'turret', pos, rot, placedTurret,
+            { attachment: { slot: 'turret-side', supportPoint: h.p, supportNormal: h.n, embedM } })) return false;
+          track?.committed('turret-side');
+          disposePartList(parts);
+          return true;
+        };
+        for (const z of [0.05, -0.25]) {
+          if (seatAt(Math.max(0.2, top * 0.45), z)) return true;
+        }
+        // VEH-13: the spare links' extended side stations, front to rear in 0.1 m steps over a band round 0.45 of the
+        // roof height; the solver judges each (support, launchers and bins, the gun's pitch, the hull under the
+        // traverse).
+        if (track) {
+          for (const yf of [0.45, 0.38, 0.52, 0.31, 0.59]) {
+            for (let k = 0; k <= 16; k++) {
+              const z = 0.55 - k * 0.1;
+              if (yf === 0.45 && (Math.abs(z - 0.05) < 1e-6 || Math.abs(z + 0.25) < 1e-6)) continue;
+              if (seatAt(Math.max(0.2, top * yf), z)) return true;
+            }
+          }
+          track.failed();
         }
         disposePartList(parts);
         return false;

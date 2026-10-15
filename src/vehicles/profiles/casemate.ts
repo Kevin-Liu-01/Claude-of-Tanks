@@ -35,6 +35,7 @@ import {
   MeshStandardMaterial,
 } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
+import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 
 interface LoftStation {
   readonly z: number;
@@ -173,13 +174,14 @@ function towHook(P: CasemateBuilderPort, x: number, y: number, z: number): void 
   P.add('hullDark', cylX(0.02, 0.12, 6), x, y + 0.015, z + 0.03);
 }
 
-// Fixed gun tube in HULL buckets. Sections front->rear from the muzzle.
+// Fixed gun tube in hull-frame buckets. Sections front->rear from the muzzle.
 // axisY/axisZ locate the bore in world; secs = [{z0, z1, r, dark?}] in world z.
+// VEH-13: its own `hullGun` buckets (same materials and armour role as `hull`) for the spare-link seat solver.
 function hullGun(P: CasemateBuilderPort, axisY: number, secs: readonly GunSection[]): void {
   const { cylZ } = KIT;
   for (const s of secs) {
     const len = s.z0 - s.z1;
-    P.add(s.dark ? 'hullDark' : 'hull', cylZ(s.r, len, P.q ? 18 : 12, s.r2), 0 + (s.x || 0), axisY + (s.dy || 0), s.z1 + len / 2);
+    P.add(s.dark ? 'hullGunDark' : 'hullGun', cylZ(s.r, len, P.q ? 18 : 12, s.r2), 0 + (s.x || 0), axisY + (s.dy || 0), s.z1 + len / 2);
   }
 }
 
@@ -262,22 +264,28 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   }
   // glacis louvre banks (radiators live ON the glacis): dark wells + ribs
   const glY = (z: number): number => 1.76 - (z - 0.85) * (0.66 / 1.76);        // glacis surface line
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.82, 0.025, 1.18), s * 0.45, 1.46, 1.69, -0.36, 0, 0);
-  }
-  for (let i = 0; i < 6; i++) {
-    const z = 1.10 + i * 0.22;
+  withSeatRole(P, 'grille', (P) => {
     for (const s of [-1, 1]) {
-      P.add('hullDark', box(0.76, 0.02, 0.16), s * 0.45, glY(z) + 0.012, z, -0.36, 0, 0);
-      P.add('hullDetail', box(0.80, 0.028, 0.05), s * 0.45, glY(z) + 0.035, z + 0.06, -0.36, 0, 0);
+      P.add('hullDark', box(0.82, 0.025, 1.18), s * 0.45, 1.46, 1.69, -0.36, 0, 0);
     }
-  }
+    for (let i = 0; i < 6; i++) {
+      const z = 1.10 + i * 0.22;
+      for (const s of [-1, 1]) {
+        P.add('hullDark', box(0.76, 0.02, 0.16), s * 0.45, glY(z) + 0.012, z, -0.36, 0, 0);
+        P.add('hullDetail', box(0.80, 0.028, 0.05), s * 0.45, glY(z) + 0.035, z + 0.06, -0.36, 0, 0);
+      }
+    }
+  });
   P.add('hullDetail', box(1.80, 0.05, 0.05), 0, glY(2.45) + 0.02, 2.45, -0.36, 0, 0); // splash rail
   // Spare-link rows and central clamp structure are prominent on the folded
-  // dozer/glacis face in the source.  Each link is planted into the sloped
-  // plate rather than carried as a floating decorative strip.
-  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
-    P.add('hullTrack', box(0.25, 0.055, 0.17), s * (0.34 + i * 0.27), 0.99, 2.79, -0.32, 0, 0);
+  // dozer/glacis face in the source.  VEH-13 (2026-10-15): the links were sunk two-thirds into the nose loft; each
+  // side's course of three is one registered run (spareTrackSeat.ts), seated by the solver on the nose plate.
+  for (const s of [-1, 1]) {
+    withSpareTrackRun(P, { site: `strv103b-dozer-${s < 0 ? 'L' : 'R'}`, source: 'adhoc', rotation: [-0.32, 0, 0] }, (P) => {
+      for (let i = 0; i < 3; i++) {
+        P.add('hullTrack', box(0.25, 0.055, 0.17), s * (0.34 + i * 0.27), 0.99, 2.79, -0.32, 0, 0);
+      }
+    });
   }
   P.add('hullDark', KIT.cylX(0.06, 3.06, 12), 0, 0.58, 3.25);                 // full-width dozer crossbar
   };
@@ -297,7 +305,7 @@ export function buildStrv103(P: CasemateBuilderPort): void {
     { z0: 3.30, z1: 2.20, r: 0.092 },                                          // mid step
     { z0: 2.20, z1: 1.05, r: 0.098, r2: 0.108 },                               // rear taper into the glacis
   ]);
-  P.add('hull', xform2(cylZ(0.10, 0.42, 12, 0.12), 0, 0, 0, -0.36), 0, 1.52, 1.15); // glacis exit sleeve
+  P.add('hullGun', xform2(cylZ(0.10, 0.42, 12, 0.12), 0, 0, 0, -0.36), 0, 1.52, 1.15); // glacis exit sleeve
   // travel clamp yoke on the nose shelf (under-tube, band-thin from the side)
   P.add('hullDetail', box(0.06, 0.28, 0.06), 0, 1.22, 3.05);
   P.add('hullDetail', box(0.22, 0.05, 0.09), 0, 1.38, 3.05);

@@ -279,12 +279,16 @@ function addPolygonToSlices(polygon, pointsBySlice, z0, z1, step) {
  * adjacent cells share an identical closed cross-section instead of relying
  * on loose AABBs or leaving the old quad seams between zones.
  */
+// VEH-13 (2026-10-15): a main gun fixed in the hull (the Strv 103 family) draws into `hullGun`, its own bucket for the
+// spare-link seat solver; it stays part of the hull's structural shell exactly as it was inside `hull`.
+const PRIMARY_BUCKETS = { hull: ['hull', 'hullGun'], turret: ['turret'] };
+
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices) {
   if (!envelope) return [];
   root.updateMatrixWorld(true);
   owner.updateMatrixWorld(true);
   const invOwner = owner.matrixWorld.clone().invert();
-  const objects = selectedObjects(root, new Set([bucket]), 'armor');
+  const objects = selectedObjects(root, new Set(PRIMARY_BUCKETS[bucket] ?? [bucket]), 'armor');
   if (!objects.length) return [];
 
   const z0 = envelope.min[2];
@@ -348,9 +352,10 @@ function receiptBoxes(root, owner, buckets, predicate = null) {
 }
 
 function primaryEnvelope(root, owner, bucket) {
-  const exact = localEnvelope(root, owner, new Set([bucket]), 'armor');
+  const names = new Set(PRIMARY_BUCKETS[bucket] ?? [bucket]);
+  const exact = localEnvelope(root, owner, names, 'armor');
   if (!exact) return null;
-  const parts = receiptBoxes(root, owner, new Set([bucket]));
+  const parts = receiptBoxes(root, owner, names);
   if (parts.length < 2) return exact;
   let maxVolume = 0;
   for (const part of parts) {
