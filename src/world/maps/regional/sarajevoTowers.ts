@@ -83,6 +83,8 @@ function insetPlan(points: ReadonlyArray<readonly [number, number]>, r: number):
 function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, number]>, y0: number, floors: number, fh: number,
   spandrel: Rgb, slab: RegionalBucket, state: (floor: number, face: number) => PaneState, look: () => number, opts: {
     rec?: number; deep?: number; step?: number; mobile?: boolean; finColour?: Rgb; finW?: number; finBucket?: RegionalBucket;
+    /** the slab edge's colour where it is clad with the spandrels (UNIS's bronze), not the floor's concrete */
+    edgeColour?: Rgb;
   } = {}): void {
   const rec = opts.rec ?? 0.45, deep = opts.deep ?? 2.8, faces = planFaces(plan), spH = fh * 0.32;
   const shallow = insetPlan(plan, rec), proud = insetPlan(plan, -0.05);
@@ -99,7 +101,8 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
     // the spandrel band with the slab's edge at its foot (charred over a burnt floor)
     sink.prism('structureMetal', plan.map(([x, z]): Vec3 => [x, y, z]), [0, 1, 0], spH, { colour: burnt ? CHAR : shade(spandrel, 0.92 + look() * 0.14) });
     // (the slab's edge 5 cm proud of the spandrels: no face of it on theirs)
-    sink.prism(slab, proud.map(([x, z]): Vec3 => [x, y, z]), [0, 1, 0], 0.32, {});
+    if (opts.edgeColour) sink.prism('structureMetal', proud.map(([x, z]): Vec3 => [x, y, z]), [0, 1, 0], 0.32, { colour: burnt ? CHAR : opts.edgeColour });
+    else sink.prism(slab, proud.map(([x, z]): Vec3 => [x, y, z]), [0, 1, 0], 0.32, {});
     // the floor's core: the rooms behind the glass, or the gutted bay's charred back wall
     const core = gutted ? deepPlan : shallow;
     sink.prism(gutted ? slab : 'dark', core.map(([x, z]): Vec3 => [x, y + spH, z]), [0, 1, 0], fh - spH, gutted ? { colour: CHAR } : {});
@@ -208,7 +211,8 @@ const unisTowers: RegionalBuilder = (ctx) => {
         if (f >= gutFrom && f < gutTo) return r < 0.22 ? 'burnt' : r < 0.9 ? 'gone' : 'glass';
         return r < 0.12 ? 'gone' : r < 0.16 ? 'sheet' : r < 0.18 ? 'lit' : 'glass';
       };
-      curtainFloors(sink, plan, lobbyH, floors, fh, bronze, slab, (f) => state(f), look, { mobile, finColour: shade(bronze, 0.8) });
+      // (the slab edges clad in the bronze: the concrete's white bands read as another building, the stills of 08:00)
+      curtainFloors(sink, plan, lobbyH, floors, fh, bronze, slab, (f) => state(f), look, { mobile, finColour: shade(bronze, 0.8), edgeColour: shade(bronze, 0.7) });
     }
   });
   return sink.finish();
