@@ -918,8 +918,15 @@ export const COMBAT_TABLE = [
   // A search of the whole fight's shift x the lens's side (tmp/s229-search.mjs, review 4's features) found the well out
   // of the lens's view over the hero with the fight 20 m back along its run and the lens as it was: 17 of 140 stagings
   // pass with no well, and this one moves least; the take ends at 5.2 s like s226 and s228, the house at its end gone)
+  // (2026-10-15, review 6's check film: foe1 drove 10 m behind foe0 on the race lens's line of sight, so the three read
+  // together only in the last 1.5 s, and the 380 kV line crossed the top of every frame with a pylon rising behind the
+  // hero's turret. tmp/s229-search2.mjs, judging every tank hidden by a nearer one, every conductor drawn 1 px or wider
+  // and the pylons behind the hero: foe1 4 m ahead of foe0 and 14 m out, the run turned 15° and set 5 m across and 25 m
+  // back, the lens 3 m to its left and 5 m higher, gives the three together 100 %, no wire drawn, no pylon behind the
+  // hero, the hero 49 % of the height)
   [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
-    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, -20], { geo: 'race', turn: 0, foe1Out: 24, durMs: 5200 }],
+    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [-5, -25],
+    { geo: 'race', turn: -15, foe1Out: 14, foe1Lead: 4, camSide: 3, camLift: 5, durMs: 5200 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
     [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
   [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
@@ -937,15 +944,18 @@ export const COMBAT_TABLE = [
  *  set's anchor onto clear ground; `turn` runs it that many degrees off the set's heading. */
 export function combatTake(row, over = {}) {
   const [n, id, title, set0, time, format, lineup, foes] = row;
-  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation, camEnd, camSide = 0, durMs = null, foe1Lead = -9, foe1Out = 11 } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
+  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation, camEnd, camSide = 0, camLift = 0, durMs = null, foe1Lead = -9, foe1Out = 11 } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
     speed: row[13], shift: row[14] ?? [0, 0], geo: 'front', turn: 0, foeFormation: 'pair', ...(row[15] ?? {}), ...over };
   // `camEnd` (2026-10-14, the coordinator on the 224 review: s226's lens climbed through a telephone line): the take's
   // own values for its lens's last key, the rest of the lens as DUEL has it
   // `camSide` (2026-10-14, review 4's s229): every key of the lens that many metres to its side in the travel frame
   // (+side is the lens's own left for s229's race lens, ahead of the hero looking back: measured on review 4b, where
-  // -4 moved it right); `durMs`: the take's own length, the lens's end key with it
+  // -4 moved it right); `durMs`: the take's own length, the lens's end key with it; `camLift` (2026-10-15, s229: a
+  // power line across the top of every frame): every key that many metres higher, so the lens looks down on the fight
+  // and a high line leaves the frame
   const cam = DUEL[lensName](D, k, hold).map((key) => ({ ...key, ...(camEnd && key.tMs === 'end' ? camEnd : {}),
-    ...(camSide && Number.isFinite(key.side) ? { side: +(key.side + camSide).toFixed(2) } : {}) }));
+    ...(camSide && Number.isFinite(key.side) ? { side: +(key.side + camSide).toFixed(2) } : {}),
+    ...(camLift && Number.isFinite(key.lift) ? { lift: +(key.lift + camLift).toFixed(2) } : {}) }));
   const anchor = shift[0] || shift[1] ? frame(set0.anchor, set0.heading).at(shift[0], shift[1]).map((v) => +v.toFixed(2)) : set0.anchor;
   const set = { ...set0, anchor, heading: ((set0.heading + turn) % 360 + 360) % 360 };
   const ids = { hero: lineup[0], ally1: lineup[1] ?? null, foe0: foes[0], foe1: foes[1] ?? null };
