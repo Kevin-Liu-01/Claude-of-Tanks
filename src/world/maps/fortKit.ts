@@ -30,7 +30,7 @@
 // carries its own colour divided by that texel's.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { sandbagBag } from './sceneryKit.ts';
+import { sandbagBag } from './fieldworksKit.ts';
 import { FractureSettle, edgeRuns, type SettleTris } from './fractureSettle.ts';
 import type { DamageMeshWriter, FractureMaterial } from '../destructionKit.ts';
 import type {

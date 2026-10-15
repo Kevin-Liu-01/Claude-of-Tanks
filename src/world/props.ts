@@ -68,7 +68,10 @@ import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
+import {
+  AMMOBOX_LEGACY, bSandbagBroken, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap,
+} from './maps/fieldworksKit.ts'; // #10 fieldworks
 import {
   FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBankField, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
@@ -100,12 +103,10 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
-  AMMOBOX_LEGACY,
   DESTRUCTIBLE_TYPES,
   DRY_STONE_KIND,
   FENCE_SEG,
   WALL_SEG,
-  bSandbagBroken,
   type DestructiblePropType,
   buildAdobePilaster,
   buildDryStoneWallHead,
@@ -8157,10 +8158,7 @@ ${snowCap ? `
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
       for (const beamSpec of beams) {
-        const beam = box(0.16 * scale, 0.16 * scale, 2.1 * scale, 1.2);
-        beam.rotateX(beamSpec.tilt);
-        beam.rotateY(beamSpec.yaw);
-        beam.translate(hx, y + 0.62 * scale, hz);
+        const beam = buildHedgehogBeam(beamSpec.tilt, beamSpec.yaw, hx, y, hz, scale);
         buckets.dark.push(beam); clutter.ownPiece(beam);
         const record: PropsCollisionRecord = {
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
