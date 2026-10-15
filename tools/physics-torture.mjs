@@ -1078,7 +1078,10 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         for (const part of record.shape2.parts) {
           // (a drawn top is read by the shell's depth under the ground and tops: bodyPen)
           if (part.tp) continue;
-          const top = part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
+          // (physics stream F8) a band under its building's roof tops out at the roof there (collision.ts bandRoofTopAt)
+          const roof = collisionModule.bandRoofTopAt?.(record, part, state.pos.x, state.pos.z) ?? -Infinity;
+          const top = roof > -Infinity && roof < (part.y1 ?? record.max[1]) ? roof : part.y1 ?? record.max[1];
+          const bottom = part.y0 ?? record.min[1];
           partRecord.min[0] = record.min[0]; partRecord.min[2] = record.min[2]; partRecord.min[1] = bottom;
           partRecord.max[0] = record.max[0]; partRecord.max[2] = record.max[2]; partRecord.max[1] = top;
           partRecord.shape2 = part;

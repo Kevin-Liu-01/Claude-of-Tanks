@@ -14,7 +14,7 @@ import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.t
 import { CLIFF_GRADE, driveGroundTypeAt } from './terrainMobility.ts';
 import { tankContactRect } from './tankContactShape.ts';
 import {
-  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartClimbAt, collisionPartIsDeck, collisionPartTopAt, collisionRecordHasDrawnTop,
+  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, bandRoofTopAt, collisionPartClimbAt, collisionPartIsDeck, collisionPartTopAt, collisionRecordHasDrawnTop,
   createHullFootprint, hullFootprint, hullUndersideOver, pointInsideCollisionRecord, type HullFootprint,
 } from '../world/collision.ts';
 
@@ -123,6 +123,11 @@ export function structureTopAt(
       for (const part of shape.parts) {
         let top = partTop(record, part, x, z);
         if (top <= best) continue;
+        // (a band under its building's roof tops out at the roof: collision.ts bandRoofTopAt)
+        if (!(part.kind === 'convex' && part.tp)) {
+          const roof = bandRoofTopAt(record, part, x, z);
+          if (roof > -Infinity && roof < top) { top = roof; if (top <= best) continue; }
+        }
         if (top > ceiling && !(part.kind === 'convex' && part.tp && plane && collisionPartClimbAt(record, part, x, z) < planeCeiling)) {
           if (!standing) continue;
           // (the roof the hull stands on reads as terrain does, within the reach of the root's deck: its own deck, and the
@@ -211,6 +216,7 @@ function partOutline(record: CollisionRecord, part: SimpleCollisionShape | null)
  */
 function topEdgeStationsIn(
   candidates: readonly CollisionRecord[], count: number, quad: ArrayLike<number>, out: Float64Array, max: number,
+  groundAt: (x: number, z: number) => number,
 ): number {
   let n = 0;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -229,6 +235,8 @@ function topEdgeStationsIn(
     const parts = shape && shape.kind === 'compound' ? shape.parts.length : 1;
     for (let p = 0; p < parts && n < max; p++) {
       const part = shape && shape.kind === 'compound' ? shape.parts[p] : (shape as SimpleCollisionShape | null);
+      // (a roof's deck, or a flat top: a stone's drawn surface falls to its foot at its outline, and has no edge to hang from)
+      if (part && part.kind === 'convex' && part.tp && !collisionPartIsDeck(record, part)) continue;
       const m = partOutline(record, part);
       if (m < 3) continue;
       let cx = 0, cz = 0;
@@ -243,7 +251,7 @@ function topEdgeStationsIn(
           const px = quad[2 * q], pz = quad[2 * q + 1], ex = quad[(2 * q + 2) % 8] - px, ez = quad[(2 * q + 3) % 8] - pz;
           if (qs * (ex * (az - pz) - ez * (ax - px)) < 0) inside = false;
         }
-        if (inside) n = pushStation(out, n, ax, az, cx, cz);
+        if (inside) n = pushStation(out, n, ax, az, cx, cz, candidates, count, groundAt);
         // the outline's edge across the box's sides
         for (let q = 0; q < 4 && n < max; q++) {
           const px = quad[2 * q], pz = quad[2 * q + 1], ex = quad[(2 * q + 2) % 8] - px, ez = quad[(2 * q + 3) % 8] - pz;
@@ -253,7 +261,7 @@ function topEdgeStationsIn(
           const t = ((ax - px) * fz - (az - pz) * fx) / den;
           const u = ((ax - px) * ez - (az - pz) * ex) / den;
           if (t < 0 || t > 1 || u < 0 || u > 1) continue;
-          n = pushStation(out, n, px + t * ex, pz + t * ez, cx, cz);
+          n = pushStation(out, n, px + t * ex, pz + t * ez, cx, cz, candidates, count, groundAt);
         }
       }
     }
@@ -261,13 +269,53 @@ function topEdgeStationsIn(
   return n;
 }
 
-function pushStation(out: Float64Array, n: number, x: number, z: number, cx: number, cz: number): number {
+/** How far past a top's outline the ground it falls to is read (topEdgeStationsIn's edge test). */
+const EDGE_STATION_OUTSET_M = 0.15;
+
+/**
+ * A station on a top's outline, EDGE_STATION_INSET_M inside it, kept where the top is an edge: the ground just past the
+ * outline (the highest top or terrain there) more than a step below the top at the station. A roof's pitch is band
+ * stairs and decks sharing outlines, and stations on those inner steps lifted a hull pivoting on a roof up its stairs.
+ */
+function pushStation(
+  out: Float64Array, n: number, x: number, z: number, cx: number, cz: number, candidates: readonly CollisionRecord[],
+  count: number, groundAt: (x: number, z: number) => number,
+): number {
   if (2 * n + 1 >= out.length) return n;
   const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz);
-  const k = d > EDGE_STATION_INSET_M ? EDGE_STATION_INSET_M / d : 0;
-  out[2 * n] = x + dx * k;
-  out[2 * n + 1] = z + dz * k;
+  if (!(d > EDGE_STATION_INSET_M)) return n;
+  const sx = x + dx / d * EDGE_STATION_INSET_M, sz = z + dz / d * EDGE_STATION_INSET_M;
+  const ox = x - dx / d * EDGE_STATION_OUTSET_M, oz = z - dz / d * EDGE_STATION_OUTSET_M;
+  if (!(highestTopAt(candidates, count, sx, sz, groundAt) - highestTopAt(candidates, count, ox, oz, groundAt) > HULL_STEP_UP_M)) return n;
+  out[2 * n] = sx;
+  out[2 * n + 1] = sz;
   return n + 1;
+}
+
+/** The highest standable top of the candidates over (x, z), or the ground's (topEdgeStationsIn's edge test). */
+function highestTopAt(
+  candidates: readonly CollisionRecord[], count: number, x: number, z: number, groundAt: (x: number, z: number) => number,
+): number {
+  let best = groundAt(x, z);
+  for (let i = 0; i < count; i++) {
+    const record = candidates[i];
+    if (record.crushed || record.dead || record.crushable) continue;
+    if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+    const shape = record.shape2;
+    if (shape && shape.kind === 'compound') {
+      for (const part of shape.parts) {
+        if (!part || (part.y1 !== undefined && part.y1 <= best)) continue;
+        if (!pointInsideCollisionRecord(record, part, x, z)) continue;
+        let top = partTop(record, part, x, z);
+        if (!(part.kind === 'convex' && part.tp)) { const roof = bandRoofTopAt(record, part, x, z); if (roof > -Infinity && roof < top) top = roof; }
+        if (top > best) best = top;
+      }
+    } else if (pointInsideCollisionRecord(record, shape ?? null, x, z)) {
+      const top = shape && shape.kind === 'convex' && shape.tp ? partTop(record, shape, x, z) : record.max[1];
+      if (top > best) best = top;
+    }
+  }
+  return best;
 }
 
 export function createStructureSupportField(
@@ -341,6 +389,8 @@ export function createStructureSupportField(
           // (a part tops out at its y1 and starts at its y0: one wholly under the best so far or over the reach is skipped
           // before its planes are read)
           if (!part || (part.y1 !== undefined && part.y1 <= best) || (part.y0 !== undefined && part.y0 > bellyY + SUPPORT_STEP_UP_M)) continue;
+          // (a band under its building's roof is the roof's there: the roof, the deck, is what the hull stands on)
+          if (!(part.kind === 'convex' && part.tp) && bandRoofTopAt(record, part, x, z) > -Infinity) continue;
           const top = collisionPartTopAt(record, part, x, z);
           if (top <= best || top > bellyY + SUPPORT_STEP_UP_M || !pointInsideCollisionRecord(record, part, x, z)) continue;
           best = top;
@@ -365,6 +415,6 @@ export function createStructureSupportField(
     get candidateCount() { return count; },
     get standingDeck() { return standing; },
     get recordReads() { return recordReads; },
-    topEdgeStations(quad, out, max) { return topEdgeStationsIn(candidates, count, quad, out, max); },
+    topEdgeStations(quad, out, max) { return topEdgeStationsIn(candidates, count, quad, out, max, terrainFast); },
   };
 }

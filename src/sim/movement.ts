@@ -3450,9 +3450,6 @@ function updateRigidAttitude(
   }
 }
 
-/** A support plane this far from the hull's attitude is taken as a landing (updateSupportedAttitude). */
-const FIT_JUMP_RAD = 0.2;
-
 function updateSupportedAttitude(
   state: TankState,
   body: RigidBodyState,
@@ -3463,15 +3460,6 @@ function updateSupportedAttitude(
 ): void {
   const spring = state._spring;
   body.landingBlendS = Math.max(0, (body.landingBlendS || 0) - dt);
-  // (physics stream F8, 2026-10-14) a plane the contacts put more than FIT_JUMP_RAD from the hull's attitude is met as a
-  // landing's is, from the soft end of the blend and its turn held to the landing's cap: the contacts that carry a hull
-  // change under it in a step (a track off an eave, a box corner onto it) and the plane they fit moves with them. A T-90
-  // resting tilted at Frontier's eave read the yard's plane for one step, 0.45 rad off; the full spring turned it at
-  // 10 rad/s, its tail struck the eave at 35 m/s and the strike threw it 23 m/s up
-  if (!(body.landingBlendS > 0) && (state._terr.tipPitch || 0) === 0 && (state._terr.tipRoll || 0) === 0
-    && (Math.abs(targetPitch - spring.pitch) > FIT_JUMP_RAD || Math.abs(targetRoll - spring.roll) > FIT_JUMP_RAD)) {
-    body.landingBlendS = LANDING_CONTACT_BLEND_S;
-  }
   const settle = body.landingBlendS > 0
     ? 1 - body.landingBlendS / LANDING_CONTACT_BLEND_S
     : 1;
