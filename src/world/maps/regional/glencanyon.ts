@@ -759,18 +759,20 @@ const fireStation: RegionalBuilder = (ctx) => {
   // the station fills the old station's reach (its bounds)
   const R = reach(ctx), W = Math.max(7, R.W - 0.8), D = Math.max(8, R.D - 0.8);
   sink.placed(0, R.cx, 0, R.cz, () => {
+  // (props census #13, lane B 2026-10-14; the judges: "the apparatus doors dark plates with a red sheet laid over them")
+  // the two apparatus bays cut through the front, their red doors in the reveals, part raised on one call in four
+  const base = dialectOf(rng, ALU, rgb(0x8a2a22), 0.4, 'panel', ctx.variant);
+  const dialect: HouseDialect = { ...base, door: (s, face, o, y0, fr) => (o.kind === 'gate'
+    ? rollerDoor(s, face, o.u, y0 + o.y0, o.w, o.h, ctx.variant() < 0.25 ? 0.6 : 0, rgb(0xb8302a), GALV, ctx.tier === 'mobile')
+    : base.door(s, face, o, y0, fr)) };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 5.0, wall: BLOCK }],
     roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.25, bucket: CONCRETE, parapet: 0.4 }, gableBucket: BLOCK,
-    openings: [{ face: 'right', storey: 0, kind: 'door', u: D * 0.25, w: 0.95, y0: 0, h: 2.1 }, ...windowRhythm('left', 0, D, { w: 1.4, h: 1.0, sill: 1.4, spacing: 3.0, margin: 1.2 })],
+    openings: [{ face: 'right', storey: 0, kind: 'door', u: D * 0.25, w: 0.95, y0: 0, h: 2.1 }, ...windowRhythm('left', 0, D, { w: 1.4, h: 1.0, sill: 1.4, spacing: 3.0, margin: 1.2 }),
+      ...[-W * 0.24, W * 0.24].map((u): Opening => ({ face: 'front', storey: 0, kind: 'gate', u, w: Math.min(3.4, W * 0.4), y0: 0, h: 4.0 }))],
     chimneys: [], gutters: null, verge: null, reveal: 0.18,
-  }, dialectOf(rng, ALU, rgb(0x8a2a22), 0.4, 'panel', ctx.variant));
+  }, dialect);
   const f = frame.faces.front;
-  for (const u of [-W * 0.24, W * 0.24]) {
-    faceBox(sink, 'dark', f, u, 2.1, 0.005, 3.4, 4.0, 0.02, { decor: true });
-    faceBox(sink, 'structureMetal', f, u, 2.1, 0.03, 3.4, 4.0, 0.04, { colour: rgb(0xb8302a), decor: true });
-    for (let k = 0; k < 4; k++) faceBox(sink, 'glass', f, u - 1.2 + k * 0.8, 2.9, 0.06, 0.6, 0.4, 0.01, { decor: true, fine: true });
-  }
   faceBox(sink, 'structureWood', f, 0, 4.55, 0.02, W * 0.6, 0.35, 0.03, { colour: WHITE, decor: true });
   // the hose tower in a back corner and the siren on its pole
   sink.span(BLOCK, W / 2 - 3.2, -0.3, -D / 2, W / 2, 13.0, -D / 2 + 3.2);
