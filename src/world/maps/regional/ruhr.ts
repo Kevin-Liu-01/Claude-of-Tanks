@@ -4,7 +4,7 @@
 // loading dock under a deep canopy; the brick water tower carrying its tank house; colliery cottages in pairs with
 // two doors and a dormer each; the colony's terraced rows (terraceLayout.ts); a shelled brick shell.
 import { PartSink, alongPlot, faceBox, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { dentilCornice, facadeOn, faceSlab, pilaster, sillStreaks, trimRing } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -44,20 +44,29 @@ function brickMasonry(frame: HouseFrame, sink: PartSink, eaves: readonly ('left'
   }
   if (vents && frame.roof.gable) {
     for (const name of ['front', 'back'] as const) {
-      const face = frame.faces[name], vy = top + (frame.roof.ridgeY - top) * 0.5, ring: Array<[number, number]> = [], hole: Array<[number, number]> = [];
+      const face = frame.faces[name], vy = top + (frame.roof.ridgeY - top) * 0.5;
+      // the yellow-brick ring round the vent: its twelve voussoirs about the opening
       for (let k = 0; k < 12; k++) {
-        const a = Math.PI * 2 * k / 12;
-        ring.push([Math.cos(a) * 0.46, vy + Math.sin(a) * 0.46]);
-        hole.push([Math.cos(a) * 0.32, vy + Math.sin(a) * 0.32]);
+        const a0 = Math.PI * 2 * k / 12, a1 = Math.PI * 2 * (k + 1) / 12;
+        faceSlab(sink, YELLOW_BRICK, face, [[Math.cos(a0) * 0.48, vy + Math.sin(a0) * 0.48], [Math.cos(a1) * 0.48, vy + Math.sin(a1) * 0.48],
+          [Math.cos(a1) * 0.36, vy + Math.sin(a1) * 0.36], [Math.cos(a0) * 0.36, vy + Math.sin(a0) * 0.36]], 0, 0.04);
       }
-      faceSlab(sink, YELLOW_BRICK, face, ring, 0, 0.04);
-      faceSlab(sink, 'dark', face, hole, 0.04, 0.004);
+      // (props census #4, lane B 2026-10-14: the vent was a dark disc painted on the gable) the vent cut through the gable
+      // (the dialect's gableOpenings), its louvres set back in it
+      for (const dy of [-0.2, -0.05, 0.1]) faceBox(sink, 'structureWood', face, 0, vy + dy, -frame.gableReveal * 0.5, 0.6, 0.06, 0.03, { colour: shade(DOOR[0], 0.7), decor: true, fine: true });
     }
   }
 }
 
-function dialect(rng: () => number, door: Rgb): HouseDialect {
+/** The gable vent's opening, cut on every tier (the phones' solids are the desktop's): a round-headed hole at mid-gable. */
+const gableVent = (_face: Face, _poly: Array<[number, number]>, frame: HouseFrame): HoleRect[] => {
+  const vy = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.5;
+  return [{ u0: -0.3, u1: 0.3, y0: vy - 0.34, y1: vy + 0.3, spring: vy }];
+};
+
+function dialect(rng: () => number, door: Rgb, vents = false): HouseDialect {
   return {
+    ...(vents ? { gableOpenings: gableVent } : {}),
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, o.kind === 'loft' ? { ...WINDOW, bars: 'cross' } : WINDOW, rng, 0.42),
     door: (s, face, o, y0) => {
       if (o.kind === 'gate') { gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(door, 0.9), { bucket: YELLOW_BRICK, width: 0.24, out: 0.08 }); return; }
@@ -204,7 +213,7 @@ const goodsShed: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: floor, out: 0.04, bucket: 'stone' }, storeys: [{ h: 4.4, wall: 'stone' }],
       roof: slate(28), gableBucket: 'stone', openings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
-    }, dialect(rng, DOOR[1]));
+    }, dialect(rng, DOOR[1], true));
     band(sink, frame.bodies[0], floor + 2.8);
     if (facadeOn()) brickMasonry(frame, sink, ['left', 'right'], ['left'], true);
     if (!dock) return;
@@ -315,7 +324,7 @@ const station: RegionalBuilder = (ctx) => {
       w: W, d: coreD, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.8, wall: 'stone' }, { h: 3.2, wall: 'stone' }],
       roof: slate(42), gableBucket: 'stone', openings: coreOpenings,
       chimneys: [{ x: W * 0.25, z: 0, sx: 0.6, sz: 0.6, above: 1.0, bucket: 'stone', cap: 'pots' }], gutters: { colour: rgb(0x6a6e70) }, verge: null,
-    }, dialect(rng, door));
+    }, dialect(rng, door, true));
     band(sink, core.bodies[0], core.floors[1] - 0.15);
     if (facadeOn()) brickMasonry(core, sink, ['left', 'right'], ['left', 'right'], true);
     for (const end of [1, -1]) {
