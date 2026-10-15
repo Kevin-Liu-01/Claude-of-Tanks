@@ -12,11 +12,11 @@
 // two-storey house, the stable wing, the walled patio with its arched gateway and bell), the whitewashed barn with its
 // arched cart door, the dovecote, the bread oven in the yard, and prickly pear (chumbera) clumps by the walls.
 import {
-  LocalFrame, PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
+  LocalFrame, PartSink, faceBox, facePanel, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, recordShaft, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -725,7 +725,9 @@ const iglesia: RegionalBuilder = (ctx) => {
     for (const s of [-1, 1]) faceBox(sink, 'stone', f, s * 1.35, 2.0, 0.14, 0.34, 3.6, 0.28, { decor: true });
     faceBox(sink, 'stone', f, 0, 3.95, 0.18, 3.2, 0.4, 0.36, { decor: true, shadow: true });
     for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.6, 4.2, 0.18), facePoint(f, 0, 5.0, 0.18), 0.22, 0.3, f.out, { decor: true, exposed: true }, 0);
-    faceBox(sink, 'dark', f, 0, 4.55, 0.02, 0.5, 0.45, 0.02, { decor: true });
+    // (props census #5: the pediment's niche a dark plate on the wall) the niche's back in shadowed stone, its saint
+    faceBox(sink, 'stone', f, 0, 4.55, 0.02, 0.5, 0.45, 0.02, { decor: true, shade: 0.72 });
+    sink.cylinder('stone', facePoint(f, 0, 4.36, 0.1), 'y', 0.36, 0.07, 6, { decor: true }, 0.05);
   });
   // the chancel: lower, hipped, at least square; it runs back to the plot's end (0.35 m short of it: the solid within
   // half a metre of the base's reach, regionalArchitecture's footprint coverage)
@@ -740,10 +742,18 @@ const iglesia: RegionalBuilder = (ctx) => {
   // the tower over the west door
   const tz = zt0 + tower / 2, shaft = 13.4, stage = 4.0, half = tower / 2;
   sink.span('stone', -half - 0.12, -0.4, tz - half - 0.12, half + 0.12, 0.6, tz + half + 0.12);
-  sink.span('stone', -half, 0.6, tz - half, half, shaft, tz + half);
+  // (props census #5, lane B 2026-10-15) the west door and the window over it cut through the shaft (the leaf and a
+  // dark plate were laid on a solid span), the leaf at the back of the door's reveal, the window open to the stair's
+  // dark; the tower recorded as a shaft body (it topples in its courses)
+  const tRev = 0.34;
+  holedBox(sink, 'stone', -half, tz - half, half, tz + half, 0.6, shaft,
+    { front: [{ u0: -0.75, u1: 0.75, y0: 0.6, y1: 3.5 }, { u0: -0.31, u1: 0.31, y0: 4.85, y1: 5.95 }] }, 0.4, tRev);
+  recordShaft(sink, 0, tz, tower, shaft + 0.3 + stage + 2.5, 'stone');
   const tf: Face = { origin: [0, 0, tz + half], u: [1, 0, 0], out: [0, 0, 1], width: tower };
-  doorUnit(sink, tf, 0, 0.6, 1.5, 2.9, { leaf: rgb(0x4a3322), frame: { bucket: 'stone', width: 0.32, out: 0.14, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
-  faceBox(sink, 'dark', tf, 0, 5.4, 0.01, 0.62, 1.1, 0.02, { decor: true });
+  sink.recess = tRev;
+  try {
+    doorUnit(sink, tf, 0, 0.6, 1.5, 2.9, { leaf: rgb(0x4a3322), frame: { bucket: 'stone', width: 0.32, out: 0.14, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
+  } finally { sink.recess = 0; }
   faceBox(sink, 'stone', tf, 0, 6.05, 0.08, 0.95, 0.16, 0.16, { decor: true });
   faceBox(sink, 'stone', tf, 0, 4.75, 0.07, 0.95, 0.12, 0.14, { decor: true });
   // cornices at the shaft's head and the stage's
@@ -802,8 +812,12 @@ const torre: RegionalBuilder = (ctx) => {
   const H = 9.2 + rng() * 1.2;
   // the battered foot and the shaft
   sink.span('stone', -h - 0.35, -0.5, -h - 0.35, h + 0.35, 0.4, h + 0.35);
-  sink.span('stone', -h - 0.2, 0.4, -h - 0.2, h + 0.2, 2.2, h + 0.2);
-  sink.span('stone', -h, 2.2, -h, h, H, h);
+  // (props census #5) the door through the battered foot and the horseshoe window through the shaft (both were dark
+  // plates on solid spans), the dark of the stair behind them; the tower recorded as a shaft body
+  const wy = H * 0.6;
+  holedBox(sink, 'stone', -h - 0.2, -h - 0.2, h + 0.2, h + 0.2, 0.4, 2.2, { front: [{ u0: -0.45, u1: 0.45, y0: 0.4, y1: 1.95 }] }, 0.4, 0.34);
+  holedBox(sink, 'stone', -h, -h, h, h, 2.2, H, { front: [{ u0: -0.31, u1: 0.31, y0: wy - 0.575, y1: wy + 0.575 }] }, 0.4, 0.34);
+  recordShaft(sink, 0, 0, S, H + 0.85, 'stone');
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     for (let y = 2.3, k = 0; y < H - 0.6; y += 0.5, k++) {
       const lx = k % 2 ? 0.55 : 0.3, lz = k % 2 ? 0.3 : 0.55;
@@ -811,11 +825,8 @@ const torre: RegionalBuilder = (ctx) => {
     }
   }
   const front: Face = { origin: [0, 0, h], u: [1, 0, 0], out: [0, 0, 1], width: S };
-  // the small door at the foot and the horseshoe window in its frame
-  faceBox(sink, 'dark', front, 0, 1.1, 0.21, 0.9, 1.7, 0.02, { decor: true });
+  // the small door's lintel at the foot and the horseshoe window's frame
   faceBox(sink, 'stone', front, 0, 2.05, 0.28, 1.25, 0.24, 0.16, { decor: true });
-  const wy = H * 0.6;
-  faceBox(sink, 'dark', front, 0, wy, 0.01, 0.62, 1.15, 0.02, { decor: true });
   for (let k = 0; k <= 8; k++) {
     const a = -0.35 + (Math.PI + 0.7) * k / 8;
     faceBox(sink, 'stone', front, Math.cos(a) * 0.38, wy + 0.45 + Math.sin(a) * 0.4, 0.03, 0.14, 0.14, 0.06, { decor: true });
@@ -862,15 +873,26 @@ const ermita: RegionalBuilder = (ctx) => {
         w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
         roof: canal(24, 0.25, 0.08), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.35,
       }, { ...dialect({ ...st, band: 'plaster2', reja: 'flat' }, look),
+        // (props census #5: a chapel's small lights unshuttered; open shutters laid on the render read as plates)
+        window: (s, face, o, y0) => {
+          windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null }, st.rng, st.litShare);
+          reja(s, face, o.u, y0 + o.y0, o.w, o.h, false);
+        },
         door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
           leaf: rgb(0x4a3322), frame: { bucket: 'plaster2', width: 0.26, out: 0.02, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
-        }, y0 + o.y0) });
+        }, y0 + o.y0),
+        // the oculus over the door cut through the front gable (it was a dark disc on it)
+        gableOpenings: (face) => (face.out[2] > 0.5 ? [{ u0: -0.22, u1: 0.22, y0: H + 0.53, y1: H + 0.97 }] : []),
+      });
       alero(sink, frame);
       zocalo(sink, frame, 'plaster2', 0.7);
       const f = frame.faces.front;
-      // the round window over the door
-      sink.cylinder('plaster2', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.012, 0.45, 12, { decor: true });
-      sink.cylinder('dark', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.022, 0.31, 12, { decor: true });
+      // the round window over the door: its ring of dressed stones round the cut, the glass at the back
+      for (let k = 0; k < 12; k++) {
+        const a = k * Math.PI / 6;
+        faceBox(sink, 'plaster2', f, Math.cos(a) * 0.38, H + 0.75 + Math.sin(a) * 0.38, 0.03, 0.15, 0.15, 0.06, { decor: true });
+      }
+      facePanel(sink, 'glass', f, 0, H + 0.75, -0.26, 0.44, 0.44, { decor: true, window: f.out });
       // the bell gable on the front gable's apex. Round 3 (gauntlet wave 108c: "its bell gable has no bell opening"):
       // its opening stood level with the roof's ridge, so the tiles closed it from every side; the gable now rises
       // clear of the ridge, the bell hanging in the sky
