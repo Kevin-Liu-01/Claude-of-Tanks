@@ -1,3 +1,4 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -337,7 +338,7 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   // 2026-10-08 (owner, 6763d7cc0): `automatic` makes the gun a working remote station (the 2A5M's original 7.62 mm)
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
-  weapon.name = `${P.spec.id}RoofMachineGun`;
+  weapon.name = `${tankSeedId(P.spec.id)}RoofMachineGun`; // schema-1 name (tankIdAliases.ts)
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
   P.turretG.add(weapon);
@@ -1013,7 +1014,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
 }
 
 function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
-  const finishSupport=captureAuxiliaryStock(P,`${P.spec.id}RoofMachineGun`);
+  const finishSupport=captureAuxiliaryStock(P,`${tankSeedId(P.spec.id)}RoofMachineGun`); // matches the literal schema-1 names
   equip(P,d,'turretDetail',cylY(.12,.16,.36,20),.743,2.62,-.926);
   // Source crossbar is a broad low cradle, separate from the tall weapon
   // cheeks and from the outboard receiver/ammunition body.

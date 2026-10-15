@@ -65,6 +65,25 @@ or that an overlap was reviewed honestly. Its regression test uses two local
 clones to exercise stale remote data, stale validation and an accidental
 whole-file rollback that Git would otherwise allow.
 
+### Merging a tank id rename (2026-10-13)
+
+When main carries a tank id rename (a commit whose message has the trailer
+`Tank-Id-Schema: N`; schema 3 is the bulk rename of SSOT 2.19), do not
+hand-merge id conflicts. Commit your work, `git merge main`, then run
+`NODE_OPTIONS=--max-old-space-size=4096 node tools/tank-id-codemod.mjs --apply --schema=N`.
+During the merge it re-merges each conflicted text file from the converted base
+and your converted side against main's side: a conflict that was only the
+rename resolves and is staged, and a real one keeps its markers for you. It
+then converts every line that `git blame` gives to your own commits from
+before the rename; lines from main or from the rename, and uncommitted lines,
+are never touched. The map has swaps (one vehicle's new id is the id another
+vehicle gave up), so this provenance rule is what makes the tool idempotent:
+run it again during or after the merge and it changes nothing. On a
+branch without the rename it refuses and changes nothing. It never edits
+generated files, icons, media or dated records: it lists the generated files
+to regenerate with their own tools. Review the diff before committing. The
+rename branch itself uses `--initial` on a clean tree, once.
+
 ### The versioned gate: `tools/gate.mjs` (2026-10-01)
 
 Codex, Claude and CI run the same gate from the checkout under test. It replaces the gate half of

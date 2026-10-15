@@ -2,6 +2,7 @@
 // faces aligned with the named independent profile constructors below.
 import type { ArmorPlate } from '../sim/armor.ts';
 import type { FleetTankSpec } from './specContracts.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import { ARIETE_X_FAMILY_SCALE } from './profiles/arieteXFamilyFrame.ts';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 
@@ -239,7 +240,8 @@ export function applySourceXWesternAuxArmor(spec: FleetTankSpec, id: string): vo
   const add: Sink = (name, face, group, owner = 'hull') => {
     const template = templates.get(name);
     if (!template) throw new Error(`${id}: missing inherited auxiliary balance ${name}`);
-    appendSurface(template, face, `${id}:${group}`, owner === 'hull' ? spec.armor.hullPlates : spec.armor.turretPlates);
+    // Surface groups keep the schema-1 spelling (tankIdAliases.ts): seat signatures hash the plates.
+    appendSurface(template, face, `${tankSeedId(id)}:${group}`, owner === 'hull' ? spec.armor.hullPlates : spec.armor.turretPlates);
   };
   if (id === 'leo2a6_x') leopardSkirts(add); // actual main cells already own both structural cheeks
   else if (id === 'strv122_x') { strvSkirts(add); strvCheeks(add); }

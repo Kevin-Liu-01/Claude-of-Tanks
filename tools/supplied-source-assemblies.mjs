@@ -2,6 +2,8 @@
 // Original exports remain available; assembly recipes preserve the source frame.
 // 2026-09-24 (round 46c): the five 20260918 recipe hashes re-pinned after the research notes moved to docs/history/research —
 // each recipe's `ownerDecision` and review `path` strings were re-rooted; no geometry, source hash or frame value changed.
+import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
+
 export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
   "warrior_tes_h": {
     "originalSha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04",
@@ -132,9 +134,12 @@ export function withAssembledSourceFrames(frames, assemblies = SUPPLIED_SOURCE_A
 }
 
 export function assembledSourcePath(id, originalPath) {
-  const assembly = SUPPLIED_SOURCE_ASSEMBLIES[id];
+  // Source models and their assembly records keep the spelling they were registered under: a vehicle renamed through
+  // the tank id alias layer reads them by its schema-1 id (SSOT 2.19).
+  const seedId = tankSeedId(id);
+  const assembly = SUPPLIED_SOURCE_ASSEMBLIES[id] ?? SUPPLIED_SOURCE_ASSEMBLIES[seedId];
   if (!assembly) return originalPath;
-  if (originalPath !== '/models/community-candidates/' + id + '_source.glb') {
+  if (originalPath !== '/models/community-candidates/' + seedId + '_source.glb') {
     throw new Error(id + ': original source path changed before assembly registration');
   }
   return assembly.path;

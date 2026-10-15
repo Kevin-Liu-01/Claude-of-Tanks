@@ -10,6 +10,7 @@ import {
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import {
   FIELD_NET_PALETTES, garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette,
   type SuitTheatre,
@@ -4631,7 +4632,8 @@ function addGhillieOwner(
   // the suit's parts share one net material (an empty part still builds and disposes its own throwaway, as before)
   const netShared = netGeos.length > 0 && suitMats.net !== undefined;
   const netMat = netShared ? suitMats.net! : makeNet(P, cfg, theatre, cover);
-  const netMesh = addMerged(P, parent, netGeos, netMat, `${cfg.id}_ghillie_${owner}_net`);
+  // Mesh names keep the schema-1 spelling (tankIdAliases.ts): geometry digests hash them.
+  const netMesh = addMerged(P, parent, netGeos, netMat, `${tankSeedId(cfg.id)}_ghillie_${owner}_net`);
   if (netMesh && !netShared) suitMats.net = netMat;
   // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts), and
   // what the decor draws up over its loads is held to the same clearances (ghillieDrape.ts)
@@ -4660,7 +4662,7 @@ function addGhillieOwner(
     const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
     if (!leavesShared) suitMats.leaves.set(atlas, mat);
     const mesh = new THREE.Mesh(leaves, mat);
-    mesh.name = `${cfg.id}_ghillie_${owner}_leaves`;
+    mesh.name = `${tankSeedId(cfg.id)}_ghillie_${owner}_leaves`;
     mesh.castShadow = mesh.receiveShadow = true;
     if (clearance) {
       mesh.userData.fieldSuit = true;

@@ -5,6 +5,7 @@
 // a suspension connection without reviving per-profile swing-arm switches.
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 
 export const SUSPENSION_PATTERN_DEFINITIONS = Object.freeze({
   'torsion-swing-arm': Object.freeze({
@@ -82,7 +83,8 @@ export function suspensionPatternFor(
     return Object.freeze({ id: override, ...definition });
   }
 
-  const id = String(spec?.id || '').toLowerCase();
+  // The family rules read the schema-1 id vocabulary (tankIdAliases.ts): a rename never changes a hull's suspension.
+  const id = tankSeedId(String(spec?.id || '')).toLowerCase();
   for (const [matcher, patternId] of FAMILY_RULES) {
     if (matcher.test(id)) {
       return Object.freeze({

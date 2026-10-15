@@ -2,23 +2,25 @@
 // seven models retain their untouched main cells, ERA, tracks and renderers.
 import type {FleetTankSpec} from './specContracts.ts';
 import type {ArmorPlate} from './specHelpers.ts';
+import {tankSeedId} from './tankIdAliases.ts';
 import {auxiliaryFace,auxiliaryQuad,auxiliaryRectangle,type AuxPoint} from './sourceXAuxArmorPrimitives.ts';
 import {type10AuxiliarySkirts} from './sourceXType10AuxArmor.ts';
 import {exposedAuxiliaryCourse} from './sourceXAuxArmorExposure.ts';
 import {memoizedAuxiliaryShapes} from './sourceXAuxArmorCache.ts';
 const IDS=new Set(['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x','type10_x','type90_x','amx40_x']);
+// Plate names built from the id keep its schema-1 spelling (tankIdAliases.ts): seat signatures hash them.
 type Span=readonly [number,number];
 
 function outerPanels(template:ArmorPlate,id:string,side:number,x:number,spans:readonly Span[],
   bottom:number,top:number):ArmorPlate[] {
-  return spans.map(([a,b],i)=>auxiliaryRectangle(template,`${id}_${side}_outer_${i}`,x,a,b,bottom,top));
+  return spans.map(([a,b],i)=>auxiliaryRectangle(template,`${tankSeedId(id)}_${side}_outer_${i}`,x,a,b,bottom,top));
 }
 function exposedBacking(template:ArmorPlate,id:string,side:number,x:number,back:number,front:number,
   bottom:number,top:number,outerBottom:number,spans:readonly Span[]):ArmorPlate[] {
-  const out=[auxiliaryRectangle(template,`${id}_${side}_backing_lower`,x,back,front,bottom,outerBottom)];
+  const out=[auxiliaryRectangle(template,`${tankSeedId(id)}_${side}_backing_lower`,x,back,front,bottom,outerBottom)];
   for(let i=0;i<spans.length-1;i++){
     const a=Math.max(back,spans[i][1]),b=Math.min(front,spans[i+1][0]);
-    if(b>a)out.push(auxiliaryRectangle(template,`${id}_${side}_backing_gap_${i}`,x,a,b,outerBottom,top));
+    if(b>a)out.push(auxiliaryRectangle(template,`${tankSeedId(id)}_${side}_backing_gap_${i}`,x,a,b,outerBottom,top));
   }
   return out;
 }
@@ -85,9 +87,9 @@ function leclercFront(template:ArmorPlate,side:number,classic:boolean):ArmorPlat
         return[side*x,y,z];
       };
       const z0=stations[j],z1=stations[j+1];
-      out.push(...auxiliaryQuad(template,`${id}_${side}_front_${i}`,j,
+      out.push(...auxiliaryQuad(template,`${tankSeedId(id)}_${side}_front_${i}`,j,
         [point(z0,false),point(z0,true),point(z1,true),point(z1,false)],side));
-      out.push(...leclercFolds(template,side,classic,`${id}_${side}_front_${i}`,j,inner,z0,z1,point));
+      out.push(...leclercFolds(template,side,classic,`${tankSeedId(id)}_${side}_front_${i}`,j,inner,z0,z1,point));
     }
   });
   return out;
@@ -147,9 +149,9 @@ function amx40(template:ArmorPlate,side:number):ArmorPlate[] {
 function replacements(id:string,template:ArmorPlate,side:number):ArmorPlate[] {
   if(id==='leclerc_x'||id==='leclerc_classic_x')return exposedAuxiliaryCourse(
     [...leclercRear(template,side,id==='leclerc_classic_x'),...leclercFront(template,side,id==='leclerc_classic_x'),
-      ...(id==='leclerc_x'?charToe(template,side):[])],side,`${id}_${side}_installed_course`);
+      ...(id==='leclerc_x'?charToe(template,side):[])],side,`${tankSeedId(id)}_${side}_installed_course`);
   if(id==='type90_x')return type90(template,side);
-  if(id==='amx40_x')return exposedAuxiliaryCourse(amx40(template,side),side,`${id}_${side}_installed_course`);
+  if(id==='amx40_x')return exposedAuxiliaryCourse(amx40(template,side),side,`${tankSeedId(id)}_${side}_installed_course`);
   if(id==='type10_x')return exposedAuxiliaryCourse([...type10AuxiliarySkirts(template,side),
     auxiliaryRectangle(template,`type10_x_${side}_fascia`,side*1.574517,-2.4807,3.5897,.7593,1.222),
     auxiliaryRectangle(template,`type10_x_${side}_rear_fascia`,side*1.574517,-3.44004,-2.4807,.75772,1.16422)],
