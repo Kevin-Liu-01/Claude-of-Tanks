@@ -54,7 +54,7 @@ assert.deepEqual(policy.selected.map((s) => s.root.name), ['tank_near', 'tank_mi
 // ground occlusion fades), six hulls on Ultra and High, four on Medium and Low, a ±8 m swap band and a 6 m rank hold
 assert.equal(NEAR_VEHICLE_SHADOW_MAX, 6); assert.equal(NEAR_VEHICLE_SHADOW_RANGE_M, 90); assert.equal(NEAR_VEHICLE_SHADOW_EXTENT_M, 6);
 assert.equal(NEAR_VEHICLE_SHADOW_HYSTERESIS_M, 8); assert.equal(NEAR_VEHICLE_SHADOW_RANK_HOLD_M, 6);
-assert.deepEqual(['ultra', 'high', 'medium', 'low', 'ultraLow'].map(nearVehicleShadowMaxFor), [6, 6, 4, 4, 4]);
+assert.deepEqual(['ultra', 'high', 'medium', 'low', 'ultralow', 'mobile-high'].map(nearVehicleShadowMaxFor), [6, 6, 4, 4, 4, 4]);
 assert.ok(!policy.selected.some((s) => s.root === far.root || s.root === behind.root), 'far and behind-the-camera hulls keep their proxies');
 assert.equal(policy.selected[0].cascadeMask, 0b0001);
 {
