@@ -83,6 +83,13 @@ export default {
       { kind: 'ridge', x: 340, z: 20, length: 240, width: 40, height: 6, yawDeg: 92, geology: MORAINE },
       { kind: 'ridge', x: -120, z: -300, length: 240, width: 44, height: 6, yawDeg: -8, geology: MORAINE },
       { kind: 'ridge', x: 140, z: -320, length: 220, width: 44, height: 6, yawDeg: 12, geology: MORAINE },
+      // a till bank in the trough beside the north pass road's last leg (the horizons stream, 2026-10-15): on the 30 m
+      // rim the trough (x -12..12, z 446-472) lay 3-4 m under the road 12 m east of it, so the exit ran on a 26 m
+      // causeway out to the red line and a hull driven along it met the playable edge (roadCrossingSweep, 7 m/s at
+      // (-18.1, 466.6)); the 52 m rim had filled the trough's north end. The bank brings the ground up to the road's
+      // shoulder (bravo's spawn clearance holds it to a half to two-thirds of its height); the road's own grade does
+      // not move.
+      { kind: 'ridge', x: -4, z: 456, length: 40, width: 16, height: 6.5, yawDeg: 40, corridorScale: 1 },
       // roches moutonnées: rock knobs the ice ground smooth on top and plucked steep at their sides
       { kind: 'knoll', x: 320, z: 170, rx: 32, rz: 50, height: 9, geology: KNOB },
       { kind: 'knoll', x: -180, z: 290, rx: 30, rz: 44, height: 8, geology: KNOB },
