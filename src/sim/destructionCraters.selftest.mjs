@@ -3,7 +3,8 @@
 // stamped on the match's ground quantized as the wire carries it, logged and handed back as an event; a smaller burst
 // is a mark. A restored log stamps the same ground; both simulations dig at the same moment; the authority's real HE
 // round on open ground digs one, every peer stamps it once (event or log), and the run replays bit for bit. Craters are
-// off in every mode's ruleset until the drawn terrain follows the overlay.
+// on in every mode that plays destruction since DST-04 (2026-10-15): the drawn terrain and the world's ray march follow
+// the overlay.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { CRATERS_PER_TICK, craterSeed, createDestructionMatch, quantizeCrater } from './destructionMatch.ts';
