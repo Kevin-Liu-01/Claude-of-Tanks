@@ -423,6 +423,15 @@ it flat up close ("a gravity-blind overlay"), although wave 265 found it helped 
 (per-material surfaces, dust and wet earth graded up from the running gear in the map's soil colour, wear where use puts
 it, contact occlusion, readable at 15-60 m, priced under cost rule v3) lands on its own wave; the stripped code is at
 95afc36d6 for reference.
+Spare-track links (VEH-13, 2026-10-15): every run goes through one seat solver (`spareTrackSeat.ts`, rules R1-R8:
+host role, footprint support, seat from outside, static and motion clearance, exposure, one source per frame). Mount
+links only as `FITTINGS.spareTrackLinks`, `KIT.spareTrackStrip` or a registered course (`withSpareTrackRun`,
+`spareTrackPart`); never as loose parts in `hullTrack`/`turretTrack`. The factory's seat pass keeps a passing run
+exactly as built, re-seats a failing one from outside nearby or drops it (`root.userData.spareTrack`,
+`spareTrackRejected`). Tag grilles, louvres and exhausts drawn into ordinary buckets with `withSeatRole(P, 'grille', ...)`
+where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGunDark`. The receipt is
+`tools/spare-track-placement-check.mjs` against `docs/geometry-gate/spare-track.json` (part of `tank:anatomy:update`
+and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a

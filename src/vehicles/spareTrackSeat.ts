@@ -677,7 +677,7 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   links.min.setComponent(ax.v, local.min.getComponent(ax.v) + 0.01);
   links.max.setComponent(ax.v, local.max.getComponent(ax.v) - 0.01);
   const grown = new THREE.Box3();
-  let clear = Infinity, clearRole: SeatRole | null = null, cut = 0;
+  let clear = Infinity, clearRole = null as SeatRole | null, cut = 0;
   env.soup.forEachInBox(placed, owner, (t) => {
     env.soup.triangle(t, _tri);
     _tri.a.applyMatrix4(_mi); _tri.b.applyMatrix4(_mi); _tri.c.applyMatrix4(_mi);

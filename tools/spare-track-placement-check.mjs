@@ -1744,7 +1744,7 @@ for (const id of ids) {
   if (CROPS) {
     for (const job of cropJobs.filter((j) => j.id === id)) {
       const B = _bundles.find((x) => x.name === job.bundle && (job.index == null || x.index === job.index)) || _bundles.find((x) => x.index === job.index)
-        || (job.near ? _bundles.slice().sort((p, q) => dist3(job.near, p.aabb) - dist3(job.near, q.aabb))[0] : null);
+        || (job.near ? _bundles.filter((x) => dist3(job.near, x.aabb) < 0.6).sort((p, q) => dist3(job.near, p.aabb) - dist3(job.near, q.aabb))[0] ?? null : null);
       const cam = job.cameraFrom && fs.existsSync(job.cameraFrom) ? JSON.parse(fs.readFileSync(job.cameraFrom, 'utf8')) : null;
       if (!B && !cam) { console.error(`[spare-track] crop ${id}: bundle ${job.bundle}#${job.index} not found`); continue; }
       try {
