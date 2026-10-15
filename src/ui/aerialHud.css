@@ -42,6 +42,8 @@
 .flight-hint{font-size:10px;color:#a9b6c0;line-height:1.4;max-width:350px}
 .cot-drone-return{display:flex;align-items:center;gap:7px;padding:6px 9px;flex-shrink:0;font-size:11px}
 .cot-drone-return .flight-icon svg{width:17px;height:17px}
+/* Owner 2026-10-14: no recall until the pilot is in the drone's feed; the control stands dimmed and inert until then. */
+.cot-drone-return:disabled{cursor:default;opacity:.42;filter:saturate(.3)}.cot-drone-return:disabled:active{filter:saturate(.3)}
 html[data-flight=drone] .cot-touch .fire,html[data-flight=drone] .cot-touch .scope,html[data-flight=drone] .cot-touch .autoaim,
 html[data-flight=gunship] .cot-touch .joy,html[data-flight=gunship] .cot-touch .autoaim,html[data-flight=gunship] .cot-touch .fire.alt,
 html[data-flight=drone] .cot-touch .jump,html[data-flight=gunship] .cot-touch .jump{display:none!important}
@@ -153,6 +155,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .flight-key{border:0;border-radius:4px;background:#e2edf01c;color:#e5eff2;min-width:19px;height:20px}
 .cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:9px;line-height:1.5;color:#c2d0d5}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,#354d59f5,#172832f5)}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,#233641ec,#081219f5)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:none;filter:drop-shadow(0 0 4px #fff)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::before{background:#fff}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::after{inset:3px}

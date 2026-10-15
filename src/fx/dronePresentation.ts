@@ -5,6 +5,7 @@ import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobble
 import { acquireDroneModelKit, droneNation, droneRotorDirection, mirroredRotorGeometry, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
 import { DRONE_ARRIVAL, DRONE_RETURN, droneArrivalAttitude } from './droneArrival.ts';
 import { avoidDroneObstacles, type AerialWorldQuery } from '../sim/aerialCombat.ts';
+import { droneReturnS, droneReturnSpeed } from '../sim/droneRecall.ts';
 
 const CAPACITY = 42;
 /**
@@ -44,6 +45,10 @@ interface ReturnFlight {
   id: string | number; ownerId: string | number; nation: string; phase: ReturnPhase;
   pos: THREE.Vector3; vel: THREE.Vector3; state: DroneAttitude; seed: number;
   t: number; phaseT: number; cruiseY: number; speed: number; descentFrom: number;
+  /** Abandoned past this (the recall timing law plus its overrun; set as the transit begins). */
+  limitS: number;
+  /** The landing's first pose last frame: the carrier's motion, fed forward so a flight home keeps up with it. */
+  dockPrev: THREE.Vector3; dockSeen: boolean;
 }
 interface Track { pos: THREE.Vector3; vel: THREE.Vector3; ownerId?: string | number; nation: string; ageS: number }
 
@@ -85,7 +90,8 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   const tracks=new Map<string|number,Track>(),returns=new Map<string|number,ReturnFlight>(),impacted=new Map<string|number,number>();
   const dockAt=new THREE.Vector3(),drawAt=new THREE.Vector3(),handoffAt=new THREE.Vector3(),toward=new THREE.Vector3(),desired=new THREE.Vector3();
   const handoffQuat=new THREE.Quaternion(),arrivalEuler=new THREE.Euler(0,0,0,'YXZ'),arrivalQuat=new THREE.Quaternion();
-  const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3();
+  const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3(),dockVel=new THREE.Vector3();
+  const {climbMps:RETURN_CLIMB_MPS,sinkMps:RETURN_SINK_MPS}=AERIAL_RULES.drone.recall;
   /**
    * The four rotors of one airframe into the pools, never with a mirrored instance transform (2026-10-12: two of the four
    * props and discs drew lit from behind, near-black against the ground). A counter-rotating spinning prop draws the
@@ -126,7 +132,8 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     options.onReturnEvent?.(id,'start',`owner ${track.ownerId}`);
     const state=attitudes.get(id)??createDroneAttitude();
     returns.set(id,{id,ownerId:track.ownerId,nation:track.nation,phase:'grace',pos:track.pos.clone(),vel:track.vel.clone(),state,
-      seed:typeof id==='number'?id*.71:id.length*.71,t:0,phaseT:0,cruiseY:track.pos.y,speed:DRONE_RETURN.minSpeed,descentFrom:0});
+      seed:typeof id==='number'?id*.71:id.length*.71,t:0,phaseT:0,cruiseY:track.pos.y,speed:droneReturnSpeed(0),descentFrom:0,
+      limitS:Infinity,dockPrev:new THREE.Vector3(),dockSeen:false});
   }
   /** Advance one flight home by this frame's presentation dt and draw it; false when it ended (handed over or abandoned). */
   function stepReturn(r:ReturnFlight):boolean {
@@ -139,16 +146,23 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     if(frame.parent?.visible===false)return ended('dock hidden');
     if(r.phase==='handoff'&&frame.userData.returnAck===true){frame.userData.returnAck=false;return ended('handed over');}
     r.t+=dt;r.phaseT+=dt;
-    if(r.t>DRONE_RETURN.maxS+DRONE_RETURN.graceS)return ended('time bound');
+    if(r.t>r.limitS)return ended('time bound');
     const world=options.world?.()??null;
     handoffPose(frame);
     frame.getWorldPosition(dockAt);
+    // The carrier may be driving: its ground velocity is fed forward (bounded against a teleport) so the flight home and
+    // the column descent keep station over a moving dock instead of trailing it into the hand-over.
+    if(r.dockSeen&&dt>0)dockVel.set(handoffAt.x-r.dockPrev.x,0,handoffAt.z-r.dockPrev.z).multiplyScalar(1/dt).clampLength(0,30);
+    else dockVel.set(0,0,0);
+    r.dockPrev.copy(handoffAt);r.dockSeen=true;
     if(r.phase==='grace'){
       r.vel.multiplyScalar(Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.phaseT>=DRONE_RETURN.graceS){
         r.phase='transit';r.phaseT=0;r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
+        // Paced and bounded by the recall's timing law (sim/droneRecall.ts), the window the authority holds the dock for.
         const distance=Math.hypot(dockAt.x-r.pos.x,dockAt.z-r.pos.z);
-        r.speed=Math.min(DRONE_RETURN.maxSpeed,Math.max(DRONE_RETURN.minSpeed,distance/DRONE_RETURN.targetS));
+        r.speed=droneReturnSpeed(distance);
+        r.limitS=r.t-DRONE_RETURN.graceS+droneReturnS(distance,r.pos.y-dockAt.y)+DRONE_RETURN.overrunS;
       }
     }else if(r.phase==='transit'){
       toward.set(handoffAt.x-r.pos.x,0,handoffAt.z-r.pos.z);
@@ -162,15 +176,15 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
         // Home at cruise height over a moving carrier: climbs or glides to it on the way, lifted over what lies ahead.
         r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
         const ground=Math.min(r.speed,distance*1.4+.5);
-        desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0);
-        desired.y=Math.max(-5,Math.min(8,(r.cruiseY-r.pos.y)*.8));
+        desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0).add(dockVel);
+        desired.y=Math.max(-RETURN_SINK_MPS,Math.min(RETURN_CLIMB_MPS,(r.cruiseY-r.pos.y)*.8));
         if(world)avoidDroneObstacles(world,String(r.ownerId),r.pos,desired);
         r.vel.lerp(desired,1-Math.exp(-dt*2.5));r.pos.addScaledVector(r.vel,dt);
       }
     }
     if(r.phase==='descent'){
       // The carrier may move: the column is tracked; the last metres ease into the landing's first pose.
-      desired.set((handoffAt.x-r.pos.x)*4,-Math.min(6,Math.max(1.2,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4);
+      desired.set((handoffAt.x-r.pos.x)*4+dockVel.x,-Math.min(6,Math.max(1.2,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4+dockVel.z);
       r.vel.lerp(desired,1-Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.pos.y<=handoffAt.y+.04){
         r.pos.copy(handoffAt);r.vel.set(0,0,0);r.phase='handoff';r.phaseT=0;

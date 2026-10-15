@@ -48,6 +48,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
+    // 2026-10-14 (owner): the drone recall, only from the drone's feed; it flies home and lands; a shorter recall cooldown
+    'src/sim/droneRecall.selftest.mjs',
+    'src/mp/host/droneRecallWire.selftest.mjs',
+    'src/fx/droneRecallReturn.selftest.mjs',
+    'src/ui/droneControlState.selftest.mjs',
     'src/engine/aerialCamera.selftest.mjs',
     'src/sim/sixModesAuthority.selftest.mjs',
   'src/mp/host/sixModesMigration.selftest.mjs',

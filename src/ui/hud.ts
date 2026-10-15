@@ -29,6 +29,7 @@ import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hud
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getLocale, t } from './i18n.ts';
+import { droneControl } from './droneControlState.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
@@ -2264,10 +2265,13 @@ export function initHud(bus: EventBus): HudRuntime {
     controlsRow.hidden=!player;
     const flight = player?.aerial;
     droneButton.hidden = flight?.kind !== 'drone';
-    droneButton.disabled = !canControl || (!flight?.active && (flight?.cooldownS ?? 0) > 0);
+    // Owner 2026-10-14: the authority refuses a recall before the drone's feed and holds the dock while it flies home.
+    const drone = droneControl(flight, canControl);
+    droneButton.disabled = drone.disabled;
+    droneButton.dataset.phase = drone.phase;
     droneButton.classList.toggle('active', !!flight?.active);
     droneButton.setAttribute('aria-pressed', String(!!flight?.active));
-    droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
+    droneButton.querySelector('.sl')!.textContent = drone.label;
 
     root.classList.toggle('aerial-active', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);

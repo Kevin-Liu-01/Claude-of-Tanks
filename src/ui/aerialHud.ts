@@ -3,6 +3,7 @@ import type { HudTank, HudMatchModeState } from './hud.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
+import { dronePhase } from './droneControlState.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { t, getLocale } from './i18n.ts';
 import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
@@ -92,6 +93,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   back.addEventListener('click',()=>bus.emit('ui:drone',{}));
   const reload=createVehicleCooldownReader();
   let priorTime=0,priorX=0,priorY=0,priorZ=0,speed=0,wasActive=false,kind='';
+  let priorRecallLocked:boolean|null=null;
   function updateWeapons(player:HudTank|null|undefined,now:number):void {
     for(let slot=0;slot<cards.length;slot++){
       const card=cards[slot]!,wait=reload(player?.combat,slot,now),selected=player?.combat?.shellSlot===slot;
@@ -133,7 +135,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   return {
     update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I',supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string},scoped=false,escort?:HudMatchModeState['escort']){
       const view=player?.aerial,active=!!view?.active&&visible;
-      const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now());
+      // A recall the authority accepted closes the feed cleanly (the airframe is flying home); a loss breaks it in static.
+      const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now(),(view?.returnS??0)>0);
       signal.hidden=signalLevel<=0;signal.style.opacity=String(Math.min(1,signalLevel*2));
       updateScopeControls(visible,active,scoped,viewKey);
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
@@ -169,7 +172,14 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       battery.hidden=!drone;battery.value=view.batteryS;
       root.classList.toggle('low-battery',drone&&view.batteryS<10);
       weapons.hidden=drone;back.hidden=!drone;
-      hint.textContent=t(drone?'flight.hint.drone':'flight.hint.gunship');
+      // Owner 2026-10-14: the authority accepts a recall only once the pilot is in the drone's feed; until then the return
+      // control stands disabled and says why.
+      const recallLocked=drone&&dronePhase(view)==='locked';
+      if(recallLocked!==priorRecallLocked){
+        priorRecallLocked=recallLocked;back.disabled=recallLocked;back.classList.toggle('recall-locked',recallLocked);
+        back.title=t(recallLocked?'flight.return.locked':'flight.return');
+      }
+      hint.textContent=t(drone?(recallLocked?'flight.hint.recallLocked':'flight.hint.drone'):'flight.hint.gunship');
       updateWeapons(player,now);
     },
   };

@@ -20,7 +20,29 @@ export const GUN_GAME_WEAPONS = Object.freeze([
   shell('Guided Missile', 'HEAT', 152, 1100, 1100, 1000, 350, { guided: true, reloadS: 5 }),
 ]);
 export const AERIAL_RULES = Object.freeze({
-  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
+  // `cooldownS` follows an airframe lost or spent (an impact, the battery, the link's range); a recall has its own below.
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12,
+    /**
+     * The recall (owner 2026-10-14: "dont be able to instantly call it back, only be able to call back once weve entered
+     * screen, and if we do, show the landing animation and we should be able to launch it again after a shorter
+     * cooldown"). Both authorities (the solo step and the network authority) time it in sim/droneRecall.ts: a recall is
+     * accepted only once the pilot is in the drone's own feed (the launch climb, then the lens hand-over `feedS` that
+     * engine/aerialCamera.ts eases the chase view into the lens over); the recalled airframe flies home and lands on its
+     * dock (the presentation draws it on this same timing law), and the next launch is ready `cooldownS` after it is parked.
+     */
+    recall: Object.freeze({
+      feedS: .55,
+      /** The flight home: the horizontal distance over `transitS` at a ground speed inside [minMps, maxMps], climbing or
+       *  sinking to `cruiseAboveDockM` over the dock at `climbMps` / `sinkMps`. */
+      transitS: 5, minMps: 20, maxMps: 60, climbMps: 8, sinkMps: 12, cruiseAboveDockM: 15,
+      /** The flight home's fixed beats: the hold for an impact in flight, the approach to the dock's column and its descent. */
+      approachS: 4.4,
+      /** The landing on the dock: the descent onto the pads and the rotor spin-down (fx/droneArrival.ts fits inside). */
+      landingS: 3.4,
+      /** The relaunch wait after a recalled airframe is parked on its dock (`cooldownS` above follows a loss). */
+      cooldownS: 5,
+    }),
+  }),
   gunship: Object.freeze({ altitudeM: 240, radiusM: 90, orbitRadS: .09 }),
 });
 export const GUNSHIP_WEAPONS = Object.freeze([
