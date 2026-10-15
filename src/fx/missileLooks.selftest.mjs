@@ -168,6 +168,13 @@ try {
     for (let o = 0; o < a.length; o += 6) if (a[o] !== a[o + 2]) q++;
     return q;
   };
+  const wirePoints = () => {
+    const m = named('fx-missile-wires');
+    if (!m || !m.visible) return 0;
+    const a = m.geometry.getAttribute('aP'); let n = 0;
+    for (let v = 0; v < a.count; v += 2) if (a.getW(v) > 0) n++;
+    return n;
+  };
   const fly = (name, sound, speed, frames) => {
     fx.resetAll();
     bus.emit('shell:fired', { shellId: 9001, shooterId: 'x', muzzlePos: [0, 2.2, 0], dir: [1, 0, 0], caliberMm: 152,
@@ -180,16 +187,18 @@ try {
       shell.prevPos.copy(shell.pos); shell.pos.x += speed * dt; shell.distM += speed * dt; shell.ageS += dt;
       fx.update(dt, [shell], camera);
       out.push({ dbg: fx.getGuidedMissileDebug(), tracers: named('Projectile tracers')?.geometry.instanceCount ?? 0,
-        media: named('fx-volume-media')?.geometry.instanceCount ?? 0, ribbon: ribbonQuads() });
+        media: named('fx-volume-media')?.geometry.instanceCount ?? 0, ribbon: ribbonQuads(), wires: wirePoints() });
     }
     return out;
   };
   const tow = fly('BGM-71E TOW-2A', 'tow-launch', 195, 12);
   assert.ok(tow.every((f) => f.dbg.bodies === 1), 'a TOW in flight draws its body');
   assert.ok(tow.at(-1).dbg.trailSegments > 0, 'its motor and plume once lit');
-  assert.ok(tow.at(-1).tracers >= 1 + 2 * 6, `its motor and two wires of six stretches (${tow.at(-1).tracers} capsules)`);
+  assert.ok(tow.at(-1).tracers >= 1, `its motor (${tow.at(-1).tracers} capsules)`);
+  // (FX lane 10-14) its two wires are their own lines from the launcher (missileWires.selftest)
+  assert.ok(tow.at(-1).wires >= 2 * 4, `and its two wires paid out (${tow.at(-1).wires} points)`);
   const kornet = fly('Kornet guided missile', 'spike-launch', 240, 12);
-  assert.ok(kornet.at(-1).tracers >= 1 && kornet.at(-1).tracers < 6, 'a beam-rider trails no wires');
+  assert.ok(kornet.at(-1).tracers >= 1 && kornet.at(-1).wires === 0, 'a beam-rider trails no wires');
   if (named('fx-volume-media')) {
     assert.ok(tow.at(-1).media > kornet.at(-1).media, `a TOW's launch outweighs a Kornet's (${tow.at(-1).media} vs ${kornet.at(-1).media})`);
     // (EF.04) its smoke trail is one ribbon joined point to point along the flight (12 frames at 195 m/s: ~78 m), not

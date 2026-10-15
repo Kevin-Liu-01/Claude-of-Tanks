@@ -76,6 +76,9 @@ const fxBindings = {
   // launch beat instead of the gun's flash, and its launch point anchors its wires
   firedIsMissile: (sound) => sound === 'missile', missileLaunchAt: new Map(), idSeed: () => 1,
   missileLaunchFx: () => fxCalls.push('missile'),
+  // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube (missileWires.selftest)
+  missileLookFor: (name) => ({ wires: name === 'TOW' ? 2 : 0 }),
+  beginWire: (e, look) => fxCalls.push(`wire:${e.shellId}:${look.wires}`),
 };
 const predictFx = await receiver('../fx/effects.ts', fxCallback('weapon:predicted'), fxBindings);
 const confirmFx = await receiver('../fx/effects.ts', fxCallback('shell:fired'), fxBindings);
@@ -96,5 +99,7 @@ predictFx(missile);
 assert.deepEqual(fxCalls.slice(4), ['missile'], 'a predicted missile launch is its own beat');
 confirmFx({ ...missile, shellId: 20, feedbackPredicted: true });
 assert.deepEqual(fxCalls.slice(4), ['missile'], 'its confirmation neither doubles the launch nor flashes the gun');
-assert.deepEqual(Array.from(fxBindings.missileLaunchAt.get(20)), shot.muzzlePos, 'its launch point anchors its wires');
+assert.deepEqual(Array.from(fxBindings.missileLaunchAt.get(20)), shot.muzzlePos, 'its launch point anchors its trail');
+confirmFx({ ...missile, shellId: 21, shellName: 'TOW' });
+assert.deepEqual(fxCalls.slice(5), ['missile', 'wire:21:2'], 'a confirmed wire-guided round pays out its wire from its launcher');
 console.log('localWeaponPresentation.selftest: production audio/FX receivers isolate intent feedback and retain authority');

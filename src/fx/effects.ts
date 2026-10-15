@@ -4,6 +4,9 @@ import { createProjectileTracers } from './projectileTracers.ts';
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
 import { createSmokeRibbons, type RibbonLook } from './smokeRibbons.ts';
 import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
+import { createMissileWires, WIRE_SLOTS } from './missileWires.ts';
+import { createSceneLightUniforms, readSceneLight, type SceneLightData } from './sceneLight.ts';
+import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
@@ -190,6 +193,8 @@ interface JetScratch {
 
 interface FxVisual {
   root: THREE.Object3D;
+  /** the gun's or a launcher tube's mouth in the world now (a wire-guided missile's wire is fixed there) */
+  gunMuzzleWorld?(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): unknown;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
   /** Wreck visuals report true; a revived/reset visual reports false (wreck r1 reads this). */
   isDestroyed?(): boolean;
@@ -374,6 +379,9 @@ interface PredictedWeaponEvent {
 interface ShellFiredEvent extends PredictedWeaponEvent {
   shellType: string;
   shellId: ShellId;
+  /** the firing vehicle and the tube or muzzle the round left (the launcher a wire-guided round's wire stays fixed to) */
+  shooterId?: ShellId | null;
+  muzzleIndex?: number | null;
   feedbackPredicted?: boolean;
   shellName?: string;
   /** the destruction catalog's class and charge (sim/munitionBlast.ts), when the shooter's step publishes them */
@@ -1289,6 +1297,11 @@ function* createFxSteps(
   // (EF.04) a missile's smoke trail as one continuous ribbon, lit by the media's own light (desktop tiers, with the media)
   const ribbons = vol ? createSmokeRibbons(vol.shading) : null;
   if (ribbons) group.add(ribbons.mesh);
+  // (FX lane 10-14) a wire-guided missile's command wire, fixed to its launcher's tube (every tier: one draw), in the
+  // time of day's light
+  const wireLight = createSceneLightUniforms();
+  const wires = createMissileWires(wireLight);
+  group.add(wires.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
 
@@ -4490,8 +4503,19 @@ function* createFxSteps(
   const _mUp = new THREE.Vector3();
   const _mPos = new THREE.Vector3();
   const _mHead = new THREE.Vector3();
-  const WIRE_RGB: readonly number[] = [0.82, 0.82, 0.78];
+  /** the covered warm's motor glow colour */
+  const WARM_GLOW_RGB: readonly number[] = [0.82, 0.82, 0.78];
   let liveMissiles = 0;
+  // (FX lane 10-14) each wire's launcher: the firing vehicle, the tube the round left (-1 the gun's own muzzle, -2 none
+  // resolved: the wire keeps the point it was fired from), whether that is a launcher tube, and the fired muzzle's offset
+  // from the visual's own at the shot (so the wire's end sits exactly where the round left)
+  const wireShooter: (ShellId | null)[] = new Array(WIRE_SLOTS).fill(null);
+  const wireTube = new Int16Array(WIRE_SLOTS).fill(-2);
+  const wireLauncher = new Uint8Array(WIRE_SLOTS);
+  const wireOff = new Float64Array(WIRE_SLOTS * 3);
+  const _wireA = new THREE.Vector3();
+  /** the covered warm's wire */
+  const WARM_WIRE_KEY = -9;
 
   function idSeed(id: ShellId): number {
     let h = 2166136261;
@@ -4597,9 +4621,80 @@ function* createFxSteps(
       renderedAtgmTrailSegments++;
       if (blast && look.smoke) emitMissileTrail(trail, look, shell, d, t, speed, seed, seedU);
     }
-    if (look.wires > 0 && trail.launch) tracerIndex = drawMissileWires(trail, look, t, seedU, tracerIndex);
+    if (look.wires > 0) payOutWire(trail, shell, look, dir);
     trail.lastD = d;
     return tracerIndex;
+  }
+
+  /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
+  function subjectFor(id: ShellId): FxEntity | null {
+    return (tracerSubject ? tracerSubject(String(id)) : null) ?? decalEntityFor(id);
+  }
+
+  /**
+   * (FX lane 10-14) A wire-guided round's wire from its launcher: the tube it left on the firing vehicle, resolved once
+   * at the shot (the event's tube, else the vehicle's tube nearest where the round left; none within 1.5 m: the wire
+   * keeps the point it was fired from).
+   */
+  function beginWire(e: ShellFiredEvent, look: MissileLook): void {
+    const slot = wires.begin(idSeed(e.shellId), look.wires, e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], particles.getTime());
+    wireShooter[slot] = e.shooterId ?? null;
+    wireTube[slot] = -2;
+    if (e.shooterId == null) return;
+    const vis = subjectFor(e.shooterId)?.visual;
+    if (!vis?.gunMuzzleWorld) return;
+    const ent = subjectFor(e.shooterId) as (FxEntity & {
+      spec?: { gun?: Parameters<typeof usesLauncherMuzzles>[0] & { shells?: readonly ({ name?: string; guided?: boolean } | null)[] } };
+    }) | null;
+    const gun = ent?.spec?.gun ?? null;
+    const round = gun?.shells?.find((r) => r?.name === e.shellName) ?? gun?.shells?.find((r) => r?.guided === true) ?? null;
+    const launcher = usesLauncherMuzzles(gun, round);
+    const tubes = launcher ? gun?.launcherMuzzles?.length ?? 0 : 0;
+    const [mx, my, mz] = e.muzzlePos;
+    let best = -2, bestD = 1.5 * 1.5;
+    const tryTube = (i: number): void => {
+      vis.gunMuzzleWorld!(_wireA, i >= 0 ? i : undefined, launcher);
+      const dd = (_wireA.x - mx) ** 2 + (_wireA.y - my) ** 2 + (_wireA.z - mz) ** 2;
+      if (dd < bestD) {
+        bestD = dd; best = i;
+        wireOff[slot * 3] = mx - _wireA.x; wireOff[slot * 3 + 1] = my - _wireA.y; wireOff[slot * 3 + 2] = mz - _wireA.z;
+      }
+    };
+    if (typeof e.muzzleIndex === 'number' && e.muzzleIndex >= 0) tryTube(e.muzzleIndex);
+    if (best === -2) { if (tubes > 0) for (let i = 0; i < tubes; i++) tryTube(i); else tryTube(-1); }
+    wireTube[slot] = best;
+    wireLauncher[slot] = launcher ? 1 : 0;
+  }
+
+  /** Each frame a wire-guided round flies: its wire's fixed end on the launcher's tube now, its free end at the round's
+   *  tail (on its axis: the spools sit in the tail), laid where the tail passed. */
+  function payOutWire(trail: GuidedTrail, shell: LiveShell, look: MissileLook, dir: THREE.Vector3): void {
+    const key = trail.seed as number;
+    let slot = wires.slotOf(key);
+    if (slot < 0) {
+      // first seen in flight (no shot event here): its wire from where it was first seen
+      const L0 = trail.launch ?? [shell.pos.x, shell.pos.y, shell.pos.z];
+      slot = wires.begin(key, look.wires, L0[0], L0[1], L0[2], particles.getTime());
+      wireShooter[slot] = shell.shooterId ?? null;
+      wireTube[slot] = -2;
+    }
+    const sid = wireShooter[slot];
+    if (wireTube[slot] > -2 && sid != null) {
+      const vis = subjectFor(sid)?.visual;
+      if (vis?.gunMuzzleWorld) {
+        vis.gunMuzzleWorld(_wireA, wireTube[slot] >= 0 ? wireTube[slot] : undefined, wireLauncher[slot] === 1);
+        wires.anchor(slot, _wireA.x + wireOff[slot * 3], _wireA.y + wireOff[slot * 3 + 1], _wireA.z + wireOff[slot * 3 + 2]);
+      }
+    }
+    const back = 0.65 + 0.625 * look.bodyLen;
+    wires.tail(slot, _mPos.x - dir.x * back, _mPos.y - dir.y * back, _mPos.z - dir.z * back, particles.getTime());
+  }
+
+  /** the round is gone (struck, burst, self-destructed): its wire parts at the missile */
+  function partWire(id: ShellId | null | undefined): void {
+    if (id == null) return;
+    const slot = wires.slotOf(idSeed(id));
+    if (slot >= 0) wires.cut(slot, particles.getTime());
   }
 
   /** A missile's or rocket's launch: a gun-launched round keeps the gun's own muzzle blast, a rack's rockets their
@@ -4711,33 +4806,6 @@ function* createFxSteps(
       n++;
     }
     trail.nextSmokeD = next;
-  }
-
-  /** A wire-guided round's command wires: faint lines from the launcher to its tail, sagging a little between, glinting
-   *  where the light catches a stretch of them (untapered capsules). */
-  function drawMissileWires(trail: GuidedTrail, look: MissileLook, t: number, seedU: number, tracerIndex: number): number {
-    const L0 = trail.launch as [number, number, number];
-    const dark = tracers.darkLevel();
-    const len = Math.hypot(_mHead.x - L0[0], _mHead.y - L0[1], _mHead.z - L0[2]);
-    if (len < 1) return tracerIndex;
-    const SEGS = 6;
-    const sag = Math.min(2.5, 0.0025 * len);
-    for (let w = 0; w < look.wires; w++) {
-      const off = look.wires > 1 ? (w === 0 ? -0.06 : 0.06) : 0;
-      let px = L0[0] + _mSide.x * off, py = L0[1], pz = L0[2] + _mSide.z * off;
-      for (let k = 1; k <= SEGS; k++) {
-        const f = k / SEGS;
-        const x = L0[0] + (_mHead.x - L0[0]) * f + _mSide.x * off;
-        const y = L0[1] + (_mHead.y - L0[1]) * f - sag * 4 * f * (1 - f);
-        const z = L0[2] + (_mHead.z - L0[2]) * f + _mSide.z * off;
-        const g = Math.sin((k * 12.9898 + w * 4.1 + seedU * 78.233) * 43758.5453 + t * 2.3);
-        const glint = Math.max(0, g) ** 6;
-        const k0 = (0.1 + 0.55 * glint) * (1 - 0.7 * dark);
-        tracers.glow(x, y, z, px, py, pz, 0.32, 0, WIRE_RGB, k0, WIRE_RGB, 0, -1);
-        px = x; py = y; pz = z;
-      }
-    }
-    return tracerIndex;
   }
 
   function writeShellBolt(
@@ -4883,6 +4951,9 @@ function* createFxSteps(
   function writeGuidedTrailAfterglow(tracerCount: number, tickDt: number): number {
     for (const [id, trail] of guidedTrails) {
       if (trail.seen) continue;
+      // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
+      // wire parts where it was last seen
+      if (trail.age === 0 && trail.look && trail.look.wires > 0) partWire(id);
       trail.age += tickDt;
       if (trail.age >= ATGM_TRAIL_S) {
         guidedTrails.delete(id);
@@ -5254,6 +5325,7 @@ function* createFxSteps(
     particles.shiftTime(delta);
     vol?.shiftTime(delta);
     ribbons?.shiftTime(delta);
+    wires.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
     structMask?.shiftTime(delta);
@@ -5902,8 +5974,16 @@ function* createFxSteps(
       // tracers' own: the solo warm's update ran with no shells, so the tracer mesh drew nothing in the covered render)
       // one motor glow, as a launch draws it, so the tracers' program compiles with the others; the next update clears it
       tracers.begin();
-      tracers.glow(pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, pos.x, pos.y, pos.z, 0.6, 2, WIRE_RGB, 0.5, WIRE_RGB, 0.2, 1);
+      tracers.glow(pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, pos.x, pos.y, pos.z, 0.6, 2, WARM_GLOW_RGB, 0.5, WARM_GLOW_RGB, 0.2, 1);
       tracers.end();
+      // (FX lane 10-14) and a short wire, so the wire's program compiles with them; resetAll clears it
+      {
+        const now = particles.getTime();
+        const slot = wires.begin(WARM_WIRE_KEY, 1, pos.x, pos.y, pos.z, now);
+        wireTube[slot] = -2;
+        wires.tail(slot, pos.x + dir.x * 6, pos.y + dir.y * 6, pos.z + dir.z * 6, now);
+        wires.update(now, groundY);
+      }
       // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
       // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
       if (ribbons && vol) {
@@ -5974,6 +6054,9 @@ function* createFxSteps(
       sweepShellsThroughProps(shells);
       let tracerCount = writeLiveShellTracers(shells, camera);
       commitAtgmInstances();
+      // (FX lane 10-14) the wires after their rounds: sag, the launcher's pull, the fall once parted; lit by the scene now
+      wires.update(particles.getTime(), groundY);
+      if (wires.mesh.visible) readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, wireLight);
       tracerCount = writeGuidedTrailAfterglow(tracerCount, tickDt);
       tracerCount = writeShellTrailAfterglow(tracerCount, tickDt);
       tracerCount = writeStaticTracerAfterglow(tracerCount);
@@ -6045,6 +6128,9 @@ function* createFxSteps(
           if (missileLaunchAt.size > 96) missileLaunchAt.clear();
           missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
           if (!e.feedbackPredicted) missileLaunchFx(e, idSeed(e.shellId));
+          // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube
+          const wired = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
+          if (wired.wires > 0) beginWire(e, wired);
         } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
@@ -6068,7 +6154,7 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:hit', (e) => {
         if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
-        if (e.kind !== 'ricochet') tracers.strike(e.shellId, e.pos);
+        if (e.kind !== 'ricochet') { tracers.strike(e.shellId, e.pos); partWire(e.shellId); }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
@@ -6126,6 +6212,7 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:expired', (e) => {
         if (e.hitTerrain || e.hitKind) drones.markImpact(e.shellId); // struck the world: no flight home (an air expiry has neither)
         tracers.strike(e.shellId, e.pos, !!e.hitWater); // atmospherics lane: the tracer's last dash and its strike
+        partWire(e.shellId); // (FX lane 10-14) a wire-guided round's wire parts where it burst
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
         // point; a fast shell can live for fewer sim ticks than one render
@@ -6997,6 +7084,7 @@ function* createFxSteps(
       particles.resetAll();
       vol?.reset();
       ribbons?.reset();
+      wires.reset();
       chunks?.reset();
       craters?.reset();
       structMask?.reset();
