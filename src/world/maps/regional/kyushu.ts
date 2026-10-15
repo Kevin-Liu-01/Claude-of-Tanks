@@ -415,7 +415,10 @@ const coopWarehouse: RegionalBuilder = (ctx) => {
       open: 0.3 + ctx.variant() * 0.4, backDoor: W * 0.3, clerestory: true, roofLights: false, ridgeVent: false, gutters: true, mobile: ctx.tier === 'mobile',
       roof: { bucket: 'structureMetal', colour: pick(rng, [rgb(0x5f6f78), rgb(0x8a3a2e), rgb(0x4f6a52)]) } }, ctx.variant);
     const f: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    faceBox(sink, 'structureMetal', f, 0, H - 0.6, 0.02, W * 0.6, 0.45, 0.03, { colour: rgb(0x2f7a4a), decor: true });
+    // (the board stands 10 cm off the sheet on its brackets, the co-op's white characters on it)
+    faceBox(sink, 'structureMetal', f, 0, H - 0.6, 0.12, W * 0.6, 0.45, 0.04, { colour: rgb(0x2f7a4a), decor: true });
+    for (const bx of [-0.35, 0, 0.35]) faceBox(sink, 'structureMetal', f, bx * W * 0.6, H - 0.6, 0.05, 0.06, 0.3, 0.1, { colour: shade(livery, 0.7), decor: true });
+    for (let k = 0; k < 4; k++) faceBox(sink, 'structureMetal', f, (k - 1.5) * 0.62, H - 0.6, 0.15, 0.4, 0.3, 0.02, { colour: rgb(0xeef0ea), decor: true, fine: true });
     sink.span('structureMetal', -3.0, 5.0, D / 2, 3.0, 5.12, D / 2 + 1.4, { colour: shade(livery, 0.9), decor: true, shadow: true });
     for (const sx of [-2.6, 2.6]) sink.member('structureMetal', [sx, 4.2, D / 2], [sx, 5.0, D / 2 + 1.2], 0.08, 0.08, [1, 0, 0], { colour: shade(livery, 0.7), decor: true, exposed: true }, 0);
     // the loading dock under the canopy, at a lorry's bed height

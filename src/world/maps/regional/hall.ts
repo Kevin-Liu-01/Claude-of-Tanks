@@ -101,7 +101,13 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
       },
       door: (s, face, o, y0) => {
         if (o.kind === 'gate') return hallDoors(s, face, o, y0, spec);
-        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: spec.doorLivery, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: spec.trim }, steps: null, leafKind: 'plank' }, y0 + o.y0);
+        // (a wicket hangs 15 cm in, inside the cut's lining, behind its frame: the reveal the sheet hasn't got)
+        s.recess = 0.15;
+        try { doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: spec.doorLivery, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: spec.trim }, steps: null, leafKind: 'plank' }, y0 + o.y0); }
+        finally { s.recess = 0; }
+        const c = { colour: shade(spec.trim, 1.15), decor: true };
+        for (const sx of [-1, 1]) faceBox(s, 'structureMetal', face, o.u + sx * (o.w / 2 - 0.01), y0 + o.y0 + o.h / 2, -0.06, 0.02, o.h, 0.18, c);
+        faceBox(s, 'structureMetal', face, o.u, y0 + o.y0 + o.h - 0.01, -0.06, o.w - 0.04, 0.02, 0.18, c);
       },
     });
   } finally { sink.paint = null; }
@@ -110,9 +116,10 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   const ix = w / 2 - 0.06, iz = d / 2 - 0.06, top = (x: number) => eave + (w / 2 - Math.abs(x)) * tanP - 0.12;
   sink.quad('structureMetal', [-ix, y0 + 0.01, iz], [ix, y0 + 0.01, iz], [ix, y0 + 0.01, -iz], [-ix, y0 + 0.01, -iz], { colour: FLOOR, decor: true });
   const back = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
-  // (the inner walls cut where the outer ones are: through a light or a door the hall's space, not a wall behind it)
+  // (the inner walls cut where the outer ones are: through a light or a door the hall's space, not a wall behind it; a
+  // light's cut opens to its lining's outer face, 2 cm round, so the lining's box closes the edge between the two sheets)
   const holesOf = (name: 'left' | 'right' | 'back'): Array<[number, number, number, number]> => openings.filter((o) => o.face === name)
-    .map((o) => [-(o.u + o.w / 2), -(o.u - o.w / 2), y0 + o.y0, y0 + o.y0 + o.h] as [number, number, number, number]);
+    .map((o) => { const m = o.kind === 'window' ? 0.02 : 0; return [-(o.u + o.w / 2) - m, -(o.u - o.w / 2) + m, y0 + o.y0 - m, y0 + o.y0 + o.h + m] as [number, number, number, number]; });
   linerWall(sink, { origin: [0, 0, -iz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * ix }, -ix, ix, y0, eave - 0.05, holesOf('back'), back);
   sink.polygon('structureMetal', [[ix, eave - 0.05, -iz], [0, top(0), -iz], [-ix, eave - 0.05, -iz]], { colour: back, decor: true });
   // (an open-sided barn takes the day in: its inside a shade of its own sheet, and no liner behind its open side)
@@ -133,15 +140,17 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   for (let k = 1; k < bays; k++) {
     const z = -iz + 2 * iz * k / bays;
     for (const s of [-1, 1]) {
-      sink.member('structureMetal', [s * (ix - 0.12), y0, z], [s * (ix - 0.12), eave - 0.2, z], 0.22, 0.14, [s, 0, 0], { colour: FRAME, decor: true }, 0);
-      sink.member('structureMetal', [s * (ix - 0.12), eave - 0.2, z], [0, top(0) - 0.12, z], 0.24, 0.12, [0, 1, 0], { colour: FRAME, decor: true }, 0);
+      // (a framing member shows its face and sides, not its back: the column's face into the hall, its back on the
+      // liner; the rafter's face down to the floor, its back up under the roof)
+      sink.member('structureMetal', [s * (ix - 0.01), y0, z], [s * (ix - 0.01), eave - 0.2, z], 0.22, 0.14, [-s, 0, 0], { colour: FRAME, decor: true }, 0);
+      sink.member('structureMetal', [s * (ix - 0.08), eave - 0.08, z], [0, top(0), z], 0.24, 0.12, [0, -1, 0], { colour: FRAME, decor: true }, 0);
     }
   }
   sink.dressing(spec.mobile, () => {
     // the sheet's seams along the long walls and its corner flashings
     for (const name of ['left', 'right'] as const) {
       const f = frame.faces[name];
-      for (let u = -f.width / 2 + 1.5; u < f.width / 2 - 0.6; u += 3) faceBox(sink, 'structureMetal', f, u, y0 + wall / 2, -0.02, 0.08, wall, 0.06, { colour: shade(spec.livery, 0.82), decor: true }, 'caps');
+      for (let u = -f.width / 2 + 1.5; u < f.width / 2 - 0.6; u += 3) faceBox(sink, 'structureMetal', f, u, y0 + wall / 2, 0.01, 0.08, wall, 0.02, { colour: shade(spec.livery, 0.82), decor: true }, 'caps');
     }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       sink.span('structureMetal', sx * w / 2 - (sx > 0 ? 0.04 : 0.06), y0, sz * d / 2 - (sz > 0 ? 0.04 : 0.06), sx * w / 2 + (sx > 0 ? 0.06 : 0.04), eave, sz * d / 2 + (sz > 0 ? 0.06 : 0.04),
@@ -171,11 +180,16 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
       for (const s of [-1, 1]) slope(s, z0, z1, 0.02, rgb(0xcfd3c8));
     }
     if (spec.ridgeVent) {
-      const rt = rg.ridgeTopY;
-      sink.span('structureMetal', -0.35, rt - 0.08, -d * 0.3, 0.35, rt + 0.35, d * 0.3, { colour: shade(spec.livery, 0.75), decor: true });
-      sink.span('structureMetal', -0.55, rt + 0.35, -d * 0.3 - 0.1, 0.55, rt + 0.43, d * 0.3 + 0.1, { colour: shade(spec.livery, 0.9), decor: true });
-      for (const s of [-1, 1]) for (let z = -d * 0.3 + 0.2; z < d * 0.3; z += 0.4) {
-        sink.span('structureMetal', s * 0.35 - 0.02, rt + 0.02, z - 0.08, s * 0.35 + 0.02, rt + 0.3, z + 0.08, { colour: INSIDE, decor: true, fine: true });
+      // the vent over its slot in the ridge: a kerb, the dark throat standing in the slot, the cap on its end plates, and
+      // each side open under the cap but for the louvre blades running its length, 23 cm proud of the throat (the dark
+      // between the blades the hall's air, never slats stuck on a box)
+      const rt = rg.ridgeTopY, z0 = -d * 0.3, z1 = d * 0.3;
+      sink.span('structureMetal', -0.35, rt - 0.08, z0, 0.35, rt + 0.02, z1, { colour: shade(spec.livery, 0.75), decor: true });
+      sink.span('structureMetal', -0.12, rt + 0.02, z0, 0.12, rt + 0.35, z1, { colour: INSIDE, decor: true });
+      sink.span('structureMetal', -0.55, rt + 0.35, z0 - 0.1, 0.55, rt + 0.43, z1 + 0.1, { colour: shade(spec.livery, 0.9), decor: true });
+      for (const z of [z0, z1]) sink.span('structureMetal', -0.37, rt + 0.02, z - 0.01, 0.37, rt + 0.35, z + 0.01, { colour: shade(spec.livery, 0.75), decor: true });
+      for (const s of [-1, 1]) for (const y of [rt + 0.09, rt + 0.18, rt + 0.27]) {
+        sink.span('structureMetal', s * 0.35 - 0.04, y, z0, s * 0.35 + 0.04, y + 0.015, z1, { colour: shade(spec.livery, 0.8), decor: true, fine: true });
       }
     }
   });
