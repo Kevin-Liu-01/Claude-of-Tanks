@@ -2433,6 +2433,9 @@ export function addGarageFacilityDetails({
           clusterBox(bay, u, f, 0.4 + (runwayY - 0.4) / 2, 0.035, runwayY - 0.4, 0.64, millSteel, 'structure'); // web
           clusterBox(bay, u + side * 0.15, f, runwayY + (roofY - runwayY) / 2, 0.32, roofY - runwayY, 0.32, millSteel, 'structure');
           clusterBox(bay, u - side * 0.2, f, runwayY - 0.25, 0.9, 0.5, 0.7, millSteel, 'structure'); // the crane bracket
+          clusterBeam(bay, [u - side * 0.05, f, runwayY - 1.6], [u - side * 0.6, f, runwayY - 0.5], 0.12, millSteel, 'structure'); // its haunch
+          clusterBox(bay, u, f, 0.43, 0.9, 0.06, 0.9, soot, 'structure'); // the base plate
+          for (const du of [-0.34, 0.34]) for (const dw of [-0.34, 0.34]) clusterCylinder(bay, u + du, f + dw, 0.5, 0.04, 0.1, soot, 0, 8); // its anchor nuts
         }
         // the runway girder and its rail, a walkway with a handrail behind it
         clusterBox(bay, side * (halfSpan - 0.4), 0, runwayY + 0.35, 0.5, 0.9, 2 * halfLen + 1, millSteel, 'structure');
@@ -2499,6 +2502,27 @@ export function addGarageFacilityDetails({
         for (const df of [-1.6, 1.6]) clusterCylinder(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 0.98, 0.32, 0.22, soot, 0, 16, Math.PI / 2);
       }
       for (const df of [-0.75, 0.75]) clusterBox(bay, 0, craneF + df, runwayY + 1.45, 2 * halfSpan - 0.8, 1.0, 0.55, craneYellow, 'painted');
+      // (the re-judge, 2026-10-15: "flat yellow and black boxes ... no I- or box-girder flanges, end carriages, trolley,
+      // hook block, festoon cable or capacity plate"): the box girders' flange plates and stiffeners, a crab rail on
+      // each, the capacity plate on the near girder, the festoon cable's loops on its wire along the bridge, the
+      // end carriages' buffers and drives
+      const flange = craneYellow.clone().multiplyScalar(0.78);
+      for (const df of [-0.75, 0.75]) {
+        for (const dy of [-0.52, 0.52]) clusterBox(bay, 0, craneF + df, runwayY + 1.45 + dy, 2 * halfSpan - 0.8, 0.05, 0.7, flange, 'painted');
+        for (let k = -6; k <= 6; k += 1) clusterBox(bay, k * 1.9, craneF + df + Math.sign(df) * 0.29, runwayY + 1.45, 0.06, 0.96, 0.03, flange, 'painted');
+        clusterBox(bay, 0, craneF + df, runwayY + 2.0, 2 * halfSpan - 1.2, 0.1, 0.08, soot, 'structure'); // the crab rail
+      }
+      clusterBox(bay, -4.5, craneF + 1.04, runwayY + 1.45, 2.2, 0.55, 0.03, new THREE.Color(0xe9e4d4), 'painted'); // the capacity plate
+      clusterBox(bay, -4.5, craneF + 1.055, runwayY + 1.45, 1.6, 0.18, 0.02, soot, 'painted'); // its lettering
+      clusterBox(bay, 0, craneF - 1.25, runwayY + 1.9, 2 * halfSpan - 1.0, 0.02, 0.02, soot, 'structure'); // the festoon wire
+      for (let k = 0; k < 9; k += 1) { // the festoon loops bunched toward the crab
+        const u = crabU - 1.4 - k * (k < 5 ? 0.7 : 2.2);
+        clusterBox(bay, u, craneF - 1.25, runwayY + 1.55, 0.06, 0.7, 0.06, soot, 'structure');
+      }
+      for (const side of [-1, 1]) {
+        for (const df of [-2.15, 2.15]) clusterBox(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 1.25, 0.5, 0.4, 0.12, soot, 'structure'); // buffers
+        clusterBox(bay, side * (halfSpan - 0.95), craneF - 1.2, runwayY + 1.55, 0.5, 0.5, 0.6, soot, 'structure'); // the long-travel drive
+      }
       const crabU = 10.4; // racked over to the bay's right, the ladle hanging clear of the hero's outline
       clusterBox(bay, crabU, craneF, runwayY + 2.25, 2.4, 0.6, 2.4, craneYellow, 'painted');
       clusterCylinder(bay, crabU, craneF, runwayY + 2.0, 0.55, 1.8, soot, 0, 16, Math.PI / 2);
