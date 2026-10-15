@@ -1,7 +1,8 @@
 // VEH-13 (2026-10-15): the spare-track seat solver (spareTrackSeat.ts) rejects every defect class on synthetic
-// fixtures, re-seats a buried authored run outward, and the Strv 103 family builds clean: no run on its fixed gun, the
-// Strv 103A carries exactly one hull run (its authored A-era links; R8 keeps the generic decor run off), the Strv 103B's
-// dozer-face courses are seated (not sunk into the nose loft), and the UDES 03's decor run is off the gun and louvres.
+// fixtures, lifts a sunk run off its own mount, re-seats a buried one outward (never under the gun, never crowded), and
+// the Strv 103 family builds clean: no run on its fixed gun, the Strv 103A carries exactly one hull run (its A-era
+// links; R8 keeps the generic decor run off), the Strv 103B's nose courses stay where authored on the nose face, and
+// the UDES 03's decor run is off the gun and louvres.
 // SPARE_TRACK_SEAT_SYNTHETIC_ONLY=1 runs the fixtures alone (no tank builds).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -171,8 +172,41 @@ const env = (sources, frame = 'hull', motion = null) => ({
   assert.ok(measureSeat(e, shape(), refined, 7).ok, 'the plane-fit pose passes');
 }
 
+// 12. R9: a seat the solver chooses never lies under the gun; an authored one only on a gun fixed in the hull
+{
+  const tube = new THREE.CylinderGeometry(0.1, 0.1, 3, 18);
+  tube.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+  tube.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0.8, 0));
+  const deck = src(plate(3, 0.1, 3, 0, -0.05, 0), 'armor');
+  const under = measureSeat({ ...env([deck, src(tube, 'gun', 0, true)]), motion: null }, shape(), poseOn(0.2, 0, 0), 7, true, true);
+  assert.equal(under.reason, 'under-gun', `a chosen seat 5 cm beside the barrel's footprint fails (${under.reason})`);
+  const clear = measureSeat(env([deck, src(tube.clone(), 'gun', 0, true)]), shape(), poseOn(0.5, 0, 0), 7, true, true);
+  assert.ok(clear.ok, `a chosen seat 15 cm off the footprint passes (${clear.reason})`);
+}
+
+// 13. a chosen seat sits in open plate: a rail upright rising beside its links (2 cm off) fails, 8 cm off passes
+{
+  const deck = src(plate(3, 0.1, 3, 0, -0.05, 0), 'armor');
+  const post = (x) => src(plate(0.03, 0.3, 0.03, x, 0.15, 0), 'armor');
+  const tight = measureSeat(env([deck, post(0.25 + 0.035)]), shape(), poseOn(0, 0, 0), 7, true, true);
+  assert.equal(tight.reason, 'crowded', `an upright 2 cm off the links crowds a chosen seat (${tight.reason})`);
+  const open = measureSeat(env([deck, post(0.25 + 0.095)]), shape(), poseOn(0, 0, 0), 7, true, true);
+  assert.ok(open.ok, `an upright 8 cm off leaves it open (${open.reason})`);
+}
+
+// 14. authored mounts first: a run whose link backs sink 3.2 cm into its own mount is lifted straight off it (by that
+// much and a few mm), not moved along the plate
+{
+  const e = env([src(plate(2, 0.1, 2, 0, -0.05, 0), 'armor')]);
+  const sunk = poseOn(0.1, -0.05, 0.2);
+  const r = solveSpareTrackSeat(e, shape(), sunk, 7);
+  assert.equal(r.seat, 'lifted', `a sunk run is lifted (${r.seat}, ${r.hint.reason})`);
+  assert.ok(Math.abs(r.pose.pos.x - 0.1) < 1e-6 && Math.abs(r.pose.pos.z - 0.2) < 1e-6, 'the lift keeps its plan position');
+  assert.ok(r.pose.pos.y - sunk.pos.y > 0.032 && r.pose.pos.y - sunk.pos.y < 0.045, `lifted ${r.pose.pos.y - sunk.pos.y} m`);
+}
+
 console.log('spareTrackSeat.selftest: synthetic fixtures passed (gun, tube facet, overhang, grille, hatch, buried re-seat, '
-  + 'casemate gun, traverse step, cloth roll, well, plane fit)');
+  + 'casemate gun, traverse step, cloth roll, well, plane fit, under the gun, crowded, lift)');
 
 if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
   const { readFileSync } = await import('node:fs');
@@ -228,14 +262,15 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
         assert.ok(['authored', 'reseated'].includes(hull[0].seat), 'the A-era links are kept, on a seat that passes');
       }
       if (id === 'strv103') {
-        const dozer = runs.filter((r) => /strv103b-dozer/.test(r.site));
-        const rejected = (root.userData.spareTrackRejected ?? []).filter((r) => /strv103b-dozer/.test(r.site));
-        assert.equal(dozer.length + rejected.length, 2, 'both dozer-face courses are registered');
-        for (const run of dozer) assert.ok(run.maxEmbedCm <= 1, `${run.site}: links embed ${run.maxEmbedCm} cm`);
+        // the nose links: one clamped course a side on the vertical nose face, kept where authored (blind critics m1:
+        // re-seated bare rows on the shelf top read as loose bricks)
+        const nose = runs.filter((r) => r.source === 'fitting' && /@hull\(-?0\.30,1\.26,3\.34\)/.test(r.site));
+        assert.equal(nose.length, 2, `both nose courses are built (${JSON.stringify(runs.map((r) => r.site))})`);
+        for (const run of nose) assert.equal(run.seat, 'authored', `${run.site} is kept where authored`);
       }
       for (const run of runs) {
         // a kept authored seat passes the authored tier, anything the solver chose the strict one
-        const strict = run.seat !== 'authored';
+        const strict = run.seat === 'reseated' || run.seat === 'decor';
         assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20) && run.exposure >= (strict ? 50 : 30),
           `${id}/${run.site}: ${JSON.stringify(run)}`);
       }

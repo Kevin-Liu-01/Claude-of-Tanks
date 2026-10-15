@@ -427,8 +427,11 @@ Spare-track links (VEH-13, 2026-10-15): every run goes through one seat solver (
 host role, footprint support, seat from outside, static and motion clearance, exposure, one source per frame). Mount
 links only as `FITTINGS.spareTrackLinks`, `KIT.spareTrackStrip` or a registered course (`withSpareTrackRun`,
 `spareTrackPart`); never as loose parts in `hullTrack`/`turretTrack`. The factory's seat pass keeps a passing run
-exactly as built, re-seats a failing one from outside nearby or drops it (`root.userData.spareTrack`,
-`spareTrackRejected`). Tag grilles, louvres and exhausts drawn into ordinary buckets with `withSeatRole(P, 'grille', ...)`
+exactly as built; authored mounts come first (a run sunk into its own mount is lifted straight off it, a hand-drawn
+course keeps the links whose own seat holds); only a mount that is itself wrong is searched, never under the gun or
+crowded against a rail, and a moved hand-drawn course gets straps; otherwise the run is dropped
+(`root.userData.spareTrack`, `spareTrackRejected`). The decor keeps its rigid pieces out of every built run
+(`root.userData.spareTrackBoxes`). Tag grilles, louvres and exhausts drawn into ordinary buckets with `withSeatRole(P, 'grille', ...)`
 where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGunDark`. The receipt is
 `tools/spare-track-placement-check.mjs` against `docs/geometry-gate/spare-track.json` (part of `tank:anatomy:update`
 and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge. The search is the pass's only

@@ -84,7 +84,7 @@ for (const id of SEATED_OWNERS) {
     }
     for (const run of runs) {
       // a seat the solver chose (re-seated, decor) meets the strict tier; a kept authored seat the authored tier
-      const strict = run.seat !== 'authored';
+      const strict = run.seat === 'reseated' || run.seat === 'decor';
       assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20),
         `${id}/${run.site}: support ${run.support} %, air ${run.air} %`);
       assert.ok((!strict || run.gapP90Cm <= 1.2) && run.maxEmbedCm <= (strict ? 1 : 5),

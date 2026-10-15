@@ -19,7 +19,7 @@ import { casemateGunYawLimit } from './casemateGunPose.ts';
 import { SPARE_TRACK_SEAT_PLAN } from './spareTrackSeatPlan.ts';
 import {
   seatAngularLow, seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat,
-  SeatSoup, measureSeat, AUTHORED_SEARCH, type SeatAngularProfile,
+  SeatSoup, measureSeat, AUTHORED_SEARCH, NO_SEARCH, type SeatAngularProfile,
   type SeatEnv, type SeatMeasure, type SeatMotion, type SeatPose, type SeatRadialProfile, type SeatRole, type SeatRunShape,
   type SeatSource, type SpareTrackRunTag, type SpareTrackSeatReceipt,
 } from './spareTrackSeat.ts';
@@ -287,42 +287,76 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
   const plan = SPARE_TRACK_SEAT_PLAN[a.spec.id];
   const consulted = new Set<string>();
   const audit = planAudit ? { live: {} as Record<string, number>, stale: [] as string[] } : null;
+  const kept: Record<'hull' | 'turret', THREE.Box3[]> = { hull: [], turret: [] };
+  const keep = (run: AuthoredRun, shape: SeatRunShape, pose: SeatPose): void => {
+    kept[run.frame].push(shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(pose.pos, pose.quat, UNIT)));
+  };
+  const reject = (run: AuthoredRun, site: string, hint: SeatMeasure): void => {
+    const { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } =
+      seatReceipt(site, run.frame, run.source, 'authored', hint);
+    report.rejected.push({ site, frame: run.frame, source: run.source, reason: hint.reason ?? 'unseated',
+      authored: { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } });
+  };
   for (const run of runs) {
-    const placed = run.shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(run.hint.pos, run.hint.quat,
-      new THREE.Vector3(1, 1, 1)));
+    const placed = run.shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(run.hint.pos, run.hint.quat, UNIT));
     const env = seatEnv(frames, run.frame, placed, motion);
-    const planned = plan?.[run.site];
-    const result = solveSpareTrackSeat(env, run.shape, run.hint, run.owner, AUTHORED_SEARCH, planned);
-    if (result.ok && result.seat === 'authored') {
-      report.runs.push(seatReceipt(run.site, run.frame, run.source, 'authored', result.measure));
+    // 1. authored mounts first: the seat as authored, or lifted straight off a mount it sinks into
+    const own = solveSpareTrackSeat(env, run.shape, run.hint, run.owner, NO_SEARCH);
+    if (own.ok && own.pose && own.seat === 'authored') {
+      report.runs.push(seatReceipt(run.site, run.frame, run.source, 'authored', own.measure));
+      keep(run, run.shape, run.hint);
       continue;
     }
+    if (own.ok && own.pose) {
+      applySeat(a, run, own.pose);
+      report.runs.push(movedReceipt(run, own.pose, own.measure, own.hint, 'lifted'));
+      keep(run, run.shape, own.pose);
+      frames = collect();
+      continue;
+    }
+    // 2. a hand-drawn course keeps the links whose own authored seat holds and loses the dead ones (buried, sunk)
+    const trimmed = run.source === 'adhoc' ? trimCourse(env, run) : null;
+    if (trimmed) {
+      for (const unit of trimmed) {
+        const site = `${run.site}#${unit.index}`;
+        if (unit.measure.ok) {
+          report.runs.push(seatReceipt(site, run.frame, run.source, 'authored', unit.measure));
+          keep(run, unit.shape, run.hint);
+        } else {
+          for (const part of unit.parts) removePart(a, part);
+          reject(run, site, unit.measure);
+        }
+      }
+      frames = collect();
+      continue;
+    }
+    // 3. only a mount that is itself wrong is left: search nearby (the recorded answer first), with retention
+    const planned = plan?.[run.site];
     if (planned !== undefined) consulted.add(run.site);
+    const result = solveSpareTrackSeat(env, run.shape, run.hint, run.owner, AUTHORED_SEARCH, planned, own.hint);
     if (audit) {
       // the search's own answer, from scratch, against the recorded one
-      const live = planned === undefined ? result.station : solveSpareTrackSeat(env, run.shape, run.hint, run.owner).station;
+      const live = planned === undefined ? result.station
+        : solveSpareTrackSeat(env, run.shape, run.hint, run.owner, AUTHORED_SEARCH, undefined, own.hint).station;
       audit.live[run.site] = live ?? -1;
       if (planned !== live) audit.stale.push(`${run.site}: plan ${planned ?? 'none'}, search ${live}`);
     }
     if (result.ok && result.pose) {
       applySeat(a, run, result.pose);
-      const c0 = run.shape.box.getCenter(new THREE.Vector3());
-      const cm = Math.round(c0.clone().applyQuaternion(result.pose.quat).add(result.pose.pos)
-        .distanceTo(c0.clone().applyQuaternion(run.hint.quat).add(run.hint.pos)) * 1000) / 10;
-      const deg = Math.round(result.pose.quat.angleTo(run.hint.quat) * 1800 / Math.PI) / 10;
-      const h = seatReceipt(run.site, run.frame, run.source, 'authored', result.hint);
-      report.runs.push({ ...seatReceipt(run.site, run.frame, run.source, 'reseated', result.measure),
-        moved: { reason: result.hint.reason, cm, deg, authored: { support: h.support, air: h.air, maxEmbedCm: h.maxEmbedCm,
-          clearCm: h.clearCm, cutCm: h.cutCm, sweepCm: h.sweepCm, exposure: h.exposure } } });
+      if (run.source === 'adhoc') addRetention(a, run, result.pose);
+      report.runs.push(movedReceipt(run, result.pose, result.measure, result.hint, 'reseated'));
+      keep(run, run.shape, result.pose);
     } else {
       removeRun(a, run);
-      const { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } =
-        seatReceipt(run.site, run.frame, run.source, 'authored', result.hint);
-      report.rejected.push({ site: run.site, frame: run.frame, source: run.source, reason: result.hint.reason ?? 'unseated',
-        authored: { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } });
+      reject(run, run.site, result.hint);
     }
     frames = collect();
   }
+  // the decor keeps its pieces out of every built run (decorations.ts), frame coordinates
+  a.root.userData.spareTrackBoxes = {
+    hull: kept.hull.map((b) => [...b.min.toArray(), ...b.max.toArray()]),
+    turret: kept.turret.map((b) => [...b.min.toArray(), ...b.max.toArray()]),
+  };
   if (audit) {
     for (const site of Object.keys(plan ?? {})) {
       if (!consulted.has(site)) audit.stale.push(`${site}: plan entry for a run that seats as authored or no longer exists`);
@@ -330,6 +364,97 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
     a.root.userData.spareTrackPlanAudit = audit;
   }
   return report;
+}
+
+const UNIT = new THREE.Vector3(1, 1, 1);
+
+/** A receipt row for a run the pass moved (lifted off its mount, or re-seated), with how far and why. */
+function movedReceipt(run: AuthoredRun, pose: SeatPose, measure: SeatMeasure, hint: SeatMeasure,
+  seat: 'lifted' | 'reseated'): SpareTrackSeatReceipt {
+  const c0 = run.shape.box.getCenter(new THREE.Vector3());
+  const cm = Math.round(c0.clone().applyQuaternion(pose.quat).add(pose.pos)
+    .distanceTo(c0.clone().applyQuaternion(run.hint.quat).add(run.hint.pos)) * 1000) / 10;
+  const deg = Math.round(pose.quat.angleTo(run.hint.quat) * 1800 / Math.PI) / 10;
+  const h = seatReceipt(run.site, run.frame, run.source, 'authored', hint);
+  return { ...seatReceipt(run.site, run.frame, run.source, seat, measure),
+    moved: { reason: hint.reason, cm, deg, authored: { support: h.support, air: h.air, maxEmbedCm: h.maxEmbedCm,
+      clearCm: h.clearCm, cutCm: h.cutCm, sweepCm: h.sweepCm, exposure: h.exposure } } };
+}
+
+interface CourseUnit { index: number; parts: Array<{ bucket: string; part: THREE.BufferGeometry }>; shape: SeatRunShape;
+  measure: SeatMeasure }
+
+/**
+ * A hand-drawn course whose whole seat fails, link by link: the parts grouped into touching units (one link and its
+ * plates), each measured where it was authored. Null unless some units hold and some do not (the course then keeps
+ * the ones that hold); a course that holds nowhere, or whose units all hold, is the search's.
+ */
+function trimCourse(env: SeatEnv, run: AuthoredRun): CourseUnit[] | null {
+  const parts = run.parts ?? [];
+  if (parts.length < 2) return null;
+  const inv = run.hint.quat.clone().invert();
+  const v = new THREE.Vector3();
+  const boxes = parts.map(({ part }) => {
+    const b = new THREE.Box3(), pos = part.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) b.expandByPoint(v.fromBufferAttribute(pos, i).applyQuaternion(inv));
+    return b;
+  });
+  const parent = parts.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < parts.length; i++) {
+    for (let j = i + 1; j < parts.length; j++) {
+      if (boxes[i].clone().expandByScalar(0.003).intersectsBox(boxes[j])) parent[find(i)] = find(j);
+    }
+  }
+  const groups = new Map<number, number[]>();
+  parts.forEach((_, i) => { const r = find(i); groups.set(r, [...(groups.get(r) ?? []), i]); });
+  if (groups.size < 2) return null;
+  const units: CourseUnit[] = [...groups.values()].map((idx, k) => {
+    const box = new THREE.Box3();
+    for (const i of idx) box.union(boxes[i]);
+    const shape: SeatRunShape = { ...run.shape, box };
+    return { index: k, parts: idx.map((i) => parts[i]), shape, measure: measureSeat(env, shape, run.hint, run.owner, true) };
+  });
+  const held = units.filter((u) => u.measure.ok).length;
+  return held > 0 && held < units.length ? units : null;
+}
+
+/**
+ * Visible retention for a hand-drawn course the search moved (a fitting brings its clamps, a strip its rails and
+ * feet): two painted steel straps over the links at a quarter and three quarters of its length, each dropping to the
+ * host at both sides.
+ */
+function addRetention(a: AuthoredSeatArgs, run: AuthoredRun, pose: SeatPose): void {
+  const bucket = run.frame === 'hull' ? 'hullDetail' : 'turretDetail';
+  const list = a.buckets[bucket];
+  if (!list || !run.parts?.length) return;
+  const tag = run.parts[0].part.userData.spareTrackRun;
+  const b = run.shape.box, n = run.shape.axis;
+  const others = [0, 1, 2].filter((k) => k !== n);
+  const ext = (k: number): number => b.max.getComponent(k) - b.min.getComponent(k);
+  const [u, w] = ext(others[0]) >= ext(others[1]) ? [others[0], others[1]] : [others[1], others[0]];
+  const m = new THREE.Matrix4().compose(pose.pos, pose.quat, UNIT);
+  const strap = (size: number[], at: number[]): void => {
+    const g = new THREE.BoxGeometry(size[0], size[1], size[2]).toNonIndexed();
+    g.translate(at[0], at[1], at[2]);
+    g.applyMatrix4(m);
+    if (tag) g.userData.spareTrackRun = tag;
+    list.push(g);
+  };
+  const top = b.max.getComponent(n), base = b.min.getComponent(n), lo = b.min.getComponent(w), hi = b.max.getComponent(w);
+  for (const f of [0.25, 0.75]) {
+    const cu = b.min.getComponent(u) + ext(u) * f;
+    const over = [0, 0, 0], overAt = [0, 0, 0];
+    over[u] = 0.03; over[w] = hi - lo + 0.03; over[n] = 0.008;
+    overAt[u] = cu; overAt[w] = (lo + hi) / 2; overAt[n] = top + 0.004;
+    strap(over, overAt);
+    for (const side of [lo - 0.011, hi + 0.011]) {
+      const leg = [0, 0, 0], legAt = [0, 0, 0];
+      leg[u] = 0.03; leg[w] = 0.008; leg[n] = top - base + 0.008;
+      legAt[u] = cu; legAt[w] = side; legAt[n] = (top + base) / 2 + 0.004;
+      strap(leg, legAt);
+    }
+  }
 }
 
 function applySeat(a: AuthoredSeatArgs, run: AuthoredRun, pose: SeatPose): void {
@@ -346,6 +471,12 @@ function applySeat(a: AuthoredSeatArgs, run: AuthoredRun, pose: SeatPose): void 
     run.group.updateMatrixWorld(true);
   }
   for (const { part } of run.parts ?? []) part.applyMatrix4(delta);
+}
+
+function removePart(a: AuthoredSeatArgs, { bucket, part }: { bucket: string; part: THREE.BufferGeometry }): void {
+  const list = a.buckets[bucket];
+  const at = list ? list.indexOf(part) : -1;
+  if (at >= 0) list.splice(at, 1);
 }
 
 function removeRun(a: AuthoredSeatArgs, run: AuthoredRun): void {

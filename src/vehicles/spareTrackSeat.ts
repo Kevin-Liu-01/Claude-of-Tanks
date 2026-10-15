@@ -386,6 +386,42 @@ export class SeatSoup {
     return true;
   }
 
+  /** True when the ray meets, within [0, far], any triangle (either frame) whose role is in `codes`. */
+  meetsRole(origin: THREE.Vector3, dir: THREE.Vector3, far: number, codes: ReadonlySet<number>): boolean {
+    if (!this.count) return false;
+    const ox = origin.x, oy = origin.y, oz = origin.z, dx = dir.x, dy = dir.y, dz = dir.z;
+    const ix = 1 / dx, iy = 1 / dy, iz = 1 / dz;
+    let sp = 0;
+    this.stack[sp++] = 0;
+    while (sp) {
+      const node = this.stack[--sp];
+      const b = node * 6;
+      let t0 = 0, t1 = far;
+      let ta = (this.nodeBox[b] - ox) * ix, tb = (this.nodeBox[b + 3] - ox) * ix;
+      if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+      if (t0 > t1) continue;
+      ta = (this.nodeBox[b + 1] - oy) * iy; tb = (this.nodeBox[b + 4] - oy) * iy;
+      if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+      if (t0 > t1) continue;
+      ta = (this.nodeBox[b + 2] - oz) * iz; tb = (this.nodeBox[b + 5] - oz) * iz;
+      if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+      if (t0 > t1) continue;
+      const left = this.nodeLeft[node];
+      if (left >= 0) { if (sp + 2 <= this.stack.length) { this.stack[sp++] = left + 1; this.stack[sp++] = left; } continue; }
+      const end = this.nodeStart[node] + this.nodeCount[node];
+      for (let i = this.nodeStart[node]; i < end; i++) {
+        const t = this.order[i];
+        if (!codes.has(this.role[t])) continue;
+        const d = this.intersect(t, ox, oy, oz, dx, dy, dz);
+        if (d >= 0 && d <= far) return true;
+      }
+    }
+    return false;
+  }
+
   /** The farthest hit along the ray within [0, far] on triangles of `owner` (the run's own underside), or -1. */
   deepestOwn(origin: THREE.Vector3, dir: THREE.Vector3, far: number, owner: number): number {
     if (!this.count || !owner) return -1;
@@ -776,6 +812,8 @@ function runAxes(shape: SeatRunShape): Axes {
 const _local = new THREE.Vector3(), _world = new THREE.Vector3(), _dir = new THREE.Vector3(), _nrm = new THREE.Vector3();
 const _m = new THREE.Matrix4(), _mi = new THREE.Matrix4(), _tri = new THREE.Triangle(), _q = new THREE.Quaternion();
 const _hit = newHit(), _hit2 = newHit();
+const _side = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+const GUN_CODES: ReadonlySet<number> = new Set([ROLE_CODE.gun, ROLE_CODE.mantlet]);
 const UNIT = new THREE.Vector3(1, 1, 1);
 
 function localPoint(shape: SeatRunShape, ax: Axes, fu: number, fv: number, along: number, out: THREE.Vector3): THREE.Vector3 {
@@ -912,6 +950,23 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.cut = cut;
   if (clearRole && fail(`clear:${clearRole}`)) return out;
   if (cut > T.cutMaxM && fail('cut')) return out;
+  // ---- R9: never under the main gun (its footprint on the deck, seen from above at rest, 5 cm wide of it). A seat the
+  // solver chooses always; an authored one where the gun is fixed in the hull, which never moves off it.
+  if ((chosen || !env.motion) && underGun(env, shape, ax, pose) && fail('under-gun')) return out;
+  // a chosen seat sits in open plate: no host part rises beside its links (a rail upright, a wall, a step)
+  if (chosen) {
+    const side = local.clone();
+    side.min.setComponent(ax.n, designHost + shape.standoffM + 2 * R.cutTolM);
+    side.expandByVector(_side.set(0.03, 0.03, 0.03).setComponent(ax.n, 0));
+    let crowded = false;
+    env.soup.forEachInBox(placed, owner, (t) => {
+      if (crowded || !HOST_CODES.has(env.soup.role[t])) return;
+      env.soup.triangle(t, _tri);
+      _tri.a.applyMatrix4(_mi); _tri.b.applyMatrix4(_mi); _tri.c.applyMatrix4(_mi);
+      if (side.intersectsTriangle(_tri)) crowded = true;
+    });
+    if (crowded && fail('crowded')) return out;
+  }
   // ---- R5: motion, and R7: line-of-sight exposure of the top face. A candidate (not `full`) takes the cheaper
   // exposure first; a receipt reports motion first.
   const exposed = env.exposure === false || full ? true
@@ -927,6 +982,23 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   }
   out.ok = !out.reason;
   return out;
+}
+
+/** R9: any top-face point of the placed run, or one 5 cm outside it, with the gun or its mantlet straight above. */
+function underGun(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose): boolean {
+  const b = shape.box, m = 0.05;
+  const u0 = b.min.getComponent(ax.u) - m, u1 = b.max.getComponent(ax.u) + m;
+  const v0 = b.min.getComponent(ax.v) - m, v1 = b.max.getComponent(ax.v) + m;
+  const p = new THREE.Vector3();
+  for (let i = 0; i <= 6; i++) {
+    for (let j = 0; j <= 2; j++) {
+      p.set(0, 0, 0).setComponent(ax.n, b.max.getComponent(ax.n))
+        .setComponent(ax.u, u0 + (u1 - u0) * i / 6).setComponent(ax.v, v0 + (v1 - v0) * j / 2);
+      p.applyQuaternion(pose.quat).add(pose.pos);
+      if (env.soup.meetsRole(p, _up, 3, GUN_CODES)) return true;
+    }
+  }
+  return false;
 }
 
 const EXPOSURE_POINTS = [0.2, 0.5, 0.8];
@@ -1172,6 +1244,9 @@ export interface SeatSearch {
   yaw: readonly number[];
 }
 
+/** No search: the authored seat and its lift only. */
+export const NO_SEARCH: SeatSearch = Object.freeze({ along: [], across: [], yaw: [] });
+
 /** S2: ±0.30 m along the plate and ±15 degrees of yaw round the authored seat. */
 export const AUTHORED_SEARCH: SeatSearch = Object.freeze({
   along: [0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3],
@@ -1182,7 +1257,7 @@ export const AUTHORED_SEARCH: SeatSearch = Object.freeze({
 export interface SeatResult {
   ok: boolean;
   /** 'authored' when the hint passed unchanged, 'reseated' when the search moved it. */
-  seat: 'authored' | 'reseated' | null;
+  seat: 'authored' | 'lifted' | 'reseated' | null;
   pose: SeatPose | null;
   measure: SeatMeasure;
   /** The hint's own measure (why it moved). */
@@ -1200,10 +1275,13 @@ export interface SeatResult {
  * longer passes falls back to the full search.
  */
 export function solveSpareTrackSeat(env: SeatEnv, shape: SeatRunShape, hint: SeatPose, owner: number,
-  search: SeatSearch = AUTHORED_SEARCH, planned?: number): SeatResult {
-  const hintMeasure = measureSeat(env, shape, hint, owner, true);
+  search: SeatSearch = AUTHORED_SEARCH, planned?: number, failedHint?: SeatMeasure): SeatResult {
+  // `failedHint`: the caller already measured the authored seat and its lift, and both failed; search only
+  const hintMeasure = failedHint ?? measureSeat(env, shape, hint, owner, true);
   if (hintMeasure.ok) return { ok: true, seat: 'authored', pose: hint, measure: hintMeasure, hint: hintMeasure, station: null };
   const none: SeatResult = { ok: false, seat: null, pose: null, measure: hintMeasure, hint: hintMeasure, station: -1 };
+  const lifted = failedHint ? null : liftOntoMount(env, shape, hint, owner, hintMeasure);
+  if (lifted) return { ok: true, seat: 'lifted', pose: lifted.pose, measure: lifted.measure, hint: hintMeasure, station: null };
   if (planned === -1) return none;
   const ax = runAxes(shape);
   const n0 = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(hint.quat).normalize();
@@ -1232,6 +1310,29 @@ export function solveSpareTrackSeat(env: SeatEnv, shape: SeatRunShape, hint: Sea
     }
   }
   return none;
+}
+
+/** The farthest an authored run is lifted off its own mount before it counts as moved (m). */
+const LIFT_MAX_M = 0.06;
+/**
+ * Authored mounts first: a run that sinks into its own mount (the host rises into its links) is lifted straight off it,
+ * along its mount normal, by the least that clears it, and kept there when it then passes as authored. A mount that is
+ * itself wrong (a grille, the gun, air, a buried station) is not a lift's to fix.
+ */
+function liftOntoMount(env: SeatEnv, shape: SeatRunShape, hint: SeatPose, owner: number,
+  hintMeasure: SeatMeasure): { pose: SeatPose; measure: SeatMeasure } | null {
+  if (hintMeasure.reason !== 'sunk' && hintMeasure.reason !== 'cut') return null;
+  const need = Math.max(hintMeasure.maxEmbed, hintMeasure.cut);
+  if (!(need > 0) || need > LIFT_MAX_M) return null;
+  const ax = runAxes(shape);
+  const n = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(hint.quat).normalize();
+  for (const d of [need + 0.003, need + 0.01]) {
+    if (d > LIFT_MAX_M) break;
+    const pose = { pos: hint.pos.clone().addScaledVector(n, d), quat: hint.quat.clone() };
+    const m = measureSeat(env, shape, pose, owner, true);
+    if (m.ok) return { pose, measure: m };
+  }
+  return null;
 }
 
 /**
@@ -1292,7 +1393,7 @@ export interface SpareTrackSeatReceipt {
   site: string;
   frame: 'hull' | 'turret';
   source: 'fitting' | 'strip' | 'adhoc' | 'decor';
-  seat: 'authored' | 'reseated' | 'decor';
+  seat: 'authored' | 'lifted' | 'reseated' | 'decor';
   support: number; air: number; gapP90Cm: number; maxEmbedCm: number; clearCm: number | null; cutCm: number;
   sweepCm: number | null; exposure: number;
   /** A re-seated run: why its authored seat failed, and how far the solver moved and turned it. */

@@ -35,7 +35,7 @@ import {
   MeshStandardMaterial,
 } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
-import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 
 interface LoftStation {
   readonly z: number;
@@ -278,14 +278,17 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   });
   P.add('hullDetail', box(1.80, 0.05, 0.05), 0, glY(2.45) + 0.02, 2.45, -0.36, 0, 0); // splash rail
   // Spare-link rows and central clamp structure are prominent on the folded
-  // dozer/glacis face in the source.  VEH-13 (2026-10-15): the links were sunk two-thirds into the nose loft; each
-  // side's course of three is one registered run (spareTrackSeat.ts), seated by the solver on the nose plate.
+  // dozer/glacis face in the source.  VEH-13 (2026-10-15): the six loose link blocks drawn here sat two-thirds inside
+  // the nose loft (their mount gone when the nose was rebuilt), the outer one hovering over the tow hooks; re-seating
+  // them put bare rows on the shelf top beside the gun (blind critics m1). The links are carried where the source
+  // shows them, on the nose's vertical front face either side of the gun: one clamped two-link course a side (the
+  // shared fitting: rails, clamps, shoe plates and grousers), its rails' feet on the face (base 4.05 cm under its
+  // origin), clear of the barrel's footprint.
   for (const s of [-1, 1]) {
-    withSpareTrackRun(P, { site: `strv103b-dozer-${s < 0 ? 'L' : 'R'}`, source: 'adhoc', rotation: [-0.32, 0, 0] }, (P) => {
-      for (let i = 0; i < 3; i++) {
-        P.add('hullTrack', box(0.25, 0.055, 0.17), s * (0.34 + i * 0.27), 0.99, 2.79, -0.32, 0, 0);
-      }
-    });
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 2, width: 0.26, seed: s < 0 ? 31 : 32 });
+    links.position.set(s * 0.30, 1.26, 3.30 + 0.0405);
+    links.rotation.set(Math.PI / 2, 0, 0);
+    P.hullG.add(links);
   }
   P.add('hullDark', KIT.cylX(0.06, 3.06, 12), 0, 0.58, 3.25);                 // full-width dozer crossbar
   };

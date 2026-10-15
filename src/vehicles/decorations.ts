@@ -4246,6 +4246,16 @@ function placedBox(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): 
 // shapes and a raked 1.75 m whip's box is mostly air, so the box alone turned away whips that stand clear of the dock
 // (the Chieftain 5's tall whip among thirteen tanks'); exact, and only run where the boxes already meet
 const _enterTri = new THREE.Triangle(), _enterA = new THREE.Vector3(), _enterB = new THREE.Vector3(), _enterC = new THREE.Vector3();
+/** The built spare-link runs of one frame (spareTrackSeatPass.ts receipts), 1 cm proud and a 10 cm lid above. */
+function spareRunVolumes(root: THREE.Object3D, frame: DecorFrame): THREE.Box3[] {
+  const rows = (root.userData.spareTrackBoxes as Record<DecorFrame, number[][]> | undefined)?.[frame] ?? [];
+  return rows.map((r) => {
+    const box = new THREE.Box3(new THREE.Vector3(r[0], r[1], r[2]), new THREE.Vector3(r[3], r[4], r[5])).expandByScalar(0.01);
+    box.max.y += 0.1;
+    return box;
+  });
+}
+
 function placedPartsEnter(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler, boxes: readonly THREE.Box3[]): boolean {
   const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
   for (const p of parts) {
@@ -4846,6 +4856,9 @@ export function* attachTankDecorationsSteps(
     // record (dockKeepOut) — the cradle, the parked airframe and its launch column, 3 cm clear — out of every decor
     // piece's placed box, so stowage packs round the dock instead of through it (107 of 220 seats had loads inside).
     const dockVolumes: Record<DecorFrame, THREE.Box3[]> = { hull: dockKeepOut(spec.id, 'hull'), turret: dockKeepOut(spec.id, 'turret') };
+    // VEH-13: every spare-link run the factory built (spareTrackSeatPass.ts), with a 10 cm lid: no rigid piece goes into
+    // or onto a run (a load on the links read as "on softload", a rack through them as clipping); drapes still lie over
+    const spareRuns: Record<DecorFrame, THREE.Box3[]> = { hull: spareRunVolumes(root, 'hull'), turret: spareRunVolumes(root, 'turret') };
     // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
     // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
     // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
@@ -5203,6 +5216,10 @@ export function* attachTankDecorationsSteps(
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
       const dockMet = dockVolumes[frame].filter((box) => box.intersectsBox(bb));
       if (dockMet.length && placedPartsEnter(parts, pos, rot, dockMet)) return rejectCommit(name, parts, 'drone-dock');
+      if (name !== 'tracks' && !parts.meta?.drape) {
+        const runMet = spareRuns[frame].filter((box) => box.intersectsBox(bb));
+        if (runMet.length && placedPartsEnter(parts, pos, rot, runMet)) return rejectCommit(name, parts, 'spare-track');
+      }
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
       if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
