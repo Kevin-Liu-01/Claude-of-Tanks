@@ -1180,6 +1180,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/roof-decks.selftest.mjs',
     // 2026-10-14 (physics stream F4(b)): a hull at rest on a roof holds its attitude (no flipping between plane fits)
     'tools/roof-rest.selftest.mjs',
+    // 2026-10-14 (physics stream F5): a hull on its shell rests and rebounds off still ground, no springs
+    'tools/shell-contact.selftest.mjs',
+    // 2026-10-14 (physics stream F6): a hull at a roof's edge stands on it or rolls off it by its centre of mass
+    'tools/roof-edge.selftest.mjs',
+    // 2026-10-14 (physics stream F7a): roof pivots no longer hop: a support step is position, a rebound no launch
+    'tools/roof-hops.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
