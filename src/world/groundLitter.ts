@@ -37,6 +37,12 @@ export interface GroundLitterConfig {
   /** Stone and soil tints (linear rgb). */
   stoneTint?: readonly [number, number, number];
   soilTint?: readonly [number, number, number];
+  /**
+   * (props lane A, #19, 2026-10-14) what lies under the stands: a fallen stick (the default), a pine cone under the
+   * conifers, a fallen leaf under autumn's broadleaves; and its tint (linear rgb; default the soil's)
+   */
+  splinterForm?: 'branch' | 'cone' | 'leaf';
+  splinterTint?: readonly [number, number, number] | null;
 }
 
 type GroundLitterBlocked =
@@ -117,6 +123,8 @@ const DEFAULTS: Required<GroundLitterConfig> = {
   // dirt's own value (was a neutral 0.20/0.19/0.17 the sky's blue fill turned pale blue, a step brighter than the turf)
   stoneTint: [0.135, 0.122, 0.104],
   soilTint: [0.17, 0.13, 0.09],
+  splinterForm: 'branch',
+  splinterTint: null,
 };
 
 /**
@@ -128,9 +136,9 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   // ground lane (2026-10-03, the gauntlet: "dark pebble dots" across the winter snow): snow buries the field stones —
   // a few on the snow maps, not a scatter of dark dots
   // (wave 4 on Winter: "evenly spaced black pebble dots" — fewer still, and a weathered grey, not black)
-  winter: { density: 0.06, clods: 0, splinters: 0.25, stoneTint: [0.13, 0.13, 0.14] },
+  winter: { density: 0.06, clods: 0, splinters: 0.25, stoneTint: [0.13, 0.13, 0.14], splinterForm: 'cone', splinterTint: [0.16, 0.1, 0.06] },
   whiteout: { density: 0.05, clods: 0, splinters: 0.1, stoneTint: [0.13, 0.13, 0.14] },
-  alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.127, 0.123] },
+  alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.127, 0.123], splinterForm: 'cone', splinterTint: [0.16, 0.1, 0.06] },
   desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.20, 0.17, 0.13] },
   oasis: { density: 1.1, clods: 0.2, splinters: 0.05, stoneTint: [0.19, 0.165, 0.125] },
   // (wave 4 on Redrock: "grey pebbles on an orange plane" — its own red sandstone, read as the floor's grain)
@@ -146,8 +154,9 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   skybridge: { density: 0.9, clods: 0.2, splinters: 0.1, stoneTint: [0.145, 0.14, 0.138] },
   airfield: { density: 0.8, clods: 0.3, splinters: 0.2 },
   monsoon: { density: 1.1, stones: 0.7, clods: 0.6, splinters: 0.9 },
-  longleaf: { density: 1.1, stones: 0.7, splinters: 0.9 },
-  autumn: { density: 1.1, stones: 0.7, splinters: 0.9 },
+  // (#19) the longleaf pine's cones under its stands; Normandy's fallen leaves in October
+  longleaf: { density: 1.1, stones: 0.7, splinters: 0.9, splinterForm: 'cone', splinterTint: [0.2, 0.12, 0.07] },
+  autumn: { density: 1.1, stones: 0.7, splinters: 0.9, splinterForm: 'leaf', splinterTint: [0.3, 0.13, 0.04] },
   orchard: { splinters: 0.7 },
   delta: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   mangrove: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
@@ -240,10 +249,42 @@ function makeBranch(): THREE.BufferGeometry {
   branch.computeVertexNormals();
   return branch;
 }
-function makeGeometries(): [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry] {
+/** (#19) A pine cone: a spindle of scales, its bracts staggered round it, lying along +X. */
+function makeCone(): THREE.BufferGeometry {
+  const pts = [[0, -0.05], [0.012, -0.048], [0.026, -0.03], [0.03, -0.005], [0.027, 0.02], [0.016, 0.042], [0, 0.05]].map(([r, y]) => new THREE.Vector2(r, y));
+  const cone = new THREE.LatheGeometry(pts, 7);
+  // the scales: every other ring pushed out a little and turned half a step
+  const p = cone.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const ring = Math.round((p.getY(i) + 0.05) / 0.0167), k = ring % 2 ? 1.18 : 0.92;
+    p.setXYZ(i, p.getX(i) * k, p.getY(i), p.getZ(i) * k);
+  }
+  cone.rotateZ(Math.PI / 2);
+  cone.translate(0, 0.02, 0);
+  cone.deleteAttribute('uv');
+  cone.computeVertexNormals();
+  return cone;
+}
+/** (#19) A fallen leaf: a broad blade, its two halves folded a little along the midrib, curled at its tip. */
+function makeLeaf(): THREE.BufferGeometry {
+  const v = [[0, 0, -0.06], [0.035, 0.008, -0.025], [0.04, 0.01, 0.02], [0, 0.018, 0.065], [-0.04, 0.01, 0.02], [-0.035, 0.008, -0.025], [0, 0.004, 0]];
+  const idx = [6, 1, 0, 6, 2, 1, 6, 3, 2, 6, 4, 3, 6, 5, 4, 6, 0, 5];
+  const pos = new Float32Array(idx.length * 3);
+  idx.forEach((i, k) => pos.set(v[i], k * 3));
+  // both faces (a leaf turned over shows its underside)
+  const back = new Float32Array(pos.length);
+  for (let t = 0; t < idx.length; t += 3) for (const [a, b] of [[0, 0], [1, 2], [2, 1]]) back.set(pos.subarray((t + a) * 3, (t + a) * 3 + 3), (t + b) * 3);
+  const g = new THREE.BufferGeometry();
+  const all = new Float32Array(pos.length * 2); all.set(pos); all.set(back, pos.length);
+  for (let i = pos.length; i < all.length; i += 3) all[i + 1] -= 0.002;
+  g.setAttribute('position', new THREE.BufferAttribute(all, 3));
+  g.computeVertexNormals();
+  return g;
+}
+function makeGeometries(form: Required<GroundLitterConfig>['splinterForm'] = 'branch'): [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry] {
   const clod = new THREE.DodecahedronGeometry(0.06, 0);
   clod.computeVertexNormals();
-  return [makeStone(), clod, makeBranch()];
+  return [makeStone(), clod, form === 'cone' ? makeCone() : form === 'leaf' ? makeLeaf() : makeBranch()];
 }
 
 function makeMaterial(setup?: GroundLitterOptions['setupMaterial']): THREE.MeshStandardMaterial {
@@ -286,7 +327,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   const lightLitter = getDeviceTier() === 'mobile' || presetLightWorld();
   const group = new THREE.Group();
   group.name = 'ground-litter';
-  const geometries = makeGeometries();
+  const geometries = makeGeometries(cfg.splinterForm);
   const material = makeMaterial(options.setupMaterial ?? undefined);
   const meshes = geometries.map((geometry, index) => {
     const mesh = new THREE.InstancedMesh(geometry, material, CAP);
@@ -396,7 +437,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       const yaw = jitterC * Math.PI * 2 + jitterA;
       _q.setFromUnitVectors(_up, _n.normalize());
       _q.multiply(new THREE.Quaternion().setFromAxisAngle(_up, yaw));
-      const tint = kind === 0 ? cfg.stoneTint : cfg.soilTint;
+      const tint = kind === 0 ? cfg.stoneTint : kind === 2 && cfg.splinterTint ? cfg.splinterTint : cfg.soilTint;
       const shade = kind === 2 ? 0.55 + jitterB * 0.25 : 0.68 + jitterA * 0.5;
       // ground lane: the warm / cool cast is relative to the tint — the absolute ±0.04 swung a 0.13 stone a third of
       // its value toward pink or blue (the gauntlet's "pastel" stones)

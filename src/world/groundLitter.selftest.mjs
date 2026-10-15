@@ -121,6 +121,16 @@ assert.deepEqual(groundLitterProfile('verdant'), {}, 'temperate fields run the d
 assert.equal(resolveGroundLitterConfig(groundLitterProfile('desert')).splinters, 0, 'no timber splinters on the wadi');
 assert.ok(resolveGroundLitterConfig(groundLitterProfile('winter')).density < 0.5, 'snow keeps a few dark stones');
 assert.match(map, /groundLitterProfile\(config\.id\)/, 'the world reads the profile by map id');
+// (props lane A, #19) what lies under the stands by map: the conifers' cones, autumn's leaves, the sticks elsewhere —
+// each pool's piece small (under 100 triangles: a ring carries hundreds)
+for (const [id, form] of [['longleaf', 'cone'], ['alpine', 'cone'], ['winter', 'cone'], ['autumn', 'leaf'], ['verdant', 'branch']]) {
+  assert.equal(resolveGroundLitterConfig(groundLitterProfile(id)).splinterForm, form, `${id}: ${form}s under its stands`);
+  const pieces = createGroundLitter(field, { seed: 7, config: groundLitterProfile(id) });
+  const g = pieces.meshes[2].geometry, n = (g.index ? g.index.count : g.getAttribute('position').count) / 3;
+  assert.ok(n > 0 && n < 100, `${id}: its ${form} ${n} triangles`);
+  assert.ok(Array.from(g.getAttribute('normal').array).every(Number.isFinite), `${id}: its ${form} lit`);
+  pieces.dispose();
+}
 
 // the material joins the engine's cascaded-shadow setup through the hook and is released with the tier
 {
