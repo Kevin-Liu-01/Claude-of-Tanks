@@ -48,6 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
+import { buildJetty, buildRivaSteps, ironBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -184,7 +185,7 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
-> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; jettyForm?: JettyForm };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -927,6 +928,8 @@ function frozenRowboat(
 
 // Short timber jetty walking off the shore onto the ice: paired piles with a
 // plank deck, ending in a slight sag.
+// Lane C (#16 r2, 2026-10-14): the jetty in its members, one form per coast (jettyKit.ts). The old kit's draws are spent
+// from the caller's stream (the landing's own, or the map's), so everything drawn after it keeps its place.
 function jetty(
   buckets: DressingBuckets,
   rng: Rng,
@@ -937,35 +940,11 @@ function jetty(
   len = 7.5,
   supportField?: DressingHeightField,
   groundingReceipts?: GroundingReceipt[] | null,
-): void {
-  const n = Math.round(len / 1.9);
-  const dx = Math.cos(ang), dz = Math.sin(ang);
-  const px = -dz, pz = dx; // deck width axis
-  for (let k = 0; k <= n; k++) {
-    const t = k * 1.9;
-    for (const s of [-1, 1]) {
-      const x = x0 + dx * t + px * 0.65 * s;
-      const z = z0 + dz * t + pz * 0.65 * s;
-      const support = supportField?.getHeightAt(x, z);
-      const base = support === undefined ? y - 0.05 : support - 0.10;
-      const ph = support === undefined ? 0.9 - k * 0.04 : y + 0.865 - base;
-      const pile = box(0.16, ph, 0.16, 1.2);
-      pile.rotateY(rng() * 0.3);
-      pile.translate(x, base + ph / 2, z);
-      buckets.wood.push(jitterUV(pile, rng));
-      if (support !== undefined) groundingReceipts?.push({
-        kind: 'jetty-pile', x, y: base, z, baseClearance: -0.10,
-        supportMin: support, supportMax: support,
-      });
-    }
-  }
-  for (let k = 0; k < n; k++) { // deck segments with a soft sag
-    const t = (k + 0.5) * 1.9;
-    const deck = box(1.95, 0.09, 1.5, 1.2);
-    deck.rotateY(-Math.atan2(dz, dx));
-    deck.translate(x0 + dx * t, y + 0.82 - (supportField ? 0 : k * 0.05), z0 + dz * t);
-    buckets.wood.push(jitterUV(deck, rng));
-  }
+  form: JettyForm = 'estacade',
+  railSide: 1 | -1 = 1,
+): JettyFrame {
+  for (let i = legacyJettyDraws(len); i > 0; i--) rng();
+  return buildJetty(buckets, form, x0, z0, ang, y, len, supportField, groundingReceipts, railSide);
 }
 
 function isDressingPointClear(
@@ -1116,6 +1095,7 @@ function addWinterLakeLandmark(
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
   boats?: BoatFamily,
+  jettyForm: JettyForm = 'stage',
 ): void {
   const boatAngle = Math.PI * 1.32 + rng() * 0.2;
   const boatX = lake.x + Math.cos(boatAngle) * lake.r * 0.86;
@@ -1125,12 +1105,14 @@ function addWinterLakeLandmark(
   const jettyAngle = boatAngle + 0.45;
   const jettyX = lake.x + Math.cos(jettyAngle) * lake.r * 1.02;
   const jettyZ = lake.z + Math.sin(jettyAngle) * lake.r * 1.02;
+  // #16 r2: the stage's piles stand on the ground under each of them (the old kit stood them all 5 cm under the bank's
+  // height, short of the lake's lower ice); no receipts, as before
   jetty(buckets, rng, jettyX, jettyZ, jettyAngle + Math.PI,
-    heightField.getHeightAt(jettyX, jettyZ));
+    heightField.getHeightAt(jettyX, jettyZ), 7.5, heightField, null, jettyForm);
 }
 
 function dressWinterLakes({
-  L, heightField, rng, buckets, groundingReceipts, boats,
+  L, heightField, rng, buckets, groundingReceipts, boats, jettyForm,
 }: FocusedDressingContext): void {
   for (const lake of L.lakes || []) {
     const big = lake.r >= 80;
@@ -1139,7 +1121,7 @@ function dressWinterLakes({
     addWinterPressureRidges(lake, big, heightField, rng, buckets);
     addWinterInteriorDrifts(lake, big, heightField, rng, buckets);
     addWinterRimDrifts(lake, big, heightField, rng, buckets);
-    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts, boats);
+    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts, boats, jettyForm);
   }
 }
 
@@ -1159,7 +1141,7 @@ export function dressMapExtras({
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees) };
+    trunks: trunksOf(trees), jettyForm: jettyFormForMap(mapId ?? '') };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1568,6 +1550,7 @@ const LEGACY_COASTAL_JETTY_DRAWS = 94;
  * sand, its head flush with the shore end. */
 function jettyGangway(
   buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan, groundingReceipts?: GroundingReceipt[] | null,
+  form: JettyForm = 'estacade', heightField?: DressingHeightField,
 ): void {
   if (!plan.gangway) return; // the deck lands on the bank
   const dx = Math.cos(plan.angle), dz = Math.sin(plan.angle);
@@ -1575,6 +1558,16 @@ function jettyGangway(
   const { run, groundY } = plan.gangway;
   const top = plan.deckY + JETTY_DECK_THICKNESS_M / 2;
   const footX = plan.x - dx * run, footZ = plan.z - dz * run;
+  if (form === 'riva' && heightField) {
+    // #16 r2: a riva climbs from the sand by its own stone steps (the plank's and its battens' draws spent)
+    for (let i = 0; i < 16; i++) rng();
+    buildRivaSteps(buckets.stone, plan.x, plan.z, plan.angle, heightField, groundY, top, run);
+    groundingReceipts?.push({
+      kind: 'jetty-gangway', x: footX, y: groundY, z: footZ, relief: top - groundY, baseClearance: -0.01,
+      supportMin: groundY, supportMax: groundY,
+    });
+    return;
+  }
   const pitch = Math.atan2(top - groundY, run);
   // centre-line ends: the foot's lower corner a centimetre into the sand, the head's top just under the deck top
   const footY = groundY + 0.04 * Math.cos(pitch) - 0.01, headY = top - 0.045;
@@ -1650,7 +1643,7 @@ function mooredBoat(
 }
 
 /** Two bollards on the deck edge beside the moored hull and a line from each to the nearer gunwale. */
-function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan, boat: MooredBoat): void {
+function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan, boat: MooredBoat, form: JettyForm = 'estacade'): void {
   const dx = Math.cos(plan.angle), dz = Math.sin(plan.angle), ax = -dz, az = dx;
   const side = plan.boat!.side;
   const top = plan.deckY + JETTY_DECK_THICKNESS_M / 2;
@@ -1662,11 +1655,14 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
     const post = box(0.20, 0.55, 0.20, 1.2);
     post.rotateY((rng() - 0.5) * 0.4);
     post.translate(px, top + 0.275, pz);
-    buckets.wood.push(jitterUV(post, rng));
+    jitterUV(post, rng);
+    // #16 r2: a riva's bollards are cast iron (the timber post's draws spent all the same)
+    const iron = form === 'riva' && buckets.baked;
+    if (iron) { post.dispose(); buckets.baked!.push(ironBollard(px, top, pz)); } else buckets.wood.push(post);
     // the line: from the bollard's top to the hull's near gunwale at that end
     const hullAlong = plan.boat!.along + end * boat.L * 0.42;
     const hx = plan.x + dx * hullAlong + ax * nearGunwale, hz = plan.z + dz * hullAlong + az * nearGunwale;
-    const fromY = top + 0.52, toY = gunwale;
+    const fromY = top + (iron ? 0.33 : 0.52), toY = gunwale;
     const runX = hx - px, runZ = hz - pz, run = Math.hypot(runX, runZ);
     const line = box(Math.hypot(run, toY - fromY), 0.03, 0.03, 1);
     line.rotateZ(Math.atan2(toY - fromY, run));
@@ -1680,11 +1676,11 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
 function dressShoreLanding(
   buckets: DressingBuckets, heightField: DressingHeightField, plan: ShoreJettyPlan,
   groundingReceipts?: GroundingReceipt[] | null, rng: Rng = landingStream(plan), animated?: AnimatedDressing[],
-  boats?: BoatFamily,
+  boats?: BoatFamily, jettyForm: JettyForm = 'estacade',
 ): void {
-  jettyGangway(buckets, rng, plan, groundingReceipts);
+  jettyGangway(buckets, rng, plan, groundingReceipts, jettyForm, heightField);
   const boat = mooredBoat(buckets, rng, heightField, plan, groundingReceipts, boats);
-  if (boat) jettyMoorings(buckets, rng, plan, boat);
+  if (boat) jettyMoorings(buckets, rng, plan, boat, jettyForm);
   // Round 67: the renderer poses the hull from the world clock (mooredHullMotion.ts); the mooring lines stay with the
   // bollards — a few centimetres of heave on a tarred line is nothing the eye reads
   if (boat && animated) {
@@ -1715,6 +1711,7 @@ function addCoastalJetty(
   spawns: readonly { x: number; z: number }[] | undefined,
   animated?: AnimatedDressing[],
   boats?: BoatFamily,
+  jettyForm: JettyForm = 'estacade',
 ): void {
   // Round 58 (2026-09-24): the jetty stood at 1.05 R of the disc with fixed-height piles and a sagging deck — 15–30 m
   // inland on Saltmere's flat strand, ten metres up the bank on Nordhavn's heads. It now stands where the strand law
@@ -1735,13 +1732,14 @@ function addCoastalJetty(
   }
   if (!plan) return;
   const stream = landingStream(plan);
-  jetty(buckets, stream, plan.x, plan.z, plan.angle, plan.deckY - 0.82, plan.length, heightField, groundingReceipts);
-  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream, animated, boats);
+  jetty(buckets, stream, plan.x, plan.z, plan.angle, plan.deckY - 0.82, plan.length, heightField, groundingReceipts,
+    jettyForm, plan.boat ? (-plan.boat.side as 1 | -1) : 1);
+  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream, animated, boats, jettyForm);
   registerShoreLanding(shore, plan);
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks, jettyForm,
 }: FocusedDressingContext): void {
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
   // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
@@ -1754,7 +1752,7 @@ function dressCoastalShore({
     addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore, boats, trunks);
     addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand);
     addCoastalBuoys(lake, big, heightField, rng, buckets);
-    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated, boats);
+    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated, boats, jettyForm);
   }
 }
 
@@ -2197,7 +2195,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [] }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [], jettyForm = 'estacade' }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   // Authored landing budget is independent of channel interpolation density.
@@ -2218,10 +2216,13 @@ function dressLakeRiverLandings(
       hauled = beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
         landing.boatYaw, false, groundingReceipts, boats, true);
     }
+    // #16 r2: a pole landing's handrail keeps to the side away from its boats (the moored one, else the hauled-out one)
+    const boatAcross = -(landing.boatX - landing.x) * Math.sin(landing.angle) + (landing.boatZ - landing.z) * Math.cos(landing.angle);
+    const railSide: 1 | -1 = landing.shore?.boat ? (-landing.shore.boat.side as 1 | -1) : boatAcross > 0 ? -1 : 1;
     jetty(buckets, rng, landing.x, landing.z, landing.angle,
-      landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
+      landing.deckY - 0.82, landing.length, heightField, groundingReceipts, jettyForm, railSide);
     // Round 58: on a sea strand the pier takes the gangway, moored boat and bollards of the derived landing
-    if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated, boats);
+    if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated, boats, jettyForm);
     // round 3: the hauled-out boat's stake and line, after the landing's timber (its receipts walk the piles from the
     // landing's first piece)
     if (hauled) mooringStake(buckets, heightField, hauled.hull, landing.boatX, landing.boatZ, landing.boatYaw, hauled.halfLength);
