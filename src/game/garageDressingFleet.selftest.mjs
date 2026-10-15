@@ -88,13 +88,10 @@ for (const signature of [
   'verdant_gantry_connected_crosshead',
   'verdant_gantry_connected_side_rail',
   'verdant_gantry_ground_foot',
-  'k2_cradle_base_rail',
-  'k2_cradle_crossmember',
-  'k2_cradle_ground_foot',
-  'k2_cradle_a_frame_brace',
-  'k2_cradle_contact_saddle',
-  'k2_cradle_rubber_contact_pad',
-  'k2_cradle_connected_spine',
+  'k2_rotisserie_ring',
+  'k2_rotisserie_clamp_arm',
+  'k2_rotisserie_clamp_pad',
+  'k2_rotisserie_roller_stand',
   'road_wheel_service_dolly',
 ]) {
   assert.match(dressing, new RegExp(signature));
@@ -189,12 +186,16 @@ assert.match(dressing,
   /15\.9 - ABRAMS_FLAMMABLE_BAY_OFFSET\.x,[\s\S]*16\.6 - ABRAMS_FLAMMABLE_BAY_OFFSET\.z,[\s\S]*verdantInteriorRoot/,
   'the indoor Abrams work lamp must follow Verdant\'s canister floor station');
 assert.match(dressing,
-  /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
+  /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*14\.5, 19\.0, -2\.03 \+ Math\.PI \/ 2/,
   'Abrams must carry four exact fleet road wheels on a connected service dolly');
 assert.match(dressing, /perimeterCraneClearance = true/,
   'the complete bay owner must receipt its corrected crane clearance');
-assert.match(dressing, /supportMode = 'connected-steel-rollover-cradle'/,
-  'the rolled K2 hull must identify its connected load-bearing support');
+assert.match(dressing, /supportMode = 'two-ring-hull-rotisserie'/,
+  'the rolled K2 hull must identify its one load-bearing support');
+// 2026-10-11, wave 398: "the K2 sits in rotisserie rings and on a scissor lift at once; the rings never clamp"
+assert.doesNotMatch(dressing, /k2_cradle_|connected-steel-rollover-cradle/, 'no second support under the rotisserie hull');
+assert.match(dressing, /const reach = Math\.min\(halfW \/ Math\.abs\(dx\), halfH \/ Math\.abs\(dy\)\)/,
+  'each clamp arm reaches the stripped hull\'s section');
 // 2026-10-09: Verdant's Abrams and K2 exchange quadrants again as two half-turned owners; outdoors only the K2 does.
 assert.match(dressing,
   /swappedServiceBayIds = isVerdant \? \['abrams_welding', 'rolled_k2'\] : \['rolled_k2'\]/,
@@ -202,7 +203,7 @@ assert.match(dressing,
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
 for (const signature of [
-  "mountMode = parent === legacyVerdantRoot",
+  "mountMode = freestanding",
   "'grounded-freestanding-frame'",
   'garage_service_sign_ground_post',
   'garage_service_sign_ground_foot',
@@ -211,7 +212,14 @@ for (const signature of [
   'supportConnections = 9',
 ]) {
   assert.ok(dressing.includes(signature),
-    `outdoor service labels must retain their grounded support: ${signature}`);
+    `freestanding service labels must retain their grounded support: ${signature}`);
+}
+// round 6 (waves 408, 419 and 424: "neon teardown signs repeat in every garage regardless of region"): the bay labels
+// stand only in Verdant, on its own kit owners
+for (const [text, owner] of [['T-90M / RELIKT', 't90m_service_sign'], ['K2 TEARDOWN', 'k2_service_sign'],
+  ['WEAPON SERVICE', 'weapon_service_sign']]) {
+  assert.ok(dressing.includes(`wallSign('${text}'`), `${text} label exists`);
+  assert.match(dressing, new RegExp(`verdantKit\\('${owner}'\\), true\\)`), `${text} stands only in Verdant`);
 }
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
@@ -219,18 +227,24 @@ assert.match(dressing, /verdantInteriorRoot\.rotation\.y = Math\.PI/,
   'Verdant wall-supported clutter must follow the indoor room half-turn');
 assert.doesNotMatch(dressing, /legacyVerdantRoot\.rotation\.y = Math\.PI/,
   'the shared bays and archive display must not rotate with the Verdant room');
-assert.match(dressing, /legacyVerdantRoot\.add\(screenRoot\)/,
-  'the rotating battle display must share the all-Garage workshop owner');
-assert.match(dressing, /legacyVerdantRoot\.add\(secondaryRoot\)/,
-  'the second battle display must live on the shared all-Garage workshop owner');
+assert.match(dressing, /legacyVerdantRoot\.add\(battleScreenOwner\);\s*battleScreenOwner\.add\(screenRoot\)/,
+  'the battle display lives on its own owner inside the unrotated workshop root');
+assert.match(dressing, /battleScreenOwner\.add\(secondaryRoot\)/,
+  'the second battle display shares that owner');
 assert.match(dressing, /secondaryRoot\.rotation\.y = Math\.PI \/ 2/,
   'the west CRT must face inward so its live image is visible instead of its rear casing');
 assert.match(dressing, /battleScreenSecondaryFacing = 'inward-to-hero'/,
   'Garage diagnostics must receipt the corrected second-display orientation');
 assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
   'the tank rear must point toward the shared physical display');
-assert.match(dressing, /battleScreenVisible = true/,
-  'the rotating battle display must remain visible in every Garage');
+// 2026-10-11, the redesign (waves 393 and 398: "a battle-footage monitor on stands in every yard"): the two archive
+// monitors stand in Verdant's hall only, their own static owner, and their slideshow sleeps elsewhere
+assert.match(dressing, /battleScreenOwner\.visible = isVerdant;[\s\S]{0,120}group\.userData\.battleScreenVisible = isVerdant;/,
+  'the battle displays show in Verdant only');
+assert.match(dressing, /if \(isVerdant && battleScreenCurrentTexture\) scheduleBattleScreenAdvance\(\);/,
+  'the archive slideshow never runs where its monitors are hidden');
+// 2026-10-11, waves 398 and 402 ("the same red box and drawer cabinet in every yard"): Verdant's chests are its own
+assert.match(dressing, /for \(const owner of verdantKitOwners\) owner\.visible = isVerdant;/, 'Verdant\'s workshop chests show in Verdant only');
 assert.match(dressing, /battleScreenDisplayCount = 2/,
   'two physically separate battle displays must surround the Garage');
 assert.match(dressing, /battleScreenResidentImageLimit = 3/,
@@ -238,8 +252,8 @@ assert.match(dressing, /battleScreenResidentImageLimit = 3/,
 assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
   'the shared display must not stop rotating outside Verdant');
 assert.match(dressing,
-  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot, \.\.\.\(abramsBayRoot \? \[abramsBayRoot\] : \[\]\)\]/,
-  'the shared bays, the movable Abrams bay and the Verdant-only interior collapse static leaf draws independently');
+  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot, \.\.\.\(abramsBayRoot \? \[abramsBayRoot\] : \[\]\),\s*battleScreenOwner, \.\.\.verdantKitOwners\]/,
+  'the shared bays, the movable Abrams bay, the Verdant-only interior and the Verdant-only monitors collapse static leaf draws independently');
 assert.match(dressing, /sharedMaintenanceBayCount = 4/);
 assert.match(dressing, /workshopOrbitCoverageDegrees = 360/);
 assert.match(dressing, /const craneRunwayX = 21\.0/,
@@ -377,7 +391,7 @@ assert.match(dressing, /garage_battle_archive_screen/);
 assert.match(dressing, /battleScreenMode = 'crt-scroll-slideshow'/);
 assert.match(dressing, /uTransition[\s\S]*scanline[\s\S]*rollingGlow/,
   'the archive changes images with a shader scroll and visible CRT treatment');
-assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| document\.hidden\) return/,
+assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| !battleScreenOwner\.visible \|\| document\.hidden\) return/,
   'the screen timer must stop instead of polling during battle or background tabs');
 assert.match(access, /prepareGarageDressing\?\./,
   'the access boundary prepares fleet builders before the quiet chunk pump');

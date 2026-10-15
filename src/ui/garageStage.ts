@@ -22,6 +22,12 @@ import {
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getGarageWorkshopLayoutPose, VERDANT_K2_WORK_LIGHT } from '../game/garageWorkshopLayout.ts';
+import {
+  GARAGE_HARDSTAND_PROGRAM_KEY,
+  garageHardstandDetailTexture,
+  garageHardstandGradedHook,
+  garageHardstandGrainTexture,
+} from './garageHardstandProgram.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -34,7 +40,7 @@ interface CanvasTextureOptions {
 
 interface GarageStageEngineContext {
   anisotropy?: number;
-  setupShadowMaterial?(material: THREE.Material): void;
+  setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
 }
 
 export interface GarageStageRuntime {
@@ -122,7 +128,7 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const g = get2dContext(c, { willReadFrequently: true });
-  g.fillStyle = '#4e5154'; // r5: a step darker — keeps the key-spot pool below clip
+  g.fillStyle = '#54524d'; // r5: a step darker, keeps the key-spot pool below clip; 2026-10-11: warm, not blue-grey
   g.fillRect(0, 0, S, S);
   // large tonal blotches
   for (let i = 0; i < 90; i++) {
@@ -214,8 +220,9 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = get2dContext(c, { willReadFrequently: true });
-  // base panel color: a painted grey-blue sheet that reads as a wall (2026-10-10, wave 357: "near-black navy walls")
-  g.fillStyle = '#58616a';
+  // base panel color: a painted warm grey sheet (2026-10-10, wave 357: "near-black navy walls"; 2026-10-11, wave 402:
+  // "the hall drowned in a flat dark-navy cast")
+  g.fillStyle = '#6a675f';
   g.fillRect(0, 0, W, H);
   // vertical corrugation ribs (light/shadow pairs, 16px pitch)
   for (let x = 0; x < W; x += 16) {
@@ -536,6 +543,30 @@ export function createGarageStage(
     metalness: 0,
     side: THREE.DoubleSide,
   }), { instanced: true, instanceColor: true });
+  // the outdoor packs' graded hardstand (garageHardstandProgram.ts): transparent, writing no depth, its own program
+  {
+    const hardstandSeed = new THREE.MeshStandardMaterial({
+      color: 0xffffff, map: outdoorSeedColor, normalMap: outdoorSeedNormal, normalScale: new THREE.Vector2(0.45, 0.45),
+      roughness: 0.94, metalness: 0.02, transparent: true, depthWrite: false, colorWrite: false,
+    });
+    engineCtx?.setupShadowMaterial?.(hardstandSeed, garageHardstandGradedHook(outdoorSeedColor, 0) as THREE.Material['onBeforeCompile']);
+    hardstandSeed.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
+    addOutdoorSeed('hardstand-graded', track(hardstandSeed));
+    // The shared grain the outdoor floors multiply in is generated once, in the browser's idle time after the Garage
+    // settles, not on the first outdoor visit (the switch ABBA, 2026-10-14: Sirocco's first cold visit presented
+    // later than main's). Never on the boot path: an idle callback, or a late timeout where there is none.
+    // The concrete detail relief (six of the nine yards pour slabs) follows it in its own idle slice (GA.03, the critic
+    // panel's detail layer); the other ground types are generated after their first visit's first frame.
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const later = (work: () => void, timeout: number): void => {
+      if (typeof idle === 'function') idle(work, { timeout });
+      else setTimeout(work, timeout / 2);
+    };
+    const floorAnisotropy = aniso >= 8 ? 16 : aniso;
+    const warmConcrete = (): void => { garageHardstandDetailTexture('concrete', floorAnisotropy); };
+    const warmGrain = (): void => { garageHardstandGrainTexture(floorAnisotropy); later(warmConcrete, 8000); };
+    later(warmGrain, 6000);
+  }
   addOutdoorSeed('facility-instance-color', seedStandard({
     color: 0xffffff,
     roughness: 0.88,
@@ -818,7 +849,8 @@ export function createGarageStage(
       cable.position.set(x, 8.7, z);
       group.add(shade, glow, cable);
       // reach the hangar's far corners (~33 m) so the floor never dies to black
-      const pointLight = new THREE.PointLight(0xf3f1ea, 36, 42, 1.9); // camo_spotting r2: neutral highbay cast
+      // camo_spotting r2: the highbay cast; 2026-10-11 (wave 402: "a flat dark-navy cast"): a warm metal-halide white
+      const pointLight = new THREE.PointLight(0xffe8cc, 40, 42, 1.9);
       pointLight.position.set(x, 7.1, z);
       verdantLights.push(pointLight);
       group.add(pointLight);
@@ -1105,7 +1137,7 @@ export function createGarageStage(
   // shadow"): low bounce fill aimed at the hull lower third / running gear —
   // parked near the podium front-right, tuned so tracks/wheels read under
   // the moody key without flattening it.
-  const gearFill = new THREE.PointLight(0xcfd8e6, 14, 9, 2);
+  const gearFill = new THREE.PointLight(0xeee2d0, 14, 9, 2);
   gearFill.position.set(2.6, 0.55, 2.2);
   gearFill.castShadow = false;
   verdantLights.push(gearFill);
@@ -1481,10 +1513,20 @@ export function createGarageStage(
     floorMat.color.setHex(variant.floorTint).lerp(neutral, 0.42);
     wallMat.color.setHex(variant.wallTint).lerp(neutral, 0.34);
     const platformEdge = new THREE.Color(variant.accent).lerp(neutral, 0.12);
+    // outdoors the turntable's hazard band is worn paint, not a lit saturated stripe (the re-judge, 2026-10-15: "the cyan
+    // and black hazard ring is saturated; desaturate it to worn paint"): half the accent's saturation, a little darker,
+    // a third of the glow; Verdant's hall keeps its own
+    let edgeGlow = 1;
+    if (variant.id !== 'verdant_motor_pool') {
+      const hsl = { h: 0, s: 0, l: 0 };
+      platformEdge.getHSL(hsl);
+      platformEdge.setHSL(hsl.h, hsl.s * 0.5, hsl.l * 0.86);
+      edgeGlow = 0.35;
+    }
     podTopMat.color.setHex(variant.platformTint);
     podSideMat.color.copy(platformEdge);
-    podSideMat.emissive.copy(platformEdge);
-    rimRingMat.emissive.copy(platformEdge);
+    podSideMat.emissive.copy(platformEdge).multiplyScalar(edgeGlow);
+    rimRingMat.emissive.copy(platformEdge).multiplyScalar(edgeGlow);
     lampMat.color.setHex(variant.lightTint);
     lensMat.emissive.setHex(variant.lightTint);
     const architectureStats = architecture.setVariant(variant);
