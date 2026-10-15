@@ -122,7 +122,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     brick_arsenal: {
       logistics: [[-35, 3], [17, -26]],
       parts: [[-24, 14], [3, -35]], floods: [[-38, 2], [38, 6]],
-      feature: [0, 28], featureRadius: [11, 5],
+      // the Zeughaus straddles the boulevard (GA.06 Steinburg, 2026-10-14): 28.6 x 8.6 m plus its dock; 7 m further back
+      // at the yard's level, its roofline and gables against the sky over the hero (the garage critic panel, 2026-10-14)
+      feature: [0.2, 38], featureRadius: [14, 6.5],
+      yardLevel: [[0, 21, 13, 10]],
     },
     naval_drydock: {
       logistics: [[-34, 15], [18, -25]],
@@ -1674,9 +1677,13 @@ export function addGarageFacilityDetails({
         [lateral + offset, longitudinal, 2.55],
         0.14, safety, 'painted');
     }
-    for (let plate = 0; plate < 5; plate += 1) {
-      clusterBox(cluster, lateral - 1.75 + plate * 0.88, longitudinal, 1.30,
-        0.68, 2.15, 0.10, plate % 2 ? tint : steel, 'equipment', -0.05 + plate * 0.025);
+    // the plates stand upright in the comb's slots, mill-scale grey and rust-brown, thick enough to read as plate, not
+    // as cards (the garage critic panel, 2026-10-14: "salmon rectangles stand at random angles like placeholder cards")
+    for (let slot = 0; slot < 9; slot += 1) clusterBox(cluster, lateral - 2.2 + slot * 0.55, longitudinal, 0.5, 0.05, 0.6, 1.9, steel, 'structure');
+    for (let plate = 0; plate < 7; plate += 1) {
+      const height = 1.7 + (plate % 3) * 0.25;
+      clusterBox(cluster, lateral - 1.93 + plate * 0.55 + (plate % 2) * 0.08, longitudinal + (plate % 2 ? 0.08 : -0.06), 0.2 + height / 2,
+        0.035, height, 1.55 - (plate % 2) * 0.2, plate % 3 === 1 ? tint.clone().multiplyScalar(0.68) : new THREE.Color(0x4b4f52), 'equipment');
       looseParts += 1;
     }
     structuralConnections += 14;
@@ -1850,6 +1857,235 @@ export function addGarageFacilityDetails({
         2.45, 0.13, 0.28, timber, 'equipment');
       railSegments += 1;
     }
+  };
+
+  /**
+   * Steinburg's Zeughaus (garage round 7, 2026-10-14; props census #20, garage:brick_arsenal grade 0: a low loading dock
+   * and a wall of painted panels across the boulevard). The arsenal range the boulevard runs into: two storeys of brick
+   * with red Main-sandstone dressings, squared on the boulevard's last stretch, the street passing through a gate arch in
+   * a projecting centre pavilion with a gable. Every opening is cut through 0.6 m of wall with sandstone surrounds: the
+   * gate (its leaves swung back into the passage), segmental-arched store doors on the ground floor (two open on the dark
+   * stores), upper windows with sills, lintels and sashes set back; a plinth, a string course, a corbelled eaves cornice,
+   * quoins, stepped end gables, a steep tiled roof with dormers, a loading dock with an edge angle and buffers under a
+   * cast-iron canopy, and gas lanterns flanking the gate. The cluster's +longitudinal faces down the boulevard.
+   */
+  const addZeughaus = (centerSide: number, centerDepth: number, roadFrom: readonly [number, number]): void => {
+    const origin = cameraPoint(centerSide, centerDepth);
+    const toward = cameraPoint(roadFrom[0], roadFrom[1]);
+    const yaw = Math.atan2(toward.x - origin.x, toward.z - origin.z);
+    const range: FacilityCluster = { x: origin.x, z: origin.z, baseY: groundAtWorld(origin.x, origin.z), yaw };
+    const at = (lateral: number, longitudinal: number): FacilityCluster => {
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      return { x: range.x + c * lateral + sn * longitudinal, z: range.z - sn * lateral + c * longitudinal, baseY: range.baseY, yaw };
+    };
+    const halfW = 14, halfD = 4, wallT = 0.6, storey = 4.5, eaveY = 8.6;
+    const sandstone = new THREE.Color(0x9b5c49), sandstoneDark = new THREE.Color(0x7d4638);
+    const oak = new THREE.Color(0x4a3426), iron = new THREE.Color(0x22262a), pane = new THREE.Color(0x1c2328);
+    const front = halfD; // the facade's centre line
+    const face = front + wallT / 2; // its outer face
+    // --- the facade: a band under the openings, piers between, bands over; the openings' surrounds in sandstone -----
+    const gate = { half: 2.3, spring: 3.6 }; // a round arch, crown at 5.9
+    const storeDoors = [-12.4, -8.8, 5.6, 9.2, 12.6].map((lateral) => ({ lateral, half: 1.2, top: 3.5 }));
+    const windows = [-12.4, -9.6, -6.8, 6.8, 9.6, 12.4].map((lateral) => ({ lateral, half: 0.6, sill: 5.3, head: 7.6 }));
+    // ground storey: piers between the gate and the store doors
+    const groundEdges = [-halfW - wallT / 2, ...[...storeDoors.map((d) => [d.lateral - d.half, d.lateral + d.half]).flat(), -gate.half, gate.half]
+      .sort((a, b) => a - b), halfW + wallT / 2];
+    for (let index = 0; index < groundEdges.length; index += 2) {
+      const a = groundEdges[index], b = groundEdges[index + 1];
+      if (b - a > 0.02) clusterSurface(range, 'brick', (a + b) / 2, front, storey / 2, b - a, storey, wallT);
+    }
+    // over the store doors to the string course; the gate's arch head stepped round its crown
+    for (const door of storeDoors) {
+      clusterSurface(range, 'brick', door.lateral, front, (door.top + storey) / 2, 2 * door.half, storey - door.top, wallT);
+      for (let v = 0; v <= 6; v += 1) { // a segmental arch of sandstone voussoirs over the door, its keystone proud
+        const t = -1 + v / 3;
+        clusterBox(range, door.lateral + t * (door.half + 0.1), face + 0.02, door.top + 0.12 + 0.18 * (1 - t * t), 0.34, 0.3, 0.06,
+          v === 3 ? sandstoneDark : sandstone, 'masonry', -Math.atan(-0.36 * t / (door.half + 0.1)));
+      }
+      for (const side of [-1, 1]) clusterBox(range, door.lateral + side * (door.half + 0.12), face + 0.02, door.top / 2, 0.24, door.top, 0.06, sandstone, 'masonry');
+    }
+    const archSlices = 8;
+    for (let slice = 0; slice < archSlices; slice += 1) {
+      const a = -gate.half + (slice * 2 * gate.half) / archSlices, b = a + (2 * gate.half) / archSlices;
+      const x = (a + b) / 2 / gate.half;
+      const head = gate.spring + gate.half * Math.sqrt(Math.max(0, 1 - x * x));
+      if (storey + 2.2 - head > 0.02) clusterSurface(range, 'brick', (a + b) / 2, front + 0.3, (head + storey + 2.2) / 2, b - a, storey + 2.2 - head, wallT + 0.6);
+    }
+    // the gate's round arch: a continuous ring of 21 sandstone voussoirs touching, alternately long and short, and a
+    // keystone (the critic panel: "the gate arch voussoirs have gaps")
+    for (let v = 0; v <= 20; v += 1) {
+      const angle = Math.PI * v / 20, r = gate.half + 0.25;
+      const chord = 2 * r * Math.sin(Math.PI / 40) + 0.03;
+      clusterBox(range, Math.cos(angle) * r, face + 0.62, gate.spring + Math.sin(angle) * r, chord, v === 10 ? 0.62 : v % 2 ? 0.42 : 0.52, 0.1,
+        v === 10 ? sandstoneDark : sandstone, 'masonry', angle - Math.PI / 2);
+    }
+    for (const side of [-1, 1]) {
+      // the gate's jambs and the pavilion's rusticated pilasters
+      clusterBox(range, side * (gate.half + 0.25), face + 0.62, gate.spring / 2, 0.5, gate.spring, 0.1, sandstone, 'masonry');
+      for (let course = 0; course < 10; course += 1) {
+        clusterBox(range, side * 3.3, face + 0.64, 0.35 + course * 0.82, course % 2 ? 0.7 : 0.9, 0.7, 0.12, course % 2 ? sandstoneDark : sandstone, 'masonry');
+      }
+    }
+    // the pavilion: 7 m wide, 0.6 m proud of the range, its own wall to the eaves and a gable over them
+    clusterSurface(range, 'brick', 0, front + 0.3, (storey + 2.2 + eaveY) / 2, 7, eaveY - storey - 2.2, wallT + 0.6);
+    for (const side of [-1, 1]) clusterSurface(range, 'brick', side * 2.95, front + 0.3, (storey + 2.2) / 2, 1.1, storey + 2.2, wallT + 0.6);
+    // the passage through the range: its walls, its vault (seen through the gate) and the leaves swung back inside it
+    for (const side of [-1, 1]) clusterSurface(range, 'brick', side * (gate.half + 0.3), 0, gate.spring / 2 + 1, 0.6, gate.spring + 2, 2 * halfD);
+    clusterSurface(range, 'brick', 0, 0, gate.spring + gate.half + 0.25, 2 * gate.half + 1.2, 0.5, 2 * halfD);
+    for (const side of [-1, 1]) {
+      const leaf = at(side * (gate.half - 0.1), front - wallT / 2 - 1.15);
+      clusterSurface({ ...leaf, yaw: yaw + Math.PI / 2 }, 'timber', 0, 0, (gate.spring + 1.6) / 2, 2.2, gate.spring + 1.6, 0.1);
+      for (const y of [0.6, 2.2, 3.9]) clusterBox({ ...leaf, yaw: yaw + Math.PI / 2 }, 0, -side * 0.07, y, 2.0, 0.12, 0.04, iron, 'painted');
+    }
+    // --- the upper storey: a band under the sills, piers between the windows, a band over the heads -------------------
+    const upperEdges = [-halfW - wallT / 2, ...windows.map((w) => [w.lateral - w.half, w.lateral + w.half]).flat().sort((a, b) => a - b), -3.5, 3.5]
+      .sort((a, b) => a - b);
+    upperEdges.push(halfW + wallT / 2);
+    const sill = windows[0].sill, head = windows[0].head;
+    clusterSurface(range, 'brick', 0, front, (storey + sill) / 2, 2 * halfW + wallT, sill - storey, wallT);
+    clusterSurface(range, 'brick', 0, front, (head + eaveY) / 2, 2 * halfW + wallT, eaveY - head, wallT);
+    for (let index = 0; index < upperEdges.length - 1; index += 2) {
+      const a = upperEdges[index], b = upperEdges[index + 1];
+      if (b - a > 0.02 && !(a > -3.6 && b < 3.6)) clusterSurface(range, 'brick', (a + b) / 2, front, (sill + head) / 2, b - a, head - sill, wallT);
+    }
+    for (const w of windows) {
+      clusterBox(range, w.lateral, face + 0.07, sill - 0.06, 2 * w.half + 0.36, 0.14, 0.2, sandstone, 'masonry'); // sill
+      clusterBox(range, w.lateral, face + 0.05, head + 0.16, 2 * w.half + 0.5, 0.32, 0.12, sandstone, 'masonry'); // lintel
+      clusterBox(range, w.lateral, face + 0.1, head + 0.36, 2 * w.half + 0.66, 0.08, 0.2, sandstoneDark, 'masonry'); // its hood
+      for (const side of [-1, 1]) clusterBox(range, w.lateral + side * (w.half + 0.1), face + 0.03, (sill + head) / 2, 0.2, head - sill, 0.06, sandstone, 'masonry');
+      // the sash 0.16 m back from the face: frame, a mullion, two glazing bars, dark lights behind
+      const sashF = face - 0.16;
+      for (const side of [-1, 1]) clusterBox(range, w.lateral + side * (w.half - 0.03), sashF, (sill + head) / 2, 0.06, head - sill, 0.07, oak, 'painted');
+      for (const y of [sill + 0.03, head - 0.03, sill + (head - sill) * 0.36, sill + (head - sill) * 0.68]) {
+        clusterBox(range, w.lateral, sashF, y, 2 * w.half, 0.05, 0.06, oak, 'painted');
+      }
+      clusterBox(range, w.lateral, sashF, (sill + head) / 2, 0.05, head - sill, 0.06, oak, 'painted');
+      clusterBox(range, w.lateral, sashF - 0.05, (sill + head) / 2, 2 * w.half - 0.04, head - sill - 0.04, 0.012, pane, 'painted');
+    }
+    // --- the store doors: oak leaves, two open on the dark stores, the rest shut ------------------------------------
+    storeDoors.forEach((door, index) => {
+      const open = index === 1 || index === 3;
+      for (const side of [-1, 1]) {
+        if (open) {
+          const leaf = at(door.lateral + side * (door.half + 0.62), face + 0.07);
+          clusterSurface(leaf, 'timber', 0, 0, door.top / 2, 1.16, door.top - 0.04, 0.08);
+        } else {
+          clusterSurface(range, 'timber', door.lateral + side * door.half / 2, front - 0.08, door.top / 2, door.half - 0.02, door.top - 0.04, 0.08);
+        }
+      }
+      if (open) {
+        // the store behind: its brick reveals, a dim back wall 2.4 m in and a stack of crates, not a black card
+        for (const side of [-1, 1]) clusterSurface(range, 'brick', door.lateral + side * (door.half + 0.1), front - wallT / 2 - 1.2, door.top / 2, 0.2, door.top, 2.4);
+        clusterBox(range, door.lateral, front - wallT / 2 - 2.4, door.top / 2, 2 * door.half + 0.4, door.top, 0.05, new THREE.Color(0x3a322c), 'painted');
+        clusterBox(range, door.lateral - 0.4, front - wallT / 2 - 1.9, 0.45, 0.9, 0.9, 0.8, oak, 'equipment');
+        clusterBox(range, door.lateral - 0.35, front - wallT / 2 - 1.9, 1.2, 0.7, 0.6, 0.7, oak.clone().multiplyScalar(1.2), 'equipment');
+      }
+    });
+    // --- dressings: plinth, string course, cornice, quoins -------------------------------------------------------------
+    clusterBox(range, 0, face + 0.06, 0.4, 2 * halfW + wallT + 0.2, 0.8, 0.14, sandstoneDark, 'masonry');
+    clusterBox(range, 0, face + 0.08, storey, 2 * halfW + wallT + 0.2, 0.22, 0.18, sandstone, 'masonry');
+    for (const [y, out] of [[eaveY - 0.1, 0.16], [eaveY + 0.08, 0.32]] as const) {
+      clusterBox(range, 0, face + out / 2, y, 2 * halfW + wallT + 0.4, 0.2, out + 0.1, sandstone, 'masonry');
+    }
+    for (const side of [-1, 1]) {
+      for (let course = 0; course < 11; course += 1) {
+        clusterBox(range, side * (halfW + wallT / 2 - (course % 2 ? 0.22 : 0.32)), face + 0.02, 0.9 + course * 0.72,
+          course % 2 ? 0.5 : 0.7, 0.6, 0.06, sandstone, 'masonry');
+      }
+    }
+    // --- the end walls, back wall and the roof: stepped end gables, a steep tiled roof, dormers --------------------------
+    for (const side of [-1, 1]) clusterSurface(range, 'brick', side * halfW, 0, eaveY / 2, wallT, eaveY, 2 * halfD - wallT);
+    clusterSurface(range, 'brick', 0, -front, eaveY / 2, 2 * halfW + wallT, eaveY, wallT);
+    const ridgeY = eaveY + halfD * Math.tan(THREE.MathUtils.degToRad(54));
+    const steps = 6;
+    for (const side of [-1, 1]) {
+      for (let step = 0; step < steps; step += 1) {
+        const y0 = eaveY + (step * (ridgeY - eaveY)) / steps, y1 = eaveY + ((step + 1) * (ridgeY - eaveY)) / steps;
+        const half = halfD * (1 - step / steps) + 0.3;
+        clusterSurface(range, 'brick', side * halfW, 0, (y0 + y1) / 2 + 0.25, wallT, y1 - y0 + 0.5, 2 * Math.max(0.5, half));
+        clusterBox(range, side * halfW, 0, y1 + 0.55, wallT + 0.12, 0.1, 2 * Math.max(0.5, half) + 0.12, sandstone, 'masonry'); // the step's coping
+      }
+    }
+    // the roof's two slopes (ridge along the range), each a tiled surface pitched across the cluster's longitudinal axis
+    {
+      const pitch = Math.atan2(ridgeY - eaveY, halfD + 0.4);
+      const slope = Math.hypot(halfD + 0.4, ridgeY - eaveY);
+      for (const sign of [-1, 1]) {
+        // plain clay tiles on the pack's roof bucket (the critic panel: "a modern standing-seam roof on a 19th-century
+        // building ... slate or Biberschwanz tile")
+        clusterSurface(range, 'tiles', 0, sign * (halfD + 0.4) / 2, (eaveY + ridgeY) / 2, 2 * halfW + 0.2, 0.08, slope + 0.1,
+          { rotationX: sign * pitch });
+        // the gutter along the eaves and two downpipes to the plinth
+        clusterCylinder(range, 0, sign * (halfD + 0.45), eaveY - 0.12, 0.09, 2 * halfW + 0.4, iron, 0, 10, Math.PI / 2);
+        if (sign > 0) for (const lateral of [-halfW + 0.6, halfW - 0.6]) clusterCylinder(range, lateral, halfD + 0.45, eaveY / 2, 0.06, eaveY - 0.2, iron, 0, 10);
+      }
+      // two chimney stacks on the ridge, corbelled caps and pots
+      for (const lateral of [-7.5, 7.5]) {
+        clusterSurface(range, 'brick', lateral, -0.6, ridgeY + 0.7, 0.9, 2.2, 0.7);
+        clusterBox(range, lateral, -0.6, ridgeY + 1.85, 1.1, 0.16, 0.9, sandstone, 'masonry');
+        for (const dl of [-0.2, 0.2]) clusterCylinder(range, lateral + dl, -0.6, ridgeY + 2.15, 0.11, 0.45, new THREE.Color(0x7a4a34), 0, 10);
+      }
+      clusterBox(range, 0, 0, ridgeY + 0.08, 2 * halfW + 0.3, 0.16, 0.3, sandstoneDark, 'masonry'); // ridge tiles
+      // dormers on the front slope: cheeks, a pitched roof, a sash
+      for (const lateral of [-9.6, 9.6]) {
+        const dormer = at(lateral, front - 1.4);
+        const base = eaveY + 1.4 * Math.tan(pitch);
+        for (const side of [-1, 1]) clusterSurface(dormer, 'brick', side * 0.85, 0.2, base + 0.8, 0.14, 1.6, 1.6);
+        // a glazed casement pair set in the dormer's cheeks: frame, mullion, two transoms, the lights behind
+        for (const side of [-1, 1]) clusterBox(dormer, side * 0.66, 0.96, base + 0.85, 0.08, 1.5, 0.1, oak, 'painted');
+        for (const y of [base + 0.14, base + 1.56, base + 1.1, base + 0.6]) clusterBox(dormer, 0, 0.96, y, 1.3, 0.07, 0.08, oak, 'painted');
+        clusterBox(dormer, 0, 0.96, base + 0.85, 0.06, 1.4, 0.08, oak, 'painted');
+        clusterBox(dormer, 0, 0.9, base + 0.85, 1.24, 1.36, 0.012, new THREE.Color(0x2b3236), 'painted');
+        clusterBox(dormer, 0, 1.0, base + 0.08, 1.5, 0.08, 0.2, sandstone, 'masonry'); // its sill
+        for (const side of [-1, 1]) clusterSurface(dormer, 'tiles', side * 0.55, 0.3, base + 1.85, 1.3, 0.06, 2.0, { rotationZ: -side * 0.6 });
+      }
+      // the pavilion's gable over the eaves, with a round window
+      const gableTop = eaveY + 3.0;
+      for (let step = 0; step < 5; step += 1) {
+        const y0 = eaveY + (step * 3.0) / 5, y1 = eaveY + ((step + 1) * 3.0) / 5;
+        clusterSurface(range, 'brick', 0, front + 0.3, (y0 + y1) / 2, 2 * (3.5 * (1 - step / 5)) + 0.2, y1 - y0, wallT + 0.6);
+      }
+      for (const sign of [-1, 1]) clusterBox(range, sign * 1.75, face + 0.32, eaveY + 1.6, Math.hypot(3.5, 3.0) + 0.2, 0.18, 0.2, sandstone, 'masonry',
+        -sign * Math.atan2(3.0, 3.5));
+      for (let v = 0; v < 10; v += 1) {
+        const angle = (v / 10) * Math.PI * 2;
+        clusterBox(range, Math.cos(angle) * 0.62, face + 0.62, eaveY + 1.1 + Math.sin(angle) * 0.62, 0.36, 0.22, 0.07, sandstone, 'masonry', angle + Math.PI / 2);
+      }
+      clusterCylinder(range, 0, face + 0.5, eaveY + 1.1, 0.5, 0.06, pane, Math.PI / 2, 16);
+      clusterBox(range, 0, face + 0.64, gableTop + 0.1, 0.5, 0.5, 0.5, sandstoneDark, 'masonry'); // the finial block
+    }
+    // --- the loading dock under a cast-iron canopy, before the right-hand stores --------------------------------------
+    {
+      const dockL0 = 4.2, dockL1 = 13.9, dockOut = 2.8, dockH = 1.05;
+      const cx = (dockL0 + dockL1) / 2, len = dockL1 - dockL0;
+      clusterSurface(range, 'brick', cx, face + dockOut / 2, dockH / 2, len, dockH, dockOut);
+      clusterBox(range, cx, face + dockOut + 0.02, dockH - 0.05, len, 0.1, 0.06, iron, 'structure'); // the edge angle
+      for (const lateral of [dockL0 + 1.2, cx, dockL1 - 1.2]) clusterBox(range, lateral, face + dockOut + 0.08, dockH - 0.42, 0.36, 0.42, 0.14, dark, 'equipment'); // buffers
+      for (let step = 0; step < 4; step += 1) {
+        clusterBox(range, dockL0 - 0.6, face + dockOut - 0.35 - step * 0.32, (step + 0.5) * dockH / 4, 1.2, dockH / 4, 0.32, sandstone, 'masonry');
+      }
+      for (const lateral of [dockL0 + 0.6, cx, dockL1 - 0.6]) {
+        clusterBox(range, lateral, face + 0.02, storey - 1.0, 0.3, 1.2, 0.04, iron, 'structure'); // the wall plate, bolted
+        for (const y of [storey - 0.5, storey - 1.5]) clusterCylinder(range, lateral, face + 0.05, y, 0.04, 0.05, iron, Math.PI / 2, 8);
+        clusterBeam(range, [lateral, face + 0.04, storey - 0.6], [lateral, face + dockOut, storey - 0.1], 0.08, iron, 'structure'); // the bracket
+        clusterBeam(range, [lateral, face + 0.04, storey - 1.4], [lateral, face + 1.4, storey - 0.4], 0.06, iron, 'structure'); // its strut
+      }
+      for (const along of [0.9, 1.9]) clusterBox(range, cx, face + along, storey - 0.18 + along * 0.06, len + 0.2, 0.08, 0.08, iron, 'structure'); // purlins
+      clusterCylinder(range, cx, face + dockOut + 0.2, storey - 0.12, 0.07, len + 0.4, iron, 0, 10, Math.PI / 2); // the gutter
+      clusterCylinder(range, dockL1 + 0.15, face + dockOut + 0.2, (storey - 0.12) / 2, 0.05, storey - 0.12, iron, 0, 10); // its downpipe
+      clusterSurface(range, 'roofing', cx, face + dockOut / 2, storey - 0.3, len + 0.4, 0.05, dockOut + 0.3, { rotationX: 0.18 });
+      clusterBox(range, cx, face + dockOut + 0.12, storey - 0.55, len + 0.4, 0.16, 0.08, iron, 'painted'); // the valance
+    }
+    // --- gas lanterns flanking the gate --------------------------------------------------------------------------------
+    for (const side of [-1, 1]) {
+      const lateral = side * 3.3;
+      clusterBox(range, lateral, face + 0.95, 4.0, 0.06, 0.06, 0.6, iron, 'structure');
+      clusterBox(range, lateral, face + 1.2, 3.75, 0.34, 0.5, 0.34, iron, 'painted');
+      clusterBox(range, lateral, face + 1.2, 3.75, 0.26, 0.38, 0.26, new THREE.Color(0xe8d2a2), 'painted');
+    }
+    environmentSpecificAssemblies += 1;
+    structuralConnections += 48;
+    servicePurposeTags.add('arsenal-gate-and-stores');
   };
 
   /**
@@ -2447,24 +2683,12 @@ export function addGarageFacilityDetails({
       // The source factory and fire-station facades already provide the
       // enclosure. Use a low, grounded loading magazine here instead of a
       // second roof frame competing with those real map buildings.
-      clusterBox(featureCluster, 0, 2, 0.16,
-        22, 0.32, 3.0, new THREE.Color(0x58534d), 'masonry');
-      clusterBox(featureCluster, 0, -3.25, 1.15,
-        22, 2.25, 0.34, new THREE.Color(0x6b5850), 'masonry');
-      clusterBox(featureCluster, 0, -3.02, 2.36,
-        22.8, 0.18, 0.70, new THREE.Color(0x4c5358), 'painted');
-      for (let index = -4; index <= 4; index += 1) {
-        clusterBox(featureCluster, index * 2.4, 0.4, 0.56,
-          1.9, 1.12, 0.7,
-          index % 2 ? new THREE.Color(0x8a7e68) : new THREE.Color(0x756e5e),
-          'equipment');
-        clusterBox(featureCluster, index * 2.4, -3.00, 1.22,
-          1.54, 1.62, 0.06, index % 2 ? dark : primer, 'painted');
-      }
-      addPoweredWinch(featureCluster, -7.2, -1.45, new THREE.Color(0x9a6542));
-      addPartsPallet(featureCluster, 6.8, -1.15, 3);
-      addSafetyRail(featureCluster, 0, -1.75, 8.5);
-      addPlatePreparationRack(featureCluster, 0, -3.25, new THREE.Color(0x8a614f));
+      // the Zeughaus across the boulevard's last stretch (from (1, 28) toward (-4, 47)); its yard equipment in front
+      addZeughaus(featureSide, featureDepth, [featureSide, featureDepth - 6]);
+      addPoweredWinch(fixedCluster(featureSide - 9.5, featureDepth - 8.2), 0, 0, new THREE.Color(0x9a6542));
+      addPartsPallet(fixedCluster(featureSide - 12.5, featureDepth - 6.0), 0, 0, 3);
+      addSafetyRail(fixedCluster(featureSide + 9.0, featureDepth - 7.6), 0, 0, 8.5);
+      addPlatePreparationRack(fixedCluster(featureSide + 11.0, featureDepth - 10.0), 0, 0, new THREE.Color(0x8a614f));
   };
   const addNavalDrydock = (): void => {
       environmentSpecificAssemblies += 1;
@@ -3097,6 +3321,10 @@ export function addGarageFacilityDetails({
   const addRegionalYardPiece = (): void => {
     const floor = getGarageFacilityTerraces(variant).find((terrace) => terrace.label === 'crew-floor-yard-power-pack');
     if (!floor) return;
+    // Steinburg keeps no loose yard piece: its cart and gas-bottle trolley floated on the lawn wherever they stood (the
+    // re-judge, 2026-10-15: "a black bench or crate and a red bollard float on the lawn ... delete them"; ticket 6: "a
+    // cart with a tall red post and two stray bars sits on the lawn"); the Zeughaus's loading dock carries its kit
+    if (variant.architecture === 'brick_arsenal') return;
     const at = fixedCluster(floor.side, floor.depth);
     const olive = new THREE.Color(0x4f5536), rope = new THREE.Color(0x8c7a55);
     const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);
@@ -3137,16 +3365,6 @@ export function addGarageFacilityDetails({
         clusterBox(at, -1.2, 0.1, 0.2, 1.0, 0.06, 1.9, wood, 'painted');
         clusterBox(at, -1.2, 0.1, 0.48, 0.8, 0.5, 1.4, olive.clone().multiplyScalar(0.85), 'painted'); // the tarped load
         operationalMachines += 1;
-        break;
-      }
-      case 'brick_arsenal': { // a two-wheeled ammunition cart and a gas-bottle trolley
-        clusterBox(at, 0, 0, 0.55, 1.1, 0.06, 1.6, steel, 'structure');
-        wheelPair(0, 0.2, 0.32, 1.25);
-        for (const side of [-1, 1]) clusterBox(at, side * 0.45, -1.2, 0.75, 0.05, 0.05, 1.0, steel, 'structure'); // the handles
-        crateStack(0, -0.3, 6, 0.32, 0.22, 0.55, olive);
-        clusterBox(at, -1.6, 0, 0.1, 0.6, 0.06, 0.4, steel, 'structure');
-        for (const dl of [-0.15, 0.15]) clusterCylinder(at, -1.6 + dl, 0, 0.8, 0.11, 1.4, dl < 0 ? new THREE.Color(0x2f5a3a) : red, 0, 16);
-        clusterBox(at, -1.6, 0.18, 0.9, 0.5, 1.6, 0.04, steel, 'structure'); // its back frame
         break;
       }
       case 'naval_drydock': { // coiled hawsers, tyre fenders and a mooring bollard

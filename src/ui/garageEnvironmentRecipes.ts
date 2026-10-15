@@ -54,6 +54,12 @@ export interface GarageApproachRecipe {
    * shed carries its own pit roads (garageFacilityDetails.ts addEngineShed).
    */
   readonly covered?: readonly [number, number];
+  /**
+   * A paved forecourt from this depth to the route's end, this wide, kerbed on three sides (Steinburg's Zeughaus: the
+   * garage critic panel, 2026-10-14: "a granite-sett forecourt across the full facade with kerbs, carried to the
+   * threshold").
+   */
+  readonly forecourt?: { readonly from: number; readonly width: number };
 }
 
 export interface GarageEnvironmentRecipe {
@@ -213,8 +219,10 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     // cobblestone embankment curls up around the bay like the inside of a bowl")
     terrainSurface: 'grass', terrainTint: 0x8f9a74, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
     structures: [
-      at(makeFactory, 'urban factory', -36, -6, 0.76),
-      at(makeFireStation, 'Steinburg fire station', -30, -30, 0.78),
+      at(makeFactory, 'urban factory', -39, -6, 0.76), // 2.1 m out: clear of the Zeughaus
+      // off the frame's left, so the Zeughaus has the sky over its roof (the garage critic panel, 2026-10-14: "move the
+      // building 15-25 m back until the whole roofline and both gables fit with sky above")
+      at(makeFireStation, 'Steinburg fire station', -39.6, 11.3, 0.62),
       at(makeCornerShop, 'arsenal corner shop', -7, -36, 0.74),
       at(makeChurch, 'old-city church', 18, -34, 0.54),
       at(makeFactory, 'arsenal annex', 36, -14, 0.56),
@@ -226,8 +234,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     treeSpecies: ['poplar', 'oak'], treeCount: 18,
     horizonStyle: 'urban', horizonHeightM: 9.4,
     approach: {
+      // straight on the Zeughaus's axis to its gate, a sett forecourt across its whole facade
       style: 'urban-street', label: 'cobbled arsenal boulevard', surface: 'cobble', width: 9.2,
-      waypoints: [[0, 10], [1, 28], [-4, 47]], lanes: [-3.1, 3.1],
+      waypoints: [[0, 10], [0.2, 22], [0.2, 33.3]], lanes: [-3.1, 3.1], forecourt: { from: 27, width: 31 },
     },
     terrainProfile: 'actual Steinburg spawn excerpt beneath a cobbled arsenal apron',
     serviceFrame: 'city appliance bay and brick industrial loading road',
