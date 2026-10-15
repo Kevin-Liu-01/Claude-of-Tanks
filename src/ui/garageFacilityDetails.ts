@@ -2439,6 +2439,41 @@ export function addGarageFacilityDetails({
       // the clad back wall, sooty sheeting over a concrete upstand
       clusterBox(bay, 0, -halfLen - 0.3, 0.6, 2 * halfSpan + 0.6, 1.2, 0.3, concreteBase, 'masonry'); // no new surface: no new draw
       clusterSurface(bay, 'sheeting', 0, -halfLen - 0.3, 1.2 + (roofY - 1.2) / 2, 2 * halfSpan + 0.6, roofY - 1.2, 0.06);
+      // what the back wall carries (the re-judge, 2026-10-15: "one large blank corrugated plane, with no doors, windows,
+      // louvres, visible girts, downpipes or staining"): girts and wind posts on its inside face, a roller-shutter road
+      // door on the left, a personnel door under a hood and a louvre bank high on the right, downpipes at its ends, soot
+      // streaks under the louvres; the 6 m behind the turret stays plain sheeting (the hero's outline)
+      {
+        const face = -halfLen - 0.24, girt = new THREE.Color(0x5b6064), shutter = new THREE.Color(0x5d666b);
+        for (const y of [3.4, 6.0, 8.6]) clusterBox(bay, 0, face + 0.1, y, 2 * halfSpan + 0.4, 0.16, 0.12, girt, 'structure');
+        for (const u of [-6.4, 6.4]) {
+          clusterBox(bay, u, face + 0.12, 1.2 + (roofY - 1.2) / 2, 0.26, roofY - 1.2, 0.05, girt, 'structure'); // flange
+          clusterBox(bay, u, face + 0.06, 1.2 + (roofY - 1.2) / 2, 0.03, roofY - 1.2, 0.14, girt, 'structure'); // web
+        }
+        // the roller-shutter road door: its jambs and head in steel, the coil box over it, the slatted curtain down
+        const doorU = -10.2, doorHalf = 2.2, doorH = 5.0;
+        for (const side of [-1, 1]) clusterBox(bay, doorU + side * (doorHalf + 0.12), face + 0.14, doorH / 2 + 0.2, 0.24, doorH + 0.4, 0.2, millSteel, 'structure');
+        clusterBox(bay, doorU, face + 0.14, doorH + 0.3, 2 * doorHalf + 0.5, 0.3, 0.2, millSteel, 'structure');
+        clusterBox(bay, doorU, face + 0.32, doorH + 0.75, 2 * doorHalf + 0.3, 0.6, 0.55, girt, 'structure'); // the coil box
+        clusterBox(bay, doorU, face + 0.08, doorH / 2, 2 * doorHalf, doorH, 0.04, shutter, 'painted');
+        for (let slat = 0; slat < 16; slat += 1) clusterBox(bay, doorU, face + 0.11, 0.3 + slat * 0.3, 2 * doorHalf, 0.03, 0.03, soot, 'structure');
+        clusterBox(bay, doorU, face + 0.14, 0.12, 2 * doorHalf - 0.1, 0.12, 0.08, soot, 'structure'); // the bottom rail
+        // the personnel door under its hood, and the louvre bank high on the right with soot streaked down from it
+        clusterBox(bay, 4.2, face + 0.07, 1.05, 1.0, 2.1, 0.05, new THREE.Color(0x4f5a52), 'painted');
+        for (const side of [-1, 1]) clusterBox(bay, 4.2 + side * 0.56, face + 0.1, 1.1, 0.1, 2.2, 0.08, millSteel, 'structure');
+        clusterBox(bay, 4.2, face + 0.45, 2.45, 1.6, 0.08, 0.8, millSteel, 'structure', 0, -0.12); // the hood (clear of the booth)
+        clusterBox(bay, 9.6, face + 0.08, 7.4, 3.2, 1.6, 0.06, girt, 'structure');
+        for (let louvre = 0; louvre < 7; louvre += 1) clusterBox(bay, 9.6, face + 0.16, 6.75 + louvre * 0.21, 3.0, 0.05, 0.14, soot, 'structure', 0, 0.6);
+        for (const [u, length] of [[8.6, 3.2], [9.5, 4.4], [10.4, 2.6], [11.0, 3.8]] as const) {
+          clusterBox(bay, u, face + 0.07, 6.6 - length / 2, 0.22, length, 0.02, soot, 'painted');
+        }
+        // downpipes from the back gutter at both ends, a shoe at the foot
+        for (const u of [-halfSpan + 0.4, halfSpan - 0.4]) {
+          clusterCylinder(bay, u, face + 0.2, (roofY - 0.2) / 2 + 0.2, 0.06, roofY - 0.4, girt, 0, 8);
+          clusterBox(bay, u, face + 0.32, 0.25, 0.16, 0.12, 0.3, girt, 'structure');
+        }
+        structuralConnections += 10;
+      }
       // the overhead crane: end carriages on the rails, a twin box-girder bridge, the crab with its rope drum, a hook
       // block on its falls holding a teeming ladle by its trunnions
       const craneF = 3.5;
