@@ -121,8 +121,8 @@ export interface HouseSpec {
   breaches?: ReadonlyArray<{ face: FaceName; storey: number; u: number; y: number; r: number; seed: number; spall?: RegionalBucket }>;
   /**
    * Spans of a face another solid stands against up every storey (props census #13: a tower in the house's corner, a
-   * hand proud of its walls): the storey walls leave them out — the tower's own face is the wall there, and the openings
-   * cut through it look into its dark, never at a house wall a hand behind it.
+   * hand proud of its walls or flush with them): the storey walls leave them out — the tower's own face is the wall there,
+   * and the openings cut through it look into its dark, never at a house wall a hand behind it.
    */
   abutted?: ReadonlyArray<{ face: FaceName; u0: number; u1: number }>;
   chimneys: ChimneySpec[];
@@ -1525,30 +1525,6 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
     // (no reveal: the opening looks into a lit body, a greenhouse's: no room behind it)
     if (reveal > 0) sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
   }
-}
-
-/**
- * A square shaft (a tower) whose faces carry openings cut through them (props census #13): a core `cut` in from every
- * face and the faces holed slabs `cut` deep round it (front and back across the full width, the sides between them),
- * each opening's reveal back to `reveal` with the dark behind it, for a unit's pane or leaf to stand in. The faces are
- * returned by name (bodyFaces' frame, centred on each face). Against a house wall a hand behind the face, the house
- * leaves that span out (HouseSpec.abutted).
- */
-export function holedShaft(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number,
-  holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number, reveal: number, opts: EmitOptions = {}): Record<FaceName, Face> {
-  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wx = x1 - x0, wz = z1 - z0;
-  sink.span(bucket, x0 + cut, y0, z0 + cut, x1 - cut, y1, z1 - cut, opts);
-  const faces: Record<FaceName, Face> = {
-    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: wx },
-    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: wz },
-    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: wx },
-    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: wz },
-  };
-  for (const name of FACE_NAMES) {
-    const half = name === 'front' || name === 'back' ? wx / 2 : wz / 2 - cut;
-    holedPolygon(sink, bucket, faces[name], [[-half, y0], [half, y0], [half, y1], [-half, y1]], holes[name] ?? [], cut, reveal, opts);
-  }
-  return faces;
 }
 
 function shadeRgb(c: Rgb, k: number): Rgb {

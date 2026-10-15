@@ -10,11 +10,12 @@ import {
   LocalFrame, PartSink, faceBox, facePoint, rgb, shade,
   type EmitOptions, type Face, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, holedShaft, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 // (props census #3, lane B 2026-10-14: the radar tower and the Jamesway hut live in arcticYard.ts, the industrial yard's)
 import { jamesway, radarTower } from './arcticYard.ts';
+import { recordLattice } from './lattice.ts';
 
 const STEEL = rgb(0x5d6266);
 export const STEEL_DARK = rgb(0x34383b);
@@ -194,7 +195,7 @@ export function boxFace(x0: number, z0: number, x1: number, z1: number, side: 'n
  * the coloured fascia band, a flat roof; `floor` is the height of its underside above the ground.
  */
 function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, floor: number, h: number, paint: Paint,
-  band: Paint, mobile: boolean, piles = true, holes: Partial<Record<'n' | 's' | 'e' | 'w', readonly HoleRect[]>> = {}): void {
+  band: Paint, mobile: boolean, piles = true, holes: Partial<Record<'n' | 's' | 'e' | 'w', readonly HoleRect[]>> = {}, rng: () => number = () => 0.5): void {
   if (piles) {
     const stepZ = Math.max(2.4, (z1 - z0 - 0.4) / Math.max(1, Math.round((z1 - z0 - 0.4) / 3)));
     for (const x of [x0 + 0.25, x1 - 0.25]) {
@@ -231,12 +232,26 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
       sink.polygon('plaster', [b, c, g], { decor: true });
     }
   }
-  // the box, its doors and windows cut through its skin (MODULE_CUT; they were laid on a solid box)
-  if (Object.values(holes).some((l) => l && l.length)) {
-    holedShaft(sink, paint, x0, z0, x1, z1, floor, floor + h, { front: holes.s, back: holes.n, right: holes.e, left: holes.w }, MODULE_CUT, MODULE_REVEAL + 0.02);
-  } else sink.span(paint, x0, floor, z0, x1, floor + h, z1);
+  // the box: a house of its own on its piles (props census #13, lane B 2026-10-15: each module a body that breaks and
+  // falls into its own heap; the train went down to the default kit's bounding-box spalls), its doors and windows cut
+  // through its skin by the house grammar with their units at the back of the reveals (they were laid on a solid box),
+  // its flat roof the old slab
+  const openings: Opening[] = [];
+  for (const [side, face] of [['s', 'front'], ['e', 'right'], ['n', 'back'], ['w', 'left']] as const) {
+    for (const c of holes[side] ?? []) {
+      openings.push({ face, storey: 0, kind: c.y1 - c.y0 > 1.5 ? 'door' : 'window', u: (c.u0 + c.u1) / 2, w: c.u1 - c.u0, y0: c.y0 - floor, h: c.y1 - c.y0 });
+    }
+  }
+  const units: HouseDialect = {
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, WINDOW, rng, 0.5),
+    door: (s, face, o, y0) => moduleDoor(s, face, o.u, y0 + o.y0),
+  };
+  sink.placed(0, (x0 + x1) / 2, floor, (z0 + z1) / 2, () => buildHouse(sink, {
+    w: x1 - x0, d: z1 - z0, plinth: null, storeys: [{ h, wall: paint }],
+    roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.22, bucket: 'roof' }, openings, chimneys: [],
+    gutters: null, verge: null, reveal: MODULE_REVEAL, rafters: null, spall: null,
+  }, units));
   sink.span(band, x0 - 0.03, floor + h - 0.5, z0 - 0.03, x1 + 0.03, floor + h - 0.1, z1 + 0.03);
-  sink.span('roof', x0 - 0.12, floor + h, z0 - 0.12, x1 + 0.12, floor + h + 0.22, z1 + 0.12);
   if (mobile) return;
   // the panel seams down every face
   const seam = { colour: shade(PAINT_RGB[paint], 0.8), decor: true, fine: true } as const;
@@ -295,15 +310,11 @@ function stair(sink: PartSink, face: Face, u: number, floor: number, mobile: boo
  * A small window and a steel door in a module's skin: cut through it (module's `holes`: MODULE_WINDOW / MODULE_DOOR give
  * the cut at (u, y)), the pane and the leaf at the back of the reveal, the door's frame round the cut on the face.
  */
-const MODULE_CUT = 0.16, MODULE_REVEAL = 0.12;
+const MODULE_REVEAL = 0.12;
 const MODULE_WINDOW = (u: number, y: number): HoleRect => ({ u0: u - 0.45, u1: u + 0.45, y0: y, y1: y + 0.7 });
 const MODULE_DOOR = (u: number, y: number): HoleRect => ({ u0: u - 0.5, u1: u + 0.5, y0: y, y1: y + 2.1 });
-function moduleWindow(sink: PartSink, face: Face, u: number, y: number, rng: () => number): void {
-  sink.recess = MODULE_REVEAL;
-  try { windowUnit(sink, face, u, y, 0.9, 0.7, WINDOW, rng, 0.5); } finally { sink.recess = 0; }
-}
 function moduleDoor(sink: PartSink, face: Face, u: number, y: number): void {
-  faceBox(sink, 'structureMetal', face, u, y + 1.05, -MODULE_REVEAL + 0.025, 1.0, 2.1, 0.04, { colour: STEEL, decor: true });
+  faceBox(sink, 'structureMetal', face, u, y + 1.05, -sink.recess + 0.025, 1.0, 2.1, 0.04, { colour: STEEL, decor: true });
   const fo = { colour: STEEL_DARK, decor: true };
   for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * 0.54, y + 1.085, 0.02, 0.08, 2.17, 0.04, fo);
   faceBox(sink, 'structureMetal', face, u, y + 2.135, 0.02, 1.0, 0.07, 0.04, fo);
@@ -352,9 +363,9 @@ const moduleTrain: RegionalBuilder = (ctx) => {
     };
     const lenA = D / 2 - 1.6 + D / 2, lenB = D / 2 - 2.4 + D / 2, doorA = -(ax1 - ax0) * 0.18, doorB = -(bx1 - bx0) * 0.18;
     module(sink, ax0, -D / 2, ax1, D / 2 - 1.6, floor, h, paint, band, mobile, true,
-      { s: [MODULE_DOOR(doorA, floor)], w: winUs(lenA).map((u) => MODULE_WINDOW(u, floor + 1.25)) });
+      { s: [MODULE_DOOR(doorA, floor)], w: winUs(lenA).map((u) => MODULE_WINDOW(u, floor + 1.25)) }, rng);
     module(sink, bx0, -D / 2, bx1, D / 2 - 2.4, floor, h, paint, band, mobile, true,
-      { s: [MODULE_DOOR(doorB, floor)], e: winUs(lenB).map((u) => MODULE_WINDOW(u, floor + 1.25)) });
+      { s: [MODULE_DOOR(doorB, floor)], e: winUs(lenB).map((u) => MODULE_WINDOW(u, floor + 1.25)) }, rng);
     // the covered link between the rows
     module(sink, ax1 - 0.05, -1.4, bx0 + 0.05, 1.4, floor, h - 0.4, paint, band, mobile, false);
     // the upper control level over the north end of the second row, and the radome over it
@@ -363,12 +374,9 @@ const moduleTrain: RegionalBuilder = (ctx) => {
     const top = floor + h + 0.22 + 2.7 + 0.22;
     if (look() < 0.7) radome(sink, (bx0 + bx1) / 2, top + 0.4, (uz0 + uz1) / 2, clamp(mw * 0.62, 2.6, 4.6), 16);
     else for (const s of [-1, 1]) sink.member('structureMetal', [(bx0 + bx1) / 2 + s * 1.2, top, (uz0 + uz1) / 2], [(bx0 + bx1) / 2 + s * 1.2, top + 5.5, (uz0 + uz1) / 2], 0.08, 0.08, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true });
-    // the doors with their stairs, the windows
+    // the stairs to the doors
     const sa = boxFace(ax0, -D / 2, ax1, D / 2 - 1.6, 's'), sb = boxFace(bx0, -D / 2, bx1, D / 2 - 2.4, 's');
-    for (const f of [sa, sb]) { moduleDoor(sink, f, -f.width * 0.18, floor); stair(sink, f, -f.width * 0.18, floor, mobile); }
-    for (const [f, len] of [[boxFace(ax0, -D / 2, ax1, D / 2 - 1.6, 'w'), lenA], [boxFace(bx0, -D / 2, bx1, D / 2 - 2.4, 'e'), lenB]] as const) {
-      for (const u of winUs(len)) moduleWindow(sink, f, u, floor + 1.25, rng);
-    }
+    for (const f of [sa, sb]) stair(sink, f, -f.width * 0.18, floor, mobile);
     // the roof's vents and stacks
     if (!mobile) {
       for (let k = 0; k < 3; k++) {
@@ -479,6 +487,12 @@ const tropo: RegionalBuilder = (ctx) => {
         }
       }
     }
+    // (props census #13, lane B 2026-10-15) the truss recorded as an open frame, its eighteen verticals the legs and its
+    // levels the girts, the reflector its crown: the billboard falls as its members beside the transmitter module (it
+    // went down to the default kit's bounding-box spalls, and the module's own reading would have dropped it)
+    recordLattice(sink, stations.flatMap((t) => [{ foot: [sx(t), -0.3, rear] as Vec3, head: [sx(t), crest, rear] as Vec3 },
+      { foot: [sx(t), -0.3, front(t)] as Vec3, head: [sx(t), crest, front(t)] as Vec3 }]), levels, 0.28, 'structureMetal', STEEL,
+    { x0: cx - bw / 2, x1: cx + bw / 2, y0: foot, y1: foot + H, z0: back, z1: curve(0.5) + 0.12, bucket: 'regionalPlaster', tint: PANEL });
     // the raking legs: A-frames from footings 2.6 m behind the rear frame up to it at three fifths of the height
     for (const t of [-0.5, -0.25, 0.25, 0.5]) {
       const x = sx(t);
@@ -506,11 +520,8 @@ const tropo: RegionalBuilder = (ctx) => {
     // the transmitter module beside the feed tower at the front, clear of the face, on its piles, its door and stair
     const mz1 = z1 - 1.6, mz0 = mz1 - 2.8, mx0 = cx + bw / 2 - 5.9, mx1 = cx + bw / 2 - 1.7;
     const modW = mx1 - mx0;
-    module(sink, mx0, mz0, mx1, mz1, 1.1, 2.8, 'plaster', 'plaster2', mobile, true, { s: [MODULE_DOOR(-modW * 0.25, 1.1), MODULE_WINDOW(modW * 0.2, 2.3)] });
-    const mf = boxFace(mx0, mz0, mx1, mz1, 's');
-    moduleDoor(sink, mf, -mf.width * 0.25, 1.1);
-    stair(sink, mf, -mf.width * 0.25, 1.1, mobile);
-    moduleWindow(sink, mf, mf.width * 0.2, 2.3, rng);
+    module(sink, mx0, mz0, mx1, mz1, 1.1, 2.8, 'plaster', 'plaster2', mobile, true, { s: [MODULE_DOOR(-modW * 0.25, 1.1), MODULE_WINDOW(modW * 0.2, 2.3)] }, rng);
+    stair(sink, boxFace(mx0, mz0, mx1, mz1, 's'), -modW * 0.25, 1.1, mobile);
   });
   return sink.finish();
 };
