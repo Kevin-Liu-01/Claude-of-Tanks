@@ -10,6 +10,7 @@ import {
   BOX_FACE, STEEL_ATLAS_STRIP_M, STEEL_BLANK_END_U, STEEL_DOOR_U, STEEL_STRIP_V, mapBoxFaceUv, type SteelStrip,
 } from '../propsSteelAtlas.ts';
 import { drawsPeriodFreight, pushPeriodFreight } from './periodFreight.ts';
+import { MAP_SETTING_YEAR } from './periodClutterKit.ts';
 
 // --- the rail kit's paint helpers (railKit.ts, copied) -------------------------------------------------------------
 
@@ -68,15 +69,29 @@ const CONTAINER_DOOR_RECESS = 0.07;
  * hook do the fading.
  */
 const CONTAINER_LIVERIES: Readonly<Record<string, readonly number[]>> = {
-  brownfield: [0x9a4634, 0x3d5d84, 0x66744d, 0xbfa676, 0x878c91, 0x4c7a76, 0xd2cab4, 0xb56a2f],
+  brownfield: [0x8a3a2c, 0x3a5878, 0x5a6844, 0xa8925f, 0x7c8186, 0x436e6a, 0xb4ac96, 0xa45f2a],
   polar: [0xd8702a, 0x4a6fa8, 0xdedfda, 0x8f959a, 0xb85a30, 0x6e8b57],
   martian: [0xe1e3e5, 0xd97d2e, 0x9ea4aa, 0xcdc6b8],
+};
+
+/**
+ * (the looks lane, 2026-10-15) The operators' and armies' colours by the battlefield's period (periodClutterKit.ts
+ * MAP_SETTING_YEAR): the early boxes of the 1960s and 70s (Sea-Land's aluminium and maroon, the Army's CONEX olive,
+ * the lessors' greys and blues), the lessors' and lines' boxes of the 1980s and 90s, today's lines; deep, worn paint,
+ * never pastel. A garage (no map) draws the brownfield set.
+ */
+const CONTAINER_PERIOD_LIVERIES: Readonly<Record<string, readonly number[]>> = {
+  early: [0xa3a5a1, 0x7a2e26, 0x55593e, 0x5a6a78, 0xb5602a, 0x7a4a2e, 0x6e7f86, 0x8c8a80],
+  late: [0x5b86ab, 0x3f6e48, 0xbe6428, 0xa8966f, 0x7c2f27, 0x86898b, 0x48607a, 0x3f6f6a],
+  modern: [0xb08a3c, 0x2b3d63, 0x5a86aa, 0xbd5f28, 0x2f5f9a, 0x7e2c55, 0x3a6a44, 0x8c8f91, 0x8a382e],
 };
 
 function containerLiveries(context?: StructureBuildContext): readonly number[] {
   if (!context) return CONTAINER_LIVERIES.brownfield;
   if (context.mapId === 'mars') return CONTAINER_LIVERIES.martian;
   if (context.snowCap || context.mapId === 'whiteout') return CONTAINER_LIVERIES.polar;
+  const year = MAP_SETTING_YEAR[context.mapId];
+  if (year !== undefined) return CONTAINER_PERIOD_LIVERIES[year < 1980 ? 'early' : year < 2000 ? 'late' : 'modern'];
   return CONTAINER_LIVERIES.brownfield;
 }
 
@@ -85,6 +100,146 @@ function drawBodyJitter(shared: () => number): Float32Array {
   const values = new Float32Array(24);
   for (let i = 0; i < 24; i++) values[i] = 1 + (shared() - 0.5) * 0.06 * 2;
   return values;
+}
+
+/** A colour's linear rgb from authored sRGB hex. */
+function hexRgb(hex: number): [number, number, number] {
+  _livery.set(hex);
+  return [_livery.r, _livery.g, _livery.b];
+}
+
+/** A smooth hash noise along one axis (the rust's streaks): no stream. */
+function streakNoise(t: number, seed: number): number {
+  const h = (k: number): number => {
+    let q = Math.imul(k | 0, 374761393) ^ Math.imul(Math.floor(seed * 1e6) | 0, 668265263);
+    q = Math.imul(q ^ (q >>> 13), 1274126177);
+    return ((q ^ (q >>> 16)) >>> 0) / 4294967296;
+  };
+  const k = Math.floor(t), f = t - k, w = f * f * (3 - 2 * f);
+  return h(k) + (h(k + 1) - h(k)) * w;
+}
+
+/**
+ * The container's walls as built (the looks lane, 2026-10-15; the garage critic panel: "pastel, smooth container
+ * rows"): each side a sheet of trapezoidal corrugation (36 mm deep, its ribs at twice the ISO 209 mm pitch: its crests a couple of
+ * millimetres inside the box, its troughs in), the blank end corrugated across, the four corner posts, the top and
+ * bottom side rails and the end rails, and the eight corner castings with their side apertures — all inside the
+ * body's box (the solid's hull and the dedicated shards unchanged). Painted in the livery: the paint faded on top,
+ * rust run down from the top rail in streaks, the troughs darker, dirt and rust along the bottom rail. Parts new to the
+ * stream (uvJitter 'none'); `seed` is one draw of the box's own stream.
+ */
+function pushContainerShell(place: (g: THREE.BufferGeometry) => THREE.BufferGeometry, seed: number, hex: number,
+  side: readonly [number, number], end: readonly [number, number], W: number, H: number, L: number): void {
+  const paint = hexRgb(hex), rust = hexRgb(0x6b3a22), grime = hexRgb(0x2e2a24);
+  const mix3 = (a: readonly number[], b: readonly number[], t: number): [number, number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  /** The paint at a wall point: `along` its run (m), `y` its height, `trough` 0 crest .. 1 trough. */
+  const wallColour = (along: number, yy: number, trough: number, salt: number): [number, number, number] => {
+    const top = yy / H;
+    let c = mix3(paint, [paint[0] * 1.15 + 0.03, paint[1] * 1.15 + 0.03, paint[2] * 1.15 + 0.03], Math.max(0, top - 0.6) * 0.8);
+    const streak = streakNoise(along / 0.42 + salt * 13.1, seed + salt);
+    c = mix3(c, rust, Math.max(0, streak - 0.45) * 1.3 * Math.pow(top, 1.6));
+    c = mix3(c, mix3(grime, rust, 0.5), Math.max(0, 1 - yy / 0.5) * 0.45);
+    const k = 1 - 0.16 * trough;
+    return [c[0] * k, c[1] * k, c[2] * k];
+  };
+  // (the ribs at twice the ISO pitch, every other one of the atlas's painted ribs: the silhouette at half the cost)
+  const P = 0.418, DEPTH = 0.036, IN = 0.002;
+  /**
+   * One corrugated wall in the plane facing +x at x = hw, its run along z from z0 to z1 (u running from u0 at z0 to u1
+   * at z1), from y0 to y1; its crests at hw - IN, its troughs DEPTH further in.
+   */
+  const wall = (hw: number, z0: number, z1: number, y0: number, y1: number, u0: number, u1: number, v: readonly [number, number],
+    salt: number): THREE.BufferGeometry => {
+    const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [];
+    // the profile's points along the run: crest flat, down, trough flat, up (a pitch's four corners)
+    const stops: Array<{ z: number; trough: number }> = [];
+    const n = Math.max(1, Math.round((z1 - z0) / P)), pitch = (z1 - z0) / n;
+    for (let k = 0; k < n; k++) {
+      const a = z0 + k * pitch;
+      stops.push({ z: a, trough: 0 }, { z: a + pitch * 0.32, trough: 0 }, { z: a + pitch * 0.5, trough: 1 }, { z: a + pitch * 0.82, trough: 1 });
+    }
+    stops.push({ z: z1, trough: 0 });
+    for (let k = 0; k + 1 < stops.length; k++) {
+      const s0 = stops[k], s1 = stops[k + 1];
+      const x0 = hw - IN - DEPTH * s0.trough, x1 = hw - IN - DEPTH * s1.trough;
+      // the quad's outward normal in the x-z plane
+      const dz = s1.z - s0.z, dx = x1 - x0, ln = Math.hypot(dz, dx) || 1;
+      const nx = dz / ln, nz = -dx / ln;
+      const pts: Array<[number, number, number, number]> = [[x0, y0, s0.z, s0.trough], [x1, y0, s1.z, s1.trough], [x1, y1, s1.z, s1.trough], [x0, y1, s0.z, s0.trough]];
+      for (const i of [0, 2, 1, 0, 3, 2]) {
+        const [px, py, pz, tr] = pts[i];
+        pos.push(px, py, pz); nor.push(nx, 0, nz);
+        uv.push(u0 + (u1 - u0) * ((pz - z0) / (z1 - z0)), v[0] + (v[1] - v[0]) * (py / H));
+        col.push(...wallColour(pz, py, tr, salt));
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.userData.uvJitter = 'none';
+    return g;
+  };
+  const POST = 0.1, RAIL_LO = 0.16, RAIL_HI = 0.1;
+  // the long sides: the +x wall built as the box's +x face is mapped (u falling with z), the -x one the same turned half
+  // round (its u then rising with z, as the -x face's is)
+  for (const s of [1, -1]) {
+    const g = wall(W / 2, -L / 2 + POST, L / 2 - POST, RAIL_LO, H - RAIL_HI, 0.5 + (L / 2 - POST) / L, 0.5 - (L / 2 - POST) / L, side, s > 0 ? 1 : 2);
+    if (s < 0) g.rotateY(Math.PI);
+    place(g);
+  }
+  // the blank end (-z), corrugated across its width: built facing +x and turned to face -z
+  {
+    // (the box's -z face maps its u falling with x: the blank end's atlas range, its posts' widths in from either edge)
+    const g = wall(L / 2, -W / 2 + POST, W / 2 - POST, RAIL_LO, H - RAIL_HI, STEEL_BLANK_END_U[1] - POST / L, STEEL_BLANK_END_U[0] + POST / L, end, 3);
+    g.rotateY(Math.PI / 2);
+    place(g);
+  }
+  // the posts, the rails and the castings, in the livery (a little darker), the castings bare and dark
+  const member = (w: number, h: number, d: number, cx: number, cy: number, cz: number, c: readonly number[]): void => {
+    const g = new THREE.BoxGeometry(w, h, d).toNonIndexed();
+    const n = g.getAttribute('position').count, colA = new Float32Array(n * 3), uvA = g.getAttribute('uv');
+    const lum = (q: readonly number[]): number => 0.2126 * q[0] + 0.7152 * q[1] + 0.0722 * q[2];
+    for (let i = 0; i < n; i++) {
+      const yy = g.getAttribute('position').getY(i) + cy;
+      // the wall's weathering as a shade on the member's own colour (faded on top, grimed at the foot)
+      const k = Math.min(1.3, Math.max(0.6, lum(wallColour(cz + g.getAttribute('position').getZ(i), Math.max(0, yy), 0, 7)) / Math.max(1e-3, lum(paint))));
+      colA[i * 3] = c[0] * k; colA[i * 3 + 1] = c[1] * k; colA[i * 3 + 2] = c[2] * k;
+      uvA.setXY(i, 0.62, (STEEL_STRIP_V.plain[0] + STEEL_STRIP_V.plain[1]) / 2);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(colA, 3));
+    g.translate(cx, cy, cz);
+    g.userData.uvJitter = 'none';
+    place(g);
+  };
+  const frame = paint.map((v) => v * 0.82), bare = hexRgb(0x3a3936);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    // a corner post, its full height between the castings
+    member(POST - 0.002, H - 0.24, POST - 0.002, sx * (W / 2 - POST / 2), H / 2, sz * (L / 2 - POST / 2), frame);
+  }
+  for (const sx of [-1, 1]) {
+    member(0.09, RAIL_LO, L - 0.36, sx * (W / 2 - 0.046), RAIL_LO / 2, 0, frame);
+    member(0.07, RAIL_HI, L - 0.36, sx * (W / 2 - 0.036), H - RAIL_HI / 2, 0, frame);
+  }
+  for (const sz of [-1, 1]) {
+    member(W - 0.33, RAIL_LO, 0.09, 0, RAIL_LO / 2, sz * (L / 2 - 0.046), frame);
+    member(W - 0.33, RAIL_HI + 0.08, 0.08, 0, H - (RAIL_HI + 0.08) / 2, sz * (L / 2 - 0.041), frame);
+  }
+  for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) {
+    const cx = sx * (W / 2 - 0.083), cy = sy ? H - 0.06 : 0.06, cz = sz * (L / 2 - 0.091);
+    member(0.162, 0.118, 0.178, cx, cy, cz, bare);
+    // the castings' apertures, on the side faces
+    const dark = (): THREE.BufferGeometry => {
+      const q = new THREE.PlaneGeometry(0.075, 0.05).toNonIndexed();
+      const n = q.getAttribute('position').count, c = new Float32Array(n * 3).fill(0.02);
+      q.setAttribute('color', new THREE.BufferAttribute(c, 3));
+      for (let i = 0; i < n; i++) q.getAttribute('uv').setXY(i, 0.62, (STEEL_STRIP_V.plain[0] + STEEL_STRIP_V.plain[1]) / 2);
+      q.userData.uvJitter = 'none';
+      return q;
+    };
+    const a = dark(); a.rotateY(sx * Math.PI / 2); a.translate(sx * (W / 2 - 0.001), cy, cz); place(a);
+  }
 }
 
 /**
@@ -119,9 +274,11 @@ function pushContainer(
   mapBoxFaceUv(body, BOX_FACE.nz, STEEL_BLANK_END_U, end);
   mapBoxFaceUv(body, BOX_FACE.pz, STEEL_DOOR_U, end);
   const index = body.getIndex()!;
-  const kept = new Uint16Array(30);
-  kept.set((index.array as Uint16Array).subarray(0, 24), 0);
-  kept.set((index.array as Uint16Array).subarray(30, 36), 24);
+  // (the looks lane, 2026-10-15) the sides and the blank end are drawn as the container's own corrugated walls, posts,
+  // rails and castings below, inside this box: the box keeps its roof and floor (and all 24 corners, so the solid's hull
+  // and the containers' damage reading, regional/container.ts readContainers, are what they were)
+  const kept = new Uint16Array(12);
+  kept.set((index.array as Uint16Array).subarray(12, 24), 0);
   body.setIndex(new THREE.BufferAttribute(kept, 1));
   body.clearGroups();
   _livery.set(hex);
@@ -135,6 +292,7 @@ function pushContainer(
   body.userData.uvJitter = 'consume';
   body.translate(0, H / 2, 0);
   place(body);
+  pushContainerShell(place, local(), hex, side, end, W, H, L);
   // the door leaf, recessed; its outer face carries the door strip
   const leaf = new THREE.BoxGeometry(W - 0.12, H - 0.12, 0.03);
   for (const face of [BOX_FACE.px, BOX_FACE.nx, BOX_FACE.py, BOX_FACE.ny, BOX_FACE.nz]) mapBoxFaceUv(leaf, face, [0.55, 0.56], plain);
