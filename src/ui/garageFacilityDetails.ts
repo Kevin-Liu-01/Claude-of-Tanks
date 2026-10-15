@@ -146,7 +146,7 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     },
     rock_cavern: {
       logistics: [[-34, -8], [18, -25]],
-      parts: [[-31, 16], [4, -34]], floods: [[-39, 5], [39, 5]],
+      parts: [[-36, 3], [4, -34]], floods: [[-39, 5], [39, 5]],
       feature: [0, 28], featureRadius: [11, 7],
     },
     recovery_yard: {
@@ -2320,36 +2320,62 @@ export function addGarageFacilityDetails({
       // deep on steel arch ribs with lagging over the crown, a vent duct and a row of lamps down it to a bulkhead with a
       // lit door, a board-formed concrete portal collar, the blast door's rail and guide frame, a drainage channel
       // across the mouth. Squared on the road's last stretch into the hill.
-      const mouthSide = -3.6, mouthDepth = 24.5;
-      const origin = cameraPoint(mouthSide, mouthDepth);
-      const roadIn = cameraPoint(mouthSide + 4 / 17, mouthDepth - 1); // back down the road toward (0, 10)
-      const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
+      // (the garage critic panel, 2026-10-14: the rock was "a freestanding hemisphere on flat snow", the portal "a floating
+      // black frame with a cardboard canopy" right behind the turret, "a diagonal pipe ends in mid-air"): the cliff now
+      // runs 46 m across the frame and rises out of its top, the tunnel mouth stands beside the turret on the cliff's
+      // right, set in a board-formed concrete headwall 1.2 m thick with its two blast-door leaves parked on the sill track
+      // under a bolted track lintel, the bore falls dark within a few metres, and the vent duct runs along the crown on
+      // hangers out to a fan housing on the headwall. Talus and drifts bank the cliff's foot.
+      const faceSide = -1, faceDepth = 27.5, mouthU = 9.5; // the face runs 68 m, past both sides of the frame
+      const faceOrigin = cameraPoint(faceSide, faceDepth);
+      const faceToward = cameraPoint(faceSide, faceDepth - 1); // square to the view axis
+      const yaw = Math.atan2(faceToward.x - faceOrigin.x, faceToward.z - faceOrigin.z);
       const c = Math.cos(yaw), sn = Math.sin(yaw);
-      const toWorld = (u: number, w: number): { x: number; z: number } => ({ x: origin.x + c * u + sn * w, z: origin.z - sn * u + c * w });
+      const toWorld = (u: number, w: number): { x: number; z: number } => ({ x: faceOrigin.x + c * u + sn * w, z: faceOrigin.z - sn * u + c * w });
+      const origin = toWorld(mouthU, 0);
       const mouthY = groundAtWorld(origin.x, origin.z);
       const portal: FacilityCluster = { x: origin.x, z: origin.z, baseY: mouthY, yaw };
       const half = 3.6, spring = 3.2, tunnelLength = 14;
       buckets.baked!.push(buildRockFace({
-        x: origin.x, z: origin.z, yaw,
-        groundAt: (u, w) => { const at = toWorld(u, w); return Math.min(groundAtWorld(at.x, at.z), mouthY + 0.2 + Math.abs(u) * 0.05); },
+        x: faceOrigin.x, z: faceOrigin.z, yaw,
+        groundAt: (u, w) => { const at = toWorld(u, w); return Math.min(groundAtWorld(at.x, at.z), mouthY + 0.2 + Math.abs(u - mouthU) * 0.05); },
       }, {
-        width: 40, height: 14, depth: 14, seed: 0x6a1c,
-        strata: [0x6c6f70, 0x5a5e60, 0x7a7972, 0x63676a, 0x55595b],
+        width: 68, height: 21, depth: 16, seed: 0x6a1c, cell: 1.05,
+        strata: [0x5f6264, 0x55595b, 0x6a6a64, 0x5a5e61, 0x4f5355],
         snow: 0xe6ecf0,
-        opening: { u: 0, half: half + 0.25, spring, length: tunnelLength, lining: 0x8a8984 },
+        opening: { u: mouthU, half: half + 0.25, spring, length: tunnelLength, lining: 0x7d7c77 },
       }));
-      const concrete = new THREE.Color(0x9a978f), concreteDark = new THREE.Color(0x7d7a73);
-      const ribSteel = new THREE.Color(0x3a3f42), lamp = new THREE.Color(0xf2dfb0);
-      // the portal collar: board-formed concrete jambs, a ring of segments round the arch, a parapet over it
-      for (const side of [-1, 1]) clusterBox(portal, side * (half + 0.45), 0.25, spring / 2, 0.9, spring, 1.3, concrete, 'masonry');
-      for (let i = 0; i <= 10; i += 1) {
-        const a = Math.PI * i / 10;
-        clusterBox(portal, Math.cos(a) * (half + 0.45), 0.25, spring + Math.sin(a) * (half + 0.45), 1.0, 0.9, 1.3,
-          i % 2 ? concrete : concreteDark, 'masonry', a - Math.PI / 2);
+      const concrete = new THREE.Color(0x9a978f), concreteDark = new THREE.Color(0x7d7a73), stain = new THREE.Color(0x6a675f);
+      const ribSteel = new THREE.Color(0x3a3f42), lamp = new THREE.Color(0xf2dfb0), doorSteel = new THREE.Color(0x56605c);
+      // the headwall: board-formed concrete 1.2 m thick round the arch, stepped to the arch head, a coping over it, a
+      // darker weathering band at its foot
+      const wallFront = 0.75, wallT = 1.2, wallHalf = half + 2.6, wallTop = spring + half + 1.5;
+      for (const side of [-1, 1]) {
+        clusterBox(portal, side * (half + 0.25 + (wallHalf - half - 0.25) / 2), wallFront - wallT / 2, wallTop / 2,
+          wallHalf - half - 0.25, wallTop, wallT, concrete, 'masonry');
       }
-      clusterBox(portal, 0, 0.1, spring + half + 1.25, 2 * half + 3.2, 0.8, 1.6, concrete, 'masonry');
-      for (let board = 0; board < 7; board += 1) { // the shuttering's boards as shallow ribs on the parapet face
-        clusterBox(portal, 0, 0.93, spring + half + 0.92 + board * 0.11, 2 * half + 3.1, 0.02, 0.04, concreteDark, 'masonry');
+      const headSlices = 10;
+      for (let slice = 0; slice < headSlices; slice += 1) {
+        const a0 = -half - 0.25 + (slice * 2 * (half + 0.25)) / headSlices, a1 = a0 + (2 * (half + 0.25)) / headSlices;
+        const x = ((a0 + a1) / 2) / (half + 0.25);
+        const head = spring + (half + 0.25) * Math.sqrt(Math.max(0, 1 - x * x));
+        clusterBox(portal, (a0 + a1) / 2, wallFront - wallT / 2, (head + wallTop) / 2, a1 - a0 + 0.01, wallTop - head, wallT, concrete, 'masonry');
+      }
+      clusterBox(portal, 0, wallFront - wallT / 2 + 0.05, wallTop + 0.12, 2 * wallHalf + 0.3, 0.24, wallT + 0.3, concreteDark, 'masonry');
+      clusterBox(portal, 0, wallFront + 0.01, 0.45, 2 * wallHalf, 0.9, 0.04, stain, 'masonry');
+      // the bolted track lintel across the head of the opening and the parking bays, the sill track below it
+      clusterBox(portal, 0, wallFront + 0.28, spring + half + 0.42, 2 * wallHalf - 0.4, 0.55, 0.5, ribSteel, 'structure');
+      for (let bolt = 0; bolt < 18; bolt += 1) {
+        clusterCylinder(portal, -wallHalf + 0.6 + bolt * ((2 * wallHalf - 1.2) / 17), wallFront + 0.55, spring + half + 0.42, 0.05, 0.06, dark, Math.PI / 2, 8);
+      }
+      clusterBox(portal, 0, wallFront + 0.3, 0.05, 2 * wallHalf - 0.4, 0.1, 0.24, ribSteel, 'structure');
+      // the two blast-door leaves parked open either side of the mouth, against the headwall: plate faces on stiffeners
+      for (const side of [-1, 1]) {
+        const leafU = side * (half + 1.35), leafW = wallFront + 0.32, leafH = spring + half - 0.1;
+        clusterBox(portal, leafU, leafW, 0.1 + leafH / 2, 2.3, leafH, 0.32, doorSteel, 'painted');
+        for (const y of [0.9, leafH / 2, leafH - 0.7]) clusterBox(portal, leafU, leafW + 0.18, y, 2.2, 0.16, 0.06, ribSteel, 'structure');
+        for (const du of [-0.95, 0.95]) clusterBox(portal, leafU + du, leafW + 0.18, 0.1 + leafH / 2, 0.12, leafH - 0.2, 0.06, ribSteel, 'structure');
+        for (const du of [-0.7, 0.7]) clusterCylinder(portal, leafU + du, leafW, 0.12, 0.13, 0.24, ribSteel, Math.PI / 2, 10); // its rollers
       }
       // steel arch ribs down the tunnel on base plates, lagging boards over the crown between them
       for (let rib = 0; rib < 7; rib += 1) {
@@ -2368,33 +2394,48 @@ export function addGarageFacilityDetails({
           for (let i = 2; i < 7; i += 1) { // lagging between this rib and the next over the crown
             const am = Math.PI * (i + 0.5) / 8, r = half - 0.24;
             clusterBox(portal, Math.cos(am) * r, w - 1.0, spring + Math.sin(am) * r, 0.36, 0.06, 1.8,
-              new THREE.Color(0x5a4a38), 'painted', am + Math.PI / 2);
+              new THREE.Color(0x4a3e30), 'painted', am + Math.PI / 2);
           }
         }
       }
-      // the floor slab, the vent duct along the crown, lamps down the tunnel, the bulkhead and its lit door
+      // the floor slab, the vent duct along the crown on hangers out to its fan housing on the headwall, warm lamps on
+      // the ribs, the bulkhead dark at the end with its lit door
       clusterBox(portal, 0, -tunnelLength / 2 + 0.4, 0.06, 2 * half - 0.1, 0.12, tunnelLength - 0.4, concreteDark, 'masonry');
-      clusterCylinder(portal, 0, -tunnelLength / 2, spring + half - 0.7, 0.42, tunnelLength - 1, new THREE.Color(0x8c9196), Math.PI / 2, 16);
-      for (let i = 0; i < 5; i += 1) {
-        clusterBox(portal, -half + 0.45, -1.8 - i * 2.8, spring + 0.4, 0.14, 0.12, 0.7, ribSteel, 'structure');
-        clusterBox(portal, -half + 0.47, -1.8 - i * 2.8, spring + 0.32, 0.1, 0.06, 0.62, lamp, 'painted');
+      // the duct starts at its fan unit hung a couple of metres inside the bore and runs back along the crown on hangers
+      const ductY = spring + half - 0.8;
+      clusterCylinder(portal, 0.9, -2.8 - (tunnelLength - 4.2) / 2, ductY, 0.36, tunnelLength - 4.2, new THREE.Color(0x5e6266), Math.PI / 2, 16);
+      for (let k = 0; k < 4; k += 1) clusterBox(portal, 0.9, -3.4 - k * 3.0, ductY + 0.55, 0.05, 0.4, 0.05, ribSteel, 'structure');
+      clusterCylinder(portal, 0.9, -2.3, ductY, 0.58, 1.1, new THREE.Color(0x4f5458), Math.PI / 2, 16); // the fan unit
+      for (const dw of [-2.7, -1.9]) clusterBox(portal, 0.9, dw, ductY + 0.68, 0.06, 0.36, 0.06, ribSteel, 'structure'); // its hangers
+      for (let i = 0; i < 4; i += 1) {
+        clusterBox(portal, -half + 0.45, -1.8 - i * 3.2, spring + 0.4, 0.14, 0.12, 0.7, ribSteel, 'structure');
+        clusterBox(portal, -half + 0.47, -1.8 - i * 3.2, spring + 0.32, 0.1, 0.06, 0.62, lamp, 'painted');
       }
       const back = -tunnelLength + 0.4;
-      clusterBox(portal, 0, back, (spring + half) / 2, 2 * half, spring + half, 0.4, concrete, 'masonry');
-      clusterBox(portal, 1.2, back + 0.24, 1.1, 1.1, 2.2, 0.08, new THREE.Color(0x4f5a52), 'painted');
+      clusterBox(portal, 0, back, (spring + half) / 2, 2 * half, spring + half, 0.4, new THREE.Color(0x232425), 'masonry');
+      clusterBox(portal, 1.2, back + 0.24, 1.1, 1.1, 2.2, 0.08, new THREE.Color(0x3b4540), 'painted');
       clusterBox(portal, 1.2, back + 0.28, 2.45, 0.4, 0.14, 0.12, lamp, 'painted');
-      // the blast door's rail across the mouth and its guide frame on the collar (the leaf stands rolled back inside)
-      clusterBox(portal, 0, 1.05, 0.05, 2 * half + 2.4, 0.1, 0.22, ribSteel, 'structure');
-      for (const side of [-1, 1]) clusterBox(portal, side * (half + 1.02), 0.95, (spring + half) / 2, 0.22, spring + half, 0.26, ribSteel, 'structure');
-      clusterBox(portal, 0, 0.95, spring + half + 0.05, 2 * half + 2.3, 0.26, 0.26, ribSteel, 'structure');
       // a drainage channel across the mouth: a dark run with a grating over it
       clusterBox(portal, 0, 2.2, 0.03, 2 * half + 2.2, 0.03, 0.42, dark, 'painted');
       for (let i = 0; i < 26; i += 1) clusterBox(portal, -half - 1.0 + i * ((2 * half + 2.0) / 25), 2.2, 0.06, 0.04, 0.03, 0.42, ribSteel, 'structure');
+      // talus at the cliff's foot and snow banked against it, along the face either side of the headwall
+      {
+        const foot = (u: number, w: number): FacilityCluster => { const at = toWorld(u, w); return { x: at.x, z: at.z, baseY: groundAtWorld(at.x, at.z), yaw }; };
+        const talus = [new THREE.Color(0x5c5f61), new THREE.Color(0x6b6c69), new THREE.Color(0x4d5153)];
+        const snowBank = new THREE.Color(0xe3e9ed);
+        for (let k = 0; k < 36; k += 1) {
+          const u = -32 + k * 1.8 + ((k * 7) % 5) * 0.2;
+          if (Math.abs(u - mouthU) < wallHalf + 0.6) continue;
+          const size = 0.5 + ((k * 13) % 7) * 0.18;
+          clusterBox(foot(u, 0.9 + ((k * 3) % 4) * 0.35), 0, 0, size * 0.4, size * 1.3, size * 0.8, size, talus[k % 3], 'masonry', ((k % 5) - 2) * 0.12, ((k % 3) - 1) * 0.15);
+          if (k % 2 === 0) clusterBox(foot(u + 0.8, 1.6), 0, 0, 0.18, 2.4, 0.36, 1.4, snowBank, 'painted', 0, -0.25);
+        }
+      }
       structuralConnections += 40;
       // the yard's kit stands in front of the portal, clear of the road
       addPoweredWinch(fixedCluster(featureSide - 11.5, featureDepth - 9.5), 0, 0, new THREE.Color(0x758692));
       addPartsPallet(fixedCluster(featureSide + 9.5, featureDepth - 9.0), 0, 0, 3);
-      addSafetyRail(fixedCluster(featureSide + 2.5, featureDepth - 12.5), 0, 0, 6.4);
+      addSafetyRail(fixedCluster(featureSide - 4.0, featureDepth - 12.5), 0, 0, 6.4);
       addPartsAndFittingsCage(fixedCluster(featureSide + 12.5, featureDepth - 4.0), 0, 0, new THREE.Color(0x82909a));
       addPlatePreparationRack(fixedCluster(featureSide - 12.5, featureDepth - 4.5), 0, 0, new THREE.Color(0x6f7d86));
   };

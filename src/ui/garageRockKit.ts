@@ -27,6 +27,8 @@ export interface RockFaceOptions {
   /** Stratum tones (sRGB), one per band in turn. */
   readonly strata: readonly number[];
   readonly snow: number;
+  /** Metres between the face's columns (default 0.8; a wide face takes coarser columns to hold its triangle budget). */
+  readonly cell?: number;
   /** The tunnel's opening and its lining, if any. */
   readonly opening?: Readonly<{ u: number; half: number; spring: number; length: number; lining: number }>;
 }
@@ -76,7 +78,7 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
   };
   const fbm = (x: number, y: number): number => noise(x, y) * 0.6 + noise(x * 2.3 + 17, y * 2.3 + 5) * 0.3 + noise(x * 5.1 + 3, y * 5.1 + 29) * 0.1;
   const half = width / 2;
-  const columns = Math.max(8, Math.round(width / 0.8));
+  const columns = Math.max(8, Math.round(width / (options.cell ?? 0.8)));
   // strata of uneven thickness (0.9-1.8 m), each a fixed band
   const stratumH = 1.3;
   const strata = Math.ceil(height / stratumH);
@@ -190,16 +192,19 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     const groundMouth = frame.groundAt(opening.u, 0);
     const mouthW = setBack(opening.u, opening.spring, 0, 0.5) + 0.4;
     const rings = 6;
+    // the bore swallows the daylight within a few metres (the garage critic panel, 2026-10-14: "the tunnel is lit like
+    // outdoors ... exponential falloff along the bore to a near-black end"): the lining's tone falls off smoothly per ring
+    const falloff = (ring: number): THREE.Color => lining.clone().multiplyScalar(Math.exp(-ring * 0.62));
     for (let ring = 0; ring < rings; ring += 1) {
       const w0 = mouthW - (ring / rings) * opening.length, w1 = mouthW - ((ring + 1) / rings) * opening.length;
-      const shade = lining.clone().multiplyScalar(1 - ring * 0.1);
+      const near = falloff(ring), far = falloff(ring + 1);
       for (let i = 0; i < profile.length - 1; i += 1) {
         const [u0, y0] = profile[i], [u1, y1] = profile[i + 1];
         const a = world(opening.u + u0, groundMouth + y0, w0), b = world(opening.u + u1, groundMouth + y1, w0);
         const c = world(opening.u + u1, groundMouth + y1, w1), d = world(opening.u + u0, groundMouth + y0, w1);
         // the lining faces the tunnel's axis
-        triangle(soup, a, c, b, shade);
-        triangle(soup, a, d, c, shade);
+        triangle(soup, a, c, b, near, far, near);
+        triangle(soup, a, d, c, near, far, far);
       }
     }
   }

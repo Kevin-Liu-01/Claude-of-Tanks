@@ -324,9 +324,10 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8, buildingTint: 0xb8b6aa,
     structures: [
       // a military pass station of steel sheds, containers and a plant house (wave 398: no chalets, chapels or domes)
-      at(makeWarehouse, 'glacier vehicle store', -36, -6, 0.6),
+      // at the cliff's foot, clear of its face (the cliff now runs 46 m across the frame: the garage critic panel)
+      at(makeWarehouse, 'glacier vehicle store', -34.65, 0.71, 0.6),
       at(makeContainerRow, 'pass container line', -30, -30, 0.55),
-      at(makeFireStation, 'pass plant house', -7, -36, 0.5),
+      at(makeFireStation, 'pass plant house', -2.1, -31.8, 0.5),
       at(makeShed, 'pass service shelter', 18, -34, 0.72),
       at(makeContainerRow, 'glacier outpost containers', 36, -14, 0.45),
       at(makeWaterTower, 'high-pass water tank', 40, -11, 0.6),
@@ -338,7 +339,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     horizonStyle: 'alpine', horizonHeightM: 13.2,
     approach: {
       style: 'alpine-pass', label: 'snowbound cavern approach', surface: 'snow', width: 7.2,
-      waypoints: [[0, 10], [-4, 27], [-1, 46]], lanes: [-2.4, 2.4],
+      waypoints: [[0, 9], [3, 15], [6.5, 21], [8.5, 26.5]], lanes: [-2.4, 2.4],
     },
     terrainProfile: 'actual Glacier Pass spawn excerpt with steep alpine shoulder',
     serviceFrame: 'high-pass recovery terrace between lodge and chalet',
