@@ -3375,16 +3375,17 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
-  missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, orbital.missioncontrol, 'metal'),
-  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, orbital.greenhouse, 'metal', orbital.greenhouseBroken),
-  ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, orbital.ascentlander, 'metal'),
-  rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, orbital.rovergarage, 'metal'),
-  habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, makeHabDome, 'metal'),
+  missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, (rng) => { orbital.missioncontrol(rng).dispose(); return spaceCraftBuild('missioncontrol', 'moon'); }, 'metal'),
+  // (props #12: Mars's greenhouse is the only one placed; its film pillows and ribs break in its settled wreck)
+  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, (rng) => { orbital.greenhouse(rng).dispose(); return spaceCraftBuild('greenhouse', 'mars'); }, 'metal'),
+  ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, (rng) => { orbital.ascentlander(rng).dispose(); return spaceCraftBuild('ascentlander', 'moon'); }, 'metal'),
+  rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, (rng) => { orbital.rovergarage(rng).dispose(); return spaceCraftBuild('rovergarage', 'moon'); }, 'metal'),
+  habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, (rng) => { makeHabDome(rng).dispose(); return spaceCraftBuild('habdome', 'moon'); }, 'metal'),
   habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, (rng) => { makeHabModule(rng).dispose(); return spaceCraftBuild('habmodule', 'moon'); }, 'metal'),
   commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, (rng) => { makeCommsMast(rng).dispose(); return spaceCraftBuild('commsmast', 'moon'); }, 'metal'),
   solararray: lightMeta('solararray', 'orbital', 4.7, 4.2, 3.2, PAL.orbital, (rng) => { makeSolarArray(rng).dispose(); return spaceCraftBuild('solararray', 'moon'); }, 'metal'),
   fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, (rng) => { makeFuelTanks(rng).dispose(); return spaceCraftBuild('fueltanks', 'moon'); }, 'metal'),
-  landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, makeLandingPad, 'metal'),
+  landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, (rng) => { makeLandingPad(rng).dispose(); return spaceCraftBuild('landingpad', 'moon'); }, 'metal'),
 };
 
 // ------------------------------------------------------------------------------------------ regional light variants
