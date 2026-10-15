@@ -155,4 +155,32 @@ function run({ shooter, context }, seconds = 12) {
   // a turret traversed broadside shows the turret's flank: the turret plates follow the turret's yaw
   assert.ok(at(TANK_SPECS.bmp2, Math.PI, Math.PI / 2) >= at(TANK_SPECS.bmp2, Math.PI) - 1e-9, 'turret plates follow the turret');
 }
-console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt');
+// 9. VH.14 launch interlock (coordinator ruling 2026-10-15): while the vehicle's own drone launches, every roof station
+//    turns back to its rest bearing, levels and holds fire; it takes its target again once the launch is over. The
+//    T-62MV's DShK stands beside its drone stand: its stand clears the gun's whole sweep docked and the gun at rest
+//    launching (missionAttachmentMotionClear).
+{
+  const shooter = { id: 't62', team: 'blue', spec: TANK_SPECS.t62mv1, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
+  const target = { id: 'apc', team: 'red', spec: { id: 'target', dims: { heightM: 2.5 } },
+    state: { pos: { x: 45, y: 0, z: 60 }, yaw: 0, turretYaw: 0 }, combat: {} };
+  const context = { entities: [shooter, target], visible: () => true, clear: () => true };
+  let fired = 0, i = 0;
+  for (; i < 6 * 60; i++) if (stepRoofGun(shooter, i / 60, 1 / 60, context)) fired++;
+  const aimed = shooter.combat.auxiliary.gunYaw;
+  assert.ok(fired > 0 && Math.abs(aimed) > .5, `the DShK takes its target off the bow (yaw ${aimed.toFixed(2)}, ${fired} rounds)`);
+  shooter.aerial = { kind: 'drone', active: true, launching: true, x: 0, y: 0, z: 0 };
+  let launchShots = 0;
+  for (let k = 0; k < 2.4 * 60; k++, i++) if (stepRoofGun(shooter, i / 60, 1 / 60, context)) launchShots++;
+  assert.equal(launchShots, 0, 'no round while its drone launches');
+  assert.ok(Math.abs(shooter.combat.auxiliary.gunYaw) < 1e-9 && Math.abs(shooter.combat.auxiliary.gunPitch) < 1e-9,
+    'parked at its rest bearing, level');
+  shooter.aerial.launching = false;
+  let after = 0;
+  for (let k = 0; k < 4 * 60; k++, i++) if (stepRoofGun(shooter, i / 60, 1 / 60, context)) after++;
+  assert.ok(after > 0, 'fires again once the launch is over');
+  const { missionAttachmentMotionClear } = await import('./missionAttachment.ts');
+  const { MISSION_ATTACHMENT_SEATS } = await import('./missionAttachmentSeats.generated.ts');
+  for (const id of ['t62mv1', 'type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
+    `${id}: the drone stand clears its DShK (whole sweep docked, at rest launching)`);
+}
+console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt; the launch interlock parks every station while its drone launches');

@@ -310,6 +310,17 @@ function stationTraverseClear(entity: AuxiliaryEntity, gun: RoofGunMount, yaw: n
   }
   return true;
 }
+/** The launch interlock's park: the station turns towards its rest bearing (yaw 0, inside every arc) and levels at its
+ * rates, keeping the multi-station interlock and the depression table. */
+function parkStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: AuxiliaryStationState, profile: AuxiliaryWeaponProfile,
+  dt: number): void {
+  const arc = gun.yawArc, turn = arc ? -state.gunYaw : wrap(-state.gunYaw);
+  const step = state.gunYaw + Math.max(-dt * profile.yawRateRadS, Math.min(dt * profile.yawRateRadS, turn));
+  const nextYaw = arc ? Math.min(arc[1], Math.max(arc[0], step)) : wrap(step);
+  if (stationTraverseClear(entity, gun, nextYaw)) state.gunYaw = nextYaw;
+  state.gunPitch += Math.max(-dt * profile.pitchRateRadS, Math.min(dt * profile.pitchRateRadS, -state.gunPitch));
+  if (gun.depressionByYaw) state.gunPitch = Math.max(state.gunPitch, -depressionAt(gun, state.gunYaw, profile.depressionRad));
+}
 /** One station's aim and burst (AuxiliaryState is its own first station: the same four fields). A station with a
  * traverse arc (gun.yawArc, mount-local radians, unwrapped) only takes targets inside it and turns the long way round
  * rather than through the stock the arc keeps it clear of. */
@@ -317,6 +328,10 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   now: number, dt: number, context: GunContext): boolean {
   const handling = damage === 'yellow' ? .5 : 1;
   const profile=auxiliaryWeaponProfile(gun.caliberMm,entity.spec.id);
+  // VH.14 launch interlock (coordinator ruling 2026-10-15): while the vehicle's own drone launches, every roof station
+  // turns back to its rest bearing and levels, and holds fire, so the launch column only has to clear the guns at rest
+  // (missionAttachment.ts missionAttachmentMotionClear; the T-62MV's and Type 59's stands beside their DShK)
+  if (entity.aerial?.kind === 'drone' && entity.aerial.launching) { parkStation(entity, gun, state, profile, dt * handling); return false; }
   base.copy(mountFrame(entity, gun.owner));
   gunMatrix.compose(targetPoint.fromArray(gun.position),quaternion.fromArray(gun.rotation),one);base.multiply(gunMatrix);
   inverse.copy(base).invert();pivot.fromArray(gun.pivot);mountScale.fromArray(gun.scale);

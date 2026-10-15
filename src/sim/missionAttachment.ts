@@ -139,11 +139,14 @@ function extendYawCircle(min:number[],max:number[],gun:RoofGun,x:number,y:number
     max[axis]=Math.max(max[axis]!,gun.position[axis]!+center[axis]!+extent);
   }
 }
-function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [number,number]|undefined=gun.yawArc):Bounds {
-  const policy=auxiliaryWeaponProfile(gun.caliberMm,id),range=policy.depressionRad+policy.elevationRad;
+function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [number,number]|undefined=gun.yawArc,
+  rest=false):Bounds {
+  // `rest`: the station parked level at its rest bearing (the launch interlock, auxiliarySystems.ts parkStation)
+  const profile=auxiliaryWeaponProfile(gun.caliberMm,id),policy=rest?{depressionRad:0,elevationRad:0}:profile;
+  const range=policy.depressionRad+policy.elevationRad;
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
   const radial=Math.hypot(...part.min.map((v,i)=>Math.max(Math.abs(v),Math.abs(part.max[i]!))));
-  const steps=Math.ceil(range/.04),padding=2*radial*Math.max(...gun.scale.map(Math.abs))*Math.sin(range/steps/4);
+  const steps=Math.max(1,Math.ceil(range/.04)),padding=2*radial*Math.max(...gun.scale.map(Math.abs))*Math.sin(range/steps/4);
   const corners:number[][]=[];
   for(const x of [part.min[0]!,part.max[0]!])for(const y of [part.min[1]!,part.max[1]!])for(const z of [part.min[2]!,part.max[2]!])corners.push([x,y,z]);
   let radius=0,minY=Infinity,maxY=-Infinity,sweepRadius=0;
@@ -175,10 +178,10 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [numbe
   if(yawArc){
     const [lo,hi]=yawArc,yawSteps=Math.max(1,Math.ceil((hi-lo)/.04));
     const arcMin=[Infinity,Infinity,Infinity],arcMax=[-Infinity,-Infinity,-Infinity];
-    // the bearing the arc leaves out (its excluded wedge's middle, station-local): one more face, at the sweep's farthest
-    // reach along it, cuts the wedge's chord off the circle (a seat behind a station that never turns there is clear)
-    const out=(lo+hi)/2+Math.PI,ox=Math.sin(out),oz=Math.cos(out);
-    let reachOut=-Infinity;
+    // and four more faces: the sweep's extent along and across the stretch's middle bearing (station-local), an oriented
+    // box round the stretch, so a diagonal barrel's axis-aligned box does not claim the air beside it
+    const mid=(lo+hi)/2,ux=Math.sin(mid),uz=Math.cos(mid),vx=uz,vz=-ux;
+    const along=[Infinity,-Infinity],across=[Infinity,-Infinity];
     for(let i=0;i<=steps;i++){
       const pitch=-policy.depressionRad+range*i/steps,c=Math.cos(pitch),s=Math.sin(pitch);
       for(const [x,y,z]of corners){
@@ -187,7 +190,9 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [numbe
         for(let k=0;k<=yawSteps;k++){
           const yaw=lo+(hi-lo)*k/yawSteps,cy=Math.cos(yaw),sy=Math.sin(yaw);
           const sx=lx*cy+lz*sy,sz=-lx*sy+lz*cy,p=rotateQuaternion([sx,ly,sz],gun.rotation);
-          reachOut=Math.max(reachOut,sx*ox+sz*oz+chord);
+          const a=sx*ux+sz*uz,b=sx*vx+sz*vz;
+          along[0]=Math.min(along[0]!,a-chord);along[1]=Math.max(along[1]!,a+chord);
+          across[0]=Math.min(across[0]!,b-chord);across[1]=Math.max(across[1]!,b+chord);
           for(let axis=0;axis<3;axis++){
             arcMin[axis]=Math.min(arcMin[axis]!,gun.position[axis]!+p[axis]!-chord-padding);
             arcMax[axis]=Math.max(arcMax[axis]!,gun.position[axis]!+p[axis]!+chord+padding);
@@ -196,8 +201,10 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [numbe
       }
     }
     for(let axis=0;axis<3;axis++){min[axis]=Math.max(min[axis]!,arcMin[axis]!);max[axis]=Math.min(max[axis]!,arcMax[axis]!);}
-    const normal=rotateQuaternion([ox,0,oz],gun.rotation);
-    planes.push({indices:[],normal,constant:-normal.reduce((sum,v,k)=>sum+v*gun.position[k]!,0)-reachOut-padding});
+    for(const [dx,dz,reach] of [[ux,uz,along[1]!],[-ux,-uz,-along[0]!],[vx,vz,across[1]!],[-vx,-vz,-across[0]!]] as const){
+      const normal=rotateQuaternion([dx,0,dz],gun.rotation);
+      planes.push({indices:[],normal,constant:-normal.reduce((sum,v,k)=>sum+v*gun.position[k]!,0)-reach-padding});
+    }
   }
   return {min,max,faces:planes,sweepRadius};
 }
@@ -215,6 +222,14 @@ function roofGunSweeps(spec: MissionCarrierSpec): {owner:Frame;bounds:Bounds}[] 
       bounds:roofPartSweep(gun,part,spec.id,[lo+(hi-lo)*k/chunks,lo+(hi-lo)*(k+1)/chunks])}));
   }));
   roofSweepsCache.set(spec,result);return result;
+}
+const restSweepsCache=new WeakMap<MissionCarrierSpec,{owner:Frame;bounds:Bounds}[]>();
+/** Every roof station parked level at its rest bearing (the launch interlock): what the launch column must clear. */
+function roofGunRestSweeps(spec: MissionCarrierSpec): {owner:Frame;bounds:Bounds}[] {
+  const cached=restSweepsCache.get(spec);if(cached)return cached;
+  const result=(auxiliaryCapabilities(spec)?.guns??[]).flatMap(gun=>(gun.collisionParts??[])
+    .map(part=>({owner:gun.owner,bounds:roofPartSweep(gun,part,spec.id,[0,0],true)})));
+  restSweepsCache.set(spec,result);return result;
 }
 interface ClearanceStock { hull:Bounds[];turret:Bounds[];guns:ReturnType<typeof roofGunSweeps> }
 function clearanceStock(spec: MissionCarrierSpec): ClearanceStock { return {hull:stockFor(spec,'hull'),turret:stockFor(spec,'turret'),guns:roofGunSweeps(spec)}; }
@@ -253,16 +268,23 @@ function clear(spec:MissionCarrierSpec,seat:MissionAttachment,stock:ClearanceSto
 /** Dynamic weapon clearance. Fixed native stock and supports are certified
  * separately by the generated-seat audit, since armor proxies contain roof air. */
 export function missionAttachmentMotionClear(spec:MissionCarrierSpec,seat:MissionAttachment):boolean {
-  return missionAttachmentVolumesClear(spec,seat,[...missionAirframeVolumes(seat,true),...missionCradleVolumes(seat)]);
+  // VH.14 launch interlock (coordinator ruling 2026-10-15): every roof station parks level at its rest bearing while its
+  // own vehicle's drone launches (auxiliarySystems.ts), so the docked drone and its cradle clear every station's whole
+  // sweep, and the launch column clears the stations at rest
+  return missionAttachmentVolumesClear(spec,seat,[...missionAirframeVolumes(seat,false),...missionCradleVolumes(seat)])
+    && volumesClearOf(roofGunRestSweeps(spec),spec,seat,missionAirframeVolumes(seat,true));
 }
-/** Auxiliary-motion check for finite receiver members relative to a dock.
- * Actual receiving steel, fixed geometry and main guns remain native checks. */
-export function missionAttachmentVolumesClear(spec:MissionCarrierSpec,seat:MissionAttachment,volumes:readonly Bounds[]):boolean {
-  const guns=roofGunSweeps(spec);
+function volumesClearOf(guns:{owner:Frame;bounds:Bounds}[],spec:MissionCarrierSpec,seat:MissionAttachment,
+  volumes:readonly Bounds[]):boolean {
   return volumes.every(part=>{
     const body=shifted(part,[seat.x,seat.y,seat.z]);
     return !guns.some(gun=>stockHits(spec,seat,body,gun.owner,gun.bounds));
   });
+}
+/** Auxiliary-motion check for finite receiver members relative to a dock.
+ * Actual receiving steel, fixed geometry and main guns remain native checks. */
+export function missionAttachmentVolumesClear(spec:MissionCarrierSpec,seat:MissionAttachment,volumes:readonly Bounds[]):boolean {
+  return volumesClearOf(roofGunSweeps(spec),spec,seat,volumes);
 }
 /** Public diagnostic uses the same conservative finite volumes as seat selection. */
 export function missionAttachmentClear(spec: MissionCarrierSpec,seat: MissionAttachment): boolean { return clear(spec,seat,clearanceStock(spec)); }
