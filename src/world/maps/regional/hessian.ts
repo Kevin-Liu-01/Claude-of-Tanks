@@ -14,6 +14,7 @@ import {
   type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -808,47 +809,41 @@ const depot: RegionalBuilder = (ctx) => {
 /** A burnt-out Fachwerk house: the sandstone ground storey and a charred frame, the roof gone. */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
   const W = Math.max(5.6, ctx.info.w - 0.3), D = Math.max(7.6, ctx.info.d - 0.3);
   const charred = rgb(0x2b2521), burnt = rgb(0x3d3127);
-  sink.span('stone', -W / 2 - 0.06, -0.5, -D / 2 - 0.06, W / 2 + 0.06, 0.55, D / 2 + 0.06);
-  // ragged ground-storey walls: stone stubs of uneven height with gaps
-  const t = 0.42;
-  const walls: Array<[number, number, number, number, 'x' | 'z']> = [
-    [-W / 2, -D / 2, W / 2, -D / 2 + t, 'x'], [-W / 2, D / 2 - t, W / 2, D / 2, 'x'],
-    [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t, 'z'], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t, 'z'],
-  ];
-  for (const [x0, z0, x1, z1, axis] of walls) {
-    const len = axis === 'x' ? x1 - x0 : z1 - z0;
-    const n = 3 + Math.floor(rng() * 3);
-    for (let k = 0; k < n; k++) {
-      if (rng() < 0.28) continue;
-      const a = k / n, b = (k + 1) / n - 0.02;
-      const h = 0.9 + rng() * 1.9;
-      if (axis === 'x') sink.span('stone', x0 + len * a, 0.5, z0, x0 + len * b, 0.5 + h, z1);
-      else sink.span('stone', x0, 0.5, z0 + len * a, x1, 0.5 + h, z0 + len * b);
-    }
-  }
-  // the charred frame: corner posts and a few studs of the upper storey, a broken plate, fallen rafters
+  // (props census #7, lane B 2026-10-14; the judges: "stone stubs as span boxes with gaps, a box of tiles") the ruin
+  // grammar: the sandstone ground storey's own walls broken to heads falling to the breach, its door and windows cut
+  // through with their lintels and sills, the joists' stubs, the tiles slid in over the heaps; over it the charred frame
+  // of the upper storey: the corner posts standing on the wall heads, a broken plate, studs and rafters fallen in
+  const gH = 2.5, t = 0.42;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * (W - 2.6), w: 1.0, y0: 0, h: 2.1 }];
+  for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D - 2 * t, { w: 0.9, h: 1.1, sill: 0.85, spacing: 2.4, margin: 1.0, max: 3 })) openings.push(o);
+  const head = (): RuinHead => ({ a: gH * (0.6 + rng() * 0.45), b: gH * (0.6 + rng() * 0.45), at: 0.15 + rng() * 0.7, dip: 0.25 + rng() * 0.5, ragged: 0.3 });
+  const r = ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [gH, 2.6], openings,
+    heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.6,
+    lintel: { bucket: SW, colour: charred }, roof: { bucket: 'roof', piece: [0.6, 0.4, 0.03] }, timber: charred, mobile,
+  }, rng, look);
+  // the charred frame: a corner post on each corner's wall head, the broken plate on the front-left one
   const postTops: number[] = [];
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    const h = 2.6 + rng() * 2.2;
-    sink.span(SW, sx * (W / 2 - 0.12) - 0.1, 0.55, sz * (D / 2 - 0.12) - 0.1, sx * (W / 2 - 0.12) + 0.1, 0.55 + h, sz * (D / 2 - 0.12) + 0.1, { colour: charred });
-    postTops.push(0.55 + h);
+  for (const [sx, sz, name, end] of [[-1, -1, 'back', 1], [1, -1, 'back', 0], [-1, 1, 'front', 0], [1, 1, 'front', 1]] as const) {
+    const tp = r.tops[name], foot = end ? tp[tp.length - 1] : tp[0], h = 1.2 + rng() * 2.0;
+    sink.span(SW, sx * (W / 2 - t / 2) - 0.1, foot - 0.05, sz * (D / 2 - t / 2) - 0.1, sx * (W / 2 - t / 2) + 0.1, foot + h, sz * (D / 2 - t / 2) + 0.1, { colour: charred });
+    postTops.push(foot + h);
   }
-  // (the buildings stream, 2026-10-12, the integrity check: the plate floated over a corner post that burnt down short
-  // of it) the broken plate rests on its front-left post, no higher than that post's charred head
-  const plateY = Math.min(3.3 + rng() * 0.6, postTops[2] - 0.18);
-  sink.span(SW, -W / 2 + 0.02, plateY, D / 2 - 0.24, W * 0.1, plateY + 0.18, D / 2 - 0.04, { colour: charred, decor: true });
-  for (let k = 0; k < 5; k++) {
-    const x = (rng() - 0.5) * W * 0.8, z = (rng() - 0.5) * D * 0.7;
-    const a: Vec3 = [x - 1.6, 0.62, z], b: Vec3 = [x + 1.4, 1.4 + rng() * 1.5, z + (rng() - 0.5) * 1.2];
-    sink.member(SW, a, b, 0.14, 0.16, [0, 0, 1], { colour: k % 2 ? charred : burnt, decor: true, exposed: true });
-    // the stud still standing that holds its raised end (the connectivity sweep: the rafters' heads leant on air)
-    sink.span(SW, b[0] - 0.08, 0.55, b[2] - 0.02, b[0] + 0.08, b[1] + 0.02, b[2] + 0.14, { colour: charred, decor: true });
-  }
-  // a fallen gable of tiles in a heap inside
-  sink.span('roof', -W * 0.3, 0.5, -D * 0.2, W * 0.25, 1.05, D * 0.25, { decor: true });
+  // (the plate rests on its front-left post, no higher than that post's charred head)
+  const plateY = postTops[2] - 0.18;
+  sink.span(SW, -W / 2 + 0.02, plateY, D / 2 - t / 2 - 0.1, -W / 2 + W * 0.45, plateY + 0.18, D / 2 - t / 2 + 0.1, { colour: charred, decor: true });
+  sink.dressing(mobile, () => {
+    for (let k = 0; k < 4; k++) {
+      const x = (look() - 0.5) * (W - 2 * t - 1.2), z = (look() - 0.5) * (D - 2 * t - 1.2);
+      const a: Vec3 = [x - 1.2, r.restOn(x - 1.2, z) - 0.05, z], b: Vec3 = [x + 1.1, r.restOn(x + 1.1, z) + 0.8 + look() * 0.9, z + (look() - 0.5) * 1.0];
+      sink.member(SW, a, b, 0.14, 0.16, [0, 0, 1], { colour: k % 2 ? charred : burnt, decor: true, exposed: true });
+      // the stud still standing that holds its raised end, from the heap under it
+      sink.span(SW, b[0] - 0.08, r.restOn(b[0], b[2]) - 0.05, b[2] - 0.02, b[0] + 0.08, b[1] + 0.02, b[2] + 0.14, { colour: charred, decor: true });
+    }
+  });
   return sink.finish();
 };
 

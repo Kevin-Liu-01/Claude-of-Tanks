@@ -187,7 +187,10 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
     for (const h of holes) {
       const lc = { ...(spec.lintel.colour ? { colour: spec.lintel.colour } : {}), decor: true };
       if (Math.min(topAt(h.u0), topAt(h.u1)) > h.y1 + 0.3) faceBox(sink, spec.lintel.bucket, f, (h.u0 + h.u1) / 2, h.y1 + 0.09, 0.015, h.u1 - h.u0 + 0.3, 0.18, 0.03, lc, { back: true });
-      if (h.y0 > floor + 0.3 && Math.min(topAt(h.u0), topAt(h.u1)) > h.y0 + 0.2) faceBox(sink, spec.lintel.bucket, f, (h.u0 + h.u1) / 2, h.y0 - 0.04, 0.04, h.u1 - h.u0 + 0.16, 0.08, 0.08, lc, { back: true });
+      // (the sill is the masonry's: a stone, a shade lighter than the wall)
+      if (h.y0 > floor + 0.3 && Math.min(topAt(h.u0), topAt(h.u1)) > h.y0 + 0.2) {
+        faceBox(sink, 'stone', f, (h.u0 + h.u1) / 2, h.y0 - 0.04, 0.04, h.u1 - h.u0 + 0.16, 0.08, 0.08, { ...(spec.colour ? { colour: shade(spec.colour, 1.08) } : {}), decor: true }, { back: true });
+      }
     }
   }
   // the plinth course round the foot
@@ -200,22 +203,26 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
   }
   // the heaps: the fallen storeys inside, and outside under the lowest heads
   const heaps: Array<[number, number, number, number]> = [];
-  const heap = (x: number, z: number, r: number, hgt: number): void => {
+  const heap = (x: number, z: number, r: number, hgt: number, outside = false): void => {
     heaps.push([x, z, r, hgt]);
-    sink.cylinder('stone', [x, foot, z], 'y', hgt - foot, r, 9, { ...(spec.colour ? { colour: shade(spec.colour, 0.8) } : {}), shadow: true }, r * 0.45, true, look() * 3);
+    sink.cylinder('stone', [x, foot, z], 'y', hgt - foot, r, 9, { ...(spec.colour ? { colour: shade(spec.colour, 0.8) } : {}), shadow: true, ...(outside ? { decor: true } : {}) },
+      r * 0.45, true, look() * 3);
   };
   const height = spec.storeys.reduce((a, b) => a + b, 0);
   const inner = Math.min(w, d) - 2 * t;
   heap(-w * 0.08, d * 0.06, inner * 0.42, floor + Math.min(1.6, 0.5 + height * 0.12));
   heap(w * 0.16, -d * 0.18, inner * 0.26, floor + Math.min(1.0, 0.35 + height * 0.07));
-  for (const name of ['front', 'right', 'back', 'left'] as const) {
-    const tp = tops[name], f = faces[name];
+  // (outside only along the front, under its breach, low against the wall and no wall a tank stops at: the plot's
+  // edges are the street's and the neighbours')
+  {
+    const tp = tops.front, f = faces.front;
     let k = 0;
     for (let j = 1; j < tp.length; j++) if (tp[j] < tp[k]) k = j;
-    if (tp[k] > floor + height * 0.6) continue;
-    const u = -f.width / 2 + (f.width * k) / (tp.length - 1);
-    const c = facePoint(f, Math.max(-f.width / 2 + 0.8, Math.min(f.width / 2 - 0.8, u)), 0, 0.85);
-    heap(c[0], c[2], 0.9 + look() * 0.5, 0.35 + look() * 0.3);
+    if (tp[k] < floor + height * 0.6) {
+      const u = -f.width / 2 + (f.width * k) / (tp.length - 1);
+      const c = facePoint(f, Math.max(-f.width / 2 + 0.7, Math.min(f.width / 2 - 0.7, u)), 0, 0.2);
+      heap(c[0], c[2], 0.6 + look() * 0.2, floor + 0.15 + look() * 0.2, true);
+    }
   }
   const restOn = (x: number, z: number): number => {
     let y = floor;
