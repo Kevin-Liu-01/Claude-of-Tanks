@@ -26,7 +26,7 @@ async function pivot(mapId, hull, x, z, yaw) {
   censusInternals.resetWorld(world);
   const near = world.query(x, z, 40).filter((r) => r.treeIdx == null && r.kind !== 'tree');
   return runCase(hull, 'earth', {
-    id: `${mapId}-roof-pivot`, mapId, seconds: 7, spawn: { x, z, yaw, dropTo: 0.12 }, allowBlocked: true, grounded: true,
+    id: `${mapId}-roof-pivot`, mapId, seconds: 7, spawn: { x, z, yaw, dropTo: 0.12, seat: 'plane' }, allowBlocked: true, grounded: true,
     input: (t) => (t < 3.5 ? { throttle: 0, steer: 1, brake: false } : { throttle: 0, steer: 0, brake: true }),
     rest: { afterS: 3.5, settleS: 1, deadlineS: 6.5, spanS: 1.5 }, worldHalfM: censusInternals.WORLD_HALF_M - 2,
     floorY: world.hf.minY - 20, metricsFromS: 0.3,

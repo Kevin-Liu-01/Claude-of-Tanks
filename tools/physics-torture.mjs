@@ -654,8 +654,12 @@ function topSpeedMps(entity) {
   return entity.spec.topSpeedKmh / 3.6 * (entity.modeSpeedMultiplier ?? 1);
 }
 
-function seatAirborne(entity, world, dropTo, { pitch = 0, roll = 0, vy = 0 } = {}) {
+function seatAirborne(entity, world, dropTo, { pitch: pitchGiven, roll: rollGiven, vy = 0, seat } = {}) {
   const state = entity.state;
+  // (physics stream F9) seat 'plane': set down on the plane the pad seat fitted (seatGrounded), not level — a hull set
+  // level on a steep roof starts with its uphill end metres inside it, which no hull in play does
+  const pitch = pitchGiven ?? (seat === 'plane' ? state._spring.pitch : 0);
+  const roll = rollGiven ?? (seat === 'plane' ? state._spring.roll : 0);
   // an inverted hull hangs its body below the root: seat its roof clear of the ground (a 2.5 m drop buried a heavy
   // hull's turret 0.7 m, and the first tick's lift read as a 0.67 m pop)
   const upright = Math.cos(pitch) * Math.cos(roll);

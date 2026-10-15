@@ -240,11 +240,11 @@ function dropOn({ x, z, yaw, dropTo, total = 8 }) {
   return { seconds: total, spawn: { x, z, yaw, dropTo }, input: () => hold(0, 0, true), rest: restAfter(total - 3), mayTip: true };
 }
 function standOn({ x, z, yaw, total = 7 }) {
-  return { seconds: total, spawn: { x, z, yaw, dropTo: 0.12 }, input: () => hold(0, 0, true), rest: { afterS: 2, settleS: 1, deadlineS: 4, spanS: 3 }, grounded: true };
+  return { seconds: total, spawn: { x, z, yaw, dropTo: 0.12, seat: 'plane' }, input: () => hold(0, 0, true), rest: { afterS: 2, settleS: 1, deadlineS: 4, spanS: 3 }, grounded: true };
 }
 function driveOff({ x, z, yaw, throttle = 0.6, waitS = 1, driveS = 4, total = 11 }) {
   return {
-    seconds: total, spawn: { x, z, yaw, dropTo: 0.12 },
+    seconds: total, spawn: { x, z, yaw, dropTo: 0.12, seat: 'plane' },
     input: (t) => (t < waitS ? hold(0, 0, true) : t < waitS + driveS ? hold(throttle) : hold(0, 0, true)),
     rest: restAfter(waitS + driveS, { deadlineS: waitS + driveS + 4 }), mayTip: true,
   };
@@ -577,7 +577,7 @@ function roofManeuvers(world, site, seed) {
     ['drop3', dropOn({ x: site.x, z: site.z, yaw, dropTo: 3 })],
     ['drop8', dropOn({ x: site.x, z: site.z, yaw: yaw + 0.6, dropTo: 8, total: 9 })],
     ['stand', standOn({ x: site.x, z: site.z, yaw })],
-    ['pivot', { ...pivotInPlace({ x: site.x, z: site.z, yaw, steer: 1 }), spawn: { x: site.x, z: site.z, yaw, dropTo: 0.12 } }],
+    ['pivot', { ...pivotInPlace({ x: site.x, z: site.z, yaw, steer: 1 }), spawn: { x: site.x, z: site.z, yaw, dropTo: 0.12, seat: 'plane' } }],
   ];
   if (off != null) list.push(['drive-off', driveOff({ x: site.x, z: site.z, yaw: off })]);
   return list;
