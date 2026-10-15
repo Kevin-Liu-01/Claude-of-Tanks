@@ -224,11 +224,15 @@ function poolFinalizer(fixture, field, drng, overrides = {}) {
     tintDestructibleInstances: () => {}, destructibleCastsShadow: () => false,
     DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group: new THREE.Group(),
     // (destruction-350) a light kind's broken state is its intact build broken (maps/propFracture.ts), from the build's seed
-    PROP_FRACTURE, fractureProp, fractureSeed, seed: 2002, ...overrides };
+    PROP_FRACTURE, fractureProp, fractureSeed, seed: 2002,
+    // (integ/225 with props #1 huts) the kinds whose broken builder is their own on the map (props.ts ownBroken: its
+    // structure variants and its pillbox); the fixture map has neither
+    ownBroken: new Set(), ...overrides };
   const functions = new Function('bindings', `const {
     THREE, mats, drng, refitDestructibleColliders, sealGroundCoverPlacements, fitWallSpan,
     heightField, wallSpans, WALL_SEG, tintDestructibleInstances, destructibleCastsShadow,
-    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed,
+    ownBroken
   } = bindings; ${prepareSource}; ${finalSource};
   return { prepare: prepareDestructiblePoolGeometry, finalize: finalizeDestructiblePool };`)(bindings);
   return { ...functions, group: bindings.group };
