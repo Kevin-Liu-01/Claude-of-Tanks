@@ -1401,8 +1401,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.058,
-   "gapM2": 0.247,
+   "insideM2": 0.39,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "hessian/church": {
@@ -1518,8 +1518,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.448,
-   "gapM2": 0.187,
+   "insideM2": 0.087,
+   "gapM2": 0.766,
    "invertedM2": 0
   },
   "dalmatian/woodshed": {
@@ -1617,8 +1617,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.069,
-   "gapM2": 0,
+   "insideM2": 0.301,
+   "gapM2": 0.187,
    "invertedM2": 0
   },
   "breton/tower": {
@@ -1797,8 +1797,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 0.245,
+   "gapM2": 0.893,
    "invertedM2": 0
   },
   "polder/fishery": {
@@ -1869,8 +1869,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.058,
-   "gapM2": 0.247,
+   "insideM2": 0.39,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "eifel/church": {
@@ -2076,8 +2076,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.058,
-   "gapM2": 0.247,
+   "insideM2": 0.39,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "franconian/church": {
@@ -2238,7 +2238,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.232,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2364,8 +2364,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.083,
-   "gapM2": 0.924,
+   "insideM2": 0.46,
+   "gapM2": 2.405,
    "invertedM2": 0
   },
   "ruhr/shed": {
@@ -2436,7 +2436,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 1.468,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2490,8 +2490,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.211,
-   "gapM2": 0.346,
+   "insideM2": 0.215,
+   "gapM2": 1.66,
    "invertedM2": 0
   },
   "kyushu/depot": {
@@ -2562,7 +2562,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.232,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2778,7 +2778,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 1.756,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2850,8 +2850,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.083,
-   "gapM2": 0.924,
+   "insideM2": 0.46,
+   "gapM2": 2.405,
    "invertedM2": 0
   },
   "saar/stack": {
@@ -3710,5 +3710,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-15T07:55:20.282Z"
+ "updatedAt": "2026-10-15T19:00:31.376Z"
 }
