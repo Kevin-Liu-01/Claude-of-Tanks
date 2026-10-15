@@ -1315,9 +1315,10 @@ try {
   }
 } catch (error) {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
-  for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await screenshot(page,`${label}-failure.png`).catch(()=>{});
+  // (2026-10-15) a page whose renderer hangs never answers a screenshot: each one is bounded, so the report is still written
+  for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await Promise.race([screenshot(page,`${label}-failure.png`).catch(()=>{}),sleep(15_000)]);
 } finally {
-  for (const [label, page] of Object.entries(pages)) if (page && !page.isClosed()) await collectRoomLog(label.toUpperCase(), page);
+  for (const [label, page] of Object.entries(pages)) if (page && !page.isClosed()) await Promise.race([collectRoomLog(label.toUpperCase(), page), sleep(10_000)]);
   // every election each page heard, with the room's reason: the ones before the reveal are MP-S03's entry elections
   report.elections = Object.fromEntries(Object.entries(report.roomLog).map(([label, entries]) => [label,
     (entries ?? []).filter((entry) => entry.kind === 'host_changed' || entry.kind === 'decline').map((entry) => ({ atMs: entry.atMs, kind: entry.kind, hostId: entry.hostId ?? null, generation: entry.generation ?? null, reason: entry.reason ?? null, unable: entry.unable ?? null }))]));
