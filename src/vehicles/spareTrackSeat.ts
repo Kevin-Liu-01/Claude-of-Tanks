@@ -268,15 +268,39 @@ export class SeatSoup {
       const ext = [this.nodeBox[b + 3] - this.nodeBox[b], this.nodeBox[b + 4] - this.nodeBox[b + 1],
         this.nodeBox[b + 5] - this.nodeBox[b + 2]];
       const axis = ext[0] >= ext[1] && ext[0] >= ext[2] ? 0 : ext[1] >= ext[2] ? 1 : 2;
-      const slice = Array.from(this.order.subarray(start, start + count));
-      slice.sort((p, q) => cent[p * 3 + axis] - cent[q * 3 + axis] || p - q);
-      this.order.set(slice, start);
       const half = count >> 1;
+      this.select(cent, axis, start, start + count - 1, start + half);
       const left = this.alloc(start, half);
       const right = this.alloc(start + half, count - half);
       this.nodeLeft[node] = left;
       if (right !== left + 1) throw new Error('SeatSoup: non-adjacent children');
       todo.push([right, start + half, count - half], [left, start, half]);
+    }
+  }
+
+  /** Quickselect: order[k] holds the k-th centroid along `axis`, smaller ones before it (ties by index). */
+  private select(cent: Float32Array, axis: number, lo: number, hi: number, k: number): void {
+    const o = this.order;
+    const key = (i: number): number => cent[o[i] * 3 + axis];
+    const less = (a: number, b: number): boolean => key(a) < key(b) || (key(a) === key(b) && o[a] < o[b]);
+    const swap = (a: number, b: number): void => { const t = o[a]; o[a] = o[b]; o[b] = t; };
+    while (hi > lo) {
+      const mid = (lo + hi) >> 1;
+      if (less(mid, lo)) swap(mid, lo);
+      if (less(hi, lo)) swap(hi, lo);
+      if (less(hi, mid)) swap(hi, mid);
+      swap(mid, hi - 1 >= lo ? hi - 1 : hi);
+      const pivot = hi - 1 >= lo ? hi - 1 : hi;
+      let i = lo, j = pivot;
+      for (;;) {
+        do i++; while (i < pivot && less(i, pivot));
+        do j--; while (j > lo && less(pivot, j));
+        if (i >= j) break;
+        swap(i, j);
+      }
+      if (i < pivot) swap(i, pivot);
+      if (i === k) return;
+      if (k < i) hi = i - 1; else lo = i + 1;
     }
   }
 
