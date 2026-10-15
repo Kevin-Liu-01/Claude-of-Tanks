@@ -2656,7 +2656,10 @@ export function addGarageFacilityDetails({
   const addRegionalYardPiece = (): void => {
     const floor = getGarageFacilityTerraces(variant).find((terrace) => terrace.label === 'crew-floor-yard-power-pack');
     if (!floor) return;
-    const at = fixedCluster(floor.side, floor.depth);
+    // Steinburg's cart and trolley stand on the forecourt's setts by the Zeughaus, not out on the lawn beside the
+    // turntable (the re-judge, 2026-10-15: "a black bench or crate and a red bollard float on the lawn ... group them
+    // into the dock loading area")
+    const at = variant.architecture === 'brick_arsenal' ? fixedCluster(9.0, 17.5) : fixedCluster(floor.side, floor.depth);
     const olive = new THREE.Color(0x4f5536), sand = new THREE.Color(0xa58e62), rope = new THREE.Color(0x8c7a55);
     const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);
     const wheelPair = (lateral: number, longitudinal: number, radius: number, track: number): void => {
