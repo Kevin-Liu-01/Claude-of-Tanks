@@ -178,7 +178,8 @@ for (const [file, pattern] of Object.entries({
   'profiles/nationalRoofWeapon.ts': /const nation=tankSeedId\(String\(P\.spec\?\.id\?\?''\)\)\.split\('_'\)\[0\]/,
   'ghillieSuit.ts': /`\$\{tankSeedId\(cfg\.id\)\}_ghillie_\$\{owner\}_net`/,
   'sourceXWesternAuxArmor.ts': /`\$\{tankSeedId\(id\)\}:\$\{group\}`/,
-  'sourceXOtherAuxArmor.ts': /schemaOneNames\(id,memoizedAuxiliaryShapes\(/,
+  'sourceXOtherAuxArmor.ts': /`\$\{tankSeedId\(id\)\}_\$\{side\}_installed_course`/,
+  'arieteModernSpecs.ts': /surfaceGroup: `ariete_c2_x:.*tank-ids:keep/,
   'profiles/merkava.ts': /`\$\{tankSeedId\(id\)\}RearClosureReceipt`/,
 })) assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file}: roof-gun names keep their schema-1 spelling`);
 for (const [file, pattern] of Object.entries(SEEDED)) {

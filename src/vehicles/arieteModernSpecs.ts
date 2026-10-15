@@ -22,7 +22,7 @@ function addUpgradeProtection(spec: FleetTankSpec): void {
       keMm: belly ? 20 : cheek ? 140 : 100,
       ceMm: belly ? 20 : cheek ? 280 : 260,
       // A closed pack is one layer even when a ray crosses both faces.
-      surfaceGroup: `ariete_c2_x:${face.name.replace(/_\d+$/, '')}`,
+      surfaceGroup: `ariete_c2_x:${face.name.replace(/_\d+$/, '')}`, // schema-1 name (seat signatures hash it), tank-ids:keep
     };
     (cheek ? spec.armor.turretPlates : spec.armor.hullPlates).push(plate);
   }

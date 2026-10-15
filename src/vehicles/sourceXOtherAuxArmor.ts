@@ -8,18 +8,19 @@ import {type10AuxiliarySkirts} from './sourceXType10AuxArmor.ts';
 import {exposedAuxiliaryCourse} from './sourceXAuxArmorExposure.ts';
 import {memoizedAuxiliaryShapes} from './sourceXAuxArmorCache.ts';
 const IDS=new Set(['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x','type10_x','type90_x','amx40_x']);
+// Plate names built from the id keep its schema-1 spelling (tankIdAliases.ts): seat signatures hash them.
 type Span=readonly [number,number];
 
 function outerPanels(template:ArmorPlate,id:string,side:number,x:number,spans:readonly Span[],
   bottom:number,top:number):ArmorPlate[] {
-  return spans.map(([a,b],i)=>auxiliaryRectangle(template,`${id}_${side}_outer_${i}`,x,a,b,bottom,top));
+  return spans.map(([a,b],i)=>auxiliaryRectangle(template,`${tankSeedId(id)}_${side}_outer_${i}`,x,a,b,bottom,top));
 }
 function exposedBacking(template:ArmorPlate,id:string,side:number,x:number,back:number,front:number,
   bottom:number,top:number,outerBottom:number,spans:readonly Span[]):ArmorPlate[] {
-  const out=[auxiliaryRectangle(template,`${id}_${side}_backing_lower`,x,back,front,bottom,outerBottom)];
+  const out=[auxiliaryRectangle(template,`${tankSeedId(id)}_${side}_backing_lower`,x,back,front,bottom,outerBottom)];
   for(let i=0;i<spans.length-1;i++){
     const a=Math.max(back,spans[i][1]),b=Math.min(front,spans[i+1][0]);
-    if(b>a)out.push(auxiliaryRectangle(template,`${id}_${side}_backing_gap_${i}`,x,a,b,outerBottom,top));
+    if(b>a)out.push(auxiliaryRectangle(template,`${tankSeedId(id)}_${side}_backing_gap_${i}`,x,a,b,outerBottom,top));
   }
   return out;
 }
@@ -86,9 +87,9 @@ function leclercFront(template:ArmorPlate,side:number,classic:boolean):ArmorPlat
         return[side*x,y,z];
       };
       const z0=stations[j],z1=stations[j+1];
-      out.push(...auxiliaryQuad(template,`${id}_${side}_front_${i}`,j,
+      out.push(...auxiliaryQuad(template,`${tankSeedId(id)}_${side}_front_${i}`,j,
         [point(z0,false),point(z0,true),point(z1,true),point(z1,false)],side));
-      out.push(...leclercFolds(template,side,classic,`${id}_${side}_front_${i}`,j,inner,z0,z1,point));
+      out.push(...leclercFolds(template,side,classic,`${tankSeedId(id)}_${side}_front_${i}`,j,inner,z0,z1,point));
     }
   });
   return out;
@@ -148,9 +149,9 @@ function amx40(template:ArmorPlate,side:number):ArmorPlate[] {
 function replacements(id:string,template:ArmorPlate,side:number):ArmorPlate[] {
   if(id==='leclerc_x'||id==='leclerc_classic_x')return exposedAuxiliaryCourse(
     [...leclercRear(template,side,id==='leclerc_classic_x'),...leclercFront(template,side,id==='leclerc_classic_x'),
-      ...(id==='leclerc_x'?charToe(template,side):[])],side,`${id}_${side}_installed_course`);
+      ...(id==='leclerc_x'?charToe(template,side):[])],side,`${tankSeedId(id)}_${side}_installed_course`);
   if(id==='type90_x')return type90(template,side);
-  if(id==='amx40_x')return exposedAuxiliaryCourse(amx40(template,side),side,`${id}_${side}_installed_course`);
+  if(id==='amx40_x')return exposedAuxiliaryCourse(amx40(template,side),side,`${tankSeedId(id)}_${side}_installed_course`);
   if(id==='type10_x')return exposedAuxiliaryCourse([...type10AuxiliarySkirts(template,side),
     auxiliaryRectangle(template,`type10_x_${side}_fascia`,side*1.574517,-2.4807,3.5897,.7593,1.222),
     auxiliaryRectangle(template,`type10_x_${side}_rear_fascia`,side*1.574517,-3.44004,-2.4807,.75772,1.16422)],
@@ -159,15 +160,6 @@ function replacements(id:string,template:ArmorPlate,side:number):ArmorPlate[] {
   // vehicle has open road gear, not the donor's full-length hanging skirts.
   return [];
 }
-/** Plate names built from the id keep its schema-1 spelling (tankIdAliases.ts): seat signatures and anatomy hash them. */
-function schemaOneNames(id:string,plates:ArmorPlate[]):ArmorPlate[] {
-  const seed=tankSeedId(id);
-  if(seed===id)return plates;
-  // A literal schema-1 name (type10_x_<side>_fascia) is already right, even where the new id is its prefix.
-  const fix=(text:string|undefined)=>!text||text.startsWith(`${seed}_`)?text
-    :text.startsWith(`${id}_`)?`${seed}${text.slice(id.length)}`:text;
-  return plates.map(p=>({...p,name:fix(p.name) as string,...(p.surfaceGroup?{surfaceGroup:fix(p.surfaceGroup)}:{})}));
-}
 export function applySourceXOtherAuxArmor(spec:FleetTankSpec,id:string):void {
   if(!IDS.has(id))return;
   const old=spec.armor.hullPlates.filter(p=>p.kind==='spaced'&&/^skirt_[RL]$/.test(p.name)&&!p.era&&!p.gunFollow);
@@ -175,6 +167,6 @@ export function applySourceXOtherAuxArmor(spec:FleetTankSpec,id:string):void {
   spec.armor.hullPlates=spec.armor.hullPlates.filter(p=>!old.includes(p));
   for(const template of old){
     const side=template.name.endsWith('_L')?-1:1;
-    spec.armor.hullPlates.push(...schemaOneNames(id,memoizedAuxiliaryShapes(`${id}/${side}`,template,()=>replacements(id,template,side))));
+    spec.armor.hullPlates.push(...memoizedAuxiliaryShapes(`${id}/${side}`,template,()=>replacements(id,template,side)));
   }
 }
