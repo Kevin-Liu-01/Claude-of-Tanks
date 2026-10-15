@@ -31,7 +31,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, ROLL_SHUTTER, TIMBER, ZINC,
-  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellHole, shellPocks, sootBand, unhcrSheet, type Keep,
+  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellPocks, sootBand, unhcrSheet, type Keep,
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
@@ -202,6 +202,20 @@ function keepsOf(openings: readonly Opening[], face: Opening['face'], frame: Hou
   });
 }
 
+/**
+ * A shell's breach in a block's street front (props census #7, lane B 2026-10-14: it was a dark plate on the render),
+ * decided before the house is built so its wall is cut through: with `chance`, on an upper storey, 1.2-1.3 m over that
+ * storey's floor, clear of the front's openings by half a metre; null otherwise.
+ */
+function streetBreach(openings: readonly Opening[], n: number, len: number, look: () => number, chance: number, y: number, r0: number, rs: number):
+  NonNullable<HouseSpec['breaches']> {
+  if (n < 2 || look() >= chance) return [];
+  const storey = 1 + Math.floor(look() * (n - 1)), u = (look() - 0.5) * len * 0.7, r = r0 + look() * rs, seed = Math.floor(look() * 1e9);
+  const clear = openings.filter((o) => o.face === 'left' && o.storey === storey)
+    .every((o) => u < o.u - o.w / 2 - 0.75 || u > o.u + o.w / 2 + 0.75 || y < o.y0 - 0.7 || y > o.y0 + o.h + 0.95);
+  return clear ? [{ face: 'left', storey, u, y, r, seed, spall: 'stone' }] : [];
+}
+
 const SIGNS: readonly Rgb[] = [0x2f4f3f, 0x6a2e26, 0x2c3d57, 0x7a6a3a, 0x3c3c3c].map(rgb);
 
 // ------------------------------------------------------------------------------------------------ the valley blocks
@@ -268,10 +282,11 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     { x: (rng() - 0.5) * 0.8, z: len / 2 - 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
     { x: (rng() - 0.5) * 0.8, z: -len / 2 + 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
   ];
+  const breaches = streetBreach(openings, n, len, look, 0.22, 1.2, 0.35, 0.3);
   sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => sink.placed(0, 0, 0, zc, () => {
     const frame = buildHouse(sink, {
       w: D, d: len, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys, roof, gableBucket: 'plaster', openings, chimneys,
-      gutters: roofKind === 'mansard' ? null : { colour: ZINC }, verge: null, reveal: 0.22, rafters: null, spall: 'stone',
+      gutters: roofKind === 'mansard' ? null : { colour: ZINC }, verge: null, reveal: 0.22, rafters: null, spall: 'stone', breaches,
     }, ahDialect(rng, door, h, sign));
     const b = frame.bodies[0], eave = frame.eaveY;
     // string course over the shops, the piano nobile's sill course, the crowning cornice
@@ -329,11 +344,6 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     const pocks = 8 + look() * 30;
     shellPocks(sink, street, { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: 0.5, y1: eave - 0.7 }, Math.round(pocks), keeps, look, 'stone',
       Math.round((mobile ? 0.4 : 1) * pocks));
-    if (look() < 0.22) {
-      const hy = frame.floors[Math.min(n - 1, 1 + Math.floor(look() * (n - 1)))] + 1.2;
-      const hu = (look() - 0.5) * len * 0.7;
-      if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.35 + look() * 0.3, look);
-    }
     if (collapse) collapsedEnd(sink, frame, collapse, cut, len, groundH, look, mobile);
   })));
   return sink.finish();
@@ -432,11 +442,12 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   openings.push({ face: 'right', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.3 });
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, W, { w: 1.1, h: 1.2, sill: 1.0, spacing: 2.4, margin: 0.9 })) openings.push(o);
   if (look() < 0.15) for (const o of openings) if (o.storey === n - 2 && o.face === 'left' && o.kind === 'window') o.state = 'burnt';
+  const breaches = streetBreach(openings, n, W, look, 0.28, 1.3, 0.4, 0.35);
   sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: D, d: W, plinth: { h: 0.25, out: 0.04, bucket: 'plaster3' }, storeys,
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.3, bucket: 'plaster3', parapet: 0.45 }, gableBucket: 'plaster3',
-      openings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: 'stone',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: 'stone', breaches,
     }, yuDialect(h, sign));
     const b = frame.bodies[0], street = frame.faces.left;
     // the slab edges banding the street and court fronts
@@ -467,10 +478,6 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     const pocks = 10 + look() * 26;
     shellPocks(sink, street, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.6, y1: frame.eaveY - 0.4 }, Math.round(pocks), keeps, look, 'stone',
       Math.round((mobile ? 0.4 : 1) * pocks));
-    if (look() < 0.28) {
-      const hy = frame.floors[1 + Math.floor(look() * (n - 1))] + 1.3, hu = (look() - 0.5) * W * 0.7;
-      if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.4 + look() * 0.35, look);
-    }
   }));
   return sink.finish();
 }
