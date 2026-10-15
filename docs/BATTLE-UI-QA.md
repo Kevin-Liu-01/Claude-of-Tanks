@@ -359,17 +359,22 @@ the other thumb steers); a caption stays under each icon instead.
 the top left (so the jump-first rule is whatever order the row has); one row when
 it fits, otherwise wrapped (at most three rows), never scrolled. The dock goes to
 the free spot nearest the point between the joystick and FIRE with 8 px clearance
-from every fixed control, the open ammo drawer and the safe-area edges. On screens
-too crowded for that (320×568) it steps down to 44 px tiles, then gives up the open
-drawer, never a fixed control. A cooldown sweeps a shadow off the tile while the
+from every fixed control, the open ammo drawer, the landscape countdown (and, at
+340 px tall and below, the fixed landscape notice band) and the safe-area edges.
+A crowded screen steps down to 44 px tiles (6 px clearance); when even that cannot
+fit without covering something, `body[data-hud-dock]` is dropped and the former
+scrolling strip stays (320×568 with five or more controls, 568 px wide landscapes).
+A cooldown clears a shadow off the tile clockwise and fills an amber ring while the
 caption counts seconds (smoke, drone, missile launcher, special action); smoke
 charges are a corner badge. The centre notices, the gun-limit warning (when the
 dock covers its place under the reticle) and the portrait countdown stack above
 the dock; side feeds end above the notices while one shows. Desktop is unchanged.
 
 Rendered five-control docks: 360×640 at (26, 358), 390×844 at (56, 537), 844×390
-at (297, 287), 667×375 at (208, 230), all one row of 264×48; seven controls are
-3×3 in portrait and one row in landscape. Receipts: `touchActionDock.selftest.mjs`
+at (297, 287), one row of 264×48; 667×375 at (209, 278) in 44 px tiles. Seven
+controls are 3×3 in portrait and one row at 844×390. The rendered matrix of
+`tools/battle-hud-layout.browser.mjs`'s 13 touch cases × 22 states (Puppeteer port,
+origin/main beside this branch) is clean on both. Receipts: `touchActionDock.selftest.mjs`
 (the layout code reproduces each rendered dock from the measured control rects in
 `touchActionDock.fixture.json`, clearance/size/order for 1–7 controls, a seeded
 property sweep) and the no-scroll/48 px check in `tools/battle-hud-layout.browser.mjs`.
