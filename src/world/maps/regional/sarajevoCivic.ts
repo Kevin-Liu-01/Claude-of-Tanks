@@ -17,7 +17,7 @@
 //   - depot → a čaršija row: single-storey timber shops under one deep-eaved tile roof, their ćepenci (shutters)
 //     closed for the siege, a whitewashed han storey over one end.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -75,10 +75,12 @@ function museum(ctx: RegionalBuildContext): RegionalParts {
     const g0 = 5.0, g1 = 5.4;
     const door = choose(rng(), DOOR_LEAVES);
     const openings: Opening[] = [];
-    for (const o of windowRhythm('left', 0, W, { w: 1.5, h: 2.5, sill: 1.1, spacing: 3.6, margin: 2.2, avoid: [[-3.4, 3.4]] })) openings.push(o);
-    for (const o of windowRhythm('left', 1, W, { w: 1.55, h: 3.0, sill: 0.8, spacing: 3.6, margin: 2.2, avoid: [[-3.4, 3.4]] })) openings.push(o);
-    for (const i of [0, 1]) for (const o of windowRhythm('right', i, W, { w: 1.4, h: 2.4, sill: 1.1, spacing: 3.6, margin: 1.6 })) openings.push(o);
-    for (const face of ['front', 'back'] as const) for (const i of [0, 1]) for (const o of windowRhythm(face, i, bd, { w: 1.4, h: 2.4, sill: 1.1, spacing: 3.4, margin: 1.4 })) openings.push(o);
+    // (props census #9: the corner pavilions stand over the house's ends, its end walls and the long walls' last bays
+    // inside them: no windows there, they were cut into the pavilions' cores)
+    const inner = (W - 1.2) / 2 - pw, ends: Array<[number, number]> = [[-W, -inner], [inner, W]];
+    for (const o of windowRhythm('left', 0, W, { w: 1.5, h: 2.5, sill: 1.1, spacing: 3.6, margin: 2.2, avoid: [[-3.4, 3.4], ...ends] })) openings.push(o);
+    for (const o of windowRhythm('left', 1, W, { w: 1.55, h: 3.0, sill: 0.8, spacing: 3.6, margin: 2.2, avoid: [[-3.4, 3.4], ...ends] })) openings.push(o);
+    for (const i of [0, 1]) for (const o of windowRhythm('right', i, W, { w: 1.4, h: 2.4, sill: 1.1, spacing: 3.6, margin: 1.6, avoid: ends })) openings.push(o);
     const dialect: HouseDialect = {
       window: (s, face, o, y0) => {
         windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, STONE_WINDOW, look, 0.06);
@@ -99,28 +101,43 @@ function museum(ctx: RegionalBuildContext): RegionalParts {
       // the piano nobile's pediments
       const street = frame.faces.left;
       for (const o of openings) if (o.face === 'left' && o.storey === 1 && !o.state) pediment(sink, street, o.u, frame.floors[1] + o.y0 + o.h + 0.28, o.w + 0.7, 0.42);
-      // the corner pavilions: a storey taller, under their own hipped roofs
+      // the corner pavilions: a storey taller, under their own hipped roofs; (props census #9) their windows cut through
+      // their walls, the units in the reveals (they were laid on a solid span), the walls 3 cm proud of the house's back
+      // and end walls (they ran in the house's planes: one face over another)
+      const prev = 0.26;
       for (const s of [-1, 1]) {
         const pz0 = s > 0 ? b.z1 - pw : b.z0, pz1 = pz0 + pw, ph = eave + 1.6;
+        const ys = [1.4, g0 + 0.9, eave - 0.2], hs = ys.map((y) => (y > eave - 1 ? 1.2 : 2.4));
         // (flush with the back wall: their roofs' eaves stay inside the main roof's)
-        sink.span('plaster', b.x0 - 0.7, 0, pz0, b.x1, ph, pz1);
+        const pv = holedBox(sink, 'plaster', b.x0 - 0.7, s < 0 ? pz0 - 0.03 : pz0, b.x1 + 0.03, s > 0 ? pz1 + 0.03 : pz1, 0, ph,
+          { left: ys.map((y, k) => ({ u0: -0.7, u1: 0.7, y0: y, y1: y + hs[k] })) }, 0.3, prev);
         sink.band('stone', b.x0 - 0.9, ph - 0.6, pz0 - 0.15, b.x1 + 0.2, ph, pz1 + 0.15, { decor: true });
         const cap: RoofSpec = { kind: 'hip', pitchDeg: 34, eave: 0.4, verge: 0.4, thickness: 0.16, bucket: 'roof', ridge: 'saddle' };
         sink.placed(0, (b.x0 - 0.7 + b.x1) / 2, 0, (pz0 + pz1) / 2, () => emitRoof(sink, roofGeometry(b.x1 - b.x0 + 0.7, pw, ph, { ...cap, verge: 0.4 }), cap));
-        const pf: Face = { origin: [b.x0 - 0.7, 0, (pz0 + pz1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: pw };
-        for (const y of [1.4, g0 + 0.9, eave - 0.2]) windowUnit(sink, pf, 0, y, 1.4, y > eave - 1 ? 1.2 : 2.4, STONE_WINDOW, look, 0.05);
+        sink.recess = prev;
+        try { ys.forEach((y, k) => windowUnit(sink, pv.left, 0, y, 1.4, hs[k], STONE_WINDOW, look, 0.05)); } finally { sink.recess = 0; }
       }
       // the entrance pavilion: taller, its pediment, the portal, the drum and the dome behind
-      const ex0 = b.x0 - (proj - 0.35), rh = eave + 3.4;
-      sink.span('plaster', ex0, 0, -rw, b.x0 + dr, rh, rw);
-      const ef: Face = { origin: [ex0, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * rw };
-      for (const du of [-0.9, -0.35, 0.35, 0.9]) faceBox(sink, 'stone', ef, du * rw, rh / 2, 0.12, 0.62, rh - 0.6, 0.24, { decor: true, fineSides: true });
+      // (props census #9) its portal and windows cut through its walls, the leaf and the units in the reveals (they were
+      // laid on a solid span); a pilaster that would stand over the portal is left out (a narrow pavilion's portal is
+      // all its front)
+      const ex0 = b.x0 - (proj - 0.35), rh = eave + 3.4, dh = Math.min(1.1, rw - 0.35), erev = 0.3;
+      const eHoles = [{ u0: -dh, u1: dh, y0: 0, y1: 3.8 }];
+      if (rw > 3.2) for (const du of [-0.63, 0.63]) for (const y of [1.6, g0 + 1.0]) eHoles.push({ u0: du * rw - 0.6, u1: du * rw + 0.6, y0: y, y1: y + 2.5 });
+      const ef = holedBox(sink, 'plaster', ex0, -rw, b.x0 + dr, rw, 0, rh, { left: eHoles }, 0.36, erev).left;
+      for (const du of [-0.9, -0.35, 0.35, 0.9]) {
+        if (Math.abs(du * rw) - 0.31 < dh + 0.04) continue;
+        faceBox(sink, 'stone', ef, du * rw, rh / 2, 0.12, 0.62, rh - 0.6, 0.24, { decor: true, fineSides: true });
+      }
       faceBox(sink, 'stone', ef, 0, rh - 0.35, 0.2, 2 * rw + 0.4, 0.7, 0.4, { decor: true });
       const ped = [[-rw - 0.2, rh], [rw + 0.2, rh], [0, rh + rw * 0.48]] as const;
       sink.prism('stone', ped.map(([u, y]) => facePoint(ef, u, y, 0)), ef.out, 0.35);
-      faceBox(sink, 'structureWood', ef, 0, 1.9, 0.02, 2.2, 3.8, 0.06, { colour: door, decor: true });
-      archHead(sink, ef, 0, 3.8, 1.1, 'stone', 0.28);
-      if (rw > 3.2) for (const du of [-0.63, 0.63]) for (const y of [1.6, g0 + 1.0]) windowUnit(sink, ef, du * rw, y, 1.2, 2.5, STONE_WINDOW, look, 0.05);
+      faceBox(sink, 'structureWood', ef, 0, 1.9, -erev + 0.034, 2 * dh, 3.8, 0.06, { colour: door, decor: true });
+      archHead(sink, ef, 0, 3.8, dh, 'stone', 0.28);
+      sink.recess = erev;
+      try {
+        if (rw > 3.2) for (const du of [-0.63, 0.63]) for (const y of [1.6, g0 + 1.0]) windowUnit(sink, ef, du * rw, y, 1.2, 2.5, STONE_WINDOW, look, 0.05);
+      } finally { sink.recess = 0; }
       for (let k = 1; k <= 3; k++) sink.span('stone', ex0 - 0.45 * k, -0.3, -rw * 0.56 - 0.3 * k, ex0 - 0.45 * (k - 1), 0.6 - k * 0.15, rw * 0.56 + 0.3 * k, { decor: true });
       const dx = b.x0 + dr * 0.73, top = rh + 0.4;
       sink.cylinder('plaster', [dx, rh - 0.5, 0], 'y', 3.1, dr, 8, {}, dr, true, Math.PI / 8);

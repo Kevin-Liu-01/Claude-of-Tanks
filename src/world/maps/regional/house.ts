@@ -1590,6 +1590,13 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
 }
 
 /**
+ * Where a tall wall's narrow edges are split (holedPolygon's edge breaks): a centimetre over each of the weathering
+ * pass's damp breaks (weather.ts, 0.35, 1.0, 1.8 m), so its cut there never meets a corner (one quad's diagonal cut 2 cm
+ * from its corner left a 40 m sliver; a corner on the break in float32 was cut again a hair from itself).
+ */
+export const DAMP_EDGE_BREAKS: readonly number[] = [0.36, 1.01, 1.81];
+
+/**
  * A box (a podium, a lobby, a slab block) whose faces carry openings cut through them (props census #9): a core `cut`
  * in from every face and the faces holed slabs `cut` deep round it (front and back across the full width, the sides
  * between them), each opening's reveal back to `reveal` with the dark behind it, for a unit's pane or leaf to stand in.
@@ -1614,7 +1621,7 @@ export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0:
     const [ua, ub] = name === 'front' || name === 'back' ? [-wx / 2, wx / 2]
       : name === 'right' ? [-(wz / 2 - c('front')), wz / 2 - c('back')] : [-(wz / 2 - c('back')), wz / 2 - c('front')];
     holedPolygon(sink, bucket, faces[name], [[ua, y0], [ub, y0], [ub, y1], [ua, y1]], holes[name] ?? [], c(name), more.reveals?.[name] ?? reveal, opts,
-      more.stains?.[name] ?? [], more.edgeBreaks ?? []);
+      more.stains?.[name] ?? [], more.edgeBreaks ?? DAMP_EDGE_BREAKS);
   }
   return faces;
 }

@@ -15,7 +15,7 @@
 // Collision: every tower's structure is a few prisms (the cores, the slabs, the podium), so its shell bands merge; the
 // facades are dressing.
 import { PartSink, faceBox, facePanel, normalize3, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { holedBox, holedPolygon, type HoleRect, type Stain } from './house.ts';
+import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, type HoleRect, type Stain } from './house.ts';
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -143,13 +143,6 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
     f = e + 1;
   }
 }
-
-/**
- * Where a tall wall's narrow edges are split (holedPolygon's edge breaks): a centimetre over each of the weathering
- * pass's damp breaks (weather.ts, 0.35, 1.0, 1.8 m), so its cut there never meets a corner (a corner on the break in
- * float32 was cut again a hair from itself, a triangle of no width).
- */
-const DAMP_BREAKS = [0.36, 1.01, 1.81] as const;
 
 /** A burnt opening's soot as a stain of the wall it is cut through (holedPolygon's): darkest at the head, fading up. */
 function sootStain(u0: number, u1: number, y0: number, y1: number): Stain {
@@ -347,7 +340,7 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
         }
       }
       holedPolygon(sink, concrete, face, [[s0, -0.4], [s1, -0.4], [s1, top], [s0, top]], holes, end ? deepEnd : cut, end ? endRev : sideRev, {}, stains,
-        DAMP_BREAKS);
+        DAMP_EDGE_BREAKS);
       // a shell's strike: the render knocked off round it (on the wall, clear of the openings and the slab joints)
       if (look() < 0.35) {
         const cu = (look() - 0.5) * face.width * 0.5, cy = 1.0 + fh * (2 + look() * (floors - 4)), r = 0.5 + look() * 0.4;
@@ -460,7 +453,7 @@ const slabBlock: RegionalBuilder = (ctx) => {
           faceBox(sink, 'structureMetal', af, u, 2.95, 0.07, uw + 0.4, 0.5, 0.14, { decor: true, colour: shade(paint, 0.9) });
         }
       }
-      holedPolygon(sink, concrete, af, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, ah], [-W / 2, ah]], holes, wallT, rev, {}, [], DAMP_BREAKS);
+      holedPolygon(sink, concrete, af, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, ah], [-W / 2, ah]], holes, wallT, rev, {}, [], DAMP_EDGE_BREAKS);
       sink.dressing(mobile, () => shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), holes, look, 'stone'));
     }
     sink.span(concrete, -W / 2 - 0.1, top, z0 - 0.1, W / 2 + 0.1, top + 0.7, z1 + 0.1);
@@ -509,7 +502,7 @@ const slabBlock: RegionalBuilder = (ctx) => {
       facePanel(sink, 'glass', back, u, (gH + top) / 2, -rev + 0.016, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
     }
     holedBox(sink, concrete, -W / 2, z0, W / 2, z1, -0.4, top, { front: frontHoles, back: backHoles }, { front: deep, back: wallT, left: wallT, right: wallT }, rev, {},
-      { reveals: { front: frontRev }, stains: { front: frontStains, back: backStains }, edgeBreaks: DAMP_BREAKS });
+      { reveals: { front: frontRev }, stains: { front: frontStains, back: backStains }, edgeBreaks: DAMP_EDGE_BREAKS });
     // the shell strikes on the back: the render knocked off, clear of the openings (the painted holes are gone)
     sink.dressing(mobile, () => {
       shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), backHoles, look, 'stone');
@@ -554,7 +547,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       pHoles.push({ u0: u - 0.75, u1: u + 0.75, y0: y, y1: y + 1.4 });
       panelWindow(sink, pf, u, y, 1.5, 1.4, look, 0.04, bh, { reveal: rev, stains: pStains });
     }
-    holedBox(sink, concrete, -W / 2, bz0, W / 2, bz1, -0.4, bh, { front: pHoles }, wallT, rev, {}, { stains: { front: pStains }, edgeBreaks: DAMP_BREAKS });
+    holedBox(sink, concrete, -W / 2, bz0, W / 2, bz1, -0.4, bh, { front: pHoles }, wallT, rev, {}, { stains: { front: pStains }, edgeBreaks: DAMP_EDGE_BREAKS });
     sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
     if (stub) {
       // the gutted storeys: their window bays open to the burnt-out dark, the soot up the wall over them
@@ -564,7 +557,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
         tHoles.push({ u0: u - bw / 2, u1: u + bw / 2, y0: 0.65 + fl * 3.4, y1: 2.55 + fl * 3.4 });
       }
       holedBox(sink, concrete, -W / 2, tz0, W / 2, tz1, -0.4, th, { front: tHoles }, wallT, rev, {},
-        { stains: { front: [sootStain(-W / 2, W / 2, 2.6, th)] }, edgeBreaks: DAMP_BREAKS });
+        { stains: { front: [sootStain(-W / 2, W / 2, 2.6, th)] }, edgeBreaks: DAMP_EDGE_BREAKS });
     }
     for (const side of [-1, 1]) {
       const cx = side * (W / 2 - cs / 2 - 0.6), h = ch * (side > 0 ? 1 : 0.86 + rng() * 0.08);
@@ -573,7 +566,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       const soot = faces.map(() => h * (0.3 + look() * 0.3));
       const coreStain = (k: number): Stain[] => [{ u0: -cs / 2, u1: cs / 2, y0: soot[k], y1: h, bottom: 1, top: 0.42 }];
       holedBox(sink, concrete, cx - cs / 2, cz - cs / 2, cx + cs / 2, cz + cs / 2, -0.4, h, {}, 0.3, 0.24, {},
-        { stains: { front: coreStain(0), right: coreStain(1), back: coreStain(2), left: coreStain(3) }, edgeBreaks: DAMP_BREAKS });
+        { stains: { front: coreStain(0), right: coreStain(1), back: coreStain(2), left: coreStain(3) }, edgeBreaks: DAMP_EDGE_BREAKS });
       // the slab stubs on the inner face at every floor, rebar at the head
       for (let y = 3.4; y < h - 1; y += 3.4) {
         const inner: Face = faces.find((f) => f.out[0] === -side) ?? faces[0];
