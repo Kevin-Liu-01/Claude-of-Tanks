@@ -92,6 +92,11 @@ const profileS = Number(argValue('profile', 0));
 // --a2-profile (2026-10-14, the 224 returning-tab Garage freeze): a CPU profile of the returning tab from its first byte to
 // its Garage, saved as a2-garage.cpuprofile, with its heaviest self-time frames in report.a2Profile
 const a2Profile = process.argv.includes('--a2-profile');
+// --separate-browsers (2026-10-14): each seat in its own Chrome (its own GPU process), as players on separate machines;
+// the returning tab A2 opens in A's browser. The default (one browser, three contexts) shares one GPU process, whose
+// contention turned the returning tab's synchronous program links into minutes (the 224 Garage freeze)
+const separateBrowsers = process.argv.includes('--separate-browsers');
+const extraBrowsers = [];
 
 function freePort() {
   return new Promise((resolvePort, reject) => {
@@ -106,7 +111,7 @@ const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = { pass: false, failures: [], findings: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
-  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS },
+  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS, separateBrowsers },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
@@ -663,14 +668,16 @@ try {
     step('vite', { origin, cacheDir });
   }
 
-  browser = await puppeteer.launch({
+  const launchBrowser = () => puppeteer.launch({
     headless: !headful, protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,720'],
   });
+  browser = await launchBrowser();
+  if (separateBrowsers) extraBrowsers.push(await launchBrowser(), await launchBrowser());
   contextA = await browser.createBrowserContext();
-  const contextB = await browser.createBrowserContext();
-  const contextC = await browser.createBrowserContext();
+  const contextB = await (separateBrowsers ? extraBrowsers[0] : browser).createBrowserContext();
+  const contextC = await (separateBrowsers ? extraBrowsers[1] : browser).createBrowserContext();
   Object.assign(contexts, { a: contextA, b: contextB, c: contextC });
   pages.a = await contextA.newPage();
   pages.b = await contextB.newPage();
@@ -1135,6 +1142,7 @@ try {
   await writeFile(join(outputDir, 'report.json'), JSON.stringify(report, null, 2));
   const teardown = async () => {
     try { await browser?.close(); } catch { /* gone */ }
+    for (const extra of extraBrowsers) { try { await extra.close(); } catch { /* gone */ } }
     try { await vite?.close(); } catch { /* gone */ }
     try { await rooms?.close(); } catch { /* gone */ }
   };
