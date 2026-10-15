@@ -7858,6 +7858,14 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-14 — Verdant Fields: Prokhorovka's set pieces (landmarks L2 on main; the maps lane)
+
+The landmarks lane's L2 Verdant subset (visual/landmarks-l2, held for the owner's group preview) on main: the village
+church (domed, its churchyard, graves and the path from the road), Prokhorovka station on its line (the clearance berth:
+the line keeps clear of every solid without moving a placement stream; trees, grass, litter and field stacks keep off
+it), the station water tower, the kolkhoz grain store, its trestle water tower and its lettered arch with wings, the
+Civil War memorial square, the post mill on the southern swell and the smock mill on the northern. Nine of nine
+Verdant houses stand where they stood. Census [6797, 6465, 7364] -> [6816, 6679, 7332].
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
