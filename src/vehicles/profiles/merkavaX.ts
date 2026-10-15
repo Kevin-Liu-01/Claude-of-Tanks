@@ -400,7 +400,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
   ]));
   // The tube runs to the measured muzzle face (westXGeometry: it ended 20 mm short, 4.836 vs the source 4.856, once the
   // carved cannon bores stopped adding the factory's seated lip).
-  KIT.buildGun(P,{len:3.4302,r:.08485,baseR:.14,sleeve:true,evac:.43,evacR:2.0,collar:true,fullLengthTube:true});
+  KIT.buildGun(P,{len:3.4302,r:.08485,baseR:.14,sleeve:true,evac:.43,evacR:2.0,collar:true});
   const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.073,seed:333,tone:'two-tone',ammo:true,shield:false,ring:false});
   coax.position.set(.17,.2967,-.16);P.gunG.add(coax);
   P.muzzleZ=3.4302;P.topY=3.04-MK3.y;
