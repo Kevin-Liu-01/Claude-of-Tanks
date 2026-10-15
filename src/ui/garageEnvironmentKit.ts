@@ -1502,6 +1502,8 @@ export function buildGarageEnvironment(
     }
   };
   reseatFacilityTerraces();
+  // the reseat levels every facility terrace's core back to its datum; the bore is cut again after it
+  carveTunnelBore();
 
 
   const measurePlacementQuality = (): {
