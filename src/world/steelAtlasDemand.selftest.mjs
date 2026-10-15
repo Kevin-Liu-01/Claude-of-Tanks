@@ -9,11 +9,16 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, STEEL_STRIP_V, makeSteelAtlas, steelAtlasNeeded } from './propsSteelAtlas.ts';
 import { yardStructureKinds } from './yardDressing.ts';
+import { YARD_FAMILY_MATERIAL } from './maps/yardClutterKit.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 // --- the predicate against an independent reading of every plan
-const yard = new Set(yardStructureKinds());
+// (props lane A #2, 2026-10-15) the yards' families draw on the vertex-colour material: a yard kind needs the atlas only
+// while one of them draws steel (none now)
+const yardSteel = Object.values(YARD_FAMILY_MATERIAL).includes('steel');
+assert.equal(yardSteel, false, 'every yard family on the vertex-colour material');
+const yard = new Set(yardSteel ? yardStructureKinds() : []);
 const without = [];
 for (const id of MAP_IDS) {
   const props = getMapConfig(id).props ?? {};
@@ -26,7 +31,7 @@ for (const id of MAP_IDS) {
 // snapshot of authored data; every battlefield answers to the predicate above against its own plan instead.
 assert.equal(steelAtlasNeeded(['cottage', 'barn'], undefined), false);
 assert.equal(steelAtlasNeeded(['cottage', 'containerRow'], undefined), true, 'a container row');
-assert.equal(steelAtlasNeeded(['cottage', 'shed'], undefined), true, 'a yard kind (its profile places drums)');
+assert.equal(steelAtlasNeeded(['cottage', 'shed'], undefined), false, 'a yard kind: its drums are on the vertex-colour material');
 assert.equal(steelAtlasNeeded(['cottage'], 'steel'), true, 'corrugated cladding');
 assert.equal(steelAtlasNeeded(undefined, undefined), false, 'no plan, no steel');
 
