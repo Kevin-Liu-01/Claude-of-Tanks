@@ -2580,6 +2580,8 @@ export function addGarageFacilityDetails({
             0.04, 0.04, iron, 'structure', -drop);
         }
         operationalMachines += 1;
+        factoryProcessZones += 1; // the craft's refit in the dock is the yard's inspection and fabrication zone
+        environmentSpecificAssemblies += 1;
         looseParts += 6;
         servicePurposeTags.add('patrol-craft-refit');
       }
