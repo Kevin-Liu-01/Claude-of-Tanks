@@ -427,4 +427,7 @@ export default {
   clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25},
   minimap:{...verdant.minimap},
   shot:{pos:[-170,45,-170],look:[20,-4,30]},
+  // (2026-10-14, the maps lane: round 5's Tajo in August — a stream and its still pools down a 54 m slot, a breath of air
+  // down the gorge's axis, no foam, no breakers; the sheet's FFT block every water map authors)
+  ocean: { windSpeed: 1.4, windDirDeg: 270, fetchKm: 0.4, amplitude: 0.35, foam: 0, breakers: 0, caustics: 0.35 },
 } satisfies MapCompositionConfig;

@@ -29,7 +29,10 @@ for(const seed of [1337,19,8821]){
   dressMapExtras({mapId:'cliffbridge',extraKits:[],L:field._layout,heightField:field,rng:mulberry32(seed),buckets,obstacles,colliders});
   const bridges=colliders.filter(x=>x.kind==='bridge');assert.ok(bridges.length>1);
   assert.ok(bridges.every(r=>r.shape2.parts.length<=64),'every bridge record fits server format');
-  for(let z=-98;z<=98;z+=2)for(const x of [-7,0,7])assert.equal(structureTopAt(bridges,bridges.length,x,z,deck.deckY+.1),deck.deckY,'continuous real deck support');
+  // (2026-10-14, the maps lane: Aegis round 5's Puente Nuevo spans the waist, 80 m between the abutments on the rock — was the
+  // 200 m viaduct's z -98..98; the deck's support is asked over its span less 2 m at each abutment)
+  const span=cfg.terrain.bridges[0].spanM/2-2;
+  for(let z=-span;z<=span;z+=2)for(const x of [-7,0,7])assert.equal(structureTopAt(bridges,bridges.length,x,z,deck.deckY+.1),deck.deckY,'continuous real deck support');
   assert.equal(bridgeBallFloor(field,0,0,deck.deckY+.1),deck.deckY,'rolling ball stays on bridge');
   assert.equal(bridgeBallFloor(field,0,0,deck.bedY+2),field.getHeightAt(0,0),'ball below bridge is not teleported up');
   assert.equal(bridgeBallFloor(field,25,0,deck.deckY),field.getHeightAt(25,0),'ball falls when it leaves the span');

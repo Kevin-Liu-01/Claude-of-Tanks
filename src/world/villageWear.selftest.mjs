@@ -104,6 +104,9 @@ function activityCoverage(before, after, size, patches) {
 // off-road wear on the gorge walls under the rect, the most of the blanket's area kept, every bit of it inside the patches.
 function gorgeCoverage(before, after, size, patches) {
   const bounds = patches.map(extent), texel = 1024 / size;
+  // (2026-10-14, the maps lane) rounds 4-5's gorge floor runs to the lower walls' foot (wall [0.76, 0.86]: 73 m out where
+  // the gorge opens) and its dry bed with it, so the band's floor share is the bed's; the walls are what lies past it
+  const bedBounds = patches.filter((patch) => patch.bed).map(extent);
   let oldArea = 0, newArea = 0, wallWear = 0;
   for (let i = 0; i < before.length; i += 4) {
     if (before[i] || before[i + 2]) continue;
@@ -112,7 +115,7 @@ function gorgeCoverage(before, after, size, patches) {
     newArea += texel ** 2;
     const col = i / 4 % size, row = Math.floor(i / 4 / size);
     const x = (col + .5) * texel - 512, z = (row + .5) * texel - 512;
-    if (Math.abs(x) < 130 && Math.abs(z) > 58 && Math.abs(z) < 86) wallWear += texel ** 2;
+    if (Math.abs(x) < 130 && Math.abs(z) > 58 && Math.abs(z) < 86 && !bedBounds.some(b => x >= b[0] && x <= b[1] && z >= b[2] && z <= b[3])) wallWear += texel ** 2;
     assert.ok(bounds.some(b => x >= b[0] && x <= b[1] && z >= b[2] && z <= b[3]),
       'remaining off-road wear stays inside authored activity support');
   }
@@ -169,7 +172,17 @@ function authoredSupport(cfg) {
     const corner = (u, v) => [x + u * c + v * s, z - u * s + v * c];
     return { boundary: [corner(-hw, -hl), corner(hw, -hl), corner(hw, hl), corner(-hw, hl)], feather: 5, strength: 0.9 };
   });
-  return [...(cfg.terrain.workedGround ?? []), ...yards];
+  // (2026-10-14, the maps lane, Aegis Crossing rounds 4-5 on main: a gorge landform's dry bed, LandformConfig.bed —
+  // terrain.ts stamps the river's worn gravel inside its walls' foot along its level reach — is authored activity support
+  // as the worked-ground patches are: the box its stamp can reach, along the gorge 0.38 of its length each side, across
+  // it the walls' foot)
+  const beds = (cfg.terrain.landforms ?? []).filter((form) => form.kind === 'gorge' && form.bed).map((form) => {
+    const a = (form.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    const hl = (form.length || 700) * 0.38, hw = (form.width || 90) * (form.wall ? form.wall[0] : 0.65);
+    const corner = (u, v) => [form.x + u * c - v * s, form.z + u * s + v * c];
+    return { boundary: [corner(-hl, -hw), corner(hl, -hw), corner(hl, hw), corner(-hl, hw)], feather: 0, strength: 1, bed: true };
+  });
+  return [...(cfg.terrain.workedGround ?? []), ...yards, ...beds];
 }
 function checkPilot(id, seed) {
   const cfg = getMapConfig(id);
