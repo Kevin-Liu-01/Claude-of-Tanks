@@ -2,15 +2,20 @@
 // The placement is computed here from the layout code itself for every touch viewport of the rendered receipt
 // (tools/battle-hud-layout.browser.mjs) x 1-7 controls x the obstacle sets its states produce (objective shown or not,
 // the landscape countdown measured or not yet seen), and must keep the dock's one rule: every control is a tile of
-// 44 px or more (48 where it fits), nothing scrolls, the dock covers no touch control, instrument, reserved lane, the
-// crosshair or its ring; when the row does not fit the last tile is More and the rest open beside it, clear of the
-// touch controls and the crosshair. The layout owner's DOM path runs on a scripted page: tiles land in their slots,
-// More opens and closes, a FIRE press never relayouts the HUD, an unchanged layout never searches again.
+// 44 px or more (48 where it fits), nothing scrolls, the dock covers no touch control, instrument, anything the reticle
+// draws in any sight at any bloom (touchReticleFootprint: ring, scope arms, magazine and reload countdown, the scope's
+// ammunition line, zoom plate and range tag) or the gun-limit warning's place, and no reserved lane unless no other
+// room exists; when the row does not fit the last tile is More and the rest open beside it, clear of the touch
+// controls and the aim keep-out. The layout owner's DOM path runs on a scripted page: tiles land in their slots, More
+// opens and closes, a docked tile acts on a tap and hands a swipe to the aim pad, holding FIRE through a relayout
+// keeps the placement (and an open More panel), an unchanged layout never searches again.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   placeTouchActionDock, createCooldownSweep, touchReticleKeepOut, touchAimWarningSlot, touchReservedLanes, touchCountdownEstimate,
+  touchReticleFootprint, touchAimKeepOut,
   TOUCH_ACTION_TILE_PX, TOUCH_ACTION_MIN_TILE_PX, TOUCH_ACTION_GAP_PX, TOUCH_ACTION_CLEARANCE_PX, TOUCH_ACTION_RETICLE,
+  TOUCH_ACTION_RETICLE_READOUTS,
 } from './touchActionDock.ts';
 import { arrangeVehicleControls } from './vehicleControlOrder.ts';
 
@@ -25,13 +30,16 @@ const discDistance = (r, d) => Math.hypot(Math.max(r.x - d.x, 0, d.x - r.x - r.w
 const RETICLE_GAP = 2;
 const clearanceOf = (tile) => (tile === TOUCH_ACTION_TILE_PX ? TOUCH_ACTION_CLEARANCE_PX : 6);
 
+const keepDistance = (r, k) => 'r' in k ? discDistance(r, k) - k.r
+  : Math.hypot(Math.max(r.x - k.x - k.w, 0, k.x - r.x - r.w), Math.max(r.y - k.y - k.h, 0, k.y - r.y - r.h));
+
 /**
- * The dock's rule for one placement. `hard`: touch controls (dock and panel); `soft`: instruments and reserved lanes
- * (dock only); `fallbackPanel`: the panel may have needed its last resort (clear of the dock and crosshair only).
+ * The dock's rule for one placement. `hard`: touch controls (dock and panel); `soft`: instruments (dock only); `lanes`:
+ * reserved lanes (dock only, unless no placement clear of them exists at all); `keep`: the aim keep-out (dock and
+ * panel, always); `fallbackPanel`: the panel may have needed its last resort (clear of the dock and keep-out only).
  */
-function checkDock(name, { width, height, hard, soft, insets = {} }, count, dock, { fallbackPanel = false } = {}) {
+function checkDock(name, { width, height, hard, soft, lanes = [], keep, insets = {}, anchor }, count, dock, { fallbackPanel = false } = {}) {
   assert.ok(dock, `${name}: ${count} controls get a dock`);
-  const keep = touchReticleKeepOut(width, height);
   const { tile } = dock;
   assert.ok(tile === TOUCH_ACTION_TILE_PX || tile === TOUCH_ACTION_MIN_TILE_PX, `${name}: 48 px tiles, 44 px (Apple's minimum) at least`);
   assert.equal(dock.more, dock.flyout.length > 0, `${name}: More exactly when controls wait behind it`);
@@ -44,13 +52,15 @@ function checkDock(name, { width, height, hard, soft, insets = {} }, count, dock
   for (const [i, [kind, r]] of all.entries()) {
     assert.ok(r.w === tile && r.h === tile && r.w >= 44 && r.h >= 44, `${name}: ${kind} ${i} is a ${tile} px tile`);
     assert.ok(r.x >= left && r.y >= top && r.x + r.w <= right && r.y + r.h <= bottom, `${name}: ${kind} ${i} stays on screen`);
-    assert.ok(discDistance(r, keep) >= keep.r + RETICLE_GAP - 1e-6,
-      `${name}: ${kind} ${i} keeps off the crosshair and its full-bloom ring (${discDistance(r, keep).toFixed(1)} < ${keep.r})`);
+    for (const [j, k] of keep.entries()) {
+      assert.ok(keepDistance(r, k) >= RETICLE_GAP - 1e-6,
+        `${name}: ${kind} ${i} keeps off the reticle's footprint / the warning's place (keep-out ${j}: ${keepDistance(r, k).toFixed(1)} px)`);
+    }
     if (kind === 'tile' || !fallbackPanel) {
       for (const [j, o] of hard.entries()) assert.ok(!overlaps(r, o, clearanceOf(tile) - 1e-6), `${name}: ${kind} ${i} within ${clearanceOf(tile)} px of touch control ${j}`);
     }
     if (kind === 'tile') {
-      for (const [j, o] of soft.entries()) assert.ok(!overlaps(r, o, clearanceOf(tile) - 1e-6), `${name}: tile ${i} within ${clearanceOf(tile)} px of instrument/lane ${j}`);
+      for (const [j, o] of soft.entries()) assert.ok(!overlaps(r, o, clearanceOf(tile) - 1e-6), `${name}: tile ${i} within ${clearanceOf(tile)} px of instrument ${j}`);
     } else {
       assert.ok(!overlaps(r, dock, clearanceOf(tile) - 1e-6), `${name}: the panel clears the dock`);
     }
@@ -68,7 +78,14 @@ function checkDock(name, { width, height, hard, soft, insets = {} }, count, dock
   assert.equal(dock.tiles[0].x, dock.x, `${name}: the first control is the leftmost tile`);
   assert.equal(dock.tiles[0].y + tile, dock.y + dock.h, `${name}: the first control is on the bottom row`);
   assert.ok(dock.rows <= 3, `${name}: three rows at most`);
+  // A reserved lane is given up only when nothing at all (not even a lone More tile) clears it.
+  if (dock.tiles.some((r) => lanes.some((o) => overlaps(r, o, clearanceOf(tile) - 1e-6)))) {
+    assert.equal(placeTouchActionDock({ width, height, count, obstacles: hard, soft: [...soft, ...lanes], keepOut: keep, anchor, insets }), null,
+      `${name}: the dock stands in a reserved lane only when no placement clears the lanes`);
+    lanesGivenUp.add(name.split(' ')[0]);
+  }
 }
+const lanesGivenUp = new Set();
 
 // ---------------------------------------------------------------------------------------------------------------
 // Every touch viewport of the rendered receipt. touchActionDock.fixture.json: CSS px rects of the visible touch
@@ -132,22 +149,24 @@ for (const viewport of VIEWPORTS) {
     const hard = Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r);
     const instruments = Object.entries(o).filter(([k]) => !HARD.test(k)).map(([, r]) => r);
     for (const countdown of landscape ? [null, viewport.countdown] : [null]) {
-      const lanes = touchReservedLanes({ width, height, objectiveBottom, scoreBottom, minimapBottom: o.minimap.y + o.minimap.h,
-        countdown, sixthHeight: 32 });
-      const soft = [...instruments, ...lanes];
+      const minimapBottom = o.minimap.y + o.minimap.h;
+      const lanes = touchReservedLanes({ width, height, objectiveBottom, scoreBottom, minimapBottom, countdown, sixthHeight: 32 });
+      const soft = instruments;
+      const keep = touchAimKeepOut(width, height, minimapBottom);
       const anchor = { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 };
       const label = `${name} ${objective ? 'objective' : 'standard'}${landscape ? countdown ? ' countdown-seen' : ' countdown-unseen' : ''}`;
       const row = [];
       for (let count = 1; count <= 7; count++) {
-        const dock = placeTouchActionDock({ width, height, count, obstacles: hard, soft, keepOut: [touchReticleKeepOut(width, height)], anchor });
-        checkDock(`${label} x${count}`, { width, height, hard, soft }, count, dock);
+        const dock = placeTouchActionDock({ width, height, count, obstacles: hard, soft, lanes, keepOut: keep, anchor });
+        checkDock(`${label} x${count}`, { width, height, hard, soft, lanes, keep, anchor }, count, dock);
         placements++;
-        if (viewport.cases.some((c) => OWNER.has(c))) assert.equal(dock.more, false, `${label}: the owner's phones show all ${count} controls`);
-        if (viewport.cases.includes('landscape')) {
-          assert.equal(dock.tile, TOUCH_ACTION_TILE_PX, `${label}: 844 x 390 keeps 48 px tiles`);
-          assert.equal(dock.rows, 1, `${label}: 844 x 390 keeps one row`);
+        // The owner's phones: every control on the dock itself, but seven on 360 x 640 (its only room clear of the
+        // reticle is the band under the minimap: six tiles there, the seventh behind More).
+        if (viewport.cases.some((c) => OWNER.has(c)) && (count <= 6 || !viewport.cases.includes('small-phone'))) {
+          assert.equal(dock.more, false, `${label}: the owner's phones show all ${count} controls`);
         }
-        if (count >= 5) row.push(`${count}:${dock.tile}px ${dock.columns}x${dock.rows}${dock.more ? ` +More(${dock.flyout.length})` : ''}`);
+        if (viewport.cases.includes('landscape')) assert.equal(dock.rows, 1, `${label}: 844 x 390 keeps one row`);
+        if (count >= 5) row.push(`${count}:${dock.tile}px ${dock.columns}x${dock.rows}@${dock.x},${dock.y}${dock.more ? ` +More(${dock.flyout.length})` : ''}`);
       }
       if (objective && !countdown) summary.push(`${name} ${row.join(' ')}`);
     }
@@ -179,6 +198,62 @@ assert.match(read('../engine/cameraRig.ts'), /raycast from the camera through sc
 for (const [w, h, r] of [[360, 640, 54], [390, 844, 59], [844, 390, 59], [320, 568, 48], [568, 256, 39], [1024, 768, 116], [200, 150, 32]]) {
   assert.deepEqual(touchReticleKeepOut(w, h), { x: w / 2, y: h / 2, r }, `${w}x${h}: keep-out radius`);
 }
+// Beyond the ring, the keep-out is everything else the reticle canvas draws (verifier 2026-10-15: the dock covered the
+// scope's ammunition line and zoom plate on 390 x 844). touchReticleFootprint restates these hud.ts placements; a
+// change to any of them fails here until the footprint follows.
+for (const [pattern, what] of [
+  [/if \(h <= 300\) return draw\.cy \+ 32;\n\s*if \(h <= 430\) return draw\.cy \+ 44;\n\s*return Math\.min\(\n\s*draw\.cy \+ Math\.max\(draw\.radius \* 1\.02 \+ 24, draw\.radius \* 1\.55 \+ 18, 96\),\n\s*h - 176,\n\s*\);/, 'sniperAmmoReadoutY'],
+  [/ctx\.font = `700 13\.5px \$\{FONT_COND\}`;\n\s*const countW = ctx\.measureText\(`\$\{count\} `\)\.width;\n\s*ctx\.font = `800 9px \$\{FONT_COND\}`;/, 'the ammunition line'],
+  [/const y = sniperAmmoReadoutY\(draw\) \+ \(h <= 300 \? 18 : 24\);\n\s*const text = `×\$\{\(view\.zoom \|\| 8\)\.toFixed\(1\)\}`;\n\s*ctx\.font = `700 16px \$\{FONT_COND\}`;/, 'paintSniperZoom'],
+  [/const halfWidth = ctx\.measureText\(text\)\.width \/ 2 \+ 12;[\s\S]{0,200}ctx\.moveTo\(draw\.cx - halfWidth - 20, y - 5\.5\);/, 'the zoom plate rules'],
+  [/const offset = 0\.7071 \* \(draw\.radius \+ 9\);[\s\S]{0,260}draw\.cx \+ offset \+ 4,\n\s*draw\.cy \+ offset \+ 12,/, 'paintSniperDistance'],
+  [/const gap = radius \+ 3;\n\s*const armEnd = radius \* 1\.55 \+ 3;/, 'the scope cross arms'],
+  [/paintScopeCrossArms\(cx, cy, gap, armEnd, 'rgba\(4,7,6,0\.38\)', 2\.4\);/, 'the arms\' under-stroke'],
+  [/const tick = i % 2 === 0 \? 4\.5 : 3;/, 'the mil ticks'],
+  [/\? Math\.min\(1\.8, 1\.1 \+ 0\.085 \* \(view\.zoom \|\| 8\)\)/, 'the scope zoom scale'],
+  [/state\.centerClearanceRadius = 14 \+ \(state\.zoomScale - 1\) \* 9;/, 'the centre clearance'],
+  [/const shellH = draw\.sniper \? 16 : 14;[\s\S]{0,400}const y0 = draw\.cy \+ draw\.centerClearanceRadius \+ 6;/, 'the magazine rack'],
+  [/const AUTOLOADER_HUD_ARC_DEPTH = 2\.25;/, 'the rack arc'],
+  [/\? draw\.magazineBottomY \+ 15\n\s*: draw\.cy \+ draw\.centerClearanceRadius \+ 15;/, 'the reload countdown'],
+  [/if \(pending\) return 'SWITCHING';/, 'the countdown while a round is chosen'],
+]) assert.match(hud, pattern, `touchReticleFootprint restates hud.ts ${what}`);
+// The footprint covers each readout, independently placed from those formulas, at rest and at full bloom, in every
+// touch viewport: the ammunition line, the zoom plate with its rules, the range tag, the countdown and rack, the arms.
+const inFootprint = (footprint, x, y) => footprint.some((k) => 'r' in k ? Math.hypot(x - k.x, y - k.y) <= k.r
+  : x >= k.x && x <= k.x + k.w && y >= k.y && y <= k.y + k.h);
+for (const { width, height } of VIEWPORTS) {
+  const footprint = touchReticleFootprint(width, height);
+  const cx = width / 2, cy = height / 2;
+  const ceil = .15 * Math.min(width, height);
+  for (const r of [11, (11 + ceil) / 2, ceil]) {
+    const ammo = height <= 300 ? cy + 32 : height <= 430 ? cy + 44 : Math.min(cy + Math.max(r * 1.02 + 24, r * 1.55 + 18, 96), height - 176);
+    const zoom = ammo + (height <= 300 ? 18 : 24);
+    const tag = .7071 * (r + 9);
+    const points = [
+      ...[-34, 0, 34].flatMap((dx) => [[cx + dx, ammo - 10], [cx + dx, ammo + 3]]), // "120 APFSDS"
+      ...[-53, -24, 0, 24, 53].flatMap((dx) => [[cx + dx, zoom - 12], [cx + dx, zoom + 4]]), // "x25.0" and its rules
+      [cx + tag + 4, cy + tag + 3], [cx + tag + 44, cy + tag + 3], [cx + tag + 4, cy + tag + 15], [cx + tag + 44, cy + tag + 15], // "1500 m"
+      [cx - 44, cy + 59], [cx + 44, cy + 59], [cx, cy + 20], [cx + 36, cy + 44], // SWITCHING, the rack and its +N
+      [cx, cy - r * 1.55 - 3], [cx, cy + r * 1.55 + 3], [cx - r * 1.55 - 3, cy], [cx + r * 1.55 + 3, cy], // arm ends
+    ];
+    for (const [x, y] of points) assert.ok(inFootprint(footprint, x, y), `${width}x${height}: r ${r.toFixed(1)}: the reticle's footprint covers (${x.toFixed(1)}, ${y.toFixed(1)})`);
+  }
+}
+assert.ok(TOUCH_ACTION_RETICLE_READOUTS.zoomHalfWidthPx >= 53 && TOUCH_ACTION_RETICLE_READOUTS.stackHalfWidthPx >= 44);
+// The verifier's counterexample, 390 x 844: the zoom plate "x8.0" centred at x 195, baseline 542 at rest and 555 at
+// full bloom; no placement for any count may touch it (the old 5-control dock at (56, 537) did).
+{
+  const v = VIEWPORTS.find((viewport) => viewport.cases.includes('phone'));
+  const plate = { x: 195 - 50, y: 542 - 12, w: 100, h: 555 + 4 - (542 - 12) };
+  const o = v.obstacles;
+  for (let count = 1; count <= 7; count++) {
+    const dock = placeTouchActionDock({ width: 390, height: 844, count,
+      obstacles: Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r), soft: Object.entries(o).filter(([k]) => !HARD.test(k)).map(([, r]) => r),
+      lanes: touchReservedLanes({ width: 390, height: 844, objectiveBottom: o.mode.y + o.mode.h, scoreBottom: o.top.y + o.top.h, minimapBottom: o.minimap.y + o.minimap.h, countdown: null, sixthHeight: 32 }),
+      keepOut: touchAimKeepOut(390, 844, o.minimap.y + o.minimap.h), anchor: v.anchor });
+    for (const r of [...dock.tiles, ...dock.flyout]) assert.ok(!overlaps(r, plate), `390x844 x${count}: no tile on the scope's zoom plate`);
+  }
+}
 
 // The countdown estimate is the stylesheet's own placement: it reproduces both measured countdown boxes.
 for (const viewport of VIEWPORTS.filter((v) => v.source === 'measured' && v.countdown)) {
@@ -208,11 +283,12 @@ for (const [minWidth, widthRange, minHeight, heightRange] of [[320, 700, 256, 60
     const hard = Array.from({ length: 2 + Math.floor(random() * 10) }, box);
     const soft = Array.from({ length: Math.floor(random() * 12) }, box);
     const count = 1 + Math.floor(random() * 7);
-    const dock = placeTouchActionDock({ width, height, count, obstacles: hard, soft, keepOut: [touchReticleKeepOut(width, height)] });
+    const keep = touchReticleFootprint(width, height);
+    const dock = placeTouchActionDock({ width, height, count, obstacles: hard, soft, keepOut: keep });
     if (!dock) continue;
     placed++;
     if (dock.more) withMore++;
-    checkDock(`random ${width}x${height} ${run}`, { width, height, hard, soft }, count, dock, { fallbackPanel: true });
+    checkDock(`random ${width}x${height} ${run}`, { width, height, hard, soft, keep }, count, dock, { fallbackPanel: true });
   }
 }
 assert.ok(placed > 550 && withMore > 20, `random layouts admit a dock (${placed}/600, ${withMore} with More)`);
@@ -243,7 +319,7 @@ const crowded = placeTouchActionDock({ width: 300, height: 200, count: 6, keepOu
   obstacles: [{ x: 0, y: 0, w: 300, h: 135 }, { x: 0, y: 135, w: 100, h: 65 }, { x: 260, y: 135, w: 40, h: 65 }] });
 assert.equal(crowded.more, true, 'a 160 px lane holds three 44 px tiles: two controls and More');
 assert.deepEqual([crowded.tile, crowded.shown, crowded.flyout.length], [44, 2, 4]);
-checkDock('crowded', { width: 300, height: 200, hard: [{ x: 0, y: 0, w: 300, h: 135 }, { x: 0, y: 135, w: 100, h: 65 }, { x: 260, y: 135, w: 40, h: 65 }], soft: [] }, 6, crowded, { fallbackPanel: true });
+checkDock('crowded', { width: 300, height: 200, hard: [{ x: 0, y: 0, w: 300, h: 135 }, { x: 0, y: 135, w: 100, h: 65 }, { x: 260, y: 135, w: 40, h: 65 }], soft: [], keep: [touchReticleKeepOut(300, 200)] }, 6, crowded, { fallbackPanel: true });
 // A 44 px row by the thumbs beats a 48 px block across the screen; 48 px wins when both are as close.
 const thumbs = placeTouchActionDock({ width: 600, height: 400, count: 4, anchor: { x: 300, y: 370 },
   obstacles: [{ x: 0, y: 0, w: 600, h: 40 }, { x: 0, y: 330, w: 190, h: 70 }, { x: 410, y: 330, w: 190, h: 70 }, { x: 0, y: 250, w: 600, h: 25 }] });
@@ -303,14 +379,25 @@ assert.doesNotMatch(css, /hud-systems-columns/, 'slots, not a column count, plac
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// The layout owner on a scripted touch page (the measured 320 x 568 phone with seven controls: four slots fit, so
-// three controls show and four wait behind More): slots are written, More opens and closes, presses never relayout.
-const originals = new Map(['document', 'window', 'ResizeObserver', 'MutationObserver', 'requestAnimationFrame', 'getComputedStyle']
+// The layout owner on a scripted touch page (the measured 320 x 568 phone with seven controls: More and the rest behind
+// it): slots are written, More opens and closes, a docked tile acts on a tap and hands a swipe to the aim pad, presses
+// never relayout, and holding FIRE through a relayout keeps the placement and an open panel.
+const originals = new Map(['document', 'window', 'ResizeObserver', 'MutationObserver', 'requestAnimationFrame', 'getComputedStyle', 'PointerEvent']
   .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
 try {
   const frames = new Map(); let nextFrame = 1;
   let mutationCallback = null, resizeCallback = null; const mutationTargets = new Set(); const resizeTargets = new Set();
   const documentListeners = [];
+  // One event through the page: document capture listeners (all of them, as on one node), then the target's own unless
+  // a capture listener stopped propagation.
+  function dispatch(target, type, init = {}) {
+    let stopped = false;
+    const event = { type, target, detail: 1, pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 0, clientY: 0, ...init,
+      preventDefault() {}, stopPropagation() { stopped = true; } };
+    for (const listener of documentListeners) if (listener.type === type && listener.capture) listener.fn(event);
+    if (!stopped) target.listeners.get(type)?.(event);
+    return event;
+  }
   class FakeStyle {
     constructor() { this.values = new Map(); this.cssText = ''; }
     getPropertyValue(key) { return this.values.get(key) ?? ''; }
@@ -335,7 +422,13 @@ try {
     toggleAttribute(key, on) { if (on) this.attrs.set(key, ''); else this.attrs.delete(key); }
     getClientRects() { return this.visible && !this.hiddenFlag ? [{}] : []; }
     getBoundingClientRect() { const r = this.rect ?? { x: 0, y: 0, w: 0, h: 0 }; return { left: r.x, top: r.y, right: r.x + r.w, bottom: r.y + r.h, width: r.w, height: r.h, x: r.x, y: r.y }; }
-    matches(selector) { return selector.split(',').some((s) => this.selectors.includes(s.trim())); }
+    matches(selector) {
+      if (selector === '.down,:active') return !!this.pressed;
+      return selector.split(',').some((s) => this.selectors.includes(s.trim()));
+    }
+    closest(selector) { for (let node = this; node; node = node.parentElement) if (node.matches?.(selector)) return node; return null; }
+    click() { this.clicks = (this.clicks ?? 0) + 1; dispatch(this, 'click', { detail: 0 }); }
+    dispatchEvent(event) { (this.received ??= []).push(event); return true; }
     contains(node) { return node === this || this.children.includes(node); }
     querySelector(selector) { return this.children.find((c) => c.matches(selector)) ?? null; }
     addEventListener(type, fn) { this.listeners.set(type, fn); }
@@ -360,6 +453,8 @@ try {
   for (let i = 0; i < 3; i++) { const shell = new FakeElement(['.cot-shell'], o.ammo); shell.classList.contains = (c) => c === 'cot-shell'; shells.append(shell); }
   for (const [key, selector] of [['dp', '.cot-dp'], ['drive', '.cot-drive'], ['minimap', '.cot-minimap'], ['top', '.cot-top'], ['mode', '.cot-mode-status.show'], ['net', '.cot-net']]) el([selector], o[key]);
   el(['.cot-sixth'], { x: 73, y: 111, w: 214, h: 42 });
+  // touchControls.ts: the swipe-to-aim pad, the right 62 % of the screen below 18 % of its height.
+  const aimPad = el(['.cot-touch-aim.on .aimpad'], { x: v.width * .38, y: v.height * .18, w: v.width * .62, h: v.height * .82 });
   const row = el(['.cot-vehicle-controls'], { x: 12, y: 300, w: 300, h: 44 });
   const tiles = Array.from({ length: 7 }, (_, i) => { const tile = new FakeElement([`.cot-vehicle-controls>button`], { x: 12 + i * 77, y: 300, w: 74, h: 44 }, 'button'); row.append(tile); return tile; });
   const document = {
@@ -376,6 +471,7 @@ try {
   globalThis.getComputedStyle = () => ({ visibility: 'visible', paddingTop: '0px', paddingRight: '0px', paddingBottom: '0px', paddingLeft: '0px' });
   globalThis.requestAnimationFrame = (fn) => { const id = nextFrame++; frames.set(id, fn); return id; };
   globalThis.ResizeObserver = class { constructor(fn) { resizeCallback = fn; } observe(target) { resizeTargets.add(target); } };
+  globalThis.PointerEvent = class { constructor(type, init) { Object.assign(this, init); this.type = type; } };
   globalThis.MutationObserver = class { constructor(fn) { mutationCallback = fn; } observe(target) { mutationTargets.add(target); } };
   const flush = () => { const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(); };
   const { installBattleHudLayout } = await import('./battleHudLayout.ts');
@@ -391,9 +487,9 @@ try {
   const dockTop = Number.parseFloat(body.style.getPropertyValue('--hud-systems-top'));
   const expected = placeTouchActionDock({ width: v.width, height: v.height, count: 7,
     obstacles: [o.joy, o.fire, o.fireAlt, o.scope, o.autoaim, o.chrome, { x: o.con0.x, y: o.con0.y, w: o.con0.w, h: o.con2.y + o.con2.h - o.con0.y }, o.ammo],
-    soft: [o.dp, o.drive, o.minimap, o.top, o.mode, o.net, o.ammoDrawerOpen, ...touchReservedLanes({ width: v.width, height: v.height,
-      objectiveBottom: o.mode.y + o.mode.h, scoreBottom: o.top.y + o.top.h, minimapBottom: o.minimap.y + o.minimap.h, countdown: null, sixthHeight: 42 })],
-    keepOut: [touchReticleKeepOut(v.width, v.height)], anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 } });
+    soft: [o.dp, o.drive, o.minimap, o.top, o.mode, o.net, o.ammoDrawerOpen], lanes: touchReservedLanes({ width: v.width, height: v.height,
+      objectiveBottom: o.mode.y + o.mode.h, scoreBottom: o.top.y + o.top.h, minimapBottom: o.minimap.y + o.minimap.h, countdown: null, sixthHeight: 42 }),
+    keepOut: touchAimKeepOut(v.width, v.height, o.minimap.y + o.minimap.h), anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 } });
   assert.deepEqual([tileSize, dockLeft, dockTop], [expected.tile, Math.floor(expected.x), Math.floor(expected.y)], 'the page uses the solver\'s placement');
   for (const [i, tile] of tiles.entries()) {
     const slot = i < expected.shown ? expected.tiles[i] : expected.flyout[i - expected.shown];
@@ -418,14 +514,69 @@ try {
   assert.ok(!body.hasAttribute('data-hud-dock-open'), 'a moved touch control does');
   fire.rect = { ...fire.rect, y: fire.rect.y + 1 };
   resizeCallback([]); flush();
+  // Holding FIRE (.down, scale .94 about its centre) through a relayout: the pressed button keeps its resting box, so
+  // the placement and an open More panel stand (verifier 2026-10-15: a hit notice during a hold closed the panel).
+  {
+    const resting = fire.rect;
+    body.toggleAttribute('data-hud-dock-open', true);
+    fire.pressed = true;
+    fire.rect = { x: resting.x + resting.w * .03, y: resting.y + resting.h * .03, w: resting.w * .94, h: resting.h * .94 };
+    resizeCallback([]); flush();
+    assert.ok(body.hasAttribute('data-hud-dock-open'), 'holding FIRE through a relayout keeps the placement and the open panel');
+    fire.pressed = false; fire.rect = resting;
+    resizeCallback([]); flush();
+    assert.ok(body.hasAttribute('data-hud-dock-open'), 'and so does releasing it');
+    body.toggleAttribute('data-hud-dock-open', false);
+  }
+  // Tap or swipe: a docked tile acts when a touch lifts within 10 px, through its keyboard path (click, detail 0); a
+  // touch that travels farther acts on nothing and, begun over the aim pad, becomes the pad's swipe from where it began.
+  {
+    const shown = tiles[0];
+    const centre = (node) => ({ clientX: node.rect.x + node.rect.w / 2, clientY: node.rect.y + node.rect.h / 2 });
+    const before = shown.clicks ?? 0;
+    const down = dispatch(shown, 'pointerdown', { ...centre(shown), pointerId: 7 });
+    assert.equal(shown.clicks ?? 0, before, 'a touch on a tile does not act on touch-down');
+    dispatch(shown, 'pointermove', { clientX: down.clientX + 6, clientY: down.clientY + 5, pointerId: 7 });
+    dispatch(shown, 'pointerup', { clientX: down.clientX + 6, clientY: down.clientY + 5, pointerId: 7 });
+    assert.equal(shown.clicks, before + 1, 'lifted within the tap slop, it acts once');
+    // A swipe begun on a tile over the aim pad aims.
+    const start = { clientX: aimPad.rect.x + 30, clientY: aimPad.rect.y + aimPad.rect.h - 60, pointerId: 8 };
+    dispatch(shown, 'pointerdown', start);
+    dispatch(shown, 'pointermove', { clientX: start.clientX + 4, clientY: start.clientY, pointerId: 8 });
+    assert.equal(aimPad.received?.length ?? 0, 0, 'within the slop nothing is handed over yet');
+    dispatch(shown, 'pointermove', { clientX: start.clientX + 34, clientY: start.clientY - 12, pointerId: 8 });
+    dispatch(aimPad, 'pointerup', { clientX: start.clientX + 34, clientY: start.clientY - 12, pointerId: 8 });
+    assert.deepEqual(aimPad.received.map((e) => [e.type, e.pointerId, e.clientX, e.clientY]),
+      [['pointerdown', 8, start.clientX, start.clientY], ['pointermove', 8, start.clientX + 34, start.clientY - 12]], 'the aim pad takes the swipe from where it began');
+    assert.equal(shown.clicks, before + 1, 'and the tile does not act');
+    // Begun outside the aim pad, a swipe is nothing at all.
+    aimPad.received = [];
+    dispatch(shown, 'pointerdown', { clientX: aimPad.rect.x - 20, clientY: aimPad.rect.y + 40, pointerId: 9 });
+    dispatch(shown, 'pointermove', { clientX: aimPad.rect.x - 50, clientY: aimPad.rect.y + 40, pointerId: 9 });
+    dispatch(shown, 'pointerup', { clientX: aimPad.rect.x - 50, clientY: aimPad.rect.y + 40, pointerId: 9 });
+    assert.deepEqual([aimPad.received.length, shown.clicks], [0, before + 1], 'a swipe off the aim pad neither aims nor acts');
+    // A mouse keeps acting on press (the tile's own pointerdown runs).
+    let ownPress = 0;
+    shown.listeners.set('pointerdown', () => { ownPress++; });
+    dispatch(shown, 'pointerdown', { pointerType: 'mouse', pointerId: 10 });
+    assert.equal(ownPress, 1, 'a mouse press reaches the tile');
+    dispatch(shown, 'pointerdown', { pointerType: 'touch', pointerId: 11 });
+    assert.equal(ownPress, 1, 'a touch press waits for the lift');
+    dispatch(shown, 'pointercancel', { pointerId: 11 });
+    assert.equal(shown.clicks, before + 1, 'a cancelled touch acts on nothing');
+    shown.listeners.delete('pointerdown');
+  }
   // Opening: the More tile's pointerdown toggles; any other press closes the panel (capture phase, after which the
   // pressed control still acts).
   {
     body.toggleAttribute('data-hud-dock-open', false);
+    // A tap: down, up (a docked tile acts on the lift), then the browser's own click (detail 1, which tiles ignore);
+    // or a keyboard activation alone (click, detail 0).
     const press = (target, type = 'pointerdown', detail = 1) => {
-      const event = { type, target, detail, preventDefault() {}, stopPropagation() {} };
-      for (const listener of documentListeners) if (listener.type === type && listener.capture) listener.fn(event);
-      target.listeners.get(type)?.(event);
+      if (type === 'click') { dispatch(target, 'click', { detail }); return; }
+      dispatch(target, 'pointerdown', { pointerId: 3 });
+      dispatch(target, 'pointerup', { pointerId: 3 });
+      dispatch(target, 'click', { detail: 1 });
     };
     press(more);
     assert.ok(body.hasAttribute('data-hud-dock-open') && more.getAttribute('aria-expanded') === 'true', 'More opens the panel');
@@ -451,4 +602,4 @@ assert.match(layout, /if \(dockKey\.length !== dockInputs\.length \|\| dockKey\.
 assert.match(read('./i18nCatalog.en-US.json'), /"systems\.more": "\{count\} more vehicle controls",/);
 assert.match(read('./i18nCatalog.zh-CN.json'), /"systems\.more": "另外 \{count\} 个车辆控制",/);
 
-console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/countdown states = ${placements} placements keep the rule (tiles >= 44 px, no scroll, nothing covered, crosshair and its full-bloom ring clear, More beyond what fits); ${placed} random layouts; gun-limit warning off the crosshair; FIRE presses never relayout\n  ${summary.join('\n  ')}`);
+console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/countdown states = ${placements} placements keep the rule (tiles >= 44 px, no scroll, no control or instrument covered, the reticle's whole footprint in every sight at every bloom and the gun-limit warning's place clear, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);

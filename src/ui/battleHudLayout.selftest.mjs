@@ -83,7 +83,7 @@ try {
   const special=node({class:'cot-special deny'});
   const visibleNodes=[special];
   const viewport={height:768,width:1366,addEventListener:(type,fn)=>listeners.set(`viewport:${type}`,fn)};
-  globalThis.document={body,querySelector:()=>null,querySelectorAll:()=>visibleNodes};
+  globalThis.document={body,querySelector:()=>null,querySelectorAll:()=>visibleNodes,addEventListener(){}};
   globalThis.window={innerHeight:768,innerWidth:1366,visualViewport:viewport,
     addEventListener:(type,fn)=>listeners.set(type,fn)};
   globalThis.getComputedStyle=()=>({visibility:'visible'});

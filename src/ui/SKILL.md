@@ -146,8 +146,10 @@ Inspect the live rendered surface, locate event/callback ownership, change the
 smallest screen module, then run its selftest and browser verification.
 On touch the vehicle-controls row is the action dock: `touchActionDock.ts` searches
 its spot from the measured touch controls, instruments and reserved lanes (tiles of
-48 px, never under 44, bottom row first, never scrolled, off the crosshair and the
-gun-limit warning's place; More beyond what fits). Re-measure
+48 px, never under 44, bottom row first, never scrolled, off everything the reticle
+draws in either sight at any bloom (`touchReticleFootprint`, pinned to hud.ts) and the
+gun-limit warning's place; More beyond what fits; a tile acts on a tap's lift and a
+swipe from it aims). Re-measure
 `touchActionDock.fixture.json` when a touch control moves.
 
 ## Gotchas

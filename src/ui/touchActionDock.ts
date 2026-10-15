@@ -7,18 +7,21 @@
  * 360 px phone the last controls were simply off-screen. The dock instead lays the controls out as icon tiles in the
  * row's order and never scrolls. Its position is searched, not hard-coded: the dock goes to the free spot nearest the
  * point between the two thumbs (the joystick and FIRE), keeping a clearance from every fixed touch control and
- * instrument it is given, and from the crosshair.
+ * instrument it is given, and from everything the reticle draws.
  *
  * One rule, on every touch screen (the browser receipt tools/battle-hud-layout.browser.mjs checks the same rule):
  * - Every tile is at least 44 x 44 px, Apple's minimum touch target (Human Interface Guidelines); 48 px, Material's
  *   comfortable target, wherever it fits. 48 px everywhere is not possible: a 360 x 640 phone has a 45 px band
  *   between its minimap and the open ammo drawer, and a 320 x 568 phone or a 568 x 256 landscape browser has no
  *   room for a row of 48 px tiles that clears its joystick, FIRE cluster and instruments.
- * - The dock never scrolls and never covers a fixed control, an instrument, the crosshair or its dispersion ring at
- *   full bloom (TOUCH_ACTION_RETICLE), or the gun-limit warning's place (touchAimWarningSlot).
+ * - The dock never scrolls and never covers a fixed control, an instrument, anything the reticle draws in any sight
+ *   mode at any bloom (touchReticleFootprint: the ring, the scope's cross arms, the magazine and reload countdown, the
+ *   scope's ammunition line, zoom plate and range tag), or the gun-limit warning's place (touchAimWarningSlot).
  * - When the whole row does not fit, the dock shows the first controls (in a jump mode the jump comes first) and a
- *   More tile; More opens the rest beside it. The open panel may lie over instruments for that moment, never over a
- *   touch control or the crosshair. Every control is one tap away, or two through More; none is ever off-screen.
+ *   More tile; More opens the rest beside it. The open panel may lie over instruments for that moment, never over the
+ *   reticle's footprint or the gun-limit warning's place, and never over a touch control unless the screen leaves no
+ *   other room (then it clears only the dock and the aim keep-out). Every control is one tap away, or two through
+ *   More; none is ever off-screen.
  *
  * Rows fill from the bottom: the first control is the bottom-left tile, nearest the thumbs, and a second or third row
  * stacks above it. DOM-free and deterministic, so placement is checked in plain Node (touchActionDock.selftest.mjs)
@@ -28,6 +31,8 @@
 export interface TouchDockRect { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
 /** A circular keep-out: nothing of the dock may come within `r` of its centre (plus a 2 px hairline). */
 export interface TouchDockDisc { readonly x: number; readonly y: number; readonly r: number }
+/** What the dock and its More panel never cover: discs and rects, each kept a 2 px hairline clear. */
+export type TouchDockKeepOut = TouchDockDisc | TouchDockRect;
 
 export interface TouchDockPlacement extends TouchDockRect {
   /** Tile edge in px: 48, or 44 (Apple's minimum touch target) where 48 does not fit. */
@@ -51,10 +56,14 @@ interface TouchDockInput {
   readonly count: number;
   /** Touch controls the dock and its More panel never cover. */
   readonly obstacles: readonly TouchDockRect[];
-  /** Instruments and reserved lanes the dock never covers; the More panel may lie over them while it is open. */
+  /** Instruments the dock never covers; the More panel may lie over them while it is open. */
   readonly soft?: readonly TouchDockRect[];
-  /** The crosshair: neither the dock nor its More panel comes near it. */
-  readonly keepOut?: readonly TouchDockDisc[];
+  /** Lanes reserved for passing notices (touchReservedLanes): kept clear like instruments, unless the screen leaves no
+   *  room for even a lone More tile (568 x 320 and 568 x 256 landscape); then the dock may stand in them. */
+  readonly lanes?: readonly TouchDockRect[];
+  /** The reticle's footprint and the gun-limit warning's place (touchAimKeepOut): neither the dock nor its More panel
+   *  comes within a 2 px hairline of them, even in the panel's last resort. */
+  readonly keepOut?: readonly TouchDockKeepOut[];
   /** Where the thumbs rest (between the joystick and FIRE); the default is the bottom centre. */
   readonly anchor?: { readonly x: number; readonly y: number } | null;
   /** Safe-area insets (notch, home indicator). */
@@ -78,7 +87,7 @@ const ROW_PENALTY_PX = 72;
 /** 44 px tiles cost as much as this much more distance from the thumbs. */
 const SMALL_TILE_PENALTY_PX = 48;
 const MAX_ROWS = 3;
-/** The crosshair keep-out is the full-bloom ring itself; tiles keep this hairline off its stroke. */
+/** The aim keep-out is the reticle's own ink; tiles keep this hairline off it. */
 const RETICLE_CLEARANCE_PX = 2;
 
 /**
@@ -87,11 +96,90 @@ const RETICLE_CLEARANCE_PX = 2;
  * shorter screen side at full bloom; the keep-out is that full-bloom ring, and never less than the 64 px crosshair
  * area (32 px radius), so no tile sits on the crosshair or on the ring around it, however far the ring blooms.
  */
-export const TOUCH_ACTION_RETICLE = Object.freeze({ minRadiusPx: 32, ringCeilFraction: .15 });
+export const TOUCH_ACTION_RETICLE = Object.freeze({ minRadiusPx: 32, ringCeilFraction: .15, ringFloorPx: 11 });
 
 export function touchReticleKeepOut(width: number, height: number): TouchDockDisc {
   return { x: width / 2, y: height / 2,
     r: Math.max(TOUCH_ACTION_RETICLE.minRadiusPx, Math.ceil(TOUCH_ACTION_RETICLE.ringCeilFraction * Math.min(width, height))) };
+}
+
+/**
+ * Where hud.ts draws the reticle's readouts on .cot-ret, around the aiming point at the screen centre, as offsets in
+ * CSS px. Each entry restates one hud.ts placement (touchActionDock.selftest.mjs pins those lines, so a change there
+ * fails until this follows) and widens its text by the widest copy the readout can print, the 3 px text shadow and
+ * the stroke; the browser receipt (tools/battle-hud-layout.browser.mjs) records every glyph and stroke the canvas
+ * draws in the battle and scope sights, at rest and at full bloom, and checks each lies inside this footprint.
+ */
+export const TOUCH_ACTION_RETICLE_READOUTS = Object.freeze({
+  /** drawScope: cross arms from the ring out to 1.55 r + 3 (2.4 px under-stroke), mil ticks 4.5 px either side. */
+  armReachFactor: 1.55, armReachPx: 3 + 1.2, armHalfWidthPx: 6.5,
+  /** paintAutoloaderMagazine and paintReloadCountdown, under the marker in both sights: the centre clearance is
+   *  14 + (zoomScale - 1) * 9 (zoomScale to 1.8 in the scope), the rack 6 px below it (16 px shells sitting up to
+   *  2.25 px lower, 3 px outline), the countdown 15 px under the rack or the clearance (16 px numerals, or SWITCHING
+   *  while a round is chosen). */
+  stackTopPx: 17, stackBottomPx: 21.2 + 6 + 2.25 + 16 + 15 + 7, stackHalfWidthPx: 56,
+  /** paintSniperAmmoReadout: 13.5 px count + 9 px type ("120 APFSDS"), baseline at sniperAmmoReadoutY. */
+  ammoAscentPx: 13, ammoDescentPx: 6, ammoHalfWidthPx: 46,
+  /** paintSniperZoom: 16 px "x25.0" 18 px (300 px tall and less) or 24 px under the ammunition, its rules running 12 + 20 px
+   *  past the text either side. */
+  zoomAscentPx: 15, zoomDescentPx: 7, zoomHalfWidthPx: 60,
+  /** paintSniperDistance: 11.5 px "1500 m" off the ring's 4:30 point, 0.7071 (r + 9) out, 4 px right and 12 px down. */
+  rangeWidthPx: 50, rangeAscentPx: 12, rangeDescentPx: 6,
+});
+
+/** sniperAmmoReadoutY (hud.ts): the scope's ammunition baseline below the aiming point, for ring radius `r`. */
+function scopeAmmoOffset(height: number, r: number): number {
+  if (height <= 300) return 32;
+  if (height <= 430) return 44;
+  return Math.min(Math.max(r * 1.02 + 24, r * 1.55 + 18, 96), height - 176 - height / 2);
+}
+
+/**
+ * Everything the reticle canvas draws around the aiming point, in the battle sight and the scope, at every ring
+ * radius from rest (11 px) to full bloom: the full-bloom ring (touchReticleKeepOut), the scope's cross arms, the
+ * magazine and reload countdown under the marker, the scope's ammunition line and zoom plate below them and its range
+ * tag off the ring's lower right. The dock does not move when the sight changes or the ring blooms, so it keeps clear
+ * of all of it at once. The range tag rides the ring outward as it blooms; the sweep is covered exactly by the boxes
+ * spanning each pair of sampled radii.
+ */
+export function touchReticleFootprint(width: number, height: number): TouchDockKeepOut[] {
+  const R = TOUCH_ACTION_RETICLE_READOUTS;
+  const cx = width / 2, cy = height / 2;
+  const ceil = Math.max(TOUCH_ACTION_RETICLE.ringFloorPx, TOUCH_ACTION_RETICLE.ringCeilFraction * Math.min(width, height));
+  const floor = TOUCH_ACTION_RETICLE.ringFloorPx;
+  const arm = ceil * R.armReachFactor + R.armReachPx;
+  const zoomGap = height <= 300 ? 18 : 24;
+  const ammoTop = cy + scopeAmmoOffset(height, floor) - R.ammoAscentPx;
+  const zoomBottom = cy + scopeAmmoOffset(height, ceil) + zoomGap + R.zoomDescentPx;
+  const footprint: TouchDockKeepOut[] = [
+    touchReticleKeepOut(width, height),
+    { x: cx - arm, y: cy - R.armHalfWidthPx, w: arm * 2, h: R.armHalfWidthPx * 2 },
+    { x: cx - R.armHalfWidthPx, y: cy - arm, w: R.armHalfWidthPx * 2, h: arm * 2 },
+    { x: cx - R.stackHalfWidthPx, y: cy + R.stackTopPx, w: R.stackHalfWidthPx * 2, h: R.stackBottomPx - R.stackTopPx },
+    { x: cx - R.zoomHalfWidthPx, y: ammoTop, w: R.zoomHalfWidthPx * 2, h: zoomBottom - ammoTop },
+  ];
+  const tag = (r: number) => {
+    const out = .7071 * (r + 9);
+    return { x0: cx + out + 4 - 3, y0: cy + out + 12 - R.rangeAscentPx, x1: cx + out + 4 + R.rangeWidthPx, y1: cy + out + 12 + R.rangeDescentPx };
+  };
+  const SAMPLES = 4;
+  for (let k = 0; k < SAMPLES; k++) {
+    const a = tag(floor + (ceil - floor) * k / SAMPLES), b = tag(floor + (ceil - floor) * (k + 1) / SAMPLES);
+    footprint.push({ x: a.x0, y: a.y0, w: b.x1 - a.x0, h: b.y1 - a.y0 });
+  }
+  return footprint;
+}
+
+/** Whether `rect` reaches into any keep-out (a disc or a rect). */
+export function touchKeepOutCovered(rect: TouchDockRect, keep: readonly TouchDockKeepOut[]): boolean {
+  return keep.some((k) => 'r' in k
+    ? Math.hypot(Math.max(rect.x - k.x, 0, k.x - rect.x - rect.w), Math.max(rect.y - k.y, 0, k.y - rect.y - rect.h)) < k.r
+    : rect.x < k.x + k.w && rect.x + rect.w > k.x && rect.y < k.y + k.h && rect.y + rect.h > k.y);
+}
+
+/** What neither the dock nor its More panel ever covers: the reticle's footprint and the gun-limit warning's place. */
+export function touchAimKeepOut(width: number, height: number, minimapBottom: number): TouchDockKeepOut[] {
+  return [...touchReticleFootprint(width, height), touchAimWarningSlot(width, height, minimapBottom)];
 }
 
 /**
@@ -152,19 +240,19 @@ interface Block { x: number; y: number; columns: number; rows: number; cost: num
 let blocked = new Float64Array(64);
 
 /**
- * The block of `slots` tiles nearest `anchor` that clears every rect and disc by `c`, or null (also null when nothing
+ * The block of `slots` tiles nearest `anchor` that clears every rect by `c` and every keep-out by a 2 px hairline, or null (also null when nothing
  * costs less than `limit`). Candidates are 1 to 3 rows; for each row count every vertical position on the 1 px grid is
  * tried and the best horizontal position at that height is solved exactly from the obstacles' blocked intervals. A
  * height whose vertical distance alone already costs as much as the best block so far is skipped, and once the band
  * is above the anchor every higher one is farther still, so the search stops there.
  */
 function searchBlock(width: number, height: number, insets: TouchDockInput['insets'], slots: number, tile: number, c: number,
-  rects: readonly (readonly TouchDockRect[])[], discs: readonly TouchDockDisc[], ax: number, ay: number, limit = Infinity): Block | null {
+  rects: readonly (readonly TouchDockRect[])[], keep: readonly TouchDockKeepOut[], ax: number, ay: number, limit = Infinity): Block | null {
   const left = EDGE_PX + Math.max(0, insets?.left ?? 0);
   const right = width - EDGE_PX - Math.max(0, insets?.right ?? 0);
   const top = EDGE_PX + Math.max(0, insets?.top ?? 0);
   const bottom = height - EDGE_PX - Math.max(0, insets?.bottom ?? 0);
-  let total = discs.length;
+  let total = keep.length;
   for (const list of rects) total += list.length;
   if (blocked.length < total * 2) blocked = new Float64Array(total * 2);
   let best: Block | null = null;
@@ -188,12 +276,16 @@ function searchBlock(width: number, height: number, insets: TouchDockInput['inse
           if (y < o.y + o.h + c && y + h > o.y - c) { blocked[n++] = o.x - c - w; blocked[n++] = o.x + o.w + c; }
         }
       }
-      for (const d of discs) {
-        const reach = d.r + RETICLE_CLEARANCE_PX;
-        const dy = d.y < y ? y - d.y : d.y > y + h ? d.y - y - h : 0;
-        if (dy >= reach) continue;
-        const half = Math.sqrt(reach * reach - dy * dy);
-        blocked[n++] = d.x - half - w; blocked[n++] = d.x + half;
+      for (const k of keep) {
+        if ('r' in k) {
+          const reach = k.r + RETICLE_CLEARANCE_PX;
+          const dy = k.y < y ? y - k.y : k.y > y + h ? k.y - y - h : 0;
+          if (dy >= reach) continue;
+          const half = Math.sqrt(reach * reach - dy * dy);
+          blocked[n++] = k.x - half - w; blocked[n++] = k.x + half;
+        } else if (y < k.y + k.h + RETICLE_CLEARANCE_PX && y + h > k.y - RETICLE_CLEARANCE_PX) {
+          blocked[n++] = k.x - RETICLE_CLEARANCE_PX - w; blocked[n++] = k.x + k.w + RETICLE_CLEARANCE_PX;
+        }
       }
       const x = nearestFreeX(n, lo, hi, target);
       if (x === null) continue;
@@ -243,11 +335,23 @@ export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement 
   const n = Math.floor(input.count);
   if (!(n > 0) || !(width > 0) || !(height > 0)) return null;
   const soft = input.soft ?? [];
-  const discs = input.keepOut ?? [];
+  const keep = input.keepOut ?? [];
   const ax = input.anchor && Number.isFinite(input.anchor.x) ? input.anchor.x : width / 2;
   const ay = input.anchor && Number.isFinite(input.anchor.y) ? input.anchor.y
     : height - EDGE_PX - Math.max(0, insets?.bottom ?? 0);
-  const dockLanes = [obstacles, soft];
+  // Clear of the reserved lanes first, down to a lone More tile; only a screen without room even for that stands the
+  // dock in a lane (never on a control, an instrument, the reticle's footprint or the gun-limit warning's place).
+  const reserved = input.lanes ?? [];
+  for (const dockLanes of reserved.length ? [[obstacles, soft, reserved], [obstacles, soft]] : [[obstacles, soft]]) {
+    const placed = placeTiers(input, n, dockLanes, keep, ax, ay);
+    if (placed) return placed;
+  }
+  return null;
+}
+
+function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (readonly TouchDockRect[])[],
+  keep: readonly TouchDockKeepOut[], ax: number, ay: number): TouchDockPlacement | null {
+  const { width, height, obstacles, insets } = input;
   for (let slots = n; slots >= 1; slots--) {
     // 48 px tiles near the thumbs beat 44 px ones; a 44 px row by the thumbs beats a 48 px block across the screen.
     const options: { block: Block; step: (typeof STEPS)[number] }[] = [];
@@ -255,7 +359,7 @@ export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement 
       // With the whole row placed (no More panel that could fail), a 44 px block is wanted only if it beats the 48 px one.
       const limit = slots === n && options.length && step.tile < TOUCH_ACTION_TILE_PX
         ? options[0].block.cost - SMALL_TILE_PENALTY_PX : Infinity;
-      const block = searchBlock(width, height, insets, slots, step.tile, step.clearance, dockLanes, discs, ax, ay, limit);
+      const block = searchBlock(width, height, insets, slots, step.tile, step.clearance, dockLanes, keep, ax, ay, limit);
       if (block) options.push({ block, step });
     }
     options.sort((a, b) => (a.block.cost + (a.step.tile < TOUCH_ACTION_TILE_PX ? SMALL_TILE_PENALTY_PX : 0))
@@ -267,13 +371,13 @@ export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement 
       if (slots === n) {
         return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: n, more: false, flyout: [] };
       }
-      // More: the last slot. The rest open beside it, clear of the touch controls, the dock and the crosshair; on a
-      // screen too crowded even for that, clear of the dock and the crosshair alone.
+      // More: the last slot. The rest open beside it, clear of the touch controls, the dock and the aim keep-out; on a
+      // screen too crowded even for that, clear of the dock and the aim keep-out alone.
       const more = tiles[slots - 1];
       const hidden = n - (slots - 1);
       const mx = more.x + more.w / 2, my = more.y + more.h / 2;
-      const panel = searchBlock(width, height, insets, hidden, step.tile, step.clearance, [obstacles, [rect]], discs, mx, my)
-        ?? searchBlock(width, height, insets, hidden, step.tile, step.clearance, [[rect]], discs, mx, my);
+      const panel = searchBlock(width, height, insets, hidden, step.tile, step.clearance, [obstacles, [rect]], keep, mx, my)
+        ?? searchBlock(width, height, insets, hidden, step.tile, step.clearance, [[rect]], keep, mx, my);
       if (!panel) continue;
       return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: slots - 1, more: true,
         flyout: blockTiles(panel, hidden, step.tile) };
