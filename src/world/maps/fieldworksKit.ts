@@ -439,17 +439,21 @@ export interface FieldworksPart {
   geometry: THREE.BufferGeometry;
 }
 
+/** A field work's destructible kind: the base record's, its builders the map's, its broken state its own (props.ts). */
+type FieldworksType = DestructiblePropType & { ownBroken?: boolean };
+
 /**
  * The destructible kinds of the field works as `mapId`'s period and side built them (props.ts LOCAL_TYPES, after the
  * sandbag stacks: the same keys, records and footprints; a map's own structure variants still win after it).
  */
 export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<Record<string, DestructiblePropType>>):
-  Record<string, DestructiblePropType> {
-  const out: Record<string, DestructiblePropType> = {};
+  Record<string, FieldworksType> {
+  const out: Record<string, FieldworksType> = {};
   const wire = WIRE_FORMS[mapId];
   if (wire && base.barbedwire) {
     out.barbedwire = {
       ...base.barbedwire,
+      ownBroken: true,
       build: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWire, rng, 0xb1e0), false),
       broken: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWireBroken, rng, 0xb1e1), true),
     };
@@ -458,6 +462,8 @@ export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<
   if (tent && base.tent) {
     out.tent = {
       ...base.tent,
+      // (its collapse is drawn: never PROP_FRACTURE's generic break of the intact build)
+      ownBroken: true,
       build: (rng: Rng) => buildFieldTent(tent, spentDraws(bTent, rng, 0x7e01), false),
       broken: (rng: Rng) => buildFieldTent(tent, spentDraws(bTentBroken, rng, 0x7e02), true),
     };
@@ -1543,24 +1549,78 @@ export function buildSandbagStack(kind: SandbagStackKind): THREE.BufferGeometry 
 }
 
 /**
- * A breached stack: a low surviving course at one end and the burst and spilled bags fanned round it. `spend` runs the
- * remnant builder it replaces first, so the props stream keeps every draw it always made.
+ * A breached stack (props census #10: "sandbag walls spill bags and slump in courses"): the stack as it was laid (the
+ * intact's own stream), then a breach where the round struck — its bags thrown down on either face, most to the far
+ * one, heaped on what fell before them, a quarter of them burst and slack; the courses either side of it slumped
+ * toward the gap and tipped; the spoil core showing low in it; the rest standing. `spend` runs the remnant builder it
+ * replaces first, so the props stream keeps every draw it always made.
  */
 export function buildSandbagHeap(kind: SandbagStackKind, spend: () => void): THREE.BufferGeometry {
   spend();
   const s = SANDBAG_STACKS[kind];
   const r = sandbagRng(s.seed ^ 0x2f);
-  const parts = sandbagCourses(s.half * 0.45, s.depth, 0.36, r).map((bag) => bag.translate(-s.half * 0.5, 0, 0));
-  for (let k = 0; k < 12; k++) {
-    const a = r() * Math.PI * 2, rr = 0.4 + Math.sqrt(r()) * s.half * 0.9;
-    const burst = r() < 0.4;
-    const bag = sandbagBag(0.5 + r() * 0.14, burst ? 0.07 + r() * 0.04 : 0.15 + r() * 0.04, burst ? 0.42 : 0.33, r);
-    bag.rotateY(r() * Math.PI); bag.rotateX((r() - 0.5) * 0.3); bag.rotateZ((r() - 0.5) * 0.3);
-    bag.translate(Math.cos(a) * rr * 0.9, burst ? 0.02 : 0.06, Math.sin(a) * rr * 0.55);
+  const height = s.top + s.sink;
+  const built = sandbagCourses(s.half, s.depth, height, sandbagRng(s.seed));
+  built.pop()!.dispose(); // (the spoil core is laid last: a lower one below)
+  const xb = (r() - 0.5) * s.half * 0.9, wb = 0.55 + r() * 0.45 * Math.min(1, s.half / 1.5);
+  const far = r() < 0.5 ? -1 : 1;
+  // the heap the fallen bags pile on, in 10 cm cells over the ground (y = 0)
+  const cell = 0.1, heap = new Map<number, number>();
+  const key = (i: number, j: number): number => i * 4096 + j;
+  const heapAt = (x: number, z: number, rad: number): number => {
+    let h = 0;
+    for (let i = Math.floor((x - rad) / cell); i <= Math.floor((x + rad) / cell); i++) {
+      for (let j = Math.floor((z - rad) / cell); j <= Math.floor((z + rad) / cell); j++) h = Math.max(h, heap.get(key(i, j)) ?? 0);
+    }
+    return h;
+  };
+  const raise = (x: number, z: number, rad: number, y: number): void => {
+    for (let i = Math.floor((x - rad) / cell); i <= Math.floor((x + rad) / cell); i++) {
+      for (let j = Math.floor((z - rad) / cell); j <= Math.floor((z + rad) / cell); j++) heap.set(key(i, j), Math.max(heap.get(key(i, j)) ?? 0, y));
+    }
+  };
+  const parts: THREE.BufferGeometry[] = [];
+  const bb = new THREE.Box3(), c = new THREE.Vector3(), e = new THREE.Vector3();
+  // the bags lowest first, so the fallen land on those fallen before them
+  const bags = built.map((g) => { g.translate(0, -s.sink, 0); bb.setFromBufferAttribute(g.getAttribute('position') as THREE.BufferAttribute); return { g, c: bb.getCenter(c.clone()), e: bb.getSize(e.clone()) }; })
+    .sort((a, b) => a.c.y - b.c.y);
+  for (const { g, c: bc, e: be } of bags) {
+    const t = (bc.y + s.sink) / height, d = Math.abs(bc.x - xb) / wb;
+    const falls = (d < 1 && t > 0.2 + 0.35 * d) || (t > 0.78 && r() < 0.4);
+    if (!falls) {
+      if (d < 1.6 && t > 0.3) {
+        // slumped toward the gap: down a little and tipped
+        const k = (1.6 - d) / 1.6, toward = Math.sign(xb - bc.x) || 1;
+        g.translate(-bc.x, -bc.y, -bc.z).rotateZ(-toward * 0.16 * k).rotateX((r() - 0.5) * 0.1 * k)
+          .translate(bc.x + toward * 0.05 * k, bc.y - be.y * 0.45 * k, bc.z);
+      }
+      parts.push(g);
+      continue;
+    }
+    g.dispose();
+    // thrown down onto a face, a closed bag (its hidden faces were never laid), a quarter burst and slack
+    const burst = r() < 0.25, len = Math.max(be.x, be.z), wid = Math.max(0.22, Math.min(be.x, be.z)), thick = Math.max(0.1, be.y);
+    const bag = sandbagBag(len * (burst ? 1.06 : 1), burst ? thick * 0.62 : thick * 0.95, burst ? wid * 1.15 : wid, r,
+      { fill: burst ? 0.76 : 0.92, dirt: 0.5 + r() * 0.4 });
+    const side = r() < 0.7 ? far : -far;
+    // (of a few places it might land, the lowest: a spill spreads, it does not tower)
+    let xt = 0, zt = 0, h = Infinity;
+    for (let k = 0; k < 4; k++) {
+      const x = bc.x + (r() - 0.5) * 0.8 + (bc.x - xb) * 0.25, z = side * (s.depth + 0.12 + r() * 0.75 * (0.5 + t));
+      const hh = heapAt(x, z, 0.16);
+      if (hh < h) { h = hh; xt = x; zt = z; }
+    }
+    const yaw = r() * Math.PI;
+    bag.rotateX((r() - 0.5) * 0.3).rotateZ((r() - 0.5) * 0.3).rotateY(yaw);
+    const ht = burst ? thick * 0.62 * 0.76 : thick * 0.95 * 0.92;
+    bag.translate(xt, h + ht * 0.42, zt);
+    raise(xt, zt, 0.16, h + ht * 0.85);
     parts.push(bag);
   }
+  // the spoil core, low: its top shows in the gap
+  parts.push(sandbagCore(s.half, s.depth * 0.92, height * 0.42, 0.02).translate(0, -s.sink, 0));
+  parts.push(sandbagEarthFillet(s.half, s.depth, r));
   const g = sandbagMerge(parts);
-  g.translate(0, -s.sink * 0.5, 0);
   if (s.along === 'z') g.rotateY(Math.PI / 2);
   return g;
 }
