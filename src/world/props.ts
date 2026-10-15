@@ -152,7 +152,7 @@ import {
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
-import { createUtilityWires, proceduralPoleParts, sourcedPoleGeometry } from './maps/utilityPoles.ts';
+import { createUtilityWires, proceduralPoleParts, utilityConductorsOf, utilityPoleDistanceGeometry, utilityPoleGeometry } from './maps/utilityPoles.ts';
 import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
@@ -188,7 +188,7 @@ import {
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
 import {
-  box, gableAttic, gablePrism, gableSlabSeat, jitterUV, makeTelephonePoleDistanceGeometry,
+  box, gableAttic, gablePrism, gableSlabSeat, jitterUV,
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
@@ -6794,7 +6794,7 @@ ${snowCap ? `
     // the live utility network decide whether a station has one or two posts.
     // (props lane A, #21, 2026-10-14: the line's geometry — the sourced pole prepared, the procedural pole, the wires'
     // pool — is maps/utilityPoles.ts's, extracted unchanged)
-    const poleGeo = SOURCED.poles && P.telegraph ? sourcedPoleGeometry(bakedGeometry) : null;
+    const poleGeo = SOURCED.poles && P.telegraph ? utilityPoleGeometry(mapId, bakedGeometry) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -6879,7 +6879,7 @@ ${snowCap ? `
       return wireSpans;
     }
     const wireSpans = collectWireSpans();
-    const network = wireSpans.length ? createUtilityNetwork(poleLine, wireSpans) : null;
+    const network = wireSpans.length ? createUtilityNetwork(poleLine, wireSpans, { conductors: utilityConductorsOf(mapId) }) : null;
     // DESTRUCTIBLES r1: telegraph-pole DEBRIS — every pole line lost a few
     // to the shelling: a snapped stump, the felled pole across the verge
     // with its crossarm splayed, a coil of downed wire. Static dressing
@@ -9535,7 +9535,7 @@ ${snowCap ? `
       poleHigh.fill(1);
       poleFullIM = new THREE.InstancedMesh(e.geo, mats.pole, e.list.length);
       poleDistanceIM = new THREE.InstancedMesh(
-        markPoleTimber(makeTelephonePoleDistanceGeometry()), mats.pole, e.list.length);
+        markPoleTimber(utilityPoleDistanceGeometry(mapId)), mats.pole, e.list.length);
       for (const mesh of [poleFullIM, poleDistanceIM]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;

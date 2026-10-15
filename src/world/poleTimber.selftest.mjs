@@ -170,10 +170,12 @@ const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const poleSource = readFileSync(new URL('./maps/utilityPoles.ts', import.meta.url), 'utf8');
 assert.match(poleSource, /markPoleTimber\(roundPoleShaft\(bakedGeometry\('telephone_pole_polygoogle',[\s\S]{0,160}\)\.clone\(\)\)\)/,
   'the cached sourced pole is cloned, its shaft rounded, then marked');
-assert.match(source, /SOURCED\.poles && P\.telegraph \? sourcedPoleGeometry\(bakedGeometry\) : null/, 'the line takes it');
+assert.match(source, /SOURCED\.poles && P\.telegraph \? utilityPoleGeometry\(mapId, bakedGeometry\) : null/, 'the line takes its region\'s pole');
+assert.match(poleSource, /: sourcedPoleGeometry\(bakedGeometry\);/, 'a map with no regional line keeps the sourced pole');
 assert.match(source, /pole: new THREE\.MeshStandardMaterial\(\{ vertexColors: true, roughness: 0\.9, metalness: 0 \}\)/);
 assert.match(source, /const poleHook: MaterialShaderHook = \(shader\) => \{ grimeHook\(shader\); applyPoleTimberHook\(shader, rockDressing\.dust >= 0\.5\); \};/);
 assert.match(source, /materialKind === 'pole' \? poleHook/);
 assert.match(source, /poleFullIM = new THREE\.InstancedMesh\(e\.geo, mats\.pole, e\.list\.length\);/);
-assert.match(source, /markPoleTimber\(makeTelephonePoleDistanceGeometry\(\)\), mats\.pole, e\.list\.length\);/);
+assert.match(source, /markPoleTimber\(utilityPoleDistanceGeometry\(mapId\)\), mats\.pole, e\.list\.length\);/);
+assert.match(poleSource, /kind \? buildLineDistance\(kind\) : makeTelephonePoleDistanceGeometry\(\)/, 'a map with no regional line keeps the sourced pole\'s stand-in');
 console.log('poleTimber self-test passed: the sourced and distance poles\' timber found by tone (insulators and steel kept), shaft and arm grain axes, no double marking, the hook ahead of the grime with seam-free grain gradients, the producer\'s clone and material');

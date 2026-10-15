@@ -17,7 +17,7 @@ type BakedSource = (name: string, opts: { targetH: number; sink: number; sourceZ
  * The sourced pole (telephone_pole_polygoogle) for the line's pool: the cached bake cloned, its shaft made round and its
  * wood marked for the poles' timber material (poleTimber.ts).
  */
-export function sourcedPoleGeometry(bakedGeometry: BakedSource): THREE.BufferGeometry {
+function sourcedPoleGeometry(bakedGeometry: BakedSource): THREE.BufferGeometry {
   // the scenery lane (after wave 57, Frosthollow's "beige column"): its wood is marked for the poles' timber material
   // (poleTimber.ts) on a clone — the baked source stays cached unmarked; wave 66 ("a straight, flat-faced,
   // constant-width beam"): its shaft round, smooth and tapered first
@@ -284,10 +284,10 @@ export function utilityPoleGeometry(mapId: string | undefined, bakedGeometry: Ba
   const kind = utilityLineFormOf(mapId);
   return kind ? markPoleTimber(lineOf(kind).full.clone()) : sourcedPoleGeometry(bakedGeometry);
 }
-/** The pole pool's distance stand-in on a map (else the sourced pole's). */
+/** The pole pool's distance stand-in on a map (else the sourced pole's), unmarked (props.ts marks the pool's). */
 export function utilityPoleDistanceGeometry(mapId: string | undefined): THREE.BufferGeometry {
   const kind = utilityLineFormOf(mapId);
-  return markPoleTimber(kind ? buildLineDistance(kind) : makeTelephonePoleDistanceGeometry());
+  return kind ? buildLineDistance(kind) : makeTelephonePoleDistanceGeometry();
 }
 /** The line's conductors on a map, one per insulator in use (undefined: the network's two). */
 export function utilityConductorsOf(mapId: string | undefined): UtilityConductor[] | undefined {
