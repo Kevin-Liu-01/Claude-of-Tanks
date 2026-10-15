@@ -138,21 +138,31 @@ const blastFurnace: RegionalBuilder = (ctx) => {
         { colour: OXIDE, decor: true, exposed: true }, 0);
     }
     // the bunkers and their bins; the wagon arches through them
-    sink.span('stone', -W / 2, -0.4, bz0, W / 2, bh, D / 2);
+    // (props census #13, lane B 2026-10-14; the judges: "the wagon arches dark plates on a brick block") the wagon
+    // passages run through the bunkers' brick: the piers between them, the deck over each on its brick head band
+    const arches = Math.max(2, Math.round(W / 4.2)), bayW = W / arches, aw = Math.min(2.8, bayW - 0.9), ah = 3.1;
+    let x = -W / 2;
+    for (let k = 0; k < arches; k++) {
+      const c = -W / 2 + bayW * (k + 0.5);
+      sink.span('stone', x, -0.4, bz0, c - aw / 2, bh, D / 2);
+      sink.span('stone', c - aw / 2, ah, bz0, c + aw / 2, bh, D / 2);
+      for (const [z, out] of [[D / 2, 1], [bz0, -1]] as const) {
+        const bf: Face = { origin: [0, 0, z], u: [out, 0, 0], out: [0, 0, out], width: W };
+        faceBox(sink, YELLOW_BRICK, bf, out * c, ah + 0.18, 0.04, aw + 0.5, 0.36, 0.08, { decor: true });
+      }
+      x = c + aw / 2;
+    }
+    sink.span('stone', x, -0.4, bz0, W / 2, bh, D / 2);
     sink.span('structureMetal', -W / 2 + 0.3, bh, bz0 + 0.3, W / 2 - 0.3, bh + 2.6, D / 2 - 0.3, { colour: SHEET });
     sink.span('structureMetal', -W / 2 + 0.2, bh + 2.6, bz0 + 0.2, W / 2 - 0.2, bh + 2.8, D / 2 - 0.2, { colour: TRUSS, decor: true });
     sink.band(YELLOW_BRICK, -W / 2 - 0.04, bh - 0.5, bz0 - 0.04, W / 2 + 0.04, bh - 0.25, D / 2 + 0.04, { decor: true });
-    const arches = Math.max(2, Math.round(W / 4.2));
-    for (const [z, out] of [[D / 2, 1], [bz0, -1]] as const) {
-      const bf: Face = { origin: [0, 0, z], u: [out, 0, 0], out: [0, 0, out], width: W };
-      for (let k = 0; k < arches; k++) facePanel(sink, 'dark', bf, -W / 2 + W * (k + 0.5) / arches, 1.6, 0.02, Math.min(2.8, W / arches - 0.9), 3.0, { decor: true });
-    }
     // the skip hoist: an inclined bridge from the bunkers' pit up to the charging platform, on its trestle
     const za = (bz0 + D / 2) / 2, ya = bh + 2.8, zb = fz + fr * 0.72 + 0.7, yb = top + 0.6;
     truss(sink, [0, ya, za], [0, yb, zb], 1.6, [0, 1, 0], 10, OXIDE, mobile);
     const zl = za - (za - zb) * 0.4, yl = ya + (yb - ya) * 0.4;
     for (const s of [-1, 1]) sink.member('structureMetal', [s * 0.8, 0, zl], [s * 0.8, yl, zl], 0.3, 0.3, [0, 0, 1], { colour: TRUSS, exposed: true }, 0);
-    if (look() < 0.5) facePanel(sink, 'dark', { origin: [(W - 1) / 2, 0, (cz0 + cz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: cz1 - cz0 }, (look() - 0.5) * 3, ch * 0.6, 0.02, 1.6, 1.2, { decor: true });
+    // (the cast house's side once carried a dark plate for a hole: its draws kept, the plate gone)
+    if (look() < 0.5) look();
   });
   return sink.finish();
 };
