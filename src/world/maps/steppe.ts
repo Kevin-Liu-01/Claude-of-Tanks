@@ -368,11 +368,12 @@ export default {
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
     // railway workers' houses along the station road and the east track.
-    // (2026-10-07, gauntlet wave 204: "shipping containers" in a 1950s sovkhoz) no container rows: an implement shed and
-    // a store in their places
+    // (2026-10-07, gauntlet wave 204: "shipping containers" in a 1950s sovkhoz; the 225 gate, 2026-10-15) the two
+    // container rows hold the period's freight (maps/periodFreight.ts FREIGHT_MIX.steppe: tarpaulined stacks, sawn
+    // lumber, crates), as on every battlefield before the ISO box (periodFreight.selftest)
     plan: ['watertower', 'warehouse', 'depot', 'granary', 'gantry', 'warehouse', 'cornershop',
-      'shed', 'shed', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
-      'cottage', 'ruin', 'barn', 'granary', 'cottage'],
+      'shed', 'containerRow', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
+      'cottage', 'ruin', 'barn', 'containerRow', 'cottage'],
     // (wave 204: "a patio awning") no desert tents or Quonset huts: the field brigades' huts and lean-tos
     destructibleBuildings: ['longhouse', 'motorpool', 'fieldhut', 'leanto'],
     // rail-kit stores are wide: the same lateral step and ground-fit tolerance
