@@ -240,20 +240,22 @@ function gasHolder(ctx: RegionalBuildContext): RegionalParts {
       // (the lift is a 16-sided drum: the patch lies on the flat side nearest where it falls, at that side's distance)
       const seg = Math.PI / 8, th = Math.PI / 2 - Math.asin(Math.max(-0.95, Math.min(0.95, u / rr)));
       const a = Math.PI / 2 - (Math.floor(th / seg) + 0.5) * seg, ap = rr * Math.cos(seg / 2);
-      facePanel(sink, 'dark', { origin: [Math.sin(a) * ap, 0, Math.cos(a) * ap], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.004, Math.min(pw, 2 * ap * Math.sin(seg / 2) - 0.05), ph, { decor: true });
+      // (props census #4, lane B 2026-10-14: a near-black patch read as a hole) a patch sheet in red lead, rust-run
+      facePanel(sink, 'structureMetal', { origin: [Math.sin(a) * ap, 0, Math.cos(a) * ap], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.004, Math.min(pw, 2 * ap * Math.sin(seg / 2) - 0.05), ph, { colour: rgb(0x8a4a32), decor: true });
     }
     // the station's wall round the lot under a brick coping, the gate's leaves shut in its front run
-    const wy = 2.0;
-    const runs: Array<[number, number, number, number]> = [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, W / 2, D / 2],
+    // (the front run parted for the gate: its iron leaves hang shut in the gap between the piers, not on the brick)
+    const wy = 2.0, gw = Math.min(4.2, W * 0.3);
+    const runs: Array<[number, number, number, number]> = [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, -gw / 2, D / 2], [gw / 2, D / 2 - t, W / 2, D / 2],
       [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t]];
     for (const [x0, z0, x1, z1] of runs) {
       sink.span('stone', x0, -0.4, z0, x1, wy, z1);
       sink.band('stone', x0 - 0.04, wy, z0 - 0.04, x1 + 0.04, wy + 0.14, z1 + 0.04, { decor: true });
     }
     const gate: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const gw = Math.min(4.2, W * 0.3);
     for (const s of [-1, 1]) {
-      faceBox(sink, 'structureMetal', gate, s * gw / 4, 1.2, 0.04, gw / 2 - 0.06, 2.3, 0.06, { colour: IRON, decor: true });
+      faceBox(sink, 'structureMetal', gate, s * gw / 4, 1.2, -t / 2, gw / 2 - 0.03, 2.3, 0.06, { colour: IRON });
+      if (!mobile) for (const y of [0.5, 1.9]) faceBox(sink, 'structureMetal', gate, s * gw / 4, y, -t / 2 + 0.05, gw / 2 - 0.15, 0.08, 0.04, { colour: IRON, decor: true, fine: true });
       faceBox(sink, 'stone', gate, s * (gw / 2 + 0.3), 1.3, 0.12, 0.6, 2.6, 0.24, { decor: true });
     }
     // the valve house at the long end, where the lot leaves room beside the frame

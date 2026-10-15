@@ -513,13 +513,23 @@ const marketHall: RegionalBuilder = (ctx) => {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       sink.span('stone', sx > 0 ? b.x1 - 0.5 : b.x0 - 0.12, 0, sz > 0 ? b.z1 - 0.5 : b.z0 - 0.12, sx > 0 ? b.x1 + 0.12 : b.x0 + 0.5, hH - 0.15, sz > 0 ? b.z1 + 0.12 : b.z0 + 0.5, { decor: true });
     }
-    // the ridge lantern: a louvred clerestory along the ridge under its own roof
+    // the ridge lantern: a louvred clerestory along the ridge under its own roof (props census #4, lane B 2026-10-14:
+    // "a dark panel on a plaster box, slats on it"): its sill wall on the ridge and the wall plate its roof sits on,
+    // carried on the end walls and piers; between them the louvres, in front of the open dark of the roof space
     const lw = clampTo(W * 0.22, 1.6, 3.4), ll = D - 3.0;
-    sink.span('plaster2', -lw / 2, rg.ridgeY - 1.0, -ll / 2, lw / 2, rg.ridgeY + 1.1, ll / 2);
+    const ly0 = rg.ridgeY + 0.3, ly1 = rg.ridgeY + 0.95;
+    sink.span('plaster2', -lw / 2, rg.ridgeY - 1.0, -ll / 2, lw / 2, ly0, ll / 2);
+    sink.span('plaster2', -lw / 2, ly1, -ll / 2, lw / 2, rg.ridgeY + 1.1, ll / 2);
+    const piers = Math.max(2, Math.round(ll / 3));
+    for (let k = 0; k <= piers; k++) {
+      // (the end walls 30 cm thick at the lantern's ends, the piers 30 cm between)
+      const z = -ll / 2 + ll * k / piers, z0 = k === 0 ? z : k === piers ? z - 0.3 : z - 0.15, z1 = k === 0 ? z + 0.3 : k === piers ? z : z + 0.15;
+      sink.span('plaster2', -lw / 2, ly0, z0, lw / 2, ly1, z1);
+    }
+    sink.span('dark', -lw / 2 + 0.3, ly0, -ll / 2 + 0.3, lw / 2 - 0.3, ly1, ll / 2 - 0.3, { decor: true });
     for (const s of [-1, 1]) {
       const f: Face = { origin: [s * lw / 2, 0, 0], u: [0, 0, -s], out: [s, 0, 0], width: ll };
-      facePanel(sink, 'dark', f, 0, rg.ridgeY + 0.6, 0.02, ll - 0.6, 0.7, { decor: true });
-      if (!mobile) for (let y = rg.ridgeY + 0.35; y < rg.ridgeY + 0.95; y += 0.16) faceBox(sink, 'structureWood', f, 0, y, 0.05, ll - 0.6, 0.04, 0.06, { colour: IRON, decor: true, fine: true });
+      if (!mobile) for (let y = ly0 + 0.05; y < ly1 - 0.04; y += 0.16) faceBox(sink, 'structureWood', f, 0, y, 0.03, ll - 0.6, 0.04, 0.06, { colour: IRON, decor: true, fine: true });
     }
     const cap: RoofSpec = { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.3, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
     emitRoof(sink, roofGeometry(lw, ll, rg.ridgeY + 1.1, cap), cap);

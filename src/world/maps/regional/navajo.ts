@@ -14,6 +14,7 @@ import { buildHouse, emitRoof, holedFace, leanTo, placeShed, roofGeometry, windo
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { latticeFrame } from './lattice.ts';
+import { sheetHall } from './hall.ts';
 
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
@@ -954,35 +955,18 @@ const woolBarn: RegionalBuilder = (ctx) => {
   const b = ctx.bounds;
   const W = Math.max(10, Math.min(17, b.maxX - b.minX - 0.3)), D = Math.max(16, Math.min(28, b.maxZ - b.minZ - 1.2));
   const xc = (b.maxX + b.minX) / 2, zc = b.minZ + 0.15 + D / 2;
-  const baseH = 1.5 + rng() * 0.4, H = 4.8 + rng() * 0.6;
+  const baseH = 1.1 + rng() * 0.3, H = 4.8 + rng() * 0.6;
+  // (props census #4, lane B 2026-10-14; the judges: "plank doors and glass laid on the tin") the shared sheet hall
+  // (hall.ts): the corrugated iron on its sandstone base at a lorry bed's height, the plank leaves sliding on their
+  // tracks over openings cut in both gables onto the barn's floor and frames, its lights high in the sides; the dock
+  // along the front door, the wool bales stacked against the north side
   sink.placed(0, xc, 0, zc, () => {
-    sink.span('stone', -W / 2 - 0.06, -0.5, -D / 2 - 0.06, W / 2 + 0.06, baseH, D / 2 + 0.06);
+    const tin = pick(rng, CLADDING);
+    sheetHall(sink, { w: W, d: D, eave: H, pitchDeg: 17, kerb: baseH, livery: tin, doorLivery: shade(PLANK_GREY, 0.95 + look() * 0.1), trim: shade(tin, 0.7),
+      doors: 'sliding', leaf: 'plank', doorW: Math.min(4.2, W * 0.36), doorH: 3.6, open: look() * 0.5, backGate: true, backDoor: null,
+      clerestory: true, roofLights: false, ridgeVent: false, gutters: false, mobile: ctx.tier === 'mobile' }, look);
     groundCourse(sink, -W / 2, -D / 2, W / 2, D / 2, 0, false, 0.9);
-    // the walls of corrugated iron over the stone (structureMetal's profiled sheet: a roof covering is never a wall a
-    // hull stops at, structureCollision.ts ROOF_BUCKETS), with their gable ends
-    const tin = { colour: pick(rng, CLADDING) };
-    for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, -W / 2 + 0.08, D / 2], [W / 2 - 0.08, -D / 2, W / 2, D / 2], [-W / 2, -D / 2, W / 2, -D / 2 + 0.08], [-W / 2, D / 2 - 0.08, W / 2, D / 2]] as const) {
-      sink.span('structureMetal', x0, baseH, z0, x1, H, z1, tin);
-    }
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 17, eave: 0.45, verge: 0.35, thickness: 0.07, bucket: 'roof', ridge: 'saddle' };
-    const rg = roofGeometry(W, D, H, roof);
-    emitRoof(sink, rg, roof);
-    if (rg.gable) for (const z of [D / 2, -D / 2]) {
-      const pts: Vec3[] = rg.gable.map(([u, y]) => [u, y, z] as Vec3);
-      sink.prism('structureMetal', z > 0 ? [...pts].reverse() : pts, [0, 0, z > 0 ? -1 : 1], 0.08, tin);
-    }
-    // the sliding doors on both gable ends, the dock in front of the main one
-    for (const [z, out] of [[D / 2, 1], [-D / 2, -1]] as const) {
-      const f: Face = { origin: [0, 0, z], u: [out, 0, 0], out: [0, 0, out], width: W };
-      plankGate(sink, f, 0, 0.0, Math.min(4.2, W * 0.36), 3.6, shade(PLANK_GREY, 0.95 + look() * 0.1), { width: 0.2, out: 0.08, colour: JUNIPER_DARK });
-      faceBox(sink, 'structureMetal', f, 0, 3.75, 0.12, Math.min(4.2, W * 0.36) * 2 + 0.4, 0.12, 0.12, { colour: IRON, decor: true });
-    }
-    sink.span('stone', -3.0, -0.4, D / 2 - 0.05, 3.0, 1.0, D / 2 + 0.9);
-    // high windows down the sides
-    for (const side of [-1, 1]) {
-      const f: Face = { origin: [side * W / 2, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D };
-      for (let u = -D / 2 + 2.5; u < D / 2 - 1.5; u += 4.2) faceBox(sink, 'glass', f, u, H - 1.0, 0.012, 1.2, 0.6, 0.02, { decor: true });
-    }
+    sink.span('stone', -3.0, -0.4, D / 2 - 0.05, 3.0, baseH, D / 2 + 0.9);
     // bales stacked against the north side
     if (ctx.tier !== 'mobile') {
       for (let k = 0; k < 6; k++) {

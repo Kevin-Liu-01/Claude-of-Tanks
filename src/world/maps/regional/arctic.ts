@@ -56,10 +56,19 @@ function overheadDoor(sink: PartSink, face: Face, u: number, y: number, w: numbe
   faceBox(sink, 'structureMetal', face, u - w / 2 - 0.07, y + h / 2, 0.04, 0.14, h + 0.1, 0.08, steel);
   faceBox(sink, 'structureMetal', face, u + w / 2 + 0.07, y + h / 2, 0.04, 0.14, h + 0.1, 0.08, steel);
   faceBox(sink, 'structureMetal', face, u, y + h + 0.07, 0.04, w + 0.28, 0.14, 0.08, steel, 'ends');
-  const leaf = shade(PAINT_RGB[paint], 0.9);
-  faceBox(sink, 'structureMetal', face, u, y + h / 2, -0.02, w, h, 0.04, { colour: leaf, decor: true });
+  const leaf = { colour: shade(PAINT_RGB[paint], 0.9), decor: true };
+  // (props census #4, lane B 2026-10-14: "dark panes stuck on the door") the leaf's sections, the glazed one cut: the
+  // leaf under and over the pane row, the stiles between the panes, the glass 1 cm back in each cut and the garage's dark
+  // behind it (a box against the leaf's back)
+  const py0 = y + h * 0.66, py1 = y + h * 0.74, pw = w * 0.16, pm = (py0 + py1) / 2;
+  faceBox(sink, 'structureMetal', face, u, (y + py0) / 2, -0.02, w, py0 - y, 0.04, leaf);
+  faceBox(sink, 'structureMetal', face, u, (py1 + y + h) / 2, -0.02, w, y + h - py1, 0.04, leaf);
+  const cuts = [0, 1, 2, 3].map((k) => u - w * 0.375 + k * w * 0.25);
+  const edges = [u - w / 2, ...cuts.flatMap((c) => [c - pw / 2, c + pw / 2]), u + w / 2];
+  for (let i = 0; i + 1 < edges.length; i += 2) faceBox(sink, 'structureMetal', face, (edges[i] + edges[i + 1]) / 2, pm, -0.02, edges[i + 1] - edges[i], py1 - py0, 0.04, leaf, 'caps');
+  for (const c of cuts) faceBox(sink, 'glass', face, c, pm, -0.01, pw, py1 - py0, 0.008, { decor: true });
+  faceBox(sink, 'dark', face, u, pm, -0.14, w - 0.04, py1 - py0 + 0.06, 0.2, { decor: true });
   for (let k = 1; k < 5; k++) faceBox(sink, 'structureMetal', face, u, y + h * k / 5, 0.0, w, 0.035, 0.02, { colour: STEEL_DARK, decor: true, fine: true }, 'ends');
-  for (let k = 0; k < 4; k++) faceBox(sink, 'dark', face, u - w * 0.375 + k * w * 0.25, y + h * 0.7, 0.002, w * 0.16, h * 0.08, 0.01, { decor: true });
   faceBox(sink, 'structureMetal', face, u, y + 0.03, 0.01, w, 0.06, 0.03, { colour: STEEL_DARK, decor: true }, 'ends');
 }
 

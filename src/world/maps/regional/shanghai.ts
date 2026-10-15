@@ -587,12 +587,24 @@ const tramDepot: RegionalBuilder = (ctx) => {
       }
     });
     const gface: Face = { origin: [0, 0, fz], u: [1, 0, 0], out: [0, 0, 1], width: bw };
-    faceBox(sink, 'structureMetal', gface, 0, eaveY + 0.9, 0.02, Math.min(bw * 0.5, 4.2), 0.6, 0.04, { colour: rgb(0x2f3a35), decor: true });
-    faceBox(sink, 'structureMetal', gface, 0, eaveY + 0.9, 0.05, Math.min(bw * 0.38, 3.2), 0.22, 0.02, { colour: GILT, decor: true, fine: true });
-    sink.span('roof', -0.9, rg.ridgeTopY - 0.2, -D / 2 + 1.2, 0.9, rg.ridgeTopY + 0.75, D / 2 - 1.2, SHADOWED);
+    // (props census #4, lane B 2026-10-14: "a name plate and the clerestory's glass stuck on") the plate stands 10 cm
+    // off the gable on its cleats; the clerestory's glass is let in between its posts, the barn's dark roof space behind
+    const pw = Math.min(bw * 0.5, 4.2);
+    faceBox(sink, 'structureMetal', gface, 0, eaveY + 0.9, 0.12, pw, 0.6, 0.04, { colour: rgb(0x2f3a35), decor: true });
+    for (const cu of [-pw * 0.35, pw * 0.35]) faceBox(sink, 'structureMetal', gface, cu, eaveY + 0.9, 0.05, 0.08, 0.4, 0.1, { colour: rgb(0x2f3a35), decor: true });
+    faceBox(sink, 'structureMetal', gface, 0, eaveY + 0.9, 0.15, Math.min(bw * 0.38, 3.2), 0.22, 0.02, { colour: GILT, decor: true, fine: true });
+    const cy0 = rg.ridgeTopY + 0.02, cy1 = rg.ridgeTopY + 0.55, cz = D / 2 - 1.2;
+    sink.span('roof', -0.9, rg.ridgeTopY - 0.2, -cz, 0.9, cy0, cz, SHADOWED);
+    sink.span('roof', -0.9, cy1, -cz, 0.9, rg.ridgeTopY + 0.75, cz, SHADOWED);
+    const posts = Math.max(2, Math.round(2 * cz / 3));
+    for (let k = 0; k <= posts; k++) {
+      const z = -cz + 2 * cz * k / posts, z0 = k === 0 ? z : k === posts ? z - 0.2 : z - 0.06, z1 = k === 0 ? z + 0.2 : k === posts ? z : z + 0.06;
+      sink.span('roof', -0.9, cy0, z0, 0.9, cy1, z1, SHADOWED);
+    }
+    sink.span('dark', -0.6, cy0, -cz + 0.2, 0.6, cy1, cz - 0.2, DEC);
     for (const side of [-1, 1]) {
       const cl: Face = { origin: [side * 0.9, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D - 2.4 };
-      facePanel(sink, 'glass', cl, 0, rg.ridgeTopY + 0.28, 0.01, D - 3.0, 0.5, { decor: true, window: cl.out });
+      facePanel(sink, 'glass', cl, 0, (cy0 + cy1) / 2, -0.03, D - 2.8, cy1 - cy0, { decor: true, window: cl.out });
     }
     // pilasters down the sides between the windows
     for (const face of [frame.faces.right, frame.faces.left]) {

@@ -8,7 +8,7 @@
 // other where the hall stands open) under a head box, or a roller curtain part raised under its drum; through the gap the
 // hall's own inside — its floor, the far wall and the portal frames — not a painted slot. Outside, the sheet's seams and
 // corner flashings, gutters and downpipes, roof lights in the slopes and a louvred ridge vent.
-import { PartSink, faceBox, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, type HouseFrame, type Opening } from './house.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 
@@ -30,6 +30,9 @@ export interface HallSpec {
   open: number;
   /** the apron doors' centres along the front (default one, centred) */
   doorAt?: readonly number[];
+  /** the apron doors again in the back gable, centred (a drive-through barn); the leaves of planks, not sheet */
+  backGate?: boolean;
+  leaf?: 'sheet' | 'plank';
   /** a personnel door in the back gable at u (null: none); one in a side wall at u (null: none) */
   backDoor: number | null;
   sideDoor?: number | null;
@@ -59,6 +62,7 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   const wall = eave - spec.kerb;
   const openings: Opening[] = [];
   if (spec.doors !== 'none') for (const u of spec.doorAt ?? [0]) openings.push({ face: 'front', storey: 0, kind: 'gate', u, w: spec.doorW, y0: 0, h: Math.min(spec.doorH, wall - 0.5) });
+  if (spec.backGate && spec.doors !== 'none') openings.push({ face: 'back', storey: 0, kind: 'gate', u: 0, w: spec.doorW, y0: 0, h: Math.min(spec.doorH, wall - 0.5) });
   if (spec.backDoor !== null) openings.push({ face: 'back', storey: 0, kind: 'door', u: spec.backDoor, w: 1.0, y0: 0, h: 2.2 });
   if (spec.sideDoor !== undefined && spec.sideDoor !== null) openings.push({ face: 'right', storey: 0, kind: 'door', u: spec.sideDoor, w: 1.0, y0: 0, h: 2.2 });
   if (spec.openSide) {
@@ -235,9 +239,19 @@ function hallDoors(sink: PartSink, face: Face, o: Opening, y0: number, spec: Hal
   // the outer track by `open` of its width; the head box over them, the bottom track along the apron
   const lw = W / 2 + 0.15, open = spec.open;
   const leaves: Array<[number, number]> = [[o.u - W / 4 + open * lw, 0.32], [o.u + W / 4, 0.12]];
+  const lb: RegionalBucket = spec.leaf === 'plank' ? 'structureWood' : 'structureMetal';
   for (const [u, track] of leaves) {
-    faceBox(sink, 'structureMetal', face, u, lift + H / 2 + 0.05, track, lw, H + 0.1, 0.1, { colour: spec.doorLivery });
-    if (!spec.mobile) {
+    faceBox(sink, lb, face, u, lift + H / 2 + 0.05, track, lw, H + 0.1, 0.1, { colour: spec.doorLivery });
+    if (!spec.mobile && lb === 'structureWood') {
+      // a plank leaf: its ledges across and the braces between them, the boards' joints down it
+      const c = { colour: shade(spec.doorLivery, 0.85), decor: true };
+      for (const t of [0.12, 0.5, 0.88]) faceBox(sink, lb, face, u, lift + H * t, track + 0.07, lw - 0.1, 0.16, 0.04, c);
+      for (const [a, b] of [[0.12, 0.5], [0.5, 0.88]] as const) {
+        const p0 = facePoint(face, u - lw / 2 + 0.15, lift + H * a + 0.08, track + 0.07), p1 = facePoint(face, u + lw / 2 - 0.15, lift + H * b - 0.08, track + 0.07);
+        sink.member(lb, p0, p1, 0.12, 0.035, face.out, c, 0.015);
+      }
+      for (let j = 1; j < Math.round(lw / 0.22); j++) faceBox(sink, lb, face, u - lw / 2 + j * lw / Math.round(lw / 0.22), lift + H / 2 + 0.05, track + 0.051, 0.012, H + 0.06, 0.004, { colour: shade(spec.doorLivery, 0.6), decor: true, fine: true }, 'caps');
+    } else if (!spec.mobile) {
       for (const f of [0.25, 0.5, 0.75]) faceBox(sink, 'structureMetal', face, u - lw / 2 + lw * f, lift + H / 2, track + 0.07, 0.1, H - 0.3, 0.05, { colour: shade(spec.doorLivery, 0.8), decor: true });
       faceBox(sink, 'structureMetal', face, u, lift + H * 0.45, track + 0.07, lw - 0.2, 0.12, 0.05, { colour: shade(spec.doorLivery, 0.8), decor: true });
     }

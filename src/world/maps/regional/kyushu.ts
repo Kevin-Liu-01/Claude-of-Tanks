@@ -91,10 +91,10 @@ function koshiWindow(sink: PartSink, face: Face, u: number, y0: number, w: numbe
   for (let k = 1; k < n; k++) faceBox(sink, 'structureWood', face, u - w / 2 + (w * k) / n, y0 + h / 2, 0.0, 0.028, h, 0.035, { colour: CEDAR_DARK, decor: true, fine: true });
 }
 
-/** The farmhouses' dialect: koshi windows, plank doors and the doma's gate. */
+/** The farmhouses' dialect: koshi windows, plank doors and the doma's gate (a 'loft' cut is the engawa's, its screens the house's own). */
 function farmDialect(rng: () => number, door: Rgb): HouseDialect {
   const base = dialectOf(rng, door);
-  return { ...base, window: (s, face, o, y0) => koshiWindow(s, face, o.u, y0 + o.y0, o.w, o.h) };
+  return { ...base, window: (s, face, o, y0) => { if (o.kind !== 'loft') koshiWindow(s, face, o.u, y0 + o.y0, o.w, o.h); } };
 }
 
 /** Sliding screens along a front between `u0` and `u1`: dark frames over shoji paper (lit at night) in a grid. */
@@ -119,6 +119,10 @@ function minkaBody(sink: PartSink, rng: () => number, look: () => number, W: num
   const kind = rng(), thatch = kind < 0.4, tile = kind >= 0.4 && kind < 0.7;
   const tin = pick(rng, TIN);
   const openings: Opening[] = [{ face: 'right', storey: 0, kind: 'gate', u: D / 2 - 1.8, w: 2.2, y0: 0, h: 2.2 }];
+  // (props census #4, lane B 2026-10-14: "the screens laid on the plaster") the engawa's run of sliding screens is the
+  // house's front there: the wall cut for them, the screens in the cut's mouth, the rooms' dark behind
+  const ua = -D / 2 + 0.6, ub = D / 2 - 4.0;
+  openings.push({ face: 'right', storey: 0, kind: 'loft', u: (ua + ub) / 2, w: ub - ua, y0: 0, h: 2.0 });
   for (const o of windowRhythm('left', 0, D, { w: 1.2, h: 0.9, sill: 1.2, spacing: 2.6, margin: 1.4, max: 4 })) openings.push(o);
   for (const o of windowRhythm('front', 0, W, { w: 1.0, h: 0.9, sill: 1.2, spacing: 2.6, margin: 1.4, max: 2 })) openings.push(o);
   const roof: RoofSpec = thatch
@@ -133,14 +137,19 @@ function minkaBody(sink: PartSink, rng: () => number, look: () => number, W: num
   // the cedar dado (koshi-ita) round the walls, lath strips over it
   const b = frame.bodies[0];
   for (const name of ['front', 'back', 'left', 'right'] as const) {
-    const f = frame.faces[name];
-    faceBox(sink, 'structureWood', f, 0, b.y0 + 0.55, 0.018, f.width, 1.1, 0.03, { colour: pick(look, CEDAR), decor: true });
-    for (let u = -f.width / 2 + 0.3; u < f.width / 2; u += 0.45) faceBox(sink, 'structureWood', f, u, b.y0 + 0.55, 0.04, 0.035, 1.1, 0.02, { colour: CEDAR_DARK, decor: true, fine: true });
+    const f = frame.faces[name], cedar = { colour: pick(look, CEDAR), decor: true };
+    // (the dado stops at the screens' cut on the engawa front)
+    const runs: Array<readonly [number, number]> = name === 'right' ? [[-f.width / 2, ua], [ub, f.width / 2]] : [[-f.width / 2, f.width / 2]];
+    for (const [r0, r1] of runs) if (r1 - r0 > 0.05) faceBox(sink, 'structureWood', f, (r0 + r1) / 2, b.y0 + 0.55, 0.018, r1 - r0, 1.1, 0.03, cedar);
+    for (let u = -f.width / 2 + 0.3; u < f.width / 2; u += 0.45) {
+      if (name === 'right' && u > ua - 0.02 && u < ub + 0.02) continue;
+      faceBox(sink, 'structureWood', f, u, b.y0 + 0.55, 0.04, 0.035, 1.1, 0.02, { colour: CEDAR_DARK, decor: true, fine: true });
+    }
   }
   // the engawa and its lean-to (hisashi) along the south front (+x): posts, a plank floor, screens behind
   const f = frame.faces.right, deep = 1.8;
   const n = Math.max(3, Math.round((D - 4) / 1.8));
-  const ua = -D / 2 + 0.6, ub = D / 2 - 4.0, at: number[] = [];
+  const at: number[] = [];
   for (let k = 0; k <= n; k++) at.push(ua + (ub - ua) * k / n);
   // (props census E4, lane B 2026-10-14; the judges: "the hisashi was turned so its low eave met the wall and the posts
   // stopped 0.51 m under it; no keta beam") the hisashi falls away from the wall from under the main eave's lip, its low
