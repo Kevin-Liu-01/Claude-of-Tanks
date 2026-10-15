@@ -113,17 +113,17 @@ function houseFixtures(sink: PartSink, W: number, D: number, top: number, rng: (
   // the split unit over the window heads (2.1 m) on a side or the back, its drain down the wall
   for (let k = 0, n = rng() < 0.45 ? 2 : 1; k < n; k++) {
     const f = faces[1 + Math.floor(rng() * 3)], u = (rng() - 0.5) * (f.width - 2.0);
-    faceBox(sink, 'structureMetal', f, u, 2.55, 0.17, 0.82, 0.5, 0.26, { colour: white, decor: true });
-    faceBox(sink, 'structureMetal', f, u + 0.12, 2.55, 0.305, 0.4, 0.4, 0.01, { colour: grey, decor: true });
-    faceBox(sink, 'structureMetal', f, u - 0.3, 1.15, 0.03, 0.03, 2.1, 0.03, { colour: white, decor: true });
+    faceBox(sink, 'structureMetal', f, u, 2.55, 0.13, 0.82, 0.5, 0.26, { colour: white, decor: true });
+    faceBox(sink, 'structureMetal', f, u + 0.12, 2.55, 0.26, 0.4, 0.4, 0.012, { colour: grey, decor: true });
+    faceBox(sink, 'structureMetal', f, u - 0.3, 1.15, 0.015, 0.03, 2.1, 0.03, { colour: white, decor: true });
   }
   // the downpipe from the roof at a back corner
   const sx = rng() < 0.5 ? -1 : 1;
-  sink.cylinder('structureMetal', [sx * (W / 2 + 0.06), 0.25, -D / 2 + 0.25], 'y', top - 0.25, 0.05, 6, { colour: white, decor: true });
+  sink.cylinder('structureMetal', [sx * (W / 2 + 0.045), 0.25, -D / 2 + 0.25], 'y', top - 0.25, 0.05, 6, { colour: white, decor: true });
   // the meter box and its conduit by the front corner of the right wall
   const right = faces[1];
   faceBox(sink, 'structureMetal', right, -D / 2 + 0.45, 1.5, 0.07, 0.34, 0.44, 0.14, { colour: rgb(0xb4b0a4), decor: true });
-  faceBox(sink, 'structureMetal', right, -D / 2 + 0.45, (1.72 + top) / 2, 0.03, 0.04, top - 1.72, 0.04, { colour: grey, decor: true });
+  faceBox(sink, 'structureMetal', right, -D / 2 + 0.45, (1.72 + top) / 2, 0.02, 0.04, top - 1.72, 0.04, { colour: grey, decor: true });
 }
 
 /**
