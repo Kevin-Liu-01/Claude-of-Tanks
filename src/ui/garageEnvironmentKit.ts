@@ -1722,6 +1722,9 @@ export function buildGarageEnvironment(
   // Monsoon's puddles: the yard's wet mask (null in every dry yard) and the whole yard damp
   const hardstandWetMaskTexture = garageHardstandWetMask(hardstandStyle);
   const hardstandWet = hardstandWetMaskTexture ? { mask: track(hardstandWetMaskTexture), amount: 1 } : null;
+  // the snow yards sparkle (packed snow most, the crushed rock with snow in its hollows less)
+  const hardstandSparkle = hardstandStyle === 'earth-snow' ? 1 : hardstandStyle === 'gravel-snow' ? 0.6
+    : hardstandStyle === 'slab-snow' ? 0.5 : 0;
   // The graded floor (garageHardstandGradedHook) blends over the terrain: transparent, writing no depth, drawn before the
   // floor decals (renderOrder -1), on its own program, which garageStage.ts compiles with the outdoor seeds.
   const gradedMaterial = (options: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial => {
@@ -1729,7 +1732,7 @@ export function buildGarageEnvironment(
     // the grain is subtler on packed snow than on earth and concrete
     const grainStrength = hardstandNormalKind === 'snow' ? 0.32 : hardstandNormalKind === 'slab' ? 0.5 : 0.62;
     engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook(garageHardstandGrainTexture(floorAnisotropy), grainStrength,
-      hardstandDetail, hardstandWet) as THREE.Material['onBeforeCompile']);
+      hardstandDetail, hardstandWet, hardstandSparkle) as THREE.Material['onBeforeCompile']);
     material.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
     return track(material);
   };

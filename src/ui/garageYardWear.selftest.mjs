@@ -98,7 +98,7 @@ assert.match(kit, /const edge = \(APRON_HALF_M - Math\.max\(Math\.abs\(x\), Math
 }
 assert.match(kit, /const rise = 1 - THREE\.MathUtils\.smoothstep\(ground, 0\.18, APRON_RISE_LIMIT_M - 0\.01\);/,
   'the apron is gone before the ground climbs to the rise limit, so no crossing line shows on a slope');
-assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength,\s*hardstandDetail, hardstandWet\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
+assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength,\s*hardstandDetail, hardstandWet, hardstandSparkle\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
   'the graded floor blends over the terrain on its own keyed program after the cascade hook, with the shared grain');
 assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
 const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
@@ -129,6 +129,9 @@ assert.match(program, /roughnessFactor = mix\(roughnessFactor \* \(1\.0 - 0\.28 
 assert.match(program, /normal = normalize\(mix\(normal, nonPerturbedNormal, hardstandWater \* 0\.92\)\);/, 'standing water lies flat');
 assert.match(program, /shader\.uniforms\.hardstandWet = \{ value: wet\?\.mask \? wet\.amount : 0 \};/, 'dry floors read no water');
 assert.match(kit, /const hardstandWetMaskTexture = garageHardstandWetMask\(hardstandStyle\);/, 'the pack asks its style for a wet mask');
+assert.match(program, /totalEmissiveRadiance \+= vec3\(1\.5\) \* hardstandGlint \* hardstandSparkle \* \(1\.0 - smoothstep\(9\.0, 30\.0, length\(vViewPosition\)\)\);/,
+  'snow sparkles near the camera and never shimmers far off');
+assert.match(kit, /const hardstandSparkle = hardstandStyle === 'earth-snow' \? 1/, 'the snow yards sparkle');
 assert.match(yardWear, /if \(style !== 'earth-wet' \|\| typeof document === 'undefined'\) return null;/, 'only the monsoon yard is wet');
 assert.equal(garageHardstandDetailKind('earth-sand'), 'sand');
 assert.equal(garageHardstandDetailKind('earth-snow'), 'snow');
