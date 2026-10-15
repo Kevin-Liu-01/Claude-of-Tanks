@@ -3,12 +3,15 @@
 // kitless maps that still fall back to the plan builders (railKit makeWarehouse, villageKit makeDepot, railKit makeShed)
 // are the ones whose kits land in 225 (goral on winter, tselina on steppe, nordland on fjord). The allowlist fails both
 // ways: a map outside it placing a fallback, and a map on it that no longer needs its exception (prune it then).
+// (Props census #13, lane B 2026-10-15) the plan's factory and fire station (urbanKit makeFactory, structureKit
+// makeFireStation) are retired the same way: every map that places them draws them from its kit (Steinburg's fabrik and
+// Feuerwache, the Ruhr works, the kits of #13), and none may fall back to them again.
 import assert from 'node:assert/strict';
 import { MAP_IDS } from './mapIds.ts';
 import { getMapConfig } from './index.ts';
 import { resolveRegionalArchitecture } from './regional/index.ts';
 
-const FALLBACKS = new Set(['warehouse', 'depot', 'shed']);
+const FALLBACKS = new Set(['warehouse', 'depot', 'shed', 'factory', 'firestation']);
 /** map -> why it may still place a plan fallback (each entry is removed when its kit lands) */
 const ALLOW = new Map([
   ['winter', 'looks-goral (225): the tartak and the board store take the depot and warehouse plots'],
@@ -28,6 +31,6 @@ for (const [id, kinds] of placing) {
   assert.ok(ALLOW.has(id), `${id} places the plan's ${kinds.join(', ')} (no kit builder for them): give its kit the builders, or (with a ruling) allowlist it`);
 }
 for (const [id, why] of ALLOW) {
-  assert.ok(placing.has(id), `${id} no longer places a plan warehouse/depot/shed (${why}): remove its allowlist entry`);
+  assert.ok(placing.has(id), `${id} no longer places a plan fallback (${why}): remove its allowlist entry`);
 }
 console.log(`plan fallbacks: ${[...placing].map(([id, k]) => `${id} (${k.join(', ')})`).join('; ') || 'none'} — each allowlisted until its kit lands`);

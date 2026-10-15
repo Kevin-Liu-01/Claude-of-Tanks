@@ -768,15 +768,32 @@ const fireStation: RegionalBuilder = (ctx) => {
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 5.0, wall: BLOCK }],
     roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.25, bucket: CONCRETE, parapet: 0.4 }, gableBucket: BLOCK,
-    openings: [{ face: 'right', storey: 0, kind: 'door', u: D * 0.25, w: 0.95, y0: 0, h: 2.1 }, ...windowRhythm('left', 0, D, { w: 1.4, h: 1.0, sill: 1.4, spacing: 3.0, margin: 1.2 }),
+    // (the side door toward the front: toward the back it stood inside the hose tower)
+    openings: [{ face: 'right', storey: 0, kind: 'door', u: -D * 0.25, w: 0.95, y0: 0, h: 2.1 }, ...windowRhythm('left', 0, D, { w: 1.4, h: 1.0, sill: 1.4, spacing: 3.0, margin: 1.2 }),
       ...[-W * 0.24, W * 0.24].map((u): Opening => ({ face: 'front', storey: 0, kind: 'gate', u, w: Math.min(3.4, W * 0.4), y0: 0, h: 4.0 }))],
     chimneys: [], gutters: null, verge: null, reveal: 0.18,
+    // the hose tower's corner: its faces are the walls there (they stood coplanar with the station's)
+    abutted: [{ face: 'right', u0: D / 2 - 3.2, u1: D / 2 }, { face: 'back', u0: -W / 2, u1: -W / 2 + 3.2 }],
   }, dialect);
   const f = frame.faces.front;
   faceBox(sink, 'structureWood', f, 0, 4.55, 0.02, W * 0.6, 0.35, 0.03, { colour: WHITE, decor: true });
-  // the hose tower in a back corner and the siren on its pole
-  sink.span(BLOCK, W / 2 - 3.2, -0.3, -D / 2, W / 2, 13.0, -D / 2 + 3.2);
-  sink.span(CONCRETE, W / 2 - 3.4, 13.0, -D / 2 - 0.2, W / 2 + 0.2, 13.4, -D / 2 + 3.4);
+  // the hose tower in a back corner, a body of its own (props census #13, lane B 2026-10-15: a solid block that fell with
+  // the bay): its drying stage's openings cut through all four faces under the cap, the louvres across them with their
+  // ends in the jambs, the hoses' dark behind; and the siren on its pole
+  const louvred: HouseDialect = {
+    window: (s, face, o, y0) => {
+      for (let y = y0 + o.y0 + 0.1; y < y0 + o.y0 + o.h - 0.1; y += 0.28) {
+        faceBox(s, 'structureMetal', face, o.u, y, -0.12, o.w + 0.08, 0.05, 0.14, { colour: STEEL_GREY, decor: true });
+      }
+    },
+    door: () => undefined,
+  };
+  sink.placed(0, W / 2 - 1.6, 0, -D / 2 + 1.6, () => buildHouse(sink, {
+    w: 3.2, d: 3.2, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 12.6, wall: BLOCK }],
+    roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.4, bucket: CONCRETE },
+    openings: (['front', 'right', 'back', 'left'] as const).map((face): Opening => ({ face, storey: 0, kind: 'loft', u: 0, w: 1.6, y0: 10.0, h: 1.8 })),
+    chimneys: [], gutters: null, verge: null, reveal: 0.22, rafters: null, spall: null,
+  }, louvred));
   sink.cylinder('structureMetal', [-W / 2 + 1.0, 0, -D / 2 + 1.0], 'y', 9, 0.1, 8, { colour: STEEL_GREY, decor: true });
   sink.cylinder('structureMetal', [-W / 2 + 1.0, 9, -D / 2 + 1.0], 'y', 0.5, 0.35, 10, { colour: rgb(0xd8d2c4), decor: true });
   });

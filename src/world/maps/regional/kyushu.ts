@@ -717,7 +717,7 @@ const worksOffice: RegionalBuilder = (ctx) => {
 /** The fire brigade post (a fire station plot): two storeys of cement render, the red shutter, the hose tower. */
 const firePost: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, mobile = ctx.tier === 'mobile';
   // the post fills the old station's reach (its bounds): the front on the front edge, the hose tower in the back corner
   const R = reach(ctx), W = Math.max(7, R.W - 0.8), D = Math.max(7, R.D - 2.3);
   sink.placed(0, R.cx, 0, R.z1 - 0.3 - D / 2, () => {
@@ -739,10 +739,27 @@ const firePost: RegionalBuilder = (ctx) => {
     const f = frame.faces.front;
     faceBox(sink, 'structureWood', f, W * 0.3, 3.4, 0.02, 1.8, 0.4, 0.03, { colour: rgb(0xe8e2d4), decor: true });
   });
-  // the hose-drying tower of steel at the back, its red lamp
-  const tx = R.x1 - 1.0, tz = R.z0 + 1.0;
-  for (const [dx, dz] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]] as const) sink.member('structureMetal', [tx + dx, -0.3, tz + dz], [tx + dx * 0.6, 11, tz + dz * 0.6], 0.1, 0.1, [1, 0, 0], { colour: rgb(0x9a9e9c), exposed: true }, 0);
-  sink.span('structureMetal', tx - 0.6, 11, tz - 0.6, tx + 0.6, 11.15, tz + 0.6, { colour: rgb(0x9a9e9c), decor: true });
+  // the hose-drying tower of steel at the back (props census #13, lane B 2026-10-15; it was four bare legs under a plate):
+  // its legs on their footings, girts and X braces in every panel, recorded as a lattice so it falls as its members; the
+  // ladder up its front, the hoses hung to dry from the head inside it, the head's deck and rail, the red lamp
+  const tx = R.x1 - 1.0, tz = R.z0 + 1.0, grey = rgb(0x9a9e9c);
+  latticeFrame(sink, { foot: 0.7, head: 0.42, cx: tx, cz: tz, y0: 0, y1: 11, size: 0.1, girt: 0.06, brace: 0.035, panels: 5, bucket: 'structureMetal',
+    colour: grey, pad: { bucket: CEMENT, size: 0.4, top: 0.15 }, mobile },
+  { x0: tx - 0.6, x1: tx + 0.6, y0: 11, y1: 11.45, z0: tz - 0.6, z1: tz + 0.6, bucket: 'structureMetal', tint: grey });
+  sink.span('structureMetal', tx - 0.6, 11, tz - 0.6, tx + 0.6, 11.15, tz + 0.6, { colour: grey, decor: true });
+  for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
+    sink.member('structureMetal', [tx + ax * 0.58, 12.05, tz + az * 0.58], [tx + bx * 0.58, 12.05, tz + bz * 0.58], 0.04, 0.04, [0, 1, 0], { colour: grey, decor: true, exposed: true }, 0);
+  }
+  for (const [x, z] of [[-0.56, -0.56], [0.56, -0.56], [0.56, 0.56], [-0.56, 0.56]] as const) {
+    sink.span('structureMetal', tx + x - 0.02, 11.15, tz + z - 0.02, tx + x + 0.02, 12.05, tz + z + 0.02, { colour: grey, decor: true });
+  }
+  // the ladder up the +z face: its stiles from the ground to the deck, rungs every 0.3 m (fine joinery)
+  const lz = (y: number): number => tz + 0.7 - (0.7 - 0.42) * (y / 11) + 0.14;
+  for (const dx of [-0.2, 0.2]) sink.member('structureMetal', [tx + dx, 0, lz(0)], [tx + dx, 11.15, lz(11.15)], 0.04, 0.04, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+  for (let y = 0.3; y < 11; y += 0.3) sink.span('structureMetal', tx - 0.2, y - 0.015, lz(y) + 0.005, tx + 0.2, y + 0.015, lz(y) + 0.035, { colour: IRON, decor: true, fine: true });
+  // the hoses hung over the head's bar to dry, down inside the frame
+  for (const dx of [-0.24, 0, 0.24]) sink.span('structureWood', tx + dx - 0.035, 5.6 + dx * 3, tz - 0.035, tx + dx + 0.035, 11.0, tz + 0.035, { colour: rgb(0xd9d1bc), decor: true });
+  sink.member('structureMetal', [tx - 0.42, 10.95, tz], [tx + 0.42, 10.95, tz], 0.06, 0.06, [0, 1, 0], { colour: IRON, decor: true }, 0);
   sink.cylinder('structureMetal', [tx, 11.15, tz], 'y', 0.3, 0.14, 8, { colour: rgb(0xd83a2a), decor: true });
   return sink.finish();
 };
