@@ -51,7 +51,8 @@ const factory = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const seed = 2002, P = config.props, mapId = config.id, rng = mulberry32(seed);
   const drng = mulberry32(seed + 9001), vrng = mulberry32(seed + 12007);
   const L = heightField._layout, v = L.village, roads = L.roads, noVeg = heightField._noVeg;
-  const buckets = { wood: [] }, decorationGroundingReceipts = [];
+  // (#19) the field timber draws on the baked material (maps/timberForms.ts)
+  const buckets = { baked: [] }, decorationGroundingReceipts = [];
   const _mat4 = new THREE.Matrix4(), _posv = new THREE.Vector3(), _scalev = new THREE.Vector3();
   const _quat = new THREE.Quaternion(), _upAxis = new THREE.Vector3(0,1,0);
   const PROP_TYPE_REGISTRY = DESTRUCTIBLE_TYPES;
@@ -95,7 +96,7 @@ function recordIdentity(records) {
     ({ kind, cls, sc, r, h, slot, state, propIdx: ob?.propIdx, colPropIdx: col?.propIdx }));
 }
 function cleanup(fixture) {
-  fixture.buckets.wood.forEach(geo => geo.dispose());
+  fixture.buckets.baked.forEach(geo => geo.dispose());
   for (const pool of fixture.pools.values()) {
     pool.imI?.geometry.dispose(); pool.imI?.material.dispose();
   }
@@ -108,7 +109,7 @@ for (const seed of [1337, 2025]) {
   // Capture intact identity before source pool finalization refits footprints.
   const originalRecords = after.records.slice(), originalObs = after.obstacles.slice();
   const originalCols = after.colliders.slice(), originalMatrices = [...after.pools.values()].flatMap(pool => pool.mats4);
-  const oldTopology = after.buckets.wood.map(topology);
+  const oldTopology = after.buckets.baked.map(topology);
   const blockers = [...canonicalBlockers.filter(ob => ob.kind !== 'truckflatbed'), ...after.obstacles, ...after.colliders];
   const receipt = composeLoggingYard(longleaf.props.loggingYard, field, after.fieldTimber, blockers, after.records, after.pools);
   const repeated = composeLoggingYard(longleaf.props.loggingYard, field, replay.fieldTimber,
@@ -116,8 +117,8 @@ for (const seed of [1337, 2025]) {
   assert.deepEqual(receipt, repeated);
   assert.deepEqual(after.nextRolls(), before.nextRolls(), 'all three actual seeded streams remain unchanged');
   assert.deepEqual(recordIdentity(after.records), recordIdentity(before.records));
-  assert.equal(after.buckets.wood.length, before.buckets.wood.length);
-  assert.deepEqual(after.buckets.wood.map(topology), oldTopology, 'same geometry objects, UVs, indices, attribute bytes');
+  assert.equal(after.buckets.baked.length, before.buckets.baked.length);
+  assert.deepEqual(after.buckets.baked.map(topology), oldTopology, 'same geometry objects, UVs, indices, attribute bytes');
   assert.equal(receipt.campsMoved, 0, 'no partial camp or unsupported fire-ring relocation');
   assert.equal(receipt.flatbeds.accepted, Math.min(2, after.records.filter(r => r.kind === 'truckflatbed').length),
     'every available production-stage flatbed moves; absent donors are never fabricated');
@@ -126,13 +127,13 @@ for (const seed of [1337, 2025]) {
   for (const row of [receipt.flatbeds, receipt.bundles, receipt.clearcut]) {
     assert.equal(row.accepted + row.unsafe + row.unavailable, row.attempted);
   }
-  const geometryChanged = (geo, index) => !geo.attributes.position.array.every((v, at) => v === before.buckets.wood[index].attributes.position.array[at]);
+  const geometryChanged = (geo, index) => !geo.attributes.position.array.every((v, at) => v === before.buckets.baked[index].attributes.position.array[at]);
   after.fieldTimber.forEach((piece, index) => {
-    assert.equal(piece.geometry, after.buckets.wood[index]);
+    assert.equal(piece.geometry, after.buckets.baked[index]);
     assert.equal(piece.radius, before.fieldTimber[index].radius);
     assert.equal(piece.length, before.fieldTimber[index].length);
     assert.equal(piece.height, before.fieldTimber[index].height);
-    assert.deepEqual(piece.geometry.attributes.position.array, replay.buckets.wood[index].attributes.position.array);
+    assert.deepEqual(piece.geometry.attributes.position.array, replay.buckets.baked[index].attributes.position.array);
     if (!geometryChanged(piece.geometry, index)) return;
     const { x, z, relief, kind } = piece.grounding;
     assert.equal(field._noVeg(x, z), false); assert.ok(field._roadDist(x, z) >= 7);
@@ -201,7 +202,7 @@ for (const seed of [1337, 2025]) {
   }
   console.log(JSON.stringify({ seed, receipt, actualStageTimber: after.fieldTimber.length,
     actualStageVehicles: after.records.filter(r => r.kind.startsWith('truck')).length,
-    vertexCount: after.buckets.wood.reduce((n, g) => n + g.attributes.position.count, 0) }));
+    vertexCount: after.buckets.baked.reduce((n, g) => n + g.attributes.position.count, 0) }));
   cleanup(before); cleanup(after); cleanup(replay);
 }
 
@@ -277,15 +278,15 @@ for (const seed of [1337, 2025]) {
 }
 
 const field = createHeightField(1337, longleaf), original = factory(longleaf, field, buildings);
-const positions = original.buckets.wood.map(g => g.attributes.position.array.slice());
+const positions = original.buckets.baked.map(g => g.attributes.position.array.slice());
 const matrices = [...original.pools.values()].map(p => p.mats4.map(m => m.elements.slice()));
 assert.equal(composeLoggingYard(undefined, field, original.fieldTimber, canonical, original.records, original.pools), null);
-assert.deepEqual(original.buckets.wood.map(g => g.attributes.position.array), positions);
+assert.deepEqual(original.buckets.baked.map(g => g.attributes.position.array), positions);
 assert.deepEqual([...original.pools.values()].map(p => p.mats4.map(m => m.elements)), matrices);
 const rejected = composeLoggingYard(longleaf.props.loggingYard, { ...field, _noVeg: () => true },
   original.fieldTimber, canonical, original.records, original.pools);
 assert.equal(rejected.flatbeds.accepted + rejected.bundles.accepted + rejected.clearcut.accepted, 0);
-assert.deepEqual(original.buckets.wood.map(g => g.attributes.position.array), positions, 'unsafe targets preserve original scenery');
+assert.deepEqual(original.buckets.baked.map(g => g.attributes.position.array), positions, 'unsafe targets preserve original scenery');
 assert.deepEqual([...original.pools.values()].map(p => p.mats4.map(m => m.elements)), matrices);
 cleanup(original);
 const unaffected = factory(verdant, createHeightField(1337, verdant), []);

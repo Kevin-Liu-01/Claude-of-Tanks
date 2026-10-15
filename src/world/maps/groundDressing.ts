@@ -1,11 +1,14 @@
 // src/world/maps/groundDressing.ts — the field's fallen timber (props lane A, family #19, 2026-10-15; WORKLIST.md #19
-// site:logs-and-stumps). Extracted from props.ts createProps as it stood (the same text, the same shared stream):
-// props.ts calls it where it ran. (The craters' clods stay in props.ts until Lane C r2d's drawn footprints land.)
+// site:logs-and-stumps). Extracted from props.ts createProps as it stood (the same shared stream, the same seats, the
+// same grounding receipts and logging-yard donors): props.ts calls it where it ran. Each piece is now its map's own
+// timber built from its members (timberForms.ts) on the baked material, its looks from its own hash stream. (The
+// craters' clods stay in props.ts until Lane C r2d's drawn footprints land.)
 import * as THREE from 'three';
 import type { HeightField } from '../terrain.ts';
 import type { FieldTimberPiece } from '../loggingYard.ts';
 import { planGroundedSegment, sampleDiscGround, type GroundedSegmentEndpoint } from '../propPlacement.ts';
-import { scaleUV } from '../propGeometry.ts';
+import { hash } from './craftMesh.ts';
+import { buildFallenLog, buildStump, logForm, stumpForm, timberOf } from './timberForms.ts';
 
 type Rng = () => number;
 
@@ -21,6 +24,10 @@ export const FIELD_LOG_COUNTS: Readonly<Record<string, number>> = Object.freeze(
 const _quat = new THREE.Quaternion();
 const _upAxis = new THREE.Vector3(0, 1, 0);
 const _posv = new THREE.Vector3();
+const _invq = new THREE.Quaternion();
+const _upv = new THREE.Vector3();
+/** A piece's own seed from where it lies (its looks never read the shared stream). */
+const pieceSeed = (x: number, z: number, salt: number): number => Math.floor(hash(Math.round(x * 64), Math.round(z * 64), salt) * 0x7fffffff);
 
 /** What a fallen log or a stump records of its grounding (props.ts DecorationGroundingReceipt). */
 interface TimberGroundingReceipt {
@@ -36,7 +43,7 @@ export interface FieldTimberHost {
   heightField: HeightField;
   v: { x0: number; x1: number; z0: number; z1: number };
   noVeg: (x: number, z: number) => boolean;
-  buckets: { wood: THREE.BufferGeometry[] };
+  buckets: { baked: THREE.BufferGeometry[] };
   decorationGroundingReceipts: TimberGroundingReceipt[];
   fieldTimber: FieldTimberPiece[] | null;
 }
@@ -63,12 +70,17 @@ export function placeFieldLogsAndStumpsOf(host: FieldTimberHost): void {
       const pose = planGroundedSegment(
         heightField, x, z, Math.cos(yaw), -Math.sin(yaw), len, r * 0.85, r * 0.1,
       );
-      const log = new THREE.CylinderGeometry(r * 0.85, r, len, 7, 1);
-      scaleUV(log, 1.0, len * 0.5);
+      // (#19) the map's own stem in the old cylinder's frame: the stubs and the root plate stand off the ground (the world's
+      // up turned into that frame); a logging yard's donor is cut timber, sawn at both ends
       _quat.setFromUnitVectors(_upAxis, _posv.set(pose.axisX, pose.axisY, pose.axisZ));
+      _upv.set(0, 1, 0).applyQuaternion(_invq.copy(_quat).invert());
+      const seedL = pieceSeed(x, z, 0x1095);
+      const donor = !!fieldTimber && fieldTimber.length < yardDonors;
+      const log = buildFallenLog(logForm(r, len, timberOf(mapId, hash(1, 0, seedL), hash(2, 0, seedL)),
+        [_upv.x, _upv.y, _upv.z], seedL, donor));
       log.applyQuaternion(_quat);
       log.translate(pose.x, pose.y, pose.z);
-      buckets.wood.push(log);
+      buckets.baked.push(log);
       decorationGroundingReceipts.push({
         kind: 'fallen-log', x: pose.x, y: pose.y, z: pose.z,
         relief: pose.relief, baseClearance: -r * 0.1,
@@ -78,12 +90,17 @@ export function placeFieldLogsAndStumpsOf(host: FieldTimberHost): void {
     } else { // stump
       const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
       const support = sampleDiscGround(heightField, x, z, r, 0.06);
-      const st = new THREE.CylinderGeometry(r * 0.92, r * 1.15, h, 8, 1);
-      scaleUV(st, 1.5, 0.5);
       const yaw = rng() * Math.PI;
+      // (#19) the map's own stump about its centre, its roots run out over the ground (read in its own frame); a logging
+      // yard's donor is fresh-felled, its roots kept to its foot (the yard moves it after it is built)
+      const seedS = pieceSeed(x, z, 0x57a3);
+      const donor = !!fieldTimber && fieldTimber.length < yardDonors;
+      const baseY = support.y + h / 2, cy = Math.cos(yaw), sy = Math.sin(yaw);
+      const st = buildStump(stumpForm(r, h, timberOf(mapId, hash(1, 0, seedS), hash(2, 0, seedS)), seedS, donor),
+        (lx, lz) => heightField.getHeightAt(x + lx * cy + lz * sy, z - lx * sy + lz * cy) - baseY);
       st.rotateY(yaw);
-      st.translate(x, support.y + h / 2, z);
-      buckets.wood.push(st);
+      st.translate(x, baseY, z);
+      buckets.baked.push(st);
       decorationGroundingReceipts.push({
         kind: 'stump', x, y: support.y, z, relief: support.spread, baseClearance: -0.06,
         supportMin: support.min, supportMax: support.max,
