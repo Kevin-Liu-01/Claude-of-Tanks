@@ -47,15 +47,15 @@
       "concealers": 5837
     },
     "steppe": {
-      "bytes": 1582361,
-      "sha256": "86d6aa6c92e6ef6258a4cfc3f8c456dc48df9135c133dd1fa459d3a9ec9cdf7b",
+      "bytes": 1584985,
+      "sha256": "2803a781f2df5b438fee3b60ed25b8de1add8baed127f0f88338429882d78a2c",
       "obstacles": 2033,
       "colliders": 1891,
       "concealers": 812
     },
     "railyard": {
-      "bytes": 1679385,
-      "sha256": "7f1f017e709d83d7f1a59b4bdabc102dad2ec1649f3bdf5aa941d61e1c976db1",
+      "bytes": 1679307,
+      "sha256": "c511fc82aec6ebe35afd266e0f4222faa0cf4088fc27223386aaf2a6ebe28d39",
       "obstacles": 2387,
       "colliders": 2525,
       "concealers": 1337
@@ -103,15 +103,15 @@
       "concealers": 1139
     },
     "caldera": {
-      "bytes": 1863142,
-      "sha256": "fa6eb920e4518dbef21aeddb68517f9db59139d3b7f506250808a45eb45154a5",
+      "bytes": 1864060,
+      "sha256": "fba2371d43dcd2e3291e1a358b3cd9679cb057ce6e56069a1c7bb65239f718b7",
       "obstacles": 2519,
       "colliders": 2410,
       "concealers": 1080
     },
     "foundry": {
-      "bytes": 2162908,
-      "sha256": "135602dca26960a6611cb7c2d2794e5106009ae6b5a8f86cee9a96912624a611",
+      "bytes": 2163059,
+      "sha256": "e39800ce0393bfaaddac9202ab0cbb28b22bd329bd54721a6049ab35de3eb118",
       "obstacles": 3873,
       "colliders": 4321,
       "concealers": 2727
@@ -215,8 +215,8 @@
       "concealers": 7024
     },
     "mars": {
-      "bytes": 1030903,
-      "sha256": "80c086576cf0d7049534695636400909285bb539aa5b9e2ba648e7ad71335ed2",
+      "bytes": 1031008,
+      "sha256": "91e19c8d510387a6b52b686610a18b6b69f4430ffcd87910500fc8338bda8d67",
       "obstacles": 822,
       "colliders": 837,
       "concealers": 0
@@ -281,15 +281,15 @@
         "concealers": 5611
       },
       "steppe": {
-        "bytes": 1839788,
-        "sha256": "9166c17f0c8d6bf77c2013ad1124eeaff35e65bcdfd29f8ce7ae9b1d1e0e14a4",
+        "bytes": 1842412,
+        "sha256": "b34fbc144d43021f1aba811044f8afc82441de1d2222f9ca2641fd900a31009c",
         "obstacles": 2252,
         "colliders": 1985,
         "concealers": 842
       },
       "railyard": {
-        "bytes": 1868624,
-        "sha256": "acc5ef5c17693bc9d8afca194d337ae387842419e7c74ed465e9a40a89f7ab47",
+        "bytes": 1868546,
+        "sha256": "ade4d98e9e2ecd85538ed3379b92b17c180688ede4ae0e4262462e657e5cc13b",
         "obstacles": 2514,
         "colliders": 2569,
         "concealers": 1337
@@ -337,15 +337,15 @@
         "concealers": 1139
       },
       "caldera": {
-        "bytes": 2046788,
-        "sha256": "2b99b0b2cc000907b95717262ef3c868622bdf263e0b03911c3dd1b8943f1322",
+        "bytes": 2047706,
+        "sha256": "61bea898566cc7f160a0ae782fe5b730f35994e8d161ccfc97280943e5d07dc1",
         "obstacles": 2642,
         "colliders": 2462,
         "concealers": 1080
       },
       "foundry": {
-        "bytes": 2162908,
-        "sha256": "135602dca26960a6611cb7c2d2794e5106009ae6b5a8f86cee9a96912624a611",
+        "bytes": 2163059,
+        "sha256": "e39800ce0393bfaaddac9202ab0cbb28b22bd329bd54721a6049ab35de3eb118",
         "obstacles": 3873,
         "colliders": 4321,
         "concealers": 2727
@@ -449,8 +449,8 @@
         "concealers": 7086
       },
       "mars": {
-        "bytes": 1198441,
-        "sha256": "0cd11475711951120a27c839d2a6167556435a8ac77aa79e701409bd360c6295",
+        "bytes": 1198546,
+        "sha256": "88ab43cdc3b7ca99df86e978c694519a30214a5fae3e82177f2d20ea789e61aa",
         "obstacles": 945,
         "colliders": 878,
         "concealers": 0
