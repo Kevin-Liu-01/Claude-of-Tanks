@@ -62,7 +62,11 @@ each powertrain's start-up and idle, the map's beds, the running gear, the
 other engine bands, every loop a rig can start, then the count's tick, the
 mode's opener, the hatch and the horn, so the countdown is heard from its first
 frame (on Verdant with six tanks: 44 assets, 45 files, 2.1 MB of the about 670
-files a cold entry queues; our idle used to decode 638th, now 7th). Pinned
+files a cold entry queues; our idle used to decode 638th, now 7th). Each roster
+hull's powertrain is resolved from its whole spec (`getVehicleSpec`, the
+fleet's `getSpec`), as its rig will be: a family turns on role and weight too,
+and by id alone every IFV warmed another family's bank
+(`presenceFamilies.selftest.mjs` checks all 220 vehicles). Pinned
 assets and live loops
 are never evicted; the decoded budget (200 MB desktop, 96 MB mobile) only caps
 the unpinned extras. One battle's working set is about 120–140 MB decoded on
@@ -415,7 +419,14 @@ behind "Firing". Every main-gun result is called; only flavour (firing, reload
 done, allies' kills, near misses, autocannon and machine-gun results) is
 probability-gated, and spot calls are throttled to one per five seconds unless
 several contacts appear at once. The team's count (last tank, last enemy,
-outnumbered) waits out the kill call that usually comes with it.
+outnumbered) waits out the kill call that usually comes with it. It counts the
+whole field, never what a seat can see: a solo battle's list is the field; a
+network seat is sent only the hulls its team spots, so it counts the lobby
+roster with the authority's deaths (`getTeamRoster`, the roster the HUD's team
+tally reads; every seat is sent every destroyed hull), and only where a death is
+final (`deathsAreFinal` in `src/sim/matchRuleset.ts`: no respawn, no waves). In
+a respawn or wave mode, or with no roster wired, a network battle (its hulls
+carry `networkVisible`) calls no side counts at all.
 
 What the crew says for the tank's own systems and the modes (2026-10-04):
 
@@ -904,7 +915,12 @@ crew-lines.json ─┐                    crew-voices.json
   count ticks its last three seconds, a network battle rolls out when its count
   reaches 0 (it never did, so its horn, start call, bells, team counts and
   quiet-stretch radio were all off), a battle rolls out once, and the loader
-  keeps its bed from the battle phase edge to the reveal.
+  keeps its bed from the battle phase edge to the reveal. Two verifier
+  counterexamples followed: the network rollout turned the side counts on over
+  a seat's spotted list (the first enemy spotted read as "last enemy" with four
+  alive and hidden), so they now count the roster where a death is final and
+  nothing otherwise; and the warm resolved engine families by id alone, so 40
+  of 220 vehicles (every IFV) warmed a heavy's diesel instead of their own.
 
 ### Cost
 

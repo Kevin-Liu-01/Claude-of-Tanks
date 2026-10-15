@@ -15,6 +15,7 @@ import { SFX_ASSETS } from './sfxManifest.generated.ts';
 import { resolveVehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import { sceneForMap } from './environmentScenes.ts';
 import { WEAPON_CLOSE } from './weaponAudio.ts';
+import * as rulesets from '../sim/matchRuleset.ts';
 
 globalThis.window = {};
 const encoder = new TextEncoder();
@@ -59,8 +60,11 @@ const me = tank('me', 't72b3m', 'Russia', { isPlayer: true });
 const tanks = [me, tank('ally', 'leo2a6', 'Germany', { x: 30, z: 60 }), tank('foe', 'm1a2', 'USA', { x: -40, z: 160, team: 'enemy' })];
 const listener = { pos: { x: 0, y: 2, z: 0 }, forward: { x: 0, y: 0, z: 1 }, kind: 'player-tank', ownerId: 'me', scoped: false };
 
-/** One battle's composition, wired as main.ts wires it: the lazy facade, the frame owner, the rollout runtime. */
-function compose({ network = false } = {}) {
+/**
+ * One battle's composition, wired as main.ts wires it: the lazy facade, the frame owner, the rollout runtime. `list` is
+ * the hulls the battle presents (game.tanks), `mode` its game mode, `getTeamRoster` main's counted roster (network).
+ */
+function compose({ network = false, list = tanks, mode = 'standard', getTeamRoster } = {}) {
   delete globalThis.window.__COT_AUDIO; // each composition's engine installs its own debug surface
   const ctx = createFakeContext({ decode: (bytes) => Object.assign(fakeBuffer(1.5), { name: assetOf(decoder.decode(bytes)) }) });
   let contexts = 0;
@@ -70,8 +74,9 @@ function compose({ network = false } = {}) {
     createContext: () => { contexts++; return ctx; },
     hasStickyActivation: () => true,
     getMapId: () => MAP,
-    getGameMode: () => 'standard',
+    getGameMode: () => mode,
     getTerrain: () => terrain,
+    ...(getTeamRoster ? { getTeamRoster } : {}),
   });
   audio.bindBus(bus);
   const game = { phase: 'garage', preBattleS: 0, result: null, player: me, timeS: 0 };
@@ -108,7 +113,7 @@ function compose({ network = false } = {}) {
     ctx.advance(dt);
     nowMs += dt * 1000;
     frames.advance(dt, dt, nowMs, false);
-    audio.update(dt, listener, tanks);
+    audio.update(dt, listener, list);
   };
   const enterBattle = () => {
     game.phase = 'battle';
@@ -430,13 +435,107 @@ async function settledButStart(fetches) {
   assert.notEqual(bed()[0].stopped, null, 'the reveal ends it');
 }
 
-// ------------------------------------------------------------------ 9. main.ts wires the frame owner's edges to the bus
+// ------------------------------------------------------------------ 9. multiplayer: the crew counts sides by the roster
+// A network seat is sent only the hulls its team spots (battlePresentation publishRoster: game.tanks holds the spotted and
+// the destroyed). The network rollout turns the crew's side counts on, and counted off that list the first enemy spotted
+// read as "last enemy" with four alive and hidden (verifier counterexample, 2026-10-14, on 28836db71). The count is the
+// lobby roster with the authority's deaths (every seat is sent every destroyed hull), and only where a death is final.
+/** A hull as battlePresentation presents it: every actor carries networkVisible; the viewer's side reads 'player'. */
+function actor(id, specId, nation, options = {}) {
+  return Object.assign(tank(id, specId, nation, options), { networkVisible: options.team !== 'enemy' });
+}
+/** One network battle's field: the viewer and three allies; five enemies on the authority, none spotted yet. */
+function networkField() {
+  const own = [actor('me', 't72b3m', 'Russia', { isPlayer: true }), actor('a1', 'leo2a6', 'Germany', { x: 20 }),
+    actor('a2', 'm1a2', 'USA', { x: 40 }), actor('a3', 'leo2a6', 'Germany', { x: 60 })];
+  const foes = [1, 2, 3, 4, 5].map((i) => actor(`e${i}`, 'm1a2', 'USA', { x: -100 + 40 * i, z: 400, team: 'enemy' }));
+  const spotted = [...own]; // game.tanks
+  return {
+    roster: [...own, ...foes], // game.rosterTanks: the lobby's hulls, each death as the authority sends it
+    foes,
+    spotted,
+    spot(foe) { foe.networkVisible = true; spotted.push(foe); },
+    // a destroyed hull is observable to every seat: its death reaches this one, spotted or not
+    kill(foe, bus) {
+      foe.combat.destroyed = true;
+      foe.networkVisible = true;
+      if (!spotted.includes(foe)) spotted.push(foe);
+      bus.emit('tank:destroyed', { id: foe.id, killerId: 'a1', pos: [foe.state.pos.x, 0, foe.state.pos.z], cause: 'shot' });
+    },
+  };
+}
+/** main.ts's getTeamRoster (its source is asserted in 10): the roster where a death is final, else none. */
+const mainTeamRoster = (net) => () => (net.rosterTanks && rulesets.deathsAreFinal(rulesets.matchRulesetFor(net.mode)) ? net.rosterTanks : null);
+const TEAM_CALLS = ['last_enemy', 'last_tank', 'outnumbered'];
+const teamCalls = (probe) => probe.sayLog.map((e) => e.id).filter((id) => TEAM_CALLS.includes(id));
+/** A network battle through its count and 12 s of live play (the start call over, the net quiet), nothing spotted. */
+async function networkBattle({ mode = 'standard', wireRoster = true } = {}) {
+  installFetch();
+  const field = networkField();
+  const net = { rosterTanks: field.roster, mode };
+  const c = compose({ network: true, list: field.spotted, mode, ...(wireRoster ? { getTeamRoster: mainTeamRoster(net) } : {}) });
+  c.audio.resume();
+  await c.audio.warmBattleEvents(ROSTER);
+  const probe = probeOf();
+  await probe.libraryIdle();
+  c.enterBattle();
+  c.audio.ambientOn(true);
+  for (let i = 0; i < 5; i++) c.frame();
+  c.game.preBattleS = 3; // the authority's countdown, as snapshots carry it
+  while (c.game.preBattleS > 0) { c.frame(); c.game.preBattleS = Math.max(0, c.game.preBattleS - FRAME_S); }
+  for (let i = 0; i < seconds(12); i++) c.frame();
+  assert.deepEqual(c.run.rollouts, [false], 'the network count rolls out');
+  return { c, field, probe };
+}
+{
+  // Standard, wired as main.ts wires it: the first enemy spotted is not the last; the real last is called once
+  const standard = await networkBattle();
+  standard.field.spot(standard.field.foes[0]);
+  for (let i = 0; i < seconds(4); i++) standard.c.frame();
+  assert.deepEqual(teamCalls(standard.probe), [], `one enemy spotted, five alive: no side call (${standard.probe.sayLog.map((e) => e.id)})`);
+  // the spotted enemy and three hidden ones fall; the fifth lives on out of sight
+  for (const foe of standard.field.foes.slice(0, 4)) standard.field.kill(foe, standard.c.bus);
+  for (let i = 0; i < seconds(3); i++) standard.c.frame();
+  assert.deepEqual(teamCalls(standard.probe), ['last_enemy'], 'the last enemy, hidden and alive, is called once, from the deaths the authority sent');
+  standard.c.leaveBattle();
+
+  // a respawn mode: the roster cannot count a side (a return out of sight is never sent), so nothing is called
+  const flags = await networkBattle({ mode: 'capture_the_flag' });
+  flags.field.spot(flags.field.foes[0]);
+  for (const foe of flags.field.foes.slice(1, 4)) flags.field.kill(foe, flags.c.bus);
+  for (let i = 0; i < seconds(4); i++) flags.c.frame();
+  assert.deepEqual(teamCalls(flags.probe), [], `where hulls return, a network seat calls no side count (${flags.probe.sayLog.map((e) => e.id)})`);
+  flags.c.leaveBattle();
+
+  // no roster wired at all: a spotted list is never counted (fails closed)
+  const bare = await networkBattle({ wireRoster: false });
+  bare.field.spot(bare.field.foes[0]);
+  for (let i = 0; i < seconds(4); i++) bare.c.frame();
+  for (const foe of bare.field.foes.slice(0, 4)) bare.field.kill(foe, bare.c.bus);
+  for (let i = 0; i < seconds(3); i++) bare.c.frame();
+  assert.deepEqual(teamCalls(bare.probe), [], 'a network list without a roster is never counted');
+  bare.c.leaveBattle();
+
+  // a death is final in a Standard battle; where hulls return (respawns, waves) no seat can count a side
+  assert.equal(rulesets.deathsAreFinal(rulesets.matchRulesetFor('standard')), true);
+  for (const mode of ['capture_the_flag', 'zone_control', 'endless_horde', 'frontline_assault', 'juggernaut', 'infected', 'gun_game', 'drone']) {
+    assert.equal(rulesets.deathsAreFinal(rulesets.matchRulesetFor(mode)), false, `${mode}: a destroyed hull comes back`);
+  }
+}
+
+// ------------------------------------------------------------------ 10. main.ts wires the frame owner's edges to the bus
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   assert.match(main, /rollout: \(late = false\) => bus\.emit\('battle:rollout', late \? \{ late: true \} : \{\}\)/, 'main emits the rollout (late) edge');
   assert.match(main, /second: \(seconds: number\) => bus\.emit\('battle:countdown', \{ seconds \}\)/, 'main emits the count\'s whole seconds');
+  // the crew's side counts: the network roster where a death is final (section 9 drives this getter), and the warm's
+  // powertrains from each hull's whole spec (presenceFamilies.selftest.mjs)
+  assert.match(main, /getTeamRoster: \(\) => \{\s*if \(!game\.rosterTanks\) return null;\s*const mode = normalizeGameMode\(game\.gameMode\);\s*return deathsAreFinal\(game\.ruleset\?\.mode === mode \? game\.ruleset : matchRulesetFor\(mode\)\) \? game\.rosterTanks : null;\s*\}/,
+    'main counts a network battle\'s sides by its roster, where a death is final');
+  assert.match(main, /getVehicleSpec: getSpec\b/, 'main hands the audio the fleet\'s specs');
   const composition = readFileSync(new URL('../mp/session/browserComposition.ts', import.meta.url), 'utf8');
   assert.match(composition, /load\.audio\.warmBattleEvents\?\.\(rosterSpecs\)/, 'a network round warms its roster\'s sounds while it loads');
 }
 
-console.log('countdownAudio.selftest: the hull, the other tanks and the world sound from the count, once; mute and volume apply; no weapon before the rollout; 3-2-1 ticks and one horn, solo and network; a late join rolls out silently; the presence set decodes first; asked-for sounds jump the bulk; the start-up waits for its recording; the loader keeps its bed passed');
+console.log('countdownAudio.selftest: the hull, the other tanks and the world sound from the count, once; mute and volume apply; no weapon before the rollout; 3-2-1 ticks and one horn, solo and network; a late join rolls out silently; the presence set decodes first; asked-for sounds jump the bulk; the start-up waits for its recording; the loader keeps its bed; '
+  + 'a network seat counts sides by the roster where a death is final, never by what it spots passed');

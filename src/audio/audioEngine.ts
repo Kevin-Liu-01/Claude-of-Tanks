@@ -90,6 +90,22 @@ interface AudioMixerOptions {
   getStructureMakeup?(structureId: number): AudioStructureMakeup | null;
   /** The battlefield the two getters above read when they are not given (main.ts hands the world itself). */
   getWorld?(): AudioWorld | null;
+  /**
+   * The whole field by side as this seat may count it, where the list update() is given is not the field (2026-10-14). A
+   * network seat is sent only the hulls its team spots (spotting filters every snapshot), so its list holds the spotted
+   * enemy, never a count of the enemy: the crew's "last enemy" read off it named the first hull spotted while the rest
+   * lived. The count is the lobby roster with the authority's deaths (game.rosterTanks: every seat is sent every
+   * destroyed hull; the HUD's team tally reads it too), and only where a death is final (matchRuleset deathsAreFinal): a
+   * hull's return out of sight is never sent. Null when there is no such count; a list of spotted hulls (its hulls
+   * carry `networkVisible`) then has no team-count calls at all.
+   */
+  getTeamRoster?(): readonly RuntimeValue[] | null;
+  /**
+   * A vehicle's whole spec by id (the fleet registry), for the hulls the battle warm names before any exists: an engine
+   * family turns on a hull's role and weight as well as its id (every IFV's diesel), so the warm resolves it from the
+   * same spec its rig will (2026-10-14: by id alone, 40 of the 220 vehicles warmed another family's bank).
+   */
+  getVehicleSpec?(specId: string): RuntimeValue;
   initialPhase?: string;
   tier?: DeviceTier;
 }
@@ -410,6 +426,8 @@ export function createAudio({
   getLandmarks: givenLandmarks,
   getStructureMakeup: givenMakeup,
   getWorld,
+  getTeamRoster,
+  getVehicleSpec,
   initialPhase = 'garage',
   tier: forcedTier,
 }: AudioMixerOptions = {}): AudioMixer {
@@ -490,6 +508,8 @@ export function createAudio({
   let lowHpCalled = false;
   let ammoLowCalled = false;
   let lastStanding = { mine: false, theirs: false, outnumbered: false };
+  // This battle's list is what a network seat's team spots (its hulls carry `networkVisible`): never a count of a side.
+  let spottedField = false;
   let lastKillAt = -99;
   let thinkStage: 'idle' | 'wait' | 'reply' = 'idle';
   let thinkUntil = 0;
@@ -1693,17 +1713,38 @@ export function createAudio({
     }
   }
 
+  /**
+   * The crew's side counts (last tank, last enemy, outnumbered), from the whole field: a solo battle's list, or the
+   * roster a network battle counts by (getTeamRoster). What a network seat spots is never the count (2026-10-14: its
+   * first spotted enemy read as "last enemy" with the rest alive and hidden), so a spotted list without a roster calls
+   * nothing.
+   */
   function updateTeamCounts(): void {
     if (!playerId || phase !== 'battle' || battleOver || !rolledOut) return;
     const me = tanks.get(playerId);
     if (!me || !me.alive) return;
     let allies = 0;
     let enemies = 0;
-    for (const info of tanks.values()) {
-      if (!info.alive) continue;
-      if (info.team === me.team) allies++; else enemies++;
+    let field = 0;
+    const roster = getTeamRoster?.() ?? null;
+    if (roster) {
+      for (let i = 0; i < roster.length; i++) {
+        const hull = roster[i] as { team?: unknown; combat?: { destroyed?: unknown } | null } | null | undefined;
+        if (!hull || typeof hull !== 'object') continue;
+        field++;
+        if (hull.combat?.destroyed) continue;
+        if (String(hull.team ?? '') === me.team) allies++; else enemies++;
+      }
+    } else if (spottedField) {
+      return;
+    } else {
+      field = tanks.size;
+      for (const info of tanks.values()) {
+        if (!info.alive) continue;
+        if (info.team === me.team) allies++; else enemies++;
+      }
     }
-    if (tanks.size < 4) return;
+    if (field < 4) return;
     if (allies === 1 && enemies > 0 && !lastStanding.mine) { lastStanding.mine = true; say('last_tank', { delayS: 0.8 }); }
     if (enemies === 1 && !lastStanding.theirs) { lastStanding.theirs = true; say('last_enemy', { delayS: 0.8 }); }
     if (enemies >= 3 && enemies >= allies * 2 && !lastStanding.outnumbered) { lastStanding.outnumbered = true; say('outnumbered', { delayS: 0.6 }); }
@@ -1711,9 +1752,21 @@ export function createAudio({
 
   // ------------------------------------------------------------ vehicle rigs ---
 
+  /** A hull's sound identity from its whole spec: its rig's (identityFor) and the battle warm's (presenceAssets) alike. */
+  function specIdentity(spec: AudioSpec | null | undefined, specId: string | undefined): VehicleAudioIdentity {
+    const whole = spec || {};
+    return resolveVehicleAudioIdentity({ ...whole, id: specId ?? whole.id });
+  }
+
   function identityFor(entity: AudioEntity): VehicleAudioIdentity {
-    const spec = entity.spec || {};
-    return resolveVehicleAudioIdentity({ ...spec, id: entity.specId ?? spec.id });
+    return specIdentity(entity.spec, entity.specId);
+  }
+
+  /** A roster entry's identity before its hull exists: the fleet's spec for the id (getVehicleSpec), as its rig will read. */
+  function rosterIdentity(specId: string): VehicleAudioIdentity {
+    let spec: RuntimeValue = null;
+    try { spec = getVehicleSpec?.(specId); } catch { /* an id the fleet does not know: the id alone */ }
+    return specIdentity(spec && typeof spec === 'object' ? spec as AudioSpec : null, specId);
   }
 
   /**
@@ -1732,6 +1785,8 @@ export function createAudio({
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
       if (!entity) continue;
+      // a network battle's presented hull (battlePresentation's actor): the list is what this seat's team spots
+      if (!spottedField && typeof (entity as { networkVisible?: unknown }).networkVisible === 'boolean') spottedField = true;
       let info = tanks.get(entity.id);
       const p = entity.state.pos;
       if (!info) {
@@ -2436,6 +2491,7 @@ export function createAudio({
         lowHpCalled = false;
         ammoLowCalled = false;
         lastStanding = { mine: false, theirs: false, outnumbered: false };
+        spottedField = false;
         heartbeatBelow = 0;
         lastSmokeBorn = -1;
         auxGunOn = null;
@@ -2641,12 +2697,12 @@ export function createAudio({
    * What a battle sounds like before anything happens (2026-10-14, the owner: the tanks and the world were silent through
    * the countdown): the roster's powertrains, the map's beds, the running gear and the hull's machinery loops, and the
    * countdown's own cues. Ordered as they are heard: each powertrain's start-up and idle, the beds, the slow running
-   * gear, then the rest.
+   * gear, then the rest. Each hull's powertrain is the one its rig will run (rosterIdentity: its whole spec).
    */
-  function presenceAssets(mapId: string, mode: string): string[] {
+  function presenceAssets(mapId: string, mode: string, roster: readonly string[] = battleRoster): string[] {
     const ids = new Set<string>();
     const families = new Set<string>();
-    for (const specId of battleRoster) families.add(resolveVehicleAudioIdentity({ id: specId }).engine);
+    for (const specId of roster) families.add(rosterIdentity(specId).engine);
     // one band of every family when the roster is unknown (our own hull's whole bank follows once indexed: preloadVehicle)
     if (!families.size) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
     for (const family of families) for (const band of ['start', 'idle']) ids.add(`engine_${family}_${band}`);
@@ -2739,6 +2795,8 @@ export function createAudio({
       library: () => library?.stats() ?? null,
       /** Resolves when every sound and voice load in flight has settled (receipts await the real load, never ticks). */
       libraryIdle: () => library?.idle() ?? Promise.resolve(),
+      /** The countdown's presence set, decoded first by the battle warm: this battle's roster, or the one given. */
+      presence: (roster?: readonly string[]) => presenceAssets(getMapId?.() || 'verdant', getGameMode?.() || 'standard', roster ?? battleRoster),
       limiterReduction: () => mixer?.limiterReduction() ?? 0,
       ambientState: () => ambience?.state() ?? { active: false },
       listenerState: () => ({ x: frame.x, y: frame.y, z: frame.z, fx: frame.fx, fz: frame.fz, kind: listenerKind, ownerId: listenerOwnerId, scoped: listenerScoped }),
