@@ -48,7 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { cableDrum, sleeperStack } from './railYardStores.ts';
+import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -2507,6 +2507,18 @@ function bufferStop(
   gauge = RAIL_SPUR_GAUGE_M,
 ): void {
   const y = heightField.getHeightAt(x, z);
+  // #24 r2 (Lane C, 2026-10-14): a rail-built buffer stop with its spring buffers (railYardStores.ts), from the old
+  // beam's four UV draws; painted (the old struts and beam where a kit has no painted bucket)
+  if (buckets.baked) {
+    const stop = bufferStopGeometry([rng(), rng(), rng(), rng()]);
+    stop.rotateY(yaw);
+    stop.translate(x, y, z);
+    // (the receipts read the beam's centre and the two posts' feet, astride the gauge)
+    const post = (side: number): [number, number] => [x + side * 0.72 * Math.cos(yaw) + 0.05 * Math.sin(yaw), z - side * 0.72 * Math.sin(yaw) + 0.05 * Math.cos(yaw)];
+    stop.userData.bufferStop = { beam: [x, y + 1.0, z], posts: [post(-1), post(1)] };
+    buckets.baked.push(stop);
+    return;
+  }
   const c = Math.cos(yaw), s = Math.sin(yaw);
   for (const side of [-gauge / 2, gauge / 2]) {
     const strut = box(0.18, 1.5, 0.18, 1.4);

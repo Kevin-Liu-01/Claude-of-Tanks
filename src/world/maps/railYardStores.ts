@@ -99,3 +99,58 @@ export function sleeperStack(v: readonly number[]): BG {
   g.rotateY(turn);
   return g;
 }
+
+const RAIL_STEEL = rgb(0x3d342d), RAIL_RUST = rgb(0x5a3b28), BEAM_RED = rgb(0xa1281f), BEAM_WHITE = rgb(0xdcd8cf),
+  BUFFER_BLACK = rgb(0x1e1d1c), CONCRETE = rgb(0x8a867d);
+
+/** A box from its extents, painted. */
+function block(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, tone: readonly number[], salt: number): BG {
+  const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
+  g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  return paint(g, tone, 0.25, salt);
+}
+/** A rail-section member from a to b (0.07 x 0.15), painted. */
+function railMember(a: readonly number[], b: readonly number[], tone: readonly number[], salt: number): BG {
+  const p = new THREE.Vector3(a[0], a[1], a[2]), q = new THREE.Vector3(b[0], b[1], b[2]), d = q.clone().sub(p), len = d.length();
+  const g = new THREE.BoxGeometry(0.07, len, 0.15);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
+  g.translate((p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2);
+  return paint(g, tone, 0.3, salt);
+}
+
+/**
+ * A rail-built buffer stop (a Prellbock) standing on the ground at the origin, the track coming in along -z: on each
+ * rail a post and a raking strut bent from old rail, tied along the ground and across the back, set in concrete feet;
+ * the buffer beam across their heads in red and white, its two spring buffers toward the track at the buffers'
+ * centres. From the old beam's four UV draws `v` (the rust, the beam's set). Painted, one geometry.
+ */
+export function bufferStopGeometry(v: readonly number[]): BG {
+  const [rust, set] = v;
+  const parts: BG[] = [];
+  const frame = rust < 0.5 ? RAIL_STEEL : RAIL_RUST, beamY = 1.0, lean = (set - 0.5) * 0.04;
+  for (const side of [-1, 1]) {
+    const x = side * 0.72;
+    parts.push(railMember([x, -0.15, 0.05], [x, beamY + 0.2, 0.05 + lean], frame, 70 + side));
+    parts.push(railMember([x, -0.1, 1.65], [x, beamY + 0.1, 0.12 + lean], frame, 72 + side));
+    parts.push(railMember([x, 0.04, 0.0], [x, 0.04, 1.7], frame, 74 + side));
+    parts.push(block(x - 0.18, x + 0.18, -0.2, 0.06, 1.45, 1.85, CONCRETE, 76 + side));
+    // the spring buffer: its housing on the beam, the plunger, the head toward the track
+    const h = new THREE.CylinderGeometry(0.15, 0.15, 0.2, 10, 1, false);
+    h.rotateX(Math.PI / 2); h.translate(side * 0.875, beamY, -0.25 + lean);
+    parts.push(paint(h, BUFFER_BLACK, 0.2, 78 + side));
+    const plunger = new THREE.CylinderGeometry(0.09, 0.09, 0.2, 8, 1, false);
+    plunger.rotateX(Math.PI / 2); plunger.translate(side * 0.875, beamY, -0.45 + lean);
+    parts.push(paint(plunger, frame, 0.2, 80 + side));
+    const head = new THREE.CylinderGeometry(0.22, 0.22, 0.04, 12, 1, false);
+    head.rotateX(Math.PI / 2); head.translate(side * 0.875, beamY, -0.57 + lean);
+    parts.push(paint(head, BUFFER_BLACK, 0.2, 82 + side));
+  }
+  // the back tie and the beam in its red and white bands
+  parts.push(railMember([-0.72, 0.6, 0.95], [0.72, 0.6, 0.95], frame, 84));
+  const bands = 7, W = 2.3;
+  for (let k = 0; k < bands; k++) {
+    const x0 = -W / 2 + (k * W) / bands, x1 = -W / 2 + ((k + 1) * W) / bands;
+    parts.push(block(x0, x1, beamY - 0.19, beamY + 0.19, -0.15 + lean, 0.15 + lean, k % 2 ? BEAM_WHITE : BEAM_RED, 86 + k));
+  }
+  return merged(parts);
+}
