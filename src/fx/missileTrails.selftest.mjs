@@ -4,7 +4,7 @@
 // The trail is a chain of segments from the point the motor lit to the nozzle this frame; it is never cut short (a long
 // flight keeps every stretch, coarser), never taken by another missile while it lives (any key, negative too), never cut
 // by its missile's end (it ends where the round struck and dissolves there); each segment draws as a screen-space soft
-// capsule whose optical depths sum seamlessly at any point spacing and stay bounded seen down the trail's length.
+// mitred screen-space band: one layer of fill, neighbours sharing their corners, bounded seen down the trail's length.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { Vector3, PerspectiveCamera } from 'three';
@@ -30,48 +30,58 @@ assert.ok(T.hellfire.tau > T.tow.tau && T.tow.tau > T.spike.tau && T.spike.tau >
 assert.ok(T.hellfire.life >= 9 && T.kornet.life <= 4, 'a dense trail hangs, a wisp is soon gone');
 assert.ok(T.mclos.c0[0] < T.hellfire.c0[0], 'an old motor is greyer');
 
-// ---- 2. the depth a pixel takes (a mirror of the fragment shader's integral) ----------------------------------------
-const cdf = (z) => 1 / (1 + Math.exp(-1.702 * z));
-function segDepth(px, py, s) {
-  const dx = s.bx - s.ax, dy = s.by - s.ay, L = Math.hypot(dx, dy);
-  const tx = L > 1e-3 ? dx / L : 1, ty = L > 1e-3 ? dy / L : 0;
-  const qx = px - s.ax, qy = py - s.ay;
-  const x = qx * tx + qy * ty, y = -qx * ty + qy * tx;
-  const us = L > 1e-3 ? Math.min(1, Math.max(0, x / L)) : 0.5;
-  const rp = s.rA + (s.rB - s.rA) * us;
-  const sig = 0.65 * rp, sa = Math.max(sig, 0.5);
-  const across = Math.exp(-0.5 * (Math.abs(y) / sig) ** 2);
-  const A = (cdf(x / sa) - cdf((x - L) / sa)) * Math.min(s.lenPx / Math.max(L, 1e-3), 2);
-  return s.tau * across * A;
+// ---- 2. the strip (a mirror of the vertex shader's corners): one layer of fill, neighbours share their joint corners ---
+// exactly, the band's width is the profile's (never a fixed width), and nothing in it depends on a side vector in the world
+const norm = (v) => { const l = Math.hypot(v[0], v[1]); return l > 1e-3 ? [v[0] / l, v[1] / l] : null; };
+function corners(sP, sA, sB, sN, hwA, hwB) {
+  const dn = norm([sB[0] - sA[0], sB[1] - sA[1]]) ?? [1, 0];
+  const joint = (other, sign) => {
+    if (!other) return dn;
+    const q = norm(sign > 0 ? [sA[0] - other[0], sA[1] - other[1]] : [other[0] - sB[0], other[1] - sB[1]]);
+    if (!q || q[0] * dn[0] + q[1] * dn[1] <= 0.8) return dn;
+    return norm([dn[0] + q[0], dn[1] + q[1]]);
+  };
+  const dA = joint(sP, 1), dB = joint(sN, -1);
+  const nd = [-dn[1], dn[0]], nA = [-dA[1], dA[0]], nB = [-dB[1], dB[0]];
+  const kA = hwA / Math.max(nA[0] * nd[0] + nA[1] * nd[1], 0.6), kB = hwB / Math.max(nB[0] * nd[0] + nB[1] * nd[1], 0.6);
+  return { A: [[sA[0] - nA[0] * kA, sA[1] - nA[1] * kA], [sA[0] + nA[0] * kA, sA[1] + nA[1] * kA]],
+    B: [[sB[0] - nB[0] * kB, sB[1] - nB[1] * kB], [sB[0] + nB[0] * kB, sB[1] + nB[1] * kB]] };
 }
-// a straight trail seen from the side, its radius growing along it: points every `space` px; the centre line's depth
-for (const space of [0.5, 3, 12, 40, 160]) {
-  const segs = [], n = Math.max(30, Math.ceil(400 / space));
-  const rAt = (px) => 3 + 0.01 * px;
-  for (let k = 0; k < n; k++) {
-    segs.push({ ax: k * space, ay: 0, bx: (k + 1) * space, by: 0, rA: rAt(k * space), rB: rAt((k + 1) * space), tau: 1, lenPx: space });
-  }
-  let lo = Infinity, hi = 0;
-  for (let px = 0.3 * n * space; px <= 0.7 * n * space; px += Math.max(0.25, space / 7)) {
-    let d = 0;
-    for (const s of segs) d += segDepth(px, 0, s);
-    lo = Math.min(lo, d); hi = Math.max(hi, d);
-  }
-  assert.ok(hi / lo < 1.03 && Math.abs(hi - 1) < 0.03, `points ${space} px apart: one seamless line (depth ${lo.toFixed(3)}..${hi.toFixed(3)})`);
-}
-// seen down its length: a stretch adds only what its projection covers (a sight laid down the missile's own line keeps
-// the target beyond it), a little deeper than from the side when seen at a slant, and never a sliver that turns with the
-// view (no world-space side vector shapes it)
 {
-  const endOn = { ax: 100, ay: 100, bx: 100.0004, by: 100.0002, rA: 6, rB: 6, tau: 0.5, lenPx: 300 };
-  const c = segDepth(100, 100, endOn);
-  assert.ok(c < 0.01, `straight down its length: next to nothing (${c.toExponential(2)})`);
-  // a 300 m stretch of 2.5 m segments converging on the vanishing point, each projected 1.5 px long: a bounded depth
-  let stack = 0;
-  for (let k = 0; k < 120; k++) stack += segDepth(100, 100, { ax: 100 + k * 1.5, ay: 100, bx: 100 + (k + 1) * 1.5, by: 100, rA: 6, rB: 6, tau: 0.5, lenPx: 300 });
-  assert.ok(stack < 0.5 * 2 + 1e-9, `a long stretch converging on the eye's line stays see-through (${stack.toFixed(2)})`);
-  const slant = { ax: 0, ay: 0, bx: 20, by: 0, rA: 6, rB: 6, tau: 0.5, lenPx: 60 };
-  assert.ok(Math.abs(segDepth(10, 0, slant) - 1.0) < 0.05, 'at a slant twice as deep as from the side, no more');
+  // a curving trail on screen: four points, three segments
+  const pts = [[100, 400], [300, 380], [480, 330], [640, 250], [760, 150]];
+  const hw = [6, 9, 12, 15, 18];
+  for (let k = 1; k < pts.length - 2; k++) {
+    const segK = corners(pts[k - 1], pts[k], pts[k + 1], pts[k + 2], hw[k], hw[k + 1]);
+    const segN = corners(pts[k], pts[k + 1], pts[k + 2], pts[k + 3], hw[k + 1], hw[k + 2]);
+    for (let e = 0; e < 2; e++) {
+      assert.ok(Math.hypot(segK.B[e][0] - segN.A[e][0], segK.B[e][1] - segN.A[e][1]) < 1e-9,
+        `segments ${k} and ${k + 1} share their joint corner exactly (no seam, no overlap)`);
+    }
+  }
+  // the band's half width at a joint is the profile's there (mitred: its perpendicular reach is hw)
+  const c = corners([0, 0], [100, 0], [200, 50], null, 10, 10);
+  const nd = norm([100, 50]);
+  const reach = Math.abs((c.A[1][0] - 100) * -nd[1] + (c.A[1][1] - 0) * nd[0]);
+  assert.ok(Math.abs(reach - 10) < 1e-9, `the band reaches its half width from the segment's own line (${reach.toFixed(3)})`);
+  // a joint turning sharply on screen (seen nearly down the trail) is not mitred: no spike past the band's width
+  const hairpin = corners([0, 0], [100, 0], [20, 10], null, 10, 10);
+  for (const c of [...hairpin.A, ...hairpin.B]) {
+    const nd2 = norm([20 - 100, 10]);
+    const off = Math.abs((c[0] - 100) * -nd2[1] + (c[1] - 0) * nd2[0]);
+    assert.ok(off <= 10 + 1e-6 || Math.abs((c[0] - 20) * -nd2[1] + (c[1] - 10) * nd2[0]) <= 10 + 1e-6, 'no corner reaches past the band');
+  }
+  // seen straight down its length a segment has no length on screen: a sliver, never a disc stacking up depth
+  const endOn = corners(null, [500, 300], [500.0004, 300.0002], null, 30, 30);
+  const area = Math.abs((endOn.B[0][0] - endOn.A[0][0]) * (endOn.A[1][1] - endOn.A[0][1]) - (endOn.B[0][1] - endOn.A[0][1]) * (endOn.A[1][0] - endOn.A[0][0]));
+  assert.ok(area < 0.1, `end-on: next to no area (${area.toExponential(1)} px^2), so a sight down the line keeps its target`);
+}
+{
+  const src = (await import('node:fs/promises')).readFile(new URL('./missileTrails.ts', import.meta.url), 'utf8');
+  const text = await src;
+  assert.match(text, /if \( T < 0\.002 \) discard;/, 'a pixel with next to no smoke leaves before the noise');
+  assert.match(text, /min\( len3 \* 0\.5 \* \( pA \+ pB \) \/ max\( Ld, 1e-3 \), \$\{OBLIQUE_CAP/, 'a slant draws at most OBLIQUE_CAP deeper');
+  assert.ok(!/sin\(/.test(text.slice(text.indexOf('const FRAG'))), 'no sine hashes in the fragment stage');
 }
 
 // ---- 3. the trail's chain ------------------------------------------------------------------------------------------
@@ -148,7 +158,7 @@ assert.equal(tr.mesh.geometry.instanceCount, TRAIL_SLOTS * TRAIL_SEGS);
   soft.mesh.onBeforeRender(fakeRenderer);
   assert.ok(!soft.mesh.material.depthTest && soft.mesh.material.uniforms.uSoftOn.value === 1, 'the scene depth: met in the shader');
   assert.equal(soft.mesh.material.uniforms.uSceneDepth, depth.uSceneDepth, 'the late pass\'s own depth uniform');
-  assert.match(soft.mesh.material.fragmentShader, /sceneM - \( axisM - h \)/, 'the part of the chord before the scene');
+  assert.match(soft.mesh.material.fragmentShader, /sceneM - \( vR\.z - h \)/, 'the part of the chord before the scene');
 }
 
 // ---- 5. time shifts, reset ------------------------------------------------------------------------------------------
@@ -223,4 +233,4 @@ try {
   if (fx) { fx.resetAll(); disposeObject3DResources(fx.group); }
   if (priorDocument) Object.defineProperty(globalThis, 'document', priorDocument); else delete globalThis.document;
 }
-console.log('missileTrails: every look its trail; seamless depth at any spacing, bounded end-on; born at the nozzle each frame; never cut short, never taken while flying, outlives its round; time, reset');
+console.log('missileTrails: every look its trail; one mitred band (shared corners, bounded end-on); born at the nozzle each frame; never cut short, never taken while flying, outlives its round; time, reset');

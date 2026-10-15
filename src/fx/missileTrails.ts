@@ -8,12 +8,14 @@
  * 2.5 m apart) and overwrote its tail; a ribbon whose round's seed was negative counted as a free slot and was taken by
  * the next missile; its newest point lagged the nozzle by up to a point's spacing.
  *
- * Here the trail is a chain of segments between points the nozzle passed (each with the time it passed), and every
- * segment draws as a screen-space soft capsule: a quad around its projection, in which each pixel takes the smoke's
- * optical depth along the eye ray — the tube's profile across it, a Gaussian-blurred box along it (neighbouring
- * segments sum seamlessly at any spacing), and seen down its length a disc as deep as the stretch behind it (capped, so
- * a tank behind a trail stays readable). Alpha is 1 - e^-depth, so overlaps compose exactly in any order. The segment
- * from the last laid point to the nozzle is rewritten every frame: the smoke is born at the nozzle, with no gap.
+ * Here the trail is a chain of segments between points the nozzle passed (each with the time it passed), drawn as one
+ * band in screen space: each segment a quad along its projection, as wide as the smoke's profile there, its joints
+ * mitred on the neighbouring points' projections so neighbours share their corners exactly — one layer of fill, no seam,
+ * and no side vector in the world to swing as the view turns. Across the band each pixel takes the tube's optical depth
+ * (its soft profile, a little deeper where the eye looks along it, bounded straight down its length so a sight laid on the
+ * missile's line keeps its target); alpha is 1 - e^-depth. The segment from the last laid point to the nozzle is
+ * rewritten every frame: the smoke is born at the nozzle, with no gap. (A first cut drew each segment as a soft capsule
+ * with blurred ends; in a 24-rocket salvo its overdraw cost 12-40 ms a frame at DPR 2.)
  *
  * In the shader each point ages: its radius grows (the jet's first expansion, then the slow spread), its depth thins as
  * it spreads (its smoke conserved), the world wind carries it and it rises, its line wanders as the air shears it, a
@@ -22,10 +24,11 @@
  * lit by the time of day (the media's light: sun through thin smoke, its round side, the sky and the ground) and the
  * motor's flame lights the few metres behind it.
  *
- * Budget: one instanced draw; TRAIL_SLOTS trails of TRAIL_SEGS segments in a fixed interleaved buffer (64 bytes a
- * segment). A segment is written once when its point is laid, the nozzle segment every frame; a trail that fills keeps
- * every other old point and lays the next twice as far apart (never cut short). A trail lives until its newest smoke has
- * dissolved, whatever happened to its missile. Nothing allocates per frame; nothing draws while no trail lives.
+ * Budget: one instanced draw; TRAIL_SLOTS trails of TRAIL_SEGS segments in a fixed interleaved buffer (96 bytes a
+ * segment, its joint neighbours with it). A segment is written once when its point is laid, the nozzle segment every
+ * frame; a trail that fills keeps every other old point and lays the next twice as far apart (never cut short). A trail
+ * lives until its newest smoke has dissolved, whatever happened to its missile. Nothing allocates per frame; nothing
+ * draws while no trail lives.
  */
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -44,13 +47,17 @@ export const TRAIL_SLOTS = 96;
 export const TRAIL_SEGS = 160;
 /** the trail looks the shader holds (each missile family one) */
 const TRAIL_LOOKS = 24;
-const STRIDE = 16;
+const STRIDE = 24;
 /** a point every this many metres of flight at least (the caller's step may be longer for a fast round) */
 export const TRAIL_STEP_M = 2.5;
 /** the newest points a filling trail keeps as laid (near the missile, where it is young and thin) */
 const KEEP_NEW = 16;
 /** how much deeper a stretch seen along its length may draw than seen from the side */
 const OBLIQUE_CAP = 2;
+/** the band reaches this many sigmas of the profile's widest (its window takes the last 15 % of it to nothing) */
+const EXTENT = 2.2;
+/** a joint is mitred while it turns under ~37 degrees on screen */
+const MITER_COS = 0.8;
 
 export interface MissileTrails {
   readonly mesh: THREE.Mesh;
@@ -82,7 +89,9 @@ const VERT = /* glsl */ `
 attribute vec4 iA;   // point A (world) and the time the nozzle passed it
 attribute vec4 iB;   // point B (newer)
 attribute vec4 iS;   // metres along the trail at A and B, seconds since the motor lit at A and B
-attribute vec4 iK;   // look index, seed
+attribute vec4 iK;   // look index, seed, A has a predecessor, B has a successor
+attribute vec4 iP;   // A's predecessor (world) and its time
+attribute vec4 iN;   // B's successor (world) and its time
 uniform float uTime;
 uniform vec3 uWind;
 uniform vec4 uViewport;
@@ -91,16 +100,13 @@ uniform vec3 uSunDir;
 uniform vec3 uSunCol;
 uniform vec3 uSkyCol;
 uniform vec3 uGroundCol;
-varying vec4 vS;     // A and B on screen (px)
-varying vec4 vW;     // clip w at A and B, radius (px) at A and B
-varying vec4 vT;     // depth across at A and B, age at A and B
-varying vec4 vG;     // along (m) at A and B, px per metre at A and B
+varying vec4 vQ;     // side (-1 .. +1 across), metres along, age, depth across
+varying vec4 vR;     // radius (m), px per metre, view depth of the axis, flame light
 varying vec4 vL;     // puff, puff spacing, churn, seed
-varying vec4 vM;     // the segment's length (m), the sun on its sides, the sun through it, its life (s)
-varying vec4 vX;     // the flame's light at A and B, fog depth, the quad's half width (px)
+varying vec4 vM;     // slant depth factor, the sun on its sides, the sun through it, life (s)
 varying vec3 vAmb;
 varying vec3 vSun;
-float h1( float n ) { return fract( sin( n * 127.1 + 4.7 ) * 43758.5453 ); }
+float h1( float p ) { p = fract( p * 0.1031 ); p *= p + 33.33; p *= p + p; return fract( p ); }
 float vn1( float x ) { float i = floor( x ), f = fract( x ); return mix( h1( i ), h1( i + 1.0 ), f * f * ( 3.0 - 2.0 * f ) ); }
 // the air takes a point: the wind (eased in as the exhaust's push dies), a slow rise, and its line wandering as the air
 // shears it (a smooth function of the metres along the trail, so neighbouring segments wander together)
@@ -123,9 +129,9 @@ float depthAt( float age, float fl, float r, vec4 L0, vec4 L1 ) {
   float t = L1.y * mix( 1.0, L1.w, boostOf( fl, L1 ) ) * pow( clamp( L0.y / max( r, 1e-3 ), 0.0, 2.0 ), 0.6 );
   return t * ( 1.0 - smoothstep( 0.62, 1.0, age / L1.x ) );
 }
+vec2 toScreen( vec4 k ) { return ( k.xy / k.w * 0.5 + 0.5 ) * uViewport.zw + uViewport.xy; }
 void main() {
-  vS = vec4( 0.0 ); vW = vec4( 1.0 ); vT = vec4( 0.0 ); vG = vec4( 0.0 ); vL = vec4( 0.0 ); vM = vec4( 0.0 );
-  vX = vec4( 0.0 ); vAmb = vec3( 0.0 ); vSun = vec3( 0.0 );
+  vQ = vec4( 0.0 ); vR = vec4( 0.0 ); vL = vec4( 0.0 ); vM = vec4( 0.0 ); vAmb = vec3( 0.0 ); vSun = vec3( 0.0 );
   int li = int( iK.x + 0.5 ) * 6;
   vec4 L0 = uLook[ li ], L1 = uLook[ li + 1 ], L2 = uLook[ li + 2 ], L3 = uLook[ li + 3 ], C0 = uLook[ li + 4 ], C1 = uLook[ li + 5 ];
   float ageA = uTime - iA.w, ageB = uTime - iB.w;
@@ -139,18 +145,18 @@ void main() {
   // the part in front of the eye
   const float ZN = -0.12;
   if ( eA.z > ZN && eB.z > ZN ) { gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 ); return; }
-  if ( eA.z > ZN ) {
+  bool clipA = eA.z > ZN, clipB = eB.z > ZN;
+  if ( clipA ) {
     float f = ( ZN - eB.z ) / ( eA.z - eB.z );
     eA = mix( eB, eA, f ); cA = mix( cB, cA, f ); ageA = mix( ageB, ageA, f ); gA = mix( gB, gA, f ); fA = mix( fB, fA, f );
-  } else if ( eB.z > ZN ) {
+  } else if ( clipB ) {
     float f = ( ZN - eA.z ) / ( eB.z - eA.z );
     eB = mix( eA, eB, f ); cB = mix( cA, cB, f ); ageB = mix( ageA, ageB, f ); gB = mix( gA, gB, f ); fB = mix( fA, fB, f );
   }
   float rA = radiusAt( ageA, fA, L0, L1, L2 ), rB = radiusAt( ageB, fB, L0, L1, L2 );
   float tA = depthAt( ageA, fA, rA, L0, L1 ), tB = depthAt( ageB, fB, rB, L0, L1 );
   vec4 kA = projectionMatrix * eA, kB = projectionMatrix * eB;
-  vec2 sA = ( kA.xy / kA.w * 0.5 + 0.5 ) * uViewport.zw + uViewport.xy;
-  vec2 sB = ( kB.xy / kB.w * 0.5 + 0.5 ) * uViewport.zw + uViewport.xy;
+  vec2 sA = toScreen( kA ), sB = toScreen( kB );
   float pA = projectionMatrix[ 1 ][ 1 ] * 0.5 * uViewport.w / kA.w;
   float pB = projectionMatrix[ 1 ][ 1 ] * 0.5 * uViewport.w / kB.w;
   // never thinner than ~a pixel on screen (its depth pays the difference: a far trail thins, it never crawls)
@@ -159,35 +165,55 @@ void main() {
   tA *= qA / rpA; tB *= qB / rpB;
   // close to the lens a stretch thins rather than walling the frame: the launcher's own cameras sit a few metres from its
   // start, and through a zoomed sight a stretch 10 m out is as close as one at 1.5 m (its pixels per metre say how near
-  // it reads); nor does any stretch wider than a fifth of the frame draw at full depth
+  // it reads); and a stretch wider than a sixth of the frame is gone (a salvo's two dozen trails all start at the lens:
+  // their near stretches were a faint haze that cost most of the fill)
   float zf = 0.5 * uViewport.w / 1080.0;
-  tA *= smoothstep( 0.4, 2.5, -eA.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pA ) ) * pow( min( 1.0, 0.2 * uViewport.w / rpA ), 2.0 );
-  tB *= smoothstep( 0.4, 2.5, -eB.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pB ) ) * pow( min( 1.0, 0.2 * uViewport.w / rpB ), 2.0 );
-  // nothing left to draw (faded at the lens, dissolved at both ends): no quad, so a huge one at the eye costs no fill
+  tA *= smoothstep( 0.4, 2.5, -eA.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pA ) ) * ( 1.0 - smoothstep( 0.05, 0.16, rpA / uViewport.w ) );
+  tB *= smoothstep( 0.4, 2.5, -eB.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pB ) ) * ( 1.0 - smoothstep( 0.05, 0.16, rpB / uViewport.w ) );
+  // nothing left to draw (faded at the lens, dissolved at both ends): no quad
   if ( max( tA, tB ) < 0.004 ) { gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 ); return; }
-  // the quad: the projected segment, out past both ends and to either side by its widest (a puff, a torn edge)
+  // the strip: a screen-space band through the projected points, its joints mitred on the neighbours' projections so
+  // neighbouring segments share their corners exactly (one layer of fill, no seam, no side vector in the world to swing);
+  // a joint that turns sharply on screen (the trail seen nearly down its length) is not mitred: each segment keeps its own
+  // square end, so a run converging on the eye draws as a soft knot, never a fan of spikes
   vec2 d = sB - sA;
-  float L = length( d );
-  vec2 t = L > 1e-3 ? d / L : vec2( 1.0, 0.0 );
-  vec2 n = vec2( -t.y, t.x );
-  // (its profile's widest sigma is 0.65 r times a puff's swell and a torn edge's; the quad reaches 3.5 of them, so no
-  // segment's blur is cut: no seam at a joint, no straight edge along a dense trail)
+  float Ld = length( d );
+  vec2 dn = Ld > 1e-3 ? d / Ld : vec2( 1.0, 0.0 );
+  vec2 dirA = dn, dirB = dn;
+  if ( iK.z > 0.5 && !clipA ) {
+    float ageP = max( uTime - iP.w, 0.0 );
+    vec4 eP = viewMatrix * vec4( iP.xyz + carry( ageP, gA - distance( iP.xyz, iA.xyz ), iK.y, L0, L2, L3 ), 1.0 );
+    if ( eP.z < ZN ) {
+      vec2 dp = sA - toScreen( projectionMatrix * eP );
+      float lp = length( dp );
+      if ( lp > 1e-3 && dot( dp / lp, dn ) > ${MITER_COS.toFixed(2)} ) dirA = normalize( dn + dp / lp );
+    }
+  }
+  if ( iK.w > 0.5 && !clipB ) {
+    float ageN = max( uTime - iN.w, 0.0 );
+    vec4 eN = viewMatrix * vec4( iN.xyz + carry( ageN, gB + distance( iN.xyz, iB.xyz ), iK.y, L0, L2, L3 ), 1.0 );
+    if ( eN.z < ZN ) {
+      vec2 dq = toScreen( projectionMatrix * eN ) - sB;
+      float lq = length( dq );
+      if ( lq > 1e-3 && dot( dq / lq, dn ) > ${MITER_COS.toFixed(2)} ) dirB = normalize( dn + dq / lq );
+    }
+  }
+  vec2 nd = vec2( -dn.y, dn.x );
+  vec2 nA = vec2( -dirA.y, dirA.x ), nB = vec2( -dirB.y, dirB.x );
+  // the band reaches EXTENT sigmas of its widest profile (a puff's swell, a torn edge)
   float pk = 0.65 * ( 1.0 + 0.25 * L2.y ) * ( 1.0 + 0.3 * L2.w );
-  float exA = 3.5 * pk * rpA + 1.5, exB = 3.5 * pk * rpB + 1.5;
-  float hw = max( exA, exB );
+  float hwA = ${EXTENT.toFixed(2)} * pk * rpA + 1.0, hwB = ${EXTENT.toFixed(2)} * pk * rpB + 1.0;
   bool atA = position.x < 0.5;
-  vec2 sp = atA ? sA - t * exA : sB + t * exB;
-  sp += n * position.y * hw;
+  vec2 sp = atA ? sA + nA * ( position.y * hwA / max( dot( nA, nd ), 0.6 ) ) : sB + nB * ( position.y * hwB / max( dot( nB, nd ), 0.6 ) );
   vec4 k = atA ? kA : kB;
   vec2 ndc = ( sp - uViewport.xy ) / uViewport.zw * 2.0 - 1.0;
   gl_Position = vec4( ndc * k.w, k.z, k.w );
-  vS = vec4( sA, sB );
-  vW = vec4( kA.w, kB.w, rpA, rpB );
-  vT = vec4( tA, tB, ageA, ageB );
-  vG = vec4( gA, gB, pA, pB );
+  float len3 = length( cB - cA );
+  float ppm = atA ? pA : pB;
+  vQ = vec4( position.y, atA ? gA : gB, atA ? ageA : ageB, atA ? tA : tB );
+  vR = vec4( atA ? rA : rB, ppm, -( atA ? eA.z : eB.z ), 0.0 );
   vL = vec4( L2.y, L2.z, L2.w, iK.y );
   // lit as the media are: the sun through thin smoke (brighter toward it), on the tube's round side, the sky, the ground
-  float len3 = length( cB - cA );
   vec3 mid = 0.5 * ( cA + cB );
   vec3 V = normalize( cameraPosition - mid );
   vec3 T3 = len3 > 1e-4 ? ( cB - cA ) / len3 : vec3( 0.0, 0.0, 1.0 );
@@ -195,7 +221,9 @@ void main() {
   float sdl = length( sd );
   sd = sdl > 1e-4 ? sd / sdl : vec3( 0.0, 1.0, 0.0 );
   float endOn = abs( dot( T3, V ) );
-  vM = vec4( len3, dot( sd, uSunDir ) * ( 1.0 - endOn ), dot( V, uSunDir ), L1.x );
+  // a stretch seen at a slant draws a little deeper (more smoke along the eye ray), never more than OBLIQUE_CAP
+  float slant = min( len3 * 0.5 * ( pA + pB ) / max( Ld, 1e-3 ), ${OBLIQUE_CAP.toFixed(1)} );
+  vM = vec4( max( slant, 1.0 ), dot( sd, uSunDir ) * ( 1.0 - endOn ), dot( V, uSunDir ), L1.x );
   float am = 0.5 * ( ageA + ageB );
   vec3 albedo = mix( C0.rgb, C1.rgb, smoothstep( 0.0, 1.0, am / L1.x ) );
   float fwd = 0.55 + 0.45 * pow( max( 0.0, dot( -V, uSunDir ) ), 3.0 );
@@ -205,18 +233,15 @@ void main() {
   // the motor's flame on the smoke just behind it (its first few metres; it shows against the night, hardly in sun)
   float sunLum = dot( uSunCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   float gk = L3.z * mix( 1.0, 0.18, smoothstep( 0.15, 1.0, sunLum ) );
-  vX = vec4( gk * exp( -ageA / 0.016 ), gk * exp( -ageB / 0.016 ), -0.5 * ( eA.z + eB.z ), hw );
+  vR.w = gk * exp( -( atA ? ageA : ageB ) / 0.016 );
 }
 `;
 
 const FRAG = /* glsl */ `
-varying vec4 vS;
-varying vec4 vW;
-varying vec4 vT;
-varying vec4 vG;
+varying vec4 vQ;
+varying vec4 vR;
 varying vec4 vL;
 varying vec4 vM;
-varying vec4 vX;
 varying vec3 vAmb;
 varying vec3 vSun;
 #ifdef USE_FOG
@@ -233,55 +258,34 @@ uniform vec2 uSoftViewport;
 uniform float uCameraNear;
 uniform float uCameraFar;
 uniform float uSoftOn;
-float h1( float n ) { return fract( sin( n * 127.1 + 4.7 ) * 43758.5453 ); }
+float h1( float p ) { p = fract( p * 0.1031 ); p *= p + 33.33; p *= p + p; return fract( p ); }
 float vn1( float x ) { float i = floor( x ), f = fract( x ); return mix( h1( i ), h1( i + 1.0 ), f * f * ( 3.0 - 2.0 * f ) ); }
-float h2( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
+float h2( vec2 p ) { vec3 p3 = fract( vec3( p.xyx ) * 0.1031 ); p3 += dot( p3, p3.yzx + 33.33 ); return fract( ( p3.x + p3.y ) * p3.z ); }
 float vn2( vec2 p ) {
   vec2 i = floor( p ), f = fract( p );
   vec2 u = f * f * ( 3.0 - 2.0 * f );
   return mix( mix( h2( i ), h2( i + vec2( 1.0, 0.0 ) ), u.x ), mix( h2( i + vec2( 0.0, 1.0 ) ), h2( i + 1.0 ), u.x ), u.y );
 }
-// the normal CDF (a logistic fit: within 0.01)
-float cdf( float z ) { return 1.0 / ( 1.0 + exp( -1.702 * z ) ); }
 void main() {
-  vec2 ab = vS.zw - vS.xy;
-  float L = length( ab );
-  vec2 t = L > 1e-3 ? ab / L : vec2( 1.0, 0.0 );
-  vec2 q = gl_FragCoord.xy - vS.xy;
-  float x = dot( q, t ), y = dot( q, vec2( -t.y, t.x ) );
-  float us = L > 1e-3 ? clamp( x / L, 0.0, 1.0 ) : 0.5;
-  // perspective-correct along the segment
-  float u3 = ( us / vW.y ) / ( ( 1.0 - us ) / vW.x + us / vW.y );
-  float rp = mix( vW.z, vW.w, us );
-  float ppm = mix( vG.z, vG.w, us );
-  float along = mix( vG.x, vG.y, u3 );
-  float age = mix( vT.z, vT.w, u3 );
-  float tau = mix( vT.x, vT.y, u3 );
-  // a pulsing sustainer's puffs: it swells and thickens every few metres
+  float side = vQ.x, along = vQ.y, age = vQ.z, tau = vQ.w;
+  float rw = vR.x;
+  float pk = 0.65 * ( 1.0 + 0.25 * vL.x ) * ( 1.0 + 0.3 * vL.z );
+  // a pulsing sustainer's puffs: it swells and thickens every few metres; its edge bulges in and out along its length
   float b = vn1( along / max( vL.y, 0.5 ) + vL.w * 37.0 ) - 0.5;
   float rk = 1.0 + vL.x * 0.5 * b;
-  tau *= 1.0 + vL.x * 0.8 * b;
-  // the profile's width: its edge (a quarter of its depth) at the radius
-  float sig = 0.65 * rp * rk;
-  // its own turbulence, in its own frame (it grows as the smoke does): torn edges, a clumped body; past the segment's
-  // ends the frame runs on (seen down its length a stretch is a disc, textured all round, never streaked)
-  float rw = rp / max( ppm, 1e-4 );
-  float alongN = along + ( x - clamp( x, 0.0, L ) ) / max( ppm, 1e-4 );
-  vec2 nq = vec2( alongN / ( 2.2 * rw * rk ), 0.75 * y / ( rp * rk ) ) + vec2( vL.w * 17.0 - age * 0.2, vL.w * 5.3 );
-  float n = vn2( nq ) * 0.65 + vn2( nq * 2.07 + vec2( 5.1, 1.7 ) ) * 0.35;
   float ch = vL.z * ( 0.35 + 0.65 * smoothstep( 0.0, 1.2, age ) );
-  // its edge bulges in and out along its length (smooth swells, never spikes); the noise clumps its body
-  float bulge = vn1( alongN / ( 1.3 * rw * rk ) + vL.w * 23.0 ) * 0.6 + vn1( alongN / ( 0.55 * rw * rk ) + vL.w * 41.0 ) * 0.4;
-  float sp = sig * ( 1.0 + ch * 0.6 * ( bulge - 0.5 ) );
+  float bulge = vn1( along / ( 1.3 * rw * rk ) + vL.w * 23.0 );
+  // the pixel's distance from the axis in sigmas of the profile here (the band was built EXTENT of the widest sigmas)
+  float ys = abs( side ) * ${EXTENT.toFixed(2)} * pk / ( 0.65 * rk * ( 1.0 + ch * 0.6 * ( bulge - 0.5 ) ) );
   float kx = mix( 2.6, 2.0, smoothstep( 0.0, 1.0, age ) );
-  float across = exp( -0.5 * pow( abs( y ) / max( sp, 1e-3 ), kx ) ) * ( 1.0 - smoothstep( 0.85, 1.0, abs( y ) / vX.w ) );
-  // along it: a Gaussian-blurred box (its neighbours sum seamlessly at any spacing), a little deeper where the eye looks
-  // along it (to OBLIQUE_CAP); seen straight down its length a stretch adds only what its projection covers, so a
-  // sight laid down the missile's own line still sees the target beyond it
-  float sa = max( sig, 0.5 );
-  float lenPx = vM.x * ppm;
-  float A = ( cdf( x / sa ) - cdf( ( x - L ) / sa ) ) * min( lenPx / max( L, 1e-3 ), ${OBLIQUE_CAP.toFixed(1)} );
-  float T = tau * across * A * clamp( 1.0 + ch * 1.1 * ( n - 0.5 ), 0.0, 2.0 );
+  float across = exp( -0.5 * pow( ys, kx ) ) * ( 1.0 - smoothstep( 0.85, 1.0, abs( side ) ) );
+  // a fresh trail's first metres fade in where its motor lit (no hard end across it)
+  float T = tau * ( 1.0 + vL.x * 0.8 * b ) * across * vM.x * smoothstep( 0.0, max( 1.5, 1.5 * rw ), along );
+  if ( T < 0.002 ) discard;
+  // its own turbulence, in its own frame (it grows as the smoke does): a clumped body, torn edges
+  vec2 nq = vec2( along / ( 2.2 * rw * rk ), 0.5 * ys * sign( side ) ) + vec2( vL.w * 17.0 - age * 0.2, vL.w * 5.3 );
+  float n = vn2( nq );
+  T *= clamp( 1.0 + ch * 1.1 * ( n - 0.5 ), 0.0, 2.0 );
   // the end of its life: the noise eats it into wisps as it fades
   float dT = smoothstep( 0.5, 1.0, age / vM.w ) * 1.05;
   T *= smoothstep( dT - 0.25, dT, n );
@@ -290,23 +294,23 @@ void main() {
   if ( uSoftOn > 0.5 ) {
     float raw = texture2D( uSceneDepth, gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) ) ).x;
     float sceneM = -( uCameraNear * uCameraFar ) / ( ( uCameraFar - uCameraNear ) * raw - uCameraFar );
-    float axisM = mix( vW.x, vW.y, u3 );
-    float R = 1.6 * sp / max( ppm, 1e-4 ), yw = y / max( ppm, 1e-4 );
+    float sig = 0.65 * rw * rk;
+    float R = 1.6 * sig, yw = ys * sig;
     float h = sqrt( max( R * R - yw * yw, 0.0 ) ) + 0.15;
-    T *= clamp( ( sceneM - ( axisM - h ) ) / ( 2.0 * h ), 0.0, 1.0 );
+    T *= clamp( ( sceneM - ( vR.z - h ) ) / ( 2.0 * h ), 0.0, 1.0 );
   }
   float a = 1.0 - exp( -min( T, 8.0 ) );
   if ( a < 0.003 ) discard;
   // lit: dense smoke shows its shaded side; thin smoke is lit through
-  float sN = clamp( y / ( 2.2 * sp ), -1.0, 1.0 );
+  float sN = clamp( sign( side ) * ys / 2.2, -1.0, 1.0 );
   float ndl = vM.y * sN + vM.z * sqrt( 1.0 - sN * sN );
   float shade = mix( 1.0, 0.45 + 0.75 * max( ndl, 0.0 ), clamp( tau * 0.8, 0.0, 1.0 ) );
-  vec3 col = vAmb + vSun * shade + vec3( 1.0, 0.52, 0.18 ) * mix( vX.x, vX.y, u3 );
+  vec3 col = vAmb + vSun * shade + vec3( 1.0, 0.52, 0.18 ) * vR.w;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
-      float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vX.z * vX.z );
+      float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vR.z * vR.z );
     #else
-      float fogFactor = smoothstep( fogNear, fogFar, vX.z );
+      float fogFactor = smoothstep( fogNear, fogFar, vR.z );
     #endif
     col = mix( col, fogColor, fogFactor );
   #endif
@@ -327,6 +331,8 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
   geo.setAttribute('iB', new THREE.InterleavedBufferAttribute(buf, 4, 4));
   geo.setAttribute('iS', new THREE.InterleavedBufferAttribute(buf, 4, 8));
   geo.setAttribute('iK', new THREE.InterleavedBufferAttribute(buf, 4, 12));
+  geo.setAttribute('iP', new THREE.InterleavedBufferAttribute(buf, 4, 16));
+  geo.setAttribute('iN', new THREE.InterleavedBufferAttribute(buf, 4, 20));
   geo.instanceCount = 0;
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
   // every segment unwritten
@@ -404,6 +410,16 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
     data[o + 12] = lookOf[slot]; data[o + 13] = seedOf[slot]; data[o + 14] = 0; data[o + 15] = 0;
     dirty(slot, k);
   }
+  /** segment k's joint neighbours: its A's predecessor (segment k-1's A) and the successor of k-1's B (k's B) */
+  function link(slot: number, k: number): void {
+    if (k <= 0) return;
+    const o = (slot * TRAIL_SEGS + k) * STRIDE, q = (slot * TRAIL_SEGS + k - 1) * STRIDE;
+    data[o + 16] = data[q]; data[o + 17] = data[q + 1]; data[o + 18] = data[q + 2]; data[o + 19] = data[q + 3];
+    data[o + 14] = 1;
+    data[q + 20] = data[o + 4]; data[q + 21] = data[o + 5]; data[q + 22] = data[o + 6]; data[q + 23] = data[o + 7];
+    data[q + 15] = 1;
+    dirty(slot, k - 1);
+  }
   function clearSeg(slot: number, k: number): void {
     const o = (slot * TRAIL_SEGS + k) * STRIDE;
     if (data[o + 3] < -1e8) return;
@@ -429,6 +445,7 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
       w++;
     }
     for (let j = w; j < TRAIL_SEGS; j++) clearSeg(slot, j);
+    for (let j = 1; j < w; j++) link(slot, j);
     count[slot] = w + 1;
     step[slot] *= 2;
     hasHead[slot] = 0;
@@ -490,6 +507,7 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
         const along = last[l + 4] + Math.hypot(x - last[l], y - last[l + 1], z - last[l + 2]);
         writeSeg(slot, count[slot] - 1, last[l], last[l + 1], last[l + 2], last[l + 3], last[l + 4], last[l + 5],
           x, y, z, birth, along, flightS);
+        link(slot, count[slot] - 1);
         last[l + 4] = along;
       } else last[l + 4] = 0;
       last[l] = x; last[l + 1] = y; last[l + 2] = z; last[l + 3] = birth; last[l + 5] = flightS;
@@ -505,6 +523,7 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
       const along = last[l + 4] + Math.hypot(x - last[l], y - last[l + 1], z - last[l + 2]);
       writeSeg(slot, count[slot] - 1, last[l], last[l + 1], last[l + 2], last[l + 3], last[l + 4], last[l + 5],
         x, y, z, now, along, flightS);
+      link(slot, count[slot] - 1);
       hasHead[slot] = 1;
       if (now > newest[slot]) newest[slot] = now;
     },
@@ -544,7 +563,7 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
       for (let i = 0; i < N; i++) {
         const o = i * STRIDE;
         if (data[o + 3] < -1e8) continue;
-        data[o + 3] += delta; data[o + 7] += delta;
+        data[o + 3] += delta; data[o + 7] += delta; data[o + 19] += delta; data[o + 23] += delta;
       }
       for (let i = 0; i < TRAIL_SLOTS; i++) { last[i * 6 + 3] += delta; newest[i] += delta; }
       buf.addUpdateRange(0, N * STRIDE);

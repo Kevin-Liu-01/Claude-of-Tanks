@@ -292,7 +292,7 @@ export const MISSILE_TRAILS: Readonly<Record<string, MissileTrail | null>> = Obj
   viper: trail({ r0: 0.04, rJet: 0.21, r1: 1.01, growS: 1.12, life: 3.5, tau: 0.55, boostS: 0.5, boostK: 1.6, boostW: 1.15,
     puff: 0.05, puffM: 3, churn: 0.6, glow: 0.5, c0: LIGHT, c1: LIGHT_AGED, rise: 0.1, windK: 0.8 }),
   // an unguided rocket: a flame and a dense grey-white trail, densest while the motor burns
-  rocket: trail({ r0: 0.14, rJet: 0.77, r1: 3.51, growS: 1.96, life: 9, tau: 3.12, boostS: 1.5, boostK: 1.3, boostW: 1.15,
+  rocket: trail({ r0: 0.14, rJet: 0.77, r1: 2.6, growS: 1.96, life: 8, tau: 2.6, boostS: 1.5, boostK: 1.3, boostW: 1.15,
     puff: 0.2, puffM: 3.4, churn: 0.85, glow: 0.85, c0: LIGHT, c1: WHITE_AGED, rise: 0.12, windK: 0.85 }),
 });
 
