@@ -22,7 +22,12 @@ import {
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getGarageWorkshopLayoutPose, VERDANT_K2_WORK_LIGHT } from '../game/garageWorkshopLayout.ts';
-import { GARAGE_HARDSTAND_PROGRAM_KEY, garageHardstandGradedHook, garageHardstandGrainTexture } from './garageHardstandProgram.ts';
+import {
+  GARAGE_HARDSTAND_PROGRAM_KEY,
+  garageHardstandDetailTexture,
+  garageHardstandGradedHook,
+  garageHardstandGrainTexture,
+} from './garageHardstandProgram.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -550,10 +555,17 @@ export function createGarageStage(
     // The shared grain the outdoor floors multiply in is generated once, in the browser's idle time after the Garage
     // settles, not on the first outdoor visit (the switch ABBA, 2026-10-14: Sirocco's first cold visit presented
     // later than main's). Never on the boot path: an idle callback, or a late timeout where there is none.
+    // The concrete detail relief (six of the nine yards pour slabs) follows it in its own idle slice (GA.03, the critic
+    // panel's detail layer); the other ground types are generated after their first visit's first frame.
     const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-    const warmGrain = (): void => { garageHardstandGrainTexture(aniso); };
-    if (typeof idle === 'function') idle(warmGrain, { timeout: 6000 });
-    else setTimeout(warmGrain, 3000);
+    const later = (work: () => void, timeout: number): void => {
+      if (typeof idle === 'function') idle(work, { timeout });
+      else setTimeout(work, timeout / 2);
+    };
+    const floorAnisotropy = aniso >= 8 ? 16 : aniso;
+    const warmConcrete = (): void => { garageHardstandDetailTexture('concrete', floorAnisotropy); };
+    const warmGrain = (): void => { garageHardstandGrainTexture(floorAnisotropy); later(warmConcrete, 8000); };
+    later(warmGrain, 6000);
   }
   addOutdoorSeed('facility-instance-color', seedStandard({
     color: 0xffffff,
