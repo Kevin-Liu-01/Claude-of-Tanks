@@ -82,7 +82,7 @@ function insetPlan(points: ReadonlyArray<readonly [number, number]>, r: number):
  */
 function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, number]>, y0: number, floors: number, fh: number,
   spandrel: Rgb, slab: RegionalBucket, state: (floor: number, face: number) => PaneState, look: () => number, opts: {
-    rec?: number; deep?: number; step?: number; mobile?: boolean; finColour?: Rgb;
+    rec?: number; deep?: number; step?: number; mobile?: boolean; finColour?: Rgb; finW?: number; finBucket?: RegionalBucket;
   } = {}): void {
   const rec = opts.rec ?? 0.45, deep = opts.deep ?? 2.8, faces = planFaces(plan), spH = fh * 0.32;
   const shallow = insetPlan(plan, rec), proud = insetPlan(plan, -0.05);
@@ -135,7 +135,10 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
     const ya = y0 + f * fh, yb = y0 + (e + 1) * fh;
     faces.forEach((fc) => {
       const n = Math.max(1, Math.round(fc.width / step));
-      for (let k = 1; k < n; k++) faceBox(sink, 'structureMetal', fc, -fc.width / 2 + fc.width * k / n, (ya + yb) / 2, -rec / 2, 0.08, yb - ya, rec, { colour: fin, decor: true, fine: true }, 'caps');
+      for (let k = 1; k < n; k++) {
+        faceBox(sink, opts.finBucket ?? 'structureMetal', fc, -fc.width / 2 + fc.width * k / n, (ya + yb) / 2, -rec / 2, opts.finW ?? 0.08, yb - ya, rec,
+          { ...(opts.finBucket ? {} : { colour: fin }), decor: true, fine: !opts.finW }, 'caps');
+      }
     });
     f = e + 1;
   }
@@ -238,34 +241,33 @@ function parliament(ctx: RegionalBuildContext): RegionalParts {
     const fh = 3.1, floors = Math.max(4, Math.min(19, Math.round((W > 16 ? 58 : 16) / fh)));
     const top = floors * fh + 1.2;
     const concrete = 'plaster3' as const;
-    sink.span('dark', -W / 2 + 0.2, -0.4, tz0 + 0.2, W / 2 - 0.2, top, tz1 - 0.2);
+    // (props census #9) the slab's floors built (curtainFloors): the concrete spandrels, the glazing set back behind the
+    // grid of fins, the burnt floors gutted a bay deep (they were glass and dark plates on a dark box)
+    sink.span(concrete, -W / 2 + 0.2, -0.4, tz0 + 0.2, W / 2 - 0.2, 1.2, tz1 - 0.2);
     sink.span(concrete, -W / 2, top, tz0, W / 2, top + 0.6, tz1);
     sink.span(concrete, -W * 0.2, top + 0.6, (tz0 + tz1) / 2 - 1.8, W * 0.2, top + 3.2, (tz0 + tz1) / 2 + 1.8);
-    const faces = planFaces(rect(-W / 2 + 0.2, tz0 + 0.2, W / 2 - 0.2, tz1 - 0.2));
     // the fire took the floors under the top and a few here and there below (the tower burnt for days in 1992)
     const burntFrom = Math.max(1, floors - 7 - Math.floor(rng() * 5));
-    for (const face of faces) {
-      for (let f = 0; f < floors; f++) {
-        const y = 1.2 + f * fh, r = look();
-        const burnt = f >= burntFrom ? r < 0.8 : r < 0.12;
-        facePanel(sink, burnt ? 'dark' : r < 0.9 ? 'glass' : 'curtain', face, 0, y + fh / 2, 0.02, face.width - 0.2, fh - 0.5, { decor: true, window: face.out });
-        faceBox(sink, concrete, face, 0, y + 0.1, 0.12, face.width + 0.3, 0.42, 0.24, { decor: true, fineSides: true });
-        if (burnt && f + 1 < floors) sootBand(sink, concrete, face, -face.width / 2, face.width / 2, y + fh - 0.3, y + fh + 0.6);
-      }
-      // the grid of fins, full height
-      const n = Math.max(2, Math.round(face.width / 1.75));
-      for (let k = 0; k <= n; k++) {
-        const u = -face.width / 2 + face.width * k / n;
-        faceBox(sink, concrete, face, u, (1.2 + top) / 2, 0.22, 0.26, top - 1.2, 0.44, { decor: true, fineSides: true });
-      }
-    }
+    const state = (f: number): PaneState => {
+      const r = look();
+      const burnt = f >= burntFrom ? r < 0.8 : r < 0.12;
+      return burnt ? 'burnt' : r < 0.9 ? 'glass' : 'lit';
+    };
+    curtainFloors(sink, rect(-W / 2 + 0.2, tz0 + 0.2, W / 2 - 0.2, tz1 - 0.2), 1.2, floors, fh, rgb(0x9a968c), concrete, (f) => state(f), look,
+      { mobile, step: 1.75, finW: 0.26, finBucket: concrete });
     // the assembly wing in front: two storeys, a ribbon of dark glass, a flat roof
     const wz0 = tz1 + 0.6, wz1 = D / 2;
     if (wz1 - wz0 > 2.5) {
-      sink.span(concrete, -W / 2, -0.4, wz0, W / 2, 8.2, wz1);
+      // (its ribbons of glazing cut into its front, the glass at the back of the cuts: they were laid on the span)
+      sink.span(concrete, -W / 2, -0.4, wz0, W / 2, 8.2, wz1 - 0.4);
       const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-      facePanel(sink, 'glass', wf, 0, 2.0, 0.02, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
-      facePanel(sink, look() < 0.5 ? 'dark' : 'glass', wf, 0, 5.6, 0.02, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
+      holedPolygon(sink, concrete, wf, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, 8.2], [-W / 2, 8.2]],
+        [{ u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 0.7, y1: 3.3 }, { u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 4.5, y1: 6.7 }], 0.4, 0.34);
+      facePanel(sink, 'glass', wf, 0, 2.0, -0.33, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
+      if (look() < 0.5) { /* (the upper ribbon's glass gone to the dark behind it: the cut's dark shows) */ } else facePanel(sink, 'glass', wf, 0, 5.6, -0.33, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
+      for (const yy of [2.0, 5.6]) for (let k = 1, n = Math.max(2, Math.round((W - 1.6) / 1.8)); k < n; k++) {
+        faceBox(sink, concrete, wf, -(W - 1.6) / 2 + (W - 1.6) * k / n, yy, -0.2, 0.12, yy > 3 ? 2.2 : 2.6, 0.3, { decor: true }, 'caps');
+      }
       faceBox(sink, concrete, wf, 0, 8.0, 0.2, W + 0.2, 0.5, 0.4, { decor: true });
       sink.dressing(mobile, () => shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone'));
     }
