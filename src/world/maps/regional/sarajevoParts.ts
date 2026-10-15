@@ -130,10 +130,12 @@ export function openBelfry(sink: PartSink, bucket: RegionalBucket, cx: number, c
     sink.span(bucket, cx + (sx < 0 ? -h : h - pw), sill, cz + (sz < 0 ? -h : h - pw), cx + (sx < 0 ? -h + pw : h), head, cz + (sz < 0 ? -h + pw : h));
   }
   sink.span(bucket, cx - h, head, cz - h, cx + h, top, cz + h);
-  sink.span('structureWood', cx - h + pw * 0.5, head - 0.34, cz - 0.08, cx + h - pw * 0.5, head - 0.18, cz + 0.08, { colour: beam, decor: true });
+  // (the integrity gate, 2026-10-15: the beam ran under the head 18 cm clear of it and between the piers' faces, so the
+  // beam and the bell hung on nothing) the headstock up against the head block's soffit, the bell hung from it
+  sink.span('structureWood', cx - h + pw * 0.5, head - 0.16, cz - 0.08, cx + h - pw * 0.5, head, cz + 0.08, { colour: beam, decor: true });
   const br = Math.min(0.55, ow * 0.32);
-  sink.cylinder('structureMetal', [cx, head - 0.34 - br * 1.5, cz], 'y', br * 1.5, br, 10, { colour: bell, decor: true }, br * 0.55, true);
-  sink.cylinder('structureMetal', [cx, head - 0.34 - br * 1.5 - 0.06, cz], 'y', 0.06, br * 1.08, 10, { colour: bell, decor: true }, br, true);
+  sink.cylinder('structureMetal', [cx, head - 0.16 - br * 1.5, cz], 'y', br * 1.5, br, 10, { colour: bell, decor: true }, br * 0.55, true);
+  sink.cylinder('structureMetal', [cx, head - 0.16 - br * 1.5 - 0.06, cz], 'y', 0.06, br * 1.08, 10, { colour: bell, decor: true }, br, true);
 }
 
 /**

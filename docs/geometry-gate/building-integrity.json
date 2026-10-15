@@ -169,7 +169,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 4.698,
+   "gapM2": 7.2,
    "invertedM2": 0
   },
   "queenstown/foundryoffice": {
@@ -246,20 +246,20 @@
   },
   "queenstown/factory": {
    "floating": 0,
-   "sliver": 408,
+   "sliver": 300,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.876,
-   "gapM2": 1.842,
+   "insideM2": 9.892,
+   "gapM2": 2.145,
    "invertedM2": 0
   },
   "sarajevo/firestation": {
    "floating": 0,
    "sliver": 12,
    "floatingM2": 0,
-   "holeM2": 0.317,
-   "insideM2": 0.238,
-   "gapM2": 3.332,
+   "holeM2": 0.483,
+   "insideM2": 2.092,
+   "gapM2": 1.932,
    "invertedM2": 0
   },
   "chouf/woodshed": {
@@ -357,8 +357,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.997,
-   "gapM2": 1.403,
+   "insideM2": 6.956,
+   "gapM2": 3.281,
    "invertedM2": 0
   },
   "savoyard/alpine": {
@@ -452,12 +452,12 @@
    "invertedM2": 3.691
   },
   "sarajevo/factory": {
-   "floating": 6,
+   "floating": 0,
    "sliver": 2,
-   "floatingM2": 2.52,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 2.415,
    "invertedM2": 0
   },
   "siwa/compound": {
@@ -583,7 +583,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 3.105,
-   "gapM2": 0,
+   "gapM2": 0.828,
    "invertedM2": 0
   },
   "savoyard/tavern": {
@@ -1068,7 +1068,7 @@
    "sliver": 0,
    "floatingM2": 0.388,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.269,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2481,8 +2481,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 0.568,
+   "gapM2": 0.568,
    "invertedM2": 0
   },
   "hostomel/ruin": {
@@ -2868,8 +2868,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 4.466,
+   "insideM2": 3.934,
+   "gapM2": 5.072,
    "invertedM2": 0
   },
   "saar/gantry": {
@@ -3031,7 +3031,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 3.445,
    "invertedM2": 0
   },
   "sarajevo/warehouse": {
@@ -3710,5 +3710,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-15T07:55:20.282Z"
+ "updatedAt": "2026-10-15T21:21:51.244Z"
 }
