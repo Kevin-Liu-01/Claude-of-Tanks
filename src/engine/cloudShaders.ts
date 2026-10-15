@@ -267,6 +267,11 @@ uniform vec3 uBsmSun;
 // QA (round 10 candidate): the far cascade read by one hardware-bilinear fetch, its depth filtered (0 = the four texels'
 // transmittance blend, the law)
 uniform float uBsmFarBilinear;
+// 2026-10-15 (the SKY lane, QA knob CLOUD_BSM_EDGE_BLEND, 0 = the hard edge): the outermost live cascade fades into the
+// column's own estimate over its outer tenth, as the near one fades into the far — at the edge the light switched from
+// the map to the column in one texel, a straight lit-or-shaded line across every cloud the window's edge cut (about
+// 20 km out on High and Ultra; on the low tier, whose far map is never marched, the near window's, about 6 km out)
+uniform float uBsmEdgeBlend;
 // [ported] the optical depth one texel gives a point past offset metres along its sun ray: the mean extinction over
 // the run into the cloud from its front, capped by the column's whole depth with its tail
 float cl2BsmTexel( vec4 s, float toTop, float offset ) {
@@ -290,9 +295,10 @@ float cl2BsmRead( sampler2D map, vec4 win, vec2 xz, float toTop, float offset ) 
 	return m - log( max( dot( w, exp( m - od ) ), 1e-6 ) );
 }
 // the optical depth to the sun from the cascades (the near one where it reaches, blended into the far one over the
-// near window's outer tenth); -1 outside both
-float cl2BsmDepth( vec3 p, float offset ) {
-	if ( uBsmSun.y < 0.03 ) return -1.0;
+// near window's outer tenth, and the outermost live one into the column's estimate over its own); the column's estimate
+// outside both
+float cl2BsmDepth( vec3 p, float offset, float column ) {
+	if ( uBsmSun.y < 0.03 ) return column;
 	vec2 xz = p.xz - uBsmSun.xz * ( ( p.y - uBsmPlane.x ) / uBsmSun.y );
 	float toTop = max( 0.0, ( uBsmPlane.y - p.y ) / uBsmSun.y );
 	vec2 r0 = ( xz - uBsmWindow0.xy ) / uBsmWindow0.z;
@@ -301,12 +307,16 @@ float cl2BsmDepth( vec3 p, float offset ) {
 	float e1 = max( abs( r1.x - 0.5 ), abs( r1.y - 0.5 ) ) * 2.0;
 	bool in0 = uBsmWindow0.w > 0.5 && e0 < 0.98;
 	bool in1 = uBsmWindow1.w > 0.5 && e1 < 0.98;
-	if ( !in0 && !in1 ) return -1.0;
+	if ( !in0 && !in1 ) return column;
 	// (2026-10-07, the cost rule: the far cascade is read only where it counts — off the near window, or in the near
 	// window's outer tenth where the two blend; inside it the blend was the near map's alone and its four reads wasted)
-	if ( in0 && ( !in1 || e0 <= 0.8 ) ) return cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset );
+	if ( in0 && ( !in1 || e0 <= 0.8 ) ) {
+		float near = cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset );
+		return in1 ? near : mix( near, column, uBsmEdgeBlend * smoothstep( 0.8, 0.98, e0 ) );
+	}
 	float far = uBsmFarBilinear > 0.5 ? cl2BsmTexel( textureLod( tBsm1, fract( xz / uBsmWindow1.z ), 0.0 ), toTop, offset )
 		: cl2BsmRead( tBsm1, uBsmWindow1, xz, toTop, offset );
+	far = mix( far, column, uBsmEdgeBlend * smoothstep( 0.8, 0.98, e1 ) );
 	if ( !in0 ) return far;
 	return mix( cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset ), far, smoothstep( 0.8, 0.98, e0 ) );
 }
@@ -751,10 +761,10 @@ void main() {
 						run += sStep;
 						sStep *= 2.0;
 					}
-					float bsm = cl2BsmDepth( p, run );
 					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
-					// (a far tower's interior stays a cloud's, never lit through)
-					od += ( bsm >= 0.0 ? bsm : sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 ) )
+					// (a far tower's interior stays a cloud's, never lit through); the cascades fade into it at their outer edge
+					float column = sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
+					od += cl2BsmDepth( p, run, column )
 						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
 				}
 				lit++;

@@ -790,7 +790,7 @@ export class VolumetricCloudLayer {
     });
     const bsmLookup = () => ({
       tBsm0: { value: null }, tBsm1: { value: null }, uBsmWindow0: { value: new THREE.Vector4() }, uBsmWindow1: { value: new THREE.Vector4() },
-      uBsmPlane: { value: new THREE.Vector2() }, uBsmSun: { value: new THREE.Vector3(0, 1, 0) }, uBsmFarBilinear: { value: 0 },
+      uBsmPlane: { value: new THREE.Vector2() }, uBsmSun: { value: new THREE.Vector3(0, 1, 0) }, uBsmFarBilinear: { value: 0 }, uBsmEdgeBlend: { value: 1 },
     });
     const lookup = bsmLookup();
     // the trace and the shade read the same lookup uniforms (by reference)
@@ -1414,6 +1414,7 @@ export class VolumetricCloudLayer {
     t.uStepCap.value = lightTune('CLOUD_STEP_CAP', budget.steps);
     (t.uFine.value as THREE.Vector2).set(lightTune('CLOUD_FINE_N', budget.fineN), lightTune('CLOUD_FINE_STRIDE', budget.fineStride));
     t.uBsmFarBilinear.value = lightTune('CLOUD_BSM_FAR_BILINEAR', 0);
+    t.uBsmEdgeBlend.value = lightTune('CLOUD_BSM_EDGE_BLEND', 1);
     {
       const k = lightTune('CLOUD_STREETS', 1), base = this.streetsBase;
       (m.uLayerStreets.value as THREE.Vector4).set(base.x * k, base.y * k, base.z * k, base.w * k);
