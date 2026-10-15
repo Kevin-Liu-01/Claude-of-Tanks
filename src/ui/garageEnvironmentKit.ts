@@ -1890,7 +1890,7 @@ export function buildGarageEnvironment(
 
   // The buildings sit in their ground (GA.03; the garage critic panel, 2026-10-14: "no cast shadows or contact darkening,
   // so the building looks pasted on ... AO at the base of every structure"; the scenery stays out of the live casters for
-  // the first visit's sake): a soft dark band 1.2 m wide round every structure's footprint, four strips from just inside
+  // the first visit's sake): a soft dark band 2.4 m wide round every structure's footprint, four strips from just inside
   // its walls outward (the corners darken twice, as ground does there), in one decal draw on the contact shadows' program.
   const addStructureBaseShade = (): void => {
     if (typeof document === 'undefined') return;
@@ -1906,7 +1906,7 @@ export function buildGarageEnvironment(
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
     const positions: number[] = [], uvs: number[] = [];
-    const margin = 1.2, inset = 0.15;
+    const margin = 2.4, inset = 0.15; // (1.2 m at 0.46 did not read from the Garage camera: the re-judge, 2026-10-15)
     // open, round or stilted structures keep their own ground (a square band round a water tower's legs would be paint)
     const open = new Set(['watertower', 'gantry', 'netyard', 'lighthouse', 'minaret', 'stack', 'parkingdeck']);
     for (const { placement, dimensions, x, z, y } of structureRecords) {
@@ -1942,7 +1942,7 @@ export function buildGarageEnvironment(
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.computeBoundingSphere();
     const material = track(new THREE.MeshBasicMaterial({
-      map: texture, color: 0x000000, transparent: true, opacity: 0.46, depthWrite: false,
+      map: texture, color: 0x000000, transparent: true, opacity: 0.62, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     }));
     material.name = 'garage:structure-base-shade';
