@@ -345,11 +345,6 @@ function brygge(b: Build): void {
       }
       // the stone it is filled with, showing between the courses
       b.masonry(slab(tc - ht + 0.06, tc + ht - 0.06, floor, logUnder - 0.04, -hs + 0.06, hs - 0.06, 0.8));
-      const surf = b.surfaceAt(tc, 0);
-      if (surf !== null && surf > floor + 0.2) {
-        const lo = Math.max(floor + 0.02, surf - 0.6);
-        b.painted(slab(tc - ht - 0.12, tc + ht + 0.12, lo, surf - 0.03, -hs - 0.12, hs + 0.12), WEED, 0.3);
-      }
       if (k === b.n) for (const s of [-0.5, 0.5]) {
         b.timber(roundMember([tc + 0.3, logUnder - 0.3, s], [tc + 0.3, b.deckTop + 0.5, s], 0.11, 0.1, 8));
       }
@@ -512,6 +507,7 @@ export function buildJetty(buckets: JettyBuckets, form: JettyForm, x0: number, z
     for (const g of list) g.dispose();
     if (!merged) throw new Error(`jettyKit: the ${form} jetty's ${key} pieces do not merge`);
     merged.applyMatrix4(m);
+    merged.userData.jetty = form; // (the strand's audits tell a jetty's painted piece from the wrack)
     into.push(merged);
     pieces[key] = merged;
   };
@@ -551,6 +547,7 @@ export function buildRivaSteps(stone: BG[], x0: number, z0: number, ang: number,
   const merged = mergeGeometries(parts, false)!;
   for (const g of parts) g.dispose();
   merged.applyMatrix4(frameMatrix(x0, z0, ang));
+  merged.userData.jetty = 'riva-stair';
   stone.push(merged);
   return merged;
 }
@@ -567,5 +564,6 @@ export function ironBollard(x: number, y: number, z: number): BG {
   const merged = mergeGeometries(parts, false)!;
   for (const g of parts) g.dispose();
   merged.translate(x, 0, z);
+  merged.userData.jetty = 'bollard';
   return merged;
 }
