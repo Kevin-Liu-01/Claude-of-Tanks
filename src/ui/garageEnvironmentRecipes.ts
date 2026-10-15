@@ -167,9 +167,12 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeCaravanserai, 'wadi caravanserai', -36, -6, 0.84),
       // a water tower, not a minaret, behind the hero (2026-10-10, waves 338, 357, 377: the round white tower with
       // its balcony and cap read as "a lighthouse standing among the dunes" in every frame)
-      at(makeWaterTower, 'wadi water tower', -30, -30, 0.7),
-      // flat-roofed and containerised (wave 398: "no European pitched-roof houses in desert or alpine sites")
-      at(makeContainerRow, 'forward container line', -7, -36, 0.62),
+      // in the frame's right third, a turret's width and more clear of the hero (the garage critic panel, 2026-10-14:
+      // "the water tower sits on the turret like a hat")
+      at(makeWaterTower, 'wadi water tower', 9.9, -38.2, 0.7),
+      // flat-roofed and containerised (wave 398: "no European pitched-roof houses in desert or alpine sites"); a low line
+      // behind the hero, under its hull's outline
+      at(makeContainerRow, 'forward container line', -30, -30, 0.5),
       at(MARKET_BUILDERS.compound, 'wadi supply compound', 18, -34, 0.5),
       at(makeCaravanserai, 'outer adobe court', 36, -14, 0.56),
       at(makeBathhouse, 'wadi crew hammam', 40, -11, 0.66),
