@@ -24,15 +24,15 @@ export function setPieceDestructibleKind(kind: SetPieceKind): string { return `s
 
 /** Per kind: the share of its speed a hull keeps crushing it, the speed (m/s) below which a hull stops against it (it may
  *  still press through), and whether it stops a round (dense cover). */
-export const SET_PIECE_MASS: Readonly<Record<SetPieceKind, { keep: number; crushMin: number; dense: boolean }>> = {
-  lrv: { keep: 0.95, crushMin: 1.4, dense: false },
-  stz3: { keep: 0.75, crushMin: 2.6, dense: true },
-  bv206: { keep: 0.72, crushMin: 2.8, dense: true },
-  snocat: { keep: 0.7, crushMin: 3.0, dense: true },
-  an26: { keep: 0.7, crushMin: 3.0, dense: true },
-  d8h: { keep: 0.5, crushMin: 4.0, dense: true },
-  k2tram: { keep: 0.55, crushMin: 4.0, dense: true },
-  haulpak: { keep: 0.45, crushMin: 4.5, dense: true },
+export const SET_PIECE_MASS: Readonly<Record<SetPieceKind, { keep: number; crushMin: number; dense: boolean; floor: number }>> = {
+  lrv: { keep: 0.95, crushMin: 1.4, dense: false, floor: 0 },
+  stz3: { keep: 0.75, crushMin: 2.6, dense: true, floor: 0.38 },
+  bv206: { keep: 0.72, crushMin: 2.8, dense: true, floor: 0.36 },
+  snocat: { keep: 0.7, crushMin: 3.0, dense: true, floor: 0.4 },
+  an26: { keep: 0.7, crushMin: 3.0, dense: true, floor: 0.3 },
+  d8h: { keep: 0.5, crushMin: 4.0, dense: true, floor: 0.55 },
+  k2tram: { keep: 0.55, crushMin: 4.0, dense: true, floor: 0.5 },
+  haulpak: { keep: 0.45, crushMin: 4.5, dense: true, floor: 0.6 },
 };
 
 const KINDS = Object.keys(SET_PIECE_SIZE) as SetPieceKind[];
@@ -54,10 +54,17 @@ export function setPieceDestructibleTypes(mobile = false): Record<string, Destru
       cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
       r: Math.hypot(size.hw, size.hl), h: size.h, hw: size.hw, hl: size.hl,
       keep: mass.keep, crushMin: mass.crushMin, groundPose: true, castShadow: true,
+      // (Lane C, #8 film) a white instance colour on every copy: the kill's burn chars the copy through it
+      // (propCrushPresentation tints the instance colour from its own to char over CHAR_S; a pool without instance
+      // colours kept its paint, and the haulpak stood yellow through its own fire). White leaves the build's painted
+      // vertex colours as they are (props.ts draws set pieces with the baked material, which multiplies them).
+      instancePaint: (out) => { out.setRGB(1, 1, 1); },
       // (Lane C, #8 r2) the phone tier draws the coarse builds (about half the triangles; the same footprint and record)
       build: () => buildSetPiece(kind, { coarse: mobile }),
       broken: () => buildSetPiece(kind, { wrecked: true, coarse: mobile }),
     };
+    // the share of its height a hull cannot press it below: a machine crumples, it is not pancaked (propCrush.ts)
+    Object.assign(out[setPieceDestructibleKind(kind)], { crushFloor: mass.floor });
   }
   return out;
 }
