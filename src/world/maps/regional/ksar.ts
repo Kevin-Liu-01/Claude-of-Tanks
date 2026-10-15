@@ -225,7 +225,17 @@ const ruin: RegionalBuilder = (ctx) => {
     if (rng() < 0.35) continue;
     ghorfa(sink, -W / 2 + 2.5 * (i + 0.5), 0, D / 2, 2.4, 1.6 + rng() * 0.5, D * (0.4 + rng() * 0.5), rng, blue);
   }
-  sink.span(MUD, -W * 0.4, -0.2, -D * 0.3, W * 0.35, 0.9, D * 0.1, { decor: true });
+  // (props census #7, lane B 2026-10-14; the judges: "the slump a box") the fallen vaults' mud slumped in two low
+  // mounds across the range's front, the broken mud bricks of the vaults on them
+  const look = ctx.variant;
+  for (const [mx, mz, mr, mh] of [[-W * 0.22, -D * 0.12, Math.min(W, D) * 0.3, 0.85], [W * 0.18, -D * 0.05, Math.min(W, D) * 0.22, 0.6]] as const) {
+    sink.cylinder(MUD, [mx, -0.2, mz], 'y', mh + 0.2, mr, 9, { decor: true, shadow: true }, mr * 0.4, true, look() * 3);
+    for (let k = 0; k < 4; k++) {
+      const a = look() * Math.PI * 2, rr = mr * (0.2 + look() * 0.5), sz = 0.22 + look() * 0.18;
+      const hy = mh * (1 - (rr / mr) * (rr / mr)) * 0.9;
+      sink.span(MUD, mx + Math.cos(a) * rr - sz, hy - 0.06, mz + Math.sin(a) * rr - sz * 0.7, mx + Math.cos(a) * rr + sz, hy + sz * 0.6, mz + Math.sin(a) * rr + sz * 0.7, { decor: true, shade: 0.85 });
+    }
+  }
   return sink.finish();
 };
 
