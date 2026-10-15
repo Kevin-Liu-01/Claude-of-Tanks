@@ -117,7 +117,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     repair_bunker: {
       logistics: [[-33, -7], [20, -24]],
       parts: [[-30, 16], [4, -34]], floods: [[-38, 6], [38, 2]],
-      feature: [-1, 28], featureRadius: [10, 6],
+      // the bunker's portal beside the turret, its light concrete facade behind the hero (the garage critic panel,
+      // 2026-10-14: dark openings and verticals behind the tank lose its outline)
+      feature: [9, 28], featureRadius: [10, 6],
     },
     brick_arsenal: {
       logistics: [[-35, 3], [17, -26]],
@@ -2231,9 +2233,9 @@ export function addGarageFacilityDetails({
       // into the bank, a blast wall screening the personnel door, vent stacks and periscope cowls through the cover, log
       // cribbing holding the earth at the flanks, drifts against the windward faces, and a timber lean-to over the
       // repair apron. Squared on the road's run into it.
-      const portalSide = -2.6, portalDepth = 26.5;
+      const portalSide = 9.5, portalDepth = 26.5;
       const origin = cameraPoint(portalSide, portalDepth);
-      const roadIn = cameraPoint(-3 + 3 / 16, 25); // back down the road toward (0, 10)
+      const roadIn = cameraPoint(portalSide, portalDepth - 1); // square to the view; the road swings in to it
       const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
       const c = Math.cos(yaw), sn = Math.sin(yaw);
       const toWorld = (u: number, w: number): { x: number; z: number } => ({ x: origin.x + c * u + sn * w, z: origin.z - sn * u + c * w });
