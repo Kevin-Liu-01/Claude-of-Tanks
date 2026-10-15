@@ -52,7 +52,7 @@ import {
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
-import { swardPatchAt, type SwardPatch } from './swardPatch.ts';
+import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -4117,7 +4117,13 @@ function* vegetationBuildSteps(
     // ground lane (2026-10-03): a crop tuft carries its crop's albedo negated in the instance colour (makeTuft) — the
     // card's own luminance (its dark roots, its lit tips) over the crop's colour, normalised by the card's mean green
     // blade (≈ 0.22/0.32/0.05 linear, luminance 0.28); every other tuft multiplies its tint as before
+    // grass r2 (2026-10-15, the sward's depth: swardPatch.ts SWARD_TONE): the card's own root-to-tip contrast steepened
+    // about its mean luminance (0.28), so its feet and the gaps between its blades read darker and its tips brighter
+    shader.uniforms.uSwardTone = SWARD_TONE;
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uSwardTone;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`
+      { float cardL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb *= max(0.0, 0.28 + (cardL - 0.28) * (1.0 + 0.35 * uSwardTone)) / max(cardL, 1e-4); }
       #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
@@ -4433,7 +4439,10 @@ function* vegetationBuildSteps(
             // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw
             // (terrain.ts: its tone by the same draw, at the bake's six bits) — not the meadow's round dry patches
             const jq = Math.round(f.jitter * 63) / 63;
-            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+            // (grass r2, 2026-10-15: Verdant's pastures read pale and washed beside 205's meadow — a grazed field is
+            // drier, most stand lush: the share skewed toward the shut-up green, to 0.32 at most)
+            const pq = (jq * 7.31 + 0.13) % 1;
+            pastureDry = 0.32 * pq * pq;
           }
         }
       }
@@ -4466,7 +4475,8 @@ function* vegetationBuildSteps(
     // (wave 71: Verdant's "flat, oversaturated neon" — the carpet's tips at HSV saturation 0.8 under the grade's boost)
     // the tint a third less saturated and a little yellower: a summer sward, not a lime lawn (was 0.225 / 0.30)
     let th = 0.21 + (hueJ - 0.5) * 0.05 - dry * 0.08;
-    let ts = 0.19 - dry * 0.07;
+    // (grass r2: the sward's saturation floor a fifth up — wave 71's neon was 0.30; the tone curve caps the rest)
+    let ts = 0.23 - dry * 0.08;
     let tl = 0.44 + (lumJ - 0.5) * 0.12 + (sn.n2 - 0.5) * 0.10 + dry * 0.04;
     // r6 terrain_environment: MEADOW PATCHWORK on the blades themselves. The
     // splat shader stamps 50-200 m dry-straw fields (meadowA -> uTintA), but

@@ -371,7 +371,7 @@ for (const ring of [grass.mid, grass.far]) {
   assert.ok(fragmentShader.includes('(1.0 - vHerb)'), 'a frond never cures to straw');
   for (const w of [0.123, 1.5, 4.9995, 5.25]) assert.ok(Math.abs(tallGrassRank(w) - (((w % 1) * 61.73 + 0.37) % 1)) < 1e-9, 'the CPU rank is the shader\'s');
   assert.ok(vertexShader.indexOf('float cotYaw = aBlade.x + position.z;') < vertexShader.indexOf('vec3 transformed;'), 'the yaw is set with the normal, before the strip');
-  assert.ok(fragmentShader.includes(`diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`), 'dark roots, lit tips (per-ring gradient and lift), bruised where crushed');
+  assert.ok(fragmentShader.includes(`diffuseColor.rgb *= mix(uGrassBase * (1.0 - 0.22 * uSwardTone), uGrassTip * (1.0 + 0.06 * uSwardTone), pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`), 'dark roots, lit tips (per-ring gradient and lift, the sward\'s depth), bruised where crushed');
   assert.ok(TALL_GRASS.crushDarken >= 0.2 && TALL_GRASS.crushDarken <= 0.4, 'a bruise, not a burn');
   assert.ok(fragmentShader.includes('normal = normalize( vNormal );'), 'both faces of a strip light the same way');
   assert.ok(!vertexShader.includes('uv.'), 'no uv attribute: the height fraction is position.y');

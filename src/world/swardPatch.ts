@@ -34,6 +34,16 @@ const smooth = (a: number, b: number, v: number): number => {
   return t * t * (3 - 2 * t);
 };
 
+/**
+ * grass r2 (2026-10-15; the grassvis census, deploy 205 against main at the same poses: the sward's luminance spread
+ * halved on every map — 35-42 to 18-21 — the tone curve's lost local contrast (the SKY lane's audit: AgX keeps ~65 %) and
+ * the sward's own): the sward's depth, 0 = main's flat sward, 1 = its roots, its card blades' feet and the gaps between
+ * them darker and its tips brighter. One uniform both tiers' materials share (the tufts' card contrast, the blades' root
+ * and tip); the QA hook window.__SWARD_TONE flips it live.
+ */
+export const SWARD_TONE: { value: number } = { value: 1 };
+if (typeof window !== 'undefined') (window as unknown as { __SWARD_TONE?: { value: number } }).__SWARD_TONE = SWARD_TONE;
+
 /** A patch's multipliers on a sward tint (r, g, b), its cured share (0..1: last season's straw) and its light. */
 export interface SwardPatch { r: number; g: number; b: number; cured: number; value: number }
 

@@ -4,7 +4,7 @@ import { createGroundPressureField, type GroundDisturbance, type GroundPressureF
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
-import { swardCellSeed, swardNoise, swardPatchAt, type SwardPatch } from './swardPatch.ts';
+import { SWARD_TONE, swardCellSeed, swardNoise, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -337,6 +337,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.uniforms.uGrassTip = shared.uGrassTip;
     shader.uniforms.uGrassDry = shared.uGrassDry;
     shader.uniforms.uGrassSeed = shared.uGrassSeed;
+    shader.uniforms.uSwardTone = SWARD_TONE;
     shader.uniforms.uGrassFade = { value: new THREE.Vector4(fade[0], fade[1], fade[2], fade[3]) };
     shader.uniforms.uGrassDissolve = { value: new THREE.Vector4(shape.dissolve[0], shape.dissolve[1], shape.dissolve[2], shape.dissolve[3]) };
     shader.uniforms.uGrassKeep = { value: new THREE.Vector3(shape.keepRefM, shape.widthGrow, shape.headLow) };
@@ -455,7 +456,7 @@ varying vec3 vHeadCol; varying float vHeadT0; varying float vHerb;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;'
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; uniform float uSwardTone; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;'
       + '\nvarying vec3 vHeadCol; varying float vHeadT0; varying float vHerb;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo" — the tank's shadow on the
@@ -472,7 +473,8 @@ varying vec3 vHeadCol; varying float vHeadT0; varying float vHerb;`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',
-      `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`
+      // (grass r2, the sward's depth: swardPatch.ts SWARD_TONE) the root a fifth darker, the tip a little brighter
+      `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase * (1.0 - 0.22 * uSwardTone), uGrassTip * (1.0 + 0.06 * uSwardTone), pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`
       // ground lane: a sward is never one green — each blade a shade lighter or darker, a fifth cured to straw from the
       // tip down (the dead leaves of last season standing in the new)
       + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT) * (1.0 - vHerb);`
@@ -843,7 +845,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
             // the field's draw (terrain.ts and vegetation.ts makeTuft: the same, at the bake's six bits) — not the
             // meadow's round dry patches
             const jq = Math.round(_field.jitter * 63) / 63;
-            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+            // (grass r2: the same skew as the tufts' — vegetation.ts)
+            const pq = (jq * 7.31 + 0.13) % 1;
+            pastureDry = 0.32 * pq * pq;
           }
           // the headland (the terrain draws the same strip): 3–5.5 m inside the margin where the drill turned, the crop
           // pressed flat and thinner, weeds coming up in it

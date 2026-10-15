@@ -3,7 +3,7 @@
 // is the one the tall-grass tier has drawn its tussocks from since 2026-10-03 (moved, unchanged).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { swardCellSeed, swardNoise, swardPatchAt } from './swardPatch.ts';
+import { SWARD_TONE, swardCellSeed, swardNoise, swardPatchAt } from './swardPatch.ts';
 
 // the noise: in [0, 1], continuous across its lattice, position-hashed (the same point, the same value)
 let lo = 1, hi = 0, jump = 0;
@@ -44,7 +44,11 @@ for (const kind of ['reed', 'dune', 'tundra']) {
 // both tiers read it
 const tall = readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8');
 const veg = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
-assert.ok(tall.includes("import { swardCellSeed, swardNoise, swardPatchAt, type SwardPatch } from './swardPatch.ts';") && tall.includes('swardPatchAt(x, z, b.kind, _patch)'), 'the blades');
-assert.ok(veg.includes("import { swardPatchAt, type SwardPatch } from './swardPatch.ts';") && veg.includes('swardPatchAt(x, z, swardKind, _swardPatch)'), 'the tufts');
+assert.ok(/import \{[^}]*\bswardPatchAt\b[^}]*\} from '\.\/swardPatch\.ts';/.test(tall) && tall.includes('swardPatchAt(x, z, b.kind, _patch)'), 'the blades');
+assert.ok(/import \{[^}]*\bswardPatchAt\b[^}]*\} from '\.\/swardPatch\.ts';/.test(veg) && veg.includes('swardPatchAt(x, z, swardKind, _swardPatch)'), 'the tufts');
+// the sward's depth: one uniform both tiers' materials share (the tufts' card contrast, the blades' root and tip)
+assert.ok(SWARD_TONE.value === 1, 'on by default');
+assert.ok(tall.includes('shader.uniforms.uSwardTone = SWARD_TONE;') && tall.includes('uGrassBase * (1.0 - 0.22 * uSwardTone), uGrassTip * (1.0 + 0.06 * uSwardTone)'), 'the blades: a darker root, a brighter tip');
+assert.ok(veg.includes('shader.uniforms.uSwardTone = SWARD_TONE;') && veg.includes('diffuseColor.rgb *= max(0.0, 0.28 + (cardL - 0.28) * (1.0 + 0.35 * uSwardTone)) / max(cardL, 1e-4);'), 'the tufts: the card\'s contrast about its mean');
 assert.ok(!/function swardNoise|function cellSeed/.test(tall), 'one copy of the field');
 console.log(`swardPatch.selftest: the field (continuous, hashed), fresh ${(fresh / n * 100).toFixed(1)} % / cured ${(cured / n * 100).toFixed(1)} % / russet ${(russet / n * 100).toFixed(1)} % of a meadow, mild multipliers, both tiers read it PASS`);
