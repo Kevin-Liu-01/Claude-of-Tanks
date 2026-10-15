@@ -151,7 +151,7 @@ assert.equal(object.renderOrder, 1, 'the Hinterland draws after the battlefield'
   for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
     [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
     [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
-    [/hlStrataAt\( vHlWorld, hlNW, hlEY, hlFoot, hlL \)/, 'the steep faces\' bedding'], [/hlShoulderAt\( vHlWorld/, 'the shoulders\' snowfields and scree'],
+    [/hlStrataAt\( vHlWorld, hlNW, hlEY, hlFoot, hlL, hlS2 \)/, 'the steep faces\' bedding'], [/0\.55 \* hlStep/, 'the beds\' steps in the light'], [/hlShoulderAt\( vHlWorld/, 'the shoulders\' snowfields and scree'],
     [/0\.6 \* hlLedge/, 'the ledges\' snow facing the sky'], [/#ifndef HL_LITE/, 'the light tiers\' variant']]) {
     assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
   }
