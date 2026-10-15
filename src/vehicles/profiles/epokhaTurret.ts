@@ -171,6 +171,14 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     P.add('turret', new THREE.PlaneGeometry(.48, recessHeight), 0,
         2.71465 - pivot.y + recessHeight / 2, joinZ);
     P.add('turret', cylY(1.01, 1.01, .25, P.q ? 36 : 20), 0, .17, 0);
+    // Owner markup 2026-10-14 on this drum's bare flank: it reads as the turret ring it is. A splash-guard lip at its
+    // foot, the dark race seam under the turret floor and a ring of race-bolt heads.
+    P.add('turret', cylY(1.055, 1.07, .035, P.q ? 36 : 20), 0, .0625, 0);
+    P.add('turretDark', cylY(1.016, 1.016, .016, P.q ? 36 : 20, true), 0, .27, 0);
+    if (P.q) for (let i = 0; i < 28; i++) {
+        const a = i / 28 * Math.PI * 2;
+        P.add('turretDark', cylX(.012, .016, 6), Math.sin(a) * 1.012, .215, Math.cos(a) * 1.012, 0, a + Math.PI / 2, 0);
+    }
     addKurganetsTurretSides(P);
     addKurganetsOpticalCase(P);
     // The source's first visible face is a continuous cover in front of the
@@ -181,22 +189,10 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     localTurret(P, 'turretDetail', box(.729, .055, 1.28), -.648, 3.126, -2.040);
     localTurret(P, 'turretDetail', box(.443, .022, .651), .033, 3.15, -1.917);
     localTurret(P, 'turretDetail', cylY(.20, .20, .07, 24), .577, 3.114, -1.433);
-    // Source's raised rear rack sits on two braced feet rather than a floating
-    // crossbar. Its eight small launch tubes remain distinct in both LODs.
-    weaponAssembly(P, () => {
-      for (const x of [.44, .92]) {
-          localTurret(P, 'turretDetail', box(.04, .27, .38), x, 3.14, -2.56);
-      }
-      for (const [y, xs] of [[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const) {
-          for (const x of xs) {
-              localTurret(P, 'turretDetail', cylZ(.046, .827, P.q ? 16 : 8), x, y, -2.821);
-              localTurret(P, 'turretDark', cylZ(.035, .015, P.q ? 12 : 8), x, y, -3.24);
-          }
-      }
-      for (const z of [-3.208, -2.429]) {
-          localTurret(P, 'turretDetail', box(.557, .045, .186), .688, 3.59, z);
-      }
-    });
+    // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies", on this rack's tubes and straps):
+    // the source's raised rear-roof bundle of eight small tubes duplicated the vehicle's real anti-tank weapon, the two
+    // twin Kornet canister housings on the turret flanks (addKurganetsTurretSides), and is removed; the roof behind the
+    // sights stays clear for the masts.
 }
 // Object_29 has four different stepped fittings, not a symmetric pair of
 // generic whips. These independent axial calipers preserve their real stations.

@@ -232,7 +232,7 @@ function addHullShell(P: PumaS1BuilderPort): void {
   {
     const hatch = hatchParts(0.31, !!P.q, -1);
     for (const g of hatch.lid) P.addCupola('hull', g, 0.68, 2.0475, 1.48);
-    for (const g of hatch.dark) P.addEquipment('hullDark', g, 0.68, 2.0475, 1.48);
+    for (const g of hatch.dark) P.add('hullDark', g, 0.68, 2.0475, 1.48);
   }
   for (const x of [0.48, 0.68, 0.88]) KIT.periscope(P, 'hullDetail', x, 2.095, 1.80);
   for (const side of [-1, 1]) {

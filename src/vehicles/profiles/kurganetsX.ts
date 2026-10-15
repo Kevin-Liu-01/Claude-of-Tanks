@@ -7,6 +7,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { RunningGearConfig, TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildEpokhaTurret } from './epokhaTurret.ts';
+import { fieldChestParts } from './fieldChest.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
 function hullSection(z: number, lowerHalf: number, shoulderHalf: number, roofHalf: number, floor: number, shoulder: number, roof: number): SolidSection {
@@ -189,7 +190,13 @@ function addKurganetsDeckFittings(P: TankBuilderPort): void {
         P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x, y, z, 0, Math.atan2(ax, az));
     }
     for (const side of [-1, 1]) {
-        P.addEquipment('hullDetail', box(.29, .12, .69), side * 1.044, 2.33, -.461);
+        // Owner markup 2026-10-14 on these blank deck blocks: each is a real low stowage chest along the deck edge,
+        // its lid hinged inboard and its two hasps facing outboard (fieldChest.ts), on the same 0.69 x 0.29 footprint.
+        {
+            const chest = fieldChestParts(.69, .12, .29, { high: !!P.q, front: 1, handles: false });
+            for (const g of chest.paint) P.addEquipment('hullDetail', g, side * 1.044, 2.27, -.461, 0, side * Math.PI / 2, 0);
+            for (const g of chest.dark) P.addEquipment('hullDark', g, side * 1.044, 2.27, -.461, 0, side * Math.PI / 2, 0);
+        }
         for (const [x, y, z] of [[.79, 2.355, -2.80], [.70, 2.355, -3.33], [1.30, 2.085, 2.014]]) {
             P.addEquipment('hullDetail', box(.23, .09, .32), side * x, y, z);
             P.addEquipment('hullDark', box(.15, .026, .014), side * x, y + .013, z + .167);
