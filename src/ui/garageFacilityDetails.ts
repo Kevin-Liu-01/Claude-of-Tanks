@@ -2577,7 +2577,11 @@ export function addGarageFacilityDetails({
       {
         const pos = atGround(-5.6, 2.6);
         clusterBox(pos, 0, 0, 0.4, 1.0, 0.8, 1.0, craneYellow, 'painted');
-        clusterBox(pos, 0, 0.1, 1.05, 1.6, 0.14, 1.6, millSteel, 'structure', 0, 0.45);
+        // the table's worn, spatter-dulled steel, not a polished mirror (ticket 6, bay_under: it blew out to white in the
+        // sun), its T-slots and a clamped plate on it
+        clusterBox(pos, 0, 0.1, 1.05, 1.6, 0.14, 1.6, millSteel.clone().multiplyScalar(0.8), 'equipment', 0, 0.45);
+        for (const du of [-0.5, 0, 0.5]) clusterBox(pos, du, 0.12, 1.12, 0.05, 0.02, 1.5, soot, 'equipment', 0, 0.45);
+        clusterBox(pos, 0.15, 0.06, 1.2, 0.9, 0.06, 0.7, rust, 'equipment', 0, 0.45);
         operationalMachines += 1;
       }
       // two transfer tracks along the bay, either side of the road
