@@ -157,9 +157,11 @@ try {
   const studioShot = productShots.find((entry) => entry.sourceType === 'studio');
   if (studioShot) {
     errors = [];
+    // --studio-scene <file> (2026-10-15: on today's Steinburg the old alley scene's lens framed a grass bank, the tanks
+    // cut off at both edges): the scene the Studio directs in the shot, its map from the scene; seeked to its fxTime
     const scene = JSON.parse(readFileSync(
-      join(HERE, 'scenes-action-r3/85_action_urban_alley_flash.json'), 'utf8'));
-    await page.goto(`${baseUrl}/?studio=1&map=urban&nogate=1`, {
+      resolve(option('studio-scene', join(HERE, 'scenes-action-r3/85_action_urban_alley_flash.json'))), 'utf8'));
+    await page.goto(`${baseUrl}/?studio=1&map=${scene.map ?? 'urban'}&nogate=1`, {
       waitUntil: 'domcontentloaded', timeout: LOAD_MS,
     });
     await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true,
