@@ -5,7 +5,7 @@
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedPolygon, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -23,12 +23,16 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 /** One ghorfa cell: rubble walls and a barrel vault running back from its rounded front, a small door, a beam. */
 function ghorfa(sink: PartSink, x: number, y: number, z: number, w: number, h: number, d: number, rng: () => number, blue: Rgb): void {
   const r = w / 2;
-  sink.span(MUD, x - r, y, z - d, x + r, y + h, z);
+  // (props census #7, lane B 2026-10-14: the cell's door was a dark plate on its front with the leaf laid over it) the
+  // cell's body behind its front wall, the door cut through that wall into its dark, the leaf hung shut at the back of the
+  // cut
+  const fw = Math.min(0.45, d * 0.3);
+  sink.span(MUD, x - r, y, z - d, x + r, y + h, z - fw);
+  const front: Face = { origin: [x, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: w };
+  holedPolygon(sink, MUD, front, [[-r, y], [r, y], [r, y + h], [-r, y + h]], [{ u0: -0.35, u1: 0.35, y0: y + 0.15, y1: y + 1.25 }], fw, fw - 0.06);
   // the vault: a half drum along -z from the front
   sink.cylinder(MUD, [x, y + h, z - d], 'z', d, r, 8, {}, r, true, -Math.PI / 2, Math.PI);
-  const front: Face = { origin: [x, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: w };
-  faceBox(sink, 'dark', front, 0, y + 0.7, 0.005, 0.7, 1.1, 0.02, { decor: true });
-  faceBox(sink, 'structureWood', front, 0, y + 0.7, 0.03, 0.66, 1.05, 0.04, { colour: rng() < 0.5 ? blue : shade(TIMBER, 0.9), decor: true, uv: UV_MEMBER });
+  faceBox(sink, 'structureWood', front, 0, y + 0.7, -fw + 0.1, 0.66, 1.05, 0.04, { colour: rng() < 0.5 ? blue : shade(TIMBER, 0.9), decor: true, uv: UV_MEMBER });
   if (rng() < 0.6) faceBox(sink, 'structureWood', front, (rng() - 0.5) * w * 0.4, y + h + r * 0.55, 0.3, 0.12, 0.12, 0.6, { colour: TIMBER, decor: true });
 }
 
