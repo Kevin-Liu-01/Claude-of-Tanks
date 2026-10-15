@@ -104,7 +104,9 @@ const env = (sources, frame = 'hull', motion = null) => ({
   tube.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0.12, 0));
   const e = env([src(glacis, 'armor'), src(tube, 'gun')]);
   assert.equal(measureSeat(e, shape(), poseOn(0, 0, 0), 7).ok, false, 'a run under the centreline gun is rejected');
-  assert.equal(measureSeat(e, shape(), poseOn(0.38, 0, 0), 7).reason, 'clear:gun', 'a run 3 cm from the gun is rejected');
+  assert.equal(measureSeat(e, shape(), poseOn(0.36, 0, 0), 7).reason, 'clear:gun', 'an authored run 1 cm from the gun is rejected');
+  assert.equal(measureSeat(e, shape(), poseOn(0.38, 0, 0), 7, false, true).reason, 'clear:gun',
+    'a seat the solver chooses keeps the gun\'s full 5 cm');
   const off = measureSeat(e, shape(), poseOn(0.7, 0, 0), 7);
   assert.ok(off.ok, `a run clear of the gun passes (${off.reason})`);
 }

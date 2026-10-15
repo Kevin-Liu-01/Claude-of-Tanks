@@ -633,14 +633,35 @@ export interface SeatMeasure {
   exposure: number;
 }
 
-/** Seater thresholds (stricter than the receipt, which gates at support 50 %, air 20 %, cut 5 cm, sweep 2 cm). */
+/** One tier of seat rules (lengths m, shares 0-1). */
+interface SeatTier {
+  supportMin: number; airMax: number; gapTolM: number; gapP90Max: number; embedMax: number; sunkShareMax: number;
+  normalMaxDeg: number; minorForbiddenMax: number; cutMaxM: number; clearScale: number; sweepClearM: number;
+  exposureMin: number;
+}
+/**
+ * Seat rules in two tiers.
+ * - authored: a seat as its profile (or an old decor station) placed it is kept unchanged when it reads as resting and
+ *   in the open. Its margins sit inside the receipt's gates (HANGING: support 50 %, air 25 %; INTERSECTING: 5 cm, or
+ *   20 % sunk over 1 cm; WEIRD: on, or within 1 cm of, a forbidden role; BURIED), and the motion margin keeps the
+ *   plan's 3 cm, so a gun or turret that grazes a run still moves it. At most one probe may land on a minor foreign
+ *   part (decor, another run, a fitting, a soft load, running gear), never on the gun, a hatch, a grille, ERA or a
+ *   weapon.
+ * - chosen: a seat the solver picks (a re-seated run, a new decor station, a plane-fit pose) is new visible stowage and
+ *   is held to the strict rules: support 80 %, air 10 %, a 12 mm gap, 1 cm embed, 20 degrees, every forbidden role
+ *   clear by its full margin, 6 cm from anything that moves, and half the hemisphere open.
+ */
 export const SEAT_RULES = Object.freeze({
-  supportMin: 0.8, airMax: 0.1, gapP90Max: 0.012, gapTolM: 0.012, linkEmbedMax: 0.01, authoredEmbedMax: 0.01,
-  normalMaxDeg: 20,
-  airReachM: 0.3, cutTolM: 0.01, sweepClearM: 0.03, exposureMin: 0.3, exposureReachM: 0.8,
-  // a run the solver moves is new visible stowage: it must sit clearly in the open and clearly out of the way
-  movedSweepClearM: 0.06, movedExposureMin: 0.5,
+  airReachM: 0.3, exposureReachM: 0.8, cutTolM: 0.01,
+  authored: Object.freeze<SeatTier>({ supportMin: 0.5, airMax: 0.2, gapTolM: 0.03, gapP90Max: Infinity, embedMax: 0.05,
+    sunkShareMax: 0.2, normalMaxDeg: 30, minorForbiddenMax: 1, cutMaxM: 0.05, clearScale: 0.34, sweepClearM: 0.03,
+    exposureMin: 0.3 }),
+  chosen: Object.freeze<SeatTier>({ supportMin: 0.8, airMax: 0.1, gapTolM: 0.012, gapP90Max: 0.012, embedMax: 0.01,
+    sunkShareMax: 0, normalMaxDeg: 20, minorForbiddenMax: 0, cutMaxM: 0.01, clearScale: 1, sweepClearM: 0.06,
+    exposureMin: 0.5 }),
 });
+/** Foreign parts a kept authored seat may touch with one probe (never the gun, hatches, grilles, ERA, weapons...). */
+const MINOR_CODES = new Set([ROLE_CODE.decor, ROLE_CODE.run, ROLE_CODE.fitting, ROLE_CODE.soft, ROLE_CODE.gear]);
 
 const U_FRACTIONS = [0.04, 0.27, 0.5, 0.73, 0.96];
 const V_FRACTIONS = [0.08, 0.5, 0.92];
@@ -682,12 +703,12 @@ export interface SeatEnv {
  * neutral values), unless `full` asks for every measure (receipts).
  */
 export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, full = false,
-  moved = false): SeatMeasure {
+  chosen = false): SeatMeasure {
   const R = SEAT_RULES;
+  const T = chosen ? R.chosen : R.authored;
   const out: SeatMeasure = { ok: false, reason: null, support: 0, air: 0, gapP90: 0, maxEmbed: 0, forbidden: 0,
     forbiddenRole: null, spreadDeg: 0, clear: Infinity, clearRole: null, cut: 0, sweep: Infinity, exposure: 1 };
   const fail = (reason: string): boolean => { if (!out.reason) out.reason = reason; return !full; };
-  const embedTol = moved ? R.linkEmbedMax : R.authoredEmbedMax;
   const ax = runAxes(shape);
   const base = shape.box.min.getComponent(ax.n);
   const top = shape.box.max.getComponent(ax.n);
@@ -699,7 +720,7 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   // the first other surface (where the run is not in the soup, from its link backs: the design host plane plus the
   // standoff): a rigid run rests where the gap closes, and a surface above its underside sinks into it.
   const gaps: number[] = [];
-  let supported = 0, air = 0, forbidden = 0, total = 0, maxEmbed = -Infinity, spread = 0;
+  let supported = 0, air = 0, forbidden = 0, majorForbidden = 0, sunk = 0, total = 0, maxEmbed = -Infinity, spread = 0;
   const noOwnBottom = lift - shape.embedM - shape.standoffM;  // probe start to the link backs of a run not in the soup
   for (const fu of U_FRACTIONS) {
     for (const fv of V_FRACTIONS) {
@@ -716,14 +737,16 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
       if (d > R.airReachM) { air++; gaps.push(R.airReachM); continue; }
       const embed = -d;                                 // how far the host rises into the run
       if (embed > maxEmbed) maxEmbed = embed;
+      if (embed > 0.01) sunk++;
       gaps.push(Math.max(0, d));
       if (!_hit.host) {
         forbidden++;
-        if (!out.forbiddenRole) out.forbiddenRole = _hit.role;
+        if (!MINOR_CODES.has(ROLE_CODE[_hit.role])) majorForbidden++;
+        if (!out.forbiddenRole || !MINOR_CODES.has(ROLE_CODE[_hit.role])) out.forbiddenRole = _hit.role;
         continue;
       }
       const angle = Math.acos(Math.min(1, Math.max(-1, _hit.n.dot(n)))) * 180 / Math.PI;
-      if (d <= shape.standoffM + R.gapTolM && embed <= embedTol && angle <= R.normalMaxDeg) {
+      if (d <= shape.standoffM + T.gapTolM && embed <= T.embedMax && angle <= T.normalMaxDeg) {
         supported++;
         if (angle > spread) spread = angle;
       }
@@ -736,11 +759,11 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.gapP90 = gaps[Math.min(gaps.length - 1, Math.ceil(gaps.length * 0.9) - 1)] ?? 0;
   out.maxEmbed = Number.isFinite(maxEmbed) ? maxEmbed : 0;
   out.spreadDeg = spread;
-  if (forbidden > 0 && fail(`host:${out.forbiddenRole}`)) return out;
-  if (out.maxEmbed > embedTol && fail('sunk')) return out;
-  if (out.air > R.airMax && fail('air')) return out;
-  if (out.support < R.supportMin && fail('support')) return out;
-  if (out.gapP90 > shape.standoffM + R.gapP90Max && fail('gap')) return out;
+  if ((majorForbidden > 0 || forbidden > T.minorForbiddenMax) && fail(`host:${out.forbiddenRole}`)) return out;
+  if ((out.maxEmbed > T.embedMax || sunk / total > T.sunkShareMax) && fail('sunk')) return out;
+  if (out.air > T.airMax && fail('air')) return out;
+  if (out.support < T.supportMin && fail('support')) return out;
+  if (out.gapP90 > shape.standoffM + T.gapP90Max && fail('gap')) return out;
   // ---- R4: static clearance from forbidden roles, and no host surface into the links
   _m.compose(pose.pos, pose.quat, UNIT);
   _mi.copy(_m).invert();
@@ -766,7 +789,7 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
       }
       return;
     }
-    const need = ROLE_CLEAR_M(ROLE_CODE[role]);
+    const need = ROLE_CLEAR_M(ROLE_CODE[role]) * T.clearScale;
     grown.copy(local).expandByScalar(need);
     if (!grown.intersectsTriangle(_tri)) return;
     // the clearance actually kept: shrink the margin until it no longer meets (2 mm steps)
@@ -778,16 +801,16 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.clearRole = clearRole;
   out.cut = cut;
   if (clearRole && fail(`clear:${clearRole}`)) return out;
-  if (cut > R.cutTolM && fail('cut')) return out;
+  if (cut > T.cutMaxM && fail('cut')) return out;
   // ---- R5: motion
   if (env.motion) {
     out.sweep = motionClearance(env, shape, ax, pose, owner);
-    if (out.sweep < (moved ? R.movedSweepClearM : R.sweepClearM) && fail('sweep')) return out;
+    if (out.sweep < T.sweepClearM && fail('sweep')) return out;
   }
   // ---- R7: line-of-sight exposure of the top face
   if (env.exposure !== false) {
     out.exposure = exposureOf(env, shape, ax, pose, n, owner);
-    if (out.exposure < (moved ? R.movedExposureMin : R.exposureMin) && fail('buried')) return out;
+    if (out.exposure < T.exposureMin && fail('buried')) return out;
   }
   out.ok = !out.reason;
   return out;
@@ -927,13 +950,13 @@ function gunClearanceAt(env: SeatEnv, M: SeatMotion, pts: readonly THREE.Vector3
     const xmin = G.bins[o], xmax = G.bins[o + 1], ymin = G.bins[o + 2], ymax = G.bins[o + 3];
     if (Number.isNaN(xmin)) continue;
     const lateral = Math.max(xmin - tx, tx - xmax, 0);
-    if (lateral > SEAT_RULES.sweepClearM) continue;
+    if (lateral > SEAT_RULES.chosen.sweepClearM) continue;
     // clearance below the gun's underside (a run sits below the gun) or above its top; inside its span, the depth
     const vertical = Math.max(ymin - gy, gy - ymax);
     const c = vertical > 0 ? Math.hypot(lateral, vertical)
       : lateral > 0 ? lateral : -Math.min(gy - ymin, ymax - gy);
     if (c >= clear) continue;
-    if (hullFrame && c < SEAT_RULES.sweepClearM && armourLimited(env, M, yaw, pitch, owner)) return Infinity;
+    if (hullFrame && c < SEAT_RULES.chosen.sweepClearM && armourLimited(env, M, yaw, pitch, owner)) return Infinity;
     clear = c;
   }
   return clear;
