@@ -2169,13 +2169,18 @@ export function buildGarageEnvironment(
     if (!sand && !snow) return;
     const inner = GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06, reach = sand ? 1.8 : 1.4, peak = sand ? 0.34 : 0.28;
     const segments = 72, rings = 5;
-    const light = new THREE.Color(sand ? 0xdcc392 : 0xeef3f6), dark = new THREE.Color(sand ? 0xc9aa74 : 0xd6e0e7);
+    // packed and crushed-rock yards keep a grey, trodden snow; the ring is uneven, banked to windward and all but gone
+    // on the lee side, never a clean halo (CPU canonical, 2026-10-15)
+    const trodden = hardstandStyle === 'gravel-snow' || hardstandStyle === 'slab-snow';
+    const light = new THREE.Color(sand ? 0xdcc392 : trodden ? 0xd4dade : 0xe6ecf0);
+    const dark = new THREE.Color(sand ? 0xc9aa74 : trodden ? 0xb9c1c6 : 0xcfd9e0);
     const positions: number[] = [], colors: number[] = [];
     const wind = seed % 628 / 100;
     const point = (segment: number, ring: number): [number, number, number, number] => {
       const angle = (segment / segments) * Math.PI * 2, t = ring / rings;
-      const depth = (0.45 + 0.4 * Math.max(0, Math.cos(angle - wind)) + 0.25 * Math.sin(angle * 5 + wind * 3)) * peak;
-      const r = inner + t * reach * (0.8 + 0.25 * Math.sin(angle * 3 + wind));
+      const windward = Math.max(0, Math.cos(angle - wind));
+      const depth = (0.08 + 0.75 * windward * windward + 0.18 * Math.sin(angle * 5 + wind * 3) + 0.1 * Math.sin(angle * 11 + wind)) * peak;
+      const r = inner + t * reach * (0.35 + 0.75 * windward + 0.15 * Math.sin(angle * 3 + wind));
       const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
       const ground = Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.03;
       return [x, ground + Math.max(0, depth) * Math.pow(1 - t, 1.6) - (ring === rings ? 0.04 : 0), z, t];
