@@ -35,6 +35,7 @@ import { execFileSync } from 'node:child_process';
 import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { filteredStill, masterFilter } from './master-filter.mjs';
 
 const MEDIA = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -49,6 +50,9 @@ const force = flag('force');
 const fallback = flag('fallback');
 const plan = flag('plan');
 const TMP = join(MEDIA, 'shots/media-r5/tmp/site-media-build');
+// the frames' and home shots' PNG masters pass the optional local master filter (master-filter.mjs) before encoding
+const FILTER = masterFilter();
+const master = (png, id) => filteredStill(png, join(TMP, 'masters'), id, FILTER);
 
 /** The landing page's mobile proxy budget (landing-media.selftest.mjs), with the Studio card's proxy kept. */
 const PROXY_BUDGET_BYTES = 9_000_000;
@@ -320,8 +324,8 @@ function frameList() {
 function buildFrames(frames) {
   for (const f of frames) {
     const extra = { frame: f.id, round: f.round };
-    make(join(OUT, 'frames', `${f.id}.webp`), f.png, (tmp) => webp(f.png, tmp, 86, [1920, 1080]), extra);
-    make(join(OUT, 'frames', `${f.id}-thumb.webp`), f.png, (tmp) => webp(f.png, tmp, 78, THUMB), extra);
+    make(join(OUT, 'frames', `${f.id}.webp`), f.png, (tmp) => webp(master(f.png, f.id), tmp, 86, [1920, 1080]), extra);
+    make(join(OUT, 'frames', `${f.id}-thumb.webp`), f.png, (tmp) => webp(master(f.png, f.id), tmp, 78, THUMB), extra);
   }
   mkdirSync(TMP, { recursive: true });
   for (let s = 0; s * SHEET.per < frames.length; s++) {
@@ -330,7 +334,7 @@ function buildFrames(frames) {
     const newest = group.reduce((a, f) => (statSync(f.png).mtimeMs > statSync(a.png).mtimeMs ? f : a));
     make(out, newest.png, (tmp) => {
       const [w, h] = SHEET.tile;
-      const inputs = group.flatMap((f) => ['-i', f.png]);
+      const inputs = group.flatMap((f) => ['-i', master(f.png, f.id)]);
       const scaled = group.map((_, i) => `[${i}:v]scale=${w}:${h}:flags=lanczos[t${i}]`).join(';');
       const layout = group.map((_, i) => `${(i % SHEET.cols) * w}_${Math.floor(i / SHEET.cols) * h}`).join('|');
       const png = join(TMP, `sheet-${s + 1}.png`);
@@ -481,9 +485,10 @@ function buildHome() {
     if (!png) continue;
     const [w, h] = slot.size;
     const extra = { home: `${slot.group}/${slot.id}` };
-    make(join(OUT, 'home', slot.group, `${slot.id}.webp`), png, (tmp) => webp(png, tmp, 84, [w, h]), extra);
+    const id = `home-${slot.group}-${slot.id}`;
+    make(join(OUT, 'home', slot.group, `${slot.id}.webp`), png, (tmp) => webp(master(png, id), tmp, 84, [w, h]), extra);
     make(join(OUT, 'home', slot.group, `${slot.id}-640.webp`), png,
-      (tmp) => webp(png, tmp, 80, [HOME_PREVIEW_W, Math.round((HOME_PREVIEW_W * h) / w)]), extra);
+      (tmp) => webp(master(png, id), tmp, 80, [HOME_PREVIEW_W, Math.round((HOME_PREVIEW_W * h) / w)]), extra);
   }
   const studio = homeStudioDelivery();
   if (!studio) return;
