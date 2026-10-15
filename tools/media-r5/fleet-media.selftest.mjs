@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../../src/vehicles/tankFactory.ts';
 import { PRODUCTION_TANK_IDS } from '../../src/vehicles/specs.ts';
+import { resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
 
 // The fleet's panel media (owner 2026-10-12: "make a special video for all tanks ... and use that everywhere"; the
 // coordinator's budget, 2026-10-13): public/media/site50-r14/fleet holds, for each production vehicle whose own take is
@@ -18,9 +19,15 @@ if (!existsSync(join(DIR, 'index.json'))) {
 }
 const index = JSON.parse(readFileSync(join(DIR, 'index.json'), 'utf8')), vehicles = Object.entries(index.vehicles ?? {});
 const LOOP_MAX = 0.6 * 1024 * 1024, POSTER_MAX = 120 * 1024, PER_VEHICLE = 0.55 * 1024 * 1024;
-const production = new Set(PRODUCTION_TANK_IDS), named = new Set(['index.json']);
+const production = new Set(PRODUCTION_TANK_IDS), named = new Set(['index.json']), resolved = new Map();
 for (const [vehicle, entry] of vehicles) {
-  assert.ok(production.has(vehicle), `${vehicle}: a production spec id`);
+  // (2026-10-15, the schema 3 rename: the index keeps the spelling it was written under, its tankIdSchema stamp, and a
+  // key names a production vehicle once resolved through the alias layer, as parseFleetTakes reads it; two keys never
+  // land on one vehicle)
+  const id = resolveTankId(vehicle, index.tankIdSchema);
+  assert.ok(production.has(id), `${vehicle}${id !== vehicle ? ` (schema ${index.tankIdSchema ?? 1} -> ${id})` : ''}: a production spec id`);
+  assert.ok(!resolved.has(id), `${vehicle} and ${resolved.get(id)} both resolve to ${id}`);
+  resolved.set(id, vehicle);
   for (const [kind, max] of [['loop', LOOP_MAX], ['poster', POSTER_MAX]]) {
     const file = entry[kind]?.replace(/^\/media\/site50-r14\/fleet\//, '');
     assert.ok(file && existsSync(join(DIR, file)), `${vehicle}: its ${kind} exists (${entry[kind]})`);
