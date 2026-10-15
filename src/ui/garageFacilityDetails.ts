@@ -1614,7 +1614,7 @@ export function addGarageFacilityDetails({
       const x = origin.x + c * lateral + sn * longitudinal, z = origin.z - sn * lateral + c * longitudinal;
       return { x, z, baseY: groundAtWorld(x, z), yaw };
     };
-    const halfW = 8.6, halfL = 4.8, mastY = 6.2, sag = 1.1;
+    const halfW = 8.6, halfL = 4.8, mastY = 7.6, sag = 1.2; // tall enough to show over the hero (GPU stills)
     const mast = new THREE.Color(0x8f7a58), cable = new THREE.Color(0x3a3530);
     const sand = new THREE.Color(0xc8ad7e), sandDark = new THREE.Color(0xa88d60), mesh = new THREE.Color(0x6e6a5e);
     const palm = new THREE.Color(0x8a7246), palmDark = new THREE.Color(0x6a5534), timberFrame = new THREE.Color(0x5c4630);
