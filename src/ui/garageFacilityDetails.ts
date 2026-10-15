@@ -1750,6 +1750,35 @@ export function addGarageFacilityDetails({
         for (const dl of [-0.5, 0.5]) clusterBox(cell, dl, 0, 1.28, 0.03, 0.03, 1.0, mesh, 'structure');
       }
     }
+    // concrete T-walls screening the far flank, a generator set on its skid by the arish screen, and the signals mast
+    // guyed at the back corner (the garage critic panel, 2026-10-14: "Hesco barriers, T-walls, sandbags, a genset, an
+    // antenna mast")
+    {
+      const concreteT = new THREE.Color(0xa89a82), concreteTDark = new THREE.Color(0x8e816b);
+      for (let k = 0; k < 6; k += 1) {
+        const wall = atGround(halfW + 9.2, -5.0 + k * 1.55);
+        clusterBox(wall, 0, 0, 1.85, 0.32, 3.4, 1.5, k % 2 ? concreteT : concreteTDark, 'masonry'); // the stem
+        clusterBox(wall, 0.0, 0, 0.18, 1.3, 0.36, 1.5, concreteTDark, 'masonry'); // the foot
+        clusterBox(wall, 0, 0, 3.4, 0.36, 0.1, 0.12, dark, 'structure'); // the lifting eye's bar
+      }
+      const genset = atGround(-halfW - 2.6, -2.2);
+      for (const side of [-1, 1]) clusterBox(genset, side * 0.45, 0, 0.08, 0.12, 0.16, 2.4, dark, 'structure');
+      clusterBox(genset, 0, 0, 0.85, 1.1, 1.2, 2.2, new THREE.Color(0x6d6a4a), 'painted');
+      for (let louvre = 0; louvre < 5; louvre += 1) clusterBox(genset, 0.56, -0.6 + louvre * 0.3, 0.95, 0.02, 0.6, 0.12, dark, 'equipment');
+      clusterCylinder(genset, 0, 0.8, 1.65, 0.06, 0.5, dark, 0, 10); // the exhaust
+      clusterBeam(genset, [-0.55, -1.1, 0.4], [-1.6, -2.4, 0.05], 0.06, dark, 'equipment'); // the cable to the depot
+      operationalMachines += 1;
+      const mast = atGround(halfW + 3.2, -halfL - 2.4);
+      clusterBox(mast, 0, 0, 0.1, 0.8, 0.2, 0.8, dark, 'masonry');
+      for (let k = 0; k < 4; k += 1) clusterCylinder(mast, 0, 0, 0.2 + k * 2.2 + 1.1, 0.06 - k * 0.008, 2.2, steel, 0, 10);
+      clusterBox(mast, 0, 0, 9.1, 0.9, 0.05, 0.05, steel, 'structure'); // the antenna arms
+      clusterCylinder(mast, 0, 0, 9.6, 0.02, 1.0, dark, 0, 8);
+      for (const [gu, gw] of [[2.6, 0], [-1.3, 2.25], [-1.3, -2.25]] as const) {
+        clusterBeam(mast, [0, 0, 6.2], [gu, gw, 0.1], 0.015, dark, 'equipment');
+        clusterBox(mast, gu, gw, 0.06, 0.2, 0.12, 0.2, dark, 'masonry');
+      }
+      servicePurposeTags.add('forward-signals');
+    }
     // the fuel bladder in its bunded berm, east of the shade
     {
       const bund = atGround(halfW + 4.6, 0.6);
