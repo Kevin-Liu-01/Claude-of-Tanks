@@ -817,10 +817,6 @@ export const NORDLAND_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   cottage: (ctx) => hus(ctx),
   logcabin: (ctx) => hus(ctx),
   alpine: (ctx) => hus(ctx, { two: true }),
-  // (the maps lane, 2026-10-15, Nordhavn's blind critics: the valley farms' farmhouse stood as the base kit's windowless
-  // whitewashed box, "not Norwegian") a farm's våningshus is the two-storey Nordland house, boarded, its windows and
-  // glassed veranda up the gable
-  farmhouse: (ctx) => hus(ctx, { two: true }),
   cornershop: landhandel,
   warehouse: sjohus,
   depot: lager,

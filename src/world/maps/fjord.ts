@@ -190,34 +190,37 @@ export default {
     // (the map-content lane, 2026-10-10; the owner: Nordhavn "very bare") the farms of the valley floor round Bjerkvik in
     // May 1940: the graded meadow the town left when it moved onto the quay (e13c91de9) stood empty, the props' scatter and
     // the trees keeping off all of it. Each farm's tun: the farmhouse with its front to the road, the barn behind it, the
+    // (the blind critics, 2026-10-15: the base kit's farmhouse stood as "a windowless whitewashed box, not Norwegian") each
+    // farmhouse plot is the nordland kit's two-storey house (its 'alpine' plot: the boarded våningshus with its windows and
+    // glassed veranda up the gable; the kit has no farmhouse of its own)
     // stabbur beside the yard and a hay rack out in the infield (landmarks below), up to seven farms a side of the middle,
     // every footprint clear of the roads' cores, the zone discs, the trees' trunks and the town. The sites stand after the
     // roadside plan (the town places exactly as before) and each draws from its own stream (terrace), the lighthouse too.
     plannedSitesAfterPlan: true,
     plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270, terrace: true },
-      { structure: 'farmhouse', x: -17.0, z: -29.0, yawDeg: 108, terrace: true },
+      { structure: 'alpine', x: -17.0, z: -29.0, yawDeg: 108, terrace: true },
       { structure: 'barn', x: -42.2, z: -35.5, yawDeg: 108, terrace: true },
-      { structure: 'farmhouse', x: -83.0, z: -277.0, yawDeg: 104, terrace: true },
+      { structure: 'alpine', x: -83.0, z: -277.0, yawDeg: 104, terrace: true },
       { structure: 'barn', x: -104.3, z: -271.7, yawDeg: 104, terrace: true },
-      { structure: 'farmhouse', x: 165.0, z: -159.0, yawDeg: 81, terrace: true },
+      { structure: 'alpine', x: 165.0, z: -159.0, yawDeg: 81, terrace: true },
       { structure: 'barn', x: 145.5, z: -176.3, yawDeg: 81, terrace: true },
-      { structure: 'farmhouse', x: 133.0, z: -55.0, yawDeg: -161, terrace: true },
+      { structure: 'alpine', x: 133.0, z: -55.0, yawDeg: -161, terrace: true },
       { structure: 'barn', x: 126.9, z: -29.6, yawDeg: -161, terrace: true },
-      { structure: 'farmhouse', x: -45.0, z: -213.0, yawDeg: -76, terrace: true },
+      { structure: 'alpine', x: -45.0, z: -213.0, yawDeg: -76, terrace: true },
       { structure: 'barn', x: -23.7, z: -218.3, yawDeg: -76, terrace: true },
-      { structure: 'farmhouse', x: 17.0, z: 287.0, yawDeg: 76, terrace: true },
+      { structure: 'alpine', x: 17.0, z: 287.0, yawDeg: 76, terrace: true },
       { structure: 'barn', x: -4.3, z: 281.7, yawDeg: 76, terrace: true },
-      { structure: 'farmhouse', x: 29.0, z: 25.0, yawDeg: -72, terrace: true },
+      { structure: 'alpine', x: 29.0, z: 25.0, yawDeg: -72, terrace: true },
       { structure: 'barn', x: 49.9, z: 18.2, yawDeg: -72, terrace: true },
-      { structure: 'farmhouse', x: -217.0, z: 235.0, yawDeg: -170, terrace: true },
+      { structure: 'alpine', x: -217.0, z: 235.0, yawDeg: -170, terrace: true },
       { structure: 'barn', x: -213.2, z: 256.7, yawDeg: -170, terrace: true },
-      { structure: 'farmhouse', x: 165.0, z: 145.0, yawDeg: 79, terrace: true },
+      { structure: 'alpine', x: 165.0, z: 145.0, yawDeg: 79, terrace: true },
       { structure: 'barn', x: 143.4, z: 140.8, yawDeg: 79, terrace: true },
-      { structure: 'farmhouse', x: 163.0, z: 285.0, yawDeg: -12, terrace: true },
+      { structure: 'alpine', x: 163.0, z: 285.0, yawDeg: -12, terrace: true },
       { structure: 'barn', x: 167.6, z: 263.5, yawDeg: -12, terrace: true },
-      { structure: 'farmhouse', x: -95.0, z: 223.0, yawDeg: 169, terrace: true },
+      { structure: 'alpine', x: -95.0, z: 223.0, yawDeg: 169, terrace: true },
       { structure: 'barn', x: -99.2, z: 244.6, yawDeg: 169, terrace: true },
-      { structure: 'farmhouse', x: 57.0, z: 159.0, yawDeg: -76, terrace: true },
+      { structure: 'alpine', x: 57.0, z: 159.0, yawDeg: -76, terrace: true },
       { structure: 'barn', x: 78.3, z: 153.7, yawDeg: -76, terrace: true },
     ],
     landmarks: [
