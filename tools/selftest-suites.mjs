@@ -649,6 +649,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
     'src/engine/contactShadows.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane, contact r2): the scene alpha's snow band — the terrain's own snow cover for the ground occlusion
+    'src/engine/sceneAlpha.selftest.mjs',
     'src/engine/vehicleOcclusion.selftest.mjs',
     'src/engine/groundBounce.selftest.mjs',
     'src/engine/sunShafts.selftest.mjs',
@@ -957,6 +959,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/textureUnits.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
+    // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
+    'tools/studio-snow-contact.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
     'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
@@ -1446,6 +1451,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane; media wave f1 "concentric contour rings on snow"): the snow maps' drift and sastrugi
+    // phases monotone along the wind over the whole square (no rings), the sunset terminator kept, the GLSL's law
+    'src/world/snowDrifts.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
