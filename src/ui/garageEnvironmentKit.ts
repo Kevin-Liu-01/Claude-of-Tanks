@@ -2069,6 +2069,46 @@ export function buildGarageEnvironment(
     }
   };
 
+  // The turntable's plinth meets loose ground with a drift banked against it (the re-judge, 2026-10-15, Sirocco: "the
+  // plinth also meets bare sand with no drift or shoulder"; the snow yards' podiums stood on their floors the same way):
+  // in the sand and snow yards a low ring of drifted sand or snow stands against the plinth's foot, deeper to windward,
+  // thinning to nothing 1.4-1.8 m out, in the baked bucket (no draw of its own)
+  const addPodiumDrift = (): void => {
+    const sand = hardstandStyle === 'earth-sand';
+    const snow = hardstandStyle === 'earth-snow' || hardstandStyle === 'gravel-snow' || hardstandStyle === 'slab-snow';
+    if (!sand && !snow) return;
+    const inner = GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06, reach = sand ? 1.8 : 1.4, peak = sand ? 0.34 : 0.28;
+    const segments = 72, rings = 5;
+    const light = new THREE.Color(sand ? 0xdcc392 : 0xeef3f6), dark = new THREE.Color(sand ? 0xc9aa74 : 0xd6e0e7);
+    const positions: number[] = [], colors: number[] = [];
+    const wind = seed % 628 / 100;
+    const point = (segment: number, ring: number): [number, number, number, number] => {
+      const angle = (segment / segments) * Math.PI * 2, t = ring / rings;
+      const depth = (0.45 + 0.4 * Math.max(0, Math.cos(angle - wind)) + 0.25 * Math.sin(angle * 5 + wind * 3)) * peak;
+      const r = inner + t * reach * (0.8 + 0.25 * Math.sin(angle * 3 + wind));
+      const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+      const ground = Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.03;
+      return [x, ground + Math.max(0, depth) * Math.pow(1 - t, 1.6) - (ring === rings ? 0.04 : 0), z, t];
+    };
+    const tone = new THREE.Color();
+    for (let segment = 0; segment < segments; segment += 1) {
+      for (let ring = 0; ring < rings; ring += 1) {
+        const a = point(segment, ring), b = point(segment + 1, ring), c = point(segment + 1, ring + 1), d = point(segment, ring + 1);
+        // outward (a to d) crossed with round the ring (a to b) points down, so a, c, d and a, b, c face the sky
+        for (const p of [a, c, d, a, b, c]) {
+          positions.push(p[0], p[1], p[2]);
+          tone.copy(light).lerp(dark, 0.3 + 0.5 * p[3]);
+          colors.push(tone.r, tone.g, tone.b);
+        }
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    combined.baked!.push(geometry);
+  };
+  addPodiumDrift();
   const addMergedStructures = (): void => {
     for (const key of BUCKET_KEYS) {
       const sources = combined[key] || [];
