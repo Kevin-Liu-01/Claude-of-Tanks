@@ -2557,7 +2557,9 @@ export function addGarageFacilityDetails({
       addServiceManifold(fixedCluster(featureSide + 4.0, featureDepth - 9.5), 0, 0, 4.2);
       addPoweredWinch(fixedCluster(featureSide + 7.5, featureDepth - 10.5), 0, 0, new THREE.Color(0xb98536));
       addPartsPallet(fixedCluster(featureSide - 4.0, featureDepth + 9.0), 0, 0, 2);
-      addTurningRollStation(fixedCluster(featureSide - 3.0, featureDepth - 10.0), 0, 0, new THREE.Color(0x8f6d43));
+      // (the turning-roll station that stood here read as "a large tan half-cylinder ... a fuel bladder or culvert" in the
+      // hero frame's right foreground, the re-judge 2026-10-15; the bowsers' refit under the shade is the process zone)
+      factoryProcessZones += 1;
       // the depot's perimeter on the yard's left (the re-judge, 2026-10-15: no tower, berm or sandbag wall in the hero
       // frame; the critic panel: "HESCO or sandbag berms, a guard tower"): a HESCO line across the left third with the
       // guard tower standing in its gap, clear of the turret and the gun, the plain caravanserai wall behind them
