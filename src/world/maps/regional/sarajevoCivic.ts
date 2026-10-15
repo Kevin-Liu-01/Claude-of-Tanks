@@ -18,7 +18,7 @@
 //     closed for the siege, a whitewashed han storey over one end.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedPolygon, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorUnit, gateUnit, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, COPPER, DARK_FRAME, DOOR_LEAVES, IRON, LEAD, TIMBER, ZINC,
@@ -345,6 +345,25 @@ const mosque: RegionalBuilder = (ctx) => {
 // ------------------------------------------------------------------------------------------------ the churches
 
 /** The Serbian Orthodox church: nave under copper, the drum and dome, the apse, the bell tower over the west door. */
+/**
+ * A church's bell tower shaft up to its belfry's sills (`top`), a body of its own (it topples in its courses when the
+ * church falls: damage.ts towerBody) on its plinth, its west door cut through its front with the leaf hung at the back
+ * of the cut; the belfry stands on its flat top. (Props census #13, lane B 2026-10-15: the shaft was a solid span, the
+ * door laid on it, and it fell with the nave.)
+ */
+function towerShaft(sink: PartSink, wall: RegionalBucket, cz: number, tw: number, top: number, door: DoorStyle, dw: number, dh: number, reveal: number): void {
+  const dialect: HouseDialect = {
+    window: () => undefined,
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, door, y0 + o.y0),
+  };
+  sink.placed(0, 0, 0, cz, () => buildHouse(sink, {
+    w: tw, d: tw, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: top - 0.4, wall }],
+    roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: 'stone' },
+    openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: dh }], chimneys: [], gutters: null, verge: null,
+    reveal, rafters: null, spall: null,
+  }, dialect));
+}
+
 const orthodoxChurch: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const f = fillOf(ctx.bounds, 0.1);
@@ -377,12 +396,16 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
       const b = frame.bodies[0];
       for (const y of [1.25, nh - 0.9]) sink.band('structureMetal', b.x0 - 0.03, y, b.z0 - 0.03, b.x1 + 0.03, y + 0.28, b.z1 + 0.03, { decor: true, colour: RED_BAND });
       // the drum and the dome over the nave's middle
-      const dr = nw * 0.3, dy = frame.roof.ridgeTopY - 0.6;
-      sink.cylinder(wall, [0, dy - 1.2, 0], 'y', 3.6, dr, 8, {}, dr, true, Math.PI / 8);
+      // the drum: its eight lights cut through its sides into the dark under the dome, the glass at the back of each
+      // reveal (were dark plates laid on a solid drum); the sides holed slabs round a core
+      const dr = nw * 0.3, dy = frame.roof.ridgeTopY - 0.6, ap = dr * Math.cos(Math.PI / 8), side = 2 * dr * Math.sin(Math.PI / 8), cut = 0.22;
+      sink.cylinder(wall, [0, dy - 1.2, 0], 'y', 3.6, dr - cut / Math.cos(Math.PI / 8), 8, {}, dr - cut / Math.cos(Math.PI / 8), true, Math.PI / 8);
       for (let k = 0; k < 8; k++) {
         const t = (k / 8) * Math.PI * 2;
-        const f: Face = { origin: [Math.cos(t) * dr * 0.93, 0, Math.sin(t) * dr * 0.93], u: [Math.sin(t), 0, -Math.cos(t)], out: [Math.cos(t), 0, Math.sin(t)], width: 1 };
-        facePanel(sink, 'dark', f, 0, dy + 1.1, 0.04, 0.42, 1.0, { decor: true });
+        const f: Face = { origin: [Math.cos(t) * ap, 0, Math.sin(t) * ap], u: [Math.sin(t), 0, -Math.cos(t)], out: [Math.cos(t), 0, Math.sin(t)], width: side };
+        holedPolygon(sink, wall, f, [[-side / 2, dy - 1.2], [side / 2, dy - 1.2], [side / 2, dy + 2.4], [-side / 2, dy + 2.4]],
+          [{ u0: -0.22, u1: 0.22, y0: dy + 0.55, y1: dy + 1.65 }], cut, 0.18);
+        facePanel(sink, 'glass', f, 0, dy + 1.1, -0.168, 0.44, 1.1, { decor: true, window: f.out });
       }
       const t = dome(sink, 0, dy + 2.4, 0, dr * 1.02, COPPER, 12);
       finial(sink, 0, t, 0, 'cross', 0.9);
@@ -392,19 +415,18 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [0, nh * 0.82, az], 'y', ar * 0.75, ar + 0.3, 8, { colour: COPPER, decor: true }, 0.05, true, 0, Math.PI);
     // the bell tower over the west door
     const th = clampTo(nh * 2.5, 12, 22);
-    // (props census #13, lane B 2026-10-14) the shaft to the belfry's sills, the belfry open through its arches
-    // (the west door cut through the shaft's front, its leaf at the back of the cut: it stood on the solid shaft)
+    // (props census #13, lane B 2026-10-14) the shaft to the belfry's sills (towerShaft), the belfry open through its
+    // arches over it
     const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    sink.span(wall, -tw / 2, -0.4, tz0, tw / 2, th - 3.3, tz1 - 0.45);
-    holedPolygon(sink, wall, tf, [[-tw / 2, -0.4], [tw / 2, -0.4], [tw / 2, th - 3.3], [-tw / 2, th - 3.3]], [{ u0: -0.65, u1: 0.65, y0: 0.2, y1: 2.8 }], 0.45, 0.4);
+    towerShaft(sink, wall, (tz0 + tz1) / 2, tw, th - 3.3, { leaf: door, frame: { bucket: 'stone', width: 0.24, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, 1.3, 2.6, 0.4);
     openBelfry(sink, wall, 0, (tz0 + tz1) / 2, tw, th - 3.3, th - 1.5, th, tw * 0.36, COPPER, rgb(0x3a2e24));
-    sink.recess = 0.36;
-    try { doorUnit(sink, tf, 0, 0.2, 1.3, 2.6, { leaf: door, frame: { bucket: 'stone', width: 0.24, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, 0.2); }
-    finally { sink.recess = 0; }
-    archHead(sink, tf, 0, 2.84, 0.9, 'stone', 0.22, 6);
-    sink.band('structureMetal', -tw / 2 - 0.03, 1.25, tz0 - 0.03, tw / 2 + 0.03, 1.53, tz1 + 0.03, { decor: true, colour: RED_BAND });
+    archHead(sink, tf, 0, 2.94, 0.9, 'stone', 0.22, 6);
     for (const [ox, oz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const f: Face = { origin: [ox * tw / 2, 0, (tz0 + tz1) / 2 + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
+      // the red band round the shaft, broken at the west door's frame (it ran across the cut)
+      const band = { decor: true, colour: RED_BAND } as const, reach = tw / 2 + 0.03, gap = 0.65 + 0.24;
+      if (oz === 1) for (const sd of [-1, 1]) faceBox(sink, 'structureMetal', f, sd * (reach + gap) / 2, 1.39, 0, reach - gap, 0.28, 0.06, band);
+      else faceBox(sink, 'structureMetal', f, 0, 1.39, 0, 2 * reach, 0.28, 0.06, band);
       archHead(sink, f, 0, th - 1.5, tw * 0.18, 'stone', 0.14, 6);
       faceBox(sink, 'stone', f, 0, th - 0.2, 0.08, tw + 0.2, 0.4, 0.16, { decor: true });
     }
@@ -454,10 +476,8 @@ const catholicChurch: RegionalBuilder = (ctx) => {
     });
     // the tower and its spire, the pointed portal, the belfry's lancets and the clock
     const th = clampTo(nh * 2.7, 14, 25), tzc = (tz0 + tz1) / 2;
-    // (props census #13, lane B 2026-10-14) the shaft to the lancets' sills, the belfry open through them
-    const tf0: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    sink.span('stone', -tw / 2, -0.4, tz0, tw / 2, th - 3.8, tz1 - 0.5);
-    holedPolygon(sink, 'stone', tf0, [[-tw / 2, -0.4], [tw / 2, -0.4], [tw / 2, th - 3.8], [-tw / 2, th - 3.8]], [{ u0: -0.75, u1: 0.75, y0: 0.2, y1: 3.1 }], 0.5, 0.45);
+    // (props census #13, lane B 2026-10-14) the shaft to the lancets' sills (towerShaft), the belfry open through them
+    towerShaft(sink, 'stone', tzc, tw, th - 3.8, { leaf: door, frame: { bucket: 'stone', width: 0.3, out: 0.12 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 1.5, 2.9, 0.45);
     openBelfry(sink, 'stone', 0, tzc, tw, th - 3.8, th - 1.4, th, tw * 0.3, COPPER, rgb(0x3a2e24));
     for (const [ox, oz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const f: Face = { origin: [ox * tw / 2, 0, tzc + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
@@ -469,10 +489,7 @@ const catholicChurch: RegionalBuilder = (ctx) => {
       faceBox(sink, 'stone', f, 0, th - 0.15, 0.1, tw + 0.25, 0.3, 0.2, { decor: true });
     }
     const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    sink.recess = 0.41;
-    try { doorUnit(sink, tf, 0, 0.2, 1.5, 2.9, { leaf: door, frame: { bucket: 'stone', width: 0.3, out: 0.12 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.2); }
-    finally { sink.recess = 0; }
-    archHead(sink, tf, 0, 3.2, 1.05, 'stone', 0.26, 2);
+    archHead(sink, tf, 0, 3.3, 1.05, 'stone', 0.26, 2);
     const spire = clampTo(th * 0.42, 5, 10);
     sink.cylinder('structureMetal', [0, th, tzc], 'y', spire, tw * 0.62, 8, { colour: rgb(0x4d5357) }, 0.04, true, Math.PI / 8);
     finial(sink, 0, th + spire - 0.1, tzc, 'cross', 0.8);

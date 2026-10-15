@@ -323,8 +323,10 @@ const headframe: RegionalBuilder = (ctx) => {
 
 /**
  * The concentrator (a factory plot): three corrugated sections stepping down the reach, tallest at the back, each
- * under a monitor roof; a conveyor gallery rising to the top section; a round thickener tank at the foot; the copper
- * green stain round the tank.
+ * under a monitor roof louvred along its sides; the sides' glazing bands cut through the cladding; the bucket
+ * elevator's casing up the top section's back; on a wide reach the thickener in its own yard beside the front section,
+ * its rake bridge from the mill to the feed well with the drive head over it and the launder along it, the wet ring
+ * round the tank.
  */
 const concentrator: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -337,24 +339,34 @@ const concentrator: RegionalBuilder = (ctx) => {
   sink.placed(0, R.cx, 0, R.cz, () => {
     sink.span(CONCRETE, -W / 2 - 0.1, -0.4, -D / 2 - 0.1, W / 2 + 0.1, 0.6, D / 2 + 0.1);
     const sec = D / 3;
+    // (props census #13, lane B 2026-10-15) the thickener's yard: the front section stops short of the reach's +x side
+    // on a wide reach (the tank stood buried inside the front section)
+    const yard = W >= 11 ? Math.min(6.4, Math.max(4.4, W * 0.36)) : 0;
     steps.forEach(([, h], k) => {
-      const z0 = -D / 2 + k * sec, z1 = z0 + sec;
+      const z0 = -D / 2 + k * sec, z1 = z0 + sec, x0 = -W / 2, x1 = k === 2 ? W / 2 - yard : W / 2, wk = x1 - x0, cx = (x0 + x1) / 2;
+      const tone = shade(sheet, 1 - k * 0.04);
       // the sides' glazing bands cut through the cladding into the mill's dark (were glass laid on solid sheet): the
       // glass and its mullions at the back of the reveal, a flashing over the sill
       const band = { u0: -(sec - 1.4) / 2, u1: (sec - 1.4) / 2, y0: h - 2.1, y1: h - 1.1 }, cut = 0.2, back = 0.15;
-      const sides: Face[] = [1, -1].map((side) => ({ origin: [side * W / 2, 0, (z0 + z1) / 2], u: [0, 0, -side], out: [side, 0, 0], width: sec }));
-      sink.span('structureMetal', -W / 2 + cut, 0.6, z0, W / 2 - cut, h, z1, { colour: shade(sheet, 1 - k * 0.04) });
-      for (const f of sides) {
-        holedPolygon(sink, 'structureMetal', f, [[-sec / 2, 0.6], [sec / 2, 0.6], [sec / 2, h], [-sec / 2, h]], [band], cut, back + 0.02,
-          { colour: shade(sheet, 1 - k * 0.04) });
-      }
-      rustSkin(sink, -W / 2, 0.6, z0, W / 2, h, z1, shade(sheet, 1 - k * 0.04), ctx.variant, [{ face: 1, ...band }, { face: 3, ...band }]);
-      // the monitor roof: a raised clerestory along the section's ridge under its own low gable
+      const sides: Face[] = [1, -1].map((side) => ({ origin: [side > 0 ? x1 : x0, 0, (z0 + z1) / 2], u: [0, 0, -side], out: [side, 0, 0], width: sec }));
+      sink.span('structureMetal', x0 + cut, 0.6, z0, x1 - cut, h, z1, { colour: tone });
+      for (const f of sides) holedPolygon(sink, 'structureMetal', f, [[-sec / 2, 0.6], [sec / 2, 0.6], [sec / 2, h], [-sec / 2, h]], [band], cut, back + 0.02, { colour: tone });
+      rustSkin(sink, x0, 0.6, z0, x1, h, z1, tone, ctx.variant, [{ face: 1, ...band }, { face: 3, ...band }]);
+      // the monitor roof: a raised clerestory along the section's ridge under its own low gable, its sides louvred: the
+      // louvre bands cut through its cladding, the blades across them, the mill's dark behind (it was a solid box)
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
-      sink.placed(0, 0, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(W, sec, h, roof), roof));
-      const rg = roofGeometry(W, sec, h, roof);
-      sink.span('structureMetal', -1.2, rg.ridgeY - 0.3, z0 + 0.6, 1.2, rg.ridgeY + 1.2, z1 - 0.6, { colour: shade(sheet, 0.9) });
-      sink.placed(0, 0, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(2.4, sec - 1.2, rg.ridgeY + 1.2, roof), roof));
+      sink.placed(0, cx, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(wk, sec, h, roof), roof));
+      const rg = roofGeometry(wk, sec, h, roof), my0 = rg.ridgeY - 0.3, my1 = rg.ridgeY + 1.2, ml = sec - 1.2, mc = 0.15;
+      const louvre = { u0: -(ml - 0.6) / 2, u1: (ml - 0.6) / 2, y0: rg.ridgeY + 0.15, y1: rg.ridgeY + 0.95 };
+      sink.span('structureMetal', cx - 1.2 + mc, my0, z0 + 0.6, cx + 1.2 - mc, my1, z1 - 0.6, { colour: shade(sheet, 0.9) });
+      for (const side of [1, -1]) {
+        const mf: Face = { origin: [cx + side * 1.2, 0, (z0 + z1) / 2], u: [0, 0, -side], out: [side, 0, 0], width: ml };
+        holedPolygon(sink, 'structureMetal', mf, [[-ml / 2, my0], [ml / 2, my0], [ml / 2, my1], [-ml / 2, my1]], [louvre], mc, 0.12, { colour: shade(sheet, 0.9) });
+        for (let y = louvre.y0 + 0.08; y < louvre.y1 - 0.04; y += 0.16) {
+          faceBox(sink, 'structureMetal', mf, 0, y, -0.06, louvre.u1 - louvre.u0 + 0.08, 0.03, 0.1, { colour: shade(sheet, 0.7), decor: true }, 'ends');
+        }
+      }
+      sink.placed(0, cx, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(2.4, sec - 1.2, my1, roof), roof));
       for (const f of sides) {
         facePanel(sink, 'glass', f, 0, h - 1.6, -back + 0.012, sec - 1.4, 1.0, { decor: true, window: f.out });
         const nm = Math.max(2, Math.round((sec - 1.4) / 1.3));
@@ -364,12 +376,34 @@ const concentrator: RegionalBuilder = (ctx) => {
         faceBox(sink, 'structureMetal', f, 0, band.y0 - 0.03, 0.04, sec - 1.3, 0.06, 0.08, { colour: shade(sheet, 0.8), decor: true });
       }
     });
-    // the conveyor gallery up to the top section's back
+    // the bucket elevator's casing up the top section's back
     sink.member('structureMetal', [0, 1.0, -D / 2 - 0.2], [0, 13.5, -D / 2 + 1.0], 1.6, 1.4, [1, 0, 0], { colour: shade(sheet, 0.85), decor: true, exposed: true }, 0);
-    // the thickener tank at the foot of the front section, its rim and the copper-green stain
-    const tx = W / 2 - 2.6, tz = D / 2 - 2.4;
-    sink.cylinder(CONCRETE, [tx, -0.3, tz], 'y', 2.4, 2.3, 18, {});
-    sink.cylinder('structureMetal', [tx, 2.1, tz], 'y', 0.05, 2.25, 18, { colour: COPPER, decor: true });
+    if (yard > 0) {
+      // the thickener in its yard: the concrete tank, its copper rim, the slurry, the copper-green stain on the apron
+      const tx = W / 2 - yard / 2, tz = D / 2 - sec / 2, rt = Math.min(2.3, yard / 2 - 0.35, sec / 2 - 0.35), top = 2.7;
+      sink.cylinder(CONCRETE, [tx, 0.3, tz], 'y', top - 0.3, rt, 18, {}, rt, true);
+      sink.cylinder('structureMetal', [tx, top - 0.2, tz], 'y', 0.18, rt + 0.03, 18, { colour: COPPER, decor: true }, rt + 0.03, true);
+      const ring = (r: number, y: number): Vec3[] => Array.from({ length: 18 }, (_, j) => [tx + Math.cos(-j / 18 * Math.PI * 2) * r, y, tz + Math.sin(-j / 18 * Math.PI * 2) * r]);
+      sink.polygon('structureMetal', ring(rt - 0.2, top + 0.005), { colour: rgb(0x5d6458), decor: true });
+      // (the wet ring kept on the apron: the slab's edge clips it)
+      sink.polygon(CONCRETE, ring(Math.min(rt + 0.9, yard / 2 + 0.05, sec / 2 + 0.05), 0.605), { shade: 0.74, decor: true });
+      // the rake bridge from the mill's side to the feed well and on to the far rim: its deck on bearers at the rims and
+      // the well, the drive head over the well, the handrail along the walkway, the launder along the bridge from the
+      // mill into the well
+      const bx0 = W / 2 - yard, bx1 = tx + rt + 0.15, deck = top + 0.25, steel = { colour: STEEL };
+      sink.span('structureMetal', bx0, deck, tz - 0.6, bx1, deck + 0.14, tz + 0.6, steel);
+      for (const x of [tx - rt, tx + rt]) sink.span('structureMetal', x - 0.15, top - 0.02, tz - 0.5, x + 0.15, deck, tz + 0.5, steel);
+      sink.cylinder('structureMetal', [tx, top, tz], 'y', deck - top, 0.6, 10, steel, 0.6, false);
+      sink.span('structureMetal', tx - 0.45, deck + 0.14, tz - 0.45, tx + 0.45, deck + 0.8, tz + 0.45, { colour: shade(STEEL, 1.2) });
+      const rail = { colour: STEEL, decor: true, exposed: true };
+      for (const x of [bx0 + 0.3, (bx0 + tx - 0.5) / 2, tx - 0.55, tx + 0.55, bx1 - 0.2]) {
+        sink.member('structureMetal', [x, deck + 0.14, tz - 0.55], [x, deck + 1.1, tz - 0.55], 0.05, 0.05, [0, 0, -1], rail, 0);
+      }
+      sink.member('structureMetal', [bx0 + 0.3, deck + 1.08, tz - 0.55], [bx1 - 0.2, deck + 1.08, tz - 0.55], 0.05, 0.05, [0, 0, -1], rail, 0);
+      const wood = { colour: TIMBER, decor: true };
+      sink.span('structureWood', bx0, deck + 0.14, tz + 0.05, tx - 0.45, deck + 0.2, tz + 0.55, wood);
+      for (const z of [tz + 0.05, tz + 0.5]) sink.span('structureWood', bx0, deck + 0.2, z, tx - 0.45, deck + 0.5, z + 0.05, wood);
+    }
     // a stack beside the top section
     sink.cylinder('structureMetal', [-W / 2 + 1.0, 15.0, -D / 2 + 1.2], 'y', 6.0, 0.45, 10, { colour: BLACK, decor: true }, 0.4);
   });

@@ -7,8 +7,9 @@
 // gate); the works office in brick with yellow-brick bands under slate. The workers' terraces, the station, the water
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
 import { PartSink, alongPlot, faceBox, facePanel, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { recordLattice } from './lattice.ts';
 import { RUHR_BUILDERS } from './ruhr.ts';
 import { factoryStack } from './shared.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -417,20 +418,22 @@ const headframe: RegionalBuilder = (ctx) => {
   // with no room for the engine house the hall runs to the lot's back (the winding engine inside it)
   const hb = engine ? hz0 : -D / 2 + 0.35;
   sink.placed(0, f.cx, 0, f.cz, () => {
-    // the shaft hall's front: its gate and windows cut through it, their units at the back of the reveals (they were laid
-    // on a solid front)
-    const front: Face = { origin: [0, 0, hz1], u: [1, 0, 0], out: [0, 0, 1], width: W - 0.5 };
-    const gw = Math.min(3, W * 0.4), hallLights = [-W / 2 + 1.4, W / 2 - 1.4], cut = 0.32;
-    sink.span('stone', -W / 2 + 0.25, -0.4, hb, W / 2 - 0.25, 6.5, hz1 - cut);
-    holedPolygon(sink, 'stone', front, [[-(W - 0.5) / 2, -0.4], [(W - 0.5) / 2, -0.4], [(W - 0.5) / 2, 6.5], [-(W - 0.5) / 2, 6.5]],
-      [{ u0: -gw / 2, u1: gw / 2, y0: 0, y1: 3.4 }, ...hallLights.map((u) => ({ u0: u - 0.5, u1: u + 0.5, y0: 2.4, y1: 4.6 }))], cut, 0.28);
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.2, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
-    sink.placed(Math.PI / 2, 0, 0, (hb + hz1) / 2, () => emitRoof(sink, roofGeometry(hz1 - hb, W - 0.5, 6.5, cap), cap));
-    sink.recess = 0.28;
-    try {
-      gateUnit(sink, front, 0, 0, gw, 3.4, DOOR, { bucket: YELLOW_BRICK, width: 0.24, out: 0.08 });
-      for (const u of hallLights) windowUnit(sink, front, u, 2.4, 1.0, 2.2, HALL_WINDOW, rng, 0.2);
-    } finally { sink.recess = 0; }
+    // the shaft hall, a body of its own (the winding house's wing, falling into its own heap): its eave on the lot's
+    // front edge, its gables on the sides; its gate and windows cut through its front, the units at the back of the
+    // reveals (they were laid on a solid front)
+    const gw = Math.min(3, W * 0.4);
+    const hallDialect: HouseDialect = {
+      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, HALL_WINDOW, rng, 0.2),
+      door: (s, face, o, y0) => gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, DOOR, { bucket: YELLOW_BRICK, width: 0.24, out: 0.08 }),
+    };
+    // (turned a quarter: its left face the street front)
+    sink.placed(Math.PI / 2, 0, 0, (hb + hz1) / 2, () => buildHouse(sink, {
+      w: hz1 - hb, d: W - 0.5, plinth: null, storeys: [{ h: 6.5, wall: 'stone' }],
+      roof: { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.2, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone',
+      openings: [{ face: 'left', storey: 0, kind: 'gate', u: 0, w: gw, y0: 0, h: 3.4 },
+        ...[-W / 2 + 1.4, W / 2 - 1.4].map((u): Opening => ({ face: 'left', storey: 0, kind: 'window', u, w: 1.0, y0: 2.4, h: 2.2 }))],
+      chimneys: [], gutters: null, verge: null, reveal: 0.28, rafters: null, spall: null,
+    }, hallDialect));
     // the tower: four legs, cross-braced, the sheave platform
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       sink.member('structureMetal', [sx * tw / 2, 0.2, tz + sz * tw / 2], [sx * tw * 0.4, th, tz + sz * tw * 0.4], 0.32, 0.32, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
@@ -440,6 +443,13 @@ const headframe: RegionalBuilder = (ctx) => {
       sink.member('structureWood', [ax * tw * k, y, tz + az * tw * k], [bx * tw * k, y + 2.4, tz + bz * tw * k], 0.09, 0.09, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
     }
     sink.span('structureMetal', -tw * 0.55, th, tz - tw * 0.55, tw * 0.55, th + 0.4, tz + tw * 0.55, { colour: TRUSS, decor: true });
+    // (props census #13, lane B 2026-10-15) the headframe recorded as an open frame: it falls as its members, the sheave
+    // platform and wheels its crown (damage.ts lattice, a body beside the halls)
+    const girts: number[] = [];
+    for (let y = 7; y < th - 1; y += 2.6) girts.push(y);
+    recordLattice(sink, ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sz]) => ({ foot: [sx * tw / 2, 0.2, tz + sz * tw / 2] as Vec3,
+      head: [sx * tw * 0.4, th, tz + sz * tw * 0.4] as Vec3 })), girts, 0.32, 'structureMetal', OXIDE,
+    { x0: -tw * 0.55, x1: tw * 0.55, y0: th, y1: th + 4.1, z0: tz - tw * 0.55, z1: tz + tw * 0.55, bucket: 'structureMetal', tint: TRUSS });
     const ropeTo = engine ? ez1 : hb + 1;
     for (const s of [-1, 1]) {
       sink.cylinder('structureMetal', [s * 0.7, th + 2.1, tz - 0.1], 'x', 0.18, 2.0, 14, { colour: TRUSS, decor: true }, 2.0, true);

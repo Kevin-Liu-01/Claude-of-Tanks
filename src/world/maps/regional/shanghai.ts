@@ -27,7 +27,7 @@
 // mix is drawn from the build stream. Every building fills its base's measured reach (ctx.bounds); a street row keeps its
 // front to the plot's.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, holedShaft, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -652,25 +652,29 @@ const cottonMill: RegionalBuilder = (ctx) => {
     };
     const frame = buildHouse(sink, spec, millDialect(look));
     const eaveY = frame.eaveY;
-    // the stair and water tower on the back corner, standing a hand proud of the mill's back wall and a quarter metre
-    // proud of its side, where the stair's lights are cut through the tower's face (were glass laid on a solid shaft):
-    // each pane and its frame at the back of the reveal, the dark of the stair behind it, a stone sill under it
+    // the stair and water tower on the back corner, a body of its own (it topples in its courses when the mill falls),
+    // standing a hand proud of the mill's back wall and a quarter metre proud of its side, where the stair's lights are
+    // cut through its face, a light to a floor (were glass laid on a solid shaft): each pane and its mullions at the back
+    // of the reveal, the dark of the stair behind it, a stone sill under it; its flat cap under the tank
     const tw = clampTo(Math.min(W, D) * 0.3, 2.6, 4.6), tTop = eaveY + 5.2;
-    const tx0 = W / 2 - tw, tz1 = -D / 2 + tw, tp = 0.25, cut = 0.24, back = 0.2;
-    const tf: Face = { origin: [W / 2 + tp, 0, -D / 2 + tw / 2], u: [0, 0, -1], out: [1, 0, 0], width: tw };
-    const lights: Array<{ u0: number; u1: number; y0: number; y1: number }> = [];
-    for (let y = 2.2; y < tTop - 1.5; y += sh) lights.push({ u0: -0.35, u1: 0.35, y0: y + 0.2, y1: y + 1.6 });
-    sink.span('stone', tx0, -0.4, -D / 2 - 0.06, W / 2 + tp - cut, tTop, tz1);
-    holedPolygon(sink, 'stone', tf, [[-tw / 2, -0.4], [tw / 2 + 0.06, -0.4], [tw / 2 + 0.06, tTop], [-tw / 2, tTop]], lights, cut, back + 0.02);
-    for (const l of lights) {
-      const ym = (l.y0 + l.y1) / 2;
-      facePanel(sink, 'glass', tf, 0, ym, -back + 0.012, 0.7, 1.4, { decor: true, window: tf.out });
-      const fc = { colour: rgb(0x3a3430), decor: true, fine: true };
-      faceBox(sink, 'structureWood', tf, 0, ym, -back + 0.03, 0.05, 1.4, 0.04, fc, 'caps');
-      faceBox(sink, 'structureWood', tf, 0, ym + 0.2, -back + 0.03, 0.7, 0.05, 0.04, fc, 'ends');
-      faceBox(sink, 'stone', tf, 0, l.y0 - 0.05, 0.03, 0.9, 0.1, 0.12, DEC);
-    }
-    sink.span('plaster3', tx0 - 0.08, tTop, -D / 2 - 0.14, W / 2 + tp + 0.08, tTop + 0.35, tz1 + 0.08, SHADOWED);
+    const tx0 = W / 2 - tw, tz1 = -D / 2 + tw, tp = 0.25;
+    const tStoreys = [...Array.from({ length: floors }, () => sh), tTop - floors * sh];
+    const stairDialect: HouseDialect = {
+      window: (s, face, o, y0) => {
+        const ym = y0 + o.y0 + o.h / 2, r = s.recess, fc = { colour: rgb(0x3a3430), decor: true, fine: true };
+        facePanel(s, 'glass', face, o.u, ym, -r + 0.012, o.w, o.h, { decor: true, window: face.out });
+        faceBox(s, 'structureWood', face, o.u, ym, -r + 0.03, 0.05, o.h, 0.04, fc, 'caps');
+        faceBox(s, 'structureWood', face, o.u, ym + 0.2, -r + 0.03, o.w, 0.05, 0.04, fc, 'ends');
+        faceBox(s, 'stone', face, o.u, y0 + o.y0 - 0.05, 0.03, o.w + 0.2, 0.1, 0.12, DEC);
+      },
+      door: () => undefined,
+    };
+    sink.placed(0, (tx0 + W / 2 + tp) / 2, 0, (-D / 2 - 0.06 + tz1) / 2, () => buildHouse(sink, {
+      w: tw + tp, d: tw + 0.06, plinth: null, storeys: tStoreys.map((h) => ({ h, wall: 'stone' as RegionalBucket })),
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.08, verge: 0.08, thickness: 0.35, bucket: 'plaster3' },
+      openings: tStoreys.map((_, k): Opening => ({ face: 'right', storey: k, kind: 'window', u: 0, w: 0.7, y0: 1.2, h: 1.4 })), chimneys: [],
+      reveal: 0.2, rafters: null, spall: null, gutters: null, verge: null,
+    }, stairDialect));
     sink.cylinder('structureMetal', [tx0 + tw / 2, tTop + 0.35, -D / 2 + tw / 2], 'y', 2.4, tw * 0.42, 12, { colour: rgb(0x4b4d4a), decor: true, shadow: true });
     pyramid(sink, 'structureMetal', tx0 + tw / 2, -D / 2 + tw / 2, tw * 0.44, tw * 0.44, tTop + 2.75, tTop + 3.6, { colour: rgb(0x3d3f3c), decor: true, shadow: true });
     // the mill's name along the parapet of its street front
@@ -728,29 +732,38 @@ const fireStation: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, spec, fireDialect(look));
     const eaveY = frame.eaveY;
     for (let st = 1; st < storeys; st++) faceBox(sink, 'plaster', frame.faces.front, 0, frame.floors[st] - 0.05, 0.05, W, 0.16, 0.1, { decor: true, fineSides: true });
-    // the watch tower on the front corner: its shaft, its stair's lights cut through its faces (were glass laid on a solid
-    // shaft: each pane now at the back of its reveal, the stair's dark behind it, a stone sill under it; on the faces
-    // over the station's roof, the lights over its parapet), the lookout's gallery and railing, the clock, the cap
+    // the watch tower on the front corner: a body of its own (it topples in its courses when the station falls), its
+    // stair's lights cut through its faces (were glass laid on a solid shaft: each pane at the back of its reveal, the
+    // stair's dark behind it, a stone sill under it; on the faces over the station's roof, the lights over its parapet),
+    // the lookout's gallery deck its flat roof, the railing, the clock, the cap
     const tTop = Math.max(eaveY + 7.5, 20.5), roofTop = eaveY + 0.3 + 0.9;
     const x0 = -W / 2 - 0.06, x1 = -W / 2 + tw, z0 = D / 2 - tw, z1 = D / 2 + 0.06;
-    const lightsAt: number[] = [];
-    for (let y = 5.5; y < tTop - 3.5; y += 3.2) lightsAt.push(y);
-    const lights = (street: boolean) => lightsAt.filter((y) => y - 0.7 > roofTop + 0.05 || (street && y + 0.7 < eaveY - 0.05))
-      .map((y) => ({ u0: -0.25, u1: 0.25, y0: y - 0.7, y1: y + 0.7 }));
-    const back = 0.2, shaftLights = { front: lights(true), left: lights(true), right: lights(false), back: lights(false) };
-    const tfs = holedShaft(sink, 'stone', x0, z0, x1, z1, -0.4, tTop, shaftLights, 0.24, back + 0.02);
-    for (const name of ['front', 'right', 'back', 'left'] as const) {
-      const lf = tfs[name];
-      for (const l of shaftLights[name]) {
-        const ym = (l.y0 + l.y1) / 2;
-        facePanel(sink, 'glass', lf, 0, ym, -back + 0.012, 0.5, 1.4, { decor: true, window: lf.out });
-        faceBox(sink, 'structureWood', lf, 0, ym + 0.15, -back + 0.03, 0.5, 0.05, 0.04, { colour: IRON, decor: true, fine: true }, 'ends');
-        faceBox(sink, 'stone', lf, 0, l.y0 - 0.05, 0.03, 0.7, 0.1, 0.12, DEC);
+    const tn = Math.max(1, Math.floor((tTop - 4.1) / 3.2));
+    const tStoreys = [4.1, ...Array.from({ length: tn }, (_, k) => (k < tn - 1 ? 3.2 : tTop - 4.1 - 3.2 * (tn - 1)))];
+    const tOpenings: Opening[] = [];
+    for (let k = 1; k < tStoreys.length - 1; k++) {
+      const y0 = 4.1 + 3.2 * (k - 1) + 0.7, y1 = y0 + 1.4;
+      const over = y0 > roofTop + 0.05, street = over || y1 < eaveY - 0.05;
+      for (const face of ['front', 'right', 'back', 'left'] as const) {
+        if (face === 'front' || face === 'left' ? street : over) tOpenings.push({ face, storey: k, kind: 'window', u: 0, w: 0.5, y0: 0.7, h: 1.4 });
       }
     }
+    const lights: HouseDialect = {
+      window: (s, face, o, y0) => {
+        const ym = y0 + o.y0 + o.h / 2, r = s.recess;
+        facePanel(s, 'glass', face, o.u, ym, -r + 0.012, o.w, o.h, { decor: true, window: face.out });
+        faceBox(s, 'structureWood', face, o.u, ym + 0.15, -r + 0.03, o.w, 0.05, 0.04, { colour: IRON, decor: true, fine: true }, 'ends');
+        faceBox(s, 'stone', face, o.u, y0 + o.y0 - 0.05, 0.03, o.w + 0.2, 0.1, 0.12, DEC);
+      },
+      door: () => undefined,
+    };
+    sink.placed(0, (x0 + x1) / 2, 0, (z0 + z1) / 2, () => buildHouse(sink, {
+      w: x1 - x0, d: z1 - z0, plinth: null, storeys: tStoreys.map((h) => ({ h, wall: 'stone' as RegionalBucket })),
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.45, verge: 0.45, thickness: 0.22, bucket: 'plaster3' }, openings: tOpenings, chimneys: [],
+      reveal: 0.2, rafters: null, spall: null, gutters: null, verge: null,
+    }, lights));
     // (the clocks seated on the shaft's faces: they stood 3 cm off them)
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, half = (x1 - x0) / 2;
-    sink.span('plaster3', x0 - 0.45, tTop, z0 - 0.45, x1 + 0.45, tTop + 0.22, z1 + 0.45, SHADOWED);
     for (const [fx, fz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const gf: Face = { origin: [cx + fx * (half + 0.4), 0, cz + fz * (half + 0.4)], u: [ux, 0, uz], out: [fx, 0, fz], width: tw + 0.9 };
       faceBox(sink, 'structureMetal', gf, 0, tTop + 1.05, 0, tw + 0.9, 0.05, 0.05, { colour: IRON, decor: true });
