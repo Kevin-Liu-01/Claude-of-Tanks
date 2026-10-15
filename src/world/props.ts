@@ -187,6 +187,7 @@ import {
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
+import { setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
@@ -4412,6 +4413,8 @@ ${snowCap ? `
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
     ...civilianVehicleTypes(mapId, mobileProps),
+    // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
+    ...setPieceDestructibleTypes(),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
@@ -10020,16 +10023,24 @@ ${snowCap ? `
   // below scan every record); the async build waits here for the pool's workers
   if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
   joinStructureShells();
+  // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
+  const setPieceRecords: VehicleSetPiece[] = [];
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
+    setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
   landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
+  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners
+  for (const piece of setPieceRecords) {
+    addDestructible(setPieceDestructibleKind(piece.kind), piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z,
+      (piece.yawDeg * Math.PI) / 180, 1);
+  }
   landmarkFurniture = false;
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
@@ -10944,6 +10955,8 @@ ${snowCap ? `
     // (b15: a straw object wears the hay print's material).
     let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
     if (meta.mat === 'vehicle' && meta.instancePaint) material = vehicleSurfaceMaterial();
+    // (item 7) a set piece's build carries its own painted vertex colours (the painted bucket's family), no paint atlas
+    if (kind.startsWith('setpiece_')) material = mats.baked;
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.

@@ -93,7 +93,7 @@ import type {
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
-  shellPassesThroughCollisionRecord,
+  shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -2037,6 +2037,8 @@ export function createAuthoritativeMatch({
     if (!obstacle?.crushable) return;
     // a pillbox stops the round and falls only to accumulated heavy damage (sim/fortifiedCover.ts), as the solo step's
     if (isFortifiedCoverRecord(obstacle) && !fortified.shellHit(obstacle, shell.spec)) return;
+    // (Lane C, item 7) heavy plant: a machine-gun bullet stops on it and leaves it standing; a gun round wrecks it
+    if (shellSparesStoppedRecord(obstacle, shell.spec.caliberMm)) return;
     const shotX = shell.pos.x - shell.prevPos.x;
     const shotZ = shell.pos.z - shell.prevPos.z;
     const shotLength = Math.hypot(shotX, shotZ) || 1;

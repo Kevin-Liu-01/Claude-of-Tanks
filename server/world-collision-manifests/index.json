@@ -152,8 +152,8 @@
       "concealers": 3381
     },
     "copper_mesa": {
-      "bytes": 2019251,
-      "sha256": "10cc89b10fa4856676db2fd83b31f52a6a21f20201feefd9638ff2f4fffe72c3",
+      "bytes": 2068386,
+      "sha256": "99c0194fa22eb45339c87454980049546e3a8df2cc84259affeecbf05e2cbacf",
       "obstacles": 1870,
       "colliders": 2330,
       "concealers": 964
@@ -173,8 +173,8 @@
       "concealers": 784
     },
     "whiteout": {
-      "bytes": 2187368,
-      "sha256": "d2ba46f0d093c6dfefd14994c2bacc3ff3033c34d5d9c08acc9851ccb04b7e59",
+      "bytes": 2228304,
+      "sha256": "0ea8e9bf75bb89be5b4bacceaa2e976c5c97535e58ffa54e766f57ed126a3bab",
       "obstacles": 1220,
       "colliders": 1234,
       "concealers": 0
@@ -222,10 +222,10 @@
       "concealers": 0
     },
     "moon": {
-      "bytes": 830975,
-      "sha256": "08697f7684ea83d8e81d291fec3a22135b9fb74a0d8bfee4055dda5439ac9a85",
+      "bytes": 840705,
+      "sha256": "4346a49144f5bbd95ea7c6622721a36534673c8b4d67cac0f2a15bebdb371fd8",
       "obstacles": 646,
-      "colliders": 543,
+      "colliders": 545,
       "concealers": 0
     },
     "cliffbridge": {
@@ -386,8 +386,8 @@
         "concealers": 3550
       },
       "copper_mesa": {
-        "bytes": 2264980,
-        "sha256": "b035573693e22a07cf73ce38b429c27fdbc428c4317e3be87b6d55c60e08c54a",
+        "bytes": 2314458,
+        "sha256": "08de9b4d96cd758a5f89eab16266e8441f74e343b1ae9cfb7560ad62272fa6de",
         "obstacles": 2046,
         "colliders": 2373,
         "concealers": 944
@@ -407,8 +407,8 @@
         "concealers": 784
       },
       "whiteout": {
-        "bytes": 2471671,
-        "sha256": "ab698c3702ebe089e7058b25669eff7ea79825f510eb6aaa2e7ba579db03585f",
+        "bytes": 2512602,
+        "sha256": "0cd619b6a87ec5fe4bb6fcea9b8717a20e9f33a5b304ec5bedefd38d1e7bb08b",
         "obstacles": 1360,
         "colliders": 1285,
         "concealers": 0
@@ -456,10 +456,10 @@
         "concealers": 0
       },
       "moon": {
-        "bytes": 1002552,
-        "sha256": "f5ec5090200b7f09193c5c7a6d76ecedcb4009d12f1621fc379ee1cf4237e0a4",
+        "bytes": 1012282,
+        "sha256": "2945197f60d9923e2bce6667e0098d9f23bc9d7791901caf2ade23af4b9de421",
         "obstacles": 779,
-        "colliders": 582,
+        "colliders": 584,
         "concealers": 0
       },
       "cliffbridge": {
