@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
+import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { t } from './i18n.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains
@@ -37,7 +38,8 @@ const source = readFileSync(new URL('./studioProductionPanel.ts', import.meta.ur
 const executable = stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export /gm, ''));
 // The site's takes (the Director's second library): a small index, one scene, and a take whose scene is on another
 // origin, which a scene link must refuse.
-const siteIndex = { takes: [
+// The fixture names vehicles in today's ids, so it carries today's tank id schema (an unstamped index is schema 1).
+const siteIndex = { tankIdSchema: TANK_IDS.schema, takes: [
   { id: 's01-street', title: { en: 'A tank pushes up the street', zh: '坦克沿街推进' }, short: { en: 'Street push', zh: '街道推进' },
     map: 'urban', durationMs: 6600, scene: '/media/site50-r14/scenes/s01-street.scene.json', thumb: '/media/site50-r14/stills/s01-street-thumb.webp' },
   { id: 's02-foreign', title: { en: 'Elsewhere', zh: '别处' }, short: { en: 'Elsewhere', zh: '别处' },
@@ -62,8 +64,8 @@ const fetch = (url) => {
 const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
 const localStorage = { getItem: (key) => stored.get(key) ?? null };
 const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error, fetch, sceneLinkPath,
-  t, LAST_TANK_STORAGE_KEY, localStorage };
-runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel;`, context);
+  t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId };
+runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;
 const S = {
@@ -149,14 +151,14 @@ assert.equal(fleetSection.hidden, false, 'an index with fleet takes shows the fi
 assert.ok(fleetSection.children.some(child => child.textContent === t('studio.director.fleet.intro', { count: 9 })), 'it counts the tanks');
 const fleetCards = () => all().filter(element => element.dataset.siteTake?.includes('-fleet-'));
 const fleetStatus = () => fleetSection.children.find(child => child.className === 'production-status').textContent;
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm'], 'the Garage tank\'s take, alone');
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013'], 'the Garage tank\'s take, alone');
 assert.equal(fleetStatus(), t('studio.director.fleet.yourTank'));
 const search = byData('fleetSearch');
 search.value = 'Leopard'; search.fire('input');
 assert.equal(fleetCards().length, 6, 'a search shows one page of cards');
 assert.equal(fleetStatus(), t('studio.director.fleet.more', { shown: 6, count: 7 }), 'and says how many more match');
 search.value = 'fjord'; search.fire('input');
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s61-fleet-m1a2', 's63-fleet-leo2a4', 's65-fleet-leo2a6', 's67-fleet-leo2pl'],
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s61-fleet-m1a1_abrams_hc', 's63-fleet-leo2a2', 's65-fleet-leo2a4', 's67-fleet-leo2pl'],
   'a map finds the takes filmed on it');
 assert.equal(fleetStatus(), '');
 search.value = '2A8'; search.fire('input');
@@ -165,10 +167,10 @@ search.value = 'zzz'; search.fire('input');
 assert.equal(fleetCards().length, 0);
 assert.equal(fleetStatus(), t('studio.director.fleet.none', { query: 'zzz' }));
 search.value = ''; search.fire('input');
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm']);
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013']);
 const featuredTank = byData('productionTank');
 featuredTank.value = 'leo2a4'; featuredTank.fire('change');
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a6'], 'the Director\'s featured tank comes first');
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a4'], 'the Director\'s featured tank comes first');
 featuredTank.value = ''; featuredTank.fire('change');
 stored.clear(); search.fire('input');
 assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
@@ -176,7 +178,7 @@ assert.equal(fleetStatus(), t('studio.director.fleet.hint'), 'but a hint');
 stored.set(LAST_TANK_STORAGE_KEY, 't90sm_2013'); search.fire('input');
 const loadsBefore = calls.filter(call => call[0] === 'load').length;
 fleetCards()[0].fire('click'); await tick(); await tick();
-assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s60-fleet-t90sm.scene.json', 'a fleet card fetches its own scene');
+assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s60-fleet-t90sm_2013.scene.json', 'a fleet card fetches its own scene');
 assert.equal(calls.filter(call => call[0] === 'load').length, loadsBefore + 1, 'and stages it as filmed');
 assert.equal(fleetCards()[0].attributes['aria-pressed'], 'true');
 search.value = 'T-90'; search.fire('input');
@@ -185,6 +187,16 @@ assert.equal(streetTake.attributes['aria-pressed'], 'false');
 search.value = ''; search.fire('input');
 panel.setVisible(true); panel.setVisible(false); await tick();
 assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1, 'reopening the Studio does not fetch the index again');
+// The shipped index is unstamped (schema 1): its t90sm is the T-90SM obr. 2013, today's t90sm_2013, and its t90sm_x is
+// the T-90SM X, today's t90sm; read through the stamp, neither offers the other tank's take (SSOT 2.19).
+{
+  const fleetTake = (vehicle) => ({ id: `fleet-${vehicle}`, group: 'fleet', vehicle });
+  const legacy = context.siteFleetTakes({ takes: [fleetTake('t90sm'), fleetTake('t90sm_x'), { id: 's01', vehicle: 'm1a2' }] });
+  assert.deepEqual(legacy.map((take) => [take.id, take.vehicle]),
+    [['fleet-t90sm', resolveTankId('t90sm', 1)], ['fleet-t90sm_x', resolveTankId('t90sm_x', 1)]], 'an unstamped index is schema 1');
+  const current = context.siteFleetTakes({ tankIdSchema: TANK_IDS.schema, takes: [fleetTake('t90sm')] });
+  assert.equal(current[0].vehicle, 't90sm', 'a current index is read as written');
+}
 byData('productionPreset', 'two').fire('click');
 const frame = byData('productionFormat'); frame.value = 'portrait'; frame.fire('change');
 assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'format selection informs the runtime camera framing');

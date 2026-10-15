@@ -29,7 +29,7 @@ async function healthPanel(parent: HTMLElement): Promise<void> {
   panel.innerHTML = '<div class="hprow"><span class="hplabel">HP</span><span class="hpnum">2,750 / 2,750</span></div><div class="hptrack"><div class="hpfill" style="background:#7ee87e"></div></div>';
   const canvas = document.createElement('canvas'); canvas.width = 284; canvas.height = 276;
   canvas.style.cssText = 'width:142px;height:138px'; panel.append(canvas); parent.append(panel);
-  const image = await imageAt('/icons/m1a2_top.webp');
+  const image = await imageAt('/icons/m1a1_abrams_hc_top.webp');
   const scale = Math.min(264 / image.width, 256 / image.height);
   canvas.getContext('2d')?.drawImage(image, (284-image.width*scale)/2, (276-image.height*scale)/2, image.width*scale, image.height*scale);
 }
