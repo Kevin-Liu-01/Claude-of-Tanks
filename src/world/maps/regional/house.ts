@@ -1570,12 +1570,11 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
   }
   for (let i = 0; i < poly.length; i++) {
     const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length];
-    const ts = edgeBreaks.filter((y) => y > Math.min(ya, yb) + 1e-4 && y < Math.max(ya, yb) - 1e-4).map((y) => (y - ya) / (yb - ya)).sort((a, b) => a - b);
-    if (!ts.length) { sink.quad(bucket, P(ub, yb, 0), P(ua, ya, 0), P(ua, ya, -depth), P(ub, yb, -depth), opts); continue; }
-    const at = (t: number): [number, number] => [ua + (ub - ua) * t, ya + (yb - ya) * t];
-    const stops = [0, ...ts, 1];
+    const cuts = edgeBreaks.filter((y) => y > Math.min(ya, yb) + 1e-4 && y < Math.max(ya, yb) - 1e-4).sort((a, b) => (yb > ya ? a - b : b - a));
+    if (!cuts.length) { sink.quad(bucket, P(ub, yb, 0), P(ua, ya, 0), P(ua, ya, -depth), P(ub, yb, -depth), opts); continue; }
+    const stops: Array<[number, number]> = [[ua, ya], ...cuts.map((y): [number, number] => [ua + (ub - ua) * (y - ya) / (yb - ya), y]), [ub, yb]];
     for (let k = 0; k + 1 < stops.length; k++) {
-      const [u0, y0] = at(stops[k]), [u1, y1] = at(stops[k + 1]);
+      const [u0, y0] = stops[k], [u1, y1] = stops[k + 1];
       sink.quad(bucket, P(u1, y1, 0), P(u0, y0, 0), P(u0, y0, -depth), P(u1, y1, -depth), opts);
     }
   }
@@ -1591,15 +1590,18 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
 }
 
 /**
- * A box (a podium, a lobby, a tower's base) whose faces carry openings cut through them (props census #9): a core `cut`
+ * A box (a podium, a lobby, a slab block) whose faces carry openings cut through them (props census #9): a core `cut`
  * in from every face and the faces holed slabs `cut` deep round it (front and back across the full width, the sides
  * between them), each opening's reveal back to `reveal` with the dark behind it, for a unit's pane or leaf to stand in.
- * The faces come back by name (bodyFaces' frame, centred on each face).
+ * `cut` may differ by face (a slab block's loggias a bay deep along its front); `more` carries per-face reveals, the
+ * faces' stains and the edge breaks (holedPolygon's). The faces come back by name (bodyFaces' frame, centred on each).
  */
 export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number,
-  holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number, reveal: number, opts: EmitOptions = {}): Record<FaceName, Face> {
+  holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number | Record<FaceName, number>, reveal: number, opts: EmitOptions = {},
+  more: { reveals?: Partial<Record<FaceName, number>>; stains?: Partial<Record<FaceName, readonly Stain[]>>; edgeBreaks?: readonly number[] } = {}): Record<FaceName, Face> {
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wx = x1 - x0, wz = z1 - z0;
-  sink.span(bucket, x0 + cut, y0, z0 + cut, x1 - cut, y1, z1 - cut, opts);
+  const c = (name: FaceName) => (typeof cut === 'number' ? cut : cut[name]);
+  sink.span(bucket, x0 + c('left'), y0, z0 + c('back'), x1 - c('right'), y1, z1 - c('front'), opts);
   const faces: Record<FaceName, Face> = {
     front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: wx },
     right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: wz },
@@ -1607,8 +1609,12 @@ export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0:
     left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: wz },
   };
   for (const name of FACE_NAMES) {
-    const half = name === 'front' || name === 'back' ? wx / 2 : wz / 2 - cut;
-    holedPolygon(sink, bucket, faces[name], [[-half, y0], [half, y0], [half, y1], [-half, y1]], holes[name] ?? [], cut, reveal, opts);
+    // (the sides between the front's and the back's walls: the right face's u runs toward the back, the left's toward
+    // the front)
+    const [ua, ub] = name === 'front' || name === 'back' ? [-wx / 2, wx / 2]
+      : name === 'right' ? [-(wz / 2 - c('front')), wz / 2 - c('back')] : [-(wz / 2 - c('back')), wz / 2 - c('front')];
+    holedPolygon(sink, bucket, faces[name], [[ua, y0], [ub, y0], [ub, y1], [ua, y1]], holes[name] ?? [], c(name), more.reveals?.[name] ?? reveal, opts,
+      more.stains?.[name] ?? [], more.edgeBreaks ?? []);
   }
   return faces;
 }

@@ -19,7 +19,7 @@ import { holedBox, holedPolygon, type HoleRect, type Stain } from './house.ts';
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  CHAR, IRON, PANEL_PAINTS, ROLL_SHUTTER, choose, clampTo, fillOf, shellHole, shellPocks, sootBand, unhcrSheet,
+  CHAR, IRON, PANEL_PAINTS, ROLL_SHUTTER, choose, clampTo, fillOf, shellPocks, sootBand, unhcrSheet,
 } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -144,8 +144,12 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
   }
 }
 
-/** The weathering pass's damp breaks (weather.ts): a tall wall's narrow edges are split there (holedPolygon). */
-const DAMP_BREAKS = [0.35, 1.0, 1.8] as const;
+/**
+ * Where a tall wall's narrow edges are split (holedPolygon's edge breaks): a centimetre over each of the weathering
+ * pass's damp breaks (weather.ts, 0.35, 1.0, 1.8 m), so its cut there never meets a corner (a corner on the break in
+ * float32 was cut again a hair from itself, a triangle of no width).
+ */
+const DAMP_BREAKS = [0.36, 1.01, 1.81] as const;
 
 /** A burnt opening's soot as a stain of the wall it is cut through (holedPolygon's): darkest at the head, fading up. */
 function sootStain(u0: number, u1: number, y0: number, y1: number): Stain {
@@ -440,22 +444,29 @@ const slabBlock: RegionalBuilder = (ctx) => {
     const top = gH + floors * fh;
     const concrete = 'plaster3' as const;
     const paint = choose(rng(), PANEL_PAINTS);
-    sink.span(concrete, -W / 2, -0.4, z0, W / 2, top, z1);
-    if (D / 2 - z1 > 1.5) {
-      const ah = 4.2;
-      sink.span(concrete, -W / 2, -0.4, z1 - 0.2, W / 2, ah, D / 2);
+    // (props census #9) the slab and its annex built as walls with their openings cut through them round cores (they
+    // were solid spans with the shops, the loggias and the windows painted on): the front's wall a loggia deep, the
+    // back's a window deep, the annex's shopfronts cut into its front
+    const annex = D / 2 - z1 > 1.5, deep = 1.2, wallT = 0.4, frontRev = deep - 0.06, rev = wallT - 0.06;
+    if (annex) {
+      // the annex one storey high (its roof at the slab's first floor: the first loggias stand over it)
+      const ah = gH, az0 = z1 - 0.2, af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+      const units = Math.max(2, Math.floor(W / 4.2)), holes: HoleRect[] = [];
+      sink.span(concrete, -W / 2, -0.4, az0, W / 2, ah, D / 2 - wallT);
       sink.span(concrete, -W / 2, ah, D / 2 - 0.25, W / 2, ah + 0.7, D / 2);
-      const af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-      const units = Math.max(2, Math.floor(W / 4.2));
       for (let k = 0; k < units; k++) {
         const u = -W / 2 + W * (k + 0.5) / units, uw = W / units - 1.0;
-        if (k % 3 === 2) faceBox(sink, 'structureMetal', af, u, 1.4, 0.03, uw, 2.8, 0.05, { decor: true, colour: shade(ROLL_SHUTTER, 0.9 + look() * 0.2) });
+        holes.push({ u0: u - uw / 2, u1: u + uw / 2, y0: 0.2, y1: 2.6 });
+        // a shop's roller shutter down in its opening, or its window at the back of the cut under the fascia
+        if (k % 3 === 2) faceBox(sink, 'structureMetal', af, u, 1.4, -0.12, uw, 2.4, 0.05, { decor: true, colour: shade(ROLL_SHUTTER, 0.9 + look() * 0.2) });
         else {
-          facePanel(sink, look() < 0.3 ? 'dark' : 'glass', af, u, 1.5, 0.02, uw, 2.6, { decor: true, window: [0, 0, 1] });
-          faceBox(sink, 'structureMetal', af, u, 3.2, 0.05, uw + 0.4, 0.55, 0.08, { decor: true, colour: shade(paint, 0.9) });
+          if (look() >= 0.3) facePanel(sink, 'glass', af, u, 1.4, -rev + 0.016, uw, 2.4, { decor: true, window: [0, 0, 1] });
+          // (the fascia a sign box 14 cm deep: a board laid on the wall read as a painted opening)
+          faceBox(sink, 'structureMetal', af, u, 2.95, 0.07, uw + 0.4, 0.5, 0.14, { decor: true, colour: shade(paint, 0.9) });
         }
       }
-      sink.dressing(mobile, () => shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), [], look, 'stone'));
+      holedPolygon(sink, concrete, af, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, ah], [-W / 2, ah]], holes, wallT, rev, {}, [], DAMP_BREAKS);
+      sink.dressing(mobile, () => shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), holes, look, 'stone'));
     }
     sink.span(concrete, -W / 2 - 0.1, top, z0 - 0.1, W / 2 + 0.1, top + 0.7, z1 + 0.1);
     for (const x of [-W * 0.28, W * 0.28]) sink.span(concrete, x - 1.3, top + 0.7, z0 + sd * 0.25, x + 1.3, top + 3.0, z1 - sd * 0.25, { decor: true });
@@ -464,30 +475,54 @@ const slabBlock: RegionalBuilder = (ctx) => {
     const bays = Math.max(2, Math.round(W / 2.9)), bw = W / bays;
     const burnt = new Set<number>();
     for (let k = 0; k < 2 + Math.floor(rng() * 5); k++) burnt.add(Math.floor(rng() * bays) * 100 + Math.floor(rng() * floors));
-    // the foot: shops' glazing and the entrances
-    facePanel(sink, 'glass', front, 0, 1.6, 0.02, W - 1, 2.4, { decor: true, window: [0, 0, 1] });
-    faceBox(sink, 'structureMetal', front, 0, gH - 0.35, 0.06, W, 0.5, 0.1, { decor: true, colour: ROLL_SHUTTER });
+    const frontHoles: HoleRect[] = [], backHoles: HoleRect[] = [], frontStains: Stain[] = [], backStains: Stain[] = [];
+    // the foot: the shops' glazing bay by bay (under the annex where it stands) and the shutter boxes
+    if (!annex) {
+      for (let k = 0; k < bays; k++) {
+        const u = -W / 2 + bw * (k + 0.5);
+        frontHoles.push({ u0: u - (bw - 0.5) / 2, u1: u + (bw - 0.5) / 2, y0: 0.4, y1: 2.8 });
+        if (look() >= 0.3) facePanel(sink, 'glass', front, u, 1.6, -frontRev + 0.016, bw - 0.5, 2.4, { decor: true, window: [0, 0, 1] });
+      }
+      faceBox(sink, 'structureMetal', front, 0, gH - 0.35, 0.06, W, 0.5, 0.1, { decor: true, colour: ROLL_SHUTTER });
+    }
     for (let f = 0; f < floors; f++) {
       const y = gH + f * fh;
       faceBox(sink, concrete, front, 0, y - 0.04, 0.5, W, 0.14, 1.0, { decor: true });
       for (let k = 0; k < bays; k++) {
+        // the loggia: its recess a bay deep (the balcony door at its back, or the dark of a burnt flat), the slab and
+        // the coloured parapet in front, the soot of a burnt one the wall's over it
         const u = -W / 2 + bw * (k + 0.5), isBurnt = burnt.has(k * 100 + f);
-        facePanel(sink, isBurnt ? 'dark' : look() < 0.9 ? 'glass' : 'curtain', front, u, y + 1.2, 0.01, bw - 0.5, 2.2, { decor: true, window: [0, 0, 1] });
+        frontHoles.push({ u0: u - (bw - 0.5) / 2, u1: u + (bw - 0.5) / 2, y0: y + 0.03, y1: y + 2.4 });
+        const door = isBurnt ? null : look() < 0.9 ? 'glass' as const : 'curtain' as const;
+        if (door) facePanel(sink, door, front, u, y + 1.215, -frontRev + 0.016, bw - 0.5, 2.37, { decor: true, window: [0, 0, 1] });
         faceBox(sink, 'structureMetal', front, u, y + 0.52, 0.97, bw - 0.12, 0.96, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(paint, 0.88 + look() * 0.22) });
-        if (isBurnt) sootBand(sink, concrete, front, u - bw / 2 + 0.2, u + bw / 2 - 0.2, y + 2.3, Math.min(y + fh + 1.1, top));
+        if (isBurnt) frontStains.push(sootStain(u - bw / 2 + 0.2, u + bw / 2 - 0.2, y + 2.4, Math.min(y + fh + 1.1, top)));
       }
-      for (let k = 0; k <= bays; k++) faceBox(sink, concrete, front, -W / 2 + bw * k, y + fh / 2, 0.5, 0.14, fh, 1.0, { decor: true, fine: true });
+      // (the end walls on the slab's ends: a wall half over the end stood open behind, its back on nothing)
+      for (let k = 0; k <= bays; k++) faceBox(sink, concrete, front, clampTo(-W / 2 + bw * k, -W / 2 + 0.07, W / 2 - 0.07), y + fh / 2, 0.5, 0.14, fh, 1.0, { decor: true, fine: true });
       // the back: kitchen windows, the stair glazing
       for (let k = 0; k < bays; k++) {
         const u = -W / 2 + bw * (k + 0.5);
         if (k % 4 === 2) continue;
-        panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06, top);
+        backHoles.push({ u0: u - 0.55, u1: u + 0.55, y0: y + 1.0, y1: y + 2.2 });
+        panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06, top, { reveal: rev, stains: backStains });
       }
     }
-    for (let k = 2; k < bays; k += 4) facePanel(sink, 'glass', back, -W / 2 + bw * (k + 0.5), (gH + top) / 2, 0.02, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
+    for (let k = 2; k < bays; k += 4) {
+      const u = -W / 2 + bw * (k + 0.5);
+      backHoles.push({ u0: u - 0.7, u1: u + 0.7, y0: gH + 0.5, y1: top - 0.5 });
+      facePanel(sink, 'glass', back, u, (gH + top) / 2, -rev + 0.016, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
+    }
+    holedBox(sink, concrete, -W / 2, z0, W / 2, z1, -0.4, top, { front: frontHoles, back: backHoles }, { front: deep, back: wallT, left: wallT, right: wallT }, rev, {},
+      { reveals: { front: frontRev }, stains: { front: frontStains, back: backStains }, edgeBreaks: DAMP_BREAKS });
+    // the shell strikes on the back: the render knocked off, clear of the openings (the painted holes are gone)
     sink.dressing(mobile, () => {
-      shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), [], look, 'stone');
-      for (let k = 0; k < 2; k++) shellHole(sink, back, (look() - 0.5) * W * 0.8, gH + fh * (1 + look() * (floors - 2)) + 2.4, 0.45 + look() * 0.4, look, 'stone');
+      shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), backHoles, look, 'stone');
+      for (let k = 0; k < 2; k++) {
+        const cu = (look() - 0.5) * W * 0.8, cy = gH + fh * (1 + look() * (floors - 2)) + 2.4, r = 0.45 + look() * 0.4;
+        shellPocks(sink, back, { u0: Math.max(-W / 2 + 0.4, cu - 3 * r), u1: Math.min(W / 2 - 0.4, cu + 3 * r), y0: cy - 3 * r, y1: Math.min(top - 0.3, cy + 3 * r) },
+          8 + Math.floor(look() * 8), backHoles, look, 'stone');
+      }
     });
   });
   return sink.finish();
