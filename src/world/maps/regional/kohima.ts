@@ -67,7 +67,7 @@ function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D
   faceBox(sink, 'structureWood', f0, 0, 2.82, 0.09, ow + 0.24, 0.14, 0.1, { colour: shade(plank, 0.95), decor: true });
   const shelves = [1.78, 2.34];
   for (const y of shelves) faceBox(sink, 'structureWood', f0, 0, y, 0.2, ow - 0.2, 0.04, 0.3, { colour: shade(plank, 0.8), decor: true });
-  faceBox(sink, 'structureWood', f0, 0, 1.0, 0.36, ow - 0.1, 0.9, 0.62, { colour: shade(plank, 1.0), decor: true });
+  faceBox(sink, 'structureWood', f0, 0, 0.95, 0.36, ow - 0.1, 1.0, 0.62, { colour: shade(plank, 1.0), decor: true });
   sink.dressing(ctx.tier === 'mobile', () => {
     const goods = streamFrom(Math.round((x + 31.7) * 997 + W * 131 + D * 17));
     const GOODS: readonly Rgb[] = [0xc9b48a, 0xb9a072, 0xa8442f, 0x4f7a4a, 0x3f5f8a, 0xc9a23a, 0xdedad0].map(rgb);
