@@ -1706,6 +1706,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/kitConnectivity.selftest.mjs',
     'src/world/buildingDetail.selftest.mjs', // 2026-10-14 BLD-04/HB-1b: the building-detail census's ratchet (tools/building-detail-census.mjs)
     'src/world/structureCollision.selftest.mjs',
+    // (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process
+    'tools/worldBuildIndependence.selftest.mjs',
     'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
