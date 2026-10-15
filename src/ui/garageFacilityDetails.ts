@@ -2367,6 +2367,9 @@ export function addGarageFacilityDetails({
         strata: [0x67645e, 0x5b5a56, 0x726d64, 0x605e5a, 0x55534f], // gneiss, a little warm against the blue snow light
         snow: 0xe6ecf0,
         opening: { u: mouthU, half: half + 0.25, spring, length: tunnelLength, lining: 0x7d7c77 },
+        // the headwall cast into a cut in the face (the re-judge, 2026-10-15: the portal "stands proud of the rock with a
+        // visible gap and shoulder ... a box stuck onto a dome"): the face stands flat just behind the headwall's back
+        cut: { half: half + 2.6, w: -0.5, top: spring + half + 2.5 },
       }));
       const concrete = new THREE.Color(0x9a978f), concreteDark = new THREE.Color(0x7d7a73), stain = new THREE.Color(0x6a675f);
       const ribSteel = new THREE.Color(0x3a3f42), lamp = new THREE.Color(0xf2dfb0), doorSteel = new THREE.Color(0x56605c);

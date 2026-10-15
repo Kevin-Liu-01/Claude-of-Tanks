@@ -31,6 +31,11 @@ export interface RockFaceOptions {
   readonly cell?: number;
   /** The tunnel's opening and its lining, if any. */
   readonly opening?: Readonly<{ u: number; half: number; spring: number; length: number; lining: number }>;
+  /**
+   * The cut the portal's headwall is cast into: within `half` of the opening and up to `top` the face stands plumb at `w`
+   * (just behind the headwall), blending back into the rock's own form over 3 m to either side and above.
+   */
+  readonly cut?: Readonly<{ half: number; w: number; top: number }>;
 }
 
 interface Soup {
@@ -133,11 +138,16 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     const reach = back * smooth((fbm(u * 0.06 + seedU * 2, 9.1) - 0.32) * 3);
     return -reach * smooth((y - line) / 1.1);
   };
+  // the portal's cut: 1 within the headwall's reach of the opening, 0 three metres beyond it
+  const cutShare = (u: number): number => (options.cut && opening
+    ? 1 - smooth((Math.abs(u - opening.u) - options.cut.half) / 3) : 0);
   /** The face's continuous form (its slope decides where snow lies). */
   const formBack = (u: number, y: number): number => {
     const curl = -depth * 0.45 * Math.pow(Math.abs(u) / half, 3) * (0.8 + 0.4 * fbm(y * 0.2, 4.1));
-    return curl - 0.18 * y + plan(u) * (0.85 + 0.3 * fbm(y * 0.08 + 2, u * 0.02)) + bench(u, y, height * 0.34, 2.2, 1.7)
+    const rock = curl - 0.18 * y + plan(u) * (0.85 + 0.3 * fbm(y * 0.08 + 2, u * 0.02)) + bench(u, y, height * 0.34, 2.2, 1.7)
       + bench(u, y, height * 0.66, 1.6, 6.1);
+    const share = cutShare(u) * (options.cut ? 1 - smooth((y - options.cut.top) / 3) : 0);
+    return share > 0 ? rock + (options.cut!.w - rock) * share : rock; // the cut stands plumb behind the headwall
   };
   // the face's set-back at (u, y) within stratum s (the strata only order the mesh's rows now)
   const setBack = (u: number, y: number, s: number, _t: number): number => {
@@ -146,7 +156,7 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     const block = Math.floor(u / blockWidth + hash(tier, 3) * 3);
     const jointed = (hash(block, tier) - 0.5) * 0.5;
     const rough = (fbm(u * 0.3 + s * 1.7, y * 0.3) - 0.5) * 0.7 + (fbm(u * 0.9 + 11, y * 0.9 + s) - 0.5) * 0.3;
-    return formBack(u, y) + jointed + rough;
+    return formBack(u, y) + (jointed + rough) * (1 - 0.75 * cutShare(u)); // the cut face is dressed flatter
   };
   const inOpening = (u: number, y: number, margin = 0): boolean => {
     if (!opening) return false;
