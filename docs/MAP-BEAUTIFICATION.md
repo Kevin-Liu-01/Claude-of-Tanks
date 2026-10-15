@@ -7858,6 +7858,27 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-14 — Monsoon Ridge: Kohima's town on its terraces, the Deputy Commissioner's bungalow and tennis court (the maps lane)
+
+**The owner, 10-09: Monsoon Ridge among the fourteen to bring up; MAP-01: built the way Verdant was.** The hill town
+stood as the roadside plan's 26 buildings, 16 of them placed, over a 290 m saddle.
+- *The place:* Kohima in April 1944, a town of terraces on the Imphal road (the Kohima kit: bungalows under painted tin
+  with deep verandas, the bazaar's timber shops, the mission church, Angami thatched houses with their crossed gable horns
+  and their granaries, and the siege's shelled ruins).
+- *The plan* (`monsoon.ts` KOHIMA_TOWN, `plannedSites`; the roadside plan retired), authored in the road's own frame:
+  the bazaar's shop rows along the road north of its crossing with the valley road (south of it the road crosses the
+  flood channel's bottoms), the lane behind it on the east short of the channel, the bungalows in their gardens on the
+  terraces west, the Angami village on the north-west spur, the church framing the town's square from the north; one in
+  five of the town's buildings shelled to a ruin. The square's zone ring (46 m) stays free of buildings and yards.
+- *The hero:* the Deputy Commissioner's bungalow on the terrace above the square and its tennis court below it, the
+  front line the garrison held for a fortnight (`landmarks/colonial.ts`, built by the landmarks lane for this map and
+  placed nowhere until now).
+- *The terrace road* climbs from the bazaar past the bungalows and the Angami village to the north road
+  (`roadEndpoints.ts` join(1, 4)), so the upper terraces front a road (the brief's orphan band).
+- *Measured* (every band holds): orphan 0.147, the zone on its hint (398 m from alpha, 412 from bravo; symmetry 1.053),
+  the middle third's cover 0.424 -> 0.473, the weakest sector 0.267 -> 0.400, the sightline median 88 -> 80 m, long
+  sightlines 0.055 -> 0.036. 72 buildings where 16 stood; census [9351, 9146, 11650] -> [9619, 9671, 11564].
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
