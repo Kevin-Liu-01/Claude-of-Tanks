@@ -10019,12 +10019,13 @@ ${snowCap ? `
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
   const animatedDressing: AnimatedDressing[] = [];
+  // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
+  // (declared here, ahead of the join: the join stands immediately before the kits, structureShellPool.selftest)
+  const setPieceRecords: VehicleSetPiece[] = [];
   // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
   // below scan every record); the async build waits here for the pool's workers
   if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
   joinStructureShells();
-  // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
-  const setPieceRecords: VehicleSetPiece[] = [];
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
