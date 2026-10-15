@@ -24,7 +24,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_DOME_RADIUS_M, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_CAPTURE_SETTLE_FRAMES, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -475,6 +475,18 @@ assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarg
   // only a surface past the dome limits the layers: inside it the dome's depth test hides them, and a history traced
   // whole behind a near ridge has nothing missing when a camera turn reveals it
   assert.match(trace, /return t < \$\{f\(CLOUD_DOME_RADIUS_M\)\} \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
+}
+{
+  // 2026-10-14 (the SKY lane; the horizons lane's Polders bird frames, 400 m up and 1.3 km off the centre: the cloud field
+  // cut by straight walls around a clear hole): the composite dome stands on the camera every frame, so each of its
+  // fragments lies CLOUD_DOME_RADIUS_M along its ray — inside the main camera's 4 km far plane from any pose (a bird, an
+  // overview, the Garage), and at the distance cloudSceneT measures the dome by
+  const layerSource = here('./volumetricClouds.ts');
+  const hook = layerSource.slice(layerSource.indexOf('  beforeSceneRender('), layerSource.indexOf('    // wind drift, bounded to the weather tile'));
+  assert.match(hook, /this\.dome\.position\.copy\(camera\.getWorldPosition\(this\.domeAnchor\)\);/, 'the dome follows the camera every frame');
+  const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const far = Number(mainSource.match(/new THREE\.PerspectiveCamera\(\s*60,[^\n]*\n\s*([\d.]+),\s*([\d.]+),/)?.[2]);
+  assert.ok(Number.isFinite(far) && CLOUD_DOME_RADIUS_M < far * 0.9, `the dome's radius sits inside the battle camera's far plane (${CLOUD_DOME_RADIUS_M} < 0.9 x ${far})`);
 }
 assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon

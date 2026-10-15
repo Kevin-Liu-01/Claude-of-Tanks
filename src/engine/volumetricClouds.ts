@@ -1615,6 +1615,8 @@ export class VolumetricCloudLayer {
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
   private readonly scratch = new THREE.Vector3();
+  /** The camera's world position: the composite dome's centre every frame. */
+  private readonly domeAnchor = new THREE.Vector3();
   private readonly irr = new THREE.Color();
   private readonly hz = new THREE.Color();
   private readonly zenith = new THREE.Color();
@@ -2089,6 +2091,12 @@ export class VolumetricCloudLayer {
     }
     this.refreshLifetime();
     if (this.context?.isContextLost()) { this.dome.visible = false; this.sceneDepthReady = false; return; }
+    // 2026-10-14 (the SKY lane; the horizons lane's bird frames over Polders, 400 m up and 1.3 km off the centre: the
+    // cloud field cut by straight walls with a clear hole over the map): the dome was a 3.4 km sphere about the world
+    // origin, so a camera more than (far - radius) from the origin — any bird, overview or Garage pose — saw its far side
+    // cut by the 4 km far plane, and a camera at the map's edge saw the near side 2.9 km away in front of a ridge the
+    // trace had marched past (cloudSceneT measures the dome's 3.4 km from the camera). The dome stands on the camera.
+    this.dome.position.copy(camera.getWorldPosition(this.domeAnchor));
     if (width !== this.targetWidth || height !== this.targetHeight) { this.resize(width, height); this.sceneDepthReady = false; }
     // wind drift, bounded to the weather tile (every noise tiles within it); the street field drifts in the
     // wind frame, the cirrus sheet at twice the speed along its own streaks
