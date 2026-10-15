@@ -38,6 +38,12 @@ const SIWA_TOWN = [
   { structure: 'caravanserai', x: 150, z: -112, yawDeg: 0 }, { structure: 'tower', x: 198, z: -20, yawDeg: 0 },
   { structure: 'bathhouse', x: 180, z: -98, yawDeg: 0 }, { structure: 'bathhouse', x: 8, z: 64, yawDeg: 0 },
   { structure: 'ruin', x: 32, z: -122, yawDeg: 20 }, { structure: 'ruin', x: 184, z: -76, yawDeg: -30 },
+  // (the maps lane, 2026-10-15, Sunscar's blind critics: from the open sand north of the souk its rows' backs stood as
+  // "long blank walls" and the town as "isolated buildings on bare sand") the houses backing onto the souk across its
+  // back lane, their fronts north to the open ground
+  { structure: 'adobe', x: 100, z: -40, yawDeg: 0 }, { structure: 'adobe', x: 113, z: -41, yawDeg: 0 },
+  { structure: 'adobe', x: 126, z: -40, yawDeg: 0 }, { structure: 'adobe', x: 139, z: -41, yawDeg: 0 },
+  { structure: 'adobe', x: 152, z: -40, yawDeg: 0 },
 ] as const;
 // the walled palm gardens between the springs and the town: G1 north of the west zone round its spring, G2 south of the
 // cross road, G3 west of old Shali — each its mud wall (wallRuns) and its rows of date palms (belts, palmSites)

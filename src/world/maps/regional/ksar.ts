@@ -624,6 +624,33 @@ const siwaShops: RegionalBuilder = (ctx) => {
   // apron above the row, and the objective search counts a solid reaching within half a metre of a zone's floor
   const top = Math.max(2.0, Math.min(2.55, ctx.bounds.maxY - 0.45));
   for (let k = 0; k < n; k++) sink.placed(0, R.x0 + (k + 0.5) * R.W / n, 0, R.cz, () => stallBody(sink, look, w, d, top));
+  // (the maps lane, 2026-10-15, Sunscar's blind critics: the rows' backs read as "long blank concrete noise barriers — no
+  // openings, buttresses or erosion") the back wall as Siwa's mud walls stand: battered mud buttresses at the stalls'
+  // party walls and the row's ends, each stall's plank back door under a palm-trunk lintel or a shuttered hatch, and the
+  // wall's top worn into rounded lumps. Drawn after the stalls (their draws are as before); the buttresses stand no
+  // higher than the wall, which the zone apron above the row allows.
+  const zb = R.cz - d / 2, wallTop = top + 0.45;
+  for (let k = 0; k <= n; k++) {
+    const x = R.x0 + k * R.W / n;
+    sink.span(MUD, x - 0.38, -0.3, zb - 0.55, x + 0.38, 1.1 + look() * 0.3, zb + 0.02);
+    sink.span(MUD, x - 0.26, 1.0, zb - 0.32, x + 0.26, wallTop - 0.25 - look() * 0.4, zb + 0.02);
+  }
+  for (let k = 0; k < n; k++) {
+    const cx = R.x0 + (k + 0.5) * R.W / n;
+    const back: Face = { origin: [cx, 0, zb], u: [-1, 0, 0], out: [0, 0, -1], width: w };
+    const u = (look() - 0.5) * (w - 2.0);
+    if (look() < 0.6) {
+      faceBox(sink, 'structureWood', back, u, 0.18 + 0.95, 0.03, 0.82, 1.9, 0.06, { colour: look() < 0.5 ? PALM : PALM_GREY, decor: true, uv: UV_MEMBER });
+      sink.cylinder('structureWood', facePoint(back, u + 0.65, 2.2, 0.08), 'x', 1.3, 0.08, 7, { colour: shade(PALM, 0.85), decor: true }, 0.07, true);
+    } else {
+      faceBox(sink, 'structureWood', back, u, 1.75, 0.03, 0.6, 0.55, 0.05, { colour: PALM_GREY, decor: true, uv: UV_MEMBER });
+    }
+    // the worn top: two or three rounded lumps of the wall's mud along its crest
+    for (let j = 0, m = 2 + Math.floor(look() * 2); j < m; j++) {
+      const x = cx + (look() - 0.5) * (w - 0.6);
+      sink.cylinder(MUD, [x, wallTop - 0.05, zb + 0.2], 'y', 0.18 + look() * 0.12, 0.32 + look() * 0.18, 7, { decor: true }, 0.1, true, look());
+    }
+  }
   return sink.finish();
 };
 
@@ -680,8 +707,10 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
       // dark speckle tiled over every wall; the salt mud keeps half of it, a shade warmer)
       // (Oasis round 3, wave 135: "a uniform pinkish stucco noise", "pink-cream") the salt mud greyer and less pink: a
       // grey-beige a step lighter (was hue 0.084, saturation x0.3 + 0.12)
-      plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.18 + 0.07), Math.min(1, l * 0.48 + 0.4)],
-      plaster2: (_h, s, l) => [0.095, Math.min(1, s * 0.16 + 0.06), Math.min(1, l * 0.46 + 0.33)],
+      // (the maps lane, 2026-10-15, Sunscar's blind critics: "grey-lavender ... the kershef needs warm ochre-tan") the salt
+      // mud a warm tan, its old walls a shade browner (was saturation x0.18 + 0.07 and x0.16 + 0.06 at hue 0.1 and 0.095)
+      plaster: (_h, s, l) => [0.088, Math.min(1, s * 0.2 + 0.24), Math.min(1, l * 0.46 + 0.36)],
+      plaster2: (_h, s, l) => [0.082, Math.min(1, s * 0.18 + 0.22), Math.min(1, l * 0.44 + 0.3)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.12), Math.min(1, l * 1.3 + 0.16)],
     },
   },
