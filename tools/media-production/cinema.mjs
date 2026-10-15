@@ -21,7 +21,7 @@ import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/st
 const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'shake', 'start-ms', 'end-ms',
   'frames', 'stills', 'still-samples', 'still-exposure-ms', 'still-max-samples', 'supersample', 'film', 'master', 'proxy',
   'keep-frames', 'out', 'resume'];
-const OPTIONS = [...JOB_OPTIONS, 'jobs', 'port', 'cache-dir', 'ticket-stamp', 'lease-min'];
+const OPTIONS = [...JOB_OPTIONS, 'jobs', 'port', 'cache-dir', 'ticket-stamp', 'lease-min', 'fresh-page'];
 const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,portrait,square] [--resolution=1080|1440|2160]
   [--fps=24|30|60] [--samples=1-64] [--max-samples=<samples>-128] [--shutter=0-360] [--filter=gaussian|box] [--shake=0-2]
   [--start-ms=0] [--end-ms=<storyboard>] [--frames=<limit>] [--stills=<timeline ms,...>] [--still-samples=32]
@@ -31,6 +31,7 @@ const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,po
   or --jobs=jobs.json: an array of jobs with the same keys (without "--"); every job needs its own "out".
 --ticket-stamp joins the capture queue at that place (a run split over leases keeps its first ticket's place);
 --lease-min ends the capture lease before a film that would carry it past the budget, exit 75: resume the rest.
+--fresh-page=0 keeps one page for the whole batch; by default a film that follows another loads the Studio afresh.
 Film settings default to the scene's "film" block, then the Studio defaults (30 fps, 180°, 8 samples
 adaptive to 64 on fast motion, gaussian). Speed ramps come from the scene's film.speed keys.`;
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
@@ -52,6 +53,13 @@ if (args.jobs && (rawJobs.some(job => !job.out) || new Set(rawJobs.map(job => re
 // 2026-10-07 (the coordinator's alternating finals): a long batch runs as several leases, one process each; every lease
 // joins the queue at the batch's first stamp, so it follows whichever lane held the GPU in between, not the line's tail.
 const leaseMs = Number(args['lease-min'] ?? 0) * 60000;
+// (2026-10-14, MED-02: a take filmed after another in the same page drew its sunlit ground under a soft shade for its
+// first ~1.4 s, gone by frame 42, where a fresh page drew it in sun: state one take leaves in the page (temporal
+// history, wall-clock-gated reseeds, streaming and carpet budgets) reaches the next. A film that follows another on
+// the page (a job's next format too), or plays on a map the page was not loaded on, now starts on a freshly loaded
+// Studio for its own map; a film a resumed batch preserves loads nothing. --fresh-page=0 keeps the old one-page
+// batch, for A/B checks)
+const freshPage = args['fresh-page'] !== '0';
 if (!(leaseMs >= 0)) throw Error(help);
 
 /** Validate one job into its settings, receipt and output paths (before taking the GPU). */
@@ -206,14 +214,20 @@ try {
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error' && !message.text().includes('favicon')) errors.push(message.text()); });
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-  await page.goto(`${origin}/?studio=1&nosplash=1&tier=desktop&map=${jobs[0].scene.map ?? 'verdant'}&diag`, { waitUntil: 'domcontentloaded', timeout: 300000 });
-  await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 300000, polling: 500 });
-  await page.evaluate(async () => {
-    const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
-    await awaitMapCaptureReadiness(window.__DEBUG.world, () => window.__DEBUG.world);
-    window.__STUDIO.pause(); window.__DEBUG.post.pinDynScale(1);
-    window.__DEBUG.post.resetPerfTrims(); window.__DEBUG.post.setAdaptiveSuspended(true);
-  });
+  let pageMap = null, pageFilmed = false;
+  const openStudio = async (mapId) => {
+    const map = mapId ?? 'verdant';
+    await page.goto(`${origin}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: 300000 });
+    await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 300000, polling: 500 });
+    await page.evaluate(async () => {
+      const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
+      await awaitMapCaptureReadiness(window.__DEBUG.world, () => window.__DEBUG.world);
+      window.__STUDIO.pause(); window.__DEBUG.post.pinDynScale(1);
+      window.__DEBUG.post.resetPerfTrims(); window.__DEBUG.post.setAdaptiveSuspended(true);
+    });
+    pageMap = map; pageFilmed = false;
+  };
+  await openStudio(jobs[0].scene.map);
   const rendererInfo = await page.evaluate(() => {
     const r = window.__DEBUG.renderer, gl = r.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info');
     return { gpu: e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), maxTextureSize: r.capabilities.maxTextureSize,
@@ -254,6 +268,11 @@ try {
         console.log(`[cinema] lease over at ${((Date.now() - heldSince) / 60000).toFixed(1)} min (longest take ${(leaseTime.longestTake / 60000).toFixed(1)} min): ${stem} and the rest wait for the next lease`);
         break jobLoop;
       }
+      if (freshPage && (pageFilmed || pageMap !== (scene.map ?? 'verdant'))) {
+        await openStudio(scene.map);
+        console.log(`[cinema] fresh page for ${stem}`);
+      }
+      pageFilmed = true;
       const dir = join(job.out, 'films', stem);
       mkdirSync(dir, { recursive: true });
       for (const name of readdirSync(dir)) if (/^frame-\d+\.png$/.test(name)) unlinkSync(join(dir, name));
