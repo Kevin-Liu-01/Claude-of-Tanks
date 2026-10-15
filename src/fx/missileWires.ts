@@ -37,7 +37,7 @@ export const WIRE_LAY_M = 5;
 const WIRE_D = 0.0006;
 const DRAW_MIN_PX = 2.0;
 /** the least coverage it keeps however far (so the paid-out wire reads as a thread to the missile) */
-const COVER_FLOOR = 0.34;
+const COVER_FLOOR = 0.45;
 /** a laid stretch sinks toward this speed (m/s) and reaches it over FALL_T s */
 const FALL_V = 0.42, FALL_T = 0.5;
 /** pulled straight over its last TAUT_M to the missile and its first LEAVE_M out of the tube */
@@ -108,7 +108,7 @@ void main() {
   c0.xy += n * ( aT.w * 0.5 * drawW ) / h * c0.w;
   gl_Position = c0;
   vSide = aT.w;
-  // dark drawn steel: the sky and the ground on it, the sun on its round side, and the glint where the half-way vector
+  // lacquered drawn steel: the sky and the ground on it, the sun on its round side, and the glint where the half-way vector
   // stands square to the wire (a stretch that faces the sun to the eye flashes along its length)
   vec3 v = normalize( cameraPosition - aP.xyz );
   vec3 t = normalize( aT.xyz );
@@ -117,7 +117,7 @@ void main() {
   vec3 hv = normalize( uSunDir + v );
   float ht = dot( hv, t );
   float glint = pow( max( 0.0, 1.0 - ht * ht ), 90.0 ) * step( 0.0, uSunDir.y );
-  vec3 albedo = vec3( 0.2, 0.19, 0.17 );
+  vec3 albedo = vec3( 0.3, 0.29, 0.27 );
   vCol = albedo * ( uSunCol * diffuse * 0.6 + uSkyCol * 0.9 + uGroundCol * 0.35 ) + uSunCol * glint * 0.9;
   vA = max( 0.0, aP.w ) * cover * ( 1.0 + 1.6 * glint );
   #ifdef USE_FOG
