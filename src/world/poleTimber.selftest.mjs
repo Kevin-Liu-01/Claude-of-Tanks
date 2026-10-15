@@ -166,8 +166,11 @@ assert.throws(() => applyPoleTimberHook({ uniforms: {}, vertexShader: '', fragme
 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(source, /markPoleTimber\(roundPoleShaft\(bakedGeometry\('telephone_pole_polygoogle',[\s\S]{0,160}\)\.clone\(\)\)\)/,
+// (props lane A, #21, 2026-10-14: the sourced pole's preparation is maps/utilityPoles.ts's, extracted from props.ts unchanged)
+const poleSource = readFileSync(new URL('./maps/utilityPoles.ts', import.meta.url), 'utf8');
+assert.match(poleSource, /markPoleTimber\(roundPoleShaft\(bakedGeometry\('telephone_pole_polygoogle',[\s\S]{0,160}\)\.clone\(\)\)\)/,
   'the cached sourced pole is cloned, its shaft rounded, then marked');
+assert.match(source, /SOURCED\.poles && P\.telegraph \? sourcedPoleGeometry\(bakedGeometry\) : null/, 'the line takes it');
 assert.match(source, /pole: new THREE\.MeshStandardMaterial\(\{ vertexColors: true, roughness: 0\.9, metalness: 0 \}\)/);
 assert.match(source, /const poleHook: MaterialShaderHook = \(shader\) => \{ grimeHook\(shader\); applyPoleTimberHook\(shader, rockDressing\.dust >= 0\.5\); \};/);
 assert.match(source, /materialKind === 'pole' \? poleHook/);

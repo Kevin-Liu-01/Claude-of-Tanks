@@ -59,7 +59,7 @@ import {
   applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
   paintBoulder, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
-import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
+import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
@@ -152,6 +152,7 @@ import {
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
+import { createUtilityWires, proceduralPoleParts, sourcedPoleGeometry } from './maps/utilityPoles.ts';
 import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
@@ -4294,7 +4295,6 @@ ${snowCap ? `
   // One renderer-free topology + one InstancedMesh for every conductor
   // segment. Only spans touching a falling pole are rewritten during impact.
   let utilityNetwork: UtilityNetwork | null = null;
-  let wireIM: THREE.InstancedMesh | null = null;
 
   // -------------------------------------------------------------------------
   // DESTRUCTIBLE SMALL-PROP LAYER (world-dressing r1) — "just like trees".
@@ -6792,15 +6792,9 @@ ${snowCap ? `
     // 9.5 source metres apart plus conductor faces between them. Use its
     // near-post slice as the physical primitive, then let terrain policy and
     // the live utility network decide whether a station has one or two posts.
-    // the scenery lane (after wave 57, Frosthollow's "beige column"): its wood is marked for the poles' timber material
-    // (poleTimber.ts) on a clone — the baked source stays cached unmarked; wave 66 ("a straight, flat-faced,
-    // constant-width beam"): its shaft round, smooth and tapered first
-    const poleGeo = SOURCED.poles && P.telegraph
-      ? markPoleTimber(roundPoleShaft(bakedGeometry('telephone_pole_polygoogle',
-        {
-          targetH: 7.4, sink: 0.15, sourceZMin: -1,
-          whiteCap: [0.14, 0.21, 0.16],
-        }).clone())) : null;
+    // (props lane A, #21, 2026-10-14: the line's geometry — the sourced pole prepared, the procedural pole, the wires'
+    // pool — is maps/utilityPoles.ts's, extracted unchanged)
+    const poleGeo = SOURCED.poles && P.telegraph ? sourcedPoleGeometry(bakedGeometry) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -6831,29 +6825,7 @@ ${snowCap ? `
         });
         return;
       }
-      const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
-      scaleUV(pole, 0.8, 3.0);
-      pole.translate(post.x, post.y + 3.0, post.z);
-      buckets.wood.push(pole);
-      for (const armY of [5.75, 5.15]) {
-        const arm = box(1.5, 0.11, 0.09, 1.0);
-        arm.rotateY(station.yaw);
-        arm.translate(post.x, post.y + armY, post.z);
-        buckets.wood.push(arm);
-        for (const side of [-1, 1]) {
-          const peg = box(0.07, 0.16, 0.07, 2.0);
-          peg.rotateY(station.yaw);
-          peg.translate(post.x + Math.cos(station.yaw) * 0.6 * side,
-            post.y + armY + 0.13, post.z - Math.sin(station.yaw) * 0.6 * side);
-          buckets.wood.push(peg);
-        }
-      }
-      const brace = box(0.06, 1.1, 0.06, 1.5);
-      brace.rotateZ(0.6);
-      brace.rotateY(station.yaw);
-      brace.translate(post.x + Math.cos(station.yaw) * 0.26,
-        post.y + 4.8, post.z - Math.sin(station.yaw) * 0.26);
-      buckets.wood.push(brace);
+      for (const part of proceduralPoleParts(post, station.yaw)) buckets.wood.push(part);
     };
     // r5 terrain_environment: poles every node (~32 m, was every 2nd). The
     // 64 m spans cut CHORDS across the road's curves — one span slashed
@@ -9611,55 +9583,7 @@ ${snowCap ? `
   // Linked utility conductors: one four-sided unit cylinder, instanced along
   // all sampled catenaries. No shadow casting avoids sub-pixel CSM shimmer;
   // matrices move only while a connected pole is actively toppling.
-  const _wirePoints = utilityNetwork
-    ? new Float64Array((utilityNetwork.segments + 1) * 3) : null;
-  const _wireA = new THREE.Vector3(), _wireB = new THREE.Vector3();
-  const _wireMid = new THREE.Vector3(), _wireDir = new THREE.Vector3();
-  const _wireUp = new THREE.Vector3(0, 1, 0), _wireScale = new THREE.Vector3();
-  const _wireQuat = new THREE.Quaternion(), _wireMatrix = new THREE.Matrix4();
-  function writeWireSpan(spanIndex: number): void {
-    const points = _wirePoints;
-    if (!wireIM || !utilityNetwork || !points) return;
-    for (let side = 0; side < 2; side++) {
-      utilityNetwork.writeSpanPoints(spanIndex, side, points);
-      for (let seg = 0; seg < utilityNetwork.segments; seg++) {
-        const a = seg * 3, b = a + 3;
-        _wireA.set(points[a], points[a + 1], points[a + 2]);
-        _wireB.set(points[b], points[b + 1], points[b + 2]);
-        _wireDir.subVectors(_wireB, _wireA);
-        const len = _wireDir.length();
-        if (len < 1e-5) continue;
-        _wireQuat.setFromUnitVectors(_wireUp, _wireDir.multiplyScalar(1 / len));
-        _wireMid.addVectors(_wireA, _wireB).multiplyScalar(0.5);
-        _wireScale.set(0.020, len * 1.02, 0.020);
-        _wireMatrix.compose(_wireMid, _wireQuat, _wireScale);
-        wireIM.setMatrixAt(utilityNetwork.instanceIndex(spanIndex, side, seg), _wireMatrix);
-      }
-    }
-  }
-  function rebuildWireSpans(indices: readonly number[] | null = null): void {
-    if (!wireIM || !utilityNetwork) return;
-    if (indices) {
-      for (const spanIndex of indices) writeWireSpan(spanIndex);
-    } else {
-      for (let i = 0; i < utilityNetwork.spans.length; i++) writeWireSpan(i);
-    }
-    wireIM.instanceMatrix.needsUpdate = true;
-  }
-  function instantiateUtilityWires(): void {
-    if (!utilityNetwork?.instanceCount) return;
-    const wireGeo = new THREE.CylinderGeometry(1, 1, 1, 4, 1);
-    wireIM = new THREE.InstancedMesh(wireGeo, mats.dark, utilityNetwork.instanceCount);
-    wireIM.name = 'utility-wires';
-    wireIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    wireIM.castShadow = false;
-    wireIM.receiveShadow = false;
-    wireIM.frustumCulled = false;
-    wireIM.matrixAutoUpdate = false;
-    group.add(wireIM);
-    rebuildWireSpans();
-  }
-  instantiateUtilityWires();
+  const utilityWires = createUtilityWires(utilityNetwork, mats.dark, group); // (maps/utilityPoles.ts)
 
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
@@ -10941,7 +10865,7 @@ ${snowCap ? `
     a.im.instanceMatrix.needsUpdate = true;
     if (a.wirePoleIndex != null && utilityNetwork) {
       const spans = utilityNetwork.setPoleFall(a.wirePoleIndex, a.ax, a.az, ang);
-      rebuildWireSpans(spans);
+      utilityWires?.rebuild(spans);
     }
   }
   function pushCrushAnim(a: CrushAnimation): void {
@@ -11651,7 +11575,7 @@ ${snowCap ? `
     restoreToppledPoles();
     if (utilityNetwork) {
       utilityNetwork.reset();
-      rebuildWireSpans();
+      utilityWires?.rebuild();
     }
   }
 
