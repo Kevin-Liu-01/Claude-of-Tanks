@@ -1232,6 +1232,7 @@ function analyse(id) {
       id, name: spec.name, era: spec.era, turretless: MM.turretless, gunMode: MM.fixedInHull ? 'fixed-in-hull' : MM.turretless ? 'casemate' : 'turret',
       gunLimitsDeg: { elevation: MM.elev, depression: MM.dep, arc: MM.arc, pitchByYaw: !!spec.gunPitchByYawDeg },
       buildMs, analyseMs: Date.now() - t1, coverage: { ...coverage, bodies: bodies.length }, inputHash, buildReceipt,
+      seatError: visual.root.userData.spareTrackError ?? null,
       decorTracks: { rowsBuilt: decorTrackAttempts.length, seated: bundles.filter((B) => B.source === 'decor').length, rejections: decorTrackSkips.map((x) => x[1]) },
       trackMaterialNonLinks: bundles.trackMaterialNonLinks || [],
       diag, bundles: out, _bodies: bodies, _bundles: bundles, _visual: visual, _MM: MM,
@@ -1668,6 +1669,7 @@ const NON_LINK_TRACK_PARTS = [
 ];
 function coverageOf(res) {
   const out = [];
+  if (res.seatError) out.push(`the build's seat pass failed: ${res.seatError}`);
   for (const B of res.bundles) {
     if (B.source !== 'adhoc') continue;
     if (B.registered) continue;

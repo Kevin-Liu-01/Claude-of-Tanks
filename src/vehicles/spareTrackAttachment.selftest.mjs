@@ -68,6 +68,7 @@ for (const id of SEATED_OWNERS) {
     materialMode: 'geometry-only',
   });
   try {
+    assert.equal(visual.root.userData.spareTrackError, undefined, `${id}: the seat pass ran`);
     const runs = visual.root.userData.spareTrack;
     const rejected = visual.root.userData.spareTrackRejected;
     assert.ok(Array.isArray(runs) && Array.isArray(rejected), `${id}: the build publishes its spare-track seat receipts`);

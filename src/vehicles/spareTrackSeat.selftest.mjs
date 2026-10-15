@@ -203,6 +203,7 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
     const tank = build(id);
     try {
       const root = tank.root;
+      assert.equal(root.userData.spareTrackError, undefined, `${id}: the seat pass ran`);
       const runs = root.userData.spareTrack ?? [];
       const gun = gunBox(root);
       assert.ok(!gun.isEmpty(), `${id}: the fixed gun draws into hullGun`);

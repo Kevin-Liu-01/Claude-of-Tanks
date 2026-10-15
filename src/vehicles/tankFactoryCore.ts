@@ -7741,12 +7741,18 @@ function* createTankOwnedSteps(
   const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
     .map(({ part }) => part));
   const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
-  const spareTrackSeats = seatAuthoredSpareTracks({
-    spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart,
-    bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
-  });
-  root.userData.spareTrack = spareTrackSeats.runs;
-  root.userData.spareTrackRejected = spareTrackSeats.rejected;
+  try {
+    const spareTrackSeats = seatAuthoredSpareTracks({
+      spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart,
+      bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
+    });
+    root.userData.spareTrack = spareTrackSeats.runs;
+    root.userData.spareTrackRejected = spareTrackSeats.rejected;
+  } catch (error) {
+    // a solver fault never costs the vehicle its build: the runs stay as authored and the receipt carries the fault
+    root.userData.spareTrackError = error instanceof Error ? error.message : String(error);
+    console.warn(`[tankFactory] ${specId}: spare-track seat pass failed — ${root.userData.spareTrackError}`);
+  }
   const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
