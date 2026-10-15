@@ -2059,7 +2059,10 @@ export function buildGarageEnvironment(
       // half-second hitch, while cascade refreshes made fine station geometry
       // shimmer. The hero tank and podium remain the only dynamic Garage
       // casters; scenery still receives their stable contact shadow.
-      mesh.castShadow = false;
+      // EXPERIMENT (night ABBA arm C, 2026-10-15): the three biggest scenery meshes cast live shadows: the baked bucket
+      // (the sail, the rock faces, the mounds), the brick and stone bucket (the sheds' and the Zeughaus's walls) and the
+      // clay roofs
+      mesh.castShadow = key === 'baked' || key === 'stone' || key === 'roof';
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
