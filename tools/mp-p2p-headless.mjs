@@ -188,7 +188,10 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     const electedAfterMs = Math.round(performance.now() - closedAt);
     log(`host_changed → ${election.hostId} generation ${election.generation} (${election.reason}) after ${electedAfterMs} ms, resumeTick ${election.resumeTick}`);
     if (election.hostId !== 'p2' || election.generation !== 2 || election.reason !== 'timeout') failures.push(`election ${JSON.stringify(election)}`);
-    if (electedAfterMs < hostGraceMs) failures.push(`the election came before the grace (${electedAfterMs} ms)`);
+    // (2026-10-14, §13.22) a peer that hears nothing from a host whose socket is gone elects at once: only an election on
+    // the lease is bound by the grace
+    const hostLost = events.some((event) => event.kind === 'host_lost');
+    if (electedAfterMs < hostGraceMs && !hostLost) failures.push(`the election came before the grace (${electedAfterMs} ms)`);
     await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', 20_000);
     const hostLiveAfterElectionMs = Math.round(performance.now() - closedAt) - electedAfterMs;
     const core2 = cores.find((entry) => entry.id === 'p2')?.core;
@@ -208,7 +211,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     const discontinuityM = Math.max(0, worstJumpM - 10 * drivenAfterLiveS);
     const reportsBy = events.filter((event) => event.kind === 'match_report').map((event) => event.from);
     report.steps.migration = {
-      electedAfterMs, generation: election.generation, resumeTickRoom: election.resumeTick, coreResumedAt: core2.actor.resumedBattleTimeMs, hostTickAfter: resumedTick, oldHostTick,
+      electedAfterMs, hostLost, claims: { p2: p2.headless.session.hostUnreachableClaims, p3: p3.headless.session.hostUnreachableClaims }, generation: election.generation, resumeTickRoom: election.resumeTick, coreResumedAt: core2.actor.resumedBattleTimeMs, hostTickAfter: resumedTick, oldHostTick,
       p2Role: p2.headless.session.role, p3Role: p3.headless.session.role, p3Target: p3.headless.session.stats().p2p?.hostId ?? null,
       peersOnP2: p2.headless.session.matchHost.peersConnected, comparedHulls: compared, worstJumpM, drivenAfterLiveS, discontinuityM, lastTickBefore3, firstTickAfter3, reportsFromP2: reportsBy.filter((from) => from === 'p2').length,
       resumeHold: core2.stats()?.resumeHold ?? null,
