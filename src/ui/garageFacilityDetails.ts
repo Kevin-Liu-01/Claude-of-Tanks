@@ -1398,6 +1398,84 @@ export function addGarageFacilityDetails({
     }
   };
 
+  /**
+   * A forward-base guard tower (garage round 7, place-truth; the critic panel, 2026-10-14: "HESCO or sandbag berms, a guard
+   * tower"): four timber legs splayed in to a 2.8 m platform 5 m up, X-braced in two tiers, a ladder up the back face, a
+   * plank deck behind a parapet of sandbags three courses high with a firing slot to the front, corner posts carrying a
+   * corrugated roof, a searchlight on the front rail, and a ring of sandbags round the legs' feet. Faces the cluster's
+   * +longitudinal.
+   */
+  const addGuardTower = (cluster: FacilityCluster, sandbag: THREE.Color, timber: THREE.Color): void => {
+    const deckY = 5.0, foot = 1.75, head = 1.35, roofY = 7.6;
+    const bagDark = sandbag.clone().multiplyScalar(0.84);
+    const leg = (sx: number, sz: number, y: number): [number, number, number] => {
+      const t = y / deckY, r = foot + (head - foot) * Math.min(1, t);
+      return [sx * r, sz * r, y];
+    };
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      clusterBeam(cluster, leg(sx, sz, 0), leg(sx, sz, deckY + 0.05), 0.2, timber, 'painted');
+      clusterBox(cluster, sx * foot, sz * foot, 0.1, 0.5, 0.2, 0.5, dark, 'masonry'); // the footing
+    }
+    // X-bracing on all four faces in two tiers, and the ledgers at the tiers' heads
+    for (const [y0, y1] of [[0.3, 2.6], [2.6, deckY - 0.1]] as const) {
+      for (const sx of [-1, 1]) {
+        clusterBeam(cluster, leg(sx, -1, y0), leg(sx, 1, y1), 0.09, timber, 'painted');
+        clusterBeam(cluster, leg(sx, 1, y0), leg(sx, -1, y1), 0.09, timber, 'painted');
+        clusterBeam(cluster, leg(-1, sx, y0), leg(1, sx, y1), 0.09, timber, 'painted');
+        clusterBeam(cluster, leg(1, sx, y0), leg(-1, sx, y1), 0.09, timber, 'painted');
+      }
+      for (const sx of [-1, 1]) {
+        clusterBeam(cluster, leg(sx, -1, y1), leg(sx, 1, y1), 0.11, timber, 'painted');
+        clusterBeam(cluster, leg(-1, sx, y1), leg(1, sx, y1), 0.11, timber, 'painted');
+      }
+    }
+    // the ladder up the back face
+    for (const dl of [-0.25, 0.25]) clusterBeam(cluster, [dl, -foot - 0.45, 0], [dl, -head - 0.25, deckY + 0.9], 0.06, timber, 'painted');
+    for (let rung = 0; rung < 14; rung += 1) {
+      const t = (rung + 0.6) / 14.5, y = t * (deckY + 0.9);
+      clusterBox(cluster, 0, -foot - 0.45 + t * (foot - head + 0.2), y, 0.5, 0.04, 0.05, timber, 'painted');
+    }
+    // the deck, its bearers, and the sandbag parapet: three courses, bonded, a firing slot to the front
+    const deckHalf = head + 0.25;
+    clusterBox(cluster, 0, 0, deckY + 0.08, 2 * deckHalf, 0.12, 2 * deckHalf, timber.clone().multiplyScalar(1.1), 'painted');
+    for (const sz of [-1, 0, 1]) clusterBox(cluster, 0, sz * (deckHalf - 0.15), deckY - 0.08, 2 * deckHalf, 0.18, 0.16, timber, 'painted');
+    for (let course = 0; course < 3; course += 1) {
+      const y = deckY + 0.24 + course * 0.17;
+      for (const [side, along] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+        const bags = 5;
+        for (let k = 0; k < bags; k += 1) {
+          const t = -deckHalf + 0.3 + (k + (course % 2) * 0.5) * ((2 * deckHalf - 0.6) / bags);
+          if (t > deckHalf - 0.25) continue;
+          if (along === 1 && course === 2 && Math.abs(t) < 0.5) continue; // the firing slot
+          const lateral = side !== 0 ? side * (deckHalf - 0.18) : t, longitudinal = side !== 0 ? t : along * (deckHalf - 0.18);
+          const long = side !== 0;
+          clusterBox(cluster, lateral, longitudinal, y, long ? 0.34 : 0.56, 0.16, long ? 0.56 : 0.34, (k + course) % 3 ? sandbag : bagDark, 'masonry');
+        }
+      }
+    }
+    // the roof: corner posts, a ridge, a corrugated sheet falling to the back
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const h = roofY - (sz < 0 ? 0.3 : 0) - deckY;
+      clusterBox(cluster, sx * (deckHalf - 0.1), sz * (deckHalf - 0.1), deckY + h / 2, 0.1, h, 0.1, timber, 'painted');
+    }
+    const pitch = Math.atan2(0.3, 2 * deckHalf);
+    clusterBox(cluster, 0, 0, roofY - 0.1, 2 * deckHalf + 0.6, 0.05, 2 * deckHalf + 0.6, new THREE.Color(0x8b8676), 'structure', 0, pitch);
+    // the searchlight on the front rail
+    clusterCylinder(cluster, deckHalf - 0.45, deckHalf - 0.2, deckY + 1.0, 0.16, 0.3, dark, Math.PI / 2, 12);
+    clusterCylinder(cluster, deckHalf - 0.45, deckHalf - 0.04, deckY + 1.0, 0.14, 0.02, new THREE.Color(0xd8d3bf), Math.PI / 2, 12);
+    // a ring of sandbags round the legs' feet, two courses, open at the ladder
+    for (let course = 0; course < 2; course += 1) {
+      for (let k = 0; k < 20; k += 1) {
+        const a = (k + (course % 2) * 0.5) / 20 * Math.PI * 2;
+        if (Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2))) < 0.35) continue;
+        const r = foot + 0.75;
+        clusterBox({ ...cluster, yaw: (cluster.yaw ?? GARAGE_FACILITY_AXIS_YAW_RAD) }, Math.cos(a) * r, Math.sin(a) * r, 0.09 + course * 0.17,
+          0.56, 0.16, 0.34, (k + course) % 3 ? sandbag : bagDark, 'masonry');
+      }
+    }
+    structuralConnections += 24;
+    servicePurposeTags.add('perimeter-guard-tower');
+  };
   const addSafetyRail = (
     cluster: FacilityCluster,
     centerLateral: number,
@@ -1958,11 +2036,16 @@ export function addGarageFacilityDetails({
     for (const sideSign of [-1, 1]) {
       const outer = sideSign * width / 2;
       const inner = sideSign * (width / 2 - 2.8);
+      // the gantry runs on a rail along a concrete runway beam each side (the re-judge, 2026-10-15: "gantries stand on
+      // bare dirt with no rails or footings"), its legs on wheeled end carriages, buffer stops at the runway's ends
+      clusterBox(cluster, outer, 0, 0.16, 1.0, 0.32, 11.0, plinthConcrete, 'masonry');
+      clusterBox(cluster, outer, 0, 0.38, 0.12, 0.12, 10.6, steel, 'structure');
+      for (const end of [-5.25, 5.25]) clusterBox(cluster, outer, end, 0.62, 0.7, 0.6, 0.4, safety, 'painted');
       for (const longitudinal of [-2.7, 2.7]) {
-        clusterBox(cluster, outer, longitudinal, 0.16,
-          1.18, 0.32, 1.18, dark, 'masonry');
-        clusterBox(cluster, outer, longitudinal, height / 2,
-          0.46, height, 0.52, steel, 'structure');
+        clusterBox(cluster, outer, longitudinal, 0.72, 0.62, 0.5, 1.5, steel, 'structure'); // the end carriage
+        for (const dw of [-0.5, 0.5]) clusterCylinder(cluster, outer, longitudinal + dw, 0.62, 0.22, 0.14, dark, 0, 12, Math.PI / 2);
+        clusterBox(cluster, outer, longitudinal, (height + 0.97) / 2,
+          0.46, height - 0.97, 0.52, steel, 'structure');
         clusterBeam(cluster,
           [inner, longitudinal, 0.32],
           [outer, longitudinal, height - 0.42],
@@ -2528,6 +2611,37 @@ export function addGarageFacilityDetails({
       addPartsPallet(fixedCluster(12.5, 12.5), 0, 0, 3);
       addSafetyRail(fixedCluster(-8.5, 11.0), 0, 0, 5.0);
       addTurningRollStation(fixedCluster(13.5, 20.5), 0, 0, new THREE.Color(0x885844));
+      // the yard's perimeter on its left (the re-judge, 2026-10-15: "nothing is fortified (no HESCO, sandbags or
+      // tower)"): a sandbag wall four courses high across the left third, the guard tower in its gap, clear of the
+      // turret and the gun, and HESCO cells either side of the tower
+      {
+        const towerSide = -15.5, towerDepth = 17.0;
+        const facing = (side: number, depth: number): FacilityCluster => {
+          const at = cameraPoint(side, depth), toward = cameraPoint(side, depth - 1);
+          return { x: at.x, z: at.z, baseY: groundAtWorld(at.x, at.z), yaw: Math.atan2(toward.x - at.x, toward.z - at.z) };
+        };
+        const bag = new THREE.Color(0xa88468), bagDark = new THREE.Color(0x8c6c54);
+        addGuardTower(facing(towerSide, towerDepth), bag, new THREE.Color(0x5e4632));
+        const fill = new THREE.Color(0xa47658), mesh = new THREE.Color(0x56514a);
+        for (const side of [-19.6, -11.4]) { // a HESCO cell either side of the tower
+          const cell = facing(side, towerDepth + 0.4);
+          clusterBox(cell, 0, 0, 0.68, 1.04, 1.36, 1.04, fill, 'painted');
+          for (const dl of [-0.52, 0.52]) for (const df of [-0.52, 0.52]) clusterBox(cell, dl, df, 0.7, 0.03, 1.4, 0.03, mesh, 'structure');
+          clusterBox(cell, 0, 0, 1.33, 0.98, 0.06, 0.98, fill.clone().multiplyScalar(1.06), 'masonry');
+        }
+        for (const [from, to] of [[-26.0, -20.4], [-10.6, -6.0]] as const) {
+          const run = facing((from + to) / 2, towerDepth + 0.4), length = to - from;
+          for (let course = 0; course < 4; course += 1) {
+            const bags = Math.floor(length / 0.58);
+            for (let k = 0; k < bags; k += 1) {
+              const l = -length / 2 + 0.29 + k * 0.58 + (course % 2) * 0.29;
+              if (l > length / 2 - 0.25) continue;
+              clusterBox(run, l, 0, 0.09 + course * 0.17, 0.56, 0.16, course < 2 ? 0.7 : 0.36, (k + course) % 3 ? bag : bagDark, 'masonry');
+            }
+          }
+        }
+        environmentSpecificAssemblies += 1;
+      }
   };
   const addFactoryLine = (): void => {
       environmentSpecificAssemblies += 1;
