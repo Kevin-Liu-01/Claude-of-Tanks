@@ -7858,6 +7858,19 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-15 — Sunscar Oasis: Siwa round 3 landed, and its critic fixes (the maps lane)
+
+**Round 3 of the map-revival lane (575f2cb29, 2026-10-07; gauntlet wave 135), stranded off main, landed on current
+main:** Siwa authored lot by lot (`oasis.ts` SIWA_TOWN; the roadside plan retired): old Shali heaped north of the
+caravan street, the new town and the souk on the cross road, the two springs, and the walled palm gardens; the siwa
+kershef's rounded, battered blocks with palm-trunk beam ends (`regional/ksar.ts`).
+- *The blind critics* (2026-10-15, WEAK +0.10; Opus 3/1, Sonnet 3/1): from the open ground north of the souk its rows'
+  backs read as "long blank grey-lavender concrete noise barriers" and the town as isolated buildings on bare sand. The
+  fixes: the siwa kershef a warm tan (its old walls a shade browner); the souk rows' back wall battered mud buttresses
+  at the party walls and ends, each stall's plank back door under a palm-trunk lintel or a shuttered hatch, a worn
+  crest; five kershef houses backing onto the souk across its back lane, fronts north (34 m and more off every zone).
+  Census [1587, 1660, 822] -> [1653, 1729, 822].
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
