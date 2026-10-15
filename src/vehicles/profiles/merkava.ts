@@ -639,7 +639,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         [gc.hw1, gc.lower1, gc.z1], [-gc.hw1, gc.lower1, gc.z1],
         [-gc.hw0, gc.upper0, gc.z0], [gc.hw0, gc.upper0, gc.z0],
         [gc.hw1, gc.upper1, gc.z1], [-gc.hw1, gc.upper1, gc.z1]));
-      P.hullG.userData[`${P.spec.id}GlacisClosureReceipt`] = Object.freeze({
+      P.hullG.userData[`${tankSeedId(P.spec.id)}GlacisClosureReceipt`] = Object.freeze({
         revision: 'upper-lower-glacis-web-r1',
         rearStationZM: gc.z0,
         frontStationZM: gc.z1,
@@ -1268,7 +1268,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   merkavaChassisHullStage13();
   const merkavaChassisReceiptStage1 = (): void => {
     if (podSupportSeats.length) {
-      P.hullG.userData[`${P.spec.id}HullAttachmentReceipt`] = Object.freeze({
+      P.hullG.userData[`${tankSeedId(P.spec.id)}HullAttachmentReceipt`] = Object.freeze({
         revision: 'bow-pod-support-shoes-r1',
         supports: Object.freeze(podSupportSeats),
         allSupportsOverlapHullAndPod: true,
@@ -1565,7 +1565,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       .includes(P.spec.id)) {
       const roadWheelY = c.wheelR + 0.07;
       const frontRoadWheelZ = Math.max(...c.wheelZs);
-      P.hullG.userData[`${P.spec.id}RunningGearReceipt`] = Object.freeze({
+      P.hullG.userData[`${tankSeedId(P.spec.id)}RunningGearReceipt`] = Object.freeze({
         revision: c.runningGearRevision ?? 'terminal-course-reseat-r2',
         previousSprocketZM: c.sprocket.z - (c.sprocketForwardM ?? 0),
         previousSprocketYM: c.sprocket.y - (c.sprocketRaiseM ?? 0),
@@ -4602,7 +4602,7 @@ function merkavaRearTurretBulkhead(P: TankBuilderPort, t: MerkavaTurretConfig): 
         basketTieCount += 1;
       }
     }
-    P.turretG.userData[`${id}RearClosureReceipt`] = Object.freeze({
+    P.turretG.userData[`${tankSeedId(id)}RearClosureReceipt`] = Object.freeze({
       revision: 'turret-bustle-closure-r1',
       bulkheadDepthM: depth,
       rearOverlapM: rearOverlap,
@@ -4657,7 +4657,7 @@ function merkavaThirdGenTurretSeat(P: TankBuilderPort, p: MerkavaProfileData): v
 
   const restWorldBottomY = pivotY + localBottom * verticalScale;
   const restWorldTopY = pivotY + localTop * verticalScale;
-  P.turretG.userData[`${P.spec.id}TurretSeatReceipt`] = Object.freeze({
+  P.turretG.userData[`${tankSeedId(P.spec.id)}TurretSeatReceipt`] = Object.freeze({
     revision: 'turret-ring-hull-seat-r1',
     hullDeckWorldYM: p.deckY,
     authoredShellBaseWorldYM: shellBaseWorldY,
@@ -5704,7 +5704,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
           // carries the complete hood instead of revealing a fixed brick.
           P.addGunExtra(xform(forwardCrest,
             -gunFrame.x, -gunFrame.y, -gunFrame.z));
-          P.gunG.userData[`${P.spec.id}ArticulatedGunHoodReceipt`] = Object.freeze({
+          P.gunG.userData[`${tankSeedId(P.spec.id)}ArticulatedGunHoodReceipt`] = Object.freeze({
             revision: 'complete-moving-gun-assembly-r1',
             owner: 'rig_gun',
             movesWithGunPitch: true,
@@ -7573,7 +7573,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
               const buildMerkavaMarkAssemblyCourse9 = (): void => {
                 const buildMerkavaMarkAssemblyCourse8 = (): void => {
                   const buildMerkavaMarkAssemblyCourse2 = (): void => {
-                    P.turretG.userData[`${tankId}LegacyEquipmentSeatReceipt`] = Object.freeze({
+                    P.turretG.userData[`${tankSeedId(tankId)}LegacyEquipmentSeatReceipt`] = Object.freeze({
                       revision: 'source-shell-equipment-seating-r1',
                       sourceRoofDatum: true,
                       seats: Object.freeze(earlyPotSeats),
@@ -9175,7 +9175,7 @@ function merkavaSourceOracleTurret(
             innerFaceOverlapM: 0.006,
           }));
         });
-        const receiptKey = `${id}TurretRailSeatReceipt`;
+        const receiptKey = `${tankSeedId(id)}TurretRailSeatReceipt`;
         const existing = P.turretG.userData[receiptKey]?.seats ?? [];
         P.turretG.userData[receiptKey] = Object.freeze({
           revision: 'outer-carrier-conformal-r1',
@@ -10440,7 +10440,7 @@ function merkavaSourceFinish(
     deckRod([[0.94, roofAt(-1.30), -1.30], [0.72, roofAt(-1.66), -1.66], [0.90, roofAt(-2.10), -2.10]],
       'turretDetail', 0.018, 0.032);
     if (earlyOracle) {
-      P.turretG.userData[`${id}SourceFitReceipt`] = Object.freeze({
+      P.turretG.userData[`${tankSeedId(id)}SourceFitReceipt`] = Object.freeze({
         revision: restoresVisibleEraRing ? 'outer-carrier-era-ring-r2' : 'source-shell-conformal-fit-r1',
         roofDatumSource: 'source-oracle',
         roofCourse: Object.freeze(earlyOracle.roof.map((station) => Object.freeze([...station]))),

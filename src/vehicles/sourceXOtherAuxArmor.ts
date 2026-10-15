@@ -2,6 +2,7 @@
 // seven models retain their untouched main cells, ERA, tracks and renderers.
 import type {FleetTankSpec} from './specContracts.ts';
 import type {ArmorPlate} from './specHelpers.ts';
+import {tankSeedId} from './tankIdAliases.ts';
 import {auxiliaryFace,auxiliaryQuad,auxiliaryRectangle,type AuxPoint} from './sourceXAuxArmorPrimitives.ts';
 import {type10AuxiliarySkirts} from './sourceXType10AuxArmor.ts';
 import {exposedAuxiliaryCourse} from './sourceXAuxArmorExposure.ts';
@@ -158,6 +159,15 @@ function replacements(id:string,template:ArmorPlate,side:number):ArmorPlate[] {
   // vehicle has open road gear, not the donor's full-length hanging skirts.
   return [];
 }
+/** Plate names built from the id keep its schema-1 spelling (tankIdAliases.ts): seat signatures and anatomy hash them. */
+function schemaOneNames(id:string,plates:ArmorPlate[]):ArmorPlate[] {
+  const seed=tankSeedId(id);
+  if(seed===id)return plates;
+  // A literal schema-1 name (type10_x_<side>_fascia) is already right, even where the new id is its prefix.
+  const fix=(text:string|undefined)=>!text||text.startsWith(`${seed}_`)?text
+    :text.startsWith(`${id}_`)?`${seed}${text.slice(id.length)}`:text;
+  return plates.map(p=>({...p,name:fix(p.name) as string,...(p.surfaceGroup?{surfaceGroup:fix(p.surfaceGroup)}:{})}));
+}
 export function applySourceXOtherAuxArmor(spec:FleetTankSpec,id:string):void {
   if(!IDS.has(id))return;
   const old=spec.armor.hullPlates.filter(p=>p.kind==='spaced'&&/^skirt_[RL]$/.test(p.name)&&!p.era&&!p.gunFollow);
@@ -165,6 +175,6 @@ export function applySourceXOtherAuxArmor(spec:FleetTankSpec,id:string):void {
   spec.armor.hullPlates=spec.armor.hullPlates.filter(p=>!old.includes(p));
   for(const template of old){
     const side=template.name.endsWith('_L')?-1:1;
-    spec.armor.hullPlates.push(...memoizedAuxiliaryShapes(`${id}/${side}`,template,()=>replacements(id,template,side)));
+    spec.armor.hullPlates.push(...schemaOneNames(id,memoizedAuxiliaryShapes(`${id}/${side}`,template,()=>replacements(id,template,side))));
   }
 }
