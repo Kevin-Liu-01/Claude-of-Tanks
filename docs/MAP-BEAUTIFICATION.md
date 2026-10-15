@@ -7858,6 +7858,14 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-14 — Aegis Crossing rounds 4-5 on main: the Tajo's slot, the Puente Nuevo, levees and miradors (the maps lane)
+
+Map revival lane 2's rounds 4 and 5 (wip/mr2-aegis-r5 63776ad88, never landed) on main as one item: the Puente Nuevo
+over the slot (buttress piers, string courses, voussoir rings, a monumental ashlar, its face's tone in slow waves; now its
+own module, maps/puenteNuevo.ts, keeping the arched bridge's deck and parapet law), the gorge floor a dry bed inside the
+walls' foot, the Tajo a 54 m slot at the Puente with its walls bedded at full weight (strata 0.22), a stream and its pools
+in the waist (the map's ocean block: a still river in August), levees and the miradors' walls for the middle band's
+cover, the rejas that read from the street's end, six border farmsteads. Census [6644, 7532, 5359] -> [6812, 7833, 5348].
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
