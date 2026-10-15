@@ -10,7 +10,7 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, placeShed, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
+  buildHouse, emitRoof, holedBox, placeShed, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
   type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
@@ -887,28 +887,38 @@ const church: RegionalBuilder = (ctx) => {
   // the west tower (toward +z, the street front), stone lower stage, slate-hung belfry, octagonal needle spire
   const tz = naveZ + towerZ;
   sink.span('stone', -towerS / 2 - 0.12, -0.5, tz - towerS / 2 - 0.12, towerS / 2 + 0.12, 0.6, tz + towerS / 2 + 0.12);
-  sink.span('stone', -towerS / 2, 0.5, tz - towerS / 2, towerS / 2, towerH - 3.6, tz + towerS / 2);
+  // (props census #5, lane B 2026-10-15) the shaft's west door cut through it (its leaf was laid on the solid span), the
+  // leaf at the back of the reveal; the tower recorded as a shaft body (it topples in its courses, the spire its crown)
+  const dRev = 0.34;
+  holedBox(sink, 'stone', -towerS / 2, tz - towerS / 2, towerS / 2, tz + towerS / 2, 0.5, towerH - 3.6, { front: [{ u0: -0.75, u1: 0.75, y0: 0.6, y1: 3.5 }] }, 0.4, dRev);
+  recordShaft(sink, 0, tz, towerS, towerH + 9.5, 'stone');
   // (facade craft, desktop; wave 116 read the bare shaft as "a church tower brick scaled several times too large") the
   // shaft rendered like the nave over its rubble, its dressed sandstone corners bare as quoin strips, clear of the door
   if (facadeOn()) renderedShaft(sink, 'plaster', 0, tz, towerS, 0.6, towerH - 3.75, 0.42, [[[-1.14, 1.14, 0.55, 4.1]]]);
-  // the belfry stage hung with roof tiles, coursed downward like a roof
-  sink.box('roof', [0, towerH - 1.8, tz], [towerS / 2 + 0.08, 1.8, towerS / 2 + 0.08], { uv: { kind: 'plane', origin: [0, towerH, tz], u: [1, 0, 1], v: [0, -1, 0] } });
+  // the belfry stage hung with roof tiles, its two louvred openings a face cut through it (they were dark plates with
+  // their slats laid on the hung box): the slats across each opening in its reveal, the belfry's dark behind them
+  const hs = towerS / 2 + 0.08, louvre: HoleRect[] = [-0.75, 0.75].map((u) => ({ u0: u - 0.31, u1: u + 0.31, y0: towerH - 2.7, y1: towerH - 1.1 }));
+  const bf = holedBox(sink, 'roof', -hs, tz - hs, hs, tz + hs, towerH - 3.6, towerH, { front: louvre, right: louvre, back: louvre, left: louvre }, 0.3, 0.24);
   const front: Face = { origin: [0, 0, tz + towerS / 2], u: [1, 0, 0], out: [0, 0, 1], width: towerS };
-  doorUnit(sink, front, 0, 0.6, 1.5, 2.9, { leaf: rgb(0x4a3020), frame: { bucket: 'stone', width: 0.3, out: 0.16, arch: true },
-    steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
+  sink.recess = dRev;
+  try {
+    doorUnit(sink, front, 0, 0.6, 1.5, 2.9, { leaf: rgb(0x4a3020), frame: { bucket: 'stone', width: 0.3, out: 0.16, arch: true },
+      steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
+  } finally { sink.recess = 0; }
   for (const [face, sgn] of [[0, 1], [0, -1], [1, 1], [1, -1]] as const) {
     const f: Face = face === 0
       ? { origin: [0, 0, tz + sgn * (towerS / 2 + 0.08)], u: [sgn, 0, 0], out: [0, 0, sgn], width: towerS }
       : { origin: [sgn * (towerS / 2 + 0.08), 0, tz], u: [0, 0, -sgn], out: [sgn, 0, 0], width: towerS };
-    // belfry louvres and a clock face
+    // belfry louvres (in the openings' reveals) and a clock face
+    const bfFace = face === 0 ? (sgn > 0 ? bf.front : bf.back) : (sgn > 0 ? bf.right : bf.left);
     for (const u of [-0.75, 0.75]) {
-      faceBox(sink, 'dark', f, u, towerH - 1.9, 0.01, 0.62, 1.6, 0.03, { decor: true });
-      for (let k = 0; k < 5; k++) faceBox(sink, SW, f, u, towerH - 2.55 + k * 0.32, 0.04, 0.62, 0.06, 0.06, { colour: rgb(0x403a33), decor: true });
+      for (let k = 0; k < 5; k++) faceBox(sink, SW, bfFace, u, towerH - 2.55 + k * 0.32, -0.1, 0.62, 0.06, 0.06, { colour: rgb(0x403a33), decor: true }, 'ends');
     }
     // the clock and the slit window stand on the shaft below the belfry, whose hung tiles stand 8 cm proud of it: on the
     // shaft's own face (the connectivity sweep: both hung 7-8 cm in front of the stone)
     faceBox(sink, SW, f, 0, towerH - 4.6, -0.045, 1.15, 1.15, 0.05, { colour: rgb(0xd8d2c2), decor: true });
-    faceBox(sink, 'dark', f, 0, towerH - 4.6, -0.01, 0.07, 0.5, 0.02, { decor: true });
+    // (the hand 5 cm wide: at 7 cm it read as a dark plate on the dial)
+    faceBox(sink, 'dark', f, 0, towerH - 4.6, -0.01, 0.05, 0.5, 0.02, { decor: true });
     faceBox(sink, 'stone', f, 0, towerH - 6.0, -0.065, 0.3, 0.9, 0.04, { decor: true });
   }
   sink.span('stone', -towerS / 2 - 0.2, towerH - 3.75, tz - towerS / 2 - 0.2, towerS / 2 + 0.2, towerH - 3.55, tz + towerS / 2 + 0.2, { decor: true });
