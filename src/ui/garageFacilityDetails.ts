@@ -2575,6 +2575,127 @@ export function addGarageFacilityDetails({
   // field-shed architecture intentionally has no additional facility builder.
   variantBuilders[variant.architecture]?.();
 
+  // The yard piece beside the hero (GA.03; the garage critic panel, 2026-10-14: "the same black tool cart sits in the
+  // same spot in all nine yards ... region-true kit per yard"): the shared pulled power pack on its stand stays in
+  // Verdant (garageDressing.ts), and each outdoor yard sets its own working kit on the same level floor beside the hero.
+  const addRegionalYardPiece = (): void => {
+    const floor = getGarageFacilityTerraces(variant).find((terrace) => terrace.label === 'crew-floor-yard-power-pack');
+    if (!floor) return;
+    const at = fixedCluster(floor.side, floor.depth);
+    const olive = new THREE.Color(0x4f5536), sand = new THREE.Color(0xa58e62), rope = new THREE.Color(0x8c7a55);
+    const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);
+    const wheelPair = (lateral: number, longitudinal: number, radius: number, track: number): void => {
+      for (const side of [-1, 1]) clusterCylinder(at, lateral + side * track / 2, longitudinal, radius, radius, 0.18, black, 0, 16, Math.PI / 2);
+      clusterCylinder(at, lateral, longitudinal, radius, 0.05, track, steel, 0, 10, Math.PI / 2);
+    };
+    const crateStack = (lateral: number, longitudinal: number, count: number, w: number, h: number, l: number, tone: THREE.Color): void => {
+      for (let k = 0; k < count; k += 1) {
+        clusterBox(at, lateral + ((k % 3) - 1) * (w + 0.04), longitudinal + (Math.floor(k / 3) % 2) * (l + 0.04), h / 2 + Math.floor(k / 6) * (h + 0.02),
+          w, h, l, tone.clone().offsetHSL(0, 0, ((k * 7) % 5 - 2) * 0.012), 'equipment');
+        looseParts += 1;
+      }
+    };
+    const pallet = (lateral: number, longitudinal: number): void => {
+      clusterBox(at, lateral, longitudinal, 0.07, 1.2, 0.14, 1.0, wood, 'painted');
+    };
+    switch (variant.architecture) {
+      case 'shade_depot': { // a water trailer and a pallet of jerrycans
+        clusterBox(at, 0, 0, 0.55, 0.9, 0.12, 2.4, steel, 'structure');
+        clusterCylinder(at, 0, 0.1, 1.15, 0.55, 2.0, sand, Math.PI / 2, 16);
+        wheelPair(0, -0.3, 0.38, 1.3);
+        clusterBox(at, 0, 1.6, 0.45, 0.1, 0.1, 1.2, steel, 'structure'); // the drawbar
+        clusterBox(at, 0.3, -1.05, 0.95, 0.1, 0.1, 0.18, black, 'equipment'); // the tap
+        pallet(-1.8, 0.2);
+        crateStack(-1.8, 0.0, 12, 0.17, 0.47, 0.34, olive);
+        operationalMachines += 1;
+        break;
+      }
+      case 'repair_bunker': { // an engine pre-heater on its cart and a loaded sledge
+        clusterBox(at, 0.8, 0, 0.75, 1.0, 0.8, 0.7, olive, 'painted');
+        wheelPair(0.8, 0, 0.22, 0.9);
+        clusterCylinder(at, 0.8, -0.25, 1.35, 0.07, 0.6, black, 0, 10); // the flue
+        clusterCylinder(at, 0.15, 0.2, 0.25, 0.28, 0.3, black, 0, 16); // the coiled hot-air duct
+        for (const side of [-1, 1]) clusterBox(at, -1.2 + side * 0.45, 0.1, 0.06, 0.08, 0.12, 2.2, steel, 'structure', 0, 0.06);
+        clusterBox(at, -1.2, 0.1, 0.2, 1.0, 0.06, 1.9, wood, 'painted');
+        clusterBox(at, -1.2, 0.1, 0.48, 0.8, 0.5, 1.4, olive.clone().multiplyScalar(0.85), 'painted'); // the tarped load
+        operationalMachines += 1;
+        break;
+      }
+      case 'brick_arsenal': { // a two-wheeled ammunition cart and a gas-bottle trolley
+        clusterBox(at, 0, 0, 0.55, 1.1, 0.06, 1.6, steel, 'structure');
+        wheelPair(0, 0.2, 0.32, 1.25);
+        for (const side of [-1, 1]) clusterBox(at, side * 0.45, -1.2, 0.75, 0.05, 0.05, 1.0, steel, 'structure'); // the handles
+        crateStack(0, -0.3, 6, 0.32, 0.22, 0.55, olive);
+        clusterBox(at, -1.6, 0, 0.1, 0.6, 0.06, 0.4, steel, 'structure');
+        for (const dl of [-0.15, 0.15]) clusterCylinder(at, -1.6 + dl, 0, 0.8, 0.11, 1.4, dl < 0 ? new THREE.Color(0x2f5a3a) : red, 0, 16);
+        clusterBox(at, -1.6, 0.18, 0.9, 0.5, 1.6, 0.04, steel, 'structure'); // its back frame
+        break;
+      }
+      case 'naval_drydock': { // coiled hawsers, tyre fenders and a mooring bollard
+        for (const [dl, df] of [[-0.6, 0], [0.7, 0.3]] as const) {
+          for (let k = 0; k < 4; k += 1) clusterCylinder(at, dl, df, 0.07 + k * 0.12, 0.62 - k * 0.04, 0.12, rope, 0, 16);
+          looseParts += 1;
+        }
+        for (let k = 0; k < 3; k += 1) clusterCylinder(at, -1.9, -0.6 + k * 0.62, 0.3, 0.3, 0.22, black, Math.PI / 2, 16);
+        clusterCylinder(at, 1.9, -0.6, 0.35, 0.22, 0.7, black, 0, 16); // the bollard
+        clusterCylinder(at, 1.9, -0.6, 0.75, 0.3, 0.1, black, 0, 16);
+        break;
+      }
+      case 'rail_roundhouse': { // a criss-cross stack of sleepers, spare rail lengths and a track jack
+        for (let layer = 0; layer < 5; layer += 1) {
+          for (let k = 0; k < 3; k += 1) {
+            const along = layer % 2 === 0;
+            clusterBox(at, along ? 0 : -0.55 + k * 0.55, along ? -0.55 + k * 0.55 : 0, 0.08 + layer * 0.15, along ? 2.6 : 0.25, 0.14, along ? 0.25 : 2.6, wood, 'painted');
+          }
+        }
+        for (const df of [1.6, 1.8]) clusterBox(at, 0, df, 0.08, 3.6, 0.16, 0.08, steel, 'structure'); // rail lengths
+        clusterBox(at, -1.9, 0.6, 0.25, 0.3, 0.5, 0.3, red, 'painted'); // the jack
+        clusterBox(at, -1.9, 0.6, 0.62, 0.08, 0.3, 0.08, steel, 'structure');
+        looseParts += 4;
+        break;
+      }
+      case 'rain_canopy': { // a diesel water pump on skids and its hoses
+        for (const side of [-1, 1]) clusterBox(at, side * 0.45, 0, 0.08, 0.1, 0.16, 1.8, steel, 'structure');
+        clusterBox(at, 0, -0.3, 0.55, 0.8, 0.7, 0.9, new THREE.Color(0x3d6a4a), 'painted'); // the engine
+        clusterCylinder(at, 0, 0.55, 0.5, 0.25, 0.5, black, Math.PI / 2, 16); // the pump volute
+        clusterCylinder(at, 0, -0.75, 1.05, 0.05, 0.4, black, 0, 10); // the exhaust
+        clusterCylinder(at, 1.3, 0.4, 0.12, 0.45, 0.24, black, 0, 16); // the coiled suction hose
+        clusterBeam(at, [0, 0.8, 0.5], [0.4, 2.6, 0.08], 0.1, new THREE.Color(0x2a3a52), 'equipment'); // the discharge hose
+        operationalMachines += 1;
+        break;
+      }
+      case 'rock_cavern': { // a snow-chain rack and a fuel heater
+        for (const side of [-1, 1]) clusterBeam(at, [side * 0.9, -0.4, 0], [side * 0.9, 0, 1.6], 0.08, steel, 'structure');
+        for (const side of [-1, 1]) clusterBeam(at, [side * 0.9, 0.4, 0], [side * 0.9, 0, 1.6], 0.08, steel, 'structure');
+        clusterBox(at, 0, 0, 1.55, 1.9, 0.08, 0.08, steel, 'structure');
+        for (let k = 0; k < 5; k += 1) clusterBox(at, -0.7 + k * 0.35, 0.05, 1.0, 0.2, 1.1, 0.06, black, 'equipment'); // hanging chains
+        clusterBox(at, -2.0, 0.2, 0.45, 0.6, 0.9, 0.6, red, 'painted'); // the heater
+        clusterCylinder(at, -2.0, 0.2, 1.05, 0.06, 0.3, black, 0, 10);
+        looseParts += 5;
+        break;
+      }
+      case 'recovery_yard': { // the recovery gear laid out on a pallet: tow bars, a chain coil, shackles, a snatch block
+        pallet(0, 0);
+        for (const dl of [-0.3, 0.3]) clusterBox(at, dl, 0, 0.2, 0.08, 0.08, 2.4, steel, 'structure'); // tow bars
+        clusterCylinder(at, -1.3, 0.3, 0.12, 0.4, 0.22, black, 0, 16); // the chain coil
+        for (let k = 0; k < 3; k += 1) clusterBox(at, 1.2, -0.4 + k * 0.3, 0.1, 0.16, 0.18, 0.06, red, 'equipment'); // shackles
+        clusterCylinder(at, 1.3, 0.6, 0.18, 0.2, 0.12, red, Math.PI / 2, 16); // the snatch block
+        looseParts += 6;
+        break;
+      }
+      case 'factory_line': { // a scrap skip and a small ladle on its cart
+        clusterBox(at, 0, 0, 0.55, 1.8, 1.0, 1.2, new THREE.Color(0x5a5048), 'painted');
+        for (let k = 0; k < 4; k += 1) clusterBox(at, -0.5 + k * 0.32, 0.1, 1.1, 0.3, 0.12, 0.6, steel, 'equipment', k * 0.4, k * 0.2); // scrap
+        clusterBox(at, -2.0, 0, 0.3, 0.9, 0.12, 0.9, steel, 'structure');
+        wheelPair(-2.0, 0, 0.18, 0.9);
+        clusterCylinder(at, -2.0, 0, 0.75, 0.38, 0.7, new THREE.Color(0x6a3f2c), 0, 16); // the ladle
+        looseParts += 4;
+        break;
+      }
+    }
+  };
+  addRegionalYardPiece();
+
   // Vehicle exhibits do not belong to the cached environment pack. One
   // asynchronously streamed, full-detail four-bay fleet graph supplies every
   // complete tank and teardown component in all ten Garages. Keeping the
