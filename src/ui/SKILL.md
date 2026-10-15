@@ -105,6 +105,20 @@ and the hero tank share one deliberate service-yard grid. Never radially aim an
 individual structure at the turntable before merging. Preserve the shared
 albedo and normal texture residency for plaster, masonry, timber, and roofs
 rather than replacing close Garage structures with flat colors.
+The hero's outline from the Garage camera stays clear (garage critic panel and
+ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
+the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses
+the hull or turret, a light, calm value stands behind the turret line, and a
+signature facility sits in a third of the frame or frames the hero. Per Garage:
+- Sirocco: the shade depot at view (20, 22), the water tower beyond it, the container line low behind the hero.
+- Saltmere: the quay crane travelled to (17, 22), its jib slewed to sea; the lighthouse to the far left.
+- Redrock: the recovery yard and its gantry at (17, 14.5).
+- Frosthollow: the bunker square to the view at side 9.5, its portal beside the turret, its light facade behind it.
+- Glacier: a 68 m cliff across the frame, the tunnel mouth beside the turret at side 8.5.
+- Ironworks: the crane bay square, its column lines 25.6 m apart framing the hero; crab and booth racked right.
+- Monsoon: the covered bay square, its column lines 24 m apart framing the hero.
+- Steinburg: the Zeughaus 7 m back at the yard's level, its roofline against the sky; the fire station off the left.
+- Cinder: the engine shed at the yard's level; its bracket signals gone, the water crane off the facade.
 The shared turntable dimensions, ground elevations, and terrain exclusion live
 in `garagePresentationPose.ts`. Keep terrain and hardstands below the complete
 platform base, including one terrain-cell safety margin. Recolor the existing
