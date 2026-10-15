@@ -49,7 +49,7 @@ assert.deepEqual(['autumn', 'delta', 'mangrove'].map((id) => reedFormForBoat(boa
 // (the frozen lakes' stage and frost-killed reeds are the winter-lake kit's own, whatever the map's boats)
 const kitSource = readFileSync(new URL('./mapKits.ts', import.meta.url), 'utf8');
 assert.match(kitSource, /jettyForm: JettyForm = 'stage'/, 'a frozen lake builds a stage');
-assert.match(kitSource, /dressReedClump\('frost', buckets\.straw, from, buckets\.baked\)/, 'and its reeds are frost-killed');
+assert.match(kitSource, /dressReedClump\('frost', buckets\.straw, from, buckets\.plaster, false\)/, 'and its reeds are frost-killed, their snow in the plaster');
 // the old two-row kit drew a turn and a UV jitter a pile, a UV jitter a deck slab
 assert.equal(legacyJettyDraws(7.5), 10 * 5 + 4 * 4);
 assert.equal(legacyJettyDraws(15.2), 10 * 9 + 4 * 8);
