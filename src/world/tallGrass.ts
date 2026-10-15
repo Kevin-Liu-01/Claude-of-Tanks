@@ -4,6 +4,7 @@ import { createGroundPressureField, type GroundDisturbance, type GroundPressureF
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
+import { swardCellSeed, swardNoise, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -224,32 +225,13 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function cellSeed(seed: number, ix: number, iz: number): number {
-  let h = (seed ^ 0x7F4A7C15) >>> 0;
-  h = Math.imul(h ^ (ix * 0x85EBCA6B), 0xC2B2AE35) >>> 0;
-  h = Math.imul(h ^ (iz * 0x27D4EB2F), 0x165667B1) >>> 0;
-  return (h ^ (h >>> 16)) >>> 0;
-}
+const cellSeed = swardCellSeed;
 
 const smoothstep = (a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
 
-/**
- * Ground lane (2026-10-03): a smooth value noise on a `cell`-metre lattice (0..1) — the sward's tussocks (1.7 m) and
- * its tall and grazed patches (9 m). Position-hashed: it draws nothing from a cell's seeded stream.
- */
-function swardNoise(x: number, z: number, cell: number, salt: number): number {
-  const fx = x / cell, fz = z / cell;
-  const ix = Math.floor(fx), iz = Math.floor(fz);
-  const tx = fx - ix, tz = fz - iz;
-  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
-  const h = (a: number, b: number): number => (cellSeed(salt, a, b) & 0xffff) / 65535;
-  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
-  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
-  return a + (b - a) * sz;
-}
 
 /**
  * A clump of `blades` strips fanned around the root, each `segments` quads tall plus a tip triangle: position.x is
@@ -590,6 +572,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   // stands as its crop
   const _field = createLandFieldSample();
   const _contactN = { x: 0, y: 1, z: 0 }; // (the rendered near terrain's normal, reused)
+  const _patch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -933,18 +916,14 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
         Math.min(1.6, hc[0] / b.tip[0] * hl), Math.min(1.6, hc[1] / b.tip[1] * hl), Math.min(1.6, hc[2] / b.tip[2] * hl));
       return;
     }
-    // grass r2 (the critics: "one species and one colour"): a sward wanders in colour patch by patch — fresh regrowth
-    // greener, last season's straw standing in another, a russet stand of sorrel or dock in seed — and in light (a
-    // 7.5 m value patch), each read as its own patch from tens of metres where the clump's own jitter averages away
-    const hueN = swardNoise(x, z, 11, 0x7ee5), valN = swardNoise(x, z, 7.5, 0x3a7c);
-    const fresh = reedTint ? 0 : smoothstep(0.60, 0.86, hueN), cured = reedTint ? 0 : smoothstep(0.62, 0.88, 1 - hueN);
-    const rus = (b.kind === 'meadow' || b.kind === 'savanna' || b.kind === 'steppe') && !reedTint
-      ? 0.8 * smoothstep(0.74, 0.92, swardNoise(x, z, 5.2, 0x91f3)) : 0;
-    const dryP = Math.max(dry, 0.55 * cured);
-    const pr = (b.tip[0] * (1 - dryP) + b.dry[0] * dryP) / b.tip[0] * (1 - 0.12 * fresh) * (1 + 0.22 * rus);
-    const pg = (b.tip[1] * (1 - dryP) + b.dry[1] * dryP) / b.tip[1] * (1 + 0.07 * fresh) * (1 - 0.14 * rus);
-    const pb = (b.tip[2] * (1 - dryP) + b.dry[2] * dryP) / b.tip[2] * (1 - 0.14 * fresh) * (1 - 0.30 * rus);
-    const plum = lum * (0.86 + 0.28 * valN);
+    // grass r2 (the critics: "one species and one colour"): the sward's patch (swardPatch.ts — the tufts read the same
+    // field): fresh regrowth, last season's straw, a russet stand, and its light; a reed margin keeps its own olive
+    const pt = reedTint ? null : swardPatchAt(x, z, b.kind, _patch);
+    const dryP = Math.max(dry, pt ? 0.55 * pt.cured : 0);
+    const pr = (b.tip[0] * (1 - dryP) + b.dry[0] * dryP) / b.tip[0] * (pt ? pt.r : 1);
+    const pg = (b.tip[1] * (1 - dryP) + b.dry[1] * dryP) / b.tip[1] * (pt ? pt.g : 1);
+    const pb = (b.tip[2] * (1 - dryP) + b.dry[2] * dryP) / b.tip[2] * (pt ? pt.b : 1);
+    const plum = lum * (pt ? pt.value : 1);
     // the species: a seed-bearing grass (more of it where the sward stands tall), a flowering herb inside a flower patch
     // (a 5.5 m noise; white, yellow or purple by a 19 m patch of its own; a third as many on a cured, straw-tipped biome)
     let code = 0;

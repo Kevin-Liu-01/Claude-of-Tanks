@@ -1441,6 +1441,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    'src/world/swardPatch.selftest.mjs', // grass r2 (2026-10-15): the sward's patches, one field for the blades and the tufts
     'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps
     'src/world/swardTerrain.selftest.mjs', // ground lane (2026-10-08, wave 274): the field gate's band, the sward on its slopes, the thatch
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
