@@ -48,7 +48,7 @@ import {
 import { bakeCloudVolumes, cloudVolumeBake, type CloudVolumeTextures } from './cloudVolumeNoise.ts';
 import { cloudBsmSlices, cloudDeckTau, cloudGroundLight, cloudStackOf, packCloudStack } from './cloudLayers.ts';
 import {
-  CLOUD2_BSM_FRAGMENT, CLOUD2_RESOLVE_FRAGMENT, CLOUD2_SHADE_FRAGMENT, cloud2TraceFragment, type Cloud2TraceDefines,
+  CLOUD2_BSM_FRAGMENT, CLOUD2_LOW_SUN_EXTRA_STEPS, CLOUD2_RESOLVE_FRAGMENT, CLOUD2_SHADE_FRAGMENT, cloud2TraceFragment, type Cloud2TraceDefines,
 } from './cloudShaders.ts';
 
 /** 0..1 smoothstep of a 0..1 ramp (the deck's far rows' share of the overcast haze target). */
@@ -1423,7 +1423,7 @@ export class VolumetricCloudLayer {
     // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the tier's law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs
     (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', budget.lightEvery))), lightTune('CLOUD_LIGHT_T', 0.15),
-      lightTune('CLOUD_SUN_STEPS', budget.sunSteps), lightTune('CLOUD_T_EXIT', budget.exitT));
+      lightTune('CLOUD_SUN_STEPS', budget.sunSteps) + this.lowSunExtraSteps(), lightTune('CLOUD_T_EXIT', budget.exitT));
     t.uDetailRange.value = budget.detailRange * lightTune('CLOUD_DETAIL_RANGE', 1);
     t.uStepGrowth.value = budget.growth * lightTune('CLOUD_STEP_GROWTH', 1);
     m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
@@ -1716,6 +1716,18 @@ export class VolumetricCloudLayer {
     const rgba = new Uint8Array(w * h * 4);
     this.renderer.readRenderTargetPixels(this.copyTarget, 0, 0, w, h, rgba);
     return { width: w, height: h, rgba };
+  }
+
+  /**
+   * (2026-10-15) the secondary sun march's extra steps for a low sun (cloudShaders.ts CLOUD2_LOW_SUN_EXTRA_STEPS): the
+   * knob's count at the horizon, none from 17 degrees up (QA knob CLOUD_SUN_STEPS_LOW; 0 = the tier's own steps).
+   */
+  private lowSunExtraSteps(): number {
+    const extra = Math.min(CLOUD2_LOW_SUN_EXTRA_STEPS, Math.max(0, Math.round(lightTune('CLOUD_SUN_STEPS_LOW', 0))));
+    if (!extra) return 0;
+    const up = Math.max(0, (this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3).y);
+    const k = 1 - Math.min(1, Math.max(0, (up - 0.1) / 0.2));
+    return Math.round(extra * k * k * (3 - 2 * k));
   }
 
   /**

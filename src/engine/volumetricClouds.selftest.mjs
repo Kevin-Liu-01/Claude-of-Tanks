@@ -808,7 +808,10 @@ assert.ok(shadersSource.includes('d = clamp( ( d * 2.0 - modifier * 0.5 ) / max(
 assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(defs\.lightEvery, 0\.15, defs\.sunSteps, defs\.exitT\) \}/);
 assert.match(layerSource, /uFine: \{ value: new THREE\.Vector2\(defs\.fineN, defs\.fineStride\) \}/);
 assert.match(layerSource, /const budget = CLOUD_TIERS\[this\.traceTier\] \?\? CLOUD_TIERS\.high;\s*t\.uStepCap\.value = lightTune\('CLOUD_STEP_CAP', budget\.steps\);\s*\(t\.uFine\.value as THREE\.Vector2\)\.set\(lightTune\('CLOUD_FINE_N', budget\.fineN\), lightTune\('CLOUD_FINE_STRIDE', budget\.fineStride\)\);/, 'the refinement the tier\'s');
-assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', budget\.lightEvery\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', budget\.sunSteps\), lightTune\('CLOUD_T_EXIT', budget\.exitT\)\);/, 'the defaults the tier\'s law');
+assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', budget\.lightEvery\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', budget\.sunSteps\) \+ this\.lowSunExtraSteps\(\), lightTune\('CLOUD_T_EXIT', budget\.exitT\)\);/, 'the defaults the tier\'s law');
+// (2026-10-15) the low sun's extra secondary steps: none by default (QA knob CLOUD_SUN_STEPS_LOW), room compiled in
+assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', 0\)/);
+assert.ok(shadersSource.includes('#define CL2_SUN_STEPS ${defs.sunSteps + CLOUD2_LOW_SUN_EXTRA_STEPS}'), 'the loop has room for them');
 // round 7 (2026-10-07, wave 221 on Monsoon: a rain shaft in front of a tower's dark core read as blue sky through it): the
 // rain under a storm takes the storm's grey light, darker under a heavy core, the sun's glow only through a thin column
 assert.ok(layerSource.includes('amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.7 ) * ( 1.0 - 0.7 * prec );')

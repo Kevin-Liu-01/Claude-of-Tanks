@@ -463,13 +463,22 @@ export interface Cloud2TraceDefines {
  * transmittance-weighted depth (km) the resolve reprojects by. Ends with the weather beyond the medium (the rain, the sea
  * fog bank, the cirrus sheet and the contrails) from `weatherGlsl`, composited as round 71 did.
  */
+/**
+ * 2026-10-15 (the SKY lane; the C2 diagnosis critic: lit clouds at a low sun stand in horizontal stair-step strata, the
+ * optical depth toward the sun following height): the secondary sun march may take this many more doubling steps
+ * (80 m, 160 m, ... a 2.5 km reach on High) while the sun is low, where the Beer map's single-front texel smears the
+ * depth of several cumulus along one long slant ray. volumetricClouds.ts sets the steps a frame takes (QA knob
+ * CLOUD_SUN_STEPS_LOW, the extra steps at the horizon; 0 = the tier's own).
+ */
+export const CLOUD2_LOW_SUN_EXTRA_STEPS = 3;
 export function cloud2TraceFragment(defs: Cloud2TraceDefines, skyGlsl: string, weatherGlsl: string): string {
   return /* glsl */`
 precision highp float;
 precision highp sampler3D;
 #define CL2_STEPS ${defs.steps}
 #define CL2_OCTAVES ${defs.octaves}
-#define CL2_SUN_STEPS ${defs.sunSteps}
+// (2026-10-15) room for the low sun's longer secondary march (uLightBudget.z picks the steps a frame takes)
+#define CL2_SUN_STEPS ${defs.sunSteps + CLOUD2_LOW_SUN_EXTRA_STEPS}
 ${skyGlsl}
 ${CLOUD2_CAMERA_GLSL}
 ${CLOUD2_MEDIUM_GLSL}
