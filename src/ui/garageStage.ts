@@ -22,7 +22,7 @@ import {
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getGarageWorkshopLayoutPose, VERDANT_K2_WORK_LIGHT } from '../game/garageWorkshopLayout.ts';
-import { GARAGE_HARDSTAND_PROGRAM_KEY, garageHardstandGradedHook } from './garageHardstandProgram.ts';
+import { GARAGE_HARDSTAND_PROGRAM_KEY, garageHardstandGradedHook, garageHardstandGrainTexture } from './garageHardstandProgram.ts';
 import type { HallMesh } from './garageHallKit.ts';
 import { buildVerdantHallParts } from './garageVerdantHall.ts';
 
@@ -513,6 +513,13 @@ export function createGarageStage(
     engineCtx?.setupShadowMaterial?.(hardstandSeed, garageHardstandGradedHook(outdoorSeedColor, 0) as THREE.Material['onBeforeCompile']);
     hardstandSeed.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
     addOutdoorSeed('hardstand-graded', track(hardstandSeed));
+    // The shared grain the outdoor floors multiply in is generated once, in the browser's idle time after the Garage
+    // settles, not on the first outdoor visit (the switch ABBA, 2026-10-14: Sirocco's first cold visit presented
+    // later than main's). Never on the boot path: an idle callback, or a late timeout where there is none.
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const warmGrain = (): void => { garageHardstandGrainTexture(aniso); };
+    if (typeof idle === 'function') idle(warmGrain, { timeout: 6000 });
+    else setTimeout(warmGrain, 3000);
   }
   addOutdoorSeed('facility-instance-color', seedStandard({
     color: 0xffffff,
