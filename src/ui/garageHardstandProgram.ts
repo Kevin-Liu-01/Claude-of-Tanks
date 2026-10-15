@@ -434,6 +434,10 @@ diffuseColor.rgb *= mix(vec3(1.0), texture2D(hardstandGrain, vHardstandGround * 
   hardstandGrainStrength);
 vec4 hardstandDetailTexel = texture2D(hardstandDetail, vHardstandGround * hardstandDetailParams.x);
 diffuseColor.rgb *= mix(1.0, hardstandDetailTexel.b * 2.0, hardstandDetailParams.z);
+// a large-scale tone in world space that never repeats with the apron's mirrored canvas, so its marks do not read as one
+// set of stains tiled across the yard (rejudge6, 2026-10-15: "repeated identical oil stains")
+diffuseColor.rgb *= 0.87 + 0.26 * (hardstandNoise(vHardstandGround * 0.045 + 3.1) * 0.65
+  + hardstandNoise(vHardstandGround * 0.13 + 9.7) * 0.35);
 #ifdef USE_MAP
 vec2 hardstandWetTexel = texture2D(hardstandWetMask, vMapUv).rg;
 float hardstandWater = hardstandWet * smoothstep(0.3, 0.8, hardstandWetTexel.r);

@@ -617,8 +617,12 @@ function drawHardstand(
       break;
     }
     case 'slab-cinder': {
-      // coal dust and cinders worked into the slabs from the rail roads
+      // coal dust and cinders worked into the slabs from the rail roads; big dull soot patches and pale ash blown across
+      // the slab and swept into its joints, so it never reads as "a huge clean concrete pad" (rejudge6, 2026-10-15)
       scatter(90, 0.6, 2.4, 'rgba(26,24,24,0.24)', 'rgba(26,24,24,0.08)');
+      scatter(22, 2.2, 5.2, 'rgba(28,26,25,0.2)', 'rgba(28,26,25,0.06)', [0.3, 0.7]);
+      scatter(36, 0.9, 2.4, 'rgba(128,120,108,0.16)', 'rgba(128,120,108,0.05)', [0.3, 0.8]);
+      alongJoints(90, 0.22, 'rgba(24,22,21,0.32)', 'rgba(24,22,21,0.1)');
       aggregate(2600, ['14,13,13', '120,70,44'], [0.6, 2.6], [0.1, 0.3], 0.85);
       break;
     }

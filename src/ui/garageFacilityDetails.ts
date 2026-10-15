@@ -17,6 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
+import { GARAGE_FACILITY_GRIME_KEY, garageFacilityGrimeHook } from './garageGrimeProgram.ts';
 import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron, buildTropicalPlants } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
@@ -149,8 +150,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // its full-detail vehicle, which also let the two terrain pads fight.
       parts: [[-31, -17], [2, -36]], floods: [[-39, 1], [39, 1]],
       // the engine shed squared on the rail fan's three roads, its front at depth 19 (GA.04, 2026-10-14), level with the
-      // yard on a cinder apron (the garage critic panel, 2026-10-14: "the shed sits on a sloping grass mound")
-      feature: [0, 27], featureRadius: [10.5, 9],
+      // yard on a cinder apron (the garage critic panel, 2026-10-14: "the shed sits on a sloping grass mound"); the level
+      // yard reaches the whole apron (rejudge6, 2026-10-15: the relief stood up through it as "polygon grass patches")
+      feature: [0, 27], featureRadius: [12.5, 10.5],
       yardLevel: [[0, 14.5, 12.5, 5]],
     },
     rain_canopy: {
@@ -268,7 +270,9 @@ export function garageDrydockGround(basin: GarageDrydockBasin, side: number, dep
 }
 
 /** Glacier's cliff and its tunnel in the face's frame (view side, depth of the face; u along the face from faceSide). */
-const ROCK_CAVERN = Object.freeze({ faceSide: -1, faceDepth: 27.5, mouthU: 9.5, half: 3.6, spring: 3.2, tunnelLength: 14 });
+// the bore 12 m deep, so its carve (3 m past the bulkhead: a terrain diagonal) ends inside the cliff's 16 m (rejudge6,
+// 2026-10-15: "the far end opens onto bright snow, so the cavern is see-through")
+const ROCK_CAVERN = Object.freeze({ faceSide: -1, faceDepth: 27.5, mouthU: 9.5, half: 3.6, spring: 3.2, tunnelLength: 12 });
 
 /**
  * Glacier's tunnel bore in view coordinates (the kit lowers the ground in it to the mouth's level: the re-judge,
@@ -2686,7 +2690,9 @@ export function addGarageFacilityDetails({
     // ash apron, no oil-soaked ground and no drift at the plinth"): a draped ground of cinder, darker and oily before the
     // doors and along the roads, a pale ash drift banked against the plinth ------------------------------------------
     {
-      const cell = 1.5, l0 = -halfW - 7.5, l1 = halfW + 7.5, f0 = -halfL - 7.5, f1 = halfL + 1.2;
+      // (inside the shed's level yard, FACILITY_LAYOUTS.rail_roundhouse: past it the yard's relief stood up through the
+      // drape as "sharp polygon grass patches pasted on asphalt", rejudge6)
+      const cell = 1.5, l0 = -halfW - 5.5, l1 = halfW + 5.5, f0 = -halfL - 4.0, f1 = halfL + 1.2;
       const cols = Math.round((l1 - l0) / cell), rows = Math.round((f1 - f0) / cell);
       const positions: number[] = [], colors: number[] = [], indices: number[] = [];
       const cinder = new THREE.Color(0x3f3a35), oily = new THREE.Color(0x2a2724), ash = new THREE.Color(0x7c766c), tone = new THREE.Color();
@@ -3439,7 +3445,9 @@ export function addGarageFacilityDetails({
       // the engine shed straddles the rail fan's three roads (GA.04); the shed's own stores stand clear of its walls
       addEngineShed(featureSide, featureDepth);
       addDrums(featureSide - 13.2, featureDepth - 7.5, 6);
-      addPoweredWinch(fixedCluster(featureSide + 12.8, featureDepth - 1.5), 0, 0, new THREE.Color(0xa56b34));
+      // the shunting winch in the railway's dark green, not a toy's orange (rejudge6, 2026-10-15: "a tiny toy machine
+      // against the wall")
+      addPoweredWinch(fixedCluster(featureSide + 12.8, featureDepth - 1.5), 0, 0, new THREE.Color(0x4f5b4c));
   };
   const addRainCanopy = (): void => {
       environmentSpecificAssemblies += 1;
@@ -3627,7 +3635,7 @@ export function addGarageFacilityDetails({
         for (const du of [-0.7, 0.7]) clusterCylinder(portal, leafU + du, leafW, 0.12, 0.13, 0.24, ribSteel, Math.PI / 2, 10); // its rollers
       }
       // steel arch ribs down the tunnel on base plates, lagging boards over the crown between them
-      for (let rib = 0; rib < 7; rib += 1) {
+      for (let rib = 0; rib < 6; rib += 1) {
         const w = -0.9 - rib * 2.0;
         const ribTone = inBore(ribSteel, w);
         for (const side of [-1, 1]) {
@@ -3640,7 +3648,7 @@ export function addGarageFacilityDetails({
           clusterBox(portal, Math.cos(am) * r, w, spring + Math.sin(am) * r, 2 * r * Math.sin((a1 - a0) / 2) + 0.04, 0.2, 0.18,
             ribTone, 'structure', am + Math.PI / 2);
         }
-        if (rib < 6) {
+        if (rib < 5) {
           for (let i = 2; i < 7; i += 1) { // lagging between this rib and the next over the crown
             const am = Math.PI * (i + 0.5) / 8, r = half - 0.24;
             clusterBox(portal, Math.cos(am) * r, w - 1.0, spring + Math.sin(am) * r, 0.36, 0.06, 1.8,
@@ -3650,9 +3658,16 @@ export function addGarageFacilityDetails({
       }
       // the floor slab, the vent duct along the crown on hangers out to its fan housing on the headwall, warm lamps on
       // the ribs, the bulkhead dark at the end with its lit door
-      for (let k = 0; k < 7; k += 1) { // the floor slab in bays, each a step darker
-        const w0 = 0.4 - k * 2.0, w1 = w0 - 2.0;
-        clusterBox(portal, 0, (w0 + w1) / 2, 0.06, 2 * half - 0.1, 0.12, 2.0 - 0.02, inBore(concreteDark, (w0 + w1) / 2, 0.03), 'masonry');
+      // the floor slab in bays, each a step darker, its top flush with the yard (rejudge6, 2026-10-15: "a raised slab with
+      // a hard edge"): it runs out under the headwall to a steel nosing at the threshold, and trodden slush, grey with
+      // grit, lies between the threshold and the drain instead of clean snow against the concrete
+      for (let k = 0; k < 6; k += 1) {
+        const w0 = (k === 0 ? wallFront : 0.4) - k * 2.0, w1 = 0.4 - (k + 1) * 2.0;
+        clusterBox(portal, 0, (w0 + w1) / 2, -0.17, 2 * half - 0.1, 0.4, w0 - w1 - 0.02, inBore(concreteDark, (w0 + w1) / 2, 0.03), 'masonry');
+      }
+      clusterBox(portal, 0, wallFront - 0.04, 0.02, 2 * half - 0.1, 0.04, 0.08, ribSteel, 'structure'); // the nosing
+      for (const [dw, len, tone] of [[1.0, 1.9, 0x8a8c8c], [2.95, 2.2, 0xb7bcbf]] as const) {
+        clusterBox(portal, 0, wallFront + dw, 0.012, 2 * half + 1.6 - dw * 0.5, 0.024, len, new THREE.Color(tone), 'masonry');
       }
       // the vent duct (the re-judge: it "ends in mid-air"): from the bulkhead at the back along the crown on hangers,
       // through its inline fan, to a bend that takes it up into the shaft in the crown two metres in from the mouth,
@@ -3662,7 +3677,7 @@ export function addGarageFacilityDetails({
         const w0 = ductFront - k * (ductFront - ductBack) / 6, w1 = ductFront - (k + 1) * (ductFront - ductBack) / 6;
         clusterCylinder(portal, ductU, (w0 + w1) / 2, ductY, 0.36, w0 - w1, inBore(new THREE.Color(0x5e6266), (w0 + w1) / 2), Math.PI / 2, 16);
       }
-      for (let k = 0; k < 4; k += 1) {
+      for (let k = 0; k < 3; k += 1) {
         clusterBox(portal, ductU, -3.4 - k * 3.0, ductY + 0.55, 0.05, 0.4, 0.05, inBore(ribSteel, -3.4 - k * 3.0), 'structure');
       }
       clusterCylinder(portal, ductU, -6.4, ductY, 0.58, 1.1, inBore(new THREE.Color(0x4f5458), -6.4), Math.PI / 2, 16); // the fan
@@ -4268,7 +4283,9 @@ export function addGarageFacilityDetails({
       ),
     });
     material.name = `garage-facility:${renderClass.name}`;
-    engineCtx.setupShadowMaterial?.(material);
+    // the working yard's grime and weathered paint on every part (rejudge6, 2026-10-15: "sterile, toy-like props")
+    engineCtx.setupShadowMaterial?.(material, garageFacilityGrimeHook());
+    material.customProgramCacheKey = () => GARAGE_FACILITY_GRIME_KEY;
     materials.push(material);
     if (instances.length) {
       makeInstances(`garage_facility_${renderClass.name}_boxes`,

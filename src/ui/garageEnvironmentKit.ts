@@ -1065,6 +1065,28 @@ function decodePatch(patch: GarageTerrainPatch): Float32Array {
   return values;
 }
 
+/**
+ * A yard's containers weathered in the Garage (rejudge6, 2026-10-15: "toy-saturated containers"): each livery drawn 40 %
+ * of the way to its grey and darkened, the dirt rising up the bottom 1.2 m. Fresh geometry per build (railKit's
+ * pushContainer), so the pass never compounds.
+ */
+function weatherLiveries(buckets: GeometryBuckets): void {
+  for (const value of Object.values(buckets)) {
+    if (!Array.isArray(value)) continue;
+    for (const geometry of value as THREE.BufferGeometry[]) {
+      const color = geometry.getAttribute('color'), position = geometry.getAttribute('position');
+      if (!color || !position) continue;
+      for (let i = 0; i < color.count; i += 1) {
+        const r = color.getX(i), g = color.getY(i), b = color.getZ(i);
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        const k = 0.86 * (1 - 0.18 * Math.max(0, 1 - position.getY(i) / 1.2));
+        color.setXYZ(i, (r + (luma - r) * 0.4) * k, (g + (luma - g) * 0.4) * k, (b + (luma - b) * 0.4) * k);
+      }
+      color.needsUpdate = true;
+    }
+  }
+}
+
 function samplePatch(
   patch: GarageTerrainPatch,
   values: Float32Array,
@@ -1287,6 +1309,7 @@ export function buildGarageEnvironment(
       info: dimensions,
       variant: structureIndex,
     });
+    if (placement.catalogId === 'containerrow') weatherLiveries(local);
     const supports: Array<{ gap: number }> = [];
     for (const value of Object.values(local)) {
       if (!Array.isArray(value)) continue;
@@ -1476,7 +1499,7 @@ export function buildGarageEnvironment(
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
         const { side, depth } = garageWorldPointToView(x, z);
-        if (Math.abs(side - bore.side) < bore.half + 3.4 && depth > bore.depth0 + 0.3 && depth < bore.depth0 + bore.length + 1.8) {
+        if (Math.abs(side - bore.side) < bore.half + 3.4 && depth > bore.depth0 + 0.3 && depth < bore.depth0 + bore.length + 3.0) {
           const index = row * patch.width + column;
           heights[index] = Math.min(heights[index], floorY);
         }
