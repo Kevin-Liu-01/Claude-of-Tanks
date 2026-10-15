@@ -7878,6 +7878,10 @@ stood as the roadside plan's 26 buildings, 16 of them placed, over a 290 m saddl
 - *Measured* (every band holds): orphan 0.147, the zone on its hint (398 m from alpha, 412 from bravo; symmetry 1.053),
   the middle third's cover 0.424 -> 0.473, the weakest sector 0.267 -> 0.400, the sightline median 88 -> 80 m, long
   sightlines 0.055 -> 0.036. 72 buildings where 16 stood; census [9351, 9146, 11650] -> [9619, 9671, 11564].
+- *The blind critics* (2026-10-15, PASS +0.58, Opus 5/1, Sonnet 5/1): the one after-defect both named, a flat black
+  rectangle on a plank shed's wall, was the Kohima bazaar shop's open front (one 'dark' panel). It opens now onto the
+  shop's back wall in shade, a framed opening, two shelves of tins and sacks and a counter across the front
+  (`regional/kohima.ts` shop; decor, no collision change; the goods from the shop's own stream).
 
 ## Acceptance is visual and measured
 
