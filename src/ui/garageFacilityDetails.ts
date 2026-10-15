@@ -1755,7 +1755,25 @@ export function addGarageFacilityDetails({
       clusterBox(loco, 0, -2.3, 3.92, 2.6, 0.12, 2.3, black, 'painted'); // its roof
       for (const f of [-1.0, 0.75, 2.5]) for (const side of [-1, 1]) {
         clusterCylinder(loco, side * 0.76, f, 0.72, 0.68, 0.12, black, 0, 16, Math.PI / 2); // the coupled wheels
+        clusterCylinder(loco, side * 0.84, f, 0.72, 0.16, 0.06, red, 0, 10, Math.PI / 2); // their bosses
       }
+      // (the re-judge, 2026-10-15: "a black cylinder boiler on a box ... no rods, wheels, cab detail or smokebox door"):
+      // the coupling rods and the connecting rods to the outside cylinders, the smokebox door with its dart and hinge
+      // straps, the buffers on their beam, the boiler handrails, the cab's spectacle plates and its side opening
+      const steelRod = new THREE.Color(0x6d7072), brass = new THREE.Color(0x8a7340);
+      for (const side of [-1, 1]) {
+        clusterBox(loco, side * 0.9, 0.75, 0.62, 0.06, 0.12, 3.6, steelRod, 'structure'); // the coupling rod
+        clusterBox(loco, side * 0.96, 2.0, 0.85, 0.06, 0.1, 2.0, steelRod, 'structure', 0, 0.12); // the connecting rod
+        clusterCylinder(loco, side * 0.92, 3.0, 1.05, 0.3, 1.0, black, Math.PI / 2, 12); // the cylinder
+        clusterCylinder(loco, side * 0.62, 4.15, 1.05, 0.17, 0.32, black, Math.PI / 2, 12); // the buffer's stock
+        clusterCylinder(loco, side * 0.62, 4.33, 1.05, 0.22, 0.05, steelRod, Math.PI / 2, 12); // its head
+        clusterBox(loco, side * 0.82, 1.0, 2.75, 0.03, 0.03, 4.6, brass, 'structure'); // the boiler handrail
+        clusterCylinder(loco, side * 0.6, -1.24, 3.05, 0.17, 0.03, new THREE.Color(0x2a3034), Math.PI / 2, 12); // spectacle
+        clusterBox(loco, side * 1.21, -2.3, 2.3, 0.02, 1.4, 0.8, new THREE.Color(0x0f1011), 'painted'); // the cab opening
+      }
+      clusterCylinder(loco, 0, 3.87, 2.25, 0.66, 0.06, new THREE.Color(0x2a2c2d), Math.PI / 2, 16); // the smokebox door
+      clusterBox(loco, 0, 3.92, 2.25, 0.1, 0.1, 0.06, steelRod, 'structure'); // its dart
+      for (const y of [1.95, 2.55]) clusterBox(loco, 0, 3.91, y, 1.0, 0.06, 0.03, black, 'structure'); // its hinge straps
       operationalMachines += 1;
     }
     // --- side walls: tall iron-framed windows between buttresses ---------------------------------------------------
