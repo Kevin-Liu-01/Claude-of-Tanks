@@ -1656,6 +1656,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
     'src/world/maps/regional/latticeDamage.selftest.mjs', // 2026-10-14 props census #3: open frames recorded, read as lattices, folded over in their members
     'src/world/maps/regional/ruinGrammar.selftest.mjs', // 2026-10-14 props census #7: kit ruins on the ruin grammar, walls recorded, no dark plates; the rubble pile keeps the street's draws
+    'src/world/maps/regional/towerDamage.selftest.mjs', // 2026-10-15 props census #9 (E13): every placed tower kind records its bodies, read in storey bands through the multi-body route
     // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
     'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
