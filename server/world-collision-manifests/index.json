@@ -194,8 +194,8 @@
       "concealers": 2285
     },
     "mangrove": {
-      "bytes": 1565076,
-      "sha256": "4cc7c64b705b9c7788fae6e0d5659f310ed6fe6394b1dc6344127bc9795f5829",
+      "bytes": 1566446,
+      "sha256": "a572c92a00cdee92bb3fab7368b2c4141e0dfd158af54709ad3ef5e8fcbad3bc",
       "obstacles": 5599,
       "colliders": 5376,
       "concealers": 6579
@@ -428,8 +428,8 @@
         "concealers": 2358
       },
       "mangrove": {
-        "bytes": 1728275,
-        "sha256": "ace8fb699e192213e80671e70b8f707d19404f1574074a91488439f90c35f867",
+        "bytes": 1729645,
+        "sha256": "29d694624f2347a1a755b2639f5d4373e0effa2156bc1ef6d2440221121d55ed",
         "obstacles": 5756,
         "colliders": 5462,
         "concealers": 6634
