@@ -4562,9 +4562,16 @@ export function initHud(bus: EventBus): HudRuntime {
       const oldFog = scene.fog;
       const rt = new THREE.WebGLRenderTarget(N, N, { depthBuffer: true });
       const hidden: THREE.Object3D[] = [];
+      // 2026-10-14 (the Kestrel water re-bake): a passing cloud's shadow is
+      // weather, not map — the volumetric layer's shade map (cloudShadeMap.ts,
+      // its on switch in w) baked dark smears across the steppe, desert and
+      // mine plates. Off for the capture, restored after.
+      const cloudShade: THREE.Vector4 | undefined = scene.userData.cloudShadeUniforms?.uCotCloudShade?.value;
+      const cloudShadeOn = cloudShade ? cloudShade.w : 0;
       try {
         rt.texture.colorSpace = THREE.SRGBColorSpace;
         scene.fog = null;
+        if (cloudShade) cloudShade.w = 0;
         if (Array.isArray(exclude)) {
           for (const o of exclude) {
             if (o && o.visible !== false) { o.visible = false; hidden.push(o); }
@@ -4594,6 +4601,7 @@ export function initHud(bus: EventBus): HudRuntime {
       } finally {
         renderer.setRenderTarget(oldTarget);
         scene.fog = oldFog;
+        if (cloudShade) cloudShade.w = cloudShadeOn;
         for (const o of hidden) o.visible = true;
         rt.dispose();
       }
@@ -4625,7 +4633,7 @@ export function initHud(bus: EventBus): HudRuntime {
     base: [70, 94, 52], hard: [104, 96, 78], soft: [48, 70, 54],
     forest: 'rgba(36,64,30,0.82)', forestStroke: 'rgba(22,40,18,0.9)',
     water: 'rgba(50,84,82,0.7)', waterStroke: 'rgba(28,48,48,0.8)',
-    bog: 'rgba(92,86,56,0.58)', bogStroke: 'rgba(56,52,34,0.5)',
+    bog: 'rgba(90,80,50,0.7)', bogStroke: 'rgba(50,46,30,0.62)',
     ice: 'rgba(158,190,214,0.85)', iceStroke: 'rgba(104,134,158,0.9)',
     roadCasing: 'rgba(46,40,28,0.9)', roadFill: 'rgba(196,178,140,0.95)',
     buildingFill: '#ccd1d9',

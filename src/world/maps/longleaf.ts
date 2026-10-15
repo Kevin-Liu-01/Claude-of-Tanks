@@ -178,6 +178,6 @@ export default {
   sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00085, fogTintHex: 0xa1a89f, fogMix: 0.6,
     cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.5,
     lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.9, contrast: 1.04 } },
-  minimap: { ...frontier.minimap, base: [73, 95, 59], hard: [105, 96, 73], soft: [44, 65, 48], bog: 'rgba(104,92,54,.6)', bogStroke: 'rgba(54,48,28,.55)' },
+  minimap: { ...frontier.minimap, base: [73, 95, 59], hard: [105, 96, 73], soft: [44, 65, 48], bog: 'rgba(92,81,48,.71)', bogStroke: 'rgba(49,43,25,.66)' },
   shot: { pos: [-244, 50, -250], look: [50, 1, 100] },
 } satisfies import('./contracts.ts').MapCompositionConfig;
