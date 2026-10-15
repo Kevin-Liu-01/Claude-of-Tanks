@@ -2719,16 +2719,6 @@ export function addGarageFacilityDetails({
         operationalMachines += 1;
         break;
       }
-      case 'brick_arsenal': { // a two-wheeled ammunition cart and a gas-bottle trolley
-        clusterBox(at, 0, 0, 0.55, 1.1, 0.06, 1.6, steel, 'structure');
-        wheelPair(0, 0.2, 0.32, 1.25);
-        for (const side of [-1, 1]) clusterBox(at, side * 0.45, -1.2, 0.75, 0.05, 0.05, 1.0, steel, 'structure'); // the handles
-        crateStack(0, -0.3, 6, 0.32, 0.22, 0.55, olive);
-        clusterBox(at, -1.6, 0, 0.1, 0.6, 0.06, 0.4, steel, 'structure');
-        for (const dl of [-0.15, 0.15]) clusterCylinder(at, -1.6 + dl, 0, 0.8, 0.11, 1.4, dl < 0 ? new THREE.Color(0x2f5a3a) : red, 0, 16);
-        clusterBox(at, -1.6, 0.18, 0.9, 0.5, 1.6, 0.04, steel, 'structure'); // its back frame
-        break;
-      }
       case 'naval_drydock': { // coiled hawsers, tyre fenders and a mooring bollard
         for (const [dl, df] of [[-0.6, 0], [0.7, 0.3]] as const) {
           for (let k = 0; k < 4; k += 1) clusterCylinder(at, dl, df, 0.07 + k * 0.12, 0.62 - k * 0.04, 0.12, rope, 0, 16);
