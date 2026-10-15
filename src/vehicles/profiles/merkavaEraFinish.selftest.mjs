@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { tankSeedId } from '../tankIdAliases.ts';
 
 const marks = Object.freeze({
   merkava1b: 16,
@@ -99,7 +100,7 @@ for (const [id, expectedTiles] of Object.entries(marks)) {
     `${id} round reset restores the two-layer ERA field exactly`);
 
   if (id === 'merkava3c' || id === 'merkava3_baz') {
-    const rails = turret.userData[`${id}TurretRailSeatReceipt`];
+    const rails = turret.userData[`${tankSeedId(id)}TurretRailSeatReceipt`]; // receipt keys keep schema-1 names
     assert.ok(rails, `${id} publishes its turret-side rail seats`);
     assert.equal(rails.revision, 'outer-carrier-conformal-r1');
     assert.equal(rails.maximumSurfaceGapM, 0);

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { isOpenLatticeMesh } from '../../../tools/standard-continuity-policy.mjs';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
 // Fixed measurements came from the owner source BEFORE authoring (see each
 // reference packet and source-measurements.json). Do not replace these with
@@ -134,7 +135,7 @@ for (const [id, source] of Object.entries(sources)) {
       `${id}: actual lowest linked shoe meets source ground zero`);
     assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined,`${id}: no second static shoe course`);
 
-    const roofGun=get(`${id}RoofMachineGun`);
+    const roofGun=get(`${tankSeedId(id)}RoofMachineGun`);
     const crewFixture=roofGun;
     let owner=crewFixture;
     while(owner && owner!==turret)owner=owner.parent;
@@ -157,7 +158,7 @@ for (const [id, source] of Object.entries(sources)) {
       const ropes=[];
       hull.traverse(o=>{if(o.userData?.sourceEquipment==='recovery-cable')ropes.push(o);});
       assert.deepEqual(ropes.map(o=>o.name).sort(),
-        [`${id}RecoveryCable_-1`,`${id}RecoveryCable_1`],`${id}: only two source-identified recovery ropes`);
+        [`${tankSeedId(id)}RecoveryCable_-1`,`${tankSeedId(id)}RecoveryCable_1`],`${id}: only two source-identified recovery ropes`);
       for(const rope of ropes) {
         assert.equal(rope.geometry.type,'TubeGeometry',`${id}: exterior role belongs to actual thin rope, not armor`);
         assert.ok(rope.geometry.parameters.radius<=.018,`${id}: no broad surface hidden in the cable role`);
@@ -320,7 +321,7 @@ for (const [id, source] of Object.entries(sources)) {
       // station is the live remote weapon, its support stock (cradle, cheeks, outboard receiver, sensor box) captured with
       // it (auxiliaryStation.ts captureAuxiliaryStock). That stock is now the station's own yawing mesh rather than part of
       // the turret's merged detail, and the mount's bounds include it; the same geometry is measured where it now lives.
-      const stationDetail=get(`${id}RoofMachineGun_yaw_turretDetail`);
+      const stationDetail=get(`${tankSeedId(id)}RoofMachineGun_yaw_turretDetail`);
       for(const [x,y] of [[.90,3.03976],[1.00,3.01360],[1.10,2.97733]])
         near(ray(stationDetail,[x,4,-.90],[0,-1,0])?.y??NaN,y,.004,
           `${id}: source separate RWS outboard sloping body at x=${x}`);
@@ -335,7 +336,7 @@ for (const [id, source] of Object.entries(sources)) {
     }
     if(id==='leo2a5') {
       for(const side of [-1,1]) {
-        const eye=get(`${id}BowTowEye_${side}`),bounds=new THREE.Box3().setFromPoints(vertices(eye));
+        const eye=get(`${tankSeedId(id)}BowTowEye_${side}`),bounds=new THREE.Box3().setFromPoints(vertices(eye));
         near(bounds.max.x-bounds.min.x,.09870,.0015,`${id}: source forged shackle transverse width`);
         near(bounds.min.y,1.04676,.006,`${id}: source hanging shackle lower envelope`);
         near(bounds.max.y,1.26149,.012,`${id}: source vertical shackle upper envelope`);

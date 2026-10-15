@@ -8,6 +8,7 @@ import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { ARIETE_X_FAMILY_SCALE as ARIETE_SCALE } from './profiles/arieteXFamilyFrame.ts';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned permanent-armor/module/crew/collision digests, the
 // whole-model geometry fingerprints and the historical guard-paint and Strv 122 wheel/link inverses that
@@ -27,7 +28,7 @@ const auxiliary = armor => [...armor.hullPlates, ...armor.turretPlates].filter(p
 const arietePoint = point => point.map(value => value * ARIETE_SCALE);
 assert.equal(ARIETE_SCALE, 1.12 * 1.10, 'owner-approved Ariete enlargement is fixed');
 const shot = (id, from, to) => traceTank(new THREE.Vector3(...from), new THREE.Vector3(...to), pose(0), TANK_SPECS[id].armor)
-  .filter(hit => hit.plate?.surfaceGroup?.startsWith(`${id}:`));
+  .filter(hit => hit.plate?.surfaceGroup?.startsWith(`${tankSeedId(id)}:`)); // surface groups keep schema-1 names
 const close = (a, b, label) => assert.ok(Math.abs(a - b) < 4e-6, `${label}: ${a} versus ${b}`);
 
 function triangles(mesh) {

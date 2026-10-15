@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
 function verifyThirdGenerationMark(id, expectedPanels) {
   const visual = createTank(id, null, {
@@ -10,7 +11,7 @@ function verifyThirdGenerationMark(id, expectedPanels) {
   const hull = visual.root.getObjectByName('rig_hull');
   const turret = visual.root.getObjectByName('rig_turret');
 
-  const fit = turret.userData[`${id}SourceFitReceipt`];
+  const fit = turret.userData[`${tankSeedId(id)}SourceFitReceipt`];
   assert.equal(fit.revision, 'outer-carrier-era-ring-r2', `${id} uses the visible ERA carrier-ring fit`);
   assert.equal(fit.roofDatumSource, 'source-oracle', `${id} uses its measured roof course`);
   assert.equal(fit.sidePanelSeats.length, expectedPanels, `${id} seats every side panel`);
@@ -51,19 +52,19 @@ function verifyThirdGenerationMark(id, expectedPanels) {
   assert.ok(fit.eraMountSeats.every((seat) => seat.structuralOverlapM > 0 && seat.cleats === 2),
     `${id} ERA cradles positively overlap their carrier and retain both edge cleats`);
 
-  const rear = turret.userData[`${id}RearClosureReceipt`];
+  const rear = turret.userData[`${tankSeedId(id)}RearClosureReceipt`];
   assert.equal(rear.closedCrownAndFloor, true, `${id} closes the turret/bustle cavity`);
   assert.ok(rear.rearOverlapM >= 0.12, `${id} bulkhead overlaps the bustle root`);
   assert.equal(rear.basketTieCount, 2, `${id} bustle has two structural tie shoes`);
 
-  const seat = turret.userData[`${id}TurretSeatReceipt`];
+  const seat = turret.userData[`${tankSeedId(id)}TurretSeatReceipt`];
   assert.equal(seat.continuousStructuralSeat, true, `${id} turret race is structurally closed`);
   assert.ok(seat.deckEmbedM > 0, `${id} lower race embeds into the hull deck`);
   assert.ok(seat.shellOverlapM > 0, `${id} upper race overlaps the turret shell`);
   assert.ok(seat.restWorldBottomYM < seat.hullDeckWorldYM,
     `${id} turret ring reaches below the deck datum`);
 
-  const glacis = hull.userData[`${id}GlacisClosureReceipt`];
+  const glacis = hull.userData[`${tankSeedId(id)}GlacisClosureReceipt`];
   assert.equal(glacis.buriedEdgeOverlap, true, `${id} glacis web is buried at both ends`);
   assert.ok(glacis.upperRangeM[0] > glacis.lowerRangeM[0],
     `${id} web spans the upper/lower glacis gap`);
