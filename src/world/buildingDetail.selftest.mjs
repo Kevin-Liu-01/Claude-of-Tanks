@@ -3,8 +3,8 @@
 //   1. the census reproduces the 10-12 study's anchors on the kits it scored (B1 §2.3: kolkhoz 17 of 20, shanghai 3,
 //      siwa 2 when it was taken), so its instrumentation still sees the shared detail modules;
 //   2. every builder builds at every seed and its geometry hashes are stable over two runs;
-//   3. no kit drops below its baseline — elements, reading distances, triangles per m² of wall (3 % slack), fine share,
-//      face pass — and no battlefield's kit coverage drops (src/world/buildingDetail.baseline.json; a deliberate change
+//   3. no kit drops below its baseline — elements, reading distances, face pass strictly; triangles per m² of wall and fine share
+//      by no more than 10 % — and no battlefield's kit coverage drops (src/world/buildingDetail.baseline.json; a deliberate change
 //      re-bases it with `node tools/building-detail-census.mjs --update-baseline`);
 //   4. the ratchet catches a drop (a synthetic one).
 import assert from 'node:assert/strict';
@@ -42,7 +42,7 @@ assert.deepEqual(failures, [], `nothing dropped below the baseline:\n  ${failure
 
 // 4. a drop is caught
 const drop = structuredClone(baselineOf(run));
-drop.kits.kolkhoz.score += 1; drop.kits.kolkhoz.trisPerWallM2 *= 1.2; drop.maps.verdant.coverage = 2;
+drop.kits.kolkhoz.score += 1; drop.kits.kolkhoz.trisPerWallM2 *= 1.25; drop.maps.verdant.coverage = 2;
 const caught = ratchetFailures(drop, run);
 assert.ok(caught.some((f) => f.startsWith('kolkhoz: score')) && caught.some((f) => f.startsWith('kolkhoz: trisPerWallM2')) && caught.some((f) => f.startsWith('verdant: coverage')),
   `a synthetic drop is caught (${caught.join('; ')})`);

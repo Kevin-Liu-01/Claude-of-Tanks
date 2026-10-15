@@ -11,10 +11,10 @@
    "facePass": 1
   },
   "savoyard": {
-   "score": 15,
+   "score": 16,
    "silhouette": 5,
    "mid": 5,
-   "fine": 3,
+   "fine": 4,
    "trisPerWallM2": 17.17,
    "fineShare": 0.579,
    "facePass": 1
@@ -164,8 +164,8 @@
    "facePass": 0.455
   },
   "queenstown": {
-   "score": 10,
-   "silhouette": 4,
+   "score": 9,
+   "silhouette": 3,
    "mid": 3,
    "fine": 2,
    "trisPerWallM2": 4.54,

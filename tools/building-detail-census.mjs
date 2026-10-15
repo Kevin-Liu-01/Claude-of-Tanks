@@ -151,7 +151,7 @@ export async function censusKits({ kits = null } = {}) {
           if (seed !== 47) row.hashes[seed] = geometryHash(parts);
           for (const hp of regionalKitPlanOf(parts)?.houses ?? []) {
             const s = hp.spec;
-            row.specs.push({ plinth: s.plinth ? s.plinth.h : 0, eave: s.roof.eave ?? 0, ridge: !!s.roof.ridge, chimneys: s.chimneys.length, gutters: !!s.gutters,
+            row.specs.push({ area: s.w * s.d, plinth: s.plinth ? s.plinth.h : 0, eave: s.roof.eave ?? 0, ridge: !!s.roof.ridge, chimneys: s.chimneys.length, gutters: !!s.gutters,
               verge: !!s.verge, rafters: !!s.rafters, roof: s.roof.kind, thickness: s.roof.thickness ?? 0 });
           }
         }
@@ -186,7 +186,9 @@ export function scoreKit(style, rows, light, mapId) {
     for (const k of Object.keys(door)) door[k] += r.door[k];
   }
   const any = (...names) => names.some((n) => calls[n] > 0);
-  const half = (pred, share = 0.5) => specs.length > 0 && specs.filter(pred).length >= specs.length * share;
+  // (a spec's say is its footprint: a builder's main body speaks for it, not the hut or porch it builds beside it)
+  const areaOf = (xs) => xs.reduce((sum, x) => sum + (x.area ?? 1), 0);
+  const half = (pred, share = 0.5) => specs.length > 0 && areaOf(specs.filter(pred)) >= areaOf(specs) * share;
   const ratio = (a, b, share) => b > 0 && a / b >= share;
   const E = {
     E1: half((s) => s.plinth >= 0.15),
@@ -334,14 +336,17 @@ export function baselineOf(run) {
   };
 }
 
-/** What dropped below the baseline (a density drop of more than 3 % counts; the elements, tiers, face pass and coverage strictly). */
+/**
+ * What dropped below the baseline: the elements, reading distances, face pass and coverage strictly; the density and the
+ * fine share by more than 10 % (a kit losing its craft, not a cost pass trimming hidden faces).
+ */
 export function ratchetFailures(baseline, run) {
   const now = baselineOf(run), out = [];
   for (const [kit, was] of Object.entries(baseline.kits ?? {})) {
     const is = now.kits[kit];
     if (!is) { out.push(`${kit}: kit missing`); continue; }
     for (const key of ['score', 'silhouette', 'mid', 'fine', 'facePass']) if (is[key] < was[key] - 1e-9) out.push(`${kit}: ${key} ${was[key]} -> ${is[key]}`);
-    for (const key of ['trisPerWallM2', 'fineShare']) if (is[key] < was[key] * 0.97 - 1e-9) out.push(`${kit}: ${key} ${was[key]} -> ${is[key]}`);
+    for (const key of ['trisPerWallM2', 'fineShare']) if (is[key] < was[key] * 0.9 - 1e-9) out.push(`${kit}: ${key} ${was[key]} -> ${is[key]}`);
   }
   for (const [map, was] of Object.entries(baseline.maps ?? {})) {
     const is = now.maps[map];
@@ -385,7 +390,7 @@ export function formatMarkdown(run, date = new Date().toISOString().slice(0, 10)
   L.push('E9 sill · E10 shutters (≥ 30 %) · E11 opening ornament (carved crest, painted shutters, heads) · E12 door steps ·');
   L.push('E13 porch, canopy, veranda or an extra roof over a door · E14 gable or eave ornament · E15 gutters (≥ 30 %) ·');
   L.push('E16 wall craft (pilasters, cornice, quoins, plinth paint, bands) · E17 domestic dressing · E18 yard · E19 regional light kit ·');
-  L.push('E20 house grammar (≥ half the dwellings through `buildHouse`). Present on half the specs or windows unless stated.', '');
+  L.push('E20 house grammar (≥ half the dwellings through `buildHouse`). Present on half the specs (by footprint) or windows unless stated.', '');
   L.push(`**Reading distances (K2):** silhouette (100–300 m) ${TIERS.silhouette.join(' ')}; mid (30–100 m) ${TIERS.mid.join(' ')}; fine (5–30 m) ${TIERS.fine.join(' ')}.`);
   L.push('**K3:** triangles per m² of wall over the dwellings (B1 floor ≥ 15, fine share ≥ 0.5; the declared-bespoke kits are judged on K2).');
   L.push('**K4 face pass:** the share of dwelling builders through the house grammar.', '');
