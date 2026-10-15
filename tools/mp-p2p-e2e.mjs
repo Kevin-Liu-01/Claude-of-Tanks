@@ -495,6 +495,8 @@ function sourceArea(callFrame) {
   if (fn === '(idle)') return 'idle';
   if (fn === '(program)') return 'program';
   if (fn === '(garbage collector)') return 'gc';
+  // a built site: the multiplayer client (composition, session, match client, presentation, transports) is its own chunks
+  if (/\/assets\/(browserComposition|browserHostPort|roomInvite)-[\w-]+\.js/.test(url)) return 'mp';
   for (const [area, needle] of [['mp', '/src/mp/'], ['sim', '/src/sim/'], ['server', '/server/'], ['engine', '/src/engine/'], ['world', '/src/world/'], ['fx', '/src/fx/'],
     ['game', '/src/game/'], ['ui', '/src/ui/'], ['audio', '/src/audio/'], ['vehicles', '/src/vehicles/'], ['three', 'three'], ['src', '/src/']]) if (url.includes(needle)) return area;
   return url ? 'bundle' : 'native';
@@ -522,6 +524,7 @@ async function profilePhase(byLabel, seconds) {
     const profile = profiles[label];
     await sessions[label]?.detach().catch(() => {});
     if (!profile) { out[label] = null; continue; }
+    const byId = new Map(profile.nodes.map((node) => [node.id, node]));
     const areaOf = new Map(profile.nodes.map((node) => [node.id, sourceArea(node.callFrame)]));
     const fileOf = new Map(profile.nodes.map((node) => [node.id, (node.callFrame.url || node.callFrame.functionName || '').replace(/^https?:\/\/[^/]+/, '').replace(/\?.*$/, '')]));
     const byArea = {}, byFile = {};
@@ -529,7 +532,11 @@ async function profilePhase(byLabel, seconds) {
       const ms = (profile.timeDeltas[i + 1] ?? profile.timeDeltas[i] ?? 0) / 1000;
       const area = areaOf.get(profile.samples[i]) ?? 'native';
       byArea[area] = (byArea[area] ?? 0) + ms;
-      if (area === 'mp' || area === 'sim' || area === 'server') { const file = fileOf.get(profile.samples[i]); byFile[file] = (byFile[file] ?? 0) + ms; }
+      if (area === 'mp' || area === 'sim' || area === 'server') {
+        const node = byId.get(profile.samples[i]);
+        const file = `${fileOf.get(profile.samples[i])}${node && /\/assets\//.test(node.callFrame.url) ? ` ${node.callFrame.functionName || '(anon)'}` : ''}`;
+        byFile[file] = (byFile[file] ?? 0) + ms;
+      }
     }
     const spanS = Math.max(0.001, (profile.endTime - profile.startTime) / 1e6);
     const frameCount = frames !== null && framesAt[label] !== null ? frames - framesAt[label] : null;
