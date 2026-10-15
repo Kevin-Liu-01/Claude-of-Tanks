@@ -75,8 +75,8 @@
       "concealers": 6836
     },
     "delta": {
-      "bytes": 2344782,
-      "sha256": "05f7909419bcb627f68a15477ba73f0917f78b0ee8ed8693d59a085cb78c4d15",
+      "bytes": 2344536,
+      "sha256": "f35543dcd6be7b84f1acf53bc92663fd576e3fc9b633d7a527799474bcef051c",
       "obstacles": 8682,
       "colliders": 8454,
       "concealers": 10071
@@ -309,8 +309,8 @@
         "concealers": 6836
       },
       "delta": {
-        "bytes": 2524082,
-        "sha256": "b1ee6959800e26d5fceca4d925afed45e308bcce4c9dc2ddb42f9a8605089d71",
+        "bytes": 2523836,
+        "sha256": "d9c70bb149d2026f5dad3b4ad3e417953878325ff8e94b395f10adf75243bfcf",
         "obstacles": 8888,
         "colliders": 8568,
         "concealers": 10098
