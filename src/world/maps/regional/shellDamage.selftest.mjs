@@ -28,6 +28,7 @@ import { describeStructure, createStructureDamageSeam } from '../../structureDam
 import '../../destructionDefaultKit.ts';
 import { isSheetBody, isSheetFace } from './sheet.ts';
 import { shaftOf } from './shaft.ts';
+import { latticeOf } from './latticeFall.ts';
 import { cellsOf } from './cluster.ts';
 import { containersOf } from './container.ts';
 import { ruinPiecesOf } from './ruin.ts';
@@ -136,7 +137,10 @@ function exercise(label, a, seam) {
   const fo = a.storeys[0].faces.map((f) => f.origin);
   const mx = fo.reduce((s, o) => s + o[0], 0) / fo.length, mz = fo.reduce((s, o) => s + o[2], 0) / fo.length;
   // (a shaft topples: its drums lie along the ground as far as it stood tall)
-  const shaftH = shaftOf(a) ? a.storeys[a.storeys.length - 1].y1 - a.storeys[0].y0 : 0;
+  // (an open frame folds over along the ground as far as it stood tall, its crown beyond: latticeFall.ts)
+  const lat = latticeOf(a);
+  const shaftH = shaftOf(a) ? a.storeys[a.storeys.length - 1].y1 - a.storeys[0].y0
+    : lat ? Math.max(...lat.legs.map((l) => l.head[1] - l.foot[1])) + 4 : 0;
   const reach = Math.max(a.w, a.d) / 2 + 6 + shaftH * 1.15;
   const check = (name, run, cap) => {
     const one = writers(...cap), two = writers(...cap);

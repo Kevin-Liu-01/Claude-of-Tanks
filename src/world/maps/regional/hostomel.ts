@@ -540,7 +540,7 @@ const waterTower: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [0, gy - 0.06, 0], 'y', 0.06, gr, 16, { ...steel }, gr, true);
     for (let k = 0; k < 12; k++) {
       const a = k * Math.PI / 6, c = Math.cos(a), s = Math.sin(a);
-      sink.member('structureMetal', [c * R * 0.95, gy - 0.9, s * R * 0.95], [c * (gr - 0.05), gy - 0.06, s * (gr - 0.05)], 0.06, 0.06, [0, 1, 0], { ...steel, exposed: true }, 0);
+      sink.member('structureMetal', [c * R * 0.82, gy - 0.9, s * R * 0.82], [c * (gr - 0.05), gy - 0.06, s * (gr - 0.05)], 0.06, 0.06, [0, 1, 0], { ...steel, exposed: true }, 0);
       sink.span('structureMetal', c * (gr - 0.03) - 0.025, gy, s * (gr - 0.03) - 0.025, c * (gr - 0.03) + 0.025, gy + 1.0, s * (gr - 0.03) + 0.025, { ...steel, fine: true });
     }
     for (const y of [gy + 0.5, gy + 1.0]) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.035, gr - 0.03, 16, { ...steel, fine: true }, gr - 0.03, false);
@@ -556,7 +556,9 @@ const waterTower: RegionalBuilder = (ctx) => {
     // the caged ladder on the shaft's -x side, its rungs and hoops fine joinery
     const lx = -(R + 0.18);
     for (const dz of [-0.22, 0.22]) sink.member('structureMetal', [lx, 0.9, dz], [lx * 0.95, gy, dz], 0.04, 0.04, [-1, 0, 0], { ...steel, exposed: true }, 0);
-    for (let y = 1.2; y < gy - 0.1; y += 0.3) sink.span('structureMetal', lx - 0.015, y - 0.015, -0.22, lx + 0.015, y + 0.015, 0.22, { ...steel, fine: true });
+    // (the rungs follow the stiles' rake in toward the shaft's head: the connectivity receipt)
+    const rungX = (y: number) => lx + (lx * 0.95 - lx) * (y - 0.9) / (gy - 0.9);
+    for (let y = 1.2; y < gy - 0.1; y += 0.3) sink.span('structureMetal', rungX(y) - 0.015, y - 0.015, -0.22, rungX(y) + 0.015, y + 0.015, 0.22, { ...steel, fine: true });
     for (let y = 3.0; y < gy - 0.3; y += 0.9) {
       sink.cylinder('structureMetal', [lx, y, 0], 'y', 0.03, 0.42, 8, { ...steel, fine: true }, 0.42, false, -Math.PI / 2, Math.PI);
     }

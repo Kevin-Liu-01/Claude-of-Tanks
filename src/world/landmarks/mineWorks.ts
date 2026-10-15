@@ -51,7 +51,7 @@ function sheetHouse(sink: PartSink, ctx: LandmarkBuildContext, at: Vec3, w: numb
       const frame = buildHouse(sink, {
         w, d, plinth: null, storeys: [{ h, wall: 'structureMetal' }],
         roof: { kind: 'gable', pitchDeg: Math.atan2(rise, w / 2) * 180 / Math.PI, eave, verge: eave, thickness: 0.07, bucket: 'roof', ridge: 'saddle' },
-        gableBucket: 'structureMetal', openings, chimneys: [], gutters: w > 6 ? { colour: shade(paint, 0.7) } : null, verge: null, reveal: 0.1,
+        gableBucket: 'structureMetal', openings, chimneys: [], gutters: null, verge: null, reveal: 0.1,
       }, {
         window: (s, face, o, y0) => {
           if (o.kind === 'loft') return;
@@ -61,7 +61,7 @@ function sheetHouse(sink: PartSink, ctx: LandmarkBuildContext, at: Vec3, w: numb
       });
       for (const name of ['left', 'right'] as const) {
         const f = frame.faces[name];
-        for (let u = -f.width / 2 + 0.85; u < f.width / 2 - 0.35; u += 0.85) faceBox(sink, 'structureMetal', f, u, h / 2, 0.012, 0.04, h, 0.024, { colour: shade(paint, 0.82), decor: true, fine: true }, 'caps');
+        for (let u = -f.width / 2 + 0.85; u < f.width / 2 - 0.35; u += 0.85) faceBox(sink, 'structureMetal', f, u, h / 2, -0.02, 0.04, h, 0.06, { colour: shade(paint, 0.82), decor: true, fine: true }, 'caps');
       }
       then?.(frame);
     } finally { sink.paint = null; }
@@ -136,6 +136,8 @@ export const headframe: LandmarkBuilder = (ctx) => {
   for (const [x, z, w2, d2] of [[0, zs - 1.45, 2.0, 0.12], [0, zs + 1.45, 2.0, 0.12], [-0.95, zs, 0.12, 2.9], [0.95, zs, 0.12, 2.9]] as const) {
     sink.span('structureWood', x - w2 / 2, g0 - 1.2, z - d2 / 2, x + w2 / 2, g0 + 1.26, z + d2 / 2, { colour: rgb(0x4a3a2c), decor: true });
   }
+  // the skip landed on its keps, the two beams across the shaft's mouth from collar to collar
+  for (const kz of [zs - 0.75, zs + 0.15]) sink.span('structureWood', -1.05, g0 + 1.2, kz - 0.08, 1.05, g0 + 1.3, kz + 0.08, { colour: rgb(0x4a3a2c), decor: true });
   sink.span('structureMetal', -0.6, g0 + 1.3, zs - 0.9, 0.6, g0 + 3.2, zs + 0.3, { colour: shade(OXIDE, 1.2), decor: true });
   // the four legs and the raking struts
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) bar(sink, 'structureMetal', [sx * half, g0 + 1.2, zs + sz * half], [sx * half, H, zs + sz * half], 0.32, legOpts);
@@ -235,7 +237,7 @@ export const oreBin: LandmarkBuilder = (ctx) => {
   sink.span('structureMetal', -g + 0.05, gy - 0.6, -g + 0.05, g - 0.05, gy - 0.25, g - 0.05, { colour: shade(IRON, 0.8), decor: true });
   for (const sz of [-1, 1]) sink.span('structureMetal', -g - 0.25, gy - 0.32, sz * g - 0.05, g + 0.95, gy - 0.22, sz * g + 0.05, { colour: IRON, decor: true });
   sink.span('structureMetal', g + 0.1, gy - 0.2, -0.06, g + 1.0, gy - 0.12, 0.06, { colour: shade(IRON, 1.3), decor: true, fine: true });
-  sheave(sink, [g + 1.0, gy - 0.1, g + 0.25], 0.32, 4, shade(IRON, 1.2), 0.05, { decor: true });
+  sheave(sink, [g + 1.0, gy - 0.16, 0], 0.32, 4, shade(IRON, 1.2), 0.05, { decor: true });
   // the head house on the hopper's lid where the conveyor delivers: the house grammar's sheet walls and roof, its door
   // to the walkway over the ladder, the conveyor's port in its front, a window on its side
   const hhW = W * 0.7, hhD = D * 0.8, hhH = Ht - top;

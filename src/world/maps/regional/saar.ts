@@ -347,19 +347,28 @@ const conveyor: RegionalBuilder = (ctx) => {
       const cap: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
       emitRoof(sink, roofGeometry(Wd - 0.6, hd - 0.2, hy + 3.2, cap), cap);
     });
-    // the trestles under the gallery: braced lattice towers of four legs on brick piers
+    // the trestles under the gallery: braced lattice towers of four legs on brick piers, each leg up into the gallery's
+    // floor where it passes over it, the girts and braces between the legs' own lines (the connectivity receipt)
+    const floorY = (z: number) => y0 + (y1 - y0) * (z + L / 2) / L;
     for (const t of [0.34, 0.62]) {
-      const p = at(t), h = p[1] - 0.2;
+      const p = at(t);
+      const foot = (s: number, e: number): Vec3 => [s * gw / 2, 0.6, p[2] + e * 0.55];
+      const head = (s: number, e: number): Vec3 => [s * gw / 2 * 0.85, floorY(p[2] + e * 0.4) - 0.04, p[2] + e * 0.4];
+      const legAt = (s: number, e: number, y: number): Vec3 => {
+        const f0 = foot(s, e), h0 = head(s, e), k = (y - f0[1]) / (h0[1] - f0[1]);
+        return [f0[0] + (h0[0] - f0[0]) * k, y, f0[2] + (h0[2] - f0[2]) * k];
+      };
+      const h = Math.min(head(1, -1)[1], head(1, 1)[1]);
       for (const s of [-1, 1]) for (const e of [-1, 1]) {
         sink.span('stone', s * gw / 2 - 0.3, -0.4, p[2] + e * 0.55 - 0.3, s * gw / 2 + 0.3, 0.6, p[2] + e * 0.55 + 0.3);
-        sink.member('structureMetal', [s * gw / 2, 0.6, p[2] + e * 0.55], [s * gw / 2 * 0.85, h, p[2] + e * 0.4], 0.18, 0.18, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
+        sink.member('structureMetal', foot(s, e), head(s, e), 0.18, 0.18, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
       }
       if (!mobile) {
         for (let y = 1.6; y < h - 0.4; y += 1.7) {
-          const w = gw / 2 * (1 - 0.15 * (y - 0.6) / Math.max(1, h - 0.6));
-          for (const e of [-1, 1]) sink.member('structureWood', [-w, y, p[2] + e * 0.5], [w, y, p[2] + e * 0.5], 0.07, 0.07, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
-          for (const s of [-1, 1]) sink.member('structureWood', [s * w, y, p[2] - 0.5], [s * w, y + 1.4, p[2] + 0.45], 0.06, 0.06, [s, 0, 0], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
-          sink.member('structureWood', [-w, y, p[2] - 0.5], [w, y + 1.4, p[2] - 0.45], 0.06, 0.06, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+          const yb = Math.min(h - 0.1, y + 1.4);
+          for (const e of [-1, 1]) sink.member('structureWood', legAt(-1, e, y), legAt(1, e, y), 0.07, 0.07, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+          for (const s of [-1, 1]) sink.member('structureWood', legAt(s, -1, y), legAt(s, 1, yb), 0.06, 0.06, [s, 0, 0], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+          sink.member('structureWood', legAt(-1, -1, y), legAt(1, -1, yb), 0.06, 0.06, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
         }
       }
     }

@@ -129,9 +129,10 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
   for (const dz of [-0.24, 0.24]) bar(sink, 'structureMetal', [lx, 1.2, lz + dz], [lx, H + 1.0, lz + dz], 0.05, { colour: IRON, decor: true });
   for (let y = 1.5; y < H + 0.6; y += 0.35) bar(sink, 'structureMetal', [lx, y, lz - 0.24], [lx, y, lz + 0.24], 0.03, { colour: IRON, decor: true, fine: true });
   for (let y = 3.5; y < H + 0.6; y += 2.4) {
-    bar(sink, 'structureMetal', [lx, y, lz - 0.38], [lx - 0.7, y, lz - 0.38], 0.03, { colour: IRON, decor: true, fine: true });
+    // (each hoop from stile to stile: the connectivity receipt)
+    bar(sink, 'structureMetal', [lx, y, lz - 0.24], [lx - 0.7, y, lz - 0.38], 0.03, { colour: IRON, decor: true, fine: true });
     bar(sink, 'structureMetal', [lx - 0.7, y, lz - 0.38], [lx - 0.7, y, lz + 0.38], 0.03, { colour: IRON, decor: true, fine: true });
-    bar(sink, 'structureMetal', [lx - 0.7, y, lz + 0.38], [lx, y, lz + 0.38], 0.03, { colour: IRON, decor: true, fine: true });
+    bar(sink, 'structureMetal', [lx - 0.7, y, lz + 0.38], [lx, y, lz + 0.24], 0.03, { colour: IRON, decor: true, fine: true });
   }
   // the harvest's lorries waiting in the yard before the silos (`trucks`, the props' destructible truck, a hull crushes)
   const trucks = Math.max(0, Math.min(4, Math.round(Number(ctx.params.trucks) || 0)));

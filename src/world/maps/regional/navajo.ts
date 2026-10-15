@@ -1209,7 +1209,8 @@ const hayShed: RegionalBuilder = (ctx) => {
     }
     if (look() < 0.6) {
       const x = -L / 2 + 1 + look() * (L - 2);
-      sink.member('roof', [x - 0.42, H + 0.24 - 0.1, Dd / 2 + 0.3], [x - 0.42, H + 0.24 + 0.55, Dd / 2 - 1.6], 0.82, 0.02, [0, 0.95, 0.3], { decor: true, exposed: true }, 0);
+      // (still nailed at its upper end on the roof, its eave end lifted: the connectivity receipt)
+      sink.member('roof', [x - 0.42, H + 0.14 + 1.6 * Math.tan(pitch) + 0.01, Dd / 2 - 1.6], [x - 0.42, H + 0.62, Dd / 2 + 0.35], 0.82, 0.02, [0, 0.95, 0.3], { decor: true, exposed: true }, 0);
     }
   });
   // the bales: stacks two to five high in most bays, each bale its own block, the courses laid crosswise and offset

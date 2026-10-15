@@ -199,7 +199,7 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
   }
   for (const s2 of [-1, 1]) bar(sink, 'structureMetal', [s2 * 1.15, gm + 0.98, vz0], [s2 * 1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
   bar(sink, 'structureMetal', [-1.15, gm + 1.95, vz0], [1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
-  sink.span('structureMetal', -0.45, gm + 1.3, vz0 - 0.04, 0.45, gm + 1.75, vz0 - 0.01, { colour: SIGN_YELLOW, decor: true });
+  sink.span('structureMetal', -0.45, gm + 1.3, vz0 - 0.04, 0.45, gm + 1.93, vz0 - 0.01, { colour: SIGN_YELLOW, decor: true });
   // the bund's expansion joints, its drain sump in the inside corner with its grate and valve
   for (let xj = -ex + 6; xj < ex; xj += 6) {
     for (const zj of [-ez + t, ez - t]) sink.span('structureMetal', xj - 0.015, gl(xj, zj) - 0.2, zj - 0.02, xj + 0.015, gl(xj, zj) + wallH + 0.02, zj + 0.02, { colour: rgb(0x2a2a2a), decor: true, fine: true });

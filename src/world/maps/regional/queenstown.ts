@@ -547,9 +547,10 @@ const tankTrestle: RegionalBuilder = (ctx) => {
         sink.member('structureWood', [x0, legH + 1.25, z0], [x1, legH + 1.25, z1], 0.06, 0.06, [0, 1, 0], { colour: TIMBER, decor: true, exposed: true }, 0);
         for (let t = 0; t <= 1.001; t += 0.25) sink.span('structureWood', x0 + (x1 - x0) * t - 0.04, legH + 0.3, z0 + (z1 - z0) * t - 0.04, x0 + (x1 - x0) * t + 0.04, legH + 1.25, z0 + (z1 - z0) * t + 0.04, { colour: TIMBER, decor: true, fine: true });
       }
-      for (const dx of [-0.25, 0.25]) sink.member('structureWood', [dx, 0.1, P / 2 + 0.55], [dx, legH + 0.3, P / 2 + 0.05], 0.07, 0.05, [0, 0, 1], { colour: TIMBER, decor: true, exposed: true }, 0);
+      // (its stiles from the ground into the deck's edge: the connectivity receipt)
+      for (const dx of [-0.25, 0.25]) sink.member('structureWood', [dx, 0, P / 2 + 0.55], [dx, legH + 0.3, P / 2 - 0.03], 0.07, 0.05, [0, 0, 1], { colour: TIMBER, decor: true, exposed: true }, 0);
       for (let y = 0.4; y < legH + 0.2; y += 0.32) {
-        const z = P / 2 + 0.55 - 0.5 * (y / (legH + 0.3));
+        const z = P / 2 + 0.55 - 0.58 * (y / (legH + 0.3));
         sink.span('structureWood', -0.25, y - 0.02, z - 0.025, 0.25, y + 0.02, z + 0.025, { colour: TIMBER, decor: true, fine: true });
       }
     });

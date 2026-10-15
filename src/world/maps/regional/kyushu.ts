@@ -325,6 +325,14 @@ const greenhouse: RegionalBuilder = (ctx) => {
   for (let k = 0; k < nb; k++) {
     sink.cylinder('structureMetal', [-L / 2 + k * bay, base, 0], 'x', bay, r - 0.035, 10, { colour: shade(VINYL, 0.97 + 0.04 * (k % 2)) }, r - 0.035, false, arc0, arc);
   }
+  // the film's inside, seen through the rolled-up sides and the doors (one run the house's length, a shade darker)
+  {
+    const ri = r - 0.06, n = 10, phi = (j: number) => rollA + (Math.PI - 2 * rollA) * j / n;
+    const at = (x: number, a: number): Vec3 => [x, base + ri * Math.sin(a), ri * Math.cos(a)];
+    for (let j = 0; j < n; j++) {
+      sink.quad('structureMetal', at(-L / 2, phi(j)), at(-L / 2, phi(j + 1)), at(L / 2, phi(j + 1)), at(L / 2, phi(j)), { colour: shade(VINYL, 0.82), decor: true });
+    }
+  }
   // the rolled curtains on their bars along each side, the cranks at the ends
   for (const sz of [-1, 1]) {
     const zc = sz * r * Math.cos(rollA);
@@ -341,6 +349,9 @@ const greenhouse: RegionalBuilder = (ctx) => {
     const f: Face = { origin: [end * L / 2, 0, 0], u: [0, 0, -end], out: [end, 0, 0], width: r * 2 };
     const poly = disc(10).map(([u, y]): [number, number] => [-u, y]);
     holedPolygon(sink, 'structureMetal', f, poly, [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.001, y1: base + doorH }], 0.02, 0, { colour: shade(VINYL, 0.95) });
+    // its inside, seen through the open door and the rolled sides
+    const fi: Face = { origin: [end * (L / 2 - 0.02), 0, 0], u: [0, 0, end], out: [-end, 0, 0], width: r * 2 };
+    holedPolygon(sink, 'structureMetal', fi, [...disc(10)].reverse(), [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.001, y1: base + doorH }], 0.002, 0, { colour: shade(VINYL, 0.82), decor: true });
     sink.dressing(mobile, () => {
       const post = { colour: HOOP, decor: true };
       for (const u of [-doorW / 2 - 0.04, doorW / 2 + 0.04, -r * 0.72, r * 0.72]) {
@@ -596,7 +607,7 @@ const shrine: RegionalBuilder = (ctx) => {
     sink.member('structureWood', [ax, fl + 0.45, az], [bx, fl + 0.45, bz], 0.05, 0.05, [0, 1, 0], { colour: CEDAR_DARK, decor: true, exposed: true }, 0);
     for (const [px, pz] of [[ax, az], [bx, bz]] as const) sink.span('structureWood', px - 0.03, fl - 0.05, pz - 0.03, px + 0.03, fl + 0.47, pz + 0.03, { colour: CEDAR_DARK, decor: true });
   }
-  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.38, 0.7 + k * (fl - 0.8) / 3 - 0.05, vz1 + 0.25 * (2 - k), 0.38, 0.7 + (k + 1) * (fl - 0.8) / 3 - 0.05, vz1 + 0.25 * (3 - k), { colour: CEDAR_GREY, decor: true });
+  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.38, -0.1, vz1 + 0.25 * (2 - k), 0.38, 0.7 + (k + 1) * (fl - 0.8) / 3 - 0.05, vz1 + 0.25 * (3 - k), { colour: CEDAR_GREY, decor: true });
   // the nagare roof: a gable whose front slope runs long over the steps (tile or cypress bark)
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 32, eave: 0.4, verge: 0.35, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
   sink.placed(Math.PI / 2, 0, 0, hz, () => emitRoof(sink, roofGeometry(hd, hw, 2.2, roof), roof));
