@@ -128,7 +128,7 @@ function monsoonPuddleLobes(): PuddleLobe[] {
     const angle = alongDepth ? Math.PI / 4 : -Math.PI / 4;
     lobes.push({ x, z, r, squash, angle });
     for (const k of [0, 1]) {
-      const turn = angle + (index * 2.4 + k * 2.2), reach = r * (0.55 + 0.1 * k);
+      const turn = angle + (index * 2.4 + k * 2.2), reach = r * (0.38 + 0.08 * k); // lobes that round the pool, no corners
       lobes.push({ x: x + Math.cos(turn) * reach, z: z + Math.sin(turn) * reach * squash, r: r * (0.55 - 0.1 * k), squash, angle: angle + 0.4 * (k - 0.5) });
     }
   });
@@ -599,7 +599,7 @@ function drawHardstand(
       for (const lobe of monsoonPuddleLobes()) {
         blot(lobe.x, lobe.z, lobe.r * 1.5, 'rgba(96,68,48,0.26)', 'rgba(96,68,48,0.08)', lobe.squash, lobe.angle);
         blot(lobe.x, lobe.z, lobe.r * 1.18, 'rgba(176,132,96,0.2)', 'rgba(176,132,96,0.06)', lobe.squash, lobe.angle);
-        blot(lobe.x, lobe.z, lobe.r, 'rgba(38,33,29,0.62)', 'rgba(48,38,31,0.4)', lobe.squash, lobe.angle);
+        blot(lobe.x, lobe.z, lobe.r, 'rgba(52,44,36,0.5)', 'rgba(60,48,38,0.32)', lobe.squash, lobe.angle);
       }
       aggregate(2600, ['150,140,128', '60,44,34'], [0.6, 2.8], [0.1, 0.28], 0.85);
       break;
