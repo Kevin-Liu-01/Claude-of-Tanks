@@ -1,6 +1,7 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
-import {KIT} from './kit.ts';
+import {KIT, FITTINGS} from './kit.ts';
+import {fieldChestParts} from './fieldChest.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -175,16 +176,23 @@ export function addBarakWhips(P: TankBuilderPort): void {
   whips.instanceMatrix.needsUpdate=true;P.turretG.add(whips);
 }
 
-function roundedStowage(P: TankBuilderPort): void {
-  // Separate measured bag/case bounds. The shapes are independent low-order
-  // ellipsoids with straps, not the source's vertices or a filled cage box.
-  for(const [x,y,z,w,h,d]of[[-.441,2.0945,-3.319,1.1605,.4181,.4071],[-.1458,2.3111,-3.3301,.6157,.2787,.5251],
-    [.2180,2.0799,-3.2806,.1485,.3772,.2737],[.6565,2.0799,-3.4022,.2784,.3772,.2427],[.6636,2.1076,-3.2246,.3667,.3824,.1170]]){
-    const g=new THREE.SphereGeometry(1,P.q?12:8,P.q?6:4);g.scale(w/2,h/2,d/2);
-    put(P,'turretDetail',g,x,y,z);
-    // The broad webbing follows the case rather than masking all storage air.
-    put(P,'turretDark',KIT.box(Math.min(.03,w/7),h*.76,.014),x,y,z-d*.47);
-  }
+function basketStowage(P: TankBuilderPort): void {
+  // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the basket held five scaled
+  // spheres with a webbing strip each. It now carries crew equipment as the IDF stows it in the Merkava's rear
+  // basket: a steel stowage chest on the left, a strapped pair of 20 L jerrycans in the middle and a smaller chest on
+  // the right, all on the basket floor (y 1.89) inside the rails (x -0.94..0.94, z -3.02..-3.55) and clear of the tall
+  // shallow case at the right front (x 0.03..0.87, z -3.14..-2.99).
+  const floor = 1.892;
+  const chest = (w: number, h: number, d: number, x: number, z: number) => {
+    const {paint, dark} = fieldChestParts(w, h, d, {high: !!P.q, front: -1});
+    for (const g of paint) put(P, 'turretEquipment', g, x, floor, z);
+    for (const g of dark) put(P, 'turretDark', g, x, floor, z);
+  };
+  chest(.80, .36, .44, -.50, -3.300);
+  chest(.42, .30, .36, .66, -3.330);
+  const cans = FITTINGS.jerryCans({mats: P.mats, count: 2, gap: .04, seed: 404, rotation: [0, Math.PI, 0]});
+  cans.position.set(.16, floor - Y, -3.32 - Z);
+  P.turretG.add(cans);
 }
 
 function basketFringe(P: TankBuilderPort): void {
@@ -219,5 +227,5 @@ export function addBarakBasket(P: TankBuilderPort): void {
   }
   for(const x of[-.954,0,.954])bar(P,[x,1.89,-3.545],[x,2.3655,-3.610],.024);
   for(const side of[-1,1])bar(P,[side*1.055,1.894,-3.008],[side*1.055,2.408,-3.044],.025);
-  roundedStowage(P);basketFringe(P);
+  basketStowage(P);basketFringe(P);
 }

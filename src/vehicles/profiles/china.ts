@@ -941,11 +941,9 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
       [s * 0.20, 0.50, 1.68], [s * 0.56, 0.52, 1.50], [s * 0.44, 0.84, 0.84], [s * 0.16, 0.82, 0.92]));
     P.add('turretDark', box(0.030, 0.030, 0.62), s * 0.34, 0.60, 1.24, -0.36, 0, 0);
   }
-  // weld beads along the belt shoulder
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.030, 0.030, 1.40), s * 1.515, 0.340, -0.24, 0, -s * 0.04, 0);
-    P.add('turretDark', box(0.030, 0.030, 1.02), s * 1.20, 0.340, 1.30, 0, -s * 0.60, 0);
-  }
+  // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the two dark 3 cm bars laid along
+  // the belt shoulder and the cheek corner as "weld beads" read as loose sticks on the armour and are gone; the belt's
+  // own crease and the cheek cassettes carry that line.
 
   // ---- roof suite (print layout): forward-LEFT panoramic head, recessed
   // gunner box right of the gun channel, commander cupola + W-85 right,

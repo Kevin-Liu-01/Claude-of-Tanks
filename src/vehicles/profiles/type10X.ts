@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
+import {fieldChestParts} from './fieldChest.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
@@ -278,10 +279,29 @@ function rearRack(P:TankBuilderPort):void {
     frameBar(P,[left,2.125,z],[right,2.125,z]);
     for(const x of [left,right])frameBar(P,[x,1.622,z],[x,2.125,z]);
   }
-  turret(P,'turretCloth',box(.37,.40,.69),-.32,1.880,-2.43);
-  turret(P,'turretCloth',cylinder(.31,.52,20),.77,1.94,-2.388);
-  turret(P,'turretCloth',box(.55,.325,.49),-.388,1.844,-2.936);
-  turret(P,'turretCloth',cylinder(.31,.52,20),.233,1.933,-2.825);
+  rearBasketStowage(P);
+}
+
+// Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the basket held two canvas blocks
+// and two upright canvas drums. The JGSDF calls the Type 10's external turret stowage its "basket": crew equipment in
+// closed steel chests (a 20 L can stands 0.49 m, taller than the basket's 0.48 m clear height). Rear row: three chests
+// across the basket; front row: three lower chests against the bustle. Every chest stands on the floor slats (y 1.622) inside the frame (x -1.268..1.12,
+// z -3.227..-2.065, top bar 2.125), clear of the bars by at least 3 cm.
+function rearBasketStowage(P:TankBuilderPort):void {
+  const floor=1.640;
+  const chest=(w:number,h:number,d:number,x:number,z:number,front:1|-1,handles=true)=>{
+    const {paint,dark}=fieldChestParts(w,h,d,{high:!!P.q,front,handles});
+    for(const g of paint)turret(P,'turret',g,x/EQUIPMENT_X_DATUM,floor,z);
+    for(const g of dark)turret(P,'turretDark',g,x/EQUIPMENT_X_DATUM,floor,z);
+  };
+  // rear row, latches facing out of the basket's rear mesh
+  chest(.86,.36,.46,-.76,-2.935,-1);
+  chest(.52,.36,.46,.02,-2.935,-1,false);
+  chest(.74,.36,.46,.70,-2.935,-1);
+  // front row against the bustle, latches facing aft over the rear row's lids
+  chest(.62,.30,.40,-.86,-2.40,-1);
+  chest(.70,.30,.40,.70,-2.40,-1);
+  chest(.50,.26,.40,-.16,-2.40,-1,false);
 }
 
 function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:number,d:number,glassZ:number):void {
