@@ -12,7 +12,7 @@
 // placements out): props.ts places the modules as destructibles, builds the outbuilding with the kit and merges the
 // beds as dressing.
 import { PartSink, rgb, shade, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { mound, ridge } from './dressing.ts';
+import { bloomDisc, mound, ridge } from './dressing.ts';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../../sim/matchPlacement.ts';
@@ -275,61 +275,222 @@ const CROP: readonly Rgb[] = [0x4f6b2e, 0x5f7f34, 0x6b8a3a, 0x3e5a2a, 0x7a8a3e].
 /** a cabbage's waxy blue-green */
 const CABBAGE: Rgb = rgb(0x7f9a74);
 
+/** A kitchen garden's make by its country (props lane A, #18b, 2026-10-14; WORKLIST.md #18: "Kitchen gardens by kit
+ *  (beds, wattle edging, bean poles, cold frames)"). */
+type GardenStyle = 'german' | 'dutch' | 'slavic' | 'french' | 'med' | 'monsoon' | 'japan' | 'american';
+const GARDEN_STYLE: Readonly<Record<string, GardenStyle>> = Object.freeze({
+  verdant: 'slavic', winter: 'slavic', steppe: 'slavic',
+  frontier: 'german', reservoir: 'german', urban: 'german', foundry: 'german', railyard: 'german', alpine: 'german',
+  polders: 'dutch', coastal: 'french', autumn: 'french',
+  orchard: 'med', saltwind: 'med', cliffbridge: 'med', ruinspires: 'med', oasis: 'med', desert: 'med',
+  monsoon: 'monsoon', mangrove: 'monsoon', delta: 'monsoon', caldera: 'japan', longleaf: 'american',
+});
+const WATTLE: Rgb = rgb(0x6a5a44), CANE: Rgb = rgb(0x9a8a62), BAMBOO: Rgb = rgb(0x8a8a50), PANE: Rgb = rgb(0xa8b8bc);
+const BOX_HEDGE: Rgb = rgb(0x2f4a26), KERB: Rgb = rgb(0x8a8478), GOURD: Rgb = rgb(0x8aa040), BLOOM: Rgb = rgb(0xe8b820);
+
 /**
- * The kitchen garden (dressing): a bed of dug soil edged with boards, rows of crops along its width (cabbage and
- * potato rows as low green ridges with gaps, a row of beans on canes), centred on the origin, its rows along local x.
+ * The kitchen garden (dressing): a bed of dug soil, rows of crops along its width (cabbage and potato rows as low green
+ * ridges with gaps, a row of beans on canes), centred on the origin, its rows along local x — edged and furnished as its
+ * country keeps one: board edging and a cold frame (Germany, the Netherlands), a woven wattle hurdle and sunflowers at
+ * its edge (the Russian and Polish villages), a low box hedge and glass cloches (France), a stone kerb and tomatoes up
+ * cane frames (the Mediterranean), a mud bund and a bamboo arbour hung with gourds (the monsoon belt), the rows on
+ * raised soil ridges under a cucumber frame (Japan), hills of maize and staked tomatoes (Louisiana, 1941).
  */
-export function gardenParts(w: number, d: number, look: () => number, drop = 0, _mapId?: string): RegionalParts {
+export function gardenParts(w: number, d: number, look: () => number, drop = 0, mapId?: string): RegionalParts {
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
+  const style = (mapId && GARDEN_STYLE[mapId]) || 'german';
   const soil = SOIL[Math.floor(look() * SOIL.length) % SOIL.length];
   // the dug ground a few centimetres over the yard's; on a slope the bed is raised to its high side, its soil carried
-  // down to the ground (`drop`) behind a board edging (wave 199 read a level bed's edging as "a plank tray")
-  sink.span('structureWood', -w / 2, -0.12 - drop, -d / 2, w / 2, 0.05, d / 2, { ...dec, colour: soil });
-  const board = shade(rgb(0x7a6a52), 0.8 + look() * 0.3);
-  if (drop > 0.12) {
-    for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop, sz * d / 2 - 0.03, w / 2 + 0.03, 0.08, sz * d / 2 + 0.03, { ...dec, colour: board });
-    for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop, -d / 2 + 0.03, sx * w / 2 + 0.03, 0.08, d / 2 - 0.03, { ...dec, colour: board });
-  }
-  const rows = Math.max(2, Math.floor((d - 0.3) / 0.55));
+  // down to the ground (`drop`); a monsoon bed stands a hand higher inside its bund
+  const bedTop = style === 'monsoon' ? 0.12 : 0.05;
+  sink.span('structureWood', -w / 2, -0.12 - drop, -d / 2, w / 2, bedTop, d / 2, { ...dec, colour: soil });
+  edging(sink, style, w, d, drop, bedTop, soil, look);
   const X: Vec3 = [1, 0, 0], Z: Vec3 = [0, 0, 1];
+  // the end kept for the garden's furniture (a cold frame, the cloches, an arbour), when the bed is long enough
+  const keep = w >= 3.2 && style !== 'slavic' && style !== 'american' ? 1.4 : 0;
+  const x0 = -w / 2 + 0.3, x1 = w / 2 - 0.2 - keep;
+  const rows = Math.max(2, Math.floor((d - 0.3) / 0.55));
   for (let r = 0; r < rows; r++) {
     const z = -d / 2 + 0.3 + (d - 0.6) * (r + 0.5) / rows;
     const crop = CROP[Math.floor(look() * CROP.length) % CROP.length];
     const kind = look();
+    // (Japan) every row on its own raised ridge of soil
+    if (style === 'japan') ridge(sink, [x0 - 0.1, bedTop, z], [x1 + 0.1, bedTop, z], 0.42, 0.14, shade(soil, 1.08), dec);
+    const base = bedTop + (style === 'japan' ? 0.12 : 0);
     if (kind < 0.18) {
-      // beans on canes: a line of canes and the leaves climbing up them, thinning toward the tops
-      let last = -w / 2 + 0.3;
-      for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.45) {
-        sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, 1.5, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
+      // beans on canes (a German bean row, a slavic one up its poles, the Mediterranean tomatoes up cane A-frames, a
+      // Louisiana corn hill): a line of canes and the leaves climbing up them, thinning toward the tops
+      if (style === 'american') { cornHills(sink, x0, x1, z, base, crop, look); continue; }
+      const frame = style === 'med' || style === 'japan';
+      let last = x0;
+      for (let x = x0; x < x1; x += 0.45) {
+        if (frame) {
+          // two canes crossed over the row, tied at the top
+          for (const s of [-1, 1]) sink.member('structureWood', [x, base, z + s * 0.28], [x, base + 1.45, z - s * 0.04], 0.03, 0.03, [s, 0, 0], { ...dec, colour: style === 'japan' ? BAMBOO : CANE, exposed: true });
+        } else sink.span('structureWood', x - 0.015, base, z - 0.015, x + 0.015, 1.5, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
         last = x;
       }
-      // the leaves a wall along the canes, thinner and lower than their tops
-      ridge(sink, [-w / 2 + 0.22, 0.05, z], [last + 0.08, 0.05, z], 0.3, 1.25, shade(crop, 0.85 + look() * 0.2), dec);
+      if (frame) sink.member('structureWood', [x0 - 0.1, base + 1.4, z], [last + 0.1, base + 1.4, z], 0.03, 0.03, [0, 1, 0], { ...dec, colour: CANE, exposed: true });
+      // (a single leafy ridge up the canes read as a green wall) the plants climbing each cane in clumps of leaves, the
+      // clumps smaller toward its top, a low ridge of leaves along the row's foot
+      const leaf = shade(crop, 0.85 + look() * 0.2);
+      ridge(sink, [x0 - 0.08, base, z], [last + 0.08, base, z], frame ? 0.42 : 0.3, 0.32, shade(leaf, 0.9), dec);
+      for (let x = x0; x <= last + 1e-6; x += 0.45) {
+        for (const [y, r] of [[0.45, 0.17], [0.85, 0.15], [1.2, 0.12]] as const) {
+          mound(sink, [x + (look() - 0.5) * 0.08, base + y - r * 0.6, z + (look() - 0.5) * 0.1], X, Z, r, r * 0.9, r * 1.5, shade(leaf, 0.85 + look() * 0.3), dec, look() * 6, 4);
+        }
+      }
+      if (style === 'med') {
+        // the tomatoes ripening on them
+        for (let x = x0 + 0.2; x < last; x += 0.5 + look() * 0.3) mound(sink, [x, base + 0.5 + look() * 0.5, z + (look() - 0.5) * 0.3], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
+      }
       continue;
     }
     if (kind < 0.5) {
       // (wave 199: "cabbages as flat green cubes on a plank tray") cabbages: a head every 0.4-0.5 m, each a pale
       // blue-green mound with the dark outer leaves at its foot, now and then one cut
-      for (let x = -w / 2 + 0.32; x < w / 2 - 0.25; x += 0.42 + look() * 0.1) {
+      for (let x = x0 + 0.02; x < x1 - 0.05; x += 0.42 + look() * 0.1) {
         if (look() < 0.1) continue;
         const rr = 0.13 + look() * 0.05;
-        mound(sink, [x, 0.05, z], X, Z, rr * 1.25, rr * 1.25, rr * 0.55, shade(CABBAGE, 0.72), dec, look() * 6);
-        mound(sink, [x, 0.07, z], X, Z, rr * 0.75, rr * 0.75, rr * 1.05, shade(CABBAGE, 1.05 + look() * 0.15), dec, look() * 6, 4);
+        mound(sink, [x, base, z], X, Z, rr * 1.25, rr * 1.25, rr * 0.55, shade(CABBAGE, 0.72), dec, look() * 6);
+        mound(sink, [x, base + 0.02, z], X, Z, rr * 0.75, rr * 0.75, rr * 1.05, shade(CABBAGE, 1.05 + look() * 0.15), dec, look() * 6, 4);
       }
       continue;
     }
     // a ridge of leafy crop (potatoes, beets, carrots) in two or three runs, gaps where a plant failed or was cut: each run
     // a low rounded ridge, darker at its foot
-    let x = -w / 2 + 0.2;
-    while (x < w / 2 - 0.4) {
-      const run = Math.min(w / 2 - 0.2 - x, 0.8 + look() * 1.6);
+    let x = x0 - 0.1;
+    while (x < x1 - 0.2) {
+      const run = Math.min(x1 - x, 0.8 + look() * 1.6);
       const h = 0.16 + look() * 0.14;
-      ridge(sink, [x, 0.05, z], [x + run, 0.05, z], 0.34, h * 1.2, shade(crop, 0.85 + look() * 0.3), dec);
+      ridge(sink, [x, base, z], [x + run, base, z], 0.34, h * 1.2, shade(crop, 0.85 + look() * 0.3), dec);
       x += run + 0.15 + look() * 0.35;
     }
   }
+  furnish(sink, style, w, d, bedTop, keep, look);
   return sink.finish();
+}
+
+/** The bed's edge as its country keeps it. */
+function edging(sink: PartSink, style: GardenStyle, w: number, d: number, drop: number, top: number, soil: Rgb, look: () => number): void {
+  const dec = { decor: true } as const;
+  const sides: Array<[Vec3, Vec3]> = [[[-w / 2, 0, -d / 2], [w / 2, 0, -d / 2]], [[w / 2, 0, -d / 2], [w / 2, 0, d / 2]],
+    [[w / 2, 0, d / 2], [-w / 2, 0, d / 2]], [[-w / 2, 0, d / 2], [-w / 2, 0, -d / 2]]];
+  if (style === 'german' || style === 'dutch' || drop > 0.12) {
+    // boards round it (wave 199 read a level bed's lone edging as "a plank tray": these stand a hand over the soil)
+    const board = shade(rgb(0x7a6a52), 0.8 + look() * 0.3), up = top + 0.08;
+    for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop - 0.05, sz * d / 2 - 0.03, w / 2 + 0.03, up, sz * d / 2 + 0.03, { ...dec, colour: board });
+    for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop - 0.05, -d / 2 + 0.03, sx * w / 2 + 0.03, up, d / 2 - 0.03, { ...dec, colour: board });
+    if (style === 'german' || style === 'dutch') return;
+  }
+  if (style === 'slavic') {
+    // a wattle hurdle: stakes a stride apart, two bands of withies woven between them
+    for (const [a, b] of sides) {
+      const len = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(2, Math.round(len / 0.45));
+      for (let k = 0; k <= n; k++) {
+        const t = k / n, x = a[0] + (b[0] - a[0]) * t, z = a[2] + (b[2] - a[2]) * t;
+        sink.span('structureWood', x - 0.02, -0.1, z - 0.02, x + 0.02, 0.42 + look() * 0.06, z + 0.02, { ...dec, colour: shade(WATTLE, 0.85 + look() * 0.2) });
+      }
+      for (const y of [0.14, 0.3]) sink.member('structureWood', [a[0], y, a[2]], [b[0], y, b[2]], 0.09, 0.03, [0, 1, 0], { ...dec, colour: shade(WATTLE, 1.1), exposed: true });
+    }
+    return;
+  }
+  if (style === 'med') {
+    // a kerb of rough stones laid end to end, a gap now and then
+    for (const [a, b] of sides) {
+      const len = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(2, Math.round(len / 0.34));
+      for (let k = 0; k < n; k++) {
+        if (look() < 0.08) continue;
+        const t0 = (k + 0.06) / n, t1 = (k + 0.94) / n, h = 0.12 + look() * 0.08;
+        const xa = a[0] + (b[0] - a[0]) * t0, za = a[2] + (b[2] - a[2]) * t0, xb = a[0] + (b[0] - a[0]) * t1, zb = a[2] + (b[2] - a[2]) * t1;
+        sink.span('structureWood', Math.min(xa, xb) - 0.07, -0.08, Math.min(za, zb) - 0.07, Math.max(xa, xb) + 0.07, h, Math.max(za, zb) + 0.07, { ...dec, colour: shade(KERB, 0.8 + look() * 0.35) });
+      }
+    }
+    return;
+  }
+  if (style === 'french') {
+    // a low box hedge clipped round it
+    for (const [a, b] of sides) ridge(sink, [a[0], 0, a[2]], [b[0], 0, b[2]], 0.26, 0.32, shade(BOX_HEDGE, 0.9 + look() * 0.2), dec);
+    return;
+  }
+  if (style === 'monsoon') {
+    // a bund of the same mud round the raised bed
+    for (const [a, b] of sides) ridge(sink, [a[0], 0, a[2]], [b[0], 0, b[2]], 0.34, 0.24, shade(soil, 0.9), dec);
+  }
+}
+
+/** Louisiana's corn hills: maize stalks in hills along the row, their strap leaves a ridge up them. */
+function cornHills(sink: PartSink, x0: number, x1: number, z: number, base: number, crop: Rgb, look: () => number): void {
+  const dec = { decor: true } as const;
+  let last = x0;
+  for (let x = x0; x < x1; x += 0.6) {
+    const h = 1.6 + look() * 0.5;
+    sink.span('structureWood', x - 0.02, base, z - 0.02, x + 0.02, base + h, z + 0.02, { ...dec, colour: rgb(0x7a8a4a) });
+    sink.span('structureWood', x - 0.01, base + h, z - 0.06, x + 0.01, base + h + 0.18, z + 0.06, { ...dec, colour: rgb(0xb8a060) });
+    last = x;
+  }
+  // the strap leaves off each stalk, in two tiers
+  const X: Vec3 = [1, 0, 0], Z: Vec3 = [0, 0, 1];
+  for (let x = x0; x <= last + 1e-6; x += 0.6) {
+    for (const [y, r] of [[0.55, 0.32], [1.05, 0.26]] as const) mound(sink, [x, base + y, z], X, Z, r, r * 0.55, 0.22, shade(crop, 0.85 + look() * 0.25), dec, look() * 6, 4);
+  }
+}
+
+/** The garden's furniture at its far end, by its country. */
+function furnish(sink: PartSink, style: GardenStyle, w: number, d: number, top: number, keep: number, look: () => number): void {
+  const dec = { decor: true } as const;
+  const X: Vec3 = [1, 0, 0], Z: Vec3 = [0, 0, 1];
+  if (style === 'slavic') {
+    // sunflowers along the back edge, their heads turned to the yard
+    for (let x = -w / 2 + 0.4; x < w / 2 - 0.3; x += 0.9 + look() * 0.6) {
+      const h = 1.7 + look() * 0.5, z = d / 2 - 0.18;
+      sink.span('structureWood', x - 0.025, top, z - 0.025, x + 0.025, top + h, z + 0.025, { ...dec, colour: rgb(0x5a7a34) });
+      for (const y of [0.6, 1.1]) mound(sink, [x, top + h * (y / 1.8), z], X, Z, 0.14, 0.08, 0.05, rgb(0x4a6a2c), dec, look() * 6, 4);
+      bloomDisc(sink, [x, top + h, z - 0.05], [0, -0.2, -1], 0.17, BLOOM, dec, look());
+      bloomDisc(sink, [x, top + h, z - 0.06], [0, -0.2, -1], 0.09, rgb(0x3a2614), dec);
+    }
+    return;
+  }
+  if (!keep) return;
+  const cx = w / 2 - keep / 2 - 0.15;
+  if (style === 'german' || style === 'dutch') {
+    // a cold frame: a box of boards, its back higher than its front, its light (a glazed sash) laid on it
+    const fw = Math.min(keep - 0.1, 1.2), fd = Math.min(d - 0.4, 0.8), frame = rgb(0x6a5a42);
+    const xa = cx - fw / 2, xb = cx + fw / 2, za = -fd / 2, zb = fd / 2, lo = top + 0.22, hi = top + 0.42;
+    sink.span('structureWood', xa, top - 0.05, za - 0.03, xb, lo, za, { ...dec, colour: frame });
+    sink.span('structureWood', xa, top - 0.05, zb, xb, hi, zb + 0.03, { ...dec, colour: frame });
+    for (const x of [xa, xb]) sink.polygon('structureWood', [[x, top - 0.05, za], [x, top - 0.05, zb], [x, hi, zb], [x, lo, za]], { ...dec, colour: frame });
+    for (const x of [xb, xa]) sink.polygon('structureWood', [[x, top - 0.05, zb], [x, top - 0.05, za], [x, lo, za], [x, hi, zb]], { ...dec, colour: frame });
+    sink.polygon('structureWood', [[xa, lo + 0.01, za], [xb, lo + 0.01, za], [xb, hi + 0.01, zb], [xa, hi + 0.01, zb]], { ...dec, colour: PANE });
+    // its sash bars
+    for (const t of [0.33, 0.66]) { const x = xa + (xb - xa) * t; sink.member('structureWood', [x, lo + 0.02, za], [x, hi + 0.02, zb], 0.03, 0.02, [0, 1, 0], { ...dec, colour: frame, exposed: true }); }
+    return;
+  }
+  if (style === 'french') {
+    // glass cloches over the young plants, in a row
+    for (let z = -d / 2 + 0.35; z < d / 2 - 0.3; z += 0.5) mound(sink, [cx + (look() - 0.5) * 0.2, top, z], X, Z, 0.17, 0.17, 0.3, PANE, dec, look() * 6);
+    return;
+  }
+  if (style === 'med') {
+    // the well's stone basin at the garden's end, water dark in it
+    const bw = Math.min(keep - 0.2, 0.9);
+    sink.span('structureWood', cx - bw / 2, top - 0.05, -0.35, cx + bw / 2, top + 0.45, 0.35, { ...dec, colour: KERB });
+    sink.span('structureWood', cx - bw / 2 + 0.08, top + 0.45, -0.27, cx + bw / 2 - 0.08, top + 0.46, 0.27, { ...dec, colour: rgb(0x1e2a26) });
+    return;
+  }
+  if (style === 'monsoon' || style === 'japan') {
+    // a bamboo arbour (the gourds hung from it) or a cucumber frame: four posts, their rails, a grid over them
+    const aw = keep - 0.1, ad = Math.min(d - 0.3, 1.8), h = style === 'monsoon' ? 1.9 : 1.5, col = BAMBOO;
+    const xa = cx - aw / 2, xb = cx + aw / 2, za = -ad / 2, zb = ad / 2;
+    for (const x of [xa, xb]) for (const z of [za, zb]) sink.member('structureWood', [x, top - 0.1, z], [x, top + h, z], 0.05, 0.05, [1, 0, 0], { ...dec, colour: col, exposed: true });
+    for (const z of [za, zb]) sink.member('structureWood', [xa, top + h, z], [xb, top + h, z], 0.04, 0.04, [0, 1, 0], { ...dec, colour: col, exposed: true });
+    for (let k = 0; k <= 3; k++) { const x = xa + (xb - xa) * (k / 3); sink.member('structureWood', [x, top + h + 0.04, za], [x, top + h + 0.04, zb], 0.03, 0.03, [0, 1, 0], { ...dec, colour: col, exposed: true }); }
+    // the vine over it and up a post
+    ridge(sink, [xa + 0.1, top + h + 0.04, 0], [xb - 0.1, top + h + 0.04, 0], ad * 0.9, 0.18, shade(GOURD, 0.75), dec);
+    ridge(sink, [xa, top, za], [xa, top + h, za + 0.01], 0.2, 0.15, shade(GOURD, 0.7), dec);
+    if (style === 'monsoon') for (let k = 0; k < 4; k++) mound(sink, [xa + 0.2 + look() * (aw - 0.4), top + h - 0.35, za + 0.2 + look() * (ad - 0.4)], X, Z, 0.08, 0.08, 0.28, shade(GOURD, 1.1), dec, look() * 6, 4);
+  }
 }
 
 const IRON: Rgb = rgb(0x1e1c1a);
