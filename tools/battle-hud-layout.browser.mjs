@@ -333,7 +333,7 @@ try {
       await page.evaluate(count=>window.__HUD_LAYOUT.controls(count),count);
       await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
       const stages=[['battle','rest','magazine'],['battle','full','magazine'],['scope','rest','magazine'],['scope','full','magazine'],['scope','full','switching'],['battle','full','switching']];
-      let widest=0;
+      let widest=0,dockAt=null;
       for(const [sight,bloom,readout] of stages){
         await page.evaluate(stage=>window.__HUD_LAYOUT.reticle(stage),{sight,bloom,readout});
         await page.waitForTimeout(160); // the scope's 0.1 s fade-in runs on the wall clock
@@ -402,10 +402,14 @@ try {
           }
           const text=ink.filter(r=>r.what.startsWith('text ')).map(r=>r.what.slice(5));
           const reach=Math.max(0,...ink.map(r=>Math.max(r.y1-innerHeight/2,Math.abs(r.x1-innerWidth/2),Math.abs(r.x0-innerWidth/2))));
+          const row=document.querySelector('.cot-vehicle-controls').getBoundingClientRect();
           return {inks:ink.length,text,outside:[...new Set(outside)].slice(0,6),covered:[...new Set(covered)].slice(0,6),reach,
-            more:!!document.querySelector('.cot-vehicle-controls>.cot-dock-more:not([hidden])')};
+            more:!!document.querySelector('.cot-vehicle-controls>.cot-dock-more:not([hidden])'),dock:[row.left,row.top,row.width,row.height].map(v=>Math.round(v)).join(',')};
         });
         widest=Math.max(widest,result.reach);
+        // The dock is placed for every sight and bloom at once: it never moves when the sight changes or the ring blooms.
+        dockAt??=result.dock;
+        if(result.dock!==dockAt)errors.push(`${name}/${count}: the dock moved from ${dockAt} to ${result.dock} in the ${sight} sight (${bloom})`);
         const label=`${name}/${count}-controls/${sight}-${bloom}-${readout}`;
         if(result.inks<5)errors.push(`${label}: the reticle drew nothing to check (${result.inks})`);
         if(sight==='scope'&&!result.text.some(t=>/^×25\.0$/.test(t)))errors.push(`${label}: the zoom plate was not drawn (${result.text})`);
@@ -447,11 +451,13 @@ try {
       if(swipe&&!swipe.none){
         const cdp=await context.newCDPSession(page);
         await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:swipe.x,y:swipe.y,id:1}]});
+        // Six 8 x 3 px steps: the first 10 px decide it is a swipe, then the aim pad holds the touch to its end (the
+        // pad scales a drag by 1.18), so the whole 66 px of travel must arrive as aim, not only the first step.
         for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:swipe.x-i*8,y:swipe.y-i*3,id:1}]});
         await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
         await cdp.detach();
         const after=await page.evaluate(()=>({aimed:window.__aimed,events:window.__swipeEvents.slice()}));
-        if(!(after.aimed>0))errors.push(`${name}/${count}: a swipe from the ${swipe.name} tile did not aim`);
+        if(!(after.aimed>=66*1.18*.9))errors.push(`${name}/${count}: a swipe from the ${swipe.name} tile aimed ${after.aimed.toFixed(1)} of ${(66*1.18).toFixed(1)} px`);
         if(after.events.length)errors.push(`${name}/${count}: a swipe from the ${swipe.name} tile acted: ${after.events}`);
         swipes.push(`${name}/${count}: ${swipe.name} aimed ${after.aimed.toFixed(0)} px`);
       } else swipes.push(`${name}/${count}: ${swipe?'no docked tile over the aim pad':'no aim pad'}`);

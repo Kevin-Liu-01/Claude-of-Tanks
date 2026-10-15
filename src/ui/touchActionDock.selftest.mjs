@@ -233,7 +233,7 @@ for (const { width, height } of VIEWPORTS) {
       ...[-34, 0, 34].flatMap((dx) => [[cx + dx, ammo - 10], [cx + dx, ammo + 3]]), // "120 APFSDS"
       ...[-53, -24, 0, 24, 53].flatMap((dx) => [[cx + dx, zoom - 12], [cx + dx, zoom + 4]]), // "x25.0" and its rules
       [cx + tag + 4, cy + tag + 3], [cx + tag + 44, cy + tag + 3], [cx + tag + 4, cy + tag + 15], [cx + tag + 44, cy + tag + 15], // "1500 m"
-      [cx - 44, cy + 59], [cx + 44, cy + 59], [cx, cy + 20], [cx + 36, cy + 44], // SWITCHING, the rack and its +N
+      [cx - 50, cy + 14], [cx + 50, cy + 14], [cx - 44, cy + 59], [cx + 44, cy + 59], [cx, cy + 20], [cx + 36, cy + 44], // SWITCHING, the rack and its +N
       [cx, cy - r * 1.55 - 3], [cx, cy + r * 1.55 + 3], [cx - r * 1.55 - 3, cy], [cx + r * 1.55 + 3, cy], // arm ends
     ];
     for (const [x, y] of points) assert.ok(inFootprint(footprint, x, y), `${width}x${height}: r ${r.toFixed(1)}: the reticle's footprint covers (${x.toFixed(1)}, ${y.toFixed(1)})`);

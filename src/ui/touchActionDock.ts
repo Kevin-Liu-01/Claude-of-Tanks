@@ -116,15 +116,15 @@ export const TOUCH_ACTION_RETICLE_READOUTS = Object.freeze({
   /** paintAutoloaderMagazine and paintReloadCountdown, under the marker in both sights: the centre clearance is
    *  14 + (zoomScale - 1) * 9 (zoomScale to 1.8 in the scope), the rack 6 px below it (16 px shells sitting up to
    *  2.25 px lower, 3 px outline), the countdown 15 px under the rack or the clearance (16 px numerals, or SWITCHING
-   *  while a round is chosen). */
-  stackTopPx: 17, stackBottomPx: 21.2 + 6 + 2.25 + 16 + 15 + 7, stackHalfWidthPx: 56,
+   *  while a round is chosen, its caps rising 12 px from a baseline 29 px down in the battle sight). */
+  stackTopPx: 12, stackBottomPx: 21.2 + 6 + 2.25 + 16 + 15 + 7, stackHalfWidthPx: 56,
   /** paintSniperAmmoReadout: 13.5 px count + 9 px type ("120 APFSDS"), baseline at sniperAmmoReadoutY. */
   ammoAscentPx: 13, ammoDescentPx: 6, ammoHalfWidthPx: 46,
   /** paintSniperZoom: 16 px "x25.0" 18 px (300 px tall and less) or 24 px under the ammunition, its rules running 12 + 20 px
    *  past the text either side. */
   zoomAscentPx: 15, zoomDescentPx: 7, zoomHalfWidthPx: 60,
   /** paintSniperDistance: 11.5 px "1500 m" off the ring's 4:30 point, 0.7071 (r + 9) out, 4 px right and 12 px down. */
-  rangeWidthPx: 50, rangeAscentPx: 12, rangeDescentPx: 6,
+  rangeWidthPx: 56, rangeAscentPx: 12, rangeDescentPx: 6,
 });
 
 /** sniperAmmoReadoutY (hud.ts): the scope's ammunition baseline below the aiming point, for ring radius `r`. */
