@@ -5,7 +5,7 @@ import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobble
 import { acquireDroneModelKit, droneNation, droneRotorDirection, mirroredRotorGeometry, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
 import { DRONE_ARRIVAL, DRONE_RETURN, droneArrivalAttitude } from './droneArrival.ts';
 import { avoidDroneObstacles, type AerialWorldQuery } from '../sim/aerialCombat.ts';
-import { droneReturnS, droneReturnSpeed } from '../sim/droneRecall.ts';
+import { droneReturnS, droneReturnSpeed, droneReturnClimbS } from '../sim/droneRecall.ts';
 
 const CAPACITY = 42;
 /**
@@ -44,7 +44,14 @@ type ReturnPhase = 'grace' | 'transit' | 'descent' | 'handoff';
 interface ReturnFlight {
   id: string | number; ownerId: string | number; nation: string; phase: ReturnPhase;
   pos: THREE.Vector3; vel: THREE.Vector3; state: DroneAttitude; seed: number;
+  /** Where the flight ended: the recall's law reads the way home from here, as the authority did. */
+  from: THREE.Vector3;
   t: number; phaseT: number; cruiseY: number; speed: number; descentFrom: number;
+  /** The climb (+) or sink (−) to cruise height over the dock, and the seconds the recall's law gives it (sim/droneRecall.ts,
+   * bounded by maxTransitS however high or low the airframe was): flown as an eased profile so it ends on time. */
+  rise: number; riseS: number;
+  /** Over the column once: from then it keeps station over it (as the descent does) while the climb or sink ends. */
+  overColumn: boolean;
   /** Abandoned past this (the recall timing law plus its overrun; set as the transit begins). */
   limitS: number;
   /** The landing's first pose last frame: the carrier's motion, fed forward so a flight home keeps up with it. */
@@ -91,7 +98,12 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   const dockAt=new THREE.Vector3(),drawAt=new THREE.Vector3(),handoffAt=new THREE.Vector3(),toward=new THREE.Vector3(),desired=new THREE.Vector3();
   const handoffQuat=new THREE.Quaternion(),arrivalEuler=new THREE.Euler(0,0,0,'YXZ'),arrivalQuat=new THREE.Quaternion();
   const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3(),dockVel=new THREE.Vector3();
-  const {climbMps:RETURN_CLIMB_MPS,sinkMps:RETURN_SINK_MPS}=AERIAL_RULES.drone.recall;
+  const {climbMps:RETURN_CLIMB_MPS,sinkMps:RETURN_SINK_MPS,maxMps:RETURN_PACE_MPS}=AERIAL_RULES.drone.recall;
+  /** The climb or sink profile: its position gain and the vertical response (1/s), so it tracks the eased profile
+   * closely, and the beat it is drawn out by past the law's leg (the column's approach settles in that while). */
+  const RETURN_PROFILE_GAIN=2.5,RETURN_LIFT_HZ=6,RETURN_RISE_SETTLE_S=1.3;
+  /** Recalled this close to the column (m), the flight home starts by keeping station over it. */
+  const RETURN_NEAR_M=8;
   /**
    * The four rotors of one airframe into the pools, never with a mirrored instance transform (2026-10-12: two of the four
    * props and discs drew lit from behind, near-black against the ground). A counter-rotating spinning prop draws the
@@ -131,9 +143,9 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     if(track.ownerId==null||track.ageS<AERIAL_RULES.drone.launchS){options.onReturnEvent?.(id,'skip',track.ownerId==null?'no owner':'never flew free');return;}
     options.onReturnEvent?.(id,'start',`owner ${track.ownerId}`);
     const state=attitudes.get(id)??createDroneAttitude();
-    returns.set(id,{id,ownerId:track.ownerId,nation:track.nation,phase:'grace',pos:track.pos.clone(),vel:track.vel.clone(),state,
+    returns.set(id,{id,ownerId:track.ownerId,nation:track.nation,phase:'grace',pos:track.pos.clone(),vel:track.vel.clone(),state,from:track.pos.clone(),
       seed:typeof id==='number'?id*.71:id.length*.71,t:0,phaseT:0,cruiseY:track.pos.y,speed:droneReturnSpeed(0),descentFrom:0,
-      limitS:Infinity,dockPrev:new THREE.Vector3(),dockSeen:false});
+      rise:0,riseS:0,overColumn:false,limitS:Infinity,dockPrev:new THREE.Vector3(),dockSeen:false});
   }
   /** Advance one flight home by this frame's presentation dt and draw it; false when it ended (handed over or abandoned). */
   function stepReturn(r:ReturnFlight):boolean {
@@ -160,9 +172,12 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       if(r.phaseT>=DRONE_RETURN.graceS){
         r.phase='transit';r.phaseT=0;r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
         // Paced and bounded by the recall's timing law (sim/droneRecall.ts), the window the authority holds the dock for.
-        const distance=Math.hypot(dockAt.x-r.pos.x,dockAt.z-r.pos.z);
+        const distance=Math.hypot(dockAt.x-r.pos.x,dockAt.z-r.pos.z),fromM=Math.hypot(dockAt.x-r.from.x,dockAt.z-r.from.z);
         r.speed=droneReturnSpeed(distance);
-        r.limitS=r.t-DRONE_RETURN.graceS+droneReturnS(distance,r.pos.y-dockAt.y)+DRONE_RETURN.overrunS;
+        // Recalled right by the column, it hops straight over it and keeps station (a carrier driving off is caught up).
+        r.overColumn=distance<=RETURN_NEAR_M;
+        r.rise=r.cruiseY-r.pos.y;r.riseS=droneReturnClimbS(r.from.y-dockAt.y)+RETURN_RISE_SETTLE_S;
+        r.limitS=droneReturnS(fromM,r.from.y-dockAt.y)+DRONE_RETURN.overrunS;
       }
     }else if(r.phase==='transit'){
       toward.set(handoffAt.x-r.pos.x,0,handoffAt.z-r.pos.z);
@@ -175,11 +190,25 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       }else{
         // Home at cruise height over a moving carrier: climbs or glides to it on the way, lifted over what lies ahead.
         r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
-        const ground=Math.min(r.speed,distance*1.4+.5);
-        desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0).add(dockVel);
-        desired.y=Math.max(-RETURN_SINK_MPS,Math.min(RETURN_CLIMB_MPS,(r.cruiseY-r.pos.y)*.8));
+        // A fast return (from the link's edge) brakes a little harder, so it settles over the column as a usual one does.
+        const pace=Math.max(1,r.speed/RETURN_PACE_MPS),ground=Math.min(r.speed,distance*1.4*Math.sqrt(pace)+.5);
+        if(distance<=DRONE_RETURN.columnM)r.overColumn=true;
+        if(r.overColumn)desired.set(toward.x*4,0,toward.z*4).clampLength(0,r.speed).add(dockVel);
+        else desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0).add(dockVel);
+        // The climb or sink to cruise height runs the law's profile (eased in and out over riseS, so a long one from high
+        // above or far below the tank ends on time and levels off without a jolt), then holds the cruise height.
+        const u=r.riseS>0?Math.min(1,r.phaseT/r.riseS):1;
+        if(u<1){
+          // The profile's pace and its change (fed forward through the vertical response), and a bounded correction.
+          const k=r.rise/r.riseS,profileY=r.cruiseY-r.rise*(1-u*u*(3-2*u));
+          desired.y=k*6*u*(1-u)+k/r.riseS*6*(1-2*u)/RETURN_LIFT_HZ
+            +Math.max(-RETURN_SINK_MPS,Math.min(RETURN_CLIMB_MPS,(profileY-r.pos.y)*RETURN_PROFILE_GAIN));
+        }else desired.y=Math.max(-RETURN_SINK_MPS,Math.min(RETURN_CLIMB_MPS,(r.cruiseY-r.pos.y)*.8));
         if(world)avoidDroneObstacles(world,String(r.ownerId),r.pos,desired);
-        r.vel.lerp(desired,1-Math.exp(-dt*2.5));r.pos.addScaledVector(r.vel,dt);
+        // The ground track eases in at the airframe's pace (quicker for a fast return), the climb and sink at the thrust's.
+        const ease=1-Math.exp(-dt*(r.overColumn?6:2.5*pace)),lift=1-Math.exp(-dt*RETURN_LIFT_HZ);
+        r.vel.x+=(desired.x-r.vel.x)*ease;r.vel.z+=(desired.z-r.vel.z)*ease;r.vel.y+=(desired.y-r.vel.y)*lift;
+        r.pos.addScaledVector(r.vel,dt);
       }
     }
     if(r.phase==='descent'){

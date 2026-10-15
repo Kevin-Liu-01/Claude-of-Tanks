@@ -33,13 +33,17 @@ export const AERIAL_RULES = Object.freeze({
     recall: Object.freeze({
       feedS: .55,
       /** The flight home: the horizontal distance over `transitS` at a ground speed inside [minMps, maxMps], climbing or
-       *  sinking to `cruiseAboveDockM` over the dock at `climbMps` / `sinkMps`. */
-      transitS: 5, minMps: 20, maxMps: 60, climbMps: 8, sinkMps: 12, cruiseAboveDockM: 15,
+       *  sinking to `cruiseAboveDockM` over the dock at `climbMps` / `sinkMps`; each leg flies faster where that pace would
+       *  not cover it inside `maxTransitS`, so a recall from the link's edge, high above or far below the tank is home
+       *  as quickly (verifier 2026-10-14: an unbounded climb or sink made a recall from 835 m up wait 81 s). */
+      transitS: 5, minMps: 20, maxMps: 60, climbMps: 8, sinkMps: 12, cruiseAboveDockM: 15, maxTransitS: 7,
       /** The flight home's fixed beats: the hold for an impact in flight, the approach to the dock's column and its descent. */
       approachS: 4.4,
       /** The landing on the dock: the descent onto the pads and the rotor spin-down (fx/droneArrival.ts fits inside). */
       landingS: 3.4,
-      /** The relaunch wait after a recalled airframe is parked on its dock (`cooldownS` above follows a loss). */
+      /** The relaunch wait after a recalled airframe is parked on its dock (`cooldownS` above follows a loss). From
+       *  anywhere, a recall relaunches within maxTransitS + approachS + landingS + cooldownS = 19.8 s of the press,
+       *  over 5 s sooner than the 25 s after a loss (sim/droneRecall.selftest.mjs sweeps the reachable envelope). */
       cooldownS: 5,
     }),
   }),
