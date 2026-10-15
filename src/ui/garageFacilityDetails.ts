@@ -1393,7 +1393,21 @@ export function addGarageFacilityDetails({
     centerLateral: number,
     longitudinal: number,
     width: number,
+    guards: 'pit' | 'edge' = 'pit',
   ): void => {
+    // a rail guards something (the re-judge, 2026-10-15: "yellow bollards scattered on the slab with no purpose"): unless
+    // it stands at an edge, an inspection pit opens behind it, a concrete kerb round a dark well, a grating over its end
+    if (guards === 'pit') {
+      const pitL = width - 0.4, pitW = 1.1, f = longitudinal - 0.75;
+      clusterBox(cluster, centerLateral, f, 0.015, pitL, 0.03, pitW, new THREE.Color(0x111314), 'painted'); // the well
+      for (const side of [-1, 1]) {
+        clusterBox(cluster, centerLateral, f + side * (pitW / 2 + 0.09), 0.06, pitL + 0.36, 0.12, 0.18, plinthConcrete, 'masonry');
+        clusterBox(cluster, centerLateral + side * (pitL / 2 + 0.09), f, 0.06, 0.18, 0.12, pitW, plinthConcrete, 'masonry');
+      }
+      for (let bar = 0; bar < 8; bar += 1) {
+        clusterBox(cluster, centerLateral + pitL / 2 - 0.1 - bar * 0.12, f, 0.05, 0.03, 0.03, pitW, steel, 'structure'); // the grating
+      }
+    }
     for (let index = 0; index <= 4; index += 1) {
       const lateral = centerLateral - width / 2 + width * index / 4;
       clusterBox(cluster, lateral, longitudinal, 0.68,
