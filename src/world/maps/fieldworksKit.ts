@@ -454,6 +454,14 @@ export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<
       broken: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWireBroken, rng, 0xb1e1), true),
     };
   }
+  const tent = TENT_FORMS[mapId];
+  if (tent && base.tent) {
+    out.tent = {
+      ...base.tent,
+      build: (rng: Rng) => buildFieldTent(tent, spentDraws(bTent, rng, 0x7e01), false),
+      broken: (rng: Rng) => buildFieldTent(tent, spentDraws(bTentBroken, rng, 0x7e02), true),
+    };
+  }
   return out;
 }
 
@@ -903,6 +911,250 @@ function buildWireRun(spec: WireSpec, o: Rng, torn: boolean): THREE.BufferGeomet
       wireTube(m, strand, 0.0065, wireCol);
     }
   }
+  return m.geometry();
+}
+
+// --- the field tent (prop:tent: 2.56 x 3.8 m, 2.1 m high, its door to +z, its foot at y = 0) ---------------------------
+//
+// The tent each army pitched: the ridge tent with its eave walls (the west's and Shanghai's, the Cold War's armies'), a
+// double fly over it in the British jungle (Kohima); the pyramidal tent on its centre pole (the Red Army's palatka, the
+// US Army's M1934 in Louisiana, the arctic's white); the modular frame tent of the late maps on its arched hoops. Canvas
+// in the army's colour, bleached at the ridge and dirty at the hem, sagging between its poles; guys to pegs; the door's
+// flaps rolled and tied back on a dark inside with a cot and kit in it. Destroyed: the poles down, the canvas collapsed
+// over its contents, a corner still pegged.
+
+type TentForm = 'ridge' | 'pyramid' | 'tunnel';
+interface TentSpec { form: TentForm; canvas: Rgb3; fly?: boolean }
+const CANVAS_OD = hexLin(0x5c5a3e), CANVAS_GREY = hexLin(0x5a5c4e), CANVAS_KHAKI = hexLin(0x7a6e4e), CANVAS_SOVIET = hexLin(0x66654a);
+const CANVAS_JUNGLE = hexLin(0x4c5038), CANVAS_SAND = hexLin(0xa8946e), CANVAS_WHITE = hexLin(0xd0cec4), CANVAS_TAN = hexLin(0x8a7a58);
+const CANVAS_BUND = hexLin(0x4f5440);
+const TENT_FORMS: Readonly<Record<string, TentSpec>> = Object.freeze({
+  fjord: { form: 'ridge', canvas: CANVAS_GREY }, autumn: { form: 'ridge', canvas: CANVAS_OD }, polders: { form: 'ridge', canvas: CANVAS_OD },
+  reservoir: { form: 'ridge', canvas: CANVAS_OD }, alpine: { form: 'ridge', canvas: CANVAS_OD }, foundry: { form: 'ridge', canvas: CANVAS_OD },
+  blackglass: { form: 'ridge', canvas: CANVAS_KHAKI }, monsoon: { form: 'ridge', canvas: CANVAS_JUNGLE, fly: true },
+  verdant: { form: 'pyramid', canvas: CANVAS_SOVIET }, winter: { form: 'pyramid', canvas: CANVAS_SOVIET },
+  steppe: { form: 'pyramid', canvas: CANVAS_SOVIET }, longleaf: { form: 'pyramid', canvas: CANVAS_OD },
+  whiteout: { form: 'pyramid', canvas: CANVAS_WHITE },
+  railyard: { form: 'ridge', canvas: CANVAS_BUND }, frontier: { form: 'ridge', canvas: CANVAS_BUND }, urban: { form: 'ridge', canvas: CANVAS_BUND },
+  skybridge: { form: 'ridge', canvas: CANVAS_OD }, titan_gorge: { form: 'ridge', canvas: CANVAS_TAN }, cliffbridge: { form: 'ridge', canvas: CANVAS_OD },
+  copper_mesa: { form: 'ridge', canvas: CANVAS_OD }, orchard: { form: 'ridge', canvas: CANVAS_SAND }, desert: { form: 'ridge', canvas: CANVAS_SAND },
+  ruinspires: { form: 'ridge', canvas: CANVAS_WHITE }, saltwind: { form: 'ridge', canvas: CANVAS_OD },
+  badlands: { form: 'tunnel', canvas: CANVAS_SAND }, oasis: { form: 'tunnel', canvas: CANVAS_SAND }, delta: { form: 'tunnel', canvas: CANVAS_OD },
+  mangrove: { form: 'tunnel', canvas: CANVAS_JUNGLE }, caldera: { form: 'tunnel', canvas: CANVAS_OD }, airfield: { form: 'tunnel', canvas: CANVAS_TAN },
+  coastal: { form: 'tunnel', canvas: CANVAS_OD }, mars: { form: 'tunnel', canvas: CANVAS_WHITE }, moon: { form: 'tunnel', canvas: CANVAS_WHITE },
+});
+const POLE_WOOD = hexLin(0x6a5640), POLE_ALU = hexLin(0x8c8e8a), ROPE = hexLin(0x9a8c6a), INSIDE_DARK = hexLin(0x141310);
+const COT = hexLin(0x3e4030), KIT_DARK = hexLin(0x2c2e24);
+
+/** The canvas's colour at a point: bleached toward the ridge, dirty at the hem, mottled. */
+function canvasShade(canvas: Rgb3, H: number, seed: number): (q: V, n: V) => Rgb3 {
+  return (q, n) => {
+    const bleach = Math.min(1, Math.max(0, q.y / H)) * (n.y > 0.2 ? 0.22 : 0.1);
+    const hem = Math.max(0, 1 - q.y / 0.35) * 0.35;
+    const mottle = 0.86 + vnoise3(q.x * 3.1, q.y * 3.1, q.z * 3.1, seed) * 0.22;
+    return mulRgb(mixRgb(mixRgb(canvas, mulRgb(canvas, 1.45), bleach), hexLin(0x4a3d2e), hem), mottle);
+  };
+}
+
+/**
+ * A sheet of canvas over the grid `at(u, v)` (u, v in 0..1, nu x nv cells), each triangle wound away from `inside`
+ * (a point within the tent); both faces when `both` (a flap seen from either side).
+ */
+function sheet(m: SteelMesh, at: (u: number, v: number) => V, nu: number, nv: number, inside: V, col: (q: V, n: V) => Rgb3, both = false): void {
+  const g: V[][] = [];
+  for (let i = 0; i <= nu; i++) { g.push([]); for (let j = 0; j <= nv; j++) g[i].push(at(i / nu, j / nv)); }
+  const put = (a: V, b: V, c: V): void => {
+    const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
+    const mid = a.clone().add(b).add(c).multiplyScalar(1 / 3).sub(inside);
+    if (n.dot(mid) >= 0) m.tri(a, b, c, col); else m.tri(a, c, b, col);
+    if (both) {
+      // (its other face a few millimetres in, so the two never fight)
+      const k = n.clone().normalize().multiplyScalar(n.dot(mid) >= 0 ? -0.004 : 0.004);
+      const a2 = a.clone().add(k), b2 = b.clone().add(k), c2 = c.clone().add(k);
+      if (n.dot(mid) >= 0) m.tri(a2, c2, b2, col); else m.tri(a2, b2, c2, col);
+    }
+  };
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) { put(g[i][j], g[i + 1][j], g[i + 1][j + 1]); put(g[i][j], g[i + 1][j + 1], g[i][j + 1]); }
+}
+
+/** A pole from a to b (a 5-sided round), and a short peg driven at p. */
+function rod(m: SteelMesh, a: V, b: V, r: number, col: Rgb3, seg = 5): void {
+  const len = a.distanceTo(b), g = new SteelMesh();
+  g.round(r, -len / 2, len / 2, seg, (q) => mulRgb(col, 0.85 + vnoise3(q.x * 7, q.y * 7, q.z * 7, 5) * 0.3), 0, 0, false);
+  const geo = g.geometry();
+  geo.lookAt(new THREE.Vector3().subVectors(b, a));
+  const mid = a.clone().add(b).multiplyScalar(0.5);
+  geo.translate(mid.x, mid.y, mid.z);
+  const pa = geo.getAttribute('position'), na = geo.getAttribute('normal'), ca = geo.getAttribute('color');
+  for (let i = 0; i < pa.count; i++) { m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
+  geo.dispose();
+}
+
+/** A guy from the canvas at a to its peg at p, the peg leaning back against the pull. */
+function guy(m: SteelMesh, a: V, p: V, rope: (q: V, n: V) => Rgb3): void {
+  wireTube(m, [a, p.clone().add(v3(0, 0.05, 0))], 0.007, rope);
+  rod(m, p.clone().add(v3(0, -0.05, 0)), p.clone().add(v3((p.x - a.x) * 0.04, 0.09, (p.z - a.z) * 0.04)), 0.014, POLE_WOOD, 4);
+}
+
+/**
+ * The inside seen through a door at z: a dark room `w` wide, `h` high and `depth` deep behind it (its floor, sides, back
+ * and ceiling facing in, so nothing of the outside shows through the canvas's backs; its ceiling falling to `hFront` at
+ * the door under a sloping roof), a cot and a kit bag in it.
+ */
+function insideDoor(m: SteelMesh, w: number, h: number, z: number, depth: number, hFront = h): void {
+  const x0 = -w / 2, x1 = w / 2, z0 = z - depth, z1 = z - 0.02;
+  const dark = (q: V): Rgb3 => mulRgb(INSIDE_DARK, 0.85 + vnoise3(q.x * 4, q.y * 4, q.z * 4, 3) * 0.3);
+  const floor = (q: V): Rgb3 => mulRgb(KIT_DARK, 0.9 + vnoise3(q.x * 4, 0, q.z * 4, 4) * 0.2);
+  const quad = (a: V, b: V, c: V, d: V, col: (q: V) => Rgb3): void => { m.tri(a, b, c, col); m.tri(a, c, d, col); };
+  quad(v3(x0, 0.01, z0), v3(x0, 0.01, z1), v3(x1, 0.01, z1), v3(x1, 0.01, z0), floor); // up
+  quad(v3(x0, 0, z0), v3(x0, h, z0), v3(x0, hFront, z1), v3(x0, 0, z1), dark); // +x
+  quad(v3(x1, 0, z0), v3(x1, 0, z1), v3(x1, hFront, z1), v3(x1, h, z0), dark); // -x
+  quad(v3(x0, 0, z0), v3(x1, 0, z0), v3(x1, h, z0), v3(x0, h, z0), dark); // +z
+  quad(v3(x0, h, z0), v3(x1, h, z0), v3(x1, hFront, z1), v3(x0, hFront, z1), dark); // -y
+  // the cot along the room, a kit bag on the floor by the door
+  const cot = new SteelMesh();
+  cot.prism([[-0.26, 0], [0.26, 0], [0.26, 0.07], [-0.26, 0.07]], -0.6, 0.6, () => COT);
+  for (const [lx, lz] of [[-0.22, -0.55], [0.22, -0.55], [-0.22, 0.55], [0.22, 0.55]]) cot.prism([[lx - 0.02, -0.34], [lx + 0.02, -0.34], [lx + 0.02, 0], [lx - 0.02, 0]], lz - 0.02, lz + 0.02, () => KIT_DARK);
+  const cg = cot.geometry(); cg.translate(x0 + 0.3, 0.35, z0 + 0.7);
+  const bag = new SteelMesh(); bag.round(0.15, -0.26, 0.26, 6, () => KIT_DARK);
+  const bg = bag.geometry(); bg.rotateY(Math.PI / 2); bg.translate(x1 - 0.2, 0.15, z1 - 0.35);
+  for (const geo of [cg, bg]) {
+    const pa = geo.getAttribute('position'), na = geo.getAttribute('normal'), ca = geo.getAttribute('color');
+    for (let k = 0; k < pa.count; k++) { m.p.push(pa.getX(k), pa.getY(k), pa.getZ(k)); m.n.push(na.getX(k), na.getY(k), na.getZ(k)); m.c.push(ca.getX(k), ca.getY(k), ca.getZ(k)); }
+    geo.dispose();
+  }
+}
+
+/** The tent as `spec` pitches it (`down`: collapsed), its own stream `o`. */
+function buildFieldTent(spec: TentSpec, o: Rng, down: boolean): THREE.BufferGeometry {
+  const m = new SteelMesh(), seed = Math.floor(o() * 1e6);
+  const H = spec.form === 'tunnel' ? 1.85 : 1.98;
+  const cloth = canvasShade(spec.canvas, H, seed), rope = (q: V): Rgb3 => mulRgb(ROPE, 0.85 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed) * 0.25);
+  const W = spec.form === 'pyramid' ? 2.4 : spec.form === 'tunnel' ? 2.3 : 2.2, L = spec.form === 'pyramid' ? 2.4 : spec.form === 'tunnel' ? 3.4 : 3.3;
+  const wall = spec.form === 'pyramid' ? 0.6 : 0.55, inside = v3(0, H * 0.4, 0), poleCol = spec.form === 'tunnel' ? POLE_ALU : POLE_WOOD;
+  if (down) {
+    // collapsed: the canvas lies over what was in it — humped over the cot and the kit, its folds, a corner still pegged
+    const humps = [[-0.55, 0.42, -0.1, 0.9], [0.35, 0.3, L / 2 - 0.6, 0.45], [0.1, 0.22, -L / 2 + 0.6, 0.6]];
+    const fall = (u: number, v: number): V => {
+      const x = (u - 0.5) * W * 1.12, z = (v - 0.5) * L * 1.05;
+      let y = 0.03 + vnoise3(x * 1.7, 0, z * 1.7, seed + 4) * 0.12;
+      for (const [hx, hy, hz, hr] of humps) y += hy * Math.max(0, 1 - Math.hypot(x - hx, (z - hz) * 0.7) / hr);
+      // the pegged corner pulled taut to its peg
+      if (u > 0.85 && v < 0.15) y *= 0.4;
+      return v3(x + Math.sin(z * 2.3 + seed) * 0.06, y, z);
+    };
+    sheet(m, fall, 5, 7, v3(0, -1, 0), cloth);
+    // the poles down across it, one snapped
+    rod(m, v3(-0.2, 0.08, -L / 2 - 0.3), v3(0.4, 0.2, L / 2 + 0.1), 0.03, poleCol);
+    rod(m, v3(0.8, 0.06, L / 2 - 0.4), v3(1.15, 0.3, L / 2 + 0.2), 0.03, poleCol);
+    guy(m, v3(W / 2, 0.1, -L / 2), v3(W / 2 + 0.12, 0, -L / 2 - 0.25), rope);
+    return m.geometry();
+  }
+  if (spec.form === 'ridge') {
+    const sag = (z: number): number => 0.05 * (1 - (2 * z / L) ** 2);
+    for (const s of [-1, 1]) {
+      // the roof's slope, eave to ridge, sagging between the poles
+      sheet(m, (u, v) => {
+        const z = (v - 0.5) * L, x = s * (W / 2) * (1 - u), y = wall + (H - wall) * u;
+        return v3(x, y - sag(z) * Math.sin(Math.PI * Math.max(u, 0.15)) - 0.02 * Math.sin(Math.PI * u), z);
+      }, 3, 4, inside, cloth);
+      // the eave wall, its hem flared out at the foot
+      sheet(m, (u, v) => v3(s * (W / 2 + 0.06 * (1 - u)), wall * u, (v - 0.5) * L), 1, 4, inside, cloth);
+      if (spec.fly) {
+        sheet(m, (u, v) => {
+          const z = (v - 0.5) * (L + 0.4), x = s * (W / 2 + 0.16) * (1 - u), y = wall + 0.05 + (H + 0.14 - wall - 0.05) * u;
+          return v3(x, y - 0.04 * Math.sin(Math.PI * v), z);
+        }, 2, 3, inside, cloth, true);
+      }
+      // the guys from the eaves to their pegs
+      for (const z of [-L / 2 + 0.2, 0, L / 2 - 0.2]) guy(m, v3(s * W / 2, wall, z), v3(s * 1.22, 0, z), rope);
+    }
+    // the rear gable closed; the front's either side of the door, the flaps rolled and tied back
+    const gable = (z: number, door: boolean): void => {
+      const top = (x: number): number => wall + (H - wall) * (1 - Math.abs(x) / (W / 2));
+      if (!door) { sheet(m, (u, v) => { const x = (u - 0.5) * W; return v3(x, top(x) * v, z); }, 4, 2, inside, cloth); return; }
+      for (const side of [-1, 1]) {
+        sheet(m, (u, v) => { const x = side * (0.42 + u * (W / 2 - 0.42)); return v3(x, top(x) * v, z); }, 2, 2, inside, cloth);
+        // the flap rolled up beside the door
+        const roll = new SteelMesh(); roll.round(0.07, 0, 1.35, 6, cloth);
+        const rg = roll.geometry(); rg.rotateX(-Math.PI / 2); rg.translate(side * 0.5, 0.05, z + 0.06);
+        const pa = rg.getAttribute('position'), na = rg.getAttribute('normal'), ca = rg.getAttribute('color');
+        for (let i = 0; i < pa.count; i++) { m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
+        rg.dispose();
+      }
+      // over the door: the gable's head
+      sheet(m, (u, v) => { const x = (u - 0.5) * 0.84; return v3(x, 1.4 + (top(x) - 1.4) * v, z); }, 2, 1, inside, cloth);
+      insideDoor(m, 0.84, 1.4, z, 1.7);
+    };
+    gable(-L / 2, false);
+    gable(L / 2, true);
+    // the poles and the ridge
+    for (const z of [-L / 2 - 0.02, L / 2 + 0.02]) rod(m, v3(0, -0.05, z), v3(0, H + 0.1, z), 0.03, poleCol);
+    rod(m, v3(0, H + 0.02, -L / 2 - 0.05), v3(0, H + 0.02, L / 2 + 0.05), 0.028, poleCol);
+    for (const zs of [-1, 1]) guy(m, v3(0, H + 0.08, zs * (L / 2 + 0.02)), v3(0, 0, zs * 1.85), rope);
+  } else if (spec.form === 'pyramid') {
+    const apex = v3(0, H + 0.06, 0), hw = W / 2, hl = L / 2;
+    const corners = [v3(-hw, wall, -hl), v3(hw, wall, -hl), v3(hw, wall, hl), v3(-hw, wall, hl)];
+    for (let k = 0; k < 4; k++) {
+      const a = corners[k], b = corners[(k + 1) % 4];
+      // the roof's face from its eave to the apex, sagging in its middle (the door's slit up the front one)
+      const face = (u0: number, u1: number, v0: number, v1: number, nu: number, nv: number): void => sheet(m, (u, v) => {
+        const uu = u0 + (u1 - u0) * u, vv = v0 + (v1 - v0) * v;
+        const e = a.clone().lerp(b, uu), q = e.clone().lerp(apex, vv);
+        const sagged = 0.06 * Math.sin(Math.PI * uu) * Math.sin(Math.PI * Math.min(1, vv * 1.2));
+        return q.add(v3(-q.x * sagged, -sagged * 0.6, -q.z * sagged));
+      }, nu, nv, inside, cloth);
+      if (k === 2) {
+        face(0, 0.36, 0, 0.55, 1, 2); face(0.64, 1, 0, 0.55, 1, 2); face(0, 1, 0.55, 1, 3, 2);
+        // the door's flap folded back over the face beside the door and tied there
+        sheet(m, (u, v) => {
+          const uu = 0.64 + 0.2 * u, vv = 0.5 * v, e = a.clone().lerp(b, uu), q = e.clone().lerp(apex, vv);
+          return q.add(v3(0, 0.03, 0.035));
+        }, 1, 2, inside, cloth);
+      } else face(0, 1, 0, 1, 3, 3);
+      // the eave wall below it (the door in the +z wall)
+      if (k === 2) {
+        for (const side of [-1, 1]) sheet(m, (u, v) => v3(side * (0.36 + u * (hw - 0.36)), wall * v, hl + 0.05 * (1 - v)), 2, 1, inside, cloth);
+        insideDoor(m, 0.7, 1.3, hl, 1.8, wall + 0.02);
+      } else sheet(m, (u, v) => { const e = a.clone().lerp(b, u); return v3(e.x * (1 + 0.04 * (1 - v)), wall * v, e.z * (1 + 0.04 * (1 - v))); }, 3, 1, inside, cloth);
+      // a guy from each eave corner and mid-eave
+      const c = a.clone(), out = v3(Math.sign(c.x) * 1.24, 0, Math.sign(c.z) * 1.8);
+      guy(m, c, out, rope);
+    }
+    rod(m, v3(0, -0.05, 0), v3(0, H + 0.14, 0), 0.04, poleCol);
+  } else {
+    // the modular frame tent: four arched hoops, the canvas over them sagging between, the door's half rolled up
+    const hoop = (z: number): void => {
+      const pts: V[] = [];
+      for (let k = 0; k <= 8; k++) { const a = Math.PI * (k / 8); pts.push(v3(-Math.cos(a) * W / 2, Math.sin(a) * H, z)); }
+      wireTube(m, pts, 0.022, () => POLE_ALU);
+    };
+    const zs = [-L / 2, -L / 6, L / 6, L / 2];
+    for (const z of zs) hoop(z);
+    sheet(m, (u, v) => {
+      const a = Math.PI * u, z = (v - 0.5) * L, between = Math.abs(Math.sin(Math.PI * ((v * 3) % 1)));
+      const r = 1 - 0.035 * between;
+      return v3(-Math.cos(a) * (W / 2 + 0.03) * r, Math.sin(a) * (H + 0.03) * r, z);
+    }, 6, 6, inside, cloth);
+    // the rear closed; the door's frame and its rolled half at the front
+    sheet(m, (u, v) => { const a = Math.PI * u; return v3(-Math.cos(a) * (W / 2) * v, Math.sin(a) * H * v, -L / 2); }, 6, 1, inside, cloth);
+    for (const side of [-1, 1]) {
+      sheet(m, (u, v) => { const a = Math.PI * (side < 0 ? u * 0.33 : 1 - u * 0.33); return v3(-Math.cos(a) * (W / 2) * (0.35 + 0.65 * v), Math.sin(a) * H * (0.35 + 0.65 * v) * v + (1 - v) * 0, L / 2); }, 2, 1, inside, cloth);
+    }
+    sheet(m, (u, v) => { const a = Math.PI * (0.33 + u * 0.34); return v3(-Math.cos(a) * (W / 2), Math.sin(a) * H * (0.82 + 0.18 * v), L / 2); }, 2, 1, inside, cloth);
+    insideDoor(m, 0.9, 1.45, L / 2, 1.8);
+    const roll = new SteelMesh(); roll.round(0.08, -0.5, 0.5, 6, cloth);
+    const rg = roll.geometry(); rg.rotateY(Math.PI / 2); rg.translate(0, 1.52, L / 2 + 0.08);
+    const pa = rg.getAttribute('position'), na = rg.getAttribute('normal'), ca = rg.getAttribute('color');
+    for (let i = 0; i < pa.count; i++) { m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
+    rg.dispose();
+    for (const z of [-L / 2, L / 2]) for (const s of [-1, 1]) guy(m, v3(s * W * 0.35, H * 0.72, z), v3(s * 1.2, 0, z + Math.sign(z) * 0.18), rope);
+  }
+  // the ground sheet's edge before the door
+  const gs = (): Rgb3 => mulRgb(KIT_DARK, 1.3);
+  const zf = L / 2;
+  m.tri(v3(-0.5, 0.012, zf), v3(0.5, 0.012, zf + 0.25), v3(0.5, 0.012, zf), gs);
+  m.tri(v3(-0.5, 0.012, zf), v3(-0.5, 0.012, zf + 0.25), v3(0.5, 0.012, zf + 0.25), gs);
   return m.geometry();
 }
 
