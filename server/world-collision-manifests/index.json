@@ -96,11 +96,11 @@
       "concealers": 11650
     },
     "alpine": {
-      "bytes": 1481769,
-      "sha256": "a9604b2944851309bf3b3177fd480995e7e909ba39319968d0fc53162fa7ff5e",
-      "obstacles": 2517,
-      "colliders": 2408,
-      "concealers": 1141
+      "bytes": 1489466,
+      "sha256": "27d91d552847a35aeefebe18eb6bf89e4c3690c041946e461201331c4464464b",
+      "obstacles": 2520,
+      "colliders": 2409,
+      "concealers": 1139
     },
     "caldera": {
       "bytes": 1541573,
@@ -330,11 +330,11 @@
         "concealers": 11322
       },
       "alpine": {
-        "bytes": 1548393,
-        "sha256": "325e3c15e2fb4df4c37f6cd3b76b8acc6729e6c1c0c32b6a716caff101700281",
-        "obstacles": 2587,
-        "colliders": 2431,
-        "concealers": 1141
+        "bytes": 1557680,
+        "sha256": "7b58c043193876c5d853c52e726b03d76239c2af9e3fbe572720b70705b0f691",
+        "obstacles": 2595,
+        "colliders": 2437,
+        "concealers": 1139
       },
       "caldera": {
         "bytes": 1657236,
