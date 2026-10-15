@@ -89,10 +89,10 @@
       "concealers": 248
     },
     "monsoon": {
-      "bytes": 2443237,
-      "sha256": "8acce494f0b33aba87a2d568e93c76aa9374d503582596f14acb537112efb8f2",
+      "bytes": 2454392,
+      "sha256": "6ee311e7cfc537bfce80b0d697add048f98dbc1a6d5051021c45dd7050271736",
       "obstacles": 9351,
-      "colliders": 9146,
+      "colliders": 9150,
       "concealers": 11650
     },
     "alpine": {
@@ -323,10 +323,10 @@
         "concealers": 248
       },
       "monsoon": {
-        "bytes": 2564208,
-        "sha256": "94c475f54f7c709bdc9e3546150d1deb25adad41a3fde00383f192ac61e5227c",
+        "bytes": 2575363,
+        "sha256": "fffa0a1f7dc8abf01d292c0a6349666a3dcd9541ecc34c2d61aa1d6f260674a2",
         "obstacles": 9333,
-        "colliders": 9054,
+        "colliders": 9058,
         "concealers": 11322
       },
       "alpine": {
