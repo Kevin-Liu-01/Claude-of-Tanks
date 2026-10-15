@@ -155,6 +155,8 @@ void main() {
   float zf = 0.5 * uViewport.w / 1080.0;
   tA *= smoothstep( 0.4, 2.5, -eA.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pA ) ) * pow( min( 1.0, 0.2 * uViewport.w / rpA ), 2.0 );
   tB *= smoothstep( 0.4, 2.5, -eB.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pB ) ) * pow( min( 1.0, 0.2 * uViewport.w / rpB ), 2.0 );
+  // nothing left to draw (faded at the lens, dissolved at both ends): no quad, so a huge one at the eye costs no fill
+  if ( max( tA, tB ) < 0.004 ) { gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 ); return; }
   // the quad: the projected segment, out past both ends and to either side by its widest (a puff, a torn edge)
   vec2 d = sB - sA;
   float L = length( d );
