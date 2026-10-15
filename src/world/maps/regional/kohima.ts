@@ -3,7 +3,7 @@
 // deep verandas; the bazaar's timber shops under sheet roofs; the mission church of rough stone under a red tin roof;
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, streamFrom, type Face, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, closeGables, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
@@ -57,9 +57,31 @@ function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D
   const faces: Face[] = [{ origin: [x, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { origin: [x + W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
     { origin: [x, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { origin: [x - W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D }];
   if (ctx.tier !== 'mobile') for (const f of faces) boardWall(sink, f, -f.width / 2 + 0.05, f.width / 2 - 0.05, 0.5, 3.15, plank);
-  // the shop front: a wide dark opening, plank shutters hinged up as an awning
-  faceBox(sink, 'dark', faces[0], 0, 1.65, 0.04, W - 1.2, 2.2, 0.02, { decor: true });
-  faceBox(sink, 'structureWood', faces[0], 0, 2.95, awning / 2 + 0.05, W - 1.0, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
+  // the shop front: plank shutters hinged up as an awning over the open front. (MAPS lane, 2026-10-15, Monsoon Kohima's
+  // blind critics: the open front was one flat black panel, "a missing texture"): the shop's back wall in the shade
+  // under the awning, a framed opening, two shelves of tins and sacks and a counter across the front. Every piece is
+  // decor (no collision change), and the goods draw from the shop's own stream (the kit's stream keeps its draws).
+  const f0 = faces[0], ow = W - 1.2;
+  faceBox(sink, 'structureWood', f0, 0, 1.65, 0.04, ow, 2.2, 0.02, { colour: shade(plank, 0.3), decor: true });
+  for (const s of [-1, 1]) faceBox(sink, 'structureWood', f0, s * (ow / 2 + 0.06), 1.62, 0.09, 0.12, 2.34, 0.1, { colour: shade(plank, 0.95), decor: true });
+  faceBox(sink, 'structureWood', f0, 0, 2.82, 0.09, ow + 0.24, 0.14, 0.1, { colour: shade(plank, 0.95), decor: true });
+  const shelves = [1.78, 2.34];
+  for (const y of shelves) faceBox(sink, 'structureWood', f0, 0, y, 0.2, ow - 0.2, 0.04, 0.3, { colour: shade(plank, 0.8), decor: true });
+  faceBox(sink, 'structureWood', f0, 0, 1.0, 0.36, ow - 0.1, 0.9, 0.62, { colour: shade(plank, 1.0), decor: true });
+  sink.dressing(ctx.tier === 'mobile', () => {
+    const goods = streamFrom(Math.round((x + 31.7) * 997 + W * 131 + D * 17));
+    const GOODS: readonly Rgb[] = [0xc9b48a, 0xb9a072, 0xa8442f, 0x4f7a4a, 0x3f5f8a, 0xc9a23a, 0xdedad0].map(rgb);
+    for (const y of shelves) for (let u = -ow / 2 + 0.3; u < ow / 2 - 0.25; u += 0.34) {
+      if (goods() < 0.18) continue;
+      const h = 0.16 + goods() * 0.16;
+      faceBox(sink, 'structureWood', f0, u, y + 0.02 + h / 2, 0.2, 0.22 + goods() * 0.06, h, 0.2, { colour: pick(goods, GOODS), decor: true });
+    }
+    for (let k = 0, n = 2 + Math.floor(goods() * 2); k < n; k++) {
+      const u = (goods() - 0.5) * (ow - 0.8), h = 0.2 + goods() * 0.14;
+      faceBox(sink, 'structureWood', f0, u, 1.45 + h / 2, 0.36, 0.34, h, 0.3, { colour: pick(goods, GOODS), decor: true });
+    }
+  });
+  faceBox(sink, 'structureWood', f0, 0, 2.95, awning / 2 + 0.05, W - 1.0, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
   const roof = tin(26);
   // (the integrity check, 2026-10-12: sky through the roof's open ends) the gables boarded under the tin
   const rg = roofGeometry(W, D, 3.2, roof);
