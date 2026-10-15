@@ -173,8 +173,8 @@ function validate(label, a, styleId) {
     assert.deepEqual(st.faces.map((f) => f.section), [0, 1, 2, 3].map((k) => st.index * 4 + k), `${label}: sections by storey and face`);
     for (const f of st.faces) {
       for (const v of [...f.origin, ...f.u, ...f.out, f.width, f.height]) finite(v, `${label} face`);
-      // (a ruin's box is round the walls it has left, which need not stand round its plot's middle)
-      if (!ruinPiecesOf(a)) assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
+      // (a ruin's box is round the walls it has left, an open frame's round its legs: neither need stand round its plot's middle)
+      if (!ruinPiecesOf(a) && !latticeOf(a)) assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
       assert.ok(f.layers.length >= 1 && f.layers.every((l) => l.thicknessM > 0), `${label}: a face's layers`);
       for (const o of f.openings) assert.ok(Math.abs(o.u) <= f.width / 2 + 0.05 && o.y0 >= -0.05 && o.y0 + o.h <= f.height + 0.05, `${label}: an opening inside its face`);
       if (f.masonry) {
