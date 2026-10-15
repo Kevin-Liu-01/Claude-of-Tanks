@@ -126,26 +126,27 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const dockObstacleSelector = '.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,'
     + '.cot-dp,.cot-drive,.cot-minimap,.cot-top,.cot-mode-status.show,.cot-net,.cot-cons,.cot-shells';
   const dockObstacles: TouchDockRect[] = [];
+  const dockSoft: TouchDockRect[] = [];
   let safeProbe: HTMLElement | null = null;
   function placeDock(row: HTMLElement, width: number, height: number): TouchDockPlacement | null {
     let count = 0;
     for (const child of row.children) if (child.getClientRects().length) count++;
-    dockObstacles.length = 0;
+    dockObstacles.length = 0; dockSoft.length = 0;
     let joy: DOMRect | null = null, fire: DOMRect | null = null;
     for (const node of document.querySelectorAll<HTMLElement>(dockObstacleSelector)) {
       if (!node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') continue;
       const box = node.getBoundingClientRect();
       if (box.width < 1 || box.height < 1) continue;
-      let x = box.left, w = box.width;
       if (node.classList.contains('cot-shells')) {
-        // The touch ammo selector opens leftwards, 56 px per further slot (hudAmmunitionPresentation.ts).
+        // The touch ammo selector opens leftwards, 56 px per further slot (hudAmmunitionPresentation.ts): the dock
+        // keeps clear of the open drawer too, unless the screen is too crowded for that.
         let slots = 0;
         for (const slot of node.children) if (slot.classList.contains('cot-shell') && slot.getClientRects().length) slots++;
-        x -= 56 * Math.max(0, slots - 1); w += 56 * Math.max(0, slots - 1);
+        if (slots > 1) dockSoft.push({ x: box.left - 56 * (slots - 1), y: box.top, w: 56 * (slots - 1), h: box.height });
       }
       if (node.classList.contains('joy')) joy = box;
       if (node.classList.contains('fire') && !node.classList.contains('alt')) fire = box;
-      dockObstacles.push({ x, y: box.top, w, h: box.height });
+      dockObstacles.push({ x: box.left, y: box.top, w: box.width, h: box.height });
     }
     if (!safeProbe) {
       safeProbe = document.createElement('div');
@@ -155,16 +156,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.append(safeProbe);
     }
     const safe = getComputedStyle(safeProbe);
-    const placement = placeTouchActionDock({ width, height, count, obstacles: dockObstacles,
+    const placement = placeTouchActionDock({ width, height, count, obstacles: dockObstacles, soft: dockSoft,
       anchor: joy && fire ? { x: (joy.left + joy.right + fire.left + fire.right) / 4, y: (joy.top + joy.bottom + fire.top + fire.bottom) / 4 } : null,
       insets: { top: parseFloat(safe.paddingTop) || 0, right: parseFloat(safe.paddingRight) || 0,
         bottom: parseFloat(safe.paddingBottom) || 0, left: parseFloat(safe.paddingLeft) || 0 } });
-    const columns = placement ? String(placement.columns) : '';
-    if (document.body.style.getPropertyValue('--hud-systems-columns') !== columns) {
-      if (columns) document.body.style.setProperty('--hud-systems-columns', columns);
-      else document.body.style.removeProperty('--hud-systems-columns');
+    for (const [property, value] of [['--hud-systems-columns', placement ? String(placement.columns) : ''],
+      ['--hud-systems-tile', placement ? `${placement.tile}px` : '']]) {
+      if (document.body.style.getPropertyValue(property) === value) continue;
+      if (value) document.body.style.setProperty(property, value);
+      else document.body.style.removeProperty(property);
     }
     return placement;
+  }
+  // The portrait countdown keeps its place under the minimap unless the dock is there; then it sits above the dock.
+  function portraitCountdownTop(dock: TouchDockPlacement): number {
+    const height = read('.cot-prebattle')?.height || 112;
+    return 255 < dock.y + dock.h + 8 && 255 + height > dock.y - 8 ? Math.max(12, dock.y - 8 - height) : 255;
   }
   function refresh() {
     frame = 0;
@@ -249,7 +256,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     const killLeft = root.querySelector('.cot-kill-lane.l');
     const killRight = root.querySelector('.cot-kill-lane.r');
-    const leftBottom = Math.min(leftFloor(height, touch),
+    // Touch dock: the centre notices (detection, the system alert and, where the dock covers its place under the
+    // reticle, the gun-limit warning) stack directly above the dock, and while any of them shows the side feeds end
+    // above that stack. When the space above is too short the stack goes below the dock instead.
+    const aimWarning = read('.cot-aim-warning:not([hidden])');
+    const aimDefaultTop = height * .5 + 48, aimHeight = aimWarning?.height ?? 24;
+    const aimDocked = !!dock && width < height && aimDefaultTop < dock.y + dock.h + 8 && aimDefaultTop + aimHeight > dock.y - 8
+      && width / 2 - 90 < dock.x + dock.w && width / 2 + 90 > dock.x;
+    const centerStack = (read('.cot-sixth')?.height ?? 48) + 8 + (read('.cot-alert')?.height ?? 28)
+      + (aimDocked && aimWarning ? 8 + aimHeight : 0);
+    const dockNoticeTop = dock && dock.y - 8 - centerStack >= Math.max(top + 8, leftAnchor, (touchChrome?.bottom ?? 0) + 8)
+      ? dock.y - 8 - centerStack : null;
+    const noticeFloor = dockNoticeTop !== null && (read('.cot-sixth.on') || read('.cot-alert.show') || (aimDocked && aimWarning))
+      ? dockNoticeTop - 8 : height;
+    const leftBottom = Math.min(leftFloor(height, touch), noticeFloor,
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
     const countdown = read('.cot-prebattle.on');
     const leftKillBottom = countdown && countdown.left < sideWidth
@@ -270,7 +290,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
     const chrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
     const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
-    const rightBottom = Math.min(rightFloor(height, width, map),
+    const rightBottom = Math.min(rightFloor(height, width, map), noticeFloor,
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
@@ -299,14 +319,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
       noticeTop = systemsTop + systemsHeight + 8;
     }
-    if (dock) {
-      // The touch dock sits low, under the centre lane: keep the whole notice stack (detection, then the system
-      // alert) above it, or below it when the space above is too short.
-      const stackHeight = (notice?.height ?? 48) + 8 + (read('.cot-alert')?.height ?? 28);
-      if (noticeTop < dock.y + dock.h + 8 && noticeTop + stackHeight > dock.y - 8
-        && noticeLeft < dock.x + dock.w && width - noticeLeft > dock.x) {
-        noticeTop = dock.y - 8 - stackHeight >= top + 8 ? dock.y - 8 - stackHeight : dock.y + dock.h + 8;
-      }
+    if (dock && noticeTop < dock.y + dock.h + 8 && noticeTop + centerStack > dock.y - 8
+      && noticeLeft < dock.x + dock.w && width - noticeLeft > dock.x) {
+      noticeTop = dockNoticeTop ?? dock.y + dock.h + 8;
     }
     const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
@@ -350,7 +365,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
-      'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
+      'portrait-countdown-top': dock ? portraitCountdownTop(dock) : systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
+      'aim-warning-dock-top': aimDocked && dock ? dock.y - 8 - aimHeight : 0,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
@@ -369,6 +385,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (document.body.style.getPropertyValue(property) !== pixels) {
         document.body.style.setProperty(property, pixels);
       }
+    }
+    if ((document.body.dataset.hudAimDocked === '1') !== aimDocked) {
+      if (aimDocked) document.body.dataset.hudAimDocked = '1'; else delete document.body.dataset.hudAimDocked;
     }
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;

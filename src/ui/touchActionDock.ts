@@ -17,6 +17,8 @@
 export interface TouchDockRect { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
 
 export interface TouchDockPlacement extends TouchDockRect {
+  /** Tile edge in px: 48, or 44 (still a full touch target) on screens too crowded for 48. */
+  readonly tile: number;
   readonly columns: number;
   readonly rows: number;
   /** One rect per control, in the row's order (left to right, then the next row). */
@@ -28,8 +30,10 @@ interface TouchDockInput {
   readonly height: number;
   /** Visible controls in the row. */
   readonly count: number;
-  /** Fixed touch controls and instruments the dock must not cover (the ammo drawer at its open extent). */
+  /** Fixed touch controls and instruments the dock must not cover. */
   readonly obstacles: readonly TouchDockRect[];
+  /** Space the dock avoids while it can but may use on the most crowded screens (the ammo selector's open drawer). */
+  readonly soft?: readonly TouchDockRect[];
   /** Where the thumbs rest (between the joystick and FIRE); the default is the bottom centre. */
   readonly anchor?: { readonly x: number; readonly y: number } | null;
   /** Safe-area insets (notch, home indicator). */
@@ -41,40 +45,55 @@ export const TOUCH_ACTION_TILE_PX = 48;
 export const TOUCH_ACTION_GAP_PX = 6;
 /** Space kept between the dock and any other control, and between the dock and the screen edge. */
 export const TOUCH_ACTION_CLEARANCE_PX = 8;
+/** The most crowded screens (320 px phones) relax in steps, never below a 44 px target or 4 px of clearance. */
+const FALLBACKS = [
+  { tile: TOUCH_ACTION_TILE_PX, clearance: TOUCH_ACTION_CLEARANCE_PX, soft: true },
+  { tile: 44, clearance: 6, soft: true },
+  { tile: 44, clearance: 4, soft: false },
+] as const;
 const EDGE_PX = 12;
 /** One extra row costs as much as this much more distance from the thumbs: a single row wins whenever one fits nearby. */
 const ROW_PENALTY_PX = 72;
 const MAX_ROWS = 3;
 
-const extent = (count: number) => count * TOUCH_ACTION_TILE_PX + Math.max(0, count - 1) * TOUCH_ACTION_GAP_PX;
+const extent = (count: number, tile: number) => count * tile + Math.max(0, count - 1) * TOUCH_ACTION_GAP_PX;
 
 /**
- * The dock nearest the thumbs that clears every obstacle, or null when nothing fits (the caller keeps its previous
- * placement then). Candidates are 1 to 3 rows; for each row count every vertical position is tried and the best
- * horizontal position at that height is solved from the obstacles' blocked intervals, so the search is exact on a
- * 1 px grid and costs a few hundred interval scans.
+ * The dock nearest the thumbs that clears every obstacle, or null when nothing fits even relaxed (the caller keeps its
+ * older strip placement then). Candidates are 1 to 3 rows; for each row count every vertical position is tried and the
+ * best horizontal position at that height is solved from the obstacles' blocked intervals, so the search is exact on
+ * a 1 px grid and costs a few hundred interval scans per step of FALLBACKS.
  */
-export function placeTouchActionDock({ width, height, count, obstacles, anchor, insets }: TouchDockInput): TouchDockPlacement | null {
+export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement | null {
+  for (const step of FALLBACKS) {
+    const placement = searchDock(input, step.tile, step.clearance, step.soft);
+    if (placement) return placement;
+  }
+  return null;
+}
+
+function searchDock({ width, height, count, obstacles, soft, anchor, insets }: TouchDockInput,
+  tile: number, c: number, avoidSoft: boolean): TouchDockPlacement | null {
   const n = Math.floor(count);
   if (!(n > 0) || !(width > 0) || !(height > 0)) return null;
+  const avoid = avoidSoft && soft?.length ? [...obstacles, ...soft] : obstacles;
   const left = EDGE_PX + Math.max(0, insets?.left ?? 0);
   const right = width - EDGE_PX - Math.max(0, insets?.right ?? 0);
   const top = EDGE_PX + Math.max(0, insets?.top ?? 0);
   const bottom = height - EDGE_PX - Math.max(0, insets?.bottom ?? 0);
   const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : width / 2;
   const ay = anchor && Number.isFinite(anchor.y) ? anchor.y : bottom;
-  const c = TOUCH_ACTION_CLEARANCE_PX;
   let best: { x: number; y: number; columns: number; rows: number; cost: number } | null = null;
   const blocked: number[] = [];
   for (let rows = 1; rows <= Math.min(MAX_ROWS, n); rows++) {
     const columns = Math.ceil(n / rows);
     // Two row counts can need the same columns (5 controls: 3 columns for 2 rows, also 2 for 3): keep the fewest rows.
     if (rows > 1 && Math.ceil(n / columns) !== rows) continue;
-    const w = extent(columns), h = extent(rows);
+    const w = extent(columns, tile), h = extent(rows, tile);
     if (left + w > right || top + h > bottom) continue;
     for (let y = Math.floor(bottom - h); y >= Math.ceil(top); y--) {
       blocked.length = 0;
-      for (const o of obstacles) {
+      for (const o of avoid) {
         if (y < o.y + o.h + c && y + h > o.y - c) blocked.push(o.x - c - w, o.x + o.w + c);
       }
       const x = nearestFreeX(blocked, left, right - w, ax - w / 2);
@@ -87,11 +106,10 @@ export function placeTouchActionDock({ width, height, count, obstacles, anchor, 
   const { x, y, columns, rows } = best;
   const tiles: TouchDockRect[] = [];
   for (let i = 0; i < n; i++) {
-    tiles.push({ x: x + (i % columns) * (TOUCH_ACTION_TILE_PX + TOUCH_ACTION_GAP_PX),
-      y: y + Math.floor(i / columns) * (TOUCH_ACTION_TILE_PX + TOUCH_ACTION_GAP_PX),
-      w: TOUCH_ACTION_TILE_PX, h: TOUCH_ACTION_TILE_PX });
+    tiles.push({ x: x + (i % columns) * (tile + TOUCH_ACTION_GAP_PX),
+      y: y + Math.floor(i / columns) * (tile + TOUCH_ACTION_GAP_PX), w: tile, h: tile });
   }
-  return { x, y, w: extent(columns), h: extent(rows), columns, rows, tiles };
+  return { x, y, w: extent(columns, tile), h: extent(rows, tile), tile, columns, rows, tiles };
 }
 
 /** The integer x in [min, max] outside every open interval (pairs in `blocked`) nearest `target`, or null. */
