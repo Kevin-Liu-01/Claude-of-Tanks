@@ -370,10 +370,12 @@ export function garageHardstandGradedHook(
   grainStrength: number,
   detail?: { readonly uniform: { value: THREE.Texture | null }; readonly kind: GarageHardstandDetailKind } | null,
   wet?: { readonly mask: THREE.Texture | null; readonly amount: number } | null,
+  sparkle = 0,
 ): (shader: { vertexShader: string; fragmentShader: string; uniforms: Record<string, THREE.IUniform> }) => void {
   return (shader) => {
   if (!shader.vertexShader.includes('#include <begin_vertex>') || !shader.fragmentShader.includes('#include <alphamap_fragment>')
-    || !shader.fragmentShader.includes('#include <normal_fragment_maps>')) return;
+    || !shader.fragmentShader.includes('#include <normal_fragment_maps>')
+    || !shader.fragmentShader.includes('#include <emissivemap_fragment>')) return;
   shader.uniforms.hardstandGrain = { value: grain };
   shader.uniforms.hardstandGrainStrength = { value: grain ? grainStrength : 0 };
   // the detail layer: the same code in every pack and the seed (one program); a seed or a plain material reads a level
@@ -387,6 +389,9 @@ export function garageHardstandGradedHook(
   // flat and glossy, and the amount dampens the whole yard; every other floor reads it at zero (the same program)
   shader.uniforms.hardstandWetMask = { value: wet?.mask ?? grain };
   shader.uniforms.hardstandWet = { value: wet?.mask ? wet.amount : 0 };
+  // snow's sparkle (the re-judge, 2026-10-15: "no grain, sparkle"): sparse ice crystals catch the light, sharp near the
+  // camera and gone by 30 m so they never shimmer; zero on every other floor (the same program)
+  shader.uniforms.hardstandSparkle = { value: sparkle };
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', `#include <common>
 attribute float hardstandBlend;
@@ -411,6 +416,7 @@ uniform sampler2D hardstandDetail;
 uniform vec3 hardstandDetailParams;
 uniform sampler2D hardstandWetMask;
 uniform float hardstandWet;
+uniform float hardstandSparkle;
 float hardstandHash(vec2 p) {
   p = fract(p * vec2(0.1031, 0.1030));
   p += dot(p, p.yx + 33.33);
@@ -434,6 +440,13 @@ float hardstandWater = hardstandWet * texture2D(hardstandWetMask, vMapUv).r;
 float hardstandWater = 0.0;
 #endif
 diffuseColor.rgb *= 1.0 - 0.2 * hardstandWater;`)
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+{
+  vec2 hardstandCrystal = floor(vHardstandGround * 34.0);
+  float hardstandGlint = step(0.986, hardstandHash(hardstandCrystal + 7.1))
+    * step(0.55, hardstandHash(hardstandCrystal * 1.7 + 3.3));
+  totalEmissiveRadiance += vec3(1.5) * hardstandGlint * hardstandSparkle * (1.0 - smoothstep(9.0, 30.0, length(vViewPosition)));
+}`)
     .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 roughnessFactor = mix(roughnessFactor * (1.0 - 0.28 * hardstandWet), 0.06, hardstandWater);`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>

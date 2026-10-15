@@ -1722,6 +1722,9 @@ export function buildGarageEnvironment(
   // Monsoon's puddles: the yard's wet mask (null in every dry yard) and the whole yard damp
   const hardstandWetMaskTexture = garageHardstandWetMask(hardstandStyle);
   const hardstandWet = hardstandWetMaskTexture ? { mask: track(hardstandWetMaskTexture), amount: 1 } : null;
+  // the snow yards sparkle (packed snow most, the crushed rock with snow in its hollows less)
+  const hardstandSparkle = hardstandStyle === 'earth-snow' ? 1 : hardstandStyle === 'gravel-snow' ? 0.6
+    : hardstandStyle === 'slab-snow' ? 0.5 : 0;
   // The graded floor (garageHardstandGradedHook) blends over the terrain: transparent, writing no depth, drawn before the
   // floor decals (renderOrder -1), on its own program, which garageStage.ts compiles with the outdoor seeds.
   const gradedMaterial = (options: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial => {
@@ -1729,7 +1732,7 @@ export function buildGarageEnvironment(
     // the grain is subtler on packed snow than on earth and concrete
     const grainStrength = hardstandNormalKind === 'snow' ? 0.32 : hardstandNormalKind === 'slab' ? 0.5 : 0.62;
     engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook(garageHardstandGrainTexture(floorAnisotropy), grainStrength,
-      hardstandDetail, hardstandWet) as THREE.Material['onBeforeCompile']);
+      hardstandDetail, hardstandWet, hardstandSparkle) as THREE.Material['onBeforeCompile']);
     material.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
     return track(material);
   };
@@ -1876,14 +1879,19 @@ export function buildGarageEnvironment(
   // its walls outward (the corners darken twice, as ground does there), in one decal draw on the contact shadows' program.
   const addStructureBaseShade = (): void => {
     if (typeof document === 'undefined') return;
-    const S = 64;
-    const data = new Uint8Array(4 * S * 4);
+    // v runs out from the wall, u along it: a band's middle (u 0.5) is full strength along the wall, its ends (u 0.5 to
+    // 1) fade out past the corners, so no band ends in a hard cut and two bands meeting at a corner blend round it (the
+    // re-judge, 2026-10-15: "hard-edged near-black rectangles" under the buildings from above)
+    const S = 64, U = 32;
+    const data = new Uint8Array(4 * S * U);
     for (let row = 0; row < S; row += 1) {
       const t = (row + 0.5) / S;
-      const alpha = Math.round(255 * (1 - t) * (1 - t));
-      for (let column = 0; column < 4; column += 1) data[(row * 4 + column) * 4 + 3] = alpha;
+      for (let column = 0; column < U; column += 1) {
+        const along = Math.max(0, ((column + 0.5) / U - 0.5) / 0.5);
+        data[(row * U + column) * 4 + 3] = Math.round(255 * (1 - t) * (1 - t) * (1 - along) * (1 - along));
+      }
     }
-    const texture = track(new THREE.DataTexture(data, 4, S, THREE.RGBAFormat));
+    const texture = track(new THREE.DataTexture(data, U, S, THREE.RGBAFormat));
     texture.magFilter = THREE.LinearFilter;
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
@@ -1905,16 +1913,24 @@ export function buildGarageEnvironment(
       ];
       for (const [[ax, az], [bx, bz], [ox, oz]] of sides) {
         const reach = margin + inset;
-        const a = at(ax, az), b = at(bx, bz), b2 = at(bx + ox * reach, bz + oz * reach), a2 = at(ax + ox * reach, az + oz * reach);
-        // two triangles, counter-clockwise seen from above (the winding is fixed below if a side comes out reversed)
-        const quad = [a, b, b2, a, b2, a2];
-        const quv = [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]];
-        const ux = b[0] - a[0], uz = b[2] - a[2], vx = a2[0] - a[0], vz = a2[2] - a[2];
-        const up = uz * vx - ux * vz; // the y of (b - a) x (a2 - a)
-        const order = up >= 0 ? [0, 1, 2, 3, 4, 5] : [0, 2, 1, 3, 5, 4];
-        for (const k of order) {
-          positions.push(...quad[k]);
-          uvs.push(quv[k][0], quv[k][1]);
+        const length = Math.hypot(bx - ax, bz - az), dx = (bx - ax) / length, dz = (bz - az) / length;
+        // three pieces along the wall: the end past one corner (fading in), the wall's own run, the end past the other
+        const cuts: Array<[number, number, number, number]> = [
+          [0, margin, 1, 0.5], [margin, length - margin, 0.5, 0.5], [length - margin, length, 0.5, 1],
+        ];
+        for (const [s0, s1, u0, u1] of cuts) {
+          const p0x = ax + dx * s0, p0z = az + dz * s0, p1x = ax + dx * s1, p1z = az + dz * s1;
+          const a = at(p0x, p0z), b = at(p1x, p1z), b2 = at(p1x + ox * reach, p1z + oz * reach), a2 = at(p0x + ox * reach, p0z + oz * reach);
+          // two triangles, counter-clockwise seen from above (the winding is fixed below if a side comes out reversed)
+          const quad = [a, b, b2, a, b2, a2];
+          const quv = [[u0, 0], [u1, 0], [u1, 1], [u0, 0], [u1, 1], [u0, 1]];
+          const ux = b[0] - a[0], uz = b[2] - a[2], vx = a2[0] - a[0], vz = a2[2] - a[2];
+          const up = uz * vx - ux * vz; // the y of (b - a) x (a2 - a)
+          const order = up >= 0 ? [0, 1, 2, 3, 4, 5] : [0, 2, 1, 3, 5, 4];
+          for (const k of order) {
+            positions.push(...quad[k]);
+            uvs.push(quv[k][0], quv[k][1]);
+          }
         }
       }
     }
@@ -1924,7 +1940,7 @@ export function buildGarageEnvironment(
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.computeBoundingSphere();
     const material = track(new THREE.MeshBasicMaterial({
-      map: texture, color: 0x000000, transparent: true, opacity: 0.62, depthWrite: false,
+      map: texture, color: 0x000000, transparent: true, opacity: 0.52, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     }));
     material.name = 'garage:structure-base-shade';
