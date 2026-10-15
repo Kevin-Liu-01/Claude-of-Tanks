@@ -7858,6 +7858,23 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-15 — Jade River Delta: the Jamuna char's market village (the maps lane)
+
+**The owner, 10-09: Jade River Delta among the fourteen to bring up; MAP-01: built the way Verdant was.** The char's
+village stood as a handful of roadside-plan buildings round the square.
+- *The place:* a Jamuna char's market village in Bangladesh: the haat round its square (the bazaar's long tin sheds and
+  the brick shops facing it, the mosque across the square from the temple), and round it the homesteads (bari), tin
+  houses on raised plinths round a swept courtyard with the rice granary beside them.
+- *The plan* (`maps/deltaVillage.ts` CHAR_VILLAGE, its own module so the paddies' and fabric rounds merge beside it;
+  `plannedSites`, the roadside plan retired), authored in the char's frame (u along it from the split toward the rejoin,
+  v across), every site with its rotation twin about the char's centre (-4, 14), as the river, the deployments and the
+  objectives are: the haat's shop rows and the corner shop on the square, the temple and the mosque, the homesteads in
+  two rows facing the lane down the char's spine while it is wide and one row as it narrows to its tip.
+- *Measured* (every band holds): no solid in a road (the corner shop stood 1.5 m nearer the square's road, its corner in
+  the core), orphan 0.05, objective symmetry 1.167, separation 836 m, sightline median 122 m; census [8515, 8209, 10071]
+  -> [8682, 8454, 10071].
+- *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
