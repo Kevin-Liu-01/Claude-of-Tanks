@@ -73,7 +73,8 @@ export function setPieceDestructibleTypes(mobile = false): Record<string, Destru
 export function rollingStockDestructibleKind(kind: RollingStockKind): string { return `rolling_${kind}`; }
 
 /** A spur vehicle's mass class: a loaded wagon or a locomotive, heavier than any works machine. */
-export const ROLLING_STOCK_MASS = { keep: 0.4, crushMin: 5.0 } as const;
+// (floor: the share of a wagon's height no hull presses it below: a 20-tonne wagon crumples, it is not pancaked; propCrush.ts)
+export const ROLLING_STOCK_MASS = { keep: 0.4, crushMin: 5.0, floor: 0.6 } as const;
 
 const STOCK_KINDS = Object.keys(ROLLING_STOCK_LENGTH) as RollingStockKind[];
 
@@ -93,6 +94,7 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
       build: () => lifted(buildRollingStock(kind, { coarse: mobile })),
       broken: () => lifted(buildRollingStock(kind, { wrecked: true, coarse: mobile })),
     };
+    Object.assign(out[rollingStockDestructibleKind(kind)], { crushFloor: ROLLING_STOCK_MASS.floor });
   }
   return out;
 }
