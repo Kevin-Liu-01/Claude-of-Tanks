@@ -377,6 +377,7 @@ interface InhabitSettings {
   /** settlement detail 2026-09-15: doorstep bench + pots, second woodpile, gate stack (default on) */
   doorsteps?: number;
   woodpiles?: number;
+  firewood?: number;
   gateStacks?: number;
 }
 
@@ -5948,6 +5949,7 @@ ${snowCap ? `
     const INH = P.inhabit || {};
     const yardFence = INH.yardFence || 'fencepicket';
     const placeYardFirewood = (building: PlacedRadius): void => {
+      if (INH.firewood === 0) return;
       if (yrng() >= 0.6) return;
       const spot = yardSpot(building, 1.2, 3.4);
       if (!spot) return;

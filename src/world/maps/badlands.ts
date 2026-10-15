@@ -54,9 +54,10 @@ const RUM_HALF: ReadonlyArray<readonly [string, number, number, 'track' | 'north
   // the lanes behind the frontage, east and west: rows of compounds facing their lanes
   ...[40, 56, 72, 88, 104].flatMap((u) => [['adobe', u, 36, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -36, u % 32 === 8 ? 'south' : 'north']] as const),
   ...[8, 24, 40, 56, 72, 88, 104, 120].flatMap((u) => [['adobe', u, 55, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -55, u % 32 === 8 ? 'south' : 'north']] as const),
-  // the back row runs on past the frontage toward the north mouth, and the patrol's store yard closes it
+  // the back row runs on past the frontage toward the north mouth, and a compound closes it
+  // (the blind critics, 2026-10-15: "generic corrugated sheds" — the patrol's steel store stood here; a block house now)
   ...[120, 136].flatMap((u) => [['adobe', u, 36, 'south'], ['adobe', u, -36, 'north']] as const),
-  ['depot', 136, 55, 'west'],
+  ['adobe', 136, 55, 'west'],
 ];
 // A village's own irregularity, keyed per site (never the props' streams): each compound a metre or two off its row and
 // a few degrees off square; one in twelve an abandoned compound fallen to a ruin, one in fourteen an open lot (the goat
@@ -73,8 +74,9 @@ const RUM_VILLAGE = RUM_HALF.flatMap(([structure, u0, v0, front]) => {
   const kind = house && r > 0.92 ? 'ruin' : structure;
   const u = u0 + (house ? (rumHash(u0, v0, 2) - 0.5) * 3.6 : 0), v = v0 + (house ? (rumHash(u0, v0, 3) - 0.5) * 2.4 : 0);
   const skew = house ? (rumHash(u0, v0, 4) - 0.5) * 9 : 0;
-  // the fort's twin across the square is the patrol's store yard (one fort to a village)
-  const twinKind = kind === 'caravanserai' ? 'depot' : kind;
+  // the fort's twin across the square is a souq row facing it (one fort to a village; the blind critics, 2026-10-15: the
+  // patrol's corrugated steel store read as "a generic shed")
+  const twinKind = kind === 'caravanserai' ? 'marketRow' : kind;
   const a = rumSite(kind, u, v, front), b = rumSite(twinKind, -u, -v, turn[front]);
   return [{ ...a, yawDeg: +(a.yawDeg + skew).toFixed(1) }, { ...b, yawDeg: +(b.yawDeg + skew).toFixed(1) }];
 });
@@ -354,6 +356,8 @@ export default {
       stalls: 4, benches: 2, coreClutter: 44, drums: 20, pots: 12,
       trucks: 11, jeeps: 9, drumClusters: 12, camps: 5, modernClutter: 28,
       roadFence: 'fencerail', yardFence: 'fencewattle',
+      // (the blind critics, 2026-10-15: "log piles in a treeless desert") no firewood stacks or woodpiles in the yards
+      firewood: 0, woodpiles: 0,
       // (round 11e, the gauntlet's waves 298b and 314: "a giant blue bottle" in the south ravine's foreground, "tiny dark
       // pill-shaped props on the sand read as chess pieces" — the dry maps' loose mix stood gas bottles, cones and bins
       // alone on the open sand by every track) the Desert Patrol's tracks carry jerry cans, a drum, a lost wheel, a pail
