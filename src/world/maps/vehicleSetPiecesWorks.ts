@@ -39,7 +39,8 @@ function wheel(mesh: VehicleMesh, x: number, y: number, z: number, r: number, w:
 }
 
 /** A track belt round its end wheels at x: the belt along z from the rear wheel (zr, radius rr) to the front (zf, rf). */
-function belt(mesh: VehicleMesh, x: number, width: number, zr: number, rr: number, yr: number, zf: number, rf: number, yf: number, coarse: boolean, m: Mat): void {
+function belt(mesh: VehicleMesh, x: number, width: number, zr: number, rr: number, yr: number, zf: number, rf: number, yf: number, coarse: boolean, m: Mat,
+  roadWheels = true): void {
   const path: Vec3[] = [], n = coarse ? 5 : 9;
   for (let k = 0; k <= n; k++) { const a = Math.PI / 2 + (k / n) * Math.PI; path.push([x, yr + Math.sin(a) * rr, zr + Math.cos(a) * rr]); }
   for (let k = 0; k <= n; k++) { const a = -Math.PI / 2 + (k / n) * Math.PI; path.push([x, yf + Math.sin(a) * rf, zf + Math.cos(a) * rf]); }
@@ -48,12 +49,13 @@ function belt(mesh: VehicleMesh, x: number, width: number, zr: number, rr: numbe
   // 8 cm thickness radial (the frame's side), so its ground run sits on y = 0 and nothing lifts the vehicle off it
   mesh.sweep(path, [[-0.04, -width / 2], [0.04, -width / 2], [0.04, width / 2], [-0.04, width / 2]], () => m,
     { closedPath: true, closedSection: true, creases: [0, 1, 2, 3], up: [1, 0, 0] });
-  // the road wheels inside the belt
+  // the road wheels inside the belt (a caller that builds its own rollers passes roadWheels false)
+  if (!roadWheels) return;
   const count = Math.max(2, Math.round((zf - zr) / 0.55));
   for (let k = 1; k < count; k++) {
     const z = zr + ((zf - zr) * k) / count, r = Math.min(rr, rf) * 0.8;
     mesh.push().translate(x, r + 0.06, z);
-    mesh.lathe([[0.0001, -width * 0.35], [r, -width * 0.35], [r, width * 0.35], [0.0001, width * 0.35]], coarse ? 8 : 10, () => STEEL_M);
+    mesh.lathe([[0.0001, -width * 0.35], [r, -width * 0.35], [r, width * 0.35], [0.0001, width * 0.35]], coarse ? 6 : 8, () => STEEL_M);
     mesh.pop();
   }
 }
@@ -85,7 +87,7 @@ export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'ol
     for (const sx of [1, -1]) {
       if (!wrecked) {
         belt(mesh, sx * tx, tw, zc - len / 2 + 0.3, 0.3, 0.32, zc + len / 2 - 0.3, 0.3, 0.36, coarse, RUBBER);
-        if (!coarse) trackCleats(mesh, sx * tx, tw, zc - len / 2 + 0.3, zc + len / 2 - 0.3, 0.02, 0.68, 9, RUBBER);
+        if (!coarse) trackCleats(mesh, sx * tx, tw, zc - len / 2 + 0.3, zc + len / 2 - 0.3, 0.02, 0.68, 6, RUBBER);
       } else {
         // the band burnt away: the road wheels and the sprocket bare on the snow, a strip of the belt's steel cord
         for (let k = 0; k < 4; k++) {
@@ -261,7 +263,7 @@ export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): voi
 /** One track: the belt round the sprocket (rear) and the idler (front), its grousers, the rollers and the frame. */
 function dozerTrack(mesh: VehicleMesh, x: number, tw: number, coarse: boolean, burnt: boolean): void {
   const zr = -1.35, rr = 0.5, yr = 0.55, zf = 1.35, rf = 0.45, yf = 0.5;
-  belt(mesh, x, tw, zr, rr, yr, zf, rf, yf, coarse, BLACK);
+  belt(mesh, x, tw, zr, rr, yr, zf, rf, yf, coarse, BLACK, false);
   const shoe = burnt ? RUSTY : BLACK;
   if (!coarse) {
     // the grousers across the shoes on the ground run and the top run
@@ -274,8 +276,8 @@ function dozerTrack(mesh: VehicleMesh, x: number, tw: number, coarse: boolean, b
   // the sprocket (toothed) at the rear, the idler at the front, both inboard of the belt's run
   mesh.push().translate(x, yr, zr);
   mesh.lathe([[0.0001, -0.12], [rr * 0.88, -0.12], [rr * 0.88, 0.12], [0.0001, 0.12]], coarse ? 8 : 12, () => (burnt ? RUSTY : STEEL_M));
-  if (!coarse) for (let k = 0; k < 10; k++) {
-    mesh.push().rotateX((k / 10) * Math.PI * 2);
+  if (!coarse) for (let k = 0; k < 8; k++) {
+    mesh.push().rotateX((k / 8) * Math.PI * 2);
     mesh.box(0, rr * 0.9, 0, 0.1, 0.1, 0.12, burnt ? RUSTY : STEEL_M, 0);
     mesh.pop();
   }
@@ -288,7 +290,7 @@ function dozerTrack(mesh: VehicleMesh, x: number, tw: number, coarse: boolean, b
   for (let k = 0; k < (coarse ? 3 : 6); k++) {
     const z = zr + 0.45 + k * ((zf - zr - 0.9) / (coarse ? 2 : 5));
     mesh.push().translate(x, 0.2, z);
-    mesh.lathe([[0.0001, -0.16], [0.17, -0.16], [0.13, -0.08], [0.13, 0.08], [0.17, 0.16], [0.0001, 0.16]], coarse ? 6 : 10, () => STEEL_M);
+    mesh.lathe([[0.0001, -0.16], [0.17, -0.16], [0.13, -0.08], [0.13, 0.08], [0.17, 0.16], [0.0001, 0.16]], coarse ? 6 : 8, () => STEEL_M);
     mesh.pop();
   }
   for (const z of [-0.45, 0.45]) {
