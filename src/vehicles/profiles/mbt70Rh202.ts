@@ -39,5 +39,10 @@ export function addMbt70Rh202(P: TankBuilderPort, top: number): THREE.Group {
   for (const g of body) P.addEquipment('turret', g);
   for (const g of dark) P.add('turretDark', g);
   station.mark('pitch');
+  // Traverse and depression measured against the built turret (tools/roof-station-arcs.mjs, 10-14): the 2.04 m reach
+  // clears everything to +-155 degrees; behind that the rear whip antennas stop it (2 degrees margin). Over the turret's
+  // left side at -115 degrees the roof lets it depress 0.113 rad, and at the +153 degree stop 0.131 (0.01 margin each).
+  station.root.userData.yawArc = [-2.6704, 2.6704];
+  station.root.userData.depressionByYaw = [[-2.0944, .14], [-2.0071, .103], [-1.9199, .14], [2.618, .14], [2.6704, .121]];
   return station.root;
 }
