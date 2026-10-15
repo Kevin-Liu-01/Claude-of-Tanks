@@ -476,9 +476,11 @@ export function buildConifers(frame: RockFrame, trees: ReadonlyArray<readonly [n
       for (let k = 0; k < sides; k += 1) {
         const a = ring(y0 + (k % 2) * 0.12, r, k), b = ring(y0 + ((k + 1) % 2) * 0.12, r, k + 1);
         // the snow lies on the cone's upper slopes: a white band from the skirt up, its shaded side greyer
+        // the snow lies in a band high on each tier, thin, the needles dark below and through it (CPU canonical,
+        // 2026-10-15: snow from the skirt up turned the stand into white cones against the sky)
         const lit = Math.cos(turn + ((k + 0.5) / sides) * Math.PI * 2 - 0.6) > -0.2;
-        const mid = a.clone().lerp(tip, 0.45), midB = b.clone().lerp(tip, 0.45);
-        const cap = lit ? snow : snowShade;
+        const mid = a.clone().lerp(tip, 0.62), midB = b.clone().lerp(tip, 0.62);
+        const cap = (lit ? snow : snowShade).clone().lerp(green, lit ? 0.35 : 0.55);
         triangle(soup, a, mid, b, green, cap, green);
         triangle(soup, b, mid, midB, green, cap, cap);
         triangle(soup, mid, tip, midB, cap, green, cap);
