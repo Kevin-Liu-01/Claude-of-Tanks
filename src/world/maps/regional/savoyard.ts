@@ -14,7 +14,7 @@ import {
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -720,8 +720,11 @@ const ruine: RegionalBuilder = (ctx) => {
     // (on the back gable's inner face, looking into the room: placed off the outer face, its room side was the face a
     // wall-mounted box leaves out, open to a breach)
     const hearthWall: Face = { origin: [0, 0, -D / 2 + t], u: [1, 0, 0], out: [0, 0, 1], width: W - 2 * t };
-    faceBox(sink, 'stone', hearthWall, -0.6, 0.9, 0.3, 1.5, 1.8, 0.6, { decor: true });
-    faceBox(sink, 'dark', hearthWall, -0.6, 0.55, 0.61, 0.9, 0.9, 0.02, { decor: true });
+    // (props census #7, lane B 2026-10-14: the firebox was a dark plate on the hearth's face) the hearth's back against
+    // the wall, its front cut by the firebox through its depth, the soot-dark back of the box behind
+    faceBox(sink, 'stone', hearthWall, -0.6, 0.9, 0.075, 1.5, 1.8, 0.15, { decor: true });
+    const hearthFront: Face = { origin: facePoint(hearthWall, -0.6, 0, 0.6), u: hearthWall.u, out: hearthWall.out, width: 1.5 };
+    holedPolygon(sink, 'stone', hearthFront, [[-0.75, 0], [0.75, 0], [0.75, 1.8], [-0.75, 1.8]], [{ u0: -0.45, u1: 0.45, y0: 0.1, y1: 1.0 }], 0.45, 0.4, { decor: true });
     // the rubble: a slumped heap inside, heaps along the walls' feet outside where their heads fell
     const heaps: Array<[number, number, number, number]> = [];
     const heap = (x: number, z: number, r: number, hgt: number) => {
