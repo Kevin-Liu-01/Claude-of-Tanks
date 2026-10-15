@@ -696,7 +696,7 @@ assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinus
 assert.match(shadersSource, /uniform sampler3D tShape;\s*uniform sampler3D tDetail;/, 'the volumes are 3D textures');
 for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.25, 0.125 ) )', 'uPhase.w * powderFade * exp( -sigma * uPowderExp )', 'texelFetch( tBlue', 'cl2BsmDepth( p, run )',
   'cl2Band( uCamPos, dir, lo, uLayerTop[ i ] )', 'uLayerAnvil', 'cl2SunTransmittance( cl2Height( uCamPos + dir * ( 0.5 * ( r0.x + r0.y ) ) ) )', 'L += T * ( S - S * Tstep ) / sigma;',
-  'if ( lit == 0 || ( ( lit % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) )', 'if ( T < uLightBudget.w || float( i ) >= uStepCap ) break;', 'if ( float( q ) >= uLightBudget.z ) break;']) {
+  'int litPhase = int( jitter * uLightBudget.x );', 'if ( lit == 0 || ( ( ( lit + litPhase ) % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) )', 'if ( T < uLightBudget.w || float( i ) >= uStepCap ) break;', 'if ( float( q ) >= uLightBudget.z ) break;']) {
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
 }
 for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDepth(']) assert.ok(layerSource.includes(term), `the sky beyond the medium carries ${term}`);

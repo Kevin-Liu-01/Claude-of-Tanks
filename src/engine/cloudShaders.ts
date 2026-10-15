@@ -653,6 +653,7 @@ void main() {
 		// alternation away, the jitter moving the steps every frame), on the first step into each cloud, and none once
 		// the ray is nearly opaque (the samples behind carry little weight)
 		int lit = 0;
+		int litPhase = int( jitter * uLightBudget.x );
 		float od = 0.0, run = 0.0;
 		for ( int i = 0; i < CL2_STEPS; i++ ) {
 			if ( T < uLightBudget.w || float( i ) >= uStepCap ) break;
@@ -725,7 +726,11 @@ void main() {
 			if ( sigma > 1e-5 ) {
 				if ( fine > 0 ) fine--;
 				vec4 wgt = sigma4 / sigma;
-				if ( lit == 0 || ( ( lit % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) ) {
+				// (2026-10-14, the SKY lane: the blind A/B's sunset frames read "horizontal slice banding" through every cumulus —
+				// the light on every Nth step counted from each cloud's refined entry put the sun term's steps at the same depths
+				// into every cloud, iso-depth bands under a low sun's steep gradient; the count starts at a per-pixel phase of the
+				// jitter, so the steps fall at different depths per pixel and frame and the history averages them away)
+				if ( lit == 0 || ( ( ( lit + litPhase ) % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) ) {
 					// the optical depth to the sun: a short secondary march (the detail the map lacks), then the map
 					od = 0.0; run = 0.0;
 					float sStep = 80.0;
