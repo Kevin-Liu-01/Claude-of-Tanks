@@ -9,7 +9,7 @@
 // clapboard; and the burnt-out farmsteads.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorUnit, gateUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { factoryStack } from './shared.ts';
@@ -724,14 +724,19 @@ const firePost: RegionalBuilder = (ctx) => {
     const openings: Opening[] = [];
     for (const o of windowRhythm('front', 1, W, { w: 1.4, h: 1.2, sill: 0.9, spacing: 2.2, margin: 1.0 })) openings.push(o);
     for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 1, D, { w: 1.2, h: 1.1, sill: 0.9, spacing: 2.4, margin: 1.0 })) openings.push(o);
+    // (props census #13, lane B 2026-10-14; the judges: "the engine bay a dark plate with a red shutter laid over it")
+    // the engine bay cut through the front, its red shutter part raised in the reveal
+    openings.push({ face: 'front', storey: 0, kind: 'gate', u: -W * 0.15, w: W * 0.5, y0: 0, h: 3.6 });
+    const base = dialectOf(rng, rgb(0x5a6a72), 0.5);
+    const dialect: HouseDialect = { ...base, door: (s, face, o, y0, fr) => (o.kind === 'gate'
+      ? rollerDoor(s, face, o.u, y0 + o.y0, o.w, o.h, 0.33, rgb(0xb8302a), rgb(0x9a9e9c), ctx.tier === 'mobile')
+      : base.door(s, face, o, y0, fr)) };
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.2, out: 0.04, bucket: CEMENT }, storeys: [{ h: 4.0, wall: CEMENT }, { h: 3.0, wall: CEMENT }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.2, bucket: CEMENT, parapet: 0.4 }, gableBucket: CEMENT,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.15,
-    }, dialectOf(rng, rgb(0x5a6a72), 0.5));
+    }, dialect);
     const f = frame.faces.front;
-    faceBox(sink, 'dark', f, -W * 0.15, 1.9, 0.005, W * 0.5, 3.6, 0.02, { decor: true });
-    faceBox(sink, 'structureMetal', f, -W * 0.15, 2.6, 0.03, W * 0.5, 2.4, 0.04, { colour: rgb(0xb8302a), decor: true });
     faceBox(sink, 'structureWood', f, W * 0.3, 3.4, 0.02, 1.8, 0.4, 0.03, { colour: rgb(0xe8e2d4), decor: true });
   });
   // the hose-drying tower of steel at the back, its red lamp
