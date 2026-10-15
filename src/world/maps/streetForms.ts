@@ -22,7 +22,7 @@ export interface BenchForm {
   kind: 'castiron' | 'concrete' | 'mastaba' | 'bamboo' | 'wpa' | 'stone' | 'timber' | 'municipal' | 'steel';
   wood: Rgb; frame: Rgb;
 }
-const L = 1.7, SEAT_Y = 0.46, DEPTH = 0.42;
+const L = 1.7, SEAT_Y = 0.46;
 
 /** The seat's slats along the bench (x), eased, with gaps; `n` of them across its depth, at `y`, from z0 to z1. */
 function slats(m: M, n: number, y: number, z0: number, z1: number, len: number, col: Rgb, rng: Rng, t = 0.03): void {
