@@ -9,7 +9,8 @@ import {
   PartSink, faceBox, facePoint, normalize3, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, leanTo, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, leanTo, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { openBelfry } from './sarajevoParts.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { hollyhocks } from './dressing.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
@@ -423,14 +424,17 @@ const church: RegionalBuilder = (ctx) => {
   // the bell tower at the west (+z) end: two square tiers and a small onion
   const tz = D / 2 + 1.6;
   sink.span('stone', -1.95, -0.4, tz - 1.95, 1.95, 0.4, tz + 1.95);
-  sink.span('plaster', -1.6, 0.4, tz - 1.6, 1.6, 7.0, tz + 1.6);
-  sink.span('plaster', -1.25, 7.0, tz - 1.25, 1.25, 9.6, tz + 1.25);
+  // (props census #5, lane B 2026-10-15) the lower tier's door cut through it (the leaf was laid on a solid span), the
+  // leaf at the back of its reveal; the belfry tier open on its four corner piers under its head, the bell hung in it
+  // (its openings were dark plates on a solid block); the tower recorded as a shaft body under its onion
+  holedBox(sink, 'plaster', -1.6, tz - 1.6, 1.6, tz + 1.6, 0.4, 7.0, { front: [{ u0: -0.65, u1: 0.65, y0: 0.4, y1: 3.0 }] }, 0.4, 0.34);
+  openBelfry(sink, 'plaster', 0, tz, 2.5, 7.0, 9.05, 9.6, 0.8, rgb(0x6a5a3a), rgb(0x4a3a2a));
+  recordShaft(sink, 0, tz, 3.2, 9.75 + 2.4, 'plaster');
   const towerFace: Face = { origin: [0, 0, tz + 1.6], u: [1, 0, 0], out: [0, 0, 1], width: 3.2 };
-  doorUnit(sink, towerFace, 0, 0.4, 1.3, 2.6, { leaf: rgb(0x6e5440), frame: { bucket: 'plaster', width: 0.24, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.4);
-  for (const [o, u] of [[[0, 0, tz + 1.25], [1, 0, 0]], [[0, 0, tz - 1.25], [-1, 0, 0]], [[1.25, 0, tz], [0, 0, -1]], [[-1.25, 0, tz], [0, 0, 1]]] as const) {
-    const f: Face = { origin: o as Vec3, u: u as Vec3, out: [Math.sign(o[0]), 0, o[0] === 0 ? Math.sign(o[2] - tz) : 0], width: 2.5 };
-    faceBox(sink, 'dark', f, 0, 8.3, 0.005, 0.8, 1.5, 0.02, { decor: true });
-  }
+  sink.recess = 0.34;
+  try {
+    doorUnit(sink, towerFace, 0, 0.4, 1.3, 2.6, { leaf: rgb(0x6e5440), frame: { bucket: 'plaster', width: 0.24, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.4);
+  } finally { sink.recess = 0; }
   sink.span('structureMetal', -1.35, 9.6, tz - 1.35, 1.35, 9.75, tz + 1.35, { colour: GREEN_ROOF });
   onion(sink, 0, 9.75, tz, 0.95, DOME_GREEN);
   if (facadeOn()) {
@@ -482,6 +486,13 @@ function churchMasonry(sink: PartSink, frame: HouseFrame, drum: Vec3, drumH: num
     const f: Face = { origin: [drum[0] + ca * r * 0.97, 0, drum[2] + sa * r * 0.97], u: [-sa, 0, ca], out: [ca, 0, sa], width: 1 };
     const wy = drum[1] + 1.2, wh = Math.max(0.5, drumH - 1.6);
     faceSlab(sink, 'dark', f, [[-0.2, wy], [0.2, wy], [0.2, wy + wh], [0, wy + wh + 0.18], [-0.2, wy + wh]], 0, 0.04);
+    // (props census #5, lane B 2026-10-15: the dark lay on the drum, a painted window) its deep plaster surround, the dark
+    // at the back of its reveal: the jambs, the sill and the head 22 cm proud of it
+    // (on a right-handed face: the drum face's u runs the other way, which turned the boxes inside out)
+    const fr: Face = { ...f, u: [sa, 0, -ca] };
+    for (const s2 of [-1, 1]) faceBox(sink, 'plaster', fr, s2 * 0.25, wy + (wh + 0.18) / 2, 0.11, 0.1, wh + 0.28, 0.22, { decor: true });
+    faceBox(sink, 'plaster', fr, 0, wy - 0.05, 0.11, 0.4, 0.1, 0.22, { decor: true }, 'ends');
+    faceBox(sink, 'plaster', fr, 0, wy + wh + 0.23, 0.11, 0.4, 0.1, 0.22, { decor: true }, 'ends');
   }
 }
 
