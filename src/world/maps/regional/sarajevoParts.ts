@@ -92,11 +92,13 @@ export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number
     if (k >= drawn) continue;
     if (keep.some((h) => cu + r > h.u0 - 0.05 && cu - r < h.u1 + 0.05 && cy + r > h.y0 - 0.05 && cy - r < h.y1 + 0.05)) continue;
     sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.8 });
+    // (props census #7, lane B 2026-10-14: a pock is the render knocked off and the brick bruised under it, not a hole:
+    // its core the masonry a shade darker, never the dark of a room)
     const c = r * 0.42;
-    sink.polygon('dark', [0, 1, 2, 3, 4].map((j) => {
+    sink.polygon(under, [0, 1, 2, 3, 4].map((j) => {
       const t = (j / 5) * Math.PI * 2 + 0.3;
       return facePoint(face, cu + Math.cos(t) * c, cy + Math.sin(t) * c, 0.016);
-    }), DECOR);
+    }), { ...DECOR, shade: 0.66 });
   }
 }
 
