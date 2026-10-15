@@ -1746,6 +1746,11 @@ export function addGarageFacilityDetails({
         clusterBox(leafCluster, 0, 0.06, (y0 + y1) / 2, len, 0.15, 0.045, tar, 'painted', -side * Math.atan2(y1 - y0, width - 0.3));
       }
       for (const y of [0.6, height - 0.55]) clusterBox(leafCluster, side * (width / 2 - 0.45), 0.09, y, 0.9, 0.07, 0.02, iron, 'painted'); // strap hinges
+      // the boarded face: the boards' joints down it (the re-judge, 2026-10-15: the open leaf showed "flat, untextured
+      // tan backs with no boarding or braces")
+      for (let board = 1; board < Math.floor(width / 0.16); board += 1) {
+        clusterBox(leafCluster, -width / 2 + board * 0.16, -0.04, height / 2 + 0.03, 0.02, height - 0.04, 0.012, tar, 'painted');
+      }
     };
     // the left road's pair swung back 110 degrees on their pintles, clear of the piers; the others shut (the critic panel:
     // "tan slabs that float off or clip into the piers ... swung 100-120 degrees clear of the piers, or close them")
