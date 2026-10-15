@@ -978,6 +978,12 @@ try {
     }
   }
   await pages.a2.setViewport(testViewport);
+  // (2026-10-14) the returning tab's own telemetry beacons (its boot stage timings: renderer, sky, garage, vehicle, post ...)
+  report.a2Beacons = [];
+  pages.a2.on('request', (request) => {
+    if (request.method() !== 'POST' || !/telemetry|\/v1\/session|\/v1\/error/.test(request.url())) return;
+    try { report.a2Beacons.push({ atMs: elapsedMs(), url: request.url().replace(/^https?:\/\/[^/]+/, ''), body: JSON.parse(request.postData() ?? 'null') }); } catch { /* not JSON */ }
+  });
   observe(pages.a2, 'A2');
   await pages.a2.evaluateOnNewDocument(installPageRecorder, forceRelay);
   // (2026-10-14) the return's own clock: the page opened → its Garage → its battle revealed (sampled beside the flow)
