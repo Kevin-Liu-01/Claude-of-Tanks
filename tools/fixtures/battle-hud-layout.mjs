@@ -5,7 +5,10 @@ import '../../src/ui/motion.css';
 import '../../src/ui/battleUiVisibility.css';
 import '../../src/ui/hudCustomization.css';
 import '../../src/ui/responsiveSurfaces.css';
+// The HUD's own lazy sheet (battleHudAccess.ts loads it with hud.ts): the flight console and the drone tile's phases.
+import '../../src/ui/aerialHud.css';
 import { Vector3 } from 'three';
+import { touchReticleFootprint } from '../../src/ui/touchActionDock.ts';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
 import { createInput } from '../../src/game/input.ts';
@@ -129,7 +132,25 @@ function controls(count) {
   window.dispatchEvent(new Event('cot-hud-relayout'));
   return [...document.querySelector('.cot-vehicle-controls').children].filter(button=>!button.classList.contains('cot-dock-more')&&button.getClientRects().length).length;
 }
-window.__HUD_LAYOUT = {multiplayer,state, roster, controls, hud, bus, touch, settings, hit, frame, tanks};
+// The reticle as the dock's keep-out check needs it: the battle sight or the scope, the ring at rest or at full bloom
+// (the fixture has no camera, so the aim point is the screen centre and the ring's px size follows dispersionRadM and
+// distM), the readouts at their widest: x25.0, a 1500 m range, a twelve-round magazine reloading (rack, +8, 13 s) or
+// a round being chosen (SWITCHING). repaint() paints one more frame of the same view.
+const restingAim = {...frame.aim};
+function reticle({sight='battle', bloom='full', readout='magazine'}={}) {
+  hud.setMode(sight==='scope'?'sniper':'battle');
+  Object.assign(frame.aim, {zoom:sight==='scope'?25:1, distM:1500, dispersionRadM:bloom==='full'?1e4:1e-4,
+    magazine:readout==='magazine'?{capacity:12,rounds:7}:null,
+    reload:readout==='magazine'?{t:12.6,totalS:15,kind:'magazine'}:readout==='switching'?{t:2,totalS:4,kind:'shell'}:{t:0,totalS:6},
+    ammoSelectionPending:readout==='switching'});
+  for(let i=0;i<150;i++){frame.timeS+=1/60;hud.update(frame);}
+}
+function repaint() { frame.aim.distM+=.3; frame.timeS+=1/60; hud.update(frame); }
+function restAim() { for(const key of Object.keys(frame.aim))if(!(key in restingAim))delete frame.aim[key]; Object.assign(frame.aim,restingAim); hud.setMode('battle'); hud.update(frame); }
+// The drone tile while a recalled drone flies home (droneControlState.ts reads returnS; item/drone-recall).
+function droneReturning() { player.aerial = {kind:'drone', active:false, cooldownS:14, recallS:0, returnS:5}; hud.update(frame); }
+window.__HUD_LAYOUT = {multiplayer,state, roster, controls, hud, bus, touch, settings, hit, frame, tanks, input,
+  reticle, repaint, restAim, droneReturning, touchReticleFootprint};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

@@ -19,7 +19,7 @@ const cases = [
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
-const reports=[];const errors=[];
+const reports=[];const errors=[];const reticleReach=[];const swipes=[];const droneCues=[];
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
   // Node-side closure. Preserve selector/DOM order for overlap diagnostics.
@@ -65,7 +65,9 @@ function measure(state){
 // The touch action dock's one rule (src/ui/touchActionDock.ts), on every touch screen and state where the row shows:
 // docked (never the old scrolling strip), a box that cannot scroll, every visible tile (More and an open More panel
 // included) at least 44 x 44 px (Apple's minimum touch target), on screen, not overlapping another tile or a touch
-// control, and off the crosshair and its dispersion ring at full bloom; the gun-limit warning off the crosshair area.
+// control, and off the reticle's footprint (the ring at full bloom and every readout of either sight at any bloom,
+// touchReticleFootprint); the gun-limit warning off the crosshair area. reticleCheck() below records what the reticle
+// canvas really draws and checks it against the tiles and the footprint.
 function dockIssues(){
   const row=document.querySelector('.cot-vehicle-controls');
   if(!row||!row.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return [];
@@ -75,6 +77,9 @@ function dockIssues(){
   if(/auto|scroll/.test(`${style.overflowX} ${style.overflowY}`))failures.push('touch action dock can scroll');
   const cx=innerWidth/2,cy=innerHeight/2,ring=Math.max(32,Math.ceil(.15*Math.min(innerWidth,innerHeight)));
   const distance=r=>Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom));
+  const footprint=window.__HUD_LAYOUT.touchReticleFootprint(innerWidth,innerHeight);
+  const keepGap=(r,k)=>'r' in k?Math.hypot(Math.max(r.left-k.x,0,k.x-r.right),Math.max(r.top-k.y,0,k.y-r.bottom))-k.r
+    :Math.hypot(Math.max(r.left-k.x-k.w,0,k.x-r.right),Math.max(r.top-k.y-k.h,0,k.y-r.bottom));
   const crosses=(a,b)=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>.5&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.5;
   const tiles=[...row.children].filter(tile=>tile.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(tile=>tile.getBoundingClientRect());
   if(!tiles.length)failures.push('touch action dock shows no tile');
@@ -84,6 +89,7 @@ function dockIssues(){
     if(tile.width<44-.01||tile.height<44-.01)failures.push(`touch action tile below 44px (${tile.width}x${tile.height})`);
     if(tile.left<-.5||tile.top<-.5||tile.right>innerWidth+.5||tile.bottom>innerHeight+.5)failures.push('touch action tile offscreen');
     if(distance(tile)<ring-.5)failures.push('touch action tile covers the crosshair');
+    if(footprint.some(k=>keepGap(tile,k)<1.5))failures.push('touch action tile covers the reticle footprint');
     if(tiles.slice(i+1).some(other=>crosses(tile,other)))failures.push('touch action tiles overlap');
     if(controls.some(control=>crosses(tile,control)))failures.push('touch action tile covers a touch control');
   }
@@ -205,6 +211,12 @@ try {
     }
     // Every control in the row's order: one tap, or two through More (the panel is checked open). Mars is a jump mode,
     // so the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
+    // A touch screen taps (the dock's tiles act on the lift of a touch); a mouse clicks.
+    async function press(locator){
+      if(!touch){await locator.click();return;}
+      const box=await locator.boundingBox();
+      await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);
+    }
     async function pressControls(expected){
       await page.evaluate(()=>{
         window.__controlEvents=[];
@@ -219,12 +231,12 @@ try {
         const {laidOut,behindMore}=await button.evaluate(b=>({laidOut:b.getClientRects().length>0,behindMore:b.hasAttribute('data-dock-overflow')}));
         if(!laidOut)continue;
         if(behindMore){
-          await page.locator('.cot-vehicle-controls > .cot-dock-more').click();
+          await press(page.locator('.cot-vehicle-controls > .cot-dock-more'));
           errors.push(...(await page.evaluate(dockIssues)).map(issue=>`${name}: open More panel: ${issue}`));
         }
         const box=await button.boundingBox();
         if(!box||box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
-        await button.click();
+        await press(button);
         if(behindMore&&await page.evaluate(()=>document.body.hasAttribute('data-hud-dock-open')))
           errors.push(`${name}: the More panel stayed open after its control acted`);
       }
@@ -312,6 +324,155 @@ try {
         }
       }
     }
+    // The reticle as drawn: every glyph and stroke the reticle canvas paints in the battle sight and the scope, at rest
+    // and at full bloom, readouts at their widest, recorded from the canvas calls themselves. No tile (nor an open More
+    // panel's) may lie on any of it, and all of it must lie inside touchReticleFootprint (2 px hairline), the keep-out
+    // the dock is placed by. Then a swipe that starts on a docked tile over the aim pad must aim and not act.
+    async function reticleCheck(count){
+      await enter('idle');
+      await page.evaluate(count=>window.__HUD_LAYOUT.controls(count),count);
+      await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+      const stages=[['battle','rest','magazine'],['battle','full','magazine'],['scope','rest','magazine'],['scope','full','magazine'],['scope','full','switching'],['battle','full','switching']];
+      let widest=0;
+      for(const [sight,bloom,readout] of stages){
+        await page.evaluate(stage=>window.__HUD_LAYOUT.reticle(stage),{sight,bloom,readout});
+        await page.waitForTimeout(160); // the scope's 0.1 s fade-in runs on the wall clock
+        const result=await page.evaluate(()=>{
+          const f=window.__HUD_LAYOUT;
+          const canvas=document.querySelector('.cot-ret'),ctx=canvas.getContext('2d');
+          const scale=canvas.width/(canvas.clientWidth||innerWidth);
+          // Boxes for glyphs, lines and fills; rings (arcs wider than 6 px: the dispersion ring and the reload sweep, taken
+          // whole) as circles, so a ring's empty corners never read as ink.
+          let ink=[],path=[],circles=[];
+          const point=(x,y)=>{const m=ctx.getTransform();return [(m.a*x+m.c*y+m.e)/scale,(m.b*x+m.d*y+m.f)/scale];};
+          const lineScale=()=>{const m=ctx.getTransform();return Math.hypot(m.a,m.b)/scale;};
+          const record=(points,pad,what)=>{
+            if(!points.length||ctx.globalAlpha<=0)return;
+            const shadow=ctx.shadowBlur>0&&!/,\s*0\)$|transparent/.test(ctx.shadowColor)?ctx.shadowBlur:0;
+            const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
+            ink.push({what,x0:Math.min(...xs)-pad-shadow+Math.min(0,ctx.shadowOffsetX),y0:Math.min(...ys)-pad-shadow+Math.min(0,ctx.shadowOffsetY),
+              x1:Math.max(...xs)+pad+shadow+Math.max(0,ctx.shadowOffsetX),y1:Math.max(...ys)+pad+shadow+Math.max(0,ctx.shadowOffsetY)});
+          };
+          const full=(points)=>{const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);return Math.max(...xs)-Math.min(...xs)>=innerWidth*.9&&Math.max(...ys)-Math.min(...ys)>=innerHeight*.9;};
+          const wraps={
+            clearRect:(x,y,w,h)=>{if(w*scale>=canvas.width*.9)ink=[];},
+            beginPath:()=>{path=[];circles=[];},
+            moveTo:(x,y)=>path.push(point(x,y)),lineTo:(x,y)=>path.push(point(x,y)),
+            arc:(x,y,r)=>{if(r*lineScale()>6){const [cx,cy]=point(x,y);circles.push({cx,cy,r:r*lineScale()});}else path.push(point(x-r,y-r),point(x+r,y+r),point(x-r,y+r),point(x+r,y-r));},
+            ellipse:(x,y,rx,ry)=>path.push(point(x-rx,y-ry),point(x+rx,y+ry),point(x-rx,y+ry),point(x+rx,y-ry)),
+            quadraticCurveTo:(a,b,x,y)=>path.push(point(a,b),point(x,y)),
+            bezierCurveTo:(a,b,c,d,x,y)=>path.push(point(a,b),point(c,d),point(x,y)),
+            rect:(x,y,w,h)=>path.push(point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)),
+            roundRect:(x,y,w,h)=>path.push(point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)),
+            stroke:()=>{record(path,ctx.lineWidth*lineScale()/2+.5,'stroke');
+              for(const c of circles)ink.push({what:'ring',ring:true,cx:c.cx,cy:c.cy,r:c.r,pad:ctx.lineWidth*lineScale()/2,x0:c.cx-c.r,y0:c.cy-c.r,x1:c.cx+c.r,y1:c.cy+c.r});},
+            fill:()=>{if(!full(path))record(path,0,'fill');for(const c of circles)ink.push({what:'disc',ring:true,cx:c.cx,cy:c.cy,r:c.r/2,pad:c.r/2,x0:c.cx-c.r,y0:c.cy-c.r,x1:c.cx+c.r,y1:c.cy+c.r});},
+            fillRect:(x,y,w,h)=>{const p=[point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)];if(!full(p))record(p,0,'fillRect');},
+            strokeRect:(x,y,w,h)=>record([point(x,y),point(x+w,y+h),point(x,y+h),point(x+w,y)],ctx.lineWidth*lineScale()/2,'strokeRect'),
+            fillText:(text,x,y)=>{const m=ctx.measureText(text);record([point(x-m.actualBoundingBoxLeft,y-m.actualBoundingBoxAscent),point(x+m.actualBoundingBoxRight,y+m.actualBoundingBoxDescent)],0,`text ${text}`);},
+            strokeText:(text,x,y)=>{const m=ctx.measureText(text);record([point(x-m.actualBoundingBoxLeft,y-m.actualBoundingBoxAscent),point(x+m.actualBoundingBoxRight,y+m.actualBoundingBoxDescent)],ctx.lineWidth*lineScale()/2,`text ${text}`);},
+            drawImage:()=>{ink.push({what:'image',x0:0,y0:0,x1:innerWidth,y1:innerHeight});},
+          };
+          for(const [name,fn] of Object.entries(wraps)){const original=ctx[name];ctx[name]=function(...args){fn(...args);return original.apply(this,args);};}
+          try { f.repaint(); } finally { for(const name of Object.keys(wraps))delete ctx[name]; }
+          const footprint=f.touchReticleFootprint(innerWidth,innerHeight);
+          const inside=(x,y)=>footprint.some(k=>'r' in k?Math.hypot(x-k.x,y-k.y)<=k.r+2:x>=k.x-2&&x<=k.x+k.w+2&&y>=k.y-2&&y<=k.y+k.h+2);
+          const outside=[];
+          for(const r of ink){
+            if(r.ring){
+              for(let a=0;a<360;a+=3)for(const rr of [Math.max(0,r.r-r.pad),r.r+r.pad]){
+                const x=r.cx+rr*Math.cos(a*Math.PI/180),y=r.cy+rr*Math.sin(a*Math.PI/180);
+                if(!inside(x,y)){outside.push(`${r.what} r ${r.r.toFixed(1)} (${x.toFixed(1)},${y.toFixed(1)})`);break;}
+              }
+              continue;
+            }
+            for(let x=r.x0;x<=r.x1+.01;x+=Math.max(.5,Math.min(2,(r.x1-r.x0)/2)))for(let y=r.y0;y<=r.y1+.01;y+=Math.max(.5,Math.min(2,(r.y1-r.y0)/2))){
+              if(!inside(x,y)){outside.push(`${r.what} (${x.toFixed(1)},${y.toFixed(1)})`);break;}
+            }
+          }
+          const tiles=[...document.querySelectorAll('.cot-vehicle-controls>button')].filter(t=>t.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(t=>t.getBoundingClientRect());
+          const covered=[];
+          const ringHits=(t,r)=>{
+            const near=Math.hypot(Math.max(t.left-r.cx,0,r.cx-t.right),Math.max(t.top-r.cy,0,r.cy-t.bottom));
+            const far=Math.max(...[[t.left,t.top],[t.right,t.top],[t.left,t.bottom],[t.right,t.bottom]].map(([x,y])=>Math.hypot(x-r.cx,y-r.cy)));
+            return near<r.r+r.pad-.5&&far>r.r-r.pad+.5;
+          };
+          for(const t of tiles)for(const r of ink){
+            if(r.ring?ringHits(t,r):Math.min(t.right,r.x1)-Math.max(t.left,r.x0)>.5&&Math.min(t.bottom,r.y1)-Math.max(t.top,r.y0)>.5)covered.push(r.what);
+          }
+          const text=ink.filter(r=>r.what.startsWith('text ')).map(r=>r.what.slice(5));
+          const reach=Math.max(0,...ink.map(r=>Math.max(r.y1-innerHeight/2,Math.abs(r.x1-innerWidth/2),Math.abs(r.x0-innerWidth/2))));
+          return {inks:ink.length,text,outside:[...new Set(outside)].slice(0,6),covered:[...new Set(covered)].slice(0,6),reach,
+            more:!!document.querySelector('.cot-vehicle-controls>.cot-dock-more:not([hidden])')};
+        });
+        widest=Math.max(widest,result.reach);
+        const label=`${name}/${count}-controls/${sight}-${bloom}-${readout}`;
+        if(result.inks<5)errors.push(`${label}: the reticle drew nothing to check (${result.inks})`);
+        if(sight==='scope'&&!result.text.some(t=>/^×25\.0$/.test(t)))errors.push(`${label}: the zoom plate was not drawn (${result.text})`);
+        if(result.outside.length)errors.push(`${label}: reticle ink outside touchReticleFootprint: ${result.outside.join('; ')}`);
+        if(result.covered.length)errors.push(`${label}: a dock tile covers reticle ink: ${result.covered.join('; ')}`);
+        if(result.more&&sight==='scope'&&bloom==='full'){
+          await press(page.locator('.cot-vehicle-controls > .cot-dock-more'));
+          const open=await page.evaluate(()=>[...document.querySelectorAll('.cot-vehicle-controls>button[data-dock-overflow]')]
+            .filter(t=>t.checkVisibility({checkVisibilityCSS:true})).map(t=>{const r=t.getBoundingClientRect();return {x0:r.left,y0:r.top,x1:r.right,y1:r.bottom};}));
+          const footprintIssues=await page.evaluate(dockIssues);
+          errors.push(...footprintIssues.map(issue=>`${label}: open More panel: ${issue}`));
+          if(!open.length)errors.push(`${label}: More opened no panel`);
+          if(readout==='magazine')await page.screenshot({path:resolve(out,`${name}-${count}-scope-more-open.png`)});
+          await page.evaluate(()=>document.body.toggleAttribute('data-hud-dock-open',false));
+        }
+        if(bloom==='full'&&readout==='magazine')await page.screenshot({path:resolve(out,`${name}-${count}-${sight}.png`)});
+        reports.push({name,...page.viewportSize(),touch,locale,state:`reticle-${count}-${sight}-${bloom}-${readout}`,failures:[...result.outside,...result.covered],rects:[],inks:result.inks});
+      }
+      reticleReach.push(`${name}/${count}: ${widest.toFixed(1)} px`);
+      await page.evaluate(()=>window.__HUD_LAYOUT.restAim());
+      // A swipe begun on a docked tile over the aim pad aims, and the tile does not act.
+      const swipe=await page.evaluate(()=>{
+        const pad=document.querySelector('.cot-touch-aim.on .aimpad')?.getBoundingClientRect();
+        if(!pad)return null;
+        const tile=[...document.querySelectorAll('.cot-vehicle-controls>button:not(.cot-dock-more)')].map(t=>({t,r:t.getBoundingClientRect()}))
+          .find(({t,r})=>t.checkVisibility({checkVisibilityCSS:true})&&!t.hasAttribute('data-dock-overflow')&&r.left+r.width/2>pad.left+2&&r.top+r.height/2>pad.top+2);
+        if(!tile)return {none:true};
+        const f=window.__HUD_LAYOUT;
+        window.__aimed=0;window.__swipeEvents=[];
+        if(!window.__aimWrapped){
+          window.__aimWrapped=true;
+          const original=f.input.addVirtualAim.bind(f.input);
+          f.input.addVirtualAim=(dx,dy)=>{window.__aimed+=Math.abs(dx)+Math.abs(dy);return original(dx,dy);};
+          for(const event of ['ui:specialAction','ui:selfRight','ui:drone','ui:shellSelect','ui:smoke','ui:lightsToggle','ui:roofGun'])
+            f.bus.on(event,()=>window.__swipeEvents.push(event));
+        }
+        return {x:tile.r.left+tile.r.width/2,y:tile.r.top+tile.r.height/2,name:tile.t.className};
+      });
+      if(swipe&&!swipe.none){
+        const cdp=await context.newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:swipe.x,y:swipe.y,id:1}]});
+        for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:swipe.x-i*8,y:swipe.y-i*3,id:1}]});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        await cdp.detach();
+        const after=await page.evaluate(()=>({aimed:window.__aimed,events:window.__swipeEvents.slice()}));
+        if(!(after.aimed>0))errors.push(`${name}/${count}: a swipe from the ${swipe.name} tile did not aim`);
+        if(after.events.length)errors.push(`${name}/${count}: a swipe from the ${swipe.name} tile acted: ${after.events}`);
+        swipes.push(`${name}/${count}: ${swipe.name} aimed ${after.aimed.toFixed(0)} px`);
+      } else swipes.push(`${name}/${count}: ${swipe?'no docked tile over the aim pad':'no aim pad'}`);
+      // The drone tile while a recalled drone flies home (item/drone-recall's data-phase; on the dock its cue must win).
+      if(count>=6){
+        const cue=await page.evaluate(()=>{
+          window.__HUD_LAYOUT.droneReturning();
+          const tile=document.querySelector('.cot-drone-control');
+          if(!tile||!tile.getClientRects().length)return null;
+          const style=getComputedStyle(tile),icon=getComputedStyle(tile.querySelector('.si'));
+          return {phase:tile.dataset.phase??null,color:style.color,edge:style.borderBottomColor,opacity:style.opacity,icon:icon.opacity,overflow:tile.hasAttribute('data-dock-overflow')};
+        });
+        if(cue?.phase==='returning'){
+          if(cue.color!=='rgb(255, 220, 148)'||cue.edge!=='rgb(239, 184, 78)'||cue.opacity!=='1'||cue.icon!=='1')
+            errors.push(`${name}/${count}: the drone's Returning cue lost on the dock: ${JSON.stringify(cue)}`);
+          droneCues.push(`${name}/${count}: returning ${cue.color} edge ${cue.edge} icon ${cue.icon}${cue.overflow?' (behind More)':''}`);
+          if(!cue.overflow)await page.screenshot({path:resolve(out,`${name}-${count}-drone-returning.png`)});
+        } else droneCues.push(`${name}/${count}: ${cue?`no returning phase on this branch (${cue.phase})`:'drone tile hidden'}`);
+      }
+    }
+    for(const count of touch?[5,6,7]:[])await reticleCheck(count);
     // Same-density count changes used to leave a stale tall container and stretch rows.
     if(!touch && width>=820 && height>=600){
       for(const count of [7,3,2,1,7]){
@@ -449,8 +610,9 @@ try {
   }
 } finally {
   await browser.close();
-  await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors},null,2));
+  await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues},null,2));
 }
 const failed=reports.filter(r=>r.failures.length);
+console.log(`reticle reach per case: ${reticleReach.join(', ')}\nswipes: ${swipes.join(', ')}\ndrone cue: ${droneCues.join(', ')}`);
 console.log(`${reports.length} state/viewport checks; ${failed.length} failed; ${errors.length} browser errors. ${out}`);
 if(failed.length||errors.length){console.log(errors);process.exitCode=1;}
