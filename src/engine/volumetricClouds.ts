@@ -865,7 +865,7 @@ export class VolumetricCloudLayer {
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
         uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(defs.lightEvery, 0.15, defs.sunSteps, defs.exitT) },
-        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uBsmLowSun: { value: new THREE.Vector2(1, 0.3) }, uEntryJitter: { value: 1 }, uDebug: { value: 0 },
+        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uBsmLowSun: { value: new THREE.Vector2(1, 0.3) }, uFarFade: { value: 1 }, uEntryJitter: { value: 1 }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -1429,6 +1429,7 @@ export class VolumetricCloudLayer {
     m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
     (t.uBsmLowSun.value as THREE.Vector2).set(lightTune('CLOUD_BSM_LOWSUN', 1), lightTune('CLOUD_BSM_LOWSUN_UP', 0.3));
+    t.uFarFade.value = lightTune('CLOUD_FAR_FADE', 1);
     t.uEntryJitter.value = lightTune('CLOUD_ENTRY_JITTER', 1);
     // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale) and a
     // closing deck's ground return

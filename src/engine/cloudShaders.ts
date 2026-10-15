@@ -494,6 +494,11 @@ uniform float uPowderExp;
 // the deep diffusion's weight per lane (the decks' diffuse light under their thick columns)
 uniform vec4 uLayerDiffuse;
 uniform float uMarchMax;
+// 2026-10-15 (the SKY lane; the C2 diagnosis critic: the winter deck seen from 400 m "ends in a dead-straight horizon
+// line", a 19-level step across the frame): where the march's reach ends a deck stopped in one step, short of the
+// horizon. The medium thins over the reach's last quarter instead, the haze taking it (QA knob CLOUD_FAR_FADE, 0 = the
+// hard end)
+uniform float uFarFade;
 uniform float uStepMin;
 uniform float uStepGrowth;
 uniform float uDetailRange;
@@ -729,6 +734,7 @@ void main() {
 			float sLod = max( 0.0, log2( max( foot * 2.0, 1.0 ) * 128.0 / uShapePeriod ) );
 			float detail = uDebug == 12.0 ? 0.0 : 1.0 - smoothstep( uDetailRange * 0.6, uDetailRange, t );
 			vec4 sigma4 = cl2Media( p, shell, hf, sLod, detail );
+			sigma4 *= 1.0 - uFarFade * smoothstep( 0.75 * uMarchMax, uMarchMax, t );
 			float sigma = sigma4.x + sigma4.y + sigma4.z + sigma4.w;
 			if ( sigma > 1e-5 && prevSigma <= 1e-5 && fine == 0 ) {
 				// entering: back up half a stride and refine
