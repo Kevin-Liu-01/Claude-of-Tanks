@@ -128,8 +128,11 @@ function streakNoise(t: number, seed: number): number {
  * rust run down from the top rail in streaks, the troughs darker, dirt and rust along the bottom rail. Parts new to the
  * stream (uvJitter 'none'); `seed` is one draw of the box's own stream.
  */
-function pushContainerShell(place: (g: THREE.BufferGeometry) => THREE.BufferGeometry, seed: number, hex: number,
+function pushContainerShell(placePart: (g: THREE.BufferGeometry) => THREE.BufferGeometry, seed: number, hex: number,
   side: readonly [number, number], end: readonly [number, number], W: number, H: number, L: number): void {
+  // every part of the shell is dressing on the body, inside its box: no collision part of its own, so the derivation
+  // sees the cubes' box and the door's parts alone and the dedicated shards stay what they were
+  const place = (g: THREE.BufferGeometry): THREE.BufferGeometry => { g.userData.noCollision = true; return placePart(g); };
   const paint = hexRgb(hex), rust = hexRgb(0x6b3a22), grime = hexRgb(0x2e2a24);
   const mix3 = (a: readonly number[], b: readonly number[], t: number): [number, number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   /** The paint at a wall point: `along` its run (m), `y` its height, `trough` 0 crest .. 1 trough. */
@@ -277,16 +280,45 @@ function pushContainer(
   // (the looks lane, 2026-10-15) the sides and the blank end are drawn as the container's own corrugated walls, posts,
   // rails and castings below, inside this box: the box keeps its roof and floor (and all 24 corners, so the solid's hull
   // and the containers' damage reading, regional/container.ts readContainers, are what they were)
-  const kept = new Uint16Array(12);
+  // The roof and the floor alone would be two flat pieces that the collision derivation drops (structureCollision
+  // solidsFromComponents; the 225 receipts: the band over the lower tier fell apart into its posts, rails and
+  // castings). A web inside the blank end's +x corner post joins them into one solid, from the roof's corner to the
+  // floor's and 4 cm in. It stands inside the post and the castings, so the solid is the cubes' box again.
+  const pos0 = body.getAttribute('position'), nor0 = body.getAttribute('normal'), uv0 = body.getAttribute('uv');
+  const corner = (sy: number): number => {
+    for (let i = 0; i < pos0.count; i++) {
+      if (Math.abs(pos0.getX(i) - W / 2) < 1e-5 && Math.abs(pos0.getY(i) - sy * H / 2) < 1e-5 && Math.abs(pos0.getZ(i) + L / 2) < 1e-5) return i;
+    }
+    throw new Error('container body: its blank-end corner');
+  };
+  const top = corner(1), foot = corner(-1), WEB = 0.04, WEB_Y = 0.03;
+  const n0 = pos0.count, webN = 1 / Math.SQRT2;
+  const position = new Float32Array((n0 + 2) * 3), normal = new Float32Array((n0 + 2) * 3), uvs = new Float32Array((n0 + 2) * 2);
+  position.set(pos0.array as Float32Array); normal.set(nor0.array as Float32Array); uvs.set(uv0.array as Float32Array);
+  position.set([W / 2 - WEB, H / 2 - WEB_Y, -L / 2 + WEB, W / 2 - WEB, -H / 2 + WEB_Y, -L / 2 + WEB], n0 * 3);
+  normal.set([webN, 0, webN, webN, 0, webN], n0 * 3);
+  uvs.set([uv0.getX(top), uv0.getY(top), uv0.getX(foot), uv0.getY(foot)], n0 * 2);
+  body.setAttribute('position', new THREE.BufferAttribute(position, 3));
+  body.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+  body.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  // the web along the corner's diagonal, its face to +x +z (counter-clockwise seen from there)
+  const kept = new Uint16Array(18);
   kept.set((index.array as Uint16Array).subarray(12, 24), 0);
+  kept.set([top, n0 + 1, foot, top, n0, n0 + 1], 12);
   body.setIndex(new THREE.BufferAttribute(kept, 1));
   body.clearGroups();
   _livery.set(hex);
-  const bodyColor = new Float32Array(24 * 3);
-  for (let i = 0; i < 24; i++) {
+  const bodyColor = new Float32Array((n0 + 2) * 3);
+  for (let i = 0; i < n0; i++) {
     bodyColor[i * 3] = Math.min(1, _livery.r * bodyJitter[i]);
     bodyColor[i * 3 + 1] = Math.min(1, _livery.g * bodyJitter[i]);
     bodyColor[i * 3 + 2] = Math.min(1, _livery.b * bodyJitter[i]);
+  }
+  // the web in the box's mean paint, so the livery the damage reading takes (the mean of the body's colours) is the same
+  for (let c = 0; c < 3; c++) {
+    let sum = 0;
+    for (let i = 0; i < n0; i++) sum += bodyColor[i * 3 + c];
+    bodyColor[n0 * 3 + c] = bodyColor[(n0 + 1) * 3 + c] = sum / n0;
   }
   body.setAttribute('color', new THREE.BufferAttribute(bodyColor, 3));
   body.userData.uvJitter = 'consume';
