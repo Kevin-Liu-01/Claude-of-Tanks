@@ -53,10 +53,10 @@ const RUM_HALF: ReadonlyArray<readonly [string, number, number, 'track' | 'north
   ...[60, 75, 90, 105, 120].flatMap((u) => [['adobe', u, 17, 'track'], ['adobe', u, -17, 'track']] as const),
   // the lanes behind the frontage, east and west: rows of compounds facing their lanes
   ...[40, 56, 72, 88, 104].flatMap((u) => [['adobe', u, 36, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -36, u % 32 === 8 ? 'south' : 'north']] as const),
-  ...[8, 24, 40, 56, 72, 88].flatMap((u) => [['adobe', u, 56, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -56, u % 32 === 8 ? 'south' : 'north']] as const),
-  ...[-8, 8, 24, 40, 56, 72].flatMap((u) => [['adobe', u, 76, 'east'], ['adobe', u, -76, 'west']] as const),
-  // the patrol's stores and the school at the village's edge
-  ['depot', 20, 94, 'west'], ['adobe', 100, 56, 'south'],
+  ...[8, 24, 40, 56, 72, 88, 104, 120].flatMap((u) => [['adobe', u, 55, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -55, u % 32 === 8 ? 'south' : 'north']] as const),
+  // the back row runs on past the frontage toward the north mouth, and the patrol's store yard closes it
+  ...[120, 136].flatMap((u) => [['adobe', u, 36, 'south'], ['adobe', u, -36, 'north']] as const),
+  ['depot', 136, 55, 'west'],
 ];
 // A village's own irregularity, keyed per site (never the props' streams): each compound a metre or two off its row and
 // a few degrees off square; one in twelve an abandoned compound fallen to a ruin, one in fourteen an open lot (the goat
