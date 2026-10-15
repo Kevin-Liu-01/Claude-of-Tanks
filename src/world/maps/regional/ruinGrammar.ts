@@ -371,9 +371,10 @@ export function roughenChunk<T extends THREE.BufferGeometry>(chunk: T, rrng: () 
 /**
  * A street rubble pile's pieces at (x, y, z), `pr` across: heaped masonry chunks of three classes (blocks, wall slabs,
  * brick clumps) over a ring of brick shards feathering it into the ground, and a charred beam jutting out of most.
- * Drawn from `rrng` exactly as props.ts drew them (the pile's draws feed the street's next candidates).
+ * Drawn from `rrng` exactly as props.ts drew them (the pile's draws feed the street's next candidates). `chunks`: how many
+ * of the stone pieces (the first) are the heap's chunks, before the shards.
  */
-export function rubblePileParts(x: number, y: number, z: number, pr: number, rrng: () => number): { stone: THREE.BufferGeometry[]; wood: THREE.BufferGeometry[] } {
+export function rubblePileParts(x: number, y: number, z: number, pr: number, rrng: () => number): { stone: THREE.BufferGeometry[]; wood: THREE.BufferGeometry[]; chunks: number } {
   const stone: THREE.BufferGeometry[] = [], wood: THREE.BufferGeometry[] = [];
   const n = 6 + ((rrng() * 5) | 0);
   for (let k = 0; k < n; k++) {
@@ -409,5 +410,5 @@ export function rubblePileParts(x: number, y: number, z: number, pr: number, rrn
     beam.translate(x, y + pr * 0.4, z);
     wood.push(beam);
   }
-  return { stone, wood };
+  return { stone, wood, chunks: n };
 }
