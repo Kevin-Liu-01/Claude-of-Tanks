@@ -49,6 +49,11 @@ export interface GarageApproachRecipe {
   readonly width: number;
   /** Optional parallel roads, rails, or ruts measured from the centerline. */
   readonly lanes?: readonly number[];
+  /**
+   * A depth span a building covers (Cinder's engine shed): the rail roads lay no rails or sleepers inside it, where the
+   * shed carries its own pit roads (garageFacilityDetails.ts addEngineShed).
+   */
+  readonly covered?: readonly [number, number];
 }
 
 export interface GarageEnvironmentRecipe {
@@ -234,8 +239,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x829a9b, buildingTint: 0xc8d2cd,
     structures: [
       at(makeFishery, 'working fishery', -36, -6, 0.78),
-      at(makeLighthouse, 'harbor lighthouse', -30, -30, 0.84),
-      at(makeBoatshed, 'harbor boatshed', -7, -36, 0.72),
+      // off the hero's axis to the far left (it rose out of the turret: the garage critic panel, 2026-10-14)
+      at(makeLighthouse, 'harbor lighthouse', -45.25, 5.66, 0.84),
+      at(makeBoatshed, 'harbor boatshed', 6.36, -40.3, 0.72), // beyond the crane's new berth
       at(makeShed, 'drydock service bay', 18, -34, 0.78),
       at(makeBoatshed, 'breakwater boatshed', 36, -14, 0.62),
       at(makeNetYard, 'rigging and net yard', 40, -11, 0.66),
@@ -260,8 +266,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     // cinder ballast ground, not a paved hillside (2026-10-10, wave 377: "a vast, empty cobbled slope")
     terrainSurface: 'rock', terrainTint: 0x6e6860, hardstandTint: 0x6f6960, buildingTint: 0xa18f7b,
     structures: [
-      at(makeWarehouse, 'freight warehouse', -36, -6, 0.78),
-      at(makeGantry, 'rail gantry', -30, -30, 0.82),
+      at(makeWarehouse, 'freight warehouse', -38, -6, 0.78), // 1.4 m further out: clear of the engine shed (GA.04)
+      // over the roads behind the engine shed (GA.04: 4.2 m further back, clear of the shed's terrace)
+      at(makeGantry, 'rail gantry', -33, -33, 0.82),
       at(makeContainerRow, 'container rank', -7, -36, 0.74),
       at(makeWaterTower, 'junction water tower', 18, -34, 0.72),
       at(makeWarehouse, 'roundhouse annex', 36, -14, 0.58),
@@ -275,7 +282,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     horizonStyle: 'flat', horizonHeightM: 5.8,
     approach: {
       style: 'rail-fan', label: 'three-road roundhouse fan', surface: 'cobble', width: 4.2,
-      waypoints: [[0, 9], [0, 27], [-1, 49]], lanes: [-6.2, 0, 6.2],
+      // straight through the engine shed (GA.04): the roads run square into its doors and out of its back
+      waypoints: [[0, 9], [0, 27], [0, 49]], lanes: [-6.2, 0, 6.2], covered: [18.6, 35.4],
     },
     terrainProfile: 'actual Cinder Junction spawn excerpt with cinder and rail-yard grades',
     serviceFrame: 'rail-served overhaul apron beneath a connected gantry',

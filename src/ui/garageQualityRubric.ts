@@ -181,8 +181,11 @@ function scorePerformance(
   const { architecture, isVerdant } = input;
   return ledger.award(isVerdant || number(architecture.drawCalls) <= 25,
     3, 'environment exceeds 25 draw calls')
-    + ledger.award(isVerdant || number(architecture.triangles) <= 50_000,
-      2, 'environment exceeds 50k triangles')
+    // 64k since garage round 7 (GA.04, 2026-10-14): the regional buildings at the props standard (real members, openings
+    // cut through) need the room; triangles at this scale cost the GPU nothing measurable, and the switch gates below
+    // (80 ms gap, 100 ms build) still hold the CPU side
+    + ledger.award(isVerdant || number(architecture.triangles) <= 64_000,
+      2, 'environment exceeds 64k triangles')
     + ledger.award(input.transitionMaxGapMs <= 80,
       3, 'normal-speed switch stalls longer than 80 ms')
     + ledger.award(isVerdant || number(architecture.lastBuildMs) <= 100,

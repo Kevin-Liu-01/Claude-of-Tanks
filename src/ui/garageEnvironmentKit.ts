@@ -32,6 +32,8 @@ import {
 } from './garageTerrainPatches.generated.ts';
 import {
   addGarageFacilityDetails,
+  garageDrydockBasin,
+  garageDrydockGround,
   garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
@@ -1430,6 +1432,24 @@ export function buildGarageEnvironment(
   // Service islands win over the graded road wherever the two intentionally
   // meet, keeping every gantry foot and real fleet exhibit on its own datum.
   shapeFacilityTerraces();
+  // Saltmere's graving dock (the re-judge, 2026-10-15: "the hero frame shows no drydock (no basin, water or caisson)"):
+  // the ground under the basin, its paving and the channel past its caisson is cut to the dock's own profile
+  // (garageDrydockGround), which keeps every terrain triangle under the altars, the head wall and the paving.
+  const drydock = garageDrydockBasin(variant);
+  const carveDrydock = (): void => {
+    if (!drydock) return;
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const { side, depth } = garageWorldPointToView(x, z);
+        const index = row * patch.width + column;
+        const cut = garageDrydockGround(drydock, side, depth, heights[index]);
+        if (cut !== null) heights[index] = cut;
+      }
+    }
+  };
+  carveDrydock();
 
   // The podium is a physical object with its bottom at y=0. Re-apply one
   // canonical circular exclusion after every structure/facility terrace has
@@ -1480,6 +1500,8 @@ export function buildGarageEnvironment(
     }
   };
   reseatFacilityTerraces();
+  // the reseat levels every facility terrace's core back to its datum; the dock is cut again after it
+  carveDrydock();
 
 
   const measurePlacementQuality = (): {
@@ -1543,6 +1565,11 @@ export function buildGarageEnvironment(
   const APRON_RISE_LIMIT_M = 0.45;
   const apronHeightAt = (x: number, z: number): number => {
     const ground = samplePatch(patch, heights, x, z);
+    // in the drydock's cut the yard's floor follows the cut ground under the dock's own granite
+    if (drydock) {
+      const { side, depth } = garageWorldPointToView(x, z);
+      if (garageDrydockGround(drydock, side, depth, ground) !== null) return ground + 0.02;
+    }
     if (ground > APRON_RISE_LIMIT_M) return ground - 0.06;
     return Math.max(ground, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02;
   };
@@ -1813,6 +1840,8 @@ export function buildGarageEnvironment(
         && Math.hypot((view.side - terrace.side) / terrace.radiusSide, (view.depth - terrace.depth) / terrace.radiusDepth) < 1.3
       ));
       if (onPad) return;
+      // nor in Saltmere's dock or through its granite paving
+      if (drydock && garageDrydockGround(drydock, view.side, view.depth, 0) !== null) return;
       const y = samplePatch(patch, heights, x, z);
       const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
       coverPosition.set(x, y + 0.01, z);
@@ -2234,6 +2263,9 @@ export function buildGarageEnvironment(
       // plane exclusion left alternate orbit angles looking unfinished even
       // though the environment owned enough vegetation for a complete ring.
       if (depth < 5 && Math.abs(side) < 16) return false;
+      // no grove in Saltmere's dock, on its paving or in its channel (a crown's reach round it)
+      if (drydock && [[0, 0], [3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5]].some(([ds, dd]) => (
+        garageDrydockGround(drydock, side + ds, depth + dd, 0) !== null))) return false;
       const nearStructure = structureRecords.some((record) => {
         const radius = Math.hypot(
           record.dimensions.w * record.placement.scale,
