@@ -443,9 +443,20 @@ export interface FieldworksPart {
  * The destructible kinds of the field works as `mapId`'s period and side built them (props.ts LOCAL_TYPES, after the
  * sandbag stacks: the same keys, records and footprints; a map's own structure variants still win after it).
  */
-export function fieldworksTypes(_mapId: string, _mobile: boolean): Record<string, DestructiblePropType> {
-  return {};
+export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<Record<string, DestructiblePropType>>):
+  Record<string, DestructiblePropType> {
+  const out: Record<string, DestructiblePropType> = {};
+  const wire = WIRE_FORMS[mapId];
+  if (wire && base.barbedwire) {
+    out.barbedwire = {
+      ...base.barbedwire,
+      build: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWire, rng, 0xb1e0), false),
+      broken: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWireBroken, rng, 0xb1e1), true),
+    };
+  }
+  return out;
 }
+
 
 // --- anti-tank hedgehogs (props.ts placeHedgehogs: three beams a hedgehog, hedgehogBeamSpecs) -------------------------
 //
@@ -576,7 +587,7 @@ function steelShade(form: HedgehogForm, h: number, seed: number): (q: THREE.Vect
     const streak = vnoise3(q.x * 30, q.y * 30, q.z * 3, seed) * 0.6 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed + 3) * 0.4;
     const end = Math.min(1, Math.max(0, (Math.abs(q.z) - h * 0.6) / (h * 0.4)));
     const up = n.y > 0.5 ? 0.25 : 0;
-    const rust = Math.min(1, Math.max(0, streak * 0.95 - 0.36 + end * 0.45 + up));
+    const rust = Math.min(1, Math.max(0, streak * 0.9 - 0.5 + end * 0.45 + up * 0.6));
     const rustCol = mixRgb(RUST_BROWN, RUST_ORANGE, Math.min(1, Math.max(0, (streak - 0.5) * 2.5)));
     let c: Rgb3;
     if (form.paint) {
@@ -668,6 +679,231 @@ export function buildHedgehogBeam(mapId: string, beam: number, tilt: number, yaw
     }
   }
   return parts;
+}
+
+// --- the wire (prop:barbedwire: a 2.6 m module along +z, its pickets at +-1.15 m, its foot at y = 0) -------------------
+//
+// The wire by period and side: the low-wire fence of the west 1940-45 on screw and angle-iron pickets, four strands and
+// two diagonals barbed every 15 cm; the eastern fronts' and Louisiana's on driven timber stakes; the knife-rests of
+// Shanghai and Kohima (timber trestles at either end, a ridge pole, the wire wound round them); the Cold War's
+// concertina coil on U pickets under a top strand; the late maps' razor tape in its coil on steel T-posts, galvanised.
+// Wire rusts; razor tape stays bright. Destroyed: the near picket down and flat, the strands torn at it and fallen to the
+// ground from the far picket, the coil crushed and dragged open. Drawn within the record's run (+-1.3 m), a coil or a
+// trestle proud of its 10 cm half width by up to 30 cm.
+
+type WireForm = 'fence' | 'stakes' | 'knife' | 'concertina' | 'razor';
+interface WireSpec { form: WireForm; picket: 'screw' | 'angle' | 'stake' | 'upicket' | 'tpost'; wire: Rgb3; soil: Rgb3 }
+const WIRE_RUST = hexLin(0x5a3a28), WIRE_GALV = hexLin(0x9a9c98), WIRE_DARK = hexLin(0x403a34);
+const WIRE_FORMS: Readonly<Record<string, WireSpec>> = Object.freeze({
+  fjord: { form: 'fence', picket: 'screw', wire: WIRE_RUST, soil: SOIL_LOAM }, autumn: { form: 'fence', picket: 'screw', wire: WIRE_RUST, soil: SOIL_LOAM },
+  polders: { form: 'fence', picket: 'screw', wire: WIRE_RUST, soil: SOIL_LOAM }, reservoir: { form: 'fence', picket: 'angle', wire: WIRE_RUST, soil: SOIL_LOAM },
+  alpine: { form: 'fence', picket: 'angle', wire: WIRE_RUST, soil: SOIL_GREY }, foundry: { form: 'fence', picket: 'angle', wire: WIRE_RUST, soil: SOIL_GREY },
+  verdant: { form: 'stakes', picket: 'stake', wire: WIRE_RUST, soil: SOIL_LOAM }, winter: { form: 'stakes', picket: 'stake', wire: WIRE_DARK, soil: SOIL_SNOW },
+  longleaf: { form: 'stakes', picket: 'stake', wire: WIRE_RUST, soil: SOIL_RED },
+  blackglass: { form: 'knife', picket: 'stake', wire: WIRE_RUST, soil: SOIL_GREY }, monsoon: { form: 'knife', picket: 'stake', wire: WIRE_RUST, soil: SOIL_RED },
+  steppe: { form: 'concertina', picket: 'upicket', wire: WIRE_DARK, soil: SOIL_LOAM }, railyard: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_GREY },
+  skybridge: { form: 'concertina', picket: 'upicket', wire: WIRE_DARK, soil: SOIL_RED }, titan_gorge: { form: 'concertina', picket: 'upicket', wire: WIRE_DARK, soil: SOIL_RED },
+  cliffbridge: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_SAND }, copper_mesa: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_RED },
+  orchard: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_RED }, urban: { form: 'concertina', picket: 'upicket', wire: WIRE_DARK, soil: SOIL_GREY },
+  frontier: { form: 'concertina', picket: 'upicket', wire: WIRE_DARK, soil: SOIL_LOAM }, desert: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_SAND },
+  ruinspires: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_GREY }, saltwind: { form: 'concertina', picket: 'upicket', wire: WIRE_RUST, soil: SOIL_GREY },
+  badlands: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_SAND }, oasis: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_SAND },
+  delta: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_LOAM }, mangrove: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_LOAM },
+  caldera: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_GREY }, airfield: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_LOAM },
+  coastal: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_SAND },
+  mars: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_RED }, moon: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_GREY },
+});
+
+type V = THREE.Vector3;
+const v3 = (x: number, y: number, z: number): V => new THREE.Vector3(x, y, z);
+
+/** A wire along the points (a 3-sided tube of radius r), its colour mottled. */
+function wireTube(m: SteelMesh, pts: readonly V[], r: number, col: (q: V, n: V) => Rgb3): void {
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1], d = new THREE.Vector3().subVectors(b, a).normalize();
+    const s = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < 0.9 ? v3(0, 1, 0) : v3(1, 0, 0)).normalize(), t = new THREE.Vector3().crossVectors(d, s);
+    const ring = (o: V, k: number): V => o.clone().addScaledVector(s, Math.cos((k / 3) * Math.PI * 2) * r).addScaledVector(t, Math.sin((k / 3) * Math.PI * 2) * r);
+    for (let k = 0; k < 3; k++) {
+      const a0 = ring(a, k), a1 = ring(a, k + 1), b0 = ring(b, k), b1 = ring(b, k + 1);
+      m.tri(a0, a1, b1, col); m.tri(a0, b1, b0, col);
+    }
+  }
+}
+
+/** Barbs along a wire every `step` m: each a pair of thin spikes across it, turned a quarter at each. */
+function barbs(m: SteelMesh, pts: readonly V[], step: number, len: number, col: (q: V, n: V) => Rgb3, seed: number): void {
+  let carry = step * 0.5, n = 0;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1], seg = a.distanceTo(b), d = new THREE.Vector3().subVectors(b, a).normalize();
+    const s = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < 0.9 ? v3(0, 1, 0) : v3(1, 0, 0)).normalize(), t = new THREE.Vector3().crossVectors(d, s);
+    for (let u = carry; u < seg; u += step, n++) {
+      const o = a.clone().addScaledVector(d, u), turn = (n % 2) * Math.PI / 2 + vnoise3(o.x * 31, o.y * 31, o.z * 31, seed) * 0.6;
+      const across = s.clone().multiplyScalar(Math.cos(turn)).addScaledVector(t, Math.sin(turn));
+      const w = d.clone().multiplyScalar(0.006);
+      // a spike each way, a sliver triangle (the pair reads from either side)
+      m.tri(o.clone().sub(w), o.clone().add(w), o.clone().addScaledVector(across, len), col);
+      m.tri(o.clone().add(w), o.clone().sub(w), o.clone().addScaledVector(across, -len), col);
+    }
+    carry = ((carry - seg) % step + step) % step;
+  }
+}
+
+/** A strand from p to q sagging `sag` m at its middle, in `n` pieces. */
+function sagged(p: V, q: V, sag: number, n: number): V[] {
+  const out: V[] = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; out.push(p.clone().lerp(q, t).add(v3(0, -4 * sag * t * (1 - t), 0))); }
+  return out;
+}
+
+/** A picket at (x, z), its top at h, standing or laid over `lean` about the x axis (toward -z when positive). */
+function picket(m: SteelMesh, spec: WireSpec, x: number, z: number, h: number, lean: number, seed: number): void {
+  const g = new SteelMesh();
+  const steel = steelShade({ section: 'angle', soil: spec.soil, paint: spec.picket === 'tpost' ? hexLin(0x3c4a3a) : undefined }, h, seed);
+  if (spec.picket === 'stake') g.round(0.042, -0.06, h, 6, logShade(h, seed));
+  else if (spec.picket === 'screw') {
+    g.round(0.012, -0.06, h, 5, steel);
+    // the picket's eyes: three small loops for the strands
+    for (const y of [0.3, 0.6, 0.9].map((k) => k * h)) g.round(0.022, y - 0.008, y + 0.008, 4, steel, 0, 0, false);
+  } else {
+    const sec: ReadonlyArray<readonly [number, number]> = spec.picket === 'angle' ? [[-0.022, -0.022], [0.022, -0.022], [0.022, -0.017], [-0.017, -0.017], [-0.017, 0.022], [-0.022, 0.022]]
+      : spec.picket === 'upicket' ? [[-0.025, -0.012], [0.025, -0.012], [0.025, 0.014], [0.019, 0.014], [0.019, -0.006], [-0.019, -0.006], [-0.019, 0.014], [-0.025, 0.014]]
+        : [[-0.022, 0.006], [-0.003, 0.006], [-0.003, -0.022], [0.003, -0.022], [0.003, 0.006], [0.022, 0.006], [0.022, 0.012], [-0.022, 0.012]];
+    g.prism(sec, -0.06, h, steel);
+  }
+  // (built along z: stood up, then leaned)
+  const geo = g.geometry();
+  geo.rotateX(-Math.PI / 2);
+  geo.rotateX(lean);
+  geo.translate(x, 0, z);
+  const pa = geo.getAttribute('position'), na = geo.getAttribute('normal'), ca = geo.getAttribute('color');
+  for (let i = 0; i < pa.count; i++) {
+    m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i));
+  }
+  geo.dispose();
+}
+
+/** A trodden collar of soil round a foot at (x, z). */
+function soilCollar(m: SteelMesh, x: number, z: number, R: number, soil: Rgb3, seed: number): void {
+  const col = (q: V): Rgb3 => mulRgb(soil, 0.8 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed) * 0.3);
+  const seg = 5;
+  for (let k = 0; k < seg; k++) {
+    const a0 = (k / seg) * Math.PI * 2, a1 = ((k + 1) / seg) * Math.PI * 2;
+    const o0 = v3(x + Math.cos(a0) * R, -0.015, z + Math.sin(a0) * R), o1 = v3(x + Math.cos(a1) * R, -0.015, z + Math.sin(a1) * R);
+    const i0 = v3(x + Math.cos(a0) * R * 0.35, 0.035, z + Math.sin(a0) * R * 0.35), i1 = v3(x + Math.cos(a1) * R * 0.35, 0.035, z + Math.sin(a1) * R * 0.35);
+    m.tri(o0, i1, o1, col); m.tri(o0, i0, i1, col);
+  }
+}
+
+/** A coil from z0 to z1 of `loops` turns, radius R about the line (0, cy), its points (`torn`: crushed and dragged open). */
+function coil(z0: number, z1: number, R: number, cy: number, loops: number, perLoop: number, torn: boolean, seed: number): V[] {
+  const out: V[] = [], n = loops * perLoop;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, a = (i / perLoop) * Math.PI * 2 + seed * 0.001;
+    let x = Math.cos(a) * R, y = cy + Math.sin(a) * R, z = z0 + (z1 - z0) * t;
+    if (torn) {
+      // crushed under a track and dragged: flattened toward the ground, splayed wide, the loops pulled apart at one end
+      x *= 1.35; y = 0.03 + (y - (cy - R)) * 0.22 * (0.6 + 0.4 * t);
+      z = z0 + (z1 - z0) * Math.pow(t, 0.8);
+    }
+    out.push(v3(x, y, z));
+  }
+  return out;
+}
+
+/** The wire run as `spec` builds it (`torn`: destroyed), its own stream `o`. */
+function buildWireRun(spec: WireSpec, o: Rng, torn: boolean): THREE.BufferGeometry {
+  const m = new SteelMesh(), seed = Math.floor(o() * 1e6);
+  const wireCol = (q: V): Rgb3 => mulRgb(spec.wire, 0.8 + vnoise3(q.x * 13, q.y * 13, q.z * 13, seed) * 0.4);
+  const zA = -1.15, zB = 1.15, H = spec.form === 'knife' ? 0.95 : spec.form === 'fence' || spec.form === 'stakes' ? 1.0 : 1.05;
+  // the near picket (at -z) stands, or lies flat in its own bay when torn; the far one stands, leaning a little
+  const leanA = torn ? 1.25 + o() * 0.2 : (o() - 0.5) * 0.08, leanB = torn ? 0.12 + o() * 0.1 : (o() - 0.5) * 0.08;
+  const top = (z: number, lean: number, y: number): V => v3(0, Math.cos(lean) * y, z + Math.sin(lean) * y);
+  if (spec.form === 'knife') {
+    // the trestles: two poles crossed at each end, a ridge pole between, the wire wound round all
+    const log = logShade(1.4, seed);
+    const frame = new SteelMesh();
+    for (const z of [zA, zB]) for (const sx of [-1, 1]) {
+      const a = v3(sx * 0.32, -0.04, z), b = v3(-sx * 0.12, 0.92, z);
+      const len = a.distanceTo(b), mid = a.clone().add(b).multiplyScalar(0.5);
+      const g = new SteelMesh(); g.round(0.035, -len / 2, len / 2, 5, log);
+      const geo = g.geometry();
+      geo.lookAt(new THREE.Vector3().subVectors(b, a));
+      geo.translate(mid.x, mid.y, mid.z);
+      const pa = geo.getAttribute('position'), na = geo.getAttribute('normal'), ca = geo.getAttribute('color');
+      for (let i = 0; i < pa.count; i++) { frame.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); frame.n.push(na.getX(i), na.getY(i), na.getZ(i)); frame.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
+      geo.dispose();
+    }
+    const ridge = new SteelMesh(); ridge.round(0.04, zA - 0.12, zB + 0.12, 5, log);
+    const rg = ridge.geometry(); rg.translate(0, 0.78, 0);
+    const fg = frame.geometry();
+    const both = mergeGeometries([fg, rg], false)!;
+    fg.dispose(); rg.dispose();
+    if (torn) { both.rotateZ(Math.PI / 2 - 0.2); both.translate(0.55, 0.32, 0); }
+    const pa = both.getAttribute('position'), na = both.getAttribute('normal'), ca = both.getAttribute('color');
+    for (let i = 0; i < pa.count; i++) { m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
+    both.dispose();
+    // the wire wound round the frame: a loose spiral over the trestles and the ridge
+    const wound: V[] = [];
+    for (let i = 0; i <= 36; i++) {
+      const t = i / 36, a = t * Math.PI * 2 * 6;
+      const p = v3(Math.cos(a) * 0.3 * (0.6 + 0.4 * Math.abs(Math.sin(a))), 0.45 + Math.sin(a) * 0.38, zA + (zB - zA) * t);
+      if (torn) { p.set(0.35 + p.x * 0.4, 0.04 + (p.y - 0.07) * 0.18, p.z); }
+      wound.push(p);
+    }
+    wireTube(m, wound, 0.006, wireCol);
+    barbs(m, wound, 0.35, 0.03, wireCol, seed);
+  } else {
+    picket(m, spec, 0, zA, H, leanA, seed);
+    picket(m, spec, 0, zB, H, leanB, seed + 1);
+    soilCollar(m, 0, zA, 0.12, spec.soil, seed);
+    soilCollar(m, 0, zB, 0.12, spec.soil, seed + 2);
+    if (spec.form === 'fence' || spec.form === 'stakes') {
+      const heights = spec.form === 'fence' ? [0.22, 0.48, 0.74, 0.96] : [0.3, 0.62, 0.92];
+      for (const [k, hy] of heights.entries()) {
+        const a = top(zA, leanA, hy), b = top(zB, leanB, hy);
+        let pts: V[];
+        if (torn) {
+          // torn at the fallen picket: from the far one it falls to the ground and lies along it, curling
+          const ground = v3((o() - 0.5) * 0.5, 0.02 + k * 0.012, zA + 0.2 + o() * 0.4);
+          pts = [b, b.clone().lerp(ground, 0.45).add(v3((o() - 0.5) * 0.2, -0.25 * hy, 0)), ground.clone().add(v3(0, 0, 0.5)), ground];
+        } else pts = sagged(a, b, 0.03 + k * 0.006, 4);
+        wireTube(m, pts, 0.007, wireCol);
+        barbs(m, pts, 0.18, 0.022, wireCol, seed + k);
+      }
+      if (!torn) {
+        // the diagonals, foot to head across the bay
+        for (const [p, q] of [[top(zA, leanA, 0.06), top(zB, leanB, H * 0.94)], [top(zB, leanB, 0.06), top(zA, leanA, H * 0.94)]] as const) {
+          const pts = sagged(p, q, 0.02, 4).map((v, i) => v.add(v3(i % 2 ? 0.012 : -0.012, 0, 0)));
+          wireTube(m, pts, 0.006, wireCol);
+          barbs(m, pts, 0.2, 0.02, wireCol, seed + 9);
+        }
+      }
+    } else {
+      const R = 0.3, cy = R + 0.01;
+      const pts = coil(-1.25, 1.25, R, cy, 7, 6, torn, seed);
+      if (spec.form === 'razor') {
+        // the razor tape: a flat bright strip (both its faces), a blade at each piece
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const a = pts[i], b = pts[i + 1], radial = v3(a.x, a.y - cy, 0).normalize();
+          const w = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(b, a).normalize(), radial).normalize().multiplyScalar(0.0125);
+          const a0 = a.clone().sub(w), a1 = a.clone().add(w), b0 = b.clone().sub(w), b1 = b.clone().add(w);
+          m.tri(a0, a1, b1, wireCol); m.tri(a0, b1, b0, wireCol);
+          m.tri(a0, b1, a1, wireCol); m.tri(a0, b0, b1, wireCol);
+          const tip = a.clone().lerp(b, 0.5).addScaledVector(radial, 0.035);
+          m.tri(a1, b1, tip, wireCol); m.tri(a1, tip, b1, wireCol);
+        }
+      } else {
+        wireTube(m, pts, 0.0055, wireCol);
+        // the coil's barbs, sparse (its loops read at range, its barbs only close)
+        barbs(m, pts, 0.9, 0.018, wireCol, seed + 3);
+      }
+      // the top strand over the coil, picket to picket
+      const a = top(zA, leanA, H * 0.96), b = top(zB, leanB, H * 0.96);
+      const strand = torn ? [b, b.clone().lerp(v3(0.3, 0.03, zA + 0.4), 0.5).add(v3(0, -0.3, 0)), v3(0.3, 0.03, zA + 0.4)] : sagged(a, b, 0.04, 4);
+      wireTube(m, strand, 0.0065, wireCol);
+    }
+  }
+  return m.geometry();
 }
 
 // ---------------------------------------------------------------------------------------------- sandbag stacks
