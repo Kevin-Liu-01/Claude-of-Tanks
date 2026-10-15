@@ -211,6 +211,11 @@ try {
         // The full Gravity + ATGM kit must remain usable after moving to a side lane.
         const buttons=page.locator('.cot-vehicle-controls > button:visible');
         if(await buttons.count()!==5)errors.push(`${name}: expected all five vehicle controls`);
+        // Touch: the action dock (touchActionDock.ts) shows every control as a 48 px tile and never scrolls.
+        if(touch&&await page.evaluate(()=>{const row=document.querySelector('.cot-vehicle-controls');
+          return row.scrollWidth>row.clientWidth+1||row.scrollHeight>row.clientHeight+1||
+            [...row.children].some(button=>button.checkVisibility()&&(button.getBoundingClientRect().width<48||button.getBoundingClientRect().height<48));}))
+          errors.push(`${name}: touch action dock scrolls or shrank a tile below 48px`);
         await page.evaluate(()=>{
           window.__controlEvents=[];
           for(const event of ['ui:specialAction','ui:selfRight','ui:smoke','ui:lightsToggle','ui:roofGun'])

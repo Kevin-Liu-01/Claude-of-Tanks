@@ -41,7 +41,8 @@ this deterministic geometry gate; verify the live battle separately as well.
   battle state. All seven mode objectives are measured against the score,
   minimap, notices and mobile toolbar.
 - The full five-control Gravity/ATGM kit is checked for 44px touch / 32px mouse target heights
-  and one correct action per click, including horizontally scrolled controls.
+  and one correct action per click, including horizontally scrolled controls. On touch the
+  controls are the action dock's 48px tiles, which never scroll (see below).
 - Settings tabs are clicked through; Shift+Tab is checked at the focus boundary.
 - Each case also rotates/resizes with the combat log open and enlarges the map, then
   returns to its original size. Both resized layouts are measured.

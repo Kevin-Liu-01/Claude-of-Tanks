@@ -1721,6 +1721,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // 2026-10-14 (owner: a better mobile action row): the touch action dock's placement at 360x640, 390x844, 844x390.
+    'src/ui/touchActionDock.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',

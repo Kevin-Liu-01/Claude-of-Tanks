@@ -294,10 +294,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const noticeLeft = (width - (notice?.width ?? 248)) / 2;
     let noticeTop = Math.max(top + 8, height * .12);
     if (noticeLeft < sideWidth + 14) noticeTop = Math.max(noticeTop, leftTop, rightAnchor + (killsRight ? killsRight + 8 : 0));
-    if (systems && noticeTop < systemsTop + systemsHeight + 8
+    if (systems && !dock && noticeTop < systemsTop + systemsHeight + 8
       && noticeTop + (notice?.height ?? 48) > systemsTop - 8
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
       noticeTop = systemsTop + systemsHeight + 8;
+    }
+    if (dock) {
+      // The touch dock sits low, under the centre lane: keep the whole notice stack (detection, then the system
+      // alert) above it, or below it when the space above is too short.
+      const stackHeight = (notice?.height ?? 48) + 8 + (read('.cot-alert')?.height ?? 28);
+      if (noticeTop < dock.y + dock.h + 8 && noticeTop + stackHeight > dock.y - 8
+        && noticeLeft < dock.x + dock.w && width - noticeLeft > dock.x) {
+        noticeTop = dock.y - 8 - stackHeight >= top + 8 ? dock.y - 8 - stackHeight : dock.y + dock.h + 8;
+      }
     }
     const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
