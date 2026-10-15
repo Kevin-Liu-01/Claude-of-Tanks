@@ -30,6 +30,8 @@
 // open west ridge, the town's streets, and the east gap under the castle rock; the garage yards and the farmsteads mark
 // them off.
 
+import { STEINBURG_ROWS } from './steinburgRows.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
@@ -270,6 +272,12 @@ export default {
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
     streetRows: true,
+    // (the maps lane, 2026-10-15, the Verdant process; the blind critics: "a town sitting flat on a plain with detached
+    // houses and grass between them", "lanes opening onto empty lots": the street pass's skips and dropped slots left 95
+    // of its 120 row houses standing free) the street rows as an authored plan: wall to wall along both sides of every
+    // street at one building line, a gap only where a lane, a planned building, a set piece, the square or the town wall
+    // stops the row (tools/plan-street-rows.mjs, steinburgRows.ts)
+    townRowPlan: STEINBURG_ROWS,
     curbs: true,
     monument: true,
     blockFill: true,
