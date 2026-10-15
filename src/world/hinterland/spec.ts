@@ -130,7 +130,9 @@ export interface HinterlandConfig {
   /** The season the place is shown in (the trees' foliage: a November polder's crowns mostly bare). Default summer. */
   season?: HinterlandSeason;
   outland?: {
-    relief?: { riseM?: readonly [number, number]; wavelengthM?: number };
+    /** The outland's relief; `arcs` scale it on bearings (a quiet arc, scale < 1: Whiteout's plateau running smooth
+     * to its fall over Davis Strait, so the eye reaches the pack ice; HOR-05). */
+    relief?: { riseM?: readonly [number, number]; wavelengthM?: number; arcs?: readonly { azDeg: readonly [number, number]; scale: number }[] };
     settle?: {
       villages?: number; hamlets?: number; farms?: number; works?: number; town?: HinterlandTownConfig | null;
       /** Villages placed on the sightlines (each with its church: a landmark at middle distance for every eye view —
@@ -181,6 +183,7 @@ export interface HinterlandSpec {
   kit: string | null;
   outland: {
     riseM: readonly [number, number]; wavelengthM: number; flat: boolean;
+    reliefArcs: readonly { azDeg: readonly [number, number]; scale: number }[];
     woods: number; hedges: number; fields: number; links: number;
     settle: HinterlandSettleSpec;
   };
@@ -240,6 +243,7 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
       riseM: o.relief?.riseM ?? region.outland.riseM,
       wavelengthM: o.relief?.wavelengthM ?? region.outland.wavelengthM,
       flat: region.outland.flat,
+      reliefArcs: o.relief?.arcs ?? [],
       woods: o.woods ?? region.vegetation.woods,
       hedges: o.hedges ?? region.vegetation.hedges,
       fields: o.fields ?? region.fields,

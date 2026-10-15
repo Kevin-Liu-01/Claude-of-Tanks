@@ -12,7 +12,9 @@ const DRAFT: HinterlandConfig = {
   place: 'DYE-M (Dye Main), the Distant Early Warning Line\'s eastern main station at Cape Dyer, Baffin Island (Nunavut), in the 1980s, as the North Warning System took the line over: the Upper Camp on a bare plateau some 700 m above Davis Strait at the island\'s most easterly point, among the Cumberland Peninsula\'s mountains, the strait\'s pack ice below. Rock and snow on permafrost, frost-shattered tors, the gravel ridges the ice left and frozen tarns, no tree for hundreds of kilometres. Nothing the station built stands on the ground: its modules ride on steel piles so their heat cannot thaw it (map revival lane 2\'s reference, rounds 1-5; folded in by the map-content lane)',
   region: 'polarStation',
   lab: true,
-  outland: { woods: 0, hedges: 0, fields: 0, settle: { villages: 0, hamlets: 0, farms: 0, works: 1 } },
+  // (the plateau runs smooth east to its fall: the region's tors and moraines would stand between the eye and the strait)
+  outland: { woods: 0, hedges: 0, fields: 0, settle: { villages: 0, hamlets: 0, farms: 0, works: 1 },
+    relief: { arcs: [{ azDeg: [45, 140], scale: 0.15 }] } },
   landforms: [
     // east: the plateau's edge falls ~700 m to Davis Strait in rock steps over ~1.5 km, from ~1 km past the edge; the
     // strait's pack ice from its foot (the water below) out to the horizon
@@ -34,7 +36,7 @@ const DRAFT: HinterlandConfig = {
   ],
   water: [
     // Davis Strait's pack in winter: snow-covered floes, grey new ice and a few dark leads, 700 m below the plateau
-    { kind: 'sea', arc: { azDeg: [20, 160] }, coastM: 4200, coastWanderM: 500, level: -700, ice: 0.9, name: 'Davis Strait' },
+    { kind: 'sea', arc: { azDeg: [20, 160] }, coastM: 3250, coastWanderM: 300, level: -700, ice: 0.9, name: 'Davis Strait' },
   ],
   far: [
     { azDeg: [210, 20], distKm: [8, 30], reliefM: 1200, form: 'alpine', layers: 2, name: 'the Cumberland Peninsula: Penny Ice Cap\'s ranges' },

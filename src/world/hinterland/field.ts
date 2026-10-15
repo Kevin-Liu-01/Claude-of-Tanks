@@ -19,7 +19,7 @@
 // scree, snow, sand, water, settlement ground, roads, rails); geologyAt gives the strata phase, the rock share and the
 // snow. No Math.random, no allocation per query (callers own their outputs).
 import { createLandFieldSample, landUseAt, resolveLandUseProfile, type LandFieldSample, type LandUseProfile } from '../landUse.ts';
-import { hinterlandBearing, hinterlandPoint, type HinterlandSpec, type HinterlandWaterConfig } from './spec.ts';
+import { arcWeight, hinterlandBearing, hinterlandPoint, type HinterlandSpec, type HinterlandWaterConfig } from './spec.ts';
 import { fbm2, hash12, hashString, noise2, seedOffset, smoothstep } from './noise.ts';
 
 /** The square's terrain edge (TERRAIN_HALF_EXTENT_M) and its playable edge. */
@@ -297,12 +297,20 @@ export function createHinterlandField(
   const [riseLo, riseHi] = spec.outland.riseM;
   const invL = 1 / Math.max(150, spec.outland.wavelengthM);
   const ridged = Math.max(0, Math.min(1, spec.geology.erosion));
+  const reliefArcs = spec.outland.reliefArcs ?? [];
   function regionalRelief(x: number, z: number, edgeOut: number): number {
     const wx = x + 0.35 * spec.outland.wavelengthM * noise2(x * invL * 0.37 + wox, z * invL * 0.37 + woz);
     const wz = z + 0.35 * spec.outland.wavelengthM * noise2(x * invL * 0.37 - woz, z * invL * 0.37 + wox);
     const n0 = fbm2(wx * invL + rox, wz * invL + roz, 4);
     const shaped = n0 * (1 - ridged) + ((1 - Math.abs(n0)) * 2 - 1.1) * ridged;
-    const amp = riseLo + (riseHi - riseLo) * smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M + 900, edgeOut);
+    let amp = riseLo + (riseHi - riseLo) * smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M + 900, edgeOut);
+    // (a quiet arc: the relief scaled on its bearings, eased over 12°)
+    if (reliefArcs.length) {
+      const b = hinterlandBearing(x, z);
+      let k = 1;
+      for (const arc of reliefArcs) k = Math.min(k, 1 + (arc.scale - 1) * arcWeight(b, arc.azDeg, 12));
+      amp *= k;
+    }
     return amp * (0.5 + 0.5 * shaped);
   }
   /**
