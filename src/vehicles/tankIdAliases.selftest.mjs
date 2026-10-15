@@ -180,6 +180,7 @@ for (const [file, pattern] of Object.entries({
   'sourceXWesternAuxArmor.ts': /`\$\{tankSeedId\(id\)\}:\$\{group\}`/,
   'sourceXOtherAuxArmor.ts': /`\$\{tankSeedId\(id\)\}_\$\{side\}_installed_course`/,
   'arieteModernSpecs.ts': /surfaceGroup: `ariete_c2_x:.*tank-ids:keep/,
+  'leclercClassicXKitArmor.ts': /AMX56_KIT_SURFACE_GROUP = 'amx56:fieldKit';.*tank-ids:keep/,
   'profiles/merkava.ts': /`\$\{tankSeedId\(id\)\}RearClosureReceipt`/,
 })) assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file}: roof-gun names keep their schema-1 spelling`);
 for (const [file, pattern] of Object.entries(SEEDED)) {
