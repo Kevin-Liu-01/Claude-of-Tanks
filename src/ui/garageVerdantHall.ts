@@ -64,8 +64,8 @@ const TONE = Object.freeze({
   leaf: 0x51624f,
   kick: 0x7c7f79,
   safety: 0xb38a24,
-  upstand: 0x8b877d,
-  upstandStain: 0x6c6961,
+  upstand: 0x77736b, // near the floor's and the sheeting's value: no bright band at the floor line (wave 402)
+  upstandStain: 0x5b5852,
   drain: 0x1e1f1e,
   grating: 0x4a4d4c,
 });
