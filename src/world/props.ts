@@ -10142,13 +10142,13 @@ ${snowCap ? `
   // instance's own pose, as a span that hides when the instance is hidden (setPieceSpans, finalizeDestructiblePool): its
   // kind's pool keeps the matrices, the crush and burn copy and the broken state, and draws nothing until a break
   // an intact instance drawn in the baked bucket at its pool matrix, as a span its hidden pool mirrors
-  const bakeIntactSpan = (kind: string, rec: DestructibleRecord): void => {
+  const bakeIntactSpan = (kind: string, rec: DestructibleRecord, bucket: 'baked' | 'structureMetal' = 'baked'): void => {
     const pool = dPools.get(kind);
     if (!pool || rec.slot < 0) return;
     let intact = setPieceIntact.get(kind);
     if (!intact) { intact = pool.meta.build(mulberry32(0x5e7b1ece)); setPieceIntact.set(kind, intact); }
     const g = intact.clone().applyMatrix4(pool.mats4[rec.slot]);
-    buckets.baked.push(g);
+    buckets[bucket].push(g);
     const span = new HiddenSpanPiece();
     span.ownPiece(g);
     let slots = setPieceSpans.get(kind);
@@ -10176,7 +10176,10 @@ ${snowCap ? `
   // (Lane C, #24) the burnt trams on their track (Sarajevo's K2s, Blackglass's Shanghai cars), seated on their wheels
   for (const tram of tramRecords) {
     const kind = tramDestructibleKind(tram.kind);
-    bakeIntactSpan(kind, addDestructible(kind, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1));
+    // (Lane C, #24) Blackglass draws no painted bucket of its own: its Shanghai car's intact span goes into the regional
+    // metal its streets' tram poles and girders draw already (the same streams; draws +0)
+    bakeIntactSpan(kind, addDestructible(kind, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1),
+      kind === 'tram_shanghai' ? 'structureMetal' : 'baked');
   }
   for (const g of setPieceIntact.values()) g.dispose();
   setPieceIntact.clear();
