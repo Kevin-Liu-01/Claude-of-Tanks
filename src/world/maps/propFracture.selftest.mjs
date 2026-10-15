@@ -47,6 +47,8 @@ for (const [kind, plan] of Object.entries(PROP_FRACTURE)) {
 }
 // the pool: the legacy builder spends its draws first, then the intact build is broken
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
-assert.match(props, /const legacyB = meta\.broken\(drng\);\s*const fracture = PROP_FRACTURE\[kind\];\s*const geoB = fracture \? fractureProp\(geoI, fracture, fractureSeed\(seed, kind\)\) : legacyB;/,
+// (E1, 2026-10-14: a kind whose build names its pieces settles into their heap first, lightWreck.ts; a kind that keeps
+// its own broken builder is never fractured)
+assert.match(props, /const legacyB = meta\.broken\(drng\);[\s\S]{0,1200}?const fracture = own \? undefined : PROP_FRACTURE\[kind\];\s*const geoB = settled \? settleLightWreck\(geoI, anatomy!, fractureSeed\(seed, kind\)\)\s*: fracture \? fractureProp\(geoI, fracture, fractureSeed\(seed, kind\)\) : legacyB;/,
   'the legacy builder runs first (the destructible stream unchanged), the intact build breaks');
 console.log(`propFracture selftest: ok — ${report.join(', ')}`);
