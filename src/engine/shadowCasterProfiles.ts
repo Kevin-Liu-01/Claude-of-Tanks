@@ -123,7 +123,10 @@ export function evaluateShadowCasterMask(
     if (!cascade.scheduled) continue;
     const bit = 1 << i;
     let shown = true;
-    if (footprint > 0 && cascade.texelM > 0 && footprint < SHADOW_FOOTPRINT_MIN_TEXELS * cascade.texelM) shown = false;
+    // (2026-10-14, SKY shadows r2a: cascade 0 holds the footprint law at cascade 1's texel — High's 3.6 cm near cascade
+    // would otherwise draw a class of small caster inside 30 m that vanishes beyond it; lowering it is its own step)
+    const lawTexelM = i === 0 && cascades.length > 1 ? Math.max(cascade.texelM, cascades[1].texelM) : cascade.texelM;
+    if (footprint > 0 && lawTexelM > 0 && footprint < SHADOW_FOOTPRINT_MIN_TEXELS * lawTexelM) shown = false;
     if (shown && profile.reachM !== undefined && footprint > 0
       && profile.reachM + SHADOW_REACH_MARGIN_M + footprint < cascade.sampledFromM) shown = false;
     if (shown && cascade.frustum) {

@@ -957,6 +957,8 @@ export function createLighting(
       return cascadeRangeScratch;
     },
     enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+    // 2026-10-14 (SKY shadows r2a): the detail covers every cascade the hull's shadow lands in (its reach down-sun)
+    sunDirection: () => csm.lightDirection,
   });
   setShadowCascadePolicy(nearVehiclePolicy);
   // 2026-10-03: the same near hulls carry the ground's occlusion in the aerial pass (vehicleGroundOcclusion.ts); the
