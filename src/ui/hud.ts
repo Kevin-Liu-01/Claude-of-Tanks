@@ -26,6 +26,7 @@ import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } 
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
+import { arrangeVehicleControls, isJumpMode } from './vehicleControlOrder.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getLocale, t } from './i18n.ts';
@@ -2257,6 +2258,18 @@ export function initHud(bus: EventBus): HudRuntime {
     button.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0&&!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
     return {action,button,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
   });
+  // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
+  const auxiliaryButton=(action:'smoke'|'lights'|'roofGun')=>auxiliaryButtons.find(item=>item.action===action)!.button;
+  const vehicleControls={jump:jumpHint,special:specialButton,drone:droneButton,missile:missileButton,
+    smoke:auxiliaryButton('smoke'),lights:auxiliaryButton('lights'),roofGun:auxiliaryButton('roofGun')};
+  let controlsJumpMode:boolean|null=null;
+  function setControlsJumpMode(on:boolean):void{
+    jumpHint.classList.toggle('on',on);
+    if(controlsJumpMode===on)return;
+    controlsJumpMode=on;
+    arrangeVehicleControls(controlsRow,vehicleControls,on);
+  }
+  setControlsJumpMode(false);
   const reloadForSlot=createVehicleCooldownReader();
   function updateSpecialAction(player: HudTank | null | undefined): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
@@ -6243,7 +6256,7 @@ export function initHud(bus: EventBus): HudRuntime {
     playerRef = frame.player || playerRef;
     if (frame.player) playerId = frame.player.id;
     jumpKey.textContent = frame.selfRightKeyLabel || 'F';
-    if(frame.matchModeState?.id)jumpHint.classList.toggle('on',(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))).jumpMps!=null);
+    if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
     if(frame.auxiliaryKeyLabels){
       for(const item of auxiliaryButtons)item.key.textContent=frame.auxiliaryKeyLabels[item.action];
       missileButton.querySelector('.sk')!.textContent=frame.auxiliaryKeyLabels.missile;
@@ -6377,7 +6390,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // Owner (2026-09-16): a ruleset without consumables (Turbo Ball) shows no consumable slots — the
       // separator and the three keycaps leave the shell selector instead of reading as "∞" spares.
       jumpLabel.textContent = t('hud.jump');
-      jumpHint.classList.toggle('on', ruleset?.jumpMps != null);
+      setControlsJumpMode(isJumpMode(ruleset));
       // round 30: the touch layer shows its rocket button in the same rulesets
       bus.emit('ui:jumpAvailable', { on: false });
       const noConsumables = ruleset?.consumables === false;

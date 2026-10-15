@@ -1745,6 +1745,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudMagazine.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
+    // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
+    'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
