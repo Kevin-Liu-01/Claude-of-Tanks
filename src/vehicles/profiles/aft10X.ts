@@ -259,7 +259,7 @@ function buildAftLauncher(P: TankBuilderPort): void {
     addAftLauncherSensors(P);
 }
 export function buildAft10X(P: TankBuilderPort): void {
-    const frame = EASTERN_SOURCE_STUDIES.aft10_x.frame;
+    const frame = EASTERN_SOURCE_STUDIES.aft10.frame;
     P.hullG.position.set(0, 0, 0);
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(frame.gun[0], frame.gun[1] - frame.turret[1], 0);
@@ -268,5 +268,5 @@ export function buildAft10X(P: TankBuilderPort): void {
     buildAftLauncher(P);
     preserveSourceStudyGunMountAppearance(P);
     P.topY = 3.50 - frame.turret[1];
-    P.hullG.userData.xRebuild = { candidate: 'aft10_x', independent: true, sourceLocalOnly: true };
+    P.hullG.userData.xRebuild = { candidate: 'aft10', independent: true, sourceLocalOnly: true };
 }

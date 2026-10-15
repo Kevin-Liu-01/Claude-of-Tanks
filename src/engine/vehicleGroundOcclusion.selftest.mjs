@@ -394,7 +394,7 @@ function builtHull(name, { z = 0, bands = true, contact = true, shoes = true, sl
   return { root, proxy };
 }
 {
-  const { root, proxy } = builtHull('t90');
+  const { root, proxy } = builtHull('t90_1992');
   assert.equal(hullProxyOf(root), proxy, 'the hull proxy');
   const h = measureVehicleGroundHull(root);
   for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, fz0: -3.42, fz1: 3.68, hr: 0, hf: 0, pz0: -3.42, pz1: 3.68,

@@ -63,7 +63,7 @@ for (const mesh of group.children) mesh.geometry.dispose();
 material.dispose();
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('t90sm_x', null, { quality, geometryReceipt: true, proceduralOnly: true });
+  const tank = createTank('t90sm', null, { quality, geometryReceipt: true, proceduralOnly: true });
   try {
     tank.root.updateMatrixWorld(true);
     for (const [x, y, z, n] of FRONT) {

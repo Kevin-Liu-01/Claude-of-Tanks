@@ -7,7 +7,7 @@ import {auxiliaryFace,auxiliaryQuad,auxiliaryRectangle,type AuxPoint} from './so
 import {type10AuxiliarySkirts} from './sourceXType10AuxArmor.ts';
 import {exposedAuxiliaryCourse} from './sourceXAuxArmorExposure.ts';
 import {memoizedAuxiliaryShapes} from './sourceXAuxArmorCache.ts';
-const IDS=new Set(['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x','type10_x','type90_x','amx40_x']);
+const IDS=new Set(['k1a1','amx30b','leclerc_xlr','amx56','type10','type90','amx40']);
 // Plate names built from the id keep its schema-1 spelling (tankIdAliases.ts): seat signatures hash them.
 type Span=readonly [number,number];
 
@@ -25,7 +25,7 @@ function exposedBacking(template:ArmorPlate,id:string,side:number,x:number,back:
   return out;
 }
 function leclercRear(template:ArmorPlate,side:number,classic:boolean):ArmorPlate[] {
-  const id=classic?'leclerc_classic_x':'leclerc_x';
+  const id=classic?'amx56':'leclerc_xlr';
   const spans:readonly Span[]=classic?[[-3.296311,-2.155381],[-2.139705,-1.287892],[-1.27162,-.419807],[-.387823,.463991],[.484075,1.304696]]:
     [[-3.1594,-2.0659],[-2.0508,-1.2344],[-1.2188,-.4024],[-.3717,.4447],[.4640,1.2505]];
   const x=classic?(side<0?-1.694394:1.652172):(side<0?-1.69355:1.68009);
@@ -68,7 +68,7 @@ function leclercFolds(template:ArmorPlate,side:number,classic:boolean,group:stri
   return out;
 }
 function leclercFront(template:ArmorPlate,side:number,classic:boolean):ArmorPlate[] {
-  const out:ArmorPlate[]=[],id=classic?'leclerc_classic_x':'leclerc_x';
+  const out:ArmorPlate[]=[],id=classic?'amx56':'leclerc_xlr';
   const spans:readonly Span[]=classic?[[1.298949,1.995990],[2.045418,2.601897],[2.648623,3.44716]]:
     [[1.245,1.9130917],[1.960467,2.4938338],[2.5386198,3.303991]];
   const classicRows=[[1.524253,1.513117,.715028,.715028],[1.512233,1.449739,.715028,.716776],[1.441197,1.30968,.716990,.72099]];
@@ -111,7 +111,7 @@ function charToe(template:ArmorPlate,side:number):ArmorPlate[] {
   return [[0,1,2],[0,2,4],[2,3,4]].map((indices,i)=>auxiliaryFace(template,
     `leclerc_x_${side}_toe`,i,indices.map(n=>points[n]),side));
 }
-function type90(template:ArmorPlate,side:number):ArmorPlate[] {
+function type90_kyumaru(template:ArmorPlate,side:number):ArmorPlate[] {
   const x=side*1.786824,out:ArmorPlate[]=[];
   const rear=[[-3.5,1.103646],[-3,1.103646],[-2.54,.694]];
   for(let i=0;i<rear.length-1;i++)out.push(auxiliaryFace(template,`type90_x_${side}_rear`,i,
@@ -133,7 +133,7 @@ function amxPoint(side:number,rear:boolean,z:number,band:number):AuxPoint {
   const x=rear?Math.max(1.643014+.00005944*y+.00081759*z,1.657710-.00957555*y+.00349933*z):1.6805;
   return[side<0?-x+.0025:x,y,z];
 }
-function amx40(template:ArmorPlate,side:number):ArmorPlate[] {
+function amx40_proto(template:ArmorPlate,side:number):ArmorPlate[] {
   const out:ArmorPlate[]=[];
   for(const rear of[true,false]){
     const zs=rear?[-3.29,-2.7634,-2.2,-1.5,-.846]:[-.846,0,1.5,2.7595,2.7748,3.188];
@@ -147,12 +147,12 @@ function amx40(template:ArmorPlate,side:number):ArmorPlate[] {
   return out;
 }
 function replacements(id:string,template:ArmorPlate,side:number):ArmorPlate[] {
-  if(id==='leclerc_x'||id==='leclerc_classic_x')return exposedAuxiliaryCourse(
-    [...leclercRear(template,side,id==='leclerc_classic_x'),...leclercFront(template,side,id==='leclerc_classic_x'),
-      ...(id==='leclerc_x'?charToe(template,side):[])],side,`${tankSeedId(id)}_${side}_installed_course`);
-  if(id==='type90_x')return type90(template,side);
-  if(id==='amx40_x')return exposedAuxiliaryCourse(amx40(template,side),side,`${tankSeedId(id)}_${side}_installed_course`);
-  if(id==='type10_x')return exposedAuxiliaryCourse([...type10AuxiliarySkirts(template,side),
+  if(id==='leclerc_xlr'||id==='amx56')return exposedAuxiliaryCourse(
+    [...leclercRear(template,side,id==='amx56'),...leclercFront(template,side,id==='amx56'),
+      ...(id==='leclerc_xlr'?charToe(template,side):[])],side,`${tankSeedId(id)}_${side}_installed_course`);
+  if(id==='type90')return type90_kyumaru(template,side);
+  if(id==='amx40')return exposedAuxiliaryCourse(amx40_proto(template,side),side,`${tankSeedId(id)}_${side}_installed_course`);
+  if(id==='type10')return exposedAuxiliaryCourse([...type10AuxiliarySkirts(template,side),
     auxiliaryRectangle(template,`type10_x_${side}_fascia`,side*1.574517,-2.4807,3.5897,.7593,1.222),
     auxiliaryRectangle(template,`type10_x_${side}_rear_fascia`,side*1.574517,-3.44004,-2.4807,.75772,1.16422)],
     side,`type10_x_${side}_installed_course`);

@@ -11,7 +11,7 @@
 //
 // Rules of the shared build:
 // - An audit sees the build as its own receipt did. Synchronous checks run back to back without yielding, so they see
-//   the build as createTank returned it; a few builders (kf51, kf51b and the PT-91M) queue a microtask that rewrites
+//   the build as createTank returned it; a few builders (kf51_evo, kf51_u and the PT-91M) queue a microtask that rewrites
 //   their merged meshes' UVs or vertex colors after createTank returns. Before the first async check of a build the pass
 //   yields one microtask turn, as those receipts did with their `await Promise.resolve()`, so async checks and every
 //   check declared after one see the build after it. The pass never updates matrices for an audit.

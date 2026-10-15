@@ -244,25 +244,25 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     } });
   }
   const { createTank } = await import('./tankFactory.ts');
-  const tejasIds = ['m1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'];
-  const shtoraIds = ['t90a', 't90a_vladimir', 't90a_x', 't90a_vladimir_x', 't90_x'];
+  const tejasIds = ['m1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep'];
+  const shtoraIds = ['t90a_2004', 't90a_2006', 't90a', 't90a_vladimir', 't90'];
   const sourceStudyLampIds = new Set([
-    'leo2a6_x', 'k1a1_x', 'amx30_x', 't62mv1_x', 't72b_1987_x', 't80u_x', 'leclerc_x',
-    'leclerc_classic_x', 'chieftain_mk10_x', 't72b3_x', 'jpz_e100_x', 'type10_x', 'type90_x',
-    'amx40_x', 'ariete_c1_x', 'strv122_x', 't72b3m_x', 'challenger1_x', 't72bu_x',
-    'chieftain5_x', 't90_x', 't90a_burlak_x', 't90ms_x',
+    'leo2a6', 'k1a1', 'amx30b', 't62mv1', 't72b_1987', 't80u', 'leclerc_xlr',
+    'amx56', 'chieftain_mk10', 't72b3', 'jpz_e100', 'type10', 'type90',
+    'amx40', 'c1_ariete', 'strv122', 't72b3m_2016', 'challenger1_mk3', 't72bu',
+    'chieftain5', 't90', 't90a_burlak', 't90ms_tagil',
   ]);
   const requestedIds = process.argv.find(arg => arg.startsWith('--ids='))?.slice(6).split(',');
-  const physicalIds = ['m1a3', 'mbt70', 't90m', 't90m_proryv'];
+  const physicalIds = ['m1a3', 'mbt70', 't90am', 't90m_proryv'];
   const allIds = process.argv.includes('--all') ? (await import('./specs.ts')).DEVELOPMENT_TANK_IDS : null;
   const offset = Number(process.argv.find(arg => arg.startsWith('--offset='))?.slice(9) ?? 0);
   const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
-  const ids = (requestedIds ?? allIds ?? (physicalRun ? physicalIds : ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'])).slice(offset, offset + count);
-  const restoredCounts = {cv90_x:4,cv90105_tml_x:2,cv90_mkiv_x:2,dardo:2,lrmv_lynx:2,
-    leo2_revolution_proto:2,type96b_x:2,aft10_x:2,warrior_tes_h:2,ajax_x:2,sabra_mk2_x:4,
-    namer_ifv:2,borsuk:4,bmp3m_dragun125_x:2,griffin50_x:4,kf41_lynx_x:2,k21_x:2,
-    m1a2_x:2,m1a2_tusk_x:2,m1a2_sepv2_x:2,m1a2_sepv3_x:2,ua_m1a1_x:2,
-    griffin_viper:4,spz_puma_s1_x:4,type89_x:2,amx10p:2,amx10p_25:2,marder2:2};
+  const ids = (requestedIds ?? allIds ?? (physicalRun ? physicalIds : ['m48a5_patton', ...tejasIds, 't90a_2006', 't90a'])).slice(offset, offset + count);
+  const restoredCounts = {cv9040c:4,cv90105_tml:2,cv90_mk4:2,dardo:2,lrmv_lynx:2,
+    leo2_revolution_proto:2,type96b:2,aft10:2,warrior_tes_h:2,ajax:2,sabra_mk2:4,
+    namer_ifv:2,borsuk:4,bmp3m_dragun125:2,griffin50mm:4,kf41_lynx:2,k21:2,
+    m1a2_abrams:2,m1a2_abrams_tusk:2,m1a2_abrams_sepv2:2,m1a2_abrams_sepv3:2,ua_m1a2_abrams:2,
+    griffin_viper:4,puma_s1:4,type89:2,amx10p:2,amx10p_25:2,marder2:2};
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
@@ -296,7 +296,7 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
       if (id === 'm1a3') assertM1A3RoadBeams(visual.root, `${id}/${quality}`);
       if (sourceStudyLampIds.has(id)) assert.ok(coverage.headlights > 0, `${id}/${quality} retains actual authored front fixtures`);
       if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
-      if (id === 'm48') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
+      if (id === 'm48a5_patton') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
       if (shtoraIds.includes(id)) assert.equal(coverage.shtora, 2, `${id}/${quality} real Shtora pair survives batch/rig setup`);
       if (tejasIds.includes(id) || process.argv.includes('--exposed') || physicalRun) {
         const hull = visual.root.getObjectByName('hull');
@@ -321,9 +321,9 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
           }
         });
         assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
-        if (physicalIds.includes(id)) assert.equal(checked, id.startsWith('t90') ? 4 : 2,
+        if (physicalIds.includes(id)) assert.equal(checked, id.startsWith('t90_1992') ? 4 : 2,
           `${id}/${quality} restores only the existing lamp apertures`);
-        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,id.startsWith('t90')?120:72);
+        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,id.startsWith('t90_1992')?120:72);
       }
     }
     const hull = visual.root.getObjectByName('hull'), hullHash = createHash('sha256');

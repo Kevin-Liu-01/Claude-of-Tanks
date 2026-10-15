@@ -63,7 +63,7 @@ function cageBounds(){
 }
 cageBounds();
 for(const quality of ['high','low']){
-  const t=createTank('t90ms_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90ms_tagil',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const m=meshes(t);rearCase(m);cradleSurfaces(m);cageSurfaces(m);actualAttachment(t);}
   finally{t.dispose();}
 }

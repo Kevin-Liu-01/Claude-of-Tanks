@@ -880,7 +880,7 @@ function sharedMats(): SharedMaterials {
       {
         vec3 kcV = normalize(cameraPosition - vKcW);
         // Degenerate-normal guard FIRST (r3): the performance-budget kit
-        // merge ships GLB hull meshes WITHOUT a normal attribute (m1a2/t90m
+        // merge ships GLB hull meshes WITHOUT a normal attribute (m1a1_abrams_hc/t90m
         // audit: 4 merged meshes each) — the attribute defaults to (0,0,0),
         // normalize() NaNs, and NaN alpha painted the whole live-Abrams
         // ghost as a solid black silhouette. Zero-length normals fall back

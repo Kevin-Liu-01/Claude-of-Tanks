@@ -10,12 +10,12 @@ const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const vec=a=>new T.Vector3(...a);
 const hits=(meshes,p,d,far)=>new T.Raycaster(vec(p),vec(d).normalize(),0,far).intersectObjects(meshes,false);
 const records=[
-  {id:'merkava4_x',build:buildMerkava4X,inner:1.73,outer:1.8384,skirt:1.25,roof:1.604,z:0,
+  {id:'merkava4',build:buildMerkava4X,inner:1.73,outer:1.8384,skirt:1.25,roof:1.604,z:0,
     stations:[[-2.980,1.73,1.587512],[-2.700,1.73,1.610190],[-2.670,1.73,1.612620],
       [-2.640,1.73,1.601641],[-2,1.73,1.604],[1.963,1.73,1.604],
       [2.8,1.73,1.347],[3.002,1.308686,1.31064]],
     panels:Array.from({length:8},(_,i)=>-2.98+i*.75+.366)},
-  {id:'merkava3d_x',build:buildMerkava3DX,inner:1.825,outer:1.92,skirt:1.43634,roof:1.70734,z:0,
+  {id:'merkava3d',build:buildMerkava3DX,inner:1.825,outer:1.92,skirt:1.43634,roof:1.70734,z:0,
     stations:[[-3.49,1.805,1.651233],[-2.96,1.825,1.734],[-2.21,1.825,1.687],
       [.58,1.825,1.687],[2.18,1.825,1.49],[2.69,1.825,1.44],[2.976,1.825,1.428327]]
       .map(([z,x,y])=>[z+.2258175,x,y+.02034]),

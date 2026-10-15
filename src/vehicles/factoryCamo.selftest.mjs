@@ -71,7 +71,7 @@ for (const patternId of NATIONAL_CAMO_PATTERN_IDS) {
   assert.ok(preset.tags.some((tag) => tag !== 'geometric' && !ENVIRONMENT_TAGS.includes(tag)), `${patternId}: filed under its nation`);
   assert.ok(!preset.tags.includes('factory'), `${patternId}: the plain colour is a selectable scheme, not the Factory coat`);
   assert.ok(CAMO_CATALOG_PATTERN_IDS.includes(patternId), `${patternId}: the national colour is in the player catalog`);
-  const onAbrams = resolveCamoVisual(getSpec('m1a2'), patternId);
+  const onAbrams = resolveCamoVisual(getSpec('m1a1_abrams_hc'), patternId);
   assert.equal(onAbrams.scheme, 'solid'); assert.equal(onAbrams.base, preset.visual.base, `${patternId}: any hull wears the national colour`);
 }
 {
@@ -104,7 +104,7 @@ for (const patternId of CAMO_PATTERN_IDS) {
   assert.ok(!label.includes(tankDisplayName(getSpec(preset.sourceTankId))), `${patternId}: never named after a vehicle (${label})`);
   const sourceVisual = getSpec(preset.sourceTankId).visual;
   assert.equal(paletteKey(preset.visual), paletteKey(sourceVisual), `${patternId}: carries its lead vehicle's exact recipe`);
-  assert.equal(paletteKey(resolveCamoVisual(getSpec('m1a2'), patternId)), paletteKey(resolveCamoVisual(getSpec('t90m'), patternId)),
+  assert.equal(paletteKey(resolveCamoVisual(getSpec('m1a1_abrams_hc'), patternId)), paletteKey(resolveCamoVisual(getSpec('t90am'), patternId)),
     `${patternId}: renders identically on hulls from different nations`);
 }
 // 2026-09-23: 19 -> 13 entries when the six retired hidden hulls that led paints left the fleet.
@@ -140,50 +140,50 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
   assert.ok((signature.patches || []).length >= 2, `${id} Signature must retain a multi-tone pattern palette`);
 }
 const requestedIsraeliDefaults = [
-  'merkava2d', 'merkava3d_x', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'sabra_mk2_x',
+  'merkava2d', 'merkava3d', 'merkava4', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'sabra_mk2',
 ];
 for (const id of requestedIsraeliDefaults) {
   assert.ok(SIGNATURE_CAMO_TANK_IDS.includes(id), `${id} must retain its requested Signature entry`);
   assert.equal(stockCamoPatternIdFor(id), `sig_${id}`, `${id} owns its distinct requested default`);
   assert.equal(getCamoSelection(id), 'factory', `${id} initially presents Factory when unset`);
 }
-const russianDigitalSignatures = ['bmpt_t90', 't90sm', 't90a_burlak', 't90m', 't90m_proryv', 't90a', 't90a_vladimir'];
+const russianDigitalSignatures = ['bmpt_t90', 't90sm_2013', 't90a_burlak_proto', 't90am', 't90m_proryv', 't90a_2004', 't90a_2006'];
 for (const id of russianDigitalSignatures) {
   const patternId = signatureCamoPatternId(id);
   assert.equal(resolveCamoVisual(getSpec(id), patternId).scheme, 'digital', `${id} keeps its Russian digital Signature`);
 }
-assert.equal(resolveCamoVisual(getSpec('t90'), defaultCamoPatternId('t90')).scheme, 'stripes');
-assert.equal(resolveCamoVisual(getSpec('t90ms'), defaultCamoPatternId('t90ms')).scheme, 'desert');
+assert.equal(resolveCamoVisual(getSpec('t90_1992'), defaultCamoPatternId('t90_1992')).scheme, 'stripes');
+assert.equal(resolveCamoVisual(getSpec('t90ms_2011'), defaultCamoPatternId('t90ms_2011')).scheme, 'desert');
 
 // --- the Special catalog audit: every special pattern is multi-tone (national colours and authored paints are not special)
 const specialPatternIds = CAMO_CATALOG_PATTERN_IDS.filter((patternId) => camoMatchesTag(patternId, 'USA', 'special'));
 assert.ok(specialPatternIds.length >= 59, 'the complete named Signature and novelty Special catalog is audited');
 for (const patternId of specialPatternIds) {
-  const visual = resolveCamoVisual(getSpec('m1a2'), patternId);
+  const visual = resolveCamoVisual(getSpec('m1a1_abrams_hc'), patternId);
   assert.notEqual(visual.scheme, 'solid', `${patternId} Special camo must not resolve to a flat one-color finish`);
   assert.ok((visual.patches || []).length >= 2, `${patternId} Special camo must expose a multi-tone pattern palette`);
 }
 for (const patternId of NATIONAL_CAMO_PATTERN_IDS) assert.ok(!specialPatternIds.includes(patternId), `${patternId} is a national colour, not a novelty`);
 
-const abramsXOnAbrams = resolveCamoVisual(getSpec('m1a2'), 'sig_abramsx');
-const abramsXOnT90 = resolveCamoVisual(getSpec('t90m'), 'sig_abramsx');
+const abramsXOnAbrams = resolveCamoVisual(getSpec('m1a1_abrams_hc'), 'sig_abramsx');
+const abramsXOnT90 = resolveCamoVisual(getSpec('t90am'), 'sig_abramsx');
 assert.equal(paletteKey(abramsXOnAbrams), paletteKey(abramsXOnT90), 'a named vehicle colorway renders identically on tanks from different nations');
 
 // --- selection defaults and persistence
-assert.equal(defaultCamoPatternId('m1a2'), 'factory');
-for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
+assert.equal(defaultCamoPatternId('m1a1_abrams_hc'), 'factory');
+for (const id of ['m46_patton', 'm47_patton', 'm48a5_patton', 'm2a2_bradley']) {
   assert.equal(defaultCamoPatternId(id), 'factory');
   assert.equal(stockCamoPatternIdFor(id), 'summer', `${id} preserves its temperate stock finish`);
   assert.equal(getCamoSelection(id), 'factory');
   assert.equal(resolveCamoVisual(getSpec(id), 'summer').scheme, 'nato');
 }
 assert.equal(getCamoSelection('abramsx'), 'factory');
-assert.equal(getCamoSelection('m1a2'), 'factory');
+assert.equal(getCamoSelection('m1a1_abrams_hc'), 'factory');
 setCamoBiome('verdant');
-assert.equal(hasCamoPaint('m48'), true, 'Factory preserves the temperate stock recipe’s seasonal bonus');
-assert.equal(hasCamoPaint('m1a2'), false, 'reorganizing paint does not add a bonus to desert stock on woodland');
+assert.equal(hasCamoPaint('m48a5_patton'), true, 'Factory preserves the temperate stock recipe’s seasonal bonus');
+assert.equal(hasCamoPaint('m1a1_abrams_hc'), false, 'reorganizing paint does not add a bonus to desert stock on woodland');
 setCamoBiome('desert');
-assert.equal(hasCamoPaint('m48'), false, 'temperate Factory paint still mismatches desert');
+assert.equal(hasCamoPaint('m48a5_patton'), false, 'temperate Factory paint still mismatches desert');
 const previousLocalStorage = globalThis.localStorage;
 globalThis.localStorage = {
   getItem: (key) => {
@@ -199,11 +199,11 @@ try {
   assert.equal(getCamoSelection('m551_sheridan'), 'sig_m551_sheridan', 'the legacy tank-relative Signature id migrates to its named reusable preset');
   for (const id of requestedIsraeliDefaults) assert.equal(getCamoSelection(id), 'factory');
   for (const pattern of ['factory', 'winter', 'suits', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'national_il', 'paint_kv2']) {
-    globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2_x' ? pattern : null;
-    assert.equal(getCamoSelection('sabra_mk2_x'), pattern, `Sabra's default does not replace an explicit saved ${pattern} choice`);
+    globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2' ? pattern : null;
+    assert.equal(getCamoSelection('sabra_mk2'), pattern, `Sabra's default does not replace an explicit saved ${pattern} choice`);
   }
-  globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2_x' ? 'custom' : key === 'cot.camoCustom.v1.sabra_mk2_x' ? '{}' : null;
-  assert.equal(getCamoSelection('sabra_mk2_x'), 'custom', 'Sabra preserves device-local custom paint');
+  globalThis.localStorage.getItem = key => key === 'cot.camo.sabra_mk2' ? 'custom' : key === 'cot.camoCustom.v1.sabra_mk2' ? '{}' : null;
+  assert.equal(getCamoSelection('sabra_mk2'), 'custom', 'Sabra preserves device-local custom paint');
 } finally {
   if (previousLocalStorage === undefined) delete globalThis.localStorage;
   else globalThis.localStorage = previousLocalStorage;

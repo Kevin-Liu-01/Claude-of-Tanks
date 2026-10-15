@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "t90a_x": {
+  "t90a": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -25,7 +25,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7069017
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "t90a_x",
+        "anchorProfile": "t90a",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -47,7 +47,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070976
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "t90a_x",
+        "anchorProfile": "t90a",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -55,7 +55,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90a_vladimir_x": {
+  "t90a_vladimir": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -74,7 +74,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "t90a_vladimir_x",
+        "anchorProfile": "t90a_vladimir",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -96,7 +96,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "t90a_vladimir_x",
+        "anchorProfile": "t90a_vladimir",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -104,7 +104,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90m_x": {
+  "t90m": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -123,7 +123,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turretPermanentMarkingSurface",
-        "anchorProfile": "t90m_x",
+        "anchorProfile": "t90m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -145,7 +145,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turretPermanentMarkingSurface",
-        "anchorProfile": "t90m_x",
+        "anchorProfile": "t90m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -153,7 +153,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90sm_x": {
+  "t90sm": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -172,7 +172,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turretPermanentMarkingSurface",
-        "anchorProfile": "t90sm_x",
+        "anchorProfile": "t90sm",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -194,7 +194,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.5918918
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90sm_x",
+        "anchorProfile": "t90sm",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

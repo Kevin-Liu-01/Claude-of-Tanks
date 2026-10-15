@@ -25,7 +25,7 @@ const ascending = (pairs) => pairs.every((p, i) => i === 0 || pairs[i - 1][0] <=
 
 // ---- 1. real hulls on the battle's frame path: the pairs are the drawn wheels, read live
 const rows = [];
-for (const id of ['t90m', 'm1a2', 'bmp2']) {
+for (const id of ['t90am', 'm1a1_abrams_hc', 'bmp2']) {
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
   try {
@@ -93,7 +93,7 @@ for (const id of ['t90m', 'm1a2', 'bmp2']) {
   const mats = Object.fromEntries(['hull', 'wheels', 'wheelsRecessed', 'rubber', 'detail', 'dark', 'shadow', 'trackLink',
     'spareTrack', 'burnt', 'trackL', 'trackR'].map((key) => [key, material]));
   mats.trackTexL = new THREE.Texture(); mats.trackTexR = new THREE.Texture();
-  const port = { spec: { id: 't90sm' }, disposables: [], mats, hullG: new THREE.Group(), geometryReceipt: true, q: true, batchStatic: false, add() {} };
+  const port = { spec: { id: 't90sm_2013' }, disposables: [], mats, hullG: new THREE.Group(), geometryReceipt: true, q: true, batchStatic: false, add() {} };
   const BASE = { wheelR: 0.4, wheelW: 0.3, wheelY: 0.5, sprocket: { z: -2, y: 0.7, r: 0.3 }, idler: { z: 2, y: 0.7, r: 0.3 }, trackW: 0.5, topY: 1 };
   KIT.buildRunningGear(port, { ...BASE, xc: 1.0, wheelZs: [-1, 0.2, 1.4] });
   KIT.buildRunningGear(port, { ...BASE, xc: 1.6, wheelZs: [-1.4, -0.2, 1.0] });

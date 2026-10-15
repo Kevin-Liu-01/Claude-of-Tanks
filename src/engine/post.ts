@@ -1414,7 +1414,7 @@ const GRADE_TOE_CHANNEL_TO = 2.5;
 // The enclosed Garage (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to near-white" on
 // the turntable). The showroom keeps its authored rig (lighting.ts, an enclosed presentation) under the legacy exposure;
 // the 2026-10-02 display shoulder that restored its frame percentiles under AgX (GARAGE_HIGHLIGHT_LIFT 0.95) pushed the
-// hull's lit paint up with them. Measured on one pose (m1a2, the camo-difference mask of its paint, display luma median /
+// hull's lit paint up with them. Measured on one pose (m1a1_abrams_hc, the camo-difference mask of its paint, display luma median /
 // p95 / saturation): main's ACES grade 158 / 211 / 0.49, the shoulder 185 / 223 / 0.37, without it 152 / 207 / 0.37 — the
 // shoulder put about 32 levels on every lit plate and the light camos lost their pattern to white; the shared bloom
 // changed 0.7 % of the frame on main and on the PR alike (not the halo). The shoulder is retired and the Garage takes the

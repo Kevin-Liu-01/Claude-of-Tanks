@@ -11,7 +11,7 @@ for(const quality of ['high','low']) {
   const original=KIT.buildRunningGear;let c;
   KIT.buildRunningGear=(port,cfg)=>{const gear=original(port,cfg);c={port,cfg,gear};return gear;};
   let tank;
-  try {tank=createTank('type10_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true});}
+  try {tank=createTank('type10',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true});}
   finally {KIT.buildRunningGear=original;}
   try {
     const hull=c.port.hullG;Object.assign(c,{tank,receipt:hull.userData.runningGearReceipts[0]});
@@ -92,7 +92,7 @@ for(const quality of ['high','low']) {
     band.position.y=originalY;
     c.gear.resetPose();tank.root.updateMatrixWorld(true);
     const visible=auditVisibleReturnRollerContact(tank,c.gear,
-      createTankState(getSpec('type10_x'),new T.Vector3(),0),{radiusM:.095});
+      createTankState(getSpec('type10'),new T.Vector3(),0),{radiusM:.095});
     for(const row of visible)assert.equal(row.contact,'PASS',JSON.stringify(row));
     console.log(JSON.stringify({quality,rollerMaximumGapM:Math.max(...visible.map(row=>row.maximumVisibleSupportGapM)),
       distances:visible.map(row=>row.distance),negativeCarrierControl:true}));

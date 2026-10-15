@@ -72,7 +72,7 @@ function bakeFixture() {
 }
 
 async function completeNull(client, workers) {
-  const pending = client.bake('t90m', { seed: 101, pop: false }, () => {});
+  const pending = client.bake('t90am', { seed: 101, pop: false }, () => {});
   const worker = workers.at(-1);
   await task();
   worker.succeed();
@@ -97,7 +97,7 @@ try {
     if (mode === 'error') workers[0].onerror({ message: 'early module failure' });
     else workers[0].onmessageerror({});
     assert.equal(workers[0].terminations, 1);
-    await assert.rejects(client.bake('t90m', {}, () => {}), /early module failure|startup transfer failed/);
+    await assert.rejects(client.bake('t90am', {}, () => {}), /early module failure|startup transfer failed/);
     assert.equal(workers.length, 1, 'early failure is surfaced, not hidden by a second worker');
     await completeNull(client, workers);
     assert.equal(workers.length, 2, 'a later explicit retry may create a fresh worker');
@@ -107,7 +107,7 @@ try {
     assert.equal(workers.length, 0, 'creating a map client does not create a worker');
     client.dispose();
     client.dispose();
-    await assert.rejects(client.bake('t90m', {}, () => {}), /disposed/);
+    await assert.rejects(client.bake('t90am', {}, () => {}), /disposed/);
     assert.equal(workers.length, 0, 'an unused or disposed client never loads fleet code');
   }
 
@@ -116,7 +116,7 @@ try {
     for (let job = 0; job < 6; job++) {
       let checkpoints = 0;
       const options = { seed: 2002 + job * 131, pop: job % 2 === 0 };
-      const specId = job % 2 ? 't90m' : 'm1a1';
+      const specId = job % 2 ? 't90am' : 'm1a1';
       const pending = client.bake(specId, options, () => { checkpoints++; });
       assert.equal(workers.length, 1, 'serial jobs reuse the map-owned worker');
       const worker = workers[0];
@@ -156,7 +156,7 @@ try {
     worker.succeed(null, worker.requests[0].requestId + 1);
     await task();
     assert.equal(settled, false, 'another request ID cannot resolve this bake');
-    await assert.rejects(client.bake('t90m', {}, () => {}), /one bake at a time/);
+    await assert.rejects(client.bake('t90am', {}, () => {}), /one bake at a time/);
     assert.equal(worker.requests.length, 1, 'concurrent rejection sends no second job');
     assert.equal(worker.terminations, 0, 'concurrent rejection does not disturb the active job');
     worker.succeed();
@@ -217,7 +217,7 @@ try {
     const wire = bakeFixture();
     const geo = wire.geo;
     Object.defineProperty(wire, 'geo', { get() { geometryReads++; return geo; } });
-    const pending = client.bake('t90m', {}, async () => {
+    const pending = client.bake('t90am', {}, async () => {
       entered.resolve();
       await release.promise;
       throw failure;
@@ -241,7 +241,7 @@ try {
 
   {
     const { client, workers } = fixture();
-    const pending = client.bake('t90m', {}, () => {});
+    const pending = client.bake('t90am', {}, () => {});
     const rejected = assert.rejects(pending, /disposed/);
     const worker = workers[0];
     client.dispose();
@@ -249,7 +249,7 @@ try {
     await rejected;
     assert.equal(worker.terminations, 1, 'dispose wakes and terminates an in-flight worker exactly once');
     assertIdle(worker);
-    await assert.rejects(client.bake('t90m', {}, () => {}), /disposed/);
+    await assert.rejects(client.bake('t90am', {}, () => {}), /disposed/);
     assert.equal(workers.length, 1, 'disposed client cannot reopen a worker');
   }
 
@@ -259,7 +259,7 @@ try {
     let geometryReads = 0;
     const wire = bakeFixture(), geo = wire.geo;
     Object.defineProperty(wire, 'geo', { get() { geometryReads++; return geo; } });
-    const pending = client.bake('t90m', {}, async () => {
+    const pending = client.bake('t90am', {}, async () => {
       entered.resolve();
       await release.promise;
     });
@@ -277,7 +277,7 @@ try {
   {
     const { client, workers } = fixture({ timeoutMs: 1 });
     let taskRan = false, checkpoints = 0;
-    const pending = client.bake('t90m', {}, () => { checkpoints++; });
+    const pending = client.bake('t90am', {}, () => { checkpoints++; });
     const rejected = assert.rejects(pending, /timed out/);
     const taskId = setTimeout(() => { taskRan = true; }, 0);
     try { await rejected; } finally { clearTimeout(taskId); }
@@ -291,7 +291,7 @@ try {
 
   {
     const { client, workers } = fixture({ timeoutMs: 1 });
-    const pending = client.bake('t90m', {}, async () => { await task(); });
+    const pending = client.bake('t90am', {}, async () => { await task(); });
     await task();
     workers[0].succeed();
     assert.equal(await pending, null, 'a completed reply is not timed out by a slow scheduler checkpoint');

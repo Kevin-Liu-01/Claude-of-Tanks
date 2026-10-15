@@ -41,19 +41,19 @@ try {
   }
   assert.ok(hordeBlocs.size >= 2, `consecutive Horde sorties meet different armies (${[...hordeBlocs].join(',')})`);
   for (const ordinal of [0, 5]) {
-    const battle = play('frontline_assault', 'm1a2', ordinal);
+    const battle = play('frontline_assault', 'm1a1_abrams_hc', ordinal);
     assert.equal(battle.enemies.length, 10, `frontline ordinal ${ordinal}: ten defenders`);
     assert.equal(battle.allies.length, 3, `frontline ordinal ${ordinal}: three allied bots`);
     const blocs = new Set(battle.enemies.map(blocOf));
     assert.equal(blocs.size, 1, `frontline ordinal ${ordinal}: one nation defends (${[...blocs].join(',')})`);
   }
   {
-    const arranged = play('endless_horde', 'm1a2', 2, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
+    const arranged = play('endless_horde', 'm1a1_abrams_hc', 2, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
     assert.equal(arranged.enemies.length, 14);
     assert.ok(arranged.enemies.every((id) => getSpec(id).nation === 'Germany'), 'an arranged nation fields every hostile from that nation');
   }
   {
-    const standard = play('standard', 'm1a2', 1);
+    const standard = play('standard', 'm1a1_abrams_hc', 1);
     assert.equal(standard.enemies.length, 7, 'standard battles keep the 7 hostiles');
     assert.equal(standard.allies.length, 6, 'standard battles keep the 6 allies');
   }

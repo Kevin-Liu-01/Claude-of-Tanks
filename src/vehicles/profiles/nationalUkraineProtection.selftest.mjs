@@ -7,7 +7,7 @@ import {MISSION_ATTACHMENT_SEATS} from '../../sim/missionAttachmentSeats.generat
 import {NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../../tools/mission-attachment-geometry.mjs';
 
-const ids=['ua_t80u_modern','ua_t72b3m_modern','ua_t72b3_modern','ua_t72b3m_hetman_ii'];
+const ids=['t80u_zoria','t72b3m_hetman','t72b3_sich','t72b3m_hetman_ii'];
 assert.deepEqual(Object.keys(NATIONAL_UKRAINE_GHILLIE).sort(),[...ids].sort());
 const hash=g=>createHash('sha256').update(Buffer.from(g.attributes.position.array.buffer)).digest('hex');
 function fingerprint(root,names){
@@ -77,7 +77,7 @@ function fullMainGunEnvelope(tank,spec,addedHull){
  assert(triangles>10000&&swept.length>1000,spec.id+': native continuum sweep has meaningful stock coverage');
  // Retain both independently observed illegal contacts as negative controls.
  // Restoring either old rail cannot silently pass this test.
- const oldContact={ua_t72b3_modern:[2.37376249,1.44455850,2.41710285],ua_t72b3m_hetman_ii:[2.44307805,1.46946863,-2.64802120]}[spec.id];
+ const oldContact={t72b3_sich:[2.37376249,1.44455850,2.41710285],t72b3m_hetman_ii:[2.44307805,1.46946863,-2.64802120]}[spec.id];
  if(oldContact){
   const p=new Vector3(...oldContact).applyMatrix4(tank.root.getObjectByName('rig_hull').matrixWorld).applyMatrix4(turretInverse);
   assert(hit(new Box3(p.clone(),p.clone()).expandByScalar(.004)),spec.id+': old cage collision must remain rejected');
@@ -118,8 +118,8 @@ for(const quality of ['high','low'])for(const id of ids){
   }
   // Sich retains one flank course over its lower field housings; the other
   // three have two. Its exposed forward banks still have two cheek courses.
-  assert(counts.hull>=60&&counts.turret>=(id==='ua_t72b3_modern'?18:24),id+': dense independently authored ERA cassettes '+JSON.stringify(counts));
-  assert.equal(newHullEra,id==='ua_t72b3m_hetman_ii'?56:counts.hull,id+': continuous motion check includes every new hull ERA body');
+  assert(counts.hull>=60&&counts.turret>=(id==='t72b3_sich'?18:24),id+': dense independently authored ERA cassettes '+JSON.stringify(counts));
+  assert.equal(newHullEra,id==='t72b3m_hetman_ii'?56:counts.hull,id+': continuous motion check includes every new hull ERA body');
   const protectedHash=fingerprint(tank.root,['hullExternalArmor','turretExternalArmor']);
   const invariantNames=['hull','turret','gunMount','hullOpenLattice','turretOpenLattice'];
   const original=fingerprint(tank.root,invariantNames);

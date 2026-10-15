@@ -62,13 +62,13 @@ assert.doesNotMatch(worker, /fleetFactory|ensureFullFleet|ensureTankBuilder/,
 for (const owner of ['T90_PROFILES', 'ABRAMS_PROFILES', 'LEOPARD_PROFILES', 'MODERN3_BUILDERS']) {
   assert.match(worker, new RegExp(owner), `worker must register its bounded ${owner} family`);
 }
-for (const id of ['t90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2']) {
+for (const id of ['t90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther']) {
   assert.match(dressing, new RegExp(`createLegacyVisual\\('${id}'`));
 }
 assert.doesNotMatch(dressing, /visual\.root\.clone\(true\)/,
   'the Leopard teardown must be its real fleet graph rather than a cloned Abrams');
 assert.match(dressing,
-  /createLegacyVisual\('leo2a5_a5nl'[\s\S]*vehicleIdentity = 'Leopard 2A5\/A5NL'/,
+  /createLegacyVisual\('leo2a4m'[\s\S]*vehicleIdentity = 'Leopard 2A5\/A5NL'/,
   'the fifth exhibit must retain the exact A5NL fleet identity throughout its service bay');
 assert.doesNotMatch(dressing, /addFleetExhibit\(/,
   'alternate duplicate fleet displays must not be built');
@@ -109,7 +109,7 @@ assert.match(dressing,
 assert.match(dressing, /foregroundOfVerdantScaffold = true/,
   'the Burlak assembly must remain in front of Verdant scaffold uprights');
 assert.match(dressing,
-  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak',[\s\S]*12\.4, -15\.0, -0\.55 \+ Math\.PI \/ 2/,
+  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak_proto',[\s\S]*12\.4, -15\.0, -0\.55 \+ Math\.PI \/ 2/,
   'Burlak must carry four exact fleet road wheels on a connected service dolly');
 assert.match(workshopLayout,
   /id: 'burlak_gantry', role: 'heavy-lift', x: 18\.8, z: -10\.3, yaw: -0\.55/,
@@ -161,10 +161,10 @@ assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its authored transform inside the swapped bay owner');
 assert.match(dressing,
-  /placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
+  /placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a1_abrams_hc'\)/,
   'the complete Abrams service section must move as one owner');
 assert.match(dressing,
-  /placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
+  /placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'xk2_black_panther'\)/,
   'the complete K2 teardown section must move into the Abrams\'s authored quadrant');
 assert.match(dressing,
   /const placement = getAbramsWeldingBayPlacement\(variant\);[\s\S]*abramsBayRoot\.position\.set\(placement\.x, 0, placement\.z\);[\s\S]*abramsBayRoot\.rotation\.y = placement\.rotationRad;[\s\S]*abramsBayRoot\.updateMatrix\(\)/,
@@ -183,13 +183,13 @@ assert.match(dressing,
 assert.doesNotMatch(dressing, /group\.add\(abramsServiceFloorRoot\)/,
   'the Abrams floor must remain off-scene until its final bay transform is ready');
 assert.match(dressing,
-  /legacyVerdantRoot\.add\(abramsServiceFloorRoot\);[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
+  /legacyVerdantRoot\.add\(abramsServiceFloorRoot\);[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a1_abrams_hc'\)/,
   'the complete Abrams floor station must enter the same owner as the vehicle');
 assert.match(dressing,
   /15\.9 - ABRAMS_FLAMMABLE_BAY_OFFSET\.x,[\s\S]*16\.6 - ABRAMS_FLAMMABLE_BAY_OFFSET\.z,[\s\S]*verdantInteriorRoot/,
   'the indoor Abrams work lamp must follow Verdant\'s canister floor station');
 assert.match(dressing,
-  /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
+  /addServiceRoadWheelDolly\([\s\S]*'m1a1_abrams_hc',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
   'Abrams must carry four exact fleet road wheels on a connected service dolly');
 assert.match(dressing, /perimeterCraneClearance = true/,
   'the complete bay owner must receipt its corrected crane clearance');

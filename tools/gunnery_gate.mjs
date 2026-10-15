@@ -230,7 +230,7 @@ try {
       });
     };
     const runBattle = async (battleIndex) => {
-      await D.startBattle('m1a2');
+      await D.startBattle('m1a1_abrams_hc');
       // LANE STAGING (controls_gunnery r4, critic minor #3): the gate's job
       // is measuring GUNNERY, not spawn luck — a 4x5 run gated only 5/20
       // shots because most spawn standoffs offer no settled <=350 m LOS

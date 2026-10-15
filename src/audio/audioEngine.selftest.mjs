@@ -38,7 +38,7 @@ audio.resume();
 const probe = globalThis.window.__COT_AUDIO;
 assert.ok(probe, 'debug surface installed');
 
-function tank(id, { x = 0, z = 0, team = 'player', isPlayer = false, specId = 't72b3m', nation = 'Russia', speed = 0, throttle = 0 } = {}) {
+function tank(id, { x = 0, z = 0, team = 'player', isPlayer = false, specId = 't72b3m_2022', nation = 'Russia', speed = 0, throttle = 0 } = {}) {
   return {
     id, team, isPlayer, specId,
     spec: { id: specId, nation, role: 'mbt', weightTons: 46.5, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 15, gun: { caliberMm: 125, shells: [{ type: 'APFSDS' }, { type: 'HEAT' }, { type: 'HE' }] } },
@@ -50,13 +50,13 @@ function tank(id, { x = 0, z = 0, team = 'player', isPlayer = false, specId = 't
 
 const listener = { pos: { x: 0, y: 2, z: 0 }, forward: { x: 0, y: 0, z: 1 }, kind: 'player-tank', ownerId: 'me', scoped: false };
 const me = tank('me', { isPlayer: true });
-const ally = tank('ally', { x: 30, z: 60, specId: 'leo2a6', nation: 'Germany' });
-const foe = tank('foe', { x: -40, z: 120, team: 'enemy', specId: 'm1a2', nation: 'USA' });
+const ally = tank('ally', { x: 30, z: 60, specId: 'leo2a4', nation: 'Germany' });
+const foe = tank('foe', { x: -40, z: 120, team: 'enemy', specId: 'm1a1_abrams_hc', nation: 'USA' });
 const farFoe = tank('far', { x: 0, z: 700, team: 'enemy', specId: 'bmp2', nation: 'USSR' });
 const tanks = [me, ally, foe, farFoe];
 
 bus.emit('phase:change', { phase: 'battle' });
-await audio.warmBattleEvents(['t72b3m', 'leo2a6', 'm1a2', 'bmp2']);
+await audio.warmBattleEvents(['t72b3m_2022', 'leo2a4', 'm1a1_abrams_hc', 'bmp2']);
 audio.ambientOn(true);
 for (let i = 0; i < 10; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 // The battle warm is bounded for the loader (3.5 s); here await every load it and the first frames started, to its real
@@ -83,7 +83,7 @@ assert.equal(probe.ambientState().bed, 'amb_urban', 'Steinburg plays its ruined-
   const bare = { root: { traverse: (fn) => fn({ userData: {} }) } };
   const netted = { ...tank('netted', { x: 20, z: 30, specId: 'cv90', nation: 'Sweden', speed: 8, throttle: 1 }), visual: suit };
   const parked = { ...tank('parked', { x: -20, z: 30, specId: 'cv90', nation: 'Sweden' }), visual: suit };
-  const plain = { ...tank('plain', { x: 25, z: 25, specId: 'leo2a6', nation: 'Germany', speed: 8, throttle: 1 }), visual: bare };
+  const plain = { ...tank('plain', { x: 25, z: 25, specId: 'leo2a4', nation: 'Germany', speed: 8, throttle: 1 }), visual: bare };
   const withNets = [...tanks, netted, parked, plain];
   for (let i = 0; i < 30; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, withNets); }
   const rigs = Object.fromEntries(probe.engineState().map((e) => [e.id, e]));
@@ -190,7 +190,7 @@ names = logSince(since).map((e) => e.n);
 assert.ok(names.includes('dry_fire'), 'firing on empty clicks');
 assert.ok(names.includes('autoloader_carousel'), 'an autoloader turns to the new round');
 since = mark();
-bus.emit('auxiliary:smokeScreens', { screens: [{ born: 12, x: 4, y: 2, z: 12, source: ['t72b3m', 0, 0, 0] }] });
+bus.emit('auxiliary:smokeScreens', { screens: [{ born: 12, x: 4, y: 2, z: 12, source: ['t72b3m_2022', 0, 0, 0] }] });
 names = logSince(since).map((e) => e.n);
 assert.ok(names.includes('smoke_launcher') && names.includes('smoke_burst'), `smoke volley (${names})`);
 since = mark();
@@ -349,7 +349,7 @@ assert.ok(logSince(since).some((e) => e.n === 'scope_in'));
 listener.scoped = false;
 
 // AC-130: the gunship circling overhead is four turboprops, never a tank on the ground.
-const gunship = tank('gunship', { x: 0, z: 200, team: 'enemy', specId: 'm1a2', nation: 'USA' });
+const gunship = tank('gunship', { x: 0, z: 200, team: 'enemy', specId: 'm1a1_abrams_hc', nation: 'USA' });
 gunship.state.pos.y = 240;
 gunship.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 200 };
 const withGunship = [...tanks, gunship];
@@ -472,7 +472,7 @@ bus.emit('mode:line_advanced', { line: 1, total: 3 });
 assert.ok(logSince(since).some((e) => e.n === 'mode_frontline_barrage'), 'the Frontline moves up behind a barrage');
 // Juggernaut: the boss (eight times anyone's hull) is found once per battle, and its gun carries further.
 gameMode = 'juggernaut';
-const boss = tank('boss', { x: -30, z: 60, team: 'enemy', specId: 'm1a2', nation: 'USA' });
+const boss = tank('boss', { x: -30, z: 60, team: 'enemy', specId: 'm1a1_abrams_hc', nation: 'USA' });
 boss.combat.maxHp = 8000;
 boss.combat.hp = 8000;
 ctx.advance(1 / 60);
@@ -515,7 +515,7 @@ since = mark();
 bus.emit('mode:infected', { id: 'me', team: 'bravo' });
 assert.ok(logSince(since).some((e) => e.n === 'sting_infected'), 'turned to the infected side');
 
-const buddy = tank('buddy', { x: 4, z: 8, specId: 'leo2a6', nation: 'Germany' });
+const buddy = tank('buddy', { x: 4, z: 8, specId: 'leo2a4', nation: 'Germany' });
 for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, [...tanks, buddy]); }
 assert.equal(probe.engineState().find((e) => e.id === 'buddy')?.lod, 'near', 'a tank 9 m away is near, never our own hull');
 assert.equal(probe.engineState().filter((e) => e.lod === 'own').length, 1, 'exactly one own rig');

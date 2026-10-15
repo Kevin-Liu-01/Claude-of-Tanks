@@ -4,9 +4,9 @@ import { ALLOWED_BORE_METHODS, inventoryOne } from './muzzle-bore-inventory.mjs'
 
 // Representative formerly capped tubes, shaped brakes and low-detail mouths.
 // Their outer source geometry remains covered by separate profile regressions.
-const CONVERTED = ['k2b', 'k1a1', 'type10', 'spz_puma', 'chieftain_mk10_x',
-  'ariete_c1_x', 'ariete_c2_x', 'ares_apc_x', 'leo2a6_x', 'amx30_x', 'jpz_e100_x', 'amx40_x',
-  't72b3m_x', 'challenger1_x', 't72bu_x', 'chieftain5_x', 't90_x', 't90a_burlak_x', 't90ms_x', 'm60a2'];
+const CONVERTED = ['k2b', 'k1e1', 'type10_tk_x', 'spz_puma', 'chieftain_mk10',
+  'c1_ariete', 'c2_ariete', 'ares_apc', 'leo2a6', 'amx30b', 'jpz_e100', 'amx40',
+  't72b3m_2016', 'challenger1_mk3', 't72bu', 'chieftain5', 't90', 't90a_burlak', 't90ms_tagil', 'm60a2'];
 for (const id of CONVERTED) {
   for (const quality of ['high', 'low']) {
     const row = inventoryOne(id, quality);
@@ -22,7 +22,7 @@ for (const id of CONVERTED) {
 
 // A declared physical bore keeps its measured recess and passes the seat policy under node with the
 // same assembled disc-depth witness the browser probe adds.
-const physical = inventoryOne('kf41_lynx_x', 'high');
+const physical = inventoryOne('kf41_lynx', 'high');
 assert.equal(physical.method, 'physical-declared');
 assert.ok(physical.recess.carvedTris > 0 && Math.abs(physical.recess.deepestM - .11 * .90) < .002,
   'KF41 keeps its measured 11 cm recess at the owner-approved 0.90 vehicle scale');
@@ -33,8 +33,8 @@ assert.equal(physical.fallback.total, physical.fallback.disc, 'the physical mout
 assert.equal(physical.fallback.disc, 0, 'the real recessed floor needs no second dark overlay');
 
 // Formerly capped tubes are carved; sealed launch canisters are not cannons.
-assert.equal(inventoryOne('m1a2', 'high').method, 'physical-carved');
-assert.equal(inventoryOne('aft10_x', 'high').method, 'none');
+assert.equal(inventoryOne('m1a1_abrams_hc', 'high').method, 'physical-carved');
+assert.equal(inventoryOne('aft10', 'high').method, 'none');
 for (const method of ['physical-carved', 'physical-declared', 'none']) assert.ok(ALLOWED_BORE_METHODS.includes(method));
 assert.ok(!ALLOWED_BORE_METHODS.includes('fallback-only') && !ALLOWED_BORE_METHODS.includes('authored-recess') && !ALLOWED_BORE_METHODS.includes('carved-undeclared'),
   'a recess carved under the fallback is never an allowed method');

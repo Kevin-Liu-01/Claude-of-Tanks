@@ -200,5 +200,5 @@ export function buildCv90105TmlX(P: TankBuilderPort): void {
   buildTmlCannon(P);
   preserveSourceStudyGunMountAppearance(P);
   P.topY=2.73-py;
-  P.hullG.userData.xRebuild={candidate:'cv90105_tml_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'cv90105_tml',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

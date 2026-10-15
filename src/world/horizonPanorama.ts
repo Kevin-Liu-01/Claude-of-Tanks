@@ -888,8 +888,8 @@ vec3 noised(vec2 x) {
   vec2 u = w * w * w * (w * (w * 6.0 - 15.0) + 10.0);
   vec2 du = 30.0 * w * w * (w * (w - 2.0) + 1.0);
   float a = hash12(p), b = hash12(p + vec2(1.0, 0.0)), c = hash12(p + vec2(0.0, 1.0)), d = hash12(p + vec2(1.0, 1.0));
-  float k1 = b - a, k2 = c - a, k4 = a - b - c + d;
-  return vec3(-1.0 + 2.0 * (a + k1 * u.x + k2 * u.y + k4 * u.x * u.y), 2.0 * du * vec2(k1 + k4 * u.y, k2 + k4 * u.x));
+  float k1 = b - a, xk2_black_panther = c - a, k4 = a - b - c + d;
+  return vec3(-1.0 + 2.0 * (a + k1 * u.x + xk2_black_panther * u.y + k4 * u.x * u.y), 2.0 * du * vec2(k1 + k4 * u.y, xk2_black_panther + k4 * u.x));
 }
 const mat2 ROT = mat2(1.6, 1.2, -1.2, 1.6);
 `;

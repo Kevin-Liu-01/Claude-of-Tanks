@@ -24,7 +24,7 @@ return shadows;}
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 // The frozen gun / non-gun payload digests and gun-triangle counts (pinned per quality and camo pattern) are
-// retired: whole-tank change detection of type96b_x, including the 2026-10-01 forward smoke correction, is the
+// retired: whole-tank change detection of type96b, including the 2026-10-01 forward smoke correction, is the
 // fleet geometry ledger's. Kept: the boot is gun-owned and the tube recoil-owned at every legal pitch/yaw, the
 // measured boot envelope and seat, the wrong-parent control, distance-policy survival and the authored
 // shadow-proxy contract (+ its two rejecting controls).
@@ -33,9 +33,9 @@ const CASES=[{quality:'high',camoPattern:'factory'},{quality:'high',camoPattern:
 
 const near=(a,b,label,eps=1e-6)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=eps,`${label}: ${a} vs ${b}`);
 const restore=installCanvasFixture(),rows=[];
-await ensureInteriorFills(['type96b_x']);
+await ensureInteriorFills(['type96b']);
 try {for(const {quality,camoPattern} of CASES){
- const tank=createTank('type96b_x',null,{quality,proceduralOnly:true,materialMode:'rendered',geometryReceipt:false,batchStatic:false,decor:true,camoPattern,camoSeed:4242});
+ const tank=createTank('type96b',null,{quality,proceduralOnly:true,materialMode:'rendered',geometryReceipt:false,batchStatic:false,decor:true,camoPattern,camoSeed:4242});
  try {
   proxies(tank.root);
   const shadow=tank.root.getObjectByName('procShadow_hull');
@@ -55,7 +55,7 @@ try {for(const {quality,camoPattern} of CASES){
   mount.geometry.computeBoundingBox();
   const bounds=mount.geometry.boundingBox;
   for(const [actual,value] of [[bounds.min.x,-.26],[bounds.max.x,.26],[bounds.min.y,-.2782],[bounds.max.y,.3518],[bounds.min.z,-.4],[bounds.max.z,.351]])near(actual,value,'Object_6 finite measured boot envelope');
-  const spec=getSpec('type96b_x');assert.equal(spec.gunDepressionDeg,7);assert.equal(spec.gunElevationDeg,14);
+  const spec=getSpec('type96b');assert.equal(spec.gunDepressionDeg,7);assert.equal(spec.gunElevationDeg,14);
   const state=createTankState(spec,new T.Vector3(),0);
   const inGun=(mesh,local)=>gun.worldToLocal(mesh.localToWorld(local.clone()));
   const witness=new T.Vector3().fromBufferAttribute(mount.geometry.attributes.position,0);

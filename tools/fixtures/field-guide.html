@@ -6,7 +6,7 @@ import {setLocale} from '/src/ui/i18n.ts';
 import {createInfoButton} from '/src/ui/contextInfo.ts';
 import {INFO_GUIDE_CAPTURES} from '/src/ui/infoGuideCaptures.ts';
 setLocale(new URLSearchParams(location.search).get('locale')||'en-US');installResponsiveLayout();
-let vehicle={id:'m1a2_x',name:'M1A2 Abrams'};
+let vehicle={id:'m1a2_abrams',name:'M1A2 Abrams'};
 for(const id of Object.keys(INFO_GUIDE_CAPTURES)){
  const button=createInfoButton({guide:id,title:id,vehicle:()=>vehicle});button.dataset.chapter=id;button.textContent=id;document.querySelector('#chapters').append(button);
 }

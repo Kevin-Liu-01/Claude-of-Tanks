@@ -7,7 +7,7 @@ import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 // Original source and measurement hashes live in the Kurg reference packet.
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed frame at this factor; the calipers stay in the source frame and every probe maps them by `f`.
-const f = VEHICLE_SIZE_FACTORS.kurganets25_x ?? 1, at = p => p.map(v => v * f);
+const f = VEHICLE_SIZE_FACTORS.kurganets25 ?? 1, at = p => p.map(v => v * f);
 function visibleHit(root, origin, direction) {
   return new THREE.Raycaster(new THREE.Vector3(...origin), new THREE.Vector3(...direction))
     .intersectObject(root, true).find(hit => {
@@ -39,7 +39,7 @@ function verifyMasts(root) {
 }
 let count = 0;
 for (const quality of ['high','low']) {
-  const tank = createTank('kurganets25_x', null, { proceduralOnly:true, quality, geometryReceipt:true, camoSeed:4242 });
+  const tank = createTank('kurganets25', null, { proceduralOnly:true, quality, geometryReceipt:true, camoSeed:4242 });
   try {
     tank.root.updateMatrixWorld(true);verifyMasts(tank.root);
     for (const side of [-1,1]) for (const z of [-2.82,-1.70,-.58,.54,1.66,2.76]) for (const y of [1.08,1.62]) {

@@ -13,9 +13,9 @@ import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 // tire-opening, skirt-finish, T-90 fittings and Burlak side-finish inverses that reached them are gone;
 // the fleet geometry ledger owns whole-tank change detection. Recipe, seating, grid, gap, seam and
 // projectile contracts below run on the actual registered specs and native models.
-const EXPECTED_STATS={t72b_1987_x:[8,8,8],t80u_x:[8,8,8],
-  t72b3_x:[8,8,8],t72b3m_x:[8,8,8],t72bu_x:[8,6,6],t90_x:[8,7,7],
-  t90a_burlak_x:[8,6,6],t90ms_x:[8,6,6]};
+const EXPECTED_STATS={t72b_1987:[8,8,8],t80u:[8,8,8],
+  t72b3:[8,8,8],t72b3m_2016:[8,8,8],t72bu:[8,6,6],t90:[8,7,7],
+  t90a_burlak:[8,6,6],t90ms_tagil:[8,6,6]};
 const EMPTY={pos:new THREE.Vector3(),yaw:0,pitch:0,roll:0,turretYaw:0,gunPitch:0};
 const vector=p=>new THREE.Vector3(...p);
 const owned=p=>p.kind==='spaced'&&!p.era&&(/^skirt(?:_rubber)?_[LR]$/.test(p.name)||p.name==='slat_cage');
@@ -67,13 +67,13 @@ function metadataInvariant(spec){
   for(const p of fields(spec)){
     assertOutline(p);assert.deepEqual(stats(p),p.name==='slat_cage'?[10,8,8]:EXPECTED_STATS[spec.id]);
   }
-  if(spec.id!=='t90ms_x')assert.ok(!fields(spec).some(p=>p.name==='slat_cage'),'no invented rear cage on absent source screen');
+  if(spec.id!=='t90ms_tagil')assert.ok(!fields(spec).some(p=>p.name==='slat_cage'),'no invented rear cage on absent source screen');
   const once=JSON.stringify(fields(spec));applySourceXSovietAuxArmor(spec,spec.id);
   assert.equal(JSON.stringify(fields(spec)),once,'sync is idempotent, not cumulative protection');
 }
 
 function nativeFacets(t,spec){
-  const meshes=['hullRubber','hullDetail','hullFixedPaintedBodywork',...(spec.id==='t90a_burlak_x'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
+  const meshes=['hullRubber','hullDetail','hullFixedPaintedBodywork',...(spec.id==='t90a_burlak'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
   let count=0;
   for(const p of fields(spec)){
     const r=finiteRay(p);
@@ -89,7 +89,7 @@ function nativeFacets(t,spec){
 }
 
 function bilateralGrid(t,spec){
-  const meshes=['hullRubber','hullDetail','hullFixedPaintedBodywork',...(spec.id==='t90a_burlak_x'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
+  const meshes=['hullRubber','hullDetail','hullFixedPaintedBodywork',...(spec.id==='t90a_burlak'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
   let positive=0,negative=0;
   for(const side of [-1,1])for(const z of [-2.75,-2.2,-1.5,-.7,0,.6,1.3,2,2.7])for(const y of [.58,.72,.86,1,1.13,1.30]){
     const from=vector([side*2.3,y,z]),to=vector([side*1.5,y,z]);
@@ -105,21 +105,21 @@ function bilateralGrid(t,spec){
   return{positive,negative};
 }
 
-const GAP={t72b_1987_x:[.68,-2,1.70],t80u_x:[.70,0,1.66],
-  t72b3_x:[1.185,0,1.64],t72b3m_x:[1.1,-2.38,1.90],t72bu_x:[1,-1.895,1.70],
-  t90_x:[1,.16675,1.65],t90a_burlak_x:[1,-1.0835,1.70],t90ms_x:[1.36,-2.5,1.80]};
+const GAP={t72b_1987:[.68,-2,1.70],t80u:[.70,0,1.66],
+  t72b3:[1.185,0,1.64],t72b3m_2016:[1.1,-2.38,1.90],t72bu:[1,-1.895,1.70],
+  t90:[1,.16675,1.65],t90a_burlak:[1,-1.0835,1.70],t90ms_tagil:[1.36,-2.5,1.80]};
 function gaps(spec){
   const[y,z,inner]=GAP[spec.id];
   for(const side of [-1,1])assert.equal(traceTank(vector([side*2.3,y,z]),vector([side*inner,y,z]),EMPTY,
     isolated(spec)).length,0,`${spec.id}: real hem/inter-panel/rail gap remains unprotected`);
-  if(['t72bu_x','t90_x','t90a_burlak_x','t90ms_x'].includes(spec.id)){
+  if(['t72bu','t90','t90a_burlak','t90ms_tagil'].includes(spec.id)){
     const ray=[vector([0,.88,-3.40]),vector([0,.88,-3.28])];
     assert.equal(traceTank(...ray,EMPTY,isolated(spec)).length,0,'old rear slat rectangle is not retained in open space');
   }
 }
 
 function facetSeam(spec){
-  if(spec.id!=='t90_x')return;
+  if(spec.id!=='t90')return;
   const tris=fields(spec).filter(p=>p.verts.length===3);
   for(let i=1;i<tris.length;i++){
     const a=tris[i-1],b=tris[i];if(a.surfaceGroup!==b.surfaceGroup)continue;
@@ -158,13 +158,13 @@ function liveProtection(spec){
 // donor record's skirt planes (x +-1.83, superseded MV-era model) are dropped. Prove the rebuild registers no spaced
 // skirt and that the former ghost plane, outside the side ERA fields, receives no protection from any plate.
 {
-  const t62=getSpec('t62mv1_x');
-  assert.ok(!SOVIET_AUX_IDS.includes('t62mv1_x'),'t62mv1_x: no source-study skirt recipe on the rebuilt chassis');
-  assert.deepEqual(fields(t62),[],'t62mv1_x: no spaced skirt plate without native skirt stock');
+  const t62=getSpec('t62mv1');
+  assert.ok(!SOVIET_AUX_IDS.includes('t62mv1'),'t62mv1: no source-study skirt recipe on the rebuilt chassis');
+  assert.deepEqual(fields(t62),[],'t62mv1: no spaced skirt plate without native skirt stock');
   for(const side of [-1,1])for(const z of [-2.75,-1.5,0,1.3,2.7])for(const y of [.55,.70,.85]){
     const hits=traceTank(vector([side*2.3,y,z]),vector([side*1.75,y,z]),EMPTY,{...t62.armor,turretPlates:[],
       collisionShells:{hull:[],turret:[]},modules:[],crew:[],trackShapes:[],gunBarrel:null});
-    assert.equal(hits.length,0,`t62mv1_x/${side}/${z}/${y}: open air beside the wheels is not armour`);
+    assert.equal(hits.length,0,`t62mv1/${side}/${z}/${y}: open air beside the wheels is not armour`);
   }
 }
 

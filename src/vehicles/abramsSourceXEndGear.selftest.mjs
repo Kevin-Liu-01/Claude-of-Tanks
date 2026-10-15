@@ -69,14 +69,14 @@ function rearWrapWitnesses(tank, label) {
   return result;
 }
 for (const quality of ['high', 'low']) for (const batchStatic of [false, true]) {
-  const tank = createTank('m1a2_sepv2_x', null,
+  const tank = createTank('m1a2_abrams_sepv2', null,
     { proceduralOnly: true, geometryReceipt: true, quality, batchStatic });
   try {
     tank.root.updateMatrixWorld(true);
     const label = `${quality}/${batchStatic ? 'batched' : 'separate'}`;
     idlerWitnesses(tank, label);
     const measurements = rearWrapWitnesses(tank, label);
-    const state = createTankState(getSpec('m1a2_sepv2_x'), new THREE.Vector3(), 0);
+    const state = createTankState(getSpec('m1a2_abrams_sepv2'), new THREE.Vector3(), 0);
     state.trackScroll.l = .37; state.trackScroll.r = -.21;
     for (let k = 0; k < 4; k++) tank.syncFromState(state, 1 / 30, 20);
     tank.root.updateMatrixWorld(true);

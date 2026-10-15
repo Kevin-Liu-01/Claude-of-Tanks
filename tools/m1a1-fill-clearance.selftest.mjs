@@ -14,7 +14,7 @@ assert.ok(sweptTriangleSolid([[.2,.2,.5],[.3,.2,.5],[.2,.3,.5]])
 assert.ok(!swept.intersects([1.01,0,-.5],[1.02,.1,-.4]),'unrelated nearby stock is retained');
 assert.ok(sweptTriangleSolid(unit,[0,0,-1],.021).intersects([1.01,0,-.5],[1.02,.1,-.4]),
   'continuous angular chord padding protects the full cell, including its edge');
-assert.equal(createM1A1FillClearance('m1a2_x',null),null,'modern Abrams does not receive the legacy policy');
+assert.equal(createM1A1FillClearance('m1a2_abrams',null),null,'modern Abrams does not receive the legacy policy');
 
 const tank=createTank('m1a1',null,{proceduralOnly:true,quality:'high',geometryReceipt:true,batchStatic:false});
 try {

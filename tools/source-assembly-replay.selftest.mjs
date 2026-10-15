@@ -20,13 +20,13 @@ const originalArieteFrame = {
   fused: true, turret: [0, 1.306227824, .328028885], gun: [0, 1.651499209, 1.3415539],
 };
 function restoreArieteRegistration(frames) {
-  assert.deepEqual(frames.ariete_c1_x, {
+  assert.deepEqual(frames.c1_ariete, {
     ...originalArieteFrame,
     sha256: '1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177',
     turret: originalArieteFrame.turret.map(v => v * (1.12 * 1.10)),
     gun: originalArieteFrame.gun.map(v => v * (1.12 * 1.10)),
   }, 'only the exact owner-directed 1.232 C1 source frame may replace its historical registration');
-  return { ...frames, ariete_c1_x: structuredClone(originalArieteFrame) };
+  return { ...frames, c1_ariete: structuredClone(originalArieteFrame) };
 }
 function checkArieteRegistrationRecipe() {
   const originalBytes = fs.readFileSync(path.join(root, 'docs/history/research/second-wave-registrations/ariete_c1_x.json'));
@@ -144,7 +144,7 @@ try {
     const wrong = structuredClone(rigid); mutate(wrong);
     await assert.rejects(replaySourceAssembly(wrong, { root: temp }), expected);
   }
-  const legacyIds = ["aft10_x", "ajax_x", "amx30_x", "amx40_x", "ariete_c1_x", "challenger1_x", "chieftain5_x", "chieftain_mk10_x", "cv90105_tml_x", "cv90_mkiv_x", "jpz_e100_x", "k1a1_x", "kf41_lynx_x", "kf51_x", "leclerc_classic_x", "leclerc_x", "leo2a5_x", "leo2a6_x", "m1a2_sepv2_x", "sabra_mk2_x", "strv122_x", "t62mv1_x", "t72b3_x", "t72b3m_x", "t72b_1987_x", "t72bu_x", "t80u_x", "t90_x", "t90a_burlak_x", "t90a_x", "t90m_x", "t90ms_x", "t90sm_x", "type10_x", "type90_x", "type96b_x", "ztz100_x"];
+  const legacyIds = ["aft10", "ajax", "amx30b", "amx40", "c1_ariete", "challenger1_mk3", "chieftain5", "chieftain_mk10", "cv90105_tml", "cv90_mk4", "jpz_e100", "k1a1", "kf41_lynx", "kf51_panther", "amx56", "leclerc_xlr", "leo2a5", "leo2a6", "m1a2_abrams_sepv2", "sabra_mk2", "strv122", "t62mv1", "t72b3", "t72b3m_2016", "t72b_1987", "t72bu", "t80u", "t90", "t90a_burlak", "t90a", "t90m", "t90ms_tagil", "t90sm", "type10", "type90", "type96b", "ztz100"];
   // Raw assembly/hash evidence is immutable; the explicit owner size target
   // is a separate frame layer, independently asserted against every entry.
   const legacy = Object.fromEntries(legacyIds.map(id => [id, AUTHORING_SOURCE_WORLD_FRAMES[id]]));
@@ -154,17 +154,17 @@ try {
   for (const mutate of [frame => { frame.sha256 = originalArieteFrame.sha256; },
     frame => { frame.turret[1] += .001; }, frame => { frame.gun[2] *= 1.01; },
     frame => { frame.fused = false; }]) {
-    const wrong = structuredClone(legacy); mutate(wrong.ariete_c1_x);
+    const wrong = structuredClone(legacy); mutate(wrong.c1_ariete);
     assert.throws(() => restoreArieteRegistration(wrong), assert.AssertionError);
   }
-  assert.equal(SOURCE_WORLD_FRAMES.ariete_c2_x, undefined,
+  assert.equal(SOURCE_WORLD_FRAMES.c2_ariete, undefined,
     'the new C2 concept must not inherit a whole-model C1 source certificate');
   for (const [id, assembly] of Object.entries(SUPPLIED_SOURCE_ASSEMBLIES)) {
     const assembledFrame={ ...assembly.originalFrame, sha256: assembly.sha256 };
-    const currentFrame=withOwnerSizeTargets({[id]:id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.frame:assembledFrame})[id];
+    const currentFrame=withOwnerSizeTargets({[id]:id==='griffin50mm'?GRIFFIN_PROPORTION_REFERENCE.frame:assembledFrame})[id];
     assert.deepEqual(SOURCE_WORLD_FRAMES[id], currentFrame, 'only approved source transformations');
     const reference = SUPPLIED_SOURCE_REFERENCE_OVERRIDES[id];
-    assert.equal(reference.glb.path, id==='griffin50_x'?GRIFFIN_PROPORTION_REFERENCE.path:assembly.path);
+    assert.equal(reference.glb.path, id==='griffin50mm'?GRIFFIN_PROPORTION_REFERENCE.path:assembly.path);
     assert.equal(reference.qualityBar, 'exemplar');
     assert.equal(reference.glb.fixedMount, true);
     assert.equal(reference.glb.componentMasks, false);
@@ -190,7 +190,7 @@ try {
     fs.writeFileSync(recipePath, Buffer.concat([recipeBytes, Buffer.from(' ')]));
     await assert.rejects(prepareRegisteredSourceAssembly(id, { root: temp }), /approved source recipe hash/);
   }
-  assert.equal(assembledSourcePath('m1a2', 'unchanged.glb'), 'unchanged.glb');
+  assert.equal(assembledSourcePath('m1a1_abrams_hc', 'unchanged.glb'), 'unchanged.glb');
   for (const [id, reference] of Object.entries(SUPPLIED_SOURCE_REFERENCE_OVERRIDES)) {
     if (!SUPPLIED_SOURCE_ASSEMBLIES[id]) assert.equal(reference.glb.path, `/models/community-candidates/${id}_source.glb`);
   }

@@ -21,7 +21,7 @@ assert.doesNotMatch(dressing, /garageCrewFigures|addCrewScene|buildCrewSceneGeom
   'the dressing builds no people and names nothing after them');
 assert.doesNotMatch(dressing, /weld_glow|weld_arc_pool|AdditiveBlending[\s\S]{0,200}weldTip/,
   'no weld arc burns without a welder');
-for (const kit of ['burlak', 'k2', 'yard']) {
+for (const kit of ['burlak', 'xk2_black_panther', 'yard']) {
   assert.match(dressing, new RegExp(`bayKitRoot\\('${kit}'`), `the ${kit} bay keeps its work-in-progress kit`);
 }
 
@@ -36,7 +36,7 @@ function kitToWorkshop(kit, point, variant) {
   p = { x: p.x + kit.frame.x, z: p.z + kit.frame.z };
   if (kit.bay === 'burlak') {
     p = { x: p.x + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.x, z: p.z + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.z };
-  } else if (kit.bay === 'k2') {
+  } else if (kit.bay === 'xk2_black_panther') {
     p = rotate(p.x, p.z, Math.PI);
     p = { x: p.x - 0.35, z: p.z - 0.35 };
   }
@@ -49,7 +49,7 @@ const KITS = [
   // the rolling stand at the Burlak's turret ring
   { label: 'Burlak work stand', bay: 'burlak', frame: { x: 17.8, z: -15.5, yaw: -0.55 }, feet: standFeet(2.85, -0.45) },
   // the rolled K2's parked hot-work corner: the stand, the screen's feet and the welding set
-  { label: 'K2 hot-work kit', bay: 'k2', frame: { x: -16.25, z: -16.85, yaw: 0.35 },
+  { label: 'K2 hot-work kit', bay: 'xk2_black_panther', frame: { x: -16.25, z: -16.85, yaw: 0.35 },
     feet: [...standFeet(0.62, 0.25), [-0.05, -1.2], [1.95, -1.2], [2.35, 0.95]] },
   // the pulled power pack's four legs
   { label: 'power pack stand', bay: 'yard', frame: { x: 0, z: 0, yaw: 0 },

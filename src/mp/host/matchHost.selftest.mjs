@@ -70,9 +70,9 @@ const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).dige
 const tokenFor = (seat, playerId, team, specId, secret = hostSecret) => signSeatToken(secret, { v: 1, roomId: 'ROOM01', seat, playerId, name: playerId, team, specId, iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
 // the host spawns 700 m from bob's team: beyond every spotting range, so bob never sees its hull (the migration seed's premise)
 const seats = [
-  { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a2', spawn: { x: -250, z: -250, yaw: 0 } },
-  { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m', spawn: { x: 250, z: 250, yaw: Math.PI } },
-  { seat: 2, playerId: 'eve', name: 'Eve', team: 'bravo', specId: 't90m', spawn: { x: 260, z: 250, yaw: Math.PI } },
+  { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: -250, z: -250, yaw: 0 } },
+  { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90am', spawn: { x: 250, z: 250, yaw: Math.PI } },
+  { seat: 2, playerId: 'eve', name: 'Eve', team: 'bravo', specId: 't90am', spawn: { x: 260, z: 250, yaw: Math.PI } },
 ];
 const config = { roomId: 'ROOM01', matchId, generation: 1, mapId: 'verdant', mode: 'standard', seed: 5, seats, bots: [], countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: null };
 
@@ -112,7 +112,7 @@ assert.equal(reports[0].verdict, undefined);
 // ---- the host's own seat over the loopback pair (behind the migrating transport, driving: its hull is the unseen one the migration seed is for)
 const hostMigrating = new MigratingTransport(host.transport);
 const hostClient = new MatchClient({
-  transport: hostMigrating, token: tokenFor(0, 'host', 'alpha', 'm1a2'), clock: time.clock,
+  transport: hostMigrating, token: tokenFor(0, 'host', 'alpha', 'm1a1_abrams_hc'), clock: time.clock,
   controls: () => ({ throttle: 1, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }),
 });
 clients.push(hostClient);
@@ -125,7 +125,7 @@ assert.equal(hostClient.roster.length, 3);
 // ---- a peer through WebRTC
 const bobRtc = new WebRtcTransport({ signaler: relay.signalerFor('bob'), createPeerConnection: world.createPeerConnection, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, random: () => 0.5 });
 const bobTransport = new MigratingTransport(bobRtc);
-const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'bravo', 't90m'), clock: time.clock });
+const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'bravo', 't90am'), clock: time.clock });
 clients.push(bobClient);
 bobClient.connect();
 await advance(TICK_MS * 12);
@@ -137,7 +137,7 @@ assert.equal(host.acceptor.peers.get('bob').label, 'peer1');
 
 // ---- a bad token is refused by the core's Web Crypto gate with the service's reason
 const eveRtc = new WebRtcTransport({ signaler: relay.signalerFor('eve'), createPeerConnection: world.createPeerConnection, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, random: () => 0.5 });
-const eveClient = new MatchClient({ transport: eveRtc, token: tokenFor(2, 'eve', 'bravo', 't90m', 'the-wrong-secret-0123456789abcdef'), clock: time.clock });
+const eveClient = new MatchClient({ transport: eveRtc, token: tokenFor(2, 'eve', 'bravo', 't90am', 'the-wrong-secret-0123456789abcdef'), clock: time.clock });
 clients.push(eveClient);
 eveClient.connect();
 await advance(TICK_MS * 12);

@@ -112,7 +112,7 @@ function countWorkshopTriangles(root: THREE.Object3D): number {
 }
 
 const WORKSHOP_FLEET_IDS = Object.freeze([
-  't90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2',
+  't90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther',
 ] as const);
 const WORKSHOP_FLEET_ID_SET = new Set<string>(WORKSHOP_FLEET_IDS);
 const WORKSHOP_PRESENTATION_OPTIONS = Object.freeze({
@@ -127,7 +127,7 @@ const WORKSHOP_PRESENTATION_OPTIONS = Object.freeze({
   deferStaticBatch: true,
 } as const);
 const WORKSHOP_CHUNK_VEHICLE_IDS = Object.freeze([
-  null, 't90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2', null, null,
+  null, 't90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther', null, null,
 ] as const);
 const WORKSHOP_CHUNK_LABELS = Object.freeze([
   'core', 'burlak-bay', 'abrams-bay', 'leopard-a5nl-bay', 't90m-bay', 'k2-bay',
@@ -863,7 +863,7 @@ export function createGarageDressing(
   function placeAuthoredServiceBay(
     firstChildIndex: number,
     bayId: 'abrams_welding' | 'rolled_k2',
-    sourceVehicleId: 'm1a2' | 'k2',
+    sourceVehicleId: 'm1a1_abrams_hc' | 'xk2_black_panther',
   ): THREE.Group {
     const authoredChildren = legacyVerdantRoot.children.slice(firstChildIndex);
     const bayRoot = markModernPart(
@@ -1107,7 +1107,7 @@ export function createGarageDressing(
   }
 
   async function createLegacyVisual(
-    specId: 't90a_burlak' | 'm1a2' | 'leo2a5_a5nl' | 't90m' | 'k2',
+    specId: 't90a_burlak_proto' | 'm1a1_abrams_hc' | 'leo2a4m' | 't90am' | 'xk2_black_panther',
     camoSeed: number,
   ): Promise<GarageWorkshopVisual> {
     if (preparedVisual?.specId === specId) return preparedVisual.visual;
@@ -1216,7 +1216,7 @@ export function createGarageDressing(
     x: number,
     seed: number,
   ): THREE.Group {
-    const sourceId = variant === 'dshk' ? 't90m' : 'm1a2';
+    const sourceId = variant === 'dshk' ? 't90am' : 'm1a1_abrams_hc';
     const component = variant === 'dshk' ? 'dshk_service_mount' : 'm2_service_mount';
     const mg = markModernPart(new THREE.Group(), sourceId, component);
     mg.position.set(x, 1.02, 0);
@@ -1482,7 +1482,7 @@ export function createGarageDressing(
       box.union(local);
     });
     if (box.isEmpty()) return;
-    const anatomy = markModernPart(new THREE.Group(), 'k2', 'stripped_hull_anatomy');
+    const anatomy = markModernPart(new THREE.Group(), 'xk2_black_panther', 'stripped_hull_anatomy');
     anatomy.name = 'k2_stripped_hull_anatomy';
     tank.add(anatomy);
     const halfWidth = (box.max.x - box.min.x) / 2;
@@ -1549,12 +1549,12 @@ export function createGarageDressing(
     }
     const wheelTires = markModernPart(
       new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
-      'k2',
+      'xk2_black_panther',
       'road_wheel_tires',
     );
     const wheelDiscs = markModernPart(
       new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
-      'k2',
+      'xk2_black_panther',
       'road_wheel_discs',
     );
     const wheelRotation = new THREE.Euler(0, 0, Math.PI / 2);
@@ -1575,7 +1575,7 @@ export function createGarageDressing(
 
   function addServiceRoadWheelDolly(
     parent: THREE.Object3D,
-    sourceVehicleId: 't90a_burlak' | 'm1a2',
+    sourceVehicleId: 't90a_burlak_proto' | 'm1a1_abrams_hc',
     tires: THREE.Mesh | undefined,
     discs: THREE.Mesh | undefined,
     x: number,
@@ -1646,7 +1646,7 @@ export function createGarageDressing(
 
   function addK2TrackShoePallet(pads: THREE.Mesh | undefined): void {
     if (!pads?.geometry) return;
-    const pallet = markModernPart(new THREE.Group(), 'k2', 'track_shoe_pallet');
+    const pallet = markModernPart(new THREE.Group(), 'xk2_black_panther', 'track_shoe_pallet');
     pallet.position.set(-21.15, 0, -13.45);
     pallet.rotation.y = -0.12;
     legacyVerdantRoot.add(pallet);
@@ -1654,7 +1654,7 @@ export function createGarageDressing(
       0, 0.06, 0, 0, 0, 0, 1, pallet);
     const shoes = markModernPart(
       new THREE.InstancedMesh(pads.geometry, pads.material, 8),
-      'k2',
+      'xk2_black_panther',
       'track_shoes',
     );
     const shoeRotation = new THREE.Euler();
@@ -2600,7 +2600,7 @@ export function createGarageDressing(
     // --- FLOOR: oil and skids (2026-10-10, wave 357: the dashed bay outlines and the painted spur lane read as
     // "car-park lane dashes" in every Garage, so the floors keep only their working history) ----------------------
     abramsServiceFloorRoot = markModernPart(
-      new THREE.Group(), 'm1a2', 'welding_service_floor',
+      new THREE.Group(), 'm1a1_abrams_hc', 'welding_service_floor',
     );
     abramsServiceFloorRoot.name = 'garage_abrams_welding_service_floor';
     abramsServiceFloorRoot.userData.floorAssetsMoveWithBay = true;
@@ -2660,9 +2660,9 @@ export function createGarageDressing(
   // ==========================================================================
   chunks.push(async function buildOriginalVerdantBurlakBay(stillValid) {
     const firstBayChildIndex = legacyVerdantRoot.children.length;
-    const visual = await createLegacyVisual('t90a_burlak', 777);
+    const visual = await createLegacyVisual('t90a_burlak_proto', 777);
     requireGarageWork(stillValid);
-    const tank = markModernPart(visual.root, 't90a_burlak', 'gantry_repair_vehicle');
+    const tank = markModernPart(visual.root, 't90a_burlak_proto', 'gantry_repair_vehicle');
     tank.name = 'dressing_tank_a';
     tank.rotation.y = -0.55;
     tank.position.set(17.8, 0.42, -15.5);
@@ -2831,7 +2831,7 @@ export function createGarageDressing(
         0, 0, Math.PI / 2, 1, jack, false);
     }
     addServiceRoadWheelDolly(
-      legacyVerdantRoot, 't90a_burlak', roadWheelTires, roadWheelDiscs,
+      legacyVerdantRoot, 't90a_burlak_proto', roadWheelTires, roadWheelDiscs,
       12.4, -15.0, -0.55 + Math.PI / 2,
     );
 
@@ -2845,7 +2845,7 @@ export function createGarageDressing(
     // one owner, then advance it ahead of Verdant's fixed scaffold uprights.
     const burlakBayChildren = legacyVerdantRoot.children.slice(firstBayChildIndex);
     const burlakBayRoot = markModernPart(
-      new THREE.Group(), 't90a_burlak', 'burlak_gantry_service_bay',
+      new THREE.Group(), 't90a_burlak_proto', 'burlak_gantry_service_bay',
     );
     burlakBayRoot.name = 'garage_burlak_gantry_forward';
     burlakBayRoot.position.set(
@@ -2869,9 +2869,9 @@ export function createGarageDressing(
   // ==========================================================================
   chunks.push(async function buildAbramsAndOriginalVerdantBay(stillValid) {
     const firstBayChildIndex = legacyVerdantRoot.children.length;
-    const visual = await createLegacyVisual('m1a2', 1440);
+    const visual = await createLegacyVisual('m1a1_abrams_hc', 1440);
     requireGarageWork(stillValid);
-    const tank = markModernPart(visual.root, 'm1a2', 'skirt_repair_vehicle');
+    const tank = markModernPart(visual.root, 'm1a1_abrams_hc', 'skirt_repair_vehicle');
     tank.name = 'dressing_tank_b';
     tank.rotation.y = -2.03;
     tank.position.set(16.9, 0, 17.7);
@@ -2930,7 +2930,7 @@ export function createGarageDressing(
     pool.position.set(15.9, 0.03, 16.6);
     legacyVerdantRoot.add(pool);
     addServiceRoadWheelDolly(
-      legacyVerdantRoot, 'm1a2', roadWheelTires, roadWheelDiscs,
+      legacyVerdantRoot, 'm1a1_abrams_hc', roadWheelTires, roadWheelDiscs,
       12.7, 17.7, -2.03 + Math.PI / 2,
     );
 
@@ -2957,7 +2957,7 @@ export function createGarageDressing(
     // dolly, cable and carts: the half-turn and FLAMMABLE-wall offset in
     // Verdant, the station beside the camera outdoors.
     legacyVerdantRoot.add(abramsServiceFloorRoot);
-    placeAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
+    placeAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a1_abrams_hc');
   });
 
   // ==========================================================================
@@ -2966,14 +2966,14 @@ export function createGarageDressing(
   // instead of cloning the neighboring Abrams graph.
   // ==========================================================================
   chunks.push(async function buildLeopardA5NlMobilityTeardown(stillValid) {
-    const visual = await createLegacyVisual('leo2a5_a5nl', 1475);
+    const visual = await createLegacyVisual('leo2a4m', 1475);
     requireGarageWork(stillValid);
     const mobilityTeardownTank = markModernPart(
-      visual.root, 'leo2a5_a5nl', 'mobility_teardown_vehicle',
+      visual.root, 'leo2a4m', 'mobility_teardown_vehicle',
     );
 
     const leopardServiceBayRoot = markModernPart(
-      new THREE.Group(), 'leo2a5_a5nl', 'mobility_teardown_service_bay_owner',
+      new THREE.Group(), 'leo2a4m', 'mobility_teardown_service_bay_owner',
     );
     leopardServiceBayRoot.name = 'garage_leopard_a5nl_independent_service_bay';
     leopardServiceBayRoot.rotation.y = Math.PI;
@@ -2989,7 +2989,7 @@ export function createGarageDressing(
     // Preserve the established square and its complete maintenance story, but
     // source the hull, A5 wedge turret and removed road wheels from A5NL itself.
     const mobilityBay = markModernPart(
-      new THREE.Group(), 'leo2a5_a5nl', 'mobility_teardown_service_bay',
+      new THREE.Group(), 'leo2a4m', 'mobility_teardown_service_bay',
     );
     mobilityBay.name = 'garage_leopard_a5nl_mobility_teardown';
     mobilityBay.position.set(LEOPARD_MOBILITY_BAY_LOCAL.x, 0, LEOPARD_MOBILITY_BAY_LOCAL.z);
@@ -3021,7 +3021,7 @@ export function createGarageDressing(
     seatVisibleRoot(mobilityTeardownTank, 1.04);
 
     const lift = markModernPart(
-      new THREE.Group(), 'leo2a5_a5nl', 'connected_hull_lift',
+      new THREE.Group(), 'leo2a4m', 'connected_hull_lift',
     );
     lift.name = 'leopard_a5nl_mobility_connected_hull_lift';
     lift.userData.supportMode = 'four-post-connected-mobility-lift';
@@ -3055,7 +3055,7 @@ export function createGarageDressing(
     }
 
     const wheelRack = markModernPart(
-      new THREE.Group(), 'leo2a5_a5nl', 'removed_road_wheel_rack',
+      new THREE.Group(), 'leo2a4m', 'removed_road_wheel_rack',
     );
     wheelRack.name = 'leopard_a5nl_removed_road_wheel_rack';
     wheelRack.position.set(-2.92, 0, 0);
@@ -3083,14 +3083,14 @@ export function createGarageDressing(
         new THREE.InstancedMesh(
           roadWheelTires.geometry, roadWheelTires.material, removedWheelPositions.length,
         ),
-        'leo2a5_a5nl',
+        'leo2a4m',
         'removed_road_wheel_tires',
       );
       const removedDiscs = markModernPart(
         new THREE.InstancedMesh(
           roadWheelDiscs.geometry, roadWheelDiscs.material, removedWheelPositions.length,
         ),
-        'leo2a5_a5nl',
+        'leo2a4m',
         'removed_road_wheel_discs',
       );
       const wheelRotation = new THREE.Euler(0, 0, Math.PI / 2);
@@ -3110,7 +3110,7 @@ export function createGarageDressing(
       // The fleet Leopard's road-wheel "disc" is only its hub cap (the hull hides the rest on a running tank), so a
       // removed wheel read as a hollow hoop (wave 338). Fill each with its dished disc in the hub's paint.
       const fill = markModernPart(new THREE.InstancedMesh(leopardDiscFill(), roadWheelDiscs.material, removedWheelPositions.length),
-        'leo2a5_a5nl', 'removed_road_wheel_disc_fill');
+        'leo2a4m', 'removed_road_wheel_disc_fill');
       removedWheelPositions.forEach(([x, y, z], index) => {
         wheelMatrix.makeRotationFromEuler(wheelRotation).setPosition(x, y, z);
         fill.setMatrixAt(index, wheelMatrix);
@@ -3132,9 +3132,9 @@ export function createGarageDressing(
   // service rack.
   // ==========================================================================
   chunks.push(async function buildT90AndOriginalVerdantComponents(stillValid) {
-    const visual = await createLegacyVisual('t90m', 1540);
+    const visual = await createLegacyVisual('t90am', 1540);
     requireGarageWork(stillValid);
-    const tank = markModernPart(visual.root, 't90m', 'turret_cradle');
+    const tank = markModernPart(visual.root, 't90am', 'turret_cradle');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
     const gun = tank.getObjectByName('rig_gun');
@@ -3147,7 +3147,7 @@ export function createGarageDressing(
     legacyVerdantRoot.add(tank);
     seatVisibleRoot(tank, 0.50);
 
-    const cradle = markModernPart(new THREE.Group(), 't90m', 'turret_support');
+    const cradle = markModernPart(new THREE.Group(), 't90am', 'turret_support');
     cradle.position.set(-6.6, 0, 20.5);
     cradle.rotation.y = 2.4;
     legacyVerdantRoot.add(cradle);
@@ -3171,7 +3171,7 @@ export function createGarageDressing(
       0, 0, 0, 1, cradle);
     put(bearerGeometry, mat.timberDark, 0, 0.49, 0.70,
       0, 0, 0, 1, cradle);
-    placeGunRig(gun, 't90m', 2.75, 1.08, 21.39, 0.92);
+    placeGunRig(gun, 't90am', 2.75, 1.08, 21.39, 0.92);
     addBarrelStand(gun, 0.62, 'garage_t90m_barrel_stand');
 
     const turretMesh = turret?.getObjectByName('turretCloth') as THREE.Mesh | undefined;
@@ -3181,7 +3181,7 @@ export function createGarageDressing(
       [0.47, 0.35, 0.45], [0.48, 0.34, 0.43], [0.40, 0.31, 0.40],
       [0.28, 0.27, 0.34],
     ] as const;
-    const rack = markModernPart(new THREE.Group(), 't90m', 'relikt_service_rack');
+    const rack = markModernPart(new THREE.Group(), 't90am', 'relikt_service_rack');
     rack.position.set(-11.2, 0, 21.15);
     legacyVerdantRoot.add(rack);
     put(track(new THREE.BoxGeometry(2.7, 0.12, 0.90)), mat.timberDark,
@@ -3199,7 +3199,7 @@ export function createGarageDressing(
     const cassetteGeometry = track(new THREE.BoxGeometry(1, 1, 1));
     const cassettes = markModernPart(
       new THREE.InstancedMesh(cassetteGeometry, reliktMaterial, 21),
-      't90m',
+      't90am',
       'relikt_cassettes',
     );
     cassettes.userData.sourceGeometry = 'profiles/t90.ts:Proryv Relikt fan';
@@ -3247,9 +3247,9 @@ export function createGarageDressing(
   // ==========================================================================
   chunks.push(async function buildOriginalVerdantK2Teardown(stillValid) {
     const firstBayChildIndex = legacyVerdantRoot.children.length;
-    const visual = await createLegacyVisual('k2', 172);
+    const visual = await createLegacyVisual('xk2_black_panther', 172);
     requireGarageWork(stillValid);
-    const tank = markModernPart(visual.root, 'k2', 'side_hull');
+    const tank = markModernPart(visual.root, 'xk2_black_panther', 'side_hull');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
     const tires = tank.getObjectByName('gearRoadWheelTires') as THREE.Mesh | undefined;
@@ -3264,7 +3264,7 @@ export function createGarageDressing(
     // after seating, so the exposed parts never lift the hull off its saddles or the weld off the belly
     addK2StrippedAnatomy(tank, hull);
 
-    const cradle = markModernPart(new THREE.Group(), 'k2', 'hull_support');
+    const cradle = markModernPart(new THREE.Group(), 'xk2_black_panther', 'hull_support');
     cradle.position.set(-16.25, 0, -16.85);
     cradle.rotation.y = 0.35;
     legacyVerdantRoot.add(cradle);
@@ -3323,7 +3323,7 @@ export function createGarageDressing(
       const ringRadius = 2.4;
       const ringGeometry = track(new THREE.TorusGeometry(ringRadius, 0.12, 8, 56));
       const rollerGeometry = track(new THREE.CylinderGeometry(0.085, 0.085, 0.16, 12));
-      const rotisserie = markModernPart(new THREE.Group(), 'k2', 'hull_rotisserie');
+      const rotisserie = markModernPart(new THREE.Group(), 'xk2_black_panther', 'hull_rotisserie');
       rotisserie.name = 'k2_hull_rotisserie';
       rotisserie.userData.supportMode = 'two-ring-hull-rotisserie';
       legacyVerdantRoot.add(rotisserie);
@@ -3356,7 +3356,7 @@ export function createGarageDressing(
 
     // The rolled K2's hot-work corner, parked (2026-10-11: no people, so no arc): a rolling stand at the belly with the
     // torch laid on its deck, the welding set and its lead across the floor, the orange screen behind.
-    const k2Kit = bayKitRoot('k2', { x: -16.25, z: -16.85, yaw: 0.35 }, legacyVerdantRoot);
+    const k2Kit = bayKitRoot('xk2_black_panther', { x: -16.25, z: -16.85, yaw: 0.35 }, legacyVerdantRoot);
     addStandWithTray(k2Kit, 0.62, 0.25, 0.9);
     addWeldCurtain(k2Kit, 0.95, -1.2, 0);
     addParkedWeldingSet(k2Kit, new THREE.Vector3(2.35, 0, 0.95), Math.PI / 2,
@@ -3365,7 +3365,7 @@ export function createGarageDressing(
 
     const weaponRack = new THREE.Group();
     weaponRack.name = 'dressing_modern_machine_gun_service_rack';
-    weaponRack.userData.sourceVehicleIds = ['m1a2', 't90m'];
+    weaponRack.userData.sourceVehicleIds = ['m1a1_abrams_hc', 't90am'];
     weaponRack.userData.sourceEra = 'modern';
     weaponRack.userData.component = 'machine_gun_service_rack';
     weaponRack.position.set(-6.4, 0, -21.35);
@@ -3384,7 +3384,7 @@ export function createGarageDressing(
       0, 2.5, 0.9, '', legacyVerdantRoot);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
       0, 2.7, 0.8, '', legacyVerdantRoot);
-    placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
+    placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'xk2_black_panther');
   });
 
   // One canonical four-bay service set is shared across all ten environments.
@@ -3396,7 +3396,7 @@ export function createGarageDressing(
     group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.verdantOriginalExhibitCount = 5;
     group.userData.verdantOriginalExhibitIds = [
-      't90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2',
+      't90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther',
     ];
     group.userData.verdantOriginalSetPieces = [
       'dual_field_record_displays', 'multilevel_factory_mezzanine',
@@ -3409,9 +3409,9 @@ export function createGarageDressing(
       'road_wheel_stacks', 'track_shoe_pallet', 'weapon_service_rack',
     ];
     group.userData.workshopForwardCorrectionRad = Math.PI;
-    group.userData.workshopFamilies = ['burlak', 'abrams', 'leopard', 't90', 'k2'];
+    group.userData.workshopFamilies = ['burlak', 'abrams', 'leopard', 't90_1992', 'xk2_black_panther'];
     group.userData.workshopSourceVehicleIds = [
-      't90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2',
+      't90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther',
     ];
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];

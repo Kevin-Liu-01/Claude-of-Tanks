@@ -97,9 +97,9 @@ function fittingRecords(root) {
     if (!parts.length && typeof object.userData.fittingSlot === 'string') add(object, object.geometry);
   });
   // 2026-10-06 (accessory round 2): the shared machine gun's loaded feed moved the can from gunmetalAmmo to its
-  // own ammoCan slot and added a cartridge-belt slot: one more owned buffer per gun (m1a2 16 -> 17, challenger_3x 14 -> 15).
-  // 2026-10-08 (tank-accessories round 5): the m1a2 loader's American M2 is the shared Browning construction (its can and
-  // belt rounds in their own slots, as every shared gun's): one more owned buffer (m1a2 17 -> 18).
+  // own ammoCan slot and added a cartridge-belt slot: one more owned buffer per gun (m1a1_abrams_hc 16 -> 17, challenger3 14 -> 15).
+  // 2026-10-08 (tank-accessories round 5): the m1a1_abrams_hc loader's American M2 is the shared Browning construction (its can and
+  // belt rounds in their own slots, as every shared gun's): one more owned buffer (m1a1_abrams_hc 17 -> 18).
   assert.equal(records.size, root.getObjectByName('fitting_americanRws_standard') ? 18 : 15, 'all actual shared-kit mount and articulated weapon buffers');
   return records;
 }
@@ -115,7 +115,7 @@ async function nativeChild(reference) {
   const { getSpec } = await import('./specs.ts');
   const { createTankState } = await import('../sim/movement.ts');
   const results = []; let buffers = 0, detachedCases = 0, batchCases = 0;
-  for (const id of ['m1a2', 'challenger_3x']) for (const quality of ['high', 'low']) for (const batchStatic of [false, true]) {
+  for (const id of ['m1a1_abrams_hc', 'challenger3']) for (const quality of ['high', 'low']) for (const batchStatic of [false, true]) {
     const options = { quality, materialMode: 'geometry-only', proceduralOnly: true, camoSeed: 4242, decor: true,
       batchStatic, deferStaticBatch: !batchStatic, battleDetailLod: batchStatic };
     const a = createTank(id, null, options), b = createTank(id, null, options);
@@ -185,7 +185,7 @@ if (process.argv.includes('--native-child')) {
   };
   const before = run(true), after = run(false);
   assert.deepEqual(after, before, 'all native geometry/material/metadata/rig/instance/LOD results stay exact');
-  assert.equal(after.builds, 16); assert.equal(after.buffers, 264); // 8 builds x (18 m1a2 | 15 challenger_3x) x 2 visuals
+  assert.equal(after.builds, 16); assert.equal(after.buffers, 264); // 8 builds x (18 m1a1_abrams_hc | 15 challenger3) x 2 visuals
   assert.equal(after.detachedCases, 2); assert.equal(after.batchCases, 4);
   console.log(JSON.stringify({ test: 'fitting geometry ownership', pass: true,
     nativeNodeBuilds: before.builds + after.builds, fixedBuffersReleasedOnce: after.buffers,

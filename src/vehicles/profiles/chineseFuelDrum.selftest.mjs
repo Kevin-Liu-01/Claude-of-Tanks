@@ -8,7 +8,7 @@ import {createTankState} from '../../sim/movement.ts';
 import {shellPart} from '../../../tools/base-shell-audit-math.mjs';
 import {shellEdgeTopology} from '../../../tools/base-shell-integrity.mjs';
 
-const ids=['vt4a1','ztz99a2_prototype','ztz99a2','cn_t80u_modern','cn_t72b3m_modern','cn_t72b3_modern'];
+const ids=['vt4a1','ztz99a','ztz99a2','t80u_yun','t72b3m_kunlun','t72b3_qilin'];
 const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 function mesh(g){const m=new THREE.Mesh(g,mat);m.updateMatrixWorld(true);return m;}
 function endFaces(meshes,center,radius,length,side){
@@ -189,7 +189,7 @@ for(const quality of ['high','low'])for(const id of ids){
    assert(clearance.gap>.025,`${id}/${quality}: complete legal pitch/recoil/yaw sweep clears every drum fitting: ${JSON.stringify(clearance)}`);
    // Restore precisely the reported former heights on the actual rendered
    // observation, without altering gun capability. This must fail the bound.
-   const oldRaise=id==='cn_t80u_modern'?.54:id==='cn_t72b3m_modern'?.62:.58;
+   const oldRaise=id==='t80u_yun'?.54:id==='t72b3m_kunlun'?.62:.58;
    assert(clearance.gap-oldRaise<0,'historical high drum location fails the same independent gun-envelope bound');
    console.log(`${id}/${quality}: continuous full-gun/drum separation ${clearance.gap.toFixed(6)} m; legal pitch ${clearance.pitch.join('..')} deg, recoil ${clearance.recoil.toFixed(6)} m`);
    const lattice=turret.getObjectByName('turretOpenLattice');assert(lattice,'rear cage belongs to rotating turret');

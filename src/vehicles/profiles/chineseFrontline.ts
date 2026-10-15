@@ -178,7 +178,7 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   buildZTZ99A2Hull(P);
 }
 
-type VtFamilyVariant = 'vt4a1' | 'type99a';
+type VtFamilyVariant = 'vt4a1' | 'ztz99_longwei';
 
 interface VtFamilyTurretConfig {
   readonly variant: VtFamilyVariant;
@@ -210,8 +210,8 @@ const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>>
     gunY: 0.3198,
     gunZ: 0.75, gunLength: 5.95,
   }),
-  type99a: Object.freeze({
-    variant: 'type99a', pivotY: 1.57, pivotZ: 0.64,
+  ztz99_longwei: Object.freeze({
+    variant: 'ztz99_longwei', pivotY: 1.57, pivotZ: 0.64,
     heightScale: 0.82, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
     frontShellLengthScale: 0.90,
     chevronInnerAdvanceM: 0.18, chevronOuterAdvanceM: 0.04, chevronLiftM: 0,
@@ -363,11 +363,11 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   });
   addChinese125Gun(P, {
     length: config.gunLength,
-    rootR: variant === 'type99a' ? 0.26 : 0.25,
-    sleeveStart: variant === 'type99a' ? 1.68 : 1.55,
-    sleeveEnd: variant === 'type99a' ? 3.86 : 3.62,
+    rootR: variant === 'ztz99_longwei' ? 0.26 : 0.25,
+    sleeveStart: variant === 'ztz99_longwei' ? 1.68 : 1.55,
+    sleeveEnd: variant === 'ztz99_longwei' ? 3.86 : 3.62,
   });
-  if (variant === 'type99a') addType99AGunThroatClosure(P, chevronStations);
+  if (variant === 'ztz99_longwei') addType99AGunThroatClosure(P, chevronStations);
 
   // The bustle is structural volume, not a detached basket. These overlapping
   // armored panniers continue the primary shell to a deep rear service wall;
@@ -405,7 +405,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: sx(2.65), d: sz(0.62), h: sy(0.48), posts: 8,
     fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0],
-    seed: variant === 'type99a' ? 9940 : 438,
+    seed: variant === 'ztz99_longwei' ? 9940 : 438,
   }), [0, rearBottomY(0.14, -2.78), rearZ(-2.78)]);
 }
 
@@ -450,8 +450,8 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   // Roof equipment is re-seated to the lower 3/4-height crown. Sights,
   // warning heads and the RWS preserve their own dimensions but no longer
   // hover at the old full-height roof datum.
-  const sightX = variant === 'type99a' ? -0.56 : -0.50;
-  const sightZ = variant === 'type99a' ? 0.06 : 0.16;
+  const sightX = variant === 'ztz99_longwei' ? -0.56 : -0.50;
+  const sightZ = variant === 'ztz99_longwei' ? 0.06 : 0.16;
   P.addEquipment('turret', box(0.44, 0.34, 0.40), sightX, 0.83 + roofLift, sightZ, 0, -0.05, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.17, 0.020),
     sightX, 0.85 + roofLift, sightZ + 0.21, 0, -0.05, 0);
@@ -463,12 +463,12 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   // fitting paint, with its bolt circle.
   addMachinedRace(P, 0.178, 0.208, 0.014, 0.47, 0.87 + roofLift, -0.02, 10);
   addSmokeAndWarningSuite(P, {
-    warningX: sx(variant === 'type99a' ? 1.08 : 1.02),
-    warningZ: sz(variant === 'type99a' ? -1.38 : -1.52),
+    warningX: sx(variant === 'ztz99_longwei' ? 1.08 : 1.02),
+    warningZ: sz(variant === 'ztz99_longwei' ? -1.38 : -1.52),
     warningY: 0.72 + roofLift,
-    smokeX: sx(variant === 'type99a' ? 1.24 : 1.18),
-    smokeZ: sz(variant === 'type99a' ? -0.18 : -0.08),
-    smokeY: sy(variant === 'type99a' ? 0.42 : 0.39),
+    smokeX: sx(variant === 'ztz99_longwei' ? 1.24 : 1.18),
+    smokeZ: sz(variant === 'ztz99_longwei' ? -0.18 : -0.08),
+    smokeY: sy(variant === 'ztz99_longwei' ? 0.42 : 0.39),
   });
   if (variant === 'vt4a1') {
     mount(P, 'turret', FITTINGS.openYokeRws({
@@ -511,20 +511,20 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   for (const side of [-1, 1] as const) {
     mount(P, 'turret', FITTINGS.stowageRack({
       mats: P.mats, w: sz(1.38), d: sx(0.42), h: sy(0.34), rails: 3, fill: 0.58,
-      seed: (variant === 'type99a' ? 9950 : 432) + side,
+      seed: (variant === 'ztz99_longwei' ? 9950 : 432) + side,
     }), [side * sx(1.28), rearTopY(0.35, -1.94), rearZ(-1.94)], [0, side * Math.PI / 2, 0]);
     mount(P, 'turret', FITTINGS.antennaWhip({
       mats: P.mats, h: side < 0 ? 1.18 : 1.05, r: 0.011,
-      seed: (variant === 'type99a' ? 9960 : 434) + side,
+      seed: (variant === 'ztz99_longwei' ? 9960 : 434) + side,
     }), [side * sx(0.76), 0.70 + roofLift + config.rearCrownLiftM * rearProgress(-2.12),
       rearZ(-2.12)]);
   }
-  const marking = variant === 'type99a' ? '99A' : 'VT4';
+  const marking = variant === 'ztz99_longwei' ? '99A' : 'VT4';
   P.decal('turret', 'number', marking, 0.23,
     [-sx(1.59), sy(0.36), sz(-0.72)], -Math.PI / 2);
   P.decal('turret', 'number', marking, 0.23,
     [sx(1.59), sy(0.36), sz(-0.72)], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, variant === 'type99a' ? 2.12 : 1.28);
+  P.topY = Math.max(P.topY || 0, variant === 'ztz99_longwei' ? 2.12 : 1.28);
 }
 
 function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfig): void {
@@ -629,12 +629,12 @@ function buildType99AWithVtDerivative(P: FrontlinePort): void {
     radius: 0.25, length: 1.12, centerX: 0.61, cradleDepth: 0.34,
     rearPlateZ: -3.52,
   });
-  buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.type99a);
+  buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.ztz99_longwei);
 }
 
 export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   vt4a1: Object.freeze({ build: buildVT4A1 }),
-  type99a: Object.freeze({ build: buildType99AWithVtDerivative }),
+  ztz99_longwei: Object.freeze({ build: buildType99AWithVtDerivative }),
   ...TYPE100_PROFILES,
   ...ZTZ100_X_PROFILES,
   ...ZTZ100_PROTOTYPE_PROFILES,

@@ -9,7 +9,7 @@ teaches something a section number can't.)
 ## The backwards tank, and why eyeballs are mandatory
 
 The gate's registration is translation-only. That makes it ruthless about scale and
-position — and completely blind to a mirror. t62mv1 shipped with its hull BACKWARDS and
+position — and completely blind to a mirror. t62_1975 shipped with its hull BACKWARDS and
 its turret seated at the stern while scoring ~70; the owner caught it on sight. The fix
 became three mandatory layers: builder-side vertex asserts (bow direction and turret
 seat derived from the reference's own vertices), the v11 mirror check (which
@@ -21,7 +21,7 @@ the oracle, never mirror the build.
 ## The gunNode incident, or: mirror what the runtime saw
 
 Graduation retires a tank's GLB registration but keeps measuring against the print via
-override maps in three harness pages. When leo2a5 graduated, the map mirrored the
+override maps in three harness pages. When leo2a4_v graduated, the map mirrored the
 registration's SURFACE call — and the `articulated` helper it used silently injects
 `gunNode:'^Gun'`. The mirrored config lacked it; at load-prove the graduate cratered to
 min 0. The law: mirror the HELPER-EXPANDED runtime config, dumped from
@@ -82,7 +82,7 @@ proven without touching shared files.
 
 ## Reversed windings: the missing left side
 
-"ariete and leclerc are missing left side of turrets." The decode: mirror loops
+"c1_ariete_preserie and leclerc_s2 are missing left side of turrets." The decode: mirror loops
 (`for s of [-1,1]` with x·s and no corner re-order) hand slab builders the OPPOSITE
 ring handedness — all six faces point inward. The gate's masks are DoubleSide and see
 the solid fine; the game and critic render FrontSide and cull it. A whole face of a
@@ -162,7 +162,7 @@ bands read as enclosed sky; the critic's top view puts the bow at image BOTTOM
 (gun-overhang check before turret-front reads); browser-pane screenshots read black on
 this box (verify via the repo puppeteer rigs, never pane screenshots); zsh splits
 `for t in $VAR` as one word (use `${=VAR}`). Cross-critic severity disputes calibrate
-against the ratified chieftain5 anchor — measurements, not vibes.
+against the ratified chieftain3 anchor — measurements, not vibes.
 
 ## The gate is honest; help the builder be honest too
 

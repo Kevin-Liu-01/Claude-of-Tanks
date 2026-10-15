@@ -1152,7 +1152,7 @@ const initial = new URLSearchParams(location.search);
 const preferredId = linkTankId(initial);
 const initialId = preferredId && recordById.has(preferredId)
   ? preferredId
-  : (recordById.has('m1a2') ? 'm1a2' : records[0]?.id);
+  : (recordById.has('m1a1_abrams_hc') ? 'm1a1_abrams_hc' : records[0]?.id);
 loadTank(initialId, { mode: initial.get('layer') || 'appearance' });
 
 window.__TANK_GALLERY = {

@@ -471,7 +471,7 @@ The builds stay separate where the checks read different models: camo seeds move
 and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
 preview. `fleetLazy` keeps its own sweep through the demand-loaded facade in a child process. Every audit keeps all of
 its assertions and negative controls and reads the build as its receipt did: synchronous checks run back to back
-before the build's microtasks (kf51, kf51b and the PT-91M rewrite UVs or vertex colours in one), async checks after
+before the build's microtasks (kf51_evo, kf51_u and the PT-91M rewrite UVs or vertex colours in one), async checks after
 one microtask turn. An audit that poses the model restores it or is declared last; after every other audit the pass
 compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
 audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go

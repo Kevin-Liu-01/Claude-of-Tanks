@@ -2,19 +2,19 @@
 import type {GhillieConfig} from './ghillieSuit.ts';
 
 export const POLISH_PROTECTION_LAYOUTS = [
-  {id:'pl_t80u_modern', hullX:2.33, hullBottom:.83, hullTop:1.38,
+  {id:'t80u_husarz', hullX:2.33, hullBottom:.83, hullTop:1.38,
     hullPanels:[[-2.42,-1.10],[-.90,.59],[.80,2.32]],
     turretX:1.91, turretBottom:.33, turretTop:.60, turretPanels:[[-1.65,-.58]],
     rearZ:-2.55, rearHalf:1.29, rearBottom:.43, rearTop:.73, rearSeatZ:-1.72, rearSeatY:.465},
-  {id:'pl_t72b3m_modern', hullX:2.42, hullBottom:.73, hullTop:1.40,
+  {id:'t72b3m_wilk', hullX:2.42, hullBottom:.73, hullTop:1.40,
     hullPanels:[[-2.70,-1.50],[-1.32,-.12],[.17,1.28],[1.46,2.68]],
     turretX:2.04, turretBottom:.35, turretTop:.67, turretPanels:[[-1.83,-.75],[-.57,.43]],
     rearZ:-2.62, rearHalf:1.37, rearBottom:.44, rearTop:.77, rearSeatZ:-1.98, rearSeatY:.515},
-  {id:'pl_t72b3_modern', hullX:2.30, hullBottom:.94, hullTop:1.37,
+  {id:'t72b3_zubr', hullX:2.30, hullBottom:.94, hullTop:1.37,
     hullPanels:[[-2.32,-.92],[-.72,.56],[.89,2.30]],
     turretX:1.81, turretBottom:.33, turretTop:.53, turretPanels:[[-1.38,-.40]],
     rearZ:-2.11, rearHalf:1.13, rearBottom:.41, rearTop:.65, rearSeatZ:-1.50, rearSeatY:.415},
-  {id:'pl_t72b3_zubr_ii', hullX:2.35, hullBottom:.72, hullTop:1.34,
+  {id:'t72b3_zubr_ii', hullX:2.35, hullBottom:.72, hullTop:1.34,
     hullPanels:[[-2.43,-1.25],[-1.07,.11],[.29,1.47],[1.65,2.68]],
     turretX:2.05, turretBottom:.38, turretTop:.72, turretPanels:[[-1.98,-1.24],[-1.08,-.34]],
     rearZ:-2.99, rearHalf:1.34, rearBottom:.44, rearTop:.78, rearSeatZ:-2.18, rearSeatY:.51},

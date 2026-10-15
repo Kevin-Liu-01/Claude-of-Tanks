@@ -34,7 +34,7 @@ const panel = createDamagePanel();
 const settings = createSettings({input, bus, isBattleActive:()=>true, gearVisible:()=>false});
 const touch = createTouchControls({input, bus, isBattleActive:()=>true, onOpenSettings:()=>settings.open()});
 const tanks = Array.from({length:14},(_,i)=>{
-  const spec = TANK_SPECS[['leo2a5','m1a2','t90m'][i%3]];
+  const spec = TANK_SPECS[['leo2a4_v','m1a1_abrams_hc','t90am'][i%3]];
   return {id:`tank-${i}`, isPlayer:i===0, team:i<7?'player':'enemy', displayName:`Commander_Long_Name_${i}`,
     spec, state:createTankState(spec,new Vector3(i*10,0,50),0), combat:createCombatState(spec)};
 });
@@ -48,7 +48,7 @@ const frame = {matchModeState:{id:'mars'}, auxiliaryKeyLabels:{smoke:'G',lights:
   ]}};
 function hit(incoming=false, attackerIndex=8) {
   bus.emit('shell:hit',{attackerId:incoming?tanks[attackerIndex].id:player.id,targetId:incoming?player.id:tanks[8].id,
-    attackerName:'Commander_Long_Name_8',targetName:'Leopard 2A5',targetSpecId:'leo2a5',attackerSpecId:'t90m',
+    attackerName:'Commander_Long_Name_8',targetName:'Leopard 2A5',targetSpecId:'leo2a4_v',attackerSpecId:'t90am',
     kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,impactAngleDeg:34,
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
@@ -92,7 +92,7 @@ function state(name) {
   if(name==='log'||name==='combined')bus.emit('ui:shotLog',{});
   if(name==='chat'||name==='combined'||name==='spectator'){
   }
-  if(name==='spectator')hud.stageSpectateBar({specId:'leo2a5',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:7,index:2});
+  if(name==='spectator')hud.stageSpectateBar({specId:'leo2a4_v',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:7,index:2});
   if(name==='settings')settings.open();
   if(name==='sniper')hud.setMode('sniper');
   if(name==='large-map'){
@@ -106,7 +106,7 @@ function state(name) {
 }
 function roster(allies, enemies) {
   const entries=Array.from({length:allies+enemies},(_,i)=>{
-    const spec=TANK_SPECS[['leo2a5','m1a2','t90m'][i%3]];
+    const spec=TANK_SPECS[['leo2a4_v','m1a1_abrams_hc','t90am'][i%3]];
     const tank=i===0?player:{id:`large-${i}`,isPlayer:false,team:i<allies?'player':'enemy',
       displayName:`Commander_Long_Name_${i}`,spec,state:createTankState(spec,new Vector3(i*10,0,50),0),combat:createCombatState(spec)};
     if(i>0&&i%3===0)tank.combat.destroyed=true;

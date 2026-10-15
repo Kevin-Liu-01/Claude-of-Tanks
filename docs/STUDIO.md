@@ -337,7 +337,7 @@ live preview at the native aspect, progress, time left and **Cancel**.
 
   "actors": [
     {
-      "id": "t90m",             // any TANK_SPECS id (see __STUDIO.TANK_IDS)
+      "id": "t90am",             // any TANK_SPECS id (see __STUDIO.TANK_IDS)
       "name": "hero",           // optional label; usable as an effect target ref
       "pos": [12, -40],         // [x, z] world meters — y is solved from terrain
       "facingDeg": 120,         // hull heading (0 = +Z, increases toward +X)

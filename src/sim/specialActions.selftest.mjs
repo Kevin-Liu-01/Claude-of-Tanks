@@ -183,13 +183,13 @@ assert.equal(strv.state.suspensionAim, true);
     if (spec.armor?.turretless) fixed += 1; else turreted += 1;
   }
   assert.ok(fixed >= 2 && turreted >= 1, `fixed ${fixed} / turreted ${turreted} hydropneumatic hulls covered`);
-  const plain = createSpecialActionState(getSpec('m1a2'));
+  const plain = createSpecialActionState(getSpec('m1a1_abrams_hc'));
   assert.equal(plain.active, false); assert.notEqual(plain.kind, SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM);
-  const bound = { spec: getSpec('m1a2'), state: { suspensionAim: false }, specialAction: plain };
+  const bound = { spec: getSpec('m1a1_abrams_hc'), state: { suspensionAim: false }, specialAction: plain };
   bindSpecialActionState(bound); assert.equal(bound.state.suspensionAim, false, 'binding leaves other kinds alone');
 }
 
-const autoloader = entityFor('leclerc');
+const autoloader = entityFor('leclerc_s2');
 assert.equal(specialActionKind(autoloader.spec), SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD);
 autoloader.combat.magazine.rounds -= 1;
 autoloader.combat.reload.t = 0;
@@ -205,7 +205,7 @@ autoloader.combat.magazine.rounds = autoloader.combat.magazine.capacity;
 assert.equal(activateSpecialAction(autoloader).reason, 'MAGAZINE_FULL',
   'a full ready rack receives a distinct denial from an active reload');
 
-assert.equal(specialActionKind(getSpec('m1a2')), SPECIAL_ACTION_KINDS.NONE,
+assert.equal(specialActionKind(getSpec('m1a1_abrams_hc')), SPECIAL_ACTION_KINDS.NONE,
   'vehicles without a modeled system do not receive a fake ability');
 
 // The network action remains fully authoritative: E and slot 2 both select
@@ -215,7 +215,7 @@ const match = createAuthoritativeMatch({
   countdownS: 0,
   players: [
     { id: 'ifv', specId: 'bwp1', team: 'alpha', spawn: { x: 0, z: -40, yaw: 0 } },
-    { id: 'target', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 80, yaw: Math.PI } },
+    { id: 'target', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 80, yaw: Math.PI } },
   ],
 });
 match.onMatchReady();

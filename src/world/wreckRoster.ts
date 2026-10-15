@@ -5,7 +5,7 @@
 import { PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { VEHICLE_ERAS, type VehicleEra } from '../vehicles/taxonomy.ts';
 
-const HISTORICAL_WRECK_IDS = Object.freeze(['kv2', 'jpz_e100_x']);
+const HISTORICAL_WRECK_IDS = Object.freeze(['kv2', 'jpz_e100']);
 
 export const WRECK_ROSTER_POOLS: Readonly<Record<VehicleEra, readonly string[]>> = Object.freeze({
   // No public interwar donor is currently available. Preserve the historical
@@ -13,30 +13,30 @@ export const WRECK_ROSTER_POOLS: Readonly<Record<VehicleEra, readonly string[]>>
   [VEHICLE_ERAS.INTERWAR]: HISTORICAL_WRECK_IDS,
   [VEHICLE_ERAS.WORLD_WAR_II]: HISTORICAL_WRECK_IDS,
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
-    'm60a1', 'm48', 't80u', 'type74', 'leo1a5', 'chieftain5',
-    'type59', 'strv103', 'm1a1', 'bmp2', 'm60a2', 'm60a3',
-    'm551_sheridan', 'marder1a3', 'bmp3', 'm2a2_bradley', 'type90',
-    'amx30b2', 'centurion5', 'udes03',
+    'm60a1', 'm48a5_patton', 't80uk', 'type74', 'leo1a5', 'chieftain3',
+    'type59', 'strv103b', 'm1a1', 'bmp2', 'm60a2', 'm60a3',
+    'm551_sheridan', 'marder1a3', 'bmp3', 'm2a2_bradley', 'type90_kyumaru',
+    'amx30b2', 'centurion5_2', 'udes03',
     // the map-vehicles lane (2026-10-06, the period ruling): the maps' own period casts — Fulda's T-80B, Hostomel's
     // T-80BV, the 1960s M47 and AMX-30s, Lebanon's Merkava Mk 1 and T-62, Jordan's Challenger 1, Japan's Type 89,
     // Franconia's Leopard 2
-    't80b', 't80bv', 'm47_patton', 'amx30', 'amx30_x', 'merkava1b', 't62mv1', 'challenger1', 'type89', 'leo2a4',
+    't80b', 't80bv', 'm47_patton', 'amx30', 'amx30b', 'merkava1b', 't62_1975', 'challenger1_mk2', 'hayate_ifv', 'leo2a2',
   ]),
   // Contemporary battlefield casts include surviving Cold War equipment and
   // the existing prototype vocabulary. Distinct light/IFV/tank silhouettes
   // add variety without raising placement counts or importing their builders.
   [VEHICLE_ERAS.MODERN]: Object.freeze([
-    'm1a2', 't90m', 'leo2a7v', 't90a', 'challenger2', 'leclerc',
-    'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete', 'pt91m', 'strv122',
-    'm1a1', 't80u', 'm551_sheridan', 'm60a2', 'm60a3', 'marder1a3',
-    'bmpt_t90', 'bmp3', 'm2a2_bradley', 'pl01', 'cv90', 'ua_t84_oplot_m',
-    'leclerc_xlr', 'type90', 'm1a2_sepv3', 't72b3m', 'k1a1', 'merkava4b',
+    'm1a1_abrams_hc', 't90am', 'leo2_improved', 't90a_2004', 'challenger2', 'leclerc_s2',
+    'merkava3_baz', 'xk2_black_panther', 'ztz99_longwei', 'type10_tk_x', 'kf51_evo', 'c1_ariete_preserie', 'pt91m', 'strv121',
+    'm1a1', 't80uk', 'm551_sheridan', 'm60a2', 'm60a3', 'marder1a3',
+    'bmpt_t90', 'bmp3', 'm2a2_bradley', 'pl01', 'cv90', 't84bm_oplot_m',
+    'leclerc_sxxi', 'type90_kyumaru', 'm1a1_abrams_fep', 't72b3m_2022', 'k1e1', 'merkava4b',
     // the period ruling (2026-10-06): the T-72M1 of the Yugoslav wars (the M-84's parent), Hostomel's T-72B3 and the
     // Ukrainian T-64BV
-    't72m1_jaguar', 't72b3_x', 'ua_t64bv',
+    't72m1_jaguar', 't72b3', 't64bv_donbas',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
-    'kf51', 't14', 'challenger_3', 'm1a3', 'abramsx', 'ariete_c2', 'pl01', 'cv90_mkiv',
+    'kf51_evo', 'object148_proto', 'challenger3_proto', 'm1a3', 'abramsx', 'c2_ariete_proto', 'pl01', 'cv90_mk4_concept',
   ]),
 });
 

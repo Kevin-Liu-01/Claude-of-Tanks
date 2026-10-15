@@ -8,9 +8,9 @@ import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { initializeAerial } from '../sim/aerialCombat.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
-await ensureAuthorityFleet(['m1a2', 'bwp1', 'strv103a', 'leclerc']);
+await ensureAuthorityFleet(['m1a1_abrams_hc', 'bwp1', 'strv103a', 'leclerc_s2']);
 const read = createSpecialActionPresentationReader();
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 const player = { id: 'player', team: 'alpha', spec, combat: createCombatState(spec),
   state: { pos: new Vector3(), yaw: 0 }, input: { shellSlot: 0 } };
 assert.equal(read(player.spec).kind, 'none');
@@ -34,7 +34,7 @@ assert.equal(read(player.spec), null, 'returning from flight keeps the tank capa
 
 assert.equal(read(getSpec('bwp1')).shortLabel, 'ATGM', 'real missile tanks retain their selector');
 assert.equal(read(getSpec('strv103a')).shortLabel, 'Suspension');
-assert.equal(read(getSpec('leclerc')).shortLabel, 'Reload');
+assert.equal(read(getSpec('leclerc_s2')).shortLabel, 'Reload');
 assert.equal(read(null).kind, 'none', 'losing the player clears the last action');
 assert.equal(read(null), null);
 

@@ -85,7 +85,7 @@ if (mode === 'list') {
   window.__WIND_RESULT = { ids };
   window.__WIND_READY = true;
 } else {
-  const id = params.get('id') || 't72b3m';
+  const id = params.get('id') || 't72b3m_2022';
   const S = Math.max(256, Math.min(1024, Number(params.get('size')) || 768));
   const out = { id, size: S };
   if (!TANK_SPECS[id]) {
@@ -608,8 +608,8 @@ if (mode === 'list') {
         return [center.x + right.x * un + up.x * vn, center.z + right.z * un + up.z * vn];
       };
       // HEIGHT DISCRIMINATOR (calibrated on the 2026-08-06 validation set):
-      // engine decks sit AT or just above the ring plane fleet-wide (t72b3m
-      // deck 1.50-1.60 vs ring 1.42; ariete/leclerc/challenger alike), so a
+      // engine decks sit AT or just above the ring plane fleet-wide (t72b3m_2022
+      // deck 1.50-1.60 vs ring 1.42; c1_ariete_preserie/leclerc/challenger alike), so a
       // ring-plane gate floods every tank with deck pixels. Stranded turret
       // furniture reads at TURRET heights — the candidate gate is
       // h >= ringY + RISE (0.20 m); the deck band [ringY-0.05, ringY+RISE)

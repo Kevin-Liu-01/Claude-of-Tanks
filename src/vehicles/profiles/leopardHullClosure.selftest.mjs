@@ -3,18 +3,18 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
 const expectedHalfWidths = new Map([
-  ['leo2a4', 0.92],
-  ['leo2a4_otco', 0.92],
-  ['leo2a4m', 0.88],
-  ['leo2a6', 0.88],
-  ['leo2a6m', 0.88],
+  ['leo2a2', 0.92],
+  ['leo2a3', 0.92],
+  ['leo2a4m_can', 0.88],
+  ['leo2a4', 0.88],
+  ['leo2a4_otco', 0.88],
   ['leo2a6_ua', 0.88],
 ]);
 
-const upperGlacisFillIds = new Set(['leo2a4m', 'leo2a6', 'leo2a6m', 'leo2a6_ua']);
-const upperShoulderFillIds = new Set(['leo2a4m', 'leo2a6', 'leo2a6m', 'leo2a6_ua']);
+const upperGlacisFillIds = new Set(['leo2a4m_can', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua']);
+const upperShoulderFillIds = new Set(['leo2a4m_can', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua']);
 const fenderSkirtClosureIds = [
-  'leo2a5', 'strv122', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2a6_ua',
+  'leo2a4_v', 'strv121', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua',
 ];
 
 for (const [id, expectedHalfW] of expectedHalfWidths) {

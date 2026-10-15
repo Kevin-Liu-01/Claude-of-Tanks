@@ -175,7 +175,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "strv103": {
+  "strv103b": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -194,7 +194,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.8362793
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "strv103",
+        "anchorProfile": "strv103b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -216,7 +216,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6513057
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "strv103",
+        "anchorProfile": "strv103b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
@@ -273,7 +273,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "strv122": {
+  "strv121": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -314,7 +314,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7065412
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "strv122",
+        "anchorProfile": "strv121",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -322,7 +322,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "cv90_mkiv": {
+  "cv90_mk4_concept": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -341,7 +341,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "cv90_mkiv",
+        "anchorProfile": "cv90_mk4_concept",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

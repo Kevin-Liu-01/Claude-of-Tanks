@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 
-assert.deepEqual(spectatorCardModel({ count: 7, index: 3, specId: 'm1a2_sepv3' }), {
+assert.deepEqual(spectatorCardModel({ count: 7, index: 3, specId: 'm1a1_abrams_fep' }), {
   icon: '/icons/m1a2_sepv3_angle.webp',
   position: '3 / 7',
 });

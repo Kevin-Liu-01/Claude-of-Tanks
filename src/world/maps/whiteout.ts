@@ -124,7 +124,7 @@ export default {
     rocks: 224, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48a5_patton', 'strv103b', 't80b', 'bmp2'] },
     // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
     // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
     // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below

@@ -27,7 +27,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
       ]
     }
   },
-  "griffin50_x": {
+  "griffin50mm": {
     "originalSha256": "62f6e270698d7b218184ada575289da3cc1b362da4d96a8314d6e1277d618d34",
     "rawSha256": "ab4daa4ba8eed3eff25c77c35bd7082a2de7d188bd0c87e6fc73c57e7076bfca",
     "sha256": "1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003",
@@ -49,7 +49,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
       ]
     }
   },
-  "kurganets25_x": {
+  "kurganets25": {
     "originalSha256": "a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0",
     "rawSha256": "0af5ccde32d66d5f56cbf7b543e000f64fa28e18cc0eb560d92ed7b05e7f7fd2",
     "sha256": "417ea9738b986a591ba049e25ef86fe2dd0f240048d3630d8f23551c17b7d793",
@@ -71,7 +71,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
       ]
     }
   },
-  "bmp3m_dragun125_x": {
+  "bmp3m_dragun125": {
     "originalSha256": "4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16",
     "rawSha256": "1c5d3241266a698550f281e715b0b96d9b1360fef07aa8ccb1cd70044fc0aae3",
     "sha256": "d79a8383dd79d8dfefc98ae47b9b12d6c60bac55df3eb1671266fef6029fc8e8",
@@ -93,7 +93,7 @@ export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
       ]
     }
   },
-  "k21_x": {
+  "k21": {
     "originalSha256": "ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8",
     "rawSha256": "bacb27e883dfddb929d8de820bbebb31dec4d161ba2b25ac0afdc539b35883a1",
     "sha256": "e2103e87628337778107ba4beec0fb5f6ad9e29136eab65ba27aa7f8bfdd956b",

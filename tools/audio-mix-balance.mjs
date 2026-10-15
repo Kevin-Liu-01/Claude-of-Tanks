@@ -204,7 +204,7 @@ try {
   if (report.garage.rmsDb < -48) fail(`garage ambience inaudible (${report.garage.rmsDb.toFixed(1)} dBFS)`);
 
   // 2) Battle: the idle bed, then gunfire against it (the battle held so bots stay quiet).
-  await page.evaluate(() => window.__DEBUG.startBattle('t90m'));
+  await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
   await page.waitForFunction('window.__COT_AUDIO.snapshot === "battle"', { timeout: 60000 });
   await page.evaluate(() => window.__COT_AUDIO.preload(['gun_125_close', 'gun_120_close', 'gun_far_medium', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain']));
   await page.evaluate(() => { window.__DEBUG.game.preBattleS = 999; window.__COT_AUDIO.clearVoiceQueue(); });
@@ -297,7 +297,7 @@ try {
 
   // 5) The drone: flying it, the listener rides it and its motors lead. A fresh Drone battle, captured before
   //    the bots engage: docked in the tank, then in flight.
-  await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90m', mapId: 'verdant', gameMode: 'drone' }), 0); });
+  await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'drone' }), 0); });
   await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "drone"', { timeout: 180000, polling: 250 });
   await page.evaluate(() => window.__COT_AUDIO.preload(['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost']));
   await sleep(1500);
@@ -326,7 +326,7 @@ try {
   await page.keyboard.press('KeyV');
 
   // 6) The AC-130: the opener, the cabin and the howitzer inside it.
-  await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90m', mapId: 'verdant', gameMode: 'ac130' }), 0); });
+  await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'ac130' }), 0); });
   await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "ac130"', { timeout: 180000, polling: 250 });
   await sleep(1500);
   const gunshipFrom = await page.evaluate(() => (window.__COT_AUDIO.sfxLog.at(-1)?.seq ?? 0));

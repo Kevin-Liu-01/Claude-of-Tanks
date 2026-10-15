@@ -26,7 +26,7 @@ export function buildT72B3M2022(P:TankBuilderPort):void {
   buildT72B3M2022Hull(P);
   buildT90SMXTurret(P);
   P.turretG.position.set(.008,1.545,.114315);
-  P.hullG.userData.familyRebuild={donor:'t72b3m_x',turret:'t90sm_x',revision:2,
+  P.hullG.userData.familyRebuild={donor:'t72b3m_2016',turret:'t90sm',revision:2,
     features:['welded-sm-turret','modular-cheeks','panoramic-sight','remote-weapon','bustle-stowage','relikt-side','lower-soft-cases']};
 }
 export function buildT72BU1989(P:TankBuilderPort):void {
@@ -36,7 +36,7 @@ export function buildT72BU1989(P:TankBuilderPort):void {
   P.addEquipment('turretDetail',box(.29,.15,.24),.24,.72,-.67);
   P.addModuleVisual('optics','turretGlass',box(.20,.065,.012),.24,.73,-.543);
   strappedPack(P,'turret',[.16,.57,-1.60],[.58,.22,.32]);
-  P.hullG.userData.familyRebuild={donor:'t72bu_x',revision:1};
+  P.hullG.userData.familyRebuild={donor:'t72bu',revision:1};
 }
 export function buildT64Modern(P:TankBuilderPort,ukrainian=false):void {
   buildT72B3X(P);
@@ -66,7 +66,7 @@ export function buildT64Modern(P:TankBuilderPort,ukrainian=false):void {
     }
   }
   if(ukrainian)addDonbasFieldCover(P);
-  P.hullG.userData.familyRebuild={donor:'t72b3_x',revision:ukrainian?2:1,variant:ukrainian?'donbas':'bv1'};
+  P.hullG.userData.familyRebuild={donor:'t72b3',revision:ukrainian?2:1,variant:ukrainian?'donbas':'bv1'};
 }
 export function buildJaguarModern(P:TankBuilderPort):void {
   buildT72B3X(P);
@@ -81,5 +81,5 @@ export function buildJaguarModern(P:TankBuilderPort):void {
   supportedSensor(P,[.43,.99,-.34],.69);
   attachedCage(P,'turret',[0,.32,-2.04],1.98,.49,.50);
   strappedPack(P,'turret',[0,.38,-1.77],[1.15,.22,.35]);
-  P.hullG.userData.familyRebuild={donor:'t72b3_x',revision:1,variant:'jaguar'};
+  P.hullG.userData.familyRebuild={donor:'t72b3',revision:1,variant:'jaguar'};
 }

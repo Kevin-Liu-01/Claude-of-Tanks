@@ -370,11 +370,11 @@ function sideInspectionCamera(center, size, extentZ) {
 
 function technicalInspectionCamera(id, center, size, extentZ, box) {
   const insetIds = [
-    'merkava3d_x', 'merkava4_x', 'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x',
-    'leo2a5_x', 'k2_x', 'kf51_x', 't14_x', 't90a_x', 't90a_vladimir_x',
-    't90m_x', 't90sm_x',
-    'm1a2_x', 'm1a2_tusk_x',
-    'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x',
+    'merkava3d', 'merkava4', 'leo2a7v', 'leo2a6m', 'leo2a5m',
+    'leo2a5', 'k2_black_panther', 'kf51_panther', 't14_armata', 't90a', 't90a_vladimir',
+    't90m', 't90sm',
+    'm1a2_abrams', 'm1a2_abrams_tusk',
+    'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams',
   ];
   if (!insetIds.includes(id)) {
     return sideInspectionCamera(center, size, extentZ);
@@ -849,7 +849,7 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       // bustle/sensor silhouette. Its centered aft field load leaves only a
       // fraction of a card pixel at the standard margin, so give this one
       // portrait a 3% camera cushion instead of weakening the fleet audit.
-      const portraitMargin = id === 'challenger_3' ? MARGIN * 1.03 : MARGIN;
+      const portraitMargin = id === 'challenger3_proto' ? MARGIN * 1.03 : MARGIN;
       const dist = (radius * portraitMargin) / Math.sin((fov / 2) * Math.PI / 180);
       // Tall source fittings remain intact; only their portrait azimuth changes.
       // Comparison/technical cameras, dense-core scale and pixel gates do not.

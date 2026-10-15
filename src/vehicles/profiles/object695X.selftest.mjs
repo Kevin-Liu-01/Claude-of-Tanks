@@ -1,5 +1,5 @@
 // The frozen HIGH/LOW chassis payload digests (and their 26-row count) are retired: whole-tank change detection of
-// object695_x is the fleet geometry ledger's. Identity, combat metadata, measured datums, part census, launcher,
+// object695 is the fleet geometry ledger's. Identity, combat metadata, measured datums, part census, launcher,
 // optics, cannon, articulation, budgets and every physical negative stay.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,11 +20,11 @@ assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is no
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map(m => m[1]).sort(),
   ['../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleAuxiliaryGeometry.ts', '../vehicleNightLighting.ts', './kit.ts', './object695MissileTurret.ts', './sectionSolid.ts', 'three']);
 const record = JSON.parse(readFileSync(new URL('../../../docs/references/tanks/object695_x.source-measurements.json', import.meta.url), 'utf8'));
-const spec = TANK_SPECS.object695_x;
+const spec = TANK_SPECS.object695;
 const installedScale = VEHICLE_SIZE_FACTORS[spec.id] ?? 1;
 assert.equal(installedScale,.90,'owner-directed ten-percent reduction');
 assert.equal(spec.name, 'Object 695'); assert.equal(spec.role, 'ifv'); assert.equal(tankTier(spec.id), 10);
-assert.equal(MODEL_SOURCE.object695_x.source, 'procedural');
+assert.equal(MODEL_SOURCE.object695.source, 'procedural');
 assert.equal(spec.gun.caliberMm, 30);
 assert.deepEqual(spec.armor.turretPivot, [0, 2.15, -1.10].map(v=>v*installedScale));
 assert.deepEqual(spec.armor.gunPivot, [0, .88, .20].map(v=>v*installedScale));
@@ -224,7 +224,7 @@ function checkArticulation(tank) {
 
 const parts=[];
 let supportFault = null, alteredSupports = 0;
-registerProfiledBuilders({object695_x:P=>OBJECT695_X_PROFILES.object695_x.build(new Proxy(P,{get(target,key){
+registerProfiledBuilders({object695:P=>OBJECT695_X_PROFILES.object695.build(new Proxy(P,{get(target,key){
   if(['add','addEquipment','addExternalArmor','addCupola','addGunExtra','addGunExtraDark','addModuleVisual'].includes(key))return(...args)=>{
     const geometry=args.find(a=>a&&a.isBufferGeometry);
     const fitting = geometry?.userData.object695Concept;
@@ -244,7 +244,7 @@ registerProfiledBuilders({object695_x:P=>OBJECT695_X_PROFILES.object695_x.build(
   };
   const value=target[key];return typeof value==='function'?value.bind(target):value;
 }}))});
-if(!process.argv.includes('--cold'))await ensureInteriorFills(['object695_x']);
+if(!process.argv.includes('--cold'))await ensureInteriorFills(['object695']);
 const costs=[];
 for(const quality of ['high','low']){
   parts.length=0;

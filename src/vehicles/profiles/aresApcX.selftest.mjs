@@ -8,7 +8,7 @@ import { vehicleEraForId } from '../taxonomy.ts';
 import { FLEET_GROUP_BY_ID } from '../fleetManifest.ts';
 import { ARES_APC_X_DATUMS } from '../aresApcXFrame.ts';
 
-const ID = 'ares_apc_x';
+const ID = 'ares_apc';
 const OWNER_SIZE = .90;
 const source = readFileSync(new URL('./aresApcX.ts', import.meta.url), 'utf8');
 assert.ok(!/GLTFLoader|\.glb|community-candidates|loadReferenceGlb/.test(source),

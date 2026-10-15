@@ -34,7 +34,7 @@ const gunBlock=html.slice(html.indexOf('let gunMetric ='),html.indexOf('// Show 
 const selectGun=new Function('source','gunComponentMasksAvailable','compare','refGun','procGun',
   'renderMask',`${gunBlock}; return {gunMetric,scoredGunMasks};`);
 const refExposed={area:1013},nativeExposed={area:1017};let comparisons=0;
-const selected=selectGun(refs.leclerc_classic_x,true,(a,b)=>{
+const selected=selectGun(refs.amx56,true,(a,b)=>{
   assert.equal(a,refExposed);assert.equal(b,nativeExposed);comparisons++;return {score:97};
 },refExposed,nativeExposed,()=>assert.fail('fused-source Classic cannot use direct gun subtrees'));
 assert.equal(comparisons,1,'the actual HTML scores Classic exposed gun exactly once, never N/A');

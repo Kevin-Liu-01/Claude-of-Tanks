@@ -35,14 +35,14 @@ assert.equal(rulesetRevives('bogus'), false, 'an unknown mode reads as Standard:
     ['p1', ledgerRow('p1', { deaths: me.deaths, dead: me.dead, isPlayer: true })],
     ['e1', ledgerRow('e1', { dmg: 300, kills: 1 })],
   ]);
-  mergeEndRosterRow(rows, { id: 'p1', team: 'player', alive: true, isPlayer: true, specId: 't90m_x', vehicle: 'T-90M' }, true);
+  mergeEndRosterRow(rows, { id: 'p1', team: 'player', alive: true, isPlayer: true, specId: 't90m', vehicle: 'T-90M' }, true);
   mergeEndRosterRow(rows, { id: 'e1', team: 'enemy', alive: false }, true);
   const p1 = rows.get('p1');
   assert.equal(p1.dead, false, 'alive at the end -> survived');
   assert.equal(p1.deaths, 1, 'the death stays a stat');
   assert.equal(p1.side, 'ally');
   assert.equal(p1.name, 'T-90M');
-  assert.equal(p1.specId, 't90m_x');
+  assert.equal(p1.specId, 't90m');
   assert.equal(rows.get('e1').dead, true, 'a roster row that fell stays destroyed');
   assert.deepEqual(summarizeTeam([p1]), { total: 1, alive: 1, kills: 0, damage: 0 },
     'the team count reads a revived vehicle as alive');

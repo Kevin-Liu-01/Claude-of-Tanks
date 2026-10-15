@@ -17,18 +17,18 @@ import { compareCountryThenTierThenName } from '../ui/garageOrder.ts';
 import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of the four legacy Italian specs' non-label
-// metadata (ariete, ariete_c1, ariete_c2, carro45t) is gone; identity, tier, datum, armor, balance,
+// metadata (c1_ariete_preserie, c1_ariete_proto_serie1, c2_ariete_proto, carro45t) is gone; identity, tier, datum, armor, balance,
 // order, paint and lazy-registration contracts below are live.
-assert.equal(TANK_SPECS.ariete_c1.name, 'C1 Ariete Prototype (Serie 1)');
-assert.equal(TANK_SPECS.ariete_c2.name, 'C2 Ariete Prototype');
-assert.equal(tankTier('ariete_c1'), 9);
-assert.equal(tankTier('ariete_c2'), 10);
+assert.equal(TANK_SPECS.c1_ariete_proto_serie1.name, 'C1 Ariete Prototype (Serie 1)');
+assert.equal(TANK_SPECS.c2_ariete_proto.name, 'C2 Ariete Prototype');
+assert.equal(tankTier('c1_ariete_proto_serie1'), 9);
+assert.equal(tankTier('c2_ariete_proto'), 10);
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
-assert.ok(!SECOND_WAVE_X_IDS.includes('ariete_c2_x'), 'new C2 is not inserted into the historical source wave');
-assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['ariete_c1_x', 'ariete_c2_x']);
+assert.ok(!SECOND_WAVE_X_IDS.includes('c2_ariete'), 'new C2 is not inserted into the historical source wave');
+assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['c1_ariete', 'c2_ariete']);
 
 assert.equal(ARIETE_X_FAMILY_SCALE, 1.12 * 1.10, 'fixed owner-directed enlargement');
-const c1 = TANK_SPECS.ariete_c1_x, c2 = TANK_SPECS.ariete_c2_x;
+const c1 = TANK_SPECS.c1_ariete, c2 = TANK_SPECS.c2_ariete;
 for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
   assert.equal(ALL_TANK_IDS.filter(id => id === spec.id).length, 1);
   assert.ok(PRODUCTION_TANK_IDS.includes(spec.id));
@@ -46,12 +46,12 @@ for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
   assert.equal(spec.gun.caliberMm, 120);
   assert.equal(spec.gun.autoloader, undefined);
   assert.ok(!spec.gun.shells.some(s => s.guided || s.launcherTubes));
-  assert.equal(spec.armor.hullPlates.concat(spec.armor.turretPlates).filter(p => p.era).length, spec.id === 'ariete_c2_x' ? 20 : 0);
+  assert.equal(spec.armor.hullPlates.concat(spec.armor.turretPlates).filter(p => p.era).length, spec.id === 'c2_ariete' ? 20 : 0);
   assert.equal(spec.gunDepressionDeg, 9); assert.equal(spec.gunElevationDeg, 20);
   assert.equal(internalLayoutFor(spec.id).layoutKey, 'arieteManual');
   assert.equal(internalLayoutFor(spec.id).crew.length, 4);
 }
-assert.equal(c2.variantOf, 'ariete_c1_x');
+assert.equal(c2.variantOf, 'c1_ariete');
 assert.equal(c2.balancePeerOf, undefined);
 assert.equal(c2.enginePowerHp, 1500);
 assert.ok(c2.enginePowerHp / c2.weightTons > c1.enginePowerHp / c1.weightTons);
@@ -62,12 +62,12 @@ assert.deepEqual(c2.gun.shells, c1.gun.shells, 'all three main-gun rounds retain
 assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.09);
 assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.10);
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
-  .filter(row => row.id === 'ariete_c2_x'), [], 'new upgrade remains within the unmodified peer gates');
+  .filter(row => row.id === 'c2_ariete'), [], 'new upgrade remains within the unmodified peer gates');
 
 function assertUpgradeFaces(spec) {
   const expected = arieteC2ArmorFaces();
   const actual = spec.armor.hullPlates.concat(spec.armor.turretPlates)
-    .filter(p => p.surfaceGroup?.startsWith('ariete_c2_x:'));
+    .filter(p => p.surfaceGroup?.startsWith('c2_ariete:'));
   assert.equal(actual.length, expected.length);
   for (const face of expected) {
     const plates = face.owner === 'hull' ? spec.armor.hullPlates : spec.armor.turretPlates;
@@ -80,10 +80,10 @@ function assertUpgradeFaces(spec) {
 }
 assertUpgradeFaces(c2);
 const missing = structuredClone(c2);
-missing.armor.turretPlates = missing.armor.turretPlates.filter((p,i,a)=>i!==a.findIndex(p=>p.surfaceGroup?.startsWith('ariete_c2_x:')));
+missing.armor.turretPlates = missing.armor.turretPlates.filter((p,i,a)=>i!==a.findIndex(p=>p.surfaceGroup?.startsWith('c2_ariete:')));
 assert.throws(() => assertUpgradeFaces(missing), 'missing actual pack face must fail');
 const shifted = structuredClone(c2);
-shifted.armor.hullPlates.find(p => p.surfaceGroup?.startsWith('ariete_c2_x:')).verts[0][0] += .1;
+shifted.armor.hullPlates.find(p => p.surfaceGroup?.startsWith('c2_ariete:')).verts[0][0] += .1;
 assert.throws(() => assertUpgradeFaces(shifted), 'floating damage cover must fail');
 // Acquire the same generated calibration registration/finalization used by
 // native release consumers only after the boot-light metadata checks above.
@@ -106,7 +106,7 @@ function packTrace(armor, from, to, owner, yaw) {
   const pose = tankPoseFromState({ pos: new Vector3(), yaw: 0, visualPitch: 0,
     visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
   return traceTank(posedPoint(from, owner, yaw), posedPoint(to, owner, yaw), pose, armor)
-    .filter(hit => hit.kind === 'plate' && hit.plate.surfaceGroup?.startsWith('ariete_c2_x:'));
+    .filter(hit => hit.kind === 'plate' && hit.plate.surfaceGroup?.startsWith('c2_ariete:'));
 }
 function assertPack(armor, group, from, to, entry, owner, yaw) {
   const hits = packTrace(armor, from, to, owner, yaw).filter(hit => hit.plate.surfaceGroup === group);
@@ -118,7 +118,7 @@ function assertPack(armor, group, from, to, entry, owner, yaw) {
 for (const yaw of [0, .63, -1.17, Math.PI]) {
   for (const side of [-1, 1]) {
     for (const [index, [rear, front]] of [[-2.60, -1.89], [-1.87, -1.16], [-1.14, -.43]].entries()) {
-      const z = (rear + front) / 2, group = `ariete_c2_x:pso_skirt_${side}_${index}`;
+      const z = (rear + front) / 2, group = `c2_ariete:pso_skirt_${side}_${index}`;
       assertPack(c2.armor, group, [side * 2, .85, z], [side * 1.4, .85, z],
         [side * 1.805, .85, z], 'hull', yaw);
       // Inner wall is sloped: x=1.514 + (1.08-.85)*.04/.50.
@@ -132,7 +132,7 @@ for (const yaw of [0, .63, -1.17, Math.PI]) {
         'PSO damage must leave air above and below the actual panel');
     }
     for (const [index, [rear, front]] of [[.15, .55], [.57, .97]].entries()) {
-      const z = (rear + front) / 2, group = `ariete_c2_x:war_cheek_${side}_${index}`;
+      const z = (rear + front) / 2, group = `c2_ariete:war_cheek_${side}_${index}`;
       assertPack(c2.armor, group, [side * 1.8, 1.7, z], [side * 1.3, 1.7, z],
         [side * 1.6, 1.7, z], 'turret', yaw);
       assertPack(c2.armor, group, [side * 1.3, 1.7, z], [side * 1.8, 1.7, z],
@@ -150,8 +150,8 @@ for (const yaw of [0, .63, -1.17, Math.PI]) {
     assert.equal(packTrace(c2.armor, [side * 1.8, 1.7, .56], [side * 1.3, 1.7, .56], 'turret', yaw).length, 0,
       'actual 22.4 mm installed WAR gap remains unarmored while yawing');
   }
-  assertPack(c2.armor, 'ariete_c2_x:mine_belly', [0, .25, 0], [0, .5, 0], [0, .366, 0], 'hull', yaw);
-  assertPack(c2.armor, 'ariete_c2_x:mine_belly', [0, .5, 0], [0, .25, 0], [0, .407, 0], 'hull', yaw);
+  assertPack(c2.armor, 'c2_ariete:mine_belly', [0, .25, 0], [0, .5, 0], [0, .366, 0], 'hull', yaw);
+  assertPack(c2.armor, 'c2_ariete:mine_belly', [0, .5, 0], [0, .25, 0], [0, .407, 0], 'hull', yaw);
   for (const z of [-2.602, 2.502]) assert.equal(
     packTrace(c2.armor, [0, .25, z], [0, .5, z], 'hull', yaw).length, 0, 'belly plate finite ends');
   for (const x of [-.832, .832]) assert.equal(
@@ -163,23 +163,23 @@ for (const yaw of [0, .63, -1.17, Math.PI]) {
 const edge = [1.805, .61, -2.25];
 const edgeFrom = edge.map((v, i) => v + [ .05, -.015, 0 ][i]);
 const edgeTo = edge.map((v, i) => v - [ .05, -.015, 0 ][i]);
-assertPack(c2.armor, 'ariete_c2_x:pso_skirt_1_0', edgeFrom, edgeTo, edge, 'hull', 0);
+assertPack(c2.armor, 'c2_ariete:pso_skirt_1_0', edgeFrom, edgeTo, edge, 'hull', 0);
 const noGroup = structuredClone(c2.armor);
-for (const plate of noGroup.hullPlates) if (plate.surfaceGroup === 'ariete_c2_x:pso_skirt_1_0')
+for (const plate of noGroup.hullPlates) if (plate.surfaceGroup === 'c2_ariete:pso_skirt_1_0')
   plate.surfaceGroup = `${plate.surfaceGroup}:${plate.name}`;
 assert.equal(packTrace(noGroup, edgeFrom, edgeTo, 'hull', 0).length, 2,
   'negative proves coincident faces would double-charge without one stock group');
 const noStock = structuredClone(c2.armor);
-noStock.turretPlates = noStock.turretPlates.filter(p => p.surfaceGroup !== 'ariete_c2_x:war_cheek_1_0');
-assert.throws(() => assertPack(noStock, 'ariete_c2_x:war_cheek_1_0', [1.8, 1.7, .35], [1.3, 1.7, .35],
+noStock.turretPlates = noStock.turretPlates.filter(p => p.surfaceGroup !== 'c2_ariete:war_cheek_1_0');
+assert.throws(() => assertPack(noStock, 'c2_ariete:war_cheek_1_0', [1.8, 1.7, .35], [1.3, 1.7, .35],
   [1.6, 1.7, .35], 'turret', .63), 'missing real pack must fail the positive runtime trace');
 const wrongFrame = structuredClone(c2.armor);
-wrongFrame.hullPlates.push(...wrongFrame.turretPlates.filter(p => p.surfaceGroup?.startsWith('ariete_c2_x:')));
-wrongFrame.turretPlates = wrongFrame.turretPlates.filter(p => !p.surfaceGroup?.startsWith('ariete_c2_x:'));
-assert.throws(() => assertPack(wrongFrame, 'ariete_c2_x:war_cheek_1_0', [1.8, 1.7, .35], [1.3, 1.7, .35],
+wrongFrame.hullPlates.push(...wrongFrame.turretPlates.filter(p => p.surfaceGroup?.startsWith('c2_ariete:')));
+wrongFrame.turretPlates = wrongFrame.turretPlates.filter(p => !p.surfaceGroup?.startsWith('c2_ariete:'));
+assert.throws(() => assertPack(wrongFrame, 'c2_ariete:war_cheek_1_0', [1.8, 1.7, .35], [1.3, 1.7, .35],
   [1.6, 1.7, .35], 'turret', .63), 'stale hull ownership must fail the yawed trace');
 
-const skirtX = Math.max(...c1.armor.hullPlates.filter(p => p.surfaceGroup?.startsWith('ariete_c1_x:'))
+const skirtX = Math.max(...c1.armor.hullPlates.filter(p => p.surfaceGroup?.startsWith('c1_ariete:'))
   .flatMap(p => p.verts.map(v => Math.abs(v[0]))));
 assert.ok(Math.abs(skirtX - 1.805 * ARIETE_X_FAMILY_SCALE) < 1e-9, 'C1 skirt damage follows the enlarged native panels');
 const c2BeforeSync = JSON.stringify(c2);
@@ -189,15 +189,15 @@ assert.equal(c1.visual.trackWidthM, C1.trackWidthM);
 
 const italian = PRODUCTION_TANK_IDS.map(id => TANK_SPECS[id]).filter(s => s.nation === 'Italy')
   .sort((a, b) => compareCountryThenTierThenName(a, b, new Map([['Italy', 0]]), tankTier));
-assert.deepEqual(italian.slice(0, 2).map(s => s.id), ['ariete_c2_x', 'ariete_c1_x']);
-assert.ok(italian.findIndex(s => s.id === 'ariete_c2') > 1);
+assert.deepEqual(italian.slice(0, 2).map(s => s.id), ['c2_ariete', 'c1_ariete']);
+assert.ok(italian.findIndex(s => s.id === 'c2_ariete_proto') > 1);
 const storage = new Map();
 const priorStorage = globalThis.localStorage;
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
 try {
   for (const spec of [c1, c2]) {
     assert.equal(defaultCamoPatternId(spec.id), 'factory');
-    assert.equal(stockCamoPatternIdFor(spec.id), spec.id === 'ariete_c1_x' ? 'service_ariete_c1' : 'sig_ariete_c2');
+    assert.equal(stockCamoPatternIdFor(spec.id), spec.id === 'c1_ariete' ? 'service_ariete_c1' : 'sig_ariete_c2');
     assert.equal(getCamoSelection(spec.id), 'factory');
     setCamoSelection(spec.id, 'winter');
     assert.equal(getCamoSelection(spec.id), 'winter', 'explicit saved paint overrides new default');

@@ -36,7 +36,7 @@ function capture(id) {
   return { parts, tank };
 }
 
-const { parts, tank } = capture('ua_m1a1_x');
+const { parts, tank } = capture('ua_m1a2_abrams');
 const count = (part) => parts.filter((p) => p.part === part).length;
 assert.equal(count('turret-brick'), (7 * 3 * 2 + 4 * 3 * 2) * 2, 'flank and cheek cassettes with lids');
 assert.equal(count('glacis-brick'), 3 * 5 * 2 * 2, 'two glacis banks with lids');
@@ -92,7 +92,7 @@ assert.ok(meshes.length > 0, 'the kitted tank builds');
 // mirrors the kit's planes and course extents): a body centre lies half a cassette behind the
 // plate plane, a backing rim (added as equipment, 6 mm off the plane) 74 mm behind it, and both
 // project inside the plate rectangle, so a hit on the visible cassette is a hit on the bank.
-const armor = getSpec('ua_m1a1_x').armor;
+const armor = getSpec('ua_m1a2_abrams').armor;
 const zones = [...armor.hullPlates.map((plate) => ({ owner: 'hull', plate })),
   ...armor.turretPlates.map((plate) => ({ owner: 'turret', plate }))].filter(({ plate }) => plate.kind === 'era');
 // finalized anatomy expands every bank into one record per physical face; all records carry the bank name
@@ -131,6 +131,6 @@ const sectors = new Set(binding.plates.flatMap((row) => row.visualSectors));
 assert.deepEqual([...sectors].sort(), ['ua-m1a2-k1-glacis-era', 'ua-m1a2-k1-turret-era', 'ua-m1a2-skirt-era'], 'every kit course is a depletable bank');
 
 // no other study wears the kit
-const { parts: plain } = capture('m1a2_x');
+const { parts: plain } = capture('m1a2_abrams');
 assert.equal(plain.length, 0, 'the M1A2 study carries no Ukrainian kit');
 console.log(`abramsSourceXUkraineKit: ${parts.length} kit parts on the M1A2 Abrams UA (bricks, skirt cassettes, bolted cage with mesh walls and rack struts, slats, jammers, stowage), ${seated} cassettes seated on ${new Set(zones.map((z) => z.plate.name)).size} gameplay ERA banks (${zones.length} finalized faces); the M1A2 study stays clean PASS`);

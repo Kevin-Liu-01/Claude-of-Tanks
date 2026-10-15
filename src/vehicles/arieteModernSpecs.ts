@@ -29,7 +29,7 @@ function addUpgradeProtection(spec: FleetTankSpec): void {
 }
 
 function createArieteC2(): FleetTankSpec {
-  const spec = cloneFleetVariant(registries.tankSpecs, 'ariete_c2_x', 'ariete_c1_x', {
+  const spec = cloneFleetVariant(registries.tankSpecs, 'c2_ariete', 'c1_ariete', {
     name: 'C2 Ariete', nation: 'Italy', era: 'modern', role: 'mbt',
   });
   delete spec.balancePeerOf;
@@ -61,4 +61,4 @@ function createArieteC2(): FleetTankSpec {
   return spec;
 }
 
-registerFleetSpecs(registries, ['ariete_c2_x'], { ariete_c2_x: createArieteC2() });
+registerFleetSpecs(registries, ['c2_ariete'], { c2_ariete: createArieteC2() });

@@ -14,7 +14,7 @@ import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const outArg = process.argv.find((arg) => arg.startsWith('--out='));
 const all = process.argv.includes('--all');
-const ids = all ? [] : idsArg ? idsArg.slice(6).split(',').filter(Boolean) : ['m1a2', 'bmp2', 'kv2'];
+const ids = all ? [] : idsArg ? idsArg.slice(6).split(',').filter(Boolean) : ['m1a1_abrams_hc', 'bmp2', 'kv2'];
 const outDir = resolve(outArg ? outArg.slice(6) : '/private/tmp/cot-muzzle-bore-proof');
 mkdirSync(outDir, { recursive: true });
 const probePort = 30000 + (process.pid % 20000);

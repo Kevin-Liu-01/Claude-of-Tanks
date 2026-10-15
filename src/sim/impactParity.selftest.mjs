@@ -54,7 +54,7 @@ assert.match(authority, /emit\('tank_destroyed', \{ id: entity\.id, killerId: en
 function soloSelfDestruction(heightAt, throttle, prepare) {
   const up = new Vector3(0, 1, 0);
   const world = { heightField: { getHeightAt: heightAt, getGroundType: () => 'hard', getNormalAt: () => up }, raycast: () => null };
-  const spec = getSpec('m1a2'), combat = createCombatState(spec), game = createGameState();
+  const spec = getSpec('m1a1_abrams_hc'), combat = createCombatState(spec), game = createGameState();
   const entity = { id: 'solo-hull', specId: spec.id, spec, isPlayer: false, team: 'player', combat,
     state: createTankState(spec, new Vector3(0, 0, -90), 0),
     input: { throttle, steer: 0, brake: throttle === 0, fire: false, shellSlot: 0, aimYaw: 0, aimPitch: 0, aimDistance: 300, actionBits: 0 },
@@ -90,8 +90,8 @@ function wallMatch(seed = 7) {
   const match = createAuthoritativeMatch({
     mapId: 'verdant', seed, countdownS: 0, worldCollision: wallWorld,
     players: [
-      { id: 'wall-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } },
-      { id: 'wall-b', specId: 'm1a2', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
+      { id: 'wall-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } },
+      { id: 'wall-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
     ],
   });
   match.onMatchReady();

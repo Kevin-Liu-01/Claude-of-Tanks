@@ -1035,7 +1035,7 @@ function clockText(frame: HudFrame, limitS: number | null): string {
 }
 
 // Default shell card data (used only when a forced screenshot aim view arrives
-// before any live frame — matches the m1a2 default player loadout).
+// before any live frame — matches the m1a1_abrams_hc default player loadout).
 const DEFAULT_SHELLS: HudShellCard[] = [
   { name: 'M829A4', type: 'APFSDS', dmg: 540, penLabel: '750 mm' },
   { name: 'M830A1', type: 'HEAT', dmg: 480, penLabel: '600 mm' },
@@ -6347,7 +6347,7 @@ export function initHud(bus: EventBus): HudRuntime {
         id: payload.id || 'spectator-preview',
         name: payload.name || 'SteppeWolf_71',
         vehicle: payload.vehicle || 'M1A2 SEP v3',
-        specId: payload.specId || 'm1a2_sepv3',
+        specId: payload.specId || 'm1a1_abrams_fep',
         count: payload.count,
         index: payload.index,
       }, true);

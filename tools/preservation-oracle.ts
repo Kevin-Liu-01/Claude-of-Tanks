@@ -14,7 +14,7 @@ export const REVOLUTION_PROTO_BASELINE = Object.freeze({
 // checkout, not from the restored prototype candidate or the newer source GLB.
 export const ZTZ100_PROTOTYPE_BASELINE = Object.freeze({
   sourceCommit: '31d08f67378cd2bc5b883de3e0eba10513784612',
-  sourceId: 'ztz100_x',
+  sourceId: 'ztz100',
   glbSha256: 'ffbc0a0709328f693597054cfe048fcc0d7e289f720d9c777ffaf585722e86b6',
   geometrySha256: '50d6b799d51ab196f9991dba5ba390daae3849fc2de72205f027583cd1dd0f7a',
 });

@@ -57,7 +57,7 @@ const viewport = {
 // swing enough to hide real regressions behind vehicle-selection variance.
 const RESOURCE_PLAYER = 'm1a1';
 const RESOURCE_ROSTER = Object.freeze([
-  'fv510_milan', 'bwp1', 'amx40', 'strv103a', 't80b', 't80bv', 'type90',
+  'fv510_milan', 'bwp1', 'amx40_proto', 'strv103a', 't80b', 't80bv', 'type90_kyumaru',
   'm60a2', 'type90a', 'm1a1ha', 'carro45t', 'ztz85_iii', 'm2a2_bradley',
 ]);
 

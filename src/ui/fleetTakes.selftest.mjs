@@ -34,7 +34,7 @@ for (const file of [S21.loop, S21.poster, S21.scene]) assert.ok(existsSync(join(
 const FIXTURE = {
   collection: 'site50-r14',
   vehicles: {
-    t90sm: S21,
+    t90sm_2013: S21,
     english: { ...S21, take: 's61-english', title: { en: 'Only in English' }, short: undefined },
     foreignLoop: { ...S21, loop: 'https://example.com/take.webm' },
     protocolLoop: { ...S21, loop: '//example.com/take.webm' },
@@ -56,10 +56,10 @@ dom.respond(fleet.FLEET_TAKES_INDEX, FIXTURE);
 const [index, again] = await Promise.all([fleet.loadFleetTakes(), fleet.loadFleetTakes()]);
 assert.equal(index, again, 'concurrent lookups share one index');
 assert.deepEqual(dom.state.fetches, [fleet.FLEET_TAKES_INDEX], 'the index is fetched once');
-assert.deepEqual([...index.keys()], ['t90sm', 'english'], 'foreign, climbing, mistyped and incomplete entries show nothing');
-const take = index.get('t90sm');
-assert.deepEqual(take, { vehicle: 't90sm', ...S21 }, 'an entry is the data contract, keyed by its vehicle');
-assert.equal(index.get('m1a2'), undefined, 'a vehicle the index lacks has no take');
+assert.deepEqual([...index.keys()], ['t90sm_2013', 'english'], 'foreign, climbing, mistyped and incomplete entries show nothing');
+const take = index.get('t90sm_2013');
+assert.deepEqual(take, { vehicle: 't90sm_2013', ...S21 }, 'an entry is the data contract, keyed by its vehicle');
+assert.equal(index.get('m1a1_abrams_hc'), undefined, 'a vehicle the index lacks has no take');
 assert.deepEqual(index.get('english').title, { en: 'Only in English', zh: 'Only in English' }, 'Chinese falls back to English');
 assert.deepEqual(index.get('english').short, index.get('english').title, 'a missing short title is the title');
 assert.equal(await fleet.loadFleetTakes(), index, 'later lookups reuse it');

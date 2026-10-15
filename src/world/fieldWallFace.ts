@@ -211,7 +211,7 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
         // (b14, wave 97: "uniform polygon cells": a power diagram — each stone's claim is its weight squared off its
         // squared distance, so the cells are polygons with straight joints, the big stones' large and the small ones'
         // small; one bed for all, so no joint curves)
-        let d1 = Infinity, d2 = Infinity, k1 = -1, k2 = -1;
+        let d1 = Infinity, d2 = Infinity, k1 = -1, xk2_black_panther = -1;
         for (let dv = -1; dv <= 1; dv++) {
           const gv = cv + dv;
           if (gv < 0 || gv >= CV) continue;
@@ -223,16 +223,16 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
               if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
               const dy = (ym - s.y) * FACE_BED;
               const d = dx * dx + dy * dy - s.weight * s.weight;
-              if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
+              if (d < d1) { d2 = d1; xk2_black_panther = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; xk2_black_panther = k; }
             }
           }
         }
         // the distance to the joint (the two sites' power bisector): the difference over twice the sites' spacing
         let gap = 1;
-        if (k1 >= 0 && k2 >= 0) {
-          let sx = stones[k2].u - stones[k1].u;
+        if (k1 >= 0 && xk2_black_panther >= 0) {
+          let sx = stones[xk2_black_panther].u - stones[k1].u;
           if (sx > W / 2) sx -= W; else if (sx < -W / 2) sx += W;
-          gap = Math.max(1e-3, 2 * Math.hypot(sx, (stones[k2].y - stones[k1].y) * FACE_BED));
+          gap = Math.max(1e-3, 2 * Math.hypot(sx, (stones[xk2_black_panther].y - stones[k1].y) * FACE_BED));
         }
         const border = (d2 - d1) / gap + wobble; // about the distance to the stone's outline
         const stone = k1 >= 0 ? stones[k1] : null;

@@ -20,7 +20,7 @@ try {
   await page.goto(`http://127.0.0.1:${port}/?qa=1&nosplash=1`,{waitUntil:'domcontentloaded',timeout:180000});
   await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG?.pedestalOnStage,{timeout:240000});
   await page.waitForSelector('#cot-boot',{hidden:true,timeout:60000});
-  for (const [index,id] of ['challenger_3','challenger_3x','challenger_3'].entries()) {
+  for (const [index,id] of ['challenger3_proto','challenger3','challenger3_proto'].entries()) {
     await page.evaluate(id=>window.__DEBUG.selectGarageTank(id),id);
     await page.waitForFunction(id=>{const d=window.__DEBUG;return d.selectedSpecId===id&&d.pedestalVisual?.specId===id&&d.pedestalOnStage;},{timeout:120000},id);
     await page.screenshot({path:resolve(out,`${index}-${id}-garage.png`)});

@@ -54,7 +54,7 @@ async function prepare(): Promise<void> {
     isBattleActive:()=>true,isSniper:()=>false,onOpenSettings:()=>{},onToggleSound:()=>false});
   const names = ['Vanguard','LongStop','SteppeWolf','OldNikolai','TotTokkie','PakWagen','SteelFox'];
   const tanks = Array.from({length:14},(_,i)=>{
-    const spec = TANK_SPECS[['m1a2','leo2a5','t90m'][i%3]!]!;
+    const spec = TANK_SPECS[['m1a1_abrams_hc','leo2a4_v','t90am'][i%3]!]!;
     return {id:`preview-${i}`,isPlayer:i===0,team:i<7?'player':'enemy',displayName:names[i%7]!,spec,
       state:createTankState(spec,new Vector3((i%7-3)*24,0,i<7?90:-150),0),combat:createCombatState(spec)};
   });
@@ -67,12 +67,12 @@ async function prepare(): Promise<void> {
   await Promise.all([healthPanel(hud.root),hud.buildMinimapFromAsset({size:1200,minY:0,maxY:80,getHeightAt:()=>0,getGroundType:()=> 'grass'},'/minimaps/verdant.webp'),document.fonts.ready]);
   hud.setMode('battle'); for(let i=0;i<31;i++)hud.update(frame);
   bus.emit('tank:destroyed',{id:tanks[8]!.id,killerId:player.id,cause:'fire'});
-  bus.emit('shell:hit',{attackerId:player.id,targetId:tanks[8]!.id,attackerName:'Vanguard',targetName:'T-90M',targetSpecId:'t90m',attackerSpecId:'m1a2',
+  bus.emit('shell:hit',{attackerId:player.id,targetId:tanks[8]!.id,attackerName:'Vanguard',targetName:'T-90M',targetSpecId:'t90am',attackerSpecId:'m1a1_abrams_hc',
     kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,impactAngleDeg:34,shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:135,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
   if(focus==='medals'){installMedalToasts(bus);bus.emit('service:medal',{id:MEDALS[0]!.id});}
   else if(focus==='alerts')bus.emit('ui:magazineReloadStarted',{});
   else bus.emit('player:spotted',{timeS:131});
-  if(focus==='damage')bus.emit('shell:hit',{attackerId:tanks[8]!.id,targetId:player.id,attackerName:'SteelFox',targetName:'Vanguard',targetSpecId:'m1a2',attackerSpecId:'t90m',kind:'pen',damage:320,shellType:'APFSDS',timeS:135});
+  if(focus==='damage')bus.emit('shell:hit',{attackerId:tanks[8]!.id,targetId:player.id,attackerName:'SteelFox',targetName:'Vanguard',targetSpecId:'m1a1_abrams_hc',attackerSpecId:'t90am',kind:'pen',damage:320,shellType:'APFSDS',timeS:135});
   if(focus==='killsRight')bus.emit('tank:destroyed',{id:tanks[1]!.id,killerId:tanks[9]!.id,cause:'fire'});
   hud.update(frame);
   await Promise.all([...document.images].map(image=>image.decode().catch(()=>{})));

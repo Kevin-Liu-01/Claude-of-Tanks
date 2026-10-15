@@ -74,6 +74,6 @@ function verifyThirdGenerationMark(id, expectedPanels) {
 }
 
 verifyThirdGenerationMark('merkava3c', 16);
-verifyThirdGenerationMark('merkava3d', 18);
+verifyThirdGenerationMark('merkava3_baz', 18);
 
 console.log('merkava3Fit.selftest: Mk 3C/3D bustle, turret seat, side armor, and glacis closures passed');

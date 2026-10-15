@@ -13,7 +13,7 @@ export const VEHICLE_COMPARISON_SOURCES = Object.freeze({
     stripBakedTextures: true,
   }),
   // jpz_e100, sturmtiger and t95 records retired 2026-09-23 (owner: "no hidden tanks"); their comparison rows left with them.
-  m1a2_tusk: Object.freeze({
+  m1a1_abrams_sa: Object.freeze({
     path: '/models/tanks/community/variants/m1a2_tusk_dannzjs_variant.glb',
     turretNode: 'TurretPivot',
     gunNode: 'GunPivot',
@@ -25,7 +25,7 @@ export const VEHICLE_COMPARISON_SOURCES = Object.freeze({
     autoPivot: true,
     paintUntextured: true,
   }),
-  m48: Object.freeze({
+  m48a5_patton: Object.freeze({
     path: '/models/tanks/community/m48a5_atmodeler.glb',
     turretNode: '^Turret$',
     autoPivot: true,

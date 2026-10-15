@@ -80,7 +80,7 @@ function createHarness({ code = 'ROOM01', host = null, region = undefined, trans
 }
 
 const token = (seed) => seed.repeat(64).slice(0, 64);
-const identity = (id, resume = token('a'), next = token('b')) => ({ roomCode: 'ROOM01', player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 'm1a2' } });
+const identity = (id, resume = token('a'), next = token('b')) => ({ roomCode: 'ROOM01', player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 'm1a1_abrams_hc' } });
 
 // ---- admission, capabilities, replacement, chat
 {
@@ -799,7 +799,7 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   h.now += 50;
   const unready = await h.command('g', { type: 'set_ready', ready: false });
   h.now += 50;
-  const vehicle = await h.command('g', { type: 'select_vehicle', specId: 't90m' });
+  const vehicle = await h.command('g', { type: 'select_vehicle', specId: 't90am' });
   h.now += 50;
   const readyAgain = await h.command('g', { type: 'set_ready', ready: true });
   assert.equal(h.all('a', 'room_state').length, 1, 'changes inside the window are absorbed');
@@ -818,7 +818,7 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   const flushed = h.last('a', 'room_state').payload.room;
   assert.equal(flushed.revision, readyAgain.payload.revision, 'the flush carries the newest revision');
   assert.equal(flushed.players.find((p) => p.id === 'guest').ready, true);
-  assert.equal(flushed.players.find((p) => p.id === 'guest').specId, 't90m');
+  assert.equal(flushed.players.find((p) => p.id === 'guest').specId, 't90am');
   assert.equal(h.actor.statePending, false);
   assert.equal(h.deferred.length, 0);
   // an instant event (a join) inside a window supersedes a pending coalesced change; the joiner has the room already
@@ -1180,11 +1180,11 @@ const relayCode = (h, socket, requestId) => { const m = relayOf(h, socket, reque
   assert.equal(port.calls.length, 1, 'the mint was under way');
   assert.equal(relayOf(h, 'g', 'k1'), null, 'the kicked seat\'s socket receives no grant');
   const releaseLeave = port.hold();
-  const leaving = h.send('t', 'room_relay', {}, 'k2');
+  const leaving = h.send('t', 'room_relay', {}, 'xk2_black_panther');
   await h.send('t', 'room_leave', {}, 'k3');
   releaseLeave();
   await leaving;
-  assert.equal(relayOf(h, 't', 'k2'), null, 'a seat that left receives no grant');
+  assert.equal(relayOf(h, 't', 'xk2_black_panther'), null, 'a seat that left receives no grant');
 }
 
 // ---- a port that fails, or answers garbage: the seat gets no server and the log names no secret

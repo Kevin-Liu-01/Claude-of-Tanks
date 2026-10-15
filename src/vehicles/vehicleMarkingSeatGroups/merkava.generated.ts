@@ -202,7 +202,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "merkava3d": {
+  "merkava3_baz": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -221,7 +221,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070781
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "merkava3d",
+        "anchorProfile": "merkava3_baz",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -243,7 +243,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070781
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "merkava3d",
+        "anchorProfile": "merkava3_baz",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

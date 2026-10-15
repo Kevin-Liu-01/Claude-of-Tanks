@@ -8,7 +8,7 @@ const names=['k1SourceWheelFacesL','k1SourceWheelFacesR'];
 function build(quality,legacy=false){
  const old=KIT.buildRunningGear;let gear;
  KIT.buildRunningGear=(port,input)=>{const cfg={...input};if(legacy){cfg.wheelCoreGeometry.disc.dispose();for(const layer of cfg.wheelFaceLayers)layer.geometry.dispose();delete cfg.wheelCoreGeometry;delete cfg.wheelFaceLayers;delete cfg.wheelTireInnerRadiusM;}return gear=old(port,cfg);};
- try{const tank=createTank('k1a1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});tank.root.updateMatrixWorld(true);return{tank,gear};}finally{KIT.buildRunningGear=old;}
+ try{const tank=createTank('k1a1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});tank.root.updateMatrixWorld(true);return{tank,gear};}finally{KIT.buildRunningGear=old;}
 }
 function unchanged(root){
  const h=createHash('sha256');root.traverse(m=>{

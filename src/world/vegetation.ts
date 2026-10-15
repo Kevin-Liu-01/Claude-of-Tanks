@@ -3232,7 +3232,7 @@ function buildOakFarGeometry(
     // 20-face silhouette is indistinguishable from the 80-face one at that
     // size, and the far-canopy pool was 1.9 M tris/frame of the 8.6 M total
     // (r7 forested-hills planting multiplied the far-tree count). Measured on
-    // the m1a2/verdant probe battle: far-canopy pool 1.92 M -> 0.53 M.
+    // the m1a1_abrams_hc/verdant probe battle: far-canopy pool 1.92 M -> 0.53 M.
     addCanopyLobe(b);
   }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };

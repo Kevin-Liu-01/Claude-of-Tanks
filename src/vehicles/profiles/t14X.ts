@@ -585,4 +585,4 @@ export function buildT14X(P: TankBuilderPort): void {
   P.topY = localY(3.18);
 }
 
-export const T14_X_PROFILES = { t14_x: { build: buildT14X } };
+export const T14_X_PROFILES = { t14_armata: { build: buildT14X } };

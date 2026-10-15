@@ -101,14 +101,14 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
   try {
     // ---- 1. create, join, ready, start → rtc:// with p1 as host; channels open; welcomes
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId, botsFill: true } });
+    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId, botsFill: true } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
     // p1 (the first host) sits on bravo; p2 and p3 are allies on alpha, so each sees the other's hull at full rate
     await p1.headless.room.setTeam('bravo');
-    await p2.headless.room.join({ roomCode: code, selection: { specId: 't90m' }, team: 'alpha' });
-    await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2a7v' }, team: 'alpha' });
+    await p2.headless.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
+    await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
     await until(() => p1.headless.room.room?.players.length === 3, 'three seats', 10_000);
     await Promise.all(sessions.map((entry) => entry.headless.room.setReady(true)));
     await until(() => p1.headless.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);

@@ -43,8 +43,8 @@ function scriptedTransport() {
   return transport;
 }
 const SEAT_SECRET = 'hand-off-seat-secret-0123456789abcdef0123';
-const room = createRoom({ roomCode: 'HANDOF', mode: 'lan', creator: { id: 'me', name: 'Me' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false }, now: 1000 });
-joinRoom(room, { player: { id: 'other', name: 'Other' }, selection: { specId: 't90m' }, team: null, now: 1001 });
+const room = createRoom({ roomCode: 'HANDOF', mode: 'lan', creator: { id: 'me', name: 'Me' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false }, now: 1000 });
+joinRoom(room, { player: { id: 'other', name: 'Other' }, selection: { specId: 't90am' }, team: null, now: 1001 });
 const snapshotWith = (host) => ({ ...serializeRoom(room), host });
 const world = new RtcWorld();
 const cores = [];
@@ -69,7 +69,7 @@ let counter = 0;
 function start(transport, hostId, players = null) {
   const matchId = `m${++counter}-0000f${counter}f0`;
   const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
-  const token = signSeatToken(hostSecret, { v: 1, roomId: 'HANDOF', seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a2', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  const token = signSeatToken(hostSecret, { v: 1, roomId: 'HANDOF', seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
   const snapshot = snapshotWith({ transport: 'p2p', hostId, generation: 1, since: 2000 });
   if (players) snapshot.players = players(snapshot.players);
   transport.deliver({ type: 'room_state', payload: { room: snapshot } });

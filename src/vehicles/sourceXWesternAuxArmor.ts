@@ -232,7 +232,7 @@ function appendSurface(template: ArmorPlate, face: Face, group: string, target: 
 }
 
 export function applySourceXWesternAuxArmor(spec: FleetTankSpec, id: string): void {
-  if (!['leo2a6_x', 'strv122_x', 'ariete_c1_x', 'challenger1_x'].includes(id)) return;
+  if (!['leo2a6', 'strv122', 'c1_ariete', 'challenger1_mk3'].includes(id)) return;
   const templates = new Map([...spec.armor.hullPlates, ...spec.armor.turretPlates]
     .filter(p => p.kind === 'spaced' && !p.gunFollow).map(p => [p.name, p]));
   spec.armor.hullPlates = spec.armor.hullPlates.filter(p => !templates.has(p.name));
@@ -243,9 +243,9 @@ export function applySourceXWesternAuxArmor(spec: FleetTankSpec, id: string): vo
     // Surface groups keep the schema-1 spelling (tankIdAliases.ts): seat signatures hash the plates.
     appendSurface(template, face, `${tankSeedId(id)}:${group}`, owner === 'hull' ? spec.armor.hullPlates : spec.armor.turretPlates);
   };
-  if (id === 'leo2a6_x') leopardSkirts(add); // actual main cells already own both structural cheeks
-  else if (id === 'strv122_x') { strvSkirts(add); strvCheeks(add); }
-  else if (id === 'ariete_c1_x') arieteSkirts((name, face, group, owner) =>
+  if (id === 'leo2a6') leopardSkirts(add); // actual main cells already own both structural cheeks
+  else if (id === 'strv122') { strvSkirts(add); strvCheeks(add); }
+  else if (id === 'c1_ariete') arieteSkirts((name, face, group, owner) =>
     add(name, face.map(p => p.map(v => v * ARIETE_X_FAMILY_SCALE) as Point), group, owner));
   else challengerSkirts(add);
 }

@@ -1,6 +1,6 @@
 // vehicleGroundOcclusion.test-support — the fixture the ground-occlusion receipts share (vehicleGroundOcclusion.selftest
 // and tools/vehicle-ground-occlusion.browser.selftest): the T-90M as measureVehicleGroundHull measured it on the
-// 2026-10-03 build (createTank('t90m', high)), the top of its shoes (the brute-force union stands its runs to it), and
+// 2026-10-03 build (createTank('t90am', high)), the top of its shoes (the brute-force union stands its runs to it), and
 // the ground points the law is held to — beside the track, ahead of the glacis, behind the rear plate, off a corner and
 // under the belly between the tracks.
 

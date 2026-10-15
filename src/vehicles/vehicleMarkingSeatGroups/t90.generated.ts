@@ -55,7 +55,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90": {
+  "t90_1992": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -74,7 +74,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6424726
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90",
+        "anchorProfile": "t90_1992",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -96,7 +96,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7582948
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90",
+        "anchorProfile": "t90_1992",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -104,7 +104,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90a": {
+  "t90a_2004": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -123,7 +123,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6964209
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90a",
+        "anchorProfile": "t90a_2004",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -145,7 +145,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6397438
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90a",
+        "anchorProfile": "t90a_2004",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -153,7 +153,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90a_vladimir": {
+  "t90a_2006": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -172,7 +172,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7348178
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90a_vladimir",
+        "anchorProfile": "t90a_2006",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -194,7 +194,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6828203
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90a_vladimir",
+        "anchorProfile": "t90a_2006",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -202,7 +202,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90a_burlak": {
+  "t90a_burlak_proto": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -221,7 +221,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.59657
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90a_burlak",
+        "anchorProfile": "t90a_burlak_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -243,7 +243,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.59657
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90a_burlak",
+        "anchorProfile": "t90a_burlak_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -251,7 +251,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90sm": {
+  "t90sm_2013": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -314,7 +314,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90sm",
+        "anchorProfile": "t90sm_2013",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -322,7 +322,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90m": {
+  "t90am": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -341,7 +341,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "t90m",
+        "anchorProfile": "t90am",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -363,7 +363,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.5782662
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90m",
+        "anchorProfile": "t90am",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
@@ -371,7 +371,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t90ms": {
+  "t90ms_2011": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -390,7 +390,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.5866069
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90ms",
+        "anchorProfile": "t90ms_2011",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -412,7 +412,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6004993
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t90ms",
+        "anchorProfile": "t90ms_2011",
         "visibilitySamples": 9,
         "visibilityClearSamples": 8,
         "visibilityRatio": 0.8888889,

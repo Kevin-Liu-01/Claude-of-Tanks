@@ -296,7 +296,7 @@ export default {
     // the armor that fought over the railhead
     // the map-vehicles lane (2026-10-06, the period ruling): a German coalfield junction in the 1960s: the
     // Bundeswehr's M48s and M47s, the Rhine Army's Centurions
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48', 'centurion5', 'm47_patton'] },
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48a5_patton', 'centurion5_2', 'm47_patton'] },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot

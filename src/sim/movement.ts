@@ -756,7 +756,7 @@ let _standsOnDeck = false;
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
  * hull's pitch radius of gyration squared (facePushGrade, the floor's turn at a leading station).
  */
-const _supportStation = { valid: false, guard: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, k2: 1, overCom: 0 };
+const _supportStation = { valid: false, guard: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, xk2_black_panther: 1, overCom: 0 };
 /** The end guard the support rests on this step, when one binds (endGuardSupportY): its hull-local z and world xz. */
 const _guardHit = { deficit: -Infinity, localX: 0, localY: 0, localZ: 0, worldX: 0, worldZ: 0, groundV: 0, grade: 0 };
 /** The most of a struck end's depth under the ground the root takes back in one step, as position (m): a deeper strike, a
@@ -787,7 +787,7 @@ let _bodyCount = 0;
  * The floor's correction at the leading station of a partial contact (constrainLoadedRide): the root's share of a lift
  * there, the turn per metre of the rest and the station's z; out, the turn rate it leaves the hull with (rad/s).
  */
-const _stationTurn = { rootShare: 1, turnPerM: 0, stationZ: 0, overCom: 0, comZ: 0, k2: 1, speed: 0, travel: 0, rate: 0, guard: false, angle: 0 };
+const _stationTurn = { rootShare: 1, turnPerM: 0, stationZ: 0, overCom: 0, comZ: 0, xk2_black_panther: 1, speed: 0, travel: 0, rate: 0, guard: false, angle: 0 };
 /** World-space grade along the travel under an airborne hull this step (worldGradeAlong). */
 let _airGrade = 0;
 /** Half the run the world grade is read over. */
@@ -1406,7 +1406,7 @@ const RAD2DEG = 180 / Math.PI;
 // arc, hull traverse toward the target auto-engages (WoT does exactly this in
 // sniper mode). `spec.gunArcDeg` overrides per vehicle; any spec whose armor
 // carries `turretless: true` (every fixed-mount vehicle in the roster: the
-// Strv 103 family and jpz_e100_x) defaults to ±CASEMATE_ARC_DEG
+// Strv 103 family and jpz_e100) defaults to ±CASEMATE_ARC_DEG
 // per the doc's ±10–15° band. Turreted tanks (arc = Infinity) are untouched.
 const CASEMATE_ARC_DEG = 11;
 // Excess-over-arc that commands a FULL-RATE hull traverse; below it the
@@ -2163,16 +2163,16 @@ function advanceAirborneRide(
 const _strike = { v: 0, travel: 0, turn: 0, endV: 0 };
 /**
  * The plastic impulse a struck end takes from the face under it, on the hull as a rigid body in its pitch plane (round 8,
- * item 3). The end sits `lever` ahead of the centre of mass and `overCom` above it (below: negative), k2 the pitch radius
+ * item 3). The end sits `lever` ahead of the centre of mass and `overCom` above it (below: negative), xk2_black_panther the pitch radius
  * of gyration squared; the centre of mass travels at `speed` (along the hull, signed), the end rises at `endV` and the
  * hull turns nose-up at `pitchV`. The face rises `grade` per metre along the travel. Per unit mass an impulse J at the
- * end changes the centre of mass's velocity by J and the turn by (lever Jy - overCom Jz) / k2, so the end's own velocity
- * by K J, K = I + q q^T / k2 with q = (-overCom, lever). The impulse stops the end on the face where the grip holds it
+ * end changes the centre of mass's velocity by J and the turn by (lever Jy - overCom Jz) / xk2_black_panther, so the end's own velocity
+ * by K J, K = I + q q^T / xk2_black_panther with q = (-overCom, lever). The impulse stops the end on the face where the grip holds it
  * (|J along the face| <= STRIKE_FRICTION x J into it), else stops its closing and slides it along the face under the
  * grip's bound. Out: the centre of mass's vertical change and travel change, the turn, and the end's vertical change.
  */
 function rigidStrikeImpulse(
-  lever: number, overCom: number, k2: number, speed: number, endV: number, pitchV: number, grade: number,
+  lever: number, overCom: number, xk2_black_panther: number, speed: number, endV: number, pitchV: number, grade: number,
 ): typeof _strike {
   _strike.v = 0; _strike.travel = 0; _strike.turn = 0; _strike.endV = 0;
   const dir = speed < 0 ? -1 : 1;
@@ -2187,7 +2187,7 @@ function rigidStrikeImpulse(
   const approach = vz * nz + vy * ny;
   if (!(approach < 0)) return _strike;
   const qz = -overCom, qy = lever;
-  const kzz = 1 + qz * qz / k2, kzy = qz * qy / k2, kyy = 1 + qy * qy / k2;
+  const kzz = 1 + qz * qz / xk2_black_panther, kzy = qz * qy / xk2_black_panther, kyy = 1 + qy * qy / xk2_black_panther;
   const det = kzz * kyy - kzy * kzy;
   // stuck: the end stops on the face, J = -K^-1 v
   let jz = -(kyy * vz - kzy * vy) / det;
@@ -2201,7 +2201,7 @@ function rigidStrikeImpulse(
     jz = push * dz;
     jy = push * dy;
   }
-  const turn = (qz * jz + qy * jy) / k2;
+  const turn = (qz * jz + qy * jy) / xk2_black_panther;
   _strike.v = jy;
   _strike.travel = jz;
   _strike.turn = turn;
@@ -2366,7 +2366,7 @@ function constrainLoadedRide(
       // face where its grip holds it, and slides on it under that grip where it does not. Both act at the end, below and
       // ahead of the centre of mass, so the push turns the hull nose-up and the grip turns it back nose-down: the hull
       // digs in instead of riding up the face on its nose and sailing off its top.
-      const strike = rigidStrikeImpulse(stationZ - _stationTurn.comZ, _stationTurn.overCom, _stationTurn.k2,
+      const strike = rigidStrikeImpulse(stationZ - _stationTurn.comZ, _stationTurn.overCom, _stationTurn.xk2_black_panther,
         _stationTurn.speed, ride.v + stationZ * pitchV, pitchV, _guardHit.grade);
       // the end's own vertical change, the root's and the turn: the root sits comZ behind the centre of mass
       const closing = strike.endV;
@@ -2516,7 +2516,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
     if (_supportStation.guard ? Math.abs(lever) > TIP_DEADBAND_M
       : lever * state.speed > 0 && Math.abs(state.speed) > TIP_TRAVEL_MPS) {
       if (Math.abs(state.speed) >= GRADE_PUSH_MIN_TRAVEL_MPS) faceGrade = facePushGrade(state);
-      const comShare = _supportStation.k2 / (_supportStation.k2 + lever * lever);
+      const comShare = _supportStation.xk2_black_panther / (_supportStation.xk2_black_panther + lever * lever);
       const turnPerM = (1 - comShare) / lever;
       _stationTurn.rootShare = Math.max(0, comShare - _supportStation.comZ * turnPerM);
       _stationTurn.turnPerM = turnPerM;
@@ -2524,7 +2524,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       _stationTurn.guard = _supportStation.guard;
       _stationTurn.overCom = _supportStation.overCom;
       _stationTurn.comZ = _supportStation.comZ;
-      _stationTurn.k2 = _supportStation.k2;
+      _stationTurn.xk2_black_panther = _supportStation.xk2_black_panther;
       _stationTurn.speed = state.speed;
     }
   }
@@ -4561,7 +4561,7 @@ function writeSupportCache(
   }
   if (_supportStation.valid) {
     _supportStation.comZ = tankContactRect(spec).centerZ + tankMassCenterOffsetM(spec);
-    _supportStation.k2 = (spec.dims.hullLengthM * spec.dims.hullLengthM + spec.dims.heightM * spec.dims.heightM) / 12;
+    _supportStation.xk2_black_panther = (spec.dims.hullLengthM * spec.dims.hullLengthM + spec.dims.heightM * spec.dims.heightM) / 12;
     // a struck end's height over the centre of mass (the posture law's, HOLD_CG_HEIGHT_FRAC of the hull over its tracks)
     _supportStation.overCom = _supportStation.guard ? _guardHit.localY - HOLD_CG_HEIGHT_FRAC * spec.dims.heightM : 0;
   }

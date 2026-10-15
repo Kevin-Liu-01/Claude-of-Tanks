@@ -37,7 +37,7 @@ names; the negative control that renames the owner still fails coverage).
 `TIGER_TURRET_HALF_WIDTH`), `buildT34`, `buildM1A2` (+ `buildM1A2Public`,
 `KIT.buildM1A2`) and `buildT90M` (+ `addT90MRearSlatCage`) — 932 lines — were
 unreachable: `profiles/ww2.ts`, `abrams.ts` and `t90.ts` register `m4a3e8`,
-`tiger1`, `t34_85`, `m1a2_legacy` and `t90m` as profiled builders, which
+`tiger1`, `t34_85`, `m1a2_legacy` and `t90am` as profiled builders, which
 `registerConfiguredBuilders` lets override the core table; no profile names a
 core id as its `base`; `KIT.buildM1A2` had no caller. `BUILDERS` keeps `is2`,
 `panther_g` and `leo2a7` (their only builders; hidden-fleet decision pending).

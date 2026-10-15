@@ -93,7 +93,7 @@ export const STRIP_CASES = Object.freeze({
     view: 'trench' },
   'trench-assault': { map: 'badlands', mode: 'frontline_assault', find: 'trench-assault', kind: 'cross', speed: 11, cruise: true,
     view: 'trench' },
-  'trench-assault-heavy': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100_x', find: 'trench-assault', kind: 'cross',
+  'trench-assault-heavy': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100', find: 'trench-assault', kind: 'cross',
     speed: 6, cruise: true, stretch: 2, view: 'trench' },
   // round 8 (the track-contact parity hand-over, 2026-10-04): the same crossings watched from 24 m, the eye 1.6 m over the
   // lips, so a hull at 11 m/s stays in frame through the run (the coordinator: "pull the camera back"); a hull driven off
@@ -104,7 +104,7 @@ export const STRIP_CASES = Object.freeze({
     view: 'trench-wide' },
   'trench-assault-wide': { map: 'badlands', mode: 'frontline_assault', find: 'trench-assault', kind: 'cross', speed: 11,
     cruise: true, view: 'trench-wide' },
-  'trench-assault-heavy-wide': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100_x', find: 'trench-assault',
+  'trench-assault-heavy-wide': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100', find: 'trench-assault',
     kind: 'cross', speed: 6, cruise: true, stretch: 2, view: 'trench-wide' },
   'roof-drive-off': { map: 'urban', mode: 'standard', find: 'roof-edge', kind: 'cross', speed: 4, cruise: true, stretch: 2,
     view: 'roof' },
@@ -120,13 +120,13 @@ const STOP_STEPS = Object.freeze([-6, 6, 15, 30, 60]);       // from the brake
 const STOPPED_STEPS = Object.freeze([0, 9, 24, 48]);        // from the stop
 
 const HELP = probeHelp({
-  tool: TOOL, accepts: ACCEPTS, defaults: { tag: 'a', spec: 't90m' },
+  tool: TOOL, accepts: ACCEPTS, defaults: { tag: 'a', spec: 't90am' },
   summary: 'Frame strips of the player hull (rough ground, hard stop, landings per gravity world, slope rest) for the visual gauntlet.',
   notes: ['Cases: ' + Object.keys(STRIP_CASES).join(', ')],
 });
 
 export function parseStripArgs(argv) {
-  const parsed = parseProbeArgs(argv, { tool: TOOL, accepts: ACCEPTS, defaults: { tag: 'a', spec: 't90m' } });
+  const parsed = parseProbeArgs(argv, { tool: TOOL, accepts: ACCEPTS, defaults: { tag: 'a', spec: 't90am' } });
   if (parsed.help) return parsed;
   const ids = parsed.options.ids ?? Object.keys(STRIP_CASES);
   const unknown = ids.filter((id) => !STRIP_CASES[id]);

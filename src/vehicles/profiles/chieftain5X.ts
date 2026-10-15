@@ -13,7 +13,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 type Point = readonly [number, number, number];
 
 export const CHIEFTAIN5_X_DATUMS = Object.freeze({
-  chieftain5_x: {
+  chieftain5: {
     dims: { hullLengthM: 6.57542378005239, overallLengthM: 10.470842599868774,
       widthM: 3.509999990463257, heightM: 2.315201997756958 },
     structuralRoofY: 2.315201997756958, fixedOpticHeightM: 2.730199,
@@ -26,7 +26,7 @@ export const CHIEFTAIN5_X_DATUMS = Object.freeze({
     muzzleZ: 6.812053203582764,
   },
 });
-const D = CHIEFTAIN5_X_DATUMS.chieftain5_x;
+const D = CHIEFTAIN5_X_DATUMS.chieftain5;
 
 export function buildChieftain5X(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
@@ -47,4 +47,4 @@ export function buildChieftain5X(P: TankBuilderPort): void {
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
 }
 
-export const CHIEFTAIN5_X_PROFILES = Object.freeze({ chieftain5_x: { build: buildChieftain5X } });
+export const CHIEFTAIN5_X_PROFILES = Object.freeze({ chieftain5: { build: buildChieftain5X } });

@@ -19,7 +19,7 @@ for(const mapId of MAP_IDS){
  for(const team of ['alpha','bravo']){
   const starts=placement.anchors.deployments[team];
   assert.ok(starts.some(start=>{
-   const route=planBotRoute({navigation:placement.navigation,start,goal:exit,spec:getSpec('m1a2'),rng:()=>.5,useRoleDetour:false});
+   const route=planBotRoute({navigation:placement.navigation,start,goal:exit,spec:getSpec('m1a1_abrams_hc'),rng:()=>.5,useRoleDetour:false});
    const end=route.at(-1);return end&&Math.hypot(end[0]-exit.x,end[1]-exit.z)<26;
   }),mapId+'/'+team+': escort and pursuers can reach extraction');routes++;
  }

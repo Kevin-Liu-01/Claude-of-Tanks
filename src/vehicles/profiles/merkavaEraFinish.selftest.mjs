@@ -7,7 +7,7 @@ const marks = Object.freeze({
   merkava2b: 20,
   merkava2d: 30,
   merkava3c: 36,
-  merkava3d: 36,
+  merkava3_baz: 36,
   merkava4b: 20,
 });
 
@@ -98,7 +98,7 @@ for (const [id, expectedTiles] of Object.entries(marks)) {
   assert.deepEqual(position.array, beforeStrip,
     `${id} round reset restores the two-layer ERA field exactly`);
 
-  if (id === 'merkava3c' || id === 'merkava3d') {
+  if (id === 'merkava3c' || id === 'merkava3_baz') {
     const rails = turret.userData[`${id}TurretRailSeatReceipt`];
     assert.ok(rails, `${id} publishes its turret-side rail seats`);
     assert.equal(rails.revision, 'outer-carrier-conformal-r1');

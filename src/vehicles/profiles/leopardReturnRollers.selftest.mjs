@@ -13,8 +13,8 @@ import {leopardReturnRollers} from './leopardReturnRollers.ts';
 import {matrix,finiteClearance,continuousShoeClearance,moving,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 
-const cases=[['leo2a7v_x',buildLeopard2A7VX],['leo2a4m_x',buildLeopard2A4MX],
- ['leo2a5_x',buildLeopard2A5X],['leo2_revolution',buildLeopardRevolution],['kf51_x',buildKF51X]];
+const cases=[['leo2a7v',buildLeopard2A7VX],['leo2a5m',buildLeopard2A4MX],
+ ['leo2a5',buildLeopard2A5X],['leo2_revolution',buildLeopardRevolution],['kf51_panther',buildKF51X]];
 const requested=process.argv[2];
 if(requested&&!cases.some(([id])=>id===requested))throw new Error('Unknown exact roller target');
 const selected=requested?cases.filter(([id])=>id===requested):cases;
@@ -22,9 +22,9 @@ const selected=requested?cases.filter(([id])=>id===requested):cases;
 // A5 lining call) is retired: whole-tank change detection is the fleet geometry ledger's. The A5 lining is now
 // isolated live: the unlined twin is the same build with the band buffers restored to their state right after
 // the gear was built (the lining only rewrites those buffers). A live roller-free twin of the current builder
-// still proves the rollers are additive for every hull except leo2a5_x, whose lining needs the roller stations
+// still proves the rollers are additive for every hull except leo2a5, whose lining needs the roller stations
 // (its roller-free twin would need a source replay and is not attempted).
-// Fixture configuration for the station-validation negatives below (leo2a7v_x running gear).
+// Fixture configuration for the station-validation negatives below (leo2a7v running gear).
 const STATION_FIXTURE={style:'rubber',wheelR:.375,wheelW:.37,wheelZs:[-2.38,-1.57,-.76,.05,.86,1.67,2.48],wheelY:.46,xc:1.48,
  trackW:.66,trackTh:.074,topY:1.32,sprocket:{z:-3.120,y:.9647,r:.3813},idler:{z:3.247,y:.9063,r:.2785},paintedEnds:true,arms:true,coveredTop:true};
 const stats={builds:0,rollers:0,poses:0,negativeControls:0,rows:[]};
@@ -35,7 +35,7 @@ function capture(id,build,quality,unlined=false,omitRollers=false){
  let port,cfg,gear;const emissions=[],original=KIT.buildRunningGear,bandBefore=[],gearBand=[];
  KIT.buildRunningGear=(p,input)=>{
   assert.ok(Math.abs(input.botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
-  assert.equal(input.trackCarrierFromOuterFace,id==='leo2a5_x'?true:undefined);
+  assert.equal(input.trackCarrierFromOuterFace,id==='leo2a5'?true:undefined);
   if(omitRollers){
    const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,trackCarrierFromOuterFace,loopPoints,botY,rigidLinkChords,...retained}=input;
    p.disposables.push(returnRollerGeometry);cfg=retained; // the twin never adopts this caller-owned buffer
@@ -104,7 +104,7 @@ function mounts(c,bounds){
  assert.equal(mesh.geometry.parameters.radialSegments,c.port.q?8:4);assert.equal(mesh.geometry.parameters.openEnded,false);
  assert.equal(mesh.material,c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
  assert.equal(mesh.parent,c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
- const panther=c.port.spec.id==='kf51_x';let oldRootGap=Infinity;
+ const panther=c.port.spec.id==='kf51_panther';let oldRootGap=Infinity;
  for(const [i,b]of bounds.entries()){
   const g=mesh.geometry.clone().applyMatrix4(matrix(mesh,i,c.port.hullG));g.computeBoundingBox();const box=g.boundingBox,side=Math.sign(b.center.x);g.dispose();
   assert.ok(Math.abs((side>0?box.min.x:-box.max.x)-(panther ? .90 : .965))<2e-7,
@@ -121,7 +121,7 @@ function mounts(c,bounds){
  if(panther){assert.ok(oldRootGap>.02,'Original Leopard root would float over 20 mm outside KF51 skin');stats.negativeControls++;}
 }
 function a5Lining(current,quality,bounds){
- const plain=capture('leo2a5_x',buildLeopard2A5X,quality,true);
+ const plain=capture('leo2a5',buildLeopard2A5X,quality,true);
  try{
   current.gear.resetPose();current.gear.update(0,0);plain.gear.update(0,0);
   let changed=0;
@@ -161,7 +161,7 @@ function a5Lining(current,quality,bounds){
 }
 for(const [id,build]of selected)for(const quality of['high','low']){
  const current=capture(id,build,quality);
- const omitted=id==='leo2a5_x'?null:capture(id,build,quality,false,true);
+ const omitted=id==='leo2a5'?null:capture(id,build,quality,false,true);
  try{
   if(omitted){
    assert.equal(omitted.port.hullG.getObjectByName('gearReturnRollerTires'),undefined,'Roller-free twin has no rollers');
@@ -200,12 +200,12 @@ for(const [id,build]of selected)for(const quality of['high','low']){
   assert.ok(Number.isFinite(clearance),'Actual finite stock was checked, not an empty collider set');
   assert.ok(clearance<.01,'The finite rollers meet a real band/web support surface, not floating below it'); // 2026-09-17: the rollers hang 8 mm under the 28 mm band so the near/far shoe stock clears them
   assert.ok(clearance>=-2e-6,`${id}/${quality}: actual band + near/far shoes penetrate rollers by ${-clearance} m`);
-  if(id==='leo2a5_x')a5Lining(current,quality,bounds);
-  if(id==='kf51_x'||id==='leo2a4m_x'){
+  if(id==='leo2a5')a5Lining(current,quality,bounds);
+  if(id==='kf51_panther'||id==='leo2a5m'){
    const sample=rollerSuspensionFixtures(current).find(f=>f.name==='compression').sample;
    current.gear.resetPose();for(let tick=0;tick<180;tick++)current.gear.conform({pos:new T.Vector3(),yaw:0,visualPitch:0,visualRoll:0},sample,0,0,1/60);
    current.gear.update(0,0);current.tank.root.updateMatrixWorld(true);
-   const oldZ=id==='kf51_x'?[-1.98,-.38,1.04,2.08]:[-2.08,-.40,1.12,2.14];
+   const oldZ=id==='kf51_panther'?[-1.98,-.38,1.04,2.08]:[-2.08,-.40,1.12,2.14];
    const misplaced=bounds.map(b=>{const i=current.cfg.rollers.findIndex(r=>Math.abs(r.z-b.center.z)<2e-7);assert.ok(i>=0);
     return{...b,center:b.center.clone().setZ(oldZ[i])};});
    const roads=current.port.hullG.getObjectByName('gearRoadWheelTires');let oldGap=Infinity;
@@ -246,12 +246,12 @@ for(const [id,build]of selected)for(const quality of['high','low']){
  assert.equal(disposedRotors,1);assert.equal(disposedRotorInstances,1);
 }
 for(const quality of['high','low']){
- const control=createTank('leo2a6m_x',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
+ const control=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
  try{
   assert.equal(control.root.getObjectByName('gearReturnRollerTires').count,8,'Existing A6M rollers retained');
   assert.equal(control.root.getObjectByName('gearReturnRollerSpindles'),undefined,'No blanket A6M opt-in or station donor');
  }finally{control.dispose();}
- const rollerless=createTank('t62mv1_x',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
+ const rollerless=createTank('t62mv1',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
  try{
   for(const name of['gearReturnRollerRotors','gearReturnRollerTires','gearReturnRollerDiscs','gearReturnRollerSpindles'])
    assert.equal(rollerless.root.getObjectByName(name),undefined,'FM100-2-3: T-62 remains a real rollerless vehicle');

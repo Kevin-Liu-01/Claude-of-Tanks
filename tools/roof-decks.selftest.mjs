@@ -18,7 +18,7 @@ import {
 } from '../src/world/structureCollision.ts';
 import { collisionPartIsDeck, collisionPartTopAt } from '../src/world/collision.ts';
 
-await ensureAuthorityFleet(['t90m', 'bmp2']);
+await ensureAuthorityFleet(['t90am', 'bmp2']);
 
 // a 10 x 8 m house: four 0.3 m walls 4 m tall, and a gable roof from 4 m at the eaves (0.6 m past the walls) to 6.5 m
 const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
@@ -77,19 +77,19 @@ assert.ok(cert.contact.score > 0.5, `the walls' footprint certifies without the 
 // a hull dropped onto the roof, along the ridge: it stands on the roof, not in the house
 const flat = () => 0;
 let minY = Infinity;
-const drop = runCase('t90m', 'earth', { id: 'roof-drop', terrain: flat, obstacles: [record], seconds: 4, rest: true,
+const drop = runCase('t90am', 'earth', { id: 'roof-drop', terrain: flat, obstacles: [record], seconds: 4, rest: true,
   spawn: { x: 0, z: 30, yaw: Math.PI / 2, dropTo: 1.5 }, input: () => ({ throttle: 0 }), allowBlocked: true }, { replay: false,
   trace: (tick, match) => { if (tick > 120) minY = Math.min(minY, match.entityById.get('subject').state.pos.y); } });
 assert.ok(minY > 5.5, `a hull dropped onto the roof stands on it (${minY.toFixed(2)} m; the ridge 6.5 m)`);
 // a hull driven past the house beside its wall, its turret under the eave: the walls stop it, the eave never does
 let maxXZ = 0;
-const pass = runCase('t90m', 'earth', { id: 'eave-pass', terrain: flat, obstacles: [record], seconds: 6,
+const pass = runCase('t90am', 'earth', { id: 'eave-pass', terrain: flat, obstacles: [record], seconds: 6,
   spawn: { x: -14, z: 30 - 4.3 - 2.2, yaw: Math.PI / 2 }, input: () => ({ throttle: 1 }), allowBlocked: true }, { replay: false,
   trace: (tick, match) => { const s = match.entityById.get('subject').state; maxXZ = Math.max(maxXZ, s.pos.x); } });
 assert.ok(maxXZ > 8, `a hull beside the wall drives on under the eave (x ${maxXZ.toFixed(1)})`);
 assert.ok(pass.popXZMaxM <= 0.12 && pass.obstaclePenMaxM <= 0.1, `and is not pushed by it (${pass.popXZMaxM.toFixed(3)} / ${pass.obstaclePenMaxM.toFixed(3)} m)`);
 // deterministic
-const again = runCase('t90m', 'earth', { id: 'roof-drop', terrain: flat, obstacles: [record], seconds: 4, rest: true,
+const again = runCase('t90am', 'earth', { id: 'roof-drop', terrain: flat, obstacles: [record], seconds: 4, rest: true,
   spawn: { x: 0, z: 30, yaw: Math.PI / 2, dropTo: 1.5 }, input: () => ({ throttle: 0 }), allowBlocked: true }, { replay: false });
 assert.deepEqual(again.final, drop.final, 'the same drop, the same pose');
 
@@ -132,7 +132,7 @@ function onSlope(hull, deg, yaw, onRoof, pivot = false) {
 const SIM_DT = 1 / 60;
 const steep = [];
 for (const deg of [30, 40, 45]) for (const [facing, yaw] of [['across', Math.PI / 2], ['downhill', Math.PI]]) {
-  const roofRun = onSlope('t90m', deg, yaw, true), ground = onSlope('t90m', deg, yaw, false);
+  const roofRun = onSlope('t90am', deg, yaw, true), ground = onSlope('t90am', deg, yaw, false);
   const at = `a T-90M ${facing} a ${deg}-degree roof`;
   assert.equal(roofRun.moved > 1, ground.moved > 1, `${at} ${ground.moved > 1 ? 'slides' : 'holds'} as on terrain of that grade (moved ${roofRun.moved.toFixed(2)} m; terrain ${ground.moved.toFixed(2)} m)`);
   // (set down level, its tail in the roof, it settles onto it no faster than onto terrain of that grade)
@@ -140,7 +140,7 @@ for (const deg of [30, 40, 45]) for (const [facing, yaw] of [['across', Math.PI 
     `${at} is never lifted off it (${roofRun.over.toFixed(2)} m over the roof, rising ${roofRun.rise.toFixed(2)} m/s; terrain ${ground.rise.toFixed(2)} m/s)`);
   steep.push(`${deg}/${facing} ${roofRun.moved > 1 ? 'slides' : 'holds'}`);
 }
-for (const hull of ['t90m', 'bmp2']) {
+for (const hull of ['t90am', 'bmp2']) {
   const mansard = onSlope(hull, 54, Math.PI / 2, true, true);
   // (past its tip angle across the slope it rolls down the mansard: its root no further off the roof than a hull on its side)
   assert.ok(mansard.rise < 4 && mansard.over < 2, `a ${hull} pivoting on a 54-degree mansard is never thrown (${mansard.over.toFixed(2)} m over it, rising ${mansard.rise.toFixed(2)} m/s)`);

@@ -8,7 +8,7 @@ import { createTankState } from '../../sim/movement.ts';
 // Independent source witnesses: the receiver sits above an open-topped
 // recess, not inside the former continuous turret roof. See the 2026-09-21
 // gun study for immutable Object_29/Object_31 calipers and source hash.
-const id = 'kurganets25_x', scale = .90; // Owner-approved complete vehicle resize.
+const id = 'kurganets25', scale = .90; // Owner-approved complete vehicle resize.
 await ensureInteriorFills([id]);
 for (const quality of ['high', 'low']) {
   const tank = createTank(id, null, { proceduralOnly:true, geometryReceipt:true,

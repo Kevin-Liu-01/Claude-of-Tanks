@@ -63,7 +63,7 @@ interface TopPanel {
   /**
    * 2026-10-09 (launch RC; ghillieSuit.selftest, "suit triangles pass into the cage"): an unseated net's floor over the
    * surface its probe reports, in metres. Where the net sags off its supports onto something under it, it rests on that
-   * at this loft instead of sinking into it. A cage wing's laid net sets it: at the edge of the cut round ua_t80u_modern's
+   * at this loft instead of sinking into it. A cage wing's laid net sets it: at the edge of the cut round t80u_zoria's
    * drone dock, the net sagging into the opening ran its edge through the row tube beneath it.
    */
   restOnProbeM?: number;
@@ -505,7 +505,7 @@ function probeGrid(tri: Float32Array, a0: number, a1: number): ProbeGrid {
   const count = tri.length / 9;
   if (!count) return { min0: 0, min1: 0, n0: 1, n1: 1, start: new Int32Array(2), items: new Int32Array(0), broad: new Int32Array(0) };
   // the netting lane (2026-10-10): one fixed window round the owner's origin, not the triangles' measured bounds. With
-  // the bounds pass, a build that followed others in the same process intermittently laid leclerc_xlr's deck nets
+  // the bounds pass, a build that followed others in the same process intermittently laid leclerc_sxxi's deck nets
   // without their left halves (never with node --single-threaded); a probe minimum forced to +0.35 m reproduces that
   // loss, as if the pass (a min/max over every corner, tens of thousands of iterations) had come out short. A fixed
   // window has no such pass; every vehicle's owner frame lies well inside it (a corner outside is clamped to the edge
@@ -1660,7 +1660,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   // from the edge, a column's cells reaching within 2 cm of the standing gun's floor are left out, so the net's top stops
   // under the gun instead of rolling over the roof through it.
   // 2026-10-08 (the lane lead, over push 5's regenerated drone-dock seats): a drape hung on a roof-cage wing that carries
-  // a mission dock is cut away over the dock's run, top to hem (missionAttachmentReceiver.selftest, ua_t80u_modern: Zoria's
+  // a mission dock is cut away over the dock's run, top to hem (missionAttachmentReceiver.selftest, t80u_zoria: Zoria's
   // bearers rest on the wing's outer tube, where the drape's roll came over it); the pieces either side hang on their own
   const dockSide = dock && Math.sign(dock.min.x + dock.max.x) === side ? dock : null;
   const runFloor = gunFloor ? (z: number): number => {
@@ -2747,8 +2747,8 @@ const LEO2A4_TURRET_ROOF_HOLES: readonly (readonly Point2[])[] = [
 ];
 
 export const GHILLIE_SUIT_CONFIGS = Object.freeze({
-  leo2a4: {
-    id: 'leo2a4', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech', maxHalfWidth: 1.845, hemFloorM: 0.565,
+  leo2a2: {
+    id: 'leo2a2', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech', maxHalfWidth: 1.845, hemFloorM: 0.565,
     light: 0x64794a, dark: 0x34462d, netColor: 'rgba(34,48,27,0.72)',
     hull: {
       // the deck under the turret and gun sweep keeps its garnish to a low band along its edges (round 3)
@@ -2793,8 +2793,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       ],
     },
   },
-  ua_t64bv: {
-    id: 'ua_t64bv', seed: 640, style: 'leafy', density: 0.92, leafScale: 1.04,
+  t64bv_donbas: {
+    id: 't64bv_donbas', seed: 640, style: 'leafy', density: 0.92, leafScale: 1.04,
     light: 0x6f7d48, dark: 0x33452d, netColor: 'rgba(38,54,29,0.76)',
     hull: {
       top: [{ x0: -1.50, x1: 1.50, z0: -3.12, z1: 3.18, nx: 24, nz: 48,
@@ -2820,8 +2820,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.42, 0.42, 0.04, 0.64), rect(-0.72, -0.20, 0.48, 0.76)], seed: 43 }],
     },
   },
-  pt91_twardy: {
-    id: 'pt91_twardy', seed: 911, style: 'leafy', density: 0.86, leafScale: 0.92, foliageKind: 'birch',
+  pt91a_twardy: {
+    id: 'pt91a_twardy', seed: 911, style: 'leafy', density: 0.86, leafScale: 0.92, foliageKind: 'birch',
     light: 0x71835a, dark: 0x374a35, netColor: 'rgba(43,58,35,0.76)',
     hull: {
       top: [{ x0: -1.55, x1: 1.55, z0: -3.15, z1: 3.22, nx: 24, nz: 48,
@@ -2875,8 +2875,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
   },
-  strv103: {
-    id: 'strv103', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
+  strv103b: {
+    id: 'strv103b', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
     light: 0x65783f, dark: 0x304329, netColor: 'rgba(37,53,29,0.80)',
     hull: {
       top: [{ x0: -1.66, x1: 1.66, z0: -3.76, z1: 3.24, nx: 26, nz: 54,
@@ -2890,8 +2890,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outAt: (_z, t) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),
     },
   },
-  strv122: {
-    id: 'strv122', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92, foliageKind: 'spruce',
+  strv121: {
+    id: 'strv121', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92, foliageKind: 'spruce',
     disabled: true,
     light: 0x657845, dark: 0x31422d, netColor: 'rgba(39,53,31,0.80)',
     hull: {
@@ -2950,8 +2950,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         seatGapM: 0.026, seat: 'bustle-cage', seed: 183 }],
     },
   },
-  ua_t84_oplot_m: {
-    id: 'ua_t84_oplot_m', seed: 8420, style: 'leafy', density: 0.90, leafScale: 0.96,
+  t84bm_oplot_m: {
+    id: 't84bm_oplot_m', seed: 8420, style: 'leafy', density: 0.90, leafScale: 0.96,
     disabled: true,
     light: 0x708055, dark: 0x354830, netColor: 'rgba(43,59,35,0.82)',
     hull: {
@@ -2976,8 +2976,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.50, 0.50, -0.04, 0.72)], seed: 213 }],
     },
   },
-  m1a2_sepv3: {
-    id: 'm1a2_sepv3', seed: 123, style: 'ulcans', density: 0.76, leafScale: 0.96,
+  m1a1_abrams_fep: {
+    id: 'm1a1_abrams_fep', seed: 123, style: 'ulcans', density: 0.76, leafScale: 0.96,
     light: 0x7a795b, dark: 0x3d4636, netColor: 'rgba(50,55,43,0.82)',
     hull: {
       // round 3: the cover rides the measured front deck (sepv3HullY), opens the driver's periscopes with his hatch, keeps
@@ -3412,7 +3412,7 @@ function cageOpenings(wing: CageWing, armour: SurfaceProbe | null, gunFloor: (x:
   const step = 0.04, s = wing.flank;
   const blocked: Array<[number, number]> = [];
   // 2026-10-08 (the lane lead, over push 5's regenerated drone-dock seats): a mission dock seated on the wing holds no
-  // cloth; its receiver keeps clear of the wing's net (missionAttachmentReceiver.selftest, ua_t80u_modern)
+  // cloth; its receiver keeps clear of the wing's net (missionAttachmentReceiver.selftest, t80u_zoria)
   const onDock = (x: number, z: number): boolean => !!dock
     && x >= dock.min.x - 0.02 && x <= dock.max.x + 0.02 && z >= dock.min.z - 0.02 && z <= dock.max.z + 0.02;
   for (let a = wing.inner - 0.06; a <= wing.outer + 0.06; a += step) {
@@ -4740,7 +4740,7 @@ function suitCapOf(P: GhillieBuilderPort): SuitCap | null {
   const root = P.hullG.parent;
   if (!root) return null;
   root.updateMatrixWorld(true);
-  // 2026-10-12 (cam-netting; battleGeometrySharing.selftest, type90 and type90a: 20 -> 16 shared stocks): Box3
+  // 2026-10-12 (cam-netting; battleGeometrySharing.selftest, type90_kyumaru and type90a: 20 -> 16 shared stocks): Box3
   // expandByObject computes and keeps every geometry's bounding box, and the battle geometry share keys a stock by its
   // bounds too, so a suited build's gear stocks no longer matched its unsuited sibling's. The bounds are read here
   // without writing them back.

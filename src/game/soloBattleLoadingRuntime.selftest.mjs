@@ -35,8 +35,8 @@ const playerVisual = { root: new Object3D() };
 const pedestalVisual = playerVisual;
 const game = {
   tanks: [
-    { specId: 'm1a2', isPlayer: true, visual: playerVisual, spec: { id: 'm1a2' } },
-    { specId: 't90m', isPlayer: false, visual: { root: new Object3D() } },
+    { specId: 'm1a1_abrams_hc', isPlayer: true, visual: playerVisual, spec: { id: 'm1a1_abrams_hc' } },
+    { specId: 't90am', isPlayer: false, visual: { root: new Object3D() } },
   ],
   player: null,
 };
@@ -77,13 +77,13 @@ const loadingOptions = {
   post: { setAdaptiveSuspended: (value) => events.push(`adaptive:${value}`) },
   battleIntent: {
     consumeMap(specId, mapId) {
-      assert.equal(specId, 'm1a2');
+      assert.equal(specId, 'm1a1_abrams_hc');
       assert.equal(mapId, 'random');
       return 'verdant';
     },
     prepareRoster(options) {
-      assert.deepEqual(options.rosterIds, ['m1a2', 't90m']);
-      assert.deepEqual(options.autoCamoIds, ['m1a2']);
+      assert.deepEqual(options.rosterIds, ['m1a1_abrams_hc', 't90am']);
+      assert.deepEqual(options.autoCamoIds, ['m1a1_abrams_hc']);
       events.push('roster:textures');
       return Promise.resolve();
     },
@@ -144,10 +144,10 @@ const loadingOptions = {
   preloadSettings: async () => events.push('settings:ready'),
   preloadArmorAim: async () => events.push('armor:ready'),
   preloadGarageReturn: async () => events.push('return:ready'),
-  planRoster: () => ['m1a2', 't90m'],
-  planCamoOverrides: () => ['m1a2'],
+  planRoster: () => ['m1a1_abrams_hc', 't90am'],
+  planCamoOverrides: () => ['m1a1_abrams_hc'],
   ensureTankBuilders: async (ids) => {
-    assert.deepEqual(ids, ['m1a2', 't90m', 'wreck']);
+    assert.deepEqual(ids, ['m1a1_abrams_hc', 't90am', 'wreck']);
     events.push('builders:ready');
   },
   preloadSoloAuthority: async () => events.push('authority:ready'),
@@ -175,7 +175,7 @@ const loadingOptions = {
   anisotropy: 4,
   rosterRows: (team) => team === 'player' ? ['allies'] : ['enemies'],
   warmShotCards: (ids) => {
-    assert.deepEqual(ids, ['m1a2', 't90m']);
+    assert.deepEqual(ids, ['m1a1_abrams_hc', 't90am']);
     events.push('shotcards:warm');
   },
   getCamoSweep: () => Promise.resolve(events.push('camo:ready')),
@@ -198,7 +198,7 @@ const loadingOptions = {
 const runtime = createSoloBattleLoadingRuntime(loadingOptions);
 
 try {
-  await runtime.begin('m1a2', null, { randomRoster: false });
+  await runtime.begin('m1a1_abrams_hc', null, { randomRoster: false });
   assert.equal(acquiredTasks, 12, 'all independent cold-entry tasks share one barrier');
   assert.ok(events.includes('minimap:preload:verdant'),
     'the exact tactical-map asset decodes alongside world construction');
@@ -217,7 +217,7 @@ try {
     'Return/Battle Again code is acquired before play, not on the result click');
   assert.ok(events.indexOf('acquisition:done') < events.indexOf('battle:setup'));
   assert.ok(events.indexOf('deployment:warm') < events.indexOf('loader:hide'));
-  assert.ok(events.indexOf('reveal:m1a2') < events.indexOf('camo:ready'),
+  assert.ok(events.indexOf('reveal:m1a1_abrams_hc') < events.indexOf('camo:ready'),
     'early player upload still precedes final camouflage');
   assert.ok(events.indexOf('camo:ready') < events.indexOf('deployment:warm'));
   assert.ok(events.indexOf('reveal:fallback') < events.indexOf('loader:hide'));
@@ -246,7 +246,7 @@ const actualAudio = createLazyAudio({
 });
 try {
   const actualLoading = createSoloBattleLoadingRuntime({ ...loadingOptions, audio: actualAudio });
-  const opening = actualLoading.begin('m1a2', null, { randomRoster: false });
+  const opening = actualLoading.begin('m1a1_abrams_hc', null, { randomRoster: false });
   assert.ok(events.includes('loader:show'));
   assert.ok(!events.includes('audio:device') && !events.includes('visuals:ready'),
     'the opaque loader is requested before device creation or scene acquisition');
@@ -286,10 +286,10 @@ await createSoloBattleEntryRuntime({
   enterGarage: () => audioRecoveryEvents.push('restore-garage'),
   nextFrame: async () => {},
   isVisibleSpecId: () => true,
-  getSelectedSpecId: () => 'm1a2',
+  getSelectedSpecId: () => 'm1a1_abrams_hc',
   getSelectedMapId: () => 'verdant',
   reportError: (_message, error) => { assert.match(error.message, /audio device unavailable/); audioRecoveryEvents.push('report'); },
-}).begin('m1a2');
+}).begin('m1a1_abrams_hc');
 assert.deepEqual(audioRecoveryEvents, ['report', 'restore-garage', 'uncover', 'hide'],
   'real deferred audio errors use existing covered-entry recovery instead of stranding the loader');
 assert.equal(deniedDeviceAudio.loadingActive, false);
@@ -377,7 +377,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
       if (cancel === 'fade') generation++;
     } },
   });
-  const result = combined.begin('m1a2', null, { randomRoster: false });
+  const result = combined.begin('m1a1_abrams_hc', null, { randomRoster: false });
   if (cancel || (fail && fail !== 'shader')) {
     await assert.rejects(result, cancel ? /superseded/ : new RegExp(`${fail} failed`));
     assert.ok(!events.includes('battle:open'), 'failed/cancelled entry cannot release control');
@@ -408,7 +408,7 @@ const missingReceipt = createSoloBattleLoadingRuntime({
   ...loadingOptions,
   deployment: { async warm() { return { generation: 1, revealPrimed: false }; } },
 });
-await assert.rejects(missingReceipt.begin('m1a2', null, { randomRoster: false }), /required reveal readiness/);
+await assert.rejects(missingReceipt.begin('m1a1_abrams_hc', null, { randomRoster: false }), /required reveal readiness/);
 assert.ok(!events.includes('loader:hide') && !events.includes('reveal:fallback'));
 delete globalThis.__BATTLE_LOAD;
 delete globalThis.__VISUAL_LOAD_TIMINGS;
@@ -462,7 +462,7 @@ for (const heldStage of ['constructor', 'preload', 'upload']) {
       stageRootTextureUploads: realUploads.stageRootTextureUploads }),
     createLoadingYielder: () => () => hold('upload'),
   });
-  await assert.rejects(entry.begin('m1a2', null, { randomRoster: false }), error => error === failure);
+  await assert.rejects(entry.begin('m1a1_abrams_hc', null, { randomRoster: false }), error => error === failure);
   const stopped = { uploads, preloads, warms };
   assert.equal(uploads, heldStage === 'upload' ? 1 : 0,
     'positive control reaches exactly the selected asynchronous boundary');
@@ -472,7 +472,7 @@ for (const heldStage of ['constructor', 'preload', 'upload']) {
   await assert.rejects(fxPending, /FX preparation superseded/);
   assert.deepEqual({ uploads, preloads, warms }, stopped,
     'the old entry performs no further preload, warm or actual texture uploads after recovery');
-  await entry.begin('m1a2', null, { randomRoster: false });
+  await entry.begin('m1a1_abrams_hc', null, { randomRoster: false });
   assert.equal(root.userData.battleTexturesStaged, true);
   assert.equal(uploads, stopped.uploads + 3, 'fresh entry stages the same retained runtime completely');
   geometry.dispose(); materials.forEach(material => material.dispose());
@@ -487,15 +487,15 @@ console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm, rev
  const aircraftVisual={root:new Object3D()};aircraftVisual.root.userData.aircraftOnly=true;
  const entry=createSoloBattleLoadingRuntime({...loadingOptions,
   battleIntent:{...loadingOptions.battleIntent,prepareRoster:async options=>{prepared.push(options);}},
-  planRoster:(_id,_random,_campaign,mode)=>{assert.equal(mode,'ac130');return ['m1a2','t90m'];},
+  planRoster:(_id,_random,_campaign,mode)=>{assert.equal(mode,'ac130');return ['m1a1_abrams_hc','t90am'];},
   ensureTankBuilders:async ids=>{built.push(...ids);},
   startBattle:()=>{game.player=game.tanks[0];game.player.visual=aircraftVisual;},
   warmShotCards:ids=>cards.push(...ids),
  });
- await entry.begin('m1a2',null,{randomRoster:false,gameMode:'ac130'});
- assert.deepEqual(prepared[0].rosterIds,['t90m']);
+ await entry.begin('m1a1_abrams_hc',null,{randomRoster:false,gameMode:'ac130'});
+ assert.deepEqual(prepared[0].rosterIds,['t90am']);
  assert.deepEqual(prepared[0].autoCamoIds,[]);
- assert.ok(!built.includes('m1a2'),'pilot tank never enters builder preparation');
- assert.deepEqual(cards,['t90m']);game.tanks[0].visual=playerVisual;
+ assert.ok(!built.includes('m1a1_abrams_hc'),'pilot tank never enters builder preparation');
+ assert.deepEqual(cards,['t90am']);game.tanks[0].visual=playerVisual;
  delete globalThis.__BATTLE_LOAD;delete globalThis.__VISUAL_LOAD_TIMINGS;
 }

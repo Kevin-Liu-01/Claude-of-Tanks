@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 
 const { prepareEntryPanelMasks } = await import('./damagePanelEntryMasks.ts');
 
-const spec = { id: 'm1a2' };
+const spec = { id: 'm1a1_abrams_hc' };
 const visual = { root: {} };
 let passed = 0;
 
@@ -32,7 +32,7 @@ let passed = 0;
   assert.equal(settled, false, 'the covered entry still waits for the panel\'s own bounded preparation');
   release();
   assert.equal(await work, false, 'a slow link resolves; it never throws into covered entry recovery');
-  assert.deepEqual(deferred, ['m1a2'], 'the deferral is reported once, by spec id');
+  assert.deepEqual(deferred, ['m1a1_abrams_hc'], 'the deferral is reported once, by spec id');
   passed++;
 }
 

@@ -32,14 +32,14 @@ function armament({aimTimeS, baseAccuracy, bloom, ...weapon}) {
   return {...weapon, bloom: firingBloom};
 }
 // 2026-10-01: two weapon relations moved with the owner's September rebuilds (fleetRenewalSpecs.ts, cdbfe54dc,
-// national-modernization-20261001.md). t62mv1_x carries the complete T-72B 1987 upper assembly "and matching 125 mm
-// weapon" (transplanted from t72b_1987_x). The t72b3m slot became the obr. 2022 on the T-90SM upper assembly, while
-// t72b3m_x, now the obr. 2016, keeps the payload it synchronized from that slot before the transplant: the t72b3
-// donor template's gun at the slot's authored 6.5 s reload (additionalFleetSpecs.ts make('t72b3', 't72b3m', ...)).
-assert.deepEqual(armament(TANK_SPECS.t72b3m.gun), armament(TANK_SPECS.t90sm_x.gun),
-  't72b3m: the obr. 2022 carries the T-90SM upper assembly gun');
-const weaponReference = (id, donorRow) => id === 't62mv1_x' ? TANK_SPECS.t72b_1987_x.gun
-  : id === 't72b3m_x' ? { ...donorSpec(TANK_SPECS, 't72b3').gun, reloadS: 6.5 } : donorRow.gun;
+// national-modernization-20261001.md). t62mv1 carries the complete T-72B 1987 upper assembly "and matching 125 mm
+// weapon" (transplanted from t72b_1987). The t72b3m_2022 slot became the obr. 2022 on the T-90SM upper assembly, while
+// t72b3m_2016, now the obr. 2016, keeps the payload it synchronized from that slot before the transplant: the t72b3
+// donor template's gun at the slot's authored 6.5 s reload (additionalFleetSpecs.ts make('t72b3', 't72b3m_2022', ...)).
+assert.deepEqual(armament(TANK_SPECS.t72b3m_2022.gun), armament(TANK_SPECS.t90sm.gun),
+  't72b3m_2022: the obr. 2022 carries the T-90SM upper assembly gun');
+const weaponReference = (id, donorRow) => id === 't62mv1' ? TANK_SPECS.t72b_1987.gun
+  : id === 't72b3m_2016' ? { ...donorSpec(TANK_SPECS, 't72b3').gun, reloadS: 6.5 } : donorRow.gun;
 for (const id of SECOND_WAVE_X_IDS) {
   const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
@@ -48,8 +48,8 @@ for (const id of SECOND_WAVE_X_IDS) {
   // 2026-09-16: the Leclerc XLR and AMX 56 studies are tier X ("the newer models are the tier 10s")
   // 2026-09-23 (owner: "no hidden tanks"): the t72b_1987 and t72b3 donor records retired, so tier.ts no longer carries
   // the rows this check read for their studies; the donors' last published tier (VIII at a10d0a30b) is pinned here.
-  const ruled = { k1a1_x: 10, leo2a6_x: 10, jpz_e100_x: 7, leclerc_x: 10, leclerc_classic_x: 10, ariete_c1_x: 10,
-    t72b_1987_x: 8, t72b3_x: 8 }[id];
+  const ruled = { k1a1: 10, leo2a6: 10, jpz_e100: 7, leclerc_xlr: 10, amx56: 10, c1_ariete: 10,
+    t72b_1987: 8, t72b3: 8 }[id];
   assert.equal(tankTier(id), ruled ?? tankTier(donor), `${id}: rebuild must not silently increase combat tier`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);
@@ -75,24 +75,24 @@ for (const id of SECOND_WAVE_X_IDS) {
     } finally { tank.dispose(); }
   }
 }
-assert.equal(TANK_SPECS.t62mv1.armor.hullPlates.some(p=>p.era), false,
+assert.equal(TANK_SPECS.t62_1975.armor.hullPlates.some(p=>p.era), false,
   'original owner-renamed T-62 remains non-reactive');
 // 2026-10-01: the rebuilt T-62MV-1 (owner, 4c34b3e8b + cdbfe54dc) keeps its first-generation Kontakt glacis pair,
 // adds the two removable side fields of the rebuild and carries the transplanted T-72B 1987 turret's own reactive
 // modules. Zones are counted independently of the generated skin tessellation.
 {
-  const era = owner => TANK_SPECS.t62mv1_x.armor[owner].filter(p=>p.era);
+  const era = owner => TANK_SPECS.t62mv1.armor[owner].filter(p=>p.era);
   const names = rows => [...new Set(rows.map(p=>p.name))].sort();
   const hull = era('hullPlates');
   assert.deepEqual(names(hull),['glacis_era_L','glacis_era_R','skirt_era_L','skirt_era_R'],
-    't62mv1_x: Kontakt glacis pair plus the two rebuilt side fields, no other hull ERA');
+    't62mv1: Kontakt glacis pair plus the two rebuilt side fields, no other hull ERA');
   for(const name of names(hull)) assert.ok(hull.some(p=>p.name===name),`${name}: generated native cover faces`);
   for(const p of hull){
     assert.equal(p.kind,'era');assert.equal(p.physicalMm,15);
     assert.deepEqual(p.era,{keReduction:.05,ceFlatMm:280},'explicit X-only first-generation gameplay convention');
   }
   const signature = rows => rows.map(p=>[p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]);
-  assert.deepEqual(signature(era('turretPlates')),signature(TANK_SPECS.t72b_1987_x.armor.turretPlates.filter(p=>p.era)),
-    't62mv1_x: the transplanted T-72B 1987 upper assembly brings exactly its own reactive modules');
+  assert.deepEqual(signature(era('turretPlates')),signature(TANK_SPECS.t72b_1987.armor.turretPlates.filter(p=>p.era)),
+    't62mv1: the transplanted T-72B 1987 upper assembly brings exactly its own reactive modules');
 }
 console.log(`sourceXSecondWave: ${donorFingerprints.size} live donor builds; ${SECOND_WAVE_X_IDS.length} independent draft IDs differ from their donors; native gear and combat metadata pass (not visual qualification)`);

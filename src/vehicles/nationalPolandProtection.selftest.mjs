@@ -99,7 +99,7 @@ for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality o
    assert(t.stripEra(sector),`${label}: ERA has a live game damage sector ${sector}`);
   }
   t.resetEra();
-  if(id==='pl_t72b3_zubr_ii')zubrMainGunCorner(t);
+  if(id==='t72b3_zubr_ii')zubrMainGunCorner(t);
   const turret=t.root.getObjectByName('rig_turret');
   assert(t.root.getObjectByName(id+'_ghillie_turret_net'),`${label}: camouflage is present in native factory output`);
   assert(t.root.getObjectByName(id+'_ghillie_hull_net'),`${label}: hull net is present in native factory output`);

@@ -28,7 +28,7 @@ if (mode === 'list') {
   window.__TP_RESULT = { ids };
   window.__TP_READY = true;
 } else {
-  const id = params.get('id') || 'm1a2';
+  const id = params.get('id') || 'm1a1_abrams_hc';
   const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
   const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
   tank.root.updateMatrixWorld(true);
@@ -108,7 +108,7 @@ if (mode === 'list') {
             });
             return;
           }
-          // ABUTTING check (t72b3m rear-rack class): furniture ATTACHED to a
+          // ABUTTING check (t72b3m_2022 rear-rack class): furniture ATTACHED to a
           // casting face has little or no AABB overlap. Flag hull meshes
           // riding the casting's y-band that come within GAP of the casting
           // in plan AND sit clear of the deck (bottom above ring - 0.10 —

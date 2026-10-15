@@ -143,7 +143,7 @@ export function shorelineSurvey(world, { gridM = 8, radiusM = 68 } = {}) {
 }
 
 export function waterScene(timeOfDay = 'sunset') {
-  return {map:'reservoir',timeOfDay,seed:5000,actors:[{id:'t90m_x',name:'lead',pos:[92,-26],facingDeg:90}],
+  return {map:'reservoir',timeOfDay,seed:5000,actors:[{id:'t90m',name:'lead',pos:[92,-26],facingDeg:90}],
     effects:[],fxTime:0,timeScale:0,storyboard:{durationMs:6000,
       shots:[{id:'start',tMs:0,pos:[103,-.5,-13],lookAt:[92,-5.8,-26],fov:48,transition:'linear'},
         {id:'end',tMs:6000,pos:[139,0,-13],lookAt:[128,-5.8,-26],fov:45}],

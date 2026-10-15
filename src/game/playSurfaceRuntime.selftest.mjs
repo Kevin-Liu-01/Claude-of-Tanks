@@ -26,7 +26,7 @@ for (const outcome of ['ready', 'deferred', 'reject', 'throw']) {
       preloadPlayMode: (selectedMode) => startPreload(`mode:${selectedMode}`),
     }),
     createMenuOptions: () => ({}),
-    getSelectedSpecId: () => 'm1a2',
+    getSelectedSpecId: () => 'm1a1_abrams_hc',
     getSelectedMapId: () => 'winter',
     startSolo: () => assert.fail('an invite must not start solo'),
     preloadCommon: [() => startPreload('hud'), () => startPreload('fx')],
@@ -84,7 +84,7 @@ const errors = [];
 const runtime = createPlaySurfaceRuntime({
   loadMenuModule: async () => module,
   createMenuOptions: () => ({ maps: ['verdant'] }),
-  getSelectedSpecId: () => 'm1a2',
+  getSelectedSpecId: () => 'm1a1_abrams_hc',
   getSelectedMapId: () => 'winter',
   startSolo: (request) => soloStarts.push(request),
   preloadCommon: [
@@ -108,12 +108,12 @@ assert.ok(!events.some((event) => event[1] === 'dedicated'),
   'private intent never warms the dedicated client');
 
 const beforeSolo = events.slice();
-await runtime.open({ mode: 'solo', specId: 't90m', mapId: 'desert' });
-assert.deepEqual(soloStarts, [{ specId: 't90m', mapId: 'desert' }]);
+await runtime.open({ mode: 'solo', specId: 't90am', mapId: 'desert' });
+assert.deepEqual(soloStarts, [{ specId: 't90am', mapId: 'desert' }]);
 assert.equal(createCalls, 0, 'solo entry does not construct the play menu');
-await runtime.open({ mode: 'solo', specId: 'm1a2', mapId: 'winter', gameMode: 'zone_control' });
+await runtime.open({ mode: 'solo', specId: 'm1a1_abrams_hc', mapId: 'winter', gameMode: 'zone_control' });
 assert.deepEqual(soloStarts.at(-1), {
-  specId: 'm1a2', mapId: 'winter', gameMode: 'zone_control',
+  specId: 'm1a1_abrams_hc', mapId: 'winter', gameMode: 'zone_control',
 }, 'solo objective selection reaches the battle-loading boundary');
 assert.deepEqual(events, beforeSolo, 'direct solo entry adds no common or multiplayer preload');
 
@@ -133,14 +133,14 @@ capturedOptions.onSolo();
 await Promise.resolve();
 assert.deepEqual(customStarts, [],
   'the latest operation owns the menu solo fallback instead of stale intent');
-assert.deepEqual(soloStarts.at(-1), { specId: 'm1a2', mapId: 'winter' });
+assert.deepEqual(soloStarts.at(-1), { specId: 'm1a1_abrams_hc', mapId: 'winter' });
 // batch 19 (2026-09-14): a request that names its rules, map or operation beats a stale retained start —
 // the campaign ladder's Launch must never be swallowed by the Garage's pending BOTS start
 await runtime.open({ mode: 'private', startSolo: () => customStarts.push('stale') });
 capturedOptions.onSolo({ gameMode: 'frontline_assault', mapId: 'alpine', campaignOperationId: 'iron_ridge' });
 await Promise.resolve();
 assert.deepEqual(customStarts, [], 'the explicit campaign launch drops the stale retained start');
-assert.deepEqual(soloStarts.at(-1), { specId: 'm1a2', mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' },
+assert.deepEqual(soloStarts.at(-1), { specId: 'm1a1_abrams_hc', mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' },
   'the campaign request reaches the loading boundary with its map and operation');
 await runtime.open({ mode: 'private', startSolo: () => customStarts.push('retained') });
 capturedOptions.onSolo({});
@@ -170,7 +170,7 @@ const retryRuntime = createPlaySurfaceRuntime({
     },
   }),
   createMenuOptions: () => ({}),
-  getSelectedSpecId: () => 'm1a2',
+  getSelectedSpecId: () => 'm1a1_abrams_hc',
   getSelectedMapId: () => 'winter',
   startSolo: () => {},
   preloadCommon: [],

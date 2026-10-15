@@ -16,10 +16,10 @@ import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.t
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 // [hull, turret] auxiliary face counts per X study.
 const cases = {
-  leo2a6_x: { counts: [20, 0] },
-  strv122_x: { counts: [676, 66] },
-  ariete_c1_x: { counts: [210, 0] },
-  challenger1_x: { counts: [156, 0] },
+  leo2a6: { counts: [20, 0] },
+  strv122: { counts: [676, 66] },
+  c1_ariete: { counts: [210, 0] },
+  challenger1_mk3: { counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
@@ -48,7 +48,7 @@ function distance(point, faces) {
 for (const [id, expected] of Object.entries(cases)) {
   const armor = TANK_SPECS[id].armor;
   assert.deepEqual([armor.hullPlates.filter(p => p.surfaceGroup).length, armor.turretPlates.filter(p => p.surfaceGroup).length], expected.counts);
-  const donor = TANK_SPECS[{ leo2a6_x: 'leo2a6', strv122_x: 'strv122', ariete_c1_x: 'ariete_c1', challenger1_x: 'challenger1' }[id]].armor;
+  const donor = TANK_SPECS[{ leo2a6: 'leo2a4', strv122: 'strv121', c1_ariete: 'c1_ariete_proto_serie1', challenger1_mk3: 'challenger1_mk2' }[id]].armor;
   for (const plate of auxiliary(armor)) {
     assertConvexArmorOutline(plate.verts, `${id}/${plate.surfaceGroup}`);
     const original = [...donor.hullPlates, ...donor.turretPlates].find(p => p.name === plate.name);
@@ -91,33 +91,33 @@ for (const [id, expected] of Object.entries(cases)) {
 }
 
 // Historical donor slabs floating outside real stock must not be accepted.
-for (const [id, x, y, z] of [['leo2a6_x', 1.91003491, .5, 0], ['strv122_x', 1.89504, .5, 2],
-  ['ariete_c1_x', 1.82505556, .75, -2], ['challenger1_x', 1.83477273, .6, 0]]) {
-  const scale = id === 'ariete_c1_x' ? ARIETE_SCALE : id === 'challenger1_x' ? 1.10 : 1;
+for (const [id, x, y, z] of [['leo2a6', 1.91003491, .5, 0], ['strv122', 1.89504, .5, 2],
+  ['c1_ariete', 1.82505556, .75, -2], ['challenger1_mk3', 1.83477273, .6, 0]]) {
+  const scale = id === 'c1_ariete' ? ARIETE_SCALE : id === 'challenger1_mk3' ? 1.10 : 1;
   for (const side of [-1, 1]) assert.equal(shot(id, [side * (x * scale + .005), y * scale, z * scale],
     [side * (x * scale - .005), y * scale, z * scale]).length, 0,
     `${id}: old unsupported side slab remains gameplay air`);
 }
 for (const side of [-1, 1]) {
-  const a6 = shot('leo2a6_x', [side * 1.8, 1.08, -1], [side * 1.70, 1.08, -1]);
+  const a6 = shot('leo2a6', [side * 1.8, 1.08, -1], [side * 1.70, 1.08, -1]);
   assert.equal(a6.length, 1); close(Math.abs(a6[0].point.x), 1.7409, 'source-fitted A6 thin leaf');
-  assert.equal(shot('leo2a6_x', [side * 1.8, 1.08, .687], [side * 1.70, 1.08, .687]).length, 0, 'A6 true 51.25mm leaf gap');
-  assert.equal(shot('leo2a6_x', [side * 1.90, 1.10, 2.169025], [side * 1.80, 1.10, 2.169025]).length, 0, 'A6 actual 1.08mm heavy-panel seam');
-  const ariete = shot('ariete_c1_x', arietePoint([side * 2, .9, .5]), arietePoint([side * 1.48, .9, .5]));
-  assert.equal(ariete.length, 1, 'Ariete outer cover does not double-charge its hidden inner sheet');
-  close(Math.abs(ariete[0].point.x), 1.805 * ARIETE_SCALE, 'Ariete actual heavy face');
-  const gap = shot('ariete_c1_x', arietePoint([side * 2, .9, .405]), arietePoint([side * 1.48, .9, .405]));
+  assert.equal(shot('leo2a6', [side * 1.8, 1.08, .687], [side * 1.70, 1.08, .687]).length, 0, 'A6 true 51.25mm leaf gap');
+  assert.equal(shot('leo2a6', [side * 1.90, 1.10, 2.169025], [side * 1.80, 1.10, 2.169025]).length, 0, 'A6 actual 1.08mm heavy-panel seam');
+  const c1_ariete_preserie = shot('c1_ariete', arietePoint([side * 2, .9, .5]), arietePoint([side * 1.48, .9, .5]));
+  assert.equal(c1_ariete_preserie.length, 1, 'Ariete outer cover does not double-charge its hidden inner sheet');
+  close(Math.abs(c1_ariete_preserie[0].point.x), 1.805 * ARIETE_SCALE, 'Ariete actual heavy face');
+  const gap = shot('c1_ariete', arietePoint([side * 2, .9, .405]), arietePoint([side * 1.48, .9, .405]));
   assert.equal(gap.length, 1, 'real Ariete outer gap exposes only the actual inner leaf');
   close(gap[0].point.x, (side < 0 ? -1.529119 : 1.5299605) * ARIETE_SCALE, 'Ariete inner leaf through outer seam');
   for (const [rawZ, rawY, rawX] of [[-90, 40, 76.181099 - .43307], [-90, 58, 76.181099], [-73.365, 40, 70]]) {
     const p = c1Point(side * rawX, rawY, rawZ).map(value => value * 1.10);
-    const hits = shot('challenger1_x', [side * 2.2, p[1], p[2]], [side * 1.65, p[1], p[2]]);
+    const hits = shot('challenger1_mk3', [side * 2.2, p[1], p[2]], [side * 1.65, p[1], p[2]]);
     assert.equal(hits.length, 1, 'Challenger field/rim/real course seam charges one exposed inherited family');
     close(hits[0].point.x, p[0], 'Challenger exact recessed sheet or raised rim');
   }
-  const roof = shot('strv122_x', [side * .7, 2.6, 1.4], [side * .7, 2.25, 1.4]);
+  const roof = shot('strv122', [side * .7, 2.6, 1.4], [side * .7, 2.25, 1.4]);
   assert.equal(roof.length, 1); close(roof[0].point.y, 2.3499142857142856, 'Strv actual forward cheek roof, not lower coarse shell');
-  assert.equal(shot('strv122_x', [side * .7, 1.60, 1.4], [side * .7, 1.65, 1.4]).length, 0,
+  assert.equal(shot('strv122', [side * .7, 1.60, 1.4], [side * .7, 1.65, 1.4]).length, 0,
     'Strv true under-cheek air stays open');
 }
 // Startup can synchronize the donor rows repeatedly before its anatomy pass.

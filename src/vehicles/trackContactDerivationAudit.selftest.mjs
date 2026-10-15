@@ -9,14 +9,14 @@ import { ensureAuthorityFleet } from './authorityFleet.ts';
 import { TANK_SPECS } from './specs.ts';
 import { createTrackContactDerivationAudit } from './trackContactDerivationAudit.test-support.mjs';
 
-await ensureAuthorityFleet(['m1a2']);
-const published = TANK_SPECS.m1a2?.armor?.trackContact;
-assert.ok(published?.panYM > 0 && published.halfLenM > 0, 'm1a2 publishes a track contact with a belly pan');
+await ensureAuthorityFleet(['m1a1_abrams_hc']);
+const published = TANK_SPECS.m1a1_abrams_hc?.armor?.trackContact;
+assert.ok(published?.panYM > 0 && published.halfLenM > 0, 'm1a1_abrams_hc publishes a track contact with a belly pan');
 
 function verdict(patch) {
   const audit = createTrackContactDerivationAudit('LOW');
   try {
-    audit.check('m1a2', { contactGeom: { ...published, ...patch }, root: new Group() });
+    audit.check('m1a1_abrams_hc', { contactGeom: { ...published, ...patch }, root: new Group() });
     return 'pass';
   } catch (error) {
     if (error instanceof assert.AssertionError) return 'fail';

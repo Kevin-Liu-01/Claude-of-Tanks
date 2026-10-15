@@ -222,7 +222,7 @@ for (const mapId of MAP_IDS) {
 assert.deepEqual(getMapConfig('frontier').props.tankWrecks.ids, ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2'],
   'the Fulda Gap in the 1980s: NATO and Soviet armour of the decade');
 assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 'type59', 'bmp2'], 'Sarajevo, 1992-96');
-assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'], 'Hostomel, 2022');
+assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'], 'Hostomel, 2022');
 assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2'], 'Kursk, 1943: the KV-2');
 assert.ok(battlefieldWrecks.size >= 20, `the period casts still bring a broad variety of hulks (${battlefieldWrecks.size} types)`);
 

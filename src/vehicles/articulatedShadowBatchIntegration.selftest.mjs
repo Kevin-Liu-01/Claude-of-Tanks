@@ -15,7 +15,7 @@ lightCamera.lookAt(0, 0, 0);
 lightCamera.updateMatrixWorld(true);
 const inverse = new THREE.Matrix4(), actual = new THREE.Matrix4(), expected = new THREE.Matrix4();
 
-for (const id of ['m1a2', 'jpz_e100_x']) {
+for (const id of ['m1a1_abrams_hc', 'jpz_e100']) {
   const visual = createTank(id, null, options);
   try {
     const root = visual.root;
@@ -72,7 +72,7 @@ for (const id of ['m1a2', 'jpz_e100_x']) {
   }
 }
 
-const authoring = createTank('m1a2', null, { ...options, batchStatic: false, battleDetailLod: false });
+const authoring = createTank('m1a1_abrams_hc', null, { ...options, batchStatic: false, battleDetailLod: false });
 try {
   assert.equal(authoring.root.getObjectByName('articulatedShadowBatch'), undefined,
     'unbatched authoring/Gallery construction remains unchanged');

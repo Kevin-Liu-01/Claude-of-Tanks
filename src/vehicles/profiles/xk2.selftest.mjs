@@ -26,8 +26,8 @@ function receivingClearance(tank,yaw){
   } finally {hull.material.side=original[0];shell.material.side=original[1];}
 }
 for(const quality of ['high','low']){
-  const tank=createTank('k2',null,{...options,quality});
-  const donor=createTank('k1a1_x',null,{...options,quality});
+  const tank=createTank('xk2_black_panther',null,{...options,quality});
+  const donor=createTank('k1a1',null,{...options,quality});
   try {
     tank.root.updateMatrixWorld(true);donor.root.updateMatrixWorld(true);
     assert.deepEqual(turretStock(tank),turretStock(donor),`${quality}: complete donor turret, gun and fittings preserved`);
@@ -48,15 +48,15 @@ for(const quality of ['high','low']){
   } finally {tank.dispose();donor.dispose();}
 }
 const productionFrame=()=>{
-  const spec=getSpec('k2_x');
+  const spec=getSpec('k2_black_panther');
   return structuredClone({dims:spec.dims,ring:spec.armor.turretPivot,
     gun:spec.armor.gunPivot,barrel:spec.armor.gunBarrel,weapon:spec.gun,
     traverse:spec.turretTraverseDegS,pitchSpeed:spec.gunPitchDegS});
 };
-assert.deepEqual(getSpec('k2').gun,{...structuredClone(getSpec('k1a1_x').gun),reloadS:6.5},
+assert.deepEqual(getSpec('xk2_black_panther').gun,{...structuredClone(getSpec('k1a1').gun),reloadS:6.5},
   'the hybrid carries the K1A1 gun/ammunition with its prototype loading cycle');
-assert.equal(getSpec('k2_x').gun.reloadS,5.7,'production K2 keeps its original loading cycle');
-assert.equal(getSpec('k2_x').gun.shells[0].name,'K279 APFSDS','production K2 keeps its ammunition');
+assert.equal(getSpec('k2_black_panther').gun.reloadS,5.7,'production K2 keeps its original loading cycle');
+assert.equal(getSpec('k2_black_panther').gun.shells[0].name,'K279 APFSDS','production K2 keeps its ammunition');
 const production=productionFrame();
 await import('../fleetFactory.ts');
 synchronizeSourceXCombatMetadata();

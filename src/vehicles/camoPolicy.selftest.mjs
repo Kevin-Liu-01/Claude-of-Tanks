@@ -48,14 +48,14 @@ assert.equal(CAMO_CATALOG_PATTERN_IDS.includes('signature'), false,
 assert.equal(CAMO_CATALOG_PATTERN_IDS.length, CAMO_PATTERN_IDS.length - 1);
 assert.equal(defaultCamoPatternId('abramsx'), 'factory');
 assert.equal(stockCamoPatternIdFor('abramsx'), 'sig_abramsx');
-assert.equal(defaultCamoPatternId('t90'), 'factory');
-assert.equal(stockCamoPatternIdFor('t90'), 'sig_t90');
-assert.equal(defaultCamoPatternId('t90sm'), 'factory');
-assert.equal(stockCamoPatternIdFor('t90sm'), 'sig_t90sm');
-assert.equal(defaultCamoPatternId('t90ms'), 'factory');
-assert.equal(stockCamoPatternIdFor('t90ms'), 'sig_t90ms');
-assert.equal(defaultCamoPatternId('m1a2'), 'factory');
-for (const id of ['m46_patton', 'm47_patton', 'm48', 'm2a2_bradley']) {
+assert.equal(defaultCamoPatternId('t90_1992'), 'factory');
+assert.equal(stockCamoPatternIdFor('t90_1992'), 'sig_t90');
+assert.equal(defaultCamoPatternId('t90sm_2013'), 'factory');
+assert.equal(stockCamoPatternIdFor('t90sm_2013'), 'sig_t90sm');
+assert.equal(defaultCamoPatternId('t90ms_2011'), 'factory');
+assert.equal(stockCamoPatternIdFor('t90ms_2011'), 'sig_t90ms');
+assert.equal(defaultCamoPatternId('m1a1_abrams_hc'), 'factory');
+for (const id of ['m46_patton', 'm47_patton', 'm48a5_patton', 'm2a2_bradley']) {
   assert.equal(defaultCamoPatternId(id), 'factory');
   assert.equal(stockCamoPatternIdFor(id), 'summer', `${id} should initially wear Summer camouflage`);
 }
@@ -120,9 +120,9 @@ assert.equal(camoMatchesTag('digitaldesert', 'USA', 'winter'), false);
 assert.equal(camoMatchesTag('unknown', 'USA', 'all'), true,
   'All remains the non-destructive catalog view');
 assert.equal(hasSignatureCamo('abramsx'), true);
-assert.equal(hasSignatureCamo('m1a2'), false);
+assert.equal(hasSignatureCamo('m1a1_abrams_hc'), false);
 assert.equal(hasSignatureCamo(null), false);
-assert.equal(signatureCamoPatternId('m1a2'), null);
+assert.equal(signatureCamoPatternId('m1a1_abrams_hc'), null);
 assert.equal(signatureCamoPatternId('marder1a3'), null,
   'a service-preset source does not accidentally become a Signature default');
 assert.equal(signatureCamoPatternId(null), null);
@@ -260,11 +260,11 @@ assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
 // Italian defaults must reach their distinct field finishes; aliases and the
 // Chinese prototype retain the same saved/network paint IDs.
 for (const [tank, paint] of Object.entries({
-  ariete_c1_x: 'service_ariete_c1', ariete_c2_x: 'sig_ariete_c2',
-  ariete_c1: 'service_ariete_c1', ariete_c2: 'sig_ariete_c2',
+  c1_ariete: 'service_ariete_c1', c2_ariete: 'sig_ariete_c2',
+  c1_ariete_proto_serie1: 'service_ariete_c1', c2_ariete_proto: 'sig_ariete_c2',
   lrmv_lynx: 'sig_lrmv_lynx', type100: 'sig_type100',
-  ztz100_x: 'sig_ztz100_x', ztz100_prototype: 'sig_ztz100_x',
-})) assert.equal(stockCamoPatternIdFor(tank, tank.startsWith('ariete') ? 'Italy' : undefined), paint);
+  ztz100: 'sig_ztz100_x', ztz100_prototype: 'sig_ztz100_x',
+})) assert.equal(stockCamoPatternIdFor(tank, tank.startsWith('c1_ariete_preserie') ? 'Italy' : undefined), paint);
 // The photographic fleet appends five stock finishes after the TOS-1A signature.
 const photoFinishes=['sig_dardo','sig_lrmv_lynx','sig_borsuk','sig_amx10p','sig_amx10p_25'];
 assert.deepEqual(CAMO_PATTERN_IDS.slice(CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil')+1,CAMO_PATTERN_IDS.indexOf('national_usa')),photoFinishes);
@@ -302,8 +302,8 @@ assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored
 assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker'], 'GT, then later paints, append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
-assert.equal(defaultCamoPatternId('sabra_mk2_x'), 'factory');
-assert.equal(stockCamoPatternIdFor('sabra_mk2_x'), 'sig_sabra_mk2_x');
+assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');
+assert.equal(stockCamoPatternIdFor('sabra_mk2'), 'sig_sabra_mk2_x');
 
 
 console.log('camoPolicy.selftest: network boundary and custom pattern codec passed');

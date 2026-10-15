@@ -30,14 +30,14 @@ assert.equal(battleOrdinalBase(), 37, 'the ordinal base is the persisted lifetim
 assert.equal(getPlayerRecord().matches, 37);
 
 // (2) two battles of rotation memory
-let memory = rememberBattleBots(null, ['t90m', 'leo2a6', 'm1a2']);
-assert.deepEqual([...memory.recent].sort(), ['leo2a6', 'm1a2', 't90m'], 'first battle: its own bots are recent');
-assert.deepEqual([...memory.previous].sort(), ['leo2a6', 'm1a2', 't90m']);
-memory = rememberBattleBots(memory.previous, ['k2', 'type10', 'm1a2']);
-assert.deepEqual([...memory.recent].sort(), ['k2', 'leo2a6', 'm1a2', 't90m', 'type10'], 'second battle: both battles\' bots are recent');
-assert.deepEqual([...memory.previous].sort(), ['k2', 'm1a2', 'type10'], 'only the latest battle carries forward');
-memory = rememberBattleBots(memory.previous, ['challenger_3']);
-assert.deepEqual([...memory.recent].sort(), ['challenger_3', 'k2', 'm1a2', 'type10'], 'the battle before last has dropped out of the memory');
+let memory = rememberBattleBots(null, ['t90am', 'leo2a4', 'm1a1_abrams_hc']);
+assert.deepEqual([...memory.recent].sort(), ['leo2a4', 'm1a1_abrams_hc', 't90am'], 'first battle: its own bots are recent');
+assert.deepEqual([...memory.previous].sort(), ['leo2a4', 'm1a1_abrams_hc', 't90am']);
+memory = rememberBattleBots(memory.previous, ['xk2_black_panther', 'type10_tk_x', 'm1a1_abrams_hc']);
+assert.deepEqual([...memory.recent].sort(), ['xk2_black_panther', 'leo2a4', 'm1a1_abrams_hc', 't90am', 'type10_tk_x'], 'second battle: both battles\' bots are recent');
+assert.deepEqual([...memory.previous].sort(), ['xk2_black_panther', 'm1a1_abrams_hc', 'type10_tk_x'], 'only the latest battle carries forward');
+memory = rememberBattleBots(memory.previous, ['challenger3_proto']);
+assert.deepEqual([...memory.recent].sort(), ['challenger3_proto', 'xk2_black_panther', 'm1a1_abrams_hc', 'type10_tk_x'], 'the battle before last has dropped out of the memory');
 
 // (3) Real-catalog diversity: fresh own-era hulls lead each draw, then fresh
 // modern contemporaries fill the remaining seats before a recent hull repeats.
@@ -97,7 +97,7 @@ try {
 } finally {
   game.allTanks = productionFleet;
 }
-const modern = play('m1a2', 3);
+const modern = play('m1a1_abrams_hc', 3);
 assert.ok(modern.flat().every((id) => eraOf(id) === 'modern'), 'a modern player never needs a contemporary');
 assert.equal(shared(modern[0], modern[1]) + shared(modern[1], modern[2]), 0, 'consecutive modern rosters share nothing');
 console.log('rosterRotationMemory.selftest: persisted battle ordinal, two-battle rotation memory and contemporary-era rotation passed');

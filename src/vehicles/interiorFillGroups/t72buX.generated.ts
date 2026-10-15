@@ -4,5 +4,5 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "t72bu_x": { v: 0.025, o: [-1.805, 0.27235, -3.382], t: [0.004898, 1.330328, 0.248077], g: [0.002246, 1.629789, 1.370949] },
+  "t72bu": { v: 0.025, o: [-1.805, 0.27235, -3.382], t: [0.004898, 1.330328, 0.248077], g: [0.002246, 1.629789, 1.370949] },
 });

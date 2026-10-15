@@ -7,10 +7,10 @@ import { createTank } from '../tankFactory.ts';
 // Vladimir NSVTs (sourceMachineGun with a station datum) mark the station root itself as the exact fitting and carry
 // the merged receiver/tube group under its pitch group, with the real bracket stock as yaw support.
 const SOURCE_AXES = [
-  ['t90a_x', 't90aRemoteNSVT', .632, 2.656, 1.527],
-  ['t90a_vladimir_x', 'vladimirRemoteNSVT', -.6125, 2.7254, 1.83385],
-  ['t90m_x', 'modernMRws', -.154, 2.763, -.132],
-  ['t90sm_x', 'modernSmRws', .584, 3.035, -.533],
+  ['t90a', 't90aRemoteNSVT', .632, 2.656, 1.527],
+  ['t90a_vladimir', 'vladimirRemoteNSVT', -.6125, 2.7254, 1.83385],
+  ['t90m', 'modernMRws', -.154, 2.763, -.132],
+  ['t90sm', 'modernSmRws', .584, 3.035, -.533],
 ];
 for (const quality of ['high', 'low']) for (const [id, stationName, x, y, muzzleZ] of SOURCE_AXES) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });

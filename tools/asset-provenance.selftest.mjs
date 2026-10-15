@@ -27,13 +27,13 @@ try {
   assert.equal(coveredPath('src/vehicles/../../../secret'),false);
   await symlink(join(root,file),join(root,'src/vehicles/link.ts'));
   await assert.rejects(()=>createReceipt(root,['src/vehicles/link.ts'],'a'.repeat(40)),/ordinary file/);
-  const model=vehicleProvenance('m1a2');assert.equal(model.creator,'Kevin B. Liu');
-  assert.equal(model.assetId,'urn:claude-of-tanks:vehicle:m1a2');
+  const model=vehicleProvenance('m1a1_abrams_hc');assert.equal(model.creator,'Kevin B. Liu');
+  assert.equal(model.assetId,'urn:claude-of-tanks:vehicle:m1a1_abrams_hc');
   assert.deepEqual(JSON.parse(JSON.stringify(model)),model,'model metadata survives JSON/glTF extras');
   const { createTank }=await import('../src/vehicles/tankFactory.ts');
   const { Group }=await import('three');
   const { GLTFExporter }=await import('three/addons/exporters/GLTFExporter.js');
-  const tank=createTank('m1a2',null,{materialMode:'geometry-only',quality:'low',proceduralOnly:true});
+  const tank=createTank('m1a1_abrams_hc',null,{materialMode:'geometry-only',quality:'low',proceduralOnly:true});
   try {
     assert.deepEqual(tank.root.userData.provenance,model,'real factory attaches canonical credit');
     const group=new Group();group.userData.provenance=tank.root.userData.provenance;

@@ -64,9 +64,9 @@ const presentation = createBattlePresentation({
 });
 
 const roster = [
-  { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a2' },
-  { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'foe', name: 'Foe', specId: 'm1a2' },
-  { entityId: 3, seat: 255, team: TEAM.ALPHA, bot: true, connected: true, playerId: 'bot-3', name: 'Bot 3', specId: 'm1a2' },
+  { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a1_abrams_hc' },
+  { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'foe', name: 'Foe', specId: 'm1a1_abrams_hc' },
+  { entityId: 3, seat: 255, team: TEAM.ALPHA, bot: true, connected: true, playerId: 'bot-3', name: 'Bot 3', specId: 'm1a1_abrams_hc' },
 ];
 const context = { ownEntityId: 1, ownPlayerId: 'me', roomId: 'r', mapId: 'winter', mode: 'standard', rulesetJson: '{}' };
 await presentation.applyRoster(roster, context);
@@ -83,7 +83,7 @@ await presentation.applyRoster(roster, context);
 assert.equal(visuals.length, 3, 'applyRoster is idempotent');
 
 // ------------------------------------------------------------ frames
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 const ownState = createTankState(spec, new Vector3(142, 1.2, -73), 0.4);
 function sample(entityId, x, z, extra = {}) {
   const out = createEntitySample(entityId);
@@ -156,7 +156,7 @@ assert.equal(visuals[1].visible, true);
 
 // ERA cassettes travel as spec-order indices; the visual strips by name and resets on an empty set.
 const eraNames = eraPlateNames(spec.armor);
-assert.ok(eraNames.length > 0, 'm1a2 carries ERA in its authored armor');
+assert.ok(eraNames.length > 0, 'm1a1_abrams_hc carries ERA in its authored armor');
 presentation.applyFrame(frame({ tick: 124, entities: [sample(2, -91, 64, { eraSpent: [0] }), sample(3, 10.5, 10)] }));
 assert.deepEqual(visuals[1].strippedEra, [eraNames[0]], 'snapshot state depletes ERA by index → plate name');
 presentation.applyFrame(frame({ tick: 126, entities: [sample(2, -91, 64, { eraSpent: [] }), sample(3, 10.5, 10)] }));
@@ -228,7 +228,7 @@ assert.equal(busEvents.at(-1).type, 'module:state');
     ['tank:spotted', { id: 'me', team: 'enemy', timeS: 12.5, spotterId: 'foe' }],
     ['player:spotted', { timeS: game.timeS }],
     ['tank:spotted', { id: 'bot-3', team: 'enemy', timeS: 12.5, spotterId: 'foe' }],
-    ['tank:autoflip', { id: 'bot-3', specId: 'm1a2' }],
+    ['tank:autoflip', { id: 'bot-3', specId: 'm1a1_abrams_hc' }],
   ], 'spots read as the viewer\'s side, our own exposure lights the sixth sense once, and an autoflip passes through');
   // (the event object is reused per step, as in solo play: read it when it is emitted)
   const steps = [];

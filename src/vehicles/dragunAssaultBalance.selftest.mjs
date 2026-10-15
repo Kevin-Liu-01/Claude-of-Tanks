@@ -5,7 +5,7 @@ import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSp
 import { createCombatState, startReload, tickReload } from '../sim/damage.ts';
 import { totalAmmunitionCapacity } from '../sim/ammunition.ts';
 
-const spec=getSpec('bmp3m_dragun125_x'), mbt=getSpec('ztz99a2');
+const spec=getSpec('bmp3m_dragun125'), mbt=getSpec('ztz99a2');
 const originalPeer=JSON.stringify(mbt);
 assert.equal(spec.gun.caliberMm,125);
 assert.deepEqual(spec.gun.shells.map(s=>[s.type,s.caliberMm,s.count]),[['APFSDS',125,24],['HEAT',125,10],['HE',125,6]]);

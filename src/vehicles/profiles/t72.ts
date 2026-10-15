@@ -953,10 +953,10 @@ export function buildT72B87Native(P: ProfileBuilderPort, variant: T72Variant = '
 
 
 export const T72_PROFILES = {
-  t72b3m: {
+  t72b3m_2022: {
     build: buildT72B3M2022,
   },
-  t72bu: {
+  t72bu_1989: {
     build: buildT72BU1989,
   },
 } satisfies VehicleProfileRecord;

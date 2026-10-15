@@ -10,16 +10,16 @@ import { verifyConfigurationSource } from './source-configuration-record.mjs';
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url));
 const manifest = JSON.parse(read(RECIPE.recipePath));
 const equipment = JSON.parse(read('docs/references/concepts/object695-epokha-equipment-retired-20260919.json'));
-assert.equal(JSON.parse(read('docs/references/batches/supplied-afv-configurations.json')).configurations.object695_x,undefined,'old source configuration is retired');
+assert.equal(JSON.parse(read('docs/references/batches/supplied-afv-configurations.json')).configurations.object695,undefined,'old source configuration is retired');
 assert.equal(equipment.roofMachineGuns, 0, 'Epokha has a coaxial weapon, not an extra roof MG');
 assert.deepEqual(equipment.source, { path: RECIPE.source.path, sha256: RECIPE.source.sha256 });
 assert.equal(equipment.ownerDecision.assembly, RECIPE.recipePath);
-const sourceReceipt = { id: 'object695_x', verified: true, ...equipment.source };
-assert.equal(roofEquipmentVerdict('object695_x', { mg: 0, invalidWeaponMarkers: 0 }, equipment, sourceReceipt).passed, false,'retired source cannot authorize the new concept');
-assert.equal(roofEquipmentVerdict('object695_x', { mg: 1, invalidWeaponMarkers: 0 }, equipment, sourceReceipt).passed, false);
-assert.equal(roofEquipmentVerdict('object695_x', { mg: 0, invalidWeaponMarkers: 0 }, equipment, { ...sourceReceipt, verified: false }).passed, false);
+const sourceReceipt = { id: 'object695', verified: true, ...equipment.source };
+assert.equal(roofEquipmentVerdict('object695', { mg: 0, invalidWeaponMarkers: 0 }, equipment, sourceReceipt).passed, false,'retired source cannot authorize the new concept');
+assert.equal(roofEquipmentVerdict('object695', { mg: 1, invalidWeaponMarkers: 0 }, equipment, sourceReceipt).passed, false);
+assert.equal(roofEquipmentVerdict('object695', { mg: 0, invalidWeaponMarkers: 0 }, equipment, { ...sourceReceipt, verified: false }).passed, false);
 const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-assert.equal(SOURCE_WORLD_FRAMES.object695_x,undefined,'new concept has no obsolete source-world certificate');
+assert.equal(SOURCE_WORLD_FRAMES.object695,undefined,'new concept has no obsolete source-world certificate');
 const frame = OBJECT695_EPOKHA_FRAME;
 assert.deepEqual(frame, OBJECT695_EPOKHA_FRAME);
 assert.deepEqual(frame.turret, [0, 2.15, -1.10]);
@@ -34,7 +34,7 @@ assert.deepEqual(manifest.sourceOnlyDatums.originalBounds.min, manifest.sourceOn
 assert.equal(manifest.sourceOnlyDatums.originalBounds.size[0], manifest.sourceOnlyDatums.derivedBounds.size[0]);
 assert.equal(manifest.sourceOnlyDatums.originalBounds.size[2], manifest.sourceOnlyDatums.derivedBounds.size[2]);
 assert(Math.abs(manifest.sourceOnlyDatums.muzzleZ - 1.02705) < 1e-6);
-assert.equal(SECOND_WAVE_X_REFERENCE_OVERRIDES.object695_x,undefined,'source target is historical only');
+assert.equal(SECOND_WAVE_X_REFERENCE_OVERRIDES.object695,undefined,'source target is historical only');
 const ref = RETIRED_OBJECT695_EPOKHA_REFERENCE;
 assert.equal(ref.glb.path, `/${RECIPE.outputPath.slice('public/'.length)}`);
 assert.equal(ref.qualityBar, 'exemplar');
@@ -77,7 +77,7 @@ for (const mutate of [
 assert.throws(() => deriveObject695Reference(Buffer.from('wrong-hull'), Buffer.alloc(0)), /authenticated Object hull/);
 
 if (process.argv.includes('--source-proof')) {
-  assert.equal(verifyConfigurationSource('object695_x', equipment).verified, true);
+  assert.equal(verifyConfigurationSource('object695', equipment).verified, true);
   const original = read(RECIPE.source.path), donor = read(RECIPE.donor.path);
   assert.throws(() => deriveObject695Reference(original, Buffer.from('wrong-turret')), /authenticated Kurg turret/);
   const replay = deriveObject695Reference(original, donor);

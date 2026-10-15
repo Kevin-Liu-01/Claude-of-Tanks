@@ -9,13 +9,13 @@ import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generate
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
 
 const ids = [
-  'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
-  'strv103a', 'strv103', 't84', 'ua_m1a1', 'leo2a6_ua',
+  't64bv_donbas', 'pt91a_twardy', 'm1a1_abrams_fep',
+  'strv103a', 'strv103b', 't84', 'ua_m1a1', 'leo2a6_ua',
 ];
 
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
 // net (ghillieFleetSuits.ts) and left this control list; the others stay net-free
-for (const id of ['t90a', 'strv122', 'ua_t84_oplot_m']) {
+for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m']) {
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -185,10 +185,10 @@ for (const id of ids) {
   const hullNet = tank.root.getObjectByName(`${id}_ghillie_hull_net`);
   const hullBounds = new THREE.Box3().setFromObject(hullNet);
   assert.ok(hullBounds.min.y > 0.52, `${id} ghillie stays above the live track corridor`);
-  if (id === 'ua_t64bv') {
-    // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "ua_t64bv with supported foliage, net and cages";
+  if (id === 't64bv_donbas') {
+    // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "t64bv_donbas with supported foliage, net and cages";
     // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
-    // ERA cassettes (z -1.9..1.7 on the t72b3_x hull) and a bustle cover behind the open sights and hatches.
+    // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches.
     const cover = turretRig.userData.fieldCover;
     assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
       `${id} field cover is carried on real rails with sights and hatches open`);
@@ -257,7 +257,7 @@ for (const id of ids) {
 
 // the suits with their own receipts (the A4) or their own field configs (the Ukrainian national rebuilds, push 3:
 // nationalUkraineProtection.ts) are held to the same contact rule
-for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_modern', 'ua_t72b3m_modern']) {
+for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
@@ -305,7 +305,7 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
     }
     return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
   };
-  for (const id of ['ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_modern', 'ua_t72b3m_modern']) {
+  for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
     tank.root.updateMatrixWorld(true);
     const turret = tank.root.getObjectByName('rig_turret');
@@ -396,14 +396,14 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const tank = createTank('leo2a4', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
+    const tank = createTank('leo2a2', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
     const net = tank.root.getObjectByName('leo2a4_ghillie_turret_net');
     assert.match(net?.material?.map?.name ?? '', /^ghillieNet:woodland:/, 'the A4 wears a woodland net on its woodland scheme');
-    setCamoOverride('leo2a4', 'desert');
-    applyCamoPatterns('leo2a4');
+    setCamoOverride('leo2a2', 'desert');
+    applyCamoPatterns('leo2a2');
     assert.match(net.material.map.name, /^ghillieNet:desert:/, 'a switch to a desert scheme carries the net to the desert');
-    setCamoOverride('leo2a4', null);
-    applyCamoPatterns('leo2a4');
+    setCamoOverride('leo2a2', null);
+    applyCamoPatterns('leo2a2');
     assert.match(net.material.map.name, /^ghillieNet:woodland:/, 'and back');
     tank.dispose();
     // the decor's rolled nets follow too: the M60A1's sand roll turns woodland on a woodland scheme
@@ -535,7 +535,7 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
   tank.dispose();
 }
 
-const twardy = GHILLIE_SUIT_CONFIGS.pt91_twardy;
+const twardy = GHILLIE_SUIT_CONFIGS.pt91a_twardy;
 const twardyTop = twardy.turret.top[0];
 assert.ok(twardyTop.yAt(0, 0) > 0.82 && twardyTop.yAt(0, 0) < 0.86,
   'Twardy net keeps a small suspended air layer over the dome crown');

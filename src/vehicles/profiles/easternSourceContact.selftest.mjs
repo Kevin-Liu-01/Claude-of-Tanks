@@ -82,7 +82,7 @@ function checkAftBridgeAndMast(tank) {
 
 function checkAftInstalledWheels(tank) {
   // 2026-09-22 nation wheel standard (owner: "standardize our wheels across NATIONS"): the AFT-10 draws the China IFV
-  // wheel — the Type 100 paired pressed construction (nationWheelSets.ts exception aft10_x → type100) fitted into its
+  // wheel — the Type 100 paired pressed construction (nationWheelSets.ts exception aft10 → type100) fitted into its
   // own envelope — so the measured aftSourceWheel* face/shoulder layers left with the old wheel. The axle datum, the
   // paired tires facing a real guide channel, painted steel first on the face and the native suspension motion
   // stay this receipt's contract.
@@ -124,7 +124,7 @@ function checkAftInstalledWheels(tank) {
   }
   assert.deepEqual(walls[-1].map(v=>+v.toFixed(5)),walls[1].map(v=>+v.toFixed(5)),'tire bands mirror with vehicle side');
   const before=[tire,disc].map(layer=>Array.from(layer.instanceMatrix.array));
-  const state=createTankState(getSpec('aft10_x'),new THREE.Vector3(),0);
+  const state=createTankState(getSpec('aft10'),new THREE.Vector3(),0);
   tank.setGroundSampler((_x,z)=>Math.abs(z)<.6?-.12:0);
   state.trackScroll.l=.27;state.trackScroll.r=.16;
   for(let step=0;step<12;step++)tank.syncFromState(state,1/30,20);
@@ -136,12 +136,12 @@ function checkAftInstalledWheels(tank) {
     'the pressed discs share their tires\' suspension instance matrices');
 }
 
-for(const quality of['high','low'])for(const id of['bmp3m_dragun125_x','k21_x','type96b_x']) {
+for(const quality of['high','low'])for(const id of['bmp3m_dragun125','k21','type96b']) {
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try {
     const bore=tank.root.userData.physicalMuzzleBoreVerification;
-    assert.ok(bore&&bore.minimumDepthM>=.10 * (id === 'k21_x' ? .90 : 1),`${id} ${quality} must verify actual recessed muzzle stock`);
-    if(id!=='type96b_x')continue;
+    assert.ok(bore&&bore.minimumDepthM>=.10 * (id === 'k21' ? .90 : 1),`${id} ${quality} must verify actual recessed muzzle stock`);
+    if(id!=='type96b')continue;
     tank.root.updateMatrixWorld(true);
     checkType96Hatch(tank);
     const hull=tank.root.getObjectByName('rig_hull');
@@ -164,10 +164,10 @@ for(const quality of['high','low'])for(const id of['bmp3m_dragun125_x','k21_x','
     }
   } finally {tank.dispose()}
 }
-await ensureInteriorFills(['aft10_x']);
-assert.ok(hasInteriorFills('aft10_x'),'AFT slot/stock witnesses include the loaded generated fill record');
+await ensureInteriorFills(['aft10']);
+assert.ok(hasInteriorFills('aft10'),'AFT slot/stock witnesses include the loaded generated fill record');
 for(const quality of['high','low']) {
-  const tank=createTank('aft10_x',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
+  const tank=createTank('aft10',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   const frontSide=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
   try {
     tank.root.traverse(mesh=>{if(mesh.isMesh)mesh.material=frontSide;});

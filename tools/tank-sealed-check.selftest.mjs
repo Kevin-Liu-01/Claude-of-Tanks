@@ -16,13 +16,13 @@ assert.match(selfTest.stdout, /mirrored box: open 0, inside-out 0, affected view
 
 const ledger = JSON.parse(readFileSync('docs/geometry-gate/sealed.json', 'utf8'));
 assert.ok(Object.keys(ledger.tanks).length >= 150, 'the ledger covers the playable fleet');
-assert.equal(ledger.tanks.m1a2.sealed, true, 'the base Abrams is a sealed reference');
+assert.equal(ledger.tanks.m1a1_abrams_hc.sealed, true, 'the base Abrams is a sealed reference');
 const sealedCount = Object.values(ledger.tanks).filter((row) => row.sealed).length;
 assert.ok(sealedCount >= 150, `at least 150 sealed tanks in the ledger (${sealedCount})`);
 
-const gate = run('--ids=m1a2,abramsx', '--ledger=docs/geometry-gate/sealed.json', '--gate');
+const gate = run('--ids=m1a1_abrams_hc,abramsx', '--ledger=docs/geometry-gate/sealed.json', '--gate');
 assert.equal(gate.status, 0, `ledger gate exit ${gate.status}\n${gate.stdout}\n${gate.stderr}`);
-assert.match(gate.stdout, /^m1a2: SEALED — .* ledger: sealed, holds/m);
+assert.match(gate.stdout, /^m1a1_abrams_hc: SEALED — .* ledger: sealed, holds/m);
 assert.match(gate.stdout, /^abramsx: SEALED — .* ledger: sealed, holds/m);
 
 const plan = readFileSync('tools/tank-release-plan.mjs', 'utf8');

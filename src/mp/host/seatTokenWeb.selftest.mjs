@@ -9,7 +9,7 @@ import { base64UrlToBytes, bytesToBase64Url, sha256HexWeb, signSeatTokenWeb, ver
 
 const SECRET = 'a-per-match-host-secret-0123456789abcdef';
 const now = 1_700_000_000_000;
-const claims = { v: 1, roomId: 'ABC123', seat: 3, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m', iat: now - 1000, exp: now + 60_000 };
+const claims = { v: 1, roomId: 'ABC123', seat: 3, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90am', iat: now - 1000, exp: now + 60_000 };
 
 // ---- room-signed → web-verified
 const token = signSeatToken(SECRET, claims);

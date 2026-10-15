@@ -7,13 +7,13 @@
 // spec data that is never registered: no id, garage card, builder, icon,
 // anchor, anatomy receipt or gate packet exists for them.
 //
-//   leo2a7   -> leo2_revolution_proto, leo2_revolution, leo2a7v (additionalFleetSpecs.ts make())
-//   t72b3    -> pt91m, t64bv1, t72b3m (make()), t72b3_x (sourceXSecondWaveSpecs.ts) and the
+//   leo2a7   -> leo2_revolution_proto, leo2_revolution, leo2_improved (additionalFleetSpecs.ts make())
+//   t72b3    -> pt91m, t64bv1, t72b3m_2022 (make()), t72b3 (sourceXSecondWaveSpecs.ts) and the
 //               derived t72b_1987 donor below
-//   merkava4 -> merkava1b, merkava2b, merkava2d, merkava3c, merkava3d, merkava4b (make(),
-//               merkavaGun(), merkavaArmor()) and merkava4_x (sourceXFleetSpecs.ts)
-//   jpz_e100 -> jpz_e100_x (sourceXSecondWaveSpecs.ts)
-//   t72b_1987 -> t72m1_jaguar (poland.ts) and t72b_1987_x; itself a make('t72b3', ...) clone,
+//   merkava4 -> merkava1b, merkava2b, merkava2d, merkava3c, merkava3_baz, merkava4b (make(),
+//               merkavaGun(), merkavaArmor()) and merkava4 (sourceXFleetSpecs.ts)
+//   jpz_e100 -> jpz_e100 (sourceXSecondWaveSpecs.ts)
+//   t72b_1987 -> t72m1_jaguar (poland.ts) and t72b_1987; itself a make('t72b3', ...) clone,
 //               registered into this table by additionalFleetSpecs.ts so the derivation order
 //               is unchanged.
 //
@@ -370,7 +370,7 @@ export const DONOR_SPECS: TankSpecRegistry = {
  */
 export function donorSpec(registry: Readonly<Record<string, FleetTankSpec>>, id: string): FleetTankSpec {
   // A donor template wins over a registered vehicle of the same name: the tank id rename (SSOT 2.19, schema 3) gives
-  // three X vehicles their template's name (merkava4_x -> merkava4, t72b3_x -> t72b3, jpz_e100_x -> jpz_e100), and an
+  // three X vehicles their template's name (merkava4 -> merkava4, t72b3 -> t72b3, jpz_e100 -> jpz_e100), and an
   // X vehicle must never become its own donor. No template name was a registered id before the rename.
   const spec = DONOR_SPECS[id] ?? registry[id];
   if (!spec) throw new Error(`Fleet donor missing or incomplete: ${id}`);

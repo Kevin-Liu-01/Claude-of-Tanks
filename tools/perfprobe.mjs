@@ -673,12 +673,12 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       await page.evaluate(async (map) => {
         const D = window.__DEBUG;
         D.flags.forceFire = true; // fire whenever reloaded after release
-        await D.beginBattleEntry('m1a2', map);
+        await D.beginBattleEntry('m1a1_abrams_hc', map);
       }, mapId);
     } else {
       await page.evaluate(async (map) => {
         const D = window.__DEBUG;
-        await D.startBattle('m1a2', map);
+        await D.startBattle('m1a1_abrams_hc', map);
         D.flags.forceFire = true;
       }, mapId);
     }

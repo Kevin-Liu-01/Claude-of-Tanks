@@ -49,8 +49,8 @@ const contact = (id, batchStatic, quality) => {
     tank.dispose();
   }
 };
-for (const [id, quality] of [['t90m', 'high'], ['t90m', 'low'], ['t90a', 'high'], ['bmpt_t90', 'high'], ['m1a2', 'high'],
-  ['m1a2_sepv2', 'high'], ['leo2a4', 'high']]) {
+for (const [id, quality] of [['t90am', 'high'], ['t90am', 'low'], ['t90a_2004', 'high'], ['bmpt_t90', 'high'], ['m1a1_abrams_hc', 'high'],
+  ['m1a1_abrams_aim', 'high'], ['leo2a2', 'high']]) {
   const batched = contact(id, true, quality), plain = contact(id, false, quality);
   assert.deepEqual(batched.batches.sort(), ['gearEndWheelBody', 'gearEndWheelHardware'], `${id}: course 1 batches its end wheels`);
   assert.equal(plain.batches.length, 0, `${id}: course 2 draws plain end-wheel meshes`);

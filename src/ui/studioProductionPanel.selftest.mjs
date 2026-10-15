@@ -45,21 +45,21 @@ const siteIndex = { takes: [
 ] };
 // Every tank's own take (owner 2026-10-12): fleet entries join the same index (group 'fleet', the vehicle's spec id) and
 // are reached by the Director's finder, never listed with the site's takes. Seven Leopards exceed one page of results.
-const SPEC_NAMES = { t90sm: 'T-90SM', m1a2: 'M1A2 Abrams', leo1: 'Leopard 1', leo2a4: 'Leopard 2A4', leo2a5: 'Leopard 2A5',
-  leo2a6: 'Leopard 2A6', leo2a7v: 'Leopard 2A7V', leo2pl: 'Leopard 2PL', leo2a8: 'Leopard 2A8' };
+const SPEC_NAMES = { t90sm_2013: 'T-90SM', m1a1_abrams_hc: 'M1A2 Abrams', leo1: 'Leopard 1', leo2a2: 'Leopard 2A4', leo2a4_v: 'Leopard 2A5',
+  leo2a4: 'Leopard 2A6', leo2_improved: 'Leopard 2A7V', leo2pl: 'Leopard 2PL', leo2a8: 'Leopard 2A8' };
 const fleetEntry = (vehicle, index) => ({ id: `s${60 + index}-fleet-${vehicle}`, group: 'fleet', vehicle,
   title: { en: `A ${SPEC_NAMES[vehicle]} in action`, zh: `${SPEC_NAMES[vehicle]} 实战` }, short: { en: SPEC_NAMES[vehicle], zh: SPEC_NAMES[vehicle] },
   map: index % 2 ? 'fjord' : 'verdant', durationMs: 6600, scene: `/media/site50-r14/scenes/s${60 + index}-fleet-${vehicle}.scene.json`,
   ...(vehicle === 'leo2a8' ? {} : { thumb: `/media/site50-r14/fleet/${vehicle}.jpg` }) });
 siteIndex.takes.push(...Object.keys(SPEC_NAMES).map(fleetEntry));
-const takeScene = { map: 'urban', actors: [{ id: 'leo2a6', name: 'hero' }] };
+const takeScene = { map: 'urban', actors: [{ id: 'leo2a4', name: 'hero' }] };
 const fetches = [];
 const fetch = (url) => {
   fetches.push(url);
   const body = url.endsWith('/scenes/index.json') ? siteIndex : takeScene;
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 };
-const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm']]); // the tank last selected in the Garage
+const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
 const localStorage = { getItem: (key) => stored.get(key) ?? null };
 const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error, fetch, sceneLinkPath,
   t, LAST_TANK_STORAGE_KEY, localStorage };
@@ -68,7 +68,7 @@ const calls = [];
 let resolveStage, rejectStage;
 const S = {
   productionFormat: 'landscape',
-  TANK_IDS: ['m1a2'], getMapInfo: id => ({ name: id }),
+  TANK_IDS: ['m1a1_abrams_hc'], getMapInfo: id => ({ name: id }),
   getSpecInfo: id => { if (!SPEC_NAMES[id]) throw new Error(`unknown vehicle ${id}`); return { name: SPEC_NAMES[id] }; },
   _internal: { actors: [{}] }, fxTimeMs: 0, durationMs: 12000, playing: false, selectedShotId: 'a',
   recordingStatus: () => ({ active: false, supported: true }),
@@ -167,13 +167,13 @@ assert.equal(fleetStatus(), t('studio.director.fleet.none', { query: 'zzz' }));
 search.value = ''; search.fire('input');
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm']);
 const featuredTank = byData('productionTank');
-featuredTank.value = 'leo2a6'; featuredTank.fire('change');
+featuredTank.value = 'leo2a4'; featuredTank.fire('change');
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a6'], 'the Director\'s featured tank comes first');
 featuredTank.value = ''; featuredTank.fire('change');
 stored.clear(); search.fire('input');
 assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
 assert.equal(fleetStatus(), t('studio.director.fleet.hint'), 'but a hint');
-stored.set(LAST_TANK_STORAGE_KEY, 't90sm'); search.fire('input');
+stored.set(LAST_TANK_STORAGE_KEY, 't90sm_2013'); search.fire('input');
 const loadsBefore = calls.filter(call => call[0] === 'load').length;
 fleetCards()[0].fire('click'); await tick(); await tick();
 assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s60-fleet-t90sm.scene.json', 'a fleet card fetches its own scene');
@@ -188,10 +188,10 @@ assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1
 byData('productionPreset', 'two').fire('click');
 const frame = byData('productionFormat'); frame.value = 'portrait'; frame.fire('change');
 assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'format selection informs the runtime camera framing');
-byData('productionTank').value = 'm1a2';
+byData('productionTank').value = 'm1a1_abrams_hc';
 const stage = byData('productionStage'); stage.fire('click'); stage.fire('click');
 assert.equal(calls.filter(call => call[0] === 'stage').length, 1, 'one scene transaction despite repeated clicks');
-assert.equal(JSON.stringify(calls.find(call => call[0] === 'stage')[1]), JSON.stringify({ presetId: 'two', format: 'portrait', vehicleId: 'm1a2' }));
+assert.equal(JSON.stringify(calls.find(call => call[0] === 'stage')[1]), JSON.stringify({ presetId: 'two', format: 'portrait', vehicleId: 'm1a1_abrams_hc' }));
 assert.equal(frame.disabled, true, 'the format cannot race a scene build');
 resolveStage(); await tick();
 assert.equal(stage.disabled, false, 'staging releases its controls on success');

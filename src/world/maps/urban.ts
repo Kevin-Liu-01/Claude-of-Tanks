@@ -340,7 +340,7 @@ export default {
     // the shelled-town read finally includes the armor that died taking it
     // the map-vehicles lane (2026-10-06, the period ruling): the inner-German border of the 1980s: the Bundeswehr's
     // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a4', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
     sandbagLines: 12,
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work

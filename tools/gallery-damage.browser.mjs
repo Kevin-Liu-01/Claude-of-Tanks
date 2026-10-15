@@ -14,7 +14,7 @@ try {
  const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/gallery?id=t90m&layer=armor`,{waitUntil:'domcontentloaded'});
- await page.waitForFunction(()=>window.__TANK_GALLERY?.ready&&window.__TANK_GALLERY.getState().selectedId==='t90m',null,{timeout:180000});
+ await page.waitForFunction(()=>window.__TANK_GALLERY?.ready&&window.__TANK_GALLERY.getState().selectedId==='t90am',null,{timeout:180000});
  await page.locator('.damage-workbench').scrollIntoViewIfNeeded();
  const before=await page.evaluate(()=>window.__TANK_GALLERY.getState());
  const era=before.damage.parts.find(p=>p.kind==='era');assert.ok(era,'T-90M exposes real ERA bindings');
@@ -50,7 +50,7 @@ try {
   await page.screenshot({path:resolve(out,`${name}-workbench.png`)});
   receipts.push({name,layout});
  }
- await page.evaluate(()=>window.__TANK_GALLERY.loadTank('kf41_lynx_x'));
+ await page.evaluate(()=>window.__TANK_GALLERY.loadTank('kf41_lynx'));
  assert.ok((await page.evaluate(()=>window.__TANK_GALLERY.getState())).damage.parts.every(p=>p.state==='ok'),'switching tanks clears damage');
  await page.locator('[data-damage-action="kind:module"]').click();
  const rack=page.locator('[data-damage-target="module:missileRack"]');

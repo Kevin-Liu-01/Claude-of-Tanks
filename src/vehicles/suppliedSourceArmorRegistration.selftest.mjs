@@ -12,9 +12,9 @@ const owners = ['hull', 'turret'];
 const rows = armor => owners.flatMap(owner => armor[`${owner}Plates`]
   .filter(p => p.kind === 'era').map(p => ({owner, name: p.name, era: p.era})));
 const cases = [
-  ['type96b_x', 'type99a', 'glacis_era_L'],
-  ['aft10_x', 'm551_sheridan', 'sheridan_glacis_era'],
-  ['sabra_mk2_x', 'm60a3', 'm60a3_turret_era_front_L'],
+  ['type96b', 'ztz99_longwei', 'glacis_era_L'],
+  ['aft10', 'm551_sheridan', 'sheridan_glacis_era'],
+  ['sabra_mk2', 'm60a3', 'm60a3_turret_era_front_L'],
 ].map(([id, donorId, failureZone]) => {
   const spec = getSpec(id), donor = getSpec(donorId);
   const donorReactive = rows(donor.armor);
@@ -28,7 +28,7 @@ const cases = [
 // plates during finalization (combatAnatomy.ts appendStructurePlates: `${owner}_${kind}_NN_${face}`), which runs
 // after donor synchronization. 2026-10-01: since 0e5fc79e2 made donor synchronization initialization-only, the loop
 // below no longer re-clones the finalized donor (whose m551_sheridan hatch/cupola plates the AFT-10 never had in
-// production: aft10_x read 10 hull plates on 581cd5119 too) and instead checks the production armor, so each
+// production: aft10 read 10 hull plates on 581cd5119 too) and instead checks the production armor, so each
 // side's own calibrated structures are told apart by name. Every excluded name must exist on its own vehicle.
 const calibratedStructureNames = (id, owner) => {
   const names = [];

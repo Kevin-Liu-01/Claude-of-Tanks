@@ -5,7 +5,7 @@ import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
 import { preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
 
-const visual = createTank('m1a2', null, {
+const visual = createTank('m1a1_abrams_hc', null, {
   proceduralOnly: true,
   geometryReceipt: true,
   batchStatic: true,
@@ -30,7 +30,7 @@ assert.ok(detailGroups.length > 0, 'probe tank exposes distance-managed battle d
 const restWheels = Array.from(wheelMesh.instanceMatrix.array);
 const restTurretPosition = turret.position.clone();
 const restBand = Array.from(trackBand.geometry.getAttribute('position').array);
-const state = createTankState(getSpec('m1a2'), new THREE.Vector3(12, 0.7, -9), 0.83);
+const state = createTankState(getSpec('m1a1_abrams_hc'), new THREE.Vector3(12, 0.7, -9), 0.83);
 state.visualPitch = 0.13;
 state.visualRoll = -0.09;
 state.turretYaw = 0.61;

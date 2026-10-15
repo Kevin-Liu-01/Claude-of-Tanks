@@ -144,8 +144,8 @@ for (const spec of Object.values(TANK_SPECS)) {
     }
     // Explicit launch points describe geometry, not which weapon is primary.
     // Autocannon IFVs retain their auxiliary missile cadence with real tips.
-    if (spec.gun.primaryGuided && ['ztz100_prototype', 'object695_x', 'griffin_viper'].includes(spec.id)) {
-      const expected = spec.id === 'ztz100_prototype' ? [12, 12] : spec.id === 'object695_x' ? [14, 14] : [1];
+    if (spec.gun.primaryGuided && ['ztz100_prototype', 'object695', 'griffin_viper'].includes(spec.id)) {
+      const expected = spec.id === 'ztz100_prototype' ? [12, 12] : spec.id === 'object695' ? [14, 14] : [1];
       assert.equal(round.reloadS, expected[slot], `${spec.id}: independently authored missile-primary reload`);
     } else if (spec.gun.primaryGuided) {
       assert.equal(round.reloadS, spec.gun.reloadS,
@@ -161,19 +161,19 @@ for (const spec of Object.values(TANK_SPECS)) {
 // Legacy guided channels and source-based additions retain their contracts;
 // the two owner-authored concepts add four explicitly checked missile modes.
 const suppliedIds = new Set(SUPPLIED_SOURCE_IDS);
-const conceptIds = new Set(['ztz100_prototype', 'object695_x', 'griffin_viper', 'm6_linebacker']);
+const conceptIds = new Set(['ztz100_prototype', 'object695', 'griffin_viper', 'm6_linebacker']);
 const concepts = guidedRounds.filter(({spec}) => conceptIds.has(spec.id));
 assert.equal(concepts.length, 6);
 // 2026-09-25 IFV identity batch (docs/references/batches/ifv-replicas-20260925.md, europe-ifvs-20260925.md):
 // the Puma S1 X and Type 89 X replica racks and the Borsuk's Spike LR are three additional guided channels,
 // counted beside the established fleet rather than folded into its immutable census.
-const ifvBatchIds = new Set(['spz_puma_s1_x', 'cv90_x', 'type89_x', 'dardo', 'lrmv_lynx', 'borsuk']);
+const ifvBatchIds = new Set(['puma_s1', 'cv9040c', 'type89', 'dardo', 'lrmv_lynx', 'borsuk']);
 assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map(({spec}) => spec.id).sort(),
-  ['borsuk', 'spz_puma_s1_x', 'type89_x'], 'the CV9040C, Dardo and LRMV carry no guided channel');
+  ['borsuk', 'puma_s1', 'type89'], 'the CV9040C, Dardo and LRMV carry no guided channel');
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)).length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
-  .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'k21_x', 'kurganets25_x', 'kurganets25_x', 'warrior_tes_h'],
+  .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
 assert.equal(guidedRounds.length, 38, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
@@ -188,21 +188,21 @@ assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct ident
 // Later additions are exercised in the fleet loop above but are counted
 // separately from the immutable established channel census.
 const laterChannelCounts = {
-  type100: 3, ztz100_x: 3, ztz100_prototype: 3, object695_x: 3,
-  merkava4_trophy: 3, merkava4_barak: 3, namer_ifv: 2, ares_apc_x: 3,
-  tos1a_tagil: 1, ariete_c2_x: 3, griffin_viper: 1,
+  type100: 3, ztz100: 3, ztz100_prototype: 3, object695: 3,
+  merkava4_trophy: 3, merkava4_barak: 3, namer_ifv: 2, ares_apc: 3,
+  tos1a_tagil: 1, c2_ariete: 3, griffin_viper: 1,
   // 2026-09-25 IFV identity batch: three X replicas beside their kept originals and three photographic additions.
-  spz_puma_s1_x: 3, cv90_x: 3, type89_x: 3, dardo: 2, lrmv_lynx: 2, borsuk: 3,
+  puma_s1: 3, cv9040c: 3, type89: 3, dardo: 2, lrmv_lynx: 2, borsuk: 3,
   amx10p: 2, amx10p_25: 2, marder2: 2, m6_linebacker: 3,
   type96_72_long: 3, type96_80_feng: 3, type96_72m_lei: 3, t72_rys: 3,
   // 2026-10-01 national modernization (cdbfe54dc, docs/history/research/national-modernization-20261001.md): twelve
   // owner-approved concepts, each carrying the T-90SM X turret's three channels.
-  ua_t80u_modern: 3, ua_t72b3m_modern: 3, ua_t72b3_modern: 3,
-  pl_t80u_modern: 3, pl_t72b3m_modern: 3, pl_t72b3_modern: 3,
-  cn_t80u_modern: 3, cn_t72b3m_modern: 3, cn_t72b3_modern: 3,
-  ru_t80u_modern: 3, ru_t72b3m_modern: 3, ru_t72b3_modern: 3,
+  t80u_zoria: 3, t72b3m_hetman: 3, t72b3_sich: 3,
+  t80u_husarz: 3, t72b3m_wilk: 3, t72b3_zubr: 3,
+  t80u_yun: 3, t72b3m_kunlun: 3, t72b3_qilin: 3,
+  t80u_bars_m: 3, t72b3m_bulat_m: 3, t72b3_bastion_m: 3,
   // 2026-10-02 (main): the two preserved-design national successors carry the same three channels.
-  ua_t72b3m_hetman_ii: 3, pl_t72b3_zubr_ii: 3,
+  t72b3m_hetman_ii: 3, t72b3_zubr_ii: 3,
 };
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
@@ -216,11 +216,11 @@ assert.deepEqual(NATIONAL_MODERNIZATION_IDS.filter((id) => !(id in laterChannelC
 const nationalModernizationChannels = NATIONAL_MODERNIZATION_IDS.reduce((count, id) => count + laterChannelCounts[id], 0);
 assert.equal(nationalModernizationChannels, 36, 'the twelve national modernization concepts add thirty-six separately covered channels');
 for (const id of NATIONAL_MODERNIZATION_IDS) {
-  assert.deepEqual(TANK_SPECS[id].gun.shells, TANK_SPECS.t90sm_x.gun.shells,
+  assert.deepEqual(TANK_SPECS[id].gun.shells, TANK_SPECS.t90sm.gun.shells,
     `${id}: the concept keeps the T-90SM X turret's ammunition, no invented rounds`);
 }
 const nationalChannels = nationalModernizationChannels
-  + laterChannelCounts.ua_t72b3m_hetman_ii + laterChannelCounts.pl_t72b3_zubr_ii;
+  + laterChannelCounts.t72b3m_hetman_ii + laterChannelCounts.t72b3_zubr_ii;
 assert.equal(nationalChannels, 42, 'fourteen national concepts add three separately exercised ammunition channels each');
 const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
 for (const [id, count] of Object.entries(laterChannelCounts)) {
@@ -236,8 +236,8 @@ assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) &&
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
   'nine three-channel, two two-channel and one guided-primary loadout');
-const arieteC2Rounds = TANK_SPECS.ariete_c2_x.gun.shells;
-assert.deepEqual(arieteC2Rounds, TANK_SPECS.ariete_c1_x.gun.shells,
+const arieteC2Rounds = TANK_SPECS.c2_ariete.gun.shells;
+assert.deepEqual(arieteC2Rounds, TANK_SPECS.c1_ariete.gun.shells,
   'the C2 upgrade retains the definitive C1 ammunition without invented penetration or missile rounds');
 assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.caliberMm,
   round.guided === true, shellAmmunitionCapacity(round)]), [
@@ -250,7 +250,7 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
 // forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04).
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker, 560,
+assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
@@ -258,7 +258,7 @@ assert.ok(depletedChannelTransitions > 200,
   `depleted-channel transitions are covered (${depletedChannelTransitions})`);
 
 {
-  const spec = TANK_SPECS.m1a2;
+  const spec = TANK_SPECS.m1a1_abrams_hc;
   const combat = createCombatState(spec);
   combat.shellSlot = 1;
   combat.ammo = [5, 0, 2];
@@ -279,7 +279,7 @@ for (const { spec, round, slot } of guidedRounds) {
     players: [
       { id: 'guided-gunner', specId: spec.id, team: 'alpha',
         spawn: { x: 0, z: -200, yaw: 0 } },
-      { id: 'guided-target', specId: 't90m', team: 'bravo',
+      { id: 'guided-target', specId: 't90am', team: 'bravo',
         spawn: { x: 0, z: 200, yaw: Math.PI } },
     ],
   });
@@ -339,7 +339,7 @@ for (const spec of Object.values(TANK_SPECS)) {
     players: [
       { id: 'fleet-gunner', specId: spec.id, team: 'alpha',
         spawn: { x: 0, z: -200, yaw: 0 } },
-      { id: 'fleet-target', specId: 't90m', team: 'bravo',
+      { id: 'fleet-target', specId: 't90am', team: 'bravo',
         spawn: { x: 0, z: 200, yaw: Math.PI } },
     ],
   });
@@ -439,7 +439,7 @@ assert.equal(fleetFinalRoundLaunches, authoredShellChannels,
     players: [
       { id: 'guided-denial-gunner', specId: spec.id, team: 'alpha',
         spawn: { x: 0, z: -200, yaw: 0 } },
-      { id: 'guided-denial-target', specId: 't90m', team: 'bravo',
+      { id: 'guided-denial-target', specId: 't90am', team: 'bravo',
         spawn: { x: 0, z: 200, yaw: Math.PI } },
     ],
   });
@@ -472,8 +472,8 @@ const match = createAuthoritativeMatch({
   mapId: 'verdant',
   countdownS: 0,
   players: [
-    { id: 'gunner', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -200, yaw: 0 } },
-    { id: 'target', specId: 't90m', team: 'bravo', spawn: { x: 0, z: 200, yaw: Math.PI } },
+    { id: 'gunner', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -200, yaw: 0 } },
+    { id: 'target', specId: 't90am', team: 'bravo', spawn: { x: 0, z: 200, yaw: Math.PI } },
   ],
 });
 match.onMatchReady();

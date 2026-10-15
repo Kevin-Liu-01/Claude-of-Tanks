@@ -1260,7 +1260,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function addActor(cfg: StudioActorInput = {}): StudioActor {
-    const specId = cfg.id || cfg.specId || 'm1a2';
+    const specId = cfg.id || cfg.specId || 'm1a1_abrams_hc';
     const spec = getSpec(specId); // throws on unknown id (deliberate)
     const engineCtx = game._engineCtx;
     const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;

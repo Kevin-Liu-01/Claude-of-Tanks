@@ -28,9 +28,9 @@ const CELL_M = 0.1;
 const SAMPLE_M = 0.03;
 // the waves' close-up tanks, the weathering wave's Leopard 2A6, and every 24th fleet id (ALL_TANK_IDS index 7, 31, ...)
 const IDS = Object.freeze([
-  'm1a2_sepv3', 'leo2a4', 't90m_proryv', 'ua_t84_oplot_m', 'challenger1', 'm60a1', 'type99a', 'pt91_twardy', 'strv103a',
-  'leclerc', 'merkava4_trophy', 't72b3m', 'm1a2_tusk', 'leo2a6',
-  'abramsx', 'cv90_x', 'bmp2', 'leo2_revolution', 'fv510_milan', 'm46_patton', 'bmp3m_dragun125_x', 't62mv1_x', 'griffin_viper',
+  'm1a1_abrams_fep', 'leo2a2', 't90m_proryv', 't84bm_oplot_m', 'challenger1_mk2', 'm60a1', 'ztz99_longwei', 'pt91a_twardy', 'strv103a',
+  'leclerc_s2', 'merkava4_trophy', 't72b3m_2022', 'm1a1_abrams_sa', 'leo2a4',
+  'abramsx', 'cv9040c', 'bmp2', 'leo2_revolution', 'fv510_milan', 'm46_patton', 'bmp3m_dragun125', 't62mv1', 'griffin_viper',
 ]);
 // the ratchets: floating and clipping accessory pieces per tank; any other tank is held to 0. Round 4's census at
 // fcc68d78b (cell borders searched, edges sampled) found 13 and 49; round 5's stowage pass (2026-10-08) took them to 12
@@ -42,8 +42,8 @@ const IDS = Object.freeze([
 // receipt reads it) and the second decor smoke bank, which main's screens and cage-wing legs moved forward along the
 // cheek, its bracket set into the armour like every other bank's (round 5's seat lays it flush there too).
 // 2026-10-08 (round 5, the guns helper over the lane head 5729f2d5b): the gun and weapon-station pieces are seated
-// (699f6c176, 8c6fca407, cb11de6ba): floating abramsx 8 -> 0, bmp3m_dragun125_x 2 -> 0; clipping abramsx 8 -> 1,
-// bmp3m_dragun125_x 2 -> 1, t62mv1_x 2 -> 0, t90m_proryv 1 -> 0, t72b3m 7 -> 6 (the station's Kord replaces the 0.8 m
+// (699f6c176, 8c6fca407, cb11de6ba): floating abramsx 8 -> 0, bmp3m_dragun125 2 -> 0; clipping abramsx 8 -> 1,
+// bmp3m_dragun125 2 -> 1, t62mv1 2 -> 0, t90m_proryv 1 -> 0, t72b3m_2022 7 -> 6 (the station's Kord replaces the 0.8 m
 // bar). What remains is decor, tow cables, racks, jerrycans, light guards and the Oplot-M's own roof station.
 // 2026-10-08, round 5's stowage batches 2a and 2b over 3b and the guns helper's head 863dd3711 (side loads clear the
 // turret, banks seated to their wall, decor kept off the guns' bodies; tow-cable eyes, lamp guards, the can strap and
@@ -55,7 +55,7 @@ const KNOWN_FLOATING = Object.freeze({});
 // the Oplot-M 5 -> 0
 const KNOWN_CLIPPING = Object.freeze({
   // the bank no wall seat backs, which keeps the old fan so its sockets hold: the T-72B3M's left (+X) bank
-  t72b3m: 1,
+  t72b3m_2022: 1,
 });
 
 function accessoryKind(object) {
