@@ -89,7 +89,7 @@ varying vec4 vT;     // depth across at A and B, age at A and B
 varying vec4 vG;     // along (m) at A and B, px per metre at A and B
 varying vec4 vL;     // puff, puff spacing, churn, seed
 varying vec4 vM;     // the segment's length (m), the sun on its sides, the sun through it, its life (s)
-varying vec4 vX;     // the flame's light at A and B, fog depth, end-on
+varying vec4 vX;     // the flame's light at A and B, fog depth, the quad's half width (px)
 varying vec3 vAmb;
 varying vec3 vSun;
 float h1( float n ) { return fract( sin( n * 127.1 + 4.7 ) * 43758.5453 ); }
@@ -162,11 +162,14 @@ void main() {
   float L = length( d );
   vec2 t = L > 1e-3 ? d / L : vec2( 1.0, 0.0 );
   vec2 n = vec2( -t.y, t.x );
-  float pk = 1.0 + 0.25 * L2.y + 0.3 * L2.w;
-  float exA = 2.0 * rpA * pk + 1.5, exB = 2.0 * rpB * pk + 1.5;
+  // (its profile's widest sigma is 0.65 r times a puff's swell and a torn edge's; the quad reaches 3.5 of them, so no
+  // segment's blur is cut: no seam at a joint, no straight edge along a dense trail)
+  float pk = 0.65 * ( 1.0 + 0.25 * L2.y ) * ( 1.0 + 0.3 * L2.w );
+  float exA = 3.5 * pk * rpA + 1.5, exB = 3.5 * pk * rpB + 1.5;
+  float hw = max( exA, exB );
   bool atA = position.x < 0.5;
   vec2 sp = atA ? sA - t * exA : sB + t * exB;
-  sp += n * position.y * max( exA, exB );
+  sp += n * position.y * hw;
   vec4 k = atA ? kA : kB;
   vec2 ndc = ( sp - uViewport.xy ) / uViewport.zw * 2.0 - 1.0;
   gl_Position = vec4( ndc * k.w, k.z, k.w );
@@ -194,7 +197,7 @@ void main() {
   // the motor's flame on the smoke just behind it (its first few metres; it shows against the night, hardly in sun)
   float sunLum = dot( uSunCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   float gk = L3.z * mix( 1.0, 0.18, smoothstep( 0.15, 1.0, sunLum ) );
-  vX = vec4( gk * exp( -ageA / 0.016 ), gk * exp( -ageB / 0.016 ), -0.5 * ( eA.z + eB.z ), endOn );
+  vX = vec4( gk * exp( -ageA / 0.016 ), gk * exp( -ageB / 0.016 ), -0.5 * ( eA.z + eB.z ), hw );
 }
 `;
 
@@ -254,9 +257,11 @@ void main() {
   vec2 nq = vec2( alongN / ( 2.2 * rw * rk ), 0.75 * y / ( rp * rk ) ) + vec2( vL.w * 17.0 - age * 0.2, vL.w * 5.3 );
   float n = vn2( nq ) * 0.65 + vn2( nq * 2.07 + vec2( 5.1, 1.7 ) ) * 0.35;
   float ch = vL.z * ( 0.35 + 0.65 * smoothstep( 0.0, 1.2, age ) );
-  float sp = sig * ( 1.0 + ch * 0.55 * ( n - 0.5 ) );
-  float kx = mix( 3.0, 2.0, smoothstep( 0.0, 1.2, age ) );
-  float across = exp( -0.5 * pow( abs( y ) / max( sp, 1e-3 ), kx ) );
+  // its edge bulges in and out along its length (smooth swells, never spikes); the noise clumps its body
+  float bulge = vn1( alongN / ( 1.3 * rw * rk ) + vL.w * 23.0 ) * 0.6 + vn1( alongN / ( 0.55 * rw * rk ) + vL.w * 41.0 ) * 0.4;
+  float sp = sig * ( 1.0 + ch * 0.6 * ( bulge - 0.5 ) );
+  float kx = mix( 2.6, 2.0, smoothstep( 0.0, 1.0, age ) );
+  float across = exp( -0.5 * pow( abs( y ) / max( sp, 1e-3 ), kx ) ) * ( 1.0 - smoothstep( 0.85, 1.0, abs( y ) / vX.w ) );
   // along it: a Gaussian-blurred box (its neighbours sum seamlessly at any spacing), a little deeper where the eye looks
   // along it (to OBLIQUE_CAP); seen straight down its length a stretch adds only what its projection covers, so a
   // sight laid down the missile's own line still sees the target beyond it
