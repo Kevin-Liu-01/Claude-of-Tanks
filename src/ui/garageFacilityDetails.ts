@@ -141,8 +141,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     rain_canopy: {
       logistics: [[-33, -8], [20, -24]],
       parts: [[-30, 18], [5, -34]], floods: [[-39, 6], [39, 2]],
-      // the covered repair bay over the causeway (garage round 7)
-      feature: [3.8, 26], featureRadius: [10.5, 9],
+      // the covered repair bay over the causeway (garage round 7), square to the view and 24 m between its column lines so
+      // they frame the hero instead of crossing its turret (the garage critic panel, 2026-10-14)
+      feature: [0, 26], featureRadius: [14, 9],
     },
     rock_cavern: {
       logistics: [[-34, -8], [18, -25]],
@@ -2303,9 +2304,9 @@ export function addGarageFacilityDetails({
       // roof with deep eaves and a ridge ventilator, on round concrete columns stained green at their feet; gutters and
       // downpipes empty into open drains round the plinth with gratings at the crossings and splash aprons; tarpaulin
       // side screens are lashed to the posts on the weather side, one half rolled up. Squared on the causeway.
-      const centerSide = 3.8, centerDepth = 26;
+      const centerSide = 0, centerDepth = 26;
       const origin = cameraPoint(centerSide, centerDepth);
-      const roadIn = cameraPoint(4 * 14 / 15, 24); // back down the causeway toward (0, 10)
+      const roadIn = cameraPoint(0, 25); // back down the straight causeway toward (0, 10)
       const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
       const c = Math.cos(yaw), sn = Math.sin(yaw);
       const baseY = groundAtWorld(origin.x, origin.z);
@@ -2313,7 +2314,7 @@ export function addGarageFacilityDetails({
       const sub = (u: number, w: number): FacilityCluster => ({ x: origin.x + c * u + sn * w, z: origin.z - sn * u + c * w, baseY, yaw });
       const concrete = new THREE.Color(0x8e938c), concreteWet = new THREE.Color(0x5d665d), algae = new THREE.Color(0x3c4a34);
       const tin = new THREE.Color(0x7d7f78), timberC = new THREE.Color(0x5a4734), tarp = new THREE.Color(0x4e5a3c), drainDark = new THREE.Color(0x1f2420);
-      const halfW = 7.6, halfL = 6.0, plinthH = 0.45, eaveY = 4.9, overhang = 1.7;
+      const halfW = 12, halfL = 6.0, plinthH = 0.45, eaveY = 4.9, overhang = 1.7;
       const roofRise = (halfW + overhang) * Math.tan(THREE.MathUtils.degToRad(28));
       const ridgeY = eaveY + roofRise;
       // the raised floor and its ramps where the causeway runs on and off
