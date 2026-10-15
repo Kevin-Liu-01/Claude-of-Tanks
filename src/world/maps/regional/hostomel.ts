@@ -10,6 +10,7 @@ import { PartSink, faceBox, facePanel, pick, rgb, shade, type Face, type Regiona
 import { buildHouse, emitRoof, holedFace, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { sheetHall } from './hall.ts';
 
 /** The sheet steel's liveries: the Antonov hangars' grey-blue and grey-green paint, a pale galvanised grey. */
 const LIVERY: readonly Rgb[] = [0x8f9ca0, 0x84907f, 0xa9ada6, 0x7b8790].map(rgb);
@@ -261,40 +262,17 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
   // a portal frame's shallow pitch (a steeper one read as a barn on the old airfield)
   const He = 5.6 + rng() * 1.4, pitch = 6 + rng() * 3;
   const livery = pick(rng, LIVERY), doorLivery = pick(rng, DOOR_LIVERY);
+  // (props census #4, lane B 2026-10-14; the judges: "a span box with its doors laid on as plates and a painted dark slot
+  // for the open leaf") the shared sheet hall (hall.ts): the portal-frame shed of sheet on its kerb, the apron opening cut
+  // with the sliding leaves on their tracks (one run part open onto the hangar's own floor, far wall and frames), the
+  // band of lights under the eaves, a personnel door in the back gable, gutters, roof lights and the ridge vent
+  const open = 0.3 + rng() * 0.4;
   sink.placed(0, cx, 0, zc, () => {
-    sink.span('stone', -W / 2, -0.4, -D / 2, W / 2, 1.0, D / 2);
-    sink.span('structureMetal', -W / 2, 1.0, -D / 2, W / 2, He, D / 2, { colour: livery });
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: pitch, eave: 0.4, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
-    const rg = roofGeometry(W, D, He, roof);
-    emitRoof(sink, rg, roof);
-    for (const z of [D / 2, -D / 2]) {
-      const face: Face = z > 0 ? { origin: [0, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: W } : { origin: [0, 0, z], u: [-1, 0, 0], out: [0, 0, -1], width: W };
-      wallPolygon(sink, 'structureMetal', face, ccw([[-W / 2, He], [W / 2, He], [0, rg.ridgeY]]), 0.25, { colour: livery });
-    }
-    // standing seams of the cladding and the band of translucent panels under the eaves
-    const sides: Face[] = [{ origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }, { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D }];
-    for (const f of sides) {
-      if (!mobile) for (let u = -D / 2 + 1.5; u < D / 2 - 0.5; u += 3) faceBox(sink, 'structureMetal', f, u, (He + 1.0) / 2, 0.03, 0.1, He - 1.0, 0.06, { colour: shade(livery, 0.8), decor: true });
-      for (let u = -D / 2 + 2.2; u < D / 2 - 1.5; u += 4.4) facePanel(sink, 'glass', f, u, He - 0.8, 0.065, 3.0, 0.7, { decor: true });
-    }
-    // the apron gable's sliding doors, one leaf run across the other, the dark hangar in the gap
-    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const Wd = W - 1.6, Hd = He - 0.6, lw = Wd / 2;
-    const open = 0.3 + rng() * 0.4;
-    faceBox(sink, 'dark', front, -Wd / 2 + lw * open / 2, Hd / 2, 0.02, lw * open, Hd, 0.02, { decor: true });
-    faceBox(sink, 'structureMetal', front, -Wd / 2 + lw / 2 + lw * open, Hd / 2, 0.3, lw, Hd, 0.18, { colour: doorLivery });
-    faceBox(sink, 'structureMetal', front, Wd / 2 - lw / 2, Hd / 2, 0.12, lw, Hd, 0.18, { colour: doorLivery });
-    faceBox(sink, 'structureMetal', front, 0, Hd + 0.15, 0.25, Wd + 1.2, 0.3, 0.4, { colour: RIB, decor: true });
-    if (!mobile) for (const u of [-Wd / 2 + lw / 2 + lw * open, Wd / 2 - lw / 2]) {
-      faceBox(sink, 'structureMetal', front, u, Hd * 0.5, u > 0 ? 0.24 : 0.42, lw - 0.3, 0.12, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
-      facePanel(sink, 'glass', front, u, Hd * 0.72, u > 0 ? 0.215 : 0.395, lw * 0.6, 0.6, { decor: true });
-    }
-    // a personnel door in the back gable
-    const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
-    doorUnit(sink, back, W * 0.25, 0, 1.0, 2.2, { leaf: pick(rng, STEEL_DOORS), frame: { bucket: 'structureMetal', width: 0.1, out: 0.05, colour: RIB }, steps: null, leafKind: 'plank' }, 0);
+    const frame = sheetHall(sink, { w: W, d: D, eave: He, pitchDeg: pitch, kerb: 1.0, livery, doorLivery, trim: RIB, doors: 'sliding', doorW: W - 1.6, doorH: He - 1.6,
+      open, backDoor: W * 0.25, clerestory: true, roofLights: true, ridgeVent: true, gutters: true, mobile }, ctx.variant);
     // shrapnel through the sheet: a torn panel on one long wall, dark behind it
     if (rng() < 0.6) {
-      const f = sides[rng() < 0.5 ? 0 : 1], u = (rng() - 0.5) * (D - 4), y = 2.2 + rng() * (He - 3.4);
+      const f = rng() < 0.5 ? frame.faces.right : frame.faces.left, u = (rng() - 0.5) * (D - 4), y = 2.2 + rng() * (He - 3.4);
       faceBox(sink, 'dark', f, u, y, 0.005, 1.4 + rng(), 1.0 + rng() * 0.8, 0.01, { decor: true });
       sink.quad('structureMetal', ...([[-0.7, 0.5], [0.7, 0.5], [0.8, -0.6], [-0.5, -0.9]].map(([du, dy]) => [
         f.origin[0] + f.u[0] * (u + du) + f.out[0] * (0.05 - dy * 0.3), y + dy, f.origin[2] + f.u[2] * (u + du) + f.out[2] * (0.05 - dy * 0.3)] as Vec3)) as [Vec3, Vec3, Vec3, Vec3],
