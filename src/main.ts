@@ -92,7 +92,7 @@ import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
-import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
+import { STRICT_DRAIN_STALL_MS, createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
 import { renderCoveredComposerWarm, type CoveredComposerWarmTiming } from './engine/coveredComposerWarm.ts';
 import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
@@ -2561,7 +2561,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             ] : undefined;
             // Strict preparation admits bounded groups and returns an explicit
             // first-use result. Covered entry checks it before any real draw.
-            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true });
+            // (2026-10-14) the covered network entry alone stops a stalled window 2 s after its last link (programWarm)
+            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true, stallMs: STRICT_DRAIN_STALL_MS });
             try {
               while (true) {
                 const step = steps.next();
