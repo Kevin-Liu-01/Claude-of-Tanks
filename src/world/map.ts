@@ -24,8 +24,10 @@ import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
   createVegetation,
   createVegetationAsync,
+  outlandAdoptable,
+  outlandTreesEnabled,
 } from './vegetation.ts';
-import type { TreeObstacle } from './vegetation.ts';
+import type { OutlandTreeSpec, TreeObstacle } from './vegetation.ts';
 import { bindHorizonForestImpostors } from './horizonForestImpostors.ts';
 import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
@@ -504,12 +506,22 @@ function assembleWorld(
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the
   // mobile tier and the receipts keep the ring's lobes.
   const ringForest = terrain.getObjectByName('horizon-forest');
+  // GND (2026-10-14; the owner's Kestrel border trees breaking into blobs): near the square the battlefield's own tree
+  // tiers draw the ring's trees (vegetation.ts adoptOutlandTrees: near, far, cross-fade, scope promotion), the rest
+  // keep their quads. Only this client assembly adopts (an atlas means a renderer): Node, server and receipt worlds keep
+  // their records; `?outlandTrees=0` keeps every quad (the A/B).
+  const adoptOutland = !!vegetation._treeImpostors && outlandTreesEnabled();
   if (ringForest && vegetation._treeImpostors) {
     bindHorizonForestImpostors(ringForest, {
       library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+      ...(adoptOutland ? {
+        formVariant: vegetation._treeFormVariant,
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
+      } : {}),
     });
   }
   // the horizons stream (2026-10-13): the Hinterland's near trees draw from the same atlas (hinterland/trees.ts), now
@@ -519,6 +531,11 @@ function assembleWorld(
     bindHinterlandTreeImpostors(hinterlandRoot, {
       library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
+      ...(adoptOutland ? {
+        formVariant: vegetation._treeFormVariant,
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
+      } : {}),
     });
   }
   // the mountains lane (2026-10-03): the far horizon panorama bakes where the renderer is — under the loading cover with

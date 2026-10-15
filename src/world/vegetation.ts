@@ -61,7 +61,7 @@ import { getDeviceTier, presetLightWorld, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 // trees round 2 (2026-10-03): the grown crowns' dappled shadow
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -376,6 +376,59 @@ interface TreeRecord {
   craterBase?: THREE.Matrix4;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
+  /** GND (2026-10-14): a tree over the red line the battlefield's tiers adopted (adoptOutlandTrees) — visual only, drawn
+   * in its batch's own pools; never in `trees` (no collider, crush, concealer, decal or interaction). */
+  outland?: OutlandTreePools;
+}
+
+/**
+ * GND (2026-10-14; the owner's Kestrel border trees "breaking into floating blobs"): the horizon ring's trees (and the
+ * Hinterland's) were flat atlas quads at every range, magnified past their texels at the chase and through the sight.
+ * Near the playable square the battlefield's own tiers draw them (adoptOutlandTrees): the same near and far geometry,
+ * materials and atlas in a batch's own pools, so the build's pools, their instance buffers and their shadow
+ * registrations are never touched.
+ */
+interface OutlandTreePools {
+  /** The batch's species, in its pools' order (the per-frame loops walk this, not the maps' iterators). */
+  species: Species[];
+  near: Map<Species, TreeMesh[][]>;
+  far: Map<Species, TreeMesh[][]>;
+  nearSlots: Map<Species, TreeRecord[][]>;
+  farSlots: Map<Species, TreeRecord[][]>;
+  trees: TreeRecord[];
+  /** The nearest tree's Chebyshev radius |x|, |z| (the repartition skips the batch while the camera is far from it). */
+  minRadiusM: number;
+}
+
+/** One tree over the red line for the battlefield's tiers (horizonForestImpostors.ts HorizonForestTree's subset). */
+export interface OutlandTreeSpec {
+  x: number; y: number; z: number;
+  yaw: number;
+  species: string;
+  /** The near variant (the impostor row). */
+  variant: number;
+  /** The far quad's mirror. */
+  mirror: boolean;
+  /** The instance scale on the species' near geometry. */
+  scale: number;
+  tint: readonly [number, number, number];
+}
+
+/** GND (2026-10-14): an adopted tree's full-detail reach as a share of the battlefield's (A5's cost lever; 1 = the
+ * battlefield's own law, 0.75 = near only inside ~150 m). */
+export const OUTLAND_NEAR_SCALE = 1;
+/** GND (2026-10-14): how far over the red line (the square's Chebyshev edge, PLAYABLE_HALF_EXTENT_M) the client adopts
+ * trees: the scope promotion's reach (TREE_NEAR_IN × 3.4 at x8, setSniperFade) from a camera at the line, so no tree a
+ * sight can promote stays a quad. */
+export const OUTLAND_ADOPT_M = 680;
+/** GND: whether the client adopts the trees over the line (`?outlandTrees=0` keeps every quad: the same-build A/B). */
+export function outlandTreesEnabled(): boolean {
+  return !(typeof location !== 'undefined' && /[?&]outlandTrees=0(&|$)/.test(location.search ?? ''));
+}
+/** GND: a tree over the line within the adoption reach (the Chebyshev distance beyond the square's edge). */
+export function outlandAdoptable(x: number, z: number, reachM = OUTLAND_ADOPT_M): boolean {
+  const beyond = Math.max(Math.abs(x), Math.abs(z)) - PLAYABLE_HALF_EXTENT_M;
+  return beyond > 0 && beyond <= reachM;
 }
 
 export interface TreeObstacle extends CollisionRecord {
@@ -457,6 +510,17 @@ export interface VegetationRuntime {
    * the same law, standing trees root into the bowl's wall (map.ts calls this once a frame after the terrain's sync).
    */
   followCraters(law: GroundCoverCraters): void;
+  /**
+   * GND (2026-10-14): adopt trees over the red line into the battlefield's tiers — visual only, in a batch of their own
+   * pools (near, far and their shadow proxies), partitioned, cross-faded and scope-promoted under the battlefield's
+   * law. All or nothing: returns how many it took (0 without an impostor atlas, after dispose, or when a tree's species
+   * has no pools). Call after the build (the client world's assembly); every call is its own batch.
+   */
+  adoptOutlandTrees(trees: readonly OutlandTreeSpec[]): number;
+  /** GND (2026-10-14): the forest-form law a wood's tree takes (assignTreeForms): the near variant it draws. */
+  _treeFormVariant(species: string, variant: number, x: number, z: number): number;
+  /** GND: the adopted batches' records and pools, read-only, for the receipts. */
+  _outland: ReadonlyArray<Readonly<OutlandTreePools>>;
 }
 
 interface GarageTreeKit {
@@ -8093,6 +8157,12 @@ function* vegetationBuildSteps(
     }
   }
   createPartitionSlots();
+  // GND (2026-10-14): a record's pools and slots — its outland batch's, else the build's
+  function nearPoolOf(t: TreeRecord): TreeMesh[] { return t.outland ? t.outland.near.get(t.species)![t.variant] : nearMeshes[t.species][t.variant]; }
+  function farPoolOf(t: TreeRecord): TreeMesh[] { return t.outland ? t.outland.far.get(t.species)![t.fv] : farMeshes[t.species][t.fv]; }
+  function nearSlotsOf(t: TreeRecord): TreeRecord[] { return t.outland ? t.outland.nearSlots.get(t.species)![t.variant] : nearSlots[t.species][t.variant]; }
+  function farSlotsOf(t: TreeRecord): TreeRecord[] { return t.outland ? t.outland.farSlots.get(t.species)![t.fv] : farSlots[t.species][t.fv]; }
+  const outlandBatches: OutlandTreePools[] = [];
   /** Flag one instance slot's matrix/color/fade for a ranged GPU upload. */
   function markSlotDirty(m: TreeMesh, slot: number): void {
     m.instanceMatrix.addUpdateRange(slot * 16, 16);
@@ -8190,7 +8260,7 @@ function* vegetationBuildSteps(
   const lodTransitions: LodTransition[] = []; // { t, dir: +1 near-fades-out | -1 near-fades-in }
   function writeLodFade(t: TreeRecord): void {
     if (t.slot < 0) return;
-    for (const m of nearMeshes[t.species][t.variant]) {
+    for (const m of nearPoolOf(t)) {
       const lf = attribute(m.geometry, 'aLodF');
       lf.array[t.slot] = t.lodF;
       lf.addUpdateRange(t.slot, 1);
@@ -8211,36 +8281,49 @@ function* vegetationBuildSteps(
       }
       if (tr.dir > 0) { // near faded out — retire the near representation
         t.lodF = 0;
-        removeFromGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+        removeFromGroup(nearPoolOf(t), nearSlotsOf(t), t, 'slot', true);
       } else {          // near fully in — drop the far stand-in beneath it
         writeLodFade(t);
-        removeFromGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+        removeFromGroup(farPoolOf(t), farSlotsOf(t), t, 'fslot', false);
       }
       t.lodT = false;
       lodTransitions.splice(i, 1);
     }
   }
+  function repartitionTree(t: TreeRecord, camPos: THREE.Vector3): void {
+    if (t.lodT) return; // mid cross-fade — settle before re-deciding
+    const d = Math.hypot(t.x - camPos.x, t.z - camPos.z), reach = t.nearScale ?? 1;
+    const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
+    if (t.near) {
+      if (d > treeNearOut * reach && !promo) {
+        t.near = false;
+        t.lodT = true;
+        t.lodF = 0; // near side starts solid, dissolves out
+        addToGroup(farPoolOf(t), farSlotsOf(t), t, 'fslot', false);
+        lodTransitions.push({ t, dir: 1 });
+      }
+    } else if (d < treeNearIn * reach || promo) {
+      t.near = true;
+      t.lodT = true;
+      t.lodF = 1; // near side arrives fully dissolved, fades in
+      addToGroup(nearPoolOf(t), nearSlotsOf(t), t, 'slot', true);
+      lodTransitions.push({ t, dir: -1 });
+    }
+  }
+  /** GND (A5): an outland batch is re-decided only while it can hold a near tree — scoped, a tree of it near or mid
+   * cross-fade, or the camera within the near reach (+ a 6 m step) of its nearest tree's Chebyshev radius. */
+  function outlandBatchLive(batch: OutlandTreePools, camPos: THREE.Vector3): boolean {
+    if (scopeZoomR > 0) return true;
+    for (const sp of batch.species) for (const slots of batch.nearSlots.get(sp)!) if (slots.length) return true;
+    const gap = batch.minRadiusM - Math.max(Math.abs(camPos.x), Math.abs(camPos.z));
+    return gap < treeNearOut * OUTLAND_NEAR_SCALE + 6;
+  }
   function repartitionTrees(camPos: THREE.Vector3): void {
     if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
-    for (const t of trees) {
-      if (t.lodT) continue; // mid cross-fade — settle before re-deciding
-      const d = Math.hypot(t.x - camPos.x, t.z - camPos.z), reach = t.nearScale ?? 1;
-      const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
-      if (t.near) {
-        if (d > treeNearOut * reach && !promo) {
-          t.near = false;
-          t.lodT = true;
-          t.lodF = 0; // near side starts solid, dissolves out
-          addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
-          lodTransitions.push({ t, dir: 1 });
-        }
-      } else if (d < treeNearIn * reach || promo) {
-        t.near = true;
-        t.lodT = true;
-        t.lodF = 1; // near side arrives fully dissolved, fades in
-        addToGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
-        lodTransitions.push({ t, dir: -1 });
-      }
+    for (const t of trees) repartitionTree(t, camPos);
+    for (const batch of outlandBatches) {
+      if (!outlandBatchLive(batch, camPos)) continue;
+      for (const t of batch.trees) repartitionTree(t, camPos);
     }
   }
   /** One-time full partition build (map load / world rebuild): plain full
@@ -8251,6 +8334,10 @@ function* vegetationBuildSteps(
       for (const slots of nearSlots[species]) slots.length = 0;
       for (const slots of farSlots[species]) slots.length = 0;
     }
+    for (const batch of outlandBatches) {
+      for (const all of batch.nearSlots.values()) for (const slots of all) slots.length = 0;
+      for (const all of batch.farSlots.values()) for (const slots of all) slots.length = 0;
+    }
   }
   function seedTreePartition(tree: TreeRecord, camPos: THREE.Vector3): void {
     tree.lodT = false;
@@ -8260,11 +8347,11 @@ function* vegetationBuildSteps(
       || scopePromoted(tree, camPos);
     if (tree.near) {
       nearTierHeightVersion++;
-      const slots = nearSlots[tree.species][tree.variant];
+      const slots = nearSlotsOf(tree);
       tree.slot = slots.length;
       tree.fslot = -1;
       slots.push(tree);
-      for (const mesh of nearMeshes[tree.species][tree.variant]) {
+      for (const mesh of nearPoolOf(tree)) {
         mesh.setMatrixAt(tree.slot, tree.mat);
         mesh.setColorAt(tree.slot, tree.tint);
         attribute(mesh.geometry, 'aFadeI').array[tree.slot] = tree.fade;
@@ -8273,11 +8360,11 @@ function* vegetationBuildSteps(
       }
       return;
     }
-    const slots = farSlots[tree.species][tree.fv];
+    const slots = farSlotsOf(tree);
     tree.fslot = slots.length;
     tree.slot = -1;
     slots.push(tree);
-    for (const mesh of farMeshes[tree.species][tree.fv]) {
+    for (const mesh of farPoolOf(tree)) {
       mesh.setMatrixAt(tree.fslot, tree.mat);
       mesh.setColorAt(tree.fslot, tree.tint);
       const fade = mesh.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
@@ -8289,8 +8376,11 @@ function* vegetationBuildSteps(
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
-    for (const mesh of nearMeshes[species][variant]) {
-      mesh.count = nearSlots[species][variant].length;
+    uploadNearPool(nearMeshes[species][variant], nearSlots[species][variant]);
+  }
+  function uploadNearPool(meshes: TreeMesh[], slots: TreeRecord[]): void {
+    for (const mesh of meshes) {
+      mesh.count = slots.length;
       mesh.instanceMatrix.clearUpdateRanges();
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) {
@@ -8309,8 +8399,11 @@ function* vegetationBuildSteps(
     }
   }
   function uploadFarPartition(species: Species, variant: number): void {
-    for (const mesh of farMeshes[species][variant]) {
-      mesh.count = farSlots[species][variant].length;
+    uploadFarPool(farMeshes[species][variant], farSlots[species][variant]);
+  }
+  function uploadFarPool(meshes: TreeMesh[], slots: TreeRecord[]): void {
+    for (const mesh of meshes) {
+      mesh.count = slots.length;
       mesh.instanceMatrix.clearUpdateRanges();
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) {
@@ -8339,6 +8432,11 @@ function* vegetationBuildSteps(
         uploadFarPartition(species, variant);
       }
     }
+    for (const batch of outlandBatches) uploadOutlandBatch(batch);
+  }
+  function uploadOutlandBatch(batch: OutlandTreePools): void {
+    for (const [species, pools] of batch.near) pools.forEach((meshes, variant) => uploadNearPool(meshes, batch.nearSlots.get(species)![variant]));
+    for (const [species, pools] of batch.far) pools.forEach((meshes, fv) => uploadFarPool(meshes, batch.farSlots.get(species)![fv]));
   }
   function rebuildPartitionFull(camPos: THREE.Vector3): void {
     _partitionBuilt = true;
@@ -8351,6 +8449,7 @@ function* vegetationBuildSteps(
       // refresh even though its visible representation is already settled.
       seedTreePartition(t, camPos);
     }
+    for (const batch of outlandBatches) for (const t of batch.trees) seedTreePartition(t, camPos);
     uploadPartition();
   }
 
@@ -8584,6 +8683,24 @@ function* vegetationBuildSteps(
         }
       }
     }
+    // GND (2026-10-14): the adopted trees' near slots share the near tier's caster profile (one registration law)
+    for (const batch of outlandBatches) {
+      for (let k = 0; k < batch.species.length; k++) {
+        const sp = batch.species[k];
+        const speciesHeight = speciesHeightM[sp] ?? 0;
+        for (const slots of batch.nearSlots.get(sp)!) {
+          for (const t of slots) {
+            const dx = t.x - camPos.x, dz = t.z - camPos.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 > reach2) reach2 = d2;
+            if (!heightStale) continue;
+            const e = t.mat.elements;
+            const h = speciesHeight * Math.hypot(e[4], e[5], e[6]);
+            if (h > height) height = h;
+          }
+        }
+      }
+    }
     if (heightStale) {
       nearTierHeight = height;
       nearTierHeightAt = nearTierHeightVersion;
@@ -8750,9 +8867,100 @@ function* vegetationBuildSteps(
       }
     });
   }
+  // ---- GND (2026-10-14; the owner's Kestrel border trees): the trees over the red line, adopted ----
+  // The horizon ring (and the Hinterland) drew its trees as flat atlas quads at every range, magnified up to 7x at the
+  // chase and 6-9 px a texel through the sight, its alpha cut breaking the crowns into islands. The client world hands
+  // the ones near the square to these tiers (map.ts, hinterland/trees.ts): visual records only, never in `trees` (no
+  // collider, crush, concealer, decal or interaction: the multiplayer indices and the authority are the build's), drawn
+  // in a batch of their own pools — the build's geometry, materials and atlas, their own instance buffers and the near
+  // tier's shadow profile — partitioned, cross-faded and scope-promoted by the same law as the battlefield's trees.
+  /** A pool mesh's twin for an outland batch: the source's vertex data and materials, its own instance attributes. */
+  function outlandMeshLike(src: TreeMesh, sp: Species, capacity: number): TreeMesh {
+    const source = src.geometry;
+    const geometry = new THREE.BufferGeometry();
+    for (const name of Object.keys(source.attributes)) {
+      const attr = source.getAttribute(name);
+      if ((attr as THREE.InstancedBufferAttribute).isInstancedBufferAttribute) continue; // aFadeI, aLodF, aImpRow: the pool's own
+      geometry.setAttribute(name, attr);
+    }
+    if (source.index) geometry.setIndex(source.index);
+    for (const g of source.groups) geometry.addGroup(g.start, g.count, g.materialIndex);
+    geometry.boundingSphere = source.boundingSphere ? source.boundingSphere.clone() : null;
+    geometry.boundingBox = source.boundingBox ? source.boundingBox.clone() : null;
+    geometry.userData = { ...source.userData };
+    if (source.getAttribute('aImpRow')) {
+      const row = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+      row.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute('aImpRow', row);
+    }
+    const mesh = makeTreeMesh(geometry, src.material, sp, src.userData.treeFoliage === true, capacity);
+    mesh.castShadow = src.castShadow;
+    mesh.receiveShadow = src.receiveShadow;
+    mesh.customDepthMaterial = src.customDepthMaterial;
+    mesh.customDistanceMaterial = src.customDistanceMaterial;
+    mesh.layers.mask = src.layers.mask;
+    Object.assign(mesh.userData, src.userData, { outlandTree: true });
+    delete mesh.userData.formAlt;
+    mesh.name = `${src.name || 'tree'}-outland`;
+    const profile = shadowCasterProfileOf(src);
+    if (profile) setShadowCasterProfile(mesh, profile);
+    const cascades = shadowCasterCascadesOf(src);
+    if (cascades !== null) setShadowCasterCascades(mesh, cascades);
+    const dynamic = shadowCasterDynamicMaskOf(src);
+    if (dynamic !== null) setShadowCasterDynamicMask(mesh, dynamic);
+    return mesh;
+  }
+  function treeFormVariant(species: string, variant: number, x: number, z: number): number {
+    // assignTreeForms for a wood's tree: a forest-form species draws one of its two forest-grown variants
+    if (!forestSpecies.has(species as Species)) return variant;
+    return variant >= FOREST_NEAR_VARIANTS ? (treePositionNoise(x, z, 97) < 0.5 ? 0 : 1) : variant;
+  }
+  function adoptOutlandTrees(specs: readonly OutlandTreeSpec[]): number {
+    if (disposed || !treeImpostors || specs.length === 0) return 0;
+    const counts = new Map<Species, number>();
+    for (const spec of specs) {
+      const sp = spec.species as Species;
+      // all or nothing: a species without its pools (not this map's, the snag) keeps the whole batch on its quads
+      if ((sp as string) === 'snag' || !nearMeshes[sp] || !farMeshes[sp]) return 0;
+      if (!(spec.variant >= 0 && spec.variant < nearMeshes[sp].length)) return 0;
+      if (!(spec.scale > 0) || !Number.isFinite(spec.x + spec.y + spec.z + spec.yaw)) return 0;
+      counts.set(sp, (counts.get(sp) ?? 0) + 1);
+    }
+    const batch: OutlandTreePools = {
+      species: [...counts.keys()], near: new Map(), far: new Map(), nearSlots: new Map(), farSlots: new Map(), trees: [], minRadiusM: Infinity,
+    };
+    for (const [sp, n] of counts) {
+      batch.near.set(sp, nearMeshes[sp].map((pool) => pool.map((src) => outlandMeshLike(src, sp, n))));
+      batch.far.set(sp, farMeshes[sp].map((pool) => pool.map((src) => outlandMeshLike(src, sp, n))));
+      batch.nearSlots.set(sp, Array.from({ length: nearMeshes[sp].length }, () => []));
+      batch.farSlots.set(sp, Array.from({ length: farMeshes[sp].length }, () => []));
+    }
+    const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    for (const spec of specs) {
+      const sp = spec.species as Species;
+      const mat = new THREE.Matrix4().compose(position.set(spec.x, spec.y, spec.z), quaternion.setFromAxisAngle(up, spec.yaw), scale.setScalar(spec.scale));
+      const heightM = (speciesHeightM[sp] ?? 10) * spec.scale;
+      batch.trees.push({
+        x: spec.x, z: spec.z, species: sp, variant: spec.variant, fv: spec.mirror && farMeshes[sp].length > 1 ? 1 : 0,
+        mat, tint: new THREE.Color(spec.tint[0], spec.tint[1], spec.tint[2]), near: false,
+        cy: spec.y + heightM * 0.62, cr: heightM * 0.22, fade: 0, slot: -1, fslot: -1, dr: 0, lodF: 0, lodT: false,
+        nearScale: OUTLAND_NEAR_SCALE, wood: true, outland: batch,
+      });
+      batch.minRadiusM = Math.min(batch.minRadiusM, Math.max(Math.abs(spec.x), Math.abs(spec.z)));
+    }
+    outlandBatches.push(batch);
+    // a world already partitioned seeds the batch at the last camera; else the first full partition takes it
+    if (_partitionBuilt) {
+      for (const t of batch.trees) seedTreePartition(t, _lastCam);
+      uploadOutlandBatch(batch);
+    }
+    group.userData.outlandTrees = (group.userData.outlandTrees ?? 0) + batch.trees.length;
+    return batch.trees.length;
+  }
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
-    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
+    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
+    adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }
