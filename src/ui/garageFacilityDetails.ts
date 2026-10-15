@@ -159,6 +159,8 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // the crane bay over the haul road, 25.6 x 21 m from depth 13 (garage round 7), square to the view and wide enough
       // that its column lines stand outside the hero's outline (the garage critic panel, 2026-10-14)
       feature: [0, 23], featureRadius: [13.8, 10.5],
+      // at the yard's level (v3 stills: the bay stood on a bank above the yard)
+      yardLevel: [[0, 14.5, 14, 4]],
     },
   });
 
