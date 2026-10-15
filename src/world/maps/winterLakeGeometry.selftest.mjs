@@ -316,8 +316,9 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
       `${mapId}: every authored pressure ridge still exists`);
     assert.ok(mapWedges > 0, `${mapId}/${seed}: shoreline and crest ice plates are populated`);
     auditReeds(built.buckets.straw, built.field);
-    for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) {
-      assert.deepEqual(Object.keys(geometry.attributes).sort(), ['normal', 'position', 'uv']);
+    for (const [bucket, geometries] of Object.entries(built.buckets)) for (const geometry of geometries) {
+      // (#16 r2: the painted bucket's pieces carry their colours)
+      assert.deepEqual(Object.keys(geometry.attributes).sort(), bucket === 'baked' ? ['color', 'normal', 'position', 'uv'] : ['normal', 'position', 'uv']);
       for (const attr of Object.values(geometry.attributes)) {
         assert.ok(attr.array.every(Number.isFinite), 'merged attributes remain finite and compatible');
       }

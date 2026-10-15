@@ -336,15 +336,18 @@ for (const seed of [1337, 2025, 7719]) {
   // #16 r2 (Lane C, 2026-10-14): the piers, their stairs and the moored boats' bollards left the wood for the stone and
   // the paint (the rivas, jettyKit.ts); the wood keeps the two mooring lines and the stake and its line a landing
   // (14 boxes): 900 / 63000 / 1800 → 168 / 11760 / 336, the merged 2700 / 86400 → 504 / 16128
-  assert.equal(metrics.triangles, 168);
-  assert.equal(metrics.bytes, 11760);
-  assert.equal(metrics.vertices, 336);
+  // the hauled-out boat's stake is a round driven pole with its broomed head and the hitch's two turns (waterside.ts:
+  // 228 triangles, 238 vertices where the box had 12 and 24): 168 / 11760 / 336 -> 600 / 28048 / 764, the merged
+  // 504 / 16128 -> 1800 / 57600
+  assert.equal(metrics.triangles, 600);
+  assert.equal(metrics.bytes, 28048);
+  assert.equal(metrics.vertices, 764);
   // Same non-indexed merge used by props.ts: incremental bytes in its existing
   // wood batch, not a whole-world draw-count or renderer-memory certification.
   const expanded = landings.wood.map((geometry) => geometry.toNonIndexed());
   const merged = mergeGeometries(expanded, false);
-  assert.equal(merged.attributes.position.count, 504); // round 58: was 3024; P2: was 3852; round 3: was 2340; #16 r2: was 2700
-  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 16128); // round 58: was 96768; P2: was 123264; round 3: was 74880; #16 r2: was 86400
+  assert.equal(merged.attributes.position.count, 1800); // round 58: was 3024; P2: was 3852; round 3: was 2340; #16 r2: was 2700, then 504
+  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 57600); // round 58: was 96768; P2: was 123264; round 3: was 74880; #16 r2: was 86400, then 16128
   for (const geometry of expanded) geometry.dispose();
   merged.dispose();
   const replay = build(saltwind, field);
@@ -358,5 +361,5 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);
-  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/2 rivas on 34 planted supports/2 stairs/2 moored hulls (painted hulls), +168 wood triangles/+16,128 merged bytes`);
+  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/2 rivas on 34 planted supports/2 stairs/2 moored hulls (painted hulls), +600 wood triangles/+57,600 merged bytes`);
 }
