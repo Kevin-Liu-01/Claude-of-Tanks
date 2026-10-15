@@ -34,6 +34,8 @@ export interface RuinSpec {
   colour?: Rgb;
   /** the plinth course round the foot (proud of the wall), or none */
   plinth: { h: number; out: number; bucket: RegionalBucket; colour?: Rgb } | null;
+  /** the floor's height when no plinth sets it (a base the kit lays itself) */
+  floor?: number;
   /** the storeys' heights over the floor (the floor on the plinth's top) */
   storeys: readonly number[];
   /** the house's openings as its builder lays them (face, storey, centre, width, sill over the storey floor, height) */
@@ -163,7 +165,7 @@ function headTops(head: RuinHead | null | undefined, L: number, floor: number, s
  */
 export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, look: () => number): RuinFrame {
   const { w, d, t } = spec;
-  const floor = spec.plinth?.h ?? 0.15, foot = -0.3;
+  const floor = spec.plinth?.h ?? spec.floor ?? 0.15, foot = -0.3;
   const wallOpts: EmitOptions = spec.colour ? { colour: spec.colour } : {};
   // the front and back the body's width, the sides between them
   const faces: Record<FaceName, Face> = {

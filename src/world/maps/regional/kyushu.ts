@@ -10,6 +10,7 @@
 import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { factoryStack } from './shared.ts';
 import { latticeFrame } from './lattice.ts';
@@ -745,17 +746,17 @@ const ruin: RegionalBuilder = (ctx) => {
     }
     return sink.finish();
   }
-  const t = 0.35;
-  for (const [x0, z0, x1, z1, axis] of [[-W / 2, -D / 2, W / 2, -D / 2 + t, 'x'], [-W / 2, D / 2 - t, W / 2, D / 2, 'x'],
-    [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t, 'z'], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t, 'z']] as const) {
-    const len = axis === 'x' ? x1 - x0 : z1 - z0, pieces = Math.max(3, Math.round(len / 1.5));
-    for (let k = 0; k < pieces; k++) {
-      if (rng() < 0.25) continue;
-      const a = k / pieces, b = (k + 1) / pieces, top = 0.8 + rng() * 3.2;
-      if (axis === 'x') sink.span(SHIKKUI, x0 + len * a, 0.4, z0, x0 + len * b, top, z1);
-      else sink.span(SHIKKUI, x0, 0.4, z0 + len * a, x1, top, z0 + len * b);
-    }
-  }
+  // (props census #7, lane B 2026-10-14; the judges: "the kura's shell span slices to random tops") the ruin grammar:
+  // the kura's own thick white walls on their stone base cracked open to ragged heads, its door and its small high window
+  // cut through where they stand, the tiles slid in over the heaps of its clay and plaster, the charred frame across them
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * (W - 2.6), w: 1.1, y0: 0, h: 1.9 },
+    { face: 'back', storey: 1, kind: 'window', u: (rng() - 0.5) * (W - 2.4), w: 0.7, y0: 0.6, h: 0.7 }];
+  const head = (): RuinHead => ({ a: 0.8 + rng() * 3.2, b: 0.8 + rng() * 3.2, at: rng(), dip: 0.3 + rng() * 0.4, ragged: 0.3 });
+  ruinHouse(sink, {
+    w: W, d: D, t: 0.45, wall: SHIKKUI, plinth: null, floor: 0.4, storeys: [2.6, 2.2], openings,
+    heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.5,
+    lintel: { bucket: 'structureWood', colour: char }, roof: { bucket: 'roof', piece: [0.32, 0.3, 0.03] }, timber: char, mobile: ctx.tier === 'mobile',
+  }, rng, ctx.variant);
   return sink.finish();
 };
 
