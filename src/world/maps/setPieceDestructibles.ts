@@ -16,6 +16,7 @@
  */
 import type { DestructiblePropType } from './inhabitKit.ts';
 import { buildSetPiece, SET_PIECE_SIZE, type SetPieceKind } from './vehicleSetPieces.ts';
+import { buildRollingStock, RAIL_HEAD_M, ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, type RollingStockKind } from './rollingStock.ts';
 
 /** The destructible kind a set piece registers as. */
 export function setPieceDestructibleKind(kind: SetPieceKind): string { return `setpiece_${kind}`; }
@@ -55,6 +56,38 @@ export function setPieceDestructibleTypes(mobile = false): Record<string, Destru
       // (Lane C, #8 r2) the phone tier draws the coarse builds (about half the triangles; the same footprint and record)
       build: () => buildSetPiece(kind, { coarse: mobile }),
       broken: () => buildSetPiece(kind, { wrecked: true, coarse: mobile }),
+    };
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------- rolling stock
+// (Lane C, #24, 2026-10-14; the owner: "trams and wagons" are the props left that never break) a spur's standing rolling
+// stock (mapKits.ts addSpurRollingStock: Cinder Junction's Omm, G 10, tank wagons and V 60) as destructibles of the props
+// instead of baked scenery with a static 'rolling-stock' record: heavy (a round stops on it and a gun round wrecks it,
+// collision.ts DENSE_SET_PIECE_KINDS), crushed only by a hull rammed hard into it, its wreck its own (rollingStock.ts:
+// derailed onto the ballast, burnt, broken by kind).
+
+/** The destructible kind a rolling stock vehicle registers as. */
+export function rollingStockDestructibleKind(kind: RollingStockKind): string { return `rolling_${kind}`; }
+
+/** A spur vehicle's mass class: a loaded wagon or a locomotive, heavier than any works machine. */
+export const ROLLING_STOCK_MASS = { keep: 0.4, crushMin: 5.0 } as const;
+
+const STOCK_KINDS = Object.keys(ROLLING_STOCK_LENGTH) as RollingStockKind[];
+
+/** The rolling stock's destructible types: the frame's origin on the ground under the rails (the build lifted by the rail
+ *  head's height), the record the body's box between the buffers (as mapKits laid it), `mobile` the coarse builds. */
+export function rollingStockDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
+  const out: Record<string, DestructiblePropType> = {};
+  const lifted = (g: ReturnType<typeof buildRollingStock>) => g.translate(0, RAIL_HEAD_M, 0);
+  for (const kind of STOCK_KINDS) {
+    const body = ROLLING_STOCK_BODY[kind], hw = body.w / 2, hl = ROLLING_STOCK_LENGTH[kind] / 2 - 0.62, h = body.h + RAIL_HEAD_M;
+    out[rollingStockDestructibleKind(kind)] = {
+      cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
+      r: Math.hypot(hw, hl), h, hw, hl, keep: ROLLING_STOCK_MASS.keep, crushMin: ROLLING_STOCK_MASS.crushMin, castShadow: true,
+      build: () => lifted(buildRollingStock(kind, { coarse: mobile })),
+      broken: () => lifted(buildRollingStock(kind, { wrecked: true, coarse: mobile })),
     };
   }
   return out;

@@ -660,7 +660,7 @@ function tem1(mesh: VehicleMesh, coarse: boolean): void {
 
 // ---------------------------------------------------------------------------------------------------- the vehicles
 
-function omm(mesh: VehicleMesh, coarse: boolean): void {
+function omm(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const L = ROLLING_STOCK_LENGTH.omm, W = ROLLING_STOCK_BODY.omm.w, frameHalf = 4.35, floorY = 1.28, top = 2.83;
   const r = 0.5;
   for (const z of [-3.0, 3.0]) { wheelset(mesh, z, r, true); axleBox(mesh, z, r, floorY - 0.02, 1.6); }
@@ -668,8 +668,17 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
   // the body: steel side and end walls, the floor, the top rails
   const hw = W / 2, h = top - floorY;
   for (const side of [1, -1]) {
-    mesh.box(side * (hw - 0.02), floorY + h / 2, 0, 0.03, h, frameHalf * 2 - 0.04, DB_BROWN, 0);
-    mesh.box(side * (hw - 0.07), floorY + h / 2, 0, 0.01, h, frameHalf * 2 - 0.12, DB_BROWN, 0);
+    // (Lane C, #24 wreck) the right side's door blown open: the wall either side of it, the door hanging from its foot
+    const breach = wrecked && side > 0;
+    for (const [z0, z1] of breach ? [[-frameHalf + 0.02, -0.78], [0.78, frameHalf - 0.02]] : [[-frameHalf + 0.02, frameHalf - 0.02]]) {
+      mesh.box(side * (hw - 0.02), floorY + h / 2, (z0 + z1) / 2, 0.03, h, z1 - z0, DB_BROWN, 0);
+      mesh.box(side * (hw - 0.07), floorY + h / 2, (z0 + z1) / 2, 0.01, h, z1 - z0 - 0.08, DB_BROWN, 0);
+    }
+    if (breach) {
+      mesh.push().translate(side * (hw + 0.02), floorY + 0.02, 0).rotateZ(-side * 1.75);
+      mesh.box(side * 0.02, h * 0.48, 0, 0.04, h * 0.95, 1.5, DB_BROWN, 0);
+      mesh.pop();
+    }
     weatherPanel(mesh, coarse, side, hw - 0.003, floorY, top, -frameHalf + 0.1, frameHalf - 0.1, side > 0 ? 11 : 13, RUST_BLEED);
     stencils(mesh, coarse, side, hw - 0.001, floorY + 0.06, -frameHalf + 0.1, frameHalf - 0.1);
     // the stakes: U-profiles outside every metre or so, the side doors' frame between the middle two
@@ -684,7 +693,7 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
       mesh.dressing(() => {
         // the side door's hinges and the door seams
         for (const z of [-0.8, 0.8]) mesh.box(side * (hw + 0.005), floorY + h / 2, z, 0.01, h - 0.1, 0.02, FRAME_BLACK, 0);
-        mesh.box(side * (hw + 0.005), floorY + h * 0.75, 0, 0.012, 0.05, 1.5, FRAME_BLACK, 0);
+        if (!(wrecked && side > 0)) mesh.box(side * (hw + 0.005), floorY + h * 0.75, 0, 0.012, 0.05, 1.5, FRAME_BLACK, 0);
       });
     }
   }
@@ -700,7 +709,7 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
   coalHeap(mesh, coarse, top, frameHalf, W, 0.05, 0.42, 1, { grid: [34, 16], peaks: 3, lumps: 96, spill: hw + 0.07 });
 }
 
-function g10(mesh: VehicleMesh, coarse: boolean): void {
+function g10(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const L = ROLLING_STOCK_LENGTH.g10, W = ROLLING_STOCK_BODY.g10.w, frameHalf = 3.85, floorY = 1.25, eave = 3.3, ridge = 3.9;
   const r = 0.5;
   for (const z of [-2.0, 2.0]) { wheelset(mesh, z, r, true); axleBox(mesh, z, r, floorY - 0.02, 1.6); }
@@ -708,8 +717,17 @@ function g10(mesh: VehicleMesh, coarse: boolean): void {
   const hw = W / 2, h = eave - floorY, bodyL = frameHalf * 2 + 0.1;
   // the planked sides and ends: vertical boards on a steel frame, the frame's diagonals outside
   for (const side of [1, -1]) {
-    mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.05, h, bodyL, DB_BROWN_WOOD, 0);
-    weatherPanel(mesh, coarse, side, hw - 0.003, floorY, eave, -bodyL / 2 + 0.1, bodyL / 2 - 0.1, side > 0 ? 31 : 33, WATER_STAIN);
+    // (Lane C, #24 wreck) the right side blown through at its door: the planking either side, boards hanging in the gap
+    const breach = wrecked && side > 0;
+    for (const [z0, z1] of breach ? [[-bodyL / 2, -1.0], [1.0, bodyL / 2]] : [[-bodyL / 2, bodyL / 2]]) {
+      mesh.box(side * (hw - 0.03), floorY + h / 2, (z0 + z1) / 2, 0.05, h, z1 - z0, DB_BROWN_WOOD, 0);
+    }
+    if (breach) for (const [z, len, lean] of [[-0.82, h * 0.7, 0.35], [-0.6, h * 0.45, -0.5], [0.7, h * 0.6, 0.6]] as const) {
+      mesh.push().translate(side * (hw - 0.03), eave - 0.05, z).rotateX(lean).rotateZ(-side * 0.25);
+      mesh.box(0, -len / 2, 0, 0.04, len, 0.14, DB_BROWN_WOOD, 0);
+      mesh.pop();
+    }
+    if (!breach) weatherPanel(mesh, coarse, side, hw - 0.003, floorY, eave, -bodyL / 2 + 0.1, bodyL / 2 - 0.1, side > 0 ? 31 : 33, WATER_STAIN);
     // (6 mm proud of the planking's weathering: its streaks lie at hw, the grime at hw - 1.5 mm)
     stencils(mesh, coarse, side, hw + 0.002, floorY + 0.14, -bodyL / 2 + 0.15, bodyL / 2 - 0.15);
     // (round 3) the louvred vents high in the side panels, and the door's handle bars and latch
@@ -739,11 +757,14 @@ function g10(mesh: VehicleMesh, coarse: boolean): void {
       beam(mesh, [side * (hw + 0.03), floorY + 0.1, end * (bodyL / 2 - 0.1)], [side * (hw + 0.03), eave - 0.1, end * 1.15], 0.04, 0.08, FRAME_BLACK, false, [side, 0, 0]);
       beam(mesh, [side * (hw + 0.03), floorY + 0.1, end * 1.15], [side * (hw + 0.03), eave - 0.1, end * (bodyL / 2 - 0.1)], 0.04, 0.08, FRAME_BLACK, false, [side, 0, 0]);
     }
-    // the sliding door and its rails, the door as weathered as the side it hangs on
+    // the sliding door and its rails, the door as weathered as the side it hangs on (wrecked: the right one is off, down
+    // on the ballast: buildRollingStock)
+    if (!(wrecked && side > 0)) {
     mesh.box(side * (hw + 0.06), floorY + h / 2 - 0.05, 0, 0.05, h - 0.2, 2.0, DB_BROWN_WOOD, coarse ? 0 : 0.01);
     weatherPanel(mesh, coarse, side, hw + 0.088, floorY + 0.05, eave - 0.15, -0.98, 0.98, side > 0 ? 35 : 37, WATER_STAIN);
+    }
     // (round 3, wave 234: "sliding doors") the door's steel frame round its edge and its diagonal brace
-    if (!coarse) mesh.dressing(() => {
+    if (!coarse && !(wrecked && side > 0)) mesh.dressing(() => {
       const xd = side * (hw + 0.091), n: Vec3 = [side, 0, 0], yb = floorY + 0.15, yt = eave - 0.25, t = 0.05;
       face4(mesh, [[xd, yb, -1.0], [xd, yb, 1.0], [xd, yb + t, 1.0], [xd, yb + t, -1.0]], n, FRAME_BLACK);
       face4(mesh, [[xd, yt - t, -1.0], [xd, yt - t, 1.0], [xd, yt, 1.0], [xd, yt, -1.0]], n, FRAME_BLACK);
@@ -784,7 +805,7 @@ function g10(mesh: VehicleMesh, coarse: boolean): void {
   }, () => ROOF_GREY, {});
 }
 
-function tank(mesh: VehicleMesh, coarse: boolean): void {
+function tank(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const L = ROLLING_STOCK_LENGTH.tank, W = 2.6, frameHalf = 3.8, floorY = 1.25, R = 1.05, axisY = floorY + 0.2 + R;
   const r = 0.5;
   for (const z of [-2.25, 2.25]) { wheelset(mesh, z, r, false); axleBox(mesh, z, r, floorY - 0.02, 1.5); }
@@ -859,7 +880,7 @@ function roundedHood(mesh: VehicleMesh, coarse: boolean, z0: number, z1: number,
   }
 }
 
-function v60(mesh: VehicleMesh, coarse: boolean): void {
+function v60(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const L = ROLLING_STOCK_LENGTH.v60, W = ROLLING_STOCK_BODY.v60.w, frameHalf = 4.6, frameTop = 1.42;
   const r = 0.625;
   // three coupled axles on plain disc wheels, the jackshaft behind the last, the coupling rods outside
@@ -1079,18 +1100,65 @@ function linearMat(hex: number): Mat {
  * One vehicle of rolling stock: its geometry in the painted bucket's streams, the rail head at y = 0, centred on its
  * length over buffers. The colours carry the coalfield's weathering (soot and coal dust low, rust on the steel).
  */
-export function buildRollingStock(kind: RollingStockKind, opts: { coarse?: boolean; seed?: number } = {}): THREE.BufferGeometry {
+/** (Lane C, #24) Where a wreck's derailment takes it: off the rails to the right, down on the ballast, leaning onto that
+ *  side (the frame's origin is the rail head, the ground RAIL_HEAD_M under it). */
+const WRECK_SHIFT_M = 0.3, WRECK_DROP_M = 0.18, WRECK_LEAN = -0.13;
+/** The rail head's height over the ground under the track (mapKits.ts RAIL_HEAD_Y). */
+export const RAIL_HEAD_M = 0.335;
+
+/** (Lane C, #24) What a wreck leaves on the ballast beside it, in the track's frame (not the derailed one). */
+function wreckGround(mesh: VehicleMesh, kind: RollingStockKind, coarse: boolean): void {
+  const gy = -RAIL_HEAD_M;
+  mesh.dressing(() => {
+    if (kind === 'omm') {
+      // the coal through the blown door, spilt down the ballast in a fan
+      const nx = coarse ? 5 : 10, nz = coarse ? 5 : 9;
+      mesh.grid(nx, nz, (i, j, out) => {
+        const u = i / nx, v = j / nz, x = 1.55 + u * 2.0, z = -1.4 + v * 2.8;
+        const e = Math.max(0, 1 - u) * (1 - Math.pow(2 * v - 1, 2));
+        out[0] = x; out[1] = gy + 0.02 + 0.75 * e * e + (hash2(i * 7 + j, 77) - 0.5) * 0.06 * e; out[2] = z;
+      }, (i, j) => (hash2(i + j * 3, 5) < 0.5 ? COAL : COAL_FACE), { flip: true });
+    } else if (kind === 'g10') {
+      // the sliding door, off its rails, down flat on the ballast
+      mesh.push().translate(2.35, gy + 0.03, 0.4).rotateY(0.2).rotateZ(Math.PI / 2 - 0.05);
+      mesh.box(0, 0, 0, 0.05, 2.0, 2.0, DB_BROWN_WOOD, 0);
+      mesh.pop();
+    }
+  });
+}
+
+/** (Lane C, #24) The tank wagon's barrel punctured on its right flank, the steel petals bent out round the hole. */
+function tankPuncture(mesh: VehicleMesh, coarse: boolean): void {
+  const R = 1.05, axisY = 1.25 + 0.2 + R, hy = axisY + 0.12, hz = 0.9, hr = 0.3;
+  mesh.push().translate(R - 0.015, hy, hz).rotateY(0);
+  mesh.lathe([[0.0001, 0], [hr, 0], [hr, 0.01], [0.0001, 0.01]], coarse ? 8 : 12, () => COAL);
+  mesh.pop();
+  const n = coarse ? 5 : 7;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + 0.3, cy = Math.cos(a), cz = Math.sin(a), len = 0.22 + hash2(k, 41) * 0.12;
+    const root: Vec3 = [R - 0.005, hy + cy * hr, hz + cz * hr];
+    const tip: Vec3 = [R + len * 0.75, hy + cy * (hr + len * 0.55), hz + cz * (hr + len * 0.55)];
+    beam(mesh, root, tip, 0.14, 0.012, TANK_BLACK);
+  }
+}
+
+export function buildRollingStock(kind: RollingStockKind, opts: { coarse?: boolean; seed?: number; wrecked?: boolean } = {}): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
-  const coarse = !!opts.coarse;
+  const coarse = !!opts.coarse, wrecked = !!opts.wrecked;
   mesh.coarse = coarse;
-  if (kind === 'omm') omm(mesh, coarse);
-  else if (kind === 'g10') g10(mesh, coarse);
-  else if (kind === 'tank') tank(mesh, coarse);
-  else if (kind === 'v60') v60(mesh, coarse);
+  // (Lane C, #24; the owner: "trams and wagons" must break) a wreck: derailed, down on the ballast and leaning to the
+  // right, burnt, and broken in its own way: the Omm's door blown open and its coal spilt, the G 10's side blown through
+  // and its door down, the tank wagon's barrel punctured, the V 60 burnt out on the ballast
+  if (wrecked) mesh.push().translate(WRECK_SHIFT_M, -WRECK_DROP_M, 0).rotateZ(WRECK_LEAN).rotateX(0.02);
+  if (kind === 'omm') omm(mesh, coarse, wrecked);
+  else if (kind === 'g10') g10(mesh, coarse, wrecked);
+  else if (kind === 'tank') { tank(mesh, coarse, wrecked); if (wrecked) tankPuncture(mesh, coarse); }
+  else if (kind === 'v60') v60(mesh, coarse, wrecked);
   else if (kind === 'covered4') covered4(mesh, coarse);
   else if (kind === 'gondola4') gondola4(mesh, coarse);
   else if (kind === 'tank4') tank4(mesh, coarse);
   else tem1(mesh, coarse);
+  if (wrecked) { mesh.pop(); wreckGround(mesh, kind, coarse); }
   const AXLES: Record<RollingStockKind, number[]> = {
     omm: [-3, 3], g10: [-2, 2], tank: [-2.25, 2.25], v60: [-2.2, 0, 2.2], covered4: [-5.9, -4.1, 4.1, 5.9],
     gondola4: [-5.3, -3.5, 3.5, 5.3], tank4: [-4.8, -2.9, 2.9, 4.8], tem1: [-6.45, -4.6, -2.75, 2.75, 4.6, 6.45],
@@ -1100,6 +1168,7 @@ export function buildRollingStock(kind: RollingStockKind, opts: { coarse?: boole
   const g = mesh.build(vehicleWeathering({
     dirtRgb: linearHex(0x2a2622), dirt: 0.75, dirtTop: 1.4, dustRgb: linearHex(0x3a3632), dust: 0.25,
     rust: kind === 'v60' ? 0.25 : 0.6, wheels: axles.map((z) => ({ z, y: r, r })), seed: (opts.seed ?? 7) + kind.length * 31, voxelAo: !coarse,
+    burnt: wrecked,
   }));
   // the painted bucket's streams (no surface stream: the props' baked material reads colours alone)
   g.deleteAttribute('surf');

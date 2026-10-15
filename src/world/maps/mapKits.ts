@@ -176,6 +176,9 @@ interface DressingContext {
   /** 2026-10-12 (item 7): an intact set piece handed to the props as a destructible (setPieceDestructibles.ts) instead of
    *  baked scenery; omitted (a sandboxed dressing), every piece is baked as before. */
   setPieceDestructible?: (piece: VehicleSetPiece) => void;
+  /** (Lane C, #24) a spur's standing vehicle handed to the props as a destructible, its pose on the rails (y the ground
+   *  under them, pitch along the track); omitted, the stock is baked with its static record as before. */
+  rollingStockDestructible?: (stock: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
@@ -187,6 +190,7 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'setPieceDestructible'
+  | 'rollingStockDestructible'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1157,12 +1161,12 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible, rollingStockDestructible,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees), setPieceDestructible };
+    trunks: trunksOf(trees), setPieceDestructible, rollingStockDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -2810,12 +2814,17 @@ function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig):
   for (const p of railStockPlacements(spur, ROLLING_STOCK_LENGTH)) {
     const kind = p.kind as RollingStockKind;
     let geo = built.get(kind);
-    if (!geo) { geo = buildRollingStock(kind); built.set(kind, geo); }
+    if (!geo && !ctx.rollingStockDestructible) { geo = buildRollingStock(kind); built.set(kind, geo); }
     const L = ROLLING_STOCK_LENGTH[kind], reach = L * 0.3;
     const yF = heightField.getHeightAt(p.x + p.ux * reach, p.z + p.uz * reach);
     const yB = heightField.getHeightAt(p.x - p.ux * reach, p.z - p.uz * reach);
     const pitch = Math.atan2(yF - yB, reach * 2), y = (yF + yB) / 2 + RAIL_HEAD_Y;
-    const g = geo.clone();
+    // (Lane C, #24) a vehicle the props break: its pose on the rails, the props' record and draw (no static record here)
+    if (ctx.rollingStockDestructible) {
+      ctx.rollingStockDestructible({ kind, x: p.x, y: y - RAIL_HEAD_Y, z: p.z, yaw: Math.atan2(p.ux, p.uz), pitch });
+      continue;
+    }
+    const g = geo!.clone();
     g.rotateX(-pitch);
     g.rotateY(Math.atan2(p.ux, p.uz));
     g.translate(p.x, y, p.z);

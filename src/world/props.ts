@@ -189,7 +189,8 @@ import {
 import { bakeTankWreckSteps, seatHulk, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
-import { setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
+import type { RollingStockKind } from './maps/rollingStock.ts';
+import { rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
@@ -4445,6 +4446,8 @@ ${snowCap ? `
     ...civilianVehicleTypes(mapId, mobileProps),
     // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
     ...setPieceDestructibleTypes(mobileProps),
+    // (Lane C, #24) the spurs' rolling stock, breakable (maps/setPieceDestructibles.ts)
+    ...rollingStockDestructibleTypes(mobileProps),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
@@ -10112,6 +10115,8 @@ ${snowCap ? `
   joinStructureShells();
   // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
   const setPieceRecords: VehicleSetPiece[] = [];
+  // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
+  const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
   // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   dressMapExtras({
@@ -10120,6 +10125,7 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
     setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
+    rollingStockDestructible: (stock) => { rollingStockRecords.push(stock); },
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
@@ -10129,11 +10135,10 @@ ${snowCap ? `
   // (Lane C, #8 r2; the coordinator: the r2 rule, draws +0) each intact piece draws in the baked bucket at its pool
   // instance's own pose, as a span that hides when the instance is hidden (setPieceSpans, finalizeDestructiblePool): its
   // kind's pool keeps the matrices, the crush and burn copy and the broken state, and draws nothing until a break
-  for (const piece of setPieceRecords) {
-    const kind = setPieceDestructibleKind(piece.kind);
-    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, (piece.yawDeg * Math.PI) / 180, 1);
+  // an intact instance drawn in the baked bucket at its pool matrix, as a span its hidden pool mirrors
+  const bakeIntactSpan = (kind: string, rec: DestructibleRecord): void => {
     const pool = dPools.get(kind);
-    if (!pool || rec.slot < 0) continue;
+    if (!pool || rec.slot < 0) return;
     let intact = setPieceIntact.get(kind);
     if (!intact) { intact = pool.meta.build(mulberry32(0x5e7b1ece)); setPieceIntact.set(kind, intact); }
     const g = intact.clone().applyMatrix4(pool.mats4[rec.slot]);
@@ -10143,6 +10148,24 @@ ${snowCap ? `
     let slots = setPieceSpans.get(kind);
     if (!slots) { slots = []; setPieceSpans.set(kind, slots); }
     slots[rec.slot] = span;
+  };
+  for (const piece of setPieceRecords) {
+    const kind = setPieceDestructibleKind(piece.kind);
+    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, (piece.yawDeg * Math.PI) / 180, 1);
+    bakeIntactSpan(kind, rec);
+  }
+  // (Lane C, #24) the rolling stock on its rails: the exact rail pose (the ground under the rails, pitched along them)
+  // over the destructible's own ground seat, which would take the lowest ground under its long footprint
+  for (const stock of rollingStockRecords) {
+    const kind = rollingStockDestructibleKind(stock.kind);
+    const rec = addDestructible(kind, stock.x, stock.y, stock.z, stock.yaw, 1, -stock.pitch, 0);
+    const pool = dPools.get(kind);
+    if (pool && rec.slot >= 0) {
+      _quat.setFromEuler(new THREE.Euler(-stock.pitch, stock.yaw, 0, 'YXZ'));
+      pool.mats4[rec.slot].compose(_posv.set(stock.x, stock.y, stock.z), _quat, _scalev.set(1, 1, 1));
+      rec.y = stock.y;
+    }
+    bakeIntactSpan(kind, rec);
   }
   for (const g of setPieceIntact.values()) g.dispose();
   setPieceIntact.clear();
