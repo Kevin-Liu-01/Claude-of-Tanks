@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { mulberry32, FIELD_LOG_COUNTS, HAY_CRATE_SITES, SLAB_SHELL_KINDS } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
+import { mulberry32, HAY_CRATE_SITES, SLAB_SHELL_KINDS } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
+// (props lane A #19, 2026-10-15) the field timber's placer and its caps moved to maps/groundDressing.ts
+import { FIELD_LOG_COUNTS, placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
 import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts'; // the hitbox lane (2026-10-08): the stacks' shell slabs
 import { cloneCollisionRecord, pushHullFromObstacle, setCircleShape, setObbShape } from './collision.ts';
 import { sampleDiscGround, sampleObbGround, planGroundedSegment } from './propPlacement.ts';
@@ -38,7 +40,7 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   // (2026-10-07) the destructible stage seats a cart tilted to its ground (props.ts cartGroundPose, CART_KINDS); since
   // 2026-10-08 a parked vehicle too (GROUND_POSED_KINDS)
   CART_RECEIPTS, CIVILIAN_VEHICLE_RECEIPTS,
-  authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES,
+  authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES, placeFieldLogsAndStumpsOf,
   // props.ts reads its settlement counts through richCount (tier multiplier, 2026-09-14); this
   // receipt checks the authored counts, i.e. the mobile tier's production value.
   richCount: (n, fallback = 0) => n ?? fallback };
