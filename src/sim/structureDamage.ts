@@ -339,16 +339,22 @@ export function slenderMasonryFactor(material: StructureMaterial, slenderness: n
   if (material !== 'masonry' && material !== 'concrete') return 1;
   return Math.min(topHeavy ? TOP_HEAVY_MAX : SLENDER_MAX, 1 + SLENDER_RATE * Math.max(0, slenderness - SLENDER_FROM));
 }
-/** The share of a body's volume in bands over half again its median band's section (a band's volume over its height). */
+/**
+ * The share of a body's volume in bands over half again its median band's section in its upper half (a band's volume
+ * over its height): a vessel up on its shaft, not a stack's or a minaret's broad foot.
+ */
 function topHeavyShare(records: readonly CollisionRecord[]): number {
   if (records.length < 3) return 0;
+  let y0 = Infinity, y1 = -Infinity;
+  for (const record of records) { y0 = Math.min(y0, record.min[1]); y1 = Math.max(y1, record.max[1]); }
+  const middle = (y0 + y1) / 2;
   const bands = records.map((record) => {
     const volume = bandVolume(record);
-    return { volume, section: volume / Math.max(1e-6, record.max[1] - record.min[1]) };
+    return { volume, section: volume / Math.max(1e-6, record.max[1] - record.min[1]), high: (record.min[1] + record.max[1]) / 2 > middle };
   });
   const sections = bands.map((b) => b.section).sort((a, b) => a - b), median = sections[Math.floor(sections.length / 2)];
   let total = 0, heavy = 0;
-  for (const b of bands) { total += b.volume; if (b.section > TOP_HEAVY_SECTION * median) heavy += b.volume; }
+  for (const b of bands) { total += b.volume; if (b.high && b.section > TOP_HEAVY_SECTION * median) heavy += b.volume; }
   return total > 0 ? heavy / total : 0;
 }
 
