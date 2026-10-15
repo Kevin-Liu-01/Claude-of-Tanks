@@ -239,6 +239,11 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
   tramAt(mid + Math.min(120, total * 0.13), -1);
 }
 
+/** A sandbag's section across it (z across, y up), counter-clockwise seen from +x: a pillow 0.5 m wide, 0.2 m thick. */
+const BAG_SECTION: ReadonlyArray<readonly [number, number]> = [
+  [-0.25, 0], [-0.19, 0.095], [0.19, 0.095], [0.25, 0], [0.19, -0.095], [-0.19, -0.095],
+];
+
 /**
  * The bridgeheads: at both ends of every bridge, a horseshoe of sandbags either side of the road (open to the bridge,
  * its mouth toward the far bank), the wire coiled along the bank beside it. Dressing; the road itself stays clear.
@@ -265,7 +270,11 @@ function dressBridgeheads(ctx: StreetContext): void {
               const t = (b + 0.5 + (r % 2) * 0.25) / n;
               if (t > 1) continue;
               const bx = x0 + (x1 - x0) * t, bz = z0 + (z1 - z0) * t;
-              sink.placed(Math.atan2(-(z1 - z0), x1 - x0), bx, 0, bz, () => sink.span('structureWood', -0.29, r * 0.2 - 0.05, -0.25, 0.29, r * 0.2 + 0.15, 0.25,
+              // (props census #10) a filled bag, not a block: its section a pillow, flat-topped and drawn in at its
+              // sides, the courses bedding a centimetre into each other
+              const yc = r * 0.19 + 0.04;
+              sink.placed(Math.atan2(-(z1 - z0), x1 - x0), bx, 0, bz, () => sink.prism('structureWood',
+                BAG_SECTION.map(([z, y]): Vec3 => [-0.28, yc + y, z]), [1, 0, 0], 0.56,
                 { colour: shade(HESSIAN, 0.84 + look() * 0.24), decor: true }));
             }
           };
