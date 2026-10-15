@@ -22,8 +22,19 @@ const APRON_D_M = 24;
 const CANVAS_W = 1024;
 const CANVAS_H = Math.round((CANVAS_W * APRON_D_M) / APRON_W_M);
 const PX_PER_M = CANVAS_W / APRON_W_M;
-const SLABS_X = 6;
-const SLABS_Z = 5;
+/**
+ * The saw-cut joints are squared to the view's axis, the facades' and the turntable's (the re-judge, 2026-10-15: "the
+ * joint grid is skewed about 30-45 degrees to the facade and turntable axis"), so on the apron's canvas (the pack's x/z)
+ * they run at 45 degrees. The pitch divides both of the canvas's spans along the view axes (29 / sqrt 2 into six, 24 /
+ * sqrt 2 into five, to within 7 cm), so the grid reflects onto itself at the canvas's edges and the mirrored apron stays
+ * seamless; 3.4 m is a saw-cut spacing for a yard slab (24-30 times a 150 mm pour).
+ */
+const JOINT_PITCH_M = (APRON_W_M / Math.SQRT2 / 6 + APRON_D_M / Math.SQRT2 / 5) / 2;
+/** A canvas-frame point (the pack's x, z) from the view's (side, depth), and the view's side and depth of one. */
+const fromView = (side: number, depth: number): [number, number] => [(side - depth) * Math.SQRT1_2, -(side + depth) * Math.SQRT1_2];
+const toView = (x: number, z: number): [number, number] => [(x - z) * Math.SQRT1_2, -(x + z) * Math.SQRT1_2];
+/** The joint lines' indices that can cross the canvas (both families). */
+const JOINT_SPAN = Math.ceil((APRON_W_M + APRON_D_M) / 2 / Math.SQRT2 / JOINT_PITCH_M) + 1;
 /** The earth and snow floors' fine relief normal repeats every 6.4 m across the apron. */
 const EARTH_NORMAL_TILE_M = 6.4;
 
@@ -235,19 +246,28 @@ function drawHardstand(
   };
 
   // --- the floor itself -----------------------------------------------------------------------------------------
-  const slabW = CANVAS_W / SLABS_X, slabH = CANVAS_H / SLABS_Z;
+  const P = JOINT_PITCH_M;
+  const jointPoint = (side: number, depth: number): [number, number] => { const [x, z] = fromView(side, depth); return px(x, z); };
   if (palette.kind === 'slab') {
-    // each pour cures to its own tone, a little lighter toward its centre (trowel and cure)
-    for (let i = 0; i < SLABS_X; i++) {
-      for (let j = 0; j < SLABS_Z; j++) {
+    // each pour cures to its own tone, a little lighter toward its centre (trowel and cure); the pours are squares on
+    // the view's axis, diamonds on the canvas
+    const slabPx = P * PX_PER_M;
+    for (let i = -JOINT_SPAN; i < JOINT_SPAN; i++) {
+      for (let j = -JOINT_SPAN; j < JOINT_SPAN; j++) {
         const tone = 1 + (rng() - 0.5) * 1.4 * palette.spread;
         const c: [number, number, number] = [br * tone, bgc * tone, bb * tone];
-        const grad = g.createRadialGradient(
-          (i + 0.5) * slabW, (j + 0.5) * slabH, slabW * 0.1, (i + 0.5) * slabW, (j + 0.5) * slabH, slabW * 0.75);
+        const [cx, cy] = jointPoint((i + 0.5) * P, (j + 0.5) * P);
+        if (cx < -slabPx || cy < -slabPx || cx > CANVAS_W + slabPx || cy > CANVAS_H + slabPx) continue;
+        const grad = g.createRadialGradient(cx, cy, slabPx * 0.1, cx, cy, slabPx * 0.75);
         grad.addColorStop(0, rgba([c[0] * 1.02, c[1] * 1.02, c[2] * 1.02], 1));
         grad.addColorStop(1, rgba([c[0] * 0.97, c[1] * 0.97, c[2] * 0.97], 1));
         g.fillStyle = grad;
-        g.fillRect(i * slabW, j * slabH, slabW, slabH);
+        g.beginPath();
+        for (const [ds, dd] of [[0, 0], [1, 0], [1, 1], [0, 1]] as const) {
+          const [x, y] = jointPoint((i + ds) * P, (j + dd) * P);
+          if (ds === 0 && dd === 0) g.moveTo(x, y); else g.lineTo(x, y);
+        }
+        g.closePath(); g.fill();
       }
     }
   }
@@ -286,8 +306,8 @@ function drawHardstand(
     // hairline cracks wandering from slab corners
     g.lineCap = 'round';
     for (let i = 0; i < 26; i++) {
-      let x = Math.round(rng() * SLABS_X) * slabW + (rng() - 0.5) * 20;
-      let y = Math.round(rng() * SLABS_Z) * slabH + (rng() - 0.5) * 20;
+      let [x, y] = jointPoint(Math.round((rng() * 2 - 1) * JOINT_SPAN) * P, Math.round((rng() * 2 - 1) * JOINT_SPAN) * P);
+      x += (rng() - 0.5) * 20; y += (rng() - 0.5) * 20;
       let heading = rng() * Math.PI * 2;
       g.strokeStyle = `rgba(24,22,20,${(0.16 + rng() * 0.16).toFixed(2)})`;
       g.lineWidth = 0.7 + rng() * 0.7;
@@ -301,21 +321,24 @@ function drawHardstand(
       }
       g.stroke();
     }
-    // sawn joints, sealed and dirty rather than ruled black lines (wave 398: "plaza-sized flagstones"); the grid wraps
-    for (let i = 0; i <= SLABS_X; i++) {
-      const x = Math.round(i * slabW);
-      g.fillStyle = 'rgba(30,28,26,0.36)'; g.fillRect(x - 1, 0, 2, CANVAS_H);
-      g.fillStyle = 'rgba(40,36,32,0.08)'; g.fillRect(x - 4, 0, 8, CANVAS_H);
+    // sawn joints, sealed and dirty rather than ruled black lines (wave 398: "plaza-sized flagstones"), squared to the
+    // view's axis; the grid reflects onto itself at the canvas's edges
+    g.lineCap = 'butt';
+    const reach = JOINT_SPAN * P;
+    for (const across of [true, false]) {
+      for (let k = -JOINT_SPAN; k <= JOINT_SPAN; k++) {
+        const [ax, ay] = across ? jointPoint(k * P, -reach) : jointPoint(-reach, k * P);
+        const [bx, by] = across ? jointPoint(k * P, reach) : jointPoint(reach, k * P);
+        for (const [width, colour] of [[8, 'rgba(40,36,32,0.08)'], [2, 'rgba(30,28,26,0.36)']] as const) {
+          g.strokeStyle = colour; g.lineWidth = width;
+          g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        }
+      }
     }
-    for (let j = 0; j <= SLABS_Z; j++) {
-      const y = Math.round(j * slabH);
-      g.fillStyle = 'rgba(30,28,26,0.36)'; g.fillRect(0, y - 1, CANVAS_W, 2);
-      g.fillStyle = 'rgba(40,36,32,0.08)'; g.fillRect(0, y - 4, CANVAS_W, 8);
-    }
+    // spalls along the joints
     for (let i = 0; i < 120; i++) {
-      const alongX = rng() < 0.5;
-      const x = alongX ? rng() * CANVAS_W : Math.round(Math.floor(rng() * (SLABS_X + 1)) * slabW);
-      const y = alongX ? Math.round(Math.floor(rng() * (SLABS_Z + 1)) * slabH) : rng() * CANVAS_H;
+      const along = (rng() * 2 - 1) * reach, line = Math.round((rng() * 2 - 1) * JOINT_SPAN) * P;
+      const [x, y] = rng() < 0.5 ? jointPoint(line, along) : jointPoint(along, line);
       g.fillStyle = 'rgba(30,27,24,0.3)';
       g.beginPath(); g.ellipse(x, y, 2 + rng() * 5, 1.5 + rng() * 3, rng() * Math.PI, 0, Math.PI * 2); g.fill();
     }
@@ -487,10 +510,9 @@ function drawHardstand(
   };
   const alongJoints = (count: number, width: number, inner: string, outer: string): void => {
     for (let i = 0; i < count; i++) {
-      const horizontal = rng() < 0.5;
-      const t = rng();
-      const xM = horizontal ? (t - 0.5) * APRON_W_M : (Math.round(rng() * SLABS_X) / SLABS_X - 0.5) * APRON_W_M;
-      const zM = horizontal ? (Math.round(rng() * SLABS_Z) / SLABS_Z - 0.5) * APRON_D_M : (t - 0.5) * APRON_D_M;
+      const along = (rng() * 2 - 1) * JOINT_SPAN * JOINT_PITCH_M, line = Math.round((rng() * 2 - 1) * JOINT_SPAN) * JOINT_PITCH_M;
+      const [xM, zM] = rng() < 0.5 ? fromView(line, along) : fromView(along, line);
+      if (Math.abs(xM) > APRON_W_M / 2 || Math.abs(zM) > APRON_D_M / 2) continue;
       blotWrapped(xM, zM, width * (0.6 + rng()), inner, outer, 0.25);
     }
   };
@@ -707,21 +729,14 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
     // ripple over the detail layer's aggregate and broom finish)
     octave(Math.round(W / 341), 0.18);
     octave(Math.round(W / 114), 0.12);
-    const slabW = W / SLABS_X, slabH = H / SLABS_Z;
-    for (let i = 0; i <= SLABS_X; i++) {
-      const x0 = Math.round(i * slabW);
-      for (let x = x0 - 2; x <= x0 + 2; x++) {
-        const xx = (x + W) % W;
-        const depth = 2.4 * (1 - Math.abs(x - x0) / 3);
-        for (let y = 0; y < H; y++) height[y * W + xx] -= depth;
-      }
-    }
-    for (let j = 0; j <= SLABS_Z; j++) {
-      const y0 = Math.round(j * slabH);
-      for (let y = y0 - 2; y <= y0 + 2; y++) {
-        const yy = (y + H) % H;
-        const depth = 2.4 * (1 - Math.abs(y - y0) / 3);
-        for (let x = 0; x < W; x++) height[yy * W + x] -= depth;
+    // the joints' grooves, on the same grid as the albedo's (squared to the view's axis)
+    for (let y = 0; y < H; y++) {
+      const z = (y / H) * APRON_D_M - APRON_D_M / 2;
+      for (let x = 0; x < W; x++) {
+        const [side, depth] = toView((x / W) * APRON_W_M - APRON_W_M / 2, z);
+        const off = (v: number): number => Math.abs(v - JOINT_PITCH_M * Math.round(v / JOINT_PITCH_M)) * PX_PER_M;
+        const near = Math.min(off(side), off(depth));
+        if (near < 3) height[y * W + x] -= 2.4 * (1 - near / 3);
       }
     }
   } else if (kind === 'snow') {
@@ -752,8 +767,9 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
   }
   g.putImageData(image, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
+  // the slab's joints reflect at the canvas's edges like its albedo (mirrored), the earth's relief tiles
+  texture.wrapS = kind === 'slab' ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
+  texture.wrapT = kind === 'slab' ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
   if (kind !== 'slab') texture.repeat.set(APRON_W_M / EARTH_NORMAL_TILE_M, APRON_D_M / EARTH_NORMAL_TILE_M);
   texture.anisotropy = anisotropy;
   texture.userData.sharedGarageHardstandNormal = kind;
@@ -764,7 +780,9 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
 /** The apron and its texel layout, for receipts. */
 export const GARAGE_HARDSTAND = Object.freeze({
   widthM: APRON_W_M, depthM: APRON_D_M, canvasW: CANVAS_W, canvasH: CANVAS_H,
-  slabPitchM: Object.freeze([APRON_W_M / SLABS_X, APRON_D_M / SLABS_Z] as const),
+  slabPitchM: Object.freeze([JOINT_PITCH_M, JOINT_PITCH_M] as const),
+  /** The joints run square to the view's axis (45 degrees on the canvas). */
+  jointAxisDeg: 45,
 });
 
 /** Which floor kind a style draws (slab joints or earth). */
