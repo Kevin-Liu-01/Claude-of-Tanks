@@ -7,6 +7,7 @@ import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, ty
 import { buildHouse, closeGables, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const TIN: readonly Rgb[] = [0x8a3a2e, 0x7a3428, 0x4f6a4a, 0x5a7a52].map(rgb);
@@ -222,25 +223,20 @@ const granary: RegionalBuilder = (ctx) => {
 /** A shelled bungalow: the plinth, a standing chimney stack, wall stubs, the tin roof down in sheets. */
 const shelled: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(6, ctx.info.w - 0.6), D = Math.max(7, ctx.info.d - 0.6);
-  sink.span('stone', -W / 2, -0.4, -D / 2, W / 2, 0.75, D / 2);
-  sink.span('stone', -W * 0.25 - 0.35, 0.75, -D * 0.2 - 0.35, -W * 0.25 + 0.35, 4.6 + rng(), -D * 0.2 + 0.35);
-  for (let k = 0; k < 7; k++) {
-    const side = k % 4, t = rng(), h = 0.4 + rng() * 2.0;
-    const x = side < 2 ? (side === 0 ? -1 : 1) * (W / 2 - 0.15) : (t - 0.5) * W * 0.8;
-    const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
-    sink.span('plaster', x - 0.18, 0.75, z - 0.18, x + 0.18, 0.75 + h, z + 0.18);
-  }
-  // the fallen sheets (the connectivity sweep: they hung over the floor): the low end on the floor, the raised end on a
-  // heap of the walls' rubble
-  for (let k = 0; k < 5; k++) {
-    const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
-    rng();
-    const hy = 0.9 + rng() * 0.5, ex = x + Math.cos(a) * 1.4, ez = z + Math.sin(a) * 1.4;
-    sink.member('structureMetal', [x - Math.cos(a) * 1.4, 0.75, z - Math.sin(a) * 1.4], [ex, hy, ez], 1.1, 0.04, [0, 1, 0], { colour: pick(rng, TIN), decor: true, exposed: true });
-    sink.cylinder('stone', [ex, 0.73, ez], 'y', hy - 0.71, 0.3 + (hy - 0.75) * 0.5, 7, { decor: true }, 0.16, true, k * 0.9);
-  }
+  // (props census #7, lane B 2026-10-14; the judges: "seven plaster posts on a plinth box, the sheets as slabs on cones")
+  // the ruin grammar: the bungalow's own rendered walls on its high plinth broken low, its door and windows cut through
+  // where they still stand, the chimney stack standing with its firebox, the tin roof down in its sheets over the heaps
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * (W - 2.6), w: 1.0, y0: 0, h: 2.1 }];
+  for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D - 0.6, { w: 1.1, h: 1.2, sill: 0.8, spacing: 2.6, margin: 1.0, max: 2 })) openings.push(o);
+  const head = (): RuinHead => ({ a: 0.4 + rng() * 1.8, b: 0.4 + rng() * 1.8, at: rng(), dip: 0.3 + rng() * 0.4, ragged: 0.3 });
+  ruinHouse(sink, {
+    w: W, d: D, t: 0.3, wall: 'plaster', plinth: { h: 0.75, out: 0.08, bucket: 'stone' }, storeys: [2.8], openings,
+    heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.35,
+    lintel: { bucket: 'structureWood', colour: rgb(0x3a2f26) }, roof: { bucket: 'structureMetal', colour: pick(rng, TIN), piece: [1.0, 2.4, 0.02] },
+    timber: rgb(0x2e2620), chimney: { x: -W * 0.25, z: -D * 0.2, w: 0.7, h: 4.6 + rng(), bucket: 'stone' }, mobile: ctx.tier === 'mobile',
+  }, rng, look);
   return sink.finish();
 };
 

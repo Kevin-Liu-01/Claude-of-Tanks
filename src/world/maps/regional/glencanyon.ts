@@ -10,6 +10,7 @@
 import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 import { latticeFrame } from './lattice.ts';
@@ -837,27 +838,20 @@ const ruin: RegionalBuilder = (ctx) => {
   const rng = ctx.rng, look = ctx.variant;
   // the ruin fills the old ruin's reach (its bounds)
   const R = reach(ctx), W = Math.max(5, R.W - 0.6), D = Math.max(6, R.D - 0.6), t = 0.22;
+  // (props census #7, lane B 2026-10-14; the judges: "block slices to random tops, a heap cone") the ruin grammar: the
+  // ranch house's own block walls broken, its door and windows cut through, the chimney standing with its firebox, the
+  // shingles down over the heaps, the rafters charred across them
   sink.placed(0, R.cx, 0, R.cz, () => {
-  sink.span(CONCRETE, -W / 2 - 0.05, -0.5, -D / 2 - 0.05, W / 2 + 0.05, 0.3, D / 2 + 0.05);
-  for (const [x0, z0, x1, z1, axis] of [[-W / 2, -D / 2, W / 2, -D / 2 + t, 'x'], [-W / 2, D / 2 - t, W / 2, D / 2, 'x'],
-    [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t, 'z'], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t, 'z']] as const) {
-    const len = axis === 'x' ? x1 - x0 : z1 - z0, pieces = Math.max(3, Math.round(len / 1.6));
-    for (let k = 0; k < pieces; k++) {
-      if (rng() < 0.22) continue;
-      const a = k / pieces, b = (k + 1) / pieces, top = 0.5 + rng() * 2.2;
-      if (axis === 'x') sink.span(BLOCK, x0 + len * a, 0.3, z0, x0 + len * b, top, z1);
-      else sink.span(BLOCK, x0, 0.3, z0 + len * a, x1, top, z0 + len * b);
-    }
-  }
-  sink.span(BLOCK, W * 0.2, 0.3, -D * 0.2, W * 0.2 + 0.6, 4.2, -D * 0.2 + 0.6);
-  // the fallen roof timbers (the connectivity sweep: they hung 0.1 m over the floor): each lies on the floor slab at one
-  // end, its other end up on a heap of the walls' rubble
-  for (let k = 0; k < 4; k++) {
-    const a: Vec3 = [(rng() - 0.5) * W * 0.7, 0.3, (rng() - 0.5) * D * 0.7], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.3 + rng() * 0.8, a[2] + (rng() - 0.5) * 3];
-    sink.member('structureWood', a, b, 0.14, 0.2, [0, 1, 0], { colour: rgb(0x2e2925), decor: true, exposed: true }, 0);
-    if (b[1] > 0.38) sink.cylinder(BLOCK, [b[0], 0.28, b[2]], 'y', b[1] - 0.24, 0.55, 7, { decor: true }, 0.18, true, k * 0.9);
-  }
-  sink.cylinder(CONCRETE, [0, 0.2, 0], 'y', 0.5, Math.min(W, D) * 0.3, 7, { decor: true }, Math.min(W, D) * 0.12, true, look());
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: -W * 0.18, w: 0.95, y0: 0, h: 2.05 },
+      { face: 'front', storey: 0, kind: 'window', u: W * 0.2, w: Math.min(2.4, W * 0.35), y0: 0.8, h: 1.4 }];
+    for (const face of ['right', 'left'] as const) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * 2, w: 1.1, y0: 1.0, h: 1.1 });
+    const head = (): RuinHead => ({ a: 0.5 + rng() * 2.2, b: 0.5 + rng() * 2.2, at: rng(), dip: 0.3 + rng() * 0.4, ragged: 0.25 });
+    ruinHouse(sink, {
+      w: W, d: D, t, wall: BLOCK, plinth: { h: 0.3, out: 0.05, bucket: CONCRETE }, storeys: [2.55], openings,
+      heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.4,
+      lintel: { bucket: CONCRETE }, roof: { bucket: 'roof', piece: [0.9, 0.5, 0.03] }, timber: rgb(0x2e2925),
+      chimney: { x: W * 0.2 + 0.3, z: -D * 0.2 + 0.3, w: 0.6, h: 4.2, bucket: BLOCK }, mobile: ctx.tier === 'mobile',
+    }, rng, look);
   });
   return sink.finish();
 };

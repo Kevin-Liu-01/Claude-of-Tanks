@@ -12,6 +12,7 @@
 import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedFace, leanTo, placeShed, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { latticeFrame } from './lattice.ts';
 import { sheetHall } from './hall.ts';
@@ -1253,32 +1254,27 @@ const ruin: RegionalBuilder = (ctx) => {
     endStacks(sink, bb, cz, R, door, look, 0.95);
     return sink.finish();
   }
+  // (props census #7, lane B 2026-10-14; the judges: "span slices to random tops round a slab") the ruin grammar: the
+  // stone house's own walls broken down toward the middle of each run and standing at the corners' piers, its doorway
+  // and windows cut through, the vigas and the mud roof's earth fallen in
   sink.placed(0, cx, 0, cz, () => {
-  const t = 0.42, H = 2.6;
-  sink.span('stone', -W / 2 - 0.05, -0.5, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
-  groundCourse(sink, -W / 2, -D / 2, W / 2, D / 2, 0, false, 0.6);
-  const runs: Array<[number, number, number, number, 'x' | 'z']> = [[-W / 2, -D / 2, W / 2, -D / 2 + t, 'x'], [-W / 2, D / 2 - t, W / 2, D / 2, 'x'],
-    [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t, 'z'], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t, 'z']];
-  runs.forEach(([x0, z0, x1, z1, axis], i) => {
-    const len = axis === 'x' ? x1 - x0 : z1 - z0, pieces = Math.max(3, Math.round(len / 1.4));
-    for (let k = 0; k < pieces; k++) {
-      // the doorway in the front wall, and the broken tops falling toward the corners' standing piers
-      if (i === 1 && k === Math.floor(pieces / 2)) continue;
-      const a = k / pieces, b = (k + 1) / pieces;
-      const corner = k === 0 || k === pieces - 1;
-      const top = corner ? H * (0.8 + rng() * 0.25) : 0.6 + rng() * (H - 0.4);
-      if (axis === 'x') sink.span('stone', x0 + len * a, 0.25, z0, x0 + len * b, top, z1);
-      else sink.span('stone', x0, 0.25, z0 + len * a, x1, top, z0 + len * b);
+    const H = 2.6;
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 2.0 }];
+    for (const face of ['right', 'left', 'back'] as const) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * 1.6, w: 0.8, y0: 0.9, h: 0.9 });
+    const head = (): RuinHead => ({ a: H * (0.8 + rng() * 0.25), b: H * (0.8 + rng() * 0.25), at: 0.3 + rng() * 0.4, dip: 0.45 + rng() * 0.3, ragged: 0.3 });
+    const r = ruinHouse(sink, {
+      w: W, d: D, t: 0.42, wall: 'stone', plinth: { h: 0.25, out: 0.05, bucket: 'stone' }, storeys: [H], openings,
+      heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.4,
+      lintel: { bucket: 'structureWood', colour: pick(look, JUNIPER) }, roof: { bucket: 'plaster2', piece: [0.8, 0.6, 0.08] }, timber: pick(look, JUNIPER),
+      mobile: ctx.tier === 'mobile',
+    }, rng, look);
+    groundCourse(sink, -W / 2, -D / 2, W / 2, D / 2, 0, false, 0.6);
+    // the vigas across the floor, each from the floor up onto the heap
+    for (let k = 0; k < 2; k++) {
+      const z = (k - 0.5) * D * 0.4, x1 = W / 2 - 0.6;
+      sink.member('structureWood', [-W / 2 + 0.6, r.floor, z + (rng() - 0.5)], [x1, r.restOn(x1, z) + 0.1, z + (rng() - 0.5) * 1.5], 0.22, 0.22, [0, 1, 0],
+        { colour: pick(look, JUNIPER), decor: true, exposed: true }, 0);
     }
-  });
-  // the fallen roof: two vigas across the floor, a heap of the mud roof's earth, the lintel log
-  for (let k = 0; k < 2; k++) {
-    const z = (k - 0.5) * D * 0.4;
-    // (the integrity check, 2026-10-12: the vigas' feet stood 5 cm over the floor) each from the floor
-    sink.member('structureWood', [-W / 2 + 0.3, 0.25, z + (rng() - 0.5)], [W / 2 - 0.2, 0.3 + rng() * 1.4, z + (rng() - 0.5) * 1.5], 0.22, 0.22, [0, 1, 0],
-      { colour: pick(look, JUNIPER), decor: true, exposed: true }, 0);
-  }
-  sink.cylinder('plaster2', [W * 0.1, 0.1, -D * 0.1], 'y', 0.55, Math.min(W, D) * 0.3, 7, { decor: true }, Math.min(W, D) * 0.12, true, look());
   });
   return sink.finish();
 };
