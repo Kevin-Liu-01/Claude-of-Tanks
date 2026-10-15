@@ -150,7 +150,7 @@ export function baleNear(f: BaleForm, rng: Rng): THREE.BufferGeometry {
 
 /** The silage bale: the round drum in its film, the film's wrinkles where it was stretched, the tape over its seam. On
  *  the vertex-colour material. Near ≤ 300 (one form: a bale casts its shadow). */
-export function silageNear(f: BaleForm, rng: Rng): THREE.BufferGeometry {
+export function silageNear(f: BaleForm, _rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
   const R = 0.72, L = 1.45, film = f.film ?? hexLin(0x1c1e1c);
   const from = m.mark;
