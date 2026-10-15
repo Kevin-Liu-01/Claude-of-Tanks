@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
 const MERKAVA_IDS = [
   'merkava1b', 'merkava2b', 'merkava2d',
@@ -115,7 +116,7 @@ for (const id of MERKAVA_IDS) {
   assert.equal(visual.root.getObjectByName('rig_hull')?.userData.nativeRoadWheelStations, 6,
     `${id}: running-gear receipt records six road-wheel stations`);
   const hull = visual.root.getObjectByName('rig_hull');
-  const gearReceipt = hull.userData[`${id}RunningGearReceipt`];
+  const gearReceipt = hull.userData[`${tankSeedId(id)}RunningGearReceipt`];
   assert.equal(gearReceipt?.revision,
     RUNNING_GEAR_REVISIONS[id] ?? 'terminal-course-reseat-r2',
     `${id}: terminal-course reseat is audited`);
@@ -134,7 +135,7 @@ for (const id of MERKAVA_IDS) {
       `${id}: front terminal is seated at the shared raised station`);
   }
 
-  const closureReceipt = hull.userData[`${id}GlacisClosureReceipt`];
+  const closureReceipt = hull.userData[`${tankSeedId(id)}GlacisClosureReceipt`];
   assert.equal(closureReceipt?.revision, 'upper-lower-glacis-web-r1',
     `${id}: lower glacis cavity has a structural closure`);
   assert.ok(Math.abs(closureReceipt.rearStationZM - GLACIS_CLOSURES[id][0]) < 1e-9);
