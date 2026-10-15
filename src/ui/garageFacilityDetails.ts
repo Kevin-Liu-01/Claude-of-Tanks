@@ -48,7 +48,7 @@ interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
  * walls, roofs and slabs mapped at their real size, one merged mesh per surface, unlike the instanced members whose
  * texture spans each face. Sheeting is trapezoidal steel (walls: ribs vertical; roofs: ribs down the slope).
  */
-type FacilitySurface = 'sheeting' | 'roofing' | 'brick' | 'render' | 'timber' | 'glazing' | 'tiles';
+type FacilitySurface = 'sheeting' | 'roofing' | 'brick' | 'render' | 'timber' | 'glazing' | 'tiles' | 'setts';
 type SurfaceMaps = Readonly<{ color: THREE.Texture | null; normal: THREE.Texture | null }>;
 
 interface FacilityBuildOptions {
@@ -129,6 +129,8 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // the drydock crane stands on the quay, short of the shore (2026-10-11: the sea opens behind it), travelled along its
       // rails to the frame's right third so its portal and jib stand clear of the hero's turret (the garage critic panel,
       // 2026-10-14: "the coastal lighthouse rising out of the turret ... set the gantry on crane rails")
+      // the drydock itself in the frame's right third, its mouth on the shore (the re-judge, 2026-10-15: "the hero frame
+      // shows no drydock"), the crane on its rails beside it
       feature: [17, 22], featureRadius: [9, 6],
     },
     rail_roundhouse: {
@@ -182,6 +184,66 @@ export function garageTerraceAtDatum(
     (other.side - terrace.side) / (other.radiusSide + terrace.radiusSide),
     (other.depth - terrace.depth) / (other.radiusDepth + terrace.radiusDepth),
   ) < 1);
+}
+
+/** Saltmere's graving dock in view coordinates (see garageDrydockBasin). */
+export interface GarageDrydockBasin {
+  /** The basin's centre line (view side) and half its width at the coping. */
+  readonly side: number;
+  readonly halfWidth: number;
+  /** The head wall's face (toward the yard) and the caisson's inner face (the mouth, on the shore). */
+  readonly depth0: number;
+  readonly depth1: number;
+  readonly floorY: number;
+  /** The granite paving round the basin; the harbour's water stands in the basin at the sea's level. */
+  readonly pavingY: number;
+  readonly waterY: number;
+  /** The paving's reach beyond the coping on the yard's hand and on the crane's hand; the head wall's thickness. */
+  readonly apronNear: number;
+  readonly apronFar: number;
+  readonly headWall: number;
+  /** The caisson's thickness across the mouth, and how far the pierheads run out past it. */
+  readonly caisson: number;
+  readonly pierheads: number;
+}
+const DRYDOCK_BASIN: GarageDrydockBasin = Object.freeze({
+  side: 14.6, halfWidth: 4.2, depth0: 14.5, depth1: 33.8, floorY: -5.4, pavingY: 0.02, waterY: -2.25,
+  apronNear: 4.0, apronFar: 8.4, headWall: 3.5, caisson: 2.2, pierheads: 1.8,
+});
+/** The altars: four 1.1 m steps, each face 0.55 m in from the one above. */
+const DRYDOCK_STEP_RISE = 1.1;
+const DRYDOCK_STEP_IN = 0.55;
+
+/**
+ * Saltmere's graving dock (garage round 7; the re-judge, 2026-10-15: "the hero frame shows no drydock"), in view
+ * coordinates: the basin's centre line at `side`, from its head wall at `depth0` to the caisson at its mouth on the shore
+ * at `depth1`. Null in every other Garage.
+ */
+export function garageDrydockBasin(variant: GarageVariant): GarageDrydockBasin | null {
+  return variant.architecture === 'naval_drydock' ? DRYDOCK_BASIN : null;
+}
+
+/**
+ * The terrain the kit lays under the dock at a view point whose own ground is `ground`, or null outside the dock. Under
+ * the paving it stands no higher than the paving; in the basin it falls 2 m for every metre in from the side walls, the
+ * line through the altars' inner foot corners, so the straight edge between any two of the terrain's grid points stays
+ * under the steps, the head wall and the paving (the heads of the grid's 3.35 m diagonals included: the paving reaches
+ * 3.4 m past the deepest point any diagonal from the basin touches). Past the caisson, between the pierheads and out from
+ * them, the channel is dredged under the sea. (A brute-force check of every terrain triangle against the dock's solids
+ * found no point standing above them and no ditch beside them.)
+ */
+export function garageDrydockGround(basin: GarageDrydockBasin, side: number, depth: number, ground: number): number | null {
+  const lateral = side - basin.side;
+  const pierheads = basin.depth1 + basin.caisson + basin.pierheads;
+  if (depth >= pierheads) {
+    return depth < pierheads + 5 && Math.abs(lateral) < basin.halfWidth ? Math.min(ground, basin.waterY - 0.6) : null;
+  }
+  const reach = basin.halfWidth + (lateral < 0 ? basin.apronNear : basin.apronFar) - 0.1;
+  if (Math.abs(lateral) >= reach || depth <= basin.depth0 - 1.8) return null;
+  const inward = basin.halfWidth - Math.abs(lateral);
+  const cut = Math.min(ground, basin.pavingY - 0.02, basin.pavingY - DRYDOCK_STEP_RISE - (DRYDOCK_STEP_RISE / DRYDOCK_STEP_IN) * inward);
+  // past the caisson, between the pierheads, the channel lies under the sea
+  return depth > basin.depth1 && inward > 0 ? Math.min(cut, basin.waterY - 0.6) : cut;
 }
 
 /** Flat, feathered service pads used before terrain geometry is emitted. */
@@ -508,6 +570,7 @@ export function addGarageFacilityDetails({
   const surfaceGeometries = new Map<FacilitySurface, THREE.BufferGeometry[]>();
   const surfaceTile: Readonly<Record<FacilitySurface, number>> = Object.freeze({
     sheeting: sheetingTileM, roofing: sheetingTileM, brick: 1.2, render: 2.4, timber: 2, glazing: 1, tiles: 2,
+    setts: 1, // the approach road's own repeat (garageApproachDetails maps its paving at a metre a tile)
   });
   /**
    * A box of one building surface in a cluster's frame. `ribsAcross` turns the top and bottom faces' mapping so roof
@@ -545,9 +608,11 @@ export function addGarageFacilityDetails({
     facilityProps += 1;
     // render, planks and brick ride the pack's own plaster, wood and brick buckets (same albedos, no extra draw where
     // the pack builds in them already: the regional shelters lay brick only in Steinburg and Cinder, which do)
-    // clay tiles ride the pack's own roof bucket (its buildings' tiled roofs), so a tiled facility roof adds no draw
-    if (surface === 'render' || surface === 'timber' || surface === 'brick' || surface === 'tiles') {
-      const bucket = surface === 'render' ? 'plaster2' : surface === 'timber' ? 'wood' : surface === 'tiles' ? 'roof' : 'stone';
+    // clay tiles ride the pack's own roof bucket (its buildings' tiled roofs), so a tiled facility roof adds no draw;
+    // granite setts ride the approach road's bucket (Saltmere's drydock: its causeway is laid in the same setts)
+    if (surface === 'render' || surface === 'timber' || surface === 'brick' || surface === 'tiles' || surface === 'setts') {
+      const bucket = surface === 'render' ? 'plaster2' : surface === 'timber' ? 'wood' : surface === 'tiles' ? 'roof'
+        : surface === 'setts' ? 'route' : 'stone';
       (buckets[bucket] ||= []).push(geometry);
       return;
     }
@@ -1734,34 +1799,6 @@ export function addGarageFacilityDetails({
     structuralConnections += 19;
   };
 
-  const addTrackOnCluster = (
-    cluster: FacilityCluster,
-    centerLateral: number,
-    centerLongitudinal: number,
-    length: number,
-  ): void => {
-    const gauge = 1.52;
-    for (const railSide of [-gauge / 2, gauge / 2]) {
-      // Raise the permanent way above the sampled yard surface. The earlier
-      // replacement pack put the rails at terrain height, so most of Cinder's
-      // identity vanished beneath its cobbles on even a mild grade.
-      clusterBox(cluster, centerLateral + railSide, centerLongitudinal, 0.28,
-        0.12, 0.18, length, steel, 'structure');
-      clusterBox(cluster, centerLateral + railSide, centerLongitudinal, 0.13,
-        0.28, 0.08, length, dark, 'structure');
-      railSegments += 2;
-    }
-    const sleepers = Math.max(12, Math.floor(length / 1.05));
-    for (let index = 0; index < sleepers; index += 1) {
-      const along = -length / 2 + (index + 0.5) * (length / sleepers);
-      // Rails use the canonical camera axis. Fan-track yaw is only used for
-      // the long beams; its sleepers remain visually legible and merged.
-      clusterBox(cluster, centerLateral, centerLongitudinal + along, 0.10,
-        2.45, 0.13, 0.28, timber, 'equipment');
-      railSegments += 1;
-    }
-  };
-
   /**
    * Cinder's engine shed (garage round 7, GA.04, 2026-10-14; props census #20, garage:rail_roundhouse grade 0: "five open
    * portals" of painted plates square to the hero, the rail fan crossing them at 45 degrees). A Prussian three-road
@@ -2422,23 +2459,142 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('drydock-heavy-lift');
       servicePurposeTags.add('saltwater-recovery');
-      // Saltmere's quay crane (garage round 7, 2026-10-14; props census #20, garage:naval_drydock grade 1: a box portal
-      // in teal paint). A travelling portal jib crane on the quay rails: four I-section legs braced in pairs on rail
-      // bogies, a portal deck, a slewing machinery house with its windows and roof vents, the driver's cab at its front,
-      // an A-frame over it, a lattice jib luffed out toward the sea with its head sheave, and the hook block on its falls;
-      // a counterweight box at the back. Along the quay edge: a granite coping and bollards with real heads;
-      // keel and bilge blocks stacked ready on timber bearers; a capstan.
-      // the quay runs along the shore, which lies at a constant depth in the view (shapeQuayAndShore): the crane's rails
-      // run along it, its jib slews out over the sea
-      const quayAt = cameraPoint(featureSide, featureDepth + 1.0), quayIn = cameraPoint(featureSide, featureDepth);
-      const quayYaw = Math.atan2(quayIn.x - quayAt.x, quayIn.z - quayAt.z);
-      const quay: FacilityCluster = { ...fixedCluster(featureSide, featureDepth + 1.0), yaw: quayYaw + Math.PI / 2 };
+      servicePurposeTags.add('graving-dock');
+      // Saltmere's graving dock (garage round 7; the re-judge, 2026-10-15: "the hero frame shows no drydock (no basin,
+      // water or caisson)"): a basin cut into the quay in the frame's right third, its mouth on the shore closed by a
+      // steel caisson with the harbour beyond, the water let in to the sea's level. Stepped granite altars run down its
+      // sides, a plain head wall closes it toward the yard, granite paving with a raised coping and bollards runs round
+      // it, and a patrol craft lies in it bow-on to the yard, moored and with a gangway down, its deckhouse, bridge and
+      // mast over the coping. The portal jib crane runs on two rails set in the paving along the basin, its jib slewed
+      // over the ship. The kit cuts the terrain under all of it (garageDrydockGround).
+      const basin = DRYDOCK_BASIN;
+      const middle = (basin.depth0 + basin.depth1) / 2, halfLen = (basin.depth1 - basin.depth0) / 2;
+      const dockAt = cameraPoint(basin.side, middle), dockToward = cameraPoint(basin.side, middle - 1);
+      const quayYaw = Math.atan2(dockToward.x - dockAt.x, dockToward.z - dockAt.z);
+      // the dock's frame: lateral along the view's side, +longitudinal toward the head (the yard), heights absolute
+      const dock: FacilityCluster = { x: dockAt.x, z: dockAt.z, baseY: 0, yaw: quayYaw };
+      const onPaving = (side: number, depth: number): FacilityCluster => ({ ...fixedCluster(side, depth), baseY: basin.pavingY });
+      const granite = new THREE.Color(0x8d8c86), graniteDark = new THREE.Color(0x77766f), iron = new THREE.Color(0x26292b);
+      const rope = new THREE.Color(0x8c7a55);
+      const top = basin.pavingY;
+      const pierhead = -halfLen - basin.caisson - basin.pierheads; // the paving runs out past the caisson's sea face
+      // the altars down each side: four steps, each from its face out under the paving's edge
+      for (const sign of [-1, 1]) {
+        const outer = basin.halfWidth + (sign < 0 ? basin.apronNear : basin.apronFar);
+        for (let k = 0; k < 4; k += 1) {
+          const y1 = top - (3 - k) * DRYDOCK_STEP_RISE, y0 = k === 0 ? basin.floorY : y1 - DRYDOCK_STEP_RISE;
+          const inner = basin.halfWidth - DRYDOCK_STEP_IN * (3 - k);
+          clusterSurface(dock, 'setts', sign * (inner + outer) / 2, (halfLen + pierhead) / 2, (y0 + y1) / 2, outer - inner, y1 - y0,
+            halfLen - pierhead);
+        }
+        // the coping: a raised kerb of dressed granite stones along the edge, out to the pierhead
+        const stones = Math.round((halfLen - pierhead) / 1.6);
+        for (let k = 0; k < stones; k += 1) {
+          const along = halfLen - (k + 0.5) * (halfLen - pierhead) / stones;
+          clusterBox(dock, sign * (basin.halfWidth + 0.5), along, top + 0.12, 1.0, 0.24, (halfLen - pierhead) / stones - 0.03,
+            k % 3 === 1 ? graniteDark : granite, 'masonry');
+        }
+        for (const f of [-8.4, -3.2, 2.0, 7.2]) { // bollards behind it
+          clusterCylinder(dock, sign * (basin.halfWidth + 1.35), f, top + 0.3, 0.2, 0.6, iron, 0, 16);
+          clusterCylinder(dock, sign * (basin.halfWidth + 1.35), f, top + 0.65, 0.28, 0.1, iron, 0, 16);
+        }
+      }
+      // the head wall: plain granite from the floor to the paving, its coping across the head
+      {
+        const near = basin.halfWidth + basin.apronNear, far = basin.halfWidth + basin.apronFar;
+        clusterSurface(dock, 'setts', (far - near) / 2, halfLen + basin.headWall / 2, (basin.floorY + top) / 2, near + far,
+          top - basin.floorY, basin.headWall);
+        for (let k = 0; k < 7; k += 1) {
+          const width = (2 * basin.halfWidth + 2) / 7;
+          clusterBox(dock, -basin.halfWidth - 1 + (k + 0.5) * width, halfLen + 0.5, top + 0.12, width - 0.03, 0.24, 1.0,
+            k % 3 === 1 ? graniteDark : granite, 'masonry');
+        }
+      }
+      // the harbour's water in the basin, at the sea's level
+      clusterBox(dock, 0, 0, (basin.floorY + basin.waterY) / 2, 2 * (basin.halfWidth - 2 * DRYDOCK_STEP_IN) - 0.02,
+        basin.waterY - basin.floorY, 2 * halfLen - 0.02, new THREE.Color(0x24474d), 'equipment');
+      // the caisson: a steel box gate across the mouth, its walkway a step over the paving, ribs and handrails
+      {
+        const width = 2 * basin.halfWidth + 1.4, at = -halfLen - basin.caisson / 2, steelGrey = new THREE.Color(0x4a4f52);
+        clusterBox(dock, 0, at, (basin.floorY + top + 0.3) / 2, width, top + 0.3 - basin.floorY, basin.caisson, steelGrey, 'structure');
+        for (let k = -3; k <= 3; k += 1) {
+          clusterBox(dock, k * 1.15, -halfLen + 0.05, (basin.waterY + top + 0.3) / 2, 0.14, top + 0.3 - basin.waterY, 0.1, iron, 'structure');
+        }
+        clusterBox(dock, 0, -halfLen + 0.05, top - 0.25, width, 0.16, 0.1, iron, 'structure'); // the top strake
+        for (const edge of [-1, 1]) {
+          for (let k = -4; k <= 4; k += 2) clusterBox(dock, k * 1.1, at + edge * 1.0, top + 0.82, 0.05, 1.04, 0.05, iron, 'structure');
+          clusterBox(dock, 0, at + edge * 1.0, top + 1.32, width - 0.4, 0.05, 0.05, iron, 'structure');
+          clusterBox(dock, 0, at + edge * 1.0, top + 0.82, width - 0.4, 0.04, 0.04, iron, 'structure');
+        }
+        structuralConnections += 12;
+      }
+      // the patrol craft: grey over red antifouling with the boot top just clear of the water, a raked bow, a deckhouse
+      // with its funnel aft and the bridge forward, a pole mast with its yard and radar, a gun on the forecastle, deck
+      // rails, mooring lines to the bollards and a gangway down from the near coping
+      {
+        const grey = new THREE.Color(0x6b7276), red = new THREE.Color(0x7a2e26), deckTone = new THREE.Color(0x4e5458);
+        const keel = -4.0, boot = basin.waterY + 0.15, deck = -0.2, beam = 4.4, aft = -8.2, shoulder = 3.0, stem = 6.4;
+        const length = shoulder - aft, mid = (shoulder + aft) / 2;
+        clusterBox(dock, 0, mid, (keel + boot) / 2, beam - 0.6, boot - keel, length, red, 'painted');
+        clusterBox(dock, 0, mid, (boot + deck) / 2, beam, deck - boot, length, grey, 'painted');
+        clusterBox(dock, 0, mid, deck + 0.05, beam - 0.1, 0.1, length, deckTone, 'painted');
+        // the bow: each side a plate raked in from the shoulder to the stem, the forecastle's deck stepped in between
+        const rake = Math.atan2(beam / 2 - 0.12, stem - shoulder), plate = Math.hypot(beam / 2 - 0.12, stem - shoulder);
+        for (const sign of [-1, 1]) {
+          const centre = clusterPoint(dock, sign * (beam / 2 + 0.12) / 2, (shoulder + stem) / 2, 0);
+          const bow: FacilityCluster = { x: centre.x, z: centre.z, baseY: 0, yaw: quayYaw - sign * rake };
+          clusterBox(bow, 0, 0, (boot + deck + 0.5) / 2, 0.1, deck + 0.5 - boot, plate, grey, 'painted');
+          clusterBox(bow, 0, -0.3, (keel + 0.9 + boot) / 2, 0.1, boot - keel - 0.9, plate - 0.6, red, 'painted');
+        }
+        for (const [from, to, width] of [[shoulder, shoulder + 1.15, 3.0], [shoulder + 1.15, shoulder + 2.3, 1.5], [shoulder + 2.3, stem - 0.2, 0.45]] as const) {
+          clusterBox(dock, 0, (from + to) / 2, deck + 0.42, width, 0.08, to - from, deckTone, 'painted');
+        }
+        clusterBox(dock, 0, -2.0, deck + 1.1, 3.2, 2.2, 4.4, grey, 'painted'); // the deckhouse
+        clusterBox(dock, 0, -0.75, deck + 2.7, 3.0, 1.0, 1.9, grey, 'painted'); // the bridge
+        clusterBox(dock, 0, 0.21, deck + 2.78, 2.7, 0.46, 0.04, new THREE.Color(0x1f272b), 'painted'); // its windows
+        clusterBox(dock, 0, -5.0, deck + 0.9, 1.2, 1.8, 1.5, grey, 'painted'); // the funnel
+        clusterBox(dock, 0, -5.0, deck + 1.9, 1.22, 0.2, 1.52, new THREE.Color(0x1d2022), 'painted'); // its black top
+        clusterCylinder(dock, 0, -1.2, deck + 5.3, 0.09, 4.2, grey, 0, 10); // the mast
+        clusterBox(dock, 0, -1.2, deck + 6.0, 1.9, 0.06, 0.06, grey, 'painted'); // its yard
+        clusterBox(dock, 0, -1.2, deck + 6.85, 1.6, 0.14, 0.34, iron, 'structure'); // the radar
+        clusterCylinder(dock, 0, shoulder + 1.2, deck + 0.75, 0.5, 0.55, grey, 0, 16); // the gun's mount
+        clusterBox(dock, 0, shoulder + 1.2, deck + 1.25, 1.0, 0.6, 1.2, grey, 'painted'); // its shield
+        clusterBox(dock, 0, shoulder + 2.6, deck + 1.3, 0.11, 0.11, 2.0, iron, 'structure'); // its barrel
+        for (const sign of [-1, 1]) {
+          clusterBox(dock, sign * (beam / 2 - 0.05), mid + 0.4, deck + 0.95, 0.04, 0.04, length - 1.2, iron, 'structure'); // deck rails
+          clusterBox(dock, sign * (beam / 2 - 0.05), mid + 0.4, deck + 0.6, 0.03, 0.03, length - 1.2, iron, 'structure');
+          clusterCylinder(dock, sign * 1.0, -3.4, deck + 2.5, 0.28, 0.9, new THREE.Color(0xd7d9d4), Math.PI / 2, 10); // a raft canister
+          // mooring lines from the bollards to the deck edge, bow and quarter
+          clusterBeam(dock, [sign * (basin.halfWidth + 1.35), 7.2, top + 0.55], [sign * (beam / 2 - 0.1), shoulder - 0.4, deck + 0.3], 0.05, rope, 'equipment');
+          clusterBeam(dock, [sign * (basin.halfWidth + 1.35), -8.4, top + 0.55], [sign * (beam / 2 - 0.1), aft + 0.8, deck + 0.3], 0.05, rope, 'equipment');
+        }
+        // the gangway, from the near coping down to the deck, its two rails
+        const drop = Math.atan2(top + 0.24 - (deck + 0.1), basin.halfWidth - beam / 2);
+        clusterBox(dock, -(basin.halfWidth + beam / 2) / 2, -2.6, (top + 0.24 + deck + 0.1) / 2, basin.halfWidth - beam / 2 + 0.3, 0.06, 0.8,
+          new THREE.Color(0x5b6062), 'structure', -drop);
+        for (const edge of [-0.38, 0.38]) {
+          clusterBox(dock, -(basin.halfWidth + beam / 2) / 2, -2.6 + edge, (top + 0.24 + deck + 0.1) / 2 + 0.9, basin.halfWidth - beam / 2 + 0.3,
+            0.04, 0.04, iron, 'structure', -drop);
+        }
+        operationalMachines += 1;
+        looseParts += 6;
+        servicePurposeTags.add('patrol-craft-refit');
+      }
+      // the crane on its rails set in the paving along the basin's far side, its jib slewed over the ship
+      const craneSide = basin.side + basin.halfWidth + 4.7;
+      const craneDepth = middle - 2.0;
+      const quay: FacilityCluster = { ...onPaving(craneSide, craneDepth), yaw: quayYaw };
       const portalBlue = new THREE.Color(0x3f6f78), houseTone = new THREE.Color(0x8a9497), roofTone = new THREE.Color(0x4f5658);
-      const granite = new THREE.Color(0x8d8c86), timberC = new THREE.Color(0x5a4532), iron = new THREE.Color(0x26292b);
-      const gauge = 6.0, legX = 3.2, portalY = 7.2;
-      // the quay rails the crane travels on (two rails, laid along the quay)
-      addTrackOnCluster(quay, -gauge / 2 - 0.0, 0, 20);
-      addTrackOnCluster(quay, gauge / 2, 0, 20);
+      const gauge = 5.0, legX = 3.2, portalY = 7.2;
+      // the crane's two rails, set flush in the paving from the head wall to the pierhead, a buffer stop at each end
+      {
+        const from = craneDepth - (basin.depth0 - basin.headWall + 0.6), to = craneDepth - (basin.depth1 + basin.caisson + basin.pierheads - 0.6);
+        for (const rail of [-gauge / 2, gauge / 2]) {
+          clusterBox(quay, rail, (from + to) / 2, 0.03, 0.1, 0.06, from - to, steel, 'structure');
+          for (const end of [from, to]) clusterBox(quay, rail, end - Math.sign(end) * 0.25, 0.3, 0.5, 0.6, 0.4, new THREE.Color(0xb48a2c), 'painted');
+          railSegments += 1;
+        }
+      }
       // the portal: four I-section legs on bogies, braced in pairs, a deck on top
       for (const lx of [-legX, legX]) for (const lz of [-gauge / 2, gauge / 2]) {
         clusterBox(quay, lz, lx, 0.55, 0.9, 0.5, 2.0, iron, 'structure'); // the bogie
@@ -2454,8 +2610,9 @@ export function addGarageFacilityDetails({
       clusterBox(quay, 0, 0, portalY + 0.2, gauge + 1.0, 0.4, 2 * legX + 1.0, portalBlue, 'structure'); // the deck
       clusterCylinder(quay, 0, 0, portalY + 0.55, 1.8, 0.3, iron, 0, 16); // the slewing ring
       // the slewing house: machinery house, roof, vents, cab, A-frame, counterweight
-      const slew = -0.6; // the jib points out toward the sea and away from the hero (its hook clear of the turret)
-      const house = { ...quay, yaw: quayYaw + Math.PI + slew };
+      // the jib points down the dock toward the sea, its hook over the ship's quarterdeck (and clear of the hero)
+      const craneAt = cameraPoint(craneSide, craneDepth), over = cameraPoint(basin.side, craneDepth + 10.4);
+      const house = { ...quay, yaw: Math.atan2(over.x - craneAt.x, over.z - craneAt.z) };
       const houseY = portalY + 0.7;
       clusterBox(house, 0, -0.6, houseY + 1.4, 3.6, 2.8, 5.2, houseTone, 'painted');
       clusterBox(house, 0, -0.6, houseY + 2.9, 3.8, 0.2, 5.4, roofTone, 'painted');
@@ -2498,26 +2655,17 @@ export function addGarageFacilityDetails({
       operationalMachines += 1;
       structuralConnections += 58;
       servicePurposeTags.add('portal-jib-crane');
-      // the quay edge: a granite coping and bollards with real heads along the top of the bank
-      const edge: FacilityCluster = { ...fixedCluster(featureSide, featureDepth + 7.2), yaw: quayYaw };
-      clusterBox(edge, 0, 0, 0.12, 30, 0.24, 0.9, granite, 'masonry');
-      for (const lat of [-12, -4, 4, 12]) {
-        clusterCylinder(edge, lat, 0.15, 0.5, 0.2, 0.6, iron, 0, 16);
-        clusterCylinder(edge, lat, 0.15, 0.85, 0.3, 0.12, iron, 0, 16); // the head
+      // a capstan on each pierhead for warping the caisson, a winch on the yard's side, the head's safety rail and a
+      // turning-roll station on the paving at the head's near corner
+      for (const sign of [-1, 1]) {
+        const capstan = onPaving(basin.side + sign * (basin.halfWidth + 1.55), basin.depth1 + basin.caisson - 0.9);
+        clusterCylinder(capstan, 0, 0, 0.45, 0.42, 0.9, iron, 0, 16);
+        clusterCylinder(capstan, 0, 0, 0.95, 0.52, 0.12, iron, 0, 16);
       }
-      // keel and bilge blocks stacked on bearers by the crane, and a capstan
-      const blocks = fixedCluster(featureSide - 9.5, featureDepth - 2.5);
-      for (let course = 0; course < 4; course += 1) for (let k = 0; k < 3; k += 1) {
-        clusterBox(blocks, (k - 1) * 1.1, 0, 0.15 + course * 0.3, 0.9, 0.28, course % 2 ? 2.2 : 1.8, course % 2 ? timberC : new THREE.Color(0x46372a), 'equipment');
-        looseParts += 1;
-      }
-      const capstan = fixedCluster(featureSide + 10.5, featureDepth + 6.5);
-      clusterCylinder(capstan, 0, 0, 0.45, 0.42, 0.9, iron, 0, 16);
-      clusterCylinder(capstan, 0, 0, 0.95, 0.52, 0.12, iron, 0, 16);
       operationalMachines += 1;
-      addPoweredWinch(fixedCluster(featureSide - 11.5, featureDepth + 3.0), 0, 0, new THREE.Color(0x3e7c88));
-      addSafetyRail(fixedCluster(featureSide + 11.0, featureDepth - 3.5), 0, 0, 7.5);
-      addTurningRollStation(fixedCluster(featureSide + 10.0, featureDepth - 8.5), 0, 0, new THREE.Color(0x477d82));
+      addPoweredWinch(fixedCluster(basin.side - basin.halfWidth - basin.apronNear - 1.6, basin.depth0 + 4.0), 0, 0, new THREE.Color(0x3e7c88));
+      addSafetyRail(onPaving(basin.side, basin.depth0 - 1.3), 0, 0, 2 * basin.halfWidth - 0.6);
+      addTurningRollStation(onPaving(basin.side - basin.halfWidth - 2.0, basin.depth0 - 2.0), 0, 0, new THREE.Color(0x477d82));
   };
   const addRailRoundhouse = (): void => {
       environmentSpecificAssemblies += 1;
