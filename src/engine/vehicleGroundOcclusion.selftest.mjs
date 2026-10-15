@@ -513,7 +513,11 @@ assert.equal(GROUND_AO_RANGE_M, NEAR_VEHICLE_SHADOW_RANGE_M, 'over the router\'s
 const u = createVehicleGroundOcclusionUniforms();
 const firstRow = u.uVehGroundM.value[0], firstBox = u.uVehGroundB.value[0], light = u.uVehGroundLight.value;
 updateVehicleGroundOcclusionUniforms(u, policy.selected, true, 0.8);
-assert.equal(u.uVehGround.value, 4, 'the four nearest hulls in front of the camera');
+// (contact r6) the set's size follows nearVehicleShadowDetail.ts (4 within 70 m today: five hulls stand in front of the camera
+// within 70 m; six within 90 m after the SKY lane's r2b: the same five)
+const nearCount = Math.min(policy.selected.length, GROUND_AO_MAX_HULLS);
+assert.ok(nearCount >= 4, 'at least the four nearest');
+assert.equal(u.uVehGround.value, nearCount, 'the nearest hulls in front of the camera, as many as the near-detail set holds');
 assert.equal(u.uVehGroundM.value[0], firstRow, 'rows reused'); assert.equal(u.uVehGroundB.value[0], firstBox, 'solids reused');
 assert.equal(u.uVehGroundLight.value, light, 'light reused');
 near(u.uVehGroundLight.value.x, 0.8, 1e-9, 'the ground albedo'); near(u.uVehGroundLight.value.y, GROUND_AO_HULL_ALBEDO, 1e-9, 'the hull albedo');
@@ -529,7 +533,7 @@ const local = new THREE.Vector3(1.2, 0.4, -2.5), world = local.clone().applyMatr
 updateVehicleGroundOcclusionUniforms(u, policy.selected, true, 0.8);
 near(row(0, world), local.x, 1e-6, 'x in the root frame (read from its pose this frame)'); near(row(1, world), local.y, 1e-6, 'y'); near(row(2, world), local.z, 1e-6, 'z');
 nearRoot.visible = false; updateVehicleGroundOcclusionUniforms(u, policy.selected, true);
-assert.equal(u.uVehGround.value, 3, 'a hidden hull casts nothing'); nearRoot.visible = true;
+assert.equal(u.uVehGround.value, nearCount - 1, 'a hidden hull casts nothing'); nearRoot.visible = true;
 updateVehicleGroundOcclusionUniforms(u, policy.selected, false);
 assert.equal(u.uVehGround.value, 0, 'the lever off: no hulls');
 
@@ -765,7 +769,11 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
 assert.equal(GROUND_AO_RANGE_M, NEAR_VEHICLE_SHADOW_RANGE_M, 'the near-detail range, imported');
 assert.ok(GROUND_AO_FADE_M > 0 && GROUND_AO_FADE_M < GROUND_AO_RANGE_M && combineVehicleGroundOcclusion([0.99], NEAR_VEHICLE_SHADOW_RANGE_M, 0.75) === 0,
   'faded out inside it: nothing at the swap');
-assert.ok(here('./vehicleGroundOcclusion.ts').includes("import { NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';"));
+assert.equal(GROUND_AO_MAX_HULLS, NEAR_VEHICLE_SHADOW_MAX, 'and the near-detail set\'s hull count, imported');
+assert.ok(here('./vehicleGroundOcclusion.ts').includes("import { NEAR_VEHICLE_SHADOW_MAX, NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';"));
+assert.ok(VEHICLE_GROUND_OCCLUSION_GLSL.includes(`uniform vec4 uVehGroundM[ ${GROUND_AO_MAX_HULLS * 3} ];`)
+  && VEHICLE_GROUND_OCCLUSION_GLSL.includes(`for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {`)
+  && createVehicleGroundOcclusionUniforms().uVehGroundB.value.length === GROUND_AO_MAX_HULLS * 4, 'the arrays and loops sized by it');
 const post = here('./post.ts'), lighting = here('./lighting.ts');
 assert.match(lighting, /scene\.userData\.nearVehicles = nearVehiclePolicy\.selected;/, 'the shadow router\'s near selection, updated in place');
 // (2026-10-14, the r5 port's cost cut) one branch for the near hulls' reach: a ground pixel shaded at its own point, a

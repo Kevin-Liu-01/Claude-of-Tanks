@@ -48,10 +48,11 @@ import * as THREE from 'three';
 import { lightTune } from './lightModelCore.ts';
 import { groundKeyLights } from './groundKeyLights.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
-import { NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';
+import { NEAR_VEHICLE_SHADOW_MAX, NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';
 
-/** At most this many hulls (the nearest of the shadow router's near selection, nearVehicleShadowDetail.ts). */
-export const GROUND_AO_MAX_HULLS = 4;
+/** At most this many hulls: the shadow router's near-detail set itself (nearVehicleShadowDetail.ts; contact r6, 2026-10-14:
+ * imported, so the block follows the set when the shadow pass widens it — the SKY lane's r2b: six hulls). */
+export const GROUND_AO_MAX_HULLS = NEAR_VEHICLE_SHADOW_MAX;
 /**
  * The selection's range (m) and the fade over its last stretch. (Contact r6, 2026-10-14; the shadow-quality plan's C4:
  * "the detail/proxy swap is hard ... and it happens where ground occlusion fades") the range is the near-detail range
