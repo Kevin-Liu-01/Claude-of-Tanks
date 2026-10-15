@@ -45,34 +45,35 @@ function surface(name: string, pos: number[], uv: number[], index: number[]): TH
 }
 
 /**
- * A round stem from its foot at the origin: `rings` rings of five (the seam doubled), tapering to a point at `height`, its
- * tip carried `bend` (x, z per metre of height) along a parabola. Returns the stem and the tip's offset.
+ * A round stem from its foot at the origin: two rings of three sides (the seam doubled), tapering to a point at `height`,
+ * its tip carried `bend` (x, z per metre of height) along a parabola (nine corners: a bank of them stays within the kit's
+ * storage ceiling).
  */
 function stem(name: string, height: number, width: number, bendX: number, bendZ: number, twist: number): THREE.BufferGeometry {
   const pos: number[] = [], uv: number[] = [], index: number[] = [];
-  const rings = [0, 0.45, 0.8];
-  rings.forEach((t, ring) => {
+  const rings = [0, 0.62];
+  rings.forEach((t) => {
     const radius = width * 0.5 * (1 - t * 0.55);
-    for (let side = 0; side <= 4; side++) {
-      const a = twist + side * Math.PI / 2;
+    for (let side = 0; side <= 3; side++) {
+      const a = twist + side * Math.PI * 2 / 3;
       pos.push(Math.cos(a) * radius + bendX * height * t * t, height * t, Math.sin(a) * radius + bendZ * height * t * t);
       uv.push(side * width, height * t * 2);
     }
   });
   const tip = pos.length / 3;
   pos.push(bendX * height, height, bendZ * height); uv.push(2 * width, height * 2);
-  for (let ring = 0; ring + 1 < rings.length; ring++) for (let side = 0; side < 4; side++) {
-    const a = ring * 5 + side, b = a + 5;
+  for (let ring = 0; ring + 1 < rings.length; ring++) for (let side = 0; side < 3; side++) {
+    const a = ring * 4 + side, b = a + 4;
     index.push(a, b, a + 1, a + 1, b, b + 1);
   }
-  for (let side = 0; side < 4; side++) { const a = (rings.length - 1) * 5 + side; index.push(a, tip, a + 1); }
+  for (let side = 0; side < 3; side++) { const a = (rings.length - 1) * 4 + side; index.push(a, tip, a + 1); }
   return surface(name, pos, uv, index);
 }
 
 /** A flat blade from its foot: `len` long, `width` at the foot, arching `arch` (rad) over along its heading `yaw`. */
 function blade(name: string, len: number, width: number, arch: number, yaw: number, twist: number): THREE.BufferGeometry {
   const pos: number[] = [], uv: number[] = [], index: number[] = [];
-  const n = 3;
+  const n = 2;
   let x = 0, y = 0;
   for (let k = 0; k <= n; k++) {
     const t = k / n, half = width * 0.5 * (1 - t * 0.85);
@@ -90,7 +91,7 @@ function blade(name: string, len: number, width: number, arch: number, yaw: numb
 
 /** A small mound, flattened: a sedge's snowy crown or an ice collar round a frozen-in foot (two rings, a crown point). */
 function mound(name: string, r: number, h: number, segments = 6): THREE.BufferGeometry {
-  const g = new THREE.SphereGeometry(r, segments, 2, 0, Math.PI * 2, 0, Math.PI / 2);
+  const g = new THREE.SphereGeometry(r, Math.min(segments, 6), 2, 0, Math.PI * 2, 0, Math.PI / 2);
   g.scale(1, h / r, 1);
   g.name = name;
   return g;
@@ -98,7 +99,7 @@ function mound(name: string, r: number, h: number, segments = 6): THREE.BufferGe
 
 /** A seed spike's cap of snow: a low four-sided cone, open beneath (the spike's top under it). */
 function snowCap(r: number, h: number): THREE.BufferGeometry {
-  const g = new THREE.ConeGeometry(r, h, 4, 1, true);
+  const g = new THREE.ConeGeometry(r, h, 3, 1, true);
   g.translate(0, h / 2, 0);
   g.name = 'winter-cattail-cap';
   return g;
@@ -126,7 +127,7 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
         [s.x + nx * (s.r * ICE + out) + tx * along, s.z + nz * (s.r * ICE + out) + tz * along];
       const bed = Math.sin(i * 0.23 + phase[bank]) + Math.sin(i * 0.071 + phase[bank] * 1.7) * 0.6;
       // the shore-ice shelf, everywhere along the edge: plates heaved against the bank, overlapping
-      const plates = 1 + ((rng() * 3) | 0);
+      const plates = 1 + ((rng() * 2) | 0);
       for (let k = 0; k < plates; k++) {
         const along = (rng() - 0.5) * s.r * 0.55, out = -0.2 - rng() * 1.1;
         const w = 0.8 + rng() * 1.3, dep = 0.5 + rng() * 0.7, th = 0.06 + rng() * 0.08;
@@ -139,13 +140,16 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
         // (its depth across the bank: the heave lifts its bank side, its width along the edge)
         plate.rotateX(-heave); plate.rotateZ(roll);
         plate.rotateY(Math.atan2(nx, nz) + yawJ);
-        plate.computeBoundingBox();
-        const bb = plate.boundingBox!;
-        plate.translate(px, field.getHeightAt(px, pz) - bb.min.y - 0.05, pz);
+        // seated: its lowest corner against the ground under it 3 cm down, wherever on the bank's slope that corner is
+        plate.translate(px, 0, pz);
+        const pp = plate.getAttribute('position');
+        let seat = Infinity;
+        for (let v = 0; v < pp.count; v++) seat = Math.min(seat, pp.getY(v) - field.getHeightAt(pp.getX(v), pp.getZ(v)));
+        plate.translate(0, -seat - 0.03, 0);
         buckets.plaster.push(jitterUV(plate, rng));
       }
       // the reed bed: in its stretch, a few clumps along the station's reach, at the waterline
-      const clumps = bed > 0.35 ? 1 + ((rng() * 3) | 0) : 0;
+      const clumps = bed > 0.2 ? 2 + ((rng() * 3) | 0) : 0;
       if (!clumps) continue;
       for (let c = 0; c < clumps; c++) {
         const along = (rng() - 0.5) * s.r * 0.6, out = -0.3 + rng() * 1.3;
@@ -159,7 +163,7 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
             const h = 1.15 + rng() * 0.75, w = 0.016 + rng() * 0.008;
             const bx = (rng() - 0.5) * 0.3, bz = (rng() - 0.5) * 0.3;
             const u = (rng() - 0.5) * 1.8, v = (rng() - 0.5) * 0.7;
-            const spike = rng() < 0.65, twist = rng() * Math.PI;
+            const spike = rng() < 0.55, twist = rng() * Math.PI;
             const fx = cx + tx * u + nx * v, fz = cz + tz * u + nz * v;
             const d = edge(fx, fz);
             if (!ok || !inBand(d)) continue;
@@ -171,7 +175,7 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
               const len = 0.17 + h * 0.05, top = 0.8 + 0.06;
               const sx = fx + bx * h * top * top, sy = y + h * top, sz = fz + bz * h * top * top;
               const dx = 2 * bx * top, dz = 2 * bz * top, dl = Math.hypot(dx, 1, dz);
-              const head = new THREE.CylinderGeometry(0.024, 0.026, len, 5, 1, true);
+              const head = new THREE.CylinderGeometry(0.025, 0.027, len, 4, 1, true);
               head.name = 'winter-cattail-head';
               head.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / dl, 1 / dl, dz / dl)));
               head.translate(sx, sy, sz);
@@ -194,14 +198,14 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
           }
         } else {
           // a sedge tussock: a dense fountain of fine blades over its crown, the crown under snow
-          const n = 10 + ((rng() * 7) | 0), r = 0.16 + rng() * 0.12;
+          const n = 8 + ((rng() * 5) | 0), r = 0.16 + rng() * 0.12;
           const d = edge(cx, cz);
           const y = field.getHeightAt(cx, cz);
           for (let k = 0; k < n; k++) {
             const len = 0.38 + rng() * 0.42, arch = 0.5 + rng() * 0.8, yaw = rng() * Math.PI * 2;
             const reach = r * rng(), lean = (rng() - 0.5) * 0.5;
-            if (!ok) continue;
             const ox = Math.cos(yaw) * reach, oz = Math.sin(yaw) * reach;
+            if (!ok || !inBand(edge(cx + ox, cz + oz))) continue;
             buckets.straw.push(blade('winter-sedge', len, 0.018, arch, yaw, lean).translate(cx + ox, y - 0.03, cz + oz));
           }
           if (ok) {
