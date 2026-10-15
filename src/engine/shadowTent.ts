@@ -10,8 +10,9 @@
  * - 5: nine taps at 0 and ±1 texel, weights [1 2 1] x [1 2 1] / 16 (4 texels);
  * - 7: sixteen taps at ±0.5 and ±1.5 texel, weights [1 3 3 1] x [1 3 3 1] / 64 (5 texels).
  * The kernel per cascade is the preset's table (quality.ts shadowTent; a closed deck takes shadowTentDeck — r1's widened
- * Vogel radius went with the Vogel disk), carried by one shared uniform, so a preset or a deck changes it without a
- * recompile. Only the CSM cascades take it: spot, point and non-CSM directional lights keep three's getShadow.
+ * Vogel radius went with the Vogel disk), coded on the cascade's shadow radius (shadowTentRadius), so a preset or a deck
+ * changes it without a recompile. Only the CSM cascades carry a tent-coded radius: spot, point and other directional
+ * lights keep three's disk exactly (getShadow wraps three's, renamed cotThreeGetShadow).
  * Technique after I. Castaño's tent-filtered PCF (2013); this formulation and its code are first-party.
  */
 
@@ -41,14 +42,26 @@ export function shadowTentBiasRadius(k: number): number {
 }
 
 /**
- * GLSL (shadowmap_pars_fragment, PCF only): cotCsmShadow — three's getShadow signature with the cascade's index in front,
- * the frustum test and bias exactly as three's, the tent in place of the disk.
+ * The cascade's kernel rides on its shadow radius (SHADOW_TENT_RADIUS_BASE + k: no other light carries a radius that
+ * large), so the lookup needs no cascade index and every getShadow call site stays three's own — vegetation's leaf floor
+ * and the coast wrapper patch those sites (shadows r3's lesson). The depth-bias law takes shadowTentBiasRadius instead.
+ */
+export const SHADOW_TENT_RADIUS_BASE = 100;
+export function shadowTentRadius(k: number): number {
+  return SHADOW_TENT_RADIUS_BASE + (k >= 7 ? 7 : k >= 5 ? 5 : 3);
+}
+
+/** three's PCF getShadow definition line (shadowmap_pars_fragment), renamed so the tent's getShadow can wrap it. */
+export const THREE_PCF_GET_SHADOW = 'float getShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {';
+export const THREE_PCF_GET_SHADOW_RENAMED = 'float cotThreeGetShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {';
+
+/**
+ * GLSL (appended to shadowmap_pars_fragment, PCF only): the tent, and getShadow over three's (renamed): a tent-coded
+ * radius takes the tent, any other the disk exactly as three draws it.
  */
 export const SHADOW_TENT_GLSL = /* glsl */`
-#ifdef USE_SHADOWMAP
-#if defined( SHADOWMAP_TYPE_PCF ) && NUM_DIR_LIGHT_SHADOWS > 0
-uniform vec4 uCotShadowTent;
-float cotCsmShadow( const in int cascade, sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
+#if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF )
+float cotTentShadow( float k, sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, vec4 shadowCoord ) {
 	float shadow = 1.0;
 	shadowCoord.xyz /= shadowCoord.w;
 	shadowCoord.z += shadowBias;
@@ -57,7 +70,6 @@ float cotCsmShadow( const in int cascade, sampler2DShadow shadowMap, vec2 shadow
 		vec2 t = vec2( 1.0 ) / shadowMapSize;
 		vec2 uv = shadowCoord.xy;
 		float z = shadowCoord.z;
-		float k = cascade == 0 ? uCotShadowTent.x : cascade == 1 ? uCotShadowTent.y : cascade == 2 ? uCotShadowTent.z : uCotShadowTent.w;
 		#ifndef OPAQUE
 		k = 3.0;
 		#endif
@@ -91,13 +103,9 @@ float cotCsmShadow( const in int cascade, sampler2DShadow shadowMap, vec2 shadow
 	}
 	return mix( 1.0, shadow, shadowIntensity );
 }
-#define COT_CSM_SHADOW( index, map, size, intensity, bias, radius, coord ) cotCsmShadow( index, map, size, intensity, bias, radius, coord )
-#else
-#define COT_CSM_SHADOW( index, map, size, intensity, bias, radius, coord ) getShadow( map, size, intensity, bias, radius, coord )
-#endif
+float getShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {
+	if ( shadowRadius > ${(SHADOW_TENT_RADIUS_BASE - 0.5).toFixed(1)} ) return cotTentShadow( shadowRadius - ${SHADOW_TENT_RADIUS_BASE.toFixed(1)}, shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowCoord );
+	return cotThreeGetShadow( shadowMap, shadowMapSize, shadowIntensity, shadowBias, shadowRadius, shadowCoord );
+}
 #endif
 `;
-
-/** The CSM loop's call three writes (both the fade and the no-fade branch) and its replacement. */
-export const CSM_GET_SHADOW_THREE = 'getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )';
-export const CSM_GET_SHADOW_TENT = 'COT_CSM_SHADOW( UNROLLED_LOOP_INDEX, directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )';

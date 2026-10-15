@@ -979,6 +979,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowStability.selftest.mjs',
     // 2026-10-14 (SKY shadows r2a): the cascades' one linear fade law and its readers, High's 30/89/320 m table, the contact seam
     'src/engine/shadowCascadeFade.selftest.mjs',
+    // 2026-10-14 (SKY shadows r2a): the cascades' tent PCF coded on their radius; three's getShadow call sites kept
+    'src/engine/shadowTent.selftest.mjs',
     'src/engine/shadowReceiverOnly.selftest.mjs', // 2026-10-04 (visual/shadow-bias): the ground takes no caster's acne terms
     'src/engine/materialEnvIntensity.selftest.mjs', // 2026-10-08 (visual/world-ibl-trim): a material's own share of the sky light
     'src/engine/shadowFitCache.selftest.mjs',

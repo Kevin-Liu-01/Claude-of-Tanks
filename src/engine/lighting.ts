@@ -30,7 +30,8 @@ import {
   CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, pushCustomCascadeBreaks,
 } from './shadowCascadeFade.ts';
 import {
-  CSM_GET_SHADOW_TENT, CSM_GET_SHADOW_THREE, SHADOW_TENT_DEFAULT, SHADOW_TENT_GLSL, shadowTentBiasRadius, type ShadowTentTable,
+  SHADOW_TENT_DEFAULT, SHADOW_TENT_GLSL, THREE_PCF_GET_SHADOW, THREE_PCF_GET_SHADOW_RENAMED, shadowTentBiasRadius, shadowTentRadius,
+  type ShadowTentTable,
 } from './shadowTent.ts';
 import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
@@ -187,8 +188,7 @@ const SHADOW_BIAS = -0.0002;
 // The receiver-only materials' share of their own shadow terms (RECEIVER_ONLY_SHADOW_NOTE): 1, the 2 cm bias and no
 // normal offset; 0 under __SHADOW_DEBUG.legacyBias, the cascade's terms as every material had them.
 const receiverOnlyShadowUniform = { value: 1 };
-// 2026-10-14 (SKY shadows r2a, P1): the four cascades' tent kernels (3, 5 or 7; shadowTent.ts), shared by every CSM material
-const shadowTentUniform = { value: new THREE.Vector4(3, 3, 3, 3) };
+
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
@@ -663,19 +663,6 @@ vec3 cotPrev;`);
 				#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 				directionalLightShadow.shadowBias = mix( directionalLightShadow.shadowBias, COT_RECEIVER_SHADOW_BIAS, uCotReceiverOnly );
 				#endif`);
-  // 2026-10-14 (SKY shadows r2a, P1): the cascades' lookups take the tent (shadowTent.ts) — the fade and the no-fade
-  // branches' calls only; three's other directional, spot and point lights keep getShadow
-  {
-    const csmHead = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct ) && defined( USE_CSM ) && defined( CSM_CASCADES )';
-    const at = frag.indexOf(csmHead);
-    if (at < 0) throw new Error('lighting.ts: CSM section not found in lights_fragment_begin');
-    let tail = frag.slice(at);
-    for (let n = 0; n < 2; n++) {
-      if (!tail.includes(CSM_GET_SHADOW_THREE)) throw new Error('lighting.ts: CSM shadow lookup not found in lights_fragment_begin');
-      tail = tail.replace(CSM_GET_SHADOW_THREE, CSM_GET_SHADOW_TENT);
-    }
-    frag = frag.slice(0, at) + tail;
-  }
   THREE.ShaderChunk.lights_fragment_begin = frag;
 
   const endHead = '#if defined( RE_IndirectDiffuse )';
@@ -771,9 +758,14 @@ varying float vCotCloudSun;
 #if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnlyV;
 #endif`;
-  // 2026-10-14 (SKY shadows r2a, P1): the cascades' tent lookup (shadowTent.ts cotCsmShadow), after three's getShadow
-  THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment}
+  // 2026-10-14 (SKY shadows r2a, P1): the cascades' tent (shadowTent.ts): three's PCF getShadow renamed, and a getShadow
+  // over it that takes the tent for a tent-coded radius (the cascades') — every call site stays three's own
+  {
+    const pars = THREE.ShaderChunk.shadowmap_pars_fragment;
+    if (pars.split(THREE_PCF_GET_SHADOW).length !== 2) throw new Error('lighting.ts: three\'s PCF getShadow not found in shadowmap_pars_fragment');
+    THREE.ShaderChunk.shadowmap_pars_fragment = `${pars.replace(THREE_PCF_GET_SHADOW, THREE_PCF_GET_SHADOW_RENAMED)}
 ${SHADOW_TENT_GLSL}`;
+  }
   THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment}
 #if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnly;
@@ -1028,7 +1020,7 @@ export function createLighting(
     // 2026-10-14 (SKY shadows r2a, P1b): the closed casters' back faces are in the map — their law is 1.5 texels along the
     // sun (shadowDepthBiasBackFace); __SHADOW_DEBUG.frontFaceBias restores the front-face law for A/B probes
     const frontFace = typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.frontFaceBias;
-    const biasM = frontFace ? shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias)
+    const biasM = frontFace ? shadowDepthBiasForTexel(worldUnitsPerTexel, shadowTentBiasRadius(tentFor(i)), shadow.normalBias)
       : shadowDepthBiasBackFace(worldUnitsPerTexel);
     shadow.bias = legacy ? SHADOW_BIAS : Math.max(SHADOW_BIAS, -biasM / depthRange);
     receiverOnlyShadowUniform.value = legacy ? 0 : 1;
@@ -1042,17 +1034,16 @@ export function createLighting(
 
   // 2026-10-14 (SKY shadows r2a, P1): each cascade's tent kernel (shadowTent.ts) from the preset's tables; a closed deck
   // (the deck's uniform share of the cut at half or more) takes the wider deck table — r1's widened Vogel radius
-  // (deckPenumbraRadius) went with the disk. One shared uniform: a preset or a deck changes it without a recompile.
+  // (deckPenumbraRadius) went with the disk. The kernel rides on each cascade's shadow radius (shadowTentRadius): a
+  // preset or a deck changes it without a recompile.
   let tentTable: ShadowTentTable = preset.shadowTent ?? SHADOW_TENT_DEFAULT;
   let tentDeckTable: ShadowTentTable = preset.shadowTentDeck ?? tentTable;
   let deckShare = 0;
   const tentFor = (i: number): number => (deckShare >= 0.5 ? tentDeckTable : tentTable)[Math.min(i, 3)];
-  /** The tents into the shared uniform and the radius the depth-bias law takes for each cascade's kernel. */
+  /** Each cascade's tent onto its shadow radius, and its bias re-derived. */
   function applyShadowTents(): void {
-    const v = shadowTentUniform.value;
-    v.set(tentFor(0), tentFor(1), tentFor(2), tentFor(3));
     for (let i = 0; i < csm.lights.length; i++) {
-      csm.lights[i].shadow.radius = shadowTentBiasRadius(tentFor(i));
+      csm.lights[i].shadow.radius = shadowTentRadius(tentFor(i));
       applyShadowNormalBias(i);
     }
   }
@@ -1068,8 +1059,8 @@ export function createLighting(
   /** Resize one cascade, retaining every other live map until its own turn. */
   function applyShadowSize(i: number, size: number): void {
     const shadow = csm.lights[i].shadow;
-    // the radius the depth-bias law takes for this cascade's tent (the kernel is in its own map's texels)
-    shadow.radius = shadowTentBiasRadius(tentFor(i));
+    // the cascade's tent, coded on its radius (the kernel is in its own map's texels)
+    shadow.radius = shadowTentRadius(tentFor(i));
     if (shadow.mapSize.x !== size) {
       shadow.mapSize.set(size, size);
       shadowFitCache.invalidate();
@@ -1093,7 +1084,7 @@ export function createLighting(
   }
 
   for (let i = 0; i < csm.lights.length; i++) {
-    csm.lights[i].shadow.radius = shadowTentBiasRadius(tentFor(i));
+    csm.lights[i].shadow.radius = shadowTentRadius(tentFor(i));
     csm.lights[i].shadow.intensity = SHADOW_OPACITY;
     csm.lights[i].color.setHex(SUN_COLOR);
     // Every cascade is driven explicitly by the coherent scheduler. This keeps
@@ -1668,8 +1659,6 @@ export function createLighting(
           // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
           // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
           bindMaterialEnvIntensity(shader, mat);
-          // 2026-10-14 (SKY shadows r2a): the cascades' tent kernels (shadowTent.ts)
-          shader.uniforms.uCotShadowTent = shadowTentUniform;
           if (receiverOnly) {
             shader.uniforms.uCotReceiverOnly = receiverOnlyShadowUniform;
             shader.uniforms.uCotReceiverOnlyV = receiverOnlyShadowUniform;
