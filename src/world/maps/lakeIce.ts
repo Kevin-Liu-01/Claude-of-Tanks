@@ -1,8 +1,16 @@
 // src/world/maps/lakeIce.ts — the frozen lakes' ice: the shore's broken plates and the pressure ridges' snow berms and
 // crest plates (props lane A, family #19, 2026-10-15; WORKLIST.md #19 ground:winter-lake-ice). Extracted from mapKits.ts
-// as it stood (the same text, the same dressing stream, the same buckets): dressWinterLakes calls it where it ran.
+// as it stood: dressWinterLakes calls it where it ran.
+//
+// (#19, the rebuild: "Rebuild the ridge as a pile of broken ice slabs. Each slab is a real block 15-40 cm thick with
+// chipped edges, stacked and leaning against each other, with an ice material (clear blue-green edges, a white rime top)
+// apart from the snow. Fill the gaps with snow") A slab is a broken plate of the sheet: an irregular pentagon, 15-40 cm
+// thick, its top arris chipped, rafted up on one edge with its low edge frozen into the sheet; vertex colour on the baked
+// material (a rime top, blue-green broken edges darkening to the deep ice below). The shore's plates and the ridges'
+// crest plates are these, on the same draws of the dressing stream; each ridge's pile of slabs leaning in on its snow
+// berm from both sides is drawn from the ridge's own hash stream, so every later draw of the dressing keeps its seat.
 import * as THREE from 'three';
-import { jitterUV, slabBox } from '../propGeometry.ts';
+import { hash, hexLin, mix, stream, type Rgb } from './craftMesh.ts';
 
 type Rng = () => number;
 /** The dressing's height field as the ice reads it (mapKits.ts DressingHeightField). */
@@ -10,9 +18,10 @@ interface DressingHeightField {
   getHeightAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
 }
-/** The buckets the ice draws in (mapKits.ts DressingBuckets). */
+/** The buckets the ice draws in (mapKits.ts DressingBuckets): the snow on the plaster, the ice on the baked material. */
 interface DressingBuckets {
   plaster: THREE.BufferGeometry[];
+  baked?: THREE.BufferGeometry[];
 }
 /** An authored lake (mapKits.ts LayoutDisc). */
 interface LayoutDisc { x: number; z: number; r: number }
@@ -42,64 +51,78 @@ function pointClear(
     && heightField._roadDist(x, z) >= roadClearance;
 }
 
-function winterWedgeBaseHeight(
-  heightField: DressingHeightField, x: number, z: number,
-  width: number, depth: number, ca: number, sa: number,
-): number {
-  // A common buried plane cannot bridge a curved bank like independently
-  // seated corners. Sample perimeter AND underside at <=0.45m spacing for
-  // the authored footprints; the35mm embed covers between-sample curvature.
-  let low = Infinity;
-  for (let row = 0; row <= 4; row++) for (let column = 0; column <= 4; column++) {
-    const lx = (column / 4 - 0.5) * width, lz = (row / 4 - 0.5) * depth;
-    low = Math.min(low, heightField.getHeightAt(x + ca * lx + sa * lz, z - sa * lx + ca * lz));
-  }
-  return low - 0.035;
+const RIME = hexLin(0xe6ecf2), SNOWED = hexLin(0xd2dae2), EDGE = hexLin(0x6a9aa0), DEEP = hexLin(0x2c5864);
+
+/** The ice's bucket: the baked material's vertex colour (a caller without it keeps the ice on the snow, uncoloured). */
+function pushIce(buckets: DressingBuckets, geometry: THREE.BufferGeometry): void {
+  if (buckets.baked) { buckets.baked.push(geometry); return; }
+  geometry.deleteAttribute('color');
+  buckets.plaster.push(geometry);
 }
 
-function setWinterPlateUV(
-  uv: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, index: number,
-  x: number, rise: number, z: number, scale: number,
-): void {
-  // Box faces are +X,-X,+Y,-Y,+Z,-Z. Use the actual deformed face axes;
-  // jitterUV still runs exactly once at the original production call site.
-  const face = Math.floor(index / 4);
-  const u = face < 2 ? (face ? -z : z) : (face === 5 ? -x : x);
-  const v = face === 2 ? -z : face === 3 ? z : rise;
-  uv.setXY(index, u * scale, v * scale);
-}
-
-// A broad, tilted fracture plate with unequal broken edges, not a narrow
-// masonry tent. Keep the same24 vertices/12 triangles and exact buried base;
-// existing roll/pitch draws vary the cap without consuming more randomness.
-function winterIceWedge(
-  heightField: DressingHeightField, x: number, z: number, width: number,
-  height: number, depth: number, yaw: number, roll: number, pitch: number, uvScale: number,
-): THREE.BoxGeometry {
-  const h = Math.min(height, width * 0.16), d = Math.max(depth, width * 0.65);
-  const geometry = slabBox(width, h, d, uvScale);
-  geometry.name = 'winter-ice-wedge';
-  const p = geometry.getAttribute('position'), uv = geometry.getAttribute('uv');
-  const ca = Math.cos(yaw), sa = Math.sin(yaw);
-  const bottomY = winterWedgeBaseHeight(heightField, x, z, width, d, ca, sa);
-  const tiltX = roll < 0 ? -0.30 : 0.30;
-  const capHeights: number[] = [];
-  for (let i = 0; i < p.count; i++) {
-    const top = p.getY(i) > 0, sx = Math.sign(p.getX(i)), sz = Math.sign(p.getZ(i));
-    let lx = p.getX(i), lz = p.getZ(i);
-    if (top) {
-      lx = lx * (0.80 + sz * (0.06 + roll * 0.08)) + pitch * width * 0.045;
-      lz = lz * (0.81 + sx * (0.045 + pitch * 0.08)) + roll * d * 0.055;
-    }
-    const wx = x + ca * lx + sa * lz, wz = z - sa * lx + ca * lz;
-    const corner = (sx > 0 ? 1 : 0) + (sz > 0 ? 2 : 0);
-    if (top && capHeights[corner] === undefined) {
-      const tilt = sx * tiltX + sz * (0.10 + pitch * 0.12);
-      capHeights[corner] = heightField.getHeightAt(wx, wz) + 0.025 + h * (0.48 + tilt);
-    }
-    p.setXYZ(i, wx, top ? capHeights[corner] : bottomY, wz);
-    setWinterPlateUV(uv, i, lx, p.getY(i) - bottomY, lz, uvScale);
+/**
+ * A broken slab of the sheet, `w` along its yaw and `d` across, `t` thick: an irregular pentagon, its top arris chipped,
+ * rafted up `lean` (rad) on its +across edge, its low edge frozen into the lowest ice under it by 4 cm; closed (its
+ * underside shows under a raised edge). `seed` its own shape.
+ */
+function iceSlab(heightField: DressingHeightField, x: number, z: number, w: number, d: number, t: number,
+  yaw: number, lean: number, seed: number): THREE.BufferGeometry {
+  const N = 5, CH = 0.03, r = stream(seed);
+  const outline = Array.from({ length: N }, (_, k) => {
+    const a = (k + (r() - 0.5) * 0.8) / N * Math.PI * 2, s = 0.6 + r() * 0.45;
+    return [Math.cos(a) * w * 0.5 * s, Math.sin(a) * d * 0.5 * s] as const;
+  });
+  const inset = (k: number, f: number) => {
+    const [px, pz] = outline[k], l = Math.hypot(px, pz) || 1;
+    return [px - (px / l) * f, pz - (pz / l) * f] as const;
+  };
+  // the raft: tilted about its long axis so the +across edge rises
+  const theta = Math.min(1.35, Math.max(0.04, lean));
+  const ct = Math.cos(theta), st = Math.sin(theta), ca = Math.cos(yaw), sa = Math.sin(yaw);
+  const world = (lx: number, lz: number) => [x + ca * lx + sa * lz, z - sa * lx + ca * lz] as const;
+  // the ice under it as a plane (a 5 x 5 probe of its footprint): the slab follows a bank's slope, then rafts up off it
+  let gx = 0, gz = 0, sxx = 0, szz = 0;
+  for (let row = 0; row <= 4; row++) for (let colm = 0; colm <= 4; colm++) {
+    const lx = (colm / 4 - 0.5) * w, lz = (row / 4 - 0.5) * d, [wx, wz] = world(lx, lz), h = heightField.getHeightAt(wx, wz);
+    gx += h * lx; gz += h * lz; sxx += lx * lx; szz += lz * lz;
   }
+  gx /= sxx; gz /= szz;
+  const local = (lx: number, ly: number, lz: number) => {
+    const ry = ly * ct + lz * st, rz = lz * ct - ly * st;
+    return [lx, ry + gx * lx + gz * rz, rz] as const;
+  };
+  // seated by one corner: the foot corner the ice stands highest against frozen in by 4 cm, the rest rafted off it
+  let y0 = -Infinity;
+  for (const [px, pz] of outline) {
+    const [lx, ly, lz] = local(px, 0, pz), [wx, wz] = world(lx, lz);
+    y0 = Math.max(y0, heightField.getHeightAt(wx, wz) - ly);
+  }
+  y0 -= 0.04;
+  const pos: number[] = [], col: number[] = [], uv: number[] = [];
+  const put = (q: readonly [number, number, number], c: Rgb) => {
+    const [lx, ly, lz] = local(q[0], q[1], q[2]), [wx, wz] = world(lx, lz);
+    pos.push(wx, y0 + ly, wz); col.push(c[0], c[1], c[2]); uv.push(wx * 0.3, wz * 0.3);
+  };
+  const tri = (a: readonly [number, number, number], b: readonly [number, number, number], c: readonly [number, number, number], ca2: Rgb, cb: Rgb, cc: Rgb) => {
+    put(a, ca2); put(b, cb); put(c, cc);
+  };
+  const shade = (k: number, base: Rgb, n: number) => mix(base, RIME, hash(k, n, seed) * 0.18);
+  const top = Array.from({ length: N }, (_, k) => { const [px, pz] = inset(k, CH * 1.4); return [px, t, pz] as const; });
+  const shoulder = outline.map(([px, pz]) => [px, t - CH, pz] as const);
+  const foot = outline.map(([px, pz]) => [px, 0, pz] as const);
+  // (wound outward: the outline runs counter-clockwise seen from +y, so a side's quad a b b' a' faces out)
+  for (let k = 1; k + 1 < N; k++) tri(top[0], top[k + 1], top[k], mix(RIME, SNOWED, hash(0, 1, seed)), RIME, SNOWED);
+  for (let k = 0; k < N; k++) {
+    const k1 = (k + 1) % N, chip = mix(RIME, EDGE, 0.45), edge = shade(k, EDGE, 2), deep = shade(k, DEEP, 3);
+    tri(shoulder[k], top[k], top[k1], chip, RIME, RIME); tri(shoulder[k], top[k1], shoulder[k1], chip, RIME, chip);
+    tri(foot[k], shoulder[k], shoulder[k1], deep, edge, edge); tri(foot[k], shoulder[k1], foot[k1], deep, edge, deep);
+  }
+  for (let k = 1; k + 1 < N; k++) tri(foot[0], foot[k], foot[k + 1], DEEP, DEEP, DEEP);
+  const geometry = new THREE.BufferGeometry();
+  geometry.name = 'winter-ice-slab';
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -211,9 +234,26 @@ function pressureRidge(
       const pw = 0.7 + rng() * 0.6, phh = 0.18 + rng() * 0.22;
       const depth = 0.10 + rng() * 0.08;
       const roll = (rng() - 0.5) * 0.5, pitch = (rng() - 0.5) * 0.4;
-      const plate = winterIceWedge(heightField, px, pz, pw, bh + phh * 0.5,
-        depth, -aa + (rng() - 0.5) * 0.6, roll, pitch, 0.8);
-      buckets.plaster.push(jitterUV(plate, rng));
+      const yaw = -aa + (rng() - 0.5) * 0.6;
+      // (#19) a slab rafted up on the crest, thicker for its depth draw; the old plate's jitterUV draws still made
+      rng(); rng(); rng(); rng();
+      pushIce(buckets, iceSlab(heightField, px, pz, pw * 1.3, pw * (0.75 + roll * 0.4), 0.14 + depth * 1.2,
+        yaw + pitch * 0.4, 0.55 + phh * 1.6, Math.floor(hash(Math.round(px * 16), Math.round(pz * 16), 0x1ce) * 0x7fffffff)));
+    }
+  }
+  // (#19) the ridge's pile: broken slabs leaning in on the berm from both sides along it, its ends left to the snow
+  const pile = stream(Math.floor(hash(Math.round(cx * 16), Math.round(cz * 16), 0x9e1) * 0x7fffffff));
+  for (let k = 1; k + 1 < rows.length; k++) {
+    const row = rows[k], ca = Math.cos(row.angle), sa = Math.sin(row.angle);
+    const slabs = 1 + Math.floor(pile() * 1.8);
+    for (let j = 0; j < slabs; j++) {
+      const side = (k + j) % 2 ? 1 : -1, off = row.halfWidth * (0.25 + pile() * 0.45) * side;
+      const along = (pile() - 0.5) * 1.2;
+      const sx = row.x + ca * along - sa * off, sz = row.z + sa * along + ca * off;
+      const w = 0.9 + pile() * 1.0, d = 0.6 + pile() * 0.7, t = 0.15 + pile() * 0.14;
+      // pushed up steeply, its raised edge toward the crest: the slab's +across turned to face the ridge's line
+      const yaw = -row.angle + (side > 0 ? Math.PI : 0) + (pile() - 0.5) * 0.5;
+      pushIce(buckets, iceSlab(heightField, sx, sz, w, d, t, yaw, 0.6 + pile() * 0.7, Math.floor(pile() * 0x7fffffff)));
     }
   }
   // Both the snow-filled seam and opaque snow-dusted plates reuse the existing
@@ -244,8 +284,11 @@ export function addWinterShoreIce(
       const roll = (rng() - 0.5) * 0.9, pitch = (rng() - 0.5) * 0.8;
       const yaw = -angle + (rng() - 0.5) * 0.9;
       const px = x + (rng() - 0.5) * 2.6, pz = z + (rng() - 0.5) * 2.6;
-      const slab = winterIceWedge(heightField, px, pz, width, height, depth, yaw, roll, pitch, 0.9);
-      buckets.plaster.push(jitterUV(slab, rng));
+      // (#19) a broken slab 15-40 cm thick rafted up on the shore; the old plate's jitterUV draws still made
+      rng(); rng(); rng(); rng();
+      // (rafted up on the shore 10-40 degrees, the higher the taller its old plate's height draw)
+      pushIce(buckets, iceSlab(heightField, px, pz, width * 1.2, width * (0.6 + Math.abs(roll) * 0.4), 0.12 + depth * 1.1,
+        yaw + pitch * 0.3, 0.18 + (height - 0.22) * 1.4, Math.floor(hash(Math.round(px * 16), Math.round(pz * 16), 0x51a) * 0x7fffffff)));
     }
   }
 }

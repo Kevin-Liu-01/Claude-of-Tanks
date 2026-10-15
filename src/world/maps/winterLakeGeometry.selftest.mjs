@@ -16,8 +16,10 @@ assert.deepEqual(MAP_IDS.filter(mapId => (getMapConfig(mapId).props.extraKits
 // gates below run on the CURRENT terrain of every winterLake consumer: seated, embedded and non-folded berms, closed
 // buried ice plates, supported reeds, finite attributes, bucket ownership, one berm set per authored lake, a storage
 // ceiling and a byte-identical rebuild.
-// Storage ceiling per map/seed: the largest V25 Frosthollow total (2,052,280 premerge bytes) plus 10 % headroom.
-const KIT_BYTES_CEILING = 2_260_000;
+// Storage ceiling per map/seed: the largest V25 Frosthollow total (2,052,280 premerge bytes) plus 10 % headroom; (props
+// lane A #19, 2026-10-15) plus the ice rebuilt as broken slabs (pentagonal blocks on the baked material, the ridges'
+// piles): the largest Frosthollow total 3,691,320 plus 10 %.
+const KIT_BYTES_CEILING = 4_060_000;
 
 function build(mapId, seed) {
   const config = getMapConfig(mapId);
@@ -159,98 +161,46 @@ function auditBerm(geometry, field) {
   }
 }
 
-function iceQuadArea(p, first) {
-  let area = 0;
-  for (const [a, b, c] of [[first, first + 2, first + 1], [first + 2, first + 3, first + 1]]) {
-    area += Math.abs((p.getX(b) - p.getX(a)) * (p.getZ(c) - p.getZ(a))
-      - (p.getZ(b) - p.getZ(a)) * (p.getX(c) - p.getX(a))) * 0.5;
+// (props lane A #19, 2026-10-15: the lakes' ice is broken slabs of the sheet, maps/lakeIce.ts iceSlab) a slab is a
+// closed pentagonal block 12-45 cm thick, its low edge frozen into the ice under it, rafted up off it, with a rime top
+// over blue-green broken edges on the baked material's vertex colour
+function auditSlab(geometry, field) {
+  const p = geometry.attributes.position, n = geometry.attributes.normal, c = geometry.attributes.color;
+  assert.equal(geometry.name, 'winter-ice-slab');
+  assert.equal(geometry.index, null);
+  assert.equal(p.count, 78, 'cap, chipped arris, broken sides and underside: 26 triangles');
+  const edges = new Map(), key = (i) => `${p.getX(i)},${p.getY(i)},${p.getZ(i)}`;
+  for (let i = 0; i < p.count; i += 3) for (let j = 0; j < 3; j++) {
+    const a = key(i + j), b = key(i + (j + 1) % 3);
+    assert.notEqual(a, b, 'every triangle has three distinct corners');
+    const forward = a < b, id = forward ? `${a}|${b}` : `${b}|${a}`;
+    const entry = edges.get(id) || [0, 0];
+    entry[0]++; entry[1] += forward ? 1 : -1; edges.set(id, entry);
   }
-  return area;
-}
-
-function auditIceTopology(geometry) {
-  const p = geometry.attributes.position, normal = geometry.attributes.normal;
-  assert.equal(p.count, 24); assert.equal(geometry.index.count, 36);
-  assert.equal(hashGeometry(geometry, []), 840, 'exact pre-V25 per-fragment attribute/index storage');
-  assert.equal(geometry.index.count * 32, 1152, 'exact final nonindexed position/normal/UV storage');
-  assert.ok(geometry.index.array instanceof Uint16Array);
-  const edges = new Map(), key = i => `${p.getX(i)},${p.getY(i)},${p.getZ(i)}`;
-  for (let i = 0; i < geometry.index.count; i += 3) {
-    const triangle = [0, 1, 2].map(j => geometry.index.getX(i + j));
-    for (let j = 0; j < 3; j++) {
-      const a = key(triangle[j]), b = key(triangle[(j + 1) % 3]);
-      assert.notEqual(a, b, 'all twelve triangles retain distinct finite edges');
-      const forward = a < b, id = forward ? `${a}|${b}` : `${b}|${a}`;
-      const entry = edges.get(id) || [0, 0];
-      entry[0]++; entry[1] += forward ? 1 : -1; edges.set(id, entry);
-    }
-  }
-  for (const edge of edges.values()) assert.deepEqual(edge, [2, 0],
-    'actual welded perimeter is closed with opposing triangle winding, not disconnected faces');
-  for (let i = 0; i < p.count; i++) assert.ok(Math.abs(Math.hypot(
-    normal.getX(i), normal.getY(i), normal.getZ(i)) - 1) < 0.000001,
-  'all deformed faces have finite unit lighting normals');
-  const ratio = iceQuadArea(p, 8) / iceQuadArea(p, 12);
-  assert.ok(ratio >= 0.50 && ratio <= 0.80,
-    'broad broken plate occupies50–80% of its base, not the old10% tent crest');
-  for (const end of [13, 14]) {
-    const dx = p.getX(end) - p.getX(12), dz = p.getZ(end) - p.getZ(12);
-    for (let i = 8; i < 12; i++) {
-      const t = ((p.getX(i) - p.getX(12)) * dx + (p.getZ(i) - p.getZ(12)) * dz) / (dx * dx + dz * dz);
-      assert.ok(t > 0.01 && t < 0.99, 'all upper corners stay strictly inside the unchanged support footprint');
-    }
-  }
-  const edgeLength = (a, b) => Math.hypot(p.getX(a) - p.getX(b), p.getZ(a) - p.getZ(b));
-  for (const [a, b, c, d] of [[8, 9, 10, 11], [8, 10, 9, 11]]) {
-    assert.ok(Math.abs(edgeLength(a, b) - edgeLength(c, d)) / edgeLength(a, b) > 0.015,
-      'both pairs of opposing broken edges are unequal, not a repeated rectangle');
-  }
-}
-
-function auditIce(geometry, field) {
-  const p = geometry.attributes.position;
-  auditIceTopology(geometry);
-  let buried = 0, top = 0, minRise = Infinity, maxRise = -Infinity;
+  for (const edge of edges.values()) assert.deepEqual(edge, [2, 0], 'a closed block, its faces wound one way round');
+  let buried = 0, high = -Infinity;
   for (let i = 0; i < p.count; i++) {
     const h = clearance(field, p, i);
-    if (h < 0) {
-      assert.ok(h <= -0.01, 'all bottom corners have a meaningful terrain embed');
-      assert.ok(Math.abs(p.getY(i) - p.getY(12)) < 0.00001, 'the entire bottom is one common plane');
-      buried++;
-    }
-    else {
-      assert.ok(h > 0 && h < 0.30); top++;
-      minRise = Math.min(minRise, h); maxRise = Math.max(maxRise, h);
-    }
+    if (h <= -0.01) buried++;
+    high = Math.max(high, h);
+    assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-5, 'finite unit lighting normals');
+    for (const v of [c.getX(i), c.getY(i), c.getZ(i)]) assert.ok(v >= 0 && v <= 1);
   }
-  assert.equal(buried, 12, 'all four repeated logical base corners are buried');
-  assert.equal(top, 12, 'wedge has real volume, not a flat sheet hidden below terrain');
-  assert.ok(maxRise - minRise > 0.05, 'the broad cap has a real tilted edge, not a level table');
-  // Twice the construction sampling density: cover full perimeter AND every
-  // underside cell, including positions between the production support probes.
-  for (let row = 0; row <= 8; row++) for (let column = 0; column <= 8; column++) {
-    const x = p.getX(12) + (p.getX(13) - p.getX(12)) * column / 8
-      + (p.getX(14) - p.getX(12)) * row / 8;
-    const z = p.getZ(12) + (p.getZ(13) - p.getZ(12)) * column / 8
-      + (p.getZ(14) - p.getZ(12)) * row / 8;
-    assert.ok(p.getY(12) - field.getHeightAt(x, z) <= -0.01,
-      'no interpolated base edge or underside bridges a curved terrain hollow');
-  }
-  // Top UVs must follow the actual cap shear, not BoxGeometry's old
-  // parameters.depth. Preserve the original independent .86–1.16 UV jitter.
-  const uv = geometry.attributes.uv;
-  for (const [a, b] of [[8, 9], [8, 10], [9, 11], [10, 11], [8, 11]]) {
-    const distance = Math.hypot(p.getX(a) - p.getX(b), p.getZ(a) - p.getZ(b));
-    const density = Math.hypot(uv.getX(a) - uv.getX(b), uv.getY(a) - uv.getY(b)) / distance;
-    assert.ok(density >= 0.8 * 0.86 - 0.0001 && density <= 0.9 * 1.16 + 0.0001,
-      'deformed cap keeps the authored .8/.9 UV density without a fivefold compressed texture');
-  }
-  for (const first of [12, 15]) {
-    const a = geometry.index.getX(first), b = geometry.index.getX(first + 1), c = geometry.index.getX(first + 2);
-    const abx = p.getX(b) - p.getX(a), abz = p.getZ(b) - p.getZ(a);
-    const acx = p.getX(c) - p.getX(a), acz = p.getZ(c) - p.getZ(a);
-    assert.ok(abz * acx - abx * acz > 0.0001, 'deformed top triangles retain upward winding');
-  }
+  assert.ok(buried >= 2, 'its low edge is frozen into the sheet');
+  assert.ok(high > 0.08 && high < 2.4, `rafted up off the ice (${high.toFixed(2)} m), never a wall`);
+  // its thickness: the cap's plane (the first 9 vertices, its fan) to the underside's (the last 9)
+  const ax = p.getX(1) - p.getX(0), ay = p.getY(1) - p.getY(0), az = p.getZ(1) - p.getZ(0);
+  const bx = p.getX(2) - p.getX(0), by = p.getY(2) - p.getY(0), bz = p.getZ(2) - p.getZ(0);
+  let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+  const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+  const under = p.count - 1;
+  const t = Math.abs((p.getX(under) - p.getX(0)) * nx + (p.getY(under) - p.getY(0)) * ny + (p.getZ(under) - p.getZ(0)) * nz);
+  assert.ok(t >= 0.12 && t <= 0.45, `a real block ${t.toFixed(2)} m thick`);
+  const lum = (i) => c.getX(i) * 0.2 + c.getY(i) * 0.7 + c.getZ(i) * 0.1;
+  let cap = 0, deep = 0;
+  for (let i = 0; i < 9; i++) { cap += lum(i) / 9; deep += lum(p.count - 1 - i) / 9; }
+  assert.ok(cap > 0.55 && deep < 0.25, 'a rime top over the deep ice');
+  assert.ok(c.getZ(40) > c.getX(40) && c.getY(40) > c.getX(40), 'blue-green broken edges');
 }
 
 function auditReeds(geometries, field) {
@@ -299,23 +249,24 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
     assert.ok(built.buckets.straw.length > 0, `${mapId}/${seed}: the authored reed/head population exists`);
     const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
     assert.deepEqual(names.filter(name => built.buckets[name].length),
-      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw'] : ['plaster', 'wood', 'straw'], // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood
-      'kit reuses the already-populated plaster draw; its obsolete stone batch is eliminated');
+      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw', 'baked'] : ['plaster', 'wood', 'straw', 'baked'], // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood
+      'kit reuses the already-populated plaster draw (the snow) and the baked one (the ice); its obsolete stone batch is eliminated');
     let mapBerms = 0, mapWedges = 0;
     for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
     for (const geometry of built.buckets.stone) {
       assert.notEqual(geometry.name, 'winter-pressure-berm', 'accepted snow berm stays out of masonry');
       assert.notEqual(geometry.name, 'winter-ice-wedge', 'no snow-dusted fracture retains mortar relief');
     }
-    for (const geometry of built.buckets.plaster) {
-      if (geometry.name === 'winter-ice-wedge') { auditIce(geometry, built.field); mapWedges++; }
+    for (const geometry of built.buckets.plaster) assert.notEqual(geometry.name, 'winter-ice-slab', 'the ice is off the snow');
+    for (const geometry of built.buckets.baked) {
+      if (geometry.name === 'winter-ice-slab') { auditSlab(geometry, built.field); mapWedges++; }
     }
     assert.equal(mapBerms, built.field._layout.lakes.reduce((n, lake) => n + (lake.r >= 80 ? 7 : 2), 0),
       `${mapId}: every authored pressure ridge still exists`);
-    assert.ok(mapWedges > 0, `${mapId}/${seed}: shoreline and crest ice plates are populated`);
+    assert.ok(mapWedges > mapBerms * 4, `${mapId}/${seed}: the shore's slabs and the ridges' piles are populated (${mapWedges})`);
     auditReeds(built.buckets.straw, built.field);
-    for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) {
-      assert.deepEqual(Object.keys(geometry.attributes).sort(), ['normal', 'position', 'uv']);
+    for (const [bucket, geometries] of Object.entries(built.buckets)) for (const geometry of geometries) {
+      assert.deepEqual(Object.keys(geometry.attributes).sort(), bucket === 'baked' ? ['color', 'normal', 'position', 'uv'] : ['normal', 'position', 'uv']);
       for (const attr of Object.values(geometry.attributes)) {
         assert.ok(attr.array.every(Number.isFinite), 'merged attributes remain finite and compatible');
       }
@@ -335,7 +286,7 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
     for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) geometry.dispose();
   }
 }
-console.log(`winterLakeGeometry.selftest: ${berms} seated berms, ${wedges} plates on the current Winter/Alpine/Whiteout terrain across three seeds`);
+console.log(`winterLakeGeometry.selftest: ${berms} seated berms, ${wedges} ice slabs on the current Winter/Alpine/Whiteout terrain across three seeds`);
 
 const supportFunctions = [
   () => 0,
@@ -356,8 +307,8 @@ for (const getHeightAt of supportFunctions) {
     for (const geometry of buckets.plaster) {
       if (geometry.name === 'winter-pressure-berm') auditBerm(geometry, field);
     }
-    for (const geometry of buckets.plaster) {
-      if (geometry.name === 'winter-ice-wedge') auditIce(geometry, field);
+    for (const geometry of buckets.baked) {
+      if (geometry.name === 'winter-ice-slab') auditSlab(geometry, field);
     }
     auditReeds(buckets.straw, field);
   } finally {
