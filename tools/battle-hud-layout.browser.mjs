@@ -62,6 +62,36 @@ function measure(state){
   })):undefined;
   return {failures,rects,body:document.body.dataset,ammoTransitions};
 }
+// The touch action dock's one rule (src/ui/touchActionDock.ts), on every touch screen and state where the row shows:
+// docked (never the old scrolling strip), a box that cannot scroll, every visible tile (More and an open More panel
+// included) at least 44 x 44 px (Apple's minimum touch target), on screen, not overlapping another tile or a touch
+// control, and off the crosshair and its dispersion ring at full bloom; the gun-limit warning off the crosshair area.
+function dockIssues(){
+  const row=document.querySelector('.cot-vehicle-controls');
+  if(!row||!row.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return [];
+  const failures=[];
+  if(!document.body.hasAttribute('data-hud-dock'))failures.push('touch vehicle controls are not docked');
+  const style=getComputedStyle(row);
+  if(/auto|scroll/.test(`${style.overflowX} ${style.overflowY}`))failures.push('touch action dock can scroll');
+  const cx=innerWidth/2,cy=innerHeight/2,ring=Math.max(32,Math.ceil(.15*Math.min(innerWidth,innerHeight)));
+  const distance=r=>Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom));
+  const crosses=(a,b)=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>.5&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.5;
+  const tiles=[...row.children].filter(tile=>tile.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(tile=>tile.getBoundingClientRect());
+  if(!tiles.length)failures.push('touch action dock shows no tile');
+  const controls=[...document.querySelectorAll('.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,.cot-con,.cot-shell')]
+    .filter(node=>node.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(node=>node.getBoundingClientRect());
+  for(const [i,tile] of tiles.entries()){
+    if(tile.width<44-.01||tile.height<44-.01)failures.push(`touch action tile below 44px (${tile.width}x${tile.height})`);
+    if(tile.left<-.5||tile.top<-.5||tile.right>innerWidth+.5||tile.bottom>innerHeight+.5)failures.push('touch action tile offscreen');
+    if(distance(tile)<ring-.5)failures.push('touch action tile covers the crosshair');
+    if(tiles.slice(i+1).some(other=>crosses(tile,other)))failures.push('touch action tiles overlap');
+    if(controls.some(control=>crosses(tile,control)))failures.push('touch action tile covers a touch control');
+  }
+  const warning=document.querySelector('.cot-aim-warning:not([hidden])');
+  if(warning?.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&distance(warning.getBoundingClientRect())<32)
+    failures.push('gun-limit warning covers the crosshair');
+  return failures;
+}
 try {
   for (const [name,width,height,touch,locale='en-US'] of cases) {
     if(arg('case','')&&!arg('case','').split(',').includes(name))continue;
@@ -78,21 +108,25 @@ try {
     const idleLayoutReads=await page.evaluate(async()=>{
       const root=document.querySelector('.cot-hud');
       const special=document.querySelector('.cot-special');
+      // A FIRE press toggles down/aiming/autofire on every shot (touchControls.ts): press state, never layout.
+      const fire=document.querySelector('.cot-touch .fire:not(.alt)');
       const original=root.getClientRects;
       let reads=0;
       root.getClientRects=function(){reads++;return original.call(this);};
       try {
         for(let i=0;i<24;i++){
           special.classList.remove('pending');
+          for(const pressed of ['down','aiming','autofire'])fire?.classList.toggle(pressed);
           await new Promise(requestAnimationFrame);
         }
         await new Promise(requestAnimationFrame);
         return reads;
       } finally { root.getClientRects=original; }
     });
-    if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD caused ${idleLayoutReads} layout measurements`);
+    if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD or FIRE presses caused ${idleLayoutReads} layout measurements`);
     async function check(state){
       const result=await page.evaluate(measure,state);
+      if(touch)result.failures.push(...await page.evaluate(dockIssues));
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
       if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
@@ -169,7 +203,36 @@ try {
       reports.push({name,...page.viewportSize(),touch,locale,state,...result});
       if(result.failures.length)console.log(`${name}/${state}: ${result.failures.join('; ')}`);
     }
-    for(const state of states){
+    // Every control in the row's order: one tap, or two through More (the panel is checked open). Mars is a jump mode,
+    // so the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
+    async function pressControls(expected){
+      await page.evaluate(()=>{
+        window.__controlEvents=[];
+        if(window.__controlListeners)return;
+        window.__controlListeners=true;
+        for(const event of ['ui:specialAction','ui:selfRight','ui:drone','ui:shellSelect','ui:smoke','ui:lightsToggle','ui:roofGun'])
+          window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
+      });
+      const controls=page.locator('.cot-vehicle-controls > button:not(.cot-dock-more)');
+      for(let i=0,n=await controls.count();i<n;i++){
+        const button=controls.nth(i);
+        const {laidOut,behindMore}=await button.evaluate(b=>({laidOut:b.getClientRects().length>0,behindMore:b.hasAttribute('data-dock-overflow')}));
+        if(!laidOut)continue;
+        if(behindMore){
+          await page.locator('.cot-vehicle-controls > .cot-dock-more').click();
+          errors.push(...(await page.evaluate(dockIssues)).map(issue=>`${name}: open More panel: ${issue}`));
+        }
+        const box=await button.boundingBox();
+        if(!box||box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
+        await button.click();
+        if(behindMore&&await page.evaluate(()=>document.body.hasAttribute('data-hud-dock-open')))
+          errors.push(`${name}: the More panel stayed open after its control acted`);
+      }
+      const events=await page.evaluate(()=>window.__controlEvents);
+      if(events.join(',')!==expected)errors.push(`${name}: vehicle control activation mismatch: ${events}`);
+      await page.evaluate(()=>document.querySelector('.cot-vehicle-controls').scrollLeft=0);
+    }
+    async function enter(state){
       await page.evaluate(state=>window.__HUD_LAYOUT.state(state),state);
       // ResizeObserver + its scheduled layout pass, and spectator's enter state.
       if(state==='ended')await page.waitForFunction(()=>
@@ -189,11 +252,17 @@ try {
         ]);
         await new Promise(requestAnimationFrame);
       });
+    }
+    async function openDrawer(state){
       if(state==='ammo-expanded'&&touch){
         await page.locator('.cot-shell.sel').click();
         await page.waitForTimeout(180);
         if(await page.locator('.cot-shell[aria-hidden="true"]').count())errors.push(`${name}: ammo drawer failed to expand`);
       }
+    }
+    for(const state of states){
+      await enter(state);
+      await openDrawer(state);
       await check(state);
       if(state==='notifications') {
         for(const variant of ['damaged','repaired','empty']) {
@@ -208,29 +277,10 @@ try {
         }
       }
       if(state==='idle'){
-        // The full Gravity + ATGM kit must remain usable after moving to a side lane.
-        const buttons=page.locator('.cot-vehicle-controls > button:visible');
-        if(await buttons.count()!==5)errors.push(`${name}: expected all five vehicle controls`);
-        // Touch: the action dock (touchActionDock.ts) shows every control as a 48 px tile and never scrolls.
-        if(touch&&await page.evaluate(()=>{const row=document.querySelector('.cot-vehicle-controls');
-          return row.scrollWidth>row.clientWidth+1||row.scrollHeight>row.clientHeight+1||
-            [...row.children].some(button=>button.checkVisibility()&&(button.getBoundingClientRect().width<48||button.getBoundingClientRect().height<48));}))
-          errors.push(`${name}: touch action dock scrolls or shrank a tile below 48px`);
-        await page.evaluate(()=>{
-          window.__controlEvents=[];
-          for(const event of ['ui:specialAction','ui:selfRight','ui:smoke','ui:lightsToggle','ui:roofGun'])
-            window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
-        });
-        for(const button of await buttons.all()){
-          const box=await button.boundingBox();
-          if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
-          await button.click();
-        }
-        const events=await page.evaluate(()=>window.__controlEvents);
-        // Mars is a jump mode: the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
-        if(events.join(',')!=='ui:selfRight,ui:specialAction,ui:smoke,ui:lightsToggle,ui:roofGun')
-          errors.push(`${name}: vehicle control activation mismatch: ${events}`);
-        await page.evaluate(()=>document.querySelector('.cot-vehicle-controls').scrollLeft=0);
+        // The full Gravity + ATGM kit must remain usable after moving to a side lane (touch: dock rule in check()).
+        const shown=await page.locator('.cot-vehicle-controls > button:not(.cot-dock-more)').evaluateAll(nodes=>nodes.filter(node=>node.getClientRects().length).length);
+        if(shown!==5)errors.push(`${name}: expected all five vehicle controls`);
+        await pressControls('ui:selfRight,ui:specialAction,ui:smoke,ui:lightsToggle,ui:roofGun');
       }
       if(state==='settings'){
         // Backward Tab at the first control must stay in Settings, not the HUD.
@@ -244,6 +294,21 @@ try {
           if(!await button.isVisible())continue;
           await button.click();
           await check('settings');
+        }
+      }
+    }
+    // Touch: six and seven controls (a drone, an extra ATGM) keep the same rule in every state, and every control is
+    // one tap away, or two through More.
+    for(const count of touch?[6,7]:[]){
+      for(const state of states){
+        await enter(state);
+        const shown=await page.evaluate(count=>window.__HUD_LAYOUT.controls(count),count);
+        await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+        await openDrawer(state);
+        await check(`${state}-${count}-controls`);
+        if(state==='idle'){
+          if(shown!==count)errors.push(`${name}: expected ${count} vehicle controls, saw ${shown}`);
+          await pressControls(['ui:selfRight','ui:specialAction','ui:drone',...count>6?['ui:shellSelect']:[],'ui:smoke','ui:lightsToggle','ui:roofGun'].join(','));
         }
       }
     }

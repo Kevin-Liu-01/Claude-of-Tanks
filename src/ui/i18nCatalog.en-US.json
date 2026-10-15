@@ -3820,6 +3820,7 @@
   "garage.stat.gunTraverse": "Gun traverse",
   "garage.stat.gunBloom": "Gun dispersion · 20°/s",
   "systems.title": "Vehicle controls",
+  "systems.more": "{count} more vehicle controls",
   "systems.smoke": "Smoke",
   "systems.smoke.help": "Launch a forward smoke screen. Three salvos; 28 s cooldown. Smoke blocks sight, not shells.",
   "systems.lights": "Lights",

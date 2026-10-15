@@ -177,16 +177,25 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='s
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short']:not(.cot-touch-layout) .cot-prebattle{width:240px}
 
 body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}
-/* TOUCH ACTION DOCK (touchActionDock.ts places it; body[data-hud-dock] while placed, else the strip above): the row
-   becomes 48 px icon tiles (44 px on the most crowded phones, --hud-systems-tile) in its own order, wrapped at
-   --hud-systems-columns instead of scrolled sideways. Each tile keeps a caption under the icon; the smoke charges
-   read as a corner badge; a cooldown (--cd, 1 -> 0, written by hud.ts) sweeps a shadow off the tile and fills an
-   amber ring clockwise while the caption counts the seconds. Keycaps mean nothing on glass. Offsets are reset because the special-action
-   button carries touch placement rules from before it joined the row. */
-body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls{display:grid;grid-template-columns:repeat(var(--hud-systems-columns,4),var(--hud-systems-tile,48px));grid-auto-rows:var(--hud-systems-tile,48px);gap:6px;width:max-content;max-width:none;padding:0;overflow:visible}
-body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button{position:relative!important;inset:auto!important;width:var(--hud-systems-tile,48px)!important;height:var(--hud-systems-tile,48px)!important;min-width:var(--hud-systems-tile,48px)!important;max-width:var(--hud-systems-tile,48px);min-height:var(--hud-systems-tile,48px);grid-template-columns:minmax(0,1fr);grid-template-rows:24px 12px;align-content:center;justify-items:center;gap:2px;padding:4px 2px 5px;overflow:hidden;touch-action:none;border:1px solid rgba(205,219,229,.34);border-bottom:2px solid rgba(205,219,229,.42);border-radius:6px!important;background:linear-gradient(180deg,rgba(29,38,45,.94),rgba(7,11,15,.92));color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);text-shadow:0 1px 2px #000;font:800 9px/12px var(--hud-font,system-ui);letter-spacing:.02em;text-transform:uppercase;transition:border-color 90ms ease,color 90ms ease}
-/* Touch placement rules for the special action (some !important) predate the row; its offsets must not shift a tile. */
-body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-special{inset:auto!important}
+/* TOUCH ACTION DOCK (touchActionDock.ts places it; body[data-hud-dock] while placed, else the strip above). The row
+   becomes icon tiles (--hud-systems-tile: 48 px, never under Apple's 44 px minimum touch target), each at its own
+   slot (--dock-x/--dock-y from battleHudLayout.ts: the first control bottom-left, further rows stacking upward) in the
+   dock's box (--hud-systems-width/height). Nothing scrolls. When the whole row does not fit, the last slot is the More
+   tile (.cot-dock-more) and the remaining controls [data-dock-overflow] wait at their places in the panel beside it,
+   shown while body[data-hud-dock-open]. Each tile keeps a caption under the icon; the smoke charges read as a corner
+   badge; a cooldown (--cd, 1 -> 0, written by hud.ts) sweeps a shadow off the tile and fills an amber ring clockwise
+   while the caption counts the seconds. Keycaps mean nothing on glass. The special action carries touch placement
+   rules from before it joined the row, so its slot offsets are restated. */
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls{display:block;width:var(--hud-systems-width,0px);height:var(--hud-systems-height,0px);max-width:none;padding:0;overflow:visible}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button{position:absolute!important;inset:var(--dock-y,0px) auto auto var(--dock-x,0px)!important;width:var(--hud-systems-tile,48px)!important;height:var(--hud-systems-tile,48px)!important;min-width:var(--hud-systems-tile,48px)!important;max-width:var(--hud-systems-tile,48px);min-height:var(--hud-systems-tile,48px);grid-template-columns:minmax(0,1fr);grid-template-rows:24px 12px;align-content:center;justify-items:center;gap:2px;padding:4px 2px 5px;overflow:hidden;touch-action:none;border:1px solid rgba(205,219,229,.34);border-bottom:2px solid rgba(205,219,229,.42);border-radius:6px!important;background:linear-gradient(180deg,rgba(29,38,45,.94),rgba(7,11,15,.92));color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);text-shadow:0 1px 2px #000;font:800 9px/12px var(--hud-font,system-ui);letter-spacing:.02em;text-transform:uppercase;transition:border-color 90ms ease,color 90ms ease}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-special{inset:var(--dock-y,0px) auto auto var(--dock-x,0px)!important}
+.cot-vehicle-controls>.cot-dock-more{display:none}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>.cot-dock-more{display:grid}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button[data-dock-overflow]{visibility:hidden;pointer-events:none}
+body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-vehicle-controls>button[data-dock-overflow]{visibility:visible;pointer-events:auto;z-index:2;box-shadow:0 6px 18px rgba(0,0,0,.62),0 0 0 1px rgba(240,173,69,.45)}
+body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-vehicle-controls>.cot-dock-more{color:#ffd27a;border-color:#f0ad45}
+/* The open panel may lie over the score plate and objective (layer 30) for that moment: lift the row above them. */
+body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-vehicle-controls{z-index:calc(var(--hud-layer-score) + 2)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background:conic-gradient(transparent calc((1 - var(--cd,0)) * 360deg),rgba(2,6,9,.74) 0)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;position:relative;z-index:1}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
@@ -201,8 +210,6 @@ body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling{opacit
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling::before{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;padding:2px;background:conic-gradient(#ffc46b calc((1 - var(--cd,0)) * 360deg),rgba(255,196,107,.18) 0);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling .si{opacity:.5}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cooling .sl{color:#ffd27a;font-size:11px}
-/* Where the touch dock covers the gun-limit warning's place under the reticle, the warning sits on the dock. */
-body[data-hud-aim-docked] .cot-aim-warning{top:var(--hud-aim-warning-dock-top)}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}

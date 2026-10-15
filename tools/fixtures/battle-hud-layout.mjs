@@ -62,6 +62,7 @@ function multiplayer(kind='healthy') {
 }
 function state(name) {
   network?.dispose();network=null;
+  delete player.aerial;
   delete frame.rosterTanks; frame.tanks=tanks;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
@@ -115,7 +116,20 @@ function roster(allies, enemies) {
   frame.rosterTanks=entries; frame.tanks=entries;
   hud.update(frame);
 }
-window.__HUD_LAYOUT = {multiplayer,state, roster, hud, bus, touch, settings, hit, frame, tanks};
+// A richer kit for the vehicle-controls layout: six controls add the drone (the HUD's own path); the seventh, the extra
+// ATGM, belongs to kits whose special action is not a missile, so it is shown directly for the layout check.
+function controls(count) {
+  if (count >= 6) player.aerial = {kind:'drone', active:false, cooldownS:0}; else delete player.aerial;
+  hud.update(frame);
+  if (count >= 7) {
+    const row = document.querySelector('.cot-vehicle-controls');
+    const missile = [...row.children].find(button=>button.classList.contains('cot-auxiliary')&&!button.classList.contains('cot-drone-control')&&button.hidden);
+    if (missile) missile.hidden = false;
+  }
+  window.dispatchEvent(new Event('cot-hud-relayout'));
+  return [...document.querySelector('.cot-vehicle-controls').children].filter(button=>!button.classList.contains('cot-dock-more')&&button.getClientRects().length).length;
+}
+window.__HUD_LAYOUT = {multiplayer,state, roster, controls, hud, bus, touch, settings, hit, frame, tanks};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

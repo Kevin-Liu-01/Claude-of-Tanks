@@ -1723,7 +1723,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
-    // 2026-10-14 (owner: a better mobile action row): the touch action dock's placement at 360x640, 390x844, 844x390.
+    // 2026-10-14 (owner: a better mobile action row): the touch action dock's rule on every touch viewport of the HUD receipt.
     'src/ui/touchActionDock.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
