@@ -166,10 +166,10 @@
       "concealers": 2435
     },
     "oasis": {
-      "bytes": 1683294,
-      "sha256": "1cd887e51e0284ddd29f4ee3be04c5f9a37b9c868199158d52a67d0969981f81",
-      "obstacles": 1587,
-      "colliders": 1660,
+      "bytes": 1854278,
+      "sha256": "f3d88539780efb92afd15b3a1a5007fc9171b8eda5f870c2aaa7d49f443f4639",
+      "obstacles": 1653,
+      "colliders": 1729,
       "concealers": 822
     },
     "whiteout": {
@@ -400,10 +400,10 @@
         "concealers": 2435
       },
       "oasis": {
-        "bytes": 1868119,
-        "sha256": "e1ecae6c59796029ecba8831a11401bbf9001539c649205099d86be15456602a",
-        "obstacles": 1729,
-        "colliders": 1707,
+        "bytes": 2041681,
+        "sha256": "b9bc27ec66354faaefc676620bd0886b558cb0618bd83d5463911b8e01fa4253",
+        "obstacles": 1795,
+        "colliders": 1776,
         "concealers": 822
       },
       "whiteout": {
