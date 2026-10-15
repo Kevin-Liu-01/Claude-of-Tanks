@@ -48,7 +48,7 @@ interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
  * walls, roofs and slabs mapped at their real size, one merged mesh per surface, unlike the instanced members whose
  * texture spans each face. Sheeting is trapezoidal steel (walls: ribs vertical; roofs: ribs down the slope).
  */
-type FacilitySurface = 'sheeting' | 'roofing' | 'brick' | 'render' | 'timber' | 'glazing';
+type FacilitySurface = 'sheeting' | 'roofing' | 'brick' | 'render' | 'timber' | 'glazing' | 'tiles';
 type SurfaceMaps = Readonly<{ color: THREE.Texture | null; normal: THREE.Texture | null }>;
 
 interface FacilityBuildOptions {
@@ -82,6 +82,11 @@ interface GarageFacilityLayout {
   readonly floods: readonly [readonly [number, number], readonly [number, number]];
   readonly feature: readonly [number, number];
   readonly featureRadius: readonly [number, number];
+  /**
+   * The signature facility stands at the yard's datum (y = 0) on these extra level terraces [side, depth, radius side,
+   * radius depth] between it and the yard, so a building the roads run into is not perched on a bank.
+   */
+  readonly yardLevel?: ReadonlyArray<readonly [number, number, number, number]>;
 }
 
 interface PrimitiveInstance {
@@ -170,7 +175,7 @@ export function garageTerraceAtDatum(
   terraces: readonly GarageFacilityTerrace[],
 ): boolean {
   const datumFloor = (candidate: GarageFacilityTerrace): boolean => candidate.label.startsWith('fleet-service-')
-    || candidate.label.startsWith('crew-floor-');
+    || candidate.label.startsWith('crew-floor-') || candidate.label.startsWith('yard-level-');
   if (datumFloor(terrace)) return true;
   return terraces.some((other) => other !== terrace && datumFloor(other) && Math.hypot(
     (other.side - terrace.side) / (other.radiusSide + terrace.radiusSide),
@@ -225,8 +230,12 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
     ...layout.parts.map(([side, depth], index) => Object.freeze({
       label: `parts-${index + 1}`, side, depth, radiusSide: 4.2, radiusDepth: 3.2,
     })),
+    ...(layout.yardLevel ?? []).map(([side, depth, radiusSide, radiusDepth], index) => Object.freeze({
+      label: `yard-level-${index + 1}`, side, depth, radiusSide, radiusDepth,
+    })),
     Object.freeze({
-      label: 'signature-facility', side: layout.feature[0], depth: layout.feature[1],
+      label: layout.yardLevel ? 'yard-level-signature-facility' : 'signature-facility',
+      side: layout.feature[0], depth: layout.feature[1],
       radiusSide: layout.featureRadius[0], radiusDepth: layout.featureRadius[1],
     }),
   ]);
@@ -497,7 +506,7 @@ export function addGarageFacilityDetails({
   // courses and plank widths keep one scale on a 0.3 m fascia and on a 20 m wall.
   const surfaceGeometries = new Map<FacilitySurface, THREE.BufferGeometry[]>();
   const surfaceTile: Readonly<Record<FacilitySurface, number>> = Object.freeze({
-    sheeting: sheetingTileM, roofing: sheetingTileM, brick: 1.2, render: 2.4, timber: 2, glazing: 1,
+    sheeting: sheetingTileM, roofing: sheetingTileM, brick: 1.2, render: 2.4, timber: 2, glazing: 1, tiles: 2,
   });
   /**
    * A box of one building surface in a cluster's frame. `ribsAcross` turns the top and bottom faces' mapping so roof
@@ -535,8 +544,9 @@ export function addGarageFacilityDetails({
     facilityProps += 1;
     // render, planks and brick ride the pack's own plaster, wood and brick buckets (same albedos, no extra draw where
     // the pack builds in them already: the regional shelters lay brick only in Steinburg and Cinder, which do)
-    if (surface === 'render' || surface === 'timber' || surface === 'brick') {
-      const bucket = surface === 'render' ? 'plaster2' : surface === 'timber' ? 'wood' : 'stone';
+    // clay tiles ride the pack's own roof bucket (its buildings' tiled roofs), so a tiled facility roof adds no draw
+    if (surface === 'render' || surface === 'timber' || surface === 'brick' || surface === 'tiles') {
+      const bucket = surface === 'render' ? 'plaster2' : surface === 'timber' ? 'wood' : surface === 'tiles' ? 'roof' : 'stone';
       (buckets[bucket] ||= []).push(geometry);
       return;
     }
@@ -2708,7 +2718,9 @@ export function addGarageFacilityDetails({
     brick: { maps: surfaces?.brick, color: new THREE.Color(0xd8cfc6), roughness: 0.95, metalness: 0.0, normalScale: 0.7 },
     render: { maps: surfaces?.render, color: new THREE.Color(0xc9c4ba), roughness: 0.96, metalness: 0.0, normalScale: 0.55 },
     timber: { maps: surfaces?.timber, color: new THREE.Color(0xc2ab8c), roughness: 0.9, metalness: 0.0, normalScale: 0.6 },
-    glazing: { maps: undefined, color: new THREE.Color(0x2a3338), roughness: 0.12, metalness: 0.55, normalScale: 0 },
+    // grey, dirty patent glazing, not a sky-blue mirror (the garage critic panel, 2026-10-14: "blue skylights")
+    glazing: { maps: undefined, color: new THREE.Color(0x3b3f40), roughness: 0.42, metalness: 0.18, normalScale: 0 },
+    tiles: { maps: undefined, color: roofing.clone(), roughness: 0.9, metalness: 0.0, normalScale: 0 }, // (routed to the roof bucket)
   });
   // Contact shadows (2026-10-11, wave 394: "add contact shadow under every figure and prop"): every box that stands on
   // the ground with a footprint of a crate or larger gets a soft dark blot a little wider than itself, on one draw.
