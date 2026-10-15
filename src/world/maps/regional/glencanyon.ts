@@ -662,10 +662,49 @@ const fieldOffice: RegionalBuilder = (ctx) => {
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.45, verge: 0.45, thickness: 0.25, bucket: CONCRETE, parapet: 0.3 }, gableBucket: BLOCK,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.18,
     }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.4, 'glazed', ctx.variant));
+    // (props census #13, lane B 2026-10-15; the judges: "no trim of any kind ... the entrance canopy a slab on two sticks,
+    // the rooftop units blank boxes") each window's precast sill and, on the long fronts, its aluminium sunshade; the
+    // parapet's metal coping; the downpipes from their scuppers; the canopy's fascia, its beam on the posts and their base
+    // plates, the Bureau's name on the fascia; the rooftop units on their curbs with their louvres and fans
+    const alu = { colour: ALUMINIUM, decor: true };
+    for (const o of openings) {
+      if (o.kind !== 'window') continue;
+      const f = frame.faces[o.face], y = frame.bodies[o.storey].y0 + o.y0;
+      faceBox(sink, CONCRETE, f, o.u, y - 0.05, 0.04, o.w + 0.2, 0.1, 0.12, { decor: true });
+      if (o.face === 'front' || o.face === 'back') faceBox(sink, 'structureMetal', f, o.u, y + o.h + 0.2, 0.25, o.w + 0.4, 0.06, 0.5, alu);
+    }
+    const ex = W / 2 + 0.45, ez = D / 2 + 0.45, ctop = frame.eaveY + 0.25 + 0.3;
+    for (const sz of [-1, 1]) sink.span('structureMetal', -ex - 0.04, ctop, sz > 0 ? ez - 0.26 : -ez - 0.04, ex + 0.04, ctop + 0.06, sz > 0 ? ez + 0.04 : -ez + 0.26, alu);
+    for (const sx of [-1, 1]) sink.span('structureMetal', sx > 0 ? ex - 0.26 : -ex - 0.04, ctop, -ez + 0.26, sx > 0 ? ex + 0.04 : -ex + 0.26, ctop + 0.06, ez - 0.26, alu);
+    for (const sx of [-1, 1]) {
+      const x = sx * (W / 2 + 0.07), z = -D / 2 + 0.5;
+      sink.cylinder('structureMetal', [x, 0.3, z], 'y', frame.eaveY - 0.3, 0.06, 6, { colour: STEEL_GREY, decor: true });
+      sink.span('structureMetal', x - 0.12, frame.eaveY - 0.1, z - 0.14, x + 0.12, frame.eaveY + 0.2, z + 0.14, { colour: STEEL_GREY, decor: true });
+    }
     sink.span(CONCRETE, -2.4, 2.9, D / 2, 2.4, 3.15, D / 2 + 2.6, { decor: true, shadow: true });
-    for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * 2.1, 0, D / 2 + 2.3], 'y', 2.9, 0.07, 8, { colour: STEEL_GREY });
+    sink.span('structureMetal', -2.45, 2.82, D / 2 + 2.6, 2.45, 3.22, D / 2 + 2.66, alu);
+    for (const sx of [-1, 1]) sink.span('structureMetal', sx > 0 ? 2.4 : -2.46, 2.82, D / 2, sx > 0 ? 2.46 : -2.4, 3.22, D / 2 + 2.6, alu);
+    sink.span('structureMetal', -2.25, 2.72, D / 2 + 2.22, 2.25, 2.9, D / 2 + 2.38, { colour: STEEL_GREY });
+    for (const s of [-1, 1]) {
+      sink.cylinder('structureMetal', [s * 2.1, 0, D / 2 + 2.3], 'y', 2.72, 0.07, 8, { colour: STEEL_GREY });
+      sink.span('structureMetal', s * 2.1 - 0.15, 0, D / 2 + 2.15, s * 2.1 + 0.15, 0.04, D / 2 + 2.45, { colour: STEEL_GREY, decor: true });
+    }
+    // the name board on the fascia, its aluminium letters standing on it
+    sink.span('structureMetal', -2.2, 2.86, D / 2 + 2.66, 2.2, 3.18, D / 2 + 2.78, { colour: rgb(0x2a3a4a), decor: true });
+    const name = 'BUREAU OF RECLAMATION', pitch = 4.2 / name.length;
+    for (let k = 0; k < name.length; k++) {
+      if (name[k] === ' ') continue;
+      sink.span('structureMetal', -2.1 + pitch * (k + 0.2), 2.93, D / 2 + 2.78, -2.1 + pitch * (k + 0.8), 3.11, D / 2 + 2.8, { colour: ALUMINIUM, decor: true, fine: true });
+    }
     const top = frame.eaveY + 0.25;
-    for (const [x, z] of [[-W * 0.25, 0], [W * 0.2, -D * 0.2]] as const) sink.span('structureMetal', x - 0.8, top, z - 0.6, x + 0.8, top + 1.1, z + 0.6, { colour: rgb(0xb8b8b0), decor: true });
+    for (const [x, z] of [[-W * 0.25, 0], [W * 0.2, -D * 0.2]] as const) {
+      sink.span(CONCRETE, x - 0.9, top, z - 0.7, x + 0.9, top + 0.15, z + 0.7, { decor: true });
+      sink.span('structureMetal', x - 0.8, top + 0.15, z - 0.6, x + 0.8, top + 1.25, z + 0.6, { colour: rgb(0xb8b8b0), decor: true });
+      for (let y = top + 0.3; y < top + 1.1; y += 0.12) for (const sz of [-1, 1]) {
+        sink.span('structureMetal', x - 0.7, y, sz > 0 ? z + 0.6 : z - 0.62, x + 0.7, y + 0.03, sz > 0 ? z + 0.62 : z - 0.6, { colour: rgb(0x8a8a84), decor: true, fine: true });
+      }
+      sink.cylinder('structureMetal', [x + 0.35, top + 1.25, z], 'y', 0.08, 0.38, 10, { colour: rgb(0x4a4a48), decor: true });
+    }
   });
   return sink.finish();
 };
