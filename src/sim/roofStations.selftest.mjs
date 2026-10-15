@@ -21,7 +21,7 @@ assert.equal(mg.name, 'm551a1TtsRoofM2', 'guns[1] is the roof M2 the owner place
 for (const gun of [cannon, mg]) assert.ok(gun.yawArc && gun.yawArc[0] < 0 && gun.yawArc[1] > 0, `${gun.name}: a traverse arc round its rest bearing`);
 assert.ok(cannon.depressionByYaw?.length, 'the 30 mm carries the turret front depression table');
 // One-station vehicles have no extra station state and no arc.
-for (const id of ['m1a2', 'abramsx', 't90m']) {
+for (const id of ['m1a2', 'abramsx', 'm1a2_tusk']) {
   assert.equal(AUXILIARY_INVENTORY[id].guns.length, 1, `${id}: one station`);
   assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations, undefined, `${id}: no extra station state`);
   assert.equal(AUXILIARY_INVENTORY[id].guns[0].yawArc, undefined, `${id}: full traverse`);
@@ -71,7 +71,7 @@ function run({ shooter, context }, seconds = 12) {
 { const shots = run(battle(60)); assert.ok(shots[0].length === 0 && shots[1].length === 0, 'no station fires through the right-hand stock'); }
 // 5. Close and low dead ahead: the 30 mm may not depress into the turret front; the M2 (clear to 0.18 rad) fires.
 {
-  const b = battle(-2, 8, -0.4), shots = run(b, 6);
+  const b = battle(-2, 9, 0), shots = run(b, 6);
   assert.ok(shots[0].length === 0 && shots[1].length > 0, `the 30 mm holds at the roof's depression limit; the M2 fires (${shots[1].length})`);
   assert.ok(b.shooter.combat.auxiliary.gunPitch >= -0.106, 'the 30 mm never pitches below the table');
 }
