@@ -156,7 +156,9 @@ interface AuthoredRun {
 
 export interface SpareTrackSeatReport {
   runs: SpareTrackSeatReceipt[];
-  rejected: Array<{ site: string; frame: 'hull' | 'turret'; source: string; reason: string }>;
+  rejected: Array<{ site: string; frame: 'hull' | 'turret'; source: string; reason: string;
+    /** The authored seat's measures (why it could not stay). */
+    authored?: Record<string, number | null> }>;
 }
 
 const r2 = (x: number): string => (Math.round(x * 100) / 100).toFixed(2);
@@ -272,7 +274,10 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
         moved: { reason: result.hint.reason, cm, deg } });
     } else {
       removeRun(a, run);
-      report.rejected.push({ site: run.site, frame: run.frame, source: run.source, reason: result.hint.reason ?? 'unseated' });
+      const { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } =
+        seatReceipt(run.site, run.frame, run.source, 'authored', result.hint);
+      report.rejected.push({ site: run.site, frame: run.frame, source: run.source, reason: result.hint.reason ?? 'unseated',
+        authored: { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } });
     }
     frames = collect();
   }
