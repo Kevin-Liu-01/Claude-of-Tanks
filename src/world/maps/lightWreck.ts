@@ -104,7 +104,7 @@ export interface LightWreckOptions {
  * FractureSettle throws). Plain triangles: position, normal, uv and colour.
  */
 export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFractureAnatomy, seed: number, opts: LightWreckOptions = {}): THREE.BufferGeometry {
-  const S = new FractureSettle(intact, anatomy, { cell: 0.08, margin: 3, dust: opts.dust ?? 0.84, ground: opts.ground });
+  const S = new FractureSettle(intact, anatomy, { cell: 0.08, margin: 3, dust: opts.dust ?? 0.84, ground: opts.ground, restMembers: true });
   const P = anatomy.pieces, idx = P.map((_p, i) => i);
   const rng = stream(seed ^ 0x51ed7);
   const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();
