@@ -269,7 +269,9 @@ const naya: RegionalBuilder = (ctx) => {
   // the barn fills the old shed's reach (its bounds), lying along the reach's long side
   const R = reach(ctx), along = R.W >= R.D;
   const W = Math.max(5, (along ? R.D : R.W) - 0.4), L = Math.max(7, (along ? R.W : R.D) - 0.6);
-  const tin = pick(rng, TIN), board = pick(rng, CEDAR);
+  // (the old board colour's draw kept: the naya's sheet hall needs no board, the stream's later draws stay where they were)
+  const tin = pick(rng, TIN);
+  pick(rng, CEDAR);
   sink.placed(along ? Math.PI / 2 : 0, R.cx, 0, R.cz, () => {
     // (built along its own z, turned to lie along the reach's long side)
     // (Caldera round 2, wave 114: "the barn reads as clean painted board, not rusting tin"): the walls are corrugated tin

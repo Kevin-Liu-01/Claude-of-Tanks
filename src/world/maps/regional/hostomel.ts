@@ -7,7 +7,7 @@
 // concrete bands under flat roofs, the windows in ribbons; the airport fire station with its hose tower; a Rozhnovsky
 // water tower; shelled concrete shells. Burnt-out and boarded windows come from the house grammar's wear pass.
 import { PartSink, faceBox, facePanel, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedFace, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, holedFace, wallPolygon, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
