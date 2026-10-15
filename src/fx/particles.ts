@@ -612,11 +612,14 @@ float screenContact( float minFeather ) {
   return smoothstep( 0.0, max( clamp( vParticleDepth * 0.005, 0.65, 3.5 ), minFeather ), sceneDepthM - vParticleDepth );
 }
 void main() {`).replace(
-  `float er = vT * 0.36;
-  float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a * softDepthFade();`,
+  // single-line anchors: the build's GLSL minifier (tools/viteGlslMinify.ts) strips line-start indentation from the
+  // program, so an anchor spanning an indented line break never matches the built shader
+  'float er = vT * 0.36;',
   `float lensK = smoothstep( 1.5, 10.0, vParticleDepth );
-  float er = vT * 0.36 * lensK;
-  float a = smoothstep( er, er + 0.44 + 0.50 * vT + 0.55 * ( 1.0 - lensK ), tex ) * vColor.a
+  float er = vT * 0.36 * lensK;`,
+).replace(
+  'float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a * softDepthFade();',
+  `float a = smoothstep( er, er + 0.44 + 0.50 * vT + 0.55 * ( 1.0 - lensK ), tex ) * vColor.a
     * screenContact( mix( 2.5, 0.65, smoothstep( 6.0, 16.0, vParticleDepth ) ) ) * ( 0.35 + 0.65 * lensK );`,
 ).replace(
   'vec3 col = fxLit( vColor.rgb, light );',
