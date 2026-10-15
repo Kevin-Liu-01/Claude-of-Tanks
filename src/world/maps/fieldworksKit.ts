@@ -7,7 +7,6 @@
 // family's rebuild works here and the hot files are left to their owners. Every builder draws what it drew before.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { box as propBox } from '../propGeometry.ts';
 // (b45: a rebuilt kind spends its legacy builder's draws exactly)
 import { spentDraws } from './brokenDraws.ts';
 import type { DestructiblePropType } from './inhabitKit.ts';
@@ -449,14 +448,226 @@ export function fieldworksTypes(_mapId: string, _mobile: boolean): Record<string
 }
 
 // --- anti-tank hedgehogs (props.ts placeHedgehogs: three beams a hedgehog, hedgehogBeamSpecs) -------------------------
+//
+// Each map's hedgehogs as its period and side made them, member by member, in the beams' collision envelopes (each
+// member inside its beam's 0.16 x 0.16 x 2.1 m box, so the slabs that stop shells and sight lines stay as they are; the
+// gusset plates and Sarajevo's tyres stand a little proud of it, as the old box did not): riveted angle
+// iron with gusset plates at the crossing in western Europe (the Czech pattern of 1938, the Wehrmacht's and NATO's);
+// welded rail, the ezhi, on the eastern fronts and on Hostomel's runway; I-beams welded and wrapped in tyres in Sarajevo,
+// welded I-beams on the late maps; lashed logs where the front had no steel to spare (Kohima, Shanghai in 1937, the
+// Louisiana Maneuvers). Bare steel rusts from its ends and its top faces; a painted one is worn back at its edges.
+// The two leaning beams' feet are bedded in a collar of trodden soil. Vertex colours on the props' baked material.
+
+type HedgehogSection = 'angle' | 'rail' | 'ibeam' | 'timber';
+interface HedgehogForm {
+  section: HedgehogSection;
+  /** the paint's linear albedo, or bare steel */
+  paint?: Rgb3;
+  /** tyres threaded on the legs (Sarajevo's barricades) */
+  tyres?: boolean;
+  /** the soil at the feet (linear albedo) */
+  soil: Rgb3;
+}
+type Rgb3 = readonly [number, number, number];
+const lin1 = (c: number): number => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+const hexLin = (hex: number): Rgb3 => [lin1(((hex >> 16) & 255) / 255), lin1(((hex >> 8) & 255) / 255), lin1((hex & 255) / 255)];
+const mixRgb = (a: Rgb3, b: Rgb3, t: number): Rgb3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const mulRgb = (a: Rgb3, k: number): Rgb3 => [a[0] * k, a[1] * k, a[2] * k];
+const STEEL_BARE = hexLin(0x34302d), RUST_BROWN = hexLin(0x4c2c1c), RUST_ORANGE = hexLin(0x6a381d);
+const PAINT_OLIVE = hexLin(0x4a503c), PAINT_SAND = hexLin(0x8c7c5e), PAINT_GREY = hexLin(0x7c7e7a);
+const LOG_GREY = hexLin(0x5b5246), LOG_BARK = hexLin(0x3e342a), LASHING = hexLin(0x8e7f5e), TYRE = hexLin(0x1c1c1c);
+const SOIL_LOAM = hexLin(0x4a3d2e), SOIL_SAND = hexLin(0x8a7458), SOIL_RED = hexLin(0x6e4a34), SOIL_GREY = hexLin(0x5a564e);
+const SOIL_SNOW = hexLin(0xc8ccd0);
+
+const HEDGEHOG_FORMS: Readonly<Record<string, HedgehogForm>> = Object.freeze({
+  // the Wehrmacht's and the Allies' riveted angle iron in the west, 1940-45
+  fjord: { section: 'angle', soil: SOIL_LOAM }, autumn: { section: 'angle', soil: SOIL_LOAM },
+  polders: { section: 'angle', soil: SOIL_LOAM }, reservoir: { section: 'angle', soil: SOIL_LOAM },
+  alpine: { section: 'angle', soil: SOIL_GREY }, foundry: { section: 'angle', soil: SOIL_GREY },
+  // the Red Army's ezhi of welded rail, 1943-58, and Hostomel's of 2022
+  verdant: { section: 'rail', soil: SOIL_LOAM }, winter: { section: 'rail', soil: SOIL_SNOW },
+  steppe: { section: 'rail', soil: SOIL_LOAM }, railyard: { section: 'rail', soil: SOIL_GREY },
+  airfield: { section: 'rail', soil: SOIL_LOAM }, coastal: { section: 'rail', soil: SOIL_SAND },
+  // lashed logs: Shanghai 1937, the Louisiana Maneuvers 1941, Kohima 1944
+  blackglass: { section: 'timber', soil: SOIL_GREY }, longleaf: { section: 'timber', soil: SOIL_RED },
+  monsoon: { section: 'timber', soil: SOIL_RED },
+  // NATO's and the Cold War's painted angle iron
+  urban: { section: 'angle', paint: PAINT_OLIVE, soil: SOIL_GREY }, frontier: { section: 'angle', paint: PAINT_OLIVE, soil: SOIL_LOAM },
+  skybridge: { section: 'angle', paint: PAINT_OLIVE, soil: SOIL_RED }, titan_gorge: { section: 'angle', paint: PAINT_OLIVE, soil: SOIL_RED },
+  cliffbridge: { section: 'angle', soil: SOIL_SAND }, copper_mesa: { section: 'angle', soil: SOIL_RED },
+  whiteout: { section: 'angle', paint: PAINT_GREY, soil: SOIL_SNOW },
+  // welded I-beams: the Chouf, the wadis, Sarajevo's with their tyres, the late maps
+  orchard: { section: 'ibeam', soil: SOIL_RED }, desert: { section: 'ibeam', paint: PAINT_SAND, soil: SOIL_SAND },
+  ruinspires: { section: 'ibeam', tyres: true, soil: SOIL_GREY }, saltwind: { section: 'ibeam', soil: SOIL_GREY },
+  badlands: { section: 'ibeam', paint: PAINT_SAND, soil: SOIL_SAND }, oasis: { section: 'ibeam', paint: PAINT_SAND, soil: SOIL_SAND },
+  delta: { section: 'ibeam', soil: SOIL_LOAM }, mangrove: { section: 'ibeam', soil: SOIL_LOAM },
+  caldera: { section: 'rail', soil: SOIL_GREY },
+  // the future's: the off-world works' painted angle iron
+  mars: { section: 'angle', paint: PAINT_GREY, soil: SOIL_RED }, moon: { section: 'angle', paint: PAINT_GREY, soil: SOIL_GREY },
+});
+const HEDGEHOG_DEFAULT: HedgehogForm = { section: 'angle', soil: SOIL_LOAM };
+
+/** The sections (m at scale 1; x across, y up, the beam along z), counter-clockwise, inside the 0.16 m square. */
+const SECTIONS: Readonly<Record<Exclude<HedgehogSection, 'timber'>, ReadonlyArray<readonly [number, number]>>> = Object.freeze({
+  angle: [[-0.08, -0.08], [0.08, -0.08], [0.08, -0.064], [-0.064, -0.064], [-0.064, 0.08], [-0.08, 0.08]],
+  rail: [[-0.066, -0.075], [0.066, -0.075], [0.066, -0.064], [0.011, -0.05], [0.008, 0.03], [0.035, 0.04], [0.035, 0.075],
+    [-0.035, 0.075], [-0.035, 0.04], [-0.008, 0.03], [-0.011, -0.05], [-0.066, -0.064]],
+  ibeam: [[-0.07, -0.075], [0.07, -0.075], [0.07, -0.061], [0.006, -0.061], [0.006, 0.061], [0.07, 0.061], [0.07, 0.075],
+    [-0.07, 0.075], [-0.07, 0.061], [-0.006, 0.061], [-0.006, -0.061], [-0.07, -0.061]],
+});
+
+/** A smooth value noise in [0, 1) (the steel's rust and the logs' weathering; no stream). */
+function vnoise3(x: number, y: number, z: number, seed: number): number {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi;
+  const h = (a: number, b: number, c: number): number => {
+    let q = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 2147483647) ^ Math.imul(seed | 0, 1103515245);
+    q = Math.imul(q ^ (q >>> 13), 1274126177);
+    return ((q ^ (q >>> 16)) >>> 0) / 4294967296;
+  };
+  const s = (t: number): number => t * t * (3 - 2 * t), u = s(xf), v = s(yf), w = s(zf);
+  const l = (a: number, b: number, t: number): number => a + (b - a) * t;
+  return l(l(l(h(xi, yi, zi), h(xi + 1, yi, zi), u), l(h(xi, yi + 1, zi), h(xi + 1, yi + 1, zi), u), v),
+    l(l(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), u), l(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), u), v), w);
+}
+
+/** Triangles with flat normals and vertex colours (no uv: the baked bucket). */
+class SteelMesh {
+  readonly p: number[] = []; readonly n: number[] = []; readonly c: number[] = [];
+  tri(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, col: (q: THREE.Vector3, n: THREE.Vector3) => Rgb3): void {
+    const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+    for (const q of [a, b, c]) {
+      const k = col(q, n);
+      this.p.push(q.x, q.y, q.z); this.n.push(n.x, n.y, n.z); this.c.push(k[0], k[1], k[2]);
+    }
+  }
+  /** A prism of `section` (x across, y up) from z0 to z1. */
+  prism(section: ReadonlyArray<readonly [number, number]>, z0: number, z1: number, col: (q: THREE.Vector3, n: THREE.Vector3) => Rgb3,
+    caps = true): void {
+    const N = section.length, v = (k: number, zz: number) => new THREE.Vector3(section[k % N][0], section[k % N][1], zz);
+    for (let k = 0; k < N; k++) {
+      const a = v(k, z0), b = v(k + 1, z0), c = v(k + 1, z1), d = v(k, z1);
+      this.tri(a, b, c, col); this.tri(a, c, d, col);
+    }
+    if (!caps) return;
+    const tris = THREE.ShapeUtils.triangulateShape(section.map(([x, y]) => new THREE.Vector2(x, y)), []);
+    for (const [i, j, k] of tris) {
+      this.tri(v(i, z0), v(k, z0), v(j, z0), col);
+      this.tri(v(i, z1), v(j, z1), v(k, z1), col);
+    }
+  }
+  /** A round prism (a log, a tyre's tread) of radius r, `seg` sides, about the z axis from z0 to z1, centred at (cx, cy). */
+  round(r: number, z0: number, z1: number, seg: number, col: (q: THREE.Vector3, n: THREE.Vector3) => Rgb3, cx = 0, cy = 0, caps = true): void {
+    const sec: Array<[number, number]> = [];
+    for (let k = 0; k < seg; k++) { const a = (k / seg) * Math.PI * 2; sec.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+    this.prism(sec, z0, z1, col, caps);
+  }
+  geometry(): THREE.BufferGeometry {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.n, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
+    return g;
+  }
+}
+
+/** The steel's colour at a point of a beam (local: along z, half length h): rust from the ends and the top faces. */
+function steelShade(form: HedgehogForm, h: number, seed: number): (q: THREE.Vector3, n: THREE.Vector3) => Rgb3 {
+  return (q, n) => {
+    const streak = vnoise3(q.x * 30, q.y * 30, q.z * 3, seed) * 0.6 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed + 3) * 0.4;
+    const end = Math.min(1, Math.max(0, (Math.abs(q.z) - h * 0.6) / (h * 0.4)));
+    const up = n.y > 0.5 ? 0.25 : 0;
+    const rust = Math.min(1, Math.max(0, streak * 0.95 - 0.36 + end * 0.45 + up));
+    const rustCol = mixRgb(RUST_BROWN, RUST_ORANGE, Math.min(1, Math.max(0, (streak - 0.5) * 2.5)));
+    let c: Rgb3;
+    if (form.paint) {
+      const wear = Math.min(1, Math.max(0, (vnoise3(q.x * 14, q.y * 14, q.z * 2, seed + 5) - 0.55) * 3 + end * 0.5));
+      c = mixRgb(form.paint, mixRgb(STEEL_BARE, rustCol, 0.6), wear * 0.8);
+    } else c = mixRgb(STEEL_BARE, rustCol, rust);
+    return mulRgb(c, 0.85 + vnoise3(q.x * 4, q.y * 4, q.z * 4, seed + 7) * 0.3);
+  };
+}
+
+/** A log's colour: silver-grey weathered timber, its bark in patches, darker toward its ends. */
+function logShade(h: number, seed: number): (q: THREE.Vector3, n: THREE.Vector3) => Rgb3 {
+  return (q) => {
+    const bark = vnoise3(q.x * 12, q.y * 12, q.z * 2.5, seed) > 0.58 ? 1 : 0;
+    const end = Math.min(1, Math.max(0, (Math.abs(q.z) - h * 0.7) / (h * 0.3)));
+    return mulRgb(mixRgb(LOG_GREY, LOG_BARK, bark * 0.85), (0.82 + vnoise3(q.x * 5, q.y * 5, q.z * 5, seed + 2) * 0.3) * (1 - end * 0.25));
+  };
+}
+
 /** A hedgehog's beam `beam` (0-2) placed at (x, y, z) (the hedgehog's foot) as `mapId` builds it: its drawn parts. */
-export function buildHedgehogBeam(_mapId: string, _beam: number, tilt: number, yaw: number, x: number, y: number, z: number,
+export function buildHedgehogBeam(mapId: string, beam: number, tilt: number, yaw: number, x: number, y: number, z: number,
   scale: number): FieldworksPart[] {
-  const beam = propBox(0.16 * scale, 0.16 * scale, 2.1 * scale, 1.2);
-  beam.rotateX(tilt);
-  beam.rotateY(yaw);
-  beam.translate(x, y + 0.62 * scale, z);
-  return [{ bucket: 'dark', geometry: beam }];
+  const form = HEDGEHOG_FORMS[mapId] ?? HEDGEHOG_DEFAULT;
+  const seed = (Math.imul(Math.round(x * 10), 73856093) ^ Math.imul(Math.round(z * 10), 19349663) ^ (beam * 83492791)) | 0;
+  const L = 1.05, m = new SteelMesh();
+  // the member (at scale 1, the beam along z, centred on the crossing)
+  if (form.section === 'timber') {
+    const shade = logShade(L, seed);
+    m.round(0.074, -L, L, 7, shade);
+    // the lashing round the crossing: three turns of hemp rope
+    for (const dz of [-0.07, 0, 0.07]) m.round(0.082, dz - 0.018, dz + 0.018, 7, () => mulRgb(LASHING, 0.9 + (beam * 0.05)));
+  } else {
+    const sec = SECTIONS[form.section];
+    // (the angle iron's legs turned so each beam shows its two faces outward; the rail and the I-beam upright)
+    m.prism(sec, -L, L, steelShade(form, L, seed));
+    if (beam === 0) {
+      if (form.section === 'angle') {
+        // the gusset: a plate either side of the crossing's legs, riveted through
+        const plate = steelShade(form, 4, seed + 11);
+        const P = 0.15, T = 0.012;
+        m.prism([[-P, -P], [P, -P], [P, P], [-P, P]].map(([a, b]) => [a, b] as const), -0.08 - T, -0.08, plate);
+        m.prism([[-P, -P], [P, -P], [P, P], [-P, P]].map(([a, b]) => [a, b] as const), 0.08, 0.08 + T, plate);
+        for (const [rx, ry] of [[-0.1, -0.1], [0.1, -0.1], [-0.1, 0.1], [0.1, 0.1]] as const) {
+          for (const zz of [-0.08 - T - 0.012, 0.08 + T]) m.round(0.014, zz, zz + 0.012, 5, () => mulRgb(RUST_BROWN, 0.9), rx, ry);
+        }
+      } else {
+        // the welds at the crossing: beads round where the three members meet
+        const weld = (): Rgb3 => mulRgb(mixRgb(STEEL_BARE, RUST_BROWN, 0.5), 0.75);
+        for (const [wx, wy] of [[0.07, 0.07], [-0.07, 0.07], [0.07, -0.07], [-0.07, -0.07]] as const) m.round(0.016, -0.09, 0.09, 5, weld, wx, wy);
+      }
+    }
+  }
+  const g = m.geometry();
+  g.scale(scale, scale, scale);
+  g.rotateX(tilt);
+  g.rotateY(yaw);
+  g.translate(x, y + 0.62 * scale, z);
+  const parts: FieldworksPart[] = [{ bucket: 'baked', geometry: g }];
+  // the leaning beam's foot bedded in a collar of trodden soil
+  if (beam !== 2) {
+    const foot = new THREE.Vector3(0, 0, (tilt > 0 ? 1 : -1) * L * scale)
+      .applyAxisAngle(new THREE.Vector3(1, 0, 0), tilt).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    const collar = new SteelMesh();
+    const soil = (q: THREE.Vector3): Rgb3 => mulRgb(form.soil, 0.8 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed + 13) * 0.3);
+    const R = 0.2 * scale, r = 0.09 * scale, H = 0.06 * scale, seg = 7;
+    for (let k = 0; k < seg; k++) {
+      const a0 = (k / seg) * Math.PI * 2, a1 = ((k + 1) / seg) * Math.PI * 2;
+      const o0 = new THREE.Vector3(Math.cos(a0) * R, -0.02 * scale, Math.sin(a0) * R), o1 = new THREE.Vector3(Math.cos(a1) * R, -0.02 * scale, Math.sin(a1) * R);
+      const i0 = new THREE.Vector3(Math.cos(a0) * r, H, Math.sin(a0) * r), i1 = new THREE.Vector3(Math.cos(a1) * r, H, Math.sin(a1) * r);
+      collar.tri(o0, i1, o1, soil); collar.tri(o0, i0, i1, soil);
+    }
+    const cg = collar.geometry();
+    cg.translate(x + foot.x, y, z + foot.z);
+    parts.push({ bucket: 'baked', geometry: cg });
+    if (form.tyres) {
+      // a tyre threaded on the leg has slid down it to the ground and lies there round its foot
+      const tyre = new SteelMesh(), seg = 10, Ro = 0.36 * scale, Ri = 0.22 * scale, W = 0.17 * scale;
+      const rubber = (q: THREE.Vector3): Rgb3 => mulRgb(TYRE, 0.85 + vnoise3(q.x * 9, q.y * 9, q.z * 9, seed + 9) * 0.35);
+      const at = (r: number, k: number, h: number) => new THREE.Vector3(Math.cos((k / seg) * Math.PI * 2) * r, h, Math.sin((k / seg) * Math.PI * 2) * r);
+      for (let k = 0; k < seg; k++) {
+        const k1 = k + 1;
+        tyre.tri(at(Ro, k, 0), at(Ro, k1, W), at(Ro, k1, 0), rubber); tyre.tri(at(Ro, k, 0), at(Ro, k, W), at(Ro, k1, W), rubber);
+        tyre.tri(at(Ri, k, 0), at(Ri, k1, 0), at(Ri, k1, W), rubber); tyre.tri(at(Ri, k, 0), at(Ri, k1, W), at(Ri, k, W), rubber);
+        tyre.tri(at(Ri, k, W), at(Ro, k1, W), at(Ro, k, W), rubber); tyre.tri(at(Ri, k, W), at(Ri, k1, W), at(Ro, k1, W), rubber);
+      }
+      const tg = tyre.geometry(), hl = Math.hypot(foot.x, foot.z) || 1;
+      tg.translate(x + foot.x - (foot.x / hl) * 0.12 * scale, y - 0.01 * scale, z + foot.z - (foot.z / hl) * 0.12 * scale);
+      parts.push({ bucket: 'baked', geometry: tg });
+    }
+  }
+  return parts;
 }
 
 // ---------------------------------------------------------------------------------------------- sandbag stacks
