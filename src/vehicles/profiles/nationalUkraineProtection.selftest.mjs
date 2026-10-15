@@ -6,6 +6,7 @@ import {TANK_SPECS} from '../specs.ts';
 import {MISSION_ATTACHMENT_SEATS} from '../../sim/missionAttachmentSeats.generated.ts';
 import {NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../../tools/mission-attachment-geometry.mjs';
+import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 const ids=['t80u_zoria','t72b3m_hetman','t72b3_sich','t72b3m_hetman_ii'];
 assert.deepEqual(Object.keys(NATIONAL_UKRAINE_GHILLIE).sort(),[...ids].sort());
@@ -136,7 +137,7 @@ for(const quality of ['high','low'])for(const id of ids){
   for(const owner of ['hull','turret']){
    const mesh=tank.root.getObjectByName(owner+'OpenLattice');
    assert.equal(mesh.userData.continuityRole,'open-lattice');
-   const net=tank.root.getObjectByName(id+'_ghillie_'+owner+'_net');
+   const net=tank.root.getObjectByName(tankSeedId(id)+'_ghillie_'+owner+'_net');
    assert(net&&net.parent.name==='rig_'+owner,id+': physical net follows '+owner);
    // 2026-10-08 (tank-accessories round 5, merging push 3): the lane's suit builder ties all its garnish into one
    // card draw per owner, named _leaves (ghillieSuit.ts, 2026-10-05); main's split _light/_dark layers are gone. Its
@@ -144,7 +145,7 @@ for(const quality of ['high','low'])for(const id of ids){
    // hedge sculpture", "fish scales"), so a dozen bunches (300 vertices) is physical leaves, not a painted net.
    // 2026-10-09 (launch RC): the bar counts cards, not vertices. A card is 24 vertices at high quality and a flat 12 at
    // low (ghillieSuit.ts, GHILLIE_TOP_CARDS), so the same dozen cards is 150 vertices at low.
-   const leaf=tank.root.getObjectByName(id+'_ghillie_'+owner+'_leaves');
+   const leaf=tank.root.getObjectByName(tankSeedId(id)+'_ghillie_'+owner+'_leaves');
    assert(leaf?.geometry.attributes.position.count>(quality==='low'?150:300),id+': physical leaves tied on, not only painted net');
   }
   const cfg=NATIONAL_UKRAINE_GHILLIE[id];

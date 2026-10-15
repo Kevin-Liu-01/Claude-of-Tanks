@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
+import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 const id = 'leo2a6_ua';
 const spec = getSpec(id);
@@ -130,7 +131,7 @@ for (const station of receipt.remoteStations) {
 // (vehicleFoliage.ts) instead of the light and dark flap layers; the net carrier is unchanged.
 for (const owner of ['hull', 'turret', 'gun']) {
   for (const layer of ['net', 'leaves']) {
-    const mesh = tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`);
+    const mesh = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`);
     assert.ok(mesh?.isMesh, `dense ${owner} ghillie ${layer} layer exists`);
     assert.ok(mesh.geometry.getAttribute('position').count > 120,
       `${owner} ghillie ${layer} is detailed fitted geometry`);
@@ -158,14 +159,14 @@ assert.ok(ghillie.top[1].yAt(0, 0) < 0.82,
   'main roof net hugs the wedge roof below its equipment line');
 {
   const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert();
-  const net = tank.root.getObjectByName(`${id}_ghillie_turret_net`), at = net.geometry.getAttribute('position');
+  const net = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_turret_net`), at = net.geometry.getAttribute('position');
   const local = Array.from({ length: at.count }, (_, i) => new THREE.Vector3().fromBufferAttribute(at, i)
     .applyMatrix4(net.matrixWorld).applyMatrix4(toTurret));
   assert.ok(local.every((v) => v.y > 0.38), 'the flank drapes stop part way down the flank cage; the lower flanks are bare');
   assert.ok(local.every((v) => v.z < 1.36), 'the cheeks and their front cage carry no net');
 }
 
-const gunNet = tank.root.getObjectByName(`${id}_ghillie_gun_net`);
+const gunNet = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_gun_net`);
 const gunBounds = new THREE.Box3().setFromObject(gunNet);
 const muzzleWorld = muzzle.getWorldPosition(new THREE.Vector3());
 assert.ok(gunBounds.max.z < muzzleWorld.z - 0.08,

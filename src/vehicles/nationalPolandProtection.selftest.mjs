@@ -5,6 +5,7 @@ import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {NATIONAL_POLAND_GHILLIE_CONFIGS} from './nationalPolandProtectionConfig.ts';
 import {sampleArmorRay} from './profiles/armorFaceSampling.ts';
 import {DEFAULT_EXCLUDE} from '../../tools/tank-voxel-body.mjs';
+import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 // The smallest Y over an entire continuous pitch interval. Turret-local yaw
 // does not alter Y, so a horizontal separating plane proves every yaw clear.
@@ -115,8 +116,8 @@ for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality o
   t.resetEra();
   if(id==='t72b3_zubr_ii')zubrMainGunCorner(t);
   const turret=t.root.getObjectByName('rig_turret');
-  assert(t.root.getObjectByName(id+'_ghillie_turret_net'),`${label}: camouflage is present in native factory output`);
-  assert(t.root.getObjectByName(id+'_ghillie_hull_net'),`${label}: hull net is present in native factory output`);
+  assert(t.root.getObjectByName(tankSeedId(id)+'_ghillie_turret_net'),`${label}: camouflage is present in native factory output`);
+  assert(t.root.getObjectByName(tankSeedId(id)+'_ghillie_hull_net'),`${label}: hull net is present in native factory output`);
   t.root.updateMatrixWorld(true);
   let station;turret.traverse(o=>{if(o.userData.remoteControlled)station=o;});assert(station,`${label}: existing roof station remains`);
   const weapon=station.getObjectByName('auxiliaryWeaponPitch'),profile=auxiliaryWeaponProfile(station.userData.caliberMm,id);
@@ -136,7 +137,7 @@ for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality o
   // and one garnish mesh whose cards hold both scrim colours
   const clothMeshes=[];
   turret.traverse(o=>{if(!o.isMesh||!o.name.includes('_ghillie_turret_'))return;clothMeshes.push(o);});
-  assert.deepEqual(clothMeshes.map(o=>o.name.slice(id.length)).sort(),['_ghillie_turret_leaves','_ghillie_turret_net'],`${label}: merged net plus one scrim garnish layer`);
+  assert.deepEqual(clothMeshes.map(o=>o.name.slice(tankSeedId(id).length)).sort(),['_ghillie_turret_leaves','_ghillie_turret_net'],`${label}: merged net plus one scrim garnish layer`);
   const tint=clothMeshes.find(o=>o.name.endsWith('_leaves')).geometry.getAttribute('color'),tints=new Set();
   for(let i=0;i<(tint?.count??0);i++)tints.add([tint.getX(i),tint.getY(i),tint.getZ(i)].map(v=>v.toFixed(3)).join());
   assert(tints.size>=2,`${label}: the scrim garnish carries cards of more than one colour (${tints.size})`);
