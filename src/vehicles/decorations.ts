@@ -57,6 +57,7 @@ import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { DecorReservedBox } from './profiles/fieldChest.ts';
 import {
   vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
   type MaterialTankSpec,
@@ -3990,8 +3991,8 @@ function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: b
   });
   // critic panel 2026-10-15 (owner-markup round): the volumes a builder reserved where it replaced marked stock
   // (fieldChest.ts reserveDecorVolume), so the decor's loads stand where they stood before the change
-  for (const [min, max] of (group.userData.decorReservedBoxes ?? []) as [number, number, number][][]) {
-    out.push(new THREE.Box3(new THREE.Vector3(...min), new THREE.Vector3(...max)));
+  for (const [min, max] of (group.userData.decorReservedBoxes ?? []) as DecorReservedBox[]) {
+    out.push(new THREE.Box3(new THREE.Vector3().fromArray(min), new THREE.Vector3().fromArray(max)));
   }
   // per side, the screen: the lattice pieces reaching within FIELD_SCREEN_FACE_BAND of that side's outermost bar (the
   // face bars and the standoffs out to them), one band box

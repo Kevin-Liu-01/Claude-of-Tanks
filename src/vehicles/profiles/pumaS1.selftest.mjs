@@ -120,7 +120,7 @@ try {
     launcher: 'MELLS-Spike-LR2',
     stabilizedPanoramicSight: true,
     allAroundCameraCount: 4,
-    remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
+    remoteSecondaryWeapon: null,
     gunCenterlineOffsetFromTurretM: 0.14,
     gunSideEquipmentPods: 2,
     gunSideOpticApertures: 4,

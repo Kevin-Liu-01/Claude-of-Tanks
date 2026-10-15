@@ -74,7 +74,9 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     frame.gun[2] - frame.turret[2],
   ];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
-  if (id === 'kurganets25_x') spec.armor.gunBarrel.radiusM = .069;
+  // the Bumerang-BM's 2A42 barrel (coordinator ruling 2026-10-15: the turret is the Bumerang-BM, so its gun is the 30 mm
+  // 2A42, not a 57 mm)
+  if (id === 'kurganets25_x') spec.armor.gunBarrel.radiusM = .05;
 }
 
 /** Game tuning starts from established fleet peers; the weapon family still
@@ -127,11 +129,12 @@ function applySourceArmament(spec: FleetTankSpec): void {
   applyFleetLauncherMuzzles(spec);
 }
 
-/** The supplied Epokha turret has four Kornet and eight visible Bulat tubes.
- * Keep the primary balance channel and expose both launchers in three slots.
- * Bulat's 70 mm nominal caliber is game tuning: the publisher gives no exact
- * caliber. Its soft-target effect reuses the peer HE round, with the existing
- * guided channel's motion, cycle and sound; this is not a thermobaric model. */
+/** The Kurganets-25 IFV's Bumerang-BM (B05Ya01 Epokha) module (coordinator ruling 2026-10-15: one real configuration,
+ * the 30 mm 2A42 as the primary balance channel, a coaxial 7.62 mm PKTM, drawn) with its two launchers in their own
+ * slots: four Kornet-M, two in each twin housing on the turret flanks, and the rear-roof launcher's eight Bulat (owner
+ * ruling 2026-10-15: "keep the missiles and kurganets launcher on it ... just make it properly attached"). Bulat's
+ * 70 mm nominal caliber is game tuning: the publisher gives no exact caliber. Its soft-target effect reuses the peer HE
+ * round, with the existing guided channel's motion, cycle and sound; this is not a thermobaric model. */
 function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   const guided = spec.gun.shells.find(round => round.guided);
   const highExplosive = spec.gun.shells.find(round => round.type === 'HE' && !round.guided);
@@ -165,7 +168,7 @@ function applyK21Launcher(spec: FleetTankSpec): void {
 /** Preserve native caliber and distinguish same-type loadout channels. */
 function applyAutocannonCaliber(spec: FleetTankSpec): void {
   const autocannonCalibers: Readonly<Record<string, number>> = {
-    kurganets25_x: 57, griffin50_x: 50, ajax_x: 40, k21_x: 40, kf41_lynx_x: 35, cv90_mkiv_x: 50,
+    kurganets25_x: 30, griffin50_x: 50, ajax_x: 40, k21_x: 40, kf41_lynx_x: 35, cv90_mkiv_x: 50,
   };
   const caliber = autocannonCalibers[spec.id];
   if (caliber) {

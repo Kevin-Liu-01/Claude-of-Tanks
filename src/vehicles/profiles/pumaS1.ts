@@ -16,7 +16,7 @@ import {
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
-import { hatchParts } from './fieldChest.ts';
+import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -538,7 +538,9 @@ function addTurret(P: PumaS1BuilderPort): void {
 
   // VH.14 (the coordinator's ruling: roof weapons match the real vehicle; critic panel 2026-10-15 on the owner markup's
   // surface 5): the Puma S1 carries its 30 mm, a coaxial MG4 and MELLS and no roof weapon, so the compact 12.7 mm remote
-  // station that stood on the rear roof is gone.
+  // station that stood on the rear roof is gone. The decor keeps out of the volume its tower stood in (measured on main;
+  // its barrel was never a keep-out), so the roof and bustle loads keep their seats (fieldChest.ts reserveDecorVolume).
+  reserveDecorVolume(P.turretG, [0.1834, 0.666, -0.9843], [0.6562, 1.0868, -0.5903]);
 
   // Twin MELLS/Spike LR2 cells use square armored launch boxes like the Puma
   // S1 demonstrator.  The shallow square mouths are unmistakable from the
@@ -636,7 +638,7 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       launcher: 'MELLS-Spike-LR2',
       stabilizedPanoramicSight: true,
       allAroundCameraCount: 4,
-      remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
+      remoteSecondaryWeapon: null,
       gunCenterlineOffsetFromTurretM: 0.14,
       gunSideEquipmentPods: 2,
       gunSideOpticApertures: 4,

@@ -792,10 +792,10 @@ function basketRail(C: EquipmentContext, label: string, y: number, rearZ: number
 // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies", on the M1A2 SEPv2's aft duffel
 // bag and the blank faces of its corner cans): the bustle rack carries real field equipment. The three tossed canvas
 // sacks are gone; the four source cans become the fleet's pressed 20 L jerrycan (stamped X faces, three-grip handle,
-// spout) on the same trays and seats; the rack bays hold steel stowage chests and stacked M2A1 ammunition cans. Rack
+// spout) on the same trays and seats; the rack bays hold steel stowage chests and rows of M2A1 ammunition cans. Rack
 // datums are turret-local (main rack floor y 0.412, bays split by the receiving plates at x -0.585, -0.068 and 0.448,
 // z -3.182..-2.684; extension floor y 0.404, x -1.065..0.926, z -3.70..-3.19); every item clears the plates, trays,
-// stiles and the folded aft screen.
+// stiles and courses.
 function bustleRackStowage(C: EquipmentContext): void {
   const P = C.P, high = !!P.q;
   for (const [i, [x, y, z, yaw]] of SOURCE_CONTAINER_SEATS.entries()) {
@@ -806,17 +806,22 @@ function bustleRackStowage(C: EquipmentContext): void {
     for (const [k, g] of paint.entries()) emit(C, `BustleCan${i}_${k}`, g.rotateY(Math.PI / 2 + yaw), [x, y + .002, z]);
     if (can.spout) emit(C, `BustleCan${i}_Spout`, can.spout.rotateY(Math.PI / 2 + yaw), [x, y + .002, z], 'turret', 'turretDark');
   }
-  const place = (parts: { paint: THREE.BufferGeometry[]; dark: THREE.BufferGeometry[] }, x: number, y: number, z: number) => {
-    for (const g of parts.paint) P.addEquipment('turret', g, x, y, z);
-    for (const g of parts.dark) P.addEquipment('turretDark', g, x, y, z);
+  const place = (parts: { paint: THREE.BufferGeometry[]; dark: THREE.BufferGeometry[] }, x: number, y: number, z: number, yaw = 0) => {
+    for (const g of parts.paint) P.addEquipment('turret', g, x, y, z, 0, yaw, 0);
+    for (const g of parts.dark) P.addEquipment('turretDark', g, x, y, z, 0, yaw, 0);
   };
   // the two middle bays: one chest each, latches aft
   for (const x of [-.327, .190]) place(fieldChestParts(.44, .30, .42, {high, front: -1, handles: false}), x, .412, -2.930);
-  // the outer bays behind the can trays: two rows of two M2A1 cans
-  for (const cx of [-1.19, .89]) for (const dx of [-.165, .165]) for (const z of [-3.095, -2.940]) {
-    place(ammoCanParts(high), cx + dx, .412, z);
+  // the outer bays behind the can trays: a row of five M2A1 cans standing long side fore and aft, latches aft, filling
+  // each bay between its frame and its receiving plate (critic panel 2026-10-15: two rows of two left the bay's inner
+  // third bare, its floor cross members reading as a loose dark bar, and the rows' lids overlapped 8 mm). Measured
+  // turret-local stock: left bay x -1.527 (frame) .. -0.592 (plate), right bay 0.455 .. 1.388; rear lower strip at
+  // z -3.187, the corner jerrycans from z -2.846; a can is 0.163 across its lid and 0.322 long with its latch, so the
+  // row spans z -3.1785..-2.8565 with 1.2 cm between cans and 3.5 cm to the frame and plate.
+  for (const cx of [-1.0595, .9215]) for (let k = -2; k <= 2; k++) {
+    place(ammoCanParts(high), cx + k * .175, .412, -3.013, Math.PI / 2);
   }
-  // the extension: two chests side by side ahead of the aft screen
+  // the extension: two chests side by side
   place(fieldChestParts(.88, .34, .40, {high, front: -1}), -.55, .404, -3.450);
   place(fieldChestParts(.78, .34, .40, {high, front: -1}), .42, .404, -3.450);
 }

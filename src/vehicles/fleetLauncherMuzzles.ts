@@ -50,7 +50,7 @@ export function applyFleetLauncherMuzzles(spec: FleetTankSpec): void {
   if (spec.id === 'kurganets25_x') {
     tips = [
       ...[-1, 1].flatMap(s => [1.281, 1.474].map(x => ({ ...world(s * x, 2.869, -.698), shellSlots: [1] }))),
-      // The dark rear discs are end caps; launch from the forward (+Z) ends.
+      // the rear-roof launcher's eight Bulat mouths, the container's measured exits (epokhaTurret.ts)
       ...([[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const)
         .flatMap(([y, xs]) => xs.map(x => ({ ...world(x, y, -2.4075), shellSlots: [2] }))),
     ];
