@@ -56,7 +56,10 @@ for (const id of SECOND_WAVE_X_IDS) {
   assert.equal(spec.publicVisualFallback, undefined);
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'));
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
-  assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
+  // An X that took its donor template's name in the schema-3 rename (merkava4_x -> merkava4, t72b3_x -> t72b3, ...)
+  // shares the donor's id string, so the donor's builder cannot be looked up by it: it must own an X builder.
+  if (donor === id) assert.match(PROCEDURAL_PROFILES[id].build.name, /X$/, `${id}: its own X builder, not its donor template's`);
+  else assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
   assert.deepEqual(armament(spec.gun), armament(weaponReference(id, donorRow)), `${id}: donor weapon payload retained`);
   assert.equal(spec.hp, donorRow.hp);
   assert.notEqual(spec.armor, donorRow.armor);
