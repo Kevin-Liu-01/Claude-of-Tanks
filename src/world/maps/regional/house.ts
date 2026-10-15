@@ -119,6 +119,12 @@ export interface HouseSpec {
    * floor) on a face, cut through the wall into the dark of the room behind — never a dark plate on the wall.
    */
   breaches?: ReadonlyArray<{ face: FaceName; storey: number; u: number; y: number; r: number; seed: number; spall?: RegionalBucket }>;
+  /**
+   * Spans of a face another solid stands against up every storey (props census #13: a tower in the house's corner, a
+   * hand proud of its walls): the storey walls leave them out — the tower's own face is the wall there, and the openings
+   * cut through it look into its dark, never at a house wall a hand behind it.
+   */
+  abutted?: ReadonlyArray<{ face: FaceName; u0: number; u1: number }>;
   chimneys: ChimneySpec[];
   gutters?: { colour: Rgb } | null;
   /**
@@ -463,14 +469,21 @@ const RENDERS: ReadonlySet<RegionalBucket> = new Set<RegionalBucket>(['plaster',
  * pier (a splinter, a sheet come loose). Decor 15 mm proud of the wall, clear of every opening, from the
  * wear context's own spall stream: the walls, the damage decisions and the collision never change.
  */
+/** An opening wholly inside one of a face's abutted spans (HouseSpec.abutted). */
+function inAbutted(abut: ReadonlyArray<{ u0: number; u1: number }>, o: Opening): boolean {
+  return abut.some((a) => o.u - o.w / 2 >= a.u0 - 1e-6 && o.u + o.w / 2 <= a.u1 + 1e-6);
+}
+
 function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face: Face,
-  body: { y0: number; y1: number }, storey: number, own: readonly Opening[]): void {
+  body: { y0: number; y1: number }, storey: number, own: readonly Opening[], covered: ReadonlyArray<{ u0: number; u1: number }> = []): void {
   const wear = wearContext, rng = wear?.spall;
   const bucket = spec.spall === undefined ? 'stone' : spec.spall;
   if (!wear || !rng || wear.amount <= 0 || !bucket || !RENDERS.has(wall)) return;
   if (rng() >= Math.min(0.75, 0.25 + 1.5 * wear.amount)) return;
   const half = face.width / 2, y0 = body.y0, y1 = body.y1;
   const keepOut = own.map((o) => ({ u0: o.u - o.w / 2 - 0.1, u1: o.u + o.w / 2 + 0.1, y0: y0 + o.y0 - 0.1, y1: y0 + o.y0 + o.h + 0.1 }));
+  // (an abutted span is no wall of this house's: its losses fall where a tower stands)
+  for (const c of covered) keepOut.push({ u0: c.u0 - 0.1, u1: c.u1 + 0.1, y0: y0 - 1, y1: y1 + 1 });
   const windows = own.filter((o) => o.kind === 'window' && !o.state);
   // (facade craft, desktop; wave 172: "a hard-edged texture-blend patch on the blank Steinburg gable") each loss in its
   // layers (layeredLoss); the losses keep their places and count, so the craft only adds to the plain build
@@ -1084,7 +1097,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     for (const name of FACE_NAMES) {
       const face = sf[name];
       const own = spec.openings.filter((o) => o.face === name && o.storey === i);
-      const holes = own.map((o) => {
+      const holes: HoleRect[] = own.map((o) => {
         // a shopfront keeps its stall riser: the glazing starts above it
         const riser = o.kind === 'shopfront' ? 0.55 : 0;
         if (o.arch) {
@@ -1103,8 +1116,13 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       // the shell breaches: each cut as its bounding square, the masonry restored round its ragged outline below
       const brs = (spec.breaches ?? []).filter((br) => br.face === name && br.storey === i);
       for (const br of brs) holes.push({ u0: br.u - br.r, u1: br.u + br.r, y0: b.y0 + br.y - br.r, y1: b.y0 + br.y + br.r });
+      // the abutted spans: left out, the storey's height, with no reveal (the solid against them is the wall there); an
+      // opening inside one has no reveal either
+      const abut = (spec.abutted ?? []).filter((a) => a.face === name);
+      own.forEach((o, k) => { if (inAbutted(abut, o)) holes[k] = { ...holes[k], bare: true }; });
+      for (const a of abut) holes.push({ u0: a.u0, u1: a.u1, y0: b.y0, y1: b.y1, bare: true });
       holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
-        [...own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), ...brs.map(() => 1)], i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
+        [...own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), ...brs.map(() => 1), ...abut.map(() => 1)], i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
       for (const br of brs) breachFill(sink, wall, face, br.u, b.y0 + br.y, br.r, Math.max(reveal, 0.12), reveal <= 0, br.seed, br.spall ?? null);
     }
     // (a hollow body — a hall open to its roof — has no attic floor at its eaves: from inside, its back was all the
@@ -1164,15 +1182,20 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       if (storey.framed && dialect.dressWall) {
         capturingMembers(plan, i, name, bodies[i].y0, bodies[i].y1,
           () => dialect.dressWall!(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame));
-      } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own);
-      // the units stand in the cut openings, set back by the reveal; (round 6) a sill shadows a rendered or masonry wall
+      } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own, (spec.abutted ?? []).filter((a) => a.face === name));
+      // the units stand in the cut openings, set back by the reveal; (round 6) a sill shadows a rendered or masonry wall;
+      // an opening inside an abutted span draws its unit into nothing (its draws kept: the house's stream is unchanged)
+      const abut = (spec.abutted ?? []).filter((a) => a.face === name);
+      const scratch = abut.length ? new PartSink(sink.uvOffset) : null;
       sink.recess = reveal;
+      if (scratch) scratch.recess = reveal;
       try {
         withSillShadow(!storey.framed && SILL_SHADOWED.has(storey.wall) ? storey.wall : null, () => {
           for (const o of own) {
-            if (o.state) damagedOpening(sink, face, o, bodies[i].y0, reveal);
-            else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(sink, face, o, bodies[i].y0, frame);
-            else dialect.window(sink, face, o, bodies[i].y0, frame);
+            const into = scratch && inAbutted(abut, o) ? scratch : sink;
+            if (o.state) damagedOpening(into, face, o, bodies[i].y0, reveal);
+            else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(into, face, o, bodies[i].y0, frame);
+            else dialect.window(into, face, o, bodies[i].y0, frame);
           }
         });
       } finally { sink.recess = 0; }
@@ -1283,7 +1306,8 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
 }
 
 /** An opening cut in a wall; `spring`: a round head across its width springs there (Opening.arch), y1 its crown. */
-export interface HoleRect { u0: number; u1: number; y0: number; y1: number; spring?: number }
+/** `bare`: a span left out of the face with no reveal (HouseSpec.abutted: a solid stands against it) */
+export interface HoleRect { u0: number; u1: number; y0: number; y1: number; spring?: number; bare?: boolean }
 /** A weathering stain on a face: the wall inside it shaded from `bottom` (at y0) to `top` (at y1). */
 export interface Stain { u0: number; u1: number; y0: number; y1: number; bottom: number; top: number }
 
@@ -1297,8 +1321,9 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   stains: readonly Stain[] = [], revealShade: readonly number[] = [], topShade = 1, bottomShade = 1): void {
   const m = 0.04;
   const kept: number[] = [];
-  const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + m), u1: Math.min(h.u1, rect.u1 - m), y0: Math.max(h.y0, rect.y0),
-    y1: Math.min(h.y1, rect.y1 - m), spring: h.spring })).filter((h, k) => {
+  // (a bare span keeps no margin: it may run to the face's corner and the storey's top)
+  const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + (h.bare ? 0 : m)), u1: Math.min(h.u1, rect.u1 - (h.bare ? 0 : m)),
+    y0: Math.max(h.y0, rect.y0), y1: Math.min(h.y1, rect.y1 - (h.bare ? 0 : m)), spring: h.spring, bare: h.bare })).filter((h, k) => {
     const ok = h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05;
     if (ok) kept.push(k);
     return ok;
@@ -1369,6 +1394,7 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   // as the wall's thickness shades them
   const deep = facadeOn() ? 0.68 : 1;
   hs.forEach((h, k) => {
+    if (h.bare) return;
     const dark = (revealShade[kept[k]] ?? 1) * deep;
     if (h.spring !== undefined) {
       // (E10) the jambs to the springing line, the intrados round the head, the sill; the room behind the whole shape
@@ -1499,6 +1525,30 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
     // (no reveal: the opening looks into a lit body, a greenhouse's: no room behind it)
     if (reveal > 0) sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
   }
+}
+
+/**
+ * A square shaft (a tower) whose faces carry openings cut through them (props census #13): a core `cut` in from every
+ * face and the faces holed slabs `cut` deep round it (front and back across the full width, the sides between them),
+ * each opening's reveal back to `reveal` with the dark behind it, for a unit's pane or leaf to stand in. The faces are
+ * returned by name (bodyFaces' frame, centred on each face). Against a house wall a hand behind the face, the house
+ * leaves that span out (HouseSpec.abutted).
+ */
+export function holedShaft(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number,
+  holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number, reveal: number, opts: EmitOptions = {}): Record<FaceName, Face> {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wx = x1 - x0, wz = z1 - z0;
+  sink.span(bucket, x0 + cut, y0, z0 + cut, x1 - cut, y1, z1 - cut, opts);
+  const faces: Record<FaceName, Face> = {
+    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: wx },
+    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: wz },
+    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: wx },
+    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: wz },
+  };
+  for (const name of FACE_NAMES) {
+    const half = name === 'front' || name === 'back' ? wx / 2 : wz / 2 - cut;
+    holedPolygon(sink, bucket, faces[name], [[-half, y0], [half, y0], [half, y1], [-half, y1]], holes[name] ?? [], cut, reveal, opts);
+  }
+  return faces;
 }
 
 function shadeRgb(c: Rgb, k: number): Rgb {
