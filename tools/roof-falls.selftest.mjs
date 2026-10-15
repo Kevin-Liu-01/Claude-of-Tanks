@@ -5,7 +5,7 @@
 // authority over the committed shards):
 //  - a hull driven off a roof at an angle, or dropped across its edge, turned nose-down about its track stations a metre
 //    and more behind the edge, its underside sank half a metre into the roof between them and the edge, and the standing
-//    rule then found it inside the building and pushed it out sideways a metre a step (Cliffbridge, Longleaf, Frontier's
+//    rule then found it inside the building and pushed it out sideways a metre a step (Cliffbridge, Airfield, Frontier's
 //    edges): the roof's edge under the box is a contact now (structureSupport.ts topEdgeStationsIn);
 //  - a part with no height range of its own in a record with a drawn top was never passed: a T-90 dropped on Copper
 //    Mesa's 22 m tower was pushed off it 4.8 m from 0.47 m over its top, and fell to the ground.
@@ -19,7 +19,7 @@ await ensureAuthorityFleet(['t90m', 'bmp2', 'jpz_e100_x', 'm1a2']);
 const CASES = [
   ['copper_mesa', 'copper_mesa/roofs/edge/5/edge-drop', "a T-90 dropped across the edge of Copper Mesa's 22 m tower"],
   ['cliffbridge', 'cliffbridge/roofs/flat/0/drive-off', 'an E-100 driven off a Cliffbridge roof at an angle'],
-  ['longleaf', 'longleaf/roofs/edge/5/edge-drop', 'a BMP-2 dropped across a Longleaf roof edge'],
+  ['airfield', 'airfield/roofs/flat/3/drive-off', 'an E-100 driven off an Airfield roof at an angle'],
   ['frontier', 'frontier/roofs/edge/11/edge-stand', "a BMP-2 set down on a Frontier roof's edge"],
 ];
 const fmt = (m) => `pop ${m.popXZMaxM.toFixed(2)} m, overlap ${m.obstaclePenMaxM.toFixed(2)} m, into the roof ${m.roofSinkMaxM.toFixed(2)} m, `

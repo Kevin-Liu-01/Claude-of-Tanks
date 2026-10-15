@@ -6,8 +6,10 @@
 //  - Frontier's 54-degree roof: a T-90 slid off it hung at the eave with a track corner across it; its support stepped
 //    0.9 m in one step and again each time the corner crossed back, the ground's rate took the steps, and it left the
 //    eave at 2.6 m/s. No launch now (a step past half a metre in one step is no moving ground).
-//  - Foundry's 25 m roof: a BMP-2 slides off it, falls 19 m, lands at 21 m/s and rises off the ground at 3.2 m/s, the
-//    ruleset's restitution (0.15): a rebound, which the census no longer counts as a launch.
+//  - Foundry's 25 m roof: a BMP-2 pivoting by its edge slid off it, fell 19 m, landed at 21 m/s and rose off the ground
+//    at 3.2 m/s, the ruleset's restitution (0.15): a rebound, which the census no longer counts as a launch. Since F8 the
+//    roof's edge holds it (it is launched by nothing either way), and a BMP-2 dropped 19 m on flat ground keeps the
+//    rebound rule's case.
 // And each run is exact: the same pivot twice ends on the same pose to the bit.
 import assert from 'node:assert/strict';
 import { runCase } from './physics-torture.mjs';
@@ -37,10 +39,15 @@ const frontier = await pivot('frontier', 't90m', 173.7323, 101.4752, 3.189701291
 assert.ok(frontier.launches === 0 && frontier.takeoffMaxMps <= 2.5,
   `Frontier: the T-90 at the 54-degree roof's eave is thrown by nothing (takeoff ${frontier.takeoffMaxMps.toFixed(2)} m/s)`);
 const foundry = await pivot('foundry', 'bmp2', -282.0764, 114.9346, 5.380314797147378);
-assert.ok(foundry.maxLandingMps > 15, `Foundry: the BMP-2 falls off the 25 m roof (lands at ${foundry.maxLandingMps.toFixed(1)} m/s)`);
 assert.ok(foundry.launches === 0 && foundry.reboundExcessMps <= 0.05,
-  `Foundry: its rebound is the restitution of its landing, no launch (${foundry.launches} launches, excess ${foundry.reboundExcessMps.toFixed(2)} m/s)`);
+  `Foundry: the BMP-2 by the 25 m roof's edge is launched by nothing (${foundry.launches} launches, excess ${foundry.reboundExcessMps.toFixed(2)} m/s)`);
+// the rebound rule: a BMP-2 dropped 19 m on flat ground lands at 19 m/s and rebounds by the ruleset's restitution
+const drop = runCase('bmp2', 'earth', { id: 'tall-drop', terrain: () => 0, obstacles: [], seconds: 5, rest: 'tail', allowBlocked: true,
+  spawn: { x: 0, z: 0, yaw: 0, dropTo: 19 }, metricsFromS: 0.3, input: () => ({ throttle: 0, steer: 0, brake: true }) }, { replay: false });
+assert.ok(drop.maxLandingMps > 15, `a BMP-2 dropped 19 m lands hard (${drop.maxLandingMps.toFixed(1)} m/s)`);
+assert.ok(drop.launches === 0 && drop.reboundExcessMps <= 0.05,
+  `its rebound is the restitution of its landing, no launch (${drop.launches} launches, excess ${drop.reboundExcessMps.toFixed(2)} m/s)`);
 const again = await pivot('frontier', 't90m', 173.7323, 101.4752, 3.189701291016217);
 assert.deepEqual(again.final, frontier.final, 'the same pivot, the same pose');
-console.log(`roof-hops.selftest: Frontier's eave thrown by nothing (${frontier.takeoffMaxMps.toFixed(2)} m/s), Foundry's 19 m fall a rebound `
-  + `(${foundry.maxLandingMps.toFixed(1)} m/s in); deterministic`);
+console.log(`roof-hops.selftest: Frontier's eave thrown by nothing (${frontier.takeoffMaxMps.toFixed(2)} m/s), Foundry's edge by nothing, `
+  + `a 19 m drop a rebound (${drop.maxLandingMps.toFixed(1)} m/s in); deterministic`);
