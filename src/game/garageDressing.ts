@@ -1847,6 +1847,10 @@ export function createGarageDressing(
           color *= scanline * grille * flicker * vignette;
           color += color * rollingGlow;
           color *= vec3(0.95, 1.02, 0.98);
+          // dimmed and drained toward grey beside the hero (the re-judge, 2026-10-15: the two screens were "the brightest
+          // and most saturated rectangles in the frame after the tank")
+          float luma = dot(color, vec3(0.299, 0.587, 0.114));
+          color = mix(vec3(luma), color, 0.55) * 0.62;
           gl_FragColor = vec4(color, 1.0);
           #include <colorspace_fragment>
         }
@@ -2163,9 +2167,29 @@ export function createGarageDressing(
         }
       }
     };
+    // Each bridge is a welded box girder (GA.05, the critic panel: "crane girders are flat yellow boxes"): two webs with
+    // stiffeners, a top flange and the wide bottom flange the underhung trolleys run on, ending in end carriages whose
+    // wheels ride the runway beams' bottom flanges, a load plate at mid-span.
     const addFactoryCraneBridge = (bridgeId: string, stationZ: number): void => {
-      const bridge = factoryPut(mat.safety, 0, 7.86, stationZ, 42.2, 0.46, 0.54);
+      const half = craneRunwayX - 0.68;
+      const bridge = factoryPut(mat.safety, 0, 8.11, stationZ, half * 2, 0.04, 0.62);
       bridge.name = `verdant_${bridgeId}_crane_bridge`;
+      factoryPut(mat.safety, 0, 7.61, stationZ, half * 2, 0.045, 0.82);
+      for (const side of [-1, 1]) {
+        factoryPut(mat.safety, 0, 7.86, stationZ + side * 0.25, half * 2, 0.46, 0.035);
+        for (let x = -half + 1; x < half - 0.5; x += 2) {
+          factoryPut(mat.safety, x, 7.86, stationZ + side * 0.285, 0.03, 0.42, 0.04, 0, 0, false);
+        }
+      }
+      factoryPut(mat.steelBright, 0, 7.9, stationZ + 0.29, 1.1, 0.26, 0.02, 0, 0, false);
+      for (const end of [-1, 1]) {
+        const x = end * (half + 0.2);
+        factoryPut(mat.steelDark, x, 7.84, stationZ, 0.4, 0.5, 2.6);
+        for (const zOffset of [-1.0, 1.0]) {
+          factoryCylinderPut(mat.steelBright, x + end * 0.3, 7.78, stationZ + zOffset, 0.15, 0.1, 0, Math.PI / 2);
+        }
+        factoryPut(mat.safety, x + end * 0.1, 7.62, stationZ, 0.6, 0.06, 2.7, 0, 0, false); // the buffer plate
+      }
     };
     const addFactoryHoistStation = (
       stationId: string,
@@ -2268,19 +2292,26 @@ export function createGarageDressing(
       factoryPut(mat.steelDark, x, 6.62, 0, 0.34, 0.12, 40.2, 0, 0, false);
       factoryPut(mat.safety, x, 6.72, 0, 0.20, 0.05, 40.0, 0, 0, false);
     }
+    // The junction boxes hang on the wall girts (GA.05, 2026-10-14: they stood 1.5 m out from the walls in the air; the
+    // hall's girts lie 0.05-0.12 m in from the sheeting, garageVerdantHall.ts), clear of the wind posts and columns; each
+    // drop leaves the perimeter tray (1.25 m out) and runs back to its box.
     const junctions = [
-      [-15.8, 4.55, -21.52], [0, 4.55, -21.52], [15.8, 4.55, -21.52],
-      [-15.8, 4.55, 21.52], [0, 4.55, 21.52], [15.8, 4.55, 21.52],
-      [-21.52, 4.55, -7.2], [21.52, 4.55, 7.2],
+      [-15.8, 4.55, -22.74], [1.2, 4.55, -22.74], [15.8, 4.55, -22.74],
+      [-15.8, 4.55, 22.74], [1.2, 4.55, 22.74], [15.8, 4.55, 22.74],
+      [-22.74, 4.55, -7.2], [22.74, 4.55, 7.2],
     ] as const;
     for (const [x, y, z] of junctions) {
-      factoryPut(mat.blueSteel, x, y, z, 0.72, 0.92, 0.28, 0, 0, false);
-      factoryPut(mat.steelBright, x, y + 0.08, z * 0.998,
-        0.44, 0.06, 0.03, 0, 0, false);
+      const onNorthSouth = Math.abs(z) > 22;
+      const trayX = onNorthSouth ? x : Math.sign(x) * 21.75, trayZ = onNorthSouth ? Math.sign(z) * 21.75 : z;
+      factoryPut(mat.blueSteel, x, y, z, onNorthSouth ? 0.72 : 0.28, 0.92, onNorthSouth ? 0.28 : 0.72, 0, 0, false);
+      factoryPut(mat.steelBright, onNorthSouth ? x : x - Math.sign(x) * 0.15, y + 0.08, onNorthSouth ? z - Math.sign(z) * 0.15 : z,
+        onNorthSouth ? 0.44 : 0.03, 0.06, onNorthSouth ? 0.03 : 0.44, 0, 0, false);
+      const outX = onNorthSouth ? x : x - Math.sign(x) * 0.14, outZ = onNorthSouth ? z - Math.sign(z) * 0.14 : z;
       addFactoryCable(`verdant_junction_drop_${x}_${z}`, [
-        new THREE.Vector3(x, 6.62, z),
-        new THREE.Vector3(x, y + 0.65, z),
-        new THREE.Vector3(x, y + 0.30, z),
+        new THREE.Vector3(trayX, 6.56, trayZ),
+        new THREE.Vector3((trayX + outX) / 2, 5.9, (trayZ + outZ) / 2),
+        new THREE.Vector3(outX, y + 0.65, outZ),
+        new THREE.Vector3(outX, y + 0.46, outZ),
       ]);
     }
     addFactoryCable('verdant_power_run_south', [
@@ -2292,31 +2323,31 @@ export function createGarageDressing(
       new THREE.Vector3(7.5, 6.48, -21.42), new THREE.Vector3(19.6, 6.48, -21.42),
     ], mat.blueSteel, 0.038);
     addFactoryCable('verdant_welder_power_drop', [
-      new THREE.Vector3(15.8, 4.82, 21.45), new THREE.Vector3(15.8, 1.10, 21.45),
-      new THREE.Vector3(13.7, 0.18, 20.7), new THREE.Vector3(11.6, 0.16, 19.9),
+      new THREE.Vector3(15.8, 4.1, 22.6), new THREE.Vector3(15.8, 1.10, 22.55),
+      new THREE.Vector3(13.7, 0.18, 20.9), new THREE.Vector3(11.6, 0.16, 19.9),
     ], mat.rubber, 0.042);
     addFactoryCable('verdant_teardown_air_drop', [
-      new THREE.Vector3(-15.8, 4.82, -21.45), new THREE.Vector3(-15.8, 1.25, -21.45),
-      new THREE.Vector3(-16.4, 0.18, -19.8), new THREE.Vector3(-16.2, 0.18, -17.8),
+      new THREE.Vector3(-15.8, 4.1, -22.6), new THREE.Vector3(-15.8, 1.25, -22.55),
+      new THREE.Vector3(-16.4, 0.18, -20.4), new THREE.Vector3(-16.2, 0.18, -17.8),
     ], mat.blueSteel, 0.038);
     addFactoryCable('verdant_center_lamp_feed', [
       new THREE.Vector3(0, 6.78, 21.45), new THREE.Vector3(0, 8.72, 16.0),
       new THREE.Vector3(0, 8.72, 5.0), new THREE.Vector3(0, 8.25, 0),
     ], mat.rubber, 0.038);
     addFactoryCable('verdant_lamp_feed_east', [
-      new THREE.Vector3(21.45, 4.82, 7.2), new THREE.Vector3(21.45, 8.55, 7.2),
+      new THREE.Vector3(22.6, 5.0, 7.2), new THREE.Vector3(22.55, 8.3, 7.2), new THREE.Vector3(21.6, 8.55, 7.2),
       new THREE.Vector3(21.60, 8.55, -7.0), new THREE.Vector3(21.60, 7.72, -7.0),
     ], mat.rubber, 0.036);
     addFactoryCable('verdant_lamp_feed_north', [
-      new THREE.Vector3(0, 4.82, -21.45), new THREE.Vector3(0, 8.48, -21.45),
+      new THREE.Vector3(1.2, 5.0, -22.6), new THREE.Vector3(1.2, 8.3, -22.55),
       new THREE.Vector3(3.20, 8.48, -21.20), new THREE.Vector3(3.20, 7.72, -21.20),
     ], mat.rubber, 0.036);
     addFactoryCable('verdant_lamp_feed_south', [
-      new THREE.Vector3(0, 4.82, 21.45), new THREE.Vector3(0, 8.48, 21.45),
+      new THREE.Vector3(1.2, 5.0, 22.6), new THREE.Vector3(1.2, 8.3, 22.55),
       new THREE.Vector3(5.90, 8.48, 20.70), new THREE.Vector3(5.90, 7.72, 20.70),
     ], mat.rubber, 0.036);
     addFactoryCable('verdant_lamp_feed_welding_bay', [
-      new THREE.Vector3(15.8, 4.82, 21.45), new THREE.Vector3(15.8, 8.42, 21.45),
+      new THREE.Vector3(15.8, 5.0, 22.6), new THREE.Vector3(15.8, 8.3, 22.55),
       new THREE.Vector3(15.9, 8.42, 16.6), new THREE.Vector3(15.9, 7.72, 16.6),
     ], mat.rubber, 0.036);
     for (const [x, z, length] of [
@@ -2387,14 +2418,17 @@ export function createGarageDressing(
         -6.2 + plate * 1.15, 1.30, 19.4, 0.90, 2.15, 0.10,
         0, -0.06 + plate * 0.025, false);
     }
-    for (const x of [3.5, 7.5]) {
+    // the turning rolls and their shell stand east of the roller shutter's sightline from the Garage camera (the
+    // garage critic panel, 2026-10-14: "the shutter doesn't read ... move the screen and bowser off its axis"): seen
+    // from the hero's camera the opening spans x -0.5..4.5 at this depth
+    for (const x of [5.5, 9.5]) {
       factoryPut(mat.steelMid, x, 0.46, 19.3, 1.05, 0.72, 1.85);
       for (const zOffset of [-0.56, 0.56]) {
         factoryCylinderPut(mat.rubber, x, 0.78, 19.3 + zOffset,
           0.34, 0.56, Math.PI / 2);
       }
     }
-    factoryCylinderPut(mat.olive, 5.5, 1.72, 19.3,
+    factoryCylinderPut(mat.olive, 7.5, 1.72, 19.3,
       1.02, 5.55, 0, Math.PI / 2);
     const cageCenterX = 14.1;
     for (const xOffset of [-2.35, 2.35]) {
