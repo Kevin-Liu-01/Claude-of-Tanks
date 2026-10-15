@@ -135,6 +135,22 @@ assert.ok(slots.every((sl, i) => i === 40 || tr.slotOf(1000 + i) === sl), 'no fl
 tr.update(10.3, 0, 0);
 assert.equal(tr.mesh.geometry.instanceCount, TRAIL_SLOTS * TRAIL_SEGS);
 
+// ---- 4b. the scene in front: with the late pass's scene depth the trail meets the ground and hulls in the shader (no
+// straight depth-test cut along a dense trail), without it the depth test does ------------------------------------------
+{
+  const { Texture, Vector2 } = await import('three');
+  const depth = { uSceneDepth: { value: null }, uSoftViewport: { value: new Vector2(1, 1) }, uCameraNear: { value: 0.5 }, uCameraFar: { value: 3000 } };
+  const soft = createMissileTrails(createSceneLightUniforms(), depth);
+  const fakeRenderer = { getCurrentViewport: (v) => v.set(0, 0, 1280, 720) };
+  soft.mesh.onBeforeRender(fakeRenderer);
+  assert.ok(soft.mesh.material.depthTest && soft.mesh.material.uniforms.uSoftOn.value === 0, 'no scene depth: the depth test');
+  depth.uSceneDepth.value = new Texture();
+  soft.mesh.onBeforeRender(fakeRenderer);
+  assert.ok(!soft.mesh.material.depthTest && soft.mesh.material.uniforms.uSoftOn.value === 1, 'the scene depth: met in the shader');
+  assert.equal(soft.mesh.material.uniforms.uSceneDepth, depth.uSceneDepth, 'the late pass\'s own depth uniform');
+  assert.match(soft.mesh.material.fragmentShader, /sceneM - \( axisM - h \)/, 'the part of the chord before the scene');
+}
+
 // ---- 5. time shifts, reset ------------------------------------------------------------------------------------------
 const before = segs(slots[3]).map((q) => q[3]);
 tr.shiftTime(4);
@@ -191,6 +207,10 @@ try {
   for (let f = 0; f < 60 * 4; f++) fx.update(1 / 60, [], camera);
   assert.ok(live().length >= laid.length, 'four seconds after the strike the whole trail still hangs');
   assert.ok(live().some((q) => Math.abs(q[3] - (shell.pos.x + 0.5)) < 1e-3), 'out to where the round struck');
+  assert.ok(fx.group.userData.softParticles.isActive(), 'hanging, it keeps the late FX pass on');
+  const src = await (await import('node:fs/promises')).readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+  assert.match(src, /\|\| smokeTrails\.mesh\.visible/,
+    'a hanging trail keeps the late FX pass on (post.ts skips it otherwise: the old ribbon vanished with the strike\'s media)');
   for (let f = 0; f < 60 * 6; f++) fx.update(1 / 60, [], camera);
   assert.equal(mesh.visible, false, 'then it has dissolved');
   // a soft launch coasts unlit, then its trail starts where the motor lit

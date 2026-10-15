@@ -1297,7 +1297,7 @@ function* createFxSteps(
   // (FX lane 10-14) a missile's smoke trail, a soft tube born at its nozzle (missileTrails.ts), and a wire-guided missile's
   // command wire, fixed to its launcher's tube: every tier (one draw each), in the time of day's light
   const missileLight = createSceneLightUniforms();
-  const smokeTrails = createMissileTrails(missileLight);
+  const smokeTrails = createMissileTrails(missileLight, particles.softParticles);
   group.add(smokeTrails.mesh);
   const wires = createMissileWires(missileLight);
   group.add(wires.mesh);
@@ -1709,8 +1709,10 @@ function* createFxSteps(
       || tracerGeo.instanceCount > 0
       || tracers.active() // atmospherics lane
       || atgmBodies.count > 0
-      // (FX lane 10-14) a parted wire settling after its missile has gone still draws in the late pass
+      // (FX lane 10-14) a parted wire settling after its missile has gone, and a trail hanging after its missile has
+      // struck, still draw in the late pass (the old ribbon vanished when the strike's media ended)
       || wires.mesh.visible
+      || smokeTrails.mesh.visible
       || shockRings.some(isRingVisible)
       || muzzleRings.some(isRingVisible)
       || (extraLateFxActive !== null && extraLateFxActive()),

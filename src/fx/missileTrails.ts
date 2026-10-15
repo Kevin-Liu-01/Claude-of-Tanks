@@ -32,6 +32,14 @@ import { LATE_FX_LAYER } from './layers.ts';
 import type { MissileTrail } from './missileLooks.ts';
 import type { SceneLightUniforms } from './sceneLight.ts';
 
+/** The scene's depth the late FX pass shares (particles.ts softParticles; post.ts fills it before layer 30). */
+interface SceneDepthUniforms {
+  readonly uSceneDepth: { value: THREE.Texture | null };
+  readonly uSoftViewport: { value: THREE.Vector2 };
+  readonly uCameraNear: { value: number };
+  readonly uCameraFar: { value: number };
+}
+
 export const TRAIL_SLOTS = 96;
 export const TRAIL_SEGS = 160;
 /** the trail looks the shader holds (each missile family one) */
@@ -220,6 +228,11 @@ varying vec3 vSun;
     uniform float fogFar;
   #endif
 #endif
+uniform sampler2D uSceneDepth;
+uniform vec2 uSoftViewport;
+uniform float uCameraNear;
+uniform float uCameraFar;
+uniform float uSoftOn;
 float h1( float n ) { return fract( sin( n * 127.1 + 4.7 ) * 43758.5453 ); }
 float vn1( float x ) { float i = floor( x ), f = fract( x ); return mix( h1( i ), h1( i + 1.0 ), f * f * ( 3.0 - 2.0 * f ) ); }
 float h2( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
@@ -272,6 +285,16 @@ void main() {
   // the end of its life: the noise eats it into wisps as it fades
   float dT = smoothstep( 0.5, 1.0, age / vM.w ) * 1.05;
   T *= smoothstep( dT - 0.25, dT, n );
+  // the scene in front of it: the part of the tube's chord through this pixel that lies before the scene's surface (a
+  // trail sagging into the ground or passing behind a hull fades into it, never cut along a straight line)
+  if ( uSoftOn > 0.5 ) {
+    float raw = texture2D( uSceneDepth, gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) ) ).x;
+    float sceneM = -( uCameraNear * uCameraFar ) / ( ( uCameraFar - uCameraNear ) * raw - uCameraFar );
+    float axisM = mix( vW.x, vW.y, u3 );
+    float R = 1.6 * sp / max( ppm, 1e-4 ), yw = y / max( ppm, 1e-4 );
+    float h = sqrt( max( R * R - yw * yw, 0.0 ) ) + 0.15;
+    T *= clamp( ( sceneM - ( axisM - h ) ) / ( 2.0 * h ), 0.0, 1.0 );
+  }
   float a = 1.0 - exp( -min( T, 8.0 ) );
   if ( a < 0.003 ) discard;
   // lit: dense smoke shows its shaded side; thin smoke is lit through
@@ -291,7 +314,7 @@ void main() {
 }
 `;
 
-export function createMissileTrails(light: SceneLightUniforms): MissileTrails {
+export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepthUniforms | null = null): MissileTrails {
   const N = TRAIL_SLOTS * TRAIL_SEGS;
   const data = new Float32Array(N * STRIDE);
   const buf = new THREE.InstancedInterleavedBuffer(data, STRIDE, 1);
@@ -312,11 +335,14 @@ export function createMissileTrails(light: SceneLightUniforms): MissileTrails {
   const uTime = { value: 0 };
   const uWind = { value: new THREE.Vector3() };
   const uViewport = { value: new THREE.Vector4(0, 0, 1920, 1080) };
+  const uSoftOn = { value: 0 };
   const material = new THREE.ShaderMaterial({
     vertexShader: VERT,
     fragmentShader: FRAG,
     uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-      uTime, uWind, uViewport, uLook,
+      uTime, uWind, uViewport, uLook, uSoftOn,
+      uSceneDepth: depth ? depth.uSceneDepth : { value: null }, uSoftViewport: depth ? depth.uSoftViewport : { value: new THREE.Vector2(1, 1) },
+      uCameraNear: depth ? depth.uCameraNear : { value: 0.1 }, uCameraFar: depth ? depth.uCameraFar : { value: 1000 },
       uSunDir: light.uSunDir, uSunCol: light.uSunCol, uSkyCol: light.uSkyCol, uGroundCol: light.uGroundCol,
     }),
     transparent: true,
@@ -340,6 +366,11 @@ export function createMissileTrails(light: SceneLightUniforms): MissileTrails {
   mesh.onBeforeRender = (renderer) => {
     renderer.getCurrentViewport(_vp);
     uViewport.value.set(_vp.x, _vp.y, Math.max(1, _vp.z), Math.max(1, _vp.w));
+    // with the scene's depth (the late pass copies it) the trail meets the scene softly in the shader; without it the
+    // depth test does
+    const soft = !!depth?.uSceneDepth.value;
+    uSoftOn.value = soft ? 1 : 0;
+    material.depthTest = !soft;
   };
 
   const looks = new Map<MissileTrail, number>();
