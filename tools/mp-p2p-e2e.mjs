@@ -1305,7 +1305,7 @@ try {
     }
   }
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
-  const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null }));
+  const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null, rewelcomes: window.__NETWORK_LOAD?.rewelcomes ?? 0, rewelcomeAtMs: window.__NETWORK_LOAD?.rewelcomeAtMs ?? null }));
   step('b-c-restored', { viewport: `${testViewport.width}x${testViewport.height}`, a2Entry });
   report.rejoin = { ...report.rejoin, a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, attempts: a2Attempts, entry: a2Entry };
   step('a-rejoined', report.rejoin);
