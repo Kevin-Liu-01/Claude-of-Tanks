@@ -431,7 +431,10 @@ exactly as built, re-seats a failing one from outside nearby or drops it (`root.
 `spareTrackRejected`). Tag grilles, louvres and exhausts drawn into ordinary buckets with `withSeatRole(P, 'grille', ...)`
 where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGunDark`. The receipt is
 `tools/spare-track-placement-check.mjs` against `docs/geometry-gate/spare-track.json` (part of `tank:anatomy:update`
-and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge.
+and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge. The search is the pass's only
+real cost, so `--update` also records its answers in the generated `spareTrackSeatPlan.ts` (a failing run goes straight
+to its station, or is not built); `--check` fails a stale record. Every built run is still measured, so a stale record
+costs time, never a bad seat.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a

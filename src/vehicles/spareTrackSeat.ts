@@ -17,8 +17,9 @@
  *   R4 static     the placed box keeps 5 cm from the gun and mantlet and 3 cm from every other forbidden role, and no
  *                 host surface cuts into the links
  *   R5 motion     hull runs clear the turret and the gun over the full traverse and the yaw-dependent pitch range
- *                 (armour-limited poses skipped); turret runs clear the gun's pitch range and the hull's solids during
- *                 traverse (where the turret's own surface already meets the hull, the host is at fault, not the run)
+ *                 (armour-limited poses skipped), whatever they stand on; turret runs clear the gun's pitch range and
+ *                 the hull's solids during traverse (where the turret's own surface next to the run already meets a
+ *                 hull part, that part is at fault, not the run)
  *   R6 no hang    a run with no passing seat is not built; the caller records it as rejected
  *   R7 visible    the run's top face must see outside in at least 30 % of a hemisphere of directions
  *   (a run the solver moves, or a decor run on a new station, is new visible stowage: it must clear the motion by 6 cm
@@ -487,6 +488,9 @@ export interface SeatGunSlices {
   /** xmin, xmax, ymin, ymax per slice (NaN when empty). */
   bins: Float32Array;
   count: number;
+  /** The gun's widest half-width |x| and its reach from the pitch axis (any slice corner), for a cheap pose filter. */
+  xAbs: number;
+  reach: number;
 }
 
 /** Build the gun's slices from gun-local geometry sources (the gun, gun-dark and mantlet buckets). */
@@ -544,7 +548,15 @@ export function seatGunSlices(sources: readonly SeatSource[], step = 0.05): Seat
       for (let v = 0; v < slab.length; v += 3) put(k, slab[v], slab[v + 1]);
     }
   }
-  return { z0, step, bins, count };
+  let xAbs = 0, reach = 0;
+  for (let k = 0; k < count; k++) {
+    const o = k * 4;
+    if (Number.isNaN(bins[o])) continue;
+    xAbs = Math.max(xAbs, Math.abs(bins[o]), Math.abs(bins[o + 1]));
+    const zf = Math.max(Math.abs(z0 + k * step), Math.abs(z0 + (k + 1) * step));
+    reach = Math.max(reach, Math.hypot(zf, Math.max(Math.abs(bins[o + 2]), Math.abs(bins[o + 3]))));
+  }
+  return { z0, step, bins, count, xAbs, reach };
 }
 
 /** A radius profile around the turret axis (2 cm bins): the lowest (turret) or highest (hull) solid at each radius. */
@@ -706,6 +718,7 @@ export interface SeatMeasure {
   reason: string | null;
   support: number;
   air: number;
+  /** The footprint's 90th-percentile gap beyond the design standoff (m). */
   gapP90: number;
   maxEmbed: number;
   forbidden: number;
@@ -781,6 +794,8 @@ export interface SeatEnv {
   motion: SeatMotion | null;
   /** Measure exposure (R7); off only in tests that isolate another rule. */
   exposure?: boolean;
+  /** Per gun yaw, the first pitch step the gun clears the host armour seen by this soup (filled on demand). */
+  armourFloors?: Map<number, number>;
 }
 
 /**
@@ -841,14 +856,14 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.support = supported / total;
   out.air = air / total;
   out.forbidden = forbidden / total;
-  out.gapP90 = gaps[Math.min(gaps.length - 1, Math.ceil(gaps.length * 0.9) - 1)] ?? 0;
+  out.gapP90 = Math.max(0, (gaps[Math.min(gaps.length - 1, Math.ceil(gaps.length * 0.9) - 1)] ?? 0) - shape.standoffM);
   out.maxEmbed = Number.isFinite(maxEmbed) ? maxEmbed : 0;
   out.spreadDeg = spread;
   if ((majorForbidden > 0 || forbidden > T.minorForbiddenMax) && fail(`host:${out.forbiddenRole}`)) return out;
   if ((out.maxEmbed > T.embedMax || sunk / total > T.sunkShareMax) && fail('sunk')) return out;
   if (out.air > T.airMax && fail('air')) return out;
   if (out.support < T.supportMin && fail('support')) return out;
-  if (out.gapP90 > shape.standoffM + T.gapP90Max && fail('gap')) return out;
+  if (out.gapP90 > T.gapP90Max && fail('gap')) return out;
   // ---- R4: static clearance from forbidden roles, and no host surface into the links
   _m.compose(pose.pos, pose.quat, UNIT);
   _mi.copy(_m).invert();
@@ -876,26 +891,37 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
     }
     // other decor is the decor's own overlap ledger's to keep apart (commit()); the box here is too coarse for it
     if (role === 'decor') return;
+    if (clearRole && !full) return;                 // a candidate already failed R4: the rest is receipt detail
     const need = ROLE_CLEAR_M(ROLE_CODE[role]) * T.clearScale;
     grown.copy(local).expandByScalar(need);
     if (!grown.intersectsTriangle(_tri)) return;
-    // the clearance actually kept: shrink the margin until it no longer meets (2 mm steps)
-    let kept = need;
-    while (kept > 0) { kept -= 0.002; grown.copy(local).expandByScalar(Math.max(0, kept)); if (!grown.intersectsTriangle(_tri)) break; }
-    if (kept < clear || !clearRole) { clear = Math.max(0, kept); clearRole = role; }
+    // the clearance actually kept: the largest margin (1 mm) at which the box still misses the triangle
+    let lo = 0, hi = need;
+    grown.copy(local);
+    if (grown.intersectsTriangle(_tri)) hi = 0;
+    while (hi - lo > 0.001) {
+      const mid = (lo + hi) / 2;
+      grown.copy(local).expandByScalar(mid);
+      if (grown.intersectsTriangle(_tri)) hi = mid; else lo = mid;
+    }
+    const kept = hi === 0 ? 0 : lo;
+    if (kept < clear || !clearRole) { clear = kept; clearRole = role; }
   });
   out.clear = clear;
   out.clearRole = clearRole;
   out.cut = cut;
   if (clearRole && fail(`clear:${clearRole}`)) return out;
   if (cut > T.cutMaxM && fail('cut')) return out;
-  // ---- R5: motion
+  // ---- R5: motion, and R7: line-of-sight exposure of the top face. A candidate (not `full`) takes the cheaper
+  // exposure first; a receipt reports motion first.
+  const exposed = env.exposure === false || full ? true
+    : (out.exposure = exposureOf(env, shape, ax, pose, n, owner, T.exposureMin)) >= T.exposureMin;
+  if (!exposed && fail('buried')) return out;
   if (env.motion) {
-    out.sweep = motionClearance(env, shape, ax, pose, owner);
+    out.sweep = motionClearance(env, shape, ax, pose, owner, full ? -Infinity : T.sweepClearM);
     if (out.sweep < T.sweepClearM && fail('sweep')) return out;
   }
-  // ---- R7: line-of-sight exposure of the top face
-  if (env.exposure !== false) {
+  if (env.exposure !== false && full) {
     out.exposure = exposureOf(env, shape, ax, pose, n, owner);
     if (out.exposure < T.exposureMin && fail('buried')) return out;
   }
@@ -903,6 +929,7 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   return out;
 }
 
+const EXPOSURE_POINTS = [0.2, 0.5, 0.8];
 const EXPOSURE_DIRS: THREE.Vector3[] = (() => {
   const dirs = [new THREE.Vector3(0, 0, 1)];
   for (const polar of [35, 70]) {
@@ -915,17 +942,24 @@ const EXPOSURE_DIRS: THREE.Vector3[] = (() => {
   return dirs;
 })();
 
-function exposureOf(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, n: THREE.Vector3, owner: number): number {
+/**
+ * Share of the top face's hemisphere rays that leave the vehicle. With `decide`, stop as soon as the share is known
+ * to land on one side of it (a candidate's pass or fail), returning a share on that side.
+ */
+function exposureOf(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, n: THREE.Vector3, owner: number,
+  decide = NaN): number {
   const top = shape.box.max.getComponent(ax.n) + 0.01;
   _q.setFromUnitVectors(EXPOSURE_DIRS[0], n);
-  let clear = 0, total = 0;
+  const total = EXPOSURE_POINTS.length * EXPOSURE_DIRS.length;
+  let clear = 0, blocked = 0;
   const origin = new THREE.Vector3();
-  for (const fu of [0.2, 0.5, 0.8]) {
+  for (const fu of EXPOSURE_POINTS) {
     localPoint(shape, ax, fu, 0.5, top, origin).applyQuaternion(pose.quat).add(pose.pos);
     for (const d of EXPOSURE_DIRS) {
       _dir.copy(d).applyQuaternion(_q);
-      total++;
-      if (!env.soup.raycast(origin, _dir, SEAT_RULES.exposureReachM, owner, true, _hit2)) clear++;
+      if (!env.soup.raycast(origin, _dir, SEAT_RULES.exposureReachM, owner, true, _hit2)) clear++; else blocked++;
+      if (clear / total >= decide) return clear / total;
+      if ((total - blocked) / total < decide) return (total - blocked) / total;
     }
   }
   return clear / total;
@@ -949,34 +983,63 @@ const GUN_YAW_STEP = Math.PI / 180;
 const GUN_PITCH_STEP = Math.PI / 180;
 
 /** Minimum clearance (m) of the run from everything that moves round it (Infinity when nothing reaches it). */
-function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, owner: number): number {
+function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, owner: number,
+  stopBelow = -Infinity): number {
   const M = env.motion!;
   const pts = runSamples(shape, ax, pose);
   let clear = Infinity;
-  const hostY = Math.min(...pts.map((p) => p.y));
   if (env.frame === 'hull') {
-    // the turret's own body over the full traverse
-    if (M.turreted && M.turretLow) {
+    // the turret's own body over the full traverse: a point under the turret's lowest solid at its radius clears it
+    // by the gap; a point at or above it is inside the traverse, whatever it stands on (a run on a fender bin the
+    // bustle sweeps, or on the deck inside a dome turret, is hit as the turret turns)
+    const T = M.turreted ? M.turretLow : null;
+    if (T) {
       for (const p of pts) {
         const r = Math.hypot(p.x - M.pivot.x, p.z - M.pivot.z);
-        if (r > M.turretLow.maxR + 0.05) continue;
-        const low = profileAt(M.turretLow, r, true);
+        if (r > T.maxR + 0.05) continue;
+        const low = profileAt(T, r, true);
         if (!Number.isFinite(low)) continue;
-        if (low <= hostY + 0.005) continue; // the turret meets the host itself there: the host's fault (HOST_SWEEP)
         clear = Math.min(clear, low - p.y);
       }
     }
-    // the gun at every yaw it can take, at the ends of its pitch range
+    if (clear < stopBelow) return clear;
+    // the gun at every yaw it can take, over its pitch range
     if (M.gun && (M.turreted || M.arc > 0)) {
-      const yaws: number[] = [];
-      if (M.turreted) for (let y = 0; y < Math.PI * 2; y += GUN_YAW_STEP) yaws.push(y);
-      else for (let y = -M.arc; y <= M.arc + 1e-9; y += GUN_YAW_STEP) yaws.push(y);
-      for (const yaw of yaws) {
-        // every degree of the pitch range this yaw allows (a gun with a long sleeve can dip its tail as it lifts)
-        const lo = M.pitchMin(yaw);
-        for (let pitch = lo; pitch <= M.pitchMax + 1e-9; pitch += GUN_PITCH_STEP) {
-          const c = gunClearanceAt(env, M, pts, yaw, pitch, true, owner);
-          if (c < clear) clear = c;
+      const yawCount = M.turreted ? Math.round(Math.PI * 2 / GUN_YAW_STEP)
+        : Math.floor(2 * M.arc / GUN_YAW_STEP + 1e-9) + 1;
+      const yaw0 = M.turreted ? 0 : -M.arc;
+      const G = M.gun, nearX = G.xAbs + SEAT_RULES.chosen.sweepClearM, nearR = G.reach + SEAT_RULES.chosen.sweepClearM;
+      const nearR2 = nearR * nearR;
+      // a candidate first takes every fourth degree of yaw and pitch: a run in the gun's path fails there at a
+      // sixteenth of the cost; only a run that passes it pays for every degree
+      for (const stride of stopBelow > -Infinity ? [4, 1] : [1]) {
+        for (let j = 0; j < yawCount; j += stride) {
+          const yaw = yaw0 + j * GUN_YAW_STEP;
+          // a yaw where no run point is within the gun's half-width and reach of its pitch axis cannot come close
+          const cy = Math.cos(yaw), sy = Math.sin(yaw);
+          let near = false;
+          for (const p of pts) {
+            const dx = p.x - M.pivot.x, dz = p.z - M.pivot.z;
+            const tx = cy * dx - sy * dz - M.gunPivot.x, tz = sy * dx + cy * dz - M.gunPivot.z;
+            const ty = p.y - M.pivot.y - M.gunPivot.y;
+            if (Math.abs(tx) <= nearX && ty * ty + tz * tz <= nearR2) { near = true; break; }
+          }
+          if (!near) continue;
+          // every degree of the pitch range this yaw allows (a gun with a long sleeve can dip its tail as it lifts);
+          // poses that already put the gun inside the host armour are armour-limited and skipped
+          const lo = M.pitchMin(yaw);
+          const steps = Math.floor((M.pitchMax - lo) / GUN_PITCH_STEP + 1e-9);
+          let floor = -1;
+          for (let i = 0; i <= steps; i += stride) {
+            const c = gunClearanceAt(M, pts, yaw, lo + i * GUN_PITCH_STEP, true);
+            if (c >= clear) continue;
+            if (c < SEAT_RULES.chosen.sweepClearM) {
+              if (floor < 0) floor = armourFloor(env, M, yaw, lo, steps, owner);
+              if (i < floor) continue;
+            }
+            clear = c;
+            if (clear < stopBelow) return clear;
+          }
         }
       }
     }
@@ -986,8 +1049,9 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
       let lo = 0;
       for (let y = 0; y < Math.PI * 2; y += Math.PI / 36) lo = Math.min(lo, M.pitchMin(y));
       for (let pitch = lo; pitch <= M.pitchMax + 1e-9; pitch += GUN_PITCH_STEP) {
-        const c = gunClearanceAt(env, M, pts, 0, pitch, false, owner);
+        const c = gunClearanceAt(M, pts, 0, pitch, false);
         if (c < clear) clear = c;
+        if (clear < stopBelow) return clear;
       }
     }
     // the hull's solids under the traverse (the turret's own surface exempts a radius it already meets)
@@ -1019,11 +1083,10 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
 const _g = new THREE.Vector3();
 /**
  * Clearance of the run points from the gun at one pose. `hullFrame` points are hull coordinates (turret yaw applies);
- * otherwise turret coordinates. A pose that already drives the gun into the run's host armour is armour-limited and
- * skipped (Infinity): the gun cannot reach the run there (gunPitchByYawDeg owns that fix, not the stowage).
+ * otherwise turret coordinates.
  */
-function gunClearanceAt(env: SeatEnv, M: SeatMotion, pts: readonly THREE.Vector3[], yaw: number, pitch: number,
-  hullFrame: boolean, owner: number): number {
+function gunClearanceAt(M: SeatMotion, pts: readonly THREE.Vector3[], yaw: number, pitch: number,
+  hullFrame: boolean): number {
   const G = M.gun!;
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
   let clear = Infinity;
@@ -1045,13 +1108,36 @@ function gunClearanceAt(env: SeatEnv, M: SeatMotion, pts: readonly THREE.Vector3
     if (lateral > SEAT_RULES.chosen.sweepClearM) continue;
     // clearance below the gun's underside (a run sits below the gun) or above its top; inside its span, the depth
     const vertical = Math.max(ymin - gy, gy - ymax);
-    const c = vertical > 0 ? Math.hypot(lateral, vertical)
+    const c = vertical > 0 ? Math.sqrt(lateral * lateral + vertical * vertical)
       : lateral > 0 ? lateral : -Math.min(gy - ymin, ymax - gy);
-    if (c >= clear) continue;
-    if (hullFrame && c < SEAT_RULES.chosen.sweepClearM && armourLimited(env, M, yaw, pitch, owner)) return Infinity;
-    clear = c;
+    if (c < clear) clear = c;
   }
   return clear;
+}
+
+/**
+ * The first pitch step (from `lo`, of `steps`) at which the gun at `yaw` is no longer inside the host armour: a pose
+ * below it is armour-limited and skipped, since the gun cannot reach the run there (gunPitchByYawDeg owns that fix,
+ * not the stowage). Lowering the gun only drives it deeper, so the floor is found by bisection and kept per yaw.
+ */
+function armourFloor(env: SeatEnv, M: SeatMotion, yaw: number, lo: number, steps: number, owner: number): number {
+  const floors = env.armourFloors ??= new Map();
+  const key = Math.round(yaw * 1e4) * 4096 + Math.round(lo * 1e3);
+  const known = floors.get(key);
+  if (known !== undefined) return known;
+  let a = 0, b = steps + 1;                // a: first step that may be free; b: first step known free
+  if (!armourLimited(env, M, yaw, lo, owner)) b = 0;
+  else if (armourLimited(env, M, yaw, lo + steps * GUN_PITCH_STEP, owner)) a = b;
+  else {
+    a = 1; b = steps;
+    while (a < b) {
+      const mid = (a + b) >> 1;
+      if (armourLimited(env, M, yaw, lo + mid * GUN_PITCH_STEP, owner)) a = mid + 1; else b = mid;
+    }
+  }
+  const floor = Math.min(a, b);
+  floors.set(key, floor);
+  return floor;
 }
 
 const _down = new THREE.Vector3(0, -1, 0), _from = new THREE.Vector3();
@@ -1101,16 +1187,24 @@ export interface SeatResult {
   measure: SeatMeasure;
   /** The hint's own measure (why it moved). */
   hint: SeatMeasure;
+  /** The search station that seated it (index into the sorted search), -1 when none did, null when the hint passed. */
+  station: number | null;
 }
 
 /**
  * S2: accept the authored pose unchanged when it passes; otherwise seat the run from outside at nearby stations
  * (nearest first: offset, then yaw) and return the first that passes; else not ok.
+ *
+ * `planned` is the search's recorded answer for this run (spareTrackSeatPlan.ts): -1 skips the search (the run is
+ * not built), a station index is measured first. Either way only a seat that passes is built; a plan entry that no
+ * longer passes falls back to the full search.
  */
 export function solveSpareTrackSeat(env: SeatEnv, shape: SeatRunShape, hint: SeatPose, owner: number,
-  search: SeatSearch = AUTHORED_SEARCH): SeatResult {
+  search: SeatSearch = AUTHORED_SEARCH, planned?: number): SeatResult {
   const hintMeasure = measureSeat(env, shape, hint, owner, true);
-  if (hintMeasure.ok) return { ok: true, seat: 'authored', pose: hint, measure: hintMeasure, hint: hintMeasure };
+  if (hintMeasure.ok) return { ok: true, seat: 'authored', pose: hint, measure: hintMeasure, hint: hintMeasure, station: null };
+  const none: SeatResult = { ok: false, seat: null, pose: null, measure: hintMeasure, hint: hintMeasure, station: -1 };
+  if (planned === -1) return none;
   const ax = runAxes(shape);
   const n0 = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(hint.quat).normalize();
   const eu = new THREE.Vector3().setComponent(ax.u, 1).applyQuaternion(hint.quat).normalize();
@@ -1120,18 +1214,24 @@ export function solveSpareTrackSeat(env: SeatEnv, shape: SeatRunShape, hint: Sea
     stations.push({ du, dv, yaw, cost: Math.hypot(du, dv) + Math.abs(yaw) * 0.5 });
   }
   stations.sort((p, q) => p.cost - q.cost);
+  const order = stations.map((_, k) => k);
+  if (planned !== undefined && planned >= 0 && planned < stations.length) { order.splice(planned, 1); order.unshift(planned); }
   const base = shape.box.min.getComponent(ax.n);
   const center = localPoint(shape, ax, 0.5, 0.5, base + shape.embedM, new THREE.Vector3());
-  for (const s of stations) {
+  for (const k of order) {
+    const s = stations[k];
     const quat = new THREE.Quaternion().setFromAxisAngle(n0, s.yaw).multiply(hint.quat);
     // the design host point of the hint, moved in plane; cast from far outside along -n for the outermost surface
     const target = center.clone().applyQuaternion(hint.quat).add(hint.pos).addScaledVector(eu, s.du).addScaledVector(ev, s.dv);
     const pose = seatFromOutside(env, shape, ax, quat, target, n0, owner);
     if (!pose) continue;
     const m = measureSeat(env, shape, pose, owner, false, true);
-    if (m.ok) return { ok: true, seat: 'reseated', pose, measure: measureSeat(env, shape, pose, owner, true, true), hint: hintMeasure };
+    if (m.ok) {
+      return { ok: true, seat: 'reseated', pose, measure: measureSeat(env, shape, pose, owner, true, true), hint: hintMeasure,
+        station: k };
+    }
   }
-  return { ok: false, seat: null, pose: null, measure: hintMeasure, hint: hintMeasure };
+  return none;
 }
 
 /**

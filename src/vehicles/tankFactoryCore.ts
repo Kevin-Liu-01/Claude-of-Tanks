@@ -7741,6 +7741,7 @@ function* createTankOwnedSteps(
   const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
     .map(({ part }) => part));
   const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
+  const spareTrackStartedAt = performance.now();
   try {
     const spareTrackSeats = seatAuthoredSpareTracks({
       spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart,
@@ -7748,6 +7749,7 @@ function* createTankOwnedSteps(
     });
     root.userData.spareTrack = spareTrackSeats.runs;
     root.userData.spareTrackRejected = spareTrackSeats.rejected;
+    root.userData.spareTrackMs = performance.now() - spareTrackStartedAt;
   } catch (error) {
     // a solver fault never costs the vehicle its build: the runs stay as authored and the receipt carries the fault
     root.userData.spareTrackError = error instanceof Error ? error.message : String(error);

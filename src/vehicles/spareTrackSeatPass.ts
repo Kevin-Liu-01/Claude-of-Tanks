@@ -6,13 +6,20 @@
  * withSpareTrackRun) is measured where it was authored. A passing run is left exactly as built; a failing one is
  * re-seated from outside nearby, or removed and recorded. S1 (decor): the decor's own spare-link rows ask the same
  * solver through `decorSeatEnv`, over the merged meshes.
+ *
+ * The search is the pass's only real cost, so its answers are recorded per vehicle in spareTrackSeatPlan.ts
+ * (tools/spare-track-placement-check.mjs --update, run by npm run tank:anatomy:update): a run whose authored seat
+ * fails goes straight to its recorded station, or is not built when the record says no station passes. The record
+ * only steers the search: every built run is still measured and passes, and a station that no longer passes falls
+ * back to the full search. The tool's audit mode re-runs the search and fails a record that has gone stale.
  */
 import * as THREE from 'three';
 import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { casemateGunYawLimit } from './casemateGunPose.ts';
+import { SPARE_TRACK_SEAT_PLAN } from './spareTrackSeatPlan.ts';
 import {
   seatAngularLow, seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat,
-  SeatSoup, measureSeat, type SeatAngularProfile,
+  SeatSoup, measureSeat, AUTHORED_SEARCH, type SeatAngularProfile,
   type SeatEnv, type SeatMeasure, type SeatMotion, type SeatPose, type SeatRadialProfile, type SeatRole, type SeatRunShape,
   type SeatSource, type SpareTrackRunTag, type SpareTrackSeatReceipt,
 } from './spareTrackSeat.ts';
@@ -22,6 +29,13 @@ const D2R = Math.PI / 180;
 const CARRIER_STANDOFF_M = 0.018;
 /** Around a run's region, the triangles that can matter: the exposure rays reach 0.8 m. */
 const SOUP_MARGIN_M = 0.9;
+
+let planAudit = false;
+/**
+ * Tools only: also run the full search for every run whose authored seat fails and record, on the root's
+ * `userData.spareTrackPlanAudit`, the search's answers (`live`) and where the recorded plan differs (`stale`).
+ */
+export function setSpareTrackSeatPlanAudit(on: boolean): void { planAudit = on; }
 
 interface SeatSpec {
   id: string;
@@ -90,10 +104,7 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
   if (!turreted && !(arc > 0)) return null;
   const gun = frames.gun.length ? seatGunSlices(frames.gun) : null;
   const toHull = new THREE.Matrix4().makeTranslation(frames.pivot.x, frames.pivot.y, frames.pivot.z);
-  let turretLow: SeatRadialProfile | null = null;
-  if (turreted) {
-    turretLow = seatRadialProfile(moved(frames.turret, toHull, false), frames.pivot.x, frames.pivot.z, true);
-  }
+  let turretLow: SeatRadialProfile | null | undefined;
   let hullHigh: SeatRadialProfile | null | undefined;
   let turretAngular: SeatAngularProfile | null | undefined;
   return {
@@ -104,7 +115,14 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
     gun,
     pitchMin: (yaw) => minimumMechanicalGunPitch(spec, yaw),
     pitchMax: (spec.gunElevationDeg ?? 20) * D2R,
-    turretLow,
+    // built on first use: only hull runs read the turret's underside
+    get turretLow(): SeatRadialProfile | null {
+      if (turretLow === undefined) {
+        turretLow = turreted
+          ? seatRadialProfile(moved(frames.turret, toHull, false), frames.pivot.x, frames.pivot.z, true) : null;
+      }
+      return turretLow;
+    },
     hullHigh: () => {
       if (hullHigh === undefined) {
         hullHigh = seatRadialProfile(frames.hull, frames.pivot.x, frames.pivot.z, false, 0, 8,
@@ -233,7 +251,13 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
         standoffM: tag.standoffM ?? (tag.source === 'strip' ? CARRIER_STANDOFF_M : 0) },
       hint: { pos: new THREE.Vector3(), quat } });
   }
-  if (!runs.length) return report;
+  if (!runs.length) {
+    if (planAudit) {
+      a.root.userData.spareTrackPlanAudit = { live: {},
+        stale: Object.keys(SPARE_TRACK_SEAT_PLAN[a.spec.id] ?? {}).map((site) => `${site}: plan entry for a run that no longer exists`) };
+    }
+    return report;
+  }
 
   const owners = new Map<THREE.Object3D, number>();
   for (const run of runs) if (run.group) owners.set(run.group, run.owner);
@@ -260,14 +284,25 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
   };
   let frames = collect();
   const motion = buildSeatMotion(a.spec, frames, a.fixedMount);
+  const plan = SPARE_TRACK_SEAT_PLAN[a.spec.id];
+  const consulted = new Set<string>();
+  const audit = planAudit ? { live: {} as Record<string, number>, stale: [] as string[] } : null;
   for (const run of runs) {
     const placed = run.shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(run.hint.pos, run.hint.quat,
       new THREE.Vector3(1, 1, 1)));
     const env = seatEnv(frames, run.frame, placed, motion);
-    const result = solveSpareTrackSeat(env, run.shape, run.hint, run.owner);
+    const planned = plan?.[run.site];
+    const result = solveSpareTrackSeat(env, run.shape, run.hint, run.owner, AUTHORED_SEARCH, planned);
     if (result.ok && result.seat === 'authored') {
       report.runs.push(seatReceipt(run.site, run.frame, run.source, 'authored', result.measure));
       continue;
+    }
+    if (planned !== undefined) consulted.add(run.site);
+    if (audit) {
+      // the search's own answer, from scratch, against the recorded one
+      const live = planned === undefined ? result.station : solveSpareTrackSeat(env, run.shape, run.hint, run.owner).station;
+      audit.live[run.site] = live ?? -1;
+      if (planned !== live) audit.stale.push(`${run.site}: plan ${planned ?? 'none'}, search ${live}`);
     }
     if (result.ok && result.pose) {
       applySeat(a, run, result.pose);
@@ -287,6 +322,12 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
         authored: { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } });
     }
     frames = collect();
+  }
+  if (audit) {
+    for (const site of Object.keys(plan ?? {})) {
+      if (!consulted.has(site)) audit.stale.push(`${site}: plan entry for a run that seats as authored or no longer exists`);
+    }
+    a.root.userData.spareTrackPlanAudit = audit;
   }
   return report;
 }

@@ -52,6 +52,10 @@ const pitchMod = await imp('src/sim/gunPitchLimits.ts');
 // the shared semantic tags (absent on trees older than the seat solver: the source-text tags then stand alone)
 const seatMod = fs.existsSync(path.join(WT, 'src/vehicles/spareTrackSeat.ts')) ? await imp('src/vehicles/spareTrackSeat.ts') : null;
 const idMod = await imp('src/vehicles/tankIdAliases.ts');
+// the seat pass re-runs its search beside the recorded plan (spareTrackSeatPlan.ts) and reports where they differ
+const PLAN_REL = 'src/vehicles/spareTrackSeatPlan.ts';
+const passMod = fs.existsSync(path.join(WT, PLAN_REL)) ? await imp('src/vehicles/spareTrackSeatPass.ts') : null;
+passMod?.setSpareTrackSeatPlanAudit(true);
 
 // ------------------------------------------------------------------ thresholds
 const SUPPORT_M = 0.03;      // a host surface within 3 cm beneath = supported
@@ -1104,11 +1108,12 @@ function analyse(id) {
   const { visual, buildMs } = buildTank(id);
   const t1 = Date.now();
   const inputHash = spareTrackGeometryDigest(visual.root);
+  const planAudit = visual.root.userData.spareTrackPlanAudit ?? null;
   // --update re-measures only ids whose geometry changed since their ledger row; --check trusts a current row (its
   // geometry is byte-identical) and fails a stale one; --gate always measures afresh
   if ((UPDATE || CHECK) && !GATE && !CROPS && ledger.rows[id]?.inputHash === inputHash && !flag('force')) {
     visual.dispose();
-    return { unchanged: true, id, inputHash };
+    return { unchanged: true, id, inputHash, planAudit };
   }
   const buildReceipt = Array.isArray(visual.root.userData.spareTrack) ? { runs: visual.root.userData.spareTrack.length,
     rejected: (visual.root.userData.spareTrackRejected || []).length } : null;
@@ -1237,8 +1242,10 @@ function analyse(id) {
     return {
       id, name: spec.name, era: spec.era, turretless: MM.turretless, gunMode: MM.fixedInHull ? 'fixed-in-hull' : MM.turretless ? 'casemate' : 'turret',
       gunLimitsDeg: { elevation: MM.elev, depression: MM.dep, arc: MM.arc, pitchByYaw: !!spec.gunPitchByYawDeg },
-      buildMs, analyseMs: Date.now() - t1, coverage: { ...coverage, bodies: bodies.length }, inputHash, buildReceipt,
+      buildMs, analyseMs: Date.now() - t1, coverage: { ...coverage, bodies: bodies.length }, inputHash, buildReceipt, planAudit,
       seatError: visual.root.userData.spareTrackError ?? null,
+      seat: { runs: visual.root.userData.spareTrack ?? null, rejected: visual.root.userData.spareTrackRejected ?? null,
+        ms: Math.round(visual.root.userData.spareTrackMs ?? 0) },
       decorTracks: { rowsBuilt: decorTrackAttempts.length, seated: bundles.filter((B) => B.source === 'decor').length, rejections: decorTrackSkips.map((x) => x[1]) },
       trackMaterialNonLinks: bundles.trackMaterialNonLinks || [],
       diag, bundles: out, _bodies: bodies, _bundles: bundles, _visual: visual, _MM: MM,
@@ -1771,6 +1778,7 @@ if (OUT) fs.mkdirSync(OUT, { recursive: true });
 const YIELD_LOAD = Number(arg('yield-load', '0'));
 const os = await import('node:os');
 const results = {};
+const planAudits = {};
 const failures = [];
 for (const id of ids) {
   while (YIELD_LOAD > 0 && os.loadavg()[0] > YIELD_LOAD) {
@@ -1783,6 +1791,7 @@ for (const id of ids) {
     failures.push(`${id}: build/analysis error ${e.message || e}`);
     continue;
   }
+  if (res.planAudit) planAudits[id] = res.planAudit;
   if (res.unchanged) { results[id] = ledger.rows[id]; if (!QUIET) console.log(`${id}	unchanged (${res.inputHash})`); continue; }
   const { _bodies, _bundles, _visual, _MM, ...clean } = res;
   const runs = clean.bundles.map((b) => {
@@ -1823,6 +1832,22 @@ for (const id of ids) {
   const bad = runs.filter((r) => r.classes.some((c) => GATED.has(c)));
   if (!QUIET) console.log(`${id}\truns ${runs.length}\tdefective ${bad.length}\tuncovered ${uncovered.length}\t${clean.buildMs + clean.analyseMs} ms`);
 }
+/** Rewrite spareTrackSeatPlan.ts with the search's answers for every id built in this run (others are kept). */
+function writeSeatPlan(audits) {
+  const file = path.join(WT, PLAN_REL);
+  const src = fs.readFileSync(file, 'utf8');
+  const at = src.indexOf('export const SPARE_TRACK_SEAT_PLAN');
+  const body = src.slice(src.indexOf('=', at) + 1).trim().replace(/;\s*$/, '');
+  const plan = Function(`return (${body});`)();
+  for (const [id, audit] of Object.entries(audits)) {
+    if (Object.keys(audit.live).length) plan[id] = Object.fromEntries(Object.entries(audit.live).sort(([a], [b]) => (a < b ? -1 : 1)));
+    else delete plan[id];
+  }
+  const ids = Object.keys(plan).sort();
+  const lines = ids.map((id) => `  ${JSON.stringify(id)}: {\n${Object.entries(plan[id]).map(([site, k]) => `    ${JSON.stringify(site)}: ${k},`).join('\n')}\n  },`);
+  const next = `${src.slice(0, at)}export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, number>>>> = {${lines.length ? `\n${lines.join('\n')}\n` : ''}};\n`;
+  if (next !== src) { fs.writeFileSync(file, next); console.log(`[spare-track] seat plan ${PLAN_REL}: ${ids.length} vehicles`); }
+}
 function dist3(p, a) { return Math.hypot(Math.max(a[0] - p[0], 0, p[0] - a[3]), Math.max(a[1] - p[1], 0, p[1] - a[4]), Math.max(a[2] - p[2], 0, p[2] - a[5])); }
 
 const lint = (CHECK || GATE || UPDATE) ? sourceLint() : [];
@@ -1843,6 +1868,7 @@ for (const [id, row] of Object.entries(results)) {
     if (was.size !== now.size || [...now].some((k) => !was.has(k))) problems.push(`${id}: a fresh measurement differs from its ledger row`);
   }
   if ((CHECK || GATE) && !prior) problems.push(`${id}: no ledger row; run --update`);
+  if ((CHECK || GATE) && !UPDATE) for (const st of planAudits[id]?.stale ?? []) problems.push(`${id}: SEAT_PLAN ${st}; run --update`);
 }
 for (const l of lint) problems.push(`UNCOVERED source ${l}`);
 if (UPDATE && ledgerPath) {
@@ -1853,6 +1879,7 @@ if (UPDATE && ledgerPath) {
   fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 1) + '\n');
   console.log(`[spare-track] ledger ${path.relative(WT, ledgerPath)}: ${Object.keys(results).length} rows written`);
 }
+if (UPDATE && passMod) writeSeatPlan(planAudits);
 if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify({ results, lint, problems }, null, 1));
 const tally = {};
 for (const row of Object.values(results)) for (const r of row.runs) tally[r.primary] = (tally[r.primary] || 0) + 1;

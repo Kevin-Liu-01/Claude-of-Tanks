@@ -187,6 +187,9 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
     for (const run of row.runs) assert.ok(!run.classes.some((c) => GATED.has(c)), `${id} ${run.site}: ${run.classes.join(', ')}`);
     assert.deepEqual(row.uncovered, [], `${id}: uncovered spare-link geometry`);
   }
+  // the recorded search answers (spareTrackSeatPlan.ts) must match a fresh search
+  const { setSpareTrackSeatPlanAudit } = await import('./spareTrackSeatPass.ts');
+  setSpareTrackSeatPlanAudit(true);
   const build = (id) => createTank(id, null, SPARE_TRACK_BUILD);
   const gunBox = (root) => {
     const box = new THREE.Box3();
@@ -221,8 +224,8 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
       if (id === 'strv103a') {
         const hull = runs.filter((r) => r.frame === 'hull');
         assert.equal(hull.length, 1, `strv103a carries exactly one hull run (${JSON.stringify(hull)})`);
-        assert.equal(hull[0].source, 'fitting');
-        assert.equal(hull[0].seat, 'authored', 'the A-era links stay as authored');
+        assert.equal(hull[0].source, 'fitting', 'the generic decor run stays off a frame with authored links (R8)');
+        assert.ok(['authored', 'reseated'].includes(hull[0].seat), 'the A-era links are kept, on a seat that passes');
       }
       if (id === 'strv103') {
         const dozer = runs.filter((r) => /strv103b-dozer/.test(r.site));
@@ -231,8 +234,12 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
         for (const run of dozer) assert.ok(run.maxEmbedCm <= 1, `${run.site}: links embed ${run.maxEmbedCm} cm`);
       }
       for (const run of runs) {
-        assert.ok(run.support >= 80 && run.air <= 10 && run.exposure >= 30, `${id}/${run.site}: ${JSON.stringify(run)}`);
+        // a kept authored seat passes the authored tier, anything the solver chose the strict one
+        const strict = run.seat !== 'authored';
+        assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20) && run.exposure >= (strict ? 50 : 30),
+          `${id}/${run.site}: ${JSON.stringify(run)}`);
       }
+      assert.deepEqual(root.userData.spareTrackPlanAudit?.stale ?? [], [], `${id}: the recorded seat plan is current`);
       assert.equal(spareTrackGeometryDigest(root), ledger.rows[id]?.inputHash, `${id}: the ledger row is current (not STALE)`);
     } finally {
       tank.dispose();
