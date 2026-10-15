@@ -272,8 +272,13 @@ export default {
     // (Caldera round 2, wave 114: "smooth, untextured domes and pale alpine spires rather than Aso's long, flat-topped
     // green rim"): the rim wooded on its lower walls and grassy over its level tops (the rolling relief's forest and
     // fields cover, not the volcanic field's bare cones), and no far peaks over it (the uplands behind the rim)
-    relief: 'rolling', panorama: { regional: 'upland' },
-    baseHex: 0x55603d, amp: 1.52, style: 'mesa', treeline: 0.55,
+    // (the maps lane with HORIZONS, 2026-10-15, wave 2's blind critics: "alpine-looking grey peaks instead of Aso's grassy
+    // flat-topped rim") the somma is the whole skyline from inside the caldera — the outer slopes fall away behind it
+    // (panorama 'plain', was 'upland'), its crest one long level wall with a stair (style 'escarpment', was 'mesa': the
+    // mesa's broken caprock tops read as peaks at amp 1.52), and its steep faces grass, the susuki and pasture down to
+    // the woods (rockHex below, was a neutral grey 0x4d4b44)
+    relief: 'rolling', panorama: { regional: 'plain' },
+    baseHex: 0x55603d, amp: 1.52, style: 'escarpment', treeline: 0.55,
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): stacked lava-flow beds on the crater
     // walls (banding 0.18 over the 0.16 default), a second skyline rank of the dark conifers and more tone grain on
     // the flattest-reading ring of the mesa family (0.48 -> 0.60)
@@ -281,7 +286,7 @@ export default {
     // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
     // the map's horizon draws no more triangles than the PR head's
     outlandRocks: 0.9,
-    forestHex: 0x27351f, rockHex: 0x4d4b44, haze: 0.94, grain: 0.60,
+    forestHex: 0x27351f, rockHex: 0x74704a, haze: 0.94, grain: 0.60,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'cumulus-humilis', coverage: 0.22, cirrus: 0.45, baseM: 1500 },
