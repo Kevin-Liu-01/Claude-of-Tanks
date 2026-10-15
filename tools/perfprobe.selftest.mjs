@@ -442,7 +442,7 @@ for (const badIds of [
   const aliased = available.map(row => ({ ...row, specId: `spec-${row.specId}` }));
   const provenance = inspectPerfRosterEligibility(request, aliased);
   const actual = snapshot();
-  actual.playerSpecId = 'spec-m1a2';
+  actual.playerSpecId = 'spec-m1a1_abrams_hc';
   actual.roster.forEach(row => { row.specId = `spec-${row.specId}`; });
   requirePerfRoster(recordPerfRosterCheckpoint(provenance, 'entry', actual));
 }

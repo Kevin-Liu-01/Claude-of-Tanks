@@ -21,6 +21,7 @@ import {
 } from './camoPolicy.ts';
 import { getCamoSelection, resolveCamoVisual, hasCamoPaint, setCamoBiome } from './materials.ts';
 import { tankDisplayName } from './tankLabels.ts';
+import { tankSeedId } from './tankIdAliases.ts'; // signature camo ids keep their schema-1 spelling
 
 // Factory is the stock recipe, including the fleet’s named and era-specific defaults.
 // a plain coat carries no pattern knobs, so solids compare by colour alone (the generator normalises them the same way)
@@ -144,7 +145,7 @@ const requestedIsraeliDefaults = [
 ];
 for (const id of requestedIsraeliDefaults) {
   assert.ok(SIGNATURE_CAMO_TANK_IDS.includes(id), `${id} must retain its requested Signature entry`);
-  assert.equal(stockCamoPatternIdFor(id), `sig_${id}`, `${id} owns its distinct requested default`);
+  assert.equal(stockCamoPatternIdFor(id), `sig_${tankSeedId(id)}`, `${id} owns its distinct requested default`);
   assert.equal(getCamoSelection(id), 'factory', `${id} initially presents Factory when unset`);
 }
 const russianDigitalSignatures = ['bmpt_t90', 't90sm_2013', 't90a_burlak_proto', 't90am', 't90m_proryv', 't90a_2004', 't90a_2006'];
