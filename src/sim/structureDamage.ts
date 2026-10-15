@@ -324,10 +324,32 @@ export function structureSlenderness(heightM: number, hw: number, hd: number): n
   const area = 4 * hw * hd;
   return area > 0 && heightM > 0 ? heightM / Math.sqrt(area) : 0;
 }
+/**
+ * A top-heavy slender body (a water tower: a quarter or more of its volume in a vessel half again its shaft's section,
+ * up on the shaft) stands on its shaft, and the shaft is what a gun brings down: its slender factor stops at twice the
+ * volume law's points (the coordinator's ruling, 2026-10-14: the slender towers — water towers, stacks, minarets,
+ * lighthouses — fall within seven 125 mm HE rounds; Hostomel's water tower took ten, the Ruhr's and the Saar's nine;
+ * the airfield's control tower, a building whose cab barely oversails its shaft, keeps its twelve).
+ */
+const TOP_HEAVY_SECTION = 1.5;
+const TOP_HEAVY_SHARE = 0.25;
+const TOP_HEAVY_MAX = 2;
 /** The points factor a slender masonry or concrete body takes over the volume law (1 for every other). */
-export function slenderMasonryFactor(material: StructureMaterial, slenderness: number): number {
+export function slenderMasonryFactor(material: StructureMaterial, slenderness: number, topHeavy = false): number {
   if (material !== 'masonry' && material !== 'concrete') return 1;
-  return Math.min(SLENDER_MAX, 1 + SLENDER_RATE * Math.max(0, slenderness - SLENDER_FROM));
+  return Math.min(topHeavy ? TOP_HEAVY_MAX : SLENDER_MAX, 1 + SLENDER_RATE * Math.max(0, slenderness - SLENDER_FROM));
+}
+/** The share of a body's volume in bands over half again its median band's section (a band's volume over its height). */
+function topHeavyShare(records: readonly CollisionRecord[]): number {
+  if (records.length < 3) return 0;
+  const bands = records.map((record) => {
+    const volume = bandVolume(record);
+    return { volume, section: volume / Math.max(1e-6, record.max[1] - record.min[1]) };
+  });
+  const sections = bands.map((b) => b.section).sort((a, b) => a - b), median = sections[Math.floor(sections.length / 2)];
+  let total = 0, heavy = 0;
+  for (const b of bands) { total += b.volume; if (b.section > TOP_HEAVY_SECTION * median) heavy += b.volume; }
+  return total > 0 ? heavy / total : 0;
 }
 
 /** Hit points from the built volume: 0.72 · V^0.72, at least 10 (§3.2). */
@@ -377,7 +399,7 @@ function buildState(id: number, group: Group, wallMaterial: StructureMaterial): 
   // a slender body in a stone town is a tower of the town's stone, not a timber shed
   if (massClass === 'shed' && slender >= SLENDER_FROM && (wallMaterial === 'masonry' || wallMaterial === 'concrete')) massClass = 'house';
   const material = structureMaterialFor(massClass, wallMaterial);
-  const maxHp = structureHitPoints(volume) * slenderMasonryFactor(material, slender);
+  const maxHp = structureHitPoints(volume) * slenderMasonryFactor(material, slender, topHeavyShare(group.colliders) >= TOP_HEAVY_SHARE);
   return {
     id, role, massClass, material,
     destructible: role !== 'fixed',
