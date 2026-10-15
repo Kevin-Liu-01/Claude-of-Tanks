@@ -589,6 +589,11 @@ function drawHardstand(
         rng(); // (the ring's angle; its stroke is gone)
       }
       scatter(44, 0.2, 0.8, 'rgba(126,66,34,0.3)', 'rgba(126,66,34,0.08)', [0.2, 0.5]);
+      // a working quay's dirt (rejudge6, 2026-10-15: "the quay paving is clean"): diesel and hydraulic oil where the
+      // crane and the trucks stand, green slime and weed in the joints toward the water, big dull grime
+      scatter(20, 1.8, 4.6, 'rgba(46,48,46,0.2)', 'rgba(46,48,46,0.06)', [0.3, 0.7]);
+      alongJoints(70, 0.18, 'rgba(58,70,48,0.3)', 'rgba(58,70,48,0.08)');
+      scatter(26, 0.4, 1.2, 'rgba(22,22,22,0.3)', 'rgba(22,22,22,0.1)', [0.4, 0.9]);
       break;
     }
     case 'slab-urban': {

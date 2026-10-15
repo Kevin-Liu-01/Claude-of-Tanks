@@ -479,7 +479,11 @@ roughnessFactor = mix(roughnessFactor * (1.0 - 0.28 * hardstandWet) * (1.0 - 0.3
 {
   float hardstandBreak = hardstandNoise(vHardstandGround * 0.42) * 0.62 + hardstandNoise(vHardstandGround * 1.9 + 17.0) * 0.28
     + hardstandNoise(vHardstandGround * 7.3 + 41.0) * 0.1;
-  diffuseColor.a *= smoothstep(0.36, 0.64, vHardstandBlend + (hardstandBreak - 0.5) * 0.72);
+  float hardstandEdge = vHardstandBlend + (hardstandBreak - 0.5) * 0.72;
+  // a trodden verge of grit and mud where the pad gives way to the ground, not clean paving cut against bright grass
+  // (rejudge6, 2026-10-15)
+  diffuseColor.rgb = mix(diffuseColor.rgb * vec3(0.62, 0.6, 0.56), diffuseColor.rgb, smoothstep(0.42, 0.85, hardstandEdge));
+  diffuseColor.a *= smoothstep(0.36, 0.64, hardstandEdge);
 }`);
   };
 }
