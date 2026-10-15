@@ -5,12 +5,11 @@
 //   - the raster sits on the sheet's own 8 m grid (four cells a side per sheet cell) and uses the sheet's admission rule
 //     (a cell is built when a corner or its centre carries a mask above WATER_SHEET_MIN_COVERAGE, 0.002) and its
 //     discard (VISIBLE_WATER_MIN, 0.015) — shallowWater.ts imports all three from visibleWater.ts;
-//   - every raster cell, all 512² of them, agrees with the truth: the sheet's water where the built geometry holds the
-//     cell and the mask at its centre reaches VISIBLE_WATER_MIN, else a level paddy's water where the land-use twin floods
-//     it (floodedPaddyAt), else dry. That covers the raster's shortcuts (cells skipped by the corner/centre rule, cells
-//     taken whole when every corner and the centre are deep);
-//   - Jade River Delta's level flooded fields (landUse.ts floodIds) all show paddy water, and no other map shows any;
-//     Tidegate Polders' canals (sheet water outside every lake and marsh contour) are on the raster;
+//   - every raster cell, all 512² of them, agrees with the truth: water where the built geometry holds the cell and the
+//     mask at its centre reaches VISIBLE_WATER_MIN, else dry. That covers the raster's shortcuts (cells skipped by the
+//     corner/centre rule, cells taken whole when every corner and the centre are deep);
+//   - Tidegate Polders' canals (sheet water outside every lake and marsh contour) are on the raster; the flooded paddies
+//     are not (the terrain material does not draw Jade River Delta's six as water: visibleWater.ts);
 //   - the build is bounded: under a third of a brute-force 2 m raster's reads, timed per map (lazy, once per world).
 // No area pins and no plate hash: plate freshness is the bake's business (tools/bake-minimap-assets.mjs).
 import assert from 'node:assert/strict';
@@ -20,10 +19,8 @@ import { worldBuildConfig } from './worldBuildConfig.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { shallowWaterGeometrySteps } from './shallowWater.ts';
 import { shorelineDistance } from './shoreline.ts';
-import { createLandFieldSample } from './landUse.ts';
 import {
-  VISIBLE_WATER, VISIBLE_WATER_MIN, WATER_SHEET_GRID_M, WATER_SHEET_MIN_COVERAGE,
-  buildVisibleWaterRaster, floodedPaddyAt, glslFloat, visibleWaterAt,
+  VISIBLE_WATER_MIN, WATER_SHEET_GRID_M, WATER_SHEET_MIN_COVERAGE, buildVisibleWaterRaster, glslFloat, visibleWaterAt,
 } from './visibleWater.ts';
 
 // ---- one grid, one admission, one discard: the sheet takes them from here ----
@@ -72,13 +69,10 @@ for (const id of MAP_IDS) {
   liquidMaps++;
   const field = createHeightField(1337, config);
   assert.equal(typeof field._waterWetnessAt, 'function', `${id}: the terrain builds its liquid sheet (terrain.ts liquidWater)`);
-  const profile = field._landUseProfile ?? null;
-  const floodIds = profile?.floodIds ?? null; // the client's terrain bake reads it while the world builds
-  const floods = !!floodIds?.size;
   let maskReads = 0;
-  const source = { size: field.size, _landUseProfile: profile, getWaterMaskAt: (x, z) => { maskReads++; return field.getWaterMaskAt(x, z); } };
+  const source = { size: field.size, getWaterMaskAt: (x, z) => { maskReads++; return field.getWaterMaskAt(x, z); } };
   const t0 = performance.now();
-  const raster = buildVisibleWaterRaster(source, true);
+  const raster = buildVisibleWaterRaster(source);
   const ms = performance.now() - t0;
   if (ms > worstMs) { worstMs = ms; worstMsMap = id; }
   const { admitted, segments, step, cells: sheetCells } = sheetAdmission(field);
@@ -88,54 +82,37 @@ for (const id of MAP_IDS) {
   assert.equal(raster.cellM, step / 4, `${id}: a quarter of the sheet's cell (${raster.cellM} m)`);
   assert.ok(raster.cellM <= 2, `${id}: 2 m or finer`);
   assert.ok(raster.samples <= raster.cells * raster.cells / 3, `${id}: bounded (${raster.samples} reads, a brute-force 2 m raster ${raster.cells ** 2})`);
-  assert.ok(maskReads <= raster.samples, `${id}: the reads are counted`);
+  assert.equal(maskReads, raster.samples, `${id}: every read is counted`);
 
-  // every cell against the truth: the built sheet's cells and the mask at the centre, then the level paddies
-  const n = raster.cells, half = field.size / 2, cellM = raster.cellM, sample = createLandFieldSample();
+  // every cell against the truth: the built sheet's cells and the mask at the centre
+  const n = raster.cells, half = field.size / 2, cellM = raster.cellM;
   const mismatches = [];
-  let mismatched = 0;
-  const paddyFields = new Set();
-  let sheetWater = 0, paddyWater = 0, outsideDiscs = 0;
+  let mismatched = 0, sheetWater = 0, outsideDiscs = 0;
   const discs = [...field._layout.marshes, ...field._layout.lakes];
   for (let j = 0; j < n; j++) {
     const z = -half + (j + 0.5) * cellM;
     for (let i = 0; i < n; i++) {
       const x = -half + (i + 0.5) * cellM;
       const sheetCell = admitted[Math.floor(j / 4) * segments + Math.floor(i / 4)];
-      let truth = sheetCell && field.getWaterMaskAt(x, z) >= VISIBLE_WATER_MIN ? VISIBLE_WATER.sheet : VISIBLE_WATER.dry;
-      if (!truth && floods && floodedPaddyAt(profile, x, z, sample)) {
-        truth = VISIBLE_WATER.paddy;
-        paddyFields.add(sample.id);
-      }
+      const truth = sheetCell && field.getWaterMaskAt(x, z) >= VISIBLE_WATER_MIN ? 1 : 0;
       const got = raster.water[j * n + i];
       if (got !== truth && mismatched++ < 8) mismatches.push(`(${x.toFixed(1)}, ${z.toFixed(1)}) raster ${got} world ${truth}`);
-      if (truth === VISIBLE_WATER.sheet) {
+      if (truth) {
         sheetWater++;
         if (!discs.some((d) => Math.abs(x - d.x) < d.r * 2 && Math.abs(z - d.z) < d.r * 2 && shorelineDistance(d, x, z, 1) <= 1)) outsideDiscs++;
-      } else if (truth === VISIBLE_WATER.paddy) paddyWater++;
+      }
     }
   }
   assert.equal(mismatched, 0, `${id}: every raster cell is the world's (${mismatched} differ: ${mismatches.join('; ')})`);
   assert.ok(sheetWater > 0, `${id}: the sheet's water is on the raster`);
   assert.equal(visibleWaterAt(raster, -half - 1, 0), false, `${id}: nothing past the square`);
-
-  // the level paddies: on the maps that flood one, every level flooded field shows water; elsewhere none
-  if (floods) {
-    assert.deepEqual([...paddyFields].sort((a, b) => a - b), [...floodIds].sort((a, b) => a - b),
-      `${id}: every level flooded field shows its water, and only those`);
-    for (const fieldId of paddyFields) assert.ok(floodIds.has(fieldId), `${id}: field ${fieldId} is a level one`);
-  } else {
-    assert.equal(paddyWater, 0, `${id}: no paddy water without a level flooded field`);
-  }
-  rows.push({ id, sheetM2: sheetWater * cellM * cellM, paddyM2: paddyWater * cellM * cellM, outsideDiscsM2: outsideDiscs * cellM * cellM,
-    reads: raster.samples, ms });
+  rows.push({ id, sheetM2: sheetWater * cellM * cellM, outsideDiscsM2: outsideDiscs * cellM * cellM, reads: raster.samples, ms });
 }
 assert.equal(liquidMaps, 12, 'twelve liquid battlefields');
 const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
-assert.ok(byId.delta.paddyM2 > 0, 'Jade River Delta: its level flooded paddies are on the raster');
 assert.ok(byId.polders.outsideDiscsM2 > 0, 'Tidegate Polders: its canals (water outside every lake and marsh) are on the raster');
 assert.ok(worstMs < 1500, `the raster is built lazily once per world in tens of milliseconds (worst ${worstMsMap} ${worstMs.toFixed(0)} ms)`);
 
 const k = (m2) => `${(m2 / 1000).toFixed(1)}k`;
-console.log(`visibleWater.selftest: ${liquidMaps} liquid maps, every 2 m cell = the sheet's real geometry + the CPU mask (+ level paddies); `
-  + rows.map((r) => `${r.id} ${k(r.sheetM2)}${r.paddyM2 ? `+${k(r.paddyM2)} paddy` : ''}${r.outsideDiscsM2 ? ` (${k(r.outsideDiscsM2)} outside discs)` : ''} ${r.reads} reads ${r.ms.toFixed(0)} ms`).join('; '));
+console.log(`visibleWater.selftest: ${liquidMaps} liquid maps, every 2 m cell = the sheet's real geometry + the CPU mask; `
+  + rows.map((r) => `${r.id} ${k(r.sheetM2)}${r.outsideDiscsM2 ? ` (${k(r.outsideDiscsM2)} outside discs)` : ''} ${r.reads} reads ${r.ms.toFixed(0)} ms`).join('; '));

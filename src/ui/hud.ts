@@ -284,7 +284,7 @@ interface HudMinimapFeatures {
   iceLake?: boolean;
   /**
    * The water a player can see (World.getVisibleWaterRaster, world/visibleWater.ts): when present it is the plate's
-   * water, cell for cell — the sheet's and the level paddies' — and the liquid discs' contours are not painted.
+   * water, the water sheet's cell for cell, and the liquid discs' contours are not painted.
    */
   visibleWater?: HudVisibleWater | null;
 }
@@ -5084,10 +5084,9 @@ export function initHud(bus: EventBus): HudRuntime {
   // the map's ground tones, ice on an iceLake map — with a keyline and no
   // waterline rim, so they still mark the slow ground; water paints over them.
   // 2026-10-15 (phase 2): the water itself is the world's visible-water raster
-  // where the world hands one over — the sheet's water and the level paddies',
-  // cell for cell: no waterline wider than the water, no wet causeway, and the
-  // canals and paddies outside every disc. The liquid discs' contours remain
-  // the fallback for a world without one.
+  // where the world hands one over — the water sheet's own cells: no waterline
+  // wider than the water, no wet causeway, and the canals outside every disc.
+  // The liquid discs' contours remain the fallback for a world without one.
   function paintMinimapWaterLayers(
     context: CanvasRenderingContext2D,
     features: HudMinimapFeatures,

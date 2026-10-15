@@ -18,7 +18,7 @@
 //     canvas);
 //   - the split is bounded: at most 337 mask samples per disc.
 // Phase 2 (2026-10-15, world/visibleWater.ts): on the liquid maps the water itself is the world's visible-water raster —
-// the sheet's and the level paddies' water in 2 m cells (its parity with the sheet is visibleWater.selftest.mjs):
+// the water sheet's own cells, 2 m (its parity with the sheet is visibleWater.selftest.mjs):
 //   - the world builds it lazily, once, outside getMinimapFeatures (the battle's audio reads those mid-fight), and both
 //     plate builds hand it to the HUD beside the features; the Studio's plan takes it too;
 //   - the HUD paints exactly the raster (the real painter on a recording canvas: one texel a cell, laid through
@@ -38,8 +38,7 @@ import { createHeightField, createLayout } from '../world/terrain.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from '../world/shoreline.ts';
 import { splitMinimapWater } from '../world/minimapWaterPatches.ts';
 import { shallowWaterGeometrySteps } from '../world/shallowWater.ts';
-import { VISIBLE_WATER_MIN, WATER_SHEET_GRID_M, buildVisibleWaterRaster, floodedPaddyAt, visibleWaterAt } from '../world/visibleWater.ts';
-import { createLandFieldSample } from '../world/landUse.ts';
+import { VISIBLE_WATER_MIN, WATER_SHEET_GRID_M, buildVisibleWaterRaster, visibleWaterAt } from '../world/visibleWater.ts';
 import { projectWorldToMinimap } from './minimapOrientation.ts';
 
 const hudSource = await readFile(new URL('./hud.ts', import.meta.url), 'utf8');
@@ -211,7 +210,6 @@ const WATERLINE_RIM = 'rgb(204,234,240)';
   worldSize = 1024;
   const cells = 16, cellM = worldSize / cells, water = new Uint8Array(cells * cells);
   for (const [i, j] of [[0, 0], [1, 0], [2, 0], [0, 1], [9, 4], [15, 15]]) water[j * cells + i] = 1; // an L by (−x, −z), a stray, a corner
-  water[4 * cells + 10] = 2; // a paddy cell
   const raster = { size: worldSize, cells, cellM, water };
   const target = recordingCanvas();
   target.width = 440; target.height = 440;
@@ -253,7 +251,8 @@ assert.equal(mapSource.slice(mapSource.indexOf('\n    },\n', featuresBegin), ras
   'map.ts: getVisibleWaterRaster follows getMinimapFeatures');
 assert.doesNotMatch(mapSource.slice(featuresBegin, rasterBegin), /VisibleWater|visibleWater/,
   'map.ts: getMinimapFeatures never touches the raster (the battle\'s audio reads the features mid-fight)');
-assert.match(mapSource.slice(rasterBegin, featuresEnd), /if \(visibleWater === undefined\) \{/, 'map.ts: the raster is built once per world');
+assert.match(mapSource.slice(rasterBegin, featuresEnd), /if \(visibleWater === undefined\) visibleWater = visibleWaterSheet \? buildVisibleWaterRaster\(heightField\) : null;/,
+  'map.ts: the raster is built once per world, on a map with a liquid sheet');
 assert.ok(preambleBegin >= 0 && preambleEnd > preambleBegin && featuresBegin > preambleEnd && featuresEnd > featuresBegin,
   'map.ts: the world\'s minimap water preamble and getMinimapFeatures remain discoverable');
 const handOffSource = stripTypeScriptTypes(`${mapSource.slice(preambleBegin, preambleEnd)}
@@ -269,7 +268,7 @@ function worldMinimap(config, heightField) {
   const rasterBuilds = [];
   const runtime = assembleHandOff(
     (discs, waterMaskAt) => { splits++; return splitMinimapWater(discs, waterMaskAt); },
-    (field, sheet) => { rasterBuilds.push(sheet); return buildVisibleWaterRaster(field, sheet); },
+    (field) => { rasterBuilds.push(field); return buildVisibleWaterRaster(field); },
     config, heightField, { features: { buildings: [], tacticalBeats: [] } }, { _clusters: [] });
   return { getMinimapFeatures: runtime.getMinimapFeatures, getVisibleWaterRaster: runtime.getVisibleWaterRaster,
     splits: () => splits, rasterBuilds: () => rasterBuilds.slice() };
@@ -295,18 +294,16 @@ function sheetAdmission(field) {
 /**
  * One liquid map's waterline census on a 1 m lattice (each raster cell's four quarter points): the old paint (the liquid
  * discs to their contours) and the raster's paint against what the world shows — the built sheet's cells with the mask
- * at VISIBLE_WATER_MIN, or a level paddy's water — and its causeways (road points inside an old liquid contour where
- * the world shows no water within 2 m).
+ * at VISIBLE_WATER_MIN — and its causeways (road points inside an old liquid contour where the world shows no water
+ * within 2 m).
  */
 function waterlineCensus(field, raster, liquidDiscs) {
   const { admitted, segments, step } = sheetAdmission(field);
-  const profile = field._landUseProfile ?? null, floods = !!profile?.floodIds?.size, sample = createLandFieldSample();
   const half = field.size / 2, n = raster.cells, cellM = raster.cellM, q = cellM / 4, pointM2 = (cellM / 2) ** 2;
   const seen = (x, z) => {
     const cx = Math.floor((x + half) / step), cz = Math.floor((z + half) / step);
-    if (cx >= 0 && cz >= 0 && cx < segments && cz < segments && admitted[cz * segments + cx]
-      && field.getWaterMaskAt(x, z) >= VISIBLE_WATER_MIN) return true;
-    return floods && floodedPaddyAt(profile, x, z, sample);
+    return cx >= 0 && cz >= 0 && cx < segments && cz < segments && admitted[cz * segments + cx] === 1
+      && field.getWaterMaskAt(x, z) >= VISIBLE_WATER_MIN;
   };
   // the old paint: the liquid discs filled to their contours, on the 1 m lattice
   const R = n * 2, pointM = cellM / 2, old = new Uint8Array(R * R);
@@ -445,7 +442,7 @@ for (const id of MAP_IDS) {
   assert.deepEqual(world.rasterBuilds(), [], `${id}: reading the features never builds the raster`);
   const raster = world.getVisibleWaterRaster();
   assert.ok(raster && world.getVisibleWaterRaster() === raster, `${id}: the world keeps one raster`);
-  assert.deepEqual(world.rasterBuilds(), [true], `${id}: built once, on the first call, with the liquid sheet`);
+  assert.deepEqual(world.rasterBuilds(), [field], `${id}: built once, on the first call, from the world's height field`);
   const plate = paintMap({ ...features, visibleWater: raster }, palette);
   assert.deepEqual(plate.rasters, [{ raster, water: palette.water }], `${id}: the plate's water is the world's raster, in the water colour`);
   assert.equal(plate.fills.filter((f) => f.style === palette.water).length, 0, `${id}: no liquid disc is painted beside it`);

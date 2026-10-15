@@ -274,9 +274,9 @@ export interface WorldRuntime {
     iceLake: boolean;
   };
   /**
-   * The water a player can see (visibleWater.ts: the sheet's and the level paddies', 2 m cells), built on the first call
-   * and kept; null where the world draws no standing water. The tactical map's plate paints its water from this. Kept
-   * out of getMinimapFeatures on purpose: the battle's audio reads those mid-fight, and this is tens of milliseconds.
+   * The water a player can see (visibleWater.ts: the water sheet's own cells, 2 m), built on the first call and kept;
+   * null on a map without a liquid sheet. The tactical map's plate paints its water from this. Kept out of
+   * getMinimapFeatures on purpose: the battle's audio reads those mid-fight, and this is tens of milliseconds.
    */
   getVisibleWaterRaster(): VisibleWaterRaster | null;
   update(
@@ -507,8 +507,8 @@ function assembleWorld(
   let minimapWater: { readonly liquid: readonly LayoutDisc[]; readonly soft: readonly LayoutDisc[] } | null = null;
   const minimapSplat: TerrainMapConfig['splat'] = config.splat;
   const minimapIceLake = !!minimapSplat?.iceLake; // the world's wet layer is ice (terrain.ts createWetSplatLayer)
-  // The tactical map's water raster (visibleWater.ts), built on the first getVisibleWaterRaster and kept. The sheet is the
-  // terrain's liquidWater (a seaLake map without frozen marshes); a level flooded paddy holds water on any map.
+  // The tactical map's water raster (visibleWater.ts), built on the first getVisibleWaterRaster and kept: the water sheet
+  // exists on the terrain's liquidWater maps only (a seaLake map without frozen marshes).
   let visibleWater: VisibleWaterRaster | null | undefined;
   const visibleWaterSheet = !!minimapSplat?.seaLake && !layout.terrain?.frozenMarshes;
   // ground lane (2026-10-03): the trees are placed — the terrain draws its forest floor under them and no field there,
@@ -937,10 +937,7 @@ function assembleWorld(
       };
     },
     getVisibleWaterRaster: () => {
-      if (visibleWater === undefined) {
-        visibleWater = visibleWaterSheet || heightField._landUseProfile?.floodIds?.size
-          ? buildVisibleWaterRaster(heightField, visibleWaterSheet) : null;
-      }
+      if (visibleWater === undefined) visibleWater = visibleWaterSheet ? buildVisibleWaterRaster(heightField) : null;
       return visibleWater;
     },
     /**
