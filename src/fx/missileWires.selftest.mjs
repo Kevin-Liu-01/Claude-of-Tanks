@@ -187,8 +187,12 @@ try {
     'and ends on the missile\'s tail');
   bus.emit('shell:hit', { shellId: 4242, pos: [shell.pos.x, 2, 0], normal: [-1, 0, 0], caliberMm: 152, kind: 'pen' });
   fx.update(1 / 60, [], camera);
+  assert.ok(drawn().length > 0 && mesh.visible && fx.group.userData.softParticles.isActive(),
+    'parted, it still draws while it settles (the late pass stays on for it)');
   for (let f = 0; f < 60 * 5; f++) fx.update(1 / 60, [], camera);
   assert.equal(drawn().length, 0, 'struck: the wire parted, settled and faded out');
+  const src = await (await import('node:fs/promises')).readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+  assert.match(src, /\|\| wires\.mesh\.visible/, 'a live or settling wire keeps the late FX pass on (post.ts skips it otherwise)');
   fly('Kornet guided missile', 'spike-launch', 240, 40);
   assert.equal(drawn().length, 0, 'a Kornet rides its laser beam: no wire');
   fly('Spike LR', 'spike-launch', 117, 40);

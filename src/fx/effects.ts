@@ -1709,6 +1709,8 @@ function* createFxSteps(
       || tracerGeo.instanceCount > 0
       || tracers.active() // atmospherics lane
       || atgmBodies.count > 0
+      // (FX lane 10-14) a parted wire settling after its missile has gone still draws in the late pass
+      || wires.mesh.visible
       || shockRings.some(isRingVisible)
       || muzzleRings.some(isRingVisible)
       || (extraLateFxActive !== null && extraLateFxActive()),
