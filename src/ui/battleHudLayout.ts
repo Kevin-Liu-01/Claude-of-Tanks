@@ -126,15 +126,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const dockObstacleSelector = '.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,'
     + '.cot-dp,.cot-drive,.cot-minimap,.cot-top,.cot-mode-status.show,.cot-net,.cot-cons,.cot-shells';
   const dockObstacles: TouchDockRect[] = [];
-  const dockSoft: TouchDockRect[] = [];
   let safeProbe: HTMLElement | null = null;
-  // Short landscape shows the pre-battle countdown in the centre lane the dock may want. Its box is remembered from
-  // the countdown that opens every battle (per viewport size), so the dock keeps clear of it without moving when it ends.
+  // Landscape shows the pre-battle countdown in the centre lane the dock may want. Its box is remembered from the
+  // countdown that opens every battle (per viewport size; estimated until then), so the dock keeps clear of it
+  // without moving when it ends.
   let countdownSlot: { width: number; height: number; box: TouchDockRect } | null = null;
-  function placeDock(row: HTMLElement, width: number, height: number): TouchDockPlacement | null {
+  function placeDock(row: HTMLElement, width: number, height: number, top: number, scoreBottom: number): TouchDockPlacement | null {
     let count = 0;
     for (const child of row.children) if (child.getClientRects().length) count++;
-    dockObstacles.length = 0; dockSoft.length = 0;
+    dockObstacles.length = 0;
     let joy: DOMRect | null = null, fire: DOMRect | null = null;
     for (const node of document.querySelectorAll<HTMLElement>(dockObstacleSelector)) {
       if (!node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') continue;
@@ -145,15 +145,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
         // keeps clear of the open drawer too, unless the screen is too crowded for that.
         let slots = 0;
         for (const slot of node.children) if (slot.classList.contains('cot-shell') && slot.getClientRects().length) slots++;
-        if (slots > 1) dockSoft.push({ x: box.left - 56 * (slots - 1), y: box.top, w: 56 * (slots - 1), h: box.height });
+        if (slots > 1) dockObstacles.push({ x: box.left - 56 * (slots - 1), y: box.top, w: 56 * (slots - 1), h: box.height });
       }
       if (node.classList.contains('joy')) joy = box;
       if (node.classList.contains('fire') && !node.classList.contains('alt')) fire = box;
       dockObstacles.push({ x: box.left, y: box.top, w: box.width, h: box.height });
     }
-    const countdown = width > height ? read('.cot-prebattle.on') : null;
-    if (countdown) countdownSlot = { width, height, box: { x: countdown.left, y: countdown.top, w: countdown.width, h: countdown.height } };
-    if (width > height && countdownSlot?.width === width && countdownSlot.height === height) dockSoft.push(countdownSlot.box);
+    if (width > height) {
+      const countdown = read('.cot-prebattle.on');
+      if (countdown) countdownSlot = { width, height, box: { x: countdown.left, y: countdown.top, w: countdown.width, h: countdown.height } };
+      dockObstacles.push(countdownSlot?.width === width && countdownSlot.height === height ? countdownSlot.box
+        : { x: width / 2 - 124, y: top + 8, w: 248, h: 128 });
+      // At 340 px and below the landscape notices hold a fixed centre band (refresh) rather than making room.
+      if (height <= 340) {
+        dockObstacles.push({ x: width / 2 - 124, y: Math.max(top + 16, scoreBottom + 52), w: 248,
+          h: (read('.cot-sixth')?.height ?? 48) + 8 + (read('.cot-alert')?.height ?? 28) });
+      }
+    }
     if (!safeProbe) {
       safeProbe = document.createElement('div');
       safeProbe.setAttribute('aria-hidden', 'true');
@@ -162,7 +170,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.append(safeProbe);
     }
     const safe = getComputedStyle(safeProbe);
-    const placement = placeTouchActionDock({ width, height, count, obstacles: dockObstacles, soft: dockSoft,
+    const placement = placeTouchActionDock({ width, height, count, obstacles: dockObstacles,
       anchor: joy && fire ? { x: (joy.left + joy.right + fire.left + fire.right) / 4, y: (joy.top + joy.bottom + fire.top + fire.bottom) / 4 } : null,
       insets: { top: parseFloat(safe.paddingTop) || 0, right: parseFloat(safe.paddingRight) || 0,
         bottom: parseFloat(safe.paddingBottom) || 0, left: parseFloat(safe.paddingLeft) || 0 } });
@@ -230,7 +238,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       (ammo ? ammo.left + ammo.width / 2 : width / 2) - dockWidth / 2));
     // Touch: the action dock (touchActionDock.ts) lays the controls out as 48 px tiles at the free spot nearest the
     // thumbs and wraps rather than scrolls. The older strip placement below remains the fallback when nothing fits.
-    const dock = touch && systems && systemsElement ? placeDock(systemsElement, width, height) : null;
+    const dock = touch && systems && systemsElement ? placeDock(systemsElement, width, height, top, scoreBottom) : null;
     if (dock) {
       systemsLeft = dock.x; systemsTop = dock.y; systemsWidth = dockWidth = dock.w; systemsHeight = dock.h;
     } else if (touch && height < 550 && width > height) {
@@ -276,11 +284,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const aimDefaultTop = height * .5 + 48, aimHeight = aimWarning?.height ?? 24;
     const aimDocked = !!dock && width < height && aimDefaultTop < dock.y + dock.h + 8 && aimDefaultTop + aimHeight > dock.y - 8
       && width / 2 - 90 < dock.x + dock.w && width / 2 + 90 > dock.x;
-    const centerStack = (read('.cot-sixth')?.height ?? 48) + 8 + (read('.cot-alert')?.height ?? 28)
+    const alertShown = read('.cot-alert.show');
+    const centerStack = (read('.cot-sixth')?.height ?? 48) + (alertShown ? 8 + alertShown.height : 0)
       + (aimDocked && aimWarning ? 8 + aimHeight : 0);
     const dockNoticeTop = dock && dock.y - 8 - centerStack >= Math.max(top + 8, leftAnchor, (touchChrome?.bottom ?? 0) + 8)
       ? dock.y - 8 - centerStack : null;
-    const noticeFloor = dockNoticeTop !== null && (read('.cot-sixth.on') || read('.cot-alert.show') || (aimDocked && aimWarning))
+    const noticeFloor = dockNoticeTop !== null && (read('.cot-sixth.on') || alertShown || (aimDocked && aimWarning))
       ? dockNoticeTop - 8 : height;
     const leftBottom = Math.min(leftFloor(height, touch), noticeFloor,
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);

@@ -1,7 +1,7 @@
 [
  {"owner":true,"width":360,"height":640,"singleRowUpTo":5,"anchor":{"x":181.5,"y":571.5},"measuredDock5":{"x":26,"y":358,"w":264,"h":48},
-  "soft":{"ammoDrawerOpen":{"x":190,"y":264,"w":112,"h":52}},
   "obstacles":{
+   "ammoDrawerOpen":{"x": 190, "y": 264, "w": 112, "h": 52},
    "joy":{"x":14,"y":516,"w":100,"h":100},
    "fire":{"x":258,"y":536,"w":82,"h":82},
    "fireAlt":{"x":108,"y":424,"w":56,"h":56},
@@ -20,8 +20,8 @@
    "ammo":{"x":302,"y":264,"w":48,"h":52}
   }},
  {"owner":true,"width":390,"height":844,"singleRowUpTo":5,"anchor":{"x":201,"y":771},"measuredDock5":{"x":56,"y":537,"w":264,"h":48},
-  "soft":{"ammoDrawerOpen":{"x":220,"y":468,"w":112,"h":52}},
   "obstacles":{
+   "ammoDrawerOpen":{"x": 220, "y": 468, "w": 112, "h": 52},
    "joy":{"x":14,"y":702,"w":118,"h":118},
    "fire":{"x":288,"y":740,"w":82,"h":82},
    "fireAlt":{"x":137,"y":628,"w":56,"h":56},
@@ -40,8 +40,9 @@
    "ammo":{"x":332,"y":468,"w":48,"h":52}
   }},
  {"owner":true,"width":844,"height":390,"singleRowUpTo":7,"anchor":{"x":429,"y":317},"measuredDock5":{"x":297,"y":287,"w":264,"h":48},
-  "soft":{"ammoDrawerOpen":{"x":674,"y":162,"w":112,"h":52},"countdown":{"x":248.2,"y":123.2,"w":347.7,"h":111.5}},
   "obstacles":{
+   "ammoDrawerOpen":{"x": 674, "y": 162, "w": 112, "h": 52},
+   "countdown":{"x": 248.2, "y": 123.2, "w": 347.7, "h": 111.5},
    "joy":{"x":12,"y":258,"w":108,"h":108},
    "fire":{"x":754,"y":284,"w":76,"h":76},
    "fireAlt":{"x":140,"y":184,"w":56,"h":56},
@@ -59,9 +60,10 @@
    "con2":{"x":786,"y":222,"w":44,"h":48},
    "ammo":{"x":786,"y":162,"w":48,"h":52}
   }},
- {"width":667,"height":375,"singleRowUpTo":5,"anchor":{"x":340.5,"y":302},"measuredDock5":null,
-  "soft":{"ammoDrawerOpen":{"x":497,"y":147,"w":112,"h":52},"countdown":{"x":232.2,"y":123.2,"w":202.5,"h":111.5}},
+ {"width":667,"height":375,"singleRowUpTo":5,"fitsUpTo":6,"anchor":{"x":340.5,"y":302},"measuredDock5":null,
   "obstacles":{
+   "ammoDrawerOpen":{"x": 497, "y": 147, "w": 112, "h": 52},
+   "countdown":{"x": 232.2, "y": 123.2, "w": 202.5, "h": 111.5},
    "joy":{"x":12,"y":243,"w":108,"h":108},
    "fire":{"x":577,"y":269,"w":76,"h":76},
    "fireAlt":{"x":12,"y":169,"w":56,"h":56},
@@ -79,9 +81,9 @@
    "con2":{"x":609,"y":207,"w":44,"h":48},
    "ammo":{"x":609,"y":147,"w":48,"h":52}
   }},
- {"width":320,"height":568,"singleRowUpTo":4,"anchor":{"x":158.5,"y":502.5},"measuredDock5":null,
-  "soft":{"ammoDrawerOpen":{"x":150,"y":215,"w":112,"h":52}},
+ {"width":320,"height":568,"singleRowUpTo":4,"fitsUpTo":4,"anchor":{"x":158.5,"y":502.5},"measuredDock5":null,
   "obstacles":{
+   "ammoDrawerOpen":{"x": 150, "y": 215, "w": 112, "h": 52},
    "joy":{"x":14,"y":456,"w":88,"h":88},
    "fire":{"x":218,"y":464,"w":82,"h":82},
    "fireAlt":{"x":108,"y":352,"w":56,"h":56},

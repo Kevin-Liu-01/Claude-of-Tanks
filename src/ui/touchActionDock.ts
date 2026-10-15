@@ -30,10 +30,8 @@ interface TouchDockInput {
   readonly height: number;
   /** Visible controls in the row. */
   readonly count: number;
-  /** Fixed touch controls and instruments the dock must not cover. */
+  /** Touch controls, instruments and reserved lanes (the open ammo drawer, the countdown) the dock must not cover. */
   readonly obstacles: readonly TouchDockRect[];
-  /** Space the dock avoids while it can but may use on the most crowded screens (the ammo selector's open drawer). */
-  readonly soft?: readonly TouchDockRect[];
   /** Where the thumbs rest (between the joystick and FIRE); the default is the bottom centre. */
   readonly anchor?: { readonly x: number; readonly y: number } | null;
   /** Safe-area insets (notch, home indicator). */
@@ -45,11 +43,10 @@ export const TOUCH_ACTION_TILE_PX = 48;
 export const TOUCH_ACTION_GAP_PX = 6;
 /** Space kept between the dock and any other control, and between the dock and the screen edge. */
 export const TOUCH_ACTION_CLEARANCE_PX = 8;
-/** The most crowded screens (320 px phones) relax in steps, never below a 44 px target or 4 px of clearance. */
+/** A crowded screen tries 44 px tiles (still a full touch target) before giving up; nothing is ever covered. */
 const FALLBACKS = [
-  { tile: TOUCH_ACTION_TILE_PX, clearance: TOUCH_ACTION_CLEARANCE_PX, soft: true },
-  { tile: 44, clearance: 6, soft: true },
-  { tile: 44, clearance: 4, soft: false },
+  { tile: TOUCH_ACTION_TILE_PX, clearance: TOUCH_ACTION_CLEARANCE_PX },
+  { tile: 44, clearance: 6 },
 ] as const;
 const EDGE_PX = 12;
 /** One extra row costs as much as this much more distance from the thumbs: a single row wins whenever one fits nearby. */
@@ -59,24 +56,23 @@ const MAX_ROWS = 3;
 const extent = (count: number, tile: number) => count * tile + Math.max(0, count - 1) * TOUCH_ACTION_GAP_PX;
 
 /**
- * The dock nearest the thumbs that clears every obstacle, or null when nothing fits even relaxed (the caller keeps its
- * older strip placement then). Candidates are 1 to 3 rows; for each row count every vertical position is tried and the
+ * The dock nearest the thumbs that clears every obstacle, or null when nothing fits even with 44 px tiles (the caller
+ * keeps the older scrolling strip then: the 320 px phone with five controls, 568 px wide landscapes). Candidates are 1 to 3 rows; for each row count every vertical position is tried and the
  * best horizontal position at that height is solved from the obstacles' blocked intervals, so the search is exact on
  * a 1 px grid and costs a few hundred interval scans per step of FALLBACKS.
  */
 export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement | null {
   for (const step of FALLBACKS) {
-    const placement = searchDock(input, step.tile, step.clearance, step.soft);
+    const placement = searchDock(input, step.tile, step.clearance);
     if (placement) return placement;
   }
   return null;
 }
 
-function searchDock({ width, height, count, obstacles, soft, anchor, insets }: TouchDockInput,
-  tile: number, c: number, avoidSoft: boolean): TouchDockPlacement | null {
+function searchDock({ width, height, count, obstacles, anchor, insets }: TouchDockInput,
+  tile: number, c: number): TouchDockPlacement | null {
   const n = Math.floor(count);
   if (!(n > 0) || !(width > 0) || !(height > 0)) return null;
-  const avoid = avoidSoft && soft?.length ? [...obstacles, ...soft] : obstacles;
   const left = EDGE_PX + Math.max(0, insets?.left ?? 0);
   const right = width - EDGE_PX - Math.max(0, insets?.right ?? 0);
   const top = EDGE_PX + Math.max(0, insets?.top ?? 0);
@@ -93,7 +89,7 @@ function searchDock({ width, height, count, obstacles, soft, anchor, insets }: T
     if (left + w > right || top + h > bottom) continue;
     for (let y = Math.floor(bottom - h); y >= Math.ceil(top); y--) {
       blocked.length = 0;
-      for (const o of avoid) {
+      for (const o of obstacles) {
         if (y < o.y + o.h + c && y + h > o.y - c) blocked.push(o.x - c - w, o.x + o.w + c);
       }
       const x = nearestFreeX(blocked, left, right - w, ax - w / 2);

@@ -16,15 +16,14 @@ const layout = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'u
 
 const intersects = (a, b, gap = 0) => a.x < b.x + b.w + gap && a.x + a.w > b.x - gap && a.y < b.y + b.h + gap && a.y + a.h > b.y - gap;
 
-function checkPlacement(name, { width, height, obstacles, soft = {}, anchor }, count) {
-  const dock = placeTouchActionDock({ width, height, count, obstacles: Object.values(obstacles), soft: Object.values(soft), anchor });
+function checkPlacement(name, { width, height, obstacles, anchor }, count) {
+  const dock = placeTouchActionDock({ width, height, count, obstacles: Object.values(obstacles), anchor });
   assert.ok(dock, `${name}: ${count} controls must fit`);
   assert.equal(dock.tiles.length, count, `${name}: one tile per control`);
   assert.ok(dock.tile === TOUCH_ACTION_TILE_PX || dock.tile === 44, `${name}: 48 px tiles, 44 px only when crowded`);
-  // 48 px tiles keep the full clearance from every control and from the open ammo drawer; the crowded fallback keeps
-  // 44 px targets and at least 4 px from every fixed control.
-  const clearance = dock.tile === TOUCH_ACTION_TILE_PX ? TOUCH_ACTION_CLEARANCE_PX : 4;
-  const avoid = dock.tile === TOUCH_ACTION_TILE_PX ? { ...obstacles, ...soft } : obstacles;
+  // 48 px tiles keep the full clearance; the crowded 44 px step keeps 6 px. Nothing is ever covered.
+  const clearance = dock.tile === TOUCH_ACTION_TILE_PX ? TOUCH_ACTION_CLEARANCE_PX : 6;
+  const avoid = obstacles;
   for (const [i, tile] of dock.tiles.entries()) {
     assert.ok(tile.w >= 44 && tile.h >= 44, `${name}: tile ${i} is a 44 px touch target`);
     assert.ok(tile.x >= 12 && tile.y >= 12 && tile.x + tile.w <= width - 12 && tile.y + tile.h <= height - 12,
@@ -56,6 +55,11 @@ const VIEWPORTS = JSON.parse(readFileSync(new URL('./touchActionDock.fixture.jso
 for (const viewport of VIEWPORTS) {
   const name = `${viewport.width}x${viewport.height}`;
   for (let count = 1; count <= 7; count++) {
+    if (count > (viewport.fitsUpTo ?? 7)) {
+      // No spot even at 44 px: the caller keeps the former scrolling strip (body without data-hud-dock).
+      assert.equal(placeTouchActionDock({ ...viewport, count, obstacles: Object.values(viewport.obstacles) }), null, `${name}: ${count} controls fall back to the strip`);
+      continue;
+    }
     const dock = checkPlacement(name, viewport, count);
     if (count === 5 && viewport.measuredDock5) assert.deepEqual({ x: dock.x, y: dock.y, w: dock.w, h: dock.h }, viewport.measuredDock5, `${name}: matches the rendered dock`);
     if (count <= viewport.singleRowUpTo) assert.equal(dock.rows, 1, `${name}: ${count} controls stay one row`);
@@ -80,12 +84,11 @@ for (let run = 0; run < 400; run++) {
     obstacles[`o${k}`] = { x: Math.floor(random() * width), y: Math.floor(random() * height),
       w: 30 + Math.floor(random() * 120), h: 30 + Math.floor(random() * 120) };
   }
-  const soft = run % 2 ? { s: { x: Math.floor(random() * width), y: Math.floor(random() * height), w: 112, h: 52 } } : {};
   const count = 1 + Math.floor(random() * 7);
-  const dock = placeTouchActionDock({ width, height, count, obstacles: Object.values(obstacles), soft: Object.values(soft) });
+  const dock = placeTouchActionDock({ width, height, count, obstacles: Object.values(obstacles) });
   if (!dock) continue;
   placed++;
-  checkPlacement(`random ${run}`, { width, height, obstacles, soft }, count);
+  checkPlacement(`random ${run}`, { width, height, obstacles }, count);
 }
 assert.ok(placed > 300, `most random layouts admit a dock (${placed}/400)`);
 
@@ -105,12 +108,11 @@ const lane = placeTouchActionDock({ width: 400, height: 400, count: 7,
   obstacles: [{ x: 0, y: 0, w: 100, h: 400 }, { x: 300, y: 0, w: 100, h: 400 }] });
 assert.equal(lane.columns, 3);
 assert.equal(lane.rows, 3);
-// Crowding relaxes in steps: a 44 px tile before giving up the open drawer, the drawer before returning nothing.
+// Crowding takes 44 px tiles before giving up, and never covers anything to fit.
 const gap44 = placeTouchActionDock({ width: 400, height: 200, count: 4, obstacles: [{ x: 0, y: 0, w: 400, h: 135 }] });
 assert.equal(gap44.tile, 44, 'a strip too short for 48 px takes 44 px tiles');
-const drawer = placeTouchActionDock({ width: 400, height: 200, count: 4, obstacles: [{ x: 0, y: 0, w: 400, h: 130 }],
-  soft: [{ x: 0, y: 130, w: 400, h: 20 }] });
-assert.ok(drawer && drawer.tile === 44 && drawer.y >= 134 && drawer.y < 150, 'the open drawer is given up last, fixed controls never');
+assert.equal(placeTouchActionDock({ width: 400, height: 200, count: 4, obstacles: [{ x: 0, y: 0, w: 400, h: 145 }] }), null,
+  'a strip too short for 44 px leaves the controls to the strip');
 
 // Cooldown sweep: the first remaining time is the whole cooldown; snapshot jitter never restarts it; ready resets it.
 const sweep = createCooldownSweep();
@@ -144,7 +146,7 @@ for (const rule of touchRules) {
 assert.equal(TOUCH_ACTION_GAP_PX, 6);
 assert.match(css, new RegExp(`gap:${TOUCH_ACTION_GAP_PX}px;width:max-content`), 'the stylesheet gap matches the layout code');
 // The layout owner places the dock only on touch and keeps the desktop path's arithmetic.
-assert.match(layout, /const dock = touch && systems && systemsElement \? placeDock\(systemsElement, width, height\) : null;/);
+assert.match(layout, /const dock = touch && systems && systemsElement \? placeDock\(systemsElement, width, height, top, scoreBottom\) : null;/);
 assert.match(layout, /let systemsLeft = Math\.max\(12, Math\.min\(width - dockWidth - 12,\n\s+\(ammo \? ammo\.left \+ ammo\.width \/ 2 : width \/ 2\) - dockWidth \/ 2\)\);/);
 
 console.log(`touchActionDock: ${VIEWPORTS.map(v => `${v.width}x${v.height}`).join(', ')} x 1-7 controls clear every touch control (48 px tiles; 44 px when crowded); ${placed} random layouts; cooldown sweep; desktop strip unchanged`);
