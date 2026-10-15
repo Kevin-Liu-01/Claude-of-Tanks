@@ -77,6 +77,19 @@ take('    if (wetness <= 0) return canalWet;\n    // Surface heights deliberatel
 take('    if (wetness <= 0) return canalWet;\n    for (const pad of padPts) {', '    if (wetness <= 0) return 0;\n    for (const pad of padPts) {');
 take('    return canalWet > wetness ? canalWet : wetness;\n  }', '    return wetness;\n  }');
 take("    if (compiledCanals !== null && inCanal(compiledCanals, x, z)) return true; // the map-revival lane: a canal and its banks' foot\n");
+// (2026-10-15, Caldera's paddies) a map's paddies hold liquid water off the sea-and-lake maps: the marshes' and lakes' own
+// liquid policy is the sea-or-lake flag it always was (marshLiquid), and the sheet is built for a map with paddies
+take("  // (2026-10-15, Caldera's paddies) a map's marshes and lakes hold liquid water on a sea-or-lake map only; its paddies hold\n"
+  + "  // theirs on any map that is not frozen (Caldera's ash marshes stay dry while its paddies are flooded)\n"
+  + "  const marshLiquid = !!cfg?.splat?.seaLake && !T.frozenMarshes;\n"
+  + "  const liquidWater = marshLiquid || (!!T.paddies?.length && !T.frozenMarshes);\n",
+  "  const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;\n");
+take("    // (Caldera's paddies) a map whose only liquid water is its paddies' reads their canals alone\n"
+  + "    if (!marshLiquid) return compiledCanals === null ? 0 : canalWetness(compiledCanals, x, z) * smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z));\n");
+take("  // (2026-10-15) a map with paddies builds the sheet for their water even off the sea-and-lake maps (Caldera)\n"
+  + "  if (cfg && cfg.splat && (cfg.splat.seaLake || heightField._layout.terrain.paddies?.length) && !heightField._layout.terrain.frozenMarshes) {\n    const waterSteps",
+  "  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {\n    const waterSteps");
+source = source.split('marshLiquid').join('liquidWater');
 take("    // (the map-revival lane, 2026-10-07) a canal's water drives as a soft lake's\n    if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';\n");
 assert.ok(!source.includes('compiledCanals') && !source.includes("from './canals.ts'") && !source.includes('compiledPaddies')
   && !source.includes("from './paddies.ts'"), 'the reconstruction holds no canal or paddy line');

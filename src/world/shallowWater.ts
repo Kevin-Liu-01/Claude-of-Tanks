@@ -562,6 +562,17 @@ export function createShallowWaterSurface(
         float swashCrest = clamp(texture2D(uOceanDisp, oceanUv(vOceanLag, 0.0)).y / max(uOceanLook.w, 0.02) * 1.4, 0.0, 1.0);
         wet = max(wet, mix(wet, 0.09, swashCrest * uOceanLook.y * smoothstep(0.003, 0.025, wet) * (1.0 - smoothstep(0.0, 0.22, wet))));
       }
+      ${paddyQuads.length ? `// (the paddies' look pass) a paddy's own rectangle: its water whatever the mask carries there (a landform-gated
+      // map's mask channel is its landform, not its water: Caldera)
+      float paddyW = 0.0;
+      for (int i = 0; i < ${PADDY_WATER_MAX}; i++) {
+        if (float(i) >= uPaddyCount) break;
+        vec2 pd = vWaterWorld.xz - uPaddyA[i].xy;
+        float pAcross = abs(pd.x * uPaddyA[i].z - pd.y * uPaddyA[i].w) - uPaddyB[i].x;
+        float pAlong = abs(pd.x * uPaddyA[i].w + pd.y * uPaddyA[i].z) - uPaddyB[i].y;
+        paddyW = max(paddyW, 1.0 - smoothstep(-0.6, 0.0, max(pAcross, pAlong)));
+      }
+      wet = max(wet, paddyW);` : ''}
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
@@ -575,16 +586,7 @@ export function createShallowWaterSurface(
       // (2026-10-05: the shelf's width follows the coast — a beach holds a wide one, a steep coast drops off in metres)
       seaShelfM = mix(uSeaShelf.y, max(seaShore.y * uSeaLook.z, 4.0), uSeaLook.y * step(0.5, seaShore.y));
       waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / seaShelfM), uSeaShelf.x);
-      ${paddyQuads.length ? `// (the paddies' look pass) a paddy's quarter metre of silty water: no deep body, its own mud
-      float paddyW = 0.0;
-      for (int i = 0; i < ${PADDY_WATER_MAX}; i++) {
-        if (float(i) >= uPaddyCount) break;
-        vec2 pd = vWaterWorld.xz - uPaddyA[i].xy;
-        float pAcross = abs(pd.x * uPaddyA[i].z - pd.y * uPaddyA[i].w) - uPaddyB[i].x;
-        float pAlong = abs(pd.x * uPaddyA[i].w + pd.y * uPaddyA[i].z) - uPaddyB[i].y;
-        paddyW = max(paddyW, 1.0 - smoothstep(-0.6, 0.0, max(pAcross, pAlong)));
-      }
-      waterDeep *= 1.0 - 0.85 * paddyW;` : ''}
+      ${paddyQuads.length ? 'waterDeep *= 1.0 - 0.85 * paddyW; // (the paddies\' look pass: a quarter metre, no deep body)' : ''}
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
       // Water pass 5 (2026-09-13): the bank colour reaches further into the body

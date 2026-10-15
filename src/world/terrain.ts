@@ -1474,7 +1474,7 @@ function* heightFieldBuildSteps(
     // trenches (lines × five samples × every marsh's shoreline distance): 11.8 µs per sample against
     // 1.0 µs at deploy 66, a 9.9 s world build. The bank-band-1 plan IS a dry map's final plan (nothing
     // later changes it), so it is cached like every other map's — byte-identical heights and plan.
-    const provisional = liquidWater && !liquidSurfaces && _MARSHES.length > 0;
+    const provisional = marshLiquid && !liquidSurfaces && _MARSHES.length > 0;
     const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
       _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
     const sectors = trenchPlan();
@@ -1669,7 +1669,10 @@ function* heightFieldBuildSteps(
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
-  const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;
+  // (2026-10-15, Caldera's paddies) a map's marshes and lakes hold liquid water on a sea-or-lake map only; its paddies hold
+  // theirs on any map that is not frozen (Caldera's ash marshes stay dry while its paddies are flooded)
+  const marshLiquid = !!cfg?.splat?.seaLake && !T.frozenMarshes;
+  const liquidWater = marshLiquid || (!!T.paddies?.length && !T.frozenMarshes);
   const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
   const waterRampStart = cfg?.splat?.seaRamp?.[0] ?? 0.40;
   const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
@@ -2024,7 +2027,7 @@ function* heightFieldBuildSteps(
     for (const line of roadExitLines) {
       const { xs, zs, ss } = line;
       // a road that reaches a shore past the edge ends there (no carriageway on the sea floor)
-      if (liquidWater && (outlandWaterAt(xs[1], zs[1])?.wetness ?? 0) > 0.2) continue;
+      if (marshLiquid && (outlandWaterAt(xs[1], zs[1])?.wetness ?? 0) > 0.2) continue;
       // the grade: the square's road at the edge, then the outland smoothed along the line, at most 7 %
       const ys = new Float64Array(ROAD_EXIT_STEPS + 1), raw = new Float64Array(ROAD_EXIT_STEPS + 1);
       for (let i = 0; i <= ROAD_EXIT_STEPS; i++) raw[i] = outlandBaseHeightAt(xs[i], zs[i]);
@@ -2623,9 +2626,9 @@ function* heightFieldBuildSteps(
   initializeSpawnPadLevels();
   // Freeze authored road/pad support first, then resolve liquid joins in the
   // existing buffer. Frozen sheets retain their original independent levels.
-  if (liquidWater && _LAKES.length) alignLiquidLakeLevels(_LAKES, lakeLevels);
-  const liquidLakes = liquidWater ? _LAKES.map((lake, index) => ({ ...lake, level: lakeLevels[index] })) : [];
-  if (liquidWater && _MARSHES.length) {
+  if (marshLiquid && _LAKES.length) alignLiquidLakeLevels(_LAKES, lakeLevels);
+  const liquidLakes = marshLiquid ? _LAKES.map((lake, index) => ({ ...lake, level: lakeLevels[index] })) : [];
+  if (marshLiquid && _MARSHES.length) {
     // Fit against the old dry/road/pad pipeline before activating the policy.
     // Roads and spawn pads keep their original levels and final priority.
     liquidSurfaces = buildLiquidMarshSurfaces(_MARSHES,
@@ -2895,7 +2898,7 @@ function* heightFieldBuildSteps(
     // Lake/marsh placement bands include dry sand, road shoulders and pads.
     // Release their water resistance at the same liquid boundary as wakes.
     // Ordinary bogs, ice, roads and bridge decks keep their authored traction.
-    return ground === 'soft' && liquidWater && getWaterMaskAt(x, z) <= 0.02
+    return ground === 'soft' && marshLiquid && getWaterMaskAt(x, z) <= 0.02
       ? 'medium' : ground;
   }
 
@@ -2948,6 +2951,8 @@ function* heightFieldBuildSteps(
   }
 
   function waterWetnessAt(x: number, z: number): number {
+    // (Caldera's paddies) a map whose only liquid water is its paddies' reads their canals alone
+    if (!marshLiquid) return compiledCanals === null ? 0 : canalWetness(compiledCanals, x, z) * smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z));
     let wetness = liquidIndex
       ? sampleIndexedMarshWetness(_MARSHES, liquidIndex,
         liquidMarshIndexBucket(x, z, MAP_SIZE, liquidIndexWords), liquidIndexWords, x, z)
@@ -3005,8 +3010,8 @@ function* heightFieldBuildSteps(
       // maps r1 (ADDITIVE): river maps keep the CHANNEL clear — tufts spawned
       // mid-stream read as flooded stubble. The outer soft band keeps its
       // sparse bank reeds. Default off => pre-existing maps unchanged.
-      const clearRadius = m.r * (liquidWater ? 1 : 0.55);
-      if ((T.clearMarshVeg || liquidWater) && distanceSquared < clearRadius * clearRadius) return true;
+      const clearRadius = m.r * (marshLiquid ? 1 : 0.55);
+      if ((T.clearMarshVeg || marshLiquid) && distanceSquared < clearRadius * clearRadius) return true;
     }
     // maps lane B (2026-10-03, the capture: tall grass stood in the salt): nothing grows on a sor's crust — the floor at
     // its flat's level (read on the 1 m fast grid: the tall-grass tier asks per blade) — while its damp margin keeps the
@@ -8871,7 +8876,8 @@ function* terrainBuildSteps(
   // terrainCraterMesh.ts on them (syncGroundOverlay / adoptTerrainGeometry hooks below; its lattice constants are this
   // file's, pinned by terrainCraterMesh.selftest)
   group.userData.terrainChunks = chunks;
-  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
+  // (2026-10-15) a map with paddies builds the sheet for their water even off the sea-and-lake maps (Caldera)
+  if (cfg && cfg.splat && (cfg.splat.seaLake || heightField._layout.terrain.paddies?.length) && !heightField._layout.terrain.frozenMarshes) {
     const waterSteps = shallowWaterGeometrySteps(heightField);
     let step = waterSteps.next();
     while (!step.done) {

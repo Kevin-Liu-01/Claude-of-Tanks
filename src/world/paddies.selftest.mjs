@@ -55,6 +55,11 @@ for (const p of paddies) assert.ok(placed.has(key(-8 - p.x, 28 - p.z)), `(${p.x.
 const frame = deploymentFrame(cfg.spawns);
 const keepClear = [frame.anchors.alpha, frame.anchors.bravo, cfg.spawns.player, ...cfg.spawns.enemies];
 let samples = 0;
+/** Every paddy of a map on its finished terrain: its bed level and wet, its bunds over the water, dry past them, off the
+ *  roads (the wider a map's road margin, the further out it is read) and the deployments. */
+function checkPaddies(cfg, field, paddies, roadOut, roadMin) {
+  const frame = deploymentFrame(cfg.spawns);
+  const keepClear = [frame.anchors.alpha, frame.anchors.bravo, cfg.spawns.player, ...cfg.spawns.enemies];
 for (const p of paddies) {
   const yaw = p.yawDeg * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw);
   const at = (a, b) => [p.x + s * a + c * b, p.z + c * a - s * b];
@@ -84,10 +89,21 @@ for (const p of paddies) {
     dry++;
   }
   assert.ok(dry >= 2, 'at least two open sides checked');
-  for (let a = -p.lengthM / 2 - 12; a <= p.lengthM / 2 + 12; a += 4) for (const b of [-p.widthM / 2 - 12, p.widthM / 2 + 12]) {
-    assert.ok(field._roadDist(...at(a, b)) >= 11, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): off the roads (a culvert would dry it)`);
+  for (let a = -p.lengthM / 2 - roadOut; a <= p.lengthM / 2 + roadOut; a += 4) for (const b of [-p.widthM / 2 - roadOut, p.widthM / 2 + roadOut]) {
+    assert.ok(field._roadDist(...at(a, b)) >= roadMin, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): off the roads (a culvert would dry it)`);
   }
   for (const k of keepClear) assert.ok(Math.hypot(p.x - k.x, p.z - k.z) > 75, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): clear of the deployments`);
+}
+}
+checkPaddies(cfg, field, paddies, 12, 11);
+// (2026-10-15) Caldera's floor: five rows of two or three on the Aso floor (the maps critics' "flat texture blocks without water or
+// bunds"), read off its roads 8 m out of the water at 10 m
+const calderaCfg = getMapConfig('caldera');
+const calderaField = createHeightField(typeof calderaCfg.seed === 'number' ? calderaCfg.seed : 1337, calderaCfg);
+assert.equal(calderaCfg.terrain.paddies.length, 11, 'Caldera: eleven paddies');
+checkPaddies(calderaCfg, calderaField, calderaCfg.terrain.paddies, 8, 9.5);
+for (const p of calderaCfg.terrain.paddies) {
+  near(calderaField.getPaddyWaterLevelAt(p.x, p.z) - calderaField.getHeightAt(p.x, p.z), PADDY_DEPTH_M, 1e-6, 'Caldera: a quarter metre of water');
 }
 
 // ---- (3b) the water's surface: each paddy's own level grid (the sheet's eight-metre lattice keeps out), facing up
