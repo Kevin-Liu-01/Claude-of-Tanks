@@ -784,4 +784,48 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   handle.dispose();
 }
 
+// (2026-10-14, the media session on main 9c511dd48: the same throw on a ONE-PAGE MAP SWITCH, the lab's verdant → village and
+// the finals' frontier → urban stills; three's stack ends at checkMaterialsReady, the poll's timer.) The only compileAsync
+// callers in src are this prepareBake and offscreenWarm's warmer (which nothing calls), so the other disposer is the
+// panorama's own dispose() when the world is torn down for the next map — the hold must outlive the poll there too.
+{
+  const handle = createHorizonPanorama(options, new THREE.Object3D());
+  const renderer = recordingRenderer();
+  const properties = new WeakMap();
+  const getProps = (m) => { let p = properties.get(m); if (!p) { p = {}; properties.set(m, p); } return p; };
+  let linked = false, disposedEarly = 0, disposed = 0;
+  renderer.compileAsync = (scene) => {
+    const materials = new Set();
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      const m = o.material;
+      getProps(m).currentProgram = { isReady: () => linked };
+      m.addEventListener('dispose', () => { properties.delete(m); disposed++; if (!linked) disposedEarly++; });
+      materials.add(m);
+    });
+    return new Promise((resolve) => {
+      function checkMaterialsReady() {
+        materials.forEach((material) => { if (getProps(material).currentProgram.isReady()) materials.delete(material); });
+        if (materials.size === 0) { resolve(scene); return; }
+        setTimeout(checkMaterialsReady, 10);
+      }
+      checkMaterialsReady();
+    });
+  };
+  const thrown = [];
+  const onError = (error) => { thrown.push(String(error?.message ?? error)); };
+  process.on('uncaughtException', onError);
+  assert.equal(handle.prepareBake(renderer), true);
+  // the map switches before the bake ever drew: the world tears the panorama down, the driver still linking
+  handle.dispose();
+  await new Promise((resolve) => setTimeout(resolve, 35));
+  const early = disposedEarly;
+  linked = true;
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  process.off('uncaughtException', onError);
+  assert.deepEqual(thrown, [], 'no isReady of an undefined program when the map switches mid-compile');
+  assert.equal(early, 0, 'the teardown holds the prepared materials until the parallel compile settles');
+  assert.ok(disposed >= 5, `and releases them then (${disposed})`);
+}
+
 console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes, the bake contract and the far country\'s cloud shade (the aux pass, the share, the square) PASS');
