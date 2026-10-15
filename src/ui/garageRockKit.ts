@@ -318,6 +318,7 @@ export function buildEarthMound(frame: RockFrame, options: MoundOptions): THREE.
   geometry.computeBoundingSphere();
   return geometry;
 }
+
 export interface TalusOptions {
   /** The apron's run along the face (u from, to). */
   readonly from: number;
