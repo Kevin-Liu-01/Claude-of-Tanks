@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 
 import type { GarageVariant } from '../game/garageVariants.ts';
+import type { GarageHardstandDetailKind } from './garageHardstandProgram.ts';
 
 const APRON_W_M = 29;
 const APRON_D_M = 24;
@@ -180,17 +181,19 @@ function drawHardstand(
   }
   // low-frequency mottling at two scales (both kinds); the big soft blots are few and faint (waves 408 and 419: "large
   // soft dark blotches that read as dirty shadow artifacts")
+  // GA.03 (the critic panel, 2026-10-14: "the foreground floor ... reads as smeared blotch"): fainter again, the detail
+  // layer carries the surface now
   for (let i = 0; i < (earth ? 260 : 140); i++) {
     const dark = rng() < 0.5;
     const big = rng() < 0.12;
-    const a = (earth ? 0.09 : 0.05) * (big ? 0.55 : 1);
+    const a = (earth ? 0.055 : 0.032) * (big ? 0.4 : 1);
     blotWrapped((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M, big ? 2.5 + rng() * 4 : 0.5 + rng() * 1.8,
       dark ? `rgba(30,26,22,${a})` : `rgba(255,248,236,${a * 0.8})`, dark ? `rgba(30,26,22,${a * 0.4})` : `rgba(255,248,236,${a * 0.3})`,
       0.45 + rng() * 0.55);
   }
   // grit and aggregate in the surface (not on it): faint for concrete, coarser in earth
   if (earth) {
-    aggregate(5200, ['30,26,22', '250,244,232'], [0.6, 3.4], [0.04, 0.14], 0.8);
+    aggregate(5200, ['30,26,22', '250,244,232'], [0.6, 2.2], [0.03, 0.1], 0.8);
   } else {
     aggregate(4200, ['28,26,24', '246,242,236'], [0.5, 1.8], [0.03, 0.08], 0.6);
   }
@@ -676,6 +679,19 @@ export const GARAGE_HARDSTAND = Object.freeze({
 /** Which floor kind a style draws (slab joints or earth). */
 export function garageHardstandKind(style: GarageHardstandStyle): 'slab' | 'earth' {
   return PALETTES[style].kind;
+}
+
+/**
+ * Which detail layer a style's floor takes (garageHardstandProgram.ts; GA.03, the critic panel: "a detail layer per ground
+ * type"): broomed concrete with aggregate and crazing on every slab yard, wind ripples on the wadi's sand, sastrugi on
+ * packed snow, packed angular stone on the pass's gravel and the slag yard, pebbled compacted fines on earth.
+ */
+export function garageHardstandDetailKind(style: GarageHardstandStyle): GarageHardstandDetailKind {
+  if (PALETTES[style].kind === 'slab') return 'concrete';
+  if (style === 'earth-sand') return 'sand';
+  if (style === 'earth-snow') return 'snow';
+  if (style === 'gravel-snow' || style === 'earth-slag') return 'gravel';
+  return 'earth';
 }
 
 /** Which shared relief normal a style takes: slab joints, earth relief, or soft packed snow. */
