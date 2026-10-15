@@ -156,8 +156,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     factory_line: {
       logistics: [[-35, 12], [16, -27]],
       parts: [[-32, 21], [2, -36]], floods: [[-39, 2], [39, 6]],
-      // the crane bay over the haul road, 19 x 21 m from depth 13 (garage round 7)
-      feature: [-0.9, 23], featureRadius: [11.5, 10.5],
+      // the crane bay over the haul road, 25.6 x 21 m from depth 13 (garage round 7), square to the view and wide enough
+      // that its column lines stand outside the hero's outline (the garage critic panel, 2026-10-14)
+      feature: [0, 23], featureRadius: [13.8, 10.5],
     },
   });
 
@@ -2389,9 +2390,9 @@ export function addGarageFacilityDetails({
       // the back half over a sooty clad back wall. Under it a fabrication line: a ladle on its stand, mould boxes stacked
       // by size, moulding-sand heaps, a turret-ring jig, a welding positioner and the coating booth with its extract
       // stacks; two transfer tracks run along the bay. Squared on the haul road.
-      const centerSide = -0.9, centerDepth = 23;
+      const centerSide = 0, centerDepth = 23;
       const origin = cameraPoint(centerSide, centerDepth);
-      const roadIn = cameraPoint(-2 * 12 / 17, 22); // a metre back down the road toward (0, 10)
+      const roadIn = cameraPoint(0, 22); // a metre back down the straight haul road toward (0, 10)
       const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
       const c = Math.cos(yaw), sn = Math.sin(yaw);
       const baseY = groundAtWorld(origin.x, origin.z);
@@ -2402,7 +2403,7 @@ export function addGarageFacilityDetails({
       };
       const millSteel = new THREE.Color(0x4a4f52), soot = new THREE.Color(0x2e3133), craneYellow = new THREE.Color(0xb88a2a);
       const rust = new THREE.Color(0x7a4a32), sandHeap = new THREE.Color(0x8a6e52), concreteBase = new THREE.Color(0x77736b);
-      const halfSpan = 9.2, halfLen = 10, runwayY = 8.0, roofY = 11.2;
+      const halfSpan = 12.8, halfLen = 10, runwayY = 8.0, roofY = 11.2;
       const columnsF = [-10, -5, 0, 5, 10];
       // stepped crane columns: a heavy lower leg to the runway, a light upper leg to the roof
       for (const side of [-1, 1]) {
@@ -2444,7 +2445,7 @@ export function addGarageFacilityDetails({
         for (const df of [-1.6, 1.6]) clusterCylinder(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 0.98, 0.32, 0.22, soot, 0, 16, Math.PI / 2);
       }
       for (const df of [-0.75, 0.75]) clusterBox(bay, 0, craneF + df, runwayY + 1.45, 2 * halfSpan - 0.8, 1.0, 0.55, craneYellow, 'painted');
-      const crabU = -2.2;
+      const crabU = 10.4; // racked over to the bay's right, the ladle hanging clear of the hero's outline
       clusterBox(bay, crabU, craneF, runwayY + 2.25, 2.4, 0.6, 2.4, craneYellow, 'painted');
       clusterCylinder(bay, crabU, craneF, runwayY + 2.0, 0.55, 1.8, soot, 0, 16, Math.PI / 2);
       clusterBox(bay, crabU + 0.9, craneF + 0.7, runwayY + 2.75, 0.8, 0.5, 0.7, soot, 'structure'); // the hoist motor
@@ -2505,8 +2506,9 @@ export function addGarageFacilityDetails({
       addTrackOnCluster(bay, -5.6, -1, 22);
       addTrackOnCluster(bay, 5.6, -1, 22);
       structuralConnections += 60;
-      // the coating booth at the back, open toward the yard; the yard kit round the bay
-      addVentilatedCoatingBooth(atGround(0, -7.0), 0, 0, new THREE.Color(0x5d4a45));
+      // the coating booth at the back right, open toward the yard (behind the hero it stood dark over the turret: the
+      // garage critic panel, 2026-10-14); the yard kit round the bay
+      addVentilatedCoatingBooth(atGround(10.2, -7.0), 0, 0, new THREE.Color(0x5d4a45));
       addPoweredWinch(fixedCluster(-12.5, 14.5), 0, 0, new THREE.Color(0x9a5439));
       addPartsPallet(fixedCluster(12.5, 15.0), 0, 0, 3);
       addSafetyRail(fixedCluster(9.5, 12.0), 0, 0, 5.5);

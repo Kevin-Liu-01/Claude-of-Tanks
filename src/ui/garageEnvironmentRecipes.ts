@@ -376,7 +376,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     // slag and cinder ground round the works (wave 377: "a paved hillside rather than a workshop yard")
     terrainSurface: 'rock', terrainTint: 0x5f5953, hardstandTint: 0x65615b, buildingTint: 0x91857b,
     structures: [
-      at(makeFoundryOffice, 'foundry office', -36, -6, 0.8),
+      at(makeFoundryOffice, 'foundry office', -37.8, -4.6, 0.8), // clear of the wider crane bay
       at(makeFactory, 'heavy factory', -31, -31, 0.76), // 1.4 m back: clear of the crane bay (garage round 7)
       at(makeStack, 'smokestack', -7, -36, 0.82),
       at(makeWaterTower, 'works water tower', 18, -34, 0.70),
@@ -390,7 +390,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     horizonStyle: 'flat', horizonHeightM: 7.8,
     approach: {
       style: 'foundry-haul-road', label: 'rail-served foundry haul road', surface: 'cobble', width: 9.0,
-      waypoints: [[0, 10], [-2, 27], [2, 48]], lanes: [-3.2, 3.2],
+      waypoints: [[0, 10], [0, 27], [0, 48]], lanes: [-3.2, 3.2], // straight under the crane bay
     },
     terrainProfile: 'actual Ironworks spawn excerpt beneath a worn factory hardstand',
     serviceFrame: 'sawtooth works road with foundry service line',
