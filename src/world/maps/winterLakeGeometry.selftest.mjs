@@ -17,9 +17,9 @@ assert.deepEqual(MAP_IDS.filter(mapId => (getMapConfig(mapId).props.extraKits
 // buried ice plates, supported reeds, finite attributes, bucket ownership, one berm set per authored lake, a storage
 // ceiling and a byte-identical rebuild.
 // Storage ceiling per map/seed: the largest V25 Frosthollow total (2,052,280 premerge bytes) plus 10 % headroom; (props
-// lane A #19, 2026-10-15) plus the ice rebuilt as broken slabs (pentagonal blocks on the baked material, the ridges'
-// piles): the largest Frosthollow total 3,691,320 plus 10 %.
-const KIT_BYTES_CEILING = 4_060_000;
+// lane A #19, 2026-10-15) the ice rebuilt as broken slabs (16-triangle pentagonal blocks on the baked material, the
+// ridges' piles; the coordinator's budget: at most 3.0 MB): the largest Frosthollow total 2,938,920, and just over it.
+const KIT_BYTES_CEILING = 2_960_000;
 
 function build(mapId, seed) {
   const config = getMapConfig(mapId);
@@ -168,7 +168,7 @@ function auditSlab(geometry, field) {
   const p = geometry.attributes.position, n = geometry.attributes.normal, c = geometry.attributes.color;
   assert.equal(geometry.name, 'winter-ice-slab');
   assert.equal(geometry.index, null);
-  assert.equal(p.count, 78, 'cap, chipped arris, broken sides and underside: 26 triangles');
+  assert.equal(p.count, 48, 'cap, broken sides and underside: 16 triangles');
   const edges = new Map(), key = (i) => `${p.getX(i)},${p.getY(i)},${p.getZ(i)}`;
   for (let i = 0; i < p.count; i += 3) for (let j = 0; j < 3; j++) {
     const a = key(i + j), b = key(i + (j + 1) % 3);
@@ -200,7 +200,7 @@ function auditSlab(geometry, field) {
   let cap = 0, deep = 0;
   for (let i = 0; i < 9; i++) { cap += lum(i) / 9; deep += lum(p.count - 1 - i) / 9; }
   assert.ok(cap > 0.55 && deep < 0.25, 'a rime top over the deep ice');
-  assert.ok(c.getZ(40) > c.getX(40) && c.getY(40) > c.getX(40), 'blue-green broken edges');
+  assert.ok(c.getZ(9) > c.getX(9) && c.getY(9) > c.getX(9), 'blue-green broken edges');
 }
 
 function auditReeds(geometries, field) {

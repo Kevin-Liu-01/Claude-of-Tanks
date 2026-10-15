@@ -5,7 +5,7 @@
 // (#19, the rebuild: "Rebuild the ridge as a pile of broken ice slabs. Each slab is a real block 15-40 cm thick with
 // chipped edges, stacked and leaning against each other, with an ice material (clear blue-green edges, a white rime top)
 // apart from the snow. Fill the gaps with snow") A slab is a broken plate of the sheet: an irregular pentagon, 15-40 cm
-// thick, its top arris chipped, rafted up on one edge with its low edge frozen into the sheet; vertex colour on the baked
+// thick, its broken edges rimed, rafted up on one edge with its low edge frozen into the sheet; vertex colour on the baked
 // material (a rime top, blue-green broken edges darkening to the deep ice below). The shore's plates and the ridges'
 // crest plates are these, on the same draws of the dressing stream; each ridge's pile of slabs leaning in on its snow
 // berm from both sides is drawn from the ridge's own hash stream, so every later draw of the dressing keeps its seat.
@@ -61,21 +61,17 @@ function pushIce(buckets: DressingBuckets, geometry: THREE.BufferGeometry): void
 }
 
 /**
- * A broken slab of the sheet, `w` along its yaw and `d` across, `t` thick: an irregular pentagon, its top arris chipped,
+ * A broken slab of the sheet, `w` along its yaw and `d` across, `t` thick: an irregular pentagon, its broken edges rimed,
  * rafted up `lean` (rad) on its +across edge, its low edge frozen into the lowest ice under it by 4 cm; closed (its
  * underside shows under a raised edge). `seed` its own shape.
  */
 function iceSlab(heightField: DressingHeightField, x: number, z: number, w: number, d: number, t: number,
   yaw: number, lean: number, seed: number): THREE.BufferGeometry {
-  const N = 5, CH = 0.03, r = stream(seed);
+  const N = 5, r = stream(seed);
   const outline = Array.from({ length: N }, (_, k) => {
     const a = (k + (r() - 0.5) * 0.8) / N * Math.PI * 2, s = 0.6 + r() * 0.45;
     return [Math.cos(a) * w * 0.5 * s, Math.sin(a) * d * 0.5 * s] as const;
   });
-  const inset = (k: number, f: number) => {
-    const [px, pz] = outline[k], l = Math.hypot(px, pz) || 1;
-    return [px - (px / l) * f, pz - (pz / l) * f] as const;
-  };
   // the raft: tilted about its long axis so the +across edge rises
   const theta = Math.min(1.35, Math.max(0.04, lean));
   const ct = Math.cos(theta), st = Math.sin(theta), ca = Math.cos(yaw), sa = Math.sin(yaw);
@@ -107,15 +103,14 @@ function iceSlab(heightField: DressingHeightField, x: number, z: number, w: numb
     put(a, ca2); put(b, cb); put(c, cc);
   };
   const shade = (k: number, base: Rgb, n: number) => mix(base, RIME, hash(k, n, seed) * 0.18);
-  const top = Array.from({ length: N }, (_, k) => { const [px, pz] = inset(k, CH * 1.4); return [px, t, pz] as const; });
-  const shoulder = outline.map(([px, pz]) => [px, t - CH, pz] as const);
+  const top = outline.map(([px, pz]) => [px, t, pz] as const);
   const foot = outline.map(([px, pz]) => [px, 0, pz] as const);
-  // (wound outward: the outline runs counter-clockwise seen from +y, so a side's quad a b b' a' faces out)
+  // (wound outward: the outline runs counter-clockwise seen from +y, so a side's quad a b b' a' faces out; the broken edge's
+  // top a pale rime, its face blue-green going deep below: 16 triangles a slab, its bytes the coordinator's budget)
   for (let k = 1; k + 1 < N; k++) tri(top[0], top[k + 1], top[k], mix(RIME, SNOWED, hash(0, 1, seed)), RIME, SNOWED);
   for (let k = 0; k < N; k++) {
-    const k1 = (k + 1) % N, chip = mix(RIME, EDGE, 0.45), edge = shade(k, EDGE, 2), deep = shade(k, DEEP, 3);
-    tri(shoulder[k], top[k], top[k1], chip, RIME, RIME); tri(shoulder[k], top[k1], shoulder[k1], chip, RIME, chip);
-    tri(foot[k], shoulder[k], shoulder[k1], deep, edge, edge); tri(foot[k], shoulder[k1], foot[k1], deep, edge, deep);
+    const k1 = (k + 1) % N, rim = shade(k, mix(RIME, EDGE, 0.55), 2), deep = shade(k, DEEP, 3);
+    tri(foot[k], top[k], top[k1], deep, rim, rim); tri(foot[k], top[k1], foot[k1], deep, rim, deep);
   }
   for (let k = 1; k + 1 < N; k++) tri(foot[0], foot[k], foot[k + 1], DEEP, DEEP, DEEP);
   const geometry = new THREE.BufferGeometry();
