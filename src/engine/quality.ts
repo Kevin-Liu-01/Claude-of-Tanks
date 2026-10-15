@@ -109,6 +109,11 @@ export interface QualityPreset {
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
   readonly shadowMaxFar: number;
+  /**
+   * 2026-10-14 (SKY shadows r2a, C1): the cascade breaks in metres (lighting.ts takes three's 'custom' split); absent, the
+   * 'practical' split (0.5 between uniform and logarithmic: 89 / 185 / 320 m over 700 m).
+   */
+  readonly shadowSplitsM?: readonly number[];
   readonly textureScale?: number;
   readonly vehicleTextureScale?: number;
   readonly textureCap?: number;
@@ -363,7 +368,12 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     rcasMinScale: 0.49,
     aoScale: 0,
     bloomScale: 0.6,
-    shadowMapSizes: [2048, 2048, 2048, 1024],
+    // 2026-10-14 (SKY shadows r2a, C1, the shadow-quality plan's P0): cascade 0 ran 0.5-89 m at 10.3 cm a texel (about 11
+    // screen pixels at the 13 m orbit: the owner's "pixelated" tank shadows). Breaks at 30 / 89 / 320 m with the third map
+    // at 4096: 0-30 m at 3.45 cm, 30-89 m about 10.9 cm (as before with its band margin), 89-185 m 18.5 cm (was 21.3),
+    // 185-320 m 18.5 cm (was 37.1), 320-700 m unchanged — no band coarser than the practical split's by more than ~6 %
+    shadowSplitsM: [30, 89, 320],
+    shadowMapSizes: [2048, 2048, 4096, 1024],
     shadowMaxFar: 700,
   },
   medium: {

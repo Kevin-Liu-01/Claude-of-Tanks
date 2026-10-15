@@ -37,6 +37,7 @@
 import * as THREE from 'three';
 import type { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { shadowCasterCascadesOf, shadowCasterDynamicMaskOf } from './renderLayers.ts';
+import { csmSliceFromM, csmSliceToM } from './shadowCascadeFade.ts';
 
 type ShadowRender = (lights: THREE.Object3D[], scene: THREE.Scene, camera: THREE.Camera) => void;
 
@@ -168,12 +169,12 @@ function createCascadePoseHold(): CascadePoseHold {
       return holding;
     },
     apply(index, csm, shadowCam, texelWidth, texelHeight, center, cameraToLight) {
-      // the slice as the shader samples it: three's CSM_FADE overlap at both ends (linear depth x - x²/8 to y + y²/8)
+      // the slice as the shader samples it: the fade's half-band at both ends (shadowCascadeFade.ts, the one law)
       const farVertices = csm.mainFrustum.vertices.far;
       const from = index === 0 ? 0 : csm.breaks[index - 1];
       const to = csm.breaks[index];
-      const nearM = Math.max((csm.camera as THREE.PerspectiveCamera).near, (csm.fade ? from - 0.125 * from * from : from) * span);
-      const farM = (csm.fade ? to + 0.125 * to * to : to) * span;
+      const nearM = Math.max((csm.camera as THREE.PerspectiveCamera).near, csmSliceFromM(from, 0, span, csm.fade));
+      const farM = csmSliceToM(to, 0, span, csm.fade);
       _holdBounds.makeEmpty();
       for (let j = 0; j < 4; j++) {
         _holdBounds.expandByPoint(_holdVertex.copy(farVertices[j]).multiplyScalar(nearM / frustumFar).applyMatrix4(cameraToLight));

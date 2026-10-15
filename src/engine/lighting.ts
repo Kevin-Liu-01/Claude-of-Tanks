@@ -24,6 +24,9 @@ import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePol
 import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
+  CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, pushCustomCascadeBreaks,
+} from './shadowCascadeFade.ts';
+import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
 } from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
@@ -595,6 +598,10 @@ function patchStableShadowSampling() {
     'if(linearDepth >= CSM_cascades[UNROLLED_LOOP_INDEX].x && linearDepth < CSM_cascades[UNROLLED_LOOP_INDEX].y) directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
 
   let frag = THREE.ShaderChunk.lights_fragment_begin;
+  // 2026-10-14 (SKY shadows r2a, C6): the cascades' fade band is linear in the break's distance (shadowCascadeFade.ts),
+  // the one law the shadow boxes, the caster profiles and the held poses read too
+  if (frag.split(CSM_FADE_MARGIN_THREE).length !== 2) throw new Error('lighting.ts: fade margin anchor not found in lights_fragment_begin');
+  frag = frag.replace(CSM_FADE_MARGIN_THREE, CSM_FADE_MARGIN_GLSL);
   if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) ||
       !frag.includes(fadeBlendAnchor) || !frag.includes(fadeEndAnchor) ||
       !frag.includes(noFadeAnchor)) {
@@ -848,17 +855,44 @@ export function createLighting(
   // desktop split while removing one full CSM sampler and allocation.
   const mobileTier = getDeviceTier() === 'mobile';
   const cascadeCount = mobileTier ? 3 : CASCADES;
+  /** The live preset's cascade breaks in metres (null: the practical split). */
+  let cascadeSplitsM: readonly number[] | null = preset.shadowSplitsM ?? null;
   const csm = new CSM({
     camera,
     parent: scene,
     cascades: cascadeCount,
     maxFar: preset.shadowMaxFar,
-    mode: 'practical',
+    // 2026-10-14 (SKY shadows r2a): a preset's own breaks (quality.ts shadowSplitsM, High's 30 / 89 / 320 m), else three's
+    // practical split
+    mode: preset.shadowSplitsM ? 'custom' : 'practical',
+    customSplitsCallback: (amount: number, _near: number, far: number, target: number[]) => {
+      pushCustomCascadeBreaks(cascadeSplitsM, amount, far, target);
+    },
     shadowMapSize: preset.shadowMapSizes[0],
     shadowBias: SHADOW_BIAS,
     lightDirection: sunDir.clone().negate().normalize(), // CSM wants FROM-sun direction
     lightIntensity: SUN_INTENSITY,
   }) as ExtendedCsm;
+  // 2026-10-14 (SKY shadows r2a, C6): each cascade's box widens by its slice's whole fade band at the far edge
+  // (shadowCascadeFade.ts) — three widened it against the camera's 4 km far plane while the shader blends over the 700 m
+  // shadow range, so fragments inside the band fell outside the box and read lit
+  csm._updateShadowBounds = function updateShadowBoundsWithFade(this: ExtendedCsm): void {
+    for (let i = 0; i < this.frustums.length; i++) {
+      const shadowCam = this.lights[i].shadow.camera;
+      const frustum = this.frustums[i];
+      const nearVerts = frustum.vertices.near;
+      const farVerts = frustum.vertices.far;
+      const point1 = farVerts[0];
+      const point2 = point1.distanceTo(farVerts[2]) > point1.distanceTo(nearVerts[2]) ? farVerts[2] : nearVerts[2];
+      let width = point1.distanceTo(point2);
+      if (this.fade) width += csmBoxFadeMarginM(farVerts[0].z);
+      shadowCam.left = -width / 2;
+      shadowCam.right = width / 2;
+      shadowCam.top = width / 2;
+      shadowCam.bottom = -width / 2;
+      shadowCam.updateProjectionMatrix();
+    }
+  };
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
   loadCasterProxies(csm.lights);
@@ -929,6 +963,8 @@ export function createLighting(
   // vehicle cast shadows that the broken Basic-packing path was dropping.
   patchShadowDepthPacking();
 
+  /** Cascade 0's residual seam at a contact (m): its depth bias along the sun plus one texel (lightRig.contactSeamM). */
+  const contactSeam = { value: CONTACT_SEAM_FALLBACK_M };
   /**
    * Keep receiver separation proportional to each physical shadow texel: the normal offset, and the depth bias the
    * cascade's PCF reach needs on a caster face 70 degrees from the sun (2026-10-04; shadowStability.ts
@@ -945,6 +981,8 @@ export function createLighting(
     shadow.bias = legacy ? SHADOW_BIAS
       : Math.max(SHADOW_BIAS, -shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias) / depthRange);
     receiverOnlyShadowUniform.value = legacy ? 0 : 1;
+    // 2026-10-14 (SKY shadows r2a; contact r6's contract): cascade 0's residual seam, its bias along the sun and a texel
+    if (i === 0) contactSeam.value = contactSeamFor(-shadow.bias * depthRange, worldUnitsPerTexel);
   }
 
   function applyShadowNormalBiases(): void {
@@ -1035,12 +1073,14 @@ export function createLighting(
     if (!pendingShadowMask) pendingShadowSizes = null;
     pendingShadowCursor = 0;
     csm.shadowMapSize = p.shadowMapSizes[0];
-    if (csm.maxFar !== p.shadowMaxFar) {
-      csm.maxFar = p.shadowMaxFar;
-      csm.updateFrustums();
-      shadowFitCache.invalidate();
-      applyShadowNormalBiases();
-    }
+    // 2026-10-14 (SKY shadows r2a): the breaks are the preset's own now (High and Ultra share the 700 m range but not
+    // their splits), so every switch re-derives the frustums, the fits and the biases
+    cascadeSplitsM = p.shadowSplitsM ?? null;
+    csm.mode = cascadeSplitsM ? 'custom' : 'practical';
+    csm.maxFar = p.shadowMaxFar;
+    csm.updateFrustums();
+    shadowFitCache.invalidate();
+    applyShadowNormalBiases();
     // A new projection cannot sample the previous static Garage depth maps.
     // Wake the cache even when this choice keeps identical map dimensions.
     staticPresentationDormant = false;
@@ -1122,12 +1162,14 @@ export function createLighting(
   const cloudShadeUniforms = createCloudShadeUniforms();
   scene.userData.cloudShadeUniforms = cloudShadeUniforms;
   const lightFx = { flags: resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery()) };
+  // (contactSeamM reads cascade 0's live seam: applyShadowNormalBias keeps contactSeam current)
   const lightRig: PublishedLightRig = {
     sunIntensity: SUN_INTENSITY, sunColor: new THREE.Color(SUN_COLOR),
     hemiIntensity: hemi.intensity, hemiSky: hemi.color, hemiGround: hemi.groundColor,
     fillIntensity: FILL_INTENSITY, fillColor: new THREE.Color(FILL_COLOR), fillDir: new THREE.Vector3(0, 1, 0),
     envDiffuseGain: 1, envDiscFill: LEGACY_ENV_DISC_FILL,
   };
+  Object.defineProperty(lightRig, 'contactSeamM', { enumerable: true, get: () => contactSeam.value });
   scene.userData.lightRig = lightRig;
   const sunDirWorld = new THREE.Vector3();
   // 2026-10-01: the grounded model's ground (its albedo) and the ground pole the sky light already gives a face
