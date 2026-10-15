@@ -141,7 +141,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 12.867,
+   "insideM2": 14.431,
    "gapM2": 2.452,
    "invertedM2": 0
   },
@@ -150,7 +150,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 12.867,
+   "insideM2": 14.431,
    "gapM2": 2.452,
    "invertedM2": 0
   },
@@ -302,9 +302,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 4.236,
-   "insideM2": 0,
-   "gapM2": 56.779,
+   "holeM2": 3.727,
+   "insideM2": 0.877,
+   "gapM2": 55.573,
    "invertedM2": 0
   },
   "hessian/woodshed": {
@@ -329,9 +329,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.93,
-   "insideM2": 0,
-   "gapM2": 77.871,
+   "holeM2": 3.882,
+   "insideM2": 1.04,
+   "gapM2": 81.868,
    "invertedM2": 0
   },
   "landmark/copper_mesa:headframe#14": {
@@ -536,9 +536,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 1.818,
-   "insideM2": 0,
-   "gapM2": 2.351,
+   "holeM2": 0,
+   "insideM2": 0.22,
+   "gapM2": 2.508,
    "invertedM2": 0
   },
   "ksar/caravanserai": {
@@ -623,10 +623,10 @@
    "invertedM2": 0
   },
   "arctic/containerRow": {
-   "floating": 1,
+   "floating": 0,
    "sliver": 0,
-   "floatingM2": 1.219,
-   "holeM2": 0.11,
+   "floatingM2": 0,
+   "holeM2": 0.208,
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
@@ -752,8 +752,8 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 1.075,
-   "insideM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.928,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2517,7 +2517,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 8.876,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2535,8 +2535,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.144,
-   "gapM2": 16.776,
+   "insideM2": 0,
+   "gapM2": 22.154,
    "invertedM2": 0
   },
   "kyushu/watertower": {
@@ -2544,8 +2544,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.549,
-   "gapM2": 1.503,
+   "insideM2": 1.521,
+   "gapM2": 1.721,
    "invertedM2": 0
   },
   "kyushu/foundryoffice": {
@@ -2661,7 +2661,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.794,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2733,8 +2733,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.144,
-   "gapM2": 8.445,
+   "insideM2": 0.231,
+   "gapM2": 10.465,
    "invertedM2": 0
   },
   "navajo/factory": {
@@ -2877,8 +2877,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.254,
-   "gapM2": 2.098,
+   "insideM2": 0.429,
+   "gapM2": 4.607,
    "invertedM2": 0
   },
   "saar/firestation": {
@@ -3193,7 +3193,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 21.765,
+   "gapM2": 25.559,
    "invertedM2": 0
   },
   "generic/watertower": {
@@ -3201,8 +3201,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 12.269,
+   "insideM2": 1.286,
+   "gapM2": 13.53,
    "invertedM2": 0
   },
   "generic/stack": {
@@ -3445,7 +3445,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 13.408,
    "invertedM2": 0
   },
   "landmark/copper_mesa:guyedMast#12": {
@@ -3701,5 +3701,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-14T17:49:23.676Z"
+ "updatedAt": "2026-10-15T05:30:04.252Z"
 }

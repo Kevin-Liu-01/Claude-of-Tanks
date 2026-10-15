@@ -278,8 +278,11 @@ const waterTower: RegionalBuilder = (ctx) => {
   for (const y of [3.2, 6.6, 10.0]) sink.cylinder(YELLOW_BRICK, [0, y, 0], 'y', 0.3, Rs + 0.05, 8, { decor: true }, Rs + 0.05, true, Math.PI / 8);
   // the corbel table: three courses stepping out to the tank house
   const T = Math.max(R + 0.3, Math.min(3.4, half - 0.4)), th = 3.6, ty = H + 0.5;
+  // (the integrity gate, 2026-10-14: the courses' radii are the octagons' corners, as the tank house's faces are laid on
+  // its corners' circle T / cos(pi/8); stepping out only to T left the tank house 10 cm clear of its top course)
+  const Tc = T / Math.cos(Math.PI / 8);
   for (let c = 0; c < 3; c++) {
-    const r0 = Rs + (T - Rs) * (c / 3), r1 = Rs + (T - Rs) * ((c + 1) / 3);
+    const r0 = Rs + (Tc - Rs) * (c / 3), r1 = Rs + (Tc - Rs) * ((c + 1) / 3);
     sink.cylinder(c === 1 ? YELLOW_BRICK : 'stone', [0, ty - 0.66 + c * 0.22, 0], 'y', 0.22, r0 + 0.06, 8, { shade: 0.9 }, r1, true, Math.PI / 8);
   }
   // the tank house: eight faces of sheet on battens, a window cut in every other face, the gallery's rail round it

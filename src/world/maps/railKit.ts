@@ -540,7 +540,8 @@ export function makeGantry(
   for (const sx of [-1, 1]) mk(boxAt(0.06, 0.5, 0.42, tx + sx * 0.3, legH - drop - 0.2, 0));
   const crook = new THREE.TorusGeometry(0.18, 0.05, 6, 10, Math.PI * 1.4);
   crook.rotateZ(Math.PI * 0.8);
-  crook.translate(tx, legH - drop - 0.95, 0);
+  // (its eye up in the block's cheeks: the integrity gate found it 9 cm clear of them)
+  crook.translate(tx, legH - drop - 0.84, 0);
   mk(dressing(crook));
   return { w: span + 5, d: 5.4, h: legH + girderH + 0.8 };
 }
@@ -609,11 +610,22 @@ export function makeWaterTower(
   deck.rotateX(-Math.PI / 2);
   deck.translate(0, legH + 0.02, 0);
   buckets.dark.push(dressing(deck));
+  // (its grating's underside, seen from the yard: the integrity gate read the deck's missing back as a hole)
+  const under = new THREE.RingGeometry(tankR - 0.05, tankR + 0.75, 16, 1);
+  under.rotateX(Math.PI / 2);
+  under.translate(0, legH - 0.01, 0);
+  buckets.dark.push(dressing(under));
   for (let k = 0; k < 12; k++) {
     const a = k / 12 * Math.PI * 2;
     buckets.dark.push(boxAt(0.04, 1.0, 0.04, Math.cos(a) * (tankR + 0.72), legH + 0.52, Math.sin(a) * (tankR + 0.72)));
   }
-  for (const h of [0.5, 1.0]) buckets.dark.push(ring(tankR + 0.72, 0.04, legH + h + 0.02, true, 16));
+  // (the rails round tubes, not open bands: an open band shows its inside from over the balcony)
+  for (const h of [0.5, 1.0]) {
+    const rail = new THREE.TorusGeometry(tankR + 0.72, 0.022, 3, 16);
+    rail.rotateX(Math.PI / 2);
+    rail.translate(0, legH + h + 0.02, 0);
+    buckets.dark.push(dressing(rail));
+  }
   for (const g of ladderGeos(legAt(1, 0) + 0.25, 0, 0, legH + 0.05, 'z', 0.42)) buckets.dark.push(g);
   for (const g of ladderGeos(tankR + 0.12, 0, legH, legH + tankH + 0.2, 'z', 0.4)) buckets.dark.push(g);
   for (let y = legH + 0.8; y < legH + tankH; y += 1.2) buckets.dark.push(boxAt(0.17, 0.04, 0.5, tankR + 0.05, y, 0));

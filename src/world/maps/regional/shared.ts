@@ -1,6 +1,6 @@
 // src/world/maps/regional/shared.ts — structures several regional kits share, built in whatever masonry the kit
 // paints (its stone surface): the brick or stone factory stack (regional-buildings lane, 2026-10-03).
-import { PartSink, faceBox, normalize3, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, normalize3, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { holedFace } from './house.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -18,6 +18,13 @@ const IRON: Rgb = rgb(0x2e2f31);
  * conductor up the other to a rod over the crown. The stream draws are the old stack's (total, plinth): the plot holds.
  * Its fall is shaft.ts's (damage.ts describeShaft reads the shaft's bands off its walls): it topples in drums.
  */
+/** A slender run from a to b laid as lengths of at most `max` metres, each drawn by `draw`. */
+function inLengths(a: Vec3, b: Vec3, draw: (p: Vec3, q: Vec3) => void, max = 4): void {
+  const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / max));
+  const at = (t: number): Vec3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  for (let k = 0; k < n; k++) draw(at(k / n), at((k + 1) / n));
+}
+
 export const factoryStack: RegionalBuilder = (ctx): RegionalParts => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
@@ -65,8 +72,9 @@ export const factoryStack: RegionalBuilder = (ctx): RegionalParts => {
   sink.dressing(mobile, () => {
     const ladder = { colour: IRON, decor: true };
     const off = 0.16, yTop = crownY + 0.4;
+    // (the integrity gate, 2026-10-14: a 2 cm stile 25 m long is a sliver: the stiles and the conductor in 4 m lengths)
     for (const dz of [-0.2, 0.2]) {
-      sink.member('structureMetal', [rAt(y0 + 0.3) + off, y0 + 0.3, dz], [rAt(yTop) + off, yTop, dz], 0.035, 0.02, [0, 0, 1], { ...ladder, exposed: true }, 0);
+      inLengths([rAt(y0 + 0.3) + off, y0 + 0.3, dz], [rAt(yTop) + off, yTop, dz], (p, q) => sink.member('structureMetal', p, q, 0.035, 0.02, [0, 0, 1], { ...ladder, exposed: true }, 0));
     }
     for (let y = y0 + 0.5; y < yTop - 0.1; y += 0.32) {
       const x = rAt(y) + off;
@@ -77,7 +85,7 @@ export const factoryStack: RegionalBuilder = (ctx): RegionalParts => {
       sink.span('structureMetal', r - 0.04, y - 0.02, -0.24, r + off + 0.02, y + 0.02, -0.18, { ...ladder, fine: true });
       sink.span('structureMetal', r - 0.04, y - 0.02, 0.18, r + off + 0.02, y + 0.02, 0.24, { ...ladder, fine: true });
     }
-    sink.member('structureMetal', [-(rAt(y0) + 0.05), y0, 0], [-(rAt(crownY) + 0.05), crownY + 0.2, 0], 0.02, 0.02, [-1, 0, 0], { colour: rgb(0x5a4a3a), decor: true, exposed: true }, 0);
+    inLengths([-(rAt(y0) + 0.05), y0, 0], [-(rAt(crownY) + 0.05), crownY + 0.2, 0], (p, q) => sink.member('structureMetal', p, q, 0.02, 0.02, [-1, 0, 0], { colour: rgb(0x5a4a3a), decor: true, exposed: true }, 0));
     sink.member('structureMetal', [-(r1 * 1.12), crownY + 0.2, 0], [-(r1 * 1.12) + 0.02, crownY + 2.4, 0], 0.025, 0.025, normalize3([-1, 0, 0]), { colour: shade(IRON, 1.2), decor: true, exposed: true }, 0);
   });
   return sink.finish();

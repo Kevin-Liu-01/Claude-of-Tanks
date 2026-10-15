@@ -91,7 +91,13 @@ export const jamesway: RegionalBuilder = (ctx) => {
   sink.dressing(mobile, () => {
     for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) sink.span('structureWood', x0 - 0.1, -0.15, z - 0.1, x1 + 0.1, 0.14, z + 0.1, { colour: shade(timber, 0.8), decor: true });
     for (let x = x0 + 0.2; x < x1; x += 0.6) sink.span('structureWood', x - 0.05, 0.14, z0 + 0.05, x + 0.05, 0.36, zH - 0.05, { colour: timber, decor: true });
-    for (let z = z0 + 0.12; z < zH; z += 0.15) sink.span('structureWood', x0, fl - 0.004, z - 0.002, x1, fl + 0.004, z + 0.002, { colour: shade(timber, 0.7), decor: true, fine: true });
+    // (the deck's board joints as lines on its top, in board lengths of 3 m: the integrity gate reads a 4 mm line 15 m
+    // long as a sliver)
+    const jc = { colour: shade(timber, 0.7), decor: true, fine: true };
+    for (let z = z0 + 0.12; z < zH; z += 0.15) for (let xa = x0; xa < x1 - 0.01; xa += 3) {
+      const xb = Math.min(x1, xa + 3);
+      sink.quad('structureWood', [xa, fl + 0.002, z - 0.002], [xa, fl + 0.002, z + 0.002], [xb, fl + 0.002, z + 0.002], [xb, fl + 0.002, z - 0.002], jc);
+    }
   });
   // the canvas from the far end to the vestibule, bay by bay between the ribs (in the vertex-coloured steel bucket)
   const vx0 = x1 - vest;

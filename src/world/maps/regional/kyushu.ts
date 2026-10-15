@@ -356,10 +356,10 @@ const greenhouse: RegionalBuilder = (ctx) => {
   for (const end of [-1, 1]) {
     const f: Face = { origin: [end * L / 2, 0, 0], u: [0, 0, -end], out: [end, 0, 0], width: r * 2 };
     const poly = disc(10).map(([u, y]): [number, number] => [-u, y]);
-    holedPolygon(sink, 'structureMetal', f, poly, [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.001, y1: base + doorH }], 0.02, 0, { colour: shade(VINYL, 0.95) });
+    holedPolygon(sink, 'structureMetal', f, poly, [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.06, y1: base + doorH }], 0.02, 0, { colour: shade(VINYL, 0.95) });
     // its inside, seen through the open door and the rolled sides
     const fi: Face = { origin: [end * (L / 2 - 0.02), 0, 0], u: [0, 0, end], out: [-end, 0, 0], width: r * 2 };
-    holedPolygon(sink, 'structureMetal', fi, [...disc(10)].reverse(), [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.001, y1: base + doorH }], 0.002, 0, { colour: shade(VINYL, 0.82), decor: true });
+    holedPolygon(sink, 'structureMetal', fi, [...disc(10)].reverse(), [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.06, y1: base + doorH }], 0.008, 0, { colour: shade(VINYL, 0.82), decor: true });
     sink.dressing(mobile, () => {
       const post = { colour: HOOP, decor: true };
       for (const u of [-doorW / 2 - 0.04, doorW / 2 + 0.04, -r * 0.72, r * 0.72]) {

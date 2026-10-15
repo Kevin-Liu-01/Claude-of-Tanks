@@ -162,7 +162,9 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
       const [za, zb] = [posts[k], posts[k + 1]];
       bar(sink, 'structureMetal', [xo, (za < zl ? top : nosing(za)) + 0.95, za], [xo, (zb < zl ? top : nosing(zb)) + 0.95, zb], 0.05, { ...dark, fine: true });
     }
+    // (the rail's band both ways round: from over the roof its inside shows — the integrity gate)
     revolve(sink, 'structureMetal', x, z, [[R * 0.9, top + R * 0.03 + 0.95], [R * 0.9, top + R * 0.03 + 1.0]], 16, { colour: STEEL_DARK, decor: true, fine: true });
+    revolve(sink, 'structureMetal', x, z, [[R * 0.9 - 0.006, top + R * 0.03 + 1.0], [R * 0.9 - 0.006, top + R * 0.03 + 0.95]], 16, { colour: STEEL_DARK, decor: true, fine: true });
     // the roof rail's posts at every second vertex of its ring, from the cone (0.024 R over the shell's top there)
     for (let k = 0; k < 8; k++) {
       const a = -(k / 8) * Math.PI * 2, px = x + Math.cos(a) * R * 0.9, pz = z + Math.sin(a) * R * 0.9;
@@ -196,6 +198,8 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [px, manifoldY(px), ez - t - 0.75], [px, gm + 1.7, ez - t - 0.75], 0.14, { colour: IRON, decor: true });
     sink.span('structureMetal', px - 0.14, gm + 1.25, ez - t - 0.9, px + 0.14, gm + 1.5, ez - t - 0.6, { colour: shade(IRON, 1.5), decor: true });
     sink.cylinder('structureMetal', [px, gm + 1.62, ez - t - 0.75], 'y', 0.04, 0.2, 10, { colour: rgb(0xa8302a), decor: true }, 0.2, false);
+    // (its spokes to the spindle: the integrity gate found the rim 10 cm clear of the riser)
+    for (const [dx, dz] of [[0.19, 0], [0, 0.19]] as const) bar(sink, 'structureMetal', [px - dx, gm + 1.64, ez - t - 0.75 - dz], [px + dx, gm + 1.64, ez - t - 0.75 + dz], 0.025, { colour: rgb(0xa8302a), decor: true, fine: true });
   }
   for (const s2 of [-1, 1]) bar(sink, 'structureMetal', [s2 * 1.15, gm + 0.98, vz0], [s2 * 1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
   bar(sink, 'structureMetal', [-1.15, gm + 1.95, vz0], [1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
