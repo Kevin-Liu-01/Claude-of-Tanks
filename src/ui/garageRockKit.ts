@@ -318,3 +318,114 @@ export function buildEarthMound(frame: RockFrame, options: MoundOptions): THREE.
   geometry.computeBoundingSphere();
   return geometry;
 }
+
+export interface TalusOptions {
+  /** The apron's run along the face (u from, to). */
+  readonly from: number;
+  readonly to: number;
+  /** How far it runs out from the face toward the yard, and its height against the face. */
+  readonly reach: number;
+  readonly height: number;
+  readonly seed: number;
+  readonly snow: number;
+  readonly rock: number;
+  /** Stretches of the face left clear (a portal's headwall), u from, to. */
+  readonly gaps?: ReadonlyArray<readonly [number, number]>;
+  /** Boulders half buried in the apron. */
+  readonly boulders?: number;
+}
+
+/**
+ * The scree at a cliff's foot under snow (Glacier, the re-judge 2026-10-15: "a freestanding hemisphere on flat snow with a
+ * hard ground line ... the 'talus' at its foot is a row of grey cuboids"): an apron that starts inside the face, stands
+ * `height` against it and falls away to the ground `reach` metres out, lumpy, thinning to nothing at its ends and at the
+ * gaps, the scree showing through the snow where it is steep, with flat-faced boulders half buried in it. World space,
+ * vertex-coloured, for the pack's baked bucket.
+ */
+export function buildTalusApron(frame: RockFrame, options: TalusOptions): THREE.BufferGeometry {
+  const apron: Soup = { positions: [], normals: [], colors: [] };
+  const stones: Soup = { positions: [], normals: [], colors: [] };
+  const { from, to, reach, height, seed } = options;
+  const gaps = options.gaps ?? [];
+  const cos = Math.cos(frame.yaw), sin = Math.sin(frame.yaw);
+  const world = (u: number, y: number, w: number): THREE.Vector3 => new THREE.Vector3(frame.x + cos * u + sin * w, y, frame.z - sin * u + cos * w);
+  let state = seed >>> 0;
+  const rand = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const lattice = Float32Array.from({ length: 32 * 32 }, rand);
+  const noise = (x: number, y: number): number => {
+    const ix = Math.floor(x), iy = Math.floor(y), tx = x - ix, ty = y - iy;
+    const at = (cx: number, cy: number): number => lattice[(((cy % 32) + 32) % 32) * 32 + (((cx % 32) + 32) % 32)];
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
+  };
+  const smooth = (x: number): number => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
+  const back = -2.5;
+  const taper = (u: number): number => {
+    let t = smooth((u - from) / 8) * smooth((to - u) / 8);
+    for (const [g0, g1] of gaps) t *= u < g0 ? smooth((g0 - u) / 2.5) : u > g1 ? smooth((u - g1) / 2.5) : 0;
+    return t;
+  };
+  const surface = (u: number, w: number): number => {
+    const t = Math.min(1, Math.max(0, (w - back) / (reach - back)));
+    const fall = Math.pow(1 - t, 1.7);
+    const crown = height * (0.55 + 0.6 * noise(u * 0.1 + 3, 1.3)) * taper(u);
+    const lump = (noise(u * 0.45 + 7, w * 0.45 + 2) - 0.5) * 0.6 * crown / Math.max(0.01, height);
+    return frame.groundAt(u, w) - 0.2 + (crown + lump) * fall;
+  };
+  const snow = new THREE.Color(options.snow), rock = new THREE.Color(options.rock), shade = new THREE.Color(0xc4cfd6);
+  const cols = Math.ceil(to - from), rows = 8;
+  const point = (i: number, j: number): THREE.Vector3 => {
+    const u = from + ((to - from) * i) / cols, w = back + ((reach - back) * j) / rows;
+    return world(u, surface(u, w), w);
+  };
+  const n = new THREE.Vector3();
+  for (let i = 0; i < cols; i += 1) {
+    for (let j = 0; j < rows; j += 1) {
+      // a runs +u to b, d runs +w (toward the yard) from a: (b - a) x (d - a) = u x w points down, so a, d, c faces up
+      const a = point(i, j), b = point(i + 1, j), c = point(i + 1, j + 1), d = point(i, j + 1);
+      n.subVectors(d, a).cross(new THREE.Vector3().subVectors(b, a)).normalize();
+      const steep = 1 - Math.abs(n.y);
+      const scree = steep > 0.3 + noise(i * 0.6, j * 0.9) * 0.25;
+      const tone = scree ? rock.clone().lerp(snow, 0.3) : snow.clone().lerp(shade, Math.min(1, steep * 1.4));
+      triangle(apron, a, d, c, tone);
+      triangle(apron, a, c, b, tone);
+    }
+  }
+  smoothNormals(apron);
+  // the boulders: jittered icosahedra, flat-faced, a snow cap on their upward faces
+  const ico = new THREE.IcosahedronGeometry(1, 0).getAttribute('position');
+  for (let k = 0; k < (options.boulders ?? 0); k += 1) {
+    const u = from + 2 + rand() * (to - from - 4), w = -0.6 + rand() * reach * 0.6;
+    if (taper(u) < 0.4) continue;
+    const size = 0.35 + rand() * 0.65, squash = 0.6 + rand() * 0.3, turn = rand() * Math.PI * 2;
+    const y = surface(u, w) - size * squash * 0.35;
+    const jitter = new Map<string, number>();
+    const corner = (index: number): THREE.Vector3 => {
+      const px = ico.getX(index), py = ico.getY(index), pz = ico.getZ(index);
+      const key = `${px.toFixed(3)},${py.toFixed(3)},${pz.toFixed(3)}`;
+      let scale = jitter.get(key);
+      if (scale === undefined) { scale = 0.72 + rand() * 0.5; jitter.set(key, scale); }
+      const lx = px * size * scale, ly = py * size * scale * squash, lz = pz * size * scale;
+      const ru = lx * Math.cos(turn) - lz * Math.sin(turn), rw = lx * Math.sin(turn) + lz * Math.cos(turn);
+      return world(u + ru, y + ly, w + rw);
+    };
+    const stoneTone = rock.clone().multiplyScalar(0.85 + rand() * 0.3);
+    for (let f = 0; f < ico.count; f += 3) {
+      const a = corner(f), b = corner(f + 1), c = corner(f + 2);
+      n.subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+      triangle(stones, a, b, c, n.y > 0.72 ? snow.clone().lerp(shade, 0.25) : stoneTone);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([...apron.positions, ...stones.positions], 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute([...apron.normals, ...stones.normals], 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute([...apron.colors, ...stones.colors], 3));
+  geometry.computeBoundingSphere();
+  return geometry;
+}

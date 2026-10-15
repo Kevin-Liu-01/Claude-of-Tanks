@@ -341,6 +341,9 @@ export function addGarageFacilityDetails({
   const roofing = new THREE.Color(shelter.roof);
   const accent = new THREE.Color(variant.accent).lerp(steel, 0.45);
   const dark = new THREE.Color(0x171b1d);
+  // the machinery's plinths are weathered concrete (the re-judge, 2026-10-15: the black plinths under the pump and the
+  // trailers read as "crisp-edged flat charcoal rectangles")
+  const plinthConcrete = new THREE.Color(0x77746c);
   const safety = new THREE.Color(0xd19a2e);
   const timber = new THREE.Color(0x685035);
   const rubber = new THREE.Color(0x151719);
@@ -1541,7 +1544,7 @@ export function addGarageFacilityDetails({
     // axle terminates inside both bearings so it reads as functioning yard
     // equipment from every orbit instead of a loose cylinder.
     clusterBox(cluster, lateral, longitudinal, 0.10,
-      2.8, 0.20, 1.45, dark, 'masonry');
+      2.8, 0.20, 1.45, plinthConcrete, 'masonry');
     for (const offset of [-0.86, 0.86]) {
       clusterBox(cluster, lateral + offset, longitudinal, 0.70,
         0.34, 1.20, 0.78, steel, 'structure');
@@ -1568,7 +1571,7 @@ export function addGarageFacilityDetails({
     // Every line meets a pedestal or riser; none of the colored pipework is
     // allowed to terminate in open air.
     clusterBox(cluster, lateral, longitudinal, 0.10,
-      width + 1.2, 0.20, 1.3, dark, 'masonry');
+      width + 1.2, 0.20, 1.3, plinthConcrete, 'masonry');
     for (const offset of [-width / 2, 0, width / 2]) {
       clusterCylinder(cluster, lateral + offset, longitudinal, 1.15,
         0.11, 2.1, steel, 0, 10);
@@ -1636,7 +1639,7 @@ export function addGarageFacilityDetails({
     environmentSpecificAssemblies += 1;
     servicePurposeTags.add('plate-preparation-and-rolling');
     clusterBox(cluster, lateral, longitudinal, 0.10,
-      6.4, 0.20, 2.2, dark, 'masonry');
+      6.4, 0.20, 2.2, plinthConcrete, 'masonry');
     for (const offset of [-2.65, 2.65]) {
       clusterBox(cluster, lateral + offset, longitudinal, 1.40,
         0.22, 2.60, 1.78, steel, 'structure');
@@ -1668,7 +1671,7 @@ export function addGarageFacilityDetails({
     environmentSpecificAssemblies += 1;
     servicePurposeTags.add('motorized-tank-turning-rolls');
     clusterBox(cluster, lateral, longitudinal, 0.10,
-      7.2, 0.20, 3.2, dark, 'masonry');
+      7.2, 0.20, 3.2, plinthConcrete, 'masonry');
     for (const stationOffset of [-1.95, 1.95]) {
       clusterBox(cluster, lateral + stationOffset, longitudinal, 0.46,
         1.05, 0.72, 1.85, steel, 'structure');
@@ -2823,7 +2826,7 @@ export function addGarageFacilityDetails({
     const floor = getGarageFacilityTerraces(variant).find((terrace) => terrace.label === 'crew-floor-yard-power-pack');
     if (!floor) return;
     const at = fixedCluster(floor.side, floor.depth);
-    const olive = new THREE.Color(0x4f5536), sand = new THREE.Color(0xa58e62), rope = new THREE.Color(0x8c7a55);
+    const olive = new THREE.Color(0x4f5536), rope = new THREE.Color(0x8c7a55);
     const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);
     const wheelPair = (lateral: number, longitudinal: number, radius: number, track: number): void => {
       for (const side of [-1, 1]) clusterCylinder(at, lateral + side * track / 2, longitudinal, radius, radius, 0.18, black, 0, 16, Math.PI / 2);
@@ -2840,9 +2843,11 @@ export function addGarageFacilityDetails({
       clusterBox(at, lateral, longitudinal, 0.07, 1.2, 0.14, 1.0, wood, 'painted');
     };
     switch (variant.architecture) {
-      case 'shade_depot': { // a water trailer and a pallet of jerrycans
+      case 'shade_depot': { // a water trailer (olive drab: a sand tank was lost on the sand, the re-judge) and jerrycans
         clusterBox(at, 0, 0, 0.55, 0.9, 0.12, 2.4, steel, 'structure');
-        clusterCylinder(at, 0, 0.1, 1.15, 0.55, 2.0, sand, Math.PI / 2, 16);
+        clusterCylinder(at, 0, 0.1, 1.15, 0.55, 2.0, olive.clone().multiplyScalar(1.15), Math.PI / 2, 16);
+        for (const band of [-0.55, 0.75]) clusterCylinder(at, 0, band, 1.15, 0.575, 0.07, black, Math.PI / 2, 16); // its straps
+        clusterCylinder(at, 0, 0.1, 1.72, 0.16, 0.08, black, 0, 12); // the filler cap
         wheelPair(0, -0.3, 0.38, 1.3);
         clusterBox(at, 0, 1.6, 0.45, 0.1, 0.1, 1.2, steel, 'structure'); // the drawbar
         clusterBox(at, 0.3, -1.05, 0.95, 0.1, 0.1, 0.18, black, 'equipment'); // the tap
@@ -3069,7 +3074,7 @@ export function addGarageFacilityDetails({
       // one merged, non-instanced decal mesh on the stock map + transparent program the bays' grime decals already use,
       // so it adds no shader program
       const material = new THREE.MeshBasicMaterial({
-        map: texture, color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false,
+        map: texture, color: 0x000000, transparent: true, opacity: 0.36, depthWrite: false, // soft, never a black slab (re-judge)
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
       material.name = 'garage-facility:contact-shadow';
