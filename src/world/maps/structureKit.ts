@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { createOrbitalStructures } from './orbitalStructures.ts';
 import { autoCraftPieces, craftAnatomy, piece } from './craftAnatomy.ts'; // props #1: a light build's pieces
 import { HUT_DIALECTS, HUT_KITS_PENDING, REGIONAL_HUTS, buildRegionalHut, type HutTools } from './hutKit.ts'; // props #1: the kits' huts
+import { SPACE_KINDS, buildSpaceKind, type SpaceWorld } from './spaceKit.ts'; // props #12: the stations, member by member
 import type { FractureMaterial } from '../destructionKit.ts';
 import type { FractureRole } from '../fractureAnatomy.ts';
 import { bar, buildFallenMast, buildLatticeMast, corrugatedFace } from './mastKit.ts';
@@ -3334,8 +3335,9 @@ function lightMeta(
     contact: 'ob' as const, collider: true as const,
     hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5,
     // (props #1: the build reads its pieces as it merges, withCraftCapture)
-    // (the space and polar stations are their own family, #12: they keep their broken builds until it lands)
-    build: family === 'orbital' ? build : (rng: Rng) => withCraftCapture({ bucket: surfaceMaterial, material: debrisMaterial === 'metal' ? 'metal' : debrisMaterial === 'canvas' ? 'canvas' : 'timber' }, () => build(rng)),
+    // (the space and polar stations are their own family, #12: they keep their broken builds until each is rebuilt
+    // member by member, spaceKit.ts)
+    build: family === 'orbital' && !SPACE_KINDS.includes(id) ? build : (rng: Rng) => withCraftCapture({ bucket: surfaceMaterial, material: debrisMaterial === 'metal' ? 'metal' : debrisMaterial === 'canvas' ? 'canvas' : 'timber' }, () => build(rng)),
     instanceTintStrength,
   };
   return {
@@ -3378,10 +3380,10 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, orbital.ascentlander, 'metal'),
   rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, orbital.rovergarage, 'metal'),
   habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, makeHabDome, 'metal'),
-  habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, makeHabModule, 'metal'),
-  commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, makeCommsMast, 'metal'),
-  solararray: lightMeta('solararray', 'orbital', 4.7, 4.2, 3.2, PAL.orbital, makeSolarArray, 'metal'),
-  fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, makeFuelTanks, 'metal'),
+  habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, (rng) => { makeHabModule(rng).dispose(); return spaceCraftBuild('habmodule', 'moon'); }, 'metal'),
+  commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, (rng) => { makeCommsMast(rng).dispose(); return spaceCraftBuild('commsmast', 'moon'); }, 'metal'),
+  solararray: lightMeta('solararray', 'orbital', 4.7, 4.2, 3.2, PAL.orbital, (rng) => { makeSolarArray(rng).dispose(); return spaceCraftBuild('solararray', 'moon'); }, 'metal'),
+  fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, (rng) => { makeFuelTanks(rng).dispose(); return spaceCraftBuild('fueltanks', 'moon'); }, 'metal'),
   landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, makeLandingPad, 'metal'),
 };
 
@@ -3793,6 +3795,21 @@ function hutTools(out: THREE.BufferGeometry[], rng: Rng): HutTools {
   };
 }
 
+/** (props #12) A station's kind as `world` builds it (spaceKit.ts): member by member, on its own stream, its pieces
+ *  named for the wreck (the receipt builds Mars's while the Olympus kit is pending). */
+export function spaceCraft(kind: string, world: SpaceWorld): THREE.BufferGeometry {
+  return withCraftCapture({ bucket: 'structureMetal', material: 'metal' }, () => spaceCraftBuild(kind, world));
+}
+function spaceCraftBuild(kind: string, world: SpaceWorld): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [];
+  buildSpaceKind(hutTools(out, kindStream(`${kind}@${world}`)), kind, world);
+  return mergeConnectedStructure(kind, out);
+}
+
+/** (props #12) The kits whose stations wait for their architecture to land (the Olympus kit, item/looks-mars): the
+ *  integrator empties this when it does, and Mars draws its own forms. */
+const SPACE_KITS_PENDING: ReadonlySet<string> = new Set(['olympus']);
+
 /** A kit's hut (hutKit.ts): built member by member on its own stream. */
 function regionalHut(kit: string, kind: string): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [];
@@ -3839,6 +3856,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     savoyard: { alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal') },
   };
   for (const kit of Object.keys(REGIONAL_HUTS)) if (!HUT_KITS_PENDING.has(kit)) table[kit] = { ...(table[kit] ?? {}), ...huts(kit) };
+  // (props #12) Mars's stations (Olympus, 2100): each spends its family's build, then builds as Mars does
+  if (!SPACE_KITS_PENDING.has('olympus')) {
+    table.olympus = { ...(table.olympus ?? {}), ...Object.fromEntries(SPACE_KINDS.map((kind) => [kind,
+      variant(kind, PAL.orbital, (rng) => { B[kind].build(rng).dispose(); return spaceCraftBuild(kind, 'mars'); }, 'metal')])) };
+  }
   // the tents in their kit's army canvas: each spends its family's build, then pitches on its own stream
   const TENT_KINDS: Readonly<Record<string, readonly string[]>> = {
     kolkhoz: ['commandtent'], lorrain: ['commandtent'], andalusian: ['commandtent'], ksar: ['commandtent', 'deserttent'],
