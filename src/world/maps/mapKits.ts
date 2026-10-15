@@ -31,6 +31,14 @@ import {
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
+// #16 r2 (Lane C, 2026-10-14): the waterside family's kits, their forms keyed on the coast's boats
+import { dressReedClump, reedFormForBoat, type ReedForm } from './reedBeds.ts';
+import {
+  buildDriftLog, buildMooringBuoy, driftCoastForBoat, fordMarker, fordStyleForBoat, mooringStakeGeometry, type DriftCoast, type FordStyle,
+} from './waterside.ts';
+import {
+  buildGangway, buildJetty, buildRivaSteps, ironBollard, jettyFormForCoast, legacyJettyDraws, timberBollard, type JettyForm, type JettyFrame,
+} from './jettyKit.ts';
 import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
 import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock, type RollingStockKind } from './rollingStock.ts';
 import { SET_PIECE_SIZE, buildSetPiece, type VehicleSetPiece } from './vehicleSetPieces.ts';
@@ -48,11 +56,6 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { dressReedClump, reedFormForMap, type ReedForm } from './reedBeds.ts';
-import {
-  buildDriftLog, buildMooringBuoy, driftCoastForMap, fordMarker, fordStyleForMap, mooringStakeGeometry, type DriftCoast, type FordStyle,
-} from './waterside.ts';
-import { buildGangway, buildJetty, buildRivaSteps, ironBollard, timberBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -189,8 +192,7 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
-> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; jettyForm?: JettyForm; coast?: DriftCoast; reedForm?: ReedForm;
-  fordStyle?: FordStyle };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -1120,7 +1122,7 @@ function addWinterLakeLandmark(
 }
 
 function dressWinterLakes({
-  L, heightField, rng, buckets, groundingReceipts, boats, jettyForm,
+  L, heightField, rng, buckets, groundingReceipts, boats,
 }: FocusedDressingContext): void {
   for (const lake of L.lakes || []) {
     const big = lake.r >= 80;
@@ -1129,7 +1131,7 @@ function dressWinterLakes({
     addWinterPressureRidges(lake, big, heightField, rng, buckets);
     addWinterInteriorDrifts(lake, big, heightField, rng, buckets);
     addWinterRimDrifts(lake, big, heightField, rng, buckets);
-    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts, boats, jettyForm);
+    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts, boats);
   }
 }
 
@@ -1149,8 +1151,7 @@ export function dressMapExtras({
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees), jettyForm: jettyFormForMap(mapId ?? ''), coast: driftCoastForMap(mapId ?? ''),
-    reedForm: reedFormForMap(mapId ?? ''), fordStyle: fordStyleForMap(mapId ?? '') };
+    trunks: trunksOf(trees) };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1735,8 +1736,9 @@ function addCoastalJetty(
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks, jettyForm, coast = 'breton',
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks,
 }: FocusedDressingContext): void {
+  const boatType = boats?.hull.type ?? 'canot', jettyForm = jettyFormForCoast(boatType), coast = driftCoastForBoat(boatType);
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
   // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
   const strand: StrandContext = {
@@ -1914,7 +1916,8 @@ function addRiverFordMarkers(
   }
 }
 
-function dressAutumnRiver({ L, heightField, rng, buckets, reedForm, fordStyle }: FocusedDressingContext): void {
+function dressAutumnRiver({ L, heightField, rng, buckets, boats }: FocusedDressingContext): void {
+  const boatType = boats?.hull.type ?? 'canot', reedForm = reedFormForBoat(boatType), fordStyle = fordStyleForBoat(boatType);
   const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
   if (links.length < 3) return;
   addRiverBankReeds(links, heightField, rng, buckets, reedForm);
@@ -2188,7 +2191,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   const { L, heightField, rng, buckets } = ctx;
   const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
   if (links.length < 3) return;
-  addRiverBankReeds(links, heightField, rng, buckets, ctx.reedForm);
+  addRiverBankReeds(links, heightField, rng, buckets, reedFormForBoat(ctx.boats?.hull.type ?? 'canot'));
   // round 61: the bridge stands on the deck plane terrain.ts resolved for the station authored crossing: 'bridge';
   // a river without one keeps the round-1 ruin
   const decks = heightField.bridgeDecks ?? [];
@@ -2196,14 +2199,15 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   if (!decks.length) addRuinedRiverBridge(links, heightField, rng, buckets);
   // ford posts on every lane that wades the river; a lane a deck carries crosses dry-shod
   addRiverFordMarkers(L.roads.filter((_road, index) => !decks.some((deck) => deck.route === index)),
-    links, heightField, rng, buckets, ctx.fordStyle);
+    links, heightField, rng, buckets, fordStyleForBoat(ctx.boats?.hull.type ?? 'canot'));
   addWeirAndMill(links, decks[0] ?? null, heightField, rng, buckets, ctx);
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [], jettyForm = 'estacade', reedForm }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [] }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
+  const boatType = boats?.hull.type ?? 'canot', jettyForm = jettyFormForCoast(boatType), reedForm = reedFormForBoat(boatType);
   // Authored landing budget is independent of channel interpolation density.
   // Existing river/coast vocabulary stays in the same wood/straw buckets.
   for (const anchor of anchors.slice(0, 4)) {
