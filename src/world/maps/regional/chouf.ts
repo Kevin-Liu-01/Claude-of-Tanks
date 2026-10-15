@@ -10,7 +10,8 @@ import {
   PartSink, faceBox, facePoint, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, recordShaft, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -429,19 +430,14 @@ function campanile(sink: PartSink, W: number, D: number, naveTop: number, look: 
   const T = Math.min(3.6, W * 0.42), x0 = W / 2 - T, x1 = W / 2, z0 = D / 2 - T, z1 = D / 2;
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const shaftTop = naveTop + 5.2 + look() * 1.4;
-  sink.span('stone', x0, 0, z0, x1, shaftTop, z1);
-  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
-  const faces: Face[] = [
-    { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: T },
-    { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: T },
-    { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: T },
-    { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: T },
-  ];
+  // (props census #5, lane B 2026-10-15) the belfry open through the shaft (its openings were dark plates on a solid
+  // span): the shaft to the openings' sill, the four corner piers and the head over them, the bell on its beam; the
+  // shaft recorded as a tower body (it topples in its courses)
   const ow = T * 0.42, oy = shaftTop - 3.2, oh = 1.9;
-  for (const f of faces) {
-    sink.quad('dark', facePoint(f, -ow / 2, oy, 0.02), facePoint(f, ow / 2, oy, 0.02), facePoint(f, ow / 2, oy + oh, 0.02), facePoint(f, -ow / 2, oy + oh, 0.02), { decor: true });
-    roundHead(sink, f, 0, oy + oh, ow, 'dark', 0.14);
-  }
+  sink.span('stone', x0, 0, z0, x1, oy, z1);
+  openBelfry(sink, 'stone', cx, cz, T, oy, oy + oh + ow / 2, shaftTop, ow, rgb(0x6a5a3a), rgb(0x4a3a2a));
+  recordShaft(sink, cx, cz, T, shaftTop + 0.3 + T * 0.95, 'stone');
+  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
   sink.span('stone', x0 - 0.15, shaftTop, z0 - 0.15, x1 + 0.15, shaftTop + 0.3, z1 + 0.15, { decor: true });
   const base = shaftTop + 0.3, apex: Vec3 = [cx, base + T * 0.95, cz];
   const corners: Array<[number, number]> = [[x0 - 0.1, z0 - 0.1], [x1 + 0.1, z0 - 0.1], [x1 + 0.1, z1 + 0.1], [x0 - 0.1, z1 + 0.1]];
@@ -465,9 +461,12 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
   onLot(sink, fp, (Wf, Df, turned) => {
     const W = Math.max(5, Wf - 0.1), D = Math.max(8, Df - 0.1);
     const doorFace: FaceName = turned ? 'left' : 'front';
-    const lights = (face: FaceName, avoid: Array<[number, number]>) => windowRhythm(face, 0, D, { w: 0.8, h: 1.9, sill: 2.0, spacing: 2.8, margin: 1.3, avoid });
+    // (props census #5) the round heads cut through the wall with the rest of the opening (they were glass fans laid on
+    // it over the cut light): the glazing in the head at the back of the reveal, the stone ring round it
+    const lights = (face: FaceName, avoid: Array<[number, number]>) => windowRhythm(face, 0, D, { w: 0.8, h: 1.9, sill: 2.0, spacing: 2.8, margin: 1.3, avoid })
+      .map((o): Opening => ({ ...o, arch: {} }));
     const openings: Opening[] = [
-      { face: doorFace, storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.6 },
+      { face: doorFace, storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.6, arch: {} },
       ...lights('left', turned ? [[-1.2, 1.2]] : []),
       ...lights('right', []),
     ];
@@ -475,7 +474,21 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
       w: W, d: D, plinth: { h: 0.7, out: 0.1, bucket: 'stone' }, storeys: [{ h: 5.6, wall: 'stone' }],
       roof: { kind: 'gable', pitchDeg: 28, eave: 0.35, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, { ...dialect(st), window: (s, face, o, y0) => { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3); roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass'); } });
+    }, {
+      ...dialect(st),
+      window: (s, face, o, y0) => {
+        windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, st.window.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.13, 6);
+      },
+      door: (s, face, o, y0, fr) => {
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
+        }, fr.floors[o.storey] + o.y0);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, st.window.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2 + 0.05, 'stone', 0.18, 7);
+      },
+    });
     if (withCampanile) { campanile(sink, W, D, frame.eaveY, st.look); return; }
     // the bell arch over the front gable: two piers and their arch, the bell, the cross
     const top = frame.roof.ridgeY, z = D / 2 - 0.3;
