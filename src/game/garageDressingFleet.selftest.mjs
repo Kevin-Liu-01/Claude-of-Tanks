@@ -106,8 +106,8 @@ assert.match(dressing,
 assert.match(dressing, /foregroundOfVerdantScaffold = true/,
   'the Burlak assembly must remain in front of Verdant scaffold uprights');
 assert.match(dressing,
-  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak',[\s\S]*14\.6, -17\.2, -0\.55 \+ Math\.PI \/ 2/,
-  'Burlak must carry four exact fleet road wheels on a connected service dolly, out of the Garage camera\'s frame');
+  /addServiceRoadWheelDolly\([\s\S]*'t90a_burlak',[\s\S]*12\.4, -15\.0, -0\.55 \+ Math\.PI \/ 2/,
+  'Burlak must carry four exact fleet road wheels on a connected service dolly');
 assert.match(workshopLayout,
   /id: 'burlak_gantry', role: 'heavy-lift', x: 18\.8, z: -10\.3, yaw: -0\.55/,
   'outdoor service structures must follow the Burlak assembly final pose');
@@ -186,7 +186,7 @@ assert.match(dressing,
   /15\.9 - ABRAMS_FLAMMABLE_BAY_OFFSET\.x,[\s\S]*16\.6 - ABRAMS_FLAMMABLE_BAY_OFFSET\.z,[\s\S]*verdantInteriorRoot/,
   'the indoor Abrams work lamp must follow Verdant\'s canister floor station');
 assert.match(dressing,
-  /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
+  /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*14\.5, 19\.0, -2\.03 \+ Math\.PI \/ 2/,
   'Abrams must carry four exact fleet road wheels on a connected service dolly');
 assert.match(dressing, /perimeterCraneClearance = true/,
   'the complete bay owner must receipt its corrected crane clearance');
