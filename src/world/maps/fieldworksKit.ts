@@ -162,6 +162,20 @@ function bAmmoboxBrokenLegacy(rng: Rng): THREE.BufferGeometry {
 const CRATE_PAINT: Palette = [0.20, 0.22, 0.19];
 const CRATE_LID: Palette = [0.20, 0.21, 0.21];
 const CRATE_WORN: Palette = [0.10, 0.18, 0.41];
+/** (props census #10) a crate's paint by its army: the olive above, bare pine, field grey, desert tan */
+interface CrateStyle { paint: Palette; lid: Palette; worn: Palette }
+const CRATE_OD: CrateStyle = { paint: CRATE_PAINT, lid: CRATE_LID, worn: CRATE_WORN };
+const CRATE_STYLES: Readonly<Record<string, CrateStyle>> = Object.freeze({
+  pine: { paint: [0.09, 0.32, 0.36], lid: [0.09, 0.3, 0.33], worn: [0.08, 0.24, 0.46] },
+  grey: { paint: [0.58, 0.05, 0.3], lid: [0.58, 0.05, 0.28], worn: [0.08, 0.16, 0.42] },
+  tan: { paint: [0.1, 0.24, 0.46], lid: [0.1, 0.22, 0.44], worn: [0.08, 0.16, 0.56] },
+});
+/** The maps whose crates are not the olive: the Red Army's and the Chinese army's bare pine, the Wehrmacht's grey in
+ *  1940, the wadis' tan. */
+const CRATE_BY_MAP: Readonly<Record<string, keyof typeof CRATE_STYLES>> = Object.freeze({
+  verdant: 'pine', winter: 'pine', steppe: 'pine', blackglass: 'pine', ruinspires: 'pine', fjord: 'grey',
+  badlands: 'tan', oasis: 'tan', desert: 'tan',
+});
 const CRATE_SCUFF: Palette = [0.10, 0.14, 0.52];
 const CRATE_GRIME: Palette = [0.09, 0.16, 0.10];
 const CRATE_SEAM: Palette = [0.20, 0.18, 0.07];
@@ -229,24 +243,24 @@ function dustAndContact(geo: THREE.BufferGeometry, rng: Rng): THREE.BufferGeomet
 }
 
 /** One wooden ammunition crate, its skids on y = 0, its length along x, its front (hasps, markings) toward +z. */
-function ammoCrate(o: Rng): THREE.BufferGeometry {
+function ammoCrate(o: Rng, style: CrateStyle = CRATE_OD): THREE.BufferGeometry {
   const { L, W, H } = AMMO_CRATE, skid = 0.022, lidT = 0.024, body = H - skid - lidT, top = skid + body;
   const parts: THREE.BufferGeometry[] = [];
-  for (const sx of [-1, 1]) parts.push(P(box(0.05, skid, W - 0.02), CRATE_WORN, 0.08, o).translate(sx * (L / 2 - 0.13), skid / 2, 0));
-  parts.push(P(box(L - 0.012, body, W - 0.012), CRATE_PAINT, 0.05, o).translate(0, skid + body / 2, 0));
+  for (const sx of [-1, 1]) parts.push(P(box(0.05, skid, W - 0.02), style.worn, 0.08, o).translate(sx * (L / 2 - 0.13), skid / 2, 0));
+  parts.push(P(box(L - 0.012, body, W - 0.012), style.paint, 0.05, o).translate(0, skid + body / 2, 0));
   // the boards' seam along both faces, and the lid's hinge line along the back
   for (const sz of [-1, 1]) {
     const seam = P(facePlane(L - 0.05, 0.006), CRATE_SEAM, 0.02, o);
     if (sz < 0) seam.rotateY(Math.PI);
     parts.push(seam.translate(0, skid + body * 0.5, sz * (W / 2 - 0.0045)));
   }
-  parts.push(P(box(L, lidT, W + 0.004), CRATE_LID, 0.05, o).translate(0, top + lidT / 2, 0));
-  parts.push(P(box(L - 0.02, 0.006, 0.006), CRATE_WORN, 0.10, o).translate(0, top + lidT - 0.003, W / 2 + 0.002));
+  parts.push(P(box(L, lidT, W + 0.004), style.lid, 0.05, o).translate(0, top + lidT / 2, 0));
+  parts.push(P(box(L - 0.02, 0.006, 0.006), style.worn, 0.10, o).translate(0, top + lidT - 0.003, W / 2 + 0.002));
   // the end cleats: a frame proud of each end, the rope becket hanging between its rails
   for (const sx of [-1, 1]) {
     const x = sx * (L / 2 + 0.006);
-    for (const sz of [-1, 1]) parts.push(P(box(0.018, body + 0.004, 0.032), CRATE_WORN, 0.10, o).translate(x, skid + body / 2, sz * (W / 2 - 0.016)));
-    for (const y of [skid + 0.019, top - 0.019]) parts.push(P(box(0.018, 0.03, W - 0.064), CRATE_WORN, 0.10, o).translate(x, y, 0));
+    for (const sz of [-1, 1]) parts.push(P(box(0.018, body + 0.004, 0.032), style.worn, 0.10, o).translate(x, skid + body / 2, sz * (W / 2 - 0.016)));
+    for (const y of [skid + 0.019, top - 0.019]) parts.push(P(box(0.018, 0.03, W - 0.064), style.worn, 0.10, o).translate(x, y, 0));
     const rx = sx * (L / 2 + 0.022), ry = skid + body * 0.6;
     for (const sz of [-1, 1]) {
       parts.push(P(box(0.012, 0.055, 0.012), HEMP, 0.08, o).translate(rx, ry - 0.0275, sz * 0.035));
@@ -295,17 +309,17 @@ function ammoCan(o: Rng): THREE.BufferGeometry {
 
 /** (b45 round 2) how far the stack sits into the ground: its skids bedded in the sand or soil, no daylight under it. */
 const AMMO_BED_M = 0.008;
-export function bAmmobox(rng: Rng): THREE.BufferGeometry {
+export function bAmmobox(rng: Rng, style: CrateStyle = CRATE_OD): THREE.BufferGeometry {
   const o = spentDraws(bAmmoboxLegacy, rng, 0xa770);
   const { W, H } = AMMO_CRATE;
   const parts: THREE.BufferGeometry[] = [];
   for (const sz of [-1, 1]) {
-    const crate = ammoCrate(o);
+    const crate = ammoCrate(o, style);
     crate.rotateY((o() - 0.5) * 0.04); // (within the 24 mm between their lids at the ends)
     parts.push(crate.translate((o() - 0.5) * 0.06, -AMMO_BED_M, sz * (W / 2 + 0.012)));
   }
   // the third across their seam, resting on their lids
-  const upper = ammoCrate(o);
+  const upper = ammoCrate(o, style);
   upper.rotateY((o() - 0.5) * 0.3);
   parts.push(upper.translate((o() - 0.5) * 0.12, H - AMMO_BED_M, (o() - 0.5) * 0.06));
   const can = ammoCan(o);
@@ -315,20 +329,20 @@ export function bAmmobox(rng: Rng): THREE.BufferGeometry {
 }
 /** (b45) the retired builds, for the receipt: the new ones spend exactly their draws. */
 export const AMMOBOX_LEGACY = Object.freeze({ build: bAmmoboxLegacy, broken: bAmmoboxBrokenLegacy });
-export function bAmmoboxBroken(rng: Rng): THREE.BufferGeometry {
+export function bAmmoboxBroken(rng: Rng, style: CrateStyle = CRATE_OD): THREE.BufferGeometry {
   const o = spentDraws(bAmmoboxBrokenLegacy, rng, 0xa771);
   const { L, W } = AMMO_CRATE;
   const parts: THREE.BufferGeometry[] = [];
   // the upper crate knocked off whole onto its side, one shoved askew, the third burst into its boards and lid
-  const fallen = ammoCrate(o);
+  const fallen = ammoCrate(o, style);
   fallen.rotateX(Math.PI / 2);
   fallen.rotateY(o() * Math.PI);
   parts.push(fallen.translate(0.35, W / 2 + 0.013, 0.55)); // (on its front: it rests on the hasps' staples)
-  const askew = ammoCrate(o);
+  const askew = ammoCrate(o, style);
   askew.rotateY(0.35 + o() * 0.4);
   parts.push(askew.translate(-0.2, 0, -0.15));
-  parts.push(...plankScatter(5, 0.7, 0.13, 0.65, o, CRATE_PAINT));
-  const lid = P(box(L, 0.024, W), CRATE_LID, 0.05, o);
+  parts.push(...plankScatter(5, 0.7, 0.13, 0.65, o, style.paint));
+  const lid = P(box(L, 0.024, W), style.lid, 0.05, o);
   lid.rotateY(o() * Math.PI);
   lid.rotateZ(0.12);
   parts.push(lid.translate(0.1, 0.07, -0.5)); // (one end on the ground, one on a board)
@@ -447,7 +461,7 @@ type FieldworksType = DestructiblePropType & { ownBroken?: boolean };
  * The destructible kinds of the field works as `mapId`'s period and side built them (props.ts LOCAL_TYPES, after the
  * sandbag stacks: the same keys, records and footprints; a map's own structure variants still win after it).
  */
-export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<Record<string, DestructiblePropType>>):
+export function fieldworksTypes(mapId: string, mobile: boolean, base: Readonly<Record<string, DestructiblePropType>>):
   Record<string, FieldworksType> {
   const out: Record<string, FieldworksType> = {};
   const wire = WIRE_FORMS[mapId];
@@ -458,6 +472,12 @@ export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<
       build: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWire, rng, 0xb1e0), false),
       broken: (rng: Rng) => buildWireRun(wire, spentDraws(bBarbedWireBroken, rng, 0xb1e1), true),
     };
+  }
+  const crate = CRATE_BY_MAP[mapId];
+  if (crate && base.ammobox && !mobile) {
+    // (a phone keeps the legacy crates, props.ts LOCAL_TYPES: never overridden here)
+    const style = CRATE_STYLES[crate];
+    out.ammobox = { ...base.ammobox, build: (rng: Rng) => bAmmobox(rng, style), broken: (rng: Rng) => bAmmoboxBroken(rng, style) };
   }
   const tent = TENT_FORMS[mapId];
   if (tent && base.tent) {

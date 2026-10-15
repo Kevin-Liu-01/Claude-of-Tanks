@@ -72,6 +72,18 @@ for (const map of [...wireMaps, 'monsoon', 'whiteout']) {
   }
 }
 
+// --- the ammunition crates in their army's paint: the same draws and triangles as the olive, a phone's never overridden
+{
+  const pine = fw.fieldworksTypes('verdant', false, DESTRUCTIBLE_TYPES).ammobox;
+  assert.ok(pine && !fw.fieldworksTypes('verdant', true, DESTRUCTIBLE_TYPES).ammobox, 'verdant: its crates bare pine on a desktop only');
+  for (const [label, b, legacy] of [['intact', pine.build, DESTRUCTIBLE_TYPES.ammobox.build], ['broken', pine.broken, DESTRUCTIBLE_TYPES.ammobox.broken]]) {
+    const r1 = counted(5), r2 = counted(5), g = b(r1), h = legacy(r2);
+    assert.equal(r1.count(), r2.count(), `verdant crates ${label}: the olive's draws`);
+    assert.equal(tris(g), tris(h), `verdant crates ${label}: the olive's triangles`);
+    assert.notDeepEqual(Array.from(g.getAttribute('color').array.slice(0, 3)), Array.from(h.getAttribute('color').array.slice(0, 3)), `verdant crates ${label}: repainted`);
+  }
+}
+
 // --- the hedgehog: members inside their beams' boxes, the leaning feet grounded
 for (const map of ['autumn', 'verdant', 'blackglass', 'ruinspires', 'desert', 'mars']) {
   const specs = hedgehogBeamSpecs(0, 0, 0, 0.7, 1, [0, 0, 0]);
