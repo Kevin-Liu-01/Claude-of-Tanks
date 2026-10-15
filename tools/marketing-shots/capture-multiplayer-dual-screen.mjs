@@ -59,6 +59,8 @@ const OUTPUT_NAME = 'dual-perspective.webp';
 const OUTPUT = Object.freeze({ width: 2400, height: 700 });
 const VIEWPORT = Object.freeze({ width: 1280, height: 720, deviceScaleFactor: 1 });
 const WEBP_QUALITY = 90;
+// the two players' frames at most this far apart (2026-10-15: one capture landed 2,978 ms after the other)
+const SKEW_MAX_MS = 500;
 const NICENESS = 10;
 /** The game boots without its splash, on the desktop tier (as the browser e2e boots it). */
 const BOOT_QUERY = 'nosplash=1&tier=desktop';
@@ -818,11 +820,19 @@ async function capture({ options, plan, seedInfo }) {
     for (const name of options.framings) {
       await Promise.all([pageA, pageB].map((page) => page.evaluate((framing) => { window.__COT_DUAL.framing = framing; }, FRAMINGS[name])));
       await sleep(1600); // several frames on the new pose: temporal AA settles after the cut
-      await healthyLinks();
-      const [viewA, viewB] = await Promise.all([readView(pageA), readView(pageB)]);
-      const serverTick = staged.actor.tick;
-      const [shotA, shotB] = await Promise.all([pageA, pageB].map((page) => page.screenshot({ type: 'png' })
-        .then((bytes) => ({ bytes, at: Date.now() }))));
+      // (2026-10-15: the two screenshots, asked for together, came back 2,978 ms apart and the HUD clocks read 14:29 and
+      // 14:25; the browser serves the two PNG encodes one after the other. Fast PNG encoding, and a framing whose two
+      // frames land more than SKEW_MAX_MS apart is taken again, up to four times)
+      let viewA, viewB, serverTick, shotA, shotB;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        await healthyLinks();
+        [viewA, viewB] = await Promise.all([readView(pageA), readView(pageB)]);
+        serverTick = staged.actor.tick;
+        [shotA, shotB] = await Promise.all([pageA, pageB].map((page) => page.screenshot({ type: 'png', optimizeForSpeed: true })
+          .then((bytes) => ({ bytes, at: Date.now() }))));
+        if (Math.abs(shotA.at - shotB.at) <= SKEW_MAX_MS) break;
+        log(`${name}: the two frames ${Math.abs(shotA.at - shotB.at)} ms apart (attempt ${attempt} of 4)${attempt < 4 ? '; again' : '; kept'}`);
+      }
       const files = { alpha: join(options.work, `alpha-${name}.png`), bravo: join(options.work, `bravo-${name}.png`) };
       writeFileSync(files.alpha, shotA.bytes);
       writeFileSync(files.bravo, shotB.bytes);
