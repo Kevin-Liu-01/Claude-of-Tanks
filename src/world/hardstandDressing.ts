@@ -47,10 +47,11 @@ class Writer {
   private readonly ground: DressingGround;
   constructor(ground: DressingGround) { this.ground = ground; }
   y(x: number, z: number): number { return this.ground.getHeightAt(x, z); }
-  /** A flat quad over the plane, `lift` above it at each corner (a, b, c, d counter-clockwise from above). */
+  /** A flat quad over the plane, `lift` above it at each corner (a, b, c, d round it), wound to face up (the film: quads
+   *  wound the other way drew dark, their normals turned under the double-sided material). */
   skin(q: readonly (readonly [number, number])[], lift: number, col: Rgb): void {
     const pts = q.map(([x, z]) => [x, this.y(x, z) + lift, z] as const);
-    for (const k of [0, 1, 2, 0, 2, 3]) this.v(pts[k], [0, 1, 0], col);
+    this.tri(pts[0], pts[1], pts[2], [0, 1, 0], col); this.tri(pts[0], pts[2], pts[3], [0, 1, 0], col);
   }
   v(q: readonly [number, number, number], nrm: readonly [number, number, number], col: Rgb): void {
     this.p.push(q[0], q[1], q[2]); this.n.push(nrm[0], nrm[1], nrm[2]); this.c.push(col[0], col[1], col[2]); this.t.push(q[0] * 0.3, q[2] * 0.3);

@@ -37,6 +37,16 @@ for (const mapId of MAP_IDS) {
       assert.ok(h <= HARDSTAND_LIP_M + 0.006, `${mapId}: a vertex on a pad ${h.toFixed(3)} m over it`);
     } else if (h > 0.08) lights++;
   }
+  // every skin over the pad faces up (the film's first cut: the piano keys wound downward drew dark)
+  let flat = 0, down = 0;
+  for (let i = 0; i < p.count; i += 3) {
+    const ys = [0, 1, 2].map((k) => p.getY(i + k) - field.getHeightAt(p.getX(i + k), p.getZ(i + k)));
+    if (ys.some((h) => h < 0.004 || h > 0.02)) continue;
+    flat++;
+    const ux = p.getX(i + 1) - p.getX(i), uz = p.getZ(i + 1) - p.getZ(i), wx = p.getX(i + 2) - p.getX(i), wz = p.getZ(i + 2) - p.getZ(i);
+    if (uz * wx - ux * wz <= 0) down++;
+  }
+  assert.ok(flat > 20 && down === 0, `${mapId}: every skin faces up (${down} of ${flat} down)`);
   assert.ok(onPad > p.count * (mapId === 'airfield' ? 0.6 : 0.97), `${mapId}: the dressing lies on its pads and their edges (${onPad}/${p.count})`);
   assert.ok(HARDSTAND_LIP_M <= 0.03, 'the lip at most 3 cm proud');
   if (mapId === 'airfield') {
