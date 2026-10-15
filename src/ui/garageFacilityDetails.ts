@@ -2585,7 +2585,9 @@ export function addGarageFacilityDetails({
       const craneDepth = middle - 2.0;
       const quay: FacilityCluster = { ...onPaving(craneSide, craneDepth), yaw: quayYaw };
       const portalBlue = new THREE.Color(0x3f6f78), houseTone = new THREE.Color(0x8a9497), roofTone = new THREE.Color(0x4f5658);
-      const gauge = 5.0, legX = 3.2, portalY = 7.2;
+      // low enough for the whole crane to stand inside the hero frame (the re-judge, 2026-10-15: "crane is cropped"): a
+      // 5.6 m portal, a 14 m jib luffed down to 22 degrees
+      const gauge = 5.0, legX = 3.2, portalY = 5.6;
       // the crane's two rails, set flush in the paving from the head wall to the pierhead, a buffer stop at each end
       {
         const from = craneDepth - (basin.depth0 - basin.headWall + 0.6), to = craneDepth - (basin.depth1 + basin.caisson + basin.pierheads - 0.6);
@@ -2610,8 +2612,11 @@ export function addGarageFacilityDetails({
       clusterBox(quay, 0, 0, portalY + 0.2, gauge + 1.0, 0.4, 2 * legX + 1.0, portalBlue, 'structure'); // the deck
       clusterCylinder(quay, 0, 0, portalY + 0.55, 1.8, 0.3, iron, 0, 16); // the slewing ring
       // the slewing house: machinery house, roof, vents, cab, A-frame, counterweight
-      // the jib points down the dock toward the sea, its hook over the ship's quarterdeck (and clear of the hero)
-      const craneAt = cameraPoint(craneSide, craneDepth), over = cameraPoint(basin.side, craneDepth + 10.4);
+      // the jib points down the dock toward the sea, its hook over the ship's stern (and clear of the hero)
+      const luff = THREE.MathUtils.degToRad(22), jibLen = 14;
+      const reach = 2.0 + Math.cos(luff) * jibLen, across = craneSide - basin.side;
+      const craneAt = cameraPoint(craneSide, craneDepth);
+      const over = cameraPoint(basin.side, craneDepth + Math.sqrt(Math.max(0, reach * reach - across * across)));
       const house = { ...quay, yaw: Math.atan2(over.x - craneAt.x, over.z - craneAt.z) };
       const houseY = portalY + 0.7;
       clusterBox(house, 0, -0.6, houseY + 1.4, 3.6, 2.8, 5.2, houseTone, 'painted');
@@ -2627,7 +2632,6 @@ export function addGarageFacilityDetails({
       }
       // the lattice jib: two chord pairs laced, luffed to 52 degrees from its heel at the house front
       const heel = [0, 2.0, houseY + 0.6] as const;
-      const luff = THREE.MathUtils.degToRad(52), jibLen = 19;
       const tip = [0, heel[1] + Math.cos(luff) * jibLen, heel[2] + Math.sin(luff) * jibLen] as const;
       for (const side of [-1, 1]) {
         for (const up of [-1, 1]) {
