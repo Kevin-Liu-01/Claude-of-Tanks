@@ -963,6 +963,8 @@ export interface HousePlan {
   timber: Rgb | null;
   /** the roof's crowns (roofCrown): ridge turrets, belfries, drums, bell-cotes, each its own damage piece */
   crowns: HouseCrown[];
+  /** a shaft recorded for the damage reading only (recordShaft): never the main body, always a tower */
+  shaft?: boolean;
 }
 
 /**
@@ -1007,6 +1009,26 @@ export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {
   const prior = planSink, plans: HousePlan[] = [];
   planSink = plans;
   try { return [build(), plans]; } finally { planSink = prior; }
+}
+
+/**
+ * Record a shaft the builder draws by other means (a round minaret, a blast furnace, a stove) as a square tower body of
+ * its girth for the damage reading, drawing nothing: the house grammar runs into a scratch sink at the sink's own
+ * placement, so the plan carries a house `girth` square and `height` tall at (cx, cz) and damage.ts takes it for a tower
+ * body (towerBody: it topples in its courses beside the main body; it went down with the hall). A no-op outside
+ * withHousePlans. (Props census #13, lane B 2026-10-15.)
+ */
+export function recordShaft(sink: PartSink, cx: number, cz: number, girth: number, height: number, wall: RegionalBucket): void {
+  if (!planSink) return;
+  const scratch = new PartSink(sink.uvOffset), pl = sink.placement();
+  const spec: HouseSpec = {
+    w: girth, d: girth, plinth: null, storeys: [{ h: height - 0.1, wall }], roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: wall },
+    openings: [], chimneys: [], gutters: null, verge: null, reveal: 0, rafters: null, spall: null,
+  };
+  const none: HouseDialect = { window: () => undefined, door: () => undefined };
+  const lay = () => scratch.placed(0, cx, 0, cz, () => { buildHouse(scratch, spec, none); });
+  if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay();
+  planSink[planSink.length - 1].shaft = true;
 }
 
 /** Dress one face with the member capture pointed at it (a no-op outside withHousePlans). */

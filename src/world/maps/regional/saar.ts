@@ -7,7 +7,7 @@
 // gate); the works office in brick with yellow-brick bands under slate. The workers' terraces, the station, the water
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
 import { PartSink, alongPlot, faceBox, facePanel, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
 import { RUHR_BUILDERS } from './ruhr.ts';
@@ -120,9 +120,13 @@ const blastFurnace: RegionalBuilder = (ctx) => {
     sink.member('structureMetal', [0, top + 5.7, fz], [dcx, ch + 4.5, dcz], 0.7, 0.7, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
     sink.cylinder('structureMetal', [dcx, ch + 0.5, dcz], 'y', 4.2, 1.2, 10, { colour: STOVE, decor: true }, 1.2);
     sink.cylinder('structureMetal', [dcx, ch - 1.5, dcz], 'y', 2.0, 0.3, 8, { colour: STOVE, decor: true }, 1.2, false);
+    // (props census #13, lane B 2026-10-15) the furnace and the stoves recorded as tower bodies of their girth: each
+    // topples in its courses beside the casting house (they went down with it)
+    recordShaft(sink, 0, fz, 2 * fr, fh, 'structureMetal');
     // the Cowper stoves behind the furnace, domed, the hot-blast main to the bustle pipe round the furnace
     for (const s of [-1, 1]) {
       const sx = s * (sr + 0.3);
+      recordShaft(sink, sx, stz, 2 * sr, sh + sr * 0.9, 'structureMetal');
       sink.cylinder('structureMetal', [sx, -0.4, stz], 'y', sh + 0.4, sr, 12, { colour: STOVE });
       // the dome: three frusta closing over the shell
       let dy = sh;

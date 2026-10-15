@@ -227,6 +227,7 @@ function seamRoofKind(kind: string): SeamRoofKind {
  * tall over its narrow side and near square in plan: it topples in its own courses (shaft.ts) rather than settling.
  */
 function towerBody(house: HousePlan): boolean {
+  if (house.shaft) return true;
   const lo = Math.min(house.spec.w, house.spec.d), hi = Math.max(house.spec.w, house.spec.d);
   const h = house.frame.roof.ridgeTopY;
   return h >= 8 && h / Math.max(0.5, lo) >= 2.2 && hi / Math.max(0.5, lo) <= 1.8;
@@ -247,8 +248,9 @@ function bodiesOf(anatomy: StructureDamageAnatomy): readonly StructureDamageAnat
 function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
   const plan = input.kitPlan as RegionalKitPlan | undefined;
   if (!plan || plan.kind !== 'regional-house' || !plan.houses.length) return null;
-  // the main body: the largest house the builder built
-  const main = plan.houses.reduce((a, b) => (b.spec.w * b.spec.d > a.spec.w * a.spec.d ? b : a));
+  // the main body: the largest house the builder built (never a shaft recorded for this reading alone: recordShaft)
+  const built = plan.houses.filter((h) => !h.shaft), pool = built.length ? built : plan.houses;
+  const main = pool.reduce((a, b) => (b.spec.w * b.spec.d > a.spec.w * a.spec.d ? b : a));
   const anatomy = houseBody(style, input, plan, main);
   const others = plan.houses.filter((h) => h !== main);
   // (props census #3) an open frame the builder laid beside its house (a headframe beside its winding house) falls as its

@@ -17,7 +17,7 @@
 //   - depot → a čaršija row: single-storey timber shops under one deep-eaved tile roof, their ćepenci (shutters)
 //     closed for the siege, a whitewashed han storey over one end.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -319,15 +319,30 @@ const mosque: RegionalBuilder = (ctx) => {
     sink.cylinder('stone', [mx, sy, mz], 'y', 0.95, 1.28, 12, { decor: true }, 1.28);
     sink.cylinder('structureMetal', [mx, shaftTop, mz], 'y', clampTo(shaftTop * 0.22, 2.5, 4.6), 0.86, 12, { colour: LEAD, decor: true }, 0.03);
     finial(sink, mx, shaftTop + clampTo(shaftTop * 0.22, 2.5, 4.6) - 0.1, mz, 'alem', 0.7);
+    // (props census #13, lane B 2026-10-15) the minaret recorded as a tower body of its base's girth: it topples in its
+    // courses beside the hall (it went down with the hall)
+    recordShaft(sink, mx, mz, 2.1, shaftTop, 'stone');
     // the harem: a low whitewashed wall round the lot, its gateway on the street; the nišani in rows before the hall
     const t = 0.3, wy = 1.25, zs = D / 2 - t;
-    sink.span('plaster', -W / 2, -0.3, zs, -1.2, wy, D / 2);
-    sink.span('plaster', 1.2, -0.3, zs, W / 2, wy, D / 2);
-    for (const s of [-1, 1]) sink.span('plaster', s * 1.2 - 0.25, -0.3, zs - 0.05, s * 1.2 + 0.25, 2.2, D / 2 + 0.05);
+    // (props census #13, lane B 2026-10-15; the judges: "the harem wall has no coping, the gateway no head") each run
+    // of wall under its stone coping, the gateway's piers capped and spanned by a stone lintel under a little lead roof
+    const runs: Array<[number, number, number, number]> = [[-W / 2, zs, -1.2, D / 2], [1.2, zs, W / 2, D / 2]];
     for (const s of [-1, 1]) {
-      sink.span('plaster', s > 0 ? W / 2 - t : -W / 2, -0.3, -D / 2, s > 0 ? W / 2 : -W / 2 + t, wy, zs);
-      sink.span('plaster', s > 0 ? hs / 2 : -W / 2 + t, -0.3, -D / 2, s > 0 ? W / 2 - t : -hs / 2, wy, -D / 2 + t);
+      runs.push([s > 0 ? W / 2 - t : -W / 2, -D / 2, s > 0 ? W / 2 : -W / 2 + t, zs]);
+      runs.push([s > 0 ? hs / 2 : -W / 2 + t, -D / 2, s > 0 ? W / 2 - t : -hs / 2, -D / 2 + t]);
     }
+    for (const [x0, z0, x1, z1] of runs) {
+      if (x1 - x0 < 0.05) continue;
+      sink.span('plaster', x0, -0.3, z0, x1, wy, z1);
+      sink.span('stone', x0 - 0.05, wy, z0 - 0.05, x1 + 0.05, wy + 0.1, z1 + 0.05, { decor: true });
+    }
+    for (const s of [-1, 1]) {
+      sink.span('plaster', s * 1.2 - 0.25, -0.3, zs - 0.05, s * 1.2 + 0.25, 2.2, D / 2 + 0.05);
+      sink.span('stone', s * 1.2 - 0.32, 2.2, zs - 0.12, s * 1.2 + 0.32, 2.32, D / 2 + 0.12, { decor: true });
+    }
+    sink.span('stone', -0.95, 2.32, zs - 0.05, 0.95, 2.56, D / 2 + 0.05);
+    const gateRoof: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.25, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null, decor: true };
+    sink.placed(Math.PI / 2, 0, 0, zs + t / 2, () => emitRoof(sink, roofGeometry(t + 0.24, 3.04, 2.56, gateRoof), gateRoof, LEAD));
     const yz0 = Math.max(pz1 + 0.4, hz1 + 0.4), yz1 = zs;
     if (yz1 - yz0 > 1.2) {
       // (a phone keeps four of the stones, every stone drawn)
