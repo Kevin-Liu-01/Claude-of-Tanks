@@ -741,15 +741,13 @@ export function makeBathhouse(
   out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
   for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25,
     style === 'timber' ? 'wood' : 'stone');
-  // (the garage critic, 2026-10-15, Monsoon: "a long blank white wall with two domes on top, a billboard") the hall lit
-  // round all four sides — tall windows down its flanks and across its back — a cornice under the roof's edge, and for
-  // the domed hall a parapet with its coping and each dome raised on its drum
-  freshParts(out, () => {
-    const frame = style === 'timber' ? 'wood' : 'stone';
-    for (const sx of [-1, 1]) for (const z of [-3.6, 0, 3.6]) addWindow(out, sx * (w / 2 + 0.04), 2.25, z, 'x', 0.7, 1.25, frame);
-    for (const x of [-4.2, 0, 4.2]) addWindow(out, x, 2.25, -d / 2 - 0.04, 'z', 0.7, 1.25, frame);
+  // (the garage critic, 2026-10-15, Monsoon: "a long blank white wall with two domes on top, a billboard") the domed hall
+  // lit down both flanks (its back has the civic pass's windows; the timber hall's flanks its catalog openings), a cornice
+  // under the roof's edge, a parapet with its coping and each dome raised on its drum
+  if (style !== 'timber') freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-3.6, 0, 3.6]) addWindow(out, sx * (w / 2 + 0.04), 2.25, z, 'x', 0.7, 1.25, 'stone');
     out.stone.push(detailUv(box(w + 0.3, 0.22, d + 0.3).translate(0, wallH - 0.2, 0)));
-    if (style !== 'timber') {
+    {
       for (const [sx, sz, len, alongX] of [[0, 1, w + 0.3, true], [0, -1, w + 0.3, true], [1, 0, d + 0.3, false], [-1, 0, d + 0.3, false]] as const) {
         const wall = alongX ? box(len, 0.55, 0.22) : box(0.22, 0.55, len);
         out[walls].push(wall.translate(sx * (w / 2 + 0.04), wallH + 0.15 + 0.275, sz * (d / 2 + 0.04)));
