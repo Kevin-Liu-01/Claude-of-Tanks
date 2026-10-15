@@ -15,7 +15,7 @@
 // Collision: every tower's structure is a few prisms (the cores, the slabs, the podium), so its shell bands merge; the
 // facades are dressing.
 import { PartSink, faceBox, facePanel, normalize3, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { holedPolygon } from './house.ts';
+import { holedBox, holedPolygon } from './house.ts';
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -141,26 +141,6 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
       }
     });
     f = e + 1;
-  }
-}
-
-/**
- * A curtain-wall face: per floor a band of glazing over a spandrel panel, the slab edge; glazing gone to the dark floor
- * behind it, burnt (the soot climbing to the next floor), lit, or under sheeting. `state(face, floor)` decides.
- */
-function curtainFace(sink: PartSink, face: Face, y0: number, floors: number, fh: number, spandrel: Rgb, slab: RegionalBucket,
-  state: (floor: number) => PaneState, look: () => number, inset = 0.25): void {
-  const w = face.width - 2 * inset;
-  if (w < 0.4) return;
-  for (let f = 0; f < floors; f++) {
-    const y = y0 + f * fh, s = state(f);
-    const gy0 = y + fh * 0.32, gy1 = y + fh - 0.12;
-    if (s === 'glass' || s === 'lit') facePanel(sink, s === 'lit' ? 'curtain' : 'glass', face, 0, (gy0 + gy1) / 2, 0.05, w, gy1 - gy0, { decor: true, window: face.out });
-    else if (s === 'sheet') facePanel(sink, 'structureMetal', face, 0, (gy0 + gy1) / 2, 0.06, w, gy1 - gy0, { decor: true, colour: rgb(0xd9dedb) });
-    // the spandrel panel (the burnt floor's charred), or the bare slab edge where the panels fell
-    if (s === 'gone') faceBox(sink, slab, face, 0, y + 0.08, 0.06, w + 0.1, 0.34, 0.12, { decor: true, fineSides: true });
-    else faceBox(sink, 'structureMetal', face, 0, y + fh * 0.16, 0.07, w + 0.1, fh * 0.32 + 0.04, 0.06, { decor: true, colour: s === 'burnt' ? CHAR : shade(spandrel, 0.92 + look() * 0.14) });
-    if (s === 'burnt') sootBand(sink, slab, face, -w / 2, w / 2, y + fh, Math.min(y + 2 * fh, y0 + floors * fh));
   }
 }
 
@@ -361,40 +341,46 @@ const holidayInn: RegionalBuilder = (ctx) => {
     const podH = 7.0, T = clampTo(Math.min(W, D) - 1.6, 4, 18), fh = 3.1;
     const floors = Math.max(3, Math.min(10, Math.round(T * 0.58)));
     const top = podH + floors * fh;
-    // the podium: brown glass between yellow piers; the cube with its corners notched; the crown storey
-    sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, podH, D / 2, { colour: shade(yellow, 0.92) });
+    // the podium: its two bands of brown glass cut into it between the yellow piers (props census #9: they were laid on
+    // a solid box), the glass at the back of the cuts (the upper band's gone to the dark on some faces); the cube with
+    // its corners notched built floor by floor (curtainFloors); the crown storey
+    const pb = { y0: 0.6, y1: 3.4 }, pu = { y0: 4.9, y1: 6.5 };
+    const band = (w: number) => [{ u0: -(w - 1.2) / 2, u1: (w - 1.2) / 2, ...pb }, { u0: -(w - 1.2) / 2, u1: (w - 1.2) / 2, ...pu }];
+    const pod = holedBox(sink, 'structureMetal', -W / 2, -D / 2, W / 2, D / 2, -0.4, podH,
+      { front: band(W), back: band(W), right: band(D - 0.8), left: band(D - 0.8) }, 0.4, 0.34, { colour: shade(yellow, 0.92) });
     const c = T * 0.08;
     const cube = chamferedSquare(0, 0, T / 2, T / 2, c);
-    planPrism(sink, 'structureMetal', cube, podH, top, { colour: yellow });
-    planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T * 0.36, T * 0.36, c * 0.7), top, top + 3.0, { colour: shade(yellow, 0.95) });
-    for (const face of planFaces(rect(-W / 2, -D / 2, W / 2, D / 2))) {
-      facePanel(sink, 'glass', face, 0, 2.0, 0.02, face.width - 1.2, 2.8, { decor: true, window: face.out });
-      faceBox(sink, 'structureMetal', face, 0, 4.4, 0.04, face.width - 1.2, 0.6, 0.06, { decor: true, colour: brown });
-      facePanel(sink, look() < 0.3 ? 'dark' : 'glass', face, 0, 5.7, 0.02, face.width - 1.2, 1.6, { decor: true, window: face.out });
-    }
-    // the window bands, brown-framed, on every face of the cube (the south-west faces shelled toward the front line)
-    planFaces(cube).forEach((face, fi) => {
-      if (face.width < 2) return;
-      const shelled = fi === 4 || fi === 6;
-      for (let f = 0; f < floors; f++) {
-        const y = podH + f * fh;
-        const roll = look();
-        const state = shelled ? (roll < 0.35 ? 'gone' : roll < 0.5 ? 'sheet' : 'glass') : roll < 0.08 ? 'gone' : roll < 0.12 ? 'lit' : 'glass';
-        const gw = face.width - 0.8;
-        if (state === 'gone') facePanel(sink, 'dark', face, 0, y + 1.55, 0.02, gw, 1.5, { decor: true });
-        else if (state === 'sheet') facePanel(sink, 'structureMetal', face, 0, y + 1.55, 0.03, gw, 1.5, { decor: true, colour: rgb(0xd9dedb) });
-        else facePanel(sink, state === 'lit' ? 'curtain' : 'glass', face, 0, y + 1.55, 0.02, gw, 1.5, { decor: true, window: face.out });
-        faceBox(sink, 'structureMetal', face, 0, y + 0.72, 0.05, gw + 0.1, 0.12, 0.08, { decor: true, colour: brown, fineSides: true });
-        faceBox(sink, 'structureMetal', face, 0, y + 2.36, 0.05, gw + 0.1, 0.12, 0.08, { decor: true, colour: brown, fineSides: true });
-        if (!mobile) for (let k = 1; k < Math.round(gw / 1.5); k++) {
-          faceBox(sink, 'structureWood', face, -gw / 2 + gw * k / Math.round(gw / 1.5), y + 1.55, 0.05, 0.07, 1.5, 0.06, { decor: true, colour: brown, fine: true });
-        }
+    planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T / 2 + 0.15, T / 2 + 0.15, c), top, top + 0.45, { colour: yellow });
+    planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T * 0.36, T * 0.36, c * 0.7), top + 0.45, top + 3.0, { colour: shade(yellow, 0.95) });
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const face = pod[name], gw = (name === 'front' || name === 'back' ? W : D - 0.8) - 1.2;
+      facePanel(sink, 'glass', face, 0, 2.0, -0.328, gw, 2.8, { decor: true, window: face.out });
+      faceBox(sink, 'structureMetal', face, 0, 4.15, 0.04, face.width - 1.2, 0.6, 0.06, { decor: true, colour: brown });
+      if (look() >= 0.3) facePanel(sink, 'glass', face, 0, 5.7, -0.328, gw, 1.6, { decor: true, window: face.out });
+      for (const yy of [2.0, 5.7]) for (let k = 1, n = Math.max(2, Math.round(gw / 1.6)); k < n; k++) {
+        faceBox(sink, 'structureMetal', face, -gw / 2 + gw * k / n, yy, -0.2, 0.08, yy > 3 ? 1.6 : 2.8, 0.3, { decor: true, colour: brown }, 'caps');
       }
-      if (shelled) sink.dressing(mobile, () => {
-        shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: podH + 0.3, y1: top - 0.5 }, 30 + Math.floor(look() * 30), [], look, 'stone');
-        for (let k = 0; k < 2; k++) shellHole(sink, face, (look() - 0.5) * face.width * 0.6, podH + fh * (1 + look() * (floors - 2)) + 2.6, 0.5 + look() * 0.5, look, 'stone');
-      });
-    });
+    }
+    // the window bands set back behind the yellow spandrels with their brown mullions, floor by floor (the south-west
+    // faces shelled toward the front line: their glass gone to the dark or under sheeting, the pocks in the spandrels)
+    const cubeFaces = planFaces(cube);
+    const state = (_f: number, fi: number): PaneState => {
+      const roll = look();
+      const shelled = fi === 4 || fi === 6;
+      return shelled ? (roll < 0.35 ? 'gone' : roll < 0.5 ? 'sheet' : 'glass') : roll < 0.08 ? 'gone' : roll < 0.12 ? 'lit' : 'glass';
+    };
+    curtainFloors(sink, cube, podH, floors, fh, yellow, 'plaster3', state, look, { mobile, step: 1.5, finColour: brown });
+    for (const fi of [4, 6]) {
+      const face = cubeFaces[fi];
+      if (!face) continue;
+      // (on the spandrels only, clear of the slab's edge and the glazing: a pock over the recess stood in the air)
+      for (let fl = 0; fl < floors; fl++) {
+        const y = podH + fl * fh, spH = fh * 0.32;
+        const band = (y0: number, y1: number) => ({ u0: -face.width, u1: face.width, y0, y1 });
+        sink.dressing(mobile, () => shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: y + 0.3, y1: y + spH },
+          2 + Math.floor(look() * 4), [band(y - 1, y + 0.32), band(y + spH, y + fh)], look, 'stone'));
+      }
+    }
     // the sign frame on the roof: posts and the board (its green lettering a dark panel at this range)
     const sy = top + 3.0;
     for (const dx of [-T * 0.25, T * 0.25]) sink.member('structureMetal', [dx, sy, 0], [dx, sy + 2.6, 0], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);

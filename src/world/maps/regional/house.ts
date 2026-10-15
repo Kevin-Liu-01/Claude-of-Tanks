@@ -1555,6 +1555,29 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
   }
 }
 
+/**
+ * A box (a podium, a lobby, a tower's base) whose faces carry openings cut through them (props census #9): a core `cut`
+ * in from every face and the faces holed slabs `cut` deep round it (front and back across the full width, the sides
+ * between them), each opening's reveal back to `reveal` with the dark behind it, for a unit's pane or leaf to stand in.
+ * The faces come back by name (bodyFaces' frame, centred on each face).
+ */
+export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number,
+  holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number, reveal: number, opts: EmitOptions = {}): Record<FaceName, Face> {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wx = x1 - x0, wz = z1 - z0;
+  sink.span(bucket, x0 + cut, y0, z0 + cut, x1 - cut, y1, z1 - cut, opts);
+  const faces: Record<FaceName, Face> = {
+    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: wx },
+    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: wz },
+    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: wx },
+    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: wz },
+  };
+  for (const name of FACE_NAMES) {
+    const half = name === 'front' || name === 'back' ? wx / 2 : wz / 2 - cut;
+    holedPolygon(sink, bucket, faces[name], [[-half, y0], [half, y0], [half, y1], [-half, y1]], holes[name] ?? [], cut, reveal, opts);
+  }
+  return faces;
+}
+
 function shadeRgb(c: Rgb, k: number): Rgb {
   return [c[0] * k, c[1] * k, c[2] * k];
 }
