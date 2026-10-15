@@ -49,6 +49,7 @@ import {
   garageFacilityAlbedo,
   garageHardstandAlbedo,
   garageHardstandDetailKind,
+  garageHardstandWetMask,
   garageHardstandNormal,
   garageHardstandNormalKind,
   garageSheeting,
@@ -1522,8 +1523,11 @@ export function buildGarageEnvironment(
   const { placementOverlaps, maxGroundContactErrorM } = measurePlacementQuality();
 
   const terrainGeometry = track(createTerrainGeometry(patch, heights, TERRAIN_TILE_M[recipe.terrainSurface] ?? 9.6));
+  // Monsoon's ground is wet (garage round 7, place-truth; the critic panel, 2026-10-14: "a dry, sunny dirt yard with no
+  // wet sheen"): the grass, the causeway and the yard take a damp sheen and the yard's puddles a polish (the wet mask)
+  const rainSoaked = variant.weather === 'rain';
   const terrain = new THREE.Mesh(terrainGeometry, texturedMaterial(recipe.terrainSurface, {
-    color: recipe.terrainTint, roughness: 0.94, metalness: 0,
+    color: recipe.terrainTint, roughness: rainSoaked ? 0.8 : 0.94, metalness: 0,
   }));
   terrain.name = 'map_derived_terrain_patch';
   terrain.receiveShadow = true;
@@ -1715,6 +1719,9 @@ export function buildGarageEnvironment(
     if (typeof idle === 'function') idle(generate, { timeout: 1500 });
     else setTimeout(generate, 600);
   }
+  // Monsoon's puddles: the yard's wet mask (null in every dry yard) and the whole yard damp
+  const hardstandWetMaskTexture = garageHardstandWetMask(hardstandStyle);
+  const hardstandWet = hardstandWetMaskTexture ? { mask: track(hardstandWetMaskTexture), amount: 1 } : null;
   // The graded floor (garageHardstandGradedHook) blends over the terrain: transparent, writing no depth, drawn before the
   // floor decals (renderOrder -1), on its own program, which garageStage.ts compiles with the outdoor seeds.
   const gradedMaterial = (options: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial => {
@@ -1722,7 +1729,7 @@ export function buildGarageEnvironment(
     // the grain is subtler on packed snow than on earth and concrete
     const grainStrength = hardstandNormalKind === 'snow' ? 0.32 : hardstandNormalKind === 'slab' ? 0.5 : 0.62;
     engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook(garageHardstandGrainTexture(floorAnisotropy), grainStrength,
-      hardstandDetail) as THREE.Material['onBeforeCompile']);
+      hardstandDetail, hardstandWet) as THREE.Material['onBeforeCompile']);
     material.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
     return track(material);
   };
@@ -2029,8 +2036,9 @@ export function buildGarageEnvironment(
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
       case 'route': return texturedMaterial(recipe.approach.surface, {
-        color: new THREE.Color(recipe.hardstandTint).lerp(new THREE.Color(0xffffff), 0.10),
-        roughness: 0.94,
+        color: new THREE.Color(recipe.hardstandTint).lerp(new THREE.Color(0xffffff), 0.10)
+          .multiplyScalar(rainSoaked ? 0.84 : 1),
+        roughness: rainSoaked ? 0.62 : 0.94,
         metalness: recipe.approach.style === 'drydock-lane' ? 0.08 : 0.01,
       });
       default: return plainMaterial({ color: 0x55595a, roughness: 0.68, metalness: 0.30 });

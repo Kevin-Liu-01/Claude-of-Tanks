@@ -50,6 +50,7 @@ for (const pitch of GARAGE_HARDSTAND.slabPitchM) {
 }
 
 const kit = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
+const yardWear = await readFile(new URL('./garageYardWear.ts', import.meta.url), 'utf8');
 const wear = await readFile(new URL('./garageYardWear.ts', import.meta.url), 'utf8');
 const facility = await readFile(new URL('./garageFacilityDetails.ts', import.meta.url), 'utf8');
 const relief = wear.slice(wear.indexOf('export function garageHardstandNormal('), wear.indexOf('export function garageHardstandKind('));
@@ -97,7 +98,7 @@ assert.match(kit, /const edge = \(APRON_HALF_M - Math\.max\(Math\.abs\(x\), Math
 }
 assert.match(kit, /const rise = 1 - THREE\.MathUtils\.smoothstep\(ground, 0\.18, APRON_RISE_LIMIT_M - 0\.01\);/,
   'the apron is gone before the ground climbs to the rise limit, so no crossing line shows on a slope');
-assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength,\s*hardstandDetail\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
+assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength,\s*hardstandDetail, hardstandWet\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
   'the graded floor blends over the terrain on its own keyed program after the cascade hook, with the shared grain');
 assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
 const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
@@ -118,6 +119,17 @@ assert.match(program, /normal = normalize\(normal \+ vHardstandAxisX \* hardstan
 assert.match(kit, /const floorAnisotropy = \(engineCtx\.anisotropy \?\? 4\) >= 8 \? 16 : \(engineCtx\.anisotropy \?\? 4\);/,
   'the floor filters at 16x where the device allows it');
 assert.equal(garageHardstandDetailKind('slab-urban'), 'concrete');
+// garage round 7, place-truth (the critic panel, 2026-10-14: Monsoon "a dry, sunny dirt yard with no wet sheen, puddles"):
+// the same program carries standing water; Monsoon's wet mask polishes its puddles flat and glossy and dampens the yard,
+// every other floor reads it at zero
+assert.match(program, /float hardstandWater = hardstandWet \* texture2D\(hardstandWetMask, vMapUv\)\.r;/,
+  'the puddles come from the yard\'s wet mask on the floor\'s own UVs');
+assert.match(program, /roughnessFactor = mix\(roughnessFactor \* \(1\.0 - 0\.28 \* hardstandWet\), 0\.06, hardstandWater\);/,
+  'the water is glossy and the wet yard damp');
+assert.match(program, /normal = normalize\(mix\(normal, nonPerturbedNormal, hardstandWater \* 0\.92\)\);/, 'standing water lies flat');
+assert.match(program, /shader\.uniforms\.hardstandWet = \{ value: wet\?\.mask \? wet\.amount : 0 \};/, 'dry floors read no water');
+assert.match(kit, /const hardstandWetMaskTexture = garageHardstandWetMask\(hardstandStyle\);/, 'the pack asks its style for a wet mask');
+assert.match(yardWear, /if \(style !== 'earth-wet' \|\| typeof document === 'undefined'\) return null;/, 'only the monsoon yard is wet');
 assert.equal(garageHardstandDetailKind('earth-sand'), 'sand');
 assert.equal(garageHardstandDetailKind('earth-snow'), 'snow');
 assert.equal(garageHardstandDetailKind('earth-slag'), 'gravel');
