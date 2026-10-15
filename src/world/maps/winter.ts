@@ -390,7 +390,7 @@ export default {
   minimap: {
     base: [170, 178, 186], hard: [128, 122, 114], soft: [150, 168, 186],
     forest: 'rgba(64,80,72,0.85)', forestStroke: 'rgba(38,50,44,0.9)',
-    water: 'rgba(158,190,214,0.85)', waterStroke: 'rgba(104,134,158,0.9)',
+    ice: 'rgba(158,190,214,0.85)', iceStroke: 'rgba(104,134,158,0.9)',
     roadCasing: 'rgba(60,54,46,0.9)', roadFill: 'rgba(120,108,96,0.95)',
     buildingFill: '#e4e7ec',
   },

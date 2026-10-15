@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { MAP_IDS, getMapConfig } from '../world/maps/index.ts';
 import { createLayout } from '../world/terrain.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
+import { splitMinimapWater } from '../world/minimapWaterPatches.ts';
 import { MINIMAP_RASTER_REVISION, minimapAssetUrl } from './minimapAssetUrl.ts';
 import {
   minimapAngleForDirection,
@@ -62,7 +63,7 @@ assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
 // tactical map 2026-09-15: every raster was re-baked (tone curve, hillshade, union
 // shorelines), so one shared revision invalidates every cache entry at once.
-assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v17-revival-mr1'); // 2026-10-05: the map-revival lane's plates (Suzhou Creek); v16 2026-10-03: maps lane B's gauntlet wave 28 plates (maps lane A's twenty on the merged head: v15; lane B's gauntlet wave 11: v14; batches 7 and 8: v13; batches 5 and 6: v12; batch 1's four: v11; the pilot's three: v10; round 48: v9)
+assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v18-liquid-water'); // 2026-10-14: water only where the world draws it; v17 2026-10-05: the map-revival lane's plates (Suzhou Creek); v16 2026-10-03: maps lane B's gauntlet wave 28 plates (maps lane A's twenty on the merged head: v15; lane B's gauntlet wave 11: v14; batches 7 and 8: v13; batches 5 and 6: v12; batch 1's four: v11; the pilot's three: v10; round 48: v9)
 for (const mapId of MAP_IDS) {
   const revision = MINIMAP_RASTER_REVISION;
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
@@ -71,7 +72,7 @@ for (const mapId of MAP_IDS) {
   assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
     `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
 }
-assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v17-revival-mr1');
+assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v18-liquid-water');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.
@@ -85,48 +86,97 @@ function hudPainter(name, nextName, bindings) {
 
 const worldSize = 1024, mapSize = 220;
 const painterPoint = [0, 0];
-const paintWater = hudPainter('paintMinimapWater', 'mixedForestFill', {
-  SHORELINE_SEGMENTS,
-  shorelineRadiusAt,
-  worldToMap: (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint),
-});
-let testedPatches = 0;
-for (const mapId of MAP_IDS) {
-  const layout = createLayout(getMapConfig(mapId));
-  const patches = [...layout.marshes, ...layout.lakes];
-  const paths = [];
-  let closed = 0, fills = 0, begins = 0;
+const worldToMap = (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint);
+const fillPatches = hudPainter('fillMinimapPatches', 'mixedForestFill', { SHORELINE_SEGMENTS, shorelineRadiusAt, worldToMap });
+/** A 2D context that keeps every filled compound path with the fill style it was painted in. */
+function recordingContext() {
+  const fills = [];
+  let paths = [];
   const context = {
-    beginPath() { begins++; },
+    fillStyle: '',
+    beginPath() { paths = []; },
     moveTo(x, y) { paths.push([[x, y]]); },
     lineTo(x, y) { paths.at(-1).push([x, y]); },
-    closePath() { closed++; },
-    fill(rule) { assert.ok(rule === undefined || rule === 'nonzero'); fills++; },
+    closePath() { paths.at(-1).closed = true; },
+    fill(rule) { assert.ok(rule === undefined || rule === 'nonzero'); fills.push({ style: context.fillStyle, paths }); },
     stroke() { assert.fail('construction lobes must not create internal bank seams'); },
     arc() { assert.fail('fallback water cannot return to circular minimap discs'); },
   };
-  paintWater(context, patches, { water: '#345', waterStroke: '#123' });
-  assert.equal(begins, patches.length ? 1 : 0, `${mapId}: water is a single compound path`);
-  assert.equal(fills, patches.length ? 1 : 0, `${mapId}: overlapping water is painted once at uniform opacity`);
-  assert.equal(paths.length, patches.length, `${mapId}: every fallback water patch is painted`);
-  assert.equal(closed, patches.length, `${mapId}: every irregular bank is a closed polygon`);
+  return { context, fills };
+}
+const shorelines = [];
+const paintWaterLayers = hudPainter('paintMinimapWaterLayers', 'buildMinimapBg', {
+  fillMinimapPatches: fillPatches,
+  paintMinimapShorelines: (context, patches, keyline, rim) => { if (patches?.length) shorelines.push({ patches, keyline, rim }); },
+});
+const palette = { water: '#345', waterStroke: '#123', bog: '#654', bogStroke: '#321', ice: '#9bd', iceStroke: '#68a' };
+const expectContour = (label, patch, vertices) => {
+  assert.equal(vertices.length, SHORELINE_SEGMENTS, `${label}: bank tessellation remains bounded`);
+  assert.ok(vertices.closed, `${label}: every irregular bank is a closed polygon`);
+  for (let vertex = 0; vertex < SHORELINE_SEGMENTS; vertex++) {
+    const angle = vertex / SHORELINE_SEGMENTS * Math.PI * 2;
+    const radius = shorelineRadiusAt(patch, angle);
+    const expected = projectWorldToMinimap(patch.x + Math.cos(angle) * radius,
+      patch.z + Math.sin(angle) * radius, worldSize, mapSize);
+    assert.deepEqual(vertices[vertex], expected, `${label}: contour agrees with terrain and marker handedness`);
+  }
+};
+
+// An asymmetric liquid lake (2026-10-14): a long cape to world +X and +Z, short coves to -X and -Z. Painted as water
+// through the composer, the long +X cape reaches map-left and the long +Z cape map-up, with the waterline rim.
+{
+  // sixteen stations from east (+X) winding toward +Z: station 4 is +Z, 8 is -X, 12 is -Z
+  const lake = { x: 120, z: -80, r: 60, radii: [1, .95, .9, .92, 1, .9, .8, .6, .4, .42, .48, .52, .5, .6, .75, .9] };
+  const { context, fills } = recordingContext();
+  shorelines.length = 0;
+  paintWaterLayers(context, { liquidPatches: [lake], softPatches: [], iceLake: false }, palette);
+  assert.deepEqual(fills.map((f) => [f.style, f.paths.length]), [[palette.water, 1]], 'the liquid lake is the one water fill');
+  const ring = fills[0].paths[0];
+  expectContour('asymmetric lake', lake, ring);
+  const center = projectWorldToMinimap(lake.x, lake.z, worldSize, mapSize);
+  const xs = ring.map(([x]) => x), ys = ring.map(([, y]) => y);
+  assert.ok(center[0] - Math.min(...xs) > 1.6 * (Math.max(...xs) - center[0]),
+    'the long world +X cape reaches map-left, the short -X cove map-right');
+  assert.ok(center[1] - Math.min(...ys) > 1.5 * (Math.max(...ys) - center[1]),
+    'the long world +Z cape reaches map-up, the short -Z cove map-down');
+  assert.equal(Math.min(...xs), ring[0][0], 'the +X station is the leftmost bank');
+  assert.deepEqual(shorelines.map((s) => [s.keyline, s.rim]), [[palette.waterStroke, 'rgb(204,234,240)']],
+    'liquid water carries the keyline and the pale waterline rim');
+}
+
+// Every battlefield: every disc's fallback contour agrees with the terrain and the markers, and on a map without a
+// liquid sheet (terrain.ts liquidWater: splat.seaLake without frozen marshes; its water mask is 0 everywhere, so the
+// world's split puts every disc in softPatches) every disc is painted in the soft style — bog, salt or clay ground, ice
+// on an iceLake map — with no water fill and no waterline rim.
+let testedPatches = 0, dryPatches = 0;
+for (const mapId of MAP_IDS) {
+  const config = getMapConfig(mapId);
+  const layout = createLayout(config);
+  const patches = [...layout.marshes, ...layout.lakes];
+  const plain = recordingContext();
+  fillPatches(plain.context, patches, palette.water);
+  assert.equal(plain.fills.length, patches.length ? 1 : 0, `${mapId}: a patch class is a single compound path, painted once at uniform opacity`);
+  const paths = plain.fills[0]?.paths ?? [];
+  assert.equal(paths.length, patches.length, `${mapId}: every fallback patch is painted`);
   for (let patchIndex = 0; patchIndex < patches.length; patchIndex++) {
-    const patch = patches[patchIndex], vertices = paths[patchIndex];
-    assert.equal(vertices.length, SHORELINE_SEGMENTS, 'bank tessellation remains bounded');
-    const center = projectWorldToMinimap(patch.x, patch.z, worldSize, mapSize);
-    assert.ok(vertices[0][0] < center[0], `${mapId}: the world +X cape appears map-left`);
-    assert.ok(vertices[SHORELINE_SEGMENTS / 4][1] < center[1], `${mapId}: the world +Z cape appears map-up`);
-    for (let vertex = 0; vertex < SHORELINE_SEGMENTS; vertex++) {
-      const angle = vertex / SHORELINE_SEGMENTS * Math.PI * 2;
-      const radius = shorelineRadiusAt(patch, angle);
-      const expected = projectWorldToMinimap(patch.x + Math.cos(angle) * radius,
-        patch.z + Math.sin(angle) * radius, worldSize, mapSize);
-      assert.deepEqual(vertices[vertex], expected, `${mapId}: contour agrees with terrain and marker handedness`);
-    }
+    expectContour(mapId, patches[patchIndex], paths[patchIndex]);
     testedPatches++;
   }
+  if (!patches.length || (config.splat?.seaLake && !layout.terrain.frozenMarshes)) continue;
+  const iceLake = !!config.splat?.iceLake;
+  const split = splitMinimapWater(patches, () => 0);
+  const layers = recordingContext();
+  shorelines.length = 0;
+  paintWaterLayers(layers.context, { liquidPatches: [...split.liquid], softPatches: [...split.soft], iceLake }, palette);
+  const dryFill = iceLake ? palette.ice : palette.bog, dryKeyline = iceLake ? palette.iceStroke : palette.bogStroke;
+  assert.deepEqual(layers.fills.map((f) => [f.style, f.paths.length]), [[dryFill, patches.length]],
+    `${mapId}: every dry disc is painted in the ${iceLake ? 'ice' : 'soft-ground'} style and none as water`);
+  assert.deepEqual(shorelines.map((s) => [s.keyline, s.rim, s.patches.length]), [[dryKeyline, null, patches.length]],
+    `${mapId}: dry discs keep a ground-toned keyline and no waterline rim`);
+  dryPatches += patches.length;
 }
 assert.ok(testedPatches > 0, 'the all-map fallback test actually covers authored shorelines');
+assert.ok(dryPatches >= 20, 'the dry-disc rule covers the authored bogs (Kestrel Airfield alone has twenty)');
 
 // Owner rule (2026-09-25): minimap markers may overlap. No jitter or separation
 // pass moves co-located markers apart (the r5/r7 relax-to-13.5 px pass and the
@@ -224,7 +274,7 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
     'co-located objective glyphs share one exact point instead of being spread apart');
 }
 
-const paintTerrain = hudPainter('paintProceduralMinimapTerrain', 'paintMinimapWater', {
+const paintTerrain = hudPainter('paintProceduralMinimapTerrain', 'fillMinimapPatches', {
   mapWorldSize: worldSize,
 });
 const sampledGround = [];
@@ -243,4 +293,4 @@ for (let row = 0; row < 4; row++) for (let column = 0; column < 4; column++) {
 }
 
 console.log('minimapOrientation.selftest: fixed north-up raster and live overlays passed');
-console.log(`minimapOrientation.selftest: ${MAP_IDS.length} fallback maps, ${testedPatches} irregular banks and terrain sampling agree`);
+console.log(`minimapOrientation.selftest: ${MAP_IDS.length} fallback maps, ${testedPatches} irregular banks (${dryPatches} dry, painted as ground or ice) and terrain sampling agree`);

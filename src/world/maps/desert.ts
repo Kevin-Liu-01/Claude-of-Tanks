@@ -581,7 +581,7 @@ export default {
   minimap: {
     base: [146, 122, 82], hard: [160, 140, 104], soft: [122, 104, 70],
     forest: 'rgba(88,104,44,0.85)', forestStroke: 'rgba(52,64,26,0.9)',
-    water: 'rgba(140,118,80,0.6)', waterStroke: 'rgba(90,76,52,0.7)',
+    bog: 'rgba(140,118,80,0.6)', bogStroke: 'rgba(90,76,52,0.7)', // the takyr flats: clay, not water
     roadCasing: 'rgba(88,72,48,0.9)', roadFill: 'rgba(214,192,150,0.95)',
     buildingFill: '#e0cba4',
   },

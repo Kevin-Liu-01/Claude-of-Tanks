@@ -14,7 +14,11 @@ export interface StudioPlanFeatures {
   readonly roads: ReadonlyArray<ReadonlyArray<readonly [number, number]>>;
   readonly buildings: ReadonlyArray<{ readonly x: number; readonly z: number; readonly [key: string]: unknown }>;
   readonly treeClusters: ReadonlyArray<{ readonly x: number; readonly z: number; readonly r: number }>;
-  readonly waterOrSoft: ReadonlyArray<{ readonly x: number; readonly z: number; readonly r: number }>;
+  /** The discs the world draws liquid water in — the only water on the plan, as on the HUD minimap. */
+  readonly liquidPatches: ReadonlyArray<{ readonly x: number; readonly z: number; readonly r: number }>;
+  /** The dry discs (bog, salt pan, takyr), frozen where `iceLake`. */
+  readonly softPatches: ReadonlyArray<{ readonly x: number; readonly z: number; readonly r: number }>;
+  readonly iceLake: boolean;
 }
 
 type PlanSide = 'hero' | 'ally' | 'foe';
@@ -97,7 +101,7 @@ interface PlanSource {
 }
 
 const COLORS = { ground: '#1d2418', grid: 'rgba(255,255,255,0.06)', road: '#a89f86', building: '#b07a5a', wood: 'rgba(60,140,60,0.42)',
-  water: 'rgba(70,120,190,0.55)', hero: '#f0a12e', ally: '#7fb2e5', foe: '#e5484d', lens: '#65d0dd', height: '#ffd27a', ink: '#0b0e11', text: '#9fb0bf' };
+  water: 'rgba(70,120,190,0.55)', bog: 'rgba(120,108,70,0.5)', ice: 'rgba(170,200,222,0.55)', hero: '#f0a12e', ally: '#7fb2e5', foe: '#e5484d', lens: '#65d0dd', height: '#ffd27a', ink: '#0b0e11', text: '#9fb0bf' };
 
 /** The Plan block for the Studio panel: the map canvas over the graph, redrawn as the playhead and the take change. */
 export function createPlanView(S: PlanSource, t: (key: string) => string): { readonly root: HTMLElement; refreshPlan(): void; refreshTime(): void } {
@@ -135,8 +139,12 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
     for (let v = Math.ceil((b.cx - b.half) / step) * step; v < b.cx + b.half; v += step) { const [px] = toPx(v, 0, size); g.beginPath(); g.moveTo(px, 0); g.lineTo(px, size); g.stroke(); }
     for (let v = Math.ceil((b.cz - b.half) / step) * step; v < b.cz + b.half; v += step) { const [, pz] = toPx(0, v, size); g.beginPath(); g.moveTo(0, pz); g.lineTo(size, pz); g.stroke(); }
     if (!features) return c;
-    g.fillStyle = COLORS.water;
-    for (const w of features.waterOrSoft) { const [px, pz] = toPx(w.x, w.z, size); g.beginPath(); g.arc(px, pz, w.r * k, 0, Math.PI * 2); g.fill(); }
+    const discs = (list: StudioPlanFeatures['liquidPatches'], fill: string) => {
+      g.fillStyle = fill;
+      for (const w of list) { const [px, pz] = toPx(w.x, w.z, size); g.beginPath(); g.arc(px, pz, w.r * k, 0, Math.PI * 2); g.fill(); }
+    };
+    discs(features.softPatches, features.iceLake ? COLORS.ice : COLORS.bog); // dry ground (or ice) first, water over it
+    discs(features.liquidPatches, COLORS.water);
     g.strokeStyle = COLORS.road; g.lineWidth = Math.max(1.5, 8 * k); g.lineJoin = 'round'; g.lineCap = 'round';
     for (const road of features.roads) { g.beginPath(); road.forEach(([x, z], i) => { const [px, pz] = toPx(x, z, size); if (i) g.lineTo(px, pz); else g.moveTo(px, pz); }); g.stroke(); }
     g.fillStyle = COLORS.wood;

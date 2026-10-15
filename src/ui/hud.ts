@@ -277,7 +277,11 @@ interface HudMinimapFeatures {
   buildings?: MapBuilding[];
   tacticalBeats?: MapBuilding[];
   treeClusters?: MapDisc[];
-  waterOrSoft?: MapDisc[];
+  /** Discs the world draws liquid water in (World.getMinimapFeatures, world/minimapWaterPatches.ts): the only water. */
+  liquidPatches?: MapDisc[];
+  /** Discs with no liquid anywhere: bog, salt pan or takyr flat — or ice where the map's wet layer is (`iceLake`). */
+  softPatches?: MapDisc[];
+  iceLake?: boolean;
 }
 
 interface HudMinimapPalette {
@@ -288,6 +292,12 @@ interface HudMinimapPalette {
   forestStroke: string;
   water: string;
   waterStroke: string;
+  /** Dry lake/marsh discs (bog, salt pan, takyr flat): ground-toned, a keyline and no waterline rim. */
+  bog: string;
+  bogStroke: string;
+  /** The same discs frozen, on a map whose wet layer is ice (splat.iceLake). */
+  ice: string;
+  iceStroke: string;
   roadCasing: string;
   roadFill: string;
   buildingFill: string;
@@ -4615,6 +4625,8 @@ export function initHud(bus: EventBus): HudRuntime {
     base: [70, 94, 52], hard: [104, 96, 78], soft: [48, 70, 54],
     forest: 'rgba(36,64,30,0.82)', forestStroke: 'rgba(22,40,18,0.9)',
     water: 'rgba(50,84,82,0.7)', waterStroke: 'rgba(28,48,48,0.8)',
+    bog: 'rgba(92,86,56,0.58)', bogStroke: 'rgba(56,52,34,0.5)',
+    ice: 'rgba(158,190,214,0.85)', iceStroke: 'rgba(104,134,158,0.9)',
     roadCasing: 'rgba(46,40,28,0.9)', roadFill: 'rgba(196,178,140,0.95)',
     buildingFill: '#ccd1d9',
   };
@@ -4729,13 +4741,14 @@ export function initHud(bus: EventBus): HudRuntime {
     context.putImageData(image, 0, 0);
   }
 
-  function paintMinimapWater(
+  /** One class of lake/marsh discs (water, bog or ice) filled to its shoreline contour in `fill`. */
+  function fillMinimapPatches(
     context: CanvasRenderingContext2D,
     patches: MapDisc[] | undefined,
-    palette: HudMinimapPalette,
+    fill: string,
   ): void {
     if (!patches?.length) return;
-    context.fillStyle = palette.water;
+    context.fillStyle = fill;
     // One nonzero fill unions consistently wound lake lobes: overlapping
     // construction patches must not add dark seams or double their opacity.
     // The terrain shoreline supplies the bank detail without a diagram border.
@@ -4913,10 +4926,13 @@ export function initHud(bus: EventBus): HudRuntime {
   // lake and marsh patches (a river is a chain of overlapping discs; stroking
   // each disc drew a string of beads). Built from masks: A = the union fill,
   // B = A blurred; inside band = A minus B, outside band = B minus A.
+  // 2026-10-14: the pale rim is the waterline, so only liquid water passes one
+  // (`rim` null for bog, salt and ice discs: their keyline alone).
   function paintMinimapShorelines(
     context: CanvasRenderingContext2D,
     patches: MapDisc[] | undefined,
-    palette: HudMinimapPalette,
+    keyline: string,
+    rim: string | null,
   ): void {
     if (!patches?.length) return;
     const width = context.canvas.width;
@@ -4959,15 +4975,34 @@ export function initHud(bus: EventBus): HudRuntime {
       ctx.fillRect(0, 0, width, height);
       return canvas;
     };
-    const rim = band(union, blurred, 'rgb(204,234,240)');
-    const keyline = band(blurred, union, palette.waterStroke);
+    const rimBand = rim ? band(union, blurred, rim) : null;
+    const keylineBand = band(blurred, union, keyline);
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
-    context.globalAlpha = 0.55;
-    context.drawImage(rim, 0, 0);
+    if (rimBand) {
+      context.globalAlpha = 0.55;
+      context.drawImage(rimBand, 0, 0);
+    }
     context.globalAlpha = 0.9;
-    context.drawImage(keyline, 0, 0);
+    context.drawImage(keylineBand, 0, 0);
     context.restore();
+  }
+
+  // 2026-10-14 (owner, Kestrel: "a bunch of water spots by spawn even though
+  // you can't actually see any water"): water only where the world draws a
+  // liquid sheet. The dry discs go first — a bog, salt pan or takyr flat in
+  // the map's ground tones, ice on an iceLake map — with a keyline and no
+  // waterline rim, so they still mark the slow ground; water paints over them.
+  function paintMinimapWaterLayers(
+    context: CanvasRenderingContext2D,
+    features: HudMinimapFeatures,
+    palette: HudMinimapPalette,
+  ): void {
+    const frozen = !!features.iceLake;
+    fillMinimapPatches(context, features.softPatches, frozen ? palette.ice : palette.bog);
+    paintMinimapShorelines(context, features.softPatches, frozen ? palette.iceStroke : palette.bogStroke, null);
+    fillMinimapPatches(context, features.liquidPatches, palette.water);
+    paintMinimapShorelines(context, features.liquidPatches, palette.waterStroke, 'rgb(204,234,240)');
   }
 
   function buildMinimapBg(
@@ -5005,8 +5040,7 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
 
     const f = features || {};
-    paintMinimapWater(octx, f.waterOrSoft, pal);
-    paintMinimapShorelines(octx, f.waterOrSoft, pal);
+    paintMinimapWaterLayers(octx, f, pal);
     // tree clusters: irregular forest polygons — r7 SATELLITE READ, r4
     // DE-STICKER pass: the repeated dark-outlined octagons read as clipart
     // dabs. Each stand is now a 12-vertex lumpy polygon whose per-vertex
@@ -6473,7 +6507,7 @@ export function initHud(bus: EventBus): HudRuntime {
     /**
      * Render the static minimap background once at battle start.
      * @param {HeightField} heightField
-     * @param {{roads:Array,buildings:Array,treeClusters:Array,waterOrSoft:Array}} features - World.getMinimapFeatures() result.
+     * @param {{roads:Array,buildings:Array,treeClusters:Array,liquidPatches:Array,softPatches:Array,iceLake:boolean}} features - World.getMinimapFeatures() result.
      * @param {object} [palette] per-map minimap palette override.
      * @param {{renderer:THREE.WebGLRenderer,scene:THREE.Scene,exclude?:THREE.Object3D[]}} [snap]
      *   optional live-scene handles for the one-time top-down ortho capture

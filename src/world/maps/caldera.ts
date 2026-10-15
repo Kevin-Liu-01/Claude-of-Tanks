@@ -300,7 +300,7 @@ export default {
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],
     forest: 'rgba(35,43,31,.75)', forestStroke: 'rgba(22,27,20,.9)',
-    water: 'rgba(75,74,68,.55)', waterStroke: 'rgba(45,44,41,.78)',
+    bog: 'rgba(75,74,68,.55)', bogStroke: 'rgba(45,44,41,.78)',
     roadCasing: 'rgba(30,29,27,.96)', roadFill: 'rgba(112,104,94,.94)', buildingFill: '#aaa7a1',
   },
   shot: { pos: [-238, 50, -230], look: [42, 6, 66] },

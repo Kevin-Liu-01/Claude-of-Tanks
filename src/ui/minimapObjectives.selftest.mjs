@@ -122,7 +122,9 @@ assert.match(hudSource, /const markers = objectiveMarkers\(frame\.matchModeState
 assert.match(hudSource, /drawMinimapObjectives\(markers, frame\.timeS, plMapX, plMapY, !!player\?\.combat\?\.destroyed\)/);
 assert.match(hudSource, /export interface HudMatchModeState extends ObjectiveStateView/);
 assert.match(hudSource, /paintMinimapRelief\(bctx, heightField, N\)/, 'the baked map carries the hillshade');
-assert.match(hudSource, /paintMinimapShorelines\(octx, f\.waterOrSoft, pal\)/, 'water carries a shoreline');
+assert.match(hudSource, /paintMinimapWaterLayers\(octx, f, pal\)/, 'the baked map carries its water layers');
+assert.match(hudSource, /paintMinimapShorelines\(context, features\.liquidPatches, palette\.waterStroke, 'rgb\(204,234,240\)'\)/,
+  'liquid water carries a shoreline with its waterline rim');
 const worldSource = await readFile(new URL('../game/matchModeWorldPresentation.ts', import.meta.url), 'utf8');
 assert.match(worldSource, /const marks = objectiveMarkers\(state\);/, 'the world presentation derives the same markers');
 assert.match(worldSource, /from '\.\.\/ui\/objectiveGlyphs\.ts'/, 'world icons are rasterised from the shared glyphs');

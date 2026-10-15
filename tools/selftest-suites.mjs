@@ -1742,6 +1742,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
     'src/ui/minimapObjectives.selftest.mjs',
+    // 2026-10-14 (owner, Kestrel: "water spots by spawn even though you can't actually see any water"): the tactical
+    // map paints water only where the world draws it — all 33 maps, Kestrel's pads, the liquid maps' wet discs
+    'src/ui/minimapLiquidWater.selftest.mjs',
     'src/ui/minimapContacts.selftest.mjs',
     'src/ui/minimapCapturePolicy.selftest.mjs',
     'src/vehicles/trackPatterns.selftest.mjs',

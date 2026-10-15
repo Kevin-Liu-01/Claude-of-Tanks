@@ -211,7 +211,7 @@ export default {
   minimap: {
     base: [154, 169, 183], hard: [132, 144, 154], soft: [105, 127, 143],
     forest: 'rgba(37,67,71,.86)', forestStroke: 'rgba(22,42,46,.94)',
-    water: 'rgba(94,139,166,.84)', waterStroke: 'rgba(53,88,113,.95)',
+    ice: 'rgba(158,190,214,.85)', iceStroke: 'rgba(104,134,158,.9)', // the frozen lakes and marsh, in winter's ice-blue
     roadCasing: 'rgba(63,69,75,.94)', roadFill: 'rgba(187,194,199,.96)', buildingFill: '#d5d9dc',
   },
   shot: { pos: [-238, 54, -252], look: [62, -3, 54] },
