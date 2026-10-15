@@ -131,15 +131,18 @@ export function hatchParts(r: number, high = true, hinge: 1 | -1 = -1): HatchPar
   return { lid, dark };
 }
 
+/** A reserved decor volume: its frame-local min and max corners. */
+export type DecorReservedBox = [number[], number[]];
 /**
  * Critic panel 2026-10-15 on the owner-markup round: a geometry change reseated the decor's loads (decorations.ts seats
  * them by probing the built surfaces, so new chest lids or a freed roof drew loads that had stood elsewhere). A builder
  * that replaces marked stock reserves the volume the stock stood in, frame-local (the hull or turret group's own
  * coordinates); the decor keeps out of it (collectFieldEquipment), so its loads stand where they stood and only the
- * marked items change.
+ * marked items change. A resized vehicle's boxes take its installed size (vehicleSize.ts).
  */
-export function reserveDecorVolume(group: THREE.Object3D, min: readonly [number, number, number], max: readonly [number, number, number]): void {
-  const boxes = (group.userData.decorReservedBoxes ??= []) as [number, number, number][][];
+export function reserveDecorVolume(group: THREE.Object3D, min: readonly [number, number, number],
+  max: readonly [number, number, number]): void {
+  const boxes = (group.userData.decorReservedBoxes ??= []) as DecorReservedBox[];
   boxes.push([[...min], [...max]]);
 }
 

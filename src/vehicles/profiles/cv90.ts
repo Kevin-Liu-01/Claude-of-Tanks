@@ -434,10 +434,10 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   }
   P.add('hullDark', box(0.16, 0.12, 0.030), 0, 0.46, -3.525);
   P.add('hullDark', cylY(0.032, 0.032, 0.10, 12), 0, 0.46, -3.585);
-  // critic panel 2026-10-15: the decor's rear-rack tray hung off the door and its loads moved once the drums were gone.
-  // The decor keeps out of the envelope the drums stood in (fieldChest.ts reserveDecorVolume; hull frame), so the
-  // door stays clear and its loads keep their seats.
-  reserveDecorVolume(P.hullG, [-1.86, 0.775, -4.215], [1.86, 2.025, -3.605]);
+  // critic panel 2026-10-15: the decor's rear-rack tray hung off the door once the drums were gone. The decor keeps out
+  // of the band behind the door, its hinges and its handle (fieldChest.ts reserveDecorVolume; hull frame), so the door
+  // stays clear and opens.
+  reserveDecorVolume(P.hullG, [-0.80, 0.60, -4.05], [1.00, 1.70, -3.70]);
   for (const x of [-0.96, 0.96]) {
     P.addEquipment('hull', box(0.30, 0.28, 0.24), x, 1.91, -3.78);
     P.addModuleVisual('optics', 'hullGlass', box(0.15, 0.075, 0.014),
