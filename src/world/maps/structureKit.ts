@@ -477,6 +477,19 @@ function addGableRoof(
   out.roof.push(slab(0.34, 0.14, d + over * 2).translate(0, wallH + roofH + 0.04, 0));
 }
 
+/**
+ * (the garage critic, 2026-10-15) Parts a builder adds inside `body` are dressing new to the building: no uv jitter (the
+ * placement stream's draws stay the building's) and no collision part (its footprint, its decks and every placement
+ * that reads them stay what they were).
+ */
+function freshParts(out: StructureParts, body: () => void): void {
+  const before = new Map(Object.entries(out).map(([k, v]) => [k, v.length]));
+  body();
+  for (const [k, list] of Object.entries(out)) {
+    for (let i = before.get(k) ?? 0; i < list.length; i++) { list[i].userData.uvJitter = 'none'; list[i].userData.noCollision = true; }
+  }
+}
+
 function addWindow(
   out: StructureParts,
   x: number,
@@ -578,6 +591,33 @@ export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   const tx = 4.0, towerH = 11.8;
   out.stone.push(box(3.0, towerH, 3.0).translate(tx, towerH / 2, -3.7));
   for (const face of [-1, 1]) out.dark.push(box(1.65, 2.1, 0.08).translate(tx, towerH - 2.1, -3.7 + face * 1.52));
+  // (the garage critic, 2026-10-15, Steinburg: "an untextured grey box tower") the hose tower's drying loft opened on all
+  // four faces in louvred openings — a frame, the dark of the loft (the two openings it had keep their panels: their
+  // draws), the louvre boards — under a cornice; a slit window lights the stair above the station's roof; the station's
+  // flanks and back lit by windows
+  freshParts(out, () => {
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const cx = tx + nx * 1.52, cz = -3.7 + nz * 1.52, alongX = nz !== 0, y = towerH - 2.1;
+      const frameBox = (fw: number, fh: number, oy: number, ox: number): THREE.BufferGeometry =>
+        (alongX ? box(fw, fh, 0.14) : box(0.14, fh, fw)).translate(cx + (alongX ? ox : 0), y + oy, cz + (alongX ? 0 : ox));
+      out.stone.push(frameBox(1.95, 0.16, 1.13, 0), frameBox(1.95, 0.16, -1.13, 0), frameBox(0.16, 2.1, 0, -0.9), frameBox(0.16, 2.1, 0, 0.9));
+      if (!alongX) out.dark.push(box(0.06, 2.1, 1.65).translate(cx - nx * 0.06, y, cz));
+      for (let k = 0; k < 6; k++) {
+        const louvre = alongX ? box(1.62, 0.05, 0.22) : box(0.22, 0.05, 1.62);
+        if (alongX) louvre.rotateX(nz * 0.6); else louvre.rotateZ(-nx * 0.6);
+        out.wood.push(louvre.translate(cx - nx * 0.02, y - 0.85 + k * 0.33, cz - nz * 0.02));
+      }
+      for (const sy of [7.0]) { // (the storeys below stand inside the station: the stair's light above its roof)
+        out.dark.push((alongX ? box(0.32, 1.0, 0.06) : box(0.06, 1.0, 0.32)).translate(cx + nx * 0.01, sy, cz + nz * 0.01));
+      }
+    }
+    out.stone.push(detailUv(box(3.4, 0.24, 3.4).translate(tx, towerH - 0.2, -3.7)));
+    for (const sx of [-1, 1]) for (const z of [-5.0, -1.8, 1.6, 4.6]) {
+      if (sx > 0 && z < -2) continue; // (the tower stands at that corner)
+      addWindow(out, sx * (w / 2 + 0.04), 3.0, z, 'x', 1.0, 1.4);
+    }
+    for (const x of [-3.6, -0.6]) addWindow(out, x, 3.0, -d / 2 - 0.04, 'z', 1.0, 1.4);
+  });
   const towerCap = new THREE.ConeGeometry(2.25, 2.2, 4, 1);
   towerCap.rotateY(Math.PI / 4); towerCap.translate(tx, towerH + 1.1, -3.7); out.roof.push(towerCap);
   out.plaster3.push(box(4.8, 0.85, 0.12).translate(-1.0, 4.7, d / 2 + 0.1));
@@ -601,6 +641,25 @@ export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimen
   out.roof.push(pitchRoofPlane(slab(4.6, 0.16, 5.4), 'x', -1, 0.12, 'skillion')
     .translate(-w / 2 - 1.5, 3.75, -2.4));
   for (const x of [-2.8, 0, 2.8]) addWindow(out, x, 2.4, d / 2 + 0.04, 'z', 1.1, 1.1);
+  // (the garage critic, 2026-10-15, Saltmere: "a plain box: no eaves, gutters, doors or windows legible") the shed's long
+  // sides lit and opened — a row of windows down each, the sliding door to the quay on its rail — its eaves boarded with
+  // a fascia under a gutter, downpipes at the corners, the ridge capped
+  freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-5.2, -1.7, 1.8, 5.3]) {
+      if (sx > 0 && Math.abs(z - 1.8) < 0.1) continue;
+      addWindow(out, sx * (w / 2 + 0.04), 2.6, z, 'x', 1.0, 1.0, 'wood');
+    }
+    out.dark.push(box(0.1, 3.0, 3.0).translate(w / 2 + 0.03, 0.35 + 1.5, 1.8));
+    out.wood.push(box(0.08, 2.9, 1.6).translate(w / 2 + 0.12, 0.35 + 1.5, 2.6));
+    out.dark.push(box(0.1, 0.1, 6.6).translate(w / 2 + 0.04, 0.35 + 3.08, 1.8)); // (the door's rail on the wall)
+    const eaveY = wallH + 0.35 - 0.06, eaveX = w / 2 + 0.55;
+    for (const sx of [-1, 1]) {
+      out.wood.push(box(0.05, 0.24, d + 1.4).translate(sx * eaveX, eaveY - 0.02, 0));
+      out.dark.push(box(0.16, 0.12, d + 1.4).translate(sx * (eaveX + 0.08), eaveY - 0.16, 0));
+      for (const sz of [-1, 1]) out.dark.push(box(0.09, eaveY - 0.15, 0.09).translate(sx * (eaveX + 0.08), (eaveY - 0.15) / 2, sz * (d / 2 + 0.55)));
+    }
+    out.roof.push(box(0.44, 0.12, d + 1.44).translate(0, wallH + 0.35 + roofH + 0.1, 0));
+  });
   addConnectedExterior(out, { id: 'fishery', w, d, wallH: wallH + 0.35, profile: 'timber', variant: 1 });
   finish(buckets, out);
   return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
@@ -681,8 +740,8 @@ export function makeBathhouse(
     // Three low domes, lantern vents and an arched entry vestibule.
     for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
       const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
-      dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
-      out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+      dome.scale(1, 0.58, 1); dome.translate(x, wallH + 0.55, z); out.roof.push(dome);
+      out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + 0.55 + r * 0.58 + 0.25, z));
     }
   }
   const vestibule = box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9);
@@ -690,11 +749,29 @@ export function makeBathhouse(
   out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
   for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25,
     style === 'timber' ? 'wood' : 'stone');
+  // (the garage critic, 2026-10-15, Monsoon: "a long blank white wall with two domes on top, a billboard") the domed hall
+  // lit down both flanks (its back has the civic pass's windows; the timber hall's flanks its catalog openings), a cornice
+  // under the roof's edge, a parapet with its coping and each dome raised on its drum
+  if (style !== 'timber') freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-3.6, 0, 3.6]) addWindow(out, sx * (w / 2 + 0.04), 2.25, z, 'x', 0.7, 1.25, 'stone');
+    out.stone.push(detailUv(box(w + 0.3, 0.22, d + 0.3).translate(0, wallH - 0.2, 0)));
+    {
+      for (const [sx, sz, len, alongX] of [[0, 1, w + 0.3, true], [0, -1, w + 0.3, true], [1, 0, d + 0.3, false], [-1, 0, d + 0.3, false]] as const) {
+        const wall = alongX ? box(len, 0.55, 0.22) : box(0.22, 0.55, len);
+        out[walls].push(wall.translate(sx * (w / 2 + 0.04), wallH + 0.15 + 0.275, sz * (d / 2 + 0.04)));
+        const coping = alongX ? box(len + 0.1, 0.08, 0.32) : box(0.32, 0.08, len + 0.1);
+        out.stone.push(coping.translate(sx * (w / 2 + 0.04), wallH + 0.15 + 0.59, sz * (d / 2 + 0.04)));
+      }
+      for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
+        out[walls].push(cylinder(r * 1.02, r * 1.04, 0.45, 12).translate(x, wallH + 0.15 + 0.22, z));
+      }
+    }
+  });
   addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3,
     bathhouseStyle: style === 'timber' ? 'timber' : undefined,
     timberBathhouseEntry: style === 'timber' ? vestibule : undefined });
   finish(buckets, out);
-  return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
+  return { w: w + 0.5, d: d + 2.2, h: wallH + 3.75 };
 }
 
 /** Explicit map variant, not an extra catalog family or a material-name signal. */
@@ -1216,6 +1293,10 @@ export function makeCivicHall(_rng: Rng, buckets: GeometryBuckets, wallBucket = 
     const rib = box(0.18, 7.0, 0.18); rib.rotateZ(-0.42 + i * 0.16);
     out.dark.push(rib.translate(-3.0 + (i - 2.5) * 0.7, h + 2.1, -1.0));
   }
+  // (the garage critic, 2026-10-15, Steinburg: blank flanks seen from the yard) two storeys of windows down both flanks
+  freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-5.6, -1.9, 1.9, 5.6]) for (const y of [3.0, 7.0]) addWindow(out, sx * (w / 2 + 0.04), y, z, 'x', 1.2, 1.9);
+  });
   addConnectedExterior(out, { id: 'civichall', w, d, wallH: h, profile: 'civic', variant: 4 });
   finish(buckets, out);
   return { w: w + 2.2, d: d + 4.8, h: h + 4.2 };
