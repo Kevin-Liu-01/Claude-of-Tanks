@@ -7,6 +7,7 @@ import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
+import { createCooldownSweep } from './touchActionDock.ts';
 import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
@@ -2258,6 +2259,18 @@ export function initHud(bus: EventBus): HudRuntime {
     return {action,button,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
   });
   const reloadForSlot=createVehicleCooldownReader();
+  // Touch dock cooldown sweeps (battleHudLayout.css): --cd runs 1 -> 0 in 60 steps and is written only when the step
+  // changes; a desktop stylesheet never reads it.
+  const cooldownPaints=new WeakMap<HTMLElement,{sweep:(remainingS:number)=>number;step:number}>();
+  function paintCooldown(button:HTMLElement,remainingS:number):void{
+    let paint=cooldownPaints.get(button);
+    if(!paint){paint={sweep:createCooldownSweep(),step:0};cooldownPaints.set(button,paint);}
+    const step=Math.ceil(paint.sweep(remainingS)*60);
+    if(step===paint.step)return;
+    if(step>0)button.style.setProperty('--cd',String(step/60));else button.style.removeProperty('--cd');
+    if((step>0)!==(paint.step>0))button.classList.toggle('cooling',step>0);
+    paint.step=step;
+  }
   function updateSpecialAction(player: HudTank | null | undefined): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
     jumpHint.disabled=!canControl;
@@ -2268,6 +2281,7 @@ export function initHud(bus: EventBus): HudRuntime {
     droneButton.classList.toggle('active', !!flight?.active);
     droneButton.setAttribute('aria-pressed', String(!!flight?.active));
     droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
+    paintCooldown(droneButton, flight?.active ? 0 : flight?.cooldownS ?? 0);
 
     root.classList.toggle('aerial-active', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
@@ -2282,6 +2296,7 @@ export function initHud(bus: EventBus): HudRuntime {
       label.textContent=action==='smoke' && state?.smokeCharges===0 ? '0/3'
         : action==='smoke' && cooldown ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`);
       status.textContent=action==='smoke'?`${state?.smokeCharges??3}/3`:'';
+      paintCooldown(button,action==='smoke'&&state?.smokeCharges!==0?(state?.smokeReadyAt||0)-lastTimeS:0);
       if(action==='smoke')button.setAttribute('aria-label',`${t('systems.smoke.help')} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
     const descriptor = readSpecialAction(player?.spec);
@@ -2317,12 +2332,16 @@ export function initHud(bus: EventBus): HudRuntime {
     const missileSlot = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE
       ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
-    const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
+    const missileRemaining=extraMissileSlot>=0?reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0:0;
+    const missileWait=Math.ceil(missileRemaining);
+    paintCooldown(missileButton,missileEmpty?0:missileRemaining);
     missileButton.querySelector('.sl')!.textContent=emptyMissileLabel ?? (missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM');
     missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
-    const wait=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
-      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
+    const specialRemaining=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?reloadForSlot(combat,missileSlot,lastTimeS)||0
+      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?combat?.gunReload?.t??combat?.reload.t??0:0;
+    const wait=Math.ceil(specialRemaining);
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
+    paintCooldown(specialButton,specialMissileEmpty?0:specialRemaining);
     specialLabel.textContent=specialMissileEmpty ? emptyMissileLabel! : wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
     specialButton.setAttribute('aria-label', specialMissileEmpty ? `${specialButton.title} ${emptyMissileLabel}` : specialButton.title || t('hud.special.unavailable'));
     specialButton.querySelector('small')!.textContent='';

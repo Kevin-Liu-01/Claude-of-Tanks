@@ -1,3 +1,5 @@
+import { placeTouchActionDock, type TouchDockPlacement, type TouchDockRect } from './touchActionDock.ts';
+
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
 export function objectiveWidth(scoreWidth: number): number {
@@ -118,6 +120,52 @@ export function installBattleHudLayout(root: HTMLElement): void {
       read('.cot-spec.show')?.top ?? height,
       width < 768 ? read('.cot-drive')?.top ?? height : height);
   }
+  // The dock clears the fixed touch controls and instruments only. The lanes that make room for the dock (kill feeds,
+  // notices, the status strip, the countdown, the aim warning) are placed after it and are never inputs, or the two
+  // would chase each other.
+  const dockObstacleSelector = '.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,'
+    + '.cot-dp,.cot-drive,.cot-minimap,.cot-top,.cot-mode-status.show,.cot-net,.cot-cons,.cot-shells';
+  const dockObstacles: TouchDockRect[] = [];
+  let safeProbe: HTMLElement | null = null;
+  function placeDock(row: HTMLElement, width: number, height: number): TouchDockPlacement | null {
+    let count = 0;
+    for (const child of row.children) if (child.getClientRects().length) count++;
+    dockObstacles.length = 0;
+    let joy: DOMRect | null = null, fire: DOMRect | null = null;
+    for (const node of document.querySelectorAll<HTMLElement>(dockObstacleSelector)) {
+      if (!node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') continue;
+      const box = node.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) continue;
+      let x = box.left, w = box.width;
+      if (node.classList.contains('cot-shells')) {
+        // The touch ammo selector opens leftwards, 56 px per further slot (hudAmmunitionPresentation.ts).
+        let slots = 0;
+        for (const slot of node.children) if (slot.classList.contains('cot-shell') && slot.getClientRects().length) slots++;
+        x -= 56 * Math.max(0, slots - 1); w += 56 * Math.max(0, slots - 1);
+      }
+      if (node.classList.contains('joy')) joy = box;
+      if (node.classList.contains('fire') && !node.classList.contains('alt')) fire = box;
+      dockObstacles.push({ x, y: box.top, w, h: box.height });
+    }
+    if (!safeProbe) {
+      safeProbe = document.createElement('div');
+      safeProbe.setAttribute('aria-hidden', 'true');
+      safeProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+        + 'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+      document.body.append(safeProbe);
+    }
+    const safe = getComputedStyle(safeProbe);
+    const placement = placeTouchActionDock({ width, height, count, obstacles: dockObstacles,
+      anchor: joy && fire ? { x: (joy.left + joy.right + fire.left + fire.right) / 4, y: (joy.top + joy.bottom + fire.top + fire.bottom) / 4 } : null,
+      insets: { top: parseFloat(safe.paddingTop) || 0, right: parseFloat(safe.paddingRight) || 0,
+        bottom: parseFloat(safe.paddingBottom) || 0, left: parseFloat(safe.paddingLeft) || 0 } });
+    const columns = placement ? String(placement.columns) : '';
+    if (document.body.style.getPropertyValue('--hud-systems-columns') !== columns) {
+      if (columns) document.body.style.setProperty('--hud-systems-columns', columns);
+      else document.body.style.removeProperty('--hud-systems-columns');
+    }
+    return placement;
+  }
   function refresh() {
     frame = 0;
     const visible = !!root.getClientRects().length;
@@ -126,6 +174,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (!visible) return;
     observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    // The touch action dock's other fixed obstacles (a ruleset can show or hide the consumables mid-session).
+    observe('.cot-cons,.cot-touch .fire,.cot-touch .scope');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
@@ -149,7 +199,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
     const systems = read('.cot-vehicle-controls');
-    const systemsHeight = systems?.height ?? 0;
+    let systemsHeight = systems?.height ?? 0;
     const ammo = read('.cot-shells');
     let systemsWidth = Math.min(440, width - 24);
     let systemsTop = (ammo?.top ?? height - 80) - systemsHeight - 8;
@@ -158,7 +208,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let dockWidth = Math.min(systemsWidth, naturalWidth);
     let systemsLeft = Math.max(12, Math.min(width - dockWidth - 12,
       (ammo ? ammo.left + ammo.width / 2 : width / 2) - dockWidth / 2));
-    if (touch && height < 550 && width > height) {
+    // Touch: the action dock (touchActionDock.ts) lays the controls out as 48 px tiles at the free spot nearest the
+    // thumbs and wraps rather than scrolls. The older strip placement below remains the fallback when nothing fits.
+    const dock = touch && systems && systemsElement ? placeDock(systemsElement, width, height) : null;
+    if (dock) {
+      systemsLeft = dock.x; systemsTop = dock.y; systemsWidth = dockWidth = dock.w; systemsHeight = dock.h;
+    } else if (touch && height < 550 && width > height) {
       // Landscape phones have a vertical ammo rail. Use the lower gap between
       // the driving instruments and aim buttons, above the health strip.
       systemsLeft = Math.max(read('.cot-touch.on .joy')?.right || 0, read('.cot-drive')?.right || 0) + 8;
@@ -166,7 +221,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       dockWidth = Math.min(systemsWidth, naturalWidth);
       systemsTop = (read('.cot-dp')?.top || height - 44) - systemsHeight - 8;
     }
-    if (touch && width < height && map && map.left < width / 2 && map.bottom + 8 > systemsTop) {
+    if (!dock && touch && width < height && map && map.left < width / 2 && map.bottom + 8 > systemsTop) {
       systemsLeft = map.right + 8;
       systemsWidth = Math.max(52, width - systemsLeft - 12);
       dockWidth = Math.min(systemsWidth, naturalWidth);
@@ -174,9 +229,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // Portrait rotation can leave the system strip level with the settings
     // buttons. Keep the touch navigation reachable before placing that strip.
     const touchChrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
-    if (touch && width < height && touchChrome && systemsLeft + dockWidth > touchChrome.left
+    if (!dock && touch && width < height && touchChrome && systemsLeft + dockWidth > touchChrome.left
       && systemsTop < touchChrome.bottom + 8) systemsTop = touchChrome.bottom + 8;
-    if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
+    if (!dock && touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
       systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
       dockWidth = Math.min(systemsWidth, naturalWidth);
