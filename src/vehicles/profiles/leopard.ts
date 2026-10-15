@@ -1,3 +1,4 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { lathedWheelSection } from './lathedWheelStock.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
@@ -6350,7 +6351,7 @@ function buildLeo2A5A5NL(builder: object) {
 // ---------------------------------------------------------------------------
 function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   const { box, cylY, cylZ } = KIT;
-  const gunName = `${P.spec.id}Flw200Gun`;
+  const gunName = `${tankSeedId(P.spec.id)}Flw200Gun`; // schema-1 name (tankIdAliases.ts)
   const finishStation = o.automatic ? captureAuxiliaryStock(P, gunName) : null;
   const s = o.s ?? 1.0;
   const ws = o.widthScale ?? s;
@@ -12866,7 +12867,7 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
     elev: variant === 'a7v-low' ? 0.035 : 0.050,
     seed: P.spec.id === 'leo2a7v' ? 27027 : 26026,
   });
-  station.name = `${P.spec.id}${weaponRole === 'auxiliary' ? 'Aux' : 'Roof'}OpenYokeRws`;
+  station.name = `${tankSeedId(P.spec.id)}${weaponRole === 'auxiliary' ? 'Aux' : 'Roof'}OpenYokeRws`; // schema-1 name
   station.position.set(x, y, z);
   station.rotation.y = yaw;
   station.userData.hostVariant = P.spec.id;

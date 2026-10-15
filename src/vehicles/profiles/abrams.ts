@@ -1,3 +1,4 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
@@ -2393,7 +2394,7 @@ function addAbramsXStyleRws(P: AbramsBuilderPort, {
   });
   const roleName = weaponRole === 'auxiliary'
     ? 'Aux' : weaponRole.startsWith('loader') ? 'Loader' : 'Commander';
-  station.name = `${P.spec.id}${roleName}OpenYokeRws`;
+  station.name = `${tankSeedId(P.spec.id)}${roleName}OpenYokeRws`; // schema-1 name (tankIdAliases.ts)
   station.position.set(x, y, z);
   station.rotation.y = yaw;
   station.userData.hostVariant = P.spec.id;

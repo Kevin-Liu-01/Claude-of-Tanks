@@ -1,6 +1,6 @@
 import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
-import { tankSeedId } from './tankIdAliases.ts';
+import { resolveTankId, tankSeedId } from './tankIdAliases.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -2917,7 +2917,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
   ];
   const decorId = decorIdentityFor(spec.id);
-  const curated = TANK_MANIFESTS[decorId];
+  // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
+  const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
   // Give every playable a visible, deterministic field load rather than one
   // tiny hash-selected object that can disappear behind a bustle. Seven
   // station-aware pieces occupy the bustle, rear turret roof, engine deck,

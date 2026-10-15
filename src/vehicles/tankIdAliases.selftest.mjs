@@ -169,6 +169,13 @@ const SEEDED = {
 };
 assert.match(readFileSync(new URL('./decorations.ts', import.meta.url), 'utf8'), /\/_x\$\/\.test\(tankSeedId\(spec\.id\)\)/,
   'the source-study rebuild gate reads the schema-1 `_x` suffix');
+assert.match(readFileSync(new URL('./decorations.ts', import.meta.url), 'utf8'), /TANK_MANIFESTS\[resolveTankId\(decorId, 1\)\]/,
+  'the curated decor table (current ids) is read with the schema-1 decor identity resolved to the current id');
+for (const [file, pattern] of Object.entries({
+  'profiles/abrams.ts': /station\.name = `\$\{tankSeedId\(P\.spec\.id\)\}\$\{roleName\}OpenYokeRws`/,
+  'profiles/leopard.ts': /const gunName = `\$\{tankSeedId\(P\.spec\.id\)\}Flw200Gun`/,
+  'profiles/leopardX.ts': /captureAuxiliaryStock\(P,`\$\{tankSeedId\(P\.spec\.id\)\}RoofMachineGun`\)/,
+})) assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file}: roof-gun names keep their schema-1 spelling`);
 for (const [file, pattern] of Object.entries(SEEDED)) {
   assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file} seeds from tankSeedId`);
 }
