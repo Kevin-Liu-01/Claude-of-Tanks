@@ -263,11 +263,11 @@ export function addGarageApproachDetails({
     }
   };
 
-  const addRuts = (offsets: readonly number[], color: number, width = 0.34): void => {
+  const addRuts = (offsets: readonly number[], color: number, width = 0.34, lift = 0.085): void => {
     for (const offset of offsets) {
       const rut = points.map((point) => ({ side: point.side + offset, depth: point.depth }));
       for (let index = 0; index < rut.length - 1; index += 1) {
-        pathPanel(baked, groundAtWorld, rut[index], rut[index + 1], width, 0.035, 0.085);
+        pathPanel(baked, groundAtWorld, rut[index], rut[index + 1], width, 0.035, lift);
         paint(baked.at(-1)!, color);
         approachDetails += 1;
       }
@@ -436,9 +436,15 @@ export function addGarageApproachDetails({
     },
     'alpine-pass': () => {
       addPath(points, approach.width, 0.16);
-      addRuts(approach.lanes || [-2.3, 2.3], 0x7b878c, 0.36);
-      addEdgeCourse(-approach.width / 2 - 0.8, 0x61696c, 0.24, 0.30);
-      addEdgeCourse(approach.width / 2 + 0.8, 0x61696c, 0.24, 0.30);
+      // tracks pressed into the packed snow, a grey trodden band with the darker slush in it (the re-judge, 2026-10-15:
+      // the thin pale ruts read as "rails ... flat grey strips lying on the snow"), and the plough's berms banked along
+      // both edges, a broad low ridge under a narrower crest
+      addRuts(approach.lanes || [-2.3, 2.3], 0xaab2b6, 0.78);
+      addRuts(approach.lanes || [-2.3, 2.3], 0x7f7c76, 0.4, 0.1);
+      for (const side of [-1, 1]) {
+        addEdgeCourse(side * (approach.width / 2 + 0.9), 0xd7dfe4, 1.5, 0.2);
+        addEdgeCourse(side * (approach.width / 2 + 1.0), 0xe6ecef, 0.8, 0.4);
+      }
       addRoadsidePosts(5.5, approach.width / 2 + 1.2, 0xde603d, 1.9);
       for (const depth of [21, 33, 43]) {
         const point = samplePath(points, depth);

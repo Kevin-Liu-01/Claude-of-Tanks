@@ -31,6 +31,11 @@ export interface RockFaceOptions {
   readonly cell?: number;
   /** The tunnel's opening and its lining, if any. */
   readonly opening?: Readonly<{ u: number; half: number; spring: number; length: number; lining: number }>;
+  /**
+   * The cut the portal's headwall is cast into: within `half` of the opening and up to `top` the face stands plumb at `w`
+   * (just behind the headwall), blending back into the rock's own form over 3 m to either side and above.
+   */
+  readonly cut?: Readonly<{ half: number; w: number; top: number }>;
 }
 
 interface Soup {
@@ -120,18 +125,38 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     return ((h >>> 0) % 10000) / 10000;
   };
   const crest = (u: number): number => height * (0.78 + 0.22 * fbm(u * 0.09 + 3, 1.7)) * (1 - 0.35 * Math.pow(Math.abs(u) / half, 3));
-  // the face's set-back at (u, y) within stratum s at fraction t up it
-  const setBack = (u: number, y: number, s: number, t: number): number => {
+  // The face's form (the re-judge, 2026-10-15: "horizontal smeared bands ... like a sliced layer cake ... no rock form,
+  // joints or facets, and snow does not sit only on the low-angle faces"): no stratum steps any more. The plan swings in
+  // and out over 6-14 m in buttresses with sharp noses and gullies between them; two benches dip across the face, where
+  // it steps back a metre or two over a metre's height and the snow lies; jointed blocks 2-4 m wide in tiers of three
+  // strata stand proud or set back; the whole face batters back with height and its ends curl into the hill.
+  const plan = (u: number): number => (1 - Math.abs(noise(u * 0.085 + 5.3, 2.1) * 2 - 1)) * 2.4 - 1.2
+    + (fbm(u * 0.21 + 1.3, 7.7) - 0.5) * 1.4;
+  const smooth = (x: number): number => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
+  const bench = (u: number, y: number, at: number, back: number, seedU: number): number => {
+    const line = at + 0.12 * u + (fbm(u * 0.05 + seedU, 3.3) - 0.5) * 3.0;
+    const reach = back * smooth((fbm(u * 0.06 + seedU * 2, 9.1) - 0.32) * 3);
+    return -reach * smooth((y - line) / 2.4); // a ledge a couple of metres deep, not a stripe (CPU canonical, 2026-10-15)
+  };
+  // the portal's cut: 1 within the headwall's reach of the opening, 0 three metres beyond it
+  const cutShare = (u: number): number => (options.cut && opening
+    ? 1 - smooth((Math.abs(u - opening.u) - options.cut.half) / 3) : 0);
+  /** The face's continuous form (its slope decides where snow lies). */
+  const formBack = (u: number, y: number): number => {
     const curl = -depth * 0.45 * Math.pow(Math.abs(u) / half, 3) * (0.8 + 0.4 * fbm(y * 0.2, 4.1));
-    const batter = -0.2 * y;
-    const lean = -0.45 * (1 - t);
-    // joint blocks: the stratum breaks into blocks 1.6-3.2 m wide, each standing proud or set back as a whole
-    const blockWidth = 1.6 + hash(s, 7) * 1.6;
-    const block = Math.floor(u / blockWidth + hash(s, 3) * 3);
-    const jointed = (hash(block, s) - 0.5) * 0.2; // (0.45 stepped the face into blocks: v3 stills)
-    const rough = (fbm(u * 0.12 + 3.1, y * 0.15) - 0.5) * 2.6 + (fbm(u * 0.3 + s * 1.7, y * 0.3) - 0.5) * 0.9
-      + (fbm(u * 0.9 + 11, y * 0.9 + s) - 0.5) * 0.3;
-    return curl + batter + lean + jointed + rough;
+    const rock = curl - 0.18 * y + plan(u) * (0.85 + 0.3 * fbm(y * 0.08 + 2, u * 0.02)) + bench(u, y, height * 0.34, 2.2, 1.7)
+      + bench(u, y, height * 0.66, 1.6, 6.1);
+    const share = cutShare(u) * (options.cut ? 1 - smooth((y - options.cut.top) / 3) : 0);
+    return share > 0 ? rock + (options.cut!.w - rock) * share : rock; // the cut stands plumb behind the headwall
+  };
+  // the face's set-back at (u, y) within stratum s (the strata only order the mesh's rows now)
+  const setBack = (u: number, y: number, s: number, _t: number): number => {
+    const tier = Math.floor(s / 3);
+    const blockWidth = 2 + hash(tier, 7) * 2;
+    const block = Math.floor(u / blockWidth + hash(tier, 3) * 3);
+    const jointed = (hash(block, tier) - 0.5) * 0.5;
+    const rough = (fbm(u * 0.3 + s * 1.7, y * 0.3) - 0.5) * 0.7 + (fbm(u * 0.9 + 11, y * 0.9 + s) - 0.5) * 0.3;
+    return formBack(u, y) + (jointed + rough) * (1 - 0.75 * cutShare(u)); // the cut face is dressed flatter
   };
   const inOpening = (u: number, y: number, margin = 0): boolean => {
     if (!opening) return false;
@@ -139,20 +164,24 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     if (y < opening.spring) return du < opening.half + margin;
     return Math.hypot(du, y - opening.spring) < opening.half + margin;
   };
-  // the strata pulled halfway to their mean so the bands read as one rock, coloured per vertex from smooth noise so
-  // neighbouring facets blend (a colour per facet read as pixels in the GPU stills)
+  // the gneiss's foliation dips and folds across the face in tones pulled most of the way to their mean, so it reads as
+  // one rock with a grain, not as stripes; noses lighter, gullies darker, water streaks; snow only where the form lies
+  // back (the benches and the crest), its edge broken by noise
   const mean = options.strata.map(linear).reduce((acc, c) => acc.add(c), new THREE.Color(0, 0, 0)).multiplyScalar(1 / options.strata.length);
-  const strataTones = options.strata.map((hex) => linear(hex).lerp(mean, 0.5));
+  const strataTones = options.strata.map((hex) => linear(hex).lerp(mean, 0.68));
   const snow = linear(options.snow);
   const snowShade = linear(0xc9d3da);
-  const tone = (s: number, u: number, y: number, n: THREE.Vector3): THREE.Color => {
-    if (n.y > 0.55) return snow.clone().lerp(snowShade, fbm(u * 0.8, y * 0.8) * 0.5);
-    const base = strataTones[s % strataTones.length].clone();
-    base.multiplyScalar(0.84 + fbm(u * 0.18 + 9, y * 0.22) * 0.32);
-    // dark streaks where water runs down the face, and the wet foot
+  const tone = (_s: number, u: number, y: number, _n: THREE.Vector3): THREE.Color => {
+    const band = (y + 0.13 * u + 2.2 * fbm(u * 0.04 + 2, y * 0.05)) / 2.4;
+    const i0 = Math.floor(band), f = band - i0, n = strataTones.length;
+    const base = strataTones[((i0 % n) + n) % n].clone().lerp(strataTones[(((i0 + 1) % n) + n) % n], f * f * (3 - 2 * f));
+    base.multiplyScalar(0.86 + fbm(u * 0.15 + 9, y * 0.18) * 0.28);
+    base.multiplyScalar(0.84 + 0.16 * Math.min(1, Math.max(0, (plan(u) + 1.2) / 2.4)));
     base.multiplyScalar(1 - Math.pow(fbm(u * 0.7 + 21, y * 0.05), 3) * 0.35);
     if (y < 1.2) base.multiplyScalar(0.8 + y / 6);
-    return base;
+    const slope = (formBack(u, y + 0.35) - formBack(u, y - 0.35)) / 0.7;
+    const lying = smooth((-slope - 0.6) / 0.9) * smooth((fbm(u * 0.11 + 4, y * 0.16) - 0.3) * 2.2); // patches, broken along the ledge
+    return lying > 0 ? base.lerp(snow.clone().lerp(snowShade, fbm(u * 0.8, y * 0.8) * 0.5), lying) : base;
   };
   const us = Array.from({ length: columns + 1 }, (_, k) => -half + (k / columns) * width);
   const ground = us.map((u) => frame.groundAt(u, 0));
@@ -189,8 +218,9 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
         const a = face(k, s, 2), b = face(k + 1, s, 2), c = face(k + 1, s + 1, 0), d = face(k, s + 1, 0);
         const mu = (us[k] + us[k + 1]) / 2, my = a.y - ground[k];
         if (a.y >= rows(k, s + 1)[2] - 1e-3 || inOpening(mu, my, -0.15)) continue;
-        triangle(soup, a, b, c, snow);
-        triangle(soup, a, c, d, snow);
+        const at = (p: THREE.Vector3, k0: number): THREE.Color => tone(s, us[k0], p.y - ground[k0], FACE_NORMAL);
+        triangle(soup, a, b, c, at(a, k), at(b, k + 1), at(c, k + 1));
+        triangle(soup, a, c, d, at(a, k), at(c, k + 1), at(d, k));
       }
     }
   }
@@ -207,7 +237,7 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     for (let s = 0; s < strata; s += 1) {
       const a = face(k, s, 0), b = face(k, s, 2);
       const backA = world(us[k] * 0.98, a.y, -depth), backB = world(us[k] * 0.98, b.y, -depth);
-      const color = strataTones[s % strataTones.length].clone().multiplyScalar(0.8);
+      const color = tone(s, us[k], a.y - ground[k], FACE_NORMAL).multiplyScalar(0.8);
       if (sign < 0) { triangle(soup, a, b, backB, color); triangle(soup, a, backB, backA, color); }
       else { triangle(soup, a, backA, backB, color); triangle(soup, a, backB, b, color); }
     }
