@@ -17,7 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
-import { buildRockFace } from './garageRockKit.ts';
+import { buildEarthMound, buildRockFace } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -2214,17 +2214,90 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('winter-recovery');
       servicePurposeTags.add('heated-component-bay');
-      addShadeHall(featureSide, 18, featureDepth, new THREE.Color(0x77858c));
-      for (const offset of [-6.2, 6.2]) {
-        clusterCylinder(featureCluster, offset, 1, 1.2,
-          0.52, 2.4, steel, 0, 14, Math.PI / 2);
-        clusterBox(featureCluster, offset, 1.9, 1.2,
-          0.25, 2.5, 0.25, dark, 'structure');
+      // Frosthollow's repair bunker (garage round 7, 2026-10-14; props census #20, garage:repair_bunker grade 1: the shared
+      // steel shade hall). The ploughed road runs into a reinforced-concrete repair bunker half sunk into the slope under
+      // an earth cover deep in snow (garageRockKit.ts buildEarthMound): a chamfered facade with a vehicle portal cut
+      // through its 0.9 m and lined 3 m deep, one sliding steel leaf drawn aside on its track, wing walls stepping down
+      // into the bank, a blast wall screening the personnel door, vent stacks and periscope cowls through the cover, log
+      // cribbing holding the earth at the flanks, drifts against the windward faces, and a timber lean-to over the
+      // repair apron. Squared on the road's run into it.
+      const portalSide = -2.6, portalDepth = 26.5;
+      const origin = cameraPoint(portalSide, portalDepth);
+      const roadIn = cameraPoint(-3 + 3 / 16, 25); // back down the road toward (0, 10)
+      const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      const toWorld = (u: number, w: number): { x: number; z: number } => ({ x: origin.x + c * u + sn * w, z: origin.z - sn * u + c * w });
+      const baseY = groundAtWorld(origin.x, origin.z);
+      const bunker: FacilityCluster = { x: origin.x, z: origin.z, baseY, yaw };
+      const atGround = (u: number, w: number): FacilityCluster => { const p = toWorld(u, w); return { ...p, baseY: groundAtWorld(p.x, p.z), yaw }; };
+      const concrete = new THREE.Color(0x9fa29f), concreteDark = new THREE.Color(0x7f8381), snowTone = new THREE.Color(0xe9eff2);
+      const log = new THREE.Color(0x5b4632), logDark = new THREE.Color(0x46352a), steelLeaf = new THREE.Color(0x56605a);
+      const halfFace = 8.5, faceH = 5.2, faceT = 0.9, portalHalf = 3.1, portalH = 4.3;
+      // the earth cover behind the facade
+      buckets.baked!.push(buildEarthMound({
+        x: origin.x, z: origin.z, yaw, groundAt: (u, w) => { const p = toWorld(u, w); return groundAtWorld(p.x, p.z); },
+      }, { width: 2 * halfFace + 4, length: 15, height: faceH + 1.6, seed: 0x5b0c, snow: 0xe8eef1, earth: 0x5d5246 }));
+      // the facade: piers either side of the portal, a beam over it, a chamfered coping, the portal's lining
+      for (const side of [-1, 1]) {
+        const inner = side * portalHalf, outer = side * halfFace;
+        clusterBox(bunker, (inner + outer) / 2, 0, faceH / 2, Math.abs(outer - inner), faceH, faceT, concrete, 'masonry');
       }
-      addServiceManifold(featureCluster, 0, -2.45, 5.2);
-      addPoweredWinch(featureCluster, 6.5, -2.35, new THREE.Color(0x758b9a));
-      addPartsPallet(featureCluster, -6.1, -2.55, 2);
-      addHydrostaticInspectionDock(featureCluster, -1.4, 0.35, new THREE.Color(0x73848c));
+      clusterBox(bunker, 0, 0, (portalH + faceH) / 2, 2 * portalHalf, faceH - portalH, faceT, concrete, 'masonry');
+      clusterBox(bunker, 0, 0.05, faceH + 0.12, 2 * halfFace + 0.3, 0.24, faceT + 0.2, concreteDark, 'masonry');
+      for (const side of [-1, 1]) clusterBox(bunker, 0, side * (faceT / 2 + 0.07), faceH - 0.05, 2 * halfFace + 0.2, 0.18, 0.18, concreteDark, 'masonry', 0, Math.PI / 4);
+      for (const side of [-1, 1]) clusterBox(bunker, side * (portalHalf + 0.15), -1.5, portalH / 2, 0.3, portalH, 3.2, concreteDark, 'masonry'); // lining walls
+      clusterBox(bunker, 0, -1.5, portalH + 0.15, 2 * portalHalf + 0.6, 0.3, 3.2, concreteDark, 'masonry'); // lining soffit
+      clusterBox(bunker, 0, -3.15, portalH / 2, 2 * portalHalf, portalH, 0.1, dark, 'painted'); // the dark of the bay beyond
+      for (let board = 0; board < 9; board += 1) { // board-formed concrete: the shuttering's joints as shallow ribs
+        clusterBox(bunker, 0, faceT / 2 + 0.01, 0.4 + board * 0.55, 2 * halfFace - 0.1, 0.03, 0.03, concreteDark, 'masonry');
+      }
+      // the sliding leaf drawn aside on its top track, against the right pier
+      clusterBox(bunker, 0, faceT / 2 + 0.35, portalH + 0.35, 2 * halfFace - 1.0, 0.18, 0.18, dark, 'structure');
+      clusterBox(bunker, portalHalf + 2.6, faceT / 2 + 0.25, portalH / 2 + 0.05, 2 * portalHalf - 0.6, portalH - 0.1, 0.16, steelLeaf, 'structure');
+      for (let rib = 0; rib < 4; rib += 1) clusterBox(bunker, portalHalf + 2.6, faceT / 2 + 0.36, 0.6 + rib * 1.05, 2 * portalHalf - 0.7, 0.1, 0.06, dark, 'structure');
+      clusterBox(bunker, 0, faceT / 2 + 0.04, 0.05, 2 * halfFace - 1.0, 0.06, 0.14, dark, 'structure'); // the floor guide
+      // wing walls stepping down into the bank, and log cribbing holding the earth beyond them
+      for (const side of [-1, 1]) {
+        for (let step = 0; step < 3; step += 1) {
+          const h = faceH - 1.2 - step * 1.25;
+          clusterBox(bunker, side * (halfFace + 0.6 + step * 1.6), -0.6 - step * 0.9, h / 2, 1.6, h, 0.8, concrete, 'masonry', 0, 0);
+        }
+        for (let course = 0; course < 5; course += 1) {
+          const cb = atGround(side * (halfFace + 5.6), -2.2);
+          clusterCylinder(cb, 0, 0, 0.18 + course * 0.34, 0.16, 3.4, course % 2 ? log : logDark, Math.PI / 2, 10, 0);
+          if (course % 2 === 0) for (const dl of [-0.9, 0.9]) clusterCylinder(cb, dl, 0, 0.35 + course * 0.34, 0.15, 1.6, logDark, 0, 10, Math.PI / 2);
+        }
+        clusterBox(atGround(side * (halfFace + 3.5), 0.8), 0, 0, 0.35, 3.0, 0.7, 1.6, snowTone, 'painted', side * 0.25); // a drift
+      }
+      // vent stacks and periscope cowls through the cover
+      for (const [u, w, h] of [[-4.5, -5.5, 2.6], [5.0, -8.0, 2.2]] as const) {
+        const stack = atGround(u, w);
+        clusterCylinder(stack, 0, 0, faceH + 0.4, 0.38, h + 1.6, concrete, 0, 16);
+        clusterCylinder(stack, 0, 0, faceH + h + 1.25, 0.5, 0.18, dark, 0, 16);
+      }
+      for (const [u, w] of [[-1.5, -3.2], [2.2, -4.5]] as const) {
+        const cowl = atGround(u, w);
+        clusterCylinder(cowl, 0, 0, faceH + 1.6, 0.14, 1.1, steelLeaf, 0, 10);
+        clusterBox(cowl, 0, 0.12, faceH + 2.2, 0.32, 0.26, 0.44, steelLeaf, 'structure');
+      }
+      // the blast wall screening the personnel door left of the portal
+      clusterBox(bunker, -portalHalf - 2.6, 2.4, 1.3, 3.4, 2.6, 0.9, concrete, 'masonry');
+      clusterBox(bunker, -portalHalf - 2.6, 0.2, 1.05, 1.0, 2.1, faceT + 0.06, new THREE.Color(0x4d5650), 'painted'); // the door's leaf in its frame
+      clusterBox(bunker, -portalHalf - 2.6, 0.5, 2.3, 1.3, 0.14, 0.3, concreteDark, 'masonry'); // its hood
+      // the repair apron's timber lean-to on the right: posts, a mono-pitch roof under snow
+      {
+        const lean = atGround(halfFace + 1.8, 4.6);
+        for (const dl of [-2.6, 2.6]) for (const df of [-1.6, 1.6]) clusterBox(lean, dl, df, df < 0 ? 1.7 : 1.35, 0.2, df < 0 ? 3.4 : 2.7, 0.2, log, 'painted');
+        clusterSurface(lean, 'timber', 0, 0, 3.15, 6.0, 0.1, 4.0, { rotationX: 0.18 });
+        clusterBox(lean, 0, 0, 3.32, 5.8, 0.26, 3.8, snowTone, 'painted', 0, 0.18);
+        clusterBox(lean, 0, -1.6, 3.3, 5.6, 0.18, 0.18, logDark, 'painted');
+      }
+      structuralConnections += 40;
+      // the yard's heated-component kit in front of the bunker, clear of the road
+      addServiceManifold(fixedCluster(featureSide + 9.5, featureDepth - 9.5), 0, 0, 5.2);
+      addPoweredWinch(fixedCluster(featureSide - 11.0, featureDepth - 9.0), 0, 0, new THREE.Color(0x758b9a));
+      addPartsPallet(fixedCluster(featureSide - 13.0, featureDepth - 3.0), 0, 0, 2);
+      addHydrostaticInspectionDock(fixedCluster(featureSide + 13.0, featureDepth - 3.5), 0, 0, new THREE.Color(0x73848c));
   };
   const addBrickArsenal = (): void => {
       environmentSpecificAssemblies += 1;
