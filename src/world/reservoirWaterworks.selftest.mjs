@@ -337,6 +337,17 @@ function validateAssembly(receipt, buckets, field) {
     const ring = receipt.pipe.find(v => Math.hypot(v[0] - x, v[2] - z) < 1e-5);
     assert.ok(ring && b.max.y > ring[1] - Math.sin(Math.PI / 3) * 0.34, 'brace intersects its connected pipe ring');
   }
+  // (props lane A, #21, 2026-10-14, Lane B's round 5 lifted: "unsupported pipes", the bank "a roofless box") a pier under
+  // every inner ring of the penstock, an iron strap over each; the bank's parapets and coping on its head
+  assert.equal(geometry.filter(g => g.name === 'reservoir-penstock-support').length, 6, 'a pier under every inner ring');
+  const straps = geometry.find(g => g.name === 'reservoir-penstock-straps');
+  assert.ok(straps && buckets.dark.includes(straps), 'the straps over the piers, in iron');
+  const head = geometry.find(g => g.name === 'reservoir-bank-parapets');
+  assert.ok(head && buckets.stone.includes(head), 'the bank\'s parapets and coping, in its stone');
+  const bankBody = geometry.find(g => g.name === 'reservoir-bank-body').boundingBox;
+  assert.ok(head.boundingBox.min.y < bankCap.max.y && head.boundingBox.max.y > bankCap.max.y + 0.5, 'the parapets stand on the bank\'s head');
+  assert.ok(head.boundingBox.min.x >= bankBody.min.x - 0.1 && head.boundingBox.max.x <= bankBody.max.x + 0.1
+    && head.boundingBox.min.z >= bankBody.min.z - 0.1 && head.boundingBox.max.z <= bankBody.max.z + 0.1, 'within a hand of its edges');
 }
 
 function meshDistance(geometries, origin, direction) {
