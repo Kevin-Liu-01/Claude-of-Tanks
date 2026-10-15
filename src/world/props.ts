@@ -70,7 +70,8 @@ import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import {
-  AMMOBOX_LEGACY, bSandbagBroken, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap,
+  AMMOBOX_LEGACY, bSandbagBroken, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, fieldworksTypes,
+  paintBurlap,
 } from './maps/fieldworksKit.ts'; // #10 fieldworks
 import {
   FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBankField, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
@@ -4404,6 +4405,9 @@ ${snowCap ? `
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
+    // (props census #10) the field works as the map's period and side built them (maps/fieldworksKit.ts): the sandbags,
+    // the wire, the tent and the ammunition boxes, on the same keys and records
+    ...fieldworksTypes(mapId, mobileProps),
     // the field wall is dry stone (inhabitKit.ts) on its own rubble print, except under a brick print, which keeps the
     // coursed module on the stone print
     // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
@@ -8157,9 +8161,11 @@ ${snowCap ? `
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
-      for (const beamSpec of beams) {
-        const beam = buildHedgehogBeam(beamSpec.tilt, beamSpec.yaw, hx, y, hz, scale);
-        buckets.dark.push(beam); clutter.ownPiece(beam);
+      for (const [beamIndex, beamSpec] of beams.entries()) {
+        // (#10 fieldworks: the beam as the map's period built it, maps/fieldworksKit.ts)
+        for (const part of buildHedgehogBeam(mapId, beamIndex, beamSpec.tilt, beamSpec.yaw, hx, y, hz, scale)) {
+          buckets[part.bucket].push(part.geometry); clutter.ownPiece(part.geometry);
+        }
         const record: PropsCollisionRecord = {
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,

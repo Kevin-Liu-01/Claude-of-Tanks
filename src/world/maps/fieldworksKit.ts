@@ -10,6 +10,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { box as propBox } from '../propGeometry.ts';
 // (b45: a rebuilt kind spends its legacy builder's draws exactly)
 import { spentDraws } from './brokenDraws.ts';
+import type { DestructiblePropType } from './inhabitKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -432,14 +433,30 @@ export function bBarbedWireBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+// --- the family's seams in props.ts ---------------------------------------------------------------------------------
+/** A field work's drawn part and the props bucket it rides. */
+export interface FieldworksPart {
+  bucket: 'dark' | 'baked';
+  geometry: THREE.BufferGeometry;
+}
+
+/**
+ * The destructible kinds of the field works as `mapId`'s period and side built them (props.ts LOCAL_TYPES, after the
+ * sandbag stacks: the same keys, records and footprints; a map's own structure variants still win after it).
+ */
+export function fieldworksTypes(_mapId: string, _mobile: boolean): Record<string, DestructiblePropType> {
+  return {};
+}
+
 // --- anti-tank hedgehogs (props.ts placeHedgehogs: three beams a hedgehog, hedgehogBeamSpecs) -------------------------
-/** A hedgehog's beam placed at (x, y, z) (the hedgehog's foot), in the props' dark bucket. */
-export function buildHedgehogBeam(tilt: number, yaw: number, x: number, y: number, z: number, scale: number): THREE.BufferGeometry {
+/** A hedgehog's beam `beam` (0-2) placed at (x, y, z) (the hedgehog's foot) as `mapId` builds it: its drawn parts. */
+export function buildHedgehogBeam(_mapId: string, _beam: number, tilt: number, yaw: number, x: number, y: number, z: number,
+  scale: number): FieldworksPart[] {
   const beam = propBox(0.16 * scale, 0.16 * scale, 2.1 * scale, 1.2);
   beam.rotateX(tilt);
   beam.rotateY(yaw);
   beam.translate(x, y + 0.62 * scale, z);
-  return beam;
+  return [{ bucket: 'dark', geometry: beam }];
 }
 
 // ---------------------------------------------------------------------------------------------- sandbag stacks
