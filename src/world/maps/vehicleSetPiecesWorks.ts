@@ -267,7 +267,7 @@ function dozerTrack(mesh: VehicleMesh, x: number, tw: number, coarse: boolean, b
   const shoe = burnt ? RUSTY : BLACK;
   if (!coarse) {
     // the grousers across the shoes on the ground run and the top run
-    for (let k = 0; k < 14; k++) mesh.box(x, 0.0, zr + 0.1 + k * ((zf - zr - 0.2) / 13), tw, 0.045, 0.045, shoe, 0);
+    for (let k = 0; k < 8; k++) mesh.box(x, 0.0, zr + 0.1 + k * ((zf - zr - 0.2) / 7), tw, 0.045, 0.045, shoe, 0);
     for (let k = 0; k < 13; k++) {
       const t = (k + 0.5) / 13, z = zr + (zf - zr) * t, y = (yr + rr) + ((yf + rf) - (yr + rr)) * t + 0.06;
       mesh.box(x, y, z, tw, 0.045, 0.045, shoe, 0);
@@ -287,19 +287,20 @@ function dozerTrack(mesh: VehicleMesh, x: number, tw: number, coarse: boolean, b
     () => (burnt ? RUSTY : STEEL_M));
   mesh.pop();
   // the bottom rollers on the track frame and the two carrier rollers over it
-  for (let k = 0; k < (coarse ? 3 : 6); k++) {
-    const z = zr + 0.45 + k * ((zf - zr - 0.9) / (coarse ? 2 : 5));
+  // (mostly hidden behind the band and the frame: four a side, plain)
+  for (let k = 0; k < (coarse ? 3 : 4); k++) {
+    const z = zr + 0.45 + k * ((zf - zr - 0.9) / (coarse ? 2 : 3));
     mesh.push().translate(x, 0.2, z);
-    mesh.lathe([[0.0001, -0.16], [0.17, -0.16], [0.13, -0.08], [0.13, 0.08], [0.17, 0.16], [0.0001, 0.16]], coarse ? 6 : 8, () => STEEL_M);
+    mesh.lathe([[0.0001, -0.16], [0.16, -0.16], [0.16, 0.16], [0.0001, 0.16]], 6, () => STEEL_M);
     mesh.pop();
   }
   for (const z of [-0.45, 0.45]) {
     mesh.push().translate(x, 0.98, z);
-    mesh.lathe([[0.0001, -0.1], [0.1, -0.1], [0.1, 0.1], [0.0001, 0.1]], coarse ? 6 : 8, () => STEEL_M);
+    mesh.lathe([[0.0001, -0.1], [0.1, -0.1], [0.1, 0.1], [0.0001, 0.1]], 6, () => STEEL_M);
     mesh.pop();
   }
   // the track frame between them and the recoil spring's housing ahead
-  mesh.box(x, 0.42, 0, 0.32, 0.3, zf - zr - 0.3, burnt ? RUSTY : CAT_YELLOW, 0.02);
+  mesh.box(x, 0.42, 0, 0.32, 0.3, zf - zr - 0.3, burnt ? RUSTY : CAT_YELLOW, 0);
   mesh.box(x, 0.5, 0.95, 0.24, 0.22, 0.5, burnt ? RUSTY : CAT_YELLOW, 0);
 }
 
@@ -323,18 +324,18 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
     mesh.push().translate(-gauge, 0.55, -1.35);
     mesh.lathe([[0.0001, -0.12], [0.44, -0.12], [0.44, 0.12], [0.0001, 0.12]], coarse ? 8 : 12, () => RUSTY);
     mesh.pop();
-    mesh.box(-gauge, 0.42, 0, 0.32, 0.3, 2.4, RUSTY, 0.02);
+    mesh.box(-gauge, 0.42, 0, 0.32, 0.3, 2.4, RUSTY, 0);
   }
   // the main frame, the engine and its hood with louvred side doors (a door off in the wreck), the radiator guard
-  mesh.box(0, 0.95, 0.1, 1.5, 0.5, 3.3, BLACK, 0.03);
-  mesh.box(0, 1.45, 0.55, 1.0, 0.6, 1.9, ENGINE, 0.03);
-  mesh.box(0, 2.27, 0.55, 1.24, 0.08, 2.0, paint, 0.02);
+  mesh.box(0, 0.95, 0.1, 1.5, 0.5, 3.3, BLACK, 0);
+  mesh.box(0, 1.45, 0.55, 1.0, 0.6, 1.9, ENGINE, 0);
+  mesh.box(0, 2.27, 0.55, 1.24, 0.08, 2.0, paint, 0);
   for (const sx of [1, -1]) {
     const off = wrecked && sx < 0;
     if (!off) {
-      mesh.box(sx * 0.6, 1.73, 0.55, 0.05, 1.0, 1.96, paint, 0.01);
+      mesh.box(sx * 0.6, 1.73, 0.55, 0.05, 1.0, 1.96, paint, 0);
       if (!coarse) mesh.dressing(() => {
-        for (let k = 0; k < 5; k++) mesh.box(sx * 0.63, 1.45 + k * 0.12, 0.85, 0.02, 0.035, 0.9, DARK, 0);
+        for (let k = 0; k < 3; k++) mesh.box(sx * 0.63, 1.5 + k * 0.16, 0.85, 0.02, 0.035, 0.9, DARK, 0);
         mesh.box(sx * 0.63, 1.73, 0.55, 0.015, 0.95, 0.015, DARK, 0);
       });
     }
@@ -342,9 +343,9 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   // the guard: its posts and top, the bars before the radiator's core (dark, 0.12 m back)
   const gz = 1.62;
   mesh.box(0, 1.75, gz - 0.12, 1.08, 0.95, 0.04, DARK, 0);
-  for (const sx of [1, -1]) mesh.box(sx * 0.62, 1.7, gz, 0.14, 1.2, 0.22, paint, 0.02);
-  mesh.box(0, 2.32, gz, 1.38, 0.16, 0.24, paint, 0.02);
-  mesh.box(0, 1.1, gz + 0.02, 1.38, 0.2, 0.26, paint, 0.02);
+  for (const sx of [1, -1]) mesh.box(sx * 0.62, 1.7, gz, 0.14, 1.2, 0.22, paint, 0);
+  mesh.box(0, 2.32, gz, 1.38, 0.16, 0.24, paint, 0);
+  mesh.box(0, 1.1, gz + 0.02, 1.38, 0.2, 0.26, paint, 0);
   if (!coarse) for (let k = 0; k < 7; k++) mesh.box(-0.45 + k * 0.15, 1.72, gz + 0.04, 0.05, 0.92, 0.05, wrecked ? RUSTY : BLACK, 0);
   // the stack with its muffler, the precleaner bowl beside it
   mesh.tube([[0.32, 2.3, 1.0], [0.32, 3.05, 1.0]], 0.07, coarse ? 6 : 10, wrecked ? RUSTY : BLACK, { caps: true });
@@ -356,15 +357,15 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   mesh.pop();
   // the operator's station: the fenders over the tracks, the seat, the levers, the fuel tank behind
   for (const sx of [1, -1]) {
-    mesh.box(sx * gauge, 1.18, -0.75, tw + 0.1, 0.05, 1.6, paint, 0.01);
+    mesh.box(sx * gauge, 1.18, -0.75, tw + 0.1, 0.05, 1.6, paint, 0);
     mesh.box(sx * (gauge + tw / 2 + 0.03), 1.07, -0.75, 0.04, 0.24, 1.6, paint, 0);
   }
-  mesh.box(0, 1.35, -0.6, 1.3, 0.3, 1.0, paint, 0.02);
-  mesh.box(0, 1.62, -0.75, 0.55, 0.12, 0.5, wrecked ? RUSTY : SEAT, 0.02);
-  mesh.box(0, 1.95, -0.98, 0.55, 0.55, 0.1, wrecked ? RUSTY : SEAT, 0.02);
+  mesh.box(0, 1.35, -0.6, 1.3, 0.3, 1.0, paint, 0);
+  mesh.box(0, 1.62, -0.75, 0.55, 0.12, 0.5, wrecked ? RUSTY : SEAT, 0);
+  mesh.box(0, 1.95, -0.98, 0.55, 0.55, 0.1, wrecked ? RUSTY : SEAT, 0);
   if (!coarse) for (const sx of [1, -1]) strut(mesh, [sx * 0.22, 1.5, -0.25], [sx * 0.22, 2.0, -0.32], 0.03, 0.03, BLACK);
-  mesh.box(0, 1.45, -0.18, 1.1, 0.5, 0.12, BLACK, 0.02);
-  mesh.box(0, 1.6, -1.55, 1.5, 0.75, 0.6, paint, 0.04);
+  mesh.box(0, 1.45, -0.18, 1.1, 0.5, 0.12, BLACK, 0);
+  mesh.box(0, 1.6, -1.55, 1.5, 0.75, 0.6, paint, 0);
   if (!coarse) mesh.dressing(() => mesh.box(0.45, 2.0, -1.55, 0.14, 0.06, 0.14, STEEL_M, 0));
   // the ROPS canopy on its four posts (wrecked: the posts buckled, the roof slumped back onto the tank and the seat)
   const roofY = 3.3;
@@ -377,7 +378,7 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   }
   mesh.push();
   if (wrecked) mesh.translate(0, roofY - 0.35, -0.2).rotateX(-0.42).rotateZ(-0.08).translate(0, -roofY, 0.2);
-  mesh.box(0, roofY, -0.97, 1.6, 0.09, 1.75, paint, 0.02);
+  mesh.box(0, roofY, -0.97, 1.6, 0.09, 1.75, paint, 0);
   mesh.box(0, roofY - 0.08, -0.97, 1.66, 0.12, 0.08, paint, 0);
   for (const sx of [1, -1]) mesh.box(sx * 0.8, roofY - 0.08, -0.97, 0.08, 0.12, 1.75, paint, 0);
   mesh.pop();
@@ -408,7 +409,7 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   }
   strut(mesh, [1.35, 1.2, gz - 0.2], [1.6, 0.95 - bladeDrop, bz - 0.36], 0.1, 0.1, paint);
   // the ripper astern: its beam on the hitch, the shank and tip, the ram
-  mesh.box(0, 1.0, -1.95, 1.3, 0.22, 0.28, paint, 0.02);
+  mesh.box(0, 1.0, -1.95, 1.3, 0.22, 0.28, paint, 0);
   for (const sx of [1, -1]) strut(mesh, [sx * 0.5, 0.95, -1.75], [sx * 0.5, 1.0, -2.0], 0.12, 0.16, paint);
   mesh.box(0, 0.62, -2.1, 0.16, 0.95, 0.26, wrecked ? RUSTY : BLACK, 0);
   mesh.box(0, 0.1, -2.02, 0.12, 0.2, 0.3, RUSTY, 0);
@@ -445,18 +446,19 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
 /** An earthmover tyre with its lugs (axis along x) and its bolted disc rim, its disc on the outboard side (`side`);
  *  burnt: the rim and the bead's wire only. */
 function haulWheel(mesh: VehicleMesh, x: number, y: number, z: number, r: number, w: number, coarse: boolean, side: 1 | -1,
-  burnt: boolean, seed: number): void {
+  burnt: boolean, seed: number, inner = false): void {
   const rimR = r * 0.63;
   mesh.push().translate(x, y, z).scale(side, 1, 1);
   if (!burnt) {
     // the tread in the tyre's own surface: the crown's two halves carry their lugs a half pitch apart (the chevron of an
     // E-3 rock tyre), raised 4 cm over the grooves between them
-    const segs = coarse ? 14 : 24;
-    mesh.lathe([[rimR, -w / 2], [r * 0.9, -w / 2], [r * 0.955, -w * 0.45], [r * 0.985, -w * 0.36], [r * 0.985, -w * 0.04],
-      [r * 0.985, w * 0.04], [r * 0.985, w * 0.36], [r * 0.955, w * 0.45], [r * 0.9, w / 2], [rimR, w / 2]],
+    // (Copper's budget: an inner dual hides behind its outer one, 12 facets; the others 16)
+    const segs = coarse ? 12 : inner ? 12 : 16;
+    mesh.lathe([[rimR, -w / 2], [r * 0.955, -w * 0.45], [r * 0.985, -w * 0.36], [r * 0.985, -w * 0.04],
+      [r * 0.985, w * 0.04], [r * 0.985, w * 0.36], [r * 0.955, w * 0.45], [rimR, w / 2]],
       segs, () => RUBBER, { flip: true, radial: coarse ? undefined : (k, sIdx) => {
-        if (k >= 3 && k <= 4) return sIdx % 2 === 0 ? 1.035 : 1;
-        if (k >= 5 && k <= 6) return sIdx % 2 === 1 ? 1.035 : 1;
+        if (k >= 2 && k <= 3) return sIdx % 2 === 0 ? 1.035 : 1;
+        if (k >= 4 && k <= 5) return sIdx % 2 === 1 ? 1.035 : 1;
         return 1;
       } });
   } else {
@@ -471,9 +473,11 @@ function haulWheel(mesh: VehicleMesh, x: number, y: number, z: number, r: number
       mesh.tube(ring, 0.028, 4, RUSTY, { closed: true });
     }
   }
-  // the rim: its barrel between the bead seats, the dished disc and the hub on the outboard face, the nuts round it
+  // the rim: its barrel between the bead seats, the dished disc and the hub on the outboard face, the nuts round it (an
+  // inner dual's are hidden behind its outer one: none)
   const rim = burnt ? RUSTY : STEEL_M;
-  mesh.lathe([[rimR * 1.06, -w * 0.47], [rimR, -w * 0.44], [rimR, w * 0.44], [rimR * 1.06, w * 0.47]], coarse ? 10 : 12, () => rim, { flip: true });
+  if (inner) { mesh.pop(); return; }
+  mesh.lathe([[rimR * 1.06, -w * 0.47], [rimR, -w * 0.44], [rimR, w * 0.44], [rimR * 1.06, w * 0.47]], coarse ? 8 : 10, () => rim, { flip: true });
   mesh.lathe([[0.0001, w * 0.3], [rimR * 0.34, w * 0.3], [rimR * 0.42, w * 0.2], [rimR * 0.97, w * 0.1], [rimR * 0.97, w * 0.02],
     [0.0001, w * 0.02]], coarse ? 8 : 10, () => rim, { flip: true });
   if (!coarse) mesh.dressing(() => {
@@ -535,31 +539,31 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   const axleY = wrecked ? rimR + 0.03 : R;
   const wheels: [number, number, number][] = [];
   for (const sx of [1, -1]) wheels.push([sx * 1.65, 2.45, W], [sx * 1.42, -1.75, W], [sx * 1.98, -1.75, W * 0.95]);
-  wheels.forEach(([x, z, w], k) => haulWheel(mesh, x, axleY, z, R, w, coarse, x > 0 ? 1 : -1, wrecked, 11 + k));
+  wheels.forEach(([x, z, w], k) => haulWheel(mesh, x, axleY, z, R, w, coarse, x > 0 ? 1 : -1, wrecked, 11 + k, Math.abs(x) === 1.42));
   const drop = R - axleY;
   mesh.push();
   if (wrecked) mesh.translate(0, -drop, 0).rotateZ(0.035).rotateX(-0.012);
   // ---- the frame: two rails, crossmembers, the front bumper on its horns, the tow hooks, the rear horns and lamps
-  for (const sx of [1, -1]) mesh.box(sx * 0.58, 1.25, -0.1, 0.26, 0.52, 6.9, BLACK, 0.02);
+  for (const sx of [1, -1]) mesh.box(sx * 0.58, 1.25, -0.1, 0.26, 0.52, 6.9, BLACK, 0);
   for (const z of [3.05, 1.2, -0.4, -2.6, -3.35]) mesh.box(0, 1.22, z, 0.92, 0.36, 0.24, BLACK, 0);
-  mesh.box(0, 1.0, 3.48, 3.5, 0.38, 0.26, BLACK, 0.03);
+  mesh.box(0, 1.0, 3.48, 3.5, 0.38, 0.26, BLACK, 0);
   for (const sx of [1, -1]) {
-    mesh.box(sx * 1.62, 1.0, 3.48, 0.26, 0.5, 0.3, BLACK, 0.02);
+    mesh.box(sx * 1.62, 1.0, 3.48, 0.26, 0.5, 0.3, BLACK, 0);
     if (!coarse) mesh.dressing(() => mesh.box(sx * 0.4, 0.9, 3.63, 0.12, 0.2, 0.08, RUSTY, 0));
   }
   for (const sx of [1, -1]) mesh.dressing(() => mesh.box(sx * 0.58, 1.05, -3.6, 0.2, 0.14, 0.04, wrecked ? DARK : LAMP_AMBER, 0));
   // the front axle beam and spindles, the Hydrair struts from them up to the frame's front horns
-  mesh.box(0, R * 0.98, 2.45, 2.6, 0.32, 0.34, BLACK, 0.03);
+  mesh.box(0, R * 0.98, 2.45, 2.6, 0.32, 0.34, BLACK, 0);
   for (const sx of [1, -1]) {
-    mesh.tube([[sx * 1.08, 1.05, 2.45], [sx * 0.98, 1.82, 2.45]], 0.09, coarse ? 6 : 10, STEEL_M, { caps: true });
-    mesh.tube([[sx * 0.98, 1.72, 2.45], [sx * 0.9, 2.42, 2.45]], 0.15, coarse ? 6 : 10, BLACK, { caps: true });
+    mesh.tube([[sx * 1.08, 1.05, 2.45], [sx * 0.98, 1.82, 2.45]], 0.09, 6, STEEL_M, { caps: true });
+    mesh.tube([[sx * 0.98, 1.72, 2.45], [sx * 0.9, 2.42, 2.45]], 0.15, 8, BLACK, { caps: true });
   }
   // the rear axle housing, the differential and the planetary hubs outboard of the duals
-  mesh.box(0, R * 0.98, -1.75, 3.3, 0.46, 0.5, BLACK, 0.04);
+  mesh.box(0, R * 0.98, -1.75, 3.3, 0.46, 0.5, BLACK, 0);
   mesh.box(0, R * 0.98, -1.75, 0.9, 0.78, 0.8, BLACK, coarse ? 0 : 0.12);
   for (const sx of [1, -1]) {
     mesh.push().translate(sx * 2.25, R * 0.98, -1.75).scale(sx, 1, 1);
-    mesh.lathe([[0.0001, -0.08], [0.3, -0.08], [0.3, 0.02], [0.22, 0.1], [0.0001, 0.1]], coarse ? 8 : 10, () => (wrecked ? RUSTY : STEEL_M));
+    mesh.lathe([[0.0001, -0.08], [0.3, -0.08], [0.3, 0.02], [0.22, 0.1], [0.0001, 0.1]], 8, () => (wrecked ? RUSTY : STEEL_M));
     mesh.pop();
   }
   // the tanks on their straps outboard of the rails: diesel on the left, hydraulic oil on the right
@@ -572,39 +576,36 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   }
   // ---- the engine under its hood, the radiator grille in its surround (the core dark behind the bars)
   const hoodZ0 = 1.8, hoodZ1 = 3.4, hoodX = 0.82, hoodY0 = 1.5, hoodY1 = 2.5;
-  mesh.box(0, (hoodY0 + hoodY1) / 2 + 0.05, hoodZ1 - 0.06, hoodX * 2, hoodY1 - hoodY0 + 0.1, 0.12, paint, 0.02);
-  mesh.box(0, hoodY1 - 0.04, (hoodZ0 + hoodZ1) / 2, hoodX * 2, 0.08, hoodZ1 - hoodZ0, paint, 0.02);
+  mesh.box(0, (hoodY0 + hoodY1) / 2 + 0.05, hoodZ1 - 0.06, hoodX * 2, hoodY1 - hoodY0 + 0.1, 0.12, paint, 0);
+  mesh.box(0, hoodY1 - 0.04, (hoodZ0 + hoodZ1) / 2, hoodX * 2, 0.08, hoodZ1 - hoodZ0, paint, 0);
   // the side panels, louvred; wrecked, the left one is off (it lies on the ground below) and the engine shows
   for (const sx of [1, -1]) {
     const off = wrecked && sx > 0;
     if (!off) {
-      mesh.box(sx * (hoodX - 0.03), (hoodY0 + hoodY1) / 2, (hoodZ0 + hoodZ1) / 2 - 0.06, 0.06, hoodY1 - hoodY0, hoodZ1 - hoodZ0 - 0.12, paint, 0.01);
+      mesh.box(sx * (hoodX - 0.03), (hoodY0 + hoodY1) / 2, (hoodZ0 + hoodZ1) / 2 - 0.06, 0.06, hoodY1 - hoodY0, hoodZ1 - hoodZ0 - 0.12, paint, 0);
       if (!coarse) mesh.dressing(() => {
-        for (let k = 0; k < 4; k++) mesh.box(sx * (hoodX + 0.005), hoodY0 + 0.35 + k * 0.13, 2.85, 0.02, 0.035, 0.8, DARK, 0);
+        for (let k = 0; k < 3; k++) mesh.box(sx * (hoodX + 0.005), hoodY0 + 0.4 + k * 0.16, 2.85, 0.02, 0.035, 0.8, DARK, 0);
       });
     }
   }
   // the engine block, its head and the radiator's back (seen through a missing panel or under the hood's edge)
-  mesh.box(0, 1.75, 2.35, 1.1, 0.7, 1.4, ENGINE, 0.04);
+  mesh.box(0, 1.75, 2.35, 1.1, 0.7, 1.4, ENGINE, 0);
   mesh.box(0, 2.18, 2.35, 0.8, 0.16, 1.2, ENGINE, 0);
   // the grille: a heavy surround, horizontal bars, the core set 0.12 m back behind them
   const gz = hoodZ1 + 0.02, gw = 1.36, gh = 0.86, gy = 1.98;
   mesh.box(0, gy, gz - 0.14, gw, gh, 0.04, DARK, 0);
   for (const s of [-1, 1]) {
-    mesh.box(s * (gw / 2 + 0.06), gy, gz, 0.12, gh + 0.24, 0.1, paint, 0.02);
-    mesh.box(0, gy + s * (gh / 2 + 0.06), gz, gw + 0.24, 0.12, 0.1, paint, 0.02);
+    mesh.box(s * (gw / 2 + 0.06), gy, gz, 0.12, gh + 0.24, 0.1, paint, 0);
+    mesh.box(0, gy + s * (gh / 2 + 0.06), gz, gw + 0.24, 0.12, 0.1, paint, 0);
   }
-  if (!coarse) for (let k = 0; k < 7; k++) mesh.box(0, gy - gh / 2 + 0.07 + k * (gh - 0.14) / 6, gz - 0.02, gw, 0.04, 0.05, wrecked ? RUSTY : BLACK, 0);
+  if (!coarse) for (let k = 0; k < 5; k++) mesh.box(0, gy - gh / 2 + 0.09 + k * (gh - 0.18) / 4, gz - 0.02, gw, 0.05, 0.05, wrecked ? RUSTY : BLACK, 0);
   // the exhaust stack behind the hood with its rain cap
   mesh.tube([[-0.55, hoodY1, 1.92], [-0.55, 3.55, 1.92]], 0.085, coarse ? 6 : 10, wrecked ? RUSTY : BLACK, { caps: true });
   if (!coarse) mesh.box(-0.55, 3.6, 1.97, 0.2, 0.03, 0.22, wrecked ? RUSTY : BLACK, 0);
   // ---- the deck over the engine and the front wheels, its railings, the ladder down the front
   const deckY = 2.55, deckZ0 = 1.52, deckZ1 = 3.5;
-  mesh.box(0, deckY, (deckZ0 + deckZ1) / 2, 4.1, 0.1, deckZ1 - deckZ0, paint, 0.02);
-  if (!coarse) mesh.dressing(() => {
-    for (let k = 0; k < 9; k++) mesh.box(-1.8 + k * 0.45, deckY + 0.055, (deckZ0 + deckZ1) / 2, 0.03, 0.012, deckZ1 - deckZ0 - 0.1, DARK, 0);
-  });
-  for (const sx of [1, -1]) mesh.box(sx * 1.95, deckY - 0.28, (deckZ0 + deckZ1) / 2, 0.12, 0.46, deckZ1 - deckZ0, paint, 0.02);
+  mesh.box(0, deckY, (deckZ0 + deckZ1) / 2, 4.1, 0.1, deckZ1 - deckZ0, paint, 0);
+  for (const sx of [1, -1]) mesh.box(sx * 1.95, deckY - 0.28, (deckZ0 + deckZ1) / 2, 0.12, 0.46, deckZ1 - deckZ0, paint, 0);
   const railY0 = deckY + 0.05, railTop = deckY + 1.0;
   const posts: [number, number][] = [[-1.98, 3.42], [-1.0, 3.42], [-0.05, 3.42], [0.62, 3.42], [-1.98, 2.5], [-1.98, 1.6]];
   posts.forEach(([x, z], k) => {
@@ -628,7 +629,7 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   // ---- the cab on the left deck: the lower panels, the pillars, the roof, the glass set back behind its gaskets
   const cx = 1.35, cz = 2.4, cw = 1.3, cd = 1.5, c0 = deckY + 0.05, belt = c0 + 0.45, roofY = c0 + 1.28;
   const sag = wrecked ? 0.16 : 0;
-  mesh.box(cx, (c0 + belt) / 2, cz, cw, belt - c0, cd, paint, 0.02);
+  mesh.box(cx, (c0 + belt) / 2, cz, cw, belt - c0, cd, paint, 0);
   const pillar = 0.08, hx = cw / 2 - pillar / 2, hz = cd / 2 - pillar / 2;
   for (const [px, pz] of [[hx, hz], [-hx, hz], [hx, -hz], [-hx, -hz]] as const) {
     const bent = wrecked && px > 0 && pz > 0;
@@ -663,11 +664,11 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   // inside: the seat, the wheel on its column, the dash (burnt: the seat's frame only)
   mesh.box(cx + 0.1, c0 + 0.55, cz - 0.25, 0.5, 0.12, 0.5, wrecked ? RUSTY : SEAT, 0);
   mesh.box(cx + 0.1, c0 + 0.9, cz - 0.48, 0.5, 0.6, 0.1, wrecked ? RUSTY : SEAT, 0);
-  mesh.box(cx, belt + 0.02, cz + cd / 2 - 0.2, cw - 0.16, 0.12, 0.3, BLACK, 0.02);
+  mesh.box(cx, belt + 0.02, cz + cd / 2 - 0.2, cw - 0.16, 0.12, 0.3, BLACK, 0);
   if (!coarse) {
     mesh.push().translate(cx + 0.1, belt + 0.25, cz + 0.32).rotateX(-0.7);
     mesh.push().rotateZ(Math.PI / 2);
-    mesh.lathe([[0.2, -0.015], [0.22, 0], [0.2, 0.015], [0.18, 0]], 14, () => BLACK);
+    mesh.lathe([[0.2, -0.015], [0.22, 0], [0.2, 0.015], [0.18, 0]], 10, () => BLACK);
     mesh.pop();
     mesh.pop();
   }
@@ -679,7 +680,7 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   // headlamps in their bezels on the deck's front face
   for (const sx of [1, -1]) {
     mesh.push().translate(sx * 1.45, deckY - 0.22, deckZ1 + 0.02).rotateY(-Math.PI / 2);
-    mesh.lathe([[0.0001, -0.02], [0.13, -0.02], [0.13, 0.06], [0.0001, 0.06]], coarse ? 8 : 10, () => (wrecked ? DARK : LAMP));
+    mesh.lathe([[0.0001, -0.02], [0.13, -0.02], [0.13, 0.06], [0.0001, 0.06]], 8, () => (wrecked ? DARK : LAMP));
     mesh.pop();
     if (!coarse) mesh.box(sx * 1.45, deckY - 0.22, deckZ1 - 0.01, 0.3, 0.3, 0.05, BLACK, 0);
   }
@@ -704,29 +705,29 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
     if (!broken) mesh.tube([mid, head], 0.08, coarse ? 6 : 10, wrecked ? RUSTY : STEEL_M, { caps: true });
     else mesh.tube([mid, [mid[0] + 0.05, mid[1] - 0.25, mid[2] - 0.55]], 0.08, coarse ? 6 : 10, RUSTY, { caps: true });
   });
-  for (const sx of [1, -1]) mesh.box(sx * 0.58, hingeY, hingeZ, 0.34, 0.3, 0.3, BLACK, 0.03);
+  for (const sx of [1, -1]) mesh.box(sx * 0.58, hingeY, hingeZ, 0.34, 0.3, 0.3, BLACK, 0);
   mesh.push().translate(0, hingeY, hingeZ).rotateZ(twist).rotateX(-raise).translate(0, -hingeY, -hingeZ);
   // the floor and its sills, the tail rising, the sides with their ribs and top rails, the headboard, the canopy
-  mesh.box(0, fy + 0.12, (tail + 0.6 + front) / 2, 3.9, 0.24, front - tail - 0.6, paint, 0.03);
+  mesh.box(0, fy + 0.12, (tail + 0.6 + front) / 2, 3.9, 0.24, front - tail - 0.6, paint, 0);
   mesh.push().translate(0, fy + 0.12, tail + 0.3).rotateX(-0.42);
-  mesh.box(0, 0.09, 0, 3.9, 0.24, 0.66, paint, 0.03);
+  mesh.box(0, 0.09, 0, 3.9, 0.24, 0.66, paint, 0);
   mesh.pop();
-  for (const sx of [1, -1]) mesh.box(sx * 0.58, fy - 0.08, (tail + front) / 2, 0.24, 0.18, front - tail - 0.4, BLACK, 0.02);
+  for (const sx of [1, -1]) mesh.box(sx * 0.58, fy - 0.08, (tail + front) / 2, 0.24, 0.18, front - tail - 0.4, BLACK, 0);
   const sideTop = fy + 1.75;
   for (const sx of [1, -1]) {
-    mesh.box(sx * 1.93, (fy + sideTop) / 2 + 0.1, (tail + front) / 2 + 0.15, 0.07, sideTop - fy - 0.2, front - tail - 0.3, paint, 0.01);
-    mesh.box(sx * 1.97, sideTop, (tail + front) / 2 + 0.15, 0.17, 0.17, front - tail - 0.3, paint, 0.03);
-    const ribs = coarse ? 3 : 6;
+    mesh.box(sx * 1.93, (fy + sideTop) / 2 + 0.1, (tail + front) / 2 + 0.15, 0.07, sideTop - fy - 0.2, front - tail - 0.3, paint, 0);
+    mesh.box(sx * 1.97, sideTop, (tail + front) / 2 + 0.15, 0.17, 0.17, front - tail - 0.3, paint, 0);
+    const ribs = coarse ? 3 : 4;
     for (let k = 0; k < ribs; k++) {
       const z = tail + 0.7 + k * (front - tail - 1.2) / (ribs - 1);
       mesh.box(sx * 2.02, (fy + sideTop) / 2 + 0.05, z, 0.1, sideTop - fy - 0.15, 0.13, paint, 0);
     }
-    mesh.box(sx * 2.0, fy + 0.62, (tail + front) / 2 + 0.15, 0.08, 0.12, front - tail - 0.5, paint, 0.02);
+    mesh.box(sx * 2.0, fy + 0.62, (tail + front) / 2 + 0.15, 0.08, 0.12, front - tail - 0.5, paint, 0);
   }
   const canopyY = 4.42, canopyZ1 = 3.62;
-  mesh.box(0, (fy + canopyY) / 2 + 0.08, front, 3.9, canopyY - fy - 0.1, 0.16, paint, 0.02);
+  mesh.box(0, (fy + canopyY) / 2 + 0.08, front, 3.9, canopyY - fy - 0.1, 0.16, paint, 0);
   for (let k = 0; k < (coarse ? 3 : 5); k++) mesh.box(-1.5 + k * (3.0 / (coarse ? 2 : 4)), (fy + canopyY) / 2 + 0.1, front + 0.11, 0.12, canopyY - fy - 0.4, 0.1, paint, 0);
-  mesh.box(0, canopyY, (front + canopyZ1) / 2, 3.9, 0.09, canopyZ1 - front, paint, 0.02);
+  mesh.box(0, canopyY, (front + canopyZ1) / 2, 3.9, 0.09, canopyZ1 - front, paint, 0);
   for (let k = 0; k < (coarse ? 3 : 6); k++) {
     const x = -1.75 + k * (3.5 / (coarse ? 2 : 5));
     mesh.box(x, canopyY - 0.11, (front + canopyZ1) / 2, 0.08, 0.14, canopyZ1 - front - 0.05, paint, 0);
@@ -734,7 +735,7 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   mesh.box(0, canopyY - 0.05, canopyZ1, 3.9, 0.2, 0.1, paint, 0);
   // the load: a heaped mound of broken ore, darker and lighter by lumps (wrecked: most of it spilt)
   if (laden || wrecked) {
-    const nx = coarse ? 5 : 8, nz = coarse ? 6 : 12, x0 = -1.84, x1 = 1.84, z0 = tail + 0.45, z1 = front - 0.12;
+    const nx = coarse ? 5 : 6, nz = coarse ? 6 : 10, x0 = -1.84, x1 = 1.84, z0 = tail + 0.45, z1 = front - 0.12;
     const peak = wrecked ? 0.45 : 1.25;
     mesh.grid(nx, nz, (i, j, out) => {
       const u = i / nx, v = j / nz, x = x0 + (x1 - x0) * u, z = z0 + (z1 - z0) * v;
