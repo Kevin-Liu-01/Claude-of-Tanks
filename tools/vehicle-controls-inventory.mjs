@@ -43,7 +43,7 @@ for(const id of ALL_TANK_IDS){
      if(!box.isEmpty())collisionParts.push({min:round(box.min.toArray()),max:round(box.max.toArray())});
     });
    }
-   guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray()});
+   guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray(),...(o.userData.yawArc?{yawArc:o.userData.yawArc.map(v=>Math.round(v*1e4)/1e4)}:{}),...(o.userData.depressionByYaw?{depressionByYaw:o.userData.depressionByYaw.map(([y,d])=>[Math.round(y*1e4)/1e4,Math.round(d*1e4)/1e4])}:{})});
   }
  });
  // The working roof gun is a vehicle's heaviest station. The sim, the presentation, combat anatomy, bots and the HUD

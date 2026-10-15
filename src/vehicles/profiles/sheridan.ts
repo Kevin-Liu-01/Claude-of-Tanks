@@ -518,6 +518,11 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
   for(const g of detail)P.add('turretDetail',g);
   for(const g of glass)P.add('turretGlass',g);
   station.mark('pitch');
+  // VH.02 (2026-10-14): the traverse that keeps the barrel out of the roof M2, the two antenna masts and the right-hand
+  // stowage (tools/roof-station-arcs.mjs: clear -150..37° level to full elevation; 2° margin each side), and over the
+  // turret front the depression the roof allows (clear 0.115 rad dead ahead against the weapon's 0.18; 0.01 margin).
+  station.root.userData.yawArc = [-2.5831, 0.6109];
+  station.root.userData.depressionByYaw = [[-0.3491,0.18],[-0.2618,0.147],[-0.1745,0.122],[-0.0873,0.108],[0.0,0.105],[0.0873,0.11],[0.1745,0.127],[0.2618,0.155],[0.3491,0.18]];
   return station.root;
 }
 
@@ -1516,6 +1521,10 @@ function addTtsRoofM2Station(P: SheridanBuilderPort): void {
   const stock = new THREE.Group();
   stock.add(m2);
   gunStation.attachPitch(stock);
+  // VH.02 (2026-10-14): the M2 fires as the second station; its traverse stays clear of the right-hand antenna mast
+  // and of the 30 mm station and its barrel (tools/roof-station-arcs.mjs: clear -58..14° level to full elevation, the
+  // full 0.18 rad depression throughout; 2° margin each side).
+  gunStation.root.userData.yawArc = [-0.9774, 0.2094];
 }
 
 function addSheridanLoaderStation(

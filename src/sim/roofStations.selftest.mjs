@@ -1,0 +1,109 @@
+// VH.02 (2026-10-14; the owner's field-equipment standard: "no duplicate or non-functional guns"): a vehicle with two
+// remote roof stations fires both. On the M551A1 TTS the 30 mm (guns[0], the owner's 10-12 order) and the roof M2 the
+// owner placed twice each aim at their own target, inside a traverse arc that keeps each barrel out of the other
+// station, the antenna masts and the stowage, and the 30 mm never depresses into the turret front. On/off, damage and
+// the roofGun module stay the one roof-gun system's. Every one-station vehicle keeps its old step exactly.
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { createTank } from '../vehicles/tankFactory.ts';
+import { TANK_SPECS } from '../vehicles/specs.ts';
+import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
+import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
+import { auxiliaryShot, auxiliaryState, createAuxiliaryState, requestAuxiliary, roofStationCount, stepRoofGun, stepRoofStation } from './auxiliarySystems.ts';
+import { stationDepression, stationProbe } from '../../tools/roof-station-arcs.mjs';
+
+const ID = 'm551a1_tts', kit = AUXILIARY_INVENTORY[ID];
+const [cannon, mg] = kit.guns;
+assert.equal(kit.guns.length, 2, 'the TTS has two remote roof stations');
+assert.equal(roofStationCount(TANK_SPECS[ID]), 2);
+assert.equal(cannon.name, 'm551a1TtsRemoteAutocannon', 'guns[0] is the 30 mm (the owner, 10-12)');
+assert.equal(mg.name, 'm551a1TtsRoofM2', 'guns[1] is the roof M2 the owner placed');
+for (const gun of [cannon, mg]) assert.ok(gun.yawArc && gun.yawArc[0] < 0 && gun.yawArc[1] > 0, `${gun.name}: a traverse arc round its rest bearing`);
+assert.ok(cannon.depressionByYaw?.length, 'the 30 mm carries the turret front depression table');
+// One-station vehicles have no extra station state and no arc.
+for (const id of ['m1a2', 'abramsx', 'm1a2_tusk']) {
+  assert.equal(AUXILIARY_INVENTORY[id].guns.length, 1, `${id}: one station`);
+  assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations, undefined, `${id}: no extra station state`);
+  assert.equal(AUXILIARY_INVENTORY[id].guns[0].yawArc, undefined, `${id}: full traverse`);
+}
+assert.equal(createAuxiliaryState(TANK_SPECS[ID]).stations?.length, 1, 'the TTS state carries its second station');
+
+const DEG = Math.PI / 180;
+function battle(bearingDeg, distanceM = 150, yM = 0) {
+  const shooter = { id: 'tts', team: 'blue', spec: TANK_SPECS[ID], state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
+  const target = { id: 'enemy', team: 'red', spec: { id: 'target', dims: { heightM: 2.5 } },
+    state: { pos: { x: Math.sin(bearingDeg * DEG) * distanceM, y: yM, z: Math.cos(bearingDeg * DEG) * distanceM }, yaw: 0, turretYaw: 0 }, combat: {} };
+  return { shooter, target, context: { entities: [shooter, target], visible: () => true, clear: () => true } };
+}
+/** Steps both stations for `seconds`; returns each station's shots and the shells' calibres and muzzles. */
+function run({ shooter, context }, seconds = 12) {
+  const shots = [[], []];
+  for (let i = 0; i < seconds * 60; i++) {
+    if (stepRoofGun(shooter, i / 60, 1 / 60, context)) shots[0].push({ caliber: auxiliaryShot.shell.caliberMm, origin: auxiliaryShot.origin.clone() });
+    if (stepRoofStation(shooter, 1, i / 60, 1 / 60, context)) shots[1].push({ caliber: auxiliaryShot.shell.caliberMm, origin: auxiliaryShot.origin.clone() });
+    const s = shooter.combat.auxiliary;
+    assert.ok(s.gunYaw >= cannon.yawArc[0] - 1e-9 && s.gunYaw <= cannon.yawArc[1] + 1e-9, 'the 30 mm stays inside its arc');
+    const m = s.stations[0];
+    assert.ok(m.gunYaw >= mg.yawArc[0] - 1e-9 && m.gunYaw <= mg.yawArc[1] + 1e-9, 'the M2 stays inside its arc');
+  }
+  return shots;
+}
+
+// 1. Dead ahead: both stations fire, each its own calibre from its own muzzle, in independent bursts.
+{
+  const b = battle(0), shots = run(b);
+  assert.ok(shots[0].length >= 3 && shots[1].length >= 3, `both stations fire (${shots[0].length} x 30 mm, ${shots[1].length} x 12.7 mm)`);
+  assert.ok(shots[0].every((s) => s.caliber === 30) && shots[1].every((s) => s.caliber === 12.7), 'each station fires its own round');
+  // the 30 mm muzzle is on the left of the roof, the M2's on the right
+  assert.ok(shots[0][0].origin.x < -0.2 && shots[1][0].origin.x > 0.4, 'each shell leaves its own station');
+  const state = b.shooter.combat.auxiliary;
+  assert.equal(state.shots, shots[0].length); assert.equal(state.stations[0].shots, shots[1].length);
+  assert.ok(JSON.stringify(state).length <= 512 - 120, `the auxiliary row still fits the 512-byte wire string with a smoke summary (${JSON.stringify(state).length})`);
+  // determinism: the same battle twice is identical
+  const again = run(battle(0));
+  assert.deepEqual(again.map((s) => s.map((x) => x.origin.toArray())), shots.map((s) => s.map((x) => x.origin.toArray())), 'deterministic');
+}
+// 2. Forward right (inside the 30 mm's arc, past the M2's right-hand antenna stop): only the 30 mm fires.
+{ const shots = run(battle(25)); assert.ok(shots[0].length > 0 && shots[1].length === 0, 'the M2 holds past its arc; the 30 mm fires'); }
+// 3. Hard left (past the M2's stop at the 30 mm station): only the 30 mm, which turns the long way round, fires.
+{ const shots = run(battle(-100)); assert.ok(shots[0].length > 0 && shots[1].length === 0, 'the 30 mm fires over the left; the M2 holds'); }
+// 4. Right of the roof (the M2, the antennas): neither barrel sweeps through them.
+{ const shots = run(battle(60)); assert.ok(shots[0].length === 0 && shots[1].length === 0, 'no station fires through the right-hand stock'); }
+// 5. Close and low dead ahead: the 30 mm may not depress into the turret front; the M2 (clear to 0.18 rad) fires.
+{
+  const b = battle(-2, 9, 0), shots = run(b, 6);
+  assert.ok(shots[0].length === 0 && shots[1].length > 0, `the 30 mm holds at the roof's depression limit; the M2 fires (${shots[1].length})`);
+  assert.ok(b.shooter.combat.auxiliary.gunPitch >= -0.106, 'the 30 mm never pitches below the table');
+}
+// 6. One system: the toggle and a red roofGun module silence both stations.
+{
+  const b = battle(0); auxiliaryState(b.shooter); requestAuxiliary(b.shooter, 'roofGun', 0);
+  let shots = run(b, 4); assert.ok(shots[0].length === 0 && shots[1].length === 0, 'B switches both stations off');
+  requestAuxiliary(b.shooter, 'roofGun', 0); b.shooter.combat.modules.roofGun = { state: 'red' };
+  shots = run(b, 4); assert.ok(shots[0].length === 0 && shots[1].length === 0, 'a red roof-gun module silences both');
+}
+
+// 7. The arcs and the table hold against the built stock (tools/roof-station-arcs.mjs), and they are tight: within 4° past
+//    each end the barrel touches something.
+{
+  const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
+  tank.root.updateMatrixWorld(true);
+  for (const gun of [cannon, mg]) {
+    const station = tank.root.getObjectByName(gun.name), profile = auxiliaryWeaponProfile(gun.caliberMm, ID);
+    const { probe } = stationProbe(tank.root, station), [lo, hi] = gun.yawArc;
+    for (let yaw = lo; yaw <= hi + 1e-9; yaw += DEG) {
+      for (let pitch = 0; pitch <= profile.elevationRad + 1e-9; pitch += .05) assert.ok(!probe(yaw, pitch), `${gun.name}: clear at ${(yaw / DEG).toFixed(0)}°, +${pitch.toFixed(2)}`);
+      const table = gun.depressionByYaw, inTable = table && yaw >= table[0][0] && yaw <= table.at(-1)[0];
+      if (!inTable) assert.ok(!probe(yaw, -profile.depressionRad), `${gun.name}: full depression clear at ${(yaw / DEG).toFixed(0)}°`);
+    }
+    for (const [yaw, depression] of gun.depressionByYaw ?? []) {
+      assert.ok(!probe(yaw, -depression), `${gun.name}: the table's ${depression} rad is clear at ${(yaw / DEG).toFixed(0)}°`);
+      const [deepest] = stationDepression(tank.root, station, profile, [yaw / DEG]);
+      assert.ok(depression <= deepest + 1e-9 && depression >= deepest - .02, `${gun.name}: the table at ${(yaw / DEG).toFixed(0)}° is the measured limit less its margin (${depression} vs ${deepest})`);
+    }
+    const blockedNear = (from, sign) => { for (let k = 1; k <= 4; k++) { const yaw = from + sign * k * DEG; for (let p = 0; p <= profile.elevationRad; p += .05) if (probe(yaw, p)) return true; } return false; };
+    assert.ok(blockedNear(lo, -1) && blockedNear(hi, 1), `${gun.name}: the arc ends within 4° of the stock it keeps clear of`);
+  }
+  tank.dispose();
+}
+console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°) and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock');

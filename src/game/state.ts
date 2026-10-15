@@ -1,6 +1,6 @@
 import { initializeAerial, stepAerial, isGunship, droneTankAlong, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
-import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
+import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
@@ -2968,12 +2968,17 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     if(bits&128)requestAuxiliary(entity,'lights',game.timeS);
     if(bits&512)requestAuxiliary(entity,'lightsOff',game.timeS);
     if(bits&256)requestAuxiliary(entity,'roofGun',game.timeS);
-    if(stepRoofGun(entity,game.timeS,SIM_DT,context)) {
-      const shell=acquireShell(auxiliaryShot.shell,entity.id,entity.isPlayer,auxiliaryShot.origin,auxiliaryShot.direction,game.nextShellId++);
-      shell.rocket=false;shell.gravityMps2*=entity.modeGravityScale??1;game.shells.push(shell);
-      game.spotting?.notifyFired(entity.id,game.timeS,auxiliaryShot.shell.caliberMm);
-    }
+    if(stepRoofGun(entity,game.timeS,SIM_DT,context))fireAuxiliaryShot(game,entity);
+    // VH.02: a multi-station vehicle's later roof stations (the M551A1 TTS's M2 beside its 30 mm), in station order
+    for(let station=1,stations=roofStationCount(entity.spec);station<stations;station++)
+      if(stepRoofStation(entity,station,game.timeS,SIM_DT,context))fireAuxiliaryShot(game,entity);
   }
+}
+/** The shell a roof station just fired (auxiliaryShot), in the solo battle. */
+function fireAuxiliaryShot(game: SoloGameState, entity: SoloEntity): void {
+  const shell=acquireShell(auxiliaryShot.shell,entity.id,entity.isPlayer,auxiliaryShot.origin,auxiliaryShot.direction,game.nextShellId++);
+  shell.rocket=false;shell.gravityMps2*=entity.modeGravityScale??1;game.shells.push(shell);
+  game.spotting?.notifyFired(entity.id,game.timeS,auxiliaryShot.shell.caliberMm);
 }
 
 function stepFireDamage(game: SoloGameState, bus: EventBus): void {
