@@ -1089,8 +1089,10 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
           if (collisionModule.recordHasBandRoofs?.(record)) {
             const depth = collisionModule.bandUndersideDepth(record, part, { x: foot.centerX, z: foot.centerZ }, foot.forwardX,
               foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, under);
-            if (depth > -Infinity && depth <= collisionModule.HULL_STEP_UP_M) metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, depth);
-            continue;
+            if (Number.isFinite(depth)) {
+              if (depth <= collisionModule.HULL_STEP_UP_M) metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, depth);
+              continue;
+            }
           }
           const clear = Number.isFinite(foot.clearBottom) ? foot.clearBottom : under;
           if (hullPassesObstacleTop(under, top, record.min[1], true, clear) && clear <= top + 0.5) {

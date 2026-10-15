@@ -212,14 +212,14 @@ export function bandRoofTopAt(record: CollisionRecord, part: SimpleCollisionShap
  * building's roof where its roof covers it (bandRoofTopAt), on hullUndersideOver's grid and by its rule: the deepest of
  * the track rows over the part, or, when none is, of the nose and tail rows lifted by the plates the tracks run under
  * (less the step they count against themselves); the track plane is the caller's hullUndersideOver (hullUndersideAt), or
- * `spanBottom` without one. -Infinity when no grid point is over the part.
+ * `spanBottom` without one. NaN when no grid point over the part is under its roof (the standing rule reads it).
  */
 export function bandUndersideDepth(
   record: CollisionRecord, part: SimpleCollisionShape, pos: Position2, fx: number, fz: number, rx: number, rz: number,
   halfL: number, halfW: number, spanBottom: number,
 ): number {
   const bandTop = part.y1 ?? record.max[1];
-  let tracks = -Infinity, ends = -Infinity;
+  let tracks = -Infinity, ends = -Infinity, roofed = false;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfL;
     const end = i === 0 || i === 4;
@@ -229,12 +229,17 @@ export function bandUndersideDepth(
       const x = pos.x + fx * along + rx * across, z = pos.z + fz * along + rz * across;
       if (!pointInsideCollisionRecord(record, part, x, z)) continue;
       const roof = bandRoofTopAt(record, part, x, z);
+      if (roof > -Infinity && roof < bandTop) roofed = true;
       const top = roof > -Infinity && roof < bandTop ? roof : bandTop;
       const plane = hullUndersideAt(x, z);
       const depth = top - (Number.isFinite(plane) ? plane : spanBottom);
       if (end) { if (depth - lift > ends) ends = depth - lift; } else if (depth > tracks) tracks = depth;
     }
   }
+  // (NaN where no point over the part is under the roof: the band is read by the standing rule, as any part is — read
+  // here too, a 0.8 m plinth beside a roofed hall passed and failed the step in turn as a hull pivoted against it, and
+  // was pushed 1.8 m out every other step)
+  if (!roofed) return NaN;
   return tracks > -Infinity ? tracks : ends;
 }
 

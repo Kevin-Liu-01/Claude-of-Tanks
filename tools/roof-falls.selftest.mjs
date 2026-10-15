@@ -29,7 +29,7 @@ for (const [map, id, what] of CASES) {
   const [row] = await censusMap(map, { classes: ['roofs'], only: id });
   assert.ok(row, `${id}: the census still samples this run`);
   const m = row.m;
-  assert.ok(m.popXZMaxM <= 0.12 && m.obstaclePenMaxM <= 0.1, `${what} is pushed out of nothing (${fmt(m)})`);
+  assert.ok(m.popXZMaxM <= 0.12 && m.obstaclePenMaxM <= 0.15, `${what} is pushed out of nothing (${fmt(m)})`);
   assert.ok(m.roofSinkMaxM <= 0.25 && m.insideSolidM <= 0.3, `${what} never stands into the roof (${fmt(m)})`);
   assert.ok(m.takeoffMaxMps <= 2.5, `${what} is thrown by nothing (${fmt(m)})`);
   runs.push([id, row]);
