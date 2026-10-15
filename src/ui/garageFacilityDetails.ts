@@ -151,7 +151,8 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     factory_line: {
       logistics: [[-35, 12], [16, -27]],
       parts: [[-32, 21], [2, -36]], floods: [[-39, 2], [39, 6]],
-      feature: [0, 16], featureRadius: [12, 10],
+      // the crane bay over the haul road, 19 x 21 m from depth 13 (garage round 7)
+      feature: [-0.9, 23], featureRadius: [11.5, 10.5],
     },
   });
 
@@ -2371,35 +2372,135 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('factory-line-assembly');
       servicePurposeTags.add('rail-fed-component-transfer');
-      // The real map-authored transfer gantry already supplies Foundry's
-      // skyline crane. Keep the central line low and rail-served so the orbit
-      // never crosses a duplicate foreground tower.
-      addTrackOnCluster(featureCluster, -6, 0, 28);
-      addTrackOnCluster(featureCluster, 6, 0, 28);
-      for (const offset of [-8, 8]) {
-        clusterCylinder(featureCluster, offset, 3, 2.6,
-          1.25, 5.2, primer, 0, 16);
-        clusterCylinder(featureCluster, offset, 3, 5.3,
-          0.62, 0.22, dark, 0, 16);
-        const inwardPipeCenter = offset - Math.sign(offset) * 4.55;
-        for (const y of [1.2, 2.7, 4.2]) {
-          clusterCylinder(featureCluster, inwardPipeCenter, 2.2, y,
-            0.14, 6.7, safety, 0, 10, Math.PI / 2);
-          clusterBox(featureCluster, inwardPipeCenter, 2.2, y / 2,
-            0.18, y, 0.18, steel, 'structure');
+      // Ironworks' crane bay (garage round 7, 2026-10-14; props census #20, garage:factory_line grade 1: two red tanks,
+      // pipe racks and a booth on a slab). The haul road runs under a steelworks crane bay: stepped crane columns on
+      // concrete bases carry the runway girders and their rails at 8 m, a box-girder overhead crane on its end carriages
+      // stands over the road with its crab, rope drum and hook block holding a teeming ladle, and a monitor roof covers
+      // the back half over a sooty clad back wall. Under it a fabrication line: a ladle on its stand, mould boxes stacked
+      // by size, moulding-sand heaps, a turret-ring jig, a welding positioner and the coating booth with its extract
+      // stacks; two transfer tracks run along the bay. Squared on the haul road.
+      const centerSide = -0.9, centerDepth = 23;
+      const origin = cameraPoint(centerSide, centerDepth);
+      const roadIn = cameraPoint(-2 * 12 / 17, 22); // a metre back down the road toward (0, 10)
+      const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      const baseY = groundAtWorld(origin.x, origin.z);
+      const bay: FacilityCluster = { x: origin.x, z: origin.z, baseY, yaw };
+      const atGround = (u: number, w: number): FacilityCluster => {
+        const x = origin.x + c * u + sn * w, z = origin.z - sn * u + c * w;
+        return { x, z, baseY: groundAtWorld(x, z), yaw };
+      };
+      const millSteel = new THREE.Color(0x4a4f52), soot = new THREE.Color(0x2e3133), craneYellow = new THREE.Color(0xb88a2a);
+      const rust = new THREE.Color(0x7a4a32), sandHeap = new THREE.Color(0x8a6e52), concreteBase = new THREE.Color(0x77736b);
+      const halfSpan = 9.2, halfLen = 10, runwayY = 8.0, roofY = 11.2;
+      const columnsF = [-10, -5, 0, 5, 10];
+      // stepped crane columns: a heavy lower leg to the runway, a light upper leg to the roof
+      for (const side of [-1, 1]) {
+        for (const f of columnsF) {
+          const u = side * halfSpan;
+          clusterBox(bay, u, f, 0.2, 1.3, 0.4, 1.3, concreteBase, 'masonry');
+          for (const df of [-0.32, 0.32]) clusterBox(bay, u, f + df, 0.4 + (runwayY - 0.4) / 2, 0.55, runwayY - 0.4, 0.06, millSteel, 'structure'); // flanges
+          clusterBox(bay, u, f, 0.4 + (runwayY - 0.4) / 2, 0.035, runwayY - 0.4, 0.64, millSteel, 'structure'); // web
+          clusterBox(bay, u + side * 0.15, f, runwayY + (roofY - runwayY) / 2, 0.32, roofY - runwayY, 0.32, millSteel, 'structure');
+          clusterBox(bay, u - side * 0.2, f, runwayY - 0.25, 0.9, 0.5, 0.7, millSteel, 'structure'); // the crane bracket
+        }
+        // the runway girder and its rail, a walkway with a handrail behind it
+        clusterBox(bay, side * (halfSpan - 0.4), 0, runwayY + 0.35, 0.5, 0.9, 2 * halfLen + 1, millSteel, 'structure');
+        clusterBox(bay, side * (halfSpan - 0.4), 0, runwayY + 0.86, 0.1, 0.12, 2 * halfLen + 1, soot, 'structure');
+        clusterBox(bay, side * (halfSpan + 0.35), 0, runwayY + 0.82, 0.7, 0.05, 2 * halfLen + 1, millSteel, 'structure');
+        clusterBox(bay, side * (halfSpan + 0.68), 0, runwayY + 1.35, 0.05, 0.05, 2 * halfLen + 1, craneYellow, 'painted');
+      }
+      // the roof: tie beams at the column lines, a monitor over the back half's ridge, sheeting falling to both eaves
+      for (const f of columnsF) clusterBox(bay, 0, f, roofY, 2 * halfSpan + 0.6, 0.45, 0.3, millSteel, 'structure');
+      {
+        const roofC = Math.cos(yaw), roofS = Math.sin(yaw);
+        const back: FacilityCluster = { x: bay.x + roofS * -5, z: bay.z + roofC * -5, baseY, yaw };
+        gableRoof(back, 'roofing', halfSpan + 0.5, roofY + 0.2, roofY + 2.1, 10.6);
+        for (const sideL of [-1, 1]) {
+          for (let louvre = 0; louvre < 3; louvre += 1) {
+            clusterBox(back, sideL * 1.6, 0, roofY + 2.2 + louvre * 0.3, 0.05, 0.08, 10.2, soot, 'painted', sideL * 0.5);
+          }
+        }
+        gableRoof(back, 'roofing', 2.0, roofY + 3.0, roofY + 3.4, 10.4);
+      }
+      // the clad back wall, sooty sheeting over a concrete upstand
+      clusterBox(bay, 0, -halfLen - 0.3, 0.6, 2 * halfSpan + 0.6, 1.2, 0.3, concreteBase, 'masonry'); // no new surface: no new draw
+      clusterSurface(bay, 'sheeting', 0, -halfLen - 0.3, 1.2 + (roofY - 1.2) / 2, 2 * halfSpan + 0.6, roofY - 1.2, 0.06);
+      // the overhead crane: end carriages on the rails, a twin box-girder bridge, the crab with its rope drum, a hook
+      // block on its falls holding a teeming ladle by its trunnions
+      const craneF = 3.5;
+      for (const side of [-1, 1]) {
+        clusterBox(bay, side * (halfSpan - 0.4), craneF, runwayY + 1.25, 0.7, 0.75, 4.2, craneYellow, 'painted');
+        for (const df of [-1.6, 1.6]) clusterCylinder(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 0.98, 0.32, 0.22, soot, 0, 16, Math.PI / 2);
+      }
+      for (const df of [-0.75, 0.75]) clusterBox(bay, 0, craneF + df, runwayY + 1.45, 2 * halfSpan - 0.8, 1.0, 0.55, craneYellow, 'painted');
+      const crabU = -2.2;
+      clusterBox(bay, crabU, craneF, runwayY + 2.25, 2.4, 0.6, 2.4, craneYellow, 'painted');
+      clusterCylinder(bay, crabU, craneF, runwayY + 2.0, 0.55, 1.8, soot, 0, 16, Math.PI / 2);
+      clusterBox(bay, crabU + 0.9, craneF + 0.7, runwayY + 2.75, 0.8, 0.5, 0.7, soot, 'structure'); // the hoist motor
+      const hookY = 4.6;
+      for (const du of [-0.35, 0.35]) clusterBox(bay, crabU + du, craneF, (runwayY + 1.7 + hookY + 0.6) / 2, 0.04, runwayY + 1.7 - hookY - 0.6, 0.04, soot, 'structure');
+      clusterBox(bay, crabU, craneF, hookY + 0.35, 0.9, 0.7, 0.5, craneYellow, 'painted'); // the hook block
+      for (const du of [-1.15, 1.15]) clusterBeam(bay, [crabU, craneF, hookY], [crabU + du, craneF, hookY - 1.0], 0.07, soot, 'structure'); // the bail
+      clusterCylinder(bay, crabU, craneF, hookY - 2.0, 1.05, 1.9, rust, 0, 16); // the ladle
+      clusterCylinder(bay, crabU, craneF, hookY - 1.0, 1.12, 0.12, soot, 0, 16);
+      for (const du of [-1.15, 1.15]) clusterCylinder(bay, crabU + du, craneF, hookY - 1.0, 0.14, 0.3, soot, 0, 10, Math.PI / 2); // trunnions
+      heavyLiftSystems += 1;
+      operationalMachines += 1;
+      // a ladle on its stand at the back left
+      {
+        const stand = atGround(-6.2, -6.0);
+        for (const du of [-1.3, 1.3]) clusterBeam(stand, [du, -0.8, 0], [du, 0, 2.2], 0.16, millSteel, 'structure');
+        for (const du of [-1.3, 1.3]) clusterBeam(stand, [du, 0.8, 0], [du, 0, 2.2], 0.16, millSteel, 'structure');
+        clusterCylinder(stand, 0, 0, 1.9, 1.0, 1.7, rust, 0, 16);
+        clusterCylinder(stand, 0, 0, 2.78, 1.06, 0.1, soot, 0, 16);
+        environmentSpecificAssemblies += 1;
+        servicePurposeTags.add('ladle-and-casting-bay');
+      }
+      // mould boxes stacked by size and moulding-sand heaps at the back right
+      {
+        const moulds = atGround(5.6, -6.6);
+        for (let k = 0; k < 5; k += 1) {
+          const size = 1.6 - k * 0.18;
+          clusterBox(moulds, 0, 0, 0.22 + k * 0.42, size, 0.36, size * 0.8, k % 2 ? millSteel : soot, 'equipment');
+          clusterBox(moulds, 0, 0, 0.42 + k * 0.42, size + 0.12, 0.05, size * 0.8 + 0.12, soot, 'equipment'); // the flange
+          looseParts += 1;
+        }
+        for (const [du, dw, r] of [[2.4, -0.4, 1.3], [3.9, 0.8, 0.9]] as const) {
+          const heap = atGround(5.6 + du, -6.6 + dw);
+          for (let layer = 0; layer < 4; layer += 1) clusterBox(heap, 0, 0, 0.12 + layer * 0.22, r * 2 * (1 - layer * 0.22), 0.24, r * 1.8 * (1 - layer * 0.22), sandHeap, 'masonry', 0, 0);
         }
       }
-      clusterCylinder(featureCluster, 0, 2.2, 2.7,
-        0.22, 4.8, steel, 0, 12);
-      for (const y of [1.2, 2.7, 4.2]) {
-        clusterCylinder(featureCluster, 0, 2.2, y,
-          0.30, 0.14, accent, 0, 12);
+      // the turret-ring jig: a ring of segments on a pedestal, at the front right under the crane
+      {
+        const jig = atGround(5.4, 2.2);
+        clusterBox(jig, 0, 0, 0.35, 1.2, 0.7, 1.2, concreteBase, 'masonry');
+        clusterCylinder(jig, 0, 0, 0.85, 0.28, 0.3, millSteel, 0, 16);
+        for (let k = 0; k < 16; k += 1) {
+          const a = (k / 16) * Math.PI * 2;
+          clusterBox(jig, Math.cos(a) * 1.25, Math.sin(a) * 1.25, 1.05, 0.52, 0.18, 0.2, k % 4 ? millSteel : craneYellow, 'structure');
+        }
+        for (const a of [0, Math.PI / 2, Math.PI, 1.5 * Math.PI]) clusterBeam(jig, [0, 0, 1.0], [Math.cos(a) * 1.2, Math.sin(a) * 1.2, 1.05], 0.08, millSteel, 'structure');
+        factoryProcessZones += 1;
+        servicePurposeTags.add('turret-ring-jig');
       }
-      addPoweredWinch(featureCluster, 0, -4.0, new THREE.Color(0x9a5439));
-      addPartsPallet(featureCluster, 0, 3.8, 3);
-      addSafetyRail(featureCluster, 0, 5.0, 13.5);
-      addTurningRollStation(featureCluster, 0, -0.55, new THREE.Color(0x8b4d3b));
-      addVentilatedCoatingBooth(featureCluster, 0, 7.35, new THREE.Color(0x5d4a45));
+      // a welding positioner: a tilted table on a geared base
+      {
+        const pos = atGround(-5.6, 2.6);
+        clusterBox(pos, 0, 0, 0.4, 1.0, 0.8, 1.0, craneYellow, 'painted');
+        clusterBox(pos, 0, 0.1, 1.05, 1.6, 0.14, 1.6, millSteel, 'structure', 0, 0.45);
+        operationalMachines += 1;
+      }
+      // two transfer tracks along the bay, either side of the road
+      addTrackOnCluster(bay, -5.6, -1, 22);
+      addTrackOnCluster(bay, 5.6, -1, 22);
+      structuralConnections += 60;
+      // the coating booth at the back, open toward the yard; the yard kit round the bay
+      addVentilatedCoatingBooth(atGround(0, -7.0), 0, 0, new THREE.Color(0x5d4a45));
+      addPoweredWinch(fixedCluster(-12.5, 14.5), 0, 0, new THREE.Color(0x9a5439));
+      addPartsPallet(fixedCluster(12.5, 15.0), 0, 0, 3);
+      addSafetyRail(fixedCluster(9.5, 12.0), 0, 0, 5.5);
+      addTurningRollStation(fixedCluster(-12.8, 21.0), 0, 0, new THREE.Color(0x8b4d3b));
   };
   const variantBuilders: Partial<Record<GarageVariant['architecture'], () => void>> = {
     shade_depot: addShadeDepot,

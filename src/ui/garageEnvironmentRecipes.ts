@@ -377,7 +377,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'rock', terrainTint: 0x5f5953, hardstandTint: 0x65615b, buildingTint: 0x91857b,
     structures: [
       at(makeFoundryOffice, 'foundry office', -36, -6, 0.8),
-      at(makeFactory, 'heavy factory', -30, -30, 0.76),
+      at(makeFactory, 'heavy factory', -31, -31, 0.76), // 1.4 m back: clear of the crane bay (garage round 7)
       at(makeStack, 'smokestack', -7, -36, 0.82),
       at(makeWaterTower, 'works water tower', 18, -34, 0.70),
       at(makeWarehouse, 'works warehouse', 36, -14, 0.58),
