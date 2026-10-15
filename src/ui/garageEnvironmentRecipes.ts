@@ -353,7 +353,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // the warehouse stood square behind the turret, its dark roof against the hero's outline (the re-judge, 2026-10-15):
       // a smaller store right of it, its roof under the turret's line from the Garage camera (view side 9, depth 44)
       at(makeWarehouse, 'recovery warehouse', -24.75, -37.48, 0.45),
-      at(makeGantry, 'heavy lift gantry', -7, -36, 0.76),
+      // the map's grey gantry stood behind the yard's own red recovery gantry, two lattices crossing in the frame's right
+      // third (stills ticket 6, 2026-10-15): it now stands behind the showroom lens on the right, seen from the orbit
+      atView(makeGantry, 'heavy lift gantry', 17, -38, 0.76),
       at(makeWaterTower, 'divide water tower', 18, -34, 0.68),
       at(makeContainerRow, 'salvage container line', 36, -14, 0.62),
       at(makeShed, 'recovery fabrication shed', 40, -11, 0.72),

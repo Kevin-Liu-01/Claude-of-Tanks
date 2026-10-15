@@ -153,8 +153,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       logistics: [[-34, -8], [19, -25]],
       parts: [[-31, 18], [4, -34]], floods: [[-39, 6], [39, 1]],
       // the recovery yard in the frame's right third, its gantry's legs clear of the hero's outline (the garage critic
-      // panel, 2026-10-14: "the badlands gantry legs" cut the tank's silhouette)
-      feature: [16, 14], featureRadius: [11, 7],
+      // panel, 2026-10-14: "the badlands gantry legs" cut the tank's silhouette); the gantry turned 45 degrees so its span
+      // recedes into the frame instead of running off its right edge (stills ticket 6, 2026-10-15), the level yard
+      // reaching both runways
+      feature: [15, 16.5], featureRadius: [10, 9],
     },
     factory_line: {
       logistics: [[-35, 12], [16, -27]],
@@ -2469,9 +2471,11 @@ export function addGarageFacilityDetails({
       // knees) carries a box beam with a geared trolley and its hook block; timber cribbing stacks and a low-loader
       // trailer with its ramps down wait under it; the recovery gear lies laid out on a pallet (tow bars, shackles,
       // snatch blocks, wire-rope reels); a bulldozed earth berm closes the yard behind. Over the trail's run.
-      const centerSide = featureSide + 1.1, centerDepth = featureDepth + 0.5;
+      // The span runs diagonally away from the lens (its near leg right of the hero, its far leg deep in the frame's
+      // right third), the yard's face toward the lens's right, so the whole gantry stands inside the canonical frame.
+      const centerSide = featureSide + 1.0, centerDepth = featureDepth + 0.5;
       const origin = cameraPoint(centerSide, centerDepth);
-      const roadIn = cameraPoint(centerSide - 0.45, centerDepth - 1); // facing back toward the yard
+      const roadIn = cameraPoint(centerSide + 0.7, centerDepth - 0.7);
 
       const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
       const c = Math.cos(yaw), sn = Math.sin(yaw);
@@ -2483,36 +2487,36 @@ export function addGarageFacilityDetails({
       };
       const craneRed = new THREE.Color(0x8c3f2a), plate = new THREE.Color(0x3a3532), wire = new THREE.Color(0x2a2a28);
       const timberC = new THREE.Color(0x6a5136), timberDark = new THREE.Color(0x4f3c28), earthTone = new THREE.Color(0x8a5a40);
-      const halfSpan = 9.0, legH = 7.8, beamY = legH + 0.4;
+      const halfSpan = 7.5, legH = 7.8, beamY = legH + 0.4, foot = 2.2, runway = 10.0;
       // the lattice legs: an A of two laced columns at each end, gussets at the knees and feet
       // it travels on a rail along a concrete runway beam each side (the re-judge, 2026-10-15: "gantries stand on bare
       // dirt with no rails or footings"), each leg on a wheeled end truck, buffer stops at the runway's ends
       for (const side of [-1, 1]) {
-        clusterBox(yard, side * halfSpan, 0, 0.15, 1.1, 0.3, 12.0, plinthConcrete, 'masonry');
-        clusterBox(yard, side * halfSpan, 0, 0.36, 0.1, 0.12, 11.6, plate, 'structure');
-        for (const end of [-5.75, 5.75]) clusterBox(yard, side * halfSpan, end, 0.62, 0.7, 0.6, 0.4, new THREE.Color(0xb88a2a), 'painted');
+        clusterBox(yard, side * halfSpan, 0, 0.15, 1.1, 0.3, runway, plinthConcrete, 'masonry');
+        clusterBox(yard, side * halfSpan, 0, 0.36, 0.1, 0.12, runway - 0.4, plate, 'structure');
+        for (const end of [-runway / 2 + 0.25, runway / 2 - 0.25]) clusterBox(yard, side * halfSpan, end, 0.62, 0.7, 0.6, 0.4, new THREE.Color(0xb88a2a), 'painted');
       }
       for (const side of [-1, 1]) {
-        for (const f of [-2.4, 2.4]) {
-          const foot = side * halfSpan;
-          clusterBox(yard, foot, f, 0.62, 0.9, 0.5, 1.5, craneRed.clone().multiplyScalar(0.8), 'structure'); // the end truck
-          for (const df of [-0.45, 0.45]) clusterCylinder(yard, foot, f + df, 0.42, 0.24, 0.16, plate, 0, 12, Math.PI / 2);
-          for (const du of [-0.28, 0.28]) clusterBox(yard, foot + du, f, legH / 2 + 0.15, 0.12, legH, 0.3, craneRed, 'structure'); // chords
+        for (const f of [-foot, foot]) {
+          const legU = side * halfSpan;
+          clusterBox(yard, legU, f, 0.62, 0.9, 0.5, 1.5, craneRed.clone().multiplyScalar(0.8), 'structure'); // the end truck
+          for (const df of [-0.45, 0.45]) clusterCylinder(yard, legU, f + df, 0.42, 0.24, 0.16, plate, 0, 12, Math.PI / 2);
+          for (const du of [-0.28, 0.28]) clusterBox(yard, legU + du, f, legH / 2 + 0.15, 0.12, legH, 0.3, craneRed, 'structure'); // chords
           for (let k = 0; k < 9; k += 1) { // the lacing
             const y0 = 0.4 + k * (legH - 0.6) / 9, y1 = y0 + (legH - 0.6) / 9;
-            clusterBeam(yard, [foot - 0.26 * (k % 2 ? -1 : 1), f, y0], [foot + 0.26 * (k % 2 ? -1 : 1), f, y1], 0.06, craneRed, 'structure');
+            clusterBeam(yard, [legU - 0.26 * (k % 2 ? -1 : 1), f, y0], [legU + 0.26 * (k % 2 ? -1 : 1), f, y1], 0.06, craneRed, 'structure');
           }
-          clusterBox(yard, foot, f, 0.55, 1.0, 0.5, 0.04, plate, 'structure'); // the foot gusset
-          clusterBox(yard, foot - side * 0.45, f, legH - 0.3, 1.2, 0.9, 0.04, plate, 'structure'); // the knee gusset
-          for (const by of [legH - 0.5, legH - 0.1]) for (const bu of [-0.3, 0.3]) clusterBox(yard, foot - side * 0.45 + bu, f + 0.03, by, 0.06, 0.06, 0.04, wire, 'structure'); // bolts
+          clusterBox(yard, legU, f, 0.55, 1.0, 0.5, 0.04, plate, 'structure'); // the foot gusset
+          clusterBox(yard, legU - side * 0.45, f, legH - 0.3, 1.2, 0.9, 0.04, plate, 'structure'); // the knee gusset
+          for (const by of [legH - 0.5, legH - 0.1]) for (const bu of [-0.3, 0.3]) clusterBox(yard, legU - side * 0.45 + bu, f + 0.03, by, 0.06, 0.06, 0.04, wire, 'structure'); // bolts
         }
         // the end frame tying the A's two legs, and a diagonal brace
-        clusterBox(yard, side * halfSpan, 0, legH - 0.1, 0.3, 0.3, 5.1, craneRed, 'structure');
-        clusterBeam(yard, [side * halfSpan, -2.4, 0.5], [side * halfSpan, 2.4, legH - 0.4], 0.1, craneRed, 'structure');
+        clusterBox(yard, side * halfSpan, 0, legH - 0.1, 0.3, 0.3, 2 * foot + 0.3, craneRed, 'structure');
+        clusterBeam(yard, [side * halfSpan, -foot, 0.5], [side * halfSpan, foot, legH - 0.4], 0.1, craneRed, 'structure');
       }
       // the box beam, its trolley on four geared wheels, the hoist drum and the hook block on four falls
       for (const f of [-0.42, 0.42]) clusterBox(yard, 0, f, beamY, 2 * halfSpan + 0.9, 0.9, 0.3, craneRed, 'structure');
-      const trolleyU = 2.4;
+      const trolleyU = 3.2; // over the turning rolls
       clusterBox(yard, trolleyU, 0, beamY + 0.75, 1.9, 0.6, 1.6, new THREE.Color(0xb88a2a), 'painted');
       for (const du of [-0.7, 0.7]) for (const df of [-0.62, 0.62]) {
         clusterCylinder(yard, trolleyU + du, df, beamY + 0.5, 0.18, 0.12, wire, 0, 16, Math.PI / 2);
@@ -2536,8 +2540,10 @@ export function addGarageFacilityDetails({
         for (const side of [-1, 1]) clusterBox(trailer, side * 0.85, -5.1, 0.5, 0.75, 0.1, 2.0, plate, 'structure', 0, -0.48); // ramps
         clusterBox(trailer, 0, 4.2, 0.45, 0.2, 0.9, 0.2, wire, 'structure'); // the landing leg
       }
-      // timber cribbing stacks, crossed courses, beside the trailer
-      for (const [u, w] of [[4.8, -1.6], [5.6, 1.4]] as const) {
+      // the turning rolls under the hook, their long axis along the runways
+      addTurningRollStation({ ...atGround(trolleyU, 0), yaw: yaw + Math.PI / 2 }, 0, 0, new THREE.Color(0x885844));
+      // timber cribbing stacks, crossed courses, between the rolls and the right runway
+      for (const [u, w] of [[5.9, -4.6], [5.9, 4.6]] as const) {
         const crib = atGround(u, w);
         for (let course = 0; course < 5; course += 1) for (const d of [-0.42, 0.42]) {
           if (course % 2) clusterBox(crib, d, 0, 0.1 + course * 0.2, 0.2, 0.2, 1.3, course % 3 ? timberC : timberDark, 'painted');
@@ -2547,7 +2553,7 @@ export function addGarageFacilityDetails({
       }
       // the recovery gear on a pallet: tow bars, shackles, snatch blocks, two wire-rope reels
       {
-        const gear = atGround(7.4, -4.6);
+        const gear = atGround(10.0, -0.8); // outside the right runway
         clusterBox(gear, 0, 0, 0.08, 2.6, 0.16, 1.6, timberDark, 'equipment');
         for (const df of [-0.45, 0.0]) clusterBox(gear, 0, df, 0.22, 2.4, 0.1, 0.1, craneRed, 'equipment'); // tow bars
         clusterBeam(gear, [-1.1, -0.45, 0.22], [-1.1, 0.0, 0.22], 0.08, craneRed, 'equipment');
@@ -2559,15 +2565,16 @@ export function addGarageFacilityDetails({
           clusterCylinder(gear, du, 0.5, 0.32, 0.17, 0.08, plate, 0, 16, Math.PI / 2); // snatch-block sheaves
           clusterBox(gear, du, 0.5, 0.36, 0.06, 0.38, 0.22, craneRed, 'equipment');
         }
-        for (const du of [-1.9, 1.9]) {
-          const reel = atGround(7.4 + du, -6.6);
+        for (const dw of [-2.8, -4.4]) {
+          const reel = atGround(10.0, -0.8 + dw);
           clusterCylinder(reel, 0, 0, 0.6, 0.6, 0.9, timberC, 0, 16, Math.PI / 2);
           clusterCylinder(reel, 0, 0, 0.6, 0.42, 0.92, wire, 0, 16, Math.PI / 2);
           looseParts += 1;
         }
       }
-      // the bulldozed berm behind the yard: a ridge of pushed earth in three straight runs
-      for (const [u, w, len, rot] of [[0, -9.5, 20, 0], [-11.5, -4.5, 9, Math.PI / 2 - 0.35], [11.5, -4.5, 9, -Math.PI / 2 + 0.35]] as const) {
+      // the bulldozed berm behind the yard: a ridge of pushed earth in two straight runs, open on the left where the
+      // trailer's ramps meet the recovery trail
+      for (const [u, w, len, rot] of [[4.5, -8.6, 16, 0], [14.5, -4.4, 8, -Math.PI / 2 + 0.35]] as const) {
         const berm = atGround(u, w);
         for (let layer = 0; layer < 3; layer += 1) {
           clusterBox({ ...berm, yaw: yaw + rot }, 0, 0, 0.3 + layer * 0.45, len - layer * 1.4, 0.6, 3.2 - layer * 0.9,
@@ -2576,9 +2583,8 @@ export function addGarageFacilityDetails({
       }
       // the yard kit round it
       addPoweredWinch(fixedCluster(-12.5, 12.0), 0, 0, new THREE.Color(0xa75f3e));
-      addPartsPallet(fixedCluster(12.5, 12.5), 0, 0, 3);
+      addPartsPallet({ ...atGround(-10.0, 2.4), yaw: yaw + Math.PI / 2 }, 0, 0, 3); // outside the left runway
       addSafetyRail(fixedCluster(-8.5, 11.0), 0, 0, 5.0);
-      addTurningRollStation(fixedCluster(13.5, 20.5), 0, 0, new THREE.Color(0x885844));
       // the yard's perimeter on its left (the re-judge, 2026-10-15: "nothing is fortified (no HESCO, sandbags or
       // tower)"): a sandbag wall four courses high across the left third, the guard tower in its gap, clear of the
       // turret and the gun, and HESCO cells either side of the tower
