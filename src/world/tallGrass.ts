@@ -587,7 +587,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     shared.uGrassBase.value.set(biome.base[0], biome.base[1], biome.base[2]);
     shared.uGrassTip.value.set(biome.tip[0], biome.tip[1], biome.tip[2]);
     shared.uGrassDry.value.set(biome.dry[0], biome.dry[1], biome.dry[2]);
-    shared.uGrassSeed.value.set(...TALL_GRASS.species[biome.kind].seedRgb);
+    const seedRgb = TALL_GRASS.species[biome.kind].seedRgb;
+    shared.uGrassSeed.value.set(seedRgb[0], seedRgb[1], seedRgb[2]);
   }
   // (Ultra Low, 2026-10-13: the light world build stands its sward untrampled, as on the phones)
   const pressure = biome && tier !== 'mobile' && !presetLightWorld() ? createGroundPressureField(options.renderer, { tier }) : null;
