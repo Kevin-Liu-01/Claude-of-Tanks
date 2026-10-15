@@ -623,13 +623,13 @@ export function addGarageFacilityDetails({
   // its bays the way its region would, on the same 9.3 x 7.3 m footprint, open to the yard: a back wall that carries the
   // tool wall, supports for the turret crane's runway, the roof clear of the Burlak's turret gantry (5.2 m).
   type ShelterKind = 'portal' | 'timber-snow-shed' | 'shade-hangar' | 'brick-bay' | 'rail-shed'
-    | 'monsoon-pavilion' | 'avalanche-gallery' | 'rock-cut' | 'mill-bay';
+    | 'monsoon-pavilion' | 'avalanche-gallery' | 'rock-cut' | 'mill-bay' | 'harbour-shed';
   const SHELTER_KINDS: Readonly<Record<GarageVariant['architecture'], ShelterKind>> = Object.freeze({
     field_shed: 'portal',
     shade_depot: 'shade-hangar', // canvas vault on arched hoops, sandbagged
     repair_bunker: 'timber-snow-shed', // heavy timber, a steep board roof deep in snow
     brick_arsenal: 'brick-bay', // brick piers and walls, steel trusses
-    naval_drydock: 'portal', // galvanised dockyard steel
+    naval_drydock: 'harbour-shed', // tarred weatherboard on granite, galvanised lattice posts
     rail_roundhouse: 'rail-shed', // brick, cast-iron columns, a smoke-vent roof
     rain_canopy: 'monsoon-pavilion', // round columns, deep eaves, gutters into drains
     rock_cavern: 'avalanche-gallery', // concrete gallery under snow, backed by scree
@@ -1111,6 +1111,160 @@ export function addGarageFacilityDetails({
     clusterBox(cluster, 0, back + 0.04, eaveY - 0.8, 2 * BAY_HALF_W + 0.3, 1.6, 0.02, soot, 'painted');
   };
 
+  const addHarbourShed = (cluster: FacilityCluster, cladLateralSign: number, deckLateralSign: number): void => {
+    // Saltmere (garage round 7, 2026-10-14: the bays were the plain portal every steel Garage shared): the harbour's own
+    // workshop, built like its fishery and boatsheds: a coursed granite plinth, tarred weatherboards lapped on the back,
+    // the far side and both gables, white window frames and bargeboards, galvanised lattice posts built up from two
+    // channels and their lacing (the dock crane's language) carrying the crane runway, a corrugated roof on steel trusses,
+    // a hoist beam out of the front gable, a lifebuoy and a coil of line on the yard post.
+    const eaveY = 5.6, ridgeY = 7.6, plinthY = 0.7, board = 0.2;
+    const eaveOut = BAY_HALF_W + 0.55;
+    const tanPitch = (ridgeY - eaveY) / BAY_HALF_W;
+    const tar = new THREE.Color(0x2c2926);
+    const trim = new THREE.Color(0xd8d4c8);
+    const pane = new THREE.Color(0x1b2327);
+    const granite = [new THREE.Color(0x8e8b85), new THREE.Color(0x7c7a75), new THREE.Color(0x9a968f)];
+    const studTimber = new THREE.Color(0x4b3c2e);
+    const boardTone = (row: number, column: number): THREE.Color =>
+      tar.clone().offsetHSL(0, 0, (((row * 5 + column * 3) % 7) - 3) * 0.006);
+    // the lattice posts: two channels laced on both faces, a base plate on a granite pad, a cap under the wall plate
+    const latticePost = (lateral: number, longitudinal: number, top: number): void => {
+      clusterBox(cluster, lateral, longitudinal, 0.14, 0.86, 0.28, 0.7, granite[1], 'masonry');
+      clusterBox(cluster, lateral, longitudinal, 0.31, 0.6, 0.06, 0.48, steel, 'structure');
+      for (const side of [-1, 1]) {
+        clusterBox(cluster, lateral + side * 0.17, longitudinal, 0.34 + (top - 0.34) / 2, 0.08, top - 0.34, 0.3, steel, 'structure');
+      }
+      const pitch = 0.46;
+      const count = Math.floor((top - 0.6) / pitch);
+      for (const face of [-0.13, 0.13]) {
+        for (let k = 0; k < count; k += 1) {
+          const y0 = 0.5 + k * pitch, sign = k % 2 ? 1 : -1;
+          clusterBeam(cluster, [lateral - sign * 0.15, longitudinal + face, y0], [lateral + sign * 0.15, longitudinal + face, y0 + pitch],
+            0.035, steel, 'structure');
+        }
+        for (const y of [0.42, top - 0.12]) clusterBox(cluster, lateral, longitudinal + face, y, 0.4, 0.16, 0.025, steel, 'structure');
+      }
+      clusterBox(cluster, lateral, longitudinal, top + 0.04, 0.52, 0.08, 0.44, steel, 'structure');
+    };
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        if (longitudinal === 0 && !midPostOn(lateral, deckLateralSign)) continue;
+        latticePost(lateral, longitudinal, eaveY - 0.08);
+      }
+      clusterBox(cluster, lateral, 0, eaveY + 0.06, 0.3, 0.2, 2 * BAY_HALF_L + 0.5, steel, 'structure'); // wall plate
+    }
+    // a boarded wall: granite plinth courses, then lapped boards (each tilted so its foot stands proud of the one below)
+    // cut around its windows; `alongLateral` walls span lateral at `at`, the others span longitudinal
+    const boardedWall = (alongLateral: boolean, at: number, from: number, to: number, top: number,
+      windows: readonly number[], plinth = true): void => {
+      const span = to - from, middle = (from + to) / 2;
+      const put = (along: number, y: number, run: number, height: number, depth: number, color: THREE.Color,
+        materialClass: PrimitiveInstance['materialClass'], tilt = 0): void => {
+        if (alongLateral) clusterBox(cluster, along, at, y, run, height, depth, color, materialClass, 0, tilt);
+        else clusterBox(cluster, at, along, y, depth, height, run, color, materialClass, tilt);
+      };
+      if (plinth) {
+        for (let course = 0; course < 2; course += 1) {
+          const block = 1.15, shift = course ? block / 2 : 0;
+          for (let start = from - shift, i = 0; start < to - 0.05; start += block, i += 1) {
+            const a = Math.max(from, start), b = Math.min(to, start + block);
+            if (b - a < 0.08) continue;
+            put((a + b) / 2, 0.18 + course * 0.35, b - a - 0.03, 0.33, 0.42, granite[(i + course * 2) % 3], 'masonry');
+          }
+        }
+        put(middle, plinthY + 0.03, span + 0.06, 0.06, 0.5, granite[2], 'masonry'); // the weathered cope
+      }
+      const sillY = 2.2, headY = 3.6, halfOpening = 0.55;
+      const rows = Math.round((top - plinthY) / board);
+      for (let row = 0; row < rows; row += 1) {
+        const y = plinthY + (row + 0.5) * board;
+        const inWindows = y > sillY && y < headY;
+        const edges = inWindows
+          ? [from, ...[...windows].sort((a, b) => a - b).flatMap((w) => [w - halfOpening, w + halfOpening]), to]
+          : [from, to];
+        for (let k = 0; k < edges.length; k += 2) {
+          if (edges[k + 1] - edges[k] < 0.05) continue;
+          put((edges[k] + edges[k + 1]) / 2, y, edges[k + 1] - edges[k], board + 0.025, 0.03, boardTone(row, k),
+            'painted', alongLateral ? -0.07 : 0.07);
+        }
+      }
+      for (const w of windows) {
+        // the frame stands in the opening's reveal, four lights behind a mullion and a transom, a sill below
+        const mid = (sillY + headY) / 2;
+        for (const side of [-1, 1]) put(w + side * (halfOpening - 0.04), mid, 0.08, headY - sillY, 0.1, trim, 'painted');
+        for (const y of [sillY + 0.04, headY - 0.04]) put(w, y, 2 * halfOpening, 0.08, 0.1, trim, 'painted');
+        put(w, mid, 0.05, headY - sillY - 0.1, 0.07, trim, 'painted');
+        put(w, sillY + (headY - sillY) * 0.55, 2 * halfOpening - 0.12, 0.05, 0.07, trim, 'painted');
+        put(w, mid, 2 * halfOpening - 0.06, headY - sillY - 0.06, 0.012, pane, 'painted');
+        put(w, sillY - 0.05, 2 * halfOpening + 0.24, 0.07, 0.22, trim, 'painted');
+        put(w, headY + 0.06, 2 * halfOpening + 0.2, 0.1, 0.16, trim, 'painted'); // the drip head
+      }
+    };
+    const back = -BAY_HALF_L - 0.26;
+    boardedWall(true, back, -BAY_HALF_W - 0.2, BAY_HALF_W + 0.2, eaveY, [-2.4, 2.4]);
+    // the inside of the back wall: studs between the tool boards and a head rail under the wall plate
+    for (const lateral of [-1.52, 1.52]) {
+      clusterBox(cluster, lateral, back + 0.09, plinthY + (eaveY - plinthY) / 2, 0.1, eaveY - plinthY, 0.14, studTimber, 'painted');
+    }
+    clusterBox(cluster, 0, back + 0.09, eaveY - 0.1, 2 * BAY_HALF_W, 0.16, 0.14, studTimber, 'painted');
+    if (cladLateralSign !== 0) {
+      boardedWall(false, cladLateralSign * (BAY_HALF_W + 0.26), -BAY_HALF_L - 0.2, 0.2, eaveY, []);
+    }
+    // both gables boarded above the tie, each board as wide as the roof lets it, under white bargeboards
+    for (const [longitudinal, front] of [[back, false], [BAY_HALF_L + 0.2, true]] as const) {
+      const rows = Math.floor((ridgeY - eaveY) / board);
+      for (let row = 0; row < rows; row += 1) {
+        const y = eaveY + 0.12 + (row + 0.5) * board;
+        const half = BAY_HALF_W - (y + board / 2 - eaveY) / tanPitch;
+        if (half < 0.15) continue;
+        clusterBox(cluster, 0, longitudinal, y, 2 * half, board + 0.025, 0.03, boardTone(row + 30, front ? 1 : 0), 'painted', 0,
+          front ? 0.07 : -0.07);
+      }
+      const pitch = Math.atan(tanPitch);
+      const out = longitudinal + (front ? 0.06 : -0.06);
+      for (const sign of [-1, 1]) {
+        const eaveYOut = eaveY - (eaveOut - BAY_HALF_W) * tanPitch;
+        const slope = Math.hypot(eaveOut, ridgeY - eaveYOut);
+        clusterBox(cluster, sign * eaveOut / 2, out, (eaveYOut + ridgeY) / 2 + 0.1, slope + 0.1, 0.26, 0.05, trim, 'painted', -sign * pitch);
+      }
+    }
+    roofTrusses(cluster, eaveY + 0.12, ridgeY, [-BAY_HALF_L, 0, BAY_HALF_L], steel);
+    for (let i = 0; i <= 4; i += 1) {
+      const t = i / 4;
+      for (const sign of [-1, 1]) {
+        clusterBox(cluster, sign * BAY_HALF_W * (1 - t), 0, eaveY + 0.12 + (ridgeY - eaveY - 0.12) * t + 0.1, 0.1, 0.12,
+          2 * BAY_HALF_L + 0.5, steel, 'structure');
+      }
+    }
+    gableRoof(cluster, 'roofing', eaveOut, eaveY + 0.12 - (eaveOut - BAY_HALF_W) * tanPitch, ridgeY + 0.12, 2 * BAY_HALF_L + 0.9);
+    clusterBox(cluster, 0, 0, ridgeY + 0.2, 0.42, 0.1, 2 * BAY_HALF_L + 0.9, roofing, 'painted'); // the ridge capping
+    // gutters along both eaves, downpipes at the back corners into the plinth's shoes
+    for (const sign of [-1, 1]) {
+      const gutterY = eaveY - (eaveOut - BAY_HALF_W) * tanPitch - 0.05;
+      clusterBox(cluster, sign * (eaveOut + 0.06), 0, gutterY, 0.16, 0.12, 2 * BAY_HALF_L + 0.9, steel, 'structure');
+      clusterCylinder(cluster, sign * (eaveOut + 0.06), -BAY_HALF_L - 0.3, gutterY / 2 + 0.2, 0.05, gutterY - 0.4, steel, 0, 8);
+      clusterBox(cluster, sign * (eaveOut + 0.06), -BAY_HALF_L - 0.12, 0.22, 0.12, 0.08, 0.4, steel, 'structure');
+    }
+    // the hoist beam out of the front gable's apex: a timber with an iron strap, a block and its hook
+    const beamY = ridgeY - 0.75;
+    clusterBox(cluster, 0, BAY_HALF_L + 0.25, beamY, 0.22, 0.26, 2.2, studTimber, 'painted');
+    clusterBox(cluster, 0, BAY_HALF_L + 1.2, beamY - 0.18, 0.12, 0.1, 0.16, dark, 'equipment');
+    clusterCylinder(cluster, 0, BAY_HALF_L + 1.2, beamY - 0.4, 0.12, 0.08, steel, Math.PI / 2, 10);
+    clusterCylinder(cluster, 0, BAY_HALF_L + 1.2, beamY - 1.3, 0.012, 1.7, dark, 0, 8);
+    clusterBox(cluster, 0, BAY_HALF_L + 1.2, beamY - 2.2, 0.1, 0.18, 0.05, dark, 'equipment');
+    // the lifebuoy and a coil of line on the yard face of the front post on the clad side
+    const buoyLateral = (cladLateralSign || 1) * BAY_HALF_W;
+    const buoyLongitudinal = BAY_HALF_L + 0.24, buoyY = 2.0, buoyR = 0.3;
+    for (let k = 0; k < 8; k += 1) {
+      const angle = (k + 0.5) * Math.PI / 4;
+      clusterBox(cluster, buoyLateral + Math.cos(angle) * buoyR, buoyLongitudinal, buoyY + Math.sin(angle) * buoyR,
+        0.27, 0.12, 0.12, k % 2 ? trim : new THREE.Color(0xb3362a), 'painted', angle + Math.PI / 2);
+    }
+    clusterBox(cluster, buoyLateral, buoyLongitudinal - 0.1, buoyY + buoyR + 0.08, 0.06, 0.16, 0.12, dark, 'equipment');
+    clusterCylinder(cluster, buoyLateral, buoyLongitudinal - 0.02, 1.0, 0.24, 0.12, new THREE.Color(0x9d8a62), Math.PI / 2, 16);
+    clusterBox(cluster, buoyLateral, buoyLongitudinal - 0.1, 1.27, 0.05, 0.12, 0.12, dark, 'equipment');
+  };
+
   /** Each Garage's own shelter on a bay (SHELTER_KINDS); the portal frame where the region builds in plain steel. */
   const addRegionalServiceBayFrame = (cluster: FacilityCluster, deckLateralSign = 0, cladLateralSign = -deckLateralSign): void => {
     if (shelterKind === 'portal') {
@@ -1127,6 +1281,7 @@ export function addGarageFacilityDetails({
       case 'avalanche-gallery': addAvalancheGallery(cluster, cladLateralSign, deckLateralSign); break;
       case 'rock-cut': addRockCut(cluster, cladLateralSign); break;
       case 'mill-bay': addMillBay(cluster, cladLateralSign, deckLateralSign); break;
+      case 'harbour-shed': addHarbourShed(cluster, cladLateralSign, deckLateralSign); break;
     }
   };
 
