@@ -14,7 +14,7 @@ import {
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofCrown, roofGeometry, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -363,20 +363,24 @@ const chapelle: RegionalBuilder = (ctx) => {
       fresco(sink, f, 3.55, 1.2, 0.72);
       // the bell turret on the front gable's apex: four stone piers, its bell, a lauze pyramid
       const ridge = frame.roof.ridgeY, tz = D / 2 - 0.65, b = 0.48;
-      sink.span('stone', -b - 0.1, ridge - 0.6, tz - b - 0.1, b + 0.1, ridge + 0.25, tz + b + 0.1);
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-        sink.span('stone', sx * b - 0.14, ridge + 0.25, tz + sz * b - 0.14, sx * b + 0.14, ridge + 1.45, tz + sz * b + 0.14);
-      }
-      sink.span('stone', -b - 0.16, ridge + 1.45, tz - b - 0.16, b + 0.16, ridge + 1.62, tz + b + 0.16);
-      sink.cylinder('structureMetal', [0, ridge + 0.55, tz], 'y', 0.5, 0.26, 8, { colour: BELL, decor: true }, 0.13);
-      // (the bell hung 5 cm under nothing, props census #5: its headstock beam across two bearers, each from pier to pier)
-      for (const sx of [-1, 1]) sink.span('structureWood', sx * b - 0.06, ridge + 1.15, tz - b - 0.1, sx * b + 0.06, ridge + 1.25, tz + b + 0.1, { colour: LARCH_DARK, decor: true });
-      sink.span('structureWood', -b, ridge + 1.05, tz - 0.05, b, ridge + 1.15, tz + 0.05, { colour: LARCH_DARK, decor: true });
-      const cap: RoofSpec = { kind: 'hip', pitchDeg: 40, eave: 0.12, verge: 0.12, thickness: 0.12, bucket: 'roof', ridge: null };
-      sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(2 * b + 0.32, 2 * b + 0.32, ridge + 1.62, cap), cap));
-      const tip = ridge + 1.62 + (b + 0.16) * Math.tan(40 * Math.PI / 180) + 0.12;
-      sink.span('structureMetal', -0.03, tip - 0.05, tz - 0.03, 0.03, tip + 0.8, tz + 0.03, { colour: IRON, decor: true });
-      sink.span('structureMetal', -0.22, tip + 0.5, tz - 0.03, 0.22, tip + 0.56, tz + 0.03, { colour: IRON, decor: true });
+      // (props census #5: the turret a crown of the roof in the house's plan: it falls with its roof section)
+      const capTop = ridge + 1.62 + (b + 0.16) * Math.tan(40 * Math.PI / 180) + 0.12 + 0.8;
+      roofCrown(sink, frame, { kind: 'belfry', x0: -b - 0.16, x1: b + 0.16, z0: tz - b - 0.16, z1: tz + b + 0.16, y0: ridge - 0.6, y1: capTop, bucket: 'stone' }, () => {
+        sink.span('stone', -b - 0.1, ridge - 0.6, tz - b - 0.1, b + 0.1, ridge + 0.25, tz + b + 0.1);
+        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+          sink.span('stone', sx * b - 0.14, ridge + 0.25, tz + sz * b - 0.14, sx * b + 0.14, ridge + 1.45, tz + sz * b + 0.14);
+        }
+        sink.span('stone', -b - 0.16, ridge + 1.45, tz - b - 0.16, b + 0.16, ridge + 1.62, tz + b + 0.16);
+        sink.cylinder('structureMetal', [0, ridge + 0.55, tz], 'y', 0.5, 0.26, 8, { colour: BELL, decor: true }, 0.13);
+        // (the bell hung 5 cm under nothing, props census #5: its headstock beam across two bearers, each from pier to pier)
+        for (const sx of [-1, 1]) sink.span('structureWood', sx * b - 0.06, ridge + 1.15, tz - b - 0.1, sx * b + 0.06, ridge + 1.25, tz + b + 0.1, { colour: LARCH_DARK, decor: true });
+        sink.span('structureWood', -b, ridge + 1.05, tz - 0.05, b, ridge + 1.15, tz + 0.05, { colour: LARCH_DARK, decor: true });
+        const cap: RoofSpec = { kind: 'hip', pitchDeg: 40, eave: 0.12, verge: 0.12, thickness: 0.12, bucket: 'roof', ridge: null };
+        sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(2 * b + 0.32, 2 * b + 0.32, ridge + 1.62, cap), cap));
+        const tip = ridge + 1.62 + (b + 0.16) * Math.tan(40 * Math.PI / 180) + 0.12;
+        sink.span('structureMetal', -0.03, tip - 0.05, tz - 0.03, 0.03, tip + 0.8, tz + 0.03, { colour: IRON, decor: true });
+        sink.span('structureMetal', -0.22, tip + 0.5, tz - 0.03, 0.22, tip + 0.56, tz + 0.03, { colour: IRON, decor: true });
+      });
     });
     // the porch: two larch posts and a lauze lean-to from the front wall
     const fz = zc + D / 2, pz = fz + porch;

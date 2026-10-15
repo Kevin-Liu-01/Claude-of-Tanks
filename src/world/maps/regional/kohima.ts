@@ -4,7 +4,7 @@
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, holedBox, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, closeGables, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -149,12 +149,15 @@ const church: RegionalBuilder = (ctx) => {
   const z = D / 2 - 0.6, top = frame.roof.ridgeTopY;
   // (props census #5, lane B 2026-10-15) the belfry's bell opening cut through its front (a dark plate on the box), the
   // bell hung in it from its beam
-  holedBox(sink, 'structureWood', -0.6, z - 0.6, 0.6, z + 0.6, top - 0.8, top + 1.3, { front: [{ u0: -0.3, u1: 0.3, y0: top + 0.2, y1: top + 1.0 }] }, 0.18, 0.14,
-    { colour: WHITE });
-  sink.cylinder('structureMetal', [0, top + 0.5, z + 0.3], 'y', 0.42, 0.2, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.1);
-  sink.cylinder('structureMetal', [0, top + 1.3, z], 'y', 1.3, 1.0, 4, { colour: TIN[0] }, 0.04, true, Math.PI / 4);
-  sink.span('structureWood', -0.04, top + 2.5, z - 0.04, 0.04, top + 3.3, z + 0.04, { colour: WHITE, decor: true });
-  sink.span('structureWood', -0.25, top + 3.0, z - 0.04, 0.25, top + 3.08, z + 0.04, { colour: WHITE, decor: true });
+  // (the belfry a crown of the roof in the house's plan: it falls with its roof section)
+  roofCrown(sink, frame, { kind: 'belfry', x0: -1.0, x1: 1.0, z0: z - 1.0, z1: z + 1.0, y0: top - 0.8, y1: top + 3.3, bucket: 'structureWood' }, () => {
+    holedBox(sink, 'structureWood', -0.6, z - 0.6, 0.6, z + 0.6, top - 0.8, top + 1.3, { front: [{ u0: -0.3, u1: 0.3, y0: top + 0.2, y1: top + 1.0 }] }, 0.18, 0.14,
+      { colour: WHITE });
+    sink.cylinder('structureMetal', [0, top + 0.5, z + 0.3], 'y', 0.42, 0.2, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.1);
+    sink.cylinder('structureMetal', [0, top + 1.3, z], 'y', 1.3, 1.0, 4, { colour: TIN[0] }, 0.04, true, Math.PI / 4);
+    sink.span('structureWood', -0.04, top + 2.5, z - 0.04, 0.04, top + 3.3, z + 0.04, { colour: WHITE, decor: true });
+    sink.span('structureWood', -0.25, top + 3.0, z - 0.04, 0.25, top + 3.08, z + 0.04, { colour: WHITE, decor: true });
+  });
   return sink.finish();
 };
 

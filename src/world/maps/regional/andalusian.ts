@@ -16,7 +16,7 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, holedBox, recordShaft, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -897,7 +897,9 @@ const ermita: RegionalBuilder = (ctx) => {
       // its opening stood level with the roof's ridge, so the tiles closed it from every side; the gable now rises
       // clear of the ridge, the bell hanging in the sky
       const ridge = frame.roof.ridgeTopY;
-      espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27, st.mobile);
+      // (props census #5: the bell gable a crown of the roof in the house's plan: it falls with its roof section)
+      roofCrown(sink, frame, { kind: 'bellcote', x0: -1.1, x1: 1.1, z0: D / 2 - 0.32, z1: D / 2, y0: ridge - 0.15, y1: ridge + 3.6, bucket: 'plaster' },
+        () => espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27, st.mobile));
     });
     // the porch: two white pillars and a lean-to of tiles from the front wall
     const fz = zc + D / 2, pz = fz + porch;
