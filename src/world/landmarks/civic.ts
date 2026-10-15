@@ -240,7 +240,11 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     ageWall(sink, age, { face: towerFaces[name], bucket: wall, area: { u0: -T / 2 + 0.5, u1: T / 2 - 0.5, y0: plinthTop, y1: H1 - 0.5 },
       openings: towerHoles[name] ?? [], ledge: H1 - 0.4, spall: 'stone', grime: 0.3 });
   }
-  return { parts: smoothRender(sink.finish(), RENDER_SMOOTH), tints: { plaster: [1.0, 1.0, 0.99], plaster2: [1, 1, 1], plaster3: [1, 1, 1] } };
+  // (the maps lane, 2026-10-15, Verdant's paired capture: the church's walls blew out to a white blob with a halo under
+  // the Kursk sun, 11 % of the frame clipped where main's view clipped 0.3 %) the lime render's tint a weathered white,
+  // in line with the village's whitewashed khatas (was [1.0, 1.0, 0.99]: the smoothed render samples the print's
+  // brightest texels across the whole wall)
+  return { parts: smoothRender(sink.finish(), RENDER_SMOOTH), tints: { plaster: [0.8, 0.79, 0.76], plaster2: [1, 1, 1], plaster3: [1, 1, 1] } };
 }
 
 /** The UV scale of a church's and a monument's lime render over the village print (kit.ts smoothRender). */
