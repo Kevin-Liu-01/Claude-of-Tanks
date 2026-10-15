@@ -770,6 +770,8 @@ export interface SeatMeasure {
 /** One tier of seat rules (lengths m, shares 0-1). */
 interface SeatTier {
   supportMin: number; airMax: number; gapTolM: number; gapP90Max: number; embedMax: number; sunkShareMax: number;
+  /** A probe counts toward the sunk share when the host rises this far into the run (m). */
+  sunkProbeM: number;
   normalMaxDeg: number; minorForbiddenMax: number; cutMaxM: number; clearScale: number; sweepClearM: number;
   exposureMin: number;
 }
@@ -777,7 +779,7 @@ interface SeatTier {
  * Seat rules in two tiers.
  * - authored: a seat as its profile (or an old decor station) placed it is kept unchanged when it reads as resting and
  *   in the open. Its margins sit inside the receipt's gates (HANGING: support 50 %, air 25 %; INTERSECTING: 5 cm, or
- *   20 % sunk over 1 cm; WEIRD: on, or within 1 cm of, a forbidden role; BURIED), and the motion margin keeps the
+ *   20 % of the probes sunk over 2.5 cm, a cut measured by how far a part reaches in; WEIRD: on, or within 1 cm of, a forbidden role; BURIED), and the motion margin keeps the
  *   plan's 3 cm, so a gun or turret that grazes a run still moves it. At most one probe may land on a minor foreign
  *   part (decor, another run, a fitting, a soft load, running gear), never on the gun, a hatch, a grille, ERA or a
  *   weapon.
@@ -788,10 +790,12 @@ interface SeatTier {
 export const SEAT_RULES = Object.freeze({
   airReachM: 0.3, exposureReachM: 0.8, cutTolM: 0.01,
   authored: Object.freeze<SeatTier>({ supportMin: 0.5, airMax: 0.2, gapTolM: 0.03, gapP90Max: Infinity, embedMax: 0.05,
-    sunkShareMax: 0.2, normalMaxDeg: 30, minorForbiddenMax: 1, cutMaxM: 0.05, clearScale: 0.34, sweepClearM: 0.03,
+    sunkShareMax: 0.2, sunkProbeM: 0.025, normalMaxDeg: 30, minorForbiddenMax: 1, cutMaxM: 0.05, clearScale: 0.34,
+    sweepClearM: 0.03,
     exposureMin: 0.3 }),
   chosen: Object.freeze<SeatTier>({ supportMin: 0.8, airMax: 0.1, gapTolM: 0.012, gapP90Max: 0.012, embedMax: 0.01,
-    sunkShareMax: 0, normalMaxDeg: 20, minorForbiddenMax: 0, cutMaxM: 0.01, clearScale: 1, sweepClearM: 0.06,
+    sunkShareMax: 0, sunkProbeM: 0.01, normalMaxDeg: 20, minorForbiddenMax: 0, cutMaxM: 0.01, clearScale: 1,
+    sweepClearM: 0.06,
     exposureMin: 0.5 }),
 });
 /** Foreign parts a kept authored seat may touch with one probe (never the gun, hatches, grilles, ERA, weapons...). */
@@ -812,6 +816,7 @@ function runAxes(shape: SeatRunShape): Axes {
 const _local = new THREE.Vector3(), _world = new THREE.Vector3(), _dir = new THREE.Vector3(), _nrm = new THREE.Vector3();
 const _m = new THREE.Matrix4(), _mi = new THREE.Matrix4(), _tri = new THREE.Triangle(), _q = new THREE.Quaternion();
 const _hit = newHit(), _hit2 = newHit();
+const _triBox = new THREE.Box3();
 const _side = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 const GUN_CODES: ReadonlySet<number> = new Set([ROLE_CODE.gun, ROLE_CODE.mantlet]);
 const UNIT = new THREE.Vector3(1, 1, 1);
@@ -875,7 +880,7 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
       if (d > R.airReachM) { air++; gaps.push(R.airReachM); continue; }
       const embed = -d;                                 // how far the host rises into the run
       if (embed > maxEmbed) maxEmbed = embed;
-      if (embed > 0.01) sunk++;
+      if (embed > T.sunkProbeM) sunk++;
       gaps.push(Math.max(0, d));
       if (!_hit.host) {
         forbidden++;
@@ -921,9 +926,17 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
     const role = env.soup.roleOf(t);
     if (HOST_CODES.has(ROLE_CODE[role])) {
       if (links.max.getComponent(ax.n) > links.min.getComponent(ax.n) && links.intersectsTriangle(_tri)) {
-        // depth: the highest point of the triangle inside the link column above the link-back tolerance
-        const h = Math.max(_tri.a.getComponent(ax.n), _tri.b.getComponent(ax.n), _tri.c.getComponent(ax.n));
-        cut = Math.max(cut, Math.min(h, local.max.getComponent(ax.n)) - (designHost + shape.standoffM));
+        // depth: how far the triangle reaches into the links along its thinnest way in. A plate across the run cuts
+        // to its height above the link backs; a wall that only enters a run's end cuts by how far it enters.
+        _triBox.setFromPoints([_tri.a, _tri.b, _tri.c]).intersect(local);
+        let depth = Math.min(_triBox.max.getComponent(ax.n), local.max.getComponent(ax.n)) - (designHost + shape.standoffM);
+        for (const k of [ax.u, ax.v]) {
+          const lo = local.min.getComponent(k), hi = local.max.getComponent(k);
+          const inLo = _triBox.max.getComponent(k) - lo, inHi = hi - _triBox.min.getComponent(k);
+          // entering from one side: the part inside from that side; spanning both sides: the whole width
+          depth = Math.min(depth, Math.min(inLo, inHi) < hi - lo - 1e-6 ? Math.min(inLo, inHi) : hi - lo);
+        }
+        cut = Math.max(cut, depth);
       }
       return;
     }
