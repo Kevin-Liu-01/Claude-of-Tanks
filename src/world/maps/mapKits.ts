@@ -48,6 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
+import { dressFrozenRiverBanks } from './frozenRiverBanks.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -1143,43 +1144,9 @@ function dressWinterLakes({
   }
 }
 
-/**
- * (the looks lane, 2026-10-15; the 225 gate) The frozen river's banks, dressed as the frozen ponds' shores were: goral's
- * Biały Dunajec (maps/winter.ts, one ice ribbon down the valley, the marsh chain frozen) replaced Frosthollow's ten ponds,
- * and their reeds and shore ice went with them. Down both banks of every station of the channel: a reed clump on the
- * bank just past the ice, and shore-ice plates heaved up at its edge. Every station spends the same draws whether or
- * not its points are clear, so the stream is the same whatever the terrain; no collision record (soft dressing).
- */
+/** The frozen river's banks (maps/frozenRiverBanks.ts, the looks lane's own file): reed beds at the waterline, the shelf. */
 function dressWinterRiverBanks({ L, heightField, rng, buckets }: FocusedDressingContext): void {
-  const stations = L.marshes ?? [];
-  if (stations.length < 2) return;
-  const ICE = 0.96; // the channel's shoreline in its stations' radii (maps/winter.ts RIVER radii)
-  const onIce = (x: number, z: number, k: number) => stations.some((s) => Math.hypot(x - s.x, z - s.z) < s.r * ICE * k);
-  for (let i = 0; i < stations.length; i++) {
-    const s = stations[i], a = stations[Math.max(0, i - 1)], b = stations[Math.min(stations.length - 1, i + 1)];
-    const tl = Math.hypot(b.x - a.x, b.z - a.z) || 1, tx = (b.x - a.x) / tl, tz = (b.z - a.z) / tl;
-    for (const side of [-1, 1]) {
-      const at = (reach: number, along: number): [number, number] =>
-        [s.x - tz * side * reach + tx * along, s.z + tx * side * reach + tz * along];
-      // the reeds: on the bank, up to a sixth of the radius past the ice
-      const reedRoll = rng(), reedReach = s.r * ICE * (1.03 + rng() * 0.16), reedAlong = (rng() - 0.5) * s.r * 0.5;
-      const [rx, rz] = at(reedReach, reedAlong);
-      if (reedRoll < 0.55 && !onIce(rx, rz, 1.0) && isDressingPointClear(heightField, rx, rz, 480, 6)) {
-        winterReedClump(buckets, rng, heightField, rx, rz);
-      }
-      // the shore ice: plates heaved up along the ice's edge
-      const iceRoll = rng(), iceReach = s.r * ICE * (0.9 + rng() * 0.12), iceAlong = (rng() - 0.5) * s.r * 0.5;
-      const [ix, iz] = at(iceReach, iceAlong);
-      if (iceRoll >= 0.4 || onIce(ix, iz, 0.86) || !isDressingPointClear(heightField, ix, iz, 480, 6)) continue;
-      const slabCount = 2 + ((rng() * 3) | 0), edgeYaw = Math.atan2(tx, tz);
-      for (let k = 0; k < slabCount; k++) {
-        const width = 0.7 + rng() * 1.1, height = 0.22 + rng() * 0.34, depth = 0.14 + rng() * 0.10;
-        const roll = (rng() - 0.5) * 0.9, pitch = (rng() - 0.5) * 0.8, yaw = edgeYaw + (rng() - 0.5) * 0.9;
-        const px = ix + (rng() - 0.5) * 2.2, pz = iz + (rng() - 0.5) * 2.2;
-        buckets.plaster.push(jitterUV(winterIceWedge(heightField, px, pz, width, height, depth, yaw, roll, pitch, 0.9), rng));
-      }
-    }
-  }
+  dressFrozenRiverBanks(L.marshes ?? [], heightField, rng, buckets as Parameters<typeof dressFrozenRiverBanks>[3]);
 }
 
 function legacyDressingKits(mapId?: string): readonly string[] {
