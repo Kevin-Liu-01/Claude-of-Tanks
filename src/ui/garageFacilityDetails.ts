@@ -152,7 +152,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     recovery_yard: {
       logistics: [[-34, -8], [19, -25]],
       parts: [[-31, 18], [4, -34]], floods: [[-39, 6], [39, 1]],
-      feature: [0, 18], featureRadius: [11, 7],
+      // the recovery yard in the frame's right third, its gantry's legs clear of the hero's outline (the garage critic
+      // panel, 2026-10-14: "the badlands gantry legs" cut the tank's silhouette)
+      feature: [16, 14], featureRadius: [11, 7],
     },
     factory_line: {
       logistics: [[-35, 12], [16, -27]],
@@ -2421,9 +2423,10 @@ export function addGarageFacilityDetails({
       // knees) carries a box beam with a geared trolley and its hook block; timber cribbing stacks and a low-loader
       // trailer with its ramps down wait under it; the recovery gear lies laid out on a pallet (tow bars, shackles,
       // snatch blocks, wire-rope reels); a bulldozed earth berm closes the yard behind. Over the trail's run.
-      const centerSide = 1.1, centerDepth = 18.5;
+      const centerSide = featureSide + 1.1, centerDepth = featureDepth + 0.5;
       const origin = cameraPoint(centerSide, centerDepth);
-      const roadIn = cameraPoint(3 * 7.5 / 16, 17.5);
+      const roadIn = cameraPoint(centerSide - 0.45, centerDepth - 1); // facing back toward the yard
+
       const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
       const c = Math.cos(yaw), sn = Math.sin(yaw);
       const baseY = groundAtWorld(origin.x, origin.z);
