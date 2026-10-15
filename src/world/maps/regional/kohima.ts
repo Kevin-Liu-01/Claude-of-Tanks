@@ -4,7 +4,7 @@
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, closeGables, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';

@@ -15,7 +15,7 @@
 // Each piece is drawn in its own frame (x across, y up, z out of its front, ground at y = 0) into the regional part sink:
 // it merges into the props' material buckets (no draw call of its own). The thin members (guys, lattice, rails, battens)
 // are dressing; the bodies, the legs and the footings are structure.
-import { PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
@@ -31,38 +31,11 @@ const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() *
 const lerp = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const num = (ctx: LandmarkBuildContext, key: string, min: number): number => Math.max(min, Number(ctx.params[key]));
 
-/** A concrete footing from below the ground (the piece's fall) up to `top`. */
-function footing(sink: PartSink, ctx: LandmarkBuildContext, x: number, z: number, hw: number, hd: number, top = 0.35): void {
-  sink.span('stone', x - hw, -0.6 - ctx.groundFall, z - hd, x + hw, top, z + hd);
-}
-
-/**
- * A footing seated on the ground at height y under it (a draped piece's legs: plan.ts drapes). It reaches down past the
- * piece's lowest ground, buried, so that its foot stands in the ground-contact band wherever the slope sets it
- * (structureCollision.ts: the movement record is the solids under 1.8 m over the base).
- */
-function foot(sink: PartSink, x: number, z: number, hw: number, hd: number, y: number, top = 0.35): void {
-  sink.span('stone', x - hw, Math.min(y - 0.8, -0.6), z - hd, x + hw, y + top, z + hd);
-}
-
 /** A rust stain down a sheet: the paint at the top, darker toward the foot (a coloured bucket's per-corner colour). */
 const weathered = (base: Rgb, y0: number, y1: number, k = 0.22) => (p: Vec3): Rgb => {
   const t = Math.min(1, Math.max(0, (p[1] - y0) / Math.max(0.01, y1 - y0)));
   return lerp(lerp(base, RUST, k), base, Math.sqrt(t));
 };
-
-/** A ladder up a face from y0 to y1 at (x, z) with its rungs (dressing). */
-function ladder(sink: PartSink, x: number, z: number, y0: number, y1: number, alongX: boolean, colour: Rgb): void {
-  const o: EmitOptions = { colour, decor: true, fine: true };
-  for (const s of [-0.22, 0.22]) {
-    const a: Vec3 = alongX ? [x + s, y0, z] : [x, y0, z + s], b: Vec3 = alongX ? [x + s, y1, z] : [x, y1, z + s];
-    bar(sink, 'structureMetal', a, b, 0.05, o);
-  }
-  for (let y = y0 + 0.3; y < y1 - 0.1; y += 0.35) {
-    const a: Vec3 = alongX ? [x - 0.22, y, z] : [x, y, z - 0.22], b: Vec3 = alongX ? [x + 0.22, y, z] : [x, y, z + 0.22];
-    bar(sink, 'structureMetal', a, b, 0.03, o);
-  }
-}
 
 // --------------------------------------------------------------------------------------------------------------- radome
 
