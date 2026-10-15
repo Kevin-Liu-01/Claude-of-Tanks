@@ -129,15 +129,23 @@ function applySourceArmament(spec: FleetTankSpec): void {
   applyFleetLauncherMuzzles(spec);
 }
 
-/** The Kurganets-25 IFV's Bumerang-BM (B05Ya01 Epokha) module, one real configuration (coordinator ruling 2026-10-15):
- * the 30 mm 2A42 (the primary balance channel), a coaxial 7.62 mm PKTM (drawn) and four Kornet-M, two in each twin
- * housing on the turret flanks (the launcher slot). The source's rear-roof bundle of eight Bulat tubes is not on the
- * real vehicle (owner markup 10-14), so the bundle and its Bulat channel are gone. */
+/** The Kurganets-25 IFV's Bumerang-BM (B05Ya01 Epokha) module (coordinator ruling 2026-10-15: one real configuration,
+ * the 30 mm 2A42 as the primary balance channel, a coaxial 7.62 mm PKTM, drawn) with its two launchers in their own
+ * slots: four Kornet-M, two in each twin housing on the turret flanks, and the rear-roof launcher's eight Bulat (owner
+ * ruling 2026-10-15: "keep the missiles and kurganets launcher on it ... just make it properly attached"). Bulat's
+ * 70 mm nominal caliber is game tuning: the publisher gives no exact caliber. Its soft-target effect reuses the peer HE
+ * round, with the existing guided channel's motion, cycle and sound; this is not a thermobaric model. */
 function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   const guided = spec.gun.shells.find(round => round.guided);
-  if (!guided) throw new Error('Kurganets requires its declared missile balance channel');
+  const highExplosive = spec.gun.shells.find(round => round.type === 'HE' && !round.guided);
+  if (!guided || !highExplosive) throw new Error('Kurganets requires both declared missile and HE balance channels');
   const kornet = { ...structuredClone(guided), name: 'Kornet guided missile', count: 4, launcherTubes: 4 };
-  spec.gun.shells = [spec.gun.shells[0], kornet];
+  const bulat = {
+    ...structuredClone(highExplosive), name: 'Bulat guided missile', caliberMm: 70,
+    guided: true, count: 8, launcherTubes: 8, velocityMps: guided.velocityMps,
+    reloadS: guided.reloadS, soundProfile: guided.soundProfile,
+  };
+  spec.gun.shells = [spec.gun.shells[0], kornet, bulat];
 }
 
 /** The supplied K21 carries two auxiliary launch canisters. Missile damage,

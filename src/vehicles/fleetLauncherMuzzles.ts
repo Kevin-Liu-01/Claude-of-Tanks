@@ -48,8 +48,12 @@ export function applyFleetLauncherMuzzles(spec: FleetTankSpec): void {
       -v * Math.sin(angle) + .4243 * Math.cos(angle), angle));
   }
   if (spec.id === 'kurganets25_x') {
-    // the four Kornet mouths in the two flank housings (the rear-roof Bulat bundle is gone, ruling 2026-10-15)
-    tips = [-1, 1].flatMap(s => [1.281, 1.474].map(x => ({ ...world(s * x, 2.869, -.698), shellSlots: [1] })));
+    tips = [
+      ...[-1, 1].flatMap(s => [1.281, 1.474].map(x => ({ ...world(s * x, 2.869, -.698), shellSlots: [1] }))),
+      // the rear-roof launcher's eight Bulat mouths, the container's measured exits (epokhaTurret.ts)
+      ...([[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const)
+        .flatMap(([y, xs]) => xs.map(x => ({ ...world(x, y, -2.4075), shellSlots: [2] }))),
+    ];
   }
   if (tips) spec.gun.launcherMuzzles = tips.map(tip => ({ ...tip, ...(tip.shellSlots ? { shellSlots: [...tip.shellSlots] } : {}) }));
 }

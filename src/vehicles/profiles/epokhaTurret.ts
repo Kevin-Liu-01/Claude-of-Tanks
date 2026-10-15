@@ -197,14 +197,67 @@ function addKurganetsTurret(P: TankBuilderPort): void {
     localTurret(P, 'turretDetail', box(.729, .055, 1.28), -.648, 3.126, -2.040);
     localTurret(P, 'turretDetail', box(.443, .022, .651), .033, 3.15, -1.917);
     localTurret(P, 'turretDetail', cylY(.20, .20, .07, 24), .577, 3.114, -1.433);
-    // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies") on the rear-roof bundle of eight
-    // small tubes: coordinator ruling 2026-10-15, the real Kurganets-25 carries no rear-roof launcher, so the bundle and
-    // its Bulat channel are gone (suppliedSourceFleetSpecs.ts applyKurganetsLaunchers); the vehicle's anti-tank weapon is
-    // its four Kornet in the two twin housings on the turret flanks. The decor keeps the volume the bundle stood in, and
-    // the turret reach it set in its two buckets, so its loads keep their seats (fieldChest.ts reserveDecorVolume;
-    // turret frame, pivot 0, 2.21, -1.27: the feet, tubes and crossbars, and the tube caps).
-    reserveDecorVolume(P.turretG, [.4095, .795, -2.031], [.9665, 1.4025, -1.066], ['turretDetail']);
-    reserveDecorVolume(P.turretG, [.444, 1.046, -1.9775], [.928, 1.288, -1.9625], ['turretDark']);
+    addKurganetsBulatLauncher(P);
+}
+/**
+ * The rear-roof launcher of the eight Bulat missiles (suppliedSourceFleetSpecs.ts applyKurganetsLaunchers: shell slot 2,
+ * eight tubes; fleetLauncherMuzzles.ts fires from these mouths). Owner ruling 2026-10-15 ("keep the missiles and
+ * kurganets launcher on it. dont remove. just make it properly attached"): the source's bundle of bare tubes on two
+ * thin legs read as loose junk. It is one closed armoured launch container (the tubes inside it, two rows, 3 over 5)
+ * mounted like equipment: two pedestals bolted to the roof armour through foot plates (the rear plate follows the
+ * roof's fall to the rear edge, 13.4 degrees), side brackets bolted to the container, the firing cable in a conduit to
+ * a junction box on the roof; eight rimmed mouths at the measured exits. Fixed to the turret (it traverses with it).
+ * Same footprint and reach as the bundle (x 0.41-0.97, rear face z -3.30). Turret roof: flat at y 3.07 from z -2.50
+ * forward, falling to 2.96 at the rear edge z -2.96.
+ */
+function addKurganetsBulatLauncher(P: TankBuilderPort): void {
+    const roofAt = (z: number): number => z >= -2.50 ? 3.07 : 2.96 + .11 * (z + 2.96) / .46;
+    const fall = -Math.atan2(.11, .46), sf = Math.sin(fall), cf = Math.cos(fall);
+    weaponAssembly(P, () => {
+        // the container: walls round the tubes, its floor at y 3.235, the front face just behind the tube exits
+        localTurret(P, 'turretDetail', box(.557, .29, .881), .688, 3.38, -2.8605);
+        // side stiffeners and the lid's seam
+        for (const x of [.4065, .9695]) for (const y of [3.30, 3.46]) localTurret(P, 'turretDetail', box(.012, .028, .82), x, y, -2.86);
+        localTurret(P, 'turretDark', box(.53, .008, .86), .688, 3.528, -2.8605);
+        // the eight mouths: a rim and a dark recessed seal per tube, at the measured exits (row 3.291: three; 3.463: five)
+        for (const [y, xs] of [[3.291, [.526, .628, .732]], [3.463, [.479, .580, .686, .789, .893]]] as const) {
+            for (const x of xs) {
+                localTurret(P, 'turretDetail', cylZ(.049, .008, P.q ? 16 : 8), x, y, -2.418);
+                localTurret(P, 'turretDark', cylZ(.040, .010, P.q ? 16 : 8), x, y, -2.4205);
+            }
+        }
+        // lifting lugs on the lid
+        for (const x of [.52, .856]) localTurret(P, 'turretDark', box(.04, .03, .06), x, 3.54, -2.86);
+    });
+    // the mount: pedestals from the roof armour to the container floor (each 5 mm into the floor, its foot 1.5 cm into
+    // the roof), foot plates bolted down, brackets bolted to the container's sides
+    const pedestal = (z: number, depth: number): void => {
+        const low = Math.min(roofAt(z - depth / 2), roofAt(z + depth / 2)) - .015, top = 3.24;
+        localTurret(P, 'turretDetail', box(.557, top - low, depth), .688, (top + low) / 2, z);
+        for (const x of [.4095 - .006, .9665 + .006]) {
+            localTurret(P, 'turretDetail', box(.012, .11, depth + .04), x, 3.235, z);                 // bracket
+            for (const dz of [-1, 1]) localTurret(P, 'turretDark', cylX(.011, .012, 8), x + Math.sign(x - .688) * .009, 3.26, z + dz * depth * .3);
+        }
+    };
+    pedestal(-2.46, .10);
+    pedestal(-2.86, .10);
+    // the front foot plate on the flat roof, the rear one along the roof's fall; four bolt heads each
+    const plate = (z: number, sloped: boolean): void => {
+        const y = roofAt(z) + .008 / (sloped ? cf : 1);
+        localTurret(P, 'turretDetail', box(.60, .016, .18), .688, y, z, sloped ? fall : 0);
+        for (const dx of [-.26, .26]) for (const dz of [-.065, .065]) {
+            const lz = sloped ? dz * cf : dz, ly = sloped ? -dz * sf : 0;
+            localTurret(P, 'turretDark', cylY(.013, .013, .012, 8), .688 + dx, y + .012 + ly, z + lz, sloped ? fall : 0);
+        }
+    };
+    plate(-2.41, false);
+    plate(-2.86, true);
+    // the firing cable: a conduit from the container's floor down the rear pedestal's side to a junction box on the roof
+    localTurret(P, 'turretDark', cylY(.012, .012, 3.24 - roofAt(-2.72) + .01, 8), .93, (3.24 + roofAt(-2.72)) / 2, -2.72);
+    localTurret(P, 'turretDetail', box(.09, .045, .08), .93, roofAt(-2.72) + .012, -2.72, fall);
+    // a launcher is no shelf: the decor keeps its loads off the container and clear above its lid (turret frame;
+    // fieldChest.ts reserveDecorVolume, scaled with the vehicle)
+    reserveDecorVolume(P.turretG, [.4095, 2.955 - 2.21, -3.301 + 1.27], [.9665, 3.80 - 2.21, -2.36 + 1.27]);
 }
 // Object_29 has four different stepped fittings, not a symmetric pair of
 // generic whips. These independent axial calipers preserve their real stations.
