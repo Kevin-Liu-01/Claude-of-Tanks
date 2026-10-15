@@ -204,9 +204,9 @@ function addKurganetsTurret(P: TankBuilderPort): void {
  * eight tubes; fleetLauncherMuzzles.ts fires from these mouths). Owner ruling 2026-10-15 ("keep the missiles and
  * kurganets launcher on it. dont remove. just make it properly attached"): the source's bundle of bare tubes on two
  * thin legs read as loose junk. It is one closed armoured launch container (the tubes inside it, two rows, 3 over 5)
- * mounted like equipment: two pedestals bolted to the roof armour through foot plates (the rear plate follows the
- * roof's fall to the rear edge, 13.4 degrees), side brackets bolted to the container, the firing cable in a conduit to
- * a junction box on the roof; eight rimmed mouths at the measured exits. Fixed to the turret (it traverses with it).
+ * mounted like equipment: a solid cradle on a base plate bolted to the roof armour (the plate follows the roof's
+ * 13.4-degree fall to the rear edge), side brackets bolted to the container, the firing cable in a conduit to a
+ * junction box on the roof; eight rimmed mouths at the measured exits. Fixed to the turret (it traverses with it).
  * Same footprint and reach as the bundle (x 0.41-0.97, rear face z -3.30). Turret roof: flat at y 3.07 from z -2.50
  * forward, falling to 2.96 at the rear edge z -2.96.
  */
@@ -229,32 +229,42 @@ function addKurganetsBulatLauncher(P: TankBuilderPort): void {
         // lifting lugs on the lid
         for (const x of [.52, .856]) localTurret(P, 'turretDark', box(.04, .03, .06), x, 3.54, -2.86);
     });
-    // the mount: pedestals from the roof armour to the container floor (each 5 mm into the floor, its foot 1.5 cm into
-    // the roof), foot plates bolted down, brackets bolted to the container's sides
-    const pedestal = (z: number, depth: number): void => {
-        const low = Math.min(roofAt(z - depth / 2), roofAt(z + depth / 2)) - .015, top = 3.24;
-        localTurret(P, 'turretDetail', box(.557, top - low, depth), .688, (top + low) / 2, z);
-        for (const x of [.4095 - .006, .9665 + .006]) {
-            localTurret(P, 'turretDetail', box(.012, .11, depth + .04), x, 3.235, z);                 // bracket
-            for (const dz of [-1, 1]) localTurret(P, 'turretDark', cylX(.011, .012, 8), x + Math.sign(x - .688) * .009, 3.26, z + dz * depth * .3);
-        }
+    // the mount: one cradle the container's length from the roof armour to its floor, its underside following the roof
+    // (flat to z -2.50, then the fall to the rear edge), 1.5 cm into the roof and 5 mm into the container floor, so the
+    // launcher stands on solid steel with no air under it; side brackets bolted to the container over the cradle
+    const ring = (z: number) => {
+        const low = roofAt(z) - .015 - 2.21, top = 3.24 - 2.21;
+        return { z: z + 1.27, ring: [[.43, low], [.946, low], [.946, top], [.43, top]] as const };
     };
-    pedestal(-2.46, .10);
-    pedestal(-2.86, .10);
-    // the front foot plate on the flat roof, the rear one along the roof's fall; four bolt heads each
-    const plate = (z: number, sloped: boolean): void => {
+    P.addEquipment('turretDetail', sectionSolid([ring(-2.93), ring(-2.50), ring(-2.40)]), 0, 0, 0);
+    for (const x of [.4095 - .006, .9665 + .006]) for (const z of [-2.46, -2.86]) {
+        localTurret(P, 'turretDetail', box(.012, .11, .14), x, 3.235, z);                                  // bracket
+        for (const dz of [-1, 1]) localTurret(P, 'turretDark', cylX(.011, .012, 8), x + Math.sign(x - .688) * .009, 3.26, z + dz * .042);
+    }
+    // the base plate under the cradle, bolted down along both sides: the front part on the flat roof, the rear part
+    // along the roof's fall
+    const plate = (z: number, depth: number, sloped: boolean): void => {
         const y = roofAt(z) + .008 / (sloped ? cf : 1);
-        localTurret(P, 'turretDetail', box(.60, .016, .18), .688, y, z, sloped ? fall : 0);
-        for (const dx of [-.26, .26]) for (const dz of [-.065, .065]) {
-            const lz = sloped ? dz * cf : dz, ly = sloped ? -dz * sf : 0;
+        localTurret(P, 'turretDetail', box(.60, .016, depth), .688, y, z, sloped ? fall : 0);
+        for (const dx of [-.28, .28]) for (const f of [-.35, 0, .35]) {
+            const dz = f * depth, lz = sloped ? dz * cf : dz, ly = sloped ? -dz * sf : 0;
             localTurret(P, 'turretDark', cylY(.013, .013, .012, 8), .688 + dx, y + .012 + ly, z + lz, sloped ? fall : 0);
         }
     };
-    plate(-2.41, false);
-    plate(-2.86, true);
-    // the firing cable: a conduit from the container's floor down the rear pedestal's side to a junction box on the roof
-    localTurret(P, 'turretDark', cylY(.012, .012, 3.24 - roofAt(-2.72) + .01, 8), .93, (3.24 + roofAt(-2.72)) / 2, -2.72);
-    localTurret(P, 'turretDetail', box(.09, .045, .08), .93, roofAt(-2.72) + .012, -2.72, fall);
+    plate(-2.45, .10, false);
+    plate(-2.72, .44, true);
+    // the container's rear 0.34 m reaches past the turret's rear edge (z -2.96, as the source bundle did): two struts
+    // carry it from a bracket under its floor to plates bolted on the turret's rear wall
+    const strut = Math.hypot(.285, .435), lean = Math.atan2(.435, .285);
+    for (const x of [.47, .91]) {
+        localTurret(P, 'turretDetail', box(.06, .02, .08), x, 3.225, -3.25);                                   // floor bracket
+        localTurret(P, 'turretDetail', box(.04, .04, strut), x, 3.0175, -3.1075, lean);                        // strut
+        localTurret(P, 'turretDetail', box(.10, .08, .012), x, 2.80, -2.966);                                  // wall plate
+        for (const y of [2.775, 2.825]) localTurret(P, 'turretDark', cylZ(.011, .012, 8), x, y, -2.974);
+    }
+    // the firing cable: a conduit from the container's floor down the cradle's side to a junction box on the roof
+    localTurret(P, 'turretDark', cylY(.012, .012, 3.24 - roofAt(-2.72) + .01, 8), .96, (3.24 + roofAt(-2.72)) / 2, -2.72);
+    localTurret(P, 'turretDetail', box(.07, .045, .08), .985, roofAt(-2.72) + .012, -2.72, fall);
     // a launcher is no shelf: the decor keeps its loads off the container and clear above its lid (turret frame;
     // fieldChest.ts reserveDecorVolume, scaled with the vehicle)
     reserveDecorVolume(P.turretG, [.4095, 2.955 - 2.21, -3.301 + 1.27], [.9665, 3.80 - 2.21, -2.36 + 1.27]);
