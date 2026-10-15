@@ -55,13 +55,13 @@ function sheetHouse(sink: PartSink, ctx: LandmarkBuildContext, at: Vec3, w: numb
       }, {
         window: (s, face, o, y0) => {
           if (o.kind === 'loft') return;
-          windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(paint, 0.6), frameWidth: 0.05, frameOut: 0.03, bars: o.w > 1 ? 'six' : 'cross', surround: null, sill: null, shutters: null }, ctx.variant, 0.12);
+          windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(paint, 0.6), frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null }, ctx.variant, 0.12);
         },
         door: (s, face, o, y0) => gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(paint, 0.85), { bucket: 'structureMetal', width: o.w > 1.5 ? 0.12 : 0.08, out: 0.04, colour: shade(paint, 0.6) }),
       });
       for (const name of ['left', 'right'] as const) {
         const f = frame.faces[name];
-        for (let u = -f.width / 2 + 0.85; u < f.width / 2 - 0.35; u += 0.85) faceBox(sink, 'structureMetal', f, u, h / 2, -0.02, 0.04, h, 0.06, { colour: shade(paint, 0.82), decor: true, fine: true }, 'caps');
+        for (let u = -f.width / 2 + 1.7; u < f.width / 2 - 0.5; u += 1.7) faceBox(sink, 'structureMetal', f, u, h / 2, -0.02, 0.04, h, 0.06, { colour: shade(paint, 0.82), decor: true, fine: true }, 'caps');
       }
       then?.(frame);
     } finally { sink.paint = null; }
@@ -266,15 +266,10 @@ export const oreBin: LandmarkBuilder = (ctx) => {
       bar(sink, 'structureMetal', [px, top - 0.02, pz], [px, top + 1.0, pz], 0.05, { colour: YELLOW, decor: true });
     }
   });
-  // the walkway: a grating ring round the lid (never over it), on brackets, its toe boards and the grating's bars
+  // the walkway: a grating ring round the lid (never over it), on brackets, its toe boards
   const grate = shade(IRON, 1.15), wy0 = top - 0.1;
   for (const [x0, z0, x1, z1] of [[-hw - 0.5, -hd - 0.5, hw + 0.5, -hd], [-hw - 0.5, hd, hw + 0.5, hd + 0.5], [-hw - 0.5, -hd, -hw, hd], [hw, -hd, hw + 0.5, hd]] as const) {
     sink.span('structureMetal', x0, wy0, z0, x1, top - 0.02, z1, { colour: grate, decor: true });
-    const along = x1 - x0 > z1 - z0;
-    for (let t = 0.3; t < (along ? x1 - x0 : z1 - z0) - 0.1; t += 0.3) {
-      if (along) sink.span('structureMetal', x0 + t - 0.01, top - 0.02, z0, x0 + t + 0.01, top - 0.005, z1, { colour: shade(grate, 0.6), decor: true, fine: true });
-      else sink.span('structureMetal', x0, top - 0.02, z0 + t - 0.01, x1, top - 0.005, z0 + t + 0.01, { colour: shade(grate, 0.6), decor: true, fine: true });
-    }
   }
   for (const [x0, z0, x1, z1] of [[-hw - 0.5, -hd - 0.5, hw + 0.5, -hd - 0.47], [-hw - 0.5, hd + 0.47, hw + 0.5, hd + 0.5], [-hw - 0.5, -hd - 0.47, -hw - 0.47, hd + 0.47], [hw + 0.47, -hd - 0.47, hw + 0.5, hd + 0.47]] as const) {
     sink.span('structureMetal', x0, top - 0.02, z0, x1, top + 0.12, z1, { colour: YELLOW, decor: true, fine: true });
@@ -386,13 +381,13 @@ export const conveyor: LandmarkBuilder = (ctx) => {
         const ra = corner(a, sx, y), rb = corner(b, sx, y);
         bar(sink, 'structureMetal', [ra[0] + sx * 0.02, ra[1], ra[2]], [rb[0] + sx * 0.02, rb[1], rb[2]], 0.07, { colour: frameC, decor: true });
       }
-      const n = Math.max(2, Math.round((b - a) / 1.5));
+      const n = Math.max(2, Math.round((b - a) / 3));
       for (let i = 1; i < n; i++) {
         const z = a + ((b - a) * i) / n, m0 = corner(z, sx, sill), m1 = corner(z, sx, head);
         bar(sink, 'structureMetal', [m0[0] - sx * 0.01, m0[1], z], [m1[0] - sx * 0.01, m1[1], z], 0.06, { colour: frameC, decor: true, fine: true });
       }
       // the truss's posts outside the sheet at the panel points
-      const np = Math.max(2, Math.round((b - a) / 3));
+      const np = Math.max(2, Math.round((b - a) / 6));
       for (let i = 0; i <= np; i++) {
         const z = a + ((b - a) * i) / np, p0 = corner(z, sx, -0.1), p1 = corner(z, sx, gh);
         bar(sink, 'structureMetal', [p0[0] + sx * 0.08, p0[1], z], [p1[0] + sx * 0.08, p1[1], z], 0.12, { colour: OXIDE, decor: true });
