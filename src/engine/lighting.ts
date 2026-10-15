@@ -980,7 +980,10 @@ export function createLighting(
       for (const r of ranges) cascadeRangeScratch.push(r);
       return cascadeRangeScratch;
     },
-    enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+    // (2026-10-15, SKY shadows r2b P2b) the tiers without a near-detail budget (Ultra Low, every phone preset) take the
+    // reduced tier: the nearest hull — the player's own — casts its silhouette and running gear into cascade 0
+    enabled: () => !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+    reduced: () => !nearVehicleDetailAllowed,
     max: () => nearVehicleMax,
     // 2026-10-14 (SKY shadows r2a): the detail covers every cascade the hull's shadow lands in (its reach down-sun)
     sunDirection: () => csm.lightDirection,
