@@ -18,7 +18,7 @@
 //   - stadtkirche the town church (the maps lane, 2026-10-15): a sandstone hall nave between buttresses under its steep
 //                tiled roof, and the west tower of five stages with its clock, bell chamber, corner turrets and spire;
 //   - bergfried  the castle keep (the maps lane, 2026-10-15): a five-stage sandstone shaft, the high door on its landing,
-//                the corbelled parapet round a steep tiled cap;
+//                the corbel course under a steep hipped cap of tiles;
 //   - palas      the castle's palace range: a sandstone ground storey under two rendered ones, a half-hipped roof, the
 //                octagonal stair tower in its court front;
 //   - fabrik     the works (a Spinnerei or a Ziegelei by the valley road): a long two-storey sandstone hall, pilaster
@@ -388,6 +388,14 @@ const fabrik: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/** A parapet round a flat top (hx, hz its half-widths), `h` high and `t` thick, its four runs closed boxes (dressing). */
+function parapetRing(sink: PartSink, hx: number, hz: number, y: number, h: number, t: number): void {
+  sink.span('stone', -hx, y - 0.02, hz - t, hx, y + h, hz + 0.01, DECOR);
+  sink.span('stone', -hx, y - 0.02, -hz - 0.01, hx, y + h, -hz + t, DECOR);
+  sink.span('stone', -hx - 0.01, y - 0.02, -hz + t, -hx + t, y + h, hz - t, DECOR);
+  sink.span('stone', hx - t, y - 0.02, -hz + t, hx + 0.01, y + h, hz - t, DECOR);
+}
+
 /**
  * The town church (Stadtkirche; Kronach's St. Johannes, the hall churches of the Franconian towns): the nave's ashlar on
  * its plinth between stepped buttresses, tall windows in dressed surrounds, its steep tiled roof hipped over the choir,
@@ -447,7 +455,7 @@ const stadtkirche: RegionalBuilder = (ctx) => {
     for (const face of ['front', 'right', 'left'] as const) {
       for (const i of [1, 2]) openings.push({ face, storey: i, kind: 'window', u: 0, w: 0.6, y0: 1.5, h: 1.6 });
     }
-    const roof: RoofSpec = { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.22, bucket: 'stone', parapet: 0.9 };
+    const roof: RoofSpec = { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.22, bucket: 'stone', parapet: 0 };
     const frame = buildHouse(sink, {
       w: T, d: T, plinth: { h: 0.6, out: 0.14, bucket: 'stone' }, storeys: sts, roof,
       gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.5,
@@ -473,8 +481,10 @@ const stadtkirche: RegionalBuilder = (ctx) => {
         for (let k = 0; k < 7; k++) faceBox(sink, SW, fb, u, by + 0.3 + k * 0.36, 0.08, 0.8, 0.06, 0.06, { colour: st.timber, decor: true });
       }
     }
-    // the corner turrets on the parapet and the octagonal spire, slated
+    // the parapet round the top, closed stone (a flat roof's own parapet is a single skin, its inner face open to view),
+    // the corner turrets on it and the octagonal spire, slated
     const top = frame.eaveY + 0.22, k = T / 2 - 0.42;
+    parapetRing(sink, T / 2, T / 2, top, 0.9, 0.42);
     for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
       sink.cylinder('stone', [sx * k, top - 0.1, sz * k], 'y', 1.9, 0.42, 8, DECOR);
       sink.cylinder('roof', [sx * k, top + 1.8, sz * k], 'y', 2.2, 0.5, 8, { colour: SLATE, decor: true }, 0.03);
@@ -487,8 +497,8 @@ const stadtkirche: RegionalBuilder = (ctx) => {
 
 /**
  * The keep (Bergfried) on the castle rock: a square shaft of sandstone on its plinth, five stages, the high door a
- * storey up reached by a timber stair, slit lights and putlog holes, the corbelled parapet and the steep hipped cap of
- * tiles inside the walk, its finial. (The maps lane, 2026-10-15: Steinburg's castle, built as a set piece — a houseRow of
+ * storey up on its timber landing, slit lights and putlog holes, the corbel course and the steep hipped cap of
+ * tiles over it, its finial. (The maps lane, 2026-10-15: Steinburg's castle, built as a set piece — a houseRow of
  * one, `structure: 'bergfried'` — so the rock carries a keep's mass, not the wall towers' 9 m.)
  */
 const bergfried: RegionalBuilder = (ctx) => {
@@ -503,7 +513,9 @@ const bergfried: RegionalBuilder = (ctx) => {
     for (const i of [2, 3]) openings.push({ face, storey: i, kind: 'window', u: (rng() - 0.5) * S * 0.3, w: 0.42, y0: 1.4, h: 1.3 });
     openings.push({ face, storey: 4, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.4 });
   }
-  const roof: RoofSpec = { kind: 'flat', pitchDeg: 0, eave: 0.1, verge: 0.1, thickness: 0.24, bucket: 'stone', parapet: 1.3 };
+  // (the steep hipped cap straight over the corbel course, as the wall tower's: a cap stood inside a parapet walk read
+  // open from above — bld-integrity)
+  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: 0.4, verge: 0.4, thickness: 0.16, bucket: 'roof', ridge: 'round' };
   const frame = buildHouse(sink, {
     w: S, d: S, plinth: { h: 0.9, out: 0.22, bucket: 'stone' }, storeys: sts, roof,
     gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.6,
@@ -518,7 +530,7 @@ const bergfried: RegionalBuilder = (ctx) => {
   for (const face of ['front', 'right', 'back', 'left'] as const) {
     putlogs(sink, storeyFaces(frame, 0)[face], 1.8, frame.floors[4] - 0.4, 6, rng);
     gunLoop(sink, storeyFaces(frame, 0)[face], (rng() - 0.5) * S * 0.3, 1.6, 1.0);
-    // the corbel band under the parapet
+    // the corbel band under the eaves
     const f = storeyFaces(frame, 4)[face];
     trimRun(sink, 'stone', f, -f.width / 2, f.width / 2, frame.eaveY - 0.5, [{ h: 0.16, out: 0.08 }, { h: 0.18, out: 0.2 }, { h: 0.2, out: 0.32 }], { ret: 0.35 });
   }
@@ -527,11 +539,7 @@ const bergfried: RegionalBuilder = (ctx) => {
   const timber = { colour: st.timber, decor: true };
   faceBox(sink, SW, front, du, landY - 0.08, 0.55, 1.7, 0.16, 1.1, timber);
   for (const pu of [du - 0.7, du + 0.7]) faceBox(sink, SW, front, pu, (landY - 0.16) / 2, 0.95, 0.16, landY - 0.16, 0.16, timber);
-  // the cap inside the parapet walk
-  const top = frame.eaveY + 0.24, cap: RoofSpec = { kind: 'hip', pitchDeg: 58, eave: 0.2, verge: 0.2, thickness: 0.16, bucket: 'roof', ridge: 'round' };
-  emitRoof(sink, roofGeometry(S - 2.0, S - 2.0, top + 0.3, cap), cap);
-  sink.span('stone', -(S - 2.0) / 2, top - 0.1, -(S - 2.0) / 2, (S - 2.0) / 2, top + 0.32, (S - 2.0) / 2);
-  finial(sink, 0, top + 0.3 + (S - 1.6) / 2 * Math.tan(58 * Math.PI / 180) + 0.1, 0, 1.4);
+  finial(sink, 0, frame.roof.ridgeTopY + 0.05, 0, 1.4);
   return sink.finish();
 };
 

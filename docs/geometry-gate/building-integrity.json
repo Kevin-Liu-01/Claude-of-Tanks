@@ -2082,7 +2082,7 @@
   },
   "franconian/church": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3699,7 +3699,43 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "franconian/bergfried": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/palas": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/urban:houseRow#4": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.312,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/urban:houseRow#3": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-14T14:19:00.339Z"
+ "updatedAt": "2026-10-15T19:33:39.452Z"
 }
