@@ -10496,6 +10496,9 @@ ${snowCap ? `
       retainedSurfaceMaterials.push(material);
     }
   }
+  // (props lane A #19) the paved pads' render-only dressing — their concrete edge, gullies and patches, a runway's markings
+  // and edge lights — on the baked material, no step in the drive surface (hardstandDressing.ts)
+  { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed); if (pads) buckets.baked.push(pads); }
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     // regional-buildings lane (2026-10-03, the urban GPU A B B A: +5 ms at the town's establishing view): a kit's
     // joinery and metalwork dressing (window frames and bars, shutters, timbers, boards, gutters and downpipes; a few
@@ -10640,9 +10643,6 @@ ${snowCap ? `
       yield { fine: true };
     }
   }
-  // (props lane A #19) the paved pads' render-only dressing — their concrete edge, gullies and patches, a runway's markings
-  // and edge lights — on the baked material, no step in the drive surface (hardstandDressing.ts)
-  { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed); if (pads) buckets.baked.push(pads); }
   yield* mergeMaterialBuckets();
   // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
   // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
