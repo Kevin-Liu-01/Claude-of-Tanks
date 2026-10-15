@@ -48,7 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { buildJetty, buildRivaSteps, ironBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
+import { buildGangway, buildJetty, buildRivaSteps, ironBollard, jettyFormForMap, legacyJettyDraws, type JettyForm, type JettyFrame } from './jettyKit.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -1554,38 +1554,14 @@ function jettyGangway(
 ): void {
   if (!plan.gangway) return; // the deck lands on the bank
   const dx = Math.cos(plan.angle), dz = Math.sin(plan.angle);
-  const heading = -Math.atan2(dz, dx);
   const { run, groundY } = plan.gangway;
   const top = plan.deckY + JETTY_DECK_THICKNESS_M / 2;
   const footX = plan.x - dx * run, footZ = plan.z - dz * run;
-  if (form === 'riva' && heightField) {
-    // #16 r2: a riva climbs from the sand by its own stone steps (the plank's and its battens' draws spent)
-    for (let i = 0; i < 16; i++) rng();
-    buildRivaSteps(buckets.stone, plan.x, plan.z, plan.angle, heightField, groundY, top, run);
-    groundingReceipts?.push({
-      kind: 'jetty-gangway', x: footX, y: groundY, z: footZ, relief: top - groundY, baseClearance: -0.01,
-      supportMin: groundY, supportMax: groundY,
-    });
-    return;
-  }
-  const pitch = Math.atan2(top - groundY, run);
-  // centre-line ends: the foot's lower corner a centimetre into the sand, the head's top just under the deck top
-  const footY = groundY + 0.04 * Math.cos(pitch) - 0.01, headY = top - 0.045;
-  const span = Math.hypot(run, headY - footY);
-  const slope = Math.atan2(headY - footY, run);
-  const plank = box(span, 0.08, 1.2, 1.2);
-  plank.rotateZ(slope);
-  plank.rotateY(heading);
-  plank.translate((footX + plan.x) / 2, (footY + headY) / 2, (footZ + plan.z) / 2);
-  buckets.wood.push(jitterUV(plank, rng));
-  for (const t of [0.25, 0.5, 0.75]) { // battens across the plank
-    const batten = box(0.07, 0.03, 1.1, 1.2);
-    batten.translate((t - 0.5) * span, 0.055, 0);
-    batten.rotateZ(slope);
-    batten.rotateY(heading);
-    batten.translate((footX + plan.x) / 2, (footY + headY) / 2, (footZ + plan.z) / 2);
-    buckets.wood.push(jitterUV(batten, rng));
-  }
+  // #16 r2 (Lane C, 2026-10-14): the gangway in its members (stringers, treads, handrails) and a riva's stone stair,
+  // from jettyKit.ts; the old plank's and battens' draws are spent so the moored boat after it keeps its own
+  for (let i = 0; i < 16; i++) rng();
+  if (form === 'riva' && heightField) buildRivaSteps(buckets.stone, plan.x, plan.z, plan.angle, heightField, groundY, top, run);
+  else buildGangway(buckets.wood, plan.x, plan.z, plan.angle, groundY, top, run);
   groundingReceipts?.push({
     kind: 'jetty-gangway', x: footX, y: groundY, z: footZ, relief: top - groundY, baseClearance: -0.01,
     supportMin: groundY, supportMax: groundY,

@@ -567,3 +567,42 @@ export function ironBollard(x: number, y: number, z: number): BG {
   merged.userData.jetty = 'bollard';
   return merged;
 }
+
+/**
+ * A timber gangway from the sand `run` m behind the shore end up to the deck: two stringers on the slope (their feet
+ * set into the sand), treads across them every 30 cm, a handrail each side on three posts with a mid rail. The treads'
+ * top line runs from 2 cm over the sand at the foot to just under the deck top at the shore end. One merged geometry
+ * into `wood`; no draws.
+ */
+export function buildGangway(wood: BG[], x0: number, z0: number, ang: number, groundY: number, top: number, run: number): BG {
+  const footT = -run, headT = -0.03, yFoot = groundY + 0.02, yHead = top - 0.045;
+  const pitch = Math.atan2(yHead - yFoot, headT - footT), cos = Math.cos(pitch);
+  const at = (u: number): [number, number] => [footT + (headT - footT) * u, yFoot + (yHead - yFoot) * u];
+  const parts: BG[] = [];
+  const drop = 0.04 + 0.09 / cos;
+  for (const s of [-0.5, 0.5]) parts.push(memberBox([footT, yFoot - drop, s], [headT, yHead - drop, s], 0.07, 0.18));
+  const length = Math.hypot(headT - footT, yHead - yFoot);
+  const treads = Math.max(3, Math.round(length / 0.3));
+  for (let i = 0; i < treads; i++) {
+    const [t, y] = at((i + 0.5) / treads);
+    const g = box(0.2, 0.04, 1.2, 1.2);
+    g.rotateZ(pitch);
+    g.translate(t, y - 0.02, 0);
+    parts.push(g);
+  }
+  for (const s of [-0.6, 0.6]) {
+    const posts = [0.06, 0.5, 0.94].map((u) => at(u));
+    for (const [t, y] of posts) parts.push(post(t, s, y - 0.2, y + 0.95, 0.07, 0));
+    const [ta, ya] = posts[0], [tb, yb] = posts[2];
+    parts.push(memberBox([ta - 0.05, ya + 0.95, s], [tb + 0.05, yb + 0.95, s], 0.06, 0.07));
+    parts.push(memberBox([ta, ya + 0.5, s], [tb, yb + 0.5, s], 0.04, 0.06));
+  }
+  const merged = mergeGeometries(parts, false)!;
+  for (const g of parts) g.dispose();
+  // its own UV jitter off a stream keyed on the seat (no draws from the landing's)
+  jitterUV(merged, hashStream(x0, z0, 0x9a76));
+  merged.applyMatrix4(frameMatrix(x0, z0, ang));
+  merged.userData.jetty = 'gangway';
+  wood.push(merged);
+  return merged;
+}
