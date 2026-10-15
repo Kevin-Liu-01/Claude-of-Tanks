@@ -114,8 +114,9 @@ signature facility sits in a third of the frame or frames the hero. Per Garage:
   guard tower and its HESCO line in the left third at (-15.5, 17).
 - Saltmere: the graving dock in the right third (centre line side 14.6, head 14.5, mouth 33.8), the crane on its rails
   along the dock's far side, its jib slewed down the dock to sea; the lighthouse to the far left.
-- Redrock: the recovery yard and its gantry at (17, 14.5); the guard tower and sandbag wall at (-15.5, 17); the
-  warehouse off the turret at (9, 44), smaller.
+- Redrock: the recovery yard and its gantry at (16, 17), its span turned 45 degrees so the whole gantry stays in the
+  frame; the guard tower and sandbag wall at (-15.5, 17); the warehouse off the turret at (9, 44), smaller; the map's
+  grey heavy-lift gantry behind the lens at (17, -38), clear of the yard's own.
 - Frosthollow: the bunker square to the view at side 9.5, its portal beside the turret, its light facade behind it; the
   spruce right of the turret; the chalet left of it at (-10, 44), the chapel whole in the right third at (24, 30).
 - Glacier: a 68 m cliff across the frame, the tunnel mouth beside the turret at side 8.5.
