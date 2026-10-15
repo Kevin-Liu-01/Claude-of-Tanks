@@ -1,5 +1,5 @@
 import type { ModeCheckpoint } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
@@ -2453,6 +2453,11 @@ export function createAuthoritativeMatch({
       if(smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt)) return false;
       auxRay.copy(b).sub(a); const distance=auxRay.length(); auxRay.normalize();
       const hit=spottingRaycast(a,auxRay,distance); return !hit || hit.dist>=distance-.5;
+    },
+    // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the authority's drone flight
+    counterDrone: ruleset.counterDrone === true,
+    droneHit: (carrier: AuthoritativeEntity, chance: number, shooter: AuthoritativeEntity) => {
+      if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id });
     },
   };
   /** The shell a roof station just fired (auxiliaryShot). */

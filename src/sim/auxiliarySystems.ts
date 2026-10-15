@@ -209,6 +209,12 @@ interface GunContext {
   entities: readonly AuxiliaryEntity[];
   visible(target: AuxiliaryEntity, shooter: AuxiliaryEntity): boolean;
   clear(a: Vector3, b: Vector3): boolean;
+  /** VH.15 counter-drone (the mode's ruleset, matchRuleset.ts counterDrone): roof stations engage enemy drones in flight
+   * before vehicles. */
+  counterDrone?: boolean;
+  /** VH.15: the authority charges a round a station fired at a drone to that drone's airframe (aerialCombat.ts
+   * strikeDrone): `chance`, the round's share of a strike at its range (weapon profile, droneStrikeChance). */
+  droneHit?(carrier: AuxiliaryEntity, chance: number, shooter: AuxiliaryEntity): void;
 }
 const wrap = (v:number) => Math.atan2(Math.sin(v), Math.cos(v));
 type RoofGunMount = AuxiliaryInventory['guns'][number];
@@ -337,12 +343,56 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   inverse.copy(base).invert();pivot.fromArray(gun.pivot);mountScale.fromArray(gun.scale);
   origin.copy(pivot).multiply(mountScale).applyMatrix4(base);
   const arc = gun.yawArc;
+  // VH.15 counter-drone: an enemy drone in flight inside the station's counter-drone range, arc and line comes first
+  const drone = context.counterDrone ? selectDroneTarget(entity, context, profile, arc) : null;
+  if (drone) {
+    const range = aimPoint.distanceTo(origin);
+    const fired = aimAndFire(entity, gun, state, profile, aimPoint, null, damage, now, dt, handling, context);
+    if (fired) context.droneHit?.(drone, droneStrikeChance(profile, range), entity);
+    return fired;
+  }
   arcMount = arc ? gun : null;
   engageWeapon = profile;
   const target = selectRoofTarget(entity, context, profile.rangeM, origin, stationAccepts);
   arcMount = null; engageWeapon = null;
   if(!target)return false;
-  direction.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z).sub(origin);
+  aimPoint.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z);
+  return aimAndFire(entity, gun, state, profile, aimPoint, target, damage, now, dt, handling, context);
+}
+/** VH.15: the share of a strike one round lands on a small drone at `range` metres: the weapon profile's droneHitAt100
+ * falling with the square of the range (a drone's presented area against the burst's spread), at most droneHitMax. */
+export function droneStrikeChance(profile: AuxiliaryWeaponProfile, range: number): number {
+  return Math.min(profile.droneHitMax, profile.droneHitAt100 * (100 / Math.max(range, 15)) ** 2);
+}
+const dronePoint = new Vector3(), aimPoint = new Vector3();
+/** VH.15: the nearest enemy drone in flight (not launching) inside the station's counter-drone range and traverse arc
+ * with a clear line from the mount; leaves its position in aimPoint (module scratch). Deterministic: entity order breaks
+ * ties. */
+function selectDroneTarget(entity: AuxiliaryEntity, context: GunContext, profile: AuxiliaryWeaponProfile,
+  arc: readonly [number, number] | undefined): AuxiliaryEntity | null {
+  let best: AuxiliaryEntity | null = null, bestD2 = profile.counterDroneRangeM ** 2;
+  for (const other of context.entities) {
+    const air = other.aerial;
+    if (other === entity || other.team === entity.team || !air || air.kind !== 'drone' || !air.active || air.launching) continue;
+    dronePoint.set(air.x, air.y, air.z);
+    const d2 = dronePoint.distanceToSquared(origin);
+    if (d2 > bestD2) continue;
+    if (arc) {
+      arcLocal.copy(dronePoint).applyMatrix4(inverse);
+      if (Number.isNaN(arcYaw(arc, Math.atan2(arcLocal.x, arcLocal.z)))) continue;
+    }
+    if (!context.clear(origin, dronePoint)) continue;
+    best = other; bestD2 = d2; aimPoint.copy(dronePoint);
+  }
+  return best;
+}
+/** A station's turn, elevation and burst at a world point (a vehicle's centre of mass, or a drone): fills auxiliaryShot
+ * when it fires. `target` is the vehicle, whose friendly lane is checked; null for a drone overhead. */
+function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: AuxiliaryStationState, profile: AuxiliaryWeaponProfile,
+  point: Vector3, target: AuxiliaryEntity | null, damage: string | undefined, now: number, dt: number, handling: number,
+  context: GunContext): boolean {
+  const arc = gun.yawArc;
+  direction.copy(point).sub(origin);
   localTarget.copy(origin).add(direction).applyMatrix4(inverse);
   const bearing=Math.atan2(localTarget.x,localTarget.z), desiredYaw=arc?arcYaw(arc,bearing):bearing;
   if(Number.isNaN(desiredYaw))return false;
@@ -368,8 +418,8 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   bore.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis,-state.gunPitch).add(pivot);
   bore.multiply(mountScale).applyAxisAngle(yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
   // Recheck from the actual moving muzzle, not merely the mount center.
-  targetPoint.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z);
-  if(!friendlyLaneClear(entity,target,context.entities,origin,targetPoint)||!context.clear(origin,targetPoint))return false;
+  targetPoint.copy(point);
+  if((target&&!friendlyLaneClear(entity,target,context.entities,origin,targetPoint))||!context.clear(origin,targetPoint))return false;
   auxiliaryShot.shell=profile.shell;
   state.shots++; state.nextShot=now+(damage === 'yellow' ? 1.6 : 1)*(state.shots%profile.burstRounds===0?profile.burstPauseS:profile.shotIntervalS);
   return true;

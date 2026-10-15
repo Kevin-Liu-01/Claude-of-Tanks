@@ -21,6 +21,15 @@ export interface AuxiliaryWeaponProfile {
   engagePenRatio: number;
   /** The share of the presented main armour (by presented area) the round must defeat before the station engages. */
   engageShare: number;
+  /**
+   * VH.15 counter-drone (coordinator ruling 2026-10-15: roof MGs engage enemy drones in range, as real crews do): the
+   * station engages an enemy drone in flight inside this range before any vehicle. Each round it fires there lands
+   * droneHitAt100 of a strike at 100 m, falling with the square of the range (a small airframe against the burst's
+   * spread), at most droneHitMax; the drone goes down at AERIAL_RULES.drone.hitsToDown strikes (sim/matchRuleset.ts).
+   */
+  counterDroneRangeM: number;
+  droneHitAt100: number;
+  droneHitMax: number;
 }
 
 const heavy: AuxiliaryWeaponProfile = {
@@ -28,12 +37,14 @@ const heavy: AuxiliaryWeaponProfile = {
     pen100Mm:26, pen1000Mm:12, pen2000Mm:5, dmg:8, moduleDmg:3},
   rangeM:240, shotIntervalS:.12, burstRounds:5, burstPauseS:1.4,
   yawRateRadS:1.7, pitchRateRadS:1, depressionRad:.18, elevationRad:.75, engagePenRatio:1, engageShare:.25,
+  counterDroneRangeM:200, droneHitAt100:.03, droneHitMax:.2,
 };
 const rifle: AuxiliaryWeaponProfile = {
   ...heavy,
   shell:{type:'AP',name:'7.62×51 mm M61 AP',caliberMm:7.62,velocityMps:830,
     pen100Mm:10,pen1000Mm:4,pen2000Mm:2,dmg:4,moduleDmg:1},
   rangeM:180,shotIntervalS:.09,burstRounds:8,burstPauseS:1.25,
+  counterDroneRangeM:150,droneHitAt100:.025,droneHitMax:.15,
 };
 const cannon: AuxiliaryWeaponProfile = {
   ...heavy,
@@ -41,6 +52,7 @@ const cannon: AuxiliaryWeaponProfile = {
     pen100Mm:65,pen1000Mm:40,pen2000Mm:20,dmg:22,moduleDmg:10},
   rangeM:360,shotIntervalS:.20,burstRounds:3,burstPauseS:1.8,
   yawRateRadS:1.2,pitchRateRadS:.8,
+  counterDroneRangeM:300,droneHitAt100:.06,droneHitMax:.35,
 };
 
 // Cartridge designations describe the fitted ammunition. Existing game damage
@@ -70,6 +82,7 @@ const rh202:AuxiliaryWeaponProfile={
     pen100Mm:45,pen1000Mm:28,pen2000Mm:12,dmg:14,moduleDmg:6},
   rangeM:320,shotIntervalS:.10,burstRounds:5,burstPauseS:1.6,
   yawRateRadS:1.4,pitchRateRadS:.9,depressionRad:.14,elevationRad:.9,engagePenRatio:1,engageShare:.25,
+  counterDroneRangeM:280,droneHitAt100:.045,droneHitMax:.3,
 };
 
 // The remaining authored stations use NATO M2/M61 or lightweight 30×113 mm

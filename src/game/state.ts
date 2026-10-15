@@ -1,4 +1,4 @@
-import { initializeAerial, stepAerial, isGunship, droneTankAlong, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
@@ -2949,6 +2949,11 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
       if (smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt)) return false;
       auxiliaryRay.copy(b).sub(a); const distance=auxiliaryRay.length(); auxiliaryRay.normalize();
       const hit=world.raycast(a,auxiliaryRay,distance); return !hit || hit.dist>=distance-.5;
+    },
+    // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the drone flight (sim/aerialCombat.ts)
+    counterDrone: game.ruleset.counterDrone === true,
+    droneHit: (carrier: SoloEntity, chance: number, shooter: SoloEntity) => {
+      if (strikeDrone(carrier, chance)) bus.emit('drone:down', { id: carrier.id, killerId: shooter.id });
     },
   };auxiliaryContexts.set(game,context);}
   context.entities=game.tanks;
