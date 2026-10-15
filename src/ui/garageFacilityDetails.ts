@@ -2690,7 +2690,7 @@ export function addGarageFacilityDetails({
       }
       operationalMachines += 1;
       addPoweredWinch(fixedCluster(basin.side - basin.halfWidth - basin.apronNear - 1.6, basin.depth0 + 4.0), 0, 0, new THREE.Color(0x3e7c88));
-      addSafetyRail(onPaving(basin.side, basin.depth0 - 1.3), 0, 0, 2 * basin.halfWidth - 0.6);
+      addSafetyRail(onPaving(basin.side, basin.depth0 - 1.3), 0, 0, 2 * basin.halfWidth - 0.6, 'edge'); // along the head's edge
       addTurningRollStation(onPaving(basin.side - basin.halfWidth - 2.0, basin.depth0 - 2.0), 0, 0, new THREE.Color(0x477d82));
   };
   const addRailRoundhouse = (): void => {
