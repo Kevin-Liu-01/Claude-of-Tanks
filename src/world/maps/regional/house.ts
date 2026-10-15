@@ -1017,13 +1017,16 @@ export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {
  * placement, so the plan carries a house `w` x `d` x `height` at (cx, cz) and damage.ts reads it as a body of its own
  * (it breaks and falls into its own heap; such builds went down to the default kit's bounding-box spalls). A `shaft`
  * (a round minaret, a blast furnace, a stove) is a tower body (towerBody: it topples in its courses) and never the main
- * one. A no-op outside withHousePlans. (Props census #13, lane B 2026-10-15.)
+ * one. A no-op outside withHousePlans. (Props census #13, lane B 2026-10-15.) With `bands` (props census #9, E13: the
+ * tower reader) the body is read in storey bands as the shell reading cuts a wall (3.2 m, at most six), so a tower's
+ * floors break and fall band by band.
  */
-export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d: number, height: number, wall: RegionalBucket, shaft = false): void {
+export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d: number, height: number, wall: RegionalBucket, shaft = false, bands = false): void {
   if (!planSink) return;
   const scratch = new PartSink(sink.uvOffset), pl = sink.placement();
+  const n = bands ? Math.max(1, Math.min(6, Math.round((height - 0.1) / 3.2))) : 1;
   const spec: HouseSpec = {
-    w, d, plinth: null, storeys: [{ h: height - 0.1, wall }], roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: wall },
+    w, d, plinth: null, storeys: Array.from({ length: n }, () => ({ h: (height - 0.1) / n, wall })), roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: wall },
     openings: [], chimneys: [], gutters: null, verge: null, reveal: 0, rafters: null, spall: null,
   };
   const none: HouseDialect = { window: () => undefined, door: () => undefined };
@@ -1032,9 +1035,9 @@ export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d:
   if (shaft) planSink[planSink.length - 1].shaft = true;
 }
 
-/** A round or polygonal shaft recorded as a square tower body of its girth (recordBody). */
-export function recordShaft(sink: PartSink, cx: number, cz: number, girth: number, height: number, wall: RegionalBucket): void {
-  recordBody(sink, cx, cz, girth, girth, height, wall, true);
+/** A round or polygonal shaft recorded as a square tower body of its girth (recordBody), in bands when asked. */
+export function recordShaft(sink: PartSink, cx: number, cz: number, girth: number, height: number, wall: RegionalBucket, bands = false): void {
+  recordBody(sink, cx, cz, girth, girth, height, wall, true, bands);
 }
 
 /** Dress one face with the member capture pointed at it (a no-op outside withHousePlans). */

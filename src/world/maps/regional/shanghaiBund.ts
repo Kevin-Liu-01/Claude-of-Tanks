@@ -15,7 +15,7 @@
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
 // Collision: every landmark's structure is a few prisms (its podium, its tiers, its tower); the facades are dressing.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
+import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, recordBody, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -167,6 +167,9 @@ const bankOfChina: RegionalBuilder = (ctx) => {
     }
     const tx = W * 0.3, tz = D * 0.4;
     sink.span('plaster2', -tx, wingTop, -tz, tx, towerTop, tz);
+    // (props census #9, E13) the wings and the tower (in its storey bands) as bodies for the damage reading
+    recordBody(sink, 0, 0, W, D, wingTop, 'plaster2', false, true);
+    recordBody(sink, 0, 0, 2 * tx, 2 * tz, towerTop + 2, 'plaster2', false, true);
     const tfaces = tierFaces(-tx, tx, -tz, tz);
     for (const face of tfaces) {
       deco(sink, face, wingTop + 0.3, towerTop - 2.4, fh, gold, look, 0.4);
@@ -227,6 +230,9 @@ const customsHouse: RegionalBuilder = (ctx) => {
     const tx = Math.min(W * 0.2, 5.5), tz = Math.min(D * 0.24, tx), tzc = D / 2 - rec - tz - 0.4;
     const shaftTop = Math.max(blockTop + 6, H * 0.77), clockY = shaftTop - 2.8;
     sink.span('plaster3', -tx, blockTop, tzc - tz, tx, shaftTop, tzc + tz);
+    // (E13) the block and the clock tower (a shaft, in bands) as bodies for the damage reading
+    recordBody(sink, 0, 0, W, D, blockTop, 'plaster3', false, true);
+    recordBody(sink, 0, tzc, 2 * tx, 2 * tz, H, 'plaster3', true, true);
     for (const face of tierFaces(-tx, tx, tzc - tz, tzc + tz)) {
       deco(sink, face, blockTop + 0.4, clockY - 2.0, fh, granite, look, 0.4);
       faceBox(sink, 'structureMetal', face, 0, clockY, 0.04, Math.min(face.width * 0.62, 4), Math.min(face.width * 0.62, 4), 0.06, { colour: WHITE_TRIM, decor: true });
@@ -308,6 +314,8 @@ const bundBank: RegionalBuilder = (ctx) => {
     // the cornice and the attic over it
     sink.span('plaster3', -W / 2 - 0.15, top - 0.5, -D / 2 - 0.15, W / 2 + 0.15, top, D / 2 + 0.15, SHADOWED);
     sink.span('plaster3', -W / 2 + 0.3, top, -D / 2 + 0.3, W / 2 - 0.3, top + 1.1, D / 2 - 0.3);
+    // (E13) the bank in its storey bands for the damage reading
+    recordBody(sink, 0, 0, W, D, top + 1.1, 'plaster3', false, true);
     faces.forEach((face, fi) => {
       // the rustication's joints, broken at the openings (and at the portico's mouth); the ground storey's cornice
       const gaps = [...(fi === 0 && rec > 0 ? [[-pw / 2, pw / 2]] : []), ...holes[fi].map((h): [number, number] => [h.u0, h.u1])].sort((p, q) => p[0] - q[0]);
@@ -458,6 +466,8 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
     holedBox(sink, wall, -W / 2, -D / 2, W / 2, D / 2, -0.4, roofY, { front: holes[0], right: holes[1], back: holes[2], left: holes[3] }, 0.35, rev, {},
       { stains: mobile ? {} : { [names[attacked]]: [{ u0: -fa.width * 0.3, u1: fa.width * 0.1, y0: roofY * 0.5, y1: roofY, bottom: 1, top: 0.4 }] } });
     for (const unit of units) unit();
+    // (E13) the warehouse in its storey bands for the damage reading
+    recordBody(sink, 0, 0, W, D, roofY + 0.9, wall, false, true);
     faces.forEach((face, fi) => {
       const n = Math.max(1, Math.round((face.width - 0.8) / 3.0)), pitch = (face.width - 0.8) / n;
       // the floors' slab edges across the face, the frame's posts

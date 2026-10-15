@@ -8,7 +8,7 @@
 // offices of painted block and its steel warehouses; and Page itself: ranch houses of stucco and block under shallow
 // shingled gables with their carports, the fire station with its hose tower, the water tower on its legs.
 import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedBox, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedBox, recordBody, recordShaft, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -209,6 +209,8 @@ const powerhouse: RegionalBuilder = (ctx) => {
   const slots = sw > 0.6 ? Array.from({ length: n }, (_, k) => -W / 2 + 0.35 + (W - 0.7) * (k + 0.5) / n) : [];
   const front = holedBox(sink, CONCRETE, -W / 2, zb, W / 2, zf, -0.5, H, { front: slots.map((um) => ({ u0: um - sw / 2, u1: um + sw / 2, y0: 3.4, y1: H - 2.6 })) },
     0.42, rev).front;
+  // (props census #9, E13) the hall in its storey bands for the damage reading
+  recordBody(sink, 0, (zb + zf) / 2, W, hallD, H + 0.6, CONCRETE, false, true);
   for (let k = 0; k <= n; k++) {
     const u = -W / 2 + 0.35 + (W - 0.7) * k / n;
     faceBox(sink, CONCRETE, front, u, H / 2 + 0.1, 0.2, 0.7, H + 0.2, 0.4, { decor: true });
@@ -240,6 +242,7 @@ const powerhouse: RegionalBuilder = (ctx) => {
   const ab0 = -PD / 2 + 0.3, ab1 = ab0 + Math.max(2.8, Math.min(4.0, PD - hallD - 7));
   const abH = 9.5 + rng() * 2;
   sink.span(CONCRETE, -W / 2 + 1.5, -0.5, ab0, W / 2 - 1.5, abH, ab1);
+  recordBody(sink, 0, (ab0 + ab1) / 2, W - 3, ab1 - ab0, abH, CONCRETE);
   const paint = pick(rng, PENSTOCK);
   const pr = 1.55;
   for (const fx of [-0.3, 0, 0.3]) {
@@ -342,6 +345,8 @@ const surgeTower: RegionalBuilder = (ctx) => {
     const hd = RR.D / 2;
     sink.cylinder(CONCRETE, [0, -0.5, 0], 'y', 4.6, R + 1.2, 24, {}, R + 1.0);
     sink.cylinder('structureMetal', [0, 4.1, 0], 'y', H, R, 24, { colour: paint });
+    // (props census #9, E13) the drum on its base a shaft in bands for the damage reading
+    recordShaft(sink, 0, 0, 2 * R, 4.1 + H + 2.2, 'structureMetal', true);
     // (the integrity check, 2026-10-12: the stiffener rings stood 6 cm off the shell on nothing, open top and bottom) each
     // ring closed against the shell: its top and bottom ledges reach in to the drum
     for (let y = 4.1 + 3.8; y < 4.1 + H - 1; y += 3.8) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.22, R + 0.06, 24, { colour: shade(paint, 0.82), decor: true }, R + 0.06);

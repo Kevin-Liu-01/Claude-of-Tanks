@@ -15,7 +15,7 @@
 // Collision: every tower's structure is a few prisms (the cores, the slabs, the podium), so its shell bands merge; the
 // facades are dressing.
 import { PartSink, faceBox, facePanel, normalize3, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, type HoleRect, type Stain } from './house.ts';
+import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, recordBody, recordShaft, type HoleRect, type Stain } from './house.ts';
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -182,6 +182,9 @@ const unisTowers: RegionalBuilder = (ctx) => {
     const bronze = rgb(0x4b3a2b), slab = 'plaster3' as const;
     // the lobby the towers stand on
     const lobbyH = 7.0;
+    // (props census #9, E13: the bodies for the damage reading, the towers in their storey bands: the lobby and each tower
+    // break and fall on their own)
+    recordBody(sink, 0, -0.2, W, D - 0.4, lobbyH, slab);
     // (props census #9) the lobby's glazed front cut into it, the glass at the back of the cut (it was laid on the span)
     sink.span(slab, -W / 2, -0.4, -D / 2, W / 2, lobbyH, D / 2 - 0.4);
     const lobby: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
@@ -193,6 +196,7 @@ const unisTowers: RegionalBuilder = (ctx) => {
       const cx = side * (gap / 2 + T / 2), hz = Math.min(T / 2, D / 2 - 0.4);
       const plan = chamferedSquare(cx, 0, T / 2, hz, c);
       const top = lobbyH + floors * fh;
+      recordBody(sink, cx, 0, T, 2 * hz, top + 3.4, slab, false, true);
       planPrism(sink, slab, chamferedSquare(cx, 0, T / 2 + 0.15, hz + 0.15, c), top, top + 0.45);
       planPrism(sink, slab, chamferedSquare(cx, 0, T * 0.32, hz * 0.64, c * 0.6), top + 0.45, top + 3.4);
       // the fire's floors: a run of gutted floors per tower, a few burnt, the rest glass (lit very rarely)
@@ -228,6 +232,8 @@ function parliament(ctx: RegionalBuildContext): RegionalParts {
     // grid of fins, the burnt floors gutted a bay deep (they were glass and dark plates on a dark box)
     sink.span(concrete, -W / 2 + 0.2, -0.4, tz0 + 0.2, W / 2 - 0.2, 1.2, tz1 - 0.2);
     sink.span(concrete, -W / 2, top, tz0, W / 2, top + 0.6, tz1);
+    // (E13) the slab tower in its storey bands for the damage reading; the assembly wing its own body
+    recordBody(sink, 0, (tz0 + tz1) / 2, W, tz1 - tz0, top + 3.2, concrete, false, true);
     sink.span(concrete, -W * 0.2, top + 0.6, (tz0 + tz1) / 2 - 1.8, W * 0.2, top + 3.2, (tz0 + tz1) / 2 + 1.8);
     // the fire took the floors under the top and a few here and there below (the tower burnt for days in 1992)
     const burntFrom = Math.max(1, floors - 7 - Math.floor(rng() * 5));
@@ -241,6 +247,7 @@ function parliament(ctx: RegionalBuildContext): RegionalParts {
     // the assembly wing in front: two storeys, a ribbon of dark glass, a flat roof
     const wz0 = tz1 + 0.6, wz1 = D / 2;
     if (wz1 - wz0 > 2.5) {
+      recordBody(sink, 0, (wz0 + wz1) / 2, W, wz1 - wz0, 8.2, concrete);
       // (its ribbons of glazing cut into its front, the glass at the back of the cuts: they were laid on the span)
       sink.span(concrete, -W / 2, -0.4, wz0, W / 2, 8.2, wz1 - 0.4);
       const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
@@ -280,6 +287,9 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
     // (props census #9) the cross built as walls with their openings cut through them round a core (it was two solid
     // slabs with the windows and the loggias painted on): the arm ends' walls a loggia deep, the arms' sides a window's
     const hx = W / 2, hz = D / 2, a = armW / 2, cut = 0.4, deepEnd = 1.2;
+    // (E13) the cross for the damage reading: the long arm whole, the other arm's halves either side of it, in storey bands
+    recordBody(sink, 0, 0, W, armW, top + 2.6, concrete, false, true);
+    if (hz - a > 0.5) for (const s2 of [-1, 1]) recordBody(sink, 0, s2 * (a + hz) / 2, armW, hz - a, top, concrete, false, true);
     planPrism(sink, concrete, rect(-hx + deepEnd, -a + cut, hx - deepEnd, a - cut), -0.4, top);
     planPrism(sink, concrete, rect(-a + cut, -hz + deepEnd, a - cut, hz - deepEnd), -0.4, top);
     sink.span(concrete, -armW / 2 - 0.5, top, -armW / 2 - 0.5, armW / 2 + 0.5, top + 2.6, armW / 2 + 0.5);
@@ -376,6 +386,9 @@ const holidayInn: RegionalBuilder = (ctx) => {
     const c = T * 0.08;
     const cube = chamferedSquare(0, 0, T / 2, T / 2, c);
     planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T / 2 + 0.15, T / 2 + 0.15, c), top, top + 0.45, { colour: yellow });
+    // (E13) the podium and the cube (in its storey bands) for the damage reading
+    recordBody(sink, 0, 0, W, D, podH, 'structureMetal');
+    recordBody(sink, 0, 0, T, T, top + 3.0, 'structureMetal', false, true);
     planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T * 0.36, T * 0.36, c * 0.7), top + 0.45, top + 3.0, { colour: shade(yellow, 0.95) });
     for (const name of ['front', 'right', 'back', 'left'] as const) {
       const face = pod[name], gw = (name === 'front' || name === 'back' ? W : D - 0.8) - 1.2;
@@ -439,6 +452,7 @@ const slabBlock: RegionalBuilder = (ctx) => {
     if (annex) {
       // the annex one storey high (its roof at the slab's first floor: the first loggias stand over it)
       const ah = gH, az0 = z1 - 0.2, af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+      recordBody(sink, 0, (z1 + D / 2) / 2, W, D / 2 - z1, ah + 0.7, concrete);
       const units = Math.max(2, Math.floor(W / 4.2)), holes: HoleRect[] = [];
       sink.span(concrete, -W / 2, -0.4, az0, W / 2, ah, D / 2 - wallT);
       sink.span(concrete, -W / 2, ah, D / 2 - 0.25, W / 2, ah + 0.7, D / 2);
@@ -457,6 +471,8 @@ const slabBlock: RegionalBuilder = (ctx) => {
       sink.dressing(mobile, () => shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), holes, look, 'stone'));
     }
     sink.span(concrete, -W / 2 - 0.1, top, z0 - 0.1, W / 2 + 0.1, top + 0.7, z1 + 0.1);
+    // (E13) the slab in its storey bands for the damage reading (the annex its own body)
+    recordBody(sink, 0, (z0 + z1) / 2, W, sd, top + 0.7, concrete, false, true);
     for (const x of [-W * 0.28, W * 0.28]) sink.span(concrete, x - 1.3, top + 0.7, z0 + sd * 0.25, x + 1.3, top + 3.0, z1 - sd * 0.25, { decor: true });
     const front: Face = { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: W };
     const back: Face = { origin: [0, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: W };
@@ -548,6 +564,8 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       panelWindow(sink, pf, u, y, 1.5, 1.4, look, 0.04, bh, { reveal: rev, stains: pStains });
     }
     holedBox(sink, concrete, -W / 2, bz0, W / 2, bz1, -0.4, bh, { front: pHoles }, wallT, rev, {}, { stains: { front: pStains }, edgeBreaks: DAMP_EDGE_BREAKS });
+    // (E13) the bodies for the damage reading: the print works, the gutted storeys, the cores (shafts, in bands)
+    recordBody(sink, 0, (bz0 + bz1) / 2, W, bz1 - bz0, bh, concrete, false, true);
     sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
     if (stub) {
       // the gutted storeys: their window bays open to the burnt-out dark, the soot up the wall over them
@@ -556,6 +574,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
         const u = -W / 2 + W * (k + 0.5) / n, bw = W / n - 0.9;
         tHoles.push({ u0: u - bw / 2, u1: u + bw / 2, y0: 0.65 + fl * 3.4, y1: 2.55 + fl * 3.4 });
       }
+      recordBody(sink, 0, (tz0 + tz1) / 2, W, tz1 - tz0, th, concrete, false, true);
       holedBox(sink, concrete, -W / 2, tz0, W / 2, tz1, -0.4, th, { front: tHoles }, wallT, rev, {},
         { stains: { front: [sootStain(-W / 2, W / 2, 2.6, th)] }, edgeBreaks: DAMP_EDGE_BREAKS });
     }
@@ -565,6 +584,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       // the core's walls round it, the fire's soot darkening up them to the head
       const soot = faces.map(() => h * (0.3 + look() * 0.3));
       const coreStain = (k: number): Stain[] => [{ u0: -cs / 2, u1: cs / 2, y0: soot[k], y1: h, bottom: 1, top: 0.42 }];
+      recordShaft(sink, cx, cz, cs, h, concrete, true);
       holedBox(sink, concrete, cx - cs / 2, cz - cs / 2, cx + cs / 2, cz + cs / 2, -0.4, h, {}, 0.3, 0.24, {},
         { stains: { front: coreStain(0), right: coreStain(1), back: coreStain(2), left: coreStain(3) }, edgeBreaks: DAMP_EDGE_BREAKS });
       // the slab stubs on the inner face at every floor, rebar at the head

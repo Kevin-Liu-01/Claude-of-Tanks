@@ -31,7 +31,7 @@ import {
   LocalFrame, PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade,
   type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, holedBox, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, recordBody, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { faceSlab, hash01, pilaster, trimRing, trimRun } from './facade.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -476,6 +476,9 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     const stone: RegionalBucket = 'stone';
     const podiumH = 8.5;
     podium(sink, plot, podiumH, stone, rng, { arcade: rng() < 0.5 });
+    // (props census #9, E13: the tower reader) the podium and the shaft (its first tier's plan, to the crown, in storey
+    // bands) as bodies for the damage reading: the podium breaks as a house, the shaft topples
+    recordBody(sink, (plot.x0 + plot.x1) / 2, (plot.z0 + plot.z1) / 2, plot.x1 - plot.x0, plot.z1 - plot.z0, podiumH, stone);
     // the vertical line of the deco shaft: piers standing well out, the spandrels set back between them and darker
     const facade: TowerFacade = {
       pier: { bucket: stone, w: 0.66, out: 0.5 }, spandrel: { bucket: stone, h: 1.1, out: 0.07, shade: 0.62 },
@@ -504,6 +507,10 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     }
     // the crown
     const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, half = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
+    {
+      const r0 = inset(plot, Math.min(1.2, (plot.x1 - plot.x0) * 0.05));
+      recordBody(sink, (r0.x0 + r0.x1) / 2, (r0.z0 + r0.z1) / 2, r0.x1 - r0.x0, r0.z1 - r0.z0, y + 0.9, stone, false, true);
+    }
     if (damage === 3) {
       // the crown shot away: its stump and the broken frame
       sink.span(stone, cx - half * 0.6, y + 0.9, cz - half * 0.6, cx + half * 0.6, y + 3.1, cz + half * 0.6);
@@ -829,6 +836,8 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
       glazing: 'bays', mullions: 2, mullion: rgb(0x4a4a44) };
     const hdmg = tierDamage(rng, damage, 2);
     const hTop = towerTier(sink, head, 0, 2, 5.2, hfacade, hdmg, rng, { base: -0.5 });
+    // (E13) the head building, the pavilion and the clock tower as bodies for the damage reading
+    recordBody(sink, (head.x0 + head.x1) / 2, (head.z0 + head.z1) / 2, head.x1 - head.x0, head.z1 - head.z0, hTop + 1.2, stone, false, true);
     trimRing(sink, stone, head, hTop - 0.4, [{ h: 0.15, out: 0.14 }, { h: 0.25, out: 0.4 }]);
     sink.span(stone, head.x0, hTop - 0.3, head.z0, head.x1, hTop + 1.2, head.z1);
     // the pavilion: taller, its arch and lunette to the forecourt
@@ -840,6 +849,7 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
     const front: Face = { origin: [(pav.x0 + pav.x1) / 2, 0, pav.z1], u: [1, 0, 0], out: [0, 0, 1], width: pw };
     const archW = pw * 0.56, archH = hTop + 1.5, ar = archW / 2, yS = archH - ar;
     sink.span(stone, pav.x0, -0.5, pav.z0, pav.x1, pTop, pav.z1 - cut);
+    recordBody(sink, (pav.x0 + pav.x1) / 2, (pav.z0 + pav.z1) / 2, pw, pav.z1 - pav.z0, pTop, stone, false, true);
     const wall = (poly: Array<[number, number]>) => faceSlab(sink, stone, front, poly, -cut, cut, { decor: false }, true);
     wall([[-pw / 2, -0.5], [-ar, -0.5], [-ar, pTop], [-pw / 2, pTop]]);
     wall([[ar, -0.5], [pw / 2, -0.5], [pw / 2, pTop], [ar, pTop]]);
@@ -862,6 +872,7 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
     // the clock tower on the pavilion's corner
     const tx = pav.x1 - 2.2, tz = pav.z1 - 2.2, tTop = hTop + 6 + 9;
     sink.span(stone, tx - 1.8, hTop + 6, tz - 1.8, tx + 1.8, tTop, tz + 1.8);
+    recordShaft(sink, tx, tz, 3.6, tTop, stone, true);
     for (const face of rectFaces({ x0: tx - 1.8, x1: tx + 1.8, z0: tz - 1.8, z1: tz + 1.8 })) {
       faceSlab(sink, 'structureMetal', face, circle(0, tTop - 2.4, 1.1, 16), 0, 0.04, { colour: rgb(0xe0dccf) });
       // (the hand 5 cm wide: at 7 cm it read as a dark plate on the dial)
