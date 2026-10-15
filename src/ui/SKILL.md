@@ -112,7 +112,10 @@ shared turntable materials per location; never create a new texture or shader
 program during an environment switch.
 The separate merged service-facility pack follows that same hero axis; never
 use `GARAGE_CAMERA_AZIMUTH_RAD` as its yaw or the bays will stare face-on at the
-opening camera instead of showing three-quarter depth beside the tank.
+opening camera instead of showing three-quarter depth beside the tank. The one
+exception is a signature building the approach runs into or through (Cinder's
+engine shed over the rail fan): it is squared on its road, its yaw derived from
+the road's own points, never from the camera constant.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,
