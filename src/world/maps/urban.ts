@@ -213,6 +213,24 @@ export default {
       { kind: 'townGate', x: -51.839, z: 100.564, yawDeg: 2, ground: 'veto', name: 'the north gate', params: { passage: 8.2, wallsLeft: 5.67, wallsRight: 9.35, height: 22 } },
       { kind: 'townGate', x: -48.339, z: -101.256, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 8.2, wallsLeft: 3.87, wallsRight: 11.21, height: 22 } },
       { kind: 'fountain', x: -62, z: 47, yawDeg: 6, ground: 'veto', name: 'the Marktbrunnen before the church', params: { style: 'markt', radius: 2.6 } },
+      // (the maps lane, 2026-10-14, MA.14; the owner, 10-09: "steinburg is really good but there are a bunch of empty areas it
+      // looks like buildings should be in the town area") the town's empty lots built up in its own Franconian kit: town
+      // houses on the lots left inside the ring, houses on the south-west corner's and the south edge's lots, each turned
+      // to its street (a lot 12 m across, clear of every building by 2 m, off the roads' cores, its ground within 1.4 m:
+      // the plot census, tools of the maps lane). Set pieces stand after every seeded pass, from streams of their own, so
+      // no house of the town moves.
+      { kind: 'houseRow', x: -124, z: -36, yawDeg: -120, ground: 'veto', name: 'a town house on an empty lot', params: { kit: 'franconian', structure: 'rowhouse', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -88, z: -42, yawDeg: 15, ground: 'veto', name: 'a town house on an empty lot', params: { kit: 'franconian', structure: 'rowhouse', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -124, z: -24, yawDeg: 5, ground: 'veto', name: 'a town house on an empty lot', params: { kit: 'franconian', structure: 'rowhouse', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -118, z: 30, yawDeg: -135, ground: 'veto', name: 'a town house on an empty lot', params: { kit: 'franconian', structure: 'rowhouse', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -82, z: 72, yawDeg: 10, ground: 'veto', name: 'a town house on an empty lot', params: { kit: 'franconian', structure: 'rowhouse', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -106, z: 30, yawDeg: -175, ground: 'veto', name: 'a town house on an empty lot', params: { kit: 'franconian', structure: 'rowhouse', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -226, z: 48, yawDeg: 105, ground: 'veto', name: 'a house on an empty lot', params: { kit: 'franconian', structure: 'cottage', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -184, z: 90, yawDeg: 140, ground: 'veto', name: 'a house on an empty lot', params: { kit: 'franconian', structure: 'cottage', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: 20, z: 96, yawDeg: -160, ground: 'veto', name: 'a house on an empty lot', params: { kit: 'franconian', structure: 'cottage', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -226, z: 60, yawDeg: 120, ground: 'veto', name: 'a house on an empty lot', params: { kit: 'franconian', structure: 'cottage', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: -202, z: 84, yawDeg: 140, ground: 'veto', name: 'a house on an empty lot', params: { kit: 'franconian', structure: 'cottage', count: 1, width: 7.2, depth: 9 } },
+      { kind: 'houseRow', x: 32, z: 96, yawDeg: -155, ground: 'veto', name: 'a house on an empty lot', params: { kit: 'franconian', structure: 'cottage', count: 1, width: 7.2, depth: 9 } },
     ],
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
