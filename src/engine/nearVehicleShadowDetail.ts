@@ -10,10 +10,26 @@ import type { Camera, Object3D, Scene } from 'three';
 import { Matrix4, Vector3 } from 'three';
 import type { ShadowCascadePolicy } from './renderLayers.ts';
 
-/** Hulls farther than this from the camera keep their convex proxies in every cascade. */
-export const NEAR_VEHICLE_SHADOW_RANGE_M = 70;
-/** At most this many hulls cast their real armour per frame (the nearest ones). */
-export const NEAR_VEHICLE_SHADOW_MAX = 4;
+/**
+ * Hulls farther than this from the camera keep their convex proxies in every cascade (2026-10-15, SKY shadows r2b: 70 m
+ * -> 90 m, High's cascade-1 break; the detail / proxy swap stood where the ground occlusion fades, 50-70 m).
+ */
+export const NEAR_VEHICLE_SHADOW_RANGE_M = 90;
+/** At most this many hulls cast their real armour per frame (the nearest ones) on Ultra and High (r2b: 4 -> 6). */
+export const NEAR_VEHICLE_SHADOW_MAX = 6;
+/** Medium and Low keep four (their near cascade's budget). */
+const NEAR_VEHICLE_SHADOW_MAX_LOWER = 4;
+/**
+ * The swap's hysteresis (r2b): a hull enters the selection inside the range less this and leaves past the range plus
+ * this (m), so a hull driving along the boundary does not flip between its armour and its proxies.
+ */
+export const NEAR_VEHICLE_SHADOW_HYSTERESIS_M = 8;
+/** And by rank: a hull selected last update competes for the cap as if this much nearer (m). */
+export const NEAR_VEHICLE_SHADOW_RANK_HOLD_M = 6;
+/** The cap by quality preset: six hulls on Ultra and High, four elsewhere. */
+export function nearVehicleShadowMaxFor(preset: string): number {
+  return preset === 'ultra' || preset === 'high' ? NEAR_VEHICLE_SHADOW_MAX : NEAR_VEHICLE_SHADOW_MAX_LOWER;
+}
 /** A hull straddling a cascade boundary casts into both; this is the half extent that decides "straddling". */
 export const NEAR_VEHICLE_SHADOW_EXTENT_M = 6;
 export const VEHICLE_SHADOW_DETAIL_KEY = 'nearShadowDetail';
@@ -35,7 +51,8 @@ interface NearVehicleShadowPolicyOptions {
   /** False keeps every hull on its proxies (mobile tier, low presets, debug A/B). */
   enabled(): boolean;
   rangeM?: number;
-  max?: number;
+  /** The cap: a number, or read at every update (lighting.ts: the live preset's nearVehicleShadowMaxFor). */
+  max?: number | (() => number);
   extentM?: number;
   /**
    * 2026-10-14 (SKY shadows r2a): the direction FROM the sun (CSM lightDirection), so a hull's detail covers every cascade
@@ -50,6 +67,8 @@ interface NearVehicleSelection {
   readonly depth: number;
   readonly cascadeMask: number;
 }
+/** A candidate's competing depth: its own, less the rank hold when it was selected last update. */
+interface NearVehicleCandidate extends NearVehicleSelection { readonly rank: number; }
 
 export interface NearVehicleShadowPolicy extends ShadowCascadePolicy {
   /** Re-select the near hulls for this frame; cheap (scene children only). */
@@ -112,18 +131,23 @@ const _position = new Vector3();
 
 export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOptions): NearVehicleShadowPolicy {
   const rangeM = options.rangeM ?? NEAR_VEHICLE_SHADOW_RANGE_M;
-  const max = options.max ?? NEAR_VEHICLE_SHADOW_MAX;
+  const maxOption = options.max ?? NEAR_VEHICLE_SHADOW_MAX;
   const extentM = options.extentM ?? NEAR_VEHICLE_SHADOW_EXTENT_M;
   const selected: NearVehicleSelection[] = [];
-  const candidates: NearVehicleSelection[] = [];
+  const candidates: NearVehicleCandidate[] = [];
+  // the hulls selected by the last update (the hysteresis reads them); cleared and refilled in place
+  const held = new Set<Object3D>();
   // the flags flipped for the cascade being rendered, restored in afterLight in reverse order
   const flipped: { object: Object3D; castShadow: boolean; visible: boolean }[] = [];
 
   function update(): void {
+    held.clear();
+    for (const entry of selected) held.add(entry.root);
     selected.length = 0;
     if (!options.enabled()) return;
     const ranges = options.cascadeRanges();
     if (!ranges.length) return;
+    const max = typeof maxOption === 'function' ? maxOption() : maxOption;
     options.camera.updateMatrixWorld();
     _view.copy(options.camera.matrixWorld).invert();
     const span = options.sunDirection ? shadowReachDepthSpan(options.sunDirection(), _view) : [0, 0];
@@ -133,7 +157,9 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
       if (!detail || !child.visible || !detail.detail.length) continue;
       child.getWorldPosition(_position).applyMatrix4(_view);
       const depth = -_position.z;
-      if (!(depth > -extentM) || depth > rangeM) continue;
+      // (r2b) the hysteresis: in inside range - H, out past range + H
+      const wasHeld = held.has(child);
+      if (!(depth > -extentM) || depth > rangeM + (wasHeld ? NEAR_VEHICLE_SHADOW_HYSTERESIS_M : -NEAR_VEHICLE_SHADOW_HYSTERESIS_M)) continue;
       // (2026-10-14: and every cascade its shadow lands in: the reach down-sun, on the view depth)
       let cascadeMask = cascadeMaskForDepth(Math.max(0, depth), extentM, ranges);
       if (span[0] < 0 || span[1] > 0) {
@@ -141,9 +167,9 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
         cascadeMask |= cascadeMaskForDepth((lo + hi) / 2, (hi - lo) / 2 + extentM, ranges);
       }
       if (!cascadeMask) continue;
-      candidates.push({ root: child, depth, cascadeMask });
+      candidates.push({ root: child, depth, cascadeMask, rank: depth - (wasHeld ? NEAR_VEHICLE_SHADOW_RANK_HOLD_M : 0) });
     }
-    candidates.sort((a, b) => a.depth - b.depth);
+    candidates.sort((a, b) => a.rank - b.rank);
     for (let i = 0; i < candidates.length && i < max; i++) selected.push(candidates[i]);
   }
 

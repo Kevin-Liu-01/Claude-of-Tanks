@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { PRESETS, getDeviceTier, getPreset, onPresetChange } from './quality.ts';
+import { PRESETS, getDeviceTier, getPreset, onPresetChange, resolvePresetName } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
@@ -34,7 +34,7 @@ import {
   type ShadowTentTable,
 } from './shadowTent.ts';
 import {
-  cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
+  cascadeRangesFromBreaks, createNearVehicleShadowPolicy, nearVehicleShadowMaxFor, type CascadeRange, type NearVehicleShadowPolicy,
 } from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 import {
@@ -938,6 +938,8 @@ export function createLighting(
   // into the cascade that covers them instead of their convex proxies (nearVehicleShadowDetail.ts). Desktop
   // tiers only — the phone presets keep the nine-draw proxy budget — and off under __SHADOW_DEBUG.noVehicleDetail.
   let nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(preset);
+  // 2026-10-15 (SKY shadows r2b): six near hulls on Ultra and High, four on Medium and Low
+  let nearVehicleMax = nearVehicleShadowMaxFor(resolvePresetName());
   const cascadeRangeScratch: CascadeRange[] = [];
   const nearVehiclePolicy: NearVehicleShadowPolicy = createNearVehicleShadowPolicy({
     camera, scene,
@@ -949,6 +951,7 @@ export function createLighting(
       return cascadeRangeScratch;
     },
     enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+    max: () => nearVehicleMax,
     // 2026-10-14 (SKY shadows r2a): the detail covers every cascade the hull's shadow lands in (its reach down-sun)
     sunDirection: () => csm.lightDirection,
   });
@@ -1103,6 +1106,7 @@ export function createLighting(
   onPresetChange((p) => {
     poseHoldTier = p !== PRESETS.ultra;
     nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
+    nearVehicleMax = nearVehicleShadowMaxFor(resolvePresetName());
     lightFx.flags = resolvePostLightFx(p, getDeviceTier(), currentPostLightFxQuery());
     applyGroundBounce();
     // Desktop presets deliberately share one shadow layout, so ordinary
