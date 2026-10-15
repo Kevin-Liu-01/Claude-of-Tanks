@@ -26,6 +26,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
     + 'only on the turretless variants (or in place of the Orion sight), so the turreted Ajax carries no roof gun.',
   spz_puma: 'Schützenpanzer Puma: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS (Spike-LR) launcher in an '
     + 'unmanned turret; no roof machine gun.',
+  spz_puma_s1: 'Schützenpanzer Puma S1: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS launcher; the S1 carries no '
+    + 'roof weapon station (its commander sight is the PERI RTWL head).',
   type89: 'Type 89 IFV: 35 mm KDE, a coaxial 7.62 mm Type 74 and two Type 79 Jyu-MAT launchers; no roof machine gun.',
   tos1a_tagil: 'TOS-1A Solntsepyok: the 24-tube 220 mm launcher on a T-72 chassis; the crew relies on personal arms and '
     + 'the vehicle carries no machine gun.',
