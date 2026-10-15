@@ -346,7 +346,7 @@ export function decorSeatEnv(spec: SeatSpec, hullG: THREE.Group, turretG: THREE.
  * One decor run's measure at a pose (S1): the solver's rules, no search (the slot owns its candidate stations). A
  * station check stops at its first failing rule; `full` measures everything (the receipt of the seat that passed).
  */
-export function decorSeatMeasure(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, full = false): SeatMeasure {
-  return measureSeat(env, shape, pose, 0, full);
+export function decorSeatMeasure(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, full = false, fresh = false): SeatMeasure {
+  return measureSeat(env, shape, pose, 0, full, fresh);
 }
 

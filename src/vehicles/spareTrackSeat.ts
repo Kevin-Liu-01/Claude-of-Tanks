@@ -21,6 +21,8 @@
  *                 traverse (where the turret's own surface already meets the hull, the host is at fault, not the run)
  *   R6 no hang    a run with no passing seat is not built; the caller records it as rejected
  *   R7 visible    the run's top face must see outside in at least 30 % of a hemisphere of directions
+ *   (a run the solver moves, or a decor run on a new station, is new visible stowage: it must clear the motion by 6 cm
+ *   and see outside in half the hemisphere)
  *
  * R8 (one source per frame) is the decor's: a generic decor run never joins a frame that already carries an
  * authored one (decorations.ts).
@@ -596,6 +598,8 @@ export interface SeatMeasure {
 export const SEAT_RULES = Object.freeze({
   supportMin: 0.8, airMax: 0.1, gapP90Max: 0.012, gapTolM: 0.012, linkEmbedMax: 0.01, normalMaxDeg: 20,
   airReachM: 0.3, cutTolM: 0.01, sweepClearM: 0.03, exposureMin: 0.3, exposureReachM: 0.8,
+  // a run the solver moves is new visible stowage: it must sit clearly in the open and clearly out of the way
+  movedSweepClearM: 0.06, movedExposureMin: 0.5,
 });
 
 const U_FRACTIONS = [0.04, 0.27, 0.5, 0.73, 0.96];
@@ -637,7 +641,8 @@ export interface SeatEnv {
  * Measure one pose against R1-R5 and R7. Early-outs once a rule fails (the remaining measures stay at their
  * neutral values), unless `full` asks for every measure (receipts).
  */
-export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, full = false): SeatMeasure {
+export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, full = false,
+  moved = false): SeatMeasure {
   const R = SEAT_RULES;
   const out: SeatMeasure = { ok: false, reason: null, support: 0, air: 0, gapP90: 0, maxEmbed: 0, forbidden: 0,
     forbiddenRole: null, spreadDeg: 0, clear: Infinity, clearRole: null, cut: 0, sweep: Infinity, exposure: 1 };
@@ -730,12 +735,12 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   // ---- R5: motion
   if (env.motion) {
     out.sweep = motionClearance(env, shape, ax, pose, owner);
-    if (out.sweep < R.sweepClearM && fail('sweep')) return out;
+    if (out.sweep < (moved ? R.movedSweepClearM : R.sweepClearM) && fail('sweep')) return out;
   }
   // ---- R7: line-of-sight exposure of the top face
   if (env.exposure !== false) {
     out.exposure = exposureOf(env, shape, ax, pose, n, owner);
-    if (out.exposure < R.exposureMin && fail('buried')) return out;
+    if (out.exposure < (moved ? R.movedExposureMin : R.exposureMin) && fail('buried')) return out;
   }
   out.ok = !out.reason;
   return out;
@@ -960,8 +965,8 @@ export function solveSpareTrackSeat(env: SeatEnv, shape: SeatRunShape, hint: Sea
     const target = center.clone().applyQuaternion(hint.quat).add(hint.pos).addScaledVector(eu, s.du).addScaledVector(ev, s.dv);
     const pose = seatFromOutside(env, shape, ax, quat, target, n0, owner);
     if (!pose) continue;
-    const m = measureSeat(env, shape, pose, owner);
-    if (m.ok) return { ok: true, seat: 'reseated', pose, measure: measureSeat(env, shape, pose, owner, true), hint: hintMeasure };
+    const m = measureSeat(env, shape, pose, owner, false, true);
+    if (m.ok) return { ok: true, seat: 'reseated', pose, measure: measureSeat(env, shape, pose, owner, true, true), hint: hintMeasure };
   }
   return { ok: false, seat: null, pose: null, measure: hintMeasure, hint: hintMeasure };
 }

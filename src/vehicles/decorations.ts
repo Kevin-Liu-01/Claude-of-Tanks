@@ -1156,7 +1156,7 @@ const TRACK_EMBED_M = 0.006;
 /** A decor spare-link run's seat check at one slot station (VEH-13 S1, attachTankDecorationsSteps). */
 interface TrackSeater {
   /** The station's pose, its plane-fit pose (with the support point and normal it was fitted to), or null. */
-  seat(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler):
+  seat(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler, fresh?: boolean):
     { pos: THREE.Vector3; rot: THREE.Euler; support?: { p: THREE.Vector3; n: THREE.Vector3 } } | null;
   committed(slot: string): void;
   failed(): void;
@@ -5421,16 +5421,18 @@ export function* attachTankDecorationsSteps(
       let firstMiss: string | null = null;
       const miss = (why: string): null => { firstMiss ??= why; return null; };
       return {
-        seat(_candidate, pos, rot) {
+        // an old station keeps the base rules (a run that passed keeps its seat); a new station or a plane-fit pose is new
+        // stowage and must also clear the moved-run margins (SEAT_RULES.moved*)
+        seat(_candidate, pos, rot, fresh = false) {
           const quat = new THREE.Quaternion().setFromEuler(rot);
-          let m = decorSeatMeasure(env, shape, { pos, quat });
-          if (m.ok) { last = decorSeatMeasure(env, shape, { pos, quat }, true); return { pos, rot }; }
+          let m = decorSeatMeasure(env, shape, { pos, quat }, false, fresh);
+          if (m.ok) { last = decorSeatMeasure(env, shape, { pos, quat }, true, fresh); return { pos, rot }; }
           if (!/^(support|gap|air|sunk|cut)/.test(m.reason ?? '')) return miss(`seat:${m.reason}`);
           const refined = refineSeat(env, shape, { pos, quat });
           if (!refined) return miss(`seat:${m.reason}`);
-          m = decorSeatMeasure(env, shape, refined);
+          m = decorSeatMeasure(env, shape, refined, false, true);
           if (!m.ok) return miss(`seat-fit:${m.reason}`);
-          last = decorSeatMeasure(env, shape, refined, true);
+          last = decorSeatMeasure(env, shape, refined, true, true);
           const n = new THREE.Vector3(0, 0, 1).applyQuaternion(refined.quat);
           const c = box.getCenter(new THREE.Vector3()).setZ(box.min.z + TRACK_EMBED_M).applyQuaternion(refined.quat).add(refined.pos);
           return { pos: refined.pos, rot: new THREE.Euler().setFromQuaternion(refined.quat, 'XYZ'), support: { p: c, n } };
@@ -5591,11 +5593,11 @@ export function* attachTankDecorationsSteps(
         const track = name === 'tracks' ? trackSeater('hull', parts, new THREE.Box3(
           new THREE.Vector3(-W * 0.4, 0, L * 0.2), new THREE.Vector3(W * 0.4, H + 0.3, L / 2 + 0.6))) : null;
         if (track === false) { disposePartList(parts); return false; }
-        const seatAt = (h: SurfaceHit, slot: 'glacis' | 'glacis-bow'): boolean => {
+        const seatAt = (h: SurfaceHit, slot: 'glacis' | 'glacis-bow', fresh = false): boolean => {
           // the station is judged before the piece is cloned (the clone is the committed copy)
           let pos = surfaceMountPosition(parts, h, embedM), rot = surfaceMountEuler(h.n), sp = h.p, sn = h.n;
           if (track) {
-            const seat = track.seat(parts, pos, rot);
+            const seat = track.seat(parts, pos, rot, fresh);
             if (!seat) return false;
             ({ pos, rot } = seat);
             if (seat.support) { sp = seat.support.p; sn = seat.support.n; }
@@ -5629,7 +5631,7 @@ export function* attachTankDecorationsSteps(
             for (const zf of [0.30, 0.36, 0.42]) {
               const h = deckProbe(xf * W, L * zf);
               if (!h || h.n.y < 0.3 || Math.abs(h.n.x) > 0.4) continue;
-              if (seatAt(h, 'glacis')) return true;
+              if (seatAt(h, 'glacis', true)) return true;
             }
           }
           track.failed();
@@ -6104,12 +6106,12 @@ export function* attachTankDecorationsSteps(
           new THREE.Vector3(side > 0 ? 0 : -(W / 2 + 0.4), -0.3, -1.5), new THREE.Vector3(side > 0 ? W / 2 + 0.4 : 0, top + 0.3, 1.0)))
           : null;
         if (track === false) { disposePartList(parts); return false; }
-        const seatAt = (y: number, z: number): boolean => {
+        const seatAt = (y: number, z: number, fresh = false): boolean => {
           const h = turP.side(y, z, side, W / 2 + 1);
           if (!h || Math.abs(h.n.x) < 0.6) return false;
           let pos = surfaceMountPosition(parts, h, embedM), rot = surfaceMountEuler(h.n), sp = h.p, sn = h.n;
           if (track) {
-            const seat = track.seat(parts, pos, rot);
+            const seat = track.seat(parts, pos, rot, fresh);
             if (!seat) return false;
             ({ pos, rot } = seat);
             if (seat.support) { sp = seat.support.p; sn = seat.support.n; }
@@ -6132,7 +6134,7 @@ export function* attachTankDecorationsSteps(
             for (let k = 0; k <= 16; k++) {
               const z = 0.55 - k * 0.1;
               if (yf === 0.45 && (Math.abs(z - 0.05) < 1e-6 || Math.abs(z + 0.25) < 1e-6)) continue;
-              if (seatAt(Math.max(0.2, top * yf), z)) return true;
+              if (seatAt(Math.max(0.2, top * yf), z, true)) return true;
             }
           }
           track.failed();
