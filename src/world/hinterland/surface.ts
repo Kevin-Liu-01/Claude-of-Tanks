@@ -222,10 +222,11 @@ export function raiseHinterlandCanopy(
  * near a field's edge onto that edge along the grid's axis (its signed offsets sU, sV), keeps it where the edge is
  * hedged (field.hedgeAt) and the cover there is open land (not water, a wood, a road or a yard), one tree a 6 m cell —
  * standards of the region's species, 9–16 m (poplars taller). Hedged regions only; beyond the band the far country's
- * shelterbelts carry them (far.ts). (A 3.5 m lattice asking every point cost the worker 2.7 s on Verdant.)
+ * shelterbelts carry them (far.ts). (A 3.5 m lattice asking every point cost the worker 2.7 s on Verdant; a 7 m one
+ * still 1.4 s under load: 10 m, a standard every ~10 m along a line.)
  */
 export function plantHinterlandHedges(
-  field: HinterlandField, groundAt: (x: number, z: number) => number, { withinM = 1750, stepM = 7 } = {},
+  field: HinterlandField, groundAt: (x: number, z: number) => number, { withinM = 1750, stepM = 10 } = {},
 ): import('./wire.ts').HinterlandGroundedTree[] {
   const veg = field.spec.region.vegetation, landUse = field.landUse;
   // (the hedged countries only: a polder's tree rows are its dykes' crowns, planned with them)
