@@ -119,6 +119,24 @@ export function shellHole(sink: PartSink, face: Face, u: number, y: number, r: n
 }
 
 /**
+ * A tower's open belfry stage (props census #13, lane B 2026-10-14: the belfries were dark plates on solid shafts): its
+ * four corner piers from the shaft's top (`sill`) to the openings' heads, the openings `ow` wide between them open
+ * through the stage, the head block over them to `top`, a bell hung in it from its beam pier to pier.
+ */
+export function openBelfry(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, tw: number, sill: number, head: number, top: number, ow: number,
+  bell: Rgb, beam: Rgb): void {
+  const pw = (tw - ow) / 2, h = tw / 2;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    sink.span(bucket, cx + (sx < 0 ? -h : h - pw), sill, cz + (sz < 0 ? -h : h - pw), cx + (sx < 0 ? -h + pw : h), head, cz + (sz < 0 ? -h + pw : h));
+  }
+  sink.span(bucket, cx - h, head, cz - h, cx + h, top, cz + h);
+  sink.span('structureWood', cx - h + pw * 0.5, head - 0.34, cz - 0.08, cx + h - pw * 0.5, head - 0.18, cz + 0.08, { colour: beam, decor: true });
+  const br = Math.min(0.55, ow * 0.32);
+  sink.cylinder('structureMetal', [cx, head - 0.34 - br * 1.5, cz], 'y', br * 1.5, br, 10, { colour: bell, decor: true }, br * 0.55, true);
+  sink.cylinder('structureMetal', [cx, head - 0.34 - br * 1.5 - 0.06, cz], 'y', 0.06, br * 1.08, 10, { colour: bell, decor: true }, br, true);
+}
+
+/**
  * The soot of a burnt storey on a face: a dark band over the storey's window heads fading up the wall (the weathering
  * pass multiplies its shade into the render), 12 mm proud.
  */

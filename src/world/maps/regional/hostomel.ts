@@ -468,13 +468,20 @@ const fireStation: RegionalBuilder = (ctx) => {
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.3, bucket: 'stone', parapet: 0.5 }, gableBucket: wall,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.16,
     }, dialect);
-    // the hose tower at the back corner: a slim block shaft, louvred openings at the top, a flat cap
+    // the hose tower at the back corner: a slim block shaft, its drying loft open at the top between four corner piers
+    // under the head band (the hoses hang in the draught: the louvres cross the openings, the loft hollow behind them;
+    // were dark plates painted on a solid shaft), a flat cap
     const tx = W / 2 - 1.6, tz = -D / 2 + 1.6, th = Math.max(11, Math.min(14, ctx.info.h - 1));
-    sink.span(wall, tx - 1.4, -0.4, tz - 1.4, tx + 1.4, th, tz + 1.4);
+    const sill = th - 2.5, head = th - 0.7, ow = 1.4, pw = (2.8 - ow) / 2;
+    sink.span(wall, tx - 1.4, -0.4, tz - 1.4, tx + 1.4, sill, tz + 1.4);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x0 = sx < 0 ? tx - 1.4 : tx + 1.4 - pw, z0 = sz < 0 ? tz - 1.4 : tz + 1.4 - pw;
+      sink.span(wall, x0, sill, z0, x0 + pw, head, z0 + pw);
+    }
+    sink.span(wall, tx - 1.4, head, tz - 1.4, tx + 1.4, th, tz + 1.4);
     for (const [ox, oz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const f: Face = { origin: [tx + ox * 1.4, 0, tz + oz * 1.4], u: [ux, 0, uz], out: [ox, 0, oz], width: 2.8 };
-      faceBox(sink, 'dark', f, 0, th - 1.6, 0.005, 1.4, 1.8, 0.01, { decor: true });
-      for (let y = th - 2.4; y < th - 0.8; y += 0.3) faceBox(sink, 'structureMetal', f, 0, y, 0.04, 1.4, 0.06, 0.08, { colour: RIB, decor: true });
+      for (let y = sill + 0.1; y < head - 0.1; y += 0.3) faceBox(sink, 'structureMetal', f, 0, y, -0.14, ow + 0.08, 0.06, 0.16, { colour: RIB, decor: true });
     }
     sink.span('stone', tx - 1.6, th, tz - 1.6, tx + 1.6, th + 0.3, tz + 1.6);
   });

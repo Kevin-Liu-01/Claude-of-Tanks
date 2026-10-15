@@ -17,12 +17,12 @@
 //   - depot → a čaršija row: single-storey timber shops under one deep-eaved tile roof, their ćepenci (shutters)
 //     closed for the siege, a whitewashed han storey over one end.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedPolygon, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, COPPER, DARK_FRAME, DOOR_LEAVES, IRON, LEAD, TIMBER, ZINC,
-  archGlazing, archHead, choose, clampTo, fillOf, nisan, pediment, shellPocks,
+  archGlazing, archHead, choose, clampTo, fillOf, nisan, openBelfry, pediment, shellPocks,
 } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -392,14 +392,19 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [0, nh * 0.82, az], 'y', ar * 0.75, ar + 0.3, 8, { colour: COPPER, decor: true }, 0.05, true, 0, Math.PI);
     // the bell tower over the west door
     const th = clampTo(nh * 2.5, 12, 22);
-    sink.span(wall, -tw / 2, -0.4, tz0, tw / 2, th, tz1);
+    // (props census #13, lane B 2026-10-14) the shaft to the belfry's sills, the belfry open through its arches
+    // (the west door cut through the shaft's front, its leaf at the back of the cut: it stood on the solid shaft)
     const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    doorUnit(sink, tf, 0, 0, 1.3, 2.6, { leaf: door, frame: { bucket: 'stone', width: 0.24, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, 0.2);
+    sink.span(wall, -tw / 2, -0.4, tz0, tw / 2, th - 3.3, tz1 - 0.45);
+    holedPolygon(sink, wall, tf, [[-tw / 2, -0.4], [tw / 2, -0.4], [tw / 2, th - 3.3], [-tw / 2, th - 3.3]], [{ u0: -0.65, u1: 0.65, y0: 0.2, y1: 2.8 }], 0.45, 0.4);
+    openBelfry(sink, wall, 0, (tz0 + tz1) / 2, tw, th - 3.3, th - 1.5, th, tw * 0.36, COPPER, rgb(0x3a2e24));
+    sink.recess = 0.36;
+    try { doorUnit(sink, tf, 0, 0.2, 1.3, 2.6, { leaf: door, frame: { bucket: 'stone', width: 0.24, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, 0.2); }
+    finally { sink.recess = 0; }
     archHead(sink, tf, 0, 2.84, 0.9, 'stone', 0.22, 6);
     sink.band('structureMetal', -tw / 2 - 0.03, 1.25, tz0 - 0.03, tw / 2 + 0.03, 1.53, tz1 + 0.03, { decor: true, colour: RED_BAND });
     for (const [ox, oz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const f: Face = { origin: [ox * tw / 2, 0, (tz0 + tz1) / 2 + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
-      facePanel(sink, 'dark', f, 0, th - 2.4, 0.02, tw * 0.36, 1.8, { decor: true });
       archHead(sink, f, 0, th - 1.5, tw * 0.18, 'stone', 0.14, 6);
       faceBox(sink, 'stone', f, 0, th - 0.2, 0.08, tw + 0.2, 0.4, 0.16, { decor: true });
     }
@@ -449,10 +454,13 @@ const catholicChurch: RegionalBuilder = (ctx) => {
     });
     // the tower and its spire, the pointed portal, the belfry's lancets and the clock
     const th = clampTo(nh * 2.7, 14, 25), tzc = (tz0 + tz1) / 2;
-    sink.span('stone', -tw / 2, -0.4, tz0, tw / 2, th, tz1);
+    // (props census #13, lane B 2026-10-14) the shaft to the lancets' sills, the belfry open through them
+    const tf0: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
+    sink.span('stone', -tw / 2, -0.4, tz0, tw / 2, th - 3.8, tz1 - 0.5);
+    holedPolygon(sink, 'stone', tf0, [[-tw / 2, -0.4], [tw / 2, -0.4], [tw / 2, th - 3.8], [-tw / 2, th - 3.8]], [{ u0: -0.75, u1: 0.75, y0: 0.2, y1: 3.1 }], 0.5, 0.45);
+    openBelfry(sink, 'stone', 0, tzc, tw, th - 3.8, th - 1.4, th, tw * 0.3, COPPER, rgb(0x3a2e24));
     for (const [ox, oz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const f: Face = { origin: [ox * tw / 2, 0, tzc + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
-      facePanel(sink, 'dark', f, 0, th - 2.6, 0.02, tw * 0.3, 2.4, { decor: true });
       archHead(sink, f, 0, th - 1.4, tw * 0.15, 'stone', 0.12, 2);
       if (oz === 1) {
         sink.polygon('structureWood', Array.from({ length: 10 }, (_, j) => facePoint(f, Math.cos(j / 10 * Math.PI * 2) * 0.6, th - 5.2 + Math.sin(j / 10 * Math.PI * 2) * 0.6, 0.03)),
@@ -461,7 +469,9 @@ const catholicChurch: RegionalBuilder = (ctx) => {
       faceBox(sink, 'stone', f, 0, th - 0.15, 0.1, tw + 0.25, 0.3, 0.2, { decor: true });
     }
     const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    doorUnit(sink, tf, 0, 0, 1.5, 2.9, { leaf: door, frame: { bucket: 'stone', width: 0.3, out: 0.12 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.2);
+    sink.recess = 0.41;
+    try { doorUnit(sink, tf, 0, 0.2, 1.5, 2.9, { leaf: door, frame: { bucket: 'stone', width: 0.3, out: 0.12 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.2); }
+    finally { sink.recess = 0; }
     archHead(sink, tf, 0, 3.2, 1.05, 'stone', 0.26, 2);
     const spire = clampTo(th * 0.42, 5, 10);
     sink.cylinder('structureMetal', [0, th, tzc], 'y', spire, tw * 0.62, 8, { colour: rgb(0x4d5357) }, 0.04, true, Math.PI / 8);
