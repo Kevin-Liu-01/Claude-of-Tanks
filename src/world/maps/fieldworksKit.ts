@@ -473,6 +473,12 @@ export function fieldworksTypes(mapId: string, _mobile: boolean, base: Readonly<
 }
 
 
+/** The forms `mapId` draws (fieldworksKit.selftest: the period's form on every map). */
+export function fieldworksForms(mapId: string): { hedgehog: string; wire?: string; tent?: string; aa: string } {
+  return { hedgehog: (HEDGEHOG_FORMS[mapId] ?? HEDGEHOG_DEFAULT).section, wire: WIRE_FORMS[mapId]?.form, tent: TENT_FORMS[mapId]?.form,
+    aa: (AA_FORMS[mapId] ?? AA_DEFAULT).form };
+}
+
 // --- anti-tank hedgehogs (props.ts placeHedgehogs: three beams a hedgehog, hedgehogBeamSpecs) -------------------------
 //
 // Each map's hedgehogs as its period and side made them, member by member, in the beams' collision envelopes (each
@@ -726,7 +732,7 @@ const WIRE_FORMS: Readonly<Record<string, WireSpec>> = Object.freeze({
   delta: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_LOAM }, mangrove: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_LOAM },
   caldera: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_GREY }, airfield: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_LOAM },
   coastal: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_SAND },
-  mars: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_RED }, moon: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_GREY },
+  mars: { form: 'razor', picket: 'tpost', wire: WIRE_GALV, soil: SOIL_RED }, moon: { form: 'concertina', picket: 'upicket', wire: WIRE_GALV, soil: SOIL_GREY },
 });
 
 type V = THREE.Vector3;
@@ -953,7 +959,7 @@ const TENT_FORMS: Readonly<Record<string, TentSpec>> = Object.freeze({
   ruinspires: { form: 'ridge', canvas: CANVAS_WHITE }, saltwind: { form: 'ridge', canvas: CANVAS_OD },
   badlands: { form: 'tunnel', canvas: CANVAS_SAND }, oasis: { form: 'tunnel', canvas: CANVAS_SAND }, delta: { form: 'tunnel', canvas: CANVAS_OD },
   mangrove: { form: 'tunnel', canvas: CANVAS_JUNGLE }, caldera: { form: 'tunnel', canvas: CANVAS_OD }, airfield: { form: 'tunnel', canvas: CANVAS_TAN },
-  coastal: { form: 'tunnel', canvas: CANVAS_OD }, mars: { form: 'tunnel', canvas: CANVAS_WHITE }, moon: { form: 'tunnel', canvas: CANVAS_WHITE },
+  coastal: { form: 'tunnel', canvas: CANVAS_OD }, mars: { form: 'tunnel', canvas: CANVAS_WHITE }, moon: { form: 'ridge', canvas: CANVAS_WHITE },
 });
 const POLE_WOOD = hexLin(0x6a5640), POLE_ALU = hexLin(0x8c8e8a), ROPE = hexLin(0x9a8c6a), INSIDE_DARK = hexLin(0x141310);
 const COT = hexLin(0x3e4030), KIT_DARK = hexLin(0x2c2e24);
@@ -1045,21 +1051,25 @@ function buildFieldTent(spec: TentSpec, o: Rng, down: boolean): THREE.BufferGeom
   const W = spec.form === 'pyramid' ? 2.4 : spec.form === 'tunnel' ? 2.3 : 2.2, L = spec.form === 'pyramid' ? 2.4 : spec.form === 'tunnel' ? 3.4 : 3.3;
   const wall = spec.form === 'pyramid' ? 0.6 : 0.55, inside = v3(0, H * 0.4, 0), poleCol = spec.form === 'tunnel' ? POLE_ALU : POLE_WOOD;
   if (down) {
-    // collapsed: the canvas lies over what was in it — humped over the cot and the kit, its folds, a corner still pegged
+    // collapsed: the canvas lies over what was in it — humped over the cot and the kit, its folds, a corner still pegged —
+    // and draped from the rear pole's head, the one pole still up, leaning
     const humps = [[-0.55, 0.42, -0.1, 0.9], [0.35, 0.3, L / 2 - 0.6, 0.45], [0.1, 0.22, -L / 2 + 0.6, 0.6]];
+    const head = v3(0.25, 0.92, -L / 2 + 0.5);
     const fall = (u: number, v: number): V => {
-      const x = (u - 0.5) * W * 1.12, z = (v - 0.5) * L * 1.05;
+      const x = (u - 0.5) * Math.min(W * 1.1, 2.44), z = (v - 0.5) * Math.min(L * 1.05, 3.6);
       let y = 0.03 + vnoise3(x * 1.7, 0, z * 1.7, seed + 4) * 0.12;
       for (const [hx, hy, hz, hr] of humps) y += hy * Math.max(0, 1 - Math.hypot(x - hx, (z - hz) * 0.7) / hr);
+      y = Math.max(y, head.y * Math.pow(Math.max(0, 1 - Math.hypot(x - head.x, z - head.z) / 1.1), 1.6) - 0.02);
       // the pegged corner pulled taut to its peg
       if (u > 0.85 && v < 0.15) y *= 0.4;
-      return v3(x + Math.sin(z * 2.3 + seed) * 0.06, y, z);
+      return v3(x + Math.sin(z * 2.3 + seed) * 0.04, y, z);
     };
     sheet(m, fall, 5, 7, v3(0, -1, 0), cloth);
-    // the poles down across it, one snapped
-    rod(m, v3(-0.2, 0.08, -L / 2 - 0.3), v3(0.4, 0.2, L / 2 + 0.1), 0.03, poleCol);
+    // the rear pole leaning under the canvas's weight, the other down across it
+    rod(m, v3(0.05, -0.04, -L / 2 - 0.12), head.clone().add(v3(0, 0.06, 0)), 0.03, poleCol);
+    rod(m, v3(-0.2, 0.08, -L / 2 + 0.6), v3(0.4, 0.2, L / 2 + 0.1), 0.03, poleCol);
     rod(m, v3(0.8, 0.06, L / 2 - 0.4), v3(1.15, 0.3, L / 2 + 0.2), 0.03, poleCol);
-    guy(m, v3(W / 2, 0.1, -L / 2), v3(W / 2 + 0.12, 0, -L / 2 - 0.25), rope);
+    guy(m, v3(Math.min(W / 2, 1.12), 0.1, -L / 2), v3(Math.min(W / 2 + 0.08, 1.2), 0, -L / 2 - 0.22), rope);
     return m.geometry();
   }
   if (spec.form === 'ridge') {
@@ -1160,13 +1170,14 @@ function buildFieldTent(spec: TentSpec, o: Rng, down: boolean): THREE.BufferGeom
     const pa = rg.getAttribute('position'), na = rg.getAttribute('normal'), ca = rg.getAttribute('color');
     for (let i = 0; i < pa.count; i++) { m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
     rg.dispose();
-    for (const z of [-L / 2, L / 2]) for (const s of [-1, 1]) guy(m, v3(s * W * 0.35, H * 0.72, z), v3(s * 1.2, 0, z + Math.sign(z) * 0.18), rope);
+    for (const z of [-L / 2, L / 2]) for (const s of [-1, 1]) guy(m, v3(s * W * 0.35, H * 0.72, z), v3(s * 1.2, 0, z + Math.sign(z) * 0.12), rope);
   }
   // the ground sheet's edge before the door
   const gs = (): Rgb3 => mulRgb(KIT_DARK, 1.3);
   const zf = L / 2;
-  m.tri(v3(-0.5, 0.012, zf), v3(0.5, 0.012, zf + 0.25), v3(0.5, 0.012, zf), gs);
-  m.tri(v3(-0.5, 0.012, zf), v3(-0.5, 0.012, zf + 0.25), v3(0.5, 0.012, zf + 0.25), gs);
+  const lip = Math.min(0.25, 1.9 - zf);
+  m.tri(v3(-0.5, 0.012, zf), v3(0.5, 0.012, zf + lip), v3(0.5, 0.012, zf), gs);
+  m.tri(v3(-0.5, 0.012, zf), v3(-0.5, 0.012, zf + lip), v3(0.5, 0.012, zf + lip), gs);
   return m.geometry();
 }
 
