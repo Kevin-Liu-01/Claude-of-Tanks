@@ -378,7 +378,7 @@ const conveyor: RegionalBuilder = (ctx) => {
     sink.span('stone', -Wd / 2, -0.4, -L / 2, Wd / 2, 1.0, -L / 2 + pd);
     const hz = -L / 2 + pd / 2, hw = gw / 2 + 0.4, hh = Math.min(1.0, pd / 2 - 0.15);
     sink.span('structureMetal', -hw, y0 + 0.2, hz - hh, hw, y0 + 0.9, hz + hh, { colour: OXIDE });
-    sink.prism('structureMetal', [[-hw, y0 + 0.2, hz - hh], [hw, y0 + 0.2, hz - hh], [0.3, 1.25, hz - 0.2], [-0.3, 1.25, hz - 0.2]], [0, 0, 1], 2 * hh * 0.9, { colour: shade(OXIDE, 0.9) });
+    sink.prism('structureMetal', [[-0.3, 1.25, hz - 0.2], [0.3, 1.25, hz - 0.2], [hw, y0 + 0.2, hz - hh], [-hw, y0 + 0.2, hz - hh]], [0, 0, 1], 2 * hh * 0.9, { colour: shade(OXIDE, 0.9) });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureMetal', sx * hw - 0.06, 1.0, hz + sz * hh - 0.06, sx * hw + 0.06, y0 + 0.9, hz + sz * hh + 0.06, { colour: TRUSS });
     if (!mobile) for (const x of [-hw / 2, 0, hw / 2]) sink.span('structureMetal', x - 0.03, y0 + 0.2, hz + hh, x + 0.03, y0 + 0.9, hz + hh + 0.05, { colour: shade(OXIDE, 0.8), decor: true, fine: true });
   }, 1));
