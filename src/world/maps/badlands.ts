@@ -398,7 +398,9 @@ export default {
     // (the maps lane, 2026-10-14, MA.12: the prototype the owner judges first) the west lane dome's wall drawn as Wadi Rum's
     // jointed face — rounded columns between vertical joints, faint beds, varnish streaming from the ledges (jebelSkin.ts)
     // — beside its twin across the outpost, which keeps the height field's own wall
-    jebelSkins: [{ x: -118, z: -128, radius: 58, tone: WADI_RUM_STONE, name: "the west lane dome's jointed face" }],
+    // (the blind critics, 2026-10-15: the skin's colour "cooler pink than the neighbouring dome") the face in the domes'
+    // own warm red-orange, a shade deeper than the scattered stone
+    jebelSkins: [{ x: -118, z: -128, radius: 58, tone: [0.038, 0.46, 0.47], name: "the west lane dome's jointed face" }],
     landmarks: [
       { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the south ravine' },
       { kind: 'cairn', x: 286, z: 228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the north ravine' },

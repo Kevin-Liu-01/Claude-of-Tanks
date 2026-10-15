@@ -134,7 +134,7 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
   // and more from the true ground, so a joint drawn on the wall itself flickered through it), the columns' middles further;
   // below the wall's foot it runs down into the talus, and over the top it rounds in over the shoulder: the dome's cap.
   const STAND_OFF = 0.7, SINK = 1.2, SHOULDER = 1.0;
-  const vertex = (j: number, y: number): [number, number, number, number, number, number, number] | null => {
+  const vertex = (j: number, y: number, inset = false): [number, number, number, number, number, number, number] | null => {
     if (!Number.isFinite(top[j])) return null;
     const yy = clamp(y, foot[j] - SINK, top[j] + SHOULDER);
     const yr = clamp(yy, foot[j], top[j]);
@@ -148,7 +148,10 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
     const round = Math.pow(Math.sin(Math.PI * f), 0.55);
     const flute = noise.noise(j * 0.9 + c * 13.1, yy * 0.12) * 0.12;
     const shoulder = 1 - over * over;
-    const off = (STAND_OFF + bulgeM * colDepth[c] * round - 0.16 * bedGroove(yy) + flute) * (0.55 + 0.45 * shoulder);
+    // (the blind critics, 2026-10-15: "from 45 m the dome splinters into shards") over the shoulder the skin tucks in
+    // under the dome's cap (its edge 0.35 m inside the ground), so no edge of it stands against the sky; an end cap's
+    // inner edge (inset) stands 0.35 m inside the wall
+    const off = inset ? -0.35 : (STAND_OFF + bulgeM * colDepth[c] * round - 0.16 * bedGroove(yy) + flute) * shoulder - 0.35 * over;
     const x = spec.x + ca * (r + off), z = spec.z + sa * (r + off);
     // tone: the column's own, darker in the joints and the beds, desert varnish streaming down a third of the columns
     // from their tops, paler on the shoulders, darker at the contact with the sand
@@ -161,30 +164,80 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
     _c.setHSL(((bh + (streak > 0 ? -0.006 : 0)) % 1 + 1) % 1, clamp(bs * (1 - 0.25 * streak), 0, 1), clamp(l, 0, 1), THREE.SRGBColorSpace);
     return [x, yy, z, _c.r, _c.g, _c.b, foot[j]];
   };
+  // (the blind critics, 2026-10-15: "stretched vertical UV streaks", "low-poly flat facets", "a hard black slot") every
+  // vertex carries the skin's own smooth normal (the surface's tangents up the wall and round the dome, by differences),
+  // the texture wraps the wall as a cylinder (u the arc round the dome, v the height, one scale), and where the skin ends
+  // between rays a cap returns it into the wall, so no slot of shade opens behind its edge.
+  const nrm: number[] = [], tex: number[] = [];
+  const UVM = 0.33, arcOf = (j: number): number => (j / rays) * circ * UVM;
+  const _n = new THREE.Vector3(), _ty = new THREE.Vector3(), _tj = new THREE.Vector3();
+  const normalAt = (j: number, y: number, p: readonly number[]): THREE.Vector3 => {
+    const e = 0.45, up = vertex(j, y + e) ?? p, dn = vertex(j, y - e) ?? p;
+    const right = vertex((j + 1) % rays, y) ?? p, left = vertex((j - 1 + rays) % rays, y) ?? p;
+    _ty.set(up[0] - dn[0], up[1] - dn[1], up[2] - dn[2]);
+    if (_ty.lengthSq() < 1e-6) _ty.set(0, 1, 0);
+    _tj.set(right[0] - left[0], right[1] - left[1], right[2] - left[2]);
+    _n.crossVectors(_ty, _tj);
+    const rx = p[0] - spec.x, rz = p[2] - spec.z, rl = Math.hypot(rx, rz) || 1;
+    if (_n.lengthSq() < 1e-8) _n.set(rx / rl, 0, rz / rl);
+    _n.normalize();
+    // a normal that would turn in (a fold of the noise) falls back toward the radial direction
+    const radial = (_n.x * rx + _n.z * rz) / rl;
+    if (radial < 0.05) { _n.x += (rx / rl) * (0.05 - radial + 0.1); _n.z += (rz / rl) * (0.05 - radial + 0.1); _n.normalize(); }
+    return _n;
+  };
+  const emit = (v: readonly number[], n: THREE.Vector3, u: number): void => {
+    pos.push(v[0], v[1], v[2]); col.push(v[3], v[4], v[5]); gr.push(v[6]); nrm.push(n.x, n.y, n.z); tex.push(u, v[1] * UVM);
+  };
+  const drawn = new Uint8Array(rays), span = new Float32Array(rays * 2);
   for (let j = 0; j < rays; j++) {
     const j1 = (j + 1) % rays;
     if (!Number.isFinite(top[j]) || !Number.isFinite(top[j1])) continue;
     const lo = Math.max(foot[j], foot[j1]) - SINK, hi = Math.min(top[j], top[j1]) + SHOULDER;
     if (hi - lo < 1 + SINK + SHOULDER) continue;
+    drawn[j] = 1; span[j * 2] = lo; span[j * 2 + 1] = hi;
     const n = Math.max(1, Math.ceil((hi - lo) / dy));
+    const uA = arcOf(j), uB = arcOf(j + 1);
     for (let i = 0; i < n; i++) {
       const y0 = lo + ((hi - lo) * i) / n, y1 = lo + ((hi - lo) * (i + 1)) / n;
       const a = vertex(j, y0), b = vertex(j1, y0), c = vertex(j1, y1), d = vertex(j, y1);
       if (!a || !b || !c || !d) continue;
+      const na = normalAt(j, y0, a).clone(), nb = normalAt(j1, y0, b).clone(), nc = normalAt(j1, y1, c).clone(), nd = normalAt(j, y1, d).clone();
       // outward-facing winding: the rays run counter-clockwise seen from above, the levels upward
-      for (const v of [a, c, b, a, d, c]) { pos.push(v[0], v[1], v[2]); col.push(v[3], v[4], v[5]); gr.push(v[6]); }
+      emit(a, na, uA); emit(c, nc, uB); emit(b, nb, uB);
+      emit(a, na, uA); emit(d, nd, uA); emit(c, nc, uB);
+    }
+  }
+  // the end caps: at a ray where the skin stops, a band from its outer face back into the wall, seen from either side
+  for (let j = 0; j < rays; j++) {
+    if (!drawn[j]) continue;
+    for (const [ray, endOf, dir] of [[(j + 1) % rays, !drawn[(j + 1) % rays], 1], [j, !drawn[(j - 1 + rays) % rays], -1]] as const) {
+      if (!endOf) continue;
+      const lo = span[j * 2], hi = span[j * 2 + 1], n = Math.max(1, Math.ceil((hi - lo) / dy));
+      const ang = (ray / rays) * Math.PI * 2, ca = Math.cos(ang), sa = Math.sin(ang);
+      const u = arcOf(dir > 0 ? j + 1 : j);
+      for (let i = 0; i < n; i++) {
+        const y0 = lo + ((hi - lo) * i) / n, y1 = lo + ((hi - lo) * (i + 1)) / n;
+        const o0 = vertex(ray, y0), o1 = vertex(ray, y1), i0 = vertex(ray, y0, true), i1 = vertex(ray, y1, true);
+        if (!o0 || !o1 || !i0 || !i1) continue;
+        for (const side of [1, -1]) {
+          // the band's normal: round the dome toward the open side, leaned out (every normal keeps an outward part)
+          _n.set(-sa * side * 0.8 + ca * 0.6, 0, ca * side * 0.8 + sa * 0.6).normalize();
+          const cap = _n.clone();
+          if (side * dir > 0) { emit(o0, cap, u); emit(i1, cap, u + 0.2); emit(i0, cap, u + 0.2); emit(o0, cap, u); emit(o1, cap, u); emit(i1, cap, u + 0.2); }
+          else { emit(o0, cap, u); emit(i0, cap, u + 0.2); emit(i1, cap, u + 0.2); emit(o0, cap, u); emit(i1, cap, u + 0.2); emit(o1, cap, u); }
+        }
+      }
     }
   }
   if (!pos.length) return { geometry: null, triangles: 0, rays: { walled, total: rays } };
   const geometry = new THREE.BufferGeometry();
   const P = new Float32Array(pos);
   geometry.setAttribute('position', new THREE.BufferAttribute(P, 3));
-  geometry.computeVertexNormals();
+  geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nrm), 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
   geometry.setAttribute('aRockGround', new THREE.BufferAttribute(new Float32Array(gr), 1));
-  const uv = new Float32Array((P.length / 3) * 2);
-  for (let v = 0; v < P.length / 3; v++) { uv[v * 2] = P[v * 3] * 0.37 + P[v * 3 + 1] * 0.21; uv[v * 2 + 1] = P[v * 3 + 2] * 0.37 - P[v * 3 + 1] * 0.17; }
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(tex), 2));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, triangles: P.length / 9, rays: { walled, total: rays } };
