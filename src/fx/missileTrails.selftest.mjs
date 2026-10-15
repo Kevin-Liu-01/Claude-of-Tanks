@@ -82,6 +82,8 @@ function corners(sP, sA, sB, sN, hwA, hwB) {
   assert.match(text, /if \( T < 0\.002 \) discard;/, 'a pixel with next to no smoke leaves before the noise');
   assert.match(text, /min\( len3 \* 0\.5 \* \( pA \+ pB \) \/ max\( Ld, 1e-3 \), \$\{OBLIQUE_CAP/, 'a slant draws at most OBLIQUE_CAP deeper');
   assert.ok(!/sin\(/.test(text.slice(text.indexOf('const FRAG'))), 'no sine hashes in the fragment stage');
+  assert.match(text, /bool knot = Ld < 2\.0 \* hwM;/, 'a segment shorter on screen than its width draws as a round knot');
+  assert.match(text, /min\( 1\.0, \( Ld \+ 1\.0 \) \/ \( 2\.0 \* hwM \) \)/, 'a knot is as deep as its projected length covers (a run down the line stays bounded)');
 }
 
 // ---- 3. the trail's chain ------------------------------------------------------------------------------------------

@@ -104,6 +104,8 @@ varying vec4 vQ;     // side (-1 .. +1 across), metres along, age, depth across
 varying vec4 vR;     // radius (m), px per metre, view depth of the axis, flame light
 varying vec4 vL;     // puff, puff spacing, churn, seed
 varying vec4 vM;     // slant depth factor, the sun on its sides, the sun through it, life (s)
+varying vec4 vE;     // a knot's A and B on screen (px)
+varying vec4 vF;     // a knot's half widths at A and B (px), knot (1) or band (0)
 varying vec3 vAmb;
 varying vec3 vSun;
 float h1( float p ) { p = fract( p * 0.1031 ); p *= p + 33.33; p *= p + p; return fract( p ); }
@@ -131,7 +133,8 @@ float depthAt( float age, float fl, float r, vec4 L0, vec4 L1 ) {
 }
 vec2 toScreen( vec4 k ) { return ( k.xy / k.w * 0.5 + 0.5 ) * uViewport.zw + uViewport.xy; }
 void main() {
-  vQ = vec4( 0.0 ); vR = vec4( 0.0 ); vL = vec4( 0.0 ); vM = vec4( 0.0 ); vAmb = vec3( 0.0 ); vSun = vec3( 0.0 );
+  vQ = vec4( 0.0 ); vR = vec4( 0.0 ); vL = vec4( 0.0 ); vM = vec4( 0.0 ); vE = vec4( 0.0 ); vF = vec4( 0.0 );
+  vAmb = vec3( 0.0 ); vSun = vec3( 0.0 );
   int li = int( iK.x + 0.5 ) * 6;
   vec4 L0 = uLook[ li ], L1 = uLook[ li + 1 ], L2 = uLook[ li + 2 ], L3 = uLook[ li + 3 ], C0 = uLook[ li + 4 ], C1 = uLook[ li + 5 ];
   float ageA = uTime - iA.w, ageB = uTime - iB.w;
@@ -205,6 +208,14 @@ void main() {
   float hwA = ${EXTENT.toFixed(2)} * pk * rpA + 1.0, hwB = ${EXTENT.toFixed(2)} * pk * rpB + 1.0;
   bool atA = position.x < 0.5;
   vec2 sp = atA ? sA + nA * ( position.y * hwA / max( dot( nA, nd ), 0.6 ) ) : sB + nB * ( position.y * hwB / max( dot( nB, nd ), 0.6 ) );
+  // a segment shorter on screen than its width (seen nearly down the trail) is a knot: a soft round blob around its
+  // projection (its ends out by its width), as deep as its projected length covers, so a run converging on the eye draws
+  // as a soft disc, never a star of square ends
+  float hwM = max( hwA, hwB );
+  bool knot = Ld < 2.0 * hwM;
+  if ( knot ) sp = ( atA ? sA - dn * hwA : sB + dn * hwB ) + nd * ( position.y * hwM );
+  vE = vec4( sA, sB );
+  vF = vec4( hwA, hwB, knot ? 1.0 : 0.0, min( 1.0, ( Ld + 1.0 ) / ( 2.0 * hwM ) ) );
   vec4 k = atA ? kA : kB;
   vec2 ndc = ( sp - uViewport.xy ) / uViewport.zw * 2.0 - 1.0;
   gl_Position = vec4( ndc * k.w, k.z, k.w );
@@ -242,6 +253,8 @@ varying vec4 vQ;
 varying vec4 vR;
 varying vec4 vL;
 varying vec4 vM;
+varying vec4 vE;
+varying vec4 vF;
 varying vec3 vAmb;
 varying vec3 vSun;
 #ifdef USE_FOG
@@ -268,6 +281,18 @@ float vn2( vec2 p ) {
 }
 void main() {
   float side = vQ.x, along = vQ.y, age = vQ.z, tau = vQ.w;
+  if ( vF.z > 0.5 ) {
+    // a knot: the pixel's distance from the projected segment, in its half widths
+    vec2 ab = vE.zw - vE.xy;
+    float L = length( ab );
+    vec2 t = L > 1e-3 ? ab / L : vec2( 1.0, 0.0 );
+    vec2 q = gl_FragCoord.xy - vE.xy;
+    float x = dot( q, t ), y = dot( q, vec2( -t.y, t.x ) );
+    float hw = mix( vF.x, vF.y, L > 1e-3 ? clamp( x / L, 0.0, 1.0 ) : 0.5 );
+    side = length( vec2( x - clamp( x, 0.0, L ), y ) ) / max( hw, 1e-3 );
+    if ( side >= 1.0 ) discard;
+    tau *= vF.w;
+  }
   float rw = vR.x;
   float pk = 0.65 * ( 1.0 + 0.25 * vL.x ) * ( 1.0 + 0.3 * vL.z );
   // a pulsing sustainer's puffs: it swells and thickens every few metres; its edge bulges in and out along its length
