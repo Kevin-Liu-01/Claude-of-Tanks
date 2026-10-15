@@ -75,6 +75,8 @@ interface ShadowDebugOptions {
   legacyBias?: boolean;
   /** 2026-10-14 (SKY shadows r2a, P1b): the front-face depth-bias law and no double-sided guard, for A/B probes. */
   frontFaceBias?: boolean;
+  /** 2026-10-15 (SKY shadows r3): contact hardening off — its cascade on the 5 tent — for A/B probes (set before the rig). */
+  noPcss?: boolean;
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
@@ -1024,6 +1026,8 @@ export function createLighting(
       : shadowDepthBiasBackFace(worldUnitsPerTexel);
     shadow.bias = legacy ? SHADOW_BIAS : Math.max(SHADOW_BIAS, -biasM / depthRange);
     receiverOnlyShadowUniform.value = legacy ? 0 : 1;
+    // (r3) contact hardening's depth-to-texel scale follows the cascade's fit
+    if (tentFor(i) >= 9) shadow.radius = tentRadius(i);
     // 2026-10-14 (SKY shadows r2a; contact r6's contract): cascade 0's residual seam, its bias along the sun and a texel
     if (i === 0) contactSeam.value = contactSeamFor(-shadow.bias * depthRange, worldUnitsPerTexel);
   }
@@ -1039,11 +1043,23 @@ export function createLighting(
   let tentTable: ShadowTentTable = preset.shadowTent ?? SHADOW_TENT_DEFAULT;
   let tentDeckTable: ShadowTentTable = preset.shadowTentDeck ?? tentTable;
   let deckShare = 0;
-  const tentFor = (i: number): number => (deckShare >= 0.5 ? tentDeckTable : tentTable)[Math.min(i, 3)];
+  const tentFor = (i: number): number => {
+    const k = (deckShare >= 0.5 ? tentDeckTable : tentTable)[Math.min(i, 3)];
+    // (2026-10-15, SKY shadows r3) __SHADOW_DEBUG.noPcss: contact hardening's cascade on the 5 tent, for A/B probes
+    return k >= 9 && typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noPcss ? 5 : k;
+  };
+  /** The cascade's radius code: its tent, and for contact hardening its depth range over its texel (shadowTent.ts). */
+  const tentRadius = (i: number): number => {
+    const k = tentFor(i);
+    if (k < 9) return shadowTentRadius(k);
+    const shadow = csm.lights[i].shadow, cam = shadow.camera;
+    const texel = Math.max(1e-6, (cam.right - cam.left) / Math.max(1, shadow.mapSize.x));
+    return shadowTentRadius(k, Math.max(1e-3, cam.far - cam.near) / texel);
+  };
   /** Each cascade's tent onto its shadow radius, and its bias re-derived. */
   function applyShadowTents(): void {
     for (let i = 0; i < csm.lights.length; i++) {
-      csm.lights[i].shadow.radius = shadowTentRadius(tentFor(i));
+      csm.lights[i].shadow.radius = tentRadius(i);
       applyShadowNormalBias(i);
     }
   }
@@ -1060,7 +1076,7 @@ export function createLighting(
   function applyShadowSize(i: number, size: number): void {
     const shadow = csm.lights[i].shadow;
     // the cascade's tent, coded on its radius (the kernel is in its own map's texels)
-    shadow.radius = shadowTentRadius(tentFor(i));
+    shadow.radius = tentRadius(i);
     if (shadow.mapSize.x !== size) {
       shadow.mapSize.set(size, size);
       shadowFitCache.invalidate();
@@ -1084,7 +1100,7 @@ export function createLighting(
   }
 
   for (let i = 0; i < csm.lights.length; i++) {
-    csm.lights[i].shadow.radius = shadowTentRadius(tentFor(i));
+    csm.lights[i].shadow.radius = tentRadius(i);
     csm.lights[i].shadow.intensity = SHADOW_OPACITY;
     csm.lights[i].color.setHex(SUN_COLOR);
     // Every cascade is driven explicitly by the coherent scheduler. This keeps

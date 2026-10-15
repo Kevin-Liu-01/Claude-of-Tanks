@@ -341,7 +341,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     shadowMaxFar: 700,
     // 2026-10-14 (SKY shadows r2a, P1): tents 5 / 3 / 3 / 3 (edge ramps about 26, 32, 56, 250 cm; the disk's ghost lobes on
     // cascades 1-3 gone), 7 on the near pair under a closed deck
-    shadowTent: [5, 3, 3, 3],
+    shadowTent: [9, 3, 3, 3], // 2026-10-15 (SKY shadows r3): contact hardening on the near cascade
     shadowTentDeck: [7, 7, 3, 3],
   },
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
@@ -387,7 +387,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     shadowMapSizes: [2048, 2048, 4096, 1024],
     shadowMaxFar: 700,
     // (tents 5 / 3 / 3 / 3: edge ramps about 17, 31, 56, 490 cm; 7 on the near pair under a closed deck)
-    shadowTent: [5, 3, 3, 3],
+    shadowTent: [9, 3, 3, 3], // 2026-10-15 (SKY shadows r3): contact hardening on the near cascade
     shadowTentDeck: [7, 7, 3, 3],
   },
   medium: {
