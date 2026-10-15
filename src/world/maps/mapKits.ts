@@ -48,6 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
+import { cableDrum, sleeperStack } from './railYardStores.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -2752,13 +2753,13 @@ function addCableDrum(
   rng: Rng,
   buckets: DressingBuckets,
 ): void {
-  const radius = 0.7 + rng() * 0.4;
-  const drum = new THREE.CylinderGeometry(radius, radius, radius * 1.1, 10, 1);
-  scaleUV(drum, 3, 1);
-  drum.rotateZ(Math.PI / 2);
-  drum.rotateY(rng() * Math.PI);
-  drum.translate(x, y + radius, z);
-  buckets.wood.push(jitterUV(drum, rng));
+  // #24 r2 (Lane C, 2026-10-14): a cable reel in its members (railYardStores.ts), from the old drum's radius, turn and
+  // UV draws; painted (timber where a kit has no painted bucket)
+  const radius = 0.7 + rng() * 0.4, yaw = rng() * Math.PI;
+  const drum = cableDrum(radius, yaw, [rng(), rng(), rng(), rng()]);
+  drum.translate(x, y, z);
+  if (buckets.baked) buckets.baked.push(drum);
+  else { drum.deleteAttribute('color'); buckets.wood.push(drum); }
 }
 
 function addSleeperStack(
@@ -2768,15 +2769,14 @@ function addSleeperStack(
   rng: Rng,
   buckets: DressingBuckets,
 ): void {
-  for (let layer = 0; layer < 3; layer++) {
-    for (let side = -1; side <= 1; side += 2) {
-      const sleeper = box(2.2, 0.14, 0.30, 1.2);
-      if (layer % 2) sleeper.rotateY(Math.PI / 2);
-      sleeper.translate(x + (layer % 2 ? side * 0.7 : 0), y + 0.1 + layer * 0.16,
-        z + (layer % 2 ? 0 : side * 0.7));
-      buckets.wood.push(jitterUV(sleeper, rng));
-    }
-  }
+  // #24 r2 (Lane C, 2026-10-14): the permanent way's store, creosoted sleepers in crossing courses (railYardStores.ts),
+  // from the old crib's six sleepers' UV draws (24); painted (timber where a kit has no painted bucket)
+  const v: number[] = [];
+  for (let k = 0; k < 24; k++) v.push(rng());
+  const stack = sleeperStack(v);
+  stack.translate(x, y - 0.02, z);
+  if (buckets.baked) buckets.baked.push(stack);
+  else { stack.deleteAttribute('color'); buckets.wood.push(stack); }
 }
 
 function addRailYardSupplies(
