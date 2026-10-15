@@ -91,7 +91,14 @@ const shootS = Number(argValue('shoot', 0));
 const profileS = Number(argValue('profile', 0));
 // --a2-profile (2026-10-14, the 224 returning-tab Garage freeze): a CPU profile of the returning tab from its first byte to
 // its Garage, saved as a2-garage.cpuprofile, with its heaviest self-time frames in report.a2Profile
-const a2Profile = process.argv.includes('--a2-profile');
+// --a2-profile=entry (2026-10-15, the slow rejoin): the same profile carried on through the return's battle entry to its
+// reveal, saved as a2-entry.cpuprofile, with report.a2EntryProfile: the main thread's self time per second by source area
+// beside the entry trace (report.rejoin.entryTrace), so each entry stage reads with what the page was doing
+const a2ProfileEntry = process.argv.includes('--a2-profile=entry');
+const a2Profile = a2ProfileEntry || process.argv.includes('--a2-profile');
+// --window-profile (2026-10-15): a CPU profile of every page through the measurement window (window-<label>.cpuprofile),
+// and each long task over 200 ms with the source areas and frames its span sampled (report.measure.perPage.<X>.stalls)
+const windowProfile = process.argv.includes('--window-profile');
 // --separate-browsers (2026-10-14): each seat in its own Chrome (its own GPU process), as players on separate machines;
 // the returning tab A2 opens in A's browser. The default (one browser, three contexts) shares one GPU process, whose
 // contention turned the returning tab's synchronous program links into minutes (the 224 Garage freeze)
@@ -213,10 +220,18 @@ function installPageRecorder(forceRelay = false) {
     bus.on('shell:expired', impact('expired'));
   }, 100);
   const arrivals = window.__MP_E2E_ARRIVALS = {};
+  // (2026-10-15) the received bytes by message: a snapshot keyframe or delta (its flags byte), else the wire type
+  const wireIn = window.__MP_E2E_WIRE = {};
   const watchChannel = (channel) => {
     if (!channel || channel.__mpE2e) return;
     channel.__mpE2e = true;
-    channel.addEventListener('message', () => {
+    channel.addEventListener('message', (event) => {
+      const bytes = event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : null;
+      if (bytes && bytes.length > 10) {
+        const key = bytes[1] === 17 ? ((bytes[10] & 1) ? 'keyframe' : 'delta') : `type${bytes[1]}`;
+        const tally = wireIn[key] ??= { n: 0, bytes: 0 };
+        tally.n++; tally.bytes += bytes.length;
+      }
       const now = performance.now();
       const row = arrivals[channel.label] ??= { count: 0, last: null, gaps: [] };
       if (row.last !== null && row.gaps.length < 20_000) row.gaps.push(now - row.last);
@@ -325,13 +340,18 @@ function bandwidthBetween(before, after) {
 const pageCounters = (page, reset) => page.evaluate((resetArrivals) => {
   const m = window.__MULTIPLAYER_V2?.stats?.().session?.match ?? null;
   const out = {
-    atMs: performance.now(), frames: window.__MP_E2E_FRAMES?.count ?? null,
+    atMs: performance.now(), wallMs: performance.timeOrigin + performance.now(), frames: window.__MP_E2E_FRAMES?.count ?? null,
     sampledTicks: m?.sampledTicks ?? null, skippedTicks: m?.skippedTicks ?? null, snapshots: m?.snapshotsAccepted ?? null, arrivalJitterMs: m?.arrivalJitterMs ?? null,
     rttMs: m?.rttMs ?? null, interpolationDelayMs: m?.interpolationDelayMs ?? null, snappedSamples: m?.snappedSamples ?? null, extrapolatedSamples: m?.extrapolatedSamples ?? null,
     maxExtrapolatedMs: m?.maxExtrapolatedMs ?? null, inputAckLagTicks: m?.inputAckLagTicks ?? null, ownShotsPredicted: m?.ownShotsPredicted ?? null, ownShotsConfirmed: m?.ownShotsConfirmed ?? null,
-    predictor: (m?.prediction ?? m?.predictorStats) ? (({ reconciliations, hardSnaps, maxPositionErrorM, lastPositionErrorM, heldTicks }) => ({ reconciliations, hardSnaps, maxPositionErrorM, lastPositionErrorM, heldTicks }))(m.prediction ?? m.predictorStats) : null,
+    predictor: (m?.prediction ?? m?.predictorStats) ? (({ reconciliations, hardSnaps, maxPositionErrorM, lastPositionErrorM, heldTicks, stallTicks, maxCorrectionStepM, maxFreePositionErrorM, maxContactPositionErrorM }) => ({ reconciliations, hardSnaps, maxPositionErrorM, lastPositionErrorM, heldTicks, stallTicks, maxCorrectionStepM, maxFreePositionErrorM, maxContactPositionErrorM }))(m.prediction ?? m.predictorStats) : null,
     arrivals: Object.fromEntries(Object.entries(window.__MP_E2E_ARRIVALS ?? {}).map(([label, row]) => [label, { count: row.count, gaps: row.gaps.slice() }])),
     longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(),
+    // (2026-10-15) the round's world and combat events by kind (a crush, a fall, a shot), to read a stall beside them
+    events: window.__MULTIPLAYER_V2?.stats?.()?.round?.events ?? null,
+    // (2026-10-15) the downlink's makeup: bytes and frames in, keyframes, keyframe requests and missing baselines
+    wireIn: JSON.parse(JSON.stringify(window.__MP_E2E_WIRE ?? {})),
+    wire: m ? { bytesIn: m.bytesIn ?? null, framesIn: m.framesIn ?? null, keyframes: m.keyframes ?? null, keyframeRequests: m.keyframeRequests ?? null, missingBaselines: m.missingBaselines ?? null } : null,
   };
   if (resetArrivals) for (const row of Object.values(window.__MP_E2E_ARRIVALS ?? {})) row.gaps.length = 0;
   return out;
@@ -339,7 +359,8 @@ const pageCounters = (page, reset) => page.evaluate((resetArrivals) => {
 /** Every hull this page shows, at one wall time (the §13.12 divergence sampler, re-made 2026-10-13). */
 const hullsOf = (page) => page.evaluate(() => {
   const tanks = window.__DEBUG?.game?.tankById;
-  const out = { wallMs: performance.timeOrigin + performance.now(), hulls: {} };
+  // (2026-10-15) the own hull's worst misprediction so far, so the window shows when it rose
+  const out = { wallMs: performance.timeOrigin + performance.now(), hulls: {}, predMaxM: window.__MULTIPLAYER_V2?.stats?.()?.session?.match?.prediction?.maxPositionErrorM ?? null };
   if (tanks?.forEach) tanks.forEach((entity, id) => { const p = entity?.state?.pos; if (p) out.hulls[id] = [p.x, p.z, Math.abs(Number(entity.state.speed) || 0), entity.networkVisible !== false && !entity.combat?.destroyed]; });
   return out;
 }).catch(() => null);
@@ -375,6 +396,18 @@ async function mainThreadMetrics(page) {
 async function measureWindow(labels, seconds) {
   const cpuStart = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await mainThreadMetrics(pages[label])])));
   await Promise.all(labels.map((label) => trackFrames(pages[label], true, ids[label])));
+  const profilers = {};
+  if (windowProfile) {
+    for (const label of labels) {
+      try {
+        const session = await pages[label].createCDPSession();
+        await session.send('Profiler.enable');
+        await session.send('Profiler.setSamplingInterval', { interval: 1000 });
+        await session.send('Profiler.start');
+        profilers[label] = session;
+      } catch { profilers[label] = null; }
+    }
+  }
   const start = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await pageCounters(pages[label], true)])));
   const samples = [];
   const until = performance.now() + seconds * 1000;
@@ -385,6 +418,16 @@ async function measureWindow(labels, seconds) {
   const end = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await pageCounters(pages[label], false)])));
   const tracked = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await trackFrames(pages[label], false)])));
   const cpuEnd = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await mainThreadMetrics(pages[label])])));
+  const stallsOf = {};
+  for (const label of labels) {
+    const session = profilers[label];
+    if (!session) continue;
+    const profile = await session.send('Profiler.stop').then((result) => result.profile).catch(() => null);
+    await session.detach().catch(() => {});
+    if (!profile) continue;
+    await writeFile(join(outputDir, `window-${label.toUpperCase()}.cpuprofile`), JSON.stringify(profile)).catch(() => {});
+    stallsOf[label] = profileStalls(profile, 200);
+  }
   const perPage = {};
   for (const label of labels) {
     const a = start[label], b = end[label];
@@ -400,10 +443,23 @@ async function measureWindow(labels, seconds) {
       channels: Object.fromEntries(Object.entries(b.arrivals).map(([name, row]) => [name, { messages: row.count - (a.arrivals[name]?.count ?? 0),
         gapP50Ms: round1(percentile(row.gaps, 0.5)), gapP95Ms: round1(percentile(row.gaps, 0.95)), gapMaxMs: round1(row.gaps.length ? Math.max(...row.gaps) : null) }])),
       longtasks: { count: tasks.length, over200: tasks.filter((task) => task.ms >= 200).length, maxMs: tasks.length ? Math.max(...tasks.map((task) => task.ms)) : 0,
-        totalMs: tasks.reduce((sum, task) => sum + task.ms, 0) },
+        totalMs: tasks.reduce((sum, task) => sum + task.ms, 0),
+        // (2026-10-15) each one over 200 ms by its start in the window, to read beside the other pages' and the events
+        over200At: tasks.filter((task) => task.ms >= 200).map((task) => ({ atMs: Math.round(task.start - a.atMs), ms: task.ms })) },
+      wire: a.wire && b.wire ? (() => { const d = (key) => (b.wire[key] ?? 0) - (a.wire[key] ?? 0); const snaps = (b.snapshots ?? 0) - (a.snapshots ?? 0);
+        return { bytesInPerS: round1(d('bytesIn') / windowS), framesIn: d('framesIn'), snapshots: snaps, bytesPerFrame: d('framesIn') ? round1(d('bytesIn') / d('framesIn')) : null,
+          keyframes: d('keyframes'), keyframeRequests: d('keyframeRequests'), missingBaselines: d('missingBaselines'),
+          byMessage: Object.fromEntries(Object.entries(b.wireIn ?? {}).map(([key, row]) => { const n = row.n - (a.wireIn?.[key]?.n ?? 0), bytes = row.bytes - (a.wireIn?.[key]?.bytes ?? 0);
+            return [key, { n, bytesPerMsg: n ? round1(bytes / n) : null, bytesPerS: round1(bytes / windowS) }]; }).filter(([, row]) => row.n > 0)) }; })() : null,
+      events: b.events ? Object.fromEntries(Object.entries(b.events).map(([kind, count]) => [kind, count - (a.events?.[kind] ?? 0)]).filter(([, count]) => count > 0)) : null,
+      ...(stallsOf[label] ? { stalls: stallsOf[label] } : {}),
       // the own hull's prediction over the window: corrections, hard snaps, the worst misprediction so far (metres)
       prediction: a.predictor && b.predictor ? { reconciliations: b.predictor.reconciliations - a.predictor.reconciliations, hardSnaps: b.predictor.hardSnaps - a.predictor.hardSnaps,
-        maxPositionErrorM: round1(b.predictor.maxPositionErrorM), maxRoseInWindow: b.predictor.maxPositionErrorM > a.predictor.maxPositionErrorM } : null,
+        maxPositionErrorM: round1(b.predictor.maxPositionErrorM), maxRoseInWindow: b.predictor.maxPositionErrorM > a.predictor.maxPositionErrorM,
+        maxFreeM: round1(b.predictor.maxFreePositionErrorM), maxContactM: round1(b.predictor.maxContactPositionErrorM), maxCorrectionStepM: round1(b.predictor.maxCorrectionStepM),
+        heldTicks: (b.predictor.heldTicks ?? 0) - (a.predictor.heldTicks ?? 0), stallTicks: (b.predictor.stallTicks ?? 0) - (a.predictor.stallTicks ?? 0),
+        // the window time each rise of the worst misprediction was first sampled (ms from the window's start)
+        rises: samples.reduce((rows, sample) => { const v = sample[label]?.predMaxM; const last = rows.length ? rows[rows.length - 1].m : a.predictor.maxPositionErrorM; if (typeof v === 'number' && v > last + 0.05) rows.push({ atMs: Math.round(sample[label].wallMs - a.wallMs), m: round1(v) }); return rows; }, []) } : null,
       // (2026-10-14) the link and the interpolator as the client reads them, the presented frame intervals, the other hulls'
       // visible snaps (the smoothness sampler) and the main thread's busy time per second (CDP Performance)
       link: { rttMs: round1(b.rttMs), interpolationDelayMs: round1(b.interpolationDelayMs), inputAckLagTicks: b.inputAckLagTicks,
@@ -418,7 +474,7 @@ async function measureWindow(labels, seconds) {
         return { taskMsPerS: per('TaskDuration'), scriptMsPerS: per('ScriptDuration'), layoutMsPerS: per('LayoutDuration'), styleMsPerS: per('RecalcStyleDuration') }; })() : null,
     };
   }
-  const moving = [], rest = [], skew = [], movingCorrected = [];
+  const moving = [], rest = [], skew = [], movingCorrected = [], movingLagMs = [];
   for (const sample of samples) {
     const views = labels.map((label) => sample[label]).filter(Boolean);
     if (views.length < 2) continue;
@@ -438,10 +494,12 @@ async function measureWindow(labels, seconds) {
       const isMoving = Math.max(...shown.map((hull) => hull[2])) > 1;
       (isMoving ? moving : rest).push(worst);
       if (isMoving) movingCorrected.push(worstCorrected);
+      // (2026-10-15) the same error as time at the hull's speed: comparable across runs whose hulls drove at other speeds
+      if (isMoving) movingLagMs.push(1000 * worstCorrected / Math.max(...shown.map((hull) => hull[2])));
     }
   }
   const summary = (values) => ({ n: values.length, p50: round1(percentile(values, 0.5)), p95: round1(percentile(values, 0.95)), max: round1(values.length ? Math.max(...values) : null) });
-  return { windowS: seconds, samples: samples.length, wallSkewMs: summary(skew), divergence: { moving: summary(moving), rest: summary(rest), movingSkewCorrected: summary(movingCorrected) }, perPage };
+  return { windowS: seconds, samples: samples.length, wallSkewMs: summary(skew), divergence: { moving: summary(moving), rest: summary(rest), movingSkewCorrected: summary(movingCorrected), movingLagMs: summary(movingLagMs) }, perPage };
 }
 /** A point on the page's battle canvas (the largest canvas, where a click lands on the canvas itself), or null. */
 const canvasPoint = (page) => page.evaluate(() => {
@@ -508,6 +566,57 @@ function sourceArea(callFrame) {
   for (const [area, needle] of [['mp', '/src/mp/'], ['sim', '/src/sim/'], ['server', '/server/'], ['engine', '/src/engine/'], ['world', '/src/world/'], ['fx', '/src/fx/'],
     ['game', '/src/game/'], ['ui', '/src/ui/'], ['audio', '/src/audio/'], ['vehicles', '/src/vehicles/'], ['three', 'three'], ['src', '/src/']]) if (url.includes(needle)) return area;
   return url ? 'bundle' : 'native';
+}
+/** A built chunk's name without its hash ('/assets/battleHud-a1b2c3d4.js' → 'battleHud'), a dev-server file's path, or the native frame. */
+function chunkOf(callFrame) {
+  const url = (callFrame.url || '').replace(/^https?:\/\/[^/]+/, '').replace(/\?.*$/, '');
+  if (!url) return callFrame.functionName || 'native';
+  const built = /\/assets\/(.+?)-[\w-]{6,}\.js$/.exec(url);
+  return built ? built[1] : url.replace(/^\/(src\/)?/, '');
+}
+/** One frame's label: its function, its chunk or file and line (minified names read with their chunk). */
+const frameLabel = (callFrame) => `${callFrame.functionName || '(anon)'} ${chunkOf(callFrame)}:${callFrame.lineNumber + 1}`;
+/** The self time of a profile's samples from `fromMs` to `toMs` (profile-relative), by chunk and by frame (with two callers). */
+function profileSpan(profile, fromMs = 0, toMs = Infinity) {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const parentOf = new Map();
+  for (const node of profile.nodes) for (const child of node.children ?? []) parentOf.set(child, node.id);
+  const chunks = new Map(), frames = new Map();
+  let at = 0, idleMs = 0, busyMs = 0;
+  for (let i = 0; i < profile.samples.length; i++) {
+    at += (profile.timeDeltas[i] ?? 0) / 1000;
+    if (at < fromMs || at > toMs) continue;
+    const ms = (profile.timeDeltas[i + 1] ?? 0) / 1000;
+    const node = byId.get(profile.samples[i]);
+    if (!node) continue;
+    if (node.callFrame.functionName === '(idle)') { idleMs += ms; continue; }
+    busyMs += ms;
+    const chunk = chunkOf(node.callFrame);
+    chunks.set(chunk, (chunks.get(chunk) ?? 0) + ms);
+    const chain = [frameLabel(node.callFrame)];
+    let up = parentOf.get(node.id);
+    for (let depth = 0; depth < 2 && up !== undefined; depth++) { chain.push(frameLabel(byId.get(up).callFrame)); up = parentOf.get(up); }
+    const key = chain.join(' < ');
+    frames.set(key, (frames.get(key) ?? 0) + ms);
+  }
+  const top = (map, n) => [...map].sort((x, y) => y[1] - x[1]).slice(0, n).map(([name, ms]) => ({ name, ms: Math.round(ms) }));
+  return { busyMs: Math.round(busyMs), idleMs: Math.round(idleMs), chunks: top(chunks, 6), frames: top(frames, 6) };
+}
+/** The profile's busy stretches over `overMs` (consecutive non-idle samples, a gap of 50 ms ends one), each with what it ran. */
+function profileStalls(profile, overMs = 200) {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const stretches = [];
+  let at = 0, current = null;
+  for (let i = 0; i < profile.samples.length; i++) {
+    at += (profile.timeDeltas[i] ?? 0) / 1000;
+    const idle = byId.get(profile.samples[i])?.callFrame.functionName === '(idle)';
+    if (idle || (current && at - current.end > 50)) { if (current) stretches.push(current); current = null; }
+    if (idle) continue;
+    if (!current) current = { start: at, end: at };
+    current.end = at;
+  }
+  if (current) stretches.push(current);
+  return stretches.filter((row) => row.end - row.start >= overMs).map((row) => ({ atMs: Math.round(row.start), ms: Math.round(row.end - row.start), ...profileSpan(profile, row.start, row.end) }));
 }
 /** A CPU profile of each page's main thread for `seconds` (0.5 ms sampling): self time per source area, per second and per frame. */
 async function profilePhase(byLabel, seconds) {
@@ -997,6 +1106,7 @@ try {
   step('b-c-shrunk', { viewport: '320x200' });
   pages.a2 = await contextA.newPage();
   let a2ProfileSession = null;
+  let a2ProfileStartedAt = null;
   if (a2Profile) {
     // the same origin first (the renderer the invite will use), then the sampler, then the invite
     await pages.a2.goto(new URL('/humans.txt', invite).href, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => {});
@@ -1005,6 +1115,7 @@ try {
       await a2ProfileSession.send('Profiler.enable').catch(() => {});
       await a2ProfileSession.send('Profiler.setSamplingInterval', { interval: 1000 }).catch(() => {});
       await a2ProfileSession.send('Profiler.start').catch(() => {});
+      a2ProfileStartedAt = elapsedMs();
     }
   }
   await pages.a2.setViewport(testViewport);
@@ -1023,7 +1134,33 @@ try {
   void pages.a2.waitForFunction(inBattle, { timeout: 420_000, polling: 100 }).then(() => { report.rejoinTiming.revealedAfterMs = elapsedMs() - a2OpenedAtMs; }).catch(() => {});
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
   report.rejoinTiming.garageAfterMs = elapsedMs() - a2OpenedAtMs;
-  if (a2ProfileSession) {
+  // (2026-10-15) the return's entry, sampled every 200 ms from its Garage to its battle: the trace's stages as they are
+  // marked (a stage marked twice shows its first value replaced), the link (transport, offers, reconnects, the WELCOME),
+  // the round's welcome / activation / reveal and the loader's own label — each row when anything in it changed
+  const entryTrace = report.rejoinEntryTrace = [];
+  let entryTraceOn = true;
+  const entryTracer = (async () => {
+    let last = '';
+    while (entryTraceOn && !pages.a2.isClosed() && elapsedMs() - a2OpenedAtMs < 300_000) {
+      const row = await pages.a2.evaluate(() => {
+        const load = window.__NETWORK_LOAD;
+        const s = window.__MULTIPLAYER_V2?.stats?.();
+        const m = s?.session?.match;
+        return {
+          stages: load?.stages ? Object.entries(load.stages).map(([stage, ms]) => `${stage}=${ms}`).join(' ') : null,
+          session: s?.session?.phase ?? null, transport: m?.transportState ?? null, welcomed: m?.welcomed ?? null, link: m?.phase ?? null,
+          reconnects: m?.reconnects ?? null, helloRetries: m?.helloRetries ?? null, close: m?.closeReason ?? null,
+          offers: s?.session?.p2p?.offersSent ?? null,
+          round: s?.round ? `${s.round.welcomed ? 'W' : '-'}${s.round.activated ? 'A' : '-'}${s.round.revealed ? 'R' : '-'}` : null,
+          label: (document.querySelector('.cot-bl')?.classList.contains('on') ? document.querySelector('.cot-bl')?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80) : null) ?? null,
+        };
+      }).catch(() => null);
+      if (row) { const key = JSON.stringify(row); if (key !== last) { entryTrace.push({ atMs: elapsedMs() - a2OpenedAtMs, ...row }); last = key; } }
+      await sleep(200);
+    }
+  })();
+  const stopEntryTrace = async () => { entryTraceOn = false; await entryTracer; };
+  if (a2ProfileSession && !a2ProfileEntry) {
     const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
     if (profile) {
       await writeFile(join(outputDir, 'a2-garage.cpuprofile'), JSON.stringify(profile));
@@ -1134,6 +1271,22 @@ try {
     report.inconclusive = [...(report.inconclusive ?? []), 'rejoin: the room ended the match before A2 was back in it'];
   } else {
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
+  await stopEntryTrace();
+  if (a2ProfileSession && a2ProfileEntry) {
+    const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
+    await a2ProfileSession.detach().catch(() => {});
+    if (profile) {
+      await writeFile(join(outputDir, 'a2-entry.cpuprofile'), JSON.stringify(profile));
+      const spanMs = (profile.endTime - profile.startTime) / 1000;
+      const offsetMs = (a2ProfileStartedAt ?? a2OpenedAtMs) - a2OpenedAtMs;
+      const seconds = [];
+      for (let from = 0; from < spanMs; from += 1000) {
+        const span = profileSpan(profile, from, from + 1000);
+        seconds.push({ atS: Math.round((from + offsetMs) / 100) / 10, busyMs: span.busyMs, chunks: span.chunks.slice(0, 3).map((row) => `${row.name} ${row.ms}`).join(', '), top: span.frames[0]?.name ?? null });
+      }
+      report.a2EntryProfile = { offsetMs, seconds, stalls: profileStalls(profile, 500).map((row) => ({ ...row, atMs: row.atMs + offsetMs })) };
+    }
+  }
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null }));
   step('b-c-restored', { viewport: `${testViewport.width}x${testViewport.height}`, a2Entry });
