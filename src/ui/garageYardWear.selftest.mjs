@@ -46,8 +46,14 @@ assert.equal(GARAGE_HARDSTAND.widthM, 29);
 assert.equal(GARAGE_HARDSTAND.depthM, 24);
 assert.ok(Math.abs(GARAGE_HARDSTAND.canvasH / GARAGE_HARDSTAND.canvasW - 24 / 29) < 0.01, 'square texels on the apron');
 for (const pitch of GARAGE_HARDSTAND.slabPitchM) {
-  assert.ok(pitch > 4 && pitch < 6, `slabs pour at a real yard pitch (${pitch.toFixed(2)} m)`);
+  assert.ok(pitch > 3 && pitch < 6, `slabs pour at a real yard pitch (${pitch.toFixed(2)} m)`);
+  // the re-judge, 2026-10-15: joints squared to the facades and the turntable (the view's axis); the grid reflects onto
+  // itself at the canvas's edges, so the mirrored apron stays seamless (each span within 10 cm of whole pitches)
+  for (const span of [29 / Math.SQRT2, 24 / Math.SQRT2]) {
+    assert.ok(Math.abs(span / pitch - Math.round(span / pitch)) * pitch < 0.1, `the joint grid reflects at the canvas edge (${span.toFixed(2)} m)`);
+  }
 }
+assert.equal(GARAGE_HARDSTAND.jointAxisDeg, 45, 'the joints run square to the view axis');
 
 const kit = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const yardWear = await readFile(new URL('./garageYardWear.ts', import.meta.url), 'utf8');
