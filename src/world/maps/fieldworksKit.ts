@@ -1164,6 +1164,185 @@ function buildFieldTent(spec: TentSpec, o: Rng, down: boolean): THREE.BufferGeom
   return m.geometry();
 }
 
+// --- the anti-aircraft guns (frontline:aa-gun: frontlineAtmosphere.ts's border ring; the base fixed, the head yawed
+// and pitched about its trunnions 1.45 m up, its muzzles near +2.9 m along +z where the tracers start) ----------------
+//
+// Each front's own gun in its pit of sandbags (two courses round it, open at the back), on its own carriage: the 40 mm
+// Bofors on its cruciform outriggers in the west 1944-45 and on NATO's Cold War maps; the 20 mm Flak 38 on its tripod
+// base with its shield (Norway 1940, and the Type 98 at Shanghai); the Red Army's 37 mm 61-K behind its shield; the
+// 57 mm S-60 in the Virgin Lands; the US quad .50 M45 on its trailer in the 1960s West; the twin 23 mm ZU-23-2 on its
+// raised wheels from the Chouf to Hostomel. Painted in its army's colour, the barrels dark steel, the tyres black.
+
+type AaForm = 'bofors' | 'flak38' | 'k61' | 's60' | 'm45' | 'zu23';
+interface AaSpec { form: AaForm; paint: Rgb3; bags: Rgb3 }
+const PAINT_OD = hexLin(0x4e5038), PAINT_FIELDGREY = hexLin(0x5a5c52), PAINT_SOVIET = hexLin(0x4d5a3e), PAINT_NATO = hexLin(0x4f5440);
+const PAINT_KHAKI = hexLin(0x6a6046), PAINT_DESERT = hexLin(0x9c8a64), PAINT_WINTER = hexLin(0xb8bab4);
+const BAG_HESSIAN = hexLin(0x8a7a5a), BAG_SAND = hexLin(0xa89670), BAG_GREY = hexLin(0x7a7668), BARREL = hexLin(0x2a2c2a);
+const AA_FORMS: Readonly<Record<string, AaSpec>> = Object.freeze({
+  fjord: { form: 'flak38', paint: PAINT_FIELDGREY, bags: BAG_HESSIAN }, blackglass: { form: 'flak38', paint: PAINT_KHAKI, bags: BAG_HESSIAN },
+  autumn: { form: 'bofors', paint: PAINT_OD, bags: BAG_HESSIAN }, polders: { form: 'bofors', paint: PAINT_OD, bags: BAG_HESSIAN },
+  reservoir: { form: 'bofors', paint: PAINT_OD, bags: BAG_HESSIAN }, alpine: { form: 'bofors', paint: PAINT_OD, bags: BAG_GREY },
+  foundry: { form: 'bofors', paint: PAINT_OD, bags: BAG_GREY }, monsoon: { form: 'bofors', paint: PAINT_SOVIET, bags: BAG_HESSIAN },
+  longleaf: { form: 'bofors', paint: PAINT_OD, bags: BAG_HESSIAN },
+  verdant: { form: 'k61', paint: PAINT_SOVIET, bags: BAG_HESSIAN }, winter: { form: 'k61', paint: PAINT_WINTER, bags: BAG_GREY },
+  steppe: { form: 's60', paint: PAINT_SOVIET, bags: BAG_HESSIAN },
+  railyard: { form: 'bofors', paint: PAINT_NATO, bags: BAG_GREY }, urban: { form: 'bofors', paint: PAINT_NATO, bags: BAG_GREY },
+  frontier: { form: 'bofors', paint: PAINT_NATO, bags: BAG_HESSIAN }, cliffbridge: { form: 'bofors', paint: PAINT_OD, bags: BAG_SAND },
+  copper_mesa: { form: 'bofors', paint: PAINT_OD, bags: BAG_SAND }, whiteout: { form: 'bofors', paint: PAINT_WINTER, bags: BAG_GREY },
+  skybridge: { form: 'm45', paint: PAINT_OD, bags: BAG_SAND }, titan_gorge: { form: 'm45', paint: PAINT_OD, bags: BAG_SAND },
+  orchard: { form: 'zu23', paint: PAINT_DESERT, bags: BAG_SAND }, desert: { form: 'zu23', paint: PAINT_DESERT, bags: BAG_SAND },
+  ruinspires: { form: 'zu23', paint: PAINT_SOVIET, bags: BAG_GREY }, saltwind: { form: 'zu23', paint: PAINT_SOVIET, bags: BAG_GREY },
+  badlands: { form: 'zu23', paint: PAINT_DESERT, bags: BAG_SAND }, oasis: { form: 'zu23', paint: PAINT_DESERT, bags: BAG_SAND },
+  delta: { form: 'zu23', paint: PAINT_SOVIET, bags: BAG_HESSIAN }, mangrove: { form: 'zu23', paint: PAINT_SOVIET, bags: BAG_HESSIAN },
+  caldera: { form: 'zu23', paint: PAINT_NATO, bags: BAG_GREY }, airfield: { form: 'zu23', paint: PAINT_SOVIET, bags: BAG_HESSIAN },
+  coastal: { form: 'zu23', paint: PAINT_NATO, bags: BAG_SAND }, mars: { form: 'zu23', paint: PAINT_WINTER, bags: BAG_GREY },
+  moon: { form: 'zu23', paint: PAINT_WINTER, bags: BAG_GREY },
+});
+const AA_DEFAULT: AaSpec = { form: 'bofors', paint: PAINT_OD, bags: BAG_HESSIAN };
+
+/** A box w x h x d centred at (x, y, z) (its long edges eased), turned `yaw` about y. */
+function block(m: SteelMesh, w: number, h: number, d: number, x: number, y: number, z: number, col: (q: V, n: V) => Rgb3, yaw = 0, pitch = 0): void {
+  const c = Math.min(w, h) * 0.12, hw = w / 2, hh = h / 2;
+  const g = new SteelMesh();
+  g.prism([[-hw, -hh + c], [-hw + c, -hh], [hw - c, -hh], [hw, -hh + c], [hw, hh - c], [hw - c, hh], [-hw + c, hh], [-hw, hh - c]], -d / 2, d / 2, col);
+  const geo = g.geometry();
+  if (pitch) geo.rotateX(pitch);
+  if (yaw) geo.rotateY(yaw);
+  geo.translate(x, y, z);
+  appendGeo(m, geo);
+}
+
+/** Appends a geometry's triangles (position, normal, colour) to a mesh, and disposes it. */
+function appendGeo(m: SteelMesh, geo: THREE.BufferGeometry): void {
+  const pa = geo.getAttribute('position'), na = geo.getAttribute('normal'), ca = geo.getAttribute('color');
+  for (let i = 0; i < pa.count; i++) { m.p.push(pa.getX(i), pa.getY(i), pa.getZ(i)); m.n.push(na.getX(i), na.getY(i), na.getZ(i)); m.c.push(ca.getX(i), ca.getY(i), ca.getZ(i)); }
+  geo.dispose();
+}
+
+/** An upright round from y0 to y1 at (x, z), radius r (a pedestal, a jack's pad). */
+function column(m: SteelMesh, r: number, y0: number, y1: number, seg: number, col: (q: V, n: V) => Rgb3, x = 0, z = 0): void {
+  const g = new SteelMesh();
+  g.round(r, y0, y1, seg, col);
+  const geo = g.geometry(); geo.rotateX(-Math.PI / 2); geo.translate(x, 0, z);
+  appendGeo(m, geo);
+}
+
+/** A barrel along +z from z0 to z1 at (x, y), radius r, its muzzle device (a cone or a brake) at its end. */
+function barrel(m: SteelMesh, x: number, y: number, z0: number, z1: number, r: number, muzzle: 'cone' | 'brake' | 'plain'): void {
+  const steel = (q: V): Rgb3 => mulRgb(BARREL, 0.85 + vnoise3(q.x * 9, q.y * 9, q.z * 9, 21) * 0.3);
+  m.round(r, z0, z1, 6, steel, x, y);
+  if (muzzle === 'cone') m.round(r * 1.7, z1, z1 + 0.28, 6, steel, x, y);
+  else if (muzzle === 'brake') { m.round(r * 1.8, z1, z1 + 0.22, 6, steel, x, y); m.round(r * 1.2, z1 + 0.22, z1 + 0.3, 6, steel, x, y); }
+}
+
+/** A wheel standing at (x, y, z) facing x, radius r. */
+function wheel(m: SteelMesh, x: number, y: number, z: number, r: number, paint: (q: V, n: V) => Rgb3): void {
+  const g = new SteelMesh();
+  g.round(r, -0.11, 0.11, 10, (q) => mulRgb(TYRE, 0.85 + vnoise3(q.x * 7, q.y * 7, q.z * 7, 22) * 0.3));
+  g.round(r * 0.55, 0.11, 0.13, 8, paint);
+  const geo = g.geometry(); geo.rotateY(Math.PI / 2); geo.translate(x, y, z);
+  appendGeo(m, geo);
+}
+
+/** The gun of `mapId`'s front: its fixed base (the pit and the carriage) and its head (about its trunnions). */
+export function buildAaGun(mapId: string): { base: THREE.BufferGeometry; head: THREE.BufferGeometry } {
+  const spec = AA_FORMS[mapId] ?? AA_DEFAULT, seed = 0xaa01;
+  const paint = (q: V, n: V): Rgb3 => {
+    const wear = Math.max(0, vnoise3(q.x * 6, q.y * 6, q.z * 6, seed) - 0.7) * 1.6 * (n.y > 0.5 ? 1.25 : 1);
+    return mulRgb(mixRgb(spec.paint, RUST_BROWN, wear), 0.88 + vnoise3(q.x * 3, q.y * 3, q.z * 3, seed + 1) * 0.24);
+  };
+  const base = new SteelMesh(), head = new SteelMesh();
+  // the pit: two courses of sandbags round it, open at the back; its floor of trodden earth
+  const bag = (q: V): Rgb3 => mulRgb(spec.bags, 0.78 + vnoise3(q.x * 5, q.y * 5, q.z * 5, seed + 2) * 0.35);
+  const R = 2.45, N = 20;
+  for (let course = 0; course < 2; course++) {
+    for (let k = 0; k < N; k++) {
+      const a = ((k + course * 0.5) / N) * Math.PI * 2;
+      if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.32) continue; // the way in, at the back (-z)
+      block(base, 0.7, 0.17, 0.36, Math.sin(a) * R, 0.085 + course * 0.16, Math.cos(a) * R, bag, a + Math.PI / 2);
+    }
+  }
+  const floor = (q: V): Rgb3 => mulRgb(hexLin(0x3e3428), 0.85 + vnoise3(q.x * 3, 0, q.z * 3, seed + 3) * 0.3);
+  for (let k = 0; k < 12; k++) {
+    const a0 = (k / 12) * Math.PI * 2, a1 = ((k + 1) / 12) * Math.PI * 2;
+    base.tri(v3(0, 0.012, 0), v3(Math.sin(a0) * 2.25, 0.012, Math.cos(a0) * 2.25), v3(Math.sin(a1) * 2.25, 0.012, Math.cos(a1) * 2.25), floor);
+  }
+  // the carriage
+  if (spec.form === 'bofors' || spec.form === 'k61' || spec.form === 's60') {
+    block(base, 1.1, 0.24, 1.1, 0, 0.5, 0, paint);
+    for (const a of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
+      // an outrigger down to its jack's pad
+      block(base, 0.16, 0.14, 1.25, Math.sin(a) * 0.95, 0.38, Math.cos(a) * 0.95, paint, a, 0.22);
+      column(base, 0.14, -0.02, 0.05, 8, paint, Math.sin(a) * 1.55, Math.cos(a) * 1.55);
+      column(base, 0.04, 0.05, 0.3, 6, paint, Math.sin(a) * 1.55, Math.cos(a) * 1.55);
+    }
+    column(base, 0.34, 0.6, 1.2, 8, paint);
+  } else if (spec.form === 'flak38') {
+    block(base, 0.8, 0.2, 0.8, 0, 0.42, 0, paint);
+    for (const a of [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3]) {
+      block(base, 0.14, 0.12, 1.1, Math.sin(a) * 0.75, 0.3, Math.cos(a) * 0.75, paint, a, 0.25);
+    }
+    column(base, 0.22, 0.5, 1.22, 8, paint);
+  } else if (spec.form === 'm45') {
+    block(base, 1.7, 0.3, 2.3, 0, 0.62, 0, paint);
+    for (const sx of [-1, 1]) wheel(base, sx * 0.98, 0.42, -0.2, 0.42, paint);
+    for (const [jx, jz] of [[-0.75, 1.0], [0.75, 1.0], [-0.75, -1.0], [0.75, -1.0]]) block(base, 0.08, 0.5, 0.08, jx, 0.25, jz, paint);
+    column(base, 0.4, 0.77, 1.2, 8, paint);
+  } else {
+    // the ZU-23-2 on its carriage, its wheels raised clear, three jacks down
+    block(base, 1.5, 0.2, 0.9, 0, 0.45, 0, paint);
+    for (const sx of [-1, 1]) wheel(base, sx * 0.95, 0.5, -0.1, 0.33, paint);
+    for (const [jx, jz] of [[-0.6, 0.9], [0.6, 0.9], [0, -1.1]]) { block(base, 0.12, 0.42, 0.12, jx, 0.22, jz, paint); column(base, 0.12, -0.02, 0.04, 8, paint, jx, jz); }
+    block(base, 0.14, 0.12, 1.0, 0, 0.42, -0.6, paint);
+    column(base, 0.3, 0.55, 1.2, 8, paint);
+  }
+  // the head, about the trunnions (y 0 here is 1.45 m up)
+  const seat = (x: number): void => { block(head, 0.34, 0.06, 0.32, x, -0.42, -0.35, paint); block(head, 0.3, 0.3, 0.05, x, -0.25, -0.52, paint); };
+  if (spec.form === 'bofors') {
+    block(head, 0.5, 0.42, 1.0, 0, -0.02, 0.05, paint);
+    block(head, 0.26, 0.32, 0.36, 0, 0.36, -0.05, paint); // the clip guides
+    barrel(head, 0, 0.02, 0.5, 2.62, 0.05, 'cone');
+    head.round(0.035, 0.5, 1.5, 6, paint, 0, 0.16); // the recoil spring's casing
+    for (const sx of [-1, 1]) { seat(sx * 0.62); block(head, 0.1, 0.16, 0.22, sx * 0.4, 0.22, -0.1, paint); }
+    block(head, 0.9, 0.06, 0.6, 0, -0.38, -0.1, paint);
+  } else if (spec.form === 'k61' || spec.form === 's60') {
+    const big = spec.form === 's60';
+    block(head, 0.52, 0.42, 1.1, 0, -0.02, 0.05, paint);
+    barrel(head, 0, 0.02, 0.5, big ? 2.6 : 2.64, big ? 0.06 : 0.045, big ? 'brake' : 'cone');
+    block(head, 0.24, 0.3, 0.4, 0, 0.34, -0.05, paint);
+    // the shield, its two wings angled back
+    block(head, 0.9, 0.85, 0.035, 0, 0.12, 0.62, paint);
+    for (const sx of [-1, 1]) block(head, 0.45, 0.8, 0.035, sx * 0.6, 0.12, 0.52, paint, sx * 0.5);
+    for (const sx of [-1, 1]) seat(sx * 0.62);
+    block(head, 0.95, 0.06, 0.6, 0, -0.38, -0.1, paint);
+  } else if (spec.form === 'flak38') {
+    block(head, 0.34, 0.3, 0.8, 0, 0, 0.05, paint);
+    barrel(head, 0, 0.03, 0.45, 2.64, 0.032, 'cone');
+    block(head, 0.12, 0.3, 0.2, -0.22, 0.05, 0.1, paint); // the magazine
+    block(head, 1.0, 0.62, 0.03, 0, 0.12, 0.55, paint); // the shield
+    seat(0);
+    block(head, 0.7, 0.05, 0.5, 0, -0.4, -0.15, paint);
+  } else if (spec.form === 'm45') {
+    block(head, 0.9, 0.7, 0.75, 0, 0, 0, paint);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+      barrel(head, sx * 0.58, sy * 0.13, 0.1, 1.9, 0.022, 'cone');
+      block(head, 0.22, 0.22, 0.42, sx * 0.62, sy * 0.13, -0.15, paint); // the ammunition chests
+    }
+    block(head, 1.0, 0.55, 0.04, 0, 0.12, 0.4, paint);
+  } else {
+    // the ZU-23-2: twin barrels side by side, their magazines outboard, the two layers' seats behind
+    block(head, 0.62, 0.3, 0.95, 0, -0.02, 0.05, paint);
+    for (const sx of [-1, 1]) {
+      barrel(head, sx * 0.21, 0.04, 0.5, 2.66, 0.035, 'cone');
+      block(head, 0.12, 0.28, 0.5, sx * 0.42, 0.08, 0.05, paint);
+      seat(sx * 0.55);
+    }
+    block(head, 0.14, 0.16, 0.2, 0, 0.26, -0.25, paint); // the sight
+    block(head, 1.1, 0.05, 0.55, 0, -0.38, -0.12, paint);
+  }
+  return { base: base.geometry(), head: head.geometry() };
+}
+
 // ---------------------------------------------------------------------------------------------- sandbag stacks
 
 // The scenery lane (2026-10-03; the gauntlet's wave 0: "a pile of identical pale ellipsoids"): the field works' sandbag
