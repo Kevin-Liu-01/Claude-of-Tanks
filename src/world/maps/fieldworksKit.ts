@@ -582,7 +582,7 @@ function vnoise3(x: number, y: number, z: number, seed: number): number {
     l(l(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), u), l(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), u), v), w);
 }
 
-/** Triangles with flat normals and vertex colours (no uv: the baked bucket). */
+/** Triangles with flat normals and vertex colours (a constant uv: the baked bucket has no print). */
 class SteelMesh {
   readonly p: number[] = []; readonly n: number[] = []; readonly c: number[] = [];
   tri(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, col: (q: THREE.Vector3, n: THREE.Vector3) => Rgb3): void {
@@ -617,6 +617,8 @@ class SteelMesh {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.n, 3));
+    // (the props' baked bucket merges its pieces with a uv each: one texel, the material has no print)
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((this.p.length / 3) * 2).fill(0.5), 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
     return g;
   }
