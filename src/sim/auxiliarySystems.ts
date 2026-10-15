@@ -165,6 +165,43 @@ export function stepRoofStation(entity: AuxiliaryEntity, index: number, now: num
   const station = (state.stations ??= guns.slice(1).map(stationState))[index - 1];
   return !!station && stepStation(entity, gun, station, damage, now, dt, context);
 }
+/** A station's barrel in plan (owner-frame x/z), pivot to muzzle at `yaw` (module scratch a/b). */
+const planA = new Vector3(), planB = new Vector3(), planQ = new Quaternion(), planAt = new Vector3();
+function barrelPlan(gun: RoofGunMount, yaw: number, a: Vector3, b: Vector3): void {
+  planQ.fromArray(gun.rotation);
+  planAt.fromArray(gun.position);
+  a.fromArray(gun.pivot).applyAxisAngle(yAxis, yaw).applyQuaternion(planQ).add(planAt);
+  b.fromArray(gun.muzzle).applyAxisAngle(yAxis, yaw).applyQuaternion(planQ).add(planAt);
+}
+const otherA = new Vector3(), otherB = new Vector3();
+/** Closest distance between two plan segments (x/z). */
+function planSegmentGap(a: Vector3, b: Vector3, c: Vector3, d: Vector3): number {
+  const ux = b.x - a.x, uz = b.z - a.z, vx = d.x - c.x, vz = d.z - c.z, wx = a.x - c.x, wz = a.z - c.z;
+  const A = ux * ux + uz * uz, B = ux * vx + uz * vz, C = vx * vx + vz * vz, D = ux * wx + uz * wz, E = vx * wx + vz * wz;
+  const den = A * C - B * B;
+  let s = den > 1e-12 ? Math.min(1, Math.max(0, (B * E - C * D) / den)) : 0;
+  let t = C > 1e-12 ? Math.min(1, Math.max(0, (B * s + E) / C)) : 0;
+  s = A > 1e-12 ? Math.min(1, Math.max(0, (B * t - D) / A)) : 0;
+  const dx = wx + s * ux - t * vx, dz = wz + s * uz - t * vz;
+  return Math.hypot(dx, dz);
+}
+/** VH.02 traverse interlock on a multi-station roof: a station never turns its barrel across another station's barrel
+ * in plan (their radii plus 4 cm), whatever either one's pitch, so two working stations cannot sweep through each other
+ * (the static stock is the traverse arcs' business). Deterministic: the other stations' current yaws. */
+function stationTraverseClear(entity: AuxiliaryEntity, gun: RoofGunMount, yaw: number): boolean {
+  const guns = auxiliaryCapabilities(entity.spec)?.guns, state = entity.combat.auxiliary;
+  if (!guns || guns.length < 2 || !state) return true;
+  barrelPlan(gun, yaw, planA, planB);
+  const r = Math.max(.03, gun.caliberMm * .0016);
+  for (let i = 0; i < guns.length; i++) {
+    const other = guns[i]!;
+    if (other === gun || other.owner !== gun.owner) continue;
+    const otherYaw = i === 0 ? state.gunYaw : state.stations?.[i - 1]?.gunYaw ?? 0;
+    barrelPlan(other, otherYaw, otherA, otherB);
+    if (planSegmentGap(planA, planB, otherA, otherB) < r + Math.max(.03, other.caliberMm * .0016) + .04) return false;
+  }
+  return true;
+}
 /** One station's aim and burst (AuxiliaryState is its own first station: the same four fields). A station with a
  * traverse arc (gun.yawArc, mount-local radians, unwrapped) only takes targets inside it and turns the long way round
  * rather than through the stock the arc keeps it clear of. */
@@ -190,7 +227,9 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   if(desiredPitch < -depressionAt(gun,desiredYaw,profile.depressionRad) || desiredPitch > profile.elevationRad)return false;
   const turn=arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
   const step=state.gunYaw+Math.max(-dt*handling*profile.yawRateRadS,Math.min(dt*handling*profile.yawRateRadS,turn));
-  state.gunYaw=arc?Math.min(arc[1],Math.max(arc[0],step)):wrap(step);
+  const nextYaw=arc?Math.min(arc[1],Math.max(arc[0],step)):wrap(step);
+  if(arc&&!stationTraverseClear(entity,gun,nextYaw))return false;
+  state.gunYaw=nextYaw;
   state.gunPitch+=Math.max(-dt*handling*profile.pitchRateRadS,Math.min(dt*handling*profile.pitchRateRadS,pitch));
   // crossing the shallow sector depressed, the barrel lifts clear of the roof first
   if(gun.depressionByYaw)state.gunPitch=Math.max(state.gunPitch,-depressionAt(gun,state.gunYaw,profile.depressionRad));

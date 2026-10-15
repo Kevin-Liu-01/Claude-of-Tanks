@@ -83,7 +83,20 @@ function run({ shooter, context }, seconds = 12) {
   shots = run(b, 4); assert.ok(shots[0].length === 0 && shots[1].length === 0, 'a red roof-gun module silences both');
 }
 
-// 7. The arcs and the table hold against the built stock (tools/roof-station-arcs.mjs), and they are tight: within 4° past
+// 7. The traverse interlock: the M2 never turns its barrel across the 30 mm's in plan. With the 30 mm held dead ahead,
+//    a target at -54 degrees (inside the M2's arc) would take the M2's muzzle over the 30 mm's barrel: it stops short and
+//    holds fire; with the 30 mm traversed left out of the way it reaches the target and fires.
+{
+  const b = battle(-54); auxiliaryState(b.shooter); const s = b.shooter.combat.auxiliary;
+  let fired = 0;
+  for (let i = 0; i < 360; i++) { s.gunYaw = 0; if (stepRoofStation(b.shooter, 1, i / 60, 1 / 60, b.context)) fired++; }
+  assert.equal(fired, 0, 'the M2 holds rather than cross the 30 mm barrel');
+  assert.ok(s.stations[0].gunYaw > -54 * DEG + .02, `the M2 stops short of the crossing (${(s.stations[0].gunYaw / DEG).toFixed(1)} deg)`);
+  for (let i = 360; i < 900; i++) { s.gunYaw = -1.2; if (stepRoofStation(b.shooter, 1, i / 60, 1 / 60, b.context)) fired++; }
+  assert.ok(fired > 0, 'with the 30 mm traversed away the M2 reaches the target and fires');
+}
+
+// 8. The arcs and the table hold against the built stock (tools/roof-station-arcs.mjs), and they are tight: within 4° past
 //    each end the barrel touches something.
 {
   const tank = createTank(ID, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
@@ -106,4 +119,4 @@ function run({ shooter, context }, seconds = 12) {
   }
   tank.dispose();
 }
-console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°) and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock');
+console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock');
