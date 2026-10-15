@@ -2163,9 +2163,29 @@ export function createGarageDressing(
         }
       }
     };
+    // Each bridge is a welded box girder (GA.05, the critic panel: "crane girders are flat yellow boxes"): two webs with
+    // stiffeners, a top flange and the wide bottom flange the underhung trolleys run on, ending in end carriages whose
+    // wheels ride the runway beams' bottom flanges, a load plate at mid-span.
     const addFactoryCraneBridge = (bridgeId: string, stationZ: number): void => {
-      const bridge = factoryPut(mat.safety, 0, 7.86, stationZ, 42.2, 0.46, 0.54);
+      const half = craneRunwayX - 0.68;
+      const bridge = factoryPut(mat.safety, 0, 8.11, stationZ, half * 2, 0.04, 0.62);
       bridge.name = `verdant_${bridgeId}_crane_bridge`;
+      factoryPut(mat.safety, 0, 7.61, stationZ, half * 2, 0.045, 0.82);
+      for (const side of [-1, 1]) {
+        factoryPut(mat.safety, 0, 7.86, stationZ + side * 0.25, half * 2, 0.46, 0.035);
+        for (let x = -half + 1; x < half - 0.5; x += 2) {
+          factoryPut(mat.safety, x, 7.86, stationZ + side * 0.285, 0.03, 0.42, 0.04, 0, 0, false);
+        }
+      }
+      factoryPut(mat.steelBright, 0, 7.9, stationZ + 0.29, 1.1, 0.26, 0.02, 0, 0, false);
+      for (const end of [-1, 1]) {
+        const x = end * (half + 0.2);
+        factoryPut(mat.steelDark, x, 7.84, stationZ, 0.4, 0.5, 2.6);
+        for (const zOffset of [-1.0, 1.0]) {
+          factoryCylinderPut(mat.steelBright, x + end * 0.3, 7.78, stationZ + zOffset, 0.15, 0.1, 0, Math.PI / 2);
+        }
+        factoryPut(mat.safety, x + end * 0.1, 7.62, stationZ, 0.6, 0.06, 2.7, 0, 0, false); // the buffer plate
+      }
     };
     const addFactoryHoistStation = (
       stationId: string,

@@ -5,7 +5,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
-import { buildVerdantHallParts } from './garageVerdantHall.ts';
+import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
+import { buildVerdantFloorAlbedo, VERDANT_FLOOR_POURS, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
 
 const HW = 23, WALL_H = 10;
 const started = performance.now();
@@ -72,5 +73,33 @@ assert.doesNotMatch(stage, /garage_verdant_roof_skylights/, 'the roof lights are
 assert.match(stage, /vertexColors: true, roughness: 0\.58, metalness: 0\.4/, 'the steel rides the vertex-colour program');
 assert.doesNotMatch(stage, /emissive: 0x0d1115|emissive: 0x151b22|emissive: 0x171c22|emissive: 0x11151a/,
   'no cold navy fake-bounce emissive is left on the hall (wave 402)');
+
+// GA.05 fixes (the garage critic panel, 2026-10-14): the floor is a finished slab on the graded floor program with the
+// concrete detail relief, daylight lands on it under the roof lights and through the shutter, the shutter is two-thirds
+// open, the glass is milky rather than cyan, the roof liner is grey, and no loose cable lies on the floor
+const floorStarted = performance.now();
+const floor = buildVerdantFloorAlbedo({ halfWidthM: HW, shutterX: verdantHallShutter(HW).x });
+const floorMs = performance.now() - floorStarted;
+assert.equal(floor.length, VERDANT_FLOOR_TEXELS * VERDANT_FLOOR_TEXELS * 4, 'the floor albedo covers the hall');
+assert.ok(floorMs < 1500, `the floor albedo builds within the boot budget (${floorMs.toFixed(0)} ms)`);
+{
+  // saw-cut joints every pour: the texel row on a joint is darker than the row between
+  const S = VERDANT_FLOOR_TEXELS, slab = S / VERDANT_FLOOR_POURS;
+  const rowMean = (y) => { let sum = 0; for (let x = 0; x < S; x++) sum += floor[(y * S + x) * 4]; return sum / S; };
+  const joint = Math.round(slab * 3), mid = Math.round(slab * 3.5);
+  assert.ok(rowMean(joint) < rowMean(mid) * 0.85, `the pours meet at sawn joints (${rowMean(joint).toFixed(0)} vs ${rowMean(mid).toFixed(0)})`);
+}
+assert.deepEqual([...verdantHallShutter(HW).x].map((x) => +x.toFixed(2)), [0.9, 6.5], 'the shutter spans x 0.9..6.5');
+assert.ok(verdantHallShutter(HW).openY >= 2.6, 'the shutter stands about two-thirds open');
+assert.match(stage, /mesh\.name = 'garage_verdant_floor_finish';/, 'the hall lays its finished floor');
+assert.match(stage, /garageHardstandGradedHook\(null, 0,\s*\{ uniform: garageHardstandDetailUniform\('concrete'\), kind: 'concrete' \}\)/,
+  'the finished floor takes the concrete detail relief on the graded floor program');
+assert.match(stage, /finish\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/, 'no new program for the floor');
+assert.match(stage, /mesh\.name = 'garage_verdant_daylight_on_floor';/, 'daylight lands on the floor');
+assert.match(stage, /map: soft, color: 0x[0-9a-f]{6}, transparent: true, depthWrite: false, blending: THREE\.AdditiveBlending,/,
+  'the daylight is one map-only additive decal (the decals\' program)');
+assert.doesNotMatch(stage, /\[\[2\.4, 0\.05, 11\.0\], \[1\.5, 0\.04, 8\.9\], \[0\.9, 0\.06, 6\.4\]\]/, 'no loose cable on the floor');
+assert.doesNotMatch(stage, /color: 0x9fb2b6/, 'no cyan glass');
+assert.doesNotMatch(stage, /function makeFloorTexture/, 'the smeared 11 px/m floor canvas is gone');
 
 console.log(`garageVerdantHall.selftest: ${total} triangles (${JSON.stringify(triangles)}), openings cut, glass inward, built in ${buildMs.toFixed(0)} ms`);

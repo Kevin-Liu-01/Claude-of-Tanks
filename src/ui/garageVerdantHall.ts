@@ -73,7 +73,16 @@ const TONE = Object.freeze({
 const UPSTAND_H = 1.2;
 const UPSTAND_FACE = 0.06;
 const UPSTAND_T = 0.25;
-const COLUMN_W = 0.28; // the bearing columns' web centre (in front of the girts)
+
+/** The roller shutter's opening along the south wall (u from the wall's origin at x = +HW, running toward -x). */
+const VERDANT_SHUTTER_U = [16.5, 22.1] as const;
+/** The curtain's bottom rail stands this high (the opening is 4 m). */
+const VERDANT_SHUTTER_OPEN_Y = 3.0;
+
+/** The shutter's span in hall x (the south wall's u runs toward -x from x = +HW) and its open height. */
+export function verdantHallShutter(halfWidth: number): { readonly x: readonly [number, number]; readonly openY: number } {
+  return { x: [halfWidth - VERDANT_SHUTTER_U[1], halfWidth - VERDANT_SHUTTER_U[0]], openY: VERDANT_SHUTTER_OPEN_Y };
+}
 
 /** Build the hall's shell, roof lights and the view out of its openings. */
 export function buildVerdantHallParts(halfWidth: number, wallHeight: number): VerdantHallParts {
@@ -101,7 +110,7 @@ export function buildVerdantHallParts(halfWidth: number, wallHeight: number): Ve
   // South (the canonical frame's right wall, behind the mezzanine): a roller shutter under the deck, between the
   // mezzanine's columns at x 0 and 9 (u 14 and 23), raised to 2.4 m; a personnel door beside it; a clerestory band
   // above the mezzanine rails (5.6 m) and the perimeter tray (6.6 m) in every bay.
-  const shutter: HallOpening = { u0: 16.5, u1: 22.1, y0: 0, y1: 4.0 };
+  const shutter: HallOpening = { u0: VERDANT_SHUTTER_U[0], u1: VERDANT_SHUTTER_U[1], y0: 0, y1: 4.0 };
   const personnel: HallOpening = { u0: 11.5, u1: 12.5, y0: 0, y1: 2.15 };
   wall('south').openings.push(shutter, personnel);
   const bayEdges = [0.55, ...lines.flatMap((u) => [u - 0.42, u + 0.42]), L - 0.55];
@@ -198,7 +207,9 @@ export function buildVerdantHallParts(halfWidth: number, wallHeight: number): Ve
     const frame = hallWallFrame(wall('south').origin, wall('south').yaw);
     steel.setFrame(frame);
     concrete.setFrame(frame);
-    addRollerShutter(steel, shutter, 2.45);
+    // two-thirds open (GA.05, the critic panel: "the shutter doesn't read ... raise it to about two-thirds open"): the
+    // apron, the hedgerow and the treeline show under the curtain
+    addRollerShutter(steel, shutter, VERDANT_SHUTTER_OPEN_Y);
     addPersonnelDoor(steel, personnel, { frameColor: TONE.frame, leafColor: TONE.leaf, kickColor: TONE.kick });
     // the door's own canopy outside is not seen; a wall light over it inside is
     steel.setColor(TONE.frame);

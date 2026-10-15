@@ -25,11 +25,13 @@ import { getGarageWorkshopLayoutPose, VERDANT_K2_WORK_LIGHT } from '../game/gara
 import {
   GARAGE_HARDSTAND_PROGRAM_KEY,
   garageHardstandDetailTexture,
+  garageHardstandDetailUniform,
   garageHardstandGradedHook,
   garageHardstandGrainTexture,
 } from './garageHardstandProgram.ts';
 import type { HallMesh } from './garageHallKit.ts';
-import { buildVerdantHallParts } from './garageVerdantHall.ts';
+import { buildVerdantFloorAlbedo, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
+import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -122,67 +124,6 @@ export function dither(
   c2d.putImageData(img, 0, 0);
 }
 
-// --- concrete floor texture: grime, expansion joints, oil stains ---
-function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
-  // 512² keeps the same authored grime/marking language while cutting the
-  // synchronous boot canvas work and upload footprint to one quarter.
-  const S = 512;
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const g = get2dContext(c, { willReadFrequently: true });
-  g.fillStyle = '#54524d'; // r5: a step darker, keeps the key-spot pool below clip; 2026-10-11: warm, not blue-grey
-  g.fillRect(0, 0, S, S);
-  // large tonal blotches
-  for (let i = 0; i < 90; i++) {
-    const x = rng() * S, y = rng() * S, r = 30 + rng() * 130;
-    const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    const dk = rng() < 0.5;
-    grad.addColorStop(0, dk ? 'rgba(38,40,42,0.16)' : 'rgba(120,124,128,0.10)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grad;
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-  }
-  // oil stains near center bay
-  for (let i = 0; i < 7; i++) {
-    const x = S / 2 + (rng() - 0.5) * 380, y = S / 2 + (rng() - 0.5) * 380;
-    const r = 12 + rng() * 42;
-    const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    grad.addColorStop(0, 'rgba(18,18,20,0.34)');
-    grad.addColorStop(0.7, 'rgba(18,18,20,0.12)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grad;
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-  }
-  // expansion joints (4x4 slabs)
-  g.strokeStyle = 'rgba(24,26,28,0.75)';
-  g.lineWidth = 3;
-  g.beginPath();
-  for (let i = 1; i < 4; i++) {
-    g.moveTo((S / 4) * i, 0); g.lineTo((S / 4) * i, S);
-    g.moveTo(0, (S / 4) * i); g.lineTo(S, (S / 4) * i);
-  }
-  g.stroke();
-  g.strokeStyle = 'rgba(150,154,158,0.25)'; // joint highlight edge
-  g.lineWidth = 1;
-  g.beginPath();
-  for (let i = 1; i < 4; i++) {
-    g.moveTo((S / 4) * i + 2, 0); g.lineTo((S / 4) * i + 2, S);
-    g.moveTo(0, (S / 4) * i + 2); g.lineTo(S, (S / 4) * i + 2);
-  }
-  g.stroke();
-  // No painted bay box or guide line (2026-10-10, wave 357: "white road-lane dashes like a car park") and no painted
-  // track lanes (main 4bbb0e5c1: the track's ground contact follows the drawn run): the hall's history is its joints
-  // and stains.
-  // speckle
-  for (let i = 0; i < 2600; i++) {
-    const v = rng();
-    g.fillStyle = v < 0.5 ? 'rgba(30,32,34,0.2)' : 'rgba(150,155,160,0.14)';
-    g.fillRect(rng() * S, rng() * S, 1 + rng() * 2, 1 + rng() * 2);
-  }
-  dither(g, S, S, rng, 0.06);
-  return c;
-}
-
 // --- roof deck: corrugated sheeting seen from below, with lap seams and grime -------------------------------------
 function makeRoofDeckTexture(rng: RandomSource): HTMLCanvasElement {
   const S = 256;
@@ -190,7 +131,7 @@ function makeRoofDeckTexture(rng: RandomSource): HTMLCanvasElement {
   c.width = S; c.height = S;
   const g = get2dContext(c, { willReadFrequently: true });
   // the underside of galvanised liner sheets, warm grey (2026-10-14, GA.05: the ribs are geometry now, garageVerdantHall.ts)
-  g.fillStyle = '#5d5c57';
+  g.fillStyle = '#9fa2a1'; // a light grey liner (GA.05: the brown underside read as rust)
   g.fillRect(0, 0, S, S);
   // sheet laps across the ribs and soot from the heaters
   for (const y of [S * 0.5, S]) {
@@ -389,9 +330,12 @@ export function createGarageStage(
   // light costs every shader in the scene), the big static surfaces carry a
   // whisper of self-illumination — a fake bounce/ambient floor that keeps
   // structure barely visible without flattening the keyed lighting.
-  const floorTex = track(canvasTexture(makeFloorTexture(rng), { aniso }));
+  // The hall floor's look is the finished slab laid over this one (GA.05, addHallFloorFinish below); this plane keeps the
+  // depth and the shadows under it. The old 512 px floor canvas drew 275,525 values from the stage's stream (90 blots,
+  // 7 stains, 2,600 specks, a 512 x 512 dither); they are drawn and dropped so every later prop keeps its place.
+  for (let skip = 0; skip < 275_525; skip += 1) rng();
   const floorMat = shadowMat(new THREE.MeshStandardMaterial({
-    map: floorTex, roughness: 0.62, metalness: 0.08, // (2026-10-08: the full sky light it always took; materialEnvIntensity.ts)
+    color: 0x57554f, roughness: 0.62, metalness: 0.08, // (2026-10-08: the full sky light it always took; materialEnvIntensity.ts)
     emissive: 0x14120e, emissiveIntensity: 0.5,
   }));
   track(floorMat);
@@ -533,6 +477,111 @@ export function createGarageStage(
     const warmGrain = (): void => { garageHardstandGrainTexture(floorAnisotropy); later(warmConcrete, 8000); };
     later(warmGrain, 6000);
   }
+  // The hall's finished floor (GA.05; the critic panel: "the floor is a smear ... a power-floated slab: saw-cut joints on
+  // a ~6 m grid, a sheen that catches lamp and window highlights, track scuffs to the shutter, oil spots at the bays ...
+  // a detail map so it stays sharp up close"): garageVerdantFloor.ts's 22 px/m slab albedo on the graded floor program
+  // the outdoor seeds compile anyway (no new program), with the concrete detail relief (aggregate, crazing, a broomed
+  // grain) and a lower roughness for the sheen; it lies 3 mm over the depth-writing floor, drawn first of the decals.
+  const shutterSpan = verdantHallShutter(HW);
+  function addHallFloorFinish(): void {
+    const albedo = track(new THREE.DataTexture(
+      buildVerdantFloorAlbedo({ halfWidthM: HW, shutterX: shutterSpan.x }),
+      VERDANT_FLOOR_TEXELS, VERDANT_FLOOR_TEXELS, THREE.RGBAFormat,
+    ));
+    albedo.colorSpace = THREE.SRGBColorSpace;
+    albedo.magFilter = THREE.LinearFilter;
+    albedo.minFilter = THREE.LinearMipmapLinearFilter;
+    albedo.generateMipmaps = true;
+    albedo.anisotropy = aniso >= 8 ? 16 : aniso;
+    albedo.needsUpdate = true;
+    const finish = new THREE.MeshStandardMaterial({
+      map: albedo, normalMap: outdoorSeedNormal, normalScale: new THREE.Vector2(0.45, 0.45),
+      roughness: 0.46, metalness: 0.04, emissive: 0x14120e, emissiveIntensity: 0.5,
+      transparent: true, depthWrite: false,
+    });
+    engineCtx?.setupShadowMaterial?.(finish, garageHardstandGradedHook(null, 0,
+      { uniform: garageHardstandDetailUniform('concrete'), kind: 'concrete' }) as THREE.Material['onBeforeCompile']);
+    finish.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
+    finish.polygonOffset = true;
+    finish.polygonOffsetFactor = -1;
+    finish.polygonOffsetUnits = -1;
+    track(finish);
+    const geometry = track(new THREE.PlaneGeometry(HW * 2, HW * 2));
+    geometry.rotateX(-Math.PI / 2);
+    geometry.setAttribute('hardstandBlend', new THREE.Float32BufferAttribute(new Float32Array(geometry.getAttribute('position').count).fill(1), 1));
+    const mesh = new THREE.Mesh(geometry, finish);
+    mesh.name = 'garage_verdant_floor_finish';
+    mesh.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.003;
+    mesh.renderOrder = -1;
+    mesh.receiveShadow = true;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    group.add(mesh);
+  }
+  addHallFloorFinish();
+
+  // Daylight in the hall (GA.05; the critic panel: "the roof lights and clerestories show sky, but no daylight reaches the
+  // floor ... a cool rect light or baked patch under each roof-light strip and the shutter opening"): soft patches of
+  // cool skylight under the three roof lights, broken by the trusses' shadows, and a warmer wedge of daylight through the
+  // shutter, added onto the floor in one draw on the decals' program (no new light, no new program).
+  function addHallDaylight(): void {
+    // a two-tint atlas (cool skylight above, warm sun below), each a soft-edged rectangle, so one map-only material (the
+    // floor decals' program) draws every patch
+    const S = 64;
+    const data = new Uint8Array(S * S * 2 * 4);
+    const tints: Array<readonly [number, number, number]> = [[0.62, 0.72, 0.86], [1.0, 0.93, 0.8]];
+    for (let half = 0; half < 2; half++) {
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          const fx = Math.min(1, Math.min(x + 0.5, S - x - 0.5) / (S * 0.32));
+          const fy = Math.min(1, Math.min(y + 0.5, S - y - 0.5) / (S * 0.22));
+          const v = (fx * fx * (3 - 2 * fx)) * (fy * fy * (3 - 2 * fy));
+          const at = ((half * S + y) * S + x) * 4;
+          for (let c = 0; c < 3; c++) data[at + c] = Math.round(255 * v * tints[half][c]);
+          data[at + 3] = 255;
+        }
+      }
+    }
+    const soft = track(new THREE.DataTexture(data, S, S * 2, THREE.RGBAFormat));
+    soft.magFilter = THREE.LinearFilter;
+    soft.minFilter = THREE.LinearFilter;
+    soft.needsUpdate = true;
+    const positions: number[] = [], uvs: number[] = [];
+    const y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.006;
+    const quad = (corners: ReadonlyArray<readonly [number, number]>, half: 0 | 1): void => {
+      const v0 = half * 0.5, v1 = v0 + 0.5;
+      const uv = [[0, v0], [1, v0], [1, v1], [0, v1]];
+      for (const k of [0, 1, 2, 0, 2, 3]) {
+        positions.push(corners[k][0], y, corners[k][1]);
+        uvs.push(uv[k][0], uv[k][1]);
+      }
+    };
+    // the roof lights run along z at x = -11.5, 0, 11.5 (2.4 m); their light lands a little wider, cut by the trusses
+    const trussZ = [-18, -9, 0, 9, 18];
+    for (const x of [-11.5, 0, 11.5]) {
+      const edges = [-HW + 1.2, ...trussZ, HW - 1.2];
+      for (let i = 0; i < edges.length - 1; i++) {
+        const z0 = edges[i] + 0.35, z1 = edges[i + 1] - 0.35;
+        quad([[x - 1.9, z1], [x + 1.9, z1], [x + 1.9, z0], [x - 1.9, z0]], 0);
+      }
+    }
+    // the shutter's wedge: daylight through the opening, widening and fading into the hall (the drain at its foot)
+    const [sx0, sx1] = shutterSpan.x;
+    quad([[sx0 - 0.9, HW - 6.2], [sx1 + 0.9, HW - 6.2], [sx1 + 0.15, HW - 0.15], [sx0 - 0.15, HW - 0.15]], 1);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    track(geometry);
+    const material = track(new THREE.MeshBasicMaterial({
+      map: soft, color: 0x55585c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = 'garage_verdant_daylight_on_floor';
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    group.add(mesh);
+  }
+  addHallDaylight();
   addOutdoorSeed('facility-instance-color', seedStandard({
     color: 0xffffff,
     roughness: 0.88,
@@ -713,10 +762,12 @@ export function createGarageStage(
   }));
   track(wallMat);
   const roofDeck = makeRoofDeckTexture(rng);
+  // the roof's underside is a light grey liner (GA.05, the critic panel: "the roof underside is tinted brown and reads as
+  // rust ... a white or grey liner panel; take the warmth from the lamp colour"): a neutral bounce, not a brown glow
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(roofDeck, { aniso, repeat: [4, 4] })),
-    roughness: 0.82, metalness: 0.3,
-    emissive: 0x17140f, emissiveIntensity: 0.65,
+    roughness: 0.82, metalness: 0.2,
+    emissive: 0x151617, emissiveIntensity: 0.65,
   }));
   track(ceilMat);
   const hall = buildVerdantHallParts(HW, WALL_H);
@@ -726,8 +777,11 @@ export function createGarageStage(
   const hallConcreteMat = track(shadowMat(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.92, metalness: 0.02, emissive: 0x100e0b, emissiveIntensity: 0.5,
   })));
+  // milky wired glass and twin-wall roof lights (GA.05, the critic panel: "cyan glazing is the most saturated thing in
+  // the frame ... milky twin-wall polycarbonate roof lights"): a pale grey, half opaque, so the sky behind reads soft
   const hallGlassMat = track(shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x9fb2b6, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.3, depthWrite: false,
+    color: 0xd3d8d6, roughness: 0.35, metalness: 0.02, transparent: true, opacity: 0.52, depthWrite: false,
+    emissive: 0x2c3034, emissiveIntensity: 0.6,
   })));
   const hallExteriorMat = track(shadowMat(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.96, metalness: 0,
@@ -1340,9 +1394,10 @@ export function createGarageStage(
     const cableMat = track(shadowMat(new THREE.MeshStandardMaterial({
       color: 0x141618, roughness: 0.88, metalness: 0.05,
     })));
+    // one run, from the junction box to the dais's socket (GA.05, the critic panel: a second run ended loose on the
+    // floor and read as "a stray black rod")
     const cableRuns = [
       [[11.2, 0.05, 6.6], [8.6, 0.04, 5.7], [6.9, 0.04, 4.4], [5.2, 0.06, 2.9]],
-      [[2.4, 0.05, 11.0], [1.5, 0.04, 8.9], [0.9, 0.06, 6.4]],
     ];
     for (const pts of cableRuns) {
       const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
@@ -1350,12 +1405,17 @@ export function createGarageStage(
       tube.castShadow = true;
       group.add(tube);
     }
-    // junction box the long run plugs into
+    // junction box the long run plugs into, and the plug and socket box on the dais skirt where it ends
     const jbox = new THREE.Mesh(track(new THREE.BoxGeometry(0.5, 0.42, 0.34)), bracketMat);
     jbox.position.set(11.45, 0.21, 6.7);
     jbox.rotation.y = -0.5;
     jbox.castShadow = true;
     group.add(jbox);
+    const socket = new THREE.Mesh(track(new THREE.BoxGeometry(0.26, 0.2, 0.18)), bracketMat);
+    socket.position.set(5.05, 0.1, 2.8);
+    socket.rotation.y = Math.atan2(5.05, 2.8);
+    socket.castShadow = true;
+    group.add(socket);
 
     // 3. foreground oil stains
     const stainC = document.createElement('canvas');
