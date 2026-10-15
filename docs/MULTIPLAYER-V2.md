@@ -2133,19 +2133,23 @@ socket: the decline and its withdrawal, none in a match, none from the mobile ti
 2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
 
 **What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session. A seat hosting a running
-match, with another seat willing to host (connected, a commander, not declined), sends `host_decline { declined: true }`
+match, with another commander connected (any seat the room's ladder can elect), sends `host_decline { declined: true }`
 on the room socket inside the event (synchronous, nothing awaited), once, and steps down at once: its actor stops and the
-seat is a peer. The room elects the willing seat at once (its declined path); a preference decline that finds no
-candidate after all leaves this seat hosting, and its lease runs as before (roomActor.selftest: "every commander has
-stepped down … it keeps hosting"). With no willing successor (a solo room with bots, every other seat declined, unable or
-gone) nothing is sent: the lease and the resume hold run as on main, so the same player can come back. A page entering
+seat is a peer. The room elects the next seat at once (its declined path: willing first, a declined commander as the last
+resort); a preference decline that finds no candidate after all leaves this seat hosting, and its lease runs as before
+(roomActor.selftest: "every commander has stepped down … it keeps hosting"). With no other connected commander (a solo
+room with bots, the others gone or spectating) nothing is sent: the lease and the resume hold run as on main, so the same
+player can come back. *(2026-10-14)* A commander that declined hosting is a successor too: the first cut waited for a
+willing one, but the lease elects the same declined seat 8 s later, and under load every seat declines in the lobby for
+headroom (§13.18), so the hand-off never ran where it mattered most (the §7 side-by-side). A page entering
 the back-forward cache (`pagehide` with `persisted`) is handled the same way; restored, it is a peer of whoever the room
 elected and never hosts on its own. Leaving the match afterwards does not decline twice; the hand-off is per round.
 
 Receipt: `matchSessionHandOff.selftest` (the real session hosting through the in-process host against a scripted room
 socket; cases "hands on and steps down" (the decline leaves before anything is awaited, once; the back-forward-cache
-restore follows the new host), "sole host keeps the lease" (the other seat declined, gone or spectating, or a solo room:
-nothing sent, still hosting), per round, none from a peer or the lobby, no actor outlives its core).
+restore follows the new host), "a declined commander is a successor" (hands on and steps down), "sole host keeps the
+lease" (the other seat gone or spectating, or a solo room: nothing sent, still hosting), per round, none from a peer or the
+lobby, no actor outlives its core).
 
 ### 13.20 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
 

@@ -2,10 +2,12 @@
 // on at once. The room used to wait out the socket lease for a vanished host (the e2e of 2026-10-13: 10 s to
 // `host_absent`, 13.75 s from the close to the new host's first report). On pagehide the hosting seat now sends
 // `host_decline` (unable) inside the event, synchronously, and the room elects the next seat at once (its 'declined'
-// path, roomActor.selftest) — only when another seat is willing to host, and the seat steps down at once (a page restored
-// from the back-forward cache never thinks it still hosts). With no willing successor (a solo room with bots, every other
-// seat declined, unable or gone) nothing is sent and the lease runs as before. This receipt drives the real MatchSession
-// hosting through the in-process host against a scripted room socket.
+// path, roomActor.selftest) — only when another commander is connected, and the seat steps down at once (a page restored
+// from the back-forward cache never thinks it still hosts). A commander that declined hosting counts (2026-10-14): the
+// room's ladder takes it as the last resort, at once on the decline, after the lease without it — and under load every
+// seat declines in the lobby for headroom (§13.18), so the hand-off used to never run. With no other connected commander
+// (a solo room with bots, the others gone or spectating) nothing is sent and the lease runs as before. This receipt drives
+// the real MatchSession hosting through the in-process host against a scripted room socket.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomClient } from '../room/roomClient.ts';
@@ -105,9 +107,23 @@ const declinesOf = (transport) => transport.outbound.filter((envelope) => envelo
   session.dispose(); client.dispose();
 }
 
-// ---- case 'sole host keeps the lease': no willing successor — nothing is sent, the seat still hosts (main's lease and resume)
+// ---- case 'a declined commander is a successor' (2026-10-14): the other seat declined hosting (a slow tab's headroom
+//      decline in the lobby, a phone): the room would elect it anyway — at once on this decline, 8 s later on the lease —
+//      so the seat hands on and steps down
+{
+  const { client, session, transport } = await seat();
+  start(transport, 'me', (list) => list.map((player) => (player.id === 'other' ? { ...player, hostDeclined: true } : player)));
+  await until(() => session.matchHost?.state === 'live', 'the host live (the other seat declined)');
+  const before = declinesOf(transport).length;
+  assert.equal(session.handOffHosting('pagehide'), true, 'a declined commander is the room\'s last resort: hand on rather than wait out the lease');
+  assert.equal(declinesOf(transport).length, before + 1, 'the decline leaves synchronously');
+  assert.equal(session.role, 'peer', 'stepped down at once');
+  await session.leaveMatch('done');
+  session.dispose(); client.dispose();
+}
+
+// ---- case 'sole host keeps the lease': no other connected commander — nothing is sent, the seat still hosts (the lease and resume)
 for (const [label, players] of [
-  ['the other seat declined (or cannot host)', (list) => list.map((player) => (player.id === 'other' ? { ...player, hostDeclined: true } : player))],
   ['the other seat is gone', (list) => list.map((player) => (player.id === 'other' ? { ...player, connected: false } : player))],
   ['the other seat spectates', (list) => list.map((player) => (player.id === 'other' ? { ...player, team: 'spectator' } : player))],
   ['a solo room with bots', (list) => list.filter((player) => player.id === 'me')],
@@ -149,4 +165,4 @@ for (const [label, players] of [
 for (const core of cores) core.dispose();
 await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
-console.log('matchSessionHandOff.selftest: hands on and steps down (a willing successor: the decline leaves synchronously, once; a back-forward-cache restore is a peer of the new host); sole host keeps the lease (declined, gone, spectating or no other seat: nothing sent, still hosting); per round; a peer and the lobby send nothing');
+console.log('matchSessionHandOff.selftest: hands on and steps down (a willing successor: the decline leaves synchronously, once; a back-forward-cache restore is a peer of the new host); a declined commander is a successor (the room\'s last resort); sole host keeps the lease (gone, spectating or no other seat: nothing sent, still hosting); per round; a peer and the lobby send nothing');
