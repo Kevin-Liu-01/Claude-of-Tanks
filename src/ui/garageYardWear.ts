@@ -614,8 +614,10 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
     }
   };
   if (kind === 'slab') {
-    octave(Math.round(W / 341), 0.5);
-    octave(Math.round(W / 114), 0.6);
+    // the pours' broad undulation only, low (v3 stills, 2026-10-14: at 0.5 and 0.6 it lit the slabs into a frost-like
+    // ripple over the detail layer's aggregate and broom finish)
+    octave(Math.round(W / 341), 0.18);
+    octave(Math.round(W / 114), 0.12);
     const slabW = W / SLABS_X, slabH = H / SLABS_Z;
     for (let i = 0; i <= SLABS_X; i++) {
       const x0 = Math.round(i * slabW);
