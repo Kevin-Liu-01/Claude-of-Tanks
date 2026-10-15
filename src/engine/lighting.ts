@@ -18,7 +18,10 @@ import {
   resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 import { debugModeRequested } from '../dev/debugIntent.ts';
-import { SHADOW_OPACITY, SHADOW_RECEIVER_ONLY_BIAS_M, shadowDepthBiasForTexel, shadowNormalBiasForTexel, snapShadowCoordinate } from './shadowStability.ts';
+import {
+  SHADOW_DOUBLE_SIDED_OFFSET, SHADOW_OPACITY, SHADOW_RECEIVER_ONLY_BIAS_M, shadowDepthBiasBackFace, shadowDepthBiasForTexel, shadowNormalBiasForTexel,
+  snapShadowCoordinate,
+} from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
 import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
@@ -69,6 +72,8 @@ interface ShadowDebugOptions {
   /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
    *  bias); read where the biases are applied, so a probe sets it and calls updateFrustums(). */
   legacyBias?: boolean;
+  /** 2026-10-14 (SKY shadows r2a, P1b): the front-face depth-bias law and no double-sided guard, for A/B probes. */
+  frontFaceBias?: boolean;
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
@@ -541,6 +546,22 @@ function requestDepthKinds(): void {
   import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; },
     () => { /* three's own derivation for the session */ });
 }
+/**
+ * 2026-10-14 (SKY shadows r2a, P1b): a DoubleSide or alpha-tested caster's front faces are in the map, so its depth draw
+ * takes the caster-side polygon offset the closed casters' back-face bias no longer gives it (shadowStability.ts
+ * SHADOW_DOUBLE_SIDED_OFFSET); every other draw of a shared depth material takes none. three copies the caster's side and
+ * alpha test onto the depth material before the shadow hook runs.
+ */
+export function guardDoubleSidedDepth(depthMaterial: THREE.Material): void {
+  const legacy = typeof window !== 'undefined' && !!(window.__SHADOW_DEBUG?.legacyBias || window.__SHADOW_DEBUG?.frontFaceBias);
+  const guard = !legacy && (depthMaterial.side === THREE.DoubleSide || depthMaterial.alphaTest > 0);
+  if (depthMaterial.polygonOffset !== guard) depthMaterial.polygonOffset = guard;
+  if (guard) {
+    depthMaterial.polygonOffsetFactor = SHADOW_DOUBLE_SIDED_OFFSET.factor;
+    depthMaterial.polygonOffsetUnits = SHADOW_DOUBLE_SIDED_OFFSET.units;
+  }
+}
+
 function patchShadowDepthPacking(): void {
   const hook: THREE.Mesh['onBeforeShadow'] = function (
     renderer,
@@ -555,6 +576,7 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    guardDoubleSidedDepth(depthMaterial);
     // the perf stream (2026-10-12): one depth material per caster kind from the next draw on (shadowDepthKinds.ts), so
     // three stops re-deriving the shared depth program at every instanced / batched / plain switch
     if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
@@ -572,6 +594,7 @@ function patchShadowDepthPacking(): void {
   const batchedBefore = THREE.BatchedMesh.prototype.onBeforeShadow;
   THREE.BatchedMesh.prototype.onBeforeShadow = function (renderer, object, camera, shadowCamera, geometry, depthMaterial, group) {
     batchedBefore.call(this, renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
+    guardDoubleSidedDepth(depthMaterial);
     if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
     else if (!depthKindsRequested) requestDepthKinds();
   };
@@ -1000,8 +1023,12 @@ export function createLighting(
     const legacy = typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.legacyBias;
     const depthRange = Math.max(1e-3, shadow.camera.far - shadow.camera.near);
     // (never more than the old normalised bias: a cascade at the 0.40 m ceiling keeps it exactly)
-    shadow.bias = legacy ? SHADOW_BIAS
-      : Math.max(SHADOW_BIAS, -shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias) / depthRange);
+    // 2026-10-14 (SKY shadows r2a, P1b): the closed casters' back faces are in the map — their law is 1.5 texels along the
+    // sun (shadowDepthBiasBackFace); __SHADOW_DEBUG.frontFaceBias restores the front-face law for A/B probes
+    const frontFace = typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.frontFaceBias;
+    const biasM = frontFace ? shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias)
+      : shadowDepthBiasBackFace(worldUnitsPerTexel);
+    shadow.bias = legacy ? SHADOW_BIAS : Math.max(SHADOW_BIAS, -biasM / depthRange);
     receiverOnlyShadowUniform.value = legacy ? 0 : 1;
     // 2026-10-14 (SKY shadows r2a; contact r6's contract): cascade 0's residual seam, its bias along the sun and a texel
     if (i === 0) contactSeam.value = contactSeamFor(-shadow.bias * depthRange, worldUnitsPerTexel);
