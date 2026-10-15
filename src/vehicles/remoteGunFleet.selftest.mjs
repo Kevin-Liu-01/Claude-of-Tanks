@@ -63,6 +63,8 @@ for(const [id,caliber] of Object.entries(requested)){
 assert.ok(auxiliaryWeaponProfile(7.62).shell.pen100Mm<auxiliaryWeaponProfile(12.7).shell.pen100Mm);
 assert.ok(auxiliaryWeaponProfile(12.7).shell.pen100Mm<auxiliaryWeaponProfile(30).shell.pen100Mm);
 assert.notEqual(auxiliaryWeaponProfile(7.62).burstRounds,auxiliaryWeaponProfile(30).burstRounds);
-// User's decorative C2 roof cannon must remain unarmed.
-assert.equal(AUXILIARY_INVENTORY.ariete_c2_x?.guns.length??0,0);
+// VH.14 (the coordinator's ruling 2026-10-14, "every drawn gun works or goes"): the Ariete C2 really carries a roof
+// station, so the C2 X's commander K2 copy, once a decorative fitting, is a working 12.7 mm remote station beside its
+// loader's GPMG.
+assert.deepEqual(AUXILIARY_INVENTORY.ariete_c2_x?.guns.map((g)=>g.caliberMm),[12.7,7.62]);
 console.log(`remoteGunFleet: all ${Object.keys(requested).length} requested mounts, muzzle metal, articulation, range and independent firing PASS`);

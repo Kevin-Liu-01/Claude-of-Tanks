@@ -39,8 +39,10 @@ const PINNED = {
   // turretCloth, so turret and turretDetail formed one contiguous layer run and merged; round 4's matte discharger tubes
   // (above) leave turretDetail cosmetic, so that fold is gone again. The round-3 machine gun's fitting-paint can and
   // rounds fold one run on the commander MAG.
-  m1a2: { saved: 2, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1, fitting_browningDerived_mag: 1 } },
-  t90m: { saved: 1, owners: { t90mProryvRemoteKord: 1 } },
+  // VH.14 (2026-10-15): the M1A2's loader M240 and the T-90M's Kord are working stations, so each folds its can and
+  // rounds on the gun's own pitch rig; the M1A2's second (decorative) MAG fold is gone with that gun
+  m1a2: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  t90m: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
   // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both
   strv122_x: { saved: 0, owners: {} },
 };
