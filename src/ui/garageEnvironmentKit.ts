@@ -733,8 +733,12 @@ function createBackdropGeometry(
         ground(colour, t, p.y, slope, segment / segments, layerIndex);
         const sunlit = Math.max(0, normal.dot(sun));
         const lit = rugged ? 0.46 + 0.86 * sunlit + 0.1 * Math.max(0, normal.y) : 0.56 + 0.64 * sunlit + 0.1 * Math.max(0, normal.y);
-        colour.multiplyScalar(lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16));
-        const haze = Math.min(0.8, 0.07 + layerIndex * 0.12 + (1 - t) * 0.16);
+        let shade = lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16);
+        // Monsoon's forest crowns stay dark against the sky (ticket 6, 2026-10-15: lit crowns "wash out to white puffs
+        // that read as cloud")
+        if (tropical && style === 'rolling' && layerIndex < 2 && t > 0.7) shade = Math.min(shade, 0.95) * 0.8;
+        colour.multiplyScalar(shade);
+        const haze = Math.min(0.8, 0.07 + layerIndex * 0.12 + (1 - t) * 0.16) * (tropical && layerIndex < 2 && t > 0.7 ? 0.5 : 1);
         colour.lerp(horizon, haze);
         colour.toArray(colors, (first + segment * ROWS + k) * 3);
       }
