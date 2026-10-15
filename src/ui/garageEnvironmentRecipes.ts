@@ -294,9 +294,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   rain_canopy: {
     terrainSurface: 'grass', terrainTint: 0x779978, hardstandTint: 0x708079, buildingTint: 0xa4af99,
     structures: [
-      at(makeBathhouse, 'monsoon bathhouse', -36, -6, 0.8),
-      at(makeDepot, 'ridge field depot', -30, -30, 0.8),
-      at(makeFishery, 'ridge longhouse workshop', -7, -36, 0.62),
+      at(makeBathhouse, 'monsoon bathhouse', -38.2, -5.66, 0.8), // clear of the wider covered bay
+      at(makeDepot, 'ridge field depot', -33, -33, 0.8), // behind the covered bay (garage round 7)
+      at(makeFishery, 'ridge longhouse workshop', -5, -39, 0.62), // clear of the covered bay
       at(makeShed, 'rain service canopy', 18, -34, 0.76),
       at(makeLogCabin, 'ridge crew lodge', 36, -14, 0.64),
       at(makeGranary, 'raised ration store', 40, -11, 0.64),
@@ -313,7 +313,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     horizonStyle: 'rolling', horizonHeightM: 10.4,
     approach: {
       style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,
-      waypoints: [[0, 10], [4, 25], [-2, 46]], lanes: [-3.3, 3.3],
+      waypoints: [[0, 10], [0, 25], [0, 46]], lanes: [-3.3, 3.3], // straight through the covered bay
     },
     terrainProfile: 'actual Monsoon Ridge spawn excerpt with drainage relief',
     serviceFrame: 'raised depot terrace and connected rain-service shelter',

@@ -614,6 +614,14 @@ function createBackdropGeometry(
       }
       case 'rolling': {
         const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
+        if (tropical && layerIndex < 2) {
+          // Monsoon's near ridges carry rain forest (the re-judge, 2026-10-15: "smooth low-poly ... no jungle belt ... no
+          // tree line on the ridges"): the crest breaks into rounded crowns about 8 m across, emergents standing over them
+          const crowns = layerIndex === 0 ? 17 : 21;
+          const crown = Math.pow(Math.abs(Math.sin(angle * crowns + phase + noise(angle / (Math.PI * 2) * 6, 0.7) * 2.4)), 0.55);
+          const emergent = Math.pow(Math.max(0, Math.sin(angle * 7 - phase * 1.3)), 12) * 0.16;
+          return broad * 1.30 + woodedShoulder + fine + crown * 0.22 + emergent;
+        }
         return broad * 1.30 + woodedShoulder + fine;
       }
       case 'coastal': {
@@ -727,8 +735,12 @@ function createBackdropGeometry(
         ground(colour, t, p.y, slope, segment / segments, layerIndex);
         const sunlit = Math.max(0, normal.dot(sun));
         const lit = rugged ? 0.46 + 0.86 * sunlit + 0.1 * Math.max(0, normal.y) : 0.56 + 0.64 * sunlit + 0.1 * Math.max(0, normal.y);
-        colour.multiplyScalar(lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16));
-        const haze = Math.min(0.8, 0.07 + layerIndex * 0.12 + (1 - t) * 0.16);
+        let shade = lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16);
+        // Monsoon's forest crowns stay dark against the sky (ticket 6, 2026-10-15: lit crowns "wash out to white puffs
+        // that read as cloud")
+        if (tropical && style === 'rolling' && layerIndex < 2 && t > 0.7) shade = Math.min(shade, 0.95) * 0.8;
+        colour.multiplyScalar(shade);
+        const haze = Math.min(0.8, 0.07 + layerIndex * 0.12 + (1 - t) * 0.16) * (tropical && layerIndex < 2 && t > 0.7 ? 0.5 : 1);
         colour.lerp(horizon, haze);
         colour.toArray(colors, (first + segment * ROWS + k) * 3);
       }

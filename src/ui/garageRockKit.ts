@@ -429,3 +429,90 @@ export function buildTalusApron(frame: RockFrame, options: TalusOptions): THREE.
   geometry.computeBoundingSphere();
   return geometry;
 }
+
+/**
+ * Monsoon's wet-tropics planting (the re-judge, 2026-10-15: "no jungle belt, tall grass, banana or bamboo ... a temperate
+ * park"): banana plants (a pseudostem and seven paddle leaves rising and arching over) and bamboo clumps (culms leaning
+ * out, drooping fronds at their heads), each a world-space point with its kind and size. Leaves are two-sided.
+ * Vertex-coloured, for the pack's baked bucket.
+ */
+export function buildTropicalPlants(
+  plants: ReadonlyArray<{ readonly x: number; readonly z: number; readonly y: number; readonly kind: 'banana' | 'bamboo'; readonly size: number }>,
+  seed: number,
+): THREE.BufferGeometry {
+  const soup: Soup = { positions: [], normals: [], colors: [] };
+  let state = seed >>> 0;
+  const rand = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const twoSided = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, ca: THREE.Color, cb: THREE.Color, cc: THREE.Color): void => {
+    triangle(soup, a, b, c, ca, cb, cc);
+    triangle(soup, a, c, b, ca, cc, cb);
+  };
+  const prism = (base: THREE.Vector3, top: THREE.Vector3, r0: number, r1: number, color: THREE.Color, sides = 6): void => {
+    for (let k = 0; k < sides; k += 1) {
+      const a0 = (k / sides) * Math.PI * 2, a1 = ((k + 1) / sides) * Math.PI * 2;
+      const p = (c: THREE.Vector3, r: number, a: number): THREE.Vector3 => new THREE.Vector3(c.x + Math.cos(a) * r, c.y, c.z + Math.sin(a) * r);
+      triangle(soup, p(base, r0, a0), p(top, r1, a1), p(base, r0, a1), color);
+      triangle(soup, p(base, r0, a0), p(top, r1, a0), p(top, r1, a1), color);
+    }
+  };
+  const leafGreen = new THREE.Color(0x3b6a2a), leafDeep = new THREE.Color(0x284d1f), rib = new THREE.Color(0x8a9a4a);
+  const stemTone = new THREE.Color(0x5d6b34), culmTone = new THREE.Color(0x8a8f45), culmOld = new THREE.Color(0x6f6a3a);
+  for (const plant of plants) {
+    const { x, z, y, size } = plant;
+    if (plant.kind === 'banana') {
+      const h = 2.4 * size;
+      const top = new THREE.Vector3(x, y + h, z);
+      prism(new THREE.Vector3(x, y - 0.1, z), top, 0.2 * size, 0.13 * size, stemTone);
+      for (let k = 0; k < 7; k += 1) {
+        const heading = (k / 7) * Math.PI * 2 + rand() * 0.5, L = (2.0 + rand() * 0.8) * size, W = 0.55 * size;
+        const dir = new THREE.Vector3(Math.cos(heading), 0, Math.sin(heading)), side = new THREE.Vector3(-dir.z, 0, dir.x);
+        const rise = 0.9 + rand() * 0.5, droop = 1.3 + rand() * 0.6;
+        const mid = (t: number): THREE.Vector3 => top.clone().addScaledVector(dir, L * t).add(new THREE.Vector3(0, (rise * t - droop * t * t) * size, 0));
+        const tone = leafGreen.clone().lerp(leafDeep, rand() * 0.6);
+        const segments = 4;
+        for (let s = 0; s < segments; s += 1) {
+          const t0 = s / segments, t1 = (s + 1) / segments;
+          const w0 = W * Math.sin(Math.PI * Math.min(0.97, t0 * 0.9 + 0.08)), w1 = W * Math.sin(Math.PI * Math.min(0.97, t1 * 0.9 + 0.08));
+          const m0 = mid(t0), m1 = mid(t1);
+          const l0 = m0.clone().addScaledVector(side, w0), r0 = m0.clone().addScaledVector(side, -w0);
+          const l1 = m1.clone().addScaledVector(side, w1), r1 = m1.clone().addScaledVector(side, -w1);
+          twoSided(m0, l0, l1, rib, tone, tone);
+          twoSided(m0, l1, m1, rib, tone, rib);
+          twoSided(m0, m1, r1, rib, rib, tone);
+          twoSided(m0, r1, r0, rib, tone, tone);
+        }
+      }
+    } else {
+      const culms = 9 + Math.floor(rand() * 4);
+      for (let k = 0; k < culms; k += 1) {
+        const heading = rand() * Math.PI * 2, lean = 0.06 + rand() * 0.16, h = (5.5 + rand() * 2.5) * size;
+        const off = new THREE.Vector3(Math.cos(heading) * 0.5 * rand(), 0, Math.sin(heading) * 0.5 * rand());
+        const base = new THREE.Vector3(x + off.x, y - 0.1, z + off.z);
+        const top = base.clone().add(new THREE.Vector3(Math.cos(heading) * h * lean, h, Math.sin(heading) * h * lean));
+        prism(base, top, 0.055 * size, 0.035 * size, k % 3 ? culmTone : culmOld, 5);
+        for (let f = 0; f < 3; f += 1) {
+          const at = base.clone().lerp(top, 0.7 + f * 0.12), fh = heading + (f - 1) * 0.9 + rand() * 0.4;
+          const dir = new THREE.Vector3(Math.cos(fh), 0, Math.sin(fh)), side = new THREE.Vector3(-dir.z, 0, dir.x);
+          const tip = at.clone().addScaledVector(dir, 1.5 * size).add(new THREE.Vector3(0, -0.7 * size, 0));
+          const midP = at.clone().addScaledVector(dir, 0.8 * size).add(new THREE.Vector3(0, -0.05 * size, 0));
+          const tone = leafGreen.clone().lerp(leafDeep, 0.3 + rand() * 0.5);
+          const w = 0.32 * size;
+          twoSided(at, midP.clone().addScaledVector(side, w), midP.clone().addScaledVector(side, -w), tone, tone, tone);
+          twoSided(midP.clone().addScaledVector(side, w), tip, midP.clone().addScaledVector(side, -w), tone, leafDeep, tone);
+        }
+      }
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(soup.positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(soup.normals, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(soup.colors, 3));
+  geometry.computeBoundingSphere();
+  return geometry;
+}

@@ -17,6 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
+import { buildTropicalPlants } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -146,7 +147,9 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     rain_canopy: {
       logistics: [[-33, -8], [20, -24]],
       parts: [[-30, 18], [5, -34]], floods: [[-39, 6], [39, 2]],
-      feature: [0, 18], featureRadius: [10, 7],
+      // the covered repair bay over the causeway (garage round 7), square to the view and 24 m between its column lines so
+      // they frame the hero instead of crossing its turret (the garage critic panel, 2026-10-14)
+      feature: [0, 26], featureRadius: [14, 9],
     },
     rock_cavern: {
       logistics: [[-34, -8], [18, -25]],
@@ -2697,17 +2700,111 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('monsoon-drainage');
       servicePurposeTags.add('covered-field-repair');
-      addShadeHall(featureSide, 19, featureDepth, new THREE.Color(0x4d6a58));
-      for (const offset of [-7.5, 7.5]) {
-        clusterBox(featureCluster, offset, 0, 0.18,
-          1.8, 0.30, 10, new THREE.Color(0x435b51), 'masonry');
-        clusterBox(featureCluster, offset, 0, 0.36,
-          0.24, 0.34, 10, accent, 'painted');
+      // Monsoon's covered repair bay (garage round 7, 2026-10-14; props census #20, garage:rain_canopy grade 1: the shared
+      // steel shade hall in green). The causeway runs up ramps onto a raised concrete floor under a steep corrugated-tin
+      // roof with deep eaves and a ridge ventilator, on round concrete columns stained green at their feet; gutters and
+      // downpipes empty into open drains round the plinth with gratings at the crossings and splash aprons; tarpaulin
+      // side screens are lashed to the posts on the weather side, one half rolled up. Squared on the causeway.
+      const centerSide = 0, centerDepth = 26;
+      const origin = cameraPoint(centerSide, centerDepth);
+      const roadIn = cameraPoint(0, 25); // back down the straight causeway toward (0, 10)
+      const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      const baseY = groundAtWorld(origin.x, origin.z);
+      const bayC: FacilityCluster = { x: origin.x, z: origin.z, baseY, yaw };
+      const sub = (u: number, w: number): FacilityCluster => ({ x: origin.x + c * u + sn * w, z: origin.z - sn * u + c * w, baseY, yaw });
+      const concrete = new THREE.Color(0x8e938c), concreteWet = new THREE.Color(0x5d665d), algae = new THREE.Color(0x3c4a34);
+      const tin = new THREE.Color(0x7d7f78), timberC = new THREE.Color(0x5a4734), tarp = new THREE.Color(0x4e5a3c), drainDark = new THREE.Color(0x1f2420);
+      const halfW = 12, halfL = 6.0, plinthH = 0.45, eaveY = 4.9, overhang = 1.7;
+      const roofRise = (halfW + overhang) * Math.tan(THREE.MathUtils.degToRad(28));
+      const ridgeY = eaveY + roofRise;
+      // the raised floor and its ramps where the causeway runs on and off
+      clusterBox(bayC, 0, 0, plinthH / 2, 2 * halfW + 1.0, plinthH, 2 * halfL + 1.0, concrete, 'masonry');
+      clusterBox(bayC, 0, 0, plinthH + 0.01, 2 * halfW + 0.6, 0.02, 2 * halfL + 0.6, concreteWet, 'masonry');
+      for (const side of [-1, 1]) {
+        const slope = Math.atan2(plinthH, 3.2);
+        clusterBox(bayC, 0, side * (halfL + 0.5 + 1.6), plinthH / 2 - 0.02, 5.4, 0.12, Math.hypot(3.2, plinthH), concrete, 'masonry', 0, side * slope);
       }
-      addServiceManifold(featureCluster, -5.5, -2.45, 4.2);
-      addPoweredWinch(featureCluster, 5.9, -2.4, new THREE.Color(0x4e8065));
-      addSafetyRail(featureCluster, 0, 3.9, 12.5);
-      addHydrostaticInspectionDock(featureCluster, 0, 0.40, new THREE.Color(0x456d5c));
+      // round columns stained green at their feet, capitals, a ring beam along each side
+      const columnsF = [-halfL, -halfL / 3, halfL / 3, halfL];
+      for (const side of [-1, 1]) {
+        for (const f of columnsF) {
+          clusterCylinder(bayC, side * halfW, f, plinthH + (eaveY - plinthH) / 2, 0.22, eaveY - plinthH, concrete, 0, 16);
+          clusterCylinder(bayC, side * halfW, f, plinthH + 0.35, 0.235, 0.7, algae, 0, 16);
+          clusterBox(bayC, side * halfW, f, eaveY - 0.12, 0.6, 0.24, 0.6, concrete, 'masonry');
+        }
+        clusterBox(bayC, side * halfW, 0, eaveY + 0.12, 0.34, 0.3, 2 * halfL + 0.5, concrete, 'masonry');
+      }
+      // timber principal rafters and tie beams at each column line, purlins, then the tin roof falling to both eaves
+      for (const f of columnsF) {
+        for (const side of [-1, 1]) clusterBeam(bayC, [side * (halfW + overhang), f, eaveY + 0.27 - overhang * Math.tan(THREE.MathUtils.degToRad(28))], [0, f, ridgeY], 0.2, timberC, 'painted');
+        clusterBox(bayC, 0, f, eaveY + 0.35, 2 * halfW, 0.2, 0.18, timberC, 'painted');
+        clusterBox(bayC, 0, f, eaveY + 0.35 + roofRise * 0.42, 0.14, roofRise * 0.8, 0.14, timberC, 'painted'); // the king post
+      }
+      for (let k = 1; k <= 4; k += 1) for (const side of [-1, 1]) {
+        const t = k / 5;
+        clusterBox(bayC, side * (halfW + overhang) * (1 - t), 0, eaveY + 0.2 + (ridgeY - eaveY) * t + 0.12 - overhang * 0.53 * (1 - t), 0.12, 0.12, 2 * halfL + 1.4, timberC, 'painted');
+      }
+      gableRoof(bayC, 'roofing', halfW + overhang, eaveY + 0.3 - overhang * Math.tan(THREE.MathUtils.degToRad(28)), ridgeY + 0.15, 2 * halfL + 1.8);
+      // the ridge ventilator: a raised cap on posts over the ridge
+      for (let f = -halfL; f <= halfL; f += 2) for (const side of [-1, 1]) clusterBox(bayC, side * 0.6, f, ridgeY + 0.45, 0.08, 0.6, 0.08, timberC, 'painted');
+      gableRoof(sub(0, 0), 'roofing', 1.15, ridgeY + 0.62, ridgeY + 0.98, 2 * halfL + 0.6);
+      // gutters along both eaves, downpipes into open drains round the plinth, gratings, splash aprons
+      const gutterY = eaveY + 0.3 - overhang * Math.tan(THREE.MathUtils.degToRad(28)) - 0.12;
+      for (const side of [-1, 1]) {
+        const gutterL = side * (halfW + overhang + 0.08);
+        clusterBox(bayC, gutterL, 0, gutterY, 0.2, 0.16, 2 * halfL + 1.8, tin, 'painted');
+        for (const f of [-halfL, 0, halfL]) {
+          clusterBox(bayC, gutterL, f, gutterY / 2, 0.11, gutterY, 0.11, tin, 'painted');
+          clusterBox(bayC, gutterL, f, 0.04, 0.8, 0.08, 0.8, concrete, 'masonry'); // the splash apron
+        }
+        // the open drain along this side: two low walls and a dark wet bed, a grating where the ramp crosses it
+        const drainL = side * (halfW + overhang + 0.08);
+        for (const dl of [-0.32, 0.32]) clusterBox(bayC, drainL + dl, 0, 0.1, 0.12, 0.2, 2 * halfL + 6.4, concrete, 'masonry');
+        clusterBox(bayC, drainL, 0, 0.02, 0.52, 0.03, 2 * halfL + 6.4, drainDark, 'painted');
+      }
+      for (const f of [-(halfL + 3.6), halfL + 3.6]) {
+        for (const dl of [-0.32, 0.32]) clusterBox(bayC, 0, f + dl, 0.1, 2 * (halfW + overhang) + 0.7, 0.2, 0.12, concrete, 'masonry');
+        clusterBox(bayC, 0, f, 0.02, 2 * (halfW + overhang) + 0.7, 0.03, 0.52, drainDark, 'painted');
+        for (let k = -12; k <= 12; k += 1) clusterBox(bayC, k * 0.22, f, 0.21, 0.04, 0.03, 0.62, tin, 'structure'); // the grating
+      }
+      // tarpaulin screens lashed to the weather-side posts, the front half rolled up under the eave
+      const weather = -1;
+      for (let k = 0; k < columnsF.length - 1; k += 1) {
+        const f0 = columnsF[k], f1 = columnsF[k + 1], fm = (f0 + f1) / 2;
+        if (k === 0) {
+          clusterBox(bayC, weather * (halfW + 0.26), fm, plinthH + (eaveY - plinthH - 0.3) / 2, 0.04, eaveY - plinthH - 0.3, f1 - f0 - 0.5, tarp, 'painted');
+          for (const y of [plinthH + 0.6, eaveY - 0.6]) for (const df of [-(f1 - f0) / 2 + 0.3, (f1 - f0) / 2 - 0.3]) {
+            clusterBox(bayC, weather * (halfW + 0.15), fm + df, y, 0.2, 0.03, 0.03, timberC, 'equipment'); // the lashings
+          }
+        } else {
+          clusterCylinder(bayC, weather * (halfW + 0.3), fm, eaveY - 0.45, 0.17, f1 - f0 - 0.5, tarp, Math.PI / 2, 10); // rolled
+          clusterBox(bayC, weather * (halfW + 0.3), fm, eaveY - 1.2, 0.03, 1.3, f1 - f0 - 0.5, tarp, 'painted');
+        }
+      }
+      // standing water at the ramp foot and on the causeway's low side
+      for (const [l, f, w, d] of [[1.6, halfL + 3.0, 2.6, 1.4], [-4.8, -(halfL + 4.4), 3.4, 1.6]] as const) {
+        clusterBox(bayC, l, f, 0.012, w, 0.01, d, new THREE.Color(0x3d4a48), 'painted');
+      }
+      structuralConnections += 52;
+      // the wet tropics round the yard (the re-judge, 2026-10-15: "no jungle belt, tall grass, banana or bamboo"): banana
+      // plants and bamboo clumps in the frame's thirds and behind the bathhouse side, none behind the hero's outline
+      {
+        const plants: Array<{ x: number; z: number; y: number; kind: 'banana' | 'bamboo'; size: number }> = [];
+        for (const [side, depth, kind, size] of [
+          [-14, 14, 'banana', 1.1], [-11.5, 17.5, 'banana', 0.9], [-22, 15, 'banana', 1.2], [14, 14, 'banana', 1.0],
+          [18, 16.5, 'banana', 1.15], [-17, 19.5, 'bamboo', 1.0], [21.5, 22, 'bamboo', 1.1], [-12.5, 38, 'bamboo', 1.2],
+        ] as const) {
+          const at = cameraPoint(side, depth);
+          plants.push({ x: at.x, z: at.z, y: groundAtWorld(at.x, at.z), kind, size });
+        }
+        buckets.baked!.push(buildTropicalPlants(plants, 0x7a1f));
+      }
+      // the drainage pumps and the yard kit round the bay
+      addServiceManifold(fixedCluster(-9.5, 13.5), 0, 0, 4.2);
+      addPoweredWinch(fixedCluster(13.5, 17.0), 0, 0, new THREE.Color(0x4e8065));
+      addSafetyRail(fixedCluster(-11.5, 18.5), 0, 0, 6.5);
+      addHydrostaticInspectionDock(fixedCluster(15.5, 24.0), 0, 0, new THREE.Color(0x456d5c));
   };
   const addRockCavern = (): void => {
       environmentSpecificAssemblies += 1;
