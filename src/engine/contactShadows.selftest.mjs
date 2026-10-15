@@ -241,14 +241,14 @@ assert.ok(CONTACT_SHADOW_GLSL.includes(`if ( floorDenominator > 0.0 && uContactS
   && CONTACT_SHADOW_GLSL.indexOf('len = min( len, ( rayStart.w - uNear )') < CONTACT_SHADOW_GLSL.indexOf(`len = min( len, ${CONTACT_SHADOW_MAX_SCREEN_PX.toFixed(4)} * rayStart.w / capDenominator );`),
   'the floor, then the near plane, then the cap');
 assert.equal((CONTACT_SHADOW_GLSL.match(/mix\( 0\.5500, 1\.4000,/g) ?? []).length, 1, 'main\'s metre ramp only behind the lever');
-assert.ok(CONTACT_SHADOW_GLSL.includes(`float soft = smoothstep( bias, bias + ${CONTACT_SHADOW_SOFT_RISE.toFixed(4)} * span, diff )`)
+assert.ok(CONTACT_SHADOW_GLSL.includes(`: smoothstep( bias, bias + ${CONTACT_SHADOW_SOFT_RISE.toFixed(4)} * span, diff )`)
   && CONTACT_SHADOW_GLSL.includes(`* ( 1.0 - smoothstep( thick - ${CONTACT_SHADOW_SOFT_FALL.toFixed(4)} * span, thick, diff ) );`), 'the soft hit');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`best = max( best, support * soft * ( 1.0 - smoothstep( ${CONTACT_SHADOW_TAIL_FADE.toFixed(4)}, 1.0, u ) ) );`)
   && CONTACT_SHADOW_GLSL.includes('if ( soft >= 0.99 ) break;') && CONTACT_SHADOW_GLSL.includes('return best;'), 'the strongest rung, the tail fade');
 assert.equal((CONTACT_SHADOW_GLSL.match(/cotNormalAt\( quv, Q \)/g) ?? []).length, 1, 'the occluder confirmed once (cost neutral)');
 assert.ok(CONTACT_SHADOW_GLSL.includes('if ( support < 0.0 ) {'), 'only until one rung confirms');
 assert.ok(CONTACT_SHADOW_GLSL.includes('float cloud = cotCloudSun( P );')
-  && CONTACT_SHADOW_GLSL.includes(`float penumbra = cloud < ${CONTACT_SHADOW_CLOUD_MIN.toFixed(4)} ? 1.0`)
+  && CONTACT_SHADOW_GLSL.includes(`float penumbra = cloud < ${CONTACT_SHADOW_CLOUD_MIN.toFixed(4)} || uContactR6 < 0.5 ? 1.0`)
   && CONTACT_SHADOW_GLSL.includes(`: smoothstep( ${CONTACT_SHADOW_PENUMBRA[0].toFixed(4)}, ${CONTACT_SHADOW_PENUMBRA[1].toFixed(4)}, clamp( sunVis / cloud, 0.0, 1.0 ) );`)
   && CONTACT_SHADOW_GLSL.includes('float occ = cotContactOcclusion( P, N, dist ) * penumbra'), 'the penumbra fade, the cloud divided out');
 assert.ok(CONTACT_SHADOW_GLSL.includes('uniform sampler2D tCotCloudShade;') && CONTACT_SHADOW_GLSL.includes('float cotCloudSun( vec3 wp ) {'),
