@@ -1015,6 +1015,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/interfacePress.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
+    // 2026-10-14: the countdown is heard (the hull, the tanks, the world, once; 3-2-1 and one horn, solo and network)
+    'src/audio/countdownAudio.selftest.mjs',
+    // 2026-10-14: every vehicle's countdown bank is the one its rig plays (the warm resolves each hull from its whole spec)
+    'src/audio/presenceFamilies.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.

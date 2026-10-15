@@ -59,8 +59,10 @@ and the paint-before-fade Garage recovery transaction for failed cold entry;
 prop-destruction, and Garage-residency reactions on the shared event bus;
 `armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay;
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
-cadence, pre-battle hold, fixed-step debt, result progression, and rendered
-pose interpolation;
+cadence, pre-battle hold, the countdown's presentation edges (one rollout a
+battle, solo or network, late for a network battle joined after its count;
+each whole second of the running count), fixed-step debt, result progression,
+and rendered pose interpolation;
 `battlePresentationRuntime.ts` owns solo/network pose selection, spotting
 residency, running-gear detail cadence, vehicle FX, and light prop contact;
 `battleHudFrameRuntime.ts` owns the retained HUD frame, spectator perspective,

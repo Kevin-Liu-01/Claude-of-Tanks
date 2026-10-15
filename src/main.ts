@@ -237,7 +237,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -1411,7 +1411,16 @@ const audio = await bootStage('audio', () => {
   // Surface under each hull (track sounds), water depth and terrain occlusion.
   getTerrain: () => (currentWorld() ? hfProxy : null),
   // The world: the churches, belfries and campanile the bells ring from, and what each structure is built of.
-  getWorld: currentWorld });
+  getWorld: currentWorld,
+  // The crew's side counts in a network battle (last tank, last enemy, outnumbered): the lobby roster with the
+  // authority's deaths, where a death is final; never the spotted list (2026-10-14). Solo: none (its list is the field).
+  getTeamRoster: () => {
+    if (!game.rosterTanks) return null;
+    const mode = normalizeGameMode(game.gameMode);
+    return deathsAreFinal(game.ruleset?.mode === mode ? game.ruleset : matchRulesetFor(mode)) ? game.rosterTanks : null;
+  },
+  // Each warmed hull's powertrain from its whole spec, as its rig will resolve it (an IFV's diesel turns on its role).
+  getVehicleSpec: getSpec });
   a.bindBus(bus);
   return a;
 });
@@ -3003,7 +3012,10 @@ const battleFrame = createBattleFrameRuntime({
         missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
-    rollout: () => bus.emit('battle:rollout', {}),
+    // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)
+    rollout: (late = false) => bus.emit('battle:rollout', late ? { late: true } : {}),
+    // the running count's whole seconds (the audio ticks 3, 2, 1)
+    second: (seconds: number) => bus.emit('battle:countdown', { seconds }),
   },
   presentation: {
     captureSoloPose: battlePresentation.captureSoloPoses,
