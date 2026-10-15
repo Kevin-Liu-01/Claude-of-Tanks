@@ -1816,6 +1816,34 @@ export function addGarageFacilityDetails({
     structuralConnections += 19;
   };
 
+  const addTrackOnCluster = (
+    cluster: FacilityCluster,
+    centerLateral: number,
+    centerLongitudinal: number,
+    length: number,
+  ): void => {
+    const gauge = 1.52;
+    for (const railSide of [-gauge / 2, gauge / 2]) {
+      // Raise the permanent way above the sampled yard surface. The earlier
+      // replacement pack put the rails at terrain height, so most of Cinder's
+      // identity vanished beneath its cobbles on even a mild grade.
+      clusterBox(cluster, centerLateral + railSide, centerLongitudinal, 0.28,
+        0.12, 0.18, length, steel, 'structure');
+      clusterBox(cluster, centerLateral + railSide, centerLongitudinal, 0.13,
+        0.28, 0.08, length, dark, 'structure');
+      railSegments += 2;
+    }
+    const sleepers = Math.max(12, Math.floor(length / 1.05));
+    for (let index = 0; index < sleepers; index += 1) {
+      const along = -length / 2 + (index + 0.5) * (length / sleepers);
+      // Rails use the canonical camera axis. Fan-track yaw is only used for
+      // the long beams; its sleepers remain visually legible and merged.
+      clusterBox(cluster, centerLateral, centerLongitudinal + along, 0.10,
+        2.45, 0.13, 0.28, timber, 'equipment');
+      railSegments += 1;
+    }
+  };
+
   /**
    * Cinder's engine shed (garage round 7, GA.04, 2026-10-14; props census #20, garage:rail_roundhouse grade 0: "five open
    * portals" of painted plates square to the hero, the rail fan crossing them at 45 degrees). A Prussian three-road
