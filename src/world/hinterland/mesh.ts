@@ -86,7 +86,7 @@ export interface HinterlandMeshOptions {
   hazeSigma?: number;
   hazeColor?: THREE.Color;
   /** The land material's fragment patch (material.ts); absent: the debug albedo by slope and height. */
-  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string; normal?: string } | null;
+  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string; normal?: string; key?: string } | null;
   /** The far haze's target: the dome's own sky (air.ts); absent, the fog colour. */
   air?: HinterlandAir | null;
 }
@@ -237,7 +237,7 @@ ${surface?.normal ?? ''}`)
   };
   if (options.setupMaterial) options.setupMaterial(material, patch);
   else material.onBeforeCompile = patch;
-  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? 'land' : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
+  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? `land-${surface.key ?? ''}` : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
 
   const mesh = new THREE.Mesh(grid, material);
   mesh.name = 'hinterland-land';

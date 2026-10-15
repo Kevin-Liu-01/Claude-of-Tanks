@@ -173,12 +173,15 @@ function beam(S: Shapes, f: Frame, a: V3, b: V3, t: number, color: V3): void {
 }
 
 /** A building of a kind on its footprint (its ridge along its longer side). */
-function addBuilding(S: Shapes, f: Frame, width: number, depth: number, style: KitStyle, tone: number, alt: boolean, kind: string): void {
+function addBuilding(S: Shapes, f: Frame, width: number, depth: number, style: KitStyle, tone: number, alt: boolean, kind: string, snowRoof = false): void {
   const long = width >= depth;
   const hu = (long ? width : depth) / 2, hw = (long ? depth : width) / 2;
   // (the frame turned a quarter when the footprint's long side runs along w)
   const g: Frame = long ? f : (u, v, w) => f(w, v, -u);
-  const wall = lin(style.wall.map((c) => c * tone)), roofC = lin((alt && style.roofAlt ? style.roofAlt : style.roof).map((c) => c * (0.92 + 0.16 * (tone - 0.9) / 0.2)));
+  const wall = lin(style.wall.map((c) => c * tone));
+  // (a snow-covered place's roofs carry their snow — the critics on round 4c: "snow-load the roofs")
+  const roofC = snowRoof ? lin([214, 222, 232].map((c) => c * (0.94 + 0.06 * (tone - 0.9) / 0.2)))
+    : lin((alt && style.roofAlt ? style.roofAlt : style.roof).map((c) => c * (0.92 + 0.16 * (tone - 0.9) / 0.2)));
   const wallH = style.wallH * (0.9 + 0.2 * (tone - 0.9) / 0.2);
   box(S, g, -hu, hu, -1.5, wallH, -hw, hw, wall, null);
   const rise = kind === 'depot' ? Math.min(style.roofH, hw * 0.35) : style.roofH * Math.min(1.25, hw / 4.5);
@@ -442,7 +445,7 @@ export function buildHinterlandOutlandGeometry(
   for (const b of plan.buildings) {
     drawn.add(b.settlement);
     const y = footBase(frame(b.x, 0, b.z, b.yaw), b.width / 2, b.depth / 2);
-    addBuilding(S, frame(b.x, y, b.z, b.yaw), b.width, b.depth, styleFor(kit, b.kind), 0.9 + 0.2 * hashXZ(b.x, b.z), hashXZ(b.x, b.z, 5) < 0.4, b.kind);
+    addBuilding(S, frame(b.x, y, b.z, b.yaw), b.width, b.depth, styleFor(kit, b.kind), 0.9 + 0.2 * hashXZ(b.x, b.z), hashXZ(b.x, b.z, 5) < 0.4, b.kind, snowy);
   }
   // a far settlement the plan counts but does not lay out: its houses about its core along its street and a cross lane
   for (const s of plan.settlements) {
@@ -459,7 +462,7 @@ export function buildHinterlandOutlandGeometry(
       const width = kind === 'barn' ? 22 + 10 * h3 : 9 + 5 * h3, depth = kind === 'barn' ? 12 + 4 * h1 : 7 + 3 * h1;
       const yaw = s.yaw + (lane ? Math.PI / 2 : 0) + (h3 - 0.5) * 0.2;
       const y = footBase(frame(p[0], 0, p[2], yaw), width / 2, depth / 2);
-      addBuilding(S, frame(p[0], y, p[2], yaw), width, depth, styleFor(kit, kind), 0.9 + 0.2 * h2, h1 < 0.4, kind);
+      addBuilding(S, frame(p[0], y, p[2], yaw), width, depth, styleFor(kit, kind), 0.9 + 0.2 * h2, h1 < 0.4, kind, snowy);
     }
   }
   for (const v of plan.verticals) {

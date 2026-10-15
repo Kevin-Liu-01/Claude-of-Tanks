@@ -42,7 +42,7 @@ interface PlacedLandform {
   mode: 'pos' | 'neg' | 'notch';
   /** Profile at world (x, z) and local (u, v): 0..1 (times h); `texelM` the bake's sample (finer detail left out). */
   profile(u: number, v: number, x: number, z: number, texelM?: number): number;
-  /** 0..1 in a gully at local (u, v) (a massif's couloirs; absent: none). */
+  /** 0..1 in a gully at local (u, v) (a massif's erosion gullies; 1..2 in an authored couloir's throat; absent: none). */
   gully?(u: number, v: number): number;
   /** A massif's summit at local (u, v): `top` 0..1 within its top 80–150 m, `crest` 0..1 on an arête's knife edge. */
   summit?(u: number, v: number): { top: number; crest: number };
@@ -112,7 +112,10 @@ function placeRidge(cfg: HinterlandLandformConfig, salt: number, erosion: number
   return place(f, 'pos', (u, v) => {
     const tu = Math.abs(u) / f.halfL;
     if (tu >= 1) return 0;
-    const crest = 0.74 + 0.26 * fbm2(u / Math.max(180, f.halfL * 0.45) + ox, oz, 3);
+    // (a notched crest: sharp minor peaks where a ridged octave crests, real cols between — round 5's edge-s)
+    const crest = cfg.notched
+      ? 0.5 + 0.5 * Math.pow(1 - Math.abs(noise2(u / Math.max(160, f.halfL * 0.22) + ox, oz)), 1.6) * (0.85 + 0.15 * fbm2(u / 90 + oz, ox, 2))
+      : 0.74 + 0.26 * fbm2(u / Math.max(180, f.halfL * 0.45) + ox, oz, 3);
     const along = 1 - smoothstep(0.55, 1, tu);
     const wander = 0.12 * f.halfW * noise2(u / Math.max(200, f.halfL * 0.6) + oz, ox);
     const sv = (v - wander) / f.halfW, tv = Math.abs(sv);
@@ -177,13 +180,21 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     for (let j = 0; j < n; j++) aretes.push((j * 2 * Math.PI) / n + (j ? (((salt * 1.37 + j * 0.71) % 1) - 0.5) * 0.6 : 0) + (k ? Math.PI : 0));
     summitAretes.push(aretes);
   }
+  // (round 5) a gendarme: a slim rock tower on the main summit's crest arête, a little way along the strike
+  if (authored?.gendarme && summits.length) {
+    const s0 = summits[0];
+    summits.push({ u: s0.u + 0.55 * s0.r, v: 0, r: Math.max(55, 0.16 * s0.r), h: 0.07 });
+    summitAretes.push([0, Math.PI]);
+  }
+  const asym = authored?.asym && authored.asym > 0 ? authored.asym : 1;
   /** A summit's pyramid at local (u, v): its height (0..1 of its own), its top band and its arêtes' knife edges. */
   const SUMMIT = { peak: 0, top: 0, crest: 0 };
   const summitAt = (u: number, v: number): typeof SUMMIT => {
     SUMMIT.peak = 0; SUMMIT.top = 0; SUMMIT.crest = 0;
     for (let k = 0; k < summits.length; k++) {
       const s = summits[k];
-      const du = (u - s.u) / s.r, dv = (v - s.v) / (s.r * 0.8);
+      // (the main summit's block offset: one side steeper by `asym`, the other gentler)
+      const du = ((u - s.u) / s.r) * (k === 0 && asym !== 1 ? (u > s.u ? asym : 1 / asym) : 1), dv = (v - s.v) / (s.r * 0.8);
       const dq = Math.hypot(du, dv);
       if (dq >= 1.4) continue;
       // the arêtes: knife-edged spurs (the faces between them fall at 1.25× the summit's mean, the arêtes at half)
@@ -200,7 +211,9 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
       const dqe = dq * (1.25 - (authored ? 0.45 : 0.75) * ridge);
       if (dqe >= 1) continue;
       // a pyramid's straight faces to a sharp apex (the old (1 − q)^1.5 rounded it to a dome)
-      const p = authored ? 1 - dqe : Math.pow(1 - dqe, 0.78);
+      // (an authored summit's straight faces carry a few metres of rib and hollow, so a coarse level never draws them as
+      // flat triangles — corner-nw's "low-poly facets")
+      const p = authored ? (1 - dqe) * (1 + 0.05 * noise2(u / 85 + ox, v / 85 - oz)) : Math.pow(1 - dqe, 0.78);
       if (s.h * p > SUMMIT.peak) {
         SUMMIT.peak = s.h * p;
         // its top 80–150 m (of the mass's height), and an arête's crest within ~14 m (the cornice's line)
@@ -215,11 +228,21 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   // running level along the middle half of its length before it falls to its ends)
   // (an authored peak's mass has no level middle: its crest falls from the summit to either end, round 4)
   const uPeak = authored ? summits[0].u : 0;
+  // (round 5) the side facing the map (the sign of the map's centre in the local v), the headwall's share of the
+  // height, the couloirs' places along the strike (seeded, spread over the middle of the face)
+  const v0 = (0 - f.cx) * f.az - (0 - f.cz) * f.ax;
+  const facing = cfg.headwall || cfg.couloirs ? (v0 >= 0 ? 1 : -1) : 0;
+  const headwallH = cfg.headwall ? cfg.headwall.heightM / (Math.abs(cfg.heightM) || 1) : 0;
+  const couloirAt: number[] = [];
+  for (let c = 0; c < Math.max(0, Math.min(8, cfg.couloirs ?? 0)); c++) {
+    const n = cfg.couloirs!;
+    couloirAt.push((-0.62 + 1.24 * (c + 0.5) / n + (((salt * (0.37 + c * 0.13)) % 1) - 0.5) * (0.8 / n)) * f.halfL);
+  }
   const massQ = (u: number, v: number): number => {
     const { q, theta } = roundQ(f, u, v, 0.18);
     const lu = Math.abs(u) / f.halfL, lv = Math.abs(v) / f.halfW;
     const wander = 1 + 0.18 * lobe(theta, f.salt * 0.013);
-    if (authored) return Math.hypot(lv, (u - uPeak) / (u >= uPeak ? f.halfL - uPeak : f.halfL + uPeak)) / wander;
+    if (authored && authored.tent !== false) return Math.hypot(lv, (u - uPeak) / (u >= uPeak ? f.halfL - uPeak : f.halfL + uPeak)) / wander;
     return Math.min(q, Math.hypot(lv, Math.max(0, lu - 0.3) / 0.7) / wander);
   };
   const placed = place(f, 'pos', (u, v, x, z, texelM = 0) => {
@@ -252,8 +275,34 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     // the gullies: two erosion octaves across the slope (the mass's radial fall), carving the mid-slopes
     // (a bake's coarse levels leave out couloirs finer than a third of their spacing: three samples a couloir or none)
     if (gullyDepth > 0 && q > 0.12 && q < 0.95 && !(texelM > gullyCell * 0.34)) h -= (gullyDepth / Math.abs(cfg.heightM || 1)) * gullyCut(u, v, q, texelM);
+    // (round 5) the side facing the map: its headwall — a cliff band rising from just above the apron, the face above it
+    // lifted with it — and its couloirs, cut down through the band over their debris fans
+    if (facing) {
+      const side = smoothstep(0, 0.3 * f.halfW, v * facing);
+      if (side > 0) {
+        if (headwallH > 0) {
+          const tc = 0.36 + 0.035 * noise2(u / 520 + ox, oz * 0.7);
+          h += headwallH * side * smoothstep(tc, tc + 0.06, t);
+        }
+        if (couloirAt.length) h += side * couloirRelief(u, t);
+      }
+    }
     return Math.max(0, h);
   });
+  /** A couloir's cut (negative) down the face and its fan (positive) at the foot, in units of the mass's height. */
+  function couloirRelief(u: number, t: number): number {
+    const H = Math.abs(cfg.heightM) || 1;
+    let r = 0;
+    for (const uc of couloirAt) {
+      const d = Math.abs(u - uc);
+      // the throat: a V ~45 m each side, 34 m deep, from the headwall's foot to near the crest, tapering at both ends
+      if (d < 46 && t > 0.33 && t < 0.9) r -= (34 / H) * (1 - d / 46) * smoothstep(0.33, 0.4, t) * (1 - smoothstep(0.78, 0.9, t));
+      // the fan: a cone of debris ~170 m across at the throat's foot, 22 m at its apex
+      const fanT = 0.3, dv = (t - fanT) * f.halfW, dd = Math.hypot(d, dv);
+      if (dd < 170 && t < 0.38) r += (22 / H) * (1 - dd / 170) ** 1.6;
+    }
+    return r;
+  }
   /** 0..1: how deep in a couloir (local u, v) at its radius q (0 on the spurs between them). */
   function gullyCut(u: number, v: number, q: number, texelM = 0): number {
     const lu = u / f.halfL, lv = v / f.halfW, rl = Math.hypot(lu, lv) || 1;
@@ -268,7 +317,18 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     const face = smoothstep(0.12, 0.35, q) * (1 - smoothstep(0.8, 0.95, q));
     return face * Math.max(0, Math.min(1, 0.5 - 0.5 * g));
   }
-  placed.gully = (u, v) => { const q = massQ(u, v); return q < 1 && gullyDepth > 0 ? gullyCut(u, v, q) : 0; };
+  placed.gully = (u, v) => {
+    const q = massQ(u, v);
+    if (q >= 1) return 0;
+    let g = gullyDepth > 0 ? gullyCut(u, v, q) : 0;
+    // (a couloir's throat is a gully full of snow)
+    if (facing && couloirAt.length && v * facing > 0) {
+      const t = 1 - q;
+      // (marked over 1: the geology fills a couloir's throat with snow, not every erosion gully's)
+      for (const uc of couloirAt) if (Math.abs(u - uc) < 40 && t > 0.34 && t < 0.88) g = Math.max(g, 2 - Math.abs(u - uc) / 40);
+    }
+    return g;
+  };
   placed.summit = (u, v) => { const s = summitAt(u, v); return { top: s.top, crest: s.crest }; };
   return placed;
 }
@@ -472,26 +532,24 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
           }
         }
       }
-      // a bare mountain's steep upper faces: bands of dark rock, a few tens of metres a bed, snow lying on the ledges
-      // between them (the coordinator on the first Glacier frames: "rock bands and cliffs ... dark, stratified, with
-      // snow on the ledges — right now there are only blotches")
+      // a bare mountain's steep upper faces: bare rock past ~46° (round 5: the bedding and its snow ledges are drawn by
+      // the land's material on the faces past 50–56° — the atlas's 55 m bands of rock and ledge snow striped the
+      // shoulders at its 24–96 m texels, "the uniform dashes read as contour lines"; the shoulders keep the region's
+      // snow, scree and forest)
       if (best.cfg.kind === 'massif' || best.cfg.kind === 'ridge') {
         const H = Math.abs(best.cfg.heightM) || 1;
-        const w = smoothstep(0.16 * H, 0.3 * H, bestA) * smoothstep(36, 44, slopeDeg);
+        const w = smoothstep(0.16 * H, 0.3 * H, bestA) * smoothstep(42, 50, slopeDeg);
         if (w > 0) {
-          // (irregular beds: their height wanders ±40 m over a few hundred metres, their ledges narrow and widen, and no
-          // snow holds on a ledge of a cliff past ~52°)
-          const sx = best.salt * 0.37, sz = best.salt * 0.21;
-          const ph = (bestA + 28 * noise2(x / 240 + sx, z / 240 - sz) + 12 * noise2(x / 70 - sz, z / 70 + sx)) / 55;
-          const fr = ph - Math.floor(ph);
-          const lw = 0.4 + 0.15 * noise2(x / 150 + sz, z / 150 + sx);
-          const ledge = (1 - smoothstep(lw - 0.06, lw + 0.06, fr)) * (1 - smoothstep(48, 56, slopeDeg));
-          const band = w * (1 - ledge);
-          out.rock = Math.max(out.rock, band);
-          out.snow = Math.max(out.snow * (1 - band), w * ledge * 0.95);
-          out.snowHold = Math.max(out.snowHold * (1 - band), w * ledge);
-          out.strata = ph;
+          out.rock = Math.max(out.rock, w);
+          out.snow *= 1 - w;
+          out.snowHold *= 1 - w;
         }
+      }
+      // (a couloir's throat holds snow down through the rock)
+      if (out.gully > 1.4) {
+        out.snow = Math.max(out.snow, 0.95);
+        out.snowHold = Math.max(out.snowHold, 1);
+        out.rock *= 0.2;
       }
       const g = best.geology;
       if (g?.rockHex !== undefined) out.rockHex = g.rockHex;
