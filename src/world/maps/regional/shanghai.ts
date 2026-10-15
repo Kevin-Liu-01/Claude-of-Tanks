@@ -142,6 +142,17 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
         horseHeadWall(sink, wall, px, k === 0 ? -1 : 1, zc, s + roof.eave, eaveY, top);
       }
     } else gableEnds(sink, wall, W, zb, zf, eaveY, rg.ridgeY);
+    // (the maps lane, 2026-10-15, Suzhou's blind critics: a terrace's end wall seen down a lane read as "a blank plaster
+    // wall") the end houses' side windows: a casement on each upper storey over the house block and a small high one on
+    // the ground floor, as the lanes' end units have them
+    for (const face of [{ origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D }, { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }] as Face[]) {
+      const uc = (face.u[2] > 0 ? 1 : -1) * zc, span = zf - zb;
+      const us = span > 6.5 ? [uc - span * 0.22, uc + span * 0.22] : [uc];
+      for (const u of us) {
+        windowUnit(sink, face, u, 1.35, 0.8, 0.9, CASEMENT, look, 0.3);
+        for (let st = 1; st < (three ? 3 : 2); st++) windowUnit(sink, face, u, s1 + (st - 1) * s2 + 0.8, 0.9, 1.4, CASEMENT, look, 0.3);
+      }
+    }
     // the courtyard wall's coping and its gates
     sink.span('structureMetal', -W / 2 - 0.04, courtH, D / 2 - T - 0.07, W / 2 + 0.04, courtH + 0.12, D / 2 + 0.07, { ...SHADOWED, colour: TILE_COPING });
     const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
