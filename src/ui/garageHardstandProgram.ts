@@ -439,7 +439,9 @@ float hardstandWater = hardstandWet * texture2D(hardstandWetMask, vMapUv).r;
 #else
 float hardstandWater = 0.0;
 #endif
-diffuseColor.rgb *= 1.0 - 0.2 * hardstandWater;`)
+// standing water takes the sky's grey-blue over the mud below it (ticket 6, 2026-10-15: the puddles read as "flat matte
+// dark blobs": at the Garage camera's angles a dielectric's 4 % reflection alone leaves them mud-dark)
+diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 - 0.2 * hardstandWater), vec3(0.34, 0.4, 0.45), hardstandWater * 0.55);`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 {
   vec2 hardstandCrystal = floor(vHardstandGround * 34.0);
