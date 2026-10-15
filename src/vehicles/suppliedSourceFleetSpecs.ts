@@ -74,7 +74,9 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     frame.gun[2] - frame.turret[2],
   ];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
-  if (id === 'kurganets25_x') spec.armor.gunBarrel.radiusM = .069;
+  // the Bumerang-BM's 2A42 barrel (coordinator ruling 2026-10-15: the turret is the Bumerang-BM, so its gun is the 30 mm
+  // 2A42, not a 57 mm)
+  if (id === 'kurganets25_x') spec.armor.gunBarrel.radiusM = .05;
 }
 
 /** Game tuning starts from established fleet peers; the weapon family still
@@ -127,9 +129,10 @@ function applySourceArmament(spec: FleetTankSpec): void {
   applyFleetLauncherMuzzles(spec);
 }
 
-/** The supplied Epokha turret's four Kornet tubes, two in each twin housing on the turret flanks: the primary balance
- * channel and the Kornet launcher in two slots. Coordinator ruling 2026-10-15 (owner markup 10-14): the source's
- * rear-roof bundle of eight Bulat tubes is not on the real Kurganets-25, so the bundle and its Bulat channel are gone. */
+/** The Kurganets-25 IFV's Bumerang-BM (B05Ya01 Epokha) module, one real configuration (coordinator ruling 2026-10-15):
+ * the 30 mm 2A42 (the primary balance channel), a coaxial 7.62 mm PKTM (drawn) and four Kornet-M, two in each twin
+ * housing on the turret flanks (the launcher slot). The source's rear-roof bundle of eight Bulat tubes is not on the
+ * real vehicle (owner markup 10-14), so the bundle and its Bulat channel are gone. */
 function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   const guided = spec.gun.shells.find(round => round.guided);
   if (!guided) throw new Error('Kurganets requires its declared missile balance channel');
@@ -157,7 +160,7 @@ function applyK21Launcher(spec: FleetTankSpec): void {
 /** Preserve native caliber and distinguish same-type loadout channels. */
 function applyAutocannonCaliber(spec: FleetTankSpec): void {
   const autocannonCalibers: Readonly<Record<string, number>> = {
-    kurganets25_x: 57, griffin50_x: 50, ajax_x: 40, k21_x: 40, kf41_lynx_x: 35, cv90_mkiv_x: 50,
+    kurganets25_x: 30, griffin50_x: 50, ajax_x: 40, k21_x: 40, kf41_lynx_x: 35, cv90_mkiv_x: 50,
   };
   const caliber = autocannonCalibers[spec.id];
   if (caliber) {

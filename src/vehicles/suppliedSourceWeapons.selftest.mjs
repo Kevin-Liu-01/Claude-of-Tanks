@@ -79,12 +79,13 @@ function checkKurganetsLoadout() {
   const kurganets = TANK_SPECS.kurganets25_x;
   // coordinator ruling 2026-10-15 (owner markup 10-14): the rear-roof Bulat bundle and its channel are gone; the Kornet
   // in the two flank housings is the vehicle's one launcher
-  assert.equal(kurganets.gun.shells.length, 2, 'the 57 mm cannon and the Kornet launcher, no Bulat channel');
+  assert.equal(kurganets.gun.shells.length, 2, 'the 30 mm 2A42 and the Kornet launcher, no Bulat channel');
   const [primary, kornet] = kurganets.gun.shells;
   assert.equal(kurganets.balancePeerOf,'spz_puma_s1','tier-X gameplay peer does not replace the source turret/frame');
   const peer = TANK_SPECS.spz_puma_s1.gun;
-  assert.deepEqual(primary, { ...peer.shells[0], name: '57 mm APFSDS', caliberMm: 57 },
-    'the short 57 mm main gun preserves declared primary gameplay tuning');
+  // coordinator ruling 2026-10-15: one real configuration, the Bumerang-BM's 30 mm 2A42 (the Puma S1 peer's numbers)
+  assert.deepEqual(primary, { ...peer.shells[0], name: '30 mm APFSDS', caliberMm: 30 },
+    'the 30 mm 2A42 keeps the declared primary gameplay tuning');
   assert.deepEqual(kornet, { ...peer.shells[1], name: 'Kornet guided missile', count: 4, launcherTubes: 4 },
     'four source-visible Kornet tubes retain the declared guided balance channel');
   assert.equal(guidedMissileSlot(kurganets), 1, 'special action selects the Kornet launcher');
@@ -102,7 +103,7 @@ function checkKurganetsLoadout() {
   assert.equal(state.ammo[0], cannonAmmo, 'launcher: the cannon inventory is preserved');
   state.ammo[1] = 0;
   assert.equal(selectShell(state, 1, kurganets), false, 'launcher: exhausted channel rejected');
-  assert.equal(selectShell(state, 0, kurganets), true, '57 mm cannon remains selectable after the launcher exhausts');
+  assert.equal(selectShell(state, 0, kurganets), true, '30 mm cannon remains selectable after the launcher exhausts');
 }
 checkLoadout();
 checkObject695Loadout();

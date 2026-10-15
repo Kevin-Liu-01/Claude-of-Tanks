@@ -32,10 +32,16 @@ for (const quality of ['high', 'low']) {
     const cap=downward(0,-.8);
     assert.ok(cap?.object===mount,`${quality}: receiver cover is visible above the recess`);
     assert.ok(Math.abs(cap.point.y/scale-3.0764)<.002);
-    for(const z of [0,.2,.5,1.30,1.60]) {
+    // coordinator ruling 2026-10-15: the Bumerang-BM's 30 mm 2A42, a slim 0.05 m tube beyond the stepped jacket
+    for(const z of [0,.2,.5]) {
       const hit=downward(-.004,z);
       assert.ok(hit?.object===gun,`${quality}: enlarged cannon remains exposed`);
-      assert.ok(hit.point.y/scale>2.979&&hit.point.y/scale<3.03,`${quality}: substantial tube/jacket above its retained 57 mm bore`);
+      assert.ok(hit.point.y/scale>2.979&&hit.point.y/scale<3.03,`${quality}: substantial jacket over the 2A42`);
+    }
+    for(const z of [1.30,1.60]) {
+      const hit=downward(-.004,z);
+      assert.ok(hit?.object===gun,`${quality}: the 2A42 tube runs to the muzzle`);
+      assert.ok(Math.abs(hit.point.y/scale-(2.917+.05))<.004,`${quality}: the 2A42's slim tube (0.05 m)`);
     }
     assert.ok(Math.abs(root.getObjectByName('rig_muzzle').position.z-2.45*scale)<1e-6,
       `${quality}: firing anchor follows the longer physical cannon`);
@@ -46,9 +52,9 @@ for (const quality of ['high', 'low']) {
     visible.pop();root.remove(oldRoof);oldRoof.geometry.dispose();
 
     const spec=getSpec(id),state=createTankState(spec,new THREE.Vector3(),0);
-    assert.equal(spec.gun.caliberMm,57,`${quality}: source weapon configuration retained`);
+    assert.equal(spec.gun.caliberMm,30,`${quality}: the Bumerang-BM's 30 mm 2A42`);
     assert.ok(Math.abs(spec.armor.gunBarrel.lengthM-2.45*scale)<1e-6,`${quality}: combat muzzle matches native cannon length`);
-    assert.ok(Math.abs(spec.armor.gunBarrel.radiusM-.069*scale)<1e-6,`${quality}: combat barrel matches its native outer radius`);
+    assert.ok(Math.abs(spec.armor.gunBarrel.radiusM-.05*scale)<1e-6,`${quality}: combat barrel matches its native outer radius`);
     for(const degrees of [-spec.gunDepressionDeg,0,spec.gunElevationDeg]) {
       state.gunPitch=THREE.MathUtils.degToRad(degrees);state.turretYaw=.7;
       tank.syncFromState(state,1);tank.recoilKick(0,.36);tank.syncFromState(state,.06);root.updateMatrixWorld(true);
@@ -70,12 +76,12 @@ for (const quality of ['high', 'low']) {
             `${quality}: real trunnion penetrates receiving stock by positive depth`);
         } finally {material.side=oldSide;}
       }
-      // Open 57 mm muzzle: center sees the dark inner termination behind the
+      // Open 30 mm muzzle: center sees the dark inner termination behind the
       // lip, while the annulus still presents a physical front face.
       const recoil=root.getObjectByName('rig_recoil');
       const cast=x=>new THREE.Raycaster(recoil.localToWorld(new THREE.Vector3(x*scale,0,2.55*scale)),
         new THREE.Vector3(0,0,-1).transformDirection(recoil.matrixWorld),0,.4).intersectObject(recoil,true)[0];
-      const bore=cast(0),lip=cast(.052);
+      const bore=cast(0),lip=cast(.032);
       assert.ok(bore&&lip,`${quality}: bore termination and lip exist`);
       assert.ok(bore.distance-lip.distance>.15*scale,`${quality}: muzzle is visibly open`);
     }

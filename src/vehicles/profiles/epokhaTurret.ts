@@ -255,8 +255,8 @@ function addKurganetsRoofMasts(P: TankBuilderPort): void {
 function addKurganetsGun(P: TankBuilderPort): void {
     const gunLength = 2.45;
     // Source Object_31: .2366 m receiver, raised .2694 m cover and a
-    // .1037 m collar around the compact 57 mm tube. Analytic closed stock,
-    // with the mantlet pitching independently of the recoiling barrel.
+    // .1037 m collar round the cannon. Analytic closed stock, with the
+    // mantlet pitching independently of the recoiling barrel.
     P.addGunExtra(sectionSolid([
         { z: -.429, ring: [[-.1183,-.0782],[.1183,-.0782],[.1183,.052],[.09,.082],[-.09,.082],[-.1183,.052]] },
         { z: .025, ring: [[-.1183,-.0782],[.1183,-.0782],[.1183,.052],[.09,.082],[-.09,.082],[-.1183,.052]] },
@@ -269,10 +269,12 @@ function addKurganetsGun(P: TankBuilderPort): void {
     for (const side of [-1, 1]) {
         localTurret(P, 'turretDetail', box(.07, .30, .23), -.004 + side * .25, 2.85465, -.68);
     }
-    // Owner-requested larger cannon package: longer exposed tube and a
-    // substantial stepped recoil jacket. The actual bore remains 57 mm;
-    // enlarging the outer steel must never silently change ammunition.
-    openTube(P, .069, .08, gunLength, .0285);
+    // Owner-requested larger cannon package: a long exposed tube and a
+    // substantial stepped recoil jacket. Coordinator ruling 2026-10-15: the
+    // module is the Bumerang-BM, so the cannon is its 30 mm 2A42 (one real
+    // configuration, no 57 mm): the 2.45 m exposed barrel is the 2A42's
+    // slim tube with a 30 mm bore beyond the jacket.
+    openTube(P, .05, .08, gunLength, .015);
     P.add('gun', cylZ(.105, .46, P.q ? 28 : 16), 0, 0, .35);
     P.add('gun', cylZ(.078, .92, P.q ? 28 : 16, .092), 0, 0, 1.02);
     for (const z of [.18,.55,1.48])
