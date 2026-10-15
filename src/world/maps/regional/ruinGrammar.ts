@@ -14,6 +14,9 @@
 // covering's pieces and its charred rafters, a chimney stack left standing with its firebox cut into it.
 // Every wall is recorded for the damage reading (shell.ts ruinWall: damage.ts describeRuin takes the walls as built).
 // The walls and heaps are structure and identical on every tier; the chunks, timbers and covering pieces are dressing.
+import * as THREE from 'three';
+import { box, jitterUV } from '../../propGeometry.ts';
+import type { GeometryBuckets, StructureDimensions } from '../exteriorDetailKit.ts';
 import { PartSink, faceBox, facePoint, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { holedPolygon, type FaceName, type Opening } from './house.ts';
 import { ruinWall } from './shell.ts';
@@ -309,4 +312,102 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
     }
   });
   return { faces, tops, floor, restOn };
+}
+
+// ------------------------------------------------------------------------------------------------ the plan ruin, the
+// street rubble pile (props census #7, lane B 2026-10-14: extracted from props.ts as they were — the same draws from the
+// same streams in the same order, byte for byte — for this lane to rebuild on the grammar)
+
+/** The base catalog's ruin (the plan's 'ruin' plot): four broken walls of piers over a slab. */
+export function makeRuin(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
+  const w = 6.0 + rng(), d = 8.0 + rng() * 1.5;
+  const stone = buckets.stone;
+  stone.push(box(w + 0.3, 1.0, d + 0.3).translate(0, -0.1, 0));
+  // four broken walls: sequences of piers with varying heights
+  const t = 0.5;
+  const walls = [
+    { len: d, rot: 0, ox: -w / 2 + t / 2, oz: 0 },
+    { len: d, rot: 0, ox: w / 2 - t / 2, oz: 0 },
+    { len: w - 2 * t, rot: Math.PI / 2, ox: 0, oz: -d / 2 + t / 2 },
+    { len: w - 2 * t, rot: Math.PI / 2, ox: 0, oz: d / 2 - t / 2 },
+  ];
+  for (const wl of walls) {
+    const segs = 3 + ((rng() * 3) | 0);
+    const segLen = wl.len / segs;
+    for (let k = 0; k < segs; k++) {
+      if (rng() < 0.3) continue; // collapsed gap
+      const hh = 0.9 + rng() * 2.1;
+      const b = box(t, hh, segLen * 0.94, 0.7);
+      b.translate(0, hh / 2, -wl.len / 2 + (k + 0.5) * segLen);
+      if (wl.rot) b.rotateY(wl.rot);
+      b.translate(wl.ox, 0, wl.oz);
+      stone.push(b);
+    }
+  }
+  return { w: w + 0.3, d: d + 0.3, h: 3.0 };
+}
+
+const _rubbleOff = new Float32Array(24);
+/**
+ * A box roughened into an irregular broken-masonry hexahedron: each of its eight corners moved by its own offset (shared
+ * corners move together, so the faces stay welded). Draws 24 numbers from `rrng`.
+ */
+export function roughenChunk<T extends THREE.BufferGeometry>(chunk: T, rrng: () => number, amt: number): T {
+  for (let c = 0; c < 8; c++) {
+    _rubbleOff[c * 3] = (rrng() - 0.5) * amt;
+    _rubbleOff[c * 3 + 1] = (rrng() - 0.5) * amt * 0.7;
+    _rubbleOff[c * 3 + 2] = (rrng() - 0.5) * amt;
+  }
+  const cp = chunk.attributes.position;
+  for (let i = 0; i < cp.count; i++) {
+    const ci = (cp.getX(i) > 0 ? 1 : 0) + (cp.getY(i) > 0 ? 2 : 0) + (cp.getZ(i) > 0 ? 4 : 0);
+    cp.setXYZ(i, cp.getX(i) + _rubbleOff[ci * 3], cp.getY(i) + _rubbleOff[ci * 3 + 1],
+      cp.getZ(i) + _rubbleOff[ci * 3 + 2]);
+  }
+  chunk.computeVertexNormals();
+  return chunk;
+}
+
+/**
+ * A street rubble pile's pieces at (x, y, z), `pr` across: heaped masonry chunks of three classes (blocks, wall slabs,
+ * brick clumps) over a ring of brick shards feathering it into the ground, and a charred beam jutting out of most.
+ * Drawn from `rrng` exactly as props.ts drew them (the pile's draws feed the street's next candidates).
+ */
+export function rubblePileParts(x: number, y: number, z: number, pr: number, rrng: () => number): { stone: THREE.BufferGeometry[]; wood: THREE.BufferGeometry[] } {
+  const stone: THREE.BufferGeometry[] = [], wood: THREE.BufferGeometry[] = [];
+  const n = 6 + ((rrng() * 5) | 0);
+  for (let k = 0; k < n; k++) {
+    const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
+    const cs = 0.35 + rrng() * 0.8;
+    // mix chunk classes: blocky masonry / flat slab / brick-proportioned
+    const cls = rrng();
+    const chunk = cls < 0.55
+      ? box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9)
+      : cls < 0.8
+        ? box(cs * 1.3, cs * 0.22, cs * (0.8 + rrng() * 0.5), 0.9)   // wall slab
+        : box(cs * 0.7, cs * 0.3, cs * 0.35, 0.9);                    // brick clump
+    roughenChunk(chunk, rrng, cs * 0.34);
+    jitterUV(chunk, rrng);
+    chunk.rotateY(rrng() * Math.PI);
+    chunk.rotateX((rrng() - 0.5) * 0.5);
+    chunk.translate(x + Math.cos(a) * rr, y + 0.12 + (1 - rr / pr) * pr * 0.35, z + Math.sin(a) * rr);
+    stone.push(chunk);
+  }
+  // brick-shard apron: small debris feathering the pile into the ground
+  for (let k = 0; k < 7; k++) {
+    const a = rrng() * Math.PI * 2, rr = pr * (0.8 + rrng() * 0.6);
+    const bs = 0.10 + rrng() * 0.16;
+    const shard = roughenChunk(box(bs * 1.7, bs * 0.7, bs, 1.2), rrng, bs * 0.4);
+    shard.rotateY(rrng() * Math.PI);
+    shard.translate(x + Math.cos(a) * rr, y + 0.05, z + Math.sin(a) * rr);
+    stone.push(shard);
+  }
+  if (rrng() < 0.6) { // charred beam jutting out
+    const beam = box(0.14, 0.14, 2.2 + rrng() * 1.4, 1.0);
+    beam.rotateX(-0.5 - rrng() * 0.4);
+    beam.rotateY(rrng() * Math.PI * 2);
+    beam.translate(x, y + pr * 0.4, z);
+    wood.push(beam);
+  }
+  return { stone, wood };
 }
