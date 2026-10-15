@@ -188,6 +188,8 @@ function addBuilding(S: Shapes, f: Frame, width: number, depth: number, style: K
 }
 
 const BRICK = lin([150, 104, 84]), SLATE = lin([60, 62, 70]), WHITE = lin([222, 216, 206]), STONE = lin([128, 122, 112]);
+/** A near village's tower: lime-rendered, warm off-white (the Maurienne's churches). */
+const PALE_RENDER = lin([220, 210, 190]);
 const STEEL = lin([118, 116, 112]), CONCRETE = lin([180, 174, 160]), DARK = lin([46, 44, 42]), TAR = lin([58, 50, 44]);
 // a church tower's (the landmark): warm brick, a pale stone cornice, a pale belfry stage, a lead-grey spire
 // (the coordinator after the tower frames: against Polders' bright haze contrast matters more than tone — a dark slate
@@ -196,20 +198,23 @@ const TOWER_BRICK = lin([186, 104, 76]), CORNICE = lin([214, 204, 184]), BELFRY 
 const SPIRE_SLATE = lin([44, 46, 54]), LOUVRE = lin([22, 20, 20]);
 
 /** A vertical: its form by kind at its height (heightM) and half-width (halfM). */
-function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number, kit: string | null): void {
+function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number, kit: string | null, slim = false): void {
   switch (kind) {
     case 'churchTower': case 'spire': case 'campanile': {
       // a landmark read at 1.5–2.6 km (the coordinator on the pilot): the tower's half-width at least a seventh of its
       // height (a tenth for a town's great tower), warm brick with a pale stone band under a pale belfry stage with dark
       // louvres, its spire dark slate and as wide as the stage, so it reads against the poplars and the bright haze
-      const s = kind === 'campanile' ? half : Math.max(half, H / (H >= 70 ? 10 : 7));
-      const body = kind === 'campanile' ? 0.8 : 0.6;
-      const wall = kit === 'savoyard' ? STONE : TOWER_BRICK;
+      // (round 4, Glacier edge-n: a near village's tower, read at ~300 m against the cirque's dark rock as the ring's
+      // church was, is slim — its half-width as planned, a tenth of its height — rendered pale, under a grey stone
+      // belfry stage and a dark spire a third of its height)
+      const s = kind === 'campanile' || slim ? half : Math.max(half, H / (H >= 70 ? 10 : 7));
+      const body = kind === 'campanile' ? 0.8 : slim ? 0.55 : 0.6;
+      const wall = slim ? PALE_RENDER : kit === 'savoyard' ? STONE : TOWER_BRICK;
       box(S, f, -s, s, -1.5, H * body, -s, s, wall, null);
       // the stone band (a cornice) and the belfry stage, a step in, its louvres dark on each face
       box(S, f, -s * 1.04, s * 1.04, H * body, H * (body + 0.015), -s * 1.04, s * 1.04, CORNICE);
-      const belfry = H * (body + 0.015), top = H * (body + 0.1);
-      box(S, f, -s * 0.9, s * 0.9, belfry, top, -s * 0.9, s * 0.9, kit === 'savoyard' ? STONE : BELFRY, null);
+      const belfry = H * (body + 0.015), top = H * (body + (slim ? 0.12 : 0.1));
+      box(S, f, -s * 0.9, s * 0.9, belfry, top, -s * 0.9, s * 0.9, kit === 'savoyard' || slim ? STONE : BELFRY, null);
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const lu = 0.3 * s, lv = 0.45 * (top - belfry);
         const cu = a * (s * 0.9 + 0.05), cw = b * (s * 0.9 + 0.05), mid = (belfry + top) / 2;
@@ -220,7 +225,7 @@ function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number,
       else prism(S, f, 8, s * 1.02, 0, top, H, SPIRE_SLATE);
       // the church behind its tower: its nave under a steep roof (not for a lone spire), a village church's size
       if (kind === 'churchTower' && H < 70) {
-        const ns = Math.min(s, 5.2), nl = ns * 3.4, nw = ns * 1.5;
+        const ns = slim ? Math.max(s, 4.6) : Math.min(s, 5.2), nl = ns * 3.4, nw = ns * 1.5;
         const g: Frame = (u, v, w) => f(u, v, w - s - nl);
         box(S, g, -nw, nw, -1.5, H * 0.26, -nl, nl, wall, null);
         roof(S, (u, v, w) => g(w, v, -u), nl, nw, H * 0.26, nw * 1.25, SLATE, wall, false);
@@ -374,6 +379,8 @@ function treeColor(species: string, form: string, tone: number, leaf: number): V
 }
 
 /** The roads' surfaces (linear): Zeeland's clinker and tarmac, a farm track's gravel and earth, a line's ballast. */
+/** A snowy place's roads: packed snow between their banks (the Glacier bird view's black slashes). */
+const SNOW_ROAD_COLOR: V3 = lin([196, 204, 214]);
 const ROAD_COLOR: Readonly<Record<string, V3>> = {
   road: lin([78, 76, 72]), dikeRoad: lin([88, 84, 78]), track: lin([118, 104, 84]), rail: lin([66, 60, 54]),
 };
@@ -419,6 +426,8 @@ export function buildHinterlandOutlandGeometry(
   pyramid: HinterlandPyramid, kit: string | null,
   /** The trees with their ground (the worker's list: the plan's, then the woods' own); absent, the plan's on the land. */
   trees: readonly (HinterlandTree & { y?: number; woods?: boolean })[] = plan.trees,
+  /** A snow-covered place (its roads packed snow). */
+  snowy = false,
 ): HinterlandOutlandGeometry {
   const t0 = performance.now();
   const ground = (x: number, z: number): number => samplePyramid(pyramid, x, z);
@@ -455,11 +464,11 @@ export function buildHinterlandOutlandGeometry(
   }
   for (const v of plan.verticals) {
     const y = footBase(frame(v.x, 0, v.z, v.yaw), v.halfM, v.halfM);
-    addVertical(S, frame(v.x, y, v.z, v.yaw), v.kind, v.heightM, v.halfM, kit);
+    addVertical(S, frame(v.x, y, v.z, v.yaw), v.kind, v.heightM, v.halfM, kit, v.slim === true);
   }
   // ---- the roads: ribbons draped on the drawn land (the atlas alone smudges a 6 m road over two 8 m texels)
   let roadTris = S.triangles;
-  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground);
+  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, snowy ? SNOW_ROAD_COLOR : ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground);
   roadTris = S.triangles - roadTris;
   // ---- the trees: near (the impostors may draw them instead) and far
   const near = new Shapes(), far = new Shapes();
