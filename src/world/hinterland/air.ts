@@ -36,6 +36,8 @@ export function createHinterlandAir(clarity = 1): HinterlandAir {
     uHlSkyOn: { value: 0 },
     uHlDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
     uHlDeckClosed: { value: 0 },
+    // (a clear-air region's haze cooled: its far.air under 1)
+    uHlAirCool: { value: clarity < 1 ? 0.4 * (1 - clarity) / 0.65 : 0 },
   };
   const fragmentPars = /* glsl */`
 ${ATMOSPHERE_SKY_GLSL}
@@ -57,11 +59,15 @@ vec3 hlDeckGrey( vec3 skyCol, vec3 direction ) {
   return skyCol;
 }
 // the far land's haze target: the sky the dome draws in this pixel's direction (at the horizon for rays below it)
+uniform float uHlAirCool;
 vec3 hlHazeTarget( vec3 fallback ) {
   if ( uHlSkyOn < 0.5 ) return fallback;
   vec3 d = inverseTransformDirection( -vViewPosition, viewMatrix );
   d = normalize( vec3( d.x, max( d.y, 0.0 ), d.z ) );
-  return atmoKnee( hlDeckGrey( atmoSky( d ), d ) ) * uAtmoIntensity;
+  vec3 t = atmoKnee( hlDeckGrey( atmoSky( d ), d ) ) * uAtmoIntensity;
+  // (clear mountain air: the far ranges fade toward a cool neutral, not the low sun's warm limb — the round-4c bird
+  // view's "sepia haze")
+  return mix( t, vec3( dot( t, vec3( 0.2126, 0.7152, 0.0722 ) ) ) * vec3( 0.93, 1.0, 1.09 ), uHlAirCool );
 }
 `;
   let domeScene: THREE.Object3D | null = null;

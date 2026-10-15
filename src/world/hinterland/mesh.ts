@@ -86,7 +86,7 @@ export interface HinterlandMeshOptions {
   hazeSigma?: number;
   hazeColor?: THREE.Color;
   /** The land material's fragment patch (material.ts); absent: the debug albedo by slope and height. */
-  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string; normal?: string } | null;
+  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string; normal?: string; key?: string } | null;
   /** The far haze's target: the dome's own sky (air.ts); absent, the fog colour. */
   air?: HinterlandAir | null;
 }
@@ -136,6 +136,9 @@ export function createHinterlandMesh(options: HinterlandMeshOptions): Hinterland
     uHlCam: { value: new THREE.Vector3() },
     uHlProj: { value: new THREE.Matrix4() },
     uHlAir: { value: options.air?.clarity ?? 1 },
+    // (clear air's far ranges: their own aerial perspective past ~4 km, so the back range reads lighter and bluer than the
+    // near walls — round 5; none where the air is the plain law's)
+    uHlFarAir: { value: (options.air?.clarity ?? 1) < 1 ? 0.55 : 0 },
     uHlHazeSigma: { value: options.hazeSigma ?? 0.00026 },
     uHlHazeColor: { value: options.hazeColor ?? new THREE.Color(0.62, 0.7, 0.8) },
     ...(options.surface?.uniforms ?? {}),
@@ -192,6 +195,7 @@ ${HINTERLAND_PROJECT_GLSL}
 ${HINTERLAND_DEPTH_GLSL}
 float hlHazeD = 0.0, hlDrawnR = 0.0;
 uniform float uHlAir;
+uniform float uHlFarAir;
 ${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}
 ${surface?.fragmentPars ?? ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
@@ -223,7 +227,7 @@ ${surface?.normal ?? ''}`)
     // than the valley floor at its foot — the Glacier frames' peaks washed out under a height-blind haze; the scale
     // height the mean of the ray's from the eye to the point, ~1.2 km)
     float hlLift = max( 0.0, 0.5 * ( vHlWorld.y - uHlCam.y ) );
-    float hlT = exp( -hlSeg - uHlHazeSigma * hlLost * exp( -hlLift / 1200.0 ) );
+    float hlT = exp( -hlSeg - uHlHazeSigma * hlLost * exp( -hlLift / 1200.0 ) - uHlFarAir * smoothstep( 4000.0, 16000.0, vHlTrueD ) );
     // (the target: the dome's sky in this direction, so the land's limb meets the sky without a line; without a
     // published sky the scene's fog colour, else a fixed blue; nothing to do inside 2.5 km)
     if ( hlT < 0.999 ) {
@@ -237,7 +241,7 @@ ${surface?.normal ?? ''}`)
   };
   if (options.setupMaterial) options.setupMaterial(material, patch);
   else material.onBeforeCompile = patch;
-  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? 'land' : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
+  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? `land-${surface.key ?? ''}` : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
 
   const mesh = new THREE.Mesh(grid, material);
   mesh.name = 'hinterland-land';

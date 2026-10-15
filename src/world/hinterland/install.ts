@@ -8,6 +8,7 @@ import { wirePyramid, type HinterlandWire } from './wire.ts';
 import { createHinterlandSurface } from './material.ts';
 import { createHinterlandOutlandObjects } from './buildings.ts';
 import { createHinterlandAir } from './air.ts';
+import { presetLightWorld } from '../../engine/quality.ts';
 
 interface EngineLike {
   setupShadowMaterial?: (material: THREE.Material, hook: (shader: THREE.WebGLProgramParametersWithUniforms) => void) => THREE.Material;
@@ -21,7 +22,10 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
   group.name = 'hinterland';
   group.matrixAutoUpdate = false;
   const pyramid = wirePyramid(wire);
-  const surface = createHinterlandSurface(wire);
+  // (the light tiers — a phone, the light presets — draw the land without its bedding, shoulders and ground bump: the
+  // coordinator, "nothing at the phone/Ultra Low tiers"; read at the world's build, as the presets' light world is)
+  const lite = engine.getDeviceTier?.() === 'mobile' || presetLightWorld();
+  const surface = createHinterlandSurface(wire, { lite });
   // (one air for the land and the outland: their far haze ends in the dome's own sky)
   const air = createHinterlandAir(wire.air ?? 1);
   const land = createHinterlandMesh({
@@ -36,5 +40,9 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
   const outland = createHinterlandOutlandObjects(wire, pyramid, engine, air);
   if (outland) group.add(outland);
   group.userData.hinterlandLand = land;
+  // (drawn after the battlefield's opaque objects — a group's order sorts its whole subtree — so the ground, props and
+  // trees in front reject the land's hidden fragments by depth before its shader runs: at eye height the square covers
+  // the lower half of the frame, and drawn first the land shaded all of it to be overwritten)
+  group.renderOrder = 1;
   return group;
 }

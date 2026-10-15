@@ -129,6 +129,14 @@ const S0 = wire.surface[0], mid = (S0.n >> 1) * (S0.n + 1) * 4;
 assert.deepEqual([...S0.rgba.subarray(mid, mid + 4)], [0, 0, 0, 0], 'inside the square nothing is baked');
 const object = createHinterlandObject(copy, {});
 const land = object.getObjectByName('hinterland-land');
+// (round 5) drawn after the battlefield's opaque objects, so they reject its hidden fragments; a phone draws the light
+// variant (no bedding, shoulders or ground bump), a program of its own
+assert.equal(object.renderOrder, 1, 'the Hinterland draws after the battlefield');
+{
+  const lite = createHinterlandObject(copyHinterlandWire(wire), { getDeviceTier: () => 'mobile' }).getObjectByName('hinterland-land');
+  assert.notEqual(lite.material.customProgramCacheKey(), land.material.customProgramCacheKey(), 'the light tiers compile their own program');
+  assert.match(lite.material.customProgramCacheKey(), /land-lite/, 'a phone draws the light land');
+}
 // the land's and the outland's shaders take every patch (a replace on a chunk that moved would silently drop one): the
 // projection, the surface, the haze for the remapped depth's segment and the compression, and the written depth
 {
@@ -143,7 +151,8 @@ const land = object.getObjectByName('hinterland-land');
   for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
     [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
     [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
-    [/hlStrataAt\( vHlWorld, hlNW, hlL \)/, 'the steep faces\' strata'], [/0\.6 \* hlLedge/, 'the ledges\' snow facing the sky']]) {
+    [/hlStrataAt\( vHlWorld, hlNW, hlEY, hlFoot, hlL, hlS2 \)/, 'the steep faces\' bedding'], [/0\.55 \* hlStep/, 'the beds\' steps in the light'], [/hlShoulderAt\( vHlWorld/, 'the shoulders\' snowfields and scree'],
+    [/0\.6 \* hlLedge/, 'the ledges\' snow facing the sky'], [/#ifndef HL_LITE/, 'the light tiers\' variant']]) {
     assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
   }
   // (the polders' rock travels; their ledges hold no snow)
