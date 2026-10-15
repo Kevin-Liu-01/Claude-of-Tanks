@@ -1863,6 +1863,73 @@ export function buildGarageEnvironment(
   };
   mergeStructureRecords();
 
+  // The buildings sit in their ground (GA.03; the garage critic panel, 2026-10-14: "no cast shadows or contact darkening,
+  // so the building looks pasted on ... AO at the base of every structure"; the scenery stays out of the live casters for
+  // the first visit's sake): a soft dark band 1.2 m wide round every structure's footprint, four strips from just inside
+  // its walls outward (the corners darken twice, as ground does there), in one decal draw on the contact shadows' program.
+  const addStructureBaseShade = (): void => {
+    if (typeof document === 'undefined') return;
+    const S = 64;
+    const data = new Uint8Array(4 * S * 4);
+    for (let row = 0; row < S; row += 1) {
+      const t = (row + 0.5) / S;
+      const alpha = Math.round(255 * (1 - t) * (1 - t));
+      for (let column = 0; column < 4; column += 1) data[(row * 4 + column) * 4 + 3] = alpha;
+    }
+    const texture = track(new THREE.DataTexture(data, 4, S, THREE.RGBAFormat));
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    const positions: number[] = [], uvs: number[] = [];
+    const margin = 1.2, inset = 0.15;
+    // open, round or stilted structures keep their own ground (a square band round a water tower's legs would be paint)
+    const open = new Set(['watertower', 'gantry', 'netyard', 'lighthouse', 'minaret', 'stack', 'parkingdeck']);
+    for (const { placement, dimensions, x, z, y } of structureRecords) {
+      if (open.has(placement.catalogId)) continue;
+      const hw = dimensions.w * placement.scale / 2, hd = dimensions.d * placement.scale / 2;
+      const c = Math.cos(placement.yaw), sn = Math.sin(placement.yaw);
+      const at = (lx: number, lz: number): [number, number, number] => [x + c * lx + sn * lz, y + 0.04, z - sn * lx + c * lz];
+      // each side: [wall start, wall end] along the wall, and its outward direction
+      const sides: Array<[[number, number], [number, number], [number, number]]> = [
+        [[-hw - margin, hd - inset], [hw + margin, hd - inset], [0, 1]],
+        [[hw + margin, -hd + inset], [-hw - margin, -hd + inset], [0, -1]],
+        [[hw - inset, hd + margin], [hw - inset, -hd - margin], [1, 0]],
+        [[-hw + inset, -hd - margin], [-hw + inset, hd + margin], [-1, 0]],
+      ];
+      for (const [[ax, az], [bx, bz], [ox, oz]] of sides) {
+        const reach = margin + inset;
+        const a = at(ax, az), b = at(bx, bz), b2 = at(bx + ox * reach, bz + oz * reach), a2 = at(ax + ox * reach, az + oz * reach);
+        // two triangles, counter-clockwise seen from above (the winding is fixed below if a side comes out reversed)
+        const quad = [a, b, b2, a, b2, a2];
+        const quv = [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]];
+        const ux = b[0] - a[0], uz = b[2] - a[2], vx = a2[0] - a[0], vz = a2[2] - a[2];
+        const up = uz * vx - ux * vz; // the y of (b - a) x (a2 - a)
+        const order = up >= 0 ? [0, 1, 2, 3, 4, 5] : [0, 2, 1, 3, 5, 4];
+        for (const k of order) {
+          positions.push(...quad[k]);
+          uvs.push(quv[k][0], quv[k][1]);
+        }
+      }
+    }
+    if (!positions.length) return;
+    const geometry = track(new THREE.BufferGeometry());
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.computeBoundingSphere();
+    const material = track(new THREE.MeshBasicMaterial({
+      map: texture, color: 0x000000, transparent: true, opacity: 0.46, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    }));
+    material.name = 'garage:structure-base-shade';
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = 'garage_structure_base_shade';
+    mesh.renderOrder = 1;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    root.add(mesh);
+  };
+  addStructureBaseShade();
+
   const buildFacilityPresentation = () => {
     // The facility frames, panels and footings take the shared weathered steel, enamel and cast-concrete albedos
     // (garageYardWear.ts) over the stucco normal; machinery keeps the timber normal (2026-10-10, wave 357: "flat
