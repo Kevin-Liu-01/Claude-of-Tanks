@@ -10648,7 +10648,7 @@ ${snowCap ? `
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
     const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
-    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
+    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(pool.meta.collisionSolid?.() ?? geometry) : null; // (every tier the same: a truck's canonical solid)
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined

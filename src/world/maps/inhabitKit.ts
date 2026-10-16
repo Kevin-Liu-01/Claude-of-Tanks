@@ -70,6 +70,8 @@ export interface DestructiblePropType {
   footprintBuild?: () => THREE.BufferGeometry;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** (physics, 2026-10-16) The tier-independent solid a kind's slab shells are read from (props.ts SLAB_SHELL_KINDS). */
+  collisionSolid?: () => THREE.BufferGeometry;
   /** The family's cascaded shadow, over the size rule (destructibleRenderPolicy.ts destructibleCastsShadow). */
   castShadow?: boolean;
   /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them
