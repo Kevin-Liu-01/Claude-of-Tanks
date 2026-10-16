@@ -1,0 +1,314 @@
+{
+ "map": "frontier",
+ "timeOfDay": "day",
+ "seed": 707,
+ "light": {
+  "sunAzimuthDeg": 304,
+  "sunElevationDeg": 38
+ },
+ "actors": [
+  {
+   "id": "t90m_x",
+   "name": "hero",
+   "pos": [
+    44.91,
+    -216.61
+   ],
+   "facingDeg": 252,
+   "turretDeg": -69,
+   "gunDeg": 2,
+   "camo": "digital",
+   "camoSeed": 5701
+  },
+  {
+   "id": "t90a_x",
+   "name": "ally1",
+   "pos": [
+    37.99,
+    -223.99
+   ],
+   "facingDeg": 252,
+   "turretDeg": -74,
+   "gunDeg": 2,
+   "camo": "service_t90m",
+   "camoSeed": 5702
+  },
+  {
+   "id": "leo2a6_x",
+   "name": "wreck0",
+   "pos": [
+    75.02,
+    -310.37
+   ],
+   "facingDeg": 304,
+   "turretDeg": 25,
+   "gunDeg": 0,
+   "state": "wrecked-burnt",
+   "stateAgeS": 40,
+   "camo": "service_leo2a6m",
+   "camoSeed": 6100
+  },
+  {
+   "id": "m1a2_sepv3_x",
+   "name": "wreck1",
+   "pos": [
+    97.19,
+    -280.83
+   ],
+   "facingDeg": 341,
+   "turretDeg": -5,
+   "gunDeg": 0,
+   "state": "wrecked-burnt",
+   "stateAgeS": 65,
+   "camo": "service_leo2a6m",
+   "camoSeed": 6101
+  },
+  {
+   "id": "leo2a7v_x",
+   "name": "wreck2",
+   "pos": [
+    93.25,
+    -255.55
+   ],
+   "facingDeg": 18,
+   "turretDeg": -35,
+   "gunDeg": 0,
+   "state": "wrecked-burnt",
+   "stateAgeS": 90,
+   "camo": "service_leo2a6m",
+   "camoSeed": 6102
+  },
+  {
+   "id": "leo2a6_x",
+   "name": "foe0",
+   "pos": [
+    71.2,
+    -270.57
+   ],
+   "facingDeg": 314,
+   "turretDeg": 10,
+   "gunDeg": 0,
+   "camo": "service_leo2a6m",
+   "camoSeed": 6200
+  }
+ ],
+ "effects": [
+  {
+   "type": "engine_smoke",
+   "actor": "wreck0",
+   "tMs": 0,
+   "params": {}
+  },
+  {
+   "type": "burning",
+   "actor": "wreck1",
+   "tMs": 0,
+   "params": {}
+  },
+  {
+   "type": "burning",
+   "actor": "wreck2",
+   "tMs": 0,
+   "params": {}
+  },
+  {
+   "type": "tank_kill",
+   "actor": "foe0",
+   "tMs": 8450,
+   "params": {
+    "cause": "ammorack",
+    "pop": true
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    71.2,
+    0.99,
+    -270.57
+   ],
+   "tMs": 8480,
+   "params": {
+    "count": 46,
+    "speedMps": 17,
+    "hot": 0.6,
+    "scale": 1.4
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    54.36,
+    -262.47
+   ],
+   "tMs": 8220,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    54.36,
+    2.11,
+    -262.47
+   ],
+   "tMs": 8240,
+   "params": {
+    "count": 40,
+    "speedMps": 15,
+    "hot": 0.4,
+    "scale": 1.3
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    45.86,
+    3.6,
+    -218.55
+   ],
+   "tMs": 8880,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.26,
+     0.66,
+     -0.54
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    45.86,
+    3.6,
+    -218.55
+   ],
+   "tMs": 8905,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.26,
+     0.66,
+     -0.54
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    45.86,
+    3.6,
+    -218.55
+   ],
+   "tMs": 8890,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "ally1",
+   "tMs": 9000,
+   "params": {
+    "ageS": 0.05,
+    "slot": 0
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "hero",
+   "tMs": 9000,
+   "params": {
+    "ageS": 0.06,
+    "slot": 0
+   }
+  },
+  {
+   "type": "dust",
+   "actor": "hero",
+   "tMs": 8700,
+   "params": {
+    "count": 8,
+    "intensity": 0.6
+   }
+  }
+ ],
+ "fxTime": 9000,
+ "timeScale": 0,
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.42,
+  "temperature": 10,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "f7-t90m-column-r5",
+  "kind": "remake-still",
+  "source": "f7_studio_t90_column_fire",
+  "round": 3,
+  "lens": "a",
+  "pick": "f7-t90m-column-r5:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   37.4,
+   4,
+   -207
+  ],
+  "lookAt": [
+   45.23,
+   1.782617835456492,
+   -218.61
+  ],
+  "fov": 32,
+  "rollDeg": 0,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    37.4,
+    4,
+    -207
+   ],
+   "lookAt": [
+    45.23,
+    1.782617835456492,
+    -218.61
+   ],
+   "fov": 32,
+   "rollDeg": 0,
+   "groundRel": true
+  }
+ ]
+}

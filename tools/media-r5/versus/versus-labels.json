@@ -1,0 +1,24 @@
+{
+ "scenes": {
+  "f6-leo2a6-steinburg": "Steinburg, day: Leopard 2A6 (NATO three-tone) v T-90SM",
+  "f7-t90sm-column": "Frontier Basin, day: T-90SM (digital) column under fire",
+  "f6-leo2a6-steinburg-r5": "Steinburg, day: Leopard 2A6 (Bundeswehr three-tone) v T-90M (digital)",
+  "f7-t90m-column-r5": "Frontier Basin, day: T-90M (digital) column under fire",
+  "vs01-desert-abrams-t90m": "Sirocco Wadi, golden hour: M1A2 SEPv3 v T-90M",
+  "vs02-verdant-challenger-t80u": "Verdant Fields, day: Challenger 3 v T-80U",
+  "vs03-reservoir-k2-type99a": "Highland Reservoir, sunset: K2 Black Panther v ZTZ-99 Longwei",
+  "vs04-railyard-leclerc-t14": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+  "vs05-oasis-merkava-t72b3": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
+  "vs06-coastal-type10-ztz99a2": "Saltmere Bay, golden hour: Type 10 v ZTZ-99A2",
+  "vs07-autumn-ariete-t62": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+  "vs08-winter-cv90-bmp3": "Frosthollow, snow: CV90 Mk 4 v BMP-3",
+  "vs09-alpine-strv122-t80bv": "Glacier Pass, snowy morning: Stridsvagn 122 v T-80BV",
+  "vs10-steppe-chieftain-t64": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1"
+ },
+ "lenses": {
+  "a": "lens a (2.2 m up, 37°)",
+  "b": "lens b (1.6 m up, 42°)",
+  "f7-t90sm-column:a": "lens a (4 m up, 36°)",
+  "f7-t90sm-column:b": "lens b (3.6 m up, 38°)"
+ }
+}
