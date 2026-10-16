@@ -583,7 +583,9 @@ function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d:
     const a = hash01(salt + 7 * boardNo++, c.seed + 43);
     return a < 0.16 ? CRATE_PINE_GREY : a < 0.34 ? (m === CRATE_PINE ? CRATE_PINE_OLD : CRATE_PINE) : m;
   };
-  box(0, h / 2, 0, w - 0.024, h - 0.012, d - 0.024, CRATE_INSIDE);
+  // (props census r2 sweep, Lane C 2026-10-16: the trolley's box-only share 73 %, its crates' square boxes) the crate's
+  // dark inside and its corner posts eased, the slats square as before
+  c.mesh.box(0, h / 2, 0, w - 0.024, h - 0.012, d - 0.024, CRATE_INSIDE, 0.006);
   const rows = 3, sh = h / rows - 0.022;
   for (let k = 0; k < rows; k++) {
     const yy = (k + 0.5) * (h / rows);
@@ -591,7 +593,7 @@ function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d:
     for (const sx of [-1, 1]) box(sx * (w / 2 - 0.006), yy, 0, 0.012, sh, d - 0.05, age());
   }
   for (let k = 0; k < 3; k++) box(0, h - 0.006, -d / 2 + (k + 0.5) * (d / 3), w - 0.02, 0.012, d / 3 - 0.018, age());
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(sx * (w / 2 - 0.018), h / 2, sz * (d / 2 - 0.018), 0.036, h, 0.036, m);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) c.mesh.box(sx * (w / 2 - 0.018), h / 2, sz * (d / 2 - 0.018), 0.036, h, 0.036, m, 0.005);
   // (round 3) the road's grime along each side's foot, the shipper's stencil on the middle board of one end
   c.mesh.dressing(() => {
     const g = 0.05 + 0.05 * hash01(salt, c.seed + 47), f = 0.004;
@@ -1857,7 +1859,7 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
   // round 4 (wave 260: "no ropes, stakes or spill"): what fell as the load was forked up, on the ground about the wheels
   const wrack = s.load === 'seaweed';
   const ground = wrack || s.load === 'hay' ? () => groundSpill(c, {
-    x0: -wx - 0.12, x1: wx + 0.12, z0: -hl - 0.05, z1: hl, reach: 0.65, groundY: 0.03,
+    x0: -wx - 0.12, x1: wx + 0.12, z0: -hl - 0.05, z1: hl, reach: 0.65, groundY: 0.006, // (the r2 sweep: on the ground, not 3 cm over it)
     wisps: wrack ? 30 : 18, len: wrack ? [0.25, 0.6] : [0.12, 0.32], width: wrack ? [0.035, 0.07] : [0.012, 0.026],
     tangles: wrack ? 5 : 4, spread: wrack ? 0.2 : 0.16,
     mats: wrack ? [KELP_B, SEAWEED_A, KELP_A] : [HAY_PALE, HAY_A, HAY_DARK], salt: c.seed + 5003,
