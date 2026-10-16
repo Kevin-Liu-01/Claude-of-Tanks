@@ -9,8 +9,10 @@ import {
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { SOURCED_STRUCTURE_TYPES } from './sourcedStructureTypes.ts';
 import {
-  certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile,
+  certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands,
 } from './structureCollision.ts';
+import { packStructureShellWire, unpackStructureShellWire } from './structureShellWire.ts';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const BUCKET_NAMES = [
   'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark',
@@ -203,3 +205,28 @@ function openCutHouse() {
 }
 
 console.log(`structureCollision.selftest: 111 families x 2 variants; minimum ${minimumScore.toFixed(1)}/100; max ${maximumParts} parts`);
+
+// (physics, 2026-10-16; the 226 base's certification reds: the courtyard's turned jars and the rover garage's wheels)
+// A part a kit flags userData.collisionHull stands as its plan hull from its foot to its top: a whole bucket geometry
+// (courtyardKit.ts) or a merged light kind's part, kept as its vertex range (structureKit.ts merge:
+// collisionHullRanges). A lathe's facets do not reach the bands; the worker's wire carries both flags.
+{
+  const lathe = () => new THREE.LatheGeometry([[0.001, 0], [0.3, 0], [0.42, 0.25], [0.45, 0.4], [0.32, 0.62], [0.2, 0.7], [0.24, 0.75]]
+    .map(([r, y]) => new THREE.Vector2(r, y)), 10);
+  const jar = lathe();
+  jar.userData.collisionHull = true;
+  const whole = deriveRuntimeStructureCollisionProfile({ stone: [jar] });
+  assert.equal(whole.contact.parts.length, 1, 'a hulled jar stands as one part');
+  assert.ok(whole.shell.every((band) => band.parts.length === 1), 'one part a band, its hull');
+  const second = lathe().translate(3, 0, 0), first = lathe().toNonIndexed(), other = second.toNonIndexed();
+  const merged = mergeGeometries([first, other], false);
+  merged.userData.collisionHullRanges = Uint32Array.from([0, first.getAttribute('position').count]);
+  const ranged = deriveRuntimeStructureCollisionProfile({ baked: [merged] });
+  const unflagged = deriveRuntimeStructureCollisionProfile({ baked: [mergeGeometries([lathe().toNonIndexed(), lathe().translate(3, 0, 0).toNonIndexed()], false)] });
+  const partsOf = (profile) => profile.shell.reduce((n, band) => n + band.parts.length, 0);
+  assert.ok(partsOf(ranged) < partsOf(unflagged), `the ranged part stands as its hull (${partsOf(ranged)} parts against ${partsOf(unflagged)})`);
+  for (const buckets of [{ stone: [jar] }, { baked: [merged] }]) {
+    assert.deepEqual(deriveRuntimeStructureShellBands(unpackStructureShellWire(packStructureShellWire(buckets).wire)),
+      deriveRuntimeStructureCollisionProfile(buckets).shell, 'the wire carries the hull flags: the worker derives the same bands');
+  }
+}

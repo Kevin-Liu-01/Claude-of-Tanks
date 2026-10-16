@@ -197,13 +197,27 @@ function habModule(T: HutTools, world: SpaceWorld): void {
 // --- the solar array --------------------------------------------------------------------------------------------------
 
 /** A panel of cells w x h tilted `tilt` about x (facing +z when 0 is upright), its frame and its mullions, centred at c. */
+/** Collision: a part that stands as its plan hull from its foot to its top (a wheel, a tapered post: structureKit.ts
+ *  merge keeps its vertex range, structureCollision.ts hullPrism), not as its curved or tapered facets. */
+function hulled<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.userData.collisionHull = true;
+  return geo;
+}
+
+/** Collision: a part drawn and no collision part (a rim, a mullion, a cable: structureKit.ts merge flags its vertices). */
+function dressing<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.userData.noCollision = true;
+  return geo;
+}
+
 function panel(T: HutTools, P: SpacePaint, w: number, h: number, tilt: number, c: V3, group: string): void {
   T.tag('sheet', group, 'metal');
   const cells = T.mbox(w - 0.08, 0.035, h - 0.08, 0.012);
   cells.rotateX(tilt);
   T.put(cells.translate(c[0], c[1], c[2]), P.cell, 0.03);
   T.tag('frame', group, 'metal');
-  const rim = (a: V3, b: V3): void => { T.put(strut(T, a, b, 0.05), P.accent); };
+  // (collision: the cells are the panel; its rims and mullions, a few centimetres proud, are dressing — physics)
+  const rim = (a: V3, b: V3): void => { dressing(T.put(strut(T, a, b, 0.05), P.accent)); };
   const at = (u: number, v: number): V3 => [c[0] + u, c[1] + v * Math.cos(tilt), c[2] + v * Math.sin(tilt)];
   rim(at(-w / 2, -h / 2), at(w / 2, -h / 2)); rim(at(-w / 2, h / 2), at(w / 2, h / 2));
   rim(at(-w / 2, -h / 2), at(-w / 2, h / 2)); rim(at(w / 2, -h / 2), at(w / 2, h / 2));
@@ -212,7 +226,7 @@ function panel(T: HutTools, P: SpacePaint, w: number, h: number, tilt: number, c
   for (let k = 1; k < n; k++) {
     const u = -w / 2 + (k * w) / n;
     const m = strut(T, at(u, -h / 2), at(u, h / 2), 0.025);
-    T.put(m.translate(0, 0.02 * Math.cos(tilt), -0.02 * Math.sin(tilt)), P.frame, 0.02);
+    dressing(T.put(m.translate(0, 0.02 * Math.cos(tilt), -0.02 * Math.sin(tilt)), P.frame, 0.02));
   }
 }
 
@@ -236,7 +250,7 @@ function solarArray(T: HutTools, world: SpaceWorld): void {
       for (const s of [-1, 1]) panel(T, P, 4.0, 2.4, -1.05, [s * 2.3, 1.95, z + 0.12], `wing${k}${s}`);
       T.tag('fitting', `junction${k}`, 'metal');
       T.put(T.mbox(0.45, 0.4, 0.3).translate(0.9, 0.2, z + 0.6), P.frame);
-      T.put(strut(T, [0.12, 0.4, z + 0.05], [0.8, 0.2, z + 0.55], 0.04), P.dark, 0.02);
+      dressing(T.put(strut(T, [0.12, 0.4, z + 0.05], [0.8, 0.2, z + 0.55], 0.04), P.dark, 0.02));
     }
     return;
   }
@@ -602,7 +616,7 @@ function rover(T: HutTools, P: SpacePaint, x: number, z: number, group: string):
   T.tag('fitting', `${group}-wheels`, 'metal');
   for (const sx of [-1, 1]) for (const dz of [-1.6, 0, 1.6]) {
     const w = T.cylinder(0.55, 0.55, 0.42, 12); w.rotateZ(Math.PI / 2);
-    T.put(w.translate(x + sx * 1.35, 0.55, z + dz), 0x2a2a28, 0.04);
+    hulled(T.put(w.translate(x + sx * 1.35, 0.55, z + dz), 0x2a2a28, 0.04));
   }
   T.tag('wall', `${group}-cab`, 'metal');
   T.put(T.mbox(2.5, 2.1, 4.6, 0.25).translate(x, 0.55 + 0.4 + 1.05, z), P.hull, 0.03);
@@ -632,7 +646,7 @@ function roverGarage(T: HutTools, world: SpaceWorld): void {
     hatch(T, P, 0, 0.3, -7.28, 1.0, 1.8);
     for (const sx of [-1, 1]) for (const z of [-6.8, -2.3, 2.3, 6.8]) {
       T.tag('post', `post${sx}${z}`, 'metal');
-      T.put(T.cylinder(0.12, 0.14, 4.6, 8).translate(sx * 5.6, 0.12 + 2.3, z), P.frame);
+      hulled(T.put(T.cylinder(0.12, 0.14, 4.6, 8).translate(sx * 5.6, 0.12 + 2.3, z), P.frame));
     }
     T.tag('roof', 'canopy-frame', 'metal'); // (the canopy's frame comes down with its blanket, as one roof)
     for (const sx of [-1, 1]) T.put(strut(T, [sx * 5.6, 4.75, -7.2], [sx * 5.6, 4.75, 7.2], 0.16), P.frame);
