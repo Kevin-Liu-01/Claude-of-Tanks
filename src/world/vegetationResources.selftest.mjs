@@ -11,7 +11,8 @@ import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { createLeafDetailLibrary, LEAF_DETAIL_NORMAL_SCALE } from './leafDetail.ts';
 
 const source = await readFile(new URL('./vegetation.ts', import.meta.url), 'utf8');
-const start = source.indexOf('  const foliageTex = {} as Record<Species, THREE.Texture>;');
+// (GND 2026-10-15) the stage now opens with the needle crowns' class and their transmission hook (canopyNeedleTransmit)
+const start = source.indexOf('  const needleCrown = (sp: Species): boolean =>');
 const end = source.indexOf('  // r7: 3 near variants + 2 far variants per species', start);
 assert.ok(start > 0 && end > start, 'the actual foliage material/ownership stage is exercised');
 assert.match(source, /import \{ registerRetainedObject3DResources \} from '\.\.\/engine\/resourceLifetime\.ts'/);

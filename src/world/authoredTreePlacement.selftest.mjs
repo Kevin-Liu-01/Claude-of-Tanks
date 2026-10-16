@@ -62,9 +62,8 @@ const builder = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const _up = new THREE.Vector3(0, 1, 0), _c = new THREE.Color();
   const palOf = sp => veg.palettes[sp] || {};
   const inAvoid = (x,z) => veg.avoid?.some(a => Math.hypot(x-a.x,z-a.z)<a.r) || false;
-  // (the ground lane, 2026-10-15: the paddies' cleared banks, vegetation.ts inTreeClear on terrain _treeClearAt)
-  const treeClearAt = heightField._treeClearAt ?? null;
-  const inTreeClear = (x, z) => treeClearAt !== null && treeClearAt(x, z);
+  // (GND 2026-10-15) the paddies' cleared banks, as vegetation.ts declares them (the tree sandboxes share this form)
+  ${source.slice(source.indexOf('  const treeClearAt ='), source.indexOf('  function inAvoid(', source.indexOf('  const treeClearAt =')))}
   ${source.slice(noiseStart, noiseEnd)}
   ${source.slice(start, end)}
   return { trees, treeObstacles, concealers, clusters, group, nextRoll: rng() };

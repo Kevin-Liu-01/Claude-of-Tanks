@@ -49,12 +49,13 @@ const observed = text.replace(rng, rng.replace('function mulberry32(', 'function
   export function takeStreams() { return streams.splice(0).map(({seed,calls,next}) => ({seed,calls,tail:[next(),next(),next()]})); }
   export function seasonalLibrary(seed, input, engineCtx) {
     const cfg = {vegetation:input}, veg = ${variable('veg')};
+    // round 77b (2026-09-26): createFoliageMaterials reads the leaf-detail tile per species (the mobile tier gets none);
+    // this receipt owns pigment only — the tiles are leafDetail.selftest's subject, as autumnLeafSprays does. (GND
+    // 2026-10-15: the registry's needleCrown reads its class too, so the stub stands at the registry's own scope)
+    const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
     ${text.slice(start, end)}
     function materials() {
       const foliageTex = {}, foliageMats = {}, foliageDepthMats = {}, foliageWindHook = () => {};
-      // round 77b (2026-09-26): createFoliageMaterials reads the leaf-detail tile per species (the mobile tier gets none);
-      // this receipt owns pigment only — the tiles are leafDetail.selftest's subject, as autumnLeafSprays does
-      const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
       ${fn('createFoliageMaterials')}
       for (const step of createFoliageMaterials()) void step;
       return {foliageTex, foliageMats, foliageDepthMats};
