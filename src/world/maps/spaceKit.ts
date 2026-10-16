@@ -94,8 +94,11 @@ function port(T: HutTools, P: SpacePaint, w: number, h: number, depth: number, t
     T.mbox(w + 2 * f, f, depth).translate(0, h / 2 + f / 2, 0), T.mbox(w + 2 * f, f, depth).translate(0, -h / 2 - f / 2, 0),
     T.mbox(f, h, depth).translate(-w / 2 - f / 2, 0, 0), T.mbox(f, h, depth).translate(w / 2 + f / 2, 0, 0),
   ];
-  for (const g of members) T.put(g.rotateX(-tilt).translate(at[0], at[1], at[2]), P.frame);
+  // (the triage round, 2026-10-16: the frames' slices broke the collision bands' certification) the frame and its pane
+  // are dressing on the hull, which collides: drawn, no collision part (structureKit merge's noCollisionVertices)
+  for (const g of members) { g.userData.noCollision = true; T.put(g.rotateX(-tilt).translate(at[0], at[1], at[2]), P.frame); }
   const glass = T.box(w, h, 0.03).translate(0, 0, -depth / 2 + 0.015).rotateX(-tilt).translate(at[0], at[1], at[2]);
+  glass.userData.noCollision = true;
   T.put(T.aperture(glass, [0, Math.sin(tilt), Math.cos(tilt)]), pane, 0.01);
 }
 
@@ -111,8 +114,12 @@ function suitport(T: HutTools, P: SpacePaint, x: number, y: number, z0: number, 
   shape.holes.push(hole);
   const ring = new THREE.ExtrudeGeometry(shape, { depth: 0.2, bevelEnabled: false, curveSegments: 6 });
   // (turned half a facet: its inner faces, not their seams, stand on the port's axes)
-  T.put((ring.index ? ring.toNonIndexed() : ring).rotateZ(Math.PI / 12).translate(x, y, z0 - 0.01), P.frame);
+  // (dressing on the face, which collides: no collision part, as the ports' frames)
+  const flat = ring.index ? ring.toNonIndexed() : ring;
+  flat.userData.noCollision = true;
+  T.put(flat.rotateZ(Math.PI / 12).translate(x, y, z0 - 0.01), P.frame);
   const disc = T.cylinder(r, r, 0.02, 12); disc.rotateX(Math.PI / 2);
+  disc.userData.noCollision = true;
   T.put(disc.translate(x, y, z0 + 0.01), P.dark, 0.01);
 }
 
@@ -491,9 +498,16 @@ function landingPad(T: HutTools, world: SpaceWorld): void {
         [Math.cos(mid) * d - Math.sin(mid) * along, y, Math.sin(mid) * d + Math.cos(mid) * along];
       const sill = T.mbox(0.36, 0.16, 2.9, 0.03); sill.rotateY(-mid);
       T.put(sill.translate(...out(R + 0.6, 0.08, 0)), P.apron, 0.05);
+      // (the triage round, 2026-10-16: the leaning plate's sloped slices broke the collision bands' certification) the
+      // deflector collides as its hull, the struts behind it are dressing
       const plate = T.mbox(0.08, 1.9, 2.8, 0.02); plate.rotateZ(-0.2); plate.rotateY(-mid);
+      plate.userData.collisionHull = true;
       T.put(plate.translate(...out(R + 0.6 + Math.sin(0.2) * 0.95, 0.16 + Math.cos(0.2) * 0.95, 0)), 0x9c6a50, 0.05);
-      for (const s of [-1, 1]) T.put(strut(T, out(R + 1.5, 0.04, s * 1.0), out(R + 0.6 + Math.sin(0.2) * 1.4 + 0.07, 0.16 + Math.cos(0.2) * 1.4, s * 1.0), 0.08), P.frame);
+      for (const s of [-1, 1]) {
+        const brace = strut(T, out(R + 1.5, 0.04, s * 1.0), out(R + 0.6 + Math.sin(0.2) * 1.4 + 0.07, 0.16 + Math.cos(0.2) * 1.4, s * 1.0), 0.08);
+        brace.userData.noCollision = true;
+        T.put(brace, P.frame);
+      }
       continue;
     }
     T.tag('bag', `berm${k}`, 'earth');

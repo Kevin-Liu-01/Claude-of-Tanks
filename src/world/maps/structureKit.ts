@@ -2077,6 +2077,10 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
       colored(out, box(0.05, 0.22, 0.05).translate(X, 0.1, zs * (d / 2 + 0.7)), t[2], r, 0.03);
     }
     const hs = style?.hospital ?? {};
+    // (the triage round, 2026-10-16: the kits' extras broke their collision bands' certification) the stones on the skirt,
+    // the snow and the bund along the wall's foot, the stoves and the door shades and jars are dressing: drawn, no
+    // collision part (the wards' cloth and poles collide as before)
+    const dressed = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.noCollision = true; return geo; };
     if (hs.fly) {
       // the fly: a second roof of canvas over the ward on spacers off its ridge pole, oversailing its eaves
       tagParts('roof', `fly|${X}`);
@@ -2091,10 +2095,10 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
       tagParts('fitting', `stoves|${X}`, 'metal');
       for (const z of [-2.2, 2.2]) {
         const sx = X - so * 1.0, roofY = ridgeY - (ridgeY - eaveY) * (1.0 / eaveX);
-        colored(out, mbox(0.5, 0.45, 0.6).translate(sx, 0.225, z), 0x2e2e2c, r, 0.03);
-        colored(out, cylinder(0.06, 0.06, roofY + 0.75 - 0.45, 6).translate(sx, 0.45 + (roofY + 0.75 - 0.45) / 2, z), 0x3a3a38, r, 0.03);
-        colored(out, cylinder(0.15, 0.15, 0.03, 8).translate(sx, roofY + 0.02, z), 0x8a8478, r, 0.03);
-        colored(out, cylinder(0.12, 0.08, 0.08, 6).translate(sx, roofY + 0.79, z), 0x3a3a38, r, 0.03);
+        dressed(colored(out, mbox(0.5, 0.45, 0.6).translate(sx, 0.225, z), 0x2e2e2c, r, 0.03));
+        dressed(colored(out, cylinder(0.06, 0.06, roofY + 0.75 - 0.45, 6).translate(sx, 0.45 + (roofY + 0.75 - 0.45) / 2, z), 0x3a3a38, r, 0.03));
+        dressed(colored(out, cylinder(0.15, 0.15, 0.03, 8).translate(sx, roofY + 0.02, z), 0x8a8478, r, 0.03));
+        dressed(colored(out, cylinder(0.12, 0.08, 0.08, 6).translate(sx, roofY + 0.79, z), 0x3a3a38, r, 0.03));
       }
     }
     if (hs.foot) {
@@ -2106,7 +2110,7 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
         if (hs.foot === 'stones') {
           for (let k = 0; k < 9; k++) {
             const sz = k % 3 === 0 ? 0.36 : k % 3 === 1 ? 0.3 : 0.26;
-            colored(out, mbox(sz, sz * 0.62, sz * 1.15, 0.04).translate(xw + side * (sz / 2 + 0.04), sz * 0.31 - 0.02, -d / 2 + 0.5 + k * (d - 1.0) / 8), k % 2 ? 0x7a7670 : 0x8a857c, r, 0.08);
+            dressed(colored(out, mbox(sz, sz * 0.62, sz * 1.15, 0.04).translate(xw + side * (sz / 2 + 0.04), sz * 0.31 - 0.02, -d / 2 + 0.5 + k * (d - 1.0) / 8), k % 2 ? 0x7a7670 : 0x8a857c, r, 0.08));
           }
           continue;
         }
@@ -2114,17 +2118,17 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
         const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(side * base, 0), new THREE.Vector2(side * base * 0.35, ht * 0.7), new THREE.Vector2(0, ht)]);
         const berm = new THREE.ExtrudeGeometry(side > 0 ? shape : new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0, ht), new THREE.Vector2(side * base * 0.35, ht * 0.7), new THREE.Vector2(side * base, 0)]),
           { depth: d - 0.3, bevelEnabled: false });
-        colored(out, scaleUV(berm, 0.5, 0.5).translate(xw, -0.02, -(d - 0.3) / 2), hs.foot === 'snow' ? 0xe8ecef : 0x6e5a42, r, 0.05);
+        dressed(colored(out, scaleUV(berm, 0.5, 0.5).translate(xw, -0.02, -(d - 0.3) / 2), hs.foot === 'snow' ? 0xe8ecef : 0x6e5a42, r, 0.05));
       }
     }
     if (hs.shade) {
       // over the door a shade of nipa thatch on two bamboo poles, and the ward's water jars by it
       tagParts('fitting', `shade|${X}`, 'timber');
-      for (const sx of [-0.85, 0.85]) colored(out, cylinder(0.045, 0.05, 2.15, 6).translate(X + sx, 1.075, d / 2 + 0.55), 0x9a8656, r, 0.05);
+      for (const sx of [-0.85, 0.85]) dressed(colored(out, cylinder(0.045, 0.05, 2.15, 6).translate(X + sx, 1.075, d / 2 + 0.55), 0x9a8656, r, 0.05));
       const thatch = mbox(2.0, 0.09, 0.85, 0.03);
       thatch.rotateX(0.18);
-      colored(out, thatch.translate(X, 2.12, d / 2 + 0.2), 0x7a6c48, r, 0.08);
-      for (const sx of [-1.35, 1.35]) colored(out, cylinder(0.24, 0.3, 0.62, 8).translate(X + sx, 0.31, d / 2 + 0.3), 0x6a4a32, r, 0.05);
+      dressed(colored(out, thatch.translate(X, 2.12, d / 2 + 0.2), 0x7a6c48, r, 0.08));
+      for (const sx of [-1.35, 1.35]) dressed(colored(out, cylinder(0.24, 0.3, 0.62, 8).translate(X + sx, 0.31, d / 2 + 0.3), 0x6a4a32, r, 0.05));
     }
     // the cots down the ward, seen through the door
     tagParts('fitting', `cots|${X}`, 'metal');
@@ -3170,6 +3174,12 @@ function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): T
   const out: THREE.BufferGeometry[] = [], s = style, p = s.sheet, w = 6.8, d = 11.5, h = 3.8, r = rng;
   const frame = 0x2c3236, pane = 0x6f8790, rib = 0x3b4246, steel = 0x1f2326;
   const R = w / 2, H = h - 0.12, skin = 0.06, Ri = R - skin, Hi = H - skin;
+  // (the triage round, 2026-10-16: the door leaves' ledges and braces broke the 1.0-1.5 m collision band's certification)
+  // the leaves' ledges, braces, straps and handles are dressing on the leaf, which collides: drawn, no collision part
+  const dressing = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.noCollision = true; return geo; };
+  // (and the battens on a board end are dressing on it; a course of sandbags collides as its hull, a box, not its eased
+  // section's slices)
+  const hull = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.collisionHull = true; return geo; };
   const archY = (x: number) => H * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
   const innerY = (x: number) => Hi * Math.sqrt(Math.max(0, 1 - (x / Ri) ** 2));
   colored(out, quonsetShell(R, H, skin, d), p[0], r, 0.1);
@@ -3210,7 +3220,7 @@ function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): T
     if (s.ends === 'board') {
       // the cover battens over the boards' joints
       for (let u = -Ri + 0.32; u < Ri - 0.3; u += 0.78) {
-        for (const [a, b] of spans(u, 0.035, innerY(Math.abs(u) + 0.035) - 0.02)) colored(out, f(0.07, b - a, 0.04, u, (a + b) / 2, 0.02), trim, r, 0.03);
+        for (const [a, b] of spans(u, 0.035, innerY(Math.abs(u) + 0.035) - 0.02)) dressing(colored(out, f(0.07, b - a, 0.04, u, (a + b) / 2, 0.02), trim, r, 0.03));
       }
     } else if (s.ends === 'sheet') {
       // the frame the sheet is fixed to: two posts to the arch, the girt either side of them
@@ -3249,29 +3259,29 @@ function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): T
       for (const sg of [-1, 1]) {
         const cx = du + sg * dw / 4, lw = dw / 2 - 0.01;
         colored(out, f(lw, dh - 0.02, 0.05, cx, (dh - 0.02) / 2, -set), leaf, r, 0.03);
-        for (const y of [0.35, 1.25, 2.15]) colored(out, box(lw - 0.12, 0.12, 0.05).translate(cx, y, zs * (at - set + 0.05)), toneOf(leaf, 0.86), r, 0.02);
-        for (const [y0, y1] of [[0.42, 1.18], [1.32, 2.08]]) colored(out, mbeam([cx - sg * 0.5, y0, zs * (at - set + 0.045)], [cx + sg * 0.5, y1, zs * (at - set + 0.045)], 0.08, 0.04), toneOf(leaf, 0.86), r, 0.02);
-        for (const y of [0.5, 2.0]) colored(out, f(0.3, 0.05, 0.03, du + sg * (dw / 2 - 0.17), y, -set + 0.04), steel, r, 0.02);
+        for (const y of [0.35, 1.25, 2.15]) dressing(colored(out, box(lw - 0.12, 0.12, 0.05).translate(cx, y, zs * (at - set + 0.05)), toneOf(leaf, 0.86), r, 0.02));
+        for (const [y0, y1] of [[0.42, 1.18], [1.32, 2.08]]) dressing(colored(out, mbeam([cx - sg * 0.5, y0, zs * (at - set + 0.045)], [cx + sg * 0.5, y1, zs * (at - set + 0.045)], 0.08, 0.04), toneOf(leaf, 0.86), r, 0.02));
+        for (const y of [0.5, 2.0]) dressing(colored(out, f(0.3, 0.05, 0.03, du + sg * (dw / 2 - 0.17), y, -set + 0.04), steel, r, 0.02));
       }
-      colored(out, f(0.5, 0.06, 0.05, du, 1.25, -set + 0.07), steel, r, 0.02);
+      dressing(colored(out, f(0.5, 0.06, 0.05, du, 1.25, -set + 0.07), steel, r, 0.02));
     } else if (s.door === 'sliding') {
       // the leaf hung on the face from its track, slid half open over the wall beside the opening
       const lw = dw + 0.2, cx = du + 0.95;
       colored(out, f(3.9, 0.1, 0.1, du + 0.85, dh + 0.18, 0.05), frame, r, 0.02);
       colored(out, f(lw, dh + 0.02, 0.05, cx, (dh + 0.02) / 2, 0.125), leaf, r, 0.03);
-      for (const y of [0.4, dh - 0.4]) colored(out, box(lw - 0.1, 0.1, 0.05).translate(cx, y, zs * (at + 0.175)), toneOf(leaf, 0.86), r, 0.02);
-      for (const sg of [-1, 1]) colored(out, f(0.06, 0.24, 0.06, cx + sg * (lw / 2 - 0.25), dh + 0.12, 0.13), steel, r, 0.02);
-      colored(out, f(0.05, 0.4, 0.05, cx - lw / 2 + 0.15, 1.1, 0.175), steel, r, 0.02);
+      for (const y of [0.4, dh - 0.4]) dressing(colored(out, box(lw - 0.1, 0.1, 0.05).translate(cx, y, zs * (at + 0.175)), toneOf(leaf, 0.86), r, 0.02));
+      for (const sg of [-1, 1]) dressing(colored(out, f(0.06, 0.24, 0.06, cx + sg * (lw / 2 - 0.25), dh + 0.12, 0.13), steel, r, 0.02));
+      dressing(colored(out, f(0.05, 0.4, 0.05, cx - lw / 2 + 0.15, 1.1, 0.175), steel, r, 0.02));
     } else if (s.door === 'wicket') {
       colored(out, f(dw - 0.02, dh - 0.02, 0.05, du, (dh - 0.02) / 2, -set), leaf, r, 0.03);
-      for (const y of [0.4, 1.7]) colored(out, box(dw - 0.14, 0.12, 0.05).translate(du, y, zs * (at - set + 0.05)), toneOf(leaf, 0.86), r, 0.02);
-      colored(out, f(0.05, 0.16, 0.06, du + dw / 2 - 0.14, 1.05, -set + 0.055), steel, r, 0.02);
+      for (const y of [0.4, 1.7]) dressing(colored(out, box(dw - 0.14, 0.12, 0.05).translate(du, y, zs * (at - set + 0.05)), toneOf(leaf, 0.86), r, 0.02));
+      dressing(colored(out, f(0.05, 0.16, 0.06, du + dw / 2 - 0.14, 1.05, -set + 0.055), steel, r, 0.02));
     } else {
       // the roller shutter: its box over the head, the guides either side, the curtain down to a metre off the ground
       colored(out, f(dw + 0.4, 0.42, 0.36, du, dh + 0.33, 0.18), frame, r, 0.02);
       colored(out, f(dw - 0.02, dh - 1.0, 0.04, du, 1.0 + (dh - 1.0) / 2, -set), leaf, r, 0.03);
       colored(out, f(dw - 0.02, 0.08, 0.08, du, 1.0, -set), toneOf(leaf, 0.86), r, 0.02);
-      for (let k = 1; k < 4; k++) colored(out, box(dw - 0.06, 0.035, 0.03).translate(du, 1.0 + k * (dh - 1.0) / 4, zs * (at - set + 0.035)), toneOf(leaf, 0.86), r, 0.02);
+      for (let k = 1; k < 4; k++) dressing(colored(out, box(dw - 0.06, 0.035, 0.03).translate(du, 1.0 + k * (dh - 1.0) / 4, zs * (at - set + 0.035)), toneOf(leaf, 0.86), r, 0.02));
     }
     colored(out, mbox(Math.max(dw + 0.6, 3.0), 0.1, 0.5).translate(du, 0.05, zs * (at + 0.25)), 0x6f7275, r, 0.03);
   }
@@ -3294,13 +3304,13 @@ function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): T
   if (s.extra === 'blastwalls') {
     // the blast walls: sandbags three courses high either side of the doors, and along the door half's flanks
     for (const sg of [-1, 1]) {
-      for (let k = 0; k < 3; k++) colored(out, mbox(1.6, 0.22, 0.4, 0.07).translate(sg * 2.45, 0.11 + k * 0.22, at + 0.22), toneOf(bag, 1 - k * 0.04), r, 0.06);
-      for (let k = 0; k < 2; k++) colored(out, mbox(0.4, 0.22, 4.6, 0.07).translate(sg * (R + 0.24), 0.11 + k * 0.22, at - 2.6), toneOf(bag, 1 - k * 0.05), r, 0.06);
+      for (let k = 0; k < 3; k++) hull(colored(out, mbox(1.6, 0.22, 0.4, 0.07).translate(sg * 2.45, 0.11 + k * 0.22, at + 0.22), toneOf(bag, 1 - k * 0.04), r, 0.06));
+      for (let k = 0; k < 2; k++) hull(colored(out, mbox(0.4, 0.22, 4.6, 0.07).translate(sg * (R + 0.24), 0.11 + k * 0.22, at - 2.6), toneOf(bag, 1 - k * 0.05), r, 0.06));
     }
   } else if (s.extra === 'baggedwindows') {
     // the windows bagged up to their sills
     for (const zs of [-1, 1]) for (const o of lights(s.windows[zs > 0 ? 0 : 1], zs > 0)) {
-      for (let k = 0; k < 4; k++) colored(out, mbox(o.w + 0.5, 0.26, 0.42, 0.07).translate(o.u, 0.13 + k * 0.26, zs * (at + 0.22)), toneOf(bag, 1 - (k % 2) * 0.05), r, 0.06);
+      for (let k = 0; k < 4; k++) hull(colored(out, mbox(o.w + 0.5, 0.26, 0.42, 0.07).translate(o.u, 0.13 + k * 0.26, zs * (at + 0.22)), toneOf(bag, 1 - (k % 2) * 0.05), r, 0.06));
     }
   } else if (s.extra === 'drifts') {
     // the drifts banked against both flanks and the back end
@@ -3356,6 +3366,10 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
   // through the wall cloth — its pieces round them, the gauze set back in the opening — and the door's opening runs up
   // into the front gable, the tent's inside behind it
   const winY0 = wall * 0.4, winH = wall * 0.4, winW = 0.9;
+  // (the triage round, 2026-10-16: the cut windows' pieces put the foot band past the collision's dense-source limit)
+  // the tent's fine dressing — the gauze, the ropes and webbing, the rolled flaps, the door's tape — is drawn and no
+  // collision part (merge's noCollisionVertices); the cloth, the poles, the bags and the fence collide as before
+  const dress = <T extends THREE.BufferGeometry>(geo: T): T => { geo.userData.noCollision = true; return geo; };
   const rope = 0x8a7c62, web = 0x7c6c50;
   const ridgeY = wall + rise;
   for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
@@ -3371,7 +3385,7 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
       const pieces: Array<[number, number, number, number]> = [[0, winY0, -bw / 2, bw / 2], [winY0 + winH, wall, -bw / 2, bw / 2],
         [winY0, winY0 + winH, -bw / 2, -winW / 2], [winY0, winY0 + winH, winW / 2, bw / 2]];
       for (const [y0, y1, za, zb] of pieces) colored(out, lean(box(0.04, y1 - y0, zb - za).translate(0, (y0 + y1) / 2 - wall / 2, (za + zb) / 2)), p[1], r, 0.03);
-      colored(out, lean(box(0.012, winH, winW).translate(-side * 0.03, winY0 + winH / 2 - wall / 2, 0)), 0x3a352c, r, 0.02);
+      dress(colored(out, lean(box(0.012, winH, winW).translate(-side * 0.03, winY0 + winH / 2 - wall / 2, 0)), 0x3a352c, r, 0.02));
     }
   }
   // the back gable whole, the front one notched for the door's opening
@@ -3386,8 +3400,8 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
   colored(out, box(w, wall, 0.04).translate(0, wall / 2, -d / 2 + 0.02), p[0], r, 0.05);
   for (const sgn of [-1, 1]) colored(out, box(w / 2 - 0.55, wall, 0.04).translate(sgn * (w / 4 + 0.28), wall / 2, d / 2 - 0.02), p[0], r, 0.05);
   // the door: its opening's head (a webbing tape across), its two flaps rolled up and tied at the sides of the opening
-  colored(out, box(1.14, 0.05, 0.05).translate(0, wall + rise * 0.55 + 0.02, d / 2 - 0.0), web, r, 0.02);
-  for (const s of [-1, 1]) colored(out, box(0.15, wall + rise * 0.45, 0.13).translate(s * 0.6, (wall + rise * 0.45) / 2 + 0.05, d / 2 + 0.03), p[1], r, 0.05);
+  dress(colored(out, box(1.14, 0.05, 0.05).translate(0, wall + rise * 0.55 + 0.02, d / 2 - 0.0), web, r, 0.02));
+  for (const s of [-1, 1]) dress(colored(out, box(0.15, wall + rise * 0.45, 0.13).translate(s * 0.6, (wall + rise * 0.45) / 2 + 0.05, d / 2 + 0.03), p[1], r, 0.05));
   // the fly over the door: canvas out from the gable on two poles
   // (a kit's tent keeps within the family's footprint and its 0.4 m margin: regionalArchitecture)
   const fz = d / 2, flyIn = wall + rise * 0.62, flyOut = wall + rise * 0.48, fo = style ? 1.1 : 1.35, fw = 1.0;
@@ -3401,8 +3415,8 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
   for (const side of [-1, 1]) for (let k = 0; k <= bays; k++) {
     const z = -d / 2 + k * bay;
     // the webbing over the roof at the bay line, the guy from the eave to its peg
-    colored(out, mbeam([side * (w / 2), wall + 0.02, z], [0, ridgeY + 0.03, z], 0.025, 0.07), web, r, 0.03);
-    colored(out, mbeam([side * (w / 2 + 0.04), wall + 0.05, z], [side * (w / 2 + 1.0), 0.04, z], 0.022, 0.022), rope, r, 0.03);
+    dress(colored(out, mbeam([side * (w / 2), wall + 0.02, z], [0, ridgeY + 0.03, z], 0.025, 0.07), web, r, 0.03));
+    dress(colored(out, mbeam([side * (w / 2 + 0.04), wall + 0.05, z], [side * (w / 2 + 1.0), 0.04, z], 0.022, 0.022), rope, r, 0.03));
   }
   // the valance along each eave, the side windows with their flaps rolled over them
   for (const side of [-1, 1]) {
@@ -3411,10 +3425,10 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
       const roll = cylinder(0.06, 0.06, 1.0, 8); roll.rotateX(Math.PI / 2);
       // (on the leaning cloth's face: the wall's foot stands out, its head in)
       const ry = winY0 + winH + 0.06;
-      colored(out, roll.translate(side * (w / 2 + 0.09 - (ry - wall / 2) * Math.sin(0.1) + 0.055), ry, z), p[1], r, 0.04);
+      dress(colored(out, roll.translate(side * (w / 2 + 0.09 - (ry - wall / 2) * Math.sin(0.1) + 0.055), ry, z), p[1], r, 0.04));
     }
   }
-  for (const zs of [-1, 1]) colored(out, mbeam([0, ridgeY + 0.3, zs * (d / 2 + 0.1)], [0, 0.04, zs * (d / 2 + (style ? 1.1 : 1.3))], 0.022, 0.022), rope, r, 0.03);
+  for (const zs of [-1, 1]) dress(colored(out, mbeam([0, ridgeY + 0.3, zs * (d / 2 + 0.1)], [0, 0.04, zs * (d / 2 + (style ? 1.1 : 1.3))], 0.022, 0.022), rope, r, 0.03));
   colored(out, slab(3.4, 0.04, style ? 1.0 : 1.9).translate(0, 0.05, d / 2 + (style ? 0.65 : 1.05)), p[1], r, 0.06);
   if ((ds.skirt ?? 'bags') === 'bags') {
     // (a long sand bag a bay and a half: the band's footprint stays in few pieces)
@@ -3435,7 +3449,7 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
     for (const side of [-1, 1]) {
       colored(out, clothPanel([side * (w / 2 + 0.22), wall + 0.18, -d / 2 - 0.15], [0, ridgeY + 0.28, -d / 2 - 0.15],
         [0, ridgeY + 0.28, d / 2 + 0.15], [side * (w / 2 + 0.22), wall + 0.18, d / 2 + 0.15], 3, 6, 0.06, [0, -1, 0], 3), side < 0 ? p[1] : p[0], r, 0.012);
-      for (let k = 0; k <= bays; k++) colored(out, mbeam([side * (w / 2 + 0.2), wall + 0.18, -d / 2 + k * bay], [side * (w / 2 + 0.03), wall + 0.02, -d / 2 + k * bay], 0.02, 0.02), rope, r, 0.03);
+      for (let k = 0; k <= bays; k++) dress(colored(out, mbeam([side * (w / 2 + 0.2), wall + 0.18, -d / 2 + k * bay], [side * (w / 2 + 0.03), wall + 0.02, -d / 2 + k * bay], 0.02, 0.02), rope, r, 0.03));
     }
     for (let k = 0; k <= bays; k++) colored(out, box(0.06, 0.26, 0.06).translate(0, ridgeY + 0.16, -d / 2 + k * bay), p[2], r, 0.03);
   }

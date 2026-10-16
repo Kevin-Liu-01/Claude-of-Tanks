@@ -459,7 +459,7 @@ export function polderPakhuis<S extends { door: Rgb; green: Rgb; window: WindowS
       const hx = ym, hz = cz + D * 0.32;
       sink.span('structureWood', hx - 0.55, 0.62, hz - 0.8, hx + 0.55, 0.68, hz + 0.8, { colour: shade(rgb(0x6a5a48), 1.05), decor: true });
       for (const s of [-1, 1]) {
-        sink.cylinder('structureWood', [hx + s * 0.62, 0.45, hz], 'x', 0.06 * s, 0.45, 12, { colour: rgb(0x3a3430), decor: true });
+        sink.cylinder('structureWood', [hx + s * 0.62 - (s < 0 ? 0.06 : 0), 0.45, hz], 'x', 0.06, 0.45, 12, { colour: rgb(0x3a3430), decor: true }); // (a negative length turned the left wheel inside out)
         sink.member('structureWood', [hx + s * 0.45, 0.65, hz + 0.7], [hx + s * 0.4, 0.08, hz + 1.9], 0.06, 0.06, [1, 0, 0], { colour: rgb(0x5a4a38), decor: true, exposed: true }, 0);
       }
       bollard(sink, yx1 - 0.4, 0.08, bb.maxZ - 0.7, 'iron', rgb(0x2a2c2d));

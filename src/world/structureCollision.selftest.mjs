@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
+  DESTRUCTIBLE_BUILDING_TYPES, MAP_DESTRUCTIBLE_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { SOURCED_STRUCTURE_TYPES } from './sourcedStructureTypes.ts';
@@ -126,6 +126,31 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
   }
 }
 
+// (the triage round, 2026-10-16; the coordinator: the hut kit's motor pools certified 0, so they had no real
+// collision) every kit's and map's own light-family form — the hut kit's huts, the tents in their armies' canvas, the
+// offices, relay huts and Quonsets in their kits' walls, Mars's stations — is certified as the generic families are:
+// each band's collision answers its source triangles above STRICT_SCORE on both variants
+const regionalForms = [];
+for (const seed of [0x51a7c7, 0xa1139e]) {
+  const forms = [
+    ...Object.entries(REGIONAL_DESTRUCTIBLE_TYPES).flatMap(([kit, table]) => Object.entries(table).map(([id, meta]) => [`${kit}/${id}`, meta])),
+    ...Object.entries(MAP_DESTRUCTIBLE_TYPES).flatMap(([map, table]) => Object.entries(table).map(([id, meta]) => [`map:${map}/${id}`, meta])),
+  ];
+  for (const [id, meta] of forms) {
+    const buckets = { baked: [meta.build(seeded(seed))] };
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
+    const certification = certifyStructureCollisionProfile(buckets, profile);
+    maximumParts = Math.max(
+      maximumParts, profile.contact.parts.length, ...profile.shell.map((band) => band.parts.length),
+    );
+    assert.ok(certification.minimumScore > STRICT_SCORE,
+      `${id}: kit light-form source-triangle certification scores above ${STRICT_SCORE}/100 (${certification.minimumScore.toFixed(1)})`);
+    minimumScore = Math.min(minimumScore, certification.minimumScore);
+    regionalForms.push(id);
+  }
+}
+assert.ok(new Set(regionalForms).size >= 150, `the kits' and maps' light forms are audited (${new Set(regionalForms).size})`);
+
 // 2026-09-17: 111 → 113 with the fortification destructibles (barbedwire, bunker)
 // 2026-09-19: 113 → 119 with the Mars station's six orbital destructibles
 // 2026-09-24: four detailed Olympus colony facilities join the existing 119 families.
@@ -204,7 +229,7 @@ function openCutHouse() {
   assert.ok(walls >= 1, 'the open-cut house has wall bands');
 }
 
-console.log(`structureCollision.selftest: 111 families x 2 variants; minimum ${minimumScore.toFixed(1)}/100; max ${maximumParts} parts`);
+console.log(`structureCollision.selftest: 111 families + ${new Set(regionalForms).size} kit light forms x 2 variants; minimum ${minimumScore.toFixed(1)}/100; max ${maximumParts} parts`);
 
 // (physics, 2026-10-16; the 226 base's certification reds: the courtyard's turned jars and the rover garage's wheels)
 // A part a kit flags userData.collisionHull stands as its plan hull from its foot to its top: a whole bucket geometry
