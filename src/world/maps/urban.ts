@@ -387,7 +387,9 @@ export default {
   // the sun over half the town while the camera metered open sun; a mid-level cell is thin and passes half the beam
   // (cloudscapes.ts deckBeam); (2026-10-10, wave 342b's after-defects: "cloud-shaded Steinburg variants go flat and murky with
   // few readable shadows") its cells pass two thirds of the beam, so the town keeps its shadows under a passing cell
-  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a, deckBeam: 0.65 },
+  // 2026-10-15 (the coordinator's ruling under the owner's 10-13 bar): the altocumulus' broken 0.60 cell layer read close
+  // enough to the banned Fjord deck in stills — Verdant's fair-weather cumulus over the town, its cirrus and contrails kept
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.38, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a },
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
     // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->
