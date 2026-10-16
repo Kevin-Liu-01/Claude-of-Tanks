@@ -3,7 +3,7 @@
 // ghorfa souk, the souk stall of the ksar and of Siwa with Siwa's row of them, the Navajo roadside stands and the Chouf
 // souk of Deir el-Qamar. The kits keep one re-pointing line each (or a body handed its sink); what a builder needs of its
 // kit's own palette or helpers its call hands in.
-import { LocalFrame, PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedFace, holedPolygon, recordBody, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { archHead } from './sarajevoParts.ts';
@@ -54,10 +54,9 @@ function shopCell(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number
 
 // ------------------------------------------------------------------------------------------------ Wadi Rum
 
-/** What the Wadi Rum souq takes from its kit: its roof furniture, its render's coat, its sheets, doors and goods. */
+/** What the Wadi Rum souq takes from its kit: its roof furniture, its sheets, doors and goods. */
 export interface RumKit {
   rooftop: (sink: PartSink, W: number, D: number, top: number, rng: () => number) => void;
-  coat: (parts: RegionalParts) => RegionalParts;
   sheets: readonly Rgb[];
   doors: readonly Rgb[];
   goods: readonly Rgb[];
@@ -71,13 +70,12 @@ export interface RumKit {
  * into with its shelves of goods, its roller shutter half raised on its drum in its guides at the head of the opening, the
  * sacks, crates, gas bottles and plastic chairs out before it; a cantilevered concrete canopy on its brackets along the
  * front, the signboards over the shops with their lettering, the air-conditioners and the cable runs; the render fallen
- * away in patches to the block.
+ * away in patches to the block. Laid in the kit's own sink, in its frame along the plot (`plot`: the kit's plotAxes), its
+ * shop fronts to +x; the kit coats it.
  */
-export function wadirumSouq(ctx: RegionalBuildContext, kit: RumKit): RegionalParts {
-  const sink = new PartSink(uvOffset(ctx));
+export function wadirumSouq(sink: PartSink, ctx: RegionalBuildContext, plot: { turned: boolean; w: number; d: number }, kit: RumKit): void {
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  // the base market row's plot is wider than deep: the row lies along it, its shop fronts (+x) to the plot's +z
-  const plot = plotAxes(ctx.info), turned = plot.turned;
+  const turned = plot.turned;
   const W = clamp(plot.w - 0.6, turned ? 4.2 : 6, 10), D = clamp(plot.d - 0.6, turned ? 6 : 10, 18);
   const H = 3.6, plinth = 0.25, t = 0.25, wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
   const n = Math.max(2, Math.floor(D / 3.2)), bay = D / n, sw = bay - 0.9, sh = 2.7, cellD = clamp(W - 1.4, 1.6, 3.2);
@@ -190,8 +188,7 @@ export function wadirumSouq(ctx: RegionalBuildContext, kit: RumKit): RegionalPar
     });
     kit.rooftop(sink, W, D, top, rng);
   };
-  alongPlot(sink, turned, lay, 1);
-  return kit.coat(sink.finish());
+  lay();
 }
 
 // ------------------------------------------------------------------------------------------------ the ksar

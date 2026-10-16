@@ -3,7 +3,7 @@
 // the next storey left standing at the corners and black water tanks on the roof, steel doors painted green or blue,
 // window grilles; the Desert Patrol's fort, crenellated with corner towers; steel-portal stores and workshops under
 // low corrugated roofs instead of tiles; walled compounds of block houses.
-import { PartSink, faceBox, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, holedShaft, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec,
 } from './house.ts';
@@ -42,12 +42,11 @@ function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => n
 }
 
 /**
- * (the maps lane, 2026-10-15, Redrock's blind critics: the shops' fronts were "flat black cut-outs") A shop's open front
- * under its half-raised shutter: the back wall in shade, two display racks of tins, sacks and cartons under the shutter,
- * a crate of produce on the step — the goods from the shop's own stream (the kit's draws are as before); all decor. The opening spans 0.3 to
- * 2.6 m on the face.
+ * (the maps lane, 2026-10-15, Redrock's blind critics: the shops' fronts were "flat black cut-outs") the goods on the
+ * souq's shelves, its tins, sacks and cartons (props census #23: the shops are rooms behind their fronts, souqs.ts).
  */
 const SHOP_GOODS: readonly Rgb[] = [0xc9b48a, 0xb9a072, 0xa8442f, 0x4f7a4a, 0x3f5f8a, 0xc9a23a, 0xdedad0, 0x7a5a3a].map(rgb);
+
 /** The block house: one or two storeys of concrete block, flat roof, parapet, steel door, grilles, roof furniture. */
 const blockHouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -423,6 +422,16 @@ const ruin: RegionalBuilder = (ctx) => {
 // ---- the base plots the first kit left to the generic yard (gauntlet wave 15: containers, gantries and steel water
 // towers read as a rail yard, not a Jordanian desert outpost)
 
+/** A shop row of the souq (the base marketRow plot; props census #23, the looks lane 2026-10-15): member-built in
+ *  souqs.ts, its shop fronts cut through the street wall with their rooms behind, in the row's frame along its plot. */
+const souqRow: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  // the base market row's plot is wider than deep: the row lies along it, its shopfronts (+x) down one long side
+  const plot = plotAxes(ctx.info);
+  alongPlot(sink, plot.turned, () => wadirumSouq(sink, ctx, plot, { rooftop, sheets: SAND_SHEET, doors: STEEL_DOORS, goods: SHOP_GOODS }), 1);
+  return renderCoat(sink.finish());
+};
+
 /** Lock-up stores in place of a container row: a single storey of bare block with steel roller doors (containerRow). */
 const lockUps: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -543,7 +552,7 @@ export const WADIRUM_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   compound: fort,
   compoundSouk: fort,
   ruin,
-  marketRow: (ctx) => wadirumSouq(ctx, { rooftop, coat: renderCoat, sheets: SAND_SHEET, doors: STEEL_DOORS, goods: SHOP_GOODS }),
+  marketRow: souqRow,
   containerRow: lockUps,
   gantry: lorryShelter,
   watertower: concreteTower,
