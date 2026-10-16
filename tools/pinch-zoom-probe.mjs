@@ -343,8 +343,15 @@ function pageSnapshot({ keys, layoutVars, censusLimit }) {
   const readKeys = () => {
     const boxes = {};
     for (const selector of keys) {
-      const hits = [...document.querySelectorAll(selector)].filter((el) => el.getClientRects().length).slice(0, 10);
-      hits.forEach((el, i) => { boxes[`${selector}${i ? `[${i}]` : ''} ${label(el)}`] = docRect(el); });
+      const hits = [...document.querySelectorAll(selector)].filter((el) => el.getClientRects().length).slice(0, 40);
+      // named by the element (its nth same-label hit), not its position among the hits: a sibling that appears
+      // between snapshots (the battle HUD's FPS meter) must not rename every box after it
+      const seen = new Map();
+      for (const el of hits) {
+        const name = label(el), nth = (seen.get(name) || 0) + 1;
+        seen.set(name, nth);
+        boxes[`${selector} ${name}${nth > 1 ? ` #${nth}` : ''}`] = docRect(el);
+      }
     }
     return boxes;
   };
@@ -497,9 +504,13 @@ async function enterBattle(page, options) {
   const started = Date.now();
   await page.evaluate(() => { window.__PINCH_BATTLE = window.__DEBUG.beginBattleEntry('m1a2', 'verdant').then(() => 'open', (e) => `error ${e?.message || e}`); });
   // settled: the countdown over and the loading veil (.cot-bl) out of layout, or its stage text changing mid-probe reads
-  // as a moved box
+  // as a moved box; and the FPS meter (.cot-net) shown, which the HUD reveals after 30 live frames (minutes on
+  // SwiftShader: it appeared mid-probe on 2026-10-16) unless the profile opted out, so at most 10 minutes for it
   await page.waitForFunction('window.__DEBUG?.game?.phase === "battle" && window.__DEBUG.game.preBattleS <= 0'
-    + ' && !!document.querySelector(".cot-hud") && !document.querySelector(".cot-bl.on, .cot-bl.leaving")',
+    + ' && !!document.querySelector(".cot-hud") && !document.querySelector(".cot-bl.on, .cot-bl.leaving")'
+    + ' && ((window.__PINCH_BATTLE_SETTLE ??= performance.now()), true)'
+    + ' && (document.querySelector(".cot-hud .cot-net")?.style.display !== "none"'
+    + ' || performance.now() - window.__PINCH_BATTLE_SETTLE > 600000)',
   { timeout: options.battleTimeoutMs, polling: 500 });
   log(`  battle open and settled after ${((Date.now() - started) / 1000).toFixed(1)} s`);
 }
