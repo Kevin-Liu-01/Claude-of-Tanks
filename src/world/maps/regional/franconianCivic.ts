@@ -37,7 +37,7 @@ import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SW: RegionalBucket = 'structureWood';
 const DECOR = { decor: true } as const;
-const IRON = rgb(0x2a2b2c), SLATE = rgb(0x4a4f55), ENGINE = rgb(0x6a2a24), ZINC = rgb(0x8c9193), CLOCK = rgb(0xd8d2c2);
+const IRON = rgb(0x2a2b2c), SLATE = rgb(0x4a4f55), ENGINE = rgb(0x6a2a24), ZINC = rgb(0x8c9193), CLOCK = rgb(0xd8d2c2), GILT = rgb(0xc8a04a);
 
 /** Quoins up every corner of a body from y0 to y1: long and short dressed stones by turns (34 cm courses). */
 function quoins(sink: PartSink, x0: number, x1: number, z0: number, z1: number, y0: number, y1: number): void {
@@ -51,12 +51,21 @@ function quoins(sink: PartSink, x0: number, x1: number, z0: number, z1: number, 
   }
 }
 
-/** A keyhole gun loop (Schlüsselscharte) on a face from y up h: the slit, its round sighting hole at the foot, the
- *  dressed block it is cut in (drawn on the solid wall: a loop is a hand's breadth, never a hole through the shaft). */
+/**
+ * A keyhole gun loop (Schlüsselscharte) on a face from y up h: the dressed block standing a hand proud of the wall with
+ * the keyhole cut into it, the slit and its round sighting hole at the foot, their dark at the back of the cut (the r2
+ * sweep, 2026-10-16: the slit and the hole were dark plates on the block's face; a loop is a hand's breadth, never a
+ * hole through the shaft, so the block carries its depth).
+ */
 function gunLoop(sink: PartSink, face: Face, u: number, y: number, h: number): void {
-  faceBox(sink, 'stone', face, u, y + h / 2, 0.015, 0.46, h + 0.24, 0.05, DECOR);
-  faceBox(sink, 'dark', face, u, y + h / 2 + 0.1, 0.045, 0.07, h - 0.2, 0.01, DECOR);
-  faceBox(sink, 'dark', face, u, y + 0.1, 0.045, 0.2, 0.2, 0.01, DECOR);
+  const B = 0.17, sl = 0.035, ft = 0.1, fh = 0.2, blk = { ...DECOR, tint: [1.04, 1.02, 0.98] as Rgb };
+  const piece = (a: number, b: number, y0: number, y1: number) => { if (b - a > 0.005 && y1 - y0 > 0.005) faceBox(sink, 'stone', face, u + (a + b) / 2, (y0 + y1) / 2, B / 2, b - a, y1 - y0, B, blk); };
+  piece(-0.23, 0.23, y - 0.12, y);
+  piece(-0.23, 0.23, y + h, y + h + 0.12);
+  piece(-0.23, -ft, y, y + fh); piece(ft, 0.23, y, y + fh);
+  piece(-0.23, -sl, y + fh, y + h); piece(sl, 0.23, y + fh, y + h);
+  faceBox(sink, 'dark', face, u, y + fh + (h - fh) / 2, 0.025, 2 * sl, h - fh, 0.01, DECOR);
+  faceBox(sink, 'dark', face, u, y + fh / 2, 0.025, 2 * ft, fh, 0.01, DECOR);
 }
 
 /**
@@ -72,7 +81,8 @@ function putlogs(sink: PartSink, faceAt: (y: number) => Face, y0: number, y1: nu
       const uu = u + (rng() - 0.5) * 0.12;
       // (the 225 integrity ledger: a hole fell in the wall walk's doorway, 16 cm off any wall; none in an opening)
       if (open(uu, y)) continue;
-      faceBox(sink, 'dark', face, uu, y, 0.004, 0.13, 0.13, 0.01, DECOR);
+      // (the r2 sweep, 2026-10-16: a dark square on the ashlar) the stub of the scaffold's putlog sawn off in its hole
+      faceBox(sink, SW, face, uu, y, 0.06, 0.12, 0.12, 0.12, { colour: rgb(0x3e3328), decor: true });
     }
   }
 }
@@ -208,13 +218,19 @@ const kapelle: RegionalBuilder = (ctx) => {
   const rg = frame.roof, z = rg.halfD * 0.42;
   const ridge = rg.topAt(0, z) ?? rg.ridgeTopY, s = 0.55;
   const low = (rg.topAt(s, z) ?? ridge) - 0.1;
-  sink.span(st.infill, -s, low, z - s, s, ridge + 1.3, z + s);
+  // (the r2 sweep, 2026-10-16: the bell openings dark plates on a solid stage) the stage under the bell open between its
+  // corner posts, the louvre boards across each side, the bell's dark chamber behind them; the slated head over it
+  const q0 = ridge + 0.12, q1 = ridge + 0.8, post = 0.13;
+  sink.span(st.infill, -s, low, z - s, s, q0, z + s);
+  sink.span(st.infill, -s, q1, z - s, s, ridge + 1.3, z + s);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span(st.infill, sx > 0 ? s - post : -s, q0, sz > 0 ? z + s - post : z - s, sx > 0 ? s : -s + post, q1, sz > 0 ? z + s : z - s + post);
+  sink.span('dark', -s + 0.2, q0, z - s + 0.2, s - 0.2, q1, z + s - 0.2, DECOR);
   for (const [face, sgn] of [[0, 1], [0, -1], [1, 1], [1, -1]] as const) {
     const f: Face = face === 0
       ? { origin: [0, 0, z + sgn * s], u: [sgn, 0, 0], out: [0, 0, sgn], width: 2 * s }
       : { origin: [sgn * s, 0, z], u: [0, 0, -sgn], out: [sgn, 0, 0], width: 2 * s };
-    faceBox(sink, 'dark', f, 0, ridge + 0.45, 0.005, 0.34, 0.62, 0.01, DECOR);
-    faceBox(sink, SW, f, 0, ridge + 0.4, 0.03, 0.42, 0.06, 0.04, { colour: st.timber, decor: true });
+    for (let k = 0; k < 4; k++) faceBox(sink, SW, f, 0, q0 + 0.12 + k * 0.16, -0.06, 2 * s - 2 * post + 0.04, 0.05, 0.05, { colour: st.timber, decor: true });
+    faceBox(sink, SW, f, 0, q0 + 0.02, -0.03, 2 * s, 0.05, 0.07, { colour: st.timber, decor: true });
   }
   sink.cylinder('roof', [0, ridge + 1.3, z], 'y', 2.6, s * 1.25, 8, {}, 0.04);
   finial(sink, 0, ridge + 3.85, z, 0.9);
@@ -287,22 +303,31 @@ const feuerwache: RegionalBuilder = (ctx) => {
       { face: 'front', storey: 2, kind: 'window', u: 0, w: 0.6, y0: 0.6, h: 1.0 },
       { face: 'right', storey: 2, kind: 'window', u: 0, w: 0.6, y0: 0.6, h: 1.0 },
     ];
+    // (the r2 sweep, 2026-10-16: the drying stage's openings dark plates behind the slats) cut through its four faces,
+    // the louvre boards in the openings
+    const louvred = new Set<Opening>();
+    for (const face of ['front', 'right', 'back', 'left'] as const) {
+      const o: Opening = { face, storey: 3, kind: 'window', u: 0, w: T - 0.9, y0: 0.15, h: 1.5 };
+      louvred.add(o); tOpen.push(o);
+    }
+    const tDialect: HouseDialect = {
+      ...dialect,
+      window: (s2, face, o, y0, fr) => {
+        if (!louvred.has(o)) { dialect.window(s2, face, o, y0, fr); return; }
+        for (let k = 0; k < 6; k++) faceBox(s2, SW, face, o.u, y0 + o.y0 + 0.12 + k * 0.25, -0.1, o.w + 0.04, 0.06, 0.07, { colour: st.timber, decor: true });
+      },
+    };
     const tf = buildHouse(sink, {
       w: T, d: T, plinth: { h: 0.4, out: 0.06, bucket: 'stone' }, storeys: tSts,
       roof: { kind: 'hip', pitchDeg: 58, eave: 0.45, verge: 0.45, thickness: 0.14, bucket: 'roof', ridge: 'round' },
       openings: tOpen, chimneys: [], gutters: null, verge: null, reveal: 0.25,
-    }, dialect);
+    }, tDialect);
     const tb = tf.bodies[1];
     quoins(sink, tb.x0, tb.x1, tb.z0, tb.z1, 4.4, tf.floors[3] - 0.1);
-    // the louvred drying stage: slats across each face of the framed top, the clock under it on the street face
-    for (const face of ['front', 'right', 'back', 'left'] as const) {
-      const f = storeyFaces(tf, 3)[face];
-      for (let k = 0; k < 6; k++) faceBox(sink, SW, f, 0, tf.floors[3] + 0.3 + k * 0.26, 0.04, T - 0.9, 0.06, 0.07, { colour: st.timber, decor: true });
-      faceBox(sink, 'dark', f, 0, tf.floors[3] + 0.25, 0.005, T - 0.9, 1.55, 0.01, DECOR);
-    }
+    // the clock under the drying stage on the street face, its hands gilded
     const fc = storeyFaces(tf, 2).front;
     faceBox(sink, SW, fc, 0, tf.floors[3] - 0.95, 0.03, 0.85, 0.85, 0.04, { colour: CLOCK, decor: true });
-    faceBox(sink, 'dark', fc, 0, tf.floors[3] - 0.95 + 0.2, 0.06, 0.05, 0.36, 0.01, DECOR);
+    faceBox(sink, SW, fc, 0, tf.floors[3] - 0.95 + 0.2, 0.06, 0.05, 0.36, 0.01, { colour: GILT, decor: true });
     finial(sink, 0, tf.roof.ridgeTopY + 0.05, 0, 1.1);
   });
   void rng;
@@ -342,6 +367,13 @@ const fabrik: RegionalBuilder = (ctx) => {
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
       leaf: rgb(0x3e4a44), frame: { bucket: 'stone', width: 0.32, out: 0.14, arch: true }, steps: null, leafKind: 'plank', transom: true,
     }, y0),
+    // (the r2 sweep, 2026-10-16: the gable's round window a dark plate on its stone) cut through the front gable, its ring
+    // over the cut's corners and its glazing set back in it (below)
+    gableOpenings: (face, poly, fr) => {
+      if (face.out[0] * fr.faces.front.out[0] + face.out[2] * fr.faces.front.out[2] < 0.9) return [];
+      const ys = poly.map(([, y]) => y), lo = Math.min(...ys), cy = lo + (Math.max(...ys) - lo) * 0.42 - 0.4;
+      return [{ u0: -0.45, u1: 0.45, y0: cy - 0.45, y1: cy + 0.45 }];
+    },
   };
   sink.placed(0, 0, 0, zHall, () => {
     const frame = buildHouse(sink, {
@@ -361,9 +393,18 @@ const fabrik: RegionalBuilder = (ctx) => {
     }
     // the gable's round window and the coping along its rakes
     if (frame.roof.gable) {
-      const front = frame.faces.front, gy = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.42;
-      faceBox(sink, 'stone', front, 0, gy - 0.55, 0.02, 1.3, 1.3, 0.08, DECOR);
-      faceBox(sink, 'dark', front, 0, gy - 0.4, 0.07, 1.0, 1.0, 0.01, DECOR);
+      const front = frame.faces.front, gy = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.42, cy = gy - 0.4;
+      // the oculus: its dressed ring of twelve stones over the cut, the round sash set back in it
+      const P = (r: number, t: number, o: number): Vec3 => [front.origin[0] + front.u[0] * Math.cos(t) * r + front.out[0] * o, cy + Math.sin(t) * r, front.origin[2] + front.u[2] * Math.cos(t) * r + front.out[2] * o];
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2, b = ((k + 1) / 12) * Math.PI * 2;
+        sink.quad('stone', P(0.42, a, 0.06), P(0.68, a, 0.06), P(0.68, b, 0.06), P(0.42, b, 0.06), { ...DECOR, shade: k % 2 ? 0.9 : 1 });
+        sink.quad('stone', P(0.68, a, 0), P(0.68, b, 0), P(0.68, b, 0.06), P(0.68, a, 0.06), { ...DECOR, shade: 0.85 });
+        sink.quad('stone', P(0.42, b, 0), P(0.42, a, 0), P(0.42, a, 0.06), P(0.42, b, 0.06), { ...DECOR, shade: 0.75 });
+      }
+      const disc: Vec3[] = Array.from({ length: 12 }, (_, k) => P(0.46, (k / 12) * Math.PI * 2, -0.16));
+      sink.polygon('glass', disc, DECOR);
+      sink.quad(SW, P(0.46, Math.PI, -0.15), P(0.46, 0, -0.15), P(0.46, 0, -0.13), P(0.46, Math.PI, -0.13), { colour: rgb(0x2f3436), decor: true, fine: true });
     }
     // the ridge lantern: a raised louvred stage along the ridge under its own little roof
     const rg = frame.roof, ly = rg.ridgeTopY - 0.05, len = D * 0.6;
@@ -464,11 +505,28 @@ const stadtkirche: RegionalBuilder = (ctx) => {
     for (const face of ['front', 'right', 'left'] as const) {
       for (const i of [1, 2]) openings.push({ face, storey: i, kind: 'window', u: 0, w: 0.6, y0: 1.5, h: 1.6 });
     }
+    // (the r2 sweep, 2026-10-16: the bell chamber's openings dark plates behind their louvres) the two tall openings on
+    // each face of the bell stage cut through the shaft, their dressed surrounds round them, the louvres in the reveals
+    const bells = new Set<Opening>();
+    for (const face of ['front', 'right', 'back', 'left'] as const) for (const u of [-T * 0.2, T * 0.2]) {
+      const o: Opening = { face, storey: 4, kind: 'window', u, w: 0.85, y0: 0.85, h: 2.7 };
+      bells.add(o); openings.push(o);
+    }
     const roof: RoofSpec = { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.22, bucket: 'stone', parapet: 0 };
     const frame = buildHouse(sink, {
       w: T, d: T, plinth: { h: 0.6, out: 0.14, bucket: 'stone' }, storeys: sts, roof,
       gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.5,
-    }, sandstone);
+    }, {
+      ...sandstone,
+      window: (s2, face, o, y0, fr) => {
+        if (!bells.has(o)) { sandstone.window(s2, face, o, y0, fr); return; }
+        const yb = y0 + o.y0, sw = 0.2;
+        // the surround: its jambs and its head, a hand proud; the louvres set back in the reveal
+        for (const sg of [-1, 1]) faceBox(s2, 'stone', face, o.u + sg * (o.w / 2 + sw / 2), yb + o.h / 2, 0.03, sw, o.h + 0.2, 0.06, DECOR);
+        faceBox(s2, 'stone', face, o.u, yb + o.h + 0.1, 0.03, o.w + 2 * sw, 0.2, 0.06, DECOR);
+        for (let k = 0; k < 7; k++) faceBox(s2, SW, face, o.u, yb + 0.25 + k * 0.36, -0.18, o.w + 0.04, 0.06, 0.06, { colour: st.timber, decor: true });
+      },
+    });
     const b0 = frame.bodies[0];
     quoins(sink, b0.x0, b0.x1, b0.z0, b0.z1, 0.6, frame.eaveY - 0.1);
     for (const face of ['front', 'right', 'back', 'left'] as const) {
@@ -480,15 +538,10 @@ const stadtkirche: RegionalBuilder = (ctx) => {
       // the clock on the fourth stage
       const fc = storeyFaces(frame, 3)[face], cy = frame.floors[3] + 2.1;
       faceBox(sink, SW, fc, 0, cy, 0.04, 1.7, 1.7, 0.05, { colour: CLOCK, decor: true });
-      faceBox(sink, 'dark', fc, 0, cy + 0.32, 0.08, 0.07, 0.64, 0.01, DECOR);
-      faceBox(sink, 'dark', fc, 0.2, cy, 0.08, 0.46, 0.06, 0.01, DECOR);
+      faceBox(sink, SW, fc, 0, cy + 0.32, 0.08, 0.07, 0.64, 0.01, { colour: GILT, decor: true });
+      faceBox(sink, SW, fc, 0.2, cy, 0.08, 0.46, 0.06, 0.01, { colour: GILT, decor: true });
       // the bell chamber's two louvred openings on each face, in their dressed surrounds
-      const fb = storeyFaces(frame, 4)[face], by = frame.floors[4] + 0.8;
-      for (const u of [-T * 0.2, T * 0.2]) {
-        faceBox(sink, 'stone', fb, u, by + 1.45, 0.02, 1.25, 3.1, 0.06, DECOR);
-        faceBox(sink, 'dark', fb, u, by + 1.4, 0.06, 0.85, 2.7, 0.01, DECOR);
-        for (let k = 0; k < 7; k++) faceBox(sink, SW, fb, u, by + 0.3 + k * 0.36, 0.08, 0.8, 0.06, 0.06, { colour: st.timber, decor: true });
-      }
+      // (the bell chamber's openings cut through the shaft above: the dialect's bell units)
     }
     // the parapet round the top, closed stone (a flat roof's own parapet is a single skin, its inner face open to view),
     // the corner turrets on it and the octagonal spire, slated
@@ -597,7 +650,8 @@ const palas: RegionalBuilder = (ctx) => {
     // the stair tower engaged in the court front, its slit lights climbing, its slated cap
     const tx = -(D / 2 + R * 0.55), H = frame.eaveY + 2.4;
     sink.cylinder('stone', [tx, -0.3, 0], 'y', H + 0.3, R, 8, {});
-    for (let k = 0; k < 4; k++) faceBox(sink, 'dark', { origin: [tx - R * 0.96, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 1 }, 0, 2.6 + k * 2.6, 0.01, 0.22, 0.9, 0.01, DECOR);
+    // (the r2 sweep, 2026-10-16: the slit lights dark plates on the shaft) each cut into its dressed block, a hand proud
+    for (let k = 0; k < 4; k++) gunLoop(sink, { origin: [tx - R, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 1 }, 0, 2.15 + k * 2.6, 0.9);
     sink.cylinder('roof', [tx, H - 0.05, 0], 'y', 3.6, R * 1.15, 8, { colour: SLATE }, 0.04);
     finial(sink, tx, H + 3.55, 0, 1.1);
   });

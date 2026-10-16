@@ -77,8 +77,9 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   assert.equal(attrs(stones), 'normal,position,uv');
   const again = buildWallFootStones(slope, 0, 0, 0, 12, half, 0xf007);
   assert.deepEqual(Array.from(again.attributes.position.array), Array.from(stones.attributes.position.array), 'the same place lays the same stones');
-  // each stone is a run of 10 triangles (a box's five faces kept): sunk and standing out, off the face, near it
-  const p = stones.attributes.position, per = 10 * 3;
+  // each stone is a run of 12 triangles (a box's five faces kept, its top crowned: r2 2026-10-16): sunk and standing out,
+  // off the face, near it
+  const p = stones.attributes.position, per = 12 * 3;
   assert.equal(p.count % per, 0, 'whole stones');
   let count = 0, sides = new Set();
   for (let s = 0; s < p.count; s += per) {
@@ -140,7 +141,7 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   const fallen = buildWallTumble(slope, 0, 0, 0, 1, 0.23, 0x7b1e);
   const again = buildWallTumble(slope, 0, 0, 0, 1, 0.23, 0x7b1e);
   assert.deepEqual(Array.from(again.attributes.position.array), Array.from(fallen.attributes.position.array), 'the same end tumbles the same');
-  const p = fallen.attributes.position, per = 10 * 3;
+  const p = fallen.attributes.position, per = 12 * 3; // (crowned: r2 2026-10-16)
   let stones = 0, out = 0;
   for (let s = 0; s < p.count; s += per) {
     let below = false, above = false, z = 0;
@@ -299,7 +300,8 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
 // their feet sunk, the field walls' attributes, deterministic at their place, under their caps; the spilled units
 {
   const flatGround = { getHeightAt: () => 0 };
-  const caps = { drystone: 300, adobe: 30, brick: 24 };
+  // (r2 sweep, 2026-10-16: the stones crowned, the brick courses dressed)
+  const caps = { drystone: 300, adobe: 30, brick: 40 };
   for (const snow of [false, true]) {
     const d = createWallDressing({ ground: flatGround, snow, mobile: false, adobeBucket: 'fieldMud', mudUv: 0.33 });
     for (const kind of ['drystone', 'adobe', 'brick']) {
@@ -339,7 +341,7 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
     const d = createWallDressing({ ground: { getHeightAt: () => 0 }, snow: false, mobile: false, adobeBucket: 'plaster', mudUv: 0.33, pierCap });
     const g = d.pier(2, -0.15, 3, 0.4, 0.46, 1.5), p = g.attributes.position, n = g.attributes.normal, tri = p.count / 3;
     assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${pierCap}: the wall bucket's attributes`);
-    assert.ok(tri <= 60, `${pierCap}: ${tri} triangles`);
+    assert.ok(tri <= 100, `${pierCap}: ${tri} triangles`);
     let top = -Infinity;
     for (let t = 0; t < p.count; t += 3) {
       const c = [0, 1, 2].map((k) => (p.getComponent(t, k) + p.getComponent(t + 1, k) + p.getComponent(t + 2, k)) / 3);

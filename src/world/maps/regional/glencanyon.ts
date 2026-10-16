@@ -14,6 +14,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 import { latticeFrame } from './lattice.ts';
+import { yardPad } from './glencanyonPads.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
 const CONCRETE: RegionalBucket = 'plaster2', PAINTED: RegionalBucket = 'plaster3', BLOCK: RegionalBucket = 'stone', STUCCO: RegionalBucket = 'plaster';
@@ -419,7 +420,7 @@ const switchyard: RegionalBuilder = (ctx) => {
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
     // the pad: crushed rock over the yard (round 2: "a gravel pad"), the kerb round it
-    sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { colour: rgb(0x8e877a), decor: true });
+    yardPad(sink, 'structureMetal', W, D, { colour: rgb(0x8e877a), decor: true }); // (looks r2 b-east: glencanyonPads.ts)
     const steel = GALV, h = 20 + rng() * 4;
     for (const sx of [-1, 1]) latticeTower(sink, sx * W * 0.28, -D / 2 + 2.6, 1.6, 0.6, h, steel);
     // the cross-arm between the towers and the line's insulator strings
@@ -455,7 +456,7 @@ const transformerYard: RegionalBuilder = (ctx) => {
   // the yard fills the old deck's reach (its bounds), walled round its edge
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
-    sink.span(CONCRETE, -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { decor: true });
+    yardPad(sink, CONCRETE, W, D, { decor: true }); // (looks r2 b-east: glencanyonPads.ts)
     const tc = pick(rng, TRANSFORMER);
     const cols = 3;
     for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {

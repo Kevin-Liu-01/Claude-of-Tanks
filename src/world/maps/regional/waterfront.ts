@@ -333,3 +333,30 @@ export function leantPole(sink: PartSink, face: Face, u: number, out: number, le
     sink.member('structureWood', b0, b1, 0.13, 0.02, face.out, { colour, decor: true, exposed: true, fine: true }, 0);
   }
 }
+
+/**
+ * A round pole from `a` to `b` in any direction (a hjell's trestle leg, a rail laid across): `sides`-sided, its section
+ * `r`, its ends capped; its sides wound outward, its caps along it. (The r2 sweep, 2026-10-16: a square member is a box.)
+ */
+export function roundPole(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, r: number, opts: EmitOptions, sides = 6): void {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+  if (len < 1e-4) return;
+  const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len], ref: Vec3 = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  const c1: Vec3 = [ax[1] * ref[2] - ax[2] * ref[1], ax[2] * ref[0] - ax[0] * ref[2], ax[0] * ref[1] - ax[1] * ref[0]];
+  const l1 = Math.hypot(c1[0], c1[1], c1[2]), e1: Vec3 = [c1[0] / l1, c1[1] / l1, c1[2] / l1];
+  const e2: Vec3 = [ax[1] * e1[2] - ax[2] * e1[1], ax[2] * e1[0] - ax[0] * e1[2], ax[0] * e1[1] - ax[1] * e1[0]];
+  const dir = (k: number): Vec3 => { const t = (k / sides) * Math.PI * 2; return [e1[0] * Math.cos(t) + e2[0] * Math.sin(t), e1[1] * Math.cos(t) + e2[1] * Math.sin(t), e1[2] * Math.cos(t) + e2[2] * Math.sin(t)]; };
+  const at = (p: Vec3, k: number): Vec3 => { const v = dir(k); return [p[0] + v[0] * r, p[1] + v[1] * r, p[2] + v[2] * r]; };
+  const face = (q: readonly Vec3[], want: Vec3) => {
+    const u = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]], v = [q[2][0] - q[0][0], q[2][1] - q[0][1], q[2][2] - q[0][2]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    return n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 ? q : [...q].reverse();
+  };
+  for (let k = 0; k < sides; k++) {
+    const m = dir(k + 0.5), q = face([at(a, k), at(a, k + 1), at(b, k + 1), at(b, k)], m);
+    sink.quad(bucket, q[0], q[1], q[2], q[3], opts);
+  }
+  const ring = (p: Vec3) => Array.from({ length: sides }, (_, k) => at(p, k));
+  sink.polygon(bucket, face(ring(b), ax), opts);
+  sink.polygon(bucket, face(ring(a), [-ax[0], -ax[1], -ax[2]]), opts);
+}

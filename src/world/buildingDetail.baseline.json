@@ -85,7 +85,7 @@
   "franconian": {
    "score": 17,
    "silhouette": 5,
-   "mid": 4,
+   "mid": 3,
    "fine": 7,
    "trisPerWallM2": 26.35,
    "fineShare": 0.559,
@@ -115,7 +115,7 @@
    "mid": 0,
    "fine": 0,
    "trisPerWallM2": 8.96,
-   "fineShare": 0.096,
+   "fineShare": 0.08,
    "facePass": 0
   },
   "wadirum": {
@@ -160,7 +160,7 @@
    "mid": 3,
    "fine": 3,
    "trisPerWallM2": 4.69,
-   "fineShare": 0.635,
+   "fineShare": 0.559,
    "facePass": 0.455
   },
   "queenstown": {
@@ -174,7 +174,7 @@
   },
   "glencanyon": {
    "score": 8,
-   "silhouette": 2,
+   "silhouette": 1,
    "mid": 3,
    "fine": 2,
    "trisPerWallM2": 1.54,
@@ -205,7 +205,7 @@
    "mid": 0,
    "fine": 2,
    "trisPerWallM2": 4.12,
-   "fineShare": 0.585,
+   "fineShare": 0.494,
    "facePass": 0
   },
   "longleaf": {

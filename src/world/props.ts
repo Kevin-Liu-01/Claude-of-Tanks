@@ -96,6 +96,7 @@ import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KIND
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
 import { GATE_KINDS, GATE_WIDTH, buildGate, gateKindForFence, gateStoneOf, gateStyleFor, type GateKind } from './maps/gateKit.ts'; // the looks lane: every fence family's own gate
 import { TIMBER_WELLS, buildMonument, buildWell, monumentFormFor, wellFormFor, wellStoneOf } from './maps/wellKit.ts'; // the looks lane: each place's well and monument
+import { waysideTypes } from './maps/waysideKit.ts'; // the looks lane (r2 sweep): the wayside kinds in their region's form
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
@@ -120,8 +121,8 @@ import {
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
-import { fenceTypes } from './maps/fenceKit.ts';
-import { coursedWallType } from './maps/coursedWallKit.ts';
+import { fenceTypes, ironRailingType } from './maps/fenceKit.ts';
+import { coursedWallType, dryStoneWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
@@ -161,7 +162,7 @@ import {
 } from './autumnHeadlands.ts';
 import { placeCropFieldsOf } from './maps/cropKit.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  DESTRUCTIBLE_BUILDING_TYPES, MAP_DESTRUCTIBLE_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -238,6 +239,7 @@ import { createLoosePropBodies } from './loosePropBodies.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 import { makeRuin, roughenChunk, rubblePileParts } from './maps/regional/ruinGrammar.ts'; // props census #7: the plan ruin and the street rubble pile
+import { breachRubble } from './maps/wallBreachRubble.ts'; // (the looks lane, r2 sweep: the breach's drawn rubble)
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
@@ -4466,16 +4468,20 @@ ${snowCap ? `
     // top, so a breached module loses it with its stones)
     // (props lane A #6: the coursed module in its region's build, maps/coursedWallKit.ts: the legacy collision and fit)
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
-      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
+      // (props lane A, r2 sweep: the drawn module's top stones crowned, the legacy's collision and fit: coursedWallKit.ts)
+      : { wallstone: dryStoneWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, snowCap ? withSnowLoad : null, () => mulberry32(0x0f0f7)) }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     // (props lane A #6: in its region's build, maps/adobeWallKit.ts: the legacy collision and fit)
     walladobe: adobeWallType(regionalArchitecture?.id, { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket }, () => mulberry32(0x0f0f7)),
     // (props lane A #6) the timber fences in their region's build (maps/fenceKit.ts, keyed as the gates are): the legacy
     // records, collision and footprints; the legacy builders still run first (their draws)
     ...fenceTypes(regionalArchitecture?.id, mapId, DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7)),
+    fenceiron: ironRailingType(DESTRUCTIBLE_TYPES.fenceiron, () => mulberry32(0x0f0f7)),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (the r2 sweep, 2026-10-16) a map with no kit its own (Mars's stations): structureKit MAP_DESTRUCTIBLE_TYPES
+    ...(MAP_DESTRUCTIBLE_TYPES[mapId] ?? {}),
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
     ...civilianVehicleTypes(mapId, mobileProps),
     // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
@@ -4508,6 +4514,7 @@ ${snowCap ? `
     // the looks lane (2026-10-13; LOOKS-BRIEF item 5): the village well and the square's monument as the map's place built
     // them (maps/wellKit.ts), on the destruction stream's contract; the legacy builders still run first (their draws)
     ...wellTypes(),
+    ...waysideTypes(regionalArchitecture?.id, mapId), // the looks lane (r2 sweep): each place's crosses and Bildstock (maps/waysideKit.ts)
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
@@ -4518,8 +4525,8 @@ ${snowCap ? `
   /** (E1) the kinds whose broken builder is their own on this map: its structure variants and the pillbox of its make */
   const ownBroken = new Set<string>([...Object.keys(P.structureVariants ?? {}), ...(fort ? ['bunker'] : [])]);
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
-  function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
-    const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
+  /** A dry-stone module with the winter's snow load along its top (the r2 sweep's drawn module takes it too). */
+  function withSnowLoad(wall: THREE.BufferGeometry): THREE.BufferGeometry {
     const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
     // (b14: the snow load settles with the wall vertex by vertex: its stone tag is the snow's kind)
     if (wall.getAttribute('aStone')) {
@@ -5436,8 +5443,8 @@ ${snowCap ? `
     const y = heightField.getHeightAt(x, z);
     const stoneStart = buckets.stone.length, woodStart = buckets.wood.length;
     // (props census #7: the pile's pieces are the ruin grammar's, drawn from the same stream as before)
-    const pile = rubblePileParts(x, y, z, pr, rrng);
-    buckets.stone.push(...pile.stone);
+    const pile = rubblePileParts(x, y, z, pr, rrng, (px, pz) => heightField.getHeightAt(px, pz)); // (looks r2: shards on the street)
+    buckets.stone.push(...pile.stone, ...pile.bed); // (looks r2: the beds under clear pieces, outside the records and plan)
     buckets.wood.push(...pile.wood);
     const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + pile.chunks), ...buckets.wood.slice(woodStart)], y, 0.05);
     if (drawn) rubbleDrawnFootprints.push(drawn);
@@ -6280,11 +6287,12 @@ ${snowCap ? `
           box(size * 1.5, size * 0.8, size, style === 'adobe' ? wallDressing.mudUv * 1.6 : 1.2), rng, size * 0.4,
         );
         if (wallB === 'fieldStone') wallDressing.stoneUv(block, rng); else jitterUV(block, rng);
-        block.rotateY(rng() * Math.PI);
+        const spin = rng() * Math.PI; block.rotateY(spin);
         const groundY = heightField.getHeightAt(x, z);
         block.translate(x, groundY + size * 0.3, z);
         const drawn = drawnPlanRecord([block], groundY, 0.05);
-        if (spill) block.dispose(); else buckets[wallB].push(block);
+        if (!spill) buckets[wallB].push(breachRubble(breachKind === 'brick', wallB === 'fieldStone', x, z, size, spin, (gx, gz) => heightField.getHeightAt(gx, gz)));
+        block.dispose(); // (the r2 sweep: the box drew; its draws and its footprint record stay, maps/wallBreachRubble.ts draws the piece)
         if (drawn) breachRubbleFootprints.push(drawn);
       }
     }

@@ -130,6 +130,34 @@ function bucket(m: Mesh, p: V3, timber: Rgb): void {
   pole(m, [p[0], p[1] + 0.06, p[2]], [p[0], p[1] + 0.1, p[2]], 0.142, 0.146, IRON, 0.9, 8);
 }
 
+/**
+ * A well's gable roof seated on its frame (the looks lane, 2026-10-16, the r2 sweep: the windlass and log wells' roofs
+ * were two boards standing in the air over the posts, sloped the wrong way): the ridge beam on the two posts' heads, a
+ * rafter pair at each post down to a tie through the post, and on the rafters the shingle courses, each lapping the one
+ * above it a hand. Gables at x = ±half, the ridge at ridgeY over z = 0, the eaves at z = ±eave at eaveY; the posts at
+ * x = ±postX. Returns nothing: its members touch the posts and each other.
+ */
+function wellRoof(m: Mesh, half: number, postX: number, ridgeY: number, eaveY: number, eave: number, r: () => number): void {
+  const rh = 0.08, oak = mul(OAK, 0.84);
+  member(m, [-half - 0.06, ridgeY, 0], [half + 0.06, ridgeY, 0], 0.09, 0.11, Y, mul(OAK, 0.78), G(0.7), { chamfer: 0.012 });
+  for (const sx of [-1, 1]) {
+    const x = sx * postX;
+    member(m, [x, eaveY - 0.05, -eave - 0.05], [x, eaveY - 0.05, eave + 0.05], 0.07, 0.09, X, oak, G(0.6), { chamfer: 0.01 });
+    for (const sz of [-1, 1]) member(m, [x, ridgeY, 0], [x, eaveY, sz * eave], 0.06, rh, X, oak, G(0.5 + sz * 0.1), { chamfer: 0.01 });
+  }
+  // the shingle courses from the eave up, each its own board of rived shakes a little lighter or darker, lapping
+  for (const sz of [-1, 1]) {
+    // u down the slope, nn its outward (upward) normal
+    const dy = eaveY - ridgeY, dz = sz * eave, L = Math.hypot(dy, dz), u: V3 = [0, dy / L, dz / L], nn: V3 = [0, Math.abs(dz) / L, -sz * dy / L];
+    const K = 4, run = L + 0.12, cw = run / K + 0.07;
+    for (let k = 0; k < K; k++) {
+      const t = run * (k + 0.5) / K, lift = rh / 2 + 0.013 + (k % 2) * 0.012;
+      const c: V3 = [0, ridgeY + u[1] * t + nn[1] * lift, u[2] * t + nn[2] * lift];
+      member(m, [-half, c[1], c[2]], [half, c[1], c[2]], cw, 0.024, u, mix(SHINGLE, OAK, 0.1 + r() * 0.25), G(0.3 + k * 0.07), { chamfer: 0.006 });
+    }
+  }
+}
+
 /** A crib of logs (corner-notched, the ends running past) w square from y0, `courses` high: the zrub. */
 function logCrib(m: Mesh, w: number, y0: number, courses: number, r: () => number, opts: { radius?: number } = {}): number {
   const rad = opts.radius ?? 0.09, half = w / 2;
@@ -325,23 +353,29 @@ function zhuravel(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry 
     pole(m, pivot, longTip, 0.07, 0.045, PINE, 0.2, 6);
     pole(m, pivot, shortEnd, 0.075, 0.085, PINE, 0.3, 6);
     // the counterweight: a bundle of logs lashed under the short arm's end
-    for (let k = 0; k < 3; k++) pole(m, add(shortEnd, [-0.22 + k * 0.22, -0.18, -0.25]), add(shortEnd, [-0.22 + k * 0.22, -0.32, 0.35]), 0.08, 0.08, mix(LOG, LOG_END, 0.3), 0.4, 6);
+    // (the r2 sweep: the outer two hung 6 cm clear of the middle one) lashed close against each other, under the arm
+    for (let k = 0; k < 3; k++) pole(m, add(shortEnd, [-0.16 + k * 0.16, -0.17 - (k === 1 ? 0 : 0.02), -0.25]), add(shortEnd, [-0.16 + k * 0.16, -0.31 - (k === 1 ? 0 : 0.02), 0.35]), 0.08, 0.08, mix(LOG, LOG_END, 0.3), 0.4, 6);
     // the hanging pole (ochep) from the long tip into the shaft, and the bucket at its foot
     pole(m, longTip, [px, 0.85, 0.15], 0.03, 0.03, mul(PINE, 0.95), 0.7, 5);
     bucket(m, [px, 0.55, 0.15], mul(PINE, 0.8));
   } else {
-    // the crib's top courses thrown off, the post snapped, the sweep and its pole lying across the ground
-    logCrib(m, 1.2, 0, 2, r);
-    for (let k = 0; k < 5; k++) {
+    // the crib's top course thrown off, the post snapped at 2 m, the sweep slid off its pivot and hanging
+    // over the stump, its long arm down to the ground in front, its short arm and the counterweight behind (the r2
+    // sweep: everything lay flat, 8 % of the standing height)
+    logCrib(m, 1.2, 0, 5, r);
+    for (let k = 0; k < 1; k++) {
       const a = r() * Math.PI * 2, d = 1.0 + r() * 0.8, start = m.mark;
       pole(m, [-0.7, 0.09, 0], [0.7, 0.09, 0], 0.09, 0.085, mix(LOG, LOG_END, r() * 0.3), 0.2, 7);
       m.turn(start, 0, 0, a);
       for (let i = start; i < m.mark; i += 3) { m.p[i] += Math.cos(a) * d; m.p[i + 2] += Math.sin(a) * d; }
     }
     waterDisc(m, 0.5, 0.33, 4);
-    pole(m, [0, -0.3, -1.9], [0, 0.85, -1.9], 0.15, 0.13, mul(LOG, 0.85), 0.5, 8);
-    pole(m, [0.3, 0.08, -1.7], [1.6, 0.06, 2.9], 0.07, 0.045, PINE, 0.2, 6);
-    pole(m, [-0.4, 0.1, -2.2], [-1.2, 0.12, -4.0], 0.075, 0.08, PINE, 0.3, 6);
+    pole(m, [0, -0.3, -1.9], [0, 2.0, -1.9], 0.15, 0.13, mul(LOG, 0.85), 0.5, 8);
+    pole(m, [0.5, 0.05, 1.7], [0.08, 1.93, -1.76], 0.07, 0.06, PINE, 0.2, 6);
+    pole(m, [0.08, 1.93, -1.76], [-0.25, 0.1, -3.4], 0.075, 0.085, PINE, 0.3, 6);
+    for (let k = 0; k < 3; k++) pole(m, [-0.6 + k * 0.16, 0.08, -3.3], [-0.5 + k * 0.16, 0.08, -3.9], 0.08, 0.08, mix(LOG, LOG_END, 0.3), 0.4, 6);
+    // the crib's plank cover thrown off and propped against the stump
+    for (let k = 0; k < 4; k++) member(m, [-0.26 + k * 0.17, 0.04, -0.82], [-0.24 + k * 0.17, 1.3, -1.74], 0.16, 0.035, [0, 0.6, 0.8], mul(PINE, 0.9 + r() * 0.15), G(0.2 + k * 0.1));
     pole(m, [-0.5, 0.05, -0.9], [0.9, 0.05, -1.6], 0.03, 0.03, mul(PINE, 0.95), 0.7, 5);
     bucket(m, [1.3, 0.0, 0.6], mul(PINE, 0.8));
   }
@@ -350,28 +384,28 @@ function zhuravel(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry 
 
 function logwell(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   const m = meshFor(true, ctx), r = stream(0x1093 + (ctx.seed ?? 0));
-  const top = logCrib(m, 1.3, 0, broken ? 2 : 6, r, { radius: 0.085 });
+  const top = logCrib(m, 1.3, 0, broken ? 4 : 6, r, { radius: 0.085 });
   waterDisc(m, 0.55, 0.3, 4);
   if (!broken) {
-    for (const s of [-1, 1]) member(m, [s * 0.78, top - 0.2, 0], [s * 0.78, top + 1.35, 0], 0.13, 0.13, Z, mul(OAK, 0.9), G(0.2 + s * 0.1), { chamfer: 0.015 });
+    for (const s of [-1, 1]) member(m, [s * 0.78, top - 0.2, 0], [s * 0.78, top + 1.3, 0], 0.13, 0.13, Z, mul(OAK, 0.9), G(0.2 + s * 0.1), { chamfer: 0.015 });
     // the windlass drum and its crank
     pole(m, [-0.74, top + 0.75, 0], [0.74, top + 0.75, 0], 0.09, 0.09, PINE, 0.4, 8);
     member(m, [0.86, top + 0.75, 0], [0.86, top + 0.45, 0.05], 0.03, 0.04, X, IRON, G(0.9));
     member(m, [0.86, top + 0.45, 0.05], [1.0, top + 0.45, 0.05], 0.03, 0.03, Z, IRON, G(0.9));
     pole(m, [0, top + 0.68, 0], [0, 0.95, 0.05], 0.012, 0.012, ROPE, 0.8, 4);
     bucket(m, [0, 0.62, 0.05], mul(PINE, 0.8));
-    // the gable roof of shingles over the drum: two boards, the ridge
-    const ry = top + 1.35;
-    for (const s of [-1, 1]) {
-      member(m, [-0.95, ry + 0.2, s * 0.42], [0.95, ry + 0.2, s * 0.42], 0.9, 0.04, [0, 1.05, -s], mix(SHINGLE, OAK, 0.2), G(0.3 + s * 0.1));
-    }
-    member(m, [-0.98, ry + 0.52, 0], [0.98, ry + 0.52, 0], 0.08, 0.08, Y, mul(OAK, 0.8), G(0.7));
-    member(m, [-0.9, ry, 0], [0.9, ry, 0], 0.1, 0.12, Y, mul(OAK, 0.85), G(0.6));
+    // the gable roof of shingles over the drum, seated on its ridge, rafters and ties (wellRoof)
+    wellRoof(m, 0.95, 0.78, top + 1.35, top + 0.9, 0.72, r);
   } else {
-    for (const [a, b] of [[[0.5, 0.07, -1.0], [1.8, 0.07, 0.2]], [[-1.0, 0.07, 0.6], [-1.6, 0.07, 2.0]]] as Array<[V3, V3]>) member(m, a, b, 0.13, 0.13, Y, mul(OAK, 0.9), G(0.2));
-    member(m, [-1.2, 0.06, -1.1], [0.3, 0.12, -2.0], 0.9, 0.04, Y, mix(SHINGLE, OAK, 0.2), G(0.3));
-    member(m, [0.2, 0.05, 1.2], [1.6, 0.1, 1.6], 0.9, 0.04, Y, mix(SHINGLE, OAK, 0.2), G(0.4));
+    // (the r2 sweep: the wreck lay 10 % of the standing height) the crib keeps four courses, one post stands snapped, the
+    // other is down with the drum, the roof slid off whole and leans on the crib
+    member(m, [-0.78, top - 0.2, 0], [-0.78, top + 0.75, 0], 0.13, 0.13, Z, mul(OAK, 0.9), G(0.2), { chamfer: 0.015 });
+    member(m, [0.5, 0.07, -1.0], [1.8, 0.07, 0.2], 0.13, 0.13, Y, mul(OAK, 0.9), G(0.2), { chamfer: 0.015 });
     pole(m, [-0.6, 0.09, 1.4], [0.8, 0.09, 1.9], 0.09, 0.09, PINE, 0.4, 8);
+    const s0 = m.mark;
+    wellRoof(m, 0.95, 0.78, 0.62, 0.1, 0.72, r);
+    m.tilt(s0, [0, 0.1, -0.72], X, -0.42);
+    for (let i = s0; i < m.mark; i += 3) { m.p[i + 2] -= 0.62; m.p[i + 1] = Math.max(0.01, m.p[i + 1]); }
     bucket(m, [1.0, 0, -0.6], mul(PINE, 0.8));
   }
   return m.geometry();
@@ -405,7 +439,7 @@ function drawwell(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry 
       member(m, [Math.cos(a0) * 0.16, py + Math.sin(a0) * 0.16, 0], [Math.cos(a1) * 0.16, py + Math.sin(a1) * 0.16, 0], 0.04, 0.04, Z, IRON, FLAT);
     }
     member(m, [0, y1 + 0.55, 0], [0, py, 0], 0.025, 0.025, Z, IRON, FLAT);
-    member(m, [0.16, py, 0], [0.16, 0.95, 0], 0.012, 0.012, Z, IRON, FLAT);
+    member(m, [0.16, py, 0], [0.16, 0.62 + 0.26, 0], 0.012, 0.012, Z, IRON, FLAT);
     bucketFlat(m, [0.16, 0.62, 0]);
   } else {
     // the crown fallen across the curb, its uprights bent down
@@ -481,7 +515,7 @@ function pump(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
 
 function granite(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   const m = meshFor(false, ctx), r = stream(0x6a17 + (ctx.seed ?? 0));
-  blockRing(m, ctx, 6, 0.62, 1.0, -0.12, broken ? 0.45 : 0.8, 0.1, r, broken ? { skip: 0.3 } : {});
+  blockRing(m, ctx, 6, 0.62, 1.0, -0.12, broken ? 0.55 : 0.8, 0.1, r, broken ? { skip: 0.3 } : {});
   if (!broken) blockRing(m, ctx, 6, 0.58, 1.04, 0.8, 0.94, 0.62, r);
   waterDisc(m, 0.62, 0.22, 10);
   if (!broken) {
@@ -489,10 +523,12 @@ function granite(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
     member(m, [-1.02, 2.37, 0], [1.02, 2.37, 0], 0.3, 0.24, Y, [1.02, 1.02, 1.02], MASON, { chamfer: 0.03 });
     pole(m, [0, 2.0, -0.04], [0, 2.0, 0.04], 0.13, 0.13, IRON, 0.5, 8);
     member(m, [0, 2.25, 0], [0, 2.0, 0], 0.025, 0.025, Z, IRON, FLAT);
-    member(m, [0.13, 2.0, 0], [0.13, 0.95, 0], 0.012, 0.012, Z, IRON, FLAT);
+    member(m, [0.13, 2.0, 0], [0.13, 0.62 + 0.26, 0], 0.012, 0.012, Z, IRON, FLAT);
     bucketFlat(m, [0.13, 0.62, 0]);
   } else {
-    for (const [a, b] of [[[0.6, 0.13, 1.0], [1.9, 0.13, 1.6]], [[-1.0, 0.13, -0.8], [-2.2, 0.13, -1.4]], [[0.4, 0.15, -1.2], [1.9, 0.15, -1.6]]] as Array<[V3, V3]>) {
+    // (the r2 sweep: the wreck stood under a quarter of the well) one post stands snapped over the ring
+    member(m, [-0.8, 0.55, 0], [-0.8, 1.35, 0], 0.26, 0.24, Z, [1, 1, 1], MASON, { chamfer: 0.03, shade: damp(ctx) });
+    for (const [a, b] of [[[0.6, 0.13, 1.0], [1.9, 0.13, 1.6]], [[0.4, 0.15, -1.2], [1.9, 0.15, -1.6]]] as Array<[V3, V3]>) {
       member(m, a, b, 0.26, 0.24, Y, [1, 1, 1], MASON, { chamfer: 0.03 });
     }
   }
@@ -535,7 +571,7 @@ function desertWell(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometr
       member(m, [Math.cos(a0) * 0.2, 1.7 + Math.sin(a0) * 0.2, -0.04], [Math.cos(a1) * 0.2, 1.7 + Math.sin(a1) * 0.2, -0.04], 0.05, 0.05, Z, mul(post, 0.8), FLAT);
     }
     member(m, [0, 1.9, 0], [0, 1.7, 0], 0.04, 0.04, X, IRON, FLAT);
-    member(m, [0.2, 1.7, 0], [0.2, 0.85, 0], 0.014, 0.014, X, ROPE, FLAT);
+    member(m, [0.2, 1.7, 0], [0.2, 0.52 + 0.26, 0], 0.014, 0.014, X, ROPE, FLAT);
     bucketFlat(m, [0.2, 0.52, 0]);
   } else {
     member(m, [0.7, 0.08, 0.9], [2.1, 0.08, 1.5], 0.13, 0.12, Y, post, FLAT);
@@ -660,7 +696,7 @@ function ringwell(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry 
   if (!broken) {
     for (const s of [-1, 1]) for (const t of [-1, 1]) member(m, [s * 0.95, -0.15, t * 0.32], [s * 0.15, 2.15, 0], 0.07, 0.07, Z, bamboo, FLAT);
     member(m, [-0.3, 2.08, 0], [0.3, 2.08, 0], 0.07, 0.07, Y, mul(bamboo, 0.9), FLAT);
-    member(m, [0, 2.05, 0], [0, 0.85, 0.05], 0.014, 0.014, Z, ROPE, FLAT);
+    member(m, [0, 2.05, 0], [0, 0.52 + 0.26, 0.05], 0.014, 0.014, Z, ROPE, FLAT);
     bucketFlat(m, [0, 0.52, 0.05]);
   } else {
     for (const [a, b] of [[[0.6, 0.06, 0.9], [2.0, 0.06, 0.6]], [[-0.8, 0.06, -0.6], [-1.9, 0.06, 0.8]]] as Array<[V3, V3]>) member(m, a, b, 0.07, 0.07, Y, bamboo, FLAT);
@@ -764,29 +800,59 @@ function trough(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
 }
 
 function windlassWell(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
+  // (the looks lane, 2026-10-16, the r2 sweep: a box of plain planks, the roof's boards in the air, a flat wreck) the
+  // longleaf farm's well: the curb a box of chamfered pine boards nailed to four corner posts, a coping frame on it, the
+  // dark shaft mouth inside; two oak posts at its sides carry the windlass drum and its iron crank, the rope down to the
+  // bucket, and over them the shingled gable on its ridge, rafters and ties. Broken: the curb's upper boards off, one
+  // post snapped, the other down with the drum, the roof slid off whole and leaning on the curb.
   const m = meshFor(true, ctx), r = stream(0xa1e5 + (ctx.seed ?? 0));
-  const w = 1.25, h = broken ? 0.4 : 0.85;
-  // the plank box over the shaft
-  for (const s of [-1, 1]) {
-    for (let k = 0; k * 0.2 < h; k++) {
-      member(m, [-w / 2, 0.1 + k * 0.2, s * w / 2], [w / 2, 0.1 + k * 0.2, s * w / 2], 0.03, 0.19, X, mix(PINE, OAK, r() * 0.4), G(0.1 + k * 0.05));
-      member(m, [s * w / 2, 0.1 + k * 0.2, -w / 2], [s * w / 2, 0.1 + k * 0.2, w / 2], 0.03, 0.19, X, mix(PINE, OAK, r() * 0.4), G(0.3 + k * 0.05));
+  const w = 1.25, hw = w / 2, courses = broken ? 2 : 4, plank = (k: number) => mix(PINE, OAK, r() * 0.4 + k * 0.03);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    member(m, [sx * (hw - 0.04), 0, sz * (hw - 0.04)], [sx * (hw - 0.04), broken && sx * sz > 0 ? 0.52 : 0.9, sz * (hw - 0.04)], 0.08, 0.08, X, mul(PINE, 0.86), G(0.2), { chamfer: 0.012 });
+  }
+  for (let k = 0; k < courses + (broken ? 1 : 0); k++) {
+    const y = 0.1 + k * 0.2;
+    for (const s2 of [-1, 1]) {
+      if (broken && k === courses && s2 > 0) continue;
+      member(m, [-hw, y, s2 * (hw + 0.015)], [hw, y, s2 * (hw + 0.015)], 0.03, 0.19, Z, plank(k), G(0.1 + k * 0.05), { chamfer: 0.008 });
+      if (!(broken && k === courses)) member(m, [s2 * (hw + 0.015), y, -hw], [s2 * (hw + 0.015), y, hw], 0.03, 0.19, X, plank(k), G(0.3 + k * 0.05), { chamfer: 0.008 });
     }
   }
-  waterDisc(m, 0.5, 0.3, 4);
+  // the shaft's mouth: dark water down the shaft, the boards' inside faces round it
+  const mouth = hexLin(0x182024), my = 0.016;
+  m.tri([-hw, my, -hw], [hw, my, hw], [hw, my, -hw], Y, Y, Y, [0.5, 0.5], [0.5, 0.5], [0.5, 0.5], mouth);
+  m.tri([-hw, my, -hw], [-hw, my, hw], [hw, my, hw], Y, Y, Y, [0.5, 0.5], [0.5, 0.5], [0.5, 0.5], mouth);
   if (!broken) {
-    for (const s of [-1, 1]) member(m, [s * (w / 2 + 0.06), -0.2, 0], [s * (w / 2 + 0.06), 2.2, 0], 0.12, 0.12, Z, OAK, G(0.5), { chamfer: 0.015 });
-    pole(m, [-w / 2, 1.35, 0], [w / 2, 1.35, 0], 0.08, 0.08, PINE, 0.4, 8);
-    member(m, [w / 2 + 0.14, 1.35, 0], [w / 2 + 0.14, 1.05, 0.04], 0.03, 0.04, X, IRON, G(0.9));
-    pole(m, [0, 1.28, 0], [0, 0.95, 0.04], 0.012, 0.012, ROPE, 0.8, 4);
+    // the coping: four boards laid flat round the top, mitred over the corner posts
+    const cy = 0.1 + 3 * 0.2 + 0.095 + 0.02;
+    for (const s2 of [-1, 1]) {
+      member(m, [-hw - 0.07, cy, s2 * hw], [hw + 0.07, cy, s2 * hw], 0.16, 0.04, Y, mul(OAK, 0.9), G(0.4), { chamfer: 0.01 });
+      member(m, [s2 * hw, cy, -hw + 0.08], [s2 * hw, cy, hw - 0.08], 0.16, 0.04, Y, mul(OAK, 0.9), G(0.45), { chamfer: 0.01 });
+    }
+    // the posts at the curb's sides (bolted to it), the windlass drum through them, its crank
+    const px = hw + 0.1, ridgeY = 2.6;
+    for (const s2 of [-1, 1]) member(m, [s2 * px, -0.2, 0], [s2 * px, ridgeY - 0.05, 0], 0.12, 0.12, Z, OAK, G(0.5), { chamfer: 0.015 });
+    pole(m, [-px - 0.03, 1.35, 0], [px + 0.03, 1.35, 0], 0.08, 0.08, PINE, 0.4, 8);
+    member(m, [px + 0.1, 1.35, 0], [px + 0.1, 1.07, 0.06], 0.03, 0.04, X, IRON, G(0.9), { chamfer: 0.006 });
+    member(m, [px + 0.02, 1.35, 0], [px + 0.12, 1.35, 0], 0.035, 0.035, Z, IRON, G(0.9));
+    member(m, [px + 0.1, 1.07, 0.06], [px + 0.24, 1.07, 0.06], 0.03, 0.03, Z, IRON, G(0.9), { chamfer: 0.006 });
+    pole(m, [0, 1.28, 0.04], [0, 0.95, 0.04], 0.012, 0.012, ROPE, 0.8, 4);
     bucket(m, [0, 0.62, 0.04], mul(PINE, 0.8));
-    for (const s of [-1, 1]) member(m, [-0.95, 2.35, s * 0.42], [0.95, 2.35, s * 0.42], 0.95, 0.04, [0, 1.0, -s], SHINGLE, G(0.3 + s * 0.1));
-    member(m, [-0.98, 2.68, 0], [0.98, 2.68, 0], 0.08, 0.08, Y, mul(OAK, 0.8), G(0.7));
-    member(m, [-0.9, 2.18, 0], [0.9, 2.18, 0], 0.1, 0.12, Y, mul(OAK, 0.85), G(0.6));
+    wellRoof(m, 0.95, px, ridgeY, 2.08, 0.78, r);
   } else {
-    member(m, [0.6, 0.07, -1.0], [1.9, 0.07, 0.2], 0.12, 0.12, Y, OAK, G(0.5));
-    member(m, [-1.3, 0.06, -0.4], [-0.2, 0.12, -1.9], 0.95, 0.04, Y, SHINGLE, G(0.3));
-    bucket(m, [1.0, 0, 0.9], mul(PINE, 0.8));
+    // one post snapped standing, the other down across the ground with the drum
+    member(m, [-hw - 0.1, -0.2, 0], [-hw - 0.1, 1.3, 0], 0.12, 0.12, Z, OAK, G(0.5), { chamfer: 0.015 });
+    member(m, [hw + 0.1, 0.07, 0.2], [hw + 1.6, 0.07, 1.0], 0.12, 0.12, Y, OAK, G(0.5), { chamfer: 0.015 });
+    pole(m, [0.4, 0.09, 1.0], [1.5, 0.09, 1.5], 0.08, 0.08, PINE, 0.4, 8);
+    for (const [a, b] of [[[-1.4, 0.03, -0.9], [-0.4, 0.03, -1.5]], [[0.9, 0.03, -0.9], [1.9, 0.04, -0.6]]] as Array<[V3, V3]>) {
+      member(m, a, b, 0.19, 0.03, Y, plank(1), G(0.2), { chamfer: 0.008 });
+    }
+    bucket(m, [1.0, 0, -1.3], mul(PINE, 0.8));
+    // the roof slid off whole: its back eave on the ground behind the curb, its ridge over the curb's rim
+    const s0 = m.mark;
+    wellRoof(m, 0.95, hw + 0.1, 0.62, 0.1, 0.78, r);
+    m.tilt(s0, [0, 0.1, -0.78], X, -0.42);
+    for (let i = s0; i < m.mark; i += 3) { m.p[i + 2] -= 0.55; m.p[i + 1] = Math.max(0.01, m.p[i + 1]); }
   }
   return m.geometry();
 }
@@ -818,7 +884,7 @@ export function buildWell(form: WellForm, ctx: WellBuildContext, broken = false)
 
 /** The bed's kerb, outside half (inside the record's hw 1.3 and the receipt's 1.8 m reach at its corners). */
 const BED = 1.24;
-const TABLET: Rgb = hexLin(0x2a2e2c), GILT: Rgb = hexLin(0xb8953e), GILT_WORN: Rgb = hexLin(0x6e6448);
+const TABLET: Rgb = hexLin(0xc9c4b4), GILT: Rgb = hexLin(0xb8953e), GILT_WORN: Rgb = hexLin(0x6e6448);
 
 /** The stepped plinth: `widths` its courses' sides from the bottom (the first sunk 0.15), each `rise` high; `onTop`
  *  the side of what stands on the last. Returns its top. */
@@ -1109,14 +1175,15 @@ function stele(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   tablet(m, 'px', 0.25, depth, panel, 5, r, { slab: false, below: broken ? cut(0.25, 0) - 0.1 : undefined });
   if (broken) snap(m, start, cut);
   const ironCross = (y: number, foot: V3 = [0.25, 0, 0]) => {
-    // the iron cross bolted proud of the face: its upright and arms of flat bar, their bolts
-    member(m, add(foot, [0.01, y + 1.15, 0]), add(foot, [0.01, y + 2.35, 0]), 0.02, 0.16, X, IRON, FLAT);
-    member(m, add(foot, [0.01, y + 1.9, -0.32]), add(foot, [0.01, y + 1.9, 0.32]), 0.02, 0.16, X, IRON, FLAT);
+    // the iron cross bolted proud of the face: its upright and arms cast, 7 cm deep in section with their arrises cut
+    // back (the r2 sweep: flat bar 2 cm proud read as a dark plate on the face), their bolts
+    member(m, add(foot, [0.035, y + 1.15, 0]), add(foot, [0.035, y + 2.35, 0]), 0.07, 0.12, X, IRON, FLAT, { chamfer: 0.014 });
+    member(m, add(foot, [0.035, y + 1.9, -0.32]), add(foot, [0.035, y + 1.9, 0.32]), 0.07, 0.12, X, IRON, FLAT, { chamfer: 0.014 });
   };
   if (!broken) {
     ironCross(y0);
-    bolts(m, 'px', 0.27, [[0, y0 + 1.25], [0, y0 + 2.25], [-0.26, y0 + 1.9], [0.26, y0 + 1.9], [0, y0 + 1.9]]);
-    wreath(m, 'px', 0.27, 0, y0 + 1.9, 0.2);
+    bolts(m, 'px', 0.315, [[0, y0 + 1.25], [0, y0 + 2.25], [-0.26, y0 + 1.9], [0.26, y0 + 1.9], [0, y0 + 1.9]]);
+    wreath(m, 'px', 0.3, 0, y0 + 1.9, 0.2);
     // the cornice over the stele and its capstone
     band(m, ctx, 0.62, 1.3, y1, y1 + 0.2, 1.04, 0.03, brick ? mul(sand, 1.05) : [1.04, 1.04, 1.04], uv);
     band(m, ctx, 0.42, 1.04, y1 + 0.2, y1 + 0.4, 1.04, 0.05, brick ? mul(sand, 1.05) : [1.04, 1.04, 1.04], uv);

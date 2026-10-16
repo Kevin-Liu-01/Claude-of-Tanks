@@ -212,7 +212,7 @@ export type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'structure' | 'setPieceDestructible'
   | 'rollingStockDestructible' | 'tramDestructible'
-> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; mapId?: string };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -888,7 +888,7 @@ export function dressMapExtras({
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
+  const focused = { mapId, L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
     trunks: trunksOf(trees), setPieceDestructible, rollingStockDestructible, tramDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
@@ -2211,7 +2211,7 @@ function addRailYardCoalHeaps(
     // An unloading strip east of the outer siding, not piles across tracks.
     const x = 84 + (oldX - 34) * 0.14, z = -52 + i * 7 + oldZ / 140;
     if (!buckets.baked || !coalSiteIsClear(heightField, x, z, length, ctx.obstacles ?? [])) continue;
-    const heap = makeCoalStockpile(heightField, x, z, radius, length, phase);
+    const heap = makeCoalStockpile(heightField, x, z, radius, length, phase, ctx.mapId);
     buckets.baked.push(heap);
     registerCoalStockpile(heap, ctx);
   }
@@ -2326,7 +2326,7 @@ function addSpurCoalStage(ctx: FocusedDressingContext, spur: RailSpurConfig): vo
     const size = rng(), stretch = rng(), phase = rng() * Math.PI;
     const radius = 1.1 + size * 0.5, length = radius * (1.15 + stretch * 0.2);
     if (!buckets.baked || !coalSiteIsClear(heightField, station.x, station.z, length, ctx.obstacles ?? [])) continue;
-    const heap = makeCoalStockpile(heightField, station.x, station.z, radius, length, phase);
+    const heap = makeCoalStockpile(heightField, station.x, station.z, radius, length, phase, ctx.mapId);
     buckets.baked.push(heap);
     registerCoalStockpile(heap, ctx);
   }

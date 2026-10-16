@@ -67,6 +67,15 @@ assert.equal(bA, bB, 'the legacy broken draws are spent exactly');
 assert.deepEqual(t.footprintBuild().attributes.position.array, legacyType.build(mulberry32(0x0f0f7)).attributes.position.array, 'the legacy footprint');
 built.dispose(); old.dispose();
 
+// the bunker r2 standard (tools/r2-standard.mjs; the LOOKS sweep's bar) on every crown: the wreck within 1.5 x the intact
+{
+  const { r2Check } = await import('../../../tools/r2-standard.mjs');
+  const ARCH = { desert: 'ksar', delta: 'bengal', badlands: 'wadirum', titan_gorge: 'navajo', oasis: 'siwa', mangrove: 'mekong' };
+  const res = r2Check({ kind: 'destructible:walladobe', maps: Object.keys(ARCH), bucket: 'fieldMud',
+    resolve: (m) => { const c = adobeCrownFor(ARCH[m]); return { form: c, build: () => buildAdobeWall(c, env), broken: () => buildAdobeWall(c, env, true) }; } });
+  assert.ok(res.ok, `the r2 standard:\n  ${res.problems.join('\n  ')}`);
+}
+
 // the mud walls' piers (inhabitKit buildAdobePilaster): about half the old 224 triangles, the region's crown on the dome
 {
   const { buildAdobePilaster } = await import('./inhabitKit.ts');

@@ -783,7 +783,10 @@ function findBundles(visual, spec, bodies, decorPieces) {
     const site = c.chain.find((f) => !FACTORY_FILES.test(f.file));
     const text = site ? contextFor(site) : '';
     const trackBucket = /^(hull|turret)Track$/.test(c.bucket);
-    const listed = c.chain.some((f) => ADHOC_SITES.some((a) => f.file === a.file && f.line >= a.from && f.line <= a.to));
+    // a listed site's links are registered runs now (withSpareTrackRun / spareTrackPart): only a track-steel part left
+    // unregistered there is link geometry; its towing eyes, lamps and guards in the other buckets are not (leo2a5m's bow
+    // tow eyes fell inside the leopardX line range once the file moved, 2026-10-16)
+    const listed = trackBucket && c.chain.some((f) => ADHOC_SITES.some((a) => f.file === a.file && f.line >= a.from && f.line <= a.to));
     if (/spare.?(link|track)/i.test(fns) || (trackBucket && SPARE_TEXT_RE.test(text)) || listed) {
       c.body.evidence = /spare.?(link|track)/i.test(fns) ? 'helper name' : listed ? 'listed site' : 'source comment';
       adhoc.push(c.body);

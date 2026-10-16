@@ -724,7 +724,8 @@ assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, ma
 assert.match(propsSource, /const wallB = style === 'adobe' \? wallDressing\.adobeBucket : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print (or the mud print)');
 assert.match(propsSource, /fieldStone: new THREE\.MeshStandardMaterial\(\{ map: fieldStone\.albedo,/, 'the field print has its own material');
 // wave 20: the mud walls' own worn render; the walls' feet, drifts and snow loads; the modules turned round by place
-assert.match(propsSource, /walladobe: \{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/, 'the mud wall pool draws the mud print');
+assert.match(propsSource, /walladobe: (?:adobeWallType\(regionalArchitecture\?\.id, )?\{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/,
+  'the mud wall pool draws the mud print (in its region\'s build: adobeWallKit.ts adobeWallType)');
 assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fieldMud\.albedo,/, 'the mud print has its own material');
 assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
 assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
@@ -734,7 +735,10 @@ assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe
 assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
-assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
+// (2026-10-15, the perf lane) a props program is keyed by the family of the hook its material wears (props.ts
+// propsProgramFamily): the hessian and the canvas both wear the grime hook, so they share one program
+assert.match(propsSource, /const propsProgramFamily = \(kind: string\): string => \(tileBiased\(kind\) \? 'tile' : isKitWall\(kind\) \? 'wall'\n\s*: kind === 'dark' \|\| kind === 'glass' \? 'plain'\n\s*: kind === 'rock' \|\| kind === 'fieldStone' \|\| kind === 'pole' \|\| kind === 'ballast' \|\| kind === 'fieldMud' \? kind\n\s*: 'grime'\);/,
+  'the hessian shares the canvas program (one hook, one family)');
 assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook\s*(?:: clutterLod \? \(shader\) => \{ grimeHook\(shader\); clutterLodHook\(shader\); \}\s*)?: grimeHook/,
   'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14); the baked clutter pools fold their near and far forms over the grime (props lane A #2)');
 assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
