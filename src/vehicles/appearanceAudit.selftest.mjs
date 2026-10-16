@@ -87,10 +87,12 @@ assert.deepEqual(auditTankAppearance(tracks).issues, []);
   };
   // Role counts after the 2026-09-25 re-roling (mesh slots; the census JSON carries triangles), and the distinct
   // rendered materials per tank: Merkava hulls grew by exactly the +2 bound (pale canvas + the fitting paint the
-  // jerry cans now share); the other re-roled hulls grew by 0.
+  // jerry cans now share); the other re-roled hulls grew by 0. VEH-13 (2026-10-16): a tank whose spare links are
+  // built carries the one shared weathered spare-link steel (cot:spare-link-steel, every link and carrier on it);
+  // the Merkava bow links are built, so +1 (`spareLink`).
   const expected = {
-    merkava3c: { canvasPale: 2, materialsMax: 26, before: 24 },
-    merkava4b: { canvasPale: 2, materialsMax: 24, before: 22 },
+    merkava3c: { canvasPale: 2, materialsMax: 27, before: 24, spareLink: 1 },
+    merkava4b: { canvasPale: 2, materialsMax: 25, before: 22, spareLink: 1 },
     leclerc_s2: { canvas: 2, materialsMax: 22, before: 22 },
     k2b: { materialsMax: 25, before: 25 },
     carro45t: { materialsMax: 23, before: 23 },
@@ -103,8 +105,11 @@ assert.deepEqual(auditTankAppearance(tracks).issues, []);
     if (want.canvasPale) assert.equal(roles.canvasPale, want.canvasPale, `${id}: pale canvas rides hull and turret`);
     else assert.equal(roles.canvasPale, undefined, `${id}: no pale canvas on a non-desert kit`);
     if (want.canvas) assert.ok((roles.canvas ?? 0) >= want.canvas, `${id}: canvas boot/kit present`);
-    assert.ok(materials.size <= want.materialsMax && materials.size <= want.before + 2,
-      `${id}: ${materials.size} materials (before ${want.before}, bound +2)`);
+    assert.ok(materials.size <= want.materialsMax && materials.size <= want.before + 2 + (want.spareLink ?? 0),
+      `${id}: ${materials.size} materials (before ${want.before}, bound +2${want.spareLink ? ` + ${want.spareLink} spare-link steel` : ''})`);
+    // the spare links share ONE material: never a second link steel
+    assert.ok([...materials].filter((m) => m.name === 'cot:spare-link-steel').length <= (want.spareLink ?? 1),
+      `${id}: the spare links share one weathered steel`);
     const pale = [...materials].filter((m) => m.userData?.appearanceRole === 'canvasPale');
     assert.ok(pale.length <= 1, `${id}: at most one pale canvas material`);
     for (const m of pale) assert.equal(m.name, 'cot:canvas-pale');
