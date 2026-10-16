@@ -119,7 +119,7 @@ import {
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { fenceTypes, ironRailingType } from './maps/fenceKit.ts';
-import { coursedWallType } from './maps/coursedWallKit.ts';
+import { coursedWallType, dryStoneWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
@@ -4463,7 +4463,8 @@ ${snowCap ? `
     // top, so a breached module loses it with its stones)
     // (props lane A #6: the coursed module in its region's build, maps/coursedWallKit.ts: the legacy collision and fit)
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
-      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
+      // (props lane A, r2 sweep: the drawn module's top stones crowned, the legacy's collision and fit: coursedWallKit.ts)
+      : { wallstone: dryStoneWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, snowCap ? withSnowLoad : null, () => mulberry32(0x0f0f7)) }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     // (props lane A #6: in its region's build, maps/adobeWallKit.ts: the legacy collision and fit)
     walladobe: adobeWallType(regionalArchitecture?.id, { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket }, () => mulberry32(0x0f0f7)),
@@ -4516,8 +4517,8 @@ ${snowCap ? `
   /** (E1) the kinds whose broken builder is their own on this map: its structure variants and the pillbox of its make */
   const ownBroken = new Set<string>([...Object.keys(P.structureVariants ?? {}), ...(fort ? ['bunker'] : [])]);
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
-  function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
-    const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
+  /** A dry-stone module with the winter's snow load along its top (the r2 sweep's drawn module takes it too). */
+  function withSnowLoad(wall: THREE.BufferGeometry): THREE.BufferGeometry {
     const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
     // (b14: the snow load settles with the wall vertex by vertex: its stone tag is the snow's kind)
     if (wall.getAttribute('aStone')) {
