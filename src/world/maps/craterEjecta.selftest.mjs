@@ -1,5 +1,5 @@
 // craterEjecta.selftest.mjs — the craters' ejecta by the ground struck (props lane A, #19, 2026-10-15): every map has its
-// climate; sand throws nothing; each piece is a small closed-enough body on the baked family's attributes, part-buried
+// climate; sand only slumped clumps of its rim (low and smooth); each piece is a small closed-enough body on the baked family's attributes, part-buried
 // (its foot under y 0), under its triangle cap, coloured as its ground (grass over soil on turf, the snow over its
 // spatter, the asphalt dark), deterministic at its seed.
 import assert from 'node:assert/strict';
@@ -12,7 +12,6 @@ for (const mapId of MAP_IDS) {
   seen.add(climate);
   for (let i = 0; i < 12; i++) {
     const size = 0.14 + (i / 11) * 0.26, g = ejectaPiece(climate, mapId, size, 7 + i * 131);
-    if (climate === 'sand') { assert.equal(g, null, `${mapId}: sand throws no clods`); continue; }
     assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], 'the baked family\'s attributes');
     assert.equal(g.index, null);
     const p = g.attributes.position, c = g.attributes.color, tris = p.count / 3;
@@ -24,6 +23,7 @@ for (const mapId of MAP_IDS) {
     }
     if (climate !== 'town') assert.ok(lo < -0.005, `${mapId}: part-buried`);
     assert.ok(hi > 0.02 && hi < size * 1.1, `${mapId}: stands ${hi.toFixed(3)} m, inside its size`);
+    if (climate === 'sand') assert.ok(hi < size * 0.32, `${mapId}: a sand clump slumps (${hi.toFixed(3)} m at ${size.toFixed(2)})`);
     assert.ok(spanX <= size * 1.05, `${mapId}: no wider than its size`);
     const again = ejectaPiece(climate, mapId, size, 7 + i * 131);
     assert.deepEqual(again.attributes.position.array, p.array, 'deterministic');
@@ -38,4 +38,4 @@ for (let i = 0; i < 20; i++) { const t = avg(ejectaPiece('turf', 'verdant', 0.3,
 assert.ok(green >= 10, `most sods land grass up (${green}/20)`);
 assert.ok(avg(ejectaPiece('snow', 'winter', 0.3, 3), () => true)[2] > 0.3, 'snow lumps pale');
 assert.equal(ejectaClimateOf('orchard'), 'turf'); assert.equal(ejectaClimateOf('mars'), 'regolith'); assert.equal(ejectaClimateOf('desert'), 'sand');
-console.log(`craterEjecta.selftest: ${MAP_IDS.length} maps, ${seen.size} climates, sand throws none, pieces part-buried and deterministic`);
+console.log(`craterEjecta.selftest: ${MAP_IDS.length} maps, ${seen.size} climates, sand clumps slumped, pieces part-buried and deterministic`);

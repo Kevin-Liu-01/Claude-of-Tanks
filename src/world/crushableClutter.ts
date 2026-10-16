@@ -22,7 +22,7 @@ const flatScale = new Vector3(1, .14, 1);
 
 /** The clutter's kinds: the rubble heaps, the hedgehogs, the loose rocks, the coal heaps, and (Lane C, PRP-02) the small
  *  dressing props given their break path (maps/smallPropBreak.ts), each `prop-<what>`. */
-export type ClutterKind = 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap' | `prop-${string}`;
+export type ClutterKind = 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap' | 'field-wall' | `prop-${string}`;
 
 /** Preserve the existing material batches/rock instances: collapse only this
  * object's vertices or instance, with no new draw calls or frame-loop work. */

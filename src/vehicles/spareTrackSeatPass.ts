@@ -20,7 +20,7 @@ import { mergeAll } from './factoryGeometry.ts';
 import { SPARE_TRACK_SEAT_PLAN, type SeatPlanEntry } from './spareTrackSeatPlan.ts';
 import {
   seatAngularLow, seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat,
-  SeatSoup, measureSeat, remountSeats, seatSourceBounds, rackSeat, searchPoses, seatExposure, RACK_POST_MAX_M, type RackSeat, AUTHORED_SEARCH, NO_SEARCH, type SeatAngularProfile, type SeatResult,
+  SeatSoup, measureSeat, remountSeats, seatSourceBounds, rackSeat, searchPoses, seatExposure, type RackSeat, AUTHORED_SEARCH, NO_SEARCH, type SeatAngularProfile, type SeatResult,
   type SeatEnv, type SeatMeasure, type SeatMotion, type SeatPose, type SeatRadialProfile, type SeatRole, type SeatRunShape,
   type SeatSource, type SpareTrackRunTag, type SpareTrackSeatReceipt,
 } from './spareTrackSeat.ts';
@@ -342,12 +342,14 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       [r5(pose.pos.x), r5(pose.pos.y), r5(pose.pos.z), r5(pose.quat.x), r5(pose.quat.y), r5(pose.quat.z), r5(pose.quat.w), racked ? 1 : 0];
     type Found = { result: SeatResult; answer: SeatPlanEntry; rack: RackSeat | null };
     // a moved run takes a second, longer look round it on the whole frame (a far overhang still buries it)
+    // every step-4 seat is measured on the whole frame (one soup a run): the search, the long look and a game build's
+    // replay of a recorded answer read the same armour, so the replay reproduces the answer
     let wholeFrame: SeatEnv | null = null;
+    const whole = (): SeatEnv => (wholeFrame ??= seatEnv(frames, run.frame, frameBounds(frames, run.frame), motion));
     let recorded = false;              // a game build following the receipt's recorded answer skips the long look
     const open = (pose: SeatPose): boolean => {
       if (recorded && !planAudit) return true;
-      wholeFrame ??= seatEnv(frames, run.frame, frameBounds(frames, run.frame), motion);
-      return seatExposure(wholeFrame, run.shape, pose, run.owner, 2.5) >= 0.5;
+      return seatExposure(whole(), run.shape, pose, run.owner, 2.5) >= 0.5;
     };
     const flushAt = (at: SeatEnv, pose: SeatPose): Found | null => (measureSeat(at, run.shape, pose, run.owner, false, true).ok
       && open(pose)
@@ -364,8 +366,8 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       if (p !== undefined && typeof p !== 'number') {
         // a recorded seat elsewhere (flush or on a rack): measured first; a stale one falls back to the whole search
         const pose = { pos: new THREE.Vector3(p[0], p[1], p[2]), quat: new THREE.Quaternion(p[3], p[4], p[5], p[6]) };
-        const at = seatEnv(frames, run.frame, run.shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(pose.pos, pose.quat, UNIT))
-          .expandByScalar(RACK_POST_MAX_M), motion);
+        // measured on the whole frame, as the search measured it (the gun's armour limits are read off the frame)
+        const at = whole();
         recorded = true;
         const got = p[7] ? rackAt(at, pose) : flushAt(at, pose);
         recorded = false;
@@ -380,13 +382,12 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       if (!planAudit) return { result: local, answer: -1, rack: null };
       // 4. fix the mount, don't remove: a rack where it was authored and round it, then every other station of its frame
       // (each flush, else on a rack), nearest first on the face it was authored on
+      const all = whole();
       for (const pose of [run.hint, ...searchPoses(run.shape, run.hint)]) {
-        const got = rackAt(env, pose);
+        const got = rackAt(all, pose);
         if (got) return got;
       }
-      const box = frameBounds(frames, run.frame);
-      const all = seatEnv(frames, run.frame, box, motion);
-      const stations = remountSeats(all, run.shape, run.hint, box, run.owner);
+      const stations = remountSeats(all, run.shape, run.hint, frameBounds(frames, run.frame), run.owner);
       for (const pose of stations) {
         const got = flushAt(all, pose) ?? rackAt(all, pose);
         if (got) return got;
@@ -400,6 +401,9 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       audit.live[run.site] = live;
       if (JSON.stringify(planned) !== JSON.stringify(live)) {
         audit.stale.push(`${run.site}: plan ${JSON.stringify(planned) ?? 'none'}, search ${JSON.stringify(live)}`);
+      } else if (planned !== undefined && JSON.stringify(answer) !== JSON.stringify(planned)) {
+        // the search still gives the recorded answer, but the build could not replay it (a game build would not either)
+        audit.stale.push(`${run.site}: the recorded answer ${JSON.stringify(planned)} does not replay`);
       }
     }
     if (result.ok && result.pose) {

@@ -49,7 +49,29 @@ const FPS_SMOOTH_CEILING = 118;
 const TRIM_DOWN_STRIKES = 2;
 /** Consecutive overloaded windows at the hold rung (~6 s at the 1.5 s decision interval) before the raster goes below. */
 export const HOLD_DOWN_STRIKES = 4;
-const TIER_DOWN_STRIKES = 4;
+/**
+ * 2026-10-15 (the perf lane; owner: Auto fell High -> Low under load and still ran ~26 fps). A preset tier is the
+ * picture's biggest lever, so it moves only when the frame really cannot keep up and only while the cut is shown to
+ * buy frames:
+ *  - KEEP-UP: a window counts toward a tier cut only when it is overloaded AND its achieved rate is under
+ *    TIER_KEEP_UP_SHARE of the presented rate (min(60 Hz, the display's cadence)): 45 fps on a 60 Hz screen. A machine
+ *    that delivers 50 fps on High keeps High (the trim and the resolution ladder still act there).
+ *  - SUSTAINED: TIER_DOWN_STRIKES consecutive such windows (12 s at the 1.5 s decision interval) since the last
+ *    workload reset, so a killcam beat, a burst of smoke or a background hitch never costs a tier.
+ *  - PROVEN: a cut opens a trial (beginTierTrial). After TIER_TRIAL_SKIP_WINDOWS settling windows (the new tier's
+ *    resize and links), the median of TIER_TRIAL_WINDOWS windows must beat the cut's evidence (the median of its strike
+ *    windows) by TIER_MIN_GAIN; otherwise the cut bought nothing (the main thread, or another process, owns the frame:
+ *    the 10-12 baseline saw Low at 22-34 fps where High made 23-35) and the policy restores the tier at once
+ *    ('tier-up') and bars tier cuts for TIER_RETRY_SECONDS, doubling up to TIER_RETRY_MAX_SECONDS per failed trial.
+ */
+const TIER_DOWN_STRIKES = 8;
+export const TIER_KEEP_UP_SHARE = 0.75;
+const TIER_PRESENTED_RATE_CAP = 60;
+export const TIER_TRIAL_SKIP_WINDOWS = 1;
+export const TIER_TRIAL_WINDOWS = 5;
+export const TIER_MIN_GAIN = 0.15;
+export const TIER_RETRY_SECONDS = 180;
+const TIER_RETRY_MAX_SECONDS = 900;
 const TIER_DOWN_WARMUP_SECONDS = 8;
 const TIER_UP_STABLE_SECONDS = 45;
 const TIER_UP_STRIKES = 4;
@@ -95,6 +117,26 @@ const knownGpu = (window: AdaptiveQualityWindow): number | null => {
   if (typeof gpu !== 'number' || !Number.isFinite(gpu) || gpu <= 0) return null;
   return gpu <= window.frameEmaMs * GPU_TRUST_SHARE ? gpu : null;
 };
+
+/** The achieved rate under which a window is a tier strike: a share of min(60 Hz, the display's presented rate). */
+export function tierKeepUpFps(frameBudgetMs: number): number {
+  const presented = Number.isFinite(frameBudgetMs) && frameBudgetMs > 0
+    ? Math.min(TIER_PRESENTED_RATE_CAP, 1000 / frameBudgetMs) : TIER_PRESENTED_RATE_CAP;
+  return presented * TIER_KEEP_UP_SHARE;
+}
+
+const median = (values: readonly number[]): number => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+interface TierTrial {
+  /** The median achieved rate of the strike windows that made the cut. */
+  readonly evidenceFps: number;
+  skip: number;
+  readonly fps: number[];
+}
 
 interface LoadClassification {
   readonly overloaded: boolean;
@@ -157,6 +199,12 @@ export class AdaptiveQualityPolicy {
   private lastTrimUpAt = Number.NEGATIVE_INFINITY;
   private lastTrimDownAt = Number.NEGATIVE_INFINITY;
   private resetAt = 0;
+  // The tier record outlives reset(): a tier change rebroadcasts the preset, and post.ts resets the governor on it.
+  private tierStrikeFps: number[] = [];
+  private tierCutEvidenceFps: number | null = null;
+  private tierTrial: TierTrial | null = null;
+  private tierDownBarredUntil = Number.NEGATIVE_INFINITY;
+  private tierRetrySeconds = TIER_RETRY_SECONDS;
 
   constructor(initialDynamicScale: number) {
     this.scale = initialDynamicScale;
@@ -165,6 +213,28 @@ export class AdaptiveQualityPolicy {
   get dynamicScale(): number { return this.scale; }
   get performanceTrim(): number { return this.trim; }
   get learnedBaselineFps(): number { return this.baselineFps; }
+  /** Diagnostics: a tier trial is measuring the last cut. */
+  get tierTrialActive(): boolean { return this.tierTrial !== null; }
+  /** Diagnostics: the clock before which no tier cut is taken (a failed trial's bar). */
+  get tierCutsBarredUntil(): number { return this.tierDownBarredUntil; }
+
+  /**
+   * The tier cut this policy asked for was applied (post.ts: reportSustainedOverload() returned true): measure it.
+   * A cut that was refused (an explicit preset, the floor tier, a phone) opens no trial.
+   */
+  beginTierTrial(): boolean {
+    const evidence = this.tierCutEvidenceFps;
+    this.tierCutEvidenceFps = null;
+    if (evidence === null || !(evidence > 0)) return false;
+    this.tierTrial = { evidenceFps: evidence, skip: TIER_TRIAL_SKIP_WINDOWS, fps: [] };
+    return true;
+  }
+
+  /** A new workload (garage <-> battle, a restored context) cannot be compared with the cut's evidence: keep the tier. */
+  abandonTierTrial(): void {
+    this.tierTrial = null;
+    this.tierCutEvidenceFps = null;
+  }
 
   reset(initialDynamicScale: number, clockSeconds: number): void {
     this.scale = initialDynamicScale;
@@ -182,6 +252,7 @@ export class AdaptiveQualityPolicy {
     this.lastTrimUpAt = Number.NEGATIVE_INFINITY;
     this.lastTrimDownAt = Number.NEGATIVE_INFINITY;
     this.resetAt = clockSeconds;
+    this.tierStrikeFps = [];
   }
 
   setDynamicScale(next: number): boolean {
@@ -214,6 +285,7 @@ export class AdaptiveQualityPolicy {
 
   evaluate(window: AdaptiveQualityWindow): AdaptiveQualityAction {
     this.resetResolutionBackoffAfterStableMinute(window.clockSeconds);
+    if (this.judgeTierTrial(window)) return 'tier-up';
     const load = classifyLoad(window, this.baselineFps);
     this.baselineFps = nextBaselineFps(
       this.baselineFps,
@@ -224,7 +296,36 @@ export class AdaptiveQualityPolicy {
     this.trimDownStrikes = 0;
     this.holdDownStrikes = 0;
     this.tierDownStrikes = 0;
+    this.tierStrikeFps = [];
     return this.applyRecovery(window, load.clean);
+  }
+
+  /** Feed an open tier trial; true when the cut bought too little and the tier must be restored now. */
+  private judgeTierTrial(window: AdaptiveQualityWindow): boolean {
+    const trial = this.tierTrial;
+    if (!trial) return false;
+    if (!window.mayRaiseTier) {
+      // the user pinned a preset (or the cap moved): nothing for the trial to restore
+      this.tierTrial = null;
+      return false;
+    }
+    if (trial.skip > 0) {
+      trial.skip--;
+      return false;
+    }
+    if (Number.isFinite(window.achievedFps) && window.achievedFps > 0) trial.fps.push(window.achievedFps);
+    if (trial.fps.length < TIER_TRIAL_WINDOWS) return false;
+    this.tierTrial = null;
+    if (median(trial.fps) >= trial.evidenceFps * (1 + TIER_MIN_GAIN)) {
+      this.tierRetrySeconds = TIER_RETRY_SECONDS;
+      return false;
+    }
+    this.tierDownBarredUntil = window.clockSeconds + this.tierRetrySeconds;
+    this.tierRetrySeconds = Math.min(this.tierRetrySeconds * 2, TIER_RETRY_MAX_SECONDS);
+    this.tierDownStrikes = 0;
+    this.tierStrikeFps = [];
+    this.tierUpStrikes = 0;
+    return true;
   }
 
   private resetResolutionBackoffAfterStableMinute(clockSeconds: number): void {
@@ -249,10 +350,10 @@ export class AdaptiveQualityPolicy {
     if (lever === 'resolution') {
       const gpu = knownGpu(window);
       // a main-thread overload: fewer pixels would not shorten the frame
-      if (gpu !== null && gpu < window.frameBudgetMs * GPU_BOUND_SHARE) return this.applyTierRelief(window.clockSeconds);
+      if (gpu !== null && gpu < window.frameBudgetMs * GPU_BOUND_SHARE) return this.applyTierRelief(window);
       return this.applyResolutionRelief(window);
     }
-    return this.applyTierRelief(window.clockSeconds);
+    return this.applyTierRelief(window);
   }
 
   private applyTrimRelief(window: AdaptiveQualityWindow): AdaptiveQualityAction {
@@ -303,11 +404,22 @@ export class AdaptiveQualityPolicy {
     return 'resolution-down';
   }
 
-  private applyTierRelief(clockSeconds: number): AdaptiveQualityAction {
+  private applyTierRelief(window: AdaptiveQualityWindow): AdaptiveQualityAction {
+    const clockSeconds = window.clockSeconds;
     if (clockSeconds <= TIER_DOWN_WARMUP_SECONDS) return 'none';
+    // keeping up (or a trial still measuring the last cut, or a failed trial's bar): no strike, and the run restarts
+    if (window.achievedFps >= tierKeepUpFps(window.frameBudgetMs) || this.tierTrial !== null
+      || clockSeconds < this.tierDownBarredUntil) {
+      this.tierDownStrikes = 0;
+      this.tierStrikeFps = [];
+      return 'none';
+    }
     this.tierDownStrikes++;
+    this.tierStrikeFps.push(window.achievedFps);
     if (this.tierDownStrikes < TIER_DOWN_STRIKES) return 'none';
+    this.tierCutEvidenceFps = median(this.tierStrikeFps);
     this.tierDownStrikes = 0;
+    this.tierStrikeFps = [];
     return 'tier-down';
   }
 
@@ -336,7 +448,7 @@ export class AdaptiveQualityPolicy {
     clean: boolean,
   ): AdaptiveQualityAction {
     const stableLongEnough = window.clockSeconds - this.resetAt >= TIER_UP_STABLE_SECONDS;
-    if (!window.mayRaiseTier || !clean || this.scale < 1 || this.trim > 0 || !stableLongEnough) {
+    if (!window.mayRaiseTier || !clean || this.scale < 1 || this.trim > 0 || !stableLongEnough || this.tierTrial) {
       this.tierUpStrikes = 0;
       return 'none';
     }

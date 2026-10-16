@@ -1,7 +1,7 @@
 // src/world/maps/regional/openings.ts — window, door, gate and step units shared by the regional dialects
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
-import { faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
+import { LocalFrame, faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type EmitOptions, type Face, type FaceSkip, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
 import { facadeOn, facadeRng, faceSlab, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
 
 export interface WindowStyle {
@@ -268,6 +268,100 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
       { decor: true, ...(style.steps.colour ? { colour: style.steps.colour } : {}) });
   }
 }
+
+/** An open shop's fittings (openShop): its timber, its shutter boards and how they stand by day, its goods' colours. */
+export interface ShopStyle {
+  timber: Rgb;
+  /**
+   * the shutter boards: taken down and stacked against a jamb inside, hinged up over the opening and propped on two poles
+   * as its awning, or put up across it (the shop shut)
+   */
+  shutters: { colour: Rgb; mode: 'stacked' | 'propped' | 'closed' } | null;
+  goods: readonly Rgb[];
+  /** a burnt-out shop: its fittings charred, its goods gone, a board or two down */
+  burnt?: boolean;
+  /** the floor raised on boards this high over the opening's foot (a bazaar shop's plank floor) */
+  floor?: number;
+}
+
+/**
+ * An open shop behind a cut shop opening (props census #29, lane B 2026-10-15; the worklist's OPEN shop unit; the judges:
+ * "a shop opening a dark facePanel proud of a solid wall"): its room behind the opening — `room.wall` the wall's
+ * thickness, `room.depth` the room beyond it, `room.width` and `room.height` its inside — fitted with its floor boards,
+ * the shelves along its back wall and the goods on them, the counter across the front, and its shutter boards (ShopStyle).
+ * The builder lays the room's own walls, ceiling and back (solids round an opening cut with no reveal backing); the
+ * unit is dressing. (u, y): the opening's bottom middle; w x h its size.
+ */
+/** A face-aligned box with every face (openShop's fittings stand free in the room: faceBox drops the back of anything at or behind the face). */
+export function freeBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, o: number, su: number, sy: number, so: number, opts: EmitOptions,
+  coarse?: FaceSkip): void {
+  sink.box(bucket, facePoint(face, u, y, o), [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? UV_WORLD }, new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]), undefined, coarse);
+}
+
+export function openShop(sink: PartSink, face: Face, u: number, y: number, w: number, h: number,
+  room: { wall: number; depth: number; width: number; height: number }, style: ShopStyle, rng: () => number): void {
+  const T = room.wall, D = room.depth, burnt = !!style.burnt;
+  // (the far form, props census #29: the cost guardrail) every fitting reads from afar by its face to the street, the
+  // rest of it fine joinery the near camera alone draws (EmitOptions.fineSides: the box's +out face coarse); the floor by
+  // its top, the goods near only
+  const wood = (k: number) => ({ colour: burnt ? shade(CHARRED, 0.8 + k * 0.4) : shade(style.timber, k), decor: true, fineSides: true } as const);
+  const fy = y + (style.floor ?? 0);
+  // the floor boards
+  freeBox(sink, 'structureWood', face, u, (fy + y) / 2 - 0.01, -T - D / 2, room.width, fy - y + 0.06, D, wood(0.62), { py: true, pz: true });
+  // the shelves along the back wall, their uprights, the goods on them
+  const back = -T - D + 0.2, sw = room.width - 0.3;
+  faceBox(sink, 'structureWood', face, u, fy + 1.25, -T - D + 0.012, sw, 2.3, 0.02, wood(0.45), { back: true });
+  for (const sy of [0.95, 1.7]) {
+    freeBox(sink, 'structureWood', face, u, fy + sy, back, sw, 0.04, 0.38, wood(0.75));
+    if (burnt) continue;
+    // (the goods in lots a hand or two apart, their backs to the backboard: the shops' triangle budget)
+    for (let x = -sw / 2 + 0.12; x < sw / 2 - 0.3;) {
+      const gw = 0.24 + rng() * 0.34, gh = 0.14 + rng() * 0.3;
+      if (rng() < 0.85) faceBox(sink, 'structureWood', face, u + x + gw / 2, fy + sy + 0.02 + gh / 2, back + (rng() - 0.5) * 0.06, gw, gh, 0.26,
+        { colour: style.goods[Math.floor(rng() * style.goods.length)], decor: true, fine: true });
+      x += gw + 0.08 + rng() * 0.16;
+    }
+  }
+  for (const s of [-1, 1]) freeBox(sink, 'structureWood', face, u + s * (sw / 2 - 0.03), fy + 1.2, back, 0.05, 2.4, 0.38, wood(0.6));
+  // the counter across the front, short of one jamb (the way in), its top board
+  const cw = Math.max(0.6, w - 0.95), cu = u + (rng() < 0.5 ? -1 : 1) * (w - cw) / 2 * 0.9;
+  if (!burnt || rng() < 0.6) {
+    freeBox(sink, 'structureWood', face, cu, fy + 0.45, -T - 0.42, cw, 0.9, 0.5, wood(0.85));
+    freeBox(sink, 'structureWood', face, cu, fy + 0.92, -T - 0.42, cw + 0.08, 0.05, 0.6, wood(1.05));
+    if (!burnt) for (let k = 0; k < 1; k++) {
+      const gw = 0.22 + rng() * 0.2;
+      freeBox(sink, 'structureWood', face, cu + (rng() - 0.5) * (cw - gw), fy + 1.0, -T - 0.42, gw, 0.12 + rng() * 0.14, 0.24,
+        { colour: style.goods[Math.floor(rng() * style.goods.length)], decor: true, fine: true });
+    }
+  }
+  // the shutter boards
+  const sh = style.shutters;
+  if (!sh) return;
+  const n = Math.max(3, Math.round(w / 0.32)), bw = w / n, bc = (k: number) => ({ colour: burnt ? CHARRED : shade(sh.colour, 0.88 + ((k * 7) % 5) * 0.06), decor: true, fineSides: true });
+  if (sh.mode === 'closed' && !burnt) {
+    for (let k = 0; k < n; k++) freeBox(sink, 'structureWood', face, u - w / 2 + bw * (k + 0.5), y + h / 2, -0.06, bw - 0.01, h - 0.04, 0.04, bc(k));
+    freeBox(sink, 'structureWood', face, u, y + h * 0.55, -0.03, w - 0.04, 0.08, 0.03, { ...bc(0), fine: true });
+  } else if (sh.mode === 'propped' && !burnt) {
+    // hinged at the head, propped out and up on two poles: the shop's awning
+    const len = Math.min(1.4, h * 0.55), tilt = 0.32, top = y + h;
+    const tip = facePoint(face, u, top + Math.sin(tilt) * len, Math.cos(tilt) * len);
+    const mid = facePoint(face, u, top + Math.sin(tilt) * len / 2, Math.cos(tilt) * len / 2);
+    const c = Math.cos(tilt), sn = Math.sin(tilt);
+    sink.box('structureWood', mid, [w / 2, 0.025, len / 2], bc(1), new LocalFrame(face.u, [face.out[0] * -sn, c, face.out[2] * -sn], [face.out[0] * c, sn, face.out[2] * c], [0, 0, 0]));
+    for (const s of [-1, 1]) {
+      const a = facePoint(face, u + s * (w / 2 - 0.12), y, Math.cos(tilt) * len - 0.04), b: Vec3 = [a[0], tip[1] - 0.04, a[2]];
+      sink.span('structureWood', Math.min(a[0], b[0]) - 0.03, a[1], Math.min(a[2], b[2]) - 0.03, Math.max(a[0], b[0]) + 0.03, b[1], Math.max(a[2], b[2]) + 0.03, bc(2));
+    }
+  } else {
+    // taken down: the boards stacked against a jamb inside (a burnt shop's charred, some fallen across the floor)
+    const side = rng() < 0.5 ? -1 : 1, k = burnt ? 2 : Math.min(4, Math.max(2, Math.floor(n * (0.4 + rng() * 0.5))));
+    for (let j = 0; j < k; j++) freeBox(sink, 'structureWood', face, u + side * (room.width / 2 - 0.2), fy + (h - 0.2) / 2, -T - 0.12 - j * 0.045, bw * 0.95, h - 0.2, 0.035, bc(j));
+    if (burnt) freeBox(sink, 'structureWood', face, u, fy + 0.04, -T - D * 0.45, bw, 0.035, h * 0.6, bc(3));
+  }
+}
+
+/** The charcoal of a burnt shop's fittings. */
+const CHARRED: Rgb = [0.09, 0.08, 0.07];
 
 /** Iron strap work on a gate (hinges, latch): the black iron of the regional kits' strap hinges. */
 const GATE_IRON: Rgb = [0.15, 0.14, 0.13];

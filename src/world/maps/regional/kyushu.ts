@@ -7,7 +7,7 @@
 // sheds stained yellow with their retorts and brick stacks; the village fire brigade's post and its fire lookout
 // (hinomi-yagura) with the alarm bell; the small Shinto shrine behind its torii; the works office of painted
 // clapboard; and the burnt-out farmsteads.
-import { PartSink, bodyFaces, faceBox, facePoint, normalize3, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';

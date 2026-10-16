@@ -60,7 +60,7 @@ function compareDecoded(committed, tree) {
     }
     return a === b;
   };
-  for (const list of ['obstacles', 'colliders', 'concealers']) {
+  for (const list of ['obstacles', 'colliders', 'concealers', 'craters']) {
     const a = committed[list] ?? [], b = tree[list] ?? [];
     if (a.length !== b.length) return { difference: `${list} ${a.length} committed, ${b.length} in the tree`, rounded };
     for (let i = 0; i < a.length; i++) {
@@ -89,6 +89,8 @@ export function collisionCaptureScript(mapId) {
       // reuses that object in its collider grid instead of inflating a clone.
       colliders: world.getColliders().filter((record) => record.treeIdx == null).map(pack),
       concealers: world.getConcealment().map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
+      // DST-04: the map's pre-placed craters as the build decided them (world/mapCraters.ts packMapCraterStamps)
+      craters: (world.getMapCraters?.() ?? []).map((s) => [s.x, s.z, s.radiusM, s.depthM, s.rimM, s.deforms ? 1 : 0]),
     };
   })()`;
 }

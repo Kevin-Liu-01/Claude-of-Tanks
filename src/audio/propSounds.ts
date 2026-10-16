@@ -102,6 +102,8 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   setpiece_lrv: recipe(layer('car_crush', 0, -4)),
   // --- the village well, the square's monument and the rail yard's coal heaps (223, destruct-s7-small-props)
   well: recipe(layer('well_break')), monument: STONE_TOPPLE, 'coal-heap': recipe(layer('coal_crunch')),
+  // (PH.15) a dry-stone field wall a hull drives through: its stones tumble
+  'field-wall': STONE,
   // wire and bags
   barbedwire: recipe(layer('wire_snag')),
   sandbagbig: recipe(layer('sandbag_thump')), sandbagsmall: recipe(layer('sandbag_thump')), sandbagwall: recipe(layer('sandbag_thump')),

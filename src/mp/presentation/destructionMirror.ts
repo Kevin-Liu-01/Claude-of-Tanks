@@ -16,6 +16,7 @@
  * point, in the section at that point here), so its own shells, sight and aim pass them as the host's do, and are
  * emitted as `structure:breach`; the log lays down, settled, those this seat did not see.
  */
+import { mapCraterStampsOf, stampMapCraters, type MapCraterWorld } from '../../world/mapCraters.ts';
 import {
   DESTRUCTION_BUS_EVENTS, MUNITION_CLASSES, type DestructionLogEntry, type MunitionClass, type StructureBreachEvent,
   type StructureStage, type StructureStageEvent, type TerrainCraterEvent,
@@ -65,6 +66,8 @@ const finite = (value: unknown, fallback = 0): number => (typeof value === 'numb
 
 export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBus | null): DestructionMirror {
   const ground = createTerrainDeformation();
+  // DST-04: the map's pre-placed craters, laid first, as the authority lays them (world/mapCraters.ts)
+  stampMapCraters(ground, mapCraterStampsOf(world as MapCraterWorld | null));
   /** Whether the stage being applied is settled state (the log), not an event (destructionMirror apply). */
   let applyingSettled = false;
   const obstacles = world?.getObstacles?.() ?? [];

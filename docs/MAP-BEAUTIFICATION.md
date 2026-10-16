@@ -8143,6 +8143,44 @@ village stood as a handful of roadside-plan buildings round the square.
   -> [8682, 8454, 10071].
 - *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
 
+### 2026-10-14 — Monsoon Ridge: Kohima's town on its terraces, the Deputy Commissioner's bungalow and tennis court (the maps lane)
+
+**The owner, 10-09: Monsoon Ridge among the fourteen to bring up; MAP-01: built the way Verdant was.** The hill town
+stood as the roadside plan's 26 buildings, 16 of them placed, over a 290 m saddle.
+- *The place:* Kohima in April 1944, a town of terraces on the Imphal road (the Kohima kit: bungalows under painted tin
+  with deep verandas, the bazaar's timber shops, the mission church, Angami thatched houses with their crossed gable horns
+  and their granaries, and the siege's shelled ruins).
+- *The plan* (`monsoon.ts` KOHIMA_TOWN, `plannedSites`; the roadside plan retired), authored in the road's own frame:
+  the bazaar's shop rows along the road north of its crossing with the valley road (south of it the road crosses the
+  flood channel's bottoms), the lane behind it on the east short of the channel, the bungalows in their gardens on the
+  terraces west, the Angami village on the north-west spur, the church framing the town's square from the north; one in
+  five of the town's buildings shelled to a ruin. The square's zone ring (46 m) stays free of buildings and yards.
+- *The hero:* the Deputy Commissioner's bungalow on the terrace above the square and its tennis court below it, the
+  front line the garrison held for a fortnight (`landmarks/colonial.ts`, built by the landmarks lane for this map and
+  placed nowhere until now).
+- *The terrace road* climbs from the bazaar past the bungalows and the Angami village to the north road
+  (`roadEndpoints.ts` join(1, 4)), so the upper terraces front a road (the brief's orphan band).
+- *Measured* (every band holds): orphan 0.147, the zone on its hint (398 m from alpha, 412 from bravo; symmetry 1.053),
+  the middle third's cover 0.424 -> 0.473, the weakest sector 0.267 -> 0.400, the sightline median 88 -> 80 m, long
+  sightlines 0.055 -> 0.036. 72 buildings where 16 stood; census [9351, 9146, 11650] -> [9619, 9671, 11564].
+- *The blind critics* (2026-10-15, PASS +0.58, Opus 5/1, Sonnet 5/1): the one after-defect both named, a flat black
+  rectangle on a plank shed's wall, was the Kohima bazaar shop's open front (one 'dark' panel). It opens now onto the
+  shop's back wall in shade, a framed opening, two shelves of tins and sacks and a counter across the front
+  (`regional/kohima.ts` shop; decor, no collision change; the goods from the shop's own stream).
+
+### 2026-10-15 — Titan Gorge: the paved highways and the valley's homesites (the maps lane)
+
+**The owner, 10-09: Titan Gorge among the fourteen to bring up (new-style buildings, paved roads).** The Oljato chapter's
+town stood alone in the middle of an empty valley on sand tracks.
+- *The roads:* the three valley roads are the paved highways through the valley, as US-163 runs through Monument Valley:
+  two lanes of asphalt, 8 m (`terrain.roads.pathStyles`); the two cross roads stay the chapter's graded dirt.
+- *The homesites* (`maps/titanHomesites.ts`, the maps lane's homesite planner; `plannedSites` after the recorded town):
+  a Navajo valley is lived in far past its trading posts, so eight rotation pairs of homesites stand along the roads
+  across the floor: hogans, family camps, an abandoned camp. Each site and its twin about the centre are within 48 m of
+  a road, the brief's orphan law; a first pass at 58 m offsets read 0.176 against 0.15.
+- *Measured* (every brief band holds): objective symmetry 1.038, orphan 0.054, no solid in a road; census
+  [2814, 2645, 1226] -> [2971, 2798, 1226]; roadCrossingSweep (titan_gorge) green.
+
 ### 2026-10-15 — Steinburg as a Franconian hill town: closed street walls, the Stadtkirche, the castle (the maps lane)
 
 **The blind critics on the empty-lot fill (WEAK +0.09): blank windowless gables and frame-filling stained walls,
@@ -8172,6 +8210,19 @@ church mass, brown roofs, lanes opening onto empty lots.** The town is planned a
 - *Measured* (every brief band holds): objective symmetry 1.029, no solid in a road, orphan 0.04, separation 803 m,
   sightline median 102 m; census [2783, 5724, 2473] -> [2801, 7951, 2472]; the building-integrity ledger rows for the
   church, the keep, the palace range and the two castle pieces.
+
+### 2026-10-15 — Tidegate Polders: the dyke village and its church (the maps lane)
+
+**The owner, 10-09: Tidegate Polders among the fourteen to bring up, built the way Verdant was.** The farm court stood
+alone on its paved yard with a handful of buildings round it and the polder empty to the dykes.
+- *The place:* a Walcheren village in the autumn of 1944: the lintdorp, a street of brick houses behind their front
+  gardens along the roads out of the farm court, a farm and an inn among them, and the village church, a brick hall
+  church with its west tower and needle spire over the flat land.
+- *The plan* (`maps/poldersVillage.ts`, generated by `tools/plan-street-rows.mjs polders --sites=cottage:6,farmhouse:2,
+  tavern:1,granary:1 --gap=3,9 --setback=8`, the zone discs kept open; `plannedSites` after the recorded farm court):
+  48 houses turned to their street, 3-9 m apart; the church a set piece east of the court, its front to the court.
+- *Measured* (every brief band holds): objective symmetry 1.031, no solid in a road, orphan 0.053; census
+  [4011, 3942, 3381] -> [4176, 4380, 3381]; the building-integrity row for the church.
 
 ### 2026-10-14 — Verdant Fields: Prokhorovka's set pieces (landmarks L2 on main; the maps lane)
 

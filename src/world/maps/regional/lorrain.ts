@@ -15,6 +15,7 @@ import { buildHouse, emitRoof, holedFace, recordBody, roofGeometry, storeyFaces,
 import { archHead } from './sarajevoParts.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, wallLantern, woodpile } from './dressing.ts';
+import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
 
@@ -818,21 +819,27 @@ const fournil: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The woodshed (bûcher): an open lean-to on posts against a back wall, its stacked logs. */
+/**
+ * The woodshed (bûcher; the props census #17, 2026-10-15, the judges: "a bucher with a coursed rubble back wall and
+ * coping, oak posts on stone bases with knee braces, a beam and rafters under canal or mechanical tile courses"): the
+ * lean-to built member by member (outbuildings.ts openShed) against its rubble wall at the back of the plot (-z), the
+ * rafters resting in the wall's top under a coping, oak posts on stone bases carrying the beam at the open front (+z),
+ * the ends boarded in gapped oak, the canal tiles in rows with their mouths at the eave, the logs stacked to the beam.
+ */
 const bucher: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const fp = footprint(ctx);
   const look = ctx.variant;
   const W = Math.max(2.0, fp.w), D = Math.max(2.0, fp.d);
-  sink.placed(0, fp.cx, 0, fp.cz, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 2.6, -D / 2 + 0.35);
-    for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.12) - 0.1, -0.3, D / 2 - 0.3, sx * (W / 2 - 0.12) + 0.1, 2.1, D / 2 - 0.1, { colour: PLANK });
-    sink.span('structureWood', -W / 2, 1.95, D / 2 - 0.32, W / 2, 2.15, D / 2 - 0.08, { colour: PLANK });
-    const tan = (2.6 - 2.15) / (D - 0.2);
-    const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan(tan) * 180 / Math.PI, eave: 0.3, verge: 0.2, thickness: 0.14, bucket: 'roof', ridge: null };
-    sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, 2.15, roof), roof));
-    const back: Face = { origin: [0, 0, -D / 2 + 0.35], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    woodpile(sink, back, -W / 2 + 0.25, W / 2 - 0.25, 1.5 + look() * 0.4, look);
+  const pile = 1.5 + look() * 0.4;
+  // the shed's frame: its back (-x) on the plot's -z, its open front to +z, its length along the plot's x
+  sink.placed(-Math.PI / 2, fp.cx, 0, fp.cz, () => {
+    openShed(sink, { W: Math.max(2.0, D - 0.2), D: Math.max(2.0, W - 0.1), hLo: 2.05, pitchDeg: 17, back: true, ends: true, pile, block: false,
+      stoneBack: { bucket: 'stone', t: 0.42, coping: 'stone' }, mobile: ctx.tier === 'mobile' }, {
+      timber: PLANK, post: 0.18, pad: { bucket: 'stone', size: 0.36, top: 0.24 },
+      cladding: 'gapped', boards: [PLANK, shade(PLANK, 1.15), shade(PLANK, 0.85)], boardW: 0.22, gap: 0.025, trim: shade(PLANK, 0.75),
+      covering: 'canal', roofBucket: 'roof', eave: 0.3, verge: 0.2,
+    }, look);
   });
   return sink.finish();
 };

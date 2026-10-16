@@ -6588,6 +6588,9 @@ void splatCompute() {
   // (ground lane, 2026-10-15; the maps critics, Aegis -0.80 and Redrock: "one smooth stretched ochre wall with a sawtooth
   // crest and no strata or ledges") a sheer face is bedded rock on every map: the beds' strength never under the map's
   // cliff floor past ~55 deg (uCliffStrata; Aegis' 0.16 and Redrock's 0.13 had faded to 40 % on exactly those faces)
+  // (perf lane, 2026-10-15: its splat pruner drops a block whose gate is false over the folded map constants; the inner
+  // gate reads a local, so this outer one, implied by it, lets a map without beds lose the whole block)
+  if (uStrata > 0.001 || uCliffStrata > 0.001) {
   float strataK = max(uStrata, uCliffStrata * smoothstep(0.42, 0.62, slope));
   if (strataK > 0.001) {
     float steep = smoothstep(0.36, 0.58, slope) * rockGate; // r6: beds only on real mesa rock
@@ -6719,6 +6722,7 @@ void splatCompute() {
       float wallMac = wallNoiseG(0.011, vec2(0.19, 0.67));
       a.rgb *= 1.0 + (wallMac - 0.5) * 0.30 * steep;
     }
+  }
   }
   // far-cliff detail rescue: the mip-biased macro fade flattens steep rock
   // faces past ~300 m into featureless sheets — re-project the rock layer at

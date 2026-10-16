@@ -65,10 +65,10 @@ import {
 import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
 import { railBerthReaches } from './railSpurs.ts'; // the buildings lane: no stack on a clearance berth
-import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
 import type { LandmarkPlacement } from './landmarks/types.ts';
-import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.ts'; // b17: the walls stone by stone near the camera
+import { createFieldWallLod, placeFieldBoundaryWorks } from './fieldBoundaryWorks.ts'; // the field boundaries' works and their LOD
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
@@ -118,6 +118,7 @@ import {
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
+import { fenceTypes } from './maps/fenceKit.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
@@ -142,7 +143,8 @@ import {
 } from './roadFootprint.ts';
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
-import { placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
+import { craterEjectaPiece, placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
+import { felledPoleDebris } from './maps/felledPoles.ts';
 import { buildHardstandDressing } from './hardstandDressing.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
@@ -332,22 +334,6 @@ interface SurfaceTextureOptions {
   roughMin?: number;
   roughMax?: number;
   aoMin?: number;
-}
-
-/** The field walls' cells and their two batches, the near form's and the far form's (b13; updateFieldWallLod). */
-interface FieldWallLod {
-  near: THREE.BatchedMesh | null;
-  far: THREE.BatchedMesh | null;
-  cells: Array<{
-    box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean;
-    /** (b17) The cell's key, and its stone form while the camera is near (built on demand; false: built, nothing in it). */
-    key: number; stones: THREE.Mesh | false | null; midShown: boolean;
-  }>;
-  /** (b17) What the stone forms are built from (null on a phone), and the walls' material they share. */
-  fine: FieldWallFineSource | null;
-  material: THREE.Material;
-  /** (b17) The cells that want their stone form and have none yet, at the last switch (map.ts getFieldWallWorkState). */
-  pending?: number;
 }
 
 interface GeneratedSurfaceTextures {
@@ -805,7 +791,7 @@ export interface CrushableRecord {
   wirePoleIndex?: number;
 }
 
-interface DestructibleRecord {
+export interface DestructibleRecord {
   clutter?: CrushableClutter;
   kind: string;
   cls: DestructibleClass;
@@ -898,7 +884,7 @@ interface ShellImpactSettings {
   cause?: LoosePropKickCause;
 }
 
-interface PropsBuildSlice {
+export interface PropsBuildSlice {
   fine?: boolean;
   /** Internal batches pace work without consuming another placement stage. */
   progress?: boolean;
@@ -908,6 +894,8 @@ interface PropsBuildSlice {
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
   /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
   structureShells?: Promise<void>;
+  /** Derive the newest unanswered structure's shells on the main thread meanwhile; false when none is left. */
+  stealStructureShell?: () => boolean;
   stage?: string;
 }
 
@@ -1021,10 +1009,11 @@ export interface PropsRuntime {
    * landed in the merged buckets. */
   structureDamage: Map<number, WorldStructureDamage>;
   structureSpans: Map<number, StructureSpan[]>;
+  mapCraterSites: number[]; // DST-04 (world/mapCraters.ts)
   /** Every props-bucket material with the mesh that draws it (world.patchStructureMaterials). */
   structureMaterials: StructureMaterialEntry[];
   /** (Plan W) the shell pool's counts for this build, null when every structure derived inline */
-  structureShellStats?: { posted: number; answered: number; failed: number; packMs: number } | null;
+  structureShellStats?: { posted: number; answered: number; failed: number; packMs: number; stolen?: number } | null;
   _buildDetail?: PropsBuildDetail;
 }
 
@@ -3562,6 +3551,11 @@ export async function createPropsAsync(
         let settled = false;
         void step.structureShells.then(() => { settled = true; });
         while (!settled) {
+          // (2026-10-15) work at the other end of the queue instead of idling, one structure a turn
+          if (step.stealStructureShell?.()) {
+            await observeTick(awaitTimings.structureShells);
+            continue;
+          }
           await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
           if (!settled) await observeTick(awaitTimings.structureShells);
         }
@@ -4245,6 +4239,11 @@ ${snowCap ? `
   // softer (applyTileLodBias)
   const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
   const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
+  // the hook a kind wears (installSurfaceShaderHooks), which is all of its code beside three's own parameters
+  const propsProgramFamily = (kind: string): string => (tileBiased(kind) ? 'tile' : isKitWall(kind) ? 'wall'
+    : kind === 'dark' || kind === 'glass' ? 'plain'
+      : kind === 'rock' || kind === 'fieldStone' || kind === 'pole' || kind === 'ballast' || kind === 'fieldMud' ? kind
+        : 'grime');
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
@@ -4262,11 +4261,17 @@ ${snowCap ? `
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
-      // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
-      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '') + (clutterLod ? CLUTTER_LOD_KEY : '');
+      // 2026-10-15 (the perf lane): the program key names the hook the material wears, not its kind. Kinds wearing one
+      // hook compile one program between them wherever three's own parameters (maps, vertex colours, side, batching)
+      // agree, as the hessian and the hay always did: the 10-15 link census had 9 of the 32-34 props programs on
+      // Verdant and Urban linking identical code under their kinds' names (the four kit walls, stone and wood, steel and
+      // structure wood...). A biased roof (round 7) and a kit wall (round 10) keep programs of their own, so a map
+      // without a kit never reuses a kit map's. The kind stays readable as userData.propsKind.
+      material.userData.propsKind = materialKind;
+      // (props lane A, #2) the baked material's clutter LOD hook is one hook more than the grime family's: its own key
+      const family = propsProgramFamily(materialKind) + (clutterLod ? CLUTTER_LOD_KEY : '');
       material.customProgramCacheKey = () =>
-        'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
+        'world-props-' + family + '-v8' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
   }
   // map revival lane 2 (2026-10-06): a log-walled kit may leave out the wood's cavity map (ArchitectureSurfaces.woodAo)
@@ -4291,7 +4296,8 @@ ${snowCap ? `
     });
     fortConcrete.aoMapIntensity = 0.82;
     engineCtx.setupShadowMaterial(fortConcrete, grimeHook);
-    fortConcrete.customProgramCacheKey = () => 'world-props-fortConcrete-v7' + (snowCap ? 's' : '');
+    fortConcrete.userData.propsKind = 'fortConcrete';
+    fortConcrete.customProgramCacheKey = () => 'world-props-grime-v8' + (snowCap ? 's' : ''); // the grime hook's program
     mats.fortConcrete = fortConcrete;
     retainedSurfaceMaterials.push(fortConcrete);
   }
@@ -4454,6 +4460,9 @@ ${snowCap ? `
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
+    // (props lane A #6) the timber fences in their region's build (maps/fenceKit.ts, keyed as the gates are): the legacy
+    // records, collision and footprints; the legacy builders still run first (their draws)
+    ...fenceTypes(regionalArchitecture?.id, mapId, DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7)),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
@@ -6914,12 +6923,13 @@ ${snowCap ? `
         const stumpSupport = sampleDiscGround(heightField, ox, oz, 0.17, 0.03);
         const oy = stumpSupport.y;
         const yawD = prng2() * Math.PI * 2;
-        // snapped stump
-        const stump = new THREE.CylinderGeometry(0.13, 0.17, 0.9 + prng2() * 0.6, 7, 1);
+        // snapped stump (props lane A #21: the cylinders and the box are the collision proxies and keep the draws; the
+        // pole's drawn debris is maps/felledPoles.ts's, in their frames)
+        const stumpH = 0.9 + prng2() * 0.6, lean = (prng2() - 0.5) * 0.24;
+        const stump = new THREE.CylinderGeometry(0.13, 0.17, stumpH, 7, 1);
         scaleUV(stump, 0.8, 1.0);
-        stump.rotateZ((prng2() - 0.5) * 0.24);
+        stump.rotateZ(lean);
         stump.translate(ox, oy + 0.45, oz);
-        buckets.wood.push(stump);
         // Felled poles are long enough to span a verge shoulder. Align the
         // rigid body to terrain at both ends instead of floating its far end
         // from the stump's one center sample.
@@ -6936,19 +6946,22 @@ ${snowCap ? `
           _posv.set(fallPose.axisX, fallPose.axisY, fallPose.axisZ));
         fall.applyQuaternion(_quat);
         fall.translate(fallPose.x, fallPose.y, fallPose.z);
-        buckets.wood.push(fall);
         decorationGroundingReceipts.push({
           kind: 'felled-utility-pole', x: fallPose.x, y: fallPose.y, z: fallPose.z,
           relief: fallPose.relief, baseClearance: -0.02,
           start: fallPose.start, end: fallPose.end,
         });
         const arm = box(1.4, 0.10, 0.09, 1.0); // crossarm knocked loose
-        arm.rotateY(yawD + 0.5 + prng2());
+        const armYaw = yawD + 0.5 + prng2();
+        arm.rotateY(armYaw);
         arm.translate(fallPose.end.x, fallPose.end.support.min + 0.05, fallPose.end.z);
-        buckets.wood.push(arm);
+        buckets.baked.push(felledPoleDebris({ mapId, ground: (x, z) => heightField.getHeightAt(x, z),
+          stump: { x: ox, y: oy + 0.45, z: oz, h: stumpH, lean }, arm: { x: fallPose.end.x, y: fallPose.end.support.min + 0.05, z: fallPose.end.z, yaw: armYaw },
+          fall: { x: fallPose.x, y: fallPose.y, z: fallPose.z, axis: [fallPose.axisX, fallPose.axisY, fallPose.axisZ], len: fallLength } }));
         for (const [part, base] of [[stump, oy], [fall, fallPose.y - 0.15], [arm, fallPose.end.support.min]] as const) {
           const drawn = drawnPlanRecord([part], base, -1);
           if (drawn) felledPoleFootprints.push(drawn);
+          part.dispose();
         }
       }
     }
@@ -8968,6 +8981,7 @@ ${snowCap ? `
   // (sealed lane 2026-10-11: an Alpine sled stood on a crater's clod) the clods thrown round a battle scar carry no record:
   // each stands in the parked vehicles' and carts' seat passes as drawn (crushableFootprints)
   const craterClodFootprints: CollisionRecord[] = [];
+  const mapCraterSites: number[] = []; // DST-04: the scars' sites [x, z, r, rim]; world/mapCraters.ts lays their bowls
   function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void> {
     // r5 terrain_environment: TRACK-TEAR strip texture — churned dark earth
     // with two ragged tread lanes running along V; laid as conformed strips
@@ -9319,13 +9333,16 @@ ${snowCap ? `
         const size = 0.14 + rng() * 0.26;
         const clod = roughenChunk(box(size * 1.4, size * 0.7, size, 1.3), rng, size * 0.4);
         jitterUV(clod, rng);
-        clod.rotateY(rng() * Math.PI);
+        const yaw = rng() * Math.PI;
+        clod.rotateY(yaw);
         const clodX = x + Math.cos(angle) * distance;
         const clodZ = z + Math.sin(angle) * distance;
         const groundY = heightField.getHeightAt(clodX, clodZ);
         clod.translate(clodX, groundY + size * 0.25, clodZ);
-        buckets.stone.push(clod);
+        // (props lane A #19: the box is the collision proxy and keeps the draws; the map's ejecta draws — groundDressing.ts)
+        buckets.baked.push(craterEjectaPiece(mapId, heightField, clodX, clodZ, yaw, size));
         const drawn = drawnPlanRecord([clod], groundY, 0.05);
+        clod.dispose();
         if (drawn) craterClodFootprints.push(drawn);
       }
     }
@@ -9360,7 +9377,7 @@ ${snowCap ? `
     }
     function tryPlaceBattleScar(
       corridors: DriveCorridor[],
-      craterDiscs: THREE.BufferGeometry[],
+      _craterDiscs: THREE.BufferGeometry[], // (DST-04: crater scars are sites now: mapCraterSites)
       burnDiscs: THREE.BufferGeometry[],
     ): boolean {
       const [x, z] = randomCraterCenter(corridors);
@@ -9372,7 +9389,7 @@ ${snowCap ? `
       }
       const r = CR_R[(rng() * CR_R.length) | 0] * (0.85 + rng() * 0.3);
       const rim = 0.26 + rng() * 0.22;
-      craterDiscs.push(conformedDisc(x, z, r, [0.03, 0.02, rim, 0.02]));
+      mapCraterSites.push(x, z, r, rim); // DST-04: a real bowl and its surface (world/mapCraters.ts), not a flat disc
       if (r > 3.2) addCraterClods(x, z, r);
       return true;
     }
@@ -9643,7 +9660,22 @@ ${snowCap ? `
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
   // below scan every record); the async build waits here for the pool's workers
-  if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
+  // (2026-10-15, the perf lane) the join's wait no longer idles: while the pool's workers finish, the main thread derives
+  // the newest unanswered structures itself (the same function on the same wire; the 10-15 Railyard probe waited 1.46 s
+  // here with its main thread idle, load ~190)
+  const stealStructureShell = (): boolean => {
+    const stolen = shellPool?.steal();
+    if (!stolen) return false;
+    try {
+      shellPool!.complete(stolen.job, deriveRuntimeStructureShellBands(unpackStructureShellWire(stolen.wire)));
+      return true;
+    } catch {
+      return false; // the join derives it again and names the structure
+    }
+  };
+  if (shellPool && pendingShells.length) {
+    yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };
+  }
   joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
@@ -10343,7 +10375,8 @@ ${snowCap ? `
         roughnessMap: thatch.surface, aoMap: thatch.surface, roughness: 1, metalness: 0 });
       material.aoMapIntensity = 0.82;
       engineCtx.setupShadowMaterial(material, grimeHook);
-      material.customProgramCacheKey = () => 'world-props-straw-v7' + (snowCap ? 's' : '');
+      material.userData.propsKind = 'thatch';
+      material.customProgramCacheKey = () => 'world-props-grime-v8' + (snowCap ? 's' : ''); // the grime hook's program
       mats.thatch = material;
       retainedSurfaceMaterials.push(material);
     }
@@ -10469,7 +10502,9 @@ ${snowCap ? `
       // (round 10) a kit wall's batch wears its walls' grime (wallGrimeHook), as its plain mesh does
       const wallBatch = isKitWall(key);
       engineCtx.setupShadowMaterial(batchMaterial, wallBatch ? wallGrimeHook : grimeHook);
-      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch' + (wallBatch ? '-wall' : '');
+      // (2026-10-15) by its hook, like the plain buckets: three's batching parameter keeps the batch programs apart
+      batchMaterial.userData.propsKind = key;
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + (wallBatch ? 'wall' : 'grime') + '-v8' + (snowCap ? 's' : '');
       retainedSurfaceMaterials.push(batchMaterial);
       const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
       batch.name = 'props-bucket-' + key + '-batch';
@@ -10895,80 +10930,8 @@ ${snowCap ? `
     }
   }
 
-  // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once
-  // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
-  // discs where the match placement seats them on these very solids — and off the aprons and the yards (the yard
-  // structures, as placeYardDressing reads them). Low and long, grounded by their own shading and dark foot (no shadow).
-  function* placeFieldBoundaryWorks(): Generator<PropsBuildSlice, void, void> {
-    const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
-    if (!scenery?.fieldWorks) return;
-    const yardKinds = new Set(yardStructureKinds());
-    const built = yield* composeFieldWorks({
-      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies], obstacles, trees: sceneryTrees,
-      seed, mobile: mobileProps,
-      hardstands: (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
-      yards: buildingFeatures.filter((b) => b.kind && yardKinds.has(b.kind)).map((b) => ({ x: b.x, z: b.z, w: b.w, d: b.d })),
-    });
-    const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
-    if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
-    if (!built.wallCells.length && !built.bankGeometry) return;
-    // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
-    // banks on the rock material)
-    const place = (geometry: THREE.BufferGeometry, material: THREE.Material, name: string): void => {
-      const works = new THREE.Mesh(geometry, material);
-      works.name = name;
-      works.castShadow = false;
-      works.receiveShadow = true;
-      works.matrixAutoUpdate = false;
-      group.add(works);
-    };
-    if (built.wallCells.length) {
-      const print = yield* makeDryWall(aniso, mobileProps ? 256 : 512);
-      const wallMaterial = new THREE.MeshStandardMaterial({
-        map: print.albedo, normalMap: print.normal, roughnessMap: print.surface, aoMap: print.surface,
-        vertexColors: true, roughness: 1, metalness: 0,
-      });
-      wallMaterial.name = 'props-field-walls';
-      // (b14, wave 97: "uniform polygon cells": the print's two-metre tile varies by world place under the props' grime,
-      // and lichen grows by world place, as on the dry-stone modules)
-      engineCtx.setupShadowMaterial(wallMaterial, (shader) => { grimeHook(shader); applyStoneWallHook(shader, stoneShape); });
-      wallMaterial.customProgramCacheKey = () => 'world-props-field-walls-v1';
-      retainedSurfaceMaterials.push(wallMaterial);
-      // (the coordinator, after the first b13 count: "full stones within a near radius, merged per cell, with a simpler
-      // mid and far form"; the joinery's law) the walls by 64 m cell: two batches of one draw each, the near form's and
-      // the far form's, one instance a cell in each; a cell shows its near form within the quality's near distance of
-      // the camera (updateFieldWallLod) and its far form past it. Every far instance starts shown, every near one hidden
-      // (the same material and program: the far draw links it for both)
-      const batchOf = (forms: Array<THREE.BufferGeometry | null>, name: string) => {
-        const list = forms.filter((g): g is THREE.BufferGeometry => !!g);
-        if (!list.length) return null;
-        const vertices = list.reduce((n, g) => n + g.getAttribute('position').count, 0);
-        const indices = list.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
-        const batch = new THREE.BatchedMesh(list.length, vertices, Math.max(1, indices), wallMaterial);
-        batch.name = name;
-        batch.sortObjects = false;
-        // (b13's cost hold, Saltwind chase: the walls drew every cell's far form, behind the camera too; a cell outside
-        // the frustum is culled, a few hundred sphere tests a frame against the draws they save)
-        batch.perObjectFrustumCulled = true;
-        batch.castShadow = false;
-        batch.receiveShadow = true;
-        batch.matrixAutoUpdate = false;
-        const ids = forms.map((g) => (g ? batch.addInstance(batch.addGeometry(g)) : -1));
-        for (const g of list) g.dispose();
-        group.add(batch);
-        return { batch, ids };
-      };
-      const near = batchOf(built.wallCells.map((c) => c.near), 'props-field-works');
-      const far = batchOf(built.wallCells.map((c) => c.far), 'props-field-works-far');
-      const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false,
-        key: c.key, stones: null, midShown: false }));
-      for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
-      // (the switch reads the cells through the group, as the fine joinery's does: updateFieldWallLod)
-      group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells, fine: built.fine, material: wallMaterial } satisfies FieldWallLod;
-    }
-    if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
-  }
-  yield* placeFieldBoundaryWorks();
+  yield* placeFieldBoundaryWorks({ cfg, mapId, heightField, L, obstacles, colliders, destructibles, sceneryTrees, seed, mobileProps,
+    buildingFeatures, group, aniso, engineCtx, grimeHook, stoneShape, retainedSurfaceMaterials, mats, makeDryWall }); // (fieldBoundaryWorks.ts)
   // the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces (above), before the
   // runtime's broad phases index the records (the loose props meet the banks too)
   pillboxEarthworks();
@@ -11573,81 +11536,7 @@ ${snowCap ? `
     ultra: 180, high: 120, medium: 90, low: 70, ultralow: 40, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
     'mobile-ultralow': 35, // Ultra Low (2026-10-13): the joinery within 40 m (a 7 cm frame is a pixel at 0.8 CSS px there)
   };
-  // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
-  // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
-  // top stone's 5 cm step is under half a pixel at 80 m (the cost hold's chase view read 100 m's near cells).
-  const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
-    ultra: 110, high: 80, medium: 65, low: 50, ultralow: 30, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
-    'mobile-ultralow': 20, // Ultra Low (2026-10-13): the wall's far form (the same wall, the same cover) from 30 m
-  };
-  // (b17; gauntlet wave 121, Saltwind's walls "a smooth extruded strip ... mortared, not dry-stone") within a nearer
-  // distance still a cell draws its stone form (fieldWorks.ts buildFieldWallFineSteps: every stone, its joints, the
-  // through-stones, the coping), built when the camera comes within it — one cell at a time, a few milliseconds a frame,
-  // its mid form showing until it is done — and let go when it leaves (8 m of hysteresis); its mid form hides while it
-  // shows. Every cell's stone form at once would hold millions of triangles (Saltwind: 4.2 M), so only the few near the
-  // camera are ever built. None on a phone, none at Low.
-  // (at High a stone is ten pixels tall at 30 m, a cell's box within 30 m of the camera is one to four cells, 20-25 k
-  // triangles each on Saltwind: the mid form takes over past it)
-  const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = {
-    ultra: 45, high: 30, medium: 22, low: 0, ultralow: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0, 'mobile-ultralow': 0,
-  };
-  /** A frame's share of the stone form being built (ms). */
-  const FIELD_WALL_STONE_BUDGET_MS = 2;
-  type WallCell = FieldWallLod['cells'][number];
-  let wallJob: { cell: WallCell; steps: Generator<unknown, THREE.BufferGeometry | null, void> } | null = null;
-  let wallNear = 80, wallFine = 45, wallFrames = 0;
-  function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
-    const lod = group.userData.fieldWallLod as FieldWallLod | undefined;
-    if (!lod || !cameraPos) return;
-    if (wallFrames-- <= 0) {
-      const preset = resolvePresetName();
-      wallNear = FIELD_WALL_NEAR_M[preset] ?? 80; wallFine = lod.fine ? FIELD_WALL_FINE_M[preset] ?? 0 : 0; wallFrames = 60;
-    }
-    const { near, far, cells } = lod;
-    // the stone form being built: a few milliseconds of it a frame
-    if (wallJob) {
-      const start = performance.now();
-      let step = wallJob.steps.next();
-      while (!step.done && performance.now() - start < FIELD_WALL_STONE_BUDGET_MS) step = wallJob.steps.next();
-      if (step.done) {
-        const { cell } = wallJob, g = step.value;
-        wallJob = null;
-        if (g) {
-          const mesh = new THREE.Mesh(g, lod.material);
-          mesh.name = 'props-field-works-stones';
-          mesh.castShadow = false; mesh.receiveShadow = true; mesh.matrixAutoUpdate = false;
-          group.add(mesh);
-          cell.stones = mesh;
-        } else cell.stones = false;
-      }
-    }
-    let pending = 0;
-    for (const cell of cells) {
-      const b = cell.box;
-      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
-      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
-      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
-      const d = Math.hypot(dx, dy, dz);
-      const wantStones = wallFine > 0 && (cell.stones ? d < wallFine + 8 : d < wallFine + (wallJob?.cell === cell ? 8 : 0));
-      if (wantStones && cell.stones === null && !wallJob && lod.fine) {
-        wallJob = { cell, steps: buildFieldWallFineSteps(lod.fine, cell.key) };
-      } else if (!wantStones && wallJob?.cell === cell) {
-        wallJob.steps.return(null); // (the camera turned away before it was done)
-        wallJob = null;
-      } else if (!wantStones && cell.stones !== null) {
-        if (cell.stones) { group.remove(cell.stones); cell.stones.geometry.dispose(); }
-        cell.stones = null;
-      }
-      if (wantStones && cell.stones === null) pending++;
-      const show = cell.nearShown ? d < wallNear + 10 : d < wallNear;
-      const midShown = show && !cell.stones;
-      if (midShown !== cell.midShown) { cell.midShown = midShown; if (near && cell.near >= 0) near.setVisibleAt(cell.near, midShown); }
-      if (show === cell.nearShown) continue;
-      cell.nearShown = show;
-      if (far && cell.far >= 0) far.setVisibleAt(cell.far, !show);
-    }
-    lod.pending = pending;
-  }
+  const updateFieldWallLod = createFieldWallLod(group); // (fieldBoundaryWorks.ts: the field walls' near, far and stone forms)
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
     const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near?: true }> }> | undefined;
@@ -11844,7 +11733,7 @@ ${snowCap ? `
   mergeStructureDecks(obstacles, colliders);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
-  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
+  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials, mapCraterSites,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),
     setCrushSweeps: (on: boolean) => crushPress.setSweeps(on),

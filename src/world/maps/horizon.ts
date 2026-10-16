@@ -3949,16 +3949,21 @@ export function* buildHorizonRingSteps(
   }
   // The species mix and crown palettes follow the map's own rim forest (vegetation.ts rimMix / palettes), so the
   // trees over the edge are the same trees as the ones inside it.
+  // GND (2026-10-15; the blind critics' Longleaf backdrop "a broadleaf band"): the ring's conifer share follows the
+  // forest over the line's own mix where the map names one (vegetation.ts `ringMix`: Longleaf's flatwoods are longleaf
+  // alone past the line, its rim keeps the creek bottom's oaks); the crown palettes and the hedges keep the rim's leads.
   const vegetation = (cfg as {
     vegetation?: {
       rimMix?: ReadonlyArray<readonly [string, number]>;
+      ringMix?: ReadonlyArray<readonly [string, number]>;
       palettes?: Partial<Record<string, { canopy?: Partial<HorizonForestSpeciesPalette> }>>;
     };
   } | null | undefined)?.vegetation;
   const rimMix = vegetation?.rimMix ?? [];
-  const rimTotal = rimMix.reduce((sum, [, weight]) => sum + weight, 0);
+  const ringMix = vegetation?.ringMix ?? rimMix;
+  const rimTotal = ringMix.reduce((sum, [, weight]) => sum + weight, 0);
   const isConifer = (species: string): boolean => HORIZON_CONIFER_SPECIES.has(species);
-  const rimConifers = rimMix.filter(([species]) => isConifer(species)).reduce((sum, [, weight]) => sum + weight, 0);
+  const rimConifers = ringMix.filter(([species]) => isConifer(species)).reduce((sum, [, weight]) => sum + weight, 0);
   const leadOf = (conifer: boolean): string | undefined =>
     rimMix.filter(([species]) => isConifer(species) === conifer).slice().sort((a, b) => b[1] - a[1])[0]?.[0];
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
