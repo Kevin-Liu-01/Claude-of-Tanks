@@ -161,6 +161,83 @@ export function collisionPartIsDeck(record: Pick<CollisionRecord, 'min' | 'crush
     && part.y0 > record.min[1] + DECK_RAISED_M && record.kind !== 'tank-wreck' && record.kind !== 'tram-wreck';
 }
 
+/** Each building record's roofs that rise over a part of its ground-contact band (bandRoofTopAt), cached. */
+const _bandRoofs = new WeakMap<object, SimpleCollisionShape[] | null>();
+/** Does this building record have a roof over part of its ground-contact band (bandRoofTopAt)? */
+export function recordHasBandRoofs(record: CollisionRecord): boolean {
+  return bandRoofsOf(record) !== null;
+}
+function bandRoofsOf(record: CollisionRecord): SimpleCollisionShape[] | null {
+  const cached = _bandRoofs.get(record);
+  if (cached !== undefined) return cached;
+  let roofs: SimpleCollisionShape[] | null = null;
+  const shape = record.shape2;
+  if (shape && shape.kind === 'compound' && !record.crushable) {
+    let lowestBand = Infinity;
+    for (const part of shape.parts) {
+      if (!part || collisionPartIsDeck(record, part) || (part.kind === 'convex' && part.tp)) continue;
+      lowestBand = Math.min(lowestBand, part.y1 ?? record.max[1]);
+    }
+    for (const part of shape.parts) {
+      if (part && collisionPartIsDeck(record, part) && (part.y1 ?? -Infinity) > lowestBand) (roofs ??= []).push(part);
+    }
+  }
+  _bandRoofs.set(record, roofs);
+  return roofs;
+}
+
+/**
+ * The building's roof over (x, z) above a part of its ground-contact band, where the roof rises over that band's top
+ * somewhere (physics stream F8, 2026-10-14): its top there, or -Infinity. The band is the walls' footprint up to their
+ * highest point, and a pitched roof dips under that toward its eaves: under the roof the band's top is the roof's. 392 of
+ * the battlefields' 1253 roofed buildings stood a band 0.3-5.4 m over their own drawn roofs, an invisible block a hull on
+ * the roof stood on, or was pushed out of sideways (a T-90 on Frontier's 54-degree roof, 4.8 m, a metre a step). A deck
+ * wholly under the band's top (an attic floor, a mezzanine inside a solid block) is no roof over it.
+ */
+export function bandRoofTopAt(record: CollisionRecord, part: SimpleCollisionShape, x: number, z: number): number {
+  const roofs = bandRoofsOf(record);
+  if (!roofs) return -Infinity;
+  const bandTop = part.y1 ?? record.max[1];
+  let best = -Infinity;
+  for (const roof of roofs) {
+    if (!((roof.y1 ?? -Infinity) > bandTop) || !pointInsideCollisionRecord(record, roof, x, z)) continue;
+    const top = collisionPartTopAt(record, roof, x, z);
+    if (top > best) best = top;
+  }
+  return best;
+}
+
+/**
+ * How far the hull's underside lies under a band part's top over that part, the top read under each point as the
+ * building's roof where its roof covers it (bandRoofTopAt), on hullUndersideOver's grid and by its rule: the deepest of
+ * the track rows over the part, or, when none is, of the nose and tail rows lifted by the plates the tracks run under
+ * (less the step they count against themselves); the track plane is the caller's hullUndersideOver (hullUndersideAt), or
+ * `spanBottom` without one. -Infinity when no grid point is over the part.
+ */
+export function bandUndersideDepth(
+  record: CollisionRecord, part: SimpleCollisionShape, pos: Position2, fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, spanBottom: number,
+): number {
+  const bandTop = part.y1 ?? record.max[1];
+  let tracks = -Infinity, ends = -Infinity;
+  for (let i = 0; i < 5; i++) {
+    const along = (i * 0.5 - 1) * halfL;
+    const end = i === 0 || i === 4;
+    const lift = !_underPlane.valid ? 0 : i === 4 ? _underPlane.frontLift - HULL_STEP_UP_M : i === 0 ? _underPlane.rearLift - HULL_STEP_UP_M : 0;
+    for (let j = 0; j < 3; j++) {
+      const across = (j - 1) * halfW;
+      const x = pos.x + fx * along + rx * across, z = pos.z + fz * along + rz * across;
+      if (!pointInsideCollisionRecord(record, part, x, z)) continue;
+      const roof = bandRoofTopAt(record, part, x, z);
+      const top = roof > -Infinity && roof < bandTop ? roof : bandTop;
+      const plane = hullUndersideAt(x, z);
+      const depth = top - (Number.isFinite(plane) ? plane : spanBottom);
+      if (end) { if (depth - lift > ends) ends = depth - lift; } else if (depth > tracks) tracks = depth;
+    }
+  }
+  return tracks > -Infinity ? tracks : ends;
+}
+
 /** setConvexShape with a drawn top (collisionPartTopAt) and its own vertical extent. */
 export function setConvexTopShape(rec: CollisionRecord, points: number[], tp: number[], y0: number, y1: number) {
   setConvexShape(rec, points);
@@ -1087,25 +1164,50 @@ export function pushHullFromObstacle(
     const startZ = outPush.z;
     let hit = false;
     let lowest = Infinity, lowestBottom = -Infinity;
+    // (physics stream F8, 2026-10-14) the roof the hull stands on: this record's highest deck under the hull's centre,
+    // when its underside there is within a step of it. The ground-contact band of a building under a pitched roof is its
+    // walls' footprint up to their tops, and a roof dips under that near its eaves; a hull standing on the roof there is
+    // on the roof, not 0.4 m into the walls. A T-90 on Frontier's 54-degree roof tilted on it, its underside's lowest
+    // point a step under the walls' top, and was pushed out of the building 4.8 m, a metre a step, in mid-air.
+    let roofTop = -Infinity;
+    if (!ob.crushable) {
+      for (const part of sh.parts) {
+        if (!collisionPartIsDeck(ob, part) || !pointInsideCollisionRecord(ob, part, pos.x, pos.z)) continue;
+        const top = collisionPartTopAt(ob, part, pos.x, pos.z);
+        if (top > roofTop) roofTop = top;
+      }
+    }
+    // (judged under the hull's centre, where the roof's top is read: on a pitched roof the underside's lowest point over
+    // the building is its downhill end, a storey under the roof's top at the centre)
+    const centreUnder = hullUndersideAt(pos.x, pos.z);
+    const onRoof = roofTop > -Infinity && (Number.isFinite(centreUnder) ? centreUnder : spanBottom) > roofTop - HULL_STEP_UP_M;
     for (const part of sh.parts) {
       // (physics stream F2) a raised deck — a roof a hull stands on, world/structureCollision.ts structureDecks — is a
       // floor only: it is met from the side by the solids under it, the walls of the ground-contact band
       if (collisionPartIsDeck(ob, part)) continue;
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
-      if (part.y1 !== undefined && (part.kind === 'convex' && part.tp && !ob.crushable
-        ? clearBottom > part.y1 + OVERPASS_CLEARANCE_M
-        : hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable, clearBottom))) continue;
+      // (physics stream F8: theirs, as the record's top would be read — a band without its own extent under a record
+      // with a drawn top was never passed, and a hull 0.47 m over a 22 m tower at Copper Mesa was pushed off it 4.8 m)
+      const partTop = part.y1 ?? ob.max[1];
+      if (part.kind === 'convex' && part.tp && !ob.crushable
+        ? part.y1 !== undefined && clearBottom > part.y1 + OVERPASS_CLEARANCE_M
+        : hullPassesObstacleTop(spanBottom, partTop, part.y0 ?? ob.min[1], !ob.crushable, clearBottom)) continue;
+      // (and the walls under the roof the hull stands on, no more than a step over it)
+      if (onRoof && !(part.kind === 'convex' && part.tp) && partTop <= roofTop + HULL_STEP_UP_M) continue;
+      // (and a band under its building's roof, read point by point under the hull: the band's top there is the roof's)
+      if (!(part.kind === 'convex' && part.tp) && bandRoofsOf(ob)
+        && bandUndersideDepth(ob, part, pos, fx, fz, rx, rz, halfL, halfW, spanBottom) <= HULL_STEP_UP_M) continue;
       if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
       _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
       _compoundRec.crushable = ob.crushable;
       _compoundPos.x = pos.x + outPush.x - startX;
       _compoundPos.z = pos.z + outPush.z - startZ;
-      const partTop = _compoundRec.max[1], partBottom = _compoundRec.min[1];
+      const bandTop = _compoundRec.max[1], partBottom = _compoundRec.min[1];
       if (pushHullFromObstacle(
         _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop, clearBottom,
-      )) { hit = true; if (partTop < lowest) { lowest = partTop; lowestBottom = partBottom; } }
+      )) { hit = true; if (bandTop < lowest) { lowest = bandTop; lowestBottom = partBottom; } }
     }
     _contactTop = hit ? lowest : -Infinity;
     _contactBottom = hit ? lowestBottom : -Infinity;
