@@ -337,7 +337,8 @@ assert.deepEqual(table, {
   verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, contrails: 2, rain: 0.3, virga: 0.85, fogBank: 0 },
   winter: { regime: 'stratocumulus-deck', coverage: 0.92, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
-  urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35, contrails: 4, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-15: Steinburg's altocumulus, a broken 0.60 cell layer, moved to Verdant's cumulus — the coordinator's ruling)
+  urban: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.3, farBand: 0.25, contrails: 4, rain: 0, virga: 0, fogBank: 0 },
   coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65, contrails: 0, rain: 0, virga: 0, fogBank: 0.45 },
   autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35, contrails: 0, rain: 0.2, virga: 0, fogBank: 0 },
@@ -431,7 +432,10 @@ assert.deepEqual(table, {
   assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 1 && railyard.cellM === 2400 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.7, 'railyard: a closed dirty deck with broad cells and strong undulatus rolls');
   assert.ok(railyard.tint.every((c) => c < foundry.tint[1]) && railyard.tint[0] - railyard.tint[2] < foundry.tint[0] - foundry.tint[2], 'railyard: a dirtier, less warm base than foundry\'s');
   const urban = deriveCloudLayerPreset(skyOf('urban'));
-  assert.ok(urban.regime === 'altocumulus' && urban.cellM === 340 && urban.interior === 0.4 && urban.deckLight === 1, 'urban: an altocumulus layer of small elements');
+  // (2026-10-15: Steinburg on Verdant's cumulus under the 10-13 ruling; the altocumulus row stays in the vocabulary, unused)
+  assert.ok(urban.regime === 'fair-weather-cumulus' && urban.cells === 0, 'urban: fair-weather cumulus, no cell layer');
+  const alto = deriveCloudLayerPreset({ ...skyOf('urban'), cloudscape: { regime: 'altocumulus', coverage: 0.55 } });
+  assert.ok(alto.regime === 'altocumulus' && alto.cellM === 340 && alto.interior === 0.4 && alto.deckLight === 1, 'the altocumulus row: a layer of small elements');
   assert.notEqual(cloudLayerKey(winter), cloudLayerKey({ ...winter, cells: 0 }), 'the key follows the deck knobs');
   // the sea maps' wind comes from their authored ocean, the streets follow it
   const coastal = deriveCloudLayerPreset(skyOf('coastal'));
