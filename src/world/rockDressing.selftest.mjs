@@ -537,7 +537,8 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
 // on: each kind's strength in its patch's vertex RGB, the material a multiplicative darkening, unlit, no fog of its own,
 // gone by 160 m, no shadow — and its output law: the target × mix(1, the grey, a)
 {
-  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+) \}\);/.exec(source);
+  // (round 3: and a crushed stone's scuff, laid at its crush)
+  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+)(?:, scuff: [\d.]+)? \}\);/.exec(source);
   assert.ok(strength, 'a strength for every kind of contact');
   const [rock, prop, stack, foundation] = strength.slice(1).map(Number);
   assert.ok(rock === 1 && prop < rock && stack < rock && foundation < prop, `a boulder's foot full, a prop's and a stack's less, a foundation's least (${rock}, ${prop}, ${stack}, ${foundation})`);
@@ -705,12 +706,15 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockBedShades = [];
     // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
     const fixtureField = { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) };
+    // (round 3: a low crushable stone keeps its bed — lowStones.placements, empty here: the crushable fixture is a small
+    // rock's; rubbleKit.ts LowStones)
+    const lowStones = { placements: new Set() };
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'nearMeshVertexHeight', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
-      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
+      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare', 'lowStones',
       `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, fixtureField,
       (px, pz) => fixtureField.getHeightAt(px, pz),
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
-      rockContact, rockSpotOf, rockBedShades, contactShare);
+      rockContact, rockSpotOf, rockBedShades, contactShare, lowStones);
     const it = fn();
     let r = it.next();
     while (!r.done) r = it.next();

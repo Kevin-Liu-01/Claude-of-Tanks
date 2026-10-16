@@ -927,26 +927,39 @@ A stone's colliders come from its own mesh (`src/world/rockCollision.ts`, receip
 `rockCollision.selftest.mjs`): the movement record is the stone's tiers (round 2), nested columns
 from the record's floor, the first the hull of the stone standing 0.2 m or more over its ground (a
 formation's block 0.3 m: the toe under it is a track's to roll over, and the audit read the ground
-outline's toe as air over main's footprint) to 0.7 m over the highest ground it leaves, each next one the stone
-above it 0.6 m higher, up to 3 m over the ground, the last to its real top, so its floor
+outline's toe as air over main's footprint) to 0.7 m over the highest ground it leaves, the next the stone above it
+0.6 m higher; above that contact band (1.3 m over the highest ground) each next one 0.4 m higher with twelve corners
+(round 3: a dome's tiers narrow with it), the last stopping 3 m over the stone's highest foot (a hull's roof: a hoodoo's
+stem above it is the shells'), so its floor
 on the stone steps as the stone does (a column within a hull's step-up is stood on and is a floor by
 the same rule); the shell and sight colliders are ranged slabs of the stone's sections ('w' parts,
-no format change) with a toe ring where the stone flares at its foot; a stone rising less than 0.45
-m is driven over and has none, and the crushable small rocks stop shells like the other dense
-crushable cover. `props.ts` keeps the legacy records through every placement pass and refits them
-once all have run, so no prop moves.
+no format change) with a toe ring where the stone flares at its foot. A stone rising less than 0.45
+m is driven over: under 0.25 m it has no collider; from 0.25 m (round 3) it is a crushable small rock
+whose records are the stone's own, so shells and sight stop on it until a hull crushes it and no hull,
+route, seat or clearing reads it. The crushable small rocks stop shells like the other dense crushable
+cover, and a crushed one reads as crushed (`src/world/crushedStones.ts`, receipt
+`crushedStones.selftest.mjs`): its middle presses into its ground, two flakes split off it either side
+tipped outward into the ground, three chips land round it, and its scuff darkens the contact layer
+under it. All of it is hashed from the stone's place, lies until a rematch, and draws nothing until a
+stone is crushed: the flakes and chips come from one instanced pool per rock form, and the scuff disc
+is folded to a point. `props.ts` keeps the legacy records through every placement pass and refits
+them once all have run, so no prop moves.
 
 The props' leaning solids take shell slabs the same way (`src/world/slabCollision.ts`): a sandbag
 stack's shell record is its own geometry's slabs (it published none, so shells passed 70-96 % of the
 stacks), a tank wreck's the convex hull of its hull and turret vertices cut in 0.5 m slabs (the
 movement record stays the solids' prisms, a hull's floor), each hedgehog beam its own slabs, and a
 pylon leg its footing and the strut's slabs to the leg's end (the lattice's 4-6 cm braces carry
-none). A formation's standing blocks keep their own outlines and their own tiers (its loose pieces,
-fewer on phones, carry none, so every tier lays the same colliders), and `--families=formations`
+none). A formation's standing blocks keep their own outlines and their own tiers. Its loose pieces
+that rise past the drive-over line (round 3: the fallen blocks and leaning slabs at a stack's foot)
+carry a fallen mass of their own, laid from the desktop's pieces on every tier: a phone draws those
+pieces where the desktop does, so every tier lays the same colliders. A rubble pile's records come
+from the chunks it draws (`src/world/rubbleCollision.ts`: each chunk past 0.2 m in 0.5 m shell slabs,
+its outline a crush trigger), and the heavy trucks' shells from their own slabs. `--families=formations`
 holds them to the legacy hull by the map's union of formation stone (the `scenery-union` row: empty
 ground plus uncovered stone). A stone a hull drives over has no collider and a shell aimed at it
-meets the ground behind it (`rockDriveOver.selftest.mjs`); a crushed stone stops no shell from the
-tick it is crushed (`crushableClutter.selftest.mjs`). Where the stones' own colliders left a sector
+meets the ground behind it, and a shell aimed at a low one meets the stone (`rockDriveOver.selftest.mjs`);
+a crushed stone stops no shell from the tick it is crushed (`crushableClutter.selftest.mjs`). Where the stones' own colliders left a sector
 under the layout brief's cover band or a map's fights off balance, the map authors cover as scenery
 formations of its own stone (`scenery.rocks`): Reservoir's slate crags, and fields of fractured
 blocks (`form: 'blocks'`: size-graded, a third to over half sunk, a skirt of chips) of the Moon's

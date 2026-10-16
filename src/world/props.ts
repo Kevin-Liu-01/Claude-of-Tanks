@@ -1,5 +1,7 @@
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
+import { rubbleCollisionRecords } from './rubbleCollision.ts'; // the hitbox lane, round 3, 2026-10-09
+import { createRubbleBalance, LowStones, lowStoneProfile, type RubbleHalvesAbout, type StoneSeat } from './rubbleKit.ts'; // round 3
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -164,7 +166,7 @@ const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'bunker']);
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', 'bunker']); // (round 3: the heavy trucks' slabs)
 import {
   appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -527,6 +529,8 @@ interface PropsSettings {
   outcrops: number;
   craters: number;
   rubblePiles: number;
+  /** The street rubble's balance about the deployments' turning point (rubbleKit.ts createRubbleBalance). */
+  rubbleHalvesAbout?: RubbleHalvesAbout;
   wrecks: number;
   cropFields: number;
   cropForm?: 'harvest' | 'wet-upright' | 'grain';
@@ -5402,9 +5406,8 @@ ${snowCap ? `
       beam.translate(x, y + pr * 0.4, z);
       buckets.wood.push(beam);
     }
-    const ob = setCircleShape({ min: [x - pr, y, z - pr],
-      max: [x + pr, y + pr * .7, z + pr], kind: 'rubble' }, x, z, pr);
-    const col = cloneCollisionRecord(ob);
+    // (the hitbox lane, round 3, 2026-10-09) the records from the chunks drawn, not one prism over the whole cone
+    const { obstacle: ob, collider: col } = rubbleCollisionRecords(buckets.stone.slice(stoneStart, stoneStart + n), y, x, z, pr);
     obstacles.push(ob); colliders.push(col);
     const clutter = new CrushableClutter('rubble', x, y, z, pr, pr * .7, [ob], [col]);
     for (const piece of buckets.stone.slice(stoneStart)) clutter.ownPiece(piece);
@@ -6961,6 +6964,7 @@ ${snowCap ? `
   // still built for both. The visual rock is rockDressing.ts buildBoulderForm, fitted inside them (the scenery lane,
   // 2026-10-04).
   const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
+  const lowStones = new LowStones(); // (rubbleKit.ts: round 3's crushable low stones, their pieces and scuffs)
   const rockGeos: THREE.BufferGeometry[] = [];
   // the scenery lane (wave 74, the cascade trim): on the desktop each rock's phone form too (270 triangles against 672),
   // for the far rocks and the far shadow cascades
@@ -7256,6 +7260,8 @@ ${snowCap ? `
       // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
       if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
+      // (round 3) a low stone under the drive-over line, past ROCK_LOW_STONE_M: a crushable small rock, its records its own
+      const low = !seat.profile && !!(seat.profile = lowStoneProfile(rockForms[seat.vv], seat.placement.elements, groundAt));
       if (!seat.profile) {
         if (seat.clutter) {
           rockClutter.delete(seat.placement);
@@ -7265,22 +7271,34 @@ ${snowCap ? `
         }
         continue;
       }
-      if (seat.rec) continue;
+      if (low) lowStones.placements.add(seat.placement);
+      if (seat.rec && !(low && !seat.clutter)) continue;
+      if (seat.rec) { lowStones.turnCrushable(seat, makeRockClutter); continue; }
       const rec: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
       const col: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
       seat.rec = rec; seat.col = col; seat.added = true;
-      if (rockStaysCrushable(seat.sc, seat.tactical)) {
+      if (low || rockStaysCrushable(seat.sc, seat.tactical)) {
         rec.kind = col.kind = 'small-rock';
-        const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [rec], [col]);
-        rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
-        seat.clutter = clutter;
+        seat.clutter = makeRockClutter(seat);
       }
     }
+  }
+  /** A crushable rock's clutter over its own records (settleRockColliders). */
+  function makeRockClutter(seat: StoneSeat): CrushableClutter {
+    const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [seat.rec!], [seat.col!]);
+    rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
+    return clutter;
   }
   yield* settleRockColliders();
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
+    lowStones.addPieces(vi, rockPlacements[vi], rockClutter, { group, material: mats.rock, depth: rockDepth,
+      groundAt: (x, z) => heightField.getHeightAt(x, z), pieceGeometry: (v) => (mobileProps ? rockGeos[v] : rockGeosFar[v]),
+      formGeometry: (v) => rockGeos[v], dressShadows: (mesh) => {
+        if (!mobileProps) setShadowCasterCascades(mesh, ROCK_NEAR_CASCADES);
+        setShadowCasterProfile(mesh, { heightM: 0.6, instanced: true });
+      } });
     // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws; the scenery lane (wave
     // 57, "its right end lifts off the slope with no contact shadow"): and the slope of that ground across the rock's
     // reach, so the soil band and the contact darkening meet a slope all round, and the rock's foot its contact patch
@@ -7422,7 +7440,8 @@ ${snowCap ? `
     let built = 0;
     for (let vi = 0; vi < 3; vi++) {
       for (const placement of rockPlacements[vi]) {
-        if (rockClutter.has(placement)) continue;
+        // (round 3) a low stone keeps the bed it stood in: crushed, it is pressed into it
+        if (rockClutter.has(placement) && !lowStones.placements.has(placement)) continue;
         const e = placement.elements, px = e[12], py = e[13], pz = e[14];
         const sx = Math.hypot(e[0], e[1], e[2]), sy = Math.hypot(e[4], e[5], e[6]), sz = Math.hypot(e[8], e[9], e[10]);
         const c = e[0] / sx, sn = -e[2] / sx; // the yaw's cosine and sine (three's rotation about +y)
@@ -9152,6 +9171,7 @@ ${snowCap ? `
   function placeStreetRubble(): void {
     if (P.rubblePiles <= 0) return;
     const rrng = mulberry32(seed + 403);
+    const balance = createRubbleBalance(P.rubbleHalvesAbout, L.spawns, obstacles); // (round 3: Blackglass's banded halves)
     const placeRubbleCandidate = (candidateIndex: number): boolean => {
       const extension = candidateIndex % 4 === 0 ? 90 : 0;
       const x = town.x0 - extension + rrng() * (town.x1 - town.x0 + extension * 2);
@@ -9178,6 +9198,7 @@ ${snowCap ? `
       if (tankWreckSpots.some((w) => Math.hypot(Math.max(0, Math.abs(seat[0] - w.x) - w.hx), Math.max(0, Math.abs(seat[1] - w.z) - w.hz)) < pr + 0.5)) {
         return false;
       }
+      if (balance && !balance.admit(seat[0], seat[1])) return false;
       const capture = waterworksRubble && waterworksRubble.length < 3;
       const stoneStart = capture ? buckets.stone.length : 0;
       const woodStart = capture ? buckets.wood.length : 0;
@@ -9410,7 +9431,7 @@ ${snowCap ? `
     // (b44) each kind's share of the contact layer's darkening, carried in the patch's vertex RGB (the contact material
     // reads its red): a boulder's foot full (its bed's shades too: they carry 1), a crushable prop's and a field stack's
     // less, a building's foundation least (its walls stand on it, and a village keeps its yards' own ground)
-    const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45 });
+    const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45, scuff: 1 });
     function conformedDisc(
       x: number,
       z: number,
@@ -9562,6 +9583,8 @@ ${snowCap ? `
       }
       // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
       for (const shade of rockBedShades) dirtDiscs.push(shade);
+      // (round 3) each crushable stone's scuff, conformed now and laid at its crush (rubbleKit.ts LowStones)
+      for (const _ of lowStones.collectScuffs(conformedDisc, CONTACT_STRENGTH.scuff)) yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
       const roadDistance = heightField._roadDist(x, z);
@@ -9600,6 +9623,7 @@ ${snowCap ? `
               try { geometry.dispose(); } catch (_) { /* continue releasing private inputs */ }
             }
           }
+          lowStones.releasePendingDiscs();
         }
       }
       const contactGeometry = addDecalMesh(dirtDiscs, makeGroundDecalTexture(noi, aniso, 'dirt'), {
@@ -9607,6 +9631,7 @@ ${snowCap ? `
         groundContact: true,
         decalKind: 'ground-contact',
       });
+      lowStones.layScuffs(group, contactGeometry, () => contactDarkeningMaterial(makeGroundDecalTexture(noi, aniso, 'dirt')));
       if (foundryDonors && !P.streetRows && contactGeometry) {
         // Keep the same merged decal and vertex windows. Only the six moved
         // foundations are resampled against their new terrain after dressing.
