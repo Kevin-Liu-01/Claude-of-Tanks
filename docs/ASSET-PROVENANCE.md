@@ -51,8 +51,7 @@ fingerprint if you use this path.
 Metadata can be stripped and unsigned hashes can be replaced. A signature proves
 that a key signed specific bytes, not that its holder originated the work. None
 of this guarantees legal ownership, prevents copying, or makes a watermark
-undetectable by agents. Small hidden mesh distortions would also risk gameplay
-geometry and could disappear under remeshing, so they are not used.
+undetectable by agents.
 
 The [glTF asset schema](https://github.com/KhronosGroup/glTF/blob/main/specification/2.0/schema/asset.schema.json)
 provides an explicit copyright field; node extras can carry project metadata.
