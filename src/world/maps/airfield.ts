@@ -137,6 +137,9 @@ export default {
     loneMix: [['birch', 0.4], ['pine', 0.4], ['poplar', 0.2]], rimMix: [['pine', 0.65], ['birch', 0.2], ['poplar', 0.15]],
     // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): Kestrel's ring: poplar x1.18, birch x0.91 of the one mean (the coordinator's ruling)
     ringStature: 'species',
+    // GND (2026-10-16; the critics past the border: "no understorey"; HORIZONS' forest share 0.62): a young tree beside a
+    // third of the ring's stands, at 0.35–0.5 of its parent's height
+    ringUnderstory: { share: 0.35, stature: [0.35, 0.5] },
     clusterCount: 26, loneCount: 42, rimCount: 80, grassDensity: 0.72, bushCount: 0.82, bushSpecies: 'birch', // map pass 2026-09-12: perimeter scrub (tree/rock counts at the first-pass ceilings)
     // the runway's cleared strip, west to east
     avoid: [{ x: -300, z: 0, r: 80 }, { x: -150, z: 0, r: 80 }, { x: 0, z: 0, r: 80 }, { x: 150, z: 0, r: 80 }, { x: 300, z: 0, r: 80 }],
