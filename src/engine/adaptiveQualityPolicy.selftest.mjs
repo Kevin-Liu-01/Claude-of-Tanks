@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { adaptiveFrameSeconds, AdaptiveQualityPolicy, HOLD_DOWN_STRIKES } from './adaptiveQualityPolicy.ts';
+import {
+  adaptiveFrameSeconds, AdaptiveQualityPolicy, HOLD_DOWN_STRIKES, TIER_KEEP_UP_SHARE, TIER_MIN_GAIN, TIER_RETRY_SECONDS,
+  TIER_TRIAL_SKIP_WINDOWS, TIER_TRIAL_WINDOWS, tierKeepUpFps,
+} from './adaptiveQualityPolicy.ts';
+
+const TIER_DOWN_STRIKES_EXPECTED = 8;
 
 assert.equal(adaptiveFrameSeconds(.1, .5), 0, 'a true long hitch is excluded despite bounded presentation dt');
 assert.equal(adaptiveFrameSeconds(.1, .12), .12, 'sustained 120ms frames remain real overload evidence');
@@ -252,11 +257,11 @@ assertNoTrimAfterTwoWindows(
   policy.setDynamicScale(0.9);
   assert.equal(policy.evaluate(overloaded({ clockSeconds: 8 })), 'none',
     'the boot grace period prevents an early tier drop');
-  for (let strike = 1; strike < 4; strike++) {
-    assert.equal(policy.evaluate(overloaded({ clockSeconds: 10 + strike * 2 })), 'none');
+  for (let strike = 1; strike < TIER_DOWN_STRIKES_EXPECTED; strike++) {
+    assert.equal(policy.evaluate(overloaded({ clockSeconds: 8 + strike * 2 })), 'none');
   }
-  assert.equal(policy.evaluate(overloaded({ clockSeconds: 18 })), 'tier-down',
-    'the exhausted ladder requires four evidence windows before an auto-tier drop');
+  assert.equal(policy.evaluate(overloaded({ clockSeconds: 8 + TIER_DOWN_STRIKES_EXPECTED * 2 })), 'tier-down',
+    'the exhausted ladder requires eight evidence windows (12 s) before an auto-tier drop');
 }
 
 {
@@ -474,4 +479,111 @@ assertNoTrimAfterTwoWindows(
   assert.equal(sameAsFloor.dynamicScale, 0.91, 'a hold at the floor is the plain ladder');
 }
 
-console.log('adaptiveQualityPolicy.selftest: ordered relief and recovery policy passed');
+
+// ------------------------------------------------------------------------------------------------ the tier lever
+// 2026-10-15 (the perf lane): Auto cut High -> Medium -> Low under background load and still ran ~26 fps. A tier moves
+// only when the frame cannot keep up (under 0.75 of min(60 Hz, the display)), after 12 s of it, and only while the cut
+// is shown to buy frames.
+assert.equal(TIER_KEEP_UP_SHARE, 0.75);
+assert.ok(Math.abs(tierKeepUpFps(1000 / 60) - 45) < 1e-9, 'a 60 Hz screen: the keep-up line is 45 fps');
+assert.ok(Math.abs(tierKeepUpFps(1000 / 120) - 45) < 1e-9, 'a 120 Hz screen keeps the 60 Hz line');
+assert.ok(Math.abs(tierKeepUpFps(34) - 0.75 * 1000 / 34) < 1e-9, 'a starved cadence scales the line down');
+
+/** A policy whose trim and resolution levers are spent (the tier lever is next). */
+const exhausted = () => {
+  const policy = new AdaptiveQualityPolicy(0.9);
+  policy.evaluate(healthy());
+  policy.forceTrim(1, 1);
+  policy.setDynamicScale(0.9);
+  return policy;
+};
+/** Drive consecutive windows from clock `from` every 1.5 s; returns the actions and the next clock. */
+const drive = (policy, from, count, make) => {
+  const actions = [];
+  let clock = from;
+  for (let i = 0; i < count; i++, clock += 1.5) actions.push(policy.evaluate(make(clock)));
+  return { actions, clock };
+};
+const slow = (fps) => (clock) => overloaded({ clockSeconds: clock, achievedFps: fps, frameEmaMs: 1000 / fps });
+
+{
+  // overloaded but keeping up: 50 fps on a 60 Hz screen never costs the tier, however long it lasts
+  const policy = exhausted();
+  const run = drive(policy, 10, 60, slow(50));
+  assert.ok(run.actions.every((a) => a === 'none'), 'a 50 fps frame (over budget, above the keep-up line) holds the tier');
+}
+{
+  // one clean (or keeping-up) window restarts the run: transient overloads never add up to a cut
+  const policy = exhausted();
+  let run = drive(policy, 10, TIER_DOWN_STRIKES_EXPECTED - 1, slow(30));
+  assert.ok(run.actions.every((a) => a === 'none'));
+  run = drive(policy, run.clock, 1, slow(48));
+  assert.deepEqual(run.actions, ['none'], 'a keeping-up window is no strike');
+  run = drive(policy, run.clock, TIER_DOWN_STRIKES_EXPECTED - 1, slow(30));
+  assert.ok(run.actions.every((a) => a === 'none'), 'the run restarted: seven strikes are not eight');
+  run = drive(policy, run.clock, 1, slow(30));
+  assert.deepEqual(run.actions, ['tier-down'], 'eight consecutive strikes take the cut');
+}
+{
+  // a cut that buys nothing is restored and barred; the bar doubles per failed trial
+  const policy = exhausted();
+  let run = drive(policy, 10, TIER_DOWN_STRIKES_EXPECTED, slow(30));
+  assert.equal(run.actions.at(-1), 'tier-down');
+  assert.equal(policy.beginTierTrial(), true, 'an applied cut opens its trial');
+  assert.equal(policy.tierTrialActive, true);
+  policy.reset(1, run.clock); // post.ts resets the governor on the rebroadcast preset: the trial survives
+  assert.equal(policy.tierTrialActive, true, 'the trial outlives the preset reset');
+  const gainless = (clock) => overloaded({ clockSeconds: clock, achievedFps: 30 * (1 + TIER_MIN_GAIN) - 0.5,
+    frameEmaMs: 30, mayRaiseTier: true, maximumTrim: 0 });
+  run = drive(policy, run.clock + 1.5, TIER_TRIAL_SKIP_WINDOWS + TIER_TRIAL_WINDOWS - 1, gainless);
+  assert.ok(!run.actions.includes('tier-up') && !run.actions.includes('tier-down'), 'the trial measures before it judges');
+  run = drive(policy, run.clock, 1, gainless);
+  assert.deepEqual(run.actions, ['tier-up'], 'under the gain line: the cut is restored at once');
+  assert.equal(policy.tierTrialActive, false);
+  const barredAt = run.clock - 1.5;
+  assert.equal(policy.tierCutsBarredUntil, barredAt + TIER_RETRY_SECONDS);
+  policy.reset(1, run.clock);
+  policy.forceTrim(1, 1);
+  policy.setDynamicScale(0.9);
+  run = drive(policy, run.clock, Math.floor((TIER_RETRY_SECONDS - 3) / 1.5), slow(30));
+  assert.ok(run.actions.every((a) => a !== 'tier-down'), 'no tier cut while the failed trial bars it');
+  run = drive(policy, barredAt + TIER_RETRY_SECONDS, TIER_DOWN_STRIKES_EXPECTED, slow(30));
+  assert.equal(run.actions.at(-1), 'tier-down', 'after the bar a sustained overload may try the cut again');
+  policy.beginTierTrial();
+  run = drive(policy, run.clock, TIER_TRIAL_SKIP_WINDOWS + TIER_TRIAL_WINDOWS, gainless);
+  assert.equal(run.actions.at(-1), 'tier-up');
+  assert.equal(policy.tierCutsBarredUntil, run.clock - 1.5 + TIER_RETRY_SECONDS * 2, 'a second failed trial doubles the bar');
+}
+{
+  // a cut that buys frames stays, and the clean-path recovery is not taken during the trial
+  const policy = exhausted();
+  let run = drive(policy, 10, TIER_DOWN_STRIKES_EXPECTED, slow(20));
+  assert.equal(run.actions.at(-1), 'tier-down');
+  policy.beginTierTrial();
+  policy.reset(1, run.clock);
+  run = drive(policy, run.clock, TIER_TRIAL_SKIP_WINDOWS + TIER_TRIAL_WINDOWS, (clock) => overloaded({
+    clockSeconds: clock, achievedFps: 20 * (1 + TIER_MIN_GAIN) + 0.5, frameEmaMs: 1000 / 23.5, mayRaiseTier: true,
+    maximumTrim: 0 }));
+  assert.ok(!run.actions.includes('tier-up'), 'a cut that buys more than the gain line is kept');
+  assert.equal(policy.tierTrialActive, false, 'the trial closed');
+  assert.equal(policy.tierCutsBarredUntil, Number.NEGATIVE_INFINITY, 'and bars nothing');
+}
+{
+  // a refused cut (an explicit preset, the floor tier) opens no trial; a trial with nothing to restore closes quietly
+  const policy = exhausted();
+  assert.equal(policy.beginTierTrial(), false, 'no cut asked for: no trial');
+  let run = drive(policy, 10, TIER_DOWN_STRIKES_EXPECTED, slow(30));
+  assert.equal(run.actions.at(-1), 'tier-down');
+  policy.beginTierTrial();
+  run = drive(policy, run.clock, TIER_TRIAL_SKIP_WINDOWS + TIER_TRIAL_WINDOWS + 2, (clock) => overloaded({
+    clockSeconds: clock, achievedFps: 30, frameEmaMs: 33, mayRaiseTier: false, maximumTrim: 0 }));
+  assert.ok(!run.actions.includes('tier-up'), 'a pinned preset: the trial has nothing to restore');
+  assert.equal(policy.tierTrialActive, false);
+  run = drive(policy, run.clock, TIER_DOWN_STRIKES_EXPECTED, slow(30));
+  assert.equal(run.actions.at(-1), 'tier-down');
+  policy.beginTierTrial();
+  policy.abandonTierTrial();
+  assert.equal(policy.tierTrialActive, false, 'a new workload abandons the trial (the cut stays)');
+}
+
+console.log('adaptiveQualityPolicy.selftest: ordered relief and recovery policy, tier keep-up line, sustained strikes and tier trials passed');

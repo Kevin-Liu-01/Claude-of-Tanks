@@ -2622,11 +2622,14 @@ export function createPost(
       return;
     }
     if (action === 'tier-down') {
-      reportSustainedOverload();
+      // the policy measures only a cut that was applied (an explicit preset or the floor tier refuses it)
+      if (reportSustainedOverload()) qualityPolicy.beginTierTrial();
+      renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
     if (action === 'tier-up') {
       reportSustainedRecovery();
+      renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
     if (action !== 'resolution-down' && action !== 'resolution-up') return;
@@ -3161,6 +3164,8 @@ export function createPost(
     /** New scene workload = fresh crisp baseline; no low-resolution state may
      * leak from a battle into the garage (or vice versa). */
     resetAdaptiveResolution() {
+      // a new workload: the open tier trial's evidence no longer compares (the tier it cut stays)
+      qualityPolicy.abandonTierTrial();
       resetGovernorState();
     },
 
