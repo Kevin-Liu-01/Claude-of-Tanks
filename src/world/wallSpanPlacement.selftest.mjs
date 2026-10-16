@@ -80,7 +80,18 @@ function auditWall({ record, mesh }, geometry, field) {
   }
   assert.ok(Math.abs(record.ob.min[1] - minY) < 1e-8);
   assert.ok(Math.abs(record.ob.max[1] - maxY) < 1e-8, 'high end of sloped wall stays ballistic cover');
-  assert.deepEqual(record.col, { ...record.ob }, 'shell and hull collision agree');
+  // (physics DST-03, 2026-10-16) the shell record stands three parts along the module, each from its own lowest vertex to
+  // its own highest: the hull's box from end to end, the shells' following the sheared top down the slope
+  assert.deepEqual([record.col.min[1], record.col.max[1]], [record.ob.min[1], record.ob.max[1]], 'shell and hull records span the same heights');
+  assert.ok([0, 2].every((i) => record.col.min[i] >= record.ob.min[i] - 1e-6 && record.col.max[i] <= record.ob.max[i] + 1e-6), 'the shells within the hull\'s box');
+  const shellParts = record.col.shape2.kind === 'compound' ? record.col.shape2.parts : [record.col.shape2];
+  assert.equal(shellParts.length, 3, 'the shells meet three parts along the module');
+  assert.ok(shellParts.every((part) => part.y0 >= minY - 1e-6 && part.y1 <= maxY + 1e-6), 'each part within the module');
+  assert.ok(Math.abs(Math.max(...shellParts.map((part) => part.y1)) - maxY) < 1e-6, 'the high end stays ballistic cover');
+  const endGround = (sign) => field.getHeightAt(record.x + sign * halfLength * Math.sin(record.yaw), record.z + sign * halfLength * Math.cos(record.yaw));
+  const rise = Math.abs(endGround(1) - endGround(-1));
+  const tops = shellParts.map((part) => part.y1);
+  if (rise > 0.3) assert.ok(Math.max(...tops) - Math.min(...tops) > rise * 0.3, `down a slope the parts' tops follow the module (${rise.toFixed(2)} m along it)`);
   assert.equal(record.y, minY);
   assert.equal(record.h, maxY - minY);
   assert.ok(Math.abs(record.groundSupport.min - minGround) < 1e-8);
