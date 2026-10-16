@@ -4,7 +4,7 @@
 // buildings themselves: a Kursk-governorate village church of 1800-1900 is a whitewashed brick "ship" — the bell tower,
 // the refectory, the cube with its drum and dome, the apse — 25-32 m long, its bell tower 25-30 m to the cross.
 import { PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
-import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
+import { emitRoof, roofGeometry, wallPolygon, type RoofSpec } from '../maps/regional/house.ts';
 import { archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, dome, drum, extrude, moulding, revolve, tentRoof, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
@@ -273,6 +273,10 @@ export const granary: LandmarkBuilder = (ctx) => {
     sink.span(wall, -1.6, H - 0.2, -1.0, 1.6, H + 1.6, 1.6, wallOpts);
     sink.quad('structureWood', [-0.6, H + 0.1, 1.61], [0.6, H + 0.1, 1.61], [0.6, H + 1.4, 1.61], [-0.6, H + 1.4, 1.61], { colour: rgb(0x4a3b2e), decor: true });
     emitRoof(sink, roofGeometry(3.2, 2.6, H + 1.6, hg), hg);
+    // (the maps lane, 2026-10-16; the building-integrity gate: the hoist beam hung 0.27 m inside an open gable, the loft
+    // seen through it) the cross gable's front triangle walled up to the roof's underside, 30 cm deep, the beam through it
+    const apex = H + 1.6 + 1.6 * Math.tan(hg.pitchDeg * Math.PI / 180);
+    wallPolygon(sink, wall, { origin: [0, 0, 1.6], u: [1, 0, 0], out: [0, 0, 1], width: 3.2 }, [[-1.6, H + 1.6], [1.6, H + 1.6], [0, apex]], 0.3, { decor: true });
     bar(sink, 'structureWood', [0, H + 2.4, 1.0], [0, H + 2.4, 2.6], 0.2, { colour: rgb(0x4a3b2e), decor: true });
   });
   return { parts: sink.finish(), tints: { plaster2: [0.6, 0.58, 0.55] } };
