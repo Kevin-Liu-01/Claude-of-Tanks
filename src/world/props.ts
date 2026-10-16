@@ -174,7 +174,7 @@ import {
 import { townRowPlotClear } from './townRowAdditions.ts';
 import {
   cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
-  setObbShape, type SimpleCollisionShape,
+  setObbShape, DENSE_HUT_SLAB_KINDS, type SimpleCollisionShape,
 } from './collision.ts';
 import {
   applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockGroundAt,
@@ -186,7 +186,7 @@ const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', 'fieldhut', 'bunker']); // (round 3: the heavy trucks' slabs; DST-03: the field hut's walls)
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', ...DENSE_HUT_SLAB_KINDS, 'bunker']); // (round 3: the heavy trucks' slabs; DST-03: the dense huts' walls)
 import {
   appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
