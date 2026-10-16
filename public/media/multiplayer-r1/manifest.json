@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "tool": "tools/marketing-shots/capture-multiplayer-dual-screen.mjs",
+  "file": "dual-perspective.webp",
+  "width": 2400,
+  "height": 700,
+  "bytes": 469470,
+  "sha256": "321af491ad36a29ec49b1ff5ca6222bd28b6803efb2f4115d881d543a20b0460",
+  "encoder": {
+    "name": "cwebp",
+    "version": "1.6.0",
+    "quality": 90,
+    "args": [
+      "-quiet",
+      "-q",
+      "90",
+      "-m",
+      "6",
+      "-sharp_yuv",
+      "-mt",
+      "-metadata",
+      "none"
+    ]
+  },
+  "createdAt": "2026-10-16T02:30:25.431Z",
+  "capturedAt": "2026-10-16T02:29:39.522Z",
+  "subject": "Two real rendered player views of one live multiplayer v2 match, captured at the same instant, each from its own player camera with its own HUD",
+  "multiplayer": {
+    "version": 2,
+    "sameMatch": true,
+    "oppositeSides": true,
+    "roomMode": "lan",
+    "roomService": "server/rooms/serve.ts (in-process LAN room host)",
+    "matchTransport": "service",
+    "gameMode": "standard",
+    "teamSize": 1,
+    "bots": 0,
+    "matchId": "m1-d0a15c4f",
+    "seed": 3500235855,
+    "timeOfDay": "day"
+  },
+  "map": {
+    "id": "verdant",
+    "name": "Verdant Fields"
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "deviceScaleFactor": 1
+  },
+  "framing": {
+    "name": "duel",
+    "back": 7.6,
+    "side": 3,
+    "up": 3.9,
+    "lookT": 0.62,
+    "lookUp": 1.5,
+    "fov": 42
+  },
+  "staging": {
+    "separationM": 20,
+    "hullAngleDeg": 20,
+    "bearingDeg": 0,
+    "center": [
+      46,
+      22
+    ],
+    "alpha": {
+      "x": 46,
+      "z": 12,
+      "y": 3,
+      "yaw": -0.3491
+    },
+    "bravo": {
+      "x": 46,
+      "z": 32,
+      "y": 3.1,
+      "yaw": 2.7925
+    }
+  },
+  "players": [
+    {
+      "slot": "player-one",
+      "side": "alpha",
+      "name": "Alpha Commander",
+      "playerId": "p_ab962a948e3548ce8cc9cf89",
+      "vehicle": {
+        "specId": "m1a2",
+        "name": "M1A1 Abrams HC"
+      },
+      "camo": "factory",
+      "turretErrorDeg": 0.17,
+      "view": {
+        "distanceM": 20,
+        "opponentVisible": true,
+        "opponentNdc": [
+          0.059,
+          0.057,
+          0.964
+        ],
+        "camera": {
+          "pos": [
+            43,
+            6.89,
+            4.4
+          ],
+          "fov": 42
+        },
+        "canvas": [
+          1280,
+          720
+        ],
+        "renderScale": "1.000",
+        "dynScale": "1.000",
+        "networkStrip": "16MSSEAT 02/28",
+        "timeOfDay": null
+      }
+    },
+    {
+      "slot": "player-two",
+      "side": "bravo",
+      "name": "Bravo Commander",
+      "playerId": "p_fe561a9ef23b476e8c750f01",
+      "vehicle": {
+        "specId": "t90m",
+        "name": "T-90AM"
+      },
+      "camo": "factory",
+      "turretErrorDeg": 0.11,
+      "view": {
+        "distanceM": 20,
+        "opponentVisible": true,
+        "opponentNdc": [
+          0.059,
+          0.053,
+          0.964
+        ],
+        "camera": {
+          "pos": [
+            49,
+            7.01,
+            39.6
+          ],
+          "fov": 42
+        },
+        "canvas": [
+          1280,
+          720
+        ],
+        "renderScale": "1.000",
+        "dynScale": "1.000",
+        "networkStrip": "20MSSEAT 12/28",
+        "timeOfDay": null
+      }
+    }
+  ],
+  "capture": {
+    "serverTick": 6517,
+    "skewMs": 2472,
+    "framingsCaptured": [
+      "duel"
+    ],
+    "niceness": 10,
+    "lockWaitMs": 272910,
+    "lockHeldMs": 406118,
+    "browserErrors": 0
+  }
+}

@@ -640,13 +640,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 135.2298,
-          "p05": 15.5106,
-          "p95": 209.2414,
+          "meanLuma": 84.817,
+          "p05": 8.3662,
+          "p95": 178.957,
           "clippedBlack": 0,
-          "clippedWhite": 0,
-          "meanSaturation": 0.3331,
-          "edgeMean": 9.3899
+          "clippedWhite": 0.0004,
+          "meanSaturation": 0.3002,
+          "edgeMean": 7.7609
         }
       }
     },
@@ -708,13 +708,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 132.3375,
-          "p05": 38.2362,
-          "p95": 206.2454,
-          "clippedBlack": 0.0002,
+          "meanLuma": 167.6258,
+          "p05": 72.1504,
+          "p95": 216.6616,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4421,
-          "edgeMean": 10.2891
+          "meanSaturation": 0.34,
+          "edgeMean": 10.3103
         }
       }
     },
