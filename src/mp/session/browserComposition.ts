@@ -111,6 +111,8 @@ export interface BrowserLoadTrace {
    */
   rewelcomes?: number;
   rewelcomeAtMs?: number[];
+  /** Seats whose vehicles were warmed beside the world load (prewarmRoster, 2026-10-15). */
+  rosterPrewarmed?: number;
 }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
@@ -152,6 +154,11 @@ export interface BrowserLoadPorts {
    */
   /** The authority's obstacle identities, from the manifest it plays (the mode's battlefield variant's when it has one). */
   loadAuthorityObstacles?(mapId: string, signal: AbortSignal, variant?: TerrainVariant): Promise<(index: number) => ObstacleIdentity | null>;
+  /**
+   * 2026-10-15: the builders and textures of the seats the room already names, warmed beside the world load (the
+   * WELCOME's bots are painted after it). Never refuses the round; the trace records how many it warmed.
+   */
+  prewarmRoster?(seats: readonly { specId: string; camo: string; isViewer: boolean }[], signal: AbortSignal): MaybePromise<RuntimeValue>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -1127,6 +1134,15 @@ export function createBrowserComposition({
       await load.nextFrame();
       check('cover');
       load.battleLoad.progress(0.08, 'Loading battlefield');
+      // 2026-10-15 (the MP stream): the named seats' vehicles warm beside the world (prewarmRoster). Never awaited here: it
+      // must not lengthen the world's stage, and prepareRoster joins whatever is still in flight (the bakes coalesce).
+      const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId
+        ? [{ specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
+      if (load.prewarmRoster && seats.length) {
+        let warming: MaybePromise<RuntimeValue>;
+        try { warming = load.prewarmRoster(seats, active.abort.signal); } catch { warming = undefined; }
+        void Promise.resolve(warming).then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster paints them itself */ });
+      }
       await Promise.all([
         load.loadModules(),
         load.ensureBattleVisuals(),

@@ -2263,6 +2263,37 @@ Receipts:
   that stays silent while the tab runs still requests a fresh socket.
 - Ablating the stall-clock restart fails both.
 
+### 13.25 The returning tab's entry overlaps what it can (MP stream, 2026-10-15)
+
+**Why.** In the §7 side-by-side (Verdant, built sites, n=3), the rejoin took 24.1 s on Sept 30 and 32.2 s on main
+(tab opened to back in battle). By stage:
+
+- Garage: +2.2 s (+0.9 s with mp-garage-freeze);
+- world and modules: +2.9 s;
+- shader stages: +1.0 s;
+- Garage-to-entry gap: +1.2 s;
+- roster and panel: about equal (main's roster painting, 6-7 s after the WELCOME, replaced Sept 30's 5.4 s panel mask
+  link).
+
+The world and shader growth went to their lanes. Two things are the MP path's own.
+
+**What.**
+- `prewarmRosterVisuals` (battlePresentation) warms the builders and texture bakes of the seats the room names while
+  the world loads. The bakes run in a worker where the browser has one. Previously this all queued behind the
+  WELCOME, after the world. It is never awaited by the entry: `prepareRoster` joins what is still in flight (the bakes
+  coalesce). The bots arrive with the WELCOME and are painted then. The trace records `rosterPrewarmed`.
+- A tab opened on a room invite holds the Garage's idle work (the neighbouring heroes, the dressing set pieces) while it
+  joins and enters, instead of sharing the main thread with the room's join and the entry. A return to the Garage
+  schedules the dressing itself (garageReturnRuntime). A tab the invite leaves in the Garage gets both after 12 s,
+  unless a battle entry holds the lifecycle then.
+
+Receipts:
+- `battlePresentation.selftest`: one warm per vehicle, paint and quality; the viewer's vehicle at its own quality; a
+  failing bake does not escape; an aborted round stops.
+- `browserComposition.selftest`: the warm starts with the world load and a warm that never settles holds nothing.
+- `garageDressingLifecycle.selftest`: the invite boot defers the work and a plain boot runs it at ready.
+- The timing is measured in the final pass (the rejoin trace).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

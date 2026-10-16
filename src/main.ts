@@ -289,6 +289,8 @@ const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
+/** A tab the room invite leaves in the Garage gets its idle work (neighbour heroes, dressing) this long after ready. */
+const INVITE_GARAGE_IDLE_DELAY_MS = 12_000;
 // FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
 const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
 const minimapAssetUrl = (mapId: string): string => (
@@ -2285,7 +2287,9 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
     import('./mp/transport/iceConfig.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }]) => {
+    // already in this chunk's graph (the composition paints its rounds with it): the roster prewarm below
+    import('./mp/presentation/battlePresentation.ts'),
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2294,7 +2298,9 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }),
+          // 2026-10-15 (the MP stream): the named seats' builders and textures beside the world load (the rejoin row)
+          prewarmRoster: (seats, signal) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4, signal }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -3529,12 +3535,25 @@ if (pendingRoomInvitePromise) {
   });
 }
 window.__GAME_READY = true;
-pedestal.queueNeighbors();
+// 2026-10-15 (the MP stream, the §7 side-by-side's rejoin row): a tab opened on a room invite is on its way into a room
+// and, on a return, straight into a running match. The Garage's idle work (the neighbouring heroes, the dressing set
+// pieces) would share the main thread with the room's join and the battle entry, so it waits: a return to the Garage
+// schedules the dressing itself (garageReturnRuntime), and a tab the invite leaves in the Garage gets both after
+// INVITE_GARAGE_IDLE_DELAY_MS unless a battle entry holds the lifecycle then.
+const runGarageIdleWork = () => {
+  pedestal.queueNeighbors();
+  if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
+};
+if (pendingRoomInvitePromise) {
+  void pendingRoomInvitePromise.then((invite) => {
+    if (!invite) { runGarageIdleWork(); return; }
+    setTimeout(() => { if (game.phase === 'garage' && !battleEntryLifecycle.pending) runGarageIdleWork(); }, INVITE_GARAGE_IDLE_DELAY_MS);
+  }, () => runGarageIdleWork());
+} else runGarageIdleWork();
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
 // 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
 primeMapLqipWhenIdle();
-if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 entryTelemetry.send({

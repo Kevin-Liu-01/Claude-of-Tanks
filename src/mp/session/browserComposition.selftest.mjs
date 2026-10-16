@@ -252,7 +252,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null, prewarmRoster = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -304,6 +304,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       recordEntryFailure: (failure) => { ports.failure = failure; },
       recordSlowEntry: (beacon) => { calls.push(`slowEntry:${beacon.stage}:${beacon.code}:${beacon.pending}`); (ports.slowEntries ??= []).push(beacon); },
       ...(loadAuthorityObstacles ? { loadAuthorityObstacles: (mapId, signal) => { calls.push(`authorityObstacles:${mapId}:${signal instanceof AbortSignal}`); return loadAuthorityObstacles(mapId, signal); } } : {}),
+      ...(prewarmRoster ? { prewarmRoster: (seats, signal) => { calls.push(`prewarmRoster:${seats.map((seat) => `${seat.specId}/${seat.camo}/${seat.isViewer ? 'own' : 'other'}`).join(',')}:${signal instanceof AbortSignal}`); return prewarmRoster(seats, signal); } } : {}),
     },
     roster: {
       getMap: (mapId) => ({ name: `Map ${mapId}`, thumb: `${mapId}.jpg`, biome: mapId }),
@@ -1038,6 +1039,21 @@ for (const [reason, message] of [
   const staged = Object.values(trace.stages).reduce((sum, ms) => sum + ms, 0);
   assert.equal(staged, trace.totalMs, `the stages add up to the entry (${staged} of ${trace.totalMs} ms)`);
   twice.composition.dispose();
+}
+
+// ------------------------------------------------------------ the roster prewarm (2026-10-15, the MP stream): the seats the room
+// names warm beside the world load; it never holds the entry (a prewarm that never settles still lets the round reveal)
+{
+  const warm = createHarness({ prewarmRoster: () => new Promise(() => {}) });
+  const { entry } = await enterRound(warm);
+  await settle(12);
+  assert.equal(await entry, true, 'a prewarm that never settles holds nothing');
+  const call = warm.calls.find((entry) => typeof entry === 'string' && entry.startsWith('prewarmRoster:'));
+  assert.ok(call, 'the named seats were warmed');
+  assert.ok(warm.calls.indexOf(call) < warm.calls.indexOf('loadWorld:alpine:null'), 'started with the world load, not after it');
+  assert.match(call, /\/own/, 'this viewer\'s vehicle warms at its own quality');
+  assert.match(call, /:true$/, 'with the round\'s abort signal');
+  warm.composition.dispose();
 }
 
 composition.dispose();
