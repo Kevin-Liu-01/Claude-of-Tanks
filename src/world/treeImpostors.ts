@@ -41,6 +41,9 @@ export const TREE_IMPOSTOR_BUDGET_BYTES = 6 * 1024 * 1024;
 export const TREE_IMPOSTOR_TILES = Object.freeze([128, 96, 64] as const);
 export const TREE_IMPOSTOR_MAX_ROWS = 16;
 export const TREE_IMPOSTOR_PROGRAM_KEY = 'world-tree-impostor-v3'; // round 77c: the elevated ring; p2 trees lane: the gust lift
+/** The bake's own law version, folded into the bake-input digest (the bake program is a ShaderMaterial, keyed by its
+ * source). v2, trees Fix B: the near cards' mip coverage give-back before the bake's cut. */
+const TREE_IMPOSTOR_BAKE_KEY = 'tree-impostor-bake-v2';
 /** Round 77c: the elevated capture ring — one row per species (its first near variant) from eight azimuths at 45°,
  * added where the atlas keeps its ground tile and the row cap; above ~20° of view elevation the tile dissolves
  * toward it and the card tilts back to face the view, so a bird view no longer sees the side view laid flat. */
@@ -50,6 +53,20 @@ const TREE_IMPOSTOR_ELEVATED_BLEND_RAD = Object.freeze([20 * Math.PI / 180, 45 *
 /** The bake's alpha cut on the cards (the near material's own) and the impostor's own. */
 export const TREE_IMPOSTOR_BAKE_ALPHA_TEST = 0.38;
 export const TREE_IMPOSTOR_ALPHA_TEST = 0.5;
+/** Trees Fix B (2026-10-15): the bake's mip coverage give-back before its cut, per mip level of the leaf atlas and
+ * its level cap. The capture draws a whole tree into a 64–128 px tile, so the cards sample the leaf atlas 3–5 mips
+ * down, where averaging thins a spray's alpha under the cut: with no give-back the baked crowns kept 0.30–0.65 of the
+ * near tier's fill at the same screen size on the needle and twig atlases (Aleppo pine 0.30, a bare birch on a 64 px
+ * tile 0.35, pinyon 0.48, pine 0.49, red pine 0.56; 178 of 327 ground rows over the 33 maps under 0.9x), in up to 86
+ * pieces. Tuned just under the near cards' own law (vegetation.ts mipAlphaGuard, 0.25 to 3.5), because the far
+ * impostor stacks its own give-back on the bake's: 0.22 is the least that holds every row to 0.9–1.1x of the near
+ * tier (worst 0.93, Aleppo pine; the full 0.25 would put every row at 1.0 and the far tier a little heavier).
+ * tools/impostor-bake-coverage.mjs measures it per row. */
+export const TREE_IMPOSTOR_BAKE_MIP_BOOST = 0.22;
+export const TREE_IMPOSTOR_BAKE_MIP_MAX = 3.5;
+/** The impostor program's own give-back on the atlas's texel footprint (applyTreeImpostorProgram). */
+export const TREE_IMPOSTOR_MIP_BOOST = 0.25;
+export const TREE_IMPOSTOR_MIP_MAX = 3.5;
 /** The quad's top flutters like a lobe crown top (paintCanopy's flexTop band). */
 export const TREE_IMPOSTOR_TOP_FLEX = 0.3;
 
@@ -260,6 +277,12 @@ varying vec3 vBakeColor;
 varying vec3 vBakeNormal;
 void main() {
   vec4 tex = texture2D( map, vBakeUv );
+  // trees Fix B: the near cards' mip coverage give-back (vegetation.ts mipAlphaGuard) before the cut, on the leaf
+  // atlas's own texel derivatives, so the baked crown keeps the coverage the near tier shows at the tile's size
+  vec2 bakeTs = vec2( textureSize( map, 0 ) );
+  vec2 bakeDx = dFdx( vBakeUv * bakeTs ), bakeDy = dFdy( vBakeUv * bakeTs );
+  float bakeMip = 0.5 * log2( max( max( dot( bakeDx, bakeDx ), dot( bakeDy, bakeDy ) ), 1.0 ) );
+  tex.a *= 1.0 + min( bakeMip, ${TREE_IMPOSTOR_BAKE_MIP_MAX.toFixed(2)} ) * ${TREE_IMPOSTOR_BAKE_MIP_BOOST.toFixed(3)};
   if ( tex.a < uAlphaTest ) discard;
   if ( uMode < 0.5 ) gl_FragColor = vec4( tex.rgb * vBakeColor, 1.0 );
   else gl_FragColor = vec4( normalize( vBakeNormal ) * 0.5 + 0.5, 1.0 );
@@ -401,7 +424,7 @@ varying vec3 vImpFE;`);
       vec2 impTs = vec2( textureSize( map, 0 ) );
       vec2 impDx = dFdx( vImpUv0 * impTs ), impDy = dFdy( vImpUv0 * impTs );
       float impMip = 0.5 * log2( max( max( dot( impDx, impDx ), dot( impDy, impDy ) ), 1.0 ) );
-      diffuseColor.a *= 1.0 + min( impMip, 3.5 ) * 0.25;
+      diffuseColor.a *= 1.0 + min( impMip, ${TREE_IMPOSTOR_MIP_MAX.toFixed(1)} ) * ${TREE_IMPOSTOR_MIP_BOOST.toFixed(2)};
     }
     #include <alphatest_fragment>`);
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>', /* glsl */`#include <normal_fragment_begin>
@@ -599,6 +622,8 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
     digest() {
       let h = 0x811c9dc5;
       h = fnvText(h, `impostor:${TREE_IMPOSTOR_DIRECTIONS}:${TREE_IMPOSTOR_ELEVATION_RAD.toFixed(6)}:${tile}:${width}x${height}:${TREE_IMPOSTOR_MARGIN}:${variants}:${elevated ? TREE_IMPOSTOR_ELEVATED_RAD.toFixed(6) : 'flat'}`);
+      // trees Fix B: the bake's coverage law is a bake input (a changed give-back bakes a different atlas)
+      h = fnvText(h, `bake:${TREE_IMPOSTOR_BAKE_KEY}:${TREE_IMPOSTOR_BAKE_ALPHA_TEST}:${TREE_IMPOSTOR_BAKE_MIP_BOOST}:${TREE_IMPOSTOR_BAKE_MIP_MAX}`);
       const hashed = new Set<THREE.Texture>();
       rows.forEach((row, index) => {
         const source = sources[index];
