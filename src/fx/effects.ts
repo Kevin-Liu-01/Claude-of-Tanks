@@ -1,9 +1,10 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
 // atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
 import { createProjectileTracers } from './projectileTracers.ts';
-import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
-import { createSmokeRibbons, type RibbonLook } from './smokeRibbons.ts';
-import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
+import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
+  type MissileTrail } from './missileLooks.ts';
+import { createMissileTrails, TRAIL_STEP_M } from './missileTrails.ts';
+import { missileIgnition, missileLaunch } from './missileRecipes.ts';
 import { createMissileWires, WIRE_SLOTS } from './missileWires.ts';
 import { createSceneLightUniforms, readSceneLight, type SceneLightData } from './sceneLight.ts';
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
@@ -276,16 +277,14 @@ interface GuidedTrail {
   count: number;
   age: number;
   seen: boolean;
-  /** (fx 9a) the round's look, seed, launch point, the distance flown last frame and of the next trail puff; (EF.04)
-   *  its smoke ribbon's slot and the distance of the ribbon's next point */
-  ribbon?: number;
-  nextRibbonD?: number;
+  /** (fx 9a) the round's look, seed, launch point and the distance flown last frame; (FX lane 10-14) its smoke trail's
+   *  slot and the distance of the trail's next point */
   look?: MissileLook;
   seed?: number;
   launch?: [number, number, number] | null;
   lastD?: number;
+  smokeSlot?: number;
   nextSmokeD?: number;
-  puffIndex?: number;
   fallbackD?: number;
 }
 
@@ -632,7 +631,8 @@ const TRAIL_S = 0.28;
 const ATGM_TRAIL_S = 0.48;
 const ATGM_TRAIL_POINTS = 24;
 const ATGM_TRAIL_SPACING_M = 0.55;
-const MAX_ATGM_BODIES = 12;
+/** (FX lane 10-14) missile bodies drawn at once: a TOS-1A's 24 rockets and a 12-tube volley in the air together */
+const MAX_ATGM_BODIES = 48;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
 const COMPOSE_VELOCITY = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
@@ -1295,13 +1295,12 @@ function* createFxSteps(
     });
   }
   if (vol) group.add(vol.group);
-  // (EF.04) a missile's smoke trail as one continuous ribbon, lit by the media's own light (desktop tiers, with the media)
-  const ribbons = vol ? createSmokeRibbons(vol.shading) : null;
-  if (ribbons) group.add(ribbons.mesh);
-  // (FX lane 10-14) a wire-guided missile's command wire, fixed to its launcher's tube (every tier: one draw), in the
-  // time of day's light
-  const wireLight = createSceneLightUniforms();
-  const wires = createMissileWires(wireLight);
+  // (FX lane 10-14) a missile's smoke trail, a soft tube born at its nozzle (missileTrails.ts), and a wire-guided missile's
+  // command wire, fixed to its launcher's tube: every tier (one draw each), in the time of day's light
+  const missileLight = createSceneLightUniforms();
+  const smokeTrails = createMissileTrails(missileLight, particles.softParticles);
+  group.add(smokeTrails.mesh);
+  const wires = createMissileWires(missileLight);
   group.add(wires.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
@@ -1714,8 +1713,10 @@ function* createFxSteps(
       || tracerGeo.instanceCount > 0
       || tracers.active() // atmospherics lane
       || atgmBodies.count > 0
-      // (FX lane 10-14) a parted wire settling after its missile has gone still draws in the late pass
+      // (FX lane 10-14) a parted wire settling after its missile has gone, and a trail hanging after its missile has
+      // struck, still draw in the late pass (the old ribbon vanished when the strike's media ended)
       || wires.mesh.visible
+      || smokeTrails.mesh.visible
       || shockRings.some(isRingVisible)
       || muzzleRings.some(isRingVisible)
       || (extraLateFxActive !== null && extraLateFxActive()),
@@ -4562,8 +4563,8 @@ function* createFxSteps(
       trail.launch = at ? [at[0], at[1], at[2]]
         : shell.prevPos ? [shell.prevPos.x, shell.prevPos.y, shell.prevPos.z] : [shell.pos.x, shell.pos.y, shell.pos.z];
       trail.lastD = -1;
+      trail.smokeSlot = -1;
       trail.nextSmokeD = trail.look.igniteM;
-      trail.puffIndex = 0;
       // a round first seen mid-flight with no distance record counts as lit
       trail.fallbackD = trail.look.igniteM;
     }
@@ -4625,7 +4626,7 @@ function* createFxSteps(
         look.flarePx * (1 + 0.25 * (1 - dark)), look.haloPx * (0.55 + 0.45 * dark), look.flareCore, fk,
         look.flareHalo, fk * (0.05 + 0.12 * dark), 1.4);
       renderedAtgmTrailSegments++;
-      if (blast && look.smoke) emitMissileTrail(trail, look, shell, d, t, speed, seed, seedU);
+      layTrail(trail, look, shell, d, t, speed, seedU, dir);
     }
     if (look.wires > 0) payOutWire(trail, shell, look, dir);
     trail.lastD = d;
@@ -4717,101 +4718,57 @@ function* createFxSteps(
     }
   }
 
-  /** The trail's puffs since the last frame, one per spacing of flight (wider when many missiles fly at once). */
-  /** (EF.04) the ribbon each look draws (once per look): thin at the motor, swelling to the trail's width, its edges
-   *  torn as much as the motor puffs (a pulsing sustainer tears more than a steady one) */
-  const ribbonLooks = new Map<string, RibbonLook>();
-  function ribbonLookOf(look: MissileLook): RibbonLook | null {
-    const sm = look.smoke;
-    if (!sm) return null;
-    let r = ribbonLooks.get(look.id);
-    if (!r) {
-      // (filmed: the ribbon alone carries the trail; it lasts as long as the media puffs it replaced lingered, a dense
-      // motor's wider and thicker)
-      const dense = ribbonDense(look);
-      r = Object.freeze({ width0: Math.max(0.12, sm.size0 * 0.45), width1: sm.size1 * (dense ? 0.9 : 0.7),
-        life: sm.life * 1.3, density: Math.min(0.9, sm.density * (dense ? 1.2 : 1.05)), c0: sm.c0, c1: sm.c1,
-        rise: sm.rise, windK: sm.windK, tear: Math.min(1, 0.35 + 0.6 * sm.pulse) });
-      ribbonLooks.set(look.id, r);
-    }
-    return r;
-  }
-  /** the covered warm's ribbon (warmProjectilePresentation) */
-  const WARM_RIBBON_KEY = -7;
-  const WARM_RIBBON: RibbonLook = Object.freeze({ width0: 0.3, width1: 1.5, life: 1, density: 0.4,
-    c0: [0.5, 0.5, 0.5] as const, c1: [0.55, 0.55, 0.55] as const, rise: 0, windK: 0, tear: 0.5 });
-  /** a ribbon point every RIBBON_STEP_M of flight */
-  const RIBBON_STEP_M = 2.5;
-  /** a dense motor's trail (rail, rocket, MANPADS, MCLOS, gun IR, old SACLOS): a wider, thicker ribbon */
-  function ribbonDense(look: MissileLook): boolean {
-    const f = look.family;
-    return f === 'rail_dense' || f === 'rocket' || f === 'manpads' || f === 'mclos' || f === 'gun_ir' || f === 'saclos_old';
-  }
+  /** the covered warm's trail (warmProjectilePresentation) */
+  const WARM_TRAIL_KEY = -7;
 
-  /** (EF.04) the ribbon's points since the last frame, where the motor passed and when */
-  function layRibbon(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
-    seedU: number): void {
-    const rl = ribbonLookOf(look);
-    if (!ribbons || !rl) return;
+  /**
+   * (FX lane 10-14) A missile's smoke trail this frame: the points its nozzle passed since the last frame (on this frame's
+   * path, each where the steering had it and when it passed), then the nozzle itself, so the smoke is born at the
+   * nozzle with no gap. A round first seen in flight starts its trail up to 60 m back. The trail outlives the round:
+   * it ends where the round struck (or was last seen) and dissolves there.
+   */
+  function layTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
+    seedU: number, dir: THREE.Vector3): void {
+    const tl: MissileTrail | null = missileTrailOf(look);
+    if (!tl) return;
     const key = trail.seed as number;
-    let slot = trail.ribbon ?? -1;
-    if (slot < 0 || ribbons.slotOf(key) !== slot) {
-      slot = ribbons.begin(key, rl, seedU);
-      trail.ribbon = slot;
-      trail.nextRibbonD = Math.max(look.igniteM, d - 60);
+    let slot = trail.smokeSlot ?? -1;
+    if (slot < 0 || smokeTrails.slotOf(key) !== slot) {
+      slot = smokeTrails.begin(key, smokeTrails.lookIndex(tl), seedU);
+      trail.smokeSlot = slot;
+      trail.nextSmokeD = Math.max(look.igniteM, d - 60);
     }
-    const dir = _v1;
     const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
     const motorBack = 0.65 + 0.625 * look.bodyLen;
     const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
     const now = particles.getTime();
-    let next = Math.max(trail.nextRibbonD as number, look.igniteM, d - 60);
-    let n = 0;
-    while (next <= d && n < 48) {
-      const back = d - next;
-      if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
-      else _v6.copy(shell.pos).addScaledVector(dir, -back);
-      missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
-      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
-      ribbons.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed) : 99);
-      next += RIBBON_STEP_M;
-      n++;
-    }
-    trail.nextRibbonD = next;
-  }
-
-  function emitMissileTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
-    seed: number, seedU: number): void {
-    const sm = look.smoke;
-    if (!sm || !blast) return;
-    // a crowded sky (a rocket salvo, a 12-tube volley): wider spacing, bigger puffs (missileTrailPuff's `coarse`)
-    // (EF.04, filmed in battle: puffs left along the ribbon outlived it as a string of beads) where the ribbons draw,
-    // the ribbon alone is the trail; the media keep the launch, the motor's ignition and the strike
-    if (ribbons) { layRibbon(trail, look, shell, d, t, speed, seedU); return; }
-    const coarse = Math.max(1, liveMissiles / 4);
-    const spacing = sm.spacingM * coarse;
+    // seconds since the flight motor lit (its boost phase) at a point the nozzle passed `back` metres ago
+    const igniteS = look.igniteM / speed;
+    const stepM = Math.max(smokeTrails.stepOf(slot), TRAIL_STEP_M, speed / 90);
     let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
-    const dir = _v1;
-    const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
     let n = 0;
-    while (next <= d && n < 24) {
+    while (next <= d && n < 64) {
       const back = d - next;
       // along this frame's path (its curve) where it reaches, straight back along the line beyond
       if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
       else _v6.copy(shell.pos).addScaledVector(dir, -back);
-      missileWobble(look, Number.isFinite(shell.ageS) || Number.isFinite(shell.distM) ? Math.max(0, t - back / speed) : 0, seedU, _wob);
-      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
-      const motorBack = 0.65 + 0.625 * look.bodyLen;
-      _v6.addScaledVector(dir, -motorBack);
-      const i = trail.puffIndex as number;
-      const beat = Math.sin(i * 1.7 + seedU * 6.2832);
-      missileTrailPuff(blast, puffRandom(seed + Math.imul(i + 1, 0x9e3779b1)), look, _v6.x, _v6.y, _v6.z,
-        dir.x, dir.y, dir.z, beat, -back / speed, coarse);
-      trail.puffIndex = i + 1;
-      next += spacing;
+      missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
+      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
+      smokeTrails.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed - igniteS) : 99);
+      next += stepM;
       n++;
     }
     trail.nextSmokeD = next;
+    // the nozzle now, on the drawn body's axis
+    smokeTrails.head(slot, _mPos.x - dir.x * motorBack, _mPos.y - dir.y * motorBack, _mPos.z - dir.z * motorBack, now,
+      timed ? Math.max(0, t - igniteS) : 99);
+  }
+
+  /** the round is gone: its trail ends where it struck (or where its nozzle was last) and dissolves there */
+  function endTrail(id: ShellId | null | undefined, pos?: WireVec3 | null): void {
+    if (id == null) return;
+    const slot = smokeTrails.slotOf(idSeed(id));
+    if (slot >= 0) smokeTrails.end(slot, particles.getTime(), pos?.[0], pos?.[1], pos?.[2]);
   }
 
   function writeShellBolt(
@@ -4959,14 +4916,14 @@ function* createFxSteps(
       if (trail.seen) continue;
       // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
       // wire parts where it was last seen
-      if (trail.age === 0 && trail.look && trail.look.wires > 0) partWire(id);
+      if (trail.age === 0 && trail.look) { if (trail.look.wires > 0) partWire(id); endTrail(id); }
       trail.age += tickDt;
       if (trail.age >= ATGM_TRAIL_S) {
         guidedTrails.delete(id);
         continue;
       }
       const fade = 1 - trail.age / ATGM_TRAIL_S;
-      // (fx 9a) a missile's own look leaves its smoke on the media layer, not a ribbon
+      // (fx 9a) a missile's own look draws its own trail (missileTrails.ts)
       if (trail.look) continue;
       tracerCount = writeGuidedTrail(trail, tracerCount, fade * fade);
     }
@@ -5330,7 +5287,7 @@ function* createFxSteps(
     if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
     vol?.shiftTime(delta);
-    ribbons?.shiftTime(delta);
+    smokeTrails.shiftTime(delta);
     wires.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
@@ -5990,15 +5947,16 @@ function* createFxSteps(
         wires.tail(slot, pos.x + dir.x * 6, pos.y + dir.y * 6, pos.z + dir.z * 6, now);
         wires.update(now, groundY);
       }
-      // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
-      // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
-      if (ribbons && vol) {
-        vol.refreshShading();
+      // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the trail program's first compile) one
+      // short trail in the covered warm, so its program compiles with the others; resetAll clears it
+      {
         const now = particles.getTime();
-        const slot = ribbons.begin(WARM_RIBBON_KEY, WARM_RIBBON, 0.5);
-        ribbons.point(slot, pos.x, pos.y, pos.z, now - 0.1, 0.1);
-        ribbons.point(slot, pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, now - 0.05, 0.15);
-        ribbons.update(now);
+        const look = missileTrailOf(MISSILE_LOOKS.konkurs) as MissileTrail;
+        const slot = smokeTrails.begin(WARM_TRAIL_KEY, smokeTrails.lookIndex(look), 0.5);
+        smokeTrails.point(slot, pos.x, pos.y, pos.z, now - 0.1, 0.1);
+        smokeTrails.head(slot, pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, now, 0.15);
+        smokeTrails.update(now, worldWind.x, worldWind.z);
+        readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
       }
     },
 
@@ -6040,11 +5998,6 @@ function* createFxSteps(
       structDebris?.update();
       rubble?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
-      if (ribbons && vol) {
-        ribbons.update(particles.getTime());
-        // the ribbons share the media's light: keep it current while ribbons fly with no media alive
-        if (ribbons.mesh.visible && !vol.isActive()) vol.refreshShading();
-      }
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
       if (!frozen) auxiliary?.update();
@@ -6060,9 +6013,13 @@ function* createFxSteps(
       sweepShellsThroughProps(shells);
       let tracerCount = writeLiveShellTracers(shells, camera);
       commitAtgmInstances();
-      // (FX lane 10-14) the wires after their rounds: sag, the launcher's pull, the fall once parted; lit by the scene now
+      // (FX lane 10-14) the trails and wires after their rounds (the clock, the wind; a wire's sag, its launcher's pull, its
+      // fall once parted), lit by the scene now
+      smokeTrails.update(particles.getTime(), worldWind.x, worldWind.z);
       wires.update(particles.getTime(), groundY);
-      if (wires.mesh.visible) readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, wireLight);
+      if (wires.mesh.visible || smokeTrails.mesh.visible) {
+        readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
+      }
       tracerCount = writeGuidedTrailAfterglow(tracerCount, tickDt);
       tracerCount = writeShellTrailAfterglow(tracerCount, tickDt);
       tracerCount = writeStaticTracerAfterglow(tracerCount);
@@ -6160,7 +6117,7 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:hit', (e) => {
         if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
-        if (e.kind !== 'ricochet') { tracers.strike(e.shellId, e.pos); partWire(e.shellId); }
+        if (e.kind !== 'ricochet') { tracers.strike(e.shellId, e.pos); partWire(e.shellId); endTrail(e.shellId, e.pos); }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
@@ -6218,7 +6175,8 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:expired', (e) => {
         if (e.hitTerrain || e.hitKind) drones.markImpact(e.shellId); // struck the world: no flight home (an air expiry has neither)
         tracers.strike(e.shellId, e.pos, !!e.hitWater); // atmospherics lane: the tracer's last dash and its strike
-        partWire(e.shellId); // (FX lane 10-14) a wire-guided round's wire parts where it burst
+        partWire(e.shellId); // (FX lane 10-14) a wire-guided round's wire parts where it burst; its trail ends there
+        endTrail(e.shellId, e.pos);
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
         // point; a fast shell can live for fewer sim ticks than one render
@@ -7089,7 +7047,7 @@ function* createFxSteps(
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       vol?.reset();
-      ribbons?.reset();
+      smokeTrails.reset();
       wires.reset();
       chunks?.reset();
       craters?.reset();
