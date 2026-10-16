@@ -21,7 +21,7 @@ const cases = [
 // combined-spotted: the combined state with detection lit (verifier 2026-10-16: the incoming-damage toast vanished
 // under it); alert-*: the longest alerts over detection, in en and zh (round 4 clamped them to two lines).
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','combined-spotted','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','alert-wave','alert-ammo','alert-flag','ended'];
-const reports=[];const errors=[];const reticleReach=[];const swipes=[];const droneCues=[];const liveInk=[];
+const reports=[];const errors=[];const reticleReach=[];const reticleYields=[];const swipes=[];const droneCues=[];const liveInk=[];const tileTable=[];const inkTable=[];
 // MAIN'S FEEDS (verifier 2026-10-16). On every touch screen and state, the kill feed and the incoming-damage feed show
 // no fewer rows than main does, the kill rows clear of the battle sight at full bloom no fewer than main's, the alert
 // shows its whole text (no clamp, nothing scrolled away), and the detection keeps its second line wherever main shows
@@ -29,9 +29,17 @@ const reports=[];const errors=[];const reticleReach=[];const swipes=[];const dro
 // (with --main-label=<commit>) against a server of main's tree measures them again (the same states, nothing else).
 // The pseudo-states are touch checks (a mouse layout keeps main's own notice places, unchanged).
 const TOUCH_ONLY = new Set(['combined-spotted','alert-wave','alert-ammo','alert-flag']);
+// ROUND 6 (verifier 2026-10-16). On every touch screen and state: no notice, countdown or dock tile lies on a round
+// button's caption (AUTO AIM, SCOPE, FIRE hang 17 px under their buttons; measure() overlaps them like any control), no
+// dock tile covers the swipe-to-aim hint, the dock shows at least as many controls whole as main's strip did (main's
+// strip scrolled under a hidden scrollbar: tiles, pinned per screen), and no notice or countdown covers more of the
+// reticle's ink, or of its resting crosshair, than main's does in the same state (the ink is read from the reticle
+// canvas itself, in both sights at rest and at full bloom with the magazine and SWITCHING readouts, and main's boxes
+// are pinned per state). The dock may lie on the scope's cross-arm tips: a tile under them must be dimmed.
 const recordMain = arg('record-main','');
 const MAIN_FEEDS = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-feeds.json', import.meta.url),'utf8'));
 const mainRecord = {};
+const mainTiles = {};
 const feedTable = [];
 function feedNumbers(){
   const vis=e=>!e.hidden&&e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&e.getBoundingClientRect().height>1;
@@ -44,13 +52,66 @@ function feedNumbers(){
     alert:copy?{text:copy.textContent,sh:copy.scrollHeight,ch:copy.clientHeight,sw:copy.scrollWidth,cw:copy.clientWidth,
       clamp:style.webkitLineClamp,size:style.fontSize}:null};
 }
+// The notices' and the countdown's boxes (round 6: main's are pinned per state, to weigh their reticle ink against).
+function noticeBoxes(){
+  const box=selector=>{const el=document.querySelector(selector);if(!el||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;
+    const r=el.getBoundingClientRect();return r.width>=1&&r.height>=1?[r.left,r.top,r.width,r.height].map(v=>Math.round(v*10)/10):null;};
+  return {d:box('.cot-sixth.on'),a:box('.cot-alert.show'),c:box('.cot-prebattle.on')};
+}
+// The tiles of the vehicle controls shown whole at once: main's strip scrolled (tiles past its box are cut off), the
+// dock shows every tile not waiting behind More (More itself is no control).
+function wholeTiles(){
+  const row=document.querySelector('.cot-vehicle-controls');
+  if(!row||!row.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;
+  const box=row.getBoundingClientRect(),docked=document.body.hasAttribute('data-hud-dock');
+  const controls=[...row.children].filter(t=>!t.classList.contains('cot-dock-more')&&t.getClientRects().length);
+  const shown=controls.filter(t=>{
+    if(!t.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})||t.hasAttribute('data-dock-overflow'))return false;
+    const r=t.getBoundingClientRect();
+    return r.left>=-.5&&r.top>=-.5&&r.right<=innerWidth+.5&&r.bottom<=innerHeight+.5&&(docked||(r.left>=box.left-.5&&r.right<=box.right+.5));
+  }).length;
+  return {laid:controls.length,shown};
+}
+// The reticle's ink as the canvas draws it (round 6): the union over both sights at rest and at full bloom, with the
+// magazine and SWITCHING readouts, and the battle sight at rest alone (the resting crosshair). Kept in the page.
+async function reticleMasks(){
+  const f=window.__HUD_LAYOUT,canvas=document.querySelector('.cot-ret'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const W=canvas.width,H=canvas.height,union=new Uint8Array(W*H);let rest=null;
+  for(const [sight,bloom,readout] of [['battle','rest','none'],['battle','full','magazine'],['battle','full','switching'],['scope','rest','magazine'],['scope','full','magazine'],['scope','full','switching']]){
+    f.state('idle');f.reticle({sight,bloom,readout});
+    await new Promise(r=>setTimeout(r,170)); // the scope's 0.1 s fade-in runs on the wall clock
+    f.repaint();
+    const data=ctx.getImageData(0,0,W,H).data,bits=new Uint8Array(W*H);
+    for(let i=0;i<W*H;i++)if(data[i*4+3]>=12){bits[i]=1;union[i]=1;}
+    if(sight==='battle'&&bloom==='rest')rest=bits;
+  }
+  f.restAim();
+  window.__retMasks={W,H,cw:canvas.clientWidth||innerWidth,ch:canvas.clientHeight||innerHeight,union,rest};
+  let n=0;for(let i=0;i<W*H;i++)n+=union[i];
+  return n;
+}
+// Each notice's reticle ink (union) and resting-crosshair ink, and the same for main's boxes in this state.
+function noticeInk(main){
+  const m=window.__retMasks;
+  if(!m||m.cw!==innerWidth||m.ch!==innerHeight)return null;
+  const sx=m.W/m.cw,sy=m.H/m.ch;
+  const count=(bits,r)=>{if(!r)return null;let n=0;
+    for(let y=Math.max(0,Math.floor(r[1]*sy));y<Math.min(m.H,Math.ceil((r[1]+r[3])*sy));y++)for(let x=Math.max(0,Math.floor(r[0]*sx));x<Math.min(m.W,Math.ceil((r[0]+r[2])*sx));x++)n+=bits[y*m.W+x];
+    return Math.round(n/sx/sy);};
+  const here=noticeBoxes(),out={};
+  for(const k of ['d','a','c'])if(here[k]&&main?.[k])out[k]={ink:count(m.union,here[k]),core:count(m.rest,here[k]),mainInk:count(m.union,main[k]),mainCore:count(m.rest,main[k]),box:here[k],main:main[k]};
+  return out;
+}
 // The centre notices and the countdown against the reticle (round 4; centreNotices.ts): the widest keep-out each box
 // clears, 3 everything the reticle draws at any bloom, 2 the battle sight at full bloom, 1 the crosshair core, 0 none.
 // Each touch screen of the receipt must reach its floor (centreNotices.selftest.mjs pins the same table; main reaches 0
 // on every phone); a size outside the table (a rotation mid-check) is recorded only. 320 x 568 reaches 1 (round 5): with
 // the feeds' rows kept, the whole alert shown and the detection's second line kept, its only room left between the
 // minimap, the ammo rail and the ring is too short for both notices.
-const CENTRE_FLOOR={'360x640':[3,3],'390x844':[3,3],'844x390':[3,3],'667x375':[3,3],'320x568':[1,3],'568x256':[0,0],'568x320':[1,2],
+// Round 6: the dock shows at least main's whole tiles before the notices are weighed, and on three screens the notices'
+// clear place was the dock's only room for that (centreNotices.selftest.mjs): 360 x 640 1, 320 x 568 0 and 1, 568 x 320
+// 1 and 0; there noticeInk() holds them to main's ink.
+const CENTRE_FLOOR={'360x640':[1,3],'390x844':[3,3],'844x390':[3,3],'667x375':[3,3],'320x568':[0,1],'568x256':[0,0],'568x320':[1,0],
   '844x300':[3,3],'932x430':[3,3],'1024x768':[3,3],'768x1024':[3,3]};
 function centreClearance(){
   const tiers=window.__HUD_LAYOUT.reticleTiers(innerWidth,innerHeight);
@@ -104,13 +165,14 @@ function measure(state){
     ['.cot-aim-warning:not([hidden])','.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
      '.cot-si-toasthost','.cot-si-log.open','.cot-si-cardhost:not(:empty)',
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
-     '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',
+     '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round','.cot-touch.on .round>.lb',
      '.cot-touch.on .mobile-chrome'];
   const rects=collectVisibleRects(selectors);
   const failures=[],laneOverlaps=[];
   for(let i=0;i<rects.length;i++){
     const a=rects[i];
-    if(a.x<-.5||a.y<-.5||a.right>innerWidth+.5||a.bottom>innerHeight+.5)failures.push(`offscreen: ${a.name}`);
+    // A caption may hang past the bottom edge where main hangs it (FIRE's on 568 x 256): only what it overlaps counts.
+    if(a.name!=='lb'&&(a.x<-.5||a.y<-.5||a.right>innerWidth+.5||a.bottom>innerHeight+.5))failures.push(`offscreen: ${a.name}`);
     for(const b of rects.slice(i+1)){
       if(!(Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1))continue;
       // A dock standing in the notices' lane (touchActionDock.ts inLane: no room at all cleared it, 568 x 256): a notice
@@ -152,14 +214,20 @@ function dockIssues(){
   if(/auto|scroll/.test(`${style.overflowX} ${style.overflowY}`))failures.push('touch action dock can scroll');
   const cx=innerWidth/2,cy=innerHeight/2,ring=Math.max(32,Math.ceil(.15*Math.min(innerWidth,innerHeight)));
   const distance=r=>Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom));
-  const footprint=window.__HUD_LAYOUT.touchReticleFootprint(innerWidth,innerHeight);
+  // The dock's keep-out: the reticle's footprint less the scope's arm tips (yielded live), and the warning's place.
+  const footprint=window.__HUD_LAYOUT.touchAimKeepOut(innerWidth,innerHeight,document.querySelector('.cot-minimap')?.getBoundingClientRect().bottom??114);
   const keepGap=(r,k)=>'r' in k?Math.hypot(Math.max(r.left-k.x,0,k.x-r.right),Math.max(r.top-k.y,0,k.y-r.bottom))-k.r
     :Math.hypot(Math.max(r.left-k.x-k.w,0,k.x-r.right),Math.max(r.top-k.y-k.h,0,k.y-r.bottom));
   const crosses=(a,b)=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>.5&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.5;
   const tiles=[...row.children].filter(tile=>tile.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(tile=>tile.getBoundingClientRect());
   if(!tiles.length)failures.push('touch action dock shows no tile');
-  const controls=[...document.querySelectorAll('.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,.cot-con,.cot-shell')]
+  const controls=[...document.querySelectorAll('.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .round>.lb,.cot-touch.on .mobile-chrome,.cot-con,.cot-shell')]
     .filter(node=>node.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(node=>node.getBoundingClientRect());
+  // The swipe-to-aim hint (round 6): the dock never covers it; an open More panel may, for that moment.
+  const hintNode=document.querySelector('.cot-touch-aim.on .aimhint');
+  const hint=hintNode?.checkVisibility({checkVisibilityCSS:true})?hintNode.getBoundingClientRect():null;
+  const docked=[...row.children].filter(tile=>tile.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&!tile.hasAttribute('data-dock-overflow')).map(tile=>tile.getBoundingClientRect());
+  if(hint&&hint.width>=1&&docked.some(tile=>crosses(tile,hint)))failures.push('touch action tile covers the swipe-to-aim hint');
   for(const [i,tile] of tiles.entries()){
     if(tile.width<44-.01||tile.height<44-.01)failures.push(`touch action tile below 44px (${tile.width}x${tile.height})`);
     if(tile.left<-.5||tile.top<-.5||tile.right>innerWidth+.5||tile.bottom>innerHeight+.5)failures.push('touch action tile offscreen');
@@ -210,6 +278,8 @@ try {
       } finally { root.getClientRects=original; }
     });
     if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD or FIRE presses caused ${idleLayoutReads} layout measurements`);
+    // The reticle's ink, once per screen, for noticeInk() (round 6).
+    if(touch&&!recordMain&&(await page.evaluate(reticleMasks))<200)errors.push(`${name}: the reticle drew too little ink to weigh the notices against`);
     // `state` names the report (with -6-controls / -7-controls when the kit grew); `base` is the fixture state.
     async function check(state,base=state){
       const result=await page.evaluate(measure,base);
@@ -221,6 +291,24 @@ try {
         for(const [what,level] of Object.entries(result.centre)){
           const floor=what==='countdown'?countdownFloor:noticeFloor;
           if(level!==null&&level<floor)result.failures.push(`the ${what} reaches the reticle (clears keep-out ${level}, needs ${floor})`);
+        }
+        // Never fewer controls whole on screen than main's strip showed (round 6).
+        const whole=await page.evaluate(wholeTiles),mainWhole=MAIN_FEEDS?.tiles?.[name];
+        if(whole&&mainWhole!=null&&base!=='spectator'&&viewport.width===width&&viewport.height===height){
+          result.tiles=whole;
+          if(whole.shown<Math.min(whole.laid,mainWhole))result.failures.push(`${whole.shown} of ${whole.laid} controls shown whole (main's strip ${mainWhole})`);
+          tileTable.push({name,state,...whole,main:mainWhole});
+        }
+        // No notice or countdown covers more of the reticle's ink, or of its resting crosshair, than main's (round 6).
+        const ink=MAIN_FEEDS?await page.evaluate(noticeInk,MAIN_FEEDS.cases[name]?.[base]??null):null;
+        if(ink){
+          result.ink=ink;
+          for(const [k,v] of Object.entries(ink)){
+            const what={d:'detection',a:'alert',c:'countdown'}[k];
+            if(v.ink>v.mainInk)result.failures.push(`the ${what} covers ${v.ink} px of reticle ink (main ${v.mainInk}; ${v.box} vs ${v.main})`);
+            if(v.core>v.mainCore)result.failures.push(`the ${what} covers ${v.core} px of the resting crosshair (main ${v.mainCore})`);
+            inkTable.push({name,state,k,ink:v.ink,main:v.mainInk});
+          }
         }
       }
       const score=result.rects.find(r=>r.name==='cot-top');
@@ -394,14 +482,15 @@ try {
           await enter(state);
           await openDrawer(state);
           const {k,r,t,sub}=await page.evaluate(feedNumbers);
-          record[state]={k,r,t,sub};
+          record[state]={k,r,t,sub,...await page.evaluate(noticeBoxes)};
+          if(state==='idle')mainTiles[name]=(await page.evaluate(wholeTiles))?.shown??null;
           if(state==='notifications')for(const variant of ['damaged','repaired','empty']){
             await page.evaluate(variant=>{const {bus,frame}=window.__HUD_LAYOUT;
               if(variant==='empty')bus.emit('ammo:empty',{id:frame.player.id});
               else bus.emit('module:state',{id:frame.player.id,module:'engine',state:variant==='damaged'?'red':'yellow',repaired:variant==='repaired'});},variant);
             await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
             const n=await page.evaluate(feedNumbers);
-            record[`notifications-${variant}`]={k:n.k,r:n.r,t:n.t,sub:n.sub};
+            record[`notifications-${variant}`]={k:n.k,r:n.r,t:n.t,sub:n.sub,...await page.evaluate(noticeBoxes)};
           }
         }
       }
@@ -531,7 +620,10 @@ try {
               if(!inside(x,y)){outside.push(`${r.what} (${x.toFixed(1)},${y.toFixed(1)})`);break;}
             }
           }
-          const tiles=[...document.querySelectorAll('.cot-vehicle-controls>button')].filter(t=>t.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})).map(t=>t.getBoundingClientRect());
+          // A tile may lie on the scope's arm tips (touchAimKeepOut): ink under a tile is allowed only on a dimmed one
+          // (touchDockYield.ts: the canvas draws over the dock, liveInkCheck() checks the stacking).
+          const tiles=[...document.querySelectorAll('.cot-vehicle-controls>button')].filter(t=>t.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&!t.hasAttribute('data-ret-yield')).map(t=>t.getBoundingClientRect());
+          const yielded=[...document.querySelectorAll('.cot-vehicle-controls>button[data-ret-yield]')].filter(t=>t.checkVisibility({checkVisibilityCSS:true})).length;
           const covered=[];
           const ringHits=(t,r)=>{
             const near=Math.hypot(Math.max(t.left-r.cx,0,r.cx-t.right),Math.max(t.top-r.cy,0,r.cy-t.bottom));
@@ -544,7 +636,7 @@ try {
           const text=ink.filter(r=>r.what.startsWith('text ')).map(r=>r.what.slice(5));
           const reach=Math.max(0,...ink.map(r=>Math.max(r.y1-innerHeight/2,Math.abs(r.x1-innerWidth/2),Math.abs(r.x0-innerWidth/2))));
           const row=document.querySelector('.cot-vehicle-controls').getBoundingClientRect();
-          return {inks:ink.length,text,outside:[...new Set(outside)].slice(0,6),covered:[...new Set(covered)].slice(0,6),reach,
+          return {inks:ink.length,text,outside:[...new Set(outside)].slice(0,6),covered:[...new Set(covered)].slice(0,6),reach,yielded,
             more:!!document.querySelector('.cot-vehicle-controls>.cot-dock-more:not([hidden])'),dock:[row.left,row.top,row.width,row.height].map(v=>Math.round(v)).join(',')};
         });
         widest=Math.max(widest,result.reach);
@@ -555,7 +647,8 @@ try {
         if(result.inks<5)errors.push(`${label}: the reticle drew nothing to check (${result.inks})`);
         if(sight==='scope'&&!result.text.some(t=>/^×25\.0$/.test(t)))errors.push(`${label}: the zoom plate was not drawn (${result.text})`);
         if(result.outside.length)errors.push(`${label}: reticle ink outside touchReticleFootprint: ${result.outside.join('; ')}`);
-        if(result.covered.length)errors.push(`${label}: a dock tile covers reticle ink: ${result.covered.join('; ')}`);
+        if(result.covered.length)errors.push(`${label}: a dock tile that is not dimmed covers reticle ink: ${result.covered.join('; ')}`);
+        if(result.yielded)reticleYields.push(`${name}/${count}/${sight}-${bloom}-${readout}: ${result.yielded}`);
         if(result.more&&sight==='scope'&&bloom==='full'){
           await press(page.locator('.cot-vehicle-controls > .cot-dock-more'));
           const open=await page.evaluate(()=>[...document.querySelectorAll('.cot-vehicle-controls>button[data-dock-overflow]')]
@@ -832,8 +925,10 @@ try {
 } finally {
   await browser.close();
   if(recordMain)await writeFile(resolve(recordMain),`${JSON.stringify({source:`${arg('main-label',`main at ${arg('url','')}`)} (five controls), measured by tools/battle-hud-layout.browser.mjs --record-main on ${new Date().toISOString().slice(0,10)}`,
-    fields:{k:'kill rows shown',r:'kill rows clear of the full-bloom ring',t:'incoming-damage toasts shown',sub:'detection shows its second line (null: no detection)'},cases:mainRecord},null,1)}\n`);
-  else await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues,liveInk,feedTable},null,2));
+    fields:{k:'kill rows shown',r:'kill rows clear of the full-bloom ring',t:'incoming-damage toasts shown',sub:'detection shows its second line (null: no detection)',
+      d:'detection box [x, y, w, h] (null: none shown)',a:'alert box',c:'countdown box',tiles:'(per screen) vehicle-control tiles the strip showed whole in idle'},
+    cases:mainRecord,tiles:mainTiles},null,1)}\n`);
+  else await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues,liveInk,feedTable,tileTable,inkTable},null,2));
 }
 if(recordMain){console.log(`main's feeds recorded for ${Object.keys(mainRecord).length} touch screens: ${resolve(recordMain)}`);process.exit(0);}
 // Per touch screen: the fewest kill rows, ring-clear kill rows and toasts against main's, over every state and kit.
@@ -843,7 +938,14 @@ for(const row of feedTable){
   m.k=Math.min(m.k,row.k-row.main.k);m.r=Math.min(m.r,row.r-row.main.r);m.t=Math.min(m.t,row.t-row.main.t);m.states++;
 }
 console.log(`feeds against main (least margin over ${feedTable.length} states; kill rows / ring-clear rows / toasts): ${Object.entries(margins).map(([n,m])=>`${n} ${m.k}/${m.r}/${m.t}`).join(', ')}`);
+const tileMargins={};
+for(const row of tileTable){const m=tileMargins[row.name]??={least:Infinity,main:row.main};m.least=Math.min(m.least,row.shown);}
+console.log(`controls shown whole against main's strip (fewest over ${tileTable.length} states): ${Object.entries(tileMargins).map(([n,m])=>`${n} ${m.least} (main ${m.main})`).join(', ')}`);
+const inkMargins={};
+for(const row of inkTable){const m=inkMargins[row.name]??={worst:-Infinity,n:0};m.worst=Math.max(m.worst,row.ink-row.main);m.n++;}
+console.log(`notice ink against main's (largest excess over ${inkTable.length} notices, px; <= 0 holds): ${Object.entries(inkMargins).map(([n,m])=>`${n} ${m.worst}`).join(', ')}`);
 const failed=reports.filter(r=>r.failures.length);
 console.log(`reticle reach per case: ${reticleReach.join(', ')}\nswipes: ${swipes.join(', ')}\ndrone cue: ${droneCues.join(', ')}`);
+console.log(`dimmed tiles under the reticle's own stages (the scope's arm tips): ${reticleYields.join(', ')||'none'}`);
 console.log(`${reports.length} state/viewport checks; ${failed.length} failed; ${errors.length} browser errors. ${out}`);
 if(failed.length||errors.length){console.log(errors);process.exitCode=1;}

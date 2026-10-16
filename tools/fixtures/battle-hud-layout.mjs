@@ -8,7 +8,7 @@ import '../../src/ui/responsiveSurfaces.css';
 // The HUD's own lazy sheet (battleHudAccess.ts loads it with hud.ts): the flight console and the drone tile's phases.
 import '../../src/ui/aerialHud.css';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { touchReticleFootprint } from '../../src/ui/touchActionDock.ts';
+import { touchAimKeepOut, touchReticleFootprint } from '../../src/ui/touchActionDock.ts';
 import { reticleTiers } from '../../src/ui/centreNotices.ts';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
@@ -198,7 +198,7 @@ function restAim() { for(const key of Object.keys(frame.aim))if(!(key in resting
 // The drone tile while a recalled drone flies home (droneControlState.ts reads returnS; item/drone-recall).
 function droneReturning() { player.aerial = {kind:'drone', active:false, cooldownS:14, recallS:0, returnS:5}; hud.update(frame); }
 window.__HUD_LAYOUT = {multiplayer,state, roster, controls, hud, bus, touch, settings, hit, frame, tanks, input,
-  reticle, repaint, restAim, droneReturning, touchReticleFootprint, reticleTiers, aimAt, hitFrom, clearHits};
+  reticle, repaint, restAim, droneReturning, touchReticleFootprint, touchAimKeepOut, reticleTiers, aimAt, hitFrom, clearHits};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

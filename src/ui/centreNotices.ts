@@ -42,7 +42,7 @@ export interface NoticeLane {
   readonly compact: boolean;
   /** Distance down from the top lane plus weighted sideways shift (lower is better). */
   readonly cost: number;
-  /** At clearance 0, how much of the reticle the notices cover (4 px cells, weighted inward); else 0. */
+  /** Below clearance 3, how much of the reticle the notices cover (4 px cells, weighted inward); else 0. */
   readonly cover: number;
 }
 
@@ -91,6 +91,11 @@ const SHIFT_COST = 1.5;
 const FLANK_COST = 24;
 /** Split notices (each at its own place) cost both places and this much more: a stack or a flank wins where one fits. */
 const SPLIT_COST = 48;
+/** Below clearance 3, each 4 px cell of the reticle a notice covers (weighted inward, reticleOverlap) costs as much as
+ *  moving it this far. */
+const COVER_COST = 6;
+type Weigh = (r: TouchDockRect) => number;
+const NO_WEIGHT: Weigh = () => 0;
 /** The dock's distance from the thumbs, as planTouchDock weighs it: two tile rows a step. */
 const DOCK_REACH_STEP_PX = 96;
 /** The docks planTouchDock weighs when it places the dock first: the search's own pick (any rows), then the nearest of one,
@@ -257,14 +262,14 @@ function leastCoveringNotices(width: number, height: number, top: number, obstac
 /** One box's cheapest place (highest, then most central) clear of the obstacles and the keep-out, or null; `limit`: give
  *  up on places costing at least this much. */
 function singlePlace(width: number, height: number, top: number, size: NoticeSize, obstacles: readonly TouchDockRect[],
-  keep: readonly TouchDockKeepOut[], limit = Infinity): { x: number; y: number; cost: number } | null {
+  keep: readonly TouchDockKeepOut[], limit = Infinity, weigh: Weigh = NO_WEIGHT): { x: number; y: number; cost: number } | null {
   const cx = width / 2;
   let best: { x: number; y: number; cost: number } | null = null;
   for (let y = Math.ceil(top); y + size.h <= height - EDGE_PX; y++) {
     if (y - top >= Math.min(limit, best ? best.cost : Infinity)) break;
     const x = freeX(width, y, size.w, size.h, cx - size.w / 2, obstacles, keep);
     if (x === null) continue;
-    const cost = y - top + SHIFT_COST * Math.abs(x + size.w / 2 - cx);
+    const cost = y - top + SHIFT_COST * Math.abs(x + size.w / 2 - cx) + weigh({ x, y, w: size.w, h: size.h });
     if (!best || cost < best.cost) best = { x, y, cost };
   }
   return best;
@@ -273,15 +278,15 @@ function singlePlace(width: number, height: number, top: number, size: NoticeSiz
 /** Split: each notice at its own cheapest place, the second off the first (both orders tried), where neither a stack nor
  *  a flank fits between the feeds' rows, the dock and the reticle (a portrait phone's pockets). */
 function splitNotices(width: number, height: number, top: number, obstacles: readonly TouchDockRect[], keep: readonly TouchDockKeepOut[],
-  detection: NoticeSize, alert: NoticeSize, limit = Infinity): Candidate | null {
+  detection: NoticeSize, alert: NoticeSize, limit = Infinity, weigh: Weigh = NO_WEIGHT): Candidate | null {
   let best: Candidate | null = null;
   for (const detectionFirst of [true, false]) {
     const [a, b] = detectionFirst ? [detection, alert] : [alert, detection];
-    const first = singlePlace(width, height, top, a, obstacles, keep, Math.min(limit, best?.cost ?? Infinity) - SPLIT_COST);
+    const first = singlePlace(width, height, top, a, obstacles, keep, Math.min(limit, best?.cost ?? Infinity) - SPLIT_COST, weigh);
     if (!first) continue;
     const firstBox = { x: first.x, y: first.y, w: a.w, h: a.h };
     const second = singlePlace(width, height, top, b, [...obstacles, firstBox], keep,
-      Math.min(limit, best?.cost ?? Infinity) - SPLIT_COST - first.cost);
+      Math.min(limit, best?.cost ?? Infinity) - SPLIT_COST - first.cost, weigh);
     if (!second) continue;
     const secondBox = { x: second.x, y: second.y, w: b.w, h: b.h };
     const cost = first.cost + second.cost + SPLIT_COST;
@@ -291,7 +296,7 @@ function splitNotices(width: number, height: number, top: number, obstacles: rea
 }
 
 function searchNotices(width: number, height: number, top: number, obstacles: readonly TouchDockRect[],
-  keep: readonly TouchDockKeepOut[], detection: NoticeSize, alert: NoticeSize): Candidate | null {
+  keep: readonly TouchDockKeepOut[], detection: NoticeSize, alert: NoticeSize, weigh: Weigh = NO_WEIGHT): Candidate | null {
   const cx = width / 2;
   let best: Candidate | null = null;
   const stackW = Math.max(detection.w, alert.w), stackH = detection.h + NOTICE_GAP_PX + alert.h;
@@ -304,12 +309,10 @@ function searchNotices(width: number, height: number, top: number, obstacles: re
       const x = freeX(width, y, stackW, stackH, cx - stackW / 2, obstacles, keep);
       if (x !== null) {
         const mid = x + stackW / 2;
-        const cost = y - top + SHIFT_COST * Math.abs(mid - cx);
-        if (!best || cost < best.cost) {
-          best = { cost, arrangement: 'stack', boxes: [
-            { x: mid - detection.w / 2, y, w: detection.w, h: detection.h },
-            { x: mid - alert.w / 2, y: y + detection.h + NOTICE_GAP_PX, w: alert.w, h: alert.h }] };
-        }
+        const boxes: Candidate['boxes'] = [{ x: mid - detection.w / 2, y, w: detection.w, h: detection.h },
+          { x: mid - alert.w / 2, y: y + detection.h + NOTICE_GAP_PX, w: alert.w, h: alert.h }];
+        const cost = y - top + SHIFT_COST * Math.abs(mid - cx) + weigh(boxes[0]) + weigh(boxes[1]);
+        if (!best || cost < best.cost) best = { cost, arrangement: 'stack', boxes };
       }
     }
     if (y + lineH > bottom || (best && y - top + FLANK_COST >= best.cost)) continue;
@@ -319,12 +322,11 @@ function searchNotices(width: number, height: number, top: number, obstacles: re
     const ax = freeX(width, y, alert.w, alert.h, Math.max(cx + NOTICE_GAP_PX / 2, dx + detection.w + NOTICE_GAP_PX), obstacles, keep);
     if (ax === null || dx + detection.w + NOTICE_GAP_PX > ax) continue;
     const shift = (Math.abs(dx + detection.w - (cx - NOTICE_GAP_PX / 2)) + Math.abs(ax - (cx + NOTICE_GAP_PX / 2))) / 2;
-    const cost = y - top + SHIFT_COST * shift + FLANK_COST;
-    if (!best || cost < best.cost) {
-      best = { cost, arrangement: 'flank', boxes: [{ x: dx, y, w: detection.w, h: detection.h }, { x: ax, y, w: alert.w, h: alert.h }] };
-    }
+    const boxes: Candidate['boxes'] = [{ x: dx, y, w: detection.w, h: detection.h }, { x: ax, y, w: alert.w, h: alert.h }];
+    const cost = y - top + SHIFT_COST * shift + FLANK_COST + weigh(boxes[0]) + weigh(boxes[1]);
+    if (!best || cost < best.cost) best = { cost, arrangement: 'flank', boxes };
   }
-  const split = splitNotices(width, height, top, obstacles, keep, detection, alert, best?.cost ?? Infinity);
+  const split = splitNotices(width, height, top, obstacles, keep, detection, alert, best?.cost ?? Infinity, weigh);
   return split && (!best || split.cost < best.cost) ? split : best;
 }
 
@@ -346,13 +348,30 @@ export function placeNoticeLane({ width, height, top, obstacles, detection, aler
   const options = (compact.length ? compact : [COMPACT_NOTICES]).map((o) => ({
     detection: { w: Math.min(detection.w, o.detection.w), h: o.detection.h }, alert: { w: Math.min(alert.w, o.alert.w), h: o.alert.h } }));
   const sizes = [{ detection, alert, compact: false }, ...options.map((o) => ({ ...o, compact: true }))];
-  for (let level = 3; level >= 1; level--) {
+  for (const size of sizes) {
+    const found = searchNotices(width, height, top, obstacles, tiers[2], size.detection, size.alert);
+    if (found) {
+      return { arrangement: found.arrangement, detection: found.boxes[0], alert: found.boxes[1],
+        clearance: 3, compact: size.compact, cost: found.cost, cover: 0 };
+    }
+  }
+  // Below clearance 3 a place costs as much more as it covers of the rest of the reticle (verifier 2026-10-16, round 6:
+  // on 390 x 844, in a kill burst with the network chip, the cheapest place clear of the battle sight put the detection
+  // on the scope's zoom plate, more of the reticle's ink than main's detection covered), and every size is weighed.
+  const bound = shapesBox(tiers[2]);
+  const weigh: Weigh = (r) => COVER_COST * reticleOverlap(tiers, bound, r);
+  for (let level = 2; level >= 1; level--) {
+    let best: { found: Candidate; compact: boolean } | null = null;
     for (const size of sizes) {
-      const found = searchNotices(width, height, top, obstacles, tiers[level - 1], size.detection, size.alert);
-      if (found) {
-        return { arrangement: found.arrangement, detection: found.boxes[0], alert: found.boxes[1],
-          clearance: level as ReticleClearance, compact: size.compact, cost: found.cost, cover: 0 };
-      }
+      const found = searchNotices(width, height, top, obstacles, tiers[level - 1], size.detection, size.alert, weigh);
+      if (found && (!best || found.cost < best.found.cost)) best = { found, compact: size.compact };
+    }
+    if (best) {
+      const { found, compact: isCompact } = best;
+      // The search keeps a 2 px hairline off the keep-out it was given; the boxes may still clear the next one up.
+      return { arrangement: found.arrangement, detection: found.boxes[0], alert: found.boxes[1],
+        clearance: Math.max(level, reticleClearance(width, height, found.boxes)) as ReticleClearance, compact: isCompact, cost: found.cost,
+        cover: reticleOverlap(tiers, bound, found.boxes[0]) + reticleOverlap(tiers, bound, found.boxes[1]) };
     }
   }
   const smallest = options[options.length - 1];
@@ -479,20 +498,29 @@ export function planTouchDock(input: TouchCentreInput): { readonly order: TouchC
     ? placeTouchActionDock({ width, height, count, obstacles: controls, soft, lanes: [...lanes, ...reserved], feeds, keepOut, anchor, insets, rows })
     : null;
   const first = placeTouchCentre(input, null, reference).notices;
-  const reservedDock = dockAt(first ? [first.detection, first.alert] : []);
-  const plans: TouchCentrePlan[] = [{ order: 'notices', dock: reservedDock, ...placeTouchCentre(input, reservedDock, reference) }];
+  const docks: { order: TouchCentrePlan['order']; dock: TouchDockPlacement | null }[] = [
+    { order: 'notices', dock: dockAt(first ? [first.detection, first.alert] : []) }];
   const same = (a: TouchDockPlacement | null, b: TouchDockPlacement | null) => !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
   for (const rows of DOCK_ROW_OPTIONS) {
     const dock = dockAt([], rows);
-    if (rows && (!dock || plans.some((plan) => same(plan.dock, dock)))) continue;
-    plans.push({ order: 'dock', dock, ...placeTouchCentre(input, dock, reference) });
+    if (rows && (!dock || docks.some((d) => same(d.dock, dock)))) continue;
+    docks.push({ order: 'dock', dock });
   }
+  // The notices are placed only round the docks that show the most controls (the score's first key): the search for a
+  // notice place that clears little of the reticle is the plan's costly part.
+  const most = Math.max(...docks.map((d) => d.dock?.shown ?? 0));
+  const plans: TouchCentrePlan[] = docks.filter((d) => (d.dock?.shown ?? 0) === most)
+    .map((d) => ({ ...d, ...placeTouchCentre(input, d.dock, reference) }));
   // The dock's own cost (its distance from the thumbs, extra rows and 44 px tiles), counted in steps of two tile rows
   // (DOCK_REACH_STEP_PX) before its tile size and the notices' size: a dock sent across the screen loses to one by the
   // thumbs.
   const reach = (plan: TouchCentrePlan) => plan.dock ? plan.dock.cost : 1e9;
+  // A dock standing in the notices' lane lets a notice draw over its tiles for a few seconds: taken only where every dock
+  // clear of the lanes would leave the notices on the crosshair (568 x 256), never where one leaves them off it (568 x
+  // 320, verifier 2026-10-16, round 6: the alert drew over a tile there).
+  const lane = (plan: TouchCentrePlan) => plan.dock?.inLane ? 1 : (plan.notices?.clearance ?? -1) >= 1 ? 2 : 0;
   const score = (plan: TouchCentrePlan): number[] => [
-    plan.dock?.shown ?? 0,
+    plan.dock?.shown ?? 0, lane(plan),
     plan.notices?.clearance ?? -1, -(plan.notices?.cover ?? 0), plan.countdown?.clearance ?? -1, -(plan.countdown?.cover ?? 0),
     -Math.round(reach(plan) / DOCK_REACH_STEP_PX), plan.dock?.tile ?? 0, plan.notices?.compact === false ? 1 : 0,
     -(plan.notices?.cost ?? 1e9) - reach(plan),

@@ -145,13 +145,16 @@ components. Run `battleHudLayout.selftest.mjs` and the rendered matrix in
 Inspect the live rendered surface, locate event/callback ownership, change the
 smallest screen module, then run its selftest and browser verification.
 On touch the vehicle-controls row is the action dock: `touchActionDock.ts` searches
-its spot from the measured touch controls, instruments and reserved lanes (tiles of
-48 px, never under 44, bottom row first, never scrolled, off everything the reticle
-draws in either sight at any bloom (`touchReticleFootprint`, pinned to hud.ts) and the
-gun-limit warning's place; More beyond what fits; a tile acts on a tap's lift and a
-swipe from it aims). `centreNotices.ts` plans it together with the centre notices and
-the pre-battle countdown (`planTouchCentre`: they clear as much of the reticle as the
-screen allows, never pushed by the feeds). The feeds keep main's lanes (round 5,
+its spot from the measured touch controls (each round button with its caption),
+instruments (the swipe-to-aim hint too) and reserved lanes (tiles of 48 px, never under
+44, bottom row first, never scrolled, off everything the reticle draws in either sight
+at any bloom (`touchReticleFootprint`, pinned to hud.ts) but the scope's arm tips, which
+the live yield dims tiles for, and the gun-limit warning's place; More beyond what fits;
+a tile acts on a tap's lift and a swipe from it aims). `centreNotices.ts` plans it
+together with the centre notices and the pre-battle countdown (`planTouchCentre`: the
+dock shows at least as many controls whole as main's strip did, then the notices clear
+as much of the reticle as the screen allows, never pushed by the feeds; the receipt holds
+their reticle ink to main's). The feeds keep main's lanes (round 5,
 `touchStripBox`/`battleFeedStack` in battleHudLayout.ts): the dock keeps off them, the
 notices and the countdown off the rows they show, and a box ends a feed only where it
 truly lies in its column below its start (`touchFeedFloor`); the browser receipt

@@ -49,12 +49,13 @@ for (const [w, h] of [[360, 640], [390, 844], [844, 390], [568, 256], [1024, 768
 // Round 6: the dock shows at least as many controls as main's strip showed whole before the notices are weighed
 // (planTouchDock), and on four screens the notices' clear place was the dock's only room for that: 360 x 640 1 (its
 // column under the minimap; was 3), 320 x 568 0 for the notices and 1 for the countdown (main's strip's place under the
-// settings, three controls and More where main showed two; was 1 and 3), 568 x 320 3 and 0 (two rows of tiles beside the
-// joystick, three and More where main showed one; the countdown was 2). The browser receipt checks these notices never
+// settings, three controls and More where main showed two; was 1 and 3), 568 x 320 1 and 0 (two rows of tiles beside the
+// joystick, three and More where main showed one, and the notices kept off them; was 1 and 2). Below 3 a notice's
+// place weighs how much of the reticle it covers (placeNoticeLane), and the browser receipt checks these notices never
 // cover more of the reticle's ink than main's do in the same state.
 const CLEARANCE = {
   'small-phone': [1, 3], phone: [3, 3], landscape: [3, 3], 'small-landscape': [3, 3], 'narrow-phone': [0, 1],
-  'short-landscape': [0, 0], 'tiny-landscape': [3, 0], 'browser-landscape': [3, 3], 'wide-landscape': [3, 3], tablet: [3, 3],
+  'short-landscape': [0, 0], 'tiny-landscape': [1, 0], 'browser-landscape': [3, 3], 'wide-landscape': [3, 3], tablet: [3, 3],
   'tablet-portrait': [3, 3],
 };
 // The compact notices as the page measures them (battleHudLayout.ts naturalCentreSizes), widest first: on a portrait
@@ -200,6 +201,35 @@ for (const viewport of VIEWPORTS) {
   }
   assert.equal(planTouchDock(centreInputs(phone, false, 4)).dock.more, false, '390 x 844: four controls (a mode without the jump) all on the dock');
 }
+// Round 6, on 390 x 844 in a kill burst with the multiplayer network chip beside the minimap (the verifier's
+// feed-burst+spotted+ammo+mp+roster): the feeds fill both columns down to y 392, the chip takes the band under the score,
+// and no place clears everything the reticle draws. The cheapest place clear of the battle sight put the detection on the
+// scope's zoom plate (its box covered 1,741 px of the reticle's ink, main's 1,251); a place below clearance 3 now costs
+// what it covers, so both notices sit under the zoom plate and each covers under half the footprint main's does.
+{
+  const phone = VIEWPORTS.find((v) => v.cases.includes('phone'));
+  const input = centreInputs(phone, true, 5);
+  const { dock } = planTouchDock(input);
+  const rows = [[0, 211], [0, 240], [0, 269], [0, 303], [0, 332], [0, 361], ...[163, 192, 221, 250, 279, 308, 337, 366].map((y) => [219, y])]
+    .map(([x, y]) => ({ x, y, w: 171, h: 26 }));
+  const chip = { x: 116, y: 112, w: 44, h: 44 };
+  const { notices } = placeTouchCentre({ ...input, instruments: [...input.instruments, chip] }, dock, rows);
+  const footprint = touchReticleFootprint(phone.width, phone.height);
+  const inside = (x, y) => footprint.some((k) => 'r' in k ? Math.hypot(x - k.x, y - k.y) <= k.r : x >= k.x && x <= k.x + k.w && y >= k.y && y <= k.y + k.h);
+  const covered = (r) => { let n = 0; for (let y = r.y + 1; y < r.y + r.h; y += 2) for (let x = r.x + 1; x < r.x + r.w; x += 2) if (inside(x, y)) n++; return n; };
+  const mainDetection = { x: 88, y: 468, w: 214, h: 42 }, mainAlert = { x: 98, y: 518, w: 195, h: 30 };
+  assert.ok(notices.clearance >= 2, '390 x 844 burst with the chip: the notices clear the battle sight at full bloom');
+  assert.ok(covered(notices.detection) < covered(mainDetection) / 2 && covered(notices.alert) < covered(mainAlert) / 2,
+    `390 x 844 burst with the chip: each notice covers less of the reticle than main's (${covered(notices.detection)} vs ${covered(mainDetection)}, ${covered(notices.alert)} vs ${covered(mainAlert)})`);
+  for (const r of [notices.detection, notices.alert]) for (const row of [...rows, chip, ...dock.tiles]) assert.ok(!overlaps(r, row), '390 x 844 burst: off the rows, the chip and the dock');
+}
+// Only 568 x 256 stands its dock in the notices' lane (a notice there draws over a tile for its few seconds): elsewhere a
+// dock clear of the lanes that leaves the notices off the crosshair wins over one in the lane (568 x 320, round 6).
+for (const viewport of VIEWPORTS) for (const objective of [true, false]) for (let count = 1; count <= 7; count++) {
+  const { dock } = planTouchDock(centreInputs(viewport, objective, count));
+  assert.equal(dock.inLane, viewport.cases.includes('short-landscape') && dock.inLane, `${viewport.cases[0]} x${count}: only 568 x 256 docks in a lane`);
+}
+
 // Round 6's first counterexample: on 360 x 640 (31 of 53 states) and 390 x 844 (a kill burst with the network chip) the
 // detection landed on the AUTO AIM and SCOPE captions, which hang 17 px under their buttons. No notice, countdown or tile
 // ever lies on a caption on any viewport (centreInputs makes each caption part of its control, as the layout does).

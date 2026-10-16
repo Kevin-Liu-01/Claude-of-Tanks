@@ -4,7 +4,11 @@
   "k": "kill rows shown",
   "r": "kill rows clear of the full-bloom ring",
   "t": "incoming-damage toasts shown",
-  "sub": "detection shows its second line (null: no detection)"
+  "sub": "detection shows its second line (null: no detection)",
+  "d": "detection box [x, y, w, h] (null: none shown)",
+  "a": "alert box",
+  "c": "countdown box",
+  "tiles": "(per screen) vehicle-control tiles the strip showed whole in idle"
  },
  "cases": {
   "tablet": {
@@ -12,163 +16,359 @@
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 15,
     "r": 14,
     "t": 6,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     527,
+     214,
+     42
+    ],
+    "a": [
+     386.4,
+     577,
+     251.2,
+     38
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     527,
+     214,
+     42
+    ],
+    "a": [
+     414.7,
+     577,
+     194.6,
+     38
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     527,
+     214,
+     42
+    ],
+    "a": [
+     420.9,
+     577,
+     182.3,
+     38
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     527,
+     214,
+     42
+    ],
+    "a": [
+     307.7,
+     577,
+     408.6,
+     38
+    ],
+    "c": null
    },
    "countdown": {
     "k": 2,
     "r": 2,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     317,
+     169,
+     390,
+     136
+    ]
    },
    "reports": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": [
+     300.6,
+     274,
+     422.9,
+     38
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": [
+     307.7,
+     274,
+     408.6,
+     38
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     405,
+     224,
+     214,
+     42
+    ],
+    "a": [
+     364.8,
+     274,
+     294.3,
+     38
+    ],
+    "c": null
    }
   },
   "tablet-portrait": {
@@ -176,163 +376,359 @@
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 16,
     "r": 13,
     "t": 8,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     258.4,
+     374,
+     251.2,
+     38
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     286.7,
+     374,
+     194.6,
+     38
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     292.9,
+     374,
+     182.3,
+     38
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     192,
+     374,
+     384,
+     44
+    ],
+    "c": null
    },
    "countdown": {
     "k": 3,
     "r": 3,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     66,
+     255,
+     636,
+     136
+    ]
    },
    "reports": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     192,
+     374,
+     384,
+     44
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     192,
+     374,
+     384,
+     44
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     277,
+     324,
+     214,
+     42
+    ],
+    "a": [
+     236.8,
+     374,
+     294.3,
+     38
+    ],
+    "c": null
    }
   },
   "narrow-phone": {
@@ -340,163 +736,359 @@
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     80,
+     270,
+     160,
+     29.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     91.5,
+     270,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     96.6,
+     270,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     80,
+     270,
+     160,
+     40.4
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     66,
+     255,
+     188,
+     68
+    ]
    },
    "reports": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 3,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     80,
+     270,
+     160,
+     40.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     80,
+     270,
+     160,
+     40.4
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     70,
+     215,
+     180,
+     47.9
+    ],
+    "a": [
+     80,
+     270,
+     160,
+     29.6
+    ],
+    "c": null
    }
   },
   "short-landscape": {
@@ -504,163 +1096,359 @@
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     28
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     36.8
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     210,
+     111,
+     148,
+     40
+    ]
    },
    "reports": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     114,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     36.8
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     36.8
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     122,
+     119,
+     136,
+     32
+    ],
+    "a": [
+     266,
+     119,
+     134,
+     28
+    ],
+    "c": null
    }
   },
   "phone": {
@@ -668,163 +1456,359 @@
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 11,
     "r": 10,
     "t": 3,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     104.3,
+     353,
+     181.3,
+     28
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     126.5,
+     353,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     131.6,
+     353,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     97.5,
+     353,
+     195,
+     29.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 4,
     "r": 4,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     66,
+     255,
+     258,
+     136
+    ]
    },
    "reports": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     300,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     97.5,
+     353,
+     195,
+     29.6
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     97.5,
+     353,
+     195,
+     29.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     97.5,
+     353,
+     195,
+     29.6
+    ],
+    "c": null
    }
   },
   "small-phone": {
@@ -832,163 +1816,359 @@
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     90,
+     314,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     111.5,
+     314,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     116.6,
+     314,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     90,
+     314,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     66,
+     264,
+     228,
+     136
+    ]
    },
    "reports": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 5,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 2,
     "r": 2,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     90,
+     314,
+     180,
+     40.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     90,
+     314,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 1,
     "r": 1,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     73,
+     264,
+     214,
+     42
+    ],
+    "a": [
+     90,
+     314,
+     180,
+     29.6
+    ],
+    "c": null
    }
   },
   "landscape": {
@@ -996,163 +2176,359 @@
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 1,
     "r": 1,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     184,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     224,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     184,
+     214,
+     32
+    ],
+    "a": [
+     353.5,
+     224,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     184,
+     214,
+     32
+    ],
+    "a": [
+     358.6,
+     224,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     184,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     224,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     248.2,
+     123.2,
+     347.7,
+     111.5
+    ]
    },
    "reports": {
     "k": 1,
     "r": 1,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 1,
     "r": 1,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 1,
     "r": 1,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 1,
     "r": 1,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 1,
     "r": 1,
     "t": 1,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     145,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 4,
     "r": 2,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     162,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     196,
+     180,
+     40.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     196,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 2,
     "r": 1,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     196,
+     180,
+     29.6
+    ],
+    "c": null
    }
   },
   "small-landscape": {
@@ -1160,163 +2536,359 @@
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     190,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     265,
+     190,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     270.1,
+     190,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     190,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     232.2,
+     123.2,
+     202.5,
+     111.5
+    ]
    },
    "reports": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     145,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 3,
     "r": 2,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     196,
+     180,
+     40.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     196,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     196,
+     180,
+     29.6
+    ],
+    "c": null
    }
   },
   "tiny-landscape": {
@@ -1324,163 +2896,359 @@
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     194,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     215.5,
+     159,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     220.6,
+     159,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     194,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     210,
+     111,
+     148,
+     74
+    ]
    },
    "reports": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 3,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     114,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     194,
+     159,
+     180,
+     42.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     194,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     177,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     194,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    }
   },
   "browser-landscape": {
@@ -1488,163 +3256,359 @@
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     353.5,
+     159,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     358.6,
+     159,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     210,
+     111,
+     424,
+     74
+    ]
    },
    "reports": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 3,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     114,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     159,
+     180,
+     42.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     315,
+     119,
+     214,
+     32
+    ],
+    "a": [
+     332,
+     159,
+     180,
+     31.6
+    ],
+    "c": null
    }
   },
   "wide-landscape": {
@@ -1652,163 +3616,359 @@
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 3,
     "r": 3,
     "t": 2,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 4,
     "r": 4,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     213,
+     214,
+     32
+    ],
+    "a": [
+     376,
+     253,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 4,
     "r": 4,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     213,
+     214,
+     32
+    ],
+    "a": [
+     397.5,
+     253,
+     137,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 4,
     "r": 4,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     213,
+     214,
+     32
+    ],
+    "a": [
+     402.6,
+     253,
+     126.9,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 4,
     "r": 4,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     213,
+     214,
+     32
+    ],
+    "a": [
+     376,
+     253,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     256.1,
+     123.2,
+     419.8,
+     111.5
+    ]
    },
    "reports": {
     "k": 3,
     "r": 3,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 3,
     "r": 3,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 3,
     "r": 3,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 3,
     "r": 3,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 3,
     "r": 3,
     "t": 1,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     174,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": [
+     376,
+     254,
+     180,
+     40.4
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": [
+     376,
+     254,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 5,
     "r": 5,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     359,
+     214,
+     214,
+     32
+    ],
+    "a": [
+     376,
+     254,
+     180,
+     29.6
+    ],
+    "c": null
    }
   },
   "chinese-landscape": {
@@ -1816,163 +3976,359 @@
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     285,
+     190,
+     97.1,
+     28
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     278.8,
+     190,
+     109.4,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     278.8,
+     190,
+     109.4,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 1,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     150,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     190,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "countdown": {
     "k": 0,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     232.2,
+     123.2,
+     202.5,
+     111.5
+    ]
    },
    "reports": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 1,
     "r": 0,
     "t": 1,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     145,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 3,
     "r": 2,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     196,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     243.5,
+     196,
+     180,
+     29.6
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 2,
     "r": 0,
     "t": 0,
-    "sub": false
+    "sub": false,
+    "d": [
+     226.5,
+     156,
+     214,
+     32
+    ],
+    "a": [
+     252.9,
+     196,
+     161.1,
+     28
+    ],
+    "c": null
    }
   },
   "chinese-phone": {
@@ -1980,164 +4336,375 @@
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "feed-burst": {
     "k": 11,
     "r": 10,
     "t": 3,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "notifications": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     146.5,
+     353,
+     97.1,
+     28
+    ],
+    "c": null
    },
    "notifications-damaged": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     140.3,
+     353,
+     109.4,
+     28
+    ],
+    "c": null
    },
    "notifications-repaired": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     140.3,
+     353,
+     109.4,
+     28
+    ],
+    "c": null
    },
    "notifications-empty": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     104.3,
+     353,
+     181.4,
+     28
+    ],
+    "c": null
    },
    "countdown": {
     "k": 4,
     "r": 4,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": [
+     66,
+     255,
+     258,
+     136
+    ]
    },
    "reports": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "log": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "chat": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "combined-spotted": {
     "k": 6,
     "r": 6,
     "t": 1,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "spectator": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "sniper": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "large-map": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "ammo-expanded": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "special": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": null
+    "sub": null,
+    "d": null,
+    "a": null,
+    "c": null
    },
    "mode-standard": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     300,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-capture_the_flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-zone_control": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-turbo_ball": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-endless_horde": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-frontline_assault": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "mode-mars": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": null,
+    "c": null
    },
    "alert-wave": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     97.5,
+     353,
+     195,
+     29.6
+    ],
+    "c": null
    },
    "alert-ammo": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     104.3,
+     353,
+     181.4,
+     28
+    ],
+    "c": null
    },
    "alert-flag": {
     "k": 6,
     "r": 6,
     "t": 0,
-    "sub": true
+    "sub": true,
+    "d": [
+     88,
+     303,
+     214,
+     42
+    ],
+    "a": [
+     114.4,
+     353,
+     161.1,
+     28
+    ],
+    "c": null
    }
   }
+ },
+ "tiles": {
+  "tablet": 5,
+  "tablet-portrait": 5,
+  "narrow-phone": 2,
+  "short-landscape": 1,
+  "phone": 4,
+  "small-phone": 4,
+  "landscape": 5,
+  "small-landscape": 3,
+  "tiny-landscape": 1,
+  "browser-landscape": 5,
+  "wide-landscape": 5,
+  "chinese-landscape": 3,
+  "chinese-phone": 4
  }
 }
