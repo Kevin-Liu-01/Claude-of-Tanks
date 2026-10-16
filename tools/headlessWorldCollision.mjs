@@ -93,17 +93,18 @@ let builders = null;
 async function worldBuilders() {
   if (builders) return builders;
   installWorldBuildFixture();
-  const [maps, terrain, vegetation, props, fleet, models] = await Promise.all([
+  const [maps, terrain, vegetation, props, fleet, models, kits] = await Promise.all([
     import('../src/world/maps/index.ts'),
     import('../src/world/terrain.ts'),
     import('../src/world/vegetation.ts'),
     import('../src/world/props.ts'),
     import('../src/vehicles/fleetFactory.ts'),
     import('../src/world/propsModelStore.ts'),
+    import('../src/world/worldKits.ts'),
   ]);
   await models.preloadPropModels();
   const mapCraters = await import('../src/world/mapCraters.ts');
-  builders = { maps, terrain, vegetation, props, fleet, mapCraters };
+  builders = { maps, terrain, vegetation, props, fleet, mapCraters, kits };
   return builders;
 }
 
@@ -114,12 +115,15 @@ async function worldBuilders() {
  * is packed (the drift receipt's drawn-geometry shape check); it must not change it.
  */
 export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
-  const { maps, terrain, vegetation, props, fleet, mapCraters } = await worldBuilders();
+  const { maps, terrain, vegetation, props, fleet, mapCraters, kits } = await worldBuilders();
   if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
   const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
   const wreckIds = config.props?.tankWrecks?.ids ?? [];
   if (wreckIds.length) await fleet.ensureTankBuilders(wreckIds);
+  // and its kits (world/worldKits.ts, as the browser's world build loads them: at once in Node, which holds every kit,
+  // and the map's own under COT_KITS_LAZY=1)
+  await kits.loadMapKits(config);
   const engine = { anisotropy: 4, setupShadowMaterial() {} };
   const field = terrain.createHeightField(terrainSeed, config);
   const flora = vegetation.createVegetation(field, engine, vegetationSeed, config);

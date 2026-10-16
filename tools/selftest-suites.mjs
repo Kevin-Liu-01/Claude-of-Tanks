@@ -1758,6 +1758,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    // 2026-10-15 (the perf lane): the kit registries — one row per style and set piece, every kit in Node, a map's own in the browser
+    'src/world/kitRegistry.selftest.mjs',
     // the buildings stream (2026-10-12; the owner: "make sure our roofs dont have empty spots in them"): every kit
     // builder, catalog builder and set piece closed and seated — no floating part, open underside, hole, inside seen
     // through a gap, sky through the building or inside-out face — held to its ledger row

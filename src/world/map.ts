@@ -52,6 +52,7 @@ import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
+import { loadMapKits } from './worldKits.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import { splitMinimapWater } from './minimapWaterPatches.ts';
@@ -377,6 +378,10 @@ export async function createMapAsync(
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
   // parsed before even the height field could start.
   const propModelsReady = preloadPropModels();
+  // (2026-10-15, the perf lane) and the map's own kits — its architecture styles and set-piece builders — beside the
+  // terrain and the vegetation, which read none of them (loadMapKits; awaited before the props build)
+  const kitsReady = loadMapKits(config);
+  kitsReady.catch(() => { /* awaited before the props build, which reports it */ });
   const terrainConfig: TerrainMapConfig = config;
   const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
   // (the time-to-battle lane, 2026-10-07) the map's planned wreck bakes start in their own worker now, beside the
@@ -430,6 +435,8 @@ export async function createMapAsync(
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
     await step('Placing structures', 0.82);
+    const kitsAwaitStart = performance.now();
+    await kitsReady;
     const propModelsAwaitStart = performance.now();
     await propModelsReady;
     const propModelsAwaitEnd = performance.now();
@@ -441,6 +448,10 @@ export async function createMapAsync(
       // duration or CPU cost. All timestamps use the page performance clock.
       props._buildDetail.propModelsAwait = { count: 1, totalMs: elapsedMs, maxMs: elapsedMs,
         startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
+      // (and the map's kits, loaded beside the terrain: the time left to wait for them at the same consumer)
+      const kitsMs = propModelsAwaitStart - kitsAwaitStart;
+      (props._buildDetail as typeof props._buildDetail & { kitsAwait?: typeof props._buildDetail.propModelsAwait }).kitsAwait = {
+        count: 1, totalMs: kitsMs, maxMs: kitsMs, startMs: kitsAwaitStart, endMs: propModelsAwaitStart };
     }
     await step('Sealing the battlefield', 0.96);
     // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
