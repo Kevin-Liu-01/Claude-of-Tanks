@@ -51,8 +51,12 @@ assert.equal(hullHit({ x: 0.58, z: 0 }, trunk, 0.1, 0.1).hit, true,
   'circle footprint still contacts at the visible radius');
 
 assert.equal(shellPassesThroughCollisionRecord({
-  min: [-1, 0, -1], max: [1, 4, 1], crushable: true, kind: 'fieldhut',
+  min: [-1, 0, -1], max: [1, 4, 1], crushable: true, kind: 'leanto',
 }), true, 'destructible small buildings yield without consuming shells');
+// (physics DST-03, 2026-10-16; the coordinator: "field huts: stop shells as drawn") a field hut's timber walls stop a round
+assert.equal(shellPassesThroughCollisionRecord({
+  min: [-1, 0, -1], max: [1, 4, 1], crushable: true, kind: 'fieldhut',
+}), false, 'a field hut stops a round on its walls');
 assert.equal(shellPassesThroughCollisionRecord({
   min: [-1, 0, -1], max: [1, 8, 1], kind: 'warehouse',
 }), false, 'non-crushable structures remain hard ballistic cover');

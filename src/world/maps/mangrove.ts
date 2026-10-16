@@ -113,6 +113,8 @@ export default {
     tuftTone: (h: number, s: number, l: number) => [h + 0.015, s * 0.7, l * 0.85],
     species: ['willow', 'palm', 'eucalyptus'], clusterMix: [['willow', 0.6], ['palm', 0.24], ['eucalyptus', 0.16]],
     loneMix: [['palm', 0.44], ['willow', 0.42], ['eucalyptus', 0.14]], rimMix: [['willow', 0.62], ['eucalyptus', 0.24], ['palm', 0.14]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): eucalyptus x1.29 of the one mean
+    ringStature: 'species',
     clusterCount: 58, loneCount: 78, rimCount: 84, grassDensity: 1.06, bushCount: 1.14, bushSpecies: 'willow', clusterScrub: 2.0,
     belts: [{ x0: -382, z0: -40, x1: -330, z1: 258, gap: 22, jitter: 5, species: 'willow' }, { x0: 40, z0: -278, x1: 46, z1: 48, gap: 23, jitter: 5, species: 'willow' }],
     authoredTrees: [

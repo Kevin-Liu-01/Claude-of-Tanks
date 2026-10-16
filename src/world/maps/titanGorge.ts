@@ -36,6 +36,7 @@
 
 import desert from './desert.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import { TITAN_HOMESITES } from './titanHomesites.ts'; // the maps lane, 2026-10-15: the valley's homesites
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -61,7 +62,11 @@ export default {
       [[366, -454], [304, -304], [246, -168], [191.28, -64.47], [172, -28], [92, 108], [40.03, 190.91], [8, 242], [-25.84, 289.09], [-84, 370], [-176, 466]],
       [[-382, -72], [-260, -92], [-215.93, -80.05], [-142, -60], [-12, -82], [29.28, -71.04], [116, -48], [191.28, -64.47], [244, -76], [372, -54]],
       [[-334, 228], [-214, 192], [-96, 220], [-61.9, 211.34], [30, 188], [40.03, 190.91], [154, 224], [203.83, 213.27], [284, 196]],
-    ] },
+    ],
+    // (the maps lane, 2026-10-15; the owner, 10-09: Titan Gorge's roads paved) the three valley roads are the paved
+    // highways through the valley, as US-163 runs through Monument Valley, two lanes of worn asphalt with the sand blown
+    // to their edges; the two cross roads stay the graded dirt of the chapter's roads
+    pathStyles: [{ surface: 'asphalt', widthM: 8 }, { surface: 'asphalt', widthM: 8 }, { surface: 'asphalt', widthM: 8 }, null, null] },
     landforms: [
       // The valley's red-rock shelves: stepped walls of bedded sandstone (cliff bands, benches, talus) along the west
       // and east sides (landformGeology.ts).
@@ -180,6 +185,10 @@ export default {
     townPlan: TOWN_PLANS.titan_gorge,
     // and its light buildings (the huts, tents and motor pools) stand where that build placed them too
     townLightPlan: TOWN_LIGHT_PLANS.titan_gorge,
+    // (the maps lane, 2026-10-15) and over the valley floor round it the families' homesites, seated after the town plan
+    // (titanHomesites.ts): eight pairs of hogans, family camps and abandoned camps along the roads
+    plannedSites: [...TITAN_HOMESITES],
+    plannedSitesAfterPlan: true,
     // its five buildings that stand in a carriageway move by the least distance that clears it; the rest stay put
     roadBuildingClearance: true,
     blockFill: true, wallStyle: 'adobe', wallStoneChance: 0.18,
@@ -224,7 +233,14 @@ export default {
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the orange sandstone
     // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)
     banding: 0.24,
-    forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.82, grain: 0.68,
+    // (Titan round 4, gauntlet wave 134: "steep, pointed, blue-tinted alpine peaks", "a smooth, blue-shaded pyramidal
+    // mountain with a pointed summit", "three rounded summits": the stack's saddle, summits and shoulder stood as
+    // domes and spires over its capped tables — past 1.1 km the outer ranges come down to their massifs' caps
+    // (horizonTablelands.ts) at a few strata round 280 m, and Monument Valley's dry air keeps them red, not blue:
+    // the ring's haze 0.82 -> 0.6) (HOR-06, the horizons stream 2026-10-15: the horizon part of the map-revival lane's
+    // visual/maprev-titan-land round 4, a6d395cf9's branch, carried onto main on its own)
+    summitCap: { levelM: 280, fromRadiusM: 1100, vary: 0.25, stepM: 25 },
+    forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.6, grain: 0.68,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is

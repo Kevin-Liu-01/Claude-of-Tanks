@@ -15,6 +15,7 @@ import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 // (props census #3, lane B 2026-10-14: the radar tower and the Jamesway hut live in arcticYard.ts, the industrial yard's)
 import { jamesway, radarTower } from './arcticYard.ts';
+import { shed } from './arcticShed.ts'; // (props census #17: the utility shed, the looks lane's)
 import { recordLattice } from './lattice.ts';
 
 const STEEL = rgb(0x5d6266);
@@ -700,30 +701,6 @@ const derelict: RegionalBuilder = (ctx) => {
     // the snow drifted onto the deck against the standing wall
     const inner: Face = { origin: [-W / 2 + 0.2, deck, (-D / 2 + zSplit) / 2], u: [0, 0, -1], out: [1, 0, 0], width: zSplit + D / 2 };
     bank(sink, inner, -inner.width / 2 + 0.2, inner.width / 2, 0.9, 0.5, 1.5, -0.04, W + D);
-  });
-  return sink.finish();
-};
-
-/**
- * The utility shed (the woodshed's plot, its door to +x): a plywood hut on runners so it can be towed, painted, a small
- * window, a vent stack, the fuel drums beside it.
- */
-const shed: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const fit = wallsIn(ctx, 0.15, 0.15);
-  const W = Math.max(2.4, fit.w), D = Math.max(2.4, fit.d), paint: Paint = look() < 0.6 ? 'plaster2' : 'plaster';
-  sink.placed(0, fit.cx, 0, fit.cz, () => {
-    for (const z of [-D / 2 + 0.3, D / 2 - 0.3]) sink.span('wood', -W / 2, -0.2, z - 0.12, W / 2, 0.25, z + 0.12);
-    const w = W - 0.9;
-    sink.span(paint, -W / 2, 0.25, -D / 2, -W / 2 + w, 2.6, D / 2);
-    sink.span('roof', -W / 2 - 0.15, 2.6, -D / 2 - 0.15, -W / 2 + w + 0.15, 2.78, D / 2 + 0.15);
-    const f = boxFace(-W / 2, -D / 2, -W / 2 + w, D / 2, 'e');
-    faceBox(sink, 'structureMetal', f, -D * 0.15, 1.3, 0.03, 0.85, 1.95, 0.05, { colour: shade(PLY, 0.75), decor: true });
-    windowUnit(sink, f, D * 0.25, 1.45, 0.6, 0.55, WINDOW, rng, 0.5);
-    if (!mobile) sink.cylinder('structureMetal', [-W / 2 + w * 0.3, 2.78, D * 0.2], 'y', 0.9, 0.1, 8, { colour: STEEL_DARK, decor: true });
-    // the fuel drums on the open side
-    for (let k = 0; k < 2; k++) sink.cylinder('structureMetal', [W / 2 - 0.4, 0, -D / 2 + 0.5 + k * 0.62], 'y', 0.88, 0.29, 10, { colour: k ? shade(ORANGE, 0.8) : STEEL_DARK });
   });
   return sink.finish();
 };

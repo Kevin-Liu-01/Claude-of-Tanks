@@ -27,47 +27,93 @@
 // towers and the transformer yards; the microwave relay tower; the gate-hoist houses and the penstock runs on their
 // saddles; the visitor centre with its overlook, or the town's school; the field offices and steel warehouses; and
 // Page's ranch houses under shingled gables with their carports, its fire station and its water tower.
+//
+// Lake Powell's arm and Glen Canyon Dam (the map-revival lane, 2026-10-06, Skybridge round 4; gauntlet waves 170-171:
+// "the landform must be inverted into a deep, sheer-walled canyon arm holding the water against a curved dam, with the
+// township and works on the slickrock rim above"; "the reservoir reads as a pit lake or shallow milky trench in a flat
+// sand plain"). The district stands on the slickrock at the plain's level. Below it a canyon arm 68 m wide is cut 22 m
+// into the rock, with sheer walls straight into the water from a rounded head under the district's south to a square
+// end at the road across the north (road 5). The water lies wall to wall: the lake's discs are round and pulled 3 m into
+// the walls, so no dry ground lies under the waterline anywhere. The dam stands on that road (reservoirDam.ts): an arch
+// convex to the reservoir, its intakes and gantry over the water, its battered downstream face dropping 28 m into a
+// tailwater pocket that holds the powerhouse at its toe. Bots route round all water ('avoid-liquid'). Nothing can reach
+// a floor: the walls give no way down, and parapets and a kerb guard the road over the dam and the pocket's rim. The
+// ring's own dam and its canyon (round 2) are retired, so the map has one dam, in reach.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import type { ReservoirDamSite } from './reservoirDam.ts';
+import { SKYBRIDGE_ARM } from './skybridgeArm.generated.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+/** The five roads (their junction nodes below, in the terrain's `roads`). */
+const ROAD_PATHS: Array<Array<[number, number]>> = [
+  [[-430, -450], [-350, -314], [-278, -172], [-239.23, -93.35], [-208, -30], [-132, 118], [-73.9, 235.78], [-58, 268], [-35.25, 319.61], [24, 454]],
+  [[-116, -458], [-72, -318], [-18, -178], [24.53, -81.61], [42, -42], [116, 92], [198, 230], [198.48, 230.63], [292, 354], [380, 456]],
+  [[356, -454], [294, -310], [236, -166], [205.36, -99.16], [170, -22], [92, 116], [42.72, 204.19], [16, 252], [-35.25, 319.61], [-78, 376], [-164, 466]],
+  [[-382, -126], [-246, -92], [-239.23, -93.35], [-116, -118], [18, -80], [24.53, -81.61], [148, -112], [205.36, -99.16], [282, -82], [394, -104]],
+  [[-326, 252], [-204, 210], [-82, 238], [-73.9, 235.78], [42, 204], [42.72, 204.19], [168, 238], [198.48, 230.63], [292, 208]],
+];
+
+/** (round 6) the brow's fallen blocks keep off the roads: the south cross road skirts the head's lip on its fill, and the
+ * scenery pass leaves a rock out within 4 m of a road's line and its radius (scenery.ts admission); a block that
+ * close is not authored. */
+const ROCK_ROAD_CLEAR_M = 4.2;
+function clearOfRoads(rock: { x: number; z: number; radius: number }): boolean {
+  for (const path of ROAD_PATHS) for (let i = 0; i + 1 < path.length; i++) {
+    const [ax, az] = path[i], [bx, bz] = path[i + 1], dx = bx - ax, dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((rock.x - ax) * dx + (rock.z - az) * dz) / (dx * dx + dz * dz)));
+    if (Math.hypot(rock.x - ax - dx * t, rock.z - az - dz * t) < ROCK_ROAD_CLEAR_M + rock.radius) return false;
+  }
+  return true;
+}
+
+/** The reservoir arm (round 6): its course, side canyons, water, brow boulders, kerbs and the dam's site, computed by
+ * skybridgeArm.ts and stored as data (skybridgeArm.generated.ts) so no fitting runs as the map configs load. */
+const ARM = SKYBRIDGE_ARM;
+
+/** The dam on road 5 over the arm's end (reservoirDam.ts, laid by the 'dam' dressing kit). */
+export const SKYBRIDGE_DAM: ReservoirDamSite = SKYBRIDGE_ARM.dam;
 
 export default {
   id: 'skybridge',
   name: 'Skybridge Chasm',
   blurb: 'A broken high crossing and fortress-scale control works span a deep flooded canyon',
+  // (round 4) the canyon's water is a barrier: bots route round it (the walls give no way down to it)
+  navigationWaterPolicy: 'avoid-liquid',
+  // (round 6) the layout metric's rays read the drowned meander's bed: one that crosses the water finds a hidden stretch
+  // at the near rim, although a hull on the far rim stays in view over the open water
+  layoutBrief: { bands: {
+    sightLongShare: { band: [0.025, 0.15], reason: 'the rays end at the drowned meander\'s near rim, where its bed drops out '
+      + 'of sight, though a hull on the far rim stays in view over the water: 0.028 as measured (the PR head\'s straight arm '
+      + '0.034), 0.050 with the water\'s cells taken as open (the head 0.045)' },
+  } },
   terrain: {
     hillScale: 0.62, microScale: 0.66, rimH: 58, softLakes: true,
     // the authored shoulders replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
     mesas: null, landformRock: true,
     marshes: [],
-    // (Skybridge round 2's canyon: the lakes pulled in off the old banks to the trough's floor and pinned at one waterline
-    // 11 m under the plain, their banks a tight 0.98 so the canyon's walls meet the water instead of a graded strand;
-    // the two sheets still overlap, one surface)
-    lakes: [
-      { x: -30, z: 50, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
-      { x: -14, z: 136, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
-    ],
+    // (round 4: the reservoir's arm and the tailwater pocket, wall to wall; armTerrain above)
+    lakes: ARM.lakes,
     // three aprons for the zone-control discs on the line of equal driven distance: the west lane's yard, the gorge's
     // west shore between the lake and the west middle segment (tilted to its ground) and the east lane's yard (tilted
     // to its ground)
     hardstands: [
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): each sited by tools/hardstand-site.mjs on its ground
-      { x: -300, z: 62, width: 56, length: 56, yawDeg: 0, level: -2.9, grade: 0, bankM: 16 },
-      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 20 },
-      { x: 310, z: 42, width: 56, length: 56, yawDeg: -170, level: -1.2, grade: 0.074, bankM: 16 },
+      // (round 8, gauntlet wave 259, head-bird: "a dark rectangular decal patch") graded sand the wind drifts back over
+      // in patches, as Redrock's yards (hardstandSurface.ts paint): paint only, every level, grade and road query the same
+      { x: -300, z: 62, width: 56, length: 56, yawDeg: 0, level: -2.9, grade: 0, bankM: 16, paint: { cover: 0.85, mottle: 0.65 } },
+      // (round 8: the apron bank law, hardstandBanks.selftest) round 6's meander brought the arm's rim within this apron's
+      // 20 m bank, which lifted a ledge below the rim into an 0.76 step at (-96, 9); a 17 m bank ends short of the rim (no
+      // walls, the steepest it steepens 0.53 at (-103, 69)) and still seats the zone disc (30 m, 7 m relief)
+      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 17, paint: { cover: 0.85, mottle: 0.65 } },
+      { x: 310, z: 42, width: 56, length: 56, yawDeg: -170, level: -1.2, grade: 0.074, bankM: 16, paint: { cover: 0.85, mottle: 0.65 } },
     ],
     village: { x0: -176, x1: 186, z0: -170, z1: 196, cx: 8, cz: 16, feather: 54, flatten: 0.72, relief: 0.28 },
     // each cross road's junctions and the northern fork are nodes both roads share, so the junction blend grades one
     // point there (no step between two bakes)
-    roads: { paths: [
-      [[-430, -450], [-350, -314], [-278, -172], [-239.23, -93.35], [-208, -30], [-132, 118], [-73.9, 235.78], [-58, 268], [-35.25, 319.61], [24, 454]],
-      [[-116, -458], [-72, -318], [-18, -178], [24.53, -81.61], [42, -42], [116, 92], [198, 230], [198.48, 230.63], [292, 354], [380, 456]],
-      [[356, -454], [294, -310], [236, -166], [205.36, -99.16], [170, -22], [92, 116], [42.72, 204.19], [16, 252], [-35.25, 319.61], [-78, 376], [-164, 466]],
-      [[-382, -126], [-246, -92], [-239.23, -93.35], [-116, -118], [18, -80], [24.53, -81.61], [148, -112], [205.36, -99.16], [282, -82], [394, -104]],
-      [[-326, 252], [-204, 210], [-82, 238], [-73.9, 235.78], [42, 204], [42.72, 204.19], [168, 238], [198.48, 230.63], [292, 208]],
-    ] },
+    roads: { paths: ROAD_PATHS },
     landforms: [
       // The canyon's rock shoulders: bedded sandstone walls (cliff bands, benches, talus; landformGeology.ts) along the
       // west and east, broken where the two cross roads pass, so the floor splits into a west lane, the gorge and an east
@@ -90,24 +136,19 @@ export default {
         geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
           flutes: { count: 5, depth: 0.12 }, rough: 0.45, boulders: 14, strata: { stepM: 6, riser: 0.2 },
           gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
-      // the drowned gorge's basin under the lakes
-      { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72,
-        geology: { outline: 0.2, rough: 0.4 } },
-      // (the map-revival lane, 2026-10-06, Skybridge round 2 item 2; gauntlet wave 107: "no drowned canyon, no dam and no
-      // bedded red sandstone wall anywhere: the reservoir is a pond lying flush with a flat sand plain") the reservoir
-      // sinks into Glen Canyon: a trough round both lakes (a canyon knoll, landformGeology.ts) whose cross-bedded Navajo
-      // sandstone walls stand 10-13 m from the plain's rim to the water, side canyons biting into them, the talus at
-      // their feet under the water; the rim stays at plain level, clear of the west shore's apron, the district's roads
-      // and the north road; two boat ramps cut the wall down to the waterline, one from the west lane's shore and one from
-      // the district's road
-      // (round 3, gauntlet wave 133: "a smooth, evenly coloured pinkish wall of uniform height": the bedding and the
-      // red-orange come from the splat's rock below. The trough's geometry stays round 2's: sunk to 21 m the boat ramps,
-      // its only ways out, ran too steep and the pacing receipt left a bot trapped under the south wall for ten minutes;
-      // sheerer walls in thicker beds stalled one at the west rim for six — a deeper gorge needs its own access)
-      { kind: 'knoll', x: -20, z: 92, rx: 85, rz: 140, height: -10, yawDeg: -10, corridorScale: 1, settlementScale: 1, wetScale: 1,
-        geology: { profile: 'canyon' as const, wall: [0.74, 0.8] as const, apron: 0.3, outline: 0.12, rough: 0.4,
-          strata: { stepM: 2.4, riser: 0.4 }, gullies: { count: 16, depthM: 1.4, width: 0.4 },
-          ramps: [{ bearingDeg: 180, halfWidthDeg: 6, runM: 40 }, { bearingDeg: 0, halfWidthDeg: 6, runM: 40 }] } },
+      // (round 6, gauntlet wave 259: "a dead-flat plain of noisy shag-carpet texture", "no slickrock domes") the slickrock's
+      // petrified dunes: low domes of cross-bedded Navajo sandstone stepped by their beds, in pairs that are each other's
+      // rotation about (5, 60) — on the south and north floors in front of the deployments' flanks and out in the west and
+      // east lanes — whalebacks 40-90 m long, each 24 m or more from a road, 90 m from a deployment, 20 m from a zone
+      // apron and clear of the shoulders (sited by mr3's dome-sites probe); 5-7.5 m high, drivable over their stepped
+      // flanks
+      ...([[-130, -230, 30, 5.5, 20], [420, -250, 44, 7, 70], [-410, -220, 44, 6.5, 140], [410, -160, 32, 5, 200],
+        [330, -210, 38, 6.5, 250], [-410, 50, 42, 7.5, 310]] as const).flatMap(([x, z, r, height, yaw]) => [[x, z, yaw], [10 - x, 120 - z, yaw + 180]]
+        .map(([px, pz, yawDeg]) => ({ kind: 'knoll' as const, x: px, z: pz, rx: r, rz: Math.round(r * 0.65), height, yawDeg,
+          geology: { profile: 'dome' as const, outline: 0.22, strata: { stepM: 2.2, riser: 0.8 }, rough: 0.4 } }))),
+      // (round 4, gauntlet waves 170-171: the basin under the lakes and the round-2 trough round them go — the reservoir
+      // is the canyon arm, its dam and the tailwater pocket; armTerrain above)
+      ...ARM.landforms,
     ],
   },
   spawns: {
@@ -145,16 +186,27 @@ export default {
     // as "wood grain" and "sawtooth stripes" wrapped round a stump in wave 134; the walls' bedding comes from the rock's
     // wider tonal range above)
     roadTint: [0.61, 0.53, 0.47], strata: 0.18, sandMacro: 0.62,
-    rippleAmp: 0.14, midRelief: 1.0, midReliefFar: 840,
+    // (round 8, gauntlet wave 259, head-bird: "a dead-flat plain of noisy shag-carpet texture"): the floor's dark blotches
+    // were the mid-relief dapple — its 59 m octave lays 1-5 m bump spots that the canyon's low sun turns into a field of
+    // dark spots (the Redrock lane's finding on its own floor, 2026-10-07: uMidRelief 0 cleared it, uSandMacro 0 did
+    // not). A trace of its broad roll stays (Redrock's 0.12); the sand's ripples, the macro sheets and the slickrock
+    // domes carry the floor's character.
+    rippleAmp: 0.14, midRelief: 0.12, midReliefFar: 840,
   },
   vegetation: {
     // (round 3, gauntlet wave 133: "uniform orange dune sand dotted with lush green trees": Glen Canyon's trees are the
     // juniper and the pinyon (treeBiomes.ts: cedar and pine take their forms); the cottonwoods were four in ten and the
     // scrub was theirs — now a few, and the scrub the junipers')
-    species: ['pine', 'poplar', 'cedar'], clusterMix: [['cedar', 0.50], ['pine', 0.42], ['poplar', 0.08]],
-    loneMix: [['cedar', 0.52], ['pine', 0.40], ['poplar', 0.08]], rimMix: [['pine', 0.48], ['cedar', 0.46], ['poplar', 0.06]],
-    clusterCount: 24, loneCount: 42, rimCount: 34, grassDensity: 0.30,
-    clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'cedar',
+    // (round 6, gauntlet wave 259: "dense clumps of lush green broadleaf trees on both sides ... a single tree sprouting
+    // from the summit of the banded butte ... a temperate park instead of Glen Canyon's bare slickrock desert") the
+    // plateau's cover thinned to its own: juniper and pinyon in open, scattered stands and alone, the scrub between
+    // them; hardly a tree on a rim or a cap. The cottonwoods stand only by the water or in the low ground (treeBiomes.ts
+    // riparian): the meander's walls leave no gentle ground at its waterline, so of the lone trees' draws (six in a
+    // hundred) the six that stand are in the low ground east of the dam
+    species: ['pine', 'poplar', 'cedar'], clusterMix: [['cedar', 0.58], ['pine', 0.40], ['poplar', 0.02]],
+    loneMix: [['cedar', 0.576], ['pine', 0.364], ['poplar', 0.06]], rimMix: [['pine', 0.5], ['cedar', 0.5]],
+    clusterCount: 12, loneCount: 36, rimCount: 8, grassDensity: 0.22,
+    clusterScrub: 1.0, bushCount: 0.7, bushSpecies: 'cedar',
     // (Skybridge round 2, the map-revival lane: Glen Canyon's bunchgrass is cured straw on the slickrock's sand, as Titan
     // Gorge's; the default tufts were the meadow's green)
     grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
@@ -189,11 +241,15 @@ export default {
     ],
     // (round 3, gauntlet wave 133: "a fan of parallel rail lines running straight down into" the reservoir, "orphan rail
     // segments describing nothing in 1960s Page": Page never had a railway — the yard's lines, coal heaps and stores go)
-    blockFill: true, extraKits: [], wallStyle: 'fieldstone', wallStoneChance: 0.82,
+    // (round 4: the dam on road 5 over the arm's end, reservoirDam.ts by mapKits.ts dressMapExtras)
+    blockFill: true, extraKits: ['dam'], wallStyle: 'fieldstone', wallStoneChance: 0.82,
     // the control district's blocks keep their footprints off every carriageway
     // the control district stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03); a building of it
     // that stands in a carriageway moves by the least distance that clears it
     townPlan: TOWN_PLANS.skybridge,
+    // (round 6) the arm's meander and its side canyons run through the seated district: a planned building the water
+    // reaches is packed to dry ground, a light building there is left out (props.ts settlementOverWater)
+    settlementOverWater: true,
     townLightPlan: TOWN_LIGHT_PLANS.skybridge,
     roadBuildingClearance: true,
     // the kit owns the renders' tones; the field walls keep the city preset's stone
@@ -216,6 +272,27 @@ export default {
       roadFence: 'fencerail', yardFence: 'fencerail',
     },
   },
+  // (round 5, gauntlet wave 207 and the coordinator: round 4's arm walls "flat vertical planes" under a soft brow) the
+  // arm's walls in relief — buttresses between the seeps' alcoves, the rain's flutes, the cross-beds, the varnish's
+  // curtains from the brow and the bathtub ring at the water (canyonWall.ts) — and the hard bed of the slickrock along
+  // both brows, its lip over the void (caprockRim.ts, trench). (round 6) Both follow the meander and its side canyons'
+  // curves (their `path`s); the carved landforms are the rock
+  scenery: {
+    rocks: ARM.rocks.filter(clearOfRoads),
+    canyonWalls: [
+      { x: ARM.arm.centre[0], z: ARM.arm.centre[1], length: ARM.arm.length, width: ARM.arm.endHalf * 1.6, yawDeg: 0, path: ARM.arm.path,
+        waterLevel: ARM.arm.waterLevel, span: 0.82, name: "Lake Powell's arm, its walls" },
+      ...ARM.sides.map((c, i) => ({ x: c.centre[0], z: c.centre[1], length: 1, width: c.half * 1.6, yawDeg: 0,
+        path: c.path, waterLevel: ARM.arm.waterLevel, span: 0.6, name: `the arm's side canyon ${i + 1}, its walls` })),
+    ],
+    caprock: [
+      { x: ARM.arm.centre[0], z: ARM.arm.centre[1], length: ARM.arm.length, width: ARM.arm.endHalf * 1.6, yawDeg: 0, path: ARM.arm.path,
+        trench: true, span: 0.82, tone: [0.06, 0.3, 0.64], thickness: [1.0, 1.8], blockM: [10, 22], name: "the arm's slickrock brows" },
+      ...ARM.sides.map((c, i) => ({ x: c.centre[0], z: c.centre[1], length: 1, width: c.half * 1.6, yawDeg: 0,
+        path: c.path, trench: true, span: 0.6, tone: [0.06, 0.3, 0.64] as const, thickness: [1.0, 1.6] as const, blockM: [8, 16] as const,
+        name: `the arm's side canyon ${i + 1}, its brows` })),
+    ],
+  },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,
     // (the map-revival lane, Skybridge round 2, gauntlet wave 120: "a repeating sawtooth ridge silhouette" — the mesa
@@ -235,12 +312,6 @@ export default {
     // cliff over talus
     summitCap: { levelM: 260, fromRadiusM: 1100, vary: 0.25, stepM: 25 },
     escarpment: { bedM: [60, 95], cliffShare: [0.4, 0.6], talusRise: 0.26, talusCurve: 2.6 },
-    // (the map-revival lane, 2026-10-06, Skybridge round 2; gauntlet wave 107: "no drowned canyon, no dam"): Glen Canyon
-    // Dam. The gorge's axis runs on out of the square through the north ring as a canyon cut into the plateau, and a
-    // concrete arch closes it 1.2 km out under the plateau's rim — 140 m from the tailwater's bed to its crest (round 3:
-    // 5 m lower under the tiered walls), the reservoir behind it a few metres under the crest, so the skyline opens over
-    // the arch (horizonDam.ts)
-    dam: { x: 5, z: 1200, crestM: 150, floorM: 10, mouthM: 790, archRadiusM: 220 },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the beige-brown
     // chasm walls (the style default 0.16 left the abutment cliffs nearly unbedded)
     banding: 0.20,

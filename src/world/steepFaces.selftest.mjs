@@ -12,13 +12,17 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { CLIFF_STRATA_FLOOR, STEEP_NORMAL_G2 } from './terrain.ts';
+// (2026-10-15) the chunk builder's steep-cell split (terrainContactSurface.ts terrainCellFlipped, the steep-diagonal item)
+// reaches this sandbox the way terrain.ts imports it; read off the module so either landing order evaluates
+import * as contactSurface from './terrainContactSurface.ts';
 
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const chunks = source.slice(source.indexOf('const CHUNKS = 8'));
-const api = new Function('THREE', stripTypeScriptTypes(`
+const api = new Function('THREE', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   ${chunks.replace(/^export /gm, '')}
-`) + 'return { buildFineGridSteps, buildChunkGeometrySteps, CHUNK_SIZE, FINE_SEGS };')(THREE);
+`) + 'return { buildFineGridSteps, buildChunkGeometrySteps, CHUNK_SIZE, FINE_SEGS };')(THREE,
+  contactSurface.terrainCellFlipped, contactSurface.terrainCellHeight);
 const drain = (steps) => { let r; do { r = steps.next(); } while (!r.done); return r.value; };
 
 // a gorge wall: 34 m of rock rising over ~6 m along x near x = 40, its crest wandering in z (a crest no grid aligns
@@ -61,6 +65,8 @@ for (const segs of [96, 48, 24]) {
 // the shader: the cliff floor, the sheerest faces' beds, the uniform's default
 const flat = source.replace(/\s+/g, ' ');
 assert.ok(flat.includes('float strataK = max(uStrata, uCliffStrata * smoothstep(0.42, 0.62, slope)); if (strataK > 0.001) {'), 'every sheer face is bedded rock');
+// (2026-10-15, the perf lane's splat pruner) the block sits under a gate of map constants alone, implied by the inner one
+assert.ok(flat.includes('if (uStrata > 0.001 || uCliffStrata > 0.001) { float strataK = max('), 'a fold-provable outer gate');
 assert.ok(flat.includes('float bedAmp = strataK * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.25 * smoothstep(0.80, 0.97, slope))'), 'the sheerest faces keep three quarters of their beds');
 assert.ok(flat.includes('float jointAmp = smoothstep(0.06, 0.16, strataK) * steep;'), 'the joint blocks and the varnish on the cliff floor too');
 assert.ok(source.includes('shader.uniforms.uCliffStrata = { value: S.cliffStrata ?? (S.strata === 0 ? 0 : CLIFF_STRATA_FLOOR) };'),

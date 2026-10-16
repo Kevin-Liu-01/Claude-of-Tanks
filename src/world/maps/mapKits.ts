@@ -24,6 +24,7 @@ import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+import { courtyardClutter, courtyardWell } from './courtyardKit.ts'; // the looks lane: the compounds' courtyard well and clutter
 import { landingBoatSeatOk, planRiverLanding, type RiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
 import {
   JETTY_DECK_HALF_WIDTH_M, JETTY_DECK_THICKNESS_M, JETTY_SPAN_M, MOORED_BOAT_DRAFT_M, MOORED_BOAT_GAP_M,
@@ -51,6 +52,8 @@ import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
+import { dressReservoirDam } from './reservoirDam.ts';
+import { SKYBRIDGE_DAM } from './skybridge.ts';
 import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength, railStockPlacements,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
@@ -482,69 +485,6 @@ function adobeBlock(
     const hut = box(bw * 0.32, 0.9, bd * 0.3, 0.8);
     hut.translate(x - bw * 0.2, bh + 0.45, z - bd * 0.2);
     wallTarget.push(jitterUV(hut, rng));
-  }
-}
-
-// courtyard well: stone ring, two posts, crossbar + bucket
-function courtyardWell(rng: Rng, buckets: GeometryBuckets, x: number, z: number): void {
-  const ring = new THREE.CylinderGeometry(0.85, 0.95, 0.85, 9, 1);
-  scaleUV(ring, 3, 1);
-  ring.translate(x, 0.42, z);
-  buckets.stone.push(jitterUV(ring, rng));
-  for (const s of [-1, 1]) {
-    const p = box(0.14, 1.9, 0.14, 1.2);
-    p.translate(x + s * 0.75, 0.95, z);
-    buckets.wood.push(p);
-  }
-  const bar = box(1.8, 0.10, 0.10, 1.2);
-  bar.translate(x, 1.8, z);
-  buckets.wood.push(bar);
-  const bk = box(0.3, 0.3, 0.3, 1.2);
-  bk.translate(x + 0.2, 1.35, z);
-  buckets.dark.push(bk);
-  // The bucket hangs from an authored rope instead of levitating beneath the
-  // crossbar. This also keeps the complete well in one support chain.
-  const rope = box(0.035, 0.45, 0.035, 2.0);
-  rope.translate(x + 0.2, 1.575, z);
-  buckets.dark.push(rope);
-}
-
-// scattered courtyard living clutter: crates, clay pots, sacks, a rug
-function courtyardClutter(
-  rng: Rng,
-  buckets: GeometryBuckets,
-  w: number,
-  d: number,
-  n: number,
-): void {
-  for (let k = 0; k < n; k++) {
-    const cx = (rng() - 0.5) * (w - 5), cz = (rng() - 0.5) * (d - 5);
-    const roll = rng();
-    if (roll < 0.34) {
-      const cs = 0.5 + rng() * 0.4;
-      const crate = box(cs, cs, cs, 1.0);
-      crate.rotateY(rng() * Math.PI * 0.5);
-      crate.translate(cx, cs / 2, cz);
-      buckets.wood.push(jitterUV(crate, rng));
-    } else if (roll < 0.62) {
-      const pr = 0.22 + rng() * 0.16, ph = 0.5 + rng() * 0.3;
-      const pot = new THREE.CylinderGeometry(pr * 0.7, pr, ph, 8, 1);
-      scaleUV(pot, 2, 1);
-      pot.translate(cx, ph / 2, cz);
-      buckets.stone.push(jitterUV(pot, rng));
-    } else if (roll < 0.82) {
-      const s = 0.42 + rng() * 0.22;
-      const sack = new THREE.SphereGeometry(s, 7, 5);
-      scaleUV(sack, 1.5, 1);
-      sack.scale(1, 0.7, 1);
-      sack.translate(cx, s * 0.48, cz);
-      buckets.plaster.push(jitterUV(sack, rng));
-    } else {
-      const rug = box(1.5 + rng() * 0.8, 0.05, 2.2 + rng() * 0.6, 0.4);
-      rug.rotateY((rng() - 0.5) * 0.6);
-      rug.translate(cx, 0.035, cz);
-      buckets.roof.push(jitterUV(rug, rng));
-    }
   }
 }
 
@@ -993,6 +933,9 @@ export function dressMapExtras({
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
   // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
   if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
+  // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
+  // earlier draw of the stream holds (reservoirDam.ts; it draws no random numbers)
+  if (kits.includes('dam') && mapId === 'skybridge') dressReservoirDam(SKYBRIDGE_DAM, heightField, buckets, obstacles, colliders);
 }
 
 // The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
@@ -2147,6 +2090,10 @@ function bufferStop(
 // (terrain.ts, railSpurs.ts) keeps vegetation and scattered props off the line before this runs.
 function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurConfig[]): void {
   const { heightField, rng, buckets } = ctx;
+  // (2026-10-15, the perf lane) one build of each rolling-stock kind serves every spur of the map: the builder is a pure
+  // function of the kind (its seed is the kind's), so a later spur's copies are the same geometry it would have rebuilt.
+  // Railyard rebuilt its wagons per spur: 0.38 s of a profiled entry in buildRollingStock (its vertex AO 0.36 s).
+  const stockGeometries = new Map<string, THREE.BufferGeometry>();
   for (const spur of spurs) {
     const lay: RailLay = {
       gauge: spur.gauge ?? RAIL_SPUR_GAUGE_M, ballast: spur.ballast ?? RAIL_SPUR_BALLAST_M,
@@ -2168,13 +2115,14 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
     // 2026-10-01: a coal stage beside the stub (after its stops, so a spur without one keeps its draws)
     if (spur.coalStage) addSpurCoalStage(ctx, spur);
     // 2026-10-06 (the map-vehicles lane, P5): the rolling stock standing on it (no draws)
-    if (spur.stock?.length) addSpurRollingStock(ctx, spur);
+    if (spur.stock?.length) addSpurRollingStock(ctx, spur, stockGeometries);
     // A spur that leaves the square through a cutting runs on in the open past the edge (railSpurs.ts RAIL_OPEN_*; the
     // round-67 tunnel portal is retired): the kit lays its first RAIL_OPEN_KIT_M on the open line's bed, after the
     // stops, so the square's dressing keeps its draws.
     const cuttings = resolveRailCuttings([spur]);
     if (cuttings && heightField.getOutlandHeightAt) dressRailOpenLine(ctx, cuttings[0], lay);
   }
+  for (const g of stockGeometries.values()) g.dispose();
 }
 
 // 2026-10-03 (the map-borders lane): the open line past the edge (railSpurs.ts RAIL_OPEN_*) — the track runs on from
@@ -2337,10 +2285,10 @@ function dressRailYard(
 // with a solid convex record from the ground to its top over its body (the buffers stand clear) that blocks shells.
 // No stream draws: the yard's dressing keeps its own.
 const RAIL_HEAD_Y = 0.335;
-function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig): void {
+function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig,
+  built: Map<string, THREE.BufferGeometry>): void {
   const { heightField, buckets } = ctx;
   if (!buckets.baked) return;
-  const built = new Map<string, THREE.BufferGeometry>();
   for (const p of railStockPlacements(spur, ROLLING_STOCK_LENGTH)) {
     const kind = p.kind as RollingStockKind;
     let geo = built.get(kind);
@@ -2368,7 +2316,6 @@ function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig):
     ctx.obstacles?.push(record);
     ctx.colliders?.push(cloneCollisionRecord(record));
   }
-  for (const g of built.values()) g.dispose();
 }
 
 // 2026-10-01 (Cinder Junction): the stockpiles of a spur's coal stage (railSpurs.ts railCoalStageStations): the yards'

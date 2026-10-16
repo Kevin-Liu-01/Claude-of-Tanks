@@ -20,7 +20,8 @@ import {
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { wallLantern, woodpile } from './dressing.ts';
+import { wallLantern } from './dressing.ts';
+import { coursedRound, openShed, recordMasonry } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const IRON = rgb(0x1d1e20);
@@ -1235,46 +1236,63 @@ const palomar: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The bread oven in the yard (horno de leña): a whitewashed block under a whitewashed dome, its arched mouth with a
- * stone lip, a little flue; firewood stacked against its side under a lean-to of tiles on two posts (the yard's
- * outbuilding). The oven stands at the plot's -x end as deep as the plot; the firewood rack fills the rest.
+ * The bread oven (horno) of a cortijo's yard (the props census #17, 2026-10-15, the judges: "cut the oven mouth as an
+ * arch with brick or stone voussoirs and a dark chamber at least 0.4 m deep, with a hearth sill and a soot stain; lay the
+ * dome in lime-washed rubble or brick courses (stepped rings) with a capped flue; build the rack from round or hewn posts
+ * on stone bases with a beam and rafters under canal tile rows"): the oven's block on its stone footing at the plot's
+ * -x end, its mouth cut half a metre into it under a ring of brick voussoirs, the hearth's sill and the soot over the
+ * mouth; the dome laid ring by ring in limewashed brick (outbuildings.ts coursedRound) to its flue under a tile cap; the
+ * firewood rack on the plot's +x side, built member by member (openShed: posts on stone bases, the beam, the rafters,
+ * the canal tiles in rows), its head on the oven, the wood stacked against the oven's side. It falls as its posts and
+ * tiles and the oven's own heap.
  */
 const horno: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile';
   const b = ctx.bounds, W = b.maxX - b.minX, D = b.maxZ - b.minZ, cz = (b.minZ + b.maxZ) / 2;
   const B = clamp(Math.min(D - 0.1, W - 0.65), 1.8, 2.6), h = B / 2;
   const ox = b.minX + 0.05 + h;
   sink.span('stone', ox - h - 0.04, -0.4, cz - h - 0.04, ox + h + 0.04, 0.3, cz + h + 0.04);
-  // (props census #15, Lane C 2026-10-16: the oven's mouth was a dark plate on its block) the mouth cut through the
-  // block's front under its round head, its dark inside
-  holedBox(sink, 'plaster', ox - h, cz - h, ox + h, cz + h, 0.3, 1.05, { front: [{ u0: -0.275, u1: 0.275, y0: 0.51, y1: 0.93, spring: 0.655 }] }, 0.2, 0.35);
-  sink.cylinder('plaster', [ox, 1.05, cz], 'y', 0.2, h * 0.98, 12, {}, h * 0.95);
-  // the dome: stacked frustums swelling in and closing
-  let y = 1.25, r = h * 0.95;
-  for (const k of [0.92, 0.78, 0.56, 0.28]) {
-    const nr = h * k, dh = 0.24;
-    sink.cylinder('plaster', [ox, y, cz], 'y', dh, r, 12, {}, nr);
-    y += dh; r = nr;
+  // the block, cut for the mouth: a chamber 0.48 m deep, the walls round it, its floor the hearth's
+  const mw = 0.55, my0 = 0.51, my1 = 0.93, md = 0.48, fz = cz + h;
+  sink.span('plaster', ox - h, 0.3, cz - h, ox + h, my0, cz + h);
+  sink.span('plaster', ox - h, my1, cz - h, ox + h, 1.05, cz + h);
+  sink.span('plaster', ox - h, my0, cz - h, ox - mw / 2, my1, cz + h);
+  sink.span('plaster', ox + mw / 2, my0, cz - h, ox + h, my1, cz + h);
+  sink.span('plaster', ox - mw / 2, my0, cz - h, ox + mw / 2, my1, fz - md);
+  const f: Face = { origin: [ox, 0, fz], u: [1, 0, 0], out: [0, 0, 1], width: B };
+  // the chamber's back in the dark, and its fire-blackened sides (the soot inside the mouth)
+  sink.quad('dark', facePoint(f, -mw / 2, my0, -md + 0.005), facePoint(f, mw / 2, my0, -md + 0.005), facePoint(f, mw / 2, my1, -md + 0.005), facePoint(f, -mw / 2, my1, -md + 0.005), {});
+  // the hearth's sill out of the mouth, the ring of brick voussoirs round its segmental head, the soot over it
+  faceBox(sink, 'stone', f, 0, my0 - 0.04, 0.12, mw + 0.3, 0.08, 0.24, { decor: true });
+  for (let k = 0; k <= 6; k++) {
+    const a = Math.PI * (0.12 + 0.76 * k / 6), r = mw / 2 + 0.07;
+    const u = -Math.cos(a) * r, y = my1 - 0.08 + Math.sin(a) * r * 0.55;
+    faceBox(sink, 'stone', f, u, y, 0.02, 0.1, 0.16, 0.06, { decor: true, tint: [1.25, 0.82, 0.62], shade: 0.85 + look() * 0.2 });
   }
-  sink.span('plaster', ox - 0.16, y - 0.2, cz - 0.16, ox + 0.16, y + 0.35, cz + 0.16);
-  const f: Face = { origin: [ox, 0, cz + h], u: [1, 0, 0], out: [0, 0, 1], width: B };
-  faceBox(sink, 'stone', f, 0, 0.47, 0.12, 0.85, 0.08, 0.24, { decor: true });
-  // the firewood rack: two posts on the plot's +x side and a lean-to of tiles falling to them from the oven, as long as
-  // the plot is deep (0.3 m short of its ends: the solid within half a metre of the base's reach, regionalArchitecture's
-  // footprint coverage); past the oven's sides two more posts carry the lean-to's head
+  sink.quad('plaster', facePoint(f, -mw / 2 - 0.05, my1 + 0.02, 0.004), facePoint(f, mw / 2 + 0.05, my1 + 0.02, 0.004), facePoint(f, mw / 2 + 0.12, 1.04, 0.004),
+    facePoint(f, -mw / 2 - 0.12, 1.04, 0.004), { decor: true, shadeAt: (p: Vec3) => 0.3 + 0.6 * Math.max(0, Math.min(1, (p[1] - my1) / 0.14)) });
+  // the dome in limewashed brick, ring by ring on its drum, and the flue under its tile cap
+  const round = coursedRound(sink, { cx: ox, cz, R: h * 0.97, wallH: 0.2, T: 0.3, course: 0.2, stone: 0.42, base: 1.05,
+    cone: { rings: 5, rise: 0.95, cap: 0.18, dome: true }, bucket: 'plaster', door: null, mobile }, look);
+  sink.span('plaster', ox - 0.16, round.top - 0.25, cz - 0.16, ox + 0.16, round.top + 0.32, cz + 0.16);
+  sink.span('roof', ox - 0.22, round.top + 0.32, cz - 0.22, ox + 0.22, round.top + 0.4, cz + 0.22, { decor: true });
+  // the firewood rack: from the oven's side to the plot's +x edge, as long as the plot is deep less a hand (the solid
+  // within half a metre of the base's reach), its head plate resting on the oven's block
   const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = Math.max(h - 0.06, D / 2 - 0.3);
   if (sw > 0.35) {
-    for (const s of [-1, 1]) sink.span('wood', x1 - 0.1, 0, cz + s * rz - 0.05, x1, 1.2, cz + s * rz + 0.05);
-    if (rz > h + 0.1) for (const s of [-1, 1]) sink.span('wood', x0, 0, cz + s * rz - 0.05, x0 + 0.1, 1.2 + sw * Math.tan(14 * Math.PI / 180), cz + s * rz + 0.05);
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.1, thickness: 0.08, bucket: 'roof' };
-    sink.placed(0, (x0 + x1) / 2, 0, cz, () => emitRoof(sink, roofGeometry(sw, 2 * rz, 1.2, lean), lean));
-    sink.dressing(ctx.tier === 'mobile', () => {
-      // the stack against the oven's side only (it has no back where the rack runs on past the oven)
-      const side: Face = { origin: [x0, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: 2 * rz };
-      woodpile(sink, side, -(h - 0.06) + 0.1, h - 0.06 - 0.1, 0.9 + look() * 0.2, look);
+    const over = 0.26, RW = sw + over, pitch = 9;
+    const hLo = 1.05 + 0.16 - (RW - 0.16) * Math.tan(pitch * Math.PI / 180);
+    const rc = x1 - RW / 2;
+    sink.placed(0, rc, 0, cz, () => {
+      openShed(sink, { W: RW, D: 2 * rz, hLo: Math.max(0.95, hLo), pitchDeg: pitch, back: false, ends: false, pile: 0.9 + look() * 0.2, noBackPosts: true, mobile,
+        masses: [{ x: ox - rc, z: 0, r: h, h: round.top, bucket: 'plaster' }] }, {
+        timber: rgb(0x6a5440), post: 0.13, round: true, pad: { bucket: 'stone', size: 0.28, top: 0.14 },
+        cladding: 'gapped', boards: [rgb(0x7a6450)], boardW: 0.2,
+        covering: 'canal', roofBucket: 'roof', eave: 0.15, verge: 0.12,
+      }, look);
     });
-  }
+  } else recordMasonry(sink, { x: ox, z: cz, r: h, h: round.top, bucket: 'plaster' }, null);
   return sink.finish();
 };
 

@@ -126,6 +126,8 @@ export default {
   vegetation: {
     species: ['oak', 'cedar', 'pine'], clusterMix: [['cedar', 0.46], ['pine', 0.34], ['oak', 0.2]],
     loneMix: [['oak', 0.64], ['cedar', 0.26], ['pine', 0.1]], rimMix: [['cedar', 0.54], ['pine', 0.36], ['oak', 0.1]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): oak x0.70 of the one mean
+    ringStature: 'species',
     clusterCount: 42, loneCount: 38, rimCount: 88, grassDensity: 0.95, bushCount: 1.0, bushSpecies: 'oak',
     // (round 5, wave 252: "lawn green") the tufts cured toward straw, a little paler, their own variation kept
     tuftTone: (h: number, s: number, l: number) => [h - 0.055, s * 0.8, Math.min(1, l * 0.95 + 0.04)],

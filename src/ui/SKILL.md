@@ -52,7 +52,8 @@ its scenes index (`group: 'fleet'`);
 `i18nCatalog.<locale>.json` files are the reviewed local source of truth and the
 General Translation CLI boundary documented in `docs/LOCALIZATION.md`.
 `i18nDictionaries.ts` ships no catalog: each document loads its own (the game the
-full catalogs, a public page the page catalog its HTML declares, built from
+full catalogs, which the build restricts to the keys the game's graph and workers
+can show, a public page the page catalog its HTML declares, built from
 `tools/i18n-page-catalogs.mjs`, and its lazy chunk before each module it reaches
 only through `import()`); a key a public page could show raw fails the build.
 

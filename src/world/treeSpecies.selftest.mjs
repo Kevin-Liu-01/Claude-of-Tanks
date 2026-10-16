@@ -43,6 +43,12 @@ for (const mapId of MAP_IDS) {
       && Number.isFinite(weight) && weight > 0),
     `${mapId}.${mixName}: weights are positive and reference declared species`);
   }
+  // GND (2026-10-15): the forest over the red line's own mix, where a map names one (vegetation.ts `ringMix`; Longleaf's
+  // flatwoods past the line are longleaf alone, the blind critics' "broadleaf band" gone) — declared species only
+  if (vegetation.ringMix !== undefined) {
+    assert.ok(vegetation.ringMix.length >= 1 && vegetation.ringMix.every(([species, weight]) => declared.has(species)
+      && Number.isFinite(weight) && weight > 0), `${mapId}.ringMix: weights are positive and reference declared species`);
+  }
   assert.ok(declared.has(vegetation.bushSpecies),
     `${mapId}: bush archetype is included in its biome declaration`);
   signatures.add(vegetation.species.join('|'));
@@ -50,6 +56,7 @@ for (const mapId of MAP_IDS) {
 
 assert.deepEqual([...usedSpecies].sort(), [...TREE_SPECIES].sort(),
   'the battlefield roster uses every procedural tree archetype');
+assert.deepEqual(getMapConfig('longleaf').vegetation.ringMix, [['pine', 1.0]], 'Longleaf: the flatwoods past the line are longleaf alone');
 assert.ok(signatures.size >= 16,
   'the battlefield roster retains strongly differentiated vegetation signatures');
 

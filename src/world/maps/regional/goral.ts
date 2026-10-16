@@ -12,11 +12,12 @@ import {
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, windowRhythm,
   type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
+import { coveringRise, openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
@@ -563,7 +564,9 @@ const stodola: RegionalBuilder = (ctx) => {
     ];
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
-      roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
+      // (the props census #17, 2026-10-15, the judges: "deepen stodola's gate reveals from 0.12 m") the gates hung at the
+      // back of a reveal as deep as the logs
+      roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.26, spall: null,
     }, dialect({ ...st, litShare: 0 }));
     if (ctx.snowCap) roofSnow(sink, frame);
     // (the props census, 2026-10-14; the judges: the village's, the barn's and the school's walls wait on real log
@@ -575,7 +578,12 @@ const stodola: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The woodshed: posts under a shingle lean-to, boarded on three sides, the wood stacked in it (open to +x). */
+/**
+ * The woodshed (drewutnia; the props census #17, 2026-10-15, the judges: "a drewutnia of spruce posts on stone pads with
+ * a sill beam, wall plates, knee braces and rafters, a gont shingle roof in courses on battens, and vertical boards with
+ * gaps"): built member by member (outbuildings.ts openShed) on granite pads, its spruce boards standing with a finger's
+ * gap for the air on three sides, the wood stacked to the plate, the snow lying on the shingles; open to +x.
+ */
 const drewutnia: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
@@ -583,21 +591,15 @@ const drewutnia: RegionalBuilder = (ctx) => {
   // over the two ends (a yard shed keeps to its plot: props.ts builds it there only if it does)
   const fit = wallsIn(ctx, 0.25, 0.18);
   const W = Math.max(2.4, fit.w), D = Math.max(2.4, fit.d);
-  const hLo = 2.2, pitch = 24, hHi = hLo + W * Math.tan(pitch * Math.PI / 180);
+  const mobile = ctx.tier === 'mobile';
   sink.placed(0, fit.cx, 0, fit.cz, () => {
-    sink.span('wood', -W / 2, -0.2, -D / 2, -W / 2 + 0.1, hHi, D / 2);
-    for (const sz of [-1, 1]) {
-      const end: Face = { origin: [0, 0, sz * D / 2], u: [sz, 0, 0], out: [0, 0, sz], width: W };
-      wallPolygon(sink, 'wood', end, sz > 0 ? [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hLo], [-W / 2, hHi]] : [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hHi], [-W / 2, hLo]], 0.08);
-    }
-    for (const sz of [-1, 0, 1]) sink.span('structureWood', W / 2 - 0.15, -0.2, sz * (D / 2 - 0.1) - 0.08, W / 2, hLo, sz * (D / 2 - 0.1) + 0.08, { colour: LOG });
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.25, verge: 0.18, thickness: 0.12, bucket: 'roof' };
-    emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
-    if (ctx.snowCap) roofSnowOn(sink, W, D, hLo, lean);
-    sink.dressing(ctx.tier === 'mobile', () => {
-      const back: Face = { origin: [-W / 2 + 0.1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-      woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.5 + look() * 0.4, look);
-    });
+    const pile = 1.5 + look() * 0.4;
+    const shed = openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile }, {
+      timber: LOG, post: 0.16, pad: { bucket: 'stone', size: 0.34, top: 0.18 },
+      cladding: 'gapped', boards: [LOG_AGED, shade(LOG_AGED, 1.12), shade(LOG, 1.05)], boardW: 0.19, gap: 0.03, trim: LOG_DARK,
+      covering: 'shingle', roofBucket: 'roof', eave: 0.25, verge: 0.18,
+    }, look);
+    if (ctx.snowCap) roofSnowOn(sink, W, D, shed.roof.eaveY + coveringRise('shingle'), shed.roof.spec);
   });
   return sink.finish();
 };

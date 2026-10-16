@@ -8143,6 +8143,44 @@ village stood as a handful of roadside-plan buildings round the square.
   -> [8682, 8454, 10071].
 - *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
 
+### 2026-10-14 — Monsoon Ridge: Kohima's town on its terraces, the Deputy Commissioner's bungalow and tennis court (the maps lane)
+
+**The owner, 10-09: Monsoon Ridge among the fourteen to bring up; MAP-01: built the way Verdant was.** The hill town
+stood as the roadside plan's 26 buildings, 16 of them placed, over a 290 m saddle.
+- *The place:* Kohima in April 1944, a town of terraces on the Imphal road (the Kohima kit: bungalows under painted tin
+  with deep verandas, the bazaar's timber shops, the mission church, Angami thatched houses with their crossed gable horns
+  and their granaries, and the siege's shelled ruins).
+- *The plan* (`monsoon.ts` KOHIMA_TOWN, `plannedSites`; the roadside plan retired), authored in the road's own frame:
+  the bazaar's shop rows along the road north of its crossing with the valley road (south of it the road crosses the
+  flood channel's bottoms), the lane behind it on the east short of the channel, the bungalows in their gardens on the
+  terraces west, the Angami village on the north-west spur, the church framing the town's square from the north; one in
+  five of the town's buildings shelled to a ruin. The square's zone ring (46 m) stays free of buildings and yards.
+- *The hero:* the Deputy Commissioner's bungalow on the terrace above the square and its tennis court below it, the
+  front line the garrison held for a fortnight (`landmarks/colonial.ts`, built by the landmarks lane for this map and
+  placed nowhere until now).
+- *The terrace road* climbs from the bazaar past the bungalows and the Angami village to the north road
+  (`roadEndpoints.ts` join(1, 4)), so the upper terraces front a road (the brief's orphan band).
+- *Measured* (every band holds): orphan 0.147, the zone on its hint (398 m from alpha, 412 from bravo; symmetry 1.053),
+  the middle third's cover 0.424 -> 0.473, the weakest sector 0.267 -> 0.400, the sightline median 88 -> 80 m, long
+  sightlines 0.055 -> 0.036. 72 buildings where 16 stood; census [9351, 9146, 11650] -> [9619, 9671, 11564].
+- *The blind critics* (2026-10-15, PASS +0.58, Opus 5/1, Sonnet 5/1): the one after-defect both named, a flat black
+  rectangle on a plank shed's wall, was the Kohima bazaar shop's open front (one 'dark' panel). It opens now onto the
+  shop's back wall in shade, a framed opening, two shelves of tins and sacks and a counter across the front
+  (`regional/kohima.ts` shop; decor, no collision change; the goods from the shop's own stream).
+
+### 2026-10-15 — Titan Gorge: the paved highways and the valley's homesites (the maps lane)
+
+**The owner, 10-09: Titan Gorge among the fourteen to bring up (new-style buildings, paved roads).** The Oljato chapter's
+town stood alone in the middle of an empty valley on sand tracks.
+- *The roads:* the three valley roads are the paved highways through the valley, as US-163 runs through Monument Valley:
+  two lanes of asphalt, 8 m (`terrain.roads.pathStyles`); the two cross roads stay the chapter's graded dirt.
+- *The homesites* (`maps/titanHomesites.ts`, the maps lane's homesite planner; `plannedSites` after the recorded town):
+  a Navajo valley is lived in far past its trading posts, so eight rotation pairs of homesites stand along the roads
+  across the floor: hogans, family camps, an abandoned camp. Each site and its twin about the centre are within 48 m of
+  a road, the brief's orphan law; a first pass at 58 m offsets read 0.176 against 0.15.
+- *Measured* (every brief band holds): objective symmetry 1.038, orphan 0.054, no solid in a road; census
+  [2814, 2645, 1226] -> [2971, 2798, 1226]; roadCrossingSweep (titan_gorge) green.
+
 ### 2026-10-15 — Steinburg as a Franconian hill town: closed street walls, the Stadtkirche, the castle (the maps lane)
 
 **The blind critics on the empty-lot fill (WEAK +0.09): blank windowless gables and frame-filling stained walls,
@@ -8173,6 +8211,19 @@ church mass, brown roofs, lanes opening onto empty lots.** The town is planned a
   sightline median 102 m; census [2783, 5724, 2473] -> [2801, 7951, 2472]; the building-integrity ledger rows for the
   church, the keep, the palace range and the two castle pieces.
 
+### 2026-10-15 — Tidegate Polders: the dyke village and its church (the maps lane)
+
+**The owner, 10-09: Tidegate Polders among the fourteen to bring up, built the way Verdant was.** The farm court stood
+alone on its paved yard with a handful of buildings round it and the polder empty to the dykes.
+- *The place:* a Walcheren village in the autumn of 1944: the lintdorp, a street of brick houses behind their front
+  gardens along the roads out of the farm court, a farm and an inn among them, and the village church, a brick hall
+  church with its west tower and needle spire over the flat land.
+- *The plan* (`maps/poldersVillage.ts`, generated by `tools/plan-street-rows.mjs polders --sites=cottage:6,farmhouse:2,
+  tavern:1,granary:1 --gap=3,9 --setback=8`, the zone discs kept open; `plannedSites` after the recorded farm court):
+  48 houses turned to their street, 3-9 m apart; the church a set piece east of the court, its front to the court.
+- *Measured* (every brief band holds): objective symmetry 1.031, no solid in a road, orphan 0.053; census
+  [4011, 3942, 3381] -> [4176, 4380, 3381]; the building-integrity row for the church.
+
 ### 2026-10-14 — Verdant Fields: Prokhorovka's set pieces (landmarks L2 on main; the maps lane)
 
 The landmarks lane's L2 Verdant subset (visual/landmarks-l2, held for the owner's group preview) on main: the village
@@ -8181,6 +8232,47 @@ the line keeps clear of every solid without moving a placement stream; trees, gr
 it), the station water tower, the kolkhoz grain store, its trestle water tower and its lettered arch with wings, the
 Civil War memorial square, the post mill on the southern swell and the smock mill on the northern. Nine of nine
 Verdant houses stand where they stood. Census [6797, 6465, 7364] -> [6816, 6679, 7332].
+
+### 2026-10-15 — Kestrel Airfield: the revival round Hostomel's airport (the maps lane)
+
+**The owner, 10-09: Kestrel Airfield among the fourteen to bring up; 10-05: every map revitalized like Verdant.** Kestrel
+was an airfield on an empty lawn. The map-revival lane's rounds of 10-05..07 (MA.17) and the map-content lane's round 3
+(10-09) were never landed; the maps lane re-made them on integ/226 with the horizons lane's border forest (d9c1ca643).
+The airport's buildings, runway, aprons, roads, pads and objectives stand where they stood.
+- *The kit* (`maps/regional/hostomelDacha.ts`): the dachas of the garden cooperatives round the airport (the sadovi
+  tovarystva of Hostomel and Bucha): a cottage of one storey in planks or rendered block on a brick plinth under a steep
+  sheet or asbestos gable, the attic light cut through the boarded gable, a glazed veranda under its lean-to; the garden
+  shed boarded up to its lean-to; the yards' picket fences, gates and beds. The border hamlets past the edge are these
+  dachas now. The maintenance hangars carry their numbers on the long wall by the apron (`airfieldPaint.ts`).
+- *The plan:* two cooperatives (a rotation pair of eight dachas each) on the valley shoulders beside the access roads,
+  each on its concrete lane (roads 5 and 6, rejoining the access road on its own line), a field cross at the lane's mouth.
+- *The woods and the land:* the Polissia's pine and birch round the plateau (clusters 34, lone trees 30, rim 108), four
+  ruled Scots pine plantations past the runway's ends (9 x 9 m belts; `vegetation.standKeepOut` keeps the woodlots out of
+  their blocks); the valleys' bogs a peaty tan; `landUse.ts airfield`: hay meadow, pasture, small fields of rye and
+  potatoes outside the perimeter.
+- *The airport worked:* the taxiway centrelines, the stands' lead-ins, stop bars and numbers in worn paint
+  (`world/groundMarkings.ts`, one receive-only decal mesh, 3 call-site lines in props.ts); eight apron floodlight masts
+  (`landmarks/airfieldWorks.ts`); the An-26s in the dispersal pens, two burnt; more trucks and jeeps.
+- *Ruling (MA.37):* Kestrel keeps its growing season (no February pass); its horizon keys stay with the horizons lane.
+- *Measured* (every brief band holds): orphan 0.016, objective symmetry 1, separation 841 m, sightline median 120 m, no
+  solid in a road; census [2974, 3015, 2435] (with the border forest [3110, 3155, 2572]) -> [4445, 4929, 3647];
+  building integrity clean for the dacha and the shed (new ledger rows), the mast's open frame its only finding; kit
+  connectivity clean for the dacha, the shed and the mast.
+- *The An-225* (its own commit, revertible on its own): the Mriya as Hostomel's hangar left it in February 2022, seated on
+  the map-revival lane's round-5 plot (105 x 97 m behind the cargo apron, its slab at the apron's own 5.92 m; the kit's
+  cargo hangar on the terminal side only; the access road behind the hangar, 17 m off its back wall; the hangar line's
+  wall ending 4 m short of the slab; the cargo apron's south-east mast 9 m off the slab's corner). The airframe is the
+  landmarks lane's round 4 (fbd53b3eb, from the Hostomel photographs after wave 246 failed round 3: the high wing on the
+  hull with six D-18T nacelles on pylons, intakes forward, the glazed flight deck, burnt aluminium as one smooth gradient,
+  the torn skin curling at the break) merged over the 217 connectivity sweep's hangar (the ribs' end posts, the purlins
+  on the ribs as drawn, the fallen lengths braced, the heaps' sheets on each other's folds); round 4's sheets hang from
+  the purlins where the purlins are, its skin flaps root on the ragged rims, the floor's burnt frames rest on the slab
+  and the back wall's cladding stands on the wall: kit connectivity 0 floating, 0 free ends (the baseline 0 / 1).
+- *Measured with the An-225* (every brief band holds): objective symmetry 1.015 (the near apron zones and the far ones as
+  round 5 measured them), orphan 0.07, separation 841 m, sightline median 118 m; census [4445, 4929, 3647] ->
+  [4614, 5107, 3872] (on integ/226 f26e05d8c, merged in: [4720, 5213, 3872]); airfield's shard current built alone and
+  after Verdant and Steinburg; 24 158 desktop triangles for the wreck (budget 26 000).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

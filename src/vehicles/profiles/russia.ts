@@ -255,6 +255,10 @@ interface T62BowServiceOptions {
 interface T62ChassisOptions {
   readonly bowService?: T62BowServiceOptions;
   readonly gear?: Readonly<Record<string, RuntimeValue>>;
+  /** VEH-13: the deck links fitting by the turret ring (false where the turret's casting covers that station). */
+  readonly deckLinks?: boolean;
+  /** VEH-13: the right aft-deck course (false where a variant carries those links elsewhere). */
+  readonly aftLinksRight?: boolean;
 }
 
 interface EraLowerLeafOptions {
@@ -1238,6 +1242,7 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // spare-track-link rows bedded flat on the aft deck (ref top line 1.473); VEH-13: each side's pair is one registered
   // run (spareTrackSeat.ts), seated on the deck that had grown over it
   [-1, 1].forEach((s) => {
+    if (s > 0 && o.aftLinksRight === false) return;
     withSpareTrackRun(P, { site: `t62-aft-links-${s < 0 ? 'L' : 'R'}`, source: 'adhoc', rotation: [0.06, 0, 0] }, (P) => {
       // VEH-13 (blind critics m1, "flat grey blocks"): each row is the fleet's links side by side over the old slab
       for (const [w, h, d, x, y, z, rx] of [[0.946, 0.08, 0.21, 0.583, 1.415, -2.55, 0.06], [0.858, 0.07, 0.17, 0.539, 1.425, -2.68, 0.08]]) {
@@ -1258,9 +1263,11 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 1.76, r: 0.08, straps: 2, seed: 5 });
     log.position.set(0, 1.28, -3.10);
     P.hullG.add(log);
-    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.55, seed: 9 });
-    links.position.set(-0.583, 1.432, 0.60);
-    P.hullG.add(links);
+    if (o.deckLinks !== false) {
+      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.55, seed: 9 });
+      links.position.set(-0.583, 1.432, 0.60);
+      P.hullG.add(links);
+    }
     const cable = FITTINGS.towCable({
       mats: P.mats, eyes: false, r: 0.018,
       pts: [[0.55, 1.468, 0.30], [1.045, 1.458, 0.90], [0.605, 1.468, 1.50]], seed: 7,
@@ -1301,7 +1308,9 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
 
 export function buildT62Obr1975(P: RussiaBuilderPort): void {
   const { box, cylX, cylY, cylZ } = KIT;
-  buildT62Obr1975Chassis(P);
+  // VEH-13: this turret's dome casting covers the chassis's deck-links station by the ring; the links ride the
+  // turret's left side instead (below)
+  buildT62Obr1975Chassis(P, { deckLinks: false });
 
   // ---- turret on the normalized casting: TRUE seat (bias split deleted),
   // crown 2.40, cupola 2.42, DShK stow spike 2.43-2.44 (3 cols, p95-legal).
@@ -1464,6 +1473,14 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
   const dx = ringSkin(rings, 0.18) + 0.006;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [dx, 0.29, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-dx, 0.29, -0.30], -Math.PI / 2);
+  // VEH-13 (2026-10-15, the owner's rule "fix how it's mounted, don't remove"; the coordinator: T-62s carried links on
+  // the turret sides): a two-link clamped course on the left side wall behind the number, its width upright across the
+  // wall's straight band (turret y 0.11-0.45), its run along the wall, turned 8 degrees to follow the casting's plan
+  // curve; the seat pass welds it on (flush, or a rack's posts where the casting bows)
+  const sideLinks = FITTINGS.spareTrackLinks({ mats: P.mats, links: 2, width: 0.34, seed: 19 });
+  sideLinks.position.set(-1.475, 0.28, -0.756);
+  sideLinks.rotation.set(0, -0.139, Math.PI / 2);
+  P.turretG.add(sideLinks);
   P.topY = 1.10;
 }
 

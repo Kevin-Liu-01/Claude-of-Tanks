@@ -74,6 +74,13 @@ export default {
     // hardwoods keep to the creek bottom (the belts below)
     species: ['pine', 'cedar', 'oak'], clusterMix: [['pine', 1.0]],
     loneMix: [['pine', 0.96], ['oak', 0.04]], rimMix: [['pine', 0.92], ['oak', 0.08]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): the ring's pines at the rim pines' own 25.4 m, not the oaks-included 24.2 m mean
+    ringStature: 'species',
+    // (GND, 2026-10-15; the blind critics: "the far backdrop is a broadleaf band that doesn't match the longleaf pines"):
+    // past the red line the flatwoods are longleaf alone — the ring's 8 % oak share drew 701 oaks stood at the pines'
+    // 24 m (2.9x their own height, 26 m crowns) into a dense broadleaf band; the map's understorey is the pines' own
+    // grass-stage seedlings (its bushes), so the ring takes no second species. The rim inside the line keeps its oaks.
+    ringMix: [['pine', 1.0]],
     // (round 4, wave 376: "the wiregrass is a mown lawn or oversized card blades"): the ground cover is wiregrass —
     // every tuft a bunch (vegetation.ts makeWiregrassCardTexture), half the meadow's count, with sand and thatch between
     // them (at half the density the sparse law's taller clumps stay off: the logging bays' stubble keeps under its logs)

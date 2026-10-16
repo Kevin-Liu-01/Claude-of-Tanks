@@ -97,6 +97,10 @@ function turretEra(P:TankBuilderPort):void {
   material.dispose();for(const g of stock)g.dispose();
 }
 
+/** Hetman II's hull package (heavy fitted skirts, joint caps, Ukrainian skirt
+ * ERA and camouflage carriers), unchanged beneath its donor turret. */
+export function hetmanIIHullPackage(P:TankBuilderPort):void { hullPackage(P); }
+
 function hullPackage(P:TankBuilderPort):void {
   const span=5.04,count=6,step=span/count;
   for(const side of [-1,1]){

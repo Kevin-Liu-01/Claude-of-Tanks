@@ -563,8 +563,16 @@ export function shellSparesStoppedRecord(record: { kind?: string } | null | unde
   return record?.kind != null && DENSE_SET_PIECE_KINDS.has(record.kind) && !((caliberMm ?? 0) >= SET_PIECE_WRECK_MIN_CALIBER_MM);
 }
 
+/** The huts that stop a round (physics DST-03): log, stone and steel walls. The first five stand their shell records as
+ * their own slabs (props.ts SLAB_SHELL_KINDS); the motor pool keeps its structure band, its open bays open. */
+export const DENSE_HUT_SLAB_KINDS: readonly string[] = ['fieldhut', 'saunahut', 'alpinerefuge', 'longhouse', 'quonsethut', 'guardpost'];
+const DENSE_HUTS: ReadonlySet<string> = new Set([...DENSE_HUT_SLAB_KINDS, 'motorpool']);
+
 function isDenseCrushableCover(kind: string | undefined): boolean {
-  return kind === 'wallstone' || kind === 'walladobe' ||
+  // (physics DST-03, 2026-10-16; the coordinator: "what's drawn: if it looks like it would stop a round, it does") the
+  // log, stone and steel huts stop a round (DENSE_HUTS): HE detonates on them and the hut takes it through its
+  // destruction path; plank, canvas and brush stay light cover
+  return kind === 'wallstone' || kind === 'walladobe' || (kind != null && DENSE_HUTS.has(kind)) ||
     kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock'
     || isFortifiedCoverKind(kind) || (kind != null && DENSE_SET_PIECE_KINDS.has(kind));
 }

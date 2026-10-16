@@ -18,6 +18,7 @@
 // it, the second within 8 m of the first's rotation about the farm court.
 import { roundRoadBends } from './roadBends.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import { POLDERS_VILLAGE } from './poldersVillage.ts'; // the maps lane, 2026-10-15: the dyke village's street
 
 /** The farm court's settlement rect (terrain.village below). */
 const VILLAGE = { x0: -178, x1: 68, z0: -96, z1: 122, cx: -64, cz: 12, feather: 42, flatten: 0.88, relief: 0.12 };
@@ -260,6 +261,8 @@ export default {
   vegetation: {
     species: ['poplar', 'willow', 'oak'], clusterMix: [['willow', 0.48], ['poplar', 0.36], ['oak', 0.16]],
     loneMix: [['poplar', 0.62], ['willow', 0.28], ['oak', 0.10]], rimMix: [['poplar', 0.54], ['willow', 0.34], ['oak', 0.12]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): willow x0.78, poplar x1.13 of the one mean
+    ringStature: 'species',
     // (step 3, gauntlet wave 205: "free-standing trees scattered at random through the ploughed field") Zeeland's trees
     // stand in willow rows along the ditches, poplar windbreaks and farmyard groups: the woodlots off the cropped ground
     // (the trees lane's woodsOffArable) and fewer of them (42), the loose field trees mostly gone (64); willow rows on the
@@ -321,11 +324,20 @@ export default {
         params: { width: 12, depth: 12, fence: 'fenceplank', back: 'fence', beds: false, path: 0 } },
       { kind: 'windmill', x: -171, z: -316, yawDeg: 300, ground: 'veto', name: 'the drain mill', params: { style: 'tower', height: 18 } },
       { kind: 'outfall', x: -182.96, z: -311.17, yawDeg: 292, ground: 'veto', name: "the drain mill's outfall", params: { length: 7.2, width: 0.8 } },
+      // (the maps lane, 2026-10-15, the Verdant process; the owner, 10-09: Tidegate Polders among the maps to bring up) the
+      // village's church east of the farm court, as every Walcheren village gathers round its church: a brick hall
+      // church, its west tower and needle spire over the polder, its front to the court
+      { kind: 'church', x: 50, z: -24, yawDeg: -90, ground: 'reserve', name: 'the village church',
+        params: { tradition: 'western', length: 28, width: 11, tower: 34, crown: 'spire' } },
     ],
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     // (2026-10-06, the map-revival lane, step 1) the farm court stands exactly as the PR head seated it (the town-plan
     // replay, townPlans.generated.ts): the dykes, ramps and water rebuilt round it no longer move its houses
     townPlan: TOWN_PLANS.polders,
+    // (the maps lane, 2026-10-15, the Verdant process) and along the roads out of it the dyke village's street, a lintdorp
+    // of brick houses behind their front gardens, a farm or an inn among them (poldersVillage.ts, tools/plan-street-rows.mjs)
+    plannedSites: [...POLDERS_VILLAGE],
+    plannedSitesAfterPlan: true,
     townLightPlan: TOWN_LIGHT_PLANS.polders,
     // (step 1) the scattered stone keeps off the zone discs: re-rolled by the new ground, an outcrop landed on the west
     // field zone's edge and pushed the zone 8 m off its authored seat

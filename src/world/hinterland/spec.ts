@@ -53,6 +53,10 @@ export interface HinterlandLandformConfig {
   floor?: number;
   /** A caldera's inner wall: the share of its radius the wall rises over below the rim (default 0.12); narrower, steeper. */
   wall?: number;
+  /** A massif's main summit, authored: its place along the strike (-1..1 of the half-length) and its share of the
+   * height (default 0.5), a shoulder either side of it; the crest falls from it to both ends — a mountain with its
+   * summit and shoulders, not a table (round 4, Mont Froid from edge-w). */
+  peak?: { along: number; share?: number };
   name?: string;
 }
 
@@ -109,7 +113,14 @@ export interface HinterlandLandmarkConfig {
 
 export interface HinterlandTownConfig { azDeg: number; distM: number; size: 'small' | 'medium' | 'large'; name?: string }
 /** A village on a sightline; `towerM` its church tower's height (a landmark must clear the dyke rows before it). */
-export interface HinterlandVillageAt { azDeg: number; distM: number; name?: string; towerM?: number }
+export interface HinterlandVillageAt {
+  azDeg: number; distM: number; name?: string; towerM?: number;
+  /** Its buildings (default: the kit's village size). */
+  buildings?: number;
+  /** A near village's tower, read at a few hundred metres: slim (a ninth to an eleventh of its height wide each side),
+   * pale-rendered, its spire a third of it — not the far landmark's stout stage (a seventh). */
+  slim?: boolean;
+}
 
 /** The block a map file carries (B-architecture §4.0). */
 export interface HinterlandConfig {

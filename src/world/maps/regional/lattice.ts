@@ -20,6 +20,7 @@ export interface LatticeReading {
   colour: Rgb | null;
   /** what stood on the frame (a tank, a wheel head, a radome): its box, bucket and tint */
   crown: { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number; bucket: string; tint: Rgb } | null;
+  shed?: import('./shedFall.ts').ShedWreck; // an open shed's own reading (shedFall.ts recordShed): it falls as a shed
 }
 
 let latticeSink: LatticeReading[] | null = null;
@@ -117,11 +118,11 @@ export function latticeFrame(sink: PartSink, spec: LatticeSpec, crown: LatticeRe
  * and heads and its crown in the emitting frame, so it falls as its frame (damage.ts describeLattice).
  */
 export function recordLattice(sink: PartSink, legs: Array<{ foot: Vec3; head: Vec3 }>, girts: number[], size: number, bucket: RegionalBucket,
-  colour: Rgb | null, crown: LatticeReading['crown']): void {
+  colour: Rgb | null, crown: LatticeReading['crown'], shed?: LatticeReading['shed']): void {
   if (!latticeSink) return;
   const c = crown ? (() => {
     const a = sink.framePoint([crown.x0, crown.y0, crown.z0]), b = sink.framePoint([crown.x1, crown.y1, crown.z1]);
     return { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: a[1], y1: b[1], z0: Math.min(a[2], b[2]), z1: Math.max(a[2], b[2]), bucket: crown.bucket, tint: crown.tint };
   })() : null;
-  latticeSink.push({ legs: legs.map((l) => ({ foot: sink.framePoint(l.foot), head: sink.framePoint(l.head) })), girts, size, bucket, colour, crown: c });
+  latticeSink.push({ legs: legs.map((l) => ({ foot: sink.framePoint(l.foot), head: sink.framePoint(l.head) })), girts, size, bucket, colour, crown: c, ...(shed ? { shed } : {}) });
 }

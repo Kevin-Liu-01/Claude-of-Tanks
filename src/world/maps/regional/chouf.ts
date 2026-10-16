@@ -7,14 +7,16 @@
 // souk's vaulted shops behind their arches; the sabil fountain under its dome; a stone church with its open bell arch;
 // the terraces' vaulted stone stores and stables; a shelled house.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, recordShaft, roofCrown, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
-import { pottedPlant, washingLine } from './dressing.ts';
+import { bloomDisc, pottedPlant, washingLine } from './dressing.ts';
+import { recordShed } from './shedFall.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
 
 /** Shutters and doors: the Lebanese green, a blue-grey, a turquoise, a brown. */
 const SHUTTERS: readonly Rgb[] = [0x3f6a4a, 0x4f7a5a, 0x5a7488, 0x4a8a8a, 0x6a5040].map(rgb);
@@ -366,42 +368,6 @@ const hammam: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The souk's row: vaulted shops behind round arches on stone piers, plank doors and shutters, a flat roof. */
-const souk: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx), rng = st.rng, look = st.look;
-  const fp = footprint(ctx);
-  const H = 3.6;
-  onLot(sink, fp, (Wf, Df) => {
-    const W = Math.max(3.5, Wf - 0.1), L = Math.max(5, Df - 0.1);
-    const nb = Math.max(2, Math.round(L / 3.0)), bay = L / nb;
-    const openings: Opening[] = [];
-    for (let k = 0; k < nb; k++) openings.push({ face: 'right', storey: 0, kind: 'door', u: -L / 2 + (k + 0.5) * bay, w: Math.min(1.9, bay - 0.8), y0: 0, h: 2.3 });
-    const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.35), gableBucket: 'stone', openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, {
-      window: () => {},
-      door: (s, face, o, y0) => {
-        // the shop's plank doors folded open on the dark of the vault, the round arch over the opening
-        const r = s.recess, go = r > 0 ? -r + 0.03 : 0.015;
-        // (round 2, wave 123: "black voids"): the vault's back a deep brown of goods and shadow, not a black hole
-        faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.04, { colour: rgb(0x3a2c22) });
-        for (const side of [-1, 1]) faceBox(s, 'structureWood', face, o.u + side * (o.w / 2 + 0.32), y0 + o.y0 + o.h / 2, 0.05, 0.6, o.h - 0.1, 0.05, { colour: shade(st.shutter, 0.85), decor: true });
-        roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass', 0.2);
-      },
-    });
-    spouts(sink, frame, ['left', 'back'], look);
-    // the awnings of cloth over a few of the shops
-    for (let k = 0; k < nb; k++) {
-      if (rng() < 0.45) continue;
-      const u = -L / 2 + (k + 0.5) * bay, c = pick(rng, [rgb(0x9a3a2c), rgb(0x2f5a7a), rgb(0xc8b88a), rgb(0x4f6a3a)]);
-      faceBox(sink, 'structureWood', frame.faces.right, u, 3.05, 0.55, Math.min(2.2, bay - 0.3), 0.05, 1.1, { colour: c, decor: true });
-    }
-  }, 1);
-  return sink.finish();
-};
-
 /** The sabil: a public fountain under a dome on four arches, its basin and spouts; its piers and lintels fill the footprint. */
 const sabil: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -613,22 +579,68 @@ const stable: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A grape arbor (arisha): a frame of posts and rails over a stone terrace, the vine's leaves over it (open). */
+/**
+ * The grape arbour (arisha; the props census #17, 2026-10-15, the judges: "hewn or round posts on stone bases with
+ * notched beams and a lattice of rails; a vine with trunks climbing the posts and leaf clusters following the lattice;
+ * a dressed stone terrace edge; destroyed: the frame racks over into its own posts and beams, and the leaves scatter"):
+ * the terrace slab with its dressed edge, round posts on stone bases, the two beams laid in notches over their heads and
+ * run out past them, the rails across the beams and the battens along the rails (the lattice), the old vine's trunk
+ * twisting up a post and out along a beam, its leaves in clusters over the lattice and the grapes hanging under it.
+ * It falls as a shed does (shedFall.ts): the posts snapped, the lattice down in lengths, the leaves thrown.
+ */
 const arisha: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile';
   const fp = footprint(ctx);
   const W = Math.max(2.4, fp.w - 0.05), D = Math.max(2.4, fp.d - 0.05), H = 2.5;
+  const LEAVES: readonly Rgb[] = [0x4f6a2e, 0x5f7a34, 0x3f5a26, 0x6a7a3a].map(rgb), GRAPE = rgb(0x3a2a40), BARK = rgb(0x4a3a2c);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.2, D / 2);
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('structureWood', sx * (W / 2 - 0.12) - 0.08, 0.2, sz * (D / 2 - 0.12) - 0.08, sx * (W / 2 - 0.12) + 0.08, H, sz * (D / 2 - 0.12) + 0.08, { colour: TIMBER });
-    for (const sz of [-1, 1]) sink.span('structureWood', -W / 2, H - 0.12, sz * (D / 2 - 0.12) - 0.06, W / 2, H, sz * (D / 2 - 0.12) + 0.06, { colour: TIMBER });
-    for (let x = -W / 2 + 0.4; x < W / 2 - 0.2; x += 0.6) sink.span('structureWood', x - 0.03, H, -D / 2, x + 0.03, H + 0.05, D / 2, { colour: TIMBER, decor: true, fine: true });
-    // the vine canopy in loose clumps
-    for (let k = 0; k < 9; k++) {
-      const x = (look() - 0.5) * (W - 0.6), z = (look() - 0.5) * (D - 0.6), s = 0.6 + look() * 0.7;
-      sink.span('structureWood', x - s / 2, H + 0.02, z - s / 2, x + s / 2, H + 0.18 + look() * 0.12, z + s / 2, { colour: shade(rgb(0x4f6a2e), 0.8 + look() * 0.4), decor: true });
+    // the terrace's dressed edge: a coping course a hand proud all round its top
+    sink.band('stone', -W / 2 - 0.04, 0.08, -D / 2 - 0.04, W / 2 + 0.04, 0.22, D / 2 + 0.04, { decor: true, shade: 0.92 });
+    // the posts on their stone bases (the corners, and a middle one on a long side)
+    const xs = W > 3.4 ? [-1, 0, 1] : [-1, 1], legs: Array<{ foot: Vec3; head: Vec3 }> = [], posts: Array<[number, number, number, number]> = [];
+    for (const sz of [-1, 1]) for (const k of xs) {
+      const x = k * (W / 2 - 0.15), z = sz * (D / 2 - 0.15);
+      sink.span('stone', x - 0.15, 0.2, z - 0.15, x + 0.15, 0.42, z + 0.15, { shade: 0.88 });
+      sink.cylinder('structureWood', [x, 0.42, z], 'y', H - 0.42, 0.08, 8, { colour: TIMBER }, 0.075);
+      legs.push({ foot: [x, 0.42, z], head: [x, H, z] }); posts.push([x, z, 0.42, H]);
     }
+    // the two beams in their notches over the post heads, run out past them; the rails across; the battens along
+    for (const sz of [-1, 1]) sink.span('structureWood', -W / 2 - 0.15, H - 0.14, sz * (D / 2 - 0.15) - 0.07, W / 2 + 0.15, H + 0.02, sz * (D / 2 - 0.15) + 0.07, { colour: TIMBER, uv: UV_MEMBER });
+    for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) sink.span('structureWood', x - 0.035, H + 0.02, -D / 2 - 0.1, x + 0.035, H + 0.09, D / 2 + 0.1, { colour: shade(TIMBER, 1.08), decor: true, uv: UV_MEMBER });
+    sink.dressing(mobile, () => {
+      for (let z = -D / 2 + 0.3; z < D / 2 - 0.15; z += 0.6) sink.span('structureWood', -W / 2, H + 0.09, z - 0.02, W / 2, H + 0.13, z + 0.02, { colour: shade(TIMBER, 1.12), decor: true, fine: true });
+      // the vine: its trunk twisting up the corner post, out along the beam and over the rails
+      const px = -(W / 2 - 0.15), pz = -(D / 2 - 0.15), pts: Vec3[] = [];
+      for (let k = 0; k <= 5; k++) {
+        const t = k / 5, a = t * Math.PI * 1.6;
+        pts.push([px + Math.cos(a) * 0.13, 0.22 + t * (H - 0.3), pz + Math.sin(a) * 0.13]);
+      }
+      pts.push([px + W * 0.35, H + 0.16, pz + 0.1], [px + W * 0.7, H + 0.18, pz + D * 0.3], [px + W * 0.45, H + 0.17, pz + D * 0.75]);
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const r = k < 6 ? 0.07 - k * 0.006 : 0.035;
+        sink.member('structureWood', pts[k], pts[k + 1], r, r, [0, 0, 1], { colour: shade(BARK, 0.9 + look() * 0.2), decor: true, exposed: true }, 0);
+      }
+      // the leaves in clusters over the lattice (each a few leaves at their own tilts, seen from above and below)
+      const n = Math.round(W * D * 2.6);
+      for (let k = 0; k < n; k++) {
+        const cx = (look() - 0.5) * (W - 0.3), cz = (look() - 0.5) * (D - 0.3), cy = H + 0.2 + look() * 0.12, colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
+        for (let j = 0; j < 3; j++) {
+          const tilt = (look() - 0.5) * 1.1, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
+          const nrm = normalize3([Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)]);
+          const c: Vec3 = [cx + (look() - 0.5) * 0.35, cy + (look() - 0.5) * 0.08, cz + (look() - 0.5) * 0.35];
+          bloomDisc(sink, c, nrm, r, shade(colour, 0.85 + look() * 0.3), { decor: true }, yaw);
+          bloomDisc(sink, c, [-nrm[0], -nrm[1], -nrm[2]], r, shade(colour, 0.7), { decor: true }, yaw);
+        }
+        if (look() < 0.25) sink.cylinder('structureWood', [cx, H - 0.05, cz], 'y', 0.22, 0.05, 6, { colour: GRAPE, decor: true, fine: true }, 0.08);
+      }
+    });
+    recordShed(sink, legs, {
+      W: W + 0.3, D: D + 0.2, pitchDeg: 4, eaveY: H + 0.1, eave: 0.1, verge: 0.1, deck: 0.08, post: 0.16, posts,
+      pad: { size: 0.3, top: 0.42, bucket: 'stone', colour: null }, timber: TIMBER, boards: null, boardW: 0.2, back: false, ends: false,
+      roof: { bucket: 'structureWood', colour: LEAVES[0], shape: 'splinter', lattice: true }, stone: null, pile: 0,
+    });
   });
   return sink.finish();
 };
@@ -674,7 +686,7 @@ export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
   // under the flat earth roof, its back to the terrace wall, sharing its walls with its neighbours (no stair)
   adobe: (ctx) => dar(ctx, { storeys: 1, roof: 'earth' }),
   bathhouse: hammam,
-  marketRow: souk,
+  marketRow: (ctx) => choufSouk(ctx, { st: stateFor(ctx), dialect, roof: earthRoof(0.35), spouts }),
   market: sabil,
   tavern: makeChurch(false),
   // (round 2, gauntlet wave 123: the border villages' generic tower and spire read as a Western church): their church

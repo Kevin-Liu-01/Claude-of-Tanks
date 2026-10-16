@@ -50,7 +50,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
@@ -186,6 +186,18 @@ interface VegetationConfig {
   clusterMix: SpeciesMix;
   loneMix: SpeciesMix;
   rimMix: SpeciesMix;
+  /** GND (2026-10-15; the blind critics' Longleaf backdrop "a broadleaf band that doesn't match the longleaf pines"):
+   * the species mix of the forest over the red line — the horizon ring's trees (maps/horizon.ts coniferShare,
+   * horizonForestImpostors.ts), the ones the battlefield's tiers adopt and the Hinterland's — where it differs from the
+   * battlefield's own rim (Longleaf's rim keeps the creek bottom's oaks; the flatwoods past the line are longleaf alone).
+   * Absent: the rim mix. */
+  ringMix?: SpeciesMix;
+  /** GND (2026-10-15; the coordinator's ruling: "birch and poplar shouldn't stand at pine height"): `'species'` stands
+   * each of the ring's trees at its own species' stature on the battlefield's rim (the mean of that species' rim trees;
+   * a species the rim does not grow, at the rim's mean instance scale × its own near height) instead of every species
+   * at the rim trees' one mean height. Absent: the one mean, as the ring always stood (Verdant's owner-approved forests
+   * stay bit for bit; ringSpeciesStature.selftest). */
+  ringStature?: 'species';
   clusterCount: number;
   loneCount: number;
   rimCount: number;
@@ -207,6 +219,12 @@ interface VegetationConfig {
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
+  /**
+   * The maps lane (Kestrel's pine plantations; the map-revival lane's 780c8a82e, 2026-10-06): rects only the belts plant
+   * in — the woodlots, the lone trees, the hedges and the saplings take no site inside one, so a plantation block holds
+   * its rows alone. Opt-in: a map that sets none draws and seats exactly as before.
+   */
+  standKeepOut?: readonly { x0: number; x1: number; z0: number; z1: number }[];
   /**
    * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
    * `palmFallback` (default: the map's first other species), so no draw moves.
@@ -490,7 +508,12 @@ export interface VegetationRuntime {
    * geometry's height, metres; 0 without an impostor library) — the ring forest's impostors take both
    * (horizonForestImpostors.ts). */
   _rimMix: SpeciesMix;
+  /** GND (2026-10-15): the forest over the red line's species mix (VegetationConfig `ringMix`, else the rim's). */
+  _ringMix: SpeciesMix;
   _rimTreeHeightM: number;
+  /** GND (2026-10-15): with VegetationConfig `ringStature: 'species'`, each ring species' height in metres (its rim
+   * trees' mean, else the rim's mean instance scale × its near rows' mean height); null otherwise (the one mean). */
+  _ringSpeciesHeightM: Readonly<Record<string, number>> | null;
   /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
    * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
    * shade average well under 1). */
@@ -4892,6 +4915,10 @@ function* vegetationBuildSteps(
     fullFade = false,
     matteCanopy = false,
     thin = 0, // round 77: leaf translucency (canopyLighting.ts), 0 for bark
+    // GND (2026-10-15): where the crown's needle share comes from (canopyLighting.ts NEEDLE_TRANSMIT_*): 'uniform' — a
+    // near card material's own uCotNeedle (0 here, 1 on a needle species' material); 'impostor' — the far tier's
+    // per-species varying (treeImpostors.ts aImpNeedle); null — none (bark, the far lobes, the phones)
+    needle: 'uniform' | 'impostor' | null = null,
   ): MaterialShaderHook => (shader: MaterialShader): void => {
     shader.uniforms.uWindTime = uWindTime;
     shader.uniforms.uWindDir = uWindDir; // round 77
@@ -5066,13 +5093,23 @@ function* vegetationBuildSteps(
         `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
     }
     // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
-    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
+    // GND (2026-10-15; Kestrel chase-s: back-lit pines "a saturated lime green"): a needle crown transmits its needles'
+    // dulled green (canopyLighting.ts cotCanopyTransmit; desktop tiers, the phones keep their fragment)
+    const needleOn = needle !== null && thin > 0 && !mobileTier;
+    if (needleOn && needle === 'uniform') {
+      shader.uniforms.uCotNeedle = { value: 0 }; // a needle species' material sets its own (needleFoliageHook)
+      shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uCotNeedle;');
+    }
+    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null,
+      needleOn ? (needle === 'uniform' ? 'uCotNeedle' : 'vCotNeedle') : null);
   };
   const treeWindHook = makeTreeWindHook(BARK_NEAR_DISSOLVE[0], BARK_NEAR_DISSOLVE[1], 0.30); // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
   // Round 77: the near cards transmit 45 % of the (shadowed) direct light when back-lit, the far lobes 18 %.
-  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45); // matte canopy cards
+  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45, 'uniform'); // matte canopy cards
   const farCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18); // matte far lobes
+  // GND (2026-10-15): the far tier's impostors — the far lobes' law, the needle share per species from the quad
+  const impostorCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18, 'impostor');
   // Round 77: moss on the shaded side of the trunk bases, by the map's climate (uMoss, treeClimate.ts). Grows in the
   // bark's fissures (the sheet's darker texels), thickest at the ground and gone by 3 m, on the side turned from the
   // sun; a faint lichen dusting on the temperate maps, a full collar on the wet ones, none on the arid and frozen.
@@ -5722,6 +5759,13 @@ function* vegetationBuildSteps(
     return veg.palettes.oak || {};
   };
 
+  /** GND (2026-10-15): a needle crown — its leaf-scale detail is needles (the grown form's family: a holm oak on a cedar
+   * slot is leaves, a longleaf pine on a pine slot needles) — transmits its needles' dulled green when back-lit. */
+  const needleCrown = (sp: Species): boolean => leafDetail.classOf(SPECIES[sp].detailSpecies ?? sp, palOf(sp)) === 'conifer';
+  const needleFoliageHook = (shader: MaterialShader): void => {
+    foliageWindHook(shader);
+    if (shader.uniforms.uCotNeedle) shader.uniforms.uCotNeedle = { value: 1 };
+  };
   const foliageTex = {} as Record<Species, THREE.Texture>;
   const foliageMats = {} as Record<Species, THREE.MeshStandardMaterial>;
   const foliageDepthMats = {} as Record<Species, THREE.MeshDepthMaterial>;
@@ -5744,7 +5788,8 @@ function* vegetationBuildSteps(
         fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
           COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
       }
-      engineCtx.setupShadowMaterial(fm, foliageWindHook);
+      // GND (2026-10-15): a needle species' cards transmit the needles' dulled green (a uniform: the one program)
+      engineCtx.setupShadowMaterial(fm, needleCrown(sp) ? needleFoliageHook : foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
@@ -5824,7 +5869,7 @@ function* vegetationBuildSteps(
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
     rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
-      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
+      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp], needle: needleCrown(sp),
     }))),
     bark: barkTex.albedo,
     flood: (() => {
@@ -5842,7 +5887,7 @@ function* vegetationBuildSteps(
       return n > 0 ? new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace)
         : new THREE.Color(0.06, 0.077, 0.021);
     })(),
-    hook: farCanopyWindHook,
+    hook: impostorCanopyWindHook,
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial(material, hook),
     renderer: bakeRenderer,
   }) : null;
@@ -5992,9 +6037,11 @@ function* vegetationBuildSteps(
     _evenSeat[0] = turn ? 2 * halvesAbout!.x - x : x; _evenSeat[1] = turn ? 2 * halvesAbout!.z - z : z;
     return _evenSeat;
   }
+  let placingBelts = false; // standKeepOut: the belts plant inside the kept-out rects
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z) || inTreeClear(x, z) || overTreeCeiling(x, z)) return false;
+    if (!placingBelts && veg.standKeepOut?.some((r) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -6122,7 +6169,32 @@ function* vegetationBuildSteps(
     heights.sort((a, b) => a - b);
     return uplandBandOf(heights);
   })() : null;
+  // the trees lane (2026-10-06, the map-revival lane's Skybridge round 4: Glen Canyon's Fremont cottonwoods by the water):
+  // a place's riparian slot (treeBiomes.ts riparian) seats only within its reach of a lake's shore and no higher over the
+  // shore than its rise, or in the low ground (the lowest share of the square's heights, a fifth unless it names one);
+  // every other slot stands anywhere. A test on a seat, no draw (every placement's zone test, uplandZoneOk, reads it).
+  const riparian = treeBiomeRiparian(cfg?.id);
+  const riparianLow: number | null = riparian ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return heights[Math.min(heights.length - 1, Math.floor(heights.length * (riparian.lowShare ?? 0.2)))];
+  })() : null;
+  function riparianZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparian || sp !== riparian.slot) return true;
+    const h = heightField.getHeightAt(x, z);
+    if (h <= riparianLow!) return true;
+    for (const lake of heightField._layout?.lakes ?? []) {
+      const d = Math.hypot(x - lake.x, z - lake.z);
+      if (d - lake.r > riparian.reachM) continue;
+      // the shore: the lake's edge on the line from its centre to the seat
+      const f = lake.r / Math.max(1e-3, d);
+      if (h - heightField.getHeightAt(lake.x + (x - lake.x) * f, lake.z + (z - lake.z) * f) <= (riparian.riseM ?? Infinity)) return true;
+    }
+    return false;
+  }
   function uplandZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparianZoneOk(x, z, sp)) return false;
     if (!uplandBand) return true;
     const form = formOf(sp)?.form ?? sp;
     return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
@@ -6750,7 +6822,8 @@ function* vegetationBuildSteps(
       }
     }
   }
-  placeTreeBelts();
+  placingBelts = true;
+  try { placeTreeBelts(); } finally { placingBelts = false; }
   rememberAuthoredDonors(authoredLoneStart, trees.length - authoredLoneStart);
 
   // horizon rim forest: dense clustered blocks on the raised map border so
@@ -8846,9 +8919,13 @@ function* vegetationBuildSteps(
   // (horizonForestImpostors.ts); 0 where no atlas exists (the receipts, the mobile tier: the ring keeps its lobes).
   let rimTreeHeightM = 0;
   const rimTreeTint: [number, number, number] = [1, 1, 1];
+  // GND (2026-10-15): and per species, for a map whose ring stands each species at its own stature (`ringStature`)
+  let ringSpeciesHeightM: Record<string, number> | null = null;
   if (treeImpostors && rimTrees.length > 0) {
     let sum = 0, r = 0, g = 0, b = 0;
     let living = 0;
+    const bySpecies = new Map<string, { height: number; count: number }>();
+    let scaleSum = 0;
     for (const tree of rimTrees) {
       if ((tree.species as string) === 'snag') continue;
       living++;
@@ -8856,10 +8933,31 @@ function* vegetationBuildSteps(
       const e = tree.mat.elements;
       sum += Math.hypot(e[4], e[5], e[6]) * row.heightM;
       r += tree.tint.r; g += tree.tint.g; b += tree.tint.b;
+      if (veg.ringStature === 'species') {
+        const entry = bySpecies.get(tree.species) ?? { height: 0, count: 0 };
+        entry.height += Math.hypot(e[4], e[5], e[6]) * row.heightM;
+        entry.count++;
+        bySpecies.set(tree.species, entry);
+        scaleSum += Math.hypot(e[4], e[5], e[6]);
+      }
     }
     if (living > 0) {
       rimTreeHeightM = sum / living;
       rimTreeTint[0] = r / living; rimTreeTint[1] = g / living; rimTreeTint[2] = b / living;
+      if (veg.ringStature === 'species') {
+        ringSpeciesHeightM = {};
+        for (const [species, entry] of bySpecies) ringSpeciesHeightM[species] = entry.height / entry.count;
+        // a ring species the rim does not grow: the rim's mean instance scale × its own near rows' mean height
+        const scaleMean = scaleSum / living;
+        for (const [species] of veg.ringMix ?? veg.rimMix) {
+          if (ringSpeciesHeightM[species] !== undefined || (species as string) === 'snag') continue;
+          if (!treeImpostors.rows.some(row => row.species === species)) continue; // (the ring drops it too)
+          const base = treeImpostors.rowBase(species);
+          let rowHeight = 0;
+          for (let v = 0; v < treeImpostors.variants; v++) rowHeight += treeImpostors.rows[base + v].heightM;
+          ringSpeciesHeightM[species] = scaleMean * rowHeight / treeImpostors.variants;
+        }
+      }
     }
   }
   rimTrees.length = 0;
@@ -8985,7 +9083,7 @@ function* vegetationBuildSteps(
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
-    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
+    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

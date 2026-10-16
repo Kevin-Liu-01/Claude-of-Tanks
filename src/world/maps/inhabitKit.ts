@@ -70,6 +70,8 @@ export interface DestructiblePropType {
   footprintBuild?: () => THREE.BufferGeometry;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** (physics, 2026-10-16) The tier-independent solid a kind's slab shells are read from (props.ts SLAB_SHELL_KINDS). */
+  collisionSolid?: () => THREE.BufferGeometry;
   /** The family's cascaded shadow, over the size rule (destructibleRenderPolicy.ts destructibleCastsShadow). */
   castShadow?: boolean;
   /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them
@@ -1361,12 +1363,14 @@ export function buildDryStoneWallHead(seed: number, thick: number, height: numbe
 /**
  * The scenery lane (wave 16): where a mud wall ends or opens, an eroded pier — a little broader and taller than the
  * wall, its arrises rubbed round, its top slumped to a worn dome, a lean of its own; no cap slab. World-free, centred
- * on its foot, its own stream.
+ * on its foot, its own stream. (props lane A #6, 2026-10-16; WORKLIST #6 site:wall-head/adobe-pilaster: the pier on the
+ * rings its rounding needs, 3 x 4 x 3 for 4 x 6 x 4, 123 triangles for 224; and its region's crown on its top, as its
+ * walls carry theirs — adobeWallKit.ts AdobeCrown: the ksour's pinnacle, a ridged cap in the wet.)
  */
-export function buildAdobePilaster(seed: number, thick: number, height: number): THREE.BufferGeometry {
+export function buildAdobePilaster(seed: number, thick: number, height: number, crown: 'pinnacles' | 'ridge' | 'kershef' | 'brush' | 'worn' = 'worn'): THREE.BufferGeometry {
   const r = dryStoneRng(seed ^ 0xad01);
   const w = thick + 0.16 + r() * 0.08, h = height * (0.95 + r() * 0.12);
-  const g = new THREE.BoxGeometry(w, h, w, 4, 6, 4);
+  const g = new THREE.BoxGeometry(w, h, w, 3, 4, 3);
   const p = g.attributes.position;
   const lean = (r() - 0.5) * 0.06, phase = r() * 10;
   for (let i = 0; i < p.count; i++) {
@@ -1382,7 +1386,17 @@ export function buildAdobePilaster(seed: number, thick: number, height: number):
     p.setXYZ(i, sx * w / 2 + lean * y * h, y * h + slump * h, sz * w / 2);
   }
   g.computeVertexNormals();
-  return keepFaces(scaleUV(g, w * ADOBE_UV_PER_M, h * ADOBE_UV_PER_M), [0, 1, 2, 4, 5]); // the field-mud print's density
+  const pier = keepFaces(scaleUV(g, w * ADOBE_UV_PER_M, h * ADOBE_UV_PER_M), [0, 1, 2, 4, 5]); // the field-mud print's density
+  if (crown !== 'pinnacles' && crown !== 'ridge') return pier;
+  // the crown on the slumped dome's top (a little under it: the dome is 62 % of the pier wide up there)
+  let top = -Infinity, cx = 0, cz = 0, n = 0;
+  for (let i = 0; i < p.count; i++) top = Math.max(top, p.getY(i));
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > top - 1e-4) { cx += p.getX(i); cz += p.getZ(i); n++; }
+  cx /= Math.max(1, n); cz /= Math.max(1, n);
+  const cap = crown === 'pinnacles'
+    ? new THREE.ConeGeometry(w * 0.26, 0.3, 4, 1, true).rotateY(Math.PI / 4).translate(cx, top + 0.12, cz)
+    : new THREE.ConeGeometry(w * 0.48, 0.18, 4, 1, true).rotateY(Math.PI / 4).translate(cx, top + 0.05, cz);
+  return merge([pier, scaleUV(cap, w * ADOBE_UV_PER_M, 0.3 * ADOBE_UV_PER_M)]);
 }
 
 function bWallStone(rng: Rng): THREE.BufferGeometry {

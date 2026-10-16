@@ -6,6 +6,9 @@
 //
 // A piece is built in its own frame on y = 0 (the caller seats it part-buried and turns it), its size the old box clod's
 // (0.14-0.4 m), its looks from its own seed: no placement stream is read. Vertex colour on the baked material.
+// (2026-10-15, wired: props.ts addCraterClods keeps the old box clod as the collision proxy and the stream's draws and
+// draws this piece in its place, groundDressing.ts craterEjectaPiece seating it; so a sand map's clod is a slumped
+// clump of its rim's sand, low and smooth, where its collision record stands, rather than nothing.)
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hash, hexLin, mix, stream, type Rgb } from './craftMesh.ts';
@@ -28,9 +31,14 @@ const SOIL: Readonly<Record<string, Rgb>> = Object.freeze({
 });
 const LOAM = hexLin(0x4e3c2c), MUD = hexLin(0x2e261e), GRASS = hexLin(0x4e6630), GRASS_DRY = hexLin(0x7a7a44);
 const SNOW = hexLin(0xd8dee6), ASPHALT = hexLin(0x3a3a38), AGGREGATE = hexLin(0x7e7a72), SETT = hexLin(0x8a8680);
+/** The sand a desert map's rim slumps in (default a pale quartz sand). */
+const SAND: Readonly<Record<string, Rgb>> = Object.freeze({
+  desert: hexLin(0xc2a272), oasis: hexLin(0xc8aa78), badlands: hexLin(0xa86a48), copper_mesa: hexLin(0xa0603e),
+  titan_gorge: hexLin(0x9a7a5a), saltwind: hexLin(0xcfc4a8), skybridge: hexLin(0xb89a74),
+});
 const BASALT = hexLin(0x3e3c3a), MARS_ROCK = hexLin(0x8a4a2e), MOON_ROCK = hexLin(0x8e8c88), SCORIA = hexLin(0x2a2220), SCORIA_RED = hexLin(0x5a2a1e);
 
-/** The ejecta a map's craters throw (sand throws none: its rim slumps). */
+/** The ejecta a map's craters throw (sand only slumped clumps of its rim). */
 export function ejectaClimateOf(mapId: string): EjectaClimate {
   return CLIMATE[mapId] ?? 'turf';
 }
@@ -95,14 +103,18 @@ function slab(r: number, t: number, top: Rgb, side: Rgb, seed: number): THREE.Bu
 
 /**
  * One piece of a crater's ejecta, `size` across (the old clod's 0.14-0.4 m), in its own frame on y 0, from its `seed`;
- * null on sand (no clods: its rim slumps). Turf: a torn sod, soil under a grass mat, some turned over to its roots;
+ * sand: a slumped clump of the rim's sand, low and smooth, damp under its dry crust (no clods). Turf: a torn sod, soil under a grass mat, some turned over to its roots;
  * mud: a wet clod; snow: a dirty snow lump spattered with soil; town: a broken slab of the asphalt or a dislodged sett;
  * regolith: an angular clast of the basalt; ash: a lump of black scoria.
  */
-export function ejectaPiece(climate: EjectaClimate, mapId: string, size: number, seed: number): THREE.BufferGeometry | null {
+export function ejectaPiece(climate: EjectaClimate, mapId: string, size: number, seed: number): THREE.BufferGeometry {
   const h = (k: number) => hash(k, 5, seed);
   switch (climate) {
-    case 'sand': return null;
+    case 'sand': {
+      const sand = SAND[mapId] ?? hexLin(0xc8b088);
+      const g = lump(1, size * 0.62, size * 0.2, size * 0.52, seed, 0.18);
+      return finish(g, (y, _ny, i) => mix(mix(sand, [0, 0, 0], 0.22), sand, Math.min(1, y * 1.4) * (0.85 + hash(i, 21, seed) * 0.15)), false);
+    }
     case 'turf': case 'mud': {
       const soil = climate === 'mud' ? mix(MUD, SOIL[mapId] ?? LOAM, 0.3) : SOIL[mapId] ?? LOAM;
       const turned = h(1) < 0.3, grass = mix(GRASS, GRASS_DRY, h(2) * (mapId === 'steppe' || mapId === 'cliffbridge' ? 1 : 0.4));
@@ -130,7 +142,7 @@ export function ejectaPiece(climate: EjectaClimate, mapId: string, size: number,
       return finish(g, (_y, _ny, i) => mix(rock, BASALT, hash(i, 15, seed) * 0.55), true);
     }
     case 'ash': {
-      const g = lump(1, size * 0.55, size * 0.4, size * 0.5, seed, 0.75);
+      const g = lump(1, size * 0.55, size * 0.4, size * 0.5, seed, 0.5);
       return finish(g, (_y, _ny, i) => mix(SCORIA, SCORIA_RED, hash(i, 19, seed) * 0.6), true);
     }
   }

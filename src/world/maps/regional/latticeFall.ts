@@ -13,6 +13,7 @@ import {
 import { HEAP_LIFT_M, Mesh, beamBetween, bodyCentre, throwPieceAt, type MoundHeight } from './fracture.ts';
 import type { LatticeReading } from './lattice.ts';
 import { lyingDrum } from './shaft.ts';
+import { collapseShed } from './shedFall.ts';
 
 type Writers = { mesh: DamageMeshWriter; pieces: DamagePieceWriter };
 type P3 = [number, number, number];
@@ -31,6 +32,7 @@ export function noLatticeDamage(): DamageStageResult {
 export function collapseLattice(anatomy: StructureDamageAnatomy, seed: number, out: Writers, mound: MoundHeight): DamageStageResult {
   const lat = latticeOf(anatomy);
   if (!lat) return { cuts: [], hides: [{ section: null, partClass: null }] };
+  if (lat.shed) return collapseShed(anatomy, lat.shed, seed, out, mound);
   const rng = damageRng(seed);
   const mesh = new Mesh(out.mesh);
   const [cx, cz] = bodyCentre(anatomy);

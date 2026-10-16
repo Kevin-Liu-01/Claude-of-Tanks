@@ -42,7 +42,9 @@ export default {
   name: 'Glacier Pass',
   blurb: 'A frozen alpine lake divides a fortified mountain village and two high passes',
   terrain: {
-    hillScale: 1.25, microScale: 0.72, rimH: 52, frozenMarshes: true,
+    // (rimH 52 -> 30, the horizons stream's Glacier item, 2026-10-14: the Hinterland's cirque and spurs enclose the col
+    // now; the 52 m rim walled edge-w in and failed the envelope's C9, 22–42)
+    hillScale: 1.25, microScale: 0.72, rimH: 30, frozenMarshes: true,
     // The base hill noise is lower than before (1.46): the geological landforms carry the relief, and the roads keep
     // the brief's 18 % grade law at every terrain seed.
     roads: { paths: [
@@ -200,6 +202,9 @@ export default {
   scenery: {
     landmarks: [{ kind: 'waysidecross', x: -96, z: -224, yawDeg: 0, scale: 1.15, name: 'the Grande Croix' }],
   },
+  // the horizons stream's Glacier item (2026-10-14): the Hinterland past the red line (hinterland/drafts/alpine.ts);
+  // delete this line for the old ring
+  hinterland: true,
   horizon: {
     baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.80, snowline: 0.72,
     forestHex: 0x29434a, rockHex: 0x88929d, haze: 0.91, grain: 0.52,
@@ -208,7 +213,7 @@ export default {
   clouds: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, towers: 0.3, anvil: 0, shear: 0.1, streets: 0, fieldMix: 0.92, windSpeed: 4, cirrus: 0.3, farBand: 0.5, rain: 0.15 },
   sky: {
     sunElevationDeg: 16, sunAzimuthDeg: 132, turbidity: 4.2, rayleigh: 2.0,
-    mieCoefficient: 0.0052, mieDirectionalG: 0.78, fogDensity: 0.00076,
+    mieCoefficient: 0.0052, mieDirectionalG: 0.78, fogDensity: 0.00072, // (C7: under .00074; the brief's O6)
     fogTintHex: 0x9eb1c3, fogMix: 0.64, envIntensity: 0.31,
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
     sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 2.85 / 0xffddbe / 0.54); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses

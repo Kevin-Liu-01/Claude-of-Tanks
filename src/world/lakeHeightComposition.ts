@@ -24,12 +24,16 @@ function bankWeight(distance: number, band: number, settlement: number, liquid: 
 export function composeLakeHeight(
   lakes: readonly ShorelineDisc[], levels: Float64Array, banks: Float64Array | null,
   authored: boolean, x: number, z: number, height: number, settlement: number,
-  out: LakeHeightResult,
+  out: LakeHeightResult, candidates: ArrayLike<number> | null = null,
 ): void {
   let oddsSum = 0, weightedLevel = 0, coreLevel = 0, coreCount = 0;
   const continuous = authored && banks !== null;
   out.wetness = 0;
-  for (let index = 0; index < lakes.length; index++) {
+  // (2026-10-08, lakeCandidateIndex.ts) `candidates`: the ascending indices of the discs that can reach (x, z); the
+  // others would each discard themselves below, so the result is the full loop's, bit for bit
+  const count = candidates ? candidates.length : lakes.length;
+  for (let k = 0; k < count; k++) {
+    const index = candidates ? candidates[k] : k;
     const band = banks ? banks[index] : 1.32;
     const distance = shorelineDistance(lakes[index], x, z, band);
     if (banks && out.wetness < 1 && distance < .96) {

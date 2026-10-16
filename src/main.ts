@@ -479,6 +479,9 @@ const lighting: MainLightingRuntime = await bootStage(
 // before honoring it because all PCF samplers remain active in the shader.
 // Subsequent garage frames skip the invisible 100-700 m shadow redraws.
 if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
+// (2026-10-16, the engine-cs lane) every flip out of the Garage's sealed bay lights the open ground with the grounded
+// model's environment, never the bay's full-dome bake (sky.ts syncEnvironmentEnclosure)
+lighting.onEnclosureChange((enclosed) => { if (!enclosed) sky.syncEnvironmentEnclosure(); });
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
 const engineCtx = {
@@ -1035,6 +1038,41 @@ for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) 
 // boot task (or, when deferred, an equally disruptive post-ready stall).
 // Gallery inspection and battle-player paths still request their own authored
 // quality tiers; this changes only the garage presentation cache.
+// Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
+// trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
+// building 5-10 m out) rendered a 100% black scope — zero feedback about the
+// blockage. A small camera-riding point light, active only in SNIPER and only
+// when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
+// WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
+// relight the midfield; intensity eases in below ~20 m aim distance.
+// (2026-10-15, the perf lane) Created here, before the hero's build, so the garage's light set is complete when its
+// programs are submitted below; the camera rig is declared further down and read only in frames (update()).
+const sniperFill = createSniperFillRuntime(scene, camera, {
+  get mode() { return rig.mode; },
+  get aimDist() { return rig.aimDist; },
+});
+// 2026-10-15 (the perf lane): the garage scene's programs go to the driver's parallel compile before the hero's build,
+// so they link while it runs. The 10-15 boot profile (Verdant, load ~165): the first live garage frame waited 1.2 s in
+// getUniforms for links (0.49 s on Sept 30), right after a 1.6 s hero build (the m1a3's suit). A plain render target
+// gives the post target's program keys (linear output, no tone mapping); the light set is final here (the garage stage,
+// its phase spots, the sniper fill above). The post stage's warm then finds them in three's cache and compiles the
+// hero's own. Boot r9's compileAsync overlap targeted the canvas after the hero's build (the canvas keys, no overlap);
+// this one has neither problem. ?bootprecompile=0 keeps the old order for the A/B; the receipt records both light sets.
+const bootLightCount = (): number => { let n = 0; scene.traverseVisible((object) => { if ((object as THREE.Light).isLight) n++; }); return n; };
+if (!STUDIO_BOOT_INTENT && !/[?&]bootprecompile=0(&|$)/.test(location.search)) {
+  const probeTarget = new THREE.WebGLRenderTarget(1, 1);
+  const previousTarget = renderer.getRenderTarget();
+  const startedAt = performance.now();
+  try {
+    renderer.setRenderTarget(probeTarget);
+    renderer.compile(scene, camera);
+  } catch { /* the post stage's warm compiles them */ } finally {
+    renderer.setRenderTarget(previousTarget);
+    probeTarget.dispose();
+  }
+  BOOT_TIMINGS.earlyCompile = Math.round(performance.now() - startedAt);
+  BOOT_TIMINGS.earlyCompileLights = bootLightCount();
+}
 await bootStage('vehicle', async () => {
   if (STUDIO_BOOT_INTENT) return;
   // The branded boot screen is opaque. Keep its animation painting at a
@@ -1498,14 +1536,7 @@ const showroom = createGarageShowroomRuntime({
 });
 resetGarageShowroom = () => showroom.reset();
 
-// Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
-// trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
-// building 5-10 m out) rendered a 100% black scope — zero feedback about the
-// blockage. A small camera-riding point light, active only in SNIPER and only
-// when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
-// WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
-// relight the midfield; intensity eases in below ~20 m aim distance.
-const sniperFill = createSniperFillRuntime(scene, camera, rig);
+// (the sniper close-quarters fill is created before the hero's build, with the boot's early program submission)
 
 // --- KILL-CAM (src/game/killcam.ts) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
@@ -1970,7 +2001,6 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
-    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
@@ -2572,6 +2602,22 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 batchMs: casterBatchMs,
                 totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
                 maxMs: Math.max(0, ...casterBatchMs) } };
+          },
+          // 2026-10-15 (the MP stream, after the perf lane's link census): the scene's programs, on the strict compile's own
+          // passes (so the keys match), submitted to the driver once the battle's light signature is final at the WELCOME;
+          // they link while the roster is painted, and the strict compile below answers them from three's cache
+          submitPrograms: async (signal?: AbortSignal) => {
+            const timing: ForwardProgramCompileTiming = {};
+            const lateMask = 1 << LATE_FX_LAYER;
+            const passes = post?.composer ? [
+              { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+              { layerMask: lateMask, target: post.lateFx.target },
+            ] : undefined;
+            for (const _ of forwardProgramWarm.compileSceneSteps({ signal, timing, passes, sliceMs: 8 })) {
+              signal?.throwIfAborted();
+              await nextPaintFrame();
+            }
+            return { ...timing };
           },
           compile: async (signal?: AbortSignal) => {
             battlePresentation.prepareModeVisuals();
@@ -3301,6 +3347,7 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
+  BOOT_TIMINGS.postCompileLights = bootLightCount(); // (the early submission's light set must equal this one)
   await warmGarageGpuPipeline({
     renderer,
     scene,

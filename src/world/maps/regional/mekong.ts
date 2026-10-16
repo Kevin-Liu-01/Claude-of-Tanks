@@ -5,11 +5,14 @@
 // halls; a collapsed stilt house where the shelling found it.
 import { PartSink, alongPlot, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
+import { mekongChoStall, mekongMarketHall } from './marketKits.ts'; // props #23: the chợ stall and the market hall
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, ladder, stilts, veranda } from './vernacular.ts';
 import { boardCladding, matCladding, proppedShutter } from './villageCraft.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
 
@@ -246,30 +249,40 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 
 }
 
 /**
+ * The delta's outbuildings member by member (the props census #17 and #22, 2026-10-15, the judges on the woodshed: "a
+ * delta shelter: posts with braces on a raised plank floor or stilts, a roof frame (rafters, purlins, ridge), nipa thatch
+ * with a ridge and eave fringe or corrugated tole with laps, and woven bamboo mat walls as panels in a frame"): the
+ * woodshed on a low plank floor on its posts, open to its yard, its mat panels framed in bamboo on three sides; the rice
+ * granary on stilts a man's height up with rat guards round them, boarded all round with its door at the ladder's head.
+ * Both under nipa (its eave course beaten thick) or tole with its laps (outbuildings.ts openShed, gable form).
+ */
+function deltaShed(ctx: RegionalBuildContext, granary: boolean): RegionalParts {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+  const W = Math.max(3.6, Math.min(7, ctx.info.w - 0.8)), D = Math.max(5, Math.min(11, ctx.info.d - 0.8));
+  const post = pick(rng, WEATHERED_PLANK);
+  const thatched = rng() < 0.5;
+  const sheet = rng() < 0.5 ? BAMBOO_MAT : shade(post, 0.9);
+  const lift = granary ? 1.05 : 0.45;
+  if (granary) wetYard(sink, ctx);
+  openShed(sink, {
+    W, D, hLo: lift + (granary ? 2.0 : 2.1), pitchDeg: thatched ? 30 : 18, gable: true, lift, back: true, ends: true, pile: granary ? 0 : 1.1 + look() * 0.3,
+    ratGuards: granary, ladder: granary, front: granary ? { u: 0, w: 0.85, h: 1.55, leaf: shade(post, 0.8) } : null, mobile,
+  }, {
+    timber: shade(post, 0.85), post: 0.15, round: true, pad: null,
+    cladding: granary ? 'lapped' : 'batten', boards: [sheet, shade(sheet, 0.93), shade(sheet, 1.06)], boardW: granary ? 0.34 : 0.85, batten: shade(post, 0.75), trim: shade(post, 0.75),
+    covering: thatched ? 'thatch' : 'sheet', roofBucket: thatched ? 'straw' : 'structureMetal', ...(thatched ? { thatch: 'nipa' as const } : { roofColour: pick(rng, RUSTED) }),
+    eave: thatched ? 0.6 : 0.45, verge: thatched ? 0.4 : 0.3,
+  }, look);
+  return sink.finish();
+}
+
+/**
  * A tin-roofed market hall: open sides, concrete posts, a long sheet roof, stall counters. On a market row's plot (wider
  * than deep) the hall lies along it (plotAxes): it no longer reaches 2.4 m past the plot's long sides.
  */
-const marketHall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const plot = plotAxes(ctx.info);
-  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(20, plot.d - 0.6));
-  alongPlot(sink, plot.turned, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.25, D / 2);
-    const top = 3.4;
-    for (const sx of [-1, 0, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3.5) + 1); k < n; k++) {
-      const x = sx * (W / 2 - 0.2), z = -D / 2 + 0.2 + (D - 0.4) * k / (n - 1);
-      sink.span('plaster', x - 0.14, 0.25, z - 0.14, x + 0.14, top + (sx === 0 ? (plot.turned ? 0.65 : 1.4) : 0), z + 0.14);
-    }
-    const roof = plot.turned ? { ...tole(16), eave: 0.3 } : tole(16);
-    emitRoof(sink, roofGeometry(W, D, top, roof), roof, rng() < 0.5 ? pick(rng, RUSTED) : undefined);
-    // the stall platforms: fixed counters of plank on block (they stand as the base hall's walls stood: cover)
-    for (const side of [-1, 1]) for (let z = -D / 2 + 1.2; z < D / 2 - 1; z += 2.4) {
-      sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK) });
-    }
-  });
-  return sink.finish();
-};
+// (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
+const marketHall: RegionalBuilder = (ctx) => mekongMarketHall(ctx, RUSTED);
 
 /** A collapsed stilt house: posts leaning, the deck broken, the roof sheets down. */
 const collapsed: RegionalBuilder = (ctx) => {
@@ -302,25 +315,8 @@ const collapsed: RegionalBuilder = (ctx) => {
 };
 
 /** A market stall (the base market plot): a plank platform, a bamboo frame under a nipa-thatch roof, a counter of baskets. */
-const marketStall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
-  const floor = 0.2, top = 2.5;
-  // a plank platform on the mud (the canal-side stall), not a slab of concrete
-  sink.span('structureWood', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2, { colour: shade(pick(rng, WEATHERED_PLANK), 0.82) });
-  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, top, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
-  }
-  const roof = nipa(24);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
-  const produce: readonly Rgb[] = [0x5a7a3a, 0xc0902a, 0x8a3a2a, 0xa8a090].map(rgb);
-  for (let k = 0; k < 4; k++) {
-    sink.cylinder('structureWood', [-W / 2 + 0.75 + k * (W - 1.5) / 3, floor + 0.8, D / 2 - 0.72], 'y', 0.14, 0.27, 8, { colour: pick(rng, produce), decor: true }, 0.22);
-  }
-  return sink.finish();
-};
+// (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
+const marketStall: RegionalBuilder = (ctx) => mekongChoStall(ctx);
 
 export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => stiltHouse(ctx),
@@ -328,8 +324,8 @@ export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   // boat shelters walled at the back, stores and rice houses walled on three sides (they keep the cover of the base
   // sheds), the depot a rendered shophouse
   boatshed: (ctx) => shelter(ctx, { walls: 3 }),
-  granary: (ctx) => shelter(ctx, { deck: true, walls: 2 }),
-  woodshed: (ctx) => shelter(ctx, { walls: 2 }),
+  granary: (ctx) => deltaShed(ctx, true),
+  woodshed: (ctx) => deltaShed(ctx, false),
   marketRow: marketHall,
   depot: (ctx) => groundHouse(ctx),
   ruin: collapsed,
@@ -353,7 +349,7 @@ export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
       straw: (h, s, l) => [h - 0.025, Math.min(1, s * 0.45), Math.min(1, l * 0.78)],
     },
   },
-  builders: MEKONG_BUILDERS,
+  builders: { ...MEKONG_BUILDERS, boatshed: mekongBoatShelter, fishery: mekongFishShed },
   // the yards: a woven-bamboo fence round raised vegetable beds, an open gap for a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: null, shed: null, garden: true },
 });

@@ -191,13 +191,14 @@ function spending(draws: number, make: (seed: number) => THREE.BufferGeometry): 
   };
 }
 
-function roleBuilders(role: CivilianVehicleKind, ctx: BuildContext): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'shadowBuild'> {
+function roleBuilders(role: CivilianVehicleKind, ctx: BuildContext): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'shadowBuild' | 'collisionSolid'> {
   const entry = ctx.fleet.roles[role];
   return {
     build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed)),
     broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(entry, role, ctx, true, seed)),
     // the mobile tier's body is already the coarse one: it casts itself
     ...(ctx.coarse ? {} : { shadowBuild: () => canonicalSolid(entry, role) }),
+    collisionSolid: () => canonicalSolid(entry, role), // (physics, 2026-10-16: the trucks' slab shells, the same on every tier)
   };
 }
 
@@ -244,6 +245,7 @@ export interface CivilianVehicleOverride {
   instancePaint: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** Desktop tiers: the shadow caster that stands in for the full body in the shadow passes (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  collisionSolid: () => THREE.BufferGeometry; // every tier: canonicalSolid, for the collision a geometry's slabs give
   /** The role's footprint and contact band on this map's fleet (the same on every tier). */
   hw: number;
   hl: number;

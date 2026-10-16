@@ -82,7 +82,8 @@ function recordMeshes(props) {
     for (const [n, a] of Object.entries(mesh.geometry.attributes)) {
       if (n === 'aDamage') tagBytes += a.array.byteLength; else attributeBytes += a.array.byteLength;
     }
-    if (['world-props-stone-v7', 'world-props-wood-v7', 'world-props-dark-v7'].includes(key)) return;
+    // (2026-10-15: a props program key names the hook family; the bucket's kind is userData.propsKind)
+    if (['stone', 'wood', 'dark'].includes(mesh.material.userData.propsKind)) return;
     if (KIT_MESHES[mesh.name]) kit[mesh.name] = { material: key, count: mesh.count, matrix: mesh.matrix.elements,
       attributes: Object.fromEntries(Object.entries(mesh.geometry.attributes).map(([n, a]) => [n, { itemSize: a.itemSize, array: a.array.slice() }])),
       index: mesh.geometry.index ? mesh.geometry.index.array.slice() : null };

@@ -75,6 +75,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
     'src/vehicles/nationalModernization.selftest.mjs',
+    'src/vehicles/nationalDonorTurrets.selftest.mjs',
     'src/vehicles/profiles/nationalUkraineProtection.selftest.mjs',
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
@@ -965,6 +966,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
+    'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
     'src/engine/lightModel.selftest.mjs',
@@ -1092,6 +1094,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
     'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    'src/mp/host/worldCollisionMobileTier.selftest.mjs', // 2026-10-16 physics PH.15: a phone-tier host plays the desktop's shard records
     // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
     'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
@@ -1246,6 +1249,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionCraters.selftest.mjs',
     // 2026-10-15 (destruction lane, DST-04): the world's ray march reads the dug ground (craters' bowls, heaps), both worlds
     'src/world/groundOverlayRaycast.selftest.mjs',
+    // 2026-10-15 (destruction lane, DST-04): a map's pre-placed craters as real bowls, laid first by every match
+    'src/world/mapCraters.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
@@ -1496,6 +1501,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // props lane A #19 (2026-10-15): the paved pads' render-only dressing (no step in the drive surface)
     'src/world/hardstandDressing.selftest.mjs',
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
+    'src/world/landformPath.selftest.mjs', // 2026-10-08: a ridge's curved axis (Skybridge round 6's meander) and the carved union
+    'src/world/maps/skybridgeArm.selftest.mjs', // 2026-10-08: Skybridge's reservoir arm generated as data, current
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
     'src/world/terrainMounds.selftest.mjs', // 2026-10-07: built mounds (Polders' molenbergen) level on their crests over the finished ground
@@ -1570,6 +1577,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/crushedStones.selftest.mjs', // 2026-10-10 the hitbox lane, round 3: a crushed stone splits and presses into its ground
     'src/world/rockDriveOver.selftest.mjs', // 2026-10-08 the hitbox lane: a drive-over stone has no collider; shells meet its ground; (2026-10-10) a low one is a crushable small rock
     'src/world/rubbleCollision.selftest.mjs', // 2026-10-09 the hitbox lane, round 3: a rubble pile's records from its drawn chunks
+    'src/world/fieldHutCover.selftest.mjs', // 2026-10-16 physics DST-03: a field hut stops rounds on its own slabs; canvas lets them through
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
@@ -1584,6 +1592,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/stoneWalls.selftest.mjs',
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
+    'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
     'src/world/maps/periodClutter.selftest.mjs',
@@ -1607,6 +1616,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // props lane A #19 (2026-10-15): the field's fallen timber by species, from its members
     'src/world/maps/timberForms.selftest.mjs',
     'src/world/maps/craterEjecta.selftest.mjs',
+    'src/world/maps/felledPoles.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
     // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
     'src/world/maps/periodFreight.selftest.mjs',
@@ -1624,6 +1634,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vegetationLighting.selftest.mjs',
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
+    'src/world/canopyNeedleTransmit.selftest.mjs', // GND (2026-10-15): a back-lit needle crown transmits its needles' dulled green, never a lime glow (Kestrel chase-s)
     'src/world/vegetationResources.selftest.mjs',
     'src/world/foliageOcclusionSweep.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
@@ -1647,9 +1658,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/understorey.selftest.mjs',
     // round 77b (2026-09-26): the far-tier impostors baked from the near trees and the leaf-scale crown detail
     'src/world/treeImpostors.selftest.mjs',
+    // trees Fix B (2026-10-15): the impostor bake keeps the near tier's crown coverage (the give-back before the bake's cut)
+    'tools/impostor-bake-coverage.selftest.mjs',
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
+    // 2026-10-15 (ground lane, the coordinator's ruling): the ring's trees at each species' own stature where a map says so;
+    // Verdant's owner-approved ring byte for byte
+    'src/world/ringSpeciesStature.selftest.mjs',
     'src/world/outlandTreeAdoption.selftest.mjs', // GND (2026-10-14): the ring's and the Hinterland's trees near the square drawn by the battlefield's tiers
     // trees round 2 (2026-10-03): the ring forest's shapes keep their own streams (a taller ring moves trees, not shapes)
     'src/world/horizonForestShapes.selftest.mjs',
@@ -1663,6 +1679,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/polderTrees.selftest.mjs',
     // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
     'src/world/landscapeWoods.selftest.mjs',
+    // the trees lane (2026-10-06, Skybridge round 4): a place's riparian slot by its water
+    'src/world/riparianTrees.selftest.mjs',
+    // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
+    'src/world/skybridgeArmIsolation.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1685,8 +1705,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
-    // the map-revival lane (2026-10-06): Skybridge's Glen Canyon Dam — the canyon through the north ring and the arch
-    'src/world/horizonDam.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
@@ -1730,6 +1748,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/railSpurs.selftest.mjs',
     'src/world/railSpurBerth.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // the map-revival lane (Skybridge round 4): Lake Powell's arm and Glen Canyon Dam in the battlefield
+    'src/world/maps/reservoirDam.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
     'src/world/borderLandform.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
@@ -1760,6 +1780,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    'src/world/groundMarkings.selftest.mjs', // 2026-10-15 (maps lane, Kestrel): paint on the paved ground — Kestrel's apron markings
     'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
@@ -1794,6 +1815,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
+    'src/world/maps/fenceKit.selftest.mjs', // 2026-10-15 props lane A #6: the timber fences in their region's build, legacy collision
+    'src/world/maps/coursedWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the brick-print field walls by region, legacy collision and fit
+    'src/world/maps/adobeWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the mud field walls by region on the legacy section, legacy collision and fit
+    'src/world/maps/terraceRisers.selftest.mjs', // 2026-10-16 props lane A #6: the village terraces' risers built along their contours
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
     'src/world/maps/clutterKit.selftest.mjs', // 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k a map)

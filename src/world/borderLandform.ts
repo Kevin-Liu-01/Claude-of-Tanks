@@ -166,7 +166,10 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   skybridge: { forest: 0.05, hedgerows: 0, farms: 1, farmBuildings: false },
   polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55, fields: 0.8, crops: 'polder', farms: 12, buildings: 'polder', erosion: 0 },
   copper_mesa: { forest: 0.03, hedgerows: 0, farms: 2, farmBuildings: false },
-  airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4, fields: 0.6, crops: 'steppe', farms: 9, buildings: 'steppe' },
+  // (Kestrel, the horizons stream 2026-10-15, the GROUND lane's tree critics: "beyond the border the land is mostly empty
+  // grass or dirt, with isolated lollipop trees or a single-file tree row; no continuous forest mass" — Hostomel's
+  // plateau stands in the pine forest: the woods the near band's main cover, the fields its clearings, few hedge rows)
+  airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.62, hedgerows: 0.12, fields: 0.3, crops: 'steppe', farms: 5, buildings: 'steppe' },
   oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
   whiteout: { forest: 0, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0 }, // map revival lane 2, round 3 (folded in by the map-content lane, 2026-10-09): Cape Dyer has no tree for hundreds of kilometres (wave 130: "conifer clusters on both flanks")
   orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65, farms: 12 },

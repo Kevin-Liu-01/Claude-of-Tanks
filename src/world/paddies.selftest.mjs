@@ -48,7 +48,8 @@ assert.throws(() => compileCanals([{ path: [[0, 0], [1, 0], [2, 1]], widthM: 4, 
 const cfg = getMapConfig('delta');
 const field = createHeightField(typeof cfg.seed === 'number' ? cfg.seed : 1337, cfg);
 const paddies = cfg.terrain.paddies;
-assert.equal(paddies.length, 10, 'ten paddies');
+// (2026-10-16, the 226 gate) the second row keeps its west paddy: its centre and east ones stood on homestead mounds
+assert.equal(paddies.length, 6, 'six paddies');
 const key = (x, z) => `${x.toFixed(3)},${z.toFixed(3)}`;
 const placed = new Set(paddies.map((p) => key(p.x, p.z)));
 for (const p of paddies) assert.ok(placed.has(key(-8 - p.x, 28 - p.z)), `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): its twin about the char`);

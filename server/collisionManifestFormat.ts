@@ -107,6 +107,15 @@ export function readCollisionConcealers(value: RuntimeValue): CollisionManifest[
   return value as CollisionManifest['concealers'];
 }
 
+/** DST-04 (2026-10-15): the map's pre-placed craters, [x, z, radius, depth, rim, deforms 0|1] each (world/mapCraters.ts). */
+export function readCollisionCraters(value: RuntimeValue): CollisionManifest['craters'] {
+  if (value !== undefined && (!Array.isArray(value) || value.length > 512 ||
+      !value.every((entry) => isFiniteTuple(entry, 6) && (entry[5] === 0 || entry[5] === 1) && entry[2] > 0))) {
+    throw new TypeError('world collision craters are invalid');
+  }
+  return value as CollisionManifest['craters'];
+}
+
 export function readCollisionManifest(value: RuntimeValue): CollisionManifest {
   if (!isRecord(value) || !Array.isArray(value.obstacles) ||
       !value.obstacles.every(isPackedCollisionRecord) || !Array.isArray(value.colliders) ||
@@ -117,6 +126,7 @@ export function readCollisionManifest(value: RuntimeValue): CollisionManifest {
     obstacles: value.obstacles,
     colliders: value.colliders,
     concealers: readCollisionConcealers(value.concealers),
+    ...(value.craters !== undefined ? { craters: readCollisionCraters(value.craters) } : {}),
   };
 }
 

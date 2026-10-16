@@ -10,6 +10,7 @@ import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { bengalBazaar } from './marketKits.ts'; // props #23: the char bazaar
 
 const SHUTTERS: readonly Rgb[] = [0x3f6f9a, 0x4f8a62, 0x8a4a3a, 0x6a5a46].map(rgb);
 
@@ -282,7 +283,7 @@ const bazaarStall: RegionalBuilder = (ctx) => {
 export const BENGAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => tinHouse(ctx),
   farmhouse: (ctx) => tinHouse(ctx, { big: true }),
-  marketRow: bazaar,
+  marketRow: bengalBazaar,
   fishery: bazaar,
   // the base market plot: a tin bazaar stall (gauntlet wave 15: the delta's streets still showed the generic stall)
   market: bazaarStall,

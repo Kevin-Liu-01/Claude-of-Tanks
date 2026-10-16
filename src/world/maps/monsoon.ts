@@ -28,6 +28,63 @@ const floodChannel = createMarshChannel([
   { x: 318, z: 278, r: 30, dip: 0.70 },
 ]);
 
+// Kohima's town (the maps lane, 2026-10-14; the owner: Monsoon Ridge among the maps to bring up, built the way Verdant
+// was). The hill town stood as 16 buildings over a 290 m saddle. Kohima in 1944 is a town of terraces: the bazaar's shops
+// in rows along the Imphal road, the colonial bungalows on the terraces above it to the west, each in its garden behind
+// a hedge, the Angami village's thatched houses with their granaries on the north-west spur, the mission church facing
+// the town's square, and the Deputy Commissioner's bungalow and its tennis court above the square (landmarks below);
+// one in five of the town's buildings shelled to a ruin, as the siege left them. The plan is authored in the road's own
+// frame (u north along the Imphal road from its crossing with the valley road at (10, -34), v across it to the east).
+const KOH_U = [0.19, 0.982] as const, KOH_V = [0.982, -0.19] as const;
+const kohAt = (u: number, v: number): [number, number] => [10 + u * KOH_U[0] + v * KOH_V[0], -34 + u * KOH_U[1] + v * KOH_V[1]];
+const kohHash = (u: number, v: number, k: number) => {
+  let h = Math.imul(Math.round(u * 10) + 7919 * k, 0x9e3779b1) ^ Math.imul(Math.round(v * 10) + 104729, 0x85ebca6b);
+  h ^= h >>> 15; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+};
+type KohFront = 'road' | 'north' | 'south' | 'east' | 'west';
+const kohSite = (structure: string, u0: number, v0: number, front: KohFront, jitter = 1) => {
+  const u = u0 + (kohHash(u0, v0, 2) - 0.5) * 3.2 * jitter, v = v0 + (kohHash(u0, v0, 3) - 0.5) * 2.2 * jitter;
+  const [x, z] = kohAt(u, v);
+  const dir = front === 'road' ? (v > 0 ? [-KOH_V[0], -KOH_V[1]] : [KOH_V[0], KOH_V[1]])
+    : front === 'north' ? KOH_U : front === 'south' ? [-KOH_U[0], -KOH_U[1]] : front === 'east' ? KOH_V : [-KOH_V[0], -KOH_V[1]];
+  const yawDeg = Math.atan2(dir[0], dir[1]) * 180 / Math.PI + (kohHash(u0, v0, 4) - 0.5) * 8 * jitter;
+  return { structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1), terrace: true };
+};
+/** A shop, a bungalow or a house; one in five of the town's shelled to a ruin, one in sixteen an empty lot. */
+const kohLot = (structure: string, u: number, v: number, front: KohFront) => {
+  const r = kohHash(u, v, 1);
+  if (r < 0.06) return [];
+  return [kohSite(r > 0.8 && structure !== 'farmhouse' ? 'ruin' : structure, u, v, front)];
+};
+const KOHIMA_TOWN = [
+  // the bazaar: shop rows and shops along the Imphal road north of the crossing, both sides (south of it the road crosses
+  // the flood channel's bottoms, which the monsoon floods)
+  ...[24, 39, 54, 69, 84, 99, 114, 129, 144, 159, 174, 189, 204].flatMap((u) => [
+    ...kohLot(u % 2 === 0 ? 'marketRow' : 'cornershop', u, 16, 'road'), ...kohLot(u % 2 === 0 ? 'cornershop' : 'marketRow', u, -16, 'road')]),
+  // the lane behind the bazaar on the east, short of the flood channel
+  ...[30, 48, 66, 84, 102, 120, 138, 156].flatMap((u) => kohLot(u % 36 === 30 ? 'cornershop' : 'bathhouse', u, 38, 'west')),
+  // the bungalows on the terraces west of the road, each in its garden
+  ...[26, 50, 74, 98, 122, 146, 170].flatMap((u) => kohLot('bathhouse', u, -44, 'east')),
+  ...[96, 120, 144, 168].flatMap((u) => kohLot('bathhouse', u, -74, 'east')),
+  ...[-26, 4, 130, 156].flatMap((u) => kohLot('bathhouse', u, -104, 'south')),
+  // south of the crossing, on the dry ground above the channel: the garrison's sheds and a bungalow or two
+  ...[[-36, 46], [-58, 60], [-40, -60], [-70, -86]].flatMap(([u, v]) => kohLot(v > 0 ? 'depot' : 'bathhouse', u, v, v > 0 ? 'south' : 'east')),
+  // the Angami village on the north-west spur: thatched houses round their granaries
+  ...[[176, -40], [190, -64], [172, -88], [200, -100], [186, -124], [214, -76], [206, -140], [226, -112], [232, -54], [244, -88]].flatMap(([u, v]) => kohLot('farmhouse', u, v, 'south')),
+  // the mission church facing the town's square from the north, and the square framed: the Deputy Commissioner's garden
+  // west of it (landmarks), a shelled house south of it
+  kohSite('chapel', 96, -82, 'south', 0),
+  kohSite('ruin', -12, -84, 'north', 0.5),
+  // the east terraces between the bazaar's back lane and the channel's bank, north of the bend
+  ...[120, 138, 156, 174, 192, 210].flatMap((u) => kohLot('bathhouse', u, 60, 'west')),
+  // the upper terraces west, toward the spur
+  ...[100, 124, 148, 172].flatMap((u) => kohLot('bathhouse', u, -134, 'east')),
+  ...[[118, -160], [142, -168], [166, -158], [96, -172]].flatMap(([u, v]) => kohLot('farmhouse', u, v, 'east')),
+// the square's zone disc (matchObjectiveLayouts: the middle zone at (-60, 24), its 30 m footprint clear of every solid)
+// keeps a 46 m ring free of the town's buildings and their yards
+].filter((site) => Math.hypot(site.x + 60, site.z - 24) >= 46);
+
 export default {
   id: 'monsoon',
   name: 'Monsoon Ridge',
@@ -40,6 +97,9 @@ export default {
       [[350, -450], [294, -286], [264, -104], [288, 72], [242, 250], [180, 450]],
       [[-356, -172], [-214, -132], [-76, -60], [62, -18], [208, -66], [264, -104], [322, -146]],
       [[-310, 204], [-164, 168], [-18, 210], [120, 274], [238, 328]],
+      // (the maps lane, 2026-10-14: Kohima's terrace road, from the bazaar up past the bungalows' terraces and the
+      // Angami village to the north road)
+      [[25.2, 44.6], [-11.8, 63.9], [-55.5, 90.7], [-69.5, 134.2], [-73.7, 175.8], [-76.8, 201.8]],
     ] },
     marshes: [
       ...floodChannel,
@@ -93,16 +153,25 @@ export default {
   vegetation: {
     species: ['eucalyptus', 'palm', 'willow', 'oak'], clusterMix: [['eucalyptus', 0.36], ['willow', 0.28], ['palm', 0.22], ['oak', 0.14]],
     loneMix: [['eucalyptus', 0.34], ['palm', 0.28], ['willow', 0.24], ['oak', 0.14]], rimMix: [['eucalyptus', 0.38], ['willow', 0.28], ['palm', 0.22], ['oak', 0.12]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): eucalyptus x1.27, willow x0.83 of the one mean
+    ringStature: 'species',
     clusterCount: 118, loneCount: 238, rimCount: 148, grassDensity: 1.38,
     clusterScrub: 2.7, bushCount: 1.72, bushSpecies: 'oak',
   },
   props: {
     // regional-buildings lane: the Kohima 1944 kit (maps/regional/kohima.ts)
     architecture: 'kohima',
-    plan: ['ruin', 'chapel', 'bathhouse', 'marketRow', 'ruin', 'cornershop',
-      'granary', 'ruin', 'depot', 'farmhouse', 'tower', 'market', 'ruin', 'woodshed',
-      'marketRow', 'ruin', 'farmhouse', 'chapel', 'depot', 'ruin', 'granary', 'cornershop',
-      'ruin', 'market', 'farmhouse', 'woodshed'],
+    // (the maps lane, 2026-10-14: the plan is Kohima's own, KOHIMA_TOWN above; the roadside plan's 26 buildings stood as 16
+    // on the saddle; was ['ruin', 'chapel', 'bathhouse', 'marketRow', ... 26 entries])
+    plan: [],
+    plannedSites: KOHIMA_TOWN,
+    // (the maps lane, 2026-10-14: the hero of Kohima's siege) the Deputy Commissioner's bungalow on the terrace above the
+    // square, its veranda to the town, and its tennis court on the terrace below it, the front line across which the
+    // garrison and the attackers fought for a fortnight (landmarks/colonial.ts, built by the landmarks lane for this map)
+    landmarks: [
+      { kind: 'colonialBungalow', x: -105.6, z: 63.7, yawDeg: 101, ground: 'veto', name: "the Deputy Commissioner's bungalow" },
+      { kind: 'tennisCourt', x: -109, z: 24.7, yawDeg: 11, ground: 'veto', name: "the Deputy Commissioner's tennis court", params: { steps: 1 } },
+    ],
     destructibleBuildings: ['stilthouse', 'longhouse', 'fieldhospital', 'commandtent'],
     tacticalBeats: [
       { id: 'western-temple-ridge', role: 'brawl', x: -250, z: 140, yawDeg: 12,

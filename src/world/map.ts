@@ -50,6 +50,7 @@ import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
 import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
+import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
@@ -70,6 +71,7 @@ import {
 import { createStructureDamage } from '../sim/structureDamage.ts';
 import { createDeformedHeightField, rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
+import { mapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 import { createGroundCoverCraters, type GroundCoverStaticLift } from './groundCoverCraters.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
@@ -193,6 +195,8 @@ export interface WorldRuntime {
   getColliders(): CollisionRecord[];
   queryObstacles: ObstacleQuery;
   getConcealment(): ConcealmentDisc[];
+  /** DST-04: the map's pre-placed craters (world/mapCraters.ts), laid into every match's ground first. */
+  getMapCraters(): readonly MapCraterStamp[];
   crushables: CrushableRecord[];
   crushProp(index: number, dx: number, dz: number, speedMetersPerSecond?: number): boolean;
   destructibles: RuntimeValue[];
@@ -536,7 +540,10 @@ function assembleWorld(
   const adoptOutland = !!vegetation._treeImpostors && outlandTreesEnabled();
   if (ringForest && vegetation._treeImpostors) {
     bindHorizonForestImpostors(ringForest, {
-      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): the forest over the line takes its own mix (VegetationConfig `ringMix`, else the rim's)
+      library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): a map whose ring stands each species at its own stature (VegetationConfig `ringStature`)
+      speciesHeightM: vegetation._ringSpeciesHeightM,
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
@@ -552,11 +559,13 @@ function assembleWorld(
   const hinterlandRoot = terrain.getObjectByName('hinterland-root');
   if (hinterlandRoot && vegetation._treeImpostors) {
     bindHinterlandTreeImpostors(hinterlandRoot, {
-      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeTint: vegetation._rimTreeTint,
+      library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       ...(adoptOutland ? {
         formVariant: vegetation._treeFormVariant,
-        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        // (HORIZONS review, integ/225: Glacier's depth remap draws the land past the square's exit + 60 m nearer, and
+        // adopted trees in the battlefield's pools don't take it, so remapped land hid them) adopt only within 40 m
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z, HINTERLAND_DEPTH_MARGIN_M - 20),
         adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
       } : {}),
     });
@@ -596,6 +605,9 @@ function assembleWorld(
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
+  // DST-04 (2026-10-15): the map's pre-placed craters as bowls, decided once on this build's own records
+  // (world/mapCraters.ts); every match on this world lays them first, and the shards carry them for the authority
+  const mapCraters = mapCraterStamps(props.mapCraterSites, obstacles, heightField);
   // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
   // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
@@ -885,6 +897,7 @@ function assembleWorld(
      * @returns {Array<{x:number,z:number,r:number,add:number}>}
      */
     getConcealment: () => vegetation.concealers || [],
+    getMapCraters: () => mapCraters,
     // effects_combat r1: crushable props (telegraph poles + world-dressing r1
     // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.

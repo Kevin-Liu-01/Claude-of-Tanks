@@ -3,6 +3,7 @@ import { convexOutlineInPlace, createObstacleGrid, nearestColliderHitAlongRay as
 import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 import { createDeformedHeightField, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { unpackMapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 
 /**
  * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
@@ -47,6 +48,9 @@ export interface CollisionManifest {
   obstacles: PackedCollisionRecord[];
   colliders: PackedCollisionRecord[];
   concealers?: Array<readonly [number, number, number, number]>;
+  /** DST-04 (2026-10-15): the map's pre-placed craters as its build decided them (world/mapCraters.ts
+   *  packMapCraterStamps: [x, z, radius, depth, rim, deforms]); absent in a shard captured before them. */
+  craters?: Array<readonly [number, number, number, number, number, number]>;
 }
 
 interface HeadlessCollisionWorldOptions {
@@ -69,6 +73,8 @@ interface HeadlessCollisionWorld {
   raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null;
   /** The match's ground overlay (docs/DESTRUCTION.md §7): the ray march reads it as the rendered world's does. */
   bindGroundOverlay(overlay: TerrainDeformation | null): void;
+  /** The map's pre-placed craters from the shard (world/mapCraters.ts). */
+  getMapCraters(): readonly MapCraterStamp[];
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];
   getConcealment(): ConcealmentRecord[];
@@ -165,6 +171,7 @@ export function createHeadlessCollisionWorld(
     }
   }
   const concealers = (manifest.concealers || []).map(([x, z, r, add]) => ({ x, z, r, add }));
+  const mapCraters = unpackMapCraterStamps(manifest.craters);
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
   const candidates: CollisionRecord[] = [];
@@ -289,6 +296,7 @@ export function createHeadlessCollisionWorld(
     getObstacles: () => obstacles,
     getColliders: () => colliders,
     getConcealment: () => concealers,
+    getMapCraters: () => mapCraters,
     queryObstacles,
     crushObstacle,
   };

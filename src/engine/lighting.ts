@@ -1481,6 +1481,11 @@ export function createLighting(
    * scene.environmentIntensity from here (sky.ts sets the same value when it installs an environment).
    */
   let lastSunPreset: SunPreset | null = null;
+  // (2026-10-16, the engine-cs lane: Verdant's white chalk boulders and the washed-out ground) who hears the enclosure
+  // flip (the first rig included: a Studio boot opens on the sky): the sky re-bakes the grounded model's environment
+  // when a battle leaves the Garage with a full-dome bake installed
+  const enclosureListeners = new Set<(enclosed: boolean) => void>();
+  let publishedEnclosed: boolean | null = null;
   function applyRig(opts: SunPreset): void {
     const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
     const irr = atmo?.irradianceRaw;
@@ -1494,6 +1499,10 @@ export function createLighting(
     scene.userData.lightModel = model;
     scene.userData.lightEnclosed = farCascadeDormant;
     scene.environmentIntensity = model.envIntensity;
+    if (publishedEnclosed !== farCascadeDormant) {
+      publishedEnclosed = farCascadeDormant;
+      for (const listener of enclosureListeners) listener(farCascadeDormant);
+    }
     const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
     const colorHex = opts.sunColorHex ?? SUN_COLOR;
     fill.intensity = model.mode === 'physical' ? 0 : (opts.fillIntensity ?? FILL_INTENSITY);
@@ -1586,6 +1595,17 @@ export function createLighting(
       forceAllCascades();
       setAllCascadeUpdates(true);
       lastScheduledMask = allCascadeMask;
+    },
+
+    /**
+     * 2026-10-16 (the engine-cs lane): hear every flip of scene.userData.lightEnclosed, the first rig's included — the Garage's
+     * sealed bay (true) and the open sky (false). main.ts hands the sky's syncEnvironmentEnclosure the open flip, so the
+     * environment a battle lights with is the grounded model's bake, never the one the Garage left installed. Returns
+     * the unsubscribe.
+     */
+    onEnclosureChange(listener: (enclosed: boolean) => void): () => void {
+      enclosureListeners.add(listener);
+      return () => { enclosureListeners.delete(listener); };
     },
 
     /**

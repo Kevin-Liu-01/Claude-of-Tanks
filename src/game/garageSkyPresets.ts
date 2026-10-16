@@ -74,7 +74,8 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
   alpine: Object.freeze({
     sunElevationDeg: 16, sunAzimuthDeg: 132,
     turbidity: 4.2, rayleigh: 2.0, mieCoefficient: 0.0052, mieDirectionalG: 0.78,
-    fogDensity: 0.00076, fogTintHex: 0x9eb1c3, fogMix: 0.64, envIntensity: 0.31,
+    // (2026-10-15: mirrors alpine.sky's Glacier Hinterland fog, .00076 -> .00072 — the envelope's C7, under .00074)
+    fogDensity: 0.00072, fogTintHex: 0x9eb1c3, fogMix: 0.64, envIntensity: 0.31,
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
     sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, // lighting 2026-09-13: mirrors alpine.sky
     postExposure: 0.95,

@@ -12,6 +12,8 @@ import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.t
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
+import { DACHA_YARD, dacha, gardenShed } from './hostomelDacha.ts';
+import { hangarSideNumber } from './airfieldPaint.ts';
 
 /** The sheet steel's liveries: the Antonov hangars' grey-blue and grey-green paint, a pale galvanised grey. */
 const LIVERY: readonly Rgb[] = [0x8f9ca0, 0x84907f, 0xa9ada6, 0x7b8790].map(rgb);
@@ -283,6 +285,11 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
       sink.quad('structureMetal', ...(flap(0).reverse() as [Vec3, Vec3, Vec3, Vec3]), { colour: shade(livery, 0.7), decor: true });
       sink.quad('structureMetal', ...flap(0.005), { colour: rgb(0x8a8e90), decor: true });
     }
+    // (the maps lane's Kestrel rebuild, 2026-10-15; wave 113: "plain flat-textured boxes") the hangar's number in white on
+    // its long wall by the apron end (airfieldPaint.ts), from the look stream: the wall the shrapnel left whole, and never
+    // the one the workshop lean-to stands against
+    const side: 'left' | 'right' | null = annex ? (torn?.face === 'left' ? null : 'left') : torn?.face === 'right' ? 'left' : 'right';
+    if (side) sink.dressing(mobile, () => hangarSideNumber(sink, frame.faces[side], D, frame.floors[0] + 1.0, He - 1.0 - 1.25 - 1.3, 1 + Math.floor(ctx.variant() * 9)));
   });
   if (annex) {
     // the workshop lean-to: block walls, a sheet roof falling away from the hangar, windows and a door
@@ -705,11 +712,14 @@ export const HOSTOMEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   ruin,
   // (the looks lane, 2026-10-13) the airport's freight boxes
   containerRow: freightBoxes,
+  // (the maps lane's Kestrel rebuild, 2026-10-15; hostomelDacha.ts) the dacha cooperatives outside the perimeter, their sheds
+  cottage: dacha,
+  woodshed: gardenShed,
 });
 
 export const HOSTOMEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'hostomel',
-  region: 'Hostomel (Antonov) airport, Kyiv oblast: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a concrete tower under its glazed cab, 1970s terminal and office blocks',
+  region: 'Hostomel (Antonov) airport, Kyiv oblast: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a concrete tower under its glazed cab, 1970s terminal and office blocks; the dachas of the garden cooperatives outside the perimeter',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.46, 0.49, 0.48] },
     stone: { kind: 'block', tint: [0.6, 0.6, 0.57] },
@@ -733,4 +743,7 @@ export const HOSTOMEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   },
   // shellfire and the fires of February 2022: more of the airfield's windows burnt out or boarded than a village's
   wear: 0.45,
+  // (the maps lane's Kestrel rebuild, 2026-10-15) the dachas' garden plots: a picket fence and gate round the yard, the
+  // garden shed at its back, the kitchen-garden beds
+  yard: DACHA_YARD,
 });
