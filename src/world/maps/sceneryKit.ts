@@ -107,11 +107,13 @@ function onLegacyCollision<T extends DestructiblePropType, P>(entry: T, legacy: 
 
 /**
  * An angle iron from (x0, y0, z0) to (x1, y1, z1): an L section `t` across each flange and an eighth of that thick, its
- * flanges along `u` and `w` (each taken square to the axis), its heel's square centred on the line (props lane A #21's
- * pylon legs, the r2 sweep: a lattice of rolled sections, never square bars).
+ * flanges along `u` and `w` (each taken square to the axis), its heel's square centred on the line, or (`heel`) its heel
+ * on the line, the flanges running off it — a girt seated on its node, its section whole above the level it marks (the
+ * structure collision's height bands meet whole girts: scenery.selftest) (props lane A #21's pylon legs, the r2 sweep: a
+ * lattice of rolled sections, never square bars).
  */
 function angleIron(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number,
-  u: readonly [number, number, number], w: readonly [number, number, number]): THREE.BufferGeometry {
+  u: readonly [number, number, number], w: readonly [number, number, number], heel = false): THREE.BufferGeometry {
   const ax = new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0), len = ax.length();
   ax.multiplyScalar(1 / len);
   const a = new THREE.Vector3(...u), b = new THREE.Vector3(...w);
@@ -125,8 +127,25 @@ function angleIron(x0: number, y0: number, z0: number, x1: number, y1: number, z
   const th = Math.max(0.004, t * 0.125);
   const shape = new THREE.Shape([[0, 0], [t, 0], [t, th], [th, th], [th, t], [0, t]].map(([p, q]) => new THREE.Vector2(p, q)));
   const g = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false, steps: 1, curveSegments: 1 });
-  const o = new THREE.Vector3(x0, y0, z0).addScaledVector(a, -t * 0.5).addScaledVector(b, -t * 0.5);
+  const o = new THREE.Vector3(x0, y0, z0);
+  if (!heel) o.addScaledVector(a, -t * 0.5).addScaledVector(b, -t * 0.5);
   g.applyMatrix4(new THREE.Matrix4().makeBasis(a, b, ax).setPosition(o));
+  return g;
+}
+
+/**
+ * A flat-bar brace from (x0, y0, z0) to (x1, y1, z1): `w` wide in its face, `th` thick along the face's normal `n` (a
+ * tower's diagonal straps, riveted across its panels between the angle-iron legs and girts).
+ */
+function strap(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, w: number, th: number,
+  n: readonly [number, number, number]): THREE.BufferGeometry {
+  const ax = new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0), len = ax.length();
+  ax.multiplyScalar(1 / len);
+  const a = new THREE.Vector3(...n);
+  a.addScaledVector(ax, -a.dot(ax)).normalize();
+  const b = new THREE.Vector3().crossVectors(ax, a);
+  const g = new THREE.BoxGeometry(w, len, th);
+  g.applyMatrix4(new THREE.Matrix4().makeBasis(b, ax, a).setPosition((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2));
   return g;
 }
 
@@ -204,8 +223,8 @@ function bWindPump(rng: Rng): THREE.BufferGeometry {
     parts.push(paint(g, pal, 0.04, rng));
   };
   const iron = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number, pal: Palette,
-    u: readonly [number, number, number], w: readonly [number, number, number]) => {
-    parts.push(paint(angleIron(x0, y0, z0, x1, y1, z1, t, u, w), pal, 0.04, rng));
+    u: readonly [number, number, number], w: readonly [number, number, number], heel = false) => {
+    parts.push(paint(angleIron(x0, y0, z0, x1, y1, z1, t, u, w, heel), pal, 0.04, rng));
   };
   const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   for (const [sx, sz] of corners) {
@@ -218,13 +237,14 @@ function bWindPump(rng: Rng): THREE.BufferGeometry {
     const h = halfAt(y);
     for (let k = 0; k < 4; k++) {
       const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
-      // (each face's girt and braces: one flange in the face, one in toward the tower's middle)
+      // (each face's girt an angle seated on its node, a flange in toward the tower's middle and one up; its braces flat
+      // straps across the panel)
       const inward: [number, number, number] = [-(ax + bx) / 2, 0, -(az + bz) / 2];
-      iron(ax * h, y, az * h, bx * h, y, bz * h, 0.05, GALV, inward, [0, 1, 0]);
+      iron(ax * h, y, az * h, bx * h, y, bz * h, 0.05, GALV, inward, [0, 1, 0], true);
       if (b < bays) {
         const y2 = 0.45 + (H - 0.9) * ((b + 1) / bays), h2 = halfAt(y2);
-        iron(ax * h, y, az * h, bx * h2, y2, bz * h2, 0.035, GALV_DARK, inward, [0, 1, 0]);
-        iron(bx * h, y, bz * h, ax * h2, y2, az * h2, 0.035, GALV_DARK, inward, [0, 1, 0]);
+        parts.push(paint(strap(ax * h, y, az * h, bx * h2, y2, bz * h2, 0.045, 0.008, inward), GALV_DARK, 0.04, rng));
+        parts.push(paint(strap(bx * h, y, bz * h, ax * h2, y2, az * h2, 0.045, 0.008, inward), GALV_DARK, 0.04, rng));
       }
     }
   }
@@ -363,8 +383,8 @@ function bWindMotor(rng: Rng): THREE.BufferGeometry {
     parts.push(paint(g, pal, 0.04, rng));
   };
   const iron = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number, pal: Palette,
-    u: readonly [number, number, number], w: readonly [number, number, number]) => {
-    parts.push(paint(angleIron(x0, y0, z0, x1, y1, z1, t, u, w), pal, 0.04, rng));
+    u: readonly [number, number, number], w: readonly [number, number, number], heel = false) => {
+    parts.push(paint(angleIron(x0, y0, z0, x1, y1, z1, t, u, w, heel), pal, 0.04, rng));
   };
   const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   for (const [sx, sz] of corners) {
@@ -377,11 +397,11 @@ function bWindMotor(rng: Rng): THREE.BufferGeometry {
     for (let k = 0; k < 4; k++) {
       const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
       const inward: [number, number, number] = [-(ax + bx) / 2, 0, -(az + bz) / 2];
-      iron(ax * h, y, az * h, bx * h, y, bz * h, 0.05, GALV, inward, [0, 1, 0]);
+      iron(ax * h, y, az * h, bx * h, y, bz * h, 0.05, GALV, inward, [0, 1, 0], true);
       if (b < bays) {
         const y2 = 0.5 + (H - 1.0) * ((b + 1) / bays), h2 = halfAt(y2);
-        iron(ax * h, y, az * h, bx * h2, y2, bz * h2, 0.04, GALV_DARK, inward, [0, 1, 0]);
-        iron(bx * h, y, bz * h, ax * h2, y2, az * h2, 0.04, GALV_DARK, inward, [0, 1, 0]);
+        parts.push(paint(strap(ax * h, y, az * h, bx * h2, y2, bz * h2, 0.05, 0.009, inward), GALV_DARK, 0.04, rng));
+        parts.push(paint(strap(bx * h, y, bz * h, ax * h2, y2, az * h2, 0.05, 0.009, inward), GALV_DARK, 0.04, rng));
       }
     }
   }
@@ -397,7 +417,9 @@ function bWindMotor(rng: Rng): THREE.BufferGeometry {
   const head = new THREE.CylinderGeometry(0.27, 0.27, 1.2, 8, 1);
   head.rotateY(Math.PI / 8); head.rotateX(Math.PI / 2);
   parts.push(paint(head.translate(0, H + 0.45, 0.1), GALV_DARK, 0.04, rng));
-  // the rosette: twenty-four sails between the inner and outer rings, pitched into the wind, their tips banded red
+  // the rosette: twenty-four sails between the inner and outer rings, pitched into the wind, their tips banded red (each
+  // sail one sheet with its red tip, welded where the band starts: the structure collision's extraction reads a pitched
+  // flat sheet exactly, where a dished one's hull over-reached it — scenery.selftest's small-item certification)
   const R = 3.0, r0 = 1.0, hubY = H + 0.55, hubZ = 0.95;
   const shaft = new THREE.CylinderGeometry(0.08, 0.08, 0.45, 8, 1);
   shaft.rotateX(Math.PI / 2);
@@ -412,13 +434,14 @@ function bWindMotor(rng: Rng): THREE.BufferGeometry {
   }
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2, len = R - r0;
-    const sail = dishedSheet(0.42, len * 0.82, 0.05, 0.025);
-    sail.translate(0, r0, 0);
+    const cut = r0 + len * 0.82;
+    const sail = new THREE.BoxGeometry(0.42, cut - r0, 0.025);
+    sail.translate(0, (r0 + cut) / 2, 0);
     sail.rotateY(0.45);
     sail.rotateZ(a);
     parts.push(paint(sail.translate(0, hubY, hubZ), GALV, 0.06, rng));
-    const tip = dishedSheet(0.42, len * 0.18, 0.05, 0.027);
-    tip.translate(0, r0 + len * 0.82, 0);
+    const tip = new THREE.BoxGeometry(0.42, R - cut, 0.025);
+    tip.translate(0, (cut + R) / 2, 0);
     tip.rotateY(0.45);
     tip.rotateZ(a);
     parts.push(paint(tip.translate(0, hubY, hubZ), ROSETTE_RED, 0.05, rng));
