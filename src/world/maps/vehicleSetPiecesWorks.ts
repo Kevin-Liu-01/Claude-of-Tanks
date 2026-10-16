@@ -155,8 +155,9 @@ export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'ol
     mesh.box(0, -sag / 2, 0, 1.84, 0.08, rl / 2 + 0.02, paint, 0.02);
     mesh.pop();
   }
-  for (const sx of [1, -1] as const) for (const z of [rz + 0.62, rz - 0.62]) glazed(mesh, sx * 0.92, (1.6 + rTop) / 2 - sag / 3, z, 'x', 1.0, rTop - 1.6 - 0.14, sx, 0.03, !wrecked);
-  glazed(mesh, 0, (1.6 + rTop) / 2, rz - rl / 2, 'z', 0.7, 0.42, -1, 0.03, !wrecked);
+  // (props r2, Lane C) the rear car's panes from the waist to the roof, their gaskets on both (they hung 4-7 cm clear)
+  for (const sx of [1, -1] as const) for (const z of [rz + 0.62, rz - 0.62]) glazed(mesh, sx * 0.92, (1.6 + rTop) / 2 - sag / 3, z, 'x', 1.0, rTop - 1.6 - 0.05, sx, 0.03, !wrecked);
+  glazed(mesh, 0, (1.6 + rTop) / 2, rz - rl / 2, 'z', 0.7, rTop - 1.6 - 0.05, -1, 0.03, !wrecked);
   if (!coarse) mesh.dressing(() => {
     // the rear door's seams, hinges and handle
     for (const x of [-0.45, 0.45]) mesh.box(x, 1.45, rz - rl / 2 - 0.006, 0.016, 1.45, 0.012, DARK, 0);
@@ -193,12 +194,15 @@ export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): voi
   for (const sx of [1, -1]) for (const zc of [1.45, -1.45]) {
     const x = sx * 0.92, torn = wrecked && sx < 0 && zc > 0;
     mesh.push();
-    if (torn) mesh.translate(0.04, -0.08, 0.06).translate(x, 0, zc).rotateY(0.12).rotateZ(-0.15).translate(-x, 0, -zc);
+    // (props r2, Lane C) the torn pontoon canted on the snow beside the others (it had sunk 13 cm under them, lifting the
+    // whole wreck off the ground), on its bent bogie arm (below)
+    if (torn) mesh.translate(0.04, 0.049, 0.06).translate(x, 0, zc).rotateY(0.12).rotateZ(-0.15).translate(-x, 0, -zc);
     belt(mesh, x, pw, zc - 0.62, 0.36, 0.38, zc + 0.62, 0.38, 0.40, coarse, wrecked ? RUSTY : BLACK);
     if (!coarse) trackCleats(mesh, x, pw + 0.04, zc - 0.62, zc + 0.62, 0.0, 0.8, 6, wrecked ? RUSTY : STEEL_M);
     mesh.box(x, 0.62, zc, pw - 0.08, 0.34, 1.3, ORANGE, coarse ? 0 : 0.06);
     if (!torn) mesh.box(x * 0.55, 0.86, zc, 0.6, 0.16, 0.3, BLACK, 0.02);
     mesh.pop();
+    if (torn) mesh.dressing(() => strut(mesh, [-0.5, 0.9, zc], [-0.79, 0.64, zc + 0.05], 0.12, 0.12, RUSTY));
   }
   const sink = wrecked ? 0.06 : 0;
   mesh.push();
@@ -213,8 +217,10 @@ export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): voi
   if (cave) mesh.box(0, -cave / 2, 0, cw * 0.6, cave, cd * 0.6, WHITE, 0);
   mesh.pop();
   const gy = (beltY + roof) / 2;
-  glazed(mesh, 0, gy, cz + cd / 2, 'z', 2.0, roof - beltY - 0.12, 1, 0.03, !wrecked);
-  glazed(mesh, 0, gy, cz - cd / 2, 'z', 1.4, roof - beltY - 0.2, -1, 0.03, !wrecked);
+  // (props r2, Lane C) the windscreen's gasket out to the corner posts, the rear pane from the waist to the roof (each
+  // hung 3-8 cm clear of its frame)
+  glazed(mesh, 0, gy, cz + cd / 2, 'z', 2.07, roof - beltY - 0.12, 1, 0.03, !wrecked);
+  glazed(mesh, 0, gy, cz - cd / 2, 'z', 1.4, roof - beltY - 0.05, -1, 0.03, !wrecked);
   for (const sx of [1, -1] as const) glazed(mesh, sx * cw / 2, gy, cz, 'x', 1.9, roof - beltY - 0.12, sx, 0.03, !wrecked);
   if (!coarse) mesh.dressing(() => {
     for (const sx of [1, -1]) {
@@ -245,7 +251,8 @@ export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): voi
   }
   mesh.pop();
   if (wrecked) mesh.dressing(() => {
-    for (const [x, z, a] of [[-1.7, -1.9, 0.6], [1.75, -2.3, -0.3]] as const) {
+    // (props r2, Lane C) the thrown drums against the rear pontoons (one lay 2 cm clear)
+    for (const [x, z, a] of [[-1.7, -1.9, 0.6], [1.7, -2.3, -0.3]] as const) {
       mesh.push().translate(x, 0.29, z).rotateY(a);
       mesh.lathe([[0.0001, -0.43], [0.29, -0.43], [0.29, 0.43], [0.0001, 0.43]], coarse ? 8 : 12, () => RUSTY);
       mesh.pop();
@@ -330,9 +337,10 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
     mesh.box(-gauge, 0.42, 0, 0.32, 0.3, 2.4, RUSTY, 0);
   }
   // the main frame, the engine and its hood with louvred side doors (a door off in the wreck), the radiator guard
-  mesh.box(0, 0.95, 0.1, 1.5, 0.5, 3.3, BLACK, 0);
-  mesh.box(0, 1.45, 0.55, 1.0, 0.6, 1.9, ENGINE, 0);
-  mesh.box(0, 2.27, 0.55, 1.24, 0.08, 2.0, paint, 0);
+  // (props r2, Lane C) the cast main frame, the engine block and the hood's top bevelled (not plain boxes)
+  mesh.box(0, 0.95, 0.1, 1.5, 0.5, 3.3, BLACK, 0.05);
+  mesh.box(0, 1.45, 0.55, 1.0, 0.6, 1.9, ENGINE, 0.05);
+  mesh.box(0, 2.27, 0.55, 1.24, 0.08, 2.0, paint, 0.03);
   for (const sx of [1, -1]) {
     const off = wrecked && sx < 0;
     if (!off) {
@@ -370,7 +378,7 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   mesh.box(0, 1.88, -0.98, 0.55, 0.55, 0.1, wrecked ? RUSTY : SEAT, 0);
   if (!coarse) for (const sx of [1, -1]) strut(mesh, [sx * 0.22, 1.5, -0.25], [sx * 0.22, 2.0, -0.32], 0.03, 0.03, BLACK);
   mesh.box(0, 1.45, -0.18, 1.1, 0.5, 0.12, BLACK, 0);
-  mesh.box(0, 1.6, -1.55, 1.5, 0.75, 0.6, paint, 0);
+  mesh.box(0, 1.6, -1.55, 1.5, 0.75, 0.6, paint, 0.07); // (props r2) the tank's rolled edges
   if (!coarse) mesh.dressing(() => mesh.box(0.45, 2.0, -1.55, 0.14, 0.06, 0.14, STEEL_M, 0));
   // the ROPS canopy on its four posts (wrecked: the posts buckled, the roof slumped back onto the tank and the seat)
   const roofY = 3.3;
@@ -383,7 +391,7 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   }
   mesh.push();
   if (wrecked) mesh.translate(0, roofY - 0.35, -0.2).rotateX(-0.42).rotateZ(-0.08).translate(0, -roofY, 0.2);
-  mesh.box(0, roofY, -0.97, 1.6, 0.09, 1.75, paint, 0);
+  mesh.box(0, roofY, -0.97, 1.6, 0.09, 1.75, paint, 0.03); // (props r2) the canopy's pressed roof, bevelled
   mesh.box(0, roofY - 0.08, -0.97, 1.66, 0.12, 0.08, paint, 0);
   for (const sx of [1, -1]) mesh.box(sx * 0.8, roofY - 0.08, -0.97, 0.08, 0.12, 1.75, paint, 0);
   mesh.pop();
@@ -402,7 +410,8 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   mesh.box(0, 0.1, bz + 0.0, bw, 0.14, 0.12, RUSTY, 0);
   for (const sx of [1, -1]) mesh.box(sx * (bw / 2 - 0.04), 0.82, bz - 0.04, 0.08, 1.45, 0.34, paint, 0);
   mesh.box(0, bh + 0.12, bz - 0.12, bw, 0.12, 0.18, paint, 0);
-  if (!coarse) for (let k = 0; k < 5; k++) mesh.box(-1.6 + k * 0.8, 0.82, bz - 0.36, 0.08, 1.2, 0.2, paint, 0);
+  // (props r2, Lane C) the back ribs welded to the moldboard's back (they stood 2 cm clear of it)
+  if (!coarse) for (let k = 0; k < 5; k++) mesh.box(-1.6 + k * 0.8, 0.82, bz - 0.34, 0.08, 1.2, 0.24, paint, 0);
   mesh.pop();
   for (const sx of [1, -1]) {
     strut(mesh, [sx * (gauge + 0.3), 0.55, -0.1], [sx * 1.55, 0.6 - bladeDrop, bz - 0.32], 0.18, 0.24, paint);
@@ -547,10 +556,12 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   wheels.forEach(([x, z, w], k) => haulWheel(mesh, x, axleY, z, R, w, coarse, x > 0 ? 1 : -1, wrecked, 11 + k, Math.abs(x) === 1.42));
   // (props r2, Lane C) each wheel on its spindle: from inside the axle beam's or the housing's end out through the hub
   // (the wreck's chassis rolls on its rims; the spindles carry the wheels to it, not the ground alone)
-  for (const sx of [1, -1]) {
-    mesh.tube([[sx * 1.2, axleY, 2.45], [sx * 1.75, axleY, 2.45]], 0.1, coarse ? 6 : 8, BLACK, { caps: true });
-    mesh.tube([[sx * 1.5, axleY, -1.75], [sx * 2.1, axleY, -1.75]], 0.12, coarse ? 6 : 8, BLACK, { caps: true });
-  }
+  mesh.dressing(() => {
+    for (const sx of [1, -1]) {
+      mesh.tube([[sx * 1.2, axleY, 2.45], [sx * 1.75, axleY, 2.45]], 0.1, coarse ? 6 : 8, BLACK, { caps: true });
+      mesh.tube([[sx * 1.5, axleY, -1.75], [sx * 2.1, axleY, -1.75]], 0.12, coarse ? 6 : 8, BLACK, { caps: true });
+    }
+  });
   const drop = R - axleY;
   mesh.push();
   if (wrecked) mesh.translate(0, -drop, 0).rotateZ(0.035).rotateX(-0.012);
