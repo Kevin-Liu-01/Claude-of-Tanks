@@ -4258,6 +4258,33 @@
    "gapM2": 0,
    "invertedM2": 0
   },
+  "landmark/verdant:church#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 7.17,
+   "invertedM2": 0
+  },
+  "landmark/verdant:granary#5": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.837,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/monsoon:tennisCourt#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
   "landmark/verdant:windmill#9": {
    "floating": 0,
    "sliver": 0,
@@ -4277,5 +4304,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T15:12:21.487Z"
+ "updatedAt": "2026-10-16T15:03:20.245Z"
 }

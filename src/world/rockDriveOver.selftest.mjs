@@ -134,9 +134,12 @@ for (const stone of lows) {
   let metHere = false;
   for (let side = 0; side < 8; side++) {
     const a = (side / 8) * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a);
-    const ground = field.getHeightAt(stone.x, stone.z);
-    aim.set(stone.x, ground + (stone.top - ground) * 0.5, stone.z);
-    origin.set(stone.x - ux * 14, 0, stone.z - uz * 14);
+    // (physics, 2026-10-16) aimed at the middle of the stone's own record, not its placement's origin: since the hitboxes
+    // r3 port a low stone's record is its drawn chunks' (rubbleKit.ts), its middle off the origin by up to its size
+    const cx = (record.min[0] + record.max[0]) / 2, cz = (record.min[2] + record.max[2]) / 2;
+    const ground = field.getHeightAt(cx, cz);
+    aim.set(cx, ground + (stone.top - ground) * 0.5, cz);
+    origin.set(cx - ux * 14, 0, cz - uz * 14);
     origin.y = Math.max(field.getHeightAt(origin.x, origin.z), ground) + 0.8;
     dir.copy(aim).sub(origin);
     const length = dir.length();

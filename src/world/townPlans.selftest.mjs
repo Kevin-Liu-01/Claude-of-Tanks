@@ -169,7 +169,7 @@ const summary = [];
  * the base's reach. Here each PR-head structure keeps a structure whose centre stands within KIT_SEAT_M of its own,
  * one to one, or a short move off a carriageway. Every structure left over must be shed-sized (a yard's shed).
  */
-const KIT_SEAT_M = 2.5, KIT_SHED_M = 6;
+const KIT_SEAT_M = 2.5, KIT_SHED_M = 6, PLANNED_SEAT_M = 1.0;
 /**
  * The buildings a map's water reaches (props.ts settlementOverWater: Suzhou Creek laid through the Blackglass district,
  * the map-revival lane, 2026-10-05): each landmark the creek reached moved to the nearest dry seat the district left it
@@ -211,6 +211,16 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
     assert.ok(i >= 0, `${mapId}: the landmark its water reached stands at its dry seat (${to})`);
     taken.add(i); overWater++;
   }
+  // the map's authored sites seated after the plan (props.plannedSitesAfterPlan: Titan Gorge's homesites and Tidegate
+  // Polders' lintdorp, the maps lane, 2026-10-15) stand where the map lays them: each taken first, by the structure on its
+  // own site (within PLANNED_SEAT_M), so none of them takes the seat of a PR-head building beside it (a Polders cottage
+  // 1.4 m from a yard shed's seat read as that shed moved off a carriageway) and none of them counts as an extra
+  let planned = 0;
+  const unseated = [];
+  for (const site of config.props.plannedSitesAfterPlan ? config.props.plannedSites ?? [] : []) {
+    const [i] = nearest(site.x, site.z, PLANNED_SEAT_M);
+    if (i >= 0) { taken.add(i); planned++; } else unseated.push(site);
+  }
   const pending = [];
   for (const [cx, cz] of kept) {
     if (water.moved.some(([from]) => same(from, [cx, cz]))) continue;
@@ -237,12 +247,18 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
     const [i] = nearest(entry.x, entry.z, KIT_SEAT_M);
     if (i >= 0) { taken.add(i); added++; }
   }
+  // (a site whose building's footprint centre stands off its site — a family camp's compound reaches past its hogan —
+  // takes its structure within KIT_SEAT_M once the PR head's buildings have theirs)
+  for (const site of unseated) {
+    const [i] = nearest(site.x, site.z, KIT_SEAT_M);
+    if (i >= 0) { taken.add(i); planned++; }
+  }
   const extra = now.filter((s, i) => !taken.has(i) && !(setPieces > 0 && onPiece(s)));
   for (const s of extra) {
     assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
   }
   summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), `
-    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${added ? `${added} authored rows, ` : ''}${extra.length} yard sheds`);
+    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${added ? `${added} authored rows, ` : ''}${planned ? `${planned} sites after the plan, ` : ''}${extra.length} yard sheds`);
 }
 for (const [mapId, { carriageway, structures, setPieces = 0 }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);

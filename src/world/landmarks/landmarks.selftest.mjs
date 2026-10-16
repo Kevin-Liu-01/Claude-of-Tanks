@@ -752,10 +752,15 @@ for (const id of MAP_IDS) {
   // the shard holds — the berth's half-width to each side of the centreline, shape by shape
   for (const spur of (config.terrain?.railSpurs ?? []).filter((candidate) => candidate.berth === 'clearance')) check(`${id}/rail berth`, () => {
     let nearest = Infinity, at = null;
+    // (the maps lane, 2026-10-16; Lane C PRP-02b made the line's buffer stops breakable small props) the line's own
+    // buffer stops stand on its closed ends: those records (within 4 m of an end the spur closes) are the track's, not a
+    // solid on its berth
+    const ends = spur.bufferStop === 'both' ? [spur.path[0], spur.path[spur.path.length - 1]]
+      : spur.bufferStop === 'start' ? [spur.path[0]] : spur.bufferStop === 'end' ? [spur.path[spur.path.length - 1]] : [];
+    const ownStop = (record) => record.k === 'prop-buffer-stop'
+      && ends.some(([ex, ez]) => Math.hypot((record.b[0] + record.b[3]) / 2 - ex, (record.b[2] + record.b[5]) / 2 - ez) <= 4);
     for (const record of [...shard.obstacles, ...shard.colliders]) {
-      if (record.k === 'tree' || record.t != null) continue;
-      // (Lane C 2026-10-16) a buffer stop stands on the track's own end: PRP-02 gave it a breakable record of its own
-      if (record.k === 'prop-buffer-stop') continue;
+      if (record.k === 'tree' || record.t != null || ownStop(record)) continue;
       if (record.b[3] < -480 || record.b[0] > 480) continue;
       const gap = recordGapToPath(record, spur.path);
       if (gap < nearest) { nearest = gap; at = `${record.k ?? 'solid'} at (${((record.b[0] + record.b[3]) / 2).toFixed(1)}, ${((record.b[2] + record.b[5]) / 2).toFixed(1)})`; }

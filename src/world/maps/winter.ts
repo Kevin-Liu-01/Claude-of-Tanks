@@ -138,6 +138,16 @@ export default {
     ],
   },
 
+  // (the maps lane, 2026-10-16; integ/226's red triage: the brief's lanes band, red since 225) Frosthollow's middle crosses
+  // in two broad lanes at 35 % and 50 % of the axis (split at the valley's middle and at the village's west end; five at
+  // 65 %, over the village), where the brief asks three: the open snowfields between them are the map's play — every other
+  // band holds (separation 756 m, route 1.067, choke 910 m, sightline median 102 m, objective symmetry 1.072) — so the
+  // count is the map's, not a closed route
+  layoutBrief: { exceptions: {
+    lanes: 'two broad lanes across the snowfields at 35 % and 50 % of the axis (five at 65 %, over the village); every other '
+      + 'band holds: the open fields are the play, no route is closed',
+  } },
+
   spawns: {
     // The player deploys on the valley floor beside the valley road (round 48
     // pacing, 2026-09-24: the first pad sat on the 6.5 m rise in the south-west
