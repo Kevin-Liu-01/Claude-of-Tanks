@@ -1088,6 +1088,49 @@ function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]
   return g;
 }
 
+/**
+ * (props lane A, r2 sweep 2026-10-16: a knocked box is still a box — eight corners, ten faces) a stone's top crowned: its
+ * up face's two triangles replaced by four round a raised centre (`lift` m), so the stone weathered round reads as one
+ * and no longer as a bare primitive. Unindexed out; the stone's uvs averaged at the crown.
+ */
+export function crownStoneTop(g: THREE.BufferGeometry, lift: number): THREE.BufferGeometry {
+  const src = g.index ? g.toNonIndexed() : g;
+  const p = src.attributes.position, uv = src.attributes.uv;
+  const tris: number[] = [], top: number[] = [];
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), nrm = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let t = 0; t < p.count; t += 3) {
+    a.fromBufferAttribute(p, t); b.fromBufferAttribute(p, t + 1); c.fromBufferAttribute(p, t + 2);
+    nrm.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).normalize();
+    (nrm.y > 0.7 ? top : tris).push(t);
+  }
+  if (top.length !== 2) { if (src !== g) g.dispose(); return src; }
+  // the up face's four corners (its two triangles share a diagonal) in turn round their centre
+  const corners: Array<{ x: number; y: number; z: number; u: number; v: number }> = [];
+  for (const t of top) for (let k = 0; k < 3; k++) {
+    const i = t + k, x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    if (!corners.some((q) => Math.abs(q.x - x) < 1e-6 && Math.abs(q.y - y) < 1e-6 && Math.abs(q.z - z) < 1e-6)) corners.push({ x, y, z, u: uv.getX(i), v: uv.getY(i) });
+  }
+  const cx = corners.reduce((s2, q) => s2 + q.x, 0) / corners.length, cz = corners.reduce((s2, q) => s2 + q.z, 0) / corners.length;
+  const cy = corners.reduce((s2, q) => s2 + q.y, 0) / corners.length + lift;
+  const cu = corners.reduce((s2, q) => s2 + q.u, 0) / corners.length, cv = corners.reduce((s2, q) => s2 + q.v, 0) / corners.length;
+  corners.sort((q, w) => Math.atan2(q.z - cz, q.x - cx) - Math.atan2(w.z - cz, w.x - cx));
+  const pos: number[] = [], uvs: number[] = [];
+  for (const t of tris) for (let k = 0; k < 3; k++) { pos.push(p.getX(t + k), p.getY(t + k), p.getZ(t + k)); uvs.push(uv.getX(t + k), uv.getY(t + k)); }
+  for (let k = 0; k < corners.length; k++) {
+    const q = corners[k], w = corners[(k + 1) % corners.length];
+    // (wound up: the corners run counter-clockwise seen from above when sorted by angle about the centre in x, z — a
+    // left-handed turn in three's frame, so each fan triangle goes q, centre, w)
+    pos.push(q.x, q.y, q.z, cx, cy, cz, w.x, w.y, w.z); uvs.push(q.u, q.v, cu, cv, w.u, w.v);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  out.computeVertexNormals();
+  if (src !== g) src.dispose();
+  g.dispose();
+  return out;
+}
+
 /** The wall's texture density (tiles a metre): a face stone's window of the field print. */
 const DRY_UV = 1.2;
 
@@ -1114,7 +1157,7 @@ function tagStone<T extends THREE.BufferGeometry>(g: T, kind: number): T {
  * lies inside that band: u along the stone, v up its sides and across its top).
  */
 function roughStone(
-  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack,
+  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack, crown = 0,
 ): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
@@ -1135,7 +1178,8 @@ function roughStone(
     uv.setXY(i, du + a * DRY_UV, v0 + b * DRY_UV * squash);
   }
   g.computeVertexNormals();
-  return keepFaces(g, keep);
+  const kept = keepFaces(g, keep);
+  return crown > 0 ? crownStoneTop(kept, crown) : kept;
 }
 
 /**
@@ -1349,7 +1393,8 @@ export function buildDryStoneWallHead(seed: number, thick: number, height: numbe
     // each lift two or three stones across, alternating, so the head is bonded like a quoin
     const n = r() < 0.5 ? 2 : 3;
     for (let k = 0; k < n; k++) {
-      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22);
+      // (r2: each stone's top crowned — the head's stones weathered round, not boxes)
+      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22, 0.22, h * 0.12);
       stone.rotateY((r() - 0.5) * 0.12); stone.rotateZ((r() - 0.5) * 0.08);
       parts.push(stone.translate(-w / 2 + (k + 0.5) * (w / n) + (r() - 0.5) * 0.03, y + h / 2, (r() - 0.5) * 0.04));
     }

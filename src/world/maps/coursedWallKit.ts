@@ -42,7 +42,7 @@ function hash(a: number, b: number, seed: number): number {
  * bare box), run `d` along z about (cx, y0, cz); its faces' uvs by place on the face (`soldier` stands its courses
  * upright: the Rollschicht's bricks on edge); its foot face left out.
  */
-function course(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
+export function dressedCourse(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
   const c = Math.min(0.025, w * 0.12, h * 0.25), hw = w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
   const sec: Array<[number, number]> = [[-hw, 0], [hw, 0], [hw, h - c], [hw - c, h], [-hw + c, h], [-hw, h - c]];
   const pos: number[] = [], uv: number[] = [];
@@ -120,32 +120,32 @@ export function buildCoursedWall(coping: CoursedCoping, broken = false): THREE.B
   const T = 0.46, H = 1.08, plinth = 0.3, parts: THREE.BufferGeometry[] = [];
   const piers = coping === 'rollschicht';
   if (!broken) {
-    parts.push(course(T + 0.06, plinth, WALL_SEG, 0, -0.1, 0));
-    parts.push(course(T, H - plinth, WALL_SEG, 0, plinth - 0.1, 0));
+    parts.push(dressedCourse(T + 0.06, plinth, WALL_SEG, 0, -0.1, 0));
+    parts.push(dressedCourse(T, H - plinth, WALL_SEG, 0, plinth - 0.1, 0));
     const top = H - 0.1;
-    if (coping === 'rollschicht') parts.push(course(T + 0.04, 0.12, WALL_SEG, 0, top, 0, true));
+    if (coping === 'rollschicht') parts.push(dressedCourse(T + 0.04, 0.12, WALL_SEG, 0, top, 0, true));
     else if (coping === 'saddleback') for (let k = 0; k < 4; k++) parts.push(ridge(T + 0.1, top + 0.04, 0.12, Z0 + k * 0.75 + 0.004, Z0 + (k + 1) * 0.75 - 0.004));
     else if (coping === 'tiled') {
-      parts.push(course(T + 0.02, 0.06, WALL_SEG, 0, top, 0));
+      parts.push(dressedCourse(T + 0.02, 0.06, WALL_SEG, 0, top, 0));
       parts.push(ridge(T + 0.24, top + 0.08, 0.16, Z0, Z1, 0.05));
-    } else if (coping === 'block') parts.push(course(T + 0.03, 0.1, WALL_SEG, 0, top, 0));
-    else parts.push(course(T + 0.1, 0.07, WALL_SEG, 0, top, 0));
+    } else if (coping === 'block') parts.push(dressedCourse(T + 0.03, 0.1, WALL_SEG, 0, top, 0));
+    else parts.push(dressedCourse(T + 0.1, 0.07, WALL_SEG, 0, top, 0));
     // the Ruhr's and the Saar's walls stand between piers (one at each module's start: the next module's is its end)
-    if (piers) parts.push(course(T + 0.18, H + 0.16, 0.42, 0, -0.1, Z0 + 0.21));
+    if (piers) parts.push(dressedCourse(T + 0.18, H + 0.16, 0.42, 0, -0.1, Z0 + 0.21));
     return merged(parts);
   }
   // the stepped bite (r2: within 1.5 x the intact's triangles, standing over the module's length): the plinth left standing
   // its whole length, the body's foot by one lip stepped down into the breach, a fallen unit or coping stone across it
   const lip = 0.7 + hash(1, 2, 0x6e1) * 0.25, hUp = 0.24 + hash(3, 1, 0x6e1) * 0.12;
-  parts.push(course(T + 0.06, plinth * 0.9, WALL_SEG, 0, -0.1, 0));
-  parts.push(course(T, hUp, lip, 0, plinth * 0.9 - 0.1, Z0 + lip / 2));
+  parts.push(dressedCourse(T + 0.06, plinth * 0.9, WALL_SEG, 0, -0.1, 0));
+  parts.push(dressedCourse(T, hUp, lip, 0, plinth * 0.9 - 0.1, Z0 + lip / 2));
   if (coping === 'saddleback' || coping === 'tiled') {
     const stone = ridge(T + 0.1, 0, 0.12, -0.36, 0.36);
     stone.rotateZ(0.5); stone.rotateY(0.7); stone.translate(0.45, 0.05, -0.2);
     parts.push(stone);
   } else {
     const a = hash(0, 5, 0x6e2), b = hash(0, 7, 0x6e2);
-    const unit = course(0.24 + a * 0.1, 0.1, 0.36, 0, 0, 0);
+    const unit = dressedCourse(0.24 + a * 0.1, 0.1, 0.36, 0, 0, 0);
     unit.rotateY(a * Math.PI);
     unit.translate(0.42 + (b - 0.5) * 0.3, plinth * 0.9 - 0.1, (b - 0.5) * 0.8);
     parts.push(unit);
