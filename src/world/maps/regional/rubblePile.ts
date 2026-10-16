@@ -146,8 +146,15 @@ export function rubblePileParts(x: number, y: number, z: number, pr: number, rrn
   feet.sort((p, q) => q.gap - p.gap);
   for (const f of feet) {
     if (tris + BED_TRIS > PILE_TRIS) break;
+    const P: number[] = [], U: number[] = [], I: number[] = [];
+    debrisBed(P, U, I, f.x, f.z, f.y - f.gap - 0.04, f.y + 0.012, Math.min(0.32, 0.1 + f.gap * 0.8), sp);
+    // (set here: the piece is the pile's own)
     const g = new THREE.BufferGeometry();
-    bed.push(debrisBed(g, f.x, f.z, f.y - f.gap - 0.04, f.y + 0.012, Math.min(0.32, 0.1 + f.gap * 0.8), sp));
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    g.setIndex(I);
+    g.computeVertexNormals();
+    bed.push(g);
     tris += BED_TRIS;
   }
   return { stone, wood, chunks: n, bed };
@@ -203,15 +210,23 @@ function spallFaces<T extends THREE.BufferGeometry>(chunk: T, sp: () => number, 
     // (a face the guard refuses keeps its two triangles: a b d, b c d)
     if (!placed) I.push(base, base + 1, base + 3, base + 1, base + 2, base + 3);
   }
-  const g = new THREE.BufferGeometry();
+  rebuilt(chunk, P, U, I);
+  return chunk;
+}
+
+/**
+ * A piece's own geometry rewritten in place (positions, UVs, index, normals; no groups): the piece keeps its identity
+ * and its userData (the bucket's merge and the census's creation stamp read them).
+ */
+function rebuilt(g: THREE.BufferGeometry, P: number[], U: number[], I: number[]): void {
+  g.deleteAttribute('normal');
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
   g.setIndex(I);
+  g.clearGroups();
   g.computeVertexNormals();
-  chunk.copy(g as unknown as T);
-  chunk.clearGroups();
-  g.dispose();
-  return chunk;
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
 }
 
 /**
@@ -246,14 +261,7 @@ function charWaist<T extends THREE.BufferGeometry>(beam: T, sp: () => number): T
     for (const p of rings[ri]) { P.push(...p); U.push(p[0] + 0.07, p[1] + 0.07); }
     if (flip) I.push(base, base + 2, base + 1, base, base + 3, base + 2); else I.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
-  g.setIndex(I);
-  g.computeVertexNormals();
-  beam.copy(g as unknown as T);
-  beam.clearGroups();
-  g.dispose();
+  rebuilt(beam, P, U, I);
   return beam;
 }
 
@@ -312,12 +320,11 @@ function fillHeightAt(fill: THREE.BufferGeometry, x: number, z: number): number 
 const BED_TRIS = 13;
 
 /**
- * A bed of smaller debris under a piece's foot (into `g`): a five-sided heap from `y0` (sunk into what it lies on) at
+ * A bed of smaller debris under a piece's foot (into the arrays P, U, I; the pile sets them on its own piece): a five-sided heap from `y0` (sunk into what it lies on) at
  * radius r up to a crown at `y1` that meets the piece; its corners jittered from `sp`.
  */
-function debrisBed(g: THREE.BufferGeometry, x: number, z: number, y0: number, y1: number, r: number, sp: () => number): THREE.BufferGeometry {
+function debrisBed(P: number[], U: number[], I: number[], x: number, z: number, y0: number, y1: number, r: number, sp: () => number): void {
   const seg = 5, rings: Array<[number, number]> = [[1, y0], [0.38, y1]];
-  const P: number[] = [], U: number[] = [], I: number[] = [];
   const jit = Array.from({ length: seg }, () => 0.8 + sp() * 0.4), turn = sp() * Math.PI;
   for (const [s, yy] of rings) {
     for (let j = 0; j < seg; j++) {
@@ -331,11 +338,6 @@ function debrisBed(g: THREE.BufferGeometry, x: number, z: number, y0: number, y1
   }
   // the crown
   for (let j = 1; j + 1 < seg; j++) I.push(seg, seg + j + 1, seg + j);
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
-  g.setIndex(I);
-  g.computeVertexNormals();
-  return g;
 }
 
 /** A deterministic stream from a seat (its position to the centimetre): no draw from the street's stream. */
