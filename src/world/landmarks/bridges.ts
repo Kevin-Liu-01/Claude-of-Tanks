@@ -16,6 +16,7 @@ import { PartSink, rgb, shade, type RegionalBucket } from '../maps/regional/geom
 import type { SimpleCollisionShape } from '../collision.ts';
 import { archedSlab, bar, extrude, moulding, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const STEEL_GREY = rgb(0x6f777b), STEEL_GREEN = rgb(0x4d5a4e), BAILEY_GREEN = rgb(0x4e5638), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const DECK_BOARD = rgb(0x7a6a55), IRON = rgb(0x2b2d2e), PAINT_WHITE = rgb(0xe6e3da), PAINT_BLACK = rgb(0x262624);
@@ -417,7 +418,7 @@ function liftPortals(sink: PartSink, span: number, top: (z: number) => number, p
     }
     // the cross-ties: at the head, at the tail (the counterweight bar) and a diagonal pair between
     bar(sink, 'structureWood', [-postX, headY, head], [postX, headY, head], 0.16, white);
-    sink.span('structureWood', -postX - 0.1, tailY - 0.34, Math.min(tail, tail + zs * 0.5), postX + 0.1, tailY + 0.12, Math.max(tail, tail + zs * 0.5), black);
+    piece(sink, { name: `counterweight-${(zs + 1) / 2}`, kind: 'detach', at: 'collapse' }, (sink) => sink.span('structureWood', -postX - 0.1, tailY - 0.34, Math.min(tail, tail + zs * 0.5), postX + 0.1, tailY + 0.12, Math.max(tail, tail + zs * 0.5), black));
     // (each tie's ends on the balance beams' line, which climbs from head to tail: level ties missed one beam by 8 cm)
     const mid = (head + tail) / 2 + zs * 0.6, beamY = (zz: number) => headY + (tailY - headY) * (zz - head) / (tail - head);
     bar(sink, 'structureWood', [-postX, beamY(mid - zs * 1.5), mid - zs * 1.5], [postX, beamY(mid + zs * 1.5), mid + zs * 1.5], 0.1, { ...white, decor: true });
@@ -458,20 +459,24 @@ function abutmentPieces(sink: PartSink, hw: number, face: number, zs: number, y0
 function liftKeeper(sink: PartSink, ctx: LandmarkBuildContext, W: number, roadEnd: number, yD: number, hutEnd: number): { cx: number; cz: number; hw: number; hl: number; y0: number; y1: number } {
   const white = { colour: PAINT_WHITE }, black = { colour: PAINT_BLACK };
   for (const zs of [-1, 1]) {
-    const x = zs * (W / 2 + 0.55), z = zs * (roadEnd + 0.7), y = yD;
-    // (kitConnectivity: the foot stood 9 cm over what carries it and the counterweight box 3 cm off its post) the foot
-    // run down 0.6 m into the abutment's fill, the box against the post
-    sink.span('structureWood', x - 0.12, y - 0.9, z - 0.12, x + 0.12, y + 0.35, z + 0.12, { ...black, decor: true });
+    // (kitConnectivity and the landmarks receipt, Lane C 2026-10-16: the slagboom stood 0.7 m past the roadway's end over
+    // the bank, its foot in the air over a ramp's foot or a bank lower than the deck, the counterweight box 3 cm off its
+    // post) on the abutment's top a metre inside its back, its foot let 0.1 m into the brick (the deck lies 0.42 m over
+    // the short form's abutment, level with the long form's), the box against the post
+    const x = zs * (W / 2 + 0.55), z = zs * (roadEnd - 1.0), y = yD;
+    sink.span('structureWood', x - 0.12, y - 0.52, z - 0.12, x + 0.12, y + 0.35, z + 0.12, { ...black, decor: true });
     sink.span('structureWood', x - 0.09, y + 0.35, z - 0.09, x + 0.09, y + 1.15, z + 0.09, { ...white, decor: true });
     sink.span('structureWood', x - 0.2, y + 0.55, z - 0.32, x + 0.2, y + 0.95, z - 0.08, { ...black, decor: true });
     // the arm, raised: 4.4 m in 0.55 m bands
     for (let k = 0; k < 8; k++) {
       const a = y + 1.15 + k * 0.55;
-      sink.span('structureWood', x - 0.06, a, z - 0.06, x + 0.06, a + 0.55, z + 0.06, { colour: k % 2 ? PAINT_WHITE : BOOM_RED, decor: true });
+      piece(sink, { name: `barrier-arm-${(zs + 1) / 2}-${k}`, kind: 'detach', at: 'collapse' }, (sink) => sink.span('structureWood', x - 0.06, a, z - 0.06, x + 0.06, a + 0.55, z + 0.06, { colour: k % 2 ? PAINT_WHITE : BOOM_RED, decor: true }));
     }
   }
   // the keeper's hut on the bank beside the roadway, past the abutment's back
-  const hx = W / 2 + 2.9, hz = hutEnd * (roadEnd + 2.2), w = 2.6, d = 2.2, wall = 2.4;
+  // (the landmarks receipt: past the roadway's end the hut stood outside the piece's footprint) on the bank beside the
+  // abutment's back half, inside the footprint plan.ts gives it
+  const hx = W / 2 + 2.9, hz = hutEnd * (roadEnd - 1.6), w = 2.6, d = 2.2, wall = 2.4;
   let g = Infinity;
   for (const dx of [-w / 2, w / 2]) for (const dz of [-d / 2, d / 2]) g = Math.min(g, groundAt(ctx, hx + dx, hz + dz));
   const y0 = g - 0.3, y1 = g + wall;
@@ -542,7 +547,7 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
     }
     return parts;
   })();
-  return { parts: sink.finish(), movement };
+  return { parts: finishLandmark(sink), movement };
 };
 
 /** The lift bridge's long form (liftBridge's note): the lift span, its piers, the fixed spans, the abutments, the ramps. */
@@ -742,5 +747,5 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
     }
     return parts;
   })();
-  return { parts: sink.finish(), movement };
+  return { parts: finishLandmark(sink), movement };
 }
