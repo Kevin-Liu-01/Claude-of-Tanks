@@ -8,7 +8,7 @@
 // permanent donor stock found by raycast: never on removable ERA, never in open air.
 import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
-import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,serviceCable,serviceCase,stockRoof} from './nationalChina.ts';
+import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,serviceCable,serviceCase} from './nationalChina.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
@@ -235,11 +235,16 @@ function kunlunRearCage(P:TankBuilderPort):void {
   }finally{shell.dispose();}
 }
 
-/** A whip antenna on its own base, seated on the permanent roof under it. */
+/** A whip antenna on its own base, seated on a shaped foot on the permanent roof under it. */
 function whip(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,length:number):void {
-  const y=stockRoof(parts,x,z);
-  P.addEquipment('turretDetail',cylY(.050,.064,.09,12),x,y+.035,z);
+  const y=equipmentFoot(P,parts,x,z,.13,.13);
+  P.addEquipment('turretDetail',cylY(.050,.064,.09,12),x,y+.040,z);
   P.addEquipment('turretDark',cylY(.007,.011,length,8),x,y+.08+length/2,z);
+}
+
+/** A guarded lamp (nationalRoofSystems.ts) on a shaped foot: the 96B's front roof falls 16 degrees under it. */
+function footedLamp(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,shape:Parameters<typeof nationalLamp>[4]):void {
+  nationalLamp(P,x,z,equipmentFoot(P,parts,x,z+.01,.27,.22),shape);
 }
 
 function kunlun(P:TankBuilderPort):void {
@@ -248,9 +253,9 @@ function kunlun(P:TankBuilderPort):void {
   kunlunEyes(P);
   const roof=permanentParts(P,['turret','turretDetail']);
   // Square guarded lamps on the front roof between the gunner's sight and the central sight, ahead of both.
-  for(const side of [-1,1])nationalLamp(P,side*.55,.86,stockRoof(roof,side*.55,.86),l.lamp);
+  for(const side of [-1,1])footedLamp(P,roof,side*.55,.86,l.lamp);
   // The scanner head between the cupola and the loader's hatch.
-  nationalRoofSensor(P,-.05,-.18,stockRoof(roof,-.05,-.18),l);
+  nationalRoofSensor(P,-.05,-.18,equipmentFoot(P,roof,-.05,-.18,.35,.33),l);
   // Removable service cases on the bustle roof (the 96B's mast and whip stand on its left rear).
   const cases=permanentParts(P,['turret']);
   serviceCase(P,cases,-.02,-1.56,.80,.15,.34);
@@ -267,7 +272,7 @@ function qilin(P:TankBuilderPort):void {
   const l=NATIONAL_ROOF_LOADOUTS.t72b3_qilin;
   const roof=permanentParts(P,['turret','turretEquipment']);
   // Round guarded lamps on the crown just behind the chevrons' upper roots, outboard of both roof sights.
-  for(const side of [-1,1])nationalLamp(P,side*.82,-.18,stockRoof(roof,side*.82,-.18),l.lamp);
+  for(const side of [-1,1])footedLamp(P,roof,side*.82,-.18,l.lamp);
   // The side camera: twin round lenses on a guarded low housing, on the left crown edge.
   lowOptic(P,roof,1.12,-.30,.20,.11,.19,true);
   // Low field-service box and tool chest, the roll and a field-service carrier on the right flank crown.

@@ -280,7 +280,7 @@ function receivingRoof(P:TankBuilderPort,owner:'hull'|'turret',x:number,z:number
   return y;
 }
 
-export function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
+function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
   const ray=new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0));
   const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let y=-Infinity;
   for(const g of parts){
