@@ -950,6 +950,9 @@ export function createBrowserComposition({
       createPresentation: createRoundPresentation,
       clock,
       clientBuild,
+      // 2026-10-15 (the MP stream): an ordinary task as the probe of this tab's own task queue: the match client's stall
+      // clock rests while it is starved (a long entry job), so a busy seat never mistakes its own stall for a dead host
+      matchClient: { taskProbe: (callback: () => void) => { setTimeout(callback, 0); } },
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,

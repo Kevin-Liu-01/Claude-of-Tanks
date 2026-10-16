@@ -2165,6 +2165,28 @@ Receipt: `predictionStall.selftest` (the real sampler, the real authority input 
 movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
 against 2.1 m and 1.5 m for the two old behaviours).
 
+### 13.24 A busy seat is not a dead host (MP stream, 2026-10-15)
+
+**Why.** Every main rejoin in the §7 side-by-side opened a second peer link about 7 s after the first. The first link
+was answered in 0.2 s and the seat was welcomed, so the entry trace marked `roster` twice (`item/mp-rejoin-trace`). The
+returning tab paints its roster for 6-7 s after the WELCOME. Its loading yielders use `scheduler.yield`, whose
+continuations run ahead of ordinary tasks, so the data channel's message tasks waited while the tab kept rendering
+frames. After 5 s without an accepted snapshot, `ConnectionRecovery` read the silence as a dead host and asked for a
+fresh socket. On Sept 30 the roster took 1.2 s, under the 5 s window.
+
+**What.** `MatchClient` keeps one ordinary task in flight (`taskProbe`; the browser composition posts it with
+`setTimeout 0`). A task still waiting past 250 ms means this tab could not have read the channel either. The
+recovery's stall clock restarts at the last frame the tab was seen starved (`RecoveryInput.starvedAtMs`). A host that
+stays silent for 5 s after the tab runs again still stalls the link as before. `stats().taskStarvations` counts the
+episodes. Without a probe (Node, the receipts' virtual clocks) nothing changes.
+
+Receipts:
+- `recovery.selftest`: a seat starved for 6.5 s requests no socket and stalls 5 s after it wakes. The control stalls at
+  5 s.
+- `matchClient.selftest`: a seat whose probe tasks and host frames are held together for 6.5 s keeps its link. A host
+  that stays silent while the tab runs still requests a fresh socket.
+- Ablating the stall-clock restart fails both.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
