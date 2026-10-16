@@ -17,6 +17,7 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 import { latticeFrame } from './lattice.ts';
 import { sheetHall } from './hall.ts';
 import { recordShed } from './shedFall.ts';
+import { navajoStands } from './souqs.ts'; // props #23: the roadside stands
 
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
@@ -776,59 +777,9 @@ const generalStore: RegionalBuilder = (ctx) => {
  */
 const roadsideStands: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
-  // the stands fill the old market row's reach (its measured bounds, which stand off the plot's centre)
-  const bb = ctx.bounds;
-  const W = Math.max(6, bb.maxX - bb.minX - 0.5), D = Math.max(2.8, bb.maxZ - bb.minZ - 0.5);
-  const n = Math.max(2, Math.round(W / 3.8)), bw = W / n, H = 2.35;
-  sink.placed(0, (bb.maxX + bb.minX) / 2, 0, (bb.maxZ + bb.minZ) / 2, () => {
-  const ply: readonly Rgb[] = [0xb8a07a, 0xa89272, 0xc4b08c].map(rgb);
-  const paint: readonly Rgb[] = [0x2f6a9a, 0x9a2e24, 0x3d8a86, 0xd8b04a, 0xe8e1d0].map(rgb);
-  for (let k = 0; k <= n; k++) {
-    const x = -W / 2 + k * bw;
-    for (const z of [-D / 2 + 0.1, D / 2 - 0.1]) pole(sink, [x + (k === 0 ? 0.1 : k === n ? -0.1 : 0), -0.3, z], [x + (k === 0 ? 0.1 : k === n ? -0.1 : 0), H + (z < 0 ? 0.3 : 0), z], 0.07, pick(look, JUNIPER), false);
-  }
-  // the back wall of plywood sheets and the side panels between the booths (structure), the roof sheets sloping to
-  // the front, the brush laid over them
-  sink.span('structureWood', -W / 2 + 0.05, 0.0, -D / 2 + 0.02, W / 2 - 0.05, H + 0.2, -D / 2 + 0.1, { colour: pick(look, ply) });
-  for (let k = 0; k <= n; k++) {
-    const x = Math.max(-W / 2 + 0.06, Math.min(W / 2 - 0.06, -W / 2 + k * bw));
-    sink.span('structureWood', x - 0.03, 0.0, -D / 2 + 0.1, x + 0.03, H, D / 2 - 0.25, { colour: shade(pick(look, ply), 0.92) });
-  }
-  for (let k = 0; k < n; k++) {
-    const x = -W / 2 + (k + 0.5) * bw;
-    const c = pick(look, ply);
-    const dz = D + 0.4, dy = -0.3, sl = Math.hypot(dz, dy);
-    sink.member('structureWood', [x, H + 0.33, -D / 2 - 0.15], [x, H + 0.03, D / 2 + 0.25], bw - 0.06, 0.03, [0, dz / sl, -dy / sl], { colour: c, decor: true, exposed: true, shadow: true }, 0);
-    // the counter and its boards: dark velvet panels set with silver and turquoise
-    sink.span('structureWood', x - bw / 2 + 0.25, 0.0, D / 2 - 0.85, x + bw / 2 - 0.25, 0.85, D / 2 - 0.3, { colour: shade(c, 0.85) });
-    sink.span('structureWood', x - bw / 2 + 0.3, 0.85, D / 2 - 0.82, x + bw / 2 - 0.3, 0.87, D / 2 - 0.33, { colour: rgb(0xe9e4da), decor: true });
-    for (let b = 0; b < 3; b++) {
-      const bx = x - bw / 2 + 0.55 + b * (bw - 1.1) / 2;
-      sink.span('structureWood', bx - 0.28, 0.87, D / 2 - 0.75, bx + 0.28, 0.9, D / 2 - 0.4, { colour: pick(look, [rgb(0x1f2a44), rgb(0x3a1f2a), rgb(0x1e1e22)]), decor: true, fine: true });
-      for (let j = 0; j < 4; j++) {
-        const jx = bx - 0.2 + j * 0.13;
-        sink.span('structureWood', jx - 0.035, 0.9, D / 2 - 0.65 + (j % 2) * 0.12, jx + 0.035, 0.925, D / 2 - 0.58 + (j % 2) * 0.12,
-          { colour: j % 2 ? rgb(0x3fb3a8) : rgb(0xc9cdd1), decor: true, fine: true });
-      }
-    }
-    // a hanging rug on the back wall and the painted sign board over the front
-    const rug = pick(look, [rgb(0x8e2f24), rgb(0x2f3a5e), rgb(0xd8ccb0)]);
-    sink.span('structureWood', x - 0.6, 1.0, -D / 2 + 0.1, x + 0.6, 2.0, -D / 2 + 0.13, { colour: rug, decor: true });
-    sink.span('structureWood', x - 0.6, 1.3, -D / 2 + 0.13, x + 0.6, 1.4, -D / 2 + 0.145, { colour: rgb(0x1e1e22), decor: true, fine: true });
-    sink.span('structureWood', x - 0.6, 1.6, -D / 2 + 0.13, x + 0.6, 1.7, -D / 2 + 0.145, { colour: rgb(0xe8e1d0), decor: true, fine: true });
-    const sign: Face = { origin: [x, 0, D / 2 - 0.08], u: [1, 0, 0], out: [0, 0, 1], width: bw };
-    // (a board standing free on its posts: its back face is drawn)
-    faceBox(sink, 'structureWood', sign, 0, H + 0.55, 0.03, bw - 0.4, 0.5, 0.04, { colour: rgb(0xe8e1d0), decor: true });
-    faceBox(sink, 'structureWood', sign, 0, H + 0.6, 0.055, bw - 0.9, 0.16, 0.02, { colour: pick(look, paint), decor: true });
-    faceBox(sink, 'structureWood', sign, 0, H + 0.42, 0.055, bw - 1.4, 0.1, 0.02, { colour: pick(look, paint), decor: true });
-  }
-  sink.span('structureWood', -W / 2, H + 0.32, -D / 2 - 0.05, W / 2, H + 0.42, -D / 2 + 0.6, { colour: rgb(0x6e6450), decor: true, shadow: true });
-  // the sign boards' posts
-  for (let k = 0; k < n; k++) {
-    const x = -W / 2 + (k + 0.5) * bw;
-    for (const s of [-1, 1]) sink.span('structureWood', x + s * (bw / 2 - 0.35) - 0.04, H, D / 2 - 0.12, x + s * (bw / 2 - 0.35) + 0.04, H + 0.85, D / 2 - 0.05, { colour: PLANK, decor: true });
-  }
+  // (props census #23, the looks lane 2026-10-15) member-built in souqs.ts, in the old row's reach (its bounds' centre)
+  sink.placed(0, (ctx.bounds.maxX + ctx.bounds.minX) / 2, 0, (ctx.bounds.maxZ + ctx.bounds.minZ) / 2, () => {
+    navajoStands(sink, ctx, { pole, juniper: JUNIPER, plank: PLANK });
   });
   return sink.finish();
 };
