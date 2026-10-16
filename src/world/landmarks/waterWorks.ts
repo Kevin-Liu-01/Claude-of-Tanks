@@ -93,22 +93,37 @@ export const waterTower: LandmarkBuilder = (ctx) => {
     [ring(rShaft), shaftTop + 0.5]], 8, {}, OCT);
   // the tank house: vertical boards painted ochre, a band of small windows, a slatted vent under the eaves
   const rHouse = rShaft + 0.7, houseFloor = shaftTop + 0.5;
-  const tf = prismBody(sink, 'structureWood', 0, 0, rHouse, 8, houseFloor, houseTop, {}, 0, { colour: BOARD_OCHRE });
+  // (the looks lane's r2 sub-stream, 2026-10-16; the r2 sweep: "glass plates stuck on the boards") the band of windows cut
+  // through the boarding on every other facet, each in its reveal (the boards on their studs) with its sash set back,
+  // its white casing and sill round it
+  const winY = houseFloor + (houseTop - houseFloor) * 0.45, WIN_REVEAL = 0.14;
+  const win = (): ArchHole => ({ u: 0, w: 0.7, y0: winY, spring: winY + 0.7, form: 'flat' });
+  const houseHoles: Record<number, ArchHole[]> = { 0: [win()], 2: [win()], 4: [win()], 6: [win()] };
+  // (the boarding cut through, its reveals dressing: the house's collision is the unbroken octagon's)
+  const tf = prismBody(sink, 'structureWood', 0, 0, rHouse, 8, houseFloor, houseTop, houseHoles, 0, { colour: BOARD_OCHRE });
   // (the floor's underside, facing down: it is the overhang a man at the foot of the tower looks up into — it faced up
   // until 2026-10-06, and the house showed its inside from below)
   sink.polygon('structureWood', tf.map((f) => facePoint(f, -f.width / 2, houseFloor)).reverse(), { colour: shade(BOARD_OCHRE, 0.6) });
   tf.forEach((f, i) => {
-    // the boards' battens and a small window on every other facet
+    // the boards' battens (the middle one stopped at the window's casing) and the windows in their reveals
+    const holed = (houseHoles[i] ?? []).length > 0;
+    const batten = (u: number, y0: number, y1: number) => sink.box('structureWood', facePoint(f, u, (y0 + y1) / 2, 0.03), [0.035, (y1 - y0) / 2, 0.03],
+      { colour: shade(BOARD_OCHRE, 0.82), decor: true, fine: true }, new LocalFrame(f.u, [0, 1, 0], f.out, [0, 0, 0]), { nz: true });
     for (let k = -2; k <= 2; k++) {
-      sink.box('structureWood', facePoint(f, k * f.width / 5, (houseFloor + houseTop) / 2, 0.03), [0.035, (houseTop - houseFloor) / 2, 0.03],
-        { colour: shade(BOARD_OCHRE, 0.82), decor: true, fine: true }, new LocalFrame(f.u, [0, 1, 0], f.out, [0, 0, 0]), { nz: true });
+      if (k === 0 && holed) { batten(0, houseFloor, winY - 0.13); batten(0, winY + 0.82, houseTop); continue; }
+      batten(k * f.width / 5, houseFloor, houseTop);
     }
-    if (i % 2 === 0) {
-      const y = houseFloor + (houseTop - houseFloor) * 0.45;
-      sink.quad('glass', facePoint(f, -0.35, y, 0.02), facePoint(f, 0.35, y, 0.02), facePoint(f, 0.35, y + 0.7, 0.02), facePoint(f, -0.35, y + 0.7, 0.02),
-        { decor: true, window: f.out });
-      sink.box('structureWood', facePoint(f, 0, y + 0.35, 0.04), [0.42, 0.42, 0.02], { colour: FRAME_WHITE, decor: true, fine: true },
-        new LocalFrame(f.u, [0, 1, 0], f.out, [0, 0, 0]), { nz: true });
+    for (const h of houseHoles[i] ?? []) {
+      // the reveal: the jambs, the sill and the head through the boarding and its studs, the room's dark behind the sash
+      const P = (u: number, y: number, o = 0) => facePoint(f, u, y, o), r = -WIN_REVEAL, u0 = h.u - h.w / 2, u1 = h.u + h.w / 2;
+      const rv = (k: number) => ({ colour: shade(BOARD_OCHRE, k), decor: true });
+      sink.quad('structureWood', P(u0, h.y0), P(u0, h.y0, r), P(u0, h.spring, r), P(u0, h.spring), rv(0.62));
+      sink.quad('structureWood', P(u1, h.y0), P(u1, h.spring), P(u1, h.spring, r), P(u1, h.y0, r), rv(0.62));
+      sink.quad('structureWood', P(u0, h.y0), P(u1, h.y0), P(u1, h.y0, r), P(u0, h.y0, r), rv(0.8));
+      sink.quad('structureWood', P(u0, h.spring), P(u0, h.spring, r), P(u1, h.spring, r), P(u1, h.spring), rv(0.5));
+      sink.polygon('dark', [P(u0, h.y0, r - 0.004), P(u1, h.y0, r - 0.004), P(u1, h.spring, r - 0.004), P(u0, h.spring, r - 0.004)], { decor: true });
+      archWindow(sink, f, h, WIN_REVEAL, FRAME_WHITE, false, { bars: true, coarse: true });
+      archSurround(sink, 'structureWood', f, h, 0.09, 0.035, { colour: FRAME_WHITE });
     }
     // the brackets under the overhang
     for (const du of [-0.3, 0.3]) {
