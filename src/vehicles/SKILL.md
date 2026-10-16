@@ -429,7 +429,9 @@ links only as `FITTINGS.spareTrackLinks`, `KIT.spareTrackStrip` or a registered 
 `spareTrackPart`); never as loose parts in `hullTrack`/`turretTrack`. The factory's seat pass keeps a passing run
 exactly as built; authored mounts come first (a run sunk into its own mount is lifted straight off it, a hand-drawn
 course keeps the links whose own seat holds); only a mount that is itself wrong is searched, never under the gun or
-crowded against a rail, and a moved hand-drawn course gets straps; otherwise the run is dropped
+crowded against a rail, and a moved hand-drawn course gets straps. Fix the mount, don't remove (the owner's rule): a
+run with no flush seat nearby goes on a rack (four posts welded to its frame's armour) where it was authored, else
+to another station of its own frame, flush or racked; only a run nothing can carry is dropped
 (`root.userData.spareTrack`, `spareTrackRejected`). The decor keeps its rigid pieces out of every built run
 (`root.userData.spareTrackBoxes`). Tag grilles, louvres and exhausts drawn into ordinary buckets with `withSeatRole(P, 'grille', ...)`
 where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGunDark`. The receipt is

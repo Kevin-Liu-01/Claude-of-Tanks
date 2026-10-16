@@ -729,7 +729,7 @@ function findBundles(visual, spec, bodies, decorPieces) {
     const q = new THREE.Quaternion(); g.getWorldQuaternion(q);
     const axis = new THREE.Vector3(...(g.userData.mountAxisLocal || [0, 1, 0])).applyQuaternion(q).normalize();
     bundles.push({ source: 'fitting', name: `fitting:spareTrackLinks@${site?.site ?? pathOf(g)}`, author: site?.site ?? null, bodies: list,
-      links: site?.links ?? null, normalHint: axis.toArray() });
+      links: site?.links ?? null, normalHint: axis.toArray(), racked: !!g.userData.rackMounted });
   }
   // registered runs (KIT.spareTrackStrip and withSpareTrackRun / spareTrackPart courses: userData.spareTrackRun)
   const regRuns = new Map();
@@ -743,14 +743,15 @@ function findBundles(visual, spec, bodies, decorPieces) {
   });
   for (const [tag, list] of regRuns) {
     list.forEach((b) => { b.cls = 'trackBundle'; });
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...(tag.rotation || [0, 0, 0])));
+    // a course the seat pass moved carries where it now stands (placedQuat); else the rotation it was authored in
+    const q = tag.placedQuat ? new THREE.Quaternion(...tag.placedQuat) : new THREE.Quaternion().setFromEuler(new THREE.Euler(...(tag.rotation || [0, 0, 0])));
     const rigs = new Set(list.map((b) => b.rig));
     if (rigs.has('turret')) { const tq = new THREE.Quaternion(); visual.root.getObjectByName('rig_turret')?.getWorldQuaternion(tq); q.premultiply(tq); }
     const axis = new THREE.Vector3(0, 1, 0);
     if (tag.axis === 2) axis.set(0, 0, 1);
     axis.applyQuaternion(q).normalize();
     bundles.push({ source: tag.source || 'adhoc', registered: true, name: `${tag.source || 'adhoc'}:${tag.site}@${list[0].site ?? '?'}`, author: list[0].site ?? null,
-      bodies: list, links: null, normalHint: axis.toArray() });
+      bodies: list, links: null, normalHint: axis.toArray(), racked: !!tag.racked });
   }
   // KIT.spareTrackStrip calls: parts whose chain passes through spareTrackStrip (trees without registration)
   const stripParts = [];
@@ -1239,6 +1240,7 @@ function analyse(id) {
         decorReceipt: B.receipt ? { slot: B.receipt.slot, supportPoint: B.receipt.supportPoint.map(r3), supportNormal: B.receipt.supportNormal.map(r4), supportGapM: r4(B.receipt.supportGapM) } : undefined,
         host: support.host, support: { ...support, host: undefined },
         intersections: inter, near, sweep, onMovingPart, flags, verdict: flags.length ? 'FLAG' : 'ok', alt, traverse, vis, registered: !!B.registered,
+        racked: !!B.racked,
         index: B.index, gunPivot: MM.pivot ? MM.pivot.toArray().map(r3) : null,
       });
     }
@@ -1515,6 +1517,8 @@ const FALSE_TAGS = [
   ['profiles/leopard.ts', "P.add('hull', box(0.047, 0.06, 0.80), s * 1.6615, 1.76, -2.90)", 'grille'],
   ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'softload'],
   ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'light'],
+  // the T-62's transom service panel: its comment names the tail lamps drawn beside it, not the panel
+  ['profiles/russia.ts', "P.add('hullDark', box(1.958, 0.34, 0.035), 0, 0.82, -3.192);", 'light'],
 ];
 const LABEL_RE = /^(\w+)<(?:(.+?)<-)?(.+?)@(.+?):(\d+)>$/;
 // Turret-traverse readings the audit verified as artefacts of the column-top model (a hull part above the run's level,
@@ -1661,6 +1665,11 @@ function classifyRun(b) {
     if (b.source === 'decor' && (classes.has('FLOATING') || classes.has('HANGING'))
       && (s.medianGapM || 0) <= 0.055 && air <= 0.25) {
       classes.delete('FLOATING'); classes.delete('HANGING'); notes.push('decor carrier standoff');
+    }
+    // a run the seat pass carried on a rack stands off the plate on posts it measured onto the frame's own armour
+    // (spareTrackSeat.ts rackSeat): its standoff is the rack's, not a float
+    if (b.racked && (classes.has('FLOATING') || classes.has('HANGING')) && (s.medianGapM || 0) <= 0.2) {
+      classes.delete('FLOATING'); classes.delete('HANGING'); notes.push('carried on its rack');
     }
     if (classes.has('ON_GUN') && !(why.ON_GUN || []).some((w) => !w.startsWith('the '))) {
       classes.delete('ON_GUN'); classes.add('IN_SWEEP'); notes.push('ON_GUN was sweep-only');
@@ -1850,8 +1859,8 @@ function writeSeatPlan(audits) {
     else delete plan[id];
   }
   const ids = Object.keys(plan).sort();
-  const lines = ids.map((id) => `  ${JSON.stringify(id)}: {\n${Object.entries(plan[id]).map(([site, k]) => `    ${JSON.stringify(site)}: ${k},`).join('\n')}\n  },`);
-  const next = `${src.slice(0, at)}export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, number>>>> = {${lines.length ? `\n${lines.join('\n')}\n` : ''}};\n`;
+  const lines = ids.map((id) => `  ${JSON.stringify(id)}: {\n${Object.entries(plan[id]).map(([site, k]) => `    ${JSON.stringify(site)}: ${JSON.stringify(k).replace(/,/g, ', ')},`).join('\n')}\n  },`);
+  const next = `${src.slice(0, at)}export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, SeatPlanEntry>>>> = {${lines.length ? `\n${lines.join('\n')}\n` : ''}};\n`;
   if (next !== src) { fs.writeFileSync(file, next); console.log(`[spare-track] seat plan ${PLAN_REL}: ${ids.length} vehicles`); }
 }
 function dist3(p, a) { return Math.hypot(Math.max(a[0] - p[0], 0, p[0] - a[3]), Math.max(a[1] - p[1], 0, p[1] - a[4]), Math.max(a[2] - p[2], 0, p[2] - a[5])); }

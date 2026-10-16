@@ -846,7 +846,7 @@ export interface SeatEnv {
  * neutral values), unless `full` asks for every measure (receipts).
  */
 export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, full = false,
-  chosen = false): SeatMeasure {
+  chosen = false, rack = false): SeatMeasure {
   const R = SEAT_RULES;
   const T = chosen ? R.chosen : R.authored;
   const out: SeatMeasure = { ok: false, reason: null, support: 0, air: 0, gapP90: 0, maxEmbed: 0, forbidden: 0,
@@ -903,10 +903,15 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.maxEmbed = Number.isFinite(maxEmbed) ? maxEmbed : 0;
   out.spreadDeg = spread;
   if ((majorForbidden > 0 || forbidden > T.minorForbiddenMax) && fail(`host:${out.forbiddenRole}`)) return out;
-  if ((out.maxEmbed > T.embedMax || sunk / total > T.sunkShareMax) && fail('sunk')) return out;
-  if (out.air > T.airMax && fail('air')) return out;
-  if (out.support < T.supportMin && fail('support')) return out;
-  if (out.gapP90 > T.gapP90Max && fail('gap')) return out;
+  if (rack) {
+    // a run on its rack (rackSeat) stands clear of everything under it; its posts, not its footprint, carry it
+    if (out.maxEmbed > 0.004 && fail('sunk')) return out;
+  } else {
+    if ((out.maxEmbed > T.embedMax || sunk / total > T.sunkShareMax) && fail('sunk')) return out;
+    if (out.air > T.airMax && fail('air')) return out;
+    if (out.support < T.supportMin && fail('support')) return out;
+    if (out.gapP90 > T.gapP90Max && fail('gap')) return out;
+  }
   // ---- R4: static clearance from forbidden roles, and no host surface into the links
   _m.compose(pose.pos, pose.quat, UNIT);
   _mi.copy(_m).invert();
@@ -1032,7 +1037,7 @@ const EXPOSURE_DIRS: THREE.Vector3[] = (() => {
  * to land on one side of it (a candidate's pass or fail), returning a share on that side.
  */
 function exposureOf(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, n: THREE.Vector3, owner: number,
-  decide = NaN): number {
+  decide = NaN, reach: number = SEAT_RULES.exposureReachM): number {
   const top = shape.box.max.getComponent(ax.n) + 0.01;
   _q.setFromUnitVectors(EXPOSURE_DIRS[0], n);
   const total = EXPOSURE_POINTS.length * EXPOSURE_DIRS.length;
@@ -1042,7 +1047,7 @@ function exposureOf(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose,
     localPoint(shape, ax, fu, 0.5, top, origin).applyQuaternion(pose.quat).add(pose.pos);
     for (const d of EXPOSURE_DIRS) {
       _dir.copy(d).applyQuaternion(_q);
-      if (!env.soup.raycast(origin, _dir, SEAT_RULES.exposureReachM, owner, true, _hit2)) clear++; else blocked++;
+      if (!env.soup.raycast(origin, _dir, reach, owner, true, _hit2)) clear++; else blocked++;
       if (clear / total >= decide) return clear / total;
       if ((total - blocked) / total < decide) return (total - blocked) / total;
     }
@@ -1401,12 +1406,166 @@ export function refineSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, ow
   return seatFromOutside(env, shape, ax, pose.quat, target, n0, owner);
 }
 
+/**
+ * Fix the mount, don't remove (the owner's standing rule): a run whose authored station holds nowhere, even after the
+ * local search, is offered every other station its own frame carries, nearest first on the face it was authored on.
+ * Candidates come from rays cast inward onto the frame's sides, rear, front and top every 15 cm: each first hit on the
+ * frame's own armour that faces the ray, seated from outside on the plane its footprint meets, the run's long side
+ * level (along the hull on a side, across it elsewhere). The caller measures them at the strict tier.
+ */
+export function remountSeats(env: SeatEnv, shape: SeatRunShape, hint: SeatPose, frameBox: THREE.Box3, owner: number,
+  limit = 400): SeatPose[] {
+  const ax = runAxes(shape);
+  const hintN = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(hint.quat).normalize();
+  const centre = localPoint(shape, ax, 0.5, 0.5, shape.box.min.getComponent(ax.n) + shape.embedM, new THREE.Vector3())
+    .applyQuaternion(hint.quat).add(hint.pos);
+  type Face = { key: string; dir: THREE.Vector3; u: THREE.Vector3; minDot: number };
+  const faces: Face[] = [
+    { key: '+x', dir: new THREE.Vector3(-1, 0, 0), u: new THREE.Vector3(0, 0, 1), minDot: Math.cos(30 * Math.PI / 180) },
+    { key: '-x', dir: new THREE.Vector3(1, 0, 0), u: new THREE.Vector3(0, 0, 1), minDot: Math.cos(30 * Math.PI / 180) },
+    { key: '-z', dir: new THREE.Vector3(0, 0, 1), u: new THREE.Vector3(1, 0, 0), minDot: Math.cos(30 * Math.PI / 180) },
+    { key: '+z', dir: new THREE.Vector3(0, 0, -1), u: new THREE.Vector3(1, 0, 0), minDot: Math.cos(35 * Math.PI / 180) },
+    { key: '+y', dir: new THREE.Vector3(0, -1, 0), u: new THREE.Vector3(1, 0, 0), minDot: 0.5 },
+  ];
+  const faceOf = (n: THREE.Vector3): string => {
+    let best = faces[0].key, dot = -Infinity;
+    for (const f of faces) { const d = -f.dir.dot(n); if (d > dot) { dot = d; best = f.key; } }
+    return best;
+  };
+  const hintFace = faceOf(hintN);
+  const step = 0.15, inset = 0.08;
+  const cands: Array<{ pose: SeatPose; key: string; d: number }> = [];
+  const origin = new THREE.Vector3(), hit = newHit(), first = newHit();
+  const b = frameBox;
+  for (const f of faces) {
+    const k = f.dir.x !== 0 ? 0 : f.dir.y !== 0 ? 1 : 2;      // the cast axis
+    const [a1, a2] = [0, 1, 2].filter((i) => i !== k);
+    const lo1 = b.min.getComponent(a1) + inset, hi1 = b.max.getComponent(a1) - inset;
+    const lo2 = b.min.getComponent(a2) + inset, hi2 = b.max.getComponent(a2) - inset;
+    const start = f.dir.getComponent(k) < 0 ? b.max.getComponent(k) + 0.5 : b.min.getComponent(k) - 0.5;
+    const reach = b.max.getComponent(k) - b.min.getComponent(k) + 1;
+    for (let p1 = lo1; p1 <= hi1 + 1e-9; p1 += step) {
+      for (let p2 = lo2; p2 <= hi2 + 1e-9; p2 += step) {
+        origin.set(0, 0, 0).setComponent(k, start).setComponent(a1, p1).setComponent(a2, p2);
+        if (!env.soup.raycast(origin, f.dir, reach, owner, false, hit) || !hit.host) continue;
+        if (-hit.n.dot(f.dir) < f.minDot) continue;
+        // a station the other frame covers (the hull deck under the turret) is never in the open
+        if (env.soup.raycast(origin, f.dir, reach, owner, true, first) && first.t < hit.t - 0.01) continue;
+        // the run's long side level and in the plane: its mount normal onto the hit's, the long axis the face's (and on
+        // a deck or glacis also along the hull, for a fender top or a narrow plate)
+        const n = hit.n.clone();
+        for (const along of f.key === '+y' ? [f.u, new THREE.Vector3(0, 0, 1)] : [f.u]) {
+          const u = along.clone().addScaledVector(n, -along.dot(n));
+          if (u.lengthSq() < 1e-4) continue;
+          u.normalize();
+          const v = new THREE.Vector3().crossVectors(n, u);
+          const cols: THREE.Vector3[] = [];
+          cols[ax.n] = n; cols[ax.u] = u; cols[ax.v] = v;
+          const basis = new THREE.Matrix4().makeBasis(cols[0], cols[1], cols[2]);
+          if (basis.determinant() < 0) { v.negate(); basis.makeBasis(cols[0], cols[1], cols[2]); }
+          const quat = new THREE.Quaternion().setFromRotationMatrix(basis);
+          const pose = seatFromOutside(env, shape, ax, quat, hit.p.clone(), n, owner);
+          if (!pose) continue;
+          const at = localPoint(shape, ax, 0.5, 0.5, shape.box.min.getComponent(ax.n) + shape.embedM, new THREE.Vector3())
+            .applyQuaternion(pose.quat).add(pose.pos);
+          if (cands.some((c) => c.pose.pos.distanceToSquared(pose.pos) < 0.01 && c.pose.quat.angleTo(pose.quat) < 0.2)) continue;
+          cands.push({ pose, key: f.key, d: at.distanceTo(centre) });
+        }
+      }
+    }
+  }
+  // nearest first on the face it was authored on, then the other faces; every face keeps its nearest stations
+  cands.sort((p, q) => (p.key === hintFace ? 0 : 1) - (q.key === hintFace ? 0 : 1) || p.d - q.d);
+  const perFace = new Map<string, number>();
+  const kept = cands.filter((c) => {
+    const k = (perFace.get(c.key) ?? 0) + 1;
+    perFace.set(c.key, k);
+    return k <= Math.ceil(limit / 3);
+  });
+  return kept.slice(0, limit).map((c) => c.pose);
+}
+
+/** The local search's stations as plain poses round the authored one (in-plane offsets and yaw), nearest first. */
+export function searchPoses(shape: SeatRunShape, hint: SeatPose, search: SeatSearch = AUTHORED_SEARCH): SeatPose[] {
+  const ax = runAxes(shape);
+  const n0 = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(hint.quat).normalize();
+  const eu = new THREE.Vector3().setComponent(ax.u, 1).applyQuaternion(hint.quat).normalize();
+  const ev = new THREE.Vector3().setComponent(ax.v, 1).applyQuaternion(hint.quat).normalize();
+  const centre = localPoint(shape, ax, 0.5, 0.5, shape.box.min.getComponent(ax.n), new THREE.Vector3())
+    .applyQuaternion(hint.quat).add(hint.pos);
+  const stations: Array<{ du: number; dv: number; yaw: number; cost: number }> = [];
+  for (const du of search.along) for (const dv of search.across) for (const yaw of search.yaw) {
+    stations.push({ du, dv, yaw, cost: Math.hypot(du, dv) + Math.abs(yaw) * 0.5 });
+  }
+  stations.sort((p, q) => p.cost - q.cost);
+  return stations.map((st) => {
+    const turn = new THREE.Quaternion().setFromAxisAngle(n0, st.yaw);
+    const quat = turn.clone().multiply(hint.quat);
+    // the run turns about its own centre and moves in plane
+    const pos = hint.pos.clone().sub(centre).applyQuaternion(turn).add(centre).addScaledVector(eu, st.du).addScaledVector(ev, st.dv);
+    return { pos, quat };
+  });
+}
+
+/**
+ * The share of a placed run's top-face hemisphere that leaves the vehicle within `reach` (m): a moved run's second,
+ * longer look (a frame-wide soup), so a station under a far overhang (a bustle rack 1.5 m up) is not taken as open.
+ */
+export function seatExposure(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, reach: number): number {
+  const ax = runAxes(shape);
+  const n = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(pose.quat).normalize();
+  return exposureOf(env, shape, ax, pose, n, owner, NaN, reach);
+}
+
+/** A rack's longest post (m): a run stands at most this far off the plate under its posts. */
+export const RACK_POST_MAX_M = 0.16;
+/** Where a rack's four posts stand under a run (fractions of its long side u and its width v). */
+export const RACK_POSTS: ReadonlyArray<readonly [number, number]> = [[0.08, 0.18], [0.08, 0.82], [0.92, 0.18], [0.92, 0.82]];
+
+/** A run on a rack: the pose lifted clear of the plate under it, and each post's foot on the host (frame coords). */
+export interface RackSeat { pose: SeatPose; posts: Array<{ top: THREE.Vector3; foot: THREE.Vector3 }>; measure: SeatMeasure }
+
+/**
+ * Fix the mount, don't remove: a run with no flush seat is carried on a rack, a frame on four posts welded to the
+ * plate, the way crews carry links over an uneven deck or a curved turret wall. The run keeps its station's plane and
+ * heading, is lifted clear of the highest point under its footprint (5 mm), and each post must find the frame's own
+ * armour within RACK_POST_MAX_M straight below it. Everything else (forbidden parts under it, clearance, motion, the
+ * gun's footprint, open plate, exposure) is the strict tier's.
+ */
+export function rackSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, full = false): RackSeat | null {
+  const ax = runAxes(shape);
+  const base = shape.box.min.getComponent(ax.n);
+  const n = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(pose.quat).normalize();
+  const down = n.clone().negate();
+  const from = new THREE.Vector3(), hit = newHit();
+  // the highest host point under the footprint (a 7 x 5 grid): the rack's underside clears it
+  let rise = -Infinity;
+  for (let i = 0; i <= 6; i++) {
+    for (let j = 0; j <= 4; j++) {
+      localPoint(shape, ax, i / 6, j / 4, base, from).applyQuaternion(pose.quat).add(pose.pos).addScaledVector(n, 0.6);
+      if (!env.soup.raycast(from, down, 0.6 + RACK_POST_MAX_M, owner, false, hit)) continue;
+      rise = Math.max(rise, 0.6 - hit.t);
+    }
+  }
+  if (!Number.isFinite(rise)) return null;
+  const lifted = { pos: pose.pos.clone().addScaledVector(n, Math.max(0, rise) + 0.005), quat: pose.quat.clone() };
+  const posts: RackSeat['posts'] = [];
+  for (const [fu, fv] of RACK_POSTS) {
+    const top = localPoint(shape, ax, fu, fv, base, new THREE.Vector3()).applyQuaternion(lifted.quat).add(lifted.pos);
+    from.copy(top).addScaledVector(n, 0.002);
+    if (!env.soup.raycast(from, down, RACK_POST_MAX_M + 0.002, owner, false, hit) || !hit.host) return null;
+    posts.push({ top, foot: hit.p.clone() });
+  }
+  const measure = measureSeat(env, shape, lifted, owner, full, true, true);
+  return measure.ok || full ? { pose: lifted, posts, measure } : null;
+}
+
 /** A receipt row for one seated run (lengths in cm, shares in %, rounded). */
 export interface SpareTrackSeatReceipt {
   site: string;
   frame: 'hull' | 'turret';
   source: 'fitting' | 'strip' | 'adhoc' | 'decor';
-  seat: 'authored' | 'lifted' | 'reseated' | 'decor';
+  seat: 'authored' | 'lifted' | 'reseated' | 'racked' | 'decor';
   support: number; air: number; gapP90Cm: number; maxEmbedCm: number; clearCm: number | null; cutCm: number;
   sweepCm: number | null; exposure: number;
   /** A re-seated run: why its authored seat failed, and how far the solver moved and turned it. */

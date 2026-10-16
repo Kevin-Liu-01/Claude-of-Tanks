@@ -1369,10 +1369,13 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
   // decks: louvred engine field on the raised deck (tops ≤1.64 under the
   // bustle sweep), tool bin on the left rear corner (outside the swing),
   // filler caps, lift eyes at the corners.
-  P.add('hullDark', box(2.30, 0.02, 1.30), 0, 1.613, -2.85);
-  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
-    P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
-  }
+  // VEH-13: the louvred engine field is a grille to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
+    P.add('hullDark', box(2.30, 0.02, 1.30), 0, 1.613, -2.85);
+    for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+      P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
+    }
+  });
   for (const s of [-1, 1]) {
     P.add('hullDark', torus(0.26, 0.013, P.q ? 22 : 14), s * 0.72, 1.614, -2.35); // fan rings
     P.add('hullDetail', cylY(0.08, 0.08, 0.018, 12), s * 1.30, 1.617, -2.10);     // filler caps
@@ -1913,8 +1916,11 @@ function buildType10Native2026(
       P.add('hullDetail', box(0.099, 0.154, 0.0308), s * 0.682, 1.122, -3.7719);  // tow hooks
       P.add('hullDark', box(0.055, 0.088, 0.022), s * 0.682, 1.133, -3.7752);
     }
-    P.add('hullDark', box(1.012, 0.33, 0.022), -0.682, 1.386, -3.7708);           // cooling exhaust grille (left)
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.968, 0.0385, 0.0242), -0.682, 1.276 + k * 0.0792, -3.7719);
+    // VEH-13: the cooling exhaust grille is a grille to the spare-link seat solver
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(1.012, 0.33, 0.022), -0.682, 1.386, -3.7708);         // cooling exhaust grille (left)
+      for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.968, 0.0385, 0.0242), -0.682, 1.276 + k * 0.0792, -3.7719);
+    });
     P.add('hullWood', box(0.308, 0.143, 0.0286), 0.33, 1.056, -3.773);            // jack block
     // VEH-13: the hanger rail and its links are one registered run on the rear plate (spareTrackSeat.ts)
     withSpareTrackRun(P, { site: 'type10-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
