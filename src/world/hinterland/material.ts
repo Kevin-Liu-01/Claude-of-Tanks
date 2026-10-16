@@ -144,9 +144,10 @@ float hlBedPhase( float hb, float a, out float dph ) {
 // and steps at a fault (as before); joints cut it into blocks 15–40 m along the strike, and across a joint the beds step
 // a little and change tone; each bed's top weathers back into a bench (its width wandering, broken into runs), an
 // overhang's shadow under it, a resistant bed standing proud: hlStep tilts the normal by it, so the beds read in the
-// light. The snow lies where the face with that relief holds it (a ~40° slope all of it, ~58° none), ragged, held a
-// little longer on north faces, the atlas's own share (the worker's snowline and couloirs) a bias; where a pixel spans
-// several beds the relief fades out and the face keeps its benches' share of snow as an even lightening (never a band).
+// light. The snow lies where the face with that relief holds it (whole to ~45°, half at ~55°, ledges only past ~62°),
+// ragged down the fall line, longer on north faces and summits, the atlas's own share (the worker's snowline and
+// couloirs) a bias; where a pixel spans several beds the relief fades out and the face keeps its benches' share of
+// snow as an even lightening (never a band).
 // n: the world normal; eY, eA: the pixel's footprint in height and across; share: the atlas's snow share 0..1.
 vec3 hlRockAt( vec3 w, vec3 n, float eY, float eA, float share, out float snowOut ) {
   vec2 q = w.xz;
@@ -163,28 +164,39 @@ vec3 hlRockAt( vec3 w, vec3 n, float eY, float eA, float share, out float snowOu
   float ph = hlBedPhase( hb, a, dph ) + 0.34 * ( hlHash( vec2( jb, 3.1 ) ) - 0.5 );
   float k = floor( ph ), fr = fract( ph );
   float crisp = 1.0 - smoothstep( 0.22, 0.6, 1.3 * eY * dph );
-  float crispA = 1.0 - smoothstep( 1.5, 5.0, eA );
+  // (a joint's crack only where a pixel holds well under a metre: farther out a crack every block reads as a brick grid)
+  float crispA = 1.0 - smoothstep( 0.4, 1.2, eA );
   float h1 = hlHash( vec2( k, 7.13 ) ), h2 = hlHash( vec2( k, 3.71 ) );
   // a joint: a dark crack ~0.6 m wide, through most beds (a massive bed is cut more rarely)
   float joint = ( 1.0 - smoothstep( 0.3, 0.3 + 1.2 * eA, jd ) ) * crispA * step( 0.25, hlHash( vec2( jb, k ) ) );
   // the bench along the bed's top and the overhang's shadow under it, both broken into runs along the strike
   float lw = mix( 0.05, 0.28, h2 ) * ( 0.4 + 1.2 * hlNoise( vec2( s / 31.0 + k * 1.3, k ) ) );
-  float run = smoothstep( 0.3, 0.6, 0.7 * hlNoise( vec2( s / 47.0 + k * 3.1, k * 1.7 ) ) + 0.3 * hlNoise( vec2( s / 13.0 + k, 2.3 ) ) );
+  float run = smoothstep( 0.42, 0.72, 0.7 * hlNoise( vec2( s / 47.0 + k * 3.1, k * 1.7 ) ) + 0.3 * hlNoise( vec2( s / 13.0 + k, 2.3 ) ) );
   float bench = smoothstep( 1.0 - lw - 0.03, 1.0 - lw + 0.01, fr ) * run;
   float under = ( 1.0 - smoothstep( 0.0, 0.07, fr ) ) * run;
   hlStep = crisp * ( 0.85 * bench - 0.7 * under + 0.15 * ( h1 - 0.5 ) );
-  // the rock: a cool dark schist, each bed and block a little lighter or darker, mottled, varnished down the fall line
-  vec3 schist = mix( uHlRock.rgb * 1.1, mix( uHlRock.rgb, vec3( 0.05, 0.058, 0.07 ), 0.45 ) * 0.62, uHlStrata.z );
-  float tone = mix( 1.0, 0.86 + 0.24 * h1 + 0.1 * ( hlHash( vec2( jb, k + 0.5 ) ) - 0.5 ), crisp );
+  // the rock: a neutral to warm mid grey (the references' lit rock; round 5d's dark slate read as a cartoon against the
+  // snow), each bed a few per cent lighter or darker only along broken runs of its strike (no continuous colour bands),
+  // each block a shade of its own, mottled, varnished down the fall line
+  float rl = dot( uHlRock.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+  vec3 schist = mix( uHlRock.rgb * 1.1, mix( uHlRock.rgb, vec3( rl ), 0.3 ) * 1.5, uHlStrata.z );
+  float bandRun = smoothstep( 0.35, 0.65, hlNoise( vec2( s / 60.0 + k * 2.3, k * 0.7 ) ) );
+  float tone = mix( 1.0, 0.94 + 0.12 * h1 * bandRun + 0.08 * ( hlHash( vec2( jb, k + 0.5 ) ) - 0.5 ), crisp );
   float mott = 0.86 + 0.28 * hlNoise( q * 0.031 + vec2( 2.2, 9.9 ) );
   float streak = smoothstep( 0.55, 0.85, hlNoise( vec2( s / 9.0, hb / 140.0 ) ) ) * ( 1.0 - smoothstep( 0.3, 0.8, eA / 9.0 ) );
-  vec3 rockC = schist * tone * mott * ( 1.0 - 0.55 * joint ) * ( 1.0 - 0.3 * streak );
-  // the snow where the face holds it
+  vec3 rockC = schist * tone * mott * ( 1.0 - 0.3 * joint ) * ( 1.0 - 0.3 * streak );
+  // the snow where the face holds it (the references: whole under ~45°, ~80 % at 50°, about half at 55°, a quarter at 60°
+  // and on the ledges only past that; the summits the snowiest): its edge ragged in streaks down the fall line, 4-8 times
+  // longer than wide, feathered, rock specks in the snow and snow specks on the rock
   float nY = normalize( n + vec3( 0.0, 0.9 * hlStep, 0.0 ) ).y;
-  float rag = 0.55 * hlNoise( q * 0.021 + vec2( 4.4, 1.0 ) ) + 0.3 * hlNoise( q * 0.083 - 2.2 ) + 0.15 * hlNoise( q * 0.31 + 7.0 );
-  float hold = nY + ( rag - 0.5 ) * 0.22 + 0.06 * n.z + 0.16 * ( share - 0.5 );
+  vec2 fd = fl > 1e-3 ? n.xz / fl : vec2( 0.0, 1.0 );
+  float t = dot( q, fd );
+  float rag = 0.5 * hlNoise( vec2( s / 9.0, t / 55.0 ) + vec2( 4.4, 1.0 ) ) + 0.3 * hlNoise( vec2( s / 3.5, t / 22.0 ) - 2.2 )
+    + 0.2 * hlNoise( q * 0.021 + 7.0 );
+  float speck = ( hlNoise( q * 0.55 + vec2( 1.3, 8.1 ) ) - 0.5 ) * crisp;
+  float hold = nY + ( rag - 0.5 ) * 0.24 + 0.08 * speck + 0.06 * n.z + 0.16 * ( share - 0.5 ) + 0.06 * smoothstep( 150.0, 900.0, w.y );
   float far = ( 1.0 - crisp ) * 0.16 * smoothstep( 0.25, 0.55, n.y );
-  snowOut = clamp( max( smoothstep( 0.53, 0.77, hold ), far ), 0.0, 1.0 ) * uHlStrata.z;
+  snowOut = clamp( max( smoothstep( 0.42, 0.74, hold ), far ), 0.0, 1.0 ) * uHlStrata.z;
   vec3 snowC = vec3( 0.72, 0.79, 0.88 ) * ( 0.95 + 0.08 * hlNoise( q * 0.05 + 3.3 ) );
   return mix( rockC, snowC, snowOut );
 }

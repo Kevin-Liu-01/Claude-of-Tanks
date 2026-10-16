@@ -13,12 +13,14 @@ import type { HinterlandField, HinterlandGround } from './field.ts';
 export interface HinterlandLevelSpec { texelM: number; halfM: number }
 
 /**
- * Desktop: 4 m to 0.9 km (384 m past the edge), 12 m to 2.3 km, 48 m to 8 km, 256 m to 33 km, 1 km to 82 km (the limb).
- * Each level's sample stays under ~0.25° from the eyes that see it (a 12 m sample at 2 km, 48 m at 8 km): about 450
- * thousand samples a bake (HL-3; the first cut asked 724 thousand).
+ * Desktop: 4 m to 0.9 km (384 m past the edge), 12 m to 3.1 km, 48 m to 8 km, 256 m to 33 km, 1 km to 82 km (the limb).
+ * Each level's sample stays under ~0.25° from the eyes that see it (a 12 m sample at 2 km, 48 m at 8 km): about 570
+ * thousand samples a bake (HL-3; the first cut asked 724 thousand). (Glacier round 6: the 12 m level reaches 3.1 km, not
+ * 2.3 — the near massifs' crests stand 2–3 km out, and on the 48 m samples past 2.3 km a crest 2 km from an edge eye
+ * drew in facets 1.4° across, the critics' "hard low-poly facets on the crags".)
  */
 export const HINTERLAND_LEVELS_DESKTOP: readonly HinterlandLevelSpec[] = Object.freeze([
-  { texelM: 4, halfM: 896 }, { texelM: 12, halfM: 2304 }, { texelM: 48, halfM: 8160 }, { texelM: 256, halfM: 32768 }, { texelM: 1024, halfM: 81920 },
+  { texelM: 4, halfM: 896 }, { texelM: 12, halfM: 3072 }, { texelM: 48, halfM: 8160 }, { texelM: 256, halfM: 32768 }, { texelM: 1024, halfM: 81920 },
 ].map((l) => Object.freeze(l)));
 /** Phones (§4.8): half the resolution, 48 km. */
 export const HINTERLAND_LEVELS_MOBILE: readonly HinterlandLevelSpec[] = Object.freeze([
