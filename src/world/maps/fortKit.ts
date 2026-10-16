@@ -835,8 +835,90 @@ function placeBag(m: Mesh, rng: Rng, x: number, y: number, z: number, yaw: numbe
   g.dispose();
 }
 
+/** A bed's top: a hair under the 6 cm the contact band starts at (structureCollision contactBandSolids), so the bed adds
+ *  no collision; the bags' feet over it within the r2 contact (2 cm). */
+const BED_TOP = 0.0595;
 /**
- * The roof's cover: a skin of earth under turf, nearly flat on top and rounded off at a ragged rim inset from the slab's
+ * The trodden spoil a stack of bags was set on (the r2 sweep, 2026-10-16: the bags at a work's mouth stood on the grade
+ * line and hung over the ground where it falls away from the seat, 2-18 cm over it on Autumn, Urban Block and
+ * Reservoir): a low mound centred at (cx, cz), `hl` along `u` and `hw` across it on top, just under the bags' feet,
+ * its flanks running down and out at about 45 degrees to `foot` under the ground, so wherever the terrain falls away
+ * from the grade it shows as the earth they stand on, never as a gap. Lumpy by place (hash noise: no draws), in the
+ * map's earth, damp and darker toward its foot, a little turf in its shoulder; under the contact band's 6 cm, so it adds
+ * no collision (structureCollision contactBandSolids), and open beneath.
+ */
+function spoilBed(m: Mesh, cx: number, cz: number, u: V3, hl: number, hw: number, foot: number, T: FortTones, seed: number): void {
+  const K = 14, top = BED_TOP;
+  const v: V3 = [-u[2], 0, u[0]];
+  // the outline: a rounded rectangle (a superellipse), its outward normal by its gradient
+  const outline = Array.from({ length: K }, (_, k) => {
+    const a = (k / K) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), p = 2 / 3;
+    const ls = Math.sign(c) * Math.pow(Math.abs(c), p) * hl, lt = Math.sign(s) * Math.pow(Math.abs(s), p) * hw;
+    const gs = Math.sign(c) * Math.pow(Math.abs(c), 2 - p) / hl, gt = Math.sign(s) * Math.pow(Math.abs(s), 2 - p) / hw, gl = Math.hypot(gs, gt) || 1;
+    return { s: ls, t: lt, ns: gs / gl, nt: gt / gl };
+  });
+  const drop = top - foot;
+  // rings from the crown's edge out and down: [reach out, height under the top, slope of the flank there]
+  const rings: Array<[number, number, number]> = [[0, 0, 0.25], [0.07, 0.035, 0.7], [0.2 + drop * 0.15, drop * 0.42, 1], [drop * 0.95, drop, 1.1]];
+  const lumpAt = (k: number, r: number): number => (hash3(k, r, 3, seed) - 0.5);
+  const P = (k: number, r: number): V3 => {
+    const o = outline[k], [out, under] = rings[r];
+    const rag = r === 0 ? 0 : lumpAt(k, r) * 0.05 * r;
+    const s = o.s + o.ns * (out + rag), t = o.t + o.nt * (out + rag);
+    // (the crown's rim only ever down, a few millimetres: the bed never stands over its top)
+    const y = top - under + (r === 0 ? -(lumpAt(k, 7) + 0.5) * 0.004 : lumpAt(k, r + 7) * Math.min(0.03, under * 0.2));
+    return [cx + u[0] * s + v[0] * t, y, cz + u[2] * s + v[2] * t];
+  };
+  const N = (k: number, r: number): V3 => {
+    const o = outline[k], slope = rings[r][2];
+    return norm([(u[0] * o.ns + v[0] * o.nt) * slope, 1, (u[2] * o.ns + v[2] * o.nt) * slope]);
+  };
+  const shade: Shade = (p, n) => {
+    const depth = clamp01((top - p[1]) / Math.max(0.05, drop));
+    let c = mix(mul(T.earth, 0.82), mul(T.earth, 0.58), depth);
+    c = mix(c, mul(T.turf, 0.75), smooth(0.55, 0.8, fbm(p[0] * 2, 0, p[2] * 2, 0.5, seed + 5)) * (1 - depth) * clamp01(n[1]) * (T.barren ? 0 : T.arid ? 0.2 : 0.5));
+    return mul(c, 0.82 + vnoise(p[0] * 3, p[1] * 3, p[2] * 3, 0.25, seed + 7) * 0.3);
+  };
+  // the crown: a fan from its middle, sunk a hair under the rim (never above the bags' feet), a little off the bags' axis
+  // (a vertex of a bag's own may stand on it: shared, the two would weld into one collision solid)
+  const mid: V3 = [cx + 0.0137, top - 0.003, cz - 0.0091], up: V3 = [0, 1, 0];
+  for (let k = 0; k < K; k++) m.triN(mid, up, P(k, 0), N(k, 0), P((k + 1) % K, 0), N((k + 1) % K, 0), shade);
+  for (let r = 0; r + 1 < rings.length; r++) for (let k = 0; k < K; k++) {
+    const k1 = (k + 1) % K;
+    m.triN(P(k, r), N(k, r), P(k, r + 1), N(k, r + 1), P(k1, r + 1), N(k1, r + 1), shade);
+    m.triN(P(k, r), N(k, r), P(k1, r + 1), N(k1, r + 1), P(k1, r), N(k1, r), shade);
+  }
+  // (no underside: it lies under the ground, and a flat one there reads to structureCollision as a deck to stand on)
+}
+
+/**
+ * The tamped earth a bag was bedded in, over its spoil bed (the log-and-earth work's threshold bags, whose feet stand up
+ * to 2 cm over the bed's top): a lumpy pad under the bag's foot, its top 4 mm under the bag's lowest point (`under`) and
+ * 1.9 cm thick, so it reaches down into the bed; thinner than the 2.5 cm a collision solid needs (structureCollision
+ * solidsFromComponents), so it adds no collision either.
+ */
+function tampedPad(m: Mesh, cx: number, cz: number, u: V3, hl: number, hw: number, under: number, T: FortTones, seed: number): void {
+  const K = 12, top = under - 0.004, bot = top - 0.019;
+  const v: V3 = [-u[2], 0, u[0]];
+  const ring = (y: number, grow: number, k: number): V3 => {
+    const a = ((k + 0.5) / K) * Math.PI * 2, rag = 1 + (hash3(k, 5, 1, seed) - 0.5) * 0.16 + grow;
+    const s = Math.cos(a) * hl * rag, t = Math.sin(a) * hw * rag;
+    return [cx + u[0] * s + v[0] * t, y - hash3(k, 6, Math.round(y * 1000), seed) * 0.002, cz + u[2] * s + v[2] * t];
+  };
+  const shade: Shade = (p) => mul(T.earth, 0.62 + vnoise(p[0] * 5, p[1] * 5, p[2] * 5, 0.2, seed + 3) * 0.2);
+  const cTop: V3 = [cx - 0.0071, top, cz + 0.0113], cBot: V3 = [cx - 0.0071, bot, cz + 0.0113];
+  for (let k = 0; k < K; k++) {
+    const k1 = (k + 1) % K;
+    const a0 = ring(top, 0, k), a1 = ring(top, 0, k1), b0 = ring(bot, 0.12, k), b1 = ring(bot, 0.12, k1);
+    m.tri(cTop, a0, a1, shade, false, undefined, [0, 1, 0]);
+    m.tri(cBot, b1, b0, shade, false, undefined, [0, -1, 0]);
+    const out: V3 = [a0[0] + a1[0] - 2 * cx, 0, a0[2] + a1[2] - 2 * cz];
+    m.quad(a0, b0, b1, a1, shade, false, undefined, out);
+  }
+}
+
+/**
+ * The roof's cover:a skin of earth under turf, nearly flat on top and rounded off at a ragged rim inset from the slab's
  * edge, gently uneven, in patches of grass, dry grass and bare earth, and tufts standing in it. Its normals are the
  * surface's own (area-weighted over the triangles round each vertex), so no wedge of the fan reads as a fold.
  */
@@ -932,6 +1014,9 @@ function tuft(m: Mesh, x: number, y: number, z: number, h: number, tone: Rgb, se
 // the log-and-earth bunker (DZOT, the Japanese bunker, the maneuvers' dugout)
 
 const LOG_W = 4.6, LOG_D = 3.8, LOG_SLIT_Y = 0.86, LOG_SLIT_HW = 0.85, LOG_SLIT_HH = 0.15;
+/** (r2 sweep) the slit's blackout board's foot: in the r2 ground band (2 cm over the base) on its stakes, over every
+ *  collision strip's floor, so the work's collision stays the one it had */
+const LOG_TOE_Y = 0.018;
 /**
  * The log-and-earth work's bank (round 2; wave 370: "a smooth green pillow ... sitting on a bright green apron", "a
  * smooth green hump with a neat pit" when destroyed): a low bank of the dug spoil round its walls (to under the slit
@@ -1129,9 +1214,14 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
   const lintel = F.end();
   const bags: number[] = [];
   const brng = mulberry32(O.seed + 17);
+  const bagFoot: number[] = [];
   for (const x of [-1.0, 1.0]) {
     F.begin({ role: 'bag', material: 'canvas', face: 'back', axes: AX, volume: 0.03 });
+    const v0 = m.p.length;
     placeBag(m, brng, x, GRADE + 0.1, -Z - 0.5, 0, T.bag, 0);
+    let foot = Infinity;
+    for (let i = v0 + 1; i < m.p.length; i += 3) foot = Math.min(foot, m.p[i]);
+    bagFoot.push(foot);
     bags.push(F.end());
   }
   // the roof: sixteen logs front to back on the wall tops, their ends out over the slit unevenly
@@ -1189,7 +1279,7 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
   const soil: Shade = (p) => mul(T.earth, 0.55 + vnoise(p[0] * 3, p[1] * 3, p[2] * 3, 0.3, O.seed + 13) * 0.3);
   /** One closed solid of the cover over [x0, x1] x [z0, z1]: its top (turf, its grass), its bottom, its faces. */
   const coverPiece = (x0: number, x1: number, z0: number, z1: number, nx: number, nz: number,
-    top: (x: number, z: number) => number, bot: (x: number, z: number, t: number) => number): number => {
+    top: (x: number, z: number) => number, bot: (x: number, z: number, t: number) => number, lip = 0): number => {
     const gx = (i: number): number => x0 + (i * (x1 - x0)) / nx, gz = (j: number): number => z0 + (j * (z1 - z0)) / nz;
     const ty: number[][] = [], by: number[][] = [];
     for (let j = 0; j <= nz; j++) {
@@ -1219,6 +1309,20 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
     };
     for (let i = 0; i < nx; i++) { edge(i, 0, i + 1, 0, [0, 0, -1]); edge(i + 1, nz, i, nz, [0, 0, 1]); }
     for (let j = 0; j < nz; j++) { edge(0, j + 1, 0, j, [-1, 0, 0]); edge(nx, j, nx, j + 1, [1, 0, 0]); }
+    if (lip) {
+      // (r2 sweep, 2026-10-16: a flank's earth stood 3 cm off its side wall, held by nothing where the ground falls from
+      // the seat past the bank's toe; Delta's right flank hung 3 cm over it) its inner face pressed on in against the
+      // logs, the earth's own section carried `lip` metres toward the wall at the heights it has there (welded on, so the
+      // heap and its collision solid keep their plan's outline and heights), the wall carrying it
+      const ie = lip < 0 ? 0 : nx, out: V3 = [Math.sign(lip), 0, 0];
+      const Q = (j: number, up: boolean): V3 => { const p = P(ie, j, up); return [p[0] + lip, p[1], p[2]]; };
+      for (let j = 0; j < nz; j++) {
+        m.quad(Q(j, true), Q(j + 1, true), Q(j + 1, false), Q(j, false), rimFace, false, undefined, out);
+        m.quad(P(ie, j, true), P(ie, j + 1, true), Q(j + 1, true), Q(j, true), (p) => mul(turf(p, [0, 1, 0]), 0.82), false, undefined, [0, 1, 0]);
+        m.quad(P(ie, j, false), P(ie, j + 1, false), Q(j + 1, false), Q(j, false), soil, false, undefined, [0, -1, 0]);
+      }
+      for (const [j, dz] of [[0, -1], [nz, 1]] as const) m.quad(P(ie, j, true), Q(j, true), Q(j, false), P(ie, j, false), soil, false, undefined, [0, 0, dz]);
+    }
     // clumps of grass in it (none on bare regolith, few and dry on an arid map)
     const clumps = T.barren ? 0 : Math.round((T.arid ? 0.25 : 1) * (x1 - x0) * (z1 - z0) * 1.6);
     for (let k = 0; k < clumps; k++) {
@@ -1241,8 +1345,8 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
   const cover = [
     coverPiece(-XR, 0, Z0, Z1, 9, 14, overRoof, () => roofTop - 0.02),
     coverPiece(0, XR, Z0, Z1, 9, 14, overRoof, () => roofTop - 0.02),
-    coverPiece(-XE, -XF, -ZF, ZF, 6, 13, flankTop, flankBot),
-    coverPiece(XF, XE, -ZF, ZF, 6, 13, flankTop, flankBot),
+    coverPiece(-XE, -XF, -ZF, ZF, 6, 13, flankTop, flankBot, 0.05),
+    coverPiece(XF, XE, -ZF, ZF, 6, 13, flankTop, flankBot, -0.05),
   ];
   // the brow's sods: cut turf stacked on the log ends to hold the earth, in two runs
   const sods: number[] = [];
@@ -1267,11 +1371,26 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
     }
     sods.push(F.end());
   }
-  // the room's dark behind the slit and through the doorway (its own piece: it falls into the pit with the rest)
+  // the room's dark behind the slit and through the doorway (its own piece: it falls into the pit with the rest). Behind
+  // the slit a blackened board on two stakes driven into the pit's floor (r2 sweep, 2026-10-16: it was a bare card hung
+  // 0.67 m up in the room, a member touching nothing), its face where the card's was; the board's foot at the base's level
+  // and the stakes 4 cm square, so the work's collision is the one it had (structureCollision: no solid under the band's
+  // floor, a stake under the 25 cm2 a solid needs)
   F.begin({ role: 'fitting', material: 'earth', face: 'floor', axes: AX, volume: 0.01 });
-  m.quad([-LOG_SLIT_HW, slitLo - 0.04, Z - 0.3], [LOG_SLIT_HW, slitLo - 0.04, Z - 0.3], [LOG_SLIT_HW, slitHi + 0.04, Z - 0.3], [-LOG_SLIT_HW, slitHi + 0.04, Z - 0.3], () => [0.005, 0.005, 0.005], false, [0, 0, 1]);
+  const blackout: Shade = () => [0.005, 0.005, 0.005];
+  solid(m, 0, LOG_TOE_Y, Z - 0.33, 2 * LOG_SLIT_HW, slitHi + 0.04 - LOG_TOE_Y, 0.06, 0, blackout, false);
+  for (const x of [-LOG_SLIT_HW + 0.12, LOG_SLIT_HW - 0.12]) solid(m, x, PIT - 0.02, Z - 0.33, 0.04, LOG_TOE_Y - 0.002 - (PIT - 0.02), 0.04, 0, blackout, false);
   m.quad([0.5, -0.1, -Z + 0.35], [-0.5, -0.1, -Z + 0.35], [-0.5, doorTop, -Z + 0.35], [0.5, doorTop, -Z + 0.35], () => [0.006, 0.006, 0.006], false, [0, 0, -1]);
   const room = F.end();
+  // the threshold bags' beds of trodden spoil, their flanks under the ground (r2 sweep: Airfield's and Monsoon's right
+  // bag stood 2-4 cm over the ground where it falls behind the work)
+  const beds: number[] = [];
+  [-1.0, 1.0].forEach((x, k) => {
+    F.begin({ role: 'footing', material: 'earth', face: 'back', anchor: true, axes: AX, volume: 0.06 });
+    spoilBed(m, x, -Z - 0.5, [0, 0, 1], 0.36, 0.25, GRADE - 0.3, T, (O.seed + (x > 0 ? 211 : 223)) >>> 0);
+    tampedPad(m, x, -Z - 0.5, [0, 0, 1], 0.2, 0.11, bagFoot[k], T, (O.seed + (x > 0 ? 227 : 229)) >>> 0);
+    beds.push(F.end());
+  });
   // the links: each band on the one under it, the corners nailed, the roof on the walls' tops, the earth on the roof
   const [fBase, fLow, fSlitL, fSlitR, fUp] = bands.front.length === 5 ? bands.front : [bands.front[0], bands.front[1], -1, -1, bands.front[bands.front.length - 1]];
   F.link(fBase, floor, 'rest');
@@ -1327,6 +1446,9 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
   F.link(lintel, posts[0], 'rest'); F.link(lintel, posts[1], 'rest');
   for (const b of bands.back) if (meets(lintel, b)) F.link(lintel, b, 'nail');
   for (const b of bags) F.link(b, floor, 'rest');
+  bags.forEach((b, k) => F.link(b, beds[k], 'rest'));
+  // (the beds' flanks run in under the doorway's posts and the rear wall's feet: those rest on them where they meet)
+  for (const bd of beds) for (const other of [...posts, ...bands.back]) if (meets(bd, other)) F.link(other, bd, 'rest');
   F.link(room, floor, 'rest');
   const g = m.geometry();
   g.userData.fracture = F.anatomy('bunker');
@@ -2098,6 +2220,12 @@ function buildConcretePillboxPieces(style: 'regelbau' | 'dot' | 'hex', O: BuildO
       bags.push(bag);
       F.link(bag, blastMainUpper, 'rest');
     }
+    // the mouth's stack on its bed of trodden spoil, its flanks under the ground (r2 sweep, 2026-10-16: the stack stood
+    // on the grade line 3.5 m behind the seat and hung over the ground where it falls away, 18 cm on Autumn)
+    const bed = F.begin({ role: 'footing', material: 'earth', face: e.face, anchor: true, axes: AX, volume: 0.3 });
+    spoilBed(m, mouthX, mouthZ, n, 0.92, 0.27, GRADE - 0.42, T, (O.seed + 97) >>> 0);
+    F.end();
+    for (const bag of byCourse[0]) F.link(bag, bed, 'rest');
   }
 
   // ---- the links: along the walls (cast), the slab on the walls, the door's leaf on its hinges
