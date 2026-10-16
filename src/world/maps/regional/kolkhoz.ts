@@ -306,8 +306,11 @@ const ambar: RegionalBuilder = (ctx) => {
   const W = Math.max(3.2, ctx.info.w - 0.6), D = Math.max(4.0, ctx.info.d - 2.0);
   const raise = 0.55, sill = 0.26, lift = raise + sill;
   for (const sx of [-1, 1]) for (const sz of [-1, 0, 1]) sink.span('stone', sx * (W / 2 - 0.25) - 0.22, -0.3, sz * (D / 2 - 0.25) - 0.22, sx * (W / 2 - 0.25) + 0.22, raise, sz * (D / 2 - 0.25) + 0.22);
-  // the two sill logs along the pads, the body's floor on them (its underside shows between them)
-  for (const sx of [-1, 1]) sink.cylinder('structureWood', [sx * (W / 2 - 0.25), raise + sill / 2, -D / 2 - 0.22], 'z', D + 0.44, sill / 2 + 0.01, 8, { colour: shade(PLANK, 0.72) });
+  // the sill frame on the pads: four heavy sill logs under the wall lines, crossing past the corners as the courses over
+  // them do (they close the courses' ends from below: the ambar stands clear of the ground)
+  const sc = { colour: shade(PLANK, 0.72) } as const, past = 0.36, t2 = 0.14;
+  for (const sz of [-1, 1]) sink.span('structureWood', -W / 2 - past, raise, sz * D / 2 - t2, W / 2 + past, lift, sz * D / 2 + t2, sc);
+  for (const sx of [-1, 1]) sink.span('structureWood', sx * W / 2 - t2, raise, -D / 2 - past, sx * W / 2 + t2, lift - 0.01, D / 2 + past, sc);
   sink.placed(0, 0, lift, 0, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: null, storeys: [{ h: 2.2, wall: 'wood' }],

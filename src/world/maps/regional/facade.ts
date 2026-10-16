@@ -102,6 +102,11 @@ const DECOR: EmitOptions = Object.freeze({ decor: true });
 export function faceSlab(sink: PartSink, bucket: RegionalBucket, face: Face, poly: ReadonlyArray<readonly [number, number]>,
   o0: number, depth: number, opts: EmitOptions = {}, coarseEdges = false): void {
   if (poly.length < 3) return;
+  // (Lane C 2026-10-16, regionalArchitecture's ray audit on the ambar's carved verges: a clockwise outline built the
+  // slab inside out) wound counter-clockwise seen from outside, whichever way the caller ran its corners
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) { const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length]; area += ua * yb - ub * ya; }
+  if (area < 0) poly = [...poly].reverse();
   const o1 = o0 + depth;
   const base = { ...DECOR, ...opts };
   sink.polygon(bucket, poly.map(([u, y]) => facePoint(face, u, y, o1)), base);

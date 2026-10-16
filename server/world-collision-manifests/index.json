@@ -89,8 +89,8 @@
       "concealers": 213
     },
     "monsoon": {
-      "bytes": 2977181,
-      "sha256": "cb9116bdf9c1ceadd8460ff046057044f181c71dc9ee0de2b92fba9f0c1f654d",
+      "bytes": 2979478,
+      "sha256": "dc0034d9cec2944f647ac50df961b860f0292e5cc8695e99ecb7f8ec1cb684d0",
       "obstacles": 9682,
       "colliders": 9763,
       "concealers": 11564
@@ -229,8 +229,8 @@
       "concealers": 0
     },
     "cliffbridge": {
-      "bytes": 2740190,
-      "sha256": "5114be55d5937843c053fa1cee1a4b1d30844c197aeecd49d4480860e21ae2c5",
+      "bytes": 2750763,
+      "sha256": "4bf67e5d8e63de0bd78cefa28de3b092cd22e8a563d6bca3e293cc6888d84622",
       "obstacles": 6677,
       "colliders": 7565,
       "concealers": 5359
@@ -323,8 +323,8 @@
         "concealers": 213
       },
       "monsoon": {
-        "bytes": 3220297,
-        "sha256": "84e65ac27f74778373d227f3148c7b3b5b9942ba31b8381a7ad6e619bc652fc1",
+        "bytes": 3222594,
+        "sha256": "cd5bc55e76b18e15458e4e9d7e860b04601cf0530084960823e0b9ce022de1a9",
         "obstacles": 9674,
         "colliders": 9679,
         "concealers": 11284
@@ -463,8 +463,8 @@
         "concealers": 0
       },
       "cliffbridge": {
-        "bytes": 2740190,
-        "sha256": "5114be55d5937843c053fa1cee1a4b1d30844c197aeecd49d4480860e21ae2c5",
+        "bytes": 2750763,
+        "sha256": "4bf67e5d8e63de0bd78cefa28de3b092cd22e8a563d6bca3e293cc6888d84622",
         "obstacles": 6677,
         "colliders": 7565,
         "concealers": 5359
