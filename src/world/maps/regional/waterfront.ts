@@ -287,7 +287,7 @@ export function slipway(sink: PartSink, cx: number, w: number, z0: number, z1: n
   if (len < 0.3) return;
   // the ramp: its top a plane from the door's sill to the foot, a sett course's depth thick, its foot sunk
   const x0 = cx - w / 2, x1 = cx + w / 2;
-  const top0: Vec3 = [x0, yTop, z0], top1: Vec3 = [x1, yTop, z0], foot1: Vec3 = [x1, yFoot, z1], foot0: Vec3 = [x0, yFoot, z1];
+  const top0: Vec3 = [x0, yTop, z0], foot0: Vec3 = [x0, yFoot, z1];
   const lo = Math.min(yFoot, yTop) - 0.4;
   // (counter-clockwise seen from +x: prism's rule)
   const pts: Vec3[] = sgn > 0 ? [foot0, [x0, lo, z1], [x0, lo, z0], top0] : [top0, [x0, lo, z0], [x0, lo, z1], foot0];
