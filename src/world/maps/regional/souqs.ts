@@ -636,9 +636,11 @@ export function choufSouk<S extends { rng: () => number; look: () => number; shu
   const us = Array.from({ length: nb }, (_, k) => -L / 2 + (k + 0.5) * bay);
   const openings: Opening[] = [
     { face: 'left', storey: 0, kind: 'door', u: L * 0.18, w: 0.95, y0: 0, h: 2.1 },
-    { face: 'left', storey: 0, kind: 'window', u: -L * 0.22, w: 0.8, y0: 1.2, h: 1.1 },
-    { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1 },
-    { face: 'back', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1 },
+    // (props census r2 sweep, Lane C 2026-10-16) the round-headed lights cut with their arches: the chouf dialect's
+    // fanlight then stands in the reveal (it lay on the uncut stone over the light, a painted plate)
+    { face: 'left', storey: 0, kind: 'window', u: -L * 0.22, w: 0.8, y0: 1.2, h: 1.1, arch: {} },
+    { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1, arch: {} },
+    { face: 'back', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1, arch: {} },
   ];
   const lay = () => {
     const frame = buildHouse(sink, {
