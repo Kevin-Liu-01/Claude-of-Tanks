@@ -12,6 +12,9 @@
 // 2. The maps that set it: each tree's height is (its placement scale / the ring's mean scale) × its species' own
 //    stature, the species statures are the rim's (or, for a species the rim does not grow, its rows' height at the
 //    rim's mean scale), and on each such map some species really moves (else the setting would be a no-op there).
+// 3. The understorey (VegetationConfig `ringUnderstory`, Kestrel): about its share of the stands get a young tree of the
+//    parent's species beside it at the key's stature, after the placements (indices past them; the stands themselves
+//    unchanged), every one a quad; Verdant has none.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
@@ -56,7 +59,7 @@ function digest(forest) {
 /** The map.ts wiring (the ring's own mix, the rim's mean, the per-species statures where the map sets the law). */
 const wiring = (world, extra = {}) => ({
   library: world._treeImpostors, rimMix: world._ringMix, rimTreeHeightM: world._rimTreeHeightM,
-  speciesHeightM: world._ringSpeciesHeightM, rimTreeTint: world._rimTreeTint, setupMaterial() {}, ...extra,
+  speciesHeightM: world._ringSpeciesHeightM, understory: world._ringUnderstory, rimTreeTint: world._rimTreeTint, setupMaterial() {}, ...extra,
 });
 
 try {
@@ -65,6 +68,7 @@ try {
     const { cfg, world, fresh } = build('verdant');
     assert.equal(cfg.vegetation.ringStature, undefined, 'Verdant sets no stature law');
     assert.equal(world._ringSpeciesHeightM, null, 'so the vegetation hands the ring no per-species statures');
+    assert.equal(world._ringUnderstory, null, 'and no understorey');
     const forest = fresh(), library = world._treeImpostors;
     const resolved = resolveHorizonForestTrees(forest, library, wiring(world));
     // the one-mean law as it was written before the stature law (598069b82), recomputed here from the packed placements
@@ -103,7 +107,9 @@ try {
     for (let i = 0; i < count; i++) scaleSum += packed[i * STRIDE + 3];
     const ringScaleMean = scaleSum / count;
     const moved = {};
+    const placements = count;
     for (const tree of resolved.trees) {
+      if (tree.index >= placements) continue; // (the understorey: section 3)
       const o = tree.index * STRIDE, row = library.rows[library.rowBase(tree.species) + tree.variant];
       assert.ok(own[tree.species] > 0, `${id}: ring species ${tree.species} has a stature`);
       const want = (packed[o + 3] / ringScaleMean) * own[tree.species];
@@ -118,6 +124,41 @@ try {
     assert.deepEqual(receipt.stature.species, own, `${id}: the binding's receipt names the statures`);
     console.log(`ringSpeciesStature: ${id} — rim mean ${world._rimTreeHeightM.toFixed(1)} m; ${Object.entries(moved)
       .map(([sp, r]) => `${sp} ${own[sp].toFixed(1)} m (x${r.toFixed(2)})`).join(', ')}`);
+  }
+
+  // ---- 3. the understorey (VegetationConfig `ringUnderstory`; the critics past Kestrel's border: "no understorey")
+  const underMaps = MAP_IDS.filter(id => getMapConfig(id).vegetation?.ringUnderstory);
+  assert.ok(underMaps.includes('airfield') && !underMaps.includes('verdant'), 'Kestrel grows an understorey, Verdant none');
+  for (const id of underMaps) {
+    const { world, fresh } = build(id);
+    const under = world._ringUnderstory, library = world._treeImpostors;
+    const forest = fresh();
+    const resolved = resolveHorizonForestTrees(forest, library, wiring(world));
+    const packed = forest.userData.horizonForest.placements, count = packed.length / STRIDE;
+    const young = resolved.trees.slice(count);
+    const stands = resolved.trees.slice(0, count).filter(t => t.detail >= 1).length;
+    assert.ok(young.length > 0.25 * stands && young.length < 0.45 * stands, `${id}: about ${under.share} of the ${stands} stands get a young tree (${young.length})`);
+    const without = resolveHorizonForestTrees(fresh(), library, wiring(world, { understory: null }));
+    assert.equal(without.trees.length, count, `${id}: without the key, the placements alone`);
+    for (let i = 0; i < count; i++) assert.ok(Object.is(without.trees[i].scale, resolved.trees[i].scale), `${id}: the stands themselves unchanged`);
+    for (const tree of young) {
+      assert.equal(tree.index, resolved.trees.indexOf(tree), `${id}: indices past the placements`);
+      assert.ok(tree.scale > 0 && Number.isFinite(tree.x + tree.y + tree.z), `${id}: a placed young tree`);
+    }
+    // each young tree stands at its share of a stand's stature, beside it
+    let checked = 0;
+    for (const tree of young) {
+      const parent = resolved.trees.slice(0, count).find(p => p.species === tree.species && Math.hypot(p.x - tree.x, p.z - tree.z) < 30
+        && tree.scale >= p.scale * under.stature[0] - 1e-9 && tree.scale <= p.scale * under.stature[1] + 1e-9);
+      assert.ok(parent, `${id}: young tree ${tree.index} has its parent beside it`);
+      checked++;
+    }
+    const bound = fresh();
+    const receipt = bindHorizonForestImpostors(bound, wiring(world));
+    assert.equal(receipt.instances, count + young.length, `${id}: every young tree a quad`);
+    const quads = bound.children.filter(c => c.userData.horizonForestImpostor).reduce((n, m) => n + m.count, 0);
+    assert.equal(quads, count + young.length - receipt.adopted, `${id}: the quads hold the stands and the young trees`);
+    console.log(`ringSpeciesStature: ${id} understorey — ${young.length} young trees under ${stands} stands (share ${under.share}, stature ${under.stature.join('–')}), ${checked} beside their parents`);
   }
 } finally {
   globalThis.document = savedDocument;

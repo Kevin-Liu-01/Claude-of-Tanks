@@ -198,6 +198,10 @@ interface VegetationConfig {
    * at the rim trees' one mean height. Absent: the one mean, as the ring always stood (Verdant's owner-approved forests
    * stay bit for bit; ringSpeciesStature.selftest). */
   ringStature?: 'species';
+  /** GND (2026-10-16; the critics past Kestrel's border: "a continuous forest mass and no understorey"): that share of
+   * the ring's stand placements gets a young tree of its parent's species beside it at stature[0]–stature[1] of the
+   * parent's height (horizonForestImpostors.ts resolveHorizonForestTrees). Absent: none. */
+  ringUnderstory?: { share: number; stature: readonly [number, number] };
   clusterCount: number;
   loneCount: number;
   rimCount: number;
@@ -514,6 +518,8 @@ export interface VegetationRuntime {
   /** GND (2026-10-15): with VegetationConfig `ringStature: 'species'`, each ring species' height in metres (its rim
    * trees' mean, else the rim's mean instance scale × its near rows' mean height); null otherwise (the one mean). */
   _ringSpeciesHeightM: Readonly<Record<string, number>> | null;
+  /** GND (2026-10-16): VegetationConfig `ringUnderstory`, else null. */
+  _ringUnderstory: { share: number; stature: readonly [number, number] } | null;
   /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
    * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
    * shade average well under 1). */
@@ -9083,7 +9089,7 @@ function* vegetationBuildSteps(
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
-    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _rimTreeTint: rimTreeTint,
+    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }
