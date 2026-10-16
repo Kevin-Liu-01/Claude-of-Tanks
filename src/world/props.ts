@@ -121,6 +121,7 @@ import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.t
 import { fenceTypes } from './maps/fenceKit.ts';
 import { coursedWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
+import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
@@ -10398,6 +10399,14 @@ ${snowCap ? `
   // (props lane A #19) the paved pads' render-only dressing — their concrete edge, gullies and patches, a runway's markings
   // and edge lights — on the baked material, no step in the drive surface (hardstandDressing.ts)
   { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed); if (pads) buckets.baked.push(pads); }
+  // (props lane A #6) the village terraces' dry-stone risers built along their contours: coping and the odd fallen stone,
+  // fine dressing on the kit's stone, the painted riser their far form (maps/terraceRisers.ts)
+  const riserZones = (cfg as { terrain?: { terraces?: TerraceRiserZone[] } } | null)?.terrain?.terraces;
+  if (riserZones?.length && !mobileProps && regionalArchitecture) {
+    const risers = yield* traceTerraceRisers(riserZones, { ground: (x, z) => heightField.getHeightAt(x, z), tint: gateStoneOf(regionalArchitecture)?.tint ?? [1, 1, 1],
+      clear: (x, z) => heightField._roadDist(x, z) > 1.4 && !placedB.some((b) => Math.hypot(x - b.x, z - b.z) < b.rr + 0.5) });
+    if (risers) buckets.regionalStone.push(...risers.parts.regionalStone);
+  }
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     // regional-buildings lane (2026-10-03, the urban GPU A B B A: +5 ms at the town's establishing view): a kit's
     // joinery and metalwork dressing (window frames and bars, shutters, timbers, boards, gutters and downpipes; a few
