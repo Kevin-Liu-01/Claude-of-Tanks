@@ -16,7 +16,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { hash, hexLin, mix, stream, type Rgb, type V3 } from './craftMesh.ts';
 
 type Ridge = 'plates' | 'furrows' | 'smooth' | 'scales' | 'rings' | 'strips';
-interface TimberSpecies {
+export interface TimberSpecies {
   bark: Rgb; dark: Rgb; sap: Rgb; heart: Rgb;
   ridge: Ridge;
   /** the bark's relief, a share of the radius */
@@ -85,7 +85,7 @@ const DEFAULT_TIMBER: MapTimber = { mix: [['pine', 5], ['oak', 5]], moss: 0.3 };
 const MOSS = C(0x4e5a2c), SOIL = C(0x4a3a2a), CLAY = C(0x7a6248), STONE = C(0x7a7670), WEATHERED = C(0x8a8478);
 const CHAR = C(0x36312c), CHAR_DARK = C(0x171513), ASH = C(0x6a655e), TURF = C(0x56653a);
 
-interface TimberPick { species: TimberSpecies; name: string; moss: number; charred: boolean }
+export interface TimberPick { species: TimberSpecies; name: string; moss: number; charred: boolean }
 /** The piece of timber a map's field shows at a draw u (0..1) of its own stream. */
 export function timberOf(mapId: string, u: number, v: number): TimberPick {
   const t = MAP_TIMBER[mapId] ?? DEFAULT_TIMBER;
@@ -96,9 +96,10 @@ export function timberOf(mapId: string, u: number, v: number): TimberPick {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// the writer: indexed parts (a part's shared vertices smooth it), each wound out, merged unindexed
+// the writer: indexed parts (a part's shared vertices smooth it), each wound out, merged unindexed (felledPoles.ts
+// builds the shelled road's telegraph poles with it: a pole is dressed timber)
 
-class Part {
+export class Part {
   readonly p: number[] = []; readonly c: number[] = []; readonly t: number[] = []; readonly i: number[] = [];
   v(q: V3, col: Rgb, u = 0, w = 0): number {
     this.p.push(q[0], q[1], q[2]); this.c.push(col[0], col[1], col[2]); this.t.push(u, w);
@@ -177,7 +178,7 @@ function grain(sp: TimberSpecies, pick: TimberPick, s: number, age: number, n: n
  * A tube of rings around a centre line: ring j at `centre(j)` in the plane spanned by `ax`, `bx` (the stem's
  * cross-section), radius `radius(k, j)`, coloured by `colour(k, j, rel)`. Returns each ring's vertex indices.
  */
-function tube(part: Part, sides: number, rings: number, centre: (j: number) => V3, ax: V3, bx: V3,
+export function tube(part: Part, sides: number, rings: number, centre: (j: number) => V3, ax: V3, bx: V3,
   radius: (k: number, j: number) => number, colour: (k: number, j: number, out: V3) => Rgb): number[][] {
   const ids: number[][] = [];
   for (let j = 0; j < rings; j++) {
@@ -226,7 +227,7 @@ function sawCap(part: Part, ring: readonly V3[], centre: V3, normal: V3, sp: Tim
 }
 
 /** A snapped end: the fibres torn out in splinters past the ring, the heart pulled furthest. */
-function snapCap(part: Part, ringPos: readonly V3[], centre: V3, normal: V3, radius: number, sp: TimberSpecies, pick: TimberPick, age: number, seed: number): void {
+export function snapCap(part: Part, ringPos: readonly V3[], centre: V3, normal: V3, radius: number, sp: TimberSpecies, pick: TimberPick, age: number, seed: number): void {
   const n = ringPos.length, r = stream(seed ^ 0x5a1);
   const ring = ringPos.map((q, k) => part.v(q, grain(sp, pick, 0.99, age, hash(k, 4, seed))));
   const inner = ringPos.map((q0, k) => {
@@ -245,7 +246,7 @@ function snapCap(part: Part, ringPos: readonly V3[], centre: V3, normal: V3, rad
 }
 
 /** A short cone from `base` along `dir`: a branch stub or a torn root, its end snapped. */
-function stub(part: Part, base: V3, dir: V3, len: number, r0: number, r1: number, sides: number, col: Rgb, end: Rgb): void {
+export function stub(part: Part, base: V3, dir: V3, len: number, r0: number, r1: number, sides: number, col: Rgb, end: Rgb): void {
   const a = unit(crs(dir, Math.abs(dir[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0])), b = crs(dir, a);
   const ring = (o: V3, r: number, c: Rgb) => Array.from({ length: sides }, (_, k) => {
     const th = (k / sides) * Math.PI * 2;

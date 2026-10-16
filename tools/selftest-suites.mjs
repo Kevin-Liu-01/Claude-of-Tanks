@@ -1558,6 +1558,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // props lane A #19 (2026-10-15): the field's fallen timber by species, from its members
     'src/world/maps/timberForms.selftest.mjs',
     'src/world/maps/craterEjecta.selftest.mjs',
+    'src/world/maps/felledPoles.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
     // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
     'src/world/maps/periodFreight.selftest.mjs',
