@@ -4696,26 +4696,26 @@
   },
   {
    "path": "media/site50-r14/home/features/studio.jpg",
-   "bytes": 525119,
-   "sha256": "a0cf3c32f375ed74ecf96170908096cbc5f1ca4d09230a6d2880813fd91b7532",
+   "bytes": 264524,
+   "sha256": "cba5dc38ba4f23a68233da664c463edffdf017dcb37324b925448253a8160b05",
    "source": "shots/media-r5/home-r2/deliver/features/studio.webm",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.json",
-   "bytes": 2424,
-   "sha256": "7327111935f369dc9864dbaa9d3821c5fcaf474bfa21febc12924f4337c94b40",
+   "bytes": 2456,
+   "sha256": "edfbe09df633d3476d6fe41e7a477818652d4943c0ea06274710358e6dff7706",
    "source": "shots/media-r5/home-r2/deliver/features/studio.json",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.mp4",
-   "bytes": 2066099,
-   "sha256": "2ec493cb3521d3d9fcfecc395eadfb530732936649dcd420671cb66382bcfd5a",
+   "bytes": 3254887,
+   "sha256": "d1643270d9e132a7e0bb50f091e2b9cae63e55e8c931d2978d81f1d148e3e28f",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 6.667,
+   "seconds": 6.6,
    "audio": null,
    "source": "shots/media-r5/home-r2/deliver/features/studio.webm",
    "home": "features/studio"

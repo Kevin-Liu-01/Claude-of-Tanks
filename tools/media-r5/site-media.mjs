@@ -248,18 +248,33 @@ function buildLoops() {
   }
 }
 
-function proxy(source, out, crf) {
-  run('ffmpeg', ['-v', 'error', '-y', '-i', source, '-an', '-vf', 'scale=960:540:flags=lanczos,fps=24,format=yuv420p',
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-profile:v', 'high', '-movflags', '+faststart', out]);
+// A job with kbps (the Studio card's proxy) is encoded in two veryslow passes at that rate: it fills the room the
+// takes' proxies leave in the budget whatever its motion (2026-10-15: the frame-stepped Studio loop moves in every
+// frame, and at CRF 27 its proxy alone, 984 KB, would have stepped every proxy down a CRF to fit; at 610 kbit/s it is
+// 509 KB at VMAF 86.3, where one slow pass of the same size scores 83.6).
+function proxy(source, out, crf, kbps) {
+  const encode = ['-v', 'error', '-y', '-i', source, '-an', '-vf', 'scale=960:540:flags=lanczos,fps=24,format=yuv420p',
+    '-c:v', 'libx264'];
+  if (!kbps) {
+    run('ffmpeg', [...encode, '-preset', 'slow', '-crf', String(crf), '-profile:v', 'high', '-movflags', '+faststart', out]);
+    return;
+  }
+  mkdirSync(TMP, { recursive: true });
+  const log = join(TMP, 'proxy-2pass');
+  const rate = ['-preset', 'veryslow', '-b:v', `${kbps}k`, '-profile:v', 'high'];
+  run('ffmpeg', [...encode, ...rate, '-pass', '1', '-passlogfile', log, '-f', 'mp4', '/dev/null']);
+  run('ffmpeg', [...encode, ...rate, '-pass', '2', '-passlogfile', log, '-movflags', '+faststart', out]);
 }
 function buildProxies() {
   mkdirSync(PROXIES, { recursive: true });
-  // the home page's Studio loop, once delivered, takes the landing-r1 recording's place and its proxy's
+  // the home page's Studio loop, once delivered, takes the landing-r1 recording's place and its proxy's; the proxy is cut
+  // from the delivered master, as the takes' are from their deliveries, not from the light web encode
   const studioLoop = join(OUT, 'home', 'features', 'studio.mp4');
-  const studio = homeStudioDelivery() && existsSync(studioLoop);
+  const studioDelivery = homeStudioDelivery();
+  const studio = studioDelivery && existsSync(studioLoop);
   const jobs = proxyIds.map((id) => ({ path: `${id}-mobile.mp4`, source: delivery(id)?.hd, crf: 27, url: `${BASE_URL}/loops/${id}.webm` }))
     .concat([{ path: 'reel-mobile.mp4', source: join(OUT, 'films', 'reel.mp4'), crf: 29, url: `${BASE_URL}/films/reel.mp4` }])
-    .concat(studio ? [{ path: HOME_STUDIO_PROXY, source: studioLoop, crf: 27, url: `${BASE_URL}/home/features/studio.mp4` }] : [])
+    .concat(studio ? [{ path: HOME_STUDIO_PROXY, source: studioDelivery.video, crf: 27, kbps: 610, url: `${BASE_URL}/home/features/studio.mp4` }] : [])
     .filter((job) => job.source && existsSync(job.source));
   if (studio) for (const p of PROXY_KEPT) if (existsSync(join(PROXIES, p))) rmSync(join(PROXIES, p));
   const kept = PROXY_KEPT.filter((p) => existsSync(join(PROXIES, p)));
@@ -268,14 +283,17 @@ function buildProxies() {
     for (const job of jobs) {
       const out = join(PROXIES, job.path);
       if (pass > 0 || force || !existsSync(out) || statSync(out).mtimeMs < statSync(job.source).mtimeMs) {
-        proxy(job.source, `${out}.tmp.mp4`, job.crf);
+        proxy(job.source, `${out}.tmp.mp4`, job.crf, job.kbps);
         renameSync(`${out}.tmp.mp4`, out);
       }
     }
     const total = keptBytes + jobs.reduce((sum, job) => sum + statSync(join(PROXIES, job.path)).size, 0);
     if (total < PROXY_BUDGET_BYTES) break;
     console.log(`[site-media] proxies ${total} B over the ${PROXY_BUDGET_BYTES} B budget: one CRF step down`);
-    for (const job of jobs) job.crf += 1;
+    for (const job of jobs) {
+      job.crf += 1;
+      if (job.kbps) job.kbps = Math.round(job.kbps * 0.9);
+    }
   }
   // a re-pick leaves proxies of takes no path names any more (retire.mjs would also drop them as unreferenced)
   const current = new Set(jobs.map((job) => job.path));
@@ -488,9 +506,12 @@ function buildHome() {
   const studio = homeStudioDelivery();
   if (!studio) return;
   const extra = { home: 'features/studio' };
+  // a light encode at the loops' VMAF floor (2026-10-15, the frame-stepped loop: CRF 28 scores 93.6 against its master,
+  // every frame at 30 fps, in 3.4 MB; CRF 21 was 98.0 in 6.1 MB), a keyframe every 2 s and level 4.1 as the landing-r1
+  // publisher made it
   make(join(OUT, 'home', 'features', 'studio.mp4'), studio.video, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', studio.video, '-an',
-    '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-maxrate', '8M',
-    '-bufsize', '16M', '-profile:v', 'high', '-movflags', '+faststart', tmp]), extra);
+    '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '28', '-maxrate', '8M',
+    '-bufsize', '16M', '-profile:v', 'high', '-level', '4.1', '-g', '60', '-keyint_min', '60', '-movflags', '+faststart', tmp]), extra);
   make(join(OUT, 'home', 'features', 'studio.jpg'), studio.video, (tmp) => run('ffmpeg', ['-v', 'error', '-y',
     '-ss', String(PICKS.home.studio?.posterS ?? 2), '-i', studio.video, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), extra);
   copy(join(OUT, 'home', 'features', 'studio.json'), studio.receipt, extra);
