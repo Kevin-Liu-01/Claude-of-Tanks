@@ -4619,16 +4619,27 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   for (const e of extent.values()) deepest = Math.max(deepest, e[3]);
   const gunLowY = gunAt.y - Math.max(maxAlong * Math.sin(Math.max(0, -tMinFront) + 0.05), -minAlong * Math.sin(Math.max(0, tMax) + 0.05))
     - deepest - clearance - 0.05;
-  /** The gun's box [left, right, above, below] round a station (three bins), or null past its ends. */
-  const gunBox = (along: number): [number, number, number, number] | null => {
-    const k = Math.floor(along / SWEEP_BIN_M);
-    let out: [number, number, number, number] | null = null;
+  // The gun's box [left, right, above, below] round a station (three bins), none past its ends: one merged box per
+  // station bin, made once (2026-10-15, the perf lane: the sweep asked a Map and built a box on every call, 4.1 s of
+  // two profiled m1a3 builds in sweptBy's own time; min and max are exact, so every box is the one it built).
+  let binLo = Infinity, binHi = -Infinity;
+  for (const key of extent.keys()) { binLo = Math.min(binLo, key - 1); binHi = Math.max(binHi, key + 1); }
+  const binCount = Number.isFinite(binLo) ? binHi - binLo + 1 : 0;
+  const boxL = new Float64Array(binCount), boxR = new Float64Array(binCount), boxA = new Float64Array(binCount);
+  const boxB = new Float64Array(binCount), boxHas = new Uint8Array(binCount);
+  for (let slot = 0; slot < binCount; slot++) {
+    const k = binLo + slot;
     for (let i = k - 1; i <= k + 1; i++) {
       const e = extent.get(i);
-      if (e) out = out ? [Math.min(out[0], e[0]), Math.max(out[1], e[1]), Math.max(out[2], e[2]), Math.max(out[3], e[3])] : [e[0], e[1], e[2], e[3]];
+      if (!e) continue;
+      if (!boxHas[slot]) { boxL[slot] = e[0]; boxR[slot] = e[1]; boxA[slot] = e[2]; boxB[slot] = e[3]; boxHas[slot] = 1; }
+      else {
+        boxL[slot] = Math.min(boxL[slot], e[0]); boxR[slot] = Math.max(boxR[slot], e[1]);
+        boxA[slot] = Math.max(boxA[slot], e[2]); boxB[slot] = Math.max(boxB[slot], e[3]);
+      }
     }
-    return out;
-  };
+  }
+  const sweptThetas = new Float64Array(6);
   /**
    * Whether the gun through pitches lo..hi meets a point `lateral` across from its bore (gun frame x, signed) at
    * turret-frame height qy and reach qz, within `margin` across and `rise` above and below.
@@ -4643,15 +4654,21 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     // the trunnion the turret's own roof lies between the breech and any cloth on it)
     const back = phi > 0 ? phi - Math.PI : phi + Math.PI;
     const nearest = THREE.MathUtils.clamp(phi, lo, hi);
-    const thetas = dy < 0 && dz < 0 ? [nearest, THREE.MathUtils.clamp(back, lo, hi)] : [nearest];
+    let count = 0;
+    sweptThetas[count++] = nearest;
+    if (dy < 0 && dz < 0) sweptThetas[count++] = THREE.MathUtils.clamp(back, lo, hi);
     // near the trunnion the gun's section changes fast (a mantlet's corners): its ends and middle pitches as well
-    if (d * Math.cos(phi - nearest) < 0.8) thetas.push(lo, (lo + hi) / 2, 0 > lo && 0 < hi ? 0 : hi, hi);
-    for (const theta of thetas) {
-      const e = gunBox(d * Math.cos(phi - theta));
-      if (!e) continue;
+    if (d * Math.cos(phi - nearest) < 0.8) {
+      sweptThetas[count++] = lo; sweptThetas[count++] = (lo + hi) / 2;
+      sweptThetas[count++] = 0 > lo && 0 < hi ? 0 : hi; sweptThetas[count++] = hi;
+    }
+    for (let t = 0; t < count; t++) {
+      const theta = sweptThetas[t];
+      const slot = Math.floor((d * Math.cos(phi - theta)) / SWEEP_BIN_M) - binLo;
+      if (!(slot >= 0 && slot < binCount) || !boxHas[slot]) continue;
       // the point's offset off the bore at that pitch: above (+) or below (-) it
       const off = d * Math.sin(phi - theta);
-      if (lateral > e[0] - margin && lateral < e[1] + margin && off < e[2] + rise && -off < e[3] + rise) return true;
+      if (lateral > boxL[slot] - margin && lateral < boxR[slot] + margin && off < boxA[slot] + rise && -off < boxB[slot] + rise) return true;
     }
     return false;
   };
