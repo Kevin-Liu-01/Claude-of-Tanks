@@ -21,7 +21,9 @@
 //   node tools/turret-ring-census.mjs --ids=t72b3,m1a1_abrams_hc [--out=dir] [--base=fp.jsonl] [--gate]
 //   node tools/turret-ring-census.mjs --all [--shard=k/n] [--out=dir] [--base=fp.jsonl] [--gate]
 //   node tools/turret-ring-census.mjs --all --fingerprints-only --out=dir   # the base commit's fingerprints
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+//   node tools/turret-ring-census.mjs --ids=... --receipts-from=<dir>/src/vehicles/combatAnatomyGroups  # a generated tree's
+// The receipt is --receipts-from's, else the published calibration's (after tank:anatomy:update), else measured here.
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 
@@ -79,6 +81,16 @@ const [shardK, shardN] = (opt('shard', '0/1')).split('/').map(Number);
 const done = new Set(existsSync(JSONL)
   ? readFileSync(JSONL, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line).id) : []);
 const ids = requested.filter((_, i) => i % shardN === shardK).filter((id) => !done.has(id));
+// a generated calibration tree's receipts (tools/gen-combat-anatomy.mjs run into another directory)
+const supplied = new Map();
+if (opt('receipts-from')) {
+  for (const name of readdirSync(resolve(opt('receipts-from')))) {
+    if (!name.endsWith('.generated.ts')) continue;
+    const text = readFileSync(resolve(opt('receipts-from'), name), 'utf8');
+    const rows = JSON.parse(text.slice(text.indexOf('Object.freeze(') + 14, text.lastIndexOf(');')));
+    for (const [id, calibration] of Object.entries(rows)) if (calibration.turretRing) supplied.set(id, calibration.turretRing);
+  }
+}
 const base = new Map();
 if (opt('base')) {
   for (const path of opt('base').split(',')) {
@@ -236,12 +248,15 @@ for (const id of ids) {
     console.log(`${id}: turretless ${row.pass ? 'PASS' : 'FAIL'}`);
     continue;
   }
-  // the receipt, as the generator measures it
+  // the receipt: --receipts-from's (a generated calibration tree), else the published one (after tank:anatomy:update),
+  // else measured here as the generator measures it
   const receiptVisual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   let receipt, deck;
   try {
     const hull = rig(receiptVisual.root, 'rig_hull'), turret = rig(receiptVisual.root, 'rig_turret');
-    receipt = measureTurretRing(hull, turret, turretRingRadius(spec.armor));
+    receipt = supplied.get(id) ?? combatAnatomyCalibration(id)?.turretRing ?? null;
+    row.receiptSource = supplied.has(id) ? 'supplied' : receipt ? 'published' : 'census';
+    receipt ??= measureTurretRing(hull, turret, turretRingRadius(spec.armor));
     deck = receipt ? probeDeck(receiptVisual.root, receipt) : null;
   } finally { receiptVisual.dispose(); }
   row.receipt = receipt;
@@ -285,8 +300,11 @@ for (const id of ids) {
     seated: !!L && L.seatErr !== null && L.seatErr <= SEAT_TOL,
     removedAtReset: !!L && L.platesAfterReset === 0 && F.platesAfterReset === 0,
     fingerprintHolds: !!L && L.fpIntact === L.fpReset && F.fpIntact === F.fpReset,
+    // the build's own measure (a stale or missing receipt's path) agrees with a receipt measured the same way; a
+    // generator's receipt (its stock-capture and measurement-mode builds) may differ, and the row records by how much
     fallbackAgrees: !!F && F.plates === 1 && F.source === 'measured' && F.centreErr <= CENTRE_TOL && !!F.ring && !!L?.ring
-      && Math.abs(F.ring.deckY - L.ring.deckY) <= FALLBACK_TOL.deckY && Math.abs(F.ring.rimR - L.ring.rimR) <= FALLBACK_TOL.rimR,
+      && (row.receiptSource !== 'census' || (Math.abs(F.ring.deckY - L.ring.deckY) <= FALLBACK_TOL.deckY
+        && Math.abs(F.ring.rimR - L.ring.rimR) <= FALLBACK_TOL.rimR)),
   };
   if (base.has(id)) {
     checks.battleBase = !!L && L.fpIntact === base.get(id).battle;
