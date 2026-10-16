@@ -16,6 +16,8 @@ import { applyPoleTimberHook } from './poleTimber.ts'; // the scenery lane: the 
 import { STONE_SETTLE_M, applyStoneWallHook } from './stoneWallShader.ts';
 import { MUD_SLUMP_M, applyMudWallHook } from './mudWallShader.ts';
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's ballast hook
+// (props lane A #2: the clutter's far-LOD program on the baked material: maps/clutterKit.ts)
+import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook } from './maps/clutterKit.ts';
 
 // Execute the actual material/ownership/shader stage without generating atlas
 // pixels or the whole battlefield. Empty buckets are the important case: CSM
@@ -48,7 +50,7 @@ const families = ['plaster', 'plaster2', 'plaster3', 'roofT', 'stone', 'fieldSto
 const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', 'makeGrimeTexture', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook',
   'applyPoleTimberHook', 'rockStoneMean', 'STONE_SETTLE_M', 'applyStoneWallHook', 'MUD_SLUMP_M', 'applyMudWallHook',
-  'applyRailBallastHook',
+  'applyRailBallastHook', 'CLUTTER_LOD_KEY', 'clutterLodDefaults', 'clutterLodHook',
   `return ${stripTypeScriptTypes(`function* testSurfaceSteps(group, engineCtx, mapId, P, atlases) {
     const { ${families.join(', ')} } = atlases;
     const noi = null, aniso = 4;
@@ -62,7 +64,7 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'make
     assert.ok(text.includes(anchor), `production shader anchor ${anchor} remains present`);
     return text.replace(anchor, replacement);
   }, rockDressingFor, applyRockShaderHook, applyPoleTimberHook, new THREE.Vector3(0.214, 0.214, 0.214),
-  STONE_SETTLE_M, applyStoneWallHook, MUD_SLUMP_M, applyMudWallHook, applyRailBallastHook);
+  STONE_SETTLE_M, applyStoneWallHook, MUD_SLUMP_M, applyMudWallHook, applyRailBallastHook, CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook);
 
 function makeTexture() {
   return new THREE.DataTexture(new Uint8Array(4 * 4 * 4).fill(128), 4, 4);
