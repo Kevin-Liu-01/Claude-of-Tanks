@@ -193,3 +193,43 @@ export function panelSlab(sink: PartSink, bucket: RegionalBucket, x0: number, y0
   sink.quad(bucket, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], so);
   sink.quad(bucket, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], so);
 }
+
+/**
+ * A rolled I-beam (a module's floor beam on its piles) from a to b, `h` deep, `b` wide, flange `tf` and web `tw` thick, its
+ * web upright (toward `up`): its section swept and its ends closed flange by flange and the web.
+ */
+export function iBeam(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, h: number, w: number, tf: number, tw: number, opts: EmitOptions = {},
+  up: Vec3 = [0, 1, 0]): void {
+  const hh = h / 2, hw = w / 2, ht = tw / 2;
+  // counter-clockwise seen from b (u across, v up): the bottom flange, the web, the top flange
+  const sec: Array<[number, number]> = [[-hw, -hh], [hw, -hh], [hw, -hh + tf], [ht, -hh + tf], [ht, hh - tf], [hw, hh - tf], [hw, hh], [-hw, hh],
+    [-hw, hh - tf], [-ht, hh - tf], [-ht, -hh + tf], [-hw, -hh + tf]];
+  sectionMember(sink, bucket, a, b, sec, opts, 'none', up);
+  const f = sectionFrame(a, b, up);
+  if (!f) return;
+  const at = (o: Vec3, p: readonly [number, number]): Vec3 =>
+    [o[0] + f.e1[0] * p[0] + f.e2[0] * p[1], o[1] + f.e1[1] * p[0] + f.e2[1] * p[1], o[2] + f.e1[2] * p[0] + f.e2[2] * p[1]];
+  const rects: Array<Array<[number, number]>> = [[[-hw, -hh], [hw, -hh], [hw, -hh + tf], [-hw, -hh + tf]], [[-ht, -hh + tf], [ht, -hh + tf], [ht, hh - tf], [-ht, hh - tf]],
+    [[-hw, hh - tf], [hw, hh - tf], [hw, hh], [-hw, hh]]];
+  for (const r of rects) {
+    sink.polygon(bucket, r.map((p) => at(b, p)), opts);
+    sink.polygon(bucket, r.map((p) => at(a, p)).reverse(), opts);
+  }
+}
+
+/**
+ * A band round a box's walls (a module's coloured fascia), `out` proud of the walls from (x0, z0) to (x1, z1), y0 to y1:
+ * its four faces and the ledges over and under them, one welded ring (no hidden slab through the body).
+ */
+export function bandRing(sink: PartSink, bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, out: number,
+  opts: EmitOptions = {}): void {
+  const o = [[x0 - out, z0 - out], [x1 + out, z0 - out], [x1 + out, z1 + out], [x0 - out, z1 + out]] as const;
+  const i = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]] as const;
+  for (let k = 0; k < 4; k++) {
+    const j = (k + 1) % 4;
+    // the face (seen from outside, the ring runs counter-clockwise from above: its outward normal on its right)
+    sink.quad(bucket, [o[j][0], y0, o[j][1]], [o[k][0], y0, o[k][1]], [o[k][0], y1, o[k][1]], [o[j][0], y1, o[j][1]], opts);
+    sink.quad(bucket, [o[k][0], y1, o[k][1]], [i[k][0], y1, i[k][1]], [i[j][0], y1, i[j][1]], [o[j][0], y1, o[j][1]], opts);
+    sink.quad(bucket, [o[j][0], y0, o[j][1]], [i[j][0], y0, i[j][1]], [i[k][0], y0, i[k][1]], [o[k][0], y0, o[k][1]], opts);
+  }
+}

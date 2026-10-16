@@ -52,7 +52,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 18.695,
+   "gapM2": 23.723,
    "invertedM2": 0
   },
   "longleaf/granary": {
@@ -192,11 +192,11 @@
   },
   "arctic/foundryoffice": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.456,
-   "gapM2": 3.283,
+   "gapM2": 4.529,
    "invertedM2": 0
   },
   "glencanyon/arcology": {
@@ -2176,12 +2176,12 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 34.833,
+   "gapM2": 32.329,
    "invertedM2": 0
   },
   "arctic/warehouse": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2194,7 +2194,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 3.697,
+   "gapM2": 3.727,
    "invertedM2": 0
   },
   "arctic/woodshed": {
@@ -3481,7 +3481,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 23.459,
+   "gapM2": 30.214,
    "invertedM2": 0
   },
   "landmark/whiteout:guyedMast#11": {
