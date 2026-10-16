@@ -144,7 +144,12 @@ const waterTower: RegionalBuilder = (ctx) => {
   // (on the tapering shaft's face at their height)
   for (const y of [4.0, 6.6]) {
     const at = R * (1 - 0.08 * (y - 0.8) / (H - 0.8)) * Math.cos(ph);
-    faceBox(sink, 'dark', { ...door, origin: [0, 0, at] }, 0.2, y, 0.005, 0.14, 0.7, 0.02, { decor: true });
+    const slit: Face = { ...door, origin: [0, 0, at] };
+    faceBox(sink, 'dark', slit, 0.2, y, 0.005, 0.14, 0.7, 0.02, { decor: true });
+    // (props census r2 sweep, Lane C 2026-10-16: the slits were dark plates on the shaft) each in its dressed surround,
+    // jambs, lintel and sill standing 13 cm proud, the slit at the back of its embrasure
+    for (const s of [-1, 1]) faceBox(sink, DRESSING, slit, 0.2 + s * 0.12, y, 0.065, 0.1, 0.9, 0.13, { decor: true });
+    for (const s of [-1, 1]) faceBox(sink, DRESSING, slit, 0.2, y + s * 0.4, 0.065, 0.34, 0.1, 0.13, { decor: true });
   }
   return sink.finish();
 };
