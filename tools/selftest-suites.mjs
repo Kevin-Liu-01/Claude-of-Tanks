@@ -1278,6 +1278,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',
+    'src/game/killcamGround.selftest.mjs',
     'src/fx/impactDecals.selftest.mjs',
     'src/fx/impactAtlasPacing.selftest.mjs',
     'src/gallery/catalog.selftest.mjs',
