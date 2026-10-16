@@ -57,15 +57,18 @@ const DRAFT: HinterlandConfig = {
     // (round 4, the coordinator on edge-w: "Mont Froid reads as a flat-topped table mountain" — its summit stands just
     // north of the west view's middle, a shoulder either side, the crest falling from it to both ends)
     // (round 5, the critics: "the same lone symmetrical cone is stamped on both edges; tie it into a range with asymmetry
-    // and foothills, and remove the hard dark plinth at its base" — Mont Froid's block falls steeper to the south, a
-    // gendarme on its crest; the Lamet's summit stands north of the east view's middle, its south shoulder long; each
-    // over a lower wooded spur in front, their forest belts kept low and broken)
-    { kind: 'massif', at: { azDeg: 282, distM: 2050 }, heightM: 620, lengthM: 3400, widthM: 2300, strikeDeg: 10, name: 'Mont Froid',
-      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 110] }, peak: { along: -0.15, share: 0.5, asym: 0.62, gendarme: true } },
+    // and foothills, and remove the hard dark plinth at its base" — each over a lower wooded spur in front, their forest
+    // belts kept low and broken; round 5's asymmetric single summits still read as cones, below)
+    // (round 6, the critics on 5d: "a lone low-poly cone ... reads as a cartoon volcano" at edge-e, "a single low-poly grey
+    // pyramid" at edge-w — an authored summit holding half the height made each mass one cone, 11-14° proud of its
+    // shoulders from the edge eyes; each is now a longer wall with its own summits and cols: from edge-w Mont Froid stands
+    // two summits ~16° high over a col at ~12°, from edge-e the Lamet three at 13-15° over cols at 11.5-12.5°)
+    { kind: 'massif', at: { azDeg: 282, distM: 2050 }, heightM: 560, lengthM: 5200, widthM: 2300, strikeDeg: 10, name: 'Mont Froid',
+      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 110] } },
     { kind: 'ridge', at: { azDeg: 262, distM: 1450 }, heightM: 150, lengthM: 1700, widthM: 620, strikeDeg: 170, name: 'the Mont Froid spur',
       geology: { snow: { lineM: 0 }, gullies: 0.6 }, cover: { forest: [0, 110] }, notched: true },
-    { kind: 'massif', at: { azDeg: 92, distM: 2500 }, heightM: 560, lengthM: 4200, widthM: 2600, strikeDeg: 170, name: 'the Lamet slopes',
-      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 110] }, peak: { along: -0.3, share: 0.42, asym: 1.7 } },
+    { kind: 'massif', at: { azDeg: 92, distM: 2500 }, heightM: 520, lengthM: 5600, widthM: 2600, strikeDeg: 170, name: 'the Lamet slopes',
+      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 110] } },
     { kind: 'ridge', at: { azDeg: 104, distM: 1500 }, heightM: 130, lengthM: 1600, widthM: 560, strikeDeg: 10, name: 'the Lamet foothills',
       geology: { snow: { lineM: 0 }, gullies: 0.6 }, cover: { forest: [0, 100] }, notched: true },
     // south: the col's own shoulder over the Grande Croix, wooded, standing over the rim so the south view keeps a dark
