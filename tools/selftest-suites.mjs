@@ -1349,6 +1349,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleFrameRuntime.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
     'src/game/matchModeWorldPresentation.selftest.mjs',
+    // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)
+    'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
