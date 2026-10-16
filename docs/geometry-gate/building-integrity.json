@@ -4194,7 +4194,16 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/airfield:aircraftWreck#8": {
+   "floating": 0,
+   "sliver": 2,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 122.997,
+   "gapM2": 757.26,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T07:13:13.032Z"
+ "updatedAt": "2026-10-16T07:47:58.647Z"
 }

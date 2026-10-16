@@ -7901,6 +7901,20 @@ The airport's buildings, runway, aprons, roads, pads and objectives stand where 
   solid in a road; census [2974, 3015, 2435] (with the border forest [3110, 3155, 2572]) -> [4445, 4929, 3647];
   building integrity clean for the dacha and the shed (new ledger rows), the mast's open frame its only finding; kit
   connectivity clean for the dacha, the shed and the mast.
+- *The An-225* (its own commit, revertible on its own): the Mriya as Hostomel's hangar left it in February 2022, seated on
+  the map-revival lane's round-5 plot (105 x 97 m behind the cargo apron, its slab at the apron's own 5.92 m; the kit's
+  cargo hangar on the terminal side only; the access road behind the hangar, 17 m off its back wall; the hangar line's
+  wall ending 4 m short of the slab; the cargo apron's south-east mast 9 m off the slab's corner). The airframe is the
+  landmarks lane's round 4 (fbd53b3eb, from the Hostomel photographs after wave 246 failed round 3: the high wing on the
+  hull with six D-18T nacelles on pylons, intakes forward, the glazed flight deck, burnt aluminium as one smooth gradient,
+  the torn skin curling at the break) merged over the 217 connectivity sweep's hangar (the ribs' end posts, the purlins
+  on the ribs as drawn, the fallen lengths braced, the heaps' sheets on each other's folds); round 4's sheets hang from
+  the purlins where the purlins are, its skin flaps root on the ragged rims, the floor's burnt frames rest on the slab
+  and the back wall's cladding stands on the wall: kit connectivity 0 floating, 0 free ends (the baseline 0 / 1).
+- *Measured with the An-225* (every brief band holds): objective symmetry 1.015 (the near apron zones and the far ones as
+  round 5 measured them), orphan 0.07, separation 841 m, sightline median 118 m; census [4445, 4929, 3647] ->
+  [4614, 5107, 3872]; airfield's shard current built alone and after Verdant and Steinburg; 24 158 desktop triangles
+  for the wreck (budget 26 000).
 
 ## Acceptance is visual and measured
 
