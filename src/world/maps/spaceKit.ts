@@ -452,7 +452,8 @@ function landingPad(T: HutTools, world: SpaceWorld): void {
   // the sintered pad, its scorch ring and its aiming circle; the blast berm round it in eight lengths, open at the
   // kiosk's side; the floodlight poles; the kiosk and its beacon mast
   T.tag('footing', 'apron', 'concrete');
-  T.put(footprintApron(T, 'landingpad', 0.04), P.apron, 0.06);
+  // (6 cm: an 18.6 m slab's eased edge stays wider than a thousandth of its length, no sliver)
+  T.put(footprintApron(T, 'landingpad', 0.06), P.apron, 0.06);
   T.tag('footing', 'pad', 'concrete');
   T.put(T.cylinder(R, R + 0.25, 0.2, 16).translate(0, 0.1, 0), P.apron, 0.05);
   T.tag('footing', 'scorch', 'concrete');
