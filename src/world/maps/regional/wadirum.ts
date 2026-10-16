@@ -3,7 +3,7 @@
 // the next storey left standing at the corners and black water tanks on the roof, steel doors painted green or blue,
 // window grilles; the Desert Patrol's fort, crenellated with corner towers; steel-portal stores and workshops under
 // low corrugated roofs instead of tiles; walled compounds of block houses.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -63,11 +63,39 @@ const blockHouse: RegionalBuilder = (ctx) => {
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.25, out: 0.05, bucket: 'stone' }, storeys: Array.from({ length: count }, () => ({ h: 3.0, wall })),
     roof: { kind: 'flat', pitchDeg: 0, eave: 0.08, verge: 0.08, thickness: 0.2, bucket: wall, parapet: 0.6 }, gableBucket: wall,
-    openings, chimneys: [], gutters: null, verge: null,
+    // (Redrock r3, the blind critics on v2: "flat olive and beige house boxes with pasted windows" near the camera) the
+    // windows set in their block wall's depth
+    openings, chimneys: [], gutters: null, verge: null, reveal: 0.18,
   }, dialect);
   rooftop(sink, W, D, frame.eaveY + 0.2, rng);
+  houseWeather(sink, frame, W, D, count);
   return sink.finish();
 };
+
+/**
+ * (Redrock r3) What a Rum house's render carries (dressing, from a stream of its own so the kit's draws are as before):
+ * a cast concrete sunshade over each window, the dado the dust and the rain splash darken to a hand over a metre, and the
+ * parapet's scuppers — a spout or two a face, the water's dark run down the render under each.
+ */
+function houseWeather(sink: PartSink, frame: ReturnType<typeof buildHouse>, W: number, D: number, count: number): void {
+  const g = streamFrom(Math.round(W * 613 + D * 241 + count * 7));
+  const dado = rgb(0x8a7a66), run = rgb(0x6e6254), slab = rgb(0xb8b0a2);
+  for (const o of frame.spec.openings) {
+    if (o.kind !== 'window') continue;
+    const f = frame.faces[o.face], y = frame.floors[o.storey] + o.y0 + o.h + 0.12;
+    faceBox(sink, 'plaster', f, o.u, y, 0.2, o.w + 0.36, 0.1, 0.4, { colour: slab, decor: true });
+  }
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    const f = frame.faces[name];
+    faceBox(sink, 'plaster', f, 0, 0.25 + 0.5, 0.006, f.width - 0.04, 1.0, 0.012, { colour: shade(dado, 0.92 + g() * 0.16), decor: true });
+    for (let k = 0, n = 1 + Math.floor(g() * 2); k < n; k++) {
+      const u = (g() - 0.5) * (f.width - 1.2), top = frame.eaveY + 0.05;
+      faceBox(sink, 'structureMetal', f, u, top, 0.22, 0.12, 0.12, 0.44, { colour: rgb(0x5a5e60), decor: true });
+      const len = 1.2 + g() * 2.2;
+      faceBox(sink, 'plaster', f, u, top - 0.1 - len / 2, 0.006, 0.18 + g() * 0.22, len, 0.012, { colour: shade(run, 0.9 + g() * 0.2), decor: true });
+    }
+  }
+}
 
 /** A steel-portal store: block plinth walls, sheet cladding in a sand livery, a low corrugated roof, a roller door. */
 const steelStore: RegionalBuilder = (ctx) => {

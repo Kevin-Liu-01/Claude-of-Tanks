@@ -146,7 +146,9 @@ export default {
     // patches a third as strong and the outpost's wear a third, both in a sandier soil; the near ripples on the loose sand
     // sheets at a working strength (the dune bedforms stay at the quiet wash's 0.06); the tracks' wheel lanes worn deep
     // and dark, gravel on their crowns
-    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.26, roadRuts: [2.6, 0.16, 1.0],
+    // (r3, the critics on v2: "empty flat sand foregrounds with smeared painted ruts") the ruts lighter, the near ripples
+    // stronger on the loose sand
+    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.34, roadRuts: [1.7, 0.12, 1.0],
     // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
     // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
     // (The Redrock lane, 2026-10-07: the contact at y 98 — the east wall's highest beehives and the canyon heads' upper
@@ -186,14 +188,18 @@ export default {
     // Trees round 2b (2026-10-03, the gauntlet's wave 15: "lush green groves on Wadi Rum"): Wadi Rum's floor carries a
     // few wide-spaced acacias in the wadi beds and hollows, not groves; six open groves (vegetation.ts treeBiomeArid
     // seats them in the low ground), twenty lone trees in the beds, a thin sward on the sand. Was 24 / 46 / 0.38.
-    clusterCount: 6, loneCount: 20, rimCount: 30, grassDensity: 0.08,
-    clusterScrub: 1.5, bushCount: 0.6, bushSpecies: 'oak',
+    // (Redrock r3, the blind critics on v2: "the acacias too lush, green and rounded for Wadi Rum", "empty flat sand
+    // foregrounds") fewer trees, the scattered Retama and the dry tussocks over the open sand a little thicker
+    clusterCount: 4, loneCount: 14, rimCount: 22, grassDensity: 0.11,
+    clusterScrub: 1.2, bushCount: 0.85, bushSpecies: 'oak',
     // (round 10, the gauntlet's wave 270: the white broom's sprays "saguaro-like cactus", the acacias "lush green") the
     // wadi's trees and scrub in Acacia raddiana's and Retama raetam's dust-dulled silver-green: a fifth of a leaf's
     // saturation, paler, the card tint all but neutral (the broadleaf slots and the shrubs read the oak palette, the
     // cedar slot the pine's); the scrub a fifth sparser
     palettes: {
       oak: { cardHue: 0.19, cardSat: 0.035, texTone: (h: number, s: number, l: number) => [0.2, clamp01(s * 0.17), clamp01(l * 1.18 + 0.05)] },
+      // (r3) the acacia slot's own palette as dust-dulled as the others' (it took the arid foliage's greener 0.32)
+      acacia: { cardHue: 0.17, cardSat: 0.03, texTone: (h: number, s: number, l: number) => [0.17, clamp01(s * 0.14), clamp01(l * 1.12 + 0.06)] },
       pine: { cardHue: 0.19, cardSat: 0.035, texTone: (h: number, s: number, l: number) => [0.2, clamp01(s * 0.17), clamp01(l * 1.18 + 0.05)] },
     },
     // (round 10: the tussocks were "tall, flat cross-card blades far out of scale" in the low sand view — a dry tuft stands
