@@ -111,6 +111,7 @@ import {
 import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
+import { withGarageWeather } from './game/garageWeather.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
@@ -830,7 +831,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getGarageSkyConfig: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
-    return getGarageSkyPreset(variant.mapId);
+    return withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId));
   },
   getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
@@ -886,7 +887,8 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
     nightLighting.reset();
     frontline.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
-    sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
+    // (2026-10-15, the SKY lane) the overcast battlefields' yards under the Garage's fair weather (garageWeather.ts)
+    sky.applyPresentationPreset(withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)), scene);
     worldRuntime.invalidateSkyPresentation();
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
   },
