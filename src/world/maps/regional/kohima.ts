@@ -3,10 +3,11 @@
 // deep verandas; the bazaar's timber shops under sheet roofs; the mission church of rough stone under a red tin roof;
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, facePoint as facePointOn, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, closeGables, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
+import { boardCladding } from './villageCraft.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -182,6 +183,10 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     window: (s2, face, o, y0) => windowUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(plank, 0.7), frameWidth: 0.06, frameOut: 0.03, bars: 'none', surround: null, sill: null,
       shutters: { colour: shade(plank, 0.8), kind: 'plank', closed: 0.6 } }, rng, 0.2),
     door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0),
+    // (the looks lane, 2026-10-15; WORKLIST #15 "kohima nagaHouse from members": the boards were one printed panel a run)
+    // the walls in the Angami's broad adzed planks, each its own, battens over their joints, a rail at foot and head
+    dressWall: (s2, face, rect, own) => boardCladding(s2, face, rect, own, (k) => shade(plank, 0.82 + ((k * 7919 + Math.round(W * 13)) % 23) / 23 * 0.26),
+      shade(plank, 0.72), { mobile: ctx.tier === 'mobile', width: face.out[2] > 0.5 ? 0.42 : 0.3 }),
   };
   // the thatch: steep, deep eaves sweeping down to near a metre off the ground
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
@@ -190,16 +195,25 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     let frame;
     try {
       frame = buildHouse(sink, {
-        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
-        openings, chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
+        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood', framed: true }], roof, gableBucket: 'structureWood',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
       }, dialect);
-      if (ctx.tier !== 'mobile') {
-        const y0 = frame.floors[0] + 0.05, y1 = frame.eaveY - 0.05;
-        boardRuns(sink, frame.faces.front, y0, y1, plank, [[du - 0.4, du + 0.4]]);
-        boardRuns(sink, frame.faces.right, y0, y1, plank, [[D * 0.18 - 0.28, D * 0.18 + 0.28]]);
-        boardRuns(sink, frame.faces.back, y0, y1, plank, []);
-        boardRuns(sink, frame.faces.left, y0, y1, plank, []);
+      // the front planks beside the door carved in relief: the mithun's head with its horns (the feast of merit's mark)
+      // over the door's side planks, and the moon disc; and before the house the sitting stones of its forecourt
+      const f = frame.faces.front, y0 = frame.floors[0];
+      for (const [u, y] of [[du - 0.75, y0 + 1.15], [du + 0.75, y0 + 1.15]] as const) {
+        if (Math.abs(u) > W / 2 - 0.4) continue;
+        faceBox(sink, 'structureWood', f, u, y, 0.06, 0.26, 0.2, 0.06, { colour: shade(plank, 1.12), decor: true });
+        for (const sx of [-1, 1]) sink.member('structureWood', facePointOn(f, u + sx * 0.1, y + 0.08, 0.07), facePointOn(f, u + sx * 0.32, y + 0.26, 0.07), 0.06, 0.04, f.out,
+          { colour: shade(plank, 1.15), decor: true, exposed: true, fine: true }, 0.01);
       }
+      sink.cylinder('structureWood', facePointOn(f, du + (du < 0 ? 1.4 : -1.4), y0 + 1.25, 0.03), 'z', 0.04, 0.17, 10, { colour: shade(plank, 1.2), decor: true, fine: true });
+      sink.dressing(ctx.tier === 'mobile', () => {
+        for (let k = 0; k < 3; k++) {
+          const x = -W / 2 + 0.9 + k * 1.1 + (ctx.variant() - 0.5) * 0.3, z = D / 2 + 0.95 + (ctx.variant() - 0.5) * 0.3;
+          sink.span('stone', x - 0.42, 0.42, z - 0.24, x + 0.42, 0.5 + 0.18 + ctx.variant() * 0.06, z + 0.24, { decor: true, shade: 0.94 });
+        }
+      });
     } finally { sink.paint = null; }
     // the crossed horns (kika) over the front gable
     const z = D / 2 + roof.verge - 0.1, apex = frame.roof.ridgeTopY;
