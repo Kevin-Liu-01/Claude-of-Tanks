@@ -7,6 +7,8 @@ import { resolvePresetName } from '../engine/quality.ts';
 import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.ts';
 import type { DestructibleRecord, PropsBuildSlice, PropsMapConfig } from './props.ts';
 import type { CollisionRecord } from './collision.ts';
+import { CrushableClutter } from './crushableClutter.ts';
+import { FieldWallCrush, fieldWallSpans } from './fieldWallCollision.ts';
 import { composeFieldWorks } from './scenery.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 import { applyStoneWallHook } from './stoneWallShader.ts';
@@ -31,6 +33,8 @@ export interface FieldWallLod {
   material: THREE.Material;
   /** (b17) The cells that want their stone form and have none yet, at the last switch (map.ts getFieldWallWorkState). */
   pending?: number;
+  /** (PH.15) The crushed spans' press, which a stone form takes as it is built (fieldWallCollision.ts). */
+  crush?: FieldWallCrush;
 }
 
 /** What the field works read of a props build (props.ts propsBuildSteps' own locals). */
@@ -60,8 +64,8 @@ export interface FieldBoundaryWorksContext {
 /** The field boundaries' walls and banks of one props build (props.ts calls it after the pools' refit). */
 export function* placeFieldBoundaryWorks(context: FieldBoundaryWorksContext): Generator<PropsBuildSlice, void, void> {
   const {
-    cfg, mapId, heightField, L, obstacles, sceneryTrees, seed, mobileProps, buildingFeatures, group, aniso, engineCtx,
-    grimeHook, stoneShape, retainedSurfaceMaterials, mats, makeDryWall,
+    cfg, mapId, heightField, L, obstacles, colliders, destructibles, sceneryTrees, seed, mobileProps, buildingFeatures, group,
+    aniso, engineCtx, grimeHook, stoneShape, retainedSurfaceMaterials, mats, makeDryWall,
   } = context;
   // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once
   // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
@@ -79,6 +83,18 @@ export function* placeFieldBoundaryWorks(context: FieldBoundaryWorksContext): Ge
     });
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
+    // (physics stream PH.15) the walls' crushable spans: shells and sight stop on the stone, a hull crushes it and is never
+    // stopped (fieldWallCollision.ts), from the desktop's plan on every tier; appended after every other destructible
+    const wallGround = (x: number, z: number): number => (heightField.getHeightAtFast ? heightField.getHeightAtFast(x, z) : heightField.getHeightAt(x, z));
+    const wallCrush = new FieldWallCrush(wallGround);
+    for (const span of built.walls ? fieldWallSpans(built.walls.lines, built.walls.noise, wallGround) : []) {
+      const clutter = new CrushableClutter('field-wall', span.cx, span.y, span.cz, span.halfAlong, span.h, [span.obstacle], [span.collider]);
+      obstacles.push(span.obstacle); colliders.push(span.collider);
+      if (!clutter.activate(destructibles.length)) continue;
+      destructibles.push({ kind: clutter.kind, cls: 'break', x: clutter.x, y: clutter.y, z: clutter.z, yaw: 0, sc: 1, r: clutter.r, h: clutter.h,
+        slot: -1, state: 0, ob: span.obstacle, col: span.collider, groundSupport: null, clutter });
+      clutter.crushHooks.push((crushed) => wallCrush.press(span, crushed));
+    }
     if (!built.wallCells.length && !built.bankGeometry) return;
     // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
     // banks on the rock material)
@@ -133,6 +149,13 @@ export function* placeFieldBoundaryWorks(context: FieldBoundaryWorksContext): Ge
       for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
       // (the switch reads the cells through the group, as the fine joinery's does: updateFieldWallLod)
       group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells, fine: built.fine, material: wallMaterial } satisfies FieldWallLod;
+      // (PH.15) a crushed span pressed in the mid and far forms, and in the stone forms shown
+      if (near) wallCrush.bindBatch(near.batch, cells.map((cell) => ({ box: cell.box, instance: cell.near })));
+      if (far) wallCrush.bindBatch(far.batch, cells.map((cell) => ({ box: cell.box, instance: cell.far })));
+      wallCrush.bindStones(function* () {
+        for (const cell of cells as FieldWallLod['cells']) if (cell.stones) yield { box: cell.box, geometry: cell.stones.geometry };
+      });
+      (group.userData.fieldWallLod as FieldWallLod).crush = wallCrush;
     }
     if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
@@ -181,6 +204,7 @@ export function createFieldWallLod(group: THREE.Group): (cameraPos: THREE.Vector
         const { cell } = wallJob, g = step.value;
         wallJob = null;
         if (g) {
+          lod.crush?.pressBuilt(g, cell.box); // (PH.15: the crushed spans over it)
           const mesh = new THREE.Mesh(g, lod.material);
           mesh.name = 'props-field-works-stones';
           mesh.castShadow = false; mesh.receiveShadow = true; mesh.matrixAutoUpdate = false;
