@@ -446,6 +446,13 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
       const xa = px - 0.09, xb = x0 + 0.08, r = 0.065;
       rod(sink, 'structureWood', [xa, purlinY(xa) - 0.05 - r, zr], [xb, purlinY(xb) - 0.05 - r, zr], r, 7, { colour: shade(plate, 0.95), decor: true, uv: UV_MEMBER });
     }
+    // the corrugated sheets' side laps down the slope, a sheet's width apart (fine joinery on the sheets' top)
+    const cosP = Math.cos(9 * Math.PI / 180), topAt = (x: number) => shed.undersideAt(x, 0) + roof.thickness / cosP;
+    const nrm: Vec3 = [-Math.sin(9 * Math.PI / 180), cosP, 0];
+    for (let z = -D / 2 - 0.3 + 0.86; z < D / 2 + 0.3 - 0.1; z += 0.86) {
+      const xa = x0 - 0.3, xb = x0 + W + 0.3;
+      sink.member('roof', [xa, topAt(xa), z], [xb, topAt(xb), z], 0.06, 0.02, nrm, { decor: true, fine: true, exposed: true }, 0.004);
+    }
   });
   // the lean-to off the front for the trucks: a low tin roof falling away from the shed, hung at its high line on a
   // ledger along the front poles and resting on a plate over its own poles
