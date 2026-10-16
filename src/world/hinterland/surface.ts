@@ -65,6 +65,22 @@ export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: 
   });
 }
 
+/** A sea's pack ice at (x, z) for an ice cover 0..1 (HOR-05, Davis Strait): 1 a snow-covered floe (its linear albedo
+ * into `tone`), 0 a refrozen lead's grey new ice, -1 an open lead. Floes a few hundred metres to kilometres across
+ * (two noise scales), the leads between them a few tens of metres to a hundred; the cover sets the leads' share. */
+const NEW_ICE: readonly [number, number, number] = [0.16, 0.2, 0.25];
+const packTone: [number, number, number] = [0, 0, 0];
+function seaIceAt(x: number, z: number, ice: number, tone: [number, number, number]): number {
+  const n = 0.5 + 0.5 * (0.6 * noise2(x / 1100 + 31.7, z / 1100 - 8.3) + 0.4 * noise2(x / 280 - 4.1, z / 280 + 12.9));
+  const open = 0.08 + 0.42 * (1 - ice);
+  if (n < open) return -1;
+  if (n < open + 0.04) return 0;
+  // (a floe's snow, a little bluer where it is bare and wind-polished)
+  const k = 0.88 + 0.12 * (0.5 + 0.5 * noise2(x / 140 + 3.3, z / 140 - 1.9));
+  tone[0] = 0.62 * k; tone[1] = 0.7 * k; tone[2] = 0.82 * k;
+  return 1;
+}
+
 /** A snow-dusted spruce wood's crowns (linear), before its dusting. */
 const SNOW_SPRUCE: readonly [number, number, number] = [0.022, 0.036, 0.034];
 
@@ -132,8 +148,12 @@ export function bakeHinterlandSurface(
         let albedo: readonly [number, number, number];
         if (cover.cls === HL_COVER.water) {
           field.waterAt(x, z, water);
-          flags |= HL_SURFACE_FLAG.water | (water.kind === 1 ? HL_SURFACE_FLAG.sea : 0);
-          albedo = CLASS_ALBEDO[HL_COVER.water];
+          const pack = (water.ice ?? 0) > 0 ? seaIceAt(x, z, water.ice ?? 0, packTone) : -1;
+          if (pack > 0) { flags |= HL_SURFACE_FLAG.snow; albedo = packTone; }
+          else {
+            flags |= HL_SURFACE_FLAG.water | (water.kind === 1 ? HL_SURFACE_FLAG.sea : 0);
+            albedo = pack === 0 ? NEW_ICE : CLASS_ALBEDO[HL_COVER.water];
+          }
         } else if (cover.cls === HL_COVER.snow) { flags |= HL_SURFACE_FLAG.snow; albedo = CLASS_ALBEDO[HL_COVER.snow]; }
         else if (cover.cls === HL_COVER.rock) {
           field.geologyAt(x, z, geo, slope, h);

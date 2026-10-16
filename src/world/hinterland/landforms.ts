@@ -355,7 +355,9 @@ function placeEscarpment(cfg: HinterlandLandformConfig, salt: number, bedM: numb
     if (tu >= 1) return 0;
     const ends = 1 - smoothstep(0.7, 1, tu);
     // the scarp's line wanders (alcoves and spurs ~180 m), the face takes a third of the width, the plateau the rest
-    const edge = 0.08 * f.halfW * fbm2(u / 180 + ox, oz, 3) - 0.35 * f.halfW;
+    // (a wide scarp's alcoves grow with it but stay a few hundred metres: at 0.08 of a 3.8 km half-width over 180 m
+    // waves Whiteout's coast fall zigzagged in the plan, HOR-05)
+    const edge = Math.min(0.08 * f.halfW, 140) * fbm2(u / Math.max(180, 0.12 * f.halfW) + ox, oz, 3) - 0.35 * f.halfW;
     const t = (v - edge) / (0.4 * f.halfW);
     if (t <= 0) return 0;
     const back = 1 - smoothstep(0.85, 1, (v + f.halfW) / (2 * f.halfW));

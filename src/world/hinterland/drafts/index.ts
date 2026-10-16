@@ -7,5 +7,6 @@ import badlands from './badlands.ts';
 import caldera from './caldera.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
+import whiteout from './whiteout.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, badlands, caldera, polders, verdant });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, badlands, caldera, polders, verdant, whiteout });

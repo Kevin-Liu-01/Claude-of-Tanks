@@ -56,6 +56,11 @@ export default {
       { kind: 'knoll', x: 318, z: -262, r: 20, height: 4.2 },
       { kind: 'knoll', x: 360, z: 330, r: 18, height: 3.8 },
       { kind: 'knoll', x: -250, z: -320, r: 17, height: 3.4 },
+      // the plateau's east edge (the horizons stream's Whiteout item, HOR-05): the ground falls away over the last ~110 m
+      // to the red line, 8 m at the edge, as the plateau's own fall toward Davis Strait begins — from the east eyes the
+      // last 80 m of rim stood 0.3-0.7° above every bearing of the strait's pack ice 700 m below, so it never showed; the
+      // Hinterland continues the fall past the edge (its residual term) to the plateau's brink and the scarp
+      { kind: 'basin', x: 540, z: 0, rx: 140, rz: 620, height: -8 },
     ],
   },
   spawns: { player: { x: -102, z: -390 }, enemies: [

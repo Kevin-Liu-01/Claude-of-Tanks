@@ -124,6 +124,12 @@ export interface BorderLandformSettings {
    */
   farmBuildings?: boolean;
   /**
+   * Bearings (deg, clockwise from the first to the second) where the border opens whatever the enclosure field says:
+   * the rim falls to its floor and the outland's hills to a tenth, so the eye runs out over the edge to what lies below
+   * it (HOR-05, Whiteout: Davis Strait's pack ice 700 m under the plateau, east). A soft shoulder of ~14° each side.
+   */
+  openArcs?: readonly (readonly [number, number])[];
+  /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
    * their predecessor and current fields with it. Not a map setting.
@@ -171,7 +177,7 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   // plateau stands in the pine forest: the woods the near band's main cover, the fields its clearings, few hedge rows)
   airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.62, hedgerows: 0.12, fields: 0.3, crops: 'steppe', farms: 5, buildings: 'steppe' },
   oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
-  whiteout: { forest: 0, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0 }, // map revival lane 2, round 3 (folded in by the map-content lane, 2026-10-09): Cape Dyer has no tree for hundreds of kilometres (wave 130: "conifer clusters on both flanks")
+  whiteout: { forest: 0, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0, openArcs: [[45, 140]] }, // map revival lane 2, round 3 (folded in by the map-content lane, 2026-10-09): Cape Dyer has no tree for hundreds of kilometres (wave 130: "conifer clusters on both flanks")
   orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65, farms: 12 },
   longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15, farms: 6 },
   mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0, farms: 6, buildings: 'tropical', erosion: 0 },
@@ -282,6 +288,19 @@ export function createBorderLandform(
     erosion: 0.5, concavity: 1.1, contrast: settings.erosion, smoothM: 0,
   }, [560, 1500]) : null;
   const inv = 1 / Math.max(120, wavelengthM);
+  const openArcs = settings.openArcs?.length ? settings.openArcs : null;
+  /** 0..1: inside one of the open arcs (soft shoulders), by the point's bearing from the centre. */
+  function openAt(x: number, z: number): number {
+    if (!openArcs) return 0;
+    const b = ((Math.atan2(x, z) * 180) / Math.PI + 360) % 360;
+    let w = 0;
+    for (const [a0, a1] of openArcs) {
+      const span = ((a1 - a0) % 360 + 360) % 360, rel = ((b - a0) % 360 + 360) % 360;
+      const inside = rel <= span ? Math.min(rel, span - rel) : -Math.min(rel - span, 360 - rel);
+      w = Math.max(w, smoothstep(-6, 8, inside));
+    }
+    return w;
+  }
   const bias = (Math.max(0, Math.min(1, enclosure)) * 2 - 1) * 0.75;
 
   /** 1 on a leaving road's line, 0 by VALLEY_SIDE_M from it (bounding boxes first: most queries touch no line). */
@@ -332,6 +351,7 @@ export function createBorderLandform(
     const e = noise.noise(x * 0.00082 + 17.3, z * 0.00082 - 41.9) * 0.8 + noise.noise(x * 0.0019 - 5.1, z * 0.0019 + 23.7) * 0.25;
     let a = smoothstep(-0.55, 0.55, e + bias);
     if (valleys.length) a *= 1 - 0.9 * valleyAt(x, z);
+    if (openArcs) a *= 1 - openAt(x, z);
     return a;
   }
   /** 0..1: the corner share — the creases of the old rim stood where both edges are near. */
@@ -341,7 +361,8 @@ export function createBorderLandform(
   }
   /** The level (units of rimH) the land holds at the playable edge: the square's rim where enclosed, lower where open. */
   function nearLevelAt(x: number, z: number, a: number): number {
-    const k = rimFloor + (1 - rimFloor) * a;
+    const floor = openArcs ? rimFloor + (Math.min(rimFloor, 0.12) - rimFloor) * openAt(x, z) : rimFloor;
+    const k = floor + (1 - floor) * a;
     return RIM_AT_PLAYABLE * k * (1 - 0.55 * cornerAt(x, z));
   }
   /** The hills (units of rimH): domain-warped fBm with a ridged share, crests where the field is high. */
@@ -382,6 +403,7 @@ export function createBorderLandform(
     // the hills grow with distance into the foothills of the ranges behind (which the ring's rows carry from ~350 m on)
     const grow = 1 + 1.1 * smoothstep(reach, reach + 520, d);
     let crest = hillHeight * (0.12 + 0.88 * h) * (0.5 + 0.5 * a) * grow;
+    if (openArcs) crest *= 1 - 0.9 * openAt(x, z);
     // the crests carved into spurs, couloirs and cols (the multiplier averages one over the band), from 20 m past the
     // edge on: the square's own mesh (and every collision record on it) keeps its ground
     if (foothills) {
