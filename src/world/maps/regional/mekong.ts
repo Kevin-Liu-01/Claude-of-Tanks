@@ -13,6 +13,7 @@ import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, ladder, stilts, veranda } from './
 import { boardCladding, matCladding, proppedShutter } from './villageCraft.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
+import { orientedPrism } from './millWorks.ts';
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
 
@@ -292,14 +293,58 @@ function deltaShed(ctx: RegionalBuildContext, granary: boolean): RegionalParts {
 const marketHall: RegionalBuilder = (ctx) => mekongMarketHall(ctx, RUSTED);
 
 /** A collapsed stilt house: posts leaning, the deck broken, the roof sheets down. */
+/** A round pole from `a` to `b` (an octagon of radius `r` run along the axis). */
+function roundPole(sink: PartSink, a: Vec3, b: Vec3, r: number, opts: EmitOptions): void {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+  if (len < 1e-3) return;
+  const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
+  const hint: Vec3 = Math.abs(ax[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const u = unit3(cross3(ax, hint)), v = cross3(ax, u);
+  const pts: Vec3[] = [];
+  for (let k = 0; k < 8; k++) {
+    const t = (k / 8) * Math.PI * 2;
+    pts.push([a[0] + (u[0] * Math.cos(t) + v[0] * Math.sin(t)) * r, a[1] + (u[1] * Math.cos(t) + v[1] * Math.sin(t)) * r, a[2] + (u[2] * Math.cos(t) + v[2] * Math.sin(t)) * r]);
+  }
+  orientedPrism(sink, 'structureWood', pts, ax, len, opts);
+}
+
+/** A corrugated sheet `w` wide lying from `a` to `b` (its ribs along the run, its faces 12 mm apart, every face closed). */
+function corrugatedSheet(sink: PartSink, a: Vec3, b: Vec3, w: number, opts: EmitOptions): void {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+  if (len < 1e-3) return;
+  const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
+  const across = unit3(cross3([0, 1, 0], ax)), up = unit3(cross3(ax, across));
+  const ribs = 10, t = 0.012;
+  const at = (k: number, lift: number, end: 0 | 1): Vec3 => {
+    const uu = -w / 2 + (w * k) / ribs, vv = (k % 2 ? 0.025 : 0) + lift, p = end ? b : a;
+    return [p[0] + across[0] * uu + up[0] * vv, p[1] + across[1] * uu + up[1] * vv, p[2] + across[2] * uu + up[2] * vv];
+  };
+  const face = (p: Vec3[], n: Vec3) => {
+    const c = cross3([p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]], [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]]);
+    const q = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] >= 0 ? p : [...p].reverse();
+    sink.quad('roof', q[0], q[1], q[2], q[3], opts);
+  };
+  const down: Vec3 = [-up[0], -up[1], -up[2]];
+  for (let k = 0; k < ribs; k++) {
+    face([at(k, 0, 0), at(k + 1, 0, 0), at(k + 1, 0, 1), at(k, 0, 1)], up);
+    face([at(k, -t, 0), at(k + 1, -t, 0), at(k + 1, -t, 1), at(k, -t, 1)], down);
+    for (const end of [0, 1] as const) face([at(k, 0, end), at(k + 1, 0, end), at(k + 1, -t, end), at(k, -t, end)], end ? ax : [-ax[0], -ax[1], -ax[2]]);
+  }
+  for (const k of [0, ribs]) face([at(k, 0, 0), at(k, 0, 1), at(k, -t, 1), at(k, -t, 0)], k ? across : [-across[0], -across[1], -across[2]]);
+}
+const cross3 = (p: Vec3, q: Vec3): Vec3 => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
+const unit3 = (p: Vec3): Vec3 => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
+
 const collapsed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(4.6, ctx.info.w - 1.0), D = Math.max(6, ctx.info.d - 2.0);
   const post = shade(pick(rng, WEATHERED_PLANK), 0.75);
+  // (props census r2 sweep, Lane C 2026-10-16: the ruin's box-only share 72 %) the stilts left standing are round poles,
+  // the fallen sheets corrugated; the draws as before
   for (let k = 0; k < 7; k++) {
     const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D, h = 0.6 + rng() * 1.8;
-    sink.member('structureWood', [x, -0.3, z], [x + (rng() - 0.5) * 0.8, h, z + (rng() - 0.5) * 0.8], 0.16, 0.16, [1, 0, 0], { colour: post, exposed: true });
+    roundPole(sink, [x, -0.3, z], [x + (rng() - 0.5) * 0.8, h, z + (rng() - 0.5) * 0.8], 0.085, { colour: post, exposed: true });
   }
   // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
   // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
@@ -313,7 +358,7 @@ const collapsed: RegionalBuilder = (ctx) => {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
     const ax = x - Math.cos(a) * 1.6, az = z - Math.sin(a) * 1.6; rng();
     const bx = x + Math.cos(a) * 1.6, bz = z + Math.sin(a) * 1.6; rng();
-    sink.member('roof', [ax, under(ax, az), az], [bx, under(bx, bz), bz], 1.6, 0.05, [0, 1, 0], { decor: true, exposed: true });
+    corrugatedSheet(sink, [ax, under(ax, az) + 0.02, az], [bx, under(bx, bz) + 0.02, bz], 1.6, { decor: true, exposed: true });
   }
   // (props census #7, lane B 2026-10-14; the judges: "the thatch a straw box") the fallen thatch slumped in a low mound
   // under the sheets, its ends ragged
