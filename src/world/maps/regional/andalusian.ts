@@ -323,12 +323,44 @@ function persiana(sink: PartSink, face: Face, u: number, y: number, w: number, h
   faceBox(sink, 'structureWood', face, u, bottom + 0.045, off + 0.015, w + 0.18, 0.09, 0.08, opts);
 }
 
+/**
+ * The plank shutters (postigos) of a window (u, y: its bottom-centre): two leaves, each three boards side by side with
+ * their joints open a centimetre and two ledges across them, folded back flat on the wall either side of the surround,
+ * or now and then closed across the opening. (Props census r2 sweep, Lane C 2026-10-16: openings.ts laid each leaf as
+ * one board, six of the school's read as dark plates painted on the white walls.) Its draws are windowUnit's for its
+ * shutters, in their order: the leaves' fade, then whether they stand closed.
+ */
+function postigos(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: WindowStyle, rng: () => number): void {
+  const sh = style.shutters!, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
+  const fade = 0.88 + rng() * 0.2;
+  const closed = rng() < (sh.closed ?? 0);
+  const sc = { colour: [sh.colour[0] * fade, sh.colour[1] * fade, sh.colour[2] * fade] as Rgb, decor: true, uv: UV_MEMBER };
+  const T = 0.035, boards = 3, joint = 0.012, lh = h + 0.02;
+  const leafAt = (cu: number, o: number, ledges: boolean) => {
+    for (let k = 0; k < boards; k++) {
+      faceBox(sink, 'structureWood', face, cu - leaf / 2 + (k + 0.5) * leaf / boards, y + h / 2, o, leaf / boards - joint, lh, T, { ...sc, fineSides: true });
+    }
+    if (ledges) for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, o + T / 2 + 0.008, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true, ends: true });
+  };
+  if (closed) {
+    // both leaves across the opening, proud of the frame, their ledges inside
+    const shut = Math.max(0, style.frameOut - sink.recess);
+    leafAt(u - leaf / 2 + 0.015, shut + 0.025, false);
+    leafAt(u + leaf / 2 - 0.015, shut + 0.028, false);
+    return;
+  }
+  // folded back flat on the wall (their back faces then never show), the ledged inner faces out
+  for (const side of [-1, 1]) leafAt(u + side * (w / 2 + sideOff + leaf / 2 + 0.02), T / 2 + 0.001, true);
+}
+
 function dialect(st: AndalusianState, look: () => number): HouseDialect {
   return {
     window: (sink, face, o, y0) => {
       const loft = o.kind === 'loft';
-      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window,
+      // (the shutters' two draws are windowUnit's last on the stream: the leaves drawn after it draw them in its place)
+      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : { ...st.window, shutters: null },
         st.rng, loft ? 0 : st.litShare);
+      if (!loft && st.window.shutters) postigos(sink, face, o.u, y0 + o.y0, o.w, o.h, st.window, st.rng);
       if (!loft && o.storey === 0 && st.reja) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, st.reja === 'box');
       if (!loft && o.storey > 0 && look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
     },
@@ -1013,15 +1045,11 @@ const escuela: RegionalBuilder = (ctx) => {
       for (const o of windowRhythm(face, i, D, { w: 1.15, h: i ? 1.8 : 1.9, sill: i ? 0.8 : 0.9, spacing: 2.5, margin: 1.2 })) openings.push(o);
     }
     for (const o of windowRhythm('back', 0, W, { w: 1.0, h: 1.4, sill: 1.1, spacing: 2.6, margin: 1.2 })) openings.push(o);
-    // (props census r2 sweep, Lane C 2026-10-16: the school's dark plank leaves read as six painted plates on the white
-    // walls) a regionalist school's shutters are louvred (persianas de librillo): each leaf built as one, its stiles,
-    // rails and slats, the wall showing through their gaps (openings.ts)
-    const shutters = st.window.shutters ? { ...st.window.shutters, kind: 'louvred' as const } : null;
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'plaster' }, { h: 3.6, wall: 'plaster' }],
       roof: canal(22, 0.38, 0.38, 'hip'), openings, gutters: null, verge: null, spall: null, reveal: 0.3,
       chimneys: [{ x: W * 0.2, z: -D * 0.28, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'tile' }],
-    }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, shutters, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
+    }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
     alero(sink, frame);
     band(sink, frame, 1, frame.floors[1] - 0.05, 0.24, 0.05, 'plaster2');
     const b0 = frame.bodies[0];
