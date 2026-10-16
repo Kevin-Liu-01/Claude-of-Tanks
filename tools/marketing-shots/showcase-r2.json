@@ -37,7 +37,6 @@
     "docs/simulation": ["24_live_killcam_impact", "25_live_killcam_xray"],
     "docs/vehicles": ["11_gallery_hero", "13_gallery_modules"],
     "docs/rendering": ["19_live_sniper", "17_live_player_hud"],
-    "docs/performance": ["17_live_player_hud", "16_mobile_garage"],
     "docs/worlds": ["01_garage_verdant", "03_garage_frosthollow"],
     "docs/ai": ["17_live_player_hud"],
     "docs/multiplayer": ["17_live_player_hud"],

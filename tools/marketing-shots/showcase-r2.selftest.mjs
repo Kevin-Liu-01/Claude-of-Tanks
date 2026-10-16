@@ -20,14 +20,15 @@ for (const [kind, count] of Object.entries(expectedKinds)) {
   assert.equal(config.shots.filter((shot) => shot.kind === kind).length, count, `${kind} shot count`);
 }
 
+// docs/performance shows no UI frame: performance and loading are told by the versus stills (2026-10-15)
 const expectedRoutes = [
   'home', 'garage', 'gallery', 'studio', 'docs',
   'docs/build', 'docs/models', 'docs/simulation', 'docs/vehicles',
-  'docs/rendering', 'docs/performance', 'docs/worlds', 'docs/ai',
+  'docs/rendering', 'docs/worlds', 'docs/ai',
   'docs/multiplayer', 'docs/audio', 'docs/interface', 'docs/studio',
 ];
 assert.deepEqual(Object.keys(config.pageAssignments).sort(), expectedRoutes.sort(),
-  'R2 must explicitly cover every public page');
+  'R2 must explicitly cover every public page that shows its frames');
 const ids = new Set(config.shots.map((shot) => shot.id));
 for (const [route, routeIds] of Object.entries(config.pageAssignments)) {
   assert.ok(routeIds.length > 0, `${route} must have at least one frame`);

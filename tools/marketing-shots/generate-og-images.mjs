@@ -3,8 +3,9 @@
 // bottom-left Monument Grotesk lockup, rendered from the current crest master.
 // Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
 // of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
-// the 404 and the manual's battle topics; the current Tank Gallery, Scene Studio, battle HUD, live close-up and
-// multiplayer captures for the pages about those screens. A picture shared by two cards is framed differently on each.
+// the 404 and the manual's battle topics, performance and loading among them; the current Tank Gallery, Scene Studio,
+// battle HUD and multiplayer captures for the pages about those screens. A picture shared by two cards is framed
+// differently on each.
 // A 1920x1080 picture covers the card at its full width, so its focus only moves the 45 px it loses top and bottom
 // (every tank stays in frame); the 2400x700 dual view, the HUD and the Studio's manual card are shown whole
 // ('contain', over their own blurred copy) so no player view, HUD edge or panel is cut.
@@ -32,7 +33,7 @@ export const OG_IMAGE_CARDS = [
   ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 0%'],
   ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 100%'],
   ['docs-rendering', 'RENDERER AND GRAPHICS', 'public/media/versus-r1/vs01-desert-abrams-t90m.webp', '50% 0%'],
-  ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/presentation-r1/ui_tank_closeup_modern.webp', '50% 50%'],
+  ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 0%'],
   ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/media/versus-r1/vs03-reservoir-k2-type99a.webp', '50% 0%'],
   ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/versus-r1/vs08-winter-cv90-bmp3.webp', '50% 0%'],
   ['docs-multiplayer', 'MULTIPLAYER ROOMS', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 28%', 'contain'],

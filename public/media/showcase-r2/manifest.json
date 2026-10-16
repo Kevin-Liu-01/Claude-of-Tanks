@@ -79,10 +79,6 @@
       "19_live_sniper",
       "17_live_player_hud"
     ],
-    "docs/performance": [
-      "17_live_player_hud",
-      "16_mobile_garage"
-    ],
     "docs/worlds": [
       "01_garage_verdant",
       "03_garage_frosthollow"
@@ -667,7 +663,6 @@
       },
       "pages": [
         "garage",
-        "docs/performance",
         "docs/interface"
       ],
       "quality": {
@@ -701,7 +696,6 @@
       "pages": [
         "docs",
         "docs/rendering",
-        "docs/performance",
         "docs/ai",
         "docs/multiplayer"
       ],
