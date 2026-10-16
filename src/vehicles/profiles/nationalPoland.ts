@@ -107,7 +107,7 @@ export interface PolishFrontSkirt {
 /** Layered skirt modules have a real chamfered thickness and a continuous
  * mounting rail. Their returns turn inwards only past the native track ends.
  * `frontBay: false` (release 227, the Zubr) leaves the front bay's tiles to the national frontal package. */
-export function skirts(P: TankBuilderPort, model: number, options: {frontBay?: boolean} = {}): PolishFrontSkirt {
+function skirts(P: TankBuilderPort, model: number, options: {frontBay?: boolean} = {}): PolishFrontSkirt {
   const count = model === 0 ? 7 : model === 1 ? 6 : 8;
   const length = model === 1 ? 5.82 : 5.15, zCenter = model === 1 ? .07 : .03;
   const inner = model === 1 ? 1.92 : model === 0 ? 1.87 : 1.86;

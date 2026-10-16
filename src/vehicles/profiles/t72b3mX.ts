@@ -309,7 +309,7 @@ function mainGun(P:TankBuilderPort):void {
  * `nativeEra: false` drops its Relikt glacis sheet and straps and its side-skirt Relikt boxes with their backing
  * strips (the rubber curtains stay); `glacisLamps: false` drops the two round glacis headlights and their guards.
  * (2026-10-16, release 227: Hetman II's own frontal package replaces them; its fitted skirt banks buried the boxes.) */
-export interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean }
+interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);

@@ -16,7 +16,7 @@ import {markVehicleNightLens, type VehicleLampKind} from '../vehicleNightLightin
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 export type V3 = readonly [number, number, number];
-export type Owner = 'hull' | 'turret';
+type Owner = 'hull' | 'turret';
 const v = (p: V3): THREE.Vector3 => new THREE.Vector3(...p);
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -60,15 +60,6 @@ export class Stock {
   dispose(): void { this.material.dispose(); }
 }
 
-/** Permanent stock of an owner (its structural bucket and its external-armour bucket, never ERA). */
-export function permanentStock(P: TankBuilderPort, owner: Owner, extra: readonly string[] = []): Stock {
-  const parts: THREE.BufferGeometry[] = [];
-  P.forEachBucketPart([owner, `${owner}ExternalArmor`, ...extra], g => {
-    if (!Object.hasOwn(g.userData, 'eraHitFaceVertexStarts')) parts.push(g);
-  });
-  return new Stock(P.spec.id, parts);
-}
-
 /** Closed loft through rings of 3D points (equal counts), every face wound outwards (convex rings only). */
 export function loft(rings: readonly (readonly V3[])[]): THREE.BufferGeometry {
   const positions: number[] = [];
@@ -97,29 +88,6 @@ export function loft(rings: readonly (readonly V3[])[]): THREE.BufferGeometry {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   return g;
-}
-
-/** A point moved `inset` metres along the ray that found it: a back face sunk into the stock it was seated on. */
-export function shellBack(stock: Stock, origin: V3, direction: V3, inset = .004): THREE.Vector3 {
-  const d = v(direction).normalize();
-  return stock.face(origin, direction).point.addScaledVector(d, inset);
-}
-
-/** Four seat points of a flat module found by parallel rays: throws on a miss or when they spread more than 6 mm out of
- * one plane (the module would rock or float). Returns the seat points and the plane's normal (towards the rays' origin). */
-export function seatQuad(stock: Stock, origins: readonly V3[], direction: V3, name: string): {points: THREE.Vector3[]; normal: THREE.Vector3} {
-  const points = origins.map(o => {
-    const hit = stock.tryFace(o, direction);
-    if (!hit) throw new Error(`${name}: seat ray from ${o.map(n => n.toFixed(3))} found no permanent stock`);
-    return hit.point;
-  });
-  const [a, b, c, d] = points;
-  const normal = c.clone().sub(a).cross(d.clone().sub(b)).normalize();
-  if (normal.dot(v(direction)) > 0) normal.negate();
-  const centre = points.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(.25);
-  const spread = Math.max(...points.map(p => Math.abs(p.clone().sub(centre).dot(normal))));
-  if (spread > .006) throw new Error(`${name}: seat points spread ${(spread * 1000).toFixed(1)} mm out of plane`);
-  return {points, normal};
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -168,18 +136,13 @@ export function crosswiseSolid(stations: readonly {x: number; ring: readonly (re
 }
 
 /** Signed area of a 2-D ring (positive: counter-clockwise). */
-export function ringArea(ring: readonly SectionPoint[]): number {
+function ringArea(ring: readonly SectionPoint[]): number {
   let a = 0;
   for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; a += p[0] * q[1] - q[0] * p[1]; }
   return a / 2;
 }
-/** The ring counter-clockwise. */
-export function ccw(ring: readonly SectionPoint[]): SectionPoint[] { return ringArea(ring) < 0 ? [...ring].reverse() : [...ring]; }
-
 // ---------------------------------------------------------------------------------------------------------------------
 // ERA modules
-
-export type EraLayers = 'single' | {doublet: {groove: number; depth: number; at: number}} | {stack: {seam: number; inset: number; chamfer: number}};
 
 /** One removable ERA module bound to an existing gameplay sector: its geometry's authored hit faces face `outward`
  * (cosine above minDot), its hardware (lugs, bolts, hooks) is furniture that leaves with it and is drawn only on the
@@ -237,35 +200,10 @@ export function mosaicLayout(length: number, pitch: number, rows: number, stagge
 // ---------------------------------------------------------------------------------------------------------------------
 // Permanent frames and lamps
 
-/** Four permanent bars round a rectangle laid on a plane (corner, u edge, v edge; bars w wide, h proud along n). */
-export function frameRails(P: TankBuilderPort, owner: Owner, rect: {o: V3; u: V3; v: V3; n: V3}, w: number, h: number,
-  bucket = `${owner}Detail`, guard?: (name: string, g: THREE.BufferGeometry) => void): void {
-  const o = v(rect.o), u = v(rect.u), vv = v(rect.v), n = v(rect.n).normalize();
-  const lu = u.length(), lv = vv.length(), ux = u.clone().normalize(), vx = vv.clone().normalize();
-  const bar = (start: THREE.Vector3, along: THREE.Vector3, len: number, across: THREE.Vector3) => {
-    const c = start.clone().addScaledVector(along, len / 2).addScaledVector(n, h / 2 - .004);
-    const g = new THREE.BoxGeometry(len, h, w).applyMatrix4(new THREE.Matrix4().makeBasis(along, n, along.clone().cross(n)));
-    void across;
-    g.translate(c.x, c.y, c.z);
-    guard?.('frame rail', g);
-    P.addEquipment(bucket, g);
-  };
-  bar(o.clone().addScaledVector(vx, w / 2), ux, lu, vx);
-  bar(o.clone().addScaledVector(vx, lv - w / 2), ux, lu, vx);
-  bar(o.clone().addScaledVector(ux, w / 2).addScaledVector(vx, w), vx, lv - 2 * w, ux);
-  bar(o.clone().addScaledVector(ux, lu - w / 2).addScaledVector(vx, w), vx, lv - 2 * w, ux);
-}
-
 /** A lens marked as a night emitter BEFORE its pose: its +Z aperture (or +Y with apertureAxis 'y') is the lit face. */
 export function nightLens(g: THREE.BufferGeometry, kind: VehicleLampKind, tint?: 'red' | 'warm'): THREE.BufferGeometry {
   g.userData.frontEraLamp = kind;
   return markVehicleNightLens(g, kind, tint ? {tint} : {});
-}
-
-/** A placed part: rotate a +Z-facing primitive so its +Z points along `facing` (yaw/pitch only, up kept), then move. */
-export function facePart(g: THREE.BufferGeometry, at: V3, facing: V3): THREE.BufferGeometry {
-  const f = v(facing).normalize(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), f);
-  return g.applyQuaternion(q).translate(...at);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -312,7 +250,7 @@ export function tagFrontPart<T extends THREE.BufferGeometry>(g: T, name: string,
 }
 
 /** The highest hull stock (turret frame) at a plan radius about the ring, or null inside or beyond the measured span. */
-export function hullTopAt(e: FrontEnvelope, r: number): number | null {
+function hullTopAt(e: FrontEnvelope, r: number): number | null {
   const k = e.hullTops;
   if (r < k[0][0] || r > k[k.length - 1][0]) return null;
   for (let i = 1; i < k.length; i++) if (r <= k[i][0]) {
@@ -364,11 +302,4 @@ export function assertTurretPart(id: string, name: string, g: THREE.BufferGeomet
     if (p.x > .60 && p.x < .97 && p.z > .15 && p.y > .80 - .176 * (p.z - .15) + 1e-4)
       throw new Error(`${id}: ${name} enters the gunner's sight's lower ray at z ${p.z.toFixed(3)}`);
   });
-}
-
-/** The smallest distance of a geometry's vertices from the six smoke lines of fire (turret frame). */
-export function smokeClearance(g: THREE.BufferGeometry): number {
-  let min = Infinity; const d = new THREE.Vector3();
-  eachVertex(g, p => { for (const s of SMOKE_LOCAL) { d.copy(p).sub(s); const t = Math.max(0, d.dot(SMOKE_AXIS)); min = Math.min(min, d.addScaledVector(SMOKE_AXIS, -t).length()); } });
-  return min;
 }

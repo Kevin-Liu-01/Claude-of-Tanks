@@ -6,7 +6,7 @@ import {KIT, FITTINGS} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {sectionSolid, type SectionPoint} from './sectionSolid.ts';
 import {buildT72B3XHullCore, buildT72B3XRunningGear, buildT72B3XFenders} from './t72b3X.ts';
-import {eraCassette, glacisEraCassette, strappedPack, attachedCage} from './modernizationFittings.ts';
+import {eraCassette, strappedPack, attachedCage} from './modernizationFittings.ts';
 import {mount} from './fittingMount.ts';
 import {addPolishProtection} from './nationalPolandProtection.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';

@@ -21,7 +21,7 @@ import type {PolishFrontSkirt} from './nationalPoland.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {cylZ} = KIT;
 
-export type PolishLevel = 1 | 2;
+type PolishLevel = 1 | 2;
 const SIDES = [-1, 1] as const;
 const idOf = (level: PolishLevel): string => level === 1 ? 't72b3_zubr' : 't72b3_zubr_ii';
 const tup = (p: THREE.Vector3): V3 => [p.x, p.y, p.z];
@@ -35,7 +35,7 @@ function orientedBox(size: V3, centre: THREE.Vector3, along: THREE.Vector3, norm
 
 /** A two-layer (stack) cassette's ring in its own (u outward, v up its face) plane: a base layer, a top layer inset 12
  * mm with 15 mm chamfers (near tier); a plain block on the far tier. The base sinks 4 mm into its seat. */
-export function stackRing(P: TankBuilderPort, h: number, base: number, top: number, inset = .012, chamfer = .015): SectionPoint[] {
+function stackRing(P: TankBuilderPort, h: number, base: number, top: number, inset = .012, chamfer = .015): SectionPoint[] {
   const t = base + top;
   if (!P.q) return [[-.004, 0], [t, 0], [t, h], [-.004, h]];
   return [[-.004, 0], [base, 0], [base, inset], [t - chamfer, inset], [t, inset + chamfer], [t, h - inset - chamfer],
