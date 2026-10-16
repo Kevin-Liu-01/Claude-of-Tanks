@@ -809,8 +809,12 @@ assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(defs\.lig
 assert.match(layerSource, /uFine: \{ value: new THREE\.Vector2\(defs\.fineN, defs\.fineStride\) \}/);
 assert.match(layerSource, /const budget = CLOUD_TIERS\[this\.traceTier\] \?\? CLOUD_TIERS\.high;\s*t\.uStepCap\.value = lightTune\('CLOUD_STEP_CAP', budget\.steps\);\s*\(t\.uFine\.value as THREE\.Vector2\)\.set\(lightTune\('CLOUD_FINE_N', budget\.fineN\), lightTune\('CLOUD_FINE_STRIDE', budget\.fineStride\)\);/, 'the refinement the tier\'s');
 assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', budget\.lightEvery\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', budget\.sunSteps\) \+ this\.lowSunExtraSteps\(\), lightTune\('CLOUD_T_EXIT', budget\.exitT\)\);/, 'the defaults the tier\'s law');
-// (2026-10-15) the low sun's extra secondary steps: none by default (QA knob CLOUD_SUN_STEPS_LOW), room compiled in
-assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', 0\)/);
+// (2026-10-15) the low sun's extra secondary steps (QA knob CLOUD_SUN_STEPS_LOW), room compiled in
+assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', CLOUD2_LOW_SUN_EXTRA_STEPS\)/, 'on by default (2026-10-15)');
+// (2026-10-15) the Beer map's share off at the horizon, on from 17 degrees; the deck tune the critic picked on Frosthollow
+assert.match(layerSource, /lightTune\('CLOUD_BSM_LOWSUN', 0\), lightTune\('CLOUD_BSM_LOWSUN_UP', 0\.3\)/);
+assert.match(layerSource, /CLOUD_DECK_FILTER: 1\.6, CLOUD_DECK_COVER: 0\.92, CLOUD_DECK_SHAPE: 1\.4, CLOUD_DECK_DETAIL: 1\.4,/);
+assert.match(layerSource, /const k = lightTune\(knob, CLOUD_DECK_TUNE\[knob\] \?\? 1\);/);
 assert.ok(shadersSource.includes('#define CL2_SUN_STEPS ${defs.sunSteps + CLOUD2_LOW_SUN_EXTRA_STEPS}'), 'the loop has room for them');
 // round 7 (2026-10-07, wave 221 on Monsoon: a rain shaft in front of a tower's dark core read as blue sky through it): the
 // rain under a storm takes the storm's grey light, darker under a heavy core, the sun's glow only through a thin column

@@ -182,6 +182,15 @@ export const CLOUD_CLEAR_RADIUS_SHARE = 0;
 export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
 export const CLOUD_BSM_SLICES = 32;
+/**
+ * 2026-10-15 (the SKY lane; the C2 diagnosis critic on Frosthollow's deck, eye, sun and air views: the plain deck 5 and,
+ * toward the sun, "exactly the featureless off-white sheet"; this tune 7, the most relief in all three, none reading as
+ * the banned broken stratocumulus): a deck lane's footprint ramp x1.6, cover x0.92, shape and detail x1.4 — scales on
+ * every deck lane (the convective lanes keep theirs); the QA knobs of the same names still override.
+ */
+export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
+  CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 0.92, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
+});
 /** The march's reach on High and the dome shell radius (inside camera.far); the tiers own the step counts. */
 export const CLOUD_MARCH_MAX_M = 36000;
 export const CLOUD_DOME_RADIUS_M = 3400;
@@ -933,7 +942,7 @@ export class VolumetricCloudLayer {
         // ramp, cover, extinction, core, shape and detail scaled (the convective lanes keep theirs)
         const deckKnobs: Array<[string, string]> = [['CLOUD_DECK_FILTER', 'uLayerFilter'], ['CLOUD_DECK_COVER', 'uLayerCover'], ['CLOUD_DECK_DENSITY', 'uLayerDensity'], ['CLOUD_DECK_CORE', 'uLayerCore'], ['CLOUD_DECK_SHAPE', 'uLayerShape'], ['CLOUD_DECK_DETAIL', 'uLayerDetail']];
         for (const [knob, key] of deckKnobs) {
-          const k = lightTune(knob, 1);
+          const k = lightTune(knob, CLOUD_DECK_TUNE[knob] ?? 1);
           if (k === 1) continue;
           const v = this.medium[key].value as THREE.Vector4;
           stack.lanes.forEach((lane, i) => { if (lane.flat >= 0.5) v.setComponent(i, v.getComponent(i) * k); });
@@ -1428,7 +1437,10 @@ export class VolumetricCloudLayer {
     t.uStepGrowth.value = budget.growth * lightTune('CLOUD_STEP_GROWTH', 1);
     m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
-    (t.uBsmLowSun.value as THREE.Vector2).set(lightTune('CLOUD_BSM_LOWSUN', 1), lightTune('CLOUD_BSM_LOWSUN_UP', 0.3));
+    // (2026-10-15, the C2 diagnosis critic: the Beer map's share under a low sun made the shade muddy brown on every
+    // sunset map, and its single-front texel stacks a 5-degree ray's cumulus into strata) none at the horizon, all of it
+    // from 17 degrees up; the secondary march takes three more doubling steps there instead (lowSunExtraSteps)
+    (t.uBsmLowSun.value as THREE.Vector2).set(lightTune('CLOUD_BSM_LOWSUN', 0), lightTune('CLOUD_BSM_LOWSUN_UP', 0.3));
     t.uFarFade.value = lightTune('CLOUD_FAR_FADE', 1);
     t.uEntryJitter.value = lightTune('CLOUD_ENTRY_JITTER', 1);
     // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale) and a
@@ -1723,7 +1735,7 @@ export class VolumetricCloudLayer {
    * knob's count at the horizon, none from 17 degrees up (QA knob CLOUD_SUN_STEPS_LOW; 0 = the tier's own steps).
    */
   private lowSunExtraSteps(): number {
-    const extra = Math.min(CLOUD2_LOW_SUN_EXTRA_STEPS, Math.max(0, Math.round(lightTune('CLOUD_SUN_STEPS_LOW', 0))));
+    const extra = Math.min(CLOUD2_LOW_SUN_EXTRA_STEPS, Math.max(0, Math.round(lightTune('CLOUD_SUN_STEPS_LOW', CLOUD2_LOW_SUN_EXTRA_STEPS))));
     if (!extra) return 0;
     const up = Math.max(0, (this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3).y);
     const k = 1 - Math.min(1, Math.max(0, (up - 0.1) / 0.2));
