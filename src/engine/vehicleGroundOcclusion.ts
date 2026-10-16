@@ -66,6 +66,16 @@ export const GROUND_AO_BELLY_VIEW = 0.3;
 export const GROUND_AO_UNDER_GROUND = 0.15;
 /** A hull's reach fades out between these multiples of its height (deck over the contact plane) from its footprint. */
 export const GROUND_AO_REACH = Object.freeze([1.5, 3] as const);
+/**
+ * 2026-10-15 (the GARAGE lane: a dark oval on every garage yard's floor just past the turntable's rim): a lower surface is
+ * not the ground the hull stands on. The broad share reached GROUND_AO_REACH[1] hull heights under the contact plane (7 m
+ * for a main battle tank), so the yard floor 0.385 m under the turntable's deck took the hull's oval, as would the bank
+ * under a bridge or the field under a ledge. Under the contact plane the broad share now fades out from half of the
+ * allowance to the whole of it: [beside the footprint, under it] (m). Beside the hull 0.3 m holds the ground a run rests
+ * on (its own dips, the ruts) and drops anything a step lower; under the belly 1 m keeps a ditch the hull straddles in its
+ * shade. The rim and the core keep their own vertical laws (a few centimetres).
+ */
+export const GROUND_AO_BELOW_M = Object.freeze([0.3, 1] as const);
 /** The belly's and the walls' strengths blend across the footprint's edge over ± this (m). */
 export const GROUND_AO_EDGE_M = 0.25;
 /** The receiver's horizon clip drops this far (m) per unit of normal tilt: a wall facing a hull keeps the whole solid. */
@@ -659,8 +669,11 @@ export function vehicleGroundOcclusionLocal(
   const inside = 1 - smoothstep(-GROUND_AO_EDGE_M, GROUND_AO_EDGE_M, sd);
   // (round 4) the broad share softened outside the footprint (GROUND_AO_WALL_SOFT), from its edge to twice the edge's blend
   // out — whole at the edge, where wave 13's snow strip under the rear plate stays shaded
+  // (2026-10-15) under the contact plane the broad share fades out over its allowance, beside the hull or under it
+  const below = GROUND_AO_BELOW_M[0] + (GROUND_AO_BELOW_M[1] - GROUND_AO_BELOW_M[0]) * inside;
   const broad = reach * (hullSkyOcclusion(q, n, h, c) + runGapOcclusion(q, n, h, c, runs))
-    * (1 + (wallSoft - 1) * smoothstep(0, 2 * GROUND_AO_EDGE_M, sd));
+    * (1 + (wallSoft - 1) * smoothstep(0, 2 * GROUND_AO_EDGE_M, sd))
+    * (1 - smoothstep(0.5 * below, below, h.y0 - q.y));
   const occ = Math.max(broad, underTrackOcclusion(q, h, runs));
   const s = strengths.wall + (strengths.belly - strengths.wall) * inside;
   return Math.min(occ, 1) * s;
@@ -1444,6 +1457,10 @@ ${GLSL_HULL_EDGES}
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
         ho *= mix( 1.0, mix( uVehGroundR5.x, 1.0, snowS ), smoothstep( 0.0, ${f(2 * GROUND_AO_EDGE_M)}, sd ) );
+        // (2026-10-15) a lower surface is not the hull's ground: under the contact plane the broad share fades out over
+        // its allowance (GROUND_AO_BELOW_M), beside the hull or under it
+        float below = mix( ${f(GROUND_AO_BELOW_M[0])}, ${f(GROUND_AO_BELOW_M[1])}, inside );
+        ho *= 1.0 - smoothstep( 0.5 * below, below, b0.w - q.y );
         // the track's contact (2026-10-09, round 3): a soft rim hugging the drawn run — whole in the shoes' lane, gone a
         // spread outside its faces (squared), by the receiver's height against the run's lower edge as drawn (the wraps'
         // ramp past the ground run): the ground under a lifted run gone a gap under it, a blade or the ground standing into

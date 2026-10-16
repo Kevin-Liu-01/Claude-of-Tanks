@@ -13,7 +13,7 @@ import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_CONTACT_EDGE_M, GROUND_AO_CONTACT_FULL_M,
   GROUND_AO_CONTACT_GAP_M, GROUND_AO_CONTACT_MAX, GROUND_AO_CONTACT_RISE_M, GROUND_AO_CONTACT_SPREAD_M, GROUND_AO_OCC_MAX, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M, GROUND_AO_FADE_M, GROUND_AO_GAP_FADE_M, GROUND_AO_HULL_ALBEDO,
   GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_NO_RUN_M, GROUND_AO_RANGE_M, GROUND_AO_REACH, GROUND_AO_RUN_KNOTS,
-  GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
+  GROUND_AO_UNDER_GROUND, GROUND_AO_BELOW_M, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
   hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_KEY_REACH_M, GROUND_AO_KEY_MAX, keyLightReach, GROUND_AO_KEY_LIGHTS, GROUND_AO_KEY_INSIDE_M,
@@ -157,6 +157,20 @@ assert.ok(F(0, 0) > 0.98 && F(0, 0) <= 1, `the belly's middle loses almost all i
 assert.ok(F(0, T.fz0) > 0.45 && F(0, T.fz0) < 0.75, `the rear end under its plate (${F(0, T.fz0).toFixed(3)})`);
 assert.ok(F(0, T.fz0 - 4.9) === 0 && F(6.7, 0) === 0 && F(0, T.fz0 - 3) > 0.02, 'past its reach (three hull heights): nothing');
 assert.equal(F(0, 0, 1.7), 0, 'over the deck: nothing');
+// (2026-10-15, the GARAGE lane) a lower surface is not the hull's ground: beside the hull the broad share is gone 0.3 m
+// under the contact plane (the yard floor 0.385 m under the turntable's deck), under the belly a ditch keeps it to 1 m
+{
+  const yard = T.y0 - 0.385, beside = T.hx + 1.2;
+  assert.ok(F(beside, 0) > 0.05, `beside the hull on its own ground: shaded (${F(beside, 0).toFixed(3)})`);
+  assert.equal(F(beside, 0, yard), 0, 'the yard floor under the turntable\'s rim: nothing');
+  assert.equal(F(0, T.fz1 + 1.5, yard), 0, 'past the bow, a step lower: nothing');
+  assert.ok(F(beside, 0, T.y0 - 0.1) > 0.8 * F(beside, 0, T.y0), `a 10 cm dip beside a run keeps nearly all of it (${F(beside, 0, T.y0 - 0.1).toFixed(3)})`);
+  assert.ok(F(0, 0, T.y0 - 0.45) > 0.5, `a ditch under the belly stays in its shade (${F(0, 0, T.y0 - 0.45).toFixed(3)})`);
+  assert.equal(F(0, 0, T.y0 - 1.05), 0, 'a bank a bridge-height under the belly: nothing');
+  assert.deepEqual([...GROUND_AO_BELOW_M], [0.3, 1]);
+  const glsl = VEHICLE_GROUND_OCCLUSION_GLSL;
+  assert.match(glsl, /float below = mix\( 0\.3(?:0*)?, 1\.0*, inside \);\s*ho \*= 1\.0 - smoothstep\( 0\.5 \* below, below, b0\.w - q\.y \);/, 'the GLSL fades the broad share under the contact plane');
+}
 // the side gaps close toward the runs; along the ground run right up to the shoes, past it fading in from the runs'
 // faces (no step under a wrap)
 assert.ok(runGapOcclusion({ x: 0, y: 0, z: 0 }, UP, T, 0) > 0.01 && runGapOcclusion({ x: 0.9, y: 0, z: 0 }, UP, T, 0) > runGapOcclusion({ x: 0, y: 0, z: 0 }, UP, T, 0),
