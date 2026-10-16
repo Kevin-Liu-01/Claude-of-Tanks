@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getDeviceTier, getPreset, presetLightWorld } from '../engine/quality.ts';
-import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
+import { createGroundPressureField, GROUND_PRESSURE_FINE_WINDOW_M, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
@@ -111,6 +111,8 @@ export interface TallGrass {
   readonly mid: THREE.InstancedMesh;
   readonly far: THREE.InstancedMesh;
   readonly pressure: GroundPressureField | null;
+  /** Contact round 5: the fine near field round the focus (GROUND_PRESSURE_FINE_WINDOW_M), null with the coarse one. */
+  readonly pressureFine: GroundPressureField | null;
   update(dt: number, cameraPosition: THREE.Vector3, focus?: { x: number; z: number } | null, cameraForward?: THREE.Vector3 | null): void;
   setDisturbances(sources: readonly GroundDisturbance[]): void;
   setWindTime(seconds: number): void;
@@ -140,7 +142,7 @@ export const TALL_GRASS = Object.freeze({
     dissolve: Object.freeze([-1, -1, 30, 46] as const),
     keepRefM: 0,
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v5', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean; v5: grass r2 (dissolve, species)
+    programKey: 'world-tall-grass-near-v6', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean; v5: grass r2 (dissolve, species); v6 (contact round 5): the fine near press field
   }),
   /**
    * grass r2 (2026-10-15): the mid ring — the sward between the near clumps and the far blades. At eye height a strip
@@ -171,7 +173,7 @@ export const TALL_GRASS = Object.freeze({
     dissolve: Object.freeze([-1, -1, -1, -1] as const),
     keepRefM: 0,
     cap: 84000,       // covers all 529 cells at the maximum 1.3 density without dropping the outer ring
-    programKey: 'world-tall-grass-far-v6', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean; v6: grass r2
+    programKey: 'world-tall-grass-far-v7', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean; v6: grass r2; v7 (contact round 5): the fine near press field
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
@@ -302,6 +304,8 @@ interface SharedUniforms {
   uWindDir: { value: THREE.Vector2 };
   uPress: { value: THREE.Texture | null };
   uPressParams: { value: THREE.Vector4 };
+  uPressFine: { value: THREE.Texture | null };
+  uPressFineParams: { value: THREE.Vector4 };
   uGrassBase: { value: THREE.Vector3 };
   uGrassTip: { value: THREE.Vector3 };
   /** Ground lane: the biome's cured-blade colour (its `dry`), the colour a dead blade takes from the tip down. */
@@ -341,6 +345,8 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.uniforms.uWindDir = shared.uWindDir;
     shader.uniforms.uPress = shared.uPress;
     shader.uniforms.uPressParams = shared.uPressParams;
+    shader.uniforms.uPressFine = shared.uPressFine;
+    shader.uniforms.uPressFineParams = shared.uPressFineParams;
     shader.uniforms.uGrassBase = shared.uGrassBase;
     shader.uniforms.uGrassTip = shared.uGrassTip;
     shader.uniforms.uGrassDry = shared.uGrassDry;
@@ -355,6 +361,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <common>', /* glsl */`#include <common>
 uniform float uWindTime; uniform vec3 uCamPos; uniform vec3 uCamFwd; uniform float uSniperFade;
 uniform vec2 uWindDir; uniform sampler2D uPress; uniform vec4 uPressParams; uniform vec4 uGrassFade; uniform float uBend;
+uniform sampler2D uPressFine; uniform vec4 uPressFineParams;
 uniform vec4 uGrassDissolve; uniform vec3 uGrassKeep; uniform vec3 uGrassSeed;
 attribute vec4 aBlade;
 varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;
@@ -430,6 +437,18 @@ varying vec3 vHeadCol; varying float vHeadT0; varying float vHerb;`);
           press = clamp(p.r * win, 0.0, 1.0);
           pdir = normalize(p.gb + vec2(1e-4, 0.0));
           crush = clamp(p.a * win, 0.0, 1.0);
+        }
+        // contact round 5 (2026-10-11): the fine near field (GROUND_PRESSURE_FINE_WINDOW_M) inside its window, eased in from its
+        // outer band (its own state fades to rest past 0.40 of its size): crisp pressed and splayed blades along a track's edge
+        if (uPressFineParams.w > 0.5) {
+          vec2 offF = abs(root.xz - uPressFineParams.yz) / uPressFineParams.x;
+          float winF = 1.0 - smoothstep(0.30, 0.38, max(offF.x, offF.y));
+          if (winF > 0.0) {
+            vec4 pf = texture2D(uPressFine, fract(root.xz / uPressFineParams.x));
+            press = mix(press, clamp(pf.r, 0.0, 1.0), winF);
+            pdir = normalize(mix(pdir, normalize(pf.gb + vec2(1e-4, 0.0)), winF) + vec2(1e-5, 0.0));
+            crush = mix(crush, clamp(pf.a, 0.0, 1.0), winF);
+          }
         }
         // wind: a gust front travelling down the wind over the meadow, and a per-blade flutter
         float phase = root.x * 0.31 + root.z * 0.27 + cotRnd * 6.2832;
@@ -515,6 +534,8 @@ function makeSharedUniforms(): SharedUniforms {
     uWindDir: { value: new THREE.Vector2(0.8, 0.6) },
     uPress: { value: null },
     uPressParams: { value: new THREE.Vector4(GROUND_PRESSURE_WINDOW_FALLBACK, 0, 0, 0) },
+    uPressFine: { value: null },
+    uPressFineParams: { value: new THREE.Vector4(GROUND_PRESSURE_FINE_WINDOW_M, 0, 0, 0) },
     uGrassBase: { value: new THREE.Vector3(0.052, 0.078, 0.030) },
     uGrassTip: { value: new THREE.Vector3(0.092, 0.160, 0.045) },
     uGrassDry: { value: new THREE.Vector3(0.27, 0.22, 0.095) },
@@ -604,6 +625,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   // (Ultra Low, 2026-10-13: the light world build stands its sward untrampled, as on the phones)
   const pressure = biome && tier !== 'mobile' && !presetLightWorld() ? createGroundPressureField(options.renderer, { tier }) : null;
   if (pressure) { shared.uPress = pressure.stateUniform; shared.uPressParams.value = pressure.params; }
+  // contact round 5: the fine near field beside the coarse one (the same stamps, a 24 m window)
+  const pressureFine = pressure ? createGroundPressureField(options.renderer, { tier, windowM: GROUND_PRESSURE_FINE_WINDOW_M }) : null;
+  if (pressureFine) { shared.uPressFine = pressureFine.stateUniform; shared.uPressFineParams.value = pressureFine.params; }
   const materials: THREE.MeshLambertMaterial[] = [];
   function makeMaterial(fade: readonly [number, number, number, number], programKey: string, far: boolean, shape: TallGrassRingShape): THREE.MeshLambertMaterial {
     const material = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
@@ -1176,6 +1200,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (pressure) {
       const anchor = focus ?? cameraPosition;
       pressure.step(dt, anchor.x, anchor.z);
+      pressureFine?.step(dt, anchor.x, anchor.z);
     }
   }
 
@@ -1191,6 +1216,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (disposed) return;
     disposed = true;
     pressure?.dispose();
+    pressureFine?.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) { options.releaseMaterial?.(material); material.dispose(); }
     for (const ring of rings) { ring.mesh.dispose(); ring.cache.clear(); }
@@ -1203,8 +1229,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     mid: mid.mesh,
     far: far.mesh,
     pressure,
+    pressureFine,
     update,
-    setDisturbances(sources) { pressure?.setDisturbances(sources); },
+    setDisturbances(sources) { pressure?.setDisturbances(sources); pressureFine?.setDisturbances(sources); },
     setWindTime(seconds) { shared.uWindTime.value = seconds; },
     setSniperFade(fraction, immediate = false) {
       sniperTarget = Math.min(1, Math.max(0, fraction));

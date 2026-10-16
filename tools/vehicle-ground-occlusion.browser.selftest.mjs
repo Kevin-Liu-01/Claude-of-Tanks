@@ -36,9 +36,12 @@ try {
   const page = await browser.newPage();
   page.on('pageerror', (error) => { if (report.errors.length < 12) report.errors.push(String(error)); });
   for (const c of cases) {
-    const { values, renderer } = await bounded(page.evaluate(evaluateVehicleGroundGlsl, { glsl, ...c.input }), 60_000, c.name);
+    const { values, grime, renderer } = await bounded(page.evaluate(evaluateVehicleGroundGlsl, { glsl, ...c.input }), 60_000, c.name);
     report.renderer = renderer;
     const rows = labels.map((label, i) => ({ label, gpu: +values[i].toFixed(6), cpu: +c.expected[i].toFixed(6), d: +(values[i] - c.expected[i]).toExponential(2) }));
+    // (contact round 4) the run's grime on a hull's own pixels, where the case expects it (the same points read as hull)
+    if (c.expectedGrime) labels.forEach((label, i) => rows.push({ label: `${label} (grime)`, gpu: +grime[i].toFixed(6), cpu: +c.expectedGrime[i].toFixed(6),
+      d: +(grime[i] - c.expectedGrime[i]).toExponential(2) }));
     report.cases.push({ name: c.name, worst: Math.max(...rows.map((r) => Math.abs(r.gpu - r.cpu))), rows });
     for (const r of rows) assert.ok(Math.abs(r.gpu - r.cpu) <= TOLERANCE, `${c.name}, ${r.label}: GPU ${r.gpu} vs CPU ${r.cpu}`);
   }
