@@ -1544,6 +1544,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/understorey.selftest.mjs',
     // round 77b (2026-09-26): the far-tier impostors baked from the near trees and the leaf-scale crown detail
     'src/world/treeImpostors.selftest.mjs',
+    // trees Fix B (2026-10-15): the impostor bake keeps the near tier's crown coverage (the give-back before the bake's cut)
+    'tools/impostor-bake-coverage.selftest.mjs',
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
