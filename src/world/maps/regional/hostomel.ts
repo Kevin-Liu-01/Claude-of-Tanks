@@ -13,7 +13,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 import { DACHA_YARD, dacha, gardenShed } from './hostomelDacha.ts';
-import { hangarDoorNumber } from './airfieldPaint.ts';
+import { hangarSideNumber } from './airfieldPaint.ts';
 
 /** The sheet steel's liveries: the Antonov hangars' grey-blue and grey-green paint, a pale galvanised grey. */
 const LIVERY: readonly Rgb[] = [0x8f9ca0, 0x84907f, 0xa9ada6, 0x7b8790].map(rgb);
@@ -286,8 +286,10 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
       sink.quad('structureMetal', ...flap(0.005), { colour: rgb(0x8a8e90), decor: true });
     }
     // (the maps lane's Kestrel rebuild, 2026-10-15; wave 113: "plain flat-textured boxes") the hangar's number in white on
-    // its closed leaf (airfieldPaint.ts), from the look stream
-    sink.dressing(mobile, () => hangarDoorNumber(sink, frame.faces.front, { u: 0, w: W - 1.6, h: He - 1.6, lift: frame.floors[0], open }, 1 + Math.floor(ctx.variant() * 9)));
+    // its long wall by the apron end (airfieldPaint.ts), from the look stream: the wall the shrapnel left whole, and never
+    // the one the workshop lean-to stands against
+    const side: 'left' | 'right' | null = annex ? (torn?.face === 'left' ? null : 'left') : torn?.face === 'right' ? 'left' : 'right';
+    if (side) sink.dressing(mobile, () => hangarSideNumber(sink, frame.faces[side], D, frame.floors[0] + 1.0, He - 1.0 - 1.25 - 1.3, 1 + Math.floor(ctx.variant() * 9)));
   });
   if (annex) {
     // the workshop lean-to: block walls, a sheet roof falling away from the hangar, windows and a door

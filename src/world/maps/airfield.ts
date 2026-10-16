@@ -19,6 +19,19 @@
 // the cargo-apron motor pool (brawl) in bravo's half and the terminal-apron hut line (support) in alpha's stand where
 // each other's rotations would, and the radar post (scout) watches the runway's east end. The zone-control discs stand
 // on the cargo apron, the runway's centre (also the turbo-ball kickoff) and the terminal apron.
+//
+// 2026-10-15 (the maps lane's Kestrel rebuild, the Verdant process; the owner: "make sure all maps look completely new and
+// revitalized like verdant", and on 10-09 Kestrel among the maps to bring up; landing the map-revival lane's rounds of
+// 2026-10-05..07): Kestrel was an airfield on an empty lawn. Verdant's layers are added round it, the airport's own
+// buildings, runway, aprons, roads, pads and objectives where they stood: the Polissia's pine and birch woods close round
+// the plateau and down the valley sides, with ruled Scots pine plantations past the runway's ends; the land outside the
+// perimeter is worked (landUse.ts `airfield`: hay meadows and pasture, small fields of rye and potatoes); the garden
+// cooperatives of Hostomel's dachas stand on the valley shoulders beside the access roads (maps/regional/hostomelDacha.ts,
+// their sheds and picket-fenced plots from the yards), each on its concrete lane with a field cross at its mouth; and the
+// airport itself is worked ground — the taxiway's centrelines and the stands' lead-ins and numbers in worn paint
+// (world/groundMarkings.ts), floodlight masts over the aprons, the hangars' numbers, the An-26s in the dispersal pens.
+// Kestrel keeps its growing season (the 10-15 MA.37 ruling: no February pass; its horizon keys stay with the horizons
+// lane).
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
 // The airfield's buildings: authored sites in rotation pairs about the runway's centre, so each half holds the same
@@ -54,6 +67,86 @@ const CARGO_SIDE = [
 ];
 const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }) =>
   ({ ...site, x: -site.x, z: -site.z, yawDeg: site.yawDeg + 180 });
+// 2026-10-05 (the map-revival lane; gauntlet wave 113: "sparse lollipop trees scattered over even green … like savanna"
+// where the Polissia is massed, closed-canopy pine on sand with hard edges against the meadow): the Scots pine
+// plantations past the runway's ends — rows 9 m apart, a tree every 9 m along them, few losses — as vegetation.ts
+// belts, so each block stands as one dark wood with a ruled edge (and its rotation pair). (2026-10-06, the coordinator
+// on hold x9: the woods cost the establishing view 3 ms of GPU at +40 % of its triangles; the plantations thinned from
+// 7 x 6.5 m to 9 x 9 m, the woodlots 44 -> 34 and the rim 140 -> 108 (under the moderate maps' 108), each wood keeping
+// its extent to the skyline)
+function plantation(x0: number, x1: number, z0: number, z1: number, rowGap = 9, gap = 9) {
+  const rows: Array<{ x0: number; z0: number; x1: number; z1: number; gap: number; jitter: number; skip: number; species: 'pine' }> = [];
+  for (let x = x0; x <= x1 + 1e-6; x += rowGap) rows.push({ x0: x, z0, x1: x, z1, gap, jitter: 1.2, skip: 0.05, species: 'pine' });
+  return rows;
+}
+const PLANTATIONS = [
+  ...plantation(376, 440, -236, -96),  // east end, south of the perimeter road
+  ...plantation(376, 440, 92, 236),    // east end, north of it
+];
+// the four blocks (the two above and their rotation pair), each 3 m past its outer rows
+const PLANTATION_BLOCKS = [[376, 440, -236, -96], [376, 440, 92, 236]].flatMap(([x0, x1, z0, z1]) => [
+  { x0: x0 - 3, x1: x1 + 3, z0: z0 - 3, z1: z1 + 3 }, { x0: -x1 - 3, x1: -x0 + 3, z0: -z1 - 3, z1: -z0 + 3 }]);
+// The taxiway's western half (path 3 below), from the runway's west end along the cargo apron to the runway's centre; the
+// eastern half (path 4) is its rotation.
+const TAXIWAY: Array<[number, number]> = [[-310, 0], [-300, -48], [-276, -88], [-230, -98], [-160, -98], [-90, -96],
+  [-56, -92], [-30, -74], [-12, -46], [-3, -20], [0, 0]];
+const rotatePoint = ([x, z]: readonly [number, number]): [number, number] => [-x, -z];
+// The concrete's slabs (the splat pavement) — the paint breaks at their joints.
+const SLAB_M = 6;
+// 2026-10-05 (the map-revival lane; the coordinator: the apron markings as receive-only decal strips, "faded paint with
+// breaks at the joints. Taxi centrelines, stand numbers and lead-in lines are enough"): two stands on each apron, nose
+// toward the hangars — a lead-in line curving off the taxiway's centreline (14 m radius) to a stop bar 8 m short of the
+// cargo apron's back strip (its rotation on the terminal apron), the stand's number in yellow on a black box on the
+// pilot's right, reading toward the stand.
+function cargoStand(xs: number, label: string) {
+  const R = 14, zTaxi = -98, zStop = -172;
+  const arc: Array<[number, number]> = [];
+  for (let k = 0; k <= 8; k++) {
+    const a = Math.PI / 2 + (k / 8) * (Math.PI / 2);
+    arc.push([xs + R + R * Math.cos(a), zTaxi - R + R * Math.sin(a)]);
+  }
+  return {
+    lines: [
+      { points: [...arc, [xs, zStop]] as Array<[number, number]>, width: 0.3, paint: 'yellow' as const },
+      { points: [[xs - 2.6, zStop], [xs + 2.6, zStop]] as Array<[number, number]>, width: 0.5, paint: 'yellow' as const },
+    ],
+    number: { x: xs + 5.2, z: -124, headingDeg: 180, text: label, height: 2.2, paint: 'yellow' as const, box: 'black' as const },
+  };
+}
+const CARGO_STANDS = [cargoStand(-236, '11'), cargoStand(-200, '12')];
+const TERMINAL_STANDS = [['21', 0], ['22', 1]].map(([label, i]) => {
+  const stand = CARGO_STANDS[i as number];
+  return {
+    lines: stand.lines.map((line) => ({ ...line, points: line.points.map(rotatePoint) })),
+    number: { ...stand.number, x: -stand.number.x, z: -stand.number.z, headingDeg: 0, text: label as string },
+  };
+});
+const APRON_MARKINGS = {
+  lines: [
+    // the taxiway's centreline, each half, stopping 3.5 m short of the runway's edge (the keep-out below)
+    { points: TAXIWAY, width: 0.32, paint: 'yellow' as const },
+    { points: TAXIWAY.map(rotatePoint), width: 0.32, paint: 'yellow' as const },
+    ...[...CARGO_STANDS, ...TERMINAL_STANDS].flatMap((stand) => stand.lines),
+  ],
+  numbers: [...CARGO_STANDS, ...TERMINAL_STANDS].map((stand) => stand.number),
+  keepOut: [
+    // the runway
+    { x0: -330, x1: 330, z0: -26, z1: 26 },
+    // the cargo hangar's plot and the apron's back strip, and their rotation
+    { x0: -263, x1: -187, z0: -230, z1: -180 },
+    { x0: 187, x1: 263, z0: 180, z1: 230 },
+  ],
+  slabM: SLAB_M,
+};
+// 2026-10-05 (the map-revival lane): the dacha cooperative on the south valley's shoulder, east of the access road's
+// climb (its rotation on the north shoulder): two rows of four plots, 30 m apart, the houses' gables to the lane that runs
+// between the rows, the yards' fenced gardens and sheds round them. The shoulder there is the plateau's smoothest edge
+// (under 1.6 m of relief across a house), 25 m and more off the access road and 15 m clear of the marshes below it.
+// Appended after the airport's sites, so those keep their order and every pose.
+const DACHAS = [40, 70, 100, 130].flatMap((x) => [
+  { structure: 'cottage', x, z: -252, yawDeg: 180 },
+  { structure: 'cottage', x, z: -278, yawDeg: 0 },
+]);
 export default {
   id: 'airfield', name: 'Kestrel Airfield',
   blurb: 'A windswept landing strip separates dispersed shelters, service aprons and perimeter berms',
@@ -84,8 +177,13 @@ export default {
         [338, 80], [338, 0]],
       // 3 / 4 — the taxiway halves: from the runway's end along the south (west half) or the north (east half) side to
       // the runway's centre, past the cargo or the terminal apron.
-      [[-310, 0], [-300, -48], [-276, -88], [-230, -98], [-160, -98], [-90, -96], [-56, -92], [-30, -74], [-12, -46], [-3, -20], [0, 0]],
-      [[310, 0], [300, 48], [276, 88], [230, 98], [160, 98], [90, 96], [56, 92], [30, 74], [12, 46], [3, 20], [0, 0]],
+      TAXIWAY,
+      TAXIWAY.map(rotatePoint),
+      // 5 / 6 — the dacha cooperatives' lane (2026-10-05, the map-revival lane; the layout brief's orphan rule): off the
+      // access road where it tops the shoulder, between the cooperative's two rows of plots and round the back of the
+      // south row to the access road again — laid in the concrete slabs of every Soviet garden cooperative's lane
+      [[0, -284], [28, -265], [146, -265], [150, -292], [40, -296], [8, -290]],
+      [[0, 284], [-28, 265], [-146, 265], [-150, 292], [-40, 296], [-8, 290]],
     ] },
     // The boggy floors of the two valleys (rotation pair), the Irpin's floodplain: every way between a team's assembly
     // ground and the plateau crosses soft ground, except the access roads' causeways.
@@ -127,15 +225,27 @@ export default {
       { x: 0, z: -403 }, { x: -60, z: -434 }, { x: -120, z: -401 },
     ],
   },
-  splat: { sourcedPalette: 'railyard', pavedRoads: true, roadTexMix: 0.12, townWear: 0.8, fieldPatch: 1, midRelief: 0.55, tintA: [0.94, 1.00, 0.76], tintB: [0.67, 0.76, 0.60], tintC: [1.06, 1.08, 0.86], roadTint: [0.55, 0.56, 0.54],
+  splat: { sourcedPalette: 'railyard', pavedRoads: true,
+    // (2026-10-05, the map-revival lane; gauntlet wave 113: "bare-soil patches tinted pink-mauve instead of sandy tan")
+    // the valleys' bog floors in a peaty tan over the Polissia's sand
+    mudTone: (_h: number, s: number, l: number) => [0.11, Math.min(1, s * 0.6), Math.min(1, l * 1.3)], roadTexMix: 0.12, townWear: 0.8, fieldPatch: 1, midRelief: 0.55, tintA: [0.94, 1.00, 0.76], tintB: [0.67, 0.76, 0.60], tintC: [1.06, 1.08, 0.86], roadTint: [0.55, 0.56, 0.54],
     // 2026-10-03 (maps lane B, gauntlet wave 28: the cargo apron "reads as a cobbled plaza"): the runway, taxiways,
     // aprons and the access roads are airfield concrete — 6 m slabs with sealed expansion joints, a tone per pour, oil
     // and fuel stains and tyre rubber along the runway's axis (terrain.ts uPaveSlab) — in place of the sett print
-    pavement: { slabM: 6, jointM: 0.04, stains: 1, tyres: 1 } },
+    pavement: { slabM: SLAB_M, jointM: 0.04, stains: 1, tyres: 1 } },
   vegetation: {
-    species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.6], ['birch', 0.25], ['poplar', 0.15]],
-    loneMix: [['birch', 0.4], ['pine', 0.4], ['poplar', 0.2]], rimMix: [['pine', 0.65], ['birch', 0.2], ['poplar', 0.15]],
-    clusterCount: 26, loneCount: 42, rimCount: 80, grassDensity: 0.72, bushCount: 0.82, bushSpecies: 'birch', // map pass 2026-09-12: perimeter scrub (tree/rock counts at the first-pass ceilings)
+    // 2026-10-05 (the map-revival lane): the Polissia's woods round the plateau — Scots pine stands with birch at their
+    // edges, down the valley sides and past the runway's ends (no tree stands inside the graded airfield: vegetation.ts
+    // keeps every tree 24 m off the settlement rect, here the whole plateau); toward Verdant's 72 / 185 / 102
+    // (gauntlet wave 113: fewer, larger, denser stands — the loose trees thin to the woods' edges, the woodlots fewer,
+    // the plantations below and a closed rim; the field shrubs young pines, not the birch sprays read as cactus)
+    species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.74], ['birch', 0.22], ['poplar', 0.04]],
+    loneMix: [['birch', 0.45], ['pine', 0.45], ['poplar', 0.10]], rimMix: [['pine', 0.78], ['birch', 0.19], ['poplar', 0.03]],
+    clusterCount: 34, loneCount: 30, rimCount: 108, grassDensity: 0.72, bushCount: 0.7, bushSpecies: 'pine',
+    belts: [...PLANTATIONS, ...PLANTATIONS.map((b) => ({ ...b, x0: -b.x0, z0: -b.z0, x1: -b.x1, z1: -b.z1 }))],
+    // (2026-10-06) each plantation block holds its rows alone — no woodlot, lone tree or sapling stands inside it, so its
+    // edge reads ruled and the woods round it stay woods (the coordinator: the trim plus the keep-out, about +15 %)
+    standKeepOut: PLANTATION_BLOCKS,
     // the runway's cleared strip, west to east
     avoid: [{ x: -300, z: 0, r: 80 }, { x: -150, z: 0, r: 80 }, { x: 0, z: 0, r: 80 }, { x: 150, z: 0, r: 80 }, { x: 300, z: 0, r: 80 }],
   },
@@ -150,7 +260,9 @@ export default {
       { id: 'terminal-hut-line', role: 'support', x: 122, z: 150, yawDeg: -90, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
-    plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite)],
+    plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite), ...DACHAS, ...DACHAS.map(rotateSite)],
+    // the taxiway centrelines and the apron stands' paint (world/groundMarkings.ts; above)
+    groundMarkings: APRON_MARKINGS,
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
     // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
     // office blocks, the fire station, the water tower, the war's damage
@@ -168,8 +280,36 @@ export default {
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,
     // the map-vehicles lane (2026-10-06, the period ruling): Hostomel, February 2022: the T-72B3, T-80BV and BMP-2,
     // and Ukraine's T-64BV
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
-    inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 7, jeeps: 5, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // (the map-content lane, 2026-10-09; the owner: Kestrel Airfield "unfinished") two more of the fight's hulks on the plateau
+    tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
+    // (the map-content lane, 2026-10-09, landed by the maps lane's Kestrel rebuild) the aprons' floodlight masts and the
+    // holding apron's (landmarks/airfieldWorks.ts floodMast), rotation pairs about the runway's centre
+    landmarks: [
+      { kind: 'floodMast', x: -268, z: -104, yawDeg: 160, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (north-west)' },
+      { kind: 'floodMast', x: 268, z: 104, yawDeg: -20, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (south-east)' },
+      { kind: 'floodMast', x: -182, z: -196, yawDeg: -20, ground: 'veto', roadMargin: 0.5, name: 'the cargo apron mast (south-east)' },
+      { kind: 'floodMast', x: 182, z: 196, yawDeg: 160, ground: 'veto', roadMargin: 0.5, name: 'the terminal apron mast (north-west)' },
+      { kind: 'floodMast', x: 58, z: -46, yawDeg: -50, ground: 'veto', name: 'the holding apron mast (south)' },
+      { kind: 'floodMast', x: -58, z: 46, yawDeg: 130, ground: 'veto', name: 'the holding apron mast (north)' },
+      { kind: 'floodMast', x: 120, z: -100, yawDeg: 180, ground: 'veto', name: 'the south taxiway mast' },
+      { kind: 'floodMast', x: -120, z: 100, yawDeg: 0, ground: 'veto', name: 'the north taxiway mast' },
+    ],
+    // the An-26 transports in the dispersal pens, two of them burnt out where the February fighting caught them (rotation
+    // pairs; maps/vehicleSetPieces.ts)
+    vehicleSetPieces: [
+      { kind: 'an26', x: 135, z: -176, yawDeg: 0, wrecked: true }, { kind: 'an26', x: -135, z: 176, yawDeg: 180, wrecked: true },
+      { kind: 'an26', x: 214, z: -182, yawDeg: 0 }, { kind: 'an26', x: -214, z: 182, yawDeg: 180 },
+    ],
+    inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 10, jeeps: 7, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
+  },
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): a field cross at the lane of each
+  // dacha cooperative. (No 110 kV line: every route to the plateau crosses the new woods, and a line's towers rise to keep
+  // the crowns clear under its spans — 55 m on the east-end route, a transmission giant beside a dacha.)
+  scenery: {
+    landmarks: [
+      { kind: 'orthodoxcross', x: 6, z: -262, yawDeg: 90, name: 'the cross at the south cooperative' },
+      { kind: 'orthodoxcross', x: -6, z: 262, yawDeg: 270, name: 'the cross at the north cooperative' },
+    ],
   },
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): an airfield plain: low swells,
   // tree lines
