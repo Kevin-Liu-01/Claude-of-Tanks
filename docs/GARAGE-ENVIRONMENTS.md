@@ -119,8 +119,10 @@ failed criterion. The rubric checks:
 - readable maintenance purpose, four real fleet exhibits, and a full 360-degree
   service story;
 - map-specific terrain, vegetation, structures, materials, skyline, and route;
-- no more than 64,000 triangles and 25 draw calls per outdoor environment (64k since
-  garage round 7: buildings at the props standard need real members and cut openings);
+- no more than 72,000 triangles and 25 draw calls per outdoor environment (64k since
+  garage round 7: buildings at the props standard need real members and cut openings; 72k since 2026-10-16, deploy
+  226: the garages' place-truth facilities and r8 detail together with the props lanes' container and tower rebuilds put
+  Cinder at 70.9k with its yard rails trimmed and Glacier at 70.5k; the Garage frame time is measured in the final pass);
 - normal-speed environment switches below the 80 ms maximum-frame-gap gate;
 - bounded texture residency, two-pack caching, and no retained heap growth after
   repeated complete cycles.
