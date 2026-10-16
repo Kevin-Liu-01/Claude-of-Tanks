@@ -17,6 +17,7 @@ import { buildHouse, windowRhythm, withWear, type HouseDialect, type Opening, ty
 import { doorUnit, windowUnit, type WindowStyle } from '../maps/regional/openings.ts';
 import type { SimpleCollisionShape } from '../collision.ts';
 import { bar } from './kit.ts';
+import { bevelSpan, orientedPrism } from '../maps/regional/millWorks.ts';
 import { sootOver } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
 
@@ -166,11 +167,17 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
   for (let i = 0; i <= 6; i++) for (let j = 0; j <= 4; j++) top = Math.max(top, g(-Wt / 2 + Wt * j / 4, -L / 2 + L * i / 6));
   top += 0.15;
   // the terrace: the clay's bed and the court's surface on it
-  sink.span('stone', -Wt / 2, top - 0.6, -L / 2, Wt / 2, top - 0.12, L / 2, { decor: true });
-  sink.span('plaster', -Wt / 2, top - 0.12, -L / 2, Wt / 2, top, L / 2);
+  // (props census r2 sweep, Lane C 2026-10-16: the court's box-only share 80 %) the bed's and the surface's arrises
+  // rounded over, the worn patches irregular, the walls' tops rough-coped, the net posts round
+  bevelSpan(sink, 'stone', -Wt / 2, top - 0.6, -L / 2, Wt / 2, top - 0.12, L / 2, 0.08, { decor: true });
+  bevelSpan(sink, 'plaster', -Wt / 2, top - 0.12, -L / 2, Wt / 2, top, L / 2, 0.03, {});
   // the clay worn to the earth behind the base lines, round the net posts and along the side lines (dressing)
   const CL = 23.77 / 2, CW = 10.97 / 2, SW = 8.23 / 2, SV = 6.4, lw = 0.05;
-  const worn = (x0: number, z0: number, x1: number, z1: number) => sink.span('plaster3', x0, top, z0, x1, top + 0.006, z1, { decor: true });
+  const worn = (x0: number, z0: number, x1: number, z1: number) => {
+    const c = Math.min(x1 - x0, z1 - z0) * 0.3;
+    orientedPrism(sink, 'plaster3', [[x1, top, z0 + c], [x1, top, z1 - c], [x1 - c, top, z1], [x0 + c, top, z1], [x0, top, z1 - c], [x0, top, z0 + c], [x0 + c, top, z0], [x1 - c, top, z0]],
+      [0, 1, 0], 0.006, { decor: true });
+  };
   for (const sz of [-1, 1]) worn(-2.6, sz * (CL + 0.2), 2.6, sz * (CL + 2.8));
   for (const sx of [-1, 1]) worn(sx * (CW + 0.5) - 0.8, -1.2, sx * (CW + 0.5) + 0.8, 1.2);
   // the lines (a doubles court 23.77 × 10.97 m, its singles side lines, the service lines and the centre line), faded
@@ -179,7 +186,7 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
   for (const sz of [-1, 1]) { line(-CW, sz * CL, CW, sz * CL); line(-SW, sz * SV, SW, sz * SV); }
   line(0, -SV, 0, SV);
   // the net and its posts (the net's band, sagging to its middle)
-  for (const sx of [-1, 1]) sink.span('structureMetal', sx * (CW + 0.9) - 0.05, top, -0.05, sx * (CW + 0.9) + 0.05, top + 1.07, 0.05, { colour: IRON });
+  for (const sx of [-1, 1]) sink.cylinder('structureMetal', [sx * (CW + 0.9), top, 0], 'y', 1.07, 0.05, 8, { colour: IRON });
   for (let k = 0; k < 8; k++) {
     const x0 = -(CW + 0.9) + (2 * CW + 1.8) * k / 8, x1 = x0 + (2 * CW + 1.8) / 8;
     const sag = (x: number) => 0.16 * (1 - (x / (CW + 0.9)) ** 2);
@@ -220,8 +227,8 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
       for (const [t0, t1] of spans) {
         const ax = side.a[0] + ux * t0, az = side.a[1] + uz * t0, bx = side.a[0] + ux * t1, bz = side.a[1] + uz * t1;
         const nx = side.n[0], nz = side.n[1];
-        sink.span('stone', Math.min(ax, bx) + Math.min(0, nx * 0.5), top - 0.4, Math.min(az, bz) + Math.min(0, nz * 0.5),
-          Math.max(ax, bx) + Math.max(0, nx * 0.5), top + 0.62, Math.max(az, bz) + Math.max(0, nz * 0.5), { decor: true });
+        bevelSpan(sink, 'stone', Math.min(ax, bx) + Math.min(0, nx * 0.5), top - 0.4, Math.min(az, bz) + Math.min(0, nz * 0.5),
+          Math.max(ax, bx) + Math.max(0, nx * 0.5), top + 0.62, Math.max(az, bz) + Math.max(0, nz * 0.5), 0.09, { decor: true });
       }
     }
     // the bank's footprint a hull meets from below (its foot to the terrace's edge)
