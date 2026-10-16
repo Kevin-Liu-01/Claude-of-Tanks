@@ -6,7 +6,7 @@
 // Drawn in its own frame (x across, y up, z out of its front, ground at y = 0) into the regional part sink: it merges into
 // the props' material buckets (no draw call of its own). The pole and its base are structure; the ladder, the rails and
 // the lamps are dressing, the lamp bank a piece of its own that a hit brings down (landmarks/pieces.ts).
-import { PartSink, faceBox, rgb, shade, type EmitOptions, type Face, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
@@ -21,6 +21,27 @@ function ladder(sink: PartSink, z: number, y0: number, y1: number, colour: Rgb):
   const o: EmitOptions = { colour, decor: true, fine: true };
   for (const s of [-0.22, 0.22]) bar(sink, 'structureMetal', [s, y0, z], [s, y1, z], 0.05, o);
   for (let y = y0 + 0.3; y < y1 - 0.1; y += 0.35) bar(sink, 'structureMetal', [-0.22, y, z], [0.22, y, z], 0.03, o);
+}
+
+/**
+ * A floodlight on a frame's face at z0 (its back on the face), facing +z: a round can of 12 sides 0.42 m deep, the bezel
+ * ring at its mouth, the lens 4 cm back inside the bezel, the can's lining between them (seen past the bezel's lip).
+ */
+function floodlight(sink: PartSink, x: number, y: number, z0: number): void {
+  const R = 0.27, Ri = 0.21, depth = 0.42, n = 12, zf = z0 + depth, zl = zf - 0.04;
+  sink.cylinder('structureMetal', [x, y, z0], 'z', depth, R, n, { colour: IRON, decor: true }, R, false);
+  const ring = (r: number, z: number): Vec3[] => Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * Math.PI * 2;
+    return [x + Math.cos(a) * r, y + Math.sin(a) * r, z];
+  });
+  const outer = ring(R, zf), inner = ring(Ri, zf), lining = ring(Ri, zl);
+  for (let k = 0; k < n; k++) {
+    const j = (k + 1) % n;
+    // the bezel (facing +z) and the lining inside it (facing the can's axis)
+    sink.quad('structureMetal', outer[k], outer[j], inner[j], inner[k], { colour: shade(IRON, 1.3), decor: true });
+    sink.quad('structureMetal', inner[k], inner[j], lining[j], lining[k], { colour: IRON, decor: true, fine: true });
+  }
+  sink.polygon('glass', lining, { decor: true });
 }
 
 /**
@@ -59,17 +80,12 @@ export const floodMast: LandmarkBuilder = (ctx) => {
     const b = ((k + 1) / 12) * Math.PI * 2;
     bar(sink, 'structureMetal', [Math.cos(a) * 1.35, H + 1.0, Math.sin(a) * 1.35], [Math.cos(b) * 1.35, H + 1.0, Math.sin(b) * 1.35], 0.04, { colour: STEEL_DARK, decor: true, fine: true });
   }
-  // the lamp bank: its frame standing on the platform inside the rail and two rows of three lamps over the rail, the glass
-  // to the apron
+  // the lamp bank: its frame standing on the platform inside the rail and two rows of three floodlights over the rail —
+  // round cans on the frame's face, each lens set back in its can behind a bezel (the maps lane, 2026-10-16; the LOOKS r2
+  // sweep: glass squares laid on box faces read as painted openings)
   piece(sink, { name: 'lamps', kind: 'detach', at: 'damaged', fall: 'flat' }, (s) => {
     s.span('structureMetal', -1.0, H, 0.3, 1.0, H + 2.6, 0.45, { colour: STEEL_DARK });
-    const lampFace: Face = { origin: [0, 0, 0.45], u: [1, 0, 0], out: [0, 0, 1], width: 2.0 };
-    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
-      const x = -0.66 + c * 0.66, y = H + 1.45 + r * 0.7;
-      // (on the frame's face: its back face left out, never a face inside the frame)
-      faceBox(s, 'structureMetal', lampFace, x, y, 0.2, 0.56, 0.56, 0.4, { colour: IRON, decor: true });
-      s.quad('glass', [x - 0.22, y - 0.22, 0.86], [x + 0.22, y - 0.22, 0.86], [x + 0.22, y + 0.22, 0.86], [x - 0.22, y + 0.22, 0.86], { decor: true });
-    }
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) floodlight(s, -0.66 + c * 0.66, H + 1.45 + r * 0.7, 0.45);
   });
   // the cable box at the foot
   sink.span('structureMetal', 0.6, 0.4, -0.3, 1.2, 1.5, 0.3, { colour: shade(STEEL, 0.8), decor: true });
