@@ -44,8 +44,12 @@ const bungalow: RegionalBuilder = (ctx) => {
       // Assam-type walls: lime plaster on split-bamboo ekra between timber posts, no masonry under it to show
       spall: null,
     }, dialect);
-    veranda(sink, frame.faces.front, 0.75, frame.eaveY - 0.2, W, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
-    veranda(sink, frame.faces.left, 0.75, frame.eaveY - 0.2, D, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    // (props census #15, Lane C 2026-10-16: "the two verandas simply overlap at the corner") the front veranda runs on
+    // over the corner to the side one's outer line, the side one stops short of it: one deck round the corner, the
+    // front's lean-to over it
+    const f = frame.faces.front, l = frame.faces.left;
+    veranda(sink, { ...f, origin: [f.origin[0] - V / 2, f.origin[1], f.origin[2]], width: W + V }, 0.75, frame.eaveY - 0.2, W + V, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    veranda(sink, { ...l, origin: [l.origin[0], l.origin[1], l.origin[2] - 0.15], width: D - 0.3 }, 0.75, frame.eaveY - 0.2, D - 0.3, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
   });
   return sink.finish();
 };
