@@ -2,6 +2,7 @@
 // `hinterland` block in its file draws its draft only under the lab override `?hinterland=1` (B-architecture §7.1),
 // so the parity lab (Verdant) and a migration in progress can be captured on one build while production keeps the ring.
 import type { HinterlandConfig } from '../spec.ts';
+import airfield from './airfield.ts';
 import alpine from './alpine.ts';
 import winter from './winter.ts';
 import railyard from './railyard.ts';
@@ -10,4 +11,4 @@ import mars from './mars.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, mars, polders, railyard, ruinspires, verdant, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ airfield, alpine, mars, polders, railyard, ruinspires, verdant, winter });
