@@ -13,7 +13,9 @@ import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 const panes = new Set(['fieldhut', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse',
   'guardpost', 'quonsethut', 'checkpointhut', 'securityoffice', 'servicegarage', 'corneroffice',
   // 2026-09-19 Mars station: the habitat dome and module carry glass panes and door lights, the landing pad a kiosk window
-  'habdome', 'habmodule', 'landingpad', 'missioncontrol', 'greenhouse', 'ascentlander']);
+  'habdome', 'habmodule', 'landingpad', 'missioncontrol', 'greenhouse', 'ascentlander',
+  // (props #12, 2026-10-16) the stations member by member: every airlock hatch carries its lit viewport, the rover dock too
+  'rovergarage']);
 function assertExposedAperture(geometry, id) {
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); mesh.updateMatrixWorld(true);
   const mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE), position = geometry.getAttribute('position');
