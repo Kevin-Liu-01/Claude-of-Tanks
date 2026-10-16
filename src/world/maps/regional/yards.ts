@@ -343,29 +343,59 @@ export function graveParts(w: number, d: number, look: () => number, drop = 0): 
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
   const rows = Math.max(1, Math.floor((d - 0.4) / 2.1)), per = Math.max(1, Math.floor((w - 0.4) / 1.15));
+  // (props census #11, the looks lane, 2026-10-15) each grave member by member: the bed's four kerb stones round its
+  // planted earth, the marker at its head on a base of its own — the slab with its arched or shouldered head and its
+  // tablet, the stone cross with its trefoils on a stepped plinth, or the Franconian wrought-iron cross with its
+  // scrolls, its name plate and its little tin roof — and a red grave light before some
+  const tin = rgb(0x6c7072), lamp = rgb(0x9a2a22), ivy = rgb(0x2e4426), blooms: readonly Rgb[] = [rgb(0xb8323a), rgb(0xd8c23a), rgb(0xe6e2d6)];
+  const iron = { ...dec, colour: IRON };
   for (let r = 0; r < rows; r++) {
     const z = -d / 2 + 0.2 + (d - 0.4) * (r + 0.5) / rows;
     for (let k = 0; k < per; k++) {
       if (look() < 0.12) continue; // an empty plot in the row
-      const x = -w / 2 + 0.2 + (w - 0.4) * (k + 0.5) / per;
-      // the bed: a low stone kerb round a mound of earth
-      sink.span('stone', x - 0.36, -0.05 - drop, z - 0.9, x + 0.36, 0.1, z + 0.75, dec);
-      sink.span('structureWood', x - 0.3, 0.05, z - 0.84, x + 0.3, 0.14, z + 0.66, { ...dec, colour: shade(SOIL[k % SOIL.length], 0.9) });
-      const kind = look(), rise = (look() - 0.5) * 0.12, hz = z - 0.92;
+      const x = -w / 2 + 0.2 + (w - 0.4) * (k + 0.5) / per, y0 = -0.08 - drop, hz = z - 0.92;
+      // the kerbs: the head and the foot stone across the bed, the sides between them
+      sink.span('stone', x - 0.37, y0, z + 0.66, x + 0.37, 0.12, z + 0.76, dec);
+      sink.span('stone', x - 0.37, y0, z - 0.84, x + 0.37, 0.12, z - 0.74, dec);
+      for (const s of [-1, 1]) sink.span('stone', x + (s > 0 ? 0.28 : -0.37), y0, z - 0.74, x + (s > 0 ? 0.37 : -0.28), 0.11, z + 0.66, dec);
+      // the bed's earth between them, ivy over it or flowers set in it
+      sink.span('structureWood', x - 0.28, y0, z - 0.74, x + 0.28, 0.07, z + 0.66, { ...dec, colour: shade(SOIL[k % SOIL.length], 0.85) });
+      if (look() < 0.55) mound(sink, [x, 0.07, z - 0.04], [1, 0, 0], [0, 0, 1], 0.26, 0.62, 0.09, shade(ivy, 0.9 + look() * 0.25), dec);
+      else for (let f = 0; f < 3; f++) mound(sink, [x + (f - 1) * 0.15, 0.07, z - 0.45 + f * 0.05], [1, 0, 0], [0, 0, 1], 0.09, 0.09, 0.13, blooms[(k + f) % 3], dec, f, 4);
+      const kind = look(), rise = (look() - 0.5) * 0.12;
       if (kind < 0.55) {
-        // a slab headstone, a shoulder cut at its top
-        const hw = 0.24 + look() * 0.1, hh = 0.55 + look() * 0.35;
-        sink.span('stone', x - hw, -0.05 - drop, hz - 0.07, x + hw, hh, hz + 0.07, dec);
-        sink.span('stone', x - hw * 0.7, hh, hz - 0.06, x + hw * 0.7, hh + 0.08, hz + 0.06, dec);
+        // a slab on its base, its head arched or shouldered, a tablet raised on its face
+        const hw = 0.24 + look() * 0.1, hh = 0.55 + look() * 0.35, arched = look() < 0.5, zf = hz - 0.065;
+        sink.span('stone', x - hw - 0.04, y0, hz - 0.1, x + hw + 0.04, 0.1, hz + 0.1, dec);
+        const head: Vec3[] = arched
+          ? Array.from({ length: 7 }, (_, i): Vec3 => [x + Math.cos((Math.PI * i) / 6) * hw, hh + Math.sin((Math.PI * i) / 6) * hw * 0.45, zf])
+          : [[x + hw, hh, zf], [x + hw * 0.62, hh + 0.09, zf], [x - hw * 0.62, hh + 0.09, zf], [x - hw, hh, zf]];
+        sink.prism('stone', [[x - hw, 0.1, zf], [x + hw, 0.1, zf], ...head], [0, 0, 1], 0.13, dec);
+        sink.span('stone', x - hw * 0.55, hh * 0.45, hz + 0.065, x + hw * 0.55, hh * 0.85, hz + 0.076, dec);
       } else if (kind < 0.8) {
-        // a stone cross on a plinth
-        sink.span('stone', x - 0.2, -0.05 - drop, hz - 0.12, x + 0.2, 0.25, hz + 0.12, dec);
-        sink.span('stone', x - 0.05, 0.25, hz - 0.05, x + 0.05, 1.05 + rise, hz + 0.05, dec);
+        // a stone cross on a stepped plinth, its arms' ends trefoiled
+        const top = 1.05 + rise;
+        sink.span('stone', x - 0.22, y0, hz - 0.14, x + 0.22, 0.14, hz + 0.14, dec);
+        sink.span('stone', x - 0.15, 0.14, hz - 0.1, x + 0.15, 0.26, hz + 0.1, dec);
+        sink.span('stone', x - 0.05, 0.26, hz - 0.05, x + 0.05, top, hz + 0.05, dec);
         sink.span('stone', x - 0.22, 0.72, hz - 0.05, x + 0.22, 0.82, hz + 0.05, dec);
+        for (const [ex, ey] of [[x - 0.22, 0.77], [x + 0.22, 0.77], [x, top]] as const) sink.span('stone', ex - 0.045, ey - 0.045, hz - 0.055, ex + 0.045, ey + 0.045, hz + 0.055, dec);
       } else {
-        // an iron cross
-        sink.span('structureMetal', x - 0.025, -drop, hz - 0.025, x + 0.025, 1.0, hz + 0.025, { ...dec, colour: IRON });
-        sink.span('structureMetal', x - 0.18, 0.7, hz - 0.02, x + 0.18, 0.74, hz + 0.02, { ...dec, colour: IRON });
+        // the wrought-iron cross on its stone foot: the upright and the bar, the scrolls in the angles, the name plate, the
+        // tin roof pitched over its head
+        sink.span('stone', x - 0.12, y0, hz - 0.1, x + 0.12, 0.12, hz + 0.1, dec);
+        sink.span('structureMetal', x - 0.022, 0.12, hz - 0.022, x + 0.022, 1.12, hz + 0.022, iron);
+        sink.span('structureMetal', x - 0.2, 0.78, hz - 0.018, x + 0.2, 0.82, hz + 0.018, iron);
+        for (const [sx, sy] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
+          sink.member('structureMetal', [x + sx * 0.035, 0.8 + sy * 0.035, hz], [x + sx * 0.12, 0.8 + sy * 0.1, hz], 0.012, 0.012, [0, 0, 1], { ...iron, exposed: true }, 0);
+        }
+        sink.span('structureMetal', x - 0.07, 0.6, hz + 0.022, x + 0.07, 0.72, hz + 0.03, { ...dec, colour: tin });
+        for (const s of [-1, 1]) sink.member('structureMetal', [x - s * 0.01, 1.2, hz], [x + s * 0.13, 1.115, hz], 0.15, 0.008, [s * 0.5547, 0.8321, 0], { ...dec, colour: tin, exposed: true }, 0);
+      }
+      if (look() < 0.3) {
+        // a grave light: its red glass and its lid
+        sink.span('structureMetal', x + 0.12, 0.07, hz + 0.16, x + 0.2, 0.19, hz + 0.24, { ...dec, colour: lamp });
+        sink.span('structureMetal', x + 0.115, 0.19, hz + 0.155, x + 0.205, 0.215, hz + 0.245, { ...dec, colour: tin });
       }
     }
   }
