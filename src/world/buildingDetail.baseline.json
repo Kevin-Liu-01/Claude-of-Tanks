@@ -155,13 +155,13 @@
    "facePass": 0.375
   },
   "kyushu": {
-   "score": 10,
+   "score": 12,
    "silhouette": 4,
    "mid": 3,
    "fine": 3,
-   "trisPerWallM2": 4.69,
-   "fineShare": 0.635,
-   "facePass": 0.455
+   "trisPerWallM2": 6.94,
+   "fineShare": 0.559,
+   "facePass": 0.636
   },
   "queenstown": {
    "score": 9,

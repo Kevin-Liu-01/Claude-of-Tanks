@@ -4221,7 +4221,43 @@
    "insideM2": 0.163,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/fjord:fishRack#22": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 21.005,
+   "invertedM2": 0
+  },
+  "landmark/fjord:stabbur#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/fjord:hayRack#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/airfield:floodMast#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.504,
+   "gapM2": 3.923,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T08:15:52.625Z"
+ "updatedAt": "2026-10-16T11:32:04.366Z"
 }

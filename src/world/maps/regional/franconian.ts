@@ -7,7 +7,7 @@
 import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { flowerBox } from './dressing.ts';
-import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, hash01, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
+import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, hash01, paintBand, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
 import {
   bindFachwerk, hessianDialect, houseUvOffset, roofFor, stateFor, withPalette, type FachwerkPalette,
@@ -121,6 +121,21 @@ const townHouse: RegionalBuilder = (ctx) => {
           const lx = k % 2 ? 0.3 : 0.5, lz = k % 2 ? 0.5 : 0.3;
           dressedQuoin(sink, 'stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.33, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
         }
+      }
+    } else if (!framed && facadeOn()) {
+      // (the maps lane, 2026-10-16; the building-detail ratchet: with the quoins on two fronts in five the town's other
+      // rendered houses carried no wall craft at all) the plainer fronts' corners painted instead of dressed: a Lisene, a
+      // flat band of the house's Fasche paint up each corner from the plinth to the eaves, as the towns' baroque and
+      // Biedermeier renders have them — paint, not the "toy quoins" — its paint chosen by the house's own measures (no draw)
+      const b = frame.bodies[0], cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, wx = b.x1 - b.x0, wz = b.z1 - b.z0;
+      const tint = FASCHEN[Math.floor(hash01(bd, bw, frame.eaveY + 1) * FASCHEN.length) % FASCHEN.length], lis = 0.38;
+      const faces: Face[] = [
+        { origin: [cx, 0, b.z1], u: [1, 0, 0], out: [0, 0, 1], width: wx }, { origin: [b.x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: wz },
+        { origin: [cx, 0, b.z0], u: [-1, 0, 0], out: [0, 0, -1], width: wx }, { origin: [b.x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: wz },
+      ];
+      for (const face of faces) for (const end of [-1, 1]) {
+        const u0 = end < 0 ? -face.width / 2 : face.width / 2 - lis, u1 = end < 0 ? -face.width / 2 + lis : face.width / 2;
+        paintBand(sink, 'plaster', face, u0, u1, 0.4, frame.eaveY - 0.3, tint);
       }
     }
     // a hoist dormer for the loft in the street roof of eaves-fronted houses, or a loft door in the street gable

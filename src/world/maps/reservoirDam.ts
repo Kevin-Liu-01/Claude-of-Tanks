@@ -18,7 +18,6 @@
 // kit's weathered concrete.
 import * as THREE from 'three';
 import { cloneCollisionRecord, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
-import { box } from '../propGeometry.ts';
 
 export interface ReservoirDamSite {
   /** The crest's middle, on the road's centre line (m). */
@@ -127,18 +126,55 @@ function surface(rows: readonly (readonly THREE.Vector3[])[], outward: THREE.Vec
   return g;
 }
 
-/** A box `w` (along u) x `h` x `d` (along v), its base's centre at p, turned so its local x runs along u. */
+/**
+ * A box `w` x `h` x `d` centred on the origin with its four upright edges chamfered by c (the maps lane, 2026-10-16; the
+ * LOOKS r2 sweep: the dam's boxes were all plain primitives): an octagonal prism, its faces flat-shaded, UVs in metres
+ * at the props' half scale (round the sides and up them; across the lids).
+ */
+function chamferBox(w: number, h: number, d: number, c: number): THREE.BufferGeometry {
+  const hw = w / 2, hd = d / 2, k = Math.max(0, Math.min(c, hw * 0.45, hd * 0.45)), hy = h / 2;
+  const ring: Array<[number, number]> = [[hw - k, -hd], [hw, -hd + k], [hw, hd - k], [hw - k, hd], [-hw + k, hd], [-hw, hd - k], [-hw, -hd + k], [-hw + k, -hd]];
+  const pos: number[] = [], nrm: number[] = [], uv: number[] = [];
+  const tri = (a: number[], b: number[], c2: number[], n: number[], ua: number[], ub: number[], uc: number[]) => {
+    pos.push(...a, ...b, ...c2); nrm.push(...n, ...n, ...n); uv.push(...ua, ...ub, ...uc);
+  };
+  let along = 0;
+  for (let i = 0; i < 8; i++) {
+    const [x0, z0] = ring[i], [x1, z1] = ring[(i + 1) % 8], len = Math.hypot(x1 - x0, z1 - z0);
+    // (the ring runs counter-clockwise seen from below: its outward normal is (dz, -dx))
+    const n = len > 0 ? [(z1 - z0) / len, 0, -(x1 - x0) / len] : [1, 0, 0];
+    const u0 = along * 0.5, u1 = (along + len) * 0.5;
+    tri([x0, -hy, z0], [x1, hy, z1], [x1, -hy, z1], n, [u0, 0], [u1, h * 0.5], [u1, 0]);
+    tri([x0, -hy, z0], [x0, hy, z0], [x1, hy, z1], n, [u0, 0], [u0, h * 0.5], [u1, h * 0.5]);
+    along += len;
+  }
+  for (let i = 1; i < 7; i++) {
+    const a = ring[0], b = ring[i], c2 = ring[i + 1];
+    tri([a[0], hy, a[1]], [c2[0], hy, c2[1]], [b[0], hy, b[1]], [0, 1, 0], [a[0] * 0.5, a[1] * 0.5], [c2[0] * 0.5, c2[1] * 0.5], [b[0] * 0.5, b[1] * 0.5]);
+    tri([a[0], -hy, a[1]], [b[0], -hy, b[1]], [c2[0], -hy, c2[1]], [0, -1, 0], [a[0] * 0.5, a[1] * 0.5], [b[0] * 0.5, b[1] * 0.5], [c2[0] * 0.5, c2[1] * 0.5]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  // (indexed, as the box it replaced: the merge turns every piece non-indexed itself)
+  g.setIndex(Array.from({ length: pos.length / 3 }, (_, i) => i));
+  return g;
+}
+
+/** A box `w` (along u) x `h` x `d` (along v), its base's centre at p, turned so its local x runs along u; its upright
+ *  edges chamfered 4 cm (or a fifth of its smaller side). */
 function placedBox(w: number, h: number, d: number, p: THREE.Vector3, u: THREE.Vector3): THREE.BufferGeometry {
-  const g = box(w, h, d, 0.5);
+  const g = chamferBox(w, h, d, Math.min(0.04, Math.min(w, d) * 0.2));
   g.rotateY(-Math.atan2(u.z, u.x));
   g.translate(p.x, p.y + h / 2, p.z);
   return g;
 }
 
-/** A prism of `seg` sides from a to b, radius r (a pipe or a pole). */
-function pipe(a: THREE.Vector3, b: THREE.Vector3, r: number, seg = 8): THREE.BufferGeometry {
+/** A prism of `seg` sides from a to b, radius r at a and rb at b (a pipe, or a tapered pole). */
+function pipe(a: THREE.Vector3, b: THREE.Vector3, r: number, seg = 8, rb = r): THREE.BufferGeometry {
   const len = a.distanceTo(b);
-  const g = new THREE.CylinderGeometry(r, r, len, seg, 1, false);
+  const g = new THREE.CylinderGeometry(rb, r, len, seg, 1, false);
   const mid = a.clone().add(b).multiplyScalar(0.5), dir = b.clone().sub(a).normalize();
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
   g.translate(mid.x, mid.y, mid.z);
@@ -298,11 +334,13 @@ export function dressReservoirDam(site: ReservoirDamSite, ground: DamGround, buc
     // the rails along the walkway under the trucks
     for (const t of [t0, t1]) push(metal, placedBox(24, 0.16, 0.2, at(0, t, walkY), u), STEEL);
     // the trolley: its machinery house on the beams, the hoist ropes and the hook block
-    const tm = (t0 + t1) / 2;
-    push(metal, placedBox(3.6, 2.4, 3.0, at(-2, tm, walkY + H + 1.1), v), GANTRY);
-    push(metal, placedBox(3.9, 0.25, 3.3, at(-2, tm, walkY + H + 3.5), v), [0.33, 0.39, 0.35]);
-    for (const dt of [-0.4, 0.4]) push(metal, pipe(at(-2, tm + dt, walkY + H), at(-2, tm + dt, walkY + 4.6), 0.03, 4), STEEL);
-    push(metal, placedBox(1.1, 1.4, 0.7, at(-2, tm, walkY + 3.2), v), DARK);
+    // (the maps lane, 2026-10-16; the LOOKS r2 sweep: the trolley stood over the middle of the span, on nothing, its
+    // ropes 3.6 m from any steel) on the west portal's beam, the ropes from the beam's bottom chord to the hook block
+    const tm = (t0 + t1) / 2, ts = -9;
+    push(metal, placedBox(3.6, 2.4, 3.0, at(ts, tm, walkY + H + 1.1), v), GANTRY);
+    push(metal, placedBox(3.9, 0.25, 3.3, at(ts, tm, walkY + H + 3.5), v), [0.33, 0.39, 0.35]);
+    for (const dt of [-0.4, 0.4]) push(metal, pipe(at(ts, tm + dt, walkY + H), at(ts, tm + dt, walkY + 4.6), 0.03, 4), STEEL);
+    push(metal, placedBox(1.1, 1.4, 0.7, at(ts, tm, walkY + 3.2), v), DARK);
   }
   // the road's parapets and lamp standards over the dam: upstream from abutment to abutment, downstream over the pocket
   // (the upstream parapet runs past the abutments over the corners the road's banks grade, to the rim's kerbs)
@@ -321,10 +359,13 @@ export function dressReservoirDam(site: ReservoirDamSite, ground: DamGround, buc
   for (let s = -chordS + 6; s <= chordS - 6; s += 12) {
     const base = at(s, site.roadHalfM + PARAPET_T / 2, walkY + PARAPET_H);
     pushConcrete(placedBox(0.62, 0.5, 0.62, base.clone().setY(walkY + PARAPET_H - 0.05), u));
-    const pole = new THREE.CylinderGeometry(0.07, 0.13, 7.2, 8, 1, false);
-    pole.translate(base.x, base.y + 0.45 + 3.6, base.z);
-    push(metal, pole, STEEL);
+    // (the maps lane, 2026-10-16; the LOOKS r2 sweep read the mast arm as floating: the pole and its arm were two kinds of
+    // geometry, so the arm's rep never met its pole) the pole and the arm one run of steel, the arm from inside the pole's
+    // head
     const top = base.clone().setY(base.y + 0.45 + 7.2), tip = top.clone().addScaledVector(v, -2.2).setY(top.y + 0.35);
+    // (its foot bolted down through the plinth and the parapet's core to the deck's ground: hidden, and it grounds the run)
+    push(metal, pipe(base.clone().setY(ground.getHeightAt(base.x, base.z) - 0.2), base.clone().setY(base.y + 0.45), 0.11, 6), STEEL);
+    push(metal, pipe(base.clone().setY(base.y + 0.45), top, 0.13, 8, 0.07), STEEL);
     push(metal, pipe(top.clone().setY(top.y - 0.3), tip, 0.05, 6), STEEL);
     push(metal, placedBox(0.95, 0.22, 0.42, tip.clone().addScaledVector(v, -0.35).setY(tip.y - 0.18), v), [0.34, 0.35, 0.36]);
     push(buckets.dark, placedBox(0.7, 0.03, 0.3, tip.clone().addScaledVector(v, -0.35).setY(tip.y - 0.2), v), DARK);
