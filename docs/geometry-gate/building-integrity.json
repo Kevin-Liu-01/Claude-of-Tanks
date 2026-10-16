@@ -3409,7 +3409,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.458,
-   "gapM2": 3.142,
+   "gapM2": 2.683,
    "invertedM2": 0
   },
   "landmark/polders:outfall#3": {
@@ -3427,7 +3427,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.224,
-   "gapM2": 5.628,
+   "gapM2": 8.173,
    "invertedM2": 0
   },
   "landmark/polders:outfall#6": {
@@ -4259,5 +4259,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T14:49:51.415Z"
+ "updatedAt": "2026-10-16T15:09:00.308Z"
 }
