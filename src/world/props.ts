@@ -115,6 +115,7 @@ import {
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { fenceTypes } from './maps/fenceKit.ts';
+import { coursedWallType } from './maps/coursedWallKit.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
@@ -733,6 +734,8 @@ interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'
   instanceTintStrength?: number;
   /** (E1) the kind's broken builder is its own (structureKit lightMeta's brokenBuild): never replaced by a fracture */
   ownBroken?: boolean;
+  /** (props lane A #6) the module a wall run's terrain fit reads in place of the drawn one (coursedWallKit.ts: the legacy) */
+  fitGeometry?: THREE.BufferGeometry;
 }
 
 interface PropsCollisionRecord extends CollisionRecord {
@@ -4426,7 +4429,8 @@ ${snowCap ? `
     // coursed module on the stone print
     // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
     // top, so a breached module loses it with its stones)
-    ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
+    // (props lane A #6: the coursed module in its region's build, maps/coursedWallKit.ts: the legacy collision and fit)
+    ...(sourcedStoneIsBrick(mapId) ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
@@ -11081,7 +11085,7 @@ ${snowCap ? `
         if (!span) continue;
         // Complete each terrain fit in the original order; only the boundary
         // between records changes. Micro-batches do not advance loading progress.
-        fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG);
+        fitWallSpan(pool.mats4[record.slot], pool.meta.fitGeometry ?? geoI, heightField, span, record, WALL_SEG);
         if (++fitted % 8 === 0 && index + 1 < pool.records.length) {
           yield { fine: true, progress: false, stage: 'wall-fit-' + kind };
         }
