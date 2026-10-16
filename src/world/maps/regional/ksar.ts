@@ -5,7 +5,7 @@
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedPolygon, recordShaft, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -244,20 +244,61 @@ const minaret: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The borj: a tapering mud-plastered watch tower with a crenellated top and a timber door high in its wall. */
+/**
+ * The borj: a mud-plastered watch tower with a crenellated top and a timber door high in its wall. (Props census #5, lane
+ * B 2026-10-15; the judges: "the buried door": its leaf stood inside the battered wall's foot, laid on nothing) a battered
+ * talus round its foot; the shaft in two stages, the upper set back over a band, its walls cut: the door raised over the
+ * talus with its steps up, loopholes in every face of both stages and a lookout window under the parapet; the palm-trunk
+ * beam ends (toron) through the walls under the parapet, its merlons over a parapet band. The shaft is a tower body
+ * (it topples in its courses).
+ */
 const borj: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const S = Math.max(3.2, Math.min(ctx.info.w, ctx.info.d) - 0.6), H = Math.max(7.5, ctx.info.h - 1.5);
-  sink.cylinder(MUD, [0, -0.3, 0], 'y', H + 0.3, S * 0.72, 4, {}, S * 0.6, true, Math.PI / 4);
-  const top = H, s = S * 0.6 * Math.SQRT1_2;
-  for (let k = -2; k <= 2; k++) for (const [ax, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]] as const) {
-    if (k % 2 !== 0) continue;
-    const c = k * s / 2.5;
-    if (ax === 'x') sink.span(MUD, sgn * s - 0.18, top, c - 0.25, sgn * s + 0.18, top + 0.6, c + 0.25);
-    else sink.span(MUD, c - 0.25, top, sgn * s - 0.18, c + 0.25, top + 0.6, sgn * s + 0.18);
+  const t = 0.55, cut = 0.42, reveal = 0.34, mid = Math.round(H * 0.55 * 10) / 10, S2 = S - 0.4;
+  // the talus, its foot sunk
+  sink.cylinder(MUD, [0, -0.3, 0], 'y', 0.8 + 0.3, (S / 2 + 0.3) * Math.SQRT2, 4, {}, (S / 2 + 0.02) * Math.SQRT2, true, Math.PI / 4);
+  const loop = (y: number, u = 0): HoleRect => ({ u0: u - 0.09, u1: u + 0.09, y0: y, y1: y + 0.7 });
+  const door: HoleRect = { u0: -0.45, u1: 0.45, y0: t + 0.25, y1: t + 0.25 + 1.85 };
+  const low = holedBox(sink, MUD, -S / 2, -S / 2, S / 2, S / 2, t, mid, {
+    front: [door, loop(mid - 1.4, 0.95)], right: [loop(2.2), loop(mid - 1.2, -0.6)], back: [loop(2.8)], left: [loop(2.0, 0.5), loop(mid - 1.3)],
+  }, cut, reveal);
+  // the band at the setback
+  sink.span(MUD, -S / 2 - 0.05, mid, -S / 2 - 0.05, S / 2 + 0.05, mid + 0.18, S / 2 + 0.05);
+  const look: HoleRect = { u0: -0.3, u1: 0.3, y0: H - 1.5, y1: H - 0.65 };
+  const high = holedBox(sink, MUD, -S2 / 2, -S2 / 2, S2 / 2, S2 / 2, mid + 0.18, H, {
+    front: [look, loop(mid + 1.0, -0.7)], right: [loop(mid + 1.4)], back: [loop(mid + 0.9, 0.4), loop(H - 1.6, -0.4)], left: [loop(mid + 1.2)],
+  }, cut - 0.06, reveal - 0.06);
+  // the parapet: its band and the merlons along it, corner horns taller
+  sink.span(MUD, -S2 / 2 - 0.06, H, -S2 / 2 - 0.06, S2 / 2 + 0.06, H + 0.3, S2 / 2 + 0.06);
+  const e = S2 / 2 + 0.06 - 0.15;
+  for (const [ax, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]] as const) {
+    for (let k = -2; k <= 2; k++) {
+      const c = k * e / 2, tall = Math.abs(k) === 2 ? 0.85 : 0.55;
+      if (ax === 'x') sink.span(MUD, sgn * e - 0.15, H + 0.3, c - 0.2, sgn * e + 0.15, H + 0.3 + tall, c + 0.2);
+      else if (Math.abs(k) < 2) sink.span(MUD, c - 0.2, H + 0.3, sgn * e - 0.15, c + 0.2, H + 0.3 + tall, sgn * e + 0.15);
+    }
   }
-  const face: Face = { origin: [0, 0, S * 0.66 * Math.SQRT1_2], u: [1, 0, 0], out: [0, 0, 1], width: S };
-  doorUnit(sink, face, 0, 0, 0.9, 1.9, { leaf: TIMBER, frame: { bucket: MUD, width: 0.2, out: 0.08 }, steps: null, leafKind: 'plank' });
+  // the toron: palm-trunk beam ends through the upper walls under the parapet
+  const beam = { colour: shade(TIMBER, 0.7), decor: true } as const;
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    for (const u of [-S2 * 0.3, 0, S2 * 0.3]) faceBox(sink, 'structureWood', high[name], u, H - 0.3, 0.2, 0.14, 0.14, 0.4, beam);
+  }
+  // the door at the back of its reveal (the steps up from the talus), the loopholes' dark frames
+  sink.recess = reveal;
+  try {
+    doorUnit(sink, low.front, 0, door.y0, door.u1 - door.u0, door.y1 - door.y0, { leaf: TIMBER, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(TIMBER, 0.8) },
+      steps: null, leafKind: 'plank' }, door.y0);
+  } finally { sink.recess = 0; }
+  // its two steps up from the talus, inside the plot
+  sink.span(MUD, -0.55, 0.2, S / 2 - 0.05, 0.55, t + 0.02, S / 2 + 0.42, { decor: true });
+  sink.span(MUD, -0.55, 0.2, S / 2 - 0.05, 0.55, t + 0.25, S / 2 + 0.16, { decor: true });
+  sink.recess = reveal - 0.06;
+  try {
+    windowUnit(sink, high.front, 0, look.y0, look.u1 - look.u0, look.y1 - look.y0, { frame: shade(TIMBER, 0.8), frameWidth: 0.05, frameOut: 0.03, bars: 'none',
+      surround: null, sill: { bucket: MUD, out: 0.06 }, shutters: null }, ctx.rng, 0.15);
+  } finally { sink.recess = 0; }
+  recordShaft(sink, 0, 0, S, H + 1.15, MUD, true);
   return sink.finish();
 };
 
@@ -337,8 +378,11 @@ function stallBody(sink: PartSink, look: () => number, W: number, D: number, top
   // the jerid: palm ribs laid across the joists with gaps between them, fresh tan to sun-grey
   const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
   for (let k = 0; k < ribs; k++) {
+    // (2026-10-07, the map-revival lane, Oasis round 3; gauntlet wave 135: "clean white plastic slats with dangling white
+    // strips") the ribs were authored as display colours in the linear vertex colour, near white on screen: weathered
+    // jerid, tan going to sun-grey (sRGB ~0.58/0.50/0.39 to ~0.62/0.60/0.56), the frond tips a shade darker
     const z = wallZ + 0.05 + (postZ + 0.3 - wallZ) * (k + 0.5) / ribs, tone = look();
-    const c: Rgb = [0.55 + tone * 0.14, 0.48 + tone * 0.12, 0.36 + tone * 0.08];
+    const c: Rgb = [0.30 + tone * 0.045, 0.21 + tone * 0.11, 0.13 + tone * 0.15];
     sink.span('structureWood', -W / 2 - 0.2 + look() * 0.15, top + 0.31, z - 0.07, W / 2 + 0.2 - look() * 0.15, top + 0.35, z + 0.07, { colour: c, decor: true, shadow: true });
   }
   // the frond tips hanging ragged over the lane edge, leaning out, some missing
@@ -346,7 +390,7 @@ function stallBody(sink: PartSink, look: () => number, W: number, D: number, top
     if (look() < 0.2) continue;
     const len = 0.2 + look() * 0.4, tone = look();
     sink.member('structureWood', [x, top + 0.33, postZ + 0.3], [x + (look() - 0.5) * 0.16, top + 0.33 - len, postZ + 0.36 + look() * 0.12],
-      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.5 + tone * 0.14, 0.43 + tone * 0.12, 0.31 + tone * 0.08], decor: true, shadow: true, exposed: true });
+      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.25 + tone * 0.06, 0.19 + tone * 0.08, 0.11 + tone * 0.09], decor: true, shadow: true, exposed: true });
   }
   // the counter: a plastered bench across the front, open at one end
   sink.span(MUD, -W / 2 + 0.35, floor, D / 2 - 1.05, W / 2 - 0.95, floor + 0.75, D / 2 - 0.5);
@@ -450,8 +494,9 @@ function roundedRing(x0: number, z0: number, x1: number, z1: number, rc: number,
   const corners: Array<[number, number, number]> = [[x0 + rc, z0 + rc, -Math.PI / 2], [x0 + rc, z1 - rc, Math.PI], [x1 - rc, z1 - rc, Math.PI / 2], [x1 - rc, z0 + rc, 0]];
   const out: Array<[number, number, number]> = [];
   // from each corner's start angle the arc turns a quarter clockwise in (x, z) (counter-clockwise seen from above)
-  for (const [cx, cz, a0] of corners) for (let k = 0; k <= 2; k++) {
-    const a = a0 - k * Math.PI / 4;
+  // (Oasis round 3, wave 135: "sharp-cornered boxes") five points to each quarter (was three)
+  for (const [cx, cz, a0] of corners) for (let k = 0; k < RING_ARC; k++) {
+    const a = a0 - k * Math.PI / 2 / (RING_ARC - 1);
     out.push([cx + Math.cos(a) * r, y, cz + Math.sin(a) * r]);
   }
   return out;
@@ -512,8 +557,9 @@ function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: num
 /** An opening cut through a slumped mass's straight side: `u` its middle along the run, `y0` its foot, w x h, its reveal
  *  `depth` into the mass (props census #26, the looks lane 2026-10-15). */
 interface MassHole { u: number; y0: number; w: number; h: number; depth: number }
-/** Each straight side's segment in roundedRing's ring (a corner's three points, then the side to the next corner). */
-const SIDE_SEGMENT: Readonly<Record<Side, number>> = Object.freeze({ left: 2, front: 5, right: 8, back: 11 });
+/** Each straight side's segment in roundedRing's ring: a corner's RING_ARC points, then the side to the next corner. */
+const RING_ARC = 5;
+const SIDE_SEGMENT: Readonly<Record<Side, number>> = Object.freeze({ left: RING_ARC - 1, front: 2 * RING_ARC - 1, right: 3 * RING_ARC - 1, back: 4 * RING_ARC - 1 });
 
 /** A quad wound to face `n` (the side its normal must point to). */
 function facing(sink: PartSink, bucket: RegionalBucket, q: readonly Vec3[], n: Vec3, opts: { decor?: boolean; shade?: number } = {}): void {
@@ -560,8 +606,11 @@ function holedSide(sink: PartSink, bucket: RegionalBucket, sideAt: (name: Side, 
 function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
   rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side> } = {}): void {
   const yb = y0 > 0 ? y0 : -0.3, top = y0 + h;
-  const batter = Math.min(0.32, 0.055 * (top - yb)) * (0.8 + look() * 0.4);
-  const rc = Math.max(batter + 0.3, Math.min(0.9, Math.min(x1 - x0, z1 - z0) * 0.14));
+  // (Oasis round 3, wave 135: "sharp-cornered boxes ... nothing like Shali's slumped, rounded grey-beige salt-mud
+  // masses") the walls battered half again as much and the corners rounded to a fifth of the block (was 0.055 of the
+  // height and 0.14 of the block, at most 0.9 m)
+  const batter = Math.min(0.45, 0.08 * (top - yb)) * (0.8 + look() * 0.4);
+  const rc = Math.max(batter + 0.3, Math.min(1.7, Math.min(x1 - x0, z1 - z0) * 0.21));
   const ph = 0.45 + look() * 0.2;
   // (the looks lane, 2026-10-15; WORKLIST #26 "Siwa kershef compounds with cut windows"; the r2 probe read every window
   // as a dark plate on a mud frame) the openings first, then the mass with them cut through its sides: each small window
@@ -621,7 +670,10 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
     for (let k = 0; k < n; k++) {
       if (look() < 0.35) continue;
       const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.3;
-      faceBox(sink, 'structureWood', fb, u, top - 0.25, 0.1, 0.1, 0.1, 0.24, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true, uv: UV_MEMBER });
+      // (Oasis round 3, wave 135: "its beam ends are neat rectangular planks rather than round palm trunks") a palm
+      // trunk's round end standing out of the wall
+      const end = 0.07 + look() * 0.03, outward = fb.out[0] + fb.out[2] > 0, p = facePoint(fb, u, top - 0.25, outward ? -0.05 : 0.25);
+      sink.cylinder('structureWood', p, fb.out[0] !== 0 ? 'x' : 'z', 0.3, end, 7, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true }, end * 0.9, true);
     }
   }
   for (const { name, hole, dress, tone } of units) {
@@ -788,16 +840,18 @@ const ainSpring: RegionalBuilder = (ctx) => {
   const along = R.W >= R.D;
   const px = along ? R.x0 + 0.3 + r : R.cx, pz = along ? R.cz : R.z0 + 0.3 + r;
   const n = 20;
+  // (Oasis round 3, wave 135: "the grey cut-stone block ... reads as modern masonry") the rim is the spring's old mud
+  // kerb, plastered and worn round, not dressed grey stone
   for (let k = 0; k < n; k++) {
     const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2, am = (a0 + a1) / 2;
-    sink.member('stone', [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 1.0, 0.5,
+    sink.member(KERSHEF_OLD, [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 0.8, 0.55,
       [Math.cos(am), 0, Math.sin(am)], { exposed: true }, 0);
   }
   // (the buildings stream, 2026-10-12, the integrity check: the water stood 22 cm in from the ring wall, a slot of bare
   // ground round it, and the steps hung over it short of the wall) the water meets the wall's inner face; the steps run
   // from the wall down into it, each tread over the one below
   sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r + 0.02, 24, { decor: true });
-  for (let k = 0; k < 3; k++) sink.span('stone', px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r + 0.05, { decor: true });
+  for (let k = 0; k < 3; k++) sink.span(KERSHEF_OLD, px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r + 0.05, { decor: true });
   // the rest of the plot: the café's low wall along the far edge and the palm-rib shelter by the pool
   const rest = along ? R.x1 - (px + r + 0.25) : R.z1 - (pz + r + 0.25);
   if (rest > 0.45) {
@@ -823,6 +877,33 @@ const siwaShops: RegionalBuilder = (ctx) => {
   // apron above the row, and the objective search counts a solid reaching within half a metre of a zone's floor
   const top = Math.max(2.0, Math.min(2.55, ctx.bounds.maxY - 0.45));
   for (let k = 0; k < n; k++) sink.placed(0, R.x0 + (k + 0.5) * R.W / n, 0, R.cz, () => stallBody(sink, look, w, d, top));
+  // (the maps lane, 2026-10-15, Sunscar's blind critics: the rows' backs read as "long blank concrete noise barriers — no
+  // openings, buttresses or erosion") the back wall as Siwa's mud walls stand: battered mud buttresses at the stalls'
+  // party walls and the row's ends, each stall's plank back door under a palm-trunk lintel or a shuttered hatch, and the
+  // wall's top worn into rounded lumps. Drawn after the stalls (their draws are as before); the buttresses stand no
+  // higher than the wall, which the zone apron above the row allows.
+  const zb = R.cz - d / 2, wallTop = top + 0.45;
+  for (let k = 0; k <= n; k++) {
+    const x = R.x0 + k * R.W / n;
+    sink.span(MUD, x - 0.38, -0.3, zb - 0.55, x + 0.38, 1.1 + look() * 0.3, zb + 0.02);
+    sink.span(MUD, x - 0.26, 1.0, zb - 0.32, x + 0.26, wallTop - 0.25 - look() * 0.4, zb + 0.02);
+  }
+  for (let k = 0; k < n; k++) {
+    const cx = R.x0 + (k + 0.5) * R.W / n;
+    const back: Face = { origin: [cx, 0, zb], u: [-1, 0, 0], out: [0, 0, -1], width: w };
+    const u = (look() - 0.5) * (w - 2.0);
+    if (look() < 0.6) {
+      faceBox(sink, 'structureWood', back, u, 0.18 + 0.95, 0.03, 0.82, 1.9, 0.06, { colour: look() < 0.5 ? PALM : PALM_GREY, decor: true, uv: UV_MEMBER });
+      sink.cylinder('structureWood', facePoint(back, u + 0.65, 2.2, 0.08), 'x', 1.3, 0.08, 7, { colour: shade(PALM, 0.85), decor: true }, 0.07, true);
+    } else {
+      faceBox(sink, 'structureWood', back, u, 1.75, 0.03, 0.6, 0.55, 0.05, { colour: PALM_GREY, decor: true, uv: UV_MEMBER });
+    }
+    // the worn top: two or three rounded lumps of the wall's mud along its crest
+    for (let j = 0, m = 2 + Math.floor(look() * 2); j < m; j++) {
+      const x = cx + (look() - 0.5) * (w - 0.6);
+      sink.cylinder(MUD, [x, wallTop - 0.05, zb + 0.2], 'y', 0.18 + look() * 0.12, 0.32 + look() * 0.18, 7, { decor: true }, 0.1, true, look());
+    }
+  }
   return sink.finish();
 };
 
@@ -881,6 +962,9 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     stone: { kind: 'rubble', tint: [0.7, 0.66, 0.58] },
     // (the kershef is the render canvas, toned: the plaster photo set read as speckled grey granite on the walls, h4)
     sourced: { plaster: false, wood: true },
+    // (Oasis round 3, wave 135: "an over-strong, uniform wormy normal pattern that reads as cottage cheese or popcorn
+    // ceiling rather than lumpy salt mud") the kershef's render relief at three eighths of the canvas's
+    plasterRelief: 0.45,
     // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
     // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
     // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
@@ -890,8 +974,12 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
       // kershef: the salt-crusted mud's warm grey-beige; the older walls darker; limewash
       // (round 2, the gauntlet's wave 125: "kershef tiling noise" — the canvas's lumps at their full contrast read as a
       // dark speckle tiled over every wall; the salt mud keeps half of it, a shade warmer)
-      plaster: (_h, s, l) => [0.084, Math.min(1, s * 0.3 + 0.12), Math.min(1, l * 0.5 + 0.36)],
-      plaster2: (_h, s, l) => [0.082, Math.min(1, s * 0.26 + 0.1), Math.min(1, l * 0.48 + 0.3)],
+      // (Oasis round 3, wave 135: "a uniform pinkish stucco noise", "pink-cream") the salt mud greyer and less pink: a
+      // grey-beige a step lighter (was hue 0.084, saturation x0.3 + 0.12)
+      // (the maps lane, 2026-10-15, Sunscar's blind critics: "grey-lavender ... the kershef needs warm ochre-tan") the salt
+      // mud a warm tan, its old walls a shade browner (was saturation x0.18 + 0.07 and x0.16 + 0.06 at hue 0.1 and 0.095)
+      plaster: (_h, s, l) => [0.088, Math.min(1, s * 0.2 + 0.24), Math.min(1, l * 0.46 + 0.36)],
+      plaster2: (_h, s, l) => [0.082, Math.min(1, s * 0.18 + 0.22), Math.min(1, l * 0.44 + 0.3)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.12), Math.min(1, l * 1.3 + 0.16)],
     },
   },

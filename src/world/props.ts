@@ -1,5 +1,7 @@
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
+import { rubbleCollisionRecords } from './rubbleCollision.ts'; // the hitbox lane, round 3, 2026-10-09
+import { createRubbleBalance, LowStones, lowStoneProfile, type RubbleHalvesAbout, type StoneSeat } from './rubbleKit.ts'; // round 3
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -11,7 +13,8 @@ import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightE
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
-import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
+import { CrushableClutter, HiddenSpanPiece, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
+import { breakableSmallProp } from './maps/smallPropBreak.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -59,8 +62,9 @@ import {
   applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
   paintBoulder, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
-import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
+import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
+import { railBerthReaches } from './railSpurs.ts'; // the buildings lane: no stack on a clearance berth
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
 import type { LandmarkPlacement } from './landmarks/types.ts';
@@ -115,6 +119,9 @@ import {
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
+import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
+import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
+import { streetLampFormOf } from './maps/streetKit.ts';
 import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
@@ -135,14 +142,17 @@ import {
 } from './roadFootprint.ts';
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
+import { placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
+import { buildHardstandDressing } from './hardstandDressing.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
 import { settleCatalogCuts } from './maps/railKit.ts';
 import {
-  captureAutumnCropRow, autumnHeadlandSite, autumnHeadlandClearsRows,
+  autumnHeadlandSite, autumnHeadlandClearsRows,
   type AutumnCropRow, type AutumnHeadlandSite,
 } from './autumnHeadlands.ts';
+import { placeCropFieldsOf } from './maps/cropKit.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
@@ -152,10 +162,12 @@ import {
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
+import { createUtilityWires, proceduralPoleParts, utilityConductorsOf, utilityPoleDistanceGeometry, utilityPoleGeometry } from './maps/utilityPoles.ts';
 import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
+import { townRowPlotClear } from './townRowAdditions.ts';
 import {
   cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
   setObbShape, type SimpleCollisionShape,
@@ -170,7 +182,7 @@ const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'bunker']);
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', 'bunker']); // (round 3: the heavy trucks' slabs)
 import {
   appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -183,17 +195,22 @@ import {
   type GroundCoverSolidProfile,
 } from './groundCoverClearance.ts';
 import {
-  cropRowSegmentIsSupported, hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
+  hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
 import {
-  box, gableAttic, gablePrism, gableSlabSeat, jitterUV, makeTelephonePoleDistanceGeometry,
+  box, gableAttic, gablePrism, gableSlabSeat, jitterUV,
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import { bakeTankWreckSteps, seatHulk, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
-import { setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
+import type { RollingStockKind } from './maps/rollingStock.ts';
+import {
+  rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes, tramDestructibleKind,
+  tramDestructibleTypes,
+} from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
@@ -385,6 +402,7 @@ interface InhabitSettings {
   /** settlement detail 2026-09-15: doorstep bench + pots, second woodpile, gate stack (default on) */
   doorsteps?: number;
   woodpiles?: number;
+  firewood?: number;
   gateStacks?: number;
 }
 
@@ -426,14 +444,9 @@ type WallRun = readonly [number, number, number, number, number?];
 const WALL_CORNER_M = 1.2;
 
 // environment density pass 2 (2026-09-12): per-map dressing caps that used to be
-// hard-coded (26 logs + stumps, 5 dressed yards everywhere). Kept here rather
+// hard-coded (5 dressed yards everywhere; the log caps: maps/groundDressing.ts FIELD_LOG_COUNTS). Kept here rather
 // than in the map modules, whose authoring the relief receipts pin; a map's own
-// props.logCount / props.hayCrateSites still wins.
-export const FIELD_LOG_COUNTS: Readonly<Record<string, number>> = Object.freeze({
-  autumn: 60, longleaf: 60, monsoon: 60, orchard: 56, verdant: 56, frontier: 56, fjord: 56, reservoir: 56,
-  alpine: 52, delta: 52, coastal: 52, mangrove: 48, saltwind: 48, steppe: 44,
-  polders: 40, skybridge: 40, railyard: 40, winter: 36, whiteout: 30, caldera: 30,
-});
+// props.hayCrateSites still wins.
 export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
   verdant: 9, autumn: 9, steppe: 9, orchard: 9,
   polders: 8, coastal: 8, frontier: 8, delta: 8, longleaf: 8, reservoir: 8,
@@ -445,9 +458,11 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
  * lower (1.4 m over grade), so at 3 m two drivable cells north of the middle work lost their cover from the south and
  * the map's middle-band cover share fell from 0.300 to 0.299, under MAP-LAYOUT-BRIEF.md's 0.30 floor; at 5 m the work
  * screens them again (both works' pillboxes step back, the bands all hold: tools/map-layout-metrics.mjs). Kept here
- * rather than in the map module, whose authoring the relief receipts pin.
+ * rather than in the map module, whose authoring the relief receipts pin. (225 gate, 2026-10-15: on 225 the regional kits'
+ * sliver-triangle filter moved Glacier's share back to 0.299 at 5 m; 6 m, inside the 4.5-7 m span where every band held,
+ * gives it its margin.)
  */
-export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 5 });
+export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 6 });
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
@@ -497,6 +512,8 @@ interface PropsSettings {
    * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
    * the street-row pass draws nothing. */
   townRowPlan?: readonly TownRowEntry[];
+  /** Rows the record never held, replayed after the recorded rows where their plot is clear (townRowAdditions.ts). */
+  townRowPlanAdditions?: readonly TownRowEntry[];
   /**
    * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
    * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
@@ -505,6 +522,8 @@ interface PropsSettings {
    */
   settlementOverWater?: boolean;
   tones: Record<string, ToneFunction | null | undefined>;
+  /** The procedural render canvas's relief (its normal's strength; default 1.2): the map's own, else its kit's. */
+  plasterRelief?: number;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
   buildingLat: readonly [number, number];
@@ -535,6 +554,8 @@ interface PropsSettings {
   outcrops: number;
   craters: number;
   rubblePiles: number;
+  /** The street rubble's balance about the deployments' turning point (rubbleKit.ts createRubbleBalance). */
+  rubbleHalvesAbout?: RubbleHalvesAbout;
   wrecks: number;
   cropFields: number;
   cropForm?: 'harvest' | 'wet-upright' | 'grain';
@@ -575,6 +596,8 @@ interface PropsSettings {
   streetRowKeepouts?: readonly (
     { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
+  /** Authored ground-cover holes ({ x, z, r }): no grass, tall grass or litter grows there (a spring's pool, Oasis). */
+  groundCoverHoles?: readonly { x: number; z: number; r: number }[];
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
   yardClutter?: boolean;
@@ -1067,6 +1090,7 @@ function makePlaster(
   anisotropy: number,
   tone: ToneFunction | null = null,
   sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
+  relief = 1.2,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
@@ -1109,7 +1133,7 @@ function makePlaster(
   applyTone(px, tone);
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, 1.2, anisotropy),
+    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, relief, anisotropy),
     surface: sharedSurface?.surface
       ?? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
   };
@@ -1607,15 +1631,6 @@ function applyTileLodBias(shader: MaterialShader, bias: number): void {
   chunk('normal_fragment_maps', 'normalMap', 'vNormalMapUv');
   chunk('roughnessmap_fragment', 'roughnessMap', 'vRoughnessMapUv');
   chunk('aomap_fragment', 'aoMap', 'vAoMapUv');
-}
-
-function cropAttributeNormal(shader: MaterialShader): void {
-  // Crop cards carry authored up normals on both faces, with no normal/bump
-  // map. Keep Three's transformed normal path, minus its backface inversion.
-  const normalChunk = _mustReplace(THREE.ShaderChunk.normal_fragment_begin,
-    'normal *= faceDirection;', '');
-  shader.fragmentShader = _mustReplace(shader.fragmentShader,
-    '#include <normal_fragment_begin>', normalChunk);
 }
 
 function* makeGrimeTexture(
@@ -3809,8 +3824,11 @@ function* propsBuildSteps(
     }
     P.tones = tones;
   }
+  // a kit's render relief (maps/regional/types.ts ArchitectureSurfaces.plasterRelief) under the map's own; the canvas's 1.2
+  // where neither sets one
+  if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
   const T = P.tones || {};
-  const plaster = makePlaster(noi, aniso, T.plaster || null);
+  const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // content_breadth r3: TWO extra render families — the street walls
   // recycled one plaster print ("same white-plaster box repeats dozens of
@@ -3834,7 +3852,7 @@ function* propsBuildSteps(
   const pouredConcrete = regionalArchitecture?.surfaces.concrete;
   const plaster2 = pouredConcrete
     ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
-    : makePlaster(noi, aniso, plaster2Tone);
+    : makePlaster(noi, aniso, plaster2Tone, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // These two procedural variants differ only in albedo tone. Share their
   // immutable relief within this props owner; retained materials deduplicate
@@ -4231,17 +4249,22 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
       const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
+      // (props lane A, #2) the baked material also folds a clutter pool's near or far form by distance (clutterKit.ts:
+      // its own program as before, one hook more; untagged geometry reads 0 and is untouched)
+      const clutterLod = materialKind === 'baked';
+      if (clutterLod) clutterLodDefaults(material);
       engineCtx.setupShadowMaterial(material, kitHook ?? (
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
             : materialKind === 'ballast' ? ballastHook
-            : materialKind === 'fieldMud' ? mudHook : grimeHook));
+            : materialKind === 'fieldMud' ? mudHook
+            : clutterLod ? (shader) => { grimeHook(shader); clutterLodHook(shader); } : grimeHook));
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
       const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
-      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
+      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '') + (clutterLod ? CLUTTER_LOD_KEY : '');
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
     }
@@ -4309,7 +4332,6 @@ ${snowCap ? `
   // One renderer-free topology + one InstancedMesh for every conductor
   // segment. Only spans touching a falling pole are rewritten during impact.
   let utilityNetwork: UtilityNetwork | null = null;
-  let wireIM: THREE.InstancedMesh | null = null;
 
   // -------------------------------------------------------------------------
   // DESTRUCTIBLE SMALL-PROP LAYER (world-dressing r1) — "just like trees".
@@ -4342,6 +4364,9 @@ ${snowCap ? `
   const looseRecords: LooseDestructibleRecord[] = []; // physics-class records; sleeping records cost no update work
   const activeLoose: LooseDestructibleRecord[] = []; // only awake records, bounded by the local interaction area
   const dPools = new Map<string, DestructiblePool>(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
+  // (Lane C, #8 r2) a set piece kind's intact instances, as spans in the baked bucket (by slot): the pool's own intact
+  // mesh stays hidden and mirrors its instances' hide and show onto them
+  const setPieceSpans = new Map<string, HiddenSpanPiece[]>();
   const wallSpans = new Map<DestructibleRecord, WallSpan>();
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
@@ -4435,11 +4460,17 @@ ${snowCap ? `
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
     ...civilianVehicleTypes(mapId, mobileProps),
     // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
-    ...setPieceDestructibleTypes(),
+    ...setPieceDestructibleTypes(mobileProps),
+    // (Lane C, #24) the spurs' rolling stock, breakable (maps/setPieceDestructibles.ts)
+    ...rollingStockDestructibleTypes(mobileProps),
+    ...tramDestructibleTypes(mobileProps),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
     ...periodClutterTypes(mapId),
+    // (props lane A, #2, 2026-10-14) the containers, crates, barrels and yard clutter of the map's place and period, each
+    // with its near and far form in its one pool (maps/clutterKit.ts)
+    ...clutterTypes(mapId, mobileProps),
     // the fortifications lane (2026-10-09): the field works' pillbox as the map's period built it (maps/fortKit.ts), on
     // the board-formed concrete; the old pillbox's draws spent first, so every pool after it keeps its shape. A map's
     // own variant (the sangar) still wins below.
@@ -5391,9 +5422,8 @@ ${snowCap ? `
     buckets.wood.push(...pile.wood);
     const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + pile.chunks), ...buckets.wood.slice(woodStart)], y, 0.05);
     if (drawn) rubbleDrawnFootprints.push(drawn);
-    const ob = setCircleShape({ min: [x - pr, y, z - pr],
-      max: [x + pr, y + pr * .7, z + pr], kind: 'rubble' }, x, z, pr);
-    const col = cloneCollisionRecord(ob);
+    // (the hitbox lane, round 3, 2026-10-09) the records from the chunks drawn, not one prism over the whole cone
+    const { obstacle: ob, collider: col } = rubbleCollisionRecords(buckets.stone.slice(stoneStart, stoneStart + pile.chunks), y, x, z, pr);
     obstacles.push(ob); colliders.push(col);
     const clutter = new CrushableClutter('rubble', x, y, z, pr, pr * .7, [ob], [col]);
     for (const piece of buckets.stone.slice(stoneStart)) clutter.ownPiece(piece);
@@ -5410,7 +5440,9 @@ ${snowCap ? `
     // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
     // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
     if (P.townRowPlan) {
-      for (const entry of P.townRowPlan) {
+      const rows = [...P.townRowPlan.map((entry) => ({ entry, added: false })), ...(P.townRowPlanAdditions ?? []).map((entry) => ({ entry, added: true }))];
+      for (const { entry, added } of rows) {
+        if (added && (footprintWet(entry.x, entry.z, entry.w, entry.d, entry.rot) || !townRowPlotClear(entry, heightField._roadDist, obstacles))) continue;
         const stream = mulberry32(entry.rng);
         let tmp: PropsBuckets = {
           plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
@@ -5599,11 +5631,12 @@ ${snowCap ? `
           if (lx < town.x0 + 4 || lx > town.x1 - 4 || lz < town.z0 + 4 || lz > town.z1 - 4) continue;
           if (distToOtherRoads(lx, lz, ri) < 7 || noVeg(lx, lz)) continue;
           const ly = heightField.getHeightAt(lx, lz);
-          if (frng() < 0.18) { // toppled post lying across the pavement
-            const fall = box(0.09, 0.09, 4.6, 1.4);
+          if (frng() < 0.18) { // toppled post lying across the pavement: the map's own lamp, fallen (streetKit.ts, #14)
+            const fall = toppledLamp(streetLampFormOf(mapId), mulberry32(seed + 607 + ri * 131 + i));
             fall.rotateY(frng() * Math.PI * 2);
-            fall.translate(lx, ly + 0.1, lz);
-            buckets.dark.push(fall);
+            fall.translate(lx, ly, lz);
+            conformYardPiece(fall, buckets.baked);
+            buckets.baked.push(fall);
             continue;
           }
           // world-dressing r1: standing lamps are DESTRUCTIBLE instances —
@@ -5626,7 +5659,7 @@ ${snowCap ? `
           if (noVeg(x, z)) continue;
           const y = heightField.getHeightAt(x, z);
           const cs = 0.14 + frng() * 0.34;
-          const chip = box(cs, cs * (0.4 + frng() * 0.4), cs * (0.5 + frng() * 0.8), 1.6);
+          const chip = litterChunk(cs, cs * (0.4 + frng() * 0.4), cs * (0.5 + frng() * 0.8)); // knapped, not a box (#14)
           jitterUV(chip, frng);
           chip.rotateY(frng() * Math.PI);
           chip.rotateX((frng() - 0.5) * 0.4);
@@ -5937,6 +5970,7 @@ ${snowCap ? `
     const INH = P.inhabit || {};
     const yardFence = INH.yardFence || 'fencepicket';
     const placeYardFirewood = (building: PlacedRadius): void => {
+      if (INH.firewood === 0) return;
       if (yrng() >= 0.6) return;
       const spot = yardSpot(building, 1.2, 3.4);
       if (!spot) return;
@@ -6776,15 +6810,9 @@ ${snowCap ? `
     // 9.5 source metres apart plus conductor faces between them. Use its
     // near-post slice as the physical primitive, then let terrain policy and
     // the live utility network decide whether a station has one or two posts.
-    // the scenery lane (after wave 57, Frosthollow's "beige column"): its wood is marked for the poles' timber material
-    // (poleTimber.ts) on a clone — the baked source stays cached unmarked; wave 66 ("a straight, flat-faced,
-    // constant-width beam"): its shaft round, smooth and tapered first
-    const poleGeo = SOURCED.poles && P.telegraph
-      ? markPoleTimber(roundPoleShaft(bakedGeometry('telephone_pole_polygoogle',
-        {
-          targetH: 7.4, sink: 0.15, sourceZMin: -1,
-          whiteCap: [0.14, 0.21, 0.16],
-        }).clone())) : null;
+    // (props lane A, #21, 2026-10-14: the line's geometry — the sourced pole prepared, the procedural pole, the wires'
+    // pool — is maps/utilityPoles.ts's, extracted unchanged)
+    const poleGeo = SOURCED.poles && P.telegraph ? utilityPoleGeometry(mapId, bakedGeometry) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -6815,29 +6843,7 @@ ${snowCap ? `
         });
         return;
       }
-      const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
-      scaleUV(pole, 0.8, 3.0);
-      pole.translate(post.x, post.y + 3.0, post.z);
-      buckets.wood.push(pole);
-      for (const armY of [5.75, 5.15]) {
-        const arm = box(1.5, 0.11, 0.09, 1.0);
-        arm.rotateY(station.yaw);
-        arm.translate(post.x, post.y + armY, post.z);
-        buckets.wood.push(arm);
-        for (const side of [-1, 1]) {
-          const peg = box(0.07, 0.16, 0.07, 2.0);
-          peg.rotateY(station.yaw);
-          peg.translate(post.x + Math.cos(station.yaw) * 0.6 * side,
-            post.y + armY + 0.13, post.z - Math.sin(station.yaw) * 0.6 * side);
-          buckets.wood.push(peg);
-        }
-      }
-      const brace = box(0.06, 1.1, 0.06, 1.5);
-      brace.rotateZ(0.6);
-      brace.rotateY(station.yaw);
-      brace.translate(post.x + Math.cos(station.yaw) * 0.26,
-        post.y + 4.8, post.z - Math.sin(station.yaw) * 0.26);
-      buckets.wood.push(brace);
+      for (const part of proceduralPoleParts(post, station.yaw)) buckets.wood.push(part);
     };
     // r5 terrain_environment: poles every node (~32 m, was every 2nd). The
     // 64 m spans cut CHORDS across the road's curves — one span slashed
@@ -6891,7 +6897,7 @@ ${snowCap ? `
       return wireSpans;
     }
     const wireSpans = collectWireSpans();
-    const network = wireSpans.length ? createUtilityNetwork(poleLine, wireSpans) : null;
+    const network = wireSpans.length ? createUtilityNetwork(poleLine, wireSpans, { conductors: utilityConductorsOf(mapId) }) : null;
     // DESTRUCTIBLES r1: telegraph-pole DEBRIS — every pole line lost a few
     // to the shelling: a snapped stump, the felled pole across the verge
     // with its crossarm splayed, a coil of downed wire. Static dressing
@@ -6959,6 +6965,7 @@ ${snowCap ? `
   // still built for both. The visual rock is rockDressing.ts buildBoulderForm, fitted inside them (the scenery lane,
   // 2026-10-04).
   const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
+  const lowStones = new LowStones(); // (rubbleKit.ts: round 3's crushable low stones, their pieces and scuffs)
   const rockGeos: THREE.BufferGeometry[] = [];
   // the scenery lane (wave 74, the cascade trim): on the desktop each rock's phone form too (270 triangles against 672),
   // for the far rocks and the far shadow cascades
@@ -7254,6 +7261,8 @@ ${snowCap ? `
       // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
       if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
+      // (round 3) a low stone under the drive-over line, past ROCK_LOW_STONE_M: a crushable small rock, its records its own
+      const low = !seat.profile && !!(seat.profile = lowStoneProfile(rockForms[seat.vv], seat.placement.elements, groundAt));
       if (!seat.profile) {
         if (seat.clutter) {
           rockClutter.delete(seat.placement);
@@ -7263,22 +7272,34 @@ ${snowCap ? `
         }
         continue;
       }
-      if (seat.rec) continue;
+      if (low) lowStones.placements.add(seat.placement);
+      if (seat.rec && !(low && !seat.clutter)) continue;
+      if (seat.rec) { lowStones.turnCrushable(seat, makeRockClutter); continue; }
       const rec: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
       const col: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
       seat.rec = rec; seat.col = col; seat.added = true;
-      if (rockStaysCrushable(seat.sc, seat.tactical)) {
+      if (low || rockStaysCrushable(seat.sc, seat.tactical)) {
         rec.kind = col.kind = 'small-rock';
-        const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [rec], [col]);
-        rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
-        seat.clutter = clutter;
+        seat.clutter = makeRockClutter(seat);
       }
     }
+  }
+  /** A crushable rock's clutter over its own records (settleRockColliders). */
+  function makeRockClutter(seat: StoneSeat): CrushableClutter {
+    const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [seat.rec!], [seat.col!]);
+    rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
+    return clutter;
   }
   yield* settleRockColliders();
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
+    lowStones.addPieces(vi, rockPlacements[vi], rockClutter, { group, material: mats.rock, depth: rockDepth,
+      groundAt: (x, z) => heightField.getHeightAt(x, z), pieceGeometry: (v) => (mobileProps ? rockGeos[v] : rockGeosFar[v]),
+      formGeometry: (v) => rockGeos[v], dressShadows: (mesh) => {
+        if (!mobileProps) setShadowCasterCascades(mesh, ROCK_NEAR_CASCADES);
+        setShadowCasterProfile(mesh, { heightM: 0.6, instanced: true });
+      } });
     // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws; the scenery lane (wave
     // 57, "its right end lifts off the slope with no contact shadow"): and the slope of that ground across the rock's
     // reach, so the soil band and the contact darkening meet a slope all round, and the rock's foot its contact patch
@@ -7420,7 +7441,8 @@ ${snowCap ? `
     let built = 0;
     for (let vi = 0; vi < 3; vi++) {
       for (const placement of rockPlacements[vi]) {
-        if (rockClutter.has(placement)) continue;
+        // (round 3) a low stone keeps the bed it stood in: crushed, it is pressed into it
+        if (rockClutter.has(placement) && !lowStones.placements.has(placement)) continue;
         const e = placement.elements, px = e[12], py = e[13], pz = e[14];
         const sx = Math.hypot(e[0], e[1], e[2]), sy = Math.hypot(e[4], e[5], e[6]), sz = Math.hypot(e[8], e[9], e[10]);
         const c = e[0] / sx, sn = -e[2] / sx; // the yaw's cosine and sine (three's rotation about +y)
@@ -7627,6 +7649,8 @@ ${snowCap ? `
         const h = heightField.getHeightAt(px, pz);
         lo = Math.min(lo, h); hi = Math.max(hi, h);
       }
+      // (the buildings lane, 2026-10-11) never on a 'clearance' rail spur's berth: the built stack's contact reach (railSpurs.ts)
+      if (heightField._railBerth && form && railBerthReaches(heightField._railBerth, x, z, Math.max(...destructibleFootprint(form.kind)) * sc + 0.05)) continue;
       const spread = hi - lo;
       if (k === 0 && spread <= 0.35) return { x, z, y };
       if (spread < bestSpread) { bestSpread = spread; best = { x, z, y }; }
@@ -7668,418 +7692,13 @@ ${snowCap ? `
     return P.loggingYard ? [] : null;
   }
   const fieldTimber = beginFieldTimberCapture();
-  function placeFieldLogsAndStumps(): void {
-  // environment density pass 2 (2026-09-12): the cap is per map (forest and
-  // farm maps carry 44-60, snow and volcanic ground 30-36; a map's own
-  // props.logCount overrides the table), attempts scale with it
-  const logCap = Math.max(0, Math.round(P.logCount ?? FIELD_LOG_COUNTS[mapId] ?? 26));
-  // the authored logging yard keeps its original donor budget (composeLoggingYard's
-  // bounded allocation of 26 pieces); every log and stump past it stays in the field
-  const yardDonors = 26;
-  for (let i = 0, placed = 0; P.logs && i < logCap * 10 && placed < logCap; i++) {
-    const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
-    if (x > v.x0 - 6 && x < v.x1 + 6 && z > v.z0 - 6 && z < v.z1 + 6) continue;
-    if (heightField._roadDist(x, z) < 7) continue;
-    if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
-    if (rng() < 0.6) { // log
-      const r = 0.16 + rng() * 0.13, len = 2.2 + rng() * 1.9;
-      const yaw = rng() * Math.PI * 2;
-      const pose = planGroundedSegment(
-        heightField, x, z, Math.cos(yaw), -Math.sin(yaw), len, r * 0.85, r * 0.1,
-      );
-      const log = new THREE.CylinderGeometry(r * 0.85, r, len, 7, 1);
-      scaleUV(log, 1.0, len * 0.5);
-      _quat.setFromUnitVectors(_upAxis, _posv.set(pose.axisX, pose.axisY, pose.axisZ));
-      log.applyQuaternion(_quat);
-      log.translate(pose.x, pose.y, pose.z);
-      buckets.wood.push(log);
-      decorationGroundingReceipts.push({
-        kind: 'fallen-log', x: pose.x, y: pose.y, z: pose.z,
-        relief: pose.relief, baseClearance: -r * 0.1,
-        start: pose.start, end: pose.end,
-      });
-      if (fieldTimber && fieldTimber.length < yardDonors) fieldTimber.push({ geometry: log, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: len, height: 0, yaw });
-    } else { // stump
-      const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
-      const support = sampleDiscGround(heightField, x, z, r, 0.06);
-      const st = new THREE.CylinderGeometry(r * 0.92, r * 1.15, h, 8, 1);
-      scaleUV(st, 1.5, 0.5);
-      const yaw = rng() * Math.PI;
-      st.rotateY(yaw);
-      st.translate(x, support.y + h / 2, z);
-      buckets.wood.push(st);
-      decorationGroundingReceipts.push({
-        kind: 'stump', x, y: support.y, z, relief: support.spread, baseClearance: -0.06,
-        supportMin: support.min, supportMax: support.max,
-      });
-      if (fieldTimber && fieldTimber.length < yardDonors) fieldTimber.push({ geometry: st, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: 0, height: h, yaw });
-    }
-    placed++;
-  }
-  }
-  placeFieldLogsAndStumps();
+  placeFieldLogsAndStumpsOf({ P, mapId, rng, heightField, v, noVeg, buckets, decorationGroundingReceipts, fieldTimber });
 
   // --- standing crop fields (r6 terrain_environment) ------------------------
   yield { stage: 'field-logs-and-stumps' };
-  // The open farmland carried no crops at all ("summer fields have no crops"
-  // critique) — WoT maps stage their fields with standing grain. Each plot is
-  // a fan of parallel crop-card rows (terrain-conformed vertical strips, one
-  // merged alpha-tested mesh) plus the field's own haystack-ready clearing.
-  // ~350 tris/plot — establishing-shot scale dressing at negligible cost.
-  const cropLandSample = {} as Parameters<NonNullable<HeightField['_landUseAt']>>[2];
-  function placeCropFields(): void {
-    if ((P.cropFields ?? 0) <= 0) return;
-    const crng = mulberry32(seed + 515);
-    const cropTex = createCropTexture(crng);
-    const cropGeos: THREE.BufferGeometry[] = [];
-    for (let p = 0, made = 0; p < P.cropFields * 30 && made < P.cropFields; p++) {
-      if (tryPlaceCropPlot(crng, cropGeos)) made++;
-    }
-    finalizeCropFields(cropTex, cropGeos);
-  }
-
-  function paintWetCropLeaves(cctx: CanvasRenderingContext2D, x: number, hgt: number, lean: number, width: number): void {
-    for (let leaf = 0; leaf < 2; leaf++) {
-      const t = .36 + leaf * .25;
-      // Exact points on the stalk quadratic, including its 2px buried start.
-      const lx = x + lean * (.8 * t + .2 * t * t);
-      const ly = 258 - (1.2 * hgt + 4) * t + (.2 * hgt + 2) * t * t;
-      const reach = (leaf ? -1 : 1) * (22 + Math.abs(lean) * 2);
-      cctx.beginPath();
-      cctx.moveTo(lx, ly);
-      cctx.quadraticCurveTo(lx + reach * .5, ly - hgt * .18 - width, lx + reach, ly - hgt * .22);
-      cctx.quadraticCurveTo(lx + reach * .5, ly - hgt * .18 + width, lx, ly);
-      cctx.fill();
-    }
-  }
-
-  function paintCropPanicle(cctx: CanvasRenderingContext2D, x: number, y: number, length: number, spread: number): void {
-    cctx.beginPath();
-    cctx.moveTo(x, y);
-    cctx.quadraticCurveTo(x + spread * .2, y - length * .7, x + spread * .4, y - length);
-    for (let branch = 0; branch < 5; branch++) {
-      const t = (branch + 1) / 6, side = branch % 2 ? -1 : 1;
-      const bx = x + spread * .4 * t, by = y - length * (1.4 * t - .4 * t * t);
-      cctx.moveTo(bx, by);
-      cctx.quadraticCurveTo(bx + side * spread, by - length * .18,
-        bx + side * spread * .85, by - length * .06);
-    }
-    cctx.stroke();
-  }
-
-  function biomeCropHeight(wet: boolean, standing: boolean, growth: number, headLength: number): number {
-    // Admission keeps the upper40% of this draw; restore its full height span.
-    if (wet) return 256 * (.64 + ((growth - .60) / .40) * .25);
-    return 256 * (standing ? .55 + headLength * .28 : .10 + growth * .19);
-  }
-
-  function biomeCropLean(wet: boolean, standing: boolean, bend: number): number {
-    return (bend - .5) * (wet ? 10 : standing ? 20 : 8);
-  }
-
-  function paintCropStalk(cctx: CanvasRenderingContext2D, x: number, hgt: number, lean: number, width: number): void {
-    cctx.lineWidth = width;
-    cctx.beginPath();
-    cctx.moveTo(x, 258);
-    cctx.quadraticCurveTo(x + lean * .4, 256 - hgt * .6, x + lean, 256 - hgt);
-    cctx.stroke();
-  }
-
-  function finishStandingCrop(cctx: CanvasRenderingContext2D, x: number, y: number,
-    wet: boolean, headLength: number, headWidth: number): void {
-    // Small branching heads, not the legacy broad elliptical wheat pegs.
-    paintCropPanicle(cctx, x, y,
-      (wet ? 12 : 7) + headLength * 5, (wet ? 3 : 1.2) + headWidth * 1.2);
-  }
-
-  function finishBrokenCrop(cctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
-    // A broken, oblique cut at the actual shortened stalk tip.
-    cctx.beginPath();
-    cctx.moveTo(x - width * .6, y + width);
-    cctx.lineTo(x + width * .6, y);
-    cctx.stroke();
-  }
-
-  function paintBiomeCrop(cctx: CanvasRenderingContext2D, crng: () => number, form: NonNullable<PropsSettings['cropForm']>): void {
-    for (let b = 0; b < 260; b++) {
-      // Keep all nine legacy draws in their original order: this same stream
-      // selects plots immediately after the atlas, including cut/headless stems.
-      const x = crng() * 256, growth = crng(), bend = crng();
-      const lum = .17 + crng() * .11, hue = crng(), girth = crng();
-      const headHue = crng(), headWidth = crng(), headLength = crng();
-      const wet = form === 'wet-upright';
-      // Admit wet stems after all draws: open gaps between whole attached
-      // plants without changing the following plot/row placement stream.
-      if (wet && growth < .60) continue;
-      if (form === 'grain') { paintGrainStalk(cctx, x, growth, bend, lum, hue, girth, headHue, headWidth, headLength); continue; }
-      const standing = wet || growth > .88;
-      const hgt = biomeCropHeight(wet, standing, growth, headLength);
-      const lean = biomeCropLean(wet, standing, bend);
-      const width = (wet ? .55 : .65) + girth * .45;
-      _col.setHSL(wet ? .20 + hue * .035 : .105 + hue * .025, wet ? .40 : .30, lum);
-      cctx.strokeStyle = cctx.fillStyle = _col.getStyle();
-      paintCropStalk(cctx, x, hgt, lean, width);
-      if (wet) paintWetCropLeaves(cctx, x, hgt, lean, .8 + girth * .6);
-      _col.setHSL(wet ? .17 + headHue * .025 : .10 + headHue * .02, .34, lum + .045);
-      cctx.strokeStyle = _col.getStyle();
-      if (standing) finishStandingCrop(cctx, x + lean, 256 - hgt, wet, headLength, headWidth);
-      else finishBrokenCrop(cctx, x + lean, 256 - hgt, width);
-    }
-  }
-
-  // Ground lane (2026-10-04, wave 71 on Verdant's close-up: the crop "a picket fence of chopsticks — evenly spaced beige
-  // dowels with flat cut tops and no ears, awns or leaves"; the coordinator: "irregular spacing and ears would fix most
-  // of it"): a field of ripe grain. The stalks stand in uneven clumps along the row (three incommensurate waves over
-  // the card's width admit them — the drill's row thinned and lodged in places, never the legacy card's four punched
-  // windows), every stalk its own height and lean, a leaf down the stem on the stouter ones, an ear on every one a
-  // shade deeper than its straw and a beard of awns on most. The nine draws a stalk stay as they were (the plot stream
-  // after the atlas is exact), and the card covers less than the legacy one at every mip (cropBiomeIdentity).
-  function paintGrainStalk(cctx: CanvasRenderingContext2D, x: number, growth: number, bend: number, lum: number,
-    hue: number, girth: number, headHue: number, headWidth: number, headLength: number): void {
-    const clump = .5 + .5 * Math.sin(x * .071 + 1.3) * Math.sin(x * .187 + .4) + .22 * Math.sin(x * .43 + 2.1);
-    if (growth > .18 + .42 * clump) return;
-    const hgt = 256 * (.50 + headLength * .30 + (growth - .3) * .14);
-    const lean = (bend - .5) * 22;
-    // (stems thick enough to hold through the card's 64 px mip: fewer and stouter, the coverage at the legacy's)
-    const width = 1.05 + girth * .55;
-    _col.setHSL(.110 + hue * .022, .32, lum);
-    cctx.strokeStyle = cctx.fillStyle = _col.getStyle();
-    paintCropStalk(cctx, x, hgt, lean, width);
-    if (girth > .55) {
-      // a leaf off the stem's lower half, arching out and drooping
-      const t = .34 + girth * .16, lx = x + lean * (.8 * t + .2 * t * t), ly = 258 - (1.2 * hgt + 4) * t + (.2 * hgt + 2) * t * t;
-      const reach = (headHue > .5 ? 1 : -1) * (10 + girth * 8);
-      cctx.lineWidth = .9;
-      cctx.beginPath();
-      cctx.moveTo(lx, ly);
-      cctx.quadraticCurveTo(lx + reach * .6, ly - hgt * .10, lx + reach, ly - hgt * .03);
-      cctx.stroke();
-    }
-    // the ear: a slim spike along the stalk's own lean at its tip, a shade deeper and warmer than the straw
-    const ex = x + lean, ey = 256 - hgt, len = 8 + headLength * 7, wid = 1.6 + headWidth * 1.0;
-    const ang = Math.atan2(lean, hgt) * .9;
-    _col.setHSL(.098 + headHue * .02, .40, Math.min(.34, lum + .035));
-    cctx.fillStyle = cctx.strokeStyle = _col.getStyle();
-    cctx.beginPath();
-    cctx.ellipse(ex + Math.sin(ang) * len * .4, ey - Math.cos(ang) * len * .4, wid, len * .55, ang, 0, Math.PI * 2);
-    cctx.fill();
-    if (headWidth > .28) {
-      // its awns: a fan of fine bristles past the ear's tip
-      cctx.lineWidth = .6;
-      cctx.beginPath();
-      const tx = ex + Math.sin(ang) * len * .9, ty = ey - Math.cos(ang) * len * .9;
-      for (let a = -2; a <= 2; a++) {
-        const aa = ang + a * .16, al = 4 + headLength * 5;
-        cctx.moveTo(tx, ty);
-        cctx.lineTo(tx + Math.sin(aa) * al, ty - Math.cos(aa) * al);
-      }
-      cctx.stroke();
-    }
-  }
-
-  function createCropTexture(crng: () => number): THREE.CanvasTexture {
-    const cs = 256;
-    const cc = document.createElement('canvas');
-    cc.width = cc.height = cs;
-    const cctx = canvas2d(cc, { willReadFrequently: true });
-    cctx.clearRect(0, 0, cs, cs);
-    if (P.cropForm) paintBiomeCrop(cctx, crng, P.cropForm);
-    else for (let b = 0; b < 260; b++) { // legacy wheat: other maps stay byte-identical
-      const x = crng() * cs;
-      const hgt = cs * (0.50 + crng() * 0.42);
-      const lean = (crng() - 0.5) * 16;
-      const lum = 0.17 + crng() * 0.11;
-      _col.setHSL(0.115 + crng() * 0.02, 0.34, lum);
-      cctx.strokeStyle = _col.getStyle();
-      cctx.lineWidth = 1.2 + crng() * 1.1;
-      cctx.beginPath();
-      cctx.moveTo(x, cs + 2);
-      cctx.quadraticCurveTo(x + lean * 0.4, cs - hgt * 0.6, x + lean, cs - hgt);
-      cctx.stroke();
-      _col.setHSL(0.105 + crng() * 0.02, 0.38, Math.min(0.35, lum + 0.065));
-      cctx.fillStyle = _col.getStyle();
-      cctx.beginPath();
-      cctx.ellipse(x + lean, cs - hgt, 1.7 + crng(), 4.5 + crng() * 2.5, lean * 0.03, 0, Math.PI * 2);
-      cctx.fill();
-    }
-    const cid = cctx.getImageData(0, 0, cs, cs);
-    for (let i = 0; i < cs * cs; i++) {
-      const x = i % cs, y = Math.floor(i / cs);
-      // Dense stalk bases formerly merged into luminous rectangular walls.
-      // Four coarse gaps remain resolved in the existing 64px mip, while
-      // each clump retains the original seeded stems and seed heads. This
-      // pixel-only cut consumes no random draws or extra rows/materials.
-      if (!P.cropForm && x % 64 < 24) cid.data[i * 4 + 3] = 0;
-      const rootShade = 0.98 - y / cs * 0.18;
-      for (let channel = 0; channel < 3; channel++) cid.data[i * 4 + channel] *= rootShade;
-      // Muted mean-tone flood prevents bright RGB fringes in transparent mips.
-      if (cid.data[i * 4 + 3] < 24) {
-        cid.data[i * 4] = P.cropForm === 'wet-upright' ? 88 : 126;
-        cid.data[i * 4 + 1] = P.cropForm === 'wet-upright' ? 112 : 110;
-        cid.data[i * 4 + 2] = P.cropForm === 'wet-upright' ? 56 : 66;
-      }
-    }
-    cctx.putImageData(cid, 0, 0);
-    const cropTex = new THREE.CanvasTexture(cc);
-    cropTex.colorSpace = THREE.SRGBColorSpace;
-    cropTex.wrapS = THREE.RepeatWrapping;
-    cropTex.anisotropy = aniso;
-    return cropTex;
-  }
-
-  function cropPlotAvoidsSpawns(cx: number, cz: number, radius: number): boolean {
-    return ![L.spawns.player, ...L.spawns.enemies].some((spawn) =>
-      Math.hypot(cx - spawn.x, cz - spawn.z) < radius + 24);
-  }
-
-  function cropPlotCornersAreLevel(
-    cx: number, cz: number, pw: number, pd: number,
-    dx: number, dz: number, px2: number, pz2: number,
-  ): boolean {
-    const y0 = heightField.getHeightAt(cx, cz);
-    for (const [ex, ez] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-      const qx = cx + dx * ex * pw * 0.5 + px2 * ez * pd * 0.5;
-      const qz = cz + dz * ex * pw * 0.5 + pz2 * ez * pd * 0.5;
-      if (Math.abs(heightField.getHeightAt(qx, qz) - y0) > 3.2) return false;
-    }
-    return true;
-  }
-
-  function appendCropRowGeometry(
-    cropGeos: THREE.BufferGeometry[], crng: () => number,
-    rx: number, rz: number, half: number, rowH: number, tintL: number,
-    dx: number, dz: number,
-  ): void {
-    const nSt = Math.max(3, Math.ceil((half * 2) / 3.4));
-    const pos: number[] = [], uv: number[] = [], idx: number[] = [], col: number[] = [];
-    for (let sIt = 0; sIt <= nSt; sIt++) {
-      const t = sIt / nSt;
-      const sx2 = rx + dx * (t * 2 - 1) * half;
-      const sz2 = rz + dz * (t * 2 - 1) * half;
-      const gy = heightField.getHeightAt(sx2, sz2);
-      const hh = rowH * (0.86 + crng() * 0.28);
-      pos.push(sx2, gy + 0.02, sz2, sx2, gy + hh, sz2);
-      uv.push(t * half * 0.8, 0, t * half * 0.8, 1);
-      const cshade = tintL * (0.9 + crng() * 0.2);
-      col.push(cshade, cshade, cshade, cshade, cshade, cshade);
-      if (sIt > 0) {
-        const b0 = (sIt - 1) * 2, b1 = sIt * 2;
-        // Plot-center qualification cannot see a shoreline crossing its edge.
-        // Keep every seeded draw and original row vertex, but emit only dry,
-        // grounded spans. Clipped plots are not refilled with extra attempts.
-        const p0 = b0 * 3;
-        if (cropRowSegmentIsSupported(heightField,
-          pos[p0], pos[p0 + 2], pos[p0 + 1] - 0.02, sx2, sz2, gy)) {
-          idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
-        }
-      }
-    }
-    if (idx.length === 0) return;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
-    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
-    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
-    geometry.setIndex(idx);
-    cropGeos.push(geometry);
-  }
-
-  function appendCropRows(
-    cropGeos: THREE.BufferGeometry[], crng: () => number,
-    cx: number, cz: number, pw: number, pd: number,
-    dx: number, dz: number, px2: number, pz2: number,
-  ): void {
-    const rowPitch = 2.5 + crng() * 0.5;
-    const nRows = Math.floor(pd / rowPitch);
-    const rowH = 1.05 + crng() * 0.2;
-    const tintL = 0.9 + crng() * 0.25;
-    for (let row = 0; row < nRows; row++) {
-      const offset = (row - (nRows - 1) / 2) * rowPitch;
-      const rx = cx + px2 * offset, rz = cz + pz2 * offset;
-      const half = pw * (0.44 + crng() * 0.08);
-      const before = cropGeos.length;
-      appendCropRowGeometry(cropGeos, crng, rx, rz, half, rowH, tintL, dx, dz);
-      if (autumnCropRows && cropGeos.length > before) {
-        captureAutumnCropRow(autumnCropRows, cropGeos[before], cx, cz, dx, dz, row);
-      }
-    }
-  }
-
-  function tryPlaceCropPlot(
-    crng: () => number,
-    cropGeos: THREE.BufferGeometry[],
-  ): boolean {
-    const cx = (crng() * 2 - 1) * 380, cz = (crng() * 2 - 1) * 380;
-    const pw = 34 + crng() * 26, pd = 26 + crng() * 22;
-    const radius = Math.hypot(pw, pd) * 0.5;
-    const overlapsVillage = cx > v.x0 - radius - 14 && cx < v.x1 + radius + 14
-      && cz > v.z0 - radius - 14 && cz < v.z1 + radius + 14;
-    if (overlapsVillage || heightField._roadDist(cx, cz) < radius + 9) return false;
-    if (heightField.getGroundType(cx, cz) === 'soft' || noVeg(cx, cz)) return false;
-    let supported = heightField.getNormalAt(cx, cz).y > 0.965;
-    if (!cropPlotAvoidsSpawns(cx, cz, radius)) supported = false;
-
-    // Keep this seeded draw before the support decision: rejected flatness
-    // candidates historically consume their row angle too.
-    const dirA = crng() * Math.PI;
-    let dx = Math.cos(dirA), dz = Math.sin(dirA);
-    // ground lane (2026-10-04, wave 71 on Verdant's close-up): on a map with fields (the height field's land-use hook)
-    // a plot of standing grain stands only inside a field of ripe wheat or barley (landUse.ts LAND_CROP 1, 2), well
-    // inside its margin, its rows along the field's own — not at any angle over whatever crop the land use laid there
-    const landAt = heightField._landUseAt;
-    // the plot as it stands in its field: along its rows (fw) and across them (fd)
-    let fw = pw, fd = pd;
-    if (landAt) {
-      const f = landAt(cx, cz, cropLandSample);
-      if (!f.active || (f.crop !== 1 && f.crop !== 2)) supported = false;
-      else {
-        // (mr4, 2026-10-06: a strip field 36 m across never held a plot of 34–60 × 26–48 m, so an openfield's or a Gewann's
-        // strips carried no standing grain at all — Amberford 8 plots → 0, Frontier's Gewann row 2 → 0) the plot fits its
-        // field instead of being refused by it: across its rows to the field's nearer edge, along them to the nearer row
-        // end, each 2 m inside the margin; a field that leaves less than 12 m across or 20 m along holds none. A plot that
-        // fitted before keeps its size (the fit only shortens what the edge would have refused), and the draws are the ones
-        // they were (the plots' own stream)
-        fd = Math.min(pd, 2 * (f.edgeM - f.marginM - 2));
-        fw = Math.min(pw, 2 * (f.endM - f.marginM - 2));
-        if (fd < 12 || fw < 20) supported = false;
-        else { dx = f.rowX; dz = f.rowZ; }
-      }
-    }
-    const px2 = -dz, pz2 = dx;
-    if (supported && !cropPlotCornersAreLevel(cx, cz, fw, fd, dx, dz, px2, pz2)) {
-      supported = false;
-    }
-    if (!supported) return false;
-    appendCropRows(cropGeos, crng, cx, cz, fw, fd, dx, dz, px2, pz2);
-    return true;
-  }
-
-  function finalizeCropFields(
-    cropTex: THREE.CanvasTexture,
-    cropGeos: THREE.BufferGeometry[],
-  ): void {
-    if (cropGeos.length === 0) { cropTex.dispose(); return; }
-    const cropMat = new THREE.MeshStandardMaterial({
-      map: cropTex, alphaTest: 0.42, alphaToCoverage: true, side: THREE.DoubleSide,
-      vertexColors: true, roughness: 1.0, metalness: 0.0,
-    });
-    // (2026-10-08: the crops take the sky's full light, as they always drew; their 0.5 trim never applied, materialEnvIntensity.ts)
-    engineCtx.setupShadowMaterial(cropMat, cropAttributeNormal);
-    cropMat.customProgramCacheKey = () => 'world-crop-authored-normal-v1';
-    const merged = mergeGeometries(cropGeos, false);
-    // Explicit up normals avoid alpha-strip lighting and missing-normal crashes.
-    const nPos = merged.attributes.position.count;
-    const nUp = new Float32Array(nPos * 3);
-    for (let i = 0; i < nPos; i++) nUp[i * 3 + 1] = 1;
-    merged.setAttribute('normal', new THREE.BufferAttribute(nUp, 3));
-    const cropMesh = new THREE.Mesh(merged, cropMat);
-    cropMesh.name = 'crop-fields';
-    cropMesh.castShadow = false;
-    cropMesh.receiveShadow = false;
-    cropMesh.matrixAutoUpdate = false;
-    cropMesh.userData.aoExclude = true;
-    group.add(cropMesh);
-  }
-  placeCropFields();
+  // (props lane A, #18b, 2026-10-14: the standing crop fields — the plots, their rows, the crop card's painter and its
+  // material — are maps/cropKit.ts's, extracted unchanged: the same draws, rows and atlas)
+  placeCropFieldsOf({ heightField, P, L, noVeg, seed, aniso, engineCtx, group, autumnCropRows });
 
   // --- street lampposts (r6 terrain_environment, town maps) -----------------
   yield;
@@ -8759,9 +8378,12 @@ ${snowCap ? `
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
         // symmetry (matchPlacement, mapLayoutBrief)
         if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return false;
-        const support = planGroundedObbPose(
-          heightField, x, z, footHx, footHz, yaw, 0.14,
-        );
+        // (Lane C, #8 r2) seated on its track runs (wrecks.ts seatHulk: the terrain over its ground contact alone, a
+        // least-squares plane at most 4 cm over the deepest dip), not sunk under the lowest of nine samples plus 0.14 m
+        // across a tossed turret's envelope (the census judge: hulks 0.42-0.90 m under the terrain)
+        const support = baked.contact
+          ? seatHulk(heightField, x, z, yaw, baked.contact)
+          : planGroundedObbPose(heightField, x, z, footHx, footHz, yaw, 0.14);
         // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
         // those candidates and let the seeded road pass find a supported
         // site instead of either floating a track or burying half the tank.
@@ -8782,16 +8404,18 @@ ${snowCap ? `
         // read without adding draw calls, animation, or live vehicle state.
         let debrisTris = 0;
         if (wCfg?.debris !== false) {
-          const debris = bakeWreckDebris(seed + 17001 + wreckSerial * 97, {
-            modern: isPostwarVehicleEra(era),
+          // (Lane C, #8 r2) built from a tank's own kinds of parts and seated piece by piece on the terrain under each
+          // (wreckDebris.ts), not boxes laid in the hulk's sunk plane (two thirds of them were wholly underground)
+          const debris = buildWreckDebris(seed + 17001 + wreckSerial * 97, {
+            modern: isPostwarVehicleEra(era), contact: baked.contact,
           });
           wreckSerial++;
-          debris.geo.rotateY(yaw);
-          debris.geo.applyQuaternion(_quat);
-          debris.geo.translate(x, y + 0.01, z);
-          wreckGeos.push(debris.geo);
-          // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
-          pushWreckDrawnFootprint(debris.geo, y, 0.05);
+          for (const piece of seatWreckDebris(debris, heightField, x, z, yaw)) {
+            wreckGeos.push(piece);
+            // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
+            piece.computeBoundingBox();
+            pushWreckDrawnFootprint(piece, piece.boundingBox!.min.y, 0.05);
+          }
           debrisTris = debris.tris;
           bakedTris += debrisTris;
         }
@@ -9113,7 +8737,7 @@ ${snowCap ? `
         const { x, z, yaw, w, d } = plan.garden;
         const fit = groundFit(x, z, w, d, yaw);
         if (fit.spread <= 0.5) {
-          const parts = (yard.graves ? graveParts : gardenParts)(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
+          const parts = (yard.graves ? graveParts : gardenParts)(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread, mapId);
           _quat.setFromAxisAngle(_upAxis, yaw);
           _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
           mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
@@ -9149,6 +8773,13 @@ ${snowCap ? `
     if (kept.length < index.count) crop.geometry.setIndex(kept);
   }
   placeRegionalYards();
+  // authored ground-cover holes (props.groundCoverHoles): ground no blade or tuft grows through that no solid marks — a
+  // spring's pool inside its stone rim (Oasis round 3, wave 135: "dry grass cards sprout through the spring's water");
+  // map.ts holds them with the yards' and the scenery's
+  if (P.groundCoverHoles?.length) {
+    group.userData.regionalYardHoles = [...((group.userData.regionalYardHoles as Array<{ x: number; z: number; r: number }> | undefined) ?? []),
+      ...P.groundCoverHoles.map((h) => ({ x: h.x, z: h.z, r: h.r }))];
+  }
   yield { fine: true, progress: false, stage: 'regional-yards' };
   // (sealed lane 2026-10-11: Ruinspires and Blackglass trucks stood with their wheels in a pavement) each kerb piece and
   // the pavement behind it in plan, for the parked vehicles' and carts' seat passes (crushableFootprints; placeStreetCurbs
@@ -9166,6 +8797,7 @@ ${snowCap ? `
   function placeStreetRubble(): void {
     if (P.rubblePiles <= 0) return;
     const rrng = mulberry32(seed + 403);
+    const balance = createRubbleBalance(P.rubbleHalvesAbout, L.spawns, obstacles); // (round 3: Blackglass's banded halves)
     const placeRubbleCandidate = (candidateIndex: number): boolean => {
       const extension = candidateIndex % 4 === 0 ? 90 : 0;
       const x = town.x0 - extension + rrng() * (town.x1 - town.x0 + extension * 2);
@@ -9192,6 +8824,7 @@ ${snowCap ? `
       if (tankWreckSpots.some((w) => Math.hypot(Math.max(0, Math.abs(seat[0] - w.x) - w.hx), Math.max(0, Math.abs(seat[1] - w.z) - w.hz)) < pr + 0.5)) {
         return false;
       }
+      if (balance && !balance.admit(seat[0], seat[1])) return false;
       const capture = waterworksRubble && waterworksRubble.length < 3;
       const stoneStart = capture ? buckets.stone.length : 0;
       const woodStart = capture ? buckets.wood.length : 0;
@@ -9285,7 +8918,8 @@ ${snowCap ? `
             const rise = [clamp(outer[0] + 0.03 - kerbTop[0], 0, WALK_RISE_MAX_M), clamp(outer[1] + 0.03 - kerbTop[1], 0, WALK_RISE_MAX_M)];
             const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WALK_EMBED_M, Math.min(inner[1], outer[1], kerbTop[1]) - WALK_EMBED_M];
             const spanned = onDeckSpan(cx, cz);
-            const g = slabBox(segLen, (kerbTop[0] - kerbFoot[0] + kerbTop[1] - kerbFoot[1]) / 2, KERB_DEPTH_M, 1.3);
+            // (#14: kerb units of about a metre with their joints, seated on the grade as they are built)
+            const g = kerbUnits(segLen, KERB_DEPTH_M, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
             jitterUV(g, rng);
             // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip flanking every street. The critique's "town =
             // boxes dropped on a lawn" came straight from streets with no built edge between asphalt and grass.
@@ -9293,7 +8927,6 @@ ${snowCap ? `
               WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
             if (spanned) { g.dispose(); walk.dispose(); continue; }
-            seatSlab(g, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
             g.rotateY(yaw);
             g.translate(px, 0, pz);
             buckets[kerbBucket].push(g);
@@ -9433,7 +9066,7 @@ ${snowCap ? `
     // (b44) each kind's share of the contact layer's darkening, carried in the patch's vertex RGB (the contact material
     // reads its red): a boulder's foot full (its bed's shades too: they carry 1), a crushable prop's and a field stack's
     // less, a building's foundation least (its walls stand on it, and a village keeps its yards' own ground)
-    const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45 });
+    const CONTACT_STRENGTH = Object.freeze({ rock: 1, prop: 0.75, stack: 0.75, foundation: 0.45, scuff: 1 });
     function conformedDisc(
       x: number,
       z: number,
@@ -9585,6 +9218,10 @@ ${snowCap ? `
       }
       // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
       for (const shade of rockBedShades) dirtDiscs.push(shade);
+      // (round 3) each crushable stone's scuff, conformed now and laid at its crush (rubbleKit.ts LowStones)
+      for (const _ of lowStones.collectScuffs(conformedDisc, CONTACT_STRENGTH.scuff)) {
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
+      }
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
       const roadDistance = heightField._roadDist(x, z);
@@ -9623,6 +9260,7 @@ ${snowCap ? `
               try { geometry.dispose(); } catch (_) { /* continue releasing private inputs */ }
             }
           }
+          lowStones.releasePendingDiscs();
         }
       }
       const contactGeometry = addDecalMesh(dirtDiscs, makeGroundDecalTexture(noi, aniso, 'dirt'), {
@@ -9630,6 +9268,7 @@ ${snowCap ? `
         groundContact: true,
         decalKind: 'ground-contact',
       });
+      lowStones.layScuffs(group, contactGeometry, () => contactDarkeningMaterial(makeGroundDecalTexture(noi, aniso, 'dirt')));
       if (foundryDonors && !P.streetRows && contactGeometry) {
         // Keep the same merged decal and vertex windows. Only the six moved
         // foundations are resampled against their new terrain after dressing.
@@ -9935,7 +9574,7 @@ ${snowCap ? `
       poleHigh.fill(1);
       poleFullIM = new THREE.InstancedMesh(e.geo, mats.pole, e.list.length);
       poleDistanceIM = new THREE.InstancedMesh(
-        markPoleTimber(makeTelephonePoleDistanceGeometry()), mats.pole, e.list.length);
+        markPoleTimber(utilityPoleDistanceGeometry(mapId)), mats.pole, e.list.length);
       for (const mesh of [poleFullIM, poleDistanceIM]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -9983,55 +9622,7 @@ ${snowCap ? `
   // Linked utility conductors: one four-sided unit cylinder, instanced along
   // all sampled catenaries. No shadow casting avoids sub-pixel CSM shimmer;
   // matrices move only while a connected pole is actively toppling.
-  const _wirePoints = utilityNetwork
-    ? new Float64Array((utilityNetwork.segments + 1) * 3) : null;
-  const _wireA = new THREE.Vector3(), _wireB = new THREE.Vector3();
-  const _wireMid = new THREE.Vector3(), _wireDir = new THREE.Vector3();
-  const _wireUp = new THREE.Vector3(0, 1, 0), _wireScale = new THREE.Vector3();
-  const _wireQuat = new THREE.Quaternion(), _wireMatrix = new THREE.Matrix4();
-  function writeWireSpan(spanIndex: number): void {
-    const points = _wirePoints;
-    if (!wireIM || !utilityNetwork || !points) return;
-    for (let side = 0; side < 2; side++) {
-      utilityNetwork.writeSpanPoints(spanIndex, side, points);
-      for (let seg = 0; seg < utilityNetwork.segments; seg++) {
-        const a = seg * 3, b = a + 3;
-        _wireA.set(points[a], points[a + 1], points[a + 2]);
-        _wireB.set(points[b], points[b + 1], points[b + 2]);
-        _wireDir.subVectors(_wireB, _wireA);
-        const len = _wireDir.length();
-        if (len < 1e-5) continue;
-        _wireQuat.setFromUnitVectors(_wireUp, _wireDir.multiplyScalar(1 / len));
-        _wireMid.addVectors(_wireA, _wireB).multiplyScalar(0.5);
-        _wireScale.set(0.020, len * 1.02, 0.020);
-        _wireMatrix.compose(_wireMid, _wireQuat, _wireScale);
-        wireIM.setMatrixAt(utilityNetwork.instanceIndex(spanIndex, side, seg), _wireMatrix);
-      }
-    }
-  }
-  function rebuildWireSpans(indices: readonly number[] | null = null): void {
-    if (!wireIM || !utilityNetwork) return;
-    if (indices) {
-      for (const spanIndex of indices) writeWireSpan(spanIndex);
-    } else {
-      for (let i = 0; i < utilityNetwork.spans.length; i++) writeWireSpan(i);
-    }
-    wireIM.instanceMatrix.needsUpdate = true;
-  }
-  function instantiateUtilityWires(): void {
-    if (!utilityNetwork?.instanceCount) return;
-    const wireGeo = new THREE.CylinderGeometry(1, 1, 1, 4, 1);
-    wireIM = new THREE.InstancedMesh(wireGeo, mats.dark, utilityNetwork.instanceCount);
-    wireIM.name = 'utility-wires';
-    wireIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    wireIM.castShadow = false;
-    wireIM.receiveShadow = false;
-    wireIM.frustumCulled = false;
-    wireIM.matrixAutoUpdate = false;
-    group.add(wireIM);
-    rebuildWireSpans();
-  }
-  instantiateUtilityWires();
+  const utilityWires = createUtilityWires(utilityNetwork, mats.dark, group); // (maps/utilityPoles.ts)
 
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
@@ -10045,6 +9636,11 @@ ${snowCap ? `
   // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
   // (declared here, ahead of the join: the join stands immediately before the kits, structureShellPool.selftest)
   const setPieceRecords: VehicleSetPiece[] = [];
+  // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
+  const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
+  const tramRecords: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }[] = [];
+  // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
+  const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
   // below scan every record); the async build waits here for the pool's workers
   if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
@@ -10052,19 +9648,66 @@ ${snowCap ? `
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
+    buildings: buildingFeatures,
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
     setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
+    // (Lane C, #27) a dressing piece that stands as a structure of its own (the bridges' parapets): records, damage path, merge
+    structure: (id, tmp, x, y, z, rot) => { addStructureCollision(id, tmp as PropsBuckets, x, y, z, rot, true);
+      _quat.setFromAxisAngle(_upAxis, rot); _mat4.compose(_posv.set(x, y, z), _quat, _one); mergeInto(buckets, tmp as PropsBuckets, _mat4); },
+    rollingStockDestructible: (stock) => { rollingStockRecords.push(stock); },
+    tramDestructible: (tram) => { tramRecords.push(tram); },
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
   landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
-  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners
+  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners.
+  // (Lane C, #8 r2; the coordinator: the r2 rule, draws +0) each intact piece draws in the baked bucket at its pool
+  // instance's own pose, as a span that hides when the instance is hidden (setPieceSpans, finalizeDestructiblePool): its
+  // kind's pool keeps the matrices, the crush and burn copy and the broken state, and draws nothing until a break
+  // an intact instance drawn in the baked bucket at its pool matrix, as a span its hidden pool mirrors
+  const bakeIntactSpan = (kind: string, rec: DestructibleRecord, bucket: 'baked' | 'structureMetal' = 'baked'): void => {
+    const pool = dPools.get(kind);
+    if (!pool || rec.slot < 0) return;
+    let intact = setPieceIntact.get(kind);
+    if (!intact) { intact = pool.meta.build(mulberry32(0x5e7b1ece)); setPieceIntact.set(kind, intact); }
+    const g = intact.clone().applyMatrix4(pool.mats4[rec.slot]);
+    buckets[bucket].push(g);
+    const span = new HiddenSpanPiece();
+    span.ownPiece(g);
+    let slots = setPieceSpans.get(kind);
+    if (!slots) { slots = []; setPieceSpans.set(kind, slots); }
+    slots[rec.slot] = span;
+  };
   for (const piece of setPieceRecords) {
-    addDestructible(setPieceDestructibleKind(piece.kind), piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z,
-      (piece.yawDeg * Math.PI) / 180, 1);
+    const kind = setPieceDestructibleKind(piece.kind);
+    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, (piece.yawDeg * Math.PI) / 180, 1);
+    bakeIntactSpan(kind, rec);
   }
+  // (Lane C, #24) the rolling stock on its rails: the exact rail pose (the ground under the rails, pitched along them)
+  // over the destructible's own ground seat, which would take the lowest ground under its long footprint
+  for (const stock of rollingStockRecords) {
+    const kind = rollingStockDestructibleKind(stock.kind);
+    const rec = addDestructible(kind, stock.x, stock.y, stock.z, stock.yaw, 1, -stock.pitch, 0);
+    const pool = dPools.get(kind);
+    if (pool && rec.slot >= 0) {
+      _quat.setFromEuler(new THREE.Euler(-stock.pitch, stock.yaw, 0, 'YXZ'));
+      pool.mats4[rec.slot].compose(_posv.set(stock.x, stock.y, stock.z), _quat, _scalev.set(1, 1, 1));
+      rec.y = stock.y;
+    }
+    bakeIntactSpan(kind, rec);
+  }
+  // (Lane C, #24) the burnt trams on their track (Sarajevo's K2s, Blackglass's Shanghai cars), seated on their wheels
+  for (const tram of tramRecords) {
+    const kind = tramDestructibleKind(tram.kind);
+    // (Lane C, #24) Blackglass draws no painted bucket of its own: its Shanghai car's intact span goes into the regional
+    // metal its streets' tram poles and girders draw already (the same streams; draws +0)
+    bakeIntactSpan(kind, addDestructible(kind, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1),
+      kind === 'tram_shanghai' ? 'structureMetal' : 'baked');
+  }
+  for (const g of setPieceIntact.values()) g.dispose();
+  setPieceIntact.clear();
   landmarkFurniture = false;
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
@@ -10591,7 +10234,7 @@ ${snowCap ? `
     for (const p of plan.placements) {
       let built = families.get(p.family);
       if (!built) {
-        built = buildYardFamily(p.family);
+        built = buildYardFamily(p.family, mapId); // props lane A #2: the map's own yard forms
         if (built.material === 'steel') ensureSteelAtlas('yard:' + p.family);
         families.set(p.family, built);
       }
@@ -10608,6 +10251,8 @@ ${snowCap ? `
       const bucket = YARD_BUCKET[built.material];
       conformYardPiece(piece, buckets[bucket]);
       buckets[bucket].push(piece);
+      // (Lane C, PRP-02 / #2b) a hull or a round breaks it: its pieces collapse, its record after every ordinary prop
+      breakableSmallProp(`prop-yard-${p.family}`, [piece], { obstacles, colliders, clutter: (c) => pendingClutter.push(c) });
       let row = perMaterial[built.material];
       if (!row) row = perMaterial[built.material] = { bucket, pieces: 0, families: [], vertices: 0 };
       row.pieces++;
@@ -10703,6 +10348,9 @@ ${snowCap ? `
       retainedSurfaceMaterials.push(material);
     }
   }
+  // (props lane A #19) the paved pads' render-only dressing — their concrete edge, gullies and patches, a runway's markings
+  // and edge lights — on the baked material, no step in the drive surface (hardstandDressing.ts)
+  { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed); if (pads) buckets.baked.push(pads); }
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     // regional-buildings lane (2026-10-03, the urban GPU A B B A: +5 ms at the town's establishing view): a kit's
     // joinery and metalwork dressing (window frames and bars, shutters, timbers, boards, gutters and downpipes; a few
@@ -11104,7 +10752,8 @@ ${snowCap ? `
     let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
     if (meta.mat === 'vehicle' && meta.instancePaint) material = vehicleSurfaceMaterial();
     // (item 7) a set piece's build carries its own painted vertex colours (the painted bucket's family), no paint atlas
-    if (kind.startsWith('setpiece_')) material = mats.baked;
+    // (Lane C, #24) and so does a wagon's or a tram's (rolling_*, tram_*)
+    if (/^(setpiece|rolling|tram)_/.test(kind)) material = mats.baked;
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.
@@ -11149,6 +10798,19 @@ ${snowCap ? `
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
+    // (Lane C, #8 r2) a set piece kind draws its intact instances in the baked bucket (setPieceSpans): this mesh draws
+    // nothing and mirrors every hide (a zero-scale matrix: a break, the crush copy taking the prop) and show (a restore,
+    // a rematch) onto the instance's span there
+    const spans = setPieceSpans.get(kind);
+    if (spans) {
+      imI.visible = false;
+      const setMatrix = imI.setMatrixAt.bind(imI);
+      imI.setMatrixAt = (index: number, matrix: THREE.Matrix4) => {
+        setMatrix(index, matrix);
+        spans[index]?.setHidden(Math.abs(matrix.determinant()) < 1e-9);
+        return imI;
+      };
+    }
     if (meta.broken) {
       // (destruction core, 2026-10-09; the owner: "destructible objects/props: not looking good") the light dressing's broken
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
@@ -11349,8 +11011,9 @@ ${snowCap ? `
     },
     // canvas drapes and drags as cloth (wave 352: "canvas never reads as cloth")
     cloth: (kind) => kind === 'tent' || (dPools.get(kind)?.meta.mat as string | undefined) === 'canvas',
-    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it
-    burns: (kind) => dPools.get(kind)?.meta.mat === 'vehicle',
+    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it;
+    // (Lane C, #8 r2) nothing burns in the Moon's vacuum (the audio's atmosphere there is 'vacuum' too): its rovers break
+    burns: (kind) => mapId !== 'moon' && dPools.get(kind)?.meta.mat === 'vehicle',
     onBurn: (x, y, z, heightM) => emitBreakFx('vehicleburn', x, y + 0.3, z, 0, 0, heightM),
   });
 
@@ -11448,7 +11111,7 @@ ${snowCap ? `
     a.im.instanceMatrix.needsUpdate = true;
     if (a.wirePoleIndex != null && utilityNetwork) {
       const spans = utilityNetwork.setPoleFall(a.wirePoleIndex, a.ax, a.az, ang);
-      rebuildWireSpans(spans);
+      utilityWires?.rebuild(spans);
     }
   }
   function pushCrushAnim(a: CrushAnimation): void {
@@ -12158,7 +11821,7 @@ ${snowCap ? `
     restoreToppledPoles();
     if (utilityNetwork) {
       utilityNetwork.reset();
-      rebuildWireSpans();
+      utilityWires?.rebuild();
     }
   }
 

@@ -521,13 +521,15 @@ export default {
     sunIntensity: 4.25, sunColorHex: 0xfff0d6, hemiIntensity: 0.30,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x898165 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): the continental steppe's big dry sky — a straw dust band under a deep blue dome
+    atmosphere: { horizonTintHex: 0xe0d4b8, horizonTintAmount: 0.4, horizonBandDeg: 7, zenithTintHex: 0x3e72c0, zenithTintAmount: 0.3 },
   },
 
   minimap: {
     base: [140, 124, 74], hard: [126, 116, 96], soft: [110, 102, 64],
     forest: 'rgba(74,88,40,0.85)', forestStroke: 'rgba(44,54,24,0.9)',
-    // round 48: the only "water" is the salt pan — a pale crust on the plate
-    water: 'rgba(216,210,190,0.78)', waterStroke: 'rgba(150,142,118,0.7)',
+    // round 48: the only "water" is the salt pan — a pale crust on the plate (2026-10-14: painted as ground, no waterline)
+    bog: 'rgba(216,210,190,0.78)', bogStroke: 'rgba(150,142,118,0.7)',
     roadCasing: 'rgba(70,58,38,0.9)', roadFill: 'rgba(212,192,148,0.95)',
     buildingFill: '#e8e2d0',
   },

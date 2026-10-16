@@ -19,6 +19,7 @@ import {
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -378,7 +379,7 @@ function buildCv90(P: CvBuilderPort): void {
 // Tier X CV90 Mk IV — independently authored heavy hull and mission turret.
 
 function buildCv90MkivHull(P: CvBuilderPort): void {
-  const { box, cylX, cylY } = KIT;
+  const { box, cylY, cylZ } = KIT;
   // The heavier hull uses its own bow stations. Terminate the belly at
   // the glacis break instead of carrying a square full-height box through it.
   const belly = sectionSolid([
@@ -404,7 +405,8 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   ]));
   P.add('hullDark', box(2.12, 1.09, 0.050), 0, 1.14, -3.69);
   P.add('hull', box(1.92, 0.91, 0.055), 0, 1.14, -3.725);
-  for (const x of [-0.74, -0.25, 0.25, 0.74]) P.add('hullDark', cylX(0.052, 0.16, 12), x, 1.66, -3.76);
+  // critic panel 2026-10-15: the four bare cylinders over the door were the fuel drums' band mounts and read as spools
+  // on a rail once the drums went; they go with them.
   for (const side of [-1, 1]) {
     P.addEquipment('hull', box(0.38, 0.46, 0.34), side * 1.30, 1.48, -3.50);
     P.add('hullDark', box(0.23, 0.24, 0.022), side * 1.30, 1.46, -3.744);
@@ -412,25 +414,42 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
       side * 1.30, 1.54, -3.758);
     P.addEquipment('hull', box(0.52, 0.22, 0.56), side * 1.04, 1.86, -3.08);
   }
-  // Twin full-width auxiliary-fuel drums are nested into a structural rear
-  // rack, with visible retaining bands and service boxes rather than floating
-  // beyond the ramp plate. Their end caps reach the rear shoulder silhouette
-  // so both cylinders remain legible from side and three-quarter views.
-  for (const y of [1.08, 1.72]) {
-    P.addEquipment('hull', cylX(0.305, 3.72, 28), 0, y, -3.91);
-    for (const x of [-1.38, -0.46, 0.46, 1.38]) {
-      P.add('hullDark', cylX(0.322, 0.050, 28), x, y, -3.91);
-    }
+  // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies", on this bare rear): the two
+  // invented 3.7 m fuel drums and their rack posts hid the CV90's real rear, its large troop door. The door now shows
+  // with its three hinge knuckles on the right edge, the handle and locking bar, and the vision block; the lower rear
+  // plate carries the two towing hooks and the tow pintle.
+  for (const y of [0.80, 1.14, 1.48]) {
+    P.add('hullDark', cylY(0.034, 0.034, 0.13, 12), 0.93, y, -3.765);
+    P.add('hullDark', box(0.10, 0.10, 0.012), 0.86, y, -3.757);
   }
+  P.add('hullDark', box(0.20, 0.045, 0.045), -0.62, 1.14, -3.78);
+  P.add('hullDark', box(0.04, 0.07, 0.05), -0.70, 1.14, -3.765);
+  P.add('hullDark', box(0.90, 0.03, 0.02), -0.10, 0.70, -3.762);
+  P.add('hullDark', box(0.20, 0.13, 0.020), 0, 1.42, -3.758);
+  P.addModuleVisual('optics', 'hullGlass', box(0.14, 0.075, 0.012), 0, 1.42, -3.770);
+  for (const x of [-0.62, 0.62]) {
+    P.add('hullDark', box(0.13, 0.15, 0.030), x, 0.50, -3.525);
+    P.add('hullDark', cylZ(0.036, 0.10, 12), x, 0.52, -3.585);
+    P.add('hullDark', box(0.075, 0.032, 0.05), x, 0.475, -3.62);
+  }
+  P.add('hullDark', box(0.16, 0.12, 0.030), 0, 0.46, -3.525);
+  P.add('hullDark', cylY(0.032, 0.032, 0.10, 12), 0, 0.46, -3.585);
+  // critic panel 2026-10-15: the decor's rear-rack tray hung off the door once the drums were gone. The decor keeps out
+  // of the band behind the door, its hinges and its handle (fieldChest.ts reserveDecorVolume; hull frame), so the door
+  // stays clear and opens.
+  reserveDecorVolume(P.hullG, [-0.80, 0.60, -4.05], [1.00, 1.70, -3.70]);
   for (const x of [-0.96, 0.96]) {
-    P.add('hullDark', box(0.075, 1.02, 0.085), x, 1.39, -3.87);
     P.addEquipment('hull', box(0.30, 0.28, 0.24), x, 1.91, -3.78);
     P.addModuleVisual('optics', 'hullGlass', box(0.15, 0.075, 0.014),
       x, 1.91, -3.91);
   }
   P.add('hullDark', box(2.08, 0.085, 0.10), 0, 0.82, -3.82);
-  P.addCupola('hull', cylY(0.31, 0.34, 0.060, 20), 0.66, 1.84, 1.47);
-  P.add('hullDark', KIT.torus(0.315, 0.015, 20), 0.66, 1.88, 1.47);
+  // the driver's hatch as a real closed hatch, not a bare disc (owner markup 2026-10-14 on the same class elsewhere)
+  {
+    const hatch = hatchParts(0.31, !!P.q, -1);
+    for (const g of hatch.lid) P.addCupola('hull', g, 0.66, 1.81, 1.47);
+    for (const g of hatch.dark) P.add('hullDark', g, 0.66, 1.81, 1.47);
+  }
   for (const x of [0.45, 0.66, 0.87]) KIT.periscope(P, 'hullDetail', x, 1.91, 1.76);
   P.add('hullDark', box(1.44, 0.025, 1.78), -0.75, 1.842, -0.06);
   for (let index = 0; index < 12; index++) {
@@ -539,6 +558,20 @@ function addCv90MkivScaffoldedCradle(P: CvBuilderPort): void {
       P.addGunExtra(beamGeometry(point(side,rear,-.90),point(side,front,.90),.036));
     for (const t of [.015,.985])
       P.addGunExtra(beamGeometry(point(side,t,-1),point(side,t,1),.040));
+  }
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 345-386's critics: "a dark rectangular gap beside the barrel where no
+  // coaxial muzzle shows"; the coordinator, keeping the owner's no-coax rule: close empty openings with armour): the
+  // cradle's nose carries a closed armour face round the cannon (a 15 mm clearance ring on its 90 mm barrel), so the
+  // front no longer opens beside the barrel; the side bays stay open between their diagonal members.
+  {
+    const [hx, hy, nz] = point(1, 1, 1);
+    const hw = hx + .012, hh = hy + .012;
+    const face = new THREE.Shape([new THREE.Vector2(-hw, -hh), new THREE.Vector2(hw, -hh),
+      new THREE.Vector2(hw, hh), new THREE.Vector2(-hw, hh)]);
+    face.holes.push(new THREE.Path().absarc(0, 0, .105, 0, Math.PI * 2, true));
+    const plate = new THREE.ExtrudeGeometry(face, { depth: .022, bevelEnabled: false, curveSegments: 24 });
+    plate.translate(0, 0, nz - .011);
+    P.addGunExtra(plate.index ? plate.toNonIndexed() : plate);
   }
 }
 
@@ -664,7 +697,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90_mk4_concept', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
-      movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
+      movingWithGun: true, surroundsMainBarrel: true, openFrontRear: false, closedNoseFace: true,
       rootJoinedToTurretFace: true, sideOnlyOpenings: true, rootRearZM: -.34,
       diagonalSidePortsPerSide: 3, mainGunCaliberMm: 50, barrelLengthM: 3.76,
       trunnionRecessM: gunTrunnionRecessM,

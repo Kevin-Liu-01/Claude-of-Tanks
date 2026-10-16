@@ -1629,6 +1629,30 @@ export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0:
   return faces;
 }
 
+/**
+ * A regular `n`-sided shaft (a minaret's, a lantern's) whose facets carry openings cut through them (props census #5,
+ * lane B 2026-10-15; the judges: "a blank shaft"): circumradius `r` about (cx, cz), facet 0 facing `facing` (radians
+ * from +z toward +x) and facet i at facing + i 2pi/n, each a holed slab `cut` deep (holedPolygon) round the core,
+ * each opening's reveal back to `reveal` with the dark behind it. Returns the facets' faces (centred on each).
+ */
+export function holedShaft(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, r: number, n: number, facing: number,
+  y0: number, y1: number, holes: ReadonlyArray<readonly HoleRect[] | undefined>, cut: number, reveal: number, opts: EmitOptions = {}): Face[] {
+  // the corners walked clockwise seen from above (u x up = out on every facet), facet 0's middle at `facing`
+  const step = Math.PI * 2 / n, a0 = Math.PI / 2 - facing + step / 2;
+  const corner = (i: number, rr: number): [number, number] => [cx + rr * Math.cos(a0 - i * step), cz + rr * Math.sin(a0 - i * step)];
+  const faces: Face[] = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, az] = corner(i, r), [bx, bz] = corner(i + 1, r);
+    const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
+    const face: Face = { origin: [(ax + bx) / 2, 0, (az + bz) / 2], u: [ux, 0, uz], out: [-uz, 0, ux], width: len };
+    faces.push(face);
+    holedPolygon(sink, bucket, face, [[-len / 2, y0], [len / 2, y0], [len / 2, y1], [-len / 2, y1]], holes[i] ?? [], cut, reveal, opts, [], DAMP_EDGE_BREAKS);
+  }
+  const ri = (r * Math.cos(step / 2) - cut) / Math.cos(step / 2);
+  sink.prism(bucket, Array.from({ length: n }, (_, i): Vec3 => { const [x, z] = corner(i, ri); return [x, y0, z]; }), [0, 1, 0], y1 - y0, opts);
+  return faces;
+}
+
 function shadeRgb(c: Rgb, k: number): Rgb {
   return [c[0] * k, c[1] * k, c[2] * k];
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 // Execute the shader's scalar expressions, not a second implementation of
 // its projection formula. Native WebGL compilation remains a separate gate.
 const body = source.match(/vec3 wallNormalDelta\(vec2 xNormal, vec2 zNormal\) \{([\s\S]*?)\n\}/)?.[1];

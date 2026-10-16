@@ -11,6 +11,9 @@ import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { mergeDestructionLogs, quantizeDestructionEntry } from '../wire/destructionLog.ts';
 import { MESSAGE_TYPE, NO_TICK, applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/index.ts';
 
+// P1's one-event collapse (the mirror's contract); the battle plays sections since DST-04 (2026-10-15), which
+// collapseCascade and structureSections pin
+const P1_RULES = { ...matchRulesetFor('standard').destruction, sections: false };
 const near = (actual, expected, eps, label) => assert.ok(Math.abs(actual - expected) <= eps, `${label}: ${actual} vs ${expected}`);
 
 /** A street of four houses (12 × 8 m, 6 m tall), ids in build order; `shift` moves the ids (a world laid out otherwise). */
@@ -28,7 +31,7 @@ function street(shift = 0, extra = false) {
 const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getContactHeightAt: () => 0, getNormalAt: () => null, maxY: 1 };
 
 // the authority's events for the street: house 2 damaged then collapsed
-const authority = createDestructionMatch({ rules: matchRulesetFor('standard').destruction, ...street() });
+const authority = createDestructionMatch({ rules: P1_RULES, ...street() });
 const house = authority.structures.byId(2);
 authority.structures.applyPoints(house, house.maxHp * 0.4, { cause: 'blast', munition: 'he', x: 40, y: 2, z: -4, dirX: 0, dirZ: 1 });
 authority.step();
@@ -127,7 +130,7 @@ assert.ok(log.every((entry) => entry.kind === 'stage' && Math.abs(entry.cx - 40)
   const retained = [{ kind: 'stage', structureId: 1, stage: 'damaged', cx: 20, cz: 0 }];
   const merged = mergeDestructionLogs(log, [...log.slice(1), ...retained]);
   assert.deepEqual(merged, [...log, ...retained], 'known entries once, the retained one appended');
-  const resumed = createDestructionMatch({ rules: matchRulesetFor('standard').destruction, ...street() });
+  const resumed = createDestructionMatch({ rules: P1_RULES, ...street() });
   const restoredWorld = resumed.structures;
   assert.equal(resumed.restore(merged), 4);
   resumed.step();

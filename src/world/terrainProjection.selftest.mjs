@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 // Exact executable UV statements from R12's rejected grazing chart (32f9a6907).
 // Only comments/indentation are omitted. Keep this tiny negative fixture local:
 // the test must work in exported/shallow source trees without any Git history.

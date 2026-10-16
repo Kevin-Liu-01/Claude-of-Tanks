@@ -66,6 +66,28 @@ export function shadowDepthBiasForTexel(worldUnitsPerTexel: number, filterRadius
 }
 
 /**
+ * 2026-10-14 (SKY shadows r2a, P1b; the shadow-quality plan's C3): three renders a FrontSide caster's BACK faces into the
+ * cascades (WebGLShadowMap's shadowSide), so the stored face is the one touching a contact, and a lit front face stands
+ * the caster's own thickness in front of it: the acne the law above guards (a lit face against its own stored depth)
+ * cannot arise there. Its 0.40 m cap bound on High's cascade 0 and on cascades 1-3 of every preset and left lit seams of
+ * up to 33 cm at a turret on its deck, a tank on a prop, a slab or a bridge. A closed caster now takes
+ * SHADOW_BACKFACE_BIAS_TEXELS of its cascade's texel along the sun (floored at 2 cm, capped at the old 0.40 m); the
+ * DoubleSide and alpha-tested casters, whose front faces are in the map, keep a guard of their own through a caster-side
+ * polygon offset on their depth draw only (SHADOW_DOUBLE_SIDED_OFFSET; lighting.ts patchShadowDepthPacking) — never a
+ * slope-scaled offset on the shared depth materials, which would push the stored back faces away and widen the seam.
+ */
+export const SHADOW_BACKFACE_BIAS_TEXELS = 1.5;
+export function shadowDepthBiasBackFace(worldUnitsPerTexel: number): number {
+  if (!(worldUnitsPerTexel > 0) || !Number.isFinite(worldUnitsPerTexel)) return SHADOW_DEPTH_BIAS_MAX_M;
+  return Math.min(SHADOW_DEPTH_BIAS_MAX_M, Math.max(SHADOW_DEPTH_BIAS_MIN_M, SHADOW_BACKFACE_BIAS_TEXELS * worldUnitsPerTexel));
+}
+/**
+ * A DoubleSide or alpha-tested caster's depth draw: a constant offset of `units` of the 24-bit depth's resolvable step over
+ * the CSM lights' 1-2000 m range (about 0.12 mm each: 2000 units, 0.24 m) plus `factor` times its slope.
+ */
+export const SHADOW_DOUBLE_SIDED_OFFSET = Object.freeze({ factor: 1, units: 2000 });
+
+/**
  * The depth bias of a receiver-only surface, world metres along the sun ray (lighting.ts setupShadowMaterial,
  * material.userData.cotShadowReceiverOnly): a surface whose meshes never cast is in no depth map, so it needs no acne
  * margin, only a hair over the depth's own precision. It takes no receiver normal offset either.

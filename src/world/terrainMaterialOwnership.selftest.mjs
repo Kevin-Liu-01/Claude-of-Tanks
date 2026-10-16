@@ -2,8 +2,9 @@ import { assertTerrainFetchExpressionCensus } from './terrainMaskShaderTestOracl
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { landUseTierOf } from './landUse.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 // ground lane (2026-10-03): the land use's field layout is declared in landUse.ts and spliced into the splat fragment
 // (`${'$'}{LAND_USE_GLSL}`); its uniform declarations count as the material's own
 const landUseSource = readFileSync(new URL('./landUse.ts', import.meta.url), 'utf8');
@@ -140,6 +141,7 @@ function checkSourceContract(text) {
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.
     'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaBanks','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
+    'uCliffStrata', // ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata; scalar, no sampler)
     'uRoadPuddle', // ground lane (2026-10-05): the map's share of the ruts' puddles and their mud (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
@@ -204,6 +206,9 @@ function checkSourceContract(text) {
     'uDetailGain', 'uRoadFromG',
     // Ultra Low (2026-10-13): the splat's cheapest variant from the live preset (quality.ts terrainLite; scalar, no sampler)
     'uTerrainLite',
+    // roads lane (2026-10-09): the road frame layer's address in the mask stack (vec4, no sampler — fetched exactly through
+    // uMask), the worked carriageway's gains (two vec4) and the paved surfaces' classes, wear and kerbed town (three vec4)
+    'uRoadFrame', 'uRoadSurf', 'uRoadSurfB', 'uPaveClass', 'uPaveWear', 'uPaveTown', 'uPaveExtra',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -334,7 +339,7 @@ console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G 
 // Ultra Low (2026-10-13): uTerrainLite follows the live preset (both Ultra Low presets), is released with the material,
 // and every lite term is a uniform branch — the other presets keep their program and their picture
 {
-  const text = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const text = terrainSourceText();
   const c = (x) => x.replace(/\s+/g, ' ');
   assert.ok(c(text).includes(c("const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };")), 'the lite flag reads the live preset');
   assert.ok(c(text).includes(c("const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });")), 'and follows its changes');

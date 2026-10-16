@@ -10,9 +10,10 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels } from './proceduralTexture.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 function section(text, start, end) {
   const a = text.indexOf(start), b = text.indexOf(end, a + start.length);
   assert.ok(a >= 0 && b > a, `production source section: ${start}`);

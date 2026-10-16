@@ -109,7 +109,7 @@ assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparen
 assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
 const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
 assert.match(program, /attribute float hardstandBlend;/, 'each vertex carries its share of worked ground');
-assert.match(program, /diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, vHardstandBlend \+ \(hardstandBreak - 0\.5\) \* 0\.72\);/,
+assert.match(program, /float hardstandEdge = vHardstandBlend \+ \(hardstandBreak - 0\.5\) \* 0\.72;\s*[\s\S]{0,600}diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, hardstandEdge\);/,
   'the margin is broken by noise, not a ruled line');
 // round 5d-2 (waves 408 and 419: "a blurry, smeared texture", "stretched low-resolution image"): a shared 256 px/m grain
 // multiplies into the yard's 35 px/m layout, neutral on average so it fades with distance
@@ -128,11 +128,20 @@ assert.equal(garageHardstandDetailKind('slab-urban'), 'concrete');
 // garage round 7, place-truth (the critic panel, 2026-10-14: Monsoon "a dry, sunny dirt yard with no wet sheen, puddles"):
 // the same program carries standing water; Monsoon's wet mask polishes its puddles flat and glossy and dampens the yard,
 // every other floor reads it at zero
-assert.match(program, /float hardstandWater = hardstandWet \* texture2D\(hardstandWetMask, vMapUv\)\.r;/,
+// rejudge6 (2026-10-15: "opaque pale-blue oval puddles ... no reflection and no wet rim"): red is the water, green the damp
+// rim; the water is dark and mirrors, the rim darker and smoother, the rain rings the water's surface
+assert.match(program, /vec2 hardstandWetTexel = texture2D\(hardstandWetMask, vMapUv\)\.rg;/,
   'the puddles come from the yard\'s wet mask on the floor\'s own UVs');
-assert.match(program, /roughnessFactor = mix\(roughnessFactor \* \(1\.0 - 0\.28 \* hardstandWet\), 0\.06, hardstandWater\);/,
+assert.match(program, /float hardstandWater = hardstandWet \* smoothstep\(0\.3, 0\.8, hardstandWetTexel\.r\);/, 'a crisp shoreline');
+assert.match(program, /float hardstandDamp = hardstandWet \* hardstandWetTexel\.g;/, 'the damp rim');
+assert.match(program, /diffuseColor\.rgb \*= 1\.0 - 0\.34 \* hardstandDamp;/, 'the wet rim is darker');
+assert.ok(!/vec3\(0\.34, 0\.4, 0\.45\)/.test(program), 'no pale-blue paint on the water');
+assert.match(program, /roughnessFactor = mix\(roughnessFactor \* \(1\.0 - 0\.28 \* hardstandWet\) \* \(1\.0 - 0\.3 \* hardstandDamp\), 0\.05, hardstandWater\);/,
   'the water is glossy and the wet yard damp');
-assert.match(program, /normal = normalize\(mix\(normal, nonPerturbedNormal, hardstandWater \* 0\.92\)\);/, 'standing water lies flat');
+assert.match(program, /normal = normalize\(mix\(normal, nonPerturbedNormal, hardstandWater \* 0\.96\)\);/, 'standing water lies flat');
+assert.match(program, /hardstandRing \* 0\.35 \* hardstandWater;/, 'the rain rings only the water');
+assert.match(yardWear, /const MONSOON_RUTS:/, 'water lies in the track ruts');
+assert.ok(!/MONSOON_PUDDLES/.test(yardWear), 'no evenly scattered ovals');
 assert.match(program, /shader\.uniforms\.hardstandWet = \{ value: wet\?\.mask \? wet\.amount : 0 \};/, 'dry floors read no water');
 assert.match(kit, /const hardstandWetMaskTexture = garageHardstandWetMask\(hardstandStyle\);/, 'the pack asks its style for a wet mask');
 assert.match(program, /totalEmissiveRadiance \+= vec3\(1\.5\) \* hardstandGlint \* hardstandSparkle \* \(1\.0 - smoothstep\(9\.0, 30\.0, length\(vViewPosition\)\)\);/,

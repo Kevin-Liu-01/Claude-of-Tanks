@@ -15,6 +15,7 @@ import {
 import { markCutCorner } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
+import { addChapelSpirelet } from './chapelDressing.ts';
 
 interface BuildingParts {
   [name: string]: THREE.BufferGeometry[];
@@ -236,6 +237,7 @@ export function makeChapel(rng: () => number, buckets: GeometryBuckets): Structu
   const cap = gablePrism(1.8, 0.5, 0.55);
   cap.rotateY(Math.PI / 2);
   parts.roof.push(cap.translate(0, wallH + roofH + bgH - 0.5, d / 2 - 0.4));
+  addChapelSpirelet(parts, wallH + roofH + bgH, d / 2 - 0.4); // (its spirelet and cross: dressing, chapelDressing.ts)
   // arched door (stone surround + recessed leaf) and slit windows
   parts.stone.push(box(1.7, 2.9, 0.22).translate(0, 1.45, d / 2 + 0.06));
   parts.wood.push(box(1.15, 2.3, 0.10).translate(0, 1.15, d / 2 + 0.13));

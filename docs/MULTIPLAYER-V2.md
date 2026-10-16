@@ -2169,6 +2169,99 @@ Receipt: `predictionStall.selftest` (the real sampler, the real authority input 
 movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
 against 2.1 m and 1.5 m for the two old behaviours).
 
+### 13.25 The returning tab's entry overlaps what it can (MP stream, 2026-10-15)
+
+**Why.** In the §7 side-by-side (Verdant, built sites, n=3), the rejoin took 24.1 s on Sept 30 and 32.2 s on main
+(tab opened to back in battle). By stage:
+
+- Garage: +2.2 s (+0.9 s with mp-garage-freeze);
+- world and modules: +2.9 s;
+- shader stages: +1.0 s;
+- Garage-to-entry gap: +1.2 s;
+- roster and panel: about equal (main's roster painting, 6-7 s after the WELCOME, replaced Sept 30's 5.4 s panel mask
+  link).
+
+The world and shader growth went to their lanes. Two things are the MP path's own.
+
+**What.**
+- `prewarmRosterVisuals` (battlePresentation) warms the builders and texture bakes of the seats the room names while
+  the world loads. The bakes run in a worker where the browser has one. Previously this all queued behind the
+  WELCOME, after the world. It is never awaited by the entry: `prepareRoster` joins what is still in flight (the bakes
+  coalesce). The bots arrive with the WELCOME and are painted then. The trace records `rosterPrewarmed`.
+- A tab opened on a room invite holds the Garage's idle work (the neighbouring heroes, the dressing set pieces) while it
+  joins and enters, instead of sharing the main thread with the room's join and the entry. A return to the Garage
+  schedules the dressing itself (garageReturnRuntime). A tab the invite leaves in the Garage gets both after 12 s,
+  unless a battle entry holds the lifecycle then.
+
+Receipts:
+- `battlePresentation.selftest`: one warm per vehicle, paint and quality; the viewer's vehicle at its own quality; a
+  failing bake does not escape; an aborted round stops.
+- `browserComposition.selftest`: the warm starts with the world load and a warm that never settles holds nothing.
+- `garageDressingLifecycle.selftest`: the invite boot defers the work and a plain boot runs it at ready.
+- The timing is measured in the final pass (the rejoin trace).
+
+### 13.24 A busy seat is not a dead host (MP stream, 2026-10-15)
+
+**Why.** Every main rejoin in the §7 side-by-side opened a second peer link about 7 s after the first. The first link
+was answered in 0.2 s and the seat was welcomed, so the entry trace marked `roster` twice (`item/mp-rejoin-trace`). The
+returning tab paints its roster for 6-7 s after the WELCOME. Its loading yielders use `scheduler.yield`, whose
+continuations run ahead of ordinary tasks, so the data channel's message tasks waited while the tab kept rendering
+frames. After 5 s without an accepted snapshot, `ConnectionRecovery` read the silence as a dead host and asked for a
+fresh socket. On Sept 30 the roster took 1.2 s, under the 5 s window.
+
+**What.** `MatchClient` keeps one ordinary task in flight (`taskProbe`; the browser composition posts it with
+`setTimeout 0`). A task still waiting past 250 ms means this tab could not have read the channel either. The
+recovery's stall clock restarts at the last frame the tab was seen starved (`RecoveryInput.starvedAtMs`). A host that
+stays silent for 5 s after the tab runs again still stalls the link as before. `stats().taskStarvations` counts the
+episodes. Without a probe (Node, the receipts' virtual clocks) nothing changes.
+
+Receipts:
+- `recovery.selftest`: a seat starved for 6.5 s requests no socket and stalls 5 s after it wakes. The control stalls at
+  5 s.
+- `matchClient.selftest`: a seat whose probe tasks and host frames are held together for 6.5 s keeps its link. A host
+  that stays silent while the tab runs still requests a fresh socket.
+- Ablating the stall-clock restart fails both.
+
+### 13.23 The seat's movement checkpoint as a changed-value mask (MP stream, wire 7, 2026-10-15)
+
+**Why.** The §7 side-by-side (Sept 30 against main, built sites, Verdant, two peers) read the host's uplink at 112 against
+135 kbit/s. A peer's downlink by message (the in-process P2P set-up, `$SP/mp/uplink-probe.mjs`) shows where: snapshot
+deltas averaged 329 bytes on Sept 30 and 380 on main, events and keyframes alike. The viewer section carries the
+seat's movement checkpoint whole on every snapshot. Physics versions 3-8 grew it from 45 to 63 `f32` values, which is
++72 bytes a snapshot to every seat.
+
+**What.** On a delta whose baseline holds a viewer on the same checkpoint version and length, the checkpoint is a mask
+of the values that changed since the baseline's (compared as `f32`) and those values (`src/mp/wire/README.md`). A
+driving hull changes ~36 of the 63 between 20 Hz snapshots, a stopped one ~20. Keyframes and every baseline the mask
+cannot follow write the full form. WIRE_VERSION 6 -> 7: a seat and a host on different layouts meet the same-wire build
+check's "refresh" refusal (`matchBuildGate`). The PROTOCOL_VERSION bump is the coordinator's: it rides 225's ids-bulk
+bump to 8, or takes the next one.
+
+Receipts: `viewerMask.selftest` checks exact `f32` round trips (the sign of zero kept), the full form wherever the
+baseline cannot follow, a typed `missing_baseline`, and on the real movement model the viewer at 174 bytes a snapshot
+driving and 114 stopped, against 274 whole. The probe's snapshot downlink for two peers reads Sept 30 108, main 125,
+masked 95 kbit/s (deltas 329 / 380 / 282 bytes).
+
+**The browser's wake order (2026-10-15, the §7 side-by-side).** The receipt's seat read the authority only after its
+waking frame, and dropped what reached it while stalled. A browser queues those rows as message tasks, and they run
+before the waking frame or after it. On the e2e's seat-pause probe (built site, B's main thread blocked while it drives)
+the hull was still corrected by 2.8 m after a 0.3 s stall and by 7.8 m, with a hard snap, after 0.7 s. That matches the
+side-by-side's own-prediction outliers on main (6.6-8.2 m), which came with 300-700 ms page stalls. There were two
+causes:
+
+- **Rows first.** The newest queued row is newer than anything the stalled seat sampled, so its reconcile is a tick jump
+  that seats the hull on the authority's pose at that tick. `skipTicks` then stepped the whole skipped range again from
+  there, and the hull ran ahead by the overlap.
+- **Frame first.** Every queued row is older than the replay window (`maxReplayTicks`, 24). Each one rewound the hull and
+  replayed only the window's newest ticks, leaving the hull behind by the rest.
+
+`skipTicks` now steps only the ticks after the hull's current one. `MatchClient` holds the newest own row and reconciles
+it once, at the next frame before its sampler (`reconcilePending`); the rows it supersedes carry nothing the newest does
+not. The receipt now queues the stalled seat's rows and runs both wake orders: the largest correction after a
+0.3-2 s stall is 0.2-5 cm. Its control, every row reconciled as it arrives after the waking frame, corrects 2.86 m after
+0.6 s. Ablating either half fails the receipt: rows first reads 1.71 m after 0.3 s; frame first, with per-row reconcile,
+reads 2.86 m after 0.6 s.
+
 ### 13.21 The elected seat's host thread is ready before the election (MP stream, 2026-10-14)
 
 **Why.** An election's freeze is the room's detection (the pagehide hand-off of §13.19, else the socket lease), then the

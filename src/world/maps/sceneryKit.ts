@@ -613,6 +613,18 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
     g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
     parts.push(paint(g, pal, 0.05, rng));
   };
+  // (props lane A, #21, 2026-10-14; WORKLIST.md #21 "pylons as lattice") a leg is an angle iron, not a square bar: its two
+  // flanges run in along the tower's faces from the corner it stands on (sx, sz), a tenth of their width thick
+  const angle = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number, pal: Palette, sx: number, sz: number) => {
+    const ax = new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0), len = ax.length();
+    ax.multiplyScalar(1 / len);
+    let u = new THREE.Vector3(-sx, 0, 0), v = new THREE.Vector3(0, 0, -sz);
+    if (new THREE.Vector3().crossVectors(u, v).dot(ax) < 0) [u, v] = [v, u];
+    const th = t * 0.12, shape = new THREE.Shape([[0, 0], [t, 0], [t, th], [th, th], [th, t], [0, t]].map(([a, b]) => new THREE.Vector2(a, b)));
+    const g = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false, steps: 1, curveSegments: 1 });
+    g.applyMatrix4(new THREE.Matrix4().makeBasis(u, v, ax).setPosition(x0 - (u.x + v.x) * t * 0.5, y0, z0 - (u.z + v.z) * t * 0.5));
+    parts.push(paint(g, pal, 0.05, rng));
+  };
   const halfAt = (y: number) => (y <= waistY ? base + (waist - base) * Math.pow(y / waistY, 0.85) : waist * (1 - 0.25 * (y - waistY) / (H - waistY)));
   const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   const sections = mobile ? 6 : 9;
@@ -622,7 +634,7 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
     const y0 = levels[i], y1 = levels[i + 1], h0 = halfAt(y0), h1 = halfAt(y1), ym = (y0 + y1) / 2, hm = halfAt(ym);
     for (let k = 0; k < 4; k++) {
       const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
-      strut(ax * h0, y0, az * h0, ax * h1, y1, az * h1, 0.16, GALV);
+      angle(ax * h0, y0, az * h0, ax * h1, y1, az * h1, 0.2, GALV, ax, az);
       strut(ax * h1, y1, az * h1, bx * h1, y1, bz * h1, 0.08, GALV);
       if (!mobile || i % 2 === 0) {
         strut(ax * h0, y0, az * h0, bx * h1, y1, bz * h1, 0.06, GALV_DARK);

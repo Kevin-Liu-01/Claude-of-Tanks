@@ -8,6 +8,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T90_BURLAK_X_SOURCE_DATUMS} from '../t90BurlakXArmor.ts';
 import {addT90BurlakSkirtCassettes} from './t90BurlakXSkirts.ts';
 import {addT90BurlakRearFurniture} from './t90BurlakXRear.ts';
@@ -198,7 +199,9 @@ function machineGun(P:TankBuilderPort):void{
   mg.add('turretDark',cylZ(.0253,.2977,24),-1.3613,2.28392,-.18972);
   mg.add('turretDark',cylZ(.01945,.395,24),-1.36935,2.28332,.21863);
   mg.add('turretDark',blindTube(.020,.0064,.1543,.055,24),-1.3739,2.28332,.49128);
-  mg.add('turretDetail',box(.0442,.099,.0195),-1.37,2.30967,.22858);mg.finish();
+  mg.add('turretDetail',box(.0442,.099,.0195),-1.37,2.30967,.22858);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(),{name:'t90BurlakXRoofNsvt',caliberMm:12.7});
 }
 function smoke(P:TankBuilderPort):void{
   // Eleven actual source stocks, with measured principal axes; the supplied

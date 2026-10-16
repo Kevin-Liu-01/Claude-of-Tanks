@@ -12,6 +12,7 @@ import {
   WATER_RIPPLE_SLEEP_AFTER_S,
 } from './waterRipples.ts';
 import { createShallowWaterSurface, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 function recordingRenderer() {
   const log = [];
@@ -207,7 +208,7 @@ f3.dispose();
 }
 
 // 7. The world wiring: the terrain hands the height field the splash hook, the FX layer uses it and drops its prints.
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 assert.ok(terrain.includes('mask: materialStep.value.waterMask, mapSizeM: heightField.size, ramp: cfg.splat.seaRamp || [0.40, 0.78],'),
   'the field reads the sheet\'s own mask, size and ramp');
 assert.ok(terrain.includes('heightField.addWaterImpulse = ripples.addImpulse;')

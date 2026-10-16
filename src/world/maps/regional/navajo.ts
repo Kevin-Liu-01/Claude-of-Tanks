@@ -184,6 +184,18 @@ function hoganBody(sink: PartSink, rng: () => number, look: () => number, o: Hog
   return mound;
 }
 
+/**
+ * A straight member along x or z from a0 to a1, its middle at (c, y) across, half sizes hw (across, level) and hh (up),
+ * its four long arrises chamfered `ch` (an octagonal section: a dressed coping, a sawn board; the looks lane 2026-10-15).
+ */
+function chamferedBeam(sink: PartSink, bucket: RegionalBucket, axis: 'x' | 'z', a0: number, a1: number, c: number, y: number, hw: number, hh: number, ch: number,
+  opts: EmitOptions): void {
+  const sec: Array<[number, number]> = [[hw, -hh + ch], [hw, hh - ch], [hw - ch, hh], [-hw + ch, hh], [-hw, hh - ch], [-hw, -hh + ch], [-hw + ch, -hh], [hw - ch, -hh]];
+  // counter-clockwise seen from the axis's plus end: along z the section's u is +x; along x it is -z
+  const pts: Vec3[] = sec.map(([u, v]) => (axis === 'z' ? [c + u, y + v, a0] : [a0, y + v, c - u]) as Vec3);
+  sink.prism(bucket, pts, axis === 'z' ? [0, 0, 1] : [1, 0, 0], a1 - a0, opts);
+}
+
 /** A juniper woodpile on the ground (dressing): split lengths stacked against each other, a few lying loose. */
 function woodpile(sink: PartSink, x: number, z: number, yaw: number, look: () => number): void {
   sink.placed(yaw, x, 0, z, () => {
@@ -748,18 +760,6 @@ const generalStore: RegionalBuilder = (ctx) => {
   }
   return sink.finish();
 };
-
-/**
- * A straight member along x or z from a0 to a1, its middle at (c, y) across, half sizes hw (across, level) and hh (up),
- * its four long arrises chamfered `ch` (an octagonal section: a dressed coping, a sawn board; the looks lane 2026-10-15).
- */
-function chamferedBeam(sink: PartSink, bucket: RegionalBucket, axis: 'x' | 'z', a0: number, a1: number, c: number, y: number, hw: number, hh: number, ch: number,
-  opts: EmitOptions): void {
-  const sec: Array<[number, number]> = [[hw, -hh + ch], [hw, hh - ch], [hw - ch, hh], [-hw + ch, hh], [-hw, hh - ch], [-hw, -hh + ch], [-hw + ch, -hh], [hw - ch, -hh]];
-  // counter-clockwise seen from the axis's plus end: along z the section's u is +x; along x it is -z
-  const pts: Vec3[] = sec.map(([u, v]) => (axis === 'z' ? [c + u, y + v, a0] : [a0, y + v, c - u]) as Vec3);
-  sink.prism(bucket, pts, axis === 'z' ? [0, 0, 1] : [1, 0, 0], a1 - a0, opts);
-}
 
 /**
  * The roadside stands (a market row plot): three booths of juniper posts and plywood under brush and plywood shade,

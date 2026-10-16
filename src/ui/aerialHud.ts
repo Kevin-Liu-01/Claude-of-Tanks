@@ -3,6 +3,7 @@ import type { HudTank, HudMatchModeState } from './hud.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
+import { dronePhase } from './droneControlState.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { t, getLocale } from './i18n.ts';
 import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
@@ -21,8 +22,15 @@ function instrument(parent:HTMLElement,name:UiIconId,label:string){
 function gunshipDesignation(escort:HudMatchModeState['escort']):string {
   return escort?t('flight.gunship.escort',{alive:escort.alive,rescued:escort.rescued,required:escort.required}):t('flight.gunship.role');
 }
+/** The ground under the drone for its altitude readout (the HUD's terrain height field), or null before a map loads. */
+type AerialGround=()=>{getHeightAt(x:number,z:number):number}|null;
+/** Height above the ground a pilot reads: whole metres, one decimal below 10 m (the low-flight band where a metre
+ * matters), never negative (the sim keeps the airframe above the ground; a probe a few centimetres off reads 0). */
+export function formatDroneAltitude(heightM:number):string{
+  const h=Math.max(0,heightM);return h<9.95?`${h.toFixed(1)}m`:`${Math.round(h)}m`;
+}
 /** Mode-specific instruments keep the shared amber/slate HUD language and real controls. */
-export function createAerialHud(parent:HTMLElement,bus:EventBus){
+export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGround=()=>null){
   const signal=node('div','cot-drone-signal-loss',parent);signal.hidden=true;
   signal.setAttribute('role','status');signal.textContent=t('flight.signalLost');
   const transition=createDroneFeedTransition();
@@ -64,6 +72,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   identity.addEventListener('click',switchView);bus.on('ui:aerialVision',switchView);
   const telemetry=node('div','flight-telemetry',heading);
   const timer=instrument(telemetry,'reload',t('flight.battery'));
+  // DR.05 (#100): the height above the ground under the airframe (terrain AGL), beside the battery.
+  const altimeter=instrument(telemetry,'altitude',t('flight.altitude'));
   const link=instrument(telemetry,'radio',t('flight.link'));
   const speedometer=instrument(telemetry,'speed',t('flight.speed'));
   const support=node('div','flight-support',heading);
@@ -92,6 +102,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   back.addEventListener('click',()=>bus.emit('ui:drone',{}));
   const reload=createVehicleCooldownReader();
   let priorTime=0,priorX=0,priorY=0,priorZ=0,speed=0,wasActive=false,kind='';
+  let priorRecallLocked:boolean|null=null;
   function updateWeapons(player:HudTank|null|undefined,now:number):void {
     for(let slot=0;slot<cards.length;slot++){
       const card=cards[slot]!,wait=reload(player?.combat,slot,now),selected=player?.combat?.shellSlot===slot;
@@ -133,7 +144,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   return {
     update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I',supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string},scoped=false,escort?:HudMatchModeState['escort']){
       const view=player?.aerial,active=!!view?.active&&visible;
-      const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now());
+      // A recall the authority accepted closes the feed cleanly (the airframe is flying home); a loss breaks it in static.
+      const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now(),(view?.returnS??0)>0);
       signal.hidden=signalLevel<=0;signal.style.opacity=String(Math.min(1,signalLevel*2));
       updateScopeControls(visible,active,scoped,viewKey);
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
@@ -162,14 +174,23 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       if(wasActive&&elapsed>0)speed+=.2*(Math.hypot(view.x-priorX,view.y-priorY,view.z-priorZ)/elapsed-speed);
       priorTime=now;priorX=view.x;priorY=view.y;priorZ=view.z;wasActive=true;
       const carrier=player?.state?.pos,range=carrier?Math.hypot(view.x-carrier.x,view.z-carrier.z):0;
-      timer.host.hidden=link.host.hidden=speedometer.host.hidden=!drone;
+      timer.host.hidden=link.host.hidden=speedometer.host.hidden=altimeter.host.hidden=!drone;
+      const field=drone?ground():null;
+      altimeter.value.textContent=field?formatDroneAltitude(view.y-field.getHeightAt(view.x,view.z)):'—';
       zoom.host.hidden=distance.host.hidden=drone;
       timer.value.textContent=`${Math.ceil(view.batteryS)}s`;link.value.textContent=`${Math.round(range)}m`;speedometer.value.textContent=`${Math.round(speed*3.6)}km/h`;
       zoom.value.textContent=`×${(55/fov).toFixed(1)}`;distance.value.textContent=`${Math.round(dist)}m`;
       battery.hidden=!drone;battery.value=view.batteryS;
       root.classList.toggle('low-battery',drone&&view.batteryS<10);
       weapons.hidden=drone;back.hidden=!drone;
-      hint.textContent=t(drone?'flight.hint.drone':'flight.hint.gunship');
+      // Owner 2026-10-14: the authority accepts a recall only once the pilot is in the drone's feed; until then the return
+      // control stands disabled and says why.
+      const recallLocked=drone&&dronePhase(view)==='locked';
+      if(recallLocked!==priorRecallLocked){
+        priorRecallLocked=recallLocked;back.disabled=recallLocked;back.classList.toggle('recall-locked',recallLocked);
+        back.title=t(recallLocked?'flight.return.locked':'flight.return');
+      }
+      hint.textContent=t(drone?(recallLocked?'flight.hint.recallLocked':'flight.hint.drone'):'flight.hint.gunship');
       updateWeapons(player,now);
     },
   };

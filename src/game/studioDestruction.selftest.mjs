@@ -22,7 +22,7 @@ const world = createHeadlessCollisionWorld({ mapId: 'verdant', heightField: fiel
   manifest: { obstacles: [packCollisionRecord(contact)], colliders: [packCollisionRecord(band)], concealers: [] } });
 const raised = [];
 const bus = { emit: (event, payload) => raised.push({ event, payload }) };
-assert.equal(matchRulesetFor('standard').destruction.sections, false, 'the battle switch is off');
+assert.equal(matchRulesetFor('standard').destruction.sections, true, 'the battle switch is on (DST-04, 2026-10-15)');
 const ground = createTerrainDeformation();
 const studio = createStudioDestruction(world, bus, { rules: matchRulesetFor('standard').destruction, ground });
 

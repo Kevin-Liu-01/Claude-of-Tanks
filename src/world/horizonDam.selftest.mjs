@@ -99,7 +99,9 @@ for (let i = 0; i < pos.count; i++) {
     facing += -(nor.getX(i) * ux + nor.getZ(i) * uz) / Math.hypot(nor.getX(i), nor.getZ(i));
   }
 }
-assert.equal(top, dam.crestM, 'the deck is the crest');
+// (#27) the crest's parapets stand on the deck and the spillway gate houses on the rock beside it: nothing of the dam
+// stands more than a gate house over the crest
+assert.ok(top >= dam.crestM + 1 && top <= dam.crestM + 12, `the deck is the crest, its parapets and the gate houses over it (${(top - dam.crestM).toFixed(1)} m)`);
 assert.ok(nearest > 700, `the dam stands far past the playable edge (${nearest.toFixed(0)} m)`);
 assert.ok(faceVertices > 20 && facing / faceVertices > 0.8, `the downstream face looks back at the map (${(facing / faceVertices).toFixed(2)})`);
 // the reservoir is the ring's water: its marine flag (uv.y < 0) only behind the arch, at the reservoir's level (or on

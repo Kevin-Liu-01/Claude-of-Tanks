@@ -22,7 +22,7 @@ const roundTrip = (indices) => {
   return { out, bytes };
 };
 
-assert.equal(WIRE_VERSION, 6, 'a layout change: the wire version moved with it');
+assert.ok(WIRE_VERSION >= 6, 'a layout change: the wire version moved with it (the set arrived in wire 6)');
 
 // ---- round trips and the form each set takes
 {

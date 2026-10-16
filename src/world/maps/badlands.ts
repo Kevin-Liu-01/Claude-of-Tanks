@@ -28,6 +28,59 @@ const pairBar = <T extends { x: number; z: number; yawDeg: number }>(form: T): T
 // rock with the walls they stand on, not as darker, redder cladding.
 const WADI_RUM_STONE = [0.045, 0.32, 0.52] as const;
 
+// Rum village (the maps lane, 2026-10-14; the owner: Redrock "looks really bad", built the way Verdant was). The outpost
+// stood as 17 buildings scattered over a 200 m sand lot. Rum is a village of walled compounds: one-storey block houses,
+// each in its yard behind a block wall with a steel gate, in rows along the valley track and the sandy lanes behind it,
+// the Desert Patrol's fort on the square, the mosque, the souq's shop rows on the track, the school, the patrol's
+// stores. The plan is authored in the track's own frame (u along the valley track from the square at (8, 0) toward the
+// north mouth, v across it to the east), and every site has its rotation twin about the outpost, as the floor's
+// landforms do, so the halves keep the same cover.
+const RUM_U = [0.2334, 0.9724] as const, RUM_V = [0.9724, -0.2334] as const;
+const rumSite = (structure: string, u: number, v: number, front: 'track' | 'north' | 'south' | 'east' | 'west') => {
+  const x = 8 + u * RUM_U[0] + v * RUM_V[0], z = u * RUM_U[1] + v * RUM_V[1];
+  // a house's front (its local +z) toward the track, or along the lanes
+  const dir = front === 'track' ? (v > 0 ? [-RUM_V[0], -RUM_V[1]] : [RUM_V[0], RUM_V[1]])
+    : front === 'north' ? RUM_U : front === 'south' ? [-RUM_U[0], -RUM_U[1]] : front === 'east' ? RUM_V : [-RUM_V[0], -RUM_V[1]];
+  const yawDeg = Math.atan2(dir[0], dir[1]) * 180 / Math.PI;
+  return { structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1), terrace: true };
+};
+/** One half of the village, [structure, u, v, front]; the other half is its rotation about the square. */
+const RUM_HALF: ReadonlyArray<readonly [string, number, number, 'track' | 'north' | 'south' | 'east' | 'west']> = [
+  // the square: the patrol's fort on its east side, the souq's shop rows facing it across the track north of it
+  ['caravanserai', -2, 46, 'west'],
+  ['marketRow', 44, 16, 'track'], ['marketRow', 44, -16, 'track'], ['minaret', 52, -26, 'track'],
+  // the track's frontage north of the square: houses in their yards, both sides
+  ...[60, 75, 90, 105, 120].flatMap((u) => [['adobe', u, 17, 'track'], ['adobe', u, -17, 'track']] as const),
+  // the lanes behind the frontage, east and west: rows of compounds facing their lanes
+  ...[40, 56, 72, 88, 104].flatMap((u) => [['adobe', u, 36, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -36, u % 32 === 8 ? 'south' : 'north']] as const),
+  ...[8, 24, 40, 56, 72, 88, 104, 120].flatMap((u) => [['adobe', u, 55, u % 32 === 8 ? 'north' : 'south'], ['adobe', u, -55, u % 32 === 8 ? 'south' : 'north']] as const),
+  // the back row runs on past the frontage toward the north mouth, and a compound closes it
+  // (the blind critics, 2026-10-15: "generic corrugated sheds" — the patrol's steel store stood here; a block house now)
+  ...[120, 136].flatMap((u) => [['adobe', u, 36, 'south'], ['adobe', u, -36, 'north']] as const),
+  ['adobe', 136, 55, 'west'],
+];
+// A village's own irregularity, keyed per site (never the props' streams): each compound a metre or two off its row and
+// a few degrees off square; one in twelve an abandoned compound fallen to a ruin, one in fourteen an open lot (the goat
+// pen, the pickup, the drums) — a site and its twin alike, so the halves keep the same cover.
+const rumHash = (u: number, v: number, k: number) => {
+  let h = Math.imul(Math.round(u * 10) + 7919 * k, 0x9e3779b1) ^ Math.imul(Math.round(Math.abs(v) * 10) + 104729, 0x85ebca6b);
+  h ^= h >>> 15; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+};
+const RUM_VILLAGE = RUM_HALF.flatMap(([structure, u0, v0, front]) => {
+  const turn = { track: 'track', north: 'south', south: 'north', east: 'west', west: 'east' } as const;
+  const house = structure === 'adobe', r = rumHash(u0, v0, 1);
+  if (house && r < 0.07) return [];
+  const kind = house && r > 0.92 ? 'ruin' : structure;
+  const u = u0 + (house ? (rumHash(u0, v0, 2) - 0.5) * 3.6 : 0), v = v0 + (house ? (rumHash(u0, v0, 3) - 0.5) * 2.4 : 0);
+  const skew = house ? (rumHash(u0, v0, 4) - 0.5) * 9 : 0;
+  // the fort's twin across the square is a souq row facing it (one fort to a village; the blind critics, 2026-10-15: the
+  // patrol's corrugated steel store read as "a generic shed")
+  const twinKind = kind === 'caravanserai' ? 'marketRow' : kind;
+  const a = rumSite(kind, u, v, front), b = rumSite(twinKind, -u, -v, turn[front]);
+  return [{ ...a, yawDeg: +(a.yawDeg + skew).toFixed(1) }, { ...b, yawDeg: +(b.yawDeg + skew).toFixed(1) }];
+});
+
 export default {
   id: 'badlands',
   name: 'Redrock Divide',
@@ -146,7 +199,9 @@ export default {
     // patches a third as strong and the outpost's wear a third, both in a sandier soil; the near ripples on the loose sand
     // sheets at a working strength (the dune bedforms stay at the quiet wash's 0.06); the tracks' wheel lanes worn deep
     // and dark, gravel on their crowns
-    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.26, roadRuts: [2.6, 0.16, 1.0],
+    // (r3, the critics on v2: "empty flat sand foregrounds with smeared painted ruts") the ruts lighter, the near ripples
+    // stronger on the loose sand
+    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.34, roadRuts: [1.7, 0.12, 1.0],
     // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
     // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
     // (The Redrock lane, 2026-10-07: the contact at y 98 — the east wall's highest beehives and the canyon heads' upper
@@ -186,14 +241,18 @@ export default {
     // Trees round 2b (2026-10-03, the gauntlet's wave 15: "lush green groves on Wadi Rum"): Wadi Rum's floor carries a
     // few wide-spaced acacias in the wadi beds and hollows, not groves; six open groves (vegetation.ts treeBiomeArid
     // seats them in the low ground), twenty lone trees in the beds, a thin sward on the sand. Was 24 / 46 / 0.38.
-    clusterCount: 6, loneCount: 20, rimCount: 30, grassDensity: 0.08,
-    clusterScrub: 1.5, bushCount: 0.6, bushSpecies: 'oak',
+    // (Redrock r3, the blind critics on v2: "the acacias too lush, green and rounded for Wadi Rum", "empty flat sand
+    // foregrounds") fewer trees, the scattered Retama and the dry tussocks over the open sand a little thicker
+    clusterCount: 4, loneCount: 14, rimCount: 22, grassDensity: 0.11,
+    clusterScrub: 1.2, bushCount: 0.85, bushSpecies: 'oak',
     // (round 10, the gauntlet's wave 270: the white broom's sprays "saguaro-like cactus", the acacias "lush green") the
     // wadi's trees and scrub in Acacia raddiana's and Retama raetam's dust-dulled silver-green: a fifth of a leaf's
     // saturation, paler, the card tint all but neutral (the broadleaf slots and the shrubs read the oak palette, the
     // cedar slot the pine's); the scrub a fifth sparser
     palettes: {
       oak: { cardHue: 0.19, cardSat: 0.035, texTone: (h: number, s: number, l: number) => [0.2, clamp01(s * 0.17), clamp01(l * 1.18 + 0.05)] },
+      // (r3) the acacia slot's own palette as dust-dulled as the others' (it took the arid foliage's greener 0.32)
+      acacia: { cardHue: 0.17, cardSat: 0.03, texTone: (h: number, s: number, l: number) => [0.17, clamp01(s * 0.14), clamp01(l * 1.12 + 0.06)] },
       pine: { cardHue: 0.19, cardSat: 0.035, texTone: (h: number, s: number, l: number) => [0.2, clamp01(s * 0.17), clamp01(l * 1.18 + 0.05)] },
     },
     // (round 10: the tussocks were "tall, flat cross-card blades far out of scale" in the low sand view — a dry tuft stands
@@ -236,9 +295,10 @@ export default {
     // and a second fort stood where the village should: the outpost is Rum village's, the patrol's fort and its store,
     // the mosque, the souq's shop rows and the block houses along the valley track, a ruin or two; the houses' own black
     // tanks on their roofs)
-    plan: ['caravanserai', 'adobe', 'marketRow', 'adobe', 'adobe', 'minaret', 'adobe', 'marketRow', 'ruin', 'adobe',
-      'adobe', 'adobe', 'adobe', 'marketRow', 'adobe', 'depot', 'adobe', 'adobe', 'ruin', 'adobe', 'marketRow',
-      'adobe', 'adobe', 'adobe'],
+    // (the maps lane, 2026-10-14: the plan is Rum village's own, RUM_VILLAGE above: the roadside plan's 24 buildings stood
+    // as 17 on the lot; was ['caravanserai', 'adobe', 'marketRow', ... 24 entries])
+    plan: [],
+    plannedSites: RUM_VILLAGE,
     destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
     // (the scenery lane, b16; gauntlet wave 121 on the steel checkpoint hut, "a jarring modern blue shed") the fuel points'
     // and the scattered checkpoints are desert posts of plastered mud brick (maps/regional/ksarGate.ts), same footprint
@@ -269,7 +329,7 @@ export default {
       { id: 'northeast-fuel-point', role: 'support', x: 196, z: 250, yawDeg: 210,
         structure: 'checkpointhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
     ],
-    blockFill: true,
+    blockFill: false,
     wallStyle: 'adobe', wallStoneChance: 0.12, buildingLat: [11, 6], sideSkip: 0.1,
     // The outpost's perimeter walls at its four corners, open where the tracks come in.
     wallRuns: [
@@ -281,7 +341,9 @@ export default {
     // (the talus law, landformGeology.ts restsOnTalus, began here: gauntlet wave 48 saw "two low-poly orange boulders
     // hanging on its face" in all four of its Redrock frames; 278 of the map's 931 boulders hung on a wall, a ledge's lip
     // or a narrow bench. The law is every map's default since 2026-10-04: rockTalusDeg names another angle)
-    hedgehogs: 22, sandbagLines: 24,
+    // (the maps lane, 2026-10-14, MA.39: a village floor, not a field-works range — the patrol's hedgehogs and sandbag lines
+    // by the outpost and the fuel points only; was 22 and 24)
+    hedgehogs: 8, sandbagLines: 10,
     // (the Redrock lane, 2026-10-07: the fallen blocks are the walls' red-brown sandstone, where the lithology's base drew a
     // grey-pink — "pillows" against the red cliffs)
     rockTone: (h: number, s: number, l: number) => [0.036, 0.40, clamp01(0.33 + (l - 0.3) * 0.8)],
@@ -294,9 +356,14 @@ export default {
     // Khalid's Chieftain and the Tariq's Centurion
     tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['challenger1_mk2', 'm60a3', 'chieftain3', 'centurion5_2'] },
     inhabit: {
-      stalls: 4, benches: 2, coreClutter: 26, drums: 12, pots: 7,
-      trucks: 7, jeeps: 5, drumClusters: 8, camps: 5, modernClutter: 28,
+      // (the maps lane, 2026-10-14: a village of some ninety compounds, so its yards and lanes carry a village's life — the
+      // pickups and lorries at the gates, the drums and the jerry cans, the camps' tents; was core clutter 26, drums 12, pots
+      // 7, trucks 7, jeeps 5, drum clusters 8)
+      stalls: 4, benches: 2, coreClutter: 44, drums: 20, pots: 12,
+      trucks: 11, jeeps: 9, drumClusters: 12, camps: 5, modernClutter: 28,
       roadFence: 'fencerail', yardFence: 'fencewattle',
+      // (the blind critics, 2026-10-15: "log piles in a treeless desert") no firewood stacks or woodpiles in the yards
+      firewood: 0, woodpiles: 0,
       // (round 11e, the gauntlet's waves 298b and 314: "a giant blue bottle" in the south ravine's foreground, "tiny dark
       // pill-shaped props on the sand read as chess pieces" — the dry maps' loose mix stood gas bottles, cones and bins
       // alone on the open sand by every track) the Desert Patrol's tracks carry jerry cans, a drum, a lost wheel, a pail
@@ -380,6 +447,8 @@ export default {
     sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25, postExposure: 0.92,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xaa8161 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Jordanian desert divide — an apricot dust band over the red rock, a deep blue overhead
+    atmosphere: { horizonTintHex: 0xe6c6a0, horizonTintAmount: 0.5, horizonBandDeg: 7, zenithTintHex: 0x4a7ac0, zenithTintAmount: 0.25 },
   },
   minimap: {
     base: [137, 81, 59], hard: [124, 91, 72], soft: [105, 69, 54],

@@ -287,8 +287,8 @@ function placeCaldera(cfg: HinterlandLandformConfig, salt: number): PlacedLandfo
   return place(f, 'pos', (u, v) => {
     const { q } = roundQ(f, u, v, 0.1);
     if (q >= 1) return 0;
-    const rimQ = 0.72;
-    if (q < rimQ) return 0.08 + 0.92 * smoothstep(rimQ - 0.12, rimQ, q);
+    const rimQ = 0.72, floor = Math.max(0, Math.min(0.5, cfg.floor ?? 0.08)), wall = Math.max(0.03, Math.min(0.4, cfg.wall ?? 0.12));
+    if (q < rimQ) return floor + (1 - floor) * smoothstep(rimQ - wall, rimQ, q);
     return Math.pow(1 - (q - rimQ) / (1 - rimQ), 1.6);
   });
 }

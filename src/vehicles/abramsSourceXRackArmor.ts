@@ -153,24 +153,6 @@ function extendedRails(out:StockFace[]):void{
     for(const[j,x]of[x0,x1-.0061].entries())box(out,`ExtensionInnerSide${i}_${j}`,[x,1.88819,-3.136415],[x+.0061,1.917445,-2.797305]);
   }
 }
-function extendedScreen(out:StockFace[]):void{
-  const folds=[
-    [1.827235,-3.320975,1.928425,-3.343915,1.931195,-3.318665],
-    [1.929375,-3.319155,2.034725,-3.341725,2.037645,-3.316485],
-    [2.033705,-3.317085,2.139855,-3.339665,2.142765,-3.314415],
-    [2.139345,-3.315025,2.245055,-3.337605,2.247895,-3.312355],
-    [2.244545,-3.312965,2.350185,-3.335535,2.353025,-3.310295],
-  ];
-  for(const[i,[a,b,c,d,e,f]]of folds.entries())extrudeYZ(out,`AftScreenFold${i}`,-.440649,.329981,[[a,b],[c,d],[e,f],[e,f+.0025],[c,d+.0025],[a,b+.0025]]);
-  extrudeYZ(out,'AftScreenBacking',-.445899,.335291,[[1.824465,-3.346465],[1.823955,-3.321335],
-    [2.458735,-3.308955],[2.458595,-3.303495],[1.814985,-3.316115],[1.815635,-3.351195],[1.833365,-3.350955],[1.833295,-3.346465]]);
-  const profile:V2[]=[[1.987225,-3.314295],[1.987155,-3.309685],[2.259495,-3.304345],[2.269495,-3.299615],
-    [2.272775,-3.289175],[2.267305,-3.279585],[2.256575,-3.277275],[2.255705,-3.272665],
-    [2.270075,-3.275945],[2.277445,-3.288685],[2.272995,-3.302765],[2.259575,-3.308955]];
-  for(const[i,[left,right]]of[[-.368759,-.332779],[-.073629,-.037649],[.221511,.257561]].entries())
-    extrudeYZ(out,`AftScreenReceiver${i}`,left,right,profile);
-}
-
 interface Plane { n:V3; d:number }
 function clipped(points:readonly V3[],plane:Plane,inside:boolean):V3[]{
   const out:V3[]=[];
@@ -266,7 +248,9 @@ function abramsSourceXRackStockFaces(extended:boolean):StockFace[]{
   const cached=faceCache.get(extended);if(cached)return copyFaces(cached);
   const out:StockFace[]=[];
   mainCourses(out);mainFrames(out);mainRibs(out);
-  if(extended){extendedRails(out);extendedScreen(out);}
+  // critic panel 2026-10-15 (owner markup sheets): the folded aft screen is gone from the rendered rack, so its faces go
+  // from the rack's armour stock too
+  if(extended)extendedRails(out);
   const exposed=exposedCourses(out);faceCache.set(extended,exposed);return copyFaces(exposed);
 }
 

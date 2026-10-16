@@ -33,6 +33,8 @@ export interface CrushRecordLike {
 /** A destructible pool as this reads it (props.ts DestructiblePool). */
 export interface CrushPoolLike {
   readonly mats4: readonly THREE.Matrix4[];
+  /** The pool's destructible type: `crushFloor`, the share of its height no hull presses it below (heavy plant). */
+  readonly meta?: { readonly keep?: number; readonly crushFloor?: number };
   readonly imI: THREE.InstancedMesh | null;
   readonly imB: THREE.InstancedMesh | null;
 }
@@ -91,6 +93,8 @@ interface CrushTarget {
   shove: { ox: number; oz: number; lift: number; ax: number; az: number; tilt: number; yaw: number; t: number } | null;
   /** The glass blown out (its triangles collapsed), once. */
   glassOut: boolean;
+  /** Heavy plant (its field has a floor) shoved aside and slewed by the hull that rammed it, once. */
+  rammed: boolean;
   /** Burning: its clock (s since the kill), the paint it chars from, whether the burnt build has taken its place. */
   burn: { t: number; from: [number, number, number]; swapped: boolean } | null;
 }
@@ -175,9 +179,9 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     source.mesh.instanceMatrix.needsUpdate = true;
     const target: CrushTarget = {
       index, kind: rec.kind, mesh, geometry, rest: (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array,
-      field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false), inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
+      field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false, pool.meta?.crushFloor ?? 0), inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
       hw, hl, dirty: false, idle: 0, frozen: false, sweep: null,
-      placement: matrix.clone(), shove: null, glassOut: false, burn: null,
+      placement: matrix.clone(), shove: null, glassOut: false, rammed: false, burn: null,
     };
     targets.set(index, target);
     order.push(target);
@@ -186,6 +190,8 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
 
   /** The hull (world) in a target's own frame: centre and forward, through its inverse placement. */
   function press(t: CrushTarget, x: number, z: number, fx: number, fz: number, halfLength: number, halfWidth: number): void {
+    // (heavy plant shoved off the hull's line: no more presses where it stood while it goes)
+    if (t.rammed && t.shove && t.shove.t > 0.2 && t.shove.t < SHOVE_S) return;
     const y = host.records[t.index]?.y ?? 0;
     _v.set(x, y, z).applyMatrix4(t.inverse);
     const cx = _v.x, cz = _v.z;
@@ -197,7 +203,28 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     if (pressField(t.field, cx, cz, lfx, lfz, halfLength * l, halfWidth * l)) {
       t.dirty = true; t.idle = 0;
       if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
+      if (t.field.floor > 0 && !t.rammed) shoveAside(t, x, z, fx, fz, halfWidth);
     }
+  }
+
+  /** Heavy plant rammed (Lane C, 2026-10-15): a machine the hull cannot press flat is shoved off the hull's line and
+   *  slewed away from it as it crumples (the burst's shove: over SHOVE_S, then its frame follows), enough to clear the
+   *  hull's width; a little ahead along the travel. Once a prop; deterministic in the hull's pose at contact. */
+  function shoveAside(t: CrushTarget, x: number, z: number, fx: number, fz: number, halfWidth: number): void {
+    const rec = host.records[t.index];
+    if (!rec) return;
+    t.rammed = true;
+    const rx = -fz, rz = fx;
+    const off = (rec.x - x) * rx + (rec.z - z) * rz;
+    const side = Math.abs(off) > 0.05 ? Math.sign(off) : ((t.index * 2654435761) >>> 0) % 2 ? 1 : -1;
+    // the prop's half extent across the hull's travel, from its placement's axes
+    const e = t.placement.elements;
+    const ax = Math.hypot(e[0], e[2]) || 1, az = Math.hypot(e[8], e[10]) || 1;
+    const across = Math.abs((e[0] / ax) * rx + (e[2] / ax) * rz) * t.hw + Math.abs((e[8] / az) * rx + (e[10] / az) * rz) * t.hl;
+    const clear = Math.max(0, Math.min(4, halfWidth + across + 0.25 - Math.abs(off)));
+    const prev = t.shove;
+    t.shove = { ox: (prev ? prev.ox : 0) + rx * side * clear + fx * 0.8, oz: (prev ? prev.oz : 0) + rz * side * clear + fz * 0.8,
+      lift: 0.18, ax: fx, az: fz, tilt: 0.1 * side, yaw: (prev ? prev.yaw : 0) + 0.32 * side, t: 0 };
   }
 
   /** Its glass blown out: every triangle all of whose corners are glass (the surface stream: glossy, not metal, not

@@ -7,6 +7,7 @@ import { createShallowWaterSurface, SEA_SHELF_WIDTH_M, seaShelfWidthM, shallowWa
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
 import { disposeObject3DResources, registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 function drain(generator) {
   let step = generator.next(), slices = 0;
@@ -142,7 +143,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   handed[0].hook(probe);
   assert.equal(probe.uniforms.uWaterMask.value, mask, 'the handed hook is the water shader patch');
   routed.mesh.material.dispose();
-  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrain = terrainSourceText();
   // round 66 (2026-09-24): the call gained the FFT ocean as its last argument (was `: null);`)
   assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend, openings: seaOpenings \} : null,\s*ocean\);/,
     'the terrain builder routes the sheet through the engine hook and hands it the reactive field and the ocean');
@@ -329,7 +330,7 @@ world = null;
 assert.equal(proxy.getWaterDepthAt(0, 0), 0, 'null field has no previous water depth; this is not a Garage lifecycle fixture');
 assert.equal(proxy.getWaterSurfaceHeightAt(18, 0), 0, 'null field has no previous surface sampler');
 const fx = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 assert.match(terrain, /gSplatRough = mix\(gSplatRough, 0\.95, fMs \* uSea\)/, 'bed cannot reflect a second white water sheet');
 assert.match(terrain, /gSplatAlbedo \*= 1\.0 - fMs \* uSea \* 0\.42/, 'only submerged liquid bed is darkened');
 const kits = readFileSync(new URL('./maps/mapKits.ts', import.meta.url), 'utf8');

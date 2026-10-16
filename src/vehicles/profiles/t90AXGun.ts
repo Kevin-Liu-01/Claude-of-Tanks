@@ -11,7 +11,8 @@ export function addT90AGun(P:TankBuilderPort):void {
   // Visible root and thermal jacket. The source's sub-3mm axis drift is
   // approximated concentrically about its independently registered trunnion.
   tube(P,1.63433,2.25047,.124955,.097345);
-  tube(P,2.25047,6.24420,.097345,.086689);
+  // the jacket runs to the measured muzzle face, the datum's 6.2642 (VH.04: it ended 20 mm short of the muzzle marker)
+  tube(P,2.25047,6.26420,.097345,.086689);
   // The narrow rear flange seats into the existing pitching mantlet.
   tube(P,1.63433,1.68440,.124955,.146474);
   tube(P,1.68440,1.68840,.146474,.122540);

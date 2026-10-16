@@ -105,6 +105,14 @@ export interface BrowserLoadTrace {
     /** At deferral (2026-10-13): the programs left pending, named (src/engine/programWarm.ts PendingProgramNote). */
     programs?: readonly BrowserPendingProgram[];
   };
+  /** Seats whose vehicles were warmed beside the world load (prewarmRoster, 2026-10-15). */
+  rosterPrewarmed?: number;
+  /**
+   * WELCOMEs after the first on this round (the link was replaced and the seat said hello again), and when each came (ms
+   * from the entry's start). The first alone marks `roster` (2026-10-15).
+   */
+  rewelcomes?: number;
+  rewelcomeAtMs?: number[];
 }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
@@ -150,6 +158,11 @@ export interface BrowserLoadPorts {
    */
   /** The authority's obstacle identities, from the manifest it plays (the mode's battlefield variant's when it has one). */
   loadAuthorityObstacles?(mapId: string, signal: AbortSignal, variant?: TerrainVariant): Promise<(index: number) => ObstacleIdentity | null>;
+  /**
+   * 2026-10-15: the builders and textures of the seats the room already names, warmed beside the world load (the
+   * WELCOME's bots are painted after it). Never refuses the round; the trace records how many it warmed.
+   */
+  prewarmRoster?(seats: readonly { specId: string; camo: string; isViewer: boolean }[], signal: AbortSignal): MaybePromise<RuntimeValue>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -532,6 +545,8 @@ interface ActiveRound {
   controls: ControlSampler;
   welcome: WelcomeMessage | null;
   welcomed: boolean;
+  /** WELCOMEs this round has had (a replaced link welcomes the seat again). */
+  welcomes: number;
   activating: boolean;
   activated: boolean;
   revealed: boolean;
@@ -954,6 +969,9 @@ export function createBrowserComposition({
       createPresentation: createRoundPresentation,
       clock,
       clientBuild,
+      // 2026-10-15 (the MP stream): an ordinary task as the probe of this tab's own task queue: the match client's stall
+      // clock rests while it is starved (a long entry job), so a busy seat never mistakes its own stall for a dead host
+      matchClient: { taskProbe: (callback: () => void) => { setTimeout(callback, 0); } },
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,
@@ -1093,7 +1111,7 @@ export function createBrowserComposition({
       matchId: matchStart.matchId, round: matchStart.round, mapId: matchStart.mapId, mode: matchStart.mode,
       spectator: sessionRound.spectator, viewerId, ownSpecId: ownPlayer?.specId || (sessionRound.spectator ? 'spectator' : ''),
       presentation: null, controls: createControlSampler(() => active.presentation?.ownActor ?? null),
-      welcome: null, welcomed: false, activating: false, activated: false, revealed: false, failed: false, reported: false,
+      welcome: null, welcomed: false, welcomes: 0, activating: false, activated: false, revealed: false, failed: false, reported: false,
       abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
@@ -1125,6 +1143,15 @@ export function createBrowserComposition({
       await load.nextFrame();
       check('cover');
       load.battleLoad.progress(0.08, 'Loading battlefield');
+      // 2026-10-15 (the MP stream): the named seats' vehicles warm beside the world (prewarmRoster). Never awaited here: it
+      // must not lengthen the world's stage, and prepareRoster joins whatever is still in flight (the bakes coalesce).
+      const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId
+        ? [{ specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
+      if (load.prewarmRoster && seats.length) {
+        let warming: MaybePromise<RuntimeValue>;
+        try { warming = load.prewarmRoster(seats, active.abort.signal); } catch { warming = undefined; }
+        void Promise.resolve(warming).then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster paints them itself */ });
+      }
       await Promise.all([
         load.loadModules(),
         load.ensureBattleVisuals(),
@@ -1170,6 +1197,16 @@ export function createBrowserComposition({
         controls: active.spectator ? null : active.controls.sample,
         prediction: null,
         onWelcome: async (welcome) => {
+          // 2026-10-15 (the MP stream, the §7 side-by-side): a later WELCOME on this round (its link was replaced and the
+          // seat said hello again; every main rejoin opened a second link 7 s in) re-seats the presentation but never marks
+          // `roster` again. The second mark overwrote the first's value with the time since it, and 6.7-10 s of every
+          // rejoin's trace belonged to no stage. It is counted instead.
+          const first = active.welcomes === 0;
+          active.welcomes++;
+          if (!first) {
+            active.trace.rewelcomes = active.welcomes - 1;
+            (active.trace.rewelcomeAtMs ??= []).push(Math.round(now() - active.trace.startedAt));
+          }
           try {
             active.welcome = welcome;
             await battlePresentation.rosterReady();
@@ -1181,7 +1218,7 @@ export function createBrowserComposition({
               const world = battlePresentation.predictionWorld();
               if (world) sessionPresentation.prediction = { world, specFor: (specId) => (specId === own.specId ? own.spec : getSpec(specId)) };
             }
-            markStage(active, 'roster');
+            if (first) markStage(active, 'roster');
             active.welcomed = true;
             load.battleLoad.progress(0.84, 'Synchronizing authority');
           } catch (error) {

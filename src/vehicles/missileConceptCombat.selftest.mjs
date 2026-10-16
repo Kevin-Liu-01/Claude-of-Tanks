@@ -24,7 +24,8 @@ for (const [id, expected] of Object.entries(definitions)) {
   assert.equal(new Set(spec.gun.launcherMuzzles.map(p => JSON.stringify(p))).size, expected.cells);
   assert.equal(counterpart.gun.launcherMuzzles?.length ?? 0, id === 'object695' ? 12 : 0,
     'service counterpart retains its own launchers, separate from concept geometry');
-  assert.equal(counterpart.gun.caliberMm, id === 'object695' ? 57 : 105);
+  // the Object 695's service counterpart, the Kurganets-25, carries its Bumerang-BM's 30 mm 2A42 (ruling 2026-10-15)
+  assert.equal(counterpart.gun.caliberMm, id === 'object695' ? 30 : 105);
   const layout = internalLayoutFor(id);
   assert.equal(layout.confidence, 'owner-directed');
   assert(layout.crew.every(station => station.frame === 'hull'), 'original unmanned design has no turret crew');

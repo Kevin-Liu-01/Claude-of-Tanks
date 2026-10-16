@@ -87,6 +87,14 @@ Euler-rotated floating bar. Preserve four PBR material readings, two heavy-lift
 systems, at least three assembled operating machines, and all four manual orbit
 captures. `garageQualityRubric.ts` must remain an all-or-nothing 90+ approval
 gate rather than a metadata-only average.
+The four instanced facility classes share one working-yard grime program
+(`garageGrimeProgram.ts`, world-space dirt, streaks and faded paint); keep new
+kit colours weathered, never toy-saturated. Saltmere's harbour is a lit sea
+(`garageSea.ts`) over the backdrop's painted one; it and the backdrop discard
+over the graving dock, which stands pumped dry (its floor cut is
+`garageDrydockGround`: re-check terrain triangles against the floor after any
+change to the basin). Monsoon's standing water lives in the yard wet mask
+(red = water, green = the damp rim) and lies only in ruts and hollows.
 Verdant's room shell and
 supported interior dressing use one static half-turn around the turntable;
 exclude the podium, hero, canonical camera, shared maintenance graph, and

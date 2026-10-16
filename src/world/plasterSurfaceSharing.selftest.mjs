@@ -17,13 +17,14 @@ import { resolveStructureWindowStyle } from './structureInstanceAppearance.ts';
 import { applyRockShaderHook, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { STONE_SETTLE_M, applyStoneWallHook } from './stoneWallShader.ts'; // b14: the dry-stone walls' world-space hook
 import { MUD_SLUMP_M, applyMudWallHook } from './mudWallShader.ts'; // b14: the mud walls' world-space hook
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be an embedded copy of the 465a68f7c painter, tone, normal and
 // surface formulas plus a copy of that commit's palette call sites, so any intended plaster repaint failed here. The
 // control is now the CURRENT production palette with relief sharing disabled (every family paints its own normal and
 // surface): sharing must be a pure allocation saving, with identical pixels, noise order, checkpoints and materials.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 const sourced = readFileSync(new URL('./sourcedTextures.ts', import.meta.url), 'utf8');
 function section(text, start, end) {
   const a = text.indexOf(start), b = text.indexOf(end, a + start.length);
