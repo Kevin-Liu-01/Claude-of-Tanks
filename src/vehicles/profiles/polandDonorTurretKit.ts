@@ -486,9 +486,12 @@ function zubrIIBasketLoad(P: TankBuilderPort): void {
 
 function zubrIISensors(P: TankBuilderPort): void {
   const l = NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii, st = ZUBR_II.stanchion, base = st.top + .022;
-  // The monocle eye on the left rear stanchion, looking forward over the gunner's cupola (on the front stanchion it
-  // would blind the gunner's sight); the independent optic on the right front stanchion.
-  nationalEye(P, st.rear[0], st.rear[1], base, l);
+  // The monocle eye on a riser on the left rear stanchion, its lens looking forward over the gunner's cupola and sight
+  // hood (top .99; on the front stanchion it would blind the gunner's sight); the independent optic on the right front
+  // stanchion.
+  const riser = .10;
+  P.addEquipment('turretDetail', box(.15, riser + .004, .15), st.rear[0], base + riser / 2 - .002, st.rear[1]);
+  nationalEye(P, st.rear[0], st.rear[1], base + riser, l);
   const [ox, oz] = st.front[0];
   P.addEquipment('turretDetail', box(.26, .13, .25), ox, base + .065, oz);
   P.addModuleVisual('optics', 'turretGlass', box(.18, .070, .014), ox, base + .083, oz + .132);
