@@ -8108,11 +8108,11 @@ export function terrainNearMeshHeightAt(heightAt: (x: number, z: number) => numb
   const u = (x + HALF) / cell, w = (z + HALF) / cell;
   const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
   const x0 = -HALF + gx * cell, z0 = -HALF + gz * cell;
-  // (2026-10-15, the steep-cell diagonal: terrainContactSurface.ts terrainCellFlipped, on the corners' Float32 heights as
-  // the mesh and the contact surface hold them)
-  const ha = Math.fround(heightAt(x0, z0)), hb = Math.fround(heightAt(x0 + cell, z0));
-  const hc = Math.fround(heightAt(x0, z0 + cell)), hd = Math.fround(heightAt(x0 + cell, z0 + cell));
-  return terrainCellHeight(ha, hb, hc, hd, fx, fz, terrainCellFlipped(ha, hb, hc, hd));
+  // (2026-10-15, the steep-cell diagonal: terrainContactSurface.ts terrainCellFlipped, decided on the corners' Float32
+  // heights as the mesh and the contact surface hold them; the heights themselves interpolate as they always did)
+  const ha = heightAt(x0, z0), hb = heightAt(x0 + cell, z0), hc = heightAt(x0, z0 + cell), hd = heightAt(x0 + cell, z0 + cell);
+  return terrainCellHeight(ha, hb, hc, hd, fx, fz,
+    terrainCellFlipped(Math.fround(ha), Math.fround(hb), Math.fround(hc), Math.fround(hd)));
 }
 
 export function acquireTerrainChunkIndex(
