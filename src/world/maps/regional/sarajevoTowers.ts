@@ -21,6 +21,7 @@ import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   CHAR, IRON, PANEL_PAINTS, ROLL_SHUTTER, choose, clampTo, fillOf, shellPocks, sootBand, unhcrSheet,
 } from './sarajevoParts.ts';
+import { parliament } from './sarajevoParliament.ts'; // (looks r2, b-east 2026-10-16: extracted, rebuilt there)
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -221,55 +222,6 @@ const unisTowers: RegionalBuilder = (ctx) => {
 };
 
 // ------------------------------------------------------------------------------------------------ the parliament
-
-/** The parliament's tower: a slab behind its grid of fins, burnt floors black, the assembly wing in front. */
-function parliament(ctx: RegionalBuildContext): RegionalParts {
-  const sink = new PartSink(uvOffset(ctx));
-  const f = fillOf(ctx.bounds, 0.1);
-  sink.placed(0, f.cx, 0, f.cz, () => {
-    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60);
-    // the slab's crown on the lot's back and side edges, the assembly wing's front on its street edge
-    const td = clampTo(D * 0.54, 6, 14), tz0 = -D / 2, tz1 = tz0 + td;
-    const fh = 3.1, floors = Math.max(4, Math.min(19, Math.round((W > 16 ? 58 : 16) / fh)));
-    const top = floors * fh + 1.2;
-    const concrete = 'plaster3' as const;
-    // (props census #9) the slab's floors built (curtainFloors): the concrete spandrels, the glazing set back behind the
-    // grid of fins, the burnt floors gutted a bay deep (they were glass and dark plates on a dark box)
-    sink.span(concrete, -W / 2 + 0.2, -0.4, tz0 + 0.2, W / 2 - 0.2, 1.2, tz1 - 0.2);
-    sink.span(concrete, -W / 2, top, tz0, W / 2, top + 0.6, tz1);
-    // (E13) the slab tower in its storey bands for the damage reading; the assembly wing its own body
-    recordBody(sink, 0, (tz0 + tz1) / 2, W, tz1 - tz0, top + 3.2, concrete, false, true);
-    sink.span(concrete, -W * 0.2, top + 0.6, (tz0 + tz1) / 2 - 1.8, W * 0.2, top + 3.2, (tz0 + tz1) / 2 + 1.8);
-    // the fire took the floors under the top and a few here and there below (the tower burnt for days in 1992)
-    const burntFrom = Math.max(1, floors - 7 - Math.floor(rng() * 5));
-    const state = (f: number): PaneState => {
-      const r = look();
-      const burnt = f >= burntFrom ? r < 0.8 : r < 0.12;
-      return burnt ? 'burnt' : r < 0.9 ? 'glass' : 'lit';
-    };
-    curtainFloors(sink, rect(-W / 2 + 0.2, tz0 + 0.2, W / 2 - 0.2, tz1 - 0.2), 1.2, floors, fh, rgb(0x9a968c), concrete, (f) => state(f), look,
-      { mobile, step: 1.75, finW: 0.26, finBucket: concrete });
-    // the assembly wing in front: two storeys, a ribbon of dark glass, a flat roof
-    const wz0 = tz1 + 0.6, wz1 = D / 2;
-    if (wz1 - wz0 > 2.5) {
-      recordBody(sink, 0, (wz0 + wz1) / 2, W, wz1 - wz0, 8.2, concrete);
-      // (its ribbons of glazing cut into its front, the glass at the back of the cuts: they were laid on the span)
-      sink.span(concrete, -W / 2, -0.4, wz0, W / 2, 8.2, wz1 - 0.4);
-      const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-      holedPolygon(sink, concrete, wf, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, 8.2], [-W / 2, 8.2]],
-        [{ u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 0.7, y1: 3.3 }, { u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 4.5, y1: 6.7 }], 0.4, 0.34);
-      facePanel(sink, 'glass', wf, 0, 2.0, -0.33, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
-      if (look() < 0.5) { /* (the upper ribbon's glass gone to the dark behind it: the cut's dark shows) */ } else facePanel(sink, 'glass', wf, 0, 5.6, -0.33, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
-      for (const yy of [2.0, 5.6]) for (let k = 1, n = Math.max(2, Math.round((W - 1.6) / 1.8)); k < n; k++) {
-        faceBox(sink, concrete, wf, -(W - 1.6) / 2 + (W - 1.6) * k / n, yy, -0.2, 0.12, yy > 3 ? 2.2 : 2.6, 0.3, { decor: true }, 'caps');
-      }
-      faceBox(sink, concrete, wf, 0, 8.0, 0.2, W + 0.2, 0.5, 0.4, { decor: true });
-      sink.dressing(mobile, () => shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone'));
-    }
-  });
-  return sink.finish();
-}
 
 // ------------------------------------------------------------------------------------------------ estate towers
 
