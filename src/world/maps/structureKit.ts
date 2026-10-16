@@ -2061,6 +2061,56 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
       colored(out, mbeam([X, wall + rise, zs * (d / 2 + 0.1)], [X, 0.04, zs * (d / 2 + 0.7)], 0.02, 0.02), rope, r, 0.03);
       colored(out, box(0.05, 0.22, 0.05).translate(X, 0.1, zs * (d / 2 + 0.7)), t[2], r, 0.03);
     }
+    const hs = style?.hospital ?? {};
+    if (hs.fly) {
+      // the fly: a second roof of canvas over the ward on spacers off its ridge pole, oversailing its eaves
+      tagParts('roof', `fly|${X}`);
+      for (const side of [-1, 1]) {
+        colored(out, clothPanel([X + side * (eaveX + 0.18), eaveY + 0.16, z0 - 0.05], [X, ridgeY + 0.26, z0 - 0.05], [X, ridgeY + 0.26, z1 + 0.05],
+          [X + side * (eaveX + 0.18), eaveY + 0.16, z1 + 0.05], 2, 2 * bays, 0.07, [0, -1, 0], bays), side > 0 ? p[0] : p[1], r, 0.012);
+      }
+      for (const z of [-d / 2 + 0.3, 0, d / 2 - 0.3]) colored(out, box(0.06, 0.24, 0.06).translate(X, ridgeY + 0.13, z), p[2], r, 0.03);
+    }
+    if (hs.stoves) {
+      // a stove a half-ward, its pipe up through the roof cloth to its cap
+      tagParts('fitting', `stoves|${X}`, 'metal');
+      for (const z of [-2.2, 2.2]) {
+        const sx = X - so * 1.0, roofY = ridgeY - (ridgeY - eaveY) * (1.0 / eaveX);
+        colored(out, mbox(0.5, 0.45, 0.6).translate(sx, 0.225, z), 0x2e2e2c, r, 0.03);
+        colored(out, cylinder(0.06, 0.06, roofY + 0.75 - 0.45, 6).translate(sx, 0.45 + (roofY + 0.75 - 0.45) / 2, z), 0x3a3a38, r, 0.03);
+        colored(out, cylinder(0.15, 0.15, 0.03, 8).translate(sx, roofY + 0.02, z), 0x8a8478, r, 0.03);
+        colored(out, cylinder(0.12, 0.08, 0.08, 6).translate(sx, roofY + 0.79, z), 0x3a3a38, r, 0.03);
+      }
+    }
+    if (hs.foot) {
+      // along the outer long wall's foot (the inner one keeps the walk clear): the snow banked to it, the stones
+      // weighting its skirt, or the earth bund
+      tagParts('slab', `foot|${X}`, hs.foot === 'stones' ? 'stone' : 'earth');
+      for (const side of [so]) {
+        const xw = X + side * (w / 2 - 0.02);
+        if (hs.foot === 'stones') {
+          for (let k = 0; k < 9; k++) {
+            const sz = k % 3 === 0 ? 0.36 : k % 3 === 1 ? 0.3 : 0.26;
+            colored(out, mbox(sz, sz * 0.62, sz * 1.15, 0.04).translate(xw + side * (sz / 2 + 0.04), sz * 0.31 - 0.02, -d / 2 + 0.5 + k * (d - 1.0) / 8), k % 2 ? 0x7a7670 : 0x8a857c, r, 0.08);
+          }
+          continue;
+        }
+        const base = 0.4, ht = hs.foot === 'snow' ? 0.46 : 0.3;
+        const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(side * base, 0), new THREE.Vector2(side * base * 0.35, ht * 0.7), new THREE.Vector2(0, ht)]);
+        const berm = new THREE.ExtrudeGeometry(side > 0 ? shape : new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0, ht), new THREE.Vector2(side * base * 0.35, ht * 0.7), new THREE.Vector2(side * base, 0)]),
+          { depth: d - 0.3, bevelEnabled: false });
+        colored(out, scaleUV(berm, 0.5, 0.5).translate(xw, -0.02, -(d - 0.3) / 2), hs.foot === 'snow' ? 0xe8ecef : 0x6e5a42, r, 0.05);
+      }
+    }
+    if (hs.shade) {
+      // over the door a shade of nipa thatch on two bamboo poles, and the ward's water jars by it
+      tagParts('fitting', `shade|${X}`, 'timber');
+      for (const sx of [-0.85, 0.85]) colored(out, cylinder(0.045, 0.05, 2.15, 6).translate(X + sx, 1.075, d / 2 + 0.55), 0x9a8656, r, 0.05);
+      const thatch = mbox(2.0, 0.09, 0.85, 0.03);
+      thatch.rotateX(0.18);
+      colored(out, thatch.translate(X, 2.12, d / 2 + 0.2), 0x7a6c48, r, 0.08);
+      for (const sx of [-1.35, 1.35]) colored(out, cylinder(0.24, 0.3, 0.62, 8).translate(X + sx, 0.31, d / 2 + 0.3), 0x6a4a32, r, 0.05);
+    }
     // the cots down the ward, seen through the door
     tagParts('fitting', `cots|${X}`, 'metal');
     for (const z of [-2.2, 1.0]) {
@@ -2526,6 +2576,10 @@ interface TentStyle {
   /** (the r2 sweep) the desert tent's own form in its region (makeDesertTentCraft): its wall and rise, the sun fly over
    *  its roof, what stands along its weather side, the platform it is pitched on and its stove */
   desert?: { wall?: number; rise?: number; sunFly?: boolean; skirt?: 'bags' | 'jarid'; platform?: boolean; stove?: boolean };
+  /** (the r2 sweep) the field hospital's wards in their place and year (makeFieldHospitalCraft): the fly over each ward,
+   *  the stoves' pipes through the roofs, what lies along the walls' foot (snow banked, stones weighting the skirt, an
+   *  earth bund against the flood), the door's shade of thatch and its water jars */
+  hospital?: { fly?: boolean; stoves?: boolean; foot?: 'snow' | 'stones' | 'bund'; shade?: boolean };
 }
 const TENT_ARMIES: Readonly<Record<string, TentStyle>> = {
   // the Red Army's USB frame tents (Verdant, 1944), and the Virgin Lands' brigade canvas
@@ -2538,9 +2592,9 @@ const TENT_ARMIES: Readonly<Record<string, TentStyle>> = {
   navajo: { canvas: [0x9a8a64, 0xa3936c, 0x5a5040], desert: { wall: 1.15, rise: 1.45, platform: true, stove: true } },
   // the Bundeswehr's olive (Frontier, Franconia)
   hessian: { canvas: [0x4f5440, 0x575c46, 0x2e3128], wall: 1.6, rise: 1.3 },
-  franconian: { canvas: [0x4f5440, 0x575c46, 0x2e3128], mark: 'cross' },
+  franconian: { canvas: [0x4f5440, 0x575c46, 0x2e3128], mark: 'cross', hospital: { stoves: true } },
   // the British EPIP ridge tent, its fly over it (Kohima)
-  kohima: { canvas: [0x6a6446, 0x726c4c, 0x3e3a2a], fly: true, mark: 'cross' },
+  kohima: { canvas: [0x6a6446, 0x726c4c, 0x3e3a2a], fly: true, mark: 'cross', hospital: { fly: true } },
   // the desert's sand canvas (the ksar, Siwa)
   ksar: { canvas: [0xb8a27a, 0xc2ac84, 0x6e6046] },
   // (the r2 sweep) Siwa's desert tent double-roofed under its sun fly, a fence of palm ribs (jarid) on its weather side
@@ -2549,10 +2603,12 @@ const TENT_ARMIES: Readonly<Record<string, TentStyle>> = {
   andalusian: { canvas: [0x6e6a4e, 0x777354, 0x403d2e] },
   shanghai: { canvas: [0x7a6e4e, 0x837754, 0x463f2e] },
   // the hospitals: an alpine winter's whitewashed canvas, the deltas' olive, the UN's white with its letters (Sarajevo)
-  savoyard: { canvas: [0xd6d2c4, 0xccc8ba, 0x6a6a64], mark: 'cross' },
-  goral: { canvas: [0xd6d2c4, 0xccc8ba, 0x6a6a64], mark: 'cross' },
-  bengal: { canvas: [0x6a6446, 0x726c4c, 0x3e3a2a], mark: 'cross' },
-  mekong: { canvas: [0x5e5c3e, 0x66643f, 0x37362a], mark: 'cross' },
+  // (the r2 sweep, each ward in its place: the pass's stones on its skirt, the Podhale's snow banked and its stoves, the
+  // char's earth bund against the flood, Ca Mau's thatched door shades and water jars)
+  savoyard: { canvas: [0xd6d2c4, 0xccc8ba, 0x6a6a64], mark: 'cross', hospital: { foot: 'stones' } },
+  goral: { canvas: [0xd6d2c4, 0xccc8ba, 0x6a6a64], mark: 'cross', hospital: { foot: 'snow', stoves: true } },
+  bengal: { canvas: [0x6a6446, 0x726c4c, 0x3e3a2a], mark: 'cross', hospital: { foot: 'bund' } },
+  mekong: { canvas: [0x5e5c3e, 0x66643f, 0x37362a], mark: 'cross', hospital: { shade: true } },
   sarajevo: { canvas: [0xe2e0d8, 0xd8d6ce, 0x6a6a68], mark: 'un' },
 };
 
