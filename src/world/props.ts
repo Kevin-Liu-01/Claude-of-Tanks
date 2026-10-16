@@ -9607,7 +9607,9 @@ ${snowCap ? `
       // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
       for (const shade of rockBedShades) dirtDiscs.push(shade);
       // (round 3) each crushable stone's scuff, conformed now and laid at its crush (rubbleKit.ts LowStones)
-      for (const _ of lowStones.collectScuffs(conformedDisc, CONTACT_STRENGTH.scuff)) yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
+      for (const _ of lowStones.collectScuffs(conformedDisc, CONTACT_STRENGTH.scuff)) {
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
+      }
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
       const roadDistance = heightField._roadDist(x, z);
