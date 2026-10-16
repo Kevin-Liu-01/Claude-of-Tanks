@@ -841,6 +841,8 @@ export interface SeatEnv {
   armourFloors?: Map<number, number>;
   /** Painted marking stations of this frame (frame coordinates): a chosen seat never covers one. */
   markings?: readonly THREE.Box3[];
+  /** The drone dock's keep-out boxes of this frame (frame coordinates): a chosen seat never enters one. */
+  dock?: readonly THREE.Box3[];
 }
 
 /**
@@ -975,6 +977,12 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   if (chosen && env.markings?.length) {
     const box = local.clone().applyMatrix4(_m);
     if (env.markings.some((mark) => mark.intersectsBox(box)) && fail('marking')) return out;
+  }
+  // a seat the solver chooses keeps out of the drone dock: its cradle, parked airframe and launch column (2026-10-16:
+  // the BMPT's turret run, re-seated between the braced stand's legs, took the authored dock's last clear roof)
+  if (chosen && env.dock?.length) {
+    const box = local.clone().applyMatrix4(_m);
+    if (env.dock.some((keep) => keep.intersectsBox(box)) && fail('dock')) return out;
   }
   // ---- R9: never under the main gun (its footprint on the deck, seen from above at rest, 5 cm wide of it). A seat the
   // solver chooses always; an authored one where the gun is fixed in the hull, which never moves off it.
