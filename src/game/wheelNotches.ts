@@ -36,6 +36,20 @@ export function wheelNotchUnits(event: WheelDeltaSource): number {
   return (wheelDeltaPx(event) / WHEEL_NOTCH_PX) * (event.ctrlKey ? PINCH_GAIN : 1);
 }
 
+/** At most this many notches from one wheel event drive a continuous dolly (a page-mode or flung wheel). */
+export const WHEEL_DOLLY_MAX_UNITS = 3;
+
+/**
+ * A continuous dolly's distance factor for fractional notches (wheelNotchUnits): one notch out multiplies the
+ * distance by 1 + step, one notch in by 1 - step, exactly the old per-click step, and a trackpad scroll or pinch
+ * glides through the fractions in between. Units beyond WHEEL_DOLLY_MAX_UNITS in one event are clamped.
+ */
+export function wheelDollyFactor(units: number, step: number): number {
+  if (!Number.isFinite(units) || units === 0) return 1;
+  const notches = Math.min(WHEEL_DOLLY_MAX_UNITS, Math.abs(units));
+  return Math.pow(units > 0 ? 1 + step : 1 - step, notches);
+}
+
 interface WheelNotcher {
   /** Whole notches released by this event (sign of deltaY); the remainder carries to the next event. */
   push(event: WheelDeltaSource, nowMs?: number): number;

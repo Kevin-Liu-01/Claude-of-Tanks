@@ -78,6 +78,7 @@ import {
 } from '../vehicles/materials.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
 import { createStudioPanel } from '../ui/studioPanel.ts';
+import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import type {
   StudioActor as StudioPanelActor,
   StudioPanelApi,
@@ -120,6 +121,7 @@ import { smokeBankBase, smokeHoldInside, smokeWallRoom, SMOKE_WIND_X, SMOKE_WIND
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
+import { WHEEL_DOLLY_MAX_UNITS, wheelDollyFactor, wheelNotchUnits } from './wheelNotches.ts';
 import type { FilmFrameInfo, FilmNearSurfaces, FilmSessionInfo } from './studioFilm.ts';
 import { createFilmTimeMap, normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
 import type { FilmFilter, FilmSettings, FilmSettingsInput } from './studioFilmPlan.ts';
@@ -1560,18 +1562,26 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
+  // The canvas is the Studio's camera surface: a wheel or a trackpad pinch (ctrl+wheel) over it is camera zoom,
+  // never a page zoom. 2026-10-15: the zoom follows the distance scrolled (wheelNotches.ts), as the Garage
+  // showroom and the gun sight do — a mouse click is still one 12 % orbit notch or one fly step, but a pinch's
+  // dozens of small events glide instead of stepping once each (one pinch used to slam the orbit into its 3 m
+  // clamp). A sideways swipe (deltaY 0) moves nothing. 2026-10-16: on a page already pinch-zoomed in, the zoom-out
+  // half of a pinch un-zooms the page instead (pinchZoomGuard.ts pinchRestoresPage).
   function onWheel(e: WheelEvent): void {
-    if (!active || e.target !== renderer.domElement) return;
-    if (filming) { e.preventDefault(); return; }
+    if (!active || e.target !== renderer.domElement || pinchRestoresPage(e)) return;
     e.preventDefault();
-    const k = e.deltaY < 0 ? 1 : -1;
+    if (filming) return;
+    const units = wheelNotchUnits(e);
+    if (!units) return;
     if (cam.mode === 'orbit') {
-      cam.orbit.dist = Math.max(3, Math.min(400, cam.orbit.dist * (1 - k * 0.12)));
+      cam.orbit.dist = Math.max(3, Math.min(400, cam.orbit.dist * wheelDollyFactor(units, 0.12)));
       cameraDirty = true;
       orbitApply();
     } else {
+      const steps = Math.max(-WHEEL_DOLLY_MAX_UNITS, Math.min(WHEEL_DOLLY_MAX_UNITS, units));
       camera.getWorldDirection(_fwd);
-      camera.position.addScaledVector(_fwd, k * Math.max(2, cam.speed * 0.35));
+      camera.position.addScaledVector(_fwd, -steps * Math.max(2, cam.speed * 0.35));
       invalidate();
     }
   }

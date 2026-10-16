@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { wheelNotchUnits } from './wheelNotches.ts';
+import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import type * as THREE from 'three';
 import { createShowroomOrbit } from '../engine/cameraRig.ts';
 
@@ -108,8 +109,10 @@ export function createGarageShowroomRuntime({
   // 2026-09-19: the dolly follows the DISTANCE scrolled (wheelNotches.ts) — a mouse click is one notch, a trackpad
   // scroll or pinch (ctrl+wheel) glides proportionally instead of stepping once per event; Safari reports the
   // pinch through gesture events, whose cumulative scale maps onto the same notch scale.
+  // 2026-10-16: on a page that is already pinch-zoomed in, the zoom-out half of a pinch is the page's to un-zoom
+  // (pinchZoomGuard.ts pinchRestoresPage): no preventDefault and no dolly for it.
   const onWheel = (event: WheelEvent) => {
-    if (!enabled) return;
+    if (!enabled || pinchRestoresPage(event)) return;
     event.preventDefault();
     const units = wheelNotchUnits(event);
     if (units) control.wheel(-units);
@@ -117,16 +120,18 @@ export function createGarageShowroomRuntime({
   let gestureScale = 1;
   const onGestureStart = (event: Event) => {
     if (!enabled) return;
-    event.preventDefault();
     gestureScale = 1;
+    if (!pinchRestoresPage(event)) event.preventDefault();
   };
   const onGestureChange = (event: Event) => {
     if (!enabled) return;
-    event.preventDefault();
     const scale = (event as Event & { scale?: number }).scale;
+    const restores = pinchRestoresPage(event);
+    if (!restores) event.preventDefault();
     if (!(typeof scale === 'number' && scale > 0)) return;
     const ratio = scale / gestureScale;
     gestureScale = scale;
+    if (restores) return;
     // one notch per 1.25x of pinch, the same feel as a pinch through ctrl+wheel
     const units = Math.log(ratio) / Math.log(1.25);
     if (units) control.wheel(units);

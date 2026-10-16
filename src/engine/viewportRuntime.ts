@@ -151,7 +151,10 @@ export function createViewportRuntime({
   win.addEventListener('resize', onViewportChange);
   // responsiveLayout.ts follows window.visualViewport directly because iOS
   // third-party browsers can change the visible height without dispatching a
-  // window resize. Its event fires after #app has the corrected CSS size.
+  // window resize. Its event fires after #app has the corrected CSS size. A
+  // pinch zoom is not a size change: that measurement ignores the pinch scale,
+  // so it neither fires this event nor moves #app, and the canvas keeps its
+  // backing store while the browser magnifies it.
   win.addEventListener('cot:layoutchange', onViewportChange);
   watchPixelRatio();
 
