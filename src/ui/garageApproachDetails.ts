@@ -319,8 +319,7 @@ export function addGarageApproachDetails({
     const start = run[0].depth, end = run.at(-1)!.depth;
     for (let depth = start + 0.3; depth < end - 0.2; depth += 0.65) {
       const point = samplePath(run, depth);
-      addLiftedBox(point.side, depth, 2.6, 0.14, 0.26, 0x3a2e24, 0.12);
-      for (const railOffset of [-0.76, 0.76]) addLiftedBox(point.side + railOffset, depth, 0.2, 0.04, 0.3, 0x2a2c2d, 0.26);
+      addLiftedBox(point.side, depth, 2.6, 0.14, 0.26, 0x3a2e24, 0.12); // (the chairs gone for the 72k budget, 2026-10-16)
     }
     for (const railOffset of [-0.76, 0.76]) {
       const rail = run.map((point) => ({ side: point.side + railOffset, depth: point.depth }));
@@ -339,12 +338,13 @@ export function addGarageApproachDetails({
       const yardPath: CameraPoint[] = [];
       const sign = Math.sign(lane);
       const doors = samplePath(fan, coverFrom).side;
+      // (straight runs one panel each, the curves in eight: the Garage's 72k triangle budget, 2026-10-16)
       if (sign === 0) {
-        for (let depth = coverFrom; depth >= 6.6; depth -= 0.9) yardPath.push({ side: doors, depth });
+        yardPath.push({ side: doors, depth: coverFrom }, { side: doors, depth: 6.6 });
       } else {
-        for (let depth = coverFrom; depth > 14.5; depth -= 0.9) yardPath.push({ side: doors, depth });
-        for (let k = 0; k <= 18; k += 1) {
-          const t = k / 18, u = 1 - t;
+        yardPath.push({ side: doors, depth: coverFrom });
+        for (let k = 0; k <= 8; k += 1) {
+          const t = k / 8, u = 1 - t;
           yardPath.push({ side: u * u * doors + 2 * u * t * doors + t * t * sign * 21, depth: u * u * 14.5 + 2 * u * t * 9.0 + t * t * 8.0 });
         }
       }
@@ -354,13 +354,12 @@ export function addGarageApproachDetails({
         return { side: point.side + (dd / length) * offset, depth: point.depth - (ds / length) * offset };
       });
       for (const railOffset of [-0.76, 0.76]) {
-        const rail = offsetPath(railOffset), groove = offsetPath(railOffset - Math.sign(railOffset) * 0.075);
+        // the rail's head flush in the concrete, a dark flangeway inside it (one strip: the head's inner edge darkened)
+        const rail = offsetPath(railOffset - Math.sign(railOffset) * 0.03);
         for (let index = 0; index < rail.length - 1; index += 1) {
-          pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.072, 0.04, 0.052); // the rail's head, flush
           approachGroundErrorM = Math.max(approachGroundErrorM,
-            pathPanel(baked, groundAtWorld, groove[index], groove[index + 1], 0.06, 0.03, 0.046));
-          paint(baked.at(-1)!, 0x17191a); // the flangeway, packed with grime
-          approachDetails += 2;
+            pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.13, 0.04, 0.052));
+          approachDetails += 1;
         }
       }
     }
