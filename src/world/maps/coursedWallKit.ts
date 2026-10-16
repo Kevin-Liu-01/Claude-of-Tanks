@@ -37,34 +37,58 @@ function hash(a: number, b: number, seed: number): number {
   return (h >>> 0) / 4294967296;
 }
 
-/** A box on the print (its faces' uvs by place on the face; `soldier` stands its courses upright), bottom face left out. */
-function course(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
-  const g = new THREE.BoxGeometry(w, h, d);
-  g.translate(cx, y0 + h / 2, cz);
-  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
-  for (let i = 0; i < p.count; i++) {
-    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
-    let u = ay > 0.5 ? p.getX(i) : ax > 0.5 ? p.getZ(i) : p.getX(i), v = ay > 0.5 ? p.getZ(i) : p.getY(i);
-    if (soldier && ay < 0.5) [u, v] = [v, u];
-    uv.setXY(i, u * UV, v * UV);
+/**
+ * A course on the print: its section `w` wide and `h` tall with its top arrises taken off (r2: a dressed course, never a
+ * bare box), run `d` along z about (cx, y0, cz); its faces' uvs by place on the face (`soldier` stands its courses
+ * upright: the Rollschicht's bricks on edge); its foot face left out.
+ */
+export function dressedCourse(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
+  const c = Math.min(0.025, w * 0.12, h * 0.25), hw = w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
+  const sec: Array<[number, number]> = [[-hw, 0], [hw, 0], [hw, h - c], [hw - c, h], [-hw + c, h], [-hw, h - c]];
+  const pos: number[] = [], uv: number[] = [];
+  const put = (x: number, y: number, z: number, nx: number, ny: number) => {
+    pos.push(cx + x, y0 + y, z);
+    let u = Math.abs(ny) > 0.5 ? cx + x : z, v = Math.abs(ny) > 0.5 ? z : y0 + y;
+    if (soldier && Math.abs(ny) < 0.5) [u, v] = [v, u];
+    void nx; uv.push(u * UV, v * UV);
+  };
+  // the long faces (not the foot), each strip wound out
+  for (let k = 1; k < sec.length; k++) {
+    const [xa, ya] = sec[k], [xb, yb] = sec[(k + 1) % sec.length];
+    const nx = (yb - ya), ny = -(xb - xa);
+    const out = nx * ((xa + xb) / 2) + ny * ((ya + yb) / 2 - h / 2) > 0;
+    const quad = out ? [[xa, ya, z0], [xb, yb, z0], [xb, yb, z1], [xa, ya, z1]] : [[xa, ya, z0], [xa, ya, z1], [xb, yb, z1], [xb, yb, z0]];
+    for (const i of [0, 1, 2, 0, 2, 3]) put(quad[i][0], quad[i][1], quad[i][2], nx, ny);
   }
-  const index = g.index!, keep: number[] = [];
-  for (let t = 0; t < index.count; t += 3) if (n.getY(index.getX(t)) > -0.5) keep.push(index.getX(t), index.getX(t + 1), index.getX(t + 2));
-  g.setIndex(keep);
-  g.clearGroups();
-  return g.toNonIndexed();
+  // the two ends (fans of the section), wound out along z
+  for (const [z, s] of [[z0, -1], [z1, 1]] as const) {
+    for (let k = 1; k + 1 < sec.length; k++) {
+      const tri = s > 0 ? [0, k, k + 1] : [0, k + 1, k];
+      for (const i of tri) put(sec[i][0], sec[i][1], z, 0, 0);
+    }
+  }
+  // (the end fans' winding: a section counter-clockwise in (x, y) faces +z)
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
 }
 
 /** A ridged coping piece along z (z0..z1) over a wall `w` wide at height y: two slopes meeting at a ridge `rise` up, its
  *  two gable ends; every face wound out from a point inside it. */
 function ridge(w: number, y: number, rise: number, z0: number, z1: number, eaves = 0.035): THREE.BufferGeometry {
   const h = w / 2, pos: number[] = [], uv: number[] = [];
-  const e = [[h, y - eaves], [-h, y - eaves]] as const;
   const quad = (a: number[], b: number[], c: number[], d: number[]) => { for (const q of [a, b, c, a, c, d]) { pos.push(q[0], q[1], q[2]); uv.push((q[2] + q[0]) * UV, q[1] * UV); } };
-  const tri = (a: number[], b: number[], c: number[]) => { for (const q of [a, b, c]) { pos.push(q[0], q[1], q[2]); uv.push(q[0] * UV, q[1] * UV); } };
-  for (const [x, yy] of e) quad([x, yy, z0], [x, yy, z1], [0, y + rise, z1], [0, y + rise, z0]);
-  tri([e[0][0], e[0][1], z0], [e[1][0], e[1][1], z0], [0, y + rise, z0]);
-  tri([e[0][0], e[0][1], z1], [e[1][0], e[1][1], z1], [0, y + rise, z1]);
+  // (r2: the coping's own thickness at its eaves — a section of five corners, its soffit too, never a bare wedge)
+  const t = 0.04, sec: Array<[number, number]> = [[-h, y - eaves - t], [h, y - eaves - t], [h, y - eaves], [0, y + rise], [-h, y - eaves]];
+  for (let k = 0; k < sec.length; k++) {
+    const [xa, ya] = sec[k], [xb, yb] = sec[(k + 1) % sec.length];
+    quad([xa, ya, z0], [xb, yb, z0], [xb, yb, z1], [xa, ya, z1]);
+  }
+  for (const z of [z0, z1]) for (let k = 1; k + 1 < sec.length; k++) {
+    for (const i of [0, k, k + 1]) { pos.push(sec[i][0], sec[i][1], z); uv.push(sec[i][0] * UV, sec[i][1] * UV); }
+  }
   const inside = [0, y + rise * 0.3, (z0 + z1) / 2];
   for (let t = 0; t < pos.length; t += 9) {
     const ux = pos[t + 3] - pos[t], uy = pos[t + 4] - pos[t + 1], uz = pos[t + 5] - pos[t + 2];
@@ -96,43 +120,35 @@ export function buildCoursedWall(coping: CoursedCoping, broken = false): THREE.B
   const T = 0.46, H = 1.08, plinth = 0.3, parts: THREE.BufferGeometry[] = [];
   const piers = coping === 'rollschicht';
   if (!broken) {
-    parts.push(course(T + 0.06, plinth, WALL_SEG, 0, -0.1, 0));
-    parts.push(course(T, H - plinth, WALL_SEG, 0, plinth - 0.1, 0));
+    parts.push(dressedCourse(T + 0.06, plinth, WALL_SEG, 0, -0.1, 0));
+    parts.push(dressedCourse(T, H - plinth, WALL_SEG, 0, plinth - 0.1, 0));
     const top = H - 0.1;
-    if (coping === 'rollschicht') parts.push(course(T + 0.04, 0.12, WALL_SEG, 0, top, 0, true));
+    if (coping === 'rollschicht') parts.push(dressedCourse(T + 0.04, 0.12, WALL_SEG, 0, top, 0, true));
     else if (coping === 'saddleback') for (let k = 0; k < 4; k++) parts.push(ridge(T + 0.1, top + 0.04, 0.12, Z0 + k * 0.75 + 0.004, Z0 + (k + 1) * 0.75 - 0.004));
     else if (coping === 'tiled') {
-      parts.push(course(T + 0.02, 0.06, WALL_SEG, 0, top, 0));
+      parts.push(dressedCourse(T + 0.02, 0.06, WALL_SEG, 0, top, 0));
       parts.push(ridge(T + 0.24, top + 0.08, 0.16, Z0, Z1, 0.05));
-    } else if (coping === 'block') parts.push(course(T + 0.03, 0.1, WALL_SEG, 0, top, 0));
-    else parts.push(course(T + 0.1, 0.07, WALL_SEG, 0, top, 0));
+    } else if (coping === 'block') parts.push(dressedCourse(T + 0.03, 0.1, WALL_SEG, 0, top, 0));
+    else parts.push(dressedCourse(T + 0.1, 0.07, WALL_SEG, 0, top, 0));
     // the Ruhr's and the Saar's walls stand between piers (one at each module's start: the next module's is its end)
-    if (piers) parts.push(course(T + 0.18, H + 0.16, 0.42, 0, -0.1, Z0 + 0.21));
+    if (piers) parts.push(dressedCourse(T + 0.18, H + 0.16, 0.42, 0, -0.1, Z0 + 0.21));
     return merged(parts);
   }
-  // the stepped bite: the plinth and the body's foot standing either side, stepped down into the breach
-  const lip = 0.55 + hash(1, 2, 0x6e1) * 0.2;
-  for (const [z0, z1, s] of [[Z0, Z0 + lip, -1], [Z1 - lip * 0.8, Z1, 1]] as const) {
-    const len = z1 - z0, zc = (z0 + z1) / 2;
-    parts.push(course(T + 0.06, plinth, len, 0, -0.1, zc));
-    const up = len * 0.55, hUp = 0.2 + hash(3, s, 0x6e1) * 0.12;
-    parts.push(course(T, hUp, up, 0, plinth - 0.1, s < 0 ? z0 + up / 2 : z1 - up / 2));
-  }
-  // the plinth's broken run across the gap, half its height
-  parts.push(course(T + 0.04, plinth * 0.5, WALL_SEG - lip * 1.8 - 0.3, 0, -0.1, (lip * 0.1)));
-  // the fallen coping and loose units across the breach, lying low
-  for (let k = 0; k < 7; k++) {
-    const a = hash(k, 5, 0x6e2), b = hash(k, 7, 0x6e2), c = hash(k, 9, 0x6e2);
-    const w = 0.12 + a * 0.16, h = 0.07 + b * 0.05, d = 0.22 + c * 0.14;
-    const unit = course(w, h, d, 0, 0, 0);
-    unit.rotateY(a * Math.PI);
-    unit.translate((b - 0.5) * 1.4, plinth * 0.5 - 0.1 + (k % 3 === 0 ? 0 : -0.05), (c - 0.5) * (WALL_SEG - 1.2));
-    parts.push(unit);
-  }
+  // the stepped bite (r2: within 1.5 x the intact's triangles, standing over the module's length): the plinth left standing
+  // its whole length, the body's foot by one lip stepped down into the breach, a fallen unit or coping stone across it
+  const lip = 0.7 + hash(1, 2, 0x6e1) * 0.25, hUp = 0.24 + hash(3, 1, 0x6e1) * 0.12;
+  parts.push(dressedCourse(T + 0.06, plinth * 0.9, WALL_SEG, 0, -0.1, 0));
+  parts.push(dressedCourse(T, hUp, lip, 0, plinth * 0.9 - 0.1, Z0 + lip / 2));
   if (coping === 'saddleback' || coping === 'tiled') {
     const stone = ridge(T + 0.1, 0, 0.12, -0.36, 0.36);
     stone.rotateZ(0.5); stone.rotateY(0.7); stone.translate(0.45, 0.05, -0.2);
     parts.push(stone);
+  } else {
+    const a = hash(0, 5, 0x6e2), b = hash(0, 7, 0x6e2);
+    const unit = dressedCourse(0.24 + a * 0.1, 0.1, 0.36, 0, 0, 0);
+    unit.rotateY(a * Math.PI);
+    unit.translate(0.42 + (b - 0.5) * 0.3, plinth * 0.9 - 0.1, (b - 0.5) * 0.8);
+    parts.push(unit);
   }
   return merged(parts);
 }

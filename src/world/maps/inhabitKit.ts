@@ -462,6 +462,33 @@ function stallAwning(rng: Rng): THREE.BufferGeometry[] {
   out.push(valance(0.004, false), valance(-0.004, true));
   return out;
 }
+/** (props lane A, r2 sweep 2026-10-16) the stall's last intact build, for its wreck (the pool builds the intact first). */
+let lastStall: THREE.BufferGeometry | null = null;
+function bStallKept(rng: Rng): THREE.BufferGeometry {
+  const g = bStall(rng);
+  lastStall?.dispose();
+  lastStall = g.clone();
+  return g;
+}
+/**
+ * The stall at the r2 bar (the sweep: PROP_FRACTURE's raft stood 11 % of its height in 2.2x its triangles): knocked over
+ * by a hull — its own build tipped forward onto its counter's front edge and a little turned, the awning down over it —
+ * in its own triangles. The legacy broken builder's draws are spent first.
+ */
+function bStallTipped(rng: Rng): THREE.BufferGeometry {
+  bStallBroken(rng).dispose();
+  const g = (lastStall ?? bStall(dryStoneRng(0x57a1))).clone();
+  g.translate(0, 0, -0.94);
+  g.rotateX(1.0);
+  g.translate(0, 0, 0.94);
+  g.rotateY(0.18);
+  const p = g.attributes.position;
+  let lo = Infinity;
+  for (let i = 0; i < p.count; i++) lo = Math.min(lo, p.getY(i));
+  g.translate(0, -lo - 0.02, 0);
+  g.computeVertexNormals();
+  return g;
+}
 function bStallBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const counter = box(2.4, 0.09, 1.2);
@@ -919,6 +946,29 @@ function bFenceIron(rng: Rng): THREE.BufferGeometry {
   for (let k = 1; k < n; k++) parts.push(...ironBar(z0 + (k * FENCE_SEG) / n, 0.11, 1.06, rng));
   return merge(parts);
 }
+/**
+ * The railing at the r2 bar (props lane A, r2 sweep 2026-10-16: its post, rails and bars were bare boxes, boxShare 0.98):
+ * the post octagonal under its cast cap, the rails round, every bar square with its spear point welded on its own top.
+ * Its own stream (no draws from the pool's): fenceKit.ts ironRailingType still runs the legacy build first for its draws,
+ * its contact band and its footprint.
+ */
+export function bFenceIronR2(): THREE.BufferGeometry {
+  const rng = dryStoneRng(0x1e0f), parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  parts.push(P(new THREE.CylinderGeometry(0.04, 0.042, 1.2, 8).rotateY(Math.PI / 8).translate(0, 0.55, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.025, 0.06, 0.1, 8).translate(0, 1.2, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.035, 0.012, 0.09, 8).translate(0, 1.29, z0), IRON, 0.04, rng));
+  for (const y of [0.14, 0.95]) parts.push(P(new THREE.CylinderGeometry(0.016, 0.016, FENCE_SEG, 6).rotateX(Math.PI / 2).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG / RAILING_BAR), hb = 0.009;
+  for (let k = 1; k < n; k++) {
+    const z = z0 + (k * FENCE_SEG) / n, y0 = 0.11, y1 = 1.06;
+    // the bar and its point as one welded piece: the point's foot the bar's own top corners
+    const bar = box(hb * 2, y1 - y0, hb * 2).translate(0, (y0 + y1) / 2, z);
+    const tip = new THREE.ConeGeometry(hb * Math.SQRT2, 0.07, 4, 1, true).rotateY(Math.PI / 4).translate(0, y1 + 0.035, z);
+    parts.push(P(merge([bar, tip]), IRON, 0.05, rng));
+  }
+  return merge(parts);
+}
 function bFenceIronBroken(rng: Rng): THREE.BufferGeometry {
   // the panel torn off its post and laid over, its bars bent where the hull went over them; the post leaning
   const parts: THREE.BufferGeometry[] = [];
@@ -1090,6 +1140,49 @@ function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]
   return g;
 }
 
+/**
+ * (props lane A, r2 sweep 2026-10-16: a knocked box is still a box — eight corners, ten faces) a stone's top crowned: its
+ * up face's two triangles replaced by four round a raised centre (`lift` m), so the stone weathered round reads as one
+ * and no longer as a bare primitive. Unindexed out; the stone's uvs averaged at the crown.
+ */
+export function crownStoneTop(g: THREE.BufferGeometry, lift: number): THREE.BufferGeometry {
+  const src = g.index ? g.toNonIndexed() : g;
+  const p = src.attributes.position, uv = src.attributes.uv;
+  const tris: number[] = [], top: number[] = [];
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), nrm = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let t = 0; t < p.count; t += 3) {
+    a.fromBufferAttribute(p, t); b.fromBufferAttribute(p, t + 1); c.fromBufferAttribute(p, t + 2);
+    nrm.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).normalize();
+    (nrm.y > 0.7 ? top : tris).push(t);
+  }
+  if (top.length !== 2) { if (src !== g) g.dispose(); return src; }
+  // the up face's four corners (its two triangles share a diagonal) in turn round their centre
+  const corners: Array<{ x: number; y: number; z: number; u: number; v: number }> = [];
+  for (const t of top) for (let k = 0; k < 3; k++) {
+    const i = t + k, x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    if (!corners.some((q) => Math.abs(q.x - x) < 1e-6 && Math.abs(q.y - y) < 1e-6 && Math.abs(q.z - z) < 1e-6)) corners.push({ x, y, z, u: uv.getX(i), v: uv.getY(i) });
+  }
+  const cx = corners.reduce((s2, q) => s2 + q.x, 0) / corners.length, cz = corners.reduce((s2, q) => s2 + q.z, 0) / corners.length;
+  const cy = corners.reduce((s2, q) => s2 + q.y, 0) / corners.length + lift;
+  const cu = corners.reduce((s2, q) => s2 + q.u, 0) / corners.length, cv = corners.reduce((s2, q) => s2 + q.v, 0) / corners.length;
+  corners.sort((q, w) => Math.atan2(q.z - cz, q.x - cx) - Math.atan2(w.z - cz, w.x - cx));
+  const pos: number[] = [], uvs: number[] = [];
+  for (const t of tris) for (let k = 0; k < 3; k++) { pos.push(p.getX(t + k), p.getY(t + k), p.getZ(t + k)); uvs.push(uv.getX(t + k), uv.getY(t + k)); }
+  for (let k = 0; k < corners.length; k++) {
+    const q = corners[k], w = corners[(k + 1) % corners.length];
+    // (wound up: the corners run counter-clockwise seen from above when sorted by angle about the centre in x, z — a
+    // left-handed turn in three's frame, so each fan triangle goes q, centre, w)
+    pos.push(q.x, q.y, q.z, cx, cy, cz, w.x, w.y, w.z); uvs.push(q.u, q.v, cu, cv, w.u, w.v);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  out.computeVertexNormals();
+  if (src !== g) src.dispose();
+  g.dispose();
+  return out;
+}
+
 /** The wall's texture density (tiles a metre): a face stone's window of the field print. */
 const DRY_UV = 1.2;
 
@@ -1116,7 +1209,7 @@ function tagStone<T extends THREE.BufferGeometry>(g: T, kind: number): T {
  * lies inside that band: u along the stone, v up its sides and across its top).
  */
 function roughStone(
-  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack,
+  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack, crown = 0,
 ): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
@@ -1137,7 +1230,8 @@ function roughStone(
     uv.setXY(i, du + a * DRY_UV, v0 + b * DRY_UV * squash);
   }
   g.computeVertexNormals();
-  return keepFaces(g, keep);
+  const kept = keepFaces(g, keep);
+  return crown > 0 ? crownStoneTop(kept, crown) : kept;
 }
 
 /**
@@ -1351,7 +1445,8 @@ export function buildDryStoneWallHead(seed: number, thick: number, height: numbe
     // each lift two or three stones across, alternating, so the head is bonded like a quoin
     const n = r() < 0.5 ? 2 : 3;
     for (let k = 0; k < n; k++) {
-      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22);
+      // (r2: each stone's top crowned — the head's stones weathered round, not boxes)
+      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22, 0.22, h * 0.12);
       stone.rotateY((r() - 0.5) * 0.12); stone.rotateZ((r() - 0.5) * 0.08);
       parts.push(stone.translate(-w / 2 + (k + 0.5) * (w / n) + (r() - 0.5) * 0.03, y + h / 2, (r() - 0.5) * 0.04));
     }
@@ -1915,7 +2010,7 @@ export const DESTRUCTIBLE_TYPES = {
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, hw: 0.36, hl: 1.0, build: bTrough, broken: bTroughBroken },
   // (2026-10-11: the stall wears the structures' canvas print — its awning real canvas; its counter, posts and goods take
   // their tones under the same weave)
-  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStall, broken: bStallBroken },
+  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStallKept, broken: bStallTipped, ownBroken: true },
   bench:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.0,  hw: 0.88, hl: 0.28, build: bBench, broken: bBenchBroken },
   churn:       { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null, bodyR: 0.23, mass: 0.65, bounce: 0.38 },
   lamp:        { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.30, h: 4.7,  shape: 'circle', collisionR: 0.20, groundR: 0.22, build: bLamp, broken: null },

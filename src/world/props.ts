@@ -120,7 +120,7 @@ import {
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
-import { fenceTypes } from './maps/fenceKit.ts';
+import { fenceTypes, ironRailingType } from './maps/fenceKit.ts';
 import { coursedWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
@@ -4473,6 +4473,7 @@ ${snowCap ? `
     // (props lane A #6) the timber fences in their region's build (maps/fenceKit.ts, keyed as the gates are): the legacy
     // records, collision and footprints; the legacy builders still run first (their draws)
     ...fenceTypes(regionalArchitecture?.id, mapId, DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7)),
+    fenceiron: ironRailingType(DESTRUCTIBLE_TYPES.fenceiron, () => mulberry32(0x0f0f7)),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),

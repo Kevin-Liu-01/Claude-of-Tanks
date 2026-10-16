@@ -182,10 +182,11 @@ export function buildAdobeWall(kind: AdobeCrown, env: Envelope, broken = false, 
   // the stepped bite: a low length of the wall by each lip, the bite's floor between, the lumps it shed
   const H = env.y1 - env.y0, parts: THREE.BufferGeometry[] = [];
   const at = (z0: number, z1: number, h: number): Envelope => ({ ...env, z0, z1, y1: env.y0 + h });
-  parts.push(sweep(at(env.z0, env.z0 + 0.8, H * 0.42), [0, 0.5, 1]));
-  parts.push(sweep(at(env.z1 - 0.65, env.z1, H * 0.3), [0, 0.5, 1]));
-  parts.push(sweep(at(env.z0 + 0.8, env.z1 - 0.65, H * 0.16), [0, 1]));
-  for (let k = 0; k < 6; k++) {
+  // (r2: the wreck within 1.5 x the intact's triangles — one length a lip, the floor open-ended, four lumps)
+  parts.push(sweep(at(env.z0, env.z0 + 0.8, H * 0.42), [0, 1]));
+  parts.push(sweep(at(env.z1 - 0.65, env.z1, H * 0.3), [0, 1]));
+  parts.push(sweep(at(env.z0 + 0.8, env.z1 - 0.65, H * 0.16), [0, 1], () => 0, false));
+  for (let k = 0; k < 4; k++) {
     const x = (env.x0 + env.x1) / 2 + (hash(k, 7, seed) - 0.5) * 1.3, z = env.z0 + 0.6 + hash(k, 8, seed) * (env.z1 - env.z0 - 1.2);
     const s = 0.08 + hash(k, 9, seed) * 0.1, y = env.y0 + 0.1;
     parts.push(lathe([square(x, y - s * 0.4, z, s), square(x, y + s * 0.3, z, s * 0.7)], [x + s * 0.2, y + s * 0.6, z]));
