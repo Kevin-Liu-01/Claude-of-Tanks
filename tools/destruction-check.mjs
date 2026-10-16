@@ -22,10 +22,13 @@
  *    twin, structureMask crumbleVertexY), sampled as the cut keeps it, 3.6 and 4.1 s into the fall: no fragment stands
  *    over the front's ragged band and the heap (the owner's "big rectangles": a roof slope or a tower's glazing hung from
  *    its vertex under the eave band until the fold);
- *  - budget: bodies within the pool's cap, a stage's pieces and run vertices within its caps.
+ *  - budget: bodies within the pool's cap, a stage's pieces and run vertices within its caps;
+ *  - the fracture (fx/fractureStages.ts, as the battle wires it on desktop; `--fracture=0` judges the kit's path alone):
+ *    its bodies at rest on support like the rubble's, nothing of what it drew — a body, a heap, a piece laid at rest —
+ *    standing over the ground in the air, and a building it brought down as bodies hidden at once (no crumble to judge).
  *
  *   node tools/destruction-check.mjs [--map=urban] [--builders=firestation,cornershop,rowhouse] [--per-builder=1]
- *        [--rounds=12] [--settle=12] [--json=<out>]
+ *        [--rounds=12] [--settle=12] [--fracture=0] [--json=<out>]
  *
  * Exit 1 on a failed check. `tools/destruction-check.selftest.mjs` runs it on Steinburg.
  */
@@ -39,7 +42,7 @@ const STEP = 1 / 60;
 
 /** The check, as a function: the report (pass, per-building rows, failures). */
 export async function runDestructionCheck({
-  mapId = 'urban', builders = null, perBuilder = 1, rounds = 20, settleS = 14, roundGapS = 0.45, log = () => {},
+  mapId = 'urban', builders = null, perBuilder = 1, rounds = 20, settleS = 14, roundGapS = 0.45, log = () => {}, fracture = true,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -51,6 +54,8 @@ export async function runDestructionCheck({
   const { createStructureStages } = await import('../src/fx/structureStages.ts');
   // (a tree without the rigid rubble — main before 2026-10-12 — is judged too: its pieces by their own program's law)
   const rubbleMod = await import('../src/fx/rubbleBodies.ts').catch(() => null);
+  // (2026-10-15: the walls' fracture and the collapse as bodies, as the battle runs them on desktop)
+  const fractureMod = fracture ? await import('../src/fx/fractureStages.ts').catch(() => null) : null;
   const { createStudioDestruction } = await import('../src/game/studioDestruction.ts');
   const { matchRulesetFor } = await import('../src/sim/matchRuleset.ts');
   const { DESTRUCTION_BUS_EVENTS } = await import('../src/sim/destructionEvents.ts');
@@ -137,8 +142,11 @@ export async function runDestructionCheck({
       for (const m of made) m.userData.t = clock;
       return made;
     };
+    const fxGroup = new THREE.Group();
+    const fx = fractureMod ? fractureMod.createFractureStages({ group: fxGroup, now: () => clock, environment: () => env, groundAt: ground,
+      materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
     const stages = createStructureStages({ mask, debris, now: () => clock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
-      scars: null, crumble: 1 });
+      scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
     const events = [];
     const bus = { emit(type, e) {
       if (e?.structureId !== undefined) events.push({ t: clock, type, stage: e.stage });
@@ -147,7 +155,7 @@ export async function runDestructionCheck({
         if (st) mounds.push({ cx: st.cx, cz: st.cz, hw: st.hw, hd: st.hd, yaw: st.yaw, heightM: rubbleHeightFor(st.topY - st.baseY) });
       }
       if (type === DESTRUCTION_BUS_EVENTS.stage) stages.stage(e, seamOf(e.structureId));
-      else if (type === DESTRUCTION_BUS_EVENTS.breach) stages.breach(e, seamOf(e.structureId));
+      else if (type === DESTRUCTION_BUS_EVENTS.breach) { stages.breach(e, seamOf(e.structureId)); fx?.breach(e); }
     } };
     const sd = createStudioDestruction({ getObstacles: () => built.obstacles, getColliders: () => built.colliders }, bus,
       { rules: matchRulesetFor('standard').destruction, sections: false });
@@ -181,6 +189,7 @@ export async function runDestructionCheck({
       }
       sd.step();
       stages.update();
+      fx?.update();
       debris.update();
       const t1 = performance.now();
       bodies?.update();
@@ -277,6 +286,58 @@ export async function runDestructionCheck({
     const moving = lows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length;
     if (moving) failures.push(`${moving} of ${inWorld} bodies still moving ${settleS} s after the collapse`);
     if (hangingBody) failures.push(`${hangingBody} bodies at rest in the air`);
+    // 5b. the fracture's: its pool's bodies on support as the rubble's are; and what it drew and left lying (a body's
+    // meshes, a heap, a piece laid at rest) never standing over the ground in the air
+    let fxInWorld = 0, fxMoving = 0, fxHanging = 0, fxHighMeshes = 0, fxHighM = 0;
+    if (fx) {
+      const FW = fx.pool.world;
+      const fxLows = [];
+      for (let slot = 0; slot < FW.capacity; slot++) {
+        if (!FW.active[slot]) continue;
+        fxInWorld++;
+        const rad = FW.shape(slot).radius;
+        fxLows.push({ x: FW.px[slot], z: FW.pz[slot], y: FW.py[slot], r: rad, awake: !FW.asleep[slot],
+          v: Math.hypot(FW.vx[slot], FW.vy[slot], FW.vz[slot]), w: Math.hypot(FW.wx[slot], FW.wy[slot], FW.wz[slot]) });
+      }
+      fxMoving = fxLows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length;
+      // (a compound body's reach is its bounding radius: one whose whole sphere stands clear of the ground, of every
+      // other body's and of every solid record is in the air)
+      for (const b of fxLows) {
+        if (b.y - b.r <= ground(b.x, b.z) + 0.15) continue;
+        if (fxLows.some((o) => o !== b && Math.hypot(o.x - b.x, o.y - b.y, o.z - b.z) < o.r + b.r + 0.1)) continue;
+        if (query(b.x - b.r, b.z - b.r, b.x + b.r, b.z + b.r, queryOut).some((rr) => !rr.crushed && !rr.dead && rr.max[1] >= b.y - b.r - 0.35)) continue;
+        fxHanging++;
+      }
+      const v = new THREE.Vector3();
+      const fxMeshes = fxGroup.children.filter((m) => m.isMesh && /^fx-(fracture-(body|heap|face)|collapse-|landmark-piece)/.test(m.name));
+      const boxes = fxMeshes.map((m) => {
+        const b = new THREE.Box3(), pa = m.geometry.getAttribute('position');
+        for (let i = 0; i < pa.count; i++) b.expandByPoint(v.fromBufferAttribute(pa, i).applyMatrix4(m.matrix));
+        return b;
+      });
+      for (const m of fxMeshes) {
+        if (!/^fx-(fracture-(body|heap)|collapse-(?!remnant)|landmark-piece)/.test(m.name)) continue;
+        const pa = m.geometry.getAttribute('position');
+        let low = Infinity, lx = 0, ly = 0, lz = 0;
+        for (let i = 0; i < pa.count; i++) {
+          v.fromBufferAttribute(pa, i).applyMatrix4(m.matrix);
+          const gap = v.y - ground(v.x, v.z);
+          if (gap < low) { low = gap; lx = v.x; ly = v.y; lz = v.z; }
+        }
+        if (!(low > 1.6)) continue;
+        // (on a record: a neighbour's wall or roof, a stub, a wall it fell against; or on another of the fall's pieces, the
+        // remnant or a standing face)
+        if (query(lx - 0.8, lz - 0.8, lx + 0.8, lz + 0.8, queryOut).some((rr) => !rr.crushed && !rr.dead && rr.max[1] >= ly - 0.5 && rr.min[1] <= ly + 0.3)) continue;
+        const own = fxMeshes.indexOf(m);
+        if (boxes.some((b, k) => k !== own && lx >= b.min.x - 0.3 && lx <= b.max.x + 0.3 && lz >= b.min.z - 0.3 && lz <= b.max.z + 0.3
+          && b.max.y >= ly - 0.4 && b.min.y < ly)) continue;
+        fxHighMeshes++; fxHighM = Math.max(fxHighM, low);
+      }
+      if (fxMoving) failures.push(`${fxMoving} of ${fxInWorld} fracture bodies still moving ${settleS} s after the collapse`);
+      if (fxHanging) failures.push(`${fxHanging} fracture bodies at rest in the air`);
+      if (fxHighMeshes) failures.push(`${fxHighMeshes} fracture meshes lie ${fxHighM.toFixed(1)} m over the ground`);
+    }
+    const asBodies = !!fx?.took(id);
     // 6. nothing hangs from the fall (a house's crumble, not a shaft's topple): the patch's law on the building's own
     // triangles (crumbleVertexY; on a tree without it, the law as it stood: a wall vertex never moved), each sampled on a
     // barycentric grid as the cut keeps it — a fragment over the front's ragged band is cut unless its triangle reaches
@@ -293,7 +354,8 @@ export async function runDestructionCheck({
         return { y: Math.max(py - 4.9 * tr * tr, front + (py - e) * 0.75 * (1 - u * u) - 1.2 * u * u), roof };
       });
       const mound = mounds[0] ?? null;
-      if (start > 0 && data[Ft] >= 0) for (const t of [3.6, 4.1]) {
+      // (a building brought down as bodies left the mask at once: its pieces fell, nothing of it crumbled)
+      if (start > 0 && data[Ft] >= 0 && !asBodies) for (const t of [3.6, 4.1]) {
         const u = Math.min(1, Math.max(0, (t - 0.3) / 3.4)), front = eave * (1 - Math.pow(u, 1.5));
         let n = 0;
         for (const span of seam.spans) {
@@ -340,6 +402,7 @@ export async function runDestructionCheck({
       id, builder: seam.builder, kit: a.kit, style: seam.style, fired, collapsedAtS: +collapsedAt.toFixed(2), lastStageS: +lastStage.toFixed(2),
       holes: holes.length, runs: runs.length, untextured: untextured.length, hangingRim, hangingPanel, hangingPanelM: +hangingPanelM.toFixed(2),
       pieces: { thrown, still, stillHanging, overGround, buried, neverLand },
+      fracture: fx ? { asBodies, inWorld: fxInWorld, moving: fxMoving, hanging: fxHanging, highMeshes: fxHighMeshes, ...fx.stats() } : null,
       bodies: { live: bs.live, inWorld, asleep, moving: lows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length, onGround, onBody, onRecord, hanging: hangingBody, buried: buriedBody, settled: bs.settled,
         awakeSample: lows.filter((b) => b.awake).slice(0, 4).map((b) => ({ v: +b.v.toFixed(3), w: +b.w.toFixed(3), age: b.age,
           gap: +(b.low - ground(b.x, b.z)).toFixed(3) })) },
@@ -371,6 +434,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     mapId: args.map ?? 'urban',
     builders: typeof args.builders === 'string' ? args.builders.split(',') : null,
     perBuilder: Number(args['per-builder'] ?? 1), rounds: Number(args.rounds ?? 20), settleS: Number(args.settle ?? 14),
+    fracture: args.fracture !== '0',
     log: (...m) => console.log('[destruction-check]', ...m),
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));

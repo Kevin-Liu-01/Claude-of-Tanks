@@ -91,8 +91,9 @@ export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): Struc
     const cp = Math.cos(pitch), sp = Math.sin(pitch);
     for (let v = 0.12; v < slope - 0.1; v += 0.26) {
       const x = -(w + 0.7) / 2 + 0.1 + v * cp, y = (hLo + hHi) / 2 + 0.22 - (hHi - hLo) / 2 + v * sp + 0.055 / cp + 0.012;
-      const course = box(0.22, 0.025, d + 0.58, 0.4);
-      course.rotateZ(pitch + 0.08);
+      // (structureConnectivity: a tilted roof slab carries the shared orientation receipt) each course lapped a little
+      // steeper than the deck, its butt standing proud
+      const course = pitchRoofPlane(box(0.22, 0.025, d + 0.58, 0.4), 'x', -1, pitch + 0.08, 'skillion');
       put(parts.roof, course.translate(x, y, 0));
     }
   }

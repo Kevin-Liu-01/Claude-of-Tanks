@@ -203,15 +203,27 @@ export interface RubbleMound {
 export function rubbleMoundHeightAt(mound: RubbleMound, x: number, z: number): number {
   const height = Math.max(0, mound.heightM);
   heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, _moundCrown);
-  return heapHeight(mound.cx, mound.cz, mound.hw, mound.hd, Math.cos(mound.yaw), Math.sin(mound.yaw), height,
-    rubbleFalloffM(mound.hw, mound.hd, height), _moundCrown, x, z);
+  const h = _moundShape;
+  h.cx = mound.cx; h.cz = mound.cz; h.hw = mound.hw; h.hd = mound.hd; h.c = Math.cos(mound.yaw); h.s = Math.sin(mound.yaw);
+  h.heightM = height; h.falloffM = rubbleFalloffM(mound.hw, mound.hd, height);
+  return heapHeight(h, x, z);
 }
 const _moundCrown = new Float64Array(CROWN_PARAMS);
+const _moundShape: HeapShape = { cx: 0, cz: 0, hw: 0, hd: 0, c: 1, s: 0, heightM: 0, falloffM: 0, crown: _moundCrown };
+
+/** A mound as the overlay's stamp, its crown worked out once: rubbleProfile(stamp, x, z) is rubbleMoundHeightAt(mound, x,
+ * z) to the bit, for a ground sampled under falling pieces every step (no crown, no closure a sample). */
+export function rubbleStampOf(mound: RubbleMound): RubbleStamp {
+  const height = Math.max(0, mound.heightM);
+  return { kind: 'rubble', cx: mound.cx, cz: mound.cz, hw: mound.hw, hd: mound.hd, yaw: mound.yaw, heightM: height,
+    c: Math.cos(mound.yaw), s: Math.sin(mound.yaw), falloffM: rubbleFalloffM(mound.hw, mound.hd, height), t0: -Infinity,
+    growS: RUBBLE_GROW_S, crown: heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, new Float64Array(CROWN_PARAMS)) };
+}
 
 /** A rubble mound's profile at (x, z) (§7): its crown over the plateau, a cosine skirt to nothing (`scale` of it: rising;
  * the heap is linear in its height, so a rising heap is the risen one scaled). */
 export function rubbleProfile(stamp: RubbleStamp, x: number, z: number, scale = 1): number {
-  return scale * heapHeight(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.c, stamp.s, stamp.heightM, stamp.falloffM, stamp.crown, x, z);
+  return scale * heapHeight(stamp, x, z);
 }
 
 /** A heap's crown from its footprint (CROWN_DROP): [lean cos, lean sin, three phases, four wave numbers]. */
@@ -233,9 +245,15 @@ function heapCrown(cx: number, cz: number, hw: number, hd: number, out: Float64A
   return out;
 }
 
-/** The heap at (x, z): the crown at the nearest plateau point, the cosine skirt from it past the plateau's edge. */
-function heapHeight(cx: number, cz: number, hw: number, hd: number, c: number, s: number, height: number, falloff: number,
-  crown: Float64Array, x: number, z: number): number {
+/** What a heap's height reads (a stamp's fields): its footprint, yaw's cos and sin, height, falloff and crown. */
+interface HeapShape { cx: number; cz: number; hw: number; hd: number; c: number; s: number; heightM: number; falloffM: number;
+  crown: Float64Array }
+/** The heap at (x, z): the crown at the nearest plateau point, the cosine skirt from it past the plateau's edge. (Its
+ *  shape by reference, not a dozen numbers: a number handed to a call is a new heap number each time in V8, and the
+ *  ground under falling pieces is read here every step.) */
+function heapHeight(shape: HeapShape, x: number, z: number): number {
+  const cx = shape.cx, cz = shape.cz, hw = shape.hw, hd = shape.hd, c = shape.c, s = shape.s, height = shape.heightM;
+  const falloff = shape.falloffM, crown = shape.crown;
   const dx = x - cx, dz = z - cz;
   // forward (sin yaw, cos yaw) along hd, right (cos yaw, −sin yaw) across hw
   const alongAt = dx * s + dz * c, acrossAt = dx * c - dz * s;
