@@ -65,6 +65,8 @@ for (const segs of [96, 48, 24]) {
 // the shader: the cliff floor, the sheerest faces' beds, the uniform's default
 const flat = source.replace(/\s+/g, ' ');
 assert.ok(flat.includes('float strataK = max(uStrata, uCliffStrata * smoothstep(0.42, 0.62, slope)); if (strataK > 0.001) {'), 'every sheer face is bedded rock');
+// (2026-10-15, the perf lane's splat pruner) the block sits under a gate of map constants alone, implied by the inner one
+assert.ok(flat.includes('if (uStrata > 0.001 || uCliffStrata > 0.001) { float strataK = max('), 'a fold-provable outer gate');
 assert.ok(flat.includes('float bedAmp = strataK * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.25 * smoothstep(0.80, 0.97, slope))'), 'the sheerest faces keep three quarters of their beds');
 assert.ok(flat.includes('float jointAmp = smoothstep(0.06, 0.16, strataK) * steep;'), 'the joint blocks and the varnish on the cliff floor too');
 assert.ok(source.includes('shader.uniforms.uCliffStrata = { value: S.cliffStrata ?? (S.strata === 0 ? 0 : CLIFF_STRATA_FLOOR) };'),
