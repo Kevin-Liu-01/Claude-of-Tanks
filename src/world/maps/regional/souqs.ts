@@ -569,16 +569,17 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
       }
     }
     sink.dressing(mobile, () => {
-      // the 2x4s: a rail at the foot, one at the head, studs every sheet's edge, on the sheets' back
+      // the 2x4s: a rail at the foot, one at the head, studs every sheet's edge, on the sheets' back (fine joinery: 9 cm
+      // behind the ply, under a pixel past the fine cut)
       const back = at + inward * 0.056;
       for (const y of [0.08, y1 - 0.06]) {
-        if (along === 'x') board(sink, 'structureWood', [a0, y, back], [a1, y, back], [0, 1, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.15), decor: true });
-        else board(sink, 'structureWood', [back, y, a0], [back, y, a1], [0, 1, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.15), decor: true });
+        if (along === 'x') board(sink, 'structureWood', [a0, y, back], [a1, y, back], [0, 1, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.15), decor: true, fine: true });
+        else board(sink, 'structureWood', [back, y, a0], [back, y, a1], [0, 1, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.15), decor: true, fine: true });
       }
       for (let j = 0; j <= m; j++) {
         const s = a0 + len * j / m;
-        if (along === 'x') board(sink, 'structureWood', [s, 0.125, back], [s, y1 - 0.105, back], [1, 0, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.1), decor: true });
-        else board(sink, 'structureWood', [back, 0.125, s], [back, y1 - 0.105, s], [0, 0, 1], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.1), decor: true });
+        if (along === 'x') board(sink, 'structureWood', [s, 0.125, back], [s, y1 - 0.105, back], [1, 0, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.1), decor: true, fine: true });
+        else board(sink, 'structureWood', [back, 0.125, s], [back, y1 - 0.105, s], [0, 0, 1], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.1), decor: true, fine: true });
       }
     });
   };

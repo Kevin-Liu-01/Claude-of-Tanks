@@ -949,6 +949,33 @@ their own device-label breakpoints. Native display density and internal scene
 resolution remain independent: phones retain native DOM/canvas presentation,
 while the 3D renderer may scale within the output-pixel and quality budgets.
 
+A pinch is a magnifier, never a resize (2026-10-15, owner: "using both my
+fingers on track pad to like expand the screen in landing causes a bunch of
+weirdness and layout shifts"). Desktop trackpad pinch and phone pinch zoom the
+visual viewport, whose width and height shrink by the zoom while the layout
+viewport stays put. `layoutViewportSize()` measures the visible area
+unmagnified: visual size x `pinchZoomFactor()`, the root's `clientWidth` (the
+layout viewport, which no pinch changes) over `visualViewport.width`, exactly 1
+within a pixel. At rest that is exactly the visual viewport, which keeps the
+iOS third-party-browser and on-screen-keyboard cases; under any pinch it is the
+unchanged layout size. The factor is never `visualViewport.scale`: iOS rests at
+a page scale other than 1 with no pinch (Safari page zoom 125 % reports scale
+1.25 on a 322 px visual viewport; an iPad window narrower than Safari's
+minimum effective device width lays out 1024 px wide at scale 0.39), where
+visual size x scale oversized or shrank the whole app (2026-10-16 iOS 26.5
+simulator review). A pixel of change that comes with a pinch is held as
+rounding. The size variables, bands, panel
+policy, `cot:layoutchange` and so the renderer only move on a real window
+resize, browser zoom (cmd +/-, which changes the CSS-pixel viewport and fires
+a window resize) or an orientation change; a zoomed pan schedules nothing, and
+unchanged values are never rewritten. The index.html seed, the battle HUD
+lanes, HUD customisation and editor, and rich tooltips read the same helper.
+The public pages keep browser pinch-zoom for accessibility; the game page
+cancels it (`ui/pinchZoomGuard.ts`), and on a page already pinch-zoomed in the
+camera canvases (garage showroom, Studio, gallery orbit) leave the zoom-out
+half of a pinch to the browser (`pinchRestoresPage()`), so the page un-zooms
+over them too.
+
 Panel policy (2026-09-19, owner: "we're cutting it all off a lil too early, it's
 not mobile yet but we already lost all the side panel details"): a fine-pointer
 window keeps the two persistent Garage sidebars from

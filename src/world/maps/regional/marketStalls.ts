@@ -289,7 +289,7 @@ function floorOf(sink: PartSink, d: StallDress, x0: number, z0: number, x1: numb
 /** A plank shutter hinged at the head of a front from x0 to x1 at z, propped up as an awning on two sticks. Dressing. */
 function shutterAwning(sink: PartSink, d: StallDress, x0: number, x1: number, z: number, y: number, footY: number): void {
   if (!d.shutter) return;
-  const c = d.shutter, len = 0.95, swing = 1.1;
+  const c = d.shutter, len = 0.95, swing = 1.45;
   sink.dressing(d.mobile, () => {
     const a: Vec3 = [x0, y, z], b: Vec3 = [x1, y, z], tip: Vec3 = [0, y + Math.sin(swing - Math.PI / 2) * len, z + Math.cos(swing - Math.PI / 2) * len];
     // the leaf: its boards across, two faces

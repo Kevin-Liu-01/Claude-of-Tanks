@@ -87,6 +87,9 @@ export const windmill: LandmarkBuilder = (ctx) => {
     // the body: boards, a gable roof, the door at the back up the ladder
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.25, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
     sink.placed(0, 0, lift, 0, () => {
+      // (the maps lane, 2026-10-16; the building-integrity gate: 5.7 m2 of the body seen into from below, its underside
+      // open over the post) the body's floor, the joists' boards under the walls, the post's head under it
+      sink.span('structureWood', -bw / 2, -0.16, -bd / 2, bw / 2, 0, bd / 2, { colour: TIMBER_DARK });
       const f = archedBody(sink, 'structureWood', 0, 0, bw, bd, 0, bh, {}, 0, { colour: BOARD_GREY });
       emitRoof(sink, roofGeometry(bw, bd, bh, roof), roof);
       plankDoor(sink, f.back, 0, 0.1, 0.9, 1.8, TIMBER_DARK, 0.02);

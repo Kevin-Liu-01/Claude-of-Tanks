@@ -6,7 +6,8 @@
 //     (railSpurBerthClearances, carried by vegetationClearance.ts placedStructureClearances), and it takes no cutting;
 //   - no stream moves: every authoring map's world built with its clearance spurs and without them holds the same
 //     records — obstacles, shell colliders and concealers, byte for byte — but the trees its berth clears, each one of
-//     them on the berth;
+//     them on the berth, and the line's own breakable buffer stops (one to a closed end, on the berth, their pool
+//     indices after every other record's: Lane C PRP-02b);
 //   - the line keeps clear of every solid: landmarks.selftest asserts the berth against the committed shard.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -93,11 +94,25 @@ for (const id of MAP_IDS) {
   // it to its next level stand, props.ts; the maps lane, 2026-10-14, carries that into this receipt) a stack is checked
   // as a set: the ones only the line-less build holds reached the berth, the ones only the line's build holds clear it,
   // as many of each; every other record keeps its place
-  const STACKS = new Set(['stog', 'plast', 'hooiberg', 'diemen', 'stook', 'bale']);
+  const STACKS = new Set(['stog', 'plast', 'hooiberg', 'diemen', 'stook', 'bale']), BUFFER_STOP = 'prop-buffer-stop';
   const centre = (record) => [(record.b[0] + record.b[3]) / 2, (record.b[2] + record.b[5]) / 2, Math.max(record.b[3] - record.b[0], record.b[5] - record.b[2]) / 2];
+  // (Lane C PRP-02b, 2026-10-16; the maps lane carries it into this receipt) the line's closed ends' buffer stops are
+  // breakable small props: records of the line's own — one a closed end, each on the berth, their pool indices after
+  // every other record's, so no other record's moves — kept out of the place and order checks below
+  const closedEnds = clear.reduce((n, spur) => n + (spur.bufferStop === 'both' ? 2 : spur.bufferStop ? 1 : 0), 0);
   for (const list of ['obstacles', 'colliders']) {
-    const stacksWith = withLine[list].filter((r) => STACKS.has(r.k)), stacksWithout = without[list].filter((r) => STACKS.has(r.k));
-    const others = { with: withLine[list].filter((r) => !STACKS.has(r.k)), without: without[list].filter((r) => !STACKS.has(r.k)) };
+    const stopKeys = new Set(without[list].filter((r) => r.k === BUFFER_STOP).map(key));
+    const lineStops = withLine[list].filter((r) => r.k === BUFFER_STOP && !stopKeys.has(key(r)));
+    assert.equal(lineStops.length, closedEnds, `${id}: a buffer stop in the ${list} to each of the line's closed ends`);
+    const lastPool = Math.max(-1, ...without[list].map((r) => (typeof r.p === 'number' ? r.p : -1)));
+    for (const r of lineStops) {
+      const [x, z, rr] = centre(r);
+      assert.ok(overlapsStructureClearance(berth, x, z, rr + 1), `${id}: the line's buffer stop stands on its berth (${x.toFixed(1)}, ${z.toFixed(1)})`);
+      assert.ok(r.p > lastPool, `${id}: the line's buffer stop takes a pool index after every other (${r.p} over ${lastPool})`);
+    }
+    const withList = withLine[list].filter((r) => !lineStops.includes(r));
+    const stacksWith = withList.filter((r) => STACKS.has(r.k)), stacksWithout = without[list].filter((r) => STACKS.has(r.k));
+    const others = { with: withList.filter((r) => !STACKS.has(r.k)), without: without[list].filter((r) => !STACKS.has(r.k)) };
     assert.equal(stacksWith.length, stacksWithout.length, `${id}: the line keeps every field stack in its ${list} (moved, not lost)`);
     const inWith = new Set(stacksWith.map(key)), inWithout = new Set(stacksWithout.map(key));
     for (const r of stacksWithout) if (!inWith.has(key(r))) {
@@ -129,7 +144,7 @@ for (const id of MAP_IDS) {
   const discs = new Set(without.concealers.map(key));
   for (const disc of withLine.concealers) assert.ok(discs.has(key(disc)), `${id}: the line adds no concealer (${key(disc)})`);
   checked++;
-  console.log(`railSpurBerth.selftest: ${id}: ${without.obstacles.length - withLine.obstacles.length} trees off the berth, every other record byte-identical`);
+  console.log(`railSpurBerth.selftest: ${id}: ${without.obstacles.length - (withLine.obstacles.length - closedEnds)} trees off the berth, ${closedEnds} buffer stops on it, every other record byte-identical`);
 }
 rmSync(scratch, { recursive: true, force: true });
 assert.ok(checked >= 1, 'at least one map lays a clearance berth');

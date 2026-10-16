@@ -33,13 +33,14 @@ const observed = source.replace(rngSource, rngSource.replace('function mulberry3
   export function takeLeafStreams() { return leafStreams.splice(0).map(({seed,calls,next}) => ({seed,calls,tail:[next(),next(),next()]})); }
   export function leafLibrary(input) {
     const seed = 2001, cfg = {vegetation:input}, veg = ${variable('veg')};
+    // round 77b (2026-09-26): the leaf-detail library the stage reads (a null tile keeps the flat card program, as on
+    // the mobile tier); the tiles themselves are leafDetail.selftest's subject. (GND 2026-10-15: the registry's
+    // needleCrown reads its class too, so the stub stands at the registry's own scope)
+    const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
     ${source.slice(start, end)}
     function materials() {
       const foliageTex = {}, foliageMats = {}, foliageDepthMats = {}, foliageWindHook = () => {};
       const engineCtx = {setupShadowMaterial() {}};
-      // round 77b (2026-09-26): the leaf-detail library the stage reads (a null tile keeps the flat card program, as on
-      // the mobile tier); the tiles themselves are leafDetail.selftest's subject
-      const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
       ${fn('createFoliageMaterials')}
       for (const step of createFoliageMaterials()) void step;
       return {foliageTex, foliageMats, foliageDepthMats};

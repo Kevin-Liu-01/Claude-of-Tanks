@@ -839,6 +839,8 @@ export interface SeatEnv {
   exposure?: boolean;
   /** Per gun yaw, the first pitch step the gun clears the host armour seen by this soup (filled on demand). */
   armourFloors?: Map<number, number>;
+  /** Painted marking stations of this frame (frame coordinates): a chosen seat never covers one. */
+  markings?: readonly THREE.Box3[];
 }
 
 /**
@@ -968,6 +970,12 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   out.cut = cut;
   if (clearRole && fail(`clear:${clearRole}`)) return out;
   if (cut > T.cutMaxM && fail('cut')) return out;
+  // a seat the solver chooses keeps off the vehicle's painted markings (designations, insignia): the marking pass
+  // drops a mark a run covers
+  if (chosen && env.markings?.length) {
+    const box = local.clone().applyMatrix4(_m);
+    if (env.markings.some((mark) => mark.intersectsBox(box)) && fail('marking')) return out;
+  }
   // ---- R9: never under the main gun (its footprint on the deck, seen from above at rest, 5 cm wide of it). A seat the
   // solver chooses always; an authored one where the gun is fixed in the hull, which never moves off it.
   if ((chosen || !env.motion) && underGun(env, shape, ax, pose) && fail('under-gun')) return out;

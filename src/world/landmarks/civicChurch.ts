@@ -173,7 +173,9 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
   for (let k = 0; k < 6; k++) {
     const r0 = Ra + 0.24, a0 = k / 6 * Math.PI / 2, a1 = (k + 1) / 6 * Math.PI / 2;
     sink.cylinder('structureMetal', [0, apseH + 0.3 + Math.sin(a0) * Ra * 0.62, zCubeBack], 'y', (Math.sin(a1) - Math.sin(a0)) * Ra * 0.62,
-      r0 * Math.cos(a0), 14, { colour: GREEN_IRON }, r0 * Math.cos(a1), k === 5, 0, Math.PI);
+      // (the maps lane, 2026-10-16; the building-integrity gate: 14 degenerate faces) the crown band closes on itself at
+      // the dome's top (its upper radius is nothing): no caps, whose top disc was a fan of zero-area triangles
+      r0 * Math.cos(a0), 14, { colour: GREEN_IRON }, r0 * Math.cos(a1), false, 0, Math.PI);
   }
   // ---- the refectory: lower, narrower, three windows a side, a low hipped roof
   const Hr = Math.max(5.2, Hc * 0.6);

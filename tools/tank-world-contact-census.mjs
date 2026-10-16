@@ -786,7 +786,9 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
         const placeIndex = Number.isFinite(site.x) && Number.isFinite(site.z) ? Math.floor(placeKey(4049, site.x, site.z) * 1024) : siteIndex;
         const hullId = CENSUS_HULLS[(placeIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
         const id = `${mapId}${variant === 'base' ? '' : `@${variant}`}/${cls}/${site.sub}/${siteIndex}/${maneuver}`;
-        if (only && !(only instanceof Set ? only.has(id) : id === only)) return;
+        // (`only`: one run's id, a set of them, or a test of the run's id and its site — a receipt that pins a site by
+        // what it is, not by its place in the sample's list, physics 2026-10-16)
+        if (only && !(typeof only === 'function' ? only(id, site) : only instanceof Set ? only.has(id) : id === only)) return;
         resetWorld(world);
         // (the records the metrics read: those round the site, without the trees, which every hull fells on contact)
         const near = world.query(site.x, site.z, 40).filter((r) => r.treeIdx == null && r.kind !== 'tree');

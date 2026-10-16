@@ -90,6 +90,23 @@ on post-ready environment texture warming, eager fleet/map artwork, frame-gap
 spikes, long-task bursts, or console errors. Environment-transition claims use
 `tools/garage-variants-probe.mjs`; exercise all ten destinations, rapid stale
 selection, cache eviction, persisted reload, iPad, and phone layouts.
+Pinch-zoom claims (a trackpad pinch only magnifies; 2026-10-16) use the manual
+`npm run qa:pinch -- --base=<served origin> --out=<report.json>`
+(`tools/pinch-zoom-probe.mjs`): a real CDP trackpad pinch to 2x, a pan and a
+pinch-out on home, docs, gallery, a dossier, 404, the HUD editor preview, the
+splash, garage, a live battle HUD and Studio (splash, garage and battle share one
+boot), each compared with two control snapshots (layout vars, bands, canvases,
+key and per-element layout boxes, scroll positions, cot:layoutchange,
+layout-shift entries), then a real resize that must relayout. Where a guard
+cancels the pinch (the game page, the HUD preview) the probe records that and
+lets a zoom through anyway (page scale on the game page, a touch pinch
+elsewhere). It runs on SwiftShader (no GPU lock): serve the checkout yourself
+and kill that PID, and on a loaded machine allow long waits (`--ready-timeout`,
+`--battle-timeout`; a game boot took up to 30 minutes at load 250, and a live
+battle can stall there, so leave `battle` out of `--surfaces` then). Run it
+against origin/main too: a build before the fix exits 1 (the negative control).
+Its pure rules are `pinch-zoom-probe.selftest.mjs` in npm test; the browser run
+is not.
 Static-screen and transition claims require `npm run perf:resources:gate`; it
 records task/script CPU, forced-GC heap, scene and renderer residency, cache
 ownership, actual paint cadence, and complete-frame draw/primitive totals
