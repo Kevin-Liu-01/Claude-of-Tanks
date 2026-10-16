@@ -537,7 +537,7 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     // its boards span the frame from girt to girt on the girts' seats, an angle bearer under their inner edge (the top
     // flight's head is the cab's floor)
     if (k + 1 < panels) {
-      boards(sink, -ring + 0.02, ring - 0.02, lz0, lz1, y1 + 0.062, 0.05, 0.16, { colour: TIMBER_DARK, decor: true });
+      boards(sink, -ring + 0.02, ring - 0.02, lz0, lz1, y1 + 0.062, 0.05, 0.2, { colour: TIMBER_DARK, decor: true });
       const bz = dir > 0 ? lz0 + 0.06 : lz1 - 0.06;
       angleBar(sink, [dir * ring, y1 + 0.002, bz], [-dir * ring, y1 + 0.002, bz], 0.08, 0.01, [0, 0, -dir], { ...steel, decor: true });
     }
@@ -571,8 +571,17 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     sink.box('structureWood', [hx, fy + 0.05 + 0.42 * sn, e + dir * 0.42 * c], [0.42, 0.42, 0.025], { colour: TIMBER, decor: true },
       new LocalFrame([1, 0, 0], [0, sn, dir * c], [0, -dir * c, sn], [0, 0, 0]));
   }
+  // (the looks lane, r2 sweep: the catwalk wore a park's wrought-iron railing, a baluster every 13 cm) the catwalk's
+  // rail as a lookout's is built: angle posts at the corners and between, an angle top rail and a mid rail
+  const rr = cw / 2 + 0.45, ry = cabY + 0.2, rail = { colour: IRON, decor: true };
   for (const [a, b] of [[[-1, -1], [1, -1]], [[1, -1], [1, 1]], [[1, 1], [-1, 1]], [[-1, 1], [-1, -1]]] as const) {
-    railing(sink, [a[0] * (cw / 2 + 0.45), a[1] * (cw / 2 + 0.45)], [b[0] * (cw / 2 + 0.45), b[1] * (cw / 2 + 0.45)], 1.0, IRON, { base: cabY + 0.2, pitch: 1.6 });
+    const n: Vec3 = [(a[0] + b[0]) / 2, 0, (a[1] + b[1]) / 2], posts = 3;
+    for (let k = 0; k < posts; k++) {
+      const t = k / posts, x = (a[0] + (b[0] - a[0]) * t) * rr, z = (a[1] + (b[1] - a[1]) * t) * rr;
+      angleBar(sink, [x, ry, z], [x, ry + 1.0, z], 0.05, 0.006, n, rail);
+    }
+    angleBar(sink, [b[0] * rr, ry + 1.0, b[1] * rr], [a[0] * rr, ry + 1.0, a[1] * rr], 0.05, 0.006, n, rail);
+    bar(sink, 'structureMetal', [a[0] * rr, ry + 0.52, a[1] * rr], [b[0] * rr, ry + 0.52, b[1] * rr], 0.03, rail);
   }
   sink.span('structureWood', -cw / 2, cabY + 2.4, -cw / 2, cw / 2, cabY + 2.55, cw / 2, { colour: TIMBER_DARK });
   });
@@ -591,7 +600,7 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     }
     s.span('structureMetal', -0.02, H - 0.05, -0.02, 0.02, H + 1.2, 0.02, { colour: IRON, decor: true });
     // the boarded soffit under the eaves (the roof's skin is one-sided: from under the eaves the sky showed through it)
-    boards(s, -e, e, -e, e, fy - 0.005, 0.025, 0.2, { colour: TIMBER_DARK, decor: true });
+    boards(s, -e, e, -e, e, fy - 0.005, 0.025, 0.3, { colour: TIMBER_DARK, decor: true });
   });
   return { parts: finishLandmark(sink) };
 };
