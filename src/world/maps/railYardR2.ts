@@ -12,16 +12,6 @@ function dressing<T extends THREE.BufferGeometry>(geo: T): T {
 }
 
 type P3 = readonly [number, number, number];
-/** A member from a to b (its section t x d), new to the stream (dressing). */
-function memberGeo(a: P3, b: P3, t: number, d = t): THREE.BufferGeometry {
-  const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-  const len = dir.length();
-  const g = box(t, d, Math.max(0.01, len), 1.0);
-  // (its length along z turned onto the member's direction: a near-vertical stile keeps its rake)
-  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize()));
-  g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-  return dressing(g);
-}
 
 /** A box new to the stream (dressing), centred at (x, y, z). */
 function boxAt(w: number, h: number, d: number, x: number, y: number, z: number, uv = 1.0): THREE.BufferGeometry {
