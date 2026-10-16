@@ -84,6 +84,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   });
   const lightState = new WebGLLights({ has: () => false });
   const lightSignatures = [];
+  let sceneSubmissions = 0;
   const compile = () => {
     const lights = [];
     scene.traverseVisible(object => { if (object.isLight) lights.push(object); });
@@ -141,15 +142,18 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       compile: () => { throw new Error('deployment must not submit the whole scene atomically'); },
       compileSceneSteps: function* (options) {
         assert.equal(options.sliceMs, 8);
+        // (2026-10-15) the first submission is the early one, once the light signature is final (before the allies)
+        const prefix = sceneSubmissions++ === 0 ? 'early' : '';
+        const named = (name) => (prefix ? prefix + name[0].toUpperCase() + name.slice(1) : name);
         compile();
         try {
           for (let index = 0; index < compileSlices; index++) {
-            calls.push(['compileSlice', index]);
+            calls.push([named('compileSlice'), index]);
             yield;
           }
           options.timing.submissionSlices = compileSlices + 1;
-          calls.push(['compileComplete']);
-        } finally { calls.push(['compileClosed']); }
+          calls.push([named('compileComplete')]);
+        } finally { calls.push([named('compileClosed')]); }
       },
       initializeSteps: function* () {},
       prepareSceneSteps: function* (options) {
@@ -258,7 +262,6 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       if (panel === 'fail') throw new Error('player panel failed');
       calls.push(['playerPanelReady']);
     },
-    *warmVisionSteps() { calls.push(['visionWarm']); yield; },
     prepareNightLighting: async () => {
       calls.push(['nightLighting']);
       if (pauseNight) await nightGate;
@@ -435,8 +438,10 @@ for (const [cancelAt, admitted] of [['before', 2], ['task', 3], ['frame', 8]]) {
     `${cancelAt}: a stale generation cannot resume the next private construction checkpoint`);
   assert.deepEqual(cadence.closed, [['allied-1', false]], 'await rejection closes the actual streamer iterator');
   assert.deepEqual(cadence.published, [], 'cancellation never publishes an unfinished visual');
-  assert.ok(!harness.calls.some(([name]) => ['terrain', 'compile', 'shadowWarm', 'postWarm', 'reveal'].includes(name)),
+  assert.ok(!harness.calls.some(([name]) => ['terrain', 'compileClosed', 'shadowWarm', 'postWarm', 'reveal'].includes(name)),
     'stale allied construction cannot advance deployment warming or reveal');
+  assert.equal(harness.calls.filter(([name]) => name === 'compile').length, 1,
+    'only the early submission (before the allied builds) reached the compiler');
   assert.equal(cadence.game.tanks.length, 14, 'cancellation leaves roster ownership intact');
 }
 
@@ -463,8 +468,7 @@ for (const [before, after] of [
   ['terrain', 'camera'],
   ['camera', 'groundCover'],
   ['groundCoverReady', 'shadowWarm'],
-  ['shadowWarm', 'visionWarm'],
-  ['visionWarm', 'postWarm'],
+  ['shadowWarm', 'postWarm'],
   ['postWarm', 'postYielded'],
   ['postYielded', 'watchdog'],
   ['watchdogSettled', 'reveal'],
@@ -533,7 +537,26 @@ for (let index = 0; index < happy.calls.length; index++) {
 assert.ok(order.indexOf('compileClosed') < order.indexOf('warmRender'));
 assert.deepEqual(happy.calls[order.indexOf('compileClosed') + 1], ['yield', true],
   'final submission releases its task before the first native forward bind');
-assert.deepEqual(happy.lightSignatures, [[2, 1], [2, 1]], 'day warms the fixed pool before manual headlights can be enabled');
+assert.deepEqual(happy.lightSignatures, [[2, 1], [2, 1], [2, 1]],
+  'day warms the fixed pool before manual headlights can be enabled; the early submission sees the final signature');
+// (2026-10-15, the perf lane) the scene's programs reach the driver once the light signature is final, before the
+// allied builds, so they link while those run; every early slice releases its task
+for (const [before, after] of [['nightLighting', 'earlyCompileClosed'], ['earlyCompileClosed', 'allies'],
+  ['earlyCompileClosed', 'compileClosed']]) {
+  assert.ok(order.indexOf(before) >= 0 && order.indexOf(before) < order.indexOf(after), `${before} precedes ${after}`);
+}
+for (let index = 0; index < happy.calls.length; index++) {
+  if (happy.calls[index][0] === 'earlyCompileSlice') {
+    assert.deepEqual(happy.calls[index + 1], ['yield', true], 'every early submission slice releases its task');
+  }
+}
+assert.deepEqual(happy.calls[order.indexOf('earlyCompileClosed') + 1], ['yield', true],
+  'the early submission releases its task before the allied builds');
+assert.equal(happyTrace.deploymentEarlySubmission.submissionSlices, 3);
+assert.equal(typeof happyTrace.stages.earlyPrograms, 'number');
+// (2026-10-15) the vision (thermal) variants are the deferred countdown owner's, never linked under the cover
+assert.equal(happyTrace.visionProgramsDeferred, true);
+assert.equal(happyTrace.stages.visionPrograms, undefined);
 assert.ok(happy.lamps.current);
 assert.ok(happy.lamps.current.lights.every(light => light.intensity === 0), 'day starts with every manual light off');
 
@@ -653,8 +676,8 @@ for (const lateCancelWarm of ['cover', 'fx', 'forward']) {
 
 const nocturnal = createHarness({ night: true });
 assert.equal((await nocturnal.runtime.warm(Promise.resolve())).revealPrimed, true);
-assert.deepEqual(nocturnal.lightSignatures, [[2, 1], [2, 1]],
-  'real Three light signatures are final before BOTH allied and scene/player submissions');
+assert.deepEqual(nocturnal.lightSignatures, [[2, 1], [2, 1], [2, 1]],
+  'real Three light signatures are final before the early, allied and scene/player submissions');
 assert.equal(nocturnal.lamps.current.emitterCount, 2,
   'player collected before streaming and late ally appended without another prepare');
 assert.equal(nocturnal.calls.filter(([name]) => name === 'nightLighting').length, 1);
