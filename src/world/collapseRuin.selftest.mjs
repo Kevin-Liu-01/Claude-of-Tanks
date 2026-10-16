@@ -91,7 +91,7 @@ anatomy.intact = intact;
   assert.ok(self.heightP90 >= RUIN_HEIGHT_SHARE * intact.p90M * 0.95 && self.planShare >= RUIN_PLAN_SHARE * 0.95, 'its own measure agrees');
   assert.ok(writer.runs.some((r) => r.role === 'remnant' && r.bucket === 'regionalStone'), 'standing remains in the wall\'s structural layer');
   assert.ok(writer.runs.some((r) => r.role === 'rubble' && r.bucket === 'regionalStone'), 'the interior heaped in the pile\'s bucket');
-  assert.ok(writer.tris.every((v, i) => i % 3 !== 1 || (v >= -0.01 && v <= intact.topM + 0.01)), 'nothing below the ground or past the top');
+  assert.ok(writer.tris.every((v, i) => i % 3 !== 1 || (v >= -0.61 && v <= intact.topM + 0.01)), 'nothing deeper than a foot under the floor, nothing past the top');
   // the same seed writes the same ruin; another writes another
   const again = recorder();
   keepRuinStanding(anatomy, 1234, { mesh: again, pieces }, (w) => raftKit(anatomy, w));

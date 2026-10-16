@@ -34,6 +34,8 @@ const BINS = 64;
 const GRID = 48;
 /** A box's 24 vertices. */
 const BOX_VERTS = 24;
+/** How far a standing piece's foot sinks under the body's floor (a slope's downhill corner never shows daylight). */
+const FOOT_M = 0.6;
 
 // ---- the measuring writer (module scratch, grown, never shrunk) ----
 let runX = new Float64Array(4096), runY = new Float64Array(4096), runZ = new Float64Array(4096);
@@ -195,7 +197,7 @@ function cornerPiers(anatomy: StructureDamageAnatomy, rng: () => number, slot: F
     const height = Math.min(cap, ruinScale * share * (0.85 + rng() * 0.3));
     if (height < 0.6) continue;
     const legX = Math.min(hw, Math.max(0.8, anatomy.w * (0.16 + rng() * 0.12))), legZ = Math.min(hd, Math.max(0.8, anatomy.d * (0.16 + rng() * 0.12)));
-    let h0 = 0;
+    let h0 = -FOOT_M;
     for (let course = 0; course < 3; course++) {
       const top = height * (course === 0 ? 0.55 : course === 1 ? 0.82 : 1);
       const shrink = 1 - course * 0.28;
@@ -228,8 +230,9 @@ function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
       if (h < 0.4) continue;
       const u = (u0 + u1) / 2, hu = (u1 - u0) / 2 * (0.9 + rng() * 0.1);
       const shade = 0.8 + rng() * 0.18;
-      if (alongX) box(mesh, u, h / 2, side * (off - t / 2), hu, h / 2, t / 2, 0, slot.tint, shade);
-      else box(mesh, side * (off - t / 2), h / 2, u, t / 2, h / 2, hu, 0, slot.tint, shade);
+      const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2;
+      if (alongX) box(mesh, u, cy, side * (off - t / 2), hu, hy, t / 2, 0, slot.tint, shade);
+      else box(mesh, side * (off - t / 2), cy, u, t / 2, hy, hu, 0, slot.tint, shade);
     }
   }
   mesh.end();
@@ -251,7 +254,7 @@ function wallFragment(anatomy: StructureDamageAnatomy, rng: () => number, slot: 
   const height = Math.min(cap, ruinScale * (0.5 + rng() * 0.3));
   const courses = 2 + (rng() < 0.5 ? 1 : 0);
   const lean = rng() < 0.5 ? -1 : 1;
-  let y0 = 0;
+  let y0 = -FOOT_M;
   for (let c = 0; c < courses; c++) {
     const y1 = height * ((c + 1) / courses) * (c === courses - 1 ? 1 : 0.9 + rng() * 0.1);
     const l = run * (1 - c * 0.3);
