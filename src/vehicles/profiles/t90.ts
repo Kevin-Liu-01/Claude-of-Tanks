@@ -7670,13 +7670,19 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // through which the far track showed beneath the glacis like a second, offset hull. The T-90M's folded
   // self-entrenching blade now hangs under the lower-glacis toe, track to track, in the final (lifted, lengthened)
   // frame: a two-facet moldboard whose top laps the toe, braced back to the belly.
+  // 2026-10-16 (the 226 gate, authoritativeBots): the blade is equipment, painted like the hull ('hullEquipment', the
+  // same group and material), not structural armour. In 'hull' it carried the combat hull box 0.22 m below the belly,
+  // track to track (min y 0.42 -> 0.1995), so the lower-front plate's zone grew down over it: every shell the blade met
+  // scored as a lower-front hit, and the bots' moving-battle hit rate rose 75.0 % -> 78.9 % over the 0.76 ceiling.
+  // The fleet's rule (tools/gen-combat-anatomy.mjs): only the structural buckets calibrate shell collision; stowage,
+  // launchers and fittings keep out of those bounds.
   {
     const toeY = 0.43, toeZ = 2.79, halfW = 1.12;
-    P.add('hull', orientedSlab(
+    P.add('hullEquipment', orientedSlab(
       [-halfW, 0.19, toeZ + 0.07], [halfW, 0.19, toeZ + 0.07], [halfW, 0.19, toeZ + 0.035], [-halfW, 0.19, toeZ + 0.035],
       [-halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.02], [-halfW, 0.32, toeZ + 0.02],
     ));
-    P.add('hull', orientedSlab(
+    P.add('hullEquipment', orientedSlab(
       [-halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.02], [-halfW, 0.32, toeZ + 0.02],
       [-halfW, toeY + 0.012, toeZ + 0.025], [halfW, toeY + 0.012, toeZ + 0.025], [halfW, toeY + 0.012, toeZ - 0.02], [-halfW, toeY + 0.012, toeZ - 0.02],
     ));
