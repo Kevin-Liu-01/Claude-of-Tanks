@@ -258,11 +258,11 @@ export function groundCourse(sink: PartSink, x0: number, z0: number, x1: number,
 /**
  * The red earth trodden dark round a body's foot (the r2 rebuilds' groundCourse without its footing; the r2 sweep: the
  * old patch a 10 cm slab standing square out of the sand): a pad sunk in the ground whose edge feathers out into it, its
- * corners worn round. Dressing.
+ * corners worn round; closed underneath (a ray from under a bank meets its underside, not the back of its top). Dressing.
  */
 function earthPad(sink: PartSink, x0: number, z0: number, x1: number, z1: number, earth = 0.75): void {
   pad(sink, 'plaster2', x0 - earth, z0 - earth, x1 + earth, z1 + earth, [{ y: -0.09, inset: 0 }, { y: 0.015, inset: earth * 0.35 }], earth * 0.9,
-    { decor: true, shade: 0.6 });
+    { decor: true, shade: 0.6 }, true);
 }
 
 /** The hogan: one octagon in its plot, its door facing the sunrise, a woodpile and a water drum by it. */
