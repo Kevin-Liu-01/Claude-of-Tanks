@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Re-encode every committed world collision shard in the newest exact encoding (server/collisionManifestCodec.ts) without
- * rebuilding a world (the shards' storage budget, 2026-10-14: primitive-kind-dict-v3). Each shard's bytes are checked
+ * rebuilding a world (the shards' storage budget, 2026-10-14: primitive-kind-dict-v3; 2026-10-16: v4). Each shard's bytes are checked
  * against the index first; its decoded manifest is written again (tools/worldCollisionManifestFiles.mjs) and decoded
  * back, and every record, key, number and string must equal the original bit for bit (Object.is: no -0 for 0, no
  * rounding) before the index is rewritten with the new bytes and checksums. A shard already in the newest encoding is
