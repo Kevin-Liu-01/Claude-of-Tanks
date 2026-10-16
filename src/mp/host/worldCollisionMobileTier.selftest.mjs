@@ -45,5 +45,7 @@ same(hosted.getObstacles(), shard.getObstacles(), 'obstacle');
 same(hosted.getColliders(), shard.getColliders(), 'collider');
 assert.equal(hosted.getConcealment().length, shard.getConcealment().length, 'the same concealers');
 const walls = hosted.getObstacles().filter((record) => record.kind === 'field-wall').length;
+// (the integrator's 226 triage) the shard carries the PH.15 spans, so the phone host stands the walls themselves
+assert.ok(walls > 0, `${MAP}'s shard carries its field walls' crushable spans (${walls})`);
 console.log(`worldCollisionMobileTier.selftest: a host at the phone tier plays ${MAP} on the desktop's shard, `
   + `${hosted.getObstacles().length} obstacles (${walls} field-wall spans) and ${hosted.getColliders().length} colliders record for record`);

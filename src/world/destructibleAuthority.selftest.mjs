@@ -102,6 +102,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     updatePoleLod() {},
     // and so are the boulders: their near/far repartition (the scenery lane's cascade trim) is inert here too
     updateRockLod() {},
+    // and the field walls' near and far forms (PH.15: fieldBoundaryWorks.ts createFieldWallLod), none here
+    createFieldWallLod: () => () => {},
     _quat: new THREE.Quaternion(), _upAxis: new THREE.Vector3(0, 1, 0),
     _mat4: new THREE.Matrix4(), _posv: new THREE.Vector3(), _zeroScale: new THREE.Vector3(),
     // settlement pass 2 (2026-09-12): the runtime reads chimney tops for hearth smoke; none here.
