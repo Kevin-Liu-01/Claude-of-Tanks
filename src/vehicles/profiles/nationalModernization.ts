@@ -82,6 +82,8 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  const donor=nationalDonorTurret(c.id);
  if(donor){
   fitDonorTurret(P,c.id,()=>({ua:buildUkraineDonorKit,pl:buildPolandDonorKit,cn:buildChinaDonorKit} as const)[c.package as 'ua'|'pl'|'cn'](P,c));
+  // The Chinese concepts keep their rear field rack (cans and unditching log) on the native transom.
+  if(c.package==='cn')addRearFieldStowage(P,true);
   P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:7,concept:true,
    preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',
    primaryTurret:`${donor.donor}-turret-with-national-up-armour`,turretDonor:donor.donor};
