@@ -4221,7 +4221,16 @@
    "insideM2": 0.163,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "lorrain/rowhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T08:15:52.625Z"
+ "updatedAt": "2026-10-16T11:39:01.226Z"
 }

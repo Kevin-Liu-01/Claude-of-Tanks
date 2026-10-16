@@ -10,7 +10,7 @@
 // steel; the boiler house's banded steel stack; the reed-thatched or sheet-roofed sheep barns (koshary) of the steppe
 // herds; a shelled house.
 import {
-  PartSink, faceBox, facePanel, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePanel, facePoint, normalize3, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, emitRoof, holedBox, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
@@ -644,12 +644,13 @@ const conveyor: RegionalBuilder = (ctx) => {
     const len = Math.hypot(b[1] - a[1], b[2] - a[2]), dy = (b[1] - a[1]) / len, dz = (b[2] - a[2]) / len;
     for (let s = 1.4; s < len - 0.8; s += 2.2) {
       const y = a[1] + dy * s + 0.25, z = a[2] + dz * s;
-      sink.quad('dark', [1.01, y - 0.22, z + 0.28], [1.01, y - 0.22, z - 0.28], [1.01, y + 0.22, z - 0.28], [1.01, y + 0.22, z + 0.28], { decor: true });
-      // (the r2 sweep: the windows were dark plates on the gallery's side) each in its pressed-steel frame standing 12 cm
-      // out of the sheet, the dark glass in its reveal
+      // (the r2 sweep: the windows were dark plates on the gallery's side) each a louvred vent for the belt's dust: its
+      // pressed-steel frame standing out of the sheet, three slats across it sloped down and out
       const fr = { colour: STEEL_DARK, decor: true } as const;
       for (const dyy of [-0.25, 0.25]) sink.span('structureMetal', 1.0, y + dyy - 0.03, z - 0.31, 1.12, y + dyy + 0.03, z + 0.31, fr);
       for (const dzz of [-0.31, 0.31]) sink.span('structureMetal', 1.0, y - 0.22, z + dzz - 0.03, 1.12, y + 0.22, z + dzz + 0.03, fr);
+      for (const dyy of [-0.12, 0, 0.12]) sink.member('structureMetal', [1.03, y + dyy + 0.04, z - 0.28], [1.03, y + dyy + 0.04, z + 0.28], 0.11, 0.012,
+        normalize3([1, 1.1, 0]), { colour: shade(STEEL_DARK, 1.2), decor: true, exposed: true }, 0);
     }
     sink.member('structureMetal', [binS / 2, binH * 0.45, z0], [binS / 2 + 1.0, binH * 0.3, z0], 0.35, 0.35, [0, 0, 1], { colour: STEEL, decor: true, exposed: true }, 0);
     for (const ddz of [-0.25, 0.25]) sink.member('structureMetal', [-binS / 2 - 0.12, 2.2, z0 + ddz], [-binS / 2 - 0.12, binH, z0 + ddz], 0.04, 0.04, [-1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true }, 0);
