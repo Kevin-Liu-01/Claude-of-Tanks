@@ -1144,8 +1144,12 @@ const pajar: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The dovecote (palomar): a square whitewashed tower under a lean-to of tiles, its pigeon holes in rows under the
- * eaves above a projecting ledge, a low store against its front with its own door.
+ * The dovecote (palomar): a square whitewashed tower under a low hipped cap of tiles, its pigeon holes in rows under the
+ * eaves above a projecting ledge, a low store against its front with its own door. (Props census #22, Lane C
+ * 2026-10-16: "destroyed by destructionDefaultKit ... not its own pieces"; the holes were 1 cm dark plates.) Both bodies
+ * are houses now (house.ts buildHouse): the tower's pigeon holes are cut through its rubble wall in their reveals, each
+ * row on its landing ledge, and the store's door is cut through its front; the damage reads the tower and the store as
+ * two bodies.
  */
 const palomar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -1154,38 +1158,52 @@ const palomar: RegionalBuilder = (ctx) => {
   // the dovecote at the back of the base granary's measured box, its store reaching the box's front
   const bb = ctx.bounds;
   const S = clamp(Math.min(bb.maxX - bb.minX - 0.5, 3.8), 3.0, 3.8), half = S / 2;
-  const tz = bb.minZ + 0.25 + half, H = 5.8, xc = (bb.minX + bb.maxX) / 2;
-  sink.placed(0, xc, 0, 0, () => {
-  sink.span('stone', -half - 0.05, -0.4, tz - half - 0.05, half + 0.05, 0.4, tz + half + 0.05);
-  sink.span('plaster', -half, 0.4, tz - half, half, H, tz + half);
-  // the tower's low pyramid of tiles
+  const tz = bb.minZ + 0.25 + half, H = 5.8, xc = (bb.minX + bb.maxX) / 2, plinth = 0.4;
   const cap: RoofSpec = { kind: 'hip', pitchDeg: 24, eave: 0.25, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'round' };
-  sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(S, S, H, cap), cap));
-  const faces: Face[] = [
-    { origin: [0, 0, tz + half], u: [1, 0, 0], out: [0, 0, 1], width: S },
-    { origin: [half, 0, tz], u: [0, 0, -1], out: [1, 0, 0], width: S },
-    { origin: [-half, 0, tz], u: [0, 0, 1], out: [-1, 0, 0], width: S },
-  ];
-  for (const fc of faces) {
-    faceBox(sink, 'plaster', fc, 0, 4.25, 0.1, S + 0.1, 0.12, 0.2, { decor: true, shadow: true });
-    for (let r = 0; r < 3; r++) for (let k = 0; k < 5; k++) {
+  // the pigeon holes: three rows under the eaves on the three free faces, every other hole along a row
+  const rows = [4.55, 4.87, 5.19], holes: Opening[] = [];
+  for (const face of ['front', 'right', 'left'] as const) {
+    for (let r = 0; r < rows.length; r++) for (let k = 0; k < 5; k++) {
       if ((r + k) % 2) continue;
-      faceBox(sink, 'dark', fc, -S / 2 + 0.4 + k * (S - 0.8) / 4, 4.55 + r * 0.32, 0.005, 0.12, 0.14, 0.01, { decor: true });
+      holes.push({ face, storey: 0, kind: 'loft', u: -S / 2 + 0.4 + k * (S - 0.8) / 4, w: 0.13, h: 0.15, y0: rows[r] - plinth });
     }
   }
-  // the store in front, its own lean-to falling toward the plot's front
-  const s0 = tz + half, s1 = bb.maxZ - 0.22;
-  if (s1 - s0 > 1.2) {
-    // its walls a prism under the lean-to's slope, high against the tower
-    const L = s1 - s0 + 0.02, rise = (s1 - s0) * Math.tan(14 * Math.PI / 180);
-    const side: Face = { origin: [-half + 0.1, 0, (s0 - 0.02 + s1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: L };
-    wallPolygon(sink, 'plaster', side, [[-L / 2, -0.3], [L / 2, -0.3], [L / 2, 2.3], [-L / 2, 2.3 + rise]], S - 0.2);
-    const sl: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof' };
-    sink.placed(-Math.PI / 2, 0, 0, (s0 + s1) / 2, () => emitRoof(sink, roofGeometry(s1 - s0, S - 0.2, 2.3, sl), sl));
-    const sf: Face = { origin: [0, 0, s1], u: [1, 0, 0], out: [0, 0, 1], width: S - 0.2 };
-    doorUnit(sink, sf, 0, 0, 0.95, 1.85, { leaf: st.door, frame: { bucket: 'plaster2', width: 0.12, out: 0.015 }, steps: null, leafKind: 'plank' });
-  }
-  if (look() < 0.5) sink.dressing(st.mobile, () => chumbera(sink, half + 0.6, tz, 0.9, look));
+  // a small light at the back for the loft
+  holes.push({ face: 'back', storey: 0, kind: 'window', u: 0, w: 0.45, h: 0.55, y0: 3.4 - plinth });
+  const quiet: HouseDialect = {
+    // a pigeon hole is left empty: its reveal and the dark of the loft behind it
+    window: (s, face, o, y0) => { if (o.kind !== 'loft') windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'none' }, st.rng, 0); },
+    door: (s, face, o, y0, frame) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: st.door, frame: { bucket: st.band ?? 'plaster2', width: 0.12, out: 0.015 }, steps: null, leafKind: 'plank',
+    }, frame.floors[o.storey] + o.y0),
+  };
+  sink.placed(0, xc, 0, 0, () => {
+    sink.placed(0, 0, 0, tz, () => {
+      const frame = buildHouse(sink, {
+        w: S, d: S, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: H - plinth, wall: 'plaster' }], roof: cap,
+        openings: holes, chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'rubble',
+      }, quiet);
+      // the landing ledges: the broad one under the holes, a narrow one under each row
+      for (const name of ['front', 'right', 'left'] as const) {
+        const fc = frame.faces[name];
+        faceBox(sink, 'plaster', fc, 0, 4.25, 0.1, S + 0.1, 0.12, 0.2, { decor: true, shadow: true });
+        for (const y of rows.slice(1)) faceBox(sink, 'plaster', fc, 0, y - 0.035, 0.05, S - 0.3, 0.05, 0.1, { decor: true });
+      }
+    });
+    // the store in front, its lean-to falling toward the plot's front, its door cut through its front
+    const s0 = tz + half, s1 = bb.maxZ - 0.22;
+    if (s1 - s0 > 1.2) {
+      const L = s1 - s0, lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof' };
+      // built a quarter turned: the house's +x (its low eave, its door) toward the plot's front
+      sink.placed(-Math.PI / 2, 0, 0, (s0 + s1) / 2, () => {
+        buildHouse(sink, {
+          w: L, d: S - 0.2, plinth: null, storeys: [{ h: 2.3, wall: 'plaster' }], roof: lean,
+          openings: [{ face: 'right', storey: 0, kind: 'door', u: 0, w: 0.95, y0: 0, h: 1.85 }],
+          chimneys: [], gutters: null, verge: null, reveal: 0.25, core: 'rubble',
+        }, quiet);
+      });
+    }
+    if (look() < 0.5) sink.dressing(st.mobile, () => chumbera(sink, half + 0.6, tz, 0.9, look));
   });
   return sink.finish();
 };

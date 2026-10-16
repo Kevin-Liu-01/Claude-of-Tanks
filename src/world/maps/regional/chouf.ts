@@ -509,18 +509,58 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
   return sink.finish();
 };
 
-/** The terrace store (qabu): a vaulted stone room half into the slope, a flat roof, a low arched door. */
+/**
+ * The terrace store (qabu): a vaulted stone room half into the slope, a flat roof, a low arched door. (Props census #22,
+ * Lane C 2026-10-16: "three blank walls, no plinth, no lintel".) The terrace's rubble bank now rises against its back
+ * and sides to the roof's edge, held at the front corners by two dry-stone wing walls; the front carries the dressed
+ * quoins, the arched door cut through it under its ring of voussoirs and keystone, and two vents cut high either side.
+ */
 const store: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), look = st.look;
   const fp = footprint(ctx);
   const W = Math.max(2.0, fp.w - 0.1), D = Math.max(2.0, fp.d - 0.1);
-  const small = Math.min(W, D) < 3.2;
+  const small = Math.min(W, D) < 3.2, h = small ? 2.3 : 2.8;
+  const spring = Math.min(1.45, h - 0.85), dw = 0.9;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: spring, arch: { spring } }];
+  if (W >= 2.6) for (const s2 of [-1, 1]) openings.push({ face: 'front', storey: 0, kind: 'loft', u: s2 * (W / 2 - 0.6), w: 0.16, h: 0.42, y0: h - 0.95 });
+  const base = dialect({ ...st, litShare: 0 });
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: null, storeys: [{ h: small ? 2.3 : 2.8, wall: 'stone' }], roof: earthRoof(0.3), gableBucket: 'stone',
-      openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.8 }], chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
-    }, dialect({ ...st, litShare: 0 }));
+      w: W, d: D, plinth: null, storeys: [{ h, wall: 'stone' }], roof: earthRoof(0.3), gableBucket: 'stone',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null, core: 'rubble',
+    }, {
+      ...base,
+      // a vent is left empty (its reveal and the store's dark); the door's leaf fills the rectangle under the arch
+      window: (s, face, o, y0, fr) => { if (o.kind !== 'loft') base.window(s, face, o, y0, fr); },
+      door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.12, out: 0.04 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, 0),
+    });
+    const f = frame.faces.front;
+    // the ring of voussoirs over the door's arch and its keystone; the dressed quoins up the front corners
+    archHead(sink, f, 0, spring, dw / 2, 'stone', 0.2, 7);
+    faceBox(sink, 'stone', f, 0, spring + dw / 2 + 0.12, 0.05, 0.24, 0.3, 0.1, { decor: true, fineSides: true });
+    for (const s2 of [-1, 1]) for (let y = 0, k = 0; y < h - 0.2; y += 0.38, k++) {
+      const long = k % 2 === 0;
+      faceBox(sink, 'stone', f, s2 * (W / 2 - (long ? 0.26 : 0.16)), y + 0.18, 0.025, long ? 0.52 : 0.32, 0.34, 0.05, { decor: true, fineSides: true, shade: 1.06 });
+    }
+    // the terrace: its rubble bank up the back and sides to the wall heads, the wing walls holding it at the front
+    const top = frame.eaveY, g = -0.25, o = 1.8, zf = D / 2 - 0.35;
+    const bank = (pts: Vec3[], want: Vec3) => {
+      const [p0, p1, p2] = pts;
+      const ux = p1[0] - p0[0], uy = p1[1] - p0[1], uz = p1[2] - p0[2], vx = p2[0] - p0[0], vy = p2[1] - p0[1], vz = p2[2] - p0[2];
+      const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      sink.polygon('stone', n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 ? pts : [...pts].reverse(), { decor: true, tint: [0.92, 0.88, 0.8] });
+    };
+    const T = (x: number, z: number): Vec3 => [x, top, z], B = (x: number, z: number): Vec3 => [x, g, z];
+    bank([T(-W / 2, -D / 2), T(W / 2, -D / 2), B(W / 2 + o, -D / 2 - o), B(-W / 2 - o, -D / 2 - o)], [0, 1, -1]);
+    for (const s2 of [-1, 1]) {
+      bank([T(s2 * W / 2, -D / 2), T(s2 * W / 2, zf), B(s2 * (W / 2 + o), zf), B(s2 * (W / 2 + o), -D / 2 - o)], [s2, 1, 0]);
+      sink.span('stone', s2 > 0 ? W / 2 : -W / 2 - 0.65, -0.3, zf - 0.02, s2 > 0 ? W / 2 + 0.65 : -W / 2, top, zf + 0.38);
+      // the bank's face over the wing wall's back, down to the ground at its end
+      bank([T(s2 * W / 2, zf), B(s2 * (W / 2 + 0.65), zf), B(s2 * (W / 2 + o), zf)], [0, 0, 1]);
+    }
     if (!small) roller(sink, frame, look);
     spouts(sink, frame, ['back'], look);
   });

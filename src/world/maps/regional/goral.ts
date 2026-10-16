@@ -199,7 +199,7 @@ function freeRanges(y0: number, y1: number, cuts: ReadonlyArray<readonly [number
  * `look` keeps the old seams' draws (one a course a storey): those draws are the courses' tones, so what the builder
  * draws after the walls keeps its look.
  */
-function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly number[], look: () => number, win: WindowStyle,
+export function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly number[], look: () => number, win: WindowStyle,
   mobile: boolean, course = 0.27): void {
   const tones: number[] = [];
   for (const i of storeys) {
