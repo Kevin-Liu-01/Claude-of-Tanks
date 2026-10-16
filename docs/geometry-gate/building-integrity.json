@@ -654,7 +654,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.493,
+   "insideM2": 2.748,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -879,7 +879,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.43,
+   "insideM2": 3.036,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2265,7 +2265,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.819,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -4169,5 +4169,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-15T14:44:44.132Z"
+ "updatedAt": "2026-10-16T06:34:34.457Z"
 }
