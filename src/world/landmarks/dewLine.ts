@@ -7,6 +7,7 @@ import { LocalFrame, PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3
 import { bar, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
+import { angleMember, pier, shellBody, tubeMember, type ShellHole } from '../maps/regional/steelMembers.ts';
 
 const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026);
 const STEEL = rgb(0x7f868b), STEEL_DARK = rgb(0x4b5157), IRON = rgb(0x2c2e30), RADOME = rgb(0xeeeeea);
@@ -67,7 +68,17 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
   footing(sink, ctx, 0, 0, h + 0.3, h + 0.3, base);
   // the block, its trim band under the parapet and the rust at its foot
   // (in the regional buckets the arctic kit paints: its white panels, its safety-orange band — maps/regional/arctic.ts)
-  sink.span('plaster', -h, base, -h, h, H, h);
+  // (the looks lane's r2 sweep, 2026-10-16: nineteen dark panes and a door plate stuck on a solid block) the block's
+  // insulated skin with its window bands and its door cut through, each cut lined with its reveal, the pane or the
+  // steel leaf set back in it, a steel frame round it
+  const winY = [2.1, H - 2.2], winU = [-1, 0, 1].map((k) => k * S * 0.28);
+  const holes: ShellHole[] = [{ face: 's', u0: -0.55, u1: 0.55, y0: base + 0.01, y1: base + 2.1, fill: 'leaf', leaf: DOOR }];
+  for (const face of ['s', 'n', 'w'] as const) for (const y of winY) for (const u of winU) {
+    if (face === 's' && y < base + 2.2 && Math.abs(u) < 1.3) continue;
+    holes.push({ face, u0: u - 0.6, u1: u + 0.6, y0: y, y1: y + 0.9, fill: 'glass' });
+  }
+  shellBody(sink, 'plaster', -h, base, -h, h, H, h, holes, {},
+    { reveal: 0.16, inset: 0.09, revealBucket: 'structureMetal', revealColour: shade(PANEL, 0.72), frame: { bucket: 'structureMetal', colour: shade(PANEL, 0.6), width: 0.06, out: 0.035 } });
   sink.span('plaster2', -h - 0.05, H - 0.7, -h - 0.05, h + 0.05, H - 0.35, h + 0.05, { decor: true });
   sink.span('structureMetal', -h - 0.08, H, -h - 0.08, h + 0.08, H + 0.45, h + 0.08, { colour: shade(PANEL, 0.82) });
   // the panel battens (fine) and the window bands on every face but the stair's
@@ -76,23 +87,25 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
     { u: [-1, 0, 0], out: [0, 0, -1], o: [0, 0, -h] }, { u: [0, 0, 1], out: [-1, 0, 0], o: [-h, 0, 0] }];
   const at = (f: typeof frames[number], u: number, y: number, out: number): Vec3 =>
     [f.o[0] + f.u[0] * u + f.out[0] * out, y, f.o[2] + f.u[2] * u + f.out[2] * out];
+  const faceName = ['s', 'e', 'n', 'w'] as const;
   frames.forEach((f, i) => {
     const bat = Math.max(3, Math.round(S / 1.2));
+    // (the battens stop at the cuts: a batten runs up the skin in the pieces under, between and over the openings)
+    const cuts = holes.filter((c) => c.face === faceName[i]);
     for (let k = 1; k < bat; k++) {
       const u = -h + (k / bat) * S;
-      sink.box('structureMetal', at(f, u, (base + H - 0.7) / 2, 0.025), [0.03, (H - 0.7 - base) / 2, 0.025], { colour: shade(PANEL, 0.86), decor: true, fine: true },
+      let from = base;
+      const runs: Array<[number, number]> = [];
+      for (const c of cuts.filter((c) => u + 0.03 > c.u0 - 0.08 && u - 0.03 < c.u1 + 0.08).sort((a, b) => a.y0 - b.y0)) {
+        if (c.y0 - 0.08 - from > 0.1) runs.push([from, c.y0 - 0.08]);
+        from = Math.max(from, c.y1 + 0.08);
+      }
+      if (H - 0.7 - from > 0.1) runs.push([from, H - 0.7]);
+      for (const [ya, yb] of runs) sink.box('structureMetal', at(f, u, (ya + yb) / 2, 0.025), [0.03, (yb - ya) / 2, 0.025], { colour: shade(PANEL, 0.86), decor: true, fine: true },
         new LocalFrame(f.u, [0, 1, 0], f.out, [0, 0, 0]));
     }
-    if (i === 1) return;
-    for (const y of [2.1, H - 2.2]) {
-      for (let k = -1; k <= 1; k++) {
-        const u = k * S * 0.28;
-        sink.quad('glass', at(f, u - 0.6, y, 0.03), at(f, u + 0.6, y, 0.03), at(f, u + 0.6, y + 0.9, 0.03), at(f, u - 0.6, y + 0.9, 0.03), { decor: true });
-      }
-    }
   });
-  // the door and its canopy on the front, the steps up to it
-  sink.quad('structureMetal', [-0.55, base, h + 0.03], [0.55, base, h + 0.03], [0.55, base + 2.1, h + 0.03], [-0.55, base + 2.1, h + 0.03], { colour: DOOR, decor: true });
+  // the door's canopy on the front, the steps up to it
   sink.span('structureMetal', -1.1, base + 2.3, h, 1.1, base + 2.45, h + 1.3, { colour: shade(PANEL, 0.7), decor: true });
   for (let k = 0; k < 2; k++) sink.span('stone', -0.9, 0, h + 0.3 + k * 0.32, 0.9, base - k * 0.22, h + 0.62 + k * 0.32, { decor: true });
   // the outside stair to the roof on the right face (+x): a ladder in its cage
@@ -116,14 +129,19 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
   reflector(sink, drumTop, rb, yc, R, (S * 0.37 + H * 0.23 + R * 0.11) % 1);
   // (props lane A, E12: the radome tears open on the side a round came from when the tower is breached; its whips come
   // off at the first damage; landmarks/pieces.ts) (#21: its inside the radar's, deep behind the hole)
+  // (the looks lane's r2 sweep, 2026-10-16: the tower's collapse left a flat heap, the sphere gone with the mask) the
+  // sphere's skin and its beacon come down whole off the drum when the tower falls, onto the snow beside the heap; its
+  // panel courses carry the vessel, so a breach still tears the skin open round the radar as before
+  piece(sink, { name: 'radome-shell', kind: 'detach', at: 'collapse', fall: 'drop' }, (s) => {
+    revolve(s, 'plaster', 0, 0, profile, 20);
+    s.span('structureMetal', -0.12, yc + R - 0.05, -0.12, 0.12, yc + R + 0.35, 0.12, { colour: TRIM_RED, decor: true });
+  });
   piece(sink, { name: 'radome', kind: 'tank', at: 'breached', vessel: { x: 0, z: 0, y0: drumTop, y1: yc + R, r: R, contents: 'none', insideM: 1.6 } }, (sink) => {
-    revolve(sink, 'plaster', 0, 0, profile, 20);
-    // the panel courses (fine rings) and the beacon at the crown
+    // the panel courses (fine rings)
     for (const deg of [-10, 20, 48, 72]) {
       const a = deg * Math.PI / 180, r = R * Math.cos(a) + 0.02, y = yc + R * Math.sin(a);
       revolve(sink, 'structureMetal', 0, 0, [[r, y - 0.04], [r, y + 0.04]], 20, { colour: shade(RADOME, 0.84), decor: true, fine: true });
     }
-    sink.span('structureMetal', -0.12, yc + R - 0.05, -0.12, 0.12, yc + R + 0.35, 0.12, { colour: TRIM_RED, decor: true });
   });
   // whip antennas on the roof's corners
   for (const [k, [sx, sz]] of ([[-1, -1], [1, 1]] as const).entries()) {
@@ -196,11 +214,20 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   // the panels: 28 strips overlapping into one curved sheet, darker toward the edges (the curve reads in the light)
   piece(sink, { name: 'face', kind: 'lattice', at: 'collapse', fall: 'flat' }, (sink) => {
   const n = 28;
+  // (the looks lane's r2 sweep, 2026-10-16: the face was 28 loose boxes) one welded skin 12 cm thick, its 28 panels each
+  // a shade darker toward the edges, front and back on the parabola, closed along its head, foot and edges
+  const skin = (t: number, y: number, o: number): Vec3 => [t * bw, y, curve(t) + o];
   for (let k = 0; k < n; k++) {
-    const t = (k + 0.5) / n - 0.5, x = t * bw, ang = Math.atan(8 * SAG * t / bw);
-    const c: Vec3 = [x, foot + H / 2, curve(t)];
-    const f = new LocalFrame([Math.cos(ang), 0, Math.sin(ang)], [0, 1, 0], [-Math.sin(ang), 0, Math.cos(ang)], c);
-    sink.box('regionalPlaster', c, [bw / n / 2 + 0.06, H / 2, 0.06], { colour: shade(TROPO_PANEL, 0.84 + 0.16 * (1 - 4 * t * t)) }, f);
+    const ta = k / n - 0.5, tb = (k + 1) / n - 0.5, tm = (ta + tb) / 2, yb = foot, yt = foot + H;
+    const o = { colour: shade(TROPO_PANEL, 0.84 + 0.16 * (1 - 4 * tm * tm)) };
+    sink.quad('regionalPlaster', skin(ta, yb, 0.06), skin(tb, yb, 0.06), skin(tb, yt, 0.06), skin(ta, yt, 0.06), o);
+    sink.quad('regionalPlaster', skin(tb, yb, -0.06), skin(ta, yb, -0.06), skin(ta, yt, -0.06), skin(tb, yt, -0.06), o);
+    sink.quad('regionalPlaster', skin(ta, yt, 0.06), skin(tb, yt, 0.06), skin(tb, yt, -0.06), skin(ta, yt, -0.06), o);
+    sink.quad('regionalPlaster', skin(ta, yb, -0.06), skin(tb, yb, -0.06), skin(tb, yb, 0.06), skin(ta, yb, 0.06), o);
+  }
+  for (const [t, s] of [[-0.5, -1], [0.5, 1]] as const) {
+    const a = skin(t, foot, 0.06), b = skin(t, foot, -0.06), c = skin(t, foot + H, -0.06), d = skin(t, foot + H, 0.06);
+    sink.quad('regionalPlaster', ...(s > 0 ? [a, b, c, d] : [b, a, d, c]) as [Vec3, Vec3, Vec3, Vec3], { colour: shade(TROPO_PANEL, 0.84) });
   }
   const joint = { colour: shade(TROPO_WHITE, 0.62), decor: true } as const;
   for (let j = 1; j < 6; j++) {
@@ -214,10 +241,11 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     const t = k / n - 0.5;
     sink.member('structureMetal', [t * bw, foot, curve(t) + 0.07], [t * bw, foot + H, curve(t) + 0.07], 0.08, 0.03, [0, 0, 1], joint);
   }
-  for (const t of [-0.5, 0.5]) sink.member('structureMetal', [t * bw, foot - 0.2, curve(t) + 0.1], [t * bw, foot + H + 0.2, curve(t) + 0.1], 0.24, 0.2, [0, 0, 1], { colour: TROPO_STEEL, exposed: true });
+  // the edge ribs (angles, capped) and the rails along the head and the foot (angles along the curve)
+  for (const t of [-0.5, 0.5]) angleMember(sink, 'structureMetal', [t * bw, foot - 0.2, curve(t) + 0.1], [t * bw, foot + H + 0.2, curve(t) + 0.1], 0.24, 0.04, { colour: TROPO_STEEL }, 'both', [0, 0, 1]);
   for (const y of [foot - 0.1, foot + H + 0.1]) for (let k = 0; k < n; k++) {
     const ta = k / n - 0.5, tb = (k + 1) / n - 0.5;
-    sink.member('structureMetal', [ta * bw, y, curve(ta) + 0.1], [tb * bw, y, curve(tb) + 0.1], 0.2, 0.18, [0, 1, 0], { colour: TROPO_STEEL, decor: true, exposed: true });
+    angleMember(sink, 'structureMetal', [ta * bw, y, curve(ta) + 0.1], [tb * bw, y, curve(tb) + 0.1], 0.2, 0.035, { colour: TROPO_STEEL, decor: true }, 'none', [0, 1, 0]);
   }
   });
   // the space truss: verticals footed on the ground under them, six levels of chords, webs and the rear plane's X bracing
@@ -232,10 +260,11 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     const x = sx(t);
     for (const z of [rearZ, front(t)]) {
       const g = gl(x, z);
-      sink.member('structureMetal', [x, Math.min(g - 0.3, -0.6), z], [x, crest, z], z === rearZ ? 0.28 : 0.2, z === rearZ ? 0.28 : 0.2, [0, 0, 1], truss);
-      sink.span('stone', x - 0.45, g - 0.4, z - 0.45, x + 0.45, g + 0.25, z + 0.45, { decor: true });
+      // (the r2 sweep: hot-rolled angles on round concrete piers, where square bars stood on blocks)
+      angleMember(sink, 'structureMetal', [x, Math.min(g - 0.3, -0.6), z], [x, crest, z], z === rearZ ? 0.28 : 0.2, 0.035, truss, 'b', [0, 0, 1]);
+      pier(sink, 'stone', x, z, 0.42, g - 0.4, g + 0.25, g, { decor: true }, 6);
     }
-    for (const y of levels) if (y > Math.max(gl(x, rearZ), gl(x, front(t))) + 0.3) sink.member('structureMetal', [x, y, rearZ], [x, y, front(t)], 0.1, 0.1, [1, 0, 0], light);
+    for (const y of levels) if (y > Math.max(gl(x, rearZ), gl(x, front(t))) + 0.3) angleMember(sink, 'structureMetal', [x, y, rearZ], [x, y, front(t)], 0.1, 0.02, light, 'none', [1, 0, 0]);
   }
   for (let j = 0; j + 1 < stations.length; j++) {
     const ta = stations[j], tb = stations[j + 1], xa = sx(ta), xb = sx(tb);
@@ -243,23 +272,23 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     for (let l = 0; l < levels.length; l++) {
       const y = levels[l];
       if (y < lo) continue;
-      sink.member('structureMetal', [xa, y, rearZ], [xb, y, rearZ], 0.14, 0.14, [0, 1, 0], light);
-      sink.member('structureMetal', [xa, y, front(ta)], [xb, y, front(tb)], 0.12, 0.12, [0, 1, 0], light);
+      angleMember(sink, 'structureMetal', [xa, y, rearZ], [xb, y, rearZ], 0.14, 0.025, light, 'none', [0, 1, 0]);
+      angleMember(sink, 'structureMetal', [xa, y, front(ta)], [xb, y, front(tb)], 0.12, 0.022, light, 'none', [0, 1, 0]);
       if (l + 1 < levels.length) {
         const y2 = levels[l + 1];
-        sink.member('structureMetal', [xa, y, rearZ], [xb, y2, rearZ], 0.09, 0.09, [0, 0, 1], light);
-        sink.member('structureMetal', [xb, y, rearZ], [xa, y2, rearZ], 0.09, 0.09, [0, 0, 1], light);
+        angleMember(sink, 'structureMetal', [xa, y, rearZ], [xb, y2, rearZ], 0.09, 0.02, light, 'none', [0, 0, 1]);
+        angleMember(sink, 'structureMetal', [xb, y, rearZ], [xa, y2, rearZ], 0.09, 0.02, light, 'none', [0, 0, 1]);
         // (the depth diagonals are fine joinery: a phone leaves them out, its coarse share the desktop's)
         const xs = (j + l) % 2 === 0 ? xa : xb, ts = (j + l) % 2 === 0 ? ta : tb;
-        sink.member('structureMetal', [xs, y, rearZ], [xs, y2, front(ts)], 0.08, 0.08, [1, 0, 0], { ...light, fine: true });
+        angleMember(sink, 'structureMetal', [xs, y, rearZ], [xs, y2, front(ts)], 0.08, 0.018, { ...light, fine: true }, 'none', [1, 0, 0]);
       }
     }
   }
   // the raking legs: A-frames from footings 2.6 m behind the rear frame up to it at three fifths of the height
   for (const t of [-0.5, -0.25, 0.25, 0.5]) {
     const x = sx(t), g = gl(x, rearZ - 2.6);
-    sink.member('structureMetal', [x, Math.min(g - 0.3, -0.6), rearZ - 2.6], [x, foot + H * 0.6, rearZ], 0.24, 0.24, [1, 0, 0], truss);
-    sink.span('stone', x - 0.5, g - 0.4, rearZ - 3.1, x + 0.5, g + 0.25, rearZ - 2.1, { decor: true });
+    angleMember(sink, 'structureMetal', [x, Math.min(g - 0.3, -0.6), rearZ - 2.6], [x, foot + H * 0.6, rearZ], 0.24, 0.035, truss, 'none', [1, 0, 0]);
+    pier(sink, 'stone', x, rearZ - 2.6, 0.48, g - 0.4, g + 0.25, g, { decor: true }, 6);
   }
   });
   // the feed horn at the focus on its own tower: four tapering legs braced in X, a platform, the horn turned to the face
@@ -269,13 +298,13 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   const legAt = (s: number, y: number): number => s * tw * (1 - 0.4 * (y - gt + 0.3) / (legTop - gt + 0.3));
   for (const ox of [-1, 1]) for (const oz of [-1, 1]) {
     const g = gl(ox * tw, tz + oz * tw);
-    sink.member('structureMetal', [legAt(ox, g - 0.3), Math.min(g - 0.3, -0.6), tz + legAt(oz, g - 0.3)], [legAt(ox, legTop), legTop, tz + legAt(oz, legTop)],
-      0.16, 0.16, [1, 0, 0], { colour: GALV, exposed: true });
+    angleMember(sink, 'structureMetal', [legAt(ox, g - 0.3), Math.min(g - 0.3, -0.6), tz + legAt(oz, g - 0.3)], [legAt(ox, legTop), legTop, tz + legAt(oz, legTop)],
+      0.16, 0.025, { colour: GALV }, 'none', [ox, 0, oz]);
   }
   for (let y = gt + 0.6; y + 2.4 < legTop; y += 2.4) {
     for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
-      sink.member('structureMetal', [legAt(ax, y), y, tz + legAt(az, y)], [legAt(bx, y + 2.4), y + 2.4, tz + legAt(bz, y + 2.4)],
-        0.06, 0.06, [0, 1, 0], { colour: GALV, decor: true, fine: true, exposed: true });
+      angleMember(sink, 'structureMetal', [legAt(ax, y), y, tz + legAt(az, y)], [legAt(bx, y + 2.4), y + 2.4, tz + legAt(bz, y + 2.4)],
+        0.06, 0.012, { colour: GALV, decor: true, fine: true }, 'none', [0, 1, 0]);
     }
   }
   sink.span('structureMetal', -0.8, legTop - 0.1, tz - 0.8, 0.8, legTop + 0.05, tz + 0.8, { colour: GALV });
@@ -287,13 +316,17 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   const mx0 = bw / 2 - 5.4, mx1 = bw / 2 - 1.2, mz1 = fz + 1.6, mz0 = mz1 - 2.8;
   const gm = Math.max(gl(mx0, mz0), gl(mx1, mz0), gl(mx0, mz1), gl(mx1, mz1)), floor = gm + 1.1;
   for (const px of [mx0 + 0.3, mx1 - 0.3]) for (const pz of [mz0 + 0.3, mz1 - 0.3]) {
-    bar(sink, 'structureMetal', [px, Math.min(gl(px, pz) - 0.3, -0.6), pz], [px, floor, pz], 0.2, { colour: STEEL_DARK });
+    tubeMember(sink, 'structureMetal', [px, Math.min(gl(px, pz) - 0.3, -0.6), pz], [px, floor, pz], 0.11, 6, { colour: STEEL_DARK }, 'none');
   }
-  sink.span('plaster', mx0, floor, mz0, mx1, floor + 2.8, mz1);
+  // (the r2 sweep: a dark door plate stood on a plain box) the module's insulated skin with its door cut through, the
+  // steel leaf set back in the reveal, the frame round the cut
+  const mcx = (mx0 + mx1) / 2;
+  shellBody(sink, 'plaster', mx0, floor, mz0, mx1, floor + 2.8, mz1,
+    [{ face: 's', u0: mx0 + 0.8 - mcx, u1: mx0 + 1.7 - mcx, y0: floor + 0.02, y1: floor + 2.0, fill: 'leaf', leaf: DOOR }], {},
+    { reveal: 0.14, inset: 0.08, revealBucket: 'structureMetal', revealColour: shade(PANEL, 0.7), frame: { bucket: 'structureMetal', colour: STEEL_DARK, width: 0.07, out: 0.04 } });
   sink.span('plaster2', mx0 - 0.04, floor + 2.3, mz0 - 0.04, mx1 + 0.04, floor + 2.6, mz1 + 0.04, { decor: true });
   sink.span('structureMetal', mx0 - 0.1, floor + 2.8, mz0 - 0.1, mx1 + 0.1, floor + 2.95, mz1 + 0.1, { colour: STEEL });
   if (ctx.snowCap) sink.span('structureMetal', mx0, floor + 2.95, mz0, mx1, floor + 3.08, mz1, { colour: SNOW, decor: true });
-  sink.quad('structureMetal', [mx0 + 0.8, floor + 0.02, mz1 + 0.03], [mx0 + 1.7, floor + 0.02, mz1 + 0.03], [mx0 + 1.7, floor + 2.0, mz1 + 0.03], [mx0 + 0.8, floor + 2.0, mz1 + 0.03], { colour: DOOR, decor: true });
   const gs = gl(mx0 + 1.25, mz1 + 0.6);
   for (let k = 0; k < 4; k++) sink.span('structureMetal', mx0 + 0.75, gs + k * floor / 4 - 0.1, mz1 + 0.2 + (3 - k) * 0.28, mx0 + 1.75, gs + k * floor / 4, mz1 + 0.48 + (3 - k) * 0.28, { colour: STEEL_DARK, decor: true });
   // (the connectivity sweep, 217: the steps hung a riser apart in air) their two stringers, from the ground before the
@@ -327,17 +360,21 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
   // (props lane A, E12: an open frame, read as members — landmarks/damage.ts; the mast one piece, its legs unbroken, that
   // goes over whole when it falls; its crown drops off when it is breached, its dishes at the first damage;
   // landmarks/pieces.ts)
-  piece(sink, { name: 'mast', kind: 'lattice', at: 'collapse', fall: 'drop' }, (sink) => {
-  for (let b = 0; b < bands; b++) {
+  // (the looks lane's r2 sweep, 2026-10-16: the whole mast went over flat) a guyed mast folds where its middle guys are
+  // made fast: the lower three bands stand on their lowest guys, leaning, and the head goes over
+  const lowBands = 3;
+  for (const [name, b0, b1, fall] of [['mast', 0, lowBands, 'slump'], ['mast-head', lowBands, bands, 'drop']] as const) piece(sink, { name, kind: 'lattice', at: 'collapse', fall }, (sink) => {
+  for (let b = b0; b < b1; b++) {
     const y0 = g0 + 0.45 + b * band, y1 = y0 + band, colour = b % 2 ? AVI_WHITE : AVI_ORANGE;
-    for (let i = 0; i < 3; i++) bar(sink, 'structureMetal', legAt(i, y0), legAt(i, y1), 0.1, { colour });
+    // (the looks lane's r2 sweep, 2026-10-16) the legs steel tube, the girts and the diagonals angles
+    for (let i = 0; i < 3; i++) tubeMember(sink, 'structureMetal', legAt(i, y0), legAt(i, y1), 0.06, 6, { colour }, b === bands - 1 ? 'b' : 'none');
     const panels = Math.max(1, Math.round(band / 1.5));
     for (let p = 0; p < panels; p++) {
       const ya = y0 + (p / panels) * band, yb = y0 + ((p + 1) / panels) * band;
       for (let i = 0; i < 3; i++) {
         const j = (i + 1) % 3;
-        bar(sink, 'structureMetal', legAt(i, yb), legAt(j, yb), 0.05, { colour, decor: true, fine: p % 2 === 1 });
-        bar(sink, 'structureMetal', legAt(i, ya), legAt(j, yb), 0.04, { colour, decor: true, fine: true });
+        angleMember(sink, 'structureMetal', legAt(i, yb), legAt(j, yb), 0.05, 0.012, { colour, decor: true, fine: p % 2 === 1 }, 'none', [0, 1, 0]);
+        angleMember(sink, 'structureMetal', legAt(i, ya), legAt(j, yb), 0.04, 0.01, { colour, decor: true, fine: true }, 'none');
       }
     }
   }
@@ -360,9 +397,12 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
   const ghTop = Math.max(gl(hx - 1.2, -1.1), gl(hx + 1.2, -1.1), gl(hx - 1.2, 1.1), gl(hx + 1.2, 1.1));
   foot(sink, hx, 0, 1.3, 1.2, gh, Math.max(0.15, ghTop - gh + 0.15));
   const hy = Math.max(gh + 0.15, ghTop + 0.15);
-  sink.span('structureMetal', hx - 1.2, hy, -1.1, hx + 1.2, hy + 2.4, 1.1, { colourAt: weathered(PANEL_CREAM, hy, hy + 2.4) });
+  // (the looks lane's r2 sweep, 2026-10-16: a dark door plate stuck on a solid box) the hut's skin with its door cut
+  // through, the leaf set back in the reveal, the frame round the cut
+  shellBody(sink, 'structureMetal', hx - 1.2, hy, -1.1, hx + 1.2, hy + 2.4, 1.1,
+    [{ face: 's', u0: -0.45, u1: 0.45, y0: hy + 0.05, y1: hy + 2.0, fill: 'leaf', leaf: DOOR }], { colourAt: weathered(PANEL_CREAM, hy, hy + 2.4) },
+    { reveal: 0.1, inset: 0.06, revealColour: shade(PANEL_CREAM, 0.7), frame: { bucket: 'structureMetal', colour: STEEL_DARK, width: 0.06, out: 0.03 } });
   sink.span('structureMetal', hx - 1.3, hy + 2.4, -1.2, hx + 1.3, hy + 2.6, 1.2, { colour: TRIM_RED });
-  sink.quad('structureMetal', [hx - 0.45, hy + 0.05, 1.12], [hx + 0.45, hy + 0.05, 1.12], [hx + 0.45, hy + 2.0, 1.12], [hx - 0.45, hy + 2.0, 1.12], { colour: DOOR, decor: true });
   if (ctx.snowCap) sink.span('structureMetal', hx - 1.2, hy + 2.6, -1.1, hx + 1.2, hy + 2.72, 1.1, { colour: SNOW, decor: true });
   // the cable tray from the hut to the mast
   bar(sink, 'structureMetal', [hx - 1.2, hy + 2.0, 0], [r, g0 + 2.0, 0], 0.12, { colour: STEEL_DARK, decor: true });
