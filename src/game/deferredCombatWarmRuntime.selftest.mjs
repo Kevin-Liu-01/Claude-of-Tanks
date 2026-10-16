@@ -26,7 +26,7 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
   }),
-  *warmVisionSteps() { events.push('vision'); yield; },
+  *warmVisionSteps() { events.push('vision'); yield; events.push('vision-step-2'); },
   combatWarm: {
     cancelRare() { events.push('cancel-rare'); },
     async warmOpeningChunked(_budget, yieldForBudget) {
@@ -56,7 +56,7 @@ const owner = createDeferredCombatWarmRuntime({
   },
   now: () => ++clock,
   yieldFrame: async () => { events.push('first-frame'); },
-  createYielder: () => async () => { events.push('yield'); },
+  createYielder: () => async (force) => { events.push(force ? 'yield-forced' : 'yield'); },
 });
 
 const first = owner.schedule(3);
@@ -64,7 +64,8 @@ assert.equal(owner.schedule(3), first, 'one battle generation owns one warm prom
 await first;
 assert.equal(pending, false, 'completed deployment warm releases rollout gate');
 assert.equal(owner.isActive(), false, 'completed queue releases its ownership slot');
-assert.deepEqual(events.slice(0, 6), ['first-frame', 'enemy-visuals', 'yield', 'vision', 'yield', 'opening']);
+assert.deepEqual(events.slice(0, 7), ['first-frame', 'enemy-visuals', 'yield-forced', 'vision', 'yield-forced', 'vision-step-2', 'opening'],
+  'the vision programs\' steps each take a real frame (their strict preparation polls its links once a step)');
 assert.equal(events.filter((event) => event === 'route').length, 3,
   'route preparation drains until the first empty job');
 assert.equal(events.filter((event) => event === 'terrain-lookahead').length, 3,
