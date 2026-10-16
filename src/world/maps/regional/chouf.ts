@@ -78,8 +78,11 @@ function stateFor(ctx: RegionalBuildContext): ChoufState {
  */
 function roundHead(sink: PartSink, face: Face, u: number, spring: number, w: number, fan: 'glass' | 'curtain' | 'dark', ring = 0.13): void {
   const r = w / 2, n = 8;
-  const pts: Vec3[] = [facePoint(face, u, spring, 0.012)];
-  for (let k = 0; k <= n; k++) { const a = Math.PI * k / n; pts.push(facePoint(face, u + Math.cos(a) * r, spring + Math.sin(a) * r, 0.012)); }
+  // (props census r2 sweep, Lane C 2026-10-16: the fanlight was a half disc laid on the uncut stone over the light, a
+  // painted plate) an opening cut with its arch takes the fanlight at the back of its reveal; elsewhere it stays on the face
+  const fo = sink.recess > 0 ? -sink.recess + 0.03 : 0.012;
+  const pts: Vec3[] = [facePoint(face, u, spring, fo)];
+  for (let k = 0; k <= n; k++) { const a = Math.PI * k / n; pts.push(facePoint(face, u + Math.cos(a) * r, spring + Math.sin(a) * r, fo)); }
   sink.polygon(fan, pts, { decor: true, ...(fan === 'curtain' ? { window: face.out } : {}) });
   for (let k = 0; k < n; k++) {
     const a0 = Math.PI * k / n, a1 = Math.PI * (k + 1) / n, R = r + ring;
@@ -113,20 +116,33 @@ function archHaunches(sink: PartSink, face: Face, u: number, ys: number, r: numb
   }
 }
 
+/** Run `body` with the sink's reveal depth set to `recess` (an uncut head reads as on the face). */
+function withRecess(sink: PartSink, recess: number, body: () => void): void {
+  const prior = sink.recess;
+  sink.recess = recess;
+  try { body(); } finally { sink.recess = prior; }
+}
+
 function dialect(st: ChoufState): HouseDialect {
   return {
     window: (sink, face, o, y0) => {
       if (o.kind === 'loft') { windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'none' }, st.rng, 0); return; }
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, st.window, st.rng, st.litShare);
-      // the round head over the rectangular light: the arched window of the mountain house
-      roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, paneBucket(st.rng, 0.3));
+      // the round head over the rectangular light: the arched window of the mountain house (cut with its arch where the
+      // builder gives the opening one, the fanlight then in the reveal)
+      const fan = paneBucket(st.rng, 0.3);
+      if (o.arch) withRecess(sink, sink.recess, () => roundHead(sink, face, o.u, y0 + o.y0 + (o.arch!.spring ?? o.h), o.w, fan));
+      else withRecess(sink, 0, () => roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, fan));
     },
     door: (sink, face, o, y0, frame) => {
       const big = o.w >= 1.3;
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
         leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
       }, frame.floors[o.storey] + o.y0);
-      if (big || o.kind === 'gate') roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'glass', 0.18);
+      if (big || o.kind === 'gate') {
+        if (o.arch) withRecess(sink, sink.recess, () => roundHead(sink, face, o.u, y0 + o.y0 + (o.arch!.spring ?? o.h), o.w, 'glass', 0.18));
+        else withRecess(sink, 0, () => roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'glass', 0.18));
+      }
     },
   };
 }
@@ -180,9 +196,13 @@ function roller(sink: PartSink, frame: HouseFrame, look: () => number): void {
  * together, two slender marble columns between them, a balcony slab and its iron rail under them (dressing; the
  * three openings are the house's own, cut into the wall).
  */
-function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () => number): void {
+function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () => number, reveal = 0): void {
   const w = 0.82, h = 2.0, step = 0.98, sill = 0.35;
-  for (const k of [-1, 0, 1]) roundHead(sink, face, u + k * step, floorY + sill + h + 0.02, w, paneBucket(rng, 0.5), 0.1);
+  // (the r2 sweep: the lights are cut with their arches, `reveal` deep: the fanlights at the back of it)
+  for (const k of [-1, 0, 1]) {
+    const fan = paneBucket(rng, 0.5);
+    withRecess(sink, reveal, () => roundHead(sink, face, u + k * step, floorY + sill + h + (reveal > 0 ? 0 : 0.02), w, fan, 0.1));
+  }
   for (const k of [-0.5, 0.5]) {
     sink.cylinder('stone', facePoint(face, u + k * step, floorY + sill, 0.1), 'y', h + 0.05, 0.075, 8, { colour: MARBLE, decor: true });
     faceBox(sink, 'stone', face, u + k * step, floorY + sill + h + 0.08, 0.1, 0.24, 0.14, 0.2, { decor: true });
@@ -191,7 +211,8 @@ function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () 
   faceBox(sink, 'stone', face, u, floorY - 0.06, 0.45, step * 3 + 0.5, 0.16, 0.9, { decor: true });
   for (const k of [-1.5, 0, 1.5]) faceBox(sink, 'stone', face, u + k * step * 0.95, floorY - 0.3, 0.3, 0.2, 0.36, 0.6, { decor: true });
   faceBox(sink, 'structureMetal', face, u, floorY + 0.95, 0.86, step * 3 + 0.45, 0.04, 0.04, { colour: IRON, decor: true });
-  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.5, 0.86, 0.025, 0.9, 0.025, { colour: IRON, decor: true, fine: true });
+  // (the r2 sweep: the balusters stood 3 cm over the slab, floating) on it
+  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.49, 0.86, 0.025, 0.94, 0.025, { colour: IRON, decor: true, fine: true });
 }
 
 interface DarOpts { storeys: 1 | 2; roof: 'tile' | 'earth'; qanatir?: boolean; stair?: boolean }
@@ -232,6 +253,14 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       for (const o of windowRhythm(rear, s, streetLen, { w: 0.8, h: 1.35, sill: 1.0, spacing: 2.8, margin: 1.2, max: 2 })) openings.push(o);
     }
     const triple = new Set(opts.qanatir ? [-0.98, 0, 0.98].map((k) => (doorU + k).toFixed(2)) : []);
+    // (props census r2 sweep, Lane C 2026-10-16) the arched lights and the big door cut with their arches (the round
+    // heads' fanlights were painted on the stone over them); the triple arch's lights keep the qanatir's own heads
+    for (let k = 0; k < openings.length; k++) {
+      const o = openings[k];
+      const tripled = o.storey === 1 && o.face === street && triple.has(o.u.toFixed(2));
+      if (o.kind === 'window' || (o.kind === 'door' && o.w >= 1.3)) openings[k] = { ...o, arch: {} };
+      void tripled;
+    }
     sink.placed(0, shift, 0, 0, () => {
       const frame = buildHouse(sink, {
         // (round 2, wave 123: "no plinths"): the mountain house's high base course, standing proud of the walls
@@ -250,7 +279,7 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       });
       // a string course between the storeys and the cornice under the eaves
       if (opts.storeys > 1) sink.band('stone', -W / 2 - 0.05, frame.floors[1] - 0.12, -D / 2 - 0.05, W / 2 + 0.05, frame.floors[1] + 0.06, D / 2 + 0.05, { decor: true });
-      if (opts.qanatir && opts.storeys > 1) qanatir(sink, frame.faces[street], doorU, frame.floors[1], rng);
+      if (opts.qanatir && opts.storeys > 1) qanatir(sink, frame.faces[street], doorU, frame.floors[1], rng, 0.3);
       if (opts.roof === 'earth') { roller(sink, frame, look); spouts(sink, frame, ['left', 'back'], look); }
       // the outside stair up the +x side to the upper floor (or the roof), its parapet (structural wedge, dressed treads)
       if (stair) {
