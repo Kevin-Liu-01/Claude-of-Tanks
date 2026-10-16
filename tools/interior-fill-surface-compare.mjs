@@ -29,7 +29,8 @@
 // view along d holds every ray along d, so it covers every perspective camera, pose and turret-off tumble) at
 // --px-per-voxel pixels per fill voxel, back faces culled as the FrontSide fill material culls them, edges inclusive.
 // The gate: no pixel where the drawn mesh's nearest surface is deeper or nearer than the closed boxes' by more than a
-// micron, covers what they do not or misses what they cover (depth ties on shared edges are counted apart). Each
+// micron, covers what they do not or misses what they cover (sub-micron depth ties, and pixel centres within 1e-4 px of
+// an outline, where the two meshes' few-ulp vertex rounding decides, are counted apart). Each
 // component is rigid, so with other geometry only adding occluders this is every live pose. --snap=<n> also rasterises
 // both with vertices snapped to 1/n pixel and the top-left fill rule (the GPU's: n = 256), front faces counting +1 and
 // back faces -1 per pixel: a closed surface sums to zero at every pixel (each ray in leaves again), and a crack, where a
@@ -250,7 +251,7 @@ async function raster() {
   const ids = flag('all') ? Object.keys(records).sort() : opt('ids', '').split(',').filter(Boolean);
   if (!ids.length) throw new Error('raster needs --all or --ids');
   const DIRS = Number(opt('dirs', '96')), PX_PER_VOXEL = Number(opt('px-per-voxel', '3')), SNAP = Number(opt('snap', '0'));
-  const MAX_RES = 2048, TIE = 1e-6;
+  const MAX_RES = 2048, TIE = 1e-6, EDGE_SLACK = 1e-4;
   // Fibonacci sphere: every direction class, below the hull included; a fixed irrational roll keeps pixel grids off
   // the lattice axes so the count is not an artefact of one alignment
   const dirs = [];
@@ -263,7 +264,7 @@ async function raster() {
    * inclusive. Snapped: vertices on a 1/snap pixel grid, the top-left rule, front faces +1 and back faces -1 into
    * `parity` (every quantity is then an exact multiple of 1/snap, so a shared edge is owned exactly once).
    */
-  function rasterise(P, d, right, up, res, scale, depth, parity, snap) {
+  function rasterise(P, d, right, up, res, scale, depth, parity, snap, slack = 0) {
     if (depth) depth.fill(Infinity);
     if (parity) parity.fill(0);
     const X = [0, 0, 0], Y = [0, 0, 0], Z = [0, 0, 0];
@@ -290,6 +291,7 @@ async function raster() {
       const inv = 1 / area;
       const own = (xa, ya, xb, yb) => (yb - ya) > 0 || ((yb - ya) === 0 && (xb - xa) < 0);
       const own0 = own(X[1], Y[1], X[2], Y[2]), own1 = own(X[2], Y[2], X[0], Y[0]), own2 = own(X[0], Y[0], X[1], Y[1]);
+      const len0 = Math.hypot(X[2] - X[1], Y[2] - Y[1]), len1 = Math.hypot(X[0] - X[2], Y[0] - Y[2]), len2 = Math.hypot(X[1] - X[0], Y[1] - Y[0]);
       const minX = Math.max(0, Math.floor(Math.min(X[0], X[1], X[2]))), maxX = Math.min(res - 1, Math.ceil(Math.max(X[0], X[1], X[2])));
       const minY = Math.max(0, Math.floor(Math.min(Y[0], Y[1], Y[2]))), maxY = Math.min(res - 1, Math.ceil(Math.max(Y[0], Y[1], Y[2])));
       for (let py = minY; py <= maxY; py++) {
@@ -299,7 +301,8 @@ async function raster() {
           const e0 = (X[2] - X[1]) * (sy - Y[1]) - (Y[2] - Y[1]) * (sx - X[1]);
           const e1 = (X[0] - X[2]) * (sy - Y[2]) - (Y[0] - Y[2]) * (sx - X[2]);
           const e2 = (X[1] - X[0]) * (sy - Y[0]) - (Y[1] - Y[0]) * (sx - X[0]);
-          if (e0 < 0 || e1 < 0 || e2 < 0) continue;
+          // `slack` (px) widens every edge: the coverage a mesh would have if its vertices moved by rounding alone
+          if (slack ? (e0 < -slack * len0 || e1 < -slack * len1 || e2 < -slack * len2) : (e0 < 0 || e1 < 0 || e2 < 0)) continue;
           const p = py * res + px;
           if (snap) { if ((e0 === 0 && !own0) || (e1 === 0 && !own1) || (e2 === 0 && !own2)) continue; parity[p] += sign; continue; }
           const z = (e0 * Z[0] + e1 * Z[1] + e2 * Z[2]) * inv;
@@ -336,6 +339,7 @@ async function raster() {
       const centred = (P) => { const Q = new Float64Array(P.length); for (let i = 0; i < P.length; i++) Q[i] = P[i] - centre[i % 3]; return Q; };
       const PC = centred(C), PD = centred(D);
       const zC = new Float64Array(res * res), zD = new Float64Array(res * res), parity = SNAP ? new Int32Array(res * res) : null;
+      let zLoose = null;
       for (const d of dirs) {
         const up0 = Math.abs(d[1]) < 0.99 ? [0, 1, 0] : [1, 0, 0];
         let right = [up0[1] * d[2] - up0[2] * d[1], up0[2] * d[0] - up0[0] * d[2], up0[0] * d[1] - up0[1] * d[0]];
@@ -345,11 +349,20 @@ async function raster() {
         [right, up] = [right.map((q, i) => cr * q + sr * up[i]), up.map((q, i) => -sr * right[i] + cr * q)];
         rasterise(PC, d, right, up, res, scale, zC, null, 0);
         rasterise(PD, d, right, up, res, scale, zD, null, 0);
+        // A pixel centre within rounding of an outline (the surface's vertices are origin + index · voxel, the boxes'
+        // centre ± half a size: the same lattice points to a few ulps) may be in one mesh and not the other: such a
+        // pixel is checked again against the other mesh with its edges widened by EDGE_SLACK px, and counted as a tie.
+        let looseFor = null;
+        const coverTie = (P, p) => {
+          zLoose ??= new Float64Array(res * res);
+          if (looseFor !== P) { rasterise(P, d, right, up, res, scale, zLoose, null, 0, EDGE_SLACK); looseFor = P; }
+          return zLoose[p] !== Infinity;
+        };
         for (let p = 0; p < res * res; p++) {
           const c = zC[p], k = zD[p];
           if (c !== Infinity) row.closedPx++;
-          if (c === Infinity) { if (k !== Infinity) row.extra++; continue; }
-          if (k === Infinity) row.missing++;
+          if (c === Infinity) { if (k !== Infinity) { if (coverTie(PC, p)) row.ties++; else row.extra++; } continue; }
+          if (k === Infinity) { if (coverTie(PD, p)) row.ties++; else row.missing++; }
           else if (k > c + TIE) row.deeper++;
           else if (k < c - TIE) row.nearer++;
           else if (k !== c) row.ties++;
@@ -373,7 +386,7 @@ async function raster() {
     }
   }
   console.log(`raster: ${total.tanks} tanks, ${total.components} components, ${total.views} views, ${total.closedPx} closed-box fill px: `
-    + `drawn surface deeper at ${total.deeper} px, nearer at ${total.nearer}, missing at ${total.missing}, extra at ${total.extra} (sub-micron depth differences ${total.ties})`
+    + `drawn surface deeper at ${total.deeper} px, nearer at ${total.nearer}, missing at ${total.missing}, extra at ${total.extra} (ties: sub-micron depth or within ${EDGE_SLACK} px of an outline, ${total.ties})`
     + (SNAP ? `; snapped to 1/${SNAP} px, top-left rule: front and back coverings differ at ${total.parityDrawn} px of the drawn surface, `
       + `${total.parityClosed} of the closed boxes` : ''));
   const json = opt('json', '');
