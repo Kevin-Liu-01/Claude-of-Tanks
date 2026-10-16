@@ -2169,6 +2169,26 @@ Receipt: `predictionStall.selftest` (the real sampler, the real authority input 
 movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
 against 2.1 m and 1.5 m for the two old behaviours).
 
+### 13.23 The seat's movement checkpoint as a changed-value mask (MP stream, wire 7, 2026-10-15)
+
+**Why.** The §7 side-by-side (Sept 30 against main, built sites, Verdant, two peers) read the host's uplink at 112 against
+135 kbit/s. A peer's downlink by message (the in-process P2P set-up, `$SP/mp/uplink-probe.mjs`) shows where: snapshot
+deltas averaged 329 bytes on Sept 30 and 380 on main, events and keyframes alike. The viewer section carries the
+seat's movement checkpoint whole on every snapshot. Physics versions 3-8 grew it from 45 to 63 `f32` values, which is
++72 bytes a snapshot to every seat.
+
+**What.** On a delta whose baseline holds a viewer on the same checkpoint version and length, the checkpoint is a mask
+of the values that changed since the baseline's (compared as `f32`) and those values (`src/mp/wire/README.md`). A
+driving hull changes ~36 of the 63 between 20 Hz snapshots, a stopped one ~20. Keyframes and every baseline the mask
+cannot follow write the full form. WIRE_VERSION 6 -> 7: a seat and a host on different layouts meet the same-wire build
+check's "refresh" refusal (`matchBuildGate`). The PROTOCOL_VERSION bump is the coordinator's: it rides 225's ids-bulk
+bump to 8, or takes the next one.
+
+Receipts: `viewerMask.selftest` checks exact `f32` round trips (the sign of zero kept), the full form wherever the
+baseline cannot follow, a typed `missing_baseline`, and on the real movement model the viewer at 174 bytes a snapshot
+driving and 114 stopped, against 274 whole. The probe's snapshot downlink for two peers reads Sept 30 108, main 125,
+masked 95 kbit/s (deltas 329 / 380 / 282 bytes).
+
 **The browser's wake order (2026-10-15, the §7 side-by-side).** The receipt's seat read the authority only after its
 waking frame, and dropped what reached it while stalled. A browser queues those rows as message tasks, and they run
 before the waking frame or after it. On the e2e's seat-pause probe (built site, B's main thread blocked while it drives)
