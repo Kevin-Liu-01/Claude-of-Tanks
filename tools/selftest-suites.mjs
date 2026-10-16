@@ -1451,6 +1451,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/liquidMarshSurface.selftest.mjs',
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
+    // props lane A #19 (2026-10-15): the paved pads' render-only dressing (no step in the drive surface)
+    'src/world/hardstandDressing.selftest.mjs',
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
@@ -1553,6 +1555,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
+    // props lane A #19 (2026-10-15): the field's fallen timber by species, from its members
+    'src/world/maps/timberForms.selftest.mjs',
+    'src/world/maps/craterEjecta.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
     // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
     'src/world/maps/periodFreight.selftest.mjs',

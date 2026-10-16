@@ -121,6 +121,43 @@ assert.deepEqual(groundLitterProfile('verdant'), {}, 'temperate fields run the d
 assert.equal(resolveGroundLitterConfig(groundLitterProfile('desert')).splinters, 0, 'no timber splinters on the wadi');
 assert.ok(resolveGroundLitterConfig(groundLitterProfile('winter')).density < 0.5, 'snow keeps a few dark stones');
 assert.match(map, /groundLitterProfile\(config\.id\)/, 'the world reads the profile by map id');
+// (props lane A, #19) what lies under the stands by map: the conifers' cones, autumn's leaves, the sticks elsewhere —
+// each pool's piece small (under 100 triangles: a ring carries hundreds)
+for (const [id, form] of [['longleaf', 'cone'], ['alpine', 'cone'], ['winter', 'cone'], ['autumn', 'leaf'], ['verdant', 'branch']]) {
+  assert.equal(resolveGroundLitterConfig(groundLitterProfile(id)).splinterForm, form, `${id}: ${form}s under its stands`);
+  const pieces = createGroundLitter(field, { seed: 7, config: groundLitterProfile(id) });
+  const g = pieces.meshes[2].geometry, n = (g.index ? g.index.count : g.getAttribute('position').count) / 3;
+  assert.ok(n > 0 && n < 100, `${id}: its ${form} ${n} triangles`);
+  assert.ok(Array.from(g.getAttribute('normal').array).every(Number.isFinite), `${id}: its ${form} lit`);
+  pieces.dispose();
+}
+
+// (#19) the stones by map: brick bats in the shelled towns (a share in brick red), angular clasts on the regolith with no
+// soil clods or sticks there; the clod a lumpy flattened soil body, not twelve flat pentagons
+for (const [id, form] of [['urban', 'brick'], ['ruinspires', 'brick'], ['foundry', 'brick'], ['blackglass', 'brick'], ['mars', 'clast'], ['moon', 'clast'], ['verdant', 'pebble'], ['desert', 'pebble']]) {
+  const cfg = resolveGroundLitterConfig(groundLitterProfile(id));
+  assert.equal(cfg.stoneForm, form, `${id}: ${form}s`);
+  if (form === 'brick') assert.ok(cfg.stoneTintAlt && cfg.stoneTintAlt[0] > cfg.stoneTintAlt[2] * 2.5 && cfg.stoneAltShare > 0.2, `${id}: brick red among its grit`);
+  if (form === 'clast') assert.ok(cfg.clods === 0 && cfg.splinters === 0, `${id}: no soil, no timber on the regolith`);
+  const pieces = createGroundLitter(field, { seed: 7, config: groundLitterProfile(id) });
+  for (const [k, mesh] of pieces.meshes.entries()) {
+    const g = mesh.geometry, n = (g.index ? g.index.count : g.getAttribute('position').count) / 3;
+    assert.ok(n > 0 && n < 100, `${id}: pool ${k} ${n} triangles`);
+    assert.ok(Array.from(g.getAttribute('normal').array).every(Number.isFinite));
+  }
+  const clod = pieces.meshes[1].geometry, box = new THREE.Box3().setFromBufferAttribute(clod.getAttribute('position'));
+  assert.ok(box.max.y - box.min.y < (box.max.x - box.min.x) * 0.8, `${id}: the clod lies flattened`);
+  pieces.dispose();
+}
+{
+  const town = createGroundLitter(field, { seed: 11, config: groundLitterProfile('urban') });
+  settle(town, { x: 0, z: 0 });
+  const c = town.meshes[0].instanceColor, n = town.meshes[0].count;
+  let red = 0;
+  for (let i = 0; i < n; i++) if (c.getX(i) > c.getZ(i) * 2.2) red++;
+  assert.ok(n > 50 && red / n > 0.35 && red / n < 0.75, `Steinburg's rubble is half brick (${red}/${n})`);
+  town.dispose();
+}
 
 // the material joins the engine's cascaded-shadow setup through the hook and is released with the tier
 {
