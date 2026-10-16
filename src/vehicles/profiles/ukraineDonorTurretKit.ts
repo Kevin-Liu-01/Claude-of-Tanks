@@ -83,6 +83,13 @@ class TurretStock {
     }
     return true;
   }
+  /** Whether a placed box (centre, size, rotation) crosses nothing: its edges and diagonals ray-tested. */
+  boxClear(center:V3,size:V3,rotation:V3=[0,0,0],buckets:readonly string[]=SOLID):boolean {
+    const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation)),c=new THREE.Vector3(...center);
+    const k=(i:number):V3=>new THREE.Vector3((i&1?.5:-.5)*size[0],(i&2?.5:-.5)*size[1],(i&4?.5:-.5)*size[2]).applyQuaternion(q).add(c).toArray() as V3;
+    const pairs=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7],[0,7],[1,6],[2,5],[3,4],[0,3],[4,7],[0,5],[2,7],[0,6],[1,7]];
+    return pairs.every(([a,b])=>this.clear(k(a),k(b),0,buckets,.002));
+  }
   /** A level-enough pad on steel near a plan point whose column up to `upTo` is open (spiral search). */
   pad(x:number,z:number,upTo:number,opts:{radius?:number;search?:number;buckets?:readonly string[];minNormalY?:number}={}):V3|null {
     const radius=opts.radius??.04,search=opts.search??.18,buckets=opts.buckets??STEEL,minNy=opts.minNormalY??.55;
@@ -410,11 +417,173 @@ function hetman(P:TankBuilderPort,S:TurretStock):void {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// T-72B3M Hetman II: the long command modernization on the T-72B3M (2016) turret
+
+/** A flank of the B3M's bustle boxes as a plane: outward normal u, forward run f, and the outermost box face. */
+interface Flank { side:number; u:THREE.Vector3; f:THREE.Vector3; face:number; at(d:number,fa:number,y:number):THREE.Vector3 }
+function b3mFlank(side:number):Flank {
+  const ids=side<0?[0,1,2,3,4]:[10,11,12,13],u=b3mCase(ids[0]).u.clone();
+  const f=new THREE.Vector3(-u.z,0,u.x);if(f.z<0)f.negate();
+  const face=Math.max(...ids.map(i=>{const b=b3mCase(i);return b.c.clone().addScaledVector(b.u,.193).dot(u);}));
+  return {side,u,f,face,at:(d,fa,y)=>u.clone().multiplyScalar(d).addScaledVector(f,fa).setY(y)};
+}
+
+/** Squared armour cabinets over a flank's bustle boxes: bolted sections of outer wall and lid, the lid carried on
+ * brackets to the casting, ERA on the wall in two courses and on the lid; the outer wall stands 12 mm off the boxes. */
+function flankCabinet(P:TankBuilderPort,S:TurretStock,side:number,f0:number,f1:number,sections:number,legs:readonly(readonly[number,number])[]):Flank {
+  const F=b3mFlank(side),d0=F.face+.012,wall=.04,dOut=d0+wall,dIn=1.17,bottom=.12,top=.78,lid=.03;
+  const yaw=Math.atan2(F.u.x,F.u.z),len=(f1-f0)/sections;
+  for(let k=0;k<sections;k++){
+    const a=f0+k*len+.005,b=f0+(k+1)*len-.005,m=(a+b)/2;
+    P.addExternalArmor('turret',box(b-a,top-bottom,wall),...F.at(d0+wall/2,m,(top+bottom)/2).toArray(),0,yaw,0);
+    P.addExternalArmor('turret',box(b-a,lid,dOut-dIn),...F.at((dIn+dOut)/2,m,top+lid/2).toArray(),0,yaw,0);
+    // Two brackets under the lid, each down onto the casting inboard of the boxes, or (where the casting has
+    // narrowed away behind the boxes) a short post onto the box roof under it.
+    for(const fb of [a+.07,b-.07]){
+      let placed=false;
+      for(const [d,buckets]of [[dIn+.02,STEEL],[dIn+.13,FIXED]] as const){
+        const p=F.at(d,fb,top),hit=S.cast(p.clone().setY(top-.004),new THREE.Vector3(0,-1,0),buckets,1);
+        if(!hit||hit.point.y<.08||!S.clear([p.x,top-.006,p.z],[p.x,hit.point.y+.01,p.z],.016,SOLID))continue;
+        P.addEquipment('turretDetail',box(.035,top-hit.point.y,.05),p.x,(top+hit.point.y)/2,p.z,0,yaw,0);
+        footPlate(P,hit.point,hit.n,[.08,.018,.08]);placed=true;break;
+      }
+      if(!placed)throw new Error(`${P.spec.id}: cabinet bracket has no seat at f ${fb}`);
+    }
+    for(const fb of [a+.03,b-.03])P.addEquipment('turretDark',cylX(.014,.012,10),...F.at(dOut+.004,fb,top-.03).toArray(),0,yaw+Math.PI/2,0);
+  }
+  // End flanges close the cabinet beyond the first and last boxes.
+  for(const fe of [f0-.018,f1+.018])P.addExternalArmor('turret',box(.03,top-bottom+lid,.10),...F.at(dOut-.05,fe,(top+lid+bottom)/2).toArray(),0,yaw,0);
+  S.refresh();
+  // Wall ERA: two courses of cassettes per section, seated by ray on the wall.
+  for(let k=0;k<sections;k++){
+    const cols=2,cw=(len-.03)/cols-.012;
+    for(let c=0;c<cols;c++)for(const y of [.29,.61]){
+      const fa=f0+k*len+.015+cw/2+c*(cw+.012);
+      seatedEra(P,S,F.at(dOut+.6,fa,y),F.u.clone().negate(),F.f,[cw,.085,.29]);
+    }
+  }
+  // Lid ERA: one course of flat cassettes, clear of the cage legs that stand on the lid.
+  for(let k=0;k<sections;k++)for(const c of [0,1]){
+    const fa=f0+k*len+len*(c?.73:.27),p=F.at((dIn+dOut)/2+.02,fa,top+.4);
+    if(legs.some(([x,z])=>Math.hypot(x-p.x,z-p.z)<.24))continue;
+    seatedEra(P,S,p,new THREE.Vector3(0,-1,0),F.f,[.20,.065,.34]);
+  }
+  return F;
+}
+
+/** Hetman II's open command basket: a floor and slat walls hung behind the rear boxes from a front beam bolted into
+ * both cabinets, with goose-neck stays over the rear boxes into the casting. */
+const HETMAN_II_BEAM:Path=[[-1.22,-1.45],[-1.02,-1.82],[-.55,-2.02],[0,-2.08],[.55,-2.02],[.98,-1.82],[1.19,-1.60]];
+const HETMAN_II_BASKET:Path=[[-1.30,-1.47],[-1.30,-2.28],[-1.00,-2.62],[1.00,-2.62],[1.28,-2.28],[1.26,-1.63]];
+function commandBasket(P:TankBuilderPort,S:TurretStock):void {
+  const floor=.24,top=.66,F=HETMAN_II_BEAM,O=HETMAN_II_BASKET;
+  const beam=(a:V3,b:V3,r=.022)=>P.addEquipment('turretDetail',beamBetween(a,b,r,10));
+  for(let i=1;i<F.length;i++)beam([F[i-1][0],floor,F[i-1][1]],[F[i][0],floor,F[i][1]],.026);
+  // The beam's ends are bolted into the cabinets' rear flanges.
+  for(const [x,z]of [F[0],F[F.length-1]])P.addEquipment('turretDetail',box(.09,.10,.09),x,floor,z);
+  // Floor: stringers from the beam to the outer frame, slats across them.
+  const stringers:[V3,V3][]=[];
+  const outerAt=(x:number,z:number):[number,number]=>{
+    let best:[number,number]=[O[0][0],O[0][1]],bd=Infinity;
+    for(let i=1;i<O.length;i++){const [ax,az]=O[i-1],[bx,bz]=O[i],dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz)));
+      const px=ax+dx*t,pz=az+dz*t,dd=Math.hypot(px-x,pz-z);if(dd<bd){bd=dd;best=[px,pz];}}
+    return best;
+  };
+  for(const [x,z]of F){const [ox,oz]=outerAt(x*1.35,z*1.3);stringers.push([[x,floor,z],[ox,floor,oz]]);beam([x,floor,z],[ox,floor,oz],.018);}
+  for(let i=1;i<stringers.length;i++)for(const t of [.33,.66]){
+    const a=stringers[i-1],b=stringers[i];
+    const pa:V3=[a[0][0]+(a[1][0]-a[0][0])*t,floor+.012,a[0][2]+(a[1][2]-a[0][2])*t];
+    const pb:V3=[b[0][0]+(b[1][0]-b[0][0])*t,floor+.012,b[0][2]+(b[1][2]-b[0][2])*t];
+    P.addEquipment('turretDark',beamBetween(pa,pb,.010,6));
+  }
+  // Slat walls (the deeper screens) along the outer frame.
+  for(let i=1;i<O.length;i++){
+    const [ax,az]=O[i-1],[bx,bz]=O[i],len=Math.hypot(bx-ax,bz-az),yaw=Math.atan2(bx-ax,bz-az);
+    for(const y of [floor,(floor+top)/2,top])screenRod(P,[ax,y,az],[bx,y,bz],y===top?.018:.014);
+    const count=Math.max(1,Math.round(len/.095));
+    for(let k=1;k<count;k++){const t=k/count;screenRod(P,[ax+(bx-ax)*t,floor+.012,az+(bz-az)*t],[ax+(bx-ax)*t,top-.012,az+(bz-az)*t],.008);}
+    for(let k=0;k<3&&len>.3;k++){const t=(k+.5)/3;screenTie(P,[ax+(bx-ax)*t,top-.038,az+(bz-az)*t],[.022,.120,.074],yaw+Math.PI/2);}
+  }
+  for(const [x,z]of O)screenRod(P,[x,floor,z],[x,top,z],.018);
+  // The outer frame's front corners meet the cabinets' rear flanges.
+  for(const [i,j]of [[0,0],[O.length-1,F.length-1]] as const)beam([O[i][0],floor,O[i][1]],[F[j][0],floor,F[j][1]],.020);
+  // Goose-neck stays: up from the beam behind the rear boxes, over their roofs, and clamped down on the roofs' high
+  // inner ends (the casting's rear roof under them is all Relikt).
+  for(const i of [2,3,4]){
+    const [x,z]=F[i],postTop=.84,target=S.pad(x*.80,z*.80,postTop,{search:.12,radius:.022,buckets:FIXED});
+    if(!target)throw new Error(`${P.spec.id}: basket stay has no pad near ${x*.8},${z*.8}`);
+    const over:V3=[target[0],postTop,target[2]];
+    if(!S.clear([x,floor+.03,z],[x,postTop,z],.020)||!S.clear([x,postTop,z],over,.020))throw new Error(`${P.spec.id}: basket stay ${i} is blocked`);
+    beam([x,floor,z],[x,postTop,z],.022);beam([x,postTop,z],over,.022);beam(over,[target[0],target[1]+.01,target[2]],.022);
+    P.addEquipment('turretDetail',box(.11,.024,.11),target[0],target[1]+.006,target[2]);
+  }
+  // The rear cable drum on two arms from the rear frame.
+  for(const x of [-.19,.19])beam([x,.46,-2.62],[x,.46,-2.84],.02);
+  P.addEquipment('turretDark',cylX(.088,.31,20),0,.46,-2.83);
+  for(const x of [-.17,.17])P.addEquipment('turretDetail',cylX(.115,.024,18),x,.46,-2.83);
+  for(const z of [-2.62,-2.40])beam([-.19,.46,z],[.19,.46,z],.016);
+  // Stowage on the basket floor.
+  strappedPack(P,'turret',[-.78,floor+.088,-2.32],[.34,.15,.36]);
+  strappedPack(P,'turret',[.80,floor+.088,-2.30],[.34,.15,.36]);
+  P.addEquipment('turretDetail',box(.52,.17,.30),0,floor+.097,-2.40);
+  P.addEquipment('turretDetail',box(.535,.02,.315),0,floor+.19,-2.40);
+  for(const dx of [-.15,.15])P.addEquipment('turretDark',box(.032,.05,.014),dx,floor+.15,-2.25);
+}
+
+const hetmanIINet=():GhillieConfig=>turretSuit('t72b3m_hetman_ii',{roof:.80,x:1.95,front:1.75,rear:-2.60,marks:turretMarks('t72b3m_hetman_ii'),
+  sides:[{side:-1,z0:-2.26,z1:-1.49,bottom:.24,top:.66,out:()=>1.30},{side:1,z0:-2.26,z1:-1.65,bottom:.24,top:.66,out:()=>1.27}],
+  rearFace:{zAt:(x:number)=>pathAt(HETMAN_II_BASKET,0,x),x0:-.98,x1:.98,y0:.305,y1:.63}});
+
+function hetmanII(P:TankBuilderPort,S:TurretStock):void {
+  const l=NATIONAL_ROOF_LOADOUTS.t72b3m_hetman_ii,sweep=stationSweep(P);
+  // Lid stations kept clear of lid ERA: the cage legs, then per flank the lamp, the sensor head and the panorama.
+  const fit={l:{lamp:.74,eye:.44,pan:-.62},r:{lamp:.22,eye:-.08,pan:-.80}};
+  const station=(side:number,dBack:number,fa:number):[number,number]=>{const p=b3mFlank(side).at(b3mFlank(side).face-dBack,fa,0);return [p.x,p.z];};
+  const reservedL:[number,number][]=[[-1.17,.06],[-1.17,-.86],[-1.42,.06],[-1.42,-.86],station(-1,.12,fit.l.lamp),station(-1,.16,fit.l.eye),station(-1,.20,fit.l.pan)];
+  const reservedR:[number,number][]=[[.98,-.32],[.98,-.90],[1.40,-.32],[1.40,-.90],station(1,.12,fit.r.lamp),station(1,.16,fit.r.eye),station(1,.20,fit.r.pan)];
+  const L=flankCabinet(P,S,-1,-.84,.86,3,reservedL),R=flankCabinet(P,S,1,-1.00,.33,2,reservedR);
+  S.refresh();
+  roofCageWings(P,S,[
+    {side:-1,inner:1.10,outer:1.92,z0:-1.06,z1:.26,y:1.16,legX:[1.17,1.42],legZ:[.06,-.86]},
+    {side:1,inner:.95,outer:1.80,z0:-1.26,z1:-.16,y:1.16,legX:[.98,1.40],legZ:[-.32,-.90]},
+  ]);
+  S.refresh();
+  commandBasket(P,S);
+  S.refresh();
+  // Slit lamps and the twin sensor heads on the cabinets' forward lids.
+  for(const [F,f]of [[L,fit.l],[R,fit.r]] as const){
+    const lamp=F.at(F.face-.12,f.lamp,0),eye=F.at(F.face-.16,f.eye,0);
+    lampOnHousing(P,S,lamp.x,lamp.z,l.lamp,.04);
+    const seat=S.pad(eye.x,eye.z,0,{search:.08,radius:.03});
+    if(!seat)throw new Error(`${P.spec.id}: no sensor seat`);
+    nationalEye(P,seat[0],seat[2],seat[1],l);
+  }
+  // The scanner on the roof ventilator housing; two panoramas on the rear lids of the cabinets.
+  {
+    const top=S.top(0,-.80,FIXED,false);if(!top)throw new Error(`${P.spec.id}: no scanner seat`);
+    nationalRoofSensor(P,0,-.80,top.point.y,l);
+    for(const [F,fa]of [[L,fit.l.pan],[R,fit.r.pan]] as const){
+      const p=F.at(F.face-.20,fa,0),seat=S.pad(p.x,p.z,0,{search:.10,radius:.03});
+      if(!seat)throw new Error(`${P.spec.id}: no panorama seat at ${p.toArray()}`);
+      supportedSensor(P,[seat[0],seat[1]+.17,seat[2]],seat[1]-.006);
+    }
+  }
+  // Aerials on the basket's rear corners, a harness from the left panorama back along the basket.
+  for(const [x,z,h]of [[-1.00,-2.62,2.6],[1.00,-2.62,2.2]] as const){
+    if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
+    P.addEquipment('turretDetail',box(.10,.05,.10),x,.685,z);
+    P.addEquipment('turretDetail',cylY(.050,.062,.055,12),x,.737,z);
+    P.addEquipment('turretDark',cylY(.007,.014,h,10),x,.765+h/2,z);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 
 function turretUpArmour(P:TankBuilderPort,id:UkraineDonorId):void {
   const S=new TurretStock(P);
   try {
     if(id==='t72b3m_hetman')hetman(P,S);
+    else if(id==='t72b3m_hetman_ii')hetmanII(P,S);
   } finally { S.dispose(); }
 }
 
@@ -434,6 +603,6 @@ function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
   turretUpArmour(P,id);
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
   addNationalUkraineProtection(P,id,{turretScreens:false});
-  addVehicleGhillieSuit(P,id==='t72b3m_hetman'?hetmanNet():{...NATIONAL_UKRAINE_GHILLIE[id],turret:undefined});
+  addVehicleGhillieSuit(P,id==='t72b3m_hetman'?hetmanNet():id==='t72b3m_hetman_ii'?hetmanIINet():{...NATIONAL_UKRAINE_GHILLIE[id],turret:undefined});
 }
 void markSmokeTube;void blindTube;void cylX;void torus;
