@@ -6,11 +6,15 @@ import alpine from './alpine.ts';
 import badlands from './badlands.ts';
 import blackglass from './blackglass.ts';
 import caldera from './caldera.ts';
+import copper_mesa from './copper_mesa.ts';
+import desert from './desert.ts';
 import mars from './mars.ts';
+import oasis from './oasis.ts';
 import polders from './polders.ts';
 import railyard from './railyard.ts';
+import titan_gorge from './titan_gorge.ts';
 import verdant from './verdant.ts';
 import whiteout from './whiteout.ts';
 import winter from './winter.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, badlands, blackglass, caldera, mars, polders, railyard, verdant, whiteout, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, badlands, blackglass, caldera, copper_mesa, desert, mars, oasis, polders, railyard, titan_gorge, verdant, whiteout, winter });
