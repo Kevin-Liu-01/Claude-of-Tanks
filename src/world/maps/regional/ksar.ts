@@ -9,6 +9,7 @@ import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type Hol
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { ksarGhorfaSouk, souqStall } from './souqs.ts'; // props #23: the ghorfa souk and the souk stall
 
 const BLUES: readonly Rgb[] = [0x2f6a9e, 0x3a7ab0, 0x2e5f8a].map(rgb);
 const TIMBER = rgb(0x7a6048);
@@ -102,30 +103,8 @@ const ghorfaRange: RegionalBuilder = (ctx) => {
  * Medenine). The ghorfa range's court needs a plot three times as deep; this row stays inside its own.
  */
 const ghorfaShops: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(5, ctx.info.w - 0.5), D = Math.max(3.4, Math.min(6, ctx.info.d - 0.9));
-  const blue = pick(rng, BLUES);
-  const cw = 2.4, ch = 1.9, tierH = ch + cw / 2 + 0.1;
-  const n = Math.max(2, Math.floor(W / (cw + 0.12)));
-  const cellX = (i: number) => -n * (cw + 0.12) / 2 + (cw + 0.12) * (i + 0.5);
-  for (let i = 0; i < n; i++) ghorfa(sink, cellX(i), 0, D / 2, cw, ch, D, rng, blue);
-  // the upper tier over the middle cells, set back a little from the lane
-  const first = Math.floor((n - 1) / 2), last = n >= 4 ? first + 1 : first;
-  for (let i = first; i <= last; i++) {
-    // the terrace's edge over the lower cell's front, its spandrels filled flush with the lane front: the stair's top
-    // stones stand against it
-    ghorfaBed(sink, cellX(i), 0, ch, cw, D / 2, 0.4, tierH, false);
-    if (rng() < 0.2) continue;
-    ghorfa(sink, cellX(i), tierH, D / 2 - 0.4, cw, ch, D - 0.4, rng, blue);
-    ghorfaBed(sink, cellX(i), 0, ch, cw, D / 2 - 0.4, D - 0.4, tierH);
-  }
-  // the stair stones jutting from the front between the cells, from the ground up to the upper floor
-  const sx = cellX(first) - cw / 2 - 0.06;
-  for (let k = 0; k < 6; k++) {
-    const y = 0.35 + k * (tierH - 0.35) / 5.5;
-    sink.span(MUD, sx - 0.3, y - 0.05, D / 2 - 0.05, sx + 0.3, y + 0.1, D / 2 + 0.3 - k * 0.04, { decor: true });
-  }
+  // (props census #23, the looks lane 2026-10-15) the souk's cells member-built in souqs.ts
+  const sink = ksarGhorfaSouk(ctx, { blues: BLUES, timber: TIMBER, mud: MUD });
   return sink.finish();
 };
 
@@ -301,64 +280,8 @@ const soukStall: RegionalBuilder = (ctx) => {
 
 /** The stall itself, W x D about the origin, its counter to +z (the ksar's market plot, Siwa's shop rows). */
 function stallBody(sink: PartSink, look: () => number, W: number, D: number, top = 2.55): void {
-  const floor = 0.18, wallZ = -D / 2 + 0.4;
-  // a beaten-earth platform skimmed with mud, the back wall of mud brick under plaster standing proud of the mat
-  sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
-  sink.span(MUD, -W / 2, floor, -D / 2, W / 2, top + 0.45, wallZ);
-  // palm-trunk posts at the front, a trunk beam across them, three trunk joists back to the wall
-  const palm = rgb(0x6a5a46), postZ = D / 2 - 0.2;
-  for (const sx of [-1, 1]) sink.cylinder('structureWood', [sx * (W / 2 - 0.2), floor, postZ], 'y', top - floor, 0.14, 7, { colour: palm, uv: UV_MEMBER }, 0.12);
-  sink.member('structureWood', [-W / 2 - 0.1, top + 0.08, postZ], [W / 2 + 0.1, top + 0.08, postZ], 0.18, 0.18, [0, 1, 0], { colour: palm });
-  for (const t of [-0.36, 0, 0.36]) sink.member('structureWood', [t * W, top + 0.24, wallZ - 0.1], [t * W, top + 0.24, postZ + 0.15], 0.13, 0.13, [0, 1, 0], { colour: shade(palm, 0.92) });
-  // the mat's edge: a pole of bound ribs across the joists' ends, under the last ribs that ran out past them and the
-  // fronds hung from those (the connectivity sweep: the mat's edge floated 2 cm off the joists)
-  sink.member('structureWood', [-W / 2 - 0.1, top + 0.24, postZ + 0.2], [W / 2 + 0.1, top + 0.24, postZ + 0.2], 0.2, 0.07, [0, 1, 0], { colour: shade(palm, 0.85), decor: true, exposed: true }, 0);
-  // the jerid: palm ribs laid across the joists with gaps between them, fresh tan to sun-grey
-  const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
-  for (let k = 0; k < ribs; k++) {
-    // (2026-10-07, the map-revival lane, Oasis round 3; gauntlet wave 135: "clean white plastic slats with dangling white
-    // strips") the ribs were authored as display colours in the linear vertex colour, near white on screen: weathered
-    // jerid, tan going to sun-grey (sRGB ~0.58/0.50/0.39 to ~0.62/0.60/0.56), the frond tips a shade darker
-    const z = wallZ + 0.05 + (postZ + 0.3 - wallZ) * (k + 0.5) / ribs, tone = look();
-    const c: Rgb = [0.30 + tone * 0.045, 0.21 + tone * 0.11, 0.13 + tone * 0.15];
-    sink.span('structureWood', -W / 2 - 0.2 + look() * 0.15, top + 0.31, z - 0.07, W / 2 + 0.2 - look() * 0.15, top + 0.35, z + 0.07, { colour: c, decor: true, shadow: true });
-  }
-  // the frond tips hanging ragged over the lane edge, leaning out, some missing
-  for (let x = -W / 2 - 0.1; x < W / 2 + 0.1; x += 0.16 + look() * 0.16) {
-    if (look() < 0.2) continue;
-    const len = 0.2 + look() * 0.4, tone = look();
-    sink.member('structureWood', [x, top + 0.33, postZ + 0.3], [x + (look() - 0.5) * 0.16, top + 0.33 - len, postZ + 0.36 + look() * 0.12],
-      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.25 + tone * 0.06, 0.19 + tone * 0.08, 0.11 + tone * 0.09], decor: true, shadow: true, exposed: true });
-  }
-  // the counter: a plastered bench across the front, open at one end
-  sink.span(MUD, -W / 2 + 0.35, floor, D / 2 - 1.05, W / 2 - 0.95, floor + 0.75, D / 2 - 0.5);
-  // the kilims on the back wall: bands of madder, indigo, saffron and undyed wool
-  const wall: Face = { origin: [0, 0, wallZ], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  const grounds: readonly Rgb[] = [0x8e2f24, 0x8e2f24, 0x2f3a5e, 0x9a5a2a].map(rgb);
-  const accents: readonly Rgb[] = [0xd8ccb0, 0xc08a2a, 0x2f3a5e, 0x6e2a3a, 0x2a2522].map(rgb);
-  for (const u of [-W * 0.27, W * 0.2]) {
-    const rw = 1.0 + look() * 0.4, rh = 1.5 + look() * 0.4, y0 = floor + 0.55, bands = 5 + 2 * Math.floor(look() * 3);
-    const ground = pick(look, grounds), unit = rh / (1.45 * (bands + 1) / 2 + 0.55 * (bands - 1) / 2);
-    // wide ground bands at either end and between the narrow accent stripes
-    for (let b = 0, y = y0; b < bands; b++) {
-      const colour = b % 2 ? pick(look, accents) : ground, h = unit * (b % 2 ? 0.55 : 1.45);
-      faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.016, rw, h, 0.012, { colour, decor: true });
-      y += h;
-    }
-  }
-  // flat baskets of dates, chillies, turmeric and chickpeas on the counter; clay jars by the posts
-  const basket = rgb(0xa08a5a), goods: readonly Rgb[] = [0x5a3020, 0xa83a1e, 0xc89a2a, 0xc8b080].map(rgb);
-  for (let k = 0; k < 3; k++) {
-    const x = -W / 2 + 0.75 + k * (W - 2.1) / 2.4;
-    sink.cylinder('structureWood', [x, floor + 0.75, D / 2 - 0.78], 'y', 0.1, 0.22, 8, { colour: basket, decor: true }, 0.24);
-    sink.cylinder('structureWood', [x, floor + 0.85, D / 2 - 0.78], 'y', 0.07, 0.2, 8, { colour: pick(look, goods), decor: true }, 0.1);
-  }
-  const clay: Rgb = rgb(0xa8673e);
-  for (let k = 0, n = 2 + Math.floor(look() * 3); k < n; k++) {
-    const x = (look() < 0.5 ? -1 : 1) * (W / 2 - 0.55 - look() * 0.5), z = wallZ + 0.4 + look() * 1.2, r = 0.17 + look() * 0.08;
-    sink.cylinder('structureWood', [x, floor, z], 'y', r * 1.8, r * 0.7, 8, { colour: clay, decor: true }, r * 1.25);
-    sink.cylinder('structureWood', [x, floor + r * 1.8, z], 'y', r * 0.9, r * 1.25, 8, { colour: shade(clay, 0.95), decor: true }, r * 0.45);
-  }
+  // (props census #23, the looks lane 2026-10-15) member-built in souqs.ts: footings, the wall's courses and its store door
+  souqStall(sink, look, W, D, top, { mud: MUD });
 }
 
 export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({

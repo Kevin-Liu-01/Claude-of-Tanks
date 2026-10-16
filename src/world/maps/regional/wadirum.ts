@@ -3,7 +3,7 @@
 // the next storey left standing at the corners and black water tanks on the roof, steel doors painted green or blue,
 // window grilles; the Desert Patrol's fort, crenellated with corner towers; steel-portal stores and workshops under
 // low corrugated roofs instead of tiles; walled compounds of block houses.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, holedShaft, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec,
 } from './house.ts';
@@ -11,6 +11,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
+import { wadirumSouq } from './souqs.ts'; // props #23: the souq row
 
 const STEEL_DOORS: readonly Rgb[] = [0x3f6a5a, 0x3e5f86, 0x6a6e70, 0x8a6a3e].map(rgb);
 const TANK = rgb(0x262626), REBAR = rgb(0x5a3e2e);
@@ -47,25 +48,6 @@ function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => n
  * 2.6 m on the face.
  */
 const SHOP_GOODS: readonly Rgb[] = [0xc9b48a, 0xb9a072, 0xa8442f, 0x4f7a4a, 0x3f5f8a, 0xc9a23a, 0xdedad0, 0x7a5a3a].map(rgb);
-function shopInterior(sink: PartSink, face: Face, u: number, w: number, mobile: boolean, seed: number): void {
-  faceBox(sink, 'structureWood', face, u, 1.45, 0.005, w, 2.3, 0.02, { colour: rgb(0x4a4038), decor: true });
-  // the display racks stand under the half-drawn shutter (its foot is 1.5 m or more), the goods out on them
-  const shelves = [0.55, 1.05];
-  for (const y of shelves) faceBox(sink, 'structureWood', face, u, y, 0.17, w - 0.1, 0.04, 0.3, { colour: rgb(0x8a7a66), decor: true });
-  sink.dressing(mobile, () => {
-    const g = streamFrom(Math.round(seed * 1000) + 977);
-    for (const y of shelves) for (let a = u - w / 2 + 0.25; a < u + w / 2 - 0.2; a += 0.32) {
-      if (g() < 0.2) continue;
-      const h = 0.16 + g() * 0.18;
-      faceBox(sink, 'structureWood', face, a, y + 0.02 + h / 2, 0.17, 0.22 + g() * 0.06, h, 0.2, { colour: pick(g, SHOP_GOODS), decor: true });
-    }
-    // a crate of produce on the step in front
-    const a = u + (g() - 0.5) * (w - 0.8);
-    faceBox(sink, 'structureWood', face, a, 0.2, 0.45, 0.6, 0.4, 0.45, { colour: rgb(0x9a7a52), decor: true });
-    faceBox(sink, 'structureWood', face, a, 0.43, 0.45, 0.52, 0.06, 0.38, { colour: pick(g, [rgb(0xb8452e), rgb(0xc9a23a), rgb(0x5f8a3a)]), decor: true });
-  });
-}
-
 /** The block house: one or two storeys of concrete block, flat roof, parapet, steel door, grilles, roof furniture. */
 const blockHouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -441,37 +423,6 @@ const ruin: RegionalBuilder = (ctx) => {
 // ---- the base plots the first kit left to the generic yard (gauntlet wave 15: containers, gantries and steel water
 // towers read as a rail yard, not a Jordanian desert outpost)
 
-/** A shop row of the souq: one storey of rendered block, a run of shopfronts with rolling shutters and awnings, a flat
- *  roof behind a parapet with its tanks (the base marketRow plot). */
-const souqRow: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  // the base market row's plot is wider than deep: the row lies along it, its shopfronts (+x) down one long side
-  const plot = plotAxes(ctx.info);
-  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(18, plot.d - 0.6));
-  const H = 3.6, wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
-  const awning = plot.turned ? 0.8 : 1.1;
-  alongPlot(sink, plot.turned, () => {
-    sink.span('stone', -W / 2 - 0.05, -0.3, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
-    sink.span(wall, -W / 2, 0.25, -D / 2, W / 2, H, D / 2);
-    for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + 0.22], [-W / 2, D / 2 - 0.22, W / 2, D / 2], [-W / 2, -D / 2, -W / 2 + 0.22, D / 2], [W / 2 - 0.22, -D / 2, W / 2, D / 2]] as const) {
-      sink.span(wall, x0, H, z0, x1, H + 0.6, z1);
-    }
-    // the shopfronts along the street side (+x): rolling shutters half up over dark shops, an awning over each
-    const face: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-    const n = Math.max(2, Math.floor(D / 3.2));
-    for (let k = 0; k < n; k++) {
-      const u = -D / 2 + (k + 0.5) * D / n, w = D / n - 0.7;
-      shopInterior(sink, face, u, w, ctx.tier === 'mobile', k * 7.31 + D * 3.7 + W);
-      faceBox(sink, 'structureMetal', face, u, 2.15 + rng() * 0.25, 0.04, w, 0.9 + rng() * 0.4, 0.05, { colour: rgb(0x8a8e90), decor: true });
-      faceBox(sink, 'structureMetal', face, u, 2.95, awning / 2, w + 0.3, 0.05, awning, { colour: pick(rng, SAND_SHEET), decor: true });
-      faceBox(sink, 'structureWood', face, u, 3.3, 0.03, w * 0.8, 0.35, 0.04, { colour: pick(rng, STEEL_DOORS), decor: true });
-    }
-    rooftop(sink, W, D, H, rng);
-  }, 1);
-  return renderCoat(sink.finish());
-};
-
 /** Lock-up stores in place of a container row: a single storey of bare block with steel roller doors (containerRow). */
 const lockUps: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -592,7 +543,7 @@ export const WADIRUM_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   compound: fort,
   compoundSouk: fort,
   ruin,
-  marketRow: souqRow,
+  marketRow: (ctx) => wadirumSouq(ctx, { rooftop, coat: renderCoat, sheets: SAND_SHEET, doors: STEEL_DOORS, goods: SHOP_GOODS }),
   containerRow: lockUps,
   gantry: lorryShelter,
   watertower: concreteTower,

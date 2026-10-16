@@ -15,6 +15,7 @@ import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
 
 /** Shutters and doors: the Lebanese green, a blue-grey, a turquoise, a brown. */
 const SHUTTERS: readonly Rgb[] = [0x3f6a4a, 0x4f7a5a, 0x5a7488, 0x4a8a8a, 0x6a5040].map(rgb);
@@ -341,42 +342,6 @@ const hammam: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The souk's row: vaulted shops behind round arches on stone piers, plank doors and shutters, a flat roof. */
-const souk: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx), rng = st.rng, look = st.look;
-  const fp = footprint(ctx);
-  const H = 3.6;
-  onLot(sink, fp, (Wf, Df) => {
-    const W = Math.max(3.5, Wf - 0.1), L = Math.max(5, Df - 0.1);
-    const nb = Math.max(2, Math.round(L / 3.0)), bay = L / nb;
-    const openings: Opening[] = [];
-    for (let k = 0; k < nb; k++) openings.push({ face: 'right', storey: 0, kind: 'door', u: -L / 2 + (k + 0.5) * bay, w: Math.min(1.9, bay - 0.8), y0: 0, h: 2.3 });
-    const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.35), gableBucket: 'stone', openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, {
-      window: () => {},
-      door: (s, face, o, y0) => {
-        // the shop's plank doors folded open on the dark of the vault, the round arch over the opening
-        const r = s.recess, go = r > 0 ? -r + 0.03 : 0.015;
-        // (round 2, wave 123: "black voids"): the vault's back a deep brown of goods and shadow, not a black hole
-        faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.04, { colour: rgb(0x3a2c22) });
-        for (const side of [-1, 1]) faceBox(s, 'structureWood', face, o.u + side * (o.w / 2 + 0.32), y0 + o.y0 + o.h / 2, 0.05, 0.6, o.h - 0.1, 0.05, { colour: shade(st.shutter, 0.85), decor: true });
-        roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass', 0.2);
-      },
-    });
-    spouts(sink, frame, ['left', 'back'], look);
-    // the awnings of cloth over a few of the shops
-    for (let k = 0; k < nb; k++) {
-      if (rng() < 0.45) continue;
-      const u = -L / 2 + (k + 0.5) * bay, c = pick(rng, [rgb(0x9a3a2c), rgb(0x2f5a7a), rgb(0xc8b88a), rgb(0x4f6a3a)]);
-      faceBox(sink, 'structureWood', frame.faces.right, u, 3.05, 0.55, Math.min(2.2, bay - 0.3), 0.05, 1.1, { colour: c, decor: true });
-    }
-  }, 1);
-  return sink.finish();
-};
-
 /** The sabil: a public fountain under a dome on four arches, its basin and spouts; its piers and lintels fill the footprint. */
 const sabil: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -609,7 +574,7 @@ export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
   // under the flat earth roof, its back to the terrace wall, sharing its walls with its neighbours (no stair)
   adobe: (ctx) => dar(ctx, { storeys: 1, roof: 'earth' }),
   bathhouse: hammam,
-  marketRow: souk,
+  marketRow: (ctx) => choufSouk(ctx, { st: stateFor(ctx), dialect, roof: earthRoof(0.35), spouts }),
   market: sabil,
   tavern: makeChurch(false),
   // (round 2, gauntlet wave 123: the border villages' generic tower and spire read as a Western church): their church
