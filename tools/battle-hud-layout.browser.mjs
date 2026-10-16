@@ -169,6 +169,11 @@ try {
       let reads=0;
       root.getClientRects=function(){reads++;return original.call(this);};
       try {
+        // Settle first (round 4: on a loaded machine the first placement's own resize notices, a compact notice taking
+        // its planned width, could still be relaying out when the window opened): the press window starts once eight
+        // frames pass without a layout pass, and then a press or an unchanged update may cause at most one.
+        for(let quiet=0,frames=0;quiet<8&&frames<120;frames++){const before=reads;await new Promise(requestAnimationFrame);quiet=reads===before?quiet+1:0;}
+        reads=0;
         for(let i=0;i<24;i++){
           special.classList.remove('pending');
           for(const pressed of ['down','aiming','autofire'])fire?.classList.toggle(pressed);
