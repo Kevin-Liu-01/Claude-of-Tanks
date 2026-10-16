@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createDeferredCombatWarmRuntime } from './deferredCombatWarmRuntime.ts';
+import { ProgramUniformPreparationError } from '../engine/programWarm.ts';
 
 let clock = 0;
 let generation = 3;
@@ -296,12 +297,45 @@ for (const staleDuringEnemies of [false, true]) {
       'unfinished enemy links leave every later stage warming');
     assert.equal(trace.error, undefined, 'no failed-warm warning');
     assert.deepEqual(warned, []);
-    assert.equal(trace.enemyProgramUniformWarm.incomplete, 'budget');
-    assert.equal(trace.enemyProgramUniformWarm.pending, 3, 'the trace counts the unfinished links');
+    assert.equal(trace.unfinishedLinks.enemyVisuals.reason, 'budget');
+    assert.equal(trace.unfinishedLinks.enemyVisuals.pending, 3, 'the trace counts the unfinished links');
     assert.equal(trace.done, true);
+  }
+}
+
+// the vision programs (the thermal variants' strict drain) unfinished: the opening, routes, terrain and rare go on;
+// another error still fails the warm
+for (const thrown of ['budget', 'other']) {
+  const steps = [];
+  const runtime = createDeferredCombatWarmRuntime({
+    game, renderer, camera: { position: {} },
+    getBattleVisuals: () => ({ async stream() { steps.push('enemy-visuals'); } }),
+    *warmVisionSteps() {
+      steps.push('vision');
+      yield;
+      if (thrown === 'budget') throw new ProgramUniformPreparationError({ status: 'incomplete', reason: 'budget', pending: 4 });
+      throw new Error('vision broke');
+    },
+    combatWarm: { cancelRare() {}, async warmOpeningChunked() { steps.push('opening'); }, async warmRareChunked() { steps.push('rare'); } },
+    async warmBattleTerrainTiles() { steps.push('terrain-grid'); },
+    getWorld: () => null, getGeneration: () => 70, setPending() {},
+    prepareNextOpeningRoute: () => false, now: () => ++clock,
+    yieldFrame: async () => {}, createYielder: () => async () => {},
+  });
+  const warn = console.warn;
+  console.warn = () => {};
+  try { await runtime.schedule(70); } finally { console.warn = warn; }
+  const trace = globalThis.__BATTLE_DEFERRED_WARM;
+  if (thrown === 'budget') {
+    assert.deepEqual(steps, ['enemy-visuals', 'vision', 'opening', 'terrain-grid', 'rare'], 'unfinished vision links leave the later stages warming');
+    assert.deepEqual(trace.unfinishedLinks.visionPrograms, { reason: 'budget', pending: 4 });
+    assert.equal(trace.error, undefined);
+  } else {
+    assert.deepEqual(steps, ['enemy-visuals', 'vision'], 'any other failure still fails the warm');
+    assert.match(trace.error, /vision broke/);
   }
 }
 
 delete globalThis.__COMBAT_RARE_WARM;
 delete globalThis.__BATTLE_DEFERRED_WARM;
-console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, revision ownership, and warming on past unfinished enemy links passed');
+console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, revision ownership, and warming on past a stage\'s unfinished links (enemy uniforms, vision) passed');

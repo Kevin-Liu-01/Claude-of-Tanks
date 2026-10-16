@@ -39,6 +39,8 @@ interface WarmTrace {
   generation: number;
   stages: Record<string, number>;
   enemyProgramUniformWarm?: RuntimeValue;
+  /** The stages whose programs were still linking when their window closed (the warm went on past them). */
+  unfinishedLinks?: Record<string, RuntimeValue>;
   navigationJobs?: number[];
   terrainLookaheadJobs?: number;
   totalMs?: number;
@@ -153,37 +155,45 @@ export function createDeferredCombatWarmRuntime<
         }
       };
 
+      // (2026-10-16, the perf lane) a stage whose programs are still linking when its strict window closes (five seconds
+      // of live battle, frame-paced: the driver drains every queued link first, and at load the battle's own frames are
+      // slow) has not failed the warm. Its links go on as submitted and an unfinished one waits at its first draw, as it
+      // would have anyway; the other stages do not wait on it. Every probed integ/226 entry (load 100-220) lost every
+      // stage after the first unfinished one to "incomplete: budget" — the vision programs, the opening and rare effects,
+      // the routes and the terrain tiles left to their first use in battle. The trace names the stage (unfinishedLinks);
+      // a stale battle (invalidated) still stops the warm.
+      const unlessLinksUnfinished = async (stage: string, run: () => Promise<void>): Promise<void> => {
+        try { await run(); } catch (error) {
+          if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
+          (trace.unfinishedLinks ??= {})[stage] = {
+            ...(error.receipt ?? {}), reason: error.preparation.reason, pending: error.preparation.pending,
+          };
+          devTrace?.mark?.('battle:deferred-warm-links-unfinished', {
+            stage, reason: error.preparation.reason, pending: error.preparation.pending ?? -1 });
+        }
+      };
+
       const enemyVisualsStartedAt = now();
       const enemyProgramBaseline = snapshotRendererPrograms(renderer);
       await getBattleVisuals().stream(
         (entity) => entity.team === 'enemy', guardedYield, null, true,
       );
-      try {
+      await unlessLinksUnfinished('enemyVisuals', async () => {
         trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
           renderer, enemyProgramBaseline, guardedYield, now,
           { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
         );
-      } catch (error) {
-        // (2026-10-16, the perf lane) the enemies' programs still linking when their window closes (five seconds of
-        // live battle: the driver drains every queued link first) are not a failed warm. They link on as they were
-        // submitted and an unfinished one waits at its first draw, as before; what must not happen is the rest of this
-        // warm dropping with them — every probed integ/226 entry lost its vision programs, its opening and rare effects,
-        // its route preparation and its terrain tiles to "incomplete: budget". A stale battle still stops here.
-        if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
-        trace.enemyProgramUniformWarm = {
-          ...(error.receipt ?? {}), incomplete: error.preparation.reason, pending: error.preparation.pending,
-        };
-        devTrace?.mark?.('battle:deferred-warm-enemy-uniforms-incomplete', {
-          reason: error.preparation.reason, pending: error.preparation.pending ?? -1 });
-      }
+      });
       trace.stages.enemyVisuals = Math.round(now() - enemyVisualsStartedAt);
 
       const visionStartedAt = now();
-      if (warmVisionSteps) for (const _ of warmVisionSteps()) await guardedYield();
+      await unlessLinksUnfinished('visionPrograms', async () => {
+        if (warmVisionSteps) for (const _ of warmVisionSteps()) await guardedYield();
+      });
       trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
 
       const openingFxStartedAt = now();
-      await combatWarm.warmOpeningChunked(6, guardedYield);
+      await unlessLinksUnfinished('combatOpeningWarm', () => combatWarm.warmOpeningChunked(6, guardedYield));
       trace.stages.combatOpeningWarm = Math.round(now() - openingFxStartedAt);
 
       const navigationStartedAt = now();
@@ -210,7 +220,7 @@ export function createDeferredCombatWarmRuntime<
       trace.stages.terrainLookahead = Math.round(now() - terrainLookaheadStartedAt);
       trace.terrainLookaheadJobs = terrainLookaheadJobs;
 
-      await combatWarm.warmRareChunked(6, guardedYield);
+      await unlessLinksUnfinished('rarePrograms', () => combatWarm.warmRareChunked(6, guardedYield));
       Object.assign(trace.stages, host.__COMBAT_RARE_WARM?.stages || {});
       trace.done = true;
       trace.totalMs = Math.round(now() - startedAt);
