@@ -151,6 +151,12 @@ function lineOf(source, offset) {
   return line;
 }
 
+/** `import.meta.url`. */
+function isImportMetaUrl(node) {
+  return node?.type === 'MemberExpression' && !node.computed && node.object?.type === 'MetaProperty'
+    && node.object.meta?.name === 'import' && node.object.property?.name === 'meta' && node.property?.name === 'url';
+}
+
 /** Whether an analysed module also imports a specifier statically (it counts once in `imports` per occurrence). */
 function staticallyImports(result, specifier) {
   let all = 0, dynamic = 0;
@@ -180,12 +186,13 @@ function keyIndex(keys) {
 /**
  * One source module's relative imports (static and literal import() targets), key uses and issues.
  * `file` is project-relative to `root`; `keys` the English catalog keys (an array, reused across calls).
- * Returns { imports, dynamicImports, exact: Set, prefixes: Set, patterns: RegExp[], issues: string[] }: `imports` every
- * relative specifier, `dynamicImports` those of them a literal import() names.
+ * Returns { imports, dynamicImports, workers, exact: Set, prefixes: Set, patterns: RegExp[], issues: string[] }: `imports`
+ * every relative specifier, `dynamicImports` those of them a literal import() names, `workers` the relative script
+ * specifiers of `new URL('./x.ts', import.meta.url)` (the worker entries Vite bundles; not import edges of the page).
  */
 export function analyzeModuleSource(source, file, { root = ROOT, keys }) {
   const { list: keyList, set: keySet } = keyIndex(keys);
-  const result = { imports: [], dynamicImports: [], exact: new Set(), prefixes: new Set(), patterns: [], issues: [] };
+  const result = { imports: [], dynamicImports: [], workers: [], exact: new Set(), prefixes: new Set(), patterns: [], issues: [] };
   const at = (node) => `${file}:${lineOf(source, node.start)}`;
   const snippet = (node) => source.slice(node.start, node.end).replace(/\s+/g, ' ').slice(0, 96);
   const matchesAny = (regex) => keyList.some((key) => regex.test(key));
@@ -313,6 +320,15 @@ export function analyzeModuleSource(source, file, { root = ROOT, keys }) {
     } else if (node.type === 'MemberExpression' && node.object?.type === 'MetaProperty'
       && node.object.meta?.name === 'import' && node.property?.name === 'glob') {
       result.issues.push(`${at(node)}: import.meta.glob in a page graph; the key scan cannot follow it`);
+    } else if (node.type === 'NewExpression' && node.callee?.type === 'Identifier' && node.callee.name === 'URL'
+      && isImportMetaUrl(node.arguments?.[1])) {
+      // a worker entry (`new Worker(new URL('./w.ts', import.meta.url))`): Vite bundles it on its own
+      const target = node.arguments[0];
+      const literal = target?.type === 'Literal' && typeof target.value === 'string' ? target.value
+        : target?.type === 'TemplateLiteral' && !target.expressions.length ? target.quasis[0].value.cooked : null;
+      if (literal && (literal.startsWith('./') || literal.startsWith('../')) && SCRIPT_RE.test(literal.split(/[?#]/, 1)[0])) {
+        result.workers.push(literal);
+      }
     } else if (node.type === 'CallExpression') {
       const argument = keyArgument(node.callee, shadowed);
       const keyNode = argument === null ? null : node.arguments[argument];
@@ -362,7 +378,12 @@ export function htmlInputs(config, { root = ROOT } = {}) {
  * scripts and their static imports) and its markup's, `lazyKeys` the further keys its lazy graphs reach, `lazy` its lazy
  * boundaries (literal import() targets outside its boot graph, and theirs in turn), `modules` everything it reaches;
  * `lazySites` names, per module, the import() specifiers of lazy boundaries whose own graphs can show a key of their
- * page's lazy chunk (the sites the build rewrites to load it first). The full catalog lists its pages and every key.
+ * page's lazy chunk (the sites the build rewrites to load it first).
+ * The game's (`game`, the full catalogs) `keys` are every key its document can show — its markup, its boot graph, every
+ * graph it reaches through import(), and the graph of every worker entry (`new URL('./w.ts', import.meta.url)`) that it
+ * or any public page reaches (a worker loads the full catalogs too) — and `modules` all of those modules; it has no lazy
+ * chunk. The build serves the full catalogs restricted to these keys (2026-10-15, the perf lane: the docs, home,
+ * gallery and media pages' strings left the game's boot), so the scan's issues cover the game's graph as well.
  */
 export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map() }) {
   const rootDir = resolve(root);
@@ -416,7 +437,8 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
   };
   // every literal import() of a lazy boundary, by importing module: the sites the build rewrites (lazySites)
   const boundarySites = new Map();
-  const staticGraph = (roots) => {
+  // (`sites` false: the game's walk; its import() sites are never rewritten, it has no lazy chunk)
+  const staticGraph = (roots, sites = true) => {
     const modules = new Set(roots), boundaries = [], queue = [...roots];
     while (queue.length) {
       const module = queue.shift();
@@ -430,6 +452,7 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
         // (a specifier imported both ways is a static edge)
         if (dynamic.has(specifier) && !staticallyImports(result, specifier)) {
           boundaries.push(next);
+          if (!sites) continue;
           if (!boundarySites.has(module)) boundarySites.set(module, new Map());
           boundarySites.get(module).set(specifier, next);
           continue;
@@ -466,17 +489,27 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
       || patterns.some((regex) => regex.test(key)));
   };
 
+  /** The worker entries a module names (`new URL('./w.ts', import.meta.url)`), project-relative. */
+  const workerEntries = (module) => (SCRIPT_RE.test(module) ? analysis(module).workers ?? [] : [])
+    .map((specifier) => resolved(module, specifier)).filter((next) => next !== null);
+  const existingScripts = (group) => {
+    const missing = group.scripts.filter((script) => !existsSync(resolve(rootDir, script)));
+    for (const script of missing) issues.push(`${group.pages.join(', ')}: module script ${script} does not exist`);
+    return group.scripts.filter((script) => !missing.includes(script));
+  };
+
   const catalogs = {};
+  const pageModules = new Set();
+  let fullGroup = null;
   for (const [name, group] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
     if (name === FULL_CATALOG) {
       const others = group.pages.filter((page) => page !== 'index.html');
       if (others.length) issues.push(`${others.join(', ')}: only the game (index.html) loads the full catalogs`);
-      catalogs[name] = { pages: group.pages, modules: [], keys: keyList, lazyKeys: [], lazy: [] };
+      catalogs[name] = null; // (scanned last: the public pages' workers load the full catalogs too)
+      fullGroup = group;
       continue;
     }
-    const missing = group.scripts.filter((script) => !existsSync(resolve(rootDir, script)));
-    for (const script of missing) issues.push(`${group.pages.join(', ')}: module script ${script} does not exist`);
-    const boot = staticGraph(group.scripts.filter((script) => !missing.includes(script)));
+    const boot = staticGraph(existingScripts(group));
     const reached = new Set(boot.modules);
     const lazy = new Set();
     const pendingBoundaries = boot.boundaries.filter((boundary) => !boot.modules.has(boundary));
@@ -492,6 +525,28 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
     const bootKeys = new Set(keys);
     const lazyKeys = lazy.size ? keysOf(reached, []).filter((key) => !bootKeys.has(key)) : [];
     catalogs[name] = { pages: group.pages, modules: [...reached].sort(), keys, lazyKeys, lazy: [...lazy].sort() };
+    for (const module of reached) pageModules.add(module);
+  }
+  if (fullGroup) {
+    // The game: its boot graph, every graph behind its import() boundaries and every worker graph, one key set.
+    const boot = staticGraph(existingScripts(fullGroup), false);
+    const reached = new Set(boot.modules);
+    const visited = new Set(boot.modules);
+    const pending = [...boot.boundaries];
+    const enqueueWorkers = (modules) => { for (const module of modules) pending.push(...workerEntries(module)); };
+    enqueueWorkers(boot.modules);
+    enqueueWorkers(pageModules);
+    while (pending.length) {
+      const next = pending.shift();
+      if (visited.has(next)) continue;
+      visited.add(next);
+      const graph = lazyGraphs.get(next) ?? staticGraph([next], false);
+      for (const module of graph.modules) reached.add(module);
+      pending.push(...graph.boundaries);
+      enqueueWorkers(graph.modules);
+    }
+    catalogs[FULL_CATALOG] = { pages: fullGroup.pages, modules: [...reached].sort(), keys: keysOf(reached, fullGroup.markup),
+      lazyKeys: [], lazy: [] };
   }
   // the sites to rewrite: an import() of a module that some page reaches only through import() and whose own graph can
   // show a key of that page's lazy chunk (a boundary whose keys the boot catalog already holds — a builder, a stylesheet,

@@ -75,6 +75,12 @@ assert.match(issueOf("const name = 'x'; void import(`./parts/${name}.ts`);"), /c
 assert.match(issueOf("const all = import.meta.glob('./parts/*.ts');"), /import\.meta\.glob/);
 assert.deepEqual(analyze("import a from './a.ts';\nexport * from './b.ts';\nvoid import('./c.ts');\nimport type { D } from './d.ts';").imports,
   ['./a.ts', './b.ts', './c.ts'], 'static, re-export and literal import() edges; type-only imports are not edges');
+assert.deepEqual(analyze("const w = new Worker(new URL('./w.ts', import.meta.url), { type: 'module' });\n"
+  + "const v = new URL(`../x/v.ts?worker`, import.meta.url);\nconst data = new URL('./models.bin.gz', import.meta.url);\n"
+  + "const page = new URL('./p.ts', location.href);\nconst pkg = new URL('pkg/w.js', import.meta.url);").workers,
+['./w.ts', '../x/v.ts?worker'], 'worker entries: relative scripts beside import.meta.url (not data files, not another base)');
+assert.deepEqual(analyze("const w = new Worker(new URL('./w.ts', import.meta.url));").imports, [],
+  'a worker entry is not an import edge of the page');
 assert.deepEqual(analyze("import a from './a.ts';\nvoid import('./c.ts');\nconst d = import(`./d.ts`);\nvoid import('pkg');\n"
   + "void import('./a.ts');").dynamicImports, ['./c.ts', './d.ts', './a.ts'],
 'the literal relative import() specifiers (a package is not followed; ./a.ts, imported both ways, is still listed)');
@@ -98,7 +104,11 @@ try {
   write('site/fake.html', page('game', ['src/home.ts']));
   write('src/ui/i18n.ts', 'export const t = (key: string): string => key;\n');
   write('src/ui/i18nCatalogEnUS.ts', "export default { 'era.modern.long': 'x' };\n");
-  write('src/main.ts', "import { t } from './ui/i18n.ts';\nt('era.modern.long');\n");
+  // the game: its boot graph, its import() graphs (lazy.ts -> deeper.ts, plain.ts) and its worker's graph
+  write('src/main.ts', "import { t } from './ui/i18n.ts';\nt('era.modern.long');\nvoid import('./lazy.ts');\n"
+    + "new Worker(new URL('./gameWorker.ts', import.meta.url), { type: 'module' });\n");
+  write('src/gameWorker.ts', "import { t } from './ui/i18n.ts';\nexport const label = t('nav.home');\n");
+  write('src/pageWorker.ts', "import { t } from './ui/i18n.ts';\nexport const label = t('topic.ai.title');\n");
   // home's boot graph is home -> shared -> boot; its lazy graphs are lazy (-> deeper, plain) and keysInBoot. A specifier a
   // module imports both ways is a static edge, and an import() of a module the boot graph holds is no boundary.
   write('src/home.ts', "import { t } from './ui/i18n.ts';\nimport './shared.ts';\nt('nav.docs');\nvoid import('./lazy.ts');\n"
@@ -113,7 +123,8 @@ try {
   write('src/plain.ts', 'export const plain = 1;\n');
   write('src/keysInBoot.ts', "import { t } from './ui/i18n.ts';\nexport const docs = t('nav.docs');\n");
   write('src/topic.ts', "import { t } from './ui/i18n.ts';\nimport rows from './rows.json' with { type: 'json' };\n"
-    + "const slug = String(rows.length);\nexport const title = t(`topic.${slug}.title`);\n");
+    + "const slug = String(rows.length);\nexport const title = t(`topic.${slug}.title`);\n"
+    + "new Worker(new URL('./pageWorker.ts', import.meta.url));\n");
   write('src/rows.json', JSON.stringify([{ label: 'guide.ai.1.t' }, { label: 'not a key' }]));
   const pages = ['index.html', 'site/home.html', 'site/topic-a.html', 'site/topic-b.html', 'site/bare.html', 'site/fake.html'];
   const cache = new Map();
@@ -128,14 +139,22 @@ try {
   assert.deepEqual(result.catalogs.home.modules, ['src/boot.ts', 'src/deeper.ts', 'src/home.ts', 'src/keysInBoot.ts',
     'src/lazy.ts', 'src/plain.ts', 'src/shared.ts', 'src/ui/i18n.ts'], 'every module the page reaches');
   assert.deepEqual(result.lazySites, { 'src/home.ts': ['./lazy.ts'], 'src/lazy.ts': ['./deeper.ts'] },
-    'the import() sites whose target can show a lazy key: not plain.ts (no key) nor keysInBoot.ts (boot keys only)');
+    'the import() sites whose target can show a lazy key: not plain.ts (no key) nor keysInBoot.ts (boot keys only), and '
+    + 'never the game\'s (main.ts imports lazy.ts too; the game has no lazy chunk)');
   assert.deepEqual([result.catalogs.topic.lazyKeys, result.catalogs.topic.lazy], [[], []], 'a page without import()');
   assert.deepEqual([result.catalogs.game.lazyKeys, result.catalogs.game.lazy], [[], []], 'the game loads everything at boot');
   assert.ok(!result.catalogs.home.modules.includes('src/ui/i18nCatalogEnUS.ts'), 'the scan does not follow a catalog');
   assert.deepEqual(result.catalogs.topic.pages, ['site/topic-a.html', 'site/topic-b.html'], 'pages declaring one catalog share it');
   assert.deepEqual(result.catalogs.topic.keys, ['topic.build.title', 'topic.ai.title', 'guide.ai.1.t'],
     'template patterns and JSON values that name keys');
-  assert.equal(result.catalogs.game.keys.length, KEYS.length, 'the game loads the full catalog');
+  // (the game group also runs fake.html's home.ts, the issue below: home -> shared -> boot and home's import() targets)
+  assert.deepEqual(result.catalogs.game.keys, ['nav.home', 'nav.docs', 'topic.ai.title', 'help.camera', 'reference.search',
+    'reference.hint', 'era.modern.long'],
+  'the game: its boot, import() and worker graphs (gameWorker), and the workers a public page reaches (topic\'s pageWorker)');
+  assert.deepEqual(result.catalogs.game.modules, ['src/boot.ts', 'src/deeper.ts', 'src/gameWorker.ts', 'src/home.ts',
+    'src/keysInBoot.ts', 'src/lazy.ts', 'src/main.ts', 'src/pageWorker.ts', 'src/plain.ts', 'src/shared.ts', 'src/ui/i18n.ts'],
+  'every module the game and the workers reach');
+  assert.ok(!result.catalogs.topic.modules.includes('src/pageWorker.ts'), 'a worker is not a module of its page');
   assert.equal(result.issues.length, 2, result.issues.join('\n'));
   assert.match(result.issues[0], /site\/bare\.html: declares no catalog/);
   assert.match(result.issues[1], /site\/fake\.html: only the game \(index\.html\) loads the full catalogs/);
@@ -227,6 +246,16 @@ for (const [name, { pages: catalogPages, modules, keys, lazyKeys, lazy }] of Obj
   }
   assert.deepEqual(Object.keys(catalogSubset(zh, keys)), keys, `${name}: every key has its zh-CN string`);
 }
+// the game (2026-10-15): the build serves its catalogs restricted to the keys its whole graph and the workers can show
+const game = real.catalogs[FULL_CATALOG];
+for (const module of ['src/main.ts', 'src/ui/localeBootstrap.ts', 'src/game/studio.ts', 'src/mp/host/matchHostWorker.ts',
+  'src/world/horizonRingWorker.ts']) assert.ok(game.modules.includes(module), `the game's scan reaches ${module}`);
+for (const key of markupKeys(readFileSync(resolve(ROOT, 'index.html'), 'utf8'))) {
+  assert.ok(game.keys.includes(key), `index.html: data-i18n="${key}" is in the game's catalogs`);
+}
+assert.ok(game.keys.length > fullKeys.length * 0.4 && game.keys.length < fullKeys.length,
+  `the game shows ${game.keys.length} of ${fullKeys.length} keys`);
+assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chunk');
 assert.ok(real.catalogs.notFound.keys.length <= 16 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and
@@ -439,6 +468,6 @@ const bootGroup = groups.find((group) => group.test === BOOT_RUNTIME_MODULES);
 assert.ok(helperGroup && bootGroup, 'the preload helper and the boot runtime each have a group');
 assert.ok((helperGroup.priority ?? 0) > (bootGroup.priority ?? 0), 'the preload helper is claimed before the boot group');
 
-console.log(`i18n-page-catalogs.selftest: ${Object.entries(real.catalogs).filter(([name]) => name !== FULL_CATALOG)
+console.log(`i18n-page-catalogs.selftest: ${Object.entries(real.catalogs)
   .map(([name, { keys, lazyKeys }]) => `${name} ${keys.length}${lazyKeys.length ? ` (+${lazyKeys.length} lazy)` : ''}`).join(', ')} `
   + `of ${fullKeys.length} keys; no raw-key paths`);
