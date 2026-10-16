@@ -45,7 +45,7 @@ export default {
   name: 'Titan Gorge',
   blurb: 'Armored columns descend through immense red-rock shelves into a winding canyon crossroads',
   terrain: {
-    hillScale: 0.72, microScale: 0.78, rimH: 16, marshes: [], // (the horizons stream, 2026-10-16, with its Hinterland draft: rimH 54 -> 16, so the buttes show over the rim: edge-s 28 % -> 96 %, corner-nw 84 % -> 100 %; mid-field 72 % -> 37 %, the near outland's shelf following the rim down)
+    hillScale: 0.72, microScale: 0.78, rimH: 54, marshes: [],
     dunes: { amp: 1.8 },
     // the authored shelves and buttes replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
     mesas: null, landformRock: true,
