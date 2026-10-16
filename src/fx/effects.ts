@@ -59,13 +59,14 @@ import { registerGroundKeyLight } from '../engine/groundKeyLights.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { breakShardsFx, landingSpillFx, lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createLatticeGround } from './latticeGround.ts';
 import { bucketAliases, createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import { createRubbleBodies, RUBBLE_BODY_CAPACITY, type RubbleBodies } from './rubbleBodies.ts';
+import { createFractureStages, type FractureStages } from './fractureStages.ts';
 import type { RigidEnvironment } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
@@ -1265,10 +1266,31 @@ function* createFxSteps(
   // the phone tier cuts no holes: it draws each cut on the wall's face (a breach still reads as damage)
   const scars: StructureScars | null = mediaTier ? null : createStructureScars();
   if (scars) group.add(scars.mesh);
+  // (2026-10-15, the fracture package: the owner's "make their collapses much more natural, not slow down the game so
+  // much") a building's walls break where they are struck and what falls — its cells, its panels, its roof — comes down
+  // as bodies of the one engine in a pool of its own (fx/fractureStages.ts); desktop tiers, the phone keeps the kit's holes
+  const pieceLanding = (x: number, y: number, z: number, speed: number, mass: number, id: number): void => {
+    if (!blast) return;
+    const look = lookOf(id);
+    pieceLandingFx(blast, x, y, z, speed, mass, look);
+    landingSpillFx(blast, x, y, z, speed, mass, look);
+  };
+  const fractureStages: FractureStages | null = mediaTier ? createFractureStages({
+    group, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
+    materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
+    onLanding: pieceLanding,
+    onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
+    hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
+  }) : null;
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15 })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15,
+      fracture: fractureStages ? fractureStages.attach : null })
     : null;
+  /** Each struck building's last burst (fx seconds), the dust load in the air round it then (the bursts' scales, each
+   *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its
+   *  own size, unless it is far bigger than what raised the load (dcore 2026-10-11, waves 397/401). */
+  const strikeDust = new Map<number, [number, number, number]>();
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   let patchedWorld: FxWorldSeam | null = null;
@@ -5264,6 +5286,7 @@ function* createFxSteps(
     structDebris?.shiftTime(delta);
     rubble?.shiftTime(delta);
     stages?.shiftTime(delta);
+    fractureStages?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -5954,6 +5977,7 @@ function* createFxSteps(
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
+      fractureStages?.update();
       if (scars && scars.count > 0) scars.light(engineCtx.scene ?? null);
       structDebris?.update();
       rubble?.update();
@@ -6000,14 +6024,17 @@ function* createFxSteps(
         const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
         if (blast) {
           // a shaft goes over in the blow's direction (structureStages structureTopple): its dust falls along that line
-          const topple = e.stage === 'collapsed' ? structureTopple(anat, e) : null;
-          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple);
+          // (one that came down as bodies falls where its drums fall: its dust is a collapse's of bodies, from the landings)
+          const asBodies = e.stage === 'collapsed' && !!fractureStages?.took(e.structureId);
+          const topple = e.stage === 'collapsed' && !asBodies ? structureTopple(anat, e) : null;
+          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple, asBodies);
         }
         else phoneStageBeat(e);
       });
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
         const e = payload as StructureBreachEvent;
         stages?.breach(e, seamOf(e.structureId));
+        fractureStages?.breach(e);
         // a section's fall (P2): its dust in the building's own colour
         if (e.sectionDown && !e.settled && blast) sectionFallFx(blast, e, lookOf(e.structureId));
       });
@@ -6174,8 +6201,22 @@ function* createFxSteps(
                 ? lastBlast.structureId : -1;
             const named = struckId >= 0 ? lookOf(struckId) : null;
             lastBlast.structureId = -1;
-            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
-              explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, named ?? lookForStruckKind(e.surfaceKind));
+            // (dcore 2026-10-11, wave 397: "the actual fall happens inside an opaque dust ball") a building struck again and
+            // again within a couple of seconds throws less new dust each time: the air round it is full already; by the
+            // load against the burst's own size (wave 401: a 152 mm after five 76 mm still raises its full burst)
+            const scale = explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120;
+            let dustK = 1;
+            if (struckId >= 0) {
+              const nowS = particles.getTime();
+              const last = strikeDust.get(struckId);
+              const fade = last ? Math.exp(-Math.max(0, nowS - last[0]) / 1.5) : 0;
+              const load = last ? last[1] * fade : 0, biggest = last ? last[2] * fade : 0;
+              dustK = 1 / (1 + 0.45 * load / Math.max(0.3, scale));
+              if (scale > 1.5 * biggest) dustK = Math.max(dustK, 0.9);
+              if (last) { last[0] = nowS; last[1] = load + scale; last[2] = Math.max(biggest, scale); }
+              else strikeDust.set(struckId, [nowS, scale, scale]);
+            }
+            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive, scale, named ?? lookForStruckKind(e.surfaceKind), 0, dustK);
             // (dcore 2026-10-09, waves 294a/b: a hit read as a light on an intact wall) the burst punches its hole there,
             // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole); and
             // (2026-10-10, the owner: "shooting buildings should cause destruction too") so does an armour-piercing round,
@@ -7007,6 +7048,8 @@ function* createFxSteps(
       structDebris?.reset();
       rubble?.reset();
       stages?.reset();
+      fractureStages?.reset();
+      strikeDust.clear();
       landingGround.clear();
       skirtHead = 0; skirtCount = 0;
       fxTrails.reset();
