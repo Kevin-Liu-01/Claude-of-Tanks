@@ -2019,9 +2019,11 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
         const q = (k: number) => (1 - v) * ((1 - u) * a0[k] + u * a1[k]) + v * ((1 - u) * b0[k] + u * b1[k]);
         return new THREE.Vector3(q(0), q(1) - sag, q(2)).addScaledVector(nrm, 0.012);
       };
-      // a stroke from (u0, z0) to (u1, z1) on the slope (u up it, z along the ward), `n` lengths, 0.15 m wide
+      // a stroke from (u0, s0) to (u1, s1) on the slope (u up it, s along the ward to the right of one who faces the
+      // slope, so the letters read UN from either side), `n` lengths, 0.15 m wide
       const span = z1 - z0, ink = 0x1e1e1e;
-      const stroke = (u0: number, za: number, u1: number, zb: number, n: number): void => {
+      const stroke = (u0: number, sa: number, u1: number, sb: number, n: number): void => {
+        const za = -so * sa, zb = -so * sb;
         for (let k = 0; k < n; k++) {
           const p0 = onCloth(u0 + (u1 - u0) * k / n, (za + (zb - za) * k / n - z0) / span);
           const p1 = onCloth(u0 + (u1 - u0) * (k + 1) / n, (za + (zb - za) * (k + 1) / n - z0) / span);
