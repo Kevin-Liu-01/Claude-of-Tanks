@@ -5,8 +5,9 @@
 // kill-cam images, the Scene Studio loop, the mechanic and mode cards: each its delivered shot under home/, or its
 // stand-in still until that is delivered); the manual's hero, trailer, chapter cards, battle
 // takes, contact sheets and archive; each topic's hero loop and figures; the game's featured stills (boot splash, Garage
-// gallery, loading screens), its JSON-LD screenshots, the 404 page, the HUD editor's backdrop and the social cards'
-// sources; the landing contract (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
+// gallery, loading screens), its JSON-LD screenshots, the 404 page and the HUD editor's backdrop (the social cards draw
+// their own pictures: tools/marketing-shots/generate-og-images.mjs); the landing contract
+// (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
 //
 //   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run]
 // Run it on an export of main after site-media.mjs. Every rewrite matches its block exactly once, or the run stops
@@ -294,13 +295,9 @@ function wireGame() {
   swap('tools/studio-example-scenarios.mjs', /\/\/ `battleReels\.selftest` pins them to this table\./,
     () => '// tools/studio-example-videos.mjs records them from this table.', 'battle reel scenarios pin note',
     /records them from this table\./);
-  // the social cards' sources (generate-og-images.mjs re-renders the cards from these)
-  const og = { game: PICKS.og, home: PICKS.home.hero[1], docs: PICKS.docs.hero, 'docs-vehicles': PICKS.docs.chapters.vehicles,
-    'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'], ...PICKS.ogCards };
-  for (const [card, pick] of Object.entries(og)) {
-    swap('tools/marketing-shots/generate-og-images.mjs', new RegExp(`(\\['${card}', '[^']*', ')public/[^']+(', ')[^']+('\\])`),
-      (_, a, b, c) => `${a}public${still(pick.id, pick.still)}${b}50% 50%${c}`, `social card ${card}`);
-  }
+  // The social cards' pictures are not wired from these picks any more (2026-10-15, the owner: the cards "have to use
+  // the modern version of the game"): generate-og-images.mjs draws every card from the versus stills and the current
+  // UI captures and sets each one's framing itself, so a re-run here leaves its table alone.
   // the 404 page shares its own card (r14b, owner: "all pages with their custom ogs"), no longer the landing page's
   swap('404.html', /(<meta property="og:image" content="https:\/\/cot\.kevinliu\.studio\/brand\/og\/)[a-z0-9-]+(\.jpg">)/,
     (_, a, b) => `${a}404${b}`, '404 social card');

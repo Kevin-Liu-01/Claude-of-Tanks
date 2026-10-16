@@ -1,6 +1,13 @@
 // Deterministic 1200x630 social cards composed from approved in-engine captures.
 // The default game card and every route companion share the owner-approved
 // bottom-left Monument Grotesk lockup, rendered from the current crest master.
+// Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
+// of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
+// the 404 and the manual's battle topics; the current Tank Gallery, Scene Studio, battle HUD, live close-up and
+// multiplayer captures for the pages about those screens. A picture shared by two cards is framed differently on each.
+// A 1920x1080 picture covers the card at its full width, so its focus only moves the 45 px it loses top and bottom
+// (every tank stays in frame); the 2400x700 dual view, the HUD and the Studio's manual card are shown whole
+// ('contain', over their own blurred copy) so no player view, HUD edge or panel is cut.
 // Preview a subset with --only=game,home,docs-models before regenerating all.
 // Every labelled card is rendered twice: public/brand/og/<id>.jpg for the English page and public/brand/og/zh/<id>.jpg,
 // the same picture with the label in the zh-CN catalog's words, for its /cn twin (src/presentation/localizedHtml.ts).
@@ -14,26 +21,26 @@ const OUTPUT = join(ROOT, 'public/brand/og');
 const LOGO = join(ROOT, 'public/brand/logo-mark.svg');
 
 export const OG_IMAGE_CARDS = [
-  ['game', '', 'public/media/site50-r14/stills/s21-fields-assault-close.webp', '50% 50%'],
-  ['home', 'HOME', 'public/media/site50-r14/stills/s49-orchard-sunset.webp', '50% 50%'],
+  ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 100%'],
+  ['home', 'HOME', 'public/media/versus-r1/vs02-verdant-challenger-t80u.webp', '50% 100%'],
   ['gallery', 'TANK GALLERY', 'public/media/showcase-r2/11_gallery_hero.webp', '50% 48%'],
-  ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%'],
-  ['private-room', 'PRIVATE BATTLE', 'public/media/site50-r14/stills/s16-street-duel.webp', '50% 50%'],
-  ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/site50-r14/stills/s33-water-tower-close.webp', '50% 50%'],
-  ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/17_live_player_hud.webp', '50% 48%'],
+  ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 0%'],
+  ['private-room', 'PRIVATE BATTLE', 'public/media/versus-r1/vs01-desert-abrams-t90m.webp', '50% 100%'],
+  ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3.webp', '50% 60%'],
+  ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/13_gallery_modules.webp', '50% 48%'],
   ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
-  ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/showcase-r2/24_live_killcam_impact.webp', '50% 46%'],
-  ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/site50-r14/stills/s05-barn-advance-close.webp', '50% 50%'],
-  ['docs-rendering', 'RENDERER AND GRAPHICS', 'public/media/site50-r14/stills/s44-oasis-sunset.webp', '50% 50%'],
-  ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/showcase-r2/18_live_spectator.webp', '50% 46%'],
-  ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/maps/fjord.webp', '50% 48%'],
-  ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/site50-r14/stills/s04-column-under-fire.webp', '50% 50%'],
-  ['docs-multiplayer', 'MULTIPLAYER ROOMS', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 50%'],
-  ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/site50-r14/stills/s34-furnace-salvo-close.webp', '50% 50%'],
-  ['docs-interface', 'INTERFACE & CONTROLS', 'public/media/showcase-r2/19_live_sniper.webp', '50% 50%'],
-  ['docs-studio', 'SCENE STUDIO & CAPTURE', 'public/media/site50-r14/stills/s47-ironworks-crane-close.webp', '50% 50%'],
-  ['docs-filming', 'FILMING THE MEDIA', 'public/media/filming-r1/cover.webp', '62% 50%'],
-  ['404', 'ROUTE NOT FOUND', 'public/media/site50-r14/stills/s38-church-knockout-close.webp', '50% 50%'],
+  ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 0%'],
+  ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 100%'],
+  ['docs-rendering', 'RENDERER AND GRAPHICS', 'public/media/versus-r1/vs01-desert-abrams-t90m.webp', '50% 0%'],
+  ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/presentation-r1/ui_tank_closeup_modern.webp', '50% 50%'],
+  ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/media/versus-r1/vs03-reservoir-k2-type99a.webp', '50% 0%'],
+  ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/versus-r1/vs08-winter-cv90-bmp3.webp', '50% 0%'],
+  ['docs-multiplayer', 'MULTIPLAYER ROOMS', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 28%', 'contain'],
+  ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2.webp', '50% 30%'],
+  ['docs-interface', 'INTERFACE & CONTROLS', 'public/media/showcase-r2/17_live_player_hud.webp', '50% 50%', 'contain'],
+  ['docs-studio', 'SCENE STUDIO & CAPTURE', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%', 'contain'],
+  ['docs-filming', 'FILMING THE MEDIA', 'public/media/versus-r1/vs02-verdant-challenger-t80u.webp', '50% 0%'],
+  ['404', 'ROUTE NOT FOUND', 'public/media/versus-r1/vs08-winter-cv90-bmp3.webp', '50% 100%'],
 ];
 
 // The /cn pages' labels: each page's own words in the zh-CN catalog (its heading, nav label or title), so a card never

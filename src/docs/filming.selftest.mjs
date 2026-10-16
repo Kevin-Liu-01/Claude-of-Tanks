@@ -76,12 +76,14 @@ assert.deepEqual(orphans, [], 'every file in filming-r1 is in the manifest (rebu
 const total = readdirSync(MEDIA).reduce((sum, name) => sum + statSync(join(MEDIA, name)).size, 0);
 assert.ok(total < 84 * 1048576, `filming-r1 is ${(total / 1048576).toFixed(1)} MB; the collection's budget is 84 MB`);
 
-// The page: its figures are the builder's, the cover feeds the manual index and the social card.
+// The page: its figures are the builder's, and its card feeds the manual index.
 const filming = topics.filming;
 assert.deepEqual(filming.media.map(([src]) => src), ['/media/filming-r1/previz-sheet.webp', '/media/filming-r1/plan-view.webp']);
 assert.deepEqual(filming.mediaAt, [3, 5], 'the previz sheet follows the motion search, the Plan view the Studio\'s gains');
 assert.match(read('site/docs.html'), /<a class="docs-chapter-wide" href="\/docs\/filming"><span class="docs-chapter-media"><img src="\/media\/filming-r1\/card\.webp"/);
-assert.match(read('tools/marketing-shots/generate-og-images.mjs'), /\['docs-filming', 'FILMING THE MEDIA', 'public\/media\/filming-r1\/cover\.webp'/);
+// (the page's social card is a versus still, staged in Scene Studio like the takes it describes: since 2026-10-15 every
+// card shows the current game)
+assert.match(read('tools/marketing-shots/generate-og-images.mjs'), /\['docs-filming', 'FILMING THE MEDIA', 'public\/media\/versus-r1\/[^']+\.webp'/);
 const topicsSource = read('src/docs/topics.ts');
 assert.match(topicsSource, /slug === 'filming'\) \{\n\s+void import\('\.\/filming\.ts'\)/, 'the viewer loads on demand, on its own page');
 
