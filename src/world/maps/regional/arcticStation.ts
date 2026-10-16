@@ -507,6 +507,11 @@ export const tropo: RegionalBuilder = (ctx) => {
       const a = skin(t, foot, 0.06), b = skin(t, foot, -0.06), c = skin(t, foot + H, -0.06), d = skin(t, foot + H, 0.06);
       sink.quad('regionalPlaster', ...(e > 0 ? [a, b, c, d] : [b, a, d, c]) as [Vec3, Vec3, Vec3, Vec3], { colour: shade(PANEL, 0.84) });
     }
+    // the panels' stiffeners down the back of the skin at every joint (angles: the purlins the panels are bolted to)
+    for (let k = 1; k < n; k++) {
+      const t = k / n - 0.5;
+      angleMember(sink, 'structureMetal', [cx + t * bw, foot, curve(t) - 0.11], [cx + t * bw, foot + H, curve(t) - 0.11], 0.1, 0.02, { colour: STEEL, decor: true }, 'none', [0, 0, -1]);
+    }
     // the panel joints: across the face every sixth of its height and down it every fourth strip, a darker grey that
     // holds at range (not fine joinery)
     const joint = { colour: shade(WHITE, 0.62), decor: true } as const;
