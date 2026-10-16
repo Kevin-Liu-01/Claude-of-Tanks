@@ -78,6 +78,9 @@ export interface DestructiblePropType {
   /** (the map-content lane, 2026-10-10) seated as the carts are, on the plane through the ground at its footprint's
    * corners (hw, hl), pitched and rolled to it (props.ts cartGroundPose): a polar station's drum works on a slope. */
   groundPose?: boolean;
+  /** (props lane A, #2; E1's contract) the kind's own broken builder stands: never the settled anatomy's heap nor
+   *  PROP_FRACTURE's break of the intact build (a clutter pool's intact build carries its far form too). */
+  ownBroken?: boolean;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters

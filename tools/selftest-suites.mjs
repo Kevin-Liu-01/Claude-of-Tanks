@@ -1630,6 +1630,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/environmentSurfaceColor.selftest.mjs',
     'src/world/cropLighting.selftest.mjs',
     'src/world/cropBiomeIdentity.selftest.mjs',
+    'src/world/maps/cropKit.selftest.mjs', // 2026-10-14 props lane A (#18b): the regional crops (maize, sunflower, beet, cauliflower) on the wheat's plot stream
     'src/world/horizonResources.selftest.mjs',
     'src/world/horizonRelief.selftest.mjs',
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
@@ -1746,11 +1747,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
+    'src/world/maps/utilityPoles.selftest.mjs', // 2026-10-14 props lane A (#21): each region's line (its pole, its timber, its conductors on its insulators)
     'src/world/wrecks.selftest.mjs',
     // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
+    'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
+    'src/world/maps/clutterKit.selftest.mjs', // 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k a map)
     'src/world/landmarks/landmarkDamage.selftest.mjs', // 2026-10-14 props lane A (E12): set pieces' named pieces, ruptures, open frames, light set pieces' fall
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',

@@ -51,7 +51,8 @@ try {
   if (oldImageData === undefined) delete globalThis.ImageData; else globalThis.ImageData = oldImageData;
 }
 
-const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+// (props lane A, #18b, 2026-10-14: the crop painter's owner is maps/cropKit.ts, extracted from props.ts unchanged)
+const source = readFileSync(new URL('./maps/cropKit.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  function createCropTexture(');
 const end = source.indexOf('  function cropPlotAvoidsSpawns(', start);
 assert.ok(start > 0 && end > start);

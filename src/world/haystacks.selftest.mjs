@@ -61,7 +61,8 @@ const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return
 const REG = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES };
 const inBands = (v) => [HAY_PACKED_V, HAY_FACE_V, HAY_THATCH_V, HAY_WOOD_V].some((band) => v >= band[0] - 0.021 && v <= band[1] + 0.021);
 const STACKS = new Set(Object.keys(HAYSTACK_DESTRUCTIBLE_TYPES));
-const BUDGET = { stog: 600, plast: 520, hooiberg: 760, meule: 700, diemen: 640, strawstack: 260, haystack: 100, stook: 420, bale: 130 };
+// (props lane A #18: the meule's straw ropes over its dome — WORKLIST #18's near cap is 800)
+const BUDGET = { stog: 600, plast: 520, hooiberg: 760, meule: 760, diemen: 640, strawstack: 260, haystack: 100, stook: 420, bale: 130 };
 for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack', 'haystack', 'stook', 'bale']) {
   const t = REG[kind];
   assert.ok(t && t.mat === 'straw' && t.cls === 'break' && t.contact === 'ob' && !t.collider, `${kind}: a straw stack, crushable and shoot-through`);
