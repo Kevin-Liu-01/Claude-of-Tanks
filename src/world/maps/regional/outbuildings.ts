@@ -681,8 +681,9 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
     for (let i = 0; i < segs; i++) {
       const a0 = Math.PI * 2 * i / segs, a1 = Math.PI * 2 * (i + 1) / segs, am = (a0 + a1) / 2;
       const inward: Vec3 = [-Math.cos(am), 0, -Math.sin(am)];
-      facing(sink, 'dark', P2(a0, base - 0.05, ri), P2(a1, base - 0.05, ri), P2(a1, wallH, ri), P2(a0, wallH, ri), inward, {});
-      if (spec.cone) facing(sink, 'dark', P2(a0, wallH, ri), P2(a1, wallH, ri), P2(a1, wallH + rise - 0.1, capR), P2(a0, wallH + rise - 0.1, capR), [inward[0], -0.6, inward[2]], {});
+      // (dressing: the ring's core keeps the collision it had)
+      facing(sink, 'dark', P2(a0, base - 0.05, ri), P2(a1, base - 0.05, ri), P2(a1, wallH, ri), P2(a0, wallH, ri), inward, { decor: true });
+      if (spec.cone) facing(sink, 'dark', P2(a0, wallH, ri), P2(a1, wallH, ri), P2(a1, wallH + rise - 0.1, capR), P2(a0, wallH + rise - 0.1, capR), [inward[0], -0.6, inward[2]], { decor: true });
     }
     // its floor: trodden earth closing the ring's foot (a ray from under the ground met the ring's back)
     sink.cylinder(bucket, [cx, base - sunk - 0.02, cz], 'y', sunk + 0.02, R - 0.035, segs, { decor: true, shade: 0.6 });
