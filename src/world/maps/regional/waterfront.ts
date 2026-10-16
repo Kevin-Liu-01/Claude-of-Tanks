@@ -130,10 +130,10 @@ export function boatHull(sink: PartSink, at: Vec3, yaw: number, spec: HullSpec,
       for (let k = 0; k < segs; k++) {
         const t0 = Math.PI * k / segs, t1 = Math.PI * (k + 1) / segs;
         const ra = a.hb * 0.98, rb = b.hb * 0.98, h = spec.depth * 0.9;
-        const pa0 = P(a.x, a.gun + Math.sin(t0) * h, Math.cos(t0) * ra), pa1 = P(a.x, a.gun + Math.sin(t1) * h, Math.cos(t1) * ra);
-        const pb0 = P(b.x, b.gun + Math.sin(t0) * h, Math.cos(t0) * rb), pb1 = P(b.x, b.gun + Math.sin(t1) * h, Math.cos(t1) * rb);
-        sink.quad(bucket, pa0, pb0, pb1, pa1, { colour: spec.hood, decor: true });
-        sink.quad(bucket, pa1, pb1, pb0, pa0, { colour: shade(spec.hood, 0.7), decor: true, fine: true });
+        // (the matting's underside a weave's thickness in: two faces in one plane fight, and a ray takes the back one)
+        const arc = (e: typeof a, r: number, t: number, inset: number): Vec3 => P(e.x, e.gun + Math.sin(t) * (h - inset), Math.cos(t) * (r - inset));
+        sink.quad(bucket, arc(a, ra, t0, 0), arc(b, rb, t0, 0), arc(b, rb, t1, 0), arc(a, ra, t1, 0), { colour: spec.hood, decor: true });
+        sink.quad(bucket, arc(a, ra, t1, 0.018), arc(b, rb, t1, 0.018), arc(b, rb, t0, 0.018), arc(a, ra, t0, 0.018), { colour: shade(spec.hood, 0.7), decor: true, fine: true });
       }
     }
   }
