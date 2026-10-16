@@ -12,13 +12,17 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { CLIFF_STRATA_FLOOR, STEEP_NORMAL_G2 } from './terrain.ts';
+// (2026-10-15) the chunk builder's steep-cell split (terrainContactSurface.ts terrainCellFlipped, the steep-diagonal item)
+// reaches this sandbox the way terrain.ts imports it; read off the module so either landing order evaluates
+import * as contactSurface from './terrainContactSurface.ts';
 
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const chunks = source.slice(source.indexOf('const CHUNKS = 8'));
-const api = new Function('THREE', stripTypeScriptTypes(`
+const api = new Function('THREE', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   ${chunks.replace(/^export /gm, '')}
-`) + 'return { buildFineGridSteps, buildChunkGeometrySteps, CHUNK_SIZE, FINE_SEGS };')(THREE);
+`) + 'return { buildFineGridSteps, buildChunkGeometrySteps, CHUNK_SIZE, FINE_SEGS };')(THREE,
+  contactSurface.terrainCellFlipped, contactSurface.terrainCellHeight);
 const drain = (steps) => { let r; do { r = steps.next(); } while (!r.done); return r.value; };
 
 // a gorge wall: 34 m of rock rising over ~6 m along x near x = 40, its crest wandering in z (a crest no grid aligns
