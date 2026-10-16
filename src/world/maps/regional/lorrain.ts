@@ -639,9 +639,9 @@ const arcades: RegionalBuilder = (ctx) => {
     }
     // the wall's ends
     for (const sz of [-1, 1]) {
-      const z = sz * F / 2, q = sz > 0
+      const z = sz * F / 2, q: Vec3[] = sz > 0
         ? [[xf, -0.3, z], [xf + deep, -0.3, z], [xf + deep, H0, z], [xf, H0, z]] : [[xf + deep, -0.3, z], [xf, -0.3, z], [xf, H0, z], [xf + deep, H0, z]];
-      sink.quad('stone', q[0] as Vec3, q[1] as Vec3, q[2] as Vec3, q[3] as Vec3);
+      sink.quad('stone', q[0], q[1], q[2], q[3]);
     }
     recordBody(sink, xf + arcade / 2, 0, arcade, F, H0, 'stone');
     // the voussoirs and keystones, the impost mouldings at the springing on the piers

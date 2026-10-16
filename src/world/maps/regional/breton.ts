@@ -5,7 +5,7 @@
 // through the eaves on the long front; small casements with painted plank shutters (blue, green, red); granite barns;
 // a chapel with a pierced bell gable.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
+  PartSink, faceBox, facePoint, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
