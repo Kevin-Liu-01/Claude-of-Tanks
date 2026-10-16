@@ -4,7 +4,8 @@
 // veranda and plank shutters; the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof
 // and a signboard; a whitewashed mosque with small domes and a slender minaret; round clay-and-bamboo rice granaries
 // (gola) under conical thatch; the river ghat's boat sheds.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { bevelSpan, orientedPrism } from './millWorks.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -254,25 +255,42 @@ const wrecked: RegionalBuilder = (ctx) => {
  * lane, a tin back wall, a plank counter with sacks of rice and lentils and baskets of produce.
  */
 const bazaarStall: RegionalBuilder = (ctx) => {
+  // (props census r2 sweep, Lane C 2026-10-16: the stall's box-only share 99 %) its parts in their own forms: the mud
+  // plinth's corners worn round, the bamboo posts round, the back wall of corrugated tin, the counter's plank eased, the
+  // tin roof's front edge turned down into a drip, the jute sacks round; the draws as before
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
   const floor = 0.35, back = 2.95, front = 2.4;
-  sink.span('plaster3', -W / 2 - 0.25, -0.3, -D / 2 - 0.25, W / 2 + 0.25, floor, D / 2 + 0.25);
+  const px = W / 2 + 0.25, pz = D / 2 + 0.25, wear = 0.35;
+  const plinth: Vec3[] = [[px, -0.3, -pz + wear], [px, -0.3, pz - wear], [px - wear, -0.3, pz], [-px + wear, -0.3, pz], [-px, -0.3, pz - wear],
+    [-px, -0.3, -pz + wear], [-px + wear, -0.3, -pz], [px - wear, -0.3, -pz]];
+  orientedPrism(sink, 'plaster3', plinth, [0, 1, 0], floor + 0.3, {});
   for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, h, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
+    sink.cylinder('structureWood', [x * (W / 2 - 0.15), floor, z * (D / 2 - 0.15)], 'y', h - floor, 0.07, 8, { colour: BAMBOO_MAT });
   }
-  sink.span('structureMetal', -W / 2 + 0.08, floor, -D / 2 + 0.08, W / 2 - 0.08, back - 0.12, -D / 2 + 0.16, { colour: sheetColour(rng) });
-  // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z)
+  // the back wall: corrugated tin, its facets welded into one sheet (front and back)
+  const tin = sheetColour(rng), zb = -D / 2 + 0.12, ribs = Math.max(8, Math.round((W - 0.16) / 0.15)), xa = -W / 2 + 0.08, xb = W / 2 - 0.08;
+  for (let i = 0; i < ribs; i++) {
+    const u0 = xa + (xb - xa) * i / ribs, u1 = xa + (xb - xa) * (i + 1) / ribs, z0 = zb + (i % 2 ? 0.03 : 0), z1 = zb + (i % 2 ? 0 : 0.03);
+    sink.quad('structureMetal', [u0, floor, z0], [u1, floor, z1], [u1, back - 0.12, z1], [u0, back - 0.12, z0], { colour: tin });
+    sink.quad('structureMetal', [u1, floor, z1], [u0, floor, z0], [u0, back - 0.12, z0], [u1, back - 0.12, z1], { colour: shade(tin, 0.8) });
+  }
+  // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z), its
+  // front edge turned down in a drip welded to the sheet
+  const roofColour = sheetColour(rng);
   const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(back - front, D) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.05, bucket: 'structureMetal', ridge: null };
-  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, sheetColour(rng)));
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
+  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, roofColour));
+  const tan = (back - front) / D, ze = D / 2 + 0.35, ye = front - 0.35 * tan;
+  sink.quad('structureMetal', [-W / 2 - 0.3, ye - 0.12, ze], [W / 2 + 0.3, ye - 0.12, ze], [W / 2 + 0.3, ye + 0.01, ze], [-W / 2 - 0.3, ye + 0.01, ze], { colour: shade(roofColour, 0.85), decor: true });
+  sink.quad('structureMetal', [W / 2 + 0.3, ye - 0.12, ze - 0.01], [-W / 2 - 0.3, ye - 0.12, ze - 0.01], [-W / 2 - 0.3, ye + 0.01, ze - 0.01], [W / 2 + 0.3, ye + 0.01, ze - 0.01], { colour: shade(roofColour, 0.7), decor: true });
+  bevelSpan(sink, 'structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, 0.04, { colour: pick(rng, WEATHERED_PLANK) });
   // the goods: jute sacks on the counter and the floor, flat baskets of produce
   const jute = rgb(0xa08a62), produce: readonly Rgb[] = [0x8a3a2a, 0xc0902a, 0x5a7a3a, 0xb8b0a0].map(rgb);
   for (let k = 0, n = 3 + Math.floor(rng() * 3); k < n; k++) {
     const x = -W / 2 + 0.7 + rng() * (W - 1.4), onCounter = rng() < 0.5;
-    const y0 = onCounter ? floor + 0.8 : floor, z = onCounter ? D / 2 - 0.72 : -D / 2 + 0.7 + rng() * 0.8;
-    sink.span('structureWood', x - 0.22, y0, z - 0.16, x + 0.22, y0 + 0.42 + rng() * 0.16, z + 0.16, { colour: jute, decor: true });
+    const y0 = onCounter ? floor + 0.8 : floor, z = onCounter ? D / 2 - 0.72 : -D / 2 + 0.7 + rng() * 0.8, h = 0.42 + rng() * 0.16;
+    sink.cylinder('structureWood', [x, y0, z], 'y', h, 0.2, 8, { colour: jute, decor: true }, 0.16);
   }
   for (let k = 0; k < 3; k++) {
     const x = -W / 2 + 0.8 + k * (W - 1.6) / 2;

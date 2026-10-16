@@ -232,3 +232,21 @@ export function beam(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, w
   const ax: Vec3 = [ay[1] * az[2] - ay[2] * az[1], ay[2] * az[0] - ay[0] * az[2], ay[0] * az[1] - ay[1] * az[0]];
   sink.box(bucket, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], [w / 2, len / 2, w / 2], opts, new LocalFrame(ax, ay, az, [0, 0, 0]));
 }
+
+/**
+ * A span from (x0, y0, z0) to (x1, y1, z1) with its long arrises eased by `c` (the r2 sweep's box-only share, Lane C
+ * 2026-10-16): the octagonal section run along the span's longest side (a squared timber, a sawn plank, a dressed block).
+ */
+export function bevelSpan(sink: PartSink, bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number,
+  c: number, opts: EmitOptions): void {
+  const lo = [Math.min(x0, x1), Math.min(y0, y1), Math.min(z0, z1)], hi = [Math.max(x0, x1), Math.max(y0, y1), Math.max(z0, z1)];
+  const size = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]];
+  const run = size[0] >= size[1] && size[0] >= size[2] ? 0 : size[1] >= size[2] ? 1 : 2;
+  const [a, b] = run === 0 ? [1, 2] : run === 1 ? [2, 0] : [0, 1];
+  const k = Math.max(0.002, Math.min(c, Math.min(size[a], size[b]) * 0.33));
+  const A0 = lo[a], A1 = hi[a], B0 = lo[b], B1 = hi[b];
+  const sec: Array<[number, number]> = [[A1, B0 + k], [A1, B1 - k], [A1 - k, B1], [A0 + k, B1], [A0, B1 - k], [A0, B0 + k], [A0 + k, B0], [A1 - k, B0]];
+  const pts: Vec3[] = sec.map(([pa, pb]) => { const v: [number, number, number] = [0, 0, 0]; v[a] = pa; v[b] = pb; v[run] = lo[run]; return v; });
+  const dir: [number, number, number] = [0, 0, 0]; dir[run] = 1;
+  orientedPrism(sink, bucket, pts, dir, size[run], opts);
+}
