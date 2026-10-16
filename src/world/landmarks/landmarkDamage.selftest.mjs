@@ -12,6 +12,7 @@
 //      1 on) none; the same anatomy and seed write the same bytes; a tank ruptures toward the blow (a cut in its shell,
 //      the torn petals, its dark inside, the spill on the ground); an open frame takes no spall and no cut; a light
 //      frame's collapse lays its frame along the line it toppled, low on the ground, past its foot.
+import { toppleHingeM } from '../toppleHinge.ts';
 import assert from 'node:assert/strict';
 import { installWorldBuildFixture } from '../../../tools/headlessWorldCollision.mjs';
 installWorldBuildFixture();
@@ -67,7 +68,7 @@ const expect = {
   statue: ['figure'], columnMonument: ['figure'], equestrianStatue: ['rider'], obelisk: ['finial'], fountain: ['bowl', 'finial'],
   campanile: ['pinnacle-0', 'pinnacle-1', 'pinnacle-2', 'pinnacle-3', 'cross'], valveTower: ['finial'],
   fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome-shell', 'radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
-  headframe: ['deck-rail', 'sheave-l', 'sheave-r'],
+  headframe: ['deck-rail', 'sheave-l', 'sheave-r', 'ropes', 'frame', 'ore-bin'],
 };
 for (const [kind, want] of Object.entries(expect)) assert.deepEqual(names(kind), want, `${kind}'s pieces`);
 assert.deepEqual(names('fountain', { style: 'markt' }), ['figure'], 'the Marktbrunnen\'s saint');
@@ -184,7 +185,8 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   const lying = out.runs.filter((r) => r.role === 'rubble');
   const xs = lying.flatMap((r) => r.v.filter((_, i) => i % 11 === 0));
   assert.ok(Math.max(...xs) > 18, `it lies along its line, out past its foot (${Math.max(...xs).toFixed(1)} m)`);
-  assert.ok(maxY(lying) < 4, `low on the ground (${maxY(lying).toFixed(2)} m)`);
+  // (227, lane B: a frame buckles over its standing bays, world/toppleHinge.ts) no higher than its buckle, the rest lies low
+  assert.ok(maxY(lying) < toppleHingeM(24, true) + 1, `no higher than its buckle (${maxY(lying).toFixed(2)} m)`);
 }
 
 {
@@ -207,11 +209,22 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
     { let top = -Infinity, at = null; for (let i = 0; i < pos.length; i += 3) if (pos[i + 1] > top) { top = pos[i + 1]; at = [pos[i], pos[i + 2]]; }
       console.log('[probe]', kind, 'w', a.w, 'd', a.d, 'h', a.h, 'laid top', top.toFixed(2), 'at', at.map((v) => v.toFixed(1)).join(',')); }
     // and it lies down (the E12 film: a mast's guys swung up into the air, a billboard stood on its edge, a lookout's
-    // frame lay as tall as its foot is wide): nothing of its fall stands over four metres
+    // frame lay as tall as its foot is wide): nothing of its fall stands over its standing bays (227, lane B: the frame
+    // buckles over them, world/toppleHinge.ts) and four metres
     let top = -Infinity;
     for (let i = 1; i < pos.length; i += 3) top = Math.max(top, pos[i]);
-    assert.ok(top <= 4, `${kind}: its fall lies down (up to ${top.toFixed(2)} m)`);
-    const floating = r2.floatingMembers(r2.toParts(g), { groundM: 0.05, contactM: 0.07 });
+    assert.ok(top <= Math.max(4, toppleHingeM(a.h, true) + 1), `${kind}: its fall lies down past its standing bays (up to ${top.toFixed(2)} m)`);
+    // (227, lane B: a frame's footings, collar and sheds stand while it falls — landmarks/damage.ts — so what it lays may
+    // rest on them: they join the check as they stand)
+    const standing = [...pos];
+    for (const sg of Object.values(build(kind, params)).flat()) {
+      if (sg.userData.damagePiece) continue;
+      const q = sg.index ? sg.toNonIndexed() : sg, arr = q.getAttribute('position').array;
+      for (let i = 0; i < arr.length; i++) standing.push(arr[i]);
+    }
+    const gs = new THREE.BufferGeometry();
+    gs.setAttribute('position', new THREE.Float32BufferAttribute(standing, 3));
+    const floating = r2.floatingMembers(r2.toParts(gs), { groundM: 0.05, contactM: 0.07 });
     assert.deepEqual(floating.map((f) => f.min), [], `${kind}: nothing of its fall left in the air`);
     assert.ok(out.pushed.every((p) => p[4] < 0.3 || Math.hypot(p[16], p[17], p[18]) > 1e-3), `${kind}: every chip above the ground is thrown`);
   }

@@ -74,7 +74,10 @@ export function collapseLattice(anatomy: StructureDamageAnatomy, seed: number, o
   const axis: Vec3 = given && gl > 1e-3 ? [given[0] / gl, 0, given[1] / gl] : [Math.cos(ang), 0, Math.sin(ang)];
   const side: Vec3 = [-axis[2], 0, axis[0]];
   const ground = (x: number, z: number): number => mound(x, z) + HEAP_LIFT_M * Math.max(0, Math.min(1, (mound(x, z) - 0.12) / 0.5));
-  const tint: Rgb = lat.colour ?? [0.6, 0.6, 0.6];
+  // (a frame in a weathered bucket, a bin tower's render: the kit's own tint for it, from the plan the anatomy carries)
+  const kitTints = (anatomy.kitPlan as { regional?: { tints?: Record<string, Rgb> } } | undefined)?.regional?.tints;
+  const regional = /^regional(.)(.*)$/.exec(lat.bucket), tintKey = regional ? regional[1].toLowerCase() + regional[2] : '';
+  const tint: Rgb = lat.colour ?? (tintKey ? kitTints?.[tintKey] : undefined) ?? [0.6, 0.6, 0.6];
   const dull: Rgb = [tint[0] * 0.9, tint[1] * 0.9, tint[2] * 0.9];
   const s = lat.size;
   const legs = lat.legs, y0 = Math.min(...legs.map((l) => l.foot[1]));

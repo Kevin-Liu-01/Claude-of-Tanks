@@ -8,6 +8,8 @@
 // (recordLattice, kept in the kit's plan beside its houses) so the damage reading (damage.ts describeLattice) brings
 // the frame down as its members, not as a shaft's drums.
 import { PartSink, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+/** A solid beside a builder's frames (an intake shed, a bin house) recorded as a house body for the damage reading. */
+export { recordBody as recordFrameHouse } from './house.ts';
 
 /** A lattice frame as its builder laid it, in the building's frame (PartSink.framePoint). */
 export interface LatticeReading {

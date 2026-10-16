@@ -16,7 +16,7 @@ import {
 import { buildHouse, emitRoof, holedBox, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { bench } from './dressing.ts';
-import { recordLattice } from './lattice.ts';
+import { recordFrameHouse, recordLattice } from './lattice.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** Window frames, shutters and doors: the settlements' blue, turquoise, green and sky blue, a brown. */
@@ -613,10 +613,12 @@ const conveyor: RegionalBuilder = (ctx) => {
     sink.span('plaster2', -hw, -0.4, -half, hw, 2.2, -half + binS);
     sink.span('plaster2', -binS / 2, 2.2, z0 - binS / 2, binS / 2, binH, z0 + binS / 2);
     sink.span('plaster2', -binS / 2 - 0.15, binH, z0 - binS / 2 - 0.15, binS / 2 + 0.15, binH + 0.3, z0 + binS / 2 + 0.15);
+    recordLattice(sink, [{ foot: [0, 2.2, z0], head: [0, binH, z0] }], [], binS, 'regionalPlaster2', null, null); // (227, lane B co-hold: the bin tower a column that falls as its frame, latticeFall.ts)
     const shedL = Math.min(4.5, Ll * 0.22), zi = half - shedL / 2;
     // (props census #15, Lane C 2026-10-16: the intake's open front was a dark plate on a box) its front cut open, the
     // dark of the intake behind it
     holedBox(sink, 'plaster', -hw, zi - shedL / 2, hw, half, -0.4, 3.2, { front: [{ u0: -(Wl - 1.0) / 2, u1: (Wl - 1.0) / 2, y0: 0.2, y1: 2.6 }] }, 0.3, 0.3);
+    recordFrameHouse(sink, 0, zi, Wl, shedL, 3.36, 'plaster'); // (227, lane B co-hold: the intake shed a house body, its own heap)
     sink.band('stone', -hw - 0.04, -0.1, zi - shedL / 2 - 0.04, hw + 0.04, 0.45, half + 0.04, { decor: true });
     sink.band('plaster2', -hw - 0.08, 2.95, zi - shedL / 2 - 0.08, hw + 0.08, 3.2, half + 0.08, { decor: true, shade: 0.9 });
     sink.span('roof', -hw - 0.25, 3.2, zi - shedL / 2 - 0.2, hw + 0.25, 3.36, half + 0.25);
@@ -640,6 +642,7 @@ const conveyor: RegionalBuilder = (ctx) => {
       // (the legs' arrises: a rolled section's flanges read as an octagon)
       for (const x of [-hw + 0.2, hw - 0.2]) sink.cylinder('structureMetal', [x, -0.3, z], 'y', y + 0.3, 0.15 / Math.cos(Math.PI / 8), 8, { colour: STEEL_DARK }, 0.15 / Math.cos(Math.PI / 8), true, Math.PI / 8);
       sink.span('structureMetal', -hw + 0.05, y - 0.3, z - 0.12, hw - 0.05, y, z + 0.12, { colour: STEEL_DARK });
+      recordLattice(sink, [-1, 1].map((sx) => ({ foot: [sx * (hw - 0.2), -0.3, z] as Vec3, head: [sx * (hw - 0.2), y, z] as Vec3 })), [y], 0.3, 'structureMetal', STEEL_DARK, null, undefined, { stand: 0.85 }); // (227, lane B co-hold: each portal trestle its frame)
       sink.member('structureMetal', [-hw + 0.2, 0.4, z], [hw - 0.2, y - 0.4, z], 0.1, 0.1, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true }, 0);
     }
     const len = Math.hypot(b[1] - a[1], b[2] - a[2]), dy = (b[1] - a[1]) / len, dz = (b[2] - a[2]) / len;
