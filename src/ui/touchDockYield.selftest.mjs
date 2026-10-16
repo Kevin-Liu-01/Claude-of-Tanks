@@ -84,11 +84,19 @@ const dimmed = (t) => t.el.attrs.has(DOCK_YIELD_ATTRIBUTE);
   y.setOpen(false);
   y.begin(); y.disc(124, 64, 20); y.commit();
   assert.equal(dimmed(panel), false, 'and clears when the panel closes');
-  // A new placement clears the old tiles' state.
+  // Opening the panel applies the last painted frame's ink at once (no repaint needed).
+  y.begin(); y.disc(124, 64, 20); y.commit();
+  y.setOpen(true);
+  assert.equal(dimmed(panel), true, 'the panel opens dimmed where ink already is');
+  y.setOpen(false);
+  // A new placement clears the old tiles' state and applies the last frame's ink to the new tiles at once: a relayout
+  // between painted frames (a hit notice while the canvas keeps its pixels) must not leave a tile under ink undimmed.
   y.begin(); y.disc(124, 124, 30); y.commit();
   assert.equal(dimmed(a), true);
-  y.setTiles([b]);
+  const a2 = tile(100, 100), far = tile(300, 300);
+  y.setTiles([a2, far]);
   assert.equal(dimmed(a), false, 'replaced tiles are left undimmed');
+  assert.deepEqual([dimmed(a2), dimmed(far)], [true, false], 'the new tile under the last frame\'s ink dims at once');
   y.setTiles([]);
   assert.equal(y.active, false);
 }

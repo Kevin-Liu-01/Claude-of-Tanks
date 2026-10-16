@@ -43,8 +43,10 @@ const MAX_SECTORS = 8;
 const SECTOR_STEP_PX = 3;
 
 export interface DockYield {
-  /** The placed tiles in viewport px (battleHudLayout.ts publishes them whenever the dock is placed or cleared). */
+  /** The placed tiles in viewport px (battleHudLayout.ts publishes them whenever the dock's geometry changes); the
+   *  last painted frame's ink applies to them at once. */
   setTiles(tiles: readonly DockYieldTile[]): void;
+  /** The More panel opened or closed; the last painted frame's ink applies to its tiles at once. */
   setOpen(open: boolean): void;
   /** True while there are tiles to yield: hud.ts skips reporting ink otherwise. */
   readonly active: boolean;
@@ -144,14 +146,30 @@ export function createDockYield(): DockYield {
     }
   }
 
+  function commit(): void {
+    for (let i = 0; i < tiles.length; i++) {
+      const t = tiles[i];
+      const shown = !t.panel || open;
+      const next = shown && reached(t, dimmed[i] ? DOCK_YIELD_LEAVE_PX : DOCK_YIELD_ENTER_PX) ? 1 : 0;
+      if (next !== dimmed[i]) { dimmed[i] = next; t.el.toggleAttribute(DOCK_YIELD_ATTRIBUTE, next === 1); }
+    }
+  }
+
+  // A relayout or the More panel can change the tiles between painted frames (a hit notice relayouts the HUD while the
+  // reticle canvas keeps its pixels): the last frame's ink is applied to the new tiles at once, not at the next paint.
   return {
     setTiles(next) {
       clearAll();
       tiles = next.slice();
       if (dimmed.length < tiles.length) dimmed = new Uint8Array(tiles.length * 2);
       dimmed.fill(0);
+      commit();
     },
-    setOpen(next) { open = next; },
+    setOpen(next) {
+      if (open === next) return;
+      open = next;
+      commit();
+    },
     get active() { return tiles.length > 0; },
     begin() { nd = nr = ns = 0; },
     disc(x, y, r) {
@@ -168,13 +186,6 @@ export function createDockYield(): DockYield {
       sectors[o] = cx; sectors[o + 1] = cy; sectors[o + 2] = Math.max(0, r0); sectors[o + 3] = r1; sectors[o + 4] = a; sectors[o + 5] = half;
       ns++;
     },
-    commit() {
-      for (let i = 0; i < tiles.length; i++) {
-        const t = tiles[i];
-        const shown = !t.panel || open;
-        const next = shown && reached(t, dimmed[i] ? DOCK_YIELD_LEAVE_PX : DOCK_YIELD_ENTER_PX) ? 1 : 0;
-        if (next !== dimmed[i]) { dimmed[i] = next; t.el.toggleAttribute(DOCK_YIELD_ATTRIBUTE, next === 1); }
-      }
-    },
+    commit,
   };
 }

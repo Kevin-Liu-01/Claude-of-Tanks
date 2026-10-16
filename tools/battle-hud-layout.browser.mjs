@@ -569,7 +569,7 @@ try {
         for(const [sight,single] of i===0?[['battle',false],['scope',false],['battle',true]]:[['battle',false]]){
           await page.evaluate(({gun,sight,single})=>{const f=window.__HUD_LAYOUT;f.aimAt(gun,{single});f.reticle({sight,bloom:'full'});},{gun,sight,single});
           await page.waitForTimeout(sight==='scope'?160:0);
-          await page.evaluate(()=>window.__HUD_LAYOUT.repaint());
+          await page.evaluate(async()=>{window.__HUD_LAYOUT.repaint();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
           const result=await page.evaluate(inkUnderTiles);
           const inked=judge(`${name}/${count}/gun-tile${i}-${sight}${single?'-single':''}`,result);
           if(!inked)errors.push(`${name}/${count}: the gun mark on tile ${i} (${sight}) left no ink on any tile`);
@@ -594,8 +594,14 @@ try {
       }
       await page.evaluate(()=>{const f=window.__HUD_LAYOUT;f.aimAt(null);f.restAim();});
       let worst=null;
+      const dockBox=()=>page.evaluate(()=>{const r=document.querySelector('.cot-vehicle-controls').getBoundingClientRect();return [r.left,r.top,r.width,r.height].map(Math.round).join(',');});
+      const dockBefore=await dockBox();
       for(const bearing of [0,45,90,135,180,225,270,315]){
         const arcs=await page.evaluate(bearing=>window.__HUD_LAYOUT.hitFrom(bearing,{crit:bearing===45}),bearing);
+        // Two frames: the relayout a hit's notices and damage panel cause has run, and the dims still hold.
+        await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+        const dockNow=await dockBox();
+        if(dockNow!==dockBefore)errors.push(`${name}/${count}: a hit from ${bearing} deg moved the dock from ${dockBefore} to ${dockNow}`);
         if(!arcs.length)errors.push(`${name}/${count}: no wedge drawn for a hit from ${bearing} deg`);
         const result=await page.evaluate(inkUnderTiles);
         const text=await page.evaluate(()=>{const ctx=document.querySelector('.cot-ret').getContext('2d');const seen=[];const fill=ctx.fillText;

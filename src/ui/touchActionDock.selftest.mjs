@@ -525,14 +525,21 @@ try {
     assert.ok(!mutationTargets.has(node), 'never class-observed: a FIRE press (down/aiming/autofire) or a tile cooldown cannot relayout the HUD');
   }
   assert.ok(mutationCallback, 'the HUD still watches its lanes');
-  // An unchanged layout reuses the placement: a search would close an open More panel, a reuse leaves it open.
+  // An unchanged layout reuses the placement and leaves an open More panel open; so does a control or instrument that
+  // moves without moving the dock (the damage panel growing on a hit); one that moves the dock closes it.
   body.toggleAttribute('data-hud-dock-open', true);
   resizeCallback([]); flush();
-  assert.ok(body.hasAttribute('data-hud-dock-open'), 'a relayout with unchanged inputs does not search again');
+  assert.ok(body.hasAttribute('data-hud-dock-open'), 'a relayout with unchanged inputs keeps the panel open');
   fire.rect = { ...fire.rect, y: fire.rect.y - 1 };
   resizeCallback([]); flush();
-  assert.ok(!body.hasAttribute('data-hud-dock-open'), 'a moved touch control does');
-  fire.rect = { ...fire.rect, y: fire.rect.y + 1 };
+  assert.ok(body.hasAttribute('data-hud-dock-open'), 'a moved control that leaves the dock where it is keeps it open');
+  const resting = fire.rect;
+  fire.rect = { x: dockLeft, y: dockTop, w: 82, h: 82 };
+  resizeCallback([]); flush();
+  assert.ok(!body.hasAttribute('data-hud-dock-open'), 'a control moved onto the dock moves it and closes the panel');
+  assert.notEqual(Number.parseFloat(body.style.getPropertyValue('--hud-systems-left')) * 1e4 + Number.parseFloat(body.style.getPropertyValue('--hud-systems-top')),
+    dockLeft * 1e4 + dockTop, 'the dock moved off the control');
+  fire.rect = { ...resting, y: resting.y + 1 };
   resizeCallback([]); flush();
   // Holding FIRE (.down, scale .94 about its centre) through a relayout: the pressed button keeps its resting box, so
   // the placement and an open More panel stand (verifier 2026-10-15: a hit notice during a hold closed the panel).

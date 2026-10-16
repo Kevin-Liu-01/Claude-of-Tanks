@@ -174,12 +174,12 @@ for (const viewport of VIEWPORTS) {
 for (const pattern of [
   /\[data-hud-notices\] \.cot-sixth\{left:var\(--hud-notice-x\);top:var\(--hud-notice-top\);width:var\(--hud-notice-w\);max-width:var\(--hud-notice-w\);transform:translate\(-50%,-6px\)\}/,
   /\[data-hud-notices\] \.cot-sixth\.on\{transform:translate\(-50%,0\)\}/,
-  /\[data-hud-notices\] \.cot-alert\{left:var\(--hud-alert-x\);top:var\(--hud-alert-top\);bottom:auto;width:auto;max-width:var\(--hud-alert-w\);/,
+  /\[data-hud-notices\] \.cot-alert\{left:var\(--hud-alert-x\);top:var\(--hud-alert-top\);bottom:auto;width:max-content;max-width:var\(--hud-alert-w\);/,
   /\[data-hud-notices\]\[data-hud-notices-flank\] \.cot-alert\.show\{transform:translate\(0,0\)\}/,
   /\[data-hud-notices\] \.cot-alert-copy\{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;/,
   /\[data-hud-notices='compact'\] \.cot-sixth \.sub\{display:none\}/,
-  /\[data-hud-countdown\] \.cot-prebattle\{left:var\(--hud-countdown-x\);top:var\(--hud-countdown-top\);transform:translateX\(-50%\) scale\(var\(--hud-countdown-scale,1\)\);transform-origin:50% 0\}/,
-  /\[data-hud-countdown='compact'\] \.cot-prebattle\{width:var\(--hud-countdown-w\);height:40px;/,
+  /(?:\[data-hud-countdown\]){4} \.cot-prebattle\{left:var\(--hud-countdown-x\);top:var\(--hud-countdown-top\);transform:translateX\(-50%\) scale\(var\(--hud-countdown-scale,1\)\);transform-origin:50% 0\}/,
+  /(?:\[data-hud-countdown='compact'\]){4} \.cot-prebattle\{width:var\(--hud-countdown-w\);height:40px;/,
 ]) assert.match(css, pattern);
 // The layout feeds the plan fixed inputs, never the feeds or the notices' copy, and the feeds make room for the lane.
 assert.match(layout, /centrePlan = planTouchCentre\(\{ width, height, top: top \+ 8, count: controls\.length, controls: dockControls,/);

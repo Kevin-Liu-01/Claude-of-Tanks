@@ -202,16 +202,11 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
   let dockInputs: number[] = [];
   let centrePlan: TouchCentrePlan | null = null;
   let moreTile: HTMLButtonElement | null = null;
-  // The tiles last published to the live yield (touchDockYield.ts): republished only when the placement or the row's
-  // controls change.
-  let yieldPlacement: TouchDockPlacement | null = null;
-  let yieldNodes: Element[] = [];
+  // The tiles last published to the live yield (touchDockYield.ts): republished only when a tile's control, place or
+  // panel membership changes (a re-solved plan that lands in the same place keeps the tiles' dimmed state).
+  let yieldTiles: DockYieldTile[] = [];
   function publishYield(placement: TouchDockPlacement | null, controls: readonly HTMLElement[], more: HTMLElement | null): void {
     if (!dockYield) return;
-    const nodes = placement && more ? [...controls, more] : [];
-    if (placement === yieldPlacement && nodes.length === yieldNodes.length && nodes.every((node, i) => node === yieldNodes[i])) return;
-    yieldPlacement = placement;
-    yieldNodes = nodes;
     const tiles: DockYieldTile[] = [];
     if (placement && more) {
       for (const [i, el] of controls.entries()) {
@@ -221,6 +216,9 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       const moreSlot = placement.more ? placement.tiles[placement.shown] : null;
       if (moreSlot) tiles.push({ el: more, x: moreSlot.x, y: moreSlot.y, w: moreSlot.w, h: moreSlot.h, panel: false });
     }
+    if (tiles.length === yieldTiles.length && tiles.every((t, i) => { const o = yieldTiles[i];
+      return t.el === o.el && t.x === o.x && t.y === o.y && t.w === o.w && t.h === o.h && t.panel === o.panel; })) return;
+    yieldTiles = tiles;
     dockYield.setTiles(tiles);
   }
   const MORE_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2.1" fill="currentColor"/>'
@@ -313,11 +311,13 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     }
     if (dockKey.length !== dockInputs.length || dockKey.some((value, i) => value !== dockInputs[i])) {
       dockInputs = dockKey.slice();
+      const before = centrePlan?.dock ?? null;
       centrePlan = planTouchCentre({ width, height, top: top + 8, count: controls.length, controls: dockControls,
         instruments: noticeObstacles, drawer: dockInstruments.slice(instrumentCount), lanes: [warning],
         keepOut: touchAimKeepOut(width, height, minimapBottom), anchor, insets,
         detection: sizes.detection, alert: sizes.alert, countdown: sizes.countdown });
-      setDockOpen(false);
+      // An instrument that changed size without moving the dock (the damage panel on a hit) keeps an open More panel.
+      if (!sameDock(before, centrePlan.dock)) setDockOpen(false);
     }
     const plan = centrePlan;
     const placement = plan?.dock ?? null;
@@ -349,6 +349,12 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     if (document.body.hasAttribute('data-hud-dock-lane') !== !!placement?.inLane) document.body.toggleAttribute('data-hud-dock-lane', !!placement?.inLane);
     publishYield(placement, controls, more);
     return plan;
+  }
+  function sameDock(a: TouchDockPlacement | null, b: TouchDockPlacement | null): boolean {
+    if (!a || !b) return a === b;
+    const same = (p: readonly TouchDockRect[], q: readonly TouchDockRect[]) => p.length === q.length
+      && p.every((r, i) => r.x === q[i].x && r.y === q[i].y && r.w === q[i].w && r.h === q[i].h);
+    return a.shown === b.shown && same(a.tiles, b.tiles) && same(a.flyout, b.flyout);
   }
   // The natural boxes of detection, the alert and the countdown at this viewport (centreNotices.ts places them; the
   // compact notices and countdown are its fallback, so these are read with them off and remembered per viewport, or a

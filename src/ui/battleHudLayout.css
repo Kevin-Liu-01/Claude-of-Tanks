@@ -390,11 +390,12 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .rel
 
 /* TOUCH CENTRE NOTICES AND COUNTDOWN (centreNotices.ts, applied by battleHudLayout.ts). They take the place the plan
    gives them, clear of the reticle (its crosshair, its ring at full bloom and every scope readout wherever the screen
-   allows): each notice's centre x, top and width; flanking puts the alert's left edge just right of the reticle's
-   column; compact takes the 299 px landscape notices' small type wherever full-size ones find no clear place. */
+   allows): each notice's centre x, top and width (the alert at its own text's width up to its reserve, never narrowed
+   by where its centre falls); flanking puts the alert's left edge just right of the reticle's column; compact takes
+   the 299 px landscape notices' small type wherever full-size ones find no clear place. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-sixth{left:var(--hud-notice-x);top:var(--hud-notice-top);width:var(--hud-notice-w);max-width:var(--hud-notice-w);transform:translate(-50%,-6px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-sixth.on{transform:translate(-50%,0)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert{left:var(--hud-alert-x);top:var(--hud-alert-top);bottom:auto;width:auto;max-width:var(--hud-alert-w);white-space:normal;transform:translate(-50%,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert{left:var(--hud-alert-x);top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-alert-w);white-space:normal;transform:translate(-50%,7px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert-copy{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;white-space:normal}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices][data-hud-notices-flank] .cot-alert{transform:translate(0,7px)}
@@ -406,9 +407,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-alert{box-sizing:border-box;gap:6px;min-height:28px;padding:4px 10px;font-size:8px;line-height:1.2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-alert-icon,
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-alert-icon svg{width:12px;height:12px}
-/* The countdown: its centre x and top, scaled from the top centre; compact, one 40 px line (the 299 px rule's). */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown] .cot-prebattle{left:var(--hud-countdown-x);top:var(--hud-countdown-top);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle{width:var(--hud-countdown-w);height:40px;min-height:40px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;transform:translateX(-50%)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle .k{font-size:10px;letter-spacing:.1em;text-indent:.1em;padding:4px 4px;white-space:nowrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle .n{width:auto;height:36px;font-size:30px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle .r{display:none}
+/* The countdown: its centre x and top, scaled from the top centre; compact, one 40 px line (the 299 px rule's). The
+   repeated attribute outranks the short landscape countdown's own width and top (0,8,1). */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown][data-hud-countdown][data-hud-countdown][data-hud-countdown] .cot-prebattle{left:var(--hud-countdown-x);top:var(--hud-countdown-top);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'] .cot-prebattle{width:var(--hud-countdown-w);height:40px;min-height:40px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;transform:translateX(-50%)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'] .cot-prebattle .k{font-size:10px;letter-spacing:.1em;text-indent:.1em;padding:4px 4px;white-space:nowrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'] .cot-prebattle .n{width:auto;height:36px;font-size:30px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'][data-hud-countdown='compact'] .cot-prebattle .r{display:none}
