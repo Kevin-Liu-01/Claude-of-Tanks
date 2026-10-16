@@ -222,7 +222,9 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
 
 // ---- the match: rules, the log, restore, cook-off
 {
-  const rules = matchRulesetFor('standard').destruction;
+  // P1's staging (one event, the next tick's swap): sections off here (on in the battle since DST-04; collapseCascade
+  // and structureSections pin the storey-by-storey collapse)
+  const rules = { ...matchRulesetFor('standard').destruction, sections: false };
   assert.equal(rules.structures, true);
   for (const mode of GAME_MODE_IDS) {
     const ruleset = matchRulesetFor(mode);

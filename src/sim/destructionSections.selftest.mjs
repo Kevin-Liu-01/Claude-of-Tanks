@@ -22,6 +22,8 @@ import { getSpec } from '../vehicles/specs.ts';
 
 const standard = matchRulesetFor('standard');
 const sectionsOn = { ...standard, destruction: { ...standard.destruction, sections: true } };
+// (the battle switch is on since DST-04, 2026-10-15: the off arm turns them off itself)
+const sectionsOff = { ...standard, destruction: { ...standard.destruction, sections: false } };
 const SOUTH_Z = -38, NORTH_Z = -32;
 
 // verdant's ground where the parity receipt stands its house; the house seated on its lowest point
@@ -88,7 +90,7 @@ assert.ok(apHole && Math.abs(apHole.radiusM / heHole.radiusM
   `it punched its own hole there, a penetrator's (${apHole?.radiusM} m to the HE round's ${heHole.radiusM} m)`);
 assert.equal(on.breaches.filter((event) => Math.abs(event.z - SOUTH_Z) < 0.05).length, 1, 'and none in the south wall');
 
-const off = volley(standard);
+const off = volley(sectionsOff);
 assert.equal(off.breaches.length, 0, 'sections off: no breach events');
 assert.ok(off.impacts.length === 2 && off.impacts.every((event) => Math.abs(event.z - SOUTH_Z) < 0.05),
   'and the second round stops on the south wall like the first');
