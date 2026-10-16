@@ -312,8 +312,15 @@ function persiana(sink: PartSink, face: Face, u: number, y: number, w: number, h
   const drop = h * (0.3 + look() * 0.55), top = y + h + 0.12, bottom = top - drop - 0.12;
   const colour = look() < 0.75 ? shade(ESPARTO, 0.86 + look() * 0.26) : shade(BLIND_GREEN, 0.9 + look() * 0.2);
   const opts = { colour, decor: true, shadow: true } as const;
-  faceBox(sink, 'structureWood', face, u, (top + bottom) / 2, 0.07, w + 0.16, top - bottom, 0.016, opts);
-  faceBox(sink, 'structureWood', face, u, bottom + 0.045, 0.085, w + 0.18, 0.09, 0.08, opts);
+  // (props census r2 sweep, Lane C 2026-10-16: the mat hung 7 cm off the wall on nothing — six floating blinds on a
+  // posada, a dark plate laid over the window's surround) it hangs as the real ones do, from an iron rod carried clear
+  // of the surround and the sill's nose on two brackets driven into the wall over the lintel, the mat let down from
+  // the rod and rolled at its foot
+  const off = 0.14, iron = { colour: IRON, decor: true } as const;
+  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * (w / 2 + 0.05), top + 0.02, off / 2, 0.03, 0.03, off + 0.02, iron);
+  faceBox(sink, 'structureMetal', face, u, top + 0.02, off, w + 0.2, 0.025, 0.025, iron);
+  faceBox(sink, 'structureWood', face, u, (top + 0.02 + bottom) / 2, off, w + 0.16, top + 0.02 - bottom, 0.016, opts);
+  faceBox(sink, 'structureWood', face, u, bottom + 0.045, off + 0.015, w + 0.18, 0.09, 0.08, opts);
 }
 
 function dialect(st: AndalusianState, look: () => number): HouseDialect {
@@ -569,9 +576,15 @@ const posada: RegionalBuilder = (ctx) => {
       const timber = rgb(0x6a5440), leaf = rgb(0x4f6a34);
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 1.25, 1.55, 0.1, 2.5, 0.1, { colour: timber, decor: true });
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 2.55, 0.8, 0.08, 0.08, 1.6, { colour: timber, decor: true });
+      // (props census r2 sweep, Lane C 2026-10-16: the leaves between the two poles hung in the air) the laths nailed
+      // across the poles that carry the vine, and every clump of leaves bedded on them (its draws as before, in order)
+      const lathTop = frame.floors[0] + 2.63;
+      for (let o = 0.12; o < 1.6; o += 0.29) faceBox(sink, 'structureWood', f, du, lathTop - 0.02, o, 2.36, 0.04, 0.05, { colour: shade(timber, 1.1), decor: true });
       for (let k = 0; k < 14; k++) {
-        faceBox(sink, 'structureWood', f, du + (look() - 0.5) * 2.4, frame.floors[0] + 2.6 + look() * 0.25, 0.2 + look() * 1.3,
-          0.4 + look() * 0.4, 0.22 + look() * 0.2, 0.35 + look() * 0.3, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true, shadow: true });
+        const lu = look(), ly = look(), lo = look(), lw = look(), lh = look(), ld = look(), tone = look();
+        const sy = 0.22 + lh * 0.2;
+        faceBox(sink, 'structureWood', f, du + (lu - 0.5) * 2.4, lathTop - 0.03 + ly * 0.04 + sy / 2, 0.2 + lo * 1.3,
+          0.4 + lw * 0.4, sy, 0.35 + ld * 0.3, { colour: shade(leaf, 0.75 + tone * 0.45), decor: true, shadow: true });
       }
       // the trough on the street against the wall's foot (the connectivity sweep: it stood at the ground floor's level,
       // a third of a metre over the street)
@@ -1000,11 +1013,15 @@ const escuela: RegionalBuilder = (ctx) => {
       for (const o of windowRhythm(face, i, D, { w: 1.15, h: i ? 1.8 : 1.9, sill: i ? 0.8 : 0.9, spacing: 2.5, margin: 1.2 })) openings.push(o);
     }
     for (const o of windowRhythm('back', 0, W, { w: 1.0, h: 1.4, sill: 1.1, spacing: 2.6, margin: 1.2 })) openings.push(o);
+    // (props census r2 sweep, Lane C 2026-10-16: the school's dark plank leaves read as six painted plates on the white
+    // walls) a regionalist school's shutters are louvred (persianas de librillo): each leaf built as one, its stiles,
+    // rails and slats, the wall showing through their gaps (openings.ts)
+    const shutters = st.window.shutters ? { ...st.window.shutters, kind: 'louvred' as const } : null;
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'plaster' }, { h: 3.6, wall: 'plaster' }],
       roof: canal(22, 0.38, 0.38, 'hip'), openings, gutters: null, verge: null, spall: null, reveal: 0.3,
       chimneys: [{ x: W * 0.2, z: -D * 0.28, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'tile' }],
-    }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
+    }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, shutters, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
     alero(sink, frame);
     band(sink, frame, 1, frame.floors[1] - 0.05, 0.24, 0.05, 'plaster2');
     const b0 = frame.bodies[0];
