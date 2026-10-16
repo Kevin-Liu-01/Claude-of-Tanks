@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { scaledGroundSampler } from '../scaledGroundSampler.ts';
+import type { DecorReservedBox } from './fieldChest.ts';
 
 /** Bake one complete vehicle before bucket merge. Articulation parents keep
  * unit scale, and the original suspension solves in its own authoring frame. */
@@ -32,6 +33,13 @@ export function resizeAuthoredVehicle(P: TankBuilderPort, factor: number): void 
     outerRadiusM: P.muzzleMouth.outerRadiusM * factor,
     innerRadiusM: P.muzzleMouth.innerRadiusM * factor,
   };
+  // critic panel 2026-10-15 (owner-markup round): decor volumes a builder reserved (fieldChest.ts reserveDecorVolume) are
+  // authored in the source frame like the stock they stand for, so they take the installed size with it
+  for (const group of [P.hullG, P.turretG]) {
+    for (const box of (group.userData.decorReservedBoxes ?? []) as DecorReservedBox[]) {
+      box[0] = box[0].map(v => v * factor); box[1] = box[1].map(v => v * factor);
+    }
+  }
   const cradle = P.turretG.userData.gunCradleSeats;
   if (cradle) cradle.stations = cradle.stations.map((p: number[]) => p.map(v => v * factor));
   const gear = P.gear;

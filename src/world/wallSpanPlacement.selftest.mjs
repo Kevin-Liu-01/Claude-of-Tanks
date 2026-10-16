@@ -17,6 +17,7 @@ import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.t
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts';
 import { box, jitterUV } from './propGeometry.ts';
+import { roughenChunk } from './maps/regional/ruinGrammar.ts'; // (props census #7 moved the masonry roughening out of props.ts)
 import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile,
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand } from './structureCollision.ts';
@@ -190,7 +191,6 @@ assert.ok(runSource.includes('wallIslandEdges(along, exclusions, WALL_SEG)'), 'p
 const legacyRunSource = runSource.replace('wallIslandEdges(along, exclusions, WALL_SEG)', 'legacyWallEdges(along, exclusions, WALL_SEG)');
 const legacyWallEdges = (length, exclusions, moduleLength) =>
   Float64Array.from({ length: exclusions.length + 1 }, (_, index) => Math.min(index * moduleLength, length));
-const rubbleSource = sourceFunction('  function roughenChunk<', '  function addRubblePile(');
 const prepareSource = sourceFunction('  function* prepareDestructiblePoolGeometry(', '  function* finalizeDestructiblePool(');
 const finalSource = sourceFunction('  function* finalizeDestructiblePool(', '  function* finalizeDestructiblePools(');
 const cleanupSource = sourceFunction('  wallSpans.clear();', '  // spatial hash');
@@ -316,11 +316,11 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   // the fixture runs none
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
     'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'drawnPlanRecord', 'breachRubbleFootprints', 'wallDressing',
-    `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
+    'roughenChunk', `${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
     field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone', () => null, [],
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
-    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }));
+    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }), roughenChunk);
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);

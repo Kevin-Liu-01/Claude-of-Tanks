@@ -15,7 +15,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // 6 (the MP stream, 2026-10-13): a snapshot's destroyed-prop set is the smaller of a gap list and a bitset over the
 // obstacle index (destroyedSet.ts) — wire 5's list was capped at 4,096 and the encoder threw past it, below Monsoon's
 // 9,119 crushable props; now any legal set fits (at most 8 KB).
-export const WIRE_VERSION = 6;
+// 7 (the MP stream, 2026-10-15): a delta's viewer names only the movement checkpoint values that changed since its
+// baseline's (a mask and those values; the version byte's high bit marks it): 253 -> ~152 bytes a snapshot while driving.
+export const WIRE_VERSION = 7;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the

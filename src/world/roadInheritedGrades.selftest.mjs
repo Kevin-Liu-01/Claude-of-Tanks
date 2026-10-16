@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { ROAD_ENDPOINT_INTENTS, completeRoadsWithIntents, usesInheritedRoadGrades, remapInheritedRoadElevations,
   alignAddedRoadJunctionGradesWithIntents } from './maps/roadEndpoints.ts';
 import { usesPhysicalRoadStations, buildRoadStationOrigins, authoredRoadStationIndex } from './maps/roadStations.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-03: Titan Gorge's and Skybridge Chasm's redesigns grade their roads over their own floors with the default
 // junction blend (their cross roads share their junction nodes), not the inherited rim-anchored node grades
@@ -20,7 +20,7 @@ for (const id of [...MAP_IDS, undefined, 'fixture']) {
   assert.equal(roads.grid, undefined, `${id}: inherited completion must not lose grid originalCounts`);
 }
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const functions = new Map();
 function visit(node) {

@@ -52,6 +52,7 @@ import {
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -4071,6 +4072,10 @@ function* vegetationBuildSteps(
   let groundCoverBlocked: GroundCoverBlocked | null = null;
   // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
   applySnowGrassLaw(veg, cfg?.id ?? null);
+  // grass r2: the map's sward kind for the shared patch field (none on a map without a sward, or under snow)
+  const swardKindOf = resolveGroundReduxProfile(cfg?.id ?? null).grass?.kind ?? null;
+  const swardKind = swardKindOf === 'tundra' ? null : swardKindOf; // (a snow map's tufts are dead winter grass: no fresh patch)
+  const _swardPatch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : lightDesk ? LIGHT_WORLD_VEG.grassScale : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -4182,7 +4187,13 @@ function* vegetationBuildSteps(
     // ground lane (2026-10-03): a crop tuft carries its crop's albedo negated in the instance colour (makeTuft) — the
     // card's own luminance (its dark roots, its lit tips) over the crop's colour, normalised by the card's mean green
     // blade (≈ 0.22/0.32/0.05 linear, luminance 0.28); every other tuft multiplies its tint as before
+    // grass r2 (2026-10-15, the sward's depth: swardPatch.ts SWARD_TONE): the card's own root-to-tip contrast steepened
+    // about its mean luminance (0.28), so its feet and the gaps between its blades read darker and its tips brighter
+    shader.uniforms.uSwardTone = SWARD_TONE;
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uSwardTone;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`
+      { float cardL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb *= max(0.0, 0.28 + (cardL - 0.28) * (1.0 + 0.35 * uSwardTone)) / max(cardL, 1e-4); }
       #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
@@ -4300,6 +4311,11 @@ function* vegetationBuildSteps(
   // candidate away from them pays four comparisons
   const avoidBounds = veg.avoid?.length ? veg.avoid.reduce((b, av) => [Math.min(b[0], av.x - av.r), Math.max(b[1], av.x + av.r),
     Math.min(b[2], av.z - av.r), Math.max(b[3], av.z + av.r)], [Infinity, -Infinity, Infinity, -Infinity]) : null;
+  // (2026-10-15, the paddies' look pass; the coordinator: "cleared banks, no tree in the water") a paddy's water, bund,
+  // bank and a working strip round it grow no tree or shrub (terrain _treeClearAt, paddies.ts inPaddyClearing); the
+  // grass keeps the banks
+  const treeClearAt = heightField._treeClearAt ?? null;
+  const inTreeClear = (x: number, z: number): boolean => treeClearAt !== null && treeClearAt(x, z);
   function inAvoid(x: number, z: number): boolean {
     if (!veg.avoid) return false;
     if (avoidBounds && (x < avoidBounds[0] || x > avoidBounds[1] || z < avoidBounds[2] || z > avoidBounds[3])) return false;
@@ -4340,7 +4356,7 @@ function* vegetationBuildSteps(
     roll: number,
     carpet: boolean,
   ): number {
-    if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
+    if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
     // the grass harnesses compile this filter without the module's helpers), not one ruled line at 4.2 m from the
@@ -4498,7 +4514,10 @@ function* vegetationBuildSteps(
             // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw
             // (terrain.ts: its tone by the same draw, at the bake's six bits) — not the meadow's round dry patches
             const jq = Math.round(f.jitter * 63) / 63;
-            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+            // (grass r2, 2026-10-15: Verdant's pastures read pale and washed beside 205's meadow — a grazed field is
+            // drier, most stand lush: the share skewed toward the shut-up green, to 0.32 at most)
+            const pq = (jq * 7.31 + 0.13) % 1;
+            pastureDry = 0.32 * pq * pq;
           }
         }
       }
@@ -4531,7 +4550,8 @@ function* vegetationBuildSteps(
     // (wave 71: Verdant's "flat, oversaturated neon" — the carpet's tips at HSV saturation 0.8 under the grade's boost)
     // the tint a third less saturated and a little yellower: a summer sward, not a lime lawn (was 0.225 / 0.30)
     let th = 0.21 + (hueJ - 0.5) * 0.05 - dry * 0.08;
-    let ts = 0.19 - dry * 0.07;
+    // (grass r2: the sward's saturation floor a fifth up — wave 71's neon was 0.30; the tone curve caps the rest)
+    let ts = 0.23 - dry * 0.08;
     let tl = 0.44 + (lumJ - 0.5) * 0.12 + (sn.n2 - 0.5) * 0.10 + dry * 0.04;
     // r6 terrain_environment: MEADOW PATCHWORK on the blades themselves. The
     // splat shader stamps 50-200 m dry-straw fields (meadowA -> uTintA), but
@@ -4543,9 +4563,14 @@ function* vegetationBuildSteps(
     th -= dryPatch * 0.075;
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
+    // grass r2 (2026-10-15, the blind critics: "one species and one colour"): the sward's own 5–11 m patches, the field
+    // the tall-grass tier's blades read (swardPatch.ts), so a patch of straw or fresh regrowth is one stand in both
+    const patch = swardKind !== null ? swardPatchAt(x, z, swardKind, _swardPatch) : null;
+    if (patch) { th -= patch.cured * 0.055; ts *= 1 - patch.cured * 0.22; tl += patch.cured * 0.035; }
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     let cropHeight = 1;
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
+    if (patch) _c.setRGB(_c.r * patch.r * patch.value, _c.g * patch.g * patch.value, _c.b * patch.b * patch.value);
     // a crop's tuft: the crop's measured albedo (landUse.ts LAND_CROP_ALBEDO, on the sample: ripe wheat
     // 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13, rice green
     // 0.10/0.23/0.045 …) carried NEGATED in the instance colour: the grass shader then keeps only the card's luminance
@@ -5969,7 +5994,7 @@ function* vegetationBuildSteps(
   }
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
-    if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
+    if (inAvoid(x, z) || inTreeClear(x, z) || overTreeCeiling(x, z)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -7644,7 +7669,7 @@ function* vegetationBuildSteps(
     const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
-      if (inAvoid(x, z)) return;
+      if (inAvoid(x, z) || inTreeClear(x, z)) return;
       if (!planted && br() > veg.bushCount) return; // per-map density scale (a planted row keeps every station)
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
@@ -7684,7 +7709,7 @@ function* vegetationBuildSteps(
             const bx = tx + (x - tx) / dl * out, bz = tz + (z - tz) / dl * out;
             if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
               && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
-              && !inAvoid(bx, bz)) {
+              && !inAvoid(bx, bz) && !inTreeClear(bx, bz)) {
               x = bx; z = bz;
             }
           }
@@ -7870,7 +7895,7 @@ function* vegetationBuildSteps(
       };
       /** The bush admission (roads, soft ground, water, slopes, spawns, the village, structures) inside the bound. */
       const admitted = (x: number, z: number, sc: number, bound: number): boolean => {
-        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) return false;
+        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z) || inTreeClear(x, z)) return false;
         // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
         if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) return false;
         if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;

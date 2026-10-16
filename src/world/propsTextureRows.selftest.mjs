@@ -10,13 +10,14 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import winter from './maps/winter.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the c5ca781e2 synchronous stone/grime painters,
 // so any intended repaint of either texture failed here. The control is now the CURRENT row-checkpointed painter
 // drained in one synchronous loop; every scheduled path (the public owner, interleaved async ticks) must reproduce it
 // byte for byte, so row checkpoints and interleaving never change pixels, maps, settings or the RNG stream.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 function section(text, start, end) {
   const from = text.indexOf(start), to = text.indexOf(end, from);
   assert.ok(from >= 0 && to > from, 'exact production source anchors: ' + start);

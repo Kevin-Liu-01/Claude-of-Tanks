@@ -48,6 +48,11 @@ export interface HinterlandLandformConfig {
   cover?: { forest?: readonly [number, number]; bare?: boolean };
   /** A dike's crown: a road on it, a row of trees on it (species), and the crown's width (m). */
   crown?: { road?: boolean; trees?: string; widthM?: number };
+  /** A caldera's floor as a share of its rim's height (default 0.08); 0 where the battlefield stands on the floor, so
+   * the floor carries on level from the edge to the inner wall's foot (Obsidian Caldera, HZ.20). */
+  floor?: number;
+  /** A caldera's inner wall: the share of its radius the wall rises over below the rim (default 0.12); narrower, steeper. */
+  wall?: number;
   name?: string;
 }
 

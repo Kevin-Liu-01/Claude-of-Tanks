@@ -108,9 +108,15 @@ never excuses missing it.
    brackets, contact shadows). Circular geometry reads circular in plan.
    NO TURRET HOLES: top-down and 55° tilt renders show filled decks — any
    sky/background reading through the hull or turret interior is a failure.
-3. DECORATION MINIMUM: roof MACHINE GUNS are MANDATORY (multiple allowed
-   and encouraged; add a tastefully-integrated pintle MG even where the ref
-   lacks one — critics must not penalize that as parity deviation). Dress
+3. DECORATION MINIMUM: ROOF WEAPONS MATCH THE REAL VEHICLE AND EVERY DRAWN GUN
+   WORKS (VH.14 ruling 2026-10-14, superseding "roof machine guns are
+   mandatory; add a pintle MG even where the ref lacks one"). A vehicle that
+   really carries a roof weapon shows it as a WORKING, calibre-true station
+   (a remote-control datum the auxiliary inventory picks up: the TTS 30 mm and
+   M2, the MBT-70 Rh 202); a vehicle whose real counterpart carries none shows
+   none and is listed with its reason in `src/vehicles/roofWeaponPolicy.ts`.
+   No decorative or duplicate gun: `roofWeaponPolicy.selftest` fails on any
+   drawn weapon fitting that is not a working station. Dress
    flat areas from: lights, ropes/tow cables, ladders, ERA/armor blocks,
    wooden trunks, canisters, bags, smoke launchers, railings/holders,
    crates, duffels, antennas. Use `KIT` fittings (kit.js) — don't hand-roll.
@@ -440,7 +446,8 @@ decorations need a packet justification.
   hull/turret AABB — fittings must never change the model AABB (§C).
 - Census (§B3 machine check): every fitting mesh carries
   `userData.fitting`; `node tools/tank-standard-check.mjs --ids=<id>`
-  requires mg ≥ 1 fitting instance and reports the dressing count, plus the
+  requires mg ≥ 1 fitting instance (mg 0 for a vehicle listed in
+  `src/vehicles/roofWeaponPolicy.ts`) and reports the dressing count, plus the
   §B2 top-down hole scan (0 enclosed cells). Hand-authored decoration
   censuses ZERO — migrate it or justify it in the packet.
 - Library self-test: `node tools/tank-standard-check.mjs --fixture`

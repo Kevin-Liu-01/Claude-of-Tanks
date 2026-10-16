@@ -78,9 +78,10 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
   assert.match(shader.vertexShader, new RegExp(`attribute vec3 ${WEAPON_EDGE_BARY}`), 'the bake attributes reach the vertex stage');
   assert.match(shader.fragmentShader, /fwidth\( ed \)/, 'the band fades where it is under a pixel');
   assert.equal((shader.fragmentShader.match(/weaponEdgeDistance\(\) \{/g) ?? []).length, 1, 'installed once');
-  for (const u of ['uWeaponWornColor', 'uWeaponWornRoughness', 'uWeaponWornMetalness', 'uWeaponWearCore', 'uWeaponWearReach', 'uWeaponChip'])
+  for (const u of ['uWeaponWornColor', 'uWeaponWornRoughness', 'uWeaponWornMetalness', 'uWeaponWearCore', 'uWeaponWearReach', 'uWeaponChip',
+    'uWeaponDust', 'uWeaponGrime'])
     assert.ok(shader.uniforms[u], `wear uniform ${u} bound`);
-  assert.match(material.customProgramCacheKey(), /^veh-ambient-floor-v5\|weapon-wear-v2$/, 'the program key keeps the vehicle key and adds the wear');
+  assert.match(material.customProgramCacheKey(), /^veh-ambient-floor-v5\|weapon-wear-v3$/, 'the program key keeps the vehicle key and adds the wear');
   // the live parameters reach the program at the next upload (no recompile), and survive Material.clone()'s JSON copy
   assert.equal(shader.uniforms.uWeaponWornRoughness.value, WEAPON_STEEL_WEAR.wornRoughness);
   material.userData.weaponWear.wornRoughness = 0.61;
@@ -97,6 +98,10 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
     assert.ok(lum <= 0.15, `${name}: worn steel is dark (linear luminance ${lum.toFixed(3)})`);
     assert.ok(w.reach <= 0.01 && w.core <= w.reach / 2, `${name}: the wear band is thin (core ${w.core} m, reach ${w.reach} m)`);
     assert.ok(w.wornRoughness >= 0.45 && w.wornMetalness <= 0.8, `${name}: worn steel is not a mirror`);
+    // round 4: dust and grime weather the finish without washing it out (a matte, mid-dark dust; bounded strengths)
+    const dustLum = 0.2126 * w.dustColor[0] + 0.7152 * w.dustColor[1] + 0.0722 * w.dustColor[2];
+    assert.ok(dustLum <= 0.2 && w.dust > 0 && w.dust <= 0.5 && w.grime >= 0 && w.grime <= 0.5,
+      `${name}: dust ${w.dust} (linear luminance ${dustLum.toFixed(3)}) and grime ${w.grime} stay weathering, not paint`);
   }
 }
 
@@ -147,9 +152,10 @@ const engineCtx = {
 };
 // one hull per weapon grammar: crew pintle guns (M1A1), the American RWS (M1A2), open-yoke stations (CV90, Type 89,
 // VT-4A1), a measured source station (T-72B3M), the field roof weapon (Griffin 50), exact source-measured guns (Sabra,
-// BMP-3M Dragun, Ares, Merkava Barak), the Tagil tower (T-90MS), an IFV's gun steel (M2A2 Bradley)
+// BMP-3M Dragun, Ares, Merkava Barak), the Tagil tower (T-90MS). (VH.14, 2026-10-15: the M2A2 Bradley's stowed M240,
+// this list's IFV gun steel, is gone with every decorative gun; the CV90's open-yoke station is the IFV case.)
 const IDS = ['m1a1', 'm1a1_abrams_hc', 'cv90', 'raiju_ifv', 'vt4a1', 't72b3m_2022', 'griffin50mm', 'sabra_mk2',
-  'bmp3m_dragun125', 'ares_apc', 'merkava4_barak', 't90ms_2011', 'm2a2_bradley'];
+  'bmp3m_dragun125', 'ares_apc', 'merkava4_barak', 't90ms_2011'];
 const isWeaponMesh = (o) => {
   for (let q = o; q; q = q.parent) {
     const fitting = q.userData?.fitting;

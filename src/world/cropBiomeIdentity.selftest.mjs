@@ -16,6 +16,8 @@ import { captureAutumnCropRow } from './autumnHeadlands.ts';
 // browser appearance, raster-overdraw, construction-time or FPS acceptance.
 const { values } = parseArgs({ options: { out: { type: 'string' } } });
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+// (props lane A, #18b, 2026-10-14: the crop fields' owner is maps/cropKit.ts, extracted from props.ts unchanged)
+const cropSource = readFileSync(new URL('./maps/cropKit.ts', import.meta.url), 'utf8');
 const lighting = readFileSync(new URL('../engine/lighting.ts', import.meta.url), 'utf8');
 function declaration(text, name) {
   const tree = ts.createSourceFile('owner.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -93,7 +95,7 @@ function legacyCropTexture(crng, _col, aniso) {
 }
 const painterNames = ['canvas2d', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight', 'biomeCropLean', 'paintCropStalk',
   'finishStandingCrop', 'finishBrokenCrop', 'paintGrainStalk', 'paintBiomeCrop', 'createCropTexture'];
-const painterSource = painterNames.map(name => declaration(source, name)).join('\n');
+const painterSource = painterNames.map(name => declaration(cropSource, name)).join('\n');
 const painterBindings = ['THREE', 'document', '_col', 'P', 'aniso'];
 const painterExports = '\nreturn { createCropTexture, paintWetCropLeaves, paintCropPanicle };';
 const painterFixture = await loadFixture(painterSource + painterExports, painterBindings);
@@ -224,7 +226,7 @@ function checkAttachments() {
 
 const rowNames = ['cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCropRowGeometry', 'appendCropRows',
   'tryPlaceCropPlot', 'finalizeCropFields', 'placeCropFields', '_mustReplace', 'cropAttributeNormal'];
-const rowSource = rowNames.map(name => declaration(source, name)).join('\n');
+const rowSource = rowNames.map(name => declaration(cropSource, name)).join('\n');
 const rowFixture = await loadFixture(`${painterSource}\n${rowSource}\nplaceCropFields(); return group;`,
   ['THREE', 'document', '_col', 'aniso', 'seed', 'group', 'L', 'v', 'P', 'heightField', 'noVeg', 'mulberry32',
     'cropRowSegmentIsSupported', 'mergeGeometries', 'engineCtx', 'autumnCropRows', 'captureAutumnCropRow']);

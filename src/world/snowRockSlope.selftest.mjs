@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { SNOW_ROCK_HOLD_LINE, snowRockHoldLine } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): a snow map's own
 // snow-on-rock law — splat.snowRockSlopeDeg / snowRockFadeDeg / snowRockCrest, swapped into the shader text only when a
@@ -11,7 +11,7 @@ import { MAP_IDS } from './maps/mapIds.ts';
 // line (its material the shared source); the degrees' conversion to the shader's 1 − n.y, a field left out at today's
 // value; the material's swap and its own key. No GPU or art claim.
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const common = source.slice(source.indexOf('const SPLAT_COMMON_FRAG'), source.indexOf('const SPLAT_NORMAL_FRAG'));
 assert.equal(common.split(SNOW_ROCK_HOLD_LINE).length - 1, 1, 'the shared source carries the hold line once');
 assert.equal(SNOW_ROCK_HOLD_LINE, 'float hold = 1.0 - smoothstep(0.30, 0.56, slope + (0.5 - gully) * 0.40 - vFold * 0.12);');

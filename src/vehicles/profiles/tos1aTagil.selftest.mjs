@@ -99,9 +99,9 @@ function fixedStock(tank){
   assert.equal(parts.filter(p=>p.module==='missileRack'&&p.parent==='gunG').length,24);
   const gun=tank.root.getObjectByName('rig_gun'),mount=gun.getObjectByName('gunMount');
   assert(mount&&mount.parent===gun,'structural pack directly follows pitch, never cannon recoil');
-  const receiver=coordinate(tank,turret,[-1.64,.855,.70],[0,0,-1],'z',.55,.2);
-  assert(receiver.object.name.includes('sourceMachineGun'),'small roof weapon has an actual receiver');
-  coordinate(tank,turret,[-1.64,.826,1.3],[0,0,-1],'z',1.05,.4);
+  // VH.14 (coordinator ruling 2026-10-14): the real TOS-1A carries no machine gun (src/vehicles/roofWeaponPolicy.ts)
+  let guns=0;tank.root.traverse(o=>{if(o.userData.fittingRoot&&['pintleMG','weaponStationMount'].includes(o.userData.fitting))guns++;});
+  assert.equal(guns,0,'no roof gun: the real vehicle carries none');
 }
 function armorFaces(tank,state){
   const frame=tank.root.getObjectByName('rig_gun'),plates=TANK_SPECS.tos1a_tagil.armor.turretPlates.filter(p=>p.gunFollow);

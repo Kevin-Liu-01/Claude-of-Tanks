@@ -5,6 +5,7 @@ import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobble
 import { acquireDroneModelKit, droneNation, droneRotorDirection, mirroredRotorGeometry, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
 import { DRONE_ARRIVAL, DRONE_RETURN, droneArrivalAttitude } from './droneArrival.ts';
 import { avoidDroneObstacles, type AerialWorldQuery } from '../sim/aerialCombat.ts';
+import { droneReturnS, droneReturnSpeed, droneReturnClimbS } from '../sim/droneRecall.ts';
 
 const CAPACITY = 42;
 /**
@@ -16,8 +17,10 @@ const CAPACITY = 42;
 export function droneHiddenFromCamera(position:THREE.Vector3,shooterId:string|number|null|undefined,flightActive:boolean,camera:THREE.Camera):boolean {
   return flightActive&&shooterId!=null&&camera.userData.aerialPilotId===shooterId&&position.distanceToSquared(camera.position)<=4;
 }
-/** The blades read individually only while they spool; at speed each rotor is a translucent disc. */
-const BLUR_AFTER_SPOOL = .62;
+/** The blades read individually only while they spool; at speed each rotor is a translucent disc. From `FAINT_DISC_S`
+ * a faint disc shows over the quickening blades, so the spool-up reads blades, then blades under a disc, then a disc —
+ * all on the cradle (round 4b: the disc is full just before the 0.6 s lift, DRONE_SPOOL_S). */
+const BLUR_AFTER_SPOOL = .5, FAINT_DISC_S = .2;
 
 interface DetailPool {
  lease:DroneKitLease;
@@ -26,8 +29,9 @@ interface DetailPool {
  /** The counter-rotating props, pre-mirrored (mirroredRotorGeometry): an instance never carries a mirrored transform. */
  mirrorRotors:THREE.InstancedMesh;
  blurs:THREE.InstancedMesh;
+ faint:THREE.InstancedMesh;
  meshes:THREE.InstancedMesh[];
- count:number; bladeCount:number; mirrorCount:number; blurCount:number;
+ count:number; bladeCount:number; mirrorCount:number; blurCount:number; faintCount:number;
 }
 /** A drone's carrier as the presentation sees it: the live dock frame (the cradle's airframe datum), and whether the
  * carrier is gone or flying again (either ends a flight home). */
@@ -43,7 +47,18 @@ type ReturnPhase = 'grace' | 'transit' | 'descent' | 'handoff';
 interface ReturnFlight {
   id: string | number; ownerId: string | number; nation: string; phase: ReturnPhase;
   pos: THREE.Vector3; vel: THREE.Vector3; state: DroneAttitude; seed: number;
+  /** Where the flight ended: the recall's law reads the way home from here, as the authority did. */
+  from: THREE.Vector3;
   t: number; phaseT: number; cruiseY: number; speed: number; descentFrom: number;
+  /** The climb (+) or sink (−) to cruise height over the dock, and the seconds the recall's law gives it (sim/droneRecall.ts,
+   * bounded by maxTransitS however high or low the airframe was): flown as an eased profile so it ends on time. */
+  rise: number; riseS: number;
+  /** Over the column once: from then it keeps station over it (as the descent does) while the climb or sink ends. */
+  overColumn: boolean;
+  /** Abandoned past this (the recall timing law plus its overrun; set as the transit begins). */
+  limitS: number;
+  /** The landing's first pose last frame: the carrier's motion, fed forward so a flight home keeps up with it. */
+  dockPrev: THREE.Vector3; dockSeen: boolean;
 }
 interface Track { pos: THREE.Vector3; vel: THREE.Vector3; ownerId?: string | number; nation: string; ageS: number }
 
@@ -58,15 +73,16 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     const rotors=new THREE.InstancedMesh(kit.rotor,kit.rotorMaterial,CAPACITY*2);
     const mirrorRotors=new THREE.InstancedMesh(lease.shared('rotor-mirrored',k=>mirroredRotorGeometry(k.rotor)),kit.rotorMaterial,CAPACITY*2);
     const blurs=new THREE.InstancedMesh(kit.rotorBlur,kit.blurMaterial,CAPACITY*4);
-    blurs.renderOrder=2;
-    const meshes=[...parts,rotors,mirrorRotors,blurs];
+    const faint=new THREE.InstancedMesh(kit.rotorBlurFaint,kit.blurMaterial,CAPACITY*4);
+    blurs.renderOrder=faint.renderOrder=2;
+    const meshes=[...parts,rotors,mirrorRotors,blurs,faint];
     // Shaded like the docked airframe (one program per material), so a launch from a shaded dock never brightens.
     for(const mesh of meshes){mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;mesh.receiveShadow=true;parent.add(mesh);}
     // Near airframes cast with the sun (solid parts and spooling blades; never the translucent discs or the lite pool).
     for(const mesh of [...parts,rotors,mirrorRotors])mesh.castShadow=detail==='full';
     parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';
-    mirrorRotors.name='FPV spinning propellers (counter-rotating)';blurs.name='FPV rotor discs';
-    return {lease,parts,rotors,mirrorRotors,blurs,meshes,count:0,bladeCount:0,mirrorCount:0,blurCount:0};
+    mirrorRotors.name='FPV spinning propellers (counter-rotating)';blurs.name='FPV rotor discs';faint.name='FPV fading rotor discs';
+    return {lease,parts,rotors,mirrorRotors,blurs,faint,meshes,count:0,bladeCount:0,mirrorCount:0,blurCount:0,faintCount:0};
   }
   function variant(nation:string){
     const key=droneNation(nation);let entry=variants.get(key);
@@ -85,7 +101,13 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   const tracks=new Map<string|number,Track>(),returns=new Map<string|number,ReturnFlight>(),impacted=new Map<string|number,number>();
   const dockAt=new THREE.Vector3(),drawAt=new THREE.Vector3(),handoffAt=new THREE.Vector3(),toward=new THREE.Vector3(),desired=new THREE.Vector3();
   const handoffQuat=new THREE.Quaternion(),arrivalEuler=new THREE.Euler(0,0,0,'YXZ'),arrivalQuat=new THREE.Quaternion();
-  const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3();
+  const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3(),dockVel=new THREE.Vector3();
+  const {climbMps:RETURN_CLIMB_MPS,sinkMps:RETURN_SINK_MPS,maxMps:RETURN_PACE_MPS}=AERIAL_RULES.drone.recall;
+  /** The climb or sink profile: its position gain and the vertical response (1/s), so it tracks the eased profile
+   * closely, and the beat it is drawn out by past the law's leg (the column's approach settles in that while). */
+  const RETURN_PROFILE_GAIN=2.5,RETURN_LIFT_HZ=6,RETURN_RISE_SETTLE_S=1.3;
+  /** Recalled this close to the column (m), the flight home starts by keeping station over it. */
+  const RETURN_NEAR_M=8;
   /**
    * The four rotors of one airframe into the pools, never with a mirrored instance transform (2026-10-12: two of the four
    * props and discs drew lit from behind, near-black against the ground). A counter-rotating spinning prop draws the
@@ -125,8 +147,9 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     if(track.ownerId==null||track.ageS<AERIAL_RULES.drone.launchS){options.onReturnEvent?.(id,'skip',track.ownerId==null?'no owner':'never flew free');return;}
     options.onReturnEvent?.(id,'start',`owner ${track.ownerId}`);
     const state=attitudes.get(id)??createDroneAttitude();
-    returns.set(id,{id,ownerId:track.ownerId,nation:track.nation,phase:'grace',pos:track.pos.clone(),vel:track.vel.clone(),state,
-      seed:typeof id==='number'?id*.71:id.length*.71,t:0,phaseT:0,cruiseY:track.pos.y,speed:DRONE_RETURN.minSpeed,descentFrom:0});
+    returns.set(id,{id,ownerId:track.ownerId,nation:track.nation,phase:'grace',pos:track.pos.clone(),vel:track.vel.clone(),state,from:track.pos.clone(),
+      seed:typeof id==='number'?id*.71:id.length*.71,t:0,phaseT:0,cruiseY:track.pos.y,speed:droneReturnSpeed(0),descentFrom:0,
+      rise:0,riseS:0,overColumn:false,limitS:Infinity,dockPrev:new THREE.Vector3(),dockSeen:false});
   }
   /** Advance one flight home by this frame's presentation dt and draw it; false when it ended (handed over or abandoned). */
   function stepReturn(r:ReturnFlight):boolean {
@@ -139,16 +162,26 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     if(frame.parent?.visible===false)return ended('dock hidden');
     if(r.phase==='handoff'&&frame.userData.returnAck===true){frame.userData.returnAck=false;return ended('handed over');}
     r.t+=dt;r.phaseT+=dt;
-    if(r.t>DRONE_RETURN.maxS+DRONE_RETURN.graceS)return ended('time bound');
+    if(r.t>r.limitS)return ended('time bound');
     const world=options.world?.()??null;
     handoffPose(frame);
     frame.getWorldPosition(dockAt);
+    // The carrier may be driving: its ground velocity is fed forward (bounded against a teleport) so the flight home and
+    // the column descent keep station over a moving dock instead of trailing it into the hand-over.
+    if(r.dockSeen&&dt>0)dockVel.set(handoffAt.x-r.dockPrev.x,0,handoffAt.z-r.dockPrev.z).multiplyScalar(1/dt).clampLength(0,30);
+    else dockVel.set(0,0,0);
+    r.dockPrev.copy(handoffAt);r.dockSeen=true;
     if(r.phase==='grace'){
       r.vel.multiplyScalar(Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.phaseT>=DRONE_RETURN.graceS){
         r.phase='transit';r.phaseT=0;r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
-        const distance=Math.hypot(dockAt.x-r.pos.x,dockAt.z-r.pos.z);
-        r.speed=Math.min(DRONE_RETURN.maxSpeed,Math.max(DRONE_RETURN.minSpeed,distance/DRONE_RETURN.targetS));
+        // Paced and bounded by the recall's timing law (sim/droneRecall.ts), the window the authority holds the dock for.
+        const distance=Math.hypot(dockAt.x-r.pos.x,dockAt.z-r.pos.z),fromM=Math.hypot(dockAt.x-r.from.x,dockAt.z-r.from.z);
+        r.speed=droneReturnSpeed(distance);
+        // Recalled right by the column, it hops straight over it and keeps station (a carrier driving off is caught up).
+        r.overColumn=distance<=RETURN_NEAR_M;
+        r.rise=r.cruiseY-r.pos.y;r.riseS=droneReturnClimbS(r.from.y-dockAt.y)+RETURN_RISE_SETTLE_S;
+        r.limitS=droneReturnS(fromM,r.from.y-dockAt.y)+DRONE_RETURN.overrunS;
       }
     }else if(r.phase==='transit'){
       toward.set(handoffAt.x-r.pos.x,0,handoffAt.z-r.pos.z);
@@ -161,16 +194,32 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       }else{
         // Home at cruise height over a moving carrier: climbs or glides to it on the way, lifted over what lies ahead.
         r.cruiseY=dockAt.y+DRONE_RETURN.cruiseAboveDockM;
-        const ground=Math.min(r.speed,distance*1.4+.5);
-        desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0);
-        desired.y=Math.max(-5,Math.min(8,(r.cruiseY-r.pos.y)*.8));
+        // A fast return (from the link's edge) brakes a little harder, so it settles over the column as a usual one does.
+        const pace=Math.max(1,r.speed/RETURN_PACE_MPS),ground=Math.min(r.speed,distance*1.4*Math.sqrt(pace)+.5);
+        if(distance<=DRONE_RETURN.columnM)r.overColumn=true;
+        if(r.overColumn)desired.set(toward.x*4,0,toward.z*4).clampLength(0,r.speed).add(dockVel);
+        else desired.copy(toward).multiplyScalar(distance>1e-6?ground/distance:0).add(dockVel);
+        // The climb or sink to cruise height runs the law's profile (eased in and out over riseS, so a long one from high
+        // above or far below the tank ends on time and levels off without a jolt), then holds the cruise height.
+        const u=r.riseS>0?Math.min(1,r.phaseT/r.riseS):1;
+        if(u<1){
+          // The profile's pace and its change (fed forward through the vertical response), and a bounded correction.
+          const k=r.rise/r.riseS,profileY=r.cruiseY-r.rise*(1-u*u*(3-2*u));
+          desired.y=k*6*u*(1-u)+k/r.riseS*6*(1-2*u)/RETURN_LIFT_HZ
+            +Math.max(-RETURN_SINK_MPS,Math.min(RETURN_CLIMB_MPS,(profileY-r.pos.y)*RETURN_PROFILE_GAIN));
+        }else desired.y=Math.max(-RETURN_SINK_MPS,Math.min(RETURN_CLIMB_MPS,(r.cruiseY-r.pos.y)*.8));
         if(world)avoidDroneObstacles(world,String(r.ownerId),r.pos,desired);
-        r.vel.lerp(desired,1-Math.exp(-dt*2.5));r.pos.addScaledVector(r.vel,dt);
+        // The ground track eases in at the airframe's pace (quicker for a fast return), the climb and sink at the thrust's.
+        const ease=1-Math.exp(-dt*(r.overColumn?6:2.5*pace)),lift=1-Math.exp(-dt*RETURN_LIFT_HZ);
+        r.vel.x+=(desired.x-r.vel.x)*ease;r.vel.z+=(desired.z-r.vel.z)*ease;r.vel.y+=(desired.y-r.vel.y)*lift;
+        r.pos.addScaledVector(r.vel,dt);
       }
     }
     if(r.phase==='descent'){
       // The carrier may move: the column is tracked; the last metres ease into the landing's first pose.
-      desired.set((handoffAt.x-r.pos.x)*4,-Math.min(6,Math.max(1.2,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4);
+      // round 5: down the column at no less than the landing's hand-over speed, so the landing continues the descent
+      // instead of a stop at the hand-over (droneArrival.ts handoffSpeed)
+      desired.set((handoffAt.x-r.pos.x)*4+dockVel.x,-Math.min(6,Math.max(DRONE_ARRIVAL.handoffSpeed,(r.pos.y-handoffAt.y)*1.6)),(handoffAt.z-r.pos.z)*4+dockVel.z);
       r.vel.lerp(desired,1-Math.exp(-dt*6));r.pos.addScaledVector(r.vel,dt);
       if(r.pos.y<=handoffAt.y+.04){
         r.pos.copy(handoffAt);r.vel.set(0,0,0);r.phase='handoff';r.phaseT=0;
@@ -208,7 +257,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     begin(timeS:number,cameraPosition?:THREE.Vector3){
       count=0;dt=Math.min(.1,Math.max(0,timeS-time));time=timeS;frame++;
       hasCamera=!!cameraPosition;if(cameraPosition)camera.copy(cameraPosition);
-      for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool){pool.count=0;pool.bladeCount=0;pool.mirrorCount=0;pool.blurCount=0;}
+      for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool){pool.count=0;pool.bladeCount=0;pool.mirrorCount=0;pool.blurCount=0;pool.faintCount=0;}
     },
     /** Every live drone shell, every frame (a missed one reads as a flight that ended). `hidden` keeps an airframe
      * tracked without drawing it (the pilot's own, around its FPV lens). */
@@ -271,9 +320,15 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       }
       pose.updateMatrix();
       for(const part of pool.parts)part.setMatrixAt(index,pose.matrix);
-      const blur=spool>=1&&ageS>=Math.max(BLUR_AFTER_SPOOL,DRONE_SPOOL_S*.9);
+      const blur=spool>=1&&ageS>=Math.max(BLUR_AFTER_SPOOL,DRONE_SPOOL_S*.9),fading=!blur&&ageS>=FAINT_DISC_S;
       // A disc turns slowly so its faint blade passages shimmer; spooling blades show their real direction.
       drawRotors(pool,pose.matrix,!blur,blur?time*9:state.rotorSpin);
+      // Round 4b: from FAINT_DISC_S a faint disc shows over the quickening blades (blades, then blades under a disc,
+      // then a disc). A disc is symmetric, so it never takes the counter-rotating mirror.
+      if(fading)for(let n=0;n<4;n++){
+        poseDroneRotor(prop,n,time*9+n);prop.scale.set(1,1,1);prop.updateMatrix();
+        matrix.multiplyMatrices(pose.matrix,prop.matrix);pool.faint.setMatrixAt(pool.faintCount++,matrix);
+      }
       count++;
     },
     end(){
@@ -291,7 +346,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       for(const v of variants.values())for(const pool of [v.full,v.lite]){
         if(!pool)continue;
         for(const part of pool.parts)part.count=pool.count;
-        pool.rotors.count=pool.bladeCount;pool.mirrorRotors.count=pool.mirrorCount;pool.blurs.count=pool.blurCount;
+        pool.rotors.count=pool.bladeCount;pool.mirrorRotors.count=pool.mirrorCount;pool.blurs.count=pool.blurCount;pool.faint.count=pool.faintCount;
         for(const mesh of pool.meshes){mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;}
       }
     },

@@ -18,6 +18,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
 import { dressedQuoin } from './facade.ts'; // the dressed quoins (facade craft, desktop)
+import { phare } from './phare.ts'; // the light on its keeper's house (props census #5, lane B)
 
 const PAINTS: readonly Rgb[] = [0x3f78a6, 0x4f88aa, 0x3f7a60, 0x9a3a32, 0x7a8890, 0x3e6688].map(rgb);
 const FRAME_WHITE = rgb(0xd2cec4);
@@ -638,6 +639,7 @@ export const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   market: halles,
   // (the looks lane, 2026-10-13) the harbour's net yards
   netyard: netYard,
+  lighthouse: (ctx) => phare(ctx, stateFor, dialect, quoins),
 });
 
 export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

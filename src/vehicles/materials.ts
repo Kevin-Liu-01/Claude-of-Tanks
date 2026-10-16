@@ -352,6 +352,47 @@ function paintDecal(
   return canvas;
 }
 
+/**
+ * The spare links' weathering (VEH-13): one 128 px tile mapped onto every face of a link (each primitive's own 0..1
+ * UVs). Dark oily steel, rust bloom toward the face's middle, oil darkening in streaks, the edges worn to bare steel.
+ * Deterministic: the same tile on every build.
+ */
+function spareLinkWearTexture(aniso: number): THREE.CanvasTexture {
+  const n = 128;
+  const c = makeCanvas(n, n);
+  const g = c.getContext('2d')!;
+  const rng = mulberry32(0x5eed1c);
+  g.fillStyle = '#3b3934';
+  g.fillRect(0, 0, n, n);
+  // rust bloom: soft rust-brown clouds, denser toward the middle of the face
+  for (let i = 0; i < 46; i++) {
+    const r = 6 + rng() * 22, x = n * (0.15 + rng() * 0.7), y = n * (0.15 + rng() * 0.7);
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    const tone = rng() < 0.5 ? '96,62,38' : '112,74,44';
+    grad.addColorStop(0, `rgba(${tone},${0.30 + rng() * 0.25})`);
+    grad.addColorStop(1, `rgba(${tone},0)`);
+    g.fillStyle = grad;
+    g.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+  // oil and grime: dark streaks along the face
+  for (let i = 0; i < 14; i++) {
+    g.strokeStyle = `rgba(18,17,15,${0.18 + rng() * 0.22})`;
+    g.lineWidth = 2 + rng() * 6;
+    const y = rng() * n;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(n, y + (rng() - 0.5) * 24); g.stroke();
+  }
+  // bare steel worn bright along every edge of the face
+  const edge = g.createLinearGradient(0, 0, 0, n);
+  edge.addColorStop(0, 'rgba(120,118,110,0.55)'); edge.addColorStop(0.08, 'rgba(120,118,110,0)');
+  edge.addColorStop(0.92, 'rgba(120,118,110,0)'); edge.addColorStop(1, 'rgba(120,118,110,0.55)');
+  g.fillStyle = edge; g.fillRect(0, 0, n, n);
+  const side = g.createLinearGradient(0, 0, n, 0);
+  side.addColorStop(0, 'rgba(120,118,110,0.45)'); side.addColorStop(0.07, 'rgba(120,118,110,0)');
+  side.addColorStop(0.93, 'rgba(120,118,110,0)'); side.addColorStop(1, 'rgba(120,118,110,0.45)');
+  g.fillStyle = side; g.fillRect(0, 0, n, n);
+  return canvasTex(c, { srgb: true, aniso });
+}
+
 function canvasTex(canvas: HTMLCanvasElement, { srgb = true, aniso = 4, repeat = false }: CanvasTextureOptions = {}): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(canvas);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
@@ -2883,6 +2924,14 @@ export function createTankMaterials(
     color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
     envMapIntensity: 0.06,
   })));
+  // VEH-13 (2026-10-15; blind critics m1: spare links read as "flat untextured grey blocks with no grousers, pins,
+  // paint or rust"): the stowed spare links, and only they (the live run, the running gear and the other track-steel
+  // dressing keep `spareTrack`), take a weathered map over the same dark oily steel: rust bloom in the hollows, oil
+  // darkening, steel worn bright at every face's edges, so the shoe plates, barrels and grousers read apart.
+  const spareLink = track(setup(new THREE.MeshStandardMaterial({
+    color: 0xffffff, map: track(spareLinkWearTexture(aniso)), roughness: 0.93, metalness: 0.1, roughnessMap: roughTex,
+    envMapIntensity: 0.06,
+  })));
   // Optics / headlight lenses: smoked dark-olive glass (round 3, 2026-10-07). The old smooth blue-grey MIRROR
   // (0x2a3540, metalness 0.85, full env) fired the PMREM sky as the most saturated blue on the vehicle. Critics:
   // T-90M "the optics are flat, saturated royal-blue patches", Oplot "the saturated blue box on the turret roof",
@@ -3099,6 +3148,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(shadow, 'gearShadow', 'gear-shadow');
   tagVehicleMaterial(trackLink, 'trackSteel', 'track-steel');
   tagVehicleMaterial(spareTrack, 'trackSteel', 'spare-track-steel');
+  tagVehicleMaterial(spareLink, 'trackSteel', 'spare-link-steel');
   tagVehicleMaterial(glass, 'opticGlass', 'optic-glass');
   tagVehicleMaterial(barrel, 'armorPaint', 'barrel-paint');
   tagVehicleMaterial(canvasCloth, 'canvas', 'canvas');
@@ -3128,7 +3178,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   }
 
   return {
-    hull, wheels, wheelsRecessed, rubber, rubberCavity, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
+    hull, wheels, wheelsRecessed, rubber, rubberCavity, detail, dark, shadow, trackLink, spareTrack, spareLink, glass, barrel,
     canvasCloth, canvasPale, wood, bark, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)

@@ -28,6 +28,8 @@ try {
         f.frame.camera.userData.thermalFlight = true;
         f.frame.matchModeState = { id: 'drone' };
         f.frame.player.aerial = { kind: 'drone', active: true, launching: false, x: 150, y: 30, z: 150, yaw: 0, pitch: 0, batteryS: 28, cooldownS: 0 };
+        // DR.05: the altimeter reads the map's height field (the one the minimap and the spotting tests take)
+        f.hud.buildMinimap({ size: 1024, minY: 0, maxY: 12, getHeightAt: () => 3.6, getGroundType: () => 'grass' });
         window.__droneReturns = 0;
         f.bus.on('ui:drone', () => window.__droneReturns++);
         f.hud.update(f.frame);
@@ -52,6 +54,8 @@ try {
           const button = root.querySelector('.flight-view-switch');
           if(getComputedStyle(button,'::before').clipPath==='none') failures.push('sensor shape is rectangular');
           if(getComputedStyle(root.querySelector('.flight-console')).backgroundImage!=='none') failures.push('old panel backing remains');
+          const altimeter = [...root.querySelectorAll('.flight-telemetry .flight-instrument')][1];
+          if(altimeter?.querySelector('b')?.textContent!=='26m') failures.push(`altimeter reads ${altimeter?.querySelector('b')?.textContent}`);
           return { failures, rects, view:root.dataset.view, activeSteps:root.querySelectorAll('.flight-view-track .active').length, label:button.getAttribute('aria-label') };
         });
         await page.screenshot({ path: resolve(out, `${width}-${height}-${locale}-${view}.png`) });

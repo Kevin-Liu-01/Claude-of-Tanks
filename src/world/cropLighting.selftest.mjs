@@ -10,7 +10,6 @@ import { bindMaterialEnvIntensity } from '../engine/materialEnvIntensity.ts';
 // Source-owned material/chaining and ideal cosine checks, not a Canvas/GPU
 // render or proof of final scene brightness. Existing crop raster tests own
 // the painter, alpha/mip input, seeded placement and terrain-support policy.
-const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const lightingSource = readFileSync(new URL('../engine/lighting.ts', import.meta.url), 'utf8');
 function declaration(source, name, method = false) {
   const tree = ts.createSourceFile('owner.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -24,9 +23,11 @@ function declaration(source, name, method = false) {
   assert.equal(matches.length, 1, `unambiguous actual ${name} owner`);
   return matches[0];
 }
-const replaceSource = declaration(propsSource, '_mustReplace');
-const hookSource = declaration(propsSource, 'cropAttributeNormal');
-const finalizeSource = declaration(propsSource, 'finalizeCropFields');
+// (props lane A, #18b, 2026-10-14: the crop material's owner is maps/cropKit.ts, extracted from props.ts unchanged)
+const cropSource = readFileSync(new URL('./maps/cropKit.ts', import.meta.url), 'utf8');
+const replaceSource = declaration(cropSource, '_mustReplace');
+const hookSource = declaration(cropSource, 'cropAttributeNormal');
+const finalizeSource = declaration(cropSource, 'finalizeCropFields');
 const setupSource = declaration(lightingSource, 'setupShadowMaterial', true);
 // round 69 (2026-09-25): the method also binds the ground-bounce rig; the sandbox injects inert stubs for it.
 // (2026-10-03: and the cloud shade's — cloudShadeMap.ts; off here, as on the phone tier; 2026-10-05: its unit count)

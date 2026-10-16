@@ -1,4 +1,6 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
@@ -1178,9 +1180,12 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // Twin backed engine-deck louvre beds. The shallow ribs are planted on
   // the aft deck and stay below its existing silhouette.
   [-1, 1].forEach((s) => {
-    P.add('hullDark', box(1.10, 0.025, 0.78), s * 0.682, 1.532, -1.82);
-    Array.from({ length: 5 }).forEach((_, i) => {
-      P.add('hullDetail', box(1.023, 0.022, 0.045), s * 0.682, 1.550, -2.10 + i * 0.14);
+    // VEH-13: the louvre beds are a grille to the spare-link seat solver
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(1.10, 0.025, 0.78), s * 0.682, 1.532, -1.82);
+      Array.from({ length: 5 }).forEach((_, i) => {
+        P.add('hullDetail', box(1.023, 0.022, 0.045), s * 0.682, 1.550, -2.10 + i * 0.14);
+      });
     });
     P.add('hull', box(0.418, 0.18, 0.62), s * 1.474, 1.50, -1.70);
     P.add('hullDark', box(0.33, 0.025, 0.50), s * 1.474, 1.603, -1.70);
@@ -1230,10 +1235,18 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   [-1, 1].forEach((s) => {
     P.add('hull', box(0.374, 0.05, 0.40), s * 1.507, 1.40, -3.02);
   });
-  // spare-track-link rows bedded flat on the aft deck (ref top line 1.473)
+  // spare-track-link rows bedded flat on the aft deck (ref top line 1.473); VEH-13: each side's pair is one registered
+  // run (spareTrackSeat.ts), seated on the deck that had grown over it
   [-1, 1].forEach((s) => {
-    P.add('hullTrack', box(0.946, 0.08, 0.21), s * 0.583, 1.415, -2.55, 0.06, 0, 0);
-    P.add('hullTrack', box(0.858, 0.07, 0.17), s * 0.539, 1.425, -2.68, 0.08, 0, 0);
+    withSpareTrackRun(P, { site: `t62-aft-links-${s < 0 ? 'L' : 'R'}`, source: 'adhoc', rotation: [0.06, 0, 0] }, (P) => {
+      // VEH-13 (blind critics m1, "flat grey blocks"): each row is the fleet's links side by side over the old slab
+      for (const [w, h, d, x, y, z, rx] of [[0.946, 0.08, 0.21, 0.583, 1.415, -2.55, 0.06], [0.858, 0.07, 0.17, 0.539, 1.425, -2.68, 0.08]]) {
+        const n = Math.round(w / 0.15), pitch = w / n;
+        for (let i = 0; i < n; i++) {
+          P.add('hullTrack', KIT.xform(spareLinkBlock(pitch, h, d), s * x - w / 2 + pitch * (i + 0.5), 0, 0), 0, y, z, rx, 0, 0);
+        }
+      }
+    });
   });
   // §B3.2 DENSITY (owner directive 2026-08-06, CEILING-CERT tank ->
   // mask-neutral only): common kit strictly inside the certified lines.
@@ -1393,7 +1406,8 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
     // over the 2.0-2.2 forward slope cost ~1.5 turret; the steeper droop
     // sinks the run under the dome line while the muzzle still rakes
     // visibly forward over the crown.)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.02, ammo: true });
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's DShKM)
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.02, ammo: true, working: true });
     mg.position.set(-0.572, 0.92, -0.30);
     mg.rotation.y = -0.06;
     P.turretG.add(mg);

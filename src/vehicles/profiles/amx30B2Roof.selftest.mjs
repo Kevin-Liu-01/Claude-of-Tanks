@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {Vector3,Raycaster,Mesh,MeshBasicMaterial,DoubleSide} from 'three';
+import {Box3,Vector3,Raycaster,Mesh,MeshBasicMaterial,DoubleSide} from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
 
@@ -23,10 +23,14 @@ for(const quality of ['high','low']) {
       assert(hits.some(y=>y>=bottom-.015&&y<=bottom+.025),'coaming sits on the cast roof');
     }
     const roots=[];turret.traverse(o=>{if(o.userData.fittingRoot&&o.userData.fitting==='pintleMG')roots.push(o)});
-    assert.equal(roots.length,2,'exactly two complete roof machine guns');
-    const names=['amx30b2_commander_machine_gun','amx30b2_loader_machine_gun'];
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the B2's one
+    // roof gun is the commander's cupola 7.62, a working station; the loader's second gun is gone
+    assert.equal(roots.length,1,'exactly one complete roof machine gun');
+    const names=['amx30b2_commander_machine_gun'];
     assert(turret.getObjectByName(names[0]).position.x<-.8,'commander MG follows negative-X cupola');
-    assert(turret.getObjectByName(names[1]).position.x>.8,'loader MG follows positive-X hatch');
+    assert.equal(turret.getObjectByName('amx30b2_loader_machine_gun'),undefined,'no loader roof gun');
+    assert(turret.getObjectByName(names[0]).userData.remoteControlled&&turret.getObjectByName(names[0]).getObjectByName('auxiliaryWeaponPitch'),
+      'the commander MG is a working station');
     const localCupola=new Mesh(turret.getObjectByName('turretCupola').geometry,localShell.material);
     localCupola.updateMatrixWorld(true);
     const upper=new Raycaster(new Vector3(-.553,1.5,-.520),new Vector3(0,-1,0),0,1.5).intersectObject(localCupola);
@@ -38,10 +42,13 @@ for(const quality of ['high','low']) {
     for(const name of names) {
       const weapon=turret.getObjectByName(name);assert(weapon&&roots.includes(weapon));
       const meshes=[];weapon.traverse(o=>{if(o.isMesh)meshes.push(o)});
-      const body=meshes.find(m=>m.name==='browningDerivedMachineGunBody');
-      assert(body,'complete receiver and barrel stock');body.geometry.computeBoundingBox();
-      const size=body.geometry.boundingBox.getSize(new Vector3());
-      assert(size.z>.70&&size.y>.20,'both MGs retain full receiver, bearing and connected barrel');
+      assert(meshes.some(m=>m.name==='browningDerivedMachineGunBody'),'complete receiver and barrel stock');
+      // the working station's mount and its pitching gun together (the receiver and barrel ride auxiliaryWeaponPitch)
+      weapon.updateMatrixWorld(true);
+      const local=new Box3(),inverse=weapon.matrixWorld.clone().invert();
+      for(const m of meshes)if(m.userData.fittingSlot==='dark'){m.geometry.computeBoundingBox();local.union(m.geometry.boundingBox.clone().applyMatrix4(inverse.clone().multiply(m.matrixWorld)));}
+      const size=local.getSize(new Vector3());
+      assert(size.z>.70&&size.y>.20,'the MG retains full receiver, bearing and connected barrel');
       const p=weapon.position;
       assert(cast([p.x,p.y+.1,p.z],[0,-1,0],.7).length,'MG bearing has a structural roof underneath');
     }

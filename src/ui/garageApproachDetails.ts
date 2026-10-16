@@ -331,14 +331,38 @@ export function addGarageApproachDetails({
         approachDetails += 3;
       }
     }
-    // the buffer stop at each road's end inside the shed's doors: timber-faced beam on two posts, its buffers, a lamp
+    // the yard side (rejudge6, 2026-10-15: "no rails run out of the shed toward the pad, so the shed and the tank
+    // turntable sit on unrelated, uniformly clean paving"): the roads run on out of the shed's front doors, laid flush in
+    // the yard's concrete with a flangeway groove inside each rail; the middle road runs straight to the turntable's rim,
+    // the outer two swing out of the frame to the yard's sidings either side, so none stops in the open
     if (Number.isFinite(coverFrom)) {
-      const stopDepth = coverFrom + 0.8;
-      const point = samplePath(fan, stopDepth);
-      for (const railOffset of [-0.76, 0.76]) addGroundBox(point.side + railOffset, stopDepth, 0.24, 1.15, 0.24, 0x2c3032);
-      addLiftedBox(point.side, stopDepth - 0.05, 2.3, 0.42, 0.32, 0x4a3a2c, 0.86);
-      for (const railOffset of [-0.76, 0.76]) addLiftedBox(point.side + railOffset, stopDepth - 0.3, 0.32, 0.32, 0.22, 0x1e2224, 0.86);
-      addLiftedBox(point.side, stopDepth, 0.2, 0.26, 0.16, 0x8a2a22, 1.25);
+      const yardPath: CameraPoint[] = [];
+      const sign = Math.sign(lane);
+      const doors = samplePath(fan, coverFrom).side;
+      if (sign === 0) {
+        for (let depth = coverFrom; depth >= 6.6; depth -= 0.9) yardPath.push({ side: doors, depth });
+      } else {
+        for (let depth = coverFrom; depth > 14.5; depth -= 0.9) yardPath.push({ side: doors, depth });
+        for (let k = 0; k <= 18; k += 1) {
+          const t = k / 18, u = 1 - t;
+          yardPath.push({ side: u * u * doors + 2 * u * t * doors + t * t * sign * 21, depth: u * u * 14.5 + 2 * u * t * 9.0 + t * t * 8.0 });
+        }
+      }
+      const offsetPath = (offset: number): CameraPoint[] => yardPath.map((point, index) => {
+        const a = yardPath[Math.max(0, index - 1)], b = yardPath[Math.min(yardPath.length - 1, index + 1)];
+        const ds = b.side - a.side, dd = b.depth - a.depth, length = Math.hypot(ds, dd) || 1;
+        return { side: point.side + (dd / length) * offset, depth: point.depth - (ds / length) * offset };
+      });
+      for (const railOffset of [-0.76, 0.76]) {
+        const rail = offsetPath(railOffset), groove = offsetPath(railOffset - Math.sign(railOffset) * 0.075);
+        for (let index = 0; index < rail.length - 1; index += 1) {
+          pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.072, 0.04, 0.052); // the rail's head, flush
+          approachGroundErrorM = Math.max(approachGroundErrorM,
+            pathPanel(baked, groundAtWorld, groove[index], groove[index + 1], 0.06, 0.03, 0.046));
+          paint(baked.at(-1)!, 0x17191a); // the flangeway, packed with grime
+          approachDetails += 2;
+        }
+      }
     }
   };
 

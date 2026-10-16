@@ -1,12 +1,15 @@
 // Ariete source-frame hull fittings, independently made from stock and tubes.
 import * as THREE from 'three';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
 
-function forwardCarry(P: TankBuilderPort): void {
+function forwardCarry(P0: TankBuilderPort): void {
+  // VEH-13: the two link rows and their long rails are one registered run (spareTrackSeat.ts)
+  withSpareTrackRun(P0, { site: 'ariete-forward-carry', source: 'adhoc', rotation: [.513, 0, 0] }, (P) => {
   for (const [z, y] of [[3.09761, 1.17499], [3.23739, 1.09595]]) {
     for (let i = 0; i < 10; i++) {
       const x = -.698533 + i * .1552296;
@@ -22,6 +25,8 @@ function forwardCarry(P: TankBuilderPort): void {
   }
   for (const [z, y] of [[3.00525, 1.20950], [3.31562, 1.03371]])
     P.addEquipment('hullDetail', box(1.56613, .032, .07065), 0, y, z, .513);
+  });
+  const P = P0;
   for (const side of [-1, 1]) {
     const x = side * .877267;
     P.addEquipment('hullDetail', box(.118, .087, .092), x, 1.133, 3.264);

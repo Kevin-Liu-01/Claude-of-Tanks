@@ -1012,7 +1012,8 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // receiver, can and belt stand clear of the NBC pack (top 0.935) and the bore (~2.68 m world) rides over the
       // commander's sight hood (2.59 m): the gun breaks the turret's far skyline in the hero view instead of hiding
       // behind the hood.
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10 });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10, working: true });
       mg.name = 'challenger1LoaderL37';
       mg.position.set(-0.74, 0.876, -0.15);
       mg.rotation.y = -0.06;
@@ -1034,7 +1035,8 @@ function challenger1Build(P: ChallengerBuilderPort): void {
         P.add('turretDark', box(0.10, 0.06, 0.07), vx, 0.80, vz, 0, vry, 0);
         P.add('turretGlass', box(0.075, 0.034, 0.012), vx, 0.80, vz + 0.035, 0, vry, 0);
       }
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10 });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10, working: true });
       mg.name = 'challenger1CommanderL37';
       mg.position.set(0.70, 0.795, -0.40);
       mg.rotation.y = 0.05;
@@ -1852,6 +1854,8 @@ function cr2MountedMg(
     // weapons read as one connected assembly instead of two floating parts.
     barrelBridge: cls === 'mag',
     rotation: [0, rotationY, 0],
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the crew gun is a working station
+    working: true,
   });
   mg.position.set(x, y, z);
   mg.userData.mountSeatY = y;
@@ -2008,7 +2012,9 @@ function buildChallenger2WeaponTower(
   const stationX = (x: number): number => x + centerX - 0.7095;
   const stationY = (y: number): number => y + seatY - 0.690;
 
-  const automatic = P.spec.id==='challenger2e' || P.spec.id==='ua_challenger2';
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the tower's GPMG works on every host — the owner's
+  // activation on the 2E and the Ukrainian CR2 (2026-10-08) now reaches the base Challenger 2's tower too.
+  const automatic = true;
   const station = automatic ? beginAuxiliaryStation(P, {
     name:'challengerRemoteGPMG',caliberMm:7.62,
     yaw:[stationX(.77),stationY(.69),.20],
@@ -2180,16 +2186,16 @@ function buildChallenger2VariantPackage(
       P.add('turretDetail', box(0.10, 0.16, 0.10), 0.05, 0.58, -1.34);
       P.add('turretDetail', cylY(0.014, 0.018, 0.36, 8), 0.05, 0.80, -1.34);
       const loaderMgSeatY = loaderCupolaBaseY + 0.12 + 0.040 - 0.005;
-      const commanderMgSeatY = commanderCupolaBaseY + 0.14 + 0.040 - 0.005;
+      // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the
+      // Challenger 2's one roof gun is the loader's L37A2 GPMG, a working station; the commander carries none, so the
+      // M2 on his cupola is gone.
       cr2MountedMg(P, { x: -0.56, y: loaderMgSeatY, z: -0.72, cls: 'mag', seed: 41, rotationY: -0.12 });
-      cr2MountedMg(P, { x: 0.54, y: commanderMgSeatY, z: -0.62, cls: 'm2', seed: 42, rotationY: 0.16, scale: 0.92 });
       roofSeats.push(
         { label: 'fv4034-loader-machine-gun', carrierY: loaderMgSeatY + 0.005, bottomY: loaderMgSeatY },
-        { label: 'fv4034-commander-machine-gun', carrierY: commanderMgSeatY + 0.005, bottomY: commanderMgSeatY },
       );
-      receipt.mannedMachineGuns = 2;
+      receipt.mannedMachineGuns = 1;
       receipt.bridgedMachineGunBarrels = 1;
-      receipt.roofAttachmentCount = 8;
+      receipt.roofAttachmentCount = 7;
       for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
         const angle = side * (0.64 + k * 0.09);
         const tubeX = side * 1.02 + Math.cos(angle) * (k - 1.5) * 0.06;

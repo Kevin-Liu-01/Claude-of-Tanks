@@ -16,7 +16,9 @@ import { gateStubs } from './plan.ts';
 import type { LandmarkBuilder } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 
-const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xece8de), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
+// (the maps lane, 2026-10-15; the blind critics on Verdant v2: the gate's sign blew out under High bloom) the banner's
+// frame, its lettering and the crest in a painted white, not a lamp's
+const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xc9c5bb), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const VERMILION = rgb(0xc4452c), LACQUER_BLACK = rgb(0x1e1c1b), FRAME_WHITE = rgb(0xe8e4da), GILT = rgb(0xb8933e);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -65,8 +67,21 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
   const base = -0.6 - ctx.groundFall, p = 0.8, px = span / 2 + p / 2, pillarTop = H - 1.6;
   for (const sx of [-1, 1]) {
     const x = sx * px;
-    sink.span('stone', x - p / 2 - 0.12, base, -p / 2 - 0.12, x + p / 2 + 0.12, 0.55, p / 2 + 0.12);
-    sink.span('plaster', x - p / 2, 0.55, -p / 2, x + p / 2, pillarTop, p / 2);
+    // (the looks lane, 2026-10-15; WORKLIST #11 r2: plinths stepped, panels sunk) the pillar's plinth in two courses,
+    // the lower proud of the upper; the shaft's front and back each a panel sunk 4 cm in its frame of stiles and rails,
+    // the red star in relief in the field
+    sink.span('stone', x - p / 2 - 0.16, base, -p / 2 - 0.16, x + p / 2 + 0.16, 0.3, p / 2 + 0.16);
+    sink.span('stone', x - p / 2 - 0.08, 0.3, -p / 2 - 0.08, x + p / 2 + 0.08, 0.55, p / 2 + 0.08, { shade: 0.95 });
+    const sunk = 0.04, st = 0.15, py0 = 1.62, py1 = pillarTop - 0.5;
+    sink.span('plaster', x - p / 2, 0.55, -p / 2 + sunk, x + p / 2, pillarTop, p / 2 - sunk);
+    for (const zs of [-1, 1]) {
+      const z0 = zs > 0 ? p / 2 - sunk : -p / 2, z1 = zs > 0 ? p / 2 : -p / 2 + sunk;
+      sink.span('plaster', x - p / 2, 0.55, z0, x - p / 2 + st, pillarTop, z1);
+      sink.span('plaster', x + p / 2 - st, 0.55, z0, x + p / 2, pillarTop, z1);
+      sink.span('plaster', x - p / 2 + st, 0.55, z0, x + p / 2 - st, py0, z1);
+      sink.span('plaster', x - p / 2 + st, py1, z0, x + p / 2 - st, pillarTop, z1);
+      if (py1 - py0 > 0.9) star(sink, 'structureMetal', x, py1 - 0.42, zs * (p / 2 - sunk + 0.016), 0.2, 0.03, { colour: STAR_RED, decor: true }, zs > 0 ? 0 : Math.PI);
+    }
     sink.placed(0, x, 0, 0, () => {
       moulding(sink, 'plaster', p, p, pillarTop - 0.02, 0.14, 0.1);
       moulding(sink, 'plaster', p, p, 1.4, 0.1, 0.04);
@@ -129,7 +144,8 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     const kind = String(ctx.params.wingFence || 'fencepicket'), x0 = px + p / 2 + 0.25;
     for (const sx of [-1, 1]) fenceRun(destructibles, kind, [sx * x0, 0], [sx * (x0 + wings), 0]);
   }
-  return { parts: smoothRender(finishLandmark(sink), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+  // (2026-10-15: the pillars' lime-wash at about two thirds, as the church's, under High bloom)
+  return { parts: smoothRender(finishLandmark(sink), LIMEWASH_UV), tints: { plaster: [0.8, 0.8, 0.78] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- town gate
@@ -200,9 +216,15 @@ function oriel(sink: PartSink, bucket: RegionalBucket, z: number, y0: number, fr
   sink.span(bucket, -w / 2, y0, z - dep, w / 2, y0 + h, z, { decor: true });
   const face: Face = { origin: [0, 0, z - dep], u: [-1, 0, 0], out: [0, 0, -1], width: w };
   for (const u of [-0.5, 0.5]) {
+    // (the looks lane, 2026-10-15; WORKLIST #11 r2 "openings with depth") each light in a stone frame proud of the bay
+    // (its sill, jambs and head), the glazing set 7 cm back behind it, the casement's mullion in it
     sink.quad('glass', facePoint(face, u - 0.3, y0 + 0.75, 0.01), facePoint(face, u + 0.3, y0 + 0.75, 0.01), facePoint(face, u + 0.3, y0 + 1.85, 0.01),
       facePoint(face, u - 0.3, y0 + 1.85, 0.01), { decor: true });
     sink.member('structureMetal', facePoint(face, u, y0 + 0.75, 0.02), facePoint(face, u, y0 + 1.85, 0.02), 0.05, 0.03, face.out, { colour: frame, decor: true }, 0);
+    for (const [a, b, w] of [[[u - 0.38, y0 + 0.71], [u + 0.38, y0 + 0.71], 0.09], [[u - 0.38, y0 + 1.9], [u + 0.38, y0 + 1.9], 0.1],
+      [[u - 0.34, y0 + 0.75], [u - 0.34, y0 + 1.85], 0.08], [[u + 0.34, y0 + 0.75], [u + 0.34, y0 + 1.85], 0.08]] as const) {
+      sink.member(bucket, facePoint(face, a[0], a[1], 0.04), facePoint(face, b[0], b[1], 0.04), w, 0.08, face.out, { decor: true, exposed: true }, 0.04);
+    }
   }
   sink.span(bucket, -w / 2 - 0.08, y0 + h, z - dep - 0.08, w / 2 + 0.08, y0 + h + 0.14, z, { decor: true });
   const cap: RoofSpec = { kind: 'shed', pitchDeg: 38, eave: 0.12, verge: 0.1, thickness: 0.07, bucket: 'roof', decor: true };
@@ -273,10 +295,41 @@ export const townGate: LandmarkBuilder = (ctx) => {
   for (const zs of [1, -1]) {
     const dRoof: RoofSpec = { kind: 'gable', pitchDeg: 50, eave: 0.12, verge: 0.12, thickness: 0.08, bucket: 'roof', ridge: null };
     sink.placed(zs > 0 ? 0 : Math.PI, 0, 0, zs * (D / 2 - 0.9), () => {
-      sink.span('stone', -0.55, top + 0.6, -0.4, 0.55, top + 1.6, 0.9);
-      sink.quad('glass', [-0.35, top + 0.75, 0.91], [0.35, top + 0.75, 0.91], [0.35, top + 1.45, 0.91], [-0.35, top + 1.45, 0.91], { decor: true });
+      // (the looks lane, 2026-10-15; WORKLIST #11 r2 "openings with depth": the dormer's pane was a glass plate on a stone
+      // box) the dormer built round its window: two cheeks, the sill and the head across between them, the window cut
+      // 13 cm in behind them, its casement frame, mullion and transom
+      for (const sx of [-1, 1]) sink.span('stone', sx < 0 ? -0.55 : 0.38, top + 0.6, -0.4, sx < 0 ? -0.38 : 0.55, top + 1.6, 0.9);
+      sink.span('stone', -0.38, top + 0.6, -0.4, 0.38, top + 1.6, 0.77);
+      sink.span('stone', -0.38, top + 0.6, 0.77, 0.38, top + 0.74, 0.9, { decor: true });
+      sink.span('stone', -0.38, top + 1.46, 0.77, 0.38, top + 1.6, 0.9, { decor: true });
+      sink.quad('glass', [-0.38, top + 0.74, 0.775], [0.38, top + 0.74, 0.775], [0.38, top + 1.46, 0.775], [-0.38, top + 1.46, 0.775], { decor: true });
+      const frameOpts = { colour: FRAME_WHITE, decor: true, fine: true } as const;
+      for (const [a, b] of [[[-0.36, top + 0.76], [0.36, top + 0.76]], [[-0.36, top + 1.44], [0.36, top + 1.44]], [[-0.36, top + 0.76], [-0.36, top + 1.44]],
+        [[0.36, top + 0.76], [0.36, top + 1.44]], [[0, top + 0.76], [0, top + 1.44]], [[-0.36, top + 1.2], [0.36, top + 1.2]]] as const) {
+        sink.member('structureMetal', [a[0], a[1], 0.79], [b[0], b[1], 0.79], 0.04, 0.03, [0, 0, 1], frameOpts, 0);
+      }
       emitRoof(sink, roofGeometry(1.1, 1.3, top + 1.6, dRoof), dRoof);
     });
+  }
+  // (the looks lane, 2026-10-15) the gate's two leaves standing open in the passage, folded back against its walls from
+  // their hinges inside the field face: ledged and braced oak boards, the iron straps across them on their pintles.
+  // Dressing: the passage stays open to a hull.
+  const leafH = spring - 0.08, leafW = P / 2 - 0.05, hingeZ = D / 2 - 0.45;
+  for (const sx of [-1, 1]) {
+    const x = sx * (P / 2 - 0.07), boards = Math.max(4, Math.round(leafW / 0.32)), bw = leafW / boards;
+    for (let k = 0; k < boards; k++) {
+      const z0 = hingeZ - k * bw, tone = 0.88 + ((k * 7919) % 13) / 13 * 0.2;
+      sink.span('structureWood', x - 0.04, 0.04, z0 - bw + 0.006, x + 0.04, leafH - (k % 2) * 0.03, z0, { colour: shade(TIMBER, tone), decor: true });
+    }
+    // the ledges and the braces on the leaf's back (toward the passage's middle), the straps on its face
+    const inner = x - sx * 0.06;
+    for (const y of [0.45, leafH / 2, leafH - 0.45]) sink.span('structureWood', inner - 0.03, y - 0.1, hingeZ - leafW + 0.05, inner + 0.03, y + 0.1, hingeZ - 0.05, { colour: TIMBER_DARK, decor: true });
+    for (const [ya, yb] of [[0.55, leafH / 2 - 0.1], [leafH / 2 + 0.1, leafH - 0.55]] as const) {
+      sink.member('structureWood', [inner, ya, hingeZ - 0.15], [inner, yb, hingeZ - leafW + 0.2], 0.16, 0.06, [-sx, 0, 0], { colour: TIMBER_DARK, decor: true, exposed: true }, 0.02);
+    }
+    for (const y of [0.45, leafH / 2, leafH - 0.45]) {
+      sink.member('structureMetal', [inner - sx * 0.035, y, hingeZ + 0.02], [inner - sx * 0.035, y, hingeZ - leafW * 0.62], 0.07, 0.012, [-sx, 0, 0], { colour: rgb(0x2a2a28), decor: true, exposed: true }, 0);
+    }
   }
   // a finial on the roof's ridge (it comes off at the first damage: props lane A, E12)
   piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
@@ -287,15 +340,23 @@ export const townGate: LandmarkBuilder = (ctx) => {
     if (walls <= 0) continue;
     const x0 = sx * W / 2, x1 = sx * (W / 2 + walls), lo = Math.min(x0, x1), hi = Math.max(x0, x1), wh = Math.min(7.5, H * 0.42);
     sink.span(wall, lo, base, -0.6, hi, wh, 0.6);
+    // (the looks lane, 2026-10-15) the wall's battered foot: a plinth course proud of it on both faces, its top weathered
+    sink.span(wall, lo, base, -0.78, hi, 0.75, 0.78, { decor: true, shade: 0.92 });
     // (the looks lane) the parapet's coping, the merlons each under its own capstone, a loop through every other one
     sink.span(DRESS_BUCKET, lo, wh - 0.12, -0.68, hi, wh + 0.04, 0.68, { decor: true });
     for (let x = lo + 0.3, k = 0; x + 0.9 < hi; x += 1.8, k++) {
       // (props lane A, E12: every third merlon falls off the wall's face at the first damage, the next of each three when
       // the gate is breached, each under its own capstone; landmarks/pieces.ts)
       const emit = (s: PartSink, xm: number, km: number) => {
-        s.span(wall, xm, wh, 0.05, xm + 0.9, wh + 0.9, 0.6);
+        // (the looks lane, 2026-10-15; WORKLIST #11 r2: the loop was a dark plate 2 cm proud of the merlon) every other
+        // merlon's loop cut through it: the merlon its two cheeks, the stone under the slit and the stone over it
+        if (km % 2 === 0) {
+          s.span(wall, xm, wh, 0.05, xm + 0.4, wh + 0.9, 0.6);
+          s.span(wall, xm + 0.5, wh, 0.05, xm + 0.9, wh + 0.9, 0.6);
+          s.span(wall, xm + 0.4, wh, 0.05, xm + 0.5, wh + 0.25, 0.6, { shade: 0.7 });
+          s.span(wall, xm + 0.4, wh + 0.75, 0.05, xm + 0.5, wh + 0.9, 0.6, { shade: 0.7 });
+        } else s.span(wall, xm, wh, 0.05, xm + 0.9, wh + 0.9, 0.6);
         s.span(DRESS_BUCKET, xm - 0.05, wh + 0.9, 0.0, xm + 0.95, wh + 1.02, 0.65, { decor: true });
-        if (km % 2 === 0) s.span('dark', xm + 0.4, wh + 0.25, 0.6, xm + 0.5, wh + 0.75, 0.62, { decor: true });
       };
       const xm = x, km = k;
       if (k % 3 < 2) {
