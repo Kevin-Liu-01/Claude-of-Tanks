@@ -36,6 +36,7 @@ import {
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
 import { ahDormer } from './sarajevoDormer.ts';
+import { atticOculus, doksatBay, mansardDormer } from './sarajevoRoofs.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -324,10 +325,7 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
         const poly: Array<[number, number]> = [[-g / 2, eave], [g / 2, eave], [g / 2, eave + 0.9], [g * 0.3, eave + 1.55], [0, eave + 1.95], [-g * 0.3, eave + 1.55], [-g / 2, eave + 0.9]];
         const face: Face = { ...street, origin: [street.origin[0] + 0.12, 0, street.origin[2]] };
         wallPolygon(sink, 'plaster', face, poly, 0.3, { decor: true });
-        sink.polygon('dark', Array.from({ length: 10 }, (_, j) => {
-          const t = (j / 10) * Math.PI * 2;
-          return facePoint(face, Math.cos(t) * 0.42, eave + 1.0 + Math.sin(t) * 0.55, 0.02);
-        }), { decor: true });
+        atticOculus(sink, face, eave); // (looks r2 forms, 2026-10-16: extracted to sarajevoRoofs.ts, rebuilt there)
       } else if (rg.kind !== 'flat' && look() < 0.45) {
         ahDormer(sink, rg, eave, len, look, AH_WINDOW); // (looks r2 b-east, 2026-10-16: extracted to sarajevoDormer.ts, rebuilt there)
       }
@@ -359,10 +357,7 @@ function mansard(sink: PartSink, frame: HouseFrame, len: number, look: () => num
   const count = Math.max(1, Math.floor((len - 1.2) / 2.6));
   for (let k = 0; k < count; k++) {
     const dz = -len / 2 + (k + 0.5) * (len / count), dw = 1.15, x0 = -a - 0.02, x1 = -a + inset + 0.15;
-    sink.span('plaster', x0, e + 0.35, dz - dw / 2, x1, e + 2.05, dz + dw / 2, { decor: true });
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.1, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: null };
-    sink.placed(Math.PI / 2, (x0 + x1) / 2, 0, dz, () => emitRoof(sink, roofGeometry(dw + 0.1, x1 - x0, e + 2.05, cap), { ...cap, decor: true }));
-    windowUnit(sink, { origin: [x0, 0, dz], u: [0, 0, 1], out: [-1, 0, 0], width: dw }, 0, e + 0.6, 0.7, 1.0, { ...AH_WINDOW, surround: null, sill: null, bars: mobile ? 'none' : 'cross' }, look, 0.1);
+    mansardDormer(sink, x0, x1, e, dz, dw, look, { ...AH_WINDOW, surround: null, sill: null, bars: mobile ? 'none' : 'cross' }); // (looks r2 forms: sarajevoRoofs.ts)
   }
 }
 
@@ -537,14 +532,7 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
     // the doksat: a bay of windows on its brackets, under the main eaves
     if (doksat) {
       const dd = 0.7, yb = y1 + 0.05, yt = frame.eaveY - 0.1;
-      faceBox(sink, 'plaster', up, du, (yb + yt) / 2, dd / 2, dw, yt - yb, dd, { decor: true });
-      const bay: Face = { origin: [up.origin[0] + up.out[0] * dd, 0, up.origin[2] + up.out[2] * dd], u: up.u, out: up.out, width: dw };
-      const panes = Math.max(3, Math.round(dw / 0.62));
-      for (let k = 0; k < panes; k++) {
-        const pu = du - dw / 2 + (k + 0.5) * dw / panes;
-        windowUnit(sink, bay, pu, yb + 0.55, dw / panes - 0.16, Math.min(1.05, yt - yb - 0.8),
-          { frame: DARK_FRAME, frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null }, look, h.lit);
-      }
+      const bay = doksatBay(sink, up, du, dw, dd, yb, yt, look, h.lit, DARK_FRAME); // (looks r2 forms: sarajevoRoofs.ts)
       faceBox(sink, 'structureWood', bay, du, yb + 0.47, 0.03, dw + 0.06, 0.1, 0.07, tc);
       faceBox(sink, 'structureWood', up, du, yb + 0.02, dd / 2 + 0.02, dw + 0.12, 0.12, dd + 0.05, { colour: timber, decor: true });
       // the side walls of the bay, its brackets down the wall
@@ -569,8 +557,8 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
           // wall carried over the gate through its thickness (dressing: the runs keep their collision)
           const gIn: Face = { origin: [s * (W / 2 - t), 0, gz], u: [0, 0, s], out: [-s, 0, 0], width: gw };
           sink.placed(0, 0, 0, -zc, () => {
-            gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
-            gateUnit(sink, gIn, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
+            gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }, { ledge: 0.12 }); // (looks r2 forms: 12 cm ledges)
+            gateUnit(sink, gIn, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }, { ledge: 0.12 }); // (looks r2 forms: 12 cm ledges)
             sink.span('plaster', x0, 2.13, gz - gw / 2, x1, Math.max(2.16, wallH), gz + gw / 2, { decor: true });
           });
         } else runs.push([x0, ga + t, x1, gb]);

@@ -390,7 +390,7 @@ const CHARRED: Rgb = [0.09, 0.08, 0.07];
 const GATE_IRON: Rgb = [0.15, 0.14, 0.13];
 
 /** Options for a gate pair: whether a leaf wide and tall enough carries a wicket (default yes). */
-export interface GateOptions { wicket?: boolean }
+export interface GateOptions { wicket?: boolean; /** a timber leaf's ledges' height (default 0.14) */ ledge?: number }
 
 /**
  * A pair of ledged-and-braced gate leaves in a wide opening (the barn, the cart shed, the yard gate). Props census E2
@@ -420,7 +420,7 @@ export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
     if (y1 - y0 < 0.04) return;
     faceBox(sink, 'structureWood', face, bu, (y0 + y1) / 2, o, bw, y1 - y0, T, { colour, decor: true, uv: UV_MEMBER }, { ends: !sides, top: y1 >= y + h - 0.001 });
   };
-  const ledge = (u0: number, u1: number, yc: number, o: number, colour: Rgb, height = steel ? 0.1 : 0.14) => {
+  const ledge = (u0: number, u1: number, yc: number, o: number, colour: Rgb, height = steel ? 0.1 : options.ledge ?? 0.14) => {
     if (u1 - u0 < 0.12) return;
     faceBox(sink, 'structureWood', face, (u0 + u1) / 2, yc, o + L / 2, u1 - u0, height, L, { colour, decor: true, uv: UV_MEMBER, fineSides: true });
   };
