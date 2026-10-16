@@ -339,7 +339,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert.show{transform:translate(var(--hud-alert-shift,-50%),0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert-copy{overflow-wrap:anywhere}
-/* Where no 12 px place clears the reticle the alert takes main's own 9 px type (its small-window rule below). */
+/* Where no 12 px place clears the reticle the alert takes main's own 9 px type (the small-window rule above). */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices][data-hud-alert-type='small']:not(.cot-touch-layout) .cot-alert{
   font-size:9px;line-height:1.2;letter-spacing:.035em;padding:4px 12px;gap:4px;min-height:28px;
 }
