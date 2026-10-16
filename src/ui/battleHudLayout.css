@@ -342,6 +342,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 @media (max-width:340px) and (orientation:portrait){
   .cot-aim-warning{top:326px;left:94px;transform:none;width:156px}
 }
+/* A portrait phone's warning is 140 px (touchActionDock.ts TOUCH_AIM_WARNING_PORTRAIT_W): its copy still fits one line,
+   and a column of two dock tiles fits beside it on 390 x 844. */
+@media (min-width:341px) and (max-width:480px) and (orientation:portrait){
+  .cot-aim-warning{width:140px}
+}
 
 /* Live FPS only appears after 30 frames. Reserve a small instrument row below
    the joystick so it cannot cover the ammo drawer or mobile settings. Network

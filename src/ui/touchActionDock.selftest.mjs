@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   placeTouchActionDock, createCooldownSweep, touchReticleKeepOut, touchAimWarningSlot,
-  touchReticleFootprint, touchAimKeepOut,
+  touchReticleFootprint, touchAimKeepOut, TOUCH_AIM_WARNING_PORTRAIT_W,
   TOUCH_ACTION_TILE_PX, TOUCH_ACTION_MIN_TILE_PX, TOUCH_ACTION_GAP_PX, TOUCH_ACTION_CLEARANCE_PX, TOUCH_ACTION_RETICLE,
   TOUCH_ACTION_RETICLE_READOUTS,
 } from './touchActionDock.ts';
@@ -158,6 +158,15 @@ function feedLanes(viewport, objective) {
   if (right) reference.push({ x: width - side, y: ra, w: side, h: right * 29 - 3 });
   return { lanes, reference };
 }
+// A round button with the caption hanging under it (touchControls.ts .lb, measured: touchActionDock.fixture.json captions),
+// as the layout owner reads it (battleHudLayout.ts placeTouchCentre): one control, the caption's band at least as wide as
+// the button (verifier 2026-10-16, round 5: the detection and the 320 x 568 dock sat on the AUTO AIM and SCOPE captions).
+function withCaption(r, c) {
+  if (!c) return r;
+  const half = Math.max(r.w, c.w) / 2, mid = r.x + r.w / 2;
+  const x = Math.min(r.x, mid - half), y = Math.min(r.y, c.y);
+  return { x, y, w: Math.max(r.x + r.w, mid + half) - x, h: Math.max(r.y + r.h, c.y + c.h) - y };
+}
 function centreInputs(viewport, objective, count) {
   const { width, height } = viewport;
   const o = structuredClone(viewport.obstacles);
@@ -169,9 +178,9 @@ function centreInputs(viewport, objective, count) {
   const objectiveBottom = objective ? o.mode.y + o.mode.h : scoreBottom;
   const minimapBottom = o.minimap.y + o.minimap.h;
   return { width, height, top: objectiveBottom + 8, count,
-    controls: Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r),
+    controls: Object.entries(o).filter(([k]) => HARD.test(k)).map(([k, r]) => withCaption(r, viewport.captions?.[k])),
     instruments: Object.entries(o).filter(([k]) => !HARD.test(k) && k !== 'ammoDrawerOpen').map(([, r]) => r),
-    drawer: o.ammoDrawerOpen ? [o.ammoDrawerOpen] : [], lanes: [touchAimWarningSlot(width, height, minimapBottom)],
+    drawer: [...(o.ammoDrawerOpen ? [o.ammoDrawerOpen] : []), ...(viewport.hint ? [viewport.hint] : [])], lanes: [touchAimWarningSlot(width, height, minimapBottom)],
     feeds: feedLanes(viewport, objective).lanes, reference: feedLanes(viewport, objective).reference,
     keepOut: touchAimKeepOut(width, height, minimapBottom),
     anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 },
@@ -192,13 +201,20 @@ for (const viewport of VIEWPORTS) {
       checkDock(`${label} x${count}`, { width, height, hard: input.controls, soft: [...input.instruments, ...input.drawer], lanes,
         feeds: input.feeds, keep: input.keepOut, anchor: input.anchor }, count, dock);
       placements++;
+      // Never fewer controls on screen at once than main's strip showed whole (verifier 2026-10-16, round 5: 390 x 844
+      // and 360 x 640 showed three and More where main showed four, 320 x 568 one where main showed two, 568 x 256 none
+      // where main showed one). Main's strip of five controls scrolled under a hidden scrollbar; mainTiles is how many of
+      // its tiles lay whole on screen (measured on main 5ab143d57), and its strip never widened past five whole tiles.
+      assert.ok(dock.shown >= Math.min(count, viewport.mainTiles), `${label} x${count}: ${dock.shown} controls on the dock (main's strip showed ${viewport.mainTiles})`);
       // The owner's phones (verifier 2026-10-16: the dock above the ring cost 390 x 844 eight of a burst's kill rows and
-      // two of its incoming toasts). Off the feeds' lanes, 390 x 844 keeps its row under the reticle: four slots, so
-      // five to seven controls show three tiles and More; 360 x 640 its block left of the reticle, three tiles and More
-      // from five controls; 844 x 390, whose feeds end high, every control in one row.
-      if (viewport.cases.includes('phone') && count >= 4) assert.deepEqual([dock.y, dock.shown, dock.more], [572, count > 4 ? 3 : 4, count > 4],
-        `${label}: 390 x 844 docks under the reticle`);
-      if (viewport.cases.includes('small-phone') && count >= 5) assert.deepEqual([dock.shown, dock.more], [3, true], `${label}: 360 x 640 shows three and More`);
+      // two of its incoming toasts; round 5: its row under the reticle showed three and More and hid the swipe-to-aim
+      // hint). Off the feeds' lanes, the hint and the captions, 390 x 844 and 360 x 640 dock in a column two tiles wide
+      // left of the reticle: every control up to six, five and More at seven. 844 x 390, whose feeds end high, shows
+      // every control in one row.
+      if ((viewport.cases.includes('phone') || viewport.cases.includes('small-phone')) && count >= 4) {
+        assert.deepEqual([dock.shown, dock.more, dock.columns], [count > 6 ? 5 : count, count > 6, 2], `${label} x${count}: the column left of the reticle`);
+        assert.ok(dock.x + dock.w < viewport.width / 2 - touchReticleKeepOut(viewport.width, viewport.height).r, `${label} x${count}: left of the ring`);
+      }
       if (viewport.cases.includes('landscape')) assert.equal(dock.more, false, `${label}: 844 x 390 shows all ${count} controls`);
       if (viewport.cases.includes('landscape')) assert.equal(dock.rows, 1, `${label}: 844 x 390 keeps one row`);
       if (count >= 5) row.push(`${count}:${dock.tile}px ${dock.columns}x${dock.rows}@${dock.x},${dock.y}${dock.more ? ` +More(${dock.flyout.length})` : ''}`);
@@ -656,7 +672,27 @@ try {
     if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
   }
 }
-assert.match(layout, /observeSize\('\.cot-touch \.joy,\.cot-touch \.round,\.cot-cons,\.cot-vehicle-controls>button'\);/, 'touch buttons and tiles: by size only');
+assert.match(layout, /observeSize\('\.cot-touch \.joy,\.cot-touch \.round,\.cot-touch-aim \.aimhint,\.cot-cons,\.cot-vehicle-controls>button'\);/, 'touch buttons, the aim hint and tiles: by size only');
+// Round 5's counterexamples: each round button's caption is part of the control (its band at least as wide as the
+// button, so a caption that changes with the button's state moves nothing), and the swipe-to-aim hint is an obstacle
+// for the dock alone (the notices may pass over it). A caption is never size-observed: FIRE's changes on every press.
+assert.match(layout, /if \(node\.classList\.contains\('round'\)\) \{\n\s*const caption = node\.querySelector<HTMLElement>\(':scope>\.lb'\);[\s\S]{0,260}const half = Math\.max\(rect\.w, c\.width\) \/ 2, mid = rect\.x \+ rect\.w \/ 2;/);
+assert.ok(layout.indexOf("node.querySelector<HTMLElement>(':scope>.lb')") < layout.indexOf("if (node.matches('.down,:active')) rect = restingBoxes.get(node) ?? rect;"), 'a pressed button keeps its resting caption band');
+assert.match(layout, /const hint = read\('\.cot-touch-aim\.on \.aimhint'\);\n\s*if \(hint && hint\.width >= 1 && hint\.height >= 1\) dockInstruments\.push\(/);
+assert.ok(layout.indexOf("const hint = read('.cot-touch-aim.on .aimhint');") > layout.indexOf('instrumentCount = dockInstruments.length;'), 'the hint is a dock-only obstacle (after the notices\' instruments)');
+assert.doesNotMatch(layout, /observeSize\('[^']*\.lb/, 'no caption is size-observed');
+// The dock's keep-out is the reticle's footprint less the scope's cross arms (their tips are yielded live, hud.ts drawScope
+// reports them), and the gun-limit warning's place; a portrait phone's warning is 140 px wide.
+for (const { width, height, obstacles } of VIEWPORTS) {
+  const footprint = touchReticleFootprint(width, height), mb = obstacles.minimap.y + obstacles.minimap.h;
+  assert.deepEqual(touchAimKeepOut(width, height, mb), [footprint[0], ...footprint.slice(3), touchAimWarningSlot(width, height, mb)], `${width}x${height}: the dock's keep-out`);
+  const slot = touchAimWarningSlot(width, height, mb);
+  if (height > width && width > 340) assert.equal(slot.w, width <= 480 ? TOUCH_AIM_WARNING_PORTRAIT_W : 180, `${width}x${height}: the portrait warning's width`);
+}
+assert.equal(TOUCH_AIM_WARNING_PORTRAIT_W, 140);
+assert.match(css, /@media \(min-width:341px\) and \(max-width:480px\) and \(orientation:portrait\)\{\n\s*\.cot-aim-warning\{width:140px\}\n\}/, 'a portrait phone\'s warning is 140 px');
+assert.match(hud, /if \(dockYield\.active\) \{\n\s*const reach = armEnd \+ TOUCH_ACTION_RETICLE_READOUTS\.armReachPx - 3, half = TOUCH_ACTION_RETICLE_READOUTS\.armHalfWidthPx;\n\s*dockYield\.rect\(cx - reach, cy - half, reach \* 2, half \* 2\);\n\s*dockYield\.rect\(cx - half, cy - reach, half \* 2, reach \* 2\);\n\s*\}\n\s*paintScopeCrossArms\(cx, cy, gap, armEnd,/,
+  'the scope reports its cross arms to the dock\'s live yield before it paints them');
 assert.doesNotMatch(layout.match(/observe\('[^']*'(?:, true)?\);/g).join('\n'), /cot-touch \.(?:fire|round|joy|autoaim|scope)|cot-cons|cot-vehicle-controls>button/,
   'no touch button or tile is class-observed');
 assert.match(layout, /if \(!dockPlan \|\| dockKey\.length !== dockInputs\.length \|\| dockKey\.some\(\(value, i\) => value !== dockInputs\[i\]\)\) \{/, 'the solver runs only when its inputs change');
@@ -666,4 +702,4 @@ assert.doesNotMatch(layout.slice(layout.indexOf('dockKey.length = 0;'), layout.i
 assert.match(read('./i18nCatalog.en-US.json'), /"systems\.more": "\{count\} more vehicle controls",/);
 assert.match(read('./i18nCatalog.zh-CN.json'), /"systems\.more": "另外 \{count\} 个车辆控制",/);
 
-console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/standard = ${placements} placements (planTouchCentre) keep the rule (tiles >= 44 px, no scroll, no control or instrument covered, the reticle's whole footprint in every sight at every bloom and the gun-limit warning's place clear, main's feed lanes never entered, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);
+console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/standard = ${placements} placements (planTouchCentre) keep the rule (tiles >= 44 px, no scroll, no control, caption, instrument or aim hint covered, the reticle's footprint in every sight at every bloom (the scope's arm tips yielded live) and the gun-limit warning's place clear, main's feed lanes never entered, never fewer controls on screen than main's strip showed whole, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);

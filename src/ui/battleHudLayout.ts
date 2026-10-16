@@ -409,6 +409,19 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       if (box.width < 1 || box.height < 1) continue;
       let rect: TouchDockRect = { x: box.left, y: box.top, w: box.width, h: box.height };
       if (node.matches(dockInstrumentSelector)) { dockInstruments.push(rect); continue; }
+      // A round button's caption hangs 17 px below it (touchControls.ts .lb: AUTO AIM, SCOPE, FIRE, ROCKET): part of the
+      // control, so nothing placed here lies on it (verifier 2026-10-16, round 5: the detection and the 320 x 568 dock
+      // sat on the AUTO AIM and SCOPE captions). The caption's band is reserved at least as wide as the button, so a
+      // caption that changes with the button's state (LOCKED, RELEASE FIRES) never moves what is placed round it.
+      if (node.classList.contains('round')) {
+        const caption = node.querySelector<HTMLElement>(':scope>.lb');
+        const c = caption && caption.getClientRects().length ? caption.getBoundingClientRect() : null;
+        if (c && c.width >= 1 && c.height >= 1) {
+          const half = Math.max(rect.w, c.width) / 2, mid = rect.x + rect.w / 2;
+          const x = Math.min(rect.x, mid - half), y = Math.min(rect.y, c.top);
+          rect = { x, y, w: Math.max(rect.x + rect.w, mid + half) - x, h: Math.max(rect.y + rect.h, c.bottom) - y };
+        }
+      }
       if (node.matches('.down,:active')) rect = restingBoxes.get(node) ?? rect; else restingBoxes.set(node, rect);
       if (node.classList.contains('cot-shells')) {
         // The touch ammo selector opens leftwards, 56 px per further slot (hudAmmunitionPresentation.ts).
@@ -422,6 +435,11 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     }
     instrumentCount = dockInstruments.length;
     if (drawer) dockInstruments.push(drawer);
+    // The swipe-to-aim hint (touchControls.ts .aimhint; "· LANDSCAPE RECOMMENDED" on a portrait phone): the dock keeps
+    // off it like an instrument (verifier 2026-10-16, round 5: on 390 x 844 the dock's row hid 82% of it); the notices
+    // may pass over it for their few seconds.
+    const hint = read('.cot-touch-aim.on .aimhint');
+    if (hint && hint.width >= 1 && hint.height >= 1) dockInstruments.push({ x: hint.left, y: hint.top, w: hint.width, h: hint.height });
     const minimapBottom = read('.cot-minimap')?.bottom ?? 114;
     const warning = touchAimWarningSlot(width, height, minimapBottom);
     // The network strip (multiplayerStatus.ts) lives outside the HUD; the notices keep clear of it too.
@@ -607,7 +625,7 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells');
     // The joystick, FIRE, scope, auto-aim, the consumables (a ruleset can hide them mid-session) and each tile of the
     // vehicle-controls row: by size only, so a press never relayouts the HUD.
-    observeSize('.cot-touch .joy,.cot-touch .round,.cot-cons,.cot-vehicle-controls>button');
+    observeSize('.cot-touch .joy,.cot-touch .round,.cot-touch-aim .aimhint,.cot-cons,.cot-vehicle-controls>button');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.

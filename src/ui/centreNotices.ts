@@ -93,6 +93,9 @@ const FLANK_COST = 24;
 const SPLIT_COST = 48;
 /** The dock's distance from the thumbs, as planTouchDock weighs it: two tile rows a step. */
 const DOCK_REACH_STEP_PX = 96;
+/** The docks planTouchDock weighs when it places the dock first: the search's own pick (any rows), then the nearest of one,
+ *  two and three rows. */
+const DOCK_ROW_OPTIONS = [0, 1, 2, 3] as const;
 /** The countdown shrinks in these steps, to 60% at most; each 10% costs as much as moving 40 px. */
 const COUNTDOWN_SCALES = [1, .9, .8, .7, .6] as const;
 const COUNTDOWN_SCALE_COST = 400;
@@ -461,34 +464,45 @@ export function placeTouchCentre(input: TouchCentreInput, dock: TouchDockPlaceme
 
 /**
  * The dock, and the order it was placed in: off the feeds' fullest lanes always; either after the notices' place was
- * reserved (for the feeds' usual fill, `reference`) or first with the notices kept off it, whichever leaves the notices
- * and the countdown (at that fill) clearer of the reticle, then shows more controls on the dock (at 48 px rather than
- * 44), then sits higher and nearer the thumbs. Its inputs never include the feeds' current rows, so the dock never
- * moves while kills and hits come and go.
+ * reserved (for the feeds' usual fill, `reference`) or first with the notices kept off it, the first as the search
+ * finds it nearest the thumbs and as the nearest dock of one, two and three rows (a portrait phone's column beside the
+ * reticle shows every control where its row above the reticle would take the notices' only clear place). Of these the
+ * plan that shows the most controls on the dock wins (verifier 2026-10-16, round 5: 390 x 844 and 360 x 640 showed
+ * three and More where main's strip showed four), then the one leaving the notices and the countdown (at that fill)
+ * clearer of the reticle, then 48 px tiles and the dock nearest the thumbs. Its inputs never include the feeds'
+ * current rows, so the dock never moves while kills and hits come and go.
  */
 export function planTouchDock(input: TouchCentreInput): { readonly order: TouchCentrePlan['order']; readonly dock: TouchDockPlacement | null } {
   const { width, height, count, controls, instruments, drawer = [], lanes, feeds = [], reference = [], keepOut, anchor, insets } = input;
   const soft = [...instruments, ...drawer];
-  const dockAt = (reserved: readonly TouchDockRect[]) => count > 0
-    ? placeTouchActionDock({ width, height, count, obstacles: controls, soft, lanes: [...lanes, ...reserved], feeds, keepOut, anchor, insets })
+  const dockAt = (reserved: readonly TouchDockRect[], rows = 0) => count > 0
+    ? placeTouchActionDock({ width, height, count, obstacles: controls, soft, lanes: [...lanes, ...reserved], feeds, keepOut, anchor, insets, rows })
     : null;
   const first = placeTouchCentre(input, null, reference).notices;
   const reservedDock = dockAt(first ? [first.detection, first.alert] : []);
-  const reserved = { order: 'notices' as const, dock: reservedDock, ...placeTouchCentre(input, reservedDock, reference) };
-  const dockFirst = dockAt([]);
-  const docked = { order: 'dock' as const, dock: dockFirst, ...placeTouchCentre(input, dockFirst, reference) };
-  const ax = anchor?.x ?? width / 2, ay = anchor?.y ?? height;
-  const reach = (plan: TouchCentrePlan) => plan.dock ? Math.hypot(plan.dock.x + plan.dock.w / 2 - ax, plan.dock.y + plan.dock.h / 2 - ay) : 1e9;
-  // The dock's reach from the thumbs counts in steps of two tile rows (DOCK_REACH_STEP_PX), before its tile size and
-  // the notices' size: a reserved place that sends the dock across the screen loses to keeping it by the thumbs.
+  const plans: TouchCentrePlan[] = [{ order: 'notices', dock: reservedDock, ...placeTouchCentre(input, reservedDock, reference) }];
+  const same = (a: TouchDockPlacement | null, b: TouchDockPlacement | null) => !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+  for (const rows of DOCK_ROW_OPTIONS) {
+    const dock = dockAt([], rows);
+    if (rows && (!dock || plans.some((plan) => same(plan.dock, dock)))) continue;
+    plans.push({ order: 'dock', dock, ...placeTouchCentre(input, dock, reference) });
+  }
+  // The dock's own cost (its distance from the thumbs, extra rows and 44 px tiles), counted in steps of two tile rows
+  // (DOCK_REACH_STEP_PX) before its tile size and the notices' size: a dock sent across the screen loses to one by the
+  // thumbs.
+  const reach = (plan: TouchCentrePlan) => plan.dock ? plan.dock.cost : 1e9;
   const score = (plan: TouchCentrePlan): number[] => [
+    plan.dock?.shown ?? 0,
     plan.notices?.clearance ?? -1, -(plan.notices?.cover ?? 0), plan.countdown?.clearance ?? -1, -(plan.countdown?.cover ?? 0),
-    plan.dock?.shown ?? 0, -Math.round(reach(plan) / DOCK_REACH_STEP_PX), plan.dock?.tile ?? 0, plan.notices?.compact === false ? 1 : 0,
+    -Math.round(reach(plan) / DOCK_REACH_STEP_PX), plan.dock?.tile ?? 0, plan.notices?.compact === false ? 1 : 0,
     -(plan.notices?.cost ?? 1e9) - reach(plan),
   ];
-  const a = score(reserved), b = score(docked);
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i] ? reserved : docked;
-  return reserved;
+  let best = plans[0], bestScore = score(best);
+  for (const plan of plans.slice(1)) {
+    const s = score(plan);
+    for (let i = 0; i < s.length; i++) if (s[i] !== bestScore[i]) { if (s[i] > bestScore[i]) { best = plan; bestScore = s; } break; }
+  }
+  return { order: best.order, dock: best.dock };
 }
 
 /** The whole plan at once (planTouchDock, then placeTouchCentre for `rows`, the reference fill by default). */

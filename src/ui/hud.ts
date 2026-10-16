@@ -7,7 +7,7 @@ import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
-import { createCooldownSweep, touchReticleFootprint, type TouchDockKeepOut } from './touchActionDock.ts';
+import { TOUCH_ACTION_RETICLE_READOUTS, createCooldownSweep, touchReticleFootprint, type TouchDockKeepOut } from './touchActionDock.ts';
 import { createDockYield } from './touchDockYield.ts';
 import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
@@ -3310,6 +3310,13 @@ export function initHud(bus: EventBus): HudRuntime {
     const radius = clampRetR(smoothRadPx);
     const gap = radius + 3;
     const armEnd = radius * 1.55 + 3;
+    // The touch dock may lie on the arms' tips (touchActionDock.ts touchAimKeepOut): a tile they reach dims under them
+    // (touchDockYield.ts), each bar reported with its under-stroke and mil ticks.
+    if (dockYield.active) {
+      const reach = armEnd + TOUCH_ACTION_RETICLE_READOUTS.armReachPx - 3, half = TOUCH_ACTION_RETICLE_READOUTS.armHalfWidthPx;
+      dockYield.rect(cx - reach, cy - half, reach * 2, half * 2);
+      dockYield.rect(cx - half, cy - reach, half * 2, reach * 2);
+    }
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(4,7,6,0.38)', 2.4);
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(170,240,178,0.6)', 1.1);
     const mil = THREE.MathUtils.clamp(8 + zoom * 1.2, 11, 22);

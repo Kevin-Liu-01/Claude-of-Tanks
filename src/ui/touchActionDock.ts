@@ -55,6 +55,8 @@ export interface TouchDockPlacement extends TouchDockRect {
   /** The dock stands in a reserved lane: no room at all cleared the lanes (568 x 256). A notice shown there draws over
    *  it (the dock sits under the notices' layer), and a tap still reaches the tile through the notice. */
   readonly inLane: boolean;
+  /** The search's own cost: the distance from the thumbs plus the extra rows' and the 44 px tiles' penalties. */
+  readonly cost: number;
 }
 
 interface TouchDockInput {
@@ -82,6 +84,8 @@ interface TouchDockInput {
   readonly anchor?: { readonly x: number; readonly y: number } | null;
   /** Safe-area insets (notch, home indicator). */
   readonly insets?: { readonly top?: number; readonly right?: number; readonly bottom?: number; readonly left?: number } | null;
+  /** Only blocks of this many rows (centreNotices.ts planTouchDock weighs each row count's dock against the notices). */
+  readonly rows?: number;
 }
 
 /** A tile is a 48 px square where it fits: the size of the touch quick buttons' family. */
@@ -184,21 +188,34 @@ export function touchReticleFootprint(width: number, height: number): TouchDockK
   return footprint;
 }
 
-/** What neither the dock nor its More panel ever covers: the reticle's footprint and the gun-limit warning's place. */
+/**
+ * What neither the dock nor its More panel ever covers: the reticle's footprint less the scope's cross arms, and the
+ * gun-limit warning's place. The arms (touchReticleFootprint [1] and [2]) reach 1.55 r + 3 from the aim point only in
+ * the scope at full bloom, and on a portrait phone their tips are all that stood between the dock and a block for every
+ * control (verifier 2026-10-16, round 5: 360 x 640 showed three controls and More where main's strip showed four). A
+ * tile may lie on an arm's tip; the scope reports the arms it draws to the live yield (touchDockYield.ts), so such a
+ * tile dims under them, as under the ring riding a lagging gun, and the arms always draw over it.
+ */
 export function touchAimKeepOut(width: number, height: number, minimapBottom: number): TouchDockKeepOut[] {
-  return [...touchReticleFootprint(width, height), touchAimWarningSlot(width, height, minimapBottom)];
+  const footprint = touchReticleFootprint(width, height);
+  return [footprint[0], ...footprint.slice(3), touchAimWarningSlot(width, height, minimapBottom)];
 }
 
+/** The gun-limit warning's width on a portrait phone 341 to 480 px wide (battleHudLayout.css): its longest copy ("GUN
+ *  TRAVEL LIMIT", "PRESS F TO FLIP") fits one line, and the 20 px it gives back either side are what a column of two
+ *  44 px tiles beside it needs on 390 x 844 (verifier 2026-10-16, round 5). */
+export const TOUCH_AIM_WARNING_PORTRAIT_W = 140;
 /**
  * The gun-limit warning's own place (.cot-aim-warning, battleHudLayout.css), reserved whether or not it shows, so the
  * warning never has to move for the dock (it used to be pushed onto the crosshair): 48 px under the crosshair on
- * portrait and tall screens, 326 px down on 340 px phones, under the minimap on landscape phones (549 px tall and less).
- * The height leaves room for a second line of copy.
+ * portrait and tall screens (140 px wide on a portrait phone, else 180), 326 px down on 340 px phones, under the minimap
+ * on landscape phones (549 px tall and less). The height leaves room for a second line of copy.
  */
 export function touchAimWarningSlot(width: number, height: number, minimapBottom: number): TouchDockRect {
   if (width > height && height <= 549) return { x: 8, y: minimapBottom + 4, w: 106, h: 24 };
   if (width <= 340 && height > width) return { x: 94, y: 326, w: 156, h: 36 };
-  return { x: width / 2 - 90, y: height / 2 + 48, w: 180, h: 36 };
+  const w = height > width && width <= 480 ? TOUCH_AIM_WARNING_PORTRAIT_W : 180;
+  return { x: width / 2 - w / 2, y: height / 2 + 48, w, h: 36 };
 }
 
 const extent = (count: number, tile: number) => count * tile + Math.max(0, count - 1) * TOUCH_ACTION_GAP_PX;
@@ -216,7 +233,8 @@ let blocked = new Float64Array(64);
  * is above the anchor every higher one is farther still, so the search stops there.
  */
 function searchBlock(width: number, height: number, insets: TouchDockInput['insets'], slots: number, tile: number, c: number,
-  rects: readonly (readonly TouchDockRect[])[], keep: readonly TouchDockKeepOut[], ax: number, ay: number, limit = Infinity): Block | null {
+  rects: readonly (readonly TouchDockRect[])[], keep: readonly TouchDockKeepOut[], ax: number, ay: number, limit = Infinity,
+  onlyRows = 0): Block | null {
   const left = EDGE_PX + Math.max(0, insets?.left ?? 0);
   const right = width - EDGE_PX - Math.max(0, insets?.right ?? 0);
   const top = EDGE_PX + Math.max(0, insets?.top ?? 0);
@@ -226,6 +244,7 @@ function searchBlock(width: number, height: number, insets: TouchDockInput['inse
   if (blocked.length < total * 2) blocked = new Float64Array(total * 2);
   let best: Block | null = null;
   for (let rows = 1; rows <= Math.min(MAX_ROWS, slots); rows++) {
+    if (onlyRows && rows !== Math.min(onlyRows, slots)) continue;
     const columns = Math.ceil(slots / rows);
     // Two row counts can need the same columns (5 slots: 3 columns for 2 rows, also 2 for 3): keep the fewest rows.
     if (rows > 1 && Math.ceil(slots / columns) !== rows) continue;
@@ -344,7 +363,7 @@ function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (reado
       // With the whole row placed (no More panel that could fail), a 44 px block is wanted only if it beats the 48 px one.
       const limit = slots === n && options.length && step.tile < TOUCH_ACTION_TILE_PX
         ? options[0].block.cost - SMALL_TILE_PENALTY_PX : Infinity;
-      const block = searchBlock(width, height, insets, slots, step.tile, step.clearance, dockLanes, keep, ax, ay, limit);
+      const block = searchBlock(width, height, insets, slots, step.tile, step.clearance, dockLanes, keep, ax, ay, limit, input.rows);
       if (block) options.push({ block, step });
     }
     options.sort((a, b) => (a.block.cost + (a.step.tile < TOUCH_ACTION_TILE_PX ? SMALL_TILE_PENALTY_PX : 0))
@@ -353,8 +372,9 @@ function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (reado
       const tiles = blockTiles(block, slots, step.tile);
       const w = extent(block.columns, step.tile), h = extent(block.rows, step.tile);
       const rect = { x: block.x, y: block.y, w, h };
+      const cost = block.cost + (step.tile < TOUCH_ACTION_TILE_PX ? SMALL_TILE_PENALTY_PX : 0);
       if (slots === n) {
-        return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: n, more: false, flyout: [], inLane };
+        return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: n, more: false, flyout: [], inLane, cost };
       }
       // More: the last slot. The rest open beside it, clear of the touch controls, the dock and the aim keep-out; on a
       // screen too crowded even for that, clear of the dock and the aim keep-out alone.
@@ -365,7 +385,7 @@ function placeTiers(input: TouchDockInput, n: number, dockLanes: readonly (reado
         ?? searchBlock(width, height, insets, hidden, step.tile, step.clearance, [[rect]], keep, mx, my);
       if (!panel) continue;
       return { ...rect, tile: step.tile, columns: block.columns, rows: block.rows, tiles, shown: slots - 1, more: true,
-        flyout: blockTiles(panel, hidden, step.tile), inLane };
+        flyout: blockTiles(panel, hidden, step.tile), inLane, cost };
     }
   }
   return null;
