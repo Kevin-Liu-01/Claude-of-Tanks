@@ -7,7 +7,7 @@
 // sheds stained yellow with their retorts and brick stacks; the village fire brigade's post and its fire lookout
 // (hinomi-yagura) with the alarm bell; the small Shinto shrine behind its torii; the works office of painted
 // clapboard; and the burnt-out farmsteads.
-import { PartSink, bodyFaces, faceBox, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, bodyFaces, faceBox, normalize3, pick, rgb, shade, streamFrom, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -182,13 +182,15 @@ function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: nu
   const b = frame.bodies[0];
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     const f = frame.faces[name];
-    faceBox(sink, 'structureWood', f, 0, b.y0 + 0.65, 0.02, f.width, 1.3, 0.03, { colour: rgb(0x33363a), decor: true });
+    // (Caldera r7, the blind critics: the kura "smooth grey or white primitives with a plastic gradient") the namako
+    // band to a third of the wall (its pointing stays fine joinery, near the camera: thin members are slivers further out)
+    faceBox(sink, 'structureWood', f, 0, b.y0 + NAMAKO_H / 2 + 0.04, 0.02, f.width, NAMAKO_H + 0.08, 0.03, { colour: rgb(0x2e3134), decor: true });
     // the pointing (Caldera round 2, wave 114: "a zigzag band where the diagonal namako tile grid should be"): the
     // square tiles set on the diagonal, their raised white joints two families of lines at 45 degrees, 0.3 m apart,
     // each clipped to the band's ends
-    const yb = b.y0 + 0.04, H = 1.22, half = f.width / 2;
+    const yb = b.y0 + 0.04, H = NAMAKO_H - 0.08, half = f.width / 2;
     for (const dir of [1, -1]) {
-      for (let c = -half - H; c < half; c += 0.3) {
+      for (let c = -half - H; c < half; c += 0.34) {
         // the line u = c + dir (y - yb) over the band, clipped to [-half, half]
         let ua = dir > 0 ? c : c + H, ub = dir > 0 ? c + H : c, ya = yb, yy = yb + H;
         const clip = (uEdge: number) => {
@@ -200,10 +202,13 @@ function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: nu
         if (ub < -half) { yy = clip(-half); ub = -half; } else if (ub > half) { yy = clip(half); ub = half; }
         if (Math.hypot(ub - ua, yy - ya) < 0.12) continue;
         sink.member('structureWood', facePt(f, ua, ya, 0.04), facePt(f, ub, yy, 0.04), 0.045, 0.015, f.out,
-          { colour: rgb(0xe4e0d6), decor: true, fine: true, exposed: true }, 0);
+          { colour: rgb(0xdcd8cc), decor: true, fine: true, exposed: true }, 0);
       }
     }
   }
+  // the hongawara courses down both slopes (round tiles over the pans, a dark rib every 0.36 m) and the heavy ridge
+  // (munagawara) with its onigawara at both gables: the roof reads as tile, not a grey sheet
+  kuraTiles(sink, frame.roof);
   // the kura's mark: a crest plate on the gable (the family's mon), a dark disc high on the front
   const front = frame.faces.front;
   if (rng() < 0.7) faceBox(sink, 'structureWood', front, 0, frame.eaveY + 0.9, 0.04, 0.7, 0.7, 0.03, { colour: rgb(0x2a2a2c), decor: true });
@@ -218,19 +223,53 @@ function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: nu
  */
 function kuraWeathering(sink: PartSink, frame: HouseFrame, w: number, d: number, h: number): void {
   const g = streamFrom(Math.round(w * 977 + d * 131 + h * 17));
-  const top = frame.eaveY - 0.08;
+  const top = frame.eaveY - 0.08, b0 = frame.bodies[0].y0;
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     const f = frame.faces[name];
     for (let k = 0, n = 2 + Math.floor(g() * 4); k < n; k++) {
       const u = (g() - 0.5) * (f.width - 0.8), len = 0.8 + g() * 2.2, wd = 0.12 + g() * 0.35;
       faceBox(sink, SHIKKUI, f, u, top - len / 2, 0.003, wd, len, 0.004, { colour: shade(rgb(0xb4b0a6), 0.9 + g() * 0.15), decor: true });
     }
+    // (Caldera r7) the splash line over the namako: the rain off the band and the yard's dust, a soft grey-brown band
+    // (0.012 thick: a wall-long band any thinner is a sliver to the integrity check)
+    faceBox(sink, SHIKKUI, f, 0, b0 + NAMAKO_H + 0.32, 0.006, f.width - 0.1, 0.5, 0.012, { colour: rgb(0xa49c8c), decor: true });
+    // the shikkui spalled off here and there, the mud wall (arakabe) under it: one or two patches a wall, ragged
+    for (let k = 0, n = Math.floor(g() * 2.6); k < n; k++) {
+      const u = (g() - 0.5) * (f.width - 1.4), y = b0 + NAMAKO_H + 0.5 + g() * Math.max(0.5, h - NAMAKO_H - 1.6);
+      const pw = 0.35 + g() * 0.8, ph = 0.25 + g() * 0.6;
+      faceBox(sink, SHIKKUI, f, u, y, 0.003, pw, ph, 0.006, { colour: rgb(0x7c664c), decor: true });
+      faceBox(sink, SHIKKUI, f, u + (g() - 0.5) * pw * 0.5, y + ph * 0.45, 0.004, pw * 0.55, ph * 0.35, 0.006, { colour: rgb(0x8a7458), decor: true });
+    }
   }
+}
+
+/** The namako band's height (m): a third of a kura's wall. */
+const NAMAKO_H = 1.75;
+const TILE_DARK = rgb(0x3c3f43), TILE_RIDGE = rgb(0x2f3236);
+
+/** A kura roof's tiles over its gable roof (ridge along z): the round-tile courses down both slopes and the ridge. */
+function kuraTiles(sink: PartSink, rg: RoofGeometry): void {
+  if (rg.kind !== 'gable') return;
+  const zEnd = rg.halfD + 0.4, xEnd = rg.s + 0.5;
+  const at = (x: number, z: number) => (rg.topAt(x, z) ?? rg.ridgeTopY - Math.abs(x) * rg.tanP);
+  for (let z = -zEnd + 0.18; z <= zEnd - 0.18; z += 0.36) {
+    for (const side of [1, -1]) {
+      const n: Vec3 = normalize3([side * rg.tanP, 1, 0]);
+      const a: Vec3 = [side * 0.25, at(side * 0.25, z) + 0.03, z], c: Vec3 = [side * xEnd, at(side * xEnd, z) + 0.03, z];
+      sink.member('structureWood', a, c, 0.13, 0.07, n, { colour: TILE_DARK, decor: true }, 0);
+    }
+  }
+  // the ridge: a heavy dark bar the length of the roof, its ends raised as the onigawara
+  const top = rg.ridgeTopY;
+  sink.span('structureWood', -0.28, top - 0.08, -zEnd, 0.28, top + 0.34, zEnd, { colour: TILE_RIDGE, decor: true });
+  for (const sz of [1, -1]) sink.span('structureWood', -0.36, top - 0.05, sz * zEnd - 0.12, 0.36, top + 0.62, sz * zEnd + 0.12, { colour: TILE_RIDGE, decor: true });
 }
 
 /** The kura's render as one coat: the shikkui's UVs at the limewash scale (landmarks/kit.ts smoothRender's law), where
  *  the shared print at its own density read as noise on a white wall. */
-const KURA_COAT_UV = 0.006;
+// (Caldera r7, the blind critics: "a plastic gradient") the coat at a lime render's scale (was the limewash's 0.006, which
+// left one flat tone a wall)
+const KURA_COAT_UV = 0.05;
 function kuraCoat(parts: RegionalParts): RegionalParts {
   for (const geometry of parts[SHIKKUI] ?? []) {
     const uv = geometry.getAttribute('uv');
