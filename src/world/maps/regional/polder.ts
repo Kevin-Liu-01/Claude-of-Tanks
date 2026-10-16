@@ -5,7 +5,7 @@
 // eaves and white-framed doors; a thatched smock mill with its stage; brick warehouses and a café on the dike road.
 import { buildSmockMill } from './windmills.ts';
 import {
-  PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
+  PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalParts, type Rgb,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
@@ -153,6 +153,110 @@ function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?:
   return sink.finish();
 }
 
+/**
+ * The Zeeland farm (props census #15, Lane C 2026-10-16: "the two 15.5 m gable triangles carry one 0.62 x 0.8 m light
+ * and two anchor pairs each: huge blank brick planes"), re-proportioned as the farmstead: the dwelling (voorhuis) gable
+ * to the road at one side of the plot and the long, lower barn (schuur) across the back, its free front to the yard with
+ * the cart doors, the stable door and lights, small stable lights along its back. Two house bodies (the damage reads
+ * both). The dwelling's road gable carries two attic lights and the owl hole under the apex behind its white board and
+ * makelaar, the tumbled brick courses (vlechtingen) up its rakes and the anchors; the barn's gables their hay hatches.
+ * A plot too narrow for the two stands as the one brick house it was.
+ */
+function boerderij(ctx: RegionalBuildContext): RegionalParts {
+  const W = Math.max(5.2, ctx.info.w - 0.3), D = Math.max(7.0, ctx.info.d - 0.3);
+  if (W < 10.5) return brickHouse(ctx, { farm: true });
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx), rng = st.rng;
+  const clampTo = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+  const Wv = clampTo(W * 0.56, 6.2, 7.8), Dw = clampTo(D * 0.44, 3.8, 4.8), Dv = D - Dw + 0.3;
+  const xv = -W / 2 + Wv / 2, zv = D / 2 - Dv / 2, zw = -D / 2 + Dw / 2;
+  const iron: Rgb = [0.08, 0.08, 0.085];
+  // the dwelling: its door and lights to the road, lights down its outer side and to the yard, the yard door
+  const vo: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: -Wv * 0.18, w: 1.0, y0: 0, h: 2.15 }];
+  vo.push(...windowRhythm('front', 0, Wv, { w: 0.95, h: 1.35, sill: 0.8, spacing: 1.9, margin: 0.9, avoid: [[-Wv * 0.18 - 0.5, -Wv * 0.18 + 0.5]], max: 3 }));
+  vo.push(...windowRhythm('left', 0, Dv - 0.3, { w: 0.95, h: 1.35, sill: 0.8, spacing: 2.4, margin: 0.9, max: 2 }).map((o) => ({ ...o, u: o.u - 0.15 })));
+  vo.push({ face: 'right', storey: 0, kind: 'door', u: -Dv * 0.12, w: 0.95, y0: 0, h: 2.05 });
+  vo.push({ face: 'right', storey: 0, kind: 'window', u: Dv * 0.24, w: 0.95, y0: 0.8, h: 1.35 });
+  const holes = new Map<'front' | 'back', HoleRect[]>();
+  const gableHoles = (front: boolean, poly: Array<[number, number]>): HoleRect[] => {
+    const base = poly[0][1], top = Math.max(...poly.map(([, y]) => y));
+    if (top - base < 2.0) return [];
+    const out: HoleRect[] = front
+      ? [-Wv * 0.2, Wv * 0.2].map((c) => ({ u0: c - 0.31, u1: c + 0.31, y0: base + 0.55, y1: base + 1.35 }))
+      : [{ u0: -0.31, u1: 0.31, y0: base + 0.55, y1: base + 1.35 }];
+    if (front && top - base > 3.4) out.push({ u0: -0.16, u1: 0.16, y0: top - 1.35, y1: top - 1.0 });
+    holes.set(front ? 'front' : 'back', out);
+    return out;
+  };
+  const roof = pantiles(50 + rng() * 4);
+  sink.placed(0, xv, 0, zv, () => {
+    const frame = buildHouse(sink, {
+      w: Wv, d: Dv, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.9, wall: 'stone' }], roof, gableBucket: 'stone', openings: vo,
+      chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: { colour: WHITE, bucket: 'structureWood' },
+    }, { ...dialect(st), gableOpenings: (face, poly) => gableHoles(face.out[2] > 0, poly) });
+    gableStacks(sink, frame.roof, true, frame.eaveY);
+    if (facadeOn()) zeelandEaves(sink, frame);
+    // the gables' lights (the owl hole left open behind its board)
+    for (const name of ['front', 'back'] as const) {
+      const face = frame.faces[name];
+      sink.recess = frame.gableReveal;
+      try {
+        for (const h of holes.get(name) ?? []) {
+          if (h.u1 - h.u0 < 0.5) continue;
+          windowUnit(sink, face, (h.u0 + h.u1) / 2, h.y0, h.u1 - h.u0, h.y1 - h.y0, { ...st.window, shutters: null }, st.rng, 0.25);
+        }
+      } finally { sink.recess = 0; }
+    }
+    const g = frame.roof.gable;
+    if (g) {
+      const top = Math.max(...g.map(([, y]) => y)), base = g[0][1], half = Math.max(...g.map(([u]) => Math.abs(u)));
+      const f = frame.faces.front;
+      // the tumbled courses up both rakes, a hand proud of the gable's brick, and the white makelaar and owl board
+      for (const side of [-1, 1]) {
+        const a = facePoint(f, side * (half - 0.25), base + 0.05, 0.0), b = facePoint(f, 0, top - 0.25, 0.0);
+        sink.member('stone', a, b, 0.32, 0.035, f.out, { decor: true, shade: 1.06 }, 0);
+      }
+      if (top - base > 3.4) {
+        faceBox(sink, 'structureWood', f, 0, top - 0.75, 0.04, 0.16, 1.2, 0.05, { colour: WHITE, decor: true });
+        for (const side of [-1, 1]) faceBox(sink, 'structureWood', f, side * 0.29, top - 1.18, 0.03, 0.26, 0.5, 0.03, { colour: WHITE, decor: true });
+      }
+      // a second pair of anchors lower on the road gable
+      for (const u of [-half * 0.3, half * 0.3]) faceBox(sink, 'structureMetal', f, u, base + 1.75, 0.02, 0.05, 0.5, 0.04, { colour: iron, decor: true });
+    }
+  });
+  // the barn across the plot's back, built a quarter turned: its ridge along the plot's x, its long front (its left
+  // face) to the yard, its back (right) along the plot's back
+  const free0 = -W / 2 + Wv, free = W / 2 - free0, fc = (free0 + W / 2) / 2;
+  const wo: Opening[] = [];
+  if (free > 4.4) {
+    wo.push({ face: 'left', storey: 0, kind: 'gate', u: fc - 0.6, w: 2.8, y0: 0, h: 2.55 });
+    wo.push({ face: 'left', storey: 0, kind: 'door', u: Math.min(W / 2 - 0.9, fc + 1.6), w: 0.95, y0: 0, h: 1.95 });
+  } else wo.push({ face: 'left', storey: 0, kind: 'door', u: fc, w: 1.0, y0: 0, h: 1.95 });
+  wo.push(...windowRhythm('right', 0, W, { w: 0.6, h: 0.45, sill: 1.45, spacing: 2.6, margin: 1.2, max: 4, kind: 'loft' }));
+  wo.push({ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 1.95 });
+  const barnHoles = (poly: Array<[number, number]>): HoleRect[] => {
+    const base = poly[0][1], top = Math.max(...poly.map(([, y]) => y));
+    return top - base > 1.6 ? [{ u0: -0.42, u1: 0.42, y0: base + 0.3, y1: base + 1.15 }] : [];
+  };
+  sink.placed(Math.PI / 2, 0, 0, zw, () => {
+    const frame = buildHouse(sink, {
+      w: Dw, d: W, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.4, wall: 'stone' }], roof: pantiles(45), gableBucket: 'stone', openings: wo,
+      chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: { colour: WHITE, bucket: 'structureWood' },
+    }, { ...dialect(st), gableOpenings: (_face, poly) => barnHoles(poly) });
+    for (const name of ['front', 'back'] as const) {
+      const face = frame.faces[name], g = frame.roof.gable;
+      if (!g) continue;
+      for (const h of barnHoles(g)) {
+        sink.recess = frame.gableReveal;
+        try {
+          doorUnit(sink, face, 0, h.y0, h.u1 - h.u0, h.y1 - h.y0, { leaf: TAR, frame: { bucket: 'structureWood', width: 0.08, out: 0.05, colour: WHITE }, steps: null, leafKind: 'plank' });
+        } finally { sink.recess = 0; }
+      }
+    }
+  });
+  return sink.finish();
+}
+
 /** The Zeeuwse schuur: black-tarred weatherboard under a high hipped thatch with a pantile foot, white-framed doors. */
 const schuur: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -273,7 +377,7 @@ const ruin: RegionalBuilder = (ctx) => {
 
 export const POLDER_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => brickHouse(ctx),
-  farmhouse: (ctx) => brickHouse(ctx, { farm: true }),
+  farmhouse: boerderij,
   tavern: (ctx) => brickHouse(ctx, { storeys: 2 }),
   barn: schuur,
   mill: smockMill,
