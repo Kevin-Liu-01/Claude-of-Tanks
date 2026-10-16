@@ -5,6 +5,10 @@
 // Usage:
 //   node tools/bake-minimap-assets.mjs
 //   node tools/bake-minimap-assets.mjs --maps verdant,desert --out /tmp/minimaps
+//   node tools/bake-minimap-assets.mjs --maps coastal --reference /tmp/minimap-world
+//
+// --reference DIR (2026-10-15, the Kestrel water plan's phase 2): beside each plate, the same capture with the water,
+// bog and ice paint left off (DIR/<map>-world.webp) — the world from straight above, to hold the plate's water against.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -32,6 +36,9 @@ for (const id of maps) {
 }
 const outDir = resolve(option('out', 'public/minimaps'));
 await mkdir(outDir, { recursive: true });
+const referenceOption = option('reference', '');
+const referenceDir = referenceOption ? resolve(referenceOption) : null;
+if (referenceDir) await mkdir(referenceDir, { recursive: true });
 await acquireCaptureLock(30 * 60 * 1000);
 process.on('exit', releaseCaptureLock);
 const lockRefresher = setInterval(refreshCaptureLock, 60_000);
@@ -62,34 +69,95 @@ const browser = await puppeteer.launch({
   protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
-const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });
+
+// three.js's compileAsync poll (checkMaterialsReady) can read a material whose program a map switch on the same page
+// just disposed: "TypeError: Cannot read properties of undefined (reading 'isReady')" (2026-10-15, desert -> steppe and
+// winter -> whiteout). It is an engine race at the switch, not a bad plate, so that map is baked once more on a fresh
+// page. Only that error class is retried, once per map; any other browser error, or the race again, fails the bake.
+const COMPILE_RACE = /Cannot read properties of undefined \(reading 'isReady'\)/;
+const onlyCompileRace = (list) => list.length > 0 && list.every((text) => COMPILE_RACE.test(text));
+
 const errors = [];
-page.on('pageerror', (error) => errors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon')) {
-    errors.push(message.text());
+let page = null;
+async function openPage() {
+  if (page) await page.close();
+  errors.length = 0;
+  const fresh = await browser.newPage();
+  page = fresh;
+  await fresh.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });
+  fresh.on('pageerror', (error) => { if (page === fresh) errors.push(String(error)); });
+  fresh.on('console', (message) => {
+    if (page !== fresh) return;
+    if (message.type() === 'error' && !message.text().includes('favicon')) {
+      errors.push(message.text());
+    }
+    if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
+  });
+  await fresh.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await fresh.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+}
+async function bakeMap(mapId) {
+  try {
+    return await page.evaluate(async (id) => {
+      const dataUrl = await window.__DEBUG.bakeMinimapForMap(id);
+      return { dataUrl, mapId: window.__DEBUG.world?.mapId,
+        capture: window.__HUD_DEBUG.getMinimapState().capture };
+    }, mapId);
+  } catch (error) {
+    if (!COMPILE_RACE.test(String(error))) throw error;
+    errors.push(String(error)); // the race rejected the bake itself: same class, same single retry
+    return null;
   }
-  if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
-});
+}
+
+/** The map just baked, once more with its water and soft-ground paint left off (the world's own top-down capture). */
+async function bakeReference(mapId) {
+  return page.evaluate(async (id) => {
+    const world = window.__DEBUG.getWorld?.() ?? window.__DEBUG.world;
+    if (world?.mapId !== id) throw new Error(`reference for ${id} on ${world?.mapId}`);
+    const { getMinimapFeatures, getVisibleWaterRaster } = world;
+    const painted = getMinimapFeatures.call(world);
+    const strips = painted.liquidPatches.length + painted.softPatches.length + (getVisibleWaterRaster.call(world) ? 1 : 0);
+    let read = 0;
+    world.getMinimapFeatures = () => { read++; return { ...getMinimapFeatures.call(world), liquidPatches: [], softPatches: [] }; };
+    world.getVisibleWaterRaster = () => { read++; return null; };
+    try {
+      const dataUrl = await window.__DEBUG.bakeMinimapForMap(id);
+      if (read < 2) throw new Error(`reference for ${id}: the bake did not read the world it was handed`);
+      return { dataUrl, strips, mapId: window.__DEBUG.world?.mapId, capture: window.__HUD_DEBUG.getMinimapState().capture };
+    } finally {
+      world.getMinimapFeatures = getMinimapFeatures;
+      world.getVisibleWaterRaster = getVisibleWaterRaster;
+    }
+  }, mapId);
+}
 
 let failed = false;
 try {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await openPage();
   for (const id of maps) {
-    const result = await page.evaluate(async (mapId) => {
-      const dataUrl = await window.__DEBUG.bakeMinimapForMap(mapId);
-      return { dataUrl, mapId: window.__DEBUG.world?.mapId,
-        capture: window.__HUD_DEBUG.getMinimapState().capture };
-    }, id);
-    requireMinimapCapture(result, id);
+    let result = await bakeMap(id);
+    if (onlyCompileRace(errors)) {
+      console.warn(`[minimap-assets] ${id}: three.js compileAsync race at the map switch; one retry on a fresh page:\n${errors.join('\n')}`);
+      await openPage();
+      result = await bakeMap(id);
+    }
     if (errors.length) throw new Error(`Browser errors before ${id} export:\n${errors.join('\n')}`);
+    requireMinimapCapture(result, id);
     const { dataUrl } = result;
     const bytes = await filterPublishedImage(Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64'),
       `minimap-${id}`, { type: 'image/webp', quality: 92 });
     await writeFile(resolve(outDir, `${id}.webp`), bytes);
     console.log(`[minimap-assets] ${id}: ${bytes.length} bytes`);
+    if (referenceDir) {
+      const reference = await bakeReference(id);
+      if (errors.length) throw new Error(`Browser errors before ${id} reference export:\n${errors.join('\n')}`);
+      requireMinimapCapture(reference, id);
+      const referenceBytes = Buffer.from(reference.dataUrl.slice(reference.dataUrl.indexOf(',') + 1), 'base64');
+      await writeFile(resolve(referenceDir, `${id}-world.webp`), referenceBytes);
+      console.log(`[minimap-assets] ${id}: reference ${referenceBytes.length} bytes (${reference.strips} water and ground layers left off)`);
+    }
+    refreshCaptureLock();
   }
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 } catch (error) {

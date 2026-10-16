@@ -526,8 +526,8 @@ export default {
   minimap: {
     base: [140, 124, 74], hard: [126, 116, 96], soft: [110, 102, 64],
     forest: 'rgba(74,88,40,0.85)', forestStroke: 'rgba(44,54,24,0.9)',
-    // round 48: the only "water" is the salt pan — a pale crust on the plate
-    water: 'rgba(216,210,190,0.78)', waterStroke: 'rgba(150,142,118,0.7)',
+    // round 48: the only "water" is the salt pan — a pale crust on the plate (2026-10-14: painted as ground, no waterline)
+    bog: 'rgba(216,210,190,0.78)', bogStroke: 'rgba(150,142,118,0.7)',
     roadCasing: 'rgba(70,58,38,0.9)', roadFill: 'rgba(212,192,148,0.95)',
     buildingFill: '#e8e2d0',
   },

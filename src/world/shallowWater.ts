@@ -6,8 +6,10 @@ import type { HeightField } from './terrain.ts';
 import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
 import type { WaterRippleField } from './waterRipples.ts';
+// the sheet's grid, its cell admission and its fragment discard are the tactical map's too (visibleWater.ts: the
+// minimap paints exactly the water this sheet draws)
+import { VISIBLE_WATER_MIN, WATER_SHEET_GRID_M as GRID_STEP_M, WATER_SHEET_MIN_COVERAGE as MIN_COVERAGE, glslFloat } from './visibleWater.ts';
 
-const GRID_STEP_M = 8;
 /** (2026-10-12, item 4) A paddy's own surface's cell (m), and where a lattice cell is probed for a paddy (corners, centre). */
 const PADDY_SURFACE_CELL_M = 2;
 const PADDY_CELL_PROBES: readonly (readonly [number, number])[] = [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]];
@@ -16,7 +18,6 @@ const PADDY_CELL_PROBES: readonly (readonly [number, number])[] = [[0, 0], [1, 0
  *  khaki sheet, not the river's deep body (linear albedo). */
 export const PADDY_WATER_MAX = 16;
 export const PADDY_MUD_RGB = [0.17, 0.15, 0.09] as const;
-const MIN_COVERAGE = 0.002;
 
 interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
@@ -573,7 +574,7 @@ export function createShallowWaterSurface(
         paddyW = max(paddyW, 1.0 - smoothstep(-0.6, 0.0, max(pAcross, pAlong)));
       }
       wet = max(wet, paddyW);` : ''}
-      if (wet < 0.015) discard;
+      if (wet < ${glslFloat(VISIBLE_WATER_MIN)}) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
       waterGrazing = grazing;

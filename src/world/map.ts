@@ -54,6 +54,8 @@ import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
+import { splitMinimapWater } from './minimapWaterPatches.ts';
+import { buildVisibleWaterRaster, type VisibleWaterRaster } from './visibleWater.ts';
 import {
   createObstacleGrid,
   shellPassesThroughCollisionRecord,
@@ -268,8 +270,20 @@ export interface WorldRuntime {
     buildings: MapFeatureRecord[];
     tacticalBeats: MapFeatureRecord[];
     treeClusters: Array<{ x: number; z: number; r: number }>;
+    /** Every lake and marsh disc, wet or dry: the placement, media and audit tools' footprint (not what to paint). */
     waterOrSoft: LayoutDisc[];
+    /** The discs the world draws liquid water in (minimapWaterPatches.ts): the only ones a map paints as water. */
+    liquidPatches: LayoutDisc[];
+    /** The rest: bog, salt pan or takyr ground — ice where `iceLake` (the map's wet layer is ice, splat.iceLake). */
+    softPatches: LayoutDisc[];
+    iceLake: boolean;
   };
+  /**
+   * The water a player can see (visibleWater.ts: the water sheet's own cells, 2 m), built on the first call and kept;
+   * null on a map without a liquid sheet. The tactical map's plate paints its water from this. Kept out of
+   * getMinimapFeatures on purpose: the battle's audio reads those mid-fight, and this is tens of milliseconds.
+   */
+  getVisibleWaterRaster(): VisibleWaterRaster | null;
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
@@ -493,6 +507,15 @@ function assembleWorld(
   props: PropsRuntime,
 ): WorldRuntime {
   const layout = heightField._layout;
+  // The tactical map's water split (minimapWaterPatches.ts), sampled on the first getMinimapFeatures and kept: the
+  // authored discs and the liquid mask are fixed for the world's life.
+  let minimapWater: { readonly liquid: readonly LayoutDisc[]; readonly soft: readonly LayoutDisc[] } | null = null;
+  const minimapSplat: TerrainMapConfig['splat'] = config.splat;
+  const minimapIceLake = !!minimapSplat?.iceLake; // the world's wet layer is ice (terrain.ts createWetSplatLayer)
+  // The tactical map's water raster (visibleWater.ts), built on the first getVisibleWaterRaster and kept: the water sheet
+  // exists on the terrain's liquidWater maps only (a seaLake map without frozen marshes).
+  let visibleWater: VisibleWaterRaster | null | undefined;
+  const visibleWaterSheet = !!minimapSplat?.seaLake && !layout.terrain?.frozenMarshes;
   // ground lane (2026-10-03): the trees are placed — the terrain draws its forest floor under them and no field there,
   // and the ground tiers built below (the litter, the tall grass) read the same cover
   if (vegetation._woodsMask) terrain.userData.applyWoodsMask?.(vegetation._woodsMask);
@@ -947,20 +970,30 @@ function assembleWorld(
     },
     advanceToppledVegetation: (dt: number) => { vegetation.advanceToppled?.(dt); },
     spawnPoints,
-    /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
-    getMinimapFeatures: () => ({
-      roads: layout.roads.map((nodes: Array<readonly [number, number]>) => (
-        nodes.map(([x, z]: readonly [number, number]) => [x, z] as [number, number])
-      )),
-      buildings: props.features.buildings.map((building) => ({ ...building })),
-      tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
-      treeClusters: vegetation._clusters.map((cluster: { x: number; z: number; r: number }) => ({
-        x: cluster.x, z: cluster.z, r: cluster.r,
-      })),
-      waterOrSoft: [...layout.marshes, ...layout.lakes].map((disc: LayoutDisc) => ({
-        ...disc,
-      })),
-    }),
+    /** @returns minimap features; the water split is sampled once per world (the battle's audio reads them mid-fight) */
+    getMinimapFeatures: () => {
+      minimapWater ??= splitMinimapWater([...layout.marshes, ...layout.lakes], heightField.getWaterMaskAt);
+      return {
+        roads: layout.roads.map((nodes: Array<readonly [number, number]>) => (
+          nodes.map(([x, z]: readonly [number, number]) => [x, z] as [number, number])
+        )),
+        buildings: props.features.buildings.map((building) => ({ ...building })),
+        tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
+        treeClusters: vegetation._clusters.map((cluster: { x: number; z: number; r: number }) => ({
+          x: cluster.x, z: cluster.z, r: cluster.r,
+        })),
+        waterOrSoft: [...layout.marshes, ...layout.lakes].map((disc: LayoutDisc) => ({
+          ...disc,
+        })),
+        liquidPatches: minimapWater.liquid.map((disc: LayoutDisc) => ({ ...disc })),
+        softPatches: minimapWater.soft.map((disc: LayoutDisc) => ({ ...disc })),
+        iceLake: minimapIceLake,
+      };
+    },
+    getVisibleWaterRaster: () => {
+      if (visibleWater === undefined) visibleWater = visibleWaterSheet ? buildVisibleWaterRaster(heightField) : null;
+      return visibleWater;
+    },
     /**
      * Per-frame world update: terrain LOD swap + vegetation wind/density.
      * @param {number} dt seconds
