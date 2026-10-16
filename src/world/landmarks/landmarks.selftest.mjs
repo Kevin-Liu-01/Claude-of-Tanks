@@ -53,6 +53,11 @@ function recordGapToPath(record, path) {
     if (part[0] === 'o') {
       const [, cx, cz, hw, hl, yaw] = part, c = Math.cos(yaw), s = Math.sin(yaw);
       poly = [[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]].map(([lx, lz]) => [cx + lx * c + lz * s, cz - lx * s + lz * c]);
+    } else if (part[0] === 'p') {
+      // (the maps lane, 2026-10-14) a convex part with a drawn top (physics F3, tools/headlessWorldCollision.mjs packShape):
+      // its extent, the planes' origin, their count, three numbers a plane, then its corners — the corners are its outline
+      const numbers = part.slice(6 + part[5] * 3);
+      poly = []; for (let i = 0; i < numbers.length; i += 2) poly.push([numbers[i], numbers[i + 1]]);
     } else {
       const numbers = part[0] === 'w' ? part.slice(3) : part.slice(1);
       poly = []; for (let i = 0; i < numbers.length; i += 2) poly.push([numbers[i], numbers[i + 1]]);
