@@ -120,6 +120,9 @@ export default {
     grassDensity: 1,
     bushCount: 1,
     bushSpecies: 'oak',
+    // (the maps lane, 2026-10-15; the blind critics on Verdant v2: "the birch grove floor is bare") the groves' undergrowth,
+    // hazel and young growth under the birches and oaks, nearly twice the default
+    clusterScrub: 1.8,
   },
 
   props: {
