@@ -31,8 +31,10 @@ export function buildNationalDonorTurret(P:TankBuilderPort,id:string):NationalDo
     buildType96Turret(P);
     preserveSourceStudyGunMountAppearance(P);
   }else if(d.donor==='ztz99a2')buildZTZ99A2ProductionTurret(P,{roofGun:false,decals:false});
-  else if(d.donor==='t72b3m_2016')buildT72B3MXTurret(P,{commanderGun:false});
-  else buildT72B3XTurret(P,{commanderGun:false});
+  // The concept's station on the commander's cupola sweeps the donor's rear roof masts/whips: each kit fits its own
+  // aerials outside that sweep.
+  else if(d.donor==='t72b3m_2016')buildT72B3MXTurret(P,{commanderGun:false,antennaMasts:false});
+  else buildT72B3XTurret(P,{commanderGun:false,antennae:false});
   P.turretG.position.set(...d.pivot);
   P.topY=d.roofY;
   P.turretG.userData.nationalDonorTurret={donor:d.donor,pivot:[...d.pivot],station:[...d.station]};

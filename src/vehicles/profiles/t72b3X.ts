@@ -344,8 +344,9 @@ export function buildT72B3X(P:TankBuilderPort):void {
 
 /** Options for reusing the T-72B3 turret on another hull. A vehicle whose own
  * fitted remote station replaces the commander's machine gun omits that gun
- * (one working roof gun, never a duplicate). */
-export interface T72B3XTurretOptions { commanderGun?:boolean }
+ * (one working roof gun, never a duplicate); one whose station's barrel sweeps
+ * the roof whips omits them and fits its own outside that sweep. */
+export interface T72B3XTurretOptions { commanderGun?:boolean; antennae?:boolean }
 
 /** The complete T-72B3 turret in its own turret frame (the turret ring centre
  * is the origin): casting, Kontakt-5 cheek and roof cassettes, roof equipment,
@@ -355,7 +356,7 @@ export function buildT72B3XTurret(P:TankBuilderPort,options:T72B3XTurretOptions=
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T72B3_X_DATUMS.muzzleZ-GUN[2];
   casting(P);cheekEra(P);roofEra(P);
-  roofEquipment(P);antennae(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
+  roofEquipment(P);if(options.antennae!==false)antennae(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
 }
 export const T72B3_X_PROFILES={t72b3:{build:buildT72B3X}} as const;
 

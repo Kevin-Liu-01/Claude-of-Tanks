@@ -224,7 +224,7 @@ function bustle(P:TankBuilderPort):void {
   }
 }
 
-function roofEquipment(P:TankBuilderPort):void {
+function roofEquipment(P:TankBuilderPort,antennaMasts=true):void {
   P.addCupola('turret',cylY(.44144,.12,36),-.62689-YAW[0],2.277-YAW[1],-.24424-YAW[2]);
   topPart(P,'turretDetail',cylY(.418,.04214,36),-.62689,2.30722,-.24424);
   P.addCupola('turret',cylY(.329,.10,28),.5278-YAW[0],2.207-YAW[1],-.41232-YAW[2]);
@@ -238,7 +238,7 @@ function roofEquipment(P:TankBuilderPort):void {
   topPart(P,'turretDetail',box(.26,.024,.22),.750,2.096,.400);
   topPart(P,'turretDetail',box(.32,.152,.286),-.001,2.239,-.689);
   for(const z of [-.785,-.610])topPart(P,'turretDetail',box(.238,.012,.069),.134,2.332,z);
-  for(const [x,z,top]of [[.225,-.791,2.904],[.077,-.534,2.627]]){
+  if(antennaMasts)for(const [x,z,top]of [[.225,-.791,2.904],[.077,-.534,2.627]]){
     topPart(P,'turretDetail',cylY(.025,top-2.327,16),x,(top+2.327)/2,z);
     topPart(P,'turretDark',cylY(.037,.075,16),x,2.382,z);
   }
@@ -313,8 +313,9 @@ export function buildT72B3MX(P:TankBuilderPort):void {
 
 /** Options for reusing the T-72B3M turret on another hull. A vehicle whose own
  * fitted remote station replaces the commander's Kord omits it and its drum
- * (one working roof gun, never a duplicate). */
-export interface T72B3MXTurretOptions { commanderGun?:boolean }
+ * (one working roof gun, never a duplicate); one whose station's barrel sweeps
+ * the two rear roof masts omits them and fits its own outside that sweep. */
+export interface T72B3MXTurretOptions { commanderGun?:boolean; antennaMasts?:boolean }
 
 /** The complete T-72B3M (2016) turret in its own turret frame (the turret ring
  * centre is the origin): cast shell, Relikt cheek and roof cassettes, bustle
@@ -323,7 +324,8 @@ export interface T72B3MXTurretOptions { commanderGun?:boolean }
 export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOptions={}):void {
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   turret(P);
-  cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
+  cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P,options.antennaMasts!==false);smoke(P);
+  if(options.commanderGun!==false)machineGun(P);mainGun(P);
 }
 export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
 
