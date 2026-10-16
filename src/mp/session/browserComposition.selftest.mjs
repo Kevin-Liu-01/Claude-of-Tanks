@@ -1012,6 +1012,34 @@ for (const [reason, message] of [
   stalled.composition.dispose();
 }
 
+// ------------------------------------------------------------ a second WELCOME (2026-10-15, the MP stream): a replaced link
+// welcomes the seat again; the entry trace keeps the first `roster` value and counts the later one, so its stages still
+// add up to the entry (every main rejoin of the §7 side-by-side opened a second link 7 s in, and its trace lost 6.7-10 s)
+{
+  let time = 1000;
+  const twice = createHarness({ clock: () => time });
+  const room = makeRoomSession(twice.calls);
+  const entry = twice.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  const owner = twice.sessions[0];
+  time = 3000; // the entry starts (the receipt's world and modules load at once)
+  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  time = 7000; // the first WELCOME and the roster: 4 s
+  await owner.welcome();
+  time = 7500; // the link is replaced; the seat is welcomed again half a second later
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await entry, true, 'a seat welcomed twice still enters');
+  const trace = twice.ports.trace;
+  assert.equal(trace.status, 'complete');
+  assert.equal(trace.stages.roster, 4000, `the first WELCOME's roster stage stands (${trace.stages.roster} ms)`);
+  assert.equal(trace.rewelcomes, 1, 'the second WELCOME is counted');
+  assert.deepEqual(trace.rewelcomeAtMs, [4500], 'with its time from the entry start');
+  const staged = Object.values(trace.stages).reduce((sum, ms) => sum + ms, 0);
+  assert.equal(staged, trace.totalMs, `the stages add up to the entry (${staged} of ${trace.totalMs} ms)`);
+  twice.composition.dispose();
+}
+
 composition.dispose();
 assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the seat');
 // ------------------------------------------------------------ the host's log levels (lane mp/ui-sync-check, 2026-09-30): a warn
