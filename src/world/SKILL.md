@@ -346,8 +346,9 @@ is a dry-stone wall fitted to the old coursed module's envelope after spending i
 (props local types) are `maps/sceneryKit.ts` `buildSandbagStack`, laid bag by bag in the sourced models' envelopes on
 the canvas weave; their remnants spend the old remnant's draws first. `fieldWorks.ts` lays a map's field-boundary
 works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's land use through the height field's
-`_landUseAt` hook — the same boundary band and field gate the terrain draws — as decor with no collision, at most
-1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, fieldBoundaryWorks.ts, after the pools'
+`_landUseAt` hook — the same boundary band and field gate the terrain draws — at most 1 m tall; the walls stand as
+crushable 'field-wall' spans (`fieldWallCollision.ts`, PH.15: shells and sight stop on the stone, a hull crushes it and
+is never stopped, a crushed span pressed into a strip of rubble), the banks are decor with no collision; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, fieldBoundaryWorks.ts, after the pools'
 refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
 placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
 selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own print (`fieldStone`,
