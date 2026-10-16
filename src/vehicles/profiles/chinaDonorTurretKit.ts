@@ -8,7 +8,11 @@
 // permanent donor stock found by raycast: never on removable ERA, never in open air.
 import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
-import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,serviceCable,serviceCase} from './nationalChina.ts';
+import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,seatCheekTile,serviceCable,serviceCase} from './nationalChina.ts';
+import {weldedFlankHousing} from './weldedFlankHousing.ts';
+import {addChineseChevronFacet} from './chineseChevronEra.ts';
+import {bustleCutZ} from '../donorBustleCut.ts';
+import {QILIN_BUSTLE_CUT_M} from '../nationalDonorTurrets.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
@@ -266,32 +270,170 @@ function kunlun(P:TankBuilderPort):void {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Qilin on the production ZTZ-99A2 turret: the 99A2's chevrons, side cassettes, smoke banks, cupola and sights stay as
-// emitted; the Qilin's own inexpensive field fit goes on top.
-function qilin(P:TankBuilderPort):void {
-  const l=NATIONAL_ROOF_LOADOUTS.t72b3_qilin;
-  const roof=permanentParts(P,['turret','turretEquipment']);
-  // Round guarded lamps on the crown just behind the chevrons' upper roots, outboard of both roof sights.
-  for(const side of [-1,1])footedLamp(P,roof,side*.82,-.18,l.lamp);
-  // The side camera: twin round lenses on a guarded low housing, on the left crown edge.
-  lowOptic(P,roof,1.12,-.30,.20,.11,.19,true);
-  // Low field-service box and tool chest, the roll and a field-service carrier on the right flank crown.
-  serviceCase(P,roof,-.74,-1.06,.29,.13,.33);
-  serviceCase(P,roof,.84,-1.56,.25,.12,.29);
-  const y=equipmentFoot(P,roof,0,-1.40,.72,.25);
-  P.addEquipment('turretCloth',cylX(.078,.66,16),0,y+.070,-1.40);
-  for(const x of [-.23,.23]){
-    P.addEquipment('turretDetail',box(.042,.036,.22),x,y+.007,-1.40);
-    P.addEquipment('turretDark',cylX(.082,.028,16),x,y+.070,-1.40);
+// Qilin (release 227, owner 2026-10-16: "make the qqilin turret 10% shorter ... and redesign the qilin turret around
+// this principle"): the production ZTZ-99A2 turret, its bustle cut by 0.395 m (QILIN_BUSTLE_CUT_M, donorBustleCut.ts),
+// wearing the Qilin's own add-ons from its cast turret, each altered slightly to wrap round the 99A2: the triangular
+// flank brows (now welded onto the 99A2's forward side cassette, each carrying three chevron cassettes), the rear flank
+// housings (in place of the 99A2's rear cassette and stowage box, carrying its rail) with their three flat tiles a
+// side, the rear box seams, the bustle roof plate with its small rack and roll, the flat eye, the split-panel sensor,
+// and the 226 field fit (round lamps, side camera, field box, tool chest, carrier, cable, basket) moved onto the cut
+// bustle. The 99A2's chevrons, face ERA, smoke banks, cupola, sights and whips stay as emitted. Not re-added: the cast
+// bustle box, rear box, central sight, antenna and four-tube smoke (the 99A2's armoured bustle, rear box, sights, whips
+// and five-tube banks are the same equipment at full size).
+const QILIN_MODEL=2;
+type FlankRow=readonly [z:number,inner:number,outer:number,bottom:number,top:number];
+// The brow: a triangular wedge (0.40 m tall at its front, 0.24 m at its rear) welded on the forward side cassette's
+// outer face (x 1.574-1.606) and buried in the chevron's permanent outer root at its front.
+const QILIN_BROW:readonly FlankRow[]=[[-.90,1.52,1.64,.30,.54],[-.52,1.52,1.67,.20,.58],[-.16,1.50,1.68,.16,.56]];
+// The rear flank housing: from the forward cassette's rear face (-0.93) round the cut bustle wall to the rear armour
+// box, wide enough at its rear to carry the 99A2's rail (x 1.51-1.55 there) on two short posts.
+const QILIN_REAR_FLANK:readonly FlankRow[]=[[-1.83,1.06,1.47,.43,.635],[-1.72,1.14,1.60,.37,.665],[-1.34,1.34,1.62,.26,.68],
+  [-.91,1.36,1.62,.22,.66]];
+
+/** A builder port whose added parts carry the add-on's inventory role (userData.chineseModernization). */
+function tagged(P:TankBuilderPort,model:number,role:string):TankBuilderPort {
+  const tag=(g:THREE.BufferGeometry)=>{if(g?.userData&&!g.userData.chineseModernization)g.userData.chineseModernization={model,role};return g;};
+  return new Proxy(P,{get(target,key){
+    if(key==='add'||key==='addEquipment'||key==='addExternalArmor')
+      return (bucket:string,g:THREE.BufferGeometry,...rest:number[])=>(target[key] as (b:string,g:THREE.BufferGeometry,...r:number[])=>void)(bucket,tag(g),...rest);
+    if(key==='addModuleVisual')
+      return (module:string,bucket:string,g:THREE.BufferGeometry,...rest:number[])=>target.addModuleVisual(module as never,bucket,tag(g),...rest);
+    const value=Reflect.get(target,key,target);
+    return typeof value==='function'?value.bind(target):value;
+  }}) as TankBuilderPort;
+}
+
+/** A plate seated on a sloping permanent roof: its underside follows the roof under its four corners (4 mm in), its top
+ * is flat `t` over the highest roof point under it. Returns the top. */
+function seatedPlate(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],bucket:string,x:number,z:number,w:number,d:number,t:number):number {
+  const at=(xx:number,zz:number)=>roofAt(parts,xx,zz);
+  const rows=[z-d/2,z+d/2].map(zz=>({z:zz,left:at(x-w/2,zz),right:at(x+w/2,zz)}));
+  let high=-Infinity;
+  for(const dx of [-w/2,0,w/2])for(const dz of [-d/2,0,d/2])high=Math.max(high,at(x+dx,z+dz));
+  const top=high+t;
+  P.addExternalArmor(bucket.replace(/ExternalArmor$/,'') as 'turret',sectionSolid(rows.map(r=>({z:r.z,ring:[[x-w/2,r.left-.004],[x+w/2,r.right-.004],
+    [x+w/2,top],[x-w/2,top]]}))));
+  return top;
+}
+
+function roofAt(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
+  const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),ray=new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0),0,6);
+  let y=-Infinity;
+  for(const g of parts){const m=new THREE.Mesh(g,mat);m.updateMatrixWorld(true);const h=ray.intersectObject(m,false)[0];if(h)y=Math.max(y,h.point.y);}
+  mat.dispose();
+  if(!Number.isFinite(y))throw new Error(`Chinese donor kit: no permanent roof at ${x},${z}`);
+  return y;
+}
+
+/** The brow's three chevron cassettes: one on its rear facet, two on its front facet, each on its seat pad. */
+function qilinBrowChevrons(P:TankBuilderPort,side:number):void {
+  const bevel=(r:FlankRow)=>Math.min(.045,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
+  for(const [i,count] of [[1,1],[2,2]] as const){
+    const a=QILIN_BROW[i-1],b=QILIN_BROW[i];
+    const low=Math.max(a[3]+bevel(a),b[3]+bevel(b))+.012,top=Math.min(a[4]-bevel(a),b[4]-bevel(b))-.012;
+    addChineseChevronFacet(P,{a:[b[2],low,b[0]],b:[a[2],low,a[0]],height:top-low},side,Math.min(.09,(top-low)*.43),count);
   }
-  const base=equipmentFoot(P,roof,-1.14,-.62,.18,.33);
-  P.addEquipment('turretDetail',box(.19,.08,.34),-1.14,base+.033,-.62);
-  for(const z of [-.72,-.62,-.52])P.addEquipment('turretDark',box(.13,.008,.017),-1.14,base+.078,z);
-  serviceCable(P,roof,[[-.74,-.86],[-.78,-.70],[-.84,-.52],[-.90,-.34]]);
+}
+
+/** A compact flat sensor eye (the cast Qilin's flat eye, a size smaller: a 0.16 m pedestal under a 0.22 m head). */
+function qilinFlatEye(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number):void {
+  const base=equipmentFoot(P,parts,x,z,.16,.16)-.003;
+  P.addEquipment('turretDetail',box(.16,.09,.16),x,base+.045,z);
+  P.addEquipment('turretDetail',box(.22,.12,.20),x,base+.15,z);
+  P.addModuleVisual('optics','turretGlass',box(.17,.075,.012),x,base+.15,z+.105);
+  P.addEquipment('turretDetail',box(.24,.014,.22),x,base+.217,z+.012);
+}
+
+function qilin(P:TankBuilderPort):void {
+  const l=NATIONAL_ROOF_LOADOUTS.t72b3_qilin,bz=(z:number)=>bustleCutZ(z,QILIN_BUSTLE_CUT_M);
+  // Permanent armour first: the brows and the rear flank housings (their two rail posts under the 99A2 rail).
+  for(const side of [-1,1]){
+    tagged(P,QILIN_MODEL,'brow').addExternalArmor('turret',weldedFlankHousing(QILIN_BROW,side,.035));
+    tagged(P,QILIN_MODEL,'rear-flank-housing').addExternalArmor('turret',weldedFlankHousing(QILIN_REAR_FLANK,side,.045));
+  }
+  qilinRailPosts(tagged(P,QILIN_MODEL,'rail-post'),bz);
+  // Removable faces on the frozen permanent stock: three brow chevron cassettes and three flat tiles a side.
+  const armour=permanentParts(P,['turretExternalArmor']);
+  for(const side of [-1,1]){
+    qilinBrowChevrons(tagged(P,QILIN_MODEL,'brow-chevron'),side);
+    for(const z of [-1.05,-1.30,-1.55])seatCheekTile(tagged(P,QILIN_MODEL,'flank-tile'),armour,side,z,.45,[.25,.07,.26]);
+  }
+  qilinRearBoxSeams(tagged(P,QILIN_MODEL,'rear-box-seam'));
+  const roof=permanentParts(P,['turret','turretEquipment']);
+  // The bustle roof plate (the cast bustle box's roof) on the crown, 5 cm behind the cupola disc.
+  const plateTop=seatedPlate(tagged(P,QILIN_MODEL,'bustle-plate'),roof,'turretExternalArmor',0,-1.48,.95,.54,.022);
+  const deck=[...roof,...permanentParts(P,['turretExternalArmor'])];
+  // Round guarded lamps on the crown just behind the chevrons' upper roots, 5 cm ahead of the commander's sight.
+  for(const side of [-1,1])footedLamp(tagged(P,QILIN_MODEL,'lamp'),roof,side*.82,-.14,l.lamp);
+  // The side camera on the left crown edge and the flat eye mirroring it on the right.
+  lowOptic(tagged(P,QILIN_MODEL,'camera'),roof,1.12,-.30,.20,.11,.19,true);
+  qilinFlatEye(tagged(P,QILIN_MODEL,'flat-eye'),roof,-1.12,-.30);
+  // The split-panel sensor on its cast seat behind the gun (the roof ahead of z 0.15 is the mantlet's open throat),
+  // between the two roof sights; the emplacement's barrel depresses less over it (its depression table).
+  const sensor=tagged(P,QILIN_MODEL,'split-sensor');
+  nationalRoofSensor(sensor,-.06,-.12,equipmentFoot(sensor,roof,-.06,-.12,.35,.33),{...l,roof:'split-panels'});
+  // The field box, the tool chest and the field-service carrier on the cut bustle, the cable outboard of the carrier.
+  serviceCase(tagged(P,QILIN_MODEL,'field-box'),roof,-.80,-1.12,.29,.13,.33);
+  serviceCase(tagged(P,QILIN_MODEL,'tool-chest'),roof,.84,-1.44,.25,.12,.29);
+  const carrier=tagged(P,QILIN_MODEL,'carrier');
+  const base=equipmentFoot(carrier,roof,-1.14,-.70,.18,.33);
+  carrier.addEquipment('turretDetail',box(.19,.08,.34),-1.14,base+.033,-.70);
+  for(const z of [-.80,-.70,-.60])carrier.addEquipment('turretDark',box(.13,.008,.017),-1.14,base+.078,z);
+  serviceCable(tagged(P,QILIN_MODEL,'cable'),roof,[[-.92,-.955],[-1.02,-.90],[-1.27,-.86],[-1.27,-.60],[-1.15,-.385]]);
+  // The roll on the bustle plate, framed by the small rack.
+  const rollCrew=tagged(P,QILIN_MODEL,'roll');
+  const y=equipmentFoot(rollCrew,deck,0,-1.40,.68,.25);
+  rollCrew.addEquipment('turretCloth',cylX(.078,.66,16),0,y+.070,-1.40);
+  for(const x of [-.23,.23]){
+    rollCrew.addEquipment('turretDetail',box(.042,.036,.22),x,y+.007,-1.40);
+    rollCrew.addEquipment('turretDark',cylX(.082,.028,16),x,y+.070,-1.40);
+  }
+  qilinRack(tagged(P,QILIN_MODEL,'rack'),deck,plateTop);
   qilinRearBasket(P);
 }
 
-/** Qilin's small open tool basket on the 99A2's rear armour box; its roots end inside that permanent box. */
+/** Two short posts a side carrying the 99A2's rail (y 0.76) on the rear flank housing's top, at the rail's mapped
+ * stanchion stations. Each post's foot sits 4 mm into the housing's top; its head 4 mm into the rail. */
+function qilinRailPosts(P:TankBuilderPort,bz:(z:number)=>number):void {
+  const housing=permanentParts(P,['turretExternalArmor']),detail=new Stock(P,['turretDetail']);
+  try {
+    for(const side of [-1,1])for(const z of [bz(-1.48),bz(-2.06)]){
+      // the rail's own position at this station (it yaws outboard towards the rear)
+      const rail=detail.hit(new THREE.Vector3(side*3,.76,z),new THREE.Vector3(-side,0,0),2.2);
+      if(!rail)throw new Error(`${P.spec.id}: no 99A2 rail over the rear flank housing at ${z}`);
+      const x=rail.point.x-side*.0175,top=roofAt(housing,x,z),railBottom=.76-.0175;
+      P.addEquipment('turretDetail',box(.034,railBottom-top+.008,.034),x,(railBottom+top)/2,z);
+    }
+  }finally{detail.dispose();}
+}
+
+/** Two dark access seams on the 99A2 rear box's lower lip, between its ribs (the cast Qilin's rear box seams). */
+function qilinRearBoxSeams(P:TankBuilderPort):void {
+  const box99=new Stock(P,['turretExternalArmor']);
+  try {
+    for(const x of [-.45,.45]){
+      const hit=box99.hit(new THREE.Vector3(x,.455,-3),new THREE.Vector3(0,0,1),2);
+      if(!hit)throw new Error(`${P.spec.id}: no rear box face for its seam at ${x}`);
+      P.addEquipment('turretDark',box(.015,.040,.014),x,.455,hit.point.z-.005);
+    }
+  }finally{box99.dispose();}
+}
+
+/** The small rack framing the roll: two posts on shaped feet, their side rails and the rear cross rail. */
+function qilinRack(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[],plateTop:number):void {
+  void plateTop;
+  let railY=-Infinity;
+  for(const x of [-.42,.42]){
+    const foot=equipmentFoot(P,deck,x,-1.40,.070,.13);
+    P.addEquipment('turretDetail',box(.025,.145,.025),x,foot+.066,-1.40);
+    railY=Math.max(railY,foot+.132);
+  }
+  for(const x of [-.42,.42])P.addEquipment('turretDetail',beamBetween([x,railY,-1.55],[x,railY,-1.25],.013));
+  P.addEquipment('turretDetail',beamBetween([-.42,railY,-1.55],[.42,railY,-1.55],.013));
+}
+
+/** Qilin's small open tool basket on the cut 99A2's rear armour box; its roots end inside that permanent box, its rear
+ * 0.27 m behind it. */
 function qilinRearBasket(P:TankBuilderPort):void {
   const shell=new Stock(P,['turret','turretExternalArmor']);
   try {
@@ -301,8 +443,8 @@ function qilinRearBasket(P:TankBuilderPort):void {
       return hit.point.z;
     };
     // Struts pass under the 99A2's dark rear plate and between its vertical ribs (x = -0.9 + 0.3 i).
-    const half=.52,bottom=.45,top=.70,rear=-2.52;
-    const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:2,role};P.addEquipment('turretOpenLattice',g);};
+    const half=.52,bottom=.45,top=.70,rear=wall(0,bottom)-.27;
+    const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:QILIN_MODEL,role};P.addEquipment('turretOpenLattice',g);};
     for(const side of [-1,1]){
       const x=side*half;
       put(beamBetween([x,bottom,wall(x,bottom)+.03],[x,bottom,rear],.019),'cage-root');

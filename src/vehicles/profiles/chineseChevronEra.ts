@@ -24,10 +24,10 @@ function cassette(a:THREE.Vector3,b:THREE.Vector3,height:number,depth:number){
  g.applyMatrix4(new THREE.Matrix4().makeBasis(normal,up,tangent.clone().negate()).setPosition(b));
  return {g,normal};
 }
-function addFacet(P:Port,f:Facet,side:number,depth:number):void{
+function addFacet(P:Port,f:Facet,side:number,depth:number,cassettes?:number):void{
  let a=new THREE.Vector3(...f.a),b=new THREE.Vector3(...f.b);
  if(side<0){a.x=-a.x;b.x=-b.x;[a,b]=[b,a];}
- const span=a.distanceTo(b),count=Math.max(1,Math.round(span/.37));
+ const span=a.distanceTo(b),count=cassettes??Math.max(1,Math.round(span/.37));
  const records:ChineseChevronReceipt[]=P.turretG.userData.chineseChevronEra??=[];
  for(let i=0;i<count;i++){
   const lo=a.clone().lerp(b,(i+.04)/count),hi=a.clone().lerp(b,(i+.96)/count);
@@ -43,6 +43,13 @@ function addFacet(P:Port,f:Facet,side:number,depth:number):void{
   P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraHitFaces(g,normal.toArray(),.35)));
  }
  P.turretG.userData.chineseChevronEra=records;
+}
+
+/** One planar wall facet's bank of single-piece cassettes (release 227: the Qilin's brows carry three a side, an
+ * explicit count): `a` to `b` is the facet's lower edge (the right-hand side's coordinates, bow to rear, so the normal
+ * faces outward), `height` its height; each cassette rides its own 22 mm seat pad in sector turret_era_L/R. */
+export function addChineseChevronFacet(P:Port,f:Facet,side:number,depth:number,cassettes:number):void{
+ addFacet(P,f,side,depth,cassettes);
 }
 
 export function addChineseChevronBank(P:Port,side:number,rows:readonly FlankStation[],depth:number):void{

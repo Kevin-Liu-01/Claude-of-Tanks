@@ -47,7 +47,9 @@ const T72B3M_ON_T72B3: Point3 = [0, 1.446 + (1.52948397398 - 1.5153), .065591405
 // y -0.04) clear the B3 roof by 12 mm at every yaw instead of sitting 42 mm inside it. The rings' own collars bridge
 // the running gap.
 const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
-const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .054, .065591405];
+// Release 227: 2 mm higher again, so the 99A2 shell's lower course passes 25 mm over the B3 driver's hatch at every yaw
+// (23.5 mm at yaw 290).
+const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .056, .065591405];
 
 // Commander's cupolas in each donor's turret frame (their builders' own datums).
 // The T-72B3 cupola's raised hatch ring (t72b3X.ts roofEquipment: r .358 at -.61355, -.363), its seat 70 mm aft of the
@@ -57,10 +59,17 @@ const T72B3M_CUPOLA = [-.62689 - .0000072471277, -.24424 - .1143146502203] as co
 const ZTZ99A2_CUPOLA = [.52, -.88] as const;
 const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
 
+/** The Qilin's bustle cut (metres): 10 % of the ZTZ-99A2 body's 3.954 m front-to-rear length. */
+export const QILIN_BUSTLE_CUT_M = .395;
+
 export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
-  // The 99A2's right-rear whip stood inside the Qilin station's sweep from the cupola: it moves to the bustle corner.
-  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.3286,
-    builderOptions: { antennaSeats: [[-1.06, -1.58], [1.06, -2.00]] } },
+  // Release 227 (owner 2026-10-16: "also make the qqilin turret 10% shorter ... and redesign the qilin turret around this
+  // principle"): the 99A2 bustle loses 0.395 m (donorBustleCut.ts: the body 3.954 -> 3.559 m, the rear armour assembly
+  // moved forward as one piece, nothing ahead of z -1.27 moved); its rear flank fit gives way to the Qilin's own rear
+  // flank housings (chinaDonorTurretKit.ts), and both whips stand on the right rear, clear of the cupola emplacement.
+  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.213,
+    addedTurretEra: ['turret_era_L', 'turret_era_R'],
+    builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.06, -1.40], [-1.14, -.96]] } },
   // Release 227: the gun's depression over the rear deck stops at 5 degrees, so the barrel clears the engine-deck
   // cooling panels' slats by 25 mm (it came within 15 mm at 6 degrees, yaw 165-195).
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.48048,

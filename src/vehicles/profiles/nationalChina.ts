@@ -140,7 +140,8 @@ function turretEra(P:TankBuilderPort,c:NationalModernizationConfig):void {
   }
 }
 
-function seatCheekTile(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],side:number,z:number,y:number,size:Point):void {
+/** A flat reactive tile on the outer wall at (z, y), seated by a -X raycast onto the frozen permanent `parts`. */
+export function seatCheekTile(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],side:number,z:number,y:number,size:Point):void {
   const ray=new THREE.Raycaster(new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0));
   const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let nearest:THREE.Intersection|undefined;
   for(const g of parts){
