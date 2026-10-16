@@ -25,7 +25,8 @@ import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
-import { buildStook, mapToBand } from './haystackKit.ts';
+import { buildStook, buildStookWreck, mapToBand } from './haystackKit.ts';
+import { spentDraws } from './brokenDraws.ts';
 // (#10 fieldworks: the field works' builders live in their family's kit)
 import { bAmmobox, bAmmoboxBroken, bBarbedWire, bBarbedWireBroken, bTent, bTentBroken } from './fieldworksKit.ts';
 
@@ -2016,7 +2017,8 @@ export const DESTRUCTIBLE_TYPES = {
   crate:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.62, h: 1.1,  hw: 0.51, hl: 0.51, build: bCrate, broken: bCrateBroken },
   pallet:      { cls: 'break',  mat: 'wood',  contact: 'loop', r: 0.62, h: 0.2,  build: bPallet,      broken: bPalletBroken },
   bale:        { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.78, h: 1.45, shape: 'circle', collisionR: 0.75, build: bBale, broken: bBaleBroken },
-  stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: bStookBroken },
+  // (props lane A, the r2 sweep, 2026-10-16: the knocked stook's sheaves still lean, on the legacy's draws)
+  stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: (rng: Rng) => buildStookWreck(spentDraws(bStookBroken, rng, 0x570905)) },
   firewood:    { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 0.95, hw: 0.84, hl: 0.69, build: bFirewood, broken: bFirewoodBroken },
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, hw: 0.36, hl: 1.0, build: bTrough, broken: bTroughBroken },
   // (2026-10-11: the stall wears the structures' canvas print — its awning real canvas; its counter, posts and goods take
