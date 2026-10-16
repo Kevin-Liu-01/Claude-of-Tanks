@@ -48,6 +48,30 @@ export const DRONE_AVOIDANCE = Object.freeze({
   /** Horizontal side-step yaws (rad), each tried on the side with more room first; never a turn back. */
   sideRad: [.55, 1.1] as readonly number[],
 });
+/**
+ * DR.06 (#100: "smarter bot drones, more than aim at target"): a bot flies the FPV top attack crews fly. Far from the
+ * target it closes at a cruise height over the aim point (above trees and roofs, where a roof gun has the least
+ * time on it); inside the dive radius it noses over onto the target's roof line, so the warhead meets the thin roof
+ * armour from above instead of the frontal plate in a level run. Deterministic: geometry of the aim point only.
+ */
+export const DRONE_BOT_ATTACK = Object.freeze({
+  /** Cruise height over the aim point while closing (m): high enough that the dive from the dive radius is ~37 degrees. */
+  cruiseM: 24,
+  /** Horizontal distance at which the dive begins: the cruise height plus the airframe's turn radius at full speed
+   * (42 m/s at 2.8 rad/s, 15 m) less a little, so the nose-over completes into a steep final run (m). */
+  diveRadiusM: 32,
+  /** The dive's aim point stands this far above the bot's aim point (its centre of mass): the roof line (m). */
+  roofLiftM: 0.85,
+});
+const _botAim = new Vector3();
+/** The point a bot's airframe steers at: over the target while closing, its roof line in the dive. */
+export function botDroneAim(position: Point3, aim: Point3, out: Vector3): Vector3 {
+  const horizontal = Math.hypot(aim.x - position.x, aim.z - position.z);
+  if (horizontal > DRONE_BOT_ATTACK.diveRadiusM) {
+    return out.set(aim.x, Math.max(aim.y + DRONE_BOT_ATTACK.cruiseM, Math.min(position.y, aim.y + DRONE_BOT_ATTACK.cruiseM * 1.5)), aim.z);
+  }
+  return out.set(aim.x, aim.y + DRONE_BOT_ATTACK.roofLiftM, aim.z);
+}
 const _probe = new Vector3(), _escape = new Vector3(), _axis = new Vector3(), _flat = new Vector3(), _q = new Quaternion();
 const WORLD_UP = new Vector3(0, 1, 0);
 function probeClear(world: AerialWorldQuery, origin: Vector3, dir: Vector3, reach: number): number {
@@ -145,7 +169,8 @@ function launchOrigin(entity:AerialEntity,out:Vector3):void {
 }
 function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<ShellSpec>, dt: number): void {
   const rules = AERIAL_RULES.drone;
-  direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
+  if (entity.bot) direction.copy(botDroneAim(shell.pos, entity.input.aimPoint, _botAim)).sub(shell.pos).normalize();
+  else direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
   const wantedYaw = Math.atan2(direction.x, direction.z), wantedPitch = Math.asin(Math.max(-1, Math.min(1, direction.y)));
   const delta = Math.atan2(Math.sin(wantedYaw - v.yaw), Math.cos(wantedYaw - v.yaw));
   v.yaw += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, delta));

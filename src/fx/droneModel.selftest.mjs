@@ -21,12 +21,14 @@ const proveCovered=geometry=>{
 for(const nation of Object.keys(DRONE_DESIGNS))for(const detail of ['full','lite']){
  const kit=createDroneModelKit(nation,detail);kit.body.computeBoundingBox();
  if(detail==='full')assert.ok(kit.body.getAttribute('position').count>1800,'motor bells, wiring, guards and feet are modeled');
- assert.equal(kit.parts.length,4,'four merged airframe materials: composite, paint, metal, glass');
+ assert.equal(kit.parts.length,5,'five merged airframe materials: composite, carbon twill plates, charge paint, metal, glass');
+ assert.ok(kit.plate.getAttribute('uv')&&kit.plateMaterial.map,'the frame plates carry the woven twill');
  assert.ok(kit.body.boundingBox.min.y>=-.25,'landing gear clears the dock');
  const assembly=new Box3();
- for(const geometry of [kit.body,kit.equipment,kit.metal,kit.lens]){proveCovered(geometry);geometry.computeBoundingBox();assembly.union(geometry.boundingBox);assert.ok(Array.from(geometry.attributes.position.array).every(Number.isFinite),'finite mesh positions');}
+ for(const geometry of [kit.body,kit.plate,kit.equipment,kit.metal,kit.lens]){proveCovered(geometry);geometry.computeBoundingBox();assembly.union(geometry.boundingBox);assert.ok(Array.from(geometry.attributes.position.array).every(Number.isFinite),'finite mesh positions');}
  kit.rotor.computeBoundingBox();
- for(const rotor of [kit.rotor,kit.rotorBlur])for(let i=0;i<4;i++)for(let step=0;step<72;step++){poseDroneRotor(pose,i,step*Math.PI/36);for(let v=0;v<rotor.attributes.position.count;v++){point.fromBufferAttribute(rotor.attributes.position,v).applyMatrix4(pose.matrix);assembly.expandByPoint(point);point.y+=DRONE_DOCK_HEIGHT_M;assert.ok(pointFits(point),'spinning rotor (blades and blur disc) stays inside finite rotor stock');}rotorChecks++;}
+ assert.equal(kit.rotorBlurSteps.length,5,'five fading discs for the landing spin-down');
+ for(const rotor of [kit.rotor,kit.rotorBlur,kit.rotorBlurFaint,...kit.rotorBlurSteps])for(let i=0;i<4;i++)for(let step=0;step<72;step++){poseDroneRotor(pose,i,step*Math.PI/36);for(let v=0;v<rotor.attributes.position.count;v++){point.fromBufferAttribute(rotor.attributes.position,v).applyMatrix4(pose.matrix);assembly.expandByPoint(point);point.y+=DRONE_DOCK_HEIGHT_M;assert.ok(pointFits(point),'spinning rotor (blades and blur disc) stays inside finite rotor stock');}rotorChecks++;}
  assembly.translate(new Vector3(0,DRONE_DOCK_HEIGHT_M,0));assert.ok(fits(assembly),nation+': complete rotating airframe is inside the clearance envelope');
  assert.ok(Math.abs(assembly.min.y-.039)<.001,nation+': landing skids contact the actual cradle pads');
  assert.ok(!fits(assembly.clone().expandByScalar(.1)),'oversize airframe negative control fails');
@@ -48,7 +50,7 @@ assert.deepEqual([0,1,2,3].map(droneRotorDirection),[1,-1,-1,1],'diagonal rotors
 // charge (RPG-pattern cone or compact charge) and the link (radio whips and transmitter, or a fibre spool).
 assert.equal(rotors.size,1,'one propeller for every service');
 assert.ok(shapes.size>=2&&shapes.size<=4,'one frame; the payload and link variants alone change the composite build');
-assert.deepEqual([...payloads].sort(),['efp','pg7'],'both charge patterns are carried');assert.deepEqual([...links].sort(),['fiber','radio'],'radio and fibre links');
+assert.deepEqual([...payloads],['pg7'],'every service carries the RPG-pattern charge (round 4: a round-nosed charge read as a camera ball)');assert.deepEqual([...links].sort(),['fiber','radio'],'radio and fibre links');
 const root=new Group(),pool=createDronePresentation(root);pool.begin(1);
 for(let i=0;i<60;i++)pool.write(new Vector3(),new Vector3(),i,0,1,i%2?'China':'USA');pool.end();
 assert.equal(root.children.filter(m=>m.name.includes('airframes')).reduce((sum,m)=>sum+m.count,0),42,'bounded shared aircraft capacity');

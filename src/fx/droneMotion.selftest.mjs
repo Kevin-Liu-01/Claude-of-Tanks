@@ -5,11 +5,12 @@ for(let i=0;i<600;i++){
  updateDroneAttitude(state,vel,0,i/60,1/60,1);
  maxBob=Math.max(maxBob,state.bob);minBob=Math.min(minBob,state.bob);
  if(lastBob!==null){const rate=state.bob-lastBob;if(rate*lastRate<0)turns++;lastRate=rate;}lastBob=state.bob;
- assert.ok(Math.abs(state.yaw)<.013,'hover corrections do not accumulate heading drift');
- assert.ok(Math.abs(droneWobblePitch(i/60,1))<.02);assert.ok(Math.abs(droneWobbleRoll(i/60,1))<.022);
+ assert.ok(Math.abs(state.yaw)<.02,'hover corrections do not accumulate heading drift');
+ assert.ok(Math.abs(droneWobblePitch(i/60,1))<.045);assert.ok(Math.abs(droneWobbleRoll(i/60,1))<.05);
  droneHoverDrift(i/60,1,drift);assert.ok(Math.hypot(drift.x,drift.z)<.022,'station-keeping wanders a centimetre or two, no more');
 }
-assert.ok(maxBob>.008&&minBob<-.008&&maxBob<.025&&minBob>-.025,'stable hover: a centimetre or two of bounded altitude hunting, never a bounce');
+assert.ok(maxBob>.015&&minBob<-.015&&maxBob<.04&&minBob>-.04,'stable hover: a few centimetres of bounded altitude hunting, never a bounce');
+{let wob=0;for(let i=0;i<600;i++)wob=Math.max(wob,Math.abs(droneWobblePitch(i/60,1)),Math.abs(droneWobbleRoll(i/60,1)));assert.ok(wob>.03,'the trim corrections read: about two degrees');}
 assert.ok(turns>=40,'small quick corrections: the altitude reverses at least four times a second ('+turns+' in 10 s)');
 vel.z=25;for(let i=0;i<60;i++)updateDroneAttitude(state,vel,0,10+i/60,1/60,1);
 assert.ok(state.pitch>.07,'forward motion banks the airframe');
@@ -32,12 +33,14 @@ assert.ok(Math.abs(state.pitch)<1e-6&&Math.abs(state.roll)<1e-6,'stabilizer sett
   if(h<=DRONE_CLIMB.clearM)assert.ok(Math.abs(out.pitch)+Math.abs(out.roll)+Math.abs(out.lift)<1e-12,'inside the carrier\'s kit envelope the airframe holds the dock attitude and the authority\'s height');
   assert.equal(out.lift,0,'never above the authority while the launch climbs');}
  droneClimbCharacter(launch,launch,1,12,1,out);assert.ok(out.pitch>DRONE_CLIMB.lean*.6,'the nose leans toward forward flight at the top of the climb');
+ // round 5: the lean shows early in the climb, two metres up
+ {let early=0;for(let age=spool;age<launch;age+=1/60){const u=(age-spool)/(launch-spool),h=height(u);if(h>2.5&&h<5){droneClimbCharacter(age,launch,u,h,1,out);early=Math.max(early,out.pitch);}}assert.ok(early>.05,'the airframe pitches into the climb early ('+early.toFixed(3)+' rad)');}
  let peak=0,dip=0,swings=0,prev=0,prevRate=0;
  for(let age=launch;age<launch+1.5;age+=1/60){droneClimbCharacter(age,launch,1,12,1,out);
-  assert.ok(Math.abs(out.roll)<.04&&out.pitch<.2,'bounded trim');peak=Math.max(peak,out.lift);dip=Math.min(dip,out.lift);
+  assert.ok(Math.abs(out.roll)<.06&&out.pitch<.3,'bounded trim');peak=Math.max(peak,out.lift);dip=Math.min(dip,out.lift);
   const rate=out.lift-prev;if(rate*prevRate<0)swings++;prevRate=rate;prev=out.lift;}
- assert.ok(peak>.15&&peak<.3,'a small overshoot over the launch height ('+peak.toFixed(3)+' m)');
- assert.ok(dip<-.02&&dip>-.1,'one shallow correction below it');assert.ok(swings>=3,'quick corrections settle it');
+ assert.ok(peak>.35&&peak<.5,'a readable overshoot over the launch height ('+peak.toFixed(3)+' m)');
+ assert.ok(dip<-.03&&dip>-.1,'one shallow correction below it');assert.ok(swings>=2,'corrections settle it');
  droneClimbCharacter(launch+1.5,launch,1,12,1,out);assert.ok(Math.abs(out.lift)<.003,'settled within a second and a half');
 }
 console.log('droneMotion: quick small hover corrections, no heading drift, station-keeping, bank, stabilization, repeated-frame determinism and lift-off character passed');

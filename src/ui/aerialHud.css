@@ -115,11 +115,11 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-designation{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:center;gap:7px;color:#ffd18b;font-size:10px;font-weight:800;letter-spacing:.18em;line-height:18px}
 .flight-designation .flight-icon{color:inherit}.flight-designation svg{width:19px;height:19px}
 .cot-flight-hud[data-kind=drone] .flight-telemetry{
- grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;
+ grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
  width:100%;margin:0;padding:5px 0;background:linear-gradient(90deg,transparent,#071219b3 20% 80%,transparent);
 }
 .cot-flight-hud[data-kind=drone] .flight-instrument{justify-content:center;gap:7px;font-size:15px;line-height:22px;font-weight:700;letter-spacing:.01em}
-.cot-flight-hud[data-kind=drone] .flight-instrument:nth-child(2){border-inline:1px solid #c0d4db40}
+.cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid #c0d4db40}
 .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon{color:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon svg{width:16px;height:16px}
 .cot-flight-hud[data-kind=drone] .flight-battery{grid-column:1/-1;grid-row:3;height:3px;margin:0 0 2px;pointer-events:none}
