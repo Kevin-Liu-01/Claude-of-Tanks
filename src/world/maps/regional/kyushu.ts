@@ -15,6 +15,7 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 import { factoryStack } from './shared.ts';
 import { latticeFrame } from './lattice.ts';
 import { sheetHall } from './hall.ts';
+import { lookoutFrame } from './kyushuLookout.ts';
 
 /** White lime plaster (shikkui), earth plaster (tsuchikabe), grey cement render; Aso's grey andesite; ibushi tile. */
 const SHIKKUI: RegionalBucket = 'plaster', EARTH: RegionalBucket = 'plaster2', CEMENT: RegionalBucket = 'plaster3', STONE: RegionalBucket = 'stone';
@@ -621,9 +622,7 @@ const stack: RegionalBuilder = (ctx) => {
   const steel = pick(rng, [rgb(0x9a9e9c), VERMILION, rgb(0x7a8a8e)]);
   // (props census #3, lane B 2026-10-14; the judges: "a tower of four bare sticks"): the hinomi-yagura's legs on their
   // footings, girts at every panel and X braces in each, recorded as a lattice so it falls as its members (lattice.ts)
-  latticeFrame(sink, { foot: b0, head: b1, y0: 0, y1: H, size: 0.1, girt: 0.06, brace: 0.035, panels: Math.max(3, Math.round(H / 2.2)), bucket: 'structureMetal',
-    colour: steel, pad: { bucket: CEMENT, size: 0.45, top: 0.2 }, mobile: ctx.tier === 'mobile' },
-  { x0: -1.1, x1: 1.1, y0: H, y1: H + 2.3, z0: -1.1, z1: 1.1, bucket: 'structureMetal', tint: steel });
+  lookoutFrame(sink, b0, b1, H, steel, CEMENT, ctx.tier === 'mobile'); // (looks r2 b-east, 2026-10-16: extracted to kyushuLookout.ts, rebuilt there)
   for (const dx of [-0.2, 0.2]) sink.member('structureMetal', [b0 + 0.1 + dx * 0, 0, dx], [b1 + 0.1, H, dx], 0.04, 0.04, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
   sink.span('structureWood', -1.0, H - 0.05, -1.0, 1.0, H + 0.05, 1.0, { colour: FRESH, decor: true });
   for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
