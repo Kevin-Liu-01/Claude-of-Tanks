@@ -212,8 +212,12 @@ function checkEdgeFade(material, parameters) {
   // the leaf transmission (2026-10-02): a Lambert lobe on the leaf's far side, its strength a uniform the vegetation
   // drives from the light model
   assert.match(parameters.fragmentShader, /uniform float uCotLeafTransmission;/);
-  assert.match(parameters.fragmentShader, /reflectedLight\.directDiffuse \+= saturate\( -canopyRawNL \) \* uCotLeafTransmission \* directLight\.color \* BRDF_Lambert\( material\.diffuseContribution \);/,
+  // GND (2026-10-15): the light through the leaf takes the crown's transmitted colour (a needle crown's dulled green,
+  // canopyLighting.ts cotCanopyTransmit; a leafy crown's albedo exactly: canopyNeedleTransmit.selftest)
+  assert.match(parameters.fragmentShader, /reflectedLight\.directDiffuse \+= saturate\( -canopyRawNL \) \* uCotLeafTransmission \* directLight\.color \* BRDF_Lambert\( canopyTransmit \);/,
     'light through the leaf when the sun is behind it');
+  assert.match(parameters.fragmentShader, /vec3 canopyTransmit = cotCanopyTransmit\( material\.diffuseContribution, uCotNeedle \);/,
+    'in the needle share of the material');
   assert.ok(parameters.uniforms.uCotLeafTransmission && typeof parameters.uniforms.uCotLeafTransmission.value === 'number', 'the transmission uniform is bound');
   const fragment = parameters.fragmentShader;
   assert.match(fragment, /vec3 cotDx = dFdx\( vViewPosition \), cotDy = dFdy\( vViewPosition \);/, 'the derivatives in uniform control flow');
