@@ -71,7 +71,9 @@ const bungalow: RegionalBuilder = (ctx) => {
         // (the end face's u runs from the wall out, or back: its sign read off the veranda's out)
         const ds = ef.u[0] * vf.out[0] + ef.u[2] * vf.out[2] > 0 ? 1 : -1;
         faceBox(sink, 'structureWood', ef, 0, 0.31, -0.03, V - 0.08, 0.82, 0.03, { colour: shade(WHITE, 0.92) });
-        const top = (o: number) => wallTop - rise * o / (V - 0.1) - 0.14, o0 = 0.08, o1 = V - 0.2, yb = 0.75 + 0.95;
+        // (the kit connectivity, 2026-10-16: the chik stopped 3 cm short of the end post and hung free) it runs from the
+        // wall out to the end post's face, hung on it
+        const top = (o: number) => wallTop - rise * o / (V - 0.1) - 0.14, o0 = 0.08, o1 = V - 0.165, yb = 0.75 + 0.95;
         const P = (o: number, y: number): Vec3 => facePoint(ef, ds * (o - V / 2), y, -0.07);
         const pts = ds > 0 ? [P(o0, yb), P(o1, yb), P(o1, top(o1)), P(o0, top(o0))] : [P(o1, yb), P(o0, yb), P(o0, top(o0)), P(o1, top(o1))];
         sink.prism('structureWood', pts, out, 0.015, { colour: chik, decor: true });
