@@ -10604,6 +10604,7 @@ ${snowCap ? `
   ): GroundCoverSolidProfile | null {
     const positions = geometry.getAttribute('position');
     if (!positions || !pool.records.length) return null;
+    geometry = pool.meta.collisionSolid?.() ?? geometry; // (physics: a kind's tier-independent solid, so every tier refits the same records)
     // Refit every destructible obstacle to the actual ground-bearing solids.
     // Roof overhangs, open bays and support gaps remain visually and
     // physically open instead of inheriting the metadata placement box.
@@ -10613,7 +10614,7 @@ ${snowCap ? `
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
     const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
-    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(pool.meta.collisionSolid?.() ?? geometry) : null; // (every tier the same: a truck's canonical solid)
+    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
