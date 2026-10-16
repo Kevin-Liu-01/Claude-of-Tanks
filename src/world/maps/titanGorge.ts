@@ -224,7 +224,14 @@ export default {
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the orange sandstone
     // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)
     banding: 0.24,
-    forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.82, grain: 0.68,
+    // (Titan round 4, gauntlet wave 134: "steep, pointed, blue-tinted alpine peaks", "a smooth, blue-shaded pyramidal
+    // mountain with a pointed summit", "three rounded summits": the stack's saddle, summits and shoulder stood as
+    // domes and spires over its capped tables — past 1.1 km the outer ranges come down to their massifs' caps
+    // (horizonTablelands.ts) at a few strata round 280 m, and Monument Valley's dry air keeps them red, not blue:
+    // the ring's haze 0.82 -> 0.6) (HOR-06, the horizons stream 2026-10-15: the horizon part of the map-revival lane's
+    // visual/maprev-titan-land round 4, a6d395cf9's branch, carried onto main on its own)
+    summitCap: { levelM: 280, fromRadiusM: 1100, vary: 0.25, stepM: 25 },
+    forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.6, grain: 0.68,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is
