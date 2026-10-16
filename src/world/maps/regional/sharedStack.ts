@@ -1,6 +1,9 @@
 // src/world/maps/regional/sharedStack.ts — the factory stack several regional kits share (shared.ts factoryStack), moved
-// as it was (the looks lane's r2 sweep, sub-stream b-east, 2026-10-16: lane B is parked, so its builder is taken
-// extract-then-own) for this lane to rebuild on the r2 standard.
+// (the looks lane's r2 sweep, sub-stream b-east, 2026-10-16: lane B is parked, so its builder was taken extract-then-own)
+// and fixed here: the r2 sweep found the ladder's stiles standing free of the shaft (stack@ruhr on Railyard, stack@kyushu
+// on Caldera: 2 islands, gaps 2-4 cm): its stand-offs were fine joinery (gone past the fine-detail distance) and reached
+// only the shaft's corner radius, 3-8 cm short of the octagon's flat face the ladder climbs. They are the ladder's
+// fixing now: drawn at any range, each let 3 cm into the flat face.
 import { PartSink, faceBox, normalize3, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { holedFace } from './house.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -82,9 +85,10 @@ export const factoryStack: RegionalBuilder = (ctx): RegionalParts => {
       sink.span('structureMetal', x - 0.012, y - 0.012, -0.2, x + 0.012, y + 0.012, 0.2, { ...ladder, fine: true });
     }
     for (let y = y0 + 1.0; y < yTop; y += 2.5) {
-      const r = rAt(y);
-      sink.span('structureMetal', r - 0.04, y - 0.02, -0.24, r + off + 0.02, y + 0.02, -0.18, { ...ladder, fine: true });
-      sink.span('structureMetal', r - 0.04, y - 0.02, 0.18, r + off + 0.02, y + 0.02, 0.24, { ...ladder, fine: true });
+      // (the shaft is an octagon on its corners' radius, turned π/8: the ladder's +x side is a flat face at r cos π/8)
+      const r = rAt(y), face = r * Math.cos(Math.PI / 8) - 0.03;
+      sink.span('structureMetal', face, y - 0.02, -0.24, r + off + 0.02, y + 0.02, -0.18, ladder);
+      sink.span('structureMetal', face, y - 0.02, 0.18, r + off + 0.02, y + 0.02, 0.24, ladder);
     }
     inLengths([-(rAt(y0) + 0.05), y0, 0], [-(rAt(crownY) + 0.05), crownY + 0.2, 0], (p, q) => sink.member('structureMetal', p, q, 0.02, 0.02, [-1, 0, 0], { colour: rgb(0x5a4a3a), decor: true, exposed: true }, 0));
     sink.member('structureMetal', [-(r1 * 1.12), crownY + 0.2, 0], [-(r1 * 1.12) + 0.02, crownY + 2.4, 0], 0.025, 0.025, normalize3([-1, 0, 0]), { colour: shade(IRON, 1.2), decor: true, exposed: true }, 0);
