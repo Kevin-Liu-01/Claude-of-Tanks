@@ -250,3 +250,24 @@ export function bevelSpan(sink: PartSink, bucket: RegionalBucket, x0: number, y0
   const dir: [number, number, number] = [0, 0, 0]; dir[run] = 1;
   orientedPrism(sink, bucket, pts, dir, size[run], opts);
 }
+
+/**
+ * A member from `a` to `b` as PartSink.member lays it (`width` across, `depth` along `out`, standing `depth - embed` proud
+ * of the line), its four long arrises eased (the r2 sweep's box-only share, Lane C 2026-10-16): a rolled section's
+ * rounded edges, a sawn timber's eased arris; by a sixth of its section's smaller side, at most 3 cm.
+ */
+export function bevelMember(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, width: number, depth: number, out: Vec3,
+  opts: EmitOptions = {}, embed = 0.02): void {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+  if (len < 1e-3) return;
+  const ay: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
+  const od = out[0] * ay[0] + out[1] * ay[1] + out[2] * ay[2];
+  let on: Vec3 = [out[0] - ay[0] * od, out[1] - ay[1] * od, out[2] - ay[2] * od];
+  const ol = Math.hypot(on[0], on[1], on[2]) || 1;
+  on = [on[0] / ol, on[1] / ol, on[2] / ol];
+  const ax: Vec3 = [ay[1] * on[2] - ay[2] * on[1], ay[2] * on[0] - ay[0] * on[2], ay[0] * on[1] - ay[1] * on[0]];
+  const hw = width / 2, mid = depth / 2 - embed, hd = depth / 2, k = Math.max(0.002, Math.min(0.03, Math.min(width, depth) / 6));
+  const sec: Array<[number, number]> = [[hw, -hd + k], [hw, hd - k], [hw - k, hd], [-hw + k, hd], [-hw, hd - k], [-hw, -hd + k], [-hw + k, -hd], [hw - k, -hd]];
+  const pts: Vec3[] = sec.map(([u, v]) => [a[0] + ax[0] * u + on[0] * (mid + v), a[1] + ax[1] * u + on[1] * (mid + v), a[2] + ax[2] * u + on[2] * (mid + v)]);
+  orientedPrism(sink, bucket, pts, ay, len, opts);
+}
