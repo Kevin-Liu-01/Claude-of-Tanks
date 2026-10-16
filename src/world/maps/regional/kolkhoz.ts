@@ -15,6 +15,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { hollyhocks } from './dressing.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder, SurfaceTone } from './types.ts';
+import { buildPostMill } from './windmills.ts';
 
 const PAINTS: readonly Rgb[] = [0x4a7aa8, 0x5a8fb8, 0x4f8a5a, 0x3f6f8f, 0x6b8a4a].map(rgb);
 const WHITE_FRAME = rgb(0xd0ccc0);
@@ -314,55 +315,8 @@ const ambar: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The wooden post mill: the body on its post and crosstrees, four lattice sails, the tail pole and the ladder. */
-const postMill: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const timber = rgb(0x6a5440), dark = rgb(0x4a3b2e);
-  const bw = 3.4, bd = 4.2, bh = 4.4, lift = 3.4;
-  // trestle: crosstrees on stone piers, quarterbars up to the post
-  for (const [x, z] of [[-2.2, 0], [2.2, 0], [0, -2.2], [0, 2.2]] as const) sink.span('stone', x - 0.35, -0.4, z - 0.35, x + 0.35, 0.45, z + 0.35);
-  sink.span('structureWood', -2.4, 0.45, -0.17, 2.4, 0.8, 0.17, { colour: dark });
-  sink.span('structureWood', -0.17, 0.45, -2.4, 0.17, 0.8, 2.4, { colour: dark });
-  sink.span('structureWood', -0.22, 0.45, -0.22, 0.22, lift, 0.22, { colour: dark });
-  for (const [x, z] of [[-2.0, 0], [2.0, 0], [0, -2.0], [0, 2.0]] as const) {
-    sink.member('structureWood', [x, 0.8, z], [x * 0.08, lift - 0.4, z * 0.08], 0.16, 0.16, [x !== 0 ? 0 : 1, 0, x !== 0 ? 1 : 0], { colour: dark, exposed: true });
-  }
-  // the body (buck): a boarded box with a gable roof, sails on its +z breast
-  sink.placed(0, 0, lift, 0, () => {
-    buildHouse(sink, {
-      w: bw, d: bd, plinth: null, storeys: [{ h: bh, wall: 'wood' }],
-      roof: { kind: 'gable', pitchDeg: 35, eave: 0.2, verge: 0.25, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
-      gableBucket: 'wood', openings: [{ face: 'back', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.8 }],
-      chimneys: [], gutters: null, verge: null,
-    }, { window: () => {}, door: (s, face, o, y0) => doorUnit(s, face, o.u, y0, o.w, o.h, { leaf: timber, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: dark }, steps: null, leafKind: 'plank' }) });
-  });
-  const hubY = lift + bh * 0.82, hubZ = bd / 2 + 0.55, sailL = 7.2;
-  sink.cylinder('structureWood', [0, hubY, bd / 2 - 0.3], 'z', 1.0, 0.18, 8, { colour: dark, decor: true });
-  for (let k = 0; k < 4; k++) {
-    const a = Math.PI / 4 + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
-    const tip: Vec3 = [ca * sailL, hubY + sa * sailL, hubZ];
-    sink.member('structureWood', [0, hubY, hubZ], tip, 0.2, 0.16, [0, 0, 1], { colour: timber, decor: true, exposed: true });
-    // the lattice: a sail frame beside the whip, bars across it
-    const px = -sa, py = ca;
-    const edgeA: Vec3 = [ca * 2.0 + px * 0.95, hubY + sa * 2.0 + py * 0.95, hubZ], edgeB: Vec3 = [ca * sailL + px * 0.95, hubY + sa * sailL + py * 0.95, hubZ];
-    sink.member('structureWood', edgeA, edgeB, 0.1, 0.08, [0, 0, 1], { colour: timber, decor: true, exposed: true });
-    for (let r = 2.2; r < sailL; r += 0.62) {
-      sink.member('structureWood', [ca * r, hubY + sa * r, hubZ], [ca * r + px * 0.95, hubY + sa * r + py * 0.95, hubZ], 0.07, 0.06, [0, 0, 1], { colour: timber, decor: true, exposed: true });
-    }
-  }
-  // the tail pole down to the ground and the ladder to the door
-  // (the connectivity sweep: the pole's foot hung a third of a metre over the ground and the ladder stopped short of the
-  // door, without rungs) the pole's foot on its stone, the ladder's stiles up to the door's sill and its rungs
-  sink.member('structureWood', [0, lift + 0.3, -bd / 2], [0, 0.4, -bd / 2 - 4.6], 0.2, 0.2, [1, 0, 0], { colour: dark, exposed: true, decor: true });
-  sink.span('stone', -0.3, -0.3, -bd / 2 - 4.85, 0.4, 0.34, -bd / 2 - 4.25, { decor: true });
-  const lt: Vec3 = [0, lift + 0.02, -bd / 2 - 0.02], lb: Vec3 = [0, 0.05, -bd / 2 - 2.6];
-  for (const sx of [-0.45, 0.45]) sink.member('structureWood', [sx, lt[1], lt[2]], [sx, lb[1], lb[2]], 0.12, 0.1, [1, 0, 0], { colour: dark, exposed: true, decor: true });
-  for (let t = 0.1; t < 0.96; t += 0.1) {
-    const y = lt[1] + (lb[1] - lt[1]) * t, z = lt[2] + (lb[2] - lt[2]) * t;
-    sink.member('structureWood', [-0.44, y, z], [0.5, y, z], 0.06, 0.05, [0, 1, 0], { colour: dark, exposed: true, decor: true, fine: true }, 0.025);
-  }
-  return sink.finish();
-};
+/** The wooden post mill (props census #22, Lane C 2026-10-16: windmills.ts buildPostMill, at the standard). */
+const postMill: RegionalBuilder = (ctx) => buildPostMill(ctx, { timber: rgb(0x6a5440), dark: rgb(0x4a3b2e) });
 
 /** An onion dome on a drum: stacked frustums swelling and narrowing to a gilt cross. */
 function onion(sink: PartSink, x: number, y: number, z: number, r: number, colour: Rgb): void {

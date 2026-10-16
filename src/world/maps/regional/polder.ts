@@ -3,9 +3,10 @@
 // sash frames with many lights, shutters painted green with white margins, a stack at each gable; the great
 // Zeeuwse schuur, a barn of black-tarred weatherboard under a towering hipped thatch with a band of pantiles at the
 // eaves and white-framed doors; a thatched smock mill with its stage; brick warehouses and a café on the dike road.
+import { buildSmockMill } from './windmills.ts';
 import {
   PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
-  type Face, type RegionalParts, type Rgb, type Vec3,
+  type Face, type RegionalParts, type Rgb,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -268,56 +269,8 @@ const schuur: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A thatched smock mill: a brick base, the octagonal thatched body, a stage on struts, the cap and four sails. */
-const smockMill: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx);
-  const R0 = 3.0, baseH = 2.6, bodyH = 8.2, R1 = 1.7;
-  sink.cylinder('stone', [0, -0.4, 0], 'y', baseH + 0.4, R0 + 0.15, 8, {}, R0, true, Math.PI / 8);
-  sink.cylinder('straw', [0, baseH, 0], 'y', bodyH, R0 - 0.05, 8, {}, R1, true, Math.PI / 8);
-  // the stage at the base's top: a timber deck ring on struts and a rail
-  const stageY = baseH + 0.1, sr = R0 + 1.5;
-  for (let k = 0; k < 8; k++) {
-    const a0 = (k + 0.5) / 8 * Math.PI * 2, a1 = (k + 1.5) / 8 * Math.PI * 2;
-    const p0: Vec3 = [Math.cos(a0) * sr, stageY, Math.sin(a0) * sr], p1: Vec3 = [Math.cos(a1) * sr, stageY, Math.sin(a1) * sr];
-    sink.member('structureWood', p0, p1, 0.16, 0.16, [0, 1, 0], { colour: TAR, decor: true, exposed: true });
-    sink.member('structureWood', [p0[0], stageY + 1.0, p0[2]], [p1[0], stageY + 1.0, p1[2]], 0.08, 0.08, [0, 1, 0], { colour: WHITE, decor: true, exposed: true });
-    sink.member('structureWood', [Math.cos(a0) * (R0 - 0.1), stageY - 1.6, Math.sin(a0) * (R0 - 0.1)], p0, 0.14, 0.14, [-Math.sin(a0), 0, Math.cos(a0)], { colour: TAR, decor: true, exposed: true });
-    sink.member('structureWood', p0, [p0[0], stageY + 1.0, p0[2]], 0.08, 0.08, [Math.cos(a0), 0, Math.sin(a0)], { colour: WHITE, decor: true, exposed: true });
-  }
-  // the deck: a thin ring of planks as a flat octagon annulus (eight trapezoids)
-  for (let k = 0; k < 8; k++) {
-    const a0 = (k + 0.5) / 8 * Math.PI * 2, a1 = (k + 1.5) / 8 * Math.PI * 2;
-    const V = (x: number, y: number, z: number): Vec3 => [x, y, z];
-    const pts: Vec3[] = [V(Math.cos(a0) * sr, stageY + 0.08, Math.sin(a0) * sr), V(Math.cos(a1) * sr, stageY + 0.08, Math.sin(a1) * sr),
-      V(Math.cos(a1) * (R0 + 0.05), stageY + 0.08, Math.sin(a1) * (R0 + 0.05)), V(Math.cos(a0) * (R0 + 0.05), stageY + 0.08, Math.sin(a0) * (R0 + 0.05))];
-    sink.prism('structureWood', pts, [0, -1, 0], 0.08, { colour: TAR, decor: true });
-  }
-  // the cap: a boat-shaped thatched hood
-  const capY = baseH + bodyH;
-  const cap: RoofSpec = { kind: 'gable', pitchDeg: 55, eave: 0.3, verge: 0.4, thickness: 0.25, bucket: 'straw', ridge: 'round' };
-  const capRg = roofGeometry(R1 * 2.1, R1 * 2.4, capY, cap);
-  emitRoof(sink, capRg, cap);
-  // (the buildings stream, 2026-10-12, the integrity check: the hood's ends stood open, sky through the cap and the
-  // windshaft hanging in it on nothing) the cap's boarded body under the thatch, its front gable carrying the shaft
-  if (capRg.gable) sink.prism('structureWood', capRg.gable.map(([u, yy]): Vec3 => [u, yy, -capRg.halfD]), [0, 0, 1], 2 * capRg.halfD, { colour: TAR, decor: true });
-  sink.cylinder('structureWood', [0, capY - 0.2, 0], 'y', 0.4, R1 + 0.05, 8, { colour: TAR }, R1 + 0.05, true, Math.PI / 8);
-  // the stock and sails on +z
-  const hubY = capY + 0.9, hubZ = R1 + 0.9, sailL = 11.5;
-  sink.cylinder('structureWood', [0, hubY, R1 - 0.2], 'z', 1.2, 0.24, 8, { colour: TAR, decor: true });
-  for (let k = 0; k < 4; k++) {
-    const a = Math.PI / 4 + k * Math.PI / 2 + 0.12, ca = Math.cos(a), sa = Math.sin(a);
-    sink.member('structureWood', [0, hubY, hubZ], [ca * sailL, hubY + sa * sailL, hubZ], 0.24, 0.2, [0, 0, 1], { colour: TAR, decor: true, exposed: true });
-    const px = -sa, py = ca;
-    sink.member('structureWood', [ca * 2.4 + px * 1.1, hubY + sa * 2.4 + py * 1.1, hubZ], [ca * sailL + px * 1.1, hubY + sa * sailL + py * 1.1, hubZ], 0.1, 0.08, [0, 0, 1], { colour: WHITE, decor: true, exposed: true });
-    for (let r = 2.6; r < sailL; r += 0.7) {
-      sink.member('structureWood', [ca * r, hubY + sa * r, hubZ], [ca * r + px * 1.1, hubY + sa * r + py * 1.1, hubZ], 0.07, 0.06, [0, 0, 1], { colour: WHITE, decor: true, exposed: true });
-    }
-  }
-  const f: Face = { origin: [0, 0, R0 * Math.cos(Math.PI / 8)], u: [1, 0, 0], out: [0, 0, 1], width: 2 };
-  doorUnit(sink, f, 0, 0, 1.1, 2.1, { leaf: st.green, frame: { bucket: 'structureWood', width: 0.1, out: 0.05, colour: WHITE }, steps: null, leafKind: 'plank' });
-  return sink.finish();
-};
+/** A thatched smock mill on its brick base and stage (props census #22, Lane C 2026-10-16: windmills.ts buildSmockMill). */
+const smockMill: RegionalBuilder = (ctx) => buildSmockMill(ctx, { tar: TAR, white: WHITE, door: stateFor(ctx).green });
 
 /** A brick warehouse (pakhuis) with loading doors above each other and a hoist beam (the base depot footprint). */
 const pakhuis: RegionalBuilder = (ctx) => {

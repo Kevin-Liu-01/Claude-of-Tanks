@@ -17,6 +17,7 @@ import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from '.
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import { openShed } from './outbuildings.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { launder, millAxle, trestle, waterWheel } from './millWorks.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -939,48 +940,67 @@ const chapel: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The water mill: a two-storey Fachwerk mill house on a sandstone ground storey, an overshot wheel on its flank. */
+/**
+ * The water mill: a two-storey Fachwerk mill house on a sandstone ground storey, an overshot wheel on its flank. (Props
+ * census #22, Lane C 2026-10-16) the water works at the standard (millWorks.ts): the wheel's shrouds, arms, sole and
+ * raked buckets on an iron hub, its banded axle into the wall through a hole cut for it; the launder's plank trough on
+ * its yokes with its water, borne on a beam from the wall and braced trestles clear of the wheel, its penstock board at
+ * the head; the wheel pit in sandstone with the tail water. The wheel, the axle, the launder and the trestles stand in
+ * the mill's records where the plot's slack holds them; the pit, its bearing pier and the water are dressing.
+ */
 const mill: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
-  // the mill house fitted to its plot (a 6.4 m plot: its wheel on +x, the flume up to the plot's front edge)
+  // the mill house fitted to its plot (a 6.4 m plot: its wheel on +x, the launder up to the plot's front edge)
   const W = Math.max(4.6, Math.min(6.0, ctx.info.w - 1.8)), D = Math.max(5.6, Math.min(7.6, ctx.info.d - 0.8));
   const sts: HouseSpec['storeys'] = [{ h: 2.8, wall: 'stone' }, { h: 2.5, wall: st.infill, framed: true, jetty: [0.2, 0, 0, 0] }];
+  const R = 2.3, half = 0.5, cxw = W / 2 + 0.78, cy = R - 0.35, plinth = 0.4;
+  // the axle's hole in the ground storey's flank (the wheel's side has no other opening there)
+  const isHole = (o: Opening): boolean => o.face === 'right' && o.storey === 0 && o.kind === 'loft';
+  const openings = houseOpenings(W, D, sts, { face: 'front', u: -1.2 }, st).filter((o) => !(o.face === 'right' && o.storey === 0));
+  openings.push({ face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.56, h: 0.56, y0: cy - plinth - 0.28 });
+  const dialect = hessianDialect(st);
   buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.4, out: 0.06, bucket: 'stone' }, storeys: sts,
+    w: W, d: D, plinth: { h: plinth, out: 0.06, bucket: 'stone' }, storeys: sts,
     roof: roofFor(st.rng, { halfHip: 0.6 }), gableFramed: true, gableBucket: st.infill,
-    openings: houseOpenings(W, D, sts, { face: 'front', u: -1.2 }, st).filter((o) => !(o.face === 'right' && o.storey === 0)),
-    chimneys: chimneyFor(st.rng, D, 'stone'), gutters: { colour: ZINC }, verge: { colour: st.timber, bucket: SW },
-  }, hessianDialect(st));
-  // the overshot wheel on +x: two rim rings, spokes, paddles and the axle into the wall; a flume on trestles feeds it
-  const R = 2.3, cxw = W / 2 + 0.78, cy = R + 0.25;
-  const wood = rgb(0x6a5440);
-  const wc = { colour: wood, decor: true, exposed: true };
-  for (const x of [cxw - 0.55, cxw + 0.55]) {
-    for (let k = 0; k < 16; k++) {
-      const a0 = k / 16 * Math.PI * 2, a1 = (k + 1) / 16 * Math.PI * 2;
-      sink.member(SW, [x, cy + Math.cos(a0) * R, Math.sin(a0) * R], [x, cy + Math.cos(a1) * R, Math.sin(a1) * R], 0.14, 0.12, [1, 0, 0], wc, 0);
-    }
-    for (let k = 0; k < 8; k++) {
-      const a = (k + 0.5) / 8 * Math.PI * 2;
-      sink.member(SW, [x, cy, 0], [x, cy + Math.cos(a) * (R - 0.05), Math.sin(a) * (R - 0.05)], 0.1, 0.1, [1, 0, 0], wc, 0);
-    }
-  }
-  for (let k = 0; k < 18; k++) {
-    const a = k / 18 * Math.PI * 2;
-    // (the connectivity sweep: at 16 cm in, the boards at the rims' corners stood clear of them)
-    const y = cy + Math.cos(a) * (R - 0.09), z = Math.sin(a) * (R - 0.09);
-    sink.member(SW, [cxw - 0.55, y, z], [cxw + 0.55, y, z], 0.3, 0.05, [0, Math.cos(a), Math.sin(a)], { colour: shade(wood, 0.85), decor: true, exposed: true }, 0.025);
-  }
-  sink.cylinder('wood', [W / 2 - 0.1, cy, 0], 'x', cxw + 0.75 - (W / 2 - 0.1), 0.16, 8, { decor: true });
-  // the flume to the top of the wheel, on two trestles
-  const fy = cy + R + 0.4;
+    openings, chimneys: chimneyFor(st.rng, D, 'stone'), gutters: { colour: ZINC }, verge: { colour: st.timber, bucket: SW },
+  }, {
+    ...dialect,
+    window: (s, face, o, y0, frame) => {
+      // the axle's hole: the mill room's dark round the shaft at the back of its reveal
+      if (isHole(o)) faceBox(s, 'dark', face, o.u, y0 + o.y0 + o.h / 2, -s.recess + 0.01, o.w, o.h, 0.02, { decor: true });
+      else dialect.window(s, face, o, y0, frame);
+    },
+  });
+  const wood = rgb(0x6a5440), wet = shade(wood, 0.72), iron = rgb(0x1e1e1e);
+  // the wheel, its axle and the launder are collision-bearing where they stay within the plot's slack
+  const solid = cxw + half + 0.22 - ctx.info.w / 2 <= 0.75;
+  sink.placed(Math.PI / 2, cxw, cy, 0, () => {
+    millAxle(sink, W / 2 - 0.25 - cxw, half + 0.22, wet, iron, [-half - 0.12, half + 0.12], solid);
+    waterWheel(sink, { R, half, kind: 'overshot', wood: wet, boards: wood, iron, solid });
+  });
+  // the pit: its outer wall in sandstone with a coping, the end wall upstream, the tail water; the bearing pier on it
+  const px0 = cxw + half + 0.14, px1 = px0 + 0.3, pz = R + 0.5;
+  sink.span('stone', px0, -0.6, -pz, px1, 0.35, pz, { decor: true });
+  sink.band('stone', px0 - 0.04, 0.35, -pz - 0.04, px1 + 0.04, 0.43, pz + 0.04, { decor: true });
+  sink.span('stone', W / 2 + 0.06, -0.6, pz, px1, 0.35, pz + 0.3, { decor: true });
+  sink.quad('glass', [W / 2 + 0.06, 0.04, pz], [px0, 0.04, pz], [px0, 0.04, -pz], [W / 2 + 0.06, 0.04, -pz], { decor: true });
+  sink.span('stone', px0, 0.43, -0.32, px1 - 0.06, cy - 0.37, 0.32, { decor: true });
+  sink.span('structureWood', px0 + 0.02, cy - 0.37, -0.26, px1 - 0.1, cy - 0.17, 0.26, { colour: wet, decor: true });
+  // the launder from over the wheel's crown to the plot's front edge, closed at its far end
+  const lf = cy + R + 0.3, lw = 0.7;
   const flumeEnd = Math.min(D / 2 + 3.4, Math.max(D / 2 + 0.4, ctx.info.d / 2 - 0.1));
-  sink.span(SW, cxw - 0.4, fy - 0.32, -0.6, cxw + 0.4, fy, flumeEnd, wc);
-  // its trestles beside the house wall and at the plot's front
-  for (const z of [Math.min(D / 2 + 0.7, 1.6), flumeEnd - 0.3]) for (const x of [cxw - 0.33, cxw + 0.33]) {
-    sink.span(SW, x - 0.07, 0, z - 0.07, x + 0.07, fy - 0.32, z + 0.07, wc);
-  }
+  launder(sink, { x: cxw, y: lf, z0: -0.35, z1: flumeEnd, width: lw, sides: 0.34, wood, solid, water: 0.22 });
+  sink.span('structureWood', cxw - lw / 2, lf, flumeEnd - 0.06, cxw + lw / 2, lf + 0.34, flumeEnd, { colour: wood, decor: true });
+  // the penstock board at the head, raised in its cleats on an iron rod with a cross handle
+  sink.span('structureWood', cxw - lw / 2, lf + 0.1, -0.12, cxw + lw / 2, lf + 0.5, -0.08, { colour: wet, decor: true });
+  sink.span('structureMetal', cxw - 0.015, lf + 0.5, -0.115, cxw + 0.015, lf + 1.05, -0.085, { colour: iron, decor: true });
+  sink.span('structureMetal', cxw - 0.16, lf + 1.02, -0.115, cxw + 0.16, lf + 1.05, -0.085, { colour: iron, decor: true, fine: true });
+  // its bearers: a beam from the house wall under the trough over the wheel, braced trestles beyond the wheel's rim
+  const under = lf - 0.06 - 0.12;
+  sink.span(SW, W / 2 - 0.1, under - 0.16, 0.92, cxw + lw / 2 + 0.12, under, 1.08, { colour: shade(wood, 0.9), ...(solid ? {} : { decor: true }) });
+  const t0 = R + 0.45, t1 = flumeEnd - 0.3;
+  for (const z of t1 - t0 > 1.0 ? [t0, t1] : [Math.max(t0, t1)]) trestle(sink, cxw, z, 0.33, -0.3, under, wood, solid);
   return sink.finish();
 };
 
