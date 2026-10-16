@@ -486,6 +486,12 @@ export interface WallDressingOptions {
   adobeApronCoarse?: boolean;
   plainV?: readonly [number, number];
   /**
+   * (props lane A #6) the coping a brick-print map's wall piers carry, by its region (brickPierCapFor): the Ruhr's and
+   * the Saar's Rollschicht of bricks on edge, the Franconian ashlar's saddleback, Jiangnan's hipped cap, Glen Canyon's
+   * block cap, a slab with its drip elsewhere.
+   */
+  pierCap?: BrickPierCap;
+  /**
    * (b18) The ground the turf banks against the dry-stone walls' feet: the nearest terrain mesh's height and the
    * ground's fold (buildWallTurf). Absent: no turf (a snow map's drifts and the phones' walls go without).
    */
@@ -521,8 +527,81 @@ export interface WallDressing {
    */
   breach(kind: 'drystone' | 'adobe' | 'brick', x: number, y: number, z: number, yaw: number, thick: number, height: number,
     toward: 1 | -1): THREE.BufferGeometry;
+  /**
+   * (props lane A #6; WORKLIST #6 site:wall-end-post) a brick-print wall's pier where a run ends or opens, its foot at
+   * (x, y, z): a plinth a brick proud, the shaft, a string course under the coping of its region (WallDressingOptions
+   * pierCap). props.ts spends the old post's draws.
+   */
+  pier(x: number, y: number, z: number, yaw: number, thick: number, height: number): THREE.BufferGeometry;
   /** The units a breach spilled (the dry-stone wall's stones, the mud wall's lumps) about (x, z); null on the snow. */
   breachTumble(adobe: boolean, x: number, z: number, ox: number, oz: number, half: number): THREE.BufferGeometry | null;
+}
+
+export type BrickPierCap = 'rollschicht' | 'saddleback' | 'hipped' | 'block' | 'slab';
+const PIER_CAPS: Readonly<Record<string, BrickPierCap>> = Object.freeze({
+  ruhr: 'rollschicht', saar: 'rollschicht', franconian: 'saddleback', shanghai: 'hipped', glencanyon: 'block',
+});
+/** A brick-print map's pier coping by its architecture kit. */
+export function brickPierCapFor(architectureId: string | null | undefined): BrickPierCap {
+  return (architectureId ? PIER_CAPS[architectureId] : undefined) ?? 'slab';
+}
+
+/** A box on the brick print (its faces' uvs by place on the face, the print's 0.7 a metre; `soldier` turns its courses
+ *  upright: the Rollschicht's bricks on edge), its bottom face left out. */
+function printedBox(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(cx, y0 + h / 2, cz);
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
+    let u = ay > 0.5 ? p.getX(i) : ax > 0.5 ? p.getZ(i) : p.getX(i), v = ay > 0.5 ? p.getZ(i) : p.getY(i);
+    if (soldier && ay < 0.5) [u, v] = [v, u];
+    uv.setXY(i, u * 0.7, v * 0.7);
+  }
+  // (the bottom face, -y: the box's fourth group)
+  const index = g.index!, keep: number[] = [];
+  for (let t = 0; t < index.count; t += 3) {
+    const a = index.getX(t);
+    if (n.getY(a) < -0.5) continue;
+    keep.push(index.getX(t), index.getX(t + 1), index.getX(t + 2));
+  }
+  g.setIndex(keep);
+  g.clearGroups();
+  return g;
+}
+
+/** A gabled or hipped coping over a pier `w` square at height y (rise `rise`), on the brick print. */
+function copingRoof(w: number, y: number, rise: number, hipped: boolean): THREE.BufferGeometry {
+  const h = w / 2, pos: number[] = [], uv: number[] = [];
+  const put = (q: readonly number[]) => { pos.push(q[0], q[1], q[2]); uv.push((q[0] + q[2]) * 0.7, q[1] * 0.7); };
+  const c: number[][] = [[h, y, h], [-h, y, h], [-h, y, -h], [h, y, -h]];
+  if (hipped) {
+    const apex = [0, y + rise, 0];
+    for (let k = 0; k < 4; k++) { put(c[k]); put(apex); put(c[(k + 1) % 4]); }
+  } else {
+    // the saddleback: its ridge along z, two slopes and two gable ends
+    const r0 = [0, y + rise, h], r1 = [0, y + rise, -h];
+    for (const q of [c[0], r0, r1, c[0], r1, c[3], c[1], c[2], r1, c[1], r1, r0]) put(q);
+    for (const q of [c[0], c[1], r0, c[2], c[3], r1]) put(q);
+  }
+  // every face wound out from a point inside the coping
+  const inside = [0, y + rise * 0.3, 0];
+  for (let t = 0; t < pos.length; t += 9) {
+    const ax = pos[t], ay = pos[t + 1], az = pos[t + 2];
+    const ux = pos[t + 3] - ax, uy = pos[t + 4] - ay, uz = pos[t + 5] - az, vx = pos[t + 6] - ax, vy = pos[t + 7] - ay, vz = pos[t + 8] - az;
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const cx = (ax + pos[t + 3] + pos[t + 6]) / 3 - inside[0], cy = (ay + pos[t + 4] + pos[t + 7]) / 3 - inside[1], cz = (az + pos[t + 5] + pos[t + 8]) / 3 - inside[2];
+    if (nx * cx + ny * cy + nz * cz < 0) {
+      for (let k = 0; k < 3; k++) [pos[t + 3 + k], pos[t + 6 + k]] = [pos[t + 6 + k], pos[t + 3 + k]];
+      const ut = (t / 3) * 2;
+      for (let k = 0; k < 2; k++) [uv[ut + 2 + k], uv[ut + 4 + k]] = [uv[ut + 4 + k], uv[ut + 2 + k]];
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
 }
 
 /** A slumped mud stub `thick` across and `len` long (y 0..h), its top stepped down from the `toward` end to a broken bite. */
@@ -672,6 +751,24 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
       } else {
         g = brickStub(thick, len, height + 0.15, toward, seed);
       }
+      g.rotateY(yaw);
+      return g.translate(x, y, z);
+    },
+    pier(x, y, z, yaw, thick, height) {
+      const w = thick + 0.22, cap = o.pierCap ?? 'slab', parts: THREE.BufferGeometry[] = [];
+      const plinth = 0.32, string = height - 0.2;
+      parts.push(printedBox(w + 0.1, plinth, w + 0.1, 0, 0, 0));
+      parts.push(printedBox(w, string - plinth, w, 0, plinth, 0));
+      parts.push(printedBox(w + 0.06, 0.07, w + 0.06, 0, string, 0));
+      parts.push(printedBox(w, 0.13, w, 0, string + 0.07, 0));
+      const top = string + 0.2;
+      if (cap === 'rollschicht') parts.push(printedBox(w + 0.04, 0.14, w + 0.04, 0, top, 0, true));
+      else if (cap === 'saddleback' || cap === 'hipped') {
+        parts.push(printedBox(w + 0.12, 0.06, w + 0.12, 0, top, 0));
+        parts.push(copingRoof(w + 0.12, top + 0.06, cap === 'hipped' ? 0.2 : 0.16, cap === 'hipped'));
+      } else if (cap === 'block') parts.push(printedBox(w + 0.04, 0.12, w + 0.04, 0, top, 0));
+      else parts.push(printedBox(w + 0.14, 0.08, w + 0.14, 0, top, 0));
+      const g = mergeParts(parts);
       g.rotateY(yaw);
       return g.translate(x, y, z);
     },

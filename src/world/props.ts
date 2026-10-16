@@ -95,7 +95,7 @@ import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M 
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
-import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
+import { brickPierCapFor, buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { WaterDisturbance } from './shallowWater.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -6127,6 +6127,7 @@ ${snowCap ? `
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     adobeApronCoarse: P.adobeApronCoarse === true,
+    pierCap: brickPierCapFor(regionalArchitecture?.id),
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
       meshAt: (x, z) => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z), foldAt: turfFoldAt,
@@ -6195,11 +6196,9 @@ ${snowCap ? `
         if (fallen) buckets[wallB].push(fallen);
         return;
       }
-      const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
-      jitterUV(post, rng);
-      buckets[wallB].push(post.translate(px, py + ph / 2, pz));
-      buckets[wallB].push(box(thick + 0.34, 0.12, thick + 0.34, 0.8)
-        .translate(px, py + ph + 0.05, pz)); // cap slab
+      // (props lane A #6) the brick wall's pier and its region's coping (fieldWallDressing.ts pier); the old post's draws
+      jitterUV(box(thick + 0.22, ph, thick + 0.22, 0.7), rng).dispose();
+      buckets[wallB].push(wallDressing.pier(px, py, pz, yaw, thick, ph + 0.11));
     }
     function addBrokenBreach(t0: number, t1: number): void {
       // (props lane A #6: the boxes are the seat proxies and keep the draws; the breach draws the wall's own stepped
