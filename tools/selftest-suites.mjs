@@ -865,6 +865,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/trailCadence.selftest.mjs',
     'src/fx/exhaustTrail.selftest.mjs',
     'src/world/trackSurface.selftest.mjs',
+    'src/world/roadPave.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
     'src/game/battlePresentationRuntime.selftest.mjs',

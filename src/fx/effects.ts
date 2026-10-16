@@ -25,6 +25,7 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
+import { streetGritShare } from '../world/roadPave.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
@@ -106,6 +107,8 @@ interface FxHeightField {
   waterRipplesActive?(): boolean;
   getGroundType?(x: number, z: number): string;
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
+  /** The paved share of a carriageway (world/roadPave.ts): a sett or concrete street throws grit, not an earth wake. */
+  getRoadPaveAt?(x: number, z: number): number;
 }
 
 /** The world seam the structure looks read (world/map.ts; DESTRUCTION.md §16.4). */
@@ -5229,6 +5232,32 @@ function* createFxSteps(
     particles.emit('dust', _puffO);
   }
 
+  /**
+   * A paved street's track grit (the s92 note): grit and old dust ground out of the joints at the track's contact — low,
+   * small and short, grey in the street's own dust colour, settling at once — so a column on the setts trails a faint
+   * continuous haze at its tracks instead of the earth wake. Same dust pool, no allocation.
+   */
+  function emitStreetGrit(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, gy: number): void {
+    updateDryDustColors('hard');
+    _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+    _puffO.pos[1] = gy + 0.15 + rng() * 0.1;
+    _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+    _puffO.vel[0] = -dir.x * (1.0 + intensity * 1.6) + (rng() - 0.5) * 0.7 + COLUMN_WIND_X * 0.4;
+    _puffO.vel[1] = 0.18 + intensity * 0.45 + rng() * 0.15;
+    _puffO.vel[2] = -dir.z * (1.0 + intensity * 1.6) + (rng() - 0.5) * 0.7 + COLUMN_WIND_Z * 0.4;
+    _puffO.life = 0.5 + rng() * 0.4;
+    _puffO.size0 = (0.18 + intensity * 0.12) * dustSizeCap;
+    _puffO.size1 = (0.7 + intensity * 0.6 + rng() * 0.25) * dustSizeCap;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 1.2;
+    col3(dustColor0, _puffO.col0);
+    col3(dustColor1, _puffO.col1);
+    _puffO.alpha = (0.07 + intensity * 0.09) * dustAlphaCap;
+    _puffO.grav = -1.4;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+  }
+
   /** One low contact puff replaces the large earth wake; same dust pool. */
   function emitTrackPowder(
     pos: THREE.Vector3,
@@ -6690,6 +6719,15 @@ function* createFxSteps(
       if (rng() > intensity * 0.85 * surfaceMultiplier) return;
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
+      // (the engine lane's s92 note, 2026-10-15: "orange glow puffs either side of the lead tank") a sett, concrete or
+      // stone street has no loose earth: its tracks throw a low grit haze, never the earth wake's climbing tan billows,
+      // which stood as glowing columns at every hull's rear corners on Steinburg's Hauptstrasse. An unpaved road keeps
+      // its continuous trail (world/roadPave.ts: the carriageway's paved share, the one the terrain paints)
+      const pave = groundType === 'hard' ? heightField?.getRoadPaveAt?.(pos.x, pos.z) ?? 0 : 0;
+      if (pave > 0 && rng() < streetGritShare(pave)) {
+        if (!frozen) emitStreetGrit(pos, dir, intensity, gy);
+        return;
+      }
       // destruction-fx (wave 265's weathering critics: no dust behind moving tanks at battle distance): on the media tier
       // a hull on sand trails a skirt of its own dust over the contact powder.
       // EF.01 (the owner, 2026-10-12: the dust "used to look more uniform ... continuous. like how it was before"): on

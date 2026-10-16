@@ -45,6 +45,7 @@ import {
   type PavedSurfaceConfig, type RoadSurface, type RoadSurfaceWork,
 } from './roadSurfaces.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
+import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
   usesInheritedRoadGrades, remapInheritedRoadElevations, alignAddedRoadJunctionGrades,
   originalRoadPlacementConfig } from './maps/roadEndpoints.ts';
@@ -652,6 +653,7 @@ export interface HeightField {
   waterRipplesActive?(): boolean;
   /** Presentation-only; simulation/headless fields may omit this query. */
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
+  getRoadPaveAt?(x: number, z: number): number; // presentation: the paved share of a carriageway (roadPave.ts)
   /** Round 61 (2026-09-24): the bridge decks resolved from the stations authored `crossing: 'bridge'` (empty on every
    * other map) — the kit, the navigation grid and the FX read the same planes the height field is exempted under. */
   bridgeDecks?: readonly BridgeDeckPlane[];
@@ -2920,6 +2922,7 @@ function* heightFieldBuildSteps(
     if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
+  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village); // the FX lane's street dust (roadPave.ts)
 
   function getDriveGroundType(x: number, z: number): GroundType {
     const ground = getGroundType(x, z);
@@ -3150,6 +3153,7 @@ function* heightFieldBuildSteps(
     bridgeDecks, // round 61
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
+    getRoadPaveAt: (x: number, z: number): number => roadPaveAt(gridSample(gRoadDist, x, z), x, z, bridgeDecks.length > 0 && bridgeDeckOver(x, z) !== null),
     _villageMask: villageMask,
     // ground lane (2026-10-03): the field system the terrain material draws (landUse.ts) — on the field itself, so the
     // client, the browser host and the server's collision shards place hedgerow trees and field bushes alike;

@@ -14,6 +14,7 @@ interface HeightFieldLike<Normal> {
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
+  getRoadPaveAt?(x: number, z: number): number;
 }
 
 interface HeightFieldWorld<Normal> {
@@ -32,6 +33,8 @@ interface LiveHeightFieldProxy<Normal> {
   getWaterDepthAt(x: number, z: number): number;
   getWaterSurfaceHeightAt(x: number, z: number): number;
   getTrackSurfaceAt(x: number, z: number): TrackSurface;
+  /** The paved share of a carriageway (roadPave.ts); 0 on an older or mock field. */
+  getRoadPaveAt(x: number, z: number): number;
   readonly size: number;
   readonly minY: number;
   readonly maxY: number;
@@ -107,6 +110,9 @@ export function createLiveHeightFieldProxy<Normal>({
     },
     getTrackSurfaceAt(x, z) {
       return field()?.getTrackSurfaceAt?.(x, z) ?? 0;
+    },
+    getRoadPaveAt(x, z) {
+      return field()?.getRoadPaveAt?.(x, z) ?? 0;
     },
     get size() { return field()?.size ?? 1000; },
     get minY() { return field()?.minY ?? 0; },
