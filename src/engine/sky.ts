@@ -784,10 +784,10 @@ function atmosphereEnabledFor(renderer: THREE.WebGLRenderer): boolean {
 }
 
 /**
- * Round 68's volumetric cloud layer was OPT-IN (`?clouds=volumetric`) from deploy 93: the owner ruled on 2026-09-25 that the
- * baked decks and the skies before it were fine, so every battlefield keeps the baked decks by default. The
- * layer stays in the tree for iteration; `?clouds=off` still names the baked decks explicitly (the pinned bake
- * receipts), and it never runs without the atmosphere.
+ * Whether the marched cloud layer runs: on every desktop battlefield with the atmosphere (the default since round 71c,
+ * deploy 96, the owner's "wow our clouds look amazing"); the mobile tier and the Ultra Low preset keep the baked decks
+ * (no atmosphere there, or the preset's `volumetricClouds: false`), and `?clouds=off` / `?clouds=baked` name the baked
+ * decks explicitly (the pinned bake receipts).
  */
 function volumetricCloudsEnabledFor(renderer: THREE.WebGLRenderer): boolean {
   if (!atmosphereEnabledFor(renderer)) return false;
@@ -807,6 +807,11 @@ function volumetricCloudsEnabledFor(renderer: THREE.WebGLRenderer): boolean {
 export interface AtmospherePublishedState {
   active: boolean;
   skyView: THREE.Texture | null;
+  /**
+   * 2026-10-06 (the clouds lane, agreed with the skies lane): the transmittance LUT (atmosphere.ts, Bruneton's (r, μ)
+   * parameterisation) — the cloud trace lights each sample by the sun's transmittance at its own altitude.
+   */
+  transmittanceLut: THREE.Texture | null;
   viewHeightKm: number;
   sunDir: THREE.Vector3;
   knee: THREE.Vector3;
@@ -1294,7 +1299,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   sky.visible = true;
   scene.add(atmosphereDome);
   const atmosphereState: AtmospherePublishedState = {
-    active: false, skyView: atmosphereLuts?.skyView.texture ?? null, viewHeightKm: 0.05, sunDir,
+    active: false, skyView: atmosphereLuts?.skyView.texture ?? null, transmittanceLut: atmosphereLuts?.transmittance.texture ?? null,
+    viewHeightKm: 0.05, sunDir,
     knee: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF), skyIntensity: 1, horizonLum: 0.45,
     horizonCap: HORIZON_LUM_CAP, fogTint: new THREE.Color(preset.fogTintHex), fogMix: preset.fogMix, fogDensity: preset.fogDensity, irradiance: new THREE.Color(0.3, 0.4, 0.6),
     summary: atmosphereLuts?.summary ?? null,

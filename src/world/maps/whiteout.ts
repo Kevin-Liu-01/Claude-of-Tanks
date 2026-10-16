@@ -296,7 +296,9 @@ export default {
   // (deckLight 1: one lighting path; a share under 1 pays both) — with soft cells, base lumps and the detail's erosion, and
   // the snow under it lifting its base (ambientScale, the deck path's ground bounce: a quarter-albedo ground at 1). The
   // deck's structure lands in the overcast photos' band, and its level comes down toward the snow's it lights
-  clouds: { regime: 'low-stratus', baseM: 300, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
+  // 2026-10-07 (the clouds lane, wave 222: the structured deck "too high for low Arctic stratus" — "a lower, subtler
+  // deck that shows the sun's direction"): the base at 180 m
+  clouds: { regime: 'low-stratus', baseM: 180, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
     deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3,
     // 2026-10-10 (the shadows lane; owner: "shadows are still really bad on maps like whiteout"): the closed deck cut the
     // cascades' sun to 2 % of its beam — lit and shaded snow 1.02 : 1, "flat, shadowless snow, with buildings that look like
