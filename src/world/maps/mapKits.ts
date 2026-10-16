@@ -48,7 +48,8 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { addArchedStoneBridge, addRuinedRiverBridge, alignWidth, type DressingBridgeDeck } from './archedStoneBridge.ts';
+import { addArchedStoneBridge, addRuinedRiverBridge, alignWidth, archedBridgeDraws, type DressingBridgeDeck } from './archedStoneBridge.ts';
+import { addSuzhouBridge } from './suzhouBridges.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 export type Rng = () => number;
@@ -1162,7 +1163,15 @@ export function dressMapExtras({
   // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
   // authored crossing: 'bridge' (the arched spans, the abutments, the parapets and their collision, as Amberford's)
   if (kits.includes('shanghai')) {
-    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
+    // (#27) Suzhou Creek's steel and concrete crossings: riveted girders on granite piers, and at the creek's mouth by
+    // the Bund (the easternmost deck) the Garden Bridge's camelback truss (suzhouBridges.ts)
+    const decks = heightField.bridgeDecks ?? [];
+    const bund = decks.reduce<DressingBridgeDeck | null>((best, d) => (!best || d.x > best.x ? d : best), null);
+    for (const deck of decks) {
+      // (the arched bridge's draws burnt, so the kit's later dressing keeps its place on the map's stream)
+      for (let k = archedBridgeDraws(deck); k > 0; k--) rng();
+      addSuzhouBridge(deck, heightField, buckets, focused, deck === bund ? 'truss' : 'girder');
+    }
     // the tram line down the Settlement's avenue, the bridgeheads' sandbagged posts, the creek's sampans (their own streams)
     dressShanghai(focused, mapId);
   }
@@ -1930,7 +1939,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   // round 61: the bridge stands on the deck plane terrain.ts resolved for the station authored crossing: 'bridge';
   // a river without one keeps the round-1 ruin
   const decks = heightField.bridgeDecks ?? [];
-  for (const deck of decks) addArchedStoneBridge(deck, heightField, rng, buckets, ctx);
+  for (const deck of decks) addArchedStoneBridge(deck, heightField, rng, buckets, ctx, 'norman');
   if (!decks.length) addRuinedRiverBridge(links, heightField, rng, buckets);
   // ford posts on every lane that wades the river; a lane a deck carries crosses dry-shod
   addRiverFordMarkers(L.roads.filter((_road, index) => !decks.some((deck) => deck.route === index)),
