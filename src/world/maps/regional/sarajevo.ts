@@ -36,7 +36,7 @@ import {
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
 import { ahDormer } from './sarajevoDormer.ts';
-import { atticOculus, mansardDormer } from './sarajevoRoofs.ts';
+import { atticOculus, doksatBay, mansardDormer } from './sarajevoRoofs.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -532,14 +532,7 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
     // the doksat: a bay of windows on its brackets, under the main eaves
     if (doksat) {
       const dd = 0.7, yb = y1 + 0.05, yt = frame.eaveY - 0.1;
-      faceBox(sink, 'plaster', up, du, (yb + yt) / 2, dd / 2, dw, yt - yb, dd, { decor: true });
-      const bay: Face = { origin: [up.origin[0] + up.out[0] * dd, 0, up.origin[2] + up.out[2] * dd], u: up.u, out: up.out, width: dw };
-      const panes = Math.max(3, Math.round(dw / 0.62));
-      for (let k = 0; k < panes; k++) {
-        const pu = du - dw / 2 + (k + 0.5) * dw / panes;
-        windowUnit(sink, bay, pu, yb + 0.55, dw / panes - 0.16, Math.min(1.05, yt - yb - 0.8),
-          { frame: DARK_FRAME, frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null }, look, h.lit);
-      }
+      const bay = doksatBay(sink, up, du, dw, dd, yb, yt, look, h.lit, DARK_FRAME); // (looks r2 forms: sarajevoRoofs.ts)
       faceBox(sink, 'structureWood', bay, du, yb + 0.47, 0.03, dw + 0.06, 0.1, 0.07, tc);
       faceBox(sink, 'structureWood', up, du, yb + 0.02, dd / 2 + 0.02, dw + 0.12, 0.12, dd + 0.05, { colour: timber, decor: true });
       // the side walls of the bay, its brackets down the wall
