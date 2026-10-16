@@ -8,7 +8,7 @@
 // the sawmill's open shed and its board store; the shepherds' huts (bacówki) on the meadows; the houses burnt in the
 // January fighting, their stacks standing in the snow.
 import {
-  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom,
+  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom, UV_MEMBER,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
@@ -528,7 +528,16 @@ const kosciol: RegionalBuilder = (ctx) => {
   }
   // the door into the tower and the boarded chamber oversailing the shaft
   const tf: Face = { origin: [0, 0, tz + h0 - 0.06], u: [1, 0, 0], out: [0, 0, 1], width: 2 * h0 };
-  doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.14, out: 0.06, colour: PALE }, steps: null, leafKind: 'plank' });
+  // (the r2 sweep: the leaf lay on the shaft's boards, a dark plate) the door hung deep in a heavy timber case standing
+  // out of the shaft, under a little shingle hood on two brackets
+  doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.18, out: 0.17, colour: PALE }, steps: null, leafKind: 'plank' });
+  {
+    const hy = 0.45 + 2.3 + 0.22, hood: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.08, verge: 0.04, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true };
+    sink.placed(0, 0, 0, tz + h0 + 0.24, () => emitRoof(sink, roofGeometry(1.7, 0.6, hy, hood), hood));
+    for (const sx of [-1, 1]) sink.member('structureWood', [sx * 0.72, hy - 0.55, tz + h0 - 0.04], [sx * 0.72, hy - 0.02, tz + h0 + 0.5], 0.09, 0.09, [sx, 0, 0],
+      { colour: LOG_DARK, decor: true, exposed: true }, 0);
+    sink.span('structureWood', -0.85, hy - 0.1, tz + h0 - 0.06, 0.85, hy, tz + h0 + 0.54, { colour: LOG_DARK, decor: true, uv: UV_MEMBER });
+  }
   const cw = h1 + 0.35, cy0 = shaft, cy1 = shaft + 2.4;
   // (props census #15, Lane C 2026-10-16: the sound holes were dark plates on the boards) cut through the chamber's
   // boarded walls with their reveals, the louvre boards across each
