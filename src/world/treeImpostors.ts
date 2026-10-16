@@ -55,11 +55,14 @@ export const TREE_IMPOSTOR_BAKE_ALPHA_TEST = 0.38;
 export const TREE_IMPOSTOR_ALPHA_TEST = 0.5;
 /** Trees Fix B (2026-10-15): the bake's mip coverage give-back before its cut, per mip level of the leaf atlas and
  * its level cap. The capture draws a whole tree into a 64–128 px tile, so the cards sample the leaf atlas 3–5 mips
- * down, where averaging thins a needle spray's alpha under the cut: without it the baked crowns of the thin-needle
- * atlases kept 0.40–0.44 of their envelope against the near tier's 0.70 at the same screen size, in 11–18 pieces.
- * The near cards' own law (vegetation.ts mipAlphaGuard: 0.25 to 3.5) brings the bake to the near tier's fill
- * (tools/impostor-bake-coverage.mjs measures it per species row; the receipt holds every row to 0.9–1.1x). */
-export const TREE_IMPOSTOR_BAKE_MIP_BOOST = 0.25;
+ * down, where averaging thins a spray's alpha under the cut: with no give-back the baked crowns kept 0.30–0.65 of the
+ * near tier's fill at the same screen size on the needle and twig atlases (Aleppo pine 0.30, a bare birch on a 64 px
+ * tile 0.35, pinyon 0.48, pine 0.49, red pine 0.56; 178 of 327 ground rows over the 33 maps under 0.9x), in up to 86
+ * pieces. Tuned just under the near cards' own law (vegetation.ts mipAlphaGuard, 0.25 to 3.5), because the far
+ * impostor stacks its own give-back on the bake's: 0.22 is the least that holds every row to 0.9–1.1x of the near
+ * tier (worst 0.93, Aleppo pine; the full 0.25 would put every row at 1.0 and the far tier a little heavier).
+ * tools/impostor-bake-coverage.mjs measures it per row. */
+export const TREE_IMPOSTOR_BAKE_MIP_BOOST = 0.22;
 export const TREE_IMPOSTOR_BAKE_MIP_MAX = 3.5;
 /** The impostor program's own give-back on the atlas's texel footprint (applyTreeImpostorProgram). */
 export const TREE_IMPOSTOR_MIP_BOOST = 0.25;

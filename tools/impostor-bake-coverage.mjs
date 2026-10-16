@@ -15,7 +15,9 @@
 //   ratio        bake / near: the bake keeps the crown's coverage when this sits in 0.9–1.1
 //   at[D]        the tree at D m (chase 60°, 1440 px tall): the near tier's silhouette (cards + trunk, near law) and
 //                the far impostor's (the baked tile, box mips, trilinear, the impostor program's own give-back, its 0.5
-//                cut). An impostor ratio well above 1 at 400–900 m is a far forest turning heavier than its trees.
+//                cut). Fill is the crown's interior (see-through gaps); spill is covered px outside the envelope over the
+//                envelope's px (a crown grown fatter than its tree). The near tier itself dissolves past ~450 m on the
+//                thin-needle atlases (its give-back caps at 3.5 mips), so the far fill ratio there is not a target.
 //
 // Fragments: the separate foliage pieces (8-connected) of the baked tile. The near tier's foliage textures upload with
 // three's default flipY (v = 1 at the image's first row; treeGrowth.ts lays its spray tiles out so), and the sampler
@@ -24,7 +26,8 @@
 //   node tools/impostor-bake-coverage.mjs                         # the default maps, a table
 //   node tools/impostor-bake-coverage.mjs --maps=all --json=out.json
 //   node tools/impostor-bake-coverage.mjs --maps=airfield --bake-boost=0   # main's bake before Fix B (no give-back)
-//   options: --maps=a,b|all  --distances=300,450,600,900  --bake-boost=<per mip>  --bake-max=<mip cap>  --json=<path>
+//   options: --maps=a,b|all  --distances=300,450,600,900  --bake-boost=<per mip>  --bake-max=<mip cap>
+//            --imp-boost=<per mip>  --imp-max=<mip cap> (the impostor program's runtime give-back)  --json=<path>
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
@@ -271,9 +274,15 @@ function fillOf(mask, envelope) {
   for (let i = 0; i < mask.length; i++) if (envelope[i]) { inside++; if (mask[i]) covered++; }
   return covered / Math.max(1, inside);
 }
+/** The spill: covered px outside the crown envelope, as a share of the envelope (a crown grown fatter than its tree). */
+function spillOf(mask, envelope) {
+  let inside = 0, outside = 0;
+  for (let i = 0; i < mask.length; i++) { if (envelope[i]) inside++; else if (mask[i]) outside++; }
+  return outside / Math.max(1, inside);
+}
 /** The far impostor drawn res px tall: the baked tile's coverage with box mips, sampled trilinear at the pixel centre,
  * the impostor program's give-back on the tile's texel footprint, its own cut (treeImpostors.ts applyTreeImpostorProgram). */
-function impostorAt(tileMask, tile, res) {
+function impostorAt(tileMask, tile, res, law) {
   const pyramid = [{ w: tile, h: tile, a: Float32Array.from(tileMask) }];
   for (let w = tile; w > 1;) {
     const prev = pyramid[pyramid.length - 1], nw = w >> 1, b = new Float32Array(nw * nw);
@@ -284,7 +293,7 @@ function impostorAt(tileMask, tile, res) {
     w = nw;
   }
   const mip = Math.max(0, Math.log2(tile / res));
-  const giveBack = 1 + Math.min(mip, TREE_IMPOSTOR_MIP_MAX) * TREE_IMPOSTOR_MIP_BOOST;
+  const giveBack = 1 + Math.min(mip, law.max) * law.boost;
   const out = new Uint8Array(res * res);
   for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
     out[y * res + x] = trilinear(pyramid, (x + 0.5) / res, (y + 0.5) / res, mip, false) * giveBack >= TREE_IMPOSTOR_ALPHA_TEST ? 1 : 0;
@@ -302,6 +311,7 @@ export function measureImpostorBakeCoverage(mapId, options = {}) {
   const distances = options.distances ?? IMPOSTOR_COVERAGE_DISTANCES;
   const nearLaw = options.nearLaw ?? readNearMipLaw();
   const bakeLaw = options.bakeLaw ?? { boost: TREE_IMPOSTOR_BAKE_MIP_BOOST, max: TREE_IMPOSTOR_BAKE_MIP_MAX };
+  const impostorLaw = options.impostorLaw ?? { boost: TREE_IMPOSTOR_MIP_BOOST, max: TREE_IMPOSTOR_MIP_MAX };
   const recorded = options.recorded ?? recordImpostorBake(mapId);
   const { library, ground } = recorded;
   const tile = library.tile;
@@ -327,12 +337,14 @@ export function measureImpostorBakeCoverage(mapId, options = {}) {
       const res = Math.max(8, Math.round(FOCAL * meta.cellM / d));
       const env = resample(envRef, refRes, res);
       const nearD = rasterRow(state, row, res, nearLaw);
-      const nearFill = fillOf(union(nearD.foliage, nearD.trunk), env), impFill = fillOf(impostorAt(bakedTile, tile, res), env);
-      entry.at[d] = { px: res, near: round(nearFill), impostor: round(impFill), ratio: round(impFill / Math.max(1e-6, nearFill)) };
+      const nearMask = union(nearD.foliage, nearD.trunk), impMask = impostorAt(bakedTile, tile, res, impostorLaw);
+      const nearFill = fillOf(nearMask, env), impFill = fillOf(impMask, env);
+      entry.at[d] = { px: res, near: round(nearFill), impostor: round(impFill), ratio: round(impFill / Math.max(1e-6, nearFill)),
+        spill: { near: round(spillOf(nearMask, env)), impostor: round(spillOf(impMask, env)) } };
     }
     rows.push(entry);
   }
-  return { map: mapId, tile, groundRows: library.groundRows, bakeLaw, nearLaw, rows };
+  return { map: mapId, tile, groundRows: library.groundRows, bakeLaw, nearLaw, impostorLaw, rows };
 }
 
 // ---- the command line ------------------------------------------------------------------------------------------------
@@ -343,14 +355,16 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const distances = arg('distances') ? arg('distances').split(',').map(Number) : IMPOSTOR_COVERAGE_DISTANCES;
   const bakeLaw = { boost: arg('bake-boost') !== undefined ? Number(arg('bake-boost')) : TREE_IMPOSTOR_BAKE_MIP_BOOST,
     max: arg('bake-max') !== undefined ? Number(arg('bake-max')) : TREE_IMPOSTOR_BAKE_MIP_MAX };
+  const impostorLaw = { boost: arg('imp-boost') !== undefined ? Number(arg('imp-boost')) : TREE_IMPOSTOR_MIP_BOOST,
+    max: arg('imp-max') !== undefined ? Number(arg('imp-max')) : TREE_IMPOSTOR_MIP_MAX };
   const nearLaw = readNearMipLaw();
   const reports = [];
-  console.log(`bake law: give-back ${bakeLaw.boost}/mip to ${bakeLaw.max}, cut ${TREE_IMPOSTOR_BAKE_ALPHA_TEST}; near law ${nearLaw.boost}/mip to ${nearLaw.max}; impostor ${TREE_IMPOSTOR_MIP_BOOST}/mip to ${TREE_IMPOSTOR_MIP_MAX}, cut ${TREE_IMPOSTOR_ALPHA_TEST}`);
+  console.log(`bake law: give-back ${bakeLaw.boost}/mip to ${bakeLaw.max}, cut ${TREE_IMPOSTOR_BAKE_ALPHA_TEST}; near law ${nearLaw.boost}/mip to ${nearLaw.max}; impostor ${impostorLaw.boost}/mip to ${impostorLaw.max}, cut ${TREE_IMPOSTOR_ALPHA_TEST}`);
   console.log(['map', 'form/v', 'tile', 'bake', 'near', 'ratio', 'frag b/n', ...distances.map(d => `${d}m imp/near`)].join('\t'));
   for (const id of maps) {
     if (!getMapConfig(id).vegetation.species.length) continue;
     let report;
-    try { report = measureImpostorBakeCoverage(id, { distances, bakeLaw, nearLaw }); } catch (error) { console.log(`${id}\t(skipped: ${error.message})`); continue; }
+    try { report = measureImpostorBakeCoverage(id, { distances, bakeLaw, nearLaw, impostorLaw }); } catch (error) { console.log(`${id}\t(skipped: ${error.message})`); continue; }
     reports.push(report);
     for (const r of report.rows) {
       console.log([id, `${r.form}/${r.variant}`, r.tile, r.bake, r.near, r.ratio, `${r.fragments.bake}/${r.fragments.near}`,
@@ -358,5 +372,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     }
   }
   const json = arg('json');
-  if (json) writeFileSync(json, JSON.stringify({ bakeLaw, nearLaw, distances, reports }, null, 1));
+  if (json) writeFileSync(json, JSON.stringify({ bakeLaw, nearLaw, impostorLaw, distances, reports }, null, 1));
 }
