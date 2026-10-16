@@ -177,6 +177,40 @@ console.log(`shadowStability.selftest: texel snapping, cascade-scaled biases on 
 // depth materials: it would push the stored back faces away and widen the seam)
 {
   const src = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
-  assert.match(src, /const guard = !legacy && \(depthMaterial\.side === THREE\.DoubleSide \|\| depthMaterial\.alphaTest > 0\);/, 'the guard keys on the depth draw\'s side and alpha test');
+  assert.match(src, /const guard = !legacy && \(depthMaterial\.side === THREE\.DoubleSide \|\| depthMaterial\.alphaTest > 0 \|\| depthMaterial\.alphaHash\);/,
+    'the guard keys on the depth draw\'s side, alpha test and (r2b) hashed alpha');
   assert.equal(src.split('guardDoubleSidedDepth(depthMaterial);').length - 1, 2, 'both shadow hooks (meshes and batched meshes) guard their draws');
+}
+// 2026-10-15 (SKY shadows r2b, C9): an alpha-tested open lattice (a net, a garnish) casts through three's hashed alpha
+// at the shadow raster's footprint instead of its 0.5 cut: its depth clone takes alphaHash and drops the cut from its
+// program once, with no per-draw version churn; every other caster's depth draw is left as three made it
+{
+  const { hashOpenLatticeShadow, guardDoubleSidedDepth } = await import('./lighting.ts');
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial({ alphaTest: 0.5 }));
+  net.userData.continuityRole = 'open-lattice';
+  const depth = new THREE.MeshDepthMaterial({ alphaTest: 0.5, side: THREE.FrontSide });
+  hashOpenLatticeShadow(net, depth);
+  assert.equal(depth.alphaHash, true, 'the net\'s depth draw is hashed');
+  assert.equal(depth.alphaTest, 0.5, 'its alpha test value stays three\'s copy (no program version churn per draw)');
+  const version = depth.version;
+  depth.alphaTest = 0.5; hashOpenLatticeShadow(net, depth);
+  assert.equal(depth.version, version, 'once per depth clone');
+  const shader = { fragmentShader: THREE.ShaderLib.depth.fragmentShader, vertexShader: THREE.ShaderLib.depth.vertexShader, uniforms: {} };
+  depth.onBeforeCompile(shader, null);
+  assert.ok(!shader.fragmentShader.includes('#include <alphatest_fragment>') && shader.fragmentShader.includes('#include <alphahash_fragment>'),
+    'the program drops the 0.5 cut and keeps the hash');
+  assert.ok(THREE.ShaderLib.depth.vertexShader.includes('#include <begin_vertex>') && THREE.ShaderChunk.begin_vertex.includes('USE_ALPHAHASH'),
+    'three\'s depth program carries the hash\'s object-space position');
+  assert.equal(depth.customProgramCacheKey(), 'cotHashedShadowAlpha');
+  guardDoubleSidedDepth(depth);
+  assert.equal(depth.polygonOffset, true, 'a hashed lattice keeps the caster-side offset');
+  for (const [role, alphaTest, why] of [['armour', 0.5, 'a caster that is no open lattice'], ['open-lattice', 0, 'an opaque lattice (a slat cage)']]) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData.continuityRole = role;
+    const dm = new THREE.MeshDepthMaterial({ alphaTest });
+    hashOpenLatticeShadow(mesh, dm);
+    assert.equal(dm.alphaHash, false, `${why} keeps three's depth draw`);
+  }
+  const src = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(src, /hashOpenLatticeShadow\(object, depthMaterial\);\s*guardDoubleSidedDepth\(depthMaterial\);/, 'the mesh shadow hook hashes before it guards');
 }
