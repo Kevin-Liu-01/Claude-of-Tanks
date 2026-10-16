@@ -182,8 +182,9 @@ function wireDocs() {
     (_, open) => `${open}<img src="${still(hero.id, hero.still)}" alt="${esc(take(hero.id).en)}" data-i18n-alt="${titleKey(hero.id)}">`, 'manual hero image');
   const trailer = BUILT.get(built(`${C}/films/trailer.mp4`));
   const seconds = String(Math.round(trailer.seconds));
-  swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
-    () => `<video controls playsinline preload="metadata" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
+  // the trailer (round six): its VP9 webm first, the H.264 mp4 for a browser that plays no VP9; it loads on a click
+  swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*">(?:<source src="[^"]*" type="video\/webm">)?<source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
+    () => `<video controls playsinline preload="metadata" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.webm`)}" type="video/webm"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
   swap(D, /<figcaption><span data-i18n="docs\.hero\.(?:reelCaption|trailerCaption)">[^<]*<\/span><strong data-i18n="docs\.hero\.(?:reelApproved|trailerSpec)"[^>]*>[^<]*<\/strong><\/figcaption>/,
     () => `<figcaption><span data-i18n="docs.hero.trailerCaption">${esc(COPY.en['docs.hero.trailerCaption'])}</span><strong data-i18n="docs.hero.trailerSpec" data-i18n-vars='{"seconds":"${seconds}"}'>${esc(COPY.en['docs.hero.trailerSpec'].replace('{seconds}', seconds))}</strong></figcaption>`, 'trailer caption');
   for (const [chapter, c] of Object.entries(PICKS.docs.chapters)) {
@@ -394,7 +395,7 @@ const COPY = {
     'home.shots.lede': 'Each scene was staged in Scene Studio and rendered at 4K in the game engine.',
     'home.mosaic.lede': "These frames show close combat and long-range fire across the game's battlefields, by day, at sunset and at night.",
     'docs.hero.trailerCaption': 'The trailer, filmed in the game engine',
-    'docs.hero.trailerSpec': '4K renders // {seconds} seconds',
+    'docs.hero.trailerSpec': 'In-engine renders // {seconds} seconds',
     'docs.hero.trailerAria': 'The Claude of Tanks trailer, filmed in the game engine, with its score and battle sound',
     'docs.studio.reelsHead': 'The site fifty // {count} takes',
     'docs.studio.reelsTitle': 'Battle takes',
@@ -424,7 +425,7 @@ const COPY = {
     'home.shots.lede': '每个场景都在 Scene Studio 中编排，并在游戏引擎中以 4K 渲染。',
     'home.mosaic.lede': '这些画面呈现游戏各个战场上的近距离交火与远程射击，白昼、日落与夜间皆有。',
     'docs.hero.trailerCaption': '预告片，在游戏引擎中拍摄',
-    'docs.hero.trailerSpec': '4K 渲染 // {seconds} 秒',
+    'docs.hero.trailerSpec': '引擎内渲染 // {seconds} 秒',
     'docs.hero.trailerAria': 'Claude of Tanks 预告片，在游戏引擎中拍摄，配有配乐与战场音效',
     'docs.studio.reelsHead': '网站五十镜头 // {count} 段',
     'docs.studio.reelsTitle': '战斗镜头',

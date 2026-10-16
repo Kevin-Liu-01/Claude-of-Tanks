@@ -4402,7 +4402,7 @@
   "media.fleet.play": "播放：{title}",
   "media.fleet.pause": "暂停：{title}",
   "docs.hero.trailerCaption": "预告片，在游戏引擎中拍摄",
-  "docs.hero.trailerSpec": "4K 渲染 // {seconds} 秒",
+  "docs.hero.trailerSpec": "引擎内渲染 // {seconds} 秒",
   "docs.hero.trailerAria": "Claude of Tanks 预告片，在游戏引擎中拍摄，配有配乐与战场音效",
   "docs.studio.reelsGridAria": "战斗镜头",
   "docs.studio.reelSpec": "6 秒 // 720p，含声音",

@@ -67,7 +67,8 @@ assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
 // the home page loops cut-30 silent; the manual plays the trailer with its score (public/media/site50-r14/films)
 assert.match(homeSource, /\/media\/site50-r14\/films\/reel\.mp4/);
 assert.doesNotMatch(homeSource, /\/media\/site50-r14\/films\/trailer\.mp4/);
-assert.match(docsSource, /<video controls[^>]*poster="\/media\/site50-r14\/films\/trailer\.jpg"[^>]*><source src="\/media\/site50-r14\/films\/trailer\.mp4"/);
+// (round six, 2026-10-15: the trailer's VP9 webm first, its H.264 mp4 after for a browser that plays no VP9)
+assert.match(docsSource, /<video controls[^>]*poster="\/media\/site50-r14\/films\/trailer\.jpg"[^>]*><source src="\/media\/site50-r14\/films\/trailer\.webm" type="video\/webm"><source src="\/media\/site50-r14\/films\/trailer\.mp4"/);
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 assert.match(
   homeStyles,
@@ -99,7 +100,7 @@ const docsMark = readFileSync(join(ROOT, 'public/brand/nav/docs.svg'), 'utf8');
 assert.match(docsMark, /data-vehicle="m1a2"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
 assert.doesNotMatch(docsMark, /<image|data:image\//, 'Docs mark must use crisp native vector geometry');
 
-for (const film of ['trailer.mp4', 'trailer.jpg', 'reel.mp4', 'reel.jpg']) {
+for (const film of ['trailer.webm', 'trailer.mp4', 'trailer.jpg', 'reel.mp4', 'reel.jpg']) {
   assert.ok(existsSync(join(ROOT, 'public/media/site50-r14/films', film)), `missing film: ${film}`);
 }
 

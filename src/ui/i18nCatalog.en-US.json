@@ -4402,7 +4402,7 @@
   "media.fleet.play": "Play: {title}",
   "media.fleet.pause": "Pause: {title}",
   "docs.hero.trailerCaption": "The trailer, filmed in the game engine",
-  "docs.hero.trailerSpec": "4K renders // {seconds} seconds",
+  "docs.hero.trailerSpec": "In-engine renders // {seconds} seconds",
   "docs.hero.trailerAria": "The Claude of Tanks trailer, filmed in the game engine, with its score and battle sound",
   "docs.studio.reelsGridAria": "Battle takes",
   "docs.studio.reelSpec": "6 seconds // 720p with sound",

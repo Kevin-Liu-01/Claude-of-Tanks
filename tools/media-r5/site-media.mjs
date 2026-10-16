@@ -20,7 +20,9 @@
 //   reels/<id>.mp4, reels/<id>.webp                1280×720 H.264 with its sound (the delivery's mobile cut), poster
 //   frames/<b>.webp, frames/<b>-thumb.webp         the fifty frames (R181) at 1920×1080 and 640×360
 //   frames/sheet-<n>.webp                          contact sheets, ten frames each (2400 × 540)
-//   films/trailer.mp4, films/trailer.jpg           the trailer at 1920×1080 with its score
+//   films/<film>.webm, .mp4, .jpg                  the trailers (picks.films: the main cut, the 30 s cut, the
+//                                                  vertical), each a VP9 webm with Opus and an H.264 mp4 with AAC
+//                                                  and its poster, as delivered (sources.trailers)
 //   films/reel.mp4, films/reel.jpg                 the picked takes crossfaded at 1920×1080, silent (the home page's loop)
 //   home/<group>/<id>.webp, <id>-640.webp          the home page's feature, mechanic and mode shots (home r2,
 //                                                  2026-10-12), from the delivered PNG <sources.home>/<group>/<id>.png;
@@ -366,15 +368,23 @@ function reelTakes() {
   return PICKS.home.reel.takes.map((id) => delivery(id)).filter((d) => d?.hd);
 }
 function buildFilms() {
-  const trailer = join(MEDIA, PICKS.sources.trailer);
-  const poster = PICKS.posters ?? { trailer: 3 };
-  if (existsSync(trailer)) {
-    make(join(OUT, 'films', 'trailer.mp4'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', trailer,
-      '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
-      '-maxrate', '4.5M', '-bufsize', '9M', '-profile:v', 'high', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', tmp]),
-    { film: 'trailer-24h' });
-    make(join(OUT, 'films', 'trailer.jpg'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-ss', String(poster.trailer),
-      '-i', trailer, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), { film: 'trailer-24h' });
+  // the trailers (round six, 2026-10-15, the owner: "also make better new trailers"): the main cut, the 30 s cut and the
+  // vertical, as delivered. Each is a VP9 webm with Opus and an H.264 mp4 with AAC from one master, each the light encode
+  // of its delivery (deliver-index.json records its CRF, rate and VMAF against the master), and its poster. They play on
+  // a click (preload=metadata), so none weighs on a page before it is asked for.
+  const trailers = join(MEDIA, PICKS.sources.trailers);
+  const index = join(trailers, 'deliver-index.json');
+  const delivered = existsSync(index) ? JSON.parse(readFileSync(index, 'utf8')).films : {};
+  for (const name of PICKS.films ?? []) {
+    const film = delivered[name];
+    if (!film) continue;
+    for (const ext of ['webm', 'mp4']) {
+      const e = film[ext];
+      copy(join(OUT, 'films', `${name}.${ext}`), join(trailers, e.file),
+        { film: name, encode: { ...(e.crf != null ? { crf: e.crf } : { passes: e.passes }), kbps: e.kbps, vmaf: e.vmaf, vmafMin: e.vmafMin,
+          ...(e.capped ? { capped: true } : {}) } });
+    }
+    copy(join(OUT, 'films', `${name}.jpg`), join(trailers, film.poster.file), { film: name });
   }
   const takes = reelTakes();
   if (takes.length === PICKS.home.reel.takes.length) {
@@ -552,7 +562,7 @@ function main() {
     }
     const frames = frameList();
     console.log(`frames: ${frames.length} (${frames.filter((f) => f.current).length} from ${PICKS.sources.frames})`);
-    console.log(`trailer: ${existsSync(join(MEDIA, PICKS.sources.trailer)) ? PICKS.sources.trailer : 'MISSING'}`);
+    console.log(`films: ${(PICKS.films ?? []).map((name) => `${name} ${existsSync(join(MEDIA, PICKS.sources.trailers, `${name}.webm`)) ? 'delivered' : 'MISSING'}`).join(', ')}`);
     console.log(`reel: ${reelTakes().length} of ${PICKS.home.reel.takes.length} takes delivered (${PICKS.home.reel.takes.join(', ')})`);
     const home = homeSlots();
     const delivered = home.filter((s) => homeDelivery(s));

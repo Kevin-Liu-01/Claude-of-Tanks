@@ -70,7 +70,8 @@ for (const reel of reels) {
   assert.ok(files.has(reel.path.replace(/\.mp4$/, '.webp')), `${reel.path} poster`);
 }
 const trailer = files.get(`media/${picks.collection}/films/trailer.mp4`);
-assert.equal(`${trailer?.width}x${trailer?.height}`, '1920x1080', 'the trailer at 1080p');
+// (round six, 2026-10-15: the trailers' files are checked with the films below; the manual's player plays its webm first)
+assert.equal(`${trailer?.width}x${trailer?.height}`, '1600x900', 'the trailer at its light encode\'s size');
 assert.equal(trailer.audio, 'aac', 'the trailer keeps its score');
 const reel = files.get(`media/${picks.collection}/films/reel.mp4`);
 assert.equal(`${reel?.width}x${reel?.height}`, '1920x1080', 'the home reel at 1080p');
@@ -96,6 +97,28 @@ for (const shot of archive.shots) {
 assert.ok(proxies.files.reduce((sum, file) => sum + file.bytes, 0) < 9_000_000);
 for (const proxy of proxies.files) {
   assert.equal(statSync(join(ROOT, 'public/media/web-video-r1', proxy.path)).size, proxy.bytes, `${proxy.path} byte receipt`);
+}
+
+// the trailers (round six, 2026-10-15, the owner: "also make better new trailers"): the main cut, the 30 s cut and the
+// vertical, each a VP9 webm with Opus and an H.264 mp4 with AAC from one master and a poster, at their light encodes:
+// each holds its weight, and its VMAF against the master (every frame) is recorded, 78 at least (the floor at the cap)
+const FILMS = [
+  ['trailer.webm', '1600x900', 70.0, 'opus', 23.5],
+  ['trailer.mp4', '1600x900', 70.0, 'aac', 26.5],
+  ['trailer-30.webm', '1920x1080', 30.0, 'opus', 12.0],
+  ['trailer-30.mp4', '1920x1080', 30.0, 'aac', 15.0],
+  ['trailer-vertical.webm', '1080x1920', 20.0, 'opus', 8.0],
+  ['trailer-vertical.mp4', '1080x1920', 20.0, 'aac', 10.0],
+];
+for (const [file, size, seconds, audio, maxMb] of FILMS) {
+  const film = files.get(`media/${picks.collection}/films/${file}`);
+  assert.ok(film, `${file} ships`);
+  assert.equal(`${film.width}x${film.height}`, size, `${file} size`);
+  assert.ok(near(film.seconds, seconds, 0.25), `${file} runs ${seconds} s (${film.seconds})`);
+  assert.equal(film.audio, audio, `${file} keeps its score`);
+  assert.ok(film.bytes <= maxMb * 1048576, `${file}: ${(film.bytes / 1048576).toFixed(2)} MB, at most ${maxMb} MB`);
+  assert.ok((film.encode?.vmaf ?? 0) >= 78, `${file}: VMAF ${film.encode?.vmaf ?? 'unrecorded'} against its master`);
+  assert.ok(files.has(`media/${picks.collection}/films/${file.replace(/\.(webm|mp4)$/, '.jpg')}`), `${file} poster`);
 }
 
 console.log(`site50-media.selftest: ${manifest.files.length} files, the ${takes.length} takes with sound, the fifty frames and the films pass`);

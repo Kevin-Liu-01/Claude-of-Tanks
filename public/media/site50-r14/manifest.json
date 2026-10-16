@@ -903,23 +903,138 @@
    "crossfadeS": 0.5
   },
   {
-   "path": "media/site50-r14/films/trailer.jpg",
-   "bytes": 133889,
-   "sha256": "c2f1335b511cba6723ead8c7f4c35feda8bec48e3099c0953535b33d210096fe",
-   "source": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4",
-   "film": "trailer-24h"
+   "path": "media/site50-r14/films/trailer-30.jpg",
+   "bytes": 103336,
+   "sha256": "0baff1ab6fb8ffd882480bf7d34fc2232f9c00d9012444c446152e27e11503bd",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.jpg",
+   "film": "trailer-30"
   },
   {
-   "path": "media/site50-r14/films/trailer.mp4",
-   "bytes": 42570276,
-   "sha256": "eb5d651575157caa9e9aec47b7839106ce0012ed1a6e59c144ced4d7fb6a6903",
+   "path": "media/site50-r14/films/trailer-30.mp4",
+   "bytes": 13457059,
+   "sha256": "bf3dbd21f53c7d5cc06616a9123f4ee881b55e744a15c5c8712e8e81ba8a3867",
    "width": 1920,
    "height": 1080,
    "fps": 30,
-   "seconds": 80,
+   "seconds": 30,
    "audio": "aac",
-   "source": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4",
-   "film": "trailer-24h"
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "film": "trailer-30",
+   "encode": {
+    "passes": 2,
+    "kbps": 3454,
+    "vmaf": 86.37,
+    "vmafMin": 67.59,
+    "capped": true
+   }
+  },
+  {
+   "path": "media/site50-r14/films/trailer-30.webm",
+   "bytes": 10881989,
+   "sha256": "e15e14a755a7977fdd4946be6eab362af734dda9d16a7344f95ad3cc42c2b245",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 30.008,
+   "audio": "opus",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.webm",
+   "film": "trailer-30",
+   "encode": {
+    "crf": 32,
+    "kbps": 2820,
+    "vmaf": 90.12,
+    "vmafMin": 49.89,
+    "capped": true
+   }
+  },
+  {
+   "path": "media/site50-r14/films/trailer-vertical.jpg",
+   "bytes": 121662,
+   "sha256": "4febcfd6fa2ba4fab61254bc1f0a2cd93783a82ca0fd2ca76ce76051b7b319d5",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.jpg",
+   "film": "trailer-vertical"
+  },
+  {
+   "path": "media/site50-r14/films/trailer-vertical.mp4",
+   "bytes": 8865807,
+   "sha256": "1ea2ee9a5f45aeb589fbec1d78d12cdf99b5daca5dfd0df87946ced4942f01e4",
+   "width": 1080,
+   "height": 1920,
+   "fps": 30,
+   "seconds": 20,
+   "audio": "aac",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "film": "trailer-vertical",
+   "encode": {
+    "passes": 2,
+    "kbps": 3413,
+    "vmaf": 91.54,
+    "vmafMin": 72.52
+   }
+  },
+  {
+   "path": "media/site50-r14/films/trailer-vertical.webm",
+   "bytes": 6934025,
+   "sha256": "6240cbf06694982a0958cf7d25774f67db6c85a00b560506bc7e134f29d807e8",
+   "width": 1080,
+   "height": 1920,
+   "fps": 30,
+   "seconds": 20.008,
+   "audio": "opus",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.webm",
+   "film": "trailer-vertical",
+   "encode": {
+    "crf": 32,
+    "kbps": 2691,
+    "vmaf": 94.48,
+    "vmafMin": 68.11,
+    "capped": true
+   }
+  },
+  {
+   "path": "media/site50-r14/films/trailer.jpg",
+   "bytes": 113358,
+   "sha256": "7eb74a345ad98c2ec73741dce567a4bbe19781dd11a868483dab166f25cdb299",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer.jpg",
+   "film": "trailer"
+  },
+  {
+   "path": "media/site50-r14/films/trailer.mp4",
+   "bytes": 24130246,
+   "sha256": "93021856f4e02d51bf3705eae6b0d937f99187ea61a7436c7b3b87dfe76ebd04",
+   "width": 1600,
+   "height": 900,
+   "fps": 30,
+   "seconds": 70,
+   "audio": "aac",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "film": "trailer",
+   "encode": {
+    "passes": 2,
+    "kbps": 2623,
+    "vmaf": 82.01,
+    "vmafMin": 61.43,
+    "capped": true
+   }
+  },
+  {
+   "path": "media/site50-r14/films/trailer.webm",
+   "bytes": 21206776,
+   "sha256": "9b03b86f4df2618195577fa0c98172e49b44b887643ec73d04431b15312d4c53",
+   "width": 1600,
+   "height": 900,
+   "fps": 30,
+   "seconds": 70.008,
+   "audio": "opus",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer.webm",
+   "film": "trailer",
+   "encode": {
+    "crf": 31,
+    "kbps": 2343,
+    "vmaf": 87.67,
+    "vmafMin": 48.25,
+    "capped": true
+   }
   },
   {
    "path": "media/site50-r14/fleet/abramsx.jpg",
