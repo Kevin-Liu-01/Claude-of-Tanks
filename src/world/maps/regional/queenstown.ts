@@ -14,6 +14,7 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 import { sheetHall } from './hall.ts';
 import { latticeFrame, recordLattice } from './lattice.ts';
 import { hotelNameBoard } from './queenstownSign.ts';
+import { trestleDeck } from './queenstownTrestle.ts';
 
 const BRICK: RegionalBucket = 'stone', CONCRETE: RegionalBucket = 'plaster3';
 /** Corrugated iron: galvanised, rust-streaked, the company's red oxide, a faded green. */
@@ -604,7 +605,7 @@ const tankTrestle: RegionalBuilder = (ctx) => {
       colour: TIMBER, pad: { bucket: CONCRETE, size: 0.7, top: 0.25 }, mobile },
       { x0: -R, x1: R, y0: legH + 0.3, y1: legH + 4.2, z0: -R, z1: R, bucket: 'structureWood', tint: staves });
     // the deck: bearers on the post heads, the joists across them, the boards
-    sink.span('structureWood', -P / 2, legH + 0.14, -P / 2, P / 2, legH + 0.3, P / 2, { colour: shade(TIMBER, 0.85) });
+    trestleDeck(sink, P, legH, shade(TIMBER, 0.85)); // (looks r2 b-east, 2026-10-16: extracted to queenstownTrestle.ts, rebuilt there)
     for (const s of [-1, 1]) sink.span('structureWood', -P / 2 - 0.1, legH - 0.12, s * post - 0.12, P / 2 + 0.1, legH + 0.14, s * post + 0.12, { colour: shade(TIMBER, 0.8), decor: true });
     sink.dressing(mobile, () => {
       for (let x = -P / 2 + 0.3; x < P / 2; x += 0.6) sink.span('structureWood', x - 0.05, legH + 0.02, -P / 2, x + 0.05, legH + 0.14, P / 2, { colour: shade(TIMBER, 0.75), decor: true, fine: true });
