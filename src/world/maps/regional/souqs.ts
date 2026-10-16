@@ -654,7 +654,7 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
  * its floor, its back wall (the arch's own shape), its sides to the springing and its vault, all facing in.
  */
 function archCell(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, w: number, y0: number, spring: number, t: number, deep: number,
-  inner: EmitOptions = {}): void {
+  inner: EmitOptions = {}, widen = 0.2): void {
   const r = w / 2, n = r < 0.8 ? 4 : r < 1.3 ? 6 : 8, P = (a: number, y: number, o: number) => facePoint(face, a, y, o);
   const at = (j: number, rr = r): [number, number] => [u + Math.cos(Math.PI * j / n) * rr, spring + Math.sin(Math.PI * j / n) * rr];
   sink.quad(bucket, P(u - r, y0, 0), P(u - r, y0, -t), P(u - r, spring, -t), P(u - r, spring, 0), { ...inner, shade: 0.72 });
@@ -665,7 +665,7 @@ function archCell(sink: PartSink, bucket: RegionalBucket, face: Face, u: number,
   }
   sink.quad(bucket, P(u - r, y0, 0), P(u + r, y0, 0), P(u + r, y0, -t), P(u - r, y0, -t), { ...inner, shade: 0.88 });
   // the cell behind, a hand wider than its arch: its vault springing from its sides
-  const R = r + 0.2, a = -t, b = -t - deep;
+  const R = r + widen, a = -t, b = -t - deep;
   const atR = (j: number): [number, number] => [u + Math.cos(Math.PI * j / n) * R, spring + Math.sin(Math.PI * j / n) * R];
   sink.quad(bucket, P(u - R, y0 + 0.002, a), P(u + R, y0 + 0.002, a), P(u + R, y0 + 0.002, b), P(u - R, y0 + 0.002, b), { ...inner, shade: 0.6, decor: true });
   sink.quad(bucket, P(u - R, y0, a), P(u - R, y0, b), P(u - R, spring, b), P(u - R, spring, a), { ...inner, shade: 0.45, decor: true });
@@ -733,7 +733,9 @@ export function choufSouk<S extends { rng: () => number; look: () => number; shu
     holedFace(sink, 'stone', f, { u0: -L / 2, u1: L / 2, y0, y1: top }, us.map((u) => ({ u0: u - aw / 2, u1: u + aw / 2, y0, y1: spring + aw / 2, spring, bare: true })), 0);
     const leafC = shade(st.shutter, 0.85);
     us.forEach((u, k) => {
-      archCell(sink, 'stone', f, u, aw, y0, spring, t, cellD, { tint: [0.9, 0.88, 0.84] });
+      // (the integrity check, 2026-10-16: an end bay's cell ran through the end wall into its window's reveal, seen there
+      // from behind) each cell a hand wider than its arch, but kept inside the end walls
+      archCell(sink, 'stone', f, u, aw, y0, spring, t, cellD, { tint: [0.9, 0.88, 0.84] }, clamp(L / 2 - t - 0.06 - Math.abs(u) - aw / 2, 0.02, 0.2));
       archHead(sink, f, u, spring, aw / 2, 'stone', 0.22, 9);
       faceBox(sink, 'stone', f, u, spring + aw / 2 + 0.13, 0.05, 0.3, 0.38, 0.1, { decor: true, tint: [1.06, 1.04, 1.0] });
       // the plank doors on their pintles, folded back against the wall either side, their battens and straps

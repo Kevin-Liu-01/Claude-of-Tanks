@@ -239,7 +239,10 @@ export function dalmatianLoggia(ctx: RegionalBuildContext): RegionalParts {
     for (const sz of [-1, 1]) {
       const end: Face = sz > 0 ? { origin: [0, 0, zc + t / 2], u: [1, 0, 0], out: [0, 0, 1], width: xc - xbi } : { origin: [0, 0, -zc - t / 2], u: [-1, 0, 0], out: [0, 0, -1], width: xc - xbi };
       const bay: Bay = sz > 0 ? { a: xr + hw, b: xc - hw } : { a: -(xc - hw), b: -(xr + hw) };
+      // (the integrity check, 2026-10-16: the open ends let the sky through two arches at once) the ends walled up to their
+      // arches' crowns, each arch a blind one in its wall over the bench's ends; the arcade open to the square alone
       arcadeWall(sink, end, sz > 0 ? xbi - 0.02 : -(xc - t / 2), sz > 0 ? xc - t / 2 : -(xbi - 0.02), [bay], ys, yt, t, stone, [false, false], mobile);
+      sink.span('stone', xbi - 0.02, floor - 0.02, sz * zc - t / 2 + 0.04, xc - t / 2, ys + (xc - xr) / 2 - hw - 0.02, sz * zc + t / 2 - 0.04, { tint: shade(stone, 0.97) });
     }
     // ---- the back wall, the architrave and cornice round the top
     const zo = zc + hw;
@@ -367,12 +370,16 @@ export function dalmatianRibarnica(ctx: RegionalBuildContext): RegionalParts {
     slabJoints(sink, plat.x0 + 0.02, plat.x1 - 0.02, plat.z0 + 0.02, -drainW / 2 - 0.01, floor + 0.003, look);
     slabJoints(sink, plat.x0 + 0.02, plat.x1 - 0.02, drainW / 2 + 0.01, plat.z1 - 0.02, floor + 0.003, look);
   });
-  // ---- the fish tables: a slab on three slab legs each side of the drain, the lip round it, its spout at the low end
-  const L = Math.max(2.4, 2 * px - 0.9), tz = Math.min(0.95, pz - 0.75), top = floor + 0.86, catches: readonly Rgb[] = [0x9aa4a8, 0xb4babc, 0x7e8a90, 0xa88a7a].map(rgb);
+  // ---- the fish tables: a low display slab on its base each side of the drain, the lip round it, its spout at the low end
+  // (the integrity check, 2026-10-16: the aisle between them a pace wider and the slabs low, so the hall reads open)
+  const L = Math.max(2.4, 2 * px - 0.9), tz = pz - 0.7, top = floor + 0.62, catches: readonly Rgb[] = [0x9aa4a8, 0xb4babc, 0x7e8a90, 0xa88a7a].map(rgb);
   const crateC: readonly Rgb[] = [0x8a7458, 0x9a8466, 0x7a6448].map(rgb);
   for (const sz of [-1, 1]) {
     const z = sz * tz;
-    for (const x of [-L / 2 + 0.3, 0, L / 2 - 0.3]) sink.span('stone', x - 0.07, floor, z - 0.3, x + 0.07, top - 0.12, z + 0.3, { tint: shade(stone, 0.96) });
+    // (the integrity check, 2026-10-16: the space under a slab on legs read as the inside of the stall) each table's slab
+    // on its masonry base, the slab overhanging it a hand all round, a plinth course at its foot
+    sink.span('stone', -L / 2 + 0.12, floor, z - 0.3, L / 2 - 0.12, top - 0.12, z + 0.3, { tint: shade(stone, 0.96) });
+    sink.span('stone', -L / 2 + 0.08, floor, z - 0.34, L / 2 - 0.08, floor + 0.12, z + 0.34, { tint: shade(stone, 0.9) });
     sink.span('stone', -L / 2, top - 0.12, z - 0.4, L / 2, top, z + 0.4, { tint: shade(stone, 1.02) });
     // the lip down both long sides and round the high end; the low end open to its spout over the drain side
     for (const s of [-1, 1]) sink.span('stone', -L / 2, top, z + s * 0.4 - (s > 0 ? 0.05 : 0), L / 2, top + 0.05, z + s * 0.4 + (s < 0 ? 0.05 : 0), { decor: true, tint: shade(stone, 1.05) });
@@ -393,10 +400,10 @@ export function dalmatianRibarnica(ctx: RegionalBuildContext): RegionalParts {
   }
   sink.dressing(mobile, () => {
     // the crates stacked by the columns, the standpipe and its basin at the far end
-    for (const [x, z, n] of [[-px + 0.15, pz - 0.55, 3], [px - 0.6, -pz + 0.55, 2]] as const) {
+    for (const [x, z, n] of [[-px + 0.15, pz - 0.55, 3], [px - 0.15, -pz + 0.55, 2]] as const) {
       for (let k = 0; k < n; k++) crate(sink, [x + (look() - 0.5) * 0.06, floor + k * 0.255, z + (look() - 0.5) * 0.06], (look() - 0.5) * 0.2, pick(look, crateC), look, k === n - 1 ? pick(look, catches) : null);
     }
-    const bx = -px + 0.55, bz = -pz + 0.35;
+    const bx = -px, bz = 0;
     sink.span('stone', bx - 0.3, floor, bz - 0.22, bx + 0.3, floor + 0.42, bz + 0.22, { decor: true, tint: shade(stone, 0.96) });
     sink.span('dark', bx - 0.24, floor + 0.36, bz - 0.16, bx + 0.24, floor + 0.425, bz + 0.16, { decor: true });
     sink.cylinder('structureMetal', [bx, floor + 0.42, bz - 0.2], 'y', 0.75, 0.035, 8, { colour: rgb(0x3a4446), decor: true });

@@ -492,8 +492,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.426,
-   "gapM2": 0.684,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "mekong/farmhouse": {
@@ -4259,5 +4259,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T11:57:32.763Z"
+ "updatedAt": "2026-10-16T14:34:53.861Z"
 }
