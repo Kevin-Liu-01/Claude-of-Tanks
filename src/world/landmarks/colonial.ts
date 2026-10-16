@@ -173,7 +173,10 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
   bevelSpan(sink, 'plaster', -Wt / 2, top - 0.12, -L / 2, Wt / 2, top, L / 2, 0.03, {});
   // the clay worn to the earth behind the base lines, round the net posts and along the side lines (dressing)
   const CL = 23.77 / 2, CW = 10.97 / 2, SW = 8.23 / 2, SV = 6.4, lw = 0.05;
-  const worn = (x0: number, z0: number, x1: number, z1: number) => {
+  const worn = (xa: number, za: number, xb: number, zb: number) => {
+    // (the maps lane, 2026-10-16; the building-integrity gate: 14.5 m2 inverted behind the -z base line) the corners in
+    // order whichever way the call gives them: with z0 over z1 the chamfer went negative and the octagon crossed itself
+    const x0 = Math.min(xa, xb), x1 = Math.max(xa, xb), z0 = Math.min(za, zb), z1 = Math.max(za, zb);
     const c = Math.min(x1 - x0, z1 - z0) * 0.3;
     orientedPrism(sink, 'plaster3', [[x1, top, z0 + c], [x1, top, z1 - c], [x1 - c, top, z1], [x0 + c, top, z1], [x0, top, z1 - c], [x0, top, z0 + c], [x0 + c, top, z0], [x1 - c, top, z0]],
       [0, 1, 0], 0.006, { decor: true });
@@ -181,7 +184,12 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
   for (const sz of [-1, 1]) worn(-2.6, sz * (CL + 0.2), 2.6, sz * (CL + 2.8));
   for (const sx of [-1, 1]) worn(sx * (CW + 0.5) - 0.8, -1.2, sx * (CW + 0.5) + 0.8, 1.2);
   // the lines (a doubles court 23.77 × 10.97 m, its singles side lines, the service lines and the centre line), faded
-  const line = (x0: number, z0: number, x1: number, z1: number) => sink.span('structureWood', Math.min(x0, x1) - lw, top, Math.min(z0, z1) - lw, Math.max(x0, x1) + lw, top + 0.012, Math.max(z0, z1) + lw, { colour: LINE_WHITE, decor: true });
+  // (the maps lane, 2026-10-16; the building-integrity gate: the lines' 1.2 cm sides along 23.8 m were slivers) each line
+  // the paint on the clay: its face alone, 1.2 cm up
+  const line = (x0: number, z0: number, x1: number, z1: number) => {
+    const xa = Math.min(x0, x1) - lw, xb = Math.max(x0, x1) + lw, za = Math.min(z0, z1) - lw, zb = Math.max(z0, z1) + lw, y = top + 0.012;
+    sink.quad('structureWood', [xa, y, zb], [xb, y, zb], [xb, y, za], [xa, y, za], { colour: LINE_WHITE, decor: true });
+  };
   for (const sx of [-1, 1]) { line(sx * CW, -CL, sx * CW, CL); line(sx * SW, -CL, sx * SW, CL); }
   for (const sz of [-1, 1]) { line(-CW, sz * CL, CW, sz * CL); line(-SW, sz * SV, SW, sz * SV); }
   line(0, -SV, 0, SV);
