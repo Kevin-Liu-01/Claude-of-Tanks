@@ -41,7 +41,11 @@ const PINNED = {
   // rounds fold one run on the commander MAG.
   // VH.14 (2026-10-15): the M1A2's loader M240 and the T-90M's Kord are working stations, so each folds its can and
   // rounds on the gun's own pitch rig; the M1A2's second (decorative) MAG fold is gone with that gun
-  m1a1_abrams_hc: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  // 2026-10-16 (integ/226 triage, conflict 5): round 3b's painted loader race (a92e6616d, americanM2 ringSlot 'detail')
+  // and VH.14 both ride 226. The race and its brackets wear the turret paint, so the loader M240 fitting's
+  // fitting_pintleMG_detail run folds with its fitting_pintleMG_hull run on the fitting's own (unpitched) owner: one
+  // draw more than VH.14's pin alone
+  m1a1_abrams_hc: { saved: 2, owners: { 'fitting_abramsLoaderM240_m1a2-split-loader': 1, auxiliaryWeaponPitch: 1 } },
   t90am: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
   // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both
   strv122: { saved: 0, owners: {} },
