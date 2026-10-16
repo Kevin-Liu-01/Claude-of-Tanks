@@ -478,7 +478,8 @@ function hetman(P:TankBuilderPort,S:TurretStock):void {
   }
   // The drone dock's landing over the gunner-side rear boxes, behind the cage wing.
   dockLanding(P,S,'t72b3m_hetman');
-  for(const [i,h]of [[6,2.4],[8,1.9]] as const){
+  // Short field whips (the national kits' height rule: the listed height is the body and its roof weapon).
+  for(const [i,h]of [[6,.85],[8,.70]] as const){
     const c=b3mCase(i).c;
     if(Math.hypot(c.x-sweep.x,c.z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     antenna(P,S,c.x,c.z,h);
@@ -652,7 +653,7 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
     for(const [F,fa]of [[L,fit.l.pan],[R,fit.r.pan]] as const){const p=F.at(F.face-.20,fa,0);panorama(P,S,p.x,p.z,.17);}
   }
   // Aerials on the basket's rear corners, a harness from the left panorama back along the basket.
-  for(const [x,z,h]of [[-1.00,-2.62,2.6],[1.00,-2.62,2.2]] as const){
+  for(const [x,z,h]of [[-1.00,-2.62,.90],[1.00,-2.62,.75]] as const){
     if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     P.addEquipment('turretDetail',box(.10,.05,.10),x,.685,z);
     P.addEquipment('turretDetail',cylY(.050,.062,.055,12),x,.737,z);
@@ -784,7 +785,7 @@ function sich(P:TankBuilderPort,S:TurretStock):void {
   dockLanding(P,S,'t72b3_sich');
   cableRun(P,S,[[-1.20,.70,-.78],[-1.08,.70,-1.05],[-.80,.74,-1.28]],.012);
   // Aerials outside the station's sweep on the screen's two rear corner posts.
-  for(const [i,h]of [[2,2.0],[3,2.3]] as const){
+  for(const [i,h]of [[2,.70],[3,.85]] as const){
     const [x,z]=SICH_SCREEN[i];
     if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     P.addEquipment('turretDetail',box(.10,.05,.10),x,.745,z);
