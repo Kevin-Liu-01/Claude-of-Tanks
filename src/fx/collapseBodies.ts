@@ -37,7 +37,7 @@ import { createRigidShape, type RigidEnvironment, type RigidShape } from '../sim
 import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { StructureDamageAnatomy } from '../world/destructionKit.ts';
-import { rubbleMoundHeightAt, type RubbleMound } from '../sim/terrainDeformation.ts';
+import { rubbleProfile, rubbleStampOf, type RubbleMound, type RubbleStamp } from '../sim/terrainDeformation.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import type { WreckTurretTank } from '../sim/wreckTurrets.ts';
 import {
@@ -259,6 +259,8 @@ interface LiveCollapse {
   remnant: THREE.Mesh[];
   stubs: CollisionRecord[];
   mound: RubbleMound | null;
+  /** The mound as a stamp (its crown once: the ground under the pieces samples it every step while it rises). */
+  stamp: RubbleStamp | null;
   /** The mound's world box (wake its sleepers while it rises). */
   box: [number, number, number, number];
   lastSoundS: number;
@@ -385,12 +387,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       let g = o.groundAt(x, z);
       for (let i = 0; i < live.length; i++) {
         const c = live[i];
-        if (!c.mound || c.partial) continue;
+        if (!c.stamp || c.partial) continue;
         const t = clockS - c.t0;
         if (t >= RISE_TO_S) continue;
         if (x < c.box[0] || x > c.box[2] || z < c.box[1] || z > c.box[3]) continue;
         const k = t <= RISE_FROM_S ? 0 : (t - RISE_FROM_S) / (RISE_TO_S - RISE_FROM_S);
-        g -= (1 - k * k * (3 - 2 * k)) * rubbleMoundHeightAt(c.mound, x, z);
+        g -= (1 - k * k * (3 - 2 * k)) * rubbleProfile(c.stamp, x, z);
       }
       return g;
     },
@@ -908,7 +910,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const reach = mound ? Math.max(mound.hw, mound.hd) + 8 : Math.max(anatomy.w, anatomy.d) / 2 + 8;
     const mx = mound ? mound.cx : placement.x, mz = mound ? mound.cz : placement.z;
     return { structureIdx: anatomy.structureIdx, plan, yaw: placement.yaw, seam, event: { ...e }, t0: clockS, pieces: [],
-      remnant: [], stubs: [], mound, box: [mx - reach, mz - reach, mx + reach, mz + reach], lastSoundS: -1, lastDustS: -1, baked: [],
+      remnant: [], stubs: [], mound, stamp: mound ? rubbleStampOf(mound) : null, box: [mx - reach, mz - reach, mx + reach, mz + reach], lastSoundS: -1, lastDustS: -1, baked: [],
       done: false, spawnQueue: [], partial };
   }
   const meshOf = (geo: THREE.BufferGeometry, material: THREE.Material, name: string): THREE.Mesh => {

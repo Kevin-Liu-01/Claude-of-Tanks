@@ -1084,6 +1084,15 @@ function sidePoly(poly: Poly, nx: number, ny: number, nz: number, d: number): nu
   return neg ? -1 : 1;
 }
 
+/** Every corner of the polygon inside the box. */
+function polyInBox(poly: Poly, min: ArrayLike<number>, max: ArrayLike<number>): boolean {
+  for (let i = 0; i < poly.length; i++) {
+    const v = poly[i];
+    if (!(v[0] >= min[0] && v[0] <= max[0] && v[1] >= min[1] && v[1] <= max[1] && v[2] >= min[2] && v[2] <= max[2])) return false;
+  }
+  return true;
+}
+
 function centroid(poly: Poly): [number, number, number] {
   let x = 0, y = 0, z = 0;
   for (const v of poly) { x += v[0]; y += v[1]; z += v[2]; }
@@ -1103,6 +1112,8 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   const out = new Map<number, number[]>();
   // a probe: one vertex through the same rules, its key recorded instead of emitted (the fast path below); a key is the
   // piece × PART_STRIDE + its part (the remnant and what is dropped keep their negative codes)
+  // (a probe is one point: no plane splits it, so every rule's split is skipped while probing — its arguments and the
+  // halves' callback not even made, 2026-10-16: the probes made a closure a rule a corner, tens of megabytes a collapse)
   let probing = false, probed = 0;
   const emit = (piece: number, poly: Poly, part = 0): void => {
     const key = piece < 0 ? piece : piece * PART_STRIDE + part;
@@ -1135,16 +1146,16 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     const sh = plan.shaft!;
     // the crown: a polygon wholly inside its box (the shaft's last part)
     const cr = sh.crown;
-    if (cr && poly.every((v) => v[0] >= cr.min[0] && v[0] <= cr.max[0] && v[1] >= cr.min[1] && v[1] <= cr.max[1] && v[2] >= cr.min[2] && v[2] <= cr.max[2])) {
+    if (cr && polyInBox(poly, cr.min, cr.max)) {
       emit(0, poly, cr.piece);
       return;
     }
     // the stump stands; the drums between their breaks up the shaft (a polygon across one is cut along it): the stump's
     // top and the top level, the breaks between on their slants
     const last = sh.bounds.length - 1;
-    if (across(poly, 0, 1, 0, sh.bounds[0], depth, (h, _s, dd) => shaftAssign(h, dd))) return;
-    if (across(poly, 0, 1, 0, sh.bounds[last], depth, (h, _s, dd) => shaftAssign(h, dd))) return;
-    for (const c of sh.cuts) if (across(poly, c.n[0], c.n[1], c.n[2], c.d, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    if (!probing && across(poly, 0, 1, 0, sh.bounds[0], depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    if (!probing && across(poly, 0, 1, 0, sh.bounds[last], depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    for (const c of sh.cuts) if (!probing && across(poly, c.n[0], c.n[1], c.n[2], c.d, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
     const cc = centroid(poly);
     if (cc[1] < sh.stumpY) { emit(STATIC_PIECE, poly); return; }
     let k = 0;
@@ -1154,7 +1165,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     if (hv) {
       const axis = sh.splitAxis[k];
       const d = axis === 0 ? plan.cx : plan.cz;
-      if (across(poly, axis === 0 ? 1 : 0, 0, axis === 2 ? 1 : 0, d, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+      if (!probing && across(poly, axis === 0 ? 1 : 0, 0, axis === 2 ? 1 : 0, d, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
       emit(0, poly, (axis === 0 ? cc[0] : cc[2]) < d ? hv[0] : hv[1]);
       return;
     }
@@ -1168,20 +1179,20 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     for (const c of plan.chimneys) {
       // (a roof's chimney over no slab goes with the roof's triangles round it)
       if (!Number.isFinite(c.breakY)) continue;
-      if (!poly.every((v) => v[0] >= c.min[0] && v[0] <= c.max[0] && v[1] >= c.min[1] && v[1] <= c.max[1] && v[2] >= c.min[2] && v[2] <= c.max[2])) continue;
+      if (!polyInBox(poly, c.min, c.max)) continue;
       // under its break: a ground stack's standing part, a roof chimney's attic part (dropped); over it, its piece (a
       // roof chimney too short for one drops whole, a ground stack's stands)
       const under = c.fromRoof ? DROPPED_PIECE : STATIC_PIECE;
       const over = c.piece >= 0 ? c.piece : under;
-      if (across(poly, 0, 1, 0, c.breakY, depth, (h, s) => emit(s > 0 ? over : under, h))) return;
+      if (!probing && across(poly, 0, 1, 0, c.breakY, depth, (h, s) => emit(s > 0 ? over : under, h))) return;
       emit(centroid(poly)[1] < c.breakY ? under : over, poly);
       return;
     }
     // under the ground storey: the plinth and footings stay
-    if (across(poly, 0, 1, 0, plan.groundY + 0.02, depth, (h, s, dd) => (s > 0 ? assign(h, dd) : emit(STATIC_PIECE, h)))) return;
+    if (!probing && across(poly, 0, 1, 0, plan.groundY + 0.02, depth, (h, s, dd) => (s > 0 ? assign(h, dd) : emit(STATIC_PIECE, h)))) return;
     if (centroid(poly)[1] < plan.groundY + 0.02) { emit(STATIC_PIECE, poly); return; }
     // the roof over the eaves, the walls under them
-    if (across(poly, 0, 1, 0, plan.eaveY, depth, (h, s, dd) => (s > 0 ? roofAssign(h, dd) : wallAssign(h, dd)))) return;
+    if (!probing && across(poly, 0, 1, 0, plan.eaveY, depth, (h, s, dd) => (s > 0 ? roofAssign(h, dd) : wallAssign(h, dd)))) return;
     if (centroid(poly)[1] >= plan.eaveY) roofAssign(poly, depth); else wallAssign(poly, depth);
   };
 
@@ -1189,8 +1200,8 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     // the storey bands and the floor slabs between them
     for (const st of plan.storeys) {
       if (st.floorPiece >= 0) {
-        if (across(poly, 0, 1, 0, st.floorY0, depth, (h, _s, dd) => wallAssign(h, dd))) return;
-        if (across(poly, 0, 1, 0, st.floorY1, depth, (h, _s, dd) => wallAssign(h, dd))) return;
+        if (!probing && across(poly, 0, 1, 0, st.floorY0, depth, (h, _s, dd) => wallAssign(h, dd))) return;
+        if (!probing && across(poly, 0, 1, 0, st.floorY1, depth, (h, _s, dd) => wallAssign(h, dd))) return;
       }
     }
     const c = centroid(poly);
@@ -1206,7 +1217,8 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       for (const v of poly) ny += v[4];
       ny /= poly.length;
       const deep = Math.min(plan.hw - Math.abs(c[0] - plan.cx), plan.hd - Math.abs(c[2] - plan.cz));
-      const wall = storey.faces.reduce((m, f) => Math.max(m, f.thickness), 0.3);
+      let wall = 0.3;
+      for (let i = 0; i < storey.faces.length; i++) wall = Math.max(wall, storey.faces[i].thickness);
       if (Math.abs(ny) > 0.85 && deep > wall + 0.9) {
         if (storey.floorPiece >= 0) partAssign(poly, depth, null, storey.floorPiece); else emit(DROPPED_PIECE, poly);
         return;
@@ -1214,8 +1226,8 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     }
     // the side by the footprint's diagonals
     const dx = plan.hd, dz = plan.hw;
-    if (across(poly, dx, 0, -dz, dx * plan.cx - dz * plan.cz, depth, (h, _s, dd) => wallAssign(h, dd))) return;
-    if (across(poly, dx, 0, dz, dx * plan.cx + dz * plan.cz, depth, (h, _s, dd) => wallAssign(h, dd))) return;
+    if (!probing && across(poly, dx, 0, -dz, dx * plan.cx - dz * plan.cz, depth, (h, _s, dd) => wallAssign(h, dd))) return;
+    if (!probing && across(poly, dx, 0, dz, dx * plan.cx + dz * plan.cz, depth, (h, _s, dd) => wallAssign(h, dd))) return;
     const rx = c[0] - plan.cx, rz = c[2] - plan.cz;
     const side = Math.abs(rx) * plan.hd >= Math.abs(rz) * plan.hw ? (rx >= 0 ? 0 : 1) : (rz >= 0 ? 2 : 3);
     const fp = storey.bySide[side] ?? storey.faces[0];
@@ -1224,7 +1236,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     // the panel along the face (its splits are vertical planes across it)
     const uOff = f.u[0] * f.origin[0] + f.u[1] * f.origin[1] + f.u[2] * f.origin[2];
     for (const s of fp.splits) {
-      if (across(poly, f.u[0], f.u[1], f.u[2], uOff + s, depth, (h, _s, dd) => wallAssign(h, dd))) return;
+      if (!probing && across(poly, f.u[0], f.u[1], f.u[2], uOff + s, depth, (h, _s, dd) => wallAssign(h, dd))) return;
     }
     const cc = centroid(poly);
     const u = f.u[0] * cc[0] + f.u[1] * cc[1] + f.u[2] * cc[2] - uOff;
@@ -1234,7 +1246,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     // the ground storey's stubs and corner piers stay standing
     if (storey.index === 0 && fp.stubTop.length) {
       const stub = f.origin[1] + (fp.stubTop[k] ?? 0);
-      if (across(poly, 0, 1, 0, stub, depth, (h, s, dd) => (s > 0 ? pierAssign(h, dd, fp, k, piece) : stubAssign(h, dd, fp, k)))) return;
+      if (!probing && across(poly, 0, 1, 0, stub, depth, (h, s, dd) => (s > 0 ? pierAssign(h, dd, fp, k, piece) : stubAssign(h, dd, fp, k)))) return;
       if (cc[1] < stub) { stubAssign(poly, depth, fp, k); return; }
       pierAssign(poly, depth, fp, k, piece);
       return;
@@ -1248,9 +1260,9 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     for (const g of fp.doorGaps) {
       if (g.k !== k) continue;
       const uOff = f.u[0] * f.origin[0] + f.u[1] * f.origin[1] + f.u[2] * f.origin[2];
-      if (across(poly, f.u[0], f.u[1], f.u[2], uOff + g.u0, depth, (h, _s, dd) => stubAssign(h, dd, fp, k))) return;
-      if (across(poly, f.u[0], f.u[1], f.u[2], uOff + g.u1, depth, (h, _s, dd) => stubAssign(h, dd, fp, k))) return;
-      if (g.sill > 0.02 && across(poly, 0, 1, 0, f.origin[1] + g.sill, depth, (h, _s, dd) => stubAssign(h, dd, fp, k))) return;
+      if (!probing && across(poly, f.u[0], f.u[1], f.u[2], uOff + g.u0, depth, (h, _s, dd) => stubAssign(h, dd, fp, k))) return;
+      if (!probing && across(poly, f.u[0], f.u[1], f.u[2], uOff + g.u1, depth, (h, _s, dd) => stubAssign(h, dd, fp, k))) return;
+      if (g.sill > 0.02 && !probing && across(poly, 0, 1, 0, f.origin[1] + g.sill, depth, (h, _s, dd) => stubAssign(h, dd, fp, k))) return;
       const c = centroid(poly);
       const u = f.u[0] * c[0] + f.u[1] * c[1] + f.u[2] * c[2] - uOff;
       if (u > g.u0 - 0.02 && u < g.u1 + 0.02 && c[1] > f.origin[1] + g.sill - 0.01) { emit(g.piece, poly); return; }
@@ -1267,10 +1279,10 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     const { origin: o, u: U, v: V } = pf;
     const uOff = U[0] * o[0] + U[1] * o[1] + U[2] * o[2], vOff = V[0] * o[0] + V[1] * o[1] + V[2] * o[2];
     for (const cut of p.partCutsU) {
-      if (across(poly, U[0], U[1], U[2], uOff + cut, depth, (h, _s, dd) => partAssign(h, dd, null, piece))) return;
+      if (!probing && across(poly, U[0], U[1], U[2], uOff + cut, depth, (h, _s, dd) => partAssign(h, dd, null, piece))) return;
     }
     for (const cut of p.partCutsY) {
-      if (across(poly, V[0], V[1], V[2], vOff + cut, depth, (h, _s, dd) => partAssign(h, dd, null, piece))) return;
+      if (!probing && across(poly, V[0], V[1], V[2], vOff + cut, depth, (h, _s, dd) => partAssign(h, dd, null, piece))) return;
     }
     const c = centroid(poly);
     const u = U[0] * c[0] + U[1] * c[1] + U[2] * c[2] - uOff, v = V[0] * c[0] + V[1] * c[1] + V[2] * c[2] - vOff;
@@ -1296,14 +1308,25 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
           return (end === 0 ? u < edge : u > edge) && c[1] < top;
         };
         // split at the pier's inner edge and its top; the part inside stays
-        if (across(poly, f.u[0], f.u[1], f.u[2], uOff + edge, depth, (h, _s, dd) => pierAssign(h, dd, fp, k, piece))) return;
-        if (across(poly, 0, 1, 0, top, depth, (h, _s, dd) => pierAssign(h, dd, fp, k, piece))) return;
+        if (!probing && across(poly, f.u[0], f.u[1], f.u[2], uOff + edge, depth, (h, _s, dd) => pierAssign(h, dd, fp, k, piece))) return;
+        if (!probing && across(poly, 0, 1, 0, top, depth, (h, _s, dd) => pierAssign(h, dd, fp, k, piece))) return;
         if (inPier(poly)) { emit(STATIC_PIECE, poly); return; }
       }
     }
     partAssign(poly, depth, fp, piece);
   };
 
+  // the roof slab whose plane lies nearest a point (and whose rectangle it falls in)
+  const nearest = (v: Float64Array | number[]): number => {
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < plan.roof.length; i++) {
+      const s = plan.roof[i];
+      const dd = Math.abs((v[0] - s.p[0]) * s.n[0] + (v[1] - s.p[1]) * s.n[1] + (v[2] - s.p[2]) * s.n[2])
+        + outsideSlab(s, v) * 2;
+      if (dd < bd) { bd = dd; best = i; }
+    }
+    return best;
+  };
   const roofAssign = (poly: Poly, depth: number): void => {
     // a gable's wall: near its face's plane and under the roof's covering
     for (const g of plan.gables) {
@@ -1314,24 +1337,18 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       const c = centroid(poly);
       const o = f.out[0] * c[0] + f.out[1] * c[1] + f.out[2] * c[2];
       if (o < inner - 0.5) continue;
-      if (across(poly, f.out[0], f.out[1], f.out[2], inner, depth, (h, _s, dd) => roofAssign(h, dd))) return;
+      if (!probing && across(poly, f.out[0], f.out[1], f.out[2], inner, depth, (h, _s, dd) => roofAssign(h, dd))) return;
       if (o < inner) continue;
       // under every slab's plane by more than its covering: the gable's (the verge's tiles stay the roof's)
-      const below = plan.roof.every((s) => (c[0] - s.p[0]) * s.n[0] + (c[1] - s.p[1]) * s.n[1] + (c[2] - s.p[2]) * s.n[2] < -0.06);
+      let below = true;
+      for (let i = 0; i < plan.roof.length && below; i++) {
+        const s = plan.roof[i];
+        below = (c[0] - s.p[0]) * s.n[0] + (c[1] - s.p[1]) * s.n[1] + (c[2] - s.p[2]) * s.n[2] < -0.06;
+      }
       if (below || !plan.roof.length) { partAssign(poly, depth, null, g.piece); return; }
     }
     if (!plan.roof.length) { emit(STATIC_PIECE, poly); return; }
     // the nearest slab's plane, split on the bisector with the runner-up where the polygon's corners disagree
-    const nearest = (v: Float64Array | number[]): number => {
-      let best = 0, bd = Infinity;
-      for (let i = 0; i < plan.roof.length; i++) {
-        const s = plan.roof[i];
-        const dd = Math.abs((v[0] - s.p[0]) * s.n[0] + (v[1] - s.p[1]) * s.n[1] + (v[2] - s.p[2]) * s.n[2])
-          + outsideSlab(s, v) * 2;
-        if (dd < bd) { bd = dd; best = i; }
-      }
-      return best;
-    };
     const first = nearest(poly[0]);
     let other = -1;
     for (const v of poly) { const n = nearest(v); if (n !== first) { other = n; break; } }
@@ -1339,12 +1356,12 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       const a = plan.roof[first], b = plan.roof[other];
       const nx = a.n[0] - b.n[0], ny = a.n[1] - b.n[1], nz = a.n[2] - b.n[2];
       const d = dot(a.n, a.p) - dot(b.n, b.p);
-      if (Math.hypot(nx, ny, nz) > 1e-3 && across(poly, nx, ny, nz, d, depth, (h, _s, dd) => roofAssign(h, dd))) return;
+      if (Math.hypot(nx, ny, nz) > 1e-3 && !probing && across(poly, nx, ny, nz, d, depth, (h, _s, dd) => roofAssign(h, dd))) return;
     }
-    const slab = plan.roof[nearest(centroid(poly).slice() as unknown as number[])];
+    const slab = plan.roof[nearest(centroid(poly))];
     const eOff = dot(slab.e, slab.p);
     for (const cut of slab.cuts) {
-      if (across(poly, slab.e[0], slab.e[1], slab.e[2], eOff + cut, depth, (h, _s, dd) => roofAssign(h, dd))) return;
+      if (!probing && across(poly, slab.e[0], slab.e[1], slab.e[2], eOff + cut, depth, (h, _s, dd) => roofAssign(h, dd))) return;
     }
     const c = centroid(poly);
     const e = slab.e[0] * c[0] + slab.e[1] * c[1] + slab.e[2] * c[2] - eOff;
