@@ -20,6 +20,7 @@ import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import { bindStructureSpans, describeStructure, tagStructureVertices } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
+import { settleCatalogCuts } from './maps/railKit.ts';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const emptyBuckets = () => Object.fromEntries(names.map(name => [name, []]));
@@ -352,6 +353,8 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   rebuildRegionalStructure, resolveRegionalArchitecture,
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
+  // (props census #13, lane B: placePlannedBuilding settles a plan hall's catalog openings after the exterior pass)
+  settleCatalogCuts,
 };
 // The map-revival lane (2026-10-05): Orchard Valley adopts the Chouf kit (maps/regional/chouf.ts), which rebuilds the
 // placed bathhouse as the hammam over the same seat, filling the base's measured bounds (the timber variant's 2 cm entry

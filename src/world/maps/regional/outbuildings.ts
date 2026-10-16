@@ -592,6 +592,13 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
   const ad = door ? door.angle : 0;
   sink.cylinder(bucket, [cx, base - sunk, cz], 'y', wallH - base + sunk, R - 0.03, 18, {}, R - 0.03, false, door ? gap - ad : 0, door ? Math.PI * 2 - 2 * gap : Math.PI * 2);
   if (door) sink.cylinder(bucket, [cx, base + doorTop, cz], 'y', wallH - base - doorTop, R - 0.03, 3, {}, R - 0.03, false, -(ad + gap), 2 * gap);
+  // (Lane C 2026-10-16, regionalArchitecture's ray audit: the core's ring stood open at its foot, and a view from under the
+  // ground met its inside) the core's foot closed under the ground
+  {
+    const foot: Vec3[] = [];
+    for (let k = 0; k < 18; k++) foot.push(P((k / 18) * Math.PI * 2, base - sunk, R - 0.03));
+    sink.polygon(bucket, foot, { decor: true });
+  }
   let top = wallH;
   // a ring's outer radius at fraction t of the cone's rise (straight, or a dome's quarter ellipse)
   const ringR = (t: number): number => (spec.cone?.dome ? spec.cone.cap + (R - spec.cone.cap) * Math.sqrt(Math.max(0, 1 - t * t)) : R + ((spec.cone?.cap ?? R) - R) * t);

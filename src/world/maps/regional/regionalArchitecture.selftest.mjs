@@ -29,6 +29,7 @@ import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, makeTimberBathhouse } from '../structureKit.ts';
 import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops } from '../exteriorDetailKit.ts';
+import { settleCatalogCuts } from '../railKit.ts';
 import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
 import { createHeightField } from '../../terrain.ts';
@@ -289,6 +290,8 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
+  // (props census #13, lane B: placePlannedBuilding settles a plan hall's catalog openings after the exterior pass)
+  settleCatalogCuts,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };
