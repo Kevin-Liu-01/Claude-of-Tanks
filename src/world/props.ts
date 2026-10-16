@@ -509,6 +509,8 @@ interface PropsSettings {
    */
   settlementOverWater?: boolean;
   tones: Record<string, ToneFunction | null | undefined>;
+  /** The procedural render canvas's relief (its normal's strength; default 1.2): the map's own, else its kit's. */
+  plasterRelief?: number;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
   buildingLat: readonly [number, number];
@@ -579,6 +581,8 @@ interface PropsSettings {
   streetRowKeepouts?: readonly (
     { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
+  /** Authored ground-cover holes ({ x, z, r }): no grass, tall grass or litter grows there (a spring's pool, Oasis). */
+  groundCoverHoles?: readonly { x: number; z: number; r: number }[];
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
   yardClutter?: boolean;
@@ -1071,6 +1075,7 @@ function makePlaster(
   anisotropy: number,
   tone: ToneFunction | null = null,
   sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
+  relief = 1.2,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
@@ -1113,7 +1118,7 @@ function makePlaster(
   applyTone(px, tone);
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, 1.2, anisotropy),
+    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, relief, anisotropy),
     surface: sharedSurface?.surface
       ?? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
   };
@@ -3813,8 +3818,11 @@ function* propsBuildSteps(
     }
     P.tones = tones;
   }
+  // a kit's render relief (maps/regional/types.ts ArchitectureSurfaces.plasterRelief) under the map's own; the canvas's 1.2
+  // where neither sets one
+  if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
   const T = P.tones || {};
-  const plaster = makePlaster(noi, aniso, T.plaster || null);
+  const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // content_breadth r3: TWO extra render families — the street walls
   // recycled one plaster print ("same white-plaster box repeats dozens of
@@ -3838,7 +3846,7 @@ function* propsBuildSteps(
   const pouredConcrete = regionalArchitecture?.surfaces.concrete;
   const plaster2 = pouredConcrete
     ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
-    : makePlaster(noi, aniso, plaster2Tone);
+    : makePlaster(noi, aniso, plaster2Tone, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // These two procedural variants differ only in albedo tone. Share their
   // immutable relief within this props owner; retained materials deduplicate
@@ -9156,6 +9164,13 @@ ${snowCap ? `
     if (kept.length < index.count) crop.geometry.setIndex(kept);
   }
   placeRegionalYards();
+  // authored ground-cover holes (props.groundCoverHoles): ground no blade or tuft grows through that no solid marks — a
+  // spring's pool inside its stone rim (Oasis round 3, wave 135: "dry grass cards sprout through the spring's water");
+  // map.ts holds them with the yards' and the scenery's
+  if (P.groundCoverHoles?.length) {
+    group.userData.regionalYardHoles = [...((group.userData.regionalYardHoles as Array<{ x: number; z: number; r: number }> | undefined) ?? []),
+      ...P.groundCoverHoles.map((h) => ({ x: h.x, z: h.z, r: h.r }))];
+  }
   yield { fine: true, progress: false, stage: 'regional-yards' };
   // (sealed lane 2026-10-11: Ruinspires and Blackglass trucks stood with their wheels in a pavement) each kerb piece and
   // the pavement behind it in plan, for the parked vehicles' and carts' seat passes (crushableFootprints; placeStreetCurbs
