@@ -6,8 +6,9 @@
 // the colliery's headframe over its shaft hall with the winding-engine house behind it (the Saar coalfield at the works'
 // gate); the works office in brick with yellow-brick bands under slate. The workers' terraces, the station, the water
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
-import { PartSink, alongPlot, faceBox, facePanel, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { PartSink, alongPlot, faceBox, facePanel, pick, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, emitRoof, recordShaft, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { facadeOn, roofDormers, shopDisplay } from './facade.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
 import { RUHR_BUILDERS } from './ruhr.ts';
@@ -571,6 +572,10 @@ const worksOffice: RegionalBuilder = (ctx) => {
 // ------------------------------------------------------------------------------------------------ the miners' houses
 
 const SANDSTONE = rgb(0x9a5f4c), WHITE_FRAME = rgb(0xe4dfd2);
+/** The Kolonialwaren shop's paint. */
+const SHOP_PAINT: readonly Rgb[] = [0x3d5c45, 0x6e2a22, 0x2c3a52, 0x5a4030].map(rgb);
+/** A u along a front `len` long, kept clear of its ends. */
+const clampU = (u: number, len: number): number => Math.max(-len / 2 + 1.6, Math.min(len / 2 - 1.6, u));
 const MINER_WINDOW: WindowStyle = { frame: WHITE_FRAME, frameWidth: 0.06, frameOut: 0.04, bars: 'cross', surround: { bucket: 'stone', width: 0.15, out: 0.05, lintel: 0.2 }, sill: { bucket: 'stone', out: 0.08 }, shutters: null };
 const LEAVES: readonly Rgb[] = [0x3e4e44, 0x5a3a2a, 0x2f3f52, 0x6b5a3c].map(rgb);
 
@@ -596,6 +601,16 @@ const minersHouse: RegionalBuilder = (ctx) => {
   const doorU = stable ? -stable * len * 0.12 : (rng() - 0.5) * len * 0.3;
   openings.push({ face: 'left', storey: 0, kind: 'door', u: doorU, w: 1.0, y0: 0, h: 2.15 });
   const avoid: Array<[number, number]> = [[doorU - 0.8, doorU + 0.8]];
+  // (props census #29, lane B 2026-10-15; the judges: "on a cornershop plot it builds the house with no shop") the corner
+  // plot's Kolonialwaren shop in the street bay beside the door: its window divided under a transom, the goods in it, a
+  // fascia over it
+  const shopPlot = ctx.structureId === 'cornershop';
+  const shopU = shopPlot ? clampU(doorU + (doorU < 0 ? 1 : -1) * 2.0, len) : 0;
+  if (shopPlot) {
+    // (the opening over the stall riser, which stands on the wall under it)
+    openings.push({ face: 'left', storey: 0, kind: 'shopfront', u: shopU, w: 2.3, y0: 0.55, h: 1.85 });
+    avoid.push([shopU - 1.45, shopU + 1.45]);
+  }
   if (stable) {
     const su = stable * (len / 2 - 1.7);
     openings.push({ face: 'left', storey: 0, kind: 'gate', u: su, w: 2.4, y0: 0, h: 2.5 });
@@ -607,9 +622,21 @@ const minersHouse: RegionalBuilder = (ctx) => {
   for (const o of windowRhythm('right', 0, len, { w: 0.8, h: 1.1, sill: 1.0, spacing: 2.4, margin: 1.2 })) openings.push(o);
   const houseDialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, MINER_WINDOW, look, 0.25),
-    door: (s, face, o, y0) => {
+    door: (s, face, o, y0, frame) => {
       if (o.kind === 'gate') { gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(leaf, 0.85), { bucket: 'stone', width: 0.2, out: 0.06 }); return; }
-      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'stone', width: 0.18, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0);
+      if (o.kind === 'shopfront') {
+        // the shop window over the masonry stall riser, divided in two under a transom, the goods in it, the fascia over it
+        const y = y0 + o.y0, paint = pick(look, SHOP_PAINT);
+        windowUnit(s, face, o.u, y, o.w, o.h, { ...MINER_WINDOW, bars: 'two', surround: { bucket: 'stone', width: 0.2, out: 0.08 } }, look, 0.5);
+        faceBox(s, 'structureWood', face, o.u, y + o.h - 0.42, -s.recess + 0.03, o.w - 0.1, 0.07, 0.05, { colour: WHITE_FRAME, decor: true, fine: 'near' }, 'ends');
+        if (facadeOn()) shopDisplay(s, face, o.u, y, o.w, o.h, -s.recess);
+        const top = Math.min(frame.bodies[o.storey].y1 - 0.1, y + o.h + 0.62);
+        faceBox(s, 'structureWood', face, o.u, top - 0.18, 0.05, o.w + 0.8, 0.34, 0.1, { colour: paint, decor: true, fineSides: 'near' });
+        faceBox(s, 'structureWood', face, o.u, top + 0.02, 0.09, o.w + 0.94, 0.06, 0.18, { colour: shade(paint, 0.8), decor: true, fineSides: 'near' });
+        return;
+      }
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'stone', width: 0.18, out: 0.06 }, transom: false, steps: { bucket: 'stone' },
+        leafKind: shopPlot && Math.abs(o.u - doorU) < 0.01 ? 'glazed' : 'panel' }, y0 + o.y0);
     },
   };
   sink.placed(0, f.cx, 0, f.cz, () => {
@@ -620,9 +647,18 @@ const minersHouse: RegionalBuilder = (ctx) => {
         chimneys: [{ x: (rng() - 0.5) * 0.6, z: (stable ? -stable : 1) * len * 0.18, sx: 0.5, sz: 0.6, above: 0.8, bucket: 'stone', cap: 'pots' }],
         gutters: mobile ? null : { colour: rgb(0x6a6e70) }, verge: null, reveal: 0.2, rafters: null, spall: null,
       }, houseDialect);
-      // the plinth band in the dressed stone, a soot shadow over the stable door
+      // the plinth band in the dressed stone (on every house: the rubble ones' in the coursed stone)
       const b = frame.bodies[0];
-      if (plaster) sink.band('stone', b.x0 - 0.03, 0.3, b.z0 - 0.03, b.x1 + 0.03, 0.62, b.z1 + 0.03, { decor: true, colour: SANDSTONE });
+      sink.band('stone', b.x0 - 0.03, 0.3, b.z0 - 0.03, b.x1 + 0.03, 0.62, b.z1 + 0.03, { decor: true, colour: SANDSTONE });
+      // (props census #29; the judges: "a plain slab roof with no verge, rafters or dormer") a dormer on the street slope
+      // over the knee wall's attic, clear of the stack
+      if (len > 5.6 && look() < 0.75) {
+        const zs = [(look() - 0.5) * Math.max(0, len - 4.4)];
+        roofDormers(sink, frame.roof, [-1], zs, {
+          kind: look() < 0.6 ? 'gable' : 'shed', wall: plaster ? 'plaster' : 'stone', covering: 'roof',
+          window: (face, u, y, w, h) => windowUnit(sink, face, u, y, w, h, { ...MINER_WINDOW, surround: null, sill: null }, look, 0.25),
+        });
+      }
     }));
     // the yard behind the house, walled to the lot's back and sides
     const yard = zc - depth / 2 - over, back = -f.d / 2;
@@ -630,11 +666,27 @@ const minersHouse: RegionalBuilder = (ctx) => {
       const t = 0.3, wy = 1.8;
       sink.span('stone', -len / 2, -0.4, back, len / 2, wy, back + t);
       for (const s of [-1, 1]) sink.span('stone', s > 0 ? len / 2 - t : -len / 2, -0.4, back + t, s > 0 ? len / 2 : -len / 2 + t, wy, yard + over);
-      if (look() < 0.7) sink.dressing(mobile, () => {
-        // a lean-to shed against the back wall: the coal, the goat
-        const sw = Math.min(3.2, len * 0.4), sx = (look() - 0.5) * (len - sw - 1);
-        sink.span('structureWood', sx - sw / 2, -0.3, back + t, sx + sw / 2, 2.2, back + t + 1.6, { colour: shade(rgb(0x5a4a3a), 0.8 + look() * 0.3), decor: true });
-      });
+      if (look() < 0.7) {
+        // a lean-to shed against the back wall, the coal and the goat (props census #29; the judges: "one plain span box with
+        // no roof, door or boards"): a board shed under its mono-pitch roof falling to the yard, its door cut in its front
+        const sw = Math.min(3.2, len * 0.4), sx = (look() - 0.5) * (len - sw - 1), sd = 1.6, hi = wy + 0.05, lo = 1.95;
+        const colour = shade(rgb(0x5a4a3a), 0.8 + look() * 0.3), pitchDeg = Math.atan2(hi - lo, sd) * 180 / Math.PI;
+        sink.placed(-Math.PI / 2, sx, 0, back + t + sd / 2, () => {
+          sink.paint = colour;
+          try {
+            const shed = buildHouse(sink, {
+              w: sd, d: sw, plinth: { h: 0.1, out: 0.03, bucket: 'stone' }, storeys: [{ h: lo - 0.1, wall: 'structureWood' }],
+              roof: { kind: 'shed', pitchDeg, eave: 0.12, verge: 0.06, thickness: 0.06, bucket: 'structureMetal' }, roofColour: shade(SHEET, 0.9),
+              gableBucket: 'structureWood', openings: [{ face: 'right', storey: 0, kind: 'door', u: (look() - 0.5) * Math.max(0, sw - 1.6), w: 0.85, y0: 0, h: 1.75 }],
+              chimneys: [], gutters: null, verge: null, reveal: 0.06, spall: null,
+            }, { window: () => {}, door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(colour, 0.85), frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(colour, 0.7) }, steps: null, leafKind: 'plank' }, y0 + o.y0) });
+            // its side walls carried up under the pent
+            const rise = sd * Math.tan(pitchDeg * Math.PI / 180), h2 = sd / 2;
+            wallPolygon(sink, 'structureWood', shed.faces.front, [[h2, lo], [-h2, lo + rise], [-h2, lo]], 0.06, { colour });
+            wallPolygon(sink, 'structureWood', shed.faces.back, [[-h2, lo], [h2, lo], [h2, lo + rise]], 0.06, { colour });
+          } finally { sink.paint = null; }
+        });
+      }
     }
   });
   return sink.finish();

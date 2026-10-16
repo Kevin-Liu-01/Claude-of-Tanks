@@ -1523,7 +1523,7 @@ export function wallPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, 
  * breaks cut its diagonal 2 cm from the corner, a sliver 40 m long).
  */
 export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Array<[number, number]>, holes: readonly HoleRect[],
-  depth: number, reveal: number, opts: EmitOptions = {}, stains: readonly Stain[] = [], edgeBreaks: readonly number[] = []): void {
+  depth: number, reveal: number, opts: EmitOptions = {}, stains: readonly Stain[] = [], edgeBreaks: readonly number[] = [], backs = false): void {
   const ys = poly.map(([, y]) => y), lo = Math.min(...ys), hi = Math.max(...ys);
   const hs = holes.filter((h) => h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05 && h.y0 > lo - 1e-6 && h.y1 < hi);
   const ss = stains.map((t) => ({ ...t, y0c: Math.max(t.y0, lo), y1c: Math.min(t.y1, hi) })).filter((t) => t.u1 - t.u0 > 0.05 && t.y1c - t.y0c > 0.05);
@@ -1570,6 +1570,8 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
   const k0 = opts.shade ?? 1;
   for (const { pc, lo: sl, hi: sh, midY } of pieces) {
     sink.polygon(bucket, pc.map(([u, y]) => P(u, y, 0)), sl === undefined ? opts : { ...opts, shadeAt: (q) => k0 * (q[1] < midY! ? sl : sh!) });
+    // `backs`: a wall with a room behind it and no core (props census #29: a board shop's walls), each piece's back too
+    if (backs) sink.polygon(bucket, pc.map(([u, y]) => P(u, y, -depth)).reverse(), { ...opts, shade: 0.7 * k0, ...(opts.colour ? { colour: shadeRgb(opts.colour, 0.7) } : {}) });
   }
   for (let i = 0; i < poly.length; i++) {
     const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length];
@@ -1608,7 +1610,9 @@ export const DAMP_EDGE_BREAKS: readonly number[] = [0.36, 1.01, 1.81];
  */
 export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number,
   holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number | Record<FaceName, number>, reveal: number, opts: EmitOptions = {},
-  more: { reveals?: Partial<Record<FaceName, number>>; stains?: Partial<Record<FaceName, readonly Stain[]>>; edgeBreaks?: readonly number[] } = {}): Record<FaceName, Face> {
+  more: { reveals?: Partial<Record<FaceName, number>>; stains?: Partial<Record<FaceName, readonly Stain[]>>; edgeBreaks?: readonly number[];
+    /** a face in a bucket of its own (props census #29: a shophouse's timber upper front over its brick block) */
+    buckets?: Partial<Record<FaceName, RegionalBucket>> } = {}): Record<FaceName, Face> {
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wx = x1 - x0, wz = z1 - z0;
   const c = (name: FaceName) => (typeof cut === 'number' ? cut : cut[name]);
   sink.span(bucket, x0 + c('left'), y0, z0 + c('back'), x1 - c('right'), y1, z1 - c('front'), opts);
@@ -1623,7 +1627,7 @@ export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0:
     // the front)
     const [ua, ub] = name === 'front' || name === 'back' ? [-wx / 2, wx / 2]
       : name === 'right' ? [-(wz / 2 - c('front')), wz / 2 - c('back')] : [-(wz / 2 - c('back')), wz / 2 - c('front')];
-    holedPolygon(sink, bucket, faces[name], [[ua, y0], [ub, y0], [ub, y1], [ua, y1]], holes[name] ?? [], c(name), more.reveals?.[name] ?? reveal, opts,
+    holedPolygon(sink, more.buckets?.[name] ?? bucket, faces[name], [[ua, y0], [ub, y0], [ub, y1], [ua, y1]], holes[name] ?? [], c(name), more.reveals?.[name] ?? reveal, opts,
       more.stains?.[name] ?? [], more.edgeBreaks ?? DAMP_EDGE_BREAKS);
   }
   return faces;
