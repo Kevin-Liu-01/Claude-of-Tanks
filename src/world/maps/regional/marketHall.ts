@@ -112,37 +112,7 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
   const rg = roofGeometry(rw, rd, eaveY, spec.roof);
   emitRoof(sink, rg, spec.roof, spec.roofColour);
   const under = (x: number): number => rg.ridgeY - Math.abs(x) * rg.tanP - 0.02;
-  sink.dressing(spec.mobile, () => {
-    const t = { ...oakDark, decor: true, exposed: true } as const;
-    const trussZs = spec.roof.kind === 'gable' ? zs : zs.filter((z) => Math.abs(z) <= rg.ridgeHalf + 0.05 || zs.length <= 2);
-    for (const z of trussZs) {
-      // the principals from the tie's ends to the apex, the king post, the struts from its foot to the principals' middles
-      for (const s of [-1, 1]) sink.member('structureWood', [s * (px + 0.05), tieTop, z], [0, under(0) - 0.08, z], 0.16, 0.12, [0, 0, 1], t, 0.06);
-      sink.member('structureWood', [0, tieTop, z], [0, under(0) - 0.05, z], 0.16, 0.14, [0, 0, 1], t, 0.07);
-      for (const s of [-1, 1]) sink.member('structureWood', [s * 0.07, tieTop + 0.35, z], [s * px * 0.5, under(px * 0.5) - 0.12, z], 0.1, 0.1, [0, 0, 1], t, 0.05);
-    }
-    // the purlins along both slopes at the principals' middles, the ridge piece under the apex
-    const ze0 = spec.roof.kind === 'gable' ? -rd / 2 - spec.roof.verge + 0.1 : -Math.max(0.2, rg.ridgeHalf) - 0.3;
-    for (const s of [-1, 1]) {
-      const x = s * px * 0.5;
-      sink.span('structureWood', x - 0.07, under(x) - 0.2, ze0, x + 0.07, under(x) - 0.06, -ze0, t);
-    }
-    sink.span('structureWood', -0.08, under(0) - 0.24, ze0, 0.08, under(0) - 0.06, -ze0, t);
-    // the common rafters under the covering, a pace apart along the ridge
-    const rz = spec.roof.kind === 'gable' ? rd / 2 + spec.roof.verge - 0.15 : Math.max(0.3, rg.ridgeHalf);
-    for (let z = -rz; z <= rz + 1e-6; z += Math.max(0.5, (2 * rz) / Math.max(1, Math.round(2 * rz / 0.75)))) {
-      for (const s of [-1, 1]) sink.member('structureWood', [s * (rg.s + spec.roof.eave * 0.8), under(rg.s + spec.roof.eave * 0.8) - 0.07, z],
-        [s * 0.06, under(0.06) - 0.07, z], 0.12, 0.07, [0, 0, 1], { colour: shade(timber, 0.76), decor: true, exposed: true }, 0.035);
-    }
-    // a hip roof's hip rafters from the plates' corners to the ridge's ends
-    if (spec.roof.kind === 'hip') {
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-        const dx = -sx * (px + 0.1), dz = sz * (rg.ridgeHalf - rd / 2 + 0.02), dl = Math.hypot(dx, dz);
-        sink.member('structureWood', [sx * (px + 0.1), eaveY + 0.02, sz * (rd / 2 - 0.02)], [0, under(0) - 0.08, sz * rg.ridgeHalf], 0.14, 0.09, [dz / dl, 0, -dx / dl],
-          { colour: shade(timber, 0.76), decor: true, exposed: true }, 0.045);
-      }
-    }
-  });
+  hallRoofTimbers(sink, { rg, roof: spec.roof, px, zs, tieTop, eaveY, rd, timber, mobile: spec.mobile });
   // a gable roof's ends boarded above the end tie beams, a louvred vent in each
   if (spec.roof.kind === 'gable' && spec.boardedGables) {
     const bc = spec.boardedGables;
@@ -167,6 +137,52 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
     x0: -cw, x1: cw, y0: eaveY, y1: eaveY + 2.6, z0: -cd, z1: cd, bucket: crownB, tint: spec.roofColour ?? [0.42, 0.43, 0.45],
   });
   return { rg, eaveY };
+}
+
+/** What a hall's roof frame stands on: its roof, the tie beams' half span (`px`) and their places along it (`zs`), the
+ *  ties' top, the eave, the roof's depth along the ridge, the oak. */
+export interface RoofFrame { rg: RoofGeometry; roof: RoofSpec; px: number; zs: readonly number[]; tieTop: number; eaveY: number; rd: number; timber: Rgb; mobile: boolean }
+
+/**
+ * The carpentry under a hall's covering, the roof's frame centred on the emitting frame's origin (the ridge along z): on
+ * every tie beam a king-post truss (on a hip roof those under the ridge), its principals and struts; the purlins along
+ * both slopes, the ridge piece, the common rafters a pace apart, a hip roof's hip rafters. Dressing.
+ */
+export function hallRoofTimbers(sink: PartSink, f: RoofFrame): void {
+  const { rg, roof, px, zs, tieTop, eaveY, rd, timber } = f;
+  const oakDark = { colour: shade(timber, 0.82) };
+  const under = (x: number): number => rg.ridgeY - Math.abs(x) * rg.tanP - 0.02;
+  sink.dressing(f.mobile, () => {
+    const t = { ...oakDark, decor: true, exposed: true } as const;
+    const trussZs = roof.kind === 'gable' ? zs : zs.filter((z) => Math.abs(z) <= rg.ridgeHalf + 0.05 || zs.length <= 2);
+    for (const z of trussZs) {
+      // the principals from the tie's ends to the apex, the king post, the struts from its foot to the principals' middles
+      for (const s of [-1, 1]) sink.member('structureWood', [s * (px + 0.05), tieTop, z], [0, under(0) - 0.08, z], 0.16, 0.12, [0, 0, 1], t, 0.06);
+      sink.member('structureWood', [0, tieTop, z], [0, under(0) - 0.05, z], 0.16, 0.14, [0, 0, 1], t, 0.07);
+      for (const s of [-1, 1]) sink.member('structureWood', [s * 0.07, tieTop + 0.35, z], [s * px * 0.5, under(px * 0.5) - 0.12, z], 0.1, 0.1, [0, 0, 1], t, 0.05);
+    }
+    // the purlins along both slopes at the principals' middles, the ridge piece under the apex
+    const ze0 = roof.kind === 'gable' ? -rd / 2 - roof.verge + 0.1 : -Math.max(0.2, rg.ridgeHalf) - 0.3;
+    for (const s of [-1, 1]) {
+      const x = s * px * 0.5;
+      sink.span('structureWood', x - 0.07, under(x) - 0.2, ze0, x + 0.07, under(x) - 0.06, -ze0, t);
+    }
+    sink.span('structureWood', -0.08, under(0) - 0.24, ze0, 0.08, under(0) - 0.06, -ze0, t);
+    // the common rafters under the covering, a pace apart along the ridge
+    const rz = roof.kind === 'gable' ? rd / 2 + roof.verge - 0.15 : Math.max(0.3, rg.ridgeHalf);
+    for (let z = -rz; z <= rz + 1e-6; z += Math.max(0.5, (2 * rz) / Math.max(1, Math.round(2 * rz / 0.75)))) {
+      for (const s of [-1, 1]) sink.member('structureWood', [s * (rg.s + roof.eave * 0.8), under(rg.s + roof.eave * 0.8) - 0.07, z],
+        [s * 0.06, under(0.06) - 0.07, z], 0.12, 0.07, [0, 0, 1], { colour: shade(timber, 0.76), decor: true, exposed: true }, 0.035);
+    }
+    // a hip roof's hip rafters from the plates' corners to the ridge's ends
+    if (roof.kind === 'hip') {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const dx = -sx * (px + 0.1), dz = sz * (rg.ridgeHalf - rd / 2 + 0.02), dl = Math.hypot(dx, dz);
+        sink.member('structureWood', [sx * (px + 0.1), eaveY + 0.02, sz * (rd / 2 - 0.02)], [0, under(0) - 0.08, sz * rg.ridgeHalf], 0.14, 0.09, [dz / dl, 0, -dx / dl],
+          { colour: shade(timber, 0.76), decor: true, exposed: true }, 0.045);
+      }
+    }
+  });
 }
 
 /**
