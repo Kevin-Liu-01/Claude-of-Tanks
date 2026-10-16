@@ -145,7 +145,9 @@ function panorama(P:TankBuilderPort,S:TurretStock,x:number,z:number,rise:number)
  * the remote station's sweep, clear of the roof cage and with nothing over them. */
 export const UKRAINE_DOCK_LANDINGS={
   t72b3m_hetman:[.80,.80,-1.42,.40,.36],
-  t72b3m_hetman_ii:[.70,.28,-2.36,.40,.34],
+  // Hetman II: a raised plate over the middle of the command basket, on posts from its floor, so the drone sits above
+  // the slat walls and the basket's stowage (on the floor the walls and the net boxed the cradle in).
+  t72b3m_hetman_ii:[0,.72,-2.28,.40,.34],
   t72b3_sich:[.40,.74,-1.50,.34,.32],
 } as const;
 function dockLanding(P:TankBuilderPort,S:TurretStock,id:UkraineDonorId):void {
@@ -157,7 +159,7 @@ function dockLanding(P:TankBuilderPort,S:TurretStock,id:UkraineDonorId):void {
     let best:{px:number;pz:number;hit:THREE.Intersection&{n:THREE.Vector3};r:number}|null=null;
     for(let i=1;i<=5;i++)for(let j=1;j<=5;j++){
       const px=x+sx*w*.46*i/5,pz=z+sz*d*.46*j/5,hit=S.top(px,pz,[...FIXED,'turretDark'],false);
-      if(!hit||hit.point.y>top-t||top-t-hit.point.y>.30)continue;
+      if(!hit||hit.point.y>top-t||top-t-hit.point.y>(id==='t72b3m_hetman_ii'?.52:.30))continue;
       if(top-t-hit.point.y>.012&&!S.clear([px,hit.point.y+.012,pz],[px,top-t-.004,pz],.022,SOLID))continue;
       const r=Math.hypot(px-x,pz-z);if(!best||r>best.r)best={px,pz,hit,r};
     }
