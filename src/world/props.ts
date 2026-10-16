@@ -9652,6 +9652,9 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
     setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
+    // (Lane C, #27) a dressing piece that stands as a structure of its own (the bridges' parapets): records, damage path, merge
+    structure: (id, tmp, x, y, z, rot) => { addStructureCollision(id, tmp as PropsBuckets, x, y, z, rot, true);
+      _quat.setFromAxisAngle(_upAxis, rot); _mat4.compose(_posv.set(x, y, z), _quat, _one); mergeInto(buckets, tmp as PropsBuckets, _mat4); },
     rollingStockDestructible: (stock) => { rollingStockRecords.push(stock); },
     tramDestructible: (tram) => { tramRecords.push(tram); },
   });

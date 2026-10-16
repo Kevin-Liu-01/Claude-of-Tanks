@@ -251,6 +251,7 @@ export function mergeStone(parts: THREE.BufferGeometry[]): THREE.BufferGeometry 
 function normanMasonry(b: {
   halfWidth: number; bodyHalf: number; parapetHalf: number; deckY: number; top: number; bottom: number; springY: number;
   centreY: number; radius: number; halfAngle: number; arcs: readonly number[]; piers: readonly number[]; seed: number;
+  copings: boolean;
 }): THREE.BufferGeometry {
   const r = localRng(b.seed), parts: THREE.BufferGeometry[] = [];
   const add = (g: THREE.BufferGeometry) => { jitterUV(g, r); parts.push(g); };
@@ -278,7 +279,7 @@ function normanMasonry(b: {
     sc.translate(0, b.top - 0.14, zf + face * 0.05);
     add(sc);
     // the coping on the parapet in lengths (the parapet stands on the slab's edge, 0.5 m thick, 1.1 m tall)
-    const copeLen = 1.45, nCope = Math.max(2, Math.round((b.parapetHalf * 2) / copeLen));
+    const copeLen = 1.45, nCope = b.copings ? Math.max(2, Math.round((b.parapetHalf * 2) / copeLen)) : 0;
     for (let k = 0; k < nCope; k++) {
       const x0 = -b.parapetHalf + (k * b.parapetHalf * 2) / nCope;
       const c = box((b.parapetHalf * 2) / nCope - 0.02, 0.14, 0.64, 0.7);
@@ -299,6 +300,45 @@ function normanMasonry(b: {
     }
   }
   return mergeStone(parts);
+}
+
+/** The parapets' runs (#27): about six metres each. */
+const PARAPET_RUN_M = 6;
+
+/**
+ * (#27, 2026-10-15) A bridge's parapets as structures of their own through the props' sink: each side in runs of about
+ * six metres, each run its wall (coped in lengths on a Norman bridge) and, at the bridge's ends, its end post, built in
+ * the run's frame (x along the road) and handed to `ctx.structure` with its place: it takes its own records and its
+ * damage path, so a round's blow or a ram brings the run down as its own pieces while the deck stays.
+ */
+function addParapetRuns(ctx: FocusedDressingContext, cx: number, cz: number, ux: number, uz: number, halfWidth: number,
+  deckY: number, parapetHalf: number, coped: boolean): void {
+  if (!ctx.structure) return;
+  const vx = -uz, vz = ux, rot = Math.atan2(-uz, ux), H = BRIDGE_PARAPET_HEIGHT_M, T = BRIDGE_PARAPET_THICK_M;
+  const inset = halfWidth - T / 2, runs = Math.max(2, Math.round((parapetHalf * 2) / PARAPET_RUN_M)), L = (parapetHalf * 2) / runs;
+  const r = localRng(Math.round(cx * 17 + cz * 23));
+  for (const side of [-1, 1]) for (let k = 0; k < runs; k++) {
+    const xm = -parapetHalf + (k + 0.5) * L;
+    const stone: THREE.BufferGeometry[] = [];
+    const wall = box(L - 0.02, H, T, 0.7);
+    wall.translate(0, H / 2, 0);
+    stone.push(jitterUV(wall, r));
+    if (coped) {
+      const n = Math.max(2, Math.round(L / 1.45));
+      for (let j = 0; j < n; j++) {
+        const c = box(L / n - 0.02, 0.14, T + 0.14, 0.7);
+        c.translate(-L / 2 + (j + 0.5) * (L / n), H + 0.07, 0);
+        stone.push(jitterUV(c, r));
+      }
+    }
+    for (const end of [-1, 1]) {
+      if ((end < 0 && k !== 0) || (end > 0 && k !== runs - 1)) continue;
+      const post = box(0.8, H + 0.4, 0.8, 0.7);
+      post.translate(end * L / 2, (H + 0.4) / 2, 0);
+      stone.push(jitterUV(post, r));
+    }
+    ctx.structure('bridge-parapet', { stone }, cx + ux * xm + vx * inset * side, deckY, cz + uz * xm + vz * inset * side, rot);
+  }
 }
 
 /** The map-stream draws the round-61 arched bridge on `deck` takes (its pieces' UV jitter: four a piece): a kit that
@@ -396,7 +436,17 @@ export function addArchedStoneBridge(
   jitterUV(slab, rng);
   buckets.stone.push(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
   const parapetHalf = bodyHalf + 0.2;
-  for (const side of [-1, 1]) {
+  // (#27) with the props' structure sink the parapets stand as structures of their own, in runs of about six metres,
+  // each with its coping and its end post: a round's blow or a ram brings a run down as its own pieces (the sections
+  // path), the deck and its body stay (the record below keeps them, fixed); the map's stream takes the draws the whole
+  // parapets' pieces took
+  // (Cliffbridge's gorge span keeps its solid parapets: a hull through a broken one would fall thirty metres)
+  const parapetRuns = !!ctx.structure && style === 'norman';
+  if (parapetRuns) {
+    for (let k = 0; k < 24; k++) rng();
+    addParapetRuns(ctx, cx, cz, ux, uz, halfWidth, deckY, parapetHalf, style === 'norman');
+  }
+  for (const side of parapetRuns ? [] : [-1, 1]) {
     const inset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
     const parapet = box(parapetHalf * 2, BRIDGE_PARAPET_HEIGHT_M, BRIDGE_PARAPET_THICK_M, 0.7);
     jitterUV(parapet, rng);
@@ -442,7 +492,7 @@ export function addArchedStoneBridge(
     const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
     const piers = Array.from({ length: arches - 1 }, (_, i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2);
     const g = normanMasonry({ halfWidth, bodyHalf, parapetHalf, deckY, top, bottom, springY, centreY, radius, halfAngle,
-      arcs, piers, seed: Math.round(cx * 13 + cz * 7) });
+      arcs, piers, seed: Math.round(cx * 13 + cz * 7), copings: !parapetRuns });
     buckets.stone.push(alignWidth(g, ux, uz).translate(cx, 0, cz));
   }
   // The record (round 63, 2026-09-24): parts that follow the geometry. The deck part is the spandrel fill and the slab
@@ -478,7 +528,7 @@ export function addArchedStoneBridge(
     }
   }
   const parapetInset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
-  for (const side of [-1, 1]) {
+  for (const side of parapetRuns ? [] : [-1, 1]) {
     parts.push({ kind: 'obb', cx: cx + vx * parapetInset * side, cz: cz + vz * parapetInset * side,
       hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw, y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M });
   }
