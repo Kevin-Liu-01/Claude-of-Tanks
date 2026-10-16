@@ -53,6 +53,7 @@ import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import { splitMinimapWater } from './minimapWaterPatches.ts';
@@ -859,6 +860,11 @@ function assembleWorld(
     return bodyQuery;
   };
   const unregisterDestructibles = props.registerDestructibles();
+  // (2026-10-16, the perf lane) every further program variant of a shared props material its own live twin, so a merged
+  // bucket and an instanced pool of one material stop re-resolving its program twice a frame (engine/programVariants.ts;
+  // the props only: the terrain's and the water's hooks keep their compile's uniform map on the material)
+  const programVariants = splitProgramVariants(props.group);
+  group.userData.programVariants = programVariants;
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
