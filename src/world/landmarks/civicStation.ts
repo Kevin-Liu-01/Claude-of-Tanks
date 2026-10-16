@@ -1,10 +1,10 @@
 // src/world/landmarks/civicStation.ts — the railway station set piece (moved byte for byte out of civic.ts by the looks
 // lane, r2 sweep 2026-10-16).
-import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { LocalFrame, PartSink, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
-import { LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
+import { archSurround, archWindow, archedBody, cornerPilasters, extrude, moulding, revolve, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
-import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
+import type { LandmarkBuilder } from './types.ts';
 import { FRAME_WHITE, IRON, bell, doorLeaf, lit, towerClock, uvOffset } from './civicKit.ts';
 import { letterText } from './lettering.ts';
 

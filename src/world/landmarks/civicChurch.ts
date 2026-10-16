@@ -1,8 +1,8 @@
 // src/world/landmarks/civicChurch.ts — the church set piece (moved byte for byte out of civic.ts by the looks lane, r2
 // sweep 2026-10-16): the Orthodox village church of the black-earth governorates and the Western hall church.
-import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
-import { LIMEWASH_UV, archSurround, archWindow, archedBody, archedFace, prismBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
+import { LIMEWASH_UV, archLine, archSurround, archWindow, archedBody, archedFace, prismBody, archedSlab, cornerPilasters, cross, dome, drum, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
 import { DOME_GREEN, FRAME_WHITE, GILT, GREEN_IRON, SLATE_BLUE, bell, cornice, doorLeaf, lit, towerClock, uvOffset } from './civicKit.ts';
@@ -23,17 +23,27 @@ function dressOpenings(sink: PartSink, ctx: LandmarkBuildContext, face: Face, ho
  * top, as drum() does.
  */
 function glazedDrum(sink: PartSink, bucket: RegionalBucket, x: number, y: number, z: number, r: number, h: number, segments: number,
-  windows: number, foot = 0): number {
+  windows: number, foot = 0, dress = true): number {
   const rIn = r * Math.cos(Math.PI / segments), facet = 2 * rIn * Math.tan(Math.PI / segments);
   const every = Math.max(1, Math.round(segments / windows)), ww = Math.min(0.7, facet * 0.56), reveal = Math.min(0.32, r * 0.16);
   const holes: Record<number, ArchHole[]> = {};
   for (let k = 0; k < windows; k++) holes[(k * every) % segments] = [{ u: 0, w: ww, y0: y + h * 0.22, spring: y + h * 0.78 - ww / 2, form: 'round' }];
-  // (`foot`: the walls run on down through a sloping roof to stand on the vault under it; the floor closes the prism)
+  // (`foot`: the walls run on down through a sloping roof to stand on the vault under it; without one a floor closes
+  // the prism, which stands on what is under it as drum()'s closed ring did)
   const faces = prismBody(sink, bucket, x, z, rIn, segments, y - foot, y + h, holes, reveal);
-  sink.polygon(bucket, faces.map((f) => facePoint(f, f.width / 2, y - foot)).reverse());
+  if (foot <= 0) sink.polygon(bucket, faces.map((f) => facePoint(f, f.width / 2, y)).reverse());
   for (const [i, list] of Object.entries(holes)) for (const hole of list) {
-    archWindow(sink, faces[Number(i)], hole, reveal, FRAME_WHITE, false);
-    archSurround(sink, bucket, faces[Number(i)], hole, Math.min(0.12, facet * 0.1), 0.05);
+    const f = faces[Number(i)];
+    if (!dress) {
+      // (`dress` false: a small drum's slit, glazed at the back of its reveal without the frame and surround)
+      const line = archLine(hole, 8), back = -reveal + 0.012;
+      const pane: Vec3[] = [facePoint(f, hole.u - hole.w / 2, hole.y0, back), facePoint(f, hole.u + hole.w / 2, hole.y0, back)];
+      for (let j = line.length - 1; j >= 0; j--) pane.push(facePoint(f, line[j][0], line[j][1], back));
+      sink.polygon('glass', pane, { decor: true, window: f.out });
+      continue;
+    }
+    archWindow(sink, f, hole, reveal, FRAME_WHITE, false);
+    archSurround(sink, bucket, f, hole, Math.min(0.12, facet * 0.1), 0.05);
   }
   // the cornice on the prism's corners (revolve's ring turned half a facet onto them)
   revolve(sink, bucket, x, z, [[r, y + h], [r * 1.09, y + h], [r * 1.09, y + h + 0.22], [r * 0.98, y + h + 0.22]], segments, {}, Math.PI / segments - Math.PI / 2);
@@ -123,7 +133,6 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     // the portal under the portico
     const door = cubePortal();
     doorLeaf(sink, f, door, 0.42);
-    archSurround(sink, 'plaster', f, door, 0.2, 0.08);
   }
   // the cube's low hipped roof, the drum and the dome with its lantern
   const roofCube: RoofSpec = { kind: 'hip', pitchDeg: 17, eave: 0.45, verge: 0.45, thickness: 0.12, bucket: 'structureMetal', ridge: null };
@@ -140,7 +149,7 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const x = sx * W * 0.3, z = zc + sz * W * 0.3;
       const roofY = rgCube.topAt(x, z - zc) ?? Hc;
-      const top = glazedDrum(sink, wall, x, roofY - 0.4, z, Rd * 0.36, 1.9, 10, 4);
+      const top = glazedDrum(sink, wall, x, roofY - 0.4, z, Rd * 0.36, 1.9, 10, 4, 0.3, false);
       const t2 = dome(sink, 'structureMetal', x, top, z, Rd * 0.4, 'onion', 10, { colour: DOME_GREEN });
       cross(sink, 'structureMetal', x, t2 - 0.05, z, 1.2, 'orthodox', GILT);
     }

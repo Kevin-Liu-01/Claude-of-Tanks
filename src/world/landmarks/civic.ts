@@ -3,12 +3,12 @@
 // tower, the railway station with its platform canopy, the market hall and the grain elevator. Proportions from the
 // buildings themselves: a Kursk-governorate village church of 1800-1900 is a whitewashed brick "ship" — the bell tower,
 // the refectory, the cube with its drum and dome, the apse — 25-32 m long, its bell tower 25-30 m to the cross.
-import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
-import { LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
+import { archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, dome, drum, extrude, moulding, revolve, tentRoof, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
-import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
-import { FRAME_WHITE, GILT, IRON, SLATE_BLUE, bell, cornice, doorLeaf, lit, revolveDisc, uvOffset } from './civicKit.ts';
+import type { LandmarkBuilder } from './types.ts';
+import { FRAME_WHITE, GILT, SLATE_BLUE, bell, doorLeaf, lit, revolveDisc, uvOffset } from './civicKit.ts';
 export { church } from './civicChurch.ts';
 export { stationHall } from './civicStation.ts';
 
