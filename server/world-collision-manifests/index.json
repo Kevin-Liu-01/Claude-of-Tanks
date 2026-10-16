@@ -12,11 +12,11 @@
       "concealers": 7940
     },
     "desert": {
-      "bytes": 1471945,
-      "sha256": "a43d3072cd953845adc0566684e16e956a8261a14be0a24996042e9996485bb0",
-      "obstacles": 1764,
-      "colliders": 1783,
-      "concealers": 1290
+      "bytes": 1465587,
+      "sha256": "905fde96a3f3002fdeca275aa255bf5fadaf047c9488b06f403ed33bc161c7f6",
+      "obstacles": 1762,
+      "colliders": 1781,
+      "concealers": 1289
     },
     "winter": {
       "bytes": 2242728,
@@ -246,11 +246,11 @@
         "concealers": 7824
       },
       "desert": {
-        "bytes": 1541681,
-        "sha256": "c5c5d9070b77793041cdab48677a5ca4cab6755e98cc9daa816b0f8e2ee9c6a5",
-        "obstacles": 1895,
-        "colliders": 1821,
-        "concealers": 1290
+        "bytes": 1544432,
+        "sha256": "03bafbe4102251d0bd02b7fdf9d0857038f86cebf8a3b2c76f2a8183e9a1e5da",
+        "obstacles": 1900,
+        "colliders": 1826,
+        "concealers": 1289
       },
       "winter": {
         "bytes": 2326044,

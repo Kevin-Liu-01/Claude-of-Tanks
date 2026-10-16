@@ -85,10 +85,7 @@ export default {
   terrain: {
     hillScale: 0.5,   // the basin floor's swell: the wadi, mesas and dunes carry the structure (was 0.85)
     microScale: 0.9,  // the sand-sheet folds and scrapes are the open basin's hull-down ground (was 0.7)
-    // (the horizons stream, 2026-10-16, with its Hinterland draft, hinterland/drafts/desert.ts: rimH 30 -> 16, so the Dahar
-    // cuesta shows over the rim from the in-game eyes — edge-w 47 % -> 85 % of the outward view, corner-se's marks 4 -> 29 of
-    // 31; mid-field 66 % -> 53 %, the near outland following the rim down; ../hzwork/rimsweep.py)
-    rimH: 16,
+    rimH: 30,
     // Sand sheet over the whole basin: lower than the old erg so the authored draa and the wadi read through it.
     dunes: { amp: 4.5 },
     // The map's own mesa noise at threshold 0.80: exactly two outliers, the North Mesa in the north-west corner and
