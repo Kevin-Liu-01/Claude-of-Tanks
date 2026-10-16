@@ -159,12 +159,15 @@ const specs = [...KINDS, ...STREET, ...FARM, ...UTILITY].map((kind) => ({
   caps: { near: kind === 'lamp' || kind === 'transformer' ? 600 : kind === 'bale' ? 800 : 300, far: kind === 'trashcan' || kind === 'cone' || kind === 'bench' ? 80 : 60 },
   // (a road sign's legend is in relief on its plate: an arrow's black head on a yellow plate is the legend, not a door)
   allowPlates: kind === 'roadsign' ? (p) => (p.centre[1] > 1.5 ? 'a road sign\'s legend in relief on its plate' : null)
-    // (a transformer's warning sign: its yellow triangle printed on its white plate)
-    : kind === 'transformer' ? (p) => (Math.max(...p.span) <= 0.16 && p.thick <= 0.01 ? 'the warning sign\'s triangle printed on its plate' : null) : undefined,
+    // (the r2 sweep, 2026-10-16: the transformer's warning triangle is printed in its plate's face now, one piece: no
+    // excuse for it)
+    : undefined,
   resolve: (mapId) => {
     const t = clutterTypes(mapId, false)[kind];
     const f = split(t.build(mulberry(5)));
-    return { form: clutterFormOf(kind, mapId), build: () => f.near ?? f.lean, far: f.far ? () => f.far : undefined,
+    // (the r2 sweep, 2026-10-16: the tactical boards' yaws are the map's own draws; Ironworks' second board stood 2.1 cm
+    // off the pole while the form's first map, Alpine's, held) a road sign's form checked map by map
+    return { form: kind === 'roadsign' ? `${clutterFormOf(kind, mapId)}@${mapId}` : clutterFormOf(kind, mapId), build: () => f.near ?? f.lean, far: f.far ? () => f.far : undefined,
       broken: t.broken ? () => t.broken(mulberry(5)) : undefined };
   },
 }));
