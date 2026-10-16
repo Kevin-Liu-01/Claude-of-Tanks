@@ -10,6 +10,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { requireMinimapCapture } from './map-art-guards.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
@@ -85,7 +86,8 @@ try {
     requireMinimapCapture(result, id);
     if (errors.length) throw new Error(`Browser errors before ${id} export:\n${errors.join('\n')}`);
     const { dataUrl } = result;
-    const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
+    const bytes = await filterPublishedImage(Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64'),
+      `minimap-${id}`, { type: 'image/webp', quality: 92 });
     await writeFile(resolve(outDir, `${id}.webp`), bytes);
     console.log(`[minimap-assets] ${id}: ${bytes.length} bytes`);
   }

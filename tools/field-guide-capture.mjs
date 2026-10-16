@@ -6,6 +6,7 @@ import puppeteer from 'puppeteer';
 import {mkdirSync,readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {filterPublishedImage} from './media-r5/master-filter.mjs';
 import {createHash} from 'node:crypto';
 import {FIELD_GUIDE_SCENES} from './field-guide-scenes.mjs';
 import {acquireCaptureLock,refreshCaptureLock,releaseCaptureLock} from './capture-lock.mjs';
@@ -41,7 +42,7 @@ try{
     const receipt=await page.evaluate(async job=>{const {stageFieldGuide}=await import('/tools/field-guide-scenes.mjs');return stageFieldGuide(job);},job);
     if(!receipt?.textures?.applied)throw new Error(`Missing capture receipt: ${job.id}`);
     const result=await page.evaluate(()=>__STUDIO.capture({width:1600,height:900,type:'image/webp',quality:.88}));
-    const bytes=Buffer.from(result.dataURL.split(',')[1],'base64');
+    const bytes=await filterPublishedImage(Buffer.from(result.dataURL.split(',')[1],'base64'),`fieldguide-${job.id}`,{type:'image/webp',quality:88});
     writeFileSync(resolve(out,`${job.id}.webp`),bytes);
     manifest.shots.push({id:job.id,file:`${job.id}.webp`,sha256:sha(bytes),sourceCommit,recipeSha256,renderer,launch,...receipt});
   }
