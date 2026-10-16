@@ -140,6 +140,40 @@ function panorama(P:TankBuilderPort,S:TurretStock,x:number,z:number,rise:number)
   supportedSensor(P,[seat[0],base+rise,seat[2]],base+.004);
 }
 
+/** The drone-dock landings (turret frame: centre x, top y, centre z, width x, depth z): flat steel plates whose top
+ * faces are the mission dock's welded support (tools/mission-attachment-geometry.mjs WELDED_SUPPORT_PATCHES), outside
+ * the remote station's sweep, clear of the roof cage and with nothing over them. */
+export const UKRAINE_DOCK_LANDINGS={
+  t72b3m_hetman:[.80,.80,-1.42,.40,.36],
+  t72b3m_hetman_ii:[.70,.28,-2.36,.40,.34],
+  t72b3_sich:[.40,.74,-1.50,.34,.32],
+} as const;
+function dockLanding(P:TankBuilderPort,S:TurretStock,id:UkraineDonorId):void {
+  const [x,top,z,w,d]=UKRAINE_DOCK_LANDINGS[id],t=.016;
+  S.refresh();
+  // A post in each quadrant onto the steel found under it: the valid seat farthest out in that quadrant.
+  const posts:{px:number;pz:number;hit:THREE.Intersection&{n:THREE.Vector3}}[]=[];
+  for(const sx of [-1,1])for(const sz of [-1,1]){
+    let best:{px:number;pz:number;hit:THREE.Intersection&{n:THREE.Vector3};r:number}|null=null;
+    for(let i=1;i<=5;i++)for(let j=1;j<=5;j++){
+      const px=x+sx*w*.46*i/5,pz=z+sz*d*.46*j/5,hit=S.top(px,pz,[...FIXED,'turretDark'],false);
+      if(!hit||hit.point.y>top-t||top-t-hit.point.y>.30)continue;
+      if(top-t-hit.point.y>.012&&!S.clear([px,hit.point.y+.012,pz],[px,top-t-.004,pz],.022,SOLID))continue;
+      const r=Math.hypot(px-x,pz-z);if(!best||r>best.r)best={px,pz,hit,r};
+    }
+    if(!best)throw new Error(`${P.spec.id}: dock landing quadrant ${sx},${sz} has no seat`);
+    posts.push(best);
+  }
+  P.addExternalArmor('turret',box(w,t,d),x,top-t/2,z);
+  for(const {px,pz,hit}of posts){
+    const h=top-t-hit.point.y;
+    P.addEquipment('turretDetail',box(.04,h+.006,.04),px,hit.point.y+h/2-.003,pz);
+    if(h>.02)footPlate(P,hit.point,hit.n,[.08,.016,.08]);
+  }
+  S.refresh();
+  P.turretG.userData.ukrainianDockLanding=[x,top,z];
+}
+
 /** One ERA cassette laid face-down on the stock a ray finds (ERA sector by side: x<0 is turret_era_L). */
 function seatedEra(P:TankBuilderPort,S:TurretStock,origin:THREE.Vector3,dir:THREE.Vector3,across:THREE.Vector3,size:V3):void {
   const hit=S.cast(origin,dir,STEEL);
@@ -344,12 +378,17 @@ function bustleScreen(P:TankBuilderPort,S:TurretStock,L:ScreenLayout):void {
 
 interface TurretNet { roof:number; x:number; rear:number; front:number; sides:readonly{side:number;z0:number;z1:number;bottom:number;top:number;out(z:number):number}[];
   rearFace?:{zAt(x:number):number;x0:number;x1:number;y0:number;y1:number}; marks:readonly(readonly[number,number])[] }
+function landingOpening(id:UkraineDonorId):[number,number][] {
+  const [x,,z,w,d]=UKRAINE_DOCK_LANDINGS[id],hx=w/2+.08,hz=d/2+.08;
+  return [[x-hx,z-hz],[x+hx,z-hz],[x+hx,z+hz],[x-hx,z+hz]];
+}
 function turretSuit(id:UkraineDonorId,n:TurretNet):GhillieConfig {
   const base=NATIONAL_UKRAINE_GHILLIE[id];
   const opening=([x,z]:readonly[number,number]):[number,number][]=>[[x-.26,z-.26],[x+.26,z-.26],[x+.26,z+.26],[x-.26,z+.26]];
   return {...base,turret:{
+    // The roof net opens round the marks and over the drone dock's landing (its 12 m lift column stays clear).
     top:[{yFromArmour:true,clipToArmour:true,autoOpeningsM:.07,rimScale:.5,x0:-n.x,x1:n.x,z0:n.rear,z1:n.front,nx:38,
-      nz:Math.round((n.front-n.rear)/.1),yAt:()=>n.roof,garnishRiseM:.16,seed:151,holes:n.marks.map(opening)}],
+      nz:Math.round((n.front-n.rear)/.1),yAt:()=>n.roof,garnishRiseM:.16,seed:151,holes:[...n.marks.map(opening),landingOpening(id)]}],
     side:n.sides.map((s,i)=>({side:s.side,z0:s.z0,z1:s.z1,nz:Math.max(6,Math.round((s.z1-s.z0)/.07)),ny:7,seed:71+s.side+i*13,
       topAt:()=>s.top-.026,bottomAt:(z:number)=>s.bottom+.068+.017*Math.sin(z*5.2),
       outAt:(z:number,t:number)=>s.out(z)+.028+(1-t)*.015})),
@@ -433,10 +472,12 @@ function hetman(P:TankBuilderPort,S:TurretStock):void {
     panorama(P,S,-.98,-1.02,.20);
   }
   // Radio and antenna-control cases on the rear boxes, aerials on the rear corner boxes outside the station's sweep.
-  for(const i of [7,9]){
+  for(const i of [5,7]){
     const b=b3mCase(i),c=b.c.clone().addScaledVector(b.u,-.04);
     utilityCase(P,S,c.x,c.z,.24,.13,.26,Math.atan2(b.u.x,b.u.z));
   }
+  // The drone dock's landing over the gunner-side rear boxes, behind the cage wing.
+  dockLanding(P,S,'t72b3m_hetman');
   for(const [i,h]of [[6,2.4],[8,1.9]] as const){
     const c=b3mCase(i).c;
     if(Math.hypot(c.x-sweep.x,c.z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
@@ -563,7 +604,15 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   for(const z of [-2.62,-2.40])beam([-.19,.46,z],[.19,.46,z],.016);
   // Stowage on the basket floor.
   strappedPack(P,'turret',[-.78,floor+.088,-2.32],[.34,.15,.36]);
-  strappedPack(P,'turret',[.80,floor+.088,-2.30],[.34,.15,.36]);
+  // The drone dock's landing bolted on two joists across the floor's gunner-side bay, beam to rear frame.
+  {
+    const [lx,,lz,lw]=UKRAINE_DOCK_LANDINGS.t72b3m_hetman_ii;
+    for(const jx of [lx-lw*.36,lx+lw*.36]){
+      const front=pathAt(F,0,jx),rear=pathAt(O,0,jx);
+      beam([jx,floor,front],[jx,floor,rear],.020);void lz;
+    }
+  }
+  S.refresh();dockLanding(P,S,'t72b3m_hetman_ii');
   P.addEquipment('turretDetail',box(.52,.17,.30),0,floor+.097,-2.40);
   P.addEquipment('turretDetail',box(.535,.02,.315),0,floor+.19,-2.40);
   for(const dx of [-.15,.15])P.addEquipment('turretDark',box(.032,.05,.014),dx,floor+.15,-2.25);
@@ -725,24 +774,22 @@ function sich(P:TankBuilderPort,S:TurretStock):void {
     nationalRoofSensor(P,.066,-.82,levelSeat(P,S,.066,-.82,.17),l);
   }
   lidTools(P,S,-1);
-  // Utility cans on the rear case's lid and the tarpaulin roll strapped beside them.
-  for(const x of [-.40,-.20])utilityCase(P,S,x,-1.53,.15,.19,.17);
+  // A utility can and the tarpaulin roll on the rear case's lid; the drone dock's landing beside them.
+  utilityCase(P,S,-.40,-1.53,.15,.19,.17);
   {
-    const top=S.top(.17,-1.53,FIXED,false);if(!top)throw new Error(`${P.spec.id}: no tarp seat`);
-    P.addEquipment('turretCloth',cylX(.082,.40,18),.17,top.point.y+.082,-1.53);
-    for(const x of [.04,.30])P.addEquipment('turretDark',box(.030,.175,.181),x,top.point.y+.082,-1.53);
+    const top=S.top(-.08,-1.53,FIXED,false);if(!top)throw new Error(`${P.spec.id}: no tarp seat`);
+    P.addEquipment('turretCloth',cylX(.082,.40,18),-.08,top.point.y+.082,-1.53);
+    for(const x of [-.21,.05])P.addEquipment('turretDark',box(.030,.175,.181),x,top.point.y+.082,-1.53);
   }
+  dockLanding(P,S,'t72b3_sich');
   cableRun(P,S,[[-1.20,.70,-.78],[-1.08,.70,-1.05],[-.80,.74,-1.28]],.012);
-  // Aerials outside the station's sweep: the gunner-side case's rear lid and the screen's rear-left corner post.
-  {
-    const a:V3=[.50,0,-1.52];
-    if(Math.hypot(a[0]-sweep.x,a[2]-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
-    antenna(P,S,a[0],a[2],2.3);
-    const [x,z]=SICH_SCREEN[2];
+  // Aerials outside the station's sweep on the screen's two rear corner posts.
+  for(const [i,h]of [[2,2.0],[3,2.3]] as const){
+    const [x,z]=SICH_SCREEN[i];
     if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     P.addEquipment('turretDetail',box(.10,.05,.10),x,.745,z);
     P.addEquipment('turretDetail',cylY(.048,.060,.05,12),x,.795,z);
-    P.addEquipment('turretDark',cylY(.007,.013,2.0,10),x,.82+1.0,z);
+    P.addEquipment('turretDark',cylY(.007,.013,h,10),x,.82+h/2,z);
   }
 }
 

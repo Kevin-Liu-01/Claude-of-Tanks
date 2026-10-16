@@ -19,6 +19,12 @@ const WELDED_SUPPORT_PATCHES={
  t80u_bars_m:{region:{minX:-1.22,maxX:-1.09,minZ:-.86,maxZ:-.54},plane:p=>.71-(.01/1.05)*(p.z+1.02),tolerance:.000002},
  t72b3m_bulat_m:{region:{minX:-1.615,maxX:-1.28,minZ:.28,maxZ:.62},plane:p=>.77-(.07/.74)*(p.z-.14),tolerance:.000002},
  t72b3_bastion_m:{region:{minX:-1.22,maxX:-1.085,minZ:-.77,maxZ:-.44},plane:p=>.67-(.02/.98)*(p.z+.79),tolerance:.000002},
+ // Owner 2026-10-15 (VEH-21): the Ukrainian donor-turret concepts' drone landings (ukraineDonorTurretKit.ts
+ // UKRAINE_DOCK_LANDINGS): flat steel plates behind the Hetman's cage wing, on the Hetman II's command basket floor
+ // and on the Sich's rear case.
+ t72b3m_hetman:{region:{minX:.60,maxX:1.00,minZ:-1.60,maxZ:-1.24},plane:()=>.80,tolerance:.000002},
+ t72b3m_hetman_ii:{region:{minX:.50,maxX:.90,minZ:-2.53,maxZ:-2.19},plane:()=>.28,tolerance:.000002},
+ t72b3_sich:{region:{minX:.23,maxX:.57,minZ:-1.66,maxZ:-1.34},plane:()=>.74,tolerance:.000002},
 };
 function weldedSupportRegion(output,mesh,tri){
  if(output.frame!=='turret'||tri.getNormal(vector).y<.9)return null;
