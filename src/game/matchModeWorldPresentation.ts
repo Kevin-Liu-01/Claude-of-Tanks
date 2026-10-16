@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import { objectiveRing, fitObjectiveSurface } from './objectiveSurface.ts';
+import { buildObjectivePost, objectivePostFormOf, type ObjectivePostForm, type ObjectivePostGeometry } from './objectivePosts.ts';
 
 import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchModes.ts';
 import { objectiveMarkers, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
@@ -46,6 +47,9 @@ interface MarkerGroup extends THREE.Group {
     beaconMaterial?: THREE.MeshBasicMaterial;
     /** the light column's authored opacity before the viewer-distance fade */
     beaconOpacity?: number;
+    /** (props lane A #28) a capture zone's physical post: its form and its pennant's material (the owner's colour) */
+    postForm?: ObjectivePostForm;
+    flagMaterial?: THREE.MeshStandardMaterial;
   };
 }
 
@@ -76,6 +80,8 @@ interface MatchModeWorldPresentationOptions {
    */
   setupMaterial?: (material: THREE.Material) => void;
   releaseMaterial?: (material: THREE.Material) => void;
+  /** (props lane A #28) the battlefield's id: a capture zone's post takes the map's form (objectivePosts.ts) */
+  mapId?: () => string | null;
 }
 
 interface WorksPlacement { x: number; y: number; z: number; yaw: number }
@@ -406,10 +412,43 @@ export function createMatchModeWorldPresentation(
     return spawnMarkers;
   };
 
+  // (props lane A #28, 2026-10-15; WORKLIST #28: "Replace the bare core pillar with a physical objective post per map,
+  // coloured by its owner through a pennant or flag rather than a translucent material") the zone's centre holds the
+  // map's post — a field-telephone post in its sandbags, a guyed comms mast, a desert cairn, a survey beacon — lit, in
+  // the cascades, its pennant in the owner's colour; one body geometry and one flag geometry a form, shared by the zones
+  let postGeometry: ObjectivePostGeometry | null = null;
+  let postMaterial: THREE.MeshStandardMaterial | null = null;
+  const postOf = (form: ObjectivePostForm): ObjectivePostGeometry => {
+    if (postGeometry?.form === form) return postGeometry;
+    postGeometry?.body.dispose(); postGeometry?.flag.dispose();
+    postGeometry = buildObjectivePost(form);
+    return postGeometry;
+  };
+  /** Fill (or refill, on a new map) a zone's post group with the map's form. */
+  const dressPost = (marker: MarkerGroup, post: THREE.Group, form: ObjectivePostForm): void => {
+    if (marker.userData.postForm === form && post.children.length) return;
+    const geometry = postOf(form);
+    if (!postMaterial) {
+      postMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.02 });
+      options.setupMaterial?.(postMaterial);
+    }
+    let flagMaterial = marker.userData.flagMaterial;
+    if (!flagMaterial) {
+      flagMaterial = new THREE.MeshStandardMaterial({ color: NEUTRAL, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+      options.setupMaterial?.(flagMaterial);
+      marker.userData.flagMaterial = flagMaterial;
+    }
+    post.clear();
+    const body = new THREE.Mesh(geometry.body, postMaterial), flag = new THREE.Mesh(geometry.flag, flagMaterial);
+    body.name = 'objective-post-body'; flag.name = 'objective-post-flag';
+    body.castShadow = flag.castShadow = true;
+    body.receiveShadow = flag.receiveShadow = true;
+    post.add(body, flag);
+    marker.userData.postForm = form;
+  };
+
   const buildZones = (): MarkerGroup[] => {
     if (zoneMarkers) return zoneMarkers;
-
-    const coreGeometry = new THREE.CylinderGeometry(0.28, 0.55, 7, 10);
 
     zoneMarkers = Array.from({ length: 3 }, (_, index) => {
       const marker = new THREE.Group() as MarkerGroup;
@@ -417,8 +456,9 @@ export function createMatchModeWorldPresentation(
       const material = basic(NEUTRAL, 0.4);
       const ring = new THREE.Mesh(objectiveRing(ZONE_RADIUS_M, 30), material);
       ring.rotation.x = -Math.PI / 2;
-      const core = new THREE.Mesh(coreGeometry, material);
-      core.position.y = 3.5;
+      const core = new THREE.Group();
+      core.name = 'objective-post';
+      dressPost(marker, core, objectivePostFormOf(options.mapId?.()));
       marker.userData.markerMaterial = material;
       // tactical map 2026-09-15: the zone reads as an area (tinted disc), its
       // capture progress as an arc inside the ring, its letter / sector number
@@ -731,6 +771,7 @@ export function createMatchModeWorldPresentation(
       if (!marker) break;
       marker.visible = true;
       marker.position.set(zone.x, zone.y, zone.z);
+      dressPost(marker, marker.children[1] as THREE.Group, objectivePostFormOf(options.mapId?.()));
       fitObjectiveSurface(marker.children[0] as THREE.Mesh, zone.x, zone.y, zone.z, options.groundHeight);
       fitObjectiveSurface(marker.children[2] as THREE.Mesh, zone.x, zone.y, zone.z, options.groundHeight);
       fitObjectiveSurface(marker.children[3] as THREE.Mesh, zone.x, zone.y, zone.z, options.groundHeight, .095);
@@ -741,6 +782,7 @@ export function createMatchModeWorldPresentation(
         material.color.setHex(color);
         material.opacity = zone.contested ? 0.68 : 0.28 + Math.abs(zone.control) * 0.38;
       }
+      marker.userData.flagMaterial?.color.setHex(mark ? sideHex(mark.side) : NEUTRAL);
       if (!mark) continue;
       const hex = sideHex(mark.side);
       const disc = marker.userData.discMaterial;
@@ -874,6 +916,10 @@ export function createMatchModeWorldPresentation(
       for (const material of meshMaterials) if (material) materials.add(material);
     });
     if (beaconGeometry) geometries.add(beaconGeometry);
+    if (postGeometry) { geometries.add(postGeometry.body); geometries.add(postGeometry.flag); }
+    // the posts' lit materials leave the cascades with the presentation
+    if (postMaterial) { options.releaseMaterial?.(postMaterial); materials.add(postMaterial); }
+    for (const marker of zoneMarkers ?? []) if (marker.userData.flagMaterial) options.releaseMaterial?.(marker.userData.flagMaterial);
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
     for (const texture of iconTextures.values()) texture.dispose();

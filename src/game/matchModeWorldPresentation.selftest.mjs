@@ -173,9 +173,16 @@ for (let index = 0; index < zoneMarkers.length; index += 1) {
   assertVector(marker.position, zoneExpected[index].position, `zone ${index + 1} position`);
   assert.equal(ring.geometry.type, 'RingGeometry');
   close(ring.rotation.x, -Math.PI / 2, `zone ${index + 1} ring rotation`);
-  assert.equal(core.geometry.type, 'CylinderGeometry');
-  close(core.position.y, 3.5, `zone ${index + 1} core height`);
-  assert.equal(ring.material, core.material, `zone ${index + 1} shares its material`);
+  // (props lane A #28) the core is the map's physical post: a lit body in vertex colour and its pennant in the owner's
+  // colour (no map named here: the comms mast)
+  assert.equal(core.name, 'objective-post');
+  close(core.position.y, 0, `zone ${index + 1} post on the ground`);
+  const [postBody, postFlag] = core.children;
+  assert.equal(postBody.material.type, 'MeshStandardMaterial', `zone ${index + 1} post is lit`);
+  assert.equal(postBody.material.vertexColors, true);
+  assert.equal(postBody.geometry.name, 'objective-post-mast');
+  assert.equal(postFlag.material.color.getHex(), zoneExpected[index].color, `zone ${index + 1} pennant follows the owner`);
+  assert.equal(postBody.castShadow, true, 'the post casts its shadow');
   assert.equal(marker.userData.markerMaterial, ring.material);
   assertBasicMaterial(ring.material, zoneExpected[index].color,
     zoneExpected[index].opacity, `zone ${index + 1} material`);
@@ -534,12 +541,13 @@ assert.equal(pickupMarkers[0].visible, true,
   assert.equal(planLineWorks([]).bags.length, 0);
   // the plan is deterministic
   assert.deepEqual(planLineWorks(lines, ground), plan);
-  // every lit works material joined the cascaded-shadow setup (two builds: three sectors, then two)
-  assert.equal(setUp.length, 8, `lit works materials are set up per build (${setUp.length})`);
+  // every lit works material joined the cascaded-shadow setup (two builds: three sectors, then two), and (props lane A
+  // #28) the zone posts' four: one body shared by the three zones and a pennant each
+  assert.equal(setUp.length, 12, `lit works and post materials are set up (${setUp.length})`);
   assert.ok(setUp.every((m) => m.isMeshStandardMaterial));
   assert.equal(released.length, 4, 'the first build released its materials when the pools were resized');
   front.dispose();
-  assert.equal(released.length, 8, 'dispose releases the live works materials too');
+  assert.equal(released.length, 12, 'dispose releases the live works and post materials too');
   assert.equal(frontScene.children.length, 0, 'dispose removes the works with the root');
 }
 

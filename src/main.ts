@@ -435,6 +435,8 @@ const matchModeWorld = createMatchModeWorldPresentation(scene, {
   viewerPosition: () => camera.position,
   setupMaterial: (material) => engineCtx.setupShadowMaterial(material),
   releaseMaterial: (material) => engineCtx.releaseShadowMaterial(material),
+  // (props lane A #28) a capture zone's post takes the battlefield's form
+  mapId: () => game.mapId,
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world
