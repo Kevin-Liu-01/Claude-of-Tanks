@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   SHADOW_TENT_DEFAULT, SHADOW_TENT_GLSL, SHADOW_TENT_RADIUS_BASE, THREE_PCF_GET_SHADOW, THREE_PCF_GET_SHADOW_RENAMED,
-  shadowTentBiasRadius, shadowTentHalfTexels, shadowTentRadius, shadowTentTaps,
+  shadowTentBiasRadius, shadowTentHalfTexels, shadowTentRadius, shadowTentTaps, SHADOW_PCSS_SLOPE,
 } from './shadowTent.ts';
 import { PRESETS } from './quality.ts';
 
@@ -30,8 +30,33 @@ assert.deepEqual([3, 5, 7].map(shadowTentTaps), [4, 9, 16]);
 assert.deepEqual([3, 5, 7].map(shadowTentHalfTexels), [1.5, 2, 2.5]);
 for (const k of [3, 5, 7]) assert.ok(Math.abs((0.95 * shadowTentBiasRadius(k) + 1) - shadowTentHalfTexels(k)) < 1e-12, `${k}: the bias law reaches its half footprint`);
 assert.deepEqual([...SHADOW_TENT_DEFAULT], [3, 3, 3, 3]);
+// 2026-10-15 (SKY shadows r3, CL.11): contact hardening (9) on Ultra's and High's near cascade, its code carrying the
+// cascade's depth range over its texel (log2 / 32 in the fraction); Medium keeps the 5
+assert.deepEqual([...PRESETS.ultra.shadowTent], [9, 3, 3, 3]);
+assert.deepEqual([...PRESETS.high.shadowTent], [9, 3, 3, 3]);
+assert.deepEqual([...PRESETS.medium.shadowTent], [5, 3, 3, 3]);
+assert.equal(shadowTentRadius(9, 1), 109);
+assert.ok(Math.abs(shadowTentRadius(9, 2 ** 14) - (109 + 14 / 32)) < 1e-12, 'the depth scale in the fraction');
+assert.equal(shadowTentRadius(9, 2 ** 20), 109.49, 'clamped short of the next code');
+for (const R of [300, 5000, 14500, 40000]) {
+  const code = shadowTentRadius(9, R) - 109;
+  assert.ok(Math.abs(2 ** (code * 32) / R - 1) < 1e-9, `${R}: decoded exactly`);
+}
+assert.equal(shadowTentHalfTexels(9), 2.5, 'its widest spread is the 7\'s');
+assert.equal(shadowTentTaps(9), 40);
+assert.ok(Math.abs(SHADOW_PCSS_SLOPE - 2 * 0.0093) < 1e-4, 'twice the sun\'s angular diameter');
+for (const term of ['if ( k >= 8.5 ) {\n\t\t\tshadow = cotPcssShadow( k - 9.0, shadowMap, t, uv, z );', 'float R = exp2( clamp( code, 0.0, 0.49 ) * 32.0 );',
+  'if ( b0 < 0.001 ) return 1.0;', 'if ( b0 > 0.999 ) return 0.0;', 'texture( shadowMap, vec3( q, z - 256.0 / R ) )',
+  'float spread = clamp( height * 0.0186 / 5.0, 0.333, 1.0 );']) assert.ok(SHADOW_TENT_GLSL.includes(term), term);
+// the penumbra law on its own (the GLSL's arithmetic): a hull's blockers (0-3 m over the ground at High's 3.45 cm: up to 87
+// texels) keep the narrowest spread; a crown 10 m up (290) takes the widest
+const spreadFor = (heightTexels) => Math.min(1, Math.max(0.333, heightTexels * SHADOW_PCSS_SLOPE / 5));
+assert.equal(spreadFor(87), 0.333);
+assert.equal(spreadFor(290), 1);
+const lightingSrc = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+assert.match(lightingSrc, /if \(tentFor\(i\) >= 9\) shadow\.radius = tentRadius\(i\);/, 'the depth scale follows the cascade\'s fit');
+assert.match(lightingSrc, /window\.__SHADOW_DEBUG\?\.noPcss \? 5 : k/, 'the A/B lever');
 for (const name of ['ultra', 'high', 'medium']) {
-  assert.deepEqual([...PRESETS[name].shadowTent], [5, 3, 3, 3], `${name}: 5 on the near cascade`);
   assert.deepEqual([...PRESETS[name].shadowTentDeck], [7, 7, 3, 3], `${name}: 7 on the near pair under a closed deck`);
 }
 for (const name of ['low', 'ultralow']) assert.equal(PRESETS[name].shadowTent, undefined, `${name}: 3 everywhere`);

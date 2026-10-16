@@ -16,8 +16,11 @@
  * Technique after I. Castaño's tent-filtered PCF (2013); this formulation and its code are first-party.
  */
 
-/** The kernels a cascade may take (taps a side: 2, 3 or 4). */
-export type ShadowTentKernel = 3 | 5 | 7;
+/**
+ * The kernels a cascade may take (taps a side: 2, 3 or 4), and 9: contact hardening (2026-10-15, SKY shadows r3, the
+ * shadow-quality plan's CL.11), the 4 x 4 tent spread by the blockers' height over the receiver — see SHADOW_PCSS_GLSL.
+ */
+export type ShadowTentKernel = 3 | 5 | 7 | 9;
 export type ShadowTentTable = readonly [ShadowTentKernel, ShadowTentKernel, ShadowTentKernel, ShadowTentKernel];
 
 /** A preset without its own table: the smallest kernel everywhere. */
@@ -25,12 +28,14 @@ export const SHADOW_TENT_DEFAULT: ShadowTentTable = Object.freeze([3, 3, 3, 3] a
 
 /** Half the kernel's footprint in texels: its outermost tap's offset plus the bilinear compare's own texel. */
 export function shadowTentHalfTexels(k: number): number {
+  // (contact hardening's widest spread is the 7's)
   return k >= 7 ? 2.5 : k >= 5 ? 2 : 1.5;
 }
 
 /** Hardware-compare taps the kernel reads (cost). */
 export function shadowTentTaps(k: number): number {
-  return k >= 7 ? 16 : k >= 5 ? 9 : 4;
+  // (contact hardening: 9 where the search finds the texel lit or wholly shaded, 40 in a penumbra)
+  return k >= 9 ? 40 : k >= 7 ? 16 : k >= 5 ? 9 : 4;
 }
 
 /**
@@ -47,9 +52,19 @@ export function shadowTentBiasRadius(k: number): number {
  * and the coast wrapper patch those sites (shadows r3's lesson). The depth-bias law takes shadowTentBiasRadius instead.
  */
 export const SHADOW_TENT_RADIUS_BASE = 100;
-export function shadowTentRadius(k: number): number {
+export function shadowTentRadius(k: number, depthTexels = 1): number {
+  // contact hardening also carries the cascade's depth range over its texel (log2 / 32 in the fraction, at most 0.49):
+  // the depth difference in texels, which the blocker search and the penumbra law work in
+  if (k >= 9) return SHADOW_TENT_RADIUS_BASE + 9 + Math.min(0.49, Math.max(0, Math.log2(Math.max(1, depthTexels)) / 32));
   return SHADOW_TENT_RADIUS_BASE + (k >= 7 ? 7 : k >= 5 ? 5 : 3);
 }
+
+/**
+ * Contact hardening's penumbra: its full width in texels per texel of the blockers' mean height over the receiver — the
+ * sun's angular diameter (0.53 degrees, 0.0093) twice over for the aureole a hazy sky spreads round it. A hull's
+ * blockers stand 0-3 m over the ground (a crisp shadow, 0-2 texels at High's 3.45 cm), a tree's crown 8-15 m (soft).
+ */
+export const SHADOW_PCSS_SLOPE = 0.0186;
 
 /** three's PCF getShadow definition line (shadowmap_pars_fragment), renamed so the tent's getShadow can wrap it. */
 export const THREE_PCF_GET_SHADOW = 'float getShadow( sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, float shadowRadius, vec4 shadowCoord ) {';
@@ -61,6 +76,41 @@ export const THREE_PCF_GET_SHADOW_RENAMED = 'float cotThreeGetShadow( sampler2DS
  */
 export const SHADOW_TENT_GLSL = /* glsl */`
 #if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF )
+// 2026-10-15 (SKY shadows r3, CL.11): contact hardening on hardware compares alone (the cascade maps are compare
+// textures: no raw depth to average). A 3 x 3 search of bilinear compares 1.5 texels apart covers the widest tent's
+// footprint: none blocked, the texel is lit; all blocked, it is shaded through (the tent could see nothing else) — 9
+// taps for most pixels. In a penumbra the share still blocked with the receiver raised 16, 64 and 256 texels' depth
+// (five taps each) integrates the blockers' mean height, the penumbra's width follows it (SHADOW_PCSS_SLOPE), and the
+// 4 x 4 binomial tent spreads its taps over a third to all of the 7's footprint: crisp at a hull's tracks, soft under a
+// tree's crown. code: the cascade's depth range over its texel, log2 / 32 (shadowTentRadius).
+float cotPcssShadow( float code, sampler2DShadow shadowMap, vec2 t, vec2 uv, float z ) {
+	float R = exp2( clamp( code, 0.0, 0.49 ) * 32.0 );
+	float lit = 0.0;
+	for ( int y = -1; y <= 1; y ++ ) for ( int x = -1; x <= 1; x ++ ) lit += texture( shadowMap, vec3( uv + vec2( float( x ), float( y ) ) * ( 1.5 * t ), z ) );
+	float b0 = 1.0 - lit * ( 1.0 / 9.0 );
+	if ( b0 < 0.001 ) return 1.0;
+	if ( b0 > 0.999 ) return 0.0;
+	vec3 b = vec3( 0.0 );
+	for ( int i = 0; i < 5; i ++ ) {
+		vec2 q = uv + ( i == 0 ? vec2( 0.0 ) : vec2( ( i == 1 || i == 3 ) ? -1.5 : 1.5, i < 3 ? -1.5 : 1.5 ) ) * t;
+		b += vec3( 1.0 ) - vec3( texture( shadowMap, vec3( q, z - 16.0 / R ) ), texture( shadowMap, vec3( q, z - 64.0 / R ) ),
+			texture( shadowMap, vec3( q, z - 256.0 / R ) ) );
+	}
+	vec3 p = min( b * ( 0.2 / b0 ), vec3( 1.0 ) );
+	// the mean height: the integral of the share of blockers higher than h, trapezoids over 0-16-64-256 texels and the
+	// rest held at 256
+	float height = 8.0 * ( 1.0 + p.x ) + 24.0 * ( p.x + p.y ) + 96.0 * ( p.y + p.z ) + 256.0 * p.z;
+	float spread = clamp( height * ${SHADOW_PCSS_SLOPE} / 5.0, 0.333, 1.0 );
+	float shadow = 0.0;
+	for ( int y = 0; y < 4; y ++ ) {
+		float wy = ( y == 0 || y == 3 ) ? 1.0 : 3.0;
+		for ( int x = 0; x < 4; x ++ ) {
+			float wx = ( x == 0 || x == 3 ) ? 1.0 : 3.0;
+			shadow += wx * wy * texture( shadowMap, vec3( uv + ( vec2( float( x ), float( y ) ) - 1.5 ) * ( spread * t ), z ) );
+		}
+	}
+	return shadow * ( 1.0 / 64.0 );
+}
 float cotTentShadow( float k, sampler2DShadow shadowMap, vec2 shadowMapSize, float shadowIntensity, float shadowBias, vec4 shadowCoord ) {
 	float shadow = 1.0;
 	shadowCoord.xyz /= shadowCoord.w;
@@ -73,7 +123,9 @@ float cotTentShadow( float k, sampler2DShadow shadowMap, vec2 shadowMapSize, flo
 		#ifndef OPAQUE
 		k = 3.0;
 		#endif
-		if ( k >= 6.5 ) {
+		if ( k >= 8.5 ) {
+			shadow = cotPcssShadow( k - 9.0, shadowMap, t, uv, z );
+		} else if ( k >= 6.5 ) {
 			shadow = 0.0;
 			for ( int y = 0; y < 4; y ++ ) {
 				float wy = ( y == 0 || y == 3 ) ? 1.0 : 3.0;
