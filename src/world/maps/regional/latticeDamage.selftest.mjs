@@ -129,7 +129,9 @@ for (const [styleId, id, dims] of FRAMES) {
   const foot = Math.max(...lat.legs.map((l) => l.foot[1]));
   if (a.kitPlan?.authored?.kind === 'windmill') {
     // (5) buckled at its second girt: the lower panels stand on every foot, no higher than half the tower; the rest out
-    const stand = one.runs.filter((r) => r.role === 'remnant');
+    // (the windmill's own buckle: its first remnant run. DESTRUCTION's central ruin pass, collapseRuin.ts keepRuinStanding
+    // a98b3ad02, may add corner piers after it up to its 30 % height target; those are its own, held by its receipts)
+    const stand = one.runs.filter((r) => r.role === 'remnant').slice(0, 1);
     let standTop = -Infinity;
     for (const r of stand) for (let i = 1; i < r.pos.length; i += 3) standTop = Math.max(standTop, r.pos[i]);
     assert.ok(standTop > lat.girts[1] - 1.0 && standTop < foot + height * 0.55, `${label}: its lower panels stand to the buckle (${standTop.toFixed(1)}, girt ${lat.girts[1].toFixed(1)})`);
