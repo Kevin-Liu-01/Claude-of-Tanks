@@ -105,6 +105,12 @@ export interface BrowserLoadTrace {
     /** At deferral (2026-10-13): the programs left pending, named (src/engine/programWarm.ts PendingProgramNote). */
     programs?: readonly BrowserPendingProgram[];
   };
+  /**
+   * WELCOMEs after the first on this round (the link was replaced and the seat said hello again), and when each came (ms
+   * from the entry's start). The first alone marks `roster` (2026-10-15).
+   */
+  rewelcomes?: number;
+  rewelcomeAtMs?: number[];
 }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
@@ -528,6 +534,8 @@ interface ActiveRound {
   controls: ControlSampler;
   welcome: WelcomeMessage | null;
   welcomed: boolean;
+  /** WELCOMEs this round has had (a replaced link welcomes the seat again). */
+  welcomes: number;
   activating: boolean;
   activated: boolean;
   revealed: boolean;
@@ -1089,7 +1097,7 @@ export function createBrowserComposition({
       matchId: matchStart.matchId, round: matchStart.round, mapId: matchStart.mapId, mode: matchStart.mode,
       spectator: sessionRound.spectator, viewerId, ownSpecId: ownPlayer?.specId || (sessionRound.spectator ? 'spectator' : ''),
       presentation: null, controls: createControlSampler(() => active.presentation?.ownActor ?? null),
-      welcome: null, welcomed: false, activating: false, activated: false, revealed: false, failed: false, reported: false,
+      welcome: null, welcomed: false, welcomes: 0, activating: false, activated: false, revealed: false, failed: false, reported: false,
       abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
@@ -1161,6 +1169,16 @@ export function createBrowserComposition({
         controls: active.spectator ? null : active.controls.sample,
         prediction: null,
         onWelcome: async (welcome) => {
+          // 2026-10-15 (the MP stream, the §7 side-by-side): a later WELCOME on this round (its link was replaced and the
+          // seat said hello again; every main rejoin opened a second link 7 s in) re-seats the presentation but never marks
+          // `roster` again. The second mark overwrote the first's value with the time since it, and 6.7-10 s of every
+          // rejoin's trace belonged to no stage. It is counted instead.
+          const first = active.welcomes === 0;
+          active.welcomes++;
+          if (!first) {
+            active.trace.rewelcomes = active.welcomes - 1;
+            (active.trace.rewelcomeAtMs ??= []).push(Math.round(now() - active.trace.startedAt));
+          }
           try {
             active.welcome = welcome;
             await battlePresentation.rosterReady();
@@ -1172,7 +1190,7 @@ export function createBrowserComposition({
               const world = battlePresentation.predictionWorld();
               if (world) sessionPresentation.prediction = { world, specFor: (specId) => (specId === own.specId ? own.spec : getSpec(specId)) };
             }
-            markStage(active, 'roster');
+            if (first) markStage(active, 'roster');
             active.welcomed = true;
             load.battleLoad.progress(0.84, 'Synchronizing authority');
           } catch (error) {
