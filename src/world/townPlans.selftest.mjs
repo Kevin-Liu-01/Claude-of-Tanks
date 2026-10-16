@@ -253,7 +253,7 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
     const [i] = nearest(site.x, site.z, KIT_SEAT_M);
     if (i >= 0) { taken.add(i); planned++; }
   }
-  const extra = now.filter((s, i) => !taken.has(i) && !(setPieces > 0 && onPiece(s)));
+  const extra = now.filter((s, i) => !taken.has(i) && !(setPieces > 0 && onPiece(s)) && !s.deck);
   for (const s of extra) {
     assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
   }
@@ -267,7 +267,16 @@ for (const [mapId, { carriageway, structures, setPieces = 0 }] of Object.entries
   }
   const manifest = decodeCollisionManifest(JSON.parse(readFileSync(
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8')));
-  const now = manifest.obstacles.filter((o) => o.k === 'structure').map(footprint);
+  // (Lane C 2026-10-16) a map kit bridge's parapet and balustrade runs are structures of their own (#27:
+  // archedStoneBridge.ts addParapetRuns, suzhouBridges.ts girderBalustradeRuns), standing on the bridge's deck. They
+  // are the bridge's furniture, not buildings of the town plan: a structure inside a 'bridge' record's box, its foot
+  // at the deck's top, seats as any structure does but is never read as an extra building (kitSeats)
+  const bridges = manifest.obstacles.filter((o) => o.k === 'bridge');
+  const onBridgeDeck = (o) => {
+    const cx = (o.b[0] + o.b[3]) / 2, cz = (o.b[2] + o.b[5]) / 2;
+    return bridges.some((b) => cx >= b.b[0] - 1 && cx <= b.b[3] + 1 && cz >= b.b[2] - 1 && cz <= b.b[5] + 1 && o.b[1] >= b.b[4] - 1.5);
+  };
+  const now = manifest.obstacles.filter((o) => o.k === 'structure').map((o) => ({ ...footprint(o), deck: onBridgeDeck(o) }));
   if (config.props.architecture) {
     kitSeats(mapId, config, carriageway, structures, now, setPieces);
     continue;
