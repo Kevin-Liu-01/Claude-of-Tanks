@@ -700,7 +700,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.572,
+   "gapM2": 0.881,
    "invertedM2": 0
   },
   "generic/alpine": {
@@ -4212,7 +4212,16 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "franconian/warehouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.163,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T06:13:56.816Z"
+ "updatedAt": "2026-10-16T08:15:52.625Z"
 }
