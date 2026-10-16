@@ -14,7 +14,6 @@ import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setW
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
 import { CrushableClutter, HiddenSpanPiece, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
-import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
 import { breakableSmallProp } from './maps/smallPropBreak.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {

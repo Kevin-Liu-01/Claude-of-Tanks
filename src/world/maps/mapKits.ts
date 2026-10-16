@@ -20,7 +20,7 @@
 // supplied collision sinks.
 
 import * as THREE from 'three';
-import { box, gablePrism, jitterUV, pitchSkillionRoof, scaleUV, slabBox } from '../propGeometry.ts';
+import { box, gablePrism, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';

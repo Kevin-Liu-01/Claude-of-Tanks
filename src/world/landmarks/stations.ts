@@ -23,8 +23,8 @@ export { airstrip, jamesway, moduleTrain } from './polarStations.ts';
 
 const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026);
 const STEEL = rgb(0x7f868b), STEEL_DARK = rgb(0x4b5157), IRON = rgb(0x2c2e30), RADOME = rgb(0xeeeeea);
-const AVI_ORANGE = rgb(0xcf5a2e), AVI_WHITE = rgb(0xe8e8e2), SNOW = rgb(0xf0f3f6), RUST = rgb(0x6e3c26), TIMBER = rgb(0x5e4c3a);
-const DOOR = rgb(0x3d4246), SIGN_YELLOW = rgb(0xd8a93a);
+const AVI_ORANGE = rgb(0xcf5a2e), AVI_WHITE = rgb(0xe8e8e2), SNOW = rgb(0xf0f3f6), RUST = rgb(0x6e3c26);
+const DOOR = rgb(0x3d4246);
 // the arctic kit's billboard paints (maps/regional/arctic.ts): the panels a multiplier over white, the truss's steel, the
 // feed tower's galvanised grey
 const TROPO_PANEL: Rgb = [0.97, 0.975, 0.97], TROPO_WHITE = rgb(0xe8e9e6), TROPO_STEEL = rgb(0x5d6266), GALV = rgb(0xa3aaae);
@@ -404,11 +404,6 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
     s.span('structureMetal', -0.14, g0 + H + 0.04, -0.14, 0.14, g0 + H + 0.36, 0.14, { colour: TRIM_RED, decor: true });
   });
   return { parts: finishLandmark(sink) };
-};
-
-// ---------------------------------------------------------------------------------------------------------- tank farm
-
-  return { parts: sink.finish() };
 };
 
 // --------------------------------------------------------------------------------------------- caches and drift fences
