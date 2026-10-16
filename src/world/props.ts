@@ -5432,7 +5432,7 @@ ${snowCap ? `
     const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + pile.chunks), ...buckets.wood.slice(woodStart)], y, 0.05);
     if (drawn) rubbleDrawnFootprints.push(drawn);
     // (the hitbox lane, round 3, 2026-10-09) the records from the chunks drawn, not one prism over the whole cone
-    const { obstacle: ob, collider: col } = rubbleCollisionRecords(buckets.stone.slice(stoneStart, stoneStart + pile.chunks), y, x, z, pr);
+    const { obstacle: ob, collider: col } = rubbleCollisionRecords(pile.stone, y, x, z, pr); // (DST-03: its fill body and courses too)
     obstacles.push(ob); colliders.push(col);
     const clutter = new CrushableClutter('rubble', x, y, z, pr, pr * .7, [ob], [col]);
     for (const piece of buckets.stone.slice(stoneStart)) clutter.ownPiece(piece);
