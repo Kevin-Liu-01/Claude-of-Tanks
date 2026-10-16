@@ -23,11 +23,12 @@ function lettering(sink: PartSink, f: Face, word: string, y: number, h: number, 
 export function hotelNameBoard(sink: PartSink, f: Face, W: number, rng: () => number): void {
   const bw = W * 0.56, y = 8.55, bh = 0.62, deep = 0.14;
   // the board: its ground in the box frame, set 3 cm back from the frame's face
-  faceBox(sink, 'structureWood', f, 0, y, (deep - 0.03) / 2, bw - 0.16, bh - 0.16, deep - 0.03, { colour: GROUND, decor: true });
+  // (a hand off the brick, its back drawn: the board stands over the eave, open to the roof behind it)
+  faceBox(sink, 'structureWood', f, 0, y, 0.005 + (deep - 0.035) / 2, bw - 0.16, bh - 0.16, deep - 0.035, { colour: GROUND, decor: true });
   // the frame's rails round it, moulded (a rail and its bead), the full depth off the brick
   for (const side of [-1, 1]) {
-    faceBox(sink, 'structureWood', f, 0, y + side * (bh / 2 - 0.04), deep / 2, bw, 0.08, deep, { colour: FRAME, decor: true });
-    faceBox(sink, 'structureWood', f, side * (bw / 2 - 0.04), y, deep / 2, 0.08, bh - 0.16, deep, { colour: FRAME, decor: true });
+    faceBox(sink, 'structureWood', f, 0, y + side * (bh / 2 - 0.04), 0.005 + (deep - 0.005) / 2, bw, 0.08, deep - 0.005, { colour: FRAME, decor: true });
+    faceBox(sink, 'structureWood', f, side * (bw / 2 - 0.04), y, 0.005 + (deep - 0.005) / 2, 0.08, bh - 0.16, deep - 0.005, { colour: FRAME, decor: true });
     faceBox(sink, 'structureWood', f, 0, y + side * (bh / 2 - 0.095), deep - 0.02, bw - 0.16, 0.03, 0.03, { colour: LINE, decor: true, fine: true });
   }
   // the name raised on the ground in cream capitals
