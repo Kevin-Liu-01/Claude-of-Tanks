@@ -19,7 +19,7 @@ import {
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
 import { woodpile } from './dressing.ts';
-import { boatHull, dryStoneFace, leantPole, slipway } from './waterfront.ts';
+import { boatHull, dryStoneFace, leantPole, roundPole, slipway } from './waterfront.ts';
 import { recordLattice } from './lattice.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import type { RegionalParts } from './geometry.ts';
@@ -333,7 +333,10 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
   const c = { colour: WHITE } as const;
   // the solid of the veranda: its granite footing, the boarded dado of each storey
   faceBox(sink, 'stone', face, 0, (y0 - 0.3) / 2, depth / 2, w + 0.1, y0 + 0.3, depth + 0.05, {});
-  faceBox(sink, st.paint, face, 0, y0 + 0.425, depth / 2, w, 0.85, depth, {});
+  // (the r2 sweep, 2026-10-16: the door's leaf lay on the dado and the glazing behind it, a painted plate) the boarded
+  // base and the lower glazing stop at the door's frame either side: the door hangs in its own opening
+  const dh = 0.85 / 2 + 0.12;
+  for (const sg of [-1, 1]) faceBox(sink, st.paint, face, sg * (dh + w / 2) / 2, y0 + 0.425, depth / 2, w / 2 - dh, 0.85, depth, {});
   faceBox(sink, st.paint, face, 0, frame.floors[1] + 0.225, depth / 2, w, 0.45, depth, {});
   // the posts at the corners and the frames of the glazing, the glass between
   for (const s of [-1, 1]) {
@@ -346,6 +349,12 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
   const front: Face = { origin: facePoint(face, 0, 0, depth), u: face.u, out: face.out, width: w };
   for (const [f, span] of [[front, w], [side(-1), depth], [side(1), depth]] as const) {
     for (const [ya, yb] of [[y0 + 0.85, frame.floors[1] - 0.14], [frame.floors[1] + 0.45, top - 0.16]] as const) {
+      if (f === front && ya < y0 + 1) {
+        for (const sg of [-1, 1]) facePanel(sink, 'glass', f, sg * (dh + span / 2 - 0.15) / 2, (ya + yb) / 2, -0.04, span / 2 - 0.15 - dh, yb - ya, {});
+        if (st.mobile) continue;
+        for (const sg of [-1, 1]) faceBox(sink, 'structureWood', f, sg * (dh + 0.025), (ya + yb) / 2, -0.02, 0.05, yb - ya, 0.04, { colour: WHITE, decor: true, fine: true }, 'caps');
+        continue;
+      }
       facePanel(sink, 'glass', f, 0, (ya + yb) / 2, -0.04, span - 0.3, yb - ya, {});
       if (st.mobile) continue;
       const n = Math.max(2, Math.round(span / 0.55));
@@ -355,7 +364,7 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
   }
   doorUnit(sink, front, 0, y0, 0.85, 2.0, {
     leaf: st.door, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: WHITE },
-    steps: { bucket: 'stone' }, leafKind: 'glazed', transom: false,
+    steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
   }, y0);
   const roof: RoofSpec = { kind: 'hip', pitchDeg: 22, eave: 0.22, verge: 0.22, thickness: 0.1, bucket: 'roof', ridge: null };
   const cc = facePoint(face, 0, 0, depth / 2);
@@ -651,7 +660,13 @@ const naust: RegionalBuilder = (ctx) => {
       if (open) boatDoor(sink, f, -dw / 4, foot, dw / 2, dh, shade(paint, 0.8), null, { leaves: 1, hinge: -1 });
       else boatDoor(sink, f, 0, foot, dw, dh, shade(paint, 0.8), null);
     } finally { sink.recess = 0; }
-    if (open) boatDoor(sink, { ...f, origin: facePoint(f, 0, 0, 0.03) }, dw / 2 + 0.16 + dw / 4, foot + 0.02, dw / 2, dh - 0.04, shade(paint, 0.78), null, { leaves: 1, hinge: -1 });
+    // (the r2 sweep, 2026-10-16: the leaf laid flat on the boards read as a painted plate) the right leaf stands swung out
+    // on its hinge at the jamb, a little past square, its face turned to the slip
+    if (open) {
+      const sw = 0.62 * Math.PI, du: Vec3 = [-f.u[0] * Math.cos(sw) + f.out[0] * Math.sin(sw), 0, -f.u[2] * Math.cos(sw) + f.out[2] * Math.sin(sw)];
+      const leafFace: Face = { origin: facePoint(f, dw / 2 + 0.04, 0, 0.02), u: du, out: [-du[2], 0, du[0]], width: dw / 2 };
+      boatDoor(sink, leafFace, dw / 4 + 0.03, foot + 0.02, dw / 2, dh - 0.04, shade(paint, 0.78), null, { leaves: 1, hinge: -1 });
+    }
     // the opening's white frame
     const fo = { colour: WHITE, decor: true };
     for (const sgn of [-1, 1]) faceBox(sink, 'structureWood', f, sgn * (dw / 2 + 0.07), foot + dh / 2, 0.025, 0.14, dh, 0.05, fo);
@@ -706,37 +721,50 @@ const hjell: RegionalBuilder = (ctx) => {
   const look = ctx.variant, mobile = ctx.tier === 'mobile';
   const bb = ctx.bounds;
   const x0 = bb.minX + 0.15, x1 = bb.maxX - 0.15, z0 = bb.minZ + 0.15, z1 = bb.maxZ - 0.15, zc = (z0 + z1) / 2;
-  const h = 3.2, pole = shade(BOARD, 0.72);
+  const h = 3.2, pole = shade(BOARD, 0.72), legR = 0.07;
   const n = Math.max(3, Math.round((x1 - x0) / 1.7));
   const legs: Array<{ foot: Vec3; head: Vec3 }> = [];
+  // (the r2 sweep, 2026-10-16: "box share 1.00": every leg, rail and fish a plain box) the trestles of round poles, the
+  // rails round poles laid in the legs' crotches and on their slopes, the fish flat and tapered, the bundles round
   for (let k = 0; k <= n; k++) {
     const x = x0 + (x1 - x0) * k / n;
     // the trestle: two legs from the plot's edges crossing just under the rail
     for (const s of [-1, 1]) {
       const foot: Vec3 = [x, -0.2, s > 0 ? z1 : z0], head: Vec3 = [x, h + 0.15, zc - s * 0.25];
-      sink.member('wood', foot, head, 0.14, 0.14, [1, 0, 0], { exposed: true });
+      roundPole(sink, 'wood', foot, head, legR, {}, 6);
       legs.push({ foot, head });
     }
   }
   // (props census #25, the looks lane 2026-10-15: "the probe finds no anatomy, so it falls to the default kit") the racks
   // recorded as an open frame: shot, they fold over as their poles and rails (damage.ts describeLattice, latticeFall.ts)
   recordLattice(sink, legs, [1.9, h], 0.14, 'wood', pole, null);
-  // the rails, square across their middle so the fish hung either side lie against them (kitConnectivity: a rail's
-  // section stood off to one side, and the fish on its far side hung 3.5 cm off it)
-  sink.span('wood', x0, h - 0.12, zc - 0.07, x1, h + 0.02, zc + 0.07);
-  for (const zr of [z0 + (z1 - z0) * 0.22, z1 - (z1 - z0) * 0.22]) {
-    sink.span('structureWood', x0, 1.85, zr - 0.05, x1, 1.95, zr + 0.05, { colour: pole, decor: true });
+  // the top rail in the legs' crotches; a rail lashed on each side's legs low down, resting on their slope
+  const legY = (z: number, side: -1 | 1): number => {
+    const zf = side > 0 ? z1 : z0, zh = zc - side * 0.25;
+    return -0.2 + ((z - zf) / (zh - zf)) * (h + 0.35);
+  };
+  sink.cylinder('wood', [x0, h - 0.05, zc], 'x', x1 - x0, 0.075, 8, {});
+  const lows: Array<[number, number]> = [];
+  for (const side of [-1, 1] as const) {
+    const zr = side < 0 ? z0 + (z1 - z0) * 0.22 : z1 - (z1 - z0) * 0.22, yr = legY(zr, side) + legR + 0.04;
+    sink.cylinder('structureWood', [x0, yr, zr], 'x', x1 - x0, 0.05, 6, { colour: pole, decor: true });
+    lows.push([zr, yr]);
   }
   sink.dressing(mobile, () => {
-    // the fish: pairs hung over the rails, every 22 cm, a few gaps where a bundle was taken down
-    for (const [zr, yr, half] of [[zc, h - 0.05, 0.07], [z0 + (z1 - z0) * 0.22, 1.9, 0.05], [z1 - (z1 - z0) * 0.22, 1.9, 0.05]] as const) {
+    // the fish: pairs hung over the rails by their tails, every 22 cm, a few gaps where a bundle was taken down
+    for (const [zr, yr, half] of [[zc, h - 0.05, 0.075], [lows[0][0], lows[0][1], 0.05], [lows[1][0], lows[1][1], 0.05]] as const) {
       for (let x = x0 + 0.3; x < x1 - 0.25; x += 0.22) {
         if (look() < 0.12) continue;
-        const len = 0.75 + look() * 0.25, tone = shade(FISH, 0.82 + look() * 0.3);
-        for (const s of [-1, 1]) sink.span('structureWood', x - 0.06, yr - len, zr + s * (half + 0.015) - 0.015, x + 0.06, yr - 0.02, zr + s * (half + 0.015) + 0.015, { colour: tone, decor: true, fine: true });
+        const len = Math.min(0.75 + look() * 0.25, yr - 0.15), tone = shade(FISH, 0.82 + look() * 0.3);
+        for (const s of [-1, 1]) {
+          const z = zr + s * (half + 0.015) - 0.015, top = yr;
+          sink.prism('structureWood', [[x - 0.02, top, z], [x - 0.065, top - len * 0.55, z], [x - 0.035, top - len, z], [x + 0.035, top - len, z], [x + 0.065, top - len * 0.55, z], [x + 0.02, top, z]],
+            [0, 0, 1], 0.03, { colour: tone, decor: true, fine: true });
+        }
       }
     }
-    for (let k = 0; k < 4; k++) sink.span('structureWood', x1 - 0.9, k * 0.32, z1 - 1.1 + (k % 2) * 0.05, x1 - 0.2, k * 0.32 + 0.3, z1 - 0.55 + (k % 2) * 0.05, { colour: shade(BOARD, 0.95 + look() * 0.15), decor: true, shadow: true });
+    // the stockfish bundled for the boat, stacked by the last trestle
+    for (let k = 0; k < 4; k++) sink.cylinder('structureWood', [x1 - 0.9, 0.15 + k * 0.29, z1 - 0.83 + (k % 2) * 0.05], 'x', 0.7, 0.15, 6, { colour: shade(BOARD, 0.95 + look() * 0.15), decor: true, shadow: true });
   });
   return sink.finish();
 };
@@ -889,6 +917,18 @@ const brent: RegionalBuilder = (ctx) => {
  * house's), painted in the yard's paint with the white corner boards and barge boards, open on its +x side with the cut
  * wood stacked to the plate; the yards' outbuilding on its own small plot.
  */
+/** Birch rounds stacked against a back wall's inner face (at x = `xb`, their ends to +x), along z within ±`lim`, to
+ *  `height`: honeycomb courses of round logs, each its own girth, length and tone. Dressing. */
+function birchStack(sink: PartSink, xb: number, lim: number, height: number, look: () => number): void {
+  const r = 0.1, rise = r * Math.sqrt(3);
+  for (let k = 0, y = r; y + r <= height + 0.02; k++, y += rise) {
+    for (let z = -lim + r + (k % 2 ? r : 0); z <= lim - r; z += 2 * r) {
+      const rr = r * (0.88 + look() * 0.12), len = 0.38 + look() * 0.08, t = 0.85 + look() * 0.3;
+      sink.cylinder('structureWood', [xb, y, z], 'x', len, rr, 5, { colour: [0.66 * t, 0.56 * t, 0.42 * t], decor: true }, rr, true, look() * 1.2);
+    }
+  }
+}
+
 const vedskjul: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
@@ -898,12 +938,63 @@ const vedskjul: RegionalBuilder = (ctx) => {
   const paint = PAINT_RGB[st.paint];
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     const pile = 1.4 + look() * 0.4;
-    openShed(sink, { W, D, hLo: 2.1, pitchDeg: 18, back: true, ends: true, pile, block: false, mobile: st.mobile }, {
+    // (the r2 sweep, 2026-10-16: "box share 0.69": the stacked wood was courses of boxes) the birch rounds stacked in
+    // their own honeycomb against the back, each log round, its end out to the open front
+    openShed(sink, { W, D, hLo: 2.1, pitchDeg: 18, back: true, ends: true, pile: 0, block: false, mobile: st.mobile }, {
       timber: BOARD, post: 0.14, postColour: st.trim, pad: { bucket: 'stone', size: 0.3, top: 0.2 },
       cladding: st.boards === 'standing' ? 'batten' : 'lapped', boards: [paint, shade(paint, 0.94), shade(paint, 1.05)],
       boardW: st.boards === 'standing' ? 0.24 : 0.18, trim: st.trim,
       covering: 'slate', roofBucket: 'roof', eave: 0.25, verge: 0.18,
     }, look);
+    // (after the shed: the phone builds no dressing, and the shed's own look draws come first on both)
+    sink.dressing(st.mobile, () => birchStack(sink, -W / 2 + 0.16, D / 2 - 0.26, pile, look));
+  });
+  return sink.finish();
+};
+
+/**
+ * The barn (låve; the r2 sweep, 2026-10-16: the plot fell to the generic barn, "five painted dark plates on wood"): the
+ * byre (fjøs) of granite under the hay barn's board walls in the yard's paint, its corner boards and barge boards white,
+ * under a slate gable; the byre's stable doors and small windows cut in its stone; the barn bridge (låvebru) up to the
+ * threshing floor's double doors in the front gable, an earth ramp between dry-stone cheeks and its last span a timber
+ * deck on two beams over the byre door; the hay hatch in the back gable. Its house plan breaks it.
+ */
+const laave: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx, [0.05, 0.85, 0.1]);
+  const rng = st.rng, look = st.look;
+  const fit = wallsIn(ctx, 0.35, 0.3), L = clamp(fit.d * 0.32, 3.2, 4.2);
+  const W = clamp(fit.w, 6, 9), D = clamp(fit.d - L, 6.5, 11);
+  const bz = ctx.bounds.minZ + 0.3 + D / 2;
+  sink.placed(0, fit.cx, 0, bz, () => {
+    const openings: Opening[] = [
+      { face: 'front', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 1.9 },
+      { face: 'back', storey: 0, kind: 'door', u: -W * 0.18, w: 1.0, y0: 0, h: 1.9 },
+      { face: 'front', storey: 1, kind: 'gate', u: 0, w: 2.6, y0: 0, h: 2.3 },
+      { face: 'back', storey: 1, kind: 'loft', u: 0, w: 1.0, y0: 0.7, h: 1.0 },
+    ];
+    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.6, h: 0.45, sill: 1.35, spacing: 2.4, margin: 1.2, max: 3 })) openings.push(o);
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: footing(0.25), storeys: [{ h: 2.3, wall: 'stone' }, { h: 2.7, wall: st.paint, framed: true }],
+      roof: skifer(34 + rng() * 4, 0.5, 0.38), gableBucket: st.paint, gableFramed: true, openings,
+      chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.12, spall: null,
+    }, dialect(st));
+    // the barn bridge: the earth ramp between its dry-stone cheeks, its head a hand under the threshing floor, the last
+    // span a deck of planks on two beams from the ramp's head to the doors' sill
+    const f1 = frame.floors[1], bw = 3.2, z0 = D / 2, zh = z0 + 1.15, zt = z0 + L - 0.1, top = f1 - 0.16;
+    const profile: Vec3[] = [[-bw / 2, 0.02, zt], [-bw / 2, -0.3, zt + 0.2], [-bw / 2, -0.3, zh], [-bw / 2, top, zh]];
+    sink.prism('stone', profile, [1, 0, 0], bw, { tint: [0.74, 0.7, 0.58] });
+    for (const sx of [-1, 1]) {
+      const x = sx * (bw / 2 + 0.22);
+      sink.prism('stone', [[x - 0.22, 0.25, zt + 0.05], [x - 0.22, -0.3, zt + 0.3], [x - 0.22, -0.3, zh - 0.02], [x - 0.22, top + 0.18, zh - 0.02]], [1, 0, 0], 0.44, { tint: [0.92, 0.9, 0.86] });
+    }
+    for (const sx of [-1, 1]) sink.span('wood', sx * 1.0 - 0.11, top - 0.24, z0 - 0.08, sx * 1.0 + 0.11, top - 0.02, zh + 0.3);
+    sink.span('wood', -bw / 2 + 0.1, top - 0.02, z0 + 0.02, bw / 2 - 0.1, top + 0.06, zh + 0.25, { tint: [0.92, 0.9, 0.86] });
+    sink.dressing(st.mobile, () => {
+      for (let x = -bw / 2 + 0.12; x < bw / 2 - 0.2; x += 0.22) {
+        sink.span('structureWood', x, top + 0.06, z0 + 0.02, x + 0.2, top + 0.085, zh + 0.25, { colour: shade(BOARD, 0.85 + look() * 0.25), decor: true });
+      }
+    });
   });
   return sink.finish();
 };
@@ -923,6 +1014,7 @@ export const NORDLAND_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   chapel: (ctx) => (ctx.bounds.maxZ - ctx.bounds.minZ < 9.9 ? bedehus(ctx) : kapell(ctx)),
   ruin: brent,
   woodshed: vedskjul,
+  barn: laave,
   lighthouse: (ctx) => fyr(ctx, stateFor, dialect),
 });
 
