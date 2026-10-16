@@ -14,12 +14,13 @@
 // carry UVs for the props wood atlas. Origin at the base centre, +Y up, the face toward +Z.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { DestructiblePropType } from './inhabitKit.ts';
+// (props census #11: the registry's entries take the wayside kinds' widened type, waysideKit.ts)
+import type { SceneryDestructibleType as DestructiblePropType } from './waysideKit.ts';
 // (b15: the field stacks of every region, and the straw props' bands of the hay print)
 import { HAY_FACE_V, HAY_WOOD_V } from '../hayPrint.ts';
 import { mapToBand } from './haystackKit.ts';
 // (props census #11: the wayside shrine, the crosses and the Mekong tomb live in waysideKit.ts)
-import { bBildstock, bBildstockBroken, bWaysideCross, bOrthodoxCross, bTomb, bTombBroken } from './waysideKit.ts';
+import { WAYSIDE_DESTRUCTIBLE_TYPES } from './waysideKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -441,11 +442,11 @@ function bStrawRickBroken(rng: Rng): THREE.BufferGeometry {
  * legs' square. Every one is shoot-through but the stone shrine, which a hull breaks only at a real overrun.
  */
 export const SCENERY_DESTRUCTIBLE_TYPES = {
-  bildstock: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.5, h: 3.25, hw: 0.33, hl: 0.33, build: bBildstock, broken: bBildstockBroken, collider: true, keep: 0.9, crushMin: 2.6 },
-  waysidecross: { cls: 'topple', mat: 'wood', contact: 'ob', r: 0.75, h: 3.65, shape: 'circle', collisionR: 0.2, groundR: 0.25, build: bWaysideCross, broken: null, keep: 0.97 },
-  orthodoxcross: { cls: 'topple', mat: 'wood', contact: 'ob', r: 0.65, h: 3.6, shape: 'circle', collisionR: 0.18, groundR: 0.24, build: bOrthodoxCross, broken: null, keep: 0.97 },
+  bildstock: WAYSIDE_DESTRUCTIBLE_TYPES.bildstock,
+  waysidecross: WAYSIDE_DESTRUCTIBLE_TYPES.waysidecross,
+  orthodoxcross: WAYSIDE_DESTRUCTIBLE_TYPES.orthodoxcross,
   windpump: { cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
-  tomb: { cls: 'break', mat: 'baked', contact: 'ob', r: 1.9, h: 2.4, hw: 1.3, hl: 1.7, build: bTomb, broken: bTombBroken, collider: true, keep: 0.86, crushMin: 2.4 },
+  tomb: WAYSIDE_DESTRUCTIBLE_TYPES.tomb,
   strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack, broken: bStrawStackBroken },
   // the mill yard (the map-revival lane, 2026-10-05, Longleaf round 2): solid stacks a hull breaks only by ramming
   lumberstack: { cls: 'break', mat: 'baked', contact: 'ob', r: 2.7, h: 2.0, hw: 1.25, hl: 2.4, build: bLumberStack, broken: bLumberStackBroken, collider: true, keep: 0.86, crushMin: 2.4 },
