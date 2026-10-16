@@ -1,5 +1,5 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { withSpareTrackRun } from '../spareTrackSeat.ts';
+import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
@@ -1180,9 +1180,12 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // Twin backed engine-deck louvre beds. The shallow ribs are planted on
   // the aft deck and stay below its existing silhouette.
   [-1, 1].forEach((s) => {
-    P.add('hullDark', box(1.10, 0.025, 0.78), s * 0.682, 1.532, -1.82);
-    Array.from({ length: 5 }).forEach((_, i) => {
-      P.add('hullDetail', box(1.023, 0.022, 0.045), s * 0.682, 1.550, -2.10 + i * 0.14);
+    // VEH-13: the louvre beds are a grille to the spare-link seat solver
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(1.10, 0.025, 0.78), s * 0.682, 1.532, -1.82);
+      Array.from({ length: 5 }).forEach((_, i) => {
+        P.add('hullDetail', box(1.023, 0.022, 0.045), s * 0.682, 1.550, -2.10 + i * 0.14);
+      });
     });
     P.add('hull', box(0.418, 0.18, 0.62), s * 1.474, 1.50, -1.70);
     P.add('hullDark', box(0.33, 0.025, 0.50), s * 1.474, 1.603, -1.70);

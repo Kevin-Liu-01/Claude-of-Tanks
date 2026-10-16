@@ -1037,7 +1037,7 @@ const EXPOSURE_DIRS: THREE.Vector3[] = (() => {
  * to land on one side of it (a candidate's pass or fail), returning a share on that side.
  */
 function exposureOf(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose, n: THREE.Vector3, owner: number,
-  decide = NaN): number {
+  decide = NaN, reach: number = SEAT_RULES.exposureReachM): number {
   const top = shape.box.max.getComponent(ax.n) + 0.01;
   _q.setFromUnitVectors(EXPOSURE_DIRS[0], n);
   const total = EXPOSURE_POINTS.length * EXPOSURE_DIRS.length;
@@ -1047,7 +1047,7 @@ function exposureOf(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: SeatPose,
     localPoint(shape, ax, fu, 0.5, top, origin).applyQuaternion(pose.quat).add(pose.pos);
     for (const d of EXPOSURE_DIRS) {
       _dir.copy(d).applyQuaternion(_q);
-      if (!env.soup.raycast(origin, _dir, SEAT_RULES.exposureReachM, owner, true, _hit2)) clear++; else blocked++;
+      if (!env.soup.raycast(origin, _dir, reach, owner, true, _hit2)) clear++; else blocked++;
       if (clear / total >= decide) return clear / total;
       if ((total - blocked) / total < decide) return (total - blocked) / total;
     }
@@ -1505,6 +1505,16 @@ export function searchPoses(shape: SeatRunShape, hint: SeatPose, search: SeatSea
     const pos = hint.pos.clone().sub(centre).applyQuaternion(turn).add(centre).addScaledVector(eu, st.du).addScaledVector(ev, st.dv);
     return { pos, quat };
   });
+}
+
+/**
+ * The share of a placed run's top-face hemisphere that leaves the vehicle within `reach` (m): a moved run's second,
+ * longer look (a frame-wide soup), so a station under a far overhang (a bustle rack 1.5 m up) is not taken as open.
+ */
+export function seatExposure(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, owner: number, reach: number): number {
+  const ax = runAxes(shape);
+  const n = new THREE.Vector3().setComponent(ax.n, 1).applyQuaternion(pose.quat).normalize();
+  return exposureOf(env, shape, ax, pose, n, owner, NaN, reach);
 }
 
 /** A rack's longest post (m): a run stands at most this far off the plate under its posts. */

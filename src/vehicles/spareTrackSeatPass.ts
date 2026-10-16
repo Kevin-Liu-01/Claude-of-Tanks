@@ -20,7 +20,7 @@ import { mergeAll } from './factoryGeometry.ts';
 import { SPARE_TRACK_SEAT_PLAN, type SeatPlanEntry } from './spareTrackSeatPlan.ts';
 import {
   seatAngularLow, seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat,
-  SeatSoup, measureSeat, remountSeats, seatSourceBounds, rackSeat, searchPoses, RACK_POST_MAX_M, type RackSeat, AUTHORED_SEARCH, NO_SEARCH, type SeatAngularProfile, type SeatResult,
+  SeatSoup, measureSeat, remountSeats, seatSourceBounds, rackSeat, searchPoses, seatExposure, RACK_POST_MAX_M, type RackSeat, AUTHORED_SEARCH, NO_SEARCH, type SeatAngularProfile, type SeatResult,
   type SeatEnv, type SeatMeasure, type SeatMotion, type SeatPose, type SeatRadialProfile, type SeatRole, type SeatRunShape,
   type SeatSource, type SpareTrackRunTag, type SpareTrackSeatReceipt,
 } from './spareTrackSeat.ts';
@@ -341,11 +341,21 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
     const entry = (pose: SeatPose, racked: boolean): number[] =>
       [r5(pose.pos.x), r5(pose.pos.y), r5(pose.pos.z), r5(pose.quat.x), r5(pose.quat.y), r5(pose.quat.z), r5(pose.quat.w), racked ? 1 : 0];
     type Found = { result: SeatResult; answer: SeatPlanEntry; rack: RackSeat | null };
+    // a moved run takes a second, longer look round it on the whole frame (a far overhang still buries it)
+    let wholeFrame: SeatEnv | null = null;
+    let recorded = false;              // a game build following the receipt's recorded answer skips the long look
+    const open = (pose: SeatPose): boolean => {
+      if (recorded && !planAudit) return true;
+      wholeFrame ??= seatEnv(frames, run.frame, frameBounds(frames, run.frame), motion);
+      return seatExposure(wholeFrame, run.shape, pose, run.owner, 2.5) >= 0.5;
+    };
     const flushAt = (at: SeatEnv, pose: SeatPose): Found | null => (measureSeat(at, run.shape, pose, run.owner, false, true).ok
+      && open(pose)
       ? { result: { ok: true, seat: 'reseated', pose, measure: measureSeat(at, run.shape, pose, run.owner, true, true), hint: own.hint,
         station: null }, answer: entry(pose, false), rack: null } : null);
     const rackAt = (at: SeatEnv, pose: SeatPose): Found | null => {
-      if (!rackSeat(at, run.shape, pose, run.owner)) return null;
+      const quick = rackSeat(at, run.shape, pose, run.owner);
+      if (!quick || !open(quick.pose)) return null;
       const full = rackSeat(at, run.shape, pose, run.owner, true)!;
       return { result: { ok: true, seat: 'reseated', pose: full.pose, measure: full.measure, hint: own.hint, station: null },
         answer: entry(pose, true), rack: full };
@@ -356,7 +366,9 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
         const pose = { pos: new THREE.Vector3(p[0], p[1], p[2]), quat: new THREE.Quaternion(p[3], p[4], p[5], p[6]) };
         const at = seatEnv(frames, run.frame, run.shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(pose.pos, pose.quat, UNIT))
           .expandByScalar(RACK_POST_MAX_M), motion);
+        recorded = true;
         const got = p[7] ? rackAt(at, pose) : flushAt(at, pose);
+        recorded = false;
         if (got) return { ...got, answer: p };
         return searchFor(undefined);
       }
@@ -592,6 +604,9 @@ function applySeat(a: AuthoredSeatArgs, run: AuthoredRun, pose: SeatPose): void 
     run.group.updateMatrixWorld(true);
   }
   for (const { part } of run.parts ?? []) part.applyMatrix4(delta);
+  // the receipt reads a moved course's mount axis from where it now stands, not the rotation it was authored in
+  const tag = run.parts?.[0]?.part.userData.spareTrackRun as (SpareTrackRunTag & { placedQuat?: number[] }) | undefined;
+  if (tag) tag.placedQuat = pose.quat.toArray();
 }
 
 function removePart(a: AuthoredSeatArgs, { bucket, part }: { bucket: string; part: THREE.BufferGeometry }): void {

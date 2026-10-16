@@ -743,7 +743,8 @@ function findBundles(visual, spec, bodies, decorPieces) {
   });
   for (const [tag, list] of regRuns) {
     list.forEach((b) => { b.cls = 'trackBundle'; });
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...(tag.rotation || [0, 0, 0])));
+    // a course the seat pass moved carries where it now stands (placedQuat); else the rotation it was authored in
+    const q = tag.placedQuat ? new THREE.Quaternion(...tag.placedQuat) : new THREE.Quaternion().setFromEuler(new THREE.Euler(...(tag.rotation || [0, 0, 0])));
     const rigs = new Set(list.map((b) => b.rig));
     if (rigs.has('turret')) { const tq = new THREE.Quaternion(); visual.root.getObjectByName('rig_turret')?.getWorldQuaternion(tq); q.premultiply(tq); }
     const axis = new THREE.Vector3(0, 1, 0);
@@ -1516,6 +1517,8 @@ const FALSE_TAGS = [
   ['profiles/leopard.ts', "P.add('hull', box(0.047, 0.06, 0.80), s * 1.6615, 1.76, -2.90)", 'grille'],
   ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'softload'],
   ['profiles/merkava.ts', 'P.add(gm2, box(gw, 0.007, gd),', 'light'],
+  // the T-62's transom service panel: its comment names the tail lamps drawn beside it, not the panel
+  ['profiles/russia.ts', "P.add('hullDark', box(1.958, 0.34, 0.035), 0, 0.82, -3.192);", 'light'],
 ];
 const LABEL_RE = /^(\w+)<(?:(.+?)<-)?(.+?)@(.+?):(\d+)>$/;
 // Turret-traverse readings the audit verified as artefacts of the column-top model (a hull part above the run's level,
