@@ -373,10 +373,31 @@ function sampan(sink: PartSink, look: () => number): void {
       : [[x1, H + 0.55, -W / 2 + 0.15], [x1, H + 0.35, -W / 2 + 0.15], [x0, -0.25, -W / 2 + 0.15], [x0, H, -W / 2 + 0.15]];
     sink.prism('structureWood', pts, [0, 0, 1], W - 0.3, wood);
   }
-  // the mat roof over the middle, its open ends dark
-  const roofL = L * (0.34 + look() * 0.1), rx = (look() - 0.5) * L * 0.2;
-  sink.cylinder('structureWood', [rx - roofL / 2, H, 0], 'x', roofL, W / 2 - 0.05, 8, { colour: shade(MAT, 0.85 + look() * 0.3), decor: true }, W / 2 - 0.05, true, -Math.PI / 2, Math.PI);
-  sink.span('dark', rx - roofL / 2 + 0.05, H, -W / 2 + 0.15, rx + roofL / 2 - 0.05, H + 0.55, W / 2 - 0.15, { decor: true });
+  // the mat roof over the middle (#16 r2, Lane C 2026-10-14: open at both ends — no dark box — woven mat over cane hoops,
+  // its underside matted too, the cargo under it on the deck)
+  const roofL = L * (0.34 + look() * 0.1), rx = (look() - 0.5) * L * 0.2, R = W / 2 - 0.05, segs = 8;
+  const mat = { colour: shade(MAT, 0.85 + look() * 0.3), decor: true };
+  sink.cylinder('structureWood', [rx - roofL / 2, H, 0], 'x', roofL, R, segs, mat, R, false, -Math.PI / 2, Math.PI);
+  const arc = (r: number, i: number, x: number): Vec3 => {
+    const a = -Math.PI / 2 + (i / segs) * Math.PI;
+    return [x, H + Math.cos(a) * r, Math.sin(a) * r];
+  };
+  const under = { colour: shade(MAT, 0.6), decor: true };
+  for (let i = 0; i < segs; i++) {
+    // the underside, wound to face the deck (the mat seen from under the roof and through its open ends)
+    sink.quad('structureWood', arc(R - 0.02, i, rx - roofL / 2), arc(R - 0.02, i, rx + roofL / 2), arc(R - 0.02, i + 1, rx + roofL / 2), arc(R - 0.02, i + 1, rx - roofL / 2), under);
+  }
+  const cane = { colour: shade(HULL, 1.45), decor: true, exposed: true };
+  for (const hx of [rx - roofL / 2 + 0.04, rx, rx + roofL / 2 - 0.04]) {
+    for (let i = 0; i < segs; i += 2) sink.member('structureWood', arc(R + 0.015, i, hx), arc(R + 0.015, i + 2, hx), 0.035, 0.035, [1, 0, 0], cane, 0);
+  }
+  // the cargo under the roof: a basket or two and a bale, and the floorboards' join
+  const basket = { colour: shade(MAT, 1.15), decor: true };
+  const nb = 1 + (Math.round(Math.abs(rx) * 1000) % 2); // (no draw: the creek's stream places the boats)
+  for (let k = 0; k < nb; k++) {
+    sink.cylinder('structureWood', [rx - roofL * 0.25 + k * 0.55, H, (k % 2 ? 0.3 : -0.25)], 'y', 0.42, 0.22, 8, basket, 0.26);
+  }
+  sink.span('structureWood', rx + roofL * 0.1, H, -0.35, rx + roofL * 0.1 + 0.7, H + 0.32, 0.15, { colour: shade(HESSIAN, 0.9), decor: true });
   // the scull over the stern
   sink.member('structureWood', [-L / 2 + 0.3, H + 0.3, 0.2], [-L / 2 - 1.6, H - 0.3, 0.45], 0.08, 0.08, [0, 1, 0], { colour: shade(HULL, 1.2), decor: true, exposed: true }, 0);
 }
