@@ -384,11 +384,33 @@ for (const style of ARCHITECTURE_STYLES) {
     }
   }
 }
-for (const id of ['polder/barn', 'siwa/adobe', 'shanghai/rowhouse']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
+for (const id of ['siwa/adobe']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
+// the Zeeland schuur (props census #17, 7e65d8abf) and the Shanghai rowhouse (#29, c53405cdb) are built on buildHouse
+// now: each hands back a house plan, and the runtime's own describe takes the house kit's reading from it (the house
+// kits break it: houseDamage.selftest.mjs), never a shell read off its parts; its stages still run as a shell's are
+for (const id of ['polder/barn', 'shanghai/rowhouse']) {
+  const [sid, bid] = id.split('/'), style = ARCHITECTURE_STYLES.find((s) => s.id === sid);
+  assert.ok(!shellIds.has(id), `${id}: not read as a shell`);
+  for (const [w, d, h, seed] of [[10, 12, 7, 7], [14, 22, 9, 25]]) {
+    const label = `${id} (${w}x${d}, house plan)`;
+    const parts = buildRegionalParts(style, { structureId: bid, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+      wallBucket: 'plaster', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'shell', snowCap: false, tier: 'desktop' }, streamFrom(seed * 3 + 5));
+    const plan = regionalKitPlanOf(parts);
+    assert.ok(plan?.kind === 'regional-house' && plan.houses.length >= 1, `${label}: the build hands back a house plan`);
+    const a = describeStructure({ structureIdx: 2, mapId: 'shell', builder: bid, style: sid, parts, w, d, h,
+      placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house' });
+    assert.equal(a.kit, sid, `${label}: the regional kit describes it`);
+    assert.equal(a.kitPlan?.regional, plan, `${label}: described from its house plan, not read off its parts`);
+    assert.ok(!latticeOf(a) && !shaftOf(a) && !cellsOf(a) && !containersOf(a) && !ruinPiecesOf(a), `${label}: a house body`);
+    validate(label, a, sid);
+    exercise(label, a, createStructureDamageSeam(2, bid, sid, a, []));
+  }
+}
 // the sheet-clad halls read as shells and break by the sheet kit (sheet.ts: their sheet torn, their frame standing)
 // (props census #4, lane B 2026-10-14: the shared sheet hall, hall.ts, lays them as house plans — the house kits' — whose
-// sheet walls still route every stage to the sheet kit)
-for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse', 'hostomel/depot', 'navajo/warehouse']) {
+// sheet walls still route every stage to the sheet kit; the Bengal tin house too, on the house grammar since #15 village,
+// e32f23029: its corrugated walls on a house plan)
+for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse', 'hostomel/depot', 'navajo/warehouse', 'bengal/farmhouse']) {
   const [sid, bid] = id.split('/'), style = ARCHITECTURE_STYLES.find((s) => s.id === sid);
   const [w, d, h, seed] = [10, 12, 7, 7];
   const parts = buildRegionalParts(style, { structureId: bid, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
