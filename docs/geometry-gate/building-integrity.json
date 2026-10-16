@@ -700,7 +700,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.881,
+   "gapM2": 1,
    "invertedM2": 0
   },
   "generic/alpine": {
