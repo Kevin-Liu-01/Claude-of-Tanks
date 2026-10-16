@@ -460,14 +460,21 @@ function drawHardstand(
     }
   };
   const [ax, az] = dir(toward);
-  // hulls up the approach road onto the turntable
-  wheelPath([ax * 16, az * 16], [ax * 11 + az * 0.9, az * 11 - ax * 0.9], [ax * 6.9, az * 6.9], 2.85, 0.62, earth ? 0.32 : 0.2);
+  // hulls up the approach road onto the turntable; on a slab their tracks polish and blacken the lanes they use (rejudge6,
+  // 2026-10-15: "a huge, empty, clean pad ... no rails or wear paths"), so the slab's lanes are as plain as the earth's
+  wheelPath([ax * 16, az * 16], [ax * 11 + az * 0.9, az * 11 - ax * 0.9], [ax * 6.9, az * 6.9], 2.85, 0.62, earth ? 0.32 : 0.34);
   // and round it to the bays either side
   for (const turn of [-1, 1]) {
     const [bx, bz] = dir(toward + turn * 0.55);
     const [cx, cz] = dir(toward + turn * 1.55);
     const [ex, ez] = dir(toward + turn * 2.35);
-    wheelPath([bx * 15, bz * 15], [cx * 10.5, cz * 10.5], [ex * 16, ez * 16], 2.85, 0.6, earth ? 0.26 : 0.16);
+    wheelPath([bx * 15, bz * 15], [cx * 10.5, cz * 10.5], [ex * 16, ez * 16], 2.85, 0.6, earth ? 0.26 : 0.28);
+  }
+  // a second pass off the turntable straight toward the lens, where the hulls leave for the yard gate
+  {
+    const [bx, bz] = dir(toward + Math.PI);
+    wheelPath([bx * 6.9, bz * 6.9], [bx * 11 + bz * 0.6, bz * 11 - bx * 0.6], [bx * 16.5 + bz * 1.4, bz * 16.5 - bx * 1.4], 2.85, 0.62,
+      earth ? 0.24 : 0.26);
   }
   // a wheeled truck's tighter line across one side of the yard
   {
@@ -582,7 +589,9 @@ function drawHardstand(
     case 'slab-quay': {
       // a little salt in the joints, standing water, rust bleeding from quay steel (waves 408 and 419: the old white bloom
       // and drying rings read as "frost or snow crust" and "painted circle arcs")
-      alongJoints(130, 0.35, 'rgba(226,224,214,0.16)', 'rgba(226,224,214,0.05)');
+      // (the salt held to a few dull runs: rejudge6, 2026-10-15, "slab joints drawn as bright, clean, perfectly regular
+      // white strips")
+      alongJoints(50, 0.3, 'rgba(206,204,194,0.09)', 'rgba(206,204,194,0.03)');
       for (let i = 0; i < 14; i++) {
         const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M, r = 0.6 + rng() * 1.6;
         blotWrapped(xM, zM, r, 'rgba(40,46,50,0.26)', 'rgba(40,46,50,0.1)', 0.5 + rng() * 0.4);

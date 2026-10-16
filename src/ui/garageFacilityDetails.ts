@@ -140,9 +140,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // 2026-10-14: "the coastal lighthouse rising out of the turret ... set the gantry on crane rails")
       // the drydock itself in the frame's right third, its mouth on the shore (the re-judge, 2026-10-15: "the hero frame
       // shows no drydock"), the crane on its rails beside it
-      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it), 2.4 m further
-      // out since the dry dock's floor cut reaches 5.95 m from its centre line (garage r8): its samples clear the cut
-      feature: [26.0, 22], featureRadius: [2.4, 4.5],
+      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it), narrower and a
+      // metre further out since the dry dock's floor cut reaches 5.95 m from its centre line (garage r8): its ground
+      // samples clear the cut by a terrain cell, and its footprint clears the harbour boatshed
+      feature: [24.6, 22], featureRadius: [1.2, 4.5],
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
@@ -151,9 +152,8 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // its full-detail vehicle, which also let the two terrain pads fight.
       parts: [[-31, -17], [2, -36]], floods: [[-39, 1], [39, 1]],
       // the engine shed squared on the rail fan's three roads, its front at depth 19 (GA.04, 2026-10-14), level with the
-      // yard on a cinder apron (the garage critic panel, 2026-10-14: "the shed sits on a sloping grass mound"); the level
-      // yard reaches the whole apron (rejudge6, 2026-10-15: the relief stood up through it as "polygon grass patches")
-      feature: [0, 27], featureRadius: [12.5, 10.5],
+      // yard on a cinder apron (the garage critic panel, 2026-10-14: "the shed sits on a sloping grass mound")
+      feature: [0, 27], featureRadius: [10.5, 9],
       yardLevel: [[0, 14.5, 12.5, 5]],
     },
     rain_canopy: {
@@ -2696,9 +2696,10 @@ export function addGarageFacilityDetails({
     // ash apron, no oil-soaked ground and no drift at the plinth"): a draped ground of cinder, darker and oily before the
     // doors and along the roads, a pale ash drift banked against the plinth ------------------------------------------
     {
-      // (inside the shed's level yard, FACILITY_LAYOUTS.rail_roundhouse: past it the yard's relief stood up through the
-      // drape as "sharp polygon grass patches pasted on asphalt", rejudge6)
-      const cell = 1.5, l0 = -halfW - 5.5, l1 = halfW + 5.5, f0 = -halfL - 4.0, f1 = halfL + 1.2;
+      // (inside the shed's level yard, the flat core of FACILITY_LAYOUTS.rail_roundhouse's terrace: past it the yard's
+      // relief stood up through the drape as "sharp polygon grass patches pasted on asphalt", rejudge6; a wider terrace
+      // met the freight warehouse's footprint)
+      const cell = 1.5, l0 = -halfW - 3.2, l1 = halfW + 3.2, f0 = -halfL - 2.6, f1 = halfL + 1.2;
       const cols = Math.round((l1 - l0) / cell), rows = Math.round((f1 - f0) / cell);
       const positions: number[] = [], colors: number[] = [], indices: number[] = [];
       const cinder = new THREE.Color(0x3f3a35), oily = new THREE.Color(0x2a2724), ash = new THREE.Color(0x7c766c), tone = new THREE.Color();
