@@ -36,6 +36,7 @@ import {
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
 import { ahDormer } from './sarajevoDormer.ts';
+import { atticOculus, mansardDormer } from './sarajevoRoofs.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -324,10 +325,7 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
         const poly: Array<[number, number]> = [[-g / 2, eave], [g / 2, eave], [g / 2, eave + 0.9], [g * 0.3, eave + 1.55], [0, eave + 1.95], [-g * 0.3, eave + 1.55], [-g / 2, eave + 0.9]];
         const face: Face = { ...street, origin: [street.origin[0] + 0.12, 0, street.origin[2]] };
         wallPolygon(sink, 'plaster', face, poly, 0.3, { decor: true });
-        sink.polygon('dark', Array.from({ length: 10 }, (_, j) => {
-          const t = (j / 10) * Math.PI * 2;
-          return facePoint(face, Math.cos(t) * 0.42, eave + 1.0 + Math.sin(t) * 0.55, 0.02);
-        }), { decor: true });
+        atticOculus(sink, face, eave); // (looks r2 forms, 2026-10-16: extracted to sarajevoRoofs.ts, rebuilt there)
       } else if (rg.kind !== 'flat' && look() < 0.45) {
         ahDormer(sink, rg, eave, len, look, AH_WINDOW); // (looks r2 b-east, 2026-10-16: extracted to sarajevoDormer.ts, rebuilt there)
       }
@@ -359,10 +357,7 @@ function mansard(sink: PartSink, frame: HouseFrame, len: number, look: () => num
   const count = Math.max(1, Math.floor((len - 1.2) / 2.6));
   for (let k = 0; k < count; k++) {
     const dz = -len / 2 + (k + 0.5) * (len / count), dw = 1.15, x0 = -a - 0.02, x1 = -a + inset + 0.15;
-    sink.span('plaster', x0, e + 0.35, dz - dw / 2, x1, e + 2.05, dz + dw / 2, { decor: true });
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.1, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: null };
-    sink.placed(Math.PI / 2, (x0 + x1) / 2, 0, dz, () => emitRoof(sink, roofGeometry(dw + 0.1, x1 - x0, e + 2.05, cap), { ...cap, decor: true }));
-    windowUnit(sink, { origin: [x0, 0, dz], u: [0, 0, 1], out: [-1, 0, 0], width: dw }, 0, e + 0.6, 0.7, 1.0, { ...AH_WINDOW, surround: null, sill: null, bars: mobile ? 'none' : 'cross' }, look, 0.1);
+    mansardDormer(sink, x0, x1, e, dz, dw, look, { ...AH_WINDOW, surround: null, sill: null, bars: mobile ? 'none' : 'cross' }); // (looks r2 forms: sarajevoRoofs.ts)
   }
 }
 
