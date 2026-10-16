@@ -13,6 +13,7 @@ import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -433,7 +434,8 @@ function loftRows(
   }
 }
 
-// Fixed hull-bucket gun run, sections muzzle->rear ({ z0, z1, r, r2?, dark? }).
+// Fixed hull-frame gun run, sections muzzle->rear ({ z0, z1, r, r2?, dark? }). VEH-13: its own `hullGun` buckets
+// (same materials and armour role as `hull`), so the spare-link seat solver reads it as the gun.
 function fixedGunRun(
   P: SwedishBuilderPort,
   axisY: number,
@@ -441,7 +443,7 @@ function fixedGunRun(
 ): void {
   for (const s of sections) {
     const len = s.z0 - s.z1;
-    P.add(s.dark ? 'hullDark' : 'hull', KIT.cylZ(s.r, len, P.q ? 18 : 12, s.r2),
+    P.add(s.dark ? 'hullGunDark' : 'hullGun', KIT.cylZ(s.r, len, P.q ? 18 : 12, s.r2),
       0, axisY + (s.dy || 0), s.z1 + len / 2);
   }
 }
@@ -521,8 +523,8 @@ function buildUdes03(P: SwedishBuilderPort): void {
     { z0: 3.02, z1: 1.92, r: 0.090 },
     { z0: 1.92, z1: 0.72, r: 0.104, r2: 0.130 },
   ]);
-  P.add('hull', KIT.xform(cylZ(0.132, 0.52, 18, 0.16), 0, 0, 0, -0.13), 0, 1.43, 0.88);
-  P.add('hullDark', KIT.xform(torus(0.145, 0.024, 16), 0, 0, 0, Math.PI / 2, 0, 0),
+  P.add('hullGun', KIT.xform(cylZ(0.132, 0.52, 18, 0.16), 0, 0, 0, -0.13), 0, 1.43, 0.88);
+  P.add('hullGunDark', KIT.xform(torus(0.145, 0.024, 16), 0, 0, 0, Math.PI / 2, 0, 0),
     0, 1.43, 1.16, -0.13, 0, 0);
   P.add('hullDark', box(0.48, 0.050, 0.16), 0, 1.38, 1.48, -0.13, 0, 0);
   P.turretG.position.set(0, 1.43, 0.40);
@@ -532,14 +534,16 @@ function buildUdes03(P: SwedishBuilderPort): void {
   // Glacis louvres and splash rail follow the actual roof slope. Alternating
   // ribs stay in merged buckets, preserving one draw call per material.
   const glY = (z: number): number => 1.52 - (z - 1.30) * 0.22;
-  for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.62, 0.022, 0.86), side * 0.52, glY(1.82), 1.82, -0.22, 0, 0);
-    for (let i = 0; i < 7; i++) {
-      const z = 1.48 + i * 0.145;
-      P.add('hullDetail', box(0.59, 0.030, 0.042), side * 0.52, glY(z) + 0.026, z,
-        -0.22, 0, 0);
+  withSeatRole(P, 'grille', (P) => {
+    for (const side of [-1, 1]) {
+      P.add('hullDark', box(0.62, 0.022, 0.86), side * 0.52, glY(1.82), 1.82, -0.22, 0, 0);
+      for (let i = 0; i < 7; i++) {
+        const z = 1.48 + i * 0.145;
+        P.add('hullDetail', box(0.59, 0.030, 0.042), side * 0.52, glY(z) + 0.026, z,
+          -0.22, 0, 0);
+      }
     }
-  }
+  });
   P.add('hullDetail', box(1.90, 0.045, 0.05), 0, glY(2.42) + 0.02, 2.42, -0.22, 0, 0);
 
   // Weld seams break up the large facets without turning the glacis into ERA.
@@ -563,11 +567,13 @@ function buildUdes03(P: SwedishBuilderPort): void {
   periscope(P, 'hullDetail', -0.20, 1.62, 0.36);
   periscope(P, 'hullDetail', 0.18, 1.62, 0.30);
   for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.94, 0.025, 0.74), side * 0.49, 1.63, -1.74);
-    for (let i = 0; i < 7; i++) {
-      P.add('hullDetail', box(0.86, 0.028, 0.035), side * 0.49, 1.65,
-        -2.02 + i * 0.105);
-    }
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(0.94, 0.025, 0.74), side * 0.49, 1.63, -1.74);
+      for (let i = 0; i < 7; i++) {
+        P.add('hullDetail', box(0.86, 0.028, 0.035), side * 0.49, 1.65,
+          -2.02 + i * 0.105);
+      }
+    });
     mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.12, r: 0.050,
       shield: true, seed: 300 + (side > 0 ? 1 : 0),
@@ -637,7 +643,11 @@ function buildUdes03(P: SwedishBuilderPort): void {
  * and angled blades fill the opening, each leaning forward over the next so the bank reads as slatted, not flat.
  * The plane passes through (x, y, z) and descends toward +z at `pitch` radians; everything is placed in its frame.
  */
-function addStrv103ALouvreBank(P: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
+function addStrv103ALouvreBank(P0: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
+  length: number; blades: number }): void {
+  withSeatRole(P0, 'grille', (P) => addStrv103ALouvreParts(P, o));
+}
+function addStrv103ALouvreParts(P: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
   length: number; blades: number }): void {
   const { box } = KIT;
   const c = Math.cos(o.pitch), sn = Math.sin(o.pitch);
@@ -761,7 +771,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     { z0: 3.55, z1: 2.30, r: 0.098 },                        // mid step
     { z0: 2.30, z1: 1.10, r: 0.106, r2: 0.125 },             // rear taper to the glacis
   ]);
-  P.add('hull', KIT.xform(cylZ(0.115, 0.46, 12, 0.135), 0, 0, 0, -0.34), 0, 1.55, 1.18); // glacis exit sleeve
+  P.add('hullGun', KIT.xform(cylZ(0.115, 0.46, 12, 0.135), 0, 0, 0, -0.34), 0, 1.55, 1.18); // glacis exit sleeve
   // travel clamp on the beak: two planted cheek posts + top yoke band
   for (const s of [-1, 1]) P.add('hullDetail', box(0.05, 0.24, 0.06), s * 0.13, 1.50, 2.96);
   P.add('hullDetail', box(0.34, 0.05, 0.08), 0, 1.65, 2.96);

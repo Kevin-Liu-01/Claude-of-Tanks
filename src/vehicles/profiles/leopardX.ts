@@ -1,5 +1,6 @@
 import { tankSeedId } from '../tankIdAliases.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
@@ -254,12 +255,16 @@ function bowFittings(P: TankBuilderPort, y: number, z: number, spareTracks: bool
     for (const x of [1.04, 1.4]) P.addEquipment('hullDetail', cylY(.012, .012, .15, 8), side * x, y + .057, z + .085);
     P.addEquipment('hullDark', cylZ(.092, .12, 12), side * .82, y - .07, z + .06);
     P.addEquipment('hullDetail', torus(.072, .026, 12, 6), side * .82, y - .065, z + .12, Math.PI / 2);
-    if (spareTracks) for (let i = 0; i < 3; i++) {
-      const x = side * (.15 + i * .18);
-      P.addEquipment('hullDark', box(.16, .027, .36), x, y + .105, z - .11, -.20);
-      P.addEquipment('hullDetail', box(.12, .044, .12), x, y + .135, z - .11, -.20);
-      P.addEquipment('hullDetail', cylX(.018, .19, 8), x, y + .125, z + .04);
-    }
+    // VEH-13: each side's three links are one registered run (spareTrackSeat.ts)
+    if (spareTracks) withSpareTrackRun(P, { site: `leopardx-bow-links-${side < 0 ? 'L' : 'R'}`, source: 'adhoc',
+      rotation: [-.20, 0, 0] }, (P) => {
+      for (let i = 0; i < 3; i++) {
+        const x = side * (.15 + i * .18);
+        P.addEquipment('hullDark', box(.16, .027, .36), x, y + .105, z - .11, -.20);
+        P.addEquipment('hullDetail', box(.12, .044, .12), x, y + .135, z - .11, -.20);
+        P.addEquipment('hullDetail', cylX(.018, .19, 8), x, y + .125, z + .04);
+      }
+    });
   }
 }
 

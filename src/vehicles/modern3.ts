@@ -1,4 +1,6 @@
 import { weaponAssembly } from './profiles/weaponStock.ts';
+import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
+import { spareLinkBlock } from './spareLinkGeometry.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
@@ -1915,8 +1917,11 @@ function buildType10Native2026(
     P.add('hullDark', box(1.012, 0.33, 0.022), -0.682, 1.386, -3.7708);           // cooling exhaust grille (left)
     for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.968, 0.0385, 0.0242), -0.682, 1.276 + k * 0.0792, -3.7719);
     P.add('hullWood', box(0.308, 0.143, 0.0286), 0.33, 1.056, -3.773);            // jack block
-    P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);          // spare-link hanger rail
-    P.add('hullTrack', box(0.33, 0.176, 0.022), 1.122, 1.188, -3.7752);           // hung spare links
+    // VEH-13: the hanger rail and its links are one registered run on the rear plate (spareTrackSeat.ts)
+    withSpareTrackRun(P, { site: 'type10-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
+      P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);        // spare-link hanger rail
+      P.add('hullTrack', spareLinkBlock(0.33, 0.176, 0.022, -1), 1.122, 1.188, -3.7752); // the hung spare link (VEH-13: the fleet's link)
+    });
     P.add('hullDetail', box(0.20, 0.20, 0.020), 0.02, 1.50, -3.774);              // convoy plate
     P.add('hullDark', box(0.16, 0.16, 0.012), 0.02, 1.50, -3.782);
     P.decal('hull', 'soot', null, 0.605, [-0.682, 1.386, -3.7774], Math.PI);
@@ -4625,11 +4630,13 @@ export function buildPuma(P: Modern3BuilderPort) {
   // engine intake louvres RIDE THE BOW PLANE right of the driver side
   // (§B8 order 2 "driver strip + louvers on it"; powerpack forward —
   // plane surface y(z) = 1.92 - (z - 1.77) * 0.2667)
-  P.add('hullDark', box(1.00, 0.02, 0.72), -0.42, 1.786, 2.35, 0.261, 0, 0);
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDetail', box(0.92, 0.026, 0.06), -0.42, 1.721 + k * 0.0427, 2.62 - k * 0.16, 0.261, 0, 0);
-  }
-  P.add('hullDark', box(0.03, 0.30, 0.62), -1.415, 1.72, 1.95);                // exhaust grille on the left flank
+  withSeatRole(P, 'grille', (P) => {                                          // VEH-13: no seat for spare links
+    P.add('hullDark', box(1.00, 0.02, 0.72), -0.42, 1.786, 2.35, 0.261, 0, 0);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.92, 0.026, 0.06), -0.42, 1.721 + k * 0.0427, 2.62 - k * 0.16, 0.261, 0, 0);
+    }
+    P.add('hullDark', box(0.03, 0.30, 0.62), -1.415, 1.72, 1.95);              // exhaust grille on the left flank
+  });
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.045, 0.05, 0.56), -1.42, 1.60 + k * 0.12, 1.95);
   // troop roof hatch seams (flush — §B2-safe)
   P.add('hullDark', box(0.66, 0.015, 1.30), -0.55, 2.09, -2.10);
@@ -4999,10 +5006,13 @@ function buildType89Hull(P: Modern3BuilderPort) {
   P.add('hull', box(0.56, 0.06, 0.56), 0.78, 1.70, 1.95, 0.499, 0, 0);        // hatch plinth on the plane
   P.add('hullDark', box(0.50, 0.02, 0.48), 0.78, 1.74, 1.94, 0.499, 0, 0);
   for (let k = 0; k < 3; k++) periscope(P, 'hullDetail', 0.56 + k * 0.22, 1.87, 1.58, (1 - k) * 0.10);
+  // VEH-13: the engine louvres and their frame are a grille to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
   P.add('hull', box(1.10, 0.055, 1.05), -0.62, 1.505, 2.30, 0.499, 0, 0);     // louvre frame on the plane
   for (let k = 0; k < 5; k++) {
     P.add('hullDark', box(1.00, 0.02, 0.13), -0.62, 1.325 + k * 0.0927, 2.64 - k * 0.17, 0.499, 0, 0);
-  }
+  }  });
+
   P.add('hullDark', box(0.03, 0.26, 0.72), -1.44, 1.50, 0.10);                 // exhaust cowl LEFT flank
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.045, 0.05, 0.64), -1.445, 1.40 + k * 0.10, 0.10);
   P.add('hullDetail', box(0.72, 0.025, 0.035), -0.35, 1.28, 2.72, 0.499, -0.20, 0); // splash rail V on the plane

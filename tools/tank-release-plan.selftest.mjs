@@ -10,6 +10,7 @@ assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
   'node-test tools/presentation-centering.mjs --check --ids=leo2a7v,t14_armata',
   'node-test tools/module-visual-align-probe.mjs --ids=leo2a7v,t14_armata --gate',
   'node-test tools/module-hit-probe.mjs --ids=leo2a7v,t14_armata',
+  'node-test tools/spare-track-placement-check.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/spare-track.json --gate',
   'node-test tools/tank-assets-check.mjs --ids=leo2a7v,t14_armata',
   'node-test tools/track-duplicate-audit.mjs --ids=leo2a7v,t14_armata',
   'node-test tools/muzzle-bore-probe.mjs --ids=leo2a7v,t14_armata',
@@ -40,13 +41,13 @@ assert.equal(steps.find(step=>step.command==='npm'&&step.args[1]==='build:privat
   'standalone private build uses the shared resource queue');
 assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,
   'non-source release does not require an unavailable reference');
-assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).length,12,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check)');
+assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).length,13,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check; 2026-10-15: + the spare-track ledger)');
 for(const ids of ['',',','t14_armata,'])assert.throws(()=>tankReleaseSteps(ids,true),/nonempty/);
 // Fast checks (2026-09-15): the same steps, staged — serial browser scoring first, then every
 // remaining probe beside the receipt suite and the build, four at a time.
 const stages=tankReleaseStages('leo2a7v,t14_armata',true,'node-test');
 assert.deepEqual(stages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),
-  [['scoring',1,3],['fleet probes, receipts and build',4,10]]);
+  [['scoring',1,3],['fleet probes, receipts and build',4,11]]);
 assert.deepEqual(stages[0].steps.map(step=>step.args[0]),
   ['tools/tank-standard-check.mjs','tools/tank-sealed-check.mjs','tools/procedural-fidelity.mjs'],
   'the load-sensitive scoring stays serial and first');
@@ -54,12 +55,12 @@ assert.deepEqual(stages.flatMap(stage=>stage.steps),steps,'staging reorders noth
 assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[0]==='test'));
 assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[1]==='build:private'));
 const plain=tankReleaseStages('m1a1_abrams_hc',false,'node-test');
-assert.deepEqual(plain.map(stage=>stage.steps.length),[2,10],'without a reference the scoring stage has no fidelity step');
+assert.deepEqual(plain.map(stage=>stage.steps.length),[2,11],'without a reference the scoring stage has no fidelity step');
 console.log('tank-release-plan: strict fidelity plus geometry, complete scope, CPU phases, nonnested capture locks and staged concurrency pass');
 
 const concept=tankReleaseSteps('ztz100_prototype,object695',true,'node-test');
 assert.equal(concept.some(s=>s.args[0]==='tools/procedural-fidelity.mjs'),false,'obsolete comparisons are not run');
-assert.equal(concept.length,12,'every other mandatory release step remains');
+assert.equal(concept.length,13,'every other mandatory release step remains');
 for(const step of concept.filter(s=>s.args[0]?.startsWith('tools/')&&s.args.some(a=>a.startsWith('--ids=')))) {
   assert.ok(step.args.includes('--ids=ztz100_prototype,object695'),'all physical checks retain both concepts');
 }
@@ -71,7 +72,7 @@ assert.throws(()=>tankReleaseSteps('unknown_x',true),/known playable/,'unknown I
 
 const type100=tankReleaseSteps('type100',true,'node-test');
 assert.equal(type100.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false);
-assert.equal(type100.length,12,'Type100 retains every physical/anatomy/assets/test/build release step');
+assert.equal(type100.length,13,'Type100 retains every physical/anatomy/assets/test/build release step');
 for(const step of type100.filter(step=>step.args.some(arg=>arg.startsWith('--ids='))))
   assert.ok(step.args.includes('--ids=type100'));
 const allConcepts=tankReleaseSteps('type100,object695,ztz100_prototype,ztz100',true,'node-test');

@@ -1,5 +1,6 @@
 import { tankSeedId } from '../tankIdAliases.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
 // Merkava family procedural profiles — FROM-SCRATCH curve-driven rebuild.
 // Owned by the Merkava agent.
 //
@@ -3420,12 +3421,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         const spareZ = g.z1 - Math.min(0.24, spanZ * 0.12);
         const spareY = gTop(spareZ) + 0.028;
         const spareStep = Math.min(0.24, w * 0.52 / Math.max(1, hullUpgrade.spare));
+        // VEH-13: the course is one registered run (spareTrackSeat.ts), seated on the bow it was sunk into
+        const spareRun = spareTrackRunTag({ site: 'merkava-bow-links', source: 'adhoc', rotation: [rxAt(spareZ), 0, 0] });
         for (let i = 0; i < hullUpgrade.spare; i++) {
           const merkavaChassisHullCourse27 = (): void => {
             const x = (i - (hullUpgrade.spare - 1) / 2) * spareStep;
-            P.add('hullTrack', box(spareStep * 0.86, 0.055, 0.15), x, spareY, spareZ,
+            P.add('hullTrack', spareTrackPart(spareRun, box(spareStep * 0.86, 0.055, 0.15)), x, spareY, spareZ,
               rxAt(spareZ), 0, (i % 2 ? 0.012 : -0.012));
-            P.add('hullDark', box(spareStep * 0.55, 0.012, 0.026), x,
+            P.add('hullDark', spareTrackPart(spareRun, box(spareStep * 0.55, 0.012, 0.026)), x,
               spareY + 0.030, spareZ - 0.045, rxAt(spareZ), 0, 0);
           };
           merkavaChassisHullCourse27();

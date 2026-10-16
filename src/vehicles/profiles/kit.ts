@@ -11,6 +11,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from '../tankFactoryCore.ts';
+import { emitSpareLink } from '../spareLinkGeometry.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
@@ -1317,7 +1318,7 @@ function isMaterial(value: RuntimeValue): value is THREE.Material {
 /** The material slots a fitting part may name: the vehicle material keys plus the machine gun's ammunition slots. */
 const FITTING_MATERIAL_SLOTS: ReadonlySet<string> = new Set([
   'hull', 'barrel', 'detail', 'dark', 'shadow', 'glass', 'rubber', 'rubberCavity', 'wheels', 'wheelsRecessed',
-  'trackLink', 'spareTrack', 'canvasCloth', 'canvasPale', 'wood', 'bark', 'burnt',
+  'trackLink', 'spareTrack', 'spareLink', 'canvasCloth', 'canvasPale', 'wood', 'bark', 'burnt',
   'gunmetalAmmo', MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT,
 ]);
 
@@ -1338,6 +1339,8 @@ function fitMat(mats: Record<string, RuntimeValue>, slot: string, type = ''): TH
   if (type === 'jerryCans' && (slot === 'canvasCloth' || slot === 'canvasPale' || slot === 'detail')
       && isMaterial(mats.ammoDrab)) return mats.ammoDrab;
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
+  // VEH-13: a material set without the spare links' weathered steel (older providers) keeps the track steel
+  if (slot === 'spareLink' && !isMaterial(mats.spareLink)) return fitMat(mats, 'spareTrack', type);
   // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds must read against the gunmetal
   // (the vehicle canvas renders near-black on several hulls), and neither ever takes the host camouflage.
   // 2026-10-07 (round 3): they take the solid fitting paint, the FSP-06 role for small painted steel accessories. The
@@ -2845,7 +2848,7 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
  *   shadows, rotation=[rx,ry,rz]
  */
 function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY } = KIT;
+  const { box, cylY } = KIT;
   const links = Math.max(1, opts.links || 4);
   const width = opts.width || 0.5;
   const pitch = opts.pitch || 0.165;
@@ -2877,24 +2880,21 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
       parts.add('detail', cylY(0.009, 0.009, 0.008, 6), x, 0.062, end * (clampZ - 0.012)); // clamp bolt head
     }
   }
-  const connectorX = width / 2 - Math.min(0.016, width * 0.16);
-  const connectorW = Math.min(0.032, width * 0.3);
   // fleet lane 2026-10-08 (circular-cap audit, the BMP-2's course): below a 0.156 m pitch two neighbours' hinge barrels
   // overlapped, their end discs one coplanar overlap; there the neighbours share one barrel on the joint between them,
-  // as a track's links share their pin, and only the course's two ends keep a barrel of their own
-  const barrelR = 0.0215, barrelZ = 0.0565;
-  const sharedHinge = pitch < 2 * (barrelZ + barrelR);
+  // as a track's links share their pin, and only the course's two ends keep a barrel of their own.
+  // VEH-13 (2026-10-15): the link itself is the fleet's one spare link (spareLinkGeometry.ts), in the spare links' own
+  // weathered steel (`spareLink`).
+  const sharedHinge = pitch < 2 * (0.0565 + 0.0215);
   for (let k = 0; k < links; k++) {
     const z = (k - (links - 1) / 2) * pitch;
-    parts.add('spareTrack', box(width * 0.94, 0.026, 0.118), 0, -0.0095, z);               // shoe plate
-    for (const side of [-1, 1]) {
+    const barrels: Array<-1 | 1 | 'shared'> = [];
+    for (const side of [-1, 1] as const) {
       const inner = side > 0 ? k < links - 1 : k > 0;
-      if (!sharedHinge || !inner) parts.add('spareTrack', cylX(barrelR, width * 0.9, 8), 0, 0, z + side * barrelZ); // hinge barrels
-      else if (side > 0) parts.add('spareTrack', cylX(barrelR, width * 0.9, 8), 0, 0, z + pitch / 2);                // the shared joint
-      parts.add('spareTrack', box(connectorW, 0.05, 0.14), side * connectorX, 0, z);       // end connector
-      parts.add('spareTrack', cylY(0.011, 0.011, 0.01, 6), side * connectorX, 0.03, z);    // wedge-bolt head
+      if (!sharedHinge || !inner) barrels.push(side);
+      else if (side > 0) barrels.push('shared');
     }
-    parts.add('spareTrack', box(width * 0.82, 0.0465, 0.036), 0, 0.02675, z);              // grouser
+    emitSpareLink((geo, x, y, zz) => parts.add('spareLink', geo, x, y, zz), width, z, { barrels, pitch });
   }
   const fitting = fitAssemble('spareTrackLinks', parts, opts);
   fitting.userData.designFamily = 'cot-spare-track-carrier-v2';

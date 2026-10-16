@@ -30,6 +30,7 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -966,11 +967,13 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.add('hull', box(2.80, 0.05, 0.19), 0, 1.518, -2.885);                      // step 1.543
     P.add('hull', box(2.80, 0.05, 0.28), 0, 1.484, -2.53);                       // step 1.509
     P.add('hull', box(2.80, 0.045, 0.14), 0, 1.474, -2.32);                      // step to the main deck
-    // engine deck dressing: grille fields + fuel caps (§B3.2 density)
-    P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
-    for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
-    P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
+    // engine deck dressing: grille fields + fuel caps (§B3.2 density); VEH-13: the fields are no seat for spare links
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
+      for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
+      P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
+      for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
+    });
     for (const s of [-1, 1]) P.add('hullDetail', cylY(0.09, 0.09, 0.025, 12), s * 1.05, 1.508, -1.32);
     // ---- stern (tail 1.42-1.45 @ -3.42..-3.48, raked plate; plan rear center
     // -3.42..-3.49) -------------------------------------------------------------

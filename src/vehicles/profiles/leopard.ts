@@ -1,5 +1,6 @@
 import { tankSeedId } from '../tankIdAliases.ts';
 import { lathedWheelSection } from './lathedWheelStock.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -3228,7 +3229,9 @@ function buildLeo2A6(P: TankBuilderPort) {
     // xform-offset along the tray's LOCAL axes (max |x| 0.3875 < 0.43, crown
     // local +0.016 over 1.568 = 1.584 < the old 1.586 cap top) — everything
     // inside the r3-certified board envelope, no new planes.
-    for (const s2 of [-1, 1]) {
+    // VEH-13: each rack is one registered run (spareTrackSeat.ts), seated on the armour grown over it
+    for (const s2 of [-1, 1]) withSpareTrackRun(P, { site: `leo2a6-glacis-rack-${s2 < 0 ? 'L' : 'R'}`, source: 'adhoc',
+      rotation: [-0.229, s2 * 0.42, 0] }, (P) => {
       P.add('hullDark', box(0.86, 0.020, 0.055), s2 * 0.44, 1.568, 2.45, -0.229, s2 * 0.42, 0);
       for (let k = 0; k < 4; k++) {
         P.add('hullTrack', xform(box(0.16, 0.012, 0.050), -0.3075 + k * 0.205, 0.010, 0),
@@ -3238,7 +3241,7 @@ function buildLeo2A6(P: TankBuilderPort) {
         P.add('hullDetail', xform(box(0.020, 0.016, 0.053), bx, 0.006, 0),
           s2 * 0.44, 1.568, 2.45, -0.229, s2 * 0.42, 0);
       }
-    }
+    });
     // #1 glacis anti-slip zones (dark matte, slope-aligned, <=10 mm proud —
     // the ref line already reads ~0.03 UNDER our certified glacis skin here,
     // so proudness stays sub-row)

@@ -1,6 +1,7 @@
 // Original first-party reconstruction of the supplied fictional vehicle.
 // The private comparison GLB is never a playable asset or vertex source.
 import * as THREE from 'three';
+import {withSeatRole} from '../spareTrackSeat.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS } from './kit.ts';
@@ -119,16 +120,17 @@ function casemate(P:TankBuilderPort):void {
   }
 }
 
-function hatches(P:TankBuilderPort):void {
-  // Separate measured roof/deck lids; gaps around optic lips are actual air.
-  for(const[x,y,z,r]of[[-.495,3.161,-1.80,.4665],[-.677,3.090,-1.023,.322],
+function hatches(P0:TankBuilderPort):void {
+  // Separate measured roof/deck lids; gaps around optic lips are actual air. VEH-13: tagged hatches (no spare-link seat).
+  withSeatRole(P0,'hatch',(P)=>{for(const[x,y,z,r]of[[-.495,3.161,-1.80,.4665],[-.677,3.090,-1.023,.322],
     [-.91,1.770,1.245,.335],[.91,1.770,1.245,.335]]) {
     place(P,'hullDetail',cylY(r,r,.034,36),x,y+.015,z);
     place(P,'hullDetail',cylY(r*.84,r*.87,.026,32),x,y+.045,z);
     place(P,'hullDetail',beamBetween([x-.12,y+.062,z],[x-.12,y+.104,z],.013),0,0,0);
     place(P,'hullDetail',beamBetween([x-.12,y+.104,z],[x+.12,y+.104,z],.013),0,0,0);
     place(P,'hullDetail',beamBetween([x+.12,y+.104,z],[x+.12,y+.062,z],.013),0,0,0);
-  }
+  }});
+  const P=P0;
   const sight=(x:number,y:number,z:number,w:number):void=>{
     for(const side of[-1,1])optic(P,'hullDetail',box(.026,.105,.11),x+side*(w-.026)/2,y+.052,z);
     optic(P,'hullDetail',box(w,.021,.11),x,y+.109,z);

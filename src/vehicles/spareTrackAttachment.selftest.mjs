@@ -5,7 +5,6 @@ import { FITTINGS } from './profiles/kit.ts';
 import { KIT } from './tankFactoryCore.ts';
 
 const BASE_OFFSET_M = 0.041;
-const MAX_SEAT_GAP_M = 0.015;
 const CARRIER_FAMILY = 'cot-spare-track-carrier-v2';
 
 const fittingMaterials = {
@@ -44,66 +43,28 @@ KIT.spareTrackStrip({
     legacyParts.push({ bucket, geometry, transform });
   },
 }, 'hull', 0, 1, 2, 3, 0.3, 0);
-assert.equal(legacyParts.length, 12,
-  'three-link legacy strip contains six link parts plus two rails and four feet');
+// VEH-13 (2026-10-15): each strip link is one merged link of the fleet's shared part (spareLinkGeometry.ts)
+assert.equal(legacyParts.length, 9,
+  'three-link legacy strip contains three links plus two rails and four feet');
 assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullDetail').length, 6,
   'legacy strip publishes six carrier/support parts in the detail finish');
-assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullTrack').length, 6,
-  'legacy strip retains six worn-track link parts');
+assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullTrack').length, 3,
+  'legacy strip retains three worn-track links');
+for (const { bucket, geometry } of legacyParts) {
+  if (bucket === 'hullTrack') assert.ok(geometry.getAttribute('position').count / 3 >= 60, 'a strip link has its plate, barrels and grouser');
+}
 for (const part of legacyParts) part.geometry.dispose();
 
-const HIGH_RISK_OWNERS = [
-  'chieftain_mk9',
-  'leo2a2',
-  'leo2a3',
-  'amx30',
-  'upior',
-  'fv510',
-  'fv510_milan',
-  'pl01_105',
-  'm3a3_bradley',
-  'mbt70',
+// VEH-13 (2026-10-15): the single centre-ray gap check gave way to the build's own seat receipts (spareTrackSeat.ts):
+// every run a tank keeps passed the solver's support, clearance, motion and exposure rules where it stands, and every
+// run it dropped is recorded with its reason. The formerly high-risk owners, plus the Strv 103 family and the runs the
+// 2026-10-15 audit found hanging, swept or on launchers.
+const SEATED_OWNERS = [
+  'strv103a', 'udes03', 'strv103b', 'fv510', 'kv2', 'chieftain_mk9', 'leo2a2', 'leo2a3', 'amx30', 'upior',
+  'pl01_105', 'm3a3_bradley', 'mbt70', 'type10_tk_x', 'challenger1_mk2',
 ];
-
-const mountAxis = new THREE.Vector3();
-const origin = new THREE.Vector3();
-const base = new THREE.Vector3();
-const start = new THREE.Vector3();
-const inward = new THREE.Vector3();
-const quaternion = new THREE.Quaternion();
-const raycaster = new THREE.Raycaster();
-let checkedSeats = 0;
-
-function supportGap(root, fittingRoot) {
-  const fittingMeshes = new Set();
-  fittingRoot.traverse((object) => {
-    if (object.isMesh) fittingMeshes.add(object);
-  });
-  const hostMeshes = [];
-  root.traverse((object) => {
-    if (!object.isMesh || fittingMeshes.has(object) || object.userData.runningGear
-        || object.userData.vehicleMarking || /ghillie|decal/i.test(object.name)) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    for (const material of materials) material.side = THREE.DoubleSide;
-    hostMeshes.push(object);
-  });
-
-  fittingRoot.getWorldPosition(origin);
-  fittingRoot.getWorldQuaternion(quaternion);
-  mountAxis.set(0, 1, 0).applyQuaternion(quaternion).normalize();
-  base.set(0, -BASE_OFFSET_M, 0).applyMatrix4(fittingRoot.matrixWorld);
-  start.copy(origin).addScaledVector(mountAxis, 0.5);
-  raycaster.set(start, inward.copy(mountAxis).negate());
-  raycaster.near = 0;
-  raycaster.far = 1.2;
-  const hit = raycaster.intersectObjects(hostMeshes, false)[0];
-  return {
-    hit,
-    gapM: hit ? hit.distance - start.distanceTo(base) : Infinity,
-  };
-}
-
-for (const id of HIGH_RISK_OWNERS) {
+let checkedRuns = 0;
+for (const id of SEATED_OWNERS) {
   const visual = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -111,29 +72,37 @@ for (const id of HIGH_RISK_OWNERS) {
     materialMode: 'geometry-only',
   });
   try {
-    visual.root.updateMatrixWorld(true);
+    assert.equal(visual.root.userData.spareTrackError, undefined, `${id}: the seat pass ran`);
+    const runs = visual.root.userData.spareTrack;
+    const rejected = visual.root.userData.spareTrackRejected;
+    assert.ok(Array.isArray(runs) && Array.isArray(rejected), `${id}: the build publishes its spare-track seat receipts`);
     const fittings = [];
     visual.root.traverse((object) => {
       if (object.userData.designFamily === CARRIER_FAMILY) fittings.push(object);
     });
-    assert.ok(fittings.length > 0, `${id}: audited spare-track fitting exists`);
+    assert.equal(fittings.length, runs.filter((run) => run.source === 'fitting').length,
+      `${id}: every carrier left in the scene has a seat receipt`);
     for (const trackFitting of fittings) {
       assert.equal(trackFitting.userData.hasContinuousCarrier, true,
         `${id}/${trackFitting.name}: fitting retains a continuous carrier`);
-      const seat = supportGap(visual.root, trackFitting);
-      assert.ok(seat.hit,
-        `${id}/${trackFitting.name}: carrier has a tank surface behind it`);
-      assert.ok(seat.gapM <= MAX_SEAT_GAP_M,
-        `${id}/${trackFitting.name}: carrier floats ${seat.gapM.toFixed(4)} m from its support`);
-      checkedSeats += 1;
     }
+    for (const run of runs) {
+      // a seat the solver chose (re-seated, decor) meets the strict tier; a kept authored seat the authored tier
+      const strict = run.seat === 'reseated' || run.seat === 'decor';
+      assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20),
+        `${id}/${run.site}: support ${run.support} %, air ${run.air} %`);
+      assert.ok((!strict || run.gapP90Cm <= 1.2) && run.maxEmbedCm <= (strict ? 1 : 5),
+        `${id}/${run.site}: gap ${run.gapP90Cm} cm beyond the standoff, embed ${run.maxEmbedCm} cm`);
+      assert.ok(run.clearCm === null || run.clearCm >= (strict ? 3 : 1), `${id}/${run.site}: ${run.clearCm} cm from a forbidden part`);
+      assert.ok(run.sweepCm === null || run.sweepCm >= 3, `${id}/${run.site}: ${run.sweepCm} cm from the moving gun or turret`);
+      assert.ok(run.exposure >= (strict ? 50 : 30), `${id}/${run.site}: exposure ${run.exposure} %`);
+      checkedRuns += 1;
+    }
+    for (const drop of rejected) assert.ok(drop.reason, `${id}/${drop.site}: a dropped run records its reason`);
   } finally {
     visual.dispose();
   }
 }
+assert.ok(checkedRuns > 0, `the seated owners keep their runs (${checkedRuns})`);
 
-// 2026-09-23: the Tiger I owned two of the fourteen seats and retired with the hidden fleet.
-assert.equal(checkedSeats, 12,
-  'all twelve formerly high-risk semantic spare-track seats are audited');
-
-console.log(`spareTrackAttachment.selftest: ${checkedSeats} high-risk seats plus both carrier systems passed`);
+console.log(`spareTrackAttachment.selftest: ${checkedRuns} seated runs on ${SEATED_OWNERS.length} owners plus both carrier systems passed`);

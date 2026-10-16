@@ -124,6 +124,9 @@ export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abram
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
+import { spareLinkBlock } from './spareLinkGeometry.ts';
+import { seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -150,6 +153,8 @@ interface TankMaterials {
   shadow: THREE.MeshStandardMaterial;
   trackLink: THREE.MeshStandardMaterial;
   spareTrack: THREE.MeshStandardMaterial;
+  /** VEH-13: the stowed spare links' weathered steel (materials.ts); absent sets fall back to `spareTrack`. */
+  spareLink?: THREE.MeshStandardMaterial;
   glass: THREE.MeshStandardMaterial;
   barrel: THREE.MeshStandardMaterial;
   canvasCloth: THREE.MeshStandardMaterial;
@@ -1282,7 +1287,7 @@ interface AuthoredRange {
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
 type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
-  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels' | 'weaponSteel';
+  | 'glass' | 'barrel' | 'spareTrack' | 'spareLink' | 'shadow' | 'wheels' | 'weaponSteel';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
@@ -6551,19 +6556,26 @@ function spareTrackStrip(
   const steel = bucket.startsWith('turret') ? 'turretTrack' : 'hullTrack';
   const detail = bucket.startsWith('turret') ? 'turretDetail' : 'hullDetail';
   const runDepth = (links - 1) * 0.165 + 0.15;
+  // VEH-13 (2026-10-15): the strip is one registered rigid run; the seat pass (spareTrackSeatPass.ts) measures it on
+  // the finished armour and re-seats or drops it there.
+  const run = spareTrackRunTag({ site: 'strip', source: 'strip', rotation: [rx, ry, 0] });
+  const tagged = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+    geometry.userData.spareTrackRun = run;
+    return geometry;
+  };
   for (const localX of [-0.16, 0.16]) {
-    P.addEquipment(detail, xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0),
+    P.addEquipment(detail, tagged(xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0)),
       x, y, z, rx, ry, 0);
     for (const localZ of [-runDepth * 0.4, runDepth * 0.4]) {
-      P.addEquipment(detail, xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ),
+      P.addEquipment(detail, tagged(xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ)),
         x, y, z, rx, ry, 0);
     }
   }
+  // VEH-13 (2026-10-15): each link is the fleet's one spare link (spareLinkGeometry.ts) over the old slab's envelope
+  // (y -0.0225..0.05), not a slab and a bar
   for (let k = 0; k < links; k++) {
     const localZ = (k - (links - 1) / 2) * 0.165;
-    P.addEquipment(steel, xform(box(0.5, 0.045, 0.15), 0, 0, localZ),
-      x, y, z, rx, ry, 0);
-    P.addEquipment(steel, xform(box(0.44, 0.06, 0.05), 0, 0.02, localZ),
+    P.addEquipment(steel, tagged(xform(spareLinkBlock(0.5, 0.0725, 0.156), 0, 0.01375, localZ)),
       x, y, z, rx, ry, 0);
   }
 }
@@ -6815,6 +6827,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // grey primer beside every camouflaged plate on the X studies. The buckets
   // keep their detail LOD, non-armor hit role and disposal ownership.
   hullDetail: ['hullG', 'hull'], hullDark: ['hullG', 'dark'],
+  // VEH-13 (2026-10-15): a main gun fixed in the hull (the Strv 103 family's printed L74) draws into its own buckets,
+  // same materials, armour role and LOD as `hull`/`hullDark` had: the spare-link seat solver and its receipt read it as
+  // the gun (the Strv 103A's decor run had seated on its barrel's crown facet as if on armour).
+  hullGun: ['hullG', 'hull'], hullGunDark: ['hullG', 'dark'],
   // Fixed painted hull fittings retain their detail LOD and non-armor role.
   hullPaintedDetail: ['hullG', 'hull'],
   // Fixed painted fender skins retain silhouette coverage, not detail LOD.
@@ -6859,6 +6875,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'weaponSteel'],
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
+  // VEH-13: every built spare-link run's links (the seat pass moves them here from hull/turretTrack), weathered steel
+  hullTrackLinks: ['hullG', 'spareLink'], turretTrackLinks: ['turretG', 'spareLink'],
   hullShadow: ['hullG', 'shadow'],
   // Per-SIDE in-lane track trim (russia §B4 t72b3m_2022 round, opt-in — no other
   // caller): gear-fade strips / wrap chord fans / ramp joint fills are
@@ -6905,7 +6923,7 @@ const CAMO_BUCKETS = new Set([
   'hullPaintedDetail', 'turretPaintedDetail',
   'hullOpenLattice', 'turretOpenLattice',
   'hullFixedPaintedBodywork',
-  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment', 'hullGun',
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
@@ -6927,7 +6945,7 @@ export function bucketMaterialKey(bucket: string): TankMaterialKey | null {
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set([
-  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR',
+  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR', 'hullGun',
   'hullFixedPaintedBodywork',
   'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
   'gunMountCanvasSkin',
@@ -7081,6 +7099,7 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
     shadow: make(0x181a17),
     trackLink: make(0x2d302b),
     spareTrack: make(0x292c27),
+    spareLink: make(0x292c27),
     glass: make(0x243e49, { transparent: true, opacity: 0.7 }),
     barrel: make(0x555d49),
     canvasCloth: make(0x41452f),
@@ -7410,6 +7429,9 @@ function* createTankOwnedSteps(
       // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged). The tube
       // stays in its authored bucket until the profile is done (smokeTubesForFittingPaint, moved after the builder):
       // a rebuild that clears, offsets or scales that bucket by name must still find it there.
+      // VEH-13: explosive cassettes are no seat for spare links (spareTrackSeat.ts); cages and slat screens are not ERA
+      if (eraOwner && !part.userData.seatRole
+          && !(activeVisualEraCluster && /cage|slat|screen|net/i.test(activeVisualEraCluster.name))) part.userData.seatRole = 'era';
       const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
       const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
@@ -7509,6 +7531,8 @@ function* createTankOwnedSteps(
         : bucket === 'turret' ? 'turretEquipment' : bucket;
       const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
+      // VEH-13: an optical station is no seat for spare links (spareTrackSeat.ts)
+      if (module === 'optics' && !part.userData.seatRole) part.userData.seatRole = 'sight';
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
@@ -7713,6 +7737,29 @@ function* createTankOwnedSteps(
       (buckets[target] || (buckets[target] = [])).push(...tubes);
     }
     smokeTubesForFittingPaint.clear();
+  }
+  // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
+  // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is
+  // re-seated from outside nearby or removed, and both are recorded.
+  const rigByKey: Record<string, THREE.Object3D | undefined> = {
+    hullG, turretG, recoilG, gunG, barrel0G: barrelGs[0], barrel1G: barrelGs[1],
+  };
+  const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
+    .map(({ part }) => part));
+  const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
+  const spareTrackStartedAt = performance.now();
+  try {
+    const spareTrackSeats = seatAuthoredSpareTracks({
+      spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart,
+      bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
+    });
+    root.userData.spareTrack = spareTrackSeats.runs;
+    root.userData.spareTrackRejected = spareTrackSeats.rejected;
+    root.userData.spareTrackMs = performance.now() - spareTrackStartedAt;
+  } catch (error) {
+    // a solver fault never costs the vehicle its build: the runs stay as authored and the receipt carries the fault
+    root.userData.spareTrackError = error instanceof Error ? error.message : String(error);
+    console.warn(`[tankFactory] ${specId}: spare-track seat pass failed — ${root.userData.spareTrackError}`);
   }
   const coreAuthoredFinishedAt = performance.now();
 
@@ -8080,8 +8127,22 @@ function* createTankOwnedSteps(
       });
     }
   };
+  // VEH-13: the merged mesh keeps the vertex spans of parts whose seat role differs from their bucket's (grilles, ERA,
+  // launchers, registered spare links), so the decor's spare-link seats read them after the merge (decorations.ts).
+  const seatRoleRangesFor = (bucket: string, list: THREE.BufferGeometry[]): Array<{ start: number; count: number; role: SeatRole }> => {
+    const ranges: Array<{ start: number; count: number; role: SeatRole }> = [];
+    const base = seatRoleForBucket(bucket);
+    let vertexOffset = 0;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const role = seatRoleForPart(bucket, part, isEraPart(part));
+      if (role !== base && count) ranges.push({ start: vertexOffset, count, role });
+      vertexOffset += count;
+    }
+    return ranges;
+  };
   const combatHitboxRoleForBucket = (bucket: string): string => {
-    if (bucket === 'hull' || bucket === 'turret'
+    if (bucket === 'hull' || bucket === 'turret' || bucket === 'hullGun'
         || bucket === 'hullCupola' || bucket === 'turretCupola'
         || bucket === 'hullHatch' || bucket === 'turretHatch') return 'armor';
     if (bucket === 'hullExternalArmor' || bucket === 'turretExternalArmor') return 'externalArmor';
@@ -8148,10 +8209,11 @@ function* createTankOwnedSteps(
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
-      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
+      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
     recordAuthoredRanges(merged, authoredRanges);
+    const seatRanges = seatRoleRangesFor(bucket, list);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -8168,8 +8230,10 @@ function* createTankOwnedSteps(
       prepareWeaponFinishGeometry(merged, boxUV);
       paintAmmoVertexColours(merged, issueDrab, false);
     }
-    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
+    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark
+      : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : mats[matKey]));
     tagMergedBucket(bucket, mesh);
+    if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>
