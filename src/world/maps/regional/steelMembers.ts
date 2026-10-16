@@ -80,6 +80,8 @@ export interface ShellHole {
   fill: 'leaf' | 'glass';
   /** the leaf's colour (a coloured bucket's paint) */
   leaf?: Rgb;
+  /** a leaf's two pressed panels (default true; a roller door's slats are its caller's) */
+  panels?: boolean;
 }
 
 /**
@@ -141,7 +143,7 @@ export function shellBody(sink: PartSink, bucket: RegionalBucket, x0: number, y0
         sink.quad('structureMetal', P(name, c.u0 + e, c.y0 + e, d), P(name, c.u1 - e, c.y0 + e, d), P(name, c.u1 - e, c.y1 - e, d), P(name, c.u0 + e, c.y1 - e, d), lo);
         // its stiles and rails as the leaf's panel moulding (a pressed steel door: two panels)
         const mid = (c.y0 + c.y1) / 2, m = { ...lo, colour: c.leaf ? [c.leaf[0] * 0.8, c.leaf[1] * 0.8, c.leaf[2] * 0.8] as Rgb : undefined, fine: true };
-        for (const [ya, yb] of [[c.y0 + 0.12, mid - 0.06], [mid + 0.06, c.y1 - 0.12]] as const) {
+        if (c.panels !== false) for (const [ya, yb] of [[c.y0 + 0.12, mid - 0.06], [mid + 0.06, c.y1 - 0.12]] as const) {
           const ua = c.u0 + 0.12, ub = c.u1 - 0.12;
           if (ub - ua > 0.1 && yb - ya > 0.1) sink.quad('structureMetal', P(name, ua, ya, d + 0.012), P(name, ub, ya, d + 0.012), P(name, ub, yb, d + 0.012), P(name, ua, yb, d + 0.012), m);
         }
@@ -165,4 +167,29 @@ export function shellBody(sink: PartSink, bucket: RegionalBucket, x0: number, y0
       }
     }
   }
+}
+
+/** A timber's section, w × h with its four arrises chamfered `c` (a sawn sleeper, a dressed joist): for sectionMember. */
+export function chamferedSection(w: number, h: number, c: number): Array<[number, number]> {
+  const hw = w / 2, hh = h / 2;
+  return [[hw, -hh + c], [hw, hh - c], [hw - c, hh], [-hw + c, hh], [-hw, hh - c], [-hw, -hh + c], [-hw + c, -hh], [hw - c, -hh]];
+}
+
+/**
+ * A slab laid in panels (a hut's plywood floor in its 4 × 8 ft sheets, a deck in its boards): the box from (x0, y0, z0)
+ * to (x1, y1, z1) as one welded skin, its top in panels `pitch` long along z, each its own tone, its edges in `side`.
+ */
+export function panelSlab(sink: PartSink, bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number,
+  pitch: number, top: (k: number) => Rgb, side: Rgb, opts: EmitOptions = {}): void {
+  const n = Math.max(1, Math.round((z1 - z0) / pitch));
+  for (let k = 0; k < n; k++) {
+    const za = z0 + (z1 - z0) * k / n, zb = z0 + (z1 - z0) * (k + 1) / n;
+    sink.quad(bucket, [x0, y1, zb], [x1, y1, zb], [x1, y1, za], [x0, y1, za], { ...opts, colour: top(k) });
+  }
+  const so = { ...opts, colour: side };
+  sink.quad(bucket, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], so);
+  sink.quad(bucket, [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], so);
+  sink.quad(bucket, [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], so);
+  sink.quad(bucket, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], so);
+  sink.quad(bucket, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], so);
 }
