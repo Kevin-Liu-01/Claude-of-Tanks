@@ -248,9 +248,12 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
       `${mapId}/${seed}: winter kit storage stays inside its ceiling (${stats.bytes} bytes)`);
     assert.ok(built.buckets.straw.length > 0, `${mapId}/${seed}: the authored reed/head population exists`);
     const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
-    assert.deepEqual(names.filter(name => built.buckets[name].length),
-      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw', 'baked'] : ['plaster', 'wood', 'straw', 'baked'], // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood
-      'kit reuses the already-populated plaster draw (the snow) and the baked one (the ice); its obsolete stone batch is eliminated');
+    // (#19 x LOOKS goral, 2026-10-15: the frozen river's shore plates are slabs on the baked family too, so Frosthollow's
+    // kit may lay no snow at all: its plaster draw is the props' own)
+    const used = names.filter(name => built.buckets[name].length);
+    const allowed = mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw', 'baked'] : ['plaster', 'wood', 'straw', 'baked']; // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood
+    assert.ok(used.every(name => allowed.includes(name)) && used.includes('straw') && used.includes('baked') && (mapId === 'winter' || used.includes('plaster')),
+      `${mapId}/${seed}: kit reuses the already-populated plaster draw (the snow) and the baked one (the ice); its obsolete stone batch is eliminated (${used})`);
     let mapBerms = 0, mapWedges = 0;
     for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
     for (const geometry of built.buckets.stone) {

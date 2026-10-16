@@ -30,7 +30,7 @@ import {
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
-import { addWinterPressureRidges, addWinterShoreIce } from './lakeIce.ts';
+import { addWinterPressureRidges, addWinterShoreIce, pushShoreIceSlab } from './lakeIce.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
 import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
 import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock, type RollingStockKind } from './rollingStock.ts';
@@ -956,7 +956,7 @@ function dressWinterRiverBanks({ L, heightField, rng, buckets }: FocusedDressing
         const width = 0.7 + rng() * 1.1, height = 0.22 + rng() * 0.34, depth = 0.14 + rng() * 0.10;
         const roll = (rng() - 0.5) * 0.9, pitch = (rng() - 0.5) * 0.8, yaw = edgeYaw + (rng() - 0.5) * 0.9;
         const px = ix + (rng() - 0.5) * 2.2, pz = iz + (rng() - 0.5) * 2.2;
-        buckets.plaster.push(jitterUV(winterIceWedge(heightField, px, pz, width, height, depth, yaw, roll, pitch, 0.9), rng));
+        pushShoreIceSlab(buckets, rng, heightField, px, pz, width, height, depth, yaw, roll, pitch);
       }
     }
   }
