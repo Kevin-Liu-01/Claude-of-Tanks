@@ -461,6 +461,10 @@ interface SplatConfig {
   marshGloss?: number;
   microAmp?: number;
   strata?: number;
+  /** Ground lane (2026-10-15, the maps critics on Aegis and Redrock: "one smooth stretched ochre wall ... no strata or
+   * ledges"): the beds' strength every sheer face carries past ~55 deg whatever the map's own `strata` (absent:
+   * CLIFF_STRATA_FLOOR; a map that authors `strata: 0` — the Moon's regolith — carries none). */
+  cliffStrata?: number;
   pavedRoads?: boolean;
   /** Maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): the paved layer drawn
    * as airfield concrete — square slabs `slabM` across with sealed expansion joints (`jointM` half-width), a tone per
@@ -4289,6 +4293,7 @@ uniform float uMarshGloss;
 uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the boundary's half-width m, -); x < -1e8 = one formation
 uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminance (rgb) and the share it takes (w)
 uniform vec4 uFormationUp;  // the upper formation: likewise
+uniform float uCliffStrata; // ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata)
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
@@ -6570,7 +6575,11 @@ void splatCompute() {
   // — moderate DUNE flanks fell inside the old band and carried the sin-bed
   // stripes as "pink contour-band marbling over the sand" (desert critique);
   // strata now live only on genuine cliff faces
-  if (uStrata > 0.001) {
+  // (ground lane, 2026-10-15; the maps critics, Aegis -0.80 and Redrock: "one smooth stretched ochre wall with a sawtooth
+  // crest and no strata or ledges") a sheer face is bedded rock on every map: the beds' strength never under the map's
+  // cliff floor past ~55 deg (uCliffStrata; Aegis' 0.16 and Redrock's 0.13 had faded to 40 % on exactly those faces)
+  float strataK = max(uStrata, uCliffStrata * smoothstep(0.42, 0.62, slope));
+  if (strataK > 0.001) {
     float steep = smoothstep(0.36, 0.58, slope) * rockGate; // r6: beds only on real mesa rock
     // (ground lane, 2026-10-07 — mr2's Aegis toggle hold: the block cost ~1.6 ms GPU p25 at Aegis' chase and bird. Every
     // term below is scaled by steep, so a fragment off the cliffs — most of a frame — ran the beds' six noise reads, the
@@ -6592,7 +6601,8 @@ void splatCompute() {
       // nearly massive rock.
       float bedF = 0.76 + gCliffJ * 0.60;
       // (ground lane: the beds weather away on the sheerest faces — the clefts and the joints' walls run massive)
-      float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope))
+      // (2026-10-15: the sheerest faces keep three quarters of their beds — at 40 % a gorge's wall read unbedded)
+      float bedAmp = strataK * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.25 * smoothstep(0.80, 0.97, slope))
         * (1.0 - 0.72 * uJebelFace.x); // (round 9: a jebel face's bedding is its relief, the paint under a third)
       // (2026-10-06, Titan's zigzag strata: bedF multiplied the absolute height as the wall basis's stretch did — the beds
       // tilted by y · ∇bedF, ~0.85 at 250 m) the per-cliff frequency as a bed-set stretch on the same 48 m band of the height,
@@ -6652,7 +6662,7 @@ void splatCompute() {
     if (steep > 0.0) {
       // joint blocks and varnish where the beds are authored strongly (Titan 0.22 and Skybridge 0.18 full, Copper Mesa
       // and Mars 0.12 six tenths, the desert's 0.10 four tenths, Caldera / Badlands none)
-      float jointAmp = smoothstep(0.06, 0.16, uStrata) * steep;
+      float jointAmp = smoothstep(0.06, 0.16, strataK) * steep;
       if (jointAmp > 0.002) {
         // blocks ~9 m along the wall and ~5 m tall, one weathering tone per block: the noise texture read at block
         // centres in BOTH wall projections and mixed by the axis weight (samples, never coordinates); the block index
@@ -7902,6 +7912,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 }; // the map-revival lane: the detail normal's strength (1 = every other map's today)
     shader.uniforms.uRoadFromG = { value: S.roadLayer === 'ground' ? 1 : 0 }; // the map-revival lane: the carriageway's layer (0 = every other map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
+    shader.uniforms.uCliffStrata = { value: S.cliffStrata ?? (S.strata === 0 ? 0 : CLIFF_STRATA_FLOOR) };
     // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
     // the Redrock lane, round 9: Wadi Rum's jebel faces (splat.jebelFace; absent = off)
@@ -8149,6 +8160,11 @@ function* createSplatMaterialSteps(
 
 const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE / CHUNKS;
 const LOD_SEGS = [96, 48, 24];
+/** Ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata's default; Aegis authors 0.16). */
+export const CLIFF_STRATA_FLOOR = 0.14;
+/** Ground lane (2026-10-15): the squared gradient (rise over run) past which a terrain vertex's normal is the mean over
+ * three spans (1.2: ~50 deg) — see buildChunkGeometrySteps. */
+export const STEEP_NORMAL_G2 = 1.2 * 1.2;
 // r3: 2.5 -> 6.5 — on the 38 m desert mesa walls the far-LOD (5.3 m verts)
 // vs near-LOD height mismatch across a chunk border exceeded the old skirt
 // and the gap flashed the fog-bright backdrop through as a white sliver in
@@ -8402,7 +8418,22 @@ function* buildChunkGeometrySteps(
       const hr = hgrid ? hgrid[fi + 1] : hf.getHeightAt(wx + stepF, wz);
       const hd = hgrid ? hgrid[fi - pn] : hf.getHeightAt(wx, wz - stepF);
       const hu = hgrid ? hgrid[fi + pn] : hf.getHeightAt(wx, wz + stepF);
-      const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
+      let nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
+      // (ground lane, 2026-10-15; the maps critics on Aegis' gorge: "smeared into vertical streaks") on a steep vertex
+      // the one-step central difference swings from column to column along a crest and a wall's foot, and every wall
+      // triangle, crest to foot, shaded in its own stripe — the more so on the coarse chunks, whose triangles span
+      // several fine steps. There the gradient is the mean over three spans (one, two and three fine steps, and never
+      // under half, one and one and a half of the chunk's own step). Render only: the height field and every sim
+      // sampler read the heights, not these normals.
+      if (nx * nx + nz * nz > STEEP_NORMAL_G2) {
+        let gx = nx, gz = nz;
+        const e2 = Math.max(2 * stepF, step), e3 = Math.max(3 * stepF, 1.5 * step);
+        gx += (hf.getHeightAt(wx - e2, wz) - hf.getHeightAt(wx + e2, wz)) / (2 * e2);
+        gz += (hf.getHeightAt(wx, wz - e2) - hf.getHeightAt(wx, wz + e2)) / (2 * e2);
+        gx += (hf.getHeightAt(wx - e3, wz) - hf.getHeightAt(wx + e3, wz)) / (2 * e3);
+        gz += (hf.getHeightAt(wx, wz - e3) - hf.getHeightAt(wx, wz + e3)) / (2 * e3);
+        nx = gx / 3; nz = gz / 3;
+      }
       const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
       nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
       if (jebelLit) jebelLit.clamp(wx, wz, nrm, vi * 3);
