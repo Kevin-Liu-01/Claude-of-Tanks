@@ -18,7 +18,7 @@ import {
 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from './house.ts';
 import { woodpile } from './dressing.ts';
-import { recordShed } from './shedFall.ts';
+import { recordShed, type ShedWreck } from './shedFall.ts';
 
 const DEG = Math.PI / 180;
 
@@ -73,6 +73,10 @@ export interface ShedPlan {
   pile: number;
   /** a chopping block and its axe before the shed */
   block?: boolean;
+  /** the back plate rests on something the kit built (an oven's block): no back posts, pads or sill under it */
+  noBackPosts?: boolean;
+  /** masonry bodies beside the shed that fall with it (shedFall.ts masses), in the shed's frame */
+  masses?: ShedWreck['masses'];
   mobile: boolean;
 }
 
@@ -305,11 +309,13 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
       sink.span(sb.coping, -W / 2 - 0.06, wallTop - 0.02, -D / 2 - 0.04, -W / 2 + sb.t * 0.4, yc, D / 2 + 0.04, { decor: true });
     }
   } else {
-    for (const z of backZ) padOf(xb, z);
-    if (d.pad) sink.span('structureWood', xb - half, padTop, -D / 2, xb + half, padTop + sillH, D / 2, member);
-    // the back posts on the sill and the wall plate along their heads
-    const backFoot = d.pad ? padTop + sillH : -0.3;
-    for (const z of backZ) postAt(xb, z, backFoot, backTop - ph);
+    if (!plan.noBackPosts) {
+      for (const z of backZ) padOf(xb, z);
+      if (d.pad) sink.span('structureWood', xb - half, padTop, -D / 2, xb + half, padTop + sillH, D / 2, member);
+      // the back posts on the sill and the wall plate along their heads
+      const backFoot = d.pad ? padTop + sillH : -0.3;
+      for (const z of backZ) postAt(xb, z, backFoot, backTop - ph);
+    }
     sink.span('structureWood', xb - half - 0.01, backTop - ph, -D / 2, xb + half + 0.01, backTop, D / 2, member);
   }
 
@@ -461,6 +467,7 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     timber: d.timber, boards: plan.back || plan.ends ? d.boards[0] : null, boardW: d.boardW, back: plan.back, ends: plan.ends,
     roof: { bucket: d.roofBucket, colour: d.roofColour ?? null, shape: DEBRIS[d.covering] },
     stone: plan.stoneBack ? { bucket: plan.stoneBack.bucket, t: plan.stoneBack.t, top: underRoof(-W / 2) } : null, pile: plan.pile,
+    ...(plan.masses ? { masses: plan.masses } : {}),
   });
   return {
     W, D, posts, size: s,
@@ -488,8 +495,13 @@ export interface RoundSpec {
   /** a course's height and a stone's (or brick's) length along the face */
   course: number;
   stone: number;
-  /** the corbelled cone over the wall in `rings` rings stepping in to a capstone of radius `cap`, `rise` high */
-  cone: { rings: number; rise: number; cap: number } | null;
+  /**
+   * the corbelled cone over the wall in `rings` rings stepping in to a capstone of radius `cap`, `rise` high; `dome`: the
+   * rings closing on a quarter ellipse (an oven's dome) rather than a straight cone
+   */
+  cone: { rings: number; rise: number; cap: number; dome?: boolean } | null;
+  /** the wall's foot (default the ground: the core and the first course sunk into it) */
+  base?: number;
   bucket: RegionalBucket;
   /** the doorway: its direction (radians about y from +x), its width and height (a monolith lintel and jambs) */
   door: { angle: number; w: number; h: number } | null;
@@ -506,18 +518,25 @@ export interface RoundSpec {
  * Returns the top and the lintel (for the wreck).
  */
 export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number): { top: number; lintel: { x: number; z: number; len: number; yaw: number } | null } {
-  const { cx, cz, R, wallH, T, bucket } = spec;
+  const { cx, cz, R, T, bucket } = spec;
+  const base = spec.base ?? 0, sunk = base > 0 ? 0 : 0.3, wallH = base + spec.wallH;
   const P = (a: number, y: number, r: number): Vec3 => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
   const door = spec.door;
   const gap = door ? Math.asin(Math.min(0.95, (door.w / 2 + 0.2) / R)) : 0, doorTop = door ? door.h + 0.22 : 0;
   // the core: the wall's ring (open at the door to the lintel's top), the wall over the door, the cone's frustum, the cap
   const ad = door ? door.angle : 0;
-  sink.cylinder(bucket, [cx, -0.3, cz], 'y', wallH + 0.3, R - 0.03, 18, {}, R - 0.03, false, door ? gap - ad : 0, door ? Math.PI * 2 - 2 * gap : Math.PI * 2);
-  if (door) sink.cylinder(bucket, [cx, doorTop, cz], 'y', wallH - doorTop, R - 0.03, 3, {}, R - 0.03, false, -(ad + gap), 2 * gap);
+  sink.cylinder(bucket, [cx, base - sunk, cz], 'y', wallH - base + sunk, R - 0.03, 18, {}, R - 0.03, false, door ? gap - ad : 0, door ? Math.PI * 2 - 2 * gap : Math.PI * 2);
+  if (door) sink.cylinder(bucket, [cx, base + doorTop, cz], 'y', wallH - base - doorTop, R - 0.03, 3, {}, R - 0.03, false, -(ad + gap), 2 * gap);
   let top = wallH;
+  // a ring's outer radius at fraction t of the cone's rise (straight, or a dome's quarter ellipse)
+  const ringR = (t: number): number => (spec.cone?.dome ? spec.cone.cap + (R - spec.cone.cap) * Math.sqrt(Math.max(0, 1 - t * t)) : R + ((spec.cone?.cap ?? R) - R) * t);
   if (spec.cone) {
     const c = spec.cone;
-    sink.cylinder(bucket, [cx, wallH - 0.01, cz], 'y', c.rise, R - 0.06, 16, {}, c.cap - 0.02, false);
+    if (c.dome) {
+      for (let j = 0; j < c.rings; j++) {
+        sink.cylinder(bucket, [cx, wallH - 0.01 + c.rise * j / c.rings, cz], 'y', c.rise / c.rings + 0.01, ringR(j / c.rings) - 0.06, 14, {}, ringR((j + 1) / c.rings) - 0.06, j === c.rings - 1);
+      }
+    } else sink.cylinder(bucket, [cx, wallH - 0.01, cz], 'y', c.rise, R - 0.06, 16, {}, c.cap - 0.02, false);
     top = wallH + c.rise;
     sink.cylinder(bucket, [cx, top - 0.02, cz], 'y', 0.16, c.cap + 0.1, 10, {});
     top += 0.14;
@@ -554,16 +573,15 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
     }
   };
   sink.dressing(spec.mobile, () => {
-    const courses = Math.max(3, Math.round((wallH + 0.25) / spec.course)), h = (wallH + 0.25) / courses;
+    const foot = base - (sunk ? 0.25 : 0), courses = Math.max(1, Math.round((wallH - foot) / spec.course)), h = (wallH - foot) / courses;
     for (let k = 0; k < courses; k++) {
-      const y0 = -0.25 + k * h;
-      ringOf(R, y0, y0 + h, k, R - 0.08, y0 < doorTop);
+      const y0 = foot + k * h;
+      ringOf(R, y0, y0 + h, k, R - 0.08, y0 < base + doorTop);
     }
     if (spec.cone) {
       const c = spec.cone, hr = c.rise / c.rings;
       for (let j = 0; j < c.rings; j++) {
-        const r = R + (c.cap - R) * j / c.rings, rNext = R + (c.cap - R) * (j + 1) / c.rings;
-        ringOf(r, wallH + j * hr, wallH + (j + 1) * hr, courses + j, rNext - 0.06, false);
+        ringOf(ringR(j / c.rings), wallH + j * hr, wallH + (j + 1) * hr, courses + j, ringR((j + 1) / c.rings) - 0.06, false);
       }
     }
   });
@@ -573,11 +591,12 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
   const face: Face = { origin: [cx + out[0] * R, 0, cz + out[2] * R], u: [out[2], 0, -out[0]], out, width: door.w + 0.6 };
   const hw = door.w / 2;
   for (const side of [-1, 1]) {
-    faceBox(sink, bucket, face, side * (hw + 0.12), door.h / 2, -T / 2 + 0.03, 0.24, door.h, T, { shade: 0.88 });
+    faceBox(sink, bucket, face, side * (hw + 0.12), base + door.h / 2, -T / 2 + 0.03, 0.24, door.h, T, { shade: 0.88 });
   }
-  faceBox(sink, bucket, face, 0, door.h + 0.11, -T / 2 + 0.06, door.w + 0.7, 0.22, T + 0.12, {});
-  faceBox(sink, bucket, face, 0, -0.06, -T / 2 + 0.05, door.w + 0.1, 0.12, T + 0.1, { decor: true, shade: 0.85 });
-  sink.quad('dark', facePoint(face, -hw, 0, -T + 0.02), facePoint(face, hw, 0, -T + 0.02), facePoint(face, hw, door.h, -T + 0.02), facePoint(face, -hw, door.h, -T + 0.02), {});
+  faceBox(sink, bucket, face, 0, base + door.h + 0.11, -T / 2 + 0.06, door.w + 0.7, 0.22, T + 0.12, {});
+  faceBox(sink, bucket, face, 0, base - 0.06, -T / 2 + 0.05, door.w + 0.1, 0.12, T + 0.1, { decor: true, shade: 0.85 });
+  sink.quad('dark', facePoint(face, -hw, base, -T + 0.02), facePoint(face, hw, base, -T + 0.02), facePoint(face, hw, base + door.h, -T + 0.02),
+    facePoint(face, -hw, base + door.h, -T + 0.02), {});
   const lp = facePoint(face, 0, 0, 0.5);
   return { top, lintel: { x: lp[0], z: lp[2], len: door.w + 0.7, yaw: Math.atan2(face.u[2], face.u[0]) + 0.35 } };
 }

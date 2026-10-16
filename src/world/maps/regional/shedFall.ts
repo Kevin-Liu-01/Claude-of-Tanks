@@ -212,7 +212,7 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
     const z0 = Z0 + (Z1 - Z0) * k / lengths + (k ? 0.06 : 0), z1 = Z0 + (Z1 - Z0) * (k + 1) / lengths - (k < lengths - 1 ? 0.06 : 0);
     const zc = (z0 + z1) / 2 + (along ? fz * 0.5 : 0);
     // the low edge (the front's, or the back's when it fell backward) on the ground, the high edge propped
-    const prop = 0.55 + rng() * 0.45 + (shed.pile > 0 ? 0.2 : 0);
+    const prop = Math.min(L * 0.36, 0.55 + rng() * 0.45 + (shed.pile > 0 ? 0.2 : 0));
     const lowX = (fwd >= 0 ? W / 2 + shed.eave : -W / 2 - shed.eave) + shift, run = Math.sqrt(Math.max(0.5, L * L - prop * prop));
     const highX = lowX - (fwd >= 0 ? 1 : -1) * run;
     const gl = ground(lowX, zc), yLow = gl + 0.06, yHigh = Math.max(gl, ground(highX, zc)) + prop;
