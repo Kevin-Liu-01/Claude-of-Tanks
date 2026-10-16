@@ -15,7 +15,7 @@
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
 // Collision: every landmark's structure is a few prisms (its podium, its tiers, its tower); the facades are dressing.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, recordBody, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
+import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, recordBody, type HoleRect } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {

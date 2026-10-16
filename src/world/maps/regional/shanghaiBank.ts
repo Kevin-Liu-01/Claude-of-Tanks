@@ -1,12 +1,56 @@
 // src/world/maps/regional/shanghaiBank.ts — the Shanghai kit's Bank of China (the terracetower on the Bund, shanghaiBund.ts),
-// extracted as it was (the looks lane's r2 sweep, sub-stream b-east, 2026-10-16: lane B is parked, so its builder is taken
-// extract-then-own) with copies of the Bund facade helpers it calls, for this lane to rebuild on the r2 standard.
-import { PartSink, faceBox, facePanel, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+// extracted (the looks lane's r2 sweep, sub-stream b-east, 2026-10-16: lane B is parked, so its builder was taken
+// extract-then-own) with copies of the Bund facade helpers it calls, and rebuilt here on the r2 standard.
+//
+// The r2 sweep measured it 0.68 plain boxes by area (blackglass): its wings and tower bare spans, its piers and spandrel
+// beams bare boxes, the cornice and the lattice band slabs. Now the wings stand on a chamfered granite plinth course
+// under a moulded cornice, the tower on its own base course, both swept round their plans with their decks; the piers
+// are of two orders (skylineDeco.ts steppedPier), the spandrel beams carry drip-nosed sills, the lattice band is a frieze
+// between its fillets. The streams draw as before.
+import { PartSink, faceBox, facePanel, rgb, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { faceSection, steppedPier } from './skylineDeco.ts';
 import { emitRoof, recordBody, roofGeometry, type RoofSpec } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
 import { BRONZE, GILT, clampTo, fillOf, planFaces, pocks, rect, uvOffset } from './shanghaiParts.ts';
 
 const SHADOWED = { decor: true, shadow: true } as const;
+
+/** A convex plan (counter-clockwise seen from above) moved in by `r` on every side (each edge offset, the offsets met). */
+function insetPlan(points: ReadonlyArray<readonly [number, number]>, r: number): Array<[number, number]> {
+  const n = points.length, lines: Array<{ p: [number, number]; d: [number, number] }> = [];
+  for (let i = 0; i < n; i++) {
+    const [ax, az] = points[i], [bx, bz] = points[(i + 1) % n], len = Math.hypot(bx - ax, bz - az) || 1;
+    const ux = (bx - ax) / len, uz = (bz - az) / len;
+    lines.push({ p: [ax + uz * r, az - ux * r], d: [ux, uz] });
+  }
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) {
+    const a = lines[(i + n - 1) % n], b = lines[i];
+    const den = a.d[0] * b.d[1] - a.d[1] * b.d[0];
+    if (Math.abs(den) < 1e-9) { out.push([b.p[0], b.p[1]]); continue; }
+    const t = ((b.p[0] - a.p[0]) * b.d[1] - (b.p[1] - a.p[1]) * b.d[0]) / den;
+    out.push([a.p[0] + a.d[0] * t, a.p[1] + a.d[1] * t]);
+  }
+  return out;
+}
+
+/** A section ([proud of the plan's edge, height]) swept round a convex plan: one welded band a segment and edge, no caps. */
+function sweep(sink: PartSink, bucket: RegionalBucket, plan: ReadonlyArray<readonly [number, number]>, section: ReadonlyArray<readonly [number, number]>,
+  opts: EmitOptions = {}): void {
+  const rings = section.map(([o, y]) => insetPlan(plan, -o).map(([x, z]): Vec3 => [x, y, z]));
+  for (let k = 0; k + 1 < rings.length; k++) {
+    const a = rings[k], b = rings[k + 1];
+    for (let i = 0; i < a.length; i++) {
+      const j = (i + 1) % a.length;
+      sink.quad(bucket, a[i], a[j], b[j], b[i], opts);
+    }
+  }
+}
+
+/** A deck over a plan at y (counter-clockwise seen from above: it faces up). */
+function deck(sink: PartSink, bucket: RegionalBucket, plan: ReadonlyArray<readonly [number, number]>, y: number): void {
+  sink.polygon(bucket, plan.map(([x, z]): Vec3 => [x, y, z]));
+}
 
 /** A tower's facade: window columns between proud piers, per floor a pane over a spandrel panel. */
 interface FacadeStyle {
@@ -45,13 +89,16 @@ function deco(sink: PartSink, face: Face, y0: number, y1: number, fh: number, st
     }
     // the floor's spandrel beam under its windows (over the ones below), the piers standing proud of it
     const b0 = Math.max(y0, y - fh * 0.1), b1 = y + fh * 0.3;
-    faceBox(sink, beamBucket, face, 0, (b0 + b1) / 2, beamOut / 2, w, b1 - b0, beamOut, { decor: true, ...beam });
+    // (looks r2) the beam with its sill: a drip-nosed sill course along its head, 4 cm proud of it
+    faceSection(sink, beamBucket, face, -w / 2, w / 2, [[0, b0], [beamOut, b0], [beamOut, b1 - 0.12], [beamOut + 0.04, b1 - 0.09], [beamOut + 0.04, b1], [0, b1]],
+      { decor: true, ...beam });
   }
   // the head beam over the top floor's windows
   const top = y0 + floors * fh;
   faceBox(sink, beamBucket, face, 0, top - fh * 0.05, beamOut / 2, w, fh * 0.1, beamOut, { decor: true, ...beam });
   const span = floors * fh, opts = { decor: true, fineSides: true, ...(st.pierShade ? { shade: st.pierShade } : {}) };
-  for (let k = 0; k <= n; k++) faceBox(sink, st.pierBucket, face, -w / 2 + pitch * k, y0 + span / 2, st.pierOut / 2, st.pier, span, st.pierOut, opts);
+  // (looks r2) piers of two orders, the front order stepped in, its arrises chamfered (bare boxes before)
+  for (let k = 0; k <= n; k++) steppedPier(sink, st.pierBucket, face, -w / 2 + pitch * k, y0, y0 + span, st.pier, st.pierOut, opts);
 }
 
 /** The faces of a tier x0..x1, z0..z1 (front +z, right, back, left). */
@@ -92,15 +139,27 @@ export const bankOfChina: RegionalBuilder = (ctx) => {
     const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 90);
     const fh = 3.4, wingTop = Math.max(fh * 2, H * 0.36), towerTop = Math.max(wingTop + fh, H * 0.84);
     const gold: FacadeStyle = { pitch: 1.6, pier: 0.55, pierBucket: 'plaster2', pierOut: 0.26, spandrel: rgb(0x6b5a3e), lit: 0.06, dark: 0.08 };
-    sink.span('plaster2', -W / 2, -0.4, -D / 2, W / 2, wingTop, D / 2);
-    sink.span('plaster2', -W / 2 - 0.1, wingTop - 0.45, -D / 2 - 0.1, W / 2 + 0.1, wingTop, D / 2 + 0.1, SHADOWED);
+    // (looks r2) the wings on a chamfered granite plinth course, closed under, their deck at the cornice's head; the cornice
+    // a moulding run round them (a fascia, a bed mould, the corona over it)
+    const wing = rect(-W / 2, -D / 2, W / 2, D / 2);
+    // (the plinth course is dressing: the wings' collision stays their walls' prism; the walls meet it at its head)
+    sweep(sink, 'plaster2', wing, [[0, -0.4], [0, 0.72], [0, wingTop]]);
+    sweep(sink, 'plaster2', wing, [[0.12, -0.4], [0.12, 0.6], [0, 0.72]], SHADOWED);
+    deck(sink, 'plaster2', wing, wingTop);
+    sink.polygon('plaster2', wing.map(([x, z]): Vec3 => [x, -0.4, z]).reverse());
+    sweep(sink, 'plaster2', wing, [[0, wingTop - 0.45], [0.04, wingTop - 0.45], [0.04, wingTop - 0.3], [0.1, wingTop - 0.24], [0.1, wingTop - 0.08],
+      [0, wingTop - 0.02]], SHADOWED);
     const faces = tierFaces(-W / 2, W / 2, -D / 2, D / 2);
     for (const face of faces) {
       podiumFront(sink, face, 5.2, look, 'plaster2');
       deco(sink, face, 5.6, wingTop - 0.5, fh, gold, look, 0.5);
     }
     const tx = W * 0.3, tz = D * 0.4;
-    sink.span('plaster2', -tx, wingTop, -tz, tx, towerTop, tz);
+    // (looks r2) the tower on its base course, its deck under the roof
+    const tower = rect(-tx, -tz, tx, tz);
+    sweep(sink, 'plaster2', tower, [[0, wingTop], [0, wingTop + 0.6], [0, towerTop]]);
+    sweep(sink, 'plaster2', tower, [[0.1, wingTop], [0.1, wingTop + 0.5], [0, wingTop + 0.6]], SHADOWED);
+    deck(sink, 'plaster2', tower, towerTop);
     // (props census #9, E13) the wings and the tower (in its storey bands) as bodies for the damage reading
     recordBody(sink, 0, 0, W, D, wingTop, 'plaster2', false, true);
     recordBody(sink, 0, 0, 2 * tx, 2 * tz, towerTop + 2, 'plaster2', false, true);
@@ -109,7 +168,10 @@ export const bankOfChina: RegionalBuilder = (ctx) => {
       deco(sink, face, wingTop + 0.3, towerTop - 2.4, fh, gold, look, 0.4);
       // the band of Chinese lattice under the roof (props census #9: a frieze 14 cm proud, its lattice on it; it was a
       // panel laid on the wall)
-      faceBox(sink, 'structureMetal', face, 0, towerTop - 1.2, 0.07, face.width - 0.6, 1.6, 0.14, { colour: rgb(0x5a4a33), decor: true });
+      // (looks r2) a frieze between its fillets: the rails 14 cm proud, the panel between them 4 cm behind their faces
+      const fy0 = towerTop - 2.0, fy1 = towerTop - 0.4;
+      faceSection(sink, 'structureMetal', face, -(face.width - 0.6) / 2, (face.width - 0.6) / 2, [[0, fy0], [0.14, fy0], [0.14, fy0 + 0.1], [0.1, fy0 + 0.14],
+        [0.1, fy1 - 0.14], [0.14, fy1 - 0.1], [0.14, fy1], [0, fy1]], { colour: rgb(0x5a4a33), decor: true });
       if (!mobile) for (let k = 0; k < Math.round(face.width / 0.9); k++) {
         faceBox(sink, 'plaster2', face, -face.width / 2 + 0.45 + k * 0.9, towerTop - 1.2, 0.17, 0.1, 1.5, 0.06, { decor: true, fine: true });
       }

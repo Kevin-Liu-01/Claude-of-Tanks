@@ -95,7 +95,7 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
  * A section (o out of the face, y) run along a face from u0 to u1: its sides (the section's segments; none along o = 0,
  * the wall) and its two end caps (the section fanned; convex).
  */
-function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, sec: ReadonlyArray<readonly [number, number]>, opts: EmitOptions): void {
+export function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, sec: ReadonlyArray<readonly [number, number]>, opts: EmitOptions): void {
   for (let i = 0; i + 1 < sec.length; i++) {
     const [oa, ya] = sec[i], [ob, yb] = sec[i + 1];
     if (oa < 1e-6 && ob < 1e-6) continue;
@@ -110,7 +110,7 @@ function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: num
  * front order 9 cm narrower a side out to `out`, its two front arrises chamfered 4 cm; its sides and front, its head
  * capped (the foot stands on the podium or the setback).
  */
-function steppedPier(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, w: number, out: number, opts: EmitOptions): void {
+export function steppedPier(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, w: number, out: number, opts: EmitOptions): void {
   const h = w / 2, f = Math.max(0.08, h - 0.09), o1 = out * 0.55, c = Math.min(0.04, f * 0.3);
   // the plan section round the pier (u, o), from the wall on its left round to the wall on its right
   const sec: Array<[number, number]> = [[-h, 0], [-h, o1], [-f, o1], [-f, out - c], [-f + c, out], [f - c, out], [f, out - c], [f, o1], [h, o1], [h, 0]];
