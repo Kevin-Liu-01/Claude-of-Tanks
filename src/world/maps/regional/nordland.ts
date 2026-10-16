@@ -355,7 +355,8 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
   }
   doorUnit(sink, front, 0, y0, 0.85, 2.0, {
     leaf: st.door, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: WHITE },
-    steps: { bucket: 'stone' }, leafKind: 'glazed', transom: false,
+    // (props census #15, Lane C co-hold 2026-10-16: a glazed leaf on the veranda's solid front laid its glass on the wood)
+    steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
   }, y0);
   const roof: RoofSpec = { kind: 'hip', pitchDeg: 22, eave: 0.22, verge: 0.22, thickness: 0.1, bucket: 'roof', ridge: null };
   const cc = facePoint(face, 0, 0, depth / 2);

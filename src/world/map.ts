@@ -44,6 +44,7 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
@@ -859,6 +860,11 @@ function assembleWorld(
     return bodyQuery;
   };
   const unregisterDestructibles = props.registerDestructibles();
+  // (2026-10-16, the perf lane) every further program variant of a shared props material its own live twin, so a merged
+  // bucket and an instanced pool of one material stop re-resolving its program twice a frame (engine/programVariants.ts;
+  // the props only: the terrain's and the water's hooks keep their compile's uniform map on the material)
+  const programVariants = splitProgramVariants(props.group);
+  group.userData.programVariants = programVariants;
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
