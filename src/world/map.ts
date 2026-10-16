@@ -513,7 +513,8 @@ function assembleWorld(
   const adoptOutland = !!vegetation._treeImpostors && outlandTreesEnabled();
   if (ringForest && vegetation._treeImpostors) {
     bindHorizonForestImpostors(ringForest, {
-      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): the forest over the line takes its own mix (VegetationConfig `ringMix`, else the rim's)
+      library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeHeightM: vegetation._rimTreeHeightM,
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
@@ -529,7 +530,7 @@ function assembleWorld(
   const hinterlandRoot = terrain.getObjectByName('hinterland-root');
   if (hinterlandRoot && vegetation._treeImpostors) {
     bindHinterlandTreeImpostors(hinterlandRoot, {
-      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeTint: vegetation._rimTreeTint,
+      library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       ...(adoptOutland ? {
         formVariant: vegetation._treeFormVariant,

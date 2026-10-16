@@ -185,6 +185,12 @@ interface VegetationConfig {
   clusterMix: SpeciesMix;
   loneMix: SpeciesMix;
   rimMix: SpeciesMix;
+  /** GND (2026-10-15; the blind critics' Longleaf backdrop "a broadleaf band that doesn't match the longleaf pines"):
+   * the species mix of the forest over the red line — the horizon ring's trees (maps/horizon.ts coniferShare,
+   * horizonForestImpostors.ts), the ones the battlefield's tiers adopt and the Hinterland's — where it differs from the
+   * battlefield's own rim (Longleaf's rim keeps the creek bottom's oaks; the flatwoods past the line are longleaf alone).
+   * Absent: the rim mix. */
+  ringMix?: SpeciesMix;
   clusterCount: number;
   loneCount: number;
   rimCount: number;
@@ -489,6 +495,8 @@ export interface VegetationRuntime {
    * geometry's height, metres; 0 without an impostor library) — the ring forest's impostors take both
    * (horizonForestImpostors.ts). */
   _rimMix: SpeciesMix;
+  /** GND (2026-10-15): the forest over the red line's species mix (VegetationConfig `ringMix`, else the rim's). */
+  _ringMix: SpeciesMix;
   _rimTreeHeightM: number;
   /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
    * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
@@ -8982,7 +8990,7 @@ function* vegetationBuildSteps(
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
-    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
+    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }
