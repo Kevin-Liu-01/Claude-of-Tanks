@@ -11,6 +11,8 @@ import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorl
 import {
   collisionFootprintContainsPoint, pushHullFromObstacle, rayCollisionRecord, shellPassesThroughCollisionRecord } from '../src/world/collision.ts';
 import { decodeCollisionManifest, encodeCollisionManifest } from './collisionManifestCodec.ts';
+import { civilianVehicleOverrides } from '../src/world/maps/civilianVehicleKit.ts';
+import { localShellSlabs, placeLocalShellSlabs } from '../src/world/rockCollision.ts';
 import { TERRAIN_VARIANTS } from '../src/sim/matchRuleset.ts';
 
 const authoredWorlds = new Map();
@@ -424,6 +426,10 @@ function assertIntakeHood(record) {
   }
 }
 
+// the Longleaf fleet's flatbed: the solid its movement and shell copies are both cut from (assertLoggingYard)
+const longleafFlatbed = civilianVehicleOverrides('longleaf', false).truckflatbed;
+const longleafFlatbedSlabs = localShellSlabs(longleafFlatbed.collisionSolid());
+
 function assertLoggingYard(mapWorld, independentWorld) {
   // 2026-09-29 curved roads change the seeded traffic donors. The actual
   // heavy-traffic stage independently reproduces these two scales and original
@@ -452,7 +458,30 @@ function assertLoggingYard(mapWorld, independentWorld) {
     assert.equal(obstacle.shape2.parts.length, 21, 'all the flatbed\'s ground-bearing parts survive the relocation');
     assert.ok(Math.hypot(obstacle.shape2.cx - x, obstacle.shape2.cz - z) < 0.3,
       `Longleaf propIdx${donor.propIdx} is missing from its authored loading bay; regenerate its native collision shard`);
-    assert.deepEqual(collider, obstacle, 'movement and shell copies share the relocated bounds, shape and identity');
+    // (physics, 2026-10-16) one solid, two forms: since the hitboxes r3 port (f10b574d7) a heavy truck's shell copy is its
+    // solid's slabs (props.ts SLAB_SHELL_KINDS), its movement copy that solid's contact band, both from the kit's
+    // tier-independent solid (civilianVehicleKit.ts canonicalSolid: the fleet's flatbed). The two copies share the
+    // relocated pose and the identity; the shell copy is exactly the solid's slabs set at the movement copy's pose.
+    for (const key of ['kind', 'propIdx', 'crushable', 'crushMin', 'crushKeep']) {
+      assert.equal(collider[key], obstacle[key], `movement and shell copies share their identity (${key})`);
+    }
+    {
+      // (the donor's scale and seat from the movement copy's own parts: the band's tops scaled, its foot on the seat; its
+      // bounds keep the table's height, pinned below)
+      const band = longleafFlatbed.contactBand, top = (parts) => Math.max(...parts.map((part) => part.y1));
+      const foot = (parts) => Math.min(...parts.map((part) => part.y0));
+      const scale = (top(obstacle.shape2.parts) - foot(obstacle.shape2.parts)) / (top(band.parts) - foot(band.parts));
+      const seat = foot(obstacle.shape2.parts) - foot(band.parts) * scale;
+      const expected = { min: [0, 0, 0], max: [0, 0, 0] };
+      placeLocalShellSlabs(expected, longleafFlatbedSlabs, x, seat, z, sites[index].yaw, scale);
+      assert.equal(collider.shape2.parts.length, expected.shape2.parts.length, 'the shell copy is the solid\'s slabs');
+      collider.shape2.parts.forEach((part, k) => {
+        const want = expected.shape2.parts[k];
+        assert.ok(Math.abs(part.y0 - want.y0) <= 0.0101 && Math.abs(part.y1 - want.y1) <= 0.0101
+          && part.points.length === want.points.length && part.points.every((v, i) => Math.abs(v - want.points[i]) <= 0.0101),
+        `the shell copy's slab ${k} is the movement copy's solid's, at its relocated pose`);
+      });
+    }
     assert.equal(obstacle.crushable, true); assert.equal(obstacle.crushMin, 2); assert.equal(obstacle.crushKeep, 0.87);
     assert.equal(shellPassesThroughCollisionRecord(obstacle), true, 'relocation preserves existing breakable-cover policy');
     assert.ok(Math.abs(obstacle.max[1] - obstacle.min[1] - donor.height) < 0.000100001,
