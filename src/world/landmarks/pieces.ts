@@ -80,6 +80,17 @@ export function piece(sink: PartSink, spec: LandmarkPieceSpec, body: (s: PartSin
   list.push({ spec, parts: child.finish() });
 }
 
+/**
+ * A named piece whose parts were built elsewhere (props census #15, Lane C 2026-10-16: a kit's whole house in a landmark's
+ * row, maps/regional/index.ts buildRegionalParts), taken as they are, in the set piece's frame.
+ */
+export function prebuiltPiece(sink: PartSink, spec: LandmarkPieceSpec, parts: RegionalParts): void {
+  let list = PENDING.get(sink);
+  if (!list) { list = []; PENDING.set(sink, list); }
+  if (list.some((p) => p.spec.name === spec.name)) throw new Error(`landmarks: a second piece named ${spec.name}`);
+  list.push({ spec, parts });
+}
+
 /** Record a destructible module on the set piece's sink (kit.ts railing). */
 export function addLandmarkModule(sink: PartSink, module: LandmarkModule): void {
   let list = MODULES.get(sink);
