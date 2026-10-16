@@ -558,10 +558,13 @@ export function fieldworksTypes(mapId: string, mobile: boolean, base: Readonly<R
     };
   }
   const crate = CRATE_BY_MAP[mapId];
-  if (crate && base.ammobox && !mobile) {
+  if (base.ammobox && !mobile) {
     // (a phone keeps the legacy crates, props.ts LOCAL_TYPES: never overridden here)
-    const style = CRATE_STYLES[crate];
-    out.ammobox = { ...base.ammobox, build: (rng: Rng) => bAmmobox(rng, style), broken: (rng: Rng) => bAmmoboxBroken(rng, style) };
+    const style = crate ? CRATE_STYLES[crate] : CRATE_OD;
+    // (r2, 2026-10-16) its broken state its own drawn heap — the upper crate knocked off whole onto its side, one shoved
+    // askew, the third burst into its boards and lid, the can tipped over — never PROP_FRACTURE's generic break of the
+    // boarded intact (a raft of loose boards at 21 % of the stack's height, the sweep's re-check); the same draws
+    out.ammobox = { ...base.ammobox, ownBroken: true, build: (rng: Rng) => bAmmobox(rng, style), broken: (rng: Rng) => bAmmoboxBroken(rng, style) };
   }
   const tent = TENT_FORMS[mapId];
   if (tent && base.tent) {
