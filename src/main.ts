@@ -2555,6 +2555,22 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
                 maxMs: Math.max(0, ...casterBatchMs) } };
           },
+          // 2026-10-15 (the MP stream, after the perf lane's link census): the scene's programs, on the strict compile's own
+          // passes (so the keys match), submitted to the driver once the battle's light signature is final at the WELCOME;
+          // they link while the roster is painted, and the strict compile below answers them from three's cache
+          submitPrograms: async (signal?: AbortSignal) => {
+            const timing: ForwardProgramCompileTiming = {};
+            const lateMask = 1 << LATE_FX_LAYER;
+            const passes = post?.composer ? [
+              { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+              { layerMask: lateMask, target: post.lateFx.target },
+            ] : undefined;
+            for (const _ of forwardProgramWarm.compileSceneSteps({ signal, timing, passes, sliceMs: 8 })) {
+              signal?.throwIfAborted();
+              await nextPaintFrame();
+            }
+            return { ...timing };
+          },
           compile: async (signal?: AbortSignal) => {
             battlePresentation.prepareModeVisuals();
             const timing: ForwardProgramCompileTiming = {};

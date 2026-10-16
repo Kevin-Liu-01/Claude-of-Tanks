@@ -194,6 +194,12 @@ export interface BrowserWarmView {
 export interface BrowserWarmPorts {
   atmosphere?(initial: { meta: { weatherSeed?: RuntimeValue } | null }): MaybePromise<void>;
   nightLighting?(): MaybePromise<void>;
+  /**
+   * 2026-10-15 (the perf lane's finding, the MP entry): the scene's programs submitted to the driver's parallel compile
+   * once the battle's light signature is final (garage lights off, the authority's weather, the night pool), so they link
+   * while the roster is painted; the strict compile later answers them from three's cache.
+   */
+  submitPrograms?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
@@ -543,6 +549,8 @@ interface ActiveRound {
   welcomed: boolean;
   /** WELCOMEs this round has had (a replaced link welcomes the seat again). */
   welcomes: number;
+  /** The battle's lights set up at the WELCOME (garage lights off, the weather, the night pool): activation skips them. */
+  lit: boolean;
   activating: boolean;
   activated: boolean;
   revealed: boolean;
@@ -1107,7 +1115,7 @@ export function createBrowserComposition({
       matchId: matchStart.matchId, round: matchStart.round, mapId: matchStart.mapId, mode: matchStart.mode,
       spectator: sessionRound.spectator, viewerId, ownSpecId: ownPlayer?.specId || (sessionRound.spectator ? 'spectator' : ''),
       presentation: null, controls: createControlSampler(() => active.presentation?.ownActor ?? null),
-      welcome: null, welcomed: false, welcomes: 0, activating: false, activated: false, revealed: false, failed: false, reported: false,
+      welcome: null, welcomed: false, welcomes: 0, lit: false, activating: false, activated: false, revealed: false, failed: false, reported: false,
       abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
@@ -1200,6 +1208,22 @@ export function createBrowserComposition({
           }
           try {
             active.welcome = welcome;
+            // 2026-10-15 (the MP stream, after the perf lane's census: 187 programs on main against 149 on Sept 30, each
+            // reaching the driver in the strict compile after the roster, the first covered draw waiting in getUniforms for
+            // the whole queue): the light signature is final once the authority's weather and the night pool stand, so they
+            // are set up now and the scene's programs go to the driver while the roster is painted below.
+            if (!active.lit && warm.submitPrograms) {
+              active.lit = true;
+              activation.setGarageLighting(false);
+              await warm.atmosphere?.({ meta: { weatherSeed: welcome.seed } });
+              check('atmosphere');
+              await warm.nightLighting?.();
+              check('nightLighting');
+              const submitted = warm.submitPrograms(active.abort.signal);
+              void Promise.resolve(submitted).catch((error) => {
+                if (!active.abort.signal.aborted) reportWarning('multiplayer v2 entry', `early program submission: ${messageOf(error)}`);
+              });
+            }
             await battlePresentation.rosterReady();
             check('roster');
             for (const actor of battlePresentation.actors.values()) actor.visual.setGroundSampler?.(scene.groundSampler);
@@ -1294,11 +1318,13 @@ export function createBrowserComposition({
       if (signal.aborted || round !== active || disposed) throw new RoundSupersededError(detail);
     };
     try {
-      activation.setGarageLighting(false);
-      await warm.atmosphere?.({ meta: { weatherSeed: active.welcome?.seed } });
-      check('atmosphere');
-      await warm.nightLighting?.();
-      check('nightLighting');
+      if (!active.lit) {
+        activation.setGarageLighting(false);
+        await warm.atmosphere?.({ meta: { weatherSeed: active.welcome?.seed } });
+        check('atmosphere');
+        await warm.nightLighting?.();
+        check('nightLighting');
+      }
       markStage(active, 'atmosphere');
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain?.(view);
