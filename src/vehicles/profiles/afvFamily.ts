@@ -1530,7 +1530,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
     P.add(`gunBarrel${barrel}Dark`, cylZ(0.058, 0.20, 12), side * 0.20, 0, 3.24);
     P.add(`gunBarrel${barrel}Dark`, cylZ(0.022, 0.026, 12), side * 0.20, 0, 3.353);
   }
-  P.muzzleZ = 3.37;
+  // VH.04 (2026-10-15): the muzzle anchor is the twin barrels' mouth face (3.366), not 4 mm in front of it
+  P.muzzleZ = 3.366;
 
   // QUAD Ataka racks BOTH flanks — the §5.360-ratified grammar doubled:
   // rack arm rooted through the housing wall, underslung mount block, TWO

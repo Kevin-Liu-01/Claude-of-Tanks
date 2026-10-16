@@ -3553,7 +3553,8 @@ export function buildBradley(P: Modern3BuilderPort) {
   };
   buildBradleyTurretStage2();                                                             // true muzzle anchor
   const buildBradleyMarkingsStage1 = (): void => {
-    P.add('gunDark', cylZ(0.044, 0.13, 8), 0, 0, 2.15);                           // flash suppressor, tip 2.37 world
+    // VH.04 (2026-10-15): the suppressor mouth is the muzzle anchor (2.23); it ended 14.5 mm short
+    P.add('gunDark', cylZ(0.044, 0.13, 8), 0, 0, 2.165);                         // flash suppressor, tip 2.385 world
                                                                                   //   (r3 r 0.052 -> 0.044: its 8-seg
                                                                                   //   facets paint st11/st12 tops —
                                                                                   //   ref 2.281, the 2.302 crown read
@@ -4391,7 +4392,8 @@ export function buildBMP2(P: Modern3BuilderPort) {
                                                                                 //   the print's fused read: its side
                                                                                 //   band is 1.875..2.0)
   P.muzzleZ = 2.785;                                                            // restore the true muzzle anchor
-  P.add('gunDark', cylZ(0.060, 0.15, 10, 0.050), 0, 0, 2.705);                  // conical flash hider, tip 3.36
+  // VH.04 (2026-10-15): the flash hider's mouth is the muzzle anchor (2.785); it ended 5 mm short
+  P.add('gunDark', cylZ(0.060, 0.155, 10, 0.050), 0, 0, 2.7075);                // conical flash hider, tip 3.36
                                                                                 //   (r3: the ref gun reads to 3.26
                                                                                 //   and the gate samples +0.114 —
                                                                                 //   the r2 3.275 tip left the gun
