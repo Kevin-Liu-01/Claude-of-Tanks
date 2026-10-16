@@ -870,7 +870,7 @@
     "src/world/collision.selftest.mjs": 100,
     "src/world/copperQuarrySurface.selftest.mjs": 5300,
     "src/world/cropLighting.selftest.mjs": 700,
-    "src/world/deltaPlasterPalette.selftest.mjs": 7000,
+    "src/world/deltaPlasterPalette.selftest.mjs": 39000,
     "src/world/destructibleAuthority.selftest.mjs": 100,
     "src/world/destructibleRenderPolicy.selftest.mjs": 100,
     "src/world/destructibles.selftest.mjs": 100,
