@@ -156,7 +156,8 @@ function post(t: number, s: number, y0: number, y1: number, w: number, turn: num
 }
 /** A box from its frame extents. */
 function slab(t0: number, t1: number, y0: number, y1: number, s0: number, s1: number, uv = 1.2): BG {
-  const g = bevelBox(t1 - t0, y1 - y0, s1 - s0, ease(...[t1 - t0, y1 - y0, s1 - s0].sort((p, q) => p - q).slice(0, 2) as [number, number]), uv);
+  // (a slab's arrises a pencil round: a deck's or a coping's walking surface stays level to within 4 mm of its edges)
+  const g = bevelBox(t1 - t0, y1 - y0, s1 - s0, Math.min(0.004, ease(...[t1 - t0, y1 - y0, s1 - s0].sort((p, q) => p - q).slice(0, 2) as [number, number])), uv);
   g.translate((t0 + t1) / 2, (y0 + y1) / 2, (s0 + s1) / 2);
   return g;
 }
