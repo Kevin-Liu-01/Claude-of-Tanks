@@ -36,6 +36,10 @@ import type { DamageMeshWriter, FractureMaterial } from '../destructionKit.ts';
 import type {
   FractureFace, FractureLink, FractureLinkKind, FracturePiece, FractureRole, KitFractureAnatomy,
 } from '../fractureAnatomy.ts';
+import { PartSink, LocalFrame, faceBox, rgb, type Face as KitFace, type RegionalParts } from './regional/geometry.ts';
+import { DAMP_EDGE_BREAKS, holedPolygon, recordBody, type HoleRect } from './regional/house.ts';
+import { doorUnit } from './regional/openings.ts';
+import type { RegionalBuildContext } from './regional/types.ts';
 
 type Rng = () => number;
 type V3 = [number, number, number];
@@ -2501,6 +2505,109 @@ export function pillboxFootprintGeometry(style: PillboxStyle, tones: FortTones, 
   body.dispose(); bank.dispose();
   if (!g) throw new Error('fortKit: footprint merge failed');
   return g;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// the Vallo Alpino blockhouse (props census #5, lane B 2026-10-15): the Savoyard kit's tower plot
+
+const VALLO_STEEL = rgb(0x4a4e4c), VALLO_DOOR = rgb(0x3f4440);
+
+/** The faces of a chamfered square plan (half-size `h`, chamfer `c`): front, its corner, right, ... each right-handed. */
+function chamferedFaces(h: number, c: number): Array<{ face: KitFace; main: 'front' | 'right' | 'back' | 'left' | null }> {
+  const v: Array<[number, number]> = [[-h + c, h], [h - c, h], [h, h - c], [h, -h + c], [h - c, -h], [-h + c, -h], [-h, -h + c], [-h, h - c]];
+  const names = ['front', null, 'right', null, 'back', null, 'left', null] as const;
+  return v.map(([ax, az], i) => {
+    const [bx, bz] = v[(i + 1) % v.length];
+    const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
+    // u x up = out
+    return { face: { origin: [(ax + bx) / 2, 0, (az + bz) / 2], u: [ux, 0, uz], out: [-uz, 0, ux], width: len }, main: names[i] };
+  });
+}
+
+/** The chamfered plan grown by `g` (negative: inset), counter-clockwise seen from above, at height y. */
+function chamferedPlan(h: number, c: number, g: number, y: number): Array<[number, number, number]> {
+  // (the chamfer's line moves out by g along its diagonal normal: it meets the grown sides (2 - sqrt 2) g further in)
+  const H = h + g, C = c + g * (2 - Math.SQRT2);
+  return [[-H + C, y, H], [H - C, y, H], [H, y, H - C], [H, y, -H + C], [H - C, y, -H], [-H + C, y, -H], [-H, y, -H + C], [-H, y, H - C]];
+}
+
+/**
+ * A blockhouse of the Vallo Alpino (the Savoyard kit's tower plot; the worklist: "savoyard tower into fortKit with the r2
+ * pillbox fracture"; the judges on the old one: "a box with dark slits on stepped plates"). Poured concrete, its arrises
+ * chamfered: a squat block on its footing, the walls half a metre thick. The embrasures (Stufenscharten) are cut through
+ * the front and both flanks, each splayed in three steps down to the steel plate with its slit, the dark of the
+ * casemate behind. The steel door is in a cut doorway at the back under its hood. Over it the roof slab with its overhang
+ * and chamfered top, and the observation cupola: a steel drum, its vision slits cut through the band, on the slab with
+ * stones bedded round it. The block is recorded as a body for the damage reading (house.ts recordBody: it breaks and
+ * falls into its own heap).
+ */
+export function valloBlockhaus(ctx: RegionalBuildContext): RegionalParts {
+  const sink = new PartSink([ctx.rng() * 7.31, ctx.rng() * 5.17]);
+  const S = Math.max(3.2, Math.min(3.8, Math.min(ctx.info.w, ctx.info.d) - 0.2)), h = S / 2, H = 3.1, C = 0.4;
+  // (the reveal's back a hand before the core's face: the dark there is never laid on the core)
+  const wall = 'plaster3' as const, cut = 0.5, reveal = 0.42;
+  // the footing, a hand out round the chamfered block and sunk
+  sink.prism(wall, chamferedPlan(h, C, 0.25, -0.5), [0, 1, 0], 0.8);
+  // the walls: each face holed by its embrasure or its door, the core behind them
+  const slit: HoleRect = { u0: -0.55, u1: 0.55, y0: 1.35, y1: 2.05 };
+  const door: HoleRect = { u0: -0.48, u1: 0.48, y0: 0.3, y1: 2.25 };
+  const faces = chamferedFaces(h, C);
+  for (const { face, main } of faces) {
+    const holes = main === 'back' ? [door] : main ? [slit] : [];
+    holedPolygon(sink, wall, face, [[-face.width / 2, 0.3], [face.width / 2, 0.3], [face.width / 2, H], [-face.width / 2, H]], holes, cut, reveal,
+      {}, [], DAMP_EDGE_BREAKS);
+  }
+  sink.prism(wall, chamferedPlan(h, C, -cut, 0.3), [0, 1, 0], H - 0.3);
+  // the embrasures' stepped splays, the steel plate with its slit at the back of each
+  const dec = { decor: true } as const;
+  for (const { face, main } of faces) {
+    if (!main || main === 'back') continue;
+    let hw = 0.55, hh = 0.35;
+    const yc = (slit.y0 + slit.y1) / 2;
+    for (let k = 1; k <= 3; k++) {
+      const d0 = k * 0.12, iw = hw - 0.11, ih = hh - 0.06, depth = reveal - d0, o = -d0 - depth / 2;
+      faceBox(sink, wall, face, 0, yc + (ih + hh) / 2, o, 2 * hw, hh - ih, depth, dec, 'ends');
+      faceBox(sink, wall, face, 0, yc - (ih + hh) / 2, o, 2 * hw, hh - ih, depth, dec, 'ends');
+      for (const s of [-1, 1]) faceBox(sink, wall, face, s * (iw + hw) / 2, yc, o, hw - iw, 2 * ih, depth, dec, 'caps');
+      hw = iw; hh = ih;
+    }
+    const plate = { colour: VALLO_STEEL, decor: true };
+    const o = -reveal + 0.03;
+    faceBox(sink, 'structureMetal', face, 0, yc + (hh + 0.04) / 2, o, 2 * hw, hh - 0.04, 0.03, plate);
+    faceBox(sink, 'structureMetal', face, 0, yc - (hh + 0.04) / 2, o, 2 * hw, hh - 0.04, 0.03, plate);
+    for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, s * (hw - 0.04), yc, o, 0.08, 0.08, 0.03, plate);
+  }
+  // the steel door at the back of its reveal, the hood over the doorway
+  const back = faces.find((f) => f.main === 'back')!.face;
+  sink.recess = reveal;
+  try {
+    doorUnit(sink, back, 0, door.y0, door.u1 - door.u0, door.y1 - door.y0, { leaf: VALLO_DOOR, frame: { bucket: 'structureMetal', width: 0.08, out: 0.03, colour: VALLO_STEEL },
+      steps: null, leafKind: 'panel', transom: false }, door.y0);
+  } finally { sink.recess = 0; }
+  faceBox(sink, wall, back, 0, door.y1 + 0.2, 0.1, 1.4, 0.2, 0.2, dec);
+  // the roof slab, its overhang and chamfered top
+  sink.prism(wall, chamferedPlan(h, C, 0.2, H), [0, 1, 0], 0.38);
+  sink.prism(wall, chamferedPlan(h, C, 0.1, H + 0.38), [0, 1, 0], 0.12);
+  const top = H + 0.5;
+  // the cupola: a steel drum on the slab, its band of vision slits cut through (the dark drum of its inside behind them)
+  const cz = -0.2, r = 0.62, steel = { colour: VALLO_STEEL };
+  sink.cylinder('structureMetal', [0, top, cz], 'y', 0.42, r, 12, steel, r, false);
+  const band = 0.07, slits = 6, seg = Math.PI * 2 / slits, gap = 0.16;
+  for (let k = 0; k < slits; k++) sink.cylinder('structureMetal', [0, top + 0.42, cz], 'y', band, r, 3, steel, r, false, k * seg + gap / 2, seg - gap);
+  sink.cylinder('dark', [0, top + 0.4, cz], 'y', band + 0.04, r - 0.05, 12, { decor: true }, r - 0.05, false);
+  sink.cylinder('structureMetal', [0, top + 0.42 + band, cz], 'y', 0.24, r, 12, steel, r, false);
+  sink.cylinder('structureMetal', [0, top + 0.73 + band - 0.07, cz], 'y', 0.3, r, 12, steel, 0.32, true);
+  // stones bedded on the slab round it
+  const look = ctx.variant;
+  for (let k = 0; k < 7; k++) {
+    const x = (look() - 0.5) * (S - 0.4), z = (look() - 0.5) * (S - 0.4);
+    if (Math.hypot(x, z - cz) < 0.95) continue;
+    const yaw = look() * Math.PI;
+    sink.box('stone', [x, top + 0.07, z], [0.2 + look() * 0.08, 0.07 + look() * 0.05, 0.15 + look() * 0.06], dec,
+      new LocalFrame([Math.cos(yaw), 0, -Math.sin(yaw)], [0, 1, 0], [Math.sin(yaw), 0, Math.cos(yaw)], [0, 0, 0]));
+  }
+  recordBody(sink, 0, 0, S, S, top, wall);
+  return sink.finish();
 }
 
 /** Default tones (a temperate map); props.ts passes each map's. */
