@@ -11,6 +11,7 @@ import { Vector3, PerspectiveCamera } from 'three';
 import { MISSILE_LOOKS, MISSILE_TRAILS, missileTrailOf } from './missileLooks.ts';
 import { createMissileTrails, TRAIL_SEGS, TRAIL_SLOTS, TRAIL_STEP_M } from './missileTrails.ts';
 import { createSceneLightUniforms } from './sceneLight.ts';
+import { missileTailM } from './missileBodies.ts';
 
 // ---- 1. every look's trail, and the kinds differ ---------------------------------------------------------------------
 const T = MISSILE_TRAILS;
@@ -210,7 +211,7 @@ try {
   };
   fx.resetAll();
   const { shell, heads } = fly(31, 'BGM-71E TOW-2A', 'tow-launch', 195, 90);
-  const back = 0.65 + 0.625 * MISSILE_LOOKS.tow.bodyLen;
+  const back = missileTailM('tow', 0);
   assert.ok(heads.length > 60 && heads.every(([g]) => Math.abs(g - back) < 0.2),
     `every frame the newest smoke is at the nozzle (${back.toFixed(2)} m behind the round's nose, within its steering)`);
   const laid = live();
