@@ -134,7 +134,7 @@ async function startRealBattleEntry() {
   await page.mouse.click(640, 360);
   await sleep(300);
   await page.evaluate(() => {
-    window.__AUDIO_PROBE_ENTRY = window.__DEBUG.beginBattleEntry('m1a2', 'desert');
+    window.__AUDIO_PROBE_ENTRY = window.__DEBUG.beginBattleEntry('m1a1_abrams_hc', 'desert');
   });
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.loadingActive',
@@ -308,16 +308,16 @@ try {
   await emit('shell:expired', `{shellId:9007, pos:window.__P.pos(6,-2,24), hitTerrain:true}`);
   await sleep(900);
   // Terrain impact + tank-on-tank ram + sapling crush + track snap.
-  await emit('tank:impact', `{id:window.__P.playerId, specId:'m1a2', isPlayer:true, speedMps:9.5, pos:window.__P.pos(2,-1,4)}`);
+  await emit('tank:impact', `{id:window.__P.playerId, specId:'m1a1_abrams_hc', isPlayer:true, speedMps:9.5, pos:window.__P.pos(2,-1,4)}`);
   await sleep(900);
   await emit('tank:ram', `{aId:window.__P.playerId, bId:window.__P.enemyId, aIsPlayer:true, bIsPlayer:false, closingMps:8.5, dmgA:42, dmgB:75, pos:window.__P.pos(-2,-1,5)}`);
   await sleep(1000);
-  await emit('prop:crushed', `{id:window.__P.playerId, specId:'m1a2', isPlayer:true, speedMps:6, kind:'tree', h:7, pos:window.__P.pos(3,-2,5), dir:[0,0,1]}`);
+  await emit('prop:crushed', `{id:window.__P.playerId, specId:'m1a1_abrams_hc', isPlayer:true, speedMps:6, kind:'tree', h:7, pos:window.__P.pos(3,-2,5), dir:[0,0,1]}`);
   await sleep(1000);
   await emit('module:state', `{id:window.__P.enemyId, module:'trackR', state:'red'}`);
   await sleep(1100);
   // Destruction (player kill → sting + "Target destroyed").
-  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(0,0,35), killerId:window.__P.playerId, cause:'shot'}`);
+  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(0,0,35), killerId:window.__P.playerId, cause:'shot'}`);
   await sleep(3200);
   capReport('combat-oneshots', await tapStopAndFetch());
   // The route log is bounded; read it before the live battle below rotates it.

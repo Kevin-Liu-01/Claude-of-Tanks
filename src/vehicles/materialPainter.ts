@@ -819,7 +819,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // camo_spotting r6: `pk`/`blackK` (visual.patchK / visual.blackK, both
       // default 1 — rng draw order untouched at 1) let the GLB atlas path
       // rescale the scheme where its UV world density differs from the boxUV
-      // reference: the m1a2's summer patches grow ~14% and the black shadow
+      // reference: the m1a1_abrams_hc's summer patches grow ~14% and the black shadow
       // bars gain weight ("two greens read monotone olive at mid distance,
       // black underweighted" critique) while the Tiger's boxUV summer — which
       // already reads — stays byte-identical.
@@ -871,7 +871,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // camo_spotting r6: `pk` (visual.patchK, default 1 — rng draw order is
       // untouched at 1) rescales the patch geometry for consumers whose UV
       // world density differs from the boxUV reference: the GLB atlas path
-      // shrinks the big modern hulls' blobs ~30% (m1a2 "dazzle/giraffe patches
+      // shrinks the big modern hulls' blobs ~30% (m1a1_abrams_hc "dazzle/giraffe patches
       // at large scale" critique) while counts scale 1/pk so overall coverage
       // eases down with the size rather than ballooning.
       const pk = visual.patchK || 1;
@@ -892,7 +892,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // Large patches near-opaque at three scales. History: r6 pushed contrast
       // here (darkHC 0.74x, paleHC white lift) so the geometry survived mipping
       // at garage distance — but stacked on the widened r9 palette that became
-      // the m1a2 "near-white cream blobs vs mid-brown dazzle" (camo_spotting r6
+      // the m1a1_abrams_hc "near-white cream blobs vs mid-brown dazzle" (camo_spotting r6
       // critique). The authored palette now carries the whole ladder: darkHC/
       // paleHC are the palette stops themselves, and the low-contrast read is
       // the point (real Sinai-family schemes are subtle).
@@ -1251,7 +1251,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         const run = rng() < 0.5 ? 1 : 2 + ((rng() * 3) | 0);
         const horiz = rng() < 0.5;
         let consumed = 0;
-        for (let k2 = 0; k2 < run && consumed < remaining; k2++, consumed++) {
+        for (let xk2_black_panther = 0; xk2_black_panther < run && consumed < remaining; xk2_black_panther++, consumed++) {
           const qx = (((gx % cells) + cells) % cells) * cell;
           const qy = (((gy % cells) + cells) % cells) * cell;
           ctx.fillRect(qx, qy, cell + 0.5, cell + 0.5);
@@ -1371,7 +1371,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
           }
           sprayEdge(p, col, 0.93, false);
           const nSat = 2 + ((rng() * 2) | 0);        // dapple trail off the rim
-          for (let k2 = 0; k2 < nSat; k2++) {
+          for (let xk2_black_panther = 0; xk2_black_panther < nSat; xk2_black_panther++) {
             const a2 = dirB + (rng() - 0.5) * 1.5;
             const sp = blobPath2D(rng, x + Math.cos(a2) * r * (1.3 + rng() * 0.7),
               y + Math.sin(a2) * r * (1.0 + rng() * 0.6), r * (0.22 + rng() * 0.22), 7, 0.55);
@@ -1632,10 +1632,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         p.closePath();
         // claw spur: a short tapered branch off a random spine point
         if (rng() < 0.55) {
-          const k2 = 1 + ((rng() * (segs - 2)) | 0);
+          const xk2_black_panther = 1 + ((rng() * (segs - 2)) | 0);
           const sa2 = dirA + (rng() < 0.5 ? 1 : -1) * (0.9 + rng() * 0.5);
           const sl = len * (0.10 + rng() * 0.10);
-          const [bx, by] = spine[k2];
+          const [bx, by] = spine[xk2_black_panther];
           p.moveTo(bx + nx * w0 * 0.2, by + ny * w0 * 0.2);
           p.lineTo(bx + Math.cos(sa2) * sl, by + Math.sin(sa2) * sl);
           p.lineTo(bx - nx * w0 * 0.2, by - ny * w0 * 0.2);
@@ -1692,7 +1692,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       for (let i = 0; i < nCl; i++) {
         const ccx = rng() * S, ccy = rng() * S;
         const n = 1 + ((rng() * 3) | 0);
-        for (let k2 = 0; k2 < n; k2++) {
+        for (let xk2_black_panther = 0; xk2_black_panther < n; xk2_black_panther++) {
           const x = ccx + (rng() - 0.5) * S * wk * 0.11;
           const y = ccy + (rng() - 0.5) * S * wk * 0.08;
           const r = S * wk * (0.019 + rng() * 0.019);
@@ -2184,8 +2184,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         for (const L of licks) {
           const p = new Path2D();
           const steps = 4;
-          for (let k2 = 0; k2 < steps; k2++) {
-            const t = k2 / steps;
+          for (let xk2_black_panther = 0; xk2_black_panther < steps; xk2_black_panther++) {
+            const t = xk2_black_panther / steps;
             const wob = Math.sin(L.j + t * 7) * L.w * 0.5;
             p.addPath(blobPath2D(mulberry32((L.j * 1e4) | 0), 0, 0,
               L.w * kScale * (1 - t * 0.72), 7, 0.3),
@@ -2228,8 +2228,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ctx.filter = 'none';
         const n = 3 + ((rng() * 3) | 0);
         const a0 = rng() * Math.PI * 2;
-        for (let k2 = 0; k2 < n; k2++) {
-          const a1 = a0 + (k2 / n) * Math.PI * 2 + (rng() - 0.5) * 0.35;
+        for (let xk2_black_panther = 0; xk2_black_panther < n; xk2_black_panther++) {
+          const a1 = a0 + (xk2_black_panther / n) * Math.PI * 2 + (rng() - 0.5) * 0.35;
           const chip = new Path2D();
           chip.arc(x, y, r * (0.95 + rng() * 0.2), a1, a1 + 0.5 + rng() * 0.5);
           strokeWrapped(ctx, S, chip, rgb(blk, 0.92), r * (0.4 + rng() * 0.2));
@@ -2303,11 +2303,11 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const gold = patches[1] || patches[0];
       const star = (x: number, y: number, s: number, rot: number, col: Rgb, a: number): void => {
         const q = new Path2D();
-        for (let k2 = 0; k2 < 10; k2++) {
-          const rr = k2 % 2 ? 0.21 : 0.5;
-          const aa = -Math.PI / 2 + (k2 * Math.PI) / 5;
+        for (let xk2_black_panther = 0; xk2_black_panther < 10; xk2_black_panther++) {
+          const rr = xk2_black_panther % 2 ? 0.21 : 0.5;
+          const aa = -Math.PI / 2 + (xk2_black_panther * Math.PI) / 5;
           const px = Math.cos(aa) * rr, py = Math.sin(aa) * rr;
-          if (k2) q.lineTo(px, py); else q.moveTo(px, py);
+          if (xk2_black_panther) q.lineTo(px, py); else q.moveTo(px, py);
         }
         q.closePath();
         const p = new Path2D();
@@ -2342,8 +2342,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const cream = patches[0];
       const button = patches[1] || '#c96a3a';
       const daisy = (x: number, y: number, s: number, rot: number, a: number): void => {
-        for (let k2 = 0; k2 < 6; k2++) {
-          const aa = rot + (k2 * Math.PI) / 3;
+        for (let xk2_black_panther = 0; xk2_black_panther < 6; xk2_black_panther++) {
+          const aa = rot + (xk2_black_panther * Math.PI) / 3;
           const q = new Path2D();
           q.ellipse(x + Math.cos(aa) * s * 0.3, y + Math.sin(aa) * s * 0.3,
             s * 0.21, s * 0.115, aa, 0, Math.PI * 2);
@@ -2390,7 +2390,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         via(x, y, S * 0.011);
         let dir = ((rng() * 4) | 0) * (Math.PI / 2);
         const segs = 2 + ((rng() * 3) | 0);
-        for (let k2 = 0; k2 < segs; k2++) {
+        for (let xk2_black_panther = 0; xk2_black_panther < segs; xk2_black_panther++) {
           const len = S * (0.07 + rng() * 0.13);
           x += Math.cos(dir) * len; y += Math.sin(dir) * len;
           p.lineTo(x, y);
@@ -2405,9 +2405,9 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         const q = new Path2D();
         q.rect(x - w / 2, y - h / 2, w, h);
         fillWrapped(ctx, S, q, rgb(mix(base, [0, 0, 0], 0.45), 0.95));
-        for (let k2 = 0; k2 < 4; k2++) {               // legs
-          via(x - w / 2 - S * 0.008, y - h / 2 + (k2 + 0.5) * (h / 4), S * 0.006);
-          via(x + w / 2 + S * 0.008, y - h / 2 + (k2 + 0.5) * (h / 4), S * 0.006);
+        for (let xk2_black_panther = 0; xk2_black_panther < 4; xk2_black_panther++) {               // legs
+          via(x - w / 2 - S * 0.008, y - h / 2 + (xk2_black_panther + 0.5) * (h / 4), S * 0.006);
+          via(x + w / 2 + S * 0.008, y - h / 2 + (xk2_black_panther + 0.5) * (h / 4), S * 0.006);
         }
       }
       for (let i = 0; i < Math.round(10 * nK); i++) via(rng() * S, rng() * S, S * 0.009);
@@ -2479,7 +2479,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         fillWrapped(ctx, S, blobPath2D(rng, x, y, r, 11, 0.55), rgb(col, 0.9));
         ctx.filter = 'none';
         const nd = 4 + ((rng() * 6) | 0);
-        for (let k2 = 0; k2 < nd; k2++) {              // droplet spray
+        for (let xk2_black_panther = 0; xk2_black_panther < nd; xk2_black_panther++) {              // droplet spray
           const aa = rng() * Math.PI * 2;
           const d = r * (1.15 + rng() * 1.5);
           const q = new Path2D();
@@ -2515,10 +2515,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const white = patches[0];
       const star = (x: number, y: number, s: number, rot: number, a: number, ring: boolean): void => {
         const q = new Path2D();
-        for (let k2 = 0; k2 < 10; k2++) {
-          const rr = k2 % 2 ? 0.19 : 0.5;
-          const aa = -Math.PI / 2 + (k2 * Math.PI) / 5;
-          if (k2) q.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr);
+        for (let xk2_black_panther = 0; xk2_black_panther < 10; xk2_black_panther++) {
+          const rr = xk2_black_panther % 2 ? 0.19 : 0.5;
+          const aa = -Math.PI / 2 + (xk2_black_panther * Math.PI) / 5;
+          if (xk2_black_panther) q.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr);
           else q.moveTo(Math.cos(aa) * rr, Math.sin(aa) * rr);
         }
         q.closePath();
@@ -2615,10 +2615,10 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       strokeWrapped(ctx, S, slash, rgb(white, 0.85), S * 0.02);
       const gs = new Path2D();                         // Guards star outline
       const gx2 = rng() * S, gy2 = rng() * S, gr = S * (0.05 + rng() * 0.02);
-      for (let k2 = 0; k2 < 10; k2++) {
-        const rr = (k2 % 2 ? 0.42 : 1) * gr;
-        const aa = -Math.PI / 2 + (k2 * Math.PI) / 5;
-        if (k2) gs.lineTo(gx2 + Math.cos(aa) * rr, gy2 + Math.sin(aa) * rr);
+      for (let xk2_black_panther = 0; xk2_black_panther < 10; xk2_black_panther++) {
+        const rr = (xk2_black_panther % 2 ? 0.42 : 1) * gr;
+        const aa = -Math.PI / 2 + (xk2_black_panther * Math.PI) / 5;
+        if (xk2_black_panther) gs.lineTo(gx2 + Math.cos(aa) * rr, gy2 + Math.sin(aa) * rr);
         else gs.moveTo(gx2 + Math.cos(aa) * rr, gy2 + Math.sin(aa) * rr);
       }
       gs.closePath();
@@ -2681,11 +2681,11 @@ export function createMaterialPainter<C extends MaterialCanvas>(
           const path = new Path2D();
           path.moveTo(x0, y0b);
           const seg = 4;
-          for (let k2 = 1; k2 <= seg; k2++) {
-            const t = k2 / seg;
+          for (let xk2_black_panther = 1; xk2_black_panther <= seg; xk2_black_panther++) {
+            const t = xk2_black_panther / seg;
             path.quadraticCurveTo(
-              x0 + Math.cos(flow) * len * (t - 0.5 / seg) - Math.sin(flow) * w * (k2 % 2 ? 1.4 : -1.4),
-              y0b + Math.sin(flow) * len * (t - 0.5 / seg) + Math.cos(flow) * w * (k2 % 2 ? 1.4 : -1.4),
+              x0 + Math.cos(flow) * len * (t - 0.5 / seg) - Math.sin(flow) * w * (xk2_black_panther % 2 ? 1.4 : -1.4),
+              y0b + Math.sin(flow) * len * (t - 0.5 / seg) + Math.cos(flow) * w * (xk2_black_panther % 2 ? 1.4 : -1.4),
               x0 + Math.cos(flow) * len * t, y0b + Math.sin(flow) * len * t);
           }
           strokeWrapped(ctx, S, path, rgb(blk, 0.92), w);
@@ -2696,7 +2696,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         for (let i = 0; i < Math.round(6 * nK); i++) {
           const cx2 = rng() * S, cy2 = rng() * S, cr = S * (0.05 + rng() * 0.09);
           const nd = 16 + ((rng() * 22) | 0);
-          for (let k2 = 0; k2 < nd; k2++) {
+          for (let xk2_black_panther = 0; xk2_black_panther < nd; xk2_black_panther++) {
             const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
             const q = new Path2D();
             q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.8,
@@ -2738,7 +2738,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const bk = patches[2] || '#262a24';
       const leafIsland = (x: number, y: number, r: number, lobes: number): Path2D => {
         const p = blobPath2D(rng, x, y, r, 11, 0.62);
-        for (let k2 = 0; k2 < lobes; k2++) {
+        for (let xk2_black_panther = 0; xk2_black_panther < lobes; xk2_black_panther++) {
           const aa = rng() * Math.PI * 2;
           p.addPath(blobPath2D(rng, x + Math.cos(aa) * r * (0.8 + rng() * 0.5),
             y + Math.sin(aa) * r * (0.7 + rng() * 0.4),
@@ -2767,7 +2767,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         const path = new Path2D();
         path.moveTo(x, y);
         const seg = 2 + ((rng() * 2) | 0);
-        for (let k2 = 0; k2 < seg; k2++) {
+        for (let xk2_black_panther = 0; xk2_black_panther < seg; xk2_black_panther++) {
           const len = S * (0.03 + rng() * 0.05);
           const mx = x + Math.cos(a) * len * 0.5 - Math.sin(a) * len * (rng() - 0.5) * 0.8;
           const my = y + Math.sin(a) * len * 0.5 + Math.cos(a) * len * (rng() - 0.5) * 0.8;
@@ -2841,7 +2841,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
           const cx2 = rng() * S, cy2 = rng() * S;
           const cr = S * (0.03 + rng() * 0.07);
           const nd = 14 + ((rng() * 20) | 0);
-          for (let k2 = 0; k2 < nd; k2++) {
+          for (let xk2_black_panther = 0; xk2_black_panther < nd; xk2_black_panther++) {
             const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
             const q = new Path2D();
             q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.85,
@@ -2951,11 +2951,11 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         const y = gy * rh + (gx % 2 ? hw : 0);
         const col = value < 0.75 ? tones[0] : tones[1];
         const path = new Path2D();
-        for (let k2 = 0; k2 < 6; k2++) {
-          const angle = (k2 / 6) * Math.PI * 2;
+        for (let xk2_black_panther = 0; xk2_black_panther < 6; xk2_black_panther++) {
+          const angle = (xk2_black_panther / 6) * Math.PI * 2;
           const px2 = x + Math.cos(angle) * hexRx * 0.94;
           const py2 = y + Math.sin(angle) * hw * 1.085;
-          if (k2 === 0) path.moveTo(px2, py2); else path.lineTo(px2, py2);
+          if (xk2_black_panther === 0) path.moveTo(px2, py2); else path.lineTo(px2, py2);
         }
         path.closePath();
         fillWrapped(ctx, S, path, rgb(col, 0.9));
@@ -2974,7 +2974,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const paintSolidScheme = (): void => {
         if (scheme === 'solid') {
       // ===================== CAMO PATTERN SECTION =====================
-      // camo_spotting r3 (critic: t90m factory "single flat parade green ...
+      // camo_spotting r3 (critic: t90am factory "single flat parade green ...
       // reads as clay render"): monotone factory coats get an explicit
       // weathered-panel pass — patterned schemes carry tonal variety in their
       // patches, but a solid coat only had the (weather-tone-dependent) soft
@@ -3486,7 +3486,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
   // camo_spotting r4: base 0.78 -> 0.84 — the multiplying map put effective
   // hull GGX at ~0.61 mean, and up-tilted plates at the sun↔camera mirror
   // angle rendered a pale specular film that washed the camo (t34 glacis /
-  // m1a2 chamfer cream). Field paint over dust is duller than 0.78.
+  // m1a1_abrams_hc chamfer cream). Field paint over dust is duller than 0.78.
   function paintRoughness(canvas: C, rng: Rng, feats: PlateFeatures, base = 0.84): C {
     const ctx = canvas2d(canvas);
     const S = canvas.width;
@@ -3541,7 +3541,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
   // ALBEDO-only repaint — one constant-response roughness field under all
   // patches, so at garage range camo read as printed vinyl, and big flat plates
   // at the sun↔camera mirror angle fired ONE uniform specular sheet that washed
-  // the pattern to cream (m1a2 turret chamfer; t34 glacis — proven by live
+  // the pattern to cream (m1a1_abrams_hc turret chamfer; t34 glacis — proven by live
   // spec-kill A/B: with roughness 1 / env 0 the "cream rectangle" is fully
   // patterned paint). Field-applied paint batches differ: each pattern TONE now
   // carries a deterministic roughness offset (±0.045), patch BOUNDARIES get a

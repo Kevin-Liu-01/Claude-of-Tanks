@@ -52,8 +52,8 @@ assert.ok((variantKinds.barbedwire ?? 0) > (baseKinds.barbedwire ?? 0) && (varia
 // ---- the authority on it: the sectors on the carved lines (the plan lays its lines at the axis fractions, so the base
 // world's fallback stands at the same points: what it lacked was the dug ground and the works round them)
 const players = [
-  { id: 'a', specId: 'm1a2', team: 'alpha' },
-  { id: 'b', specId: 't90m', team: 'bravo' },
+  { id: 'a', specId: 'm1a1_abrams_hc', team: 'alpha' },
+  { id: 'b', specId: 't90am', team: 'bravo' },
 ];
 const sectors = (world) => {
   const match = createAuthoritativeMatch({ mapId: MAP, seed: 4, countdownS: 0, gameMode: 'frontline_assault', worldCollision: world, players });

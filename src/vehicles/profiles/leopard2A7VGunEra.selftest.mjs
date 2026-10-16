@@ -7,7 +7,7 @@ const eraSectorNames = ['a7v_upper_glacis_era'];
 const permanentCheekNames = [
   'a7v_turret_cheek_layer_R', 'a7v_turret_cheek_layer_L',
 ];
-const spec = getSpec('leo2a7v');
+const spec = getSpec('leo2_improved');
 const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => eraSectorNames.includes(plate.name));
 assert.deepEqual(new Set(eraSectors.map((plate) => plate.name)), new Set(eraSectorNames),
@@ -27,7 +27,7 @@ for (const plate of permanentCheeks) {
 assert.equal(spec.armor.turretPlates.some((plate) => /a7v_turret_cheek_era/.test(plate.name)), false,
   'obsolete turret-cheek ERA sectors are absent');
 
-const visual = createTank('leo2a7v', null, {
+const visual = createTank('leo2_improved', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });

@@ -10,7 +10,7 @@ import {shellPart,mirroredSurfaceError,slabWarps} from '../../../tools/base-shel
 import {shellEdgeTopology,properSurfaceCrossings,weldedPanelConcavity} from '../../../tools/base-shell-integrity.mjs';
 import {nativeStructuralStock,mapCapturedStock} from '../../../tools/base-shell-live-stock.mjs';
 
-const ids=['m1a1','m1a1ha','ua_m1a1','m1a2','m1a2_tusk','m1a2_sepv2','m1a2_sepv3'];
+const ids=['m1a1','m1a1ha','ua_m1a1','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep'];
 const key=p=>p.map(n=>Math.round(n*1e5)).join(',');
 const near=(a,b)=>Math.abs(a-b)<2e-6;
 // Original finite narrow bow stock: identical eight boundary corners, but

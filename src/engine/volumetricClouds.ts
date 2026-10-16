@@ -1598,6 +1598,11 @@ export class VolumetricCloudLayer {
   private frame = 0;
   private traces = 0;
   private rebuild = 16;
+  /**
+   * The layer's quad programs linking in parallel (warmAsync); the layer does not draw until they are linked, so no frame
+   * reads their link synchronously (2026-10-14, the MP stream: the 224 returning tab's Garage freeze).
+   */
+  private linkPending: Promise<void> | null = null;
   private since = 0;
   private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
   private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
@@ -1615,6 +1620,8 @@ export class VolumetricCloudLayer {
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
   private readonly scratch = new THREE.Vector3();
+  /** The camera's world position: the composite dome's centre every frame. */
+  private readonly domeAnchor = new THREE.Vector3();
   private readonly irr = new THREE.Color();
   private readonly hz = new THREE.Color();
   private readonly zenith = new THREE.Color();
@@ -2081,7 +2088,8 @@ export class VolumetricCloudLayer {
     if (hazeDatum !== undefined && Number.isFinite(hazeDatum)) this.hazeDatum = hazeDatum;
     if (sceneDepth !== undefined) this.lastSceneDepth = sceneDepth;
     const preset = this.preset;
-    if (!preset || !this.active || renderer !== this.renderer) {
+    // (2026-10-14) programs still linking in parallel: no draw this frame (a draw would read their link synchronously)
+    if (!preset || !this.active || renderer !== this.renderer || this.linkPending) {
       this.dome.visible = false;
       this.sceneDepthReady = false;
       this.dropCloudShade();
@@ -2089,6 +2097,12 @@ export class VolumetricCloudLayer {
     }
     this.refreshLifetime();
     if (this.context?.isContextLost()) { this.dome.visible = false; this.sceneDepthReady = false; return; }
+    // 2026-10-14 (the SKY lane; the horizons lane's bird frames over Polders, 400 m up and 1.3 km off the centre: the
+    // cloud field cut by straight walls with a clear hole over the map): the dome was a 3.4 km sphere about the world
+    // origin, so a camera more than (far - radius) from the origin — any bird, overview or Garage pose — saw its far side
+    // cut by the 4 km far plane, and a camera at the map's edge saw the near side 2.9 km away in front of a ridge the
+    // trace had marched past (cloudSceneT measures the dome's 3.4 km from the camera). The dome stands on the camera.
+    this.dome.position.copy(camera.getWorldPosition(this.domeAnchor));
     if (width !== this.targetWidth || height !== this.targetHeight) { this.resize(width, height); this.sceneDepthReady = false; }
     // wind drift, bounded to the weather tile (every noise tiles within it); the street field drifts in the
     // wind frame, the cirrus sheet at twice the speed along its own streaks
@@ -2258,7 +2272,9 @@ export class VolumetricCloudLayer {
     (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
     // (a deck's cell is optically thick: CLOUD_LAYER_RULES.deckShadowCore; a deck closing toward no gaps casts less of its
     // pattern as the light model's uniform cut takes over — the two complementary over the closing coverage)
-    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE) : lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore);
+    // (2026-10-09, the shadows lane: a thin deck — CloudscapeConfig.deckBeam — passes that share of the beam in its cells)
+    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE)
+      : Math.min(lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore), 1 - (preset.deckBeam ?? 0));
     const pattern = preset.shadow ? preset.shadowPattern : preset.shadowPattern * (lightTune('DECK_PATTERN', 1) > 0 ? 1 : 0);
     (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(core * pattern,
       lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', CLOUD_SHADOW_SOFT));
@@ -2393,6 +2409,54 @@ export class VolumetricCloudLayer {
     const rgba = new Uint8Array(w * h * 4);
     this.renderer.readRenderTargetPixels(this.copyTarget, 0, 0, w, h, rgba);
     return { width: w, height: h, rgba };
+  }
+
+  /**
+   * The layer's quad programs (trace, resolve, far shade) submitted for a parallel link and awaited without blocking the
+   * main thread, then `warm()` (2026-10-14, the MP stream). warm()'s 1 × 1 renders read the ray-march program's link
+   * synchronously: the 224 MP window's returning tab sat 104-163 s in one main-thread task there (its Garage boot's
+   * "vehicle" stage; reproduced locally at 87 s, 0.5 s in an uncontended run) while the browser's one GPU process compiled
+   * two battle tabs' programs. Until the link completes the layer draws nothing (beforeSceneRender), which only ever
+   * happens under the boot's or the battle entry's cover in practice. Without KHR_parallel_shader_compile the compile
+   * resolves at once and warm() links at its first render, as before.
+   */
+  warmAsync(): Promise<void> {
+    if (this.linkPending) return this.linkPending;
+    if (!this.active) return Promise.resolve();
+    const renderer = this.renderer as THREE.WebGLRenderer & { compileAsync?: THREE.WebGLRenderer['compileAsync'] };
+    if (typeof renderer.compileAsync !== 'function') { this.warm(); return Promise.resolve(); }
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    for (const material of [this.traceMaterial, this.resolveMaterial, this.farShadeMaterial]) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+    }
+    // the variant the quad renders: an offscreen target (its output space) without tone mapping, as renderQuad sets it
+    const prevTarget = renderer.getRenderTarget();
+    const prevFace = renderer.getActiveCubeFace(), prevMip = renderer.getActiveMipmapLevel();
+    const prevXr = renderer.xr.enabled, prevToneMapping = renderer.toneMapping;
+    let compiled: Promise<unknown>;
+    try {
+      renderer.xr.enabled = false;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.setRenderTarget(this.trace);
+      compiled = renderer.compileAsync(scene, camera);
+    } catch (error) {
+      compiled = Promise.reject(error);
+    } finally {
+      renderer.xr.enabled = prevXr;
+      renderer.toneMapping = prevToneMapping;
+      renderer.setRenderTarget(prevTarget, prevFace, prevMip);
+    }
+    const pending: Promise<void> = compiled.then(() => undefined, () => undefined).then(() => {
+      if (this.linkPending === pending) this.linkPending = null;
+      geometry.dispose();
+      this.warm();
+    });
+    this.linkPending = pending;
+    return pending;
   }
 
   /** Compile the three programs under a loading cover (a 1 × 1 trace and resolve; the dome compiles with the scene). */

@@ -8,9 +8,9 @@ import { MISC_PROFILES } from './profiles/misc.ts';
 import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
-  'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
-  'challenger_3', 'challenger_3x', 'mbt70', 't14',
-  'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89',
+  'amx40_proto', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
+  'challenger3_proto', 'challenger3', 'mbt70', 'object148_proto',
+  'k1e1', 'type10_tk_x', 'm2a2_bradley', 'bmp2', 'hayate_ifv',
 ]);
 const owners = new Map();
 for (const [group, ids] of Object.entries(FLEET_GROUP_IDS)) {
@@ -47,65 +47,65 @@ await runFleetSweep(`
   const specs = await import(${JSON.stringify(specsUrl)});
   const markingRegistry = await import(${JSON.stringify(markingRegistryUrl)});
   const anatomyRegistry = await import(${JSON.stringify(anatomyRegistryUrl)});
-  assert.equal(fleet.isTankBuilderReady('leclerc'), false);
-  assert.equal(fleet.isTankBuilderReady('amx40'), false);
+  assert.equal(fleet.isTankBuilderReady('leclerc_s2'), false);
+  assert.equal(fleet.isTankBuilderReady('amx40_proto'), false);
   assert.equal(fleet.isTankBuilderReady('challenger2'), false);
-  assert.equal(fleet.isTankBuilderReady('type10'), false);
-  assert.equal(fleet.isTankBuilderReady('m1a2'), false);
-  assert.equal(fleet.isTankBuilderReady('t90m'), false);
-  assert.equal(fleet.isTankBuilderReady('leo2a4'), false);
+  assert.equal(fleet.isTankBuilderReady('type10_tk_x'), false);
+  assert.equal(fleet.isTankBuilderReady('m1a1_abrams_hc'), false);
+  assert.equal(fleet.isTankBuilderReady('t90am'), false);
+  assert.equal(fleet.isTankBuilderReady('leo2a2'), false);
   assert.equal(fleet.isTankBuilderReady('merkava4b'), false);
-  assert.equal(markingRegistry.vehicleMarkingSeats('m1a2'), null);
-  assert.equal(anatomyRegistry.combatAnatomyCalibration('m1a2'), null);
-  await fleet.ensureTankBuilder('m1a2');
-  assert.equal(fleet.isTankBuilderReady('m1a2'), true);
-  assert.equal(fleet.isTankBuilderReady('m1a2_sepv3'), true);
-  assert.ok(markingRegistry.vehicleMarkingSeats('m1a2'));
-  assert.ok(markingRegistry.vehicleMarkingSeats('m1a2_sepv3'));
+  assert.equal(markingRegistry.vehicleMarkingSeats('m1a1_abrams_hc'), null);
+  assert.equal(anatomyRegistry.combatAnatomyCalibration('m1a1_abrams_hc'), null);
+  await fleet.ensureTankBuilder('m1a1_abrams_hc');
+  assert.equal(fleet.isTankBuilderReady('m1a1_abrams_hc'), true);
+  assert.equal(fleet.isTankBuilderReady('m1a1_abrams_fep'), true);
+  assert.ok(markingRegistry.vehicleMarkingSeats('m1a1_abrams_hc'));
+  assert.ok(markingRegistry.vehicleMarkingSeats('m1a1_abrams_fep'));
   assert.equal(markingRegistry.vehicleMarkingSeats('m60a3'), null);
-  assert.ok(anatomyRegistry.combatAnatomyCalibration('m1a2'));
-  assert.ok(anatomyRegistry.combatAnatomyCalibration('m1a2_sepv3'));
+  assert.ok(anatomyRegistry.combatAnatomyCalibration('m1a1_abrams_hc'));
+  assert.ok(anatomyRegistry.combatAnatomyCalibration('m1a1_abrams_fep'));
   assert.equal(anatomyRegistry.combatAnatomyCalibration('m60a3'), null);
-  assert.ok(specs.getSpec('m1a2').armor.collisionShells.hull.length > 0);
+  assert.ok(specs.getSpec('m1a1_abrams_hc').armor.collisionShells.hull.length > 0);
   assert.equal(fleet.isTankBuilderReady('m60a3'), false);
-  assert.equal(fleet.isTankBuilderReady('t90m'), false);
-  assert.throws(() => fleet.createTank('t90m', null, { geometryReceipt: true }), /not loaded/);
-  const abrams = fleet.createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
+  assert.equal(fleet.isTankBuilderReady('t90am'), false);
+  assert.throws(() => fleet.createTank('t90am', null, { geometryReceipt: true }), /not loaded/);
+  const abrams = fleet.createTank('m1a1_abrams_hc', null, { proceduralOnly: true, geometryReceipt: true });
   abrams.dispose();
-  await fleet.ensureTankBuilders(['leclerc', 'amx40']);
-  assert.equal(fleet.isTankBuilderReady('leclerc'), true);
-  assert.equal(fleet.isTankBuilderReady('amx40'), true);
+  await fleet.ensureTankBuilders(['leclerc_s2', 'amx40_proto']);
+  assert.equal(fleet.isTankBuilderReady('leclerc_s2'), true);
+  assert.equal(fleet.isTankBuilderReady('amx40_proto'), true);
   assert.equal(fleet.isTankBuilderReady('challenger2'), false);
   await fleet.ensureTankBuilder('challenger2');
   assert.equal(fleet.isTankBuilderReady('challenger2'), true);
-  for (const id of ['leclerc', 'challenger2', 'challenger_3', 'challenger_3x', 'amx40']) {
+  for (const id of ['leclerc_s2', 'challenger2', 'challenger3_proto', 'challenger3', 'amx40_proto']) {
     const visual = fleet.createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
     visual.dispose();
   }
-  await fleet.ensureTankBuilder('type10');
-  assert.equal(fleet.isTankBuilderReady('type10'), true);
-  const type10 = fleet.createTank('type10', null, { proceduralOnly: true, geometryReceipt: true });
-  type10.dispose();
-  await fleet.ensureTankBuilders(['t14', 'mbt70']);
-  assert.equal(fleet.isTankBuilderReady('t14'), true);
+  await fleet.ensureTankBuilder('type10_tk_x');
+  assert.equal(fleet.isTankBuilderReady('type10_tk_x'), true);
+  const type10_tk_x = fleet.createTank('type10_tk_x', null, { proceduralOnly: true, geometryReceipt: true });
+  type10_tk_x.dispose();
+  await fleet.ensureTankBuilders(['object148_proto', 'mbt70']);
+  assert.equal(fleet.isTankBuilderReady('object148_proto'), true);
   assert.equal(fleet.isTankBuilderReady('mbt70'), true);
-  const t14 = fleet.createTank('t14', null, { proceduralOnly: true, geometryReceipt: true });
-  assert.ok(t14.root.getObjectByName('rig_turret')?.userData?.object148Design,
+  const object148_proto = fleet.createTank('object148_proto', null, { proceduralOnly: true, geometryReceipt: true });
+  assert.ok(object148_proto.root.getObjectByName('rig_turret')?.userData?.object148Design,
     'lazy T-14 route constructs the authored Armata builder, not the box placeholder');
-  t14.dispose();
+  object148_proto.dispose();
   const mbt70 = fleet.createTank('mbt70', null, { proceduralOnly: true, geometryReceipt: true });
   assert.ok(mbt70.root.getObjectByName('rig_turret')?.userData?.mbt70TurretReceipt,
     'lazy MBT-70 route constructs the authored turret, not the box placeholder');
   assert.equal(mbt70.root.getObjectByName('rig_gun')?.userData?.mbt70MantletReceipt?.profile,
     'parabolic-arrow', 'lazy MBT-70 route retains the authored XM150 mantlet');
   mbt70.dispose();
-  await fleet.ensureTankBuilder('type99a');
-  assert.equal(fleet.isTankBuilderReady('type99a'), true);
-  const type99a = fleet.createTank('type99a', null, { proceduralOnly: true, geometryReceipt: true });
-  type99a.dispose();
-  await fleet.ensureTankBuilders(['m60a3', 't90m']);
+  await fleet.ensureTankBuilder('ztz99_longwei');
+  assert.equal(fleet.isTankBuilderReady('ztz99_longwei'), true);
+  const ztz99_longwei = fleet.createTank('ztz99_longwei', null, { proceduralOnly: true, geometryReceipt: true });
+  ztz99_longwei.dispose();
+  await fleet.ensureTankBuilders(['m60a3', 't90am']);
   assert.equal(fleet.isTankBuilderReady('m60a3'), true);
-  assert.equal(fleet.isTankBuilderReady('t90m'), true);
+  assert.equal(fleet.isTankBuilderReady('t90am'), true);
   await fleet.ensureFullFleet();
   const { VISIBLE_TANK_IDS } = specs;
   process.send({kind:'fleet-start',ids:VISIBLE_TANK_IDS});

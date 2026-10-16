@@ -323,7 +323,7 @@ try {
   // a separately captured DOM layer preserves the real roster and controls.
   await goto(page, '/?nogate=1');
   await waitForGame(page);
-  await page.evaluate(() => window.__DEBUG?.selectGarageTank?.('m1a2_sepv2'));
+  await page.evaluate(() => window.__DEBUG?.selectGarageTank?.('m1a1_abrams_aim'));
   await delay(1_000);
   await page.setViewport({ width: NATIVE_BATTLE ? WIDTH : 800, height: NATIVE_BATTLE ? HEIGHT : 450, deviceScaleFactor: 1 });
   if (NATIVE_BATTLE) await page.evaluate(() => {
@@ -371,7 +371,7 @@ try {
   if (!GARAGE_ONLY) {
 
   // Battle entry: the real loading screen, progress motion, and battlefield art.
-  await page.evaluate(() => window.__DEBUG?.selectGarageTank?.('m1a2_sepv2'));
+  await page.evaluate(() => window.__DEBUG?.selectGarageTank?.('m1a1_abrams_aim'));
   await page.evaluate(() => window.__DEBUG?.garage?.setSelectedMap?.('steppe'));
   await delay(800);
   const startBattle = async () => {
@@ -694,8 +694,8 @@ try {
   await page.evaluate(async () => {
     const S = window.__STUDIO;
     const actors = [
-      { id: 'm1a2_sepv2', name: 'alpha', pos: [132, -52], facingDeg: 90, camo: 'summer' },
-      { id: 'leclerc_xlr', name: 'bravo', pos: [188, -52], facingDeg: -90, camo: 'summer' },
+      { id: 'm1a1_abrams_aim', name: 'alpha', pos: [132, -52], facingDeg: 90, camo: 'summer' },
+      { id: 'leclerc_sxxi', name: 'bravo', pos: [188, -52], facingDeg: -90, camo: 'summer' },
     ];
     await S.load({ map: 'coastal', seed: 25137, actors, fxTime: 0, timeScale: 0 });
     S.directDuel({ variant: 0 });

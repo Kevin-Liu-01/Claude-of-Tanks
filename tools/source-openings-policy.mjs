@@ -8,7 +8,7 @@ export {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys} from './source-opening-witnes
  * retain raw counts and reject missing/malformed evidence. */
 export function sourceOpeningsVerdict({id,scan,sourceReceipt,configuration,samples,guards,quality='high'}) {
   const raw = scan?.holeCells;
-  const registered = ['warrior_tes_h','aft10_x','merkava4_barak'].includes(id) || isArieteOpeningTarget(id);
+  const registered = ['warrior_tes_h','aft10','merkava4_barak'].includes(id) || isArieteOpeningTarget(id);
   const fail = reason => ({passed:false,rawHoleCells:raw,intentionalCells:0,unexpectedCells:raw,reason});
   if (!Number.isInteger(raw) || raw<0 || scan.error) return fail('Missing continuity scan');
   if (!registered) return {passed:raw===0,rawHoleCells:raw,intentionalCells:0,unexpectedCells:raw};
@@ -55,7 +55,7 @@ function validOpeningTarget(id,configuration,scan){
 export function approvedOpeningRegion(id,x,z,quality='high'){
   if(isArieteOpeningTarget(id))return arieteOpeningCell(id,x,z,quality);
   if(id==='merkava4_barak')return barakOpeningCell(x,z);
-  if(id==='aft10_x')return AFT_SOURCE_SLOTS.some(slot=>Math.abs(x-slot.x)<slot.width/2 && Math.abs(z-slot.z)<slot.length/2);
+  if(id==='aft10')return AFT_SOURCE_SLOTS.some(slot=>Math.abs(x-slot.x)<slot.width/2 && Math.abs(z-slot.z)<slot.length/2);
   // This bounds only where source/native air may be classified. It does not
   // claim that the whole rectangle is empty; complete-source rays still
   // reject every point occupied by an edge lip, ledge or mounting bracket.

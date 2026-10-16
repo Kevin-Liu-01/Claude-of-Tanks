@@ -49,10 +49,10 @@ const M: Datum = { yaw: [.018092,1.336748,-.104459], gun: [.001973,1.608251,1.14
 const S: Datum = { yaw: [.008,1.532,.359], gun: [.001,1.90309,1.56], muzzle: 7.0399, roof: 2.2893, height: 3.1501 };
 
 export const T90_X_DATUMS = Object.freeze({
-  t90a_x: { ...A, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.9922, overallLengthM: 10.4586 },
-  t90a_vladimir_x: { ...V, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.1115, overallLengthM: 10.7863 },
-  t90m_x: { ...M, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.8329, overallLengthM: 10.3513 },
-  t90sm_x: { ...S, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.0598, overallLengthM: 11.1371 },
+  t90a: { ...A, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.9922, overallLengthM: 10.4586 },
+  t90a_vladimir: { ...V, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.1115, overallLengthM: 10.7863 },
+  t90m: { ...M, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.8329, overallLengthM: 10.3513 },
+  t90sm: { ...S, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.0598, overallLengthM: 11.1371 },
 });
 
 function frame(P: TankBuilderPort, d: Datum): void {
@@ -187,7 +187,7 @@ function mGunBoot(P:TankBuilderPort):void {
   // Source canvas covers a longer pitching cradle than the steel trunnion.
   // Original positive U-section cloth skins keep the underside and forward
   // barrel aperture open; they do not fill a rectangular bounding volume.
-  // Owner 2026-09-16 ("fix this green mantlet on the t90m"): the Proryv's cradle cover is painted with
+  // Owner 2026-09-16 ("fix this green mantlet on the t90am"): the Proryv's cradle cover is painted with
   // the vehicle scheme like the turret around it, not left in bare olive canvas — 'gunMount' paint.
   const rows:readonly(readonly[number,number,number,number,number])[]=[
     [.987,-.4149,.3123,1.969,1.982],[1.140,-.4149,.3123,1.421,1.926],
@@ -1427,7 +1427,7 @@ function modernMasts(P: TankBuilderPort,d: Datum,sm: boolean): void {
     return;
   }
   // DVE-BS wind sensor: the source model's 92-108 mm post is kept for the
-  // exemplar geometry gate (t90m_x 93.1/92 with it, 90.8 without); the real
+  // exemplar geometry gate (t90m 93.1/92 with it, 90.8 without); the real
   // mast is slimmer and reads better, recorded as an owner decision in
   // docs/research/fleet-visual-standard-20260911.md.
   onTurret(P,d,'turretDetail',cylY(.046,.482,12),x,2.260,z);
@@ -1642,6 +1642,6 @@ export function buildT90SMXTurret(P: TankBuilderPort, customBustle=false): void 
 }
 
 export const T90_X_PROFILES = {
-  t90a_x:{build:buildT90AX},t90a_vladimir_x:{build:buildT90AVladimirX},
-  t90m_x:{build:buildT90MX},t90sm_x:{build:buildT90SMX},
+  t90a:{build:buildT90AX},t90a_vladimir:{build:buildT90AVladimirX},
+  t90m:{build:buildT90MX},t90sm:{build:buildT90SMX},
 } as const;

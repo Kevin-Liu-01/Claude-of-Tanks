@@ -63,7 +63,7 @@ export function assertC2ReceivingClearance(tank,oldStocks,newStocks){
   const material=new T.MeshBasicMaterial({side:T.DoubleSide}),targets=probes(newStocks,material),old=probes(oldStocks,material),shoes=[];
   tank.root.traverse(o=>{if(o.isInstancedMesh&&/^gearTrackPads(?:Simplified)?$/.test(o.name))shoes.push(o);});
   assert.equal(shoes.length,2,'both actual native shoe detail streams');
-  const state=createTankState(getSpec('ariete_c2_x'),new T.Vector3(),0),pitch=shoes[0].userData.trackShoePitchM*S;
+  const state=createTankState(getSpec('c2_ariete'),new T.Vector3(),0),pitch=shoes[0].userData.trackShoePitchM*S;
   try{
     for(const phase of [0,.25,.5,.75]){
       state.trackScroll.l=state.trackScroll.r=phase*pitch;tank.syncFromState(state,1/60,0);tank.root.updateMatrixWorld(true);

@@ -64,7 +64,7 @@ function drive(bot, ctl, seconds, { gun = 'free', onTick = null } = {}) {
 }
 
 function idleEnemy(x, z) {
-  const host = entity('host', 'm1a2', 'player', x, z, Math.PI);
+  const host = entity('host', 'm1a1_abrams_hc', 'player', x, z, Math.PI);
   host.isPlayer = true;
   return host;
 }
@@ -155,7 +155,7 @@ console.log('[3] a scout struck from the side keeps moving; a main battle tank t
   const scout = struck('bmp3');
   ok(scout.reaction !== 'angle' && scout.brakingS === 0 && scout.after > scout.atHit + 3,
     `the BMP-3 keeps moving (reaction ${scout.reaction}, ${scout.brakingS.toFixed(2)} s braking, ${scout.atHit.toFixed(1)} m/s at the hit and ${scout.after.toFixed(1)} m/s 2.5 s on)`);
-  const tank = struck('t90m');
+  const tank = struck('t90am');
   ok(tank.reaction === 'angle', `the T-90M angles its hull onto the shot (reaction ${tank.reaction})`);
 }
 

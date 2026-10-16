@@ -29,12 +29,12 @@ interface TankLabelOverride {
 }
 
 const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.freeze({
-  griffin50_x: { displayName: 'Griffin 50 mm', searchAliases: ['Griffin 50 mm X'] },
-  ajax_x: { displayName: 'Ajax', searchAliases: ['Ajax X'] },
-  sabra_mk2_x: { displayName: 'Sabra Mk 2', searchAliases: ['Sabra Mk 2 X'] },
-  cv90105_tml_x: { displayName: 'CV90105 TML', searchAliases: ['CV90105 TML X'] },
-  kf41_lynx_x: { displayName: 'KF41 Lynx', searchAliases: ['KF41 Lynx X'] },
-  k21_x: { displayName: 'K21', searchAliases: ['K21 X'] },
+  griffin50mm: { displayName: 'Griffin 50 mm', searchAliases: ['Griffin 50 mm X'] },
+  ajax: { displayName: 'Ajax', searchAliases: ['Ajax X'] },
+  sabra_mk2: { displayName: 'Sabra Mk 2', searchAliases: ['Sabra Mk 2 X'] },
+  cv90105_tml: { displayName: 'CV90105 TML', searchAliases: ['CV90105 TML X'] },
+  kf41_lynx: { displayName: 'KF41 Lynx', searchAliases: ['KF41 Lynx X'] },
+  k21: { displayName: 'K21', searchAliases: ['K21 X'] },
   m551_sheridan: {
     displayName: 'M551 Sheridan', shortName: 'M551',
     searchAliases: ['Sheridan', 'M551 Shillelagh', 'US airborne light tank'],
@@ -51,7 +51,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'UDES 03', shortName: 'UDES 03',
     searchAliases: ['UDES 03 Swedish tank destroyer', 'Swedish siege TD'],
   },
-  strv103: {
+  strv103b: {
     displayName: 'Stridsvagn 103B', shortName: 'Strv 103B',
     searchAliases: ['S-Tank', 'S-Tank B'],
   },
@@ -59,7 +59,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Stridsvagn 103A', shortName: 'Strv 103A',
     searchAliases: ['S-Tank A'],
   },
-  strv122: {
+  strv121: {
     displayName: 'Stridsvagn 121', shortName: 'Strv 121',
     searchAliases: ['Swedish Leopard 2', 'Strv 122A', 'Stridsvagn 122A'],
   },
@@ -67,19 +67,19 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'CV90', shortName: 'CV90',
     searchAliases: ['Combat Vehicle 90', 'Stridsfordon 90', 'CV9040', 'Swedish IFV'],
   },
-  cv90_mkiv: {
+  cv90_mk4_concept: {
     displayName: 'CV90 Mk 4 Concept', shortName: 'CV90 Mk 4 Concept',
     searchAliases: ['CV90 Mk IV', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
   },
-  spz_puma_s1_x: {displayName:'Puma S1',shortName:'Puma S1',searchAliases:['SPz Puma S1 X','RCT30 MELLS']},
+  puma_s1: {displayName:'Puma S1',shortName:'Puma S1',searchAliases:['SPz Puma S1 X','RCT30 MELLS']},
   amx10p: {displayName:'AMX-10P',shortName:'AMX-10P',searchAliases:['AMX 10 P','Toucan II']},
   amx10p_25: {displayName:'AMX-10P 25',shortName:'AMX-10P 25',searchAliases:['AMX 10 P 25','Dragar']},
   dardo: {displayName:'Dardo',shortName:'Dardo',searchAliases:['VCC Dardo','HITFIST 25']},
   lrmv_lynx: {displayName:'LRMV Lynx',shortName:'LRMV Lynx',searchAliases:['Italian Lynx KF41','A2CS IFV','Lance 30']},
   borsuk: {displayName:'Borsuk',shortName:'Borsuk',searchAliases:['BWP Borsuk','ZSSW-30']},
-  cv90_x: {displayName:'CV9040C',shortName:'CV9040C',searchAliases:['CV90 X','Stridsfordon 9040C']},
-  type89_x: {displayName:'Type 89',shortName:'Type 89',searchAliases:['Japanese Type 89 IFV X']},
-  cv90_mkiv_x: {
+  cv9040c: {displayName:'CV9040C',shortName:'CV9040C',searchAliases:['CV90 X','Stridsfordon 9040C']},
+  type89: {displayName:'Type 89',shortName:'Type 89',searchAliases:['Japanese Type 89 IFV X']},
+  cv90_mk4: {
     displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
     searchAliases: ['CV90 Mk IV X', 'CV90 MkIV X', 'CV90 Mark 4 X'],
   },
@@ -87,7 +87,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'T-72M1 Jaguar', shortName: 'T-72M1 Jaguar',
     searchAliases: ['T-72M1 Jaguar Poland', 'Jaguar MBT'],
   },
-  pt91_twardy: {
+  pt91a_twardy: {
     displayName: 'PT-91A Twardy', shortName: 'PT-91A Twardy',
     searchAliases: ['PT-91 Twardy', 'Twardy MBT'],
   },
@@ -99,15 +99,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'PL-01 (105)', shortName: 'PL-01 105',
     searchAliases: ['PL-01 105 mm', 'Polish 105 autoloader'],
   },
-  k2: {
+  xk2_black_panther: {
     displayName: 'XK2 Black Panther', shortName: 'XK2',
     searchAliases: ['K2 Main Battle Tank', 'K2 MBT'],
   },
-  k2_x: {
+  k2_black_panther: {
     displayName: 'K2 Black Panther', shortName: 'K2',
     searchAliases: ['K2 Main Battle Tank', 'K2 MBT'],
   },
-  kurganets25_x: {
+  kurganets25: {
     displayName: 'Kurganets-25', shortName: 'Kurganets-25',
     searchAliases: ['Kurganets 25', 'Object 693', 'Russian tracked IFV'],
   },
@@ -115,15 +115,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'K2B', shortName: 'K2B',
     searchAliases: ['K2B Black Panther', 'Korean stealth K2'],
   },
-  chieftain5: { displayName: 'Chieftain Mk 3' },
-  challenger1: { displayName: 'Challenger 1 Mk 2' },
+  chieftain3: { displayName: 'Chieftain Mk 3' },
+  challenger1_mk2: { displayName: 'Challenger 1 Mk 2' },
   fv4034: { displayName: 'FV4034', searchAliases: ['Challenger predecessor', 'FV 4034'] },
   challenger2e: { displayName: 'Challenger 2E', searchAliases: ['Enhanced Challenger 2', 'CR2E'] },
   ua_challenger2: {
     displayName: 'Challenger 2 (Ukraine)', shortName: 'Challenger 2 UA',
     searchAliases: ['Ukrainian Challenger 2', 'Ukraine Challenger 2'],
   },
-  challenger_3x: {
+  challenger3: {
     displayName: 'Challenger 3', shortName: 'Challenger 3',
     searchAliases: ['Challenger 3X', 'CR3X', 'Challenger 3 X'],
   },
@@ -138,28 +138,28 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['Warrior MILAN X', 'Warrior MILAN', 'Warrior TES', 'Warrior Theatre Entry Standard', 'FV510 Warrior TES(H)'],
     noteKey: 'gallery.brief.note.warriorTesH',
   },
-  // 2026-10-13: no two garage cards read "Type 90"; type90_x keeps the plain name.
-  type90: { displayName: 'Type 90 Kyū-maru', shortName: 'Type 90 Kyū-maru', searchAliases: ['Type 90 (Kyū-maru)', 'Kyu-maru'] },
+  // 2026-10-13: no two garage cards read "Type 90"; type90 keeps the plain name.
+  type90_kyumaru: { displayName: 'Type 90 Kyū-maru', shortName: 'Type 90 Kyū-maru', searchAliases: ['Type 90 (Kyū-maru)', 'Kyu-maru'] },
   // 2026-10-13: no vehicle keeps an "X" suffix (the 2026-09-15 naming ruling).
-  type96b_x: { displayName: 'Type 96B', searchAliases: ['Type 96B X', 'ZTZ-96B'] },
-  aft10_x: { displayName: 'AFT-10', searchAliases: ['AFT-10 X'] },
-  bmp3m_dragun125_x: { displayName: 'BMP-3M Dragun 125', searchAliases: ['BMP-3M Dragun 125 X', 'Dragun 125'] },
+  type96b: { displayName: 'Type 96B', searchAliases: ['Type 96B X', 'ZTZ-96B'] },
+  aft10: { displayName: 'AFT-10', searchAliases: ['AFT-10 X'] },
+  bmp3m_dragun125: { displayName: 'BMP-3M Dragun 125', searchAliases: ['BMP-3M Dragun 125 X', 'Dragun 125'] },
   stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
   type90a: { displayName: 'Type 90A', shortName: 'Type 90A', searchAliases: ['Type 90 Kai'] },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
-  leo2a4_otco: {
+  leo2a3: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
     searchAliases: ['Leopard 2A4 OTCO', '2A3'],
   },
-  leo2a4m: {
+  leo2a4m_can: {
     displayName: 'Leopard 2A4M CAN', shortName: 'Leopard 2A4M CAN',
     searchAliases: ['Leopard 2A4M Canada', '2A4M CAN'],
   },
-  leo2a5_a5nl: {
+  leo2a4m: {
     displayName: 'Leopard 2A4M', shortName: 'Leopard 2A4M',
     searchAliases: ['Leopard 2A5/A5NL', 'A5NL', '2A4M'],
   },
-  leo2a6m: {
+  leo2a4_otco: {
     displayName: 'Leopard 2A4 OTCO', shortName: 'Leopard 2A4 OTCO',
     searchAliases: ['Leopard 2A6M', '2A4 OTCO'],
   },
@@ -213,19 +213,19 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   },
   m6_linebacker: {displayName:'M6 Linebacker',shortName:'M6 Linebacker',searchAliases:['Linebacker modernization','Bradley air defense concept']},
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
-  spz_puma_s1: {
+  spz_wotan: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',
     searchAliases: ['SPz Puma S1', 'Former Puma S1 upgrade'],
   },
-  type89_light_tiger: {
+  raiju_ifv: {
     displayName: 'Raijū IFV', shortName: 'Raijū',
     searchAliases: ['Type 89 Light Tiger IFV', 'Type 89 LT', 'JGSDF Light Tiger'],
   },
-  ares_apc_x: {
+  ares_apc: {
     displayName: 'Ares APC', shortName: 'Ares',
     searchAliases: ['ARES APC', 'Ajax Ares', 'Ajax-family APC', 'British Ares'],
   },
-  type99a: {
+  ztz99_longwei: {
     displayName: 'ZTZ-99 Longwei', shortName: 'Longwei',
     searchAliases: ['ZTZ-99A (Type 99A)', 'Type 99A (ZTZ-99A)', 'Type 99A', 'Longwei original concept'],
   },
@@ -241,7 +241,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-99A2', shortName: 'ZTZ-99A2',
     searchAliases: ['Type 99A2', 'ZTZ 99A2'],
   },
-  ztz99a2_prototype: {
+  ztz99a: {
     displayName: 'ZTZ-99A', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A2 Prototype', 'ZTZ 99A2 Prototype', '99A2-P'],
   },
@@ -249,7 +249,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Type 100 IFV', shortName: 'Type 100 IFV',
     searchAliases: ['Type 100 support vehicle', 'ZBD-100', 'PLA next-generation IFV', '100式支援战车'],
   },
-  ztz100_x: {
+  ztz100: {
     displayName: 'ZTZ-100', shortName: 'ZTZ-100',
     searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
   },
@@ -257,36 +257,36 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-100 Prototype', shortName: 'ZTZ-100 Proto',
     searchAliases: ['ZTZ-100 original', 'ZTZ-100 prototype', 'Type 100 prototype'],
   },
-  object695_x: {
+  object695: {
     displayName: 'Object 695', shortName: 'Object 695',
     searchAliases: ['Object 695 IFV', 'Kurganets', 'Kurganets-25 variant', 'Epokha', 'B-11', 'Объект 695'],
   },
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
-  m1a2_sepv3: { displayName: 'M1A1 Abrams FEP' },
+  m1a1_abrams_fep: { displayName: 'M1A1 Abrams FEP' },
   m1a3: {
     displayName: 'M1A3 Abrams', shortName: 'M1A3 Abrams',
     searchAliases: ['M1A3 Abrams concept', 'Next-generation Abrams'],
   },
-  kf51b: { displayName: 'KF51-U', shortName: 'KF51-U', searchAliases: ['KF51B Panther'] },
+  kf51_u: { displayName: 'KF51-U', shortName: 'KF51-U', searchAliases: ['KF51B Panther'] },
   merkava1b: { displayName: 'Merkava Mk 1B' },
   merkava2b: { displayName: 'Merkava Mk 2B' },
   merkava2d: { displayName: 'Merkava Mk 2D' },
   merkava3c: { displayName: 'Merkava Mk 3C' },
-  merkava3d: { displayName: 'Merkava Mk 3 Baz' },
+  merkava3_baz: { displayName: 'Merkava Mk 3 Baz' },
   merkava4b: { displayName: 'Merkava Mk 4B' },
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
-  centurion5: { displayName: 'Centurion Mk 5/2' },
+  centurion5_2: { displayName: 'Centurion Mk 5/2' },
   carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
-  ariete: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
-  ariete_c1: { displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1' },
-  ariete_c2: { displayName: 'C2 Ariete Prototype', shortName: 'C2 Prototype' },
-  ariete_c1_x: { displayName: 'C1 Ariete', shortName: 'C1 Ariete' },
-  ariete_c2_x: { displayName: 'C2 Ariete', shortName: 'C2 Ariete' },
-  ua_t64bv: { displayName: 'T-64BV Donbas', shortName: 'T-64BV Donbas' },
+  c1_ariete_preserie: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
+  c1_ariete_proto_serie1: { displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1' },
+  c2_ariete_proto: { displayName: 'C2 Ariete Prototype', shortName: 'C2 Prototype' },
+  c1_ariete: { displayName: 'C1 Ariete', shortName: 'C1 Ariete' },
+  c2_ariete: { displayName: 'C2 Ariete', shortName: 'C2 Ariete' },
+  t64bv_donbas: { displayName: 'T-64BV Donbas', shortName: 'T-64BV Donbas' },
   ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
-  ua_t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
-  ua_t84_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },
+  t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
+  t84bm_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },
   ua_m1a1: { displayName: 'M1A1 SA (Ukraine)', shortName: 'M1A1 SA UA', searchAliases: ['M1A1 Abrams UA', 'M1A1 Abrams (Ukraine)'] },
 });
 

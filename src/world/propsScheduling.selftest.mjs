@@ -61,7 +61,7 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
   let clock = 100, disposed = 0;
   const sliceTick = deferred(), beforeCheckpoint = deferred(), checkpointTick = deferred();
   const afterCheckpoint = deferred(), enteredBake = deferred(), enteredCheckpoint = deferred();
-  const request = { specId: 't90m', options: {}, result: null }, baked = {};
+  const request = { specId: 't90am', options: {}, result: null }, baked = {};
   const client = {
     prepare() {}, dispose() { disposed++; },
     async bake(id, options, checkpoint) {
@@ -105,7 +105,7 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
   assert.deepEqual(timing.wreckCheckpoints, { count: 1, totalMs: 7, maxMs: 7 });
   assert.deepEqual(timing.wreckBakes, { count: 1, totalMs: 40, maxMs: 40 });
   assert.deepEqual(timing.builderImports, { count: 0, totalMs: 0, maxMs: 0 });
-  assert.deepEqual(timing.wreckRows, [{ specId: 't90m', startMs: 110, endMs: 150,
+  assert.deepEqual(timing.wreckRows, [{ specId: 't90am', startMs: 110, endMs: 150,
     elapsedMs: 40, includedCheckpointMs: 7 }]);
   assert.equal(timing.wreckRowsDropped, 0);
   assert.equal(clock - 100, 7 + timing.sliceTicks.totalMs + timing.wreckBakes.totalMs);
@@ -116,7 +116,7 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
 {
   let clock = 20;
   const imported = deferred();
-  const f = fixture([{ tankBuilder: 't90m', fine: true }], () => imported.promise,
+  const f = fixture([{ tankBuilder: 't90am', fine: true }], () => imported.promise,
     undefined, null, () => clock);
   const pending = f.run({}, {}, 2002, null, () => { clock += 2; }, true);
   assert.deepEqual(f.events.map(([kind]) => kind), ['work']);
@@ -155,8 +155,8 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   const rejection = deferred();
   const client = { prepare() {}, dispose() { disposed++; }, bake: () => rejection.promise };
   const steps = failureAt === 'bake'
-    ? [{ wreckBake: { specId: 't90m', options: {}, result: null } }]
-    : [{ tankBuilder: 't90m' }];
+    ? [{ wreckBake: { specId: 't90am', options: {}, result: null } }]
+    : [{ tankBuilder: 't90am' }];
   const f = fixture(steps, () => rejection.promise, undefined, failureAt === 'import' ? null : client);
   const pending = f.run({}, {}, 2002, null, () => rejection.promise, true);
   rejection.reject(0);
@@ -227,7 +227,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
 }
 
 {
-  const calls = [], request = { specId: 't90m', options: { seed: 2002, pop: true }, result: null };
+  const calls = [], request = { specId: 't90am', options: { seed: 2002, pop: true }, result: null };
   const baked = {};
   const client = {
     prepare() {},
@@ -238,7 +238,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
     },
     dispose() { calls.push('disposed'); },
   };
-  const f = fixture([{ fine: true, tankBuilder: 't90m' },
+  const f = fixture([{ fine: true, tankBuilder: 't90am' },
     { fine: true, progress: false, wreckBake: request }],
   () => { throw new Error('worker path must not load a main-thread donor'); }, () => {}, client);
   const ticks = [];
@@ -248,7 +248,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   assert.equal(f.args[0][6].signal.aborted, false, 'successful build retains pending source settlement');
   assert.equal(request.result, baked);
   assert.deepEqual(ticks, [1, 1, 1, 1], 'worker waits check ownership without fake progress');
-  assert.deepEqual(calls, [['t90m', request.options], 'disposed']);
+  assert.deepEqual(calls, [['t90am', request.options], 'disposed']);
 }
 {
   // (the wreck-worker lane, 2026-10-09) a failed worker bake no longer fails the build: the same request is baked on the
@@ -256,19 +256,19 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   const failure = new Error('worker transfer failed');
   let disposed = 0;
   const client = { prepare() {}, async bake() { throw failure; }, dispose() { disposed++; } };
-  const request = { specId: 'k2', options: { seed: 7, pop: true }, result: null };
-  const fallback = { specId: 'k2', mainThread: true };
+  const request = { specId: 'xk2_black_panther', options: { seed: 7, pop: true }, result: null };
+  const fallback = { specId: 'xk2_black_panther', mainThread: true };
   const acquired = [];
   const f = fixture([{ fine: true, wreckBake: request }], async (id) => { acquired.push(id); }, undefined, client,
     undefined, function* (ctx, id, options) {
-      assert.deepEqual([ctx, id, options], [{}, 'k2', request.options], 'the worker\'s own bake of the same request');
+      assert.deepEqual([ctx, id, options], [{}, 'xk2_black_panther', request.options], 'the worker\'s own bake of the same request');
       yield { fine: true, progress: false };
       return fallback;
     });
   const warn = console.warn; console.warn = () => {};
   try { await f.run({}, {}, 2002, null, null, true); } finally { console.warn = warn; }
   assert.equal(request.result, fallback);
-  assert.deepEqual(acquired, ['k2'], 'the donor builder loads on the main thread for the fallback only');
+  assert.deepEqual(acquired, ['xk2_black_panther'], 'the donor builder loads on the main thread for the fallback only');
   assert.equal(disposed, 1);
   assert.deepEqual(f.events.map(([event]) => event), ['work', 'complete', 'closed']);
   assert.equal(f.args[0][6].signal.aborted, false, 'a worker failure no longer cancels this build');
@@ -280,14 +280,14 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   const client = { prepare() { calls.push('prepare'); }, async bake(id) { calls.push(['bake', id]); return { id }; },
     dispose() { calls.push('disposed'); } };
   const planned = { specId: 'm60a2', options: { seed: 2002, pop: true }, result: null };
-  const unplanned = { specId: 'k2', options: { seed: 2133, pop: false }, result: null };
+  const unplanned = { specId: 'xk2_black_panther', options: { seed: 2133, pop: false }, result: null };
   const prefetch = { take: (specId) => (specId === 'm60a2' ? Promise.resolve({ id: 'planned' }) : null) };
   const f = fixture([{ fine: true, progress: false, wreckBake: planned }, { fine: true, progress: false, wreckBake: unplanned }],
     undefined, undefined, client);
   await f.run({}, {}, 2002, null, null, true, null, prefetch);
   assert.deepEqual(planned.result, { id: 'planned' }, 'the planned bake is the prefetch\'s');
-  assert.deepEqual(unplanned.result, { id: 'k2' });
-  assert.deepEqual(calls, [['bake', 'k2'], 'disposed'], 'no eager start: only the miss starts this build\'s worker');
+  assert.deepEqual(unplanned.result, { id: 'xk2_black_panther' });
+  assert.deepEqual(calls, [['bake', 'xk2_black_panther'], 'disposed'], 'no eager start: only the miss starts this build\'s worker');
 }
 for (const props of [{ wrecks: 0 }, { tankWrecks: { count: 0 } }]) {
   const client = { prepare() { assert.fail('empty wreck cast must not start a worker'); },
@@ -301,7 +301,7 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   const failure = new Error(`cancel ${failureAt}`);
   const steps = failureAt === 'generator' ? {
     *[Symbol.iterator]() { yield undefined; throw failure; },
-  } : [failureAt === 'import' ? { tankBuilder: 'k2', fine: true } : undefined];
+  } : [failureAt === 'import' ? { tankBuilder: 'xk2_black_panther', fine: true } : undefined];
   const f = fixture(steps, async () => { throw failure; });
   await assert.rejects(f.run({}, {}, 2002, null,
     failureAt === 'tick' ? () => { throw failure; } : null, true), error => error === failure);
@@ -331,7 +331,7 @@ for (const failureAt of ['tick', 'import', 'generator']) {
     code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant');
   const cache = new Map(), disposed = [], geo = {}, shadowGeo = {};
   const bake = make(cache, disposed);
-  const abandoned = bake('k2', true);
+  const abandoned = bake('xk2_black_panther', true);
   const step = abandoned.next().value;
   assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true, remnant: 0x4e5834 });
   step.wreckBake.result = { geo, shadowGeo };
@@ -339,12 +339,12 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   assert.deepEqual(disposed, [geo, shadowGeo]);
   assert.equal(cache.size, 0);
   disposed.length = 0;
-  const adopted = bake('k2', true);
+  const adopted = bake('xk2_black_panther', true);
   adopted.next().value.wreckBake.result = { geo, shadowGeo };
   assert.deepEqual(adopted.next(), { done: true, value: { geo, shadowGeo } });
   assert.deepEqual(disposed, [], 'cache owns successful transfer');
   assert.equal(cache.size, 1);
-  assert.equal(bake('k2', true).next().done, true, 'cached recipe never queues a duplicate worker job');
+  assert.equal(bake('xk2_black_panther', true).next().done, true, 'cached recipe never queues a duplicate worker job');
 }
 
 {
@@ -368,7 +368,7 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   assert.deepEqual(ticks, [[1, 9], [2, 9]], 'legacy coarse callers keep their paint cadence');
 }
 {
-  const f = fixture([{ fine: true, tankBuilder: 't90m' },
+  const f = fixture([{ fine: true, tankBuilder: 't90am' },
     ...Array.from({ length: 300 }, () => ({ fine: true, progress: false, stage: 'vertex-batch' })),
     { fine: true, stage: 'placed' }]);
   const ticks = [];
@@ -380,7 +380,7 @@ for (const failureAt of ['tick', 'import', 'generator']) {
 }
 for (const failureStage of ['tick', 'builder']) {
   const failure = new Error('original ' + failureStage + ' rejection');
-  const f = fixture([{ fine: true, tankBuilder: 't90m' }, { fine: true }],
+  const f = fixture([{ fine: true, tankBuilder: 't90am' }, { fine: true }],
     async () => { if (failureStage === 'builder') throw failure; });
   await assert.rejects(f.run({}, {}, 2002, null, async () => { throw failure; }, true),
     error => error === failure);
@@ -436,7 +436,7 @@ const placementStart = source.indexOf('      function* placeWreck(');
 const placementEnd = source.indexOf('\n      let placedW = 0;', placementStart);
 assert.ok(placementStart > 0 && placementEnd > placementStart);
 const placementSource = stripTypeScriptTypes(source.slice(placementStart, placementEnd));
-const wreckCast = ['m551_sheridan', 'marder1a3', 'leo2a7v', 'm1a1', 't90a'];
+const wreckCast = ['m551_sheridan', 'marder1a3', 'leo2_improved', 'm1a1', 't90a_2004'];
 
 function placementFixture({ authored = true, random = () => 0.25, code = placementSource, roadDistance = 1e9 } = {}) {
   const state = { nullBake: false, maxEmbed: 0, bakes: [], bakeDrains: 0, randomCalls: 0 };
@@ -473,6 +473,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
     // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
     deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
+    // (sealed lane 2026-10-10) a placed hulk's drawn footprint for the parked vehicles' seat passes (props.ts
+    // wreckDrawnFootprints): the fixture runs no seat pass
+    pushWreckDrawnFootprint() {},
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
@@ -661,6 +664,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
     contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
+    // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
+    drawnPlanRecord: () => null, craterClodFootprints: [],
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
     groundHelpers + '\nlet reconformFoundryFoundations = null;\n' + code)

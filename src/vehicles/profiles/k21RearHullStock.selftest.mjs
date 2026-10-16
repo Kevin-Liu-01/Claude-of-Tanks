@@ -68,7 +68,7 @@ const witnesses = [
   [[-1.417835,1.6092,4],[0,0,-1],0.5,[-1.417835,1.6092,3.5957000255584717]],
   [[1.422065,1.6092,4],[0,0,-1],0.5,[1.422065,1.6092,3.5957000255584717]],
 ];
-const id='k21_x';
+const id='k21';
 const frontMaterial=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
 const sectionMaterial=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 const ray=new THREE.Raycaster();

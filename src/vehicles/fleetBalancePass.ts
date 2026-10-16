@@ -49,28 +49,28 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     armor(registry, 'm1a3', 0.88);
   }
   {
-    const tank = spec(registry, 'challenger_3');
+    const tank = spec(registry, 'challenger3_proto');
     Object.assign(tank, { hp: 2650, topSpeedKmh: 62, reverseSpeedKmh: 24 });
     Object.assign(tank.gun, { reloadS: 5.9, baseAccuracy: 0.24, aimTimeS: 1.6 });
-    primary(registry, 'challenger_3', { pen100: 880, pen1000: 810, pen2000: 730 });
+    primary(registry, 'challenger3_proto', { pen100: 880, pen1000: 810, pen2000: 730 });
   }
   {
-    const tank = spec(registry, 'challenger_3x');
+    const tank = spec(registry, 'challenger3');
     Object.assign(tank, { hp: 2780, topSpeedKmh: 60, reverseSpeedKmh: 24 });
     Object.assign(tank.gun, { reloadS: 5.7, baseAccuracy: 0.22, aimTimeS: 1.5 });
-    primary(registry, 'challenger_3x', { pen100: 900, pen1000: 820, pen2000: 740 });
+    primary(registry, 'challenger3', { pen100: 900, pen1000: 820, pen2000: 740 });
   }
 
   // T-90 family.
   {
-    const tank = spec(registry, 't90');
+    const tank = spec(registry, 't90_1992');
     Object.assign(tank, {
       hp: 2550, enginePowerHp: 1050, topSpeedKmh: 65, reverseSpeedKmh: 12,
       hullTraverseDegS: 42, turretTraverseDegS: 38,
     });
     Object.assign(tank.gun, { reloadS: 6.1, baseAccuracy: 0.31, aimTimeS: 1.85 });
-    primary(registry, 't90', { damage: 550, pen100: 840, pen1000: 780, pen2000: 700 });
-    armor(registry, 't90', 1.15);
+    primary(registry, 't90_1992', { damage: 550, pen100: 840, pen1000: 780, pen2000: 700 });
+    armor(registry, 't90_1992', 1.15);
   }
   {
     const tank = spec(registry, 't90m_proryv');
@@ -82,24 +82,24 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
 
   // British Cold War troughs.
   {
-    const tank = spec(registry, 'chieftain_mk10');
+    const tank = spec(registry, 'chieftain_mk9');
     Object.assign(tank, {
       hp: 2100, enginePowerHp: 900, topSpeedKmh: 50, reverseSpeedKmh: 13,
       hullTraverseDegS: 30, turretTraverseDegS: 28,
     });
     Object.assign(tank.gun, { reloadS: 6.2, baseAccuracy: 0.28, aimTimeS: 1.85 });
-    primary(registry, 'chieftain_mk10', { damage: 510, pen100: 700, pen1000: 640, pen2000: 580 });
-    armor(registry, 'chieftain_mk10', 1.5);
+    primary(registry, 'chieftain_mk9', { damage: 510, pen100: 700, pen1000: 640, pen2000: 580 });
+    armor(registry, 'chieftain_mk9', 1.5);
   }
   {
-    const tank = spec(registry, 'centurion5');
+    const tank = spec(registry, 'centurion5_2');
     Object.assign(tank, {
       hp: 1900, enginePowerHp: 850, topSpeedKmh: 48, reverseSpeedKmh: 15,
       hullTraverseDegS: 32, turretTraverseDegS: 30,
     });
     Object.assign(tank.gun, { reloadS: 6.6, baseAccuracy: 0.3, aimTimeS: 2 });
-    primary(registry, 'centurion5', { pen100: 570, pen1000: 525, pen2000: 480 });
-    armor(registry, 'centurion5', 1.12);
+    primary(registry, 'centurion5_2', { pen100: 570, pen1000: 525, pen2000: 480 });
+    armor(registry, 'centurion5_2', 1.12);
   }
   {
     const tank = spec(registry, 'fv4034');
@@ -110,11 +110,11 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
 
   // K2 progression.
   {
-    const tank = spec(registry, 'k2');
+    const tank = spec(registry, 'xk2_black_panther');
     tank.hp = 2700;
     tank.gun.reloadS = 5.7;
-    primary(registry, 'k2', { pen100: 890, pen1000: 815, pen2000: 740 });
-    armor(registry, 'k2', 1.3);
+    primary(registry, 'xk2_black_panther', { pen100: 890, pen1000: 815, pen2000: 740 });
+    armor(registry, 'xk2_black_panther', 1.3);
   }
   {
     const tank = spec(registry, 'k2b');
@@ -133,17 +133,17 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     armor(registry, 'merkava1b', 0.35);
   }
   {
-    const tank = spec(registry, 't62mv1');
+    const tank = spec(registry, 't62_1975');
     tank.hp = 1850;
     tank.gun.reloadS = 6.6;
-    primary(registry, 't62mv1', { damage: 430, pen100: 580, pen1000: 530, pen2000: 480 });
-    armor(registry, 't62mv1', 1.1);
+    primary(registry, 't62_1975', { damage: 430, pen100: 580, pen1000: 530, pen2000: 480 });
+    armor(registry, 't62_1975', 1.1);
   }
   {
-    const tank = spec(registry, 'm48');
+    const tank = spec(registry, 'm48a5_patton');
     Object.assign(tank, { hp: 2050, enginePowerHp: 900, topSpeedKmh: 50, reverseSpeedKmh: 18 });
     Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.3, aimTimeS: 1.8 });
-    primary(registry, 'm48', { damage: 450, pen100: 580, pen1000: 535, pen2000: 490 });
+    primary(registry, 'm48a5_patton', { damage: 450, pen100: 580, pen1000: 535, pen2000: 490 });
   }
   Object.assign(spec(registry, 'm60a1'), {
     hp: 2100, enginePowerHp: 900, topSpeedKmh: 52, reverseSpeedKmh: 18,
@@ -177,12 +177,12 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.34, aimTimeS: 2 });
     armor(registry, 't80b', 0.95);
   }
-  Object.assign(spec(registry, 'type90'), {
+  Object.assign(spec(registry, 'type90_kyumaru'), {
     enginePowerHp: 1550, topSpeedKmh: 74, reverseSpeedKmh: 34,
     hullTraverseDegS: 48, turretTraverseDegS: 44,
   });
   {
-    const tank = spec(registry, 't90a');
+    const tank = spec(registry, 't90a_2004');
     Object.assign(tank, { hp: 2250, hullTraverseDegS: 42, turretTraverseDegS: 38 });
     Object.assign(tank.gun, { reloadS: 6.8, baseAccuracy: 0.33, aimTimeS: 2 });
   }
@@ -230,7 +230,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     armor(registry, 'bmp3_rok', 2);
   }
   {
-    const tank = spec(registry, 'spz_puma_s1');
+    const tank = spec(registry, 'spz_wotan');
     tank.hp = 2750;
     Object.assign(tank.gun, { reloadS: 0.38, baseAccuracy: 0.25, aimTimeS: 1.1 });
     Object.assign(tank.gun.shells[0], {
@@ -241,7 +241,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
       reloadS: 2.8, count: 6, velocityMps: 240,
     });
     tank.gun.shells[2].reloadS = 0.38;
-    armor(registry, 'spz_puma_s1', 0.9);
+    armor(registry, 'spz_wotan', 0.9);
   }
   {
     const tank = spec(registry, 'bmpt_t90');
@@ -274,7 +274,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     armor(registry, 'ua_m2a3_bradley', 1.3);
   }
   {
-    const tank = spec(registry, 'type89_light_tiger');
+    const tank = spec(registry, 'raiju_ifv');
     tank.hp = 2700;
     Object.assign(tank.gun, { reloadS: 0.46, baseAccuracy: 0.23, aimTimeS: 0.95 });
     Object.assign(tank.gun.shells[0], {
@@ -284,28 +284,28 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
       dmg: 720, pen100Mm: 950, pen1000Mm: 950,
     });
     tank.gun.shells[2].reloadS = 0.46;
-    armor(registry, 'type89_light_tiger', 1.08);
+    armor(registry, 'raiju_ifv', 1.08);
   }
 
   // Strong but no longer runaway peer packages.
   {
-    const tank = spec(registry, 'leo2a6');
+    const tank = spec(registry, 'leo2a4');
     tank.hp = 2300;
     tank.gun.reloadS = 6.1;
-    armor(registry, 'leo2a6', 0.78);
-  }
-  {
-    const tank = spec(registry, 'leo2a5_a5nl');
-    tank.hp = 2725;
-    tank.gun.reloadS = 6.1;
-    armor(registry, 'leo2a5_a5nl', 0.96);
+    armor(registry, 'leo2a4', 0.78);
   }
   {
     const tank = spec(registry, 'leo2a4m');
+    tank.hp = 2725;
+    tank.gun.reloadS = 6.1;
+    armor(registry, 'leo2a4m', 0.96);
+  }
+  {
+    const tank = spec(registry, 'leo2a4m_can');
     tank.hp = 2500;
     tank.gun.reloadS = 6.2;
-    primary(registry, 'leo2a4m', { damage: 510, pen100: 720, pen1000: 665, pen2000: 610 });
-    armor(registry, 'leo2a4m', 1.2);
+    primary(registry, 'leo2a4m_can', { damage: 510, pen100: 720, pen1000: 665, pen2000: 610 });
+    armor(registry, 'leo2a4m_can', 1.2);
   }
   {
     const tank = spec(registry, 'type10b');
@@ -316,9 +316,9 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   // Shared Soviet-derived fire-control floor. These retain looser handling
   // than Western peers without falling outside the complete tier envelope.
   for (const id of [
-    'pt91_twardy', 'pt91m', 't64bv1', 't72b3m', 't72m1_jaguar', 'ua_t64bv',
+    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas',
   ]) {
     Object.assign(spec(registry, id).gun, { baseAccuracy: 0.33, aimTimeS: 2 });
   }
-  Object.assign(spec(registry, 't14').gun, { baseAccuracy: 0.29, aimTimeS: 1.8 });
+  Object.assign(spec(registry, 'object148_proto').gun, { baseAccuracy: 0.29, aimTimeS: 1.8 });
 }

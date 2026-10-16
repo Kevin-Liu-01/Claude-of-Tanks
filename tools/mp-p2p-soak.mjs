@@ -83,7 +83,7 @@ const gameHost = argValue('host', 'harness') === 'game';
 const GAME_BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 // The harness's prediction reads `getSpec` from the saved registry (src/vehicles/specs.ts without the fleet's lazy
 // finalization): these ids exist there and in the host's fleet alike.
-const SPEC_IDS = ['m1a2', 't90m', 'strv103', 'kv2', 't90m_proryv'];
+const SPEC_IDS = ['m1a1_abrams_hc', 't90am', 'strv103b', 'kv2', 't90m_proryv'];
 
 /** §13.8 budgets (docs/MULTIPLAYER-V2.md). */
 const BUDGET = Object.freeze({

@@ -1155,18 +1155,18 @@ function weatherDrum(body: THREE.BufferGeometry, cx: number, transverse: boolean
     const along = transverse ? x - cx + L / 2 : z + L / 2;           // 0 .. L from one head
     const a = transverse ? Math.atan2(y, z) : Math.atan2(y, x - cx);  // round the axis, PI/2 on top
     const u = along / L;
-    let k0 = 1, k1 = 1, k2 = 1;
+    let k0 = 1, k1 = 1, xk2_black_panther = 1;
     // rust at the hoops (0.29 and 0.71 of the length), patchy round the drum
     const g0 = ((u - 0.29) * L) / 0.03, g1 = ((u - 0.71) * L) / 0.03;
     const hoopNear = Math.max(Math.exp(-(g0 * g0)), Math.exp(-(g1 * g1)));
     const patch = 0.5 + 0.5 * Math.sin(a * 3 + n(2) * 6) * Math.sin(a * 5 + n(3) * 6);
     const rust = hoopNear * (0.35 + 0.65 * patch);
-    k0 *= 1 + rust * 0.45; k1 *= 1 - rust * 0.18; k2 *= 1 - rust * 0.5;
+    k0 *= 1 + rust * 0.45; k1 *= 1 - rust * 0.18; xk2_black_panther *= 1 - rust * 0.5;
     // a fuel stain from the bung end down the crown, fading along the drum
     const da = Math.atan2(Math.sin(a - stainAt), Math.cos(a - stainAt));
     const stain = Math.exp(-((da / 0.32) ** 2)) * Math.max(0, 1 - u / (0.45 + 0.3 * n(4)));
     const dark = 1 - stain * 0.38;
-    col.setXYZ(i, col.getX(i) * k0 * dark, col.getY(i) * k1 * dark, col.getZ(i) * k2 * dark * 0.96);
+    col.setXYZ(i, col.getX(i) * k0 * dark, col.getY(i) * k1 * dark, col.getZ(i) * xk2_black_panther * dark * 0.96);
   }
   col.needsUpdate = true;
 }

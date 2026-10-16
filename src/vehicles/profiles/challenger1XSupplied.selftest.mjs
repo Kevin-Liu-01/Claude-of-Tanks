@@ -190,7 +190,7 @@ function surfacesAndAir(t,ms){
 }
 primitiveChecks();
 for(const quality of['high','low']){
- const t=createTank('challenger1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+ const t=createTank('challenger1_mk3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
   t.root.scale.setScalar(1 / 1.10); t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(n=>{if(n.isMesh&&!n.userData.shadowOnly)ms.push(n);});
   framesAndBore(t,ms);gear(t);surfacesAndAir(t,ms);sideCourses(t,ms);

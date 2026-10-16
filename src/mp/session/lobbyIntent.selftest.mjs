@@ -7,8 +7,8 @@ import { createLobbyIntent, lobbyRoomStatus } from './lobbyIntent.ts';
 const lobby = (over = {}) => ({
   roomCode: 'ABC123', mode: 'private', phase: 'waiting', mapId: 'verdant', hostId: 'host',
   players: [
-    { id: 'host', name: 'Host', team: 'alpha', specId: 'm1a2', ready: false, connected: true, isHost: true },
-    { id: 'guest', name: 'Guest', team: 'bravo', specId: 't90m', ready: true, connected: true, isHost: false },
+    { id: 'host', name: 'Host', team: 'alpha', specId: 'm1a1_abrams_hc', ready: false, connected: true, isHost: true },
+    { id: 'guest', name: 'Guest', team: 'bravo', specId: 't90am', ready: true, connected: true, isHost: false },
     { id: 'watcher', name: 'Watcher', team: 'spectator', specId: null, ready: false, connected: true, isHost: false },
   ],
   ...over,
@@ -58,7 +58,7 @@ assert.throws(() => createLobbyIntent({}), /requires its menu, Garage and prepar
   assert.deepEqual(h.calls, [['garage', { roomCode: 'ABC123', mode: 'private', ready: false, canSetReady: true, readyCount: 1, total: 2 }]]);
   await h.flush();
   assert.ok(h.preloaded.includes('presentation') && h.preloaded.includes('battle-modules') && h.preloaded.includes('visuals'));
-  assert.ok(h.preloaded.includes('builders:m1a2,t90m'), 'only the roster builders transfer (no spectator seat)');
+  assert.ok(h.preloaded.includes('builders:m1a1_abrams_hc,t90am'), 'only the roster builders transfer (no spectator seat)');
   assert.ok(h.preloaded.includes('prefetch:verdant:intent'), 'the fixed map warms with explicit intent');
   const transfers = () => h.preloaded.filter((entry) => !/^(prefetch|cancel-except):/.test(entry));
   const before = transfers().length;

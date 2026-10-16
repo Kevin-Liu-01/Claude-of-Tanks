@@ -39,8 +39,8 @@ function rangeMatch(shellRewind) {
   const match = createAuthoritativeMatch({
     mapId: 'verdant', seed: 4242, countdownS: 0,
     players: [
-      { id: 'shooter', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -80, yaw: 0 } },
-      { id: 'target', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 80, yaw: Math.PI / 2 } },
+      { id: 'shooter', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -80, yaw: 0 } },
+      { id: 'target', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 80, yaw: Math.PI / 2 } },
     ],
     shellRewind,
   });
@@ -138,7 +138,7 @@ function fireAt(match, point, ticks) {
   assert.equal(MAX_AUTHORITATIVE_PLAYERS, 64);
   const players = [];
   for (let index = 0; index < 28; index++) {
-    players.push({ id: `p${index}`, specId: index % 2 ? 't90m' : 'm1a2', team: index < 14 ? 'alpha' : 'bravo', bot: index % 4 === 3 });
+    players.push({ id: `p${index}`, specId: index % 2 ? 't90am' : 'm1a1_abrams_hc', team: index < 14 ? 'alpha' : 'bravo', bot: index % 4 === 3 });
   }
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 77, countdownS: 0, players });
   match.onMatchReady();
@@ -151,6 +151,6 @@ function fireAt(match, point, ticks) {
   }
   for (let tick = 0; tick < 30; tick++) match.step({ dt: 1 / 60, inputs: new Map() });
   assert.ok(match.entities.every((entity) => Number.isFinite(entity.state.pos.x)));
-  assert.throws(() => createAuthoritativeMatch({ players: Array.from({ length: 65 }, (_, i) => ({ id: `x${i}`, specId: 'm1a2', team: 'alpha' })) }), /1-64/);
+  assert.throws(() => createAuthoritativeMatch({ players: Array.from({ length: 65 }, (_, i) => ({ id: `x${i}`, specId: 'm1a1_abrams_hc', team: 'alpha' })) }), /1-64/);
   console.log('poseHistory.selftest: a 28-tank roster spawns without overlap and steps; 65 is refused');
 }

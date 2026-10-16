@@ -3,11 +3,11 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 
-await ensureInteriorFills(['type96b_x']);
-assert.ok(hasInteriorFills('type96b_x'), 'actual generated Type96 fill data is required');
+await ensureInteriorFills(['type96b']);
+assert.ok(hasInteriorFills('type96b'), 'actual generated Type96 fill data is required');
 const rows=[];
 for(const quality of ['high','low']) {
-  const tank=createTank('type96b_x',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
+  const tank=createTank('type96b',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try {
     const hull=tank.root.getObjectByName('rig_hull'),turret=tank.root.getObjectByName('rig_turret');
     const pivot=turret.position.clone();

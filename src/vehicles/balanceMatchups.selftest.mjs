@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { BALANCE_SCENARIOS } from './balanceScenarios.ts';
 import { runBalanceDuel, runBalanceSeries } from './balanceSimulation.ts';
 
-const deterministicA = runBalanceDuel({ aId: 'm1a2', bId: 'm1a2', seed: 8675309 });
-const deterministicB = runBalanceDuel({ aId: 'm1a2', bId: 'm1a2', seed: 8675309 });
+const deterministicA = runBalanceDuel({ aId: 'm1a1_abrams_hc', bId: 'm1a1_abrams_hc', seed: 8675309 });
+const deterministicB = runBalanceDuel({ aId: 'm1a1_abrams_hc', bId: 'm1a1_abrams_hc', seed: 8675309 });
 assert.deepEqual(deterministicA, deterministicB,
   'the same roster, seed and range setup reproduce an identical duel');
 

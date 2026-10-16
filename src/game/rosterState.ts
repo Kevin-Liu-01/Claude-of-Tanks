@@ -388,7 +388,7 @@ function* buildRosterVisual(
 
 // PERF r3: specs whose closeup contract shots (tank_closeup_*) frame the
 // vehicle at 3-6 m — always hero texture tier regardless of roster role.
-const HERO_TEX_SPECS = new Set(['m1a2', 't90m']);
+const HERO_TEX_SPECS = new Set(['m1a1_abrams_hc', 't90am']);
 
 function textureQualityFor(game: RosterGameState, ent: RosterEntity): NonNullable<CreateTankOptions['quality']> {
   // The first participant is the player before setupBattle stamps isPlayer.

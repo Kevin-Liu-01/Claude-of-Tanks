@@ -129,11 +129,11 @@ console.log('[1] a parked human across the route: the committed passing path is 
 // escape to open room to turn before the passing path.
 for (const team of ['player', 'enemy']) {
   for (const [specId, dx, dz, deg] of [
-    ['type99a', 2, 10, 160], ['type99a', 4, 10, -135], ['type99a', 3, 12, 110], ['type99a', 1, 8, 180],
-    ['m1a2', 1, 10, 135], ['m1a2', 2, 10, -160], ['m1a2', 1, 9, 110],
+    ['ztz99_longwei', 2, 10, 160], ['ztz99_longwei', 4, 10, -135], ['ztz99_longwei', 3, 12, 110], ['ztz99_longwei', 1, 8, 180],
+    ['m1a1_abrams_hc', 1, 10, 135], ['m1a1_abrams_hc', 2, 10, -160], ['m1a1_abrams_hc', 1, 9, 110],
   ]) {
     const bot = entity('a-bot', specId, team, 0, 0, 0);
-    const human = entity('z-human', 'm1a2', team, dx, dz, deg * Math.PI / 180);
+    const human = entity('z-human', 'm1a1_abrams_hc', team, dx, dz, deg * Math.PI / 180);
     human.isPlayer = true;
     const ctl = controller(bot, { allies: [human] });
     ctl.setWaypoints([[0, 200]], { loop: false });
@@ -151,8 +151,8 @@ console.log('[2] the bounded yield: a parked human in a walled lane is given way
 for (const team of ['player', 'enemy']) {
   // walls beside the human close the ordinary passing lane on both sides; the wider lane round them is open
   const walls = [box(7, 8, 10, 22), box(-10, 8, -7, 22)];
-  const bot = entity('a-bot', 'type99a', team, 0, 0, 0);
-  const human = entity('z-human', 'm1a2', team, 0, 16, Math.PI / 2);
+  const bot = entity('a-bot', 'ztz99_longwei', team, 0, 0, 0);
+  const human = entity('z-human', 'm1a1_abrams_hc', team, 0, 16, Math.PI / 2);
   human.isPlayer = true;
   const ctl = controller(bot, { allies: [human], getObstacles: () => walls });
   ctl.setWaypoints([[0, 200]], { loop: false });
@@ -170,8 +170,8 @@ for (const team of ['player', 'enemy']) {
 }
 for (const team of ['player', 'enemy']) {
   // control: a lead moving at 3 m/s ahead in the lane is traffic, not a parked hull
-  const bot = entity('z-follow', 'm1a2', team, 0, 0, 0);
-  const lead = entity('a-lead', 'm1a2', team, 0, 14, 0);
+  const bot = entity('z-follow', 'm1a1_abrams_hc', team, 0, 0, 0);
+  const lead = entity('a-lead', 'm1a1_abrams_hc', team, 0, 14, 0);
   const ctl = controller(bot, { allies: [lead] });
   ctl.setWaypoints([[0, 400]], { loop: false });
   let closest = Infinity;
@@ -187,7 +187,7 @@ for (const team of ['player', 'enemy']) {
 console.log('[3] oncoming traffic passes side by side instead of stopping on every predicted crossing');
 // The nose-to-nose gap stop fired on hulls that were passing outside the lane: every stop ended the predicted
 // crossing and every restart re-armed it, 40-365 stops and 19-36 s per pair.
-for (const [specA, specB, gap, offset] of [['m1a2', 'm1a2', 28, 0], ['type99a', 'leclerc', 32, 1], ['k2', 'm1a2', 26, -1]]) {
+for (const [specA, specB, gap, offset] of [['m1a1_abrams_hc', 'm1a1_abrams_hc', 28, 0], ['ztz99_longwei', 'leclerc_s2', 32, 1], ['xk2_black_panther', 'm1a1_abrams_hc', 26, -1]]) {
   const a = entity('a-route', specA, 'player', 0, 0);
   const b = entity('z-route', specB, 'player', offset, gap, Math.PI);
   const ca = controller(a, { allies: [b] });
@@ -216,9 +216,9 @@ function smokeOnly(hp, ammo = [0, 0, 12]) {
   const bot = entity('bot', 'challenger2', 'enemy', 0, 0, 0, hp);
   bot.combat.ammo = ammo.slice();
   bot.combat.ammoCapacity = [16, 16, 12];
-  const host = entity('host', 'm1a2', 'player', 8, 80, Math.PI);
+  const host = entity('host', 'm1a1_abrams_hc', 'player', 8, 80, Math.PI);
   host.isPlayer = true;
-  const teammate = entity('mate', 't90m', 'enemy', -450, -450); // 636 m off: no support to retire to
+  const teammate = entity('mate', 't90am', 'enemy', -450, -450); // 636 m off: no support to retire to
   const ctl = controller(bot, { enemies: [host], allies: [teammate], seed: 91 });
   return { bot, host, ctl };
 }
@@ -258,7 +258,7 @@ function zoneHolder({ blocked }) {
   bot.combat.ammo = [20, 0, 0]; // the kinetic round only: no HE burst to fall back on
   bot.combat.ammoCapacity = [20, 20, 20];
   // bow on at the zone's far edge: the Type 59's rounds shut on its front (ratio 0.8) and open on its side
-  const foe = entity('foe', 'leo2a7v', 'player', 0, 85, Math.PI);
+  const foe = entity('foe', 'leo2_improved', 'player', 0, 85, Math.PI);
   const ctl = controller(bot, {
     enemies: [foe], getObjective: () => zone, getObstacles: () => walls,
     ...(blocked ? { raycast: boxRaycast(walls) } : {}),
@@ -285,7 +285,7 @@ console.log('[6] a mission route that ends short of its objective releases the h
 {
   const zone = { mission: 'assault', x: 0, z: 400, radiusM: 30 };
   const bot = entity('attacker', 'm60a3', 'enemy', 0, 0, 0);
-  const foe = entity('defender', 'leo2a7v', 'player', 0, 330, Math.PI);
+  const foe = entity('defender', 'leo2_improved', 'player', 0, 330, Math.PI);
   // the planner's best reaches z = 140: beyond it lies another connected component for this hull
   const planRoute = (start) => (start.z < 134 ? [[0, Math.min(140, start.z + 60)], [0, 140]] : [[start.x, start.z]]);
   const ctl = controller(bot, { enemies: [foe], getObjective: () => zone, planRoute });
@@ -321,13 +321,13 @@ function arrivalRun(specId, walls) {
   } });
   return { arrivedS, reverses, path };
 }
-for (const specId of ['m1a2', 'type59']) {
+for (const specId of ['m1a1_abrams_hc', 'type59']) {
   const { arrivedS, reverses, path } = arrivalRun(specId, []);
   ok(arrivedS !== null && reverses === 0 && path < 1,
     `${specId}: arrived at ${arrivedS?.toFixed(0) ?? 'never'} s, then ${reverses} reverses and ${path.toFixed(1)} m in 90 s`);
 }
 {
-  const { reverses } = arrivalRun('m1a2', [box(-40, 12, 40, 14)]);
+  const { reverses } = arrivalRun('m1a1_abrams_hc', [box(-40, 12, 40, 14)]);
   ok(reverses >= 1, `control: a hull wedged on a wall short of the zone still backs off (${reverses} reverses)`);
 }
 

@@ -655,5 +655,5 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
 }
 
 export const PUMA_S1_PROFILES = Object.freeze({
-  spz_puma_s1: Object.freeze({ build: buildPumaS1 }),
+  spz_wotan: Object.freeze({ build: buildPumaS1 }),
 }) satisfies VehicleProfileRecord;

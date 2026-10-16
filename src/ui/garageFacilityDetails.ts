@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import type { GarageVariant } from '../game/garageVariants.ts';
 import type { GeometryBuckets } from '../world/maps/exteriorDetailKit.ts';
@@ -15,6 +16,7 @@ import {
   LEOPARD_MOBILITY_FLOOR,
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
+import { garageContactShadowTexture } from './garageYardWear.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -37,9 +39,17 @@ interface GarageFacilityDetailStats {
 }
 
 interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
-  readonly meshes: readonly THREE.InstancedMesh[];
-  readonly materials: readonly THREE.MeshStandardMaterial[];
+  readonly meshes: readonly THREE.Mesh[];
+  readonly materials: readonly THREE.Material[];
 }
+
+/**
+ * The building surfaces (the redesign, 2026-10-11: "halls, shelters, cranes and gantries built like real buildings"):
+ * walls, roofs and slabs mapped at their real size, one merged mesh per surface, unlike the instanced members whose
+ * texture spans each face. Sheeting is trapezoidal steel (walls: ribs vertical; roofs: ribs down the slope).
+ */
+type FacilitySurface = 'sheeting' | 'roofing' | 'brick' | 'render' | 'timber' | 'glazing';
+type SurfaceMaps = Readonly<{ color: THREE.Texture | null; normal: THREE.Texture | null }>;
 
 interface FacilityBuildOptions {
   readonly buckets: GeometryBuckets;
@@ -52,6 +62,10 @@ interface FacilityBuildOptions {
   >>;
   readonly groundAtWorld: (x: number, z: number) => number;
   readonly variant: GarageVariant;
+  /** Real-size building surface textures; a surface without maps falls back to its flat colour. */
+  readonly surfaces?: Readonly<Partial<Record<'sheeting' | 'brick' | 'render' | 'timber', SurfaceMaps>>>;
+  /** Metres per texture repeat for the shared building surfaces. */
+  readonly sheetingTileM?: number;
 }
 
 interface GarageFacilityTerrace {
@@ -226,6 +240,8 @@ export function addGarageFacilityDetails({
   surfaceMaps,
   groundAtWorld,
   variant,
+  surfaces,
+  sheetingTileM = 2,
 }: FacilityBuildOptions): GarageFacilityDetailBuild {
   buckets.baked ||= [];
   let facilityProps = 0;
@@ -257,6 +273,9 @@ export function addGarageFacilityDetails({
   const unitCylinders = new Map<number, THREE.CylinderGeometry>();
   const boxInstances: PrimitiveInstance[] = [];
   const cylinderInstances = new Map<number, PrimitiveInstance[]>();
+  // Two cylinder resolutions, one draw each (2026-10-11: the four or five segment counts each drew alone, and the
+  // building surfaces needed those draws): pipes and posts at ten sides, drums, tanks and rollers at sixteen.
+  const cylinderTier = (segments: number): number => (segments > 10 ? 16 : 10);
   const unitCylinder = (segments: number): THREE.CylinderGeometry => {
     let geometry = unitCylinders.get(segments);
     if (!geometry) {
@@ -318,14 +337,15 @@ export function addGarageFacilityDetails({
     segments = 10,
     materialClass: PrimitiveInstance['materialClass'] = 'equipment',
   ): void => {
-    unitCylinder(segments);
-    const instances = cylinderInstances.get(segments) || [];
+    const tier = cylinderTier(segments);
+    unitCylinder(tier);
+    const instances = cylinderInstances.get(tier) || [];
     instances.push({
       matrix: transform(side, depth, y, [radius, height, radius], yaw, rotationX, rotationZ),
       color: color.clone(),
       materialClass,
     });
-    cylinderInstances.set(segments, instances);
+    cylinderInstances.set(tier, instances);
     facilityProps += 1;
   };
 
@@ -333,12 +353,17 @@ export function addGarageFacilityDetails({
     readonly x: number;
     readonly z: number;
     readonly baseY: number;
+    /** The cluster's heading; the yard grid's axis unless the cluster belongs to a vehicle bay. */
+    readonly yaw?: number;
   }
 
+  // A bay's shelter stands square to the vehicle it houses, open toward the yard (the redesign, 2026-10-11, wave 393:
+  // "the gantry's poles run through its walkway": the old grid-aligned frame crossed the turned exhibit's own kit).
   const bayCluster = (pose: GarageWorkshopBayPose): FacilityCluster => ({
     x: pose.x,
     z: pose.z,
     baseY: groundAtWorld(pose.x, pose.z),
+    yaw: pose.yaw,
   });
 
   const fixedCluster = (side: number, depth: number): FacilityCluster => {
@@ -355,19 +380,20 @@ export function addGarageFacilityDetails({
     rotationX = 0,
     rotationZ = 0,
   ): THREE.Matrix4 => {
-    // Facility facades stay parallel to the hero/rear wall. Only the cluster
-    // center follows the real exhibit. This preserves the deliberate Garage
-    // grid while making each shelter physically belong to its vehicle bay.
-    const yaw = GARAGE_FACILITY_AXIS_YAW_RAD;
+    // Facility facades stay parallel to the hero/rear wall unless the cluster is a vehicle bay's shelter, which turns
+    // with its vehicle. Pitch and roll apply in the cluster's own frame, then its heading.
+    const yaw = cluster.yaw ?? GARAGE_FACILITY_AXIS_YAW_RAD;
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
+    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
+      .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(rotationX, 0, rotationZ)));
     return new THREE.Matrix4().compose(
       new THREE.Vector3(
         cluster.x + cos * lateral + sin * longitudinal,
         cluster.baseY + y,
         cluster.z - sin * lateral + cos * longitudinal,
       ),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(rotationX, yaw, rotationZ)),
+      rotation,
       new THREE.Vector3(...scale),
     );
   };
@@ -378,7 +404,7 @@ export function addGarageFacilityDetails({
     longitudinal: number,
     y: number,
   ): THREE.Vector3 => {
-    const yaw = GARAGE_FACILITY_AXIS_YAW_RAD;
+    const yaw = cluster.yaw ?? GARAGE_FACILITY_AXIS_YAW_RAD;
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
     return new THREE.Vector3(
@@ -449,8 +475,9 @@ export function addGarageFacilityDetails({
     segments = 12,
     rotationZ = 0,
   ): void => {
-    unitCylinder(segments);
-    const instances = cylinderInstances.get(segments) || [];
+    const tier = cylinderTier(segments);
+    unitCylinder(tier);
+    const instances = cylinderInstances.get(tier) || [];
     instances.push({
       matrix: clusterMatrix(
         cluster, lateral, longitudinal, y, [radius, height, radius], rotationX, rotationZ,
@@ -458,64 +485,139 @@ export function addGarageFacilityDetails({
       color: color.clone(),
       materialClass: 'equipment',
     });
-    cylinderInstances.set(segments, instances);
+    cylinderInstances.set(tier, instances);
     facilityProps += 1;
   };
 
-  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster, deckLateralSign = 0): void => {
-    // One continuous slab and four explicit reinforced footings establish a
-    // common datum. Every column, roof rail, brace and machine below derives
-    // from this one baseY; terrain variation can no longer pull joints apart.
-    // The bay's floor is the pack's own hardstand pad (the exhibit and its crew stand at the datum); only the service
-    // pit's steel grating marks it here, flush with the slab (2026-10-10: the old 20 cm brick deck buried them).
-    clusterBox(cluster, 0, 0.2, 0.035, 2.45, 0.03, 6.4, dark, 'equipment');
-    for (const lateral of [-4.65, 4.65]) {
-      for (const longitudinal of [-3.65, 3.65]) {
-        clusterBox(cluster, lateral, longitudinal, 0.12,
-          0.92, 0.24, 0.92, dark, 'masonry');
-        clusterBox(cluster, lateral, longitudinal, 2.82,
-          0.38, 5.4, 0.38, steel, 'structure');
-        clusterBox(cluster, lateral, longitudinal, 5.36,
-          0.88, 0.14, 0.88, accent, 'painted');
-      }
-      clusterBox(cluster, lateral, 0, 5.42,
-        0.42, 0.34, 7.7, steel, 'structure');
-      // Exact endpoint beams terminate in the column and crosshead. Avoid
-      // Euler-rotated decorative bars: their apparent joints changed with
-      // Garage yaw and caused the visibly floating braces in orbit views.
-      for (const longitudinal of [-1.86, 1.86]) {
-        const inward = lateral < 0 ? 1 : -1;
-        // the inspection overhang and its ladder stand on one side: no brace runs through them (wave 377: "yellow
-        // diagonals piercing the deck and ladder at random angles")
-        if (deckLateralSign !== 0 && Math.sign(lateral) === deckLateralSign) continue;
-        clusterBeam(cluster,
-          [lateral, longitudinal, 0.42],
-          [lateral + inward * 1.42, longitudinal, 5.18],
-          0.18, safety, 'painted');
+  // Building surfaces at their real size: each box's six faces take UVs from their own metres, so sheeting ribs, brick
+  // courses and plank widths keep one scale on a 0.3 m fascia and on a 20 m wall.
+  const surfaceGeometries = new Map<FacilitySurface, THREE.BufferGeometry[]>();
+  const surfaceTile: Readonly<Record<FacilitySurface, number>> = Object.freeze({
+    sheeting: sheetingTileM, roofing: sheetingTileM, brick: 2, render: 2.4, timber: 2, glazing: 1,
+  });
+  /**
+   * A box of one building surface in a cluster's frame. `ribsAcross` turns the top and bottom faces' mapping so roof
+   * sheeting ribs run down a slope that falls across the cluster (laterally) instead of along it.
+   */
+  const clusterSurface = (
+    cluster: FacilityCluster,
+    surface: FacilitySurface,
+    lateral: number,
+    longitudinal: number,
+    y: number,
+    width: number,
+    height: number,
+    length: number,
+    options: Readonly<{ rotationX?: number; rotationZ?: number; ribsAcross?: boolean }> = {},
+  ): void => {
+    const geometry = new THREE.BoxGeometry(width, height, length);
+    const uv = geometry.getAttribute('uv') as THREE.BufferAttribute;
+    const tile = surfaceTile[surface];
+    // BoxGeometry faces: +X, -X, +Y, -Y, +Z, -Z, four vertices each
+    const spans: ReadonlyArray<readonly [number, number]> = [
+      [length, height], [length, height], [width, length], [width, length], [width, height], [width, height],
+    ];
+    for (let face = 0; face < 6; face += 1) {
+      const [su, sv] = spans[face];
+      const across = options.ribsAcross && (face === 2 || face === 3);
+      for (let vertex = 0; vertex < 4; vertex += 1) {
+        const i = face * 4 + vertex;
+        const u = uv.getX(i) * su / tile, v = uv.getY(i) * sv / tile;
+        if (across) uv.setXY(i, v, u); else uv.setXY(i, u, v);
       }
     }
-    for (const longitudinal of [-3.65, 3.65]) {
-      clusterBox(cluster, 0, longitudinal, 5.44,
-        9.7, 0.42, 0.46, steel, 'structure');
+    geometry.applyMatrix4(clusterMatrix(cluster, lateral, longitudinal, y, [1, 1, 1],
+      options.rotationX ?? 0, options.rotationZ ?? 0));
+    facilityProps += 1;
+    // render and planks ride the pack's own plaster and wood buckets (same albedos, no extra draw)
+    if (surface === 'render' || surface === 'timber') {
+      const bucket = surface === 'render' ? 'plaster2' : 'wood';
+      (buckets[bucket] ||= []).push(geometry);
+      return;
     }
+    const list = surfaceGeometries.get(surface) || [];
+    list.push(geometry);
+    surfaceGeometries.set(surface, list);
+  };
 
-    // Corrugated-looking roof strips overlap on supported purlins instead of
-    // hovering as one enormous slab. A gutter and downpipe close the edge.
-    for (const longitudinal of [-2.9, -1.45, 0, 1.45, 2.9]) {
-      clusterBox(cluster, 0, longitudinal, 5.68,
-        10.15, 0.13, 1.52, roofing, 'painted');
-      clusterBox(cluster, 0, longitudinal, 5.60,
-        9.72, 0.16, 0.18, steel, 'structure');
+  // The outdoor service shelters (the redesign, 2026-10-11; waves 377 and 393: "the gantry is a jumble of columns with
+  // yellow diagonals piercing the deck and ladder", "the camera looks down through a cage-like timber frame"): one
+  // portal-frame building per bay. Four columns on footings carry a mono-pitch roof of trapezoidal sheeting that falls
+  // to a gutter at the back; the back wall and the far side are clad, so the bay reads as a shelter with an open front;
+  // short knee braces stiffen the front portal only; the bridge crane runs on brackets under the rafters.
+  const BAY_HALF_W = 4.65;
+  const BAY_HALF_L = 3.65;
+  const FRONT_EAVE_Y = 6.0;
+  const BACK_EAVE_Y = 5.45;
+  const bayRoofY = (longitudinal: number): number => BACK_EAVE_Y
+    + (FRONT_EAVE_Y - BACK_EAVE_Y) * ((longitudinal + BAY_HALF_L) / (2 * BAY_HALF_L));
+  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster, deckLateralSign = 0, cladLateralSign = -deckLateralSign): void => {
+    // The bay's floor is the pack's own hardstand pad; only the service pit's steel grating marks it, flush with it.
+    clusterBox(cluster, 0, 0.2, 0.035, 2.45, 0.03, 6.4, dark, 'equipment');
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      for (const longitudinal of [-BAY_HALF_L, BAY_HALF_L]) {
+        const top = bayRoofY(longitudinal) - 0.18;
+        clusterBox(cluster, lateral, longitudinal, 0.12, 0.92, 0.24, 0.92, dark, 'masonry');
+        clusterBox(cluster, lateral, longitudinal, top / 2, 0.36, top, 0.36, steel, 'structure');
+        // base plate and cap plate
+        clusterBox(cluster, lateral, longitudinal, 0.27, 0.56, 0.06, 0.56, steel, 'structure');
+        clusterBox(cluster, lateral, longitudinal, top, 0.5, 0.08, 0.5, steel, 'structure');
+      }
+      // the rafter on each column line follows the roof pitch from the back column to the front one
+      clusterBeam(cluster,
+        [lateral, -BAY_HALF_L - 0.45, bayRoofY(-BAY_HALF_L - 0.45) - 0.14],
+        [lateral, BAY_HALF_L + 0.45, bayRoofY(BAY_HALF_L + 0.45) - 0.14],
+        0.3, steel, 'structure');
     }
-    clusterBox(cluster, 4.90, 0, 5.43, 0.20, 0.24, 8.0,
-      roofing, 'painted');
-    clusterBox(cluster, 4.90, 3.40, 2.70, 0.16, 5.45, 0.16,
-      dark, 'structure');
+    // front and back portal beams, front knee braces short and square to the frame (no brace crosses the deck)
+    for (const longitudinal of [-BAY_HALF_L, BAY_HALF_L]) {
+      clusterBox(cluster, 0, longitudinal, bayRoofY(longitudinal) - 0.32,
+        2 * BAY_HALF_W + 0.36, 0.42, 0.34, steel, 'structure');
+    }
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      if (deckLateralSign !== 0 && Math.sign(lateral) === deckLateralSign) continue;
+      const inward = lateral < 0 ? 1 : -1;
+      clusterBeam(cluster,
+        [lateral, BAY_HALF_L, FRONT_EAVE_Y - 1.45],
+        [lateral + inward * 0.95, BAY_HALF_L, FRONT_EAVE_Y - 0.52],
+        0.16, steel, 'structure');
+    }
+    // purlins across the rafters, then the roof sheeting with a 0.45 m overhang all round
+    const pitch = Math.atan2(FRONT_EAVE_Y - BACK_EAVE_Y, 2 * BAY_HALF_L);
+    for (let i = 0; i <= 5; i += 1) {
+      const longitudinal = -BAY_HALF_L - 0.3 + i * ((2 * BAY_HALF_L + 0.6) / 5);
+      clusterBox(cluster, 0, longitudinal, bayRoofY(longitudinal) + 0.05,
+        2 * BAY_HALF_W + 0.9, 0.16, 0.12, steel, 'structure');
+    }
+    clusterSurface(cluster, 'roofing', 0, 0, bayRoofY(0) + 0.17,
+      2 * BAY_HALF_W + 1.0, 0.05, (2 * BAY_HALF_L + 0.9) / Math.cos(pitch), { rotationX: -pitch });
+    // fascia on the high front edge, gutter and two downpipes at the low back edge
+    clusterBox(cluster, 0, BAY_HALF_L + 0.47, FRONT_EAVE_Y + 0.12, 2 * BAY_HALF_W + 1.0, 0.26, 0.05, roofing, 'painted');
+    clusterBox(cluster, 0, -BAY_HALF_L - 0.5, BACK_EAVE_Y + 0.06, 2 * BAY_HALF_W + 1.0, 0.16, 0.18, dark, 'painted');
+    for (const lateral of [-BAY_HALF_W + 0.3, BAY_HALF_W - 0.3]) {
+      clusterBox(cluster, lateral, -BAY_HALF_L - 0.52, BACK_EAVE_Y / 2, 0.11, BACK_EAVE_Y, 0.11, dark, 'painted');
+    }
+    // the back wall clad from a concrete upstand to the rafters; the far side clad over its back half
+    clusterSurface(cluster, 'render', 0, -BAY_HALF_L - 0.2, 0.3, 2 * BAY_HALF_W + 0.4, 0.6, 0.26);
+    clusterSurface(cluster, 'sheeting', 0, -BAY_HALF_L - 0.24, 0.6 + (BACK_EAVE_Y - 0.75) / 2,
+      2 * BAY_HALF_W + 0.36, BACK_EAVE_Y - 0.75, 0.05);
+    for (const y of [1.9, 3.6]) {
+      clusterBox(cluster, 0, -BAY_HALF_L - 0.17, y, 2 * BAY_HALF_W, 0.14, 0.08, steel, 'structure');
+    }
+    if (cladLateralSign !== 0) {
+      const far = cladLateralSign * (BAY_HALF_W + 0.22);
+      clusterSurface(cluster, 'render', far - cladLateralSign * 0.02, -BAY_HALF_L / 2, 0.3, 0.26, 0.6, BAY_HALF_L + 0.2);
+      clusterSurface(cluster, 'sheeting', far, -BAY_HALF_L / 2, 0.6 + (bayRoofY(-BAY_HALF_L / 2) - 0.85) / 2,
+        0.05, bayRoofY(-BAY_HALF_L / 2) - 0.85, BAY_HALF_L + 0.2);
+      clusterBox(cluster, far - cladLateralSign * 0.05, -BAY_HALF_L / 2, 2.6, 0.08, 0.14, BAY_HALF_L + 0.2, steel, 'structure');
+    }
   };
 
   const addPurposeBuiltServiceBay = (
     pose: GarageWorkshopBayPose,
     mirror: -1 | 1,
+    withCrane = true,
+    withDeck = true,
   ): void => {
     const cluster = bayCluster(pose);
     facilityStations += 1;
@@ -528,117 +630,90 @@ export function addGarageFacilityDetails({
     servicePurposeTags.add('overhead-travelling-crane');
     servicePurposeTags.add('grounded-service-pit');
 
-    addPurposeBuiltServiceBayFrame(cluster, Math.sign(-mirror * 3.55));
+    addPurposeBuiltServiceBayFrame(cluster, withDeck ? -mirror : 0, mirror);
 
-    // Bridge crane: runway rails sit on the column heads, the bridge spans
-    // between them, and a visible trolley/chain/hook terminates over the real
-    // tank or component at this bay center.
-    for (const lateral of [-4.35, 4.35]) {
-      clusterBox(cluster, lateral, 0, 5.23,
-        0.22, 0.20, 7.2, safety, 'painted');
+    // Bridge crane: runway beams on brackets inside the rafters, the bridge spanning them, a trolley with its hook
+    // block, a spreader beam and two slings over the bay centre. The Burlak's own turret gantry does its lift, so its
+    // shelter carries none.
+    const runwayY = BACK_EAVE_Y - 0.55;
+    if (withCrane) for (const lateral of [-4.3, 4.3]) {
+      clusterBox(cluster, lateral, 0, runwayY, 0.24, 0.3, 2 * BAY_HALF_L - 0.2, safety, 'painted');
+      for (const longitudinal of [-BAY_HALF_L + 0.25, BAY_HALF_L - 0.25]) {
+        clusterBox(cluster, lateral + Math.sign(lateral) * 0.18, longitudinal, runwayY + 0.1, 0.34, 0.12, 0.3, steel, 'structure');
+      }
     }
-    clusterBox(cluster, 0, mirror * 0.55, 5.12,
-      8.85, 0.30, 0.42, safety, 'painted');
-    clusterBox(cluster, mirror * 0.8, mirror * 0.55, 4.86,
-      0.72, 0.40, 0.68, dark, 'equipment');
-    clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, 3.78,
-      0.035, 1.78, steel, 0, 8);
-    clusterBox(cluster, mirror * 0.8, mirror * 0.55, 2.84,
-      0.42, 0.20, 0.18, steel, 'equipment', 0.48);
-
-    // A real spreader beam and paired slings distribute the lift over a tank
-    // assembly instead of terminating in one implausible point hook.
-    clusterBox(cluster, mirror * 0.8, mirror * 0.55, 3.24,
-      2.8, 0.16, 0.20, safety, 'painted');
-    for (const lateralOffset of [-1.22, 1.22]) {
-      clusterBeam(cluster,
-        [mirror * 0.8, mirror * 0.55, 3.24],
-        [mirror * 0.8 + lateralOffset, mirror * 0.55, 2.48],
-        0.035, steel, 'equipment');
+    if (withCrane) {
+      clusterBox(cluster, 0, mirror * 0.55, runwayY - 0.12, 8.85, 0.34, 0.42, safety, 'painted');
+      clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 0.42, 0.72, 0.4, 0.68, dark, 'equipment');
+      clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, runwayY - 1.4, 0.04, 1.6, steel, 0, 8);
+      clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 2.28, 0.42, 0.24, 0.2, steel, 'equipment', 0.48);
+      clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 2.5, 2.8, 0.16, 0.2, safety, 'painted');
+      for (const lateralOffset of [-1.22, 1.22]) {
+        clusterBeam(cluster,
+          [mirror * 0.8, mirror * 0.55, runwayY - 2.5],
+          [mirror * 0.8 + lateralOffset, mirror * 0.55, runwayY - 3.2],
+          0.05, steel, 'equipment');
+      }
+      structuralConnections += 6;
     }
-    structuralConnections += 6;
 
-    // Column-supported inspection overhang. Its floor, toe board, rails and
-    // ladder all terminate at the service-bay frame, making the elevated
-    // access believable from the rear and side orbit views.
-    const deckSide = -mirror * 3.55;
-    clusterBox(cluster, deckSide, 1.55, 3.36,
-      1.35, 0.18, 3.2, steel, 'structure');
+    // Column-supported inspection deck on the open side, its rails and a steel ladder to it, all inside the frame. The
+    // T-90M bay works its turret on the ground, so it has none (wave 398: the deck stood against the turret). It stands
+    // 0.9 m clear of the Burlak's own turret gantry, whose legs read through it from the yard (wave 408: "braces that
+    // pass through the deck without meeting any joint").
+    const deckSide = -mirror * 4.0;
+    if (withDeck) {
+    clusterBox(cluster, deckSide, 1.55, 3.36, 1.35, 0.18, 3.2, steel, 'structure');
     for (const longitudinal of [0.25, 2.85]) {
-      clusterBox(cluster, deckSide, longitudinal, 1.72,
-        0.16, 3.36, 0.16, steel, 'structure');
-      clusterBox(cluster, deckSide, longitudinal, 4.02,
-        0.12, 1.18, 0.12, safety, 'painted');
+      clusterBox(cluster, deckSide, longitudinal, 1.72, 0.16, 3.36, 0.16, steel, 'structure');
+      clusterBox(cluster, deckSide, longitudinal, 4.02, 0.08, 1.18, 0.08, safety, 'painted');
     }
-    for (const y of [3.60, 4.36]) {
-      clusterBox(cluster, deckSide, 1.55, y,
-        0.12, 0.10, 3.28, safety, 'painted');
+    for (const y of [3.85, 4.5]) {
+      clusterBox(cluster, deckSide, 1.55, y, 0.08, 0.07, 3.28, safety, 'painted');
     }
-    for (let rung = 0; rung < 7; rung += 1) {
-      clusterBox(cluster, deckSide - mirror * 0.72, 0.30,
-        0.48 + rung * 0.43, 1.15, 0.08, 0.10, steel, 'structure');
+    for (const rail of [-0.3, 0.3]) {
+      clusterBox(cluster, deckSide - mirror * 0.72 + rail, 0.3, 1.8, 0.07, 3.6, 0.07, steel, 'structure');
+    }
+    for (let rung = 0; rung < 8; rung += 1) {
+      clusterBox(cluster, deckSide - mirror * 0.72, 0.3, 0.38 + rung * 0.4, 0.62, 0.05, 0.06, steel, 'structure');
     }
     structuralConnections += 18;
+    }
 
-    // Camera-facing opening convention: local +longitudinal points toward the
-    // opening camera, so the service backplane belongs on the negative side
-    // of the real tank. The old +3.58 placement put a solid dark wall between
-    // Frosthollow's camera and its Abrams. Split panels and open gaps retain a
-    // readable tool wall without ever becoming one vehicle-height occluder.
-    // Open tool racks, not boards (2026-10-10, wave 377: "three pale grey panels with black speckled, torn edges hang
-    // across the lower half of the frame, hiding the turret"): two rails per bay carry the hung tools, and the bay stays
-    // visible through them from every side.
+    // The tool wall hangs on the clad back wall: two rails per bay carry graded spanners, hammers, a pry bar and a coil
+    // of air line; a timber bench and a red tool cabinet stand below it.
+    const wall = -BAY_HALF_L - 0.12;
     const toolSteel = new THREE.Color(0x5a5e60);
     for (const lateral of [-3.05, 0, 3.05]) {
+      clusterSurface(cluster, 'timber', lateral, wall + 0.02, 1.55, 2.5, 1.3, 0.04);
       for (const railY of [1.15, 1.98]) {
-        clusterBox(cluster, lateral, -4.08, railY, 2.38, 0.06, 0.08, steel, 'structure');
+        clusterBox(cluster, lateral, wall + 0.06, railY, 2.38, 0.05, 0.06, steel, 'structure');
       }
-      // hung hand tools: spanners in a graded row, two hammers, a pry bar and a coil of air line
       for (let spanner = 0; spanner < 7; spanner += 1) {
-        clusterBox(cluster, lateral - 0.9 + spanner * 0.16, -3.97, 1.92,
+        clusterBox(cluster, lateral - 0.9 + spanner * 0.16, wall + 0.09, 1.92,
           0.035, 0.18 + spanner * 0.035, 0.03, toolSteel, 'equipment');
       }
       for (const offset of [-0.55, -0.32]) {
-        clusterBox(cluster, lateral + offset, -3.97, 1.18, 0.05, 0.42, 0.04, toolSteel, 'equipment');
-        clusterBox(cluster, lateral + offset, -3.97, 1.4, 0.16, 0.06, 0.06, dark, 'equipment');
+        clusterBox(cluster, lateral + offset, wall + 0.09, 1.18, 0.05, 0.42, 0.04, toolSteel, 'equipment');
+        clusterBox(cluster, lateral + offset, wall + 0.09, 1.4, 0.16, 0.06, 0.06, dark, 'equipment');
       }
-      clusterBox(cluster, lateral + 0.15, -3.97, 1.12, 0.05, 0.9, 0.04, accent, 'painted');
-      clusterCylinder(cluster, lateral + 0.7, -3.95, 1.05, 0.2, 0.05, safety, Math.PI / 2, 12);
+      clusterBox(cluster, lateral + 0.15, wall + 0.09, 1.12, 0.05, 0.9, 0.04, accent, 'painted');
+      clusterCylinder(cluster, lateral + 0.7, wall + 0.12, 1.05, 0.2, 0.05, safety, Math.PI / 2, 12);
     }
-    for (const lateral of [-4.48, -1.53, 1.53, 4.48]) {
-      clusterBox(cluster, lateral, -4.08, 1.25,
-        0.15, 2.50, 0.22, steel, 'structure');
-    }
-    clusterBox(cluster, 0, -4.08, 2.48,
-      9.1, 0.18, 0.24, steel, 'structure');
-    clusterBox(cluster, mirror * 2.25, -3.36, 0.82,
-      3.2, 0.18, 1.05, timber, 'equipment');
+    clusterBox(cluster, mirror * 2.25, -3.0, 0.82, 3.2, 0.1, 0.95, timber, 'equipment');
     for (const lateral of [mirror * 0.85, mirror * 3.65]) {
-      clusterBox(cluster, lateral, -3.36, 0.42,
-        0.16, 0.82, 0.72, steel, 'structure');
+      clusterBox(cluster, lateral, -3.0, 0.4, 0.12, 0.8, 0.8, steel, 'structure');
     }
-    clusterBox(cluster, -mirror * 3.30, -3.36, 0.92,
-      1.18, 1.72, 0.88, primer, 'painted');
+    clusterBox(cluster, -mirror * 3.3, -3.05, 0.92, 1.18, 1.72, 0.88, primer, 'painted');
     for (const y of [0.48, 0.82, 1.16]) {
-      clusterBox(cluster, -mirror * 3.30, -2.89, y,
-        0.92, 0.04, 0.03, dark, 'equipment');
+      clusterBox(cluster, -mirror * 3.3, -2.59, y, 0.92, 0.04, 0.03, dark, 'equipment');
     }
-    // Connected overhead utility run, junction cabinet, two drops and work
-    // lamps bring Verdant's believable wiring language into every outdoor bay.
-    clusterBox(cluster, 0, -4.02, 4.62,
-      8.8, 0.10, 0.10, dark, 'equipment');
-    // the junction cabinet stands on its own post to the floor (2026-10-10, wave 377: "boxes hang unsupported")
-    clusterBox(cluster, mirror * 3.85, -3.96, 3.62,
-      0.72, 1.08, 0.28, new THREE.Color(0x56605a), 'painted');
-    clusterBox(cluster, mirror * 3.85, -4.0, 1.54, 0.12, 3.08, 0.12, steel, 'structure');
-    clusterBox(cluster, mirror * 3.85, -4.0, 0.03, 0.36, 0.06, 0.36, dark, 'equipment');
+    // the power run along the back wall: a cable tray, a junction cabinet on the wall, two drops to work lamps
+    clusterBox(cluster, 0, wall + 0.12, 4.62, 8.8, 0.08, 0.2, dark, 'equipment');
+    clusterBox(cluster, mirror * 3.85, wall + 0.2, 3.3, 0.72, 1.0, 0.28, new THREE.Color(0x56605a), 'painted');
     for (const lateral of [-2.15, 2.15]) {
-      clusterBeam(cluster,
-        [lateral, -4.02, 4.62],
-        [lateral, -1.35, 4.08],
-        0.045, dark, 'equipment');
-      clusterCylinder(cluster, lateral, -1.35, 3.94,
-        0.24, 0.16, accent, 0, 10);
+      clusterBox(cluster, lateral, -1.0, runwayY + 0.25, 0.05, 0.05, 2 * BAY_HALF_L - 1.2, dark, 'equipment');
+      clusterCylinder(cluster, lateral, -0.2, runwayY + 0.1, 0.24, 0.16, accent, 0, 10);
     }
     structuralConnections += 18;
   };
@@ -680,59 +755,6 @@ export function addGarageFacilityDetails({
       cylinder(x, z, 0.46, 0.31, 0.90, tint, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
       cylinder(x, z, 0.30, 0.318, 0.035, steel, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
       cylinder(x, z, 0.64, 0.318, 0.035, steel, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 12);
-    }
-  };
-
-  const addWheelRack = (side: number, depth: number): void => {
-    const cluster = fixedCluster(side, depth);
-    looseParts += 12;
-    for (const x of [-2.1, 2.1]) {
-      clusterBox(cluster, x, 0, 1.1, 0.18, 2.2, 0.18, steel, 'structure');
-    }
-    for (const y of [0.48, 1.42]) {
-      clusterBox(cluster, 0, 0, y, 4.4, 0.16, 0.20, steel, 'structure');
-    }
-    for (let index = 0; index < 6; index += 1) {
-      const x = -1.65 + index * 0.66;
-      clusterCylinder(cluster, x, -0.05, index % 2 ? 1.50 : 0.56,
-        0.36, 0.19, rubber, Math.PI / 2, 12);
-      clusterCylinder(cluster, x, -0.05, index % 2 ? 1.50 : 0.56,
-        0.18, 0.21, accent, Math.PI / 2, 10);
-    }
-  };
-
-  const addTrackRack = (side: number, depth: number): void => {
-    const cluster = fixedCluster(side, depth);
-    clusterBox(cluster, 0, 0, 1.2, 4.8, 2.4, 0.24, steel, 'structure');
-    for (let index = 0; index < 30; index += 1) {
-      const column = index % 10;
-      const row = Math.floor(index / 10);
-      clusterBox(cluster, -2.08 + column * 0.46, -0.18,
-        0.38 + row * 0.64, 0.38, 0.12, 0.54, dark, 'equipment');
-      looseParts += 1;
-    }
-  };
-
-  // A roll-cab tool chest (2026-10-10, wave 338: "a blank maroon box"): drawer fronts with pulls on both long faces,
-  // a top tray lip, a push bar on one end and four casters.
-  const addToolCart = (side: number, depth: number, tint = primer): void => {
-    const cluster = fixedCluster(side, depth);
-    clusterBox(cluster, 0, 0, 0.66, 1.05, 1.24, 0.56, tint, 'painted');
-    for (const z of [-0.23, 0.23]) for (const x of [-0.42, 0.42]) {
-      clusterCylinder(cluster, x, z, 0.12, 0.10, 0.12,
-        rubber, Math.PI / 2, 8);
-    }
-    const face = tint.clone().multiplyScalar(1.18);
-    for (const longitudinal of [-0.292, 0.292]) {
-      for (const [y, height] of [[0.3, 0.2], [0.53, 0.2], [0.76, 0.2], [0.98, 0.18], [1.16, 0.14]] as const) {
-        clusterBox(cluster, 0, longitudinal, y, 0.97, height - 0.025, 0.018, face, 'painted');
-        clusterBox(cluster, 0, longitudinal * 1.06, y + height * 0.22, 0.42, 0.022, 0.024, steel, 'equipment');
-      }
-    }
-    clusterBox(cluster, 0, 0, 1.3, 1.09, 0.035, 0.6, dark, 'equipment');
-    clusterCylinder(cluster, 0.6, 0, 1.0, 0.016, 0.5, steel, Math.PI / 2, 8);
-    for (const longitudinal of [-0.2, 0.2]) {
-      clusterBox(cluster, 0.56, longitudinal, 1.0, 0.08, 0.03, 0.03, steel, 'equipment');
     }
   };
 
@@ -1102,25 +1124,20 @@ export function addGarageFacilityDetails({
       clusterBox(cluster, 0, longitudinal, 5.40,
         width, 0.18, 0.20, steel, 'structure');
     }
-    // Three broad overlapping sheets read as a real roof from the opening
-    // camera. The earlier two steeply rotated slabs collapsed to thin bars
-    // from this exact view and made the whole shelter look unfinished.
-    for (const longitudinal of [-2.9, 0, 2.9]) {
-      clusterBox(cluster, 0, longitudinal, 5.52,
-        width, 0.16, 3.15, roofColor, 'painted');
-      clusterBox(cluster, 0, longitudinal - 1.52, 5.42,
-        width, 0.24, 0.12, roofing, 'painted');
-    }
+    // The roof is one run of trapezoidal sheeting over the purlins, falling gently to a gutter at the back (the redesign,
+    // 2026-10-11: the old flat colour strips read as boards); the back wall is clad to the eaves above a concrete upstand.
+    const hallPitch = 0.07;
+    clusterSurface(cluster, 'roofing', 0, 0, 5.58, width + 0.7, 0.05, 9.4, { rotationX: -hallPitch });
+    clusterBox(cluster, 0, 4.72, 5.9, width + 0.7, 0.24, 0.05, roofColor, 'painted');
+    clusterBox(cluster, 0, -4.72, 5.28, width + 0.7, 0.16, 0.18, dark, 'painted');
     clusterBox(cluster, width / 2 - 0.20, 0, 5.22,
       0.22, 0.22, 8.7, steel, 'structure');
-    clusterBox(cluster, width / 2 - 0.20, 3.58, 2.62,
-      0.18, 5.2, 0.18, dark, 'structure');
-    // Connected rear work wall and waist-high bench give the shelter a real
-    // operating face while preserving the open hero sightline.
-    clusterBox(cluster, 0, -4.22, 1.12,
-      width - 1.3, 2.05, 0.22, dark, 'painted');
+    clusterBox(cluster, width / 2 - 0.20, -4.75, 2.62,
+      0.12, 5.2, 0.12, dark, 'painted');
+    clusterSurface(cluster, 'render', 0, -4.22, 0.3, width - 0.4, 0.6, 0.26);
+    clusterSurface(cluster, 'sheeting', 0, -4.26, 0.6 + 2.25, width - 0.5, 4.5, 0.05);
     for (const lateral of [-width * 0.30, -width * 0.10, width * 0.10, width * 0.30]) {
-      clusterBox(cluster, lateral, -4.08, 1.16,
+      clusterBox(cluster, lateral, -4.18, 1.16,
         0.08, 1.72, 0.06, lateral === width * 0.10 ? accent : steel, 'painted');
     }
     clusterBox(cluster, 0, -3.55, 0.76,
@@ -1231,25 +1248,214 @@ export function addGarageFacilityDetails({
   const burlakBay = workshopBays.find((bay) => bay.id === 'burlak_gantry');
   const t90Bay = workshopBays.find((bay) => bay.id === 't90m_relikt');
   if (!burlakBay || !t90Bay) throw new Error(`Garage ${variant.id} lacks workshop bay anchors`);
-  addPurposeBuiltServiceBay(burlakBay, 1);
-  addPurposeBuiltServiceBay(t90Bay, -1);
+  addPurposeBuiltServiceBay(burlakBay, 1, false);
+  addPurposeBuiltServiceBay(t90Bay, -1, true, false);
   addFloodTower(layout.floods[0][0], layout.floods[0][1], 7.6);
   addFloodTower(layout.floods[1][0], layout.floods[1][1], 7.6);
-  addCrates(leftLogistics[0], leftLogistics[1], 2);
-  addDrums(rightLogistics[0], rightLogistics[1], 6);
-  addWheelRack(leftParts[0], leftParts[1]);
-  addTrackRack(rightParts[0], rightParts[1]);
-  // The track inventory now lives inside an actual connected secure cage.
-  // Its wall bars sit outside the rack envelope, so the detail reads as one
-  // purposeful store rather than intersecting piles of workshop props.
-  addPartsAndFittingsCage(
-    fixedCluster(rightParts[0], rightParts[1]), 0, 0, accent, false,
-  );
+  // Kit for the place (2026-10-11, waves 398 and 402: "one stock kit everywhere: the same crate, tool chest, wheel rack
+  // and blank panels, recoloured per yard"): each Garage furnishes its four yard stations and the two shelter flanks
+  // with what its own army keeps there.
+  const sand = new THREE.Color(0xb59c72), olive = new THREE.Color(0x4f5638), snowCap = new THREE.Color(0xe8edf0);
+  const kitBuilders = {
+    // a jerrycan rack: a welded frame holding two rows of cans, the spout ends out, a locking bar chained across
+    jerrycans: (c: FacilityCluster): void => {
+      for (const x of [-1.25, 1.25]) clusterBox(c, x, 0, 0.62, 0.06, 1.24, 0.56, steel, 'structure');
+      clusterBox(c, 0, 0.32, 0.9, 2.56, 0.05, 0.05, dark, 'equipment');
+      secureStorageSystems += 1;
+      for (const y of [0.1, 0.66]) clusterBox(c, 0, 0, y, 2.6, 0.05, 0.56, steel, 'structure');
+      for (let row = 0; row < 2; row += 1) for (let k = 0; k < 7; k += 1) {
+        const tint = (k + row) % 3 === 0 ? sand : olive;
+        clusterBox(c, -1.05 + k * 0.35, 0, 0.36 + row * 0.56, 0.17, 0.46, 0.34, tint, 'painted');
+        clusterBox(c, -1.05 + k * 0.35, 0.08, 0.62 + row * 0.56, 0.12, 0.05, 0.06, dark, 'equipment');
+      }
+      looseParts += 14;
+    },
+    // a sandbag wall in staggered courses round a fuel point
+    sandbags: (c: FacilityCluster): void => {
+      for (let course = 0; course < 4; course += 1) for (let k = 0; k < 7; k += 1) {
+        clusterBox(c, -1.95 + k * 0.62 + (course % 2) * 0.31, 0, 0.09 + course * 0.17, 0.6, 0.17, 0.34,
+          course % 2 ? sand.clone().multiplyScalar(0.94) : sand, 'masonry');
+      }
+      looseParts += 28;
+    },
+    // a water bowser on its trailer: chassis, drawbar, two wheels each side, the tank and its manway
+    bowser: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.62, 3.0, 0.14, 1.3, dark, 'structure');
+      clusterBox(c, 1.9, 0, 0.55, 1.2, 0.08, 0.08, dark, 'structure');
+      for (const x of [-0.9, 0.3]) for (const z of [-0.72, 0.72]) clusterCylinder(c, x, z, 0.42, 0.42, 0.26, rubber, Math.PI / 2, 16);
+      clusterCylinder(c, -0.2, 0, 1.36, 0.66, 2.8, sand, 0, 16, Math.PI / 2);
+      clusterCylinder(c, -0.2, 0, 2.05, 0.24, 0.14, dark, 0, 16);
+      operationalMachines += 1;
+    },
+    // a diesel space heater on its skid with the warm-air duct running to the shelter
+    heater: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.08, 1.6, 0.16, 0.9, dark, 'structure');
+      clusterBox(c, 0, 0, 0.66, 1.4, 0.96, 0.76, olive, 'painted');
+      clusterCylinder(c, -0.45, 0, 1.4, 0.07, 0.6, steel, 0, 10);
+      for (let k = 0; k < 6; k += 1) clusterCylinder(c, 0.95 + k * 0.42, 0, 0.6 - k * 0.07, 0.17, 0.42, dark, 0, 10, Math.PI / 2);
+      operationalMachines += 1;
+    },
+    // split logs stacked between posts, a tarp over the top
+    woodpile: (c: FacilityCluster): void => {
+      for (const x of [-1.5, 1.5]) clusterBox(c, x, 0, 0.7, 0.1, 1.4, 0.1, timber, 'equipment');
+      for (let row = 0; row < 6; row += 1) for (let k = 0; k < 9; k += 1) {
+        clusterCylinder(c, -1.3 + k * 0.32 + (row % 2) * 0.16, 0, 0.13 + row * 0.22, 0.12, 0.9, timber.clone().multiplyScalar(0.9 + (k % 3) * 0.06), Math.PI / 2, 10);
+      }
+      clusterBox(c, 0, 0, 1.45, 3.3, 0.04, 1.1, olive, 'painted');
+      looseParts += 54;
+    },
+    // oil drums on a pallet; in the snow Garages each wears a cap of snow
+    drums: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.07, 2.4, 0.14, 1.6, timber, 'equipment');
+      for (let k = 0; k < 6; k += 1) {
+        const x = -0.78 + (k % 3) * 0.78, z = k < 3 ? -0.38 : 0.38;
+        const tint = k % 3 === 0 ? olive : k % 3 === 1 ? dark : new THREE.Color(0x6a3a2a);
+        clusterCylinder(c, x, z, 0.6, 0.3, 0.88, tint, 0, 16);
+        clusterCylinder(c, x, z, 0.44, 0.31, 0.03, steel, 0, 16);
+        clusterCylinder(c, x, z, 0.78, 0.31, 0.03, steel, 0, 16);
+        if (snowy) clusterCylinder(c, x, z, 1.06, 0.29, 0.06, snowCap, 0, 16);
+      }
+      looseParts += 6;
+    },
+    // a steel pallet cage of gas bottles, chained in, caps on
+    gasCage: (c: FacilityCluster): void => {
+      for (const x of [-0.95, 0.95]) for (const z of [-0.5, 0.5]) clusterBox(c, x, z, 0.85, 0.06, 1.7, 0.06, steel, 'structure');
+      for (const y of [0.08, 0.9, 1.68]) {
+        for (const z of [-0.5, 0.5]) clusterBox(c, 0, z, y, 1.96, 0.05, 0.05, steel, 'structure');
+        for (const x of [-0.95, 0.95]) clusterBox(c, x, 0, y, 0.05, 0.05, 1.04, steel, 'structure');
+      }
+      for (let k = 0; k < 8; k += 1) {
+        const x = -0.66 + (k % 4) * 0.44, z = k < 4 ? -0.2 : 0.2;
+        const tint = k % 2 ? new THREE.Color(0x2d4f3e) : new THREE.Color(0x8a8c88);
+        clusterCylinder(c, x, z, 0.72, 0.12, 1.3, tint, 0, 10);
+        clusterCylinder(c, x, z, 1.42, 0.06, 0.12, steel, 0, 10);
+      }
+      secureStorageSystems += 1;
+      looseParts += 8;
+    },
+    // pallets of boxed spares stacked two high, strapped
+    pallets: (c: FacilityCluster): void => {
+      for (const [x, z, high] of [[-0.7, 0, 2], [0.7, 0, 1], [0, 1.15, 1]] as const) {
+        for (let level = 0; level < high; level += 1) {
+          clusterBox(c, x, z, 0.07 + level * 0.92, 1.2, 0.14, 1.0, timber, 'equipment');
+          clusterBox(c, x, z, 0.5 + level * 0.92, 1.1, 0.72, 0.92, level % 2 ? olive : sand.clone().multiplyScalar(0.8), 'painted');
+          clusterBox(c, x, z, 0.5 + level * 0.92, 0.04, 0.74, 0.94, dark, 'equipment');
+        }
+      }
+      looseParts += 8;
+    },
+    // rope coils and a chain heap on the quay, a life ring on its post
+    ropes: (c: FacilityCluster): void => {
+      for (const [x, z] of [[-0.8, 0], [0.4, 0.3]] as const) {
+        for (let turn = 0; turn < 4; turn += 1) clusterCylinder(c, x, z, 0.05 + turn * 0.09, 0.42 - turn * 0.02, 0.08, new THREE.Color(0x8c7a52), 0, 16);
+      }
+      for (let k = 0; k < 6; k += 1) clusterCylinder(c, 1.3 + (k % 3) * 0.12, -0.3 + Math.floor(k / 3) * 0.2, 0.06 + (k % 2) * 0.08, 0.22, 0.12, dark, 0, 10);
+      clusterBox(c, -1.7, 0.6, 0.75, 0.1, 1.5, 0.1, steel, 'structure');
+      clusterCylinder(c, -1.7, 0.66, 1.15, 0.32, 0.1, new THREE.Color(0xd2522e), Math.PI / 2, 16);
+      looseParts += 9;
+    },
+    // a rail trolley on a short spur with sleepers stacked beside it
+    trolley: (c: FacilityCluster): void => {
+      for (let k = 0; k < 6; k += 1) clusterBox(c, -1.5 + k * 0.6, 0, 0.06, 0.22, 0.12, 1.9, timber, 'equipment');
+      for (const z of [-0.72, 0.72]) clusterBox(c, 0, z, 0.18, 3.6, 0.12, 0.08, steel, 'structure');
+      clusterBox(c, 0, 0, 0.5, 1.6, 0.1, 1.5, dark, 'structure');
+      for (const x of [-0.55, 0.55]) for (const z of [-0.72, 0.72]) clusterCylinder(c, x, z, 0.3, 0.16, 0.08, steel, Math.PI / 2, 16);
+      for (let level = 0; level < 4; level += 1) for (let k = 0; k < 4; k += 1) {
+        clusterBox(c, 2.6, -0.75 + k * 0.5, 0.08 + level * 0.16, level % 2 ? 2.2 : 0.24, 0.15, level % 2 ? 0.24 : 2.2, timber, 'equipment');
+      }
+      railSegments += 1;
+    },
+    // a tarp-covered pallet stack lashed down against the rain, duckboards across the mud to it
+    tarped: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.07, 2.4, 0.14, 1.6, timber, 'equipment');
+      clusterBox(c, 0, 0, 0.75, 2.3, 1.2, 1.5, new THREE.Color(0x3c5a44), 'painted');
+      for (const x of [-0.8, 0, 0.8]) clusterBox(c, x, 0, 0.75, 0.03, 1.24, 1.54, dark, 'equipment');
+      for (let k = 0; k < 6; k += 1) clusterBox(c, -1.6 + k * 0.62, 1.5, 0.04, 0.5, 0.06, 1.4, timber, 'equipment');
+      looseParts += 2;
+    },
+    // a portable pump on its skid, suction and discharge hoses laid out
+    pump: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.08, 1.4, 0.16, 0.8, dark, 'structure');
+      clusterBox(c, -0.25, 0, 0.5, 0.7, 0.62, 0.6, new THREE.Color(0xa2482a), 'painted');
+      clusterCylinder(c, 0.38, 0, 0.42, 0.2, 0.44, steel, 0, 16, Math.PI / 2);
+      for (let k = 0; k < 7; k += 1) clusterCylinder(c, 0.9 + k * 0.4, 0.15 * Math.sin(k), 0.06, 0.06, 0.42, dark, 0, 10, Math.PI / 2);
+      operationalMachines += 1;
+    },
+    // a winch drum on its frame and recovery chains coiled beside it
+    winchDrum: (c: FacilityCluster): void => {
+      for (const x of [-0.7, 0.7]) clusterBox(c, x, 0, 0.55, 0.14, 1.1, 0.8, steel, 'structure');
+      clusterCylinder(c, 0, 0, 0.75, 0.42, 1.3, dark, 0, 16, Math.PI / 2);
+      clusterCylinder(c, 0, 0, 0.75, 0.5, 0.06, steel, 0, 16, Math.PI / 2);
+      for (let k = 0; k < 5; k += 1) clusterCylinder(c, 1.6, 0.2, 0.05 + k * 0.08, 0.36 - k * 0.03, 0.08, dark, 0, 16);
+      heavyLiftSystems += 1;
+    },
+    // spare track sections stacked on bearers, grousers up
+    trackStack: (c: FacilityCluster): void => {
+      for (const x of [-1.2, 1.2]) clusterBox(c, x, 0, 0.08, 0.2, 0.16, 1.4, timber, 'equipment');
+      for (let level = 0; level < 4; level += 1) {
+        clusterBox(c, 0, 0, 0.22 + level * 0.12, 3.0, 0.1, 0.62, dark, 'equipment');
+        for (let k = 0; k < 10; k += 1) clusterBox(c, -1.35 + k * 0.3, 0, 0.29 + level * 0.12, 0.06, 0.04, 0.62, steel, 'equipment');
+      }
+      looseParts += 4;
+    },
+    // steel billets in a crib, rust on the ends
+    billets: (c: FacilityCluster): void => {
+      for (let level = 0; level < 4; level += 1) for (let k = 0; k < 6; k += 1) {
+        clusterBox(c, level % 2 ? -1.0 + k * 0.4 : 0, level % 2 ? 0 : -1.0 + k * 0.4, 0.12 + level * 0.24,
+          level % 2 ? 0.22 : 2.4, 0.22, level % 2 ? 2.4 : 0.22, k % 2 ? new THREE.Color(0x6b4434) : dark, 'equipment');
+      }
+      looseParts += 24;
+    },
+    // a slag pot on its stand, crusted
+    slagPot: (c: FacilityCluster): void => {
+      for (const x of [-0.9, 0.9]) clusterBox(c, x, 0, 0.45, 0.2, 0.9, 1.4, steel, 'structure');
+      clusterCylinder(c, 0, 0, 1.2, 0.95, 1.1, new THREE.Color(0x3e3533), 0, 16);
+      clusterCylinder(c, 0, 0, 1.78, 0.98, 0.08, new THREE.Color(0x6b5a50), 0, 16);
+      for (const x of [-1.02, 1.02]) clusterCylinder(c, x, 0, 1.3, 0.12, 0.2, steel, 0, 10, Math.PI / 2);
+      operationalMachines += 1;
+    },
+    // probe and shovel racks against avalanches, a sled beside them
+    avalancheKit: (c: FacilityCluster): void => {
+      for (const x of [-1.0, 1.0]) clusterBox(c, x, 0, 0.8, 0.08, 1.6, 0.08, steel, 'structure');
+      clusterBox(c, 0, 0, 1.5, 2.1, 0.06, 0.08, steel, 'structure');
+      for (let k = 0; k < 9; k += 1) clusterBox(c, -0.85 + k * 0.21, 0.06, 0.85, 0.03, 1.5, 0.03, k % 3 ? steel : new THREE.Color(0xd2522e), 'equipment');
+      clusterBox(c, 0, 0.9, 0.12, 2.0, 0.1, 0.7, new THREE.Color(0xd2522e), 'painted');
+      for (const z of [0.6, 1.2]) clusterBox(c, 0, z, 0.04, 2.2, 0.06, 0.05, steel, 'structure');
+      looseParts += 10;
+    },
+  } as const;
+  type KitName = keyof typeof kitBuilders;
+  const snowy = variant.architecture === 'repair_bunker' || variant.architecture === 'rock_cavern';
+  // the four yard stations (two logistics, two parts) and the flanks of the Burlak and T-90M shelters
+  const REGIONAL_KIT: Readonly<Partial<Record<GarageVariant['architecture'], readonly KitName[]>>> = Object.freeze({
+    shade_depot: ['jerrycans', 'bowser', 'sandbags', 'pallets', 'drums', 'jerrycans'],
+    repair_bunker: ['woodpile', 'heater', 'drums', 'gasCage', 'heater', 'woodpile'],
+    brick_arsenal: ['gasCage', 'pallets', 'billets', 'gasCage', 'pallets', 'drums'],
+    naval_drydock: ['ropes', 'pallets', 'drums', 'ropes', 'gasCage', 'pallets'],
+    rail_roundhouse: ['trolley', 'drums', 'trackStack', 'pallets', 'gasCage', 'drums'],
+    rain_canopy: ['tarped', 'pump', 'sandbags', 'gasCage', 'pump', 'drums'],
+    rock_cavern: ['avalancheKit', 'heater', 'drums', 'gasCage', 'heater', 'avalancheKit'],
+    recovery_yard: ['trackStack', 'winchDrum', 'drums', 'pallets', 'winchDrum', 'jerrycans'],
+    factory_line: ['billets', 'gasCage', 'slagPot', 'billets', 'gasCage', 'drums'],
+  });
+  const kit = REGIONAL_KIT[variant.architecture] ?? ['pallets', 'drums', 'pallets', 'drums', 'pallets', 'drums'];
   const burlakView = garageWorldPointToView(burlakBay.x, burlakBay.z);
   const t90View = garageWorldPointToView(t90Bay.x, t90Bay.z);
-  addToolCart(burlakView.side - 5.8, burlakView.depth + 1.2);
-  addToolCart(t90View.side + 5.8, t90View.depth + 1.2,
-    accent.clone().multiplyScalar(0.70));
+  const stations: ReadonlyArray<readonly [number, number]> = [
+    leftLogistics, rightLogistics, leftParts, rightParts,
+    [burlakView.side - 5.8, burlakView.depth + 1.2], [t90View.side + 5.8, t90View.depth + 1.2],
+  ];
+  const KIT_PURPOSE: Readonly<Record<KitName, string>> = Object.freeze({
+    jerrycans: 'fuel-and-water-point', sandbags: 'blast-protection', bowser: 'water-supply', heater: 'cold-start-heating',
+    woodpile: 'stove-fuel-store', drums: 'lubricant-store', gasCage: 'compressed-gas-store', pallets: 'spares-staging',
+    ropes: 'mooring-and-rigging', trolley: 'rail-transfer', tarped: 'weatherproof-stores', pump: 'drainage-pumping',
+    winchDrum: 'recovery-winching', trackStack: 'track-spares', billets: 'plate-and-billet-stock', slagPot: 'slag-handling',
+    avalancheKit: 'avalanche-rescue',
+  });
+  stations.forEach(([side, depth], index) => {
+    kitBuilders[kit[index]](fixedCluster(side, depth));
+    servicePurposeTags.add(KIT_PURPOSE[kit[index]]);
+  });
   const [featureSide, featureDepth] = layout.feature;
   const featureCluster = fixedCluster(featureSide, featureDepth);
 
@@ -1477,8 +1683,8 @@ export function addGarageFacilityDetails({
   // complete tank and teardown component in all ten Garages. Keeping the
   // frames as static scenery avoids both duplicate geometry and the old
   // silhouette-only vehicle/turret proxies that looked visibly unfinished.
-  const meshes: THREE.InstancedMesh[] = [];
-  const materials: THREE.MeshStandardMaterial[] = [];
+  const meshes: THREE.Mesh[] = [];
+  const materials: THREE.Material[] = [];
   const makeInstances = (
     name: string,
     geometry: THREE.BufferGeometry,
@@ -1566,6 +1772,89 @@ export function addGarageFacilityDetails({
     }
   }
   for (const geometry of unitCylinders.values()) geometry.dispose();
+  // the building surfaces: one merged mesh each, tinted by the pack's shelter finish, casting the sun's shadow
+  const surfaceLook: Readonly<Record<FacilitySurface, Readonly<{
+    maps: SurfaceMaps | undefined; color: THREE.Color; roughness: number; metalness: number; normalScale: number;
+  }>>> = Object.freeze({
+    sheeting: { maps: surfaces?.sheeting, color: steel.clone().lerp(new THREE.Color(0xffffff), 0.18), roughness: 0.62, metalness: 0.42, normalScale: 0.9 },
+    roofing: { maps: surfaces?.sheeting, color: roofing.clone(), roughness: 0.66, metalness: 0.38, normalScale: 0.9 },
+    brick: { maps: surfaces?.brick, color: new THREE.Color(0xd8cfc6), roughness: 0.95, metalness: 0.0, normalScale: 0.7 },
+    render: { maps: surfaces?.render, color: new THREE.Color(0xc9c4ba), roughness: 0.96, metalness: 0.0, normalScale: 0.55 },
+    timber: { maps: surfaces?.timber, color: new THREE.Color(0xc2ab8c), roughness: 0.9, metalness: 0.0, normalScale: 0.6 },
+    glazing: { maps: undefined, color: new THREE.Color(0x2a3338), roughness: 0.12, metalness: 0.55, normalScale: 0 },
+  });
+  // Contact shadows (2026-10-11, wave 394: "add contact shadow under every figure and prop"): every box that stands on
+  // the ground with a footprint of a crate or larger gets a soft dark blot a little wider than itself, on one draw.
+  {
+    const texture = garageContactShadowTexture();
+    const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3();
+    const euler = new THREE.Euler();
+    const blots: THREE.Matrix4[] = [];
+    for (const instance of boxInstances) {
+      instance.matrix.decompose(position, quaternion, scale);
+      euler.setFromQuaternion(quaternion, 'YXZ');
+      if (Math.abs(euler.x) > 0.2 || Math.abs(euler.z) > 0.2) continue; // braces and leaning parts cast their own
+      const ground = groundAtWorld(position.x, position.z);
+      const bottom = position.y - scale.y / 2;
+      const area = scale.x * scale.z;
+      if (Math.abs(bottom - ground) > 0.14 || area < 0.06 || area > 40 || scale.y < 0.12) continue;
+      blots.push(new THREE.Matrix4().compose(
+        new THREE.Vector3(position.x, ground + 0.03, position.z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, euler.y, 'YXZ')),
+        new THREE.Vector3(scale.x * 1.3 + 0.35, scale.z * 1.3 + 0.35, 1),
+      ));
+    }
+    if (texture && blots.length) {
+      // one merged, non-instanced decal mesh on the stock map + transparent program the bays' grime decals already use,
+      // so it adds no shader program
+      const material = new THREE.MeshBasicMaterial({
+        map: texture, color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      });
+      material.name = 'garage-facility:contact-shadow';
+      materials.push(material);
+      const quads = blots.map((matrix) => new THREE.PlaneGeometry(1, 1).applyMatrix4(matrix));
+      const merged = mergeGeometries(quads, false);
+      for (const quad of quads) quad.dispose();
+      const mesh = new THREE.Mesh(merged ?? new THREE.PlaneGeometry(0, 0), material);
+      mesh.name = 'garage_facility_contact_shadows';
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 1;
+      mesh.geometry.computeBoundingBox();
+      mesh.geometry.computeBoundingSphere();
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      meshes.push(mesh);
+    }
+  }
+  for (const [surface, geometries] of surfaceGeometries) {
+    if (!geometries.length) continue;
+    const merged = mergeGeometries(geometries, false);
+    for (const geometry of geometries) geometry.dispose();
+    if (!merged) continue;
+    merged.computeBoundingBox();
+    merged.computeBoundingSphere();
+    const look = surfaceLook[surface];
+    const material = new THREE.MeshStandardMaterial({
+      color: look.color,
+      roughness: look.roughness,
+      metalness: look.metalness,
+      map: look.maps?.color ?? null,
+      normalMap: look.maps?.normal ?? null,
+      normalScale: new THREE.Vector2(look.normalScale, look.normalScale),
+    });
+    material.name = `garage-facility-surface:${surface}`;
+    engineCtx.setupShadowMaterial?.(material);
+    materials.push(material);
+    const mesh = new THREE.Mesh(merged, material);
+    mesh.name = `garage_facility_surface_${surface}`;
+    mesh.castShadow = surface !== 'glazing';
+    mesh.receiveShadow = true;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    meshes.push(mesh);
+  }
   };
   emitFacilityMeshes();
 
@@ -1590,6 +1879,7 @@ export function addGarageFacilityDetails({
     facilityMaterialClasses: new Set([
       ...boxInstances.map((instance) => instance.materialClass),
       ...[...cylinderInstances.values()].flat().map((instance) => instance.materialClass),
+      ...surfaceGeometries.keys(),
     ]).size,
     openingSightlineIntrusions,
     meshes: Object.freeze(meshes),

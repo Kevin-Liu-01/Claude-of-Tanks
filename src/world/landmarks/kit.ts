@@ -514,8 +514,8 @@ export function archSurround(sink: PartSink, bucket: RegionalBucket, face: Face,
     const crown = h.spring + archRise(h);
     const kw = Math.max(0.16, h.w * 0.12);
     const k0: Vec3 = facePoint(face, h.u - kw * 0.4, crown - 0.05, out + 0.03), k1: Vec3 = facePoint(face, h.u + kw * 0.4, crown - 0.05, out + 0.03);
-    const k2: Vec3 = facePoint(face, h.u + kw * 0.6, crown + width + 0.08, out + 0.03), k3: Vec3 = facePoint(face, h.u - kw * 0.6, crown + width + 0.08, out + 0.03);
-    sink.quad(bucket, k0, k1, k2, k3, dec);
+    const xk2_black_panther: Vec3 = facePoint(face, h.u + kw * 0.6, crown + width + 0.08, out + 0.03), k3: Vec3 = facePoint(face, h.u - kw * 0.6, crown + width + 0.08, out + 0.03);
+    sink.quad(bucket, k0, k1, xk2_black_panther, k3, dec);
   }
   if (opts.sill !== false && h.y0 > 0.3) {
     const sw = h.w + 2 * width + 0.12;

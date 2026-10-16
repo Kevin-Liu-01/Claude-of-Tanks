@@ -107,7 +107,7 @@ function poseAndEnvelope(t,all) {
 }
 closedPlanePrimitive();
 for(const quality of ['high','low']) {
-  const t=createTank('ariete_c1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('c1_ariete',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     t.root.updateMatrixWorld(true);const all=[];
     t.root.traverse(o=>{if(o.isMesh&&!o.name.startsWith('procShadow_')&&!o.userData.vehicleMarking)all.push(o);});

@@ -22,7 +22,7 @@ function frames(tank){
     const p=tank.root.getObjectByName(name).getWorldPosition(new THREE.Vector3());
     point.forEach((v,i)=>near(p.getComponent(i),v,.000002,`${name} source measured/inferred joint`));
   }
-  near(getSpec('t72b3m_x').dims.heightM,SOURCE.physicalRoof,.000002,'physical casting roof is not elevated AA height');
+  near(getSpec('t72b3m_2016').dims.heightM,SOURCE.physicalRoof,.000002,'physical casting roof is not elevated AA height');
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
   assert.ok(gun.getObjectByName('gunMount')?.isMesh,'actual pitching canvas/mount geometry');
   assert.equal(gun.getObjectByName('rig_recoil').parent,gun);
@@ -88,7 +88,7 @@ function gearAndFitting(tank){
   near(ray.intersectObject(gun,false)[0]?.point.distanceTo(muzzle),0,.000003,'actual source AA barrel end');
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3m_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('t72b3m_2016',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);frames(tank);bore(tank);covers(tank);gearAndFitting(tank);}
   finally{tank.dispose();}
 }

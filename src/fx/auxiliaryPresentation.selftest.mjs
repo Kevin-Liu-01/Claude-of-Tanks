@@ -68,7 +68,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     return { ...rec, fx };
   }
   const key = (p) => [p.birth, p.x, p.y, p.z, p.size1, p.life].map((v) => v.toFixed(4)).join(',');
-  const screen = salvo('leo2a6');
+  const screen = salvo('leo2a4');
   const at60 = run(screen, 1 / 60), at20 = run(screen, 1 / 20), at144 = run(screen, 1 / 144);
   assert.ok(at60.puffs.length > 40, `a salvo draws a wall of puffs (${at60.puffs.length})`);
   assert.deepEqual(at20.puffs.map(key).sort(), at60.puffs.map(key).sort(), 'the same puffs at 20 fps as at 60 fps');
@@ -130,7 +130,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   // (the inner 5 m of its ~10 m card); a gap the simulation itself leaves open stays open. (Every smoke-equipped vehicle
   // passes with the base and the fanned launchers alike: widest gap 2.6 m and 0 m, where the old ring of lobes left up to
   // 10 m and 4.3 m.)
-  for (const id of ['leo2a6', 'm1a1', 'm1a2', 't90', 'amx40', 'pt91m']) {
+  for (const id of ['leo2a4', 'm1a1', 'm1a1_abrams_hc', 't90_1992', 'amx40_proto', 'pt91m']) {
     const sc = salvo(id);
     const r = run(sc, 1 / 60);
     const src = sc.source, ox = src ? src[1] : sc.x, oz = src ? src[3] : sc.z;
@@ -248,7 +248,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const flat = { getHeightAt: () => 0, getHeightAtFast: () => 0, getNormalAt: () => UP, maxY: 0, minY: 0 };
     const box = { b: [10, 0, -4, 18, 5, 4], k: 'structure' };
     const world = createHeadlessCollisionWorld({ heightField: flat, manifest: { obstacles: [box], colliders: [box] } });
-    const t = { id: 'leo2a6', team: 'player', spec: { id: 'leo2a6', dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
+    const t = { id: 'leo2a4', team: 'player', spec: { id: 'leo2a4', dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
       state: { pos: { x: 2, y: 0, z: 0 }, yaw: Math.PI / 2, turretYaw: 0, visualPitch: 0, visualRoll: 0 }, combat: {} };
     assert.ok(requestAuxiliary(t, 'smoke', 3, () => 0, world), 'a salvo at a house');
     const walled = run(t.combat.auxiliary.smoke, 1 / 60);

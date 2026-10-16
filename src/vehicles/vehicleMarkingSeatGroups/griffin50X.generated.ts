@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "griffin50_x": {
+  "griffin50mm": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -25,7 +25,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "griffin50_x",
+        "anchorProfile": "griffin50mm",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -47,7 +47,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.697486
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "griffin50_x",
+        "anchorProfile": "griffin50mm",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

@@ -57,7 +57,7 @@ function wellAirAndContact(all, turret, detail) {
 
 for (const quality of ['high', 'low']) {
   const census = fieldKitCensus();
-  const tank = createTank('leclerc_x', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false,
+  const tank = createTank('leclerc_xlr', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false,
     partCensus: census.partCensus});
   kit = fieldKitFilter(tank.root, census);
   try {

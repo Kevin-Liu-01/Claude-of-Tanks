@@ -46,7 +46,7 @@ for (let n = 0; n < 4000; n++) {
   const coordinate = () => (grid ? (pick(7) - 3) * grid : (random() - 0.5) * 1600);
   const entities = Array.from({ length: count }, (_, i) => ({
     id: `e${i}`, team: random() < 0.5 ? 'alpha' : 'bravo',
-    spec: { id: 'm1a2', dims: grid ? { heightM: 2.4 } : random() < 0.8 ? { heightM: 2 + pick(3) * 0.4 } : undefined },
+    spec: { id: 'm1a1_abrams_hc', dims: grid ? { heightM: 2.4 } : random() < 0.8 ? { heightM: 2 + pick(3) * 0.4 } : undefined },
     state: { pos: { x: coordinate(), y: grid ? 0 : (random() - 0.5) * 30, z: coordinate() }, yaw: 0, turretYaw: 0 },
     combat: { destroyed: random() < 0.1 },
     modeActive: random() < 0.07 ? false : undefined,
@@ -80,7 +80,7 @@ assert.ok(chosen > 1000 && none > 300, `both outcomes covered (${chosen} chosen,
 assert.ok(ties > 5, `equal distances covered (${ties})`);
 // and the tie by construction: two clear enemies at one distance, either order — the first in entity order wins
 for (const order of [['east', 'west'], ['west', 'east']]) {
-  const tank = (id, team, x) => ({ id, team, spec: { id: 'm1a2', dims: { heightM: 2.4 } }, state: { pos: { x, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: {} });
+  const tank = (id, team, x) => ({ id, team, spec: { id: 'm1a1_abrams_hc', dims: { heightM: 2.4 } }, state: { pos: { x, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: {} });
   const shooter = tank('me', 'alpha', 0);
   const enemies = order.map((id) => tank(id, 'bravo', id === 'east' ? 120 : -120));
   const context = { entities: [shooter, tank('far', 'bravo', 400), ...enemies], visible: () => true, clear: () => true };

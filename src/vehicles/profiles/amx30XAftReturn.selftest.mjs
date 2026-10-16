@@ -50,7 +50,7 @@ function air(objects) {
   ]) assert.equal(cast(objects, o, d, far), undefined, `complete-source real air ${o}`);
   close(cast(objects, [1.5, 1.4, -3.3], [0, -1, 0])?.point.y, 1.044423074458011, 'different right terminal remains solid');
 }
-// The frozen pre-edit digest of every other primitive is retired: whole-tank change detection of amx30_x is the
+// The frozen pre-edit digest of every other primitive is retired: whole-tank change detection of amx30b is the
 // fleet geometry ledger's.
 for (const quality of ['high', 'low']) {
   const helper = [], guards = []; let targets = 0;
@@ -61,7 +61,7 @@ for (const quality of ['high', 'low']) {
   const triangles = helper.reduce((n, m) => n + m.geometry.attributes.position.count / 3, 0);
   assert.ok(triangles > 0 && triangles < 1500, `bounded closed-stock geometry: ${triangles}`);
   surfaces(helper, TOP, false); surfaces(helper, BOTTOM, true); air(helper);
-  registerProfiledBuilders({ amx30_x: p => buildAmx30X(new Proxy(p, { get(o, key) {
+  registerProfiledBuilders({ amx30b: p => buildAmx30X(new Proxy(p, { get(o, key) {
     if (['add', 'addEquipment', 'addCupola', 'addMudguard'].includes(key)) return (...args) => {
       const guard = key === 'addMudguard';
       if (guard && ['amx30-x-side-fender', 'amx30-x-aft-flap', 'amx30-x-aft-return'].includes(args[0])) {
@@ -72,7 +72,7 @@ for (const quality of ['high', 'low']) {
     };
     return Reflect.get(o, key);
   } })) });
-  const tank = createTank('amx30_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
+  const tank = createTank('amx30b', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
     assert.equal(targets, 4, 'exactly the two side-fender and two aft-return primitives');
     tank.root.updateMatrixWorld(true);
@@ -97,7 +97,7 @@ for (const quality of ['high', 'low']) {
     for (const m of meshes) m.geometry.addEventListener('dispose', () => disposed++);
     tank.dispose(); assert.ok(disposed > 0, 'ordinary tank disposal releases geometry');
   } finally {
-    registerProfiledBuilders({ amx30_x: buildAmx30X });
+    registerProfiledBuilders({ amx30b: buildAmx30X });
     for (const m of [...helper, ...guards]) { m.geometry.dispose(); m.material.dispose(); }
   }
 }

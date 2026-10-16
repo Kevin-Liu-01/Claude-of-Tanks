@@ -2,14 +2,14 @@
 // Salvo indicator probe (round 41, committed 2026-09-23 by owner approval). Rendered proof that a guided salvo rack
 // drives the autoloader HUD indicator through the real desktop input path: the ZTZ-100 prototype's twin HJ-P9 rack
 // shows two pips at rest, one pip with the intra-salvo keyline after the first launch (LMB on the canvas), an empty
-// rack filling during the held group reload, two pips again after it. A cannon autoloader (control A, leclerc_x) and a
-// single-shot gun (control B, t72b3m) are captured the same way. Each phase is a reticle crop
+// rack filling during the held group reload, two pips again after it. A cannon autoloader (control A, leclerc_xlr) and a
+// single-shot gun (control B, t72b3m_2022) are captured the same way. Each phase is a reticle crop
 // <label>-<phase>.png plus the player's combat state in the receipt (reload kind / t / total, salvo shots, magazine).
 // The battle starts through __DEBUG.startBattle (the QA cold entry) and the reload clock is held with __DEBUG so the
 // HUD can be photographed mid-cycle; sim/magazineIndicator.selftest.mjs is the derivation's receipt, this is the
 // rendered one. Uses the system Chrome when present (the pointer-lock path the round verified with).
 //
-//   node tools/salvo-indicator-probe.mjs --root=<worktree> --out=<dir> [--ids=ztz100_prototype:salvo,leclerc_x:autoloader,t72b3m:single]
+//   node tools/salvo-indicator-probe.mjs --root=<worktree> --out=<dir> [--ids=ztz100_prototype:salvo,leclerc_xlr:autoloader,t72b3m_2022:single]
 //
 // Hold the probe mutex and run under nice -n 19 (header of tools/map-probe-runtime.mjs). Exit 1 when a case failed.
 import path from 'node:path';
@@ -23,7 +23,7 @@ const ACCEPTS = ['root', 'out', 'tag', 'ids', 'cache-dir', 'executable-path'];
 const SALVO_PROBE_VIEWPORT = Object.freeze({ width: 1280, height: 720 });
 /** The reticle crop around the screen centre where the magazine indicator sits. */
 const SALVO_PROBE_RETICLE = Object.freeze({ x: 640 - 170, y: 360 - 140, width: 340, height: 300 });
-export const SALVO_PROBE_DEFAULT_CASES = Object.freeze(['ztz100_prototype:salvo', 'leclerc_x:autoloader', 't72b3m:single']);
+export const SALVO_PROBE_DEFAULT_CASES = Object.freeze(['ztz100_prototype:salvo', 'leclerc_xlr:autoloader', 't72b3m_2022:single']);
 const SALVO_PROBE_PHASES = Object.freeze(['1-rest', '2-after-first-shot', '3-after-second-shot', '4-refilled']);
 const SYSTEM_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const HELP = probeHelp({

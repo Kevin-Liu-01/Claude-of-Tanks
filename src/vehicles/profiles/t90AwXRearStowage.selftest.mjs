@@ -21,7 +21,7 @@ try{
   assert.equal(hit(owned.ms,[0,1.85,-1.51],[0,0,1],.03),undefined,'real air beneath the rising aft floor');
   for(const side of[-1,1])assert.ok(owned.ms.filter(m=>inside(m,[side*.65,2.158,-1.3])).length>=2,'raised wing stock joins its lower original case');
   for(const quality of['high','low']){
-    const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});
       for(const r of packet.rays){const h=hit(ms,r.origin,r.direction,1);assert.ok(h&&h.point.distanceTo(new THREE.Vector3(...r.point))<.006,`${quality} source rear ${r.label}/${r.origin}: ${h?.point.toArray()} vs ${r.point}`);}
       for(const p of[[0,2.13,-1.18],[0,1.85,-1.51]])assert.equal(hit(ms,p,[0,0,1],.03),undefined,'complete native stowage retains source air');

@@ -97,7 +97,7 @@ function checkVisibleWheelFaces(tank, quality) {
   assert.equal(discs.userData.appearanceRole, 'wheelDish');
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('amx30_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
+  const tank=createTank('amx30b',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     checkRunningGear(tank,quality);

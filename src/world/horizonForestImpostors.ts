@@ -40,10 +40,45 @@ interface HorizonForestImpostorOptions {
   rimTreeTint?: readonly [number, number, number];
   setupMaterial(material: THREE.Material, hook: MaterialShaderHook): void;
   releaseMaterial?(material: THREE.Material): void;
+  /** The battlefield's forest-form variant law (vegetation.ts `_treeFormVariant`, assignTreeForms for a wood's tree): a
+   * placement's near variant passes through it, so the impostor row and an adopted tree's near variant agree. */
+  formVariant?: (species: string, variant: number, x: number, z: number) => number;
+  /**
+   * GND / the Kestrel border trees (2026-10-14): the ring trees the battlefield's own tree tiers take over (vegetation.ts
+   * adoptOutlandTrees): every resolved tree `adoptWithin` says yes to is handed to `adopt` and gets no quad and no lobe
+   * shadow proxy here; `adopt` returns how many it took (0: none, every placement keeps its quad). Absent: no adoption.
+   */
+  adoptWithin?: (tree: HorizonForestTree) => boolean;
+  adopt?: (trees: readonly HorizonForestTree[]) => number;
+}
+
+/** One ring placement as the battlefield's trees would draw it (resolveHorizonForestTrees): its packed index, position,
+ * yaw, species, near variant (the impostor row), mirror, instance scale and the tint its quad takes. */
+export interface HorizonForestTree {
+  index: number;
+  x: number; y: number; z: number;
+  yaw: number;
+  species: string;
+  variant: number;
+  mirror: boolean;
+  scale: number;
+  tint: [number, number, number];
+  conifer: boolean;
+  /** The ring's class: 2 the near class, 1 the band, 0 the range. */
+  detail: number;
+}
+
+export interface ResolvedHorizonForest {
+  trees: HorizonForestTree[];
+  ringLobeHeightM: number;
+  ratio: number;
+  tint: [number, number, number];
 }
 
 interface HorizonForestImpostorReceipt {
   instances: number;
+  /** The placements the battlefield's tiers took over (no quad, no lobe proxy here). */
+  adopted: number;
   /** Colour draws (one per species and mirror that has trees). */
   draws: number;
   /** The near class's lobe pools kept as shadow-only casters. */
@@ -101,15 +136,18 @@ export function horizonForestImpostorVariant(tone: number, variants: number): nu
 }
 
 /**
- * Redraw a ring forest group's placements as impostor quads on the battlefield's atlas. Returns null (and changes
- * nothing) when the group carries no packed placements or is already bound. Idempotent per group.
+ * The ring forest's trees as the battlefield draws them (GND, 2026-10-14; shared by the quads below and the battlefield's
+ * adoption, vegetation.ts adoptOutlandTrees): per placement the species by class from the rim mix (a hash of the
+ * position), the near variant from its tone through the battlefield's forest-form law, the mirror from the ring's
+ * variant, and the instance scale that stands it at the ring's relative stature × the rim trees' mean height. Null when
+ * the group carries no packed placements.
  */
-export function bindHorizonForestImpostors(
-  forest: THREE.Object3D, options: HorizonForestImpostorOptions,
-): HorizonForestImpostorReceipt | null {
+export function resolveHorizonForestTrees(
+  forest: THREE.Object3D, library: TreeImpostorLibrary,
+  options: Pick<HorizonForestImpostorOptions, 'rimMix' | 'rimTreeHeightM' | 'rimTreeTint' | 'formVariant'>,
+): ResolvedHorizonForest | null {
   const record = forest.userData.horizonForest as ForestRecord | undefined;
-  if (!record?.placements || forest.userData.horizonForestImpostors) return null;
-  const { library } = options;
+  if (!record?.placements) return null;
   const stride = HORIZON_FOREST_PLACEMENT_STRIDE;
   const packed = record.placements;
   const count = Math.floor(packed.length / stride);
@@ -117,12 +155,7 @@ export function bindHorizonForestImpostors(
   const librarySpecies: string[] = [];
   for (const row of library.rows) if (!librarySpecies.includes(row.species)) librarySpecies.push(row.species);
   const classMix = [resolveHorizonForestClassMix(options.rimMix, librarySpecies, false), resolveHorizonForestClassMix(options.rimMix, librarySpecies, true)];
-  // the lobe pools: the near class becomes shadow-only proxies, the band and range classes go
-  const pools: Array<{ mesh: THREE.InstancedMesh; tag: PoolTag }> = [];
-  for (const child of forest.children) {
-    const tag = child.userData.horizonForestPool as PoolTag | undefined;
-    if (tag && (child as THREE.InstancedMesh).isInstancedMesh) pools.push({ mesh: child as THREE.InstancedMesh, tag });
-  }
+  const pools = lobePoolsOf(forest);
   const lobeHeightOf = (conifer: boolean, detail: number, variant: number): number => {
     const pool = pools.find(p => p.tag.conifer === conifer && p.tag.detail === detail && (detail !== 2 || p.tag.variant === variant));
     return pool ? pool.tag.treeHeight : 6.5;
@@ -136,21 +169,74 @@ export function bindHorizonForestImpostors(
   }
   const ringLobeHeightM = ringHeightSum / count, ringScaleMean = ringScaleSum / count;
   const ratio = options.rimTreeHeightM > 0 ? options.rimTreeHeightM / ringLobeHeightM : 1;
-  // the assignment: species by class from the rim mix (a hash of the position), the near variant from its tone, the
-  // mirror from its variant; the instance scale puts the tree at the ring's relative stature × the rim's mean
-  const species = new Array<string>(count), variantOf = new Int32Array(count), scaleOf = new Float32Array(count);
-  const buckets = new Map<string, number[]>();
+  const rim = options.rimTreeTint ?? [1, 1, 1];
+  // the assignment: species by class from the rim mix (a hash of the position), the near variant from its tone (through
+  // the forest-form law), the mirror from its variant; the instance scale puts the tree at the ring's relative stature
+  // × the rim's mean: height = (scale / mean ring scale) × ring mean lobe height × ratio = (scale / mean) × rim mean
+  const trees: HorizonForestTree[] = new Array(count);
   for (let i = 0; i < count; i++) {
     const o = i * stride;
     const conifer = packed[o + 5] > 0.5;
-    const sp = pickSpecies(classMix[conifer ? 1 : 0], horizonForestImpostorPick(packed[o], packed[o + 2]));
-    const variant = horizonForestImpostorVariant(packed[o + 7], library.variants);
-    const row = library.rows[library.rowBase(sp) + variant];
-    species[i] = sp; variantOf[i] = variant;
-    // height = (scale / mean ring scale) × ring mean lobe height × ratio = (scale / mean ring scale) × rim mean height
+    const x = packed[o], z = packed[o + 2];
+    const species = pickSpecies(classMix[conifer ? 1 : 0], horizonForestImpostorPick(x, z));
+    let variant = horizonForestImpostorVariant(packed[o + 7], library.variants);
+    if (options.formVariant) variant = Math.min(library.variants - 1, Math.max(0, options.formVariant(species, variant, x, z)));
+    const row = library.rows[library.rowBase(species) + variant];
     const targetHeight = (packed[o + 3] / ringScaleMean) * ringLobeHeightM * ratio;
-    scaleOf[i] = targetHeight / Math.max(1e-3, row.heightM);
-    const key = `${sp}/${packed[o + 6] > 0.5 ? 1 : 0}`;
+    const tone = packed[o + 7];
+    trees[i] = {
+      index: i, x, y: packed[o + 1], z, yaw: packed[o + 4], species, variant, mirror: packed[o + 6] > 0.5,
+      scale: targetHeight / Math.max(1e-3, row.heightM), tint: [tone * rim[0], tone * rim[1], tone * rim[2]],
+      conifer, detail: packed[o + 9],
+    };
+  }
+  return { trees, ringLobeHeightM, ratio, tint: [rim[0], rim[1], rim[2]] };
+}
+
+function lobePoolsOf(forest: THREE.Object3D): Array<{ mesh: THREE.InstancedMesh; tag: PoolTag }> {
+  const pools: Array<{ mesh: THREE.InstancedMesh; tag: PoolTag }> = [];
+  for (const child of forest.children) {
+    const tag = child.userData.horizonForestPool as PoolTag | undefined;
+    if (tag && (child as THREE.InstancedMesh).isInstancedMesh) pools.push({ mesh: child as THREE.InstancedMesh, tag });
+  }
+  return pools;
+}
+
+/**
+ * Redraw a ring forest group's placements as impostor quads on the battlefield's atlas. Returns null (and changes
+ * nothing) when the group carries no packed placements or is already bound. Idempotent per group. With `adopt`, the
+ * trees `adoptWithin` selects are handed to the battlefield's tiers first and draw no quad and cast no lobe proxy here.
+ */
+export function bindHorizonForestImpostors(
+  forest: THREE.Object3D, options: HorizonForestImpostorOptions,
+): HorizonForestImpostorReceipt | null {
+  if (forest.userData.horizonForestImpostors) return null;
+  const { library } = options;
+  const resolved = resolveHorizonForestTrees(forest, library, options);
+  if (!resolved) return null;
+  const record = forest.userData.horizonForest as ForestRecord;
+  const stride = HORIZON_FOREST_PLACEMENT_STRIDE;
+  const packed = record.placements;
+  const count = resolved.trees.length;
+  const { ringLobeHeightM, ratio } = resolved;
+  // the lobe pools: the near class becomes shadow-only proxies, the band and range classes go
+  const pools = lobePoolsOf(forest);
+  // the adoption: the battlefield's tiers take the trees near the playable square (no quad, no lobe proxy here)
+  const adoptedMask = new Uint8Array(count);
+  let adopted = 0;
+  if (options.adopt && options.adoptWithin) {
+    const chosen = resolved.trees.filter(tree => options.adoptWithin!(tree));
+    adopted = chosen.length ? options.adopt(chosen) : 0;
+    if (adopted > 0) for (const tree of chosen) adoptedMask[tree.index] = 1;
+    if (adopted > 0 && adopted !== chosen.length) throw new Error(`horizon forest: ${chosen.length} trees offered, ${adopted} adopted`);
+  }
+  const species = resolved.trees.map(tree => tree.species);
+  const variantOf = Int32Array.from(resolved.trees, tree => tree.variant);
+  const scaleOf = Float32Array.from(resolved.trees, tree => tree.scale);
+  const buckets = new Map<string, number[]>();
+  for (let i = 0; i < count; i++) {
+    if (adoptedMask[i]) continue;
+    const key = `${species[i]}/${resolved.trees[i].mirror ? 1 : 0}`;
     let bucket = buckets.get(key);
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
     bucket.push(i);
@@ -219,6 +305,7 @@ export function bindHorizonForestImpostors(
     for (let i = 0; i < count && j < mesh.count; i++) {
       const o = i * stride;
       if ((packed[o + 5] > 0.5) !== tag.conifer || packed[o + 9] !== 2 || packed[o + 6] !== tag.variant) continue;
+      if (adoptedMask[i]) continue; // (the adopted tree's own near proxy casts its shadow: no double crown)
       const row = library.rows[library.rowBase(species[i]) + variantOf[i]];
       quaternion.setFromAxisAngle(up, packed[o + 4]);
       scale.setScalar(scaleOf[i] * row.heightM / Math.max(1e-3, tag.treeHeight));
@@ -227,6 +314,7 @@ export function bindHorizonForestImpostors(
       mesh.setMatrixAt(j, matrix);
       j++;
     }
+    mesh.count = j; // (a pool short of its quota by the adopted trees draws only what it holds)
     mesh.instanceMatrix.needsUpdate = true;
     mesh.material = proxyMaterial;
     markShadowOnly(mesh);
@@ -240,7 +328,7 @@ export function bindHorizonForestImpostors(
     lobeMaterial.dispose();
   }
   const receipt: HorizonForestImpostorReceipt = {
-    instances: count, draws, shadowProxies, species: speciesCounts,
+    instances: count, adopted, draws, shadowProxies, species: speciesCounts,
     stature: { rimTreeHeightM: options.rimTreeHeightM, ringLobeHeightM, ratio },
     tint: [rimTint.r, rimTint.g, rimTint.b],
   };

@@ -425,7 +425,7 @@ export function requireSameTimingState(reference, current) {
 }
 
 function requireTimingGarageOwner(owner) {
-  const sourceIds = ['t90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2'];
+  const sourceIds = ['t90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther'];
   if (owner?.built !== true || owner.variant !== 'verdant_motor_pool' || owner.mapId !== 'verdant'
       || owner.exhibitCount !== 5 || owner.optimizedTriangleParity !== true
       || !identical(owner.sourceVehicleIds, sourceIds)) {

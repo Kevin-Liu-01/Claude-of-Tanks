@@ -126,7 +126,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "type99a": {
+  "ztz99_longwei": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -189,7 +189,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.668702
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "type99a",
+        "anchorProfile": "ztz99_longwei",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -197,7 +197,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ztz99a2_prototype": {
+  "ztz99a": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -437,7 +437,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ztz100_x": {
+  "ztz100": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -456,7 +456,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ztz100_x",
+        "anchorProfile": "ztz100",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -478,7 +478,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ztz100_x",
+        "anchorProfile": "ztz100",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -606,7 +606,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "t14": {
+  "object148_proto": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -625,7 +625,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6979886
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t14",
+        "anchorProfile": "object148_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -647,7 +647,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t14",
+        "anchorProfile": "object148_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -655,7 +655,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "object695_x": {
+  "object695": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -674,7 +674,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hullExternalArmor",
-        "anchorProfile": "object695_x",
+        "anchorProfile": "object695",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -696,7 +696,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hullExternalArmor",
-        "anchorProfile": "object695_x",
+        "anchorProfile": "object695",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

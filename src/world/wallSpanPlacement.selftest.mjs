@@ -224,11 +224,15 @@ function poolFinalizer(fixture, field, drng, overrides = {}) {
     tintDestructibleInstances: () => {}, destructibleCastsShadow: () => false,
     DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group: new THREE.Group(),
     // (destruction-350) a light kind's broken state is its intact build broken (maps/propFracture.ts), from the build's seed
-    PROP_FRACTURE, fractureProp, fractureSeed, seed: 2002, ...overrides };
+    PROP_FRACTURE, fractureProp, fractureSeed, seed: 2002,
+    // (integ/225 with props #1 huts) the kinds whose broken builder is their own on the map (props.ts ownBroken: its
+    // structure variants and its pillbox); the fixture map has neither
+    ownBroken: new Set(), ...overrides };
   const functions = new Function('bindings', `const {
     THREE, mats, drng, refitDestructibleColliders, sealGroundCoverPlacements, fitWallSpan,
     heightField, wallSpans, WALL_SEG, tintDestructibleInstances, destructibleCastsShadow,
-    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed,
+    ownBroken
   } = bindings; ${prepareSource}; ${finalSource};
   return { prepare: prepareDestructiblePoolGeometry, finalize: finalizeDestructiblePool };`)(bindings);
   return { ...functions, group: bindings.group };
@@ -308,11 +312,13 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   };
   // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print; a dry-stone run's
   // posts and breach draw the field walls' print)
+  // (sealed lane 2026-10-11) a breach's rubble stands in the parked vehicles' seat passes (props.ts breachRubbleFootprints):
+  // the fixture runs none
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
-    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'wallDressing',
+    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'drawnPlanRecord', 'breachRubbleFootprints', 'wallDressing',
     `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
-    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone',
+    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone', () => null, [],
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
     createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }));
   runs.forEach((args, runIndex) => {

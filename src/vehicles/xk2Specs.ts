@@ -15,7 +15,7 @@ let donor: OriginalK2Metadata | null = null;
 
 /** Freeze the original production donor before applying the prototype hybrid. */
 export function k2SourceMetadata(): OriginalK2Metadata {
-  const spec = TANK_SPECS.k2;
+  const spec = TANK_SPECS.xk2_black_panther;
   donor ??= structuredClone({ armor: spec.armor, dims: spec.dims, gun: spec.gun,
     turretTraverseDegS: spec.turretTraverseDegS, gunPitchDegS: spec.gunPitchDegS });
   return structuredClone(donor);
@@ -26,20 +26,20 @@ export function k2SourceMetadata(): OriginalK2Metadata {
 export function prepareXk2DonorMetadata(): void {
   // Combat donor synchronization is initialization-only once final role tuning is published.
   if (isFleetBalanceFinalized(TANK_SPECS)) return;
-  Object.assign(TANK_SPECS.k2, k2SourceMetadata());
+  Object.assign(TANK_SPECS.xk2_black_panther, k2SourceMetadata());
 }
 
 /** Apply the selected turret only after all original donor clones are ready. */
 export function synchronizeXk2CombatMetadata(): void {
   // Combat donor synchronization is initialization-only once final role tuning is published.
   if (isFleetBalanceFinalized(TANK_SPECS)) return;
-  const spec = TANK_SPECS.k2, turret = TANK_SPECS.k1a1_x.armor;
-  spec.gun = structuredClone(TANK_SPECS.k1a1_x.gun);
+  const spec = TANK_SPECS.xk2_black_panther, turret = TANK_SPECS.k1a1.armor;
+  spec.gun = structuredClone(TANK_SPECS.k1a1.gun);
   // The prototype uses the transplanted gun/ammunition and a slower loading
   // cycle. Keep its mobile and stationary Tier IX matchups within their bands.
   spec.gun.reloadS = 6.5;
-  spec.turretTraverseDegS = TANK_SPECS.k1a1_x.turretTraverseDegS;
-  spec.gunPitchDegS = TANK_SPECS.k1a1_x.gunPitchDegS;
+  spec.turretTraverseDegS = TANK_SPECS.k1a1.turretTraverseDegS;
+  spec.gunPitchDegS = TANK_SPECS.k1a1.gunPitchDegS;
   spec.armor.turretPivot = [...D.turretPivot];
   spec.armor.gunPivot = [...D.gunPivot];
   spec.armor.gunBarrel = { lengthM: D.barrelLengthM, radiusM: D.barrelRadiusM };

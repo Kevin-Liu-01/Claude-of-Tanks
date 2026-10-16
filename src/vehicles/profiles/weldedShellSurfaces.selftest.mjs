@@ -60,27 +60,27 @@ for(const side of [-1,1]){
 // so deleting or bypassing the stock cannot silently pass this regression.
 const targets={
   ztz99a2:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('buildZTZ99A2Hull (')&&p.part.size.x>1.1&&p.part.size.x<1.13&&p.part.size.z>2.29&&p.part.size.z<2.31&&p.part.bounds.max.y<1.63,convexAll:true,mirrorPair:true},
-  k2_x:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.part.triangles.length===92&&p.site.includes('k2X.ts'),sectionContour:p=>p.part.size.x>2?8:6},
-  k21_x:{expected:2,select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='hull'&&p.site.includes('buildK21Hull (')&&p.part.size.z>6)||(p.bucket==='turret'&&p.site.includes('buildK21Turret (')&&p.part.vertices.length===30)),sectionContour:p=>p.bucket==='hull'?14:6},
+  k2_black_panther:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.part.triangles.length===92&&p.site.includes('k2X.ts'),sectionContour:p=>p.part.size.x>2?8:6},
+  k21:{expected:2,select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='hull'&&p.site.includes('buildK21Hull (')&&p.part.size.z>6)||(p.bucket==='turret'&&p.site.includes('buildK21Turret (')&&p.part.vertices.length===30)),sectionContour:p=>p.bucket==='hull'?14:6},
   marder2:{expected:4,select:p=>p.part.geometryType==='BufferGeometry'&&p.site.includes('buildMarder2 (')&&((p.bucket==='hull'&&p.part.size.z>7)||(p.bucket==='turret'&&p.part.vertices.length>8)),sectionContour:p=>p.bucket==='hull'?8:p.part.size.x>2?6:5},
-  challenger1_x:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
-  kf41_lynx_x:{expected:8,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&((p.site.includes('buildLynxTurretArmor (')&&p.part.vertices.length===30)||p.site.includes('addLynxTurretCheek ('))),sectionContour:p=>p.part.geometryType==='ExtrudeGeometry'?null:p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===30?6:5},
+  challenger1_mk3:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
+  kf41_lynx:{expected:8,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&((p.site.includes('buildLynxTurretArmor (')&&p.part.vertices.length===30)||p.site.includes('addLynxTurretCheek ('))),sectionContour:p=>p.part.geometryType==='ExtrudeGeometry'?null:p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===30?6:5},
   lrmv_lynx:{expected:6,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&p.site.includes('buildLrmvLynx (')&&p.part.geometryType==='BufferGeometry'&&[8,24].includes(p.part.vertices.length)),sectionContour:p=>p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===24?6:4},
   carro45t:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.site.includes('buildCarro45TTurretStage1 (')&&p.part.vertices.length>8,sectionContour:p=>p.part.size.x>2?8:5},
-  strv103:{expected:14,select:p=>p.bucket==='hull'&&p.site.includes('at loft (')&&p.site.includes('casemate.ts'),convexAll:true,mirror:true},
+  strv103b:{expected:14,select:p=>p.bucket==='hull'&&p.site.includes('at loft (')&&p.site.includes('casemate.ts'),convexAll:true,mirror:true},
   strv103a:{expected:19,select:p=>p.bucket==='hull'&&p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'),convexAll:true,mirror:true},
   udes03:{expected:8,select:p=>p.bucket==='hull'&&((p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'))||(p.part.vertices.length===8&&p.part.size.z>2.15&&p.part.size.z<2.17&&p.part.size.x<.61)),convexAll:true,mirror:true},
-  m1a2_x:{expected:2,select:p=>p.site.includes('buildTurretArmor (')&&p.site.includes('abramsSourceX.ts')&&p.bucket==='turret'&&p.part.size.z>2&&p.part.bounds.max.z>2&&p.part.bounds.min.z>-.02&&p.part.size.x>1},
+  m1a2_abrams:{expected:2,select:p=>p.site.includes('buildTurretArmor (')&&p.site.includes('abramsSourceX.ts')&&p.bucket==='turret'&&p.part.size.z>2&&p.part.bounds.max.z>2&&p.part.bounds.min.z>-.02&&p.part.size.x>1},
   ztz85_iii:{expected:1,select:p=>p.site.includes('buildZTZ85III (')&&p.bucket==='turret'&&p.part.triangles.length===84,panels:56,mirror:true},
-  sabra_mk2_x:{expected:3,select:p=>(p.site.includes('buildSabraHull (')&&p.part.triangles.length===80)||(p.site.includes('buildSabraTurretArmor (')&&p.bucket==='turret'&&p.part.triangles.length===44),mirror:true},
-  type96b_x:{expected:3,select:p=>p.part.triangles.length>24&&((p.site.includes('buildType96Hull (')&&p.bucket==='hull'&&p.part.geometryType!=='ExtrudeGeometry')||(p.site.includes('buildType96Turret (')&&p.bucket==='turret'&&p.part.triangles.length===68)),mirror:true},
+  sabra_mk2:{expected:3,select:p=>(p.site.includes('buildSabraHull (')&&p.part.triangles.length===80)||(p.site.includes('buildSabraTurretArmor (')&&p.bucket==='turret'&&p.part.triangles.length===44),mirror:true},
+  type96b:{expected:3,select:p=>p.part.triangles.length>24&&((p.site.includes('buildType96Hull (')&&p.bucket==='hull'&&p.part.geometryType!=='ExtrudeGeometry')||(p.site.includes('buildType96Turret (')&&p.bucket==='turret'&&p.part.triangles.length===68)),mirror:true},
   type10b:{expected:3,select:p=>(p.site.includes('addType10BPackage (')&&p.bucket==='turret'&&p.part.vertices.length===8&&p.part.bounds.max.y>.6&&p.part.bounds.min.y<.06)||(p.site.includes('buildType10Native2026TurretStage1 (')&&p.bucket==='turret'&&p.part.triangles.length===108&&p.part.size.z>4)},
-  k1a1_x:{expected:2,select:p=>(p.site.includes('hullBody (')&&p.bucket==='hull'&&p.part.bounds.min.z>2&&p.part.bounds.max.z<3.49)||(p.site.includes('turretBody (')&&p.bucket==='turret'&&p.part.triangles.length===92)},
+  k1a1:{expected:2,select:p=>(p.site.includes('hullBody (')&&p.bucket==='hull'&&p.part.bounds.min.z>2&&p.part.bounds.max.z<3.49)||(p.site.includes('turretBody (')&&p.bucket==='turret'&&p.part.triangles.length===92)},
   stb1:{expected:12,select:p=>p.site.includes('addSTB1HullBody (')&&p.bucket==='hull'&&p.part.vertices.length===8&&p.part.size.x>1.4&&p.part.size.z<3.19&&p.part.size.y>.075,mirror:true},
-  t90ms:{expected:1,select:p=>p.site.includes('rebuildT90MSTurretExact (')&&p.bucket==='turret'&&p.part.triangles.length===104,panels:96,mirror:true},
+  t90ms_2011:{expected:1,select:p=>p.site.includes('rebuildT90MSTurretExact (')&&p.bucket==='turret'&&p.part.triangles.length===104,panels:96,mirror:true},
   mbt70:{expected:1,select:p=>p.bucket==='turret'&&p.part.bounds.min.z<-2.91&&p.part.bounds.max.z>1.6&&p.part.vertices.length>80},
   challenger2:{expected:2,select:p=>p.bucket==='hull'&&p.part.size.x<.021&&p.part.size.z>7&&p.part.bounds.min.y>1.16},
-  t90sm:{expected:1,select:p=>p.site.includes('addT90SMTurretFoundation (')&&p.part.size.x>3,cap:true},
+  t90sm_2013:{expected:1,select:p=>p.site.includes('addT90SMTurretFoundation (')&&p.part.size.x>3,cap:true},
 };
 let checked=0;
 for(const [id,config]of Object.entries(targets))for(const quality of ['high','low']){
@@ -114,7 +114,7 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
       assert.equal(edges.nonmanifold,0,`${id}/${quality} manifold native panels`);
       if(!config.cap)assert.equal(edges.boundary,0,`${id}/${quality} closed finite stock`);
       if(config.panels)panelFaces(part,config.panels);
-      if(id==='k1a1_x'&&part.triangles.length===92)panelFaces(part,80);
+      if(id==='k1a1'&&part.triangles.length===92)panelFaces(part,80);
       if(id==='stb1')for(const face of part.triangles){const n=face.triangle.getNormal(new Vector3());
         for(const v of part.vertices)assert.ok(n.dot(new Vector3(...v).sub(face.triangle.a))<.000003,'STB welded bay is outward convex stock');}
       if(id==='type10b'&&part.triangles.length===108){panelFaces(part,72);close(mirroredSurfaceError(part,part).maxM,0,'native Type10 hull-derived turret symmetry');}
@@ -126,11 +126,11 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
       }
       checked++;
     }
-    if(id==='kf41_lynx_x'||id==='lrmv_lynx'){
-      const scale=.9,body=parts.find(p=>p.bucket==='turret'&&p.part.vertices.length===(id==='kf41_lynx_x'?30:24)).part;
-      const role=id==='kf41_lynx_x'?'lynx-cheek-fastener-washer':'lrmv-cheek-fitting';
+    if(id==='kf41_lynx'||id==='lrmv_lynx'){
+      const scale=.9,body=parts.find(p=>p.bucket==='turret'&&p.part.vertices.length===(id==='kf41_lynx'?30:24)).part;
+      const role=id==='kf41_lynx'?'lynx-cheek-fastener-washer':'lrmv-cheek-fitting';
       const fixtures=emissions.filter(p=>p.g.userData.nativeShellFixtureRole===role);
-      assert.equal(fixtures.length,id==='kf41_lynx_x'?16:8,'all bilateral armor-mounted fittings are present');
+      assert.equal(fixtures.length,id==='kf41_lynx'?16:8,'all bilateral armor-mounted fittings are present');
       for(const {g}of fixtures){
         const fixture=shellPart(g),center=fixture.bounds.getCenter(new Vector3());
         const ray=new Ray(new Vector3(Math.sign(center.x)*3,center.y,center.z),new Vector3(-Math.sign(center.x),0,0));
@@ -146,12 +146,12 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
         };
         for(const face of fixture.triangles)if(face.triangle.getNormal(new Vector3()).dot(normal)<-.999){
           const point=face.triangle.getMidpoint(new Vector3());
-          close(separation(point),-(id==='kf41_lynx_x'?.001:.002)*scale,'fixture foot embeds in actual carrier',.00001);
+          close(separation(point),-(id==='kf41_lynx'?.001:.002)*scale,'fixture foot embeds in actual carrier',.00001);
           assert.ok(separation(point.clone().addScaledVector(normal,.05))>.04,'detached fitting is a failing control');tested++;
         }
         assert.ok(tested>=2,'fitting back faces independently tested');
       }
-      if(id==='kf41_lynx_x'){
+      if(id==='kf41_lynx'){
         const pockets=parts.filter(p=>p.part.geometryType==='ExtrudeGeometry');assert.equal(pockets.length,2);
         const front=y=>y<=2.76?1.63+.525*(y-2.64):1.693-1.75*(y-2.76);
         const oldY=[2.4,2.61,2.825];
@@ -172,7 +172,7 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
         }
       }
     }
-    if(id==='t90ms'){
+    if(id==='t90ms_2011'){
       const source=parts[0].part;
       const plates=emissions.filter(p=>String(p.g.userData.nativeArmorSkinRole).startsWith('t90ms-welded-'));
       assert.equal(plates.length,54,'all native flank, shoulder, lower and roof cassette solids remain');
@@ -197,7 +197,7 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
         if(roof)assert.ok(plate.bounds.max.y-plate.bounds.min.y>.052,'roof ERA extrudes upward, never sideways or flat');
       }
     }
-    if(id==='sabra_mk2_x'){
+    if(id==='sabra_mk2'){
       const source=parts.find(p=>p.part.bounds.min.z>.4).part;
       const covers=emissions.filter(p=>p.bucket==='turretExternalArmor'&&p.site.includes('buildSabraTurretArmor ('));
       assert.equal(covers.length,4,'all four Sabra roof covers remain');

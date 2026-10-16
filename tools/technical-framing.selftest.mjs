@@ -13,10 +13,10 @@ const extract=name=>{
 const context=vm.createContext({THREE,MARGIN:1.07});
 vm.runInContext(['orthoCam','sideInspectionCamera','technicalInspectionCamera'].map(extract).join('\n'),context);
 const INSET_IDS=[
-  'merkava3d_x','merkava4_x','leo2a7v_x','leo2a6m_x','leo2a4m_x','leo2a5_x',
-  'k2_x','kf51_x','t14_x','t90a_x','t90a_vladimir_x','t90m_x','t90sm_x',
-  'm1a2_x','m1a2_tusk_x',
-  'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x',
+  'merkava3d','merkava4','leo2a7v','leo2a6m','leo2a5m','leo2a5',
+  'k2_black_panther','kf51_panther','t14_armata','t90a','t90a_vladimir','t90m','t90sm',
+  'm1a2_abrams','m1a2_abrams_tusk',
+  'm1a2_abrams_sepv2','m1a2_abrams_sepv3','ua_m1a2_abrams',
 ];
 const LEGACY_IDS=INSET_IDS.map(id=>id.slice(0,-2));
 
@@ -35,13 +35,13 @@ function verifySafeContent(bounds,label) {
 }
 function verifyOriginalOverlap(bounds,id,label) {
   assert.ok(bounds.right>420,`${label}: original full gun extends into the right label gutter`);
-  if(id==='merkava3d_x'||id==='merkava4_x') {
+  if(id==='merkava3d'||id==='merkava4') {
     assert.ok(bounds.bottom>224,`${label}: original lowest track enters the footer`);
   }
-  if(id==='leo2a7v_x'||id==='kf51_x') {
+  if(id==='leo2a7v'||id==='kf51_panther') {
     assert.ok(bounds.top<43,`${label}: original whip crosses the opaque header edge`);
   }
-  if(id==='t14_x') {
+  if(id==='t14_armata') {
     assert.ok(bounds.left<92,`${label}: original stern enters the left label gutter`);
   }
 }

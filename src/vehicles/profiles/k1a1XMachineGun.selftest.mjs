@@ -11,7 +11,7 @@ function closedAt(object,p,axis){
   assert.ok(a&&b&&a.distance>1e-6&&b.distance>1e-6,'point is inside actual closed stock');
 }
 for(const quality of ['high','low']){
-  const tank=createTank('k1a1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('k1a1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);
     const gun=tank.root.getObjectByName('k1a1XPhotoRoofMachineGun');

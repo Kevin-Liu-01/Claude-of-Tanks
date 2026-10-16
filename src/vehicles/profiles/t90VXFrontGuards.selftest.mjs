@@ -62,7 +62,7 @@ function jointChecks(side) {
 }
 
 for (const quality of ['high','low']) {
-  const tank = createTank('t90a_vladimir_x',null,{ quality, proceduralOnly:true, geometryReceipt:true, batchStatic:false });
+  const tank = createTank('t90a_vladimir',null,{ quality, proceduralOnly:true, geometryReceipt:true, batchStatic:false });
   try {
     tank.root.updateMatrixWorld(true);
     const hull = tank.root.getObjectByName('hull');

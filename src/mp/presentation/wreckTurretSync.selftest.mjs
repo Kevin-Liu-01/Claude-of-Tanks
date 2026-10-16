@@ -15,7 +15,7 @@ import { RemoteInterpolator } from '../match/interpolation.ts';
 
 const MAP = 'verdant';
 const world = createDedicatedWorldCollision(MAP);
-const players = [{ id: 'h1', specId: 'm1a2', team: 'alpha' }, { id: 'h2', specId: 't90m', team: 'bravo' }];
+const players = [{ id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' }, { id: 'h2', specId: 't90am', team: 'bravo' }];
 const match = createAuthoritativeMatch({ players, mapId: MAP, seed: 21, countdownS: 0, gameMode: 'standard', worldCollision: world });
 match.onMatchReady();
 const victim = match.entities.find((entity) => entity.id === 'h2');

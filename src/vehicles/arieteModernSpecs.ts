@@ -22,14 +22,14 @@ function addUpgradeProtection(spec: FleetTankSpec): void {
       keMm: belly ? 20 : cheek ? 140 : 100,
       ceMm: belly ? 20 : cheek ? 280 : 260,
       // A closed pack is one layer even when a ray crosses both faces.
-      surfaceGroup: `ariete_c2_x:${face.name.replace(/_\d+$/, '')}`,
+      surfaceGroup: `ariete_c2_x:${face.name.replace(/_\d+$/, '')}`, // schema-1 name (seat signatures hash it), tank-ids:keep
     };
     (cheek ? spec.armor.turretPlates : spec.armor.hullPlates).push(plate);
   }
 }
 
 function createArieteC2(): FleetTankSpec {
-  const spec = cloneFleetVariant(registries.tankSpecs, 'ariete_c2_x', 'ariete_c1_x', {
+  const spec = cloneFleetVariant(registries.tankSpecs, 'c2_ariete', 'c1_ariete', {
     name: 'C2 Ariete', nation: 'Italy', era: 'modern', role: 'mbt',
   });
   delete spec.balancePeerOf;
@@ -61,4 +61,4 @@ function createArieteC2(): FleetTankSpec {
   return spec;
 }
 
-registerFleetSpecs(registries, ['ariete_c2_x'], { ariete_c2_x: createArieteC2() });
+registerFleetSpecs(registries, ['c2_ariete'], { c2_ariete: createArieteC2() });

@@ -3,12 +3,12 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
 const ABRAMS_FAMILY_IDS = [
-  'm1a2',
+  'm1a1_abrams_hc',
   'm1a1',
   'm1a1ha',
-  'm1a2_tusk',
-  'm1a2_sepv2',
-  'm1a2_sepv3',
+  'm1a1_abrams_sa',
+  'm1a1_abrams_aim',
+  'm1a1_abrams_fep',
   'ua_m1a1',
   // MBT-70 intentionally composes the certified skirtless M1A1 hull.
   'mbt70',
@@ -18,12 +18,12 @@ const EXPECTED_WHEEL_ZS = [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19];
 const EXPECTED_CONTACT_ZS = [2.19, -2.19];
 const EPSILON = 1e-6;
 const ABRAMS_RETURN_ROLLER_CASES = [
-  ['m1a2', 2],
+  ['m1a1_abrams_hc', 2],
   ['m1a1', 2],
   ['m1a1ha', 2],
-  ['m1a2_tusk', 2],
-  ['m1a2_sepv2', 2],
-  ['m1a2_sepv3', 2],
+  ['m1a1_abrams_sa', 2],
+  ['m1a1_abrams_aim', 2],
+  ['m1a1_abrams_fep', 2],
   ['ua_m1a1', 2],
   ['abramsx', 2],
   ['mbt70', 3],

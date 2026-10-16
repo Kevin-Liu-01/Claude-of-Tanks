@@ -145,7 +145,7 @@ engagement) — the architecture law limits decor to the two rig groups.
 
 Catalog sheets: every builder × variant on a pedestal at 3 angles
 (`shots/decorations-r1/catalog/*.png`, 1 m scale bar). Composition sheets:
-8 tanks (tiger1, t34_85, m4a3e8 · m60a1 cold-war · kv2 · leo2a6 GLB, k2
+8 tanks (tiger1, t34_85, m4a3e8 · m60a1 cold-war · kv2 · leo2a4 GLB, xk2_black_panther
 modern · isu152 casemate GLB) hero/rear, closeups, full-depression
 articulation strip, dressed|bare pair, wreck burn check. Scored 1–10 on
 shape fidelity / read-at-game-distance / material believability; every
@@ -198,8 +198,8 @@ fuel-tan), wire-grid texture split from camo-net.
 | m4a3e8 | ww2 | procedural | 10 | 2472 | 9 |
 | m60a1 | cold-war | procedural | 9 | 2090 | 9 |
 | kv2 | ww2 | procedural | 11 | 2832 | 7 |
-| leo2a6 | modern | glb | 10 | 2344 | 7 |
-| k2 | modern | procedural | 10 | 1780 | 7 |
+| leo2a4 | modern | glb | 10 | 2344 | 7 |
+| xk2_black_panther | modern | procedural | 10 | 1780 | 7 |
 | isu152 | ww2 | glb (casemate) | 7 | 2026 | 4 |
 
 (tiger1, t34_85, m4a3e8 and isu152 have had no builder since 2026-09-25 —
@@ -207,15 +207,15 @@ owner: delete the archived WWII / casemate tanks outside production; their rows
 stay as the grading record.)
 
 In-game auto-path spot check (real engine ctx, zero opts): garage pedestal
-m1a2 (GLB) 6 decor meshes / 1048 tris; battle roster all dressed incl.
-uncurated defaults — panther_g 984, is2 2654, leo2a7 1834, t90m 930 tris.
+m1a1_abrams_hc (GLB) 6 decor meshes / 1048 tris; battle roster all dressed incl.
+uncurated defaults — panther_g 984, is2 2654, leo2a7 1834, t90am 930 tris.
 Evidence: `shots/decorations-r1/game/{garage,tank_closeup_ww2,battlefield,player_view,studio_*}.png`
 plus the studio selftest scenes.
 
 ## Manifests
 
-`TANK_MANIFESTS` carries curated loadouts (kv2, m60a1, type74, leo2a6, k2,
-m1a2, t90m and the Abrams / Challenger / Leclerc / KF51 / Type 10 family
+`TANK_MANIFESTS` carries curated loadouts (kv2, m60a1, type74, leo2a4, xk2_black_panther,
+m1a1_abrams_hc, t90am and the Abrams / Challenger / Leclerc / KF51 / Type 10 family
 entries; the tiger1, t34_85, m4a3e8, isu152, is7 and merkava4 loadouts
 retired with those hulls on 2026-09-23); everything else takes
 the era/nation default (`defaultManifest`) — interwar/ww2/cold-war/modern/next-generation tagged, with

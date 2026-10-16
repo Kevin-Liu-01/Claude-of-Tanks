@@ -112,8 +112,8 @@ material.onBeforeCompile(shader, {});
 const tag = `#include <opaque_fragment>\n#if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )\n\tgl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};\n#endif`;
 assert.equal(shader.fragmentShader.split(tag).length, 2, 'the vehicle hook tags its pixels exactly once');
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
-assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = 2\.0 \+ cotSunVis;/,
-  'the lit materials still write 2 + v (the base the tag adds to)');
+assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\n#ifdef COT_SNOW_COVER\n[\s\S]*?\n#else\ngl_FragColor\.a = 2\.0 \+ cotSunVis;/,
+  'the lit materials still write 2 + v (the base the tag adds to; only the terrain, COT_SNOW_COVER, writes the snow band)');
 material.dispose();
 
 console.log(`vehicleOcclusion.selftest: alpha tag ${VEHICLE_ALPHA_TAG} (vehicle >= ${VEHICLE_ALPHA_MIN}), ${VEHICLE_OCCLUSION_DIRECTIONS}x${VEHICLE_OCCLUSION_STEPS} fixed taps over ${VEHICLE_OCCLUSION_RADIUS_M} m, strength ${VEHICLE_OCCLUSION_STRENGTH} on the ambient share`);

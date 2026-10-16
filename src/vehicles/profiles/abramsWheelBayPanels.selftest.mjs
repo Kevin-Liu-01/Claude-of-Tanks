@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
 const OPEN_WHEEL_BAY_IDS = [
-  'm1a2',
+  'm1a1_abrams_hc',
   'm1a1',
   'm1a1ha',
-  'm1a2_tusk',
-  'm1a2_sepv2',
-  'm1a2_sepv3',
+  'm1a1_abrams_sa',
+  'm1a1_abrams_aim',
+  'm1a1_abrams_fep',
   'ua_m1a1',
 ];
 

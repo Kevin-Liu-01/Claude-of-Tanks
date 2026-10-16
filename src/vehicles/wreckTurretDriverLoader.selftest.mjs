@@ -27,11 +27,11 @@ assert.match(source('./wreckTurretDriverLoader.ts'), /import\('\.\/wreckTurretDr
 assert.equal(wreckTurretDriverReady(), false, 'loading the tank factory does not load the wreck physics');
 
 function battleTank() {
-  const visual = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true, batchStatic: true, battleDetailLod: true });
+  const visual = createTank('m1a1_abrams_hc', null, { proceduralOnly: true, geometryReceipt: true, batchStatic: true, battleDetailLod: true });
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
   const seat = turret.position.clone();
-  const state = createTankState(getSpec('m1a2'), new THREE.Vector3(12, 0.7, -9), 0.83);
+  const state = createTankState(getSpec('m1a1_abrams_hc'), new THREE.Vector3(12, 0.7, -9), 0.83);
   state.turretYaw = 0.61;
   state.gunPitch = 0.17;
   visual.setGroundSampler(() => 1.4);

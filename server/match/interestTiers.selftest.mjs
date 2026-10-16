@@ -91,7 +91,7 @@ function createHeadlessClient(actor, seat, playerId, team) {
     } else if (message.type === MESSAGE_TYPE.EVENT) client.events.push(...message.events.map((event) => ({ ...event, tick: message.tick })));
   });
   const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 1, token: 'issued-elsewhere', clientBuild: 'tiers' };
-  assert.ok(actor.attach(link.server, hello, { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team, specId: 'm1a2', iat: 0, exp: 1 }));
+  assert.ok(actor.attach(link.server, hello, { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team, specId: 'm1a1_abrams_hc', iat: 0, exp: 1 }));
   return client;
 }
 
@@ -104,12 +104,12 @@ const control = (overrides = {}) => ({
 // and one at 420 m (spotted or not, the oracle decides); every hull drives slowly along +z so its rows change every tick
 const X0 = -200;
 const seats = [
-  { seat: 0, playerId: 'p1', name: 'Viewer', team: 'alpha', specId: 'm1a2', spawn: { x: X0, z: 0, yaw: 0 } },
-  { seat: 1, playerId: 'p2', name: 'Near', team: 'alpha', specId: 'm1a2', spawn: { x: X0 + 60, z: 0, yaw: 0 } },
-  { seat: 2, playerId: 'p5', name: 'Mid', team: 'alpha', specId: 'm1a2', spawn: { x: X0 + 200, z: 0, yaw: 0 } },
-  { seat: 3, playerId: 'p6', name: 'Far', team: 'alpha', specId: 'm1a2', spawn: { x: X0 + 400, z: 0, yaw: -Math.PI / 2 } },
-  { seat: 4, playerId: 'p3', name: 'NearEnemy', team: 'bravo', specId: 't90m', spawn: { x: X0 + 40, z: 0, yaw: 0 } },
-  { seat: 5, playerId: 'p4', name: 'FarEnemy', team: 'bravo', specId: 't90m', spawn: { x: X0 + 420, z: 0, yaw: 0 } },
+  { seat: 0, playerId: 'p1', name: 'Viewer', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: X0, z: 0, yaw: 0 } },
+  { seat: 1, playerId: 'p2', name: 'Near', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: X0 + 60, z: 0, yaw: 0 } },
+  { seat: 2, playerId: 'p5', name: 'Mid', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: X0 + 200, z: 0, yaw: 0 } },
+  { seat: 3, playerId: 'p6', name: 'Far', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: X0 + 400, z: 0, yaw: -Math.PI / 2 } },
+  { seat: 4, playerId: 'p3', name: 'NearEnemy', team: 'bravo', specId: 't90am', spawn: { x: X0 + 40, z: 0, yaw: 0 } },
+  { seat: 5, playerId: 'p4', name: 'FarEnemy', team: 'bravo', specId: 't90am', spawn: { x: X0 + 420, z: 0, yaw: 0 } },
   { seat: 9, playerId: 's1', name: 'Watcher', team: 'spectator', specId: '' },
 ];
 // at an explicit 30 Hz: the cadences below are written in ticks (4 = every second snapshot, 6 = every third)

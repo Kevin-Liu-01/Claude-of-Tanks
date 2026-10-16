@@ -312,7 +312,7 @@ export function buildT72B3MX(P:TankBuilderPort):void {
   buildT72B3MXHull(P);turret(P);
   cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
-export const T72B3M_X_PROFILES={t72b3m_x:{build:buildT72B3MX}} as const;
+export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT72B3MXRunningGear(P:TankBuilderPort):void { runningGear(P); }

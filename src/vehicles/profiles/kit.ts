@@ -529,7 +529,7 @@ function addWesternHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): voi
 function addHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
   if (d.style === 'merkava') addMerkavaHullShell(P,d);
   else if (d.style === 'soviet') addSovietHullShell(P,p,d);
-  else if (d.style === 'type90') addType90HullShell(P,d);
+  else if (d.style === 'type90_kyumaru') addType90HullShell(P,d);
   else if (d.style === 'warrior') addWarriorHullShell(P,d);
   else if (d.style === 'ifv') addIfvHullShell(P,d);
   else if (d.style === 'classic') addClassicHullShell(P,d);
@@ -611,7 +611,7 @@ function addClassicDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions):
 function addHullDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
   if (d.style === 'merkava') addMerkavaDeckFurniture(P,d);
   else if (d.style === 'soviet') addSovietDeckFurniture(P,d);
-  else if (d.style === 'type90') addType90DeckFurniture(P,d);
+  else if (d.style === 'type90_kyumaru') addType90DeckFurniture(P,d);
   else if (d.style === 'warrior') addWarriorDeckFurniture(P,d);
   else if (d.style === 'western' || d.style === 'ifv') addWesternDeckFurniture(P,d);
   else addClassicDeckFurniture(P,d);
@@ -833,14 +833,14 @@ function addTurretShell(P: ProfileBuilderPort, p: ProfileConfig): void {
   else if (p.turret === 'merkava') merkavaTurret(P,p);
   else if (p.turret === 'cast') castTurret(P,p);
   else if (p.turret === 'ifv') ifvTurret(P,p);
-  else if (p.turret === 'type90') type90Turret(P,p);
+  else if (p.turret === 'type90_kyumaru') type90Turret(P,p);
   else westernWedge(P,p);
 }
 
 function addTurretCrewStations(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { cylY,cupola,periscope }=KIT;
   const h=p.turretHeight;
-  if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90') {
+  if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90_kyumaru') {
     cupola(P,'turret',p.commanderX ?? p.turretWidth*0.20,h,p.commanderZ ?? -p.turretDepth*0.22,
       p.cupolaR ?? Math.min(0.24,p.turretWidth*0.09),p.cupolaH ?? 0.10,p.cupolaPeriscopes ?? 6);
     P.add('turret',cylY(0.19,0.19,0.035,14),p.loaderX ?? -p.turretWidth*0.20,h+0.02,-p.turretDepth*0.18);
@@ -917,12 +917,12 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
 }
 
 // §B3.1 addendum MUZZLE BORE (owner 2026-08-06, banked 32a6946; MANDATORY
-// MECHANISM per the leclerc landing, banked 3fca39b): no gun ends in a solid
+// MECHANISM per the leclerc_s2 landing, banked 3fca39b): no gun ends in a solid
 // capped tip — every muzzle face carries an annular rim + a near-black bore
 // disc recessed inside the rim mouth. MECHANISM = SHADOW-NAMED RENDER
 // FURNITURE (§C), the misc.ts muzzleBore() reference pattern: bucket-based
 // rims grow the gun AABB ~3cm and RE-FRAME the turret-row cameras (-6.2
-// measured on leclerc; also re-binned gate z-columns here — m46/m47 hull
+// measured on leclerc_s2; also re-binned gate z-columns here — m46/m47 hull
 // -0.5/-0.3 measured before the rework). /shadow/i-named meshes render in
 // every game/critic view but are excluded from every measurement mask AND
 // the visible-box framing recipes — mask/frame-neutral BY CONSTRUCTION, and

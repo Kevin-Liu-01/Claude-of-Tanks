@@ -35,7 +35,7 @@ function helperContacts(){
 }
 helperContacts();
 for(const quality of ['high','low']){
-  const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});sourceRays(ms);
     const hull=t.root.getObjectByName('hull'),detail=t.root.getObjectByName('hullDetail');
     const previous=[hull.material.side,detail.material.side];hull.material.side=detail.material.side=THREE.DoubleSide;

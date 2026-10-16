@@ -26,7 +26,7 @@ const take = {
   poster: '/media/site50-r14/loops/s21-fields-assault.jpg',
   scene: '/media/site50-r14/scenes/s21-fields-assault.scene.json',
 };
-dom.respond('/media/site50-r14/fleet/index.json', { collection: 'site50-r14', vehicles: { t90sm: take } });
+dom.respond('/media/site50-r14/fleet/index.json', { collection: 'site50-r14', vehicles: { t90sm_2013: take } });
 
 const { watchVehicleTakes } = await import('./referenceTakes.ts');
 const records = dom.document.createElement('div');
@@ -39,8 +39,8 @@ const record = (vehicle) => {
   return details;
 };
 const toggle = (details, open) => { details.open = open; details.dispatchEvent({ type: 'toggle' }); };
-const withTake = record('t90sm');
-const withoutTake = record('m1a2');
+const withTake = record('t90sm_2013');
+const withoutTake = record('m1a1_abrams_hc');
 const notAVehicle = record('');
 watchVehicleTakes(records);
 await settle();

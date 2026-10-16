@@ -24,7 +24,7 @@ function mustReplace(src: string, anchor: string, replacement: string): string {
 }
 
 /** The vehicle material's program cache key suffix (the hook changes the program). */
-export const VEHICLE_SURFACE_PROGRAM = 'surf1';
+export const VEHICLE_SURFACE_PROGRAM = 'surf2';
 
 /** Patch the vehicle material's program: the per-vertex surface stream and the masked instance tint. */
 export function applyVehicleSurfaceHook(shader: ShaderLike): void {
@@ -43,4 +43,9 @@ export function applyVehicleSurfaceHook(shader: ShaderLike): void {
 #endif`);
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <metalnessmap_fragment>', /* glsl */`#include <metalnessmap_fragment>
   metalnessFactor = vSurf.y;`);
+  // Sealed lane 2026-10-10 (wave 368: "the cab window carries an opaque grey rubble texture", "black-slab windscreens"):
+  // the glass (the stream's roughness under 0.1) keeps its smooth normal; the paint tile's relief stays on everything
+  // else (the chrome at 0.25 and up keeps it)
+  shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_maps>', /* glsl */`#include <normal_fragment_maps>
+  normal = normalize( mix( nonPerturbedNormal, normal, smoothstep( 0.08, 0.16, vSurf.x ) ) );`);
 }

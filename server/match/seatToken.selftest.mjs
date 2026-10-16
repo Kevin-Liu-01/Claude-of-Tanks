@@ -3,7 +3,7 @@ import { isSeatClaims, signSeatToken, verifySeatToken } from './seatToken.ts';
 
 const secret = 'test-secret-that-is-long-enough';
 const now = 1_700_000_000_000;
-const claims = { v: 1, roomId: 'room-1', seat: 3, playerId: 'p_3', name: 'Three', team: 'bravo', specId: 't90m', iat: now, exp: now + 60_000 };
+const claims = { v: 1, roomId: 'room-1', seat: 3, playerId: 'p_3', name: 'Three', team: 'bravo', specId: 't90am', iat: now, exp: now + 60_000 };
 const token = signSeatToken(secret, claims);
 assert.ok(token.includes('.') && token.length < 400);
 const verified = verifySeatToken(secret, token, now + 1000);

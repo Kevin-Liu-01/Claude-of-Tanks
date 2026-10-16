@@ -209,5 +209,11 @@ console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and
   };
   fortFractureEdge('concrete', lift, lift.scores[0], 0x4321, writer);
   assert.equal(runs.length, 2, 'a cap on each half');
-  for (const run of runs) assert.ok(run.t >= 50 && run.role === 'rim', 'a ragged cap with its bars');
+  // (E1: the cap's grid by the break's size, a cell about 40 cm across, at least two along it and one through it, so the
+  // wreck stays within 1.5 x the intact; its bars two triangles each)
+  for (const run of runs) assert.ok(run.t >= 4 + 6 && run.role === 'rim', `a ragged cap with its bars (${run.t} triangles)`);
+  const slab = g.userData.fracture.pieces.find((p) => p.role === 'slab' && !p.anchor);
+  const big = [];
+  fortFractureEdge('concrete', { ...slab, scoreAxis: 0 }, 0, 0x4321, { ...writer, end() { big.push(this.run); } });
+  assert.ok(big[0].t > runs[0].t, 'a wider break draws a finer cap');
 }

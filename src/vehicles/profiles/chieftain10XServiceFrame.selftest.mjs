@@ -6,7 +6,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The published-foundation source-byte contract and the frozen successor / non-track vertex multisets
 // (docs/references/tanks/chieftain_mk10_x.published-foundation-preservation.json) are retired: whole-tank
-// change detection of chieftain_mk10_x is the fleet geometry ledger's. Kept: source crowns and air, real
+// change detection of chieftain_mk10 is the fleet geometry ledger's. Kept: source crowns and air, real
 // rail gaps, seated folded feet, every service-frame vertex actually drawn by the factory, hull ownership.
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
@@ -117,7 +117,7 @@ function wiringNegativeControl(tank, fixture) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false }), fixture = fixtures();
   try {
     tank.root.updateMatrixWorld(true);

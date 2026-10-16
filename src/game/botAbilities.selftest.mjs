@@ -9,7 +9,7 @@ import { PLAYER_ACTION_BITS as B } from '../sim/playerActions.ts';
 import { createBotAbilityPlanner } from './botAbilities.ts';
 
 function fixture(team = 'alpha') {
-  const spec = getSpec('m1a2');
+  const spec = getSpec('m1a1_abrams_hc');
   const entity = { id: `bot-${team}`, team, spec, state: createTankState(spec, new Vector3(), 0), combat: createCombatState(spec) };
   const context = { hitAtS: 10, hitBearing: 0, retreating: true, reloadS: 6, contactM: 90, safeJump: false };
   return { entity, context, planner: createBotAbilityPlanner(spec) };

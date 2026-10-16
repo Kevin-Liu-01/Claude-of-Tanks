@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "challenger1": {
+  "challenger1_mk2": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -25,7 +25,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "challenger1",
+        "anchorProfile": "challenger1_mk2",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -47,7 +47,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "challenger1",
+        "anchorProfile": "challenger1_mk2",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -295,7 +295,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "challenger_3": {
+  "challenger3_proto": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -380,7 +380,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7026635
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "challenger_3",
+        "anchorProfile": "challenger3_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -388,7 +388,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "challenger_3x": {
+  "challenger3": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -407,7 +407,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6824235
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "challenger_3x",
+        "anchorProfile": "challenger3",
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
@@ -429,7 +429,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7060247
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "challenger_3x",
+        "anchorProfile": "challenger3",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

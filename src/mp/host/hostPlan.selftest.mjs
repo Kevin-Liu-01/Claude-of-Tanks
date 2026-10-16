@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 import { createRoom, joinRoom, planStart, setPlayerConnected } from '../room/roomPolicy.ts';
 import { planFromMatchStart, planFromRoom, planHostBoot } from './hostPlan.ts';
 
-const room = createRoom({ roomCode: 'PLAN01', mode: 'private', creator: { id: 'alice', name: 'Alice' }, selection: { specId: 'm1a2', equipment: ['optics'] }, settings: { teamSize: 3, mapId: 'verdant' }, now: 1000 });
-joinRoom(room, { player: { id: 'bob', name: 'Bob' }, selection: { specId: 't90m' }, team: null, now: 1001 });
-joinRoom(room, { player: { id: 'carol', name: 'Carol' }, selection: { specId: 'leo2a7v' }, team: 'alpha', now: 1002 });
+const room = createRoom({ roomCode: 'PLAN01', mode: 'private', creator: { id: 'alice', name: 'Alice' }, selection: { specId: 'm1a1_abrams_hc', equipment: ['optics'] }, settings: { teamSize: 3, mapId: 'verdant' }, now: 1000 });
+joinRoom(room, { player: { id: 'bob', name: 'Bob' }, selection: { specId: 't90am' }, team: null, now: 1001 });
+joinRoom(room, { player: { id: 'carol', name: 'Carol' }, selection: { specId: 'leo2_improved' }, team: 'alpha', now: 1002 });
 joinRoom(room, { player: { id: 'dave', name: 'Dave' }, selection: null, team: null, now: 1003 });
 joinRoom(room, { player: { id: 'spec', name: 'Spec' }, selection: null, team: 'spectator', now: 1004 });
 setPlayerConnected(room, 'carol', false, 1005);
@@ -30,7 +30,7 @@ assert.deepEqual(planHostBoot(room, matchStart, 'alice').seats.map((seat) => sea
 assert.throws(() => planHostBoot(room, matchStart, 'carol'), /not seated/);
 
 // an attached plan wins; a malformed one is ignored
-const attached = { ...matchStart, plan: { seats: [{ seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a2', equipment: [] }], bots: [{ playerId: 'bot-bravo-1', name: 'Bot 1', team: 'bravo', specId: 'm1a2', difficulty: 'hard' }] } };
+const attached = { ...matchStart, plan: { seats: [{ seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a1_abrams_hc', equipment: [] }], bots: [{ playerId: 'bot-bravo-1', name: 'Bot 1', team: 'bravo', specId: 'm1a1_abrams_hc', difficulty: 'hard' }] } };
 const fromRoom = planFromMatchStart(attached);
 assert.equal(fromRoom.seats.length, 1);
 assert.equal(fromRoom.bots[0].difficulty, 'hard');
@@ -39,6 +39,6 @@ assert.equal(planFromMatchStart({ ...matchStart, plan: { seats: [{ seat: 'x' }] 
 assert.equal(planFromMatchStart({ ...matchStart, plan: 'nope' }), null);
 
 // co-op: no bots
-const coop = createRoom({ roomCode: 'PLAN02', mode: 'private', creator: { id: 'eve', name: 'Eve' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2, gameMode: 'endless_horde', mapId: 'verdant' }, now: 1000 });
+const coop = createRoom({ roomCode: 'PLAN02', mode: 'private', creator: { id: 'eve', name: 'Eve' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, gameMode: 'endless_horde', mapId: 'verdant' }, now: 1000 });
 assert.deepEqual(planFromRoom(coop).bots, []);
 console.log('hostPlan.selftest: the derived plan equals planStart, attached plans win, co-op seats no bots');

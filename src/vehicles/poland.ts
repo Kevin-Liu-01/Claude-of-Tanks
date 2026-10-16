@@ -16,7 +16,7 @@ import {
 import { donorSpec } from './donorSpecs.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105'] as const);
+const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91a_twardy', 'pl01', 'pl01_105'] as const);
 
 type PolishStatOverrides = Partial<Pick<FleetTankSpec,
   | 'hp'
@@ -118,7 +118,7 @@ const twardyDonor = donorSpec(registries.tankSpecs, 't72b3');
 const twardyArmor = structuredClone(twardyDonor.armor);
 fitArmorToDims(twardyArmor, twardyDonor.dims,
   { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.19 });
-const pt91Twardy = variant('pt91_twardy', 'pt91m', {
+const pt91Twardy = variant('pt91a_twardy', 'pt91m', {
   name: 'PT-91A Twardy', number: 'PT-91', scheme: 'stripes',
   base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'],
   camoScale: 0.46,
@@ -134,7 +134,7 @@ const pt91Twardy = variant('pt91_twardy', 'pt91m', {
 });
 pt91Twardy.visual.trackWidthM = .50;
 
-const pl01 = variant('pl01', 'k2', {
+const pl01 = variant('pl01', 'xk2_black_panther', {
   name: 'PL-01', number: 'PL-01', scheme: 'digital',
   base: '#313b38', weather: '#47504a', patches: ['#202725', '#4e5750', '#67685e'],
   camoScale: 0.36,
@@ -192,7 +192,7 @@ applyEscortFieldKitArmor(pl01_105,ESCORT_FIELD_KITS.pl01_105);
 
 const POLAND_SPECS = {
   t72m1_jaguar: t72m1Jaguar,
-  pt91_twardy: pt91Twardy,
+  pt91a_twardy: pt91Twardy,
   pl01,
   pl01_105,
 } satisfies Record<string, FleetTankSpec>;

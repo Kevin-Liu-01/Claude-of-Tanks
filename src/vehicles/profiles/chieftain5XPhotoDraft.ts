@@ -18,7 +18,7 @@ type Point = readonly [number, number, number];
 type Band = readonly [z: number, left: number, right: number, low: number, high: number];
 
 export const CHIEFTAIN5_X_DATUMS = Object.freeze({
-  chieftain5_x: {
+  chieftain5: {
     // WEG printed 4-7 fixes chassis length/width/reported 2.90 m height.
     // The armor roof, complete gun length and rig are separate estimates.
     dims: { hullLengthM: 7.48, overallLengthM: 10.80, widthM: 3.51, heightM: 2.45 },
@@ -29,7 +29,7 @@ export const CHIEFTAIN5_X_DATUMS = Object.freeze({
     muzzleZ: 7.06,
   },
 });
-const D = CHIEFTAIN5_X_DATUMS.chieftain5_x;
+const D = CHIEFTAIN5_X_DATUMS.chieftain5;
 
 function local(g: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return g.translate(-p[0], -p[1], -p[2]);
@@ -333,5 +333,5 @@ export function buildChieftain5XPhotoDraft(P: TankBuilderPort): void {
 }
 
 export const CHIEFTAIN5_PHOTO_DRAFT_PROFILES = Object.freeze({
-  chieftain5_x: { build: buildChieftain5XPhotoDraft },
+  chieftain5: { build: buildChieftain5XPhotoDraft },
 });

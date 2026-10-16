@@ -23,7 +23,7 @@ export function nationalRoofSystems(P:TankBuilderPort,l:NationalRoofLoadout):voi
  try {
   for(const side of [-1,1])lamp(P,side*.68,.96,seat(side*.68,.96),l.lamp);
   const sides=l.eyes==='twin'?[-1,1]:l.eyes==='monocle-left'?[-1]:[1];
-  const cheekEyes=['ru_t80u_modern','ru_t72b3m_modern','cn_t72b3m_modern'].includes(P.spec.id);
+  const cheekEyes=['t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun'].includes(P.spec.id);
   if(cheekEyes) {
    const anchors:number[][]=[];
    for(const side of [-1,1]) {

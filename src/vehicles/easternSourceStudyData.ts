@@ -1,7 +1,7 @@
 // Boot-light source-study contracts. These data do not register playable IDs;
 // the fleet integrator owns admission after the measured release gates pass.
 export const EASTERN_SOURCE_STUDIES = {
-  aft10_x: {
+  aft10: {
     name: 'AFT-10 X', donor: 'm551_sheridan', nation: 'China', role: 'tank_destroyer', tier: 10,
     sourceFile: 'aft-10_armored_warfare.glb',
     sourceSha256: '45fdbb3efdc173cfc09a6293673534afc83f86ba20a1cd7ebc05f688ac85d1f0',
@@ -17,7 +17,7 @@ export const EASTERN_SOURCE_STUDIES = {
       guidance: 'guided', launcherCount: 8, muzzleOffsetX: 1.035, muzzleOffsetY: .45 },
     limitation: 'Eight independently visible launcher canisters; no main cannon. Dedicated missile combat contract required.',
   },
-  bmp3m_dragun125_x: {
+  bmp3m_dragun125: {
     name: 'BMP-3M Dragun 125 X', donor: 'bmp3', nation: 'Russia', role: 'light_tank', tier: 10,
     sourceFile: 'bmp-3m_dragun_125_armored_warfare.glb',
     sourceSha256: '1c5d3241266a698550f281e715b0b96d9b1360fef07aa8ccb1cd70044fc0aae3',
@@ -32,7 +32,7 @@ export const EASTERN_SOURCE_STUDIES = {
     weapon: { kind: 'cannon', caliberMm: 125, name: '125 mm smoothbore' },
     limitation: 'Object_11 is a detached suspension-like object below the actual track ground; retained in the full oracle.',
   },
-  k21_x: {
+  k21: {
     name: 'K21', donor: 'cv90', nation: 'South Korea', role: 'ifv', tier: 9,
     sourceFile: 'k21_armored_warfare.glb',
     sourceSha256: 'bacb27e883dfddb929d8de820bbebb31dec4d161ba2b25ac0afdc539b35883a1',
@@ -47,8 +47,8 @@ export const EASTERN_SOURCE_STUDIES = {
     weapon: { kind: 'autocannon', caliberMm: 40, name: '40 mm autocannon' },
     limitation: 'Object_7 is detached below the actual track ground and retained in the full oracle. Source roof has optics/launcher fixtures but no roof MG.',
   },
-  type96b_x: {
-    name: 'Type 96B X', donor: 'type99a', nation: 'China', role: 'mbt', tier: 10,
+  type96b: {
+    name: 'Type 96B X', donor: 'ztz99_longwei', nation: 'China', role: 'mbt', tier: 10,
     sourceFile: 'type_96b_armored_warfare.glb',
     sourceSha256: '4abe3113a6919c78d56f9dfb8f8841bd22cc40a33283925c768bbcd3ee5fc8f0',
     canonicalSha256: 'ac66370796b83d2d63755390ffdbcaa503d9dbc15726630205c4e44a2765b1ed',

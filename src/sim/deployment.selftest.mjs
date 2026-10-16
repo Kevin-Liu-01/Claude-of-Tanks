@@ -155,7 +155,7 @@ for (const mapId of MAP_IDS) {
 {
   const mapId = 'badlands', world = createDedicatedWorldCollision(mapId);
   const players = [];
-  for (let i = 0; i < 14; i++) players.push({ id: `p${i}`, specId: [bigSpec, 'm1a2', 't90m', smallSpec][i % 4], team: i < 7 ? 'alpha' : 'bravo', bot: true });
+  for (let i = 0; i < 14; i++) players.push({ id: `p${i}`, specId: [bigSpec, 'm1a1_abrams_hc', 't90am', smallSpec][i % 4], team: i < 7 ? 'alpha' : 'bravo', bot: true });
   players[3] = { ...players[3], spawn: { x: 12, z: -40, yaw: 0.25 } };
   const match = createAuthoritativeMatch({ mapId, gameMode: 'standard', seed: 7, countdownS: 0, worldCollision: world, players });
   const placement = createMatchPlacement({ mapId, heightField: world.heightField, obstacles: world.getObstacles(), queryObstacles: world.queryObstacles,

@@ -2,31 +2,31 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
 const CASES = Object.freeze({
-  t90: Object.freeze({
+  t90_1992: Object.freeze({
     weaponName: 't90Ru417AutomatedKord',
     stationReceipt: 't90Ru417AutomatedStationReceipt',
   }),
-  t90a: Object.freeze({
+  t90a_2004: Object.freeze({
     weaponName: 't90aRemoteNsvt',
     stationReceipt: 't90aAutomatedStationReceipt',
   }),
-  t90a_vladimir: Object.freeze({
+  t90a_2006: Object.freeze({
     weaponName: 't90aVladimirRemoteKord',
     stationReceipt: 't90aVladimirAutomatedStationReceipt',
   }),
-  t90a_burlak: Object.freeze({
+  t90a_burlak_proto: Object.freeze({
     weaponName: 't90aBurlakCommanderNsvt',
     stationReceipt: 't90aBurlakAutomatedStationReceipt',
   }),
-  t90sm: Object.freeze({
+  t90sm_2013: Object.freeze({
     weaponName: 't90smRemoteNsvt',
     stationReceipt: 't90smAutomatedStationReceipt',
   }),
-  t90ms: Object.freeze({
+  t90ms_2011: Object.freeze({
     weaponName: 't90msTagilRemoteKord',
     stationReceipt: 't90msTagilWeaponTowerReceipt',
   }),
-  t90m: Object.freeze({
+  t90am: Object.freeze({
     weaponName: 't90mProryvRemoteKord',
     stationReceipt: 't90mProryvAutomatedStationReceipt',
   }),

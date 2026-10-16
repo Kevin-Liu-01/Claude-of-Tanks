@@ -4,13 +4,13 @@ import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const TARGETS = Object.freeze({
-  m1a2_sepv3: Object.freeze({
+  m1a1_abrams_fep: Object.freeze({
     variant: 'sepv3-armored', mount: [-0.70, 0.8003898305084746, 0.2565],
     supportTop: 0.8103898305084746, replacesCommanderGun: true,
     loaderVariant: 'sepv3-low-loader',
     sizeStandard: 'm1a3-full-tower', scale: 1.28, minimumWidth: 0.84, minimumHeight: 0.82,
   }),
-  m1a2_tusk: Object.freeze({
+  m1a1_abrams_sa: Object.freeze({
     variant: 'tusk-urban', mount: [-0.70, 0.8103898305084746, 0.2565],
     supportTop: 0.8203898305084746, replacesCommanderGun: true,
     loaderVariant: 'tusk-lags-loader',
@@ -24,12 +24,12 @@ const TARGETS = Object.freeze({
     sizeStandard: 'k2b-compact-tower', scale: 1.14, towerRiseM: 0.12,
     minimumWidth: 0.74, minimumHeight: 0.66,
   }),
-  kf51b: Object.freeze({
+  kf51_u: Object.freeze({
     variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],
     sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
     minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
   }),
-  kf51: Object.freeze({
+  kf51_evo: Object.freeze({
     variant: 'kf51-panther', mount: [0.42, 0.815, -1.72],
     sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
     minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',

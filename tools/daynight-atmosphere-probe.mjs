@@ -10,7 +10,7 @@
 // Optional 9-shot desktop fixture suite, separate from the default 31-shot matrix:
 // --world-fixtures-only --expected-build-index-hash=<sha256> --out=/absolute/fresh --gate
 // Or 3 shots per explicitly requested repair variant (maximum 4):
-// --vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv --expected-build-index-hash=<sha256>
+// --vehicle-fixtures=m1a3,mbt70,t90am,t90m_proryv --expected-build-index-hash=<sha256>
 // Or one FIRST battle selected as night before entry (3 desktop Urban/m1a3 shots):
 // --cold-night-entry --expected-build-index-hash=<sha256> --out=/absolute/fresh --gate
 import assert from 'node:assert/strict';
@@ -72,8 +72,8 @@ function requestedVehicleFixtures(args) {
   const argument = args.find(value => value.startsWith('--vehicle-fixtures='));
   if (argument === undefined) return [];
   const ids = argument.slice('--vehicle-fixtures='.length).split(',');
-  const supported = ['m1a3', 'mbt70', 't90m', 't90m_proryv',
-    'namer_ifv', 'leo2_revolution_proto', 'cv90_x', 'm1a2_x'];
+  const supported = ['m1a3', 'mbt70', 't90am', 't90m_proryv',
+    'namer_ifv', 'leo2_revolution_proto', 'cv9040c', 'm1a2_abrams'];
   assert(ids.length <= 4 && new Set(ids).size === ids.length && ids.every(id => supported.includes(id)),
     `Vehicle fixture suite requires up to four unique canonical repair IDs: ${supported.join(', ')}`);
   return ids;
@@ -908,7 +908,7 @@ async function completeOptionalFixtureSuite(garageBaseline) {
 async function focusedNightFixturePictures() {
   for (const [mapId, specId, kind, label] of [
     ['urban', 'm1a1', 'streetlamp', 'high-urban-streetlamp'],
-    ['verdant', 't90a_vladimir', 'shtora', 'high-t90a-vladimir-shtora'],
+    ['verdant', 't90a_2006', 'shtora', 'high-t90a-vladimir-shtora'],
   ]) {
     const row = { label, mapId, specId, kind, visualAcceptance: 'requires-human-screenshot-review', checks: { completed: false } };
     report.focusedFixtures.push(row); save();
@@ -994,7 +994,7 @@ function checkEquipmentGeometry(before, after, reset) {
 
 async function equipmentPictures() {
   report.equipmentProgress = 'staging'; save();
-  await stage('verdant', 'leo2a6');
+  await stage('verdant', 'leo2a4');
   report.atmosphere = await evaluateWithin(async () => {
     const d = window.__DEBUG;
     await d.battleAtmosphere.prepare(1, 'verdant');

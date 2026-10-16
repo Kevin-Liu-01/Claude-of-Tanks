@@ -52,7 +52,8 @@ assert.match(access, /if \(!input\.isTouchLayout\(\)\) return autoAim \? Promise
 
 // The equal-size controls row owns the desktop and touch jump action.
 assert.match(hud, /jumpHint.innerHTML = `[^`]*uiIconSVG\('rocket', 18\)[^`]*system-status/, 'jump has its rocket, keycap and status');
-assert.match(hud, /jumpHint.classList.toggle\('on', ruleset\?\.jumpMps != null\)/, 'only jump rulesets expose the control');
+assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\)\)/, 'only jump rulesets expose the control');
+assert.match(hud, /function setControlsJumpMode\(on:boolean\):void\{\n\s*jumpHint\.classList\.toggle\('on',on\);/, 'the jump flag shows the control');
 assert.match(hud, /jumpHint.addEventListener\('pointerdown',[^\n]*bus.emit\('ui:selfRight',\{\}\)/, 'the shared control fires the real jump edge');
 assert.match(hud, /bus.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'the legacy touch button stays hidden to avoid duplicate controls');
 const touch = read('../ui/touchControls.ts');

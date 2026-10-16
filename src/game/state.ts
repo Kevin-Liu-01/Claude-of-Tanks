@@ -108,7 +108,7 @@ import {
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
-  shellPassesThroughCollisionRecord,
+  shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -2208,6 +2208,8 @@ function crushWorldPropFromShell(
   if (!record?.crushable || !world.crushObstacle) return;
   // a pillbox stops the round and falls only to accumulated heavy damage (sim/fortifiedCover.ts), as the authority's
   if (isFortifiedCoverRecord(record) && !fortified?.shellHit(record, shell.spec)) return;
+  // (Lane C, item 7) heavy plant: a machine-gun bullet stops on it and leaves it standing; a gun round wrecks it
+  if (shellSparesStoppedRecord(record, shell.spec.caliberMm)) return;
   const crushed = world.crushObstacle(
     record,
     _seg.x,

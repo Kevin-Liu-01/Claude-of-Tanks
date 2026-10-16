@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 const lowerHullExpectations = {
   m46_patton: { floorY: 0.48, minimumGlacisAngleDeg: 1 },
   m47_patton: { floorY: 0.468, minimumGlacisAngleDeg: 1 },
-  m48: { floorY: 0.626, minimumGlacisAngleDeg: 24 },
+  m48a5_patton: { floorY: 0.626, minimumGlacisAngleDeg: 24 },
 };
 
 for (const [id, expected] of Object.entries(lowerHullExpectations)) {

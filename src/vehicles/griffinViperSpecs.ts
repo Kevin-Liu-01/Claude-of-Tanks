@@ -6,7 +6,7 @@ import { shell, moduleBox, crewBox, plate } from './specHelpers.ts';
 import { VIPER as D, VIPER_MUZZLES } from './griffinViperLayout.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_HULL_LENGTH_SCALE as H, GRIFFIN_TURRET_SCALE as S } from './profiles/griffinProportions.ts';
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const spec = cloneFleetVariant(TANK_SPECS, 'griffin_viper', 'griffin50_x', {
+const spec = cloneFleetVariant(TANK_SPECS, 'griffin_viper', 'griffin50mm', {
   name: 'Griffin Viper', nation: 'USA', era: 'modern', role: 'ifv',
 });
 for (const key of ['balancePeerOf', 'publicVisualFallback', 'sourceStudyStatus', 'label', 'roster']) delete spec[key];

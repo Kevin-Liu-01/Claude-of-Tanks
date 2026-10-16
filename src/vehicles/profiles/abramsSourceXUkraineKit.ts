@@ -1,4 +1,4 @@
-// M1A2 Abrams UA field kit (owner 2026-09-15: "change it to m1a2 UA and make it have a bunch
+// M1A2 Abrams UA field kit (owner 2026-09-15: "change it to m1a1_abrams_hc UA and make it have a bunch
 // of add ons and attachments like source material online"). The Ukrainian Abrams in the
 // field carry Soviet Kontakt-1 reactive bricks on the turret cheeks, turret flanks and the
 // glacis, ARAT-style cassettes on the skirts, a welded anti-drone cage over the whole turret

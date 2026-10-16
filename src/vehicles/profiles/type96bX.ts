@@ -141,7 +141,7 @@ function buildType96Hull(P: TankBuilderPort): void {
 }
 function buildType96Gear(P: TankBuilderPort): void {
     // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the China MBT nation
-    // construction (ztz100_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+    // construction (ztz100, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
     P.gear = KIT.buildRunningGear(P, {
         style: 'rubber', trackPattern: 'soviet-single-pin',
         wheelR: .3383, wheelW: .3994, wheelY: .4119,
@@ -298,7 +298,7 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.additionalShadowSources = {
         hull: ['hullExternalArmor'],
     };
-    const frame = EASTERN_SOURCE_STUDIES.type96b_x.frame;
+    const frame = EASTERN_SOURCE_STUDIES.type96b.frame;
     P.hullG.position.set(0, 0, 0);
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
@@ -308,5 +308,5 @@ export function buildType96bX(P: TankBuilderPort): void {
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);
     P.topY = 3.016 - frame.turret[1];
-    P.hullG.userData.xRebuild = { candidate: 'type96b_x', independent: true, sourceLocalOnly: true };
+    P.hullG.userData.xRebuild = { candidate: 'type96b', independent: true, sourceLocalOnly: true };
 }

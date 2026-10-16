@@ -1,3 +1,4 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -33,13 +34,13 @@ interface Datum {
 // Physical meters in the same hull-centered, ground-zero frame as the local
 // source receipt. These are integration datums, not self-certifying tests.
 export const LEOPARD_X_DATUMS: Readonly<Record<string, Datum>> = Object.freeze({
-  leo2a7v_x: { widthM: 4, hullLengthM: 7.72, overallLengthM: 10.97, heightM: 2.64,
+  leo2a7v: { widthM: 4, hullLengthM: 7.72, overallLengthM: 10.97, heightM: 2.64,
     turretPivot: [0, 1.79, .52], trunnion: [0, 2.0326, 2.02], muzzleZ: 6.969 },
-  leo2a6m_x: { widthM: 3.98, hullLengthM: 7.72, overallLengthM: 10.97, heightM: 3.03,
+  leo2a6m: { widthM: 3.98, hullLengthM: 7.72, overallLengthM: 10.97, heightM: 3.03,
     turretPivot: [.006, 1.719, .508], trunnion: [-.0005, 2.0894, 1.95], muzzleZ: 7.025 },
-  leo2a4m_x: { widthM: 3.77, hullLengthM: 7.72, overallLengthM: 9.96, heightM: 2.62,
+  leo2a5m: { widthM: 3.77, hullLengthM: 7.72, overallLengthM: 9.96, heightM: 2.62,
     turretPivot: [-.05, 1.65, .36], trunnion: [-.1273, 1.908, 1.91], muzzleZ: 6.10 },
-  leo2a5_x: { widthM: 3.75, hullLengthM: 7.72, overallLengthM: 9.97, heightM: 2.64,
+  leo2a5: { widthM: 3.75, hullLengthM: 7.72, overallLengthM: 9.97, heightM: 2.64,
     turretPivot: [0, 1.662, .661], trunnion: [.0238, 1.9979, 1.659], muzzleZ: 6.11 },
 });
 
@@ -84,7 +85,7 @@ function shell(P: TankBuilderPort, d: Datum, stations: readonly ShellStation[],
 }
 
 function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[]):void {
-  if(d===LEOPARD_X_DATUMS.leo2a5_x) P.add('turret',sectionSolid(sections));
+  if(d===LEOPARD_X_DATUMS.leo2a5) P.add('turret',sectionSolid(sections));
   else addLeopardTurretWithGunOpening(P,sections,
     d.trunnion[0]-d.turretPivot[0],d.trunnion[1]-d.turretPivot[1],d.trunnion[2]-d.turretPivot[2]);
 }
@@ -151,9 +152,9 @@ function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): v
   KIT.buildGun(P, { len: length, r: radius, baseR: radius * 1.6,
     sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
   // The existing physical collar pitches but is not part of barrel recoil.
-  const fit=d===LEOPARD_X_DATUMS.leo2a7v_x
+  const fit=d===LEOPARD_X_DATUMS.leo2a7v
     ? {crown:.515,noseZ:1.10,noseRoof:.145}
-    : d===LEOPARD_X_DATUMS.leo2a6m_x
+    : d===LEOPARD_X_DATUMS.leo2a6m
       ? {crown:.390,noseZ:1.24,noseRoof:.105}
       : {crown:.445,noseZ:1.04,noseRoof:.120};
   addLeopardMovingMantlet(P,fit);
@@ -337,7 +338,7 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   // 2026-10-08 (owner, 6763d7cc0): `automatic` makes the gun a working remote station (the 2A5M's original 7.62 mm)
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
-  weapon.name = `${P.spec.id}RoofMachineGun`;
+  weapon.name = `${tankSeedId(P.spec.id)}RoofMachineGun`; // schema-1 name (tankIdAliases.ts)
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
   P.turretG.add(weapon);
@@ -399,7 +400,7 @@ function surfacePanel(P:TankBuilderPort,d:Datum,owner:'hull'|'turret',corners:re
 function roofPlateEdges(P:TankBuilderPort,d:Datum,front:number,rear:number,eraPrefix?:string): void {
   // Positive cheek's broad top cover, the narrow opposite outer cheek, and
   // two accessible roof lids. The EMES approach at negative X is untouched.
-  const inner=d===LEOPARD_X_DATUMS.leo2a5_x?.25:d.trunnion[0]+.44;
+  const inner=d===LEOPARD_X_DATUMS.leo2a5?.25:d.trunnion[0]+.44;
   const right:PlanPoint[]=[[inner,rear],[1.04,rear+.08],[.66,front],[inner+.04,front+.05]];
   const left:PlanPoint[]=[[-1.24,rear],[-1.11,rear+.04],[-1.10,front-.43],[-1.22,front-.48]];
   if(eraPrefix) {
@@ -1018,7 +1019,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
 }
 
 function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
-  const finishSupport=captureAuxiliaryStock(P,`${P.spec.id}RoofMachineGun`);
+  const finishSupport=captureAuxiliaryStock(P,`${tankSeedId(P.spec.id)}RoofMachineGun`); // matches the literal schema-1 names
   equip(P,d,'turretDetail',cylY(.12,.16,.36,20),.743,2.62,-.926);
   // Source crossbar is a broad low cradle, separate from the tall weapon
   // cheeks and from the outboard receiver/ammunition body.
@@ -1095,7 +1096,7 @@ function a4Whip(P:TankBuilderPort,d:Datum,x:number,dy:number,dz:number): void {
 export function buildLeopard2A7VX(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
-  const d = LEOPARD_X_DATUMS.leo2a7v_x;
+  const d = LEOPARD_X_DATUMS.leo2a7v;
   begin(P, d);
   const stations: Station[] = [
     [-3.86,1.80,1.955,2.00], [-3.47,1.80,1.22,1.994], [-3.08,1.80,.64,1.99],
@@ -1155,7 +1156,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
 // A6M CAN: clean low tub and compact central turret. The cage is genuine
 // stand-off equipment, not solid armor sheets or a second running-gear copy.
 export function buildLeopard2A6MX(P: TankBuilderPort): void {
-  const d=LEOPARD_X_DATUMS.leo2a6m_x;
+  const d=LEOPARD_X_DATUMS.leo2a6m;
   begin(P,d);
   a6HullShell(P);
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.3579,wheelW:.35,
@@ -1207,7 +1208,7 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
 // A4M: full-width forward hull modules and the distinctive broad, low
 // AMAP shell; the stern frame is intentionally left-offset, not a generic rack.
 export function buildLeopard2A4MX(P: TankBuilderPort): void {
-  const d=LEOPARD_X_DATUMS.leo2a4m_x;
+  const d=LEOPARD_X_DATUMS.leo2a5m;
   begin(P,d);
   const stations: Station[]=[[-3.83,1.60,1.67,1.70],[-3.44,1.675,1.23,1.79],
     [-3.06,1.675,.523,1.816],[-1.86,1.675,.525,1.778],[-1.14,1.70,.528,1.616],
@@ -1265,7 +1266,7 @@ const A5_WEB_INSET_M = .01403 + (.0389 - .028);
 export function buildLeopard2A5X(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
-  const d=LEOPARD_X_DATUMS.leo2a5_x;
+  const d=LEOPARD_X_DATUMS.leo2a5;
   begin(P,d);
   a5HullShell(P);
   P.gear=KIT.buildRunningGear(P,leopardReturnRollers(P,{style:'rubber',wheelR:.3516,wheelW:.34,
@@ -1336,8 +1337,8 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({
-  leo2a7v_x: { build: buildLeopard2A7VX },
-  leo2a6m_x: { build: buildLeopard2A6MX },
-  leo2a4m_x: { build: buildLeopard2A4MX },
-  leo2a5_x: { build: buildLeopard2A5X },
+  leo2a7v: { build: buildLeopard2A7VX },
+  leo2a6m: { build: buildLeopard2A6MX },
+  leo2a5m: { build: buildLeopard2A4MX },
+  leo2a5: { build: buildLeopard2A5X },
 });

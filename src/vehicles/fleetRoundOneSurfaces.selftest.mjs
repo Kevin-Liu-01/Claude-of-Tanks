@@ -19,7 +19,7 @@ const build = (id) => createTank(id, null, { decor: true, quality: 'high', geome
 
 // --- built hulls: the insets' cavity material, the framed sight panes
 const tankLog = [];
-for (const id of ['t90m_x', 'm1a2_sepv3_x', 'leo2a6_ua', 'challenger_3']) {
+for (const id of ['t90m', 'm1a2_abrams_sepv3', 'leo2a6_ua', 'challenger3_proto']) {
   const tank = build(id);
   tank.root.updateMatrixWorld(true);
   let gun = null, insets = 0, cavityInsets = 0;
@@ -55,7 +55,7 @@ for (const id of ['t90m_x', 'm1a2_sepv3_x', 'leo2a6_ua', 'challenger_3']) {
 {
   const counts = [];
   const FRAME_OF = { turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount' };
-  for (const id of ['t90m_x', 'leclerc_classic_x']) {
+  for (const id of ['t90m', 'amx56']) {
     const panes = [], parts = { turretDetail: [], hullDetail: [], gunMount: [] };
     createTank(id, null, { proceduralOnly: true, decor: true, quality: 'high', geometryQuality: 'high', camoSeed: 4242,
       partCensus: (bucket, part) => {
@@ -91,7 +91,7 @@ for (const id of ['t90m_x', 'm1a2_sepv3_x', 'leo2a6_ua', 'challenger_3']) {
   const painter = createMaterialPainter(createCanvas);
   for (const seed of [4242, 7, 911]) {
     const entry = { camoCanvas: createCanvas(1, 1), normalCanvas: createCanvas(1, 1), roughCanvas: createCanvas(1, 1), feats: null };
-    const request = { identity: `ring-check-${seed}`, visual: resolveCamoVisual(getSpec('m1a2'), 'paint_m1a1'), seed,
+    const request = { identity: `ring-check-${seed}`, visual: resolveCamoVisual(getSpec('m1a1_abrams_hc'), 'paint_m1a1'), seed,
       dimensions: { albedo: 128, map: 64 }, plateLines: true };
     for (const step of painter.bakeBaseSteps(entry, request)) void step;
     assert.equal(entry.feats.rings.length, 0, `seed ${seed}: no bolt circles in the tile`);

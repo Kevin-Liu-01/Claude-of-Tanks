@@ -72,8 +72,8 @@ function run(seed) {
   const match = createAuthoritativeMatch({
     mapId: MAP, seed, countdownS: 0, worldCollision: world,
     players: [
-      { id: 'ram', specId: 'm1a2', team: 'alpha', spawn: { x: pick.sx, z: pick.sz, yaw: pick.yaw } },
-      { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: -pick.sx * 0.2, z: 420, yaw: 0 } },
+      { id: 'ram', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: pick.sx, z: pick.sz, yaw: pick.yaw } },
+      { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: -pick.sx * 0.2, z: 420, yaw: 0 } },
     ],
   });
   match.onMatchReady();

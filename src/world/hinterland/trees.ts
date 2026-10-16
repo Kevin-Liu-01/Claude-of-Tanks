@@ -23,6 +23,18 @@ export interface HinterlandTreeImpostorOptions {
   rimMix: ReadonlyArray<readonly [string, number]>;
   rimTreeTint?: readonly [number, number, number];
   setupMaterial(material: THREE.Material, hook: (shader: MaterialShader) => void): void;
+  /** GND (2026-10-14): the battlefield's forest-form law (vegetation.ts `_treeFormVariant`): the near variant a tree draws. */
+  formVariant?: (species: string, variant: number, x: number, z: number) => number;
+  /** GND (2026-10-14): the trees the battlefield's tiers take over (vegetation.ts adoptOutlandTrees): `adoptWithin`
+   * selects, `adopt` takes them all or none and returns how many; an adopted tree draws no quad here. */
+  adoptWithin?: (tree: { x: number; z: number }) => boolean;
+  adopt?: (trees: readonly HinterlandAdoptedTree[]) => number;
+}
+
+/** A Hinterland tree as the battlefield's tiers take it (vegetation.ts OutlandTreeSpec). */
+export interface HinterlandAdoptedTree {
+  x: number; y: number; z: number; yaw: number; species: string; variant: number; mirror: boolean; scale: number;
+  tint: [number, number, number];
 }
 
 const BINDING = 'hinterlandTreeImpostors';
@@ -40,7 +52,7 @@ export function hinterlandTreeBinding(root: THREE.Object3D): HinterlandTreeImpos
 }
 
 /** Redraw the Hinterland object's near trees as impostor quads (idempotent; null when there is nothing to bind). */
-export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: HinterlandTreeImpostorOptions): { instances: number; draws: number } | null {
+export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: HinterlandTreeImpostorOptions): { instances: number; adopted: number; draws: number } | null {
   const outland = object.getObjectByName('hinterland-outland');
   const near = outland?.userData.hinterlandNearTrees as HinterlandNearTrees | undefined;
   if (!outland || !near || outland.userData.hinterlandTreeImpostors) return null;
@@ -58,13 +70,45 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
   };
   const buckets = new Map<string, number[]>();
   const speciesOf = new Array<string>(count);
+  // GND (2026-10-14): each tree resolved once — its species, near variant (the forest-form law), yaw, stature, seat and
+  // tint — for the quads below and for the battlefield's adoption
+  const rimTint = new THREE.Color(...(options.rimTreeTint ?? [1, 1, 1]));
+  // the season's foliage as a tint: a turning crown olive-brown, a bare one grey-brown (linear multipliers)
+  const turned = new THREE.Color(0.95, 0.72, 0.42), bare = new THREE.Color(0.62, 0.52, 0.46), white = new THREE.Color(1, 1, 1);
+  const resolved: HinterlandAdoptedTree[] = new Array(count);
+  const tint = new THREE.Color();
   for (let i = 0; i < count; i++) {
     const o = i * HINTERLAND_TREE_STRIDE, x = near.trees[o], z = near.trees[o + 1];
     const planned = near.species[near.trees[o + 6]];
     const conifer = HINTERLAND_FORMS[near.trees[o + 7]] === 'conifer';
     const sp = librarySpecies.includes(planned) ? planned : pick(classMix[conifer ? 1 : 0], horizonForestImpostorPick(x, z));
     speciesOf[i] = sp;
-    const mirror = horizonForestImpostorPick(z, x) < 0.5 ? 1 : 0;
+    const heightM = near.trees[o + 2], tone = near.trees[o + 4], leaf = near.trees[o + 5];
+    let variant = Math.min(library.variants - 1, Math.floor(tone * library.variants));
+    if (options.formVariant) variant = Math.min(library.variants - 1, Math.max(0, options.formVariant(sp, variant, x, z)));
+    const row = library.rows[library.rowBase(sp) + variant];
+    const yRaw = near.trees[o + 8];
+    const l = Math.max(0, Math.min(1, leaf));
+    if (l > 0.5) tint.copy(turned).lerp(white, (l - 0.5) * 2); else tint.copy(bare).lerp(turned, l * 2);
+    tint.multiplyScalar(0.9 + 0.2 * tone).multiply(rimTint);
+    resolved[i] = {
+      x, y: (Number.isFinite(yRaw) ? yRaw : samplePyramid(near.pyramid, x, z)) - 0.3, z,
+      yaw: horizonForestImpostorPick(x * 1.7, z * 0.3) * Math.PI * 2, species: sp, variant,
+      mirror: horizonForestImpostorPick(z, x) < 0.5, scale: heightM / Math.max(1e-3, row.heightM), tint: [tint.r, tint.g, tint.b],
+    };
+  }
+  const adoptedMask = new Uint8Array(count);
+  let adopted = 0;
+  if (options.adopt && options.adoptWithin) {
+    const chosen: number[] = [];
+    for (let i = 0; i < count; i++) if (options.adoptWithin(resolved[i])) chosen.push(i);
+    adopted = chosen.length ? options.adopt(chosen.map(i => resolved[i])) : 0;
+    if (adopted > 0) for (const i of chosen) adoptedMask[i] = 1;
+  }
+  for (let i = 0; i < count; i++) {
+    if (adoptedMask[i]) continue;
+    const sp = speciesOf[i];
+    const mirror = resolved[i].mirror ? 1 : 0;
     const key = `${sp}/${mirror}`;
     let bucket = buckets.get(key);
     if (!bucket) { bucket = []; buckets.set(key, bucket); }
@@ -81,9 +125,7 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
     applyCanopyDiffuseWrap(shader, HORIZON_FOREST_IMPOSTOR_WRAP, true, HORIZON_FOREST_IMPOSTOR_THIN);
   });
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(), position = new THREE.Vector3();
-  const up = new THREE.Vector3(0, 1, 0), color = new THREE.Color(), rimTint = new THREE.Color(...(options.rimTreeTint ?? [1, 1, 1]));
-  // the season's foliage as a tint: a turning crown olive-brown, a bare one grey-brown (linear multipliers)
-  const turned = new THREE.Color(0.95, 0.72, 0.42), bare = new THREE.Color(0.62, 0.52, 0.46);
+  const up = new THREE.Vector3(0, 1, 0), color = new THREE.Color();
   let draws = 0;
   const group = new THREE.Group();
   group.name = 'hinterland-tree-impostors';
@@ -99,21 +141,14 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
     mesh.matrixAutoUpdate = false; mesh.frustumCulled = false;
     mesh.userData.aoExclude = true; // (alpha-tested: the GTAO prepass would composite the quads solid)
     for (let j = 0; j < bucket.length; j++) {
-      const i = bucket[j], o = i * HINTERLAND_TREE_STRIDE;
-      const x = near.trees[o], z = near.trees[o + 1], heightM = near.trees[o + 2], tone = near.trees[o + 4], leaf = near.trees[o + 5];
-      const variant = Math.min(library.variants - 1, Math.floor(tone * library.variants));
-      const row = library.rows[library.rowBase(sp) + variant];
-      quaternion.setFromAxisAngle(up, horizonForestImpostorPick(x * 1.7, z * 0.3) * Math.PI * 2);
-      scale.setScalar(heightM / Math.max(1e-3, row.heightM));
-      const y = near.trees[o + 8];
-      position.set(x, (Number.isFinite(y) ? y : samplePyramid(near.pyramid, x, z)) - 0.3, z);
+      const tree = resolved[bucket[j]];
+      quaternion.setFromAxisAngle(up, tree.yaw);
+      scale.setScalar(tree.scale);
+      position.set(tree.x, tree.y, tree.z);
       matrix.compose(position, quaternion, scale);
       mesh.setMatrixAt(j, matrix);
-      const l = Math.max(0, Math.min(1, leaf));
-      if (l > 0.5) color.copy(turned).lerp(new THREE.Color(1, 1, 1), (l - 0.5) * 2); else color.copy(bare).lerp(turned, l * 2);
-      color.multiplyScalar(0.9 + 0.2 * tone).multiply(rimTint);
-      mesh.setColorAt(j, color);
-      rows.array[j] = variant; // (the program adds the species' first row: aImpCell.x)
+      mesh.setColorAt(j, color.setRGB(tree.tint[0], tree.tint[1], tree.tint[2]));
+      rows.array[j] = tree.variant; // (the program adds the species' first row: aImpCell.x)
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -124,7 +159,7 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
   group.updateMatrixWorld(true);
   const procedural = outland.getObjectByName('hinterland-trees-near');
   if (procedural) procedural.visible = false;
-  const receipt = { instances: count, draws };
+  const receipt = { instances: count, adopted, draws };
   outland.userData.hinterlandTreeImpostors = receipt;
   return receipt;
 }

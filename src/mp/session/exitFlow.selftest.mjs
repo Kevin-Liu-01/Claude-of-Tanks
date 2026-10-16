@@ -90,8 +90,8 @@ function createHarness() {
     v: 2, roomCode: 'ROOM01', mode: 'lan', phase, adminId: 'me', revision: 3, round: 1,
     settings: { gameMode: 'standard', mapId: 'verdant', teamSize: 2, maxSpectators: 2, botsFill: true, allowTeamSwitch: true, locked: false, arrangement: null, campaignOperationId: null },
     players: [
-      { id: 'me', name: 'Me', team: 'alpha', seat: 0, specId: 'm1a2', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: true, joinedAt: 1 },
-      { id: 'foe', name: 'Foe', team: 'bravo', seat: 1, specId: 'm1a2', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: false, joinedAt: 2 },
+      { id: 'me', name: 'Me', team: 'alpha', seat: 0, specId: 'm1a1_abrams_hc', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: true, joinedAt: 1 },
+      { id: 'foe', name: 'Foe', team: 'bravo', seat: 1, specId: 'm1a1_abrams_hc', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: false, joinedAt: 2 },
     ],
     match, lastResult: null, createdAt: 0, touchedAt: 0,
   });
@@ -100,8 +100,8 @@ function createHarness() {
     type: MESSAGE_TYPE.WELCOME, protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz: SNAPSHOT_HZ, seat: 0, entityId: 1, team: TEAM.ALPHA,
     serverTick: 600, serverTimeMs: 10_000, seed: 7, capabilities: 0, roomId: 'ROOM01', mapId: 'verdant', mode: 'standard', rulesetJson: '{}',
     roster: [
-      { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a2' },
-      { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'foe', name: 'Foe', specId: 'm1a2' },
+      { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a1_abrams_hc' },
+      { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'foe', name: 'Foe', specId: 'm1a1_abrams_hc' },
     ],
   });
   /** The room host: admit the join with the running match's match_start. */

@@ -18,7 +18,7 @@ function geometryHash(root){
 }
 // Every missile platform plus representative armor/roof-gun families. These are
 // actual rendered objects and renderer LOD selection, not just policy predicates.
-const ids=PRODUCTION_TANK_IDS.filter(id=>['m1a2','t90m','t90m_proryv'].includes(id)
+const ids=PRODUCTION_TANK_IDS.filter(id=>['m1a1_abrams_hc','t90am','t90m_proryv'].includes(id)
  || getSpec(id).armor.externalWeapons?.length);
 let checks=0, guns=0, smoke=0, era=0;
 for(const id of ids)for(const quality of ['high','low']){
