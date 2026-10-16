@@ -15,10 +15,10 @@
 //     keeps the whole relief;
 //  4. the GLSL carries the law and none of the old one.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { tileableTorusNoise as torusNoise } from './proceduralTexture.ts';
 import { mulberry32 } from './terrain.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // ---- the shader's uNoise texture (terrain.ts splatFieldSteps + makeShaderNoiseTexture): R = field a, G = field b
 const S = 256;
@@ -130,7 +130,7 @@ for (const el of [35, 50, 70]) for (let az = 0; az < 360; az += 30) {
 assert.equal(dayKeep, 1, 'a day sun (35° and up) keeps the whole relief');
 
 // ---- 4. the GLSL
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 const block = terrain.slice(terrain.indexOf('  if (uReduxSnow.y > 0.001) {'), terrain.indexOf('  // Round 73: the folds.'));
 assert.ok(block.length > 500, 'the snow trains\' block');
 for (const term of [

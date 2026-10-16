@@ -68,6 +68,8 @@ import {
   type FilmSupport,
 } from './studioFilmSupport.ts';
 import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
+import { createDugHeightFieldProxy } from '../world/liveHeightFieldProxy.ts';
+import { mapCraterStampsOf, stampMapCraters } from '../world/mapCraters.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
 import {
@@ -980,11 +982,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // collision primitives below the belly), and a tank staged over a bridge starts on the deck, not on the river bed
   // or gorge floor under it (the height field there is the excavated surface; the deck is collision support).
   const _deckCandidates: CollisionRecord[] = [], _deckScratch: CollisionRecord[] = [];
+  // the ground the Studio dug (DST-04, 2026-10-15): its hulls, their running gear and its rounds meet the craters it
+  // digs, as a battle's do (world/liveHeightFieldProxy.ts createDugHeightFieldProxy over the world's bound overlay)
+  const hfDug = createDugHeightFieldProxy(hfProxy, () => getWorld()?.groundOverlay?.() ?? null);
   function actorSupport(a: StudioActor): StructureSupportField | typeof hfProxy {
     const world = getWorld();
-    if (!world) return hfProxy;
+    if (!world) return hfDug;
     if (!a.support || a.supportWorld !== world) {
-      a.support = createStructureSupportField(hfProxy as Parameters<typeof createStructureSupportField>[0], world);
+      a.support = createStructureSupportField(hfDug as Parameters<typeof createStructureSupportField>[0], world);
       a.supportWorld = world;
     }
     const x = a.state.pos.x, z = a.state.pos.z;
@@ -1274,7 +1279,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     let owner: StudioActor | null = null;
     if (visual.setGroundSampler) {
       // late-bound: the running gear conforms to the same surface the hull rides (a bridge deck, a roof)
-      visual.setGroundSampler((x: number, z: number) => (owner?.support ?? hfProxy).getHeightAt(x, z));
+      visual.setGroundSampler((x: number, z: number) => (owner?.support ?? hfDug).getHeightAt(x, z));
     }
     const a = createActorRecord(cfg, specId, spec, visual, camoSeed);
     owner = a;
@@ -2080,7 +2085,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * (sim/destructionMatch.ts dig and quantizeCrater: radius at least CRATER_DEFORM_MIN_RADIUS_M, never on hard ground,
    * the ruleset's crater switch and scale) — on a ground overlay of the Studio's own, bound to the world while the Studio digs, so the
    * drawn terrain, the ground cover and the crater's surface follow it as they do in battle. A scene reload levels it;
-   * leaving the Studio unbinds it (the next battle binds its own). The Studio's hulls keep the undug ground.
+   * leaving the Studio unbinds it (the next battle binds its own). The Studio's hulls ride the dug ground (hfDug, 2026-10-15).
    */
   let studioGround: TerrainDeformation | null = null;
   let studioCraters = 0;
@@ -2101,10 +2106,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   function resetStudioGround(unbind: boolean): void {
     studioCraters = 0;
-    if (!studioGround) return;
-    studioGround.reset();
     const w = getWorld();
-    if (unbind && w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
+    if (unbind) {
+      if (!studioGround) return;
+      studioGround.reset();
+      if (w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
+      return;
+    }
+    // DST-04 (2026-10-15): a scene's ground holds its map's pre-placed craters from the load, bound as a battle's is
+    // (world/mapCraters.ts), so a film's ground, hulls and rounds meet the bowls a battle has
+    if (!studioGround) studioGround = createTerrainDeformation();
+    else studioGround.reset();
+    stampMapCraters(studioGround, mapCraterStampsOf(w));
+    if (w && w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
   }
 
   /**
@@ -2438,7 +2452,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (record?.crushable !== true) return false;
     const kind = record.kind;
     return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall'
-      || kind === 'small-rock' || kind === 'bunker' || /^setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)$/.test(kind ?? ''));
+      || kind === 'small-rock' || kind === 'bunker'
+      || /^(setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)|rolling_(omm|g10|tank|v60|covered4|gondola4|tank4|tem1)|tram_(xk2_black_panther|shanghai))$/.test(kind ?? ''));
   }
   /**
    * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
@@ -2469,7 +2484,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // (Lane C, item 7) a gun round that stops on heavy plant wrecks it there, as a battle round's does (state.ts
       // crushWorldPropFromShell; collision.ts shellSparesStoppedRecord: a machine-gun bullet leaves it standing)
       const plant = hit.record as { crushable?: boolean; crushed?: boolean; kind?: string } | null | undefined;
-      if (plant?.crushable === true && !plant.crushed && /^setpiece_/.test(plant.kind ?? '') && world.crushObstacle
+      if (plant?.crushable === true && !plant.crushed && /^(setpiece|rolling|tram)_/.test(plant.kind ?? '') && world.crushObstacle
         && (Number(sh.spec?.caliberMm) || 0) >= 20) {
         world.crushObstacle(hit.record, _strikeDir.x, _strikeDir.z, Number(sh.spec?.velocityMps) || 0, 'shell');
       }
@@ -2755,7 +2770,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const t = (lo + hi) * 0.5;
       const x = px + (sh.pos.x - px) * t, z = pz + (sh.pos.z - pz) * t;
       const y = py + (sh.pos.y - py) * t;
-      if (y <= hfProxy.getHeightAt(x, z)) hi = t; else lo = t;
+      if (y <= hfDug.getHeightAt(x, z)) hi = t; else lo = t;
     }
     sh.pos.x = px + (sh.pos.x - px) * hi;
     sh.pos.z = pz + (sh.pos.z - pz) * hi;
@@ -2776,12 +2791,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         // a strike round (P2) meets what the world puts in its path this step — the raycast reads the sim's openings;
         // light cover on the way breaks and lets it on (traceStrikeRound)
         if (sh._studioWorld && traceWorld && traceStrikeRound(sh, traceWorld, _strikePrev, sh.pos)) continue;
-        const gy = hfProxy.getHeightAt(sh.pos.x, sh.pos.z);
+        const gy = hfDug.getHeightAt(sh.pos.x, sh.pos.z);
         if (sh.pos.y <= gy) {
           // cinematic quality lands the shell where its path met the ground,
           // independent of the export step (battle keeps the legacy look)
           if (exactShells) refineShellCrossing(sh, px, py, pz);
-          sh.pos.y = hfProxy.getHeightAt(sh.pos.x, sh.pos.z) + 0.05;
+          sh.pos.y = hfDug.getHeightAt(sh.pos.x, sh.pos.z) + 0.05;
           sh.dead = true;
           // a strike round bursts on the ground as a battle round does (strikeGround): the blast, then the impact, then
           // the crater, the solo step's order
@@ -5393,7 +5408,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const world = getWorld();
       if (!world) return null;
       const f = world.getMinimapFeatures();
-      return { size: world.heightField.size, roads: f.roads, buildings: f.buildings, treeClusters: f.treeClusters, waterOrSoft: f.waterOrSoft };
+      return { size: world.heightField.size, roads: f.roads, buildings: f.buildings, treeClusters: f.treeClusters,
+        liquidPatches: f.liquidPatches, softPatches: f.softPatches, iceLake: f.iceLake, visibleWater: world.getVisibleWaterRaster() };
     },
     get selectedShotId() { return selectedShotId; },
     // video output

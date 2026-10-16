@@ -31,7 +31,7 @@ export function shaftOf(anatomy: StructureDamageAnatomy): ShaftExtras | null {
  * `w` across it and half height `h`, its corners chamfered (a stack's octagon, a minaret's dressed corners), rolled by
  * `roll` about its axis; eight long faces and two broken ends, in its bucket.
  */
-function lyingDrum(mesh: Mesh, c: Vec3, axis: Vec3, l: number, w: number, h: number, roll: number, tint: Rgb, rng: () => number): void {
+export function lyingDrum(mesh: Mesh, c: Vec3, axis: Vec3, l: number, w: number, h: number, roll: number, tint: Rgb, rng: () => number): void {
   if (!mesh.fits(8 * 4 + 2 * 9)) return;
   const side0 = norm3([-axis[2], 0, axis[0]]), up0: Vec3 = [0, 1, 0];
   const cr = Math.cos(roll), sr = Math.sin(roll);

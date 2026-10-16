@@ -3,7 +3,8 @@
 // stamped on the match's ground quantized as the wire carries it, logged and handed back as an event; a smaller burst
 // is a mark. A restored log stamps the same ground; both simulations dig at the same moment; the authority's real HE
 // round on open ground digs one, every peer stamps it once (event or log), and the run replays bit for bit. Craters are
-// off in every mode's ruleset until the drawn terrain follows the overlay.
+// on in every mode that plays destruction since DST-04 (2026-10-15): the drawn terrain and the world's ray march follow
+// the overlay.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { CRATERS_PER_TICK, craterSeed, createDestructionMatch, quantizeCrater } from './destructionMatch.ts';
@@ -64,11 +65,15 @@ const noWorld = { obstacles: [], colliders: [] };
   for (const [x, z] of [[10.123, -20.988], [11, -20], [-200, 200], [-170, 201], [5, 5]]) {
     assert.equal(restoredGround.offsetAt(x, z), ground.offsetAt(x, z), `the restored ground at ${x}, ${z}`);
   }
-  // off in every mode until the terrain follows; a mode's rules dig nothing
+  // on in every mode that plays destruction since DST-04 (2026-10-15): the standard ruleset digs; Turbo Ball digs nothing
   const standard = createDestructionMatch({ rules: matchRulesetFor('standard').destruction, ...noWorld, ground: createTerrainDeformation() });
   standard.shellWorldHit(howitzer, null, 0, 0, 0, 0, 1, true);
   standard.step();
-  assert.equal(standard.drainCraters([]), 0, 'the standard ruleset digs nothing yet');
+  assert.equal(standard.drainCraters([]), 1, 'the standard ruleset digs');
+  const turbo = createDestructionMatch({ rules: matchRulesetFor('turbo_ball').destruction, ...noWorld, ground: createTerrainDeformation() });
+  turbo.shellWorldHit(howitzer, null, 0, 0, 0, 0, 1, true);
+  turbo.step();
+  assert.equal(turbo.drainCraters([]), 0, 'Turbo Ball digs nothing');
 }
 
 // ---- both simulations dig at the same moment
@@ -85,7 +90,8 @@ const noWorld = { obstacles: [], colliders: [] };
   assert.match(authority, /destruction\.drainCraters\(craterEvents\);\s*for \(const \{ sourceId, \.\.\.event \} of craterEvents\) emitFrom\(sourceId \?\? null, 'terrain_crater', event\);/, 'authority: terrain_crater (its source kept on the authority, 2026-10-13)');
   for (const text of [solo, authority]) assert.match(text, /groundTypeAt: \(x, z\) => /, 'no crater on hard ground, alike');
   // the drawn ground and the decals follow the battle's overlay: bound per battle, a round's mirror on a network seat
-  assert.match(solo, /ground\.overlay\.reset\(\);\s*world\.bindGroundOverlay\?\.\(ground\.overlay\);/, 'solo binds its ground');
+  // (DST-04, 2026-10-15: the map's pre-placed craters go in between, first: world/mapCraters.selftest)
+  assert.match(solo, /ground\.overlay\.reset\(\);[\s\S]{0,240}?world\.bindGroundOverlay\?\.\(ground\.overlay\);/, 'solo binds its ground');
   const presentation = readFileSync(new URL('../mp/presentation/battlePresentation.ts', import.meta.url), 'utf8');
   assert.match(presentation, /bindGroundOverlay\?\.\(destruction\.ground\);/, 'a network seat binds its mirror\'s ground');
   assert.match(presentation, /function dispose\(\): void \{\s*disposed = true;\s*\(worldCollision[^\n]*bindGroundOverlay\?\.\(null\);/, 'and unbinds it');

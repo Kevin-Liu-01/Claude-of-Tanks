@@ -174,8 +174,12 @@ let facets=0;
 for(const id of ids){
   assert.ok(SOVIET_AUX_IDS.includes(id));
   const donor=donorSpec(TANK_SPECS,SECOND_WAVE_X_DONORS[id]),original=JSON.stringify(donor); // retired donors come from the donorSpecs.ts templates
-  const noOp=structuredClone(donor),noOpBefore=JSON.stringify(noOp);applySourceXSovietAuxArmor(noOp,donor.id);
-  assert.equal(JSON.stringify(noOp),noOpBefore,'original donor API is exact no-op');
+  // An X that took its donor template's name in the schema-3 rename (t72b_1987, t72b3) shares the donor's id, so the
+  // donor's own id names the X here; the no-op holds for every donor whose id is not an X id.
+  if(donor.id!==id){
+    const noOp=structuredClone(donor),noOpBefore=JSON.stringify(noOp);applySourceXSovietAuxArmor(noOp,donor.id);
+    assert.equal(JSON.stringify(noOp),noOpBefore,'original donor API is exact no-op');
+  }
   for(const quality of ['high','low']){
     const spec=structuredClone(getSpec(id));metadataInvariant(spec);
     assert.deepEqual(fields(getSpec(id)),fields(spec),'actual registered API matches exact auxiliary recipes');

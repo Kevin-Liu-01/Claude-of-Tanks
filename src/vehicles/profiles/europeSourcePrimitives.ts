@@ -61,12 +61,30 @@ export function optic(P: TankBuilderPort, x: number, y: number, z: number,
 export function smokeBank(P: TankBuilderPort, side: number, x: number, y: number,
   z: number, count: number): void {
   turretEquipment(P, 'turretDetail', KIT.box(.14, .16, count * .12 + .08), side * x, y, z);
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 345-392's critics on the Sabra: the banks are "plain pale cream
+  // cylinders with no dark bores, rails or mounts ... like rows of chalk sticks"): each discharger is a painted cup with a
+  // 30 mm recessed mouth and its dark grenade face a millimetre off the recess floor, the cups seated in a dark cradle
+  // rail on the bracket's top; the face was a disc floating a centimetre off the tube's axis.
+  turretEquipment(P, 'turretDark', KIT.box(.10, .012, count * .12 + .06), side * (x + .02), y + .086, z);
+  const n = P.q ? 14 : 8, length = .24, recess = .03;
+  const aim = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(-.6, side * .55, 0, 'XYZ'));
   for (let i = 0; i < count; i++) {
-    turretEquipment(P, 'turretDetail', markSmokeTube(KIT.cylZ(.05, .24, P.q ? 14 : 8)),
-      side * (x + .04), y + .08, z + (i - (count - 1) / 2) * .12, -.6, side * .55);
-    turretEquipment(P, 'turretDark', KIT.cylZ(.037, .018, P.q ? 14 : 8),
-      side * (x + .095), y + .15, z + (i - (count - 1) / 2) * .12 + .09, -.6, side * .55);
+    const cz = z + (i - (count - 1) / 2) * .12;
+    const cup = markSmokeTube(blindCup(.05, .039, length, recess, n)).applyMatrix4(aim);
+    turretEquipment(P, 'turretDetail', cup, side * (x + .04), y + .08, cz);
+    const face = KIT.cylZ(.038, .004, n).translate(0, 0, length / 2 - recess + .003).applyMatrix4(aim);
+    turretEquipment(P, 'turretDark', face, side * (x + .04), y + .08, cz);
   }
+}
+
+/** A cup along +Z (centred): closed back, `depth`-deep recess of radius `bore` at the front. */
+function blindCup(radius: number, bore: number, length: number, depth: number, segments: number): THREE.BufferGeometry {
+  const profile = [new THREE.Vector2(0, -length / 2), new THREE.Vector2(radius, -length / 2),
+    new THREE.Vector2(radius, length / 2), new THREE.Vector2(bore, length / 2),
+    new THREE.Vector2(bore, length / 2 - depth), new THREE.Vector2(0, length / 2 - depth)];
+  const lathe = new THREE.LatheGeometry(profile, segments).rotateX(Math.PI / 2);
+  const flat = lathe.toNonIndexed(); lathe.dispose(); flat.computeVertexNormals();
+  return flat;
 }
 
 export function antenna(P: TankBuilderPort, x: number, bottom: number, top: number, z: number): void {

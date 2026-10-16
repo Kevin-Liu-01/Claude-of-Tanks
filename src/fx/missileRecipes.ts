@@ -169,22 +169,3 @@ export function missileIgnition(C: BlastContext, R: () => number, L: MissileLook
       Math.min(0.75, s.density + 0.25), 0.0, 0.4, bo + R() * 0.02);
   }
 }
-
-/**
- * One puff of the trail where the motor passed (x, y, z) heading d, born `bo` (negative: it passed that point earlier).
- * `beat` is the sustainer's pulse at that point (-1..1): a puffy motor's trail swells and thins along its length.
- */
-export function missileTrailPuff(C: BlastContext, R: () => number, L: MissileLook, x: number, y: number, z: number,
-  dx: number, dy: number, dz: number, beat: number, bo: number, coarse = 1): void {
-  const s = L.smoke;
-  if (!s) return;
-  // `coarse` (>= 1): a crowded sky's trails are laid with fewer, bigger puffs (the caller spaces them wider) so they stay
-  // continuous without overrunning the media pool
-  const p = (1 + s.pulse * 0.45 * beat) * Math.min(2.5, Math.sqrt(Math.max(1, coarse)));
-  // the exhaust leaves backward and stalls within a second; the trail then drifts with the air and rises a little
-  const v = 1.5 + R();
-  puff(C, R, x + (R() - 0.5) * 0.2, y + (R() - 0.5) * 0.2, z + (R() - 0.5) * 0.2,
-    -dx * v + (R() - 0.5) * 0.5, -dy * v + (R() - 0.5) * 0.5, -dz * v + (R() - 0.5) * 0.5,
-    2.0, s.rise, s.windK, s.life * (0.8 + 0.4 * R()), s.size0 * p, s.size1 * p * (0.85 + 0.3 * R()), 1.6,
-    s.c0, s.c1, Math.min(0.9, s.density * (0.8 + 0.25 * R()) * (1 + s.pulse * 0.3 * beat)), 0.04, 0.35, bo);
-}

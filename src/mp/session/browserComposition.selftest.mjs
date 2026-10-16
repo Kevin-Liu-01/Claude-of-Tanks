@@ -252,7 +252,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null, prewarmRoster = null, submitPrograms = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -304,6 +304,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       recordEntryFailure: (failure) => { ports.failure = failure; },
       recordSlowEntry: (beacon) => { calls.push(`slowEntry:${beacon.stage}:${beacon.code}:${beacon.pending}`); (ports.slowEntries ??= []).push(beacon); },
       ...(loadAuthorityObstacles ? { loadAuthorityObstacles: (mapId, signal) => { calls.push(`authorityObstacles:${mapId}:${signal instanceof AbortSignal}`); return loadAuthorityObstacles(mapId, signal); } } : {}),
+      ...(prewarmRoster ? { prewarmRoster: (seats, signal) => { calls.push(`prewarmRoster:${seats.map((seat) => `${seat.specId}/${seat.camo}/${seat.isViewer ? 'own' : 'other'}`).join(',')}:${signal instanceof AbortSignal}`); return prewarmRoster(seats, signal); } } : {}),
     },
     roster: {
       getMap: (mapId) => ({ name: `Map ${mapId}`, thumb: `${mapId}.jpg`, biome: mapId }),
@@ -326,6 +327,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     warm: {
       atmosphere: async (initial) => calls.push(`warm.atmosphere:${initial.meta?.weatherSeed}`),
       nightLighting: async () => calls.push('warm.nightLighting'),
+      ...(submitPrograms ? { submitPrograms: (signal) => { calls.push(`warm.submitPrograms:${signal instanceof AbortSignal}`); return submitPrograms(signal); } } : {}),
       terrain: async (view) => calls.push(`warm.terrain:${view.entities.size}`),
       wrecks: async (view) => calls.push(`warm.wrecks:${view.entities.size}`),
       playerPanel: async (view, viewerId) => calls.push(`warm.panel:${view.entities.get(viewerId)?.specId}`),
@@ -1010,6 +1012,75 @@ for (const [reason, message] of [
   assert.equal(stalled.battleLoad.visible, false, 'the loader clears');
   assert.equal(stalled.menu.shown.length, 1, 'the room opens again');
   stalled.composition.dispose();
+}
+
+// ------------------------------------------------------------ the early program submission (2026-10-15, after the perf lane's
+// link census): with a submitPrograms port, the WELCOME sets the battle's lights up (garage lights off, the authority's
+// weather, the night pool) and submits the scene's programs before the roster resolves; activation does not repeat the
+// lights; a submission that never settles holds nothing
+{
+  const early = createHarness({ submitPrograms: () => new Promise(() => {}) });
+  const room = makeRoomSession(early.calls);
+  const entry = early.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  const owner = early.sessions[0];
+  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await owner.welcome();
+  const lit = early.calls.filter((call) => typeof call === 'string' && (call.startsWith('warm.') || call.startsWith('garageLighting')));
+  assert.deepEqual(lit, ['garageLighting:false', 'warm.atmosphere:99', 'warm.nightLighting', 'warm.submitPrograms:true'],
+    'the WELCOME sets the lights up and submits the programs before anything else warms');
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await entry, true, 'a submission that never settles holds nothing');
+  const order = early.calls.filter((call) => typeof call === 'string' && (call.startsWith('warm.') || call.startsWith('garageLighting')));
+  assert.equal(order.filter((call) => call.startsWith('warm.atmosphere')).length, 1, 'activation does not set the weather again');
+  assert.equal(order.filter((call) => call === 'warm.nightLighting').length, 1, 'nor the night pool');
+  assert.equal(order.filter((call) => call === 'garageLighting:false').length, 1, 'nor the garage lights');
+  assert.ok(order.indexOf('warm.compile') > order.indexOf('warm.submitPrograms:true'), 'the strict compile still follows');
+  assert.ok('atmosphere' in early.ports.trace.stages, 'the trace keeps its atmosphere stage');
+  early.composition.dispose();
+}
+
+// ------------------------------------------------------------ the roster prewarm (2026-10-15, the MP stream): the seats the room
+// names warm beside the world load; it never holds the entry (a prewarm that never settles still lets the round reveal)
+{
+  const warm = createHarness({ prewarmRoster: () => new Promise(() => {}) });
+  const { entry } = await enterRound(warm);
+  await settle(12);
+  assert.equal(await entry, true, 'a prewarm that never settles holds nothing');
+  const call = warm.calls.find((entry) => typeof entry === 'string' && entry.startsWith('prewarmRoster:'));
+  assert.ok(call, 'the named seats were warmed');
+  assert.ok(warm.calls.indexOf(call) < warm.calls.indexOf('loadWorld:alpine:null'), 'started with the world load, not after it');
+  assert.match(call, /\/own/, 'this viewer\'s vehicle warms at its own quality');
+  assert.match(call, /:true$/, 'with the round\'s abort signal');
+  warm.composition.dispose();
+}
+
+// ------------------------------------------------------------ a second WELCOME (2026-10-15, the MP stream): a replaced link
+// welcomes the seat again; the entry trace keeps the first `roster` value and counts the later one, so its stages still
+// add up to the entry (every main rejoin of the §7 side-by-side opened a second link 7 s in, and its trace lost 6.7-10 s)
+{
+  let time = 1000;
+  const twice = createHarness({ clock: () => time });
+  const room = makeRoomSession(twice.calls);
+  const entry = twice.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  const owner = twice.sessions[0];
+  time = 3000; // the entry starts (the receipt's world and modules load at once)
+  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  time = 7000; // the first WELCOME and the roster: 4 s
+  await owner.welcome();
+  time = 7500; // the link is replaced; the seat is welcomed again half a second later
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await entry, true, 'a seat welcomed twice still enters');
+  const trace = twice.ports.trace;
+  assert.equal(trace.status, 'complete');
+  assert.equal(trace.stages.roster, 4000, `the first WELCOME's roster stage stands (${trace.stages.roster} ms)`);
+  assert.equal(trace.rewelcomes, 1, 'the second WELCOME is counted');
+  assert.deepEqual(trace.rewelcomeAtMs, [4500], 'with its time from the entry start');
+  const staged = Object.values(trace.stages).reduce((sum, ms) => sum + ms, 0);
+  assert.equal(staged, trace.totalMs, `the stages add up to the entry (${staged} of ${trace.totalMs} ms)`);
+  twice.composition.dispose();
 }
 
 composition.dispose();

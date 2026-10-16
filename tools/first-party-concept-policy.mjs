@@ -1,4 +1,5 @@
 // Explicit owner-authored designs. This is not a fallback for failed sources.
+import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
 const CONCEPT_DOCUMENTS = Object.freeze({
   m6_linebacker:'docs/references/concepts/m6-linebacker-20261003.json',
   t72b3_zubr_ii:'docs/references/concepts/national-legacy-pair-20261001.json',
@@ -126,8 +127,13 @@ export function conceptDocumentPassed(id,record) {
       || record.comparisonPurpose!=='owner-authored-concept' || record.comparisonApplicable!==false
       || record.sourceScore!==null || !record.designs) return false;
   const members=Object.keys(CONCEPT_DOCUMENTS).filter(key=>CONCEPT_DOCUMENTS[key]===document);
-  return Object.keys(record.designs).length===members.length
-    && members.every(key=>Object.hasOwn(record.designs,key)&&exactDesign(record.designs[key],firstPartyConcept(key)));
+  // The owner's documents keep the ids they were written under (docs/references, unstamped = schema 1): read their
+  // designs in today's ids (tankIdAliases.ts, SSOT 2.19).
+  const resolve=(key)=>resolveTankId(key,record.tankIdSchema);
+  const designs=Object.fromEntries(Object.entries(record.designs).map(([key,design])=>
+    [resolve(key),typeof design?.id==='string'?{...design,id:resolve(design.id)}:design]));
+  return Object.keys(designs).length===members.length
+    && members.every(key=>Object.hasOwn(designs,key)&&exactDesign(designs[key],firstPartyConcept(key)));
 }
 export function validateSelectedIds(ids, knownIds) {
   if (!Array.isArray(ids) || !ids.length || new Set(ids).size!==ids.length

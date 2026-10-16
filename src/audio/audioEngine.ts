@@ -186,7 +186,7 @@ interface AudioEntity {
   };
   input?: { throttle?: number; brake?: boolean };
   /** Drone and AC-130 modes: the tank's drone in flight, or the gunship this entity is. */
-  aerial?: { kind?: string; active?: boolean; launching?: boolean; x?: number; y?: number; z?: number; batteryS?: number; cooldownS?: number };
+  aerial?: { kind?: string; active?: boolean; launching?: boolean; x?: number; y?: number; z?: number; batteryS?: number; cooldownS?: number; recallS?: number };
   combat?: {
     destroyed?: boolean;
     hp: number;
@@ -2410,10 +2410,10 @@ export function createAudio({
     on<undefined>('ui:minimapZoom', () => play('ui_tab', { gainDb: -6 }));
     on<undefined>('spectate:cycle', () => play('spectate_switch'));
     // Drone mode: the launch and the recall are heard from the flight itself (spin-up, crew call, the feed cutting);
-    // a press while the drone is still recharging is refused.
+    // a press while the drone is still recharging or flying home, or a recall before its feed is live, is refused.
     on<undefined>('ui:drone', () => {
       const view = latestPlayer?.aerial;
-      if (phase === 'battle' && view?.kind === 'drone' && !view.active && (view.cooldownS ?? 0) > 0) play('ui_error');
+      if (phase === 'battle' && view?.kind === 'drone' && (view.active ? (view.recallS ?? 0) > 0 : (view.cooldownS ?? 0) > 0)) play('ui_error');
     });
     // The optics' sensor changing (the tank sight or the drone and gunship cameras).
     on<undefined>('ui:visionChanged', () => { if (phase === 'battle') play('zoom_step', hullOptions({ gainDb: -6 })); });

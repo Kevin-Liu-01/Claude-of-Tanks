@@ -144,6 +144,18 @@ export class VehicleMesh {
 
   get vertexCount(): number { return this.pos.length / 3; }
   get triangleCount(): number { return this.idx.length / 3; }
+  /** (Lane C, #8 r2) The lowest point emitted so far (m; +Infinity when empty): a wreck settles on it (cartKit.ts). */
+  lowestY(): number {
+    let low = Infinity;
+    for (let i = 1; i < this.pos.length; i += 3) if (this.pos[i] < low) low = this.pos[i];
+    return low;
+  }
+  /** (Lane C, #8 r2) The farthest +x reached by any point lower than `y` (-Infinity when none): an edge to tip over. */
+  maxXBelow(y: number): number {
+    let far = -Infinity;
+    for (let i = 0; i < this.pos.length; i += 3) if (this.pos[i + 1] < y && this.pos[i] > far) far = this.pos[i];
+    return far;
+  }
 
   push(): this { this.stack.push(this.m); return this; }
   pop(): this { const m = this.stack.pop(); if (!m) throw new Error('VehicleMesh: pop without push'); this.setMatrix(m); return this; }

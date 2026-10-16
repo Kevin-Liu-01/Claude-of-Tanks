@@ -70,6 +70,8 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // bBarrel is a coopered wooden barrel (staves and hoops), not a steel drum
   barrel: WOOD_SMASH,
   fenceplank: WOOD_FENCE, fencepicket: WOOD_FENCE, fencewattle: WOOD_FENCE, fencerail: WOOD_FENCE, gate: WOOD_FENCE,
+  // (props lane A, E12) a set piece's wrought-iron ground railing bends and tears off its post
+  fenceiron: recipe(layer('fence_metal')),
   // (the looks lane: each fence family's own gate, maps/gateKit.ts; the stone and mud walls' gates go as their piers)
   gatepicket: WOOD_FENCE, gatewattle: WOOD_FENCE, gatestone: STONE, gateadobe: MASONRY,
   // straw
@@ -100,6 +102,8 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   setpiece_lrv: recipe(layer('car_crush', 0, -4)),
   // --- the village well, the square's monument and the rail yard's coal heaps (223, destruct-s7-small-props)
   well: recipe(layer('well_break')), monument: STONE_TOPPLE, 'coal-heap': recipe(layer('coal_crunch')),
+  // (PH.15) a dry-stone field wall a hull drives through: its stones tumble
+  'field-wall': STONE,
   // wire and bags
   barbedwire: recipe(layer('wire_snag')),
   sandbagbig: recipe(layer('sandbag_thump')), sandbagsmall: recipe(layer('sandbag_thump')), sandbagwall: recipe(layer('sandbag_thump')),

@@ -52,6 +52,7 @@ import {
 } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -185,6 +186,12 @@ interface VegetationConfig {
   clusterMix: SpeciesMix;
   loneMix: SpeciesMix;
   rimMix: SpeciesMix;
+  /** GND (2026-10-15; the blind critics' Longleaf backdrop "a broadleaf band that doesn't match the longleaf pines"):
+   * the species mix of the forest over the red line — the horizon ring's trees (maps/horizon.ts coniferShare,
+   * horizonForestImpostors.ts), the ones the battlefield's tiers adopt and the Hinterland's — where it differs from the
+   * battlefield's own rim (Longleaf's rim keeps the creek bottom's oaks; the flatwoods past the line are longleaf alone).
+   * Absent: the rim mix. */
+  ringMix?: SpeciesMix;
   clusterCount: number;
   loneCount: number;
   rimCount: number;
@@ -489,6 +496,8 @@ export interface VegetationRuntime {
    * geometry's height, metres; 0 without an impostor library) — the ring forest's impostors take both
    * (horizonForestImpostors.ts). */
   _rimMix: SpeciesMix;
+  /** GND (2026-10-15): the forest over the red line's species mix (VegetationConfig `ringMix`, else the rim's). */
+  _ringMix: SpeciesMix;
   _rimTreeHeightM: number;
   /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
    * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
@@ -4071,6 +4080,10 @@ function* vegetationBuildSteps(
   let groundCoverBlocked: GroundCoverBlocked | null = null;
   // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
   applySnowGrassLaw(veg, cfg?.id ?? null);
+  // grass r2: the map's sward kind for the shared patch field (none on a map without a sward, or under snow)
+  const swardKindOf = resolveGroundReduxProfile(cfg?.id ?? null).grass?.kind ?? null;
+  const swardKind = swardKindOf === 'tundra' ? null : swardKindOf; // (a snow map's tufts are dead winter grass: no fresh patch)
+  const _swardPatch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : lightDesk ? LIGHT_WORLD_VEG.grassScale : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -4182,7 +4195,13 @@ function* vegetationBuildSteps(
     // ground lane (2026-10-03): a crop tuft carries its crop's albedo negated in the instance colour (makeTuft) — the
     // card's own luminance (its dark roots, its lit tips) over the crop's colour, normalised by the card's mean green
     // blade (≈ 0.22/0.32/0.05 linear, luminance 0.28); every other tuft multiplies its tint as before
+    // grass r2 (2026-10-15, the sward's depth: swardPatch.ts SWARD_TONE): the card's own root-to-tip contrast steepened
+    // about its mean luminance (0.28), so its feet and the gaps between its blades read darker and its tips brighter
+    shader.uniforms.uSwardTone = SWARD_TONE;
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uSwardTone;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`
+      { float cardL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb *= max(0.0, 0.28 + (cardL - 0.28) * (1.0 + 0.35 * uSwardTone)) / max(cardL, 1e-4); }
       #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
@@ -4300,6 +4319,11 @@ function* vegetationBuildSteps(
   // candidate away from them pays four comparisons
   const avoidBounds = veg.avoid?.length ? veg.avoid.reduce((b, av) => [Math.min(b[0], av.x - av.r), Math.max(b[1], av.x + av.r),
     Math.min(b[2], av.z - av.r), Math.max(b[3], av.z + av.r)], [Infinity, -Infinity, Infinity, -Infinity]) : null;
+  // (2026-10-15, the paddies' look pass; the coordinator: "cleared banks, no tree in the water") a paddy's water, bund,
+  // bank and a working strip round it grow no tree or shrub (terrain _treeClearAt, paddies.ts inPaddyClearing); the
+  // grass keeps the banks
+  const treeClearAt = heightField._treeClearAt ?? null;
+  const inTreeClear = (x: number, z: number): boolean => treeClearAt !== null && treeClearAt(x, z);
   function inAvoid(x: number, z: number): boolean {
     if (!veg.avoid) return false;
     if (avoidBounds && (x < avoidBounds[0] || x > avoidBounds[1] || z < avoidBounds[2] || z > avoidBounds[3])) return false;
@@ -4340,7 +4364,7 @@ function* vegetationBuildSteps(
     roll: number,
     carpet: boolean,
   ): number {
-    if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
+    if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
     // the grass harnesses compile this filter without the module's helpers), not one ruled line at 4.2 m from the
@@ -4498,7 +4522,10 @@ function* vegetationBuildSteps(
             // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw
             // (terrain.ts: its tone by the same draw, at the bake's six bits) — not the meadow's round dry patches
             const jq = Math.round(f.jitter * 63) / 63;
-            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+            // (grass r2, 2026-10-15: Verdant's pastures read pale and washed beside 205's meadow — a grazed field is
+            // drier, most stand lush: the share skewed toward the shut-up green, to 0.32 at most)
+            const pq = (jq * 7.31 + 0.13) % 1;
+            pastureDry = 0.32 * pq * pq;
           }
         }
       }
@@ -4531,7 +4558,8 @@ function* vegetationBuildSteps(
     // (wave 71: Verdant's "flat, oversaturated neon" — the carpet's tips at HSV saturation 0.8 under the grade's boost)
     // the tint a third less saturated and a little yellower: a summer sward, not a lime lawn (was 0.225 / 0.30)
     let th = 0.21 + (hueJ - 0.5) * 0.05 - dry * 0.08;
-    let ts = 0.19 - dry * 0.07;
+    // (grass r2: the sward's saturation floor a fifth up — wave 71's neon was 0.30; the tone curve caps the rest)
+    let ts = 0.23 - dry * 0.08;
     let tl = 0.44 + (lumJ - 0.5) * 0.12 + (sn.n2 - 0.5) * 0.10 + dry * 0.04;
     // r6 terrain_environment: MEADOW PATCHWORK on the blades themselves. The
     // splat shader stamps 50-200 m dry-straw fields (meadowA -> uTintA), but
@@ -4543,9 +4571,14 @@ function* vegetationBuildSteps(
     th -= dryPatch * 0.075;
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
+    // grass r2 (2026-10-15, the blind critics: "one species and one colour"): the sward's own 5–11 m patches, the field
+    // the tall-grass tier's blades read (swardPatch.ts), so a patch of straw or fresh regrowth is one stand in both
+    const patch = swardKind !== null ? swardPatchAt(x, z, swardKind, _swardPatch) : null;
+    if (patch) { th -= patch.cured * 0.055; ts *= 1 - patch.cured * 0.22; tl += patch.cured * 0.035; }
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     let cropHeight = 1;
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
+    if (patch) _c.setRGB(_c.r * patch.r * patch.value, _c.g * patch.g * patch.value, _c.b * patch.b * patch.value);
     // a crop's tuft: the crop's measured albedo (landUse.ts LAND_CROP_ALBEDO, on the sample: ripe wheat
     // 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13, rice green
     // 0.10/0.23/0.045 …) carried NEGATED in the instance colour: the grass shader then keeps only the card's luminance
@@ -4867,6 +4900,10 @@ function* vegetationBuildSteps(
     fullFade = false,
     matteCanopy = false,
     thin = 0, // round 77: leaf translucency (canopyLighting.ts), 0 for bark
+    // GND (2026-10-15): where the crown's needle share comes from (canopyLighting.ts NEEDLE_TRANSMIT_*): 'uniform' — a
+    // near card material's own uCotNeedle (0 here, 1 on a needle species' material); 'impostor' — the far tier's
+    // per-species varying (treeImpostors.ts aImpNeedle); null — none (bark, the far lobes, the phones)
+    needle: 'uniform' | 'impostor' | null = null,
   ): MaterialShaderHook => (shader: MaterialShader): void => {
     shader.uniforms.uWindTime = uWindTime;
     shader.uniforms.uWindDir = uWindDir; // round 77
@@ -5041,13 +5078,23 @@ function* vegetationBuildSteps(
         `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
     }
     // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
-    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
+    // GND (2026-10-15; Kestrel chase-s: back-lit pines "a saturated lime green"): a needle crown transmits its needles'
+    // dulled green (canopyLighting.ts cotCanopyTransmit; desktop tiers, the phones keep their fragment)
+    const needleOn = needle !== null && thin > 0 && !mobileTier;
+    if (needleOn && needle === 'uniform') {
+      shader.uniforms.uCotNeedle = { value: 0 }; // a needle species' material sets its own (needleFoliageHook)
+      shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uCotNeedle;');
+    }
+    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null,
+      needleOn ? (needle === 'uniform' ? 'uCotNeedle' : 'vCotNeedle') : null);
   };
   const treeWindHook = makeTreeWindHook(BARK_NEAR_DISSOLVE[0], BARK_NEAR_DISSOLVE[1], 0.30); // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
   // Round 77: the near cards transmit 45 % of the (shadowed) direct light when back-lit, the far lobes 18 %.
-  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45); // matte canopy cards
+  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45, 'uniform'); // matte canopy cards
   const farCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18); // matte far lobes
+  // GND (2026-10-15): the far tier's impostors — the far lobes' law, the needle share per species from the quad
+  const impostorCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18, 'impostor');
   // Round 77: moss on the shaded side of the trunk bases, by the map's climate (uMoss, treeClimate.ts). Grows in the
   // bark's fissures (the sheet's darker texels), thickest at the ground and gone by 3 m, on the side turned from the
   // sun; a faint lichen dusting on the temperate maps, a full collar on the wet ones, none on the arid and frozen.
@@ -5697,6 +5744,13 @@ function* vegetationBuildSteps(
     return veg.palettes.oak || {};
   };
 
+  /** GND (2026-10-15): a needle crown — its leaf-scale detail is needles (the grown form's family: a holm oak on a cedar
+   * slot is leaves, a longleaf pine on a pine slot needles) — transmits its needles' dulled green when back-lit. */
+  const needleCrown = (sp: Species): boolean => leafDetail.classOf(SPECIES[sp].detailSpecies ?? sp, palOf(sp)) === 'conifer';
+  const needleFoliageHook = (shader: MaterialShader): void => {
+    foliageWindHook(shader);
+    if (shader.uniforms.uCotNeedle) shader.uniforms.uCotNeedle = { value: 1 };
+  };
   const foliageTex = {} as Record<Species, THREE.Texture>;
   const foliageMats = {} as Record<Species, THREE.MeshStandardMaterial>;
   const foliageDepthMats = {} as Record<Species, THREE.MeshDepthMaterial>;
@@ -5719,7 +5773,8 @@ function* vegetationBuildSteps(
         fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
           COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
       }
-      engineCtx.setupShadowMaterial(fm, foliageWindHook);
+      // GND (2026-10-15): a needle species' cards transmit the needles' dulled green (a uniform: the one program)
+      engineCtx.setupShadowMaterial(fm, needleCrown(sp) ? needleFoliageHook : foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
@@ -5799,7 +5854,7 @@ function* vegetationBuildSteps(
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
     rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
-      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
+      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp], needle: needleCrown(sp),
     }))),
     bark: barkTex.albedo,
     flood: (() => {
@@ -5817,7 +5872,7 @@ function* vegetationBuildSteps(
       return n > 0 ? new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace)
         : new THREE.Color(0.06, 0.077, 0.021);
     })(),
-    hook: farCanopyWindHook,
+    hook: impostorCanopyWindHook,
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial(material, hook),
     renderer: bakeRenderer,
   }) : null;
@@ -5969,7 +6024,7 @@ function* vegetationBuildSteps(
   }
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
-    if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
+    if (inAvoid(x, z) || inTreeClear(x, z) || overTreeCeiling(x, z)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -7644,7 +7699,7 @@ function* vegetationBuildSteps(
     const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
-      if (inAvoid(x, z)) return;
+      if (inAvoid(x, z) || inTreeClear(x, z)) return;
       if (!planted && br() > veg.bushCount) return; // per-map density scale (a planted row keeps every station)
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
@@ -7684,7 +7739,7 @@ function* vegetationBuildSteps(
             const bx = tx + (x - tx) / dl * out, bz = tz + (z - tz) / dl * out;
             if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
               && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
-              && !inAvoid(bx, bz)) {
+              && !inAvoid(bx, bz) && !inTreeClear(bx, bz)) {
               x = bx; z = bz;
             }
           }
@@ -7870,7 +7925,7 @@ function* vegetationBuildSteps(
       };
       /** The bush admission (roads, soft ground, water, slopes, spawns, the village, structures) inside the bound. */
       const admitted = (x: number, z: number, sc: number, bound: number): boolean => {
-        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) return false;
+        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z) || inTreeClear(x, z)) return false;
         // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
         if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) return false;
         if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;
@@ -8960,7 +9015,7 @@ function* vegetationBuildSteps(
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
-    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
+    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

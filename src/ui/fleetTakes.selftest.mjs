@@ -90,6 +90,23 @@ assert.equal((await offline.loadFleetTakes()).size, 0, 'offline: no takes');
 dom.respond(offline.FLEET_TAKES_INDEX, FIXTURE);
 assert.equal((await offline.loadFleetTakes()).size, 2, 'a lookup after a network failure tries again');
 
+// The index names vehicles under the tank id schema it was written in (SSOT 2.19): a stamped index moves through each
+// later rename once, the leo2a6m swap included, and an unstamped one is schema 1. Today's leo2a6m (the Leopard 2A6M)
+// must never show the take of the Leopard 2A4 OTCO, which schema 1 and 2 called leo2a6m.
+{
+  const OTCO = { ...S21, take: 's62-otco', title: { en: 'Leopard 2A4 OTCO fixture' } };
+  const A6M = { ...S21, take: 's63-a6m', title: { en: 'Leopard 2A6M fixture' } };
+  for (const [stamp, label] of [[2, 'a schema-2 index'], [undefined, 'an unstamped index']]) {
+    const reader = await freshModule();
+    dom.respond(reader.FLEET_TAKES_INDEX, { collection: 'site50-r14', ...(stamp ? { tankIdSchema: stamp } : {}),
+      vehicles: { leo2a6m: OTCO, leo2a6m_x: A6M } });
+    const takes = await reader.loadFleetTakes();
+    assert.equal(takes.get(resolveTankId('leo2a6m', stamp))?.take, 's62-otco', `${label}: its leo2a6m is the 2A4 OTCO's take`);
+    assert.equal(takes.get(resolveTankId('leo2a6m_x', stamp))?.take, 's63-a6m', `${label}: its leo2a6m_x is the 2A6M's take`);
+    assert.equal(takes.get(resolveTankId('leo2a6m_x', stamp))?.vehicle, resolveTankId('leo2a6m_x', stamp), `${label}: entries carry today's id`);
+  }
+}
+
 // 2. The player: poster first, a source only on screen, pause off screen, release after the grace.
 const frame = dom.document.createElement('div');
 const player = fleet.createFleetTakePlayer(frame);
@@ -239,7 +256,8 @@ if (existsSync(shipped)) {
   const reader = await freshModule();
   dom.respond(reader.FLEET_TAKES_INDEX, json);
   const takes = await reader.loadFleetTakes();
-  assert.deepEqual([...takes.keys()].sort(), Object.keys(json.vehicles ?? {}).sort(), 'every shipped entry is valid');
+  assert.deepEqual([...takes.keys()].sort(), Object.keys(json.vehicles ?? {}).map((key) => resolveTankId(key, json.tankIdSchema)).sort(),
+    'every shipped entry is valid, keyed in today\'s spelling');
   for (const entry of takes.values()) {
     assert.ok(production.has(entry.vehicle), `${entry.vehicle}: a production vehicle (src/docs/reference.generated.json)`);
     for (const file of [entry.loop, entry.poster, entry.scene]) {

@@ -16,13 +16,15 @@
 // are dressing; the bodies, the legs and the footings are structure.
 import { LocalFrame, PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar, revolve } from './kit.ts';
-import { drapedPath } from './grounds.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
+// (props census #12: the module train, the Jamesway and the airstrip are the looks lane's, in polarStations.ts)
+export { airstrip, jamesway, moduleTrain } from './polarStations.ts';
 
-const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026), TRIM_BLUE = rgb(0x34506e);
+const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026);
 const STEEL = rgb(0x7f868b), STEEL_DARK = rgb(0x4b5157), IRON = rgb(0x2c2e30), RADOME = rgb(0xeeeeea);
-const AVI_ORANGE = rgb(0xcf5a2e), AVI_WHITE = rgb(0xe8e8e2), SNOW = rgb(0xf0f3f6), RUST = rgb(0x6e3c26), TIMBER = rgb(0x5e4c3a);
-const DOOR = rgb(0x3d4246), SIGN_YELLOW = rgb(0xd8a93a);
+const AVI_ORANGE = rgb(0xcf5a2e), AVI_WHITE = rgb(0xe8e8e2), SNOW = rgb(0xf0f3f6), RUST = rgb(0x6e3c26);
+const DOOR = rgb(0x3d4246);
 // the arctic kit's billboard paints (maps/regional/arctic.ts): the panels a multiplier over white, the truss's steel, the
 // feed tower's galvanised grey
 const TROPO_PANEL: Rgb = [0.97, 0.975, 0.97], TROPO_WHITE = rgb(0xe8e9e6), TROPO_STEEL = rgb(0x5d6266), GALV = rgb(0xa3aaae);
@@ -121,17 +123,64 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
     profile.push([R * Math.cos(a), yc + R * Math.sin(a)]);
   }
   profile.push([0, yc + R]);
-  revolve(sink, 'plaster', 0, 0, profile, 20);
-  // the panel courses (fine rings) and the beacon at the crown
-  for (const deg of [-10, 20, 48, 72]) {
-    const a = deg * Math.PI / 180, r = R * Math.cos(a) + 0.02, y = yc + R * Math.sin(a);
-    revolve(sink, 'structureMetal', 0, 0, [[r, y - 0.04], [r, y + 0.04]], 20, { colour: shade(RADOME, 0.84), decor: true, fine: true });
-  }
-  sink.span('structureMetal', -0.12, yc + R - 0.05, -0.12, 0.12, yc + R + 0.35, 0.12, { colour: TRIM_RED, decor: true });
+  // (props lane A #21, 2026-10-15; WORKLIST #21: "radome panels tear and fall exposing the reflector") the search
+  // radar inside the sphere — its reflector, a wide parabolic cheese of panels on a backing frame, on its pedestal and
+  // turning gear, the feed horn on its struts at the focus — hidden while the sphere stands, laid open when it tears
+  reflector(sink, drumTop, rb, yc, R, (S * 0.37 + H * 0.23 + R * 0.11) % 1);
+  // (props lane A, E12: the radome tears open on the side a round came from when the tower is breached; its whips come
+  // off at the first damage; landmarks/pieces.ts) (#21: its inside the radar's, deep behind the hole)
+  piece(sink, { name: 'radome', kind: 'tank', at: 'breached', vessel: { x: 0, z: 0, y0: drumTop, y1: yc + R, r: R, contents: 'none', insideM: 1.6 } }, (sink) => {
+    revolve(sink, 'plaster', 0, 0, profile, 20);
+    // the panel courses (fine rings) and the beacon at the crown
+    for (const deg of [-10, 20, 48, 72]) {
+      const a = deg * Math.PI / 180, r = R * Math.cos(a) + 0.02, y = yc + R * Math.sin(a);
+      revolve(sink, 'structureMetal', 0, 0, [[r, y - 0.04], [r, y + 0.04]], 20, { colour: shade(RADOME, 0.84), decor: true, fine: true });
+    }
+    sink.span('structureMetal', -0.12, yc + R - 0.05, -0.12, 0.12, yc + R + 0.35, 0.12, { colour: TRIM_RED, decor: true });
+  });
   // whip antennas on the roof's corners
-  for (const [sx, sz] of [[-1, -1], [1, 1]]) bar(sink, 'structureMetal', [sx * (h - 0.6), H + 0.45, sz * (h - 0.6)], [sx * (h - 0.6), H + 4.2, sz * (h - 0.6)], 0.05, { colour: STEEL_DARK, decor: true });
-  return { parts: sink.finish() };
+  for (const [k, [sx, sz]] of ([[-1, -1], [1, 1]] as const).entries()) {
+    piece(sink, { name: `whip-${k}`, kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
+      bar(s, 'structureMetal', [sx * (h - 0.6), H + 0.45, sz * (h - 0.6)], [sx * (h - 0.6), H + 4.2, sz * (h - 0.6)], 0.05, { colour: STEEL_DARK, decor: true }));
+  }
+  return { parts: finishLandmark(sink) };
 };
+
+/**
+ * The search radar inside the radome (an AN/FPS-19's kind): its pedestal on the drum's floor, the turning gear, the
+ * reflector — a wide shallow parabolic cheese of mesh panels in a frame, its back braced — facing `azimuth`, and the feed
+ * horn on its struts at the focus; all within the sphere (radius R about yc). Structure metal, decor: no collision.
+ */
+function reflector(sink: PartSink, floor: number, rb: number, yc: number, R: number, turn: number): void {
+  const azimuth = turn * Math.PI * 2, ca = Math.cos(azimuth), sa = Math.sin(azimuth);
+  const rot = (x: number, y: number, z: number): Vec3 => [x * ca + z * sa, y, -x * sa + z * ca];
+  const dec = { decor: true } as const;
+  // the deck across the drum, the pedestal on it and its turning gear
+  revolve(sink, 'structureMetal', 0, 0, [[rb, floor + 0.02], [0.24, floor + 0.02]], 16, { colour: STEEL_DARK, ...dec });
+  bar(sink, 'structureMetal', [0, floor, 0], [0, yc - 0.35, 0], 0.22, { colour: STEEL_DARK, ...dec });
+  revolve(sink, 'structureMetal', 0, 0, [[0.45, yc - 0.55], [0.45, yc - 0.3], [0.3, yc - 0.3]], 12, { colour: IRON, ...dec });
+  // the reflector: W wide, Hh tall, its face concave toward +z (the parabola's sag `sag` at the rim), a little behind the axis
+  const W = R * 1.6, Hh = R * 0.7, sag = R * 0.22, back = -R * 0.12, cols = 10, rows = 4;
+  const at = (i: number, j: number): Vec3 => {
+    const x = (i / cols - 0.5) * W, y = (j / rows - 0.5) * Hh;
+    return rot(x, yc + y + 0.1, back + sag * ((2 * x / W) ** 2 * 0.8 + (2 * y / Hh) ** 2 * 0.2));
+  };
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1);
+    const panel = (i + j) % 2 ? STEEL : shade(STEEL, 0.9);
+    sink.quad('structureMetal', a, b, c, d, { colour: panel, ...dec });
+    sink.quad('structureMetal', d, c, b, a, { colour: shade(STEEL_DARK, 0.9), ...dec });
+  }
+  // its frame: the rim and the ribs, and the backing struts to the turning gear
+  for (let i = 0; i <= cols; i += 2) bar(sink, 'structureMetal', at(i, 0), at(i, rows), 0.035, { colour: STEEL_DARK, ...dec });
+  for (const j of [0, rows]) for (let i = 0; i < cols; i++) bar(sink, 'structureMetal', at(i, j), at(i + 1, j), 0.04, { colour: STEEL_DARK, ...dec });
+  for (const i of [2, 5, 8]) bar(sink, 'structureMetal', at(i, rows / 2), rot(0, yc - 0.3, back - 0.4), 0.04, { colour: STEEL_DARK, ...dec });
+  // the feed horn at the focus on its two struts from the reflector's lower rim
+  const focus = rot(0, yc - 0.1, back + R * 0.62);
+  for (const i of [3, 7]) bar(sink, 'structureMetal', at(i, 0), focus, 0.03, { colour: STEEL, ...dec });
+  const f = focus;
+  sink.box('structureMetal', f, [0.16, 0.12, 0.2], { colour: IRON, ...dec }, new LocalFrame(rot(1, 0, 0), [0, 1, 0], rot(0, 0, 1), [0, 0, 0]));
+}
 
 // -------------------------------------------------------------------------------------------------------- billboards
 
@@ -158,6 +207,7 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   for (let k = 0; k <= 8; k++) { const t = k / 8 - 0.5; g0 = Math.max(g0, gl(t * bw, curve(t)), gl(t * bw, rearZ)); }
   const foot = g0 + clear, fy = foot + H * 0.5, crest = foot + H + 0.8;
   // the panels: 28 strips overlapping into one curved sheet, darker toward the edges (the curve reads in the light)
+  piece(sink, { name: 'face', kind: 'lattice', at: 'collapse', fall: 'flat' }, (sink) => {
   const n = 28;
   for (let k = 0; k < n; k++) {
     const t = (k + 0.5) / n - 0.5, x = t * bw, ang = Math.atan(8 * SAG * t / bw);
@@ -182,7 +232,9 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     const ta = k / n - 0.5, tb = (k + 1) / n - 0.5;
     sink.member('structureMetal', [ta * bw, y, curve(ta) + 0.1], [tb * bw, y, curve(tb) + 0.1], 0.2, 0.18, [0, 1, 0], { colour: TROPO_STEEL, decor: true, exposed: true });
   }
+  });
   // the space truss: verticals footed on the ground under them, six levels of chords, webs and the rear plane's X bracing
+  piece(sink, { name: 'truss', kind: 'lattice', at: 'collapse', fall: 'slump' }, (sink) => {
   const stations = [-0.5, -0.375, -0.25, -0.125, 0, 0.125, 0.25, 0.375, 0.5];
   const front = (t: number): number => curve(t) - 0.14;
   const sx = (t: number): number => t * bw * 0.98;
@@ -222,7 +274,9 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     sink.member('structureMetal', [x, Math.min(g - 0.3, -0.6), rearZ - 2.6], [x, foot + H * 0.6, rearZ], 0.24, 0.24, [1, 0, 0], truss);
     sink.span('stone', x - 0.5, g - 0.4, rearZ - 3.1, x + 0.5, g + 0.25, rearZ - 2.1, { decor: true });
   }
+  });
   // the feed horn at the focus on its own tower: four tapering legs braced in X, a platform, the horn turned to the face
+  piece(sink, { name: 'feed', kind: 'lattice', at: 'breached', fall: 'topple', outward: false }, (sink) => {
   const tw = 0.85, tz = fz + 0.9, legTop = fy - 0.7;
   const gt = Math.min(gl(-tw, tz - tw), gl(tw, tz - tw), gl(-tw, tz + tw), gl(tw, tz + tw));
   const legAt = (s: number, y: number): number => s * tw * (1 - 0.4 * (y - gt + 0.3) / (legTop - gt + 0.3));
@@ -241,6 +295,7 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   sink.cylinder('structureMetal', [0, fy, fz - 1.9], 'z', 1.9, 1.1, 4, { colour: STEEL_DARK }, 0.32);
   sink.span('structureMetal', -0.45, fy - 0.45, fz, 0.45, fy + 0.45, fz + 0.8, { colour: TROPO_STEEL });
   sink.member('structureMetal', [0.35, fy - 0.45, fz + 0.5], [0.35, gt + 0.9, tz + 0.5], 0.14, 0.1, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true });
+  });
   // the transmitter module beside the feed tower, on its piles, clear of the face, its door toward the front
   const mx0 = bw / 2 - 5.4, mx1 = bw / 2 - 1.2, mz1 = fz + 1.6, mz0 = mz1 - 2.8;
   const gm = Math.max(gl(mx0, mz0), gl(mx1, mz0), gl(mx0, mz1), gl(mx1, mz1)), floor = gm + 1.1;
@@ -258,7 +313,7 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   // first up to the module's front under its door, along the steps' nosings
   const nose = (z: number): number => gs + (mz1 + 1.32 - z) / 0.28 * (floor / 4) - 0.05;
   for (const x of [mx0 + 0.73, mx0 + 1.77]) bar(sink, 'structureMetal', [x, nose(mz1 + 1.45), mz1 + 1.45], [x, nose(mz1 - 0.02), mz1 - 0.02], 0.06, { colour: STEEL_DARK, decor: true });
-  return { parts: sink.finish() };
+  return { parts: finishLandmark(sink) };
 };
 
 /** The billboard's depth from its raking legs' footings to its transmitter module (plan.ts footprint, the piece centred). */
@@ -282,6 +337,10 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
   foot(sink, 0, 0, face * 1.4, face * 1.4, g0, 0.45);
   const legAt = (i: number, y: number): Vec3 => { const a = (i / 3) * Math.PI * 2 + Math.PI / 2; return [Math.cos(a) * r, y, Math.sin(a) * r]; };
   const bands = 7, band = (H - 0.45) / bands;
+  // (props lane A, E12: an open frame, read as members — landmarks/damage.ts; the mast one piece, its legs unbroken, that
+  // goes over whole when it falls; its crown drops off when it is breached, its dishes at the first damage;
+  // landmarks/pieces.ts)
+  piece(sink, { name: 'mast', kind: 'lattice', at: 'collapse', fall: 'drop' }, (sink) => {
   for (let b = 0; b < bands; b++) {
     const y0 = g0 + 0.45 + b * band, y1 = y0 + band, colour = b % 2 ? AVI_WHITE : AVI_ORANGE;
     for (let i = 0; i < 3; i++) bar(sink, 'structureMetal', legAt(i, y0), legAt(i, y1), 0.1, { colour });
@@ -295,15 +354,19 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
       }
     }
   }
+  });
   // the guys from three heights to three anchors, each anchor in line with a leg and its guys made fast to that leg (the
   // connectivity sweep, 217: the guys ended in air between the legs)
   for (let k = 0; k < 3; k++) {
     const a = (k / 3) * Math.PI * 2 + Math.PI / 2, ax = Math.cos(a) * G, az = Math.sin(a) * G, ga = gl(ax, az);
     sink.span('stone', ax - 0.5, ga - 0.6, az - 0.5, ax + 0.5, ga + 0.35, az + 0.5, { decor: true });
-    for (const f of [0.34, 0.66, 0.95]) {
-      const y = g0 + 0.45 + (H - 0.45) * f;
-      bar(sink, 'structureMetal', [ax, ga + 0.35, az], [Math.cos(a) * r, y, Math.sin(a) * r], 0.035, { colour: STEEL, decor: true });
-    }
+    // (the guys go slack with the mast: they fall with it)
+    piece(sink, { name: `guys-${k}`, kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => {
+      for (const f of [0.34, 0.66, 0.95]) {
+        const y = g0 + 0.45 + (H - 0.45) * f;
+        bar(s, 'structureMetal', [ax, ga + 0.35, az], [Math.cos(a) * r, y, Math.sin(a) * r], 0.035, { colour: STEEL, decor: true });
+      }
+    });
   }
   // the hut at the foot, its door toward the front
   const hx = face * 1.4 + 1.6, gh = Math.min(gl(hx - 1.2, -1.1), gl(hx + 1.2, -1.1), gl(hx - 1.2, 1.1), gl(hx + 1.2, 1.1));
@@ -317,7 +380,7 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
   // the cable tray from the hut to the mast
   bar(sink, 'structureMetal', [hx - 1.2, hy + 2.0, 0], [r, g0 + 2.0, 0], 0.12, { colour: STEEL_DARK, decor: true });
   // the head: two dishes, the whips and the beacon
-  for (const [i, y] of [[0, g0 + H * 0.78], [2, g0 + H * 0.62]] as const) {
+  for (const [i, y] of [[0, g0 + H * 0.78], [2, g0 + H * 0.62]] as const) piece(sink, { name: `dish-${i}`, kind: 'detach', at: 'damaged', fall: 'flat' }, (sink) => {
     const [lx, , lz] = legAt(i, 0), out = Math.hypot(lx, lz) || 1, dx = lx / out, dz = lz / out;
     const c: Vec3 = [lx + dx * 0.5, y, lz + dz * 0.5];
     bar(sink, 'structureMetal', legAt(i, y), c, 0.06, { colour: STEEL, decor: true });
@@ -333,209 +396,14 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
       sink.polygon('structureMetal', [c, ring[n], ring[s]], { colour: AVI_WHITE, decor: true });
       sink.polygon('structureMetal', [c, ring[s], ring[n]], { colour: shade(AVI_WHITE, 0.7), decor: true });
     }
-  }
-  // the head's cap plate across the legs' tops, the whip and the beacon on it
-  sink.span('structureMetal', -r - 0.06, g0 + H - 0.02, -r - 0.06, r + 0.06, g0 + H + 0.04, r + 0.06, { colour: STEEL_DARK, decor: true });
-  bar(sink, 'structureMetal', [0, g0 + H + 0.04, 0], [0, g0 + H + 3.2, 0], 0.06, { colour: STEEL_DARK, decor: true });
-  sink.span('structureMetal', -0.14, g0 + H + 0.04, -0.14, 0.14, g0 + H + 0.36, 0.14, { colour: TRIM_RED, decor: true });
-  return { parts: sink.finish() };
-};
-
-// ------------------------------------------------------------------------------------------------------ module train
-
-/**
- * The module train: the station's modules joined end to end along x on short steel stilts over the permafrost (the
- * utilidor's pipes under the floor), each module's cladding, its joint battens and its small windows, the trim band
- * under the eaves in the module's colour, the arctic entries with their steps at two doors, a taller garage module at
- * the east end with its roller door, the vents and stacks on the flat roof (a snow slab on a snow map).
- */
-export const moduleTrain: LandmarkBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx.rng));
-  const n = Math.round(num(ctx, 'modules', 3)), L = num(ctx, 'length', 5), D = num(ctx, 'width', 6), Hm = num(ctx, 'height', 3);
-  const stilt = num(ctx, 'stilts', 0.4), total = n * L, x0 = -total / 2, hd = D / 2, floor = stilt, eave = floor + Hm;
-  const trims = [TRIM_RED, TRIM_BLUE, TRIM_RED, SIGN_YELLOW];
-  // the stilts on their pads, the floor deck and the utilidor pipes under it
-  for (let k = 0; k <= n; k++) for (const sz of [-1, 1]) {
-    const x = x0 + k * L;
-    footing(sink, ctx, x, sz * (hd - 0.4), 0.35, 0.35, 0.15);
-    bar(sink, 'structureMetal', [x, 0.15, sz * (hd - 0.4)], [x, floor, sz * (hd - 0.4)], 0.24, { colour: STEEL_DARK });
-  }
-  sink.span('structureMetal', x0, floor - 0.25, -hd, x0 + total, floor, hd, { colour: STEEL_DARK });
-  for (const z of [-1.2, -0.6]) {
-    sink.cylinder('structureMetal', [x0, floor - 0.55, z], 'x', total, 0.18, 6, { colour: STEEL, decor: true });
-    // (the connectivity sweep, 217: the pipes hung 12 cm under the deck on nothing) a hanger from the deck at every stilt line
-    for (let k = 0; k <= n; k++) bar(sink, 'structureMetal', [x0 + k * L + (k === 0 ? 0.3 : k === n ? -0.3 : 0), floor - 0.24, z], [x0 + k * L + (k === 0 ? 0.3 : k === n ? -0.3 : 0), floor - 0.5, z], 0.04, { colour: STEEL_DARK, decor: true });
-  }
-  // the modules
-  for (let k = 0; k < n; k++) {
-    const a = x0 + k * L, b = a + L, garage = k === n - 1 && n > 2, top = garage ? eave + 1.6 : eave;
-    const paint = k % 3 === 2 ? PANEL_CREAM : PANEL, trim = trims[(k + Math.floor(ctx.variant() * 4)) % 4];
-    // (the arctic kit's panels: white, a module in three its pale blue-grey, the band under the eaves its orange or a dark trim)
-    sink.span(k % 3 === 2 ? 'plaster3' : 'plaster', a + 0.02, floor, -hd, b - 0.02, top, hd);
-    if (trim === TRIM_RED || trim === SIGN_YELLOW) sink.span('plaster2', a, top - 0.55, -hd - 0.04, b, top - 0.25, hd + 0.04, { decor: true });
-    else sink.span('structureMetal', a, top - 0.55, -hd - 0.04, b, top - 0.25, hd + 0.04, { colour: trim, decor: true });
-    sink.span('structureMetal', a - 0.05, top, -hd - 0.12, b + 0.05, top + 0.3, hd + 0.12, { colour: shade(paint, 0.78) });
-    if (ctx.snowCap) sink.span('structureMetal', a + 0.1, top + 0.3, -hd + 0.05, b - 0.1, top + 0.46, hd - 0.05, { colour: SNOW, decor: true });
-    // the joint battens at the module's ends (both long faces)
-    for (const sz of [-1, 1]) sink.span('structureMetal', a - 0.06, floor, sz * hd - 0.05, a + 0.06, top - 0.55, sz * hd + 0.05, { colour: shade(paint, 0.7), decor: true });
-    if (garage) {
-      // the roller door on the front and the far end
-      sink.quad('structureMetal', [a + 0.8, floor + 0.05, hd + 0.03], [b - 0.8, floor + 0.05, hd + 0.03], [b - 0.8, top - 0.9, hd + 0.03], [a + 0.8, top - 0.9, hd + 0.03], { colour: shade(STEEL, 0.75), decor: true });
-      for (let y = floor + 0.4; y < top - 1.0; y += 0.35) sink.span('structureMetal', a + 0.8, y, hd + 0.03, b - 0.8, y + 0.04, hd + 0.06, { colour: shade(STEEL, 0.6), decor: true, fine: true });
-      // the earth ramp up to the door
-      sink.span('stone', a + 0.6, -0.3, hd, b - 0.6, floor - 0.05, hd + 1.6, { decor: true });
-      continue;
-    }
-    // two windows on each long face
-    for (const sz of [-1, 1]) for (const f of [0.3, 0.7]) {
-      const x = a + L * f, z = sz * (hd + 0.03), y = floor + 1.3;
-      const pts: Vec3[] = sz > 0 ? [[x - 0.45, y, z], [x + 0.45, y, z], [x + 0.45, y + 0.8, z], [x - 0.45, y + 0.8, z]]
-        : [[x + 0.45, y, z], [x - 0.45, y, z], [x - 0.45, y + 0.8, z], [x + 0.45, y + 0.8, z]];
-      sink.polygon('glass', pts, { decor: true });
-    }
-    // a roof vent or a stack
-    if (ctx.rng() < 0.6) sink.span('structureMetal', a + L * 0.4, top + 0.3, -0.5, a + L * 0.6, top + 0.9, 0.3, { colour: STEEL, decor: true });
-    else sink.cylinder('structureMetal', [a + L * 0.5, top + 0.3, -hd * 0.5], 'y', 2.2, 0.18, 8, { colour: IRON, decor: true });
-  }
-  // the arctic entries at two doors: a vestibule box, its door and the steps down
-  for (const k of [Math.min(1, n - 1), Math.max(0, n - 3)]) {
-    const cx = x0 + (k + 0.5) * L;
-    sink.span('structureMetal', cx - 1.0, floor, hd, cx + 1.0, floor + 2.5, hd + 1.4, { colour: shade(PANEL_CREAM, 0.95) });
-    sink.span('structureMetal', cx - 1.1, floor + 2.5, hd - 0.05, cx + 1.1, floor + 2.65, hd + 1.5, { colour: shade(PANEL, 0.75) });
-    sink.quad('structureMetal', [cx - 0.45, floor + 0.02, hd + 1.42], [cx + 0.45, floor + 0.02, hd + 1.42], [cx + 0.45, floor + 2.0, hd + 1.42], [cx - 0.45, floor + 2.0, hd + 1.42], { colour: DOOR, decor: true });
-    for (let s = 0; s < 2; s++) sink.span('structureWood', cx - 0.7, 0, hd + 1.4 + s * 0.35, cx + 0.7, floor - s * (floor / 2), hd + 1.75 + s * 0.35, { colour: TIMBER, decor: true });
-  }
-  return { parts: sink.finish() };
-};
-
-// ---------------------------------------------------------------------------------------------------------- tank farm
-
-/**
- * The POL tank farm: vertical tanks in rows inside a concrete bund (its gap and the steps over it at the front), each tank
- * on its ring footing with its cone roof, the stair climbing its side to the rail round its roof; the pipes from each tank
- * to the manifold at the bund's front.
- */
-export const fuelTankFarm: LandmarkBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx.rng));
-  const count = Math.round(num(ctx, 'tanks', 1)), R = num(ctx, 'radius', 2), Ht = num(ctx, 'height', 3);
-  const cols = Math.min(count, Math.max(1, Math.round(num(ctx, 'columns', 1)))), rows = Math.ceil(count / cols);
-  const pitch = 2 * R + 3, ex = (cols - 1) * pitch / 2 + R + 2.5, ez = (rows - 1) * pitch / 2 + R + 2.5;
-  const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
-  // (on falling ground — plan.ts drapes — each tank stands on its own ring footing at the highest ground under it, and
-  // the bund runs in short lengths, each from below its lowest ground to a wall's height over its highest)
-  const wallH = 1.1, t = 0.35;
-  const wall = (ax: number, az: number, bx: number, bz: number) => {
-    const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 6));
-    for (let k = 0; k < n; k++) {
-      const x0 = ax + (bx - ax) * k / n, z0 = az + (bz - az) * k / n, x1 = ax + (bx - ax) * (k + 1) / n, z1 = az + (bz - az) * (k + 1) / n;
-      const g0 = gl(x0, z0), g1 = gl(x1, z1), gm = gl((x0 + x1) / 2, (z0 + z1) / 2);
-      const lo = Math.min(g0, g1, gm), hi = Math.max(g0, g1, gm);
-      sink.span('stone', Math.min(x0, x1) - (az === bz ? 0 : t / 2), Math.min(lo - 0.6, -0.6), Math.min(z0, z1) - (az === bz ? t / 2 : 0),
-        Math.max(x0, x1) + (az === bz ? 0 : t / 2), hi + wallH, Math.max(z0, z1) + (az === bz ? t / 2 : 0));
-    }
-  };
-  wall(-ex, -ez + t / 2, ex, -ez + t / 2);
-  wall(-ex + t / 2, -ez, -ex + t / 2, ez);
-  wall(ex - t / 2, -ez, ex - t / 2, ez);
-  wall(-ex, ez - t / 2, -1.4, ez - t / 2);
-  wall(1.4, ez - t / 2, ex, ez - t / 2);
-  // the manifold's line: straight from 0.5 m over the ground at one end to 0.5 m over it at the other
-  const manifoldY = (mx: number): number => {
-    const z = ez - t - 0.75, a = gl(-ex + 1.0, z) + 0.5, b = gl(ex - 1.0, z) + 0.5;
-    return a + (b - a) * Math.min(1, Math.max(0, (mx + ex - 1.0) / Math.max(1e-6, 2 * ex - 2.0)));
-  };
-  // the tanks
-  for (let i = 0; i < count; i++) {
-    const c = i % cols, r = Math.floor(i / cols);
-    const x = -((cols - 1) * pitch) / 2 + c * pitch, z = -((rows - 1) * pitch) / 2 + r * pitch;
-    let lo = Infinity, hi = -Infinity;
-    for (let a = 0; a < 8; a++) { const g = gl(x + Math.cos(a * Math.PI / 4) * R, z + Math.sin(a * Math.PI / 4) * R); lo = Math.min(lo, g); hi = Math.max(hi, g); }
-    lo = Math.min(lo, gl(x, z)); hi = Math.max(hi, gl(x, z));
-    const y0 = hi + 0.3;
-    const tone = lerp(PANEL, SNOW, ctx.variant() * 0.4);
-    revolve(sink, 'stone', x, z, [[R + 0.3, Math.min(lo - 0.6, -0.6)], [R + 0.3, y0], [R - 0.05, y0]], 16);
-    revolve(sink, 'structureMetal', x, z, [[R, y0], [R, y0 + Ht], [R * 0.25, y0 + Ht + R * 0.18], [0, y0 + Ht + R * 0.2]], 20,
-      { colourAt: (p) => (p[1] > y0 + Ht + 0.01 ? shade(tone, 0.88) : weathered(tone, y0, y0 + Ht, 0.3)(p)) });
-    // the shell's courses (fine rings)
-    for (let y = y0 + 1.8; y < y0 + Ht - 0.3; y += 1.8) revolve(sink, 'structureMetal', x, z, [[R + 0.02, y - 0.03], [R + 0.02, y + 0.03]], 20, { colour: shade(tone, 0.8), decor: true, fine: true });
-    // the stair up its side: a straight flight on the tangent, its head on a landing at the shell where the roof begins,
-    // its foot out toward the front — two stringers, the treads, the outer handrail on posts — and the rail round the
-    // roof on its posts (the connectivity sweep, 217: the flight's head stood two metres off the shell, its handrail and
-    // the roof's rail on nothing)
-    const top = y0 + Ht, xi = x - R - 0.04, xo = xi - 0.75, zh = z, zf = z + 0.8 + R * 0.9, zl = zh + 0.45;
-    const gf = Math.min(gl(xi, zf), gl(xo, zf)) - 0.05, rise = top - 0.04 - gf;
-    const nosing = (zz: number): number => gf + rise * (zf - zz) / (zf - zl);
-    const dark = { colour: STEEL_DARK, decor: true } as const;
-    sink.span('structureMetal', xo - 0.05, top - 0.08, zh - 0.45, xi + 0.16, top, zl, dark);
-    for (const sx of [xi, xo]) bar(sink, 'structureMetal', [sx, gf, zf], [sx, top - 0.04, zl], 0.08, dark);
-    const steps = Math.max(3, Math.ceil(rise / 0.3));
-    for (let k = 1; k < steps; k++) {
-      const zz = zf - (zf - zl) * k / steps, y = nosing(zz);
-      sink.span('structureMetal', xo, y - 0.035, zz - 0.13, xi, y + 0.005, zz + 0.13, { ...dark, fine: true });
-    }
-    const posts = [zf - 0.3, (zf + zl) / 2, zl - 0.08, zh - 0.37];
-    for (const zp of posts) bar(sink, 'structureMetal', [xo, (zp < zl ? top - 0.04 : nosing(zp)), zp], [xo, (zp < zl ? top : nosing(zp)) + 0.95, zp], 0.05, { ...dark, fine: true });
-    for (let k = 0; k + 1 < posts.length; k++) {
-      const [za, zb] = [posts[k], posts[k + 1]];
-      bar(sink, 'structureMetal', [xo, (za < zl ? top : nosing(za)) + 0.95, za], [xo, (zb < zl ? top : nosing(zb)) + 0.95, zb], 0.05, { ...dark, fine: true });
-    }
-    revolve(sink, 'structureMetal', x, z, [[R * 0.9, top + R * 0.03 + 0.95], [R * 0.9, top + R * 0.03 + 1.0]], 16, { colour: STEEL_DARK, decor: true, fine: true });
-    // the roof rail's posts at every second vertex of its ring, from the cone (0.024 R over the shell's top there)
-    for (let k = 0; k < 8; k++) {
-      const a = -(k / 8) * Math.PI * 2, px = x + Math.cos(a) * R * 0.9, pz = z + Math.sin(a) * R * 0.9;
-      bar(sink, 'structureMetal', [px, top + R * 0.024 - 0.04, pz], [px, top + R * 0.03 + 0.975, pz], 0.05, { ...dark, fine: true });
-    }
-    // the pipe from the tank's foot to the manifold (the buildings stream, 2026-10-12, the integrity check: on falling
-    // ground each pipe ended at its own ground's height, short of or past the straight manifold, which hung over the
-    // slope on nothing) to the manifold's line
-    bar(sink, 'structureMetal', [x, y0 + 0.2, z + R], [x, manifoldY(x), ez - t - 0.75], 0.24, { colour: IRON, decor: true });
-  }
-  // the manifold along the bund's front on its stands, its valve stand, the steps over the gap
-  const gm = gl(0, ez - t - 0.75);
-  bar(sink, 'structureMetal', [-ex + 1.0, manifoldY(-ex + 1.0), ez - t - 0.75], [ex - 1.0, manifoldY(ex - 1.0), ez - t - 0.75], 0.3, { colour: IRON, decor: true });
-  for (let k = 0, n = Math.max(2, Math.round((2 * ex - 2) / 4)); k <= n; k++) {
-    const xs = -ex + 1.0 + (2 * ex - 2) * k / n;
-    bar(sink, 'structureMetal', [xs, gl(xs, ez - t - 0.75) - 0.2, ez - t - 0.75], [xs, manifoldY(xs), ez - t - 0.75], 0.1, { colour: STEEL_DARK, decor: true });
-  }
-  sink.span('structureMetal', -1.2, gm - 0.3, ez - t - 1.5, 1.2, gm + 1.3, ez - t - 0.7, { colour: SIGN_YELLOW });
-  const gs = gl(0, ez + 0.1);
-  sink.span('structureWood', -1.3, gs - 0.3, ez - 0.4, 1.3, gs + 0.25, ez + 0.6, { colour: TIMBER, decor: true });
-  return { parts: sink.finish() };
-};
-
-// ------------------------------------------------------------------------------------------------------------ jamesway
-
-// (the first capture: the canvas read as a golden yellow under the snow's light) the olive drab of the huts' canvas, dark
-const CANVAS_OLIVE = rgb(0x5a5a3e), PLYWOOD = shade(rgb(0x5a5a3e), 1.25);
-
-/**
- * A Jamesway hut (the polar stations' prefabricated shelter from the 1950s): canvas over timber arches on a raised
- * plywood floor, its length along z, the plywood end walls, the door in a small vestibule on the front end with its
- * steps, the stovepipe through the canvas; snow lying along its crown on a snow map.
- */
-export const jamesway: LandmarkBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx.rng));
-  const L = num(ctx, 'length', 6), W = num(ctx, 'width', 3), r = W / 2, floor = 0.45, z0 = -L / 2;
-  footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.05);
-  sink.span('structureWood', -r - 0.05, 0.05, z0, r + 0.05, floor, -z0, { colour: shade(PLYWOOD, 0.75) });
-  const canvas = shade(CANVAS_OLIVE, 0.88 + 0.24 * ctx.variant());
-  sink.cylinder('structureMetal', [0, floor, z0], 'z', L, r, 12, { colour: canvas }, r, false, -Math.PI / 2, Math.PI);
-  // the arches showing as bands through the canvas (fine) and the crown's snow
-  for (let z = z0 + 1.22; z < -z0 - 0.3; z += 1.22) sink.cylinder('structureMetal', [0, floor, z - 0.04], 'z', 0.08, r + 0.02, 12, { colour: shade(canvas, 0.78), decor: true, fine: true }, r + 0.02, false, -Math.PI / 2, Math.PI);
-  if (ctx.snowCap) sink.cylinder('structureMetal', [0, floor, z0 + 0.1], 'z', L - 0.2, r + 0.05, 6, { colour: SNOW, decor: true }, r + 0.05, false, -0.55, 1.1);
-  // the end walls: half discs of plywood
-  for (const e of [-1, 1]) {
-    const ring: Vec3[] = [];
-    for (let k = 0; k <= 10; k++) { const a = Math.PI - (k / 10) * Math.PI; ring.push([Math.cos(a) * r, floor + Math.sin(a) * r, e * (L / 2)]); }
-    sink.polygon('structureWood', e > 0 ? ring.reverse() : ring, { colour: PLYWOOD });
-  }
-  // the vestibule and the door on the front, the steps, the stovepipe
-  sink.span('plaster2', -0.9, floor, -z0, 0.9, floor + 2.2, -z0 + 1.2);
-  sink.span('structureWood', -1.0, floor + 2.2, -z0 - 0.05, 1.0, floor + 2.32, -z0 + 1.3, { colour: shade(PLYWOOD, 0.6) });
-  sink.quad('structureWood', [-0.42, floor + 0.02, -z0 + 1.22], [0.42, floor + 0.02, -z0 + 1.22], [0.42, floor + 1.95, -z0 + 1.22], [-0.42, floor + 1.95, -z0 + 1.22], { colour: DOOR, decor: true });
-  sink.span('structureWood', -0.6, 0, -z0 + 1.2, 0.6, floor * 0.5, -z0 + 1.55, { colour: TIMBER, decor: true });
-  sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85, -z0 * 0.4], 'y', 1.4, 0.09, 6, { colour: IRON, decor: true });
-  return { parts: sink.finish() };
+  });
+  // the head's cap plate across the legs' tops, the whip and the beacon on it (they go with the top band)
+  piece(sink, { name: 'crown', kind: 'lattice', at: 'breached', fall: 'drop' }, (s) => {
+    s.span('structureMetal', -r - 0.06, g0 + H - 0.02, -r - 0.06, r + 0.06, g0 + H + 0.04, r + 0.06, { colour: STEEL_DARK, decor: true });
+    bar(s, 'structureMetal', [0, g0 + H + 0.04, 0], [0, g0 + H + 3.2, 0], 0.06, { colour: STEEL_DARK, decor: true });
+    s.span('structureMetal', -0.14, g0 + H + 0.04, -0.14, 0.14, g0 + H + 0.36, 0.14, { colour: TRIM_RED, decor: true });
+  });
+  return { parts: finishLandmark(sink) };
 };
 
 // --------------------------------------------------------------------------------------------- caches and drift fences
@@ -569,45 +437,4 @@ export const snowFence: LandmarkBuilder = (ctx) => {
     destructibles.push({ kind: 'fenceplank', x: -((n - 1) * module) / 2 + k * module, z: 0, yawDeg: 90 });
   }
   return { parts: new PartSink().finish(), destructibles };
-};
-
-// ------------------------------------------------------------------------------------------------------------ airstrip
-
-/**
- * The station's airstrip (DYE-M's gravel strip, kept open by its graders and ploughs): the strip draped on the ground along
- * z, its edge markers (the props' barrels: a hull scatters them) every 30 m down both sides, the windsock on its mast
- * beside the strip's middle and the plywood shack of its radio operator. Built of the map's ground: on falling ground it
- * follows the slope (plan.ts drapes).
- */
-export const airstrip: LandmarkBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx.rng));
-  const L = num(ctx, 'length', 60), W = num(ctx, 'width', 10), hw = W / 2;
-  const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
-  drapedPath(sink, 'plaster3', ctx.ground, [0, -L / 2], [0, L / 2], W, { lift: 0.05, cell: 4 });
-  const destructibles: Array<{ kind: string; x: number; z: number; yawDeg: number }> = [];
-  for (let z = -L / 2; z <= L / 2 + 0.01; z += 30) for (const sx of [-1, 1]) destructibles.push({ kind: 'barrel', x: sx * (hw + 1.2), z, yawDeg: ctx.rng() * 360 });
-  // the windsock: its mast, the hoop and the orange sock streaming down the wind
-  const wx = hw + 4.5, wz = 0, wg = gl(wx, wz);
-  sink.span('stone', wx - 0.4, Math.min(wg - 0.8, -0.6), wz - 0.4, wx + 0.4, wg + 0.3, wz + 0.4);
-  bar(sink, 'structureMetal', [wx, wg + 0.3, wz], [wx, wg + 6.5, wz], 0.12, { colour: STEEL });
-  const sock: Vec3[] = [];
-  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; sock.push([wx + 0.15, wg + 6.2 + Math.sin(a) * 0.45, wz + Math.cos(a) * 0.45]); }
-  // (the connectivity sweep, 217: the sock hung 9 cm off the mast) its hoop, and the arms that carry it from the mast
-  for (let k = 0; k < 8; k++) bar(sink, 'structureMetal', sock[k], sock[(k + 1) % 8], 0.04, { colour: STEEL_DARK, decor: true });
-  bar(sink, 'structureMetal', [wx, wg + 6.42, wz], [wx + 0.15, wg + 6.65, wz], 0.04, { colour: STEEL_DARK, decor: true });
-  bar(sink, 'structureMetal', [wx, wg + 5.75, wz], [wx + 0.17, wg + 5.75, wz], 0.04, { colour: STEEL_DARK, decor: true });
-  for (let k = 0; k < 8; k++) {
-    const n = (k + 1) % 8, tip = (p: Vec3): Vec3 => [p[0] + 2.4, wg + 6.0 + (p[1] - wg - 6.2) * 0.4, p[2] * 0.4 + wz * 0.6];
-    sink.quad('structureMetal', sock[k], sock[n], tip(sock[n]), tip(sock[k]), { colour: k % 2 ? AVI_ORANGE : AVI_WHITE, decor: true });
-    sink.quad('structureMetal', tip(sock[k]), tip(sock[n]), sock[n], sock[k], { colour: shade(AVI_ORANGE, 0.7), decor: true });
-  }
-  // the radio shack on its skids by the windsock
-  const sx0 = hw + 6.5, sz0 = 4, sg = Math.max(gl(sx0, sz0), gl(sx0 + 3, sz0), gl(sx0, sz0 + 2.4), gl(sx0 + 3, sz0 + 2.4));
-  sink.span('structureWood', sx0 - 0.1, Math.min(sg - 0.4, -0.6), sz0, sx0 + 3.1, sg + 0.25, sz0 + 2.4, { colour: TIMBER });
-  sink.span('plaster2', sx0, sg + 0.25, sz0 + 0.1, sx0 + 3, sg + 2.6, sz0 + 2.3);
-  sink.span('structureMetal', sx0 - 0.15, sg + 2.6, sz0 - 0.05, sx0 + 3.15, sg + 2.75, sz0 + 2.45, { colour: STEEL });
-  if (ctx.snowCap) sink.span('structureMetal', sx0, sg + 2.75, sz0 + 0.1, sx0 + 3, sg + 2.88, sz0 + 2.3, { colour: SNOW, decor: true });
-  sink.quad('structureMetal', [sx0 - 0.02, sg + 0.3, sz0 + 1.6], [sx0 - 0.02, sg + 0.3, sz0 + 0.8], [sx0 - 0.02, sg + 2.2, sz0 + 0.8], [sx0 - 0.02, sg + 2.2, sz0 + 1.6], { colour: DOOR, decor: true });
-  bar(sink, 'structureMetal', [sx0 + 2.6, sg + 2.75, sz0 + 1.2], [sx0 + 2.6, sg + 7.5, sz0 + 1.2], 0.05, { colour: STEEL_DARK, decor: true });
-  return { parts: sink.finish(), tints: { plaster3: [0.62, 0.6, 0.58] }, destructibles };
 };

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { tankSeedId } from './tankIdAliases.ts'; // the ariete family prefix is schema-1 vocabulary
 import {
   CAMO_CATALOG_PATTERN_IDS,
   CAMO_PATTERN_IDS,
@@ -264,7 +265,7 @@ for (const [tank, paint] of Object.entries({
   c1_ariete_proto_serie1: 'service_ariete_c1', c2_ariete_proto: 'sig_ariete_c2',
   lrmv_lynx: 'sig_lrmv_lynx', type100: 'sig_type100',
   ztz100: 'sig_ztz100_x', ztz100_prototype: 'sig_ztz100_x',
-})) assert.equal(stockCamoPatternIdFor(tank, tank.startsWith('c1_ariete_preserie') ? 'Italy' : undefined), paint);
+})) assert.equal(stockCamoPatternIdFor(tank, tankSeedId(tank).startsWith('ariete') ? 'Italy' : undefined), paint);
 // The photographic fleet appends five stock finishes after the TOS-1A signature.
 const photoFinishes=['sig_dardo','sig_lrmv_lynx','sig_borsuk','sig_amx10p','sig_amx10p_25'];
 assert.deepEqual(CAMO_PATTERN_IDS.slice(CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil')+1,CAMO_PATTERN_IDS.indexOf('national_usa')),photoFinishes);

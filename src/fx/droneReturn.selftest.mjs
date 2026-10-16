@@ -9,6 +9,7 @@ import { DRONE_ARRIVAL, DRONE_RETURN } from './droneArrival.ts';
 import { syncMissionAttachment, clearMissionAttachment, missionAttachmentVisualFrame, missionHoldDownOpen } from '../game/missionAttachmentVisual.ts';
 import { missionAttachmentTurretPivot } from '../sim/missionAttachment.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
+import { droneDockS, droneReturnS } from '../sim/droneRecall.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 
 const dt = 1 / 60, spec = TANK_SPECS.m1a1_abrams_hc, measured = {};
@@ -81,7 +82,8 @@ function scene({ blockColumn = false } = {}) {
   }
   assert.deepEqual(phases, ['grace', 'transit', 'descent', 'handoff'], 'grace, transit, descent and hand-over in order');
   assert.ok(minTransitY >= dock.y + DRONE_RETURN.cruiseAboveDockM - 1, 'the transit holds its cruise height over the battlefield');
-  assert.ok(handedOver > 0 && handedOver * dt < DRONE_RETURN.maxS, `home inside the bound (${(handedOver * dt).toFixed(1)} s)`);
+  const law = droneReturnS(Math.hypot(start.x - dock.x, start.z - dock.z), start.y - dock.y);
+  assert.ok(handedOver > 0 && handedOver * dt < law + DRONE_RETURN.overrunS, `home inside the recall law's bound (${(handedOver * dt).toFixed(1)} s of ${law.toFixed(1)} s)`);
   assert.equal(overlaps, 0, 'never two airframes: the flight copy stops the frame the dock takes the landing');
   assert.equal(gaps, 0, 'never none: the hand-over frame is drawn by the flight copy');
   Object.assign(measured, { homeS: +(handedOver * dt).toFixed(2), cruiseAboveDockM: +(minTransitY - dock.y).toFixed(1), landedS: +(frames * dt).toFixed(2) });
@@ -89,7 +91,8 @@ function scene({ blockColumn = false } = {}) {
   const detail = tank.root.getObjectByName('Docked FPV airframe detail');
   assert.ok(detail.visible && tank.root.getObjectByName('Docked FPV mission payload').visible, 'the airframe sits on its cradle after the landing');
   assert.ok(tank.view.cooldownS > 0, 'it landed inside the cooldown, which ran unchanged');
-  for (let i = 0; i < 20; i++) s.frame();
+  // the clamps flip down over the skids in their swing time (round 4b: 0.45 s, readable in 0.1 s stills)
+  for (let i = 0; i < Math.ceil(.5 / dt) + 2; i++) s.frame();
   assert.equal(missionHoldDownOpen(tank.root), 0, 'the clamps close on the airframe that came home');
   // At the cooldown's end the airframe that came home is the ready one: no second landing.
   while (tank.view.cooldownS > 0) { s.frame(); tank.view.cooldownS = Math.max(0, tank.view.cooldownS - dt * 8); }
@@ -140,7 +143,7 @@ function scene({ blockColumn = false } = {}) {
   for (let i = 0; i < 10; i++) s.frame([{ pos: new Vector3(90, 30, -25), vel: new Vector3(-10, 0, 0), id: 21, ageS: 9, owner: 'p1' }]);
   tank.view.active = false; tank.view.cooldownS = 25;
   let reachedDescent = false;
-  for (let i = 0; i < 60 * DRONE_RETURN.maxS && (pool.returning().size || i < 2); i++) {
+  for (let i = 0; i < 60 * 30 && (pool.returning().size || i < 2); i++) {
     s.frame();
     if (pool.returning().get(21)?.phase === 'descent') reachedDescent = true;
   }
@@ -152,5 +155,6 @@ function scene({ blockColumn = false } = {}) {
 }
 
 // 5. The landing it hands over to is the dock's own law: from heightM straight down the certified column.
-assert.ok(DRONE_ARRIVAL.heightM > 1 && DRONE_RETURN.maxS + DRONE_RETURN.graceS < AERIAL_RULES.drone.cooldownS, 'home before the next airframe is due');
+assert.ok(DRONE_ARRIVAL.heightM > 1 && droneDockS(AERIAL_RULES.drone.rangeM, DRONE_RETURN.cruiseAboveDockM) < AERIAL_RULES.drone.cooldownS,
+  'a lost or spent airframe at the link\'s edge is home before the next airframe is due');
 console.log(`droneReturn (${JSON.stringify(measured)}): recall flies home at cruise height, descends the column, one drawer through the hand-over, lands inside the unchanged cooldown, clamps close; impacts, unflown launches, lost or relaunched carriers and blocked columns never fly home`);

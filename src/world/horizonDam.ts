@@ -146,6 +146,14 @@ const CONCRETE: readonly [number, number, number] = [0.42, 0.40, 0.355];
 const DECK: readonly [number, number, number] = [0.48, 0.465, 0.43];
 const POWERHOUSE: readonly [number, number, number] = [0.53, 0.50, 0.45];
 const ROOF: readonly [number, number, number] = [0.33, 0.32, 0.30];
+// (#27, Lane C 2026-10-15) the far silhouette's features: the crest's parapets, the spillway gate houses on the rock
+// past each abutment, the powerhouse's window band and the transformer bays on its roof
+const PARAPET: readonly [number, number, number] = [0.5, 0.485, 0.45];
+const GATEHOUSE: readonly [number, number, number] = [0.46, 0.44, 0.40];
+const WINDOWS: readonly [number, number, number] = [0.11, 0.12, 0.13];
+const TRANSFORMER: readonly [number, number, number] = [0.26, 0.28, 0.27];
+/** The crest's parapets: their height over the deck and their thickness (m). */
+const PARAPET_H = 1.1, PARAPET_T = 0.45;
 
 interface DamBuffers { positions: number[]; normals: number[]; colors: number[]; indices: number[] }
 
@@ -200,6 +208,21 @@ function addFan(out: DamBuffers, points: readonly THREE.Vector3[], outward: THRE
     if (a.cross(b).dot(outward) >= 0) out.indices.push(base, base + k, base + k + 1);
     else out.indices.push(base, base + k + 1, base + k);
   }
+}
+
+/** A box (a fan a face) at `c`, `h` half extents along the unit axes `e1`, `e2` (level) and up. */
+function addBox(out: DamBuffers, c: THREE.Vector3, e1: THREE.Vector3, e2: THREE.Vector3, h: readonly [number, number, number],
+  tone: readonly [number, number, number]): void {
+  const up = new THREE.Vector3(0, 1, 0);
+  const corner = (a: number, b: number, d: number) => c.clone().addScaledVector(e1, a * h[0]).addScaledVector(up, b * h[1]).addScaledVector(e2, d * h[2]);
+  const faces: [THREE.Vector3, THREE.Vector3[]][] = [
+    [up.clone(), [corner(-1, 1, -1), corner(1, 1, -1), corner(1, 1, 1), corner(-1, 1, 1)]],
+    [e1.clone(), [corner(1, -1, -1), corner(1, 1, -1), corner(1, 1, 1), corner(1, -1, 1)]],
+    [e1.clone().negate(), [corner(-1, -1, -1), corner(-1, 1, -1), corner(-1, 1, 1), corner(-1, -1, 1)]],
+    [e2.clone(), [corner(-1, -1, 1), corner(1, -1, 1), corner(1, 1, 1), corner(-1, 1, 1)]],
+    [e2.clone().negate(), [corner(-1, -1, -1), corner(1, -1, -1), corner(1, 1, -1), corner(-1, 1, -1)]],
+  ];
+  for (const [n, pts] of faces) addFan(out, pts, n, tone);
 }
 
 /**
@@ -260,6 +283,13 @@ export function buildHorizonDam(
   addStrip(out, [thetas.map((t) => at(t, deckEdge, f.crest)), thetas.map((t) => at(t, deckEdge, soffitY))], () => DECK, downstream);
   addStrip(out, [thetas.map((t) => at(t, deckEdge, soffitY)), thetas.map((t) => at(t, thick(soffitY), soffitY))],
     () => CONCRETE, new THREE.Vector3(0, -1, 0));
+  // (#27) the parapets along both edges of the crest's road: inner face, coping, outer face (the outer the face's own)
+  for (const [s0, s1, outward] of [[0, PARAPET_T, upstream], [deckEdge, deckEdge - PARAPET_T, downstream]] as const) {
+    const inward = outward.clone().negate();
+    addStrip(out, [thetas.map((t) => at(t, s1, f.crest)), thetas.map((t) => at(t, s1, f.crest + PARAPET_H))], () => PARAPET, inward);
+    addStrip(out, [thetas.map((t) => at(t, s0, f.crest + PARAPET_H)), thetas.map((t) => at(t, s1, f.crest + PARAPET_H))], () => PARAPET, up);
+    addStrip(out, [thetas.map((t) => at(t, s0, f.crest + PARAPET_H)), thetas.map((t) => at(t, s0, f.crest))], () => PARAPET, outward);
+  }
   // the downstream face: from under the soffit to each slice's foot, in levels
   const LEVELS = 7;
   const faceRows: THREE.Vector3[][] = [];
@@ -295,6 +325,29 @@ export function buildHorizonDam(
     for (const [t, side] of [[ts[0], -1], [ts[M], 1]] as const) {
       const tangent = at(t + side * 0.01, s1, 0).sub(at(t, s1, 0)).normalize();
       addFan(out, [at(t, s0, sunk), at(t, s0, roof), at(t, s1, roof), at(t, s1, sunk)], tangent, POWERHOUSE);
+    }
+  }
+  // (#27) the spillway gate houses on the rock past each abutment, at the crest's level: Glen Canyon's spillways open
+  // through the canyon walls beside the dam, their radial gates housed in blocks on the rim
+  for (const theta of [left - 16 / f.R, right + 16 / f.R]) {
+    const c = at(theta, deckEdge * 0.5, 0);
+    // (at the reservoir's level, cut into the wall: the rock stands over the crest there)
+    if (!Number.isFinite(groundAt(c.x, c.z))) continue;
+    const base = f.crest - 1;
+    const e2 = at(theta, 0, 0).sub(at(theta, 1, 0)).normalize();
+    const e1 = new THREE.Vector3(-e2.z, 0, e2.x);
+    addBox(out, c.setY(base + 4), e1, e2, [9, 5, 7], GATEHOUSE);
+    addBox(out, at(theta, deckEdge * 0.5, base + 9.6), e1, e2, [7, 0.6, 5.5], ROOF);
+  }
+  // (#27) the powerhouse's window band along its downstream wall, and the transformer bays on its roof
+  {
+    const roofY = f.floor + 20, s1 = f.tb + 22, half = Math.max(8, f.halfW - 8) / (f.R - f.tb);
+    const M = 8, ts = Array.from({ length: M + 1 }, (_, j) => -half + 2 * half * (j / M));
+    addStrip(out, [ts.map((t) => at(t, s1 + 0.15, roofY - 3)), ts.map((t) => at(t, s1 + 0.15, roofY - 9))], () => WINDOWS, downstream);
+    for (let k = 0; k < 8; k++) {
+      const t = -half * 0.85 + (2 * half * 0.85 * (k + 0.5)) / 8;
+      const e2 = at(t, 0, 0).sub(at(t, 1, 0)).normalize();
+      addBox(out, at(t, f.tb + 12, roofY + 3), new THREE.Vector3(-e2.z, 0, e2.x), e2, [2.6, 3, 2.4], TRANSFORMER);
     }
   }
   // the receipts' diagnostics: the ring under the face's middle half stands below it (its foundation inside the body),

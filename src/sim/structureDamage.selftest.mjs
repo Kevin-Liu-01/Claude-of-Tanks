@@ -4,14 +4,16 @@
 import assert from 'node:assert/strict';
 import { setCompoundShape, setObbShape, setCircleShape } from '../world/collision.ts';
 import {
-  COLLAPSES_PER_TICK, RAM_SCUFF_KJ, STAGE_EVENTS_PER_TICK, createStructureDamage, minimumAreaRectangle, ramStructurePoints,
-  stageForIntegrity, structureHitPoints, structureMassClass,
+  COLLAPSES_PER_TICK, LIGHT_SETPIECE_MAX_M3, RAM_SCUFF_KJ, STAGE_EVENTS_PER_TICK, createStructureDamage, lightSetPieceMaterial,
+  minimumAreaRectangle, ramStructurePoints, setPieceMassClass, stageForIntegrity, structureHitPoints, structureMassClass,
+  structureRubbleHeightM,
 } from './structureDamage.ts';
 import { createDestructionMatch, resetStructureRecords } from './destructionMatch.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { GAME_MODE_IDS } from './matchModes.ts';
 import { cookOffChargeKg, structureBlastPoints } from './munitionBlast.ts';
 import { structureMaterialFor, wallMaterialForStyle } from './structureMaterial.ts';
+import { rubbleHeightFor } from './terrainDeformation.ts';
 
 const near = (actual, expected, eps, label) => assert.ok(Math.abs(actual - expected) <= eps,
   `${label}: ${actual} is not within ${eps} of ${expected}`);
@@ -43,7 +45,21 @@ assert.equal(structureMassClass(150, 'building'), 'shed');
 assert.equal(structureMassClass(1500, 'building'), 'house');
 assert.equal(structureMassClass(9000, 'building'), 'large');
 assert.equal(structureMassClass(30000, 'building'), 'landmark');
-assert.equal(structureMassClass(150, 'setpiece'), 'landmark', 'a set piece is a landmark whatever its size');
+assert.equal(structureMassClass(250, 'setpiece'), 'landmark', 'a set piece of 200 m³ and more is a landmark');
+// (props lane A, E12, 2026-10-14) a light set piece (under 200 m³: a statue, a mast, a fountain) is a shed that comes down
+assert.equal(structureMassClass(150, 'setpiece'), 'shed', 'a light set piece takes damage as a shed');
+assert.equal(setPieceMassClass(199.9), 'shed');
+assert.equal(setPieceMassClass(LIGHT_SETPIECE_MAX_M3), 'landmark');
+assert.equal(lightSetPieceMaterial('adobe'), 'masonry', 'a light set piece is stone or iron, never a mud wall');
+assert.equal(lightSetPieceMaterial('concrete'), 'concrete');
+// the heap law: a building's by its height (terrainDeformation rubbleHeightFor, pinned equal); a light set piece's by its
+// volume over its plan, a third of it, at least 0.3 m and at most its height law's
+for (const h of [0, 2, 3.3, 7, 14.4, 20, 40]) {
+  near(structureRubbleHeightM({ role: 'building', massClass: 'house', volumeM3: 600, hw: 5, hd: 6, topY: h, baseY: 0 }), rubbleHeightFor(h), 1e-12, `the heap of a ${h} m building`);
+}
+near(structureRubbleHeightM({ role: 'setpiece', massClass: 'landmark', volumeM3: 900, hw: 4, hd: 4, topY: 22, baseY: 0 }), rubbleHeightFor(22), 1e-12, 'a landmark\'s heap (never raised)');
+near(structureRubbleHeightM({ role: 'setpiece', massClass: 'shed', volumeM3: 96, hw: 3.15, hd: 3.15, topY: 8, baseY: 0 }), 0.35 * 96 / (4 * 3.15 * 3.15), 1e-9, 'a fountain\'s');
+assert.equal(structureRubbleHeightM({ role: 'setpiece', massClass: 'shed', volumeM3: 108, hw: 6.75, hd: 9, topY: 21, baseY: 0 }), 0.3, 'an open frame leaves a low spread');
 assert.deepEqual([1, 0.71, 0.7, 0.36, 0.35, 0.01, 0, -1].map(stageForIntegrity), [0, 0, 1, 1, 2, 2, 3, 3]);
 // the ram law (§4.4, 2026-10-08): (½·m·v² − E₀(material)) / 40, E₀ the energy the wall's face absorbs crushing 2 cm over
 // a hull's 2 m² bow (σc · A · d): timber 30, mudbrick 60, masonry 300, concrete 1,100 kJ; masonry when unnamed
@@ -165,6 +181,28 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   assert.equal(damage.byId(1).hp, damage.byId(1).maxHp, 'a fixed group is untouched');
 }
 
+// ---- a light set piece (E12): a shed's hit points (no slender tower's), masonry's ram, it comes down and swaps
+{
+  // a 31 m mast on a 0.8 m section (20 m³: whiteout's guyed mast reads 39 m³) and a 96 m³ fountain
+  const mast = building(0, 0, 0, 0.8, 0.8, 31.3, 0, 'setpiece');
+  const { obstacles, colliders } = world(mast, building(1, 40, 0, 6.3, 6.3, 2.4, 0, 'setpiece'));
+  const damage = createStructureDamage(obstacles, colliders, { wallMaterial: 'adobe' });
+  const [m, f] = damage.structures;
+  assert.equal(m.massClass, 'shed', 'the mast is light');
+  assert.equal(m.collapsible, true, 'it comes down');
+  assert.equal(m.material, 'masonry', 'iron, never the map\'s mud');
+  near(m.maxHp, structureHitPoints(m.volumeM3), 1e-9, 'no slender tower\'s points for a mast');
+  assert.equal(ramStructurePoints(50, 3.4, m.material), 0, 'a walking-pace bump only scuffs it');
+  const events = [];
+  damage.applyRam(m, 50, 9, 0, { ...blowAt(0, 1, -0.5), cause: 'ram' });
+  for (let i = 0; i < 3; i++) damage.step();
+  damage.drainEvents(events);
+  assert.deepEqual(events.filter((e) => e.structureId === 0).map((e) => e.stage), ['damaged', 'breached', 'collapsed'], 'a hull at 9 m/s fells it');
+  assert.equal(events.find((e) => e.stage === 'collapsed').massClass, 'shed');
+  assert.ok(obstacles[0].crushed && colliders[0].dead, 'its collision swaps');
+  assert.equal(f.massClass, 'shed');
+}
+
 // ---- blasts: contact, falloff, reach, bucket edges, ascending order
 {
   // three 6 × 6 m sheds (108 m³, 20.9 HP) in a row across a 16 m bucket edge (x = 0 is a bucket edge: −512 + 32 · 16)
@@ -222,12 +260,15 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
 
 // ---- the match: rules, the log, restore, cook-off
 {
-  const rules = matchRulesetFor('standard').destruction;
+  // P1's staging (one event, the next tick's swap): sections off here (on in the battle since DST-04; collapseCascade
+  // and structureSections pin the storey-by-storey collapse)
+  const rules = { ...matchRulesetFor('standard').destruction, sections: false };
   assert.equal(rules.structures, true);
   for (const mode of GAME_MODE_IDS) {
     const ruleset = matchRulesetFor(mode);
     assert.equal(ruleset.destruction.structures, mode !== 'turbo_ball', `${mode}: structures`);
-    assert.equal(ruleset.destruction.craters, false, `${mode}: craters off until the drawn terrain follows the overlay (P3)`);
+    // craters on wherever structures are (DST-04, 2026-10-15): the drawn terrain and the world's ray march follow the overlay
+    assert.equal(ruleset.destruction.craters, mode !== 'turbo_ball', `${mode}: craters`);
   }
   assert.equal(matchRulesetFor('ac130').destruction.craterScale, 1.25);
   const make = () => world(building(0, 0, 0, 4, 5, 3), building(1, 20, 0, 10, 8, 7));

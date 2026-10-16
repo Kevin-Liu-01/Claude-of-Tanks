@@ -6,7 +6,7 @@
 
 import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute } from 'three';
 import {
-  convexHull2, setCompoundShape,
+  convexHull2, convexOutlineInPlace, setCompoundShape,
   type CollisionRecord, type SimpleCollisionShape,
 } from './collision.ts';
 
@@ -756,6 +756,23 @@ function rangeRectangles(rectangles: number[][], source: RangedPolygon[]): Range
   });
 }
 
+/** A band part narrower than this (m) is a sliver, not a solid's footprint (makeRuntimeBand). */
+const SLIVER_WIDTH_M = 0.006;
+
+/** A polygon's least width: over its edges, the farthest of its corners from the edge's line, the least of those. */
+function polygonWidth(points: number[]): number {
+  const n = points.length / 2;
+  let least = Infinity;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, ex = points[2 * j] - points[2 * i], ez = points[2 * j + 1] - points[2 * i + 1], len = Math.hypot(ex, ez);
+    if (len < 1e-9) continue;
+    let far = 0;
+    for (let k = 0; k < n; k++) far = Math.max(far, Math.abs((points[2 * k] - points[2 * i]) * ez - (points[2 * k + 1] - points[2 * i + 1]) * ex) / len);
+    least = Math.min(least, far);
+  }
+  return least;
+}
+
 function rangedShape(item: RangedPolygon): SimpleCollisionShape {
   const shape = { ...polygonShape(item.points), y0: item.y0, y1: item.y1 } as Extract<SimpleCollisionShape, { kind: 'convex' }>;
   if (item.tp) shape.tp = item.tp;
@@ -1114,6 +1131,30 @@ function shedTrim(source: RangedPolygon[]): RangedPolygon[] {
   return kept.length <= PART_LIMIT ? kept : source;
 }
 
+/**
+ * (the 225 gate, 2026-10-15; Cliffbridge's yard walls) A part the decoder would cut — a corner within a millimetre of its
+ * chord, dropped by collision.ts convexOutlineInPlace, so the read part loses up to half its outline: a dry-stone face
+ * stone's projection 1.5-2 cm across, standing a hair out of the hearting's — that lies inside another part (to 3 mm in
+ * plan, within its height) adds nothing to the band, and goes. Every other part is kept as it is.
+ */
+function dropCutCovered(items: RangedPolygon[]): RangedPolygon[] {
+  if (items.length < 2) return items;
+  const within = (outer: number[], x: number, z: number): boolean => {
+    let sign = 0;
+    for (let i = 0; i < outer.length; i += 2) {
+      const j = (i + 2) % outer.length, ex = outer[j] - outer[i], ez = outer[j + 1] - outer[i + 1];
+      const d = (ex * (z - outer[i + 1]) - ez * (x - outer[i])) / (Math.hypot(ex, ez) || 1);
+      if (Math.abs(d) <= 0.003) continue;
+      if (!sign) sign = Math.sign(d); else if (Math.sign(d) !== sign) return false;
+    }
+    return true;
+  };
+  const cut = (item: RangedPolygon): boolean => convexOutlineInPlace(item.points.slice()).length < item.points.length;
+  return items.filter((item, i) => !cut(item) || !items.some((other, j) => j !== i && !cut(other)
+    && other.y0 <= item.y0 + 1e-6 && other.y1 >= item.y1 - 1e-6
+    && item.points.every((_, k) => k % 2 === 1 || within(other.points, item.points[k], item.points[k + 1]))));
+}
+
 function makeRuntimeBand(
   solids: LocalSolid[], minY: number, maxY: number, groundContact = false,
   projectedCache?: Map<LocalSolid, number[][]>,
@@ -1125,7 +1166,11 @@ function makeRuntimeBand(
   // (the landmarks lane, 2026-10-05: a raw dense loop over the packed corner limit — a turned tank's section — collapses
   // too; every band the manifests already carried was within both limits and publishes as it was)
   if (source.length <= PART_LIMIT && source.every((item) => item.points.length <= 2 * PACKED_POLYGON_VERTICES)) {
-    return { minY, maxY, parts: source.map(rangedShape) };
+    // (the 225 gate, 2026-10-15) a sliver — a projected face a millimetre or two across (Orchard's dry-stone wall: its
+    // stones' near-upright faces, 45 cm long) — holds nothing, and the decoder's convex reading (collision.ts
+    // convexOutlineInPlace, a corner within a millimetre of its chord dropped) halves it: the band goes without it
+    const kept = source.length > 1 ? source.filter((item) => polygonWidth(item.points) >= SLIVER_WIDTH_M) : source;
+    return { minY, maxY, parts: dropCutCovered(kept.length ? kept : source).map(rangedShape) };
   }
   const collision = collapseRuntimeFootprint(source.map((item) => item.points));
   return { minY, maxY, parts: rangeRectangles(collision, source).map(rangedShape) };

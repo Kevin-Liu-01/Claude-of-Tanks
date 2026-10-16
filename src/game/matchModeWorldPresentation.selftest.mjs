@@ -104,8 +104,11 @@ const alphaBase = view.root.getObjectByName('alpha-flag-base');
 const bravoBase = view.root.getObjectByName('bravo-flag-base');
 assert.ok(alphaBase && bravoBase);
 assertVector(bravoBase.position, [-8, 2, 85], 'the enemy base stays home while its flag is carried');
-assert.equal(bravoBase.children.length, 2, 'halo ring and light column');
-const [bravoHalo, bravoColumn] = bravoBase.children;
+assert.equal(bravoBase.children.length, 3, 'halo ring, light column and (#28) the flag\'s stand');
+const [bravoHalo, bravoColumn, bravoStand] = bravoBase.children;
+assert.equal(bravoStand.name, 'flag-stand');
+assert.equal(bravoStand.children[0].geometry.name, 'flag-stand-mast', 'no map named: the modern weighted tripod');
+assert.equal(bravoStand.children[0].material.vertexColors, true, 'the stand is lit, in vertex colour');
 assert.equal(bravoHalo.geometry.type, 'RingGeometry');
 assert.equal(bravoColumn.name, 'beacon');
 assert.equal(bravoColumn.geometry.type, 'CylinderGeometry');
@@ -173,9 +176,16 @@ for (let index = 0; index < zoneMarkers.length; index += 1) {
   assertVector(marker.position, zoneExpected[index].position, `zone ${index + 1} position`);
   assert.equal(ring.geometry.type, 'RingGeometry');
   close(ring.rotation.x, -Math.PI / 2, `zone ${index + 1} ring rotation`);
-  assert.equal(core.geometry.type, 'CylinderGeometry');
-  close(core.position.y, 3.5, `zone ${index + 1} core height`);
-  assert.equal(ring.material, core.material, `zone ${index + 1} shares its material`);
+  // (props lane A #28) the core is the map's physical post: a lit body in vertex colour and its pennant in the owner's
+  // colour (no map named here: the comms mast)
+  assert.equal(core.name, 'objective-post');
+  close(core.position.y, 0, `zone ${index + 1} post on the ground`);
+  const [postBody, postFlag] = core.children;
+  assert.equal(postBody.material.type, 'MeshStandardMaterial', `zone ${index + 1} post is lit`);
+  assert.equal(postBody.material.vertexColors, true);
+  assert.equal(postBody.geometry.name, 'objective-post-mast');
+  assert.equal(postFlag.material.color.getHex(), zoneExpected[index].color, `zone ${index + 1} pennant follows the owner`);
+  assert.equal(postBody.castShadow, true, 'the post casts its shadow');
   assert.equal(marker.userData.markerMaterial, ring.material);
   assertBasicMaterial(ring.material, zoneExpected[index].color,
     zoneExpected[index].opacity, `zone ${index + 1} material`);
@@ -214,16 +224,15 @@ assert.equal(zoneMarkers.every((marker) => !marker.visible), true);
 const ball = view.root.getObjectByName('turbo-ball');
 assert.ok(ball);
 assert.equal(ball.visible, true);
-assert.equal(ball.geometry.type, 'SphereGeometry');
-assert.equal(ball.geometry.parameters.radius, 2.2);
+// (#28) the ball is a welded steel buoy 2.2 m in radius (its lugs past it), lit in vertex colour
+assert.equal(ball.geometry.name, 'turbo-ball-buoy');
+ball.geometry.computeBoundingSphere();
+assert.ok(Math.abs(ball.geometry.boundingSphere.radius - 2.2) < 0.4, 'a 2.2 m buoy');
 assertVector(ball.position, [6, 3.2, -4], 'turbo ball placement');
 assertVector(ball.rotation, [1.1, 1.6, 0.7, 'XYZ'], 'turbo ball rotation');
 assert.equal(ball.material.type, 'MeshStandardMaterial');
-assert.equal(ball.material.color.getHex(), 0xe8eef2);
-assert.equal(ball.material.roughness, 0.28);
-assert.equal(ball.material.metalness, 0.36);
-assert.equal(ball.material.emissive.getHex(), 0x25313a);
-assert.equal(ball.material.emissiveIntensity, 0.45);
+assert.equal(ball.material.vertexColors, true);
+assert.equal(ball.castShadow, true);
 const goalMarkers = ['alpha-turbo-goal', 'bravo-turbo-goal'].map((name) =>
   view.root.getObjectByName(name));
 assert.equal(goalMarkers.every(Boolean), true);
@@ -241,11 +250,14 @@ for (let index = 0; index < goalMarkers.length; index += 1) {
   assert.equal(marker.children.length, 2, 'hoop and the goal icon');
   assert.equal(marker.children[1].isSprite, true);
   close(marker.children[1].position.y, 24, 'goal icon floats above the hoop');
-  assert.equal(hoop.geometry.type, 'TorusGeometry');
-  close(hoop.position.y, 10, `goal ${index + 1} hoop height`);
-  assert.equal(marker.userData.markerMaterial, hoop.material);
-  assertBasicMaterial(hoop.material, index === 0 ? ALLY : ENEMY, 0.65,
-    `goal ${index + 1} material`);
+  // (#28) the hoop in its bolted segments on its gantry: the hoop wears the team's paint, the gantry plain steel
+  assert.equal(hoop.name, 'turbo-goal-frame');
+  const [ring, gantry] = hoop.children;
+  assert.equal(ring.geometry.name, 'turbo-goal-hoop');
+  assert.equal(gantry.geometry.name, 'turbo-goal-gantry');
+  assert.equal(marker.userData.markerMaterial, ring.material);
+  assert.equal(ring.material.type, 'MeshStandardMaterial');
+  assert.equal(ring.material.color.getHex(), index === 0 ? ALLY : ENEMY, `goal ${index + 1} paint`);
 }
 const retainedTurbo = { ball, goals: [...goalMarkers], childCount: view.root.children.length };
 view.update({ ...base, id: 'turbo_ball', label: 'Turbo Ball' }, 2.5);
@@ -291,7 +303,8 @@ assert.equal(pickupMarkers[0].userData.crate.visible,true);
 assert.equal(pickupMarkers[0].userData.cage.visible,false);
 assert.equal(pickupMarkers[0].position.y,80,'airdrop does not bob');
 view.update({...base,id:'ac130',pickups:[{id:'drop',kind:'ammo',x:0,y:1.2,z:0,airDrop:true,groundY:1.2,active:true}]},6);
-assert.equal(pickupMarkers[0].userData.parachute.visible,false,'canopy disappears on landing');
+assert.equal(pickupMarkers[0].userData.parachute.visible,false,'the open canopy is gone on landing');
+assert.equal(pickupMarkers[0].userData.canopyDown.visible,true,'(#28) the canopy lies collapsed beside the landed load');
 assert.equal(pickupMarkers[0].rotation.y,0,'ground crate does not spin');
 
 view.update({
@@ -534,12 +547,13 @@ assert.equal(pickupMarkers[0].visible, true,
   assert.equal(planLineWorks([]).bags.length, 0);
   // the plan is deterministic
   assert.deepEqual(planLineWorks(lines, ground), plan);
-  // every lit works material joined the cascaded-shadow setup (two builds: three sectors, then two)
-  assert.equal(setUp.length, 8, `lit works materials are set up per build (${setUp.length})`);
+  // every lit works material joined the cascaded-shadow setup (two builds: three sectors, then two), and (props lane A
+  // #28) the zone posts' four: one body shared by the three zones and a pennant each
+  assert.equal(setUp.length, 12, `lit works and post materials are set up (${setUp.length})`);
   assert.ok(setUp.every((m) => m.isMeshStandardMaterial));
   assert.equal(released.length, 4, 'the first build released its materials when the pools were resized');
   front.dispose();
-  assert.equal(released.length, 8, 'dispose releases the live works materials too');
+  assert.equal(released.length, 12, 'dispose releases the live works and post materials too');
   assert.equal(frontScene.children.length, 0, 'dispose removes the works with the root');
 }
 

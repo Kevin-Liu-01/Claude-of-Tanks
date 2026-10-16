@@ -21,7 +21,7 @@ import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,type NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH} from '../nationalModernizationDesign.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-import {addNationalMantlet} from './nationalMantlet.ts';
+import {addNationalMantlet,nationalGland} from './nationalMantlet.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {buildZubrIIHull} from './zubrII.ts';
@@ -47,7 +47,7 @@ function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<Nationa
  // The rear dust seal and front cuff share the elevating owner. Neither is
  // a fixed cap across the gun's depression/elevation corridor.
  P.add('gunMountCanvasSkin',boxSections([[-.29,.369,.28,-.28],[-.20,.369,.28,-.28]]));
- P.add('gunMountDark',cylZ(.181,.045,32),0,0,.785);
+ nationalGland(P,.785,.045);
  }
  KIT.buildGun(P,{len:NATIONAL_BARREL_LENGTH,r:.105,baseR:.14,sleeve:false,collar:false});
  for(const [start,end,r]of [[.37,1.80,.139],[1.87,3.04,.126],[3.12,3.61,.161],[3.67,4.89,.118]])

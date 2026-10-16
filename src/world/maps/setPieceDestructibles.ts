@@ -16,21 +16,23 @@
  */
 import type { DestructiblePropType } from './inhabitKit.ts';
 import { buildSetPiece, SET_PIECE_SIZE, type SetPieceKind } from './vehicleSetPieces.ts';
+import { buildRollingStock, RAIL_HEAD_M, ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, type RollingStockKind } from './rollingStock.ts';
+import { buildShanghaiTram, SHANGHAI_TRAM_SIZE } from './tramShanghai.ts';
 
 /** The destructible kind a set piece registers as. */
 export function setPieceDestructibleKind(kind: SetPieceKind): string { return `setpiece_${kind}`; }
 
 /** Per kind: the share of its speed a hull keeps crushing it, the speed (m/s) below which a hull stops against it (it may
  *  still press through), and whether it stops a round (dense cover). */
-export const SET_PIECE_MASS: Readonly<Record<SetPieceKind, { keep: number; crushMin: number; dense: boolean }>> = {
-  lrv: { keep: 0.95, crushMin: 1.4, dense: false },
-  stz3: { keep: 0.75, crushMin: 2.6, dense: true },
-  bv206: { keep: 0.72, crushMin: 2.8, dense: true },
-  snocat: { keep: 0.7, crushMin: 3.0, dense: true },
-  an26: { keep: 0.7, crushMin: 3.0, dense: true },
-  d8h: { keep: 0.5, crushMin: 4.0, dense: true },
-  k2tram: { keep: 0.55, crushMin: 4.0, dense: true },
-  haulpak: { keep: 0.45, crushMin: 4.5, dense: true },
+export const SET_PIECE_MASS: Readonly<Record<SetPieceKind, { keep: number; crushMin: number; dense: boolean; floor: number }>> = {
+  lrv: { keep: 0.95, crushMin: 1.4, dense: false, floor: 0 },
+  stz3: { keep: 0.75, crushMin: 2.6, dense: true, floor: 0.38 },
+  bv206: { keep: 0.72, crushMin: 2.8, dense: true, floor: 0.36 },
+  snocat: { keep: 0.7, crushMin: 3.0, dense: true, floor: 0.4 },
+  an26: { keep: 0.7, crushMin: 3.0, dense: true, floor: 0.3 },
+  d8h: { keep: 0.5, crushMin: 4.0, dense: true, floor: 0.55 },
+  k2tram: { keep: 0.55, crushMin: 4.0, dense: true, floor: 0.5 },
+  haulpak: { keep: 0.45, crushMin: 4.5, dense: true, floor: 0.6 },
 };
 
 const KINDS = Object.keys(SET_PIECE_SIZE) as SetPieceKind[];
@@ -42,8 +44,9 @@ export function isDenseSetPieceKind(kind: string | undefined): boolean { return 
 export function isSetPieceKind(kind: string | undefined): boolean { return !!kind && kind.startsWith('setpiece_'); }
 
 /** The set pieces' destructible types (props.ts LOCAL_TYPES): seated on the ground under their corners, as a parked
- *  vehicle is; their own builds (the painted vertex colours, props.ts draws them with the baked family's material). */
-export function setPieceDestructibleTypes(): Record<string, DestructiblePropType> {
+ *  vehicle is; their own builds (the painted vertex colours, props.ts draws them with the baked family's material);
+ *  `mobile`: the phone tier's coarse builds. */
+export function setPieceDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
   const out: Record<string, DestructiblePropType> = {};
   for (const kind of KINDS) {
     const size = SET_PIECE_SIZE[kind], mass = SET_PIECE_MASS[kind];
@@ -51,9 +54,84 @@ export function setPieceDestructibleTypes(): Record<string, DestructiblePropType
       cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
       r: Math.hypot(size.hw, size.hl), h: size.h, hw: size.hw, hl: size.hl,
       keep: mass.keep, crushMin: mass.crushMin, groundPose: true, castShadow: true,
-      build: () => buildSetPiece(kind),
-      broken: () => buildSetPiece(kind, { wrecked: true }),
+      // (Lane C, #8 film) a white instance colour on every copy: the kill's burn chars the copy through it
+      // (propCrushPresentation tints the instance colour from its own to char over CHAR_S; a pool without instance
+      // colours kept its paint, and the haulpak stood yellow through its own fire). White leaves the build's painted
+      // vertex colours as they are (props.ts draws set pieces with the baked material, which multiplies them).
+      instancePaint: (out) => { out.setRGB(1, 1, 1); },
+      // (Lane C, #8 r2) the phone tier draws the coarse builds (about half the triangles; the same footprint and record)
+      build: () => buildSetPiece(kind, { coarse: mobile }),
+      broken: () => buildSetPiece(kind, { wrecked: true, coarse: mobile }),
     };
+    // the share of its height a hull cannot press it below: a machine crumples, it is not pancaked (propCrush.ts)
+    Object.assign(out[setPieceDestructibleKind(kind)], { crushFloor: mass.floor });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------------------------------- rolling stock
+// (Lane C, #24, 2026-10-14; the owner: "trams and wagons" are the props left that never break) a spur's standing rolling
+// stock (mapKits.ts addSpurRollingStock: Cinder Junction's Omm, G 10, tank wagons and V 60) as destructibles of the props
+// instead of baked scenery with a static 'rolling-stock' record: heavy (a round stops on it and a gun round wrecks it,
+// collision.ts DENSE_SET_PIECE_KINDS), crushed only by a hull rammed hard into it, its wreck its own (rollingStock.ts:
+// derailed onto the ballast, burnt, broken by kind).
+
+/** The destructible kind a rolling stock vehicle registers as. */
+export function rollingStockDestructibleKind(kind: RollingStockKind): string { return `rolling_${kind}`; }
+
+/** A spur vehicle's mass class: a loaded wagon or a locomotive, heavier than any works machine. */
+// (floor: the share of a wagon's height no hull presses it below: a 20-tonne wagon crumples, it is not pancaked; propCrush.ts)
+export const ROLLING_STOCK_MASS = { keep: 0.4, crushMin: 5.0, floor: 0.6 } as const;
+
+const STOCK_KINDS = Object.keys(ROLLING_STOCK_LENGTH) as RollingStockKind[];
+
+/** The rolling stock's destructible types: the frame's origin on the ground under the rails (the build lifted by the rail
+ *  head's height), the record the body's box between the buffers (as mapKits laid it), `mobile` the coarse builds. */
+export function rollingStockDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
+  const out: Record<string, DestructiblePropType> = {};
+  const lifted = (g: ReturnType<typeof buildRollingStock>) => g.translate(0, RAIL_HEAD_M, 0);
+  for (const kind of STOCK_KINDS) {
+    const body = ROLLING_STOCK_BODY[kind], hw = body.w / 2, hl = ROLLING_STOCK_LENGTH[kind] / 2 - 0.62, h = body.h + RAIL_HEAD_M;
+    out[rollingStockDestructibleKind(kind)] = {
+      cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
+      r: Math.hypot(hw, hl), h, hw, hl, keep: ROLLING_STOCK_MASS.keep, crushMin: ROLLING_STOCK_MASS.crushMin, castShadow: true,
+      // a white instance colour on every copy, so a round's kill chars the copy through it (props.ts draws a wagon with
+      // the baked material, which multiplies its painted vertex colours by it: no change until the fire)
+      instancePaint: (out) => { out.setRGB(1, 1, 1); },
+      build: () => lifted(buildRollingStock(kind, { coarse: mobile })),
+      broken: () => lifted(buildRollingStock(kind, { wrecked: true, coarse: mobile })),
+    };
+    Object.assign(out[rollingStockDestructibleKind(kind)], { crushFloor: ROLLING_STOCK_MASS.floor });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------- the trams
+// (Lane C, #24) Sarajevo's burnt trams (sarajevoStreets.ts) as the Tatra K2s they were: a burnt-out K2 standing on the
+// track (vehicleSetPieces.ts k2tram 'burnt'), heavy cover, that a gun round or a hard ram collapses (its 'collapsed'
+// state: the bodies crushed down onto the frame, slewed at the joint). A burnt-out car does not burn again: the trams
+// are no 'vehicle' to the crush press (it would char and crumple a copy of the burnt car and never show the collapse);
+// their break swaps to the collapsed build, drawn with the baked material.
+
+/** The destructible kind a tram registers as: Sarajevo's K2 or Blackglass's Shanghai car (tramShanghai.ts). */
+export type TramKind = 'xk2_black_panther' | 'shanghai';
+export function tramDestructibleKind(kind: TramKind): string { return `tram_${kind}`; }
+
+export function tramDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
+  const xk2_black_panther = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE;
+  return {
+    [tramDestructibleKind('xk2_black_panther')]: {
+      cls: 'break', mat: 'baked', contact: 'ob', collider: true,
+      r: Math.hypot(xk2_black_panther.hw, xk2_black_panther.hl), h: xk2_black_panther.h, hw: xk2_black_panther.hw, hl: xk2_black_panther.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
+      build: () => buildSetPiece('k2tram', { wrecked: true, coarse: mobile }),
+      broken: () => buildSetPiece('k2tram', { wrecked: true, collapsed: true, coarse: mobile }),
+    },
+    // (Blackglass, 1937) the Shanghai Electric Construction Company's car, burnt out on its avenue
+    [tramDestructibleKind('shanghai')]: {
+      cls: 'break', mat: 'baked', contact: 'ob', collider: true,
+      r: Math.hypot(sh.hw, sh.hl), h: sh.h, hw: sh.hw, hl: sh.hl, keep: 0.4, crushMin: 5.0, groundPose: true, castShadow: true,
+      build: () => buildShanghaiTram('burnt', mobile),
+      broken: () => buildShanghaiTram('collapsed', mobile),
+    },
+  };
 }

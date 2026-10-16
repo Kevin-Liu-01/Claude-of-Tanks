@@ -4,7 +4,10 @@ export const FULL_CATALOG: string;
 export interface PageCatalog {
   readonly pages: readonly string[];
   readonly modules: readonly string[];
-  /** The boot graph's keys (the page chunk): its scripts, their static imports and its markup. */
+  /**
+   * The boot graph's keys (the page chunk): its scripts, their static imports and its markup. The game's (`game`, the
+   * full catalogs, which have no lazy chunk): every key its document, its import() graphs and the workers can show.
+   */
   readonly keys: readonly string[];
   /** The further keys the page's lazy graphs reach (the lazy chunk, loaded at the first import() of a boundary). */
   readonly lazyKeys: readonly string[];

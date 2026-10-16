@@ -91,25 +91,6 @@ function clearUpperStructure(P: AfvBuilderPort): void {
   delete P.turretG.userData.bradleyA2TurretClosureReceipt;
 }
 
-function roofMG(
-  P: AfvBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  seed: number,
-  cls = 'mag',
-  yaw = 0,
-  scale = 0.82,
-  feed?: 'left' | 'right',
-): void {
-  P.add('turret', KIT.cylY(0.18, 0.20, 0.075, 16), x, y, z);
-  P.add('turretDark', KIT.cylY(0.15, 0.17, 0.020, 16), x, y + 0.047, z);
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls, tone: 'two-tone', scale, elev: 0.10,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed, feed,
-  }), x, y + 0.07, z, [0, yaw, 0]);
-}
-
 function radioPair(P: AfvBuilderPort, y: number, z: number, seed: number, spread = 0.92): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.032, 0.042, 0.060, 10), side * spread, y, z);
@@ -214,7 +195,7 @@ function addBMP3Turret(P: AfvBuilderPort): void {
     P.add('turretDetail', box(0.10, 0.06, 0.46), side * 0.85, 0.69, -0.70,
       0, 0, side * 0.03);
   }
-  roofMG(P, 0.40, 0.80, -0.30, 3101, 'mag', 0.03, 0.72);
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   // §5.349 RESIDUE (§5.265 orphan-flap law, rebuilt-instrument find): the MG
   // chain had real air at BOTH ends — ring bottom 0.7625 hung 5 cm over the
   // crown slab (~0.71) and the pintle foot (0.87) hung 1.3 cm over the ring
@@ -415,7 +396,7 @@ function addTerminatorStation(P: AfvBuilderPort): void {
   P.add('turret', box(0.22, 0.03, 0.26), 0.14, 0.795, 0.12);
   P.add('turretDark', box(0.05, 0.012, 0.10), -0.18, 0.815, 0.10);            // lid latches
   P.add('turretDark', box(0.05, 0.012, 0.10), 0.14, 0.815, 0.10);
-  roofMG(P, -0.30, 0.82, -0.35, 3300, 'nsvt', -0.04, 0.72);
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   smokePair(P, 0.82, 0.58, -0.48, 4, 3310);
   // Whips re-seated on REAL structure (the r2-class "standing on air behind
   // the casemate" island): wing shelves off the casemate rear corners carry
@@ -507,7 +488,7 @@ function addBWP1Station(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.28, d: 0.34, h: 0.23, fill: 0.60, rails: 3, seed: 3398,
   }), 0, 0.56, -0.82);
-  roofMG(P, -0.42, 0.77, -0.26, 3400, 'mag', -0.05, 0.75);
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   smokePair(P, 0.83, 0.57, 0.05, 4, 3410);
   radioPair(P, 0.66, -0.72, 3420, 0.78);
   P.decal('turret', 'number', 'BWP-1', 0.19, [-1.02, 0.41, -0.32], -Math.PI / 2);
@@ -616,7 +597,7 @@ function addMarderCastTurret(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 0.90, d: 0.28, h: 0.20, fill: 0.66, rails: 3, seed: 3497,
   }), 0, 0.47, -0.86);
-  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mg3', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   for (const sde of [-1, 1]) {
     P.add('turret', box(0.12, 0.20, 0.34), sde * 0.60, 0.30, -0.44, 0, 0, sde * 0.10); // smoke collar seats
     mount(P, 'turret', FITTINGS.smokeBank({
@@ -793,11 +774,10 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   P.add('turretDetail', box(0.035, 0.28, 0.58), 0.74, 0.48, -1.20,
     0, 0, 0.54);
 
-  // Roof weapon and dense service equipment. 2026-10-08 (the owner's field standard in main 6763d7cc0, the
-  // coordinator's ruling on the lane's audit): the M3A3's armament is the 25 mm, the M240C coax and TOW, and no .50
-  // rides its turret, so the hatch-ring M2 is gone. The shielded M240 on the other hatch ring stays as the vehicle's
-  // one roof gun (the fleet's §B3 rule that every vehicle shows a machine gun).
-  roofMG(P, -0.31, 0.86, -0.36, 3616, 'mag', -0.16, 0.58);
+  // Dense service equipment. 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the
+  // lane's audit): the M3A3's armament is the 25 mm, the M240C coax and TOW, and no .50 rides its turret, so the
+  // hatch-ring M2 is gone. 2026-10-14 (VH.14, "roof weapons match the real vehicle and every drawn gun works"): no M240
+  // rides it either (roofWeaponPolicy.ts), so the shielded hatch-ring M240 the old §B3 rule kept is gone too.
   for (const [x, z, yaw] of [
     [-0.62, -0.76, -0.08], [0.62, -0.82, 0.08],
     [-0.58, 0.28, -0.05], [0.58, 0.16, 0.05],
@@ -1212,10 +1192,7 @@ function buildBMP3(P: AfvBuilderPort): void {
                                                                                 //   read ~70% under-massed)
   radioPair(P, 0.30, -0.85, 3830, 0.68);                                       // whips share the sight-tower
                                                                                 //   z-band (p95 dims discipline)
-  roofMG(P, 0.36, 0.16, -0.85, 3840, 'nsvt', 0.04, 0.50);                      // §B3 MG law — co-located with the
-                                                                                //   sight tower's z-band so the two
-                                                                                //   tall features share the same
-                                                                                //   <=5 p95-excluded columns
+  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
   P.decal('turret', 'number', '331', 0.22, [1.02, 0.26, -0.15], Math.PI / 2, 0, 0.03);
   P.decal('turret', 'number', '331', 0.22, [-1.02, 0.26, -0.15], -Math.PI / 2, 0, -0.03);
   // ---- triple gun plant: 100 mm 2A70 + 30 mm 2A72 LEFT + PKT --------------
@@ -1406,8 +1383,8 @@ function addPumaOraclePackage(P: AfvBuilderPort): void {
   // rear face (the gate's floater scan flagged the whip island at every
   // pose once the §5.249 print restore re-framed the render). Both re-seat
   // on real surfaces: MG pot buried into the roof at its own z, whips onto
-  // the bustle roof plate (§B5 physical-seat law).
-  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mg3', -0.04, 0.74);
+  // the bustle roof plate (§B5 physical-seat law). 2026-10-14 (VH.14): the Puma carries its 30 mm, the coaxial MG4 and
+  // MELLS and no roof machine gun (roofWeaponPolicy.ts), so the roof MG3 pot is gone.
   radioPair(P, 0.79, -1.20, 3710, 0.55);
   P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
   P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
@@ -1530,7 +1507,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
     P.add(`gunBarrel${barrel}Dark`, cylZ(0.058, 0.20, 12), side * 0.20, 0, 3.24);
     P.add(`gunBarrel${barrel}Dark`, cylZ(0.022, 0.026, 12), side * 0.20, 0, 3.353);
   }
-  P.muzzleZ = 3.37;
+  // VH.04 (2026-10-15): the muzzle anchor is the twin barrels' mouth face (3.366), not 4 mm in front of it
+  P.muzzleZ = 3.366;
 
   // QUAD Ataka racks BOTH flanks — the §5.360-ratified grammar doubled:
   // rack arm rooted through the housing wall, underslung mount block, TWO
@@ -1619,16 +1597,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
     }
   }
 
-  // 2026-10-07 (tank-accessories round 4): the NSVT's box takes the gun's left (the NSV feeds from either side). On its
-  // right it hung through the bustle's jerrycans (109 triangles inside the box region in the feed-side collision census,
-  // 107 before round 4); on the left the region is clear (0).
-  // 2026-10-09 (launch RC; missionAttachmentMechanical.selftest, "actual stand including braces is clear"): at its true
-  // calibre the NSVT parked facing forward lay under the braced drone stand, the BMPT's only seat that clears the twin
-  // 30 mm envelope (gen-mission-attachment-seats; a grid search over the roof found no other). The pintle keeps its gun
-  // and moves 15 cm right and 2 cm forward on the rear roof, off the jerrycans and the left whip it stood in. The gun is
-  // parked in travel lock, facing rear-right over the bustle (yaw 2.30), with its box on the right. Edge crossings of the
-  // station into other turret stock fall from 327 to 12, where the barrel rests on the stowage rack's rail.
-  roofMG(P, -0.15, 0.91, -0.58, 3801, 'nsvt', 2.30, 0.76, 'right');
+  // VH.14 (coordinator ruling 2026-10-14: "the BMPT's NSVT goes"): the real BMPT carries two 2A42, four Ataka and a
+  // coaxial PKTM and no roof machine gun (roofWeaponPolicy.ts), so the rear-roof NSVT pintle is gone.
 
   // Rear equipment: backing plate buried into the base-skirt slope, deep
   // bustle rack seated on the slab top, cans left / spare links right.

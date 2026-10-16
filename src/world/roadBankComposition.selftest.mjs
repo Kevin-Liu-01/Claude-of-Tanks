@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { usesBoundedRoadShoulders } from './maps/roadBorderCorridor.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 function declaration(text, name) {
   const ast = ts.createSourceFile('terrain.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const matches = [];

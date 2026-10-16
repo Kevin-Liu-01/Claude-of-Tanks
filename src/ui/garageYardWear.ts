@@ -15,14 +15,26 @@
 import * as THREE from 'three';
 
 import type { GarageVariant } from '../game/garageVariants.ts';
+import type { GarageHardstandDetailKind } from './garageHardstandProgram.ts';
 
 const APRON_W_M = 29;
 const APRON_D_M = 24;
 const CANVAS_W = 1024;
 const CANVAS_H = Math.round((CANVAS_W * APRON_D_M) / APRON_W_M);
 const PX_PER_M = CANVAS_W / APRON_W_M;
-const SLABS_X = 6;
-const SLABS_Z = 5;
+/**
+ * The saw-cut joints are squared to the view's axis, the facades' and the turntable's (the re-judge, 2026-10-15: "the
+ * joint grid is skewed about 30-45 degrees to the facade and turntable axis"), so on the apron's canvas (the pack's x/z)
+ * they run at 45 degrees. The pitch divides both of the canvas's spans along the view axes (29 / sqrt 2 into six, 24 /
+ * sqrt 2 into five, to within 7 cm), so the grid reflects onto itself at the canvas's edges and the mirrored apron stays
+ * seamless; 3.4 m is a saw-cut spacing for a yard slab (24-30 times a 150 mm pour).
+ */
+const JOINT_PITCH_M = (APRON_W_M / Math.SQRT2 / 6 + APRON_D_M / Math.SQRT2 / 5) / 2;
+/** A canvas-frame point (the pack's x, z) from the view's (side, depth), and the view's side and depth of one. */
+const fromView = (side: number, depth: number): [number, number] => [(side - depth) * Math.SQRT1_2, -(side + depth) * Math.SQRT1_2];
+const toView = (x: number, z: number): [number, number] => [(x - z) * Math.SQRT1_2, -(x + z) * Math.SQRT1_2];
+/** The joint lines' indices that can cross the canvas (both families). */
+const JOINT_SPAN = Math.ceil((APRON_W_M + APRON_D_M) / 2 / Math.SQRT2 / JOINT_PITCH_M) + 1;
 /** The earth and snow floors' fine relief normal repeats every 6.4 m across the apron. */
 const EARTH_NORMAL_TILE_M = 6.4;
 
@@ -62,8 +74,8 @@ const PALETTES: Readonly<Record<GarageHardstandStyle, StylePalette>> = Object.fr
   'slab-field': { kind: 'slab', base: [146, 146, 138], spread: 0.05, speckle: 0.08, seed: 11 },
   'slab-sand': { kind: 'slab', base: [190, 172, 142], spread: 0.045, speckle: 0.07, seed: 23 },
   'slab-snow': { kind: 'slab', base: [138, 142, 146], spread: 0.05, speckle: 0.07, seed: 37 },
-  'slab-urban': { kind: 'slab', base: [140, 139, 135], spread: 0.06, speckle: 0.08, seed: 41 },
-  'slab-quay': { kind: 'slab', base: [132, 136, 136], spread: 0.055, speckle: 0.08, seed: 53 },
+  'slab-urban': { kind: 'slab', base: [128, 127, 123], spread: 0.06, speckle: 0.08, seed: 41 }, // (the re-judge: overbright)
+  'slab-quay': { kind: 'slab', base: [138, 134, 126], spread: 0.055, speckle: 0.08, seed: 53 },
   'slab-cinder': { kind: 'slab', base: [124, 120, 114], spread: 0.06, speckle: 0.1, seed: 67 },
   'earth-wet': { kind: 'earth', base: [122, 88, 62], spread: 0.08, speckle: 0.12, seed: 71 },
   'slab-rock': { kind: 'slab', base: [128, 132, 136], spread: 0.05, speckle: 0.08, seed: 83 },
@@ -91,6 +103,121 @@ function px(xM: number, zM: number): [number, number] {
   return [((xM + APRON_W_M / 2) / APRON_W_M) * CANVAS_W, ((zM + APRON_D_M / 2) / APRON_D_M) * CANVAS_H];
 }
 
+/**
+ * Monsoon's standing water (garage round 7, place-truth; the critic panel, 2026-10-14: "a dry, sunny dirt yard with no
+ * wet sheen, puddles"; rejudge6, 2026-10-15: "about 15 opaque pale-blue oval puddles scattered evenly like polka dots,
+ * with no reflection and no wet rim"). Water lies where a yard holds it: in the two track ruts the hulls cut from the
+ * turntable toward the gate, broken into the ruts' low spots, and in a few hollows of different sizes, most of them in
+ * the camera's foreground and none alone mid-yard. Pools are (side, depth, radius m, squash, along the view's depth
+ * axis); ruts are (side, depth from, depth to, width m).
+ */
+const MONSOON_POOLS: ReadonlyArray<readonly [number, number, number, number, boolean]> = [
+  [-6.8, -8.6, 2.1, 0.55, true], [5.4, -10.6, 1.25, 0.62, false], [9.6, -3.2, 0.95, 0.7, true],
+  [-10.2, 1.6, 1.5, 0.5, false], [4.8, 7.8, 1.7, 0.55, true], [-3.6, -14.6, 0.8, 0.6, false],
+];
+const MONSOON_RUTS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [-1.55, -13.9, -11.8, 0.5], [-1.5, -9.7, -8.6, 0.42], [1.5, -15.3, -13.5, 0.52], [1.55, -11.1, -10.0, 0.44],
+  [1.5, -7.7, -6.9, 0.36],
+];
+/** The track ruts themselves (side, depth from, depth to): pressed mud the water lies in. */
+const MONSOON_TRACKS: ReadonlyArray<readonly [number, number, number]> = [[-1.55, -17, -5.6], [1.5, -17, -5.6]];
+
+/** A water outline in the pack's x/z metres (the apron canvas's frame: x = (side - depth) / sqrt 2, z = -(side + depth) / sqrt 2). */
+type WaterShape = ReadonlyArray<readonly [number, number]>;
+const viewToPack = (side: number, depth: number): [number, number] => [(side - depth) * Math.SQRT1_2, -(side + depth) * Math.SQRT1_2];
+
+function monsoonWater(): WaterShape[] {
+  const rng = mulberry(20261015);
+  const shapes: WaterShape[] = [];
+  MONSOON_POOLS.forEach(([side, depth, r, squash, alongDepth]) => {
+    // an irregular shoreline: two or three low harmonics and a little noise, smoothed, never an oval
+    const n = 30, p1 = rng() * 6.3, p2 = rng() * 6.3, p3 = rng() * 6.3, a2 = 0.16 + rng() * 0.14, a3 = 0.1 + rng() * 0.1;
+    const radii = Array.from({ length: n }, (_, i) => {
+      const t = (i / n) * Math.PI * 2;
+      return 1 + a2 * Math.sin(2 * t + p1) + a3 * Math.sin(3 * t + p2) + 0.07 * Math.sin(5 * t + p3) + (rng() - 0.5) * 0.08;
+    });
+    const smooth = radii.map((v, i) => (radii[(i + n - 1) % n] + 2 * v + radii[(i + 1) % n]) / 4);
+    const along = alongDepth ? 1 : 0;
+    const shape: Array<[number, number]> = smooth.map((k, i) => {
+      const t = (i / n) * Math.PI * 2;
+      const u = Math.cos(t) * r * k, w = Math.sin(t) * r * k * squash; // u along the pool's long axis
+      const ds = along ? w : u, dd = along ? u : w;
+      return viewToPack(side + ds, depth + dd);
+    });
+    shapes.push(shape);
+  });
+  MONSOON_RUTS.forEach(([side, d0, d1, width]) => {
+    // water in a rut's low spot: a strip whose width wanders and whose ends taper
+    const n = 14, left: Array<[number, number]> = [], right: Array<[number, number]> = [];
+    for (let i = 0; i <= n; i++) {
+      const f = i / n, depth = d0 + (d1 - d0) * f;
+      const half = (width / 2) * Math.sqrt(Math.sin(Math.PI * f)) * (0.8 + rng() * 0.35);
+      const wobble = (rng() - 0.5) * 0.08;
+      left.push(viewToPack(side - half + wobble, depth));
+      right.push(viewToPack(side + half + wobble, depth));
+    }
+    shapes.push([...left, ...right.reverse()]);
+  });
+  return shapes;
+}
+
+/** Trace a water outline on a canvas (pixels from pack metres, `scale` the canvas's share of the apron's) through its midpoints. */
+function traceWater(g: CanvasRenderingContext2D, shape: WaterShape, scale: number, grow = 1): void {
+  let cx = 0, cz = 0;
+  for (const [x, z] of shape) { cx += x / shape.length; cz += z / shape.length; }
+  const pts = shape.map(([x, z]) => px(cx + (x - cx) * grow, cz + (z - cz) * grow)).map(([x, y]) => [x * scale, y * scale]);
+  g.beginPath();
+  const mid = (a: number[], b: number[]): [number, number] => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const start = mid(pts[pts.length - 1], pts[0]);
+  g.moveTo(start[0], start[1]);
+  for (let i = 0; i < pts.length; i++) {
+    const next = mid(pts[i], pts[(i + 1) % pts.length]);
+    g.quadraticCurveTo(pts[i][0], pts[i][1], next[0], next[1]);
+  }
+  g.closePath();
+}
+
+/**
+ * The yard's wet mask (garageHardstandGradedHook's standing water) on the apron canvas's frame and wrapping: red is
+ * standing water, a crisp shoreline; green is the damp ground round it and along the ruts, the wet rim. Null for every
+ * dry yard and in plain Node.
+ */
+export function garageHardstandWetMask(style: GarageHardstandStyle): THREE.CanvasTexture | null {
+  if (style !== 'earth-wet' || typeof document === 'undefined') return null;
+  const scale = 0.5;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(CANVAS_W * scale);
+  canvas.height = Math.round(CANVAS_H * scale);
+  const g = canvas.getContext('2d');
+  if (!g) return null;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  g.globalCompositeOperation = 'lighten'; // per channel: the water's white keeps the damp's green under it
+  // the damp: wide and soft round each pool and strip, and the ruts' pressed mud wet along their whole run
+  g.filter = `blur(${(5 * scale).toFixed(1)}px)`;
+  for (const shape of monsoonWater()) {
+    g.fillStyle = 'rgb(0,150,0)'; traceWater(g, shape, scale, 1.55); g.fill();
+    g.fillStyle = 'rgb(0,235,0)'; traceWater(g, shape, scale, 1.2); g.fill();
+  }
+  g.strokeStyle = 'rgb(0,120,0)';
+  g.lineWidth = 0.55 * PX_PER_M * scale;
+  for (const [side, d0, d1] of MONSOON_TRACKS) {
+    const a = px(...viewToPack(side, d0)), b = px(...viewToPack(side, d1));
+    g.beginPath(); g.moveTo(a[0] * scale, a[1] * scale); g.lineTo(b[0] * scale, b[1] * scale); g.stroke();
+  }
+  // the water: a crisp shoreline
+  g.filter = `blur(${(0.8 * scale).toFixed(1)}px)`;
+  g.fillStyle = '#fff';
+  for (const shape of monsoonWater()) { traceWater(g, shape, scale); g.fill(); }
+  g.filter = 'none';
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.wrapS = THREE.MirroredRepeatWrapping;
+  texture.wrapT = THREE.MirroredRepeatWrapping;
+  texture.userData.garageHardstandWetMask = style;
+  return texture;
+}
+
 const rgba = (c: readonly [number, number, number], a: number): string =>
   `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a.toFixed(3)})`;
 
@@ -107,7 +234,7 @@ function drawHardstand(
   g.fillStyle = `rgb(${br},${bgc},${bb})`;
   g.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  const blot = (xM: number, zM: number, rM: number, inner: string, outer: string, squash = 1, angle = rng() * Math.PI): void => {
+  const blot = (xM: number, zM: number, rM: number, inner: string, outer: string, squash = 1, angle = rng() * Math.PI, edge = 0.6): void => {
     const [x, y] = px(xM, zM);
     const r = Math.max(1, rM * PX_PER_M);
     g.save();
@@ -116,20 +243,20 @@ function drawHardstand(
     g.scale(1, squash);
     const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
     grad.addColorStop(0, inner);
-    grad.addColorStop(0.6, outer);
+    grad.addColorStop(edge, outer);
     grad.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grad;
     g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
     g.restore();
   };
   // wrap-aware blot: the pads beyond the apron sample the canvas wrapped, so marks near an edge repeat across it
-  const blotWrapped = (xM: number, zM: number, rM: number, inner: string, outer: string, squash = 1): void => {
+  const blotWrapped = (xM: number, zM: number, rM: number, inner: string, outer: string, squash = 1, edge = 0.6): void => {
     const angle = rng() * Math.PI;
     for (const dx of [-APRON_W_M, 0, APRON_W_M]) {
       for (const dz of [-APRON_D_M, 0, APRON_D_M]) {
         const x = xM + dx, z = zM + dz;
         if (x < -APRON_W_M / 2 - rM || x > APRON_W_M / 2 + rM || z < -APRON_D_M / 2 - rM || z > APRON_D_M / 2 + rM) continue;
-        blot(x, z, rM, inner, outer, squash, angle);
+        blot(x, z, rM, inner, outer, squash, angle, edge);
       }
     }
   };
@@ -162,34 +289,46 @@ function drawHardstand(
   };
 
   // --- the floor itself -----------------------------------------------------------------------------------------
-  const slabW = CANVAS_W / SLABS_X, slabH = CANVAS_H / SLABS_Z;
+  const P = JOINT_PITCH_M;
+  const jointPoint = (side: number, depth: number): [number, number] => { const [x, z] = fromView(side, depth); return px(x, z); };
   if (palette.kind === 'slab') {
-    // each pour cures to its own tone, a little lighter toward its centre (trowel and cure)
-    for (let i = 0; i < SLABS_X; i++) {
-      for (let j = 0; j < SLABS_Z; j++) {
+    // each pour cures to its own tone, a little lighter toward its centre (trowel and cure); the pours are squares on
+    // the view's axis, diamonds on the canvas
+    const slabPx = P * PX_PER_M;
+    for (let i = -JOINT_SPAN; i < JOINT_SPAN; i++) {
+      for (let j = -JOINT_SPAN; j < JOINT_SPAN; j++) {
         const tone = 1 + (rng() - 0.5) * 1.4 * palette.spread;
         const c: [number, number, number] = [br * tone, bgc * tone, bb * tone];
-        const grad = g.createRadialGradient(
-          (i + 0.5) * slabW, (j + 0.5) * slabH, slabW * 0.1, (i + 0.5) * slabW, (j + 0.5) * slabH, slabW * 0.75);
+        const [cx, cy] = jointPoint((i + 0.5) * P, (j + 0.5) * P);
+        if (cx < -slabPx || cy < -slabPx || cx > CANVAS_W + slabPx || cy > CANVAS_H + slabPx) continue;
+        const grad = g.createRadialGradient(cx, cy, slabPx * 0.1, cx, cy, slabPx * 0.75);
         grad.addColorStop(0, rgba([c[0] * 1.02, c[1] * 1.02, c[2] * 1.02], 1));
         grad.addColorStop(1, rgba([c[0] * 0.97, c[1] * 0.97, c[2] * 0.97], 1));
         g.fillStyle = grad;
-        g.fillRect(i * slabW, j * slabH, slabW, slabH);
+        g.beginPath();
+        for (const [ds, dd] of [[0, 0], [1, 0], [1, 1], [0, 1]] as const) {
+          const [x, y] = jointPoint((i + ds) * P, (j + dd) * P);
+          if (ds === 0 && dd === 0) g.moveTo(x, y); else g.lineTo(x, y);
+        }
+        g.closePath(); g.fill();
       }
     }
   }
-  // low-frequency mottling at two scales (both kinds)
+  // low-frequency mottling at two scales (both kinds); the big soft blots are few and faint (waves 408 and 419: "large
+  // soft dark blotches that read as dirty shadow artifacts")
+  // GA.03 (the critic panel, 2026-10-14: "the foreground floor ... reads as smeared blotch"): fainter again, the detail
+  // layer carries the surface now
   for (let i = 0; i < (earth ? 260 : 140); i++) {
     const dark = rng() < 0.5;
-    const a = earth ? 0.09 : 0.05;
-    const big = rng() < 0.3;
+    const big = rng() < 0.12;
+    const a = (earth ? 0.055 : 0.032) * (big ? 0.4 : 1);
     blotWrapped((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M, big ? 2.5 + rng() * 4 : 0.5 + rng() * 1.8,
       dark ? `rgba(30,26,22,${a})` : `rgba(255,248,236,${a * 0.8})`, dark ? `rgba(30,26,22,${a * 0.4})` : `rgba(255,248,236,${a * 0.3})`,
       0.45 + rng() * 0.55);
   }
   // grit and aggregate in the surface (not on it): faint for concrete, coarser in earth
   if (earth) {
-    aggregate(5200, ['30,26,22', '250,244,232'], [0.6, 3.4], [0.04, 0.14], 0.8);
+    aggregate(5200, ['30,26,22', '250,244,232'], [0.6, 2.2], [0.03, 0.1], 0.8);
   } else {
     aggregate(4200, ['28,26,24', '246,242,236'], [0.5, 1.8], [0.03, 0.08], 0.6);
   }
@@ -210,8 +349,8 @@ function drawHardstand(
     // hairline cracks wandering from slab corners
     g.lineCap = 'round';
     for (let i = 0; i < 26; i++) {
-      let x = Math.round(rng() * SLABS_X) * slabW + (rng() - 0.5) * 20;
-      let y = Math.round(rng() * SLABS_Z) * slabH + (rng() - 0.5) * 20;
+      let [x, y] = jointPoint(Math.round((rng() * 2 - 1) * JOINT_SPAN) * P, Math.round((rng() * 2 - 1) * JOINT_SPAN) * P);
+      x += (rng() - 0.5) * 20; y += (rng() - 0.5) * 20;
       let heading = rng() * Math.PI * 2;
       g.strokeStyle = `rgba(24,22,20,${(0.16 + rng() * 0.16).toFixed(2)})`;
       g.lineWidth = 0.7 + rng() * 0.7;
@@ -225,21 +364,24 @@ function drawHardstand(
       }
       g.stroke();
     }
-    // sawn joints, sealed and dirty rather than ruled black lines (wave 398: "plaza-sized flagstones"); the grid wraps
-    for (let i = 0; i <= SLABS_X; i++) {
-      const x = Math.round(i * slabW);
-      g.fillStyle = 'rgba(30,28,26,0.36)'; g.fillRect(x - 1, 0, 2, CANVAS_H);
-      g.fillStyle = 'rgba(40,36,32,0.08)'; g.fillRect(x - 4, 0, 8, CANVAS_H);
+    // sawn joints, sealed and dirty rather than ruled black lines (wave 398: "plaza-sized flagstones"), squared to the
+    // view's axis; the grid reflects onto itself at the canvas's edges
+    g.lineCap = 'butt';
+    const reach = JOINT_SPAN * P;
+    for (const across of [true, false]) {
+      for (let k = -JOINT_SPAN; k <= JOINT_SPAN; k++) {
+        const [ax, ay] = across ? jointPoint(k * P, -reach) : jointPoint(-reach, k * P);
+        const [bx, by] = across ? jointPoint(k * P, reach) : jointPoint(reach, k * P);
+        for (const [width, colour] of [[8, 'rgba(40,36,32,0.08)'], [2, 'rgba(30,28,26,0.36)']] as const) {
+          g.strokeStyle = colour; g.lineWidth = width;
+          g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        }
+      }
     }
-    for (let j = 0; j <= SLABS_Z; j++) {
-      const y = Math.round(j * slabH);
-      g.fillStyle = 'rgba(30,28,26,0.36)'; g.fillRect(0, y - 1, CANVAS_W, 2);
-      g.fillStyle = 'rgba(40,36,32,0.08)'; g.fillRect(0, y - 4, CANVAS_W, 8);
-    }
+    // spalls along the joints
     for (let i = 0; i < 120; i++) {
-      const alongX = rng() < 0.5;
-      const x = alongX ? rng() * CANVAS_W : Math.round(Math.floor(rng() * (SLABS_X + 1)) * slabW);
-      const y = alongX ? Math.round(Math.floor(rng() * (SLABS_Z + 1)) * slabH) : rng() * CANVAS_H;
+      const along = (rng() * 2 - 1) * reach, line = Math.round((rng() * 2 - 1) * JOINT_SPAN) * P;
+      const [x, y] = rng() < 0.5 ? jointPoint(line, along) : jointPoint(along, line);
       g.fillStyle = 'rgba(30,27,24,0.3)';
       g.beginPath(); g.ellipse(x, y, 2 + rng() * 5, 1.5 + rng() * 3, rng() * Math.PI, 0, Math.PI * 2); g.fill();
     }
@@ -260,7 +402,9 @@ function drawHardstand(
    */
   const toward = Math.atan2(approach.x, approach.z);
   const dir = (angle: number): [number, number] => [Math.sin(angle), Math.cos(angle)];
-  const rutDark = earth ? (snow ? '86,90,92' : '42,30,22') : '26,24,22';
+  // packed snow under tracks is a compacted blue-grey with grit, read against the white (the re-judge, 2026-10-15: "no
+  // ... packed track ruts")
+  const rutDark = earth ? (snow ? '104,112,122' : '42,30,22') : '26,24,22';
   const berm = snow ? '246,250,252' : style === 'earth-sand' ? '232,212,176' : style === 'earth-dust' ? '214,160,124' : '';
   const wheelPath = (
     p0: readonly [number, number], p1: readonly [number, number], p2: readonly [number, number],
@@ -292,23 +436,45 @@ function drawHardstand(
       }
     };
     // soft compacted bands rather than ruled lines (wave 408: "faint painted circle arcs")
+    const press = snow ? 1.5 : 1; // snow takes a deeper, plainer print
     for (const side of [-1, 1]) {
       const offset = side * gauge / 2;
-      stroke(offset, width * 2.3, rutDark, strength * 0.24);
-      stroke(offset, width, rutDark, strength * 0.5);
-      stroke(offset + side * width * 0.12, width * 0.45, rutDark, strength * 0.22);
-      if (berm) stroke(offset + side * (width * 1.05), width * 0.7, berm, strength * 0.3);
+      stroke(offset, width * 2.3, rutDark, strength * 0.24 * press);
+      stroke(offset, width, rutDark, strength * 0.5 * press);
+      stroke(offset + side * width * 0.12, width * 0.45, rutDark, strength * 0.22 * press);
+      if (berm) stroke(offset + side * (width * 1.05), width * 0.7, berm, strength * 0.3 * press);
+      // the track links' grousers printed across the band
+      if (earth) {
+        g.lineCap = 'butt';
+        g.lineWidth = Math.max(1, 0.05 * PX_PER_M);
+        for (let i = 2; i < samples.length - 2; i++) {
+          const t = i / (samples.length - 1);
+          const fade = Math.min(1, t / 0.2, (1 - t) / 0.2);
+          const [x, z, nx, nz] = samples[i];
+          const [ax, ay] = px(x + nx * (offset - width * 0.45), z + nz * (offset - width * 0.45));
+          const [bx, by] = px(x + nx * (offset + width * 0.45), z + nz * (offset + width * 0.45));
+          g.strokeStyle = `rgba(${rutDark},${(strength * 0.3 * press * fade).toFixed(3)})`;
+          g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+        }
+      }
     }
   };
   const [ax, az] = dir(toward);
-  // hulls up the approach road onto the turntable
-  wheelPath([ax * 16, az * 16], [ax * 11 + az * 0.9, az * 11 - ax * 0.9], [ax * 6.9, az * 6.9], 2.85, 0.62, earth ? 0.32 : 0.2);
+  // hulls up the approach road onto the turntable; on a slab their tracks polish and blacken the lanes they use (rejudge6,
+  // 2026-10-15: "a huge, empty, clean pad ... no rails or wear paths"), so the slab's lanes are as plain as the earth's
+  wheelPath([ax * 16, az * 16], [ax * 11 + az * 0.9, az * 11 - ax * 0.9], [ax * 6.9, az * 6.9], 2.85, 0.62, earth ? 0.32 : 0.34);
   // and round it to the bays either side
   for (const turn of [-1, 1]) {
     const [bx, bz] = dir(toward + turn * 0.55);
     const [cx, cz] = dir(toward + turn * 1.55);
     const [ex, ez] = dir(toward + turn * 2.35);
-    wheelPath([bx * 15, bz * 15], [cx * 10.5, cz * 10.5], [ex * 16, ez * 16], 2.85, 0.6, earth ? 0.26 : 0.16);
+    wheelPath([bx * 15, bz * 15], [cx * 10.5, cz * 10.5], [ex * 16, ez * 16], 2.85, 0.6, earth ? 0.26 : 0.28);
+  }
+  // a second pass off the turntable straight toward the lens, where the hulls leave for the yard gate
+  {
+    const [bx, bz] = dir(toward + Math.PI);
+    wheelPath([bx * 6.9, bz * 6.9], [bx * 11 + bz * 0.6, bz * 11 - bx * 0.6], [bx * 16.5 + bz * 1.4, bz * 16.5 - bx * 1.4], 2.85, 0.62,
+      earth ? 0.24 : 0.26);
   }
   // a wheeled truck's tighter line across one side of the yard
   {
@@ -317,6 +483,18 @@ function drawHardstand(
     const [cx, cz] = dir(toward + turn * 1.9);
     const [ex, ez] = dir(toward + turn * 2.9);
     wheelPath([bx * 16, bz * 16], [cx * 12.5, cz * 12.5], [ex * 16, ez * 16], 1.95, 0.32, earth ? 0.24 : 0.14);
+  }
+  // dirt banked against the turntable's plinth, uneven, heavier where the hulls roll on and off it (rejudge6, 2026-10-15:
+  // "the turntable looks like a pasted disc", "a hard clean ring")
+  {
+    const [tx, tz] = dir(toward);
+    for (let i = 0; i < 90; i++) {
+      const a = rng() * Math.PI * 2, ca = Math.sin(a) * tx + Math.cos(a) * tz;
+      const lanes = Math.max(ca, -ca) ** 8; // the approach lane and the gate lane
+      const r = 6.45 + rng() * 0.5;
+      blot(Math.sin(a) * r, Math.cos(a) * r, 0.35 + rng() * 0.6, rgba([58, 52, 46], 0.16 + 0.16 * lanes), rgba([58, 52, 46], 0.05),
+        0.5 + rng() * 0.4, a);
+    }
   }
   // footfall round the turntable and the bays' approaches: small prints in short trails, scuffed in loose ground
   for (let trail = 0; trail < 42; trail++) {
@@ -335,12 +513,15 @@ function drawHardstand(
       x += Math.cos(heading) * 0.36; z += Math.sin(heading) * 0.36;
     }
   }
-  // oil, hydraulic fluid and coolant: the dark history of every pack pulled and every road wheel changed
+  // oil, hydraulic fluid and coolant: the dark history of every pack pulled and every road wheel changed; on concrete a
+  // stain soaks in with a crisp edge (the re-judge, 2026-10-15: "big soft dark smudges that read as dirt clouds, not
+  // stains"), and the big ones are rarer
   for (let i = 0; i < 40; i++) {
     const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M;
     if (Math.hypot(xM, zM) < 6.4) continue;
-    const r = 0.22 + rng() * (rng() < 0.22 ? 1.5 : 0.65);
-    blotWrapped(xM, zM, r, snow ? 'rgba(60,58,56,0.3)' : 'rgba(14,12,11,0.42)', 'rgba(18,16,14,0.14)', 0.5 + rng() * 0.5);
+    const r = 0.22 + rng() * (rng() < (earth ? 0.22 : 0.1) ? 1.5 : 0.65);
+    blotWrapped(xM, zM, r, snow ? 'rgba(60,58,56,0.3)' : 'rgba(14,12,11,0.42)', earth ? 'rgba(18,16,14,0.14)' : 'rgba(16,14,12,0.3)',
+      0.5 + rng() * 0.5, earth ? 0.6 : 0.86);
     if (rng() < 0.4) blotWrapped(xM + (rng() - 0.5) * r, zM + (rng() - 0.5) * r, r * 0.5, 'rgba(48,36,22,0.2)', 'rgba(48,36,22,0.07)');
   }
   // rust: bleeding from where steel stood (stands, racks, bollards)
@@ -394,10 +575,9 @@ function drawHardstand(
   };
   const alongJoints = (count: number, width: number, inner: string, outer: string): void => {
     for (let i = 0; i < count; i++) {
-      const horizontal = rng() < 0.5;
-      const t = rng();
-      const xM = horizontal ? (t - 0.5) * APRON_W_M : (Math.round(rng() * SLABS_X) / SLABS_X - 0.5) * APRON_W_M;
-      const zM = horizontal ? (Math.round(rng() * SLABS_Z) / SLABS_Z - 0.5) * APRON_D_M : (t - 0.5) * APRON_D_M;
+      const along = (rng() * 2 - 1) * JOINT_SPAN * JOINT_PITCH_M, line = Math.round((rng() * 2 - 1) * JOINT_SPAN) * JOINT_PITCH_M;
+      const [xM, zM] = rng() < 0.5 ? fromView(line, along) : fromView(along, line);
+      if (Math.abs(xM) > APRON_W_M / 2 || Math.abs(zM) > APRON_D_M / 2) continue;
       blotWrapped(xM, zM, width * (0.6 + rng()), inner, outer, 0.25);
     }
   };
@@ -419,17 +599,22 @@ function drawHardstand(
       break;
     }
     case 'slab-quay': {
-      // salt bloom crusting along joints and in drying puddle rings, rust bleeding from quay steel, standing water
-      alongJoints(130, 0.35, 'rgba(236,236,228,0.38)', 'rgba(236,236,228,0.1)');
+      // a little salt in the joints, standing water, rust bleeding from quay steel (waves 408 and 419: the old white bloom
+      // and drying rings read as "frost or snow crust" and "painted circle arcs")
+      // (the salt held to a few dull runs: rejudge6, 2026-10-15, "slab joints drawn as bright, clean, perfectly regular
+      // white strips")
+      alongJoints(50, 0.3, 'rgba(206,204,194,0.09)', 'rgba(206,204,194,0.03)');
       for (let i = 0; i < 14; i++) {
         const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M, r = 0.6 + rng() * 1.6;
         blotWrapped(xM, zM, r, 'rgba(40,46,50,0.26)', 'rgba(40,46,50,0.1)', 0.5 + rng() * 0.4);
-        const [x, y] = px(xM, zM);
-        g.strokeStyle = 'rgba(236,236,226,0.22)';
-        g.lineWidth = 2;
-        g.beginPath(); g.ellipse(x, y, r * PX_PER_M, r * PX_PER_M * 0.7, rng() * Math.PI, 0, Math.PI * 2); g.stroke();
+        rng(); // (the ring's angle; its stroke is gone)
       }
-      scatter(30, 0.2, 0.7, 'rgba(126,66,34,0.28)', 'rgba(126,66,34,0.08)', [0.2, 0.5]);
+      scatter(44, 0.2, 0.8, 'rgba(126,66,34,0.3)', 'rgba(126,66,34,0.08)', [0.2, 0.5]);
+      // a working quay's dirt (rejudge6, 2026-10-15: "the quay paving is clean"): diesel and hydraulic oil where the
+      // crane and the trucks stand, green slime and weed in the joints toward the water, big dull grime
+      scatter(20, 1.8, 4.6, 'rgba(46,48,46,0.2)', 'rgba(46,48,46,0.06)', [0.3, 0.7]);
+      alongJoints(70, 0.18, 'rgba(58,70,48,0.3)', 'rgba(58,70,48,0.08)');
+      scatter(26, 0.4, 1.2, 'rgba(22,22,22,0.3)', 'rgba(22,22,22,0.1)', [0.4, 0.9]);
       break;
     }
     case 'slab-urban': {
@@ -458,8 +643,12 @@ function drawHardstand(
       break;
     }
     case 'slab-cinder': {
-      // coal dust and cinders worked into the slabs from the rail roads
+      // coal dust and cinders worked into the slabs from the rail roads; big dull soot patches and pale ash blown across
+      // the slab and swept into its joints, so it never reads as "a huge clean concrete pad" (rejudge6, 2026-10-15)
       scatter(90, 0.6, 2.4, 'rgba(26,24,24,0.24)', 'rgba(26,24,24,0.08)');
+      scatter(22, 2.2, 5.2, 'rgba(28,26,25,0.2)', 'rgba(28,26,25,0.06)', [0.3, 0.7]);
+      scatter(36, 0.9, 2.4, 'rgba(128,120,108,0.16)', 'rgba(128,120,108,0.05)', [0.3, 0.8]);
+      alongJoints(90, 0.22, 'rgba(24,22,21,0.32)', 'rgba(24,22,21,0.1)');
       aggregate(2600, ['14,13,13', '120,70,44'], [0.6, 2.6], [0.1, 0.3], 0.85);
       break;
     }
@@ -478,13 +667,29 @@ function drawHardstand(
       break;
     }
     case 'earth-wet': {
-      // monsoon laterite: puddles with darker wet ground and lighter dried rims, gravel worked into the ruts
-      for (let i = 0; i < 22; i++) {
-        const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M, r = 0.5 + rng() * 1.8;
-        if (Math.hypot(xM, zM) < 6.6) continue;
-        blotWrapped(xM, zM, r * 1.3, 'rgba(176,132,96,0.22)', 'rgba(176,132,96,0.07)', 0.45 + rng() * 0.3);
-        blotWrapped(xM, zM, r, 'rgba(40,34,30,0.5)', 'rgba(52,40,32,0.26)', 0.45 + rng() * 0.3);
+      // monsoon laterite: the hulls' two track ruts pressed dark into the mud with their grousers' ribs, the ground darker
+      // and wet round the water (no dried pale ring: the rim of a puddle in the rain is wet), the water's bed silt
+      g.save();
+      g.filter = 'blur(3px)';
+      for (const shape of monsoonWater()) {
+        g.fillStyle = 'rgba(70,46,32,0.3)'; traceWater(g, shape, 1, 1.5); g.fill();
+        g.fillStyle = 'rgba(62,42,30,0.34)'; traceWater(g, shape, 1, 1.18); g.fill();
       }
+      g.filter = 'none';
+      for (const [side, d0, d1] of MONSOON_TRACKS) {
+        const a = px(...viewToPack(side, d0)), b = px(...viewToPack(side, d1));
+        g.strokeStyle = 'rgba(66,44,30,0.34)'; g.lineWidth = 0.62 * PX_PER_M;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+        g.strokeStyle = 'rgba(48,32,22,0.3)'; g.lineWidth = 0.07 * PX_PER_M;
+        for (let t = 0; t < len; t += 0.16 * PX_PER_M) { // the grousers' ribs across the rut
+          const x = a[0] + ux * t, y = a[1] + uy * t, h = 0.27 * PX_PER_M;
+          g.beginPath(); g.moveTo(x - uy * h, y + ux * h); g.lineTo(x + uy * h, y - ux * h); g.stroke();
+        }
+      }
+      g.fillStyle = 'rgba(54,40,30,0.55)';
+      for (const shape of monsoonWater()) { traceWater(g, shape, 1); g.fill(); }
+      g.restore();
       aggregate(2600, ['150,140,128', '60,44,34'], [0.6, 2.8], [0.1, 0.28], 0.85);
       break;
     }
@@ -515,7 +720,7 @@ function drawHardstand(
     case 'earth-snow': {
       // packed snow: glazed ice where it melted and froze, grit and soot, drifts banked at the edges and the podium
       scatter(40, 0.5, 1.8, 'rgba(176,196,214,0.32)', 'rgba(176,196,214,0.1)', [0.4, 0.8]);
-      scatter(50, 0.4, 1.4, 'rgba(118,112,104,0.18)', 'rgba(118,112,104,0.05)');
+      scatter(24, 0.3, 1.0, 'rgba(118,112,104,0.1)', 'rgba(118,112,104,0.03)'); // grit, not grey smears (the re-judge)
       aggregate(1600, ['80,78,74'], [0.5, 1.8], [0.06, 0.18], 0.85);
       drifts('250,252,255', 0.6, 2.8, true);
       break;
@@ -612,23 +817,18 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
     }
   };
   if (kind === 'slab') {
-    octave(Math.round(W / 341), 0.5);
-    octave(Math.round(W / 114), 0.6);
-    const slabW = W / SLABS_X, slabH = H / SLABS_Z;
-    for (let i = 0; i <= SLABS_X; i++) {
-      const x0 = Math.round(i * slabW);
-      for (let x = x0 - 2; x <= x0 + 2; x++) {
-        const xx = (x + W) % W;
-        const depth = 2.4 * (1 - Math.abs(x - x0) / 3);
-        for (let y = 0; y < H; y++) height[y * W + xx] -= depth;
-      }
-    }
-    for (let j = 0; j <= SLABS_Z; j++) {
-      const y0 = Math.round(j * slabH);
-      for (let y = y0 - 2; y <= y0 + 2; y++) {
-        const yy = (y + H) % H;
-        const depth = 2.4 * (1 - Math.abs(y - y0) / 3);
-        for (let x = 0; x < W; x++) height[yy * W + x] -= depth;
+    // the pours' broad undulation only, low (v3 stills, 2026-10-14: at 0.5 and 0.6 it lit the slabs into a frost-like
+    // ripple over the detail layer's aggregate and broom finish)
+    octave(Math.round(W / 341), 0.18);
+    octave(Math.round(W / 114), 0.12);
+    // the joints' grooves, on the same grid as the albedo's (squared to the view's axis)
+    for (let y = 0; y < H; y++) {
+      const z = (y / H) * APRON_D_M - APRON_D_M / 2;
+      for (let x = 0; x < W; x++) {
+        const [side, depth] = toView((x / W) * APRON_W_M - APRON_W_M / 2, z);
+        const off = (v: number): number => Math.abs(v - JOINT_PITCH_M * Math.round(v / JOINT_PITCH_M)) * PX_PER_M;
+        const near = Math.min(off(side), off(depth));
+        if (near < 3) height[y * W + x] -= 2.4 * (1 - near / 3);
       }
     }
   } else if (kind === 'snow') {
@@ -659,8 +859,9 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
   }
   g.putImageData(image, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
+  // the slab's joints reflect at the canvas's edges like its albedo (mirrored), the earth's relief tiles
+  texture.wrapS = kind === 'slab' ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
+  texture.wrapT = kind === 'slab' ? THREE.MirroredRepeatWrapping : THREE.RepeatWrapping;
   if (kind !== 'slab') texture.repeat.set(APRON_W_M / EARTH_NORMAL_TILE_M, APRON_D_M / EARTH_NORMAL_TILE_M);
   texture.anisotropy = anisotropy;
   texture.userData.sharedGarageHardstandNormal = kind;
@@ -671,12 +872,27 @@ export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4)
 /** The apron and its texel layout, for receipts. */
 export const GARAGE_HARDSTAND = Object.freeze({
   widthM: APRON_W_M, depthM: APRON_D_M, canvasW: CANVAS_W, canvasH: CANVAS_H,
-  slabPitchM: Object.freeze([APRON_W_M / SLABS_X, APRON_D_M / SLABS_Z] as const),
+  slabPitchM: Object.freeze([JOINT_PITCH_M, JOINT_PITCH_M] as const),
+  /** The joints run square to the view's axis (45 degrees on the canvas). */
+  jointAxisDeg: 45,
 });
 
 /** Which floor kind a style draws (slab joints or earth). */
 export function garageHardstandKind(style: GarageHardstandStyle): 'slab' | 'earth' {
   return PALETTES[style].kind;
+}
+
+/**
+ * Which detail layer a style's floor takes (garageHardstandProgram.ts; GA.03, the critic panel: "a detail layer per ground
+ * type"): broomed concrete with aggregate and crazing on every slab yard, wind ripples on the wadi's sand, sastrugi on
+ * packed snow, packed angular stone on the pass's gravel and the slag yard, pebbled compacted fines on earth.
+ */
+export function garageHardstandDetailKind(style: GarageHardstandStyle): GarageHardstandDetailKind {
+  if (PALETTES[style].kind === 'slab') return 'concrete';
+  if (style === 'earth-sand') return 'sand';
+  if (style === 'earth-snow') return 'snow';
+  if (style === 'gravel-snow' || style === 'earth-slag') return 'gravel';
+  return 'earth';
 }
 
 /** Which shared relief normal a style takes: slab joints, earth relief, or soft packed snow. */

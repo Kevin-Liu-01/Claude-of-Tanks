@@ -150,7 +150,9 @@ const entries = [...groups.values()].map(({ recipe, ids }) => {
   const env = environmentOf(recipe), style = styleOf(recipe);
   const tags = [nationTag, env, style, 'signature'].filter(Boolean);
   const parts = nameParts(recipe, spec.nation, env, spec.era);
-  return { id: `${PAINT_ID_PREFIX}${lead}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
+  // A paint id is a saved and wire-sent camo id: it keeps the lead's schema-1 spelling (tankIdAliases.ts), so a rename
+  // never orphans a player's paint or a room's allowlist.
+  return { id: `${PAINT_ID_PREFIX}${tankSeedId(lead)}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
 }).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 // two paints of one nation with the same words: the paint worn by the most hulls keeps the bare name, the others
 // take numerals (ties in id order), so a one-off concept never displaces a fleet-wide coat's name

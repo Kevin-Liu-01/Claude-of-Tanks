@@ -4,12 +4,13 @@
 // slopes in all (aat-chala), the kalasa finial, a triple-arched front faced with terracotta plaques.
 //
 // The frame: the front (+z) is the arched façade and the steps; y = 0 the lowest ground under the plinth.
-import { PartSink, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { archedBody, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
+import { PartSink, facePoint, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { archLine, archedBody, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const TERRACOTTA = rgb(0xa45a3a), PLAQUE: readonly ReturnType<typeof rgb>[] = [0xa65c3c, 0x9a5236, 0xb06a46, 0x8e4a30].map(rgb);
-const DARK = rgb(0x1f1a17), FINIAL = rgb(0x7a5a3a);
+const FINIAL = rgb(0x7a5a3a), SAL = rgb(0x6a5440);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 
@@ -75,6 +76,10 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
   const wall: RegionalBucket = 'stone';
   // the plinth and its steps up to the front
   sink.span(wall, -S / 2 - 0.9, base, -S / 2 - 0.9, S / 2 + 0.9, plinth, S / 2 + 0.9);
+  // (the looks lane, 2026-10-15; WORKLIST #11 r2: moulded bases and cornices) the plinth's base course a brick proud of
+  // it, damp and mossed, and its cornice of moulded brick under the floor's edge
+  sink.span(wall, -S / 2 - 1.02, base, -S / 2 - 1.02, S / 2 + 1.02, 0.28, S / 2 + 1.02, { decor: true, tint: [0.78, 0.86, 0.7], shade: 0.9 });
+  sink.span(wall, -S / 2 - 1.0, plinth - 0.14, -S / 2 - 1.0, S / 2 + 1.0, plinth - 0.02, S / 2 + 1.0, { decor: true, shade: 0.94 });
   for (let k = 0; k < 4; k++) sink.span(wall, -1.6, plinth - 0.25 * (k + 1), S / 2 + 0.9 + k * 0.32, 1.6, plinth - 0.25 * k, S / 2 + 0.9 + (k + 1) * 0.32, { decor: true });
   // the bangla cornice (gauntlet wave 158: "a straight cornice"): the walls' top follows the eave's curve, highest at
   // the middle of each face and drooping to its corners, the fascia's underside its line
@@ -108,7 +113,7 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
   }
   const inner = S / 2 - 0.4, apex = spring + aw * 0.74;
   /** A box's inside (a space seen through its openings): the faces looking inward, each its own occlusion. */
-  const room = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, skip: { px?: boolean; nx?: boolean; pz?: boolean; nz?: boolean }) => {
+  const room = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, skip: { px?: boolean; nx?: boolean; pz?: boolean; nz?: boolean }, dim = 1) => {
     // (each face wound to look into the space: its normal toward the room's middle)
     const mid: Vec3 = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
     const q = (pts: Vec3[], sh: number) => {
@@ -116,7 +121,7 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
         (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]), (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
       const toMid = n[0] * (mid[0] - a[0]) + n[1] * (mid[1] - a[1]) + n[2] * (mid[2] - a[2]);
       const o = toMid >= 0 ? pts : [...pts].reverse();
-      sink.quad(wall, o[0], o[1], o[2], o[3], { decor: true, shade: sh });
+      sink.quad(wall, o[0], o[1], o[2], o[3], { decor: true, shade: sh * dim });
     };
     q([[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], 0.62); // the floor
     q([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], 0.3); // the ceiling
@@ -127,11 +132,35 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
   };
   // the porch across the front, and the sanctum's door in its back wall
   const zP = S / 2 - 1.6;
-  room(-inner + 0.01, inner - 0.01, plinth, apex + 0.2, zP, inner + 0.02, { pz: true });
-  sink.span('structureWood', -aw * 0.42, plinth, zP + 0.01, aw * 0.42, spring + aw * 0.3, zP + 0.06, { colour: DARK, decor: true });
-  sink.span(wall, -aw * 0.42 - 0.18, plinth, zP + 0.01, -aw * 0.42, spring + aw * 0.42, zP + 0.08, { decor: true, shade: 0.55 });
-  sink.span(wall, aw * 0.42, plinth, zP + 0.01, aw * 0.42 + 0.18, spring + aw * 0.42, zP + 0.08, { decor: true, shade: 0.55 });
-  sink.span(wall, -aw * 0.42 - 0.18, spring + aw * 0.3, zP + 0.01, aw * 0.42 + 0.18, spring + aw * 0.42, zP + 0.08, { decor: true, shade: 0.55 });
+  room(-inner + 0.01, inner - 0.01, plinth, apex + 0.2, zP, inner + 0.02, { pz: true, nz: true });
+  // (the looks lane, 2026-10-15; WORKLIST #11 r2 "openings with depth": the sanctum's door was a dark board on the porch
+  // wall) the porch's back wall with the sanctum's doorway cut through it: its reveal through the wall, its frame proud
+  // of the wall, the sanctum dark beyond, and its two sal-wood leaves standing open into it, boarded and ledged
+  const dw = aw * 0.84, doorTop = spring + aw * 0.3, wy1 = apex + 0.2, wz = zP, rv = 0.45;
+  const backWall = (x0: number, x1: number, y0: number, y1: number) => sink.quad(wall, [x0, y0, wz], [x1, y0, wz], [x1, y1, wz], [x0, y1, wz], { decor: true, shade: 0.4 });
+  backWall(-inner + 0.01, -dw / 2, plinth, wy1);
+  backWall(dw / 2, inner - 0.01, plinth, wy1);
+  backWall(-dw / 2, dw / 2, doorTop, wy1);
+  sink.quad(wall, [-dw / 2, plinth, wz - rv], [-dw / 2, doorTop, wz - rv], [-dw / 2, doorTop, wz], [-dw / 2, plinth, wz], { decor: true, shade: 0.36 });
+  sink.quad(wall, [dw / 2, plinth, wz], [dw / 2, doorTop, wz], [dw / 2, doorTop, wz - rv], [dw / 2, plinth, wz - rv], { decor: true, shade: 0.36 });
+  sink.quad(wall, [-dw / 2, doorTop, wz - rv], [dw / 2, doorTop, wz - rv], [dw / 2, doorTop, wz], [-dw / 2, doorTop, wz], { decor: true, shade: 0.3 });
+  room(-1.3, 1.3, plinth, doorTop + 0.9, wz - rv - 2.0, wz - rv, { pz: true }, 0.45);
+  for (const [x0, x1, y0, y1] of [[-dw / 2 - 0.16, -dw / 2, plinth, doorTop + 0.16], [dw / 2, dw / 2 + 0.16, plinth, doorTop + 0.16], [-dw / 2 - 0.16, dw / 2 + 0.16, doorTop, doorTop + 0.16]] as const) {
+    sink.span(wall, x0, y0, wz, x1, y1, wz + 0.07, { decor: true, shade: 0.55 });
+  }
+  for (const sx of [-1, 1]) {
+    // each leaf from its hinge on the reveal's inner edge, swung 70 degrees in
+    const hx = sx * (dw / 2 - 0.03), hz = wz - rv + 0.04, a = 70 * Math.PI / 180, lw = dw / 2 - 0.03;
+    const dx = -sx * Math.cos(a), dz = -Math.sin(a), nxo: Vec3 = [-dz * sx, 0, dx * sx];
+    for (let k = 0; k < 3; k++) {
+      const t = (k + 0.5) / 3 * lw, px = hx + dx * t, pz = hz + dz * t;
+      sink.member('structureWood', [px, plinth + 0.02, pz], [px, doorTop - 0.04, pz], lw / 3 - 0.006, 0.05, nxo, { colour: k === 1 ? SAL : [SAL[0] * 0.9, SAL[1] * 0.9, SAL[2] * 0.9], decor: true, exposed: true }, 0);
+    }
+    for (const y of [plinth + 0.35, doorTop - 0.35]) {
+      sink.member('structureWood', [hx + dx * 0.04 + nxo[0] * 0.04, y, hz + dz * 0.04 + nxo[2] * 0.04], [hx + dx * (lw - 0.04) + nxo[0] * 0.04, y, hz + dz * (lw - 0.04) + nxo[2] * 0.04],
+        0.14, 0.035, nxo, { colour: [SAL[0] * 0.75, SAL[1] * 0.75, SAL[2] * 0.75], decor: true, exposed: true }, 0);
+    }
+  }
   // the chambers behind the other faces' arches, and their deities in terracotta
   const relief = (cx: number, cy: number, cz: number, nx: number, nz: number, w: number, h: number, i: number) => {
     // a moulded panel: its field and frame, the figure standing out of it (the kit's plaster3: fired clay, not wood)
@@ -197,17 +226,24 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
   charChala(sink, 'plaster3', h0, y0 + 0.2, droop, h1, yRoof1, S * 0.03,
     { fascia: wall, rib: 'plaster', fasciaH: 0.36, tintAt: roofMoss(y0 + 0.2 - droop, yRoof1) });
   const upperH = Math.max(1.3, S * 0.2), yUp = yRoof1 + upperH;
-  sink.span(wall, -h1 + 0.05, yRoof1 - 0.3, -h1 + 0.05, h1 - 0.05, yUp, h1 - 0.05);
-  for (const [u, nx, nz] of [[0, 0, 1], [0, 0, -1], [0, 1, 0], [0, -1, 0]] as const) {
-    void u;
-    const x = nx * (h1 - 0.03), z = nz * (h1 - 0.03);
-    // (the upper cella's blind openings: the terracotta in its own shadow, not a black void)
-    sink.span(wall, x - (nz ? 0.32 : 0.02), yRoof1 + 0.1, z - (nx ? 0.32 : 0.02), x + (nz ? 0.32 : 0.02), yUp - 0.35, z + (nx ? 0.32 : 0.02), { decor: true, shade: 0.45 });
+  // (the looks lane, 2026-10-15; WORKLIST #11 r2: the upper cella's blind openings were shaded plates 2 cm proud of its
+  // walls) each face's blind arch cut 22 cm into the wall, its reveal and pointed head, its back the terracotta in its
+  // own shadow
+  const uw = 2 * h1 - 0.1, niche: ArchHole = { u: 0, w: 0.64, y0: yRoof1 + 0.12, spring: yUp - 0.88, form: 'pointed' };
+  const upper = archedBody(sink, wall, 0, 0, uw, uw, yRoof1 - 0.3, yUp, { front: [niche], back: [niche], left: [niche], right: [niche] }, 0.22, { through: true });
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    const f = upper[name], line = archLine(niche, 8), back = -0.22;
+    const outline: Vec3[] = [facePoint(f, niche.u - niche.w / 2, niche.y0, back), facePoint(f, niche.u + niche.w / 2, niche.y0, back)];
+    for (let i = line.length - 1; i >= 0; i--) outline.push(facePoint(f, line[i][0], line[i][1], back));
+    sink.polygon(wall, outline, { decor: true, shade: 0.45 });
   }
   const yApex = yUp + S * 0.33;
-  charChala(sink, 'plaster3', h1 + 0.35, yUp + 0.12, Math.min(0.55, S * 0.07), 0, yApex, S * 0.03,
-    { fascia: wall, rib: 'plaster', fasciaH: 0.28, tintAt: roofMoss(yUp + 0.12 - Math.min(0.55, S * 0.07), yApex) });
-  revolve(sink, 'structureMetal', 0, 0, [[0.34, yApex - 0.15], [0.42, yApex + 0.12], [0.18, yApex + 0.42], [0.3, yApex + 0.7], [0.12, yApex + 1.0], [0.03, yApex + 1.45]], 10,
-    { colour: FINIAL });
-  return { parts: sink.finish(), tints: { stone: [TERRACOTTA[0] * 1.55, TERRACOTTA[1] * 1.55, TERRACOTTA[2] * 1.55] } };
+  // (props census E12 named pieces: the upper chala comes down when the temple is breached, the kalasa at the first damage)
+  piece(sink, { name: 'roof', kind: 'detach', at: 'breached', fall: 'slump' }, (s) =>
+    charChala(s, 'plaster3', h1 + 0.35, yUp + 0.12, Math.min(0.55, S * 0.07), 0, yApex, S * 0.03,
+      { fascia: wall, rib: 'plaster', fasciaH: 0.28, tintAt: roofMoss(yUp + 0.12 - Math.min(0.55, S * 0.07), yApex) }));
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
+    revolve(s, 'structureMetal', 0, 0, [[0.34, yApex - 0.15], [0.42, yApex + 0.12], [0.18, yApex + 0.42], [0.3, yApex + 0.7], [0.12, yApex + 1.0], [0.03, yApex + 1.45]], 10,
+      { colour: FINIAL }));
+  return { parts: finishLandmark(sink), tints: { stone: [TERRACOTTA[0] * 1.55, TERRACOTTA[1] * 1.55, TERRACOTTA[2] * 1.55] } };
 };

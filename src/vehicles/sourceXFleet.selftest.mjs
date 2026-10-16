@@ -53,7 +53,10 @@ for (const id of SOURCE_X_IDS) {
   assert.equal(spec.community, undefined);
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'), `${id}: independently demand-loaded builder`);
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
-  assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
+  // An X that took its donor template's name in the schema-3 rename (merkava4_x -> merkava4, t72b3_x -> t72b3, ...)
+  // shares the donor's id string, so the donor's builder cannot be looked up by it: it must own an X builder.
+  if (donor === id) assert.match(PROCEDURAL_PROFILES[id].build.name, /X$/, `${id}: its own X builder, not its donor template's`);
+  else assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
   const templateGun = donor === 'xk2_black_panther' ? k2SourceMetadata().gun : RETIRED_DONORS.has(donor) ? donorRow.gun : null;
   assert.deepEqual(spec.gun, templateGun ? roleTuned(id, templateGun) : donorRow.gun,
     `${id}: production donor combat balance remains independent of the XK2 hybrid`);

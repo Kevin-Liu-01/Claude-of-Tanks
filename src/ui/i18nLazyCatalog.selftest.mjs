@@ -118,7 +118,7 @@ assert.ok(!localizeHtmlDocument(built.replace(/<meta name="cot-locale-catalog"[^
   .includes('modulepreload" crossorigin href="/assets/i18nCatalog'), 'no meta (the dev server) means no preload');
 
 const viteConfig = readFileSync(resolve(ROOT, 'vite.config.ts'), 'utf8');
-assert.match(viteConfig, /^\s*i18nPageCatalogs\(\),$/m, 'the build registers the page catalog plugin');
+assert.match(viteConfig, /^const pageCatalogs = i18nPageCatalogs\(\);$/m, 'the build creates the page catalog plugin');
 const pluginSource = readFileSync(resolve(ROOT, 'tools/viteI18nPageCatalogs.ts'), 'utf8');
 assert.match(pluginSource, /transformIndexHtml: \{\s*order: 'post',/,
   'the build names each page\'s catalog chunks after bundling');
@@ -131,7 +131,12 @@ const fullCatalogs = Object.fromEntries(['en-US', 'zh-CN'].map((locale) =>
 const studioKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).studio).sort();
 assert.ok(studioKeys.length > 100, 'the Studio owns its slice of the catalog');
 assert.deepEqual(Object.keys(splitStudioCatalog(fullCatalogs['zh-CN']).studio).sort(), studioKeys, 'both locales split alike');
-assert.match(viteConfig, /^\s*i18nStudioCatalog\(\),\n\s*i18nPageCatalogs\(\),$/m, 'the build registers the Studio catalog split');
+assert.match(viteConfig, /^\s*i18nStudioCatalog\(\{ gameKeys: gameCatalogKeys \}\),\n\s*pageCatalogs,$/m,
+  'the build registers the Studio catalog split, then the page catalogs');
+assert.match(viteConfig, /^const gameCatalogKeys = \(\): readonly string\[\] \| null => pageCatalogs\.api\.gameCatalogKeys\(\);$/m,
+  'the split takes the game\'s keys from the page catalog scan');
+assert.match(viteConfig, /worker: \{ format: 'es', plugins: \(\) => \[i18nStudioCatalog\(\{ gameKeys: gameCatalogKeys \}\)\]/,
+  'the worker builds restrict the game\'s catalogs alike, so both emit the same catalog files'); 
 const studioPlugin = i18nStudioCatalog();
 studioPlugin.configResolved({ root: ROOT });
 const pluginContext = { addWatchFile() {}, error(message) { throw new Error(message); } };
@@ -145,6 +150,25 @@ for (const locale of ['en-US', 'zh-CN']) {
   assert.deepEqual({ ...game, ...slice }, fullCatalogs[locale], `the ${locale} split loses and changes nothing`);
 }
 assert.equal(studioPlugin.load.call(pluginContext, resolve(ROOT, 'src/ui/i18n.ts')), null, 'other modules load as written');
+// 2026-10-15: the build restricts the game's catalogs to the keys its graph and workers can show (the page catalog scan's
+// `game` keys, tools/i18n-page-catalogs.mjs); the Studio slice stays whole, and no key set (the dev server) keeps them.
+const shownKeys = ['garage.battle', studioKeys[0], 'no.such.key', Object.keys(fullCatalogs['en-US']).find((key) => key.startsWith('docs.'))];
+const restricted = i18nStudioCatalog({ gameKeys: () => shownKeys });
+restricted.configResolved({ root: ROOT });
+const wholePlugin = i18nStudioCatalog({ gameKeys: () => null });
+wholePlugin.configResolved({ root: ROOT });
+for (const locale of ['en-US', 'zh-CN']) {
+  const file = resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`);
+  const game = JSON.parse(restricted.load.call(pluginContext, file));
+  const expected = Object.fromEntries(Object.entries(fullCatalogs[locale])
+    .filter(([key]) => (key === shownKeys[0] || key === shownKeys[3])));
+  assert.deepEqual(game, expected, `the ${locale} game catalog holds only the shown keys it has, in catalog order, no Studio key`);
+  const sliceId = restricted.resolveId.call(pluginContext, `virtual:cot-i18n-studio/${locale}`);
+  const slice = JSON.parse(restricted.load.call(pluginContext, sliceId).replace(/^export default /, '').replace(/;\s*$/, ''));
+  assert.deepEqual(Object.keys(slice).sort(), studioKeys, `the ${locale} Studio slice is not restricted`);
+  assert.equal(wholePlugin.load.call(pluginContext, file), studioPlugin.load.call(pluginContext, file),
+    `no key set: the ${locale} game catalog is served whole`);
+}
 // Nothing outside the Studio shows its strings (they would read raw), and the game's static graph holds no Studio module.
 const STUDIO_MODULE = /^src\/(?:ui|game)\/studio[A-Za-z]*\.ts$/;
 const studioFamilies = ['studio.film.', 'studioPanel.picture.', 'studioPanel.light.', 'studioPanel.fxParam.'];

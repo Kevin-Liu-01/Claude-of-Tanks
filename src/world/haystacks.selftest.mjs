@@ -61,7 +61,8 @@ const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return
 const REG = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES };
 const inBands = (v) => [HAY_PACKED_V, HAY_FACE_V, HAY_THATCH_V, HAY_WOOD_V].some((band) => v >= band[0] - 0.021 && v <= band[1] + 0.021);
 const STACKS = new Set(Object.keys(HAYSTACK_DESTRUCTIBLE_TYPES));
-const BUDGET = { stog: 600, plast: 520, hooiberg: 760, meule: 700, diemen: 640, strawstack: 260, haystack: 100, stook: 420, bale: 130 };
+// (props lane A #18: the meule's straw ropes over its dome — WORKLIST #18's near cap is 800)
+const BUDGET = { stog: 600, plast: 520, hooiberg: 760, meule: 760, diemen: 640, strawstack: 260, haystack: 100, stook: 420, bale: 130 };
 for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack', 'haystack', 'stook', 'bale']) {
   const t = REG[kind];
   assert.ok(t && t.mat === 'straw' && t.cls === 'break' && t.contact === 'ob' && !t.collider, `${kind}: a straw stack, crushable and shoot-through`);
@@ -141,7 +142,11 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
   assert.match(props, /const hay = yield\* makeHay\(aniso, T\.straw \|\| null, getDeviceTier\(\) === 'mobile' \? 256 : 512\);/, 'the hay print, half size on phones');
   assert.match(props, /hay: new THREE\.MeshStandardMaterial\(\{ map: hay\.albedo, normalMap: hay\.normal,/, 'the hay material');
   assert.match(props, /let material = \(meta\.mat === 'straw' \? mats\.hay : mats\[meta\.mat\]\) \|\| mats\.baked;/, 'a straw destructible wears the hay material');
-  assert.match(props, /materialKind === 'hay' \? 'straw'/, 'the hay shares the straw\'s program');
+  // (2026-10-15) props program keys name the hook family: the hay and the straw both wear the grime hook (no special case
+  // names either), so they share one program wherever three's parameters agree
+  assert.match(props, /const propsProgramFamily = \(kind: string\): string => \([^;]*: 'grime'\);/, 'the hay shares the straw\'s program');
+  assert.doesNotMatch(props.slice(props.indexOf('const propsProgramFamily'), props.indexOf('function installSurfaceShaderHooks')),
+    /'hay'|'straw'/, 'neither the hay nor the straw is a family of its own');
   assert.match(props, /const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = \{ \.\.\.DESTRUCTIBLE_TYPES, \.\.\.SCENERY_DESTRUCTIBLE_TYPES, \.\.\.HAYSTACK_DESTRUCTIBLE_TYPES \};/,
     'the stacks join the props registry after the scenery\'s kinds (not landmarks: the scenery plan never places them)');
   assert.match(props, /haystacks: 0, rocks: 170/, 'the default draws none');

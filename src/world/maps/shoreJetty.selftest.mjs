@@ -156,6 +156,28 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
   assert.throws(() => planShoreJetty({ ...field, getWaterMaskAt: undefined }, lake, Math.PI), /getWaterMaskAt/, 'a missing liquid owner is an error, not a silently omitted jetty');
 }
 
+// the lowest and the highest surface a vertical line through (x, z) meets in a list of geometries
+function columnThrough(geometries, x, z) {
+  let lo = Infinity, hi = -Infinity;
+  for (const g of geometries) {
+    if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox;
+    if (x < bb.min.x - 1e-6 || x > bb.max.x + 1e-6 || z < bb.min.z - 1e-6 || z > bb.max.z + 1e-6) continue;
+    const p = g.attributes.position, idx = g.index, n = idx ? idx.count : p.count;
+    for (let i = 0; i < n; i += 3) {
+      const a = idx ? idx.getX(i) : i, b = idx ? idx.getX(i + 1) : i + 1, c = idx ? idx.getX(i + 2) : i + 2;
+      const ax = p.getX(a), az = p.getZ(a), bx = p.getX(b), bz = p.getZ(b), cx = p.getX(c), cz = p.getZ(c);
+      const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+      if (Math.abs(d) < 1e-12) continue;
+      const u = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, v = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d, w = 1 - u - v;
+      if (u < -1e-9 || v < -1e-9 || w < -1e-9) continue;
+      const y = u * p.getY(a) + v * p.getY(b) + w * p.getY(c);
+      lo = Math.min(lo, y); hi = Math.max(hi, y);
+    }
+  }
+  return [lo, hi];
+}
+
 // ------------------------------------------------------------------ the built kit stands where the plan says
 {
   const kits = readFileSync(new URL('./mapKits.ts', import.meta.url), 'utf8');
@@ -188,13 +210,21 @@ console.log(`shoreJetty.selftest: ${plans} plans audited over nine fields — ${
     }
     if (mapId === 'coastal') assert.equal(gangways.length, 3, 'Saltmere: a gangway on each restored cove');
     if (mapId === 'saltwind') assert.equal(gangways.length, 2, 'Saltwind: a gangway on each pier');
-    // every pile's top meets the deck (the emitted geometry, not only the receipt): the wood pieces whose top is a
-    // deck top are at least the piles
-    const tops = new Map();
-    for (const g of buckets.wood) { g.computeBoundingBox(); const key = g.boundingBox.max.y.toFixed(4); tops.set(key, (tops.get(key) ?? 0) + 1); }
-    for (const hull of hulls) {
-      const deckTop = (field.getHeightAt(hull.x, hull.z) + field.getWaterDepthAt(hull.x, hull.z) + JETTY_FREEBOARD_M).toFixed(4);
-      assert.ok((tops.get(deckTop) ?? 0) >= 2 * (JETTY_MIN_SPANS + 1) + JETTY_MIN_SPANS, `${mapId}: piles and deck segments meet at the deck top ${deckTop}`);
+    // every support meets the deck (the emitted geometry, not only the receipt): #16 r2 (Lane C, 2026-10-14) — the
+    // jetties are built in their members, one form per coast (jettyKit.ts: Saltmere's estacade, Nordhavn's crib pier,
+    // Saltwind's riva), a merged piece a bucket, so a vertical line through each support's point meets the timber or the
+    // masonry from 10 cm into its bed (or deeper) up to the deck (a few centimetres either side along the axis: a ray
+    // down a board's gap meets the stringer under it; the outer station's posts stand over the deck)
+    const deckTops = hulls.map((hull) => field.getHeightAt(hull.x, hull.z) + field.getWaterDepthAt(hull.x, hull.z) + JETTY_FREEBOARD_M);
+    const solid = [...buckets.wood, ...buckets.stone];
+    for (const pile of piles) {
+      let lo = Infinity, hi = -Infinity;
+      for (const [ox, oz] of [[0, 0], [0.04, 0], [-0.04, 0], [0, 0.04], [0, -0.04]]) {
+        const [l, h] = columnThrough(solid, pile.x + ox, pile.z + oz);
+        lo = Math.min(lo, l); hi = Math.max(hi, h);
+      }
+      assert.ok(lo <= pile.y + 2e-6, `${mapId}: the support at (${pile.x.toFixed(1)}, ${pile.z.toFixed(1)}) is planted`);
+      assert.ok(deckTops.some((top) => hi >= top - 0.1 && hi <= top + 0.6), `${mapId}: the support at (${pile.x.toFixed(1)}, ${pile.z.toFixed(1)}) carries the deck (${hi.toFixed(3)})`);
     }
     for (const geometries of Object.values(buckets)) for (const g of geometries) g.dispose();
   }

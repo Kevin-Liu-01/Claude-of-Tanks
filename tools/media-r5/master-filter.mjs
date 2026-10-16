@@ -1,4 +1,6 @@
 // An optional local pass over the masters before any delivery is encoded from them.
+// (site-loops and site-media for the site's takes; the minimap, field-guide, social-card, map and gallery publishers
+// for the pictures they publish.)
 //
 // When the environment names an executable in COT_MASTER_FILTER (or shots/media-r5/master-filter exists and is
 // executable), every master goes through it once:
@@ -8,7 +10,8 @@
 // films are read as rendered, exactly as before. A configured filter that fails stops the run: a delivery is never
 // encoded half-filtered.
 import { execFileSync } from 'node:child_process';
-import { accessSync, constants, copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { SHOTS } from './paths.mjs';
 
@@ -60,4 +63,31 @@ export function filteredFilm(src, workDir, id, filter = masterFilter()) {
   runFilter(filter, ['film', src, dst, id]);
   if (!existsSync(dst)) throw new Error(`master filter wrote no film for ${id}`);
   return dst;
+}
+
+/**
+ * The bytes to publish for a picture a publisher encodes itself (a browser capture, a screenshot). With no filter the
+ * bytes come back untouched. With one, the decoded picture goes through it as a PNG master, and is re-encoded at the
+ * same type and quality (0-100) only when the filter changed it; a filter that passes it through keeps the original.
+ */
+export async function filterPublishedImage(bytes, id, { type, quality = 90, workDir = join(tmpdir(), 'cot-master-filter') } = {},
+  filter = masterFilter()) {
+  if (!filter) return bytes;
+  if (!/^image\/(png|webp|jpeg)$/.test(type ?? '')) throw new Error(`filterPublishedImage: unsupported type ${type}`);
+  const { createCanvas, loadImage } = await import('@napi-rs/canvas');
+  const draw = async (data) => {
+    const image = await loadImage(data);
+    const canvas = createCanvas(image.width, image.height);
+    canvas.getContext('2d').drawImage(image, 0, 0);
+    return canvas;
+  };
+  mkdirSync(workDir, { recursive: true });
+  const src = join(workDir, `${id}.capture.png`), dst = join(workDir, `${id}.capture.filtered.png`);
+  const png = (await draw(bytes)).toBuffer('image/png');
+  writeFileSync(src, png);
+  filterStill(src, dst, id, filter);
+  const filtered = readFileSync(dst);
+  if (filtered.equals(png)) return bytes;
+  const canvas = await draw(filtered);
+  return type === 'image/png' ? canvas.toBuffer('image/png') : canvas.toBuffer(type, quality);
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
+import { createDugHeightFieldProxy, createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
+import { createTerrainDeformation } from '../sim/terrainDeformation.ts';
 
 const calls = { exact: 0, fast: 0 };
 const normal = { x: 0, y: 1, z: 0 };
@@ -61,4 +62,31 @@ assert.equal(proxy.getTrackSurfaceAt(0, 0), 0);
 assert.equal(proxy.getWaterSurfaceHeightAt(0, 0), 0);
 assert.equal(proxy.size, 1000);
 
-console.log('liveHeightFieldProxy.selftest: fast live and exact authoring terrain paths pass');
+// DST-04 (2026-10-15): the dug ground — the world's bound overlay added as the simulation adds it, every other member
+// read through; a rebind swaps the wrapper, an unbind returns the base
+{
+  const flatNormal = { x: 0, y: 1, z: 0 };
+  const base = { size: 1000, minY: 0, maxY: 10, getHeightAt: () => 2, getHeightAtFast: () => 2, getContactHeightAt: () => 2,
+    getNormalAt: () => flatNormal, getGroundType: () => 'soft' };
+  let bound = null;
+  const dug = createDugHeightFieldProxy(base, () => bound);
+  assert.equal(dug.getHeightAt(0, 0), 2, 'unbound: the base');
+  assert.equal(dug.getNormalAt(0, 0), flatNormal);
+  const ground = createTerrainDeformation();
+  ground.addCrater(0, 0, 3.4, 1.37, 0.41, 77);
+  bound = ground;
+  assert.equal(dug.getHeightAt(0, 0), 2 + ground.offsetAt(0, 0), 'heights add offsetAt (the sim\'s getHeightAt)');
+  assert.equal(dug.getHeightAtFast(0.3, 0.2), 2 + ground.offsetAt(0.3, 0.2));
+  assert.equal(dug.getContactHeightAt(0.4, -0.7), 2 + ground.contactOffsetAt(0.4, -0.7), 'the contact surface adds contactOffsetAt');
+  assert.ok(dug.getHeightAt(0, 0) < 1, 'into the bowl');
+  const wall = dug.getNormalAt(2.2, 0);
+  assert.ok(wall.y < 0.99 && wall.x < 0, 'the bowl wall\'s normal leans into it');
+  assert.equal(dug.getGroundType(0, 0), 'soft', 'the rest reads through');
+  assert.equal(dug.size, 1000);
+  assert.ok(dug.maxY >= 10 + 0.41, 'maxY counts the overlay\'s raise');
+  assert.equal(dug.getHeightAt(300, 300), 2, 'far from every stamp: the base');
+  bound = null;
+  assert.equal(dug.getHeightAt(0, 0), 2, 'unbound again: the base');
+}
+
+console.log('liveHeightFieldProxy.selftest: fast live and exact authoring terrain paths pass; the dug ground follows the bound overlay');

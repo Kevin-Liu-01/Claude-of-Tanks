@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
@@ -12,12 +11,13 @@ import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRed
 // ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
 // height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
 import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the b1c6629a3 pre-pacing splatFields, with sha256
 // pins of it and of three consumer bodies, so any intended change to the splat noise failed here. The control is now
 // the CURRENT synchronous path (a second fixture draining the same generator in one call): row pacing, warm/cold paths,
 // cache races, progress and cancellation must never change a Float32 write, an upload or a sample.
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 function declaration(name) {
   const matches = ast.statements.filter(node => ts.isFunctionDeclaration(node) && node.name?.text === name);

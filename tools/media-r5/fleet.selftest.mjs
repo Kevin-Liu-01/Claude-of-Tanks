@@ -5,6 +5,8 @@ import { isBuiltInCamoId, signatureCamoPatternId, stockCamoPatternIdFor } from '
 import { CAST } from './cast.mjs';
 import { FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
 import { takeBars } from './take-bars.mjs';
+import { resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
+import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
 
 // The fleet takes (owner 2026-10-12: "make a special video for all tanks since it shouldnt be too hard on a wider variety
 // of maps and use that everywhere"): every production vehicle leads a take, the fleet's after the fifty and the nine,
@@ -14,8 +16,11 @@ assert.ok(FLEET.length > 0, 'a fleet roster (fleet-plan.mjs writes fleet-roster.
 assert.deepEqual(FLEET.map((s) => s[0]), Array.from({ length: FLEET.length }, (_, i) => i + 60), 'numbered on from 60 in order');
 const all = [...SHOTS, ...OWNER_NINE, ...FLEET];
 assert.equal(new Set(all.map((s) => s[1])).size, all.length, 'unique ids across every take');
-const scenes = new Map(FLEET.map((shot) => [shot[0], siteScene(shot)]));
-const heroOf = (shot) => scenes.get(shot[0])?.actors[0].id ?? siteScene(shot).actors[0].id;
+// The media scenes keep the ids they were written in (schema 1, unstamped) and the Studio resolves them at load (SSOT
+// 2.19, tankIdBoundaries.ts): read them the same way, so a renamed vehicle still leads its take.
+const staged = (shot) => sceneInCurrentTankIds(siteScene(shot));
+const scenes = new Map(FLEET.map((shot) => [shot[0], staged(shot)]));
+const heroOf = (shot) => scenes.get(shot[0])?.actors[0].id ?? staged(shot).actors[0].id;
 const sitesHeroes = new Set([...SHOTS, ...OWNER_NINE].map(heroOf)), fleetHeroes = FLEET.map(heroOf);
 assert.equal(new Set(fleetHeroes).size, fleetHeroes.length, 'one fleet take a tank');
 assert.deepEqual(fleetHeroes.filter((h) => sitesHeroes.has(h)), [], 'a tank leading one of the site takes keeps that take');
@@ -30,7 +35,7 @@ for (const [map, count] of Object.entries(perMap)) assert.ok(count <= 7, `${map}
 
 // paint: the hero's side in the hero's own scheme (its signature, else its nation's stock coat), the foes in another,
 // one scheme a model (the Studio paints per model), catalog paint only
-const cast = new Set([...Object.values(CAST), ...PRODUCTION_TANK_IDS]);
+const cast = new Set([...Object.values(CAST).map((id) => resolveTankId(id)), ...PRODUCTION_TANK_IDS]); // CAST is schema 1
 for (const shot of FLEET) {
   const sc = scenes.get(shot[0]), hero = sc.actors[0].id, spec = TANK_SPECS[hero];
   const own = signatureCamoPatternId(hero) ?? stockCamoPatternIdFor(hero, spec.nation, spec.era);
