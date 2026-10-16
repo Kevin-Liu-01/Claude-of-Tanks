@@ -549,7 +549,9 @@ const stodola: RegionalBuilder = (ctx) => {
     ];
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
-      roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
+      // (the props census #17, 2026-10-15, the judges: "deepen stodola's gate reveals from 0.12 m") the gates hung at the
+      // back of a reveal as deep as the logs
+      roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.26, spall: null,
     }, dialect({ ...st, litShare: 0 }));
     if (ctx.snowCap) roofSnow(sink, frame);
     // (the props census, 2026-10-14; the judges: the village's, the barn's and the school's walls wait on real log
