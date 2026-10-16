@@ -829,7 +829,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   else cabOverFront(mesh, m, paint, coarse, zNose);
   // ---- the cab, on its mounts (props census r2 sweep, Lane C 2026-10-16: a wide-bonnet cab stood 2 cm over its rails)
   truckCab(mesh, m, paint, coarse);
-  if (m.cab.y0 > m.frameY + 0.005) {
+  if (!coarse && m.cab.y0 > m.frameY + 0.005) {
     const h = m.cab.y0 - m.frameY + 0.03;
     mesh.dressing(() => {
       for (const x of [-m.frameHW, m.frameHW]) for (const z of [m.cab.zF - 0.2, m.cab.zB + 0.15]) mesh.box(x, m.frameY - 0.01 + h / 2, z, 0.1, h, 0.12, UNDER);
@@ -846,7 +846,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
     // brackets, a dumb iron on each rail's end forward into the bar
     const y0 = Math.min(fb.y - fb.h / 2 + 0.02, m.frameY - 0.16), y1 = Math.max(fb.y + fb.h / 2 - 0.02, m.frameY - 0.04);
     const z0 = railZ0 - 0.04, z1 = zNose - 0.08;
-    mesh.dressing(() => {
+    if (!coarse) mesh.dressing(() => {
       for (const x of [-m.frameHW, m.frameHW]) mesh.box(x, (y0 + y1) / 2, (z0 + z1) / 2, 0.07, y1 - y0, z1 - z0, UNDER);
     });
   }
@@ -890,7 +890,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
     mesh.pop();
     // (props census r2 sweep, Lane C 2026-10-16: the wheel lay between the rails touching neither) its cradle, a bar
     // under the tyre on a hanger from each rail
-    mesh.dressing(() => {
+    if (!coarse) mesh.dressing(() => {
       const zc = m.body.zB + 0.55, under = m.frameY - 0.25 - m.tyreW * 0.5;
       mesh.box(0, under, zc, m.frameHW * 2 + 0.06, 0.05, 0.06, UNDER);
       for (const x of [-m.frameHW, m.frameHW]) mesh.box(x, (under + m.frameY - 0.1) / 2, zc, 0.05, m.frameY - 0.1 - under, 0.06, UNDER);
@@ -904,7 +904,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
     // (props census r2 sweep, Lane C 2026-10-16: a lamp hung 3-20 cm under the floor's tail, floating) a lamp below
     // the floor stands on a strap from the floor's rear edge
     const lampTop = l.y + (l.shape === 'round' ? (l.r ?? 0.06) * 1.15 : (l.h ?? 0.08) / 2 + 0.0125);
-    if (lampTop < m.body.floorY - 0.05) {
+    if (!coarse && lampTop < m.body.floorY - 0.05) {
       const y0 = l.y, y1 = m.body.floorY - 0.02;
       mesh.dressing(() => {
         for (const side of [1, -1]) mesh.box(side * l.x, (y0 + y1) / 2, m.body.zB - 0.005, 0.04, y1 - y0, 0.05, UNDER);
@@ -922,7 +922,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
       // (props census r2 sweep, Lane C 2026-10-16: the flap hung 11 cm from anything) its hanger: a bar along the flap's
       // top, an arm up from its inner end and a tie in to the rail
       const top = m.wheelR * 1.07, inner = mid - across / 2, tieY = m.frameY - 0.12;
-      mesh.dressing(() => {
+      if (!coarse) mesh.dressing(() => {
         mesh.box(side * mid, top - 0.015, z, across + 0.02, 0.03, 0.03, UNDER);
         if (tieY > top) {
           mesh.box(side * (inner + 0.02), (top - 0.03 + tieY + 0.02) / 2, z, 0.04, tieY + 0.02 - (top - 0.03), 0.03, UNDER);
@@ -966,7 +966,7 @@ function wheelbaseKit(mesh: VehicleMesh, m: TruckModel, coarse: boolean): void {
         const y = top - airR - 0.02 + dy;
         if (y - airR < low) continue;
         // (props census r2 sweep, Lane C 2026-10-16: the tanks stood 4 cm off the rail, floating) on two straps
-        for (const dz of [-airL * 0.3, airL * 0.3]) mesh.box(railOut + 0.02, (y + top) / 2, right - airL / 2 + dz, 0.06, top - y, 0.05, UNDER);
+        if (!coarse) for (const dz of [-airL * 0.3, airL * 0.3]) mesh.box(railOut + 0.02, (y + top) / 2, right - airL / 2 + dz, 0.06, top - y, 0.05, UNDER);
         mesh.push().translate(railOut + airR + 0.04, y, right - airL / 2).rotateY(Math.PI / 2);
         mesh.lathe([[0.0001, -airL / 2], [airR * 0.85, -airL / 2 + 0.01], [airR, -airL / 2 + 0.05], [airR, airL / 2 - 0.05], [airR * 0.85, airL / 2 - 0.01], [0.0001, airL / 2]],
           coarse ? 6 : 10, () => UNDER);
@@ -1097,7 +1097,7 @@ function narrowFront(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, c
       // lamp bar from the bezel's back in to the radiator shell's side
       const yb = l.y - (l.r ?? 0.1) * 0.3, ys = clamp(yb, rad.y - rad.h / 2 + 0.04, rad.y + rad.h / 2 - 0.04);
       const xs = side * Math.max(0.02, Math.min(Math.abs(x), rad.w / 2 - 0.03));
-      mesh.dressing(() => mesh.tube([[x, yb, zNose - 0.32 + (l.dz ?? 0) - 0.06], [xs, ys, shellZ]], 0.018, 6, TRIM));
+      if (!coarse) mesh.dressing(() => mesh.tube([[x, yb, zNose - 0.32 + (l.dz ?? 0) - 0.06], [xs, ys, shellZ]], 0.018, 6, TRIM));
     }
   }
 }
