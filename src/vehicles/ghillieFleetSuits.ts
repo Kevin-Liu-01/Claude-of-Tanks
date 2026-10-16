@@ -429,17 +429,18 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   },
   // T-80U Yun: the roof netted round its faceted station (the builder), sights and hatches, drapes down the flanks behind
   // the roof smoke banks, a rear drape; the engine deck netted short of the turbine exhaust, the front deck, four drapes
-  // a side.
+  // a side. Release 227: the turret net re-laid on the Yun's Type 96B wrap (the 96B roof, its housings' shelves, the
+  // bustle module and rear band), open round the faceted station's swept base, the 96B commander's cupola and its
+  // secondary-hatch lid; the flank drapes hang on the housings behind the flat tiles, the rear drape over the module.
   t80u_yun: {
     id: 't80u_yun', seed: 8031, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.37, hemFloorM: 0.93,
     turret: {
-      // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
-      top: [laid({ x0: -1.73, x1: 1.73, z0: -2.03, z1: 1.40, nx: 43, nz: 43, y: 0.74,
-        holes: [...pair(0.90, 1.24, -0.92, -0.20), ...pair(0.36, 0.86, -1.42, -0.94)], garnishRiseM: 0.16, seed: 11 })],
-      // the bustle sides' insignia and number stay clear (vehicleMarkings.ts concept stations: turret z -1.0 to -1.3)
-      side: flanks(-1.90, -0.94, 0.78, 0.46, 1.70, 17, {}, () => [cut(-1.48, -0.90, 0.40, 0.95)]),
-      face: [face({ z: -2.04, x0: -1.30, x1: 1.30, y0: 0.32, y1: 0.72, nx: 26, ny: 6, seed: 23 })],
+      top: [laid({ x0: -1.75, x1: 1.75, z0: -2.25, z1: 1.95, nx: 44, nz: 52, y: 0.70,
+        holes: [rect(0.06, 0.74, -0.96, -0.28), rect(-1.012, -0.172, -0.315, 0.525), rect(0.18, 1.00, -0.36, 0.23)],
+        garnishRiseM: 0.16, seed: 11 })],
+      side: flanks(-1.84, -1.30, 0.66, 0.34, 1.62, 17),
+      face: [face({ z: -2.24, x0: -1.20, x1: 1.20, y0: 0.24, y1: 0.58, nx: 24, ny: 6, seed: 23 })],
     },
     hull: {
       top: [

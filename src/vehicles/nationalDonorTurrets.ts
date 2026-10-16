@@ -49,6 +49,12 @@ const T72B3M_ON_T72B3: Point3 = [0, 1.446 + (1.52948397398 - 1.5153), .065591405
 const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
 // Release 227: 2 mm higher again, so the 99A2 shell's lower course passes 25 mm over the B3 driver's hatch at every yaw
 // (23.5 mm at yaw 290).
+// Release 227 (owner 2026-10-16: "make the yun keep all its extra add ons and modifications but altered slightly to be
+// wrapped around the type 96b turret base"): the Type 96B ring rides 50 mm above the T-80U's own yaw datum, so the 96B
+// barrel (its trunnion 0.85 m further forward and 68 mm lower than the cast Yun's) clears the T-80U's armoured front lamp
+// brows by 25 mm at full depression and the 96B shell's floor clears the T-80U roof; a stationary ring race on the hull
+// closes the running gap under the collar (nationalChina.ts yunRingRace).
+const TYPE96B_ON_T80U: Point3 = [0, 1.55158 + .050, .0718698169];
 const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .056, .065591405];
 
 // Commander's cupolas in each donor's turret frame (their builders' own datums).
@@ -72,12 +78,20 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
     builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.06, -1.40], [-1.14, -.96]] } },
   // Release 227: the gun's depression over the rear deck stops at 5 degrees, so the barrel clears the engine-deck
   // cooling panels' slats by 25 mm (it came within 15 mm at 6 degrees, yaw 165-195).
-  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.48048,
+  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.35,
     gunPitchByYawDeg: [[0, -6], [150, -6], [158, -5], [180, -5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
     // Release 227: the boot's heel keeps the mantlet boot over the B3M driver's hatch at full elevation.
     builderOptions: { mastTopY: 3.40, bootHeel: true } },
+  // The Yun keeps its faceted station on its own left-roof seat beside the 96B commander's cupola, as on its cast turret
+  // (the cupola's latch clevis and periscopes stand inside the station's bearing ring); the 96B's open side bins and
+  // twelve cheek launchers give way to the Yun's armour housings and its own eight roof smoke tubes.
+  // Its depression over the transom stops at 5 degrees at yaw 159-166 (the slatted transom plate).
+  t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.40, -.62], heightM: 3.222,
+    gunPitchByYawDeg: [[0, -6], [156, -6], [159, -5], [166, -5], [169, -6], [180, -6]],
+    addedTurretEra: ['turret_era_L', 'turret_era_R'],
+    builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true } },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
   t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.402 },
   t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA_RING, heightM: 3.305 },

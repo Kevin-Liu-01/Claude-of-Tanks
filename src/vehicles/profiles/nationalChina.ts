@@ -6,6 +6,7 @@ import {addChineseChevronBank} from './chineseChevronEra.ts';
 import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween,blindTube,roofSheet} from './measuredPrimitives.ts';
+import {machinedRing} from '../machineGunGeometry.ts';
 import {castModernizedTurret} from './nationalDonorCore.ts';
 import {weldedFlankHousing} from './weldedFlankHousing.ts';
 import {eraCassette,glacisEraCassette} from './modernizationFittings.ts';
@@ -83,6 +84,12 @@ function yun(P:TankBuilderPort,c:NationalModernizationConfig):void {
       [1.12,.43,1.20,.26,.55],[1.48,.39,.66,.28,.46]]);
   }
   bustle(P,-1.64,.70,.32,.58);
+  yunHull(P,c);
+}
+
+/** The Yun's hull package (release 227: shared by its cast turret and the Type 96B donor turret, unchanged): the twin
+ * engine-deck cooling panels, six two-course skirt modules, two glacis tile rows and the slatted transom plate. */
+export function yunHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
   coolingPanel(P,-.51,-2.38,.76,.91,8);
   coolingPanel(P,.51,-2.38,.76,.91,8);
   skirts(P,c,6,-2.58,2.70,1.94,.79);
@@ -541,18 +548,29 @@ function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):vo
  * turrets (nationalDonorTurret.ts): engine-deck cooling panels, heavy skirts,
  * glacis cassettes, the driver's station, armoured lamps and rear fuel drums. */
 export function chinaDonorHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  if(c.model===1){
+  if(c.model===0)yunHull(P,c);
+  else if(c.model===1){
     for(const side of [-1,1])coolingPanel(P,side*.52,-2.49,.85,.88,9);
     skirts(P,c,7,-2.65,3.08,1.98,.74);
     frontTiles(P,2.19,3,.68,.29);
-  }else if(c.model===2){
+  }else{
     coolingPanel(P,-.46,-2.49,.73,.83,7);
     coolingPanel(P,.46,-2.38,.73,1.00,8);
     skirts(P,c,5,-2.35,2.67,1.93,.85);
     frontTiles(P,2.06,2,.57,.38);
-  }else throw new Error(`${c.id}: no donor-turret hull package`);
+  }
   chinaHullEquipment(P,c);
   addConceptFuelDrums(P,c);
+  if(c.model===0)yunRingRace(P);
+}
+
+/** Release 227: the Yun's stationary ring race under the Type 96B ring collar, which rides 40 mm higher on the T-80U
+ * hull than the cast turret did: a machined race bedded 6-35 mm into the sloping T-80U roof, its top 2 mm under the
+ * collar's underside, so no daylight shows under the collar. Its front edge stays behind the driver's hatch rim. */
+function yunRingRace(P:TankBuilderPort):void {
+  const g=machinedRing(.98,1.10,1.5696-1.522,.004,P.q?24:16);
+  g.userData.chineseModernization={model:0,role:'ring-race'};
+  P.addEquipment('hullDetail',g,0,1.522,.0718698169);
 }
 
 export function buildNationalChina(P:TankBuilderPort,c:NationalModernizationConfig):void {

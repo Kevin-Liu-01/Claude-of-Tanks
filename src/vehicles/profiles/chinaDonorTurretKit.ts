@@ -1,7 +1,9 @@
 // Owner 2026-10-15 (VEH-19, VEH-20): the T-72B3 Qilin carries the production ZTZ-99A2 turret and the T-72B3M Kunlun
-// the Type 96B turret, each emitted by its own builder (nationalDonorTurret.ts). The Kunlun keeps its special ERA,
-// its 30 mm autocannon and its Shtora eyes on the Type 96B; the Qilin keeps its compact remote station and field fit.
-// The hulls keep their Chinese packages unchanged (nationalChina.ts chinaDonorHull).
+// the Type 96B turret, each emitted by its own builder (nationalDonorTurret.ts). The Kunlun keeps its special ERA and
+// its Shtora eyes on the Type 96B. Release 227 (owner 2026-10-16): the Kunlun's and the Qilin's roof guns are QJC-88
+// 12.7 mm machine guns on open cupola pintles (nationalRoofWeapon.ts nationalCupolaPintle); the Qilin's 99A2 is cut 10 %
+// and re-wrapped in its own add-ons; the T-80U Yun carries the Type 96B with all its own add-ons wrapped round it.
+// The hulls keep their Chinese packages unchanged (nationalChina.ts chinaDonorHull; the Yun gains a ring race).
 //   "for the t72nn3 qilin, adopt its turret to actually use the ztz-99a2 turret and make the kunlun usee the type 96b
 //    turret except with the special era, autocannon, shtora eyes"
 // Everything here is turret-local (origin on the ring centre, +Z forward, +X the vehicle's left) and stands on
@@ -10,21 +12,22 @@ import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
 import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,seatCheekTile,serviceCable,serviceCase} from './nationalChina.ts';
 import {weldedFlankHousing} from './weldedFlankHousing.ts';
-import {addChineseChevronFacet} from './chineseChevronEra.ts';
+import {addChineseChevronBank,addChineseChevronFacet} from './chineseChevronEra.ts';
+import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {bustleCutZ} from '../donorBustleCut.ts';
 import {QILIN_BUSTLE_CUT_M} from '../nationalDonorTurrets.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
-import {beamBetween} from './measuredPrimitives.ts';
+import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
-import {nationalLamp,nationalRoofSensor} from './nationalRoofSystems.ts';
+import {nationalEye,nationalLamp,nationalRoofSensor} from './nationalRoofSystems.ts';
 import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import type {ChineseChevronReceipt} from './chineseChevronEra.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const {box,cylY,cylZ,cylX}=KIT;
-type ChinaDonorId='t72b3m_kunlun'|'t72b3_qilin';
+type ChinaDonorId='t72b3m_kunlun'|'t72b3_qilin'|'t80u_yun';
 type P3=readonly [number,number,number];
 
 /** Frozen permanent receivers: raycasts against these never land on ERA or on parts added after the freeze. */
@@ -456,9 +459,151 @@ function qilinRearBasket(P:TankBuilderPort):void {
   }finally{shell.dispose();}
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Yun (release 227, owner 2026-10-16: "make the yun keep all its extra add ons and modifications but altered slightly to
+// be wrapped around the type 96b turret base"): the Type 96B turret on the T-80U hull (its bins and cheek launchers
+// left out, its boot heeled), wearing every add-on of the cast Yun, each altered to wrap round the 96B: one welded armour
+// housing a side round the 96B wall carrying the chevron bank and three flat tiles, the bustle module with its roof
+// plate and marks, the rear band and its seams, the slat cage, eight roof smoke tubes, the three service cases, the spine
+// frame, the low flat optic, the service cable and its antenna, the sight hood round the 96B gunner's sight, the spine
+// sensor, the slit lamps, the monocle eye, the two side electronics, the faceted station on its own left-roof seat, and
+// the gun's thermal-sleeve bands and muzzle-reference strip on the 96B barrel. The 96B's shell, ring collar, cupola,
+// secondary hatch, roof fittings, sights, mast and whip are the Yun's own now. Every part is turret-local and tagged.
+const YUN_MODEL=0;
+// [z, inner, outer, bottom, top]: inner edges buried >= 20 mm in the 96B wall, top shelves 20-40 mm under its roof edge,
+// the front rows >= 80 mm outboard of the boot.
+const YUN_WRAP:readonly FlankRow[]=[[-1.86,.98,1.24,.34,.58],[-1.42,1.15,1.58,.32,.64],[-.25,1.14,1.64,.30,.66],
+  [.55,.97,1.62,.22,.64],[.95,.78,1.50,.22,.58],[1.45,.48,1.16,.18,.44],[1.90,.34,.66,.18,.38]];
+// The Type 96B barrel's outer stations in its gun frame (type96bX.ts buildType96Turret): [z, radius].
+const TYPE96_BARREL:readonly (readonly [number,number])[]=[[.25,.154],[.65,.154],[.68,.1375],[2.04,.1205],[2.90,.1105],
+  [4.67,.1105],[4.92211,.099]];
+function type96BarrelRadius(z:number):number {
+  for(let i=1;i<TYPE96_BARREL.length;i++)if(z<=TYPE96_BARREL[i][0]){
+    const [z0,r0]=TYPE96_BARREL[i-1],[z1,r1]=TYPE96_BARREL[i];return r0+(r1-r0)*(z-z0)/(z1-z0);
+  }
+  return TYPE96_BARREL[TYPE96_BARREL.length-1][1];
+}
+
+/** The Yun's gun modifications on the recoiling 96B barrel: five thermal-sleeve clamp bands and the muzzle strip. */
+function yunGun(P:TankBuilderPort):void {
+  const bands=tagged(P,YUN_MODEL,'gun-band');
+  for(const z of [1.80,2.40,2.90,3.78,4.62])bands.add('gunDark',cylZ(type96BarrelRadius(z)+.018,.027,P.q?28:16),0,0,z);
+  // the muzzle-reference strip on the barrel's top line, 2 mm into the tube
+  tagged(P,YUN_MODEL,'muzzle-strip').add('gun',box(.035,.039,.74),0,type96BarrelRadius(4.21)+.0195-.002,4.21);
+}
+
+/** The bustle module behind the 96B rear cap (its front 5 cm inside the cap), its roof plate and marks, the rear band
+ * (the cast Yun's rear box) and its seams. */
+function yunBustle(P:TankBuilderPort):void {
+  const ring=(w:number,low:number,top:number):SectionPoint[]=>{
+    const b=.06;
+    return [[-w+b,low],[w-b,low],[w,low+b],[w,top-b],[w-b,top],[-w+b,top],[-w,top-b],[-w,low+b]];
+  };
+  const module=tagged(P,YUN_MODEL,'bustle-module');
+  module.addExternalArmor('turret',sectionSolid([{z:-2.06,ring:ring(.94,.22,.58)},{z:-1.84,ring:ring(1.00,.22,.58)}]));
+  module.addEquipment('turretDetail',box(1.40,.022,.16),0,.590,-1.97);
+  for(const side of [-1,1])module.addEquipment('turretDark',box(.08,.07,.02),side*.63,.545,-2.068);
+  const band=tagged(P,YUN_MODEL,'rear-band');
+  band.addExternalArmor('turret',box(1.30,.14,.17),0,.33,-2.135);
+  for(const x of [-.39,.39])band.addEquipment('turretDark',box(.015,.095,.014),x,.33,-2.225);
+}
+
+/** The slat cage behind the bustle module: roots 30 mm into the module's rear face, two front posts on its top, four
+ * rear rails (three slat rows) and three floor bars 4 cm over the rear band. */
+function yunCage(P:TankBuilderPort):void {
+  const shell=new Stock(P,['turret','turretExternalArmor']);
+  try {
+    const wall=(x:number,y:number)=>{
+      const hit=shell.hit(new THREE.Vector3(x,y,-3.5),new THREE.Vector3(0,0,1),3);
+      if(!hit)throw new Error(`${P.spec.id}: no bustle module for the rear cage at ${x},${y}`);
+      return hit.point.z;
+    };
+    const half=.72,bottom=.44,top=.74,rear=-2.45,postZ=-1.985,deck=.58;
+    const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:YUN_MODEL,role};P.addEquipment('turretOpenLattice',g);};
+    for(const side of [-1,1]){
+      const x=side*half;
+      put(beamBetween([x,bottom,wall(x,bottom)+.03],[x,bottom,rear],.021),'cage-root');
+      put(beamBetween([x,deck-.004,postZ],[x,top,postZ],.018),'cage-front-post');
+      put(beamBetween([x,top,postZ],[x,top,rear],.017),'cage-side-rail');
+      put(beamBetween([x,bottom,rear],[x,top,rear],.018),'cage-post');
+    }
+    for(let row=0;row<=3;row++){
+      const y=bottom+(top-bottom)*row/3;
+      put(beamBetween([-half,y,rear],[half,y,rear],row===0||row===3?.020:.012),'cage-rear-rail');
+    }
+    for(const x of [-.36,0,.36])put(beamBetween([x,bottom,wall(x,bottom)+.03],[x,bottom,rear],.014),'cage-floor');
+  }finally{shell.dispose();}
+}
+
+/** Four roof smoke tubes a side behind the cheeks on shaped feet, firing out over the housing shelf. */
+function yunSmoke(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
+  for(const side of [-1,1])for(const z of [-1.25,-1.13,-1.01,-.89]){
+    const x=side*1.08;
+    const seats=[z-.047,z+.047].map(zz=>({z:zz,left:roofAt(parts,x-.060,zz),right:roofAt(parts,x+.060,zz)}));
+    const top=Math.max(...seats.flatMap(s=>[s.left,s.right]))+.035;
+    P.addEquipment('turretDetail',sectionSolid(seats.map(s=>({z:s.z,
+      ring:[[x-.060,s.left-.006],[x+.060,s.right-.006],[x+.060,top],[x-.060,top]] as SectionPoint[]}))));
+    P.addEquipment('turretDark',markSmokeTube(blindTube(.038,.027,.21,.13,P.q?12:8),[0,0,1],true),
+      x,top+.072,z+.025,-.66,side*.57);
+  }
+}
+
+/** The armoured hood round the 96B gunner's sight (box x .394-.904, y .729-.943, z .37-.65): a top plate on the sight's
+ * top and two side guards standing on the roof 23 mm clear of its sides, their feet following the roof's fall. */
+function yunSightHood(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
+  const cx=.649,cz=.51,plateY=.955;
+  P.addEquipment('turretDetail',box(.59,.025,.34),cx,plateY,cz);
+  for(const side of [-1,1]){
+    const x=cx+side*.29,rows=[cz-.15,cz+.15].map(z=>({z,y:roofAt(parts,x,z)}));
+    P.addEquipment('turretDetail',sectionSolid(rows.map(r=>({z:r.z,ring:[[x-.0125,r.y-.004],[x+.0125,r.y-.004],
+      [x+.0125,plateY+.004],[x-.0125,plateY+.004]] as SectionPoint[]}))));
+  }
+}
+
+function yun(P:TankBuilderPort):void {
+  const l=NATIONAL_ROOF_LOADOUTS.t80u_yun;
+  yunGun(P);
+  // Permanent armour first: one welded housing a side round the 96B wall, then the bustle module and the rear band.
+  for(const side of [-1,1])tagged(P,YUN_MODEL,'wrap-housing').addExternalArmor('turret',weldedFlankHousing(YUN_WRAP,side,.035));
+  yunBustle(P);
+  // The chevron bank on the housing's front walls (1 + 2 + 2 wall cassettes and a nose cassette a side, on their pads),
+  // then three flat tiles a side on the frozen housing's outer wall.
+  for(const side of [-1,1])addChineseChevronBank(tagged(P,YUN_MODEL,'chevron'),side,YUN_WRAP.slice(3),.10);
+  const armour=permanentParts(P,['turretExternalArmor']);
+  for(const side of [-1,1])for(const z of [-1.10,-.70,-.30])seatCheekTile(tagged(P,YUN_MODEL,'flank-tile'),armour,side,z,.48,[.24,.075,.30]);
+  yunCage(P);
+  const roof=permanentParts(P,['turret','turretExternalArmor']);
+  yunSmoke(tagged(P,YUN_MODEL,'smoke-tube'),roof);
+  serviceCase(tagged(P,YUN_MODEL,'service-case'),roof,-.68,-1.62,.26,.14,.28);
+  serviceCase(tagged(P,YUN_MODEL,'service-case'),roof,.68,-1.62,.26,.14,.28);
+  serviceCase(tagged(P,YUN_MODEL,'service-case'),roof,0,-1.43,.77,.16,.23);
+  // The spine frame over the centre case: two posts on shaped feet, their rails and the rear cross rail.
+  const frame=tagged(P,YUN_MODEL,'spine-frame'),y=roofAt(roof,0,-1.43)+.026;
+  for(const x of [-.48,.48]){
+    const foot=equipmentFoot(frame,roof,x,-1.36,.070,.070);
+    frame.addEquipment('turretDetail',beamBetween([x,foot-.006,-1.36],[x,y+.17,-1.36],.016));
+    frame.addEquipment('turretDetail',beamBetween([x,y+.17,-1.36],[x,y+.17,-1.58],.016));
+  }
+  frame.addEquipment('turretDetail',beamBetween([-.48,y+.17,-1.58],[.48,y+.17,-1.58],.016));
+  lowOptic(tagged(P,YUN_MODEL,'low-optic'),roof,-.97,-.45,.27,.115,.22,false);
+  // The service cable from the right case to the antenna base, and the antenna on the right rear.
+  serviceCable(tagged(P,YUN_MODEL,'cable'),roof,[[-.82,-1.66],[-.90,-1.62],[-.94,-1.59]]);
+  const antenna=tagged(P,YUN_MODEL,'antenna'),ay=roofAt(roof,-1.00,-1.55);
+  antenna.addEquipment('turretDetail',cylY(.057,.07,.08,12),-1.00,ay+.025,-1.55);
+  antenna.addEquipment('turretDark',cylY(.007,.010,.54,8),-1.00,ay+.33,-1.55);
+  yunSightHood(tagged(P,YUN_MODEL,'sight-hood'),roof);
+  const sensor=tagged(P,YUN_MODEL,'spine-sensor');
+  nationalRoofSensor(sensor,-.04,-.20,equipmentFoot(sensor,roof,-.04,-.20,.35,.33),l);
+  for(const side of [-1,1])footedLamp(tagged(P,YUN_MODEL,'slit-lamp'),roof,side*.50,.92,l.lamp);
+  // The monocle eye on the left housing shelf, outboard of the sight hood; the side electronics on both shelves.
+  const eye=tagged(P,YUN_MODEL,'monocle-eye');
+  nationalEye(eye,1.20,.45,equipmentFoot(eye,roof,1.20,.45,.20,.20),l);
+  for(const side of [-1,1])lowOptic(tagged(P,YUN_MODEL,'side-electronics'),roof,side*1.36,.05,.22,.085,.20,false);
+}
+
 /** The national fit on the donor turret (P.turretG already carries it and the remote station). */
 function turretFit(P:TankBuilderPort,id:ChinaDonorId):void {
-  if(id==='t72b3m_kunlun')kunlun(P);else qilin(P);
+  if(id==='t72b3m_kunlun')kunlun(P);else if(id==='t80u_yun')yun(P);else qilin(P);
 }
 
 export function buildChinaDonorKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
