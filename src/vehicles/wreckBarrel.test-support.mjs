@@ -17,9 +17,12 @@
 //           bend point: a chord, a stray piece, or a straight tube under a bent sleeve.
 // Every wreck pose: the battle builds (rosterState.ts: the player's high geometry, a desktop bot's low geometry and
 // detail LOD, a mobile bot's low geometry), the map hulk (wrecks.ts), each plain and popped (the bend down, or any way
-// on a thrown turret), on any seed (the live kill's bend rides the visual's camo seed, the hulk's its wreck seed).
+// on a thrown turret), on any seed (the live kill's bend rides the visual's camo seed, the hulk's its wreck seed); a
+// battle kill also inside the tank's own shot (strokeS: its cannon out of battery at the kill, the stroke's return and
+// the wreck's settle run through syncFromState as in play; WRECK verify 2026-10-16).
 import * as THREE from 'three';
 import { kinkPoint } from './wreckDents.ts';
+import { createTankState } from '../sim/movement.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from '../world/wreckCrumple.ts';
 
 export const POKE_M = 0.02;
@@ -168,6 +171,12 @@ function muzzlesOf(root, gunInv) {
   });
   return out;
 }
+/** How far the cannon stands out of battery: the recoil group's, or a multi-barrel mount's firing tube's, stroke. */
+function strokeOf(root) {
+  let m = 0;
+  root.traverse((o) => { if (/^rig_(recoil|barrel_\d+)$/.test(o.name)) m = Math.max(m, Math.abs(o.position.z)); });
+  return m;
+}
 function toFrame(positions, matrix) {
   const out = new Float32Array(positions.length), v = new THREE.Vector3();
   for (let i = 0; i < positions.length; i += 3) { v.fromArray(positions, i).applyMatrix4(matrix); v.toArray(out, i); }
@@ -190,17 +199,28 @@ export const bakeBuild = (seed) => ({ camoSeed: 4000 + (seed % 997), quality: 'l
   materialMode: 'geometry-only', eraVisualBindingReceipt: false, proceduralOnly: true });
 export const WRECK_MODES = Object.freeze([...Object.keys(LIVE_BUILDS), 'bake']);
 
+/** A battle kill inside the tank's own shot: the kill this long after its recoilKick, in the out-of-battery hold. */
+export const MID_STROKE_S = 0.12;
+/** The frames the wreck runs after a mid-stroke kill (the stroke's return, 0.79 s, and the settle). */
+const SETTLE_FRAMES = 150;
+
 /**
  * Build `id`, take its muzzles and the intact stray census, kill it (a battle build: setDestroyed at age 3; 'bake': the
  * hulk's posed, planned, refined and crumpled sequence) and measure each bore. `seed`: the battle visual's camo seed, or
- * the hulk's wreck seed. The caller has loaded the builder, the interior fills and the wreck turret driver.
+ * the hulk's wreck seed. `strokeS` (a battle build): the kill that long into the tank's own shot (recoilKick, then
+ * syncFromState), its cannon out of battery, and SETTLE_FRAMES of syncFromState after it; null kills it in battery. The
+ * caller has loaded the builder, the interior fills and the wreck turret driver.
  */
-export function measureWreckBarrels(createTank, spec, { mode = 'bot', pop = false, seed = 1 } = {}) {
+export function measureWreckBarrels(createTank, spec, { mode = 'bot', pop = false, seed = 1, strokeS = null } = {}) {
   if (!WRECK_MODES.includes(mode)) throw new Error(`wreck mode ${mode}: one of ${WRECK_MODES.join(', ')}`);
+  if (strokeS !== null && mode === 'bake') throw new Error('a map hulk is baked in battery: strokeS is a battle kill');
   const r = spec.armor.gunBarrel?.radiusM ?? 0.06;
   const tank = createTank(spec.id, null, mode === 'bake' ? bakeBuild(seed) : liveBuild(mode, seed));
   try {
     const root = tank.root;
+    // the stroke pose runs the battle visual as play does: settled on its state first
+    const state = strokeS === null ? null : createTankState(spec, new THREE.Vector3(), 0);
+    if (state) tank.syncFromState(state, 0);
     root.updateMatrixWorld(true);
     const gunG = root.getObjectByName('rig_gun');
     const muzzles = muzzlesOf(root, gunG.matrixWorld.clone().invert());
@@ -220,7 +240,7 @@ export function measureWreckBarrels(createTank, spec, { mode = 'bot', pop = fals
     // the kill, measured on the carrier's own stock
     const ownerRigs = new Set(muzzles.map((m) => m.owner));
     const carried = meshes.filter((mesh) => ownerRigs.has(ownerOf(mesh, root)));
-    let entries, bend;
+    let entries, bend, outOfBatteryM = 0;
     if (mode === 'bake') {
       tank.setDestroyed({ pop, ageS: 1000 });
       root.updateMatrixWorld(true);
@@ -237,6 +257,12 @@ export function measureWreckBarrels(createTank, spec, { mode = 'bot', pop = fals
           name: mesh.name || mesh.type, owner: ownerOf(mesh, root) };
       });
     } else {
+      if (state) {
+        // the tank's own shot, the kill inside its stroke
+        tank.recoilKick(0, 1);
+        tank.syncFromState(state, strokeS);
+        outOfBatteryM = strokeOf(root);
+      }
       // the bend writes corners through setXYZ: each corner's value before its first write gives the intact position of
       // every corner of the bent geometry, even of a re-topologized copy
       const before = new WeakMap(), setXYZ = THREE.BufferAttribute.prototype.setXYZ;
@@ -246,6 +272,7 @@ export function measureWreckBarrels(createTank, spec, { mode = 'bot', pop = fals
         return setXYZ.call(this, i, x, y, z);
       };
       try { tank.setDestroyed({ pop, ageS: 3 }); } finally { THREE.BufferAttribute.prototype.setXYZ = setXYZ; }
+      if (state) for (let i = 0; i < SETTLE_FRAMES; i++) tank.syncFromState(state, 1 / 60);
       bend = gunG.userData.wreckBend ?? null;
       root.updateMatrixWorld(true);
       const gunInv1 = gunG.matrixWorld.clone().invert();
@@ -284,7 +311,8 @@ export function measureWreckBarrels(createTank, spec, { mode = 'bot', pop = fals
     const unbent = bend ? bores.filter((b) => b.owner === 'gun' && b.rings > 0 && b.muzzleZ > bend.z0 + bend.ramp
       && b.pastKink === 0) : [];
     return {
-      id: spec.id, mode, pop, seed, realGuns, muzzles: muzzles.length, bendM: +bendM.toFixed(3),
+      id: spec.id, mode, pop, seed, strokeS, outOfBatteryM: +outOfBatteryM.toFixed(3), wreckStrokeM: +strokeOf(root).toFixed(3),
+      realGuns, muzzles: muzzles.length, bendM: +bendM.toFixed(3),
       bend: bend ? { z0: +bend.z0.toFixed(3), theta: +bend.theta.toFixed(3) } : null, strays, bores,
       // more seated muzzles than real guns is an extra barrel; fewer (a launcher's cells sharing one fire anchor) is not
       pass: muzzles.length <= realGuns && strays.length === 0 && twoBarrels.length === 0 && offKink.length === 0

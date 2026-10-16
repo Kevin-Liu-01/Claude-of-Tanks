@@ -9323,6 +9323,20 @@ function* createTankOwnedSteps(
     });
   }
 
+  /**
+   * The recuperator stroke over, every tube in battery. A bent gun cannot slide in its cradle, and planLiveCrumple
+   * cuts and bends each gun mesh where it stands: killed inside its own shot (the tube up to REC_AMP out of battery),
+   * the recoiling tube kept its kink a stroke further out than the cradle's sleeves once the return ran, 2-3.5 cm
+   * apart past it (two barrels; tank-opt WRECK verify 2026-10-16). setDestroyed seats it before the crumple; a
+   * wreck's recoilKick starts no stroke.
+   */
+  function seatRecoilStroke(): void {
+    recoilT = 1e9;
+    recoilG.position.z = 0;
+    recoilG.rotation.z = 0;
+    for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
+  }
+
   function resetLiveCrumple(): void {
     burnU.uCrOn.value = 0;
     delete gunG.userData.wreckBend;
@@ -9907,7 +9921,8 @@ function* createTankOwnedSteps(
         const index = muzzleIndex ?? launcherCursor++;
         return ((index % launcherTips.length) + launcherTips.length) % launcherTips.length;
       }
-      recoilT = Math.max(0, ageS);
+      // a wreck's bent gun stays in battery (seatRecoilStroke): a replayed or late shot still picks its muzzle
+      recoilT = destroyed ? 1e9 : Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;
       recoilPendingScale = recoilScale;
@@ -10063,6 +10078,9 @@ function* createTankOwnedSteps(
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
       destroyed = true;
+      // the gun in battery before planLiveCrumple cuts its kink: the cradle's sleeves and the recoiling tube bend at
+      // one point
+      seatRecoilStroke();
       captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
@@ -10192,7 +10210,7 @@ function* createTankOwnedSteps(
       popT = 0;
       popTrailAcc = 0;
       popScale = 1;
-      recoilT = 1e9;
+      seatRecoilStroke();
       recoilPending = false;
       recoilScale = 1;
       recoilPendingScale = 1;
@@ -10200,9 +10218,6 @@ function* createTankOwnedSteps(
       recoilYawAmp = 0;
       recoilRollAmp = 0;
       recoilBarrelIndex = -1;
-      recoilG.position.z = 0;
-      recoilG.rotation.z = 0;
-      for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
       sway = 0;
       wreckAge = -1;
       mats.burnt.emissiveIntensity = 0.018;

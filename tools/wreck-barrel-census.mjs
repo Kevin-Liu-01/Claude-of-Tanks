@@ -3,14 +3,17 @@
 // 2026-10-15; the owner: "fix the guns of the destroyed tanks that kind of spawn 2 barrels").
 //
 //   node tools/wreck-barrel-census.mjs --ids=m1a1_abrams_hc,t90am | --all [--modes=player,bot,mobile,bake]
-//     [--pops=0,1] [--seeds=1,132] [--shard=k/n] [--jsonl=out.jsonl] [--gate]
+//     [--pops=0,1] [--seeds=1,132] [--strokes=none,0.12] [--shard=k/n] [--jsonl=out.jsonl] [--gate]
 //
 // Per id, wreck mode (the battle builds: the player's tank, a desktop bot, a mobile bot; the map hulk), pop and seed:
 // builds the visual, kills it (a battle build: setDestroyed, the kill's own crumple; the hulk: the posed, planned,
 // refined and crumpled sequence of wrecks.ts) and measures every bore with src/vehicles/wreckBarrel.test-support.mjs:
 // one seated muzzle per real gun, no tube on a bore owned by another rig, no two pieces concentric intact that the
-// wreck pulls apart (the bent gun drawn as two barrels), and the drawn stock where the kink puts it. --gate exits 1 on
-// any failure. A sample of gun constructions runs in npm test (src/vehicles/wreckGunSingleBarrel.selftest.mjs).
+// wreck pulls apart (the bent gun drawn as two barrels), and the drawn stock where the kink puts it. --strokes adds
+// battle kills inside the tank's own shot (seconds after its recoilKick, its cannon out of battery; 'none' is the kill in
+// battery, the default): the stroke's return and the wreck's settle run through syncFromState (WRECK verify
+// 2026-10-16). --gate exits 1 on any failure. A sample of gun constructions runs in npm test
+// (src/vehicles/wreckGunSingleBarrel.selftest.mjs).
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ensureInteriorFills } from '../src/vehicles/interiorFills.ts';
@@ -29,6 +32,8 @@ if (shard) { const [k, n] = shard.split('/').map(Number); ids = ids.filter((_, i
 const modes = opt('modes', WRECK_MODES.join(',')).split(',').filter(Boolean);
 const pops = opt('pops', '0,1').split(',').map((v) => v === '1');
 const seeds = opt('seeds', '1,132').split(',').map(Number);
+const strokes = opt('strokes', 'none').split(',').filter(Boolean).map((v) => v === 'none' ? null : Number(v));
+if (strokes.some((v) => v !== null && !(v >= 0))) throw new Error('--strokes: none or seconds after the shot');
 const jsonl = opt('jsonl', '');
 if (jsonl) writeFileSync(jsonl, '');
 
@@ -37,9 +42,11 @@ const failed = [];
 let rows = 0;
 for (const id of ids) {
   await ensureInteriorFills([id]);
-  for (const mode of modes) for (const pop of pops) for (const seed of seeds) {
+  for (const mode of modes) for (const pop of pops) for (const seed of seeds) for (const strokeS of strokes) {
+    // a map hulk is baked in battery: the stroke poses are battle kills
+    if (mode === 'bake' && strokeS !== null) continue;
     let res;
-    try { res = measureWreckBarrels(createTank, TANK_SPECS[id], { mode, pop, seed }); } catch (error) { res = { id, mode, pop, seed, pass: false, error: String(error?.message ?? error) }; }
+    try { res = measureWreckBarrels(createTank, TANK_SPECS[id], { mode, pop, seed, strokeS }); } catch (error) { res = { id, mode, pop, seed, strokeS, pass: false, error: String(error?.message ?? error) }; }
     rows++;
     if (jsonl) appendFileSync(jsonl, `${JSON.stringify(res)}\n`);
     const bores = res.bores ?? [];
@@ -56,10 +63,11 @@ for (const id of ids) {
     const kink = off?.kink ?? '-';
     // informational: a muzzle anchor seated off its own tube's axis (the flash and the round leave off the bore)
     const anchor = bores.reduce((w, b) => Math.max(w, b.anchorOffM ?? 0), 0);
-    console.log(`${res.pass ? 'ok  ' : 'FAIL'} ${id.padEnd(24)} ${mode.padEnd(6)} pop=${pop ? 1 : 0} seed=${seed} `
+    const stroke = strokeS === null ? '' : ` stroke=${strokeS}s(${res.outOfBatteryM ?? '?'}m)`;
+    console.log(`${res.pass ? 'ok  ' : 'FAIL'} ${id.padEnd(24)} ${mode.padEnd(6)} pop=${pop ? 1 : 0} seed=${seed}${stroke} `
       + `bend=${res.bend ? `${res.bend.z0}/${res.bend.theta}` : '-'} kink=${kink}${anchor > 0.02 ? ` anchorOff=${anchor}` : ''}`
       + `${why ? ` :: ${why}` : ''}`);
-    if (!res.pass) failed.push(`${id}/${mode}/pop${pop ? 1 : 0}/seed${seed}`);
+    if (!res.pass) failed.push(`${id}/${mode}/pop${pop ? 1 : 0}/seed${seed}${strokeS === null ? '' : `/stroke${strokeS}`}`);
   }
 }
 console.log(`\nwreck-barrel-census: ${rows - failed.length} of ${rows} wrecks one barrel per gun, bent at its bend point`

@@ -14,7 +14,12 @@
 //   - one seated muzzle per real gun, and no tube on a bore's outer half owned by a rig other than its muzzle's;
 //   - after the kill, tubes concentric intact stay concentric along the whole run (poke <= POKE_M);
 //   - every drawn cross-section of the gun's stock lies where the plan's kink puts it (kink <= KINK_M), with stock past
-//     the kink: the gun still bends, at its bend point (the cure is not a straight barrel).
+//     the kink: the gun still bends, at its bend point (the cure is not a straight barrel);
+//   - killed inside its own shot (WRECK verify 2026-10-16): planLiveCrumple bent the recoiling tube where it stood, up to
+//     0.13 m out of battery, so once the stroke returned its kink sat a stroke further out than the cradle sleeves' (the
+//     Challenger, Ariete, Merkava and Leclerc families split 2.2-3.5 cm, every recoiling tube 2.3-3.9 cm off its kink).
+//     setDestroyed seats the stroke before the crumple (tankFactoryCore.ts seatRecoilStroke), and a wreck's recoilKick
+//     starts none: a killcam replay of a dead attacker's shot, a late fire event, a Studio recoil age on a wreck.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -22,7 +27,8 @@ import { ensureInteriorFills } from './interiorFills.ts';
 import { preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
 import { TANK_SPECS } from './specs.ts';
 import { bendGeometry, cutAtBend, planBend, wreckRandom } from './wreckDents.ts';
-import { KINK_M, POKE_M, boreRings, measureWreckBarrels, triangleList, worstKink, worstPoke } from './wreckBarrel.test-support.mjs';
+import { createTankState } from '../sim/movement.ts';
+import { KINK_M, MID_STROKE_S, POKE_M, boreRings, measureWreckBarrels, triangleList, worstKink, worstPoke } from './wreckBarrel.test-support.mjs';
 
 // ---- the mechanism on a buildGun-shaped tube ------------------------------------------------------------------------
 {
@@ -92,13 +98,18 @@ import { KINK_M, POKE_M, boreRings, measureWreckBarrels, triangleList, worstKink
 const LIVE = ['m1a1_abrams_hc', 'leo2a4', 't72b3m_2022', 'challenger2', 'merkava4b', 'cv90', 'leo2a6', 't72b3m_hetman',
   'bmpt_t90', 'strv103b'];
 const BAKE = ['leo2a4', 't72b3m_2022', 'merkava4b'];
-const BENDS = new Set(['m1a1_abrams_hc', 'leo2a4', 't72b3m_2022', 'challenger2', 'merkava4b', 'cv90', 'leo2a6', 't72b3m_hetman']);
-for (const id of [...LIVE, ...BAKE]) assert.ok(TANK_SPECS[id], `${id}: a fleet id`);
+// killed mid-stroke: sleeves on the cradle around a recoiling tube (Challenger 2, Ariete preserie, Merkava Mk 4B) and a
+// tube that recoils whole (M1A1 HC: one barrel either way, its kink 2.4-3.9 cm off uncured)
+const STROKE = [['challenger2', 'player', false], ['c1_ariete_preserie', 'bot', true], ['merkava4b', 'bot', false],
+  ['m1a1_abrams_hc', 'player', false]];
+const BENDS = new Set(['m1a1_abrams_hc', 'leo2a4', 't72b3m_2022', 'challenger2', 'merkava4b', 'cv90', 'leo2a6', 't72b3m_hetman',
+  'c1_ariete_preserie']);
+for (const id of [...LIVE, ...BAKE, ...STROKE.map(([id]) => id)]) assert.ok(TANK_SPECS[id], `${id}: a fleet id`);
 await preloadWreckTurretDriver();
-await ensureInteriorFills(LIVE);
+await ensureInteriorFills([...LIVE, ...STROKE.map(([id]) => id)]);
 let checked = 0;
 const verdict = (res) => {
-  const pose = `${res.id} (${res.mode}, pop ${res.pop}, seed ${res.seed})`;
+  const pose = `${res.id} (${res.mode}, pop ${res.pop}, seed ${res.seed}${res.strokeS == null ? '' : `, killed ${res.strokeS} s into its shot`})`;
   assert.equal(res.muzzles, res.realGuns, `${res.id}: one seated muzzle per real gun (${res.muzzles} for ${res.realGuns})`);
   assert.deepEqual(res.strays, [], `${res.id}: a tube on a bore owned by another rig stays behind when the gun moves`);
   for (const bore of res.bores) {
@@ -118,4 +129,32 @@ for (const id of LIVE) {
   verdict(measureWreckBarrels(createTank, TANK_SPECS[id], { mode: 'bot', pop: true, seed: 132 }));
 }
 for (const id of BAKE) verdict(measureWreckBarrels(createTank, TANK_SPECS[id], { mode: 'bake', pop: true, seed: 132 }));
+for (const [id, mode, pop] of STROKE) {
+  const res = measureWreckBarrels(createTank, TANK_SPECS[id], { mode, pop, seed: 7, strokeS: MID_STROKE_S });
+  assert.ok(res.outOfBatteryM > 0.1, `${id}: killed ${MID_STROKE_S} s into its shot, out of battery (${res.outOfBatteryM} m)`);
+  assert.ok(res.wreckStrokeM === 0, `${id}: the wreck's gun in battery (${res.wreckStrokeM} m)`);
+  verdict(res);
+}
+// a wreck's gun never strokes: a shot kicked on it (one tube, and a twin mount's selected barrel) leaves every tube
+// seated, and the kick still names its muzzle for the flash
+for (const [id, index] of [['challenger2', undefined], ['bmpt_t90', 1]]) {
+  const spec = TANK_SPECS[id];
+  const tank = createTank(id, null, { geometryQuality: 'low', battleDetailLod: true, camoSeed: 7, quality: 'low', batchStatic: true,
+    eraVisualBindingReceipt: false, proceduralOnly: true, geometryReceipt: true });
+  try {
+    const state = createTankState(spec, new THREE.Vector3(), 0);
+    tank.syncFromState(state, 0);
+    tank.setDestroyed({ pop: false, ageS: 3 });
+    const picked = tank.recoilKick(0, 1, index);
+    if (index !== undefined) assert.equal(picked, index, `${id}: a wreck's kick still picks its muzzle`);
+    for (const dt of [0.02, 0.1, 0.12]) {
+      tank.syncFromState(state, dt);
+      tank.root.traverse((o) => {
+        if (/^rig_(recoil|barrel_\d+)$/.test(o.name)) assert.ok(Math.abs(o.position.z) < 1e-12, `${id}: ${o.name} stays in battery on the wreck`);
+      });
+    }
+  } finally {
+    tank.dispose();
+  }
+}
 console.log(`wreckGunSingleBarrel selftest: ${checked} wrecks, one barrel per gun, bent at its bend point`);

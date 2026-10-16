@@ -159,6 +159,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
     'tools/physical-bore-air.selftest.mjs',
+    // 2026-10-16 (tank-opt WRECK): no shipped fill voxel in open bore air (the turret-frame rods left where a bent or
+    // elevated gun's muzzle was; tools/interior-fill-bore-air.mjs --all --gate is the fleet census)
+    'tools/interior-fill-bore-air.selftest.mjs',
     // 2026-10-06: moving-part clearance air (pockets under the gun group, declared clearance cells) is reported apart
     'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
