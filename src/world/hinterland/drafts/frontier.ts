@@ -18,6 +18,7 @@
 //   - the ridges behind: a second, higher row 3.7-4 km out showing through the saddles;
 //   - the valley east and west: the floor kept low past the edge (the outland's swells and the knolls the old ring stood
 //     on eased down in it) so the view runs out along the river;
+//   - the fish ponds in the valley floor's hollow past the east edge;
 //   - the Kegelspiel: eight wooded basalt Kuppen 6.4-10.4 km east-south-east on the Kuppenrhön's upland, of unequal
 //     heights and sizes, the Soisberg the highest, grouped with cols between them (never one lone cone);
 //   - the Rhön plateau south-east at 18-32 km, the upland all round behind (the ring's upland 260, no peaks);
@@ -100,6 +101,10 @@ const DRAFT: HinterlandConfig = {
     { kind: 'inselberg', at: { azDeg: 92, distM: 9600 }, heightM: 240, lengthM: 1400, widthM: 1150, cover: { forest: [0, 400] } },
     { kind: 'inselberg', at: { azDeg: 133, distM: 9600 }, heightM: 270, lengthM: 1700, widthM: 1400, cover: { forest: [0, 400] } },
     { kind: 'inselberg', at: { azDeg: 108, distM: 10400 }, heightM: 225, lengthM: 1500, widthM: 1200, cover: { forest: [0, 400] } },
+  ],
+  water: [
+    // (the valley floor's hollow past the east edge, where the knolls were eased, holds the fish ponds down the valley)
+    { kind: 'lake', at: { azDeg: 95.9, distM: 1257 }, radiusM: 170, level: -4, name: 'the fish ponds down the valley' },
   ],
   far: [
     { azDeg: [0, 360], distKm: [8, 20], reliefM: 260, form: 'upland', layers: 1, name: 'the Hessian uplands' },
