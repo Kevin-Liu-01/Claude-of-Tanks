@@ -134,10 +134,55 @@ function block(x0: number, x1: number, y0: number, y1: number, z0: number, z1: n
   g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
   return paint(g, tone, 0.25, salt);
 }
-/** A rail-section member from a to b (0.07 x 0.15), painted. */
+/** A flat-bottomed rail's section (a worn S 49: 0.15 m tall, its foot 0.125 m), across x, its height along z. */
+const RAIL_SECTION: ReadonlyArray<readonly [number, number]> = (() => {
+  // upright (w across, h up from the foot), counter-clockwise; laid with the foot toward +z
+  const up: Array<[number, number]> = [[-0.0625, 0], [0.0625, 0], [0.0625, 0.011], [0.012, 0.03], [0.008, 0.04], [0.008, 0.105],
+    [0.0335, 0.115], [0.0335, 0.15], [-0.0335, 0.15], [-0.0335, 0.115], [-0.008, 0.105], [-0.008, 0.04], [-0.012, 0.03], [-0.0625, 0.011]];
+  return up.map(([w, h]) => [w, 0.075 - h] as [number, number]).reverse();
+})();
+/** The rail section run `len` along y (centred), flat-shaded sides and its two cut ends: indexed, like BoxGeometry. */
+function railBar(len: number): BG {
+  const S = RAIL_SECTION, n = S.length, pos: number[] = [], nor: number[] = [], uv: number[] = [], idx: number[] = [];
+  const tri = (a: number, b: number, c: number, nx: number, ny: number, nz: number) => {
+    const ax = pos[a * 3], ay = pos[a * 3 + 1], az = pos[a * 3 + 2];
+    const ux = pos[b * 3] - ax, uy = pos[b * 3 + 1] - ay, uz = pos[b * 3 + 2] - az, vx = pos[c * 3] - ax, vy = pos[c * 3 + 1] - ay, vz = pos[c * 3 + 2] - az;
+    const d = (uy * vz - uz * vy) * nx + (uz * vx - ux * vz) * ny + (ux * vy - uy * vx) * nz;
+    if (d >= 0) idx.push(a, b, c); else idx.push(a, c, b);
+  };
+  const vert = (x: number, y: number, z: number, nx: number, ny: number, nz: number, u: number, v: number) => {
+    pos.push(x, y, z); nor.push(nx, ny, nz); uv.push(u, v); return pos.length / 3 - 1;
+  };
+  let run = 0;
+  for (let k = 0; k < n; k++) {
+    const [u0, v0] = S[k], [u1, v1] = S[(k + 1) % n], du = u1 - u0, dv = v1 - v0, l = Math.hypot(du, dv) || 1;
+    // (counter-clockwise in x, z: the outward normal is the edge turned clockwise)
+    const nx = dv / l, nz = -du / l;
+    const a = vert(u0, -len / 2, v0, nx, 0, nz, 0, run), b = vert(u1, -len / 2, v1, nx, 0, nz, 0, run + l);
+    const c = vert(u1, len / 2, v1, nx, 0, nz, len, run + l), d = vert(u0, len / 2, v0, nx, 0, nz, len, run);
+    tri(a, b, c, nx, 0, nz); tri(a, c, d, nx, 0, nz);
+    run += l;
+  }
+  const faces = THREE.ShapeUtils.triangulateShape(S.map(([u, v]) => new THREE.Vector2(u, v)), []);
+  for (const sy of [-1, 1]) {
+    const base = pos.length / 3;
+    for (const [u, v] of S) vert(u, sy * len / 2, v, 0, sy, 0, u, v);
+    for (const [a, b, c] of faces) tri(base + a, base + b, base + c, 0, sy, 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+/**
+ * A member bent from old rail, from a to b: (props r2, Lane C 2026-10-16) the rail's own section, its head, web and
+ * foot (it was a 0.07 x 0.15 box), the foot toward +z when it stands upright. Painted.
+ */
 function railMember(a: readonly number[], b: readonly number[], tone: readonly number[], salt: number): BG {
   const p = new THREE.Vector3(a[0], a[1], a[2]), q = new THREE.Vector3(b[0], b[1], b[2]), d = q.clone().sub(p), len = d.length();
-  const g = new THREE.BoxGeometry(0.07, len, 0.15);
+  const g = railBar(len);
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
   g.translate((p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2);
   return paint(g, tone, 0.3, salt);
@@ -184,7 +229,7 @@ export function bufferStopGeometry(v: readonly number[]): BG {
   parts.push(block(-0.25, 0.25, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_RED, 97));
   parts.push(block(-0.31, 0.31, beamY + 0.43, beamY + 0.49, zf0, zf1, BEAM_WHITE, 96));
   parts.push(block(-0.31, 0.31, beamY + 0.91, beamY + 0.97, zf0, zf1, BEAM_WHITE, 98));
-  for (const sx of [-1, 1]) parts.push(block(sx * 0.25, sx * 0.31, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_WHITE, 99 + sx));
+  for (const sx of [-1, 1]) parts.push(block(sx > 0 ? 0.25 : -0.31, sx > 0 ? 0.31 : -0.25, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_WHITE, 99 + sx));
   const bands = 7, W = 2.3;
   for (let k = 0; k < bands; k++) {
     const x0 = -W / 2 + (k * W) / bands, x1 = -W / 2 + ((k + 1) * W) / bands;
