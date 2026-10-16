@@ -1175,7 +1175,19 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
   };
   // the floor, dug to the pit
   F.begin({ role: 'slab', material: 'earth', face: 'floor', axes: AX, anchor: true, volume: 0.5 });
-  m.quad([-X + 0.15, PIT, -Z + 0.15], [X - 0.15, PIT, -Z + 0.15], [X - 0.15, PIT, Z - 0.15], [-X + 0.15, PIT, Z - 0.15], () => mul(T.earth, 0.45), false, [0, 1, 0]);
+  // (the r2 standard, 2026-10-16: one flat quad, 15 m2 of the work's plain area) the trodden earth, dished a little
+  // where the crew stood, a grid of cells by place (hash noise: no draws), never under the pit by more than 2 cm
+  {
+    const NX = 4, NZ = 3, x0 = -X + 0.15, x1 = X - 0.15, z0 = -Z + 0.15, z1 = Z - 0.15;
+    const at = (i: number, j: number): V3 => {
+      const u = i / NX, w = j / NZ, edge = i === 0 || j === 0 || i === NX || j === NZ;
+      const dip = edge ? 0 : 0.008 + hash3(i, j, 23, O.seed) * 0.012;
+      return [x0 + (x1 - x0) * u, PIT - dip, z0 + (z1 - z0) * w];
+    };
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) {
+      m.quad(at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1), () => mul(T.earth, 0.45), false, [0, 1, 0]);
+    }
+  }
   const floor = F.end();
   // the walls in bands: the buried courses (anchors), then below the slit, the slit's course, the lintel and above
   const cGrade = courses.findIndex((c) => c.y - c.r > -0.05);

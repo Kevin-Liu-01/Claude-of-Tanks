@@ -229,6 +229,9 @@ const house: RegionalBuilder = (ctx) => {
 function batterParts(parts: RegionalParts, cx: number, cz: number, hx: number, hz: number, top: number, inset: number): void {
   const kx = inset / hx, kz = inset / hz;
   for (const list of Object.values(parts)) for (const g of list) {
+    // (the CPU gate, facade.selftest: the wall-foot apron moved off the ground it was draped on) what the house laid on
+    // the ground (its apron and door paths: userData.onGround) stays where it lies
+    if (g.userData?.onGround) continue;
     const pos = g.getAttribute('position'), nor = g.getAttribute('normal');
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = Math.max(0, Math.min(1, y / top)), on = y > 0 && y < top;
