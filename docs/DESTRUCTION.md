@@ -144,7 +144,7 @@ Stages only advance. A blow that crosses two thresholds emits one event per stag
 ### 3.4 Sections (P2)
 
 Landed off on `feature/destruction-sections` (2026-10-08) behind the ruleset's `sections` flag (§9:
-`SECTIONS_SWITCH`, off in every mode until its gates pass). `sim/structureSections.ts` derives a structure's sections
+`SECTIONS_SWITCH`); on in every mode that plays destruction since DST-04 (2026-10-15). `sim/structureSections.ts` derives a structure's sections
 from its collision records alone (a host has no rendered kit), on its first blow:
 
 - **The eaves**: the top of the highest half metre whose shell bands' plan area is at least ¾ of the widest (a pitched
@@ -631,7 +631,8 @@ P2 (2026-10-08): the audit logs `structure_breach` keyed by what it names (`brea
 fall's hole 255) and judges it as it judges a stage: missing, duplicate, late, a breach older than the view animated, a
 breach the host never sent, and one the new host re-sends after the migration. With the switch flipped (sections on),
 the scripted ram's breaches presented on 3 views, 3 of 3, none re-sent by the new host; its stages 18 of 18 as before.
-With sections off (every mode today) the host sends none and the earlier judgments are unchanged.
+With sections off (every mode before DST-04, 2026-10-15; a ruleset may still turn them off) the host sends none and the
+earlier judgments are unchanged.
 
 ## 9. Per-mode rules
 
@@ -649,10 +650,12 @@ readonly destruction: {
 
 Craters follow one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`: on since DST-04 (2026-10-15), after the switch-on
 gates below. The column says what each mode takes. **Sections**
-(`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`, off until their
-gates pass (the receipts below, paired pacing and fairness, the determinism and world-events audits with sections on,
-the cost of the openings-aware rays, and the motion strips of a wall panel coming down from a metre up, storeys dropping
-and a round through a hole).
+(`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`: on since DST-04
+(2026-10-15; the owner's "explosions that should be destructive and leave holes"), so a battle's HE holes the wall it
+strikes, a section at zero falls and a collapse comes down storey by storey, as the Studio's films have shown since
+2026-10-08. The receipts and both audits ran with sections on in P2; the paired pacing and fairness, the cost of the
+openings-aware rays and the motion strips (a wall panel coming down from a metre up, storeys dropping, a round through a
+hole) run in the 225/226 final pass.
 
 **The switch-on gates (crater-render-spec §F), on feature/destruction-craters (2026-10-08).** This branch is the core plus
 the drawn terrain and ground cover (the ground lane, §B/§C) and the crater surface (the FX lane, §D). The surface drapes on
