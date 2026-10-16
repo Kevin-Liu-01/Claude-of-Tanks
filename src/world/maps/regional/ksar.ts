@@ -4,7 +4,7 @@
 // fronts; flat-roofed village houses rendered in ochre or whitewash with Tunisian blue doors and window grilles, a stair
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
-import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -169,7 +169,13 @@ const house: RegionalBuilder = (ctx) => {
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: blue, frame: { bucket: 'plaster', width: 0.18, out: 0.06, arch: rng() < 0.5 }, steps: { bucket: MUD }, leafKind: 'panel' }, y0 + o.y0),
   };
   const parapet = 0.55 + rng() * 0.3;
-  sink.placed(0, cx, 0, 0, () => {
+  // (the looks lane, 2026-10-16; WORKLIST #26 "rounded arrises, slight batter") the house body laid in a sink of its own
+  // so it can be battered as a whole: its walls lean in a hand and a half over their height, their arrises rounded off in
+  // a bead of mud at each corner; what stands outside it (the stair) is laid upright beside it
+  const hs = new PartSink(sink.uvOffset), batter = 0.1 + look() * 0.06;
+  let bodyTop = wallH + parapet + 0.2;
+  hs.placed(0, cx, 0, 0, () => {
+    const sink = hs;
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.2, out: 0.06, bucket: MUD }, storeys: [{ h: wallH, wall }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.18, bucket: wall, parapet },
@@ -203,11 +209,22 @@ const house: RegionalBuilder = (ctx) => {
         gableBucket: wall, openings: [{ face: 'front', storey: 0, kind: 'door', u: rw * 0.18, w: 0.75, y0: 0, h: 1.75 }], chimneys: [], gutters: null, verge: null, skirt: null,
       }, { window: () => {}, door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(blue, 0.85), frame: { bucket: 'plaster', width: 0.12, out: 0.04 }, steps: null, leafKind: 'plank' }, y0 + o.y0) }));
     }
+    // the corners' beads: the mud worked round each arris, a quarter round a hand proud of both faces from the plinth to
+    // the parapet's top (its arc meets each face's plane 0.4 m from the corner)
+    bodyTop = frame.eaveY + 0.18 + parapet;
+    const R = 0.28, a = R * Math.SQRT1_2, y0 = frame.floors[0] - 0.02;
+    for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+      const th = Math.atan2(sz, sx);
+      sink.cylinder(wall, [sx * (W / 2 - a), y0, sz * (D / 2 - a)], 'y', bodyTop - y0, R, 8, {}, R, true, -(th + Math.PI / 2), Math.PI);
+    }
   });
+  const body = hs.finish();
+  batterParts(body, cx, 0, W / 2, D / 2, bodyTop, batter);
   if (stair) {
     // the mud stair up the +x side from the front corner to the roof terrace: each tread a block to the ground, the
     // low parapet stepping up its outer edge, the landing at the head beside the parapet
-    const x0 = cx + W / 2 + 0.02, x1 = x0 + SW, headY = wallH + 0.18;
+    // (its inner side reaching in under the battered wall, so no gap opens between them as the wall leans back)
+    const x0 = cx + W / 2 + 0.02 - batter, x1 = cx + W / 2 + 0.02 + SW, headY = wallH + 0.18;
     const n = Math.max(9, Math.round(headY / 0.22)), r = headY / n, run = Math.min(0.3, (D - 1.3) / n), z0 = D / 2 - 0.2;
     for (let k = 0; k < n; k++) {
       const za = z0 - (k + 1) * run, zb = z0 - k * run, tone = 0.95 + look() * 0.1;
@@ -218,8 +235,37 @@ const house: RegionalBuilder = (ctx) => {
     sink.span(MUD, x0, -0.3, zl - 0.9, x1, headY, zl);
     sink.span(MUD, x1 - 0.14, headY, zl - 0.9, x1, headY + 0.55, zl, { decor: true, shade: 0.95 });
   }
-  return sink.finish();
+  const parts = sink.finish();
+  for (const name of Object.keys(body) as Array<keyof RegionalParts>) parts[name].push(...body[name]);
+  return parts;
 };
+
+/**
+ * Batter a body's parts in place (the looks lane, 2026-10-16): every point drawn in toward the body's vertical axis at
+ * (cx, cz) in proportion to its height over the foot, `inset` metres at `top` and level with the top above it (a roof
+ * room stands on the battered roof); a vertex's normal turned with the wall it lies on (the map's inverse transpose).
+ * hx, hz the body's half sizes at its foot: both its faces lean in by the same distance.
+ */
+function batterParts(parts: RegionalParts, cx: number, cz: number, hx: number, hz: number, top: number, inset: number): void {
+  const kx = inset / hx, kz = inset / hz;
+  for (const list of Object.values(parts)) for (const g of list) {
+    const pos = g.getAttribute('position'), nor = g.getAttribute('normal');
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = Math.max(0, Math.min(1, y / top)), on = y > 0 && y < top;
+      const sx = 1 - kx * t, sz = 1 - kz * t;
+      pos.setXYZ(i, cx + (x - cx) * sx, y, cz + (z - cz) * sz);
+      if (!nor) continue;
+      // J = [[sx, dx/dy, 0], [0, 1, 0], [0, dz/dy, sz]]: the normal's m solves J^T m = n
+      const bx = on ? -(x - cx) * kx / top : 0, bz = on ? -(z - cz) * kz / top : 0;
+      const n0 = nor.getX(i), n1 = nor.getY(i), n2 = nor.getZ(i);
+      const m0 = n0 / sx, m2 = n2 / sz, m1 = n1 - bx * m0 - bz * m2, l = Math.hypot(m0, m1, m2) || 1;
+      nor.setXYZ(i, m0 / l, m1 / l, m2 / l);
+    }
+    pos.needsUpdate = true;
+    if (nor) nor.needsUpdate = true;
+    g.computeBoundingBox();
+  }
+}
 
 /** The square Tunisian minaret: whitewashed shaft, a gallery parapet, a lantern of arches and a little dome. */
 const minaret: RegionalBuilder = (ctx) => {
