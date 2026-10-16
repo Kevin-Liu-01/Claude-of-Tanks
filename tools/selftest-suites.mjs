@@ -709,6 +709,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garagePhasePresentationRuntime.selftest.mjs',
     'src/game/garageEnvironmentPresentationRuntime.selftest.mjs',
     'src/game/garageSkyPresets.selftest.mjs',
+    'src/game/garageWeather.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
     'src/game/garageBayFloor.selftest.mjs',
