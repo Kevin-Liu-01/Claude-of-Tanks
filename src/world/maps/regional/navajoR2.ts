@@ -7,6 +7,7 @@ import { emitRoof, holedFace, leanTo, placeShed, roofGeometry, type HoleRect, ty
 import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { latticeFrame } from './lattice.ts';
+import { board, pad, rod } from './r2Members.ts';
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 export const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
 export const JUNIPER_DARK = rgb(0x5a4d41);
@@ -197,14 +198,21 @@ function woodpile(sink: PartSink, x: number, z: number, yaw: number, look: () =>
 /**
  * A stack of split juniper (structure: a hull stops at it): a solid core of the cords, the ends of the lengths over its
  * face as dressing. At (x, z), its length along local x turned `yaw`; it fills a plot's end beside a small house.
+ * `ends` 'logs' (the hogan's cords, the r2 sweep 2026-10-16: a 3 cm end disc on the core read as a dark plate stuck on
+ * it): each end a length of log bedded 7 cm in the cord and standing 4-9 cm proud of its face, not a disc on it.
  */
-export function woodStack(sink: PartSink, x: number, z: number, yaw: number, len: number, h: number, look: () => number, depth = 0.9): void {
+export function woodStack(sink: PartSink, x: number, z: number, yaw: number, len: number, h: number, look: () => number, depth = 0.9,
+  ends: 'disc' | 'logs' = 'disc'): void {
   const hd = depth / 2;
   sink.placed(yaw, x, 0, z, () => {
     sink.span('structureWood', -len / 2, -0.2, -hd, len / 2, h, hd, { colour: shade(JUNIPER_DARK, 1.1) });
     for (let k = 0; k < Math.round(len / 0.24) * 2; k++) {
       const u = -len / 2 + 0.12 + look() * (len - 0.24), y = 0.12 + look() * (h - 0.24), r = 0.07 + look() * 0.04;
-      for (const side of [-1, 1]) sink.cylinder('structureWood', [u, y, side * hd - (side > 0 ? 0 : 0.03)], 'z', 0.03, r, 6, { colour: pick(look, JUNIPER), decor: true, fine: true });
+      if (ends === 'logs') {
+        // (how far each stands proud from where it lies in the cord: no draw of its own, the stream runs as the discs')
+        const proud = 0.04 + ((u * 13.7 + y * 7.1) % 1 + 1) % 1 * 0.05;
+        for (const side of [-1, 1]) sink.cylinder('structureWood', [u, y, side > 0 ? hd - 0.07 : -hd - proud], 'z', 0.07 + proud, r, 6, { colour: pick(look, JUNIPER), decor: true, fine: true });
+      } else for (const side of [-1, 1]) sink.cylinder('structureWood', [u, y, side * hd - (side > 0 ? 0 : 0.03)], 'z', 0.03, r, 6, { colour: pick(look, JUNIPER), decor: true, fine: true });
     }
     sink.span('structureWood', -len / 2 - 0.05, h, -hd - 0.05, len / 2 + 0.05, h + 0.05, hd + 0.05, { colour: pick(look, JUNIPER), decor: true });
   });
@@ -215,7 +223,8 @@ export function woodStack(sink: PartSink, x: number, z: number, yaw: number, len
  * octagon leaves the ends of its plot open, and a plot's reach is kept so no lane opens beside it), clear of the
  * door's side: a single cord where an end is narrow, a deep stack where it has room.
  */
-export function endStacks(sink: PartSink, b: RegionalBuildContext['bounds'], hz: number, R: number, door: number, look: () => number, h: number): void {
+export function endStacks(sink: PartSink, b: RegionalBuildContext['bounds'], hz: number, R: number, door: number, look: () => number, h: number,
+  ends: 'disc' | 'logs' = 'disc'): void {
   const doorX = Math.cos(door * OCT), doorZ = Math.sin(door * OCT);
   const A = R * Math.cos(OCT / 2) + 0.06;
   for (const end of [-1, 1]) {
@@ -224,7 +233,7 @@ export function endStacks(sink: PartSink, b: RegionalBuildContext['bounds'], hz:
     const depth = Math.max(0.4, Math.min(0.9, gap - 0.2)), z = edge - end * (0.15 + depth / 2);
     const sx = doorX > 0.3 ? -1 : doorX < -0.3 ? 1 : (end * doorZ > 0 ? -1 : 1);
     const len = Math.max(1.0, Math.min(2.6, (b.maxX - b.minX) / 2 - 0.6));
-    woodStack(sink, sx * ((b.maxX - b.minX) / 2 - len / 2 - 0.1) + (b.maxX + b.minX) / 2, z, 0, len, h, look, depth);
+    woodStack(sink, sx * ((b.maxX - b.minX) / 2 - len / 2 - 0.1) + (b.maxX + b.minX) / 2, z, 0, len, h, look, depth, ends);
   }
 }
 
@@ -246,6 +255,16 @@ export function groundCourse(sink: PartSink, x0: number, z0: number, x1: number,
 }
 
 
+/**
+ * The red earth trodden dark round a body's foot (the r2 rebuilds' groundCourse without its footing; the r2 sweep: the
+ * old patch a 10 cm slab standing square out of the sand): a pad sunk in the ground whose edge feathers out into it, its
+ * corners worn round. Dressing.
+ */
+function earthPad(sink: PartSink, x0: number, z0: number, x1: number, z1: number, earth = 0.75): void {
+  pad(sink, 'plaster2', x0 - earth, z0 - earth, x1 + earth, z1 + earth, [{ y: -0.09, inset: 0 }, { y: 0.015, inset: earth * 0.35 }], earth * 0.9,
+    { decor: true, shade: 0.6 });
+}
+
 /** The hogan: one octagon in its plot, its door facing the sunrise, a woodpile and a water drum by it. */
 export const hogan: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -254,7 +273,7 @@ export const hogan: RegionalBuilder = (ctx) => {
   const R = Math.max(2.4, Math.min(3.25, span / (2 * Math.cos(OCT / 2)) - 0.12));
   const door = eastSide(ctx.yaw);
   hoganBody(sink, rng, look, { r: R, door });
-  endStacks(sink, ctx.bounds, 0, R, door, look, 1.15);
+  endStacks(sink, ctx.bounds, 0, R, door, look, 1.15, 'logs');
   // the woodpile behind the hogan and a water drum beside the door, kept inside the plot (dressing, not on phones)
   sink.dressing(ctx.tier === 'mobile', () => {
     const clampX = (v: number, m: number) => Math.max(-ctx.info.w / 2 + m, Math.min(ctx.info.w / 2 - m, v));
@@ -337,7 +356,11 @@ export const windmill: RegionalBuilder = (ctx) => {
 
 /**
  * The equipment shed (a depot plot): a pole frame of juniper clad in corrugated iron on three sides, open to the front
- * between its posts, a shed roof falling to the back, a lean-to off the front for the trucks.
+ * between its posts, a shed roof falling to the back, a lean-to off the front for the trucks. (The r2 sweep, 2026-10-16:
+ * box share 0.81, "the floor, the earth and the bales slabs, the girts and the plate plain spans") the floor a slab with
+ * its arris weathered, the earth round it feathering out into the sand; the girts and the plate sawn timbers with their
+ * arrises eased; the roof carried on pole rafters from the plate to the back wall and sawn purlins along them; the bale
+ * stacks and the loose bales with their rounded edges; the fence posts stacked along the back wall.
  */
 export const equipmentShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -352,8 +375,8 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
   const roof: RoofSpec = { kind: 'shed', pitchDeg: 9, eave: 0.4, verge: 0.3, thickness: 0.07, bucket: 'roof' };
   const rise = W * Math.tan(9 * Math.PI / 180);
   // the clad walls: back (-x) full height, the ends (gable-trapezoid) and the posts along the open front (+x)
-  sink.span('stone', x0 - 0.05, -0.4, -D / 2 - 0.05, x0 + W + 0.05, 0.15, D / 2 + 0.05);
-  groundCourse(sink, x0, -D / 2, x0 + W + lw, D / 2, 0, false, 0.7);
+  pad(sink, 'stone', x0 - 0.05, -D / 2 - 0.05, x0 + W + 0.05, D / 2 + 0.05, [{ y: -0.4, inset: 0 }, { y: 0.11, inset: 0 }, { y: 0.15, inset: 0.04 }], 0.05, {}, true);
+  earthPad(sink, x0, -D / 2, x0 + W + lw, D / 2, 0.7);
   const tin = { colour: pick(ctx.rng, CLADDING) };
   sink.span('structureMetal', x0, 0.15, -D / 2, x0 + 0.08, H, D / 2, tin);
   for (const z of [-D / 2, D / 2]) {
@@ -364,7 +387,7 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
   const bays = Math.max(3, Math.round(D / 3.6));
   for (let k = 0; k < bays; k += 2) {
     const za = -D / 2 + 0.3 + (D - 0.6) * k / bays, zb = -D / 2 + 0.3 + (D - 0.6) * (k + 1) / bays;
-    sink.span('straw', x0 + W - 1.4, 0.15, za + 0.15, x0 + W - 0.35, 1.5, zb - 0.15);
+    board(sink, 'straw', [x0 + W - 0.875, 0.825, za + 0.15], [x0 + W - 0.875, 0.825, zb - 0.15], [1, 0, 0], 1.05, 1.35, 0.1);
     // (props census #4, lane B 2026-10-14: "the bale stack a straw box") its bales' courses and the joints between them
     if (ctx.tier !== 'mobile') {
       for (const y of [0.6, 1.05]) sink.span('straw', x0 + W - 1.42, y - 0.015, za + 0.13, x0 + W - 0.33, y + 0.015, zb - 0.13, { decor: true, shade: 0.78 });
@@ -375,8 +398,8 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
   sink.dressing(ctx.tier === 'mobile', () => {
     const girt = { colour: shade(pick(look, JUNIPER), 0.85), decor: true, uv: UV_MEMBER };
     for (const y of [1.3, 2.6, 3.7]) {
-      sink.span('structureWood', x0 + 0.08, y - 0.06, -D / 2 + 0.1, x0 + 0.18, y + 0.06, D / 2 - 0.1, girt);
-      for (const z of [-D / 2 + 0.08, D / 2 - 0.18]) sink.span('structureWood', x0 + 0.1, y - 0.06, z, x0 + W - 0.3, y + 0.06, z + 0.1, girt);
+      chamferedBeam(sink, 'structureWood', 'z', -D / 2 + 0.1, D / 2 - 0.1, x0 + 0.13, y, 0.05, 0.06, 0.012, girt);
+      for (const z of [-D / 2 + 0.08, D / 2 - 0.18]) chamferedBeam(sink, 'structureWood', 'x', x0 + 0.1, x0 + W - 0.3, z + 0.05, y, 0.05, 0.06, 0.012, girt);
     }
     for (let z = -D / 2 + 0.6; z < D / 2 - 0.2; z += 0.75) sink.span('structureMetal', x0 - 0.02, 0.15, z - 0.02, x0 + 0.005, H - 0.05, z + 0.02, { colour: shade(tin.colour, 0.82), decor: true, fine: true });
     // (the rust band a face on the sheet, not a 17 mm box 19 m long: the integrity gate reads its edges as slivers)
@@ -388,11 +411,26 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
   // the roof falls to the back wall; the front poles carry a juniper plate under its high eave, the poles up to it
   const shed = placeShed(sink, { cx: x0 + W / 2, cz: 0, run: W, span: D, fall: [-1, 0], highY: H + rise, roof });
   const px = x0 + W - 0.15, plateTop = shed.undersideAt(px, 0) + 0.01, plate = pick(look, JUNIPER);
-  sink.span('structureWood', px - 0.09, plateTop - 0.18, -D / 2 - 0.05, px + 0.09, plateTop, D / 2 + 0.05, { colour: shade(plate, 0.9), uv: UV_MEMBER });
+  chamferedBeam(sink, 'structureWood', 'z', -D / 2 - 0.05, D / 2 + 0.05, px, plateTop - 0.09, 0.09, 0.09, 0.02, { colour: shade(plate, 0.9), uv: UV_MEMBER });
   for (let k = 0; k <= n; k++) {
     const z = -D / 2 + 0.15 + (D - 0.3) * k / n;
     pole(sink, [px, -0.3, z], [px, plateTop - 0.18, z], 0.11, pick(look, JUNIPER), false);
   }
+  // the roof's frame under its sheets (dressing): three sawn purlins the length of the shed, end wall to end wall, their
+  // tops at the sheets; under them a juniper pole rafter over each front pole, from the plate's back to the back wall
+  sink.dressing(ctx.tier === 'mobile', () => {
+    const timber = { colour: shade(plate, 0.82), decor: true, uv: UV_MEMBER };
+    const purlinY = (x: number) => shed.undersideAt(x, 0) - 0.05;
+    for (const t of [0.22, 0.5, 0.78]) {
+      const x = x0 + 0.08 + (px - 0.09 - x0 - 0.08) * t;
+      chamferedBeam(sink, 'structureWood', 'z', -D / 2 + 0.08, D / 2 - 0.08, x, purlinY(x), 0.04, 0.05, 0.01, timber);
+    }
+    for (let k = 0; k <= n; k++) {
+      const z = -D / 2 + 0.15 + (D - 0.3) * k / n, zr = Math.max(-D / 2 + 0.2, Math.min(D / 2 - 0.2, z));
+      const xa = px - 0.09, xb = x0 + 0.08, r = 0.065;
+      rod(sink, 'structureWood', [xa, purlinY(xa) - 0.05 - r, zr], [xb, purlinY(xb) - 0.05 - r, zr], r, 7, { colour: shade(plate, 0.95), decor: true, uv: UV_MEMBER });
+    }
+  });
   // the lean-to off the front for the trucks: a low tin roof falling away from the shed, hung at its high line on a
   // ledger along the front poles and resting on a plate over its own poles
   if (lw > 1.2) {
@@ -400,16 +438,25 @@ export const equipmentShed: RegionalBuilder = (ctx) => {
     const lean = leanTo(sink, { face: front, u0: -D / 2 + 0.1, u1: D / 2 - 0.1, from: -0.15 + 0.11, depth: lw - 0.12,
       highY: plateTop - 0.18 - 0.2, roof: { pitchDeg: 8, eave: 0.12, verge: 0.2, thickness: 0.06, bucket: 'roof' },
       posts: null, plate: { h: 0.15, w: 0.16, bucket: 'structureWood', colour: shade(plate, 0.95) } });
-    faceBox(sink, 'structureWood', front, 0, lean.highY - 0.07, -0.15 + 0.11 + 0.05, D, 0.14, 0.1, { colour: shade(plate, 0.85), decor: true, uv: UV_MEMBER });
+    // the ledger the lean-to hangs on, along the front poles
+    chamferedBeam(sink, 'structureWood', 'z', -D / 2, D / 2, x0 + W - 0.15 + 0.11 + 0.05, lean.highY - 0.07, 0.05, 0.07, 0.012, { colour: shade(plate, 0.85), decor: true, uv: UV_MEMBER });
     for (let k = 0; k <= n; k += 2) {
       const z = -D / 2 + 0.3 + (D - 0.6) * k / n;
       pole(sink, [x0 + W + lw - 0.12, -0.3, z], [x0 + W + lw - 0.12, lean.postTop, z], 0.09, pick(look, JUNIPER), false);
     }
   }
-  // inside: loose bales and a stack of fence posts
+  // inside: loose bales on the floor (their edges rounded) and a stack of juniper fence posts along the back wall
   sink.dressing(ctx.tier === 'mobile', () => {
-    for (let k = 0; k < 4; k++) for (let r = 0; r < 3 - (k % 2); r++) sink.span('straw', x0 + 0.4, r * 0.45, -D / 2 + 0.6 + k * 1.05, x0 + 1.3, r * 0.45 + 0.45, -D / 2 + 1.6 + k * 1.05, { decor: true });
-    for (let k = 0; k < 8; k++) sink.cylinder('structureWood', [x0 + 0.5, 0.08 + (k % 3) * 0.14, D / 2 - 3.6 + k * 0.17], 'z', 0.05, 0.07, 5, { colour: pick(look, JUNIPER), decor: true }, 0.07, true);
+    for (let k = 0; k < 4; k++) for (let r = 0; r < 3 - (k % 2); r++) {
+      const z0 = -D / 2 + 0.6 + k * 1.05, y = 0.15 + r * 0.45 + 0.225;
+      board(sink, 'straw', [x0 + 0.85, y, z0], [x0 + 0.85, y, z0 + 1.0], [1, 0, 0], 0.9, 0.45, 0.06, { decor: true });
+    }
+    // eight posts 2.4 m long in courses of four, three and one, each course in the hollows of the one under it
+    const row = [0, 1, 2, 3, 0.5, 1.5, 2.5, 1.5], lift = [0, 0, 0, 0, 1, 1, 1, 2];
+    for (let k = 0; k < 8; k++) {
+      const r = 0.065, x = x0 + 0.3 + r + row[k] * 2 * r, y = 0.15 + r + lift[k] * r * 1.73, z1 = D / 2 - 0.5;
+      rod(sink, 'structureWood', [x, y, z1 - 2.4], [x, y, z1], r, 6, { colour: pick(look, JUNIPER), decor: true, uv: UV_MEMBER });
+    }
   });
   });
   return sink.finish();
