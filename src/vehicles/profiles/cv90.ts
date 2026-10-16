@@ -540,6 +540,20 @@ function addCv90MkivScaffoldedCradle(P: CvBuilderPort): void {
     for (const t of [.015,.985])
       P.addGunExtra(beamGeometry(point(side,t,-1),point(side,t,1),.040));
   }
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 345-386's critics: "a dark rectangular gap beside the barrel where no
+  // coaxial muzzle shows"; the coordinator, keeping the owner's no-coax rule: close empty openings with armour): the
+  // cradle's nose carries a closed armour face round the cannon (a 15 mm clearance ring on its 90 mm barrel), so the
+  // front no longer opens beside the barrel; the side bays stay open between their diagonal members.
+  {
+    const [hx, hy, nz] = point(1, 1, 1);
+    const hw = hx + .012, hh = hy + .012;
+    const face = new THREE.Shape([new THREE.Vector2(-hw, -hh), new THREE.Vector2(hw, -hh),
+      new THREE.Vector2(hw, hh), new THREE.Vector2(-hw, hh)]);
+    face.holes.push(new THREE.Path().absarc(0, 0, .105, 0, Math.PI * 2, true));
+    const plate = new THREE.ExtrudeGeometry(face, { depth: .022, bevelEnabled: false, curveSegments: 24 });
+    plate.translate(0, 0, nz - .011);
+    P.addGunExtra(plate.index ? plate.toNonIndexed() : plate);
+  }
 }
 
 function buildCv90MkivTurret(P: CvBuilderPort): void {
@@ -664,7 +678,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90_mk4_concept', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
-      movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
+      movingWithGun: true, surroundsMainBarrel: true, openFrontRear: false, closedNoseFace: true,
       rootJoinedToTurretFace: true, sideOnlyOpenings: true, rootRearZM: -.34,
       diagonalSidePortsPerSide: 3, mainGunCaliberMm: 50, barrelLengthM: 3.76,
       trunnionRecessM: gunTrunnionRecessM,

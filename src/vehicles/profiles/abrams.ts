@@ -2351,6 +2351,8 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
     elev: elevation,
     barrelLength,
     ring: ring ? { r: 0.235, stubs: 4 } : false,
+    // round 3b (wave 348 on the M1A1: the ring "does not match the tan hull"): the loader's race is painted with the turret
+    ringSlot: ring ? 'detail' : undefined,
     seed: P.spec.id === 'm1a1_abrams_fep' ? 153
       : P.spec.id === 'm1a1_abrams_aim' ? 152
         : P.spec.id === 'm1a1_abrams_sa' ? 151 : 150,

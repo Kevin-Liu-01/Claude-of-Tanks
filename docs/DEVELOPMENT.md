@@ -690,6 +690,7 @@ Run a targeted release check:
     npm run tank:release:check -- --ids=<tank-id>
 
 The target check covers generated assets, muzzle bore, geometry standards,
+the fleet geometry ledger and mission-seat receipts for the selected ids,
 tests, and private build. See TANK-ASSET-PIPELINE.md and BUILD-STANDARD.md for
 the complete vehicle-authoring contract.
 
