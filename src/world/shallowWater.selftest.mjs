@@ -353,7 +353,8 @@ assert.match(terrain, /gSplatRough = mix\(gSplatRough, 0\.95, fMs \* uSea\)/, 'b
 assert.match(terrain, /gSplatAlbedo \*= 1\.0 - fMs \* uSea \* 0\.42/, 'only submerged liquid bed is darkened');
 const kits = readFileSync(new URL('./maps/mapKits.ts', import.meta.url), 'utf8');
 assert.match(kits, /const waterline = heightField\.getWaterSurfaceHeightAt\?\.\(x, z\)/);
-assert.match(kits, /buoy\.translate\(x, waterline \+ 0\.16, z\)/);
+// (integ/226: Lane C #16 r2 builds the mooring buoy on its chain at the waterline, waterside.ts buildMooringBuoy)
+assert.match(kits, /buildMooringBuoy\(coast, r, v, x, waterline, /);
 assert.match(fx, /const surfaceY = water\s*\? heightField\?\.getWaterSurfaceHeightAt\?\.\(x, z\)/);
 assert.match(fx, /surfaceY \+ \(water \? 0\.065 : 0\.035\)/);
 assert.match(fx, /float ring = 0\.28 \+ \(1\.0 - vFade\) \* 0\.66/);
