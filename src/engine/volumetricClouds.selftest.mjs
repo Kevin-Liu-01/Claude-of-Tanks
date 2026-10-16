@@ -344,8 +344,8 @@ assert.deepEqual(table, {
   steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35, contrails: 0, rain: 0.2, virga: 0, fogBank: 0 },
   // (2026-10-14, the SKY lane: Cinder Junction leaves its closed industrial deck for a junction's hazy summer cumulus — the
   // garage critics' "plain pale gradient", the owner's fair-weather-cumulus rule)
-  // (integ/226: the merge kept cloudban's closed industrial deck in railyard.ts over the grade's older cumulus proposal)
-  railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-16: Cinder Junction on hazy summer cumulus everywhere — the coordinator's ruling)
+  railyard: { regime: 'fair-weather-cumulus', coverage: 0.45, baseM: 1100, thicknessM: 800, shadow: true, streets: 0.3, cirrus: 0.2, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-13, the owner: "no more of the cloud type depicted in fjord" — fjord, polders and copper_mesa leave the broken
   // stratocumulus deck for Verdant's fair-weather cumulus tuned to their place; cloudsBan.selftest.mjs keeps it out)
@@ -431,10 +431,8 @@ assert.deepEqual(table, {
   assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
-  // (integ/226: railyard.ts keeps cloudban's closed industrial deck, so the deck's pins return with it)
-  // (2026-10-03, the gauntlet's wave 27: fp14's dk3 — broad cells and strong rolls, cells 1, cellM 2400, undulatus 0.7)
-  assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 1 && railyard.cellM === 2400 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.7, 'railyard: a closed dirty deck with broad cells and strong undulatus rolls');
-  assert.ok(railyard.tint.every((c) => c < foundry.tint[1]) && railyard.tint[0] - railyard.tint[2] < foundry.tint[0] - foundry.tint[2], 'railyard: a dirtier, less warm base than foundry\'s');
+  // (2026-10-16: Cinder Junction under hazy fair-weather cumulus everywhere — no deck structure, its clouds cast their shadows)
+  assert.deepEqual([railyard.regime, railyard.cells, railyard.deckLight, railyard.shadow], ['fair-weather-cumulus', 0, 0, true], 'railyard: fair-weather cumulus, no deck');
   const urban = deriveCloudLayerPreset(skyOf('urban'));
   // (2026-10-15: Steinburg on Verdant's cumulus under the 10-13 ruling; the altocumulus row stays in the vocabulary, unused)
   assert.ok(urban.regime === 'fair-weather-cumulus' && urban.cells === 0, 'urban: fair-weather cumulus, no cell layer');

@@ -168,6 +168,7 @@ assert.match(layer, /deckBeam: clamp\(scape\.deckBeam \?\? 0, 0, 1\),/);
 // ---- 6. every map (2026-10-10: the owner's free hand lifted the protected maps): no map is held off by id
 assert.doesNotMatch(map, /PROTECTED_MAPS/, 'no per-map exclusion');
 assert.equal(getMapConfig('winter').clouds?.deckBeam, 0.4, 'Frosthollow\'s broken deck passes part of the beam');
-assert.equal(getMapConfig('railyard').clouds?.deckBeam, 0.35, 'Cinder Junction\'s too');
+// (2026-10-16: Cinder Junction on cumulus — no deck, so no deck beam)
+assert.equal(getMapConfig('railyard').clouds?.deckBeam, undefined, 'Cinder Junction: cumulus, no deck beam');
 
 console.log(`structureGroundOcclusion.selftest: Lambert's law (infinite wall, box, deck), the ${SGO_SIZE}² raster (base wrap, seamless wall foot, region re-bake), Whiteout's occluders, the pass and its wiring, the thin deck's beam, every map PASS`);
