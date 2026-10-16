@@ -484,6 +484,18 @@ function drawHardstand(
     const [ex, ez] = dir(toward + turn * 2.9);
     wheelPath([bx * 16, bz * 16], [cx * 12.5, cz * 12.5], [ex * 16, ez * 16], 1.95, 0.32, earth ? 0.24 : 0.14);
   }
+  // dirt banked against the turntable's plinth, uneven, heavier where the hulls roll on and off it (rejudge6, 2026-10-15:
+  // "the turntable looks like a pasted disc", "a hard clean ring")
+  {
+    const [tx, tz] = dir(toward);
+    for (let i = 0; i < 90; i++) {
+      const a = rng() * Math.PI * 2, ca = Math.sin(a) * tx + Math.cos(a) * tz;
+      const lanes = Math.max(ca, -ca) ** 8; // the approach lane and the gate lane
+      const r = 6.45 + rng() * 0.5;
+      blot(Math.sin(a) * r, Math.cos(a) * r, 0.35 + rng() * 0.6, rgba([58, 52, 46], 0.16 + 0.16 * lanes), rgba([58, 52, 46], 0.05),
+        0.5 + rng() * 0.4, a);
+    }
+  }
   // footfall round the turntable and the bays' approaches: small prints in short trails, scuffed in loose ground
   for (let trail = 0; trail < 42; trail++) {
     const a = rng() * Math.PI * 2;

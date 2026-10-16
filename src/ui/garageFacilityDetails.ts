@@ -387,15 +387,18 @@ export function addGarageFacilityDetails({
   const shelter = GARAGE_SHELTER_FINISHES[variant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
   const steel = new THREE.Color(shelter.frame);
   const roofing = new THREE.Color(shelter.roof);
-  const accent = new THREE.Color(variant.accent).lerp(steel, 0.45);
+  // the kit's colours weathered rather than a toy's (rejudge6, 2026-10-15: "flat saturated primitive props such as the
+  // orange cylinders and red cubes", "the saturated red cabinet"): the accent drawn further toward the frame's steel, the
+  // safety yellow and the enamel red faded
+  const accent = new THREE.Color(variant.accent).lerp(steel, 0.6);
   const dark = new THREE.Color(0x171b1d);
   // the machinery's plinths are weathered concrete (the re-judge, 2026-10-15: the black plinths under the pump and the
   // trailers read as "crisp-edged flat charcoal rectangles")
   const plinthConcrete = new THREE.Color(0x77746c);
-  const safety = new THREE.Color(0xd19a2e);
+  const safety = new THREE.Color(0xb08a3c);
   const timber = new THREE.Color(0x685035);
   const rubber = new THREE.Color(0x151719);
-  const primer = new THREE.Color(0x8a3026); // tool-chest red enamel
+  const primer = new THREE.Color(0x7a3a2e); // tool-chest red enamel, faded
   const unitCylinders = new Map<number, THREE.CylinderGeometry>();
   const boxInstances: PrimitiveInstance[] = [];
   const cylinderInstances = new Map<number, PrimitiveInstance[]>();
@@ -4157,6 +4160,9 @@ export function addGarageFacilityDetails({
     // re-judge, 2026-10-15: "a black bench or crate and a red bollard float on the lawn ... delete them"; ticket 6: "a
     // cart with a tall red post and two stray bars sits on the lawn"); the Zeughaus's loading dock carries its kit
     if (variant.architecture === 'brick_arsenal') return;
+    // nor does Redrock: its recovery gear lies on the recovery yard's own pallet, and the vignette here read as "toy-like
+    // scattered props (a black puck disc, a plank with two sticks, little red cylinders)" (rejudge6, 2026-10-15)
+    if (variant.architecture === 'recovery_yard') return;
     const at = fixedCluster(floor.side, floor.depth);
     const olive = new THREE.Color(0x4f5536), rope = new THREE.Color(0x8c7a55);
     const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);
@@ -4240,15 +4246,6 @@ export function addGarageFacilityDetails({
         clusterBox(at, -2.0, 0.2, 0.45, 0.6, 0.9, 0.6, red, 'painted'); // the heater
         clusterCylinder(at, -2.0, 0.2, 1.05, 0.06, 0.3, black, 0, 10);
         looseParts += 5;
-        break;
-      }
-      case 'recovery_yard': { // the recovery gear laid out on a pallet: tow bars, a chain coil, shackles, a snatch block
-        pallet(0, 0);
-        for (const dl of [-0.3, 0.3]) clusterBox(at, dl, 0, 0.2, 0.08, 0.08, 2.4, steel, 'structure'); // tow bars
-        clusterCylinder(at, -1.3, 0.3, 0.12, 0.4, 0.22, black, 0, 16); // the chain coil
-        for (let k = 0; k < 3; k += 1) clusterBox(at, 1.2, -0.4 + k * 0.3, 0.1, 0.16, 0.18, 0.06, red, 'equipment'); // shackles
-        clusterCylinder(at, 1.3, 0.6, 0.18, 0.2, 0.12, red, Math.PI / 2, 16); // the snatch block
-        looseParts += 6;
         break;
       }
       case 'factory_line': { // a scrap skip and a small ladle on its cart
