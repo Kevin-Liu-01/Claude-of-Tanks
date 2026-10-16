@@ -590,7 +590,8 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
 }
 
 /**
- * The field boundaries' works: walls and banks on the land use's own lines (decor, no collision; fieldWorks.ts). The
+ * The field boundaries' works: walls and banks on the land use's own lines (fieldWorks.ts; the walls' crushable spans:
+ * fieldWallCollision.ts, the banks decor with no collision). The
  * props owner runs this once every solid is final (after its pools' refit), so the keep-out's match placement reads the
  * same solids the battle's does. Null when the map asks for none or the world has no land use.
  */

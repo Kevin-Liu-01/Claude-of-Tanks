@@ -47,6 +47,10 @@ const factory = new Function('deps', `
   const frng = mulberry32(seed + 606);
   const junction = { x: 0, z: 0 };
   const SOURCED = { sandbags: true }, wreckCount = 5, bakedTris = 0, WRECK_TRIS_BUDGET = ${wreckBudgetMatch[1]};
+  // (props lane A, #14, 2026-10-14) a toppled post is the map's own lamp fallen (streetForms.ts toppledLamp), seated in the
+  // baked bucket: the fixture records where it lies, as it recorded the old dark bar
+  const mapId = 'fixture', streetLampFormOf = () => null, conformYardPiece = () => {};
+  const toppledLamp = () => box(0.09, 0.09, 4.6, 1.4);
   let placedW = 0;
   function* placeWreck(...args) { wreckRecords.push(args); return true; }
   function* placePairedWreck() {}
@@ -130,7 +134,7 @@ function fixture(L, roadDistance = () => 20, options = {}) {
     P: options.props ?? { fences: true, carts: true, inhabit: { carts: 6 }, sandbagLines: 9, telegraph: true, lampposts: true },
     authoredRoadStationCount, authoredRoadStationIndex, FENCE_SEG, planUtilityPoleStation,
     utilityPolePlacements, addUtilityPole: (post, station) => poles.push({ post, station }), wreckRecords, fenceRuns,
-    distToOtherRoads: options.otherRoadDistance ?? (() => 20), buckets: { dark: fallenLamps },
+    distToOtherRoads: options.otherRoadDistance ?? (() => 20), buckets: { dark: fallenLamps, baked: fallenLamps },
     // a cart's footprint (its seat's tilt is read off the fixture's gently sloping ground: never past the cap)
     resolveDestructibleMeta: () => ({ r: 1, hw: 0.9, hl: 2 }), destructibleContext: null,
     box: (...dimensions) => Object.defineProperties({ dimensions }, {

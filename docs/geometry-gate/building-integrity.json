@@ -561,7 +561,7 @@
   },
   "landmark/saltwind:houseRow#2": {
    "floating": 0,
-   "sliver": 1,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.178,
@@ -4168,16 +4168,7 @@
    "gapM2": 0,
    "invertedM2": 0
   },
-  "landmark/airfield:floodMast#0": {
-   "floating": 0,
-   "sliver": 0,
-   "floatingM2": 0,
-   "holeM2": 0,
-   "insideM2": 0.504,
-   "gapM2": 3.923,
-   "invertedM2": 0
-  },
-  "hostomel/woodshed": {
+  "franconian/bergfried": {
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
@@ -4186,7 +4177,7 @@
    "gapM2": 0,
    "invertedM2": 0
   },
-  "hostomel/cottage": {
+  "franconian/palas": {
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
@@ -4195,15 +4186,33 @@
    "gapM2": 0,
    "invertedM2": 0
   },
-  "landmark/airfield:aircraftWreck#8": {
+  "landmark/urban:houseRow#4": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 122.997,
-   "gapM2": 757.26,
+   "insideM2": 0.312,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/urban:houseRow#3": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/polders:church#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T07:47:58.647Z"
+ "updatedAt": "2026-10-16T06:13:56.816Z"
 }

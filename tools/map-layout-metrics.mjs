@@ -55,7 +55,9 @@ export const COVER_HULL_M = 1.1;
 /** The carriageway half-width a solid prop must stay out of (the road mask's edge sits at ~3.85 m). */
 export const ROAD_CORE_M = 3.5;
 /** Deliberate roadblocks: reported, but not counted as dressing that wandered into a road. */
-export const ROADBLOCK_KINDS = new Set(['hedgehog', 'barrier']);
+// (2026-10-06, the map-revival lane: a burnt tram on its track — Ruinspires' boulevard, maps/sarajevoStreets.ts — blocks a road
+// as a hedgehog does, deliberately)
+export const ROADBLOCK_KINDS = new Set(['hedgehog', 'barrier', 'tram-wreck']);
 export const ORPHAN_ROAD_M = 60;
 /** Lane points sit this far apart along each slice across the spawn axis. */
 export const LANE_POINT_M = 20;

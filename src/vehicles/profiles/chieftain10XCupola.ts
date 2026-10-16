@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number, number, number];
@@ -84,7 +85,8 @@ function machineGun(P: TankBuilderPort, pivot: Point): void {
   mg.add('turretDetail', cylZ(.0105, .283, 20), -.35805, 2.7553, .4165);
   mg.add('turretDetail', box(.089, .052, .070), -.418, 2.805, .209);
   mg.add('turretDetail', box(.034, .047, .070), -.320, 2.791, .210);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'chieftain10XCupolaGpmg', caliberMm: 7.62 });
 }
 
 export function addChieftain10XCupola(P: TankBuilderPort, pivot: Point): void {

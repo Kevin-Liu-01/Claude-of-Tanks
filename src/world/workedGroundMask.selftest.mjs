@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 import { stampWorkedGroundMask } from './workedGroundMask.ts';
 import { createHeightField, makeMaskTexture, mulberry32 } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import longleaf from './maps/longleaf.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 // 2026-10-01 (frozen pins retired): the pre-change full-RGBA digest of Longleaf's mask (baked on the historical road
@@ -129,7 +129,7 @@ try {
 } finally {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 // Projection/sand/worn-blend gates own later shader improvements independently; this checks the current A-channel consumer.
 assertTerrainMaskShaderContract(source);
 console.log(JSON.stringify({ test: 'workedGroundMask', scope: 'CPU production masks; no native/performance acceptance', receipts }));

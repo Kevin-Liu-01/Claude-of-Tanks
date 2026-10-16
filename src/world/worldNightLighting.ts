@@ -66,6 +66,9 @@ export function registerWorldNightLighting(
   mesh.geometry.setAttribute(WORLD_LAMP_ACTIVE_ATTRIBUTE, active);
   const matrix = new Matrix4();
   const lens = new Vector3();
+  // (a shot-out lamp's form has no glass and no seat for a light: it stays dark)
+  const lensAt = (mesh.geometry.userData.lampLens === undefined ? [0.98, 3.895, 0] : mesh.geometry.userData.lampLens) as [number, number, number] | null;
+  if (!lensAt) return;
   const emitters: NightLightEmitter[] = [];
   for (const record of records) {
     if (record.kind !== 'lamp') continue;
@@ -73,8 +76,9 @@ export function registerWorldNightLighting(
       throw new RangeError('Streetlamp light requires its authored instance slot');
     }
     mesh.getMatrixAt(record.slot, matrix);
-    // bLamp lens center transformed with the actual scale and terrain tilt.
-    lens.set(0.98, 3.895, 0).applyMatrix4(matrix);
+    // the lamp form's lens centre (props lane A #14: each map's lamp says where its glass is; bLamp's by default)
+    // transformed with the actual scale and terrain tilt.
+    lens.set(lensAt[0], lensAt[1], lensAt[2]).applyMatrix4(matrix);
     emitters.push({
       kind: 'building', position: [lens.x, lens.y, lens.z],
       // Restrain nearby facade spill from the existing unshadowed point.

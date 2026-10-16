@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createHeightField, makeMaskTexture, mulberry32, stackLandUseBake } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from './maps/index.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Ground lane (2026-10-05; Ruinspires first, Shanghai's lilong lanes, Ronda's streets and the Lorraine villages after):
 // a road path's own surface and carriageway width (terrain.roads.pathStyles[i] styles paths[i]). Pins: the layout
@@ -85,13 +85,14 @@ assert.equal(moved, 0, 'no core moves off a styled road');
 }
 
 // the material: one exact fetch through the mask's sampler, the decode, the styled gauge and the paved share
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+const source = terrainSourceText().replace(/\s+/g, ' ');
 for (const line of [
   'uniform vec4 uRoadClass;',
   'vec4 rc = texelFetch(uMask, rt + ivec2(0, int(uRoadClass.y + 0.5)), 0);',
   'gRoadClass = floor(rc.r * 255.0 + 0.5);',
   'roadHalfW = floor(rc.g * 255.0 + 0.5) * 0.1;',
-  'if (gRoadClass > 0.5) gRoadTex = gRoadClass > 3.5 ? 0.0 : 1.0;',
+  // (roads lane 2026-10-09: classes 5–7, clinker, concrete and brick, are paved; only dirt (4) is not)
+  'if (gRoadClass > 0.5) gRoadTex = abs(gRoadClass - 4.0) < 0.5 ? 0.0 : 1.0;',
   'float roadHalf = (roadHalfW > 0.05 ? roadHalfW : 3.85) + (n1hs - 0.5) * 1.1 + (n2 - 0.5) * 1.5;',
   'shader.uniforms.uRoadClass = { value: maskStack.road };',
 ]) assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import badlands from './maps/badlands.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): this receipt used to `git show` the 78640f623 Badlands module and hold every
 // non-material authoring field, the historical palette projection and the rock tone's hue/saturation/mean to it.
@@ -39,7 +40,7 @@ assert.throws(() => assertQuietWash({ ...badlands, splat: { ...badlands.splat, s
 
 // These are actual production uniform/painter connections, not replacement
 // test equations standing in for a disconnected config.
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 assert.match(terrain, /shader\.uniforms\.uStrata = \{ value: S\.strata \?\? 0 \}/);
 assert.match(terrain, /S\.rippleAmp \?\? 0/);
 assert.match(terrain, /makeSandstoneLayer\(3002, aniso, S\.rockTone \|\| null, S\.sandstoneMarkers \?\? 1\)/);

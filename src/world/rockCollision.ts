@@ -31,6 +31,13 @@ import {
 
 /** A stone rising less than this above the ground under it is driven over: no collider (a hull's belly line). */
 export const ROCK_DRIVE_OVER_M = 0.45;
+/**
+ * A stone under the drive-over line that still rises this far (the hitbox lane's round 3, 2026-10-10; the critics of wave
+ * 344: "the low grey slab ... has no collider of either colour, so tanks and shells pass through it") carries a crushable
+ * record, as the small rocks do: shells and sight stop on it until a hull crushes it, and no hull is stopped, so no route,
+ * seat or clearing reads it (props.ts settleRockColliders, rubbleKit.ts).
+ */
+export const ROCK_LOW_STONE_M = 0.25;
 /** The movement columns hold the stone up to this height over its ground (the tallest hull's roof: a hoodoo's cap
  * above it is a shell's business, not a hull's; the overlay's legend says so). */
 export const ROCK_CONTACT_TOP_M = 3;
@@ -149,6 +156,8 @@ export interface RockCollisionProfile {
 
 /** How a stone's shell slabs are cut (the defaults are the shipped law; the audit's experiments vary them). */
 export interface RockBandOptions {
+  /** The least rise that earns a profile (ROCK_DRIVE_OVER_M; a low stone's crushable record takes ROCK_LOW_STONE_M). */
+  minRise?: number;
   /** 'adaptive' (the law above) or 'uniform': equal slabs of `band`. */
   mode?: 'adaptive' | 'uniform';
   band?: number;
@@ -631,7 +640,7 @@ export function rockCollisionProfile(
   form: RockForm, matrix: ArrayLike<number>, groundAt: (x: number, z: number) => number, options: RockBandOptions = {},
 ): RockCollisionProfile | null {
   const s = placeSurface(form.positions, form.edges, matrix, groundAt);
-  if (!(s.exposed >= ROCK_DRIVE_OVER_M) || !Number.isFinite(s.low) || !(s.top > s.low)) return null;
+  if (!(s.exposed >= (options.minRise ?? ROCK_DRIVE_OVER_M)) || !Number.isFinite(s.low) || !(s.top > s.low)) return null;
   const tiers = movementTiers(s, ROCK_CONTACT_TOP_M, options.tierStep ?? ROCK_TIER_STEP_M);
   if (!tiers.length) return null;
   // a stone turned about the vertical and scaled (the placements' law): its sections are the form's, scaled — read from

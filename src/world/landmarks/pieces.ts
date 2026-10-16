@@ -40,7 +40,9 @@ export interface LandmarkPieceSpec {
    *  plan (a figure off its plinth). */
   clear?: number;
   /** A tank's vessel (kind 'tank'): a vertical cylinder in the set piece's frame, and what spills from it. */
-  vessel?: { x: number; z: number; y0: number; y1: number; r: number; contents: 'water' | 'fuel' | 'grain' | 'none' };
+  vessel?: { x: number; z: number; y0: number; y1: number; r: number; contents: 'water' | 'fuel' | 'grain' | 'none';
+    /** how far behind the hole its dark inside lies, a share of r (default 0.6; a radome's 1.6, behind its radar) */
+    insideM?: number };
 }
 
 /** The ground round a piece, over the set piece's base (m), on an n × n grid from (x0, z0) at `step` metres. */
@@ -106,6 +108,11 @@ export function finishLandmark(sink: PartSink): RegionalParts {
         triangles += pos.count / 3;
         geometry.userData.damagePiece = spec.name;
         if (spec.dressing) geometry.userData.noCollision = true;
+        // (E12, the re-film: a fallen mast's guys and its fine members stood on in the air) a piece draws in its bucket's
+        // plain mesh, never the fine-detail batch (props.ts mergeMaterialBuckets: receive-only dressing and fine joinery
+        // go to a BatchedMesh): the stage that lays a piece down hides its spans there, as the film shows it does for the
+        // plain mesh's members
+        geometry.userData.castsShadow = true;
         parts[bucket].push(geometry);
       }
     }

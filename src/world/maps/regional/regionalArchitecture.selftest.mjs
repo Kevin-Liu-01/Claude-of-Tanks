@@ -61,6 +61,8 @@ const INFO = {
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
   shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0], containerRow: [15, 6.4, 3.4], gantry: [21, 5.4, 12],
   firestation: [11.8, 15.4, 14.1],
+  // the plan's light (railKit makeLighthouse): the breton phare and the nordland fyr on their keepers' houses
+  lighthouse: [5.6, 5.6, 15],
   // the colony terrace's unauthored plot (terraceLayout.ts TERRACE_DEFAULT_PLOT: four houses)
   terrace: [22, 9.6, 9],
   // the megacity landmarks the city kits (Sarajevo, Shanghai) rebuild (structureKit.ts footprints)

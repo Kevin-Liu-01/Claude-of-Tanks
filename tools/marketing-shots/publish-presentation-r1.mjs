@@ -14,6 +14,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { filteredStill, masterFilter } from '../media-r5/master-filter.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -29,7 +31,9 @@ mkdirSync(OUT, { recursive: true });
 const sceneFiles = readdirSync(SCENES).filter((file) => file.endsWith('.json')).sort();
 if (sceneFiles.length < 50) throw new Error(`Expected at least 50 scene files, found ${sceneFiles.length}`);
 
-function encode(input, output, quality = 80) {
+const FILTER = masterFilter(); // optional local pass over the source pictures (media-r5/master-filter.mjs)
+function encode(source, output, quality = 80) {
+  const input = filteredStill(source, join(tmpdir(), 'cot-master-filter', 'presentation'), `presentation-${basename(source).replace(/\.[^.]+$/, '')}`, FILTER);
   const result = spawnSync('cwebp', ['-quiet', '-mt', '-m', '6', '-q', String(quality), '-sharp_yuv', input, '-o', output], {
     stdio: 'inherit',
   });

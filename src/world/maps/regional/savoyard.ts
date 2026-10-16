@@ -19,12 +19,13 @@ import {
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
+import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { valloBlockhaus } from '../fortKit.ts'; // the tower plot's blockhouse (props census #5, lane B)
 
 /** Larch weathered silver-brown, a darker larch, the old red and green paints, the barracks' grey-green. */
 const JOINERY: readonly Rgb[] = [0x6b5a44, 0x56483a, 0x4f5f4a, 0x6e3428, 0x5f6a66].map(rgb);
 const LARCH = rgb(0x5e4b38), LARCH_DARK = rgb(0x3f3328), IRON = rgb(0x26282a), TIN = rgb(0x8a9090), BELL = rgb(0x6a5a3a);
-const STEEL = rgb(0x4a4e4c);
 const SHINGLE = rgb(0x3e3a36);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -299,7 +300,12 @@ const mazot: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The open woodshed (bûcher): larch posts under a lauze lean-to, boarded on three sides, the wood stacked in it (open to +x). */
+/**
+ * The open woodshed (bûcher; the props census #17, 2026-10-15, the judges: "larch posts on stone pads with knee braces,
+ * a sill and wall plate, vertical larch boards with gaps as separate members on three sides, rafters, and a lauze roof
+ * of thick stone slabs in courses with a ridge; keep the woodpile"): built member by member (outbuildings.ts openShed)
+ * on stone pads, the larch boards standing with an air gap, the lauzes laid in thick irregular courses; open to +x.
+ */
 function bucher(ctx: RegionalBuildContext, yard = false): ReturnType<RegionalBuilder> {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
@@ -311,21 +317,12 @@ function bucher(ctx: RegionalBuildContext, yard = false): ReturnType<RegionalBui
 
 function bucherBody(sink: PartSink, ctx: RegionalBuildContext, look: () => number, pw: number, pd: number): void {
   const W = clamp(pw - 0.6, 2.2, 4.4), D = clamp(pd - 0.6, 2.4, 5.4);
-  const hLo = 2.1, pitch = 15, rise = W * Math.tan(pitch * Math.PI / 180), hHi = hLo + rise;
-  const c = { colour: shade(LARCH, 0.9) } as const;
-  // the back wall (-x) and the two ends, boarded; posts at the open front
-  sink.span('structureWood', -W / 2, -0.2, -D / 2, -W / 2 + 0.1, hHi, D / 2, c);
-  for (const sz of [-1, 1]) {
-    const end: Face = { origin: [0, 0, sz * D / 2], u: [sz, 0, 0], out: [0, 0, sz], width: W };
-    wallPolygon(sink, 'wood', end, sz > 0 ? [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hLo], [-W / 2, hHi]] : [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hHi], [-W / 2, hLo]], 0.08);
-  }
-  for (const sz of [-1, 0, 1]) sink.span('structureWood', W / 2 - 0.16, -0.2, sz * (D / 2 - 0.1) - 0.08, W / 2, hLo, sz * (D / 2 - 0.1) + 0.08, c);
-  const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.4, verge: 0.3, thickness: 0.18, bucket: 'roof' };
-  emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
-  sink.dressing(ctx.tier === 'mobile', () => {
-    const back: Face = { origin: [-W / 2 + 0.1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-    woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.4 + look() * 0.4, look);
-  });
+  const pile = 1.4 + look() * 0.4;
+  openShed(sink, { W, D, hLo: 2.05, pitchDeg: 20, back: true, ends: true, pile, block: look() < 0.5, mobile: ctx.tier === 'mobile' }, {
+    timber: LARCH, post: 0.18, pad: { bucket: 'stone', size: 0.38, top: 0.24 },
+    cladding: 'gapped', boards: [shade(LARCH, 0.9), shade(LARCH, 1.08), shade(LARCH_DARK, 1.2)], boardW: 0.22, gap: 0.03, trim: LARCH_DARK,
+    covering: 'lauze', roofBucket: 'roof', eave: 0.4, verge: 0.3,
+  }, look);
 }
 
 // ------------------------------------------------------------------------------------------------ the pass's buildings
@@ -846,48 +843,6 @@ const ruine: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/**
- * A blockhouse of the Vallo Alpino (the base tower's plot): a squat concrete block with chamfered edges, the slit
- * embrasures with their stepped splays, a steel observation cupola on the roof slab, stones bedded on the slab, the
- * steel door at the back.
- */
-const blockhaus: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const S = clamp(Math.min(ctx.info.w, ctx.info.d) - 0.2, 3.2, 3.8), h = S / 2, H = 3.1;
-  sink.span('plaster3', -h - 0.25, -0.5, -h - 0.25, h + 0.25, 0.3, h + 0.25);
-  sink.span('plaster3', -h, 0.3, -h, h, H, h);
-  sink.span('plaster3', -h - 0.2, H, -h - 0.2, h + 0.2, H + 0.5, h + 0.2);
-  // the embrasures: a dark slit in a stepped concrete splay on three faces
-  const faces: Face[] = [
-    { origin: [0, 0, h], u: [1, 0, 0], out: [0, 0, 1], width: S }, { origin: [h, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: S },
-    { origin: [-h, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: S },
-  ];
-  for (const f of faces) {
-    faceBox(sink, 'plaster3', f, 0, 1.75, 0.05, 1.5, 0.75, 0.1, { decor: true });
-    faceBox(sink, 'dark', f, 0, 1.75, 0.105, 1.05, 0.2, 0.01, { decor: true });
-    faceBox(sink, 'plaster3', f, 0, 1.75, 0.13, 1.6, 0.06, 0.16, { decor: true, shadow: true });
-  }
-  // the cupola: a steel drum with its vision slits and a domed cap
-  sink.cylinder('structureMetal', [0, H + 0.5, -0.2], 'y', 0.75, 0.62, 12, { colour: STEEL });
-  sink.cylinder('structureMetal', [0, H + 1.25, -0.2], 'y', 0.3, 0.62, 12, { colour: STEEL }, 0.32);
-  for (let k = 0; k < 6; k++) {
-    const a = k * Math.PI / 3, r = 0.625;
-    sink.box('dark', [Math.sin(a) * r, H + 0.95, -0.2 + Math.cos(a) * r], [0.12, 0.04, 0.012], { decor: true },
-      new LocalFrame([Math.cos(a), 0, -Math.sin(a)], [0, 1, 0], [Math.sin(a), 0, Math.cos(a)], [0, 0, 0]));
-  }
-  // stones bedded on the slab, a steel door at the back
-  const look = ctx.variant;
-  for (let k = 0; k < 7; k++) {
-    const x = (look() - 0.5) * (S - 0.4), z = (look() - 0.5) * (S - 0.4);
-    if (Math.hypot(x, z + 0.2) < 0.95) continue;
-    sink.span('stone', x - 0.2, H + 0.5, z - 0.16, x + 0.2, H + 0.5 + 0.12 + look() * 0.12, z + 0.16, { decor: true });
-  }
-  const back: Face = { origin: [0, 0, -h], u: [-1, 0, 0], out: [0, 0, -1], width: S };
-  faceBox(sink, 'structureMetal', back, 0, 1.25, 0.03, 0.9, 1.9, 0.05, { colour: STEEL, decor: true });
-  faceBox(sink, 'plaster3', back, 0, 2.35, 0.1, 1.3, 0.2, 0.2, { decor: true });
-  return sink.finish();
-};
-
 export const SAVOYARD_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   alpine: maison,
   logcabin: grange,
@@ -903,7 +858,8 @@ export const SAVOYARD_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   rangerlodge: caserma,
   depot: grangeLongue,
   ruin: ruine,
-  tower: blockhaus,
+  // (props census #5, lane B 2026-10-15) the Vallo Alpino blockhouse, rebuilt in fortKit.ts
+  tower: (ctx) => valloBlockhaus(ctx),
 });
 
 /** the roughcast of the Maurienne: a grey-white lime, not a southern whitewash */

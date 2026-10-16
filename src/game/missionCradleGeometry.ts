@@ -28,7 +28,9 @@ class CradleBuilder {
   if (flat !== geometry) geometry.dispose();
   for (const name of Object.keys(flat.attributes)) if (name !== 'position' && name !== 'normal') flat.deleteAttribute(name);
   if (!flat.getAttribute('normal')) flat.computeVertexNormals();
-  const [r, g, b] = linear(hex), count = flat.getAttribute('position').count, colors = new Float32Array(count * 3);
+  // Each member's paint weathered its own way (a few percent either side), as field kit does.
+  const k = .94 + .12 * memberShade(this.parts.length);
+  const [r, g, b] = linear(hex).map(v => v * k) as unknown as Color3, count = flat.getAttribute('position').count, colors = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) { colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b; }
   flat.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   this.parts.push(flat);
@@ -72,10 +74,14 @@ class CradleBuilder {
  }
 }
 
+const memberShade = (index:number) => { const s = Math.sin(index * 91.7 + 13.1) * 43758.5453; return s - Math.floor(s); };
+const BARE_STEEL = 0x6c6d68, WELD = 0x4a4b46, DUST_LIGHT = 0x9a8f78, GRIME = 0x3b352c;
+
 /** Plate top (seat-local metres); the skids rest on the channels at 0.039. */
 const PLATE_TOP = .012, PLATE_BOTTOM = .002;
-/** The skid clamps: posts beside the skids, between the gear's struts. Seat-local, before the payload offset. */
-const CLAMP_X = .112, CLAMP_Z = .055, CLAMP_TOP = .062;
+/** The skid clamps: posts beside the skids, between the gear's struts. Seat-local, before the payload offset. The red
+ * arm hinges at the post's top (HINGE_Y, axis along the skid) and flips from over the skid to straight up. */
+const CLAMP_X = .112, CLAMP_Z = .055, HINGE_Y = .0675;
 /** The airframe's skid line, seat-local (droneModel: x 0.205 authoring at DRONE_AIRFRAME_SCALE 0.45). */
 const SKID_X = .0923;
 
@@ -95,7 +101,12 @@ export function createMissionCradleGeometry(seat:MissionAttachment, paint:number
    c.cylinder(.0058, .0016, 8, 'y', x + ox, PLATE_TOP + .0008, z + oz, ZINC);
   }
   if (z > 0) c.cylinder(.012, .0006, 14, 'y', dx / 2, PLATE_TOP + .0003, z, shade(paint, .32));
+  // Weld beads down both seams where the cross plate meets the side plates.
+  for (const x of [-fx + dx, fx + dx]) for (const e of [-.024, .024]) c.rod(.0018, [x + e, PLATE_TOP + .0004, z - .022], [x + e, PLATE_TOP + .0004, z + .022], WELD, 5);
+  // Paint chipped back to bare steel along the plate edges.
+  for (const [k, x] of [-.13, -.05, .04, .12].entries()) c.box(.007 + .002 * (k % 2), .0006, .004, dx / 2 + x, PLATE_TOP + .0003, z + (k % 2 ? .021 : -.021), BARE_STEEL);
  }
+ for (const x of [-fx + dx, fx + dx]) for (const [k, zc] of [-.15, -.03, .11].entries()) c.box(.004, .0006, .006 + .002 * k, x + (k % 2 ? .021 : -.021), PLATE_TOP + .0003, dz / 2 + zc, BARE_STEEL);
  for (const x of [-fx + dx, fx + dx]) for (const z of [dz / 2 - .147, dz / 2 + .147]) c.cylinder(.011, .0006, 14, 'y', x, PLATE_TOP + .0003, z, shade(paint, .32));
  // Junction box on the rear cross plate: lid, screws, status lamp, hazard label, rear connector and side gland.
  c.span(-.047, PLATE_TOP, -fz - .058, .047, .027, -fz + .05, paint);
@@ -119,18 +130,29 @@ export function createMissionCradleGeometry(seat:MissionAttachment, paint:number
    // is a separate mesh. A base boss bolts it to the side plate.
    const px = sx * CLAMP_X + dx, pz = (j ? 1 : -1) * CLAMP_Z + dz;
    c.cylinder(.009, .007, 12, 'y', px, PLATE_TOP + .0035, pz, dark);
+   c.add(new THREE.TorusGeometry(.0058, .0016, 4, 12).rotateX(Math.PI / 2).translate(px, PLATE_TOP + .0072, pz), WELD);
    c.post(.0055, px, PLATE_TOP + .007, .021, pz, STEEL_DARK);
    c.post(.0055, px, .021, .039, pz, STEEL_DARK);
-   c.post(.0055, px, .039, CLAMP_TOP - .004, pz, STEEL_DARK);
+   c.post(.0055, px, .039, HINGE_Y - .003, pz, STEEL_DARK);
+   // Hinge knuckle at the post's top (the red arm swings about it) and the red quick-release collar below it.
+   c.cylinder(.0052, .02, 10, 'z', px, HINGE_Y, pz, STEEL_DARK);
+   c.post(.0068, px, .0425, .0495, pz, RELEASE, 12);
    // Leg: round tube standoff under a bolted top flange; the supported foot follows the measured roof.
    const index = i * 2 + j, foot = seat.y - (seat.supportY?.[index] ?? seat.y - .045);
    c.box(.036, .006, .040, x, PLATE_BOTTOM - .003, z, dark);
    c.post(.0145, x, -foot + .008, PLATE_BOTTOM - .006, z, paint, 12);
+   // Fillet welds round the tube where it meets its flanges.
+   c.add(new THREE.TorusGeometry(.0152, .0022, 4, 14).rotateX(Math.PI / 2).translate(x, PLATE_BOTTOM - .0062, z), WELD);
+   c.add(new THREE.TorusGeometry(.0152, .0022, 4, 14).rotateX(Math.PI / 2).translate(x, -foot + .0082, z), WELD);
    if (foot > .07) c.post(.0175, x, -foot * .5 - .004, -foot * .5 + .004, z, dark, 12);
    // Foot: rubber isolator, round flange with four bolts into the roof.
    c.post(.044, x, -foot - .003, -foot, z, RUBBER, 16);
    c.post(.041, x, -foot, -foot + .008, z, paint, 16);
-   for (const bx of [-.026, .026]) for (const bz of [-.026, .026]) c.post(.0045, x + bx, -foot + .008, -foot + .0115, z + bz, ZINC, 6);
+   // round 5 (critics: "no visible fixing"): four hex bolts on washers hold each foot to the roof, big enough to read
+   for (const bx of [-.026, .026]) for (const bz of [-.026, .026]) {
+    c.post(.0082, x + bx, -foot + .008, -foot + .0089, z + bz, ZINC, 12);
+    c.post(.0062, x + bx, -foot + .0089, -foot + .0115, z + bz, ZINC, 6);
+   }
   }
  }
  // Power and data cable: from the box gland along the rear plate's underside, clipped down the rear-left leg.
@@ -153,33 +175,39 @@ export function createMissionCradleGeometry(seat:MissionAttachment, paint:number
  }
  const geometry = c.merge();
  // Field wear: dust on what faces up, grime toward the roof, scuffed paint (the airframe's own law, in metres).
- weatherVertexColors(geometry, .3, -.02, .45);
+ weatherVertexColors(geometry, .5, -.02, .45, DUST_LIGHT, GRIME);
  return geometry;
 }
 
-/** The four quick-release clamps, in seat-local metres (payload offset applied): the pivot of each swinging head and
- * the yaw that swings it open along its skid, away from the dock's centre. */
-export function missionHoldDownPivots(seat:MissionAttachment):{x:number;z:number;closedYaw:number;openYaw:number}[] {
+/** The four quick-release clamps, in seat-local metres (payload offset applied): each arm's hinge and the yaw that
+ * points it inward over its skid. */
+export function missionHoldDownPivots(seat:MissionAttachment):{x:number;z:number;closedYaw:number}[] {
  const [dx, dz] = seat.payloadOffset ?? [0, 0], result = [];
- for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-  const closedYaw = sx > 0 ? 0 : Math.PI;
-  result.push({ x: sx * CLAMP_X + dx, z: sz * CLAMP_Z + dz, closedYaw, openYaw: closedYaw + sx * sz * Math.PI / 2 });
- }
+ for (const sx of [-1, 1]) for (const sz of [-1, 1]) result.push({ x: sx * CLAMP_X + dx, z: sz * CLAMP_Z + dz, closedYaw: sx > 0 ? 0 : Math.PI });
  return result;
 }
-/** Height of the clamp heads' pivot (the post's top). */
-export const MISSION_HOLD_DOWN_Y = CLAMP_TOP - .004;
-/** One clamp head about its pivot: a red hook arm that reaches over the skid along local -x, a lip down past the
- * skid's crown and a rubber pad bearing on it, and the red quick-release knob on the post. Painted release red so the
- * hold-down reads before a lift-off; vertex-coloured, worn like the dock. */
+/** Height of the clamp arms' hinge (the post's top). */
+export const MISSION_HOLD_DOWN_Y = HINGE_Y;
+/** A clamp arm's pose at an opening fraction (0 holding the skid, 1 standing straight up): it flips about its hinge,
+ * eased at both ends. The whole swing stays inside the parked airframe's gear stock (missionAttachmentVisual receipt). */
+export function missionHoldDownMatrix(p:{x:number;z:number;closedYaw:number}, open:number, out:THREE.Matrix4):THREE.Matrix4 {
+ const h = Math.min(1, Math.max(0, open)), e = h * h * (3 - 2 * h);
+ out.makeRotationY(p.closedYaw).multiply(flip.makeRotationZ(-e * Math.PI / 2));
+ return out.setPosition(p.x, HINGE_Y, p.z);
+}
+const flip = new THREE.Matrix4();
+/** One clamp arm about its hinge (the hinge on its top edge, so the arm flips up without ever reaching outboard), as a
+ * quick-release lever (round 5, critics: "the hold-downs read as orange blocks"): a hinge barrel, a slim dark-steel
+ * lever that lies over the skid along local -x, a red grip sleeve on its free end (the release, read before a lift-off),
+ * a lip down past the skid's crown and a rubber pad bearing on it. Vertex-coloured, worn like the dock. */
 export function createMissionHoldDownGeometry():THREE.BufferGeometry {
  const c = new CradleBuilder();
- c.cylinder(.0068, .007, 12, 'y', 0, .0035, 0, STEEL_DARK);
- c.span(-.038, .0, -.0075, .0, .0095, .0075, RELEASE);
- c.span(-.038, -.008, -.0075, -.032, .0, .0075, RELEASE);
- c.span(-.032, -.0035, -.0068, -.025, .0, .0068, RUBBER);
- c.cylinder(.0068, .008, 12, 'y', 0, .0135, 0, shade(RELEASE, .82));
- c.cylinder(.0035, .003, 8, 'y', 0, .019, 0, STEEL_DARK);
+ c.cylinder(.0042, .013, 10, 'z', -.0062, -.0045, 0, STEEL_DARK);
+ c.span(-.034, -.0072, -.0048, -.0045, -.0022, .0048, STEEL_DARK);
+ c.span(-.038, -.0095, -.0072, -.0255, 0, .0072, RELEASE);
+ for (const x of [-.0335, -.03]) c.span(x - .0007, -.0003, -.0073, x + .0007, .0003, .0073, shade(RELEASE, .62));
+ c.span(-.038, -.0175, -.0062, -.0335, -.0095, .0062, STEEL_DARK);
+ c.span(-.0335, -.013, -.0058, -.0255, -.0095, .0058, RUBBER);
  const geometry = c.merge();
  weatherVertexColors(geometry, .22, -1, .45);
  return geometry;

@@ -187,7 +187,73 @@ export default {
     // sight lines and objectives keep their bands. The lighthouse stands on the south
     // headland's crest, 21 m over the water 20 m below it, where the roadside plan had put it 300 m inland.
     town: { x0: 170, x1: 254, z0: -236, z1: 166, cx: 214, cz: -40 },
-    plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270 }],
+    // (the map-content lane, 2026-10-10; the owner: Nordhavn "very bare") the farms of the valley floor round Bjerkvik in
+    // May 1940: the graded meadow the town left when it moved onto the quay (e13c91de9) stood empty, the props' scatter and
+    // the trees keeping off all of it. Each farm's tun: the farmhouse with its front to the road, the barn behind it, the
+    // (the blind critics, 2026-10-15: the base kit's farmhouse stood as "a windowless whitewashed box, not Norwegian") each
+    // farmhouse plot is the nordland kit's two-storey house (its 'alpine' plot: the boarded våningshus with its windows and
+    // glassed veranda up the gable; the kit has no farmhouse of its own)
+    // stabbur beside the yard and a hay rack out in the infield (landmarks below), up to seven farms a side of the middle,
+    // every footprint clear of the roads' cores, the zone discs, the trees' trunks and the town. The sites stand after the
+    // roadside plan (the town places exactly as before) and each draws from its own stream (terrace), the lighthouse too.
+    plannedSitesAfterPlan: true,
+    plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270, terrace: true },
+      { structure: 'alpine', x: -17.0, z: -29.0, yawDeg: 108, terrace: true },
+      { structure: 'barn', x: -42.2, z: -35.5, yawDeg: 108, terrace: true },
+      { structure: 'alpine', x: -83.0, z: -277.0, yawDeg: 104, terrace: true },
+      { structure: 'barn', x: -104.3, z: -271.7, yawDeg: 104, terrace: true },
+      { structure: 'alpine', x: 165.0, z: -159.0, yawDeg: 81, terrace: true },
+      { structure: 'barn', x: 145.5, z: -176.3, yawDeg: 81, terrace: true },
+      { structure: 'alpine', x: 133.0, z: -55.0, yawDeg: -161, terrace: true },
+      { structure: 'barn', x: 126.9, z: -29.6, yawDeg: -161, terrace: true },
+      { structure: 'alpine', x: -45.0, z: -213.0, yawDeg: -76, terrace: true },
+      { structure: 'barn', x: -23.7, z: -218.3, yawDeg: -76, terrace: true },
+      { structure: 'alpine', x: 17.0, z: 287.0, yawDeg: 76, terrace: true },
+      { structure: 'barn', x: -4.3, z: 281.7, yawDeg: 76, terrace: true },
+      { structure: 'alpine', x: 29.0, z: 25.0, yawDeg: -72, terrace: true },
+      { structure: 'barn', x: 49.9, z: 18.2, yawDeg: -72, terrace: true },
+      { structure: 'alpine', x: -217.0, z: 235.0, yawDeg: -170, terrace: true },
+      { structure: 'barn', x: -213.2, z: 256.7, yawDeg: -170, terrace: true },
+      { structure: 'alpine', x: 165.0, z: 145.0, yawDeg: 79, terrace: true },
+      { structure: 'barn', x: 143.4, z: 140.8, yawDeg: 79, terrace: true },
+      { structure: 'alpine', x: 163.0, z: 285.0, yawDeg: -12, terrace: true },
+      { structure: 'barn', x: 167.6, z: 263.5, yawDeg: -12, terrace: true },
+      { structure: 'alpine', x: -95.0, z: 223.0, yawDeg: 169, terrace: true },
+      { structure: 'barn', x: -99.2, z: 244.6, yawDeg: 169, terrace: true },
+      { structure: 'alpine', x: 57.0, z: 159.0, yawDeg: -76, terrace: true },
+      { structure: 'barn', x: 78.3, z: 153.7, yawDeg: -76, terrace: true },
+    ],
+    landmarks: [
+      { kind: 'stabbur', x: -28.6, z: -38.9, yawDeg: 108, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -58.8, z: -15.4, yawDeg: 108, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: -93.9, z: -287.7, yawDeg: 104, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -125.7, z: -266.4, yawDeg: 104, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 159.1, z: -173.1, yawDeg: 81, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'stabbur', x: 123.3, z: -43.2, yawDeg: -161, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 147.3, z: -13.4, yawDeg: -161, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: -34.1, z: -202.3, yawDeg: -76, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -2.3, z: -223.6, yawDeg: -76, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 12.4, z: 272.5, yawDeg: 76, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -25.7, z: 276.4, yawDeg: 76, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 40.6, z: 34.9, yawDeg: -72, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 70.8, z: 11.4, yawDeg: -72, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: -228.4, z: 245.1, yawDeg: -170, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -209.4, z: 278.3, yawDeg: -170, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 159.6, z: 130.7, yawDeg: 79, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 121.8, z: 136.6, yawDeg: 79, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 151.9, z: 274.5, yawDeg: -12, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'stabbur', x: -109.3, z: 228.4, yawDeg: 169, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -103.4, z: 266.2, yawDeg: 169, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 67.9, z: 169.7, yawDeg: -76, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 99.7, z: 148.4, yawDeg: -76, ground: 'veto', name: 'a hay rack in the infield' },
+      // the stockfish racks on the harbour's slopes, the cod hung in pairs to dry (a sixth at (231, -43) stood inside the
+      // harbour store's footprint, so the composer never built it: dropped, the shard unchanged)
+      { kind: 'fishRack', x: 235, z: 77, yawDeg: -101, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 233, z: 139, yawDeg: -101, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 235, z: -181, yawDeg: -99, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 269, z: 65, yawDeg: -94, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 231, z: 241, yawDeg: -99, ground: 'veto', name: 'a stockfish rack by the harbour' },
+    ],
     blockFill: true,
     extraKits: ['coastal'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [
@@ -211,7 +277,8 @@ export default {
     inhabit: {
       // (wave 111b: "a fairground-style market stall") no market stall: the quay's own fish trade has the fish plant
       // (round 3, gauntlet wave 129: "a park bench (1940!)") no park benches either
-      stalls: 0, benches: 0, coreClutter: 22, trucks: 5, jeeps: 3,
+      // (map-content, the valley fill 2026-10-10) the farms' carts and the valley road's traffic of 1940 (the norway1940 fleet)
+      stalls: 0, benches: 0, coreClutter: 22, trucks: 8, jeeps: 5, carts: 4, handcarts: 2,
       // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
       // vocabulary is the wharf's cable reels and the road signs
       // (round 3, wave 129: "a flat-shaded green box with three green cylinders") nor a pad transformer's cabinet
@@ -257,7 +324,9 @@ export default {
     // (2026-10-13: the baked decks the phones show match the cumulus — the cirrus veil 0.9 -> 0.6 and the deck 1.15 -> 1.05,
     // Verdant's; the deck tint a near-white 0xf2f5f6 (was the grey 0xd9e1e2), which the layer's albedo reads by day too)
     cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xf2f5f6,
-    sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
+    sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Norwegian fjord's crisp sea air — a cool silver band, a clean northern blue
+    atmosphere: { horizonTintHex: 0xd6e0e6, horizonTintAmount: 0.35, horizonBandDeg: 8, zenithTintHex: 0x5a86c4, zenithTintAmount: 0.2 },
   },
   minimap: {
     base: [68, 82, 76], hard: [92, 96, 94], soft: [42, 66, 68],
@@ -265,7 +334,11 @@ export default {
     water: 'rgba(43,81,99,.88)', waterStroke: 'rgba(21,46,61,.95)',
     roadCasing: 'rgba(37,41,43,.95)', roadFill: 'rgba(143,151,150,.96)', buildingFill: '#c2c8ca',
   },
-  shot: { pos: [-226, 42, -238], look: [218, -4, 38] },
+  // (the map-content lane, 2026-10-10; the research lane's request, the coordinator's approval: the old pose looked across
+  // the middle of the map at the old village site, an empty moor since the town moved onto the quays on 10-03) the
+  // establishing pose from the valley floor south-west of the harbour town, looking north-east along the harbour road over
+  // the farms, the town and the quays to the lighthouse on the south headland, the bay's arms and the massifs behind
+  shot: { pos: [96, 38, -300], look: [330, -6, 20] },
   // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;
   // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)
   ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.4 },

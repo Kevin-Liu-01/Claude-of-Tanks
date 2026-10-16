@@ -20,9 +20,18 @@ interface UtilityPole extends UtilityPoleInput {
 
 type UtilitySpanInput = readonly [number, number];
 
+/** One conductor's insulator on a pole: along its crossarm (local x, metres; the road's side by sign) and over the
+ *  pole's attachment height (props lane A, #21, 2026-10-14: a region's line carries its own conductors). */
+export interface UtilityConductor {
+  across: number;
+  up: number;
+}
+
 interface UtilityNetworkOptions {
   segments?: number;
   sideOffset?: number;
+  /** the line's conductors (default: two, at -sideOffset and +sideOffset on the attachment height) */
+  conductors?: readonly UtilityConductor[];
 }
 
 interface PoleFallState {
@@ -36,6 +45,8 @@ export interface UtilityNetwork {
   readonly spans: Array<{ a: number; b: number }>;
   readonly segments: number;
   readonly sideOffset: number;
+  /** how many conductors each span carries (the wires' pool lays each one's segments) */
+  readonly conductors: number;
   readonly instanceCount: number;
   instanceIndex(spanIndex: number, sideIndex: number, segmentIndex: number): number;
   setPoleFall(poleIndex: number, axisX: number, axisZ: number, angle: number): number[];
@@ -47,13 +58,13 @@ export interface UtilityNetwork {
 function rotateAttachment(
   pole: UtilityPole,
   state: PoleFallState | null,
-  side: number,
-  offset: number,
+  across: number,
+  up: number,
   out: Float64Array,
 ): Float64Array {
-  const vx = Math.cos(pole.yaw) * side * offset;
-  const vy = pole.attachH;
-  const vz = -Math.sin(pole.yaw) * side * offset;
+  const vx = Math.cos(pole.yaw) * across;
+  const vy = pole.attachH + up;
+  const vz = -Math.sin(pole.yaw) * across;
   if (!state || state.angle === 0) {
     out[0] = pole.x + vx;
     out[1] = pole.y + vy;
@@ -86,6 +97,9 @@ export function createUtilityNetwork(
 ): UtilityNetwork {
   const segments = opts.segments ?? DEFAULT_SEGMENTS;
   const sideOffset = opts.sideOffset ?? 0.6;
+  const conductors: readonly UtilityConductor[] = opts.conductors?.length ? opts.conductors
+    : [{ across: -sideOffset, up: 0 }, { across: sideOffset, up: 0 }];
+  const n = conductors.length;
   const normalizedPoles: UtilityPole[] = poles.map((pole) => ({
     ...pole,
     attachH: pole.attachH ?? 6.5,
@@ -108,11 +122,12 @@ export function createUtilityNetwork(
     spans: normalizedSpans,
     segments,
     sideOffset,
-    instanceCount: normalizedSpans.length * 2 * segments,
+    conductors: n,
+    instanceCount: normalizedSpans.length * n * segments,
 
     /** Stable instance slot for one conductor segment. */
     instanceIndex(spanIndex: number, sideIndex: number, segmentIndex: number): number {
-      return ((spanIndex * 2 + sideIndex) * segments) + segmentIndex;
+      return ((spanIndex * n + sideIndex) * segments) + segmentIndex;
     },
 
     /** Set one pole's live hinge pose; returns its stable adjacent-span list. */
@@ -137,16 +152,16 @@ export function createUtilityNetwork(
 
     /**
      * Write (segments + 1) XYZ points into caller-owned `out`.
-     * sideIndex 0/1 maps to the two crossarm insulators.
+     * sideIndex picks the conductor (by default 0/1: the two crossarm insulators).
      */
     writeSpanPoints(spanIndex: number, sideIndex: number, out: Float64Array): number {
       const span = normalizedSpans[spanIndex];
       if (!span || !out || out.length < (segments + 1) * 3) return 0;
-      const side = sideIndex === 0 ? -1 : 1;
+      const conductor = conductors[sideIndex] ?? conductors[0];
       const stateA = falls[span.a];
       const stateB = falls[span.b];
-      rotateAttachment(normalizedPoles[span.a], stateA, side, sideOffset, a);
-      rotateAttachment(normalizedPoles[span.b], stateB, side, sideOffset, b);
+      rotateAttachment(normalizedPoles[span.a], stateA, conductor.across, conductor.up, a);
+      rotateAttachment(normalizedPoles[span.b], stateB, conductor.across, conductor.up, b);
       const horizontal = Math.hypot(b[0] - a[0], b[2] - a[2]);
       const fallA = stateA ? Math.abs(Math.sin(stateA.angle)) : 0;
       const fallB = stateB ? Math.abs(Math.sin(stateB.angle)) : 0;

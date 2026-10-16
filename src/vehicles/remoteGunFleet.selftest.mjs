@@ -12,7 +12,9 @@ const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).ma
  strv122:7.62,merkava4_trophy:7.62,merkava4:7.62,leo2a6_ua:7.62,ua_challenger2:7.62};
 const vector=a=>new THREE.Vector3(...a);
 for(const [id,caliber] of Object.entries(requested)){
- const kit=AUXILIARY_INVENTORY[id];assert.equal(kit.guns.length,1,id+' has one controlled station');
+ // VH.14 (2026-10-15): every drawn roof gun works, so a Challenger 2 whose loader also carries a GPMG has two
+ // stations; the first (heaviest, the one stepRoofGun drives) is of the requested calibre
+ const kit=AUXILIARY_INVENTORY[id];assert.ok(kit.guns.length>=1,id+' has a controlled station');
  const g=kit.guns[0];assert.equal(g.caliberMm,caliber,id);
  const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true});
  const mount=tank.root.getObjectByName(g.name),pitch=mount?.getObjectByName('auxiliaryWeaponPitch');
@@ -61,6 +63,8 @@ for(const [id,caliber] of Object.entries(requested)){
 assert.ok(auxiliaryWeaponProfile(7.62).shell.pen100Mm<auxiliaryWeaponProfile(12.7).shell.pen100Mm);
 assert.ok(auxiliaryWeaponProfile(12.7).shell.pen100Mm<auxiliaryWeaponProfile(30).shell.pen100Mm);
 assert.notEqual(auxiliaryWeaponProfile(7.62).burstRounds,auxiliaryWeaponProfile(30).burstRounds);
-// User's decorative C2 roof cannon must remain unarmed.
-assert.equal(AUXILIARY_INVENTORY.c2_ariete?.guns.length??0,0);
+// VH.14 (the coordinator's ruling 2026-10-14, "every drawn gun works or goes"): the Ariete C2 really carries a roof
+// station, so the C2 X's commander K2 copy, once a decorative fitting, is a working 12.7 mm remote station beside its
+// loader's GPMG.
+assert.deepEqual(AUXILIARY_INVENTORY.c2_ariete?.guns.map((g)=>g.caliberMm),[12.7,7.62]);
 console.log(`remoteGunFleet: all ${Object.keys(requested).length} requested mounts, muzzle metal, articulation, range and independent firing PASS`);

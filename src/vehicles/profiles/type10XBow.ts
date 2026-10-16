@@ -1,9 +1,12 @@
 // Original source-measured spare-link bodies and cross pins; no source buffers.
 import {KIT} from './kit.ts';
+import {withSpareTrackRun} from '../spareTrackSeat.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
-export function addType10BowLinks(P:TankBuilderPort):void {
-  for(const x of [-.731826,-.192168,.192171,.731828]) {
+export function addType10BowLinks(P0:TankBuilderPort):void {
+  // VEH-13: each link with its pins is one registered run (spareTrackSeat.ts)
+  for(const x of [-.731826,-.192168,.192171,.731828]) withSpareTrackRun(P0,{site:'type10-bow-link',source:'adhoc',
+    rotation:[.615620555,0,0],axis:2},(P)=>{
     // 1.4 mm concealed back extension engages the permanent measured face;
     // the complete source front plane and outer silhouette are unchanged.
     P.addEquipment('hullDark',KIT.box(.318035,.351478,.054583),
@@ -16,5 +19,5 @@ export function addType10BowLinks(P:TankBuilderPort):void {
         P.addEquipment('hullDetail',pin,x+side*.05536,y,z,.615620555);
       }
     }
-  }
+  });
 }

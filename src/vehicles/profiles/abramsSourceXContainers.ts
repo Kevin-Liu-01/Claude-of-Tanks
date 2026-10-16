@@ -1,100 +1,16 @@
-// Four source81 containers. The handle is a real opening between separately
-// closed molded stock, not a dark rectangle on a filled bounding box.
+// The source81 container seats and their trays. The source cans themselves were replaced on 2026-10-14 by the fleet's
+// pressed 20 L jerrycan on these seats (owner markup: their blank faces read as random blocks; abramsSourceXEquipment.ts
+// bustleRackStowage); the trays and receivers stay the source's.
 import * as THREE from 'three';
-import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
-import { closedSectionLoft, planeBoundedArmor, roundMember, type ArmorPlane, type XY, type XYZ } from './abramsSourceXGeometry.ts';
+import { closedSectionLoft, planeBoundedArmor, type ArmorPlane, type XY } from './abramsSourceXGeometry.ts';
 
 interface ContainerPart { name: string; geometry: THREE.BufferGeometry }
-const SOURCE_CONTAINER_SEATS = [
+export const SOURCE_CONTAINER_SEATS = [
   [-1.288625, 1.879755, -2.375235, 0],
   [1.150562, 1.879755, -2.375235, 0],
   [-1.203210, 1.889645, -3.149505, -Math.PI / 2],
   [1.0643895, 1.889645, -3.149505, -Math.PI / 2],
 ] as const;
-
-function roundedContour(ring: readonly XY[], high: boolean): XY[] {
-  return ring.flatMap((p,i)=>{
-    const previous=ring[(i+ring.length-1)%ring.length],next=ring[(i+1)%ring.length];
-    const offset=(q:XY):XY=>{
-      const t=Math.min(.22,.006/Math.hypot(q[0]-p[0],q[1]-p[1]));
-      return[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];
-    };
-    const a=offset(previous),b=offset(next);
-    return (high ? [0,.25,.5,.75,1] : [0,.5,1]).map(t=>[
-      (1-t)**2*a[0]+2*(1-t)*t*p[0]+t*t*b[0],
-      (1-t)**2*a[1]+2*(1-t)*t*p[1]+t*t*b[1],
-    ] as XY);
-  });
-}
-
-function roundedStock(outline: readonly XY[], high: boolean, depth = .15244): THREE.BufferGeometry {
-  // Low keeps every molded boundary and the same 6mm corner controls.
-  // Only intermediate fillet samples and bevel depth rows are reduced.
-  const ring=roundedContour(outline,high);
-  const bevel = .009;
-  const cx = ring.reduce((s,p)=>s+p[0],0)/ring.length;
-  const cy = ring.reduce((s,p)=>s+p[1],0)/ring.length;
-  const inset = ring.map(([x,y])=>[x+(cx-x)*.04,y+(cy-y)*.02] as XY);
-  const half=ring.map(([x,y],i)=>[(x+inset[i][0])/2,(y+inset[i][1])/2] as XY);
-  const geometry=closedSectionLoft(high ? [
-    {z:-depth/2,ring:inset},{z:-depth/2+bevel*.25,ring:half},
-    {z:-depth/2+bevel,ring}, {z:depth/2-bevel,ring},
-    {z:depth/2-bevel*.25,ring:half},{z:depth/2,ring:inset},
-  ] : [{z:-depth/2,ring:inset},{z:-depth/2+bevel,ring},
-    {z:depth/2-bevel,ring},{z:depth/2,ring:inset}]);
-  const smooth=toCreasedNormals(geometry,Math.PI/3);
-  if(smooth!==geometry)geometry.dispose();
-  return smooth;
-}
-
-function canBody(high: boolean): THREE.BufferGeometry {
-  return roundedStock([[-.154,.00969],[.148,.00969],[.17112,.017],[.17112,.366],
-    [.080,.411],[-.151,.411],[-.17112,.386],[-.17112,.017]],high);
-}
-
-function capParts(segments: number): ContainerPart[] {
-  // Source cap assembly spans ~108mm vertically and122mm in thickness-axis
-  // width. Its tilted socket meets the sloping container shoulder; the neck
-  // and cap share one axis instead of independently angled cylinders.
-  const axis = new THREE.Vector3(.544350,.838858,-.00008162).normalize();
-  const center = new THREE.Vector3(.110195,.421530,.00054);
-  const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis);
-  const part = (name: string, radius: number, height: number, offset: number) => {
-    const g = new THREE.CylinderGeometry(radius,radius,height,segments);
-    g.applyQuaternion(rotation).translate(...center.clone().addScaledVector(axis,offset).toArray());
-    return {name,geometry:g};
-  };
-  return [part('Socket',.044,.045,-.030),part('Cap',.0612,.031,0),
-    part('CapButton',.013,.009,.019)];
-}
-
-function containerParts(high: boolean, soleBottom: number): ContainerPart[] {
-  return [{name:'Body',geometry:canBody(high)},
-    // The source's central sole is recessed9.69mm. Two shallow molded feet
-    // contact the tray; do not extend the whole body down into that real air.
-    ...[-1,1].map(s=>({name:`Sole${s}`,geometry:new THREE.BoxGeometry(.294,.011-soleBottom,.026)
-      .translate(0,(.011+soleBottom)/2,s*.052)})),
-    {name:'HandleLeftLeg',geometry:roundedStock([[-.157,.405],[-.095,.405],[-.126,.467],[-.138,.479],[-.157,.460]],high,.12246)},
-    {name:'HandleRightLeg',geometry:roundedStock([[.019,.405],[.063,.405],[.059,.464],[.048,.480],[.025,.478]],high,.12246)},
-    {name:'HandleBar',geometry:roundMember([-.126,.469,0],[.040,.469,0],.013,high?16:12)},
-    ...capParts(high?24:16)];
-}
-
-export function sourceContainers(high = true): ContainerPart[] {
-  const parts: ContainerPart[] = [];
-  for (const [i, [x,y,z,yaw]] of SOURCE_CONTAINER_SEATS.entries()) {
-    const position: XYZ = [x,y,z];
-    // Front source feet overlap their real tray by120µm. Rear source leaves
-    // a370µm seam above107; extend only the native sole490µm to close that
-    // submillimetre assembly seam, keeping body and recessed air unchanged.
-    for(const part of containerParts(high,i<2?.00094:-.00049)) {
-      part.geometry.rotateY(yaw).translate(...position);
-      part.geometry.userData.sourceOwner = 'selectedOBJ:81';
-      parts.push({name:`Container${i}${part.name}`,geometry:part.geometry});
-    }
-  }
-  return parts;
-}
 
 function trayOutline(x0: number, x1: number, z0: number, z1: number, corner: number): XY[] {
   // Counterclockwise in ground X/-Z. Eight independent chamfer stations,

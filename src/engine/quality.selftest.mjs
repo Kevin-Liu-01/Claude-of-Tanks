@@ -52,7 +52,8 @@ assert.equal(desktop.PRESETS.high.maxPixelRatio, 1.5);
 assert.deepEqual(desktop.PRESETS.ultra.shadowMapSizes, [4096, 4096, 4096, 2048], 'Ultra 4K near/hero/mid cascades, 2K far');
 assert.equal(desktop.PRESETS.ultra.shadowMaxFar, 700, 'Ultra shadow range covers whole towns');
 assert.equal(desktop.PRESETS.ultra.aoScale, 0, 'Ultra keeps ambient occlusion off');
-assert.deepEqual(desktop.PRESETS.high.shadowMapSizes, [2048, 2048, 2048, 1024], 'High 2K cascades');
+// (2026-10-14, SKY shadows r2a: High's breaks at 30 / 89 / 320 m with the 185-320 m band at 4096 — shadowCascadeFade.selftest)
+assert.deepEqual(desktop.PRESETS.high.shadowMapSizes, [2048, 2048, 4096, 1024], 'High 2K near cascades, a 4K mid cascade');
 assert.equal(desktop.PRESETS.high.shadowMaxFar, 700, 'High shadow range covers whole towns');
 assert.equal(desktop.PRESETS.high.aoScale, 0, 'High keeps ambient occlusion off');
 assert.deepEqual(desktop.PRESETS.medium.shadowMapSizes, desktop.DESKTOP_SHADOW_MAP_SIZES,

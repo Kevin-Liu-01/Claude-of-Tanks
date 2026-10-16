@@ -26,9 +26,12 @@
 // shophouses and often burnt, the Settlement's a mix of lanes, shophouses and blocks. Without a place (the receipts) the
 // mix is drawn from the build stream. Every building fills its base's measured reach (ctx.bounds); a street row keeps its
 // front to the plot's.
-import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, holedPolygon, recordBody, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { LocalFrame, PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import {
+  DAMP_EDGE_BREAKS, buildHouse, emitRoof, holedBox, holedPolygon, recordBody, roofGeometry, wallPolygon, windowRhythm,
+  type FaceName, type HoleRect, type HouseDialect, type HouseSpec, type Opening, type RoofSpec,
+} from './house.ts';
+import { doorUnit, gateUnit, openShop, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
@@ -39,6 +42,8 @@ import {
 import { SHANGHAI_BUND_BUILDERS } from './shanghaiBund.ts';
 
 const DEC = { decor: true } as const;
+/** A Zhabei shop's goods on its shelves: bolts of cloth, tea and rice sacks, lacquer boxes, crocks. */
+const SHOP_GOODS: readonly Rgb[] = [0x8a3a2e, 0x2f4f6a, 0xb08a4a, 0xd8cfb8, 0x4a5a3a, 0x6a4a6a, 0x9a7a3a, 0x3a3634].map(rgb);
 const SHADOWED = { decor: true, shadow: true } as const;
 
 /**
@@ -76,15 +81,29 @@ function gableEnds(sink: PartSink, bucket: RegionalBucket, W: number, zb: number
 type Pediment = 'triangle' | 'arch' | 'flat';
 
 /** A shikumen's gate: the granite frame, the black lacquer leaves (one ajar now and then), the carved pediment. */
-function shikumenGate(sink: PartSink, face: Face, u: number, gw: number, gh: number, ped: Pediment, look: () => number, burnt: boolean): void {
-  facePanel(sink, 'dark', face, u, gh / 2, 0.006, gw, gh, DEC);
+function shikumenGate(sink: PartSink, face: Face, u: number, gw: number, gh: number, ped: Pediment, look: () => number, burnt: boolean, wallT = 0): void {
+  // (props census #29, lane B 2026-10-15; the judges: "the shikumen gate a dark panel with leaf boxes laid on it") the gate
+  // a doorway cut through the court wall (`wallT` deep), its lacquer leaves hung at the back of it, one ajar now and then
+  // swung in to the court; laid on a wall without a cut (wallT 0), the dark of the old panel behind them
+  if (wallT <= 0) facePanel(sink, 'dark', face, u, gh / 2, 0.006, gw, gh, DEC);
+  const lo = wallT > 0 ? -wallT + 0.04 : 0.03;
   const ajar = look() < 0.22;
   for (const side of [-1, 1]) {
     const lu = u + side * gw / 4;
-    if (burnt) { faceBox(sink, 'structureWood', face, lu, gh / 2, 0.03, gw / 2 - 0.03, gh - 0.05, 0.05, { colour: CHAR, decor: true }); continue; }
-    if (ajar && side > 0) continue;
-    faceBox(sink, 'structureWood', face, lu, gh / 2, 0.03, gw / 2 - 0.03, gh - 0.05, 0.05, { colour: LACQUER, decor: true, fineSides: true });
-    faceBox(sink, 'structureMetal', face, u + side * 0.13, 1.3, 0.07, 0.1, 0.1, 0.03, { colour: GILT, decor: true, fine: true });
+    if (burnt) { faceBox(sink, 'structureWood', face, lu, gh / 2, lo, gw / 2 - 0.03, gh - 0.05, 0.05, { colour: CHAR, decor: true }); continue; }
+    if (ajar && side > 0) {
+      if (wallT <= 0) continue;
+      // swung in on its hinge at the jamb, three-quarters open
+      const lw = gw / 2 - 0.03, a = 1.2, hx = u + gw / 2, ca = Math.cos(a), sa = Math.sin(a);
+      const ux = face.u, ox = face.out;
+      const axis: Vec3 = [-ux[0] * ca - ox[0] * sa, 0, -ux[2] * ca - ox[2] * sa];
+      const hinge = facePoint(face, hx, gh / 2, -wallT + 0.02);
+      const c: Vec3 = [hinge[0] + axis[0] * lw / 2, hinge[1], hinge[2] + axis[2] * lw / 2];
+      sink.box('structureWood', c, [lw / 2, (gh - 0.05) / 2, 0.025], { colour: LACQUER, decor: true }, new LocalFrame(axis, [0, 1, 0], [-axis[2], 0, axis[0]], [0, 0, 0]));
+      continue;
+    }
+    faceBox(sink, 'structureWood', face, lu, gh / 2, lo, gw / 2 - 0.03, gh - 0.05, 0.05, { colour: LACQUER, decor: true, fineSides: true });
+    faceBox(sink, 'structureMetal', face, u + side * 0.13, 1.3, lo + 0.04, 0.1, 0.1, 0.03, { colour: GILT, decor: true, fine: true });
   }
   const sf = { decor: true, fineSides: true };
   for (const side of [-1, 1]) faceBox(sink, 'plaster3', face, u + side * (gw / 2 + 0.13), (gh + 0.1) / 2, 0.06, 0.26, gh + 0.1, 0.12, sf);
@@ -123,11 +142,32 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
     const stepped = look() < 0.55;
     const ped = choose(look(), ['triangle', 'arch', 'flat'] as const);
     // the house, the back wing (the kitchen, the pavilion room over it, the drying terrace on its roof), the court wall
-    sink.span(wall, -W / 2, -0.4, zb, W / 2, eaveY, zf);
+    // (props census #29, lane B 2026-10-15; the judges: "solid span boxes, the gate a dark panel, the casements windowUnits on
+    // unholed walls") the house, the back wing and the court wall each a wall cut by its openings: the gates through the
+    // court wall into the courts, the hall's lattice doors and the casements cut in the house front, the back wing's door
+    // and windows cut; the house and the wing each a body for the damage (recordBody)
     const backTop = s1 + s2 * 0.8 + s3;
-    sink.span(wall, -W / 2, -0.4, -D / 2, W / 2, backTop, zb);
     const courtH = s1 + 1.3;
-    sink.span(wall, -W / 2, -0.4, D / 2 - T, W / 2, courtH, D / 2);
+    const gw = clampTo(uw * 0.3, 1.2, 1.5), gh = 2.75, hallW = uw - 1.2, rv = 0.18;
+    const houseHoles: HoleRect[] = [], wingHoles: HoleRect[] = [], gateHoles: HoleRect[] = [];
+    for (let k = 0; k < n; k++) {
+      const u = -W / 2 + uw * (k + 0.5);
+      gateHoles.push({ u0: u - gw / 2, u1: u + gw / 2, y0: -0.05, y1: gh });
+      houseHoles.push({ u0: u - hallW / 2, u1: u + hallW / 2, y0: 0.15, y1: 2.85 });
+      for (let st = 1; st < (three ? 3 : 2); st++) {
+        const y = s1 + (st - 1) * s2 + 0.8;
+        for (const du of [-uw * 0.22, uw * 0.22]) houseHoles.push({ u0: u + du - 0.5, u1: u + du + 0.5, y0: y, y1: y + 1.5 });
+      }
+      const ub = W / 2 - uw * (k + 0.5);
+      wingHoles.push({ u0: ub - uw * 0.2 - 0.45, u1: ub - uw * 0.2 + 0.45, y0: 0, y1: 2.1 },
+        { u0: ub + uw * 0.18 - 0.4, u1: ub + uw * 0.18 + 0.4, y0: 1.1, y1: 2.1 }, { u0: ub - 0.45, u1: ub + 0.45, y0: s1 + 0.7, y1: s1 + 1.9 });
+    }
+    const house = holedBox(sink, wall, -W / 2, zb, W / 2, zf, -0.4, eaveY, { front: houseHoles }, 0.3, rv).front;
+    const wing = holedBox(sink, wall, -W / 2, -D / 2, W / 2, zb, -0.4, backTop, { back: wingHoles }, 0.3, rv);
+    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    holedPolygon(sink, wall, front, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, courtH], [-W / 2, courtH]], gateHoles, T, 0, {}, [], DAMP_EDGE_BREAKS);
+    recordBody(sink, 0, (zb + zf) / 2, W, zf - zb, eaveY, wall, false, true);
+    recordBody(sink, 0, (-D / 2 + zb) / 2, W, zb + D / 2, backTop, wall);
     for (let k = 0; k <= n; k++) {
       const x0 = clampTo(-W / 2 + k * uw - 0.12, -W / 2, W / 2 - 0.24);
       sink.span(wall, x0, -0.4, zf, x0 + 0.24, courtH - 0.45, D / 2 - T);
@@ -143,29 +183,38 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
         horseHeadWall(sink, wall, px, k === 0 ? -1 : 1, zc, s + roof.eave, eaveY, top);
       }
     } else gableEnds(sink, wall, W, zb, zf, eaveY, rg.ridgeY);
+    // (the maps lane, 2026-10-15, Suzhou's blind critics: a terrace's end wall seen down a lane read as "a blank plaster
+    // wall") the end houses' side windows: a casement on each upper storey over the house block and a small high one on
+    // the ground floor, as the lanes' end units have them
+    for (const face of [{ origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D }, { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }] as Face[]) {
+      const uc = (face.u[2] > 0 ? 1 : -1) * zc, span = zf - zb;
+      const us = span > 6.5 ? [uc - span * 0.22, uc + span * 0.22] : [uc];
+      for (const u of us) {
+        windowUnit(sink, face, u, 1.35, 0.8, 0.9, CASEMENT, look, 0.3);
+        for (let st = 1; st < (three ? 3 : 2); st++) windowUnit(sink, face, u, s1 + (st - 1) * s2 + 0.8, 0.9, 1.4, CASEMENT, look, 0.3);
+      }
+    }
     // the courtyard wall's coping and its gates
     sink.span('structureMetal', -W / 2 - 0.04, courtH, D / 2 - T - 0.07, W / 2 + 0.04, courtH + 0.12, D / 2 + 0.07, { ...SHADOWED, colour: TILE_COPING });
-    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const house: Face = { origin: [0, 0, zf], u: [1, 0, 0], out: [0, 0, 1], width: W };
     const keep: Array<{ u0: number; u1: number; y0: number; y1: number }> = [];
-    const gw = clampTo(uw * 0.3, 1.2, 1.5), gh = 2.75;
     for (let k = 0; k < n; k++) {
       const u = -W / 2 + uw * (k + 0.5);
-      shikumenGate(sink, front, u, gw, gh, ped, look, burnt);
+      shikumenGate(sink, front, u, gw, gh, ped, look, burnt, T);
       keep.push({ u0: u - gw / 2 - 0.5, u1: u + gw / 2 + 0.5, y0: 0, y1: gh + 1.4 });
-      // the house front over the court wall: its casements (the lattice doors of the hall below seen only from above)
-      facePanel(sink, 'structureWood', house, u, 1.5, 0.01, uw - 1.2, 2.7, { colour: shade(TEAK, 0.7), decor: true });
-      for (let st = 1; st < (three ? 3 : 2); st++) {
-        const y = s1 + (st - 1) * s2 + 0.8;
-        for (const du of [-uw * 0.22, uw * 0.22]) {
-          if (burnt && look() < 0.65) {
-            facePanel(sink, 'dark', house, u + du, y + 0.75, 0.01, 1.0, 1.5, DEC);
-            soot(sink, house, u + du - 0.7, u + du + 0.7, y + 1.5, Math.min(eaveY, y + 3.2));
-            continue;
+      sink.recess = rv;
+      try {
+        // the hall's lattice doors (geshan) across its opening to the court, the casements of the floors over it
+        // (one lattice screen to a hall, its leaves its glazing bars: blackglass's 55 rows hold the family's triangle
+        // guardrail)
+        if (!burnt) windowUnit(sink, house, u, 0.15, hallW, 2.7, { ...CASEMENT, frame: shade(TEAK, 0.6), bars: 'six', sill: null, surround: null, shutters: null }, look, 0.2);
+        for (let st = 1; st < (three ? 3 : 2); st++) {
+          const y = s1 + (st - 1) * s2 + 0.8;
+          for (const du of [-uw * 0.22, uw * 0.22]) {
+            if (burnt && look() < 0.65) { soot(sink, house, u + du - 0.7, u + du + 0.7, y + 1.5, Math.min(eaveY, y + 3.2)); continue; }
+            windowUnit(sink, house, u + du, y, 1.0, 1.5, CASEMENT, look, 0.3);
           }
-          windowUnit(sink, house, u + du, y, 1.0, 1.5, CASEMENT, look, 0.3);
         }
-      }
+      } finally { sink.recess = 0; }
       // a tiger window (the lanes' dormer) on the front slope
       if (look() < 0.5) {
         const zd = zc + s * 0.42, yb = top(zd + 0.35 - zc) - 0.3, yt = yb + 1.45;
@@ -182,13 +231,16 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
       faceBox(sink, 'plaster3', front, 0, 0.3, 0.015, W, 0.6, 0.03, DEC);
     }
     // the back wing: its windows, the back door, the terrace's parapet and the washing on its bamboo poles
-    const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
-    for (let k = 0; k < n; k++) {
-      const u = W / 2 - uw * (k + 0.5);
-      doorUnit(sink, back, u - uw * 0.2, 0, 0.9, 2.1, { leaf: LACQUER, frame: { bucket: 'plaster3', width: 0.12, out: 0.05 }, transom: false, steps: null, leafKind: 'plank' });
-      windowUnit(sink, back, u + uw * 0.18, 1.1, 0.8, 1.0, CASEMENT, look, 0.25);
-      windowUnit(sink, back, u, s1 + 0.7, 0.9, 1.2, CASEMENT, look, 0.25);
-    }
+    const back = wing.back;
+    sink.recess = rv;
+    try {
+      for (let k = 0; k < n; k++) {
+        const u = W / 2 - uw * (k + 0.5);
+        doorUnit(sink, back, u - uw * 0.2, 0, 0.9, 2.1, { leaf: LACQUER, frame: { bucket: 'plaster3', width: 0.12, out: 0.05 }, transom: false, steps: null, leafKind: 'plank' });
+        windowUnit(sink, back, u + uw * 0.18, 1.1, 0.8, 1.0, CASEMENT, look, 0.25);
+        windowUnit(sink, back, u, s1 + 0.7, 0.9, 1.2, CASEMENT, look, 0.25);
+      }
+    } finally { sink.recess = 0; }
     sink.span(wall, -W / 2, backTop, -D / 2, W / 2, backTop + 0.95, -D / 2 + 0.22, SHADOWED);
     if (look() < 0.6) sink.dressing(mobile, () => {
       for (const dz of [0.9, 1.6]) {
@@ -253,8 +305,39 @@ function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPar
     const burnt = look() < (bank === 'zhabei' ? 0.45 : 0.1);
     const wall: RegionalBucket = look() < 0.6 ? 'plaster' : 'stone';
     const stepped = look() < 0.72;
-    sink.span(wall, -W / 2, -0.4, zb, W / 2, s1, zf - shopIn);
-    sink.span(wall, -W / 2, s1, zb, W / 2, eaveY, zf);
+    // (props census #29, lane B 2026-10-15; the judges: "solid span boxes, the shop opening a dark facePanel 8 mm proud of
+    // a solid wall, the oversailing upper front a painted wood facePanel") the row built of walls cut by their openings:
+    // the shops' front wall with each shop's opening cut through it into its room (its floor, shelves, goods, counter and
+    // shutter boards: openings.ts openShop), the rooms between their party walls back to the stores' block with the back
+    // doors and windows cut; the upper storeys' timber front over them, its lattice casements cut between its posts and
+    // rails, the back's windows cut. The row is a house body for the damage (recordBody, in storey bands).
+    const T = 0.3, zs = zf - shopIn, roomD = clampTo(zs - zb - T - 2.2, 1.3, 2.6), zr = zs - T - roomD;
+    const shop: Face = { origin: [0, 0, zs], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    const ow = uw - 0.55, openY = 0.05, openH = 3.0;
+    const shopHoles: HoleRect[] = [];
+    for (let k = 0; k < n; k++) { const u = -W / 2 + uw * (k + 0.5); shopHoles.push({ u0: u - ow / 2, u1: u + ow / 2, y0: openY, y1: openY + openH }); }
+    holedPolygon(sink, wall, shop, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, s1], [-W / 2, s1]], shopHoles, T, 0, {}, [], DAMP_EDGE_BREAKS);
+    for (let k = 0; k <= n; k++) {
+      const x0 = clampTo(-W / 2 + k * uw - 0.12, -W / 2, W / 2 - 0.24);
+      sink.span(wall, x0, -0.4, zr, x0 + 0.24, s1, zs - T);
+    }
+    const backHoles: Partial<Record<FaceName, HoleRect[]>> = { back: [] };
+    const upHoles: Partial<Record<FaceName, HoleRect[]>> = { front: [], back: [] };
+    const m = uw > 4.1 ? 3 : 2;
+    for (let k = 0; k < n; k++) {
+      const ub = W / 2 - uw * (k + 0.5);
+      backHoles.back!.push({ u0: ub - uw * 0.22 - 0.45, u1: ub - uw * 0.22 + 0.45, y0: 0, y1: 2.1 });
+      upHoles.back!.push({ u0: ub + uw * 0.15 - 0.4, u1: ub + uw * 0.15 + 0.4, y0: s1 + 0.8, y1: s1 + 1.9 });
+      const u = -W / 2 + uw * (k + 0.5);
+      for (let st = 1; st < (three ? 3 : 2); st++) {
+        const y = s1 + (st - 1) * s2 + 0.75;
+        for (let j = 0; j < m; j++) { const wu = u - uw / 2 + uw * (j + 0.5) / m; upHoles.front!.push({ u0: wu - 0.425, u1: wu + 0.425, y0: y, y1: y + 1.6 }); }
+      }
+    }
+    const rv = 0.16;
+    const stores = holedBox(sink, wall, -W / 2, zb, W / 2, zr, -0.4, s1, backHoles, 0.28, 0.2);
+    const upper = holedBox(sink, wall, -W / 2, zb, W / 2, zf, s1, eaveY, upHoles, 0.24, rv, {}, { buckets: { front: burnt ? 'dark' : 'wood' } });
+    recordBody(sink, 0, (zb + zf) / 2, W, zf - zb, eaveY, wall, false, true);
     const rg = streetRoof(sink, -W / 2 + 0.02, W / 2 - 0.02, zb, zf, eaveY, roof);
     const zc = (zb + zf) / 2, s = (zf - zb) / 2;
     const top = (a: number) => rg.topAt(Math.min(a, s + roof.eave), 0) ?? eaveY;
@@ -265,50 +348,51 @@ function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPar
         horseHeadWall(sink, wall === 'stone' ? 'stone' : 'plaster', px, k === 0 ? -1 : 1, zc, s + roof.eave, eaveY, top, 0.5);
       }
     } else gableEnds(sink, wall, W, zb, zf, eaveY, rg.ridgeY);
-    const shop: Face = { origin: [0, 0, zf - shopIn], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const up: Face = { origin: [0, 0, zf], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    // the upper storeys' timber fronts and the pent eave along the floor line
-    facePanel(sink, burnt ? 'dark' : 'wood', up, 0, s1 + (s2 + s3) / 2, 0.012, W - 0.08, s2 + s3 - 0.1, DEC);
+    const up = upper.front;
+    // the timber front's posts and rails (the lattice casements between them), the pent eave along the floor line
+    const tf = { colour: burnt ? CHAR : shade(TEAK, 0.78), decor: true, fineSides: true } as const;
+    for (let st = 1; st < (three ? 3 : 2); st++) {
+      const y = s1 + (st - 1) * s2;
+      faceBox(sink, 'structureWood', up, 0, y + 0.7, 0.03, W - 0.1, 0.1, 0.06, tf);
+      faceBox(sink, 'structureWood', up, 0, y + 2.42, 0.03, W - 0.1, 0.1, 0.06, tf);
+    }
+    for (let k = 0; k <= n * m; k++) faceBox(sink, 'structureWood', up, clampTo(-W / 2 + k * uw / m, -W / 2 + 0.06, W / 2 - 0.06), (s1 + eaveY) / 2, 0.035, 0.12, eaveY - s1 - 0.1, 0.07, tf);
     faceBox(sink, 'structureMetal', up, 0, s1 + 0.08, 0.34, W, 0.13, 0.68, { ...SHADOWED, colour: TILE_COPING });
     for (let k = 0; k < n; k++) {
-      const u = -W / 2 + uw * (k + 0.5), ow = uw - 0.55;
-      facePanel(sink, 'dark', shop, u, 1.55, 0.008, ow, 3.0, DEC);
-      if (burnt) {
-        facePanel(sink, 'structureMetal', shop, u, 1.0, 0.014, ow, 1.9, { decor: true, colour: CHAR });
-        soot(sink, up, u - ow / 2, u + ow / 2, s1 + 0.2, eaveY - 0.2);
-      } else {
-        // the plank shutters: most taken down by day, stacked boards on one side; the counter across the front
-        const boards = Math.floor(ow / 0.34), put = Math.floor(boards * look() * look());
-        for (let b = 0; b < put; b++) {
-          faceBox(sink, 'structureWood', shop, u - ow / 2 + 0.17 + b * 0.34, 1.52, 0.04, 0.32, 2.98, 0.05,
-            { colour: shade(TEAK, 0.85 + look() * 0.3), decor: true, fineSides: true });
-        }
-        faceBox(sink, 'structureWood', shop, u + (put > 0 ? 0.4 : 0), 0.48, 0.28, Math.max(0.6, ow - 0.6 - put * 0.34), 0.96, 0.5, { colour: TEAK, decor: true });
-        if (look() < 0.35) for (const side of [-1, 1]) lantern(sink, shop, u + side * ow * 0.32, s1 - 0.05, 0.32);
-      }
+      const u = -W / 2 + uw * (k + 0.5);
+      if (burnt) soot(sink, up, u - ow / 2, u + ow / 2, s1 + 0.2, eaveY - 0.2);
+      openShop(sink, shop, u, openY, ow, openH, { wall: T, depth: roomD, width: uw - 0.24, height: s1 - openY }, {
+        timber: TEAK, shutters: { colour: TEAK, mode: look() < 0.14 ? 'closed' : 'stacked' }, goods: SHOP_GOODS, burnt,
+      }, look);
+      if (!burnt && look() < 0.35) for (const side of [-1, 1]) lantern(sink, shop, u + side * ow * 0.32, s1 - 0.05, 0.32);
       nameBoard(sink, shop, u, s1 - 0.42, ow, burnt ? CHAR : choose(look(), SIGN_BOARDS));
-      // the casements of each upper storey: a band of lattice lights
-      const m = uw > 4.1 ? 3 : 2;
-      for (let st = 1; st < (three ? 3 : 2); st++) {
-        const y = s1 + (st - 1) * s2 + 0.75;
-        for (let j = 0; j < m; j++) {
-          const wu = u - uw / 2 + uw * (j + 0.5) / m;
-          if (burnt) { facePanel(sink, 'dark', up, wu, y + 0.8, 0.02, 0.85, 1.6, DEC); continue; }
-          windowUnit(sink, up, wu, y, 0.85, 1.6, CASEMENT, look, 0.3);
-        }
+      // the casements of each upper storey, at the back of their reveals
+      if (!burnt) {
+        sink.recess = rv;
+        try {
+          for (let st = 1; st < (three ? 3 : 2); st++) {
+            const y = s1 + (st - 1) * s2 + 0.75;
+            for (let j = 0; j < m; j++) windowUnit(sink, up, u - uw / 2 + uw * (j + 0.5) / m, y, 0.85, 1.6, CASEMENT, look, 0.3);
+          }
+        } finally { sink.recess = 0; }
       }
       if (!burnt && look() < 0.75) signboard(sink, up, u - uw / 2 + 0.42, eaveY - 0.25, clampTo(s2 + s3 - 0.5, 1.8, 3.6), choose(look(), SIGN_BOARDS), 0.8);
     }
     // the piers between the shops
     for (let k = 0; k <= n; k++) faceBox(sink, wall, shop, -W / 2 + k * uw + (k === 0 ? 0.2 : k === n ? -0.2 : 0), s1 / 2, 0.06, 0.4, s1, 0.12, { decor: true, fineSides: true });
-    // the back: small casements, a back door
-    const back: Face = { origin: [0, 0, zb], u: [-1, 0, 0], out: [0, 0, -1], width: W };
+    // the back: the doors and the small casements at the back of their reveals
     for (let k = 0; k < n; k++) {
       const u = W / 2 - uw * (k + 0.5);
-      doorUnit(sink, back, u - uw * 0.22, 0, 0.9, 2.1, { leaf: TEAK, frame: { bucket: 'plaster3', width: 0.1, out: 0.04 }, transom: false, steps: null, leafKind: 'plank' });
-      windowUnit(sink, back, u + uw * 0.15, s1 + 0.8, 0.8, 1.1, CASEMENT, look, 0.25);
+      sink.recess = 0.2;
+      try {
+        doorUnit(sink, stores.back, u - uw * 0.22, 0, 0.9, 2.1, { leaf: TEAK, frame: { bucket: 'plaster3', width: 0.1, out: 0.04 }, transom: false, steps: null, leafKind: 'plank' });
+      } finally { sink.recess = 0; }
+      sink.recess = rv;
+      try { windowUnit(sink, upper.back, u + uw * 0.15, s1 + 0.8, 0.8, 1.1, CASEMENT, look, 0.25); } finally { sink.recess = 0; }
     }
-    sink.dressing(mobile, () => pocks(sink, up, -W / 2 + 0.3, W / 2 - 0.3, s1 + 0.2, eaveY - 0.2, (bank === 'zhabei' ? 12 : 4) + Math.floor(look() * 8), look, [], 'plaster3'));
+    // (the pocks clear of the casements cut through the front: a pock over an opening stood in the air)
+    const keepUp = (upHoles.front ?? []).map((h) => ({ u0: h.u0 - 0.15, u1: h.u1 + 0.15, y0: h.y0 - 0.15, y1: h.y1 + 0.15 }));
+    sink.dressing(mobile, () => pocks(sink, up, -W / 2 + 0.3, W / 2 - 0.3, s1 + 0.2, eaveY - 0.2, (bank === 'zhabei' ? 12 : 4) + Math.floor(look() * 8), look, keepUp, 'plaster3'));
     if (burnt && look() < 0.7) roofHole(sink, rg.ridgeTopY, zc, s, roof, (look() - 0.5) * (W - 2.4), look);
   });
   return sink.finish();
@@ -419,6 +503,8 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
 /** The street row: a shikumen terrace, a shophouse row or a Settlement block, by the bank of the creek it stands on. */
 const rowhouse: RegionalBuilder = (ctx) => {
   const bank = bankOf(ctx), r = ctx.rng();
+  // a lane's terrace (round 2's lilong rows on the empty lots: plots of four or more gate houses) is always shikumen
+  if (ctx.info.w >= 19) return shikumenRow(ctx, bank);
   if (bank === 'zhabei') return r < 0.68 ? shophouseRow(ctx, bank) : shikumenRow(ctx, bank);
   if (bank === 'settlement') return r < 0.4 ? shikumenRow(ctx, bank) : r < 0.72 ? settlementBlock(ctx) : shophouseRow(ctx, bank);
   return r < 0.34 ? shikumenRow(ctx, bank) : r < 0.67 ? shophouseRow(ctx, bank) : settlementBlock(ctx);

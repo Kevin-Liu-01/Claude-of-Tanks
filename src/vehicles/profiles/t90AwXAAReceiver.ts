@@ -138,7 +138,9 @@ export function addT90AWAAReceiver(P:TankBuilderPort):void{
 export function addT90AWRoofMachineGun(P:TankBuilderPort):void{
   const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'nsvt',scale:1,
     tone:'dark',ammo:true,shield:false,ring:false,barrelBridge:true,
-    mount:'external-cradle',seed:90010});
+    mount:'external-cradle',seed:90010,
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the commander's NSVT is a working station
+    working:true});
   weapon.name='t90XMountedNsvt';
   // Park the entire AA weapon rearward on the existing transverse cradle.
   // Receiver and barrel remain one straight, full-size assembly; no isolated

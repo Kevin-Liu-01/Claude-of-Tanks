@@ -14,7 +14,9 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
 import { balconette, dressedQuoin, facadeOn, facadeRng, trimRun } from './facade.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
+import { coursedRound, recordMasonry } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { dalmatianBoathouse } from './harbourSheds.ts'; // props #25: the boathouse
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
 const DOORS: readonly Rgb[] = [0x6e5440, 0x4f6a4e, 0x7a6048, 0x5e6c76].map(rgb);
@@ -330,51 +332,21 @@ const granary: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The kažun: a round dry-stone field hut with a corbelled stone cone and a low door (open to +x). */
+/**
+ * The kažun (the props census #17, 2026-10-15, the judges: "dry-stone construction: the wall and cone as courses of
+ * rough stones (stepped corbel rings with uneven stone faces) and a capstone; cut the doorway through the 0.6 m wall with
+ * a monolith lintel and jambs and a dark interior; destroyed: it slumps into a heap of its own stones with the lintel
+ * fallen"): the round field hut of the karst laid course by course without mortar (outbuildings.ts coursedRound), its
+ * corbelled cone stepping in ring by ring to the capstone, its low door to +x; it falls as a heap of its stones.
+ */
 const kazun: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const R = Math.max(1.7, Math.min(2.3, Math.min(ctx.info.w, ctx.info.d) / 2 - 0.2));
   const wallH = 1.9 + rng() * 0.3;
-  sink.cylinder('stone', [0, -0.3, 0], 'y', wallH + 0.3, R, 14, {}, R * 0.97);
-  // the corbelled cone: stepped rings, each a little smaller, capped by a flat slab
-  let r = R * 0.98, y = wallH;
-  for (let k = 0; k < 6; k++) {
-    const h = 0.42, r1 = r * 0.82;
-    sink.cylinder('stone', [0, y, 0], 'y', h, r, 14, {}, r1);
-    y += h; r = r1 * 0.97;
-  }
-  sink.cylinder('stone', [0, y, 0], 'y', 0.14, r + 0.08, 10, {});
-  // the doorway: lintel slab and two jamb stones, the opening dark
-  const face: Face = { origin: [R - 0.02, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: 1.2 };
-  faceBox(sink, 'dark', face, 0, 0.75, 0.01, 0.62, 1.5, 0.02, { decor: true });
-  faceBox(sink, 'stone', face, 0, 1.6, 0.12, 1.05, 0.22, 0.32);
-  for (const side of [-1, 1]) faceBox(sink, 'stone', face, side * 0.43, 0.78, 0.1, 0.22, 1.6, 0.26, { decor: true });
-  return sink.finish();
-};
-
-/** A stone boathouse: a big round-arched opening to the water, rubble walls, a low tiled roof. */
-const boathouse: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx);
-  const W = Math.max(5.5, Math.min(8.5, ctx.info.w - 0.6)), D = Math.max(8, Math.min(13, ctx.info.d - 0.6));
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: null, storeys: [{ h: 3.4, wall: 'stone' }],
-    roof: { kind: 'gable', pitchDeg: 22, eave: 0.2, verge: 0.08, thickness: 0.15, bucket: 'roof', ridge: 'round' },
-    gableBucket: 'stone', openings: [
-      { face: 'front', storey: 0, kind: 'gate', u: 0, w: Math.min(3.4, W - 1.6), y0: 0, h: 2.9 },
-      { face: 'right', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.9, h: 0.6 },
-      { face: 'left', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.9, h: 0.6 },
-    ],
-    chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
-  eaveCourse(sink, frame);
-  // the arch voussoirs over the gate read as a stone ring
-  const f = frame.faces.front, gw = Math.min(3.4, W - 1.6);
-  for (let k = 0; k <= 8; k++) {
-    const a = Math.PI * k / 8;
-    faceBox(sink, 'stone', f, Math.cos(a) * (gw / 2 + 0.12), 2.9 + Math.sin(a) * 0.55, 0.06, 0.34, 0.3, 0.14, { decor: true });
-  }
+  const round = coursedRound(sink, { cx: 0, cz: 0, R, wallH, T: 0.6, course: 0.3, stone: 0.72, cone: { rings: 6, rise: 2.4, cap: 0.36 }, bucket: 'stone',
+    door: { angle: 0, w: 0.62, h: 1.5 }, mobile: ctx.tier === 'mobile' }, ctx.variant);
+  recordMasonry(sink, { x: 0, z: 0, r: R, h: round.top, bucket: 'stone' }, round.lintel);
   return sink.finish();
 };
 
@@ -593,7 +565,7 @@ export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obj
   cornershop: (ctx) => dwelling(ctx, { shop: true, render: true }),
   farmhouse, depot, granary, ruin,
   woodshed: kazun,
-  boatshed: boathouse,
+  boatshed: (ctx) => dalmatianBoathouse(ctx, { st: stateFor(ctx), dialect }),
   fishery: fishStore,
   marketRow: loggia,
   bathhouse: customsHouse,

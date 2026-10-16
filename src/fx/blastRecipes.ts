@@ -150,7 +150,7 @@ function lightPuff(C: BlastContext, pool: 'flash' | 'fire', x: number, y: number
 }
 
 function sparkSpray(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number, count: number,
-  speed: number, cone: number, life: number, width: number, birthOffset: number): void {
+  speed: number, cone: number, life: number, width: number, birthOffset: number, col: Rgb = SPARK, grav = -18): void {
   const s = C.ls;
   const R = C.rand;
   // a basis around the normal
@@ -167,7 +167,7 @@ function sparkSpray(C: BlastContext, x: number, y: number, z: number, nx: number
     s.pos[0] = x; s.pos[1] = y; s.pos[2] = z;
     s.vel[0] = dx * v; s.vel[1] = dy * v; s.vel[2] = dz * v;
     s.life = life * (0.5 + R() * 0.8); s.width = width * (0.6 + R() * 0.8); s.stretch = 0.03;
-    s.grav = -18; s.col[0] = SPARK[0]; s.col[1] = SPARK[1]; s.col[2] = SPARK[2]; s.alpha = 0.5 + R() * 0.5;
+    s.grav = grav; s.col[0] = col[0]; s.col[1] = col[1]; s.col[2] = col[2]; s.alpha = 0.5 + R() * 0.5;
     s.seed = R(); s.birthOffset = birthOffset - R() * 0.04;
     C.sparks(s);
   }
@@ -184,6 +184,154 @@ function chunk(C: BlastContext, shapeId: ChunkShape, x: number, y: number, z: nu
   const tint = 0.8 + R() * 0.4;
   k.r = col[0] * tint; k.g = col[1] * tint; k.b = col[2] * tint; k.heat = heatK; k.seed = R();
   C.chunk(k);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// (FX lane 10-15, the owner's FX-05: "more variety of explosions ... esp from like the ac 130 and drones and missiles")
+// each weapon's own signature over the burst its class and charge already draw — the flash's shape, what it throws, its
+// smoke and (craterMarks.ts) the mark it leaves — so the gunship's shell, a drone's warhead and a tandem ATGM read apart
+// from a tank's HE and from each other:
+//   - the GUNSHIP'S HOWITZER (and its missile, and any heavy HE plunging in): a flat starburst of light racing out along
+//     the ground, the soil thrown out in low radial rays, the casing's fragments streaking out near the horizontal, a cap
+//     rolling out at the column's top; a rayed crater;
+//   - a DRONE'S WARHEAD: a small sharp pop, then its battery's cells burning white in a crackle of little fires and white
+//     sparks for most of a second, the frame's carbon arms and props thrown, a pale low smoke; a pocked scorch with a
+//     melted black patch;
+//   - a TANDEM ATGM: two flashes a beat apart (the precursor, then the main charge), the molten liner splashing back out
+//     of the hole along the jet, the missile's fins and motor tube thrown back up its line, a cleaner white-grey spike;
+//     the shaped charge's star.
+// Tank HE keeps its dark earth fountain and grey-brown cloud. Everything draws from the context's seeded stream.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** A tandem warhead's precursor fires this long before its main charge: two flashes, three frames apart. */
+export const TANDEM_DELAY_S = 0.05;
+/** a shaped charge's liner, molten copper */
+const MOLTEN: Rgb = [1, 0.6, 0.28];
+/** a drone battery's burning cells, white-hot, and the orange they cool to */
+const LITHIUM: Rgb = [1, 0.93, 0.78];
+const LITHIUM_COOL: Rgb = [1, 0.6, 0.3];
+/** a heavy shell's casing fragments, hot */
+const FRAG_HOT: Rgb = [1, 0.72, 0.42];
+/** a drone's frame: carbon arms, props and plastic */
+const CARBON: Rgb = [0.03, 0.03, 0.032];
+/** a missile's olive airframe: its fins and its motor tube */
+const MISSILE_SKIN: Rgb = [0.07, 0.075, 0.06];
+/** the pale smoke of burning cells */
+const BATTERY_SMOKE: Rgb = [0.5, 0.5, 0.49];
+
+/** A tandem warhead's precursor: a small flash and a few molten sparks a beat before the main charge. */
+function tandemPrecursor(C: BlastContext, x: number, y: number, z: number, size: number, dk: number, bo: number): void {
+  lightPuff(C, 'flash', x, y, z, 0, 0.3, 0, 0.035, 0.3 * size * dk, 0.55 * size * dk, FLASH_WHITE, FLASH_ORANGE, 0.5, 0, bo);
+  sparkSpray(C, x, y, z, 0, 1, 0, 6, 14, 1.2, 0.2, 0.02, bo, MOLTEN, -12);
+}
+
+/**
+ * A missile's own remains at its strike: the molten liner splashing back out of the hole along the jet's axis
+ * (ax, ay, az: out of the hole), the airframe's fins and its motor tube thrown back up that line.
+ */
+function missileRemains(C: BlastContext, x: number, y: number, z: number, ax: number, ay: number, az: number, s: number,
+  dk: number, bo: number): void {
+  const R = C.rand;
+  sparkSpray(C, x, y + 0.2, z, ax, ay, az, 26, 26 * Math.sqrt(s), 0.4, 0.55, 0.024, bo, MOLTEN, -12);
+  for (let i = 0; i < 5; i++) {
+    const v = 4 + R() * 6;
+    const sx = (R() - 0.5) * 0.9, sz = (R() - 0.5) * 0.9;
+    chunk(C, i === 0 ? 'stone' : 'sheet', x + ax * 0.3, y + 0.4, z + az * 0.3, (ax + sx) * v, (Math.max(0.3, ay) + 0.5) * v,
+      (az + sz) * v, (i === 0 ? 0.12 : 0.07 + R() * 0.05) * dk, MISSILE_SKIN, 16 + R() * 6, i === 0 ? 0.55 : 0.15,
+      bo + 0.01 + R() * 0.02);
+  }
+}
+
+/**
+ * A drone's warhead set off its battery: the cells burn white for most of a second (a crackle of small fires and white
+ * sparks round the strike), the frame's carbon arms and props are thrown (two motors glowing), and the cells' pale smoke
+ * rises low. (nx, ny, nz): the surface's outward normal.
+ */
+function droneRemains(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number, dk: number,
+  bo: number): void {
+  const R = C.rand;
+  const m = C.m;
+  for (let i = 0; i < 9; i++) {
+    const a = R() * TAU, r = 0.2 + R() * 1.1;
+    lightPuff(C, 'fire', x + Math.cos(a) * r + nx * 0.2, y + 0.15 + R() * 0.3 + ny * 0.2, z + Math.sin(a) * r + nz * 0.2,
+      (R() - 0.5) * 0.6, 0.6 + R() * 0.8, (R() - 0.5) * 0.6, 0.16 + R() * 0.2, 0.18 * dk, (0.35 + R() * 0.25) * dk,
+      LITHIUM, LITHIUM_COOL, 0.85, 0.6, bo + 0.08 + R() * 0.85);
+  }
+  for (let k = 0; k < 3; k++) {
+    sparkSpray(C, x + nx * 0.2, y + 0.2 + ny * 0.2, z + nz * 0.2, nx, ny, nz, 6, 7, 1.0, 0.35, 0.016, bo + 0.15 + 0.25 * k,
+      LITHIUM, -9);
+  }
+  for (let i = 0; i < 10; i++) {
+    const a = R() * TAU, up = 0.25 + R() * 0.5, v = 3 + R() * 6;
+    chunk(C, i % 3 === 0 ? 'splinter' : 'sheet', x, y + 0.3, z, Math.cos(a) * (1 - up) * v + nx * 2, up * v + 1.5,
+      Math.sin(a) * (1 - up) * v + nz * 2, (0.05 + R() * 0.08) * dk, CARBON, 14 + R() * 8, i < 2 ? 0.7 : 0, bo + R() * 0.03);
+  }
+  for (let i = 0; i < 3; i++) {
+    place(m, x + (R() - 0.5) * 0.8 + nx * 0.3, y + 0.3 + ny * 0.3, z + (R() - 0.5) * 0.8 + nz * 0.3, bo + 0.2 + i * 0.25);
+    move(m, (R() - 0.5) * 0.4, 0.5 + R() * 0.4, (R() - 0.5) * 0.4, 1.2, 0.5 + R() * 0.3, 0.9, 0);
+    const life = 5 + R() * 2;
+    shape(m, life, 0.4 * dk, (1.8 + R() * 0.8) * dk, 2.0, R);
+    look(m, BATTERY_SMOKE, SMOKE_AGED, 0.4, 0.15, 0.5);
+    book(m, 'billow', R, life);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+}
+
+/**
+ * A heavy shell plunging into the ground (the gunship's howitzer and missile; heavy HE from above): a flat starburst of
+ * light racing out along the ground, the casing's fragments streaking out near the horizontal, the soil thrown out in
+ * low radial rays (three puffs a ray along one bearing), and, as the column stalls, a cap rolling out at its top. A
+ * crowded patch (a barrage) throws fewer rays.
+ */
+function plungeStarburst(C: BlastContext, x: number, by: number, z: number, D: number, s: number, sq: number,
+  vTop: number, ejecta: Rgb, heightK: number, smokeC0: Rgb, smokeAged: Rgb, dk: number, bo: number, crowd: number): void {
+  const R = C.rand;
+  const m = C.m;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + (R() - 0.5) * 0.5, v = 34 * sq;
+    lightPuff(C, 'flash', x + Math.cos(a) * 0.25 * D, by + 0.2 + 0.1 * D, z + Math.sin(a) * 0.25 * D, Math.cos(a) * v, 0.5,
+      Math.sin(a) * v, 0.07, 0.35 * D * dk, 0.7 * D * dk, FLASH_WHITE, FLASH_ORANGE, 0.5, 0, bo);
+  }
+  // the casing's fragments: six sprays round the strike, each about a bearing just over the horizontal
+  const fragN = Math.round(5 + s);
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * TAU + (R() - 0.5) * 0.6;
+    sparkSpray(C, x, by + 0.5, z, Math.cos(a) * 0.98, 0.2, Math.sin(a) * 0.98, fragN, 62, 0.55, 0.4, 0.022, bo, FRAG_HOT, -9);
+  }
+  const rays = Math.max(4, Math.round(10 * (1 - 0.6 * crowd)));
+  for (let k = 0; k < rays; k++) {
+    const a = (k / rays) * TAU + (R() - 0.5) * 0.45;
+    const tilt = 0.16 + 0.22 * R();
+    for (let j = 0; j < 3; j++) {
+      const v = (14 + 7 * j + 3 * R()) * Math.sqrt(sq) * heightK;
+      place(m, x + Math.cos(a) * 0.3 * s, by + 0.25, z + Math.sin(a) * 0.3 * s, bo + 0.01 + 0.015 * j);
+      move(m, Math.cos(a) * Math.cos(tilt) * v, Math.sin(tilt) * v + 2, Math.sin(a) * Math.cos(tilt) * v, 1.9, 0, 0.3, -9.8);
+      const life = 1.2 + R() * 0.5;
+      const size1 = (0.9 + 0.35 * j + R() * 0.4) * Math.pow(s, 0.8) * dk;
+      shape(m, life, size1 * 0.35, size1, 2.6, R);
+      const c0 = mixInto(_h, ejecta, SOOT, 0.25);
+      look(m, c0, mix3(c0, smokeAged, 0.45), 1.0, 0.0, 0.55);
+      book(m, 'burst', R, life, 1);
+      heat(m, 0, 1);
+      C.media(m);
+    }
+  }
+  const capH = 0.38 * vTop;
+  const capN = Math.max(3, Math.round(6 * (1 - 0.5 * crowd)));
+  for (let i = 0; i < capN; i++) {
+    const a = (i / capN) * TAU + (R() - 0.5) * 0.8;
+    place(m, x + Math.cos(a) * 0.6 * s, by + capH * (0.85 + 0.25 * R()), z + Math.sin(a) * 0.6 * s, bo + 0.8 + R() * 0.4);
+    const out = (2.6 + 1.4 * R()) * sq;
+    move(m, Math.cos(a) * out, 0.5 + R() * 0.4, Math.sin(a) * out, 0.9, 0.35, 0.95, 0);
+    const life = 10 + R() * 3;
+    const size1 = (4.6 + 1.6 * R()) * s * dk;
+    shape(m, life, size1 * 0.4, size1, 2.4, R);
+    look(m, mix3b(smokeC0, SOOT, 0.2), smokeAged, 0.9, 0.08, 0.4);
+    book(m, 'billow', R, life);
+    heat(m, 0, 1);
+    C.media(m);
+  }
 }
 
 /** The blast's length scale from its charge: cbrt(kg), floored for the smallest explosive rounds. */
@@ -230,7 +378,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const L = surfaceLook(I.surface);
   const R = C.rand;
   const m = C.m;
-  const bo = I.birthOffset ?? 0;
+  // (FX-05) a tandem ATGM's main charge a beat after its precursor
+  const tandem = I.munition === 'atgm';
+  const bo0 = I.birthOffset ?? 0;
+  const bo = bo0 + (tandem ? TANDEM_DELAY_S : 0);
   const kg = Math.max(0.05, I.chargeKg);
   const s = blastScale(kg);
   const sq = Math.sqrt(s);
@@ -242,10 +393,14 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const heavy = I.munition === 'howitzer' || I.munition === 'missile' || I.munition === 'rocket';
   const thermobaric = I.munition === 'rocket';
   const hard = I.surface === 'rock' || I.surface === 'concrete' || I.surface === 'metal';
+  // (FX-05) the gunship's howitzer and missile, and any heavy HE plunging in from above: the starburst
+  const plunge = I.dy !== undefined && (I.dy ?? 0) < -0.55;
+  const starburst = (I.munition === 'howitzer' || I.munition === 'missile') && (kg >= 8 || plunge);
   const dustK = L.dustK * (shaped ? 0.6 : 1);
   // the fireball's width: an open-air TNT fireball is ~3.9 kg^0.32 m across (the drone's 1.2 kg ~4 m, the 125 mm's
   // 3.5 kg ~5.8 m, the gunship's 20 kg ~10 m); a shaped charge's explosive drives its jet, its ball is smaller
   const D = 3.9 * Math.pow(kg, 0.32) * (shaped ? 0.7 : 1) * (thermobaric ? 1.35 : 1);
+  if (tandem) tandemPrecursor(C, I.x, by + 0.25 * D, I.z, D, dk, bo0);
   if (heavy || s >= 1.6) C.shockRing(I.x, I.z, 0.5 + 0.38 * s, Math.min(1.3, 0.55 + 0.28 * s), Math.max(0, -bo));
 
   // 1. the flash and the fireball. (fx 8, the blind critics after 7d/7e: "a hard white sprite birth flash over a flat
@@ -314,7 +469,11 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // 954922's cloud is a mid grey, lighter than the treeline, its darkest at the core) the explosive's grey residue is
   // the body and the soot only darkens it: born a dark mid grey, ageing to a light grey; the dark heart is the
   // fireball's own soot and the earth column's soil inside it
-  const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.45), soilC, 0.12)
+  // (FX-05) a drone's small warhead leaves a paler grey puff and a tandem ATGM's octol a cleaner grey column than a gun's
+  // shaped charge (still the dark smoke out of a fireball: volumeMedia.selftest's law)
+  const smokeC0: Rgb = fpv ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.85), soilC, 0.06)
+    : tandem ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.78), soilC, 0.1)
+    : shaped || thermobaric ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.45), soilC, 0.12)
     : mixInto(_e, mixInto(_e, BLAST_RESIDUE, SOOT, 0.25), soilC, 0.12);
   let smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
     : mixInto(_f, SMOKE_AGED, L.dust, 0.08);
@@ -366,6 +525,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     j.life = 0.14; j.width = (fpv ? 0.35 : 0.5) * s * dk; j.len0 = 0.8; j.len1 = (fpv ? 5 : 8) * s * dk; j.seed = R();
     j.col[0] = 1; j.col[1] = 0.92; j.col[2] = 0.7; j.alpha = 1; j.birthOffset = bo;
     C.jet(j);
+    // (FX-05) the tandem ATGM's liner splashing back out of its hole along the jet, its airframe thrown back up its line
+    if (tandem) missileRemains(C, I.x, by, I.z, ax, ay, az, s, dk, bo);
     // the spike rises nearly straight up, leaning a little back along the round's line (the jet's flash is the line)
     ax *= 0.3; az *= 0.3; ay = 1;
     const sl = Math.hypot(ax, ay, az);
@@ -458,6 +619,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     }
     // the drone's warhead throws its fragments
     if (fpv) sparkSpray(C, I.x, by + 0.4, I.z, 0, 1, 0, 26, 24, 1.3, 0.35, 0.022, bo);
+    // (FX-05) and its battery burns, its frame thrown
+    if (fpv) droneRemains(C, I.x, by, I.z, 0, 1, 0, dk, bo);
   }
 
   // 2b. the earth: a dense dark fountain in a cone (HE ~20°, the heavy rounds wider and far taller) — many small puffs of
@@ -542,6 +705,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       C.media(m);
     }
   }
+
+  // 2b'. (FX-05) the gunship's plunging shell: its starburst, fragments, rays and cap
+  if (starburst) plungeStarburst(C, I.x, by, I.z, D, s, sq, vTop, L.ejecta, L.heightK, smokeC0, smokeAged, dk, bo, crowd);
 
   // 2c. the clods: lumps of the ground itself, lit and in its colour, drawn out along their flight; most are thrown low
   // and fall back within a second or two, a few go high; they lie where they land (~20 s) and settle into the ground
@@ -737,11 +903,17 @@ interface PlateBurstInput {
 export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   const R = C.rand;
   const m = C.m;
-  const bo = I.birthOffset ?? 0;
+  // (FX-05) each weapon's own: a tandem ATGM's two flashes, liner and airframe; a drone's burning battery and frame; the
+  // gunship's heavy shell's fragments
+  const tandem = I.munition === 'atgm', fpv = I.munition === 'drone_fpv';
+  const heavyHit = I.munition === 'howitzer' || I.munition === 'missile';
+  const bo0 = I.birthOffset ?? 0;
+  const bo = bo0 + (tandem ? TANDEM_DELAY_S : 0);
   const s = blastScale(I.chargeKg);
   const dk = C.distBoost(I.x, I.y, I.z);
   const nl = Math.hypot(I.nx, I.ny, I.nz) || 1;
   const nx = I.nx / nl, ny = I.ny / nl, nz = I.nz / nl;
+  if (tandem) tandemPrecursor(C, I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, 1.6 * s, dk, bo0);
   // (the combat review: "the hit flash blooms the hero to pure white for several frames") a smaller, dimmer flash
   // (the bloom's share capped), gone in two or three frames
   lightPuff(C, 'flash', I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, nx, ny + 0.5, nz, 0.045, 1.0 * s * dk,
@@ -758,12 +930,17 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
     place(m, I.x + nx * 0.6 * s, I.y + ny * 0.6 * s + 0.2, I.z + nz * 0.6 * s, bo - 0.02);
     move(m, (nx + (R() - 0.5) * 0.8) * 3 * s, (ny * 3 + 2 + R() * 2) * s, (nz + (R() - 0.5) * 0.8) * 3 * s, 2.2, 1.2, 0.6, 0);
     shape(m, 2.6 + R() * 0.8, 1.0 * s * dk, (3.6 + R()) * s * dk, 2.6, R);
-    look(m, BLAST_RESIDUE, mix3(BLAST_RESIDUE, PROPELLANT, 0.3), 0.85, 0.0, 0.45);
+    // (FX-05) a shaped warhead's cleaner smoke (a drone's, a tandem ATGM's) a lighter grey than a shell's residue
+    look(m, tandem || fpv ? mixInto(_h, BLAST_RESIDUE, PROPELLANT, 0.45) : BLAST_RESIDUE, mix3(BLAST_RESIDUE, PROPELLANT, 0.3),
+      0.85, 0.0, 0.45);
     book(m, 'billow', R, 3.2);
     heat(m, 1.35, 4.2);
     C.media(m);
   }
   sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(14 + 8 * s), 20 * Math.sqrt(s), 1.2, 0.45, 0.026, bo);
+  if (tandem) missileRemains(C, I.x, I.y, I.z, nx, ny, nz, s, dk, bo);
+  if (fpv) droneRemains(C, I.x, I.y, I.z, nx, ny, nz, dk, bo);
+  if (heavyHit) sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(24 + 6 * s), 55, 1.4, 0.35, 0.022, bo, FRAG_HOT, -9);
   // (fx 8, the killcam critics after 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s") the hit's light is the
   // flash's, gone in a quarter second in the burst's warm hue — it took the kill light's 1.9 s orange decay at full peak,
   // 1.5 m over the hull it struck

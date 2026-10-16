@@ -17,6 +17,7 @@ import { groundReduxProfileIds, resolveGroundReduxProfile } from './groundRedux.
 import { createTallGrass } from './tallGrass.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 const flat = () => 0;
 const cam = new THREE.Vector3(0, 2, 0);
@@ -149,7 +150,7 @@ for (const id of groundReduxProfileIds()) {
 
 // 3. The thatch under Monsoon's sward: the material's gated block, bound from the profile, off under the legacy A/B.
 {
-  const src = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const src = terrainSourceText();
   assert.ok(src.includes('uniform float uThatch;'), 'a scalar uniform (no sampler)');
   assert.ok(src.includes('if (uThatch > 0.001 && meadowG > 0.002) {'), 'the block runs only where a map asks it, on the meadow');
   assert.ok(src.includes('let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));') && src.includes('    thatchV = 0;')
@@ -175,7 +176,7 @@ for (const id of groundReduxProfileIds()) {
   assert.ok(tg.includes('if (landW > landDraw && _field.active) {')
     && tg.includes('? swardNoise(x, z, 0.9, 0x2b3c) < 1 - smoothstep(-1.6, 2.6, _field.edgeM - _field.marginM + (swardNoise(x, z, 5.0, 0x3d4e) - 0.5) * 3.0)'),
     'the tall grass reads the gate and the margin the same way');
-  const terr = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terr = terrainSourceText();
   assert.ok(terr.includes('gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;'), 'a young green crop keeps the sward\'s relief');
 }
 

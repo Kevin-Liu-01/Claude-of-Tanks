@@ -57,6 +57,7 @@ import {
   garageHardstandNormalKind,
   garageSheeting,
 } from './garageYardWear.ts';
+import { createGarageSea, garageSeaHoleGlsl } from './garageSea.ts';
 import {
   addGarageApproachDetails,
   type GarageApproachStats,
@@ -764,7 +765,7 @@ function createBackdropGeometry(
         const angle = (segment / segments) * Math.PI * 2;
         positions.push(Math.cos(angle) * r, -2.3, Math.sin(angle) * r);
         const swell = noise(segment / segments * 31 + ringIndex * 0.21, 0.2 + ringIndex * 0.1);
-        colour.copy(hexColor(0x274f57)).lerp(hexColor(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.3)
+        colour.copy(hexColor(0x274f57)).lerp(hexColor(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.12) // (rejudge6: "flat teal bands")
           .lerp(horizon, Math.min(0.92, 0.12 + far * far * 0.85));
         colors.push(colour.r, colour.g, colour.b);
       }
@@ -1065,6 +1066,28 @@ function decodePatch(patch: GarageTerrainPatch): Float32Array {
   return values;
 }
 
+/**
+ * A yard's containers weathered in the Garage (rejudge6, 2026-10-15: "toy-saturated containers"): each livery drawn 40 %
+ * of the way to its grey and darkened, the dirt rising up the bottom 1.2 m. Fresh geometry per build (railKit's
+ * pushContainer), so the pass never compounds.
+ */
+function weatherLiveries(buckets: GeometryBuckets): void {
+  for (const value of Object.values(buckets)) {
+    if (!Array.isArray(value)) continue;
+    for (const geometry of value as THREE.BufferGeometry[]) {
+      const color = geometry.getAttribute('color'), position = geometry.getAttribute('position');
+      if (!color || !position) continue;
+      for (let i = 0; i < color.count; i += 1) {
+        const r = color.getX(i), g = color.getY(i), b = color.getZ(i);
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        const k = 0.86 * (1 - 0.18 * Math.max(0, 1 - position.getY(i) / 1.2));
+        color.setXYZ(i, (r + (luma - r) * 0.4) * k, (g + (luma - g) * 0.4) * k, (b + (luma - b) * 0.4) * k);
+      }
+      color.needsUpdate = true;
+    }
+  }
+}
+
 function samplePatch(
   patch: GarageTerrainPatch,
   values: Float32Array,
@@ -1271,6 +1294,30 @@ export function buildGarageEnvironment(
   horizon.matrixAutoUpdate = false;
   horizon.updateMatrix();
   root.add(horizon);
+  // Saltmere's harbour (rejudge6, 2026-10-15: "the sea is flat teal bands"): a lit sea with swell and chop over the
+  // backdrop's painted one out to 125 m; neither covers the graving dock, pumped dry
+  if (recipe.horizonStyle === 'coastal') {
+    const dock = garageDrydockBasin(variant);
+    const hole = dock ? { side: dock.side, halfWidth: dock.halfWidth, depth0: dock.depth0, depth1: dock.depth1 } : null;
+    if (hole) {
+      const backdropMaterial = horizon.material as THREE.MeshBasicMaterial;
+      backdropMaterial.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vBackdropWorld;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBackdropWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        shader.fragmentShader = shader.fragmentShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vBackdropWorld;')
+          .replace('#include <dithering_fragment>', `#include <dithering_fragment>\n${garageSeaHoleGlsl(hole, 'vBackdropWorld')}`);
+      };
+      backdropMaterial.customProgramCacheKey = () => 'garage-backdrop-dock-hole-v1';
+    }
+    const sea = createGarageSea(engineCtx.setupShadowMaterial
+      ? (material, hook) => { engineCtx.setupShadowMaterial!(material, hook as THREE.Material['onBeforeCompile']); }
+      : null, hole);
+    track(sea.geometry);
+    track(sea.material as THREE.Material);
+    root.add(sea);
+  }
 
   const combined = createBuckets();
   const rng = mulberry32(seed);
@@ -1287,6 +1334,7 @@ export function buildGarageEnvironment(
       info: dimensions,
       variant: structureIndex,
     });
+    if (placement.catalogId === 'containerrow') weatherLiveries(local);
     const supports: Array<{ gap: number }> = [];
     for (const value of Object.values(local)) {
       if (!Array.isArray(value)) continue;
@@ -1476,7 +1524,7 @@ export function buildGarageEnvironment(
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
         const { side, depth } = garageWorldPointToView(x, z);
-        if (Math.abs(side - bore.side) < bore.half + 3.4 && depth > bore.depth0 + 0.3 && depth < bore.depth0 + bore.length + 1.8) {
+        if (Math.abs(side - bore.side) < bore.half + 3.4 && depth > bore.depth0 + 0.3 && depth < bore.depth0 + bore.length + 3.0) {
           const index = row * patch.width + column;
           heights[index] = Math.min(heights[index], floorY);
         }

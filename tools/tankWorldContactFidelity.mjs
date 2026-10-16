@@ -37,7 +37,12 @@ const partsOf = (record) => (record.shape2?.kind === 'compound' ? record.shape2.
 function ownTopAt(record, x, z) {
   let best = -Infinity;
   for (const part of partsOf(record)) {
-    const top = part?.tp ? partTopAt(record, part, x, z) : part?.y1 ?? record.max[1];
+    let top = part?.tp ? partTopAt(record, part, x, z) : part?.y1 ?? record.max[1];
+    // (physics stream F8) a band under its building's roof tops out at the roof there, as the support reads it
+    if (part && !part.tp && collision.bandRoofTopAt) {
+      const roof = collision.bandRoofTopAt(record, part, x, z);
+      if (roof > -Infinity && roof < top) top = roof;
+    }
     if (top > best && pointInsideCollisionRecord(record, part, x, z)) best = top;
   }
   return best;

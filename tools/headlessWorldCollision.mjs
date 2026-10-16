@@ -78,12 +78,14 @@ export function packCollisionRecord(record) {
 }
 
 /** Pack a world's three record lists (the capture page's shape: tree colliders are stored once, in obstacles). */
-export function packWorldCollision({ obstacles, colliders, concealers }) {
+export function packWorldCollision({ obstacles, colliders, concealers, craters = null }) {
   const n = (value) => Math.round(value * 10000) / 10000;
   return {
     obstacles: obstacles.map(packCollisionRecord),
     colliders: colliders.filter((record) => record.treeIdx == null).map(packCollisionRecord),
     concealers: concealers.map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
+    // DST-04: the map's pre-placed craters (world/mapCraters.ts), as the browser capture packs them
+    ...(craters ? { craters: craters.map((s) => [s.x, s.z, s.radiusM, s.depthM, s.rimM, s.deforms ? 1 : 0]) } : {}),
   };
 }
 
@@ -100,7 +102,8 @@ async function worldBuilders() {
     import('../src/world/propsModelStore.ts'),
   ]);
   await models.preloadPropModels();
-  builders = { maps, terrain, vegetation, props, fleet };
+  const mapCraters = await import('../src/world/mapCraters.ts');
+  builders = { maps, terrain, vegetation, props, fleet, mapCraters };
   return builders;
 }
 
@@ -111,7 +114,7 @@ async function worldBuilders() {
  * is packed (the drift receipt's drawn-geometry shape check); it must not change it.
  */
 export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
-  const { maps, terrain, vegetation, props, fleet } = await worldBuilders();
+  const { maps, terrain, vegetation, props, fleet, mapCraters } = await worldBuilders();
   if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
   const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
@@ -122,9 +125,12 @@ export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, veget
   const flora = vegetation.createVegetation(field, engine, vegetationSeed, config);
   const dressing = props.createProps(field, engine, propsSeed, config, flora);
   inspect?.({ mapId, flora, dressing });
+  const obstacles = [...dressing.obstacles, ...flora.treeObstacles];
   return packWorldCollision({
-    obstacles: [...dressing.obstacles, ...flora.treeObstacles],
+    obstacles,
     colliders: [...dressing.colliders, ...flora.treeObstacles],
     concealers: flora.concealers || [],
+    // DST-04: decided on the built records, as world/map.ts decides them
+    craters: mapCraters.mapCraterStamps(dressing.mapCraterSites, obstacles, field),
   });
 }

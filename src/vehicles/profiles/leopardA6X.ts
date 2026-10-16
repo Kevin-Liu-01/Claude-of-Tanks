@@ -7,6 +7,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addLeopardA6XFittings } from './leopardA6XFittings.ts';
 import { leopardA6WheelSolids } from './leopardA6XWheels.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -458,7 +459,8 @@ function weapons(P: TankBuilderPort): void {
   mg.add('turretDark', box(.08, .055, .18), .9349, 2.6331, -.155);
   mg.add('turretDark', cylZ(.01985, .31484, 20), .9349, 2.63313, -.007705);
   mg.add('turretDark', cylZ(.006, .007, 16), .9349, 2.63313, .150);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'leopardA6XLoaderMg', caliberMm: 7.62 });
 }
 
 function muzzleReference(P: TankBuilderPort): void {

@@ -26,9 +26,19 @@ for (const slope of [0, 0.05, -0.12]) {
     radii.push(Math.hypot((ca * dx - sa * dz) / 12, (sa * dx + ca * dz) / 2));
   }
   assert.ok(Math.max(...radii) - Math.min(...radii) > 0.2, 'outline is not another scaled ellipse');
+  // the lee cornice: straight downwind (segment 0) the crest stays near full height out to ring 3, then breaks to the rim;
+  // straight upwind (segment 12) the slope is already low there
+  const lee3 = 1 + 2 * 24, wind3 = 1 + 2 * 24 + 12;
+  const clear = (i) => p.getY(i) - ground(p.getX(i), p.getZ(i));
+  assert.ok(clear(lee3) > 0.85 * 0.2, `the lee crest is held up to its cornice (${clear(lee3).toFixed(3)})`);
+  assert.ok(clear(wind3) < 0.3 * 0.2, `the windward slope is long and low (${clear(wind3).toFixed(3)})`);
+  {
+    const ldx = p.getX(lee3) - 30, ldz = p.getZ(lee3) + 70;
+    assert.ok(Math.hypot(ldx, ldz) > 0.8 * 12 * 0.7, 'the cornice is carried out toward the lee rim');
+  }
   const repeat = createSnowDrift(field, 30, -70, 12, 2, 0.2, -0.6);
   assert.deepEqual(drift.attributes.position.array, repeat.attributes.position.array);
   drift.dispose(); repeat.dispose();
 }
 original.dispose();
-console.log('snowDrift.selftest: irregular buried rims, upward faces, 168 triangles vs 432; deterministic planar support');
+console.log('snowDrift.selftest: irregular buried rims, a lee cornice, upward faces, 168 triangles vs 432; deterministic planar support');

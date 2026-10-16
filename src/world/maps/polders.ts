@@ -18,6 +18,7 @@
 // it, the second within 8 m of the first's rotation about the farm court.
 import { roundRoadBends } from './roadBends.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import { POLDERS_VILLAGE } from './poldersVillage.ts'; // the maps lane, 2026-10-15: the dyke village's street
 
 /** The farm court's settlement rect (terrain.village below). */
 const VILLAGE = { x0: -178, x1: 68, z0: -96, z1: 122, cx: -64, cz: 12, feather: 42, flatten: 0.88, relief: 0.12 };
@@ -321,11 +322,20 @@ export default {
         params: { width: 12, depth: 12, fence: 'fenceplank', back: 'fence', beds: false, path: 0 } },
       { kind: 'windmill', x: -171, z: -316, yawDeg: 300, ground: 'veto', name: 'the drain mill', params: { style: 'tower', height: 18 } },
       { kind: 'outfall', x: -182.96, z: -311.17, yawDeg: 292, ground: 'veto', name: "the drain mill's outfall", params: { length: 7.2, width: 0.8 } },
+      // (the maps lane, 2026-10-15, the Verdant process; the owner, 10-09: Tidegate Polders among the maps to bring up) the
+      // village's church east of the farm court, as every Walcheren village gathers round its church: a brick hall
+      // church, its west tower and needle spire over the polder, its front to the court
+      { kind: 'church', x: 50, z: -24, yawDeg: -90, ground: 'reserve', name: 'the village church',
+        params: { tradition: 'western', length: 28, width: 11, tower: 34, crown: 'spire' } },
     ],
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     // (2026-10-06, the map-revival lane, step 1) the farm court stands exactly as the PR head seated it (the town-plan
     // replay, townPlans.generated.ts): the dykes, ramps and water rebuilt round it no longer move its houses
     townPlan: TOWN_PLANS.polders,
+    // (the maps lane, 2026-10-15, the Verdant process) and along the roads out of it the dyke village's street, a lintdorp
+    // of brick houses behind their front gardens, a farm or an inn among them (poldersVillage.ts, tools/plan-street-rows.mjs)
+    plannedSites: [...POLDERS_VILLAGE],
+    plannedSitesAfterPlan: true,
     townLightPlan: TOWN_LIGHT_PLANS.polders,
     // (step 1) the scattered stone keeps off the zone discs: re-rolled by the new ground, an outcrop landed on the west
     // field zone's edge and pushed the zone 8 m off its authored seat
@@ -385,7 +395,12 @@ export default {
   // (2026-10-13: the baked decks the phones show match the cumulus — Verdant's 620 m deck of 3200 m masses in place of
   // round 47's 420 m deck of 2600 m masses, the slant haze 0.00016 kept so the flat ring's grazing sky keeps its texture,
   // the fair-weather patchiness (cloudShadowAmp auto 0.22, was 0.18), the cirrus veil 0.72 -> 0.6, a near-white tint)
-  sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.6, cloudTintHex: 0xf4f6f6, cloudHazeK: 0.00016, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43 },
+  sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.6, cloudTintHex: 0xf4f6f6, cloudHazeK: 0.00016, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43,
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland"): a Dutch sea-wind sky — bright, luminous air full of
+    // white sea salt, a silvery band on the low horizon and a soft clear blue overhead (atmosphere.ts sky grade: the dome,
+    // the fog's colour and the sky light all follow it)
+    atmosphere: { rayleighScale: 1.1, mieScale: 7, mieG: 0.84,
+      horizonTintHex: 0xdde6ea, horizonTintAmount: 0.45, horizonBandDeg: 10, zenithTintHex: 0x7fa3cc, zenithTintAmount: 0.2 } },
   minimap: { base: [88, 112, 69], hard: [122, 117, 90], soft: [54, 80, 67], forest: 'rgba(44,78,43,.84)', forestStroke: 'rgba(26,51,27,.92)', water: 'rgba(66,103,114,.84)', waterStroke: 'rgba(35,67,78,.94)', roadCasing: 'rgba(54,47,36,.92)', roadFill: 'rgba(188,176,144,.96)', buildingFill: '#d3ccb9' },
   shot: { pos: [-268, 46, -256], look: [28, 1, 112] },
   // round 66 (2026-09-24, the FFT ocean): the polders' drained lakes take the sea wind across the flats — a short

@@ -15,6 +15,12 @@
 //    those keys is rewritten to load the lazy chunk first (src/ui/i18nDictionaries.ts loadLazyCatalog, reached through
 //    `globalThis.__cotI18nLazy` so a module shared with a worker imports nothing more); a document without a lazy chunk
 //    (the game's full catalogs) passes straight through.
+//  - the game (2026-10-15, the perf lane): the scan reads the game's whole graph too (its boot, every import() target
+//    and every worker), and `api.gameCatalogKeys()` hands that key set to tools/viteI18nStudioCatalog.ts, which serves
+//    the game's catalog modules restricted to it in the build (the strings only the docs, home, gallery and media pages
+//    show never reach the game's boot; the English chunk 338,807 -> 152,915 raw, the zh-CN one 323,587 -> 148,500). A
+//    scan issue in the game's graph fails the build like a public page's. The dev server keeps the whole catalogs (no
+//    scan before the game can boot).
 //  - serve: each page catalog's boot and lazy keys together (one subset, as before the split: the dev server rewrites
 //    no import(), so no module request waits on a scan) as virtual modules at /@cot-i18n/<catalog>.<locale>.js,
 //    re-scanned after an edit.
@@ -190,7 +196,8 @@ export function bootChunkProblems(bundle: OutputBundle): string[] {
   return problems;
 }
 
-export function i18nPageCatalogs(): Plugin {
+/** The page catalog plugin; its `api` hands the game's key set to the catalog split (tools/viteI18nStudioCatalog.ts). */
+export function i18nPageCatalogs(): Plugin & { api: { gameCatalogKeys(): readonly string[] | null } } {
   let root = process.cwd();
   let pages: string[] = [];
   let build = false;
@@ -211,6 +218,15 @@ export function i18nPageCatalogs(): Plugin {
   };
   return {
     name: 'cot-i18n-page-catalogs',
+    api: {
+      /**
+       * The build's: every key the game's document and the workers can show (the scan's `game` catalog), which the game's
+       * catalog modules are restricted to (tools/viteI18nStudioCatalog.ts); null on the dev server, which serves them whole.
+       */
+      gameCatalogKeys(): readonly string[] | null {
+        return build ? scanned().catalogs[FULL_CATALOG]?.keys ?? null : null;
+      },
+    },
     configResolved(config) {
       root = config.root;
       build = config.command === 'build';

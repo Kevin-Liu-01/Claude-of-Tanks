@@ -402,7 +402,7 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.throws(() => encodeMessage({ type: MESSAGE_TYPE.INPUT, clientTick: 1, snapshotAckTick: 0, interpDelayMs: 0, controls: [] }), (error) => error.code === 'too_many');
   assert.throws(() => encodeMessage({ type: 200 }), (error) => error.code === 'unknown_type');
   assert.equal(peekMessageType(samples[0]), MESSAGE_TYPE.HELLO);
-  assert.equal(peekMessageType(new Uint8Array([7, 1])), null);
+  assert.equal(peekMessageType(new Uint8Array([WIRE_VERSION + 1, 1])), null);
   console.log(`wire.selftest: ${rejected} truncated prefixes and every malformed class rejected with typed WireError codes`);
 }
 

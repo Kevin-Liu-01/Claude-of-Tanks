@@ -15,20 +15,31 @@ interface VertexSpan {
   homeNormal: Float32Array;
 }
 interface InstanceSlot { mesh: InstancedMesh; slot: number; home: Matrix4 }
-const pieceOwners = new WeakMap<BufferGeometry, CrushableClutter>();
+/** Anything that owns pieces drawn inside a merged material bucket and moves their vertices there (bindClutterBatch). */
+interface SpanOwner { readonly spans: VertexSpan[] }
+const pieceOwners = new WeakMap<BufferGeometry, SpanOwner>();
 const flatScale = new Vector3(1, .14, 1);
+
+/** The clutter's kinds: the rubble heaps, the hedgehogs, the loose rocks, the coal heaps, and (Lane C, PRP-02) the small
+ *  dressing props given their break path (maps/smallPropBreak.ts), each `prop-<what>`. */
+export type ClutterKind = 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap' | 'field-wall' | `prop-${string}`;
 
 /** Preserve the existing material batches/rock instances: collapse only this
  * object's vertices or instance, with no new draw calls or frame-loop work. */
 export class CrushableClutter {
   readonly spans: VertexSpan[] = [];
   readonly instances: InstanceSlot[] = [];
-  readonly kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap';
+  readonly kind: ClutterKind;
   readonly x: number; readonly y: number; readonly z: number;
   readonly r: number; readonly h: number;
   readonly obstacles: CollisionRecord[]; readonly colliders: CollisionRecord[];
+  /** (the hitbox lane, 2026-10-10) a crushed instance's pose from its standing one, in place of the flattening (a
+   * crushed stone splits and presses into the ground: crushedStones.ts), and what else a crush lays and a rematch takes
+   * back (a stone's flakes and chips, its scuff). */
+  pressedPose: ((home: Matrix4, out: Matrix4) => void) | null = null;
+  readonly crushHooks: Array<(crushed: boolean) => void> = [];
   constructor(
-    kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap',
+    kind: ClutterKind,
     x: number, y: number, z: number, r: number, h: number,
     obstacles: CollisionRecord[], colliders: CollisionRecord[],
   ) {
@@ -60,9 +71,11 @@ export class CrushableClutter {
     for (const span of this.spans) this.poseSpan(span, crushed);
     for (const {mesh, slot, home} of this.instances) {
       const matrix = home.clone();
-      if (crushed) { matrix.scale(flatScale); matrix.elements[13] = this.y + .02; }
+      if (crushed && this.pressedPose) this.pressedPose(home, matrix);
+      else if (crushed) { matrix.scale(flatScale); matrix.elements[13] = this.y + .02; }
       mesh.setMatrixAt(slot, matrix); mesh.instanceMatrix.needsUpdate = true;
     }
+    for (const hook of this.crushHooks) hook(crushed);
   }
 
   private poseSpan(span: VertexSpan, crushed: boolean): void {
@@ -76,6 +89,32 @@ export class CrushableClutter {
     }
     position.addUpdateRange(first * 3, p.length); normal.addUpdateRange(first * 3, n.length);
     position.needsUpdate = true; normal.needsUpdate = true;
+  }
+}
+
+/**
+ * (Lane C, #8 r2, 2026-10-14) A piece drawn inside a merged material bucket that can be hidden there and shown again:
+ * a vehicle set piece's intact build (props.ts), so a map's set pieces cost no draw of their own. Hidden, its vertices
+ * collapse onto its first one (degenerate triangles, nothing drawn); shown, they return to their home positions.
+ */
+export class HiddenSpanPiece {
+  readonly spans: VertexSpan[] = [];
+  private hidden = false;
+
+  ownPiece(geometry: BufferGeometry): void { pieceOwners.set(geometry, this); }
+
+  setHidden(hidden: boolean): void {
+    if (hidden === this.hidden) return;
+    this.hidden = hidden;
+    for (const {position, first, homePosition: p} of this.spans) {
+      for (let i = 0; i < p.length; i += 3) {
+        const at = first + i / 3;
+        if (hidden) position.setXYZ(at, p[0]!, p[1]!, p[2]!);
+        else position.setXYZ(at, p[i]!, p[i + 1]!, p[i + 2]!);
+      }
+      position.addUpdateRange(first * 3, p.length);
+      position.needsUpdate = true;
+    }
   }
 }
 

@@ -488,6 +488,34 @@ export function boxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.Buffe
   return geometry;
 }
 
+/**
+ * boxUV with the projection axis chosen per triangle from its face normal, for non-indexed merged geometry.
+ * A rounded box's bevels carry blended vertex normals, so boxUV could project one triangle's corners onto
+ * different axes: the UVs jumped across the face and mipmapping smeared the camouflage to one flat tone
+ * (the T-90AM's glacis and ERA blocks, 2026-10-11). Each triangle keeps one axis here.
+ */
+export function faceBoxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.BufferGeometry {
+  if (geometry.index) return boxUV(geometry, scale);
+  const position = geometry.getAttribute('position');
+  const uv = new Float32Array(position.count * 2);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let index = 0; index + 2 < position.count; index += 3) {
+    a.fromBufferAttribute(position, index);
+    b.fromBufferAttribute(position, index + 1);
+    c.fromBufferAttribute(position, index + 2);
+    const normal = b.sub(a).cross(c.sub(a));
+    const nx = Math.abs(normal.x), ny = Math.abs(normal.y), nz = Math.abs(normal.z);
+    const axis = ny >= nx && ny >= nz ? 1 : nx >= nz ? 0 : 2;
+    for (let corner = index; corner < index + 3; corner++) {
+      const x = position.getX(corner), y = position.getY(corner), z = position.getZ(corner);
+      uv[corner * 2] = (axis === 0 ? z : x) * scale;
+      uv[corner * 2 + 1] = (axis === 1 ? z : y) * scale;
+    }
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return geometry;
+}
+
 export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
   const flat = geometries.map((geometry) => geometry.index ? geometry.toNonIndexed() : geometry);
   const merged = mergeGeometries(flat, false);

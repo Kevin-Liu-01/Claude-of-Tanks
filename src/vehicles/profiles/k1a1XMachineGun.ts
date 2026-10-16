@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 type Weapon=ReturnType<typeof sourceMachineGun>;
 const X=-.3867,Y=2.765;
@@ -73,4 +74,7 @@ export function addK1A1XMachineGun(P:TankBuilderPort):void {
   receiver(mg);barrel(mg);perforatedJacket(mg);ammunitionTray(mg);
   const group=mg.finish();group.name='k1a1XPhotoRoofMachineGun';
   group.userData.reference='DVIDS3912303-photo-inferred-dimensions';
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the hosts without the K1A1's measured datum turn the
+  // same exact gun as a working station (auxiliaryStation.ts)
+  if(P.spec.id!=='k1a1')stationFromDrawnGun(group,{name:'k1a1XPhotoRoofStation',caliberMm:12.7});
 }

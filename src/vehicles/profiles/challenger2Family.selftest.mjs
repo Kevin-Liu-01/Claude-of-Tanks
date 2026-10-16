@@ -67,14 +67,15 @@ for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {
     `${id} machine-gun receipt must match exact fittings`);
 
   if (id === 'fv4034') {
-    assert.equal(receipt.mannedMachineGuns, 2,
-      'FV4034 carries two manually operated roof machine guns');
+    // VH.14 (coordinator ruling 2026-10-14): the loader's L37A2 is the Challenger 2's one roof gun; the commander's M2 is gone
+    assert.equal(receipt.mannedMachineGuns, 1,
+      'FV4034 carries the loader\'s manually operated roof machine gun');
     assert.equal(receipt.enhancedSkirtPanels, 0,
       'FV4034 remains the bare predecessor-style variant');
     assert.deepEqual(tank.root.userData.eraClusterNames, [],
       'FV4034 must not inherit Challenger 2E ERA');
-    assert.equal(receipt.roofAttachmentCount, 8,
-      'FV4034 cupolas, periscopes, and machine guns must all publish roof seats');
+    assert.equal(receipt.roofAttachmentCount, 7,
+      'FV4034 cupolas, periscopes, and the machine gun must all publish roof seats');
     assert.equal(receipt.bridgedMachineGunBarrels, 1,
       'FV4034 MAG barrel must bridge directly into its receiver');
   } else {

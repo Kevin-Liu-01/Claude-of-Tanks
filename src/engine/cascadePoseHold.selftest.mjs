@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
+import { csmSliceFromM, csmSliceToM } from './shadowCascadeFade.ts';
 
 const store = new Map();
 globalThis.window = {
@@ -73,7 +74,8 @@ function reference(i) {
   const span = far() - camera.near;
   const x = i ? csm.breaks[i - 1] : 0, y = csm.breaks[i];
   const plain = sliceBox(i ? x * far() : camera.near, y * far());
-  const sampled = sliceBox(Math.max(camera.near, (x - 0.125 * x * x) * span), (y + 0.125 * y * y) * span);
+  // (2026-10-14: the slice as the fade samples it, the one law — shadowCascadeFade.ts)
+  const sampled = sliceBox(Math.max(camera.near, csmSliceFromM(x, 0, span, true)), csmSliceToM(y, 0, span, true));
   const cam = lights[i].shadow.camera, texel = (cam.right - cam.left) / lights[i].shadow.mapSize.x;
   const snap = (c) => snapShadowCoordinate(c, texel);
   return {

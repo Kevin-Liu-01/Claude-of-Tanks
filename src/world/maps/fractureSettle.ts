@@ -537,9 +537,22 @@ export class FractureSettle {
       const c = centreOf(b.tris), out = nrm([c[0] - mid[0] + 1e-3, 0, c[2] - mid[2]]);
       for (let attempt = 1; attempt < 4 && topOf(pts, xf) > o.ceiling; attempt++) {
         // (out from the middle, farther each time; the last time laid flat, clear of the heap, on the ground)
-        const reach = attempt < 3 ? 0.55 * attempt : 1.7;
-        const to: V3 = [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach];
-        xf = this.rest(pts, attempt < 3 ? o : { ...o, maxTilt: 0.3 }, about(attempt < 3 ? IDENTITY.R : flatTurn(b), c, to));
+        if (attempt < 3) {
+          const reach = 0.55 * attempt;
+          xf = this.rest(pts, o, about(IDENTITY.R, c, [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach]));
+          continue;
+        }
+        // (the looks lane, 2026-10-15: a big piece — a greenhouse's film, a garage's arch — laid 1.7 m out still lay on the
+        // heap over the ceiling, and the next came down on it: the space stations' wrecks stood higher than the stations.
+        // Out farther until it lies under the ceiling, or where it lies lowest.)
+        let best = xf, bestTop = Infinity;
+        for (const reach of [1.7, 2.6, 3.8, 5.4, 7.5]) {
+          const laid = this.rest(pts, { ...o, maxTilt: 0.3 }, about(flatTurn(b), c, [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach]));
+          const top = topOf(pts, laid);
+          if (top < bestTop) { best = laid; bestTop = top; }
+          if (top <= o.ceiling) break;
+        }
+        xf = best;
       }
     }
     const sink = o.sink ?? 0.012;

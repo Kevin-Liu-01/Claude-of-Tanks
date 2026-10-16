@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { ClampToEdgeWrapping, LinearMipmapLinearFilter, NoColorSpace } from 'three';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMask } from './terrain.ts';
@@ -8,6 +7,7 @@ import { resolveDeviceTier } from '../engine/quality.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the 31 full-RGBA "original" mask digests (baked on historical road, shoreline,
 // Reservoir, Badlands and Oasis inputs through a historical terrain module), the Oasis contour digests and its
@@ -213,7 +213,7 @@ try {
 } finally {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 assertTerrainMaskShaderContract(source);
 assert.match(source, /S\.shoreDirt \? \(S\.seaRamp\?\.\[0\] \?\? 0\.40\) : null/);
 assert.match(source, /stampShoreDirtMask\(px, dist, s, MAP_SIZE, shoreDirtStart\)/, 'production passes the original road scratch, not a new buffer');

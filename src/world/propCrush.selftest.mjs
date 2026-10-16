@@ -249,5 +249,54 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   late.group.children[0].getColorAt(0, c);
   assert.ok(c.g < 0.07 && late.burnt.length === 0, 'settled: charred at once, no fire');
 }
+// heavy plant (Lane C, 2026-10-15; the owner: "destroyed vehicles must crumple"): a D8H's field carries its kind's floor
+// (setPieceDestructibles.ts SET_PIECE_MASS.floor, the type's crushFloor). A hull crossing it presses it no lower than
+// that share of its height, its upper works rack over along the travel and its panels buckle; the same crossing crushes it
+// the same; the presentation shoves it off the hull's line, once
+{
+  const { SET_PIECE_MASS, setPieceDestructibleTypes } = await import('./maps/setPieceDestructibles.ts');
+  const type = setPieceDestructibleTypes().setpiece_d8h;
+  assert.equal(type.crushFloor, SET_PIECE_MASS.d8h.floor, 'the type carries its kind\'s floor');
+  const dozer = type.build(rng);
+  dozer.computeBoundingBox();
+  const db = dozer.boundingBox, dhw = Math.max(-db.min.x, db.max.x), dhl = Math.max(-db.min.z, db.max.z), dtop = db.max.y;
+  const drest = dozer.getAttribute('position').array;
+  const run = () => {
+    const f = createCrushField(dhw, dhl, dtop, undefined, false, type.crushFloor);
+    const out = new Float32Array(drest.length);
+    for (let s = -(dhl + HL + 2); s < dhl + HL + 1; s += V * DT) {
+      if (!hullMeetsBox(0, s, 0, 1, HL, HW, dhw, dhl)) continue;
+      pressField(f, 0, s, 0, 1, HL, HW);
+    }
+    deformPositions(f, drest, out);
+    return out;
+  };
+  const one = run(), two = run();
+  assert.deepEqual(Array.from(two), Array.from(one), 'the same crossing crushes the dozer the same');
+  let hi = 0, lean = 0, n = 0, wave = 0;
+  for (let v = 0; v < one.length; v += 3) {
+    hi = Math.max(hi, one[v + 1]);
+    if (drest[v + 1] > dtop * 0.7) { lean += one[v + 2] - drest[v + 2]; n++; }
+    wave = Math.max(wave, Math.abs(one[v] - drest[v]));
+  }
+  lean /= Math.max(1, n);
+  assert.ok(hi > dtop * type.crushFloor * 0.95, `it keeps its floor (${dtop.toFixed(2)} m -> ${hi.toFixed(2)} m, floor ${(dtop * type.crushFloor).toFixed(2)} m)`);
+  assert.ok(hi < dtop * 0.9, `and is crushed down from its top (${hi.toFixed(2)} m)`);
+  assert.ok(lean > 0.1, `its upper works rack over along the travel (${lean.toFixed(2)} m)`);
+  assert.ok(wave > 0.05, `its panels buckle (${wave.toFixed(2)} m)`);
+  // the presentation: shoved off the hull's line once, then its frame follows it
+  const group = new THREE.Group();
+  const record = { kind: 'setpiece_d8h', x: 0, y: 0, z: 0, r: 3, slot: 0, state: 0 };
+  const pool = { ...poolOf(dozer, null), meta: type };
+  const press = createPropCrushPresentation({ group, records: [record], poolOf: () => pool, near: (a, b2, c, d, o) => { o.length = 0; o.push(0); return o; },
+    eligible: () => true });
+  for (let s = -(dhl + HL + 1); s < dhl + HL; s += V * DT) { press.pressHull(0, s, 0, HL, HW); press.step(DT); }
+  for (let i = 0; i < 90; i++) press.step(DT);
+  const copy = group.children[0], m = new THREE.Matrix4();
+  copy.getMatrixAt(0, m);
+  const at = new THREE.Vector3().setFromMatrixPosition(m);
+  assert.ok(Math.abs(at.x) > HW + 0.5, `shoved off the hull's line (${at.x.toFixed(2)} m aside)`);
+  console.log(`  heavy plant: D8H ${dtop.toFixed(2)} m -> ${hi.toFixed(2)} m (floor ${type.crushFloor}), racked ${lean.toFixed(2)} m, buckled ${wave.toFixed(2)} m, shoved ${at.x.toFixed(2)} m aside`);
+}
 console.log('propCrush: a vehicle gives at contact and pancakes under the tracks, never rising, the same twice; the far side of a clip stands; '
-  + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again PASS');
+  + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again; heavy plant keeps its floor, racks, buckles and is shoved aside PASS');

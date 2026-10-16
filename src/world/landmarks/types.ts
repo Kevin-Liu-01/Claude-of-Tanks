@@ -39,7 +39,9 @@ export type LandmarkKind =
   // works: an airfield's (airfieldWorks.ts)
   | 'floodMast'
   // works: a mine's (mining.ts)
-  | 'headframe' | 'oreBin' | 'conveyor' | 'oreCars';
+  | 'headframe' | 'oreBin' | 'conveyor' | 'oreCars'
+  // a fjord farm's works (fjordWorks.ts)
+  | 'hayRack' | 'fishRack' | 'stabbur';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;
