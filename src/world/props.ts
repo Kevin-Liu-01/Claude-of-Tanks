@@ -185,7 +185,7 @@ const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', 'bunker']); // (round 3: the heavy trucks' slabs)
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', 'fieldhut', 'bunker']); // (round 3: the heavy trucks' slabs; DST-03: the field hut's walls)
 import {
   appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
