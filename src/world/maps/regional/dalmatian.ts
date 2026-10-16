@@ -9,6 +9,7 @@ import {
   PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb,
 } from './geometry.ts';
+import { orientedPrism } from './millWorks.ts';
 import { buildHouse, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
@@ -271,7 +272,7 @@ const farmhouse: RegionalBuilder = (ctx) => {
   const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.22, verge: 0.12, thickness: 0.14, bucket: 'roof' };
   const wl = wingL - 0.04;
   sink.placed(0, W / 2 + wl / 2, 0, wz, () => {
-    buildHouse(sink, {
+    const wf = buildHouse(sink, {
       w: wl, d: ww, plinth: { h: 0.15, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.15, wall: 'stone' }], roof: lean, gableBucket: 'stone',
       openings: [
         { face: 'right', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 1.85 },
@@ -285,6 +286,14 @@ const farmhouse: RegionalBuilder = (ctx) => {
         leaf: shade(st.door, 0.9), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
       }, 0.15),
     });
+    // (Lane C 2026-10-16, building-integrity: the sky showed through the wing under its lean-to, 2.35 m2 from the front)
+    // the end walls' raking tops built up to the lean-to's underside (a shed roof leaves its ends open: roofGeometry
+    // gives a shed no gable)
+    const rg = wf.roof;
+    for (const end of [1, -1]) {
+      const z0 = end > 0 ? rg.halfD - 0.25 : -rg.halfD;
+      orientedPrism(sink, 'stone', [[rg.s, rg.eaveY - 0.02, z0], [-rg.s, rg.eaveY + 2 * rg.s * rg.tanP - 0.02, z0], [-rg.s, rg.eaveY - 0.02, z0]], [0, 0, 1], 0.25, {});
+    }
   });
   return sink.finish();
 };
