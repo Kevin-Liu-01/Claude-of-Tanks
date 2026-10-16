@@ -1,0 +1,133 @@
+// src/world/maps/coalBays.ts — the coal stockpiles' heaps and their records (the looks lane's r2 sub-stream, 2026-10-16).
+// Extract-then-own: coalStockpile.ts's faceted heap, its lumps, its convex record and crushable pile (Lane B's, parked)
+// moved here byte for byte; coalStockpile.ts keeps its clear-site law and re-exports these.
+import * as THREE from 'three';
+import { cloneCollisionRecord, convexHull2, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { CrushableClutter } from '../crushableClutter.ts';
+import type { CoalGround } from './coalStockpile.ts';
+
+/** What a heap registers into (mapKits.ts FocusedDressingContext's members it uses). */
+interface CoalContext {
+  obstacles?: CollisionRecord[];
+  colliders?: CollisionRecord[];
+  clutter?: (pile: CrushableClutter) => void;
+}
+
+type CoalVertex = readonly [number, number, number];
+
+function coalFacet(
+  positions: number[], colors: number[], uvs: number[],
+  a: CoalVertex, b: CoalVertex, c: CoalVertex, phase: number,
+): void {
+  // Three small irregular facets retain a granular highlight, not smooth
+  // interpolated ellipsoid normals. No additional seeded draws are consumed.
+  const middle: CoalVertex = [(a[0] + b[0] + c[0]) / 3,
+    (a[1] + b[1] + c[1]) / 3 + 0.015 * (1 + Math.sin(phase * 2.7)),
+    (a[2] + b[2] + c[2]) / 3];
+  const corners = [a, b, c];
+  for (let edge = 0; edge < 3; edge++) {
+    const shade = 0.032 + 0.012 * Math.sin(phase * 4.1 + edge * 1.7);
+    for (const vertex of [corners[edge], corners[(edge + 1) % 3], middle]) {
+      positions.push(...vertex);
+      colors.push(shade * 0.94, shade, shade * 1.03);
+      uvs.push(vertex[0] * 0.6, vertex[2] * 0.6);
+    }
+  }
+}
+
+/** A lump of coal lying on a heap's facet (a, b, c) at barycentric `w`: a low pyramid sunk 3 cm into the facet's plane. */
+function coalLump(
+  positions: number[], colors: number[], uvs: number[],
+  a: CoalVertex, b: CoalVertex, c: CoalVertex, w: readonly [number, number, number], size: number, phase: number,
+): void {
+  const at = (k: number) => a[k] * w[0] + b[k] * w[1] + c[k] * w[2];
+  const cx = at(0), cz = at(2);
+  // the facet's plane: y over (x, z)
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+  const planeY = (x: number, z: number) => a[1] - (nx * (x - a[0]) + nz * (z - a[2])) / ny;
+  const ring: CoalVertex[] = [];
+  for (let k = 0; k < 5; k++) {
+    const ang = phase * 1.3 + k * Math.PI * 2 / 5, r = size * (0.75 + 0.25 * Math.sin(phase * 2.1 + k * 2.3));
+    // the ring's angle rising from x toward z, as the heap's own rings (its faces then wind up and out)
+    const x = cx + Math.cos(ang) * r, z = cz + Math.sin(ang) * r;
+    ring.push([x, planeY(x, z) - 0.03, z]);
+  }
+  const apex: CoalVertex = [cx + size * 0.15 * Math.sin(phase), planeY(cx, cz) + size * (0.8 + 0.25 * Math.sin(phase * 3.7)), cz + size * 0.15 * Math.cos(phase)];
+  for (let k = 0; k < 5; k++) {
+    const shade = 0.05 + 0.02 * Math.sin(phase * 2.9 + k * 1.9);
+    for (const vertex of [ring[k], apex, ring[(k + 1) % 5]]) {
+      positions.push(...vertex);
+      colors.push(shade * 0.95, shade, shade * 1.06);
+      uvs.push(vertex[0] * 0.6, vertex[2] * 0.6);
+    }
+  }
+}
+
+export function makeCoalStockpile(
+  field: CoalGround, x: number, z: number,
+  radius: number, length: number, phase: number,
+): THREE.BufferGeometry {
+  const base: CoalVertex[] = [], shoulder: CoalVertex[] = [];
+  const height = 0.66 + (radius - 1.1) * 0.36;
+  for (let i = 0; i < 8; i++) {
+    const angle = i * Math.PI / 4;
+    const dx = Math.cos(angle) * radius, dz = Math.sin(angle) * length;
+    base.push([x + dx, field.getHeightAt(x + dx, z + dz) - 0.05, z + dz]);
+    const sx = x + dx * 0.47 + radius * 0.08, sz = z + dz * 0.47;
+    shoulder.push([sx, field.getHeightAt(sx, sz) + height * (0.54 + 0.06 * Math.sin(i * 2 + phase)), sz]);
+  }
+  const peak: CoalVertex = [x - radius * 0.1, field.getHeightAt(x - radius * 0.1, z) + height, z];
+  const positions: number[] = [], colors: number[] = [], uvs: number[] = [];
+  for (let i = 0; i < 8; i++) {
+    const next = (i + 1) % 8;
+    // Clockwise XZ winding faces upward in Three's Y-up world.
+    coalFacet(positions, colors, uvs, base[i], shoulder[i], base[next], phase + i * 3);
+    coalFacet(positions, colors, uvs, base[next], shoulder[i], shoulder[next], phase + i * 3 + 1);
+    coalFacet(positions, colors, uvs, shoulder[i], peak, shoulder[next], phase + i * 3 + 2);
+  }
+  // (props census #3, lane B 2026-10-14; the judges: "a smooth faceted cone, no lumps, no loose coal") the lumps lying
+  // on its faces and the loose coal spilt along its toe: low five-sided pyramids sunk into the facets they lie on, every
+  // face upward, all of them inside the heap's footprint and under its peak (its collision record unchanged)
+  for (let i = 0; i < 8; i++) {
+    const next = (i + 1) % 8;
+    coalLump(positions, colors, uvs, base[next], shoulder[i], shoulder[next], [0.3, 0.35, 0.35], 0.13, phase + i * 5);
+    coalLump(positions, colors, uvs, base[i], shoulder[i], base[next], [0.36, 0.28, 0.36], 0.09, phase + i * 5 + 1);
+    if (i % 2 === 0) coalLump(positions, colors, uvs, shoulder[i], peak, shoulder[next], [0.5, 0.2, 0.3], 0.1, phase + i * 5 + 2);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.name = 'rail-coal-stockpile';
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+export function registerCoalStockpile(geometry: THREE.BufferGeometry, ctx: CoalContext): void {
+  const position = geometry.getAttribute('position'), points: Array<[number, number]> = [];
+  let low = Infinity, high = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    points.push([position.getX(i), position.getZ(i)]);
+    low = Math.min(low, position.getY(i)); high = Math.max(high, position.getY(i));
+  }
+  // Same ordinary conservative vertical prism as authored rocks: exact
+  // projected convex footprint/Y bounds, not a rectangular invisible wall.
+  const record = setConvexShape({min: [0, low, 0], max: [0, high, 0], kind: 'coal-heap'}, convexHull2(points));
+  const shell = cloneCollisionRecord(record);
+  ctx.obstacles?.push(record);
+  ctx.colliders?.push(shell);
+  // (destruction stream, 2026-10-13; the owner: every prop under a size destructible by ramming or shooting) a hull
+  // drives through a coal pile and a round bursts it: crushed, the pile lies flattened where it stood
+  if (ctx.clutter) {
+    let cx = 0, cz = 0;
+    for (const [x, z] of points) { cx += x; cz += z; }
+    cx /= Math.max(1, points.length); cz /= Math.max(1, points.length);
+    let r = 0;
+    for (const [x, z] of points) r = Math.max(r, Math.hypot(x - cx, z - cz));
+    const pile = new CrushableClutter('coal-heap', cx, low, cz, r, high - low, [record], [shell]);
+    pile.ownPiece(geometry);
+    ctx.clutter(pile);
+  }
+}
+
