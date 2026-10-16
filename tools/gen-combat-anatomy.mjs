@@ -584,7 +584,7 @@ function receiptFor(id) {
     // race's reach inside the turret base, rig_hull frame. The anatomy's turretRing volume centres on it
     // (combatAnatomy.ts alignTurretRing); a wreck's ring plate and a hulk's well are sized from it.
     const turretRing = turret
-      ? measureTurretRing(hullRig, turretRig, turretRingRadius(TANK_SPECS[id]?.armor)) : null;
+      ? measureTurretRing(hullRig, turretRig, turretRingRadius(TANK_SPECS[id]?.armor), { exterior: true }) : null;
     if (!hull) throw new Error(`${id}: main hull receipt missing`);
     if (!trackL || !trackR) throw new Error(`${id}: running-gear receipt missing`);
     const hullStructures = structureReceipts(tank.root, hullRig, 'hull');

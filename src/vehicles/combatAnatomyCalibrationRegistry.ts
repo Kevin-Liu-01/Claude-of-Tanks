@@ -56,8 +56,12 @@ export interface AnatomyTurretRingReceipt extends Record<string, RuntimeValue> {
   readonly rimR: number;
   readonly skirt: number;
   readonly footR: number;
-  /** The well's floor: a floor plate over the highest of the hull's undersides under the opening. */
+  /** The well's floor: a floor plate over the highest of the hull's undersides under the opening, and over its skin. */
   readonly floorY?: number;
+  /** The well's wall under the race's lip where the hull's skin keeps it narrower than the gear's band (a ledge). */
+  readonly wellR?: number;
+  /** The nearest the hull's skin comes to the ring's axis under the lip, when within a hulk crumple's reach of it. */
+  readonly skinR?: number;
 }
 
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
