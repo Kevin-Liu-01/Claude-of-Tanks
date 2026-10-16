@@ -3,8 +3,8 @@
 // 3 wall, edgeM the distance to the field's edge). The karst's dry stone walls stand on the grid's wall boundaries and
 // a bocage's hedge lines get their earth banks, on the same layout the terrain draws (the boundary band, the same field
 // gate: off the villages, the roads, the water and the slopes), so a wall stands exactly where the ground shows its
-// footing. They are decor: a low rubble wall or a bank is crossed, not cover — no collision (should they ever matter in
-// play they become crushable like the fences, never blocking), no taller than a metre, kept off the roads, the bridges
+// footing. A low rubble wall or a bank is crossed, not hard cover: the banks carry no collision, and the walls (physics
+// stream PH.15, 2026-10-15) stand as crushable spans like the fences, never blocking (fieldWallCollision.ts); no taller than a metre, kept off the roads, the bridges
 // and their approaches, the aprons and yards, every mode's objective discs and the spawn pads (the maps lane owns the
 // layouts these keep clear); one welded mesh, casting no shadow: the walls (group 0) on their own stone (the face
 // print, fieldWallFace.ts), the banks (group 1) on the props rock material.
