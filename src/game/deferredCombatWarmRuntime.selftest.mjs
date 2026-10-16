@@ -51,7 +51,7 @@ const owner = createDeferredCombatWarmRuntime({
   getGeneration: () => generation,
   setPending(value) { pending = value; },
   prepareNextOpeningRoute() {
-    events.push('route');
+    events.push(pending ? 'route-held' : 'route');
     return routeJobs-- > 0;
   },
   now: () => ++clock,
@@ -65,8 +65,11 @@ await first;
 assert.equal(pending, false, 'completed deployment warm releases rollout gate');
 assert.equal(owner.isActive(), false, 'completed queue releases its ownership slot');
 assert.deepEqual(events.slice(0, 4), ['first-frame', 'enemy-visuals', 'yield-forced', 'opening']);
-assert.deepEqual(events.slice(events.indexOf('rare')), ['rare', 'yield-forced', 'vision', 'yield-forced', 'vision-step-2'],
-  'the rare effects, then the vision programs, warm after the countdown\'s hold is released (vision one real frame a step)');
+assert.ok(!events.includes('route-held') && !events.includes('rare-held') && !events.includes('vision-held'),
+  'the routes, the terrain, the rare effects and the sights all warm after the countdown\'s hold is released');
+const order = ['route', 'terrain-grid', 'rare', 'terrain-lookahead', 'vision'].map((event) => events.indexOf(event));
+assert.deepEqual(order, [...order].sort((a, b) => a - b), 'in the order a battle needs them: routes, tiles, rare effects, lookahead, sights');
+assert.deepEqual(events.slice(events.indexOf('vision')), ['vision', 'yield-forced', 'vision-step-2'], 'the sights one real frame a step');
 assert.equal(globalThis.__BATTLE_DEFERRED_WARM.releasedBeforeRollout, true, 'the hold was released before the count ran out');
 assert.equal(events.filter((event) => event === 'route').length, 3,
   'route preparation drains until the first empty job');
