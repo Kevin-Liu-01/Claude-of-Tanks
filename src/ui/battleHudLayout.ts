@@ -708,7 +708,9 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       // shown or the countdown shown ends it only where it truly lies in that feed's column below the feed's start.
       let floorLeft = Math.max(feeds.mainLeft, Math.min(leftFloor(height, touch), touchFeedRingFloor(width, height, 0, sideWidth)));
       let floorRight = Math.max(feeds.mainRight, Math.min(rightFloor(height, width, map), touchFeedRingFloor(width, height, width - sideWidth, width)));
-      const boxes: (TouchDockRect | null)[] = [dock,
+      // The dock, or the older strip where not even one tile found room.
+      const controlsBox = dock ?? (systemsHeight ? { x: systemsLeft, y: systemsTop, w: dockWidth, h: systemsHeight } : null);
+      const boxes: (TouchDockRect | null)[] = [controlsBox,
         read('.cot-sixth.on') ? noticeLane?.detection ?? null : null, read('.cot-alert.show') ? noticeLane?.alert ?? null : null,
         countdown ? centre.countdown ?? { x: countdown.left, y: countdown.top, w: countdown.width, h: countdown.height } : null];
       for (const box of boxes) {
