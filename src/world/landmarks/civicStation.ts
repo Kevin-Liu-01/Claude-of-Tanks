@@ -80,9 +80,14 @@ export const stationHall: LandmarkBuilder = (ctx) => {
     left: [seg(0, 1.15, H1 + 0.9, H1 + 2.55)],
     right: [seg(0, 1.15, H1 + 0.9, H1 + 2.55)],
   };
-  const cf = archedBody(sink, wall, 0, 0, Wc, Dc, plinth, H2, cHoles, 0.32);
+  // (the looks lane, r2 sweep 2026-10-16: the clock was pasted over the head of the platform face's middle upper window)
+  // that bay carries the clock in its roundel instead of a window
+  const clockBay = cHoles.front![4];
+  const cut: Partial<Record<FaceName, ArchHole[]>> = { ...cHoles, front: cHoles.front!.filter((h) => h !== clockBay) };
+  const cf = archedBody(sink, wall, 0, 0, Wc, Dc, plinth, H2, cut, 0.32);
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     for (const h of cHoles[name] ?? []) {
+      if (h === clockBay) { lit(ctx, 0.4); continue; } // (its draw kept: the windows after it light as they did)
       if (h.y0 <= plinth + 0.01) doorLeaf(sink, cf[name], h, 0.32);
       else archWindow(sink, cf[name], h, 0.32, FRAME_WHITE, lit(ctx, 0.4));
       archSurround(sink, surround.bucket, cf[name], h, surround.width, surround.out);
@@ -93,9 +98,9 @@ export const stationHall: LandmarkBuilder = (ctx) => {
     const len = name === 'front' || name === 'back' ? Wc : Dc;
     // each storey runs off its own ledge: the string course and the cornice
     ageWall(sink, ctx.age, { face: cf[name], bucket: wall, area: { u0: -len / 2 + 0.6, u1: len / 2 - 0.6, y0: plinth, y1: H1 - 0.1 },
-      openings: (cHoles[name] ?? []).filter((h) => h.y0 < H1), ledge: H1 - 0.02, grime: 0.24 });
+      openings: (cut[name] ?? []).filter((h) => h.y0 < H1), ledge: H1 - 0.02, grime: 0.24 });
     ageWall(sink, ctx.age, { face: cf[name], bucket: wall, area: { u0: -len / 2 + 0.6, u1: len / 2 - 0.6, y0: H1 + 0.35, y1: H2 - 0.7 },
-      openings: (cHoles[name] ?? []).filter((h) => h.y0 >= H1), ledge: H2 - 0.66, grime: 0.28 });
+      openings: (cut[name] ?? []).filter((h) => h.y0 >= H1), ledge: H2 - 0.66, grime: 0.28 });
   }
   // the string course between the storeys and the cornice
   moulding(sink, trim, Wc, Dc, H1 + 0.05, 0.26, 0.08);
@@ -121,7 +126,7 @@ export const stationHall: LandmarkBuilder = (ctx) => {
   for (const u of [-bw + 0.03, bw - 0.03]) sink.member('structureWood', facePoint(board, u, by - 0.24, 0), facePoint(board, u, by + 0.24, 0), 0.06, 0.03, pf.out, rim, 0);
   const name = String(ctx.params.board ?? STATION_NAMES[ctx.mapId] ?? 'ВОКЗАЛ');
   letterText(sink, 'structureMetal', board, name, 0, by - 0.17, { capHeight: 0.34, maxWidth: Wc * 0.5, colour: IRON, fine: true });
-  towerClock(sink, pf, 0, H2 - 1.25, 0.5, trim);
+  towerClock(sink, pf, 0, H1 + 1.75, 0.55, trim);
   // ---- the platform canopy on cast-iron columns, its roof falling toward the track
   if (canopyL > 0) {
     const z0 = D / 2, depth = 3.7, yIn = Hw - 0.55, yOut = yIn - 0.5, cols = Math.max(2, Math.round(canopyL / 3.8));
