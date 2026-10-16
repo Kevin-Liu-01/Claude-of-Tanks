@@ -18,6 +18,7 @@
 
 import * as THREE from 'three';
 import { box, jitterUV } from '../propGeometry.ts';
+import { bevelBox } from './bevelBox.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import { shorelinePhases, shorelineRadiusAt, shorelineWetness, type ShorelineDisc } from '../shoreline.ts';
 import type { CollisionRecord } from '../collision.ts';
@@ -312,7 +313,10 @@ function driftStick(p: Placement, x: number, z: number, yaw: number, rng: Rng): 
   let px = -length * 0.5, pz = 0, bend = 0;
   for (let k = 0; k < segments; k++) {
     bend += (rng() - 0.5) * 0.5;
-    const piece = box(segment * 1.03, thick * (0.8 + rng() * 0.4), thick * (0.8 + rng() * 0.4), 1);
+    // (props census r2 sweep, Lane C 2026-10-16: the sticks' lengths plain boxes) a stick is round, its two radii a
+    // little apart as it wore (the same draws as the box's sides)
+    const ry = thick * (0.8 + rng() * 0.4) / 2, rz = thick * (0.8 + rng() * 0.4) / 2;
+    const piece = new THREE.CylinderGeometry(ry, ry, segment * 1.03, 7, 1).rotateZ(Math.PI / 2).scale(1, 1, rz / ry);
     piece.rotateY(bend);
     piece.translate(px + Math.cos(bend) * segment * 0.5, 0, pz - Math.sin(bend) * segment * 0.5);
     px += Math.cos(bend) * segment;
@@ -365,7 +369,8 @@ function shell(p: Placement, x: number, z: number, rng: Rng): boolean {
 function timberBaulk(p: Placement, x: number, z: number, yaw: number, rng: Rng): boolean {
   const length = 2.4 + rng() * 1.0, side = 0.20 + rng() * 0.06;
   const pose = planGroundedSegment(p.ctx.heightField, x, z, Math.cos(yaw), -Math.sin(yaw), length, side * 0.5, 0.03);
-  const beam = box(length, side, side, 1.2);
+  // (the r2 sweep: a plain box) the squared baulk's arrises worn round by the sea
+  const beam = bevelBox(length, side, side, side * 0.18, 1.2);
   jitterUV(beam, rng);
   if (pose.relief > 0.35) { beam.dispose(); return false; }
   _normal.set(pose.axisX, pose.axisY, pose.axisZ);
@@ -383,7 +388,7 @@ function brokenCrate(p: Placement, x: number, z: number, yaw: number, rng: Rng):
   const pose = planGroundedObbPose(field, x, z, 0.7, 0.7, yaw, 0.02);
   const parts: THREE.BufferGeometry[] = [];
   for (let k = 0; k < 4; k++) {
-    const plank = box(0.86, 0.045, 0.13, 1.2);
+    const plank = bevelBox(0.86, 0.045, 0.13, 0.008, 1.2); // (the r2 sweep) its arrises eased
     plank.rotateY(yaw + (k - 1.5) * 0.22 + (rng() - 0.5) * 0.3);
     alignToPlane(plank, pose);
     const dx = (rng() - 0.5) * 0.5, dz = (rng() - 0.5) * 0.5;
@@ -392,7 +397,7 @@ function brokenCrate(p: Placement, x: number, z: number, yaw: number, rng: Rng):
   }
   for (const side of [-1, 1]) {
     // two end boards 0.6 m apart along the crate's local Z, each leaning inward over the planks
-    const board = box(0.55, 0.55, 0.04, 1.2);
+    const board = bevelBox(0.55, 0.55, 0.04, 0.01, 1.2);
     board.rotateX(-side * 1.15);
     board.rotateY(yaw + side * 0.35);
     alignToPlane(board, pose);

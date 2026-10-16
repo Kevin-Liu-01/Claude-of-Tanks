@@ -329,12 +329,19 @@ function actualBudgetAndSupport() {
   });
   assert.equal(connection.connected, all.length, 'roof, hoist, façade, dock and window joinery retain connected structural support');
   const landing = planRiverLanding(field, field._layout.lakes, mangrove.props.riverLandings[0]);
-  const deck = dressing.find(g => {
+  // (Lane C 2026-10-16) the jetty kit (#16) merges a jetty's timbers into one geometry a bucket: the first deck is the
+  // jetty's deck band, its top 9 cm (mapKits builds it at deckY - 0.82, the deck top 0.865 over that), found in the
+  // dressing within the jetty's reach of the landing
+  const deckTop = landing.deckY + .045, reach = landing.length / 2 + 3.5;
+  let deckVertices = 0;
+  for (const g of dressing) {
     g.computeBoundingBox(); const center = g.boundingBox.getCenter(new THREE.Vector3());
-    return Math.abs(g.boundingBox.max.y - g.boundingBox.min.y - .09) < .001
-      && Math.hypot(center.x - landing.x, center.z - landing.z) < 1.5;
-  });
-  assert.ok(deck);
+    if (Math.hypot(center.x - landing.x, center.z - landing.z) > reach) continue;
+    const a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) if (a.getY(i) >= deckTop - .091 && a.getY(i) <= deckTop + .001) deckVertices++;
+  }
+  assert.ok(deckVertices >= 4, 'the landing jetty lays its deck at the landing\'s deck level');
+  const deck = { boundingBox: { min: { y: deckTop - .09 }, max: { y: deckTop } } };
   // Two square-decimetre surface stations along the actual edge joint lie
   // inside both footprints; this is not merely intersecting rotated AABBs.
   const deckInverse = new THREE.Matrix4().makeRotationY(-pose.yaw);
@@ -427,7 +434,8 @@ function rejectAtomically() {
   const bodyFooting = new THREE.Vector3(-4.85, 0, 3.8).applyMatrix4(matrix(pose));
   const landing = planRiverLanding(field, field._layout.lakes, args[3]);
   const intrudingBoat = new THREE.BoxGeometry(30, 2, 2).translate(landing.boatX, pose.y + 1, landing.boatZ);
-  const badBoat = args[6].slice(); badBoat[0] = intrudingBoat;
+  // (Lane C 2026-10-16: the jetty kit's merged timbers may stand first in the dressing; the intruder is laid beside them)
+  const badBoat = [...args[6], intrudingBoat];
   const cases = [
     ['prop', [...args.slice(0, 4), [...args[4], obstacle], ...args.slice(5)], /occupied by sentinel/],
     ['tree', [...args.slice(0, 5), { ...args[5], treeObstacles: [...args[5].treeObstacles, obstacle] }, args[6]], /occupied by sentinel/],

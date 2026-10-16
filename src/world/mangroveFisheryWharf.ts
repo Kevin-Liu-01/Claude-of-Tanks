@@ -182,18 +182,26 @@ function checkMembers(local: Buckets, p: WharfPlan, field: Field, dressing: read
     && Math.abs(g.boundingBox!.max.z - 11.75) < 0.001 && Math.abs(g.boundingBox!.max.x - 8.2) < 0.001);
   if (!dock) throw new Error('expected complete original fishery dock');
   const landing = planRiverLanding(field, field._layout.lakes, anchor)!;
-  const deck = dressing.filter(g => {
-    g.computeBoundingBox(); const b = g.boundingBox!; b.getCenter(point);
-    return Math.abs(b.max.y - b.min.y - 0.09) < 0.001
-      && Math.hypot(point.x - landing.x, point.z - landing.z) < 1.5;
-  });
-  if (deck.length !== 1) throw new Error('expected actual first jetty deck');
+  // (Lane C 2026-10-16) the jetty kit (#16) merges a jetty's timbers into one geometry a bucket, so the old kit's lone
+  // 9 cm deck plank is gone: the first deck is the jetty's deck band (mapKits builds it at deckY - 0.82, its deck top
+  // 0.865 over that), the vertices of the dressing within the jetty's reach that lie in its top 9 cm
+  const deckTop = landing.deckY + 0.045, reach = landing.length / 2 + 2;
+  const deckPoints: [number, number][] = [];
+  for (const g of dressing) {
+    g.computeBoundingBox(); const bb = g.boundingBox!; bb.getCenter(point);
+    if (Math.hypot(point.x - landing.x, point.z - landing.z) > reach + 1.5 || bb.max.y < deckTop - 0.09 || bb.min.y > deckTop) continue;
+    const a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) {
+      const y = a.getY(i);
+      if (y >= deckTop - 0.091 && y <= deckTop + 0.001) deckPoints.push([a.getX(i), a.getZ(i)]);
+    }
+  }
+  if (deckPoints.length < 4) throw new Error('expected actual first jetty deck');
   const a = hull(dock).map((q, i, values) => i % 2 === 0
     ? p.x + Math.cos(p.yaw) * q + Math.sin(p.yaw) * values[i + 1]
     : p.z - Math.sin(p.yaw) * values[i - 1] + Math.cos(p.yaw) * q);
-  const b = hull(deck[0]);
-  const vertical = Math.min(p.y + dock.boundingBox!.max.y, deck[0].boundingBox!.max.y)
-    - Math.max(p.y + dock.boundingBox!.min.y, deck[0].boundingBox!.min.y);
+  const b = convexHull2(deckPoints);
+  const vertical = Math.min(p.y + dock.boundingBox!.max.y, deckTop) - Math.max(p.y + dock.boundingBox!.min.y, deckTop - 0.09);
   if (vertical < 0.02 || separated(a, b) || separated(b, a)) throw new Error('actual dock and jetty have no solid contact');
 }
 
@@ -255,9 +263,23 @@ export function composeMangroveFisheryWharf(mapId: string, field: Field, packet:
       const dx = Math.max(box.min.x - s.x, 0, s.x - box.max.x), dz = Math.max(box.min.z - s.z, 0, s.z - box.max.z);
       if (Math.hypot(dx, dz) < 32) throw new Error('fishery enters deployment clearance');
     }
-    clearRecords(box, blockers, new Set(packet.records));
+    // (Lane C 2026-10-16) PRP-02 gave the hauled boat's mooring stake a breakable record of its own: the landing's stake
+    // is its boat's, judged as the boat is, against the wharf's own parts rather than its bounding box
+    const landing = planRiverLanding(field, field._layout.lakes, anchor)!;
+    const stakes = blockers.filter((ob) => ob.kind === 'prop-mooring-stake'
+      && Math.hypot((ob.min[0] + ob.max[0]) / 2 - landing.boatX, (ob.min[2] + ob.max[2]) / 2 - landing.boatZ) < 8);
+    clearRecords(box, blockers, new Set([...packet.records, ...stakes]));
     clearVegetation(box, vegetation);
     clearBoat(parts, dressing, field, anchor);
+    for (const ob of stakes) {
+      const sh = [ob.min[0] - 0.05, ob.min[2] - 0.05, ob.max[0] + 0.05, ob.min[2] - 0.05, ob.max[0] + 0.05, ob.max[2] + 0.05, ob.min[0] - 0.05, ob.max[2] + 0.05];
+      for (const a of parts) {
+        const b = a.boundingBox!;
+        if (b.max.x < sh[0] || b.min.x > sh[2] || b.max.z < sh[1] || b.min.z > sh[5]) continue;
+        const ah = hull(a);
+        if (!separated(ah, sh) && !separated(sh, ah)) throw new Error('fishery intersects the boat\'s mooring stake');
+      }
+    }
     // Commit only after all geometry, support and occupancy checks succeed.
     commitGeometry(packet, local);
     const bands = [profile.contact, ...profile.shell];
