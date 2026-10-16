@@ -35,6 +35,10 @@ interface HorizonForestImpostorOptions {
   /** The mean height of the battlefield's rim trees in metres (vegetation.ts `_rimTreeHeightM`): the ring's trees
    * take the same mean stature, keeping the ring's own relative size spread. 0 leaves the lobes' stature law. */
   rimTreeHeightM: number;
+  /** GND (2026-10-15; vegetation.ts `_ringSpeciesHeightM`, the map's `ringStature: 'species'`): each species' own rim
+   * stature in metres; a placement of a species named here stands at (its scale / the ring's mean scale) × that height
+   * instead of × the one rim mean. Absent or null: the one mean for every species, bit for bit as before. */
+  speciesHeightM?: Readonly<Record<string, number>> | null;
   /** The rim trees' mean instance tint (vegetation.ts `_rimTreeTint`): every ring quad's colour is its own ring tone
    * × this, so the ring's forest carries the battlefield's value jitter and stand shade on average. */
   rimTreeTint?: readonly [number, number, number];
@@ -84,7 +88,7 @@ interface HorizonForestImpostorReceipt {
   /** The near class's lobe pools kept as shadow-only casters. */
   shadowProxies: number;
   species: Record<string, number>;
-  stature: { rimTreeHeightM: number; ringLobeHeightM: number; ratio: number };
+  stature: { rimTreeHeightM: number; ringLobeHeightM: number; ratio: number; species?: Readonly<Record<string, number>> };
   /** The rim tint every quad's tone was multiplied by. */
   tint: [number, number, number];
 }
@@ -144,7 +148,7 @@ export function horizonForestImpostorVariant(tone: number, variants: number): nu
  */
 export function resolveHorizonForestTrees(
   forest: THREE.Object3D, library: TreeImpostorLibrary,
-  options: Pick<HorizonForestImpostorOptions, 'rimMix' | 'rimTreeHeightM' | 'rimTreeTint' | 'formVariant'>,
+  options: Pick<HorizonForestImpostorOptions, 'rimMix' | 'rimTreeHeightM' | 'rimTreeTint' | 'formVariant' | 'speciesHeightM'>,
 ): ResolvedHorizonForest | null {
   const record = forest.userData.horizonForest as ForestRecord | undefined;
   if (!record?.placements) return null;
@@ -182,7 +186,10 @@ export function resolveHorizonForestTrees(
     let variant = horizonForestImpostorVariant(packed[o + 7], library.variants);
     if (options.formVariant) variant = Math.min(library.variants - 1, Math.max(0, options.formVariant(species, variant, x, z)));
     const row = library.rows[library.rowBase(species) + variant];
-    const targetHeight = (packed[o + 3] / ringScaleMean) * ringLobeHeightM * ratio;
+    // (GND 2026-10-15) a map whose ring stands each species at its own stature: that species' rim height
+    const own = options.speciesHeightM?.[species];
+    const targetHeight = own !== undefined && own > 0 ? (packed[o + 3] / ringScaleMean) * own
+      : (packed[o + 3] / ringScaleMean) * ringLobeHeightM * ratio;
     const tone = packed[o + 7];
     trees[i] = {
       index: i, x, y: packed[o + 1], z, yaw: packed[o + 4], species, variant, mirror: packed[o + 6] > 0.5,
@@ -329,7 +336,7 @@ export function bindHorizonForestImpostors(
   }
   const receipt: HorizonForestImpostorReceipt = {
     instances: count, adopted, draws, shadowProxies, species: speciesCounts,
-    stature: { rimTreeHeightM: options.rimTreeHeightM, ringLobeHeightM, ratio },
+    stature: { rimTreeHeightM: options.rimTreeHeightM, ringLobeHeightM, ratio, ...(options.speciesHeightM ? { species: options.speciesHeightM } : {}) },
     tint: [rimTint.r, rimTint.g, rimTint.b],
   };
   forest.userData.horizonForestImpostors = receipt;
