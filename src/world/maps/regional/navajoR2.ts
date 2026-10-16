@@ -312,26 +312,42 @@ export const windmill: RegionalBuilder = (ctx) => {
       sink.span('structureMetal', x - 0.012, y - 0.012, tz - w, x + 0.012, y + 0.012, tz + w, { colour: steel, decor: true, fine: true });
     }
   });
-  // the platform, the head, the wheel and the vane
+  // the platform, the head, the wheel and the vane. (The r2 sweep 2026-10-16: the wheel's sails and rings hung 2 cm clear
+  // of the head on no shaft, the inner ring 10 cm off the sails.) As an Aermotor stands: the cast gear head on the
+  // platform, the main shaft out of its front to the hub; six arms from the hub to the outer rim, the inner and the
+  // outer rims on the wheel's cone, the eighteen sails riveted across them at their pitch; the tail boom out of the head's
+  // back with its stay to the vane; the pump rod down the middle to the pump's standpipe
   sink.span('structureWood', tx - 0.55, H - 0.05, tz - 0.55, tx + 0.55, H + 0.03, tz + 0.55, { colour: PLANK_GREY, decor: true });
-  sink.span('structureMetal', tx - 0.22, H + 0.03, tz - 0.3, tx + 0.22, H + 0.5, tz + 0.3, { colour: shade(steel, 0.8), decor: true });
-  const hub: Vec3 = [tx, H + 0.55, tz + 0.55], wheelR = 1.35 + look() * 0.3;
-  const sails = 18;
+  const cast = { colour: shade(steel, 0.8), decor: true };
+  board(sink, 'structureMetal', [tx, H + 0.29, tz - 0.3], [tx, H + 0.29, tz + 0.3], [1, 0, 0], 0.44, 0.52, 0.08, cast);
+  const shaftY = H + 0.42, hubZ = tz + 0.58;
+  rod(sink, 'structureMetal', [tx, shaftY, tz + 0.25], [tx, shaftY, hubZ], 0.045, 8, cast);
+  sink.cylinder('structureMetal', [tx, shaftY, hubZ - 0.08], 'z', 0.16, 0.14, 10, cast);
+  const wheelR = 1.35 + look() * 0.3, rimR = wheelR * 0.98, innerR = wheelR * 0.5, cone = 0.08;
+  // a point on the wheel's cone at radius r and angle a
+  const onWheel = (r: number, a: number): Vec3 => [tx + Math.cos(a) * r, shaftY + Math.sin(a) * r, hubZ + cone * (r - 0.14) / (rimR - 0.14)];
+  const wheel = { colour: steel, decor: true };
+  for (let k = 0; k < 6; k++) {
+    const a = (k + 0.25) / 6 * Math.PI * 2;
+    rod(sink, 'structureMetal', onWheel(0.1, a), onWheel(rimR, a), 0.016, 5, wheel);
+  }
+  for (const rr of [rimR, innerR]) for (let k = 0; k < 12; k++) {
+    rod(sink, 'structureMetal', onWheel(rr, k / 12 * Math.PI * 2), onWheel(rr, (k + 1) / 12 * Math.PI * 2), 0.018, 5, wheel);
+  }
+  const sails = 18, pitchA = 0.55;
   for (let k = 0; k < sails; k++) {
-    const a = k / sails * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
-    const inner: Vec3 = [hub[0] + c * 0.3, hub[1] + s * 0.3, hub[2]], outer: Vec3 = [hub[0] + c * wheelR, hub[1] + s * wheelR, hub[2] + 0.12];
-    sink.member('structureMetal', inner, outer, 0.17, 0.012, [0, 0, 1], { colour: shade(steel, 0.95 + (k % 2) * 0.08), decor: true, exposed: true }, 0);
+    const a = k / sails * Math.PI * 2;
+    // the sail across the rims, turned about its radius to its pitch (its width between the wheel's tangent and its axis)
+    const side: Vec3 = [-Math.sin(a) * Math.cos(pitchA), Math.cos(a) * Math.cos(pitchA), Math.sin(pitchA)];
+    board(sink, 'structureMetal', onWheel(innerR - 0.03, a), onWheel(wheelR, a), side, 0.17, 0.012, 0.004,
+      { colour: shade(steel, 0.95 + (k % 2) * 0.08), decor: true });
   }
-  for (let k = 0; k < 12; k++) {
-    const a0 = k / 12 * Math.PI * 2, a1 = (k + 1) / 12 * Math.PI * 2;
-    for (const rr of [wheelR * 0.98, wheelR * 0.55]) {
-      sink.member('structureMetal', [hub[0] + Math.cos(a0) * rr, hub[1] + Math.sin(a0) * rr, hub[2] + 0.1], [hub[0] + Math.cos(a1) * rr, hub[1] + Math.sin(a1) * rr, hub[2] + 0.1],
-        0.03, 0.03, [0, 0, 1], { colour: steel, decor: true, exposed: true }, 0);
-    }
-  }
-  sink.member('structureMetal', [tx, H + 0.4, tz - 0.2], [tx, H + 0.45, tz - 2.2], 0.06, 0.06, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
-  sink.member('structureMetal', [tx, H + 0.75, tz - 1.6], [tx, H + 0.75, tz - 2.6], 1.0, 0.02, [1, 0, 0], { colour: rgb(0xd8d4c8), decor: true, exposed: true }, 0);
-  sink.member('structureMetal', [tx, 0.2, tz], [tx, H, tz], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+  rod(sink, 'structureMetal', [tx, H + 0.33, tz - 0.25], [tx, H + 0.45, tz - 2.2], 0.035, 6, wheel);
+  rod(sink, 'structureMetal', [tx, H + 0.5, tz - 0.25], [tx, H + 1.15, tz - 1.65], 0.014, 5, wheel);
+  board(sink, 'structureMetal', [tx, H + 0.75, tz - 1.6], [tx, H + 0.75, tz - 2.6], [0, 1, 0], 1.0, 0.02, 0.005, { colour: rgb(0xd8d4c8), decor: true });
+  // the pump rod from the head down the tower's middle to the pump's standpipe on the ground
+  rod(sink, 'structureMetal', [tx, 0.55, tz], [tx, H + 0.05, tz], 0.016, 5, { colour: IRON, decor: true });
+  rod(sink, 'structureMetal', [tx, -0.2, tz], [tx, 0.6, tz], 0.075, 8, { colour: IRON, decor: true });
   // the stock tank and the storage tank (structure), the water in them
   const sr = Math.min(1.35, P * 0.26), sxp = cx + PX / 2 - sr - 0.15, szp = cz + PZ / 2 - sr - 0.15;
   sink.cylinder('structureMetal', [sxp, -0.2, szp], 'y', 0.9, sr, 16, { colour: shade(steel, 0.92) });
@@ -487,7 +503,7 @@ export const trailer: RegionalBuilder = (ctx) => {
   sink.placed(0, xc, 0, zc, () => {
     // the piers behind the skirting, the skirting (structure) and the box
     sink.span('structureMetal', -L / 2 + 0.1, -0.3, -T / 2 + 0.1, L / 2 - 0.1, floor, T / 2 - 0.1, { colour: shade(skin, 0.82) });
-    groundCourse(sink, -L / 2, -T / 2, L / 2, T / 2, 0, false, 0.65);
+    earthPad(sink, -L / 2, -T / 2, L / 2, T / 2, 0.65);
     const roof: RoofSpec = double
       ? { kind: 'gable', pitchDeg: 11, eave: 0.3, verge: 0.25, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' }
       : { kind: 'gable', pitchDeg: 4, eave: 0.06, verge: 0.06, thickness: 0.05, bucket: 'structureMetal', ridge: null };
@@ -541,15 +557,34 @@ export const trailer: RegionalBuilder = (ctx) => {
     } finally { sink.paint = null; }
     // the door's porch on the front (+z) side: a deck on a single-wide's deep lot, a stoop on a double-wide's
     const deckW = double ? 2.0 : 2.6;
-    sink.span('structureWood', du - deckW / 2, 0.0, T / 2, du + deckW / 2, floor - 0.05, T / 2 + deckD, { colour: PLANK_GREY, ...(double ? { decor: true } : {}) });
-    for (let k = 1; k <= 3; k++) sink.span('structureWood', du - 0.6, floor * (3 - k) / 4 - 0.05, T / 2 + deckD + 0.28 * (k - 1), du + 0.6, floor * (4 - k) / 4 - 0.05, T / 2 + deckD + 0.28 * k, { colour: PLANK_GREY, decor: true });
-    for (const s2 of [-1, 1]) {
-      sink.span('structureWood', du + s2 * (deckW / 2 - 0.05) - 0.04, floor - 0.05, T / 2 + 0.05, du + s2 * (deckW / 2 - 0.05) + 0.04, floor + 0.95, T / 2 + deckD, { colour: PLANK, decor: true, fine: true });
+    // (the r2 sweep 2026-10-16: the deck, its steps and its rail plain boxes) the deck's body (structure: what a hull meets),
+    // its boards laid across it with their gaps and their eased arrises, a rim board round its open sides; the steps' treads
+    // on two stringers from the ground to the deck's edge; the rail's posts and its cap sawn
+    const deckTop = floor - 0.05, dz1 = T / 2 + deckD;
+    sink.span('structureWood', du - deckW / 2, 0.0, T / 2, du + deckW / 2, deckTop, dz1, { colour: PLANK_GREY, ...(double ? { decor: true } : {}) });
+    const grey = { colour: PLANK_GREY, decor: true, uv: UV_MEMBER };
+    for (let k = 0, m = Math.max(4, Math.round(deckD / 0.145)); k < m; k++) {
+      const z = T / 2 + (k + 0.5) * deckD / m;
+      board(sink, 'structureWood', [du - deckW / 2 - 0.02, deckTop + 0.014, z], [du + deckW / 2 + 0.02, deckTop + 0.014, z], [0, 0, 1], deckD / m - 0.012, 0.028, 0.006,
+        { ...grey, colour: shade(PLANK_GREY, 0.94 + (k % 3) * 0.05) });
     }
-    sink.span('structureWood', du - deckW / 2, floor + 0.88, T / 2 + deckD - 0.05, du + deckW / 2, floor + 0.95, T / 2 + deckD + 0.02, { colour: PLANK, decor: true });
+    board(sink, 'structureWood', [du - deckW / 2, deckTop - 0.11, dz1 + 0.02], [du + deckW / 2, deckTop - 0.11, dz1 + 0.02], [0, 1, 0], 0.2, 0.04, 0.008, grey);
+    for (const s2 of [-1, 1]) board(sink, 'structureWood', [du + s2 * (deckW / 2 + 0.02), deckTop - 0.11, T / 2], [du + s2 * (deckW / 2 + 0.02), deckTop - 0.11, dz1 + 0.04], [0, 1, 0], 0.2, 0.04, 0.008, grey);
+    const run = 0.84;
+    for (const s2 of [-1, 1]) board(sink, 'structureWood', [du + s2 * 0.56, 0.12, dz1 + run + 0.04], [du + s2 * 0.56, deckTop - 0.12, dz1 + 0.04], [0, 1, 0], 0.25, 0.04, 0.006, grey);
+    for (let k = 1; k <= 3; k++) {
+      const y = floor * (4 - k) / 4 - 0.05 - 0.02, z = dz1 + 0.04 + 0.28 * (k - 0.5);
+      board(sink, 'structureWood', [du - 0.6, y, z], [du + 0.6, y, z], [0, 0, 1], 0.27, 0.04, 0.006, grey);
+    }
+    for (const s2 of [-1, 1]) {
+      const x = du + s2 * (deckW / 2 - 0.05);
+      board(sink, 'structureWood', [x, deckTop + 0.028, dz1 - 0.04], [x, floor + 0.88, dz1 - 0.04], [1, 0, 0], 0.08, 0.08, 0.01, { colour: PLANK, decor: true, fine: true });
+      board(sink, 'structureWood', [x, floor + 0.6, T / 2 + 0.05], [x, floor + 0.6, dz1 - 0.08], [0, 1, 0], 0.09, 0.04, 0.006, { colour: PLANK, decor: true, fine: true });
+    }
+    board(sink, 'structureWood', [du - deckW / 2, floor + 0.915, dz1 - 0.04], [du + deckW / 2, floor + 0.915, dz1 - 0.04], [0, 0, 1], 0.14, 0.07, 0.012, { colour: PLANK, decor: true });
     // the swamp cooler on the roof, the propane bottle and a satellite dish
     const cx = -L * 0.2, roofAt = (double ? rg.ridgeTopY : top) + 0.02;
-    sink.span('structureMetal', cx - 0.5, roofAt, -0.5, cx + 0.5, roofAt + 0.9, 0.5, { colour: rgb(0xc4c0b4), decor: true });
+    board(sink, 'structureMetal', [cx - 0.5, roofAt + 0.45, 0], [cx + 0.5, roofAt + 0.45, 0], [0, 1, 0], 0.9, 1.0, 0.03, { colour: rgb(0xc4c0b4), decor: true });
     for (let k = 0; k < 5; k++) sink.span('structureMetal', cx - 0.42, roofAt + 0.15 + k * 0.14, 0.5, cx + 0.42, roofAt + 0.19 + k * 0.14, 0.53, { colour: rgb(0x8a8a84), decor: true, fine: true });
     sink.cylinder('structureMetal', [-L / 2 - 0.65, 0.0, -0.4], 'y', 1.2, 0.36, 10, { colour: rgb(0xe8e6e0), decor: true });
     sink.cylinder('structureMetal', [-L / 2 - 0.65, 1.2, -0.4], 'y', 0.25, 0.36, 10, { colour: rgb(0xe8e6e0), decor: true }, 0.12);
@@ -576,14 +611,15 @@ export const hayShed: RegionalBuilder = (ctx) => {
   const pitch = 12 * Math.PI / 180, half = Dd / 2 - 0.15, rise = half * Math.tan(pitch);
   sink.placed(0, (bb.maxX + bb.minX) / 2, 0, (bb.maxZ + bb.minZ) / 2, () => {
   // the ground under the shed worn bare and dark (dressing)
-  groundCourse(sink, -L / 2, -Dd / 2, L / 2, Dd / 2, 0, false, 0.5);
+  earthPad(sink, -L / 2, -Dd / 2, L / 2, Dd / 2, 0.5);
   const xs: number[] = [];
   for (let k = 0; k <= n; k++) {
     const x = -L / 2 + 0.15 + (L - 0.3) * k / n;
     xs.push(x);
     for (const z of [-half, half]) pole(sink, [x, -0.3, z], [x + (look() - 0.5) * 0.08, H - 0.25, z], 0.12, pick(look, JUNIPER), false);
   }
-  for (const z of [-half, half]) sink.span('structureWood', -L / 2, H - 0.25, z - 0.1, L / 2, H, z + 0.1, { colour: JUNIPER_DARK });
+  // (the r2 sweep 2026-10-16: the plates, purlins and the stacks' cores plain boxes) the plates hewn, their arrises taken off
+  for (const z of [-half, half]) chamferedBeam(sink, 'structureWood', 'x', -L / 2, L / 2, z, H - 0.125, 0.1, 0.125, 0.025, { colour: JUNIPER_DARK, uv: UV_MEMBER });
   sink.dressing(mobile, () => {
     for (const x of xs) {
       // the knee braces from each post to the plate, both ways along it
@@ -599,7 +635,7 @@ export const hayShed: RegionalBuilder = (ctx) => {
     // the purlins along the rafters
     for (const t of [0.15, 0.5, 0.85]) for (const side of [-1, 1]) {
       const z = side * half * (1 - t), y = H + rise * t + 0.06;
-      sink.span('structureWood', -L / 2, y, z - 0.05, L / 2, y + 0.08, z + 0.05, { colour: JUNIPER_DARK, decor: true });
+      chamferedBeam(sink, 'structureWood', 'x', -L / 2, L / 2, z, y + 0.04, 0.05, 0.04, 0.01, { colour: JUNIPER_DARK, decor: true, uv: UV_MEMBER });
     }
   });
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.45, verge: 0.4, thickness: 0.03, bucket: 'roof', ridge: 'saddle' };
@@ -623,7 +659,8 @@ export const hayShed: RegionalBuilder = (ctx) => {
   for (let k = 0; k < n; k++) {
     if (ctx.rng() < 0.25) continue;
     const x0 = -L / 2 + 0.4 + (L - 0.3) * k / n, h = 2 + Math.floor(ctx.rng() * 4), x1 = x0 + Math.min(2.6, (L - 0.8) / n - 0.3);
-    sink.span('straw', x0 + 0.05, 0, -0.85, x1 - 0.05, h * 0.46 - 0.04, 1.15);
+    // the stack's core, its edges as the bales round them (structure)
+    board(sink, 'straw', [x0 + 0.05, (h * 0.46 - 0.04) / 2, 0.15], [x1 - 0.05, (h * 0.46 - 0.04) / 2, 0.15], [0, 0, 1], 2.0, h * 0.46 - 0.04, 0.12);
     sink.dressing(mobile, () => {
       for (let r = 0; r < h; r++) {
         const y0 = r * 0.46, cross = r % 2 === 1, bl = cross ? 0.46 : 0.92, off = cross ? 0 : (r % 4 === 2 ? 0.46 : 0);
