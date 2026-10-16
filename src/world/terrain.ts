@@ -10,7 +10,7 @@ import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // Contract: docs/ARCHITECTURE.md §2.7, §3.2; visuals per docs/research/graphics-aaa.md §6–7.
 
 import * as THREE from 'three';
-import { createTerrainContactSampler } from './terrainContactSurface.ts';
+import { createTerrainContactSampler, terrainCellFlipped, terrainCellHeight } from './terrainContactSurface.ts';
 import {
   chooseTerrainLodBuild,
   initialTerrainLods,
@@ -601,6 +601,9 @@ export interface HeightField {
     source: (x: number, z: number) => number): number;
   /** That triangle's unit normal into `out` (terrainContactSurface.ts normalAt): the slope the player sees. */
   getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
+  /** (ground lane, 2026-10-15) Whether that triangle's cell takes the steep a–d diagonal (terrainContactSurface.ts
+   *  terrainCellFlipped): the split the battle's ground overlay rides. */
+  getContactCellFlippedAt?(x: number, z: number): boolean;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
@@ -3053,6 +3056,7 @@ function* heightFieldBuildSteps(
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
     getContactNormalAt: getContactHeightAt.normalAt,
+    getContactCellFlippedAt: getContactHeightAt.cellFlippedAt,
     seedContactGrid: getContactHeightAt.seedGrid,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
@@ -8104,12 +8108,11 @@ export function terrainNearMeshHeightAt(heightAt: (x: number, z: number) => numb
   const u = (x + HALF) / cell, w = (z + HALF) / cell;
   const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
   const x0 = -HALF + gx * cell, z0 = -HALF + gz * cell;
-  if (fx + fz <= 1) {
-    const ha = heightAt(x0, z0);
-    return ha + (heightAt(x0 + cell, z0) - ha) * fx + (heightAt(x0, z0 + cell) - ha) * fz;
-  }
-  const hd = heightAt(x0 + cell, z0 + cell);
-  return hd + (heightAt(x0, z0 + cell) - hd) * (1 - fx) + (heightAt(x0 + cell, z0) - hd) * (1 - fz);
+  // (2026-10-15, the steep-cell diagonal: terrainContactSurface.ts terrainCellFlipped, on the corners' Float32 heights as
+  // the mesh and the contact surface hold them)
+  const ha = Math.fround(heightAt(x0, z0)), hb = Math.fround(heightAt(x0 + cell, z0));
+  const hc = Math.fround(heightAt(x0, z0 + cell)), hd = Math.fround(heightAt(x0 + cell, z0 + cell));
+  return terrainCellHeight(ha, hb, hc, hd, fx, fz, terrainCellFlipped(ha, hb, hc, hd));
 }
 
 export function acquireTerrainChunkIndex(
@@ -8334,9 +8337,31 @@ function* buildChunkGeometrySteps(
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   geo.setAttribute('fold', new THREE.BufferAttribute(fold, 1, true)); // round 73: one normalised byte per vertex
   geo.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true)); // round 73b: the inverted shore byte
-  geo.setIndex(acquireTerrainChunkIndex(indexPool || new Map(), segs));
+  geo.setIndex(terrainChunkIndexFor(acquireTerrainChunkIndex(indexPool || new Map(), segs), segs, pos));
   geo.computeBoundingSphere();
   return geo;
+}
+
+/**
+ * (the ground lane, 2026-10-15; the maps critics: "a sawtooth crest") a chunk whose surface holds a steep cell
+ * (terrainContactSurface.ts terrainCellFlipped on its Float32 corner heights: the a–d diagonal joins corners closer in
+ * height by over a metre) takes its own copy of the pooled index with those cells split along a–d — the same split the
+ * contact surface, the ground overlay and the near-mesh height take. Every other chunk keeps the pooled index itself.
+ */
+function terrainChunkIndexFor(pooled: THREE.BufferAttribute, segs: number, pos: Float32Array): THREE.BufferAttribute {
+  const n = segs + 1;
+  let own: Uint16Array | null = null;
+  for (let gz = 0; gz < segs; gz++) {
+    for (let gx = 0; gx < segs; gx++) {
+      const a = gz * n + gx, b = a + 1, c = a + n, d = c + 1;
+      if (!terrainCellFlipped(pos[a * 3 + 1], pos[b * 3 + 1], pos[c * 3 + 1], pos[d * 3 + 1])) continue;
+      own ??= (pooled.array as Uint16Array).slice();
+      const ii = (gz * segs + gx) * 6;
+      own[ii] = a; own[ii + 1] = d; own[ii + 2] = b;
+      own[ii + 3] = a; own[ii + 4] = c; own[ii + 5] = d;
+    }
+  }
+  return own ? new THREE.BufferAttribute(own, 1) : pooled;
 }
 
 // ---------------------------------------------------------------------------

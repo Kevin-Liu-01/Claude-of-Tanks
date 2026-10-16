@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { createTerrainContactSampler } from './terrainContactSurface.ts';
+import { createTerrainContactSampler, terrainCellFlipped, terrainCellHeight } from './terrainContactSurface.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { createStructureSupportField } from '../sim/structureSupport.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
@@ -13,10 +13,10 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 // the oracle deliberately does not reimplement the contact interpolation.
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const chunks = source.slice(source.indexOf('const CHUNKS = 8'));
-const api = new Function('THREE', stripTypeScriptTypes(`
+const api = new Function('THREE', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   ${chunks.replace(/^export /gm, '')}
-`) + 'return { buildFineGridSteps, buildChunkGeometrySteps };')(THREE);
+`) + 'return { buildFineGridSteps, buildChunkGeometrySteps };')(THREE, terrainCellFlipped, terrainCellHeight);
 const drain = (steps) => { let r; do { r = steps.next(); } while (!r.done); return r.value; };
 const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
 const material = new THREE.MeshBasicMaterial();

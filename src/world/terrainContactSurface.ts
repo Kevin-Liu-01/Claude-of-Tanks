@@ -2,6 +2,28 @@
  * Float32 vertices and triangle diagonal. Bilinear/analytic heights describe
  * a different surface and can leave a visible gap under an entire track. */
 const SIZE = 1024, HALF = SIZE / 2, CHUNK = 128, SEGMENTS = 96;
+
+/**
+ * The steep-cell diagonal (the ground lane, 2026-10-15; the maps critics on Aegis' gorge: "a sawtooth crest"). A cell
+ * (a at its own corner, b = +x, c = +z, d = +x+z) is split along its b–c diagonal, as every cell always was, unless the
+ * a–d diagonal joins corners closer in height by more than TERRAIN_FLIP_MARGIN_M and the cell is folded — its two splits
+ * part by over a quarter metre at its centre (|a + d − b − c| / 2 > TERRAIN_FLIP_FOLD_M / 2): then a cliff's lip or a
+ * wall's foot runs along the triangles' shared edge instead of sawing across them. A plane (or nearly one) draws the
+ * same on either split and keeps b–c, so ordinary ground does not move by a bit. The render mesh (terrain.ts
+ * buildChunkGeometrySteps, terrainNearMeshHeightAt), this contact surface, the battle's ground overlay
+ * (sim/terrainDeformation.ts contactOffsetAt) and the debris ground (fx/latticeGround.ts) all split by this one rule, on
+ * the same Float32 corner heights where they share the lattice.
+ */
+export const TERRAIN_FLIP_MARGIN_M = 1.0;
+export const TERRAIN_FLIP_FOLD_M = 0.5;
+export function terrainCellFlipped(a: number, b: number, c: number, d: number): boolean {
+  return Math.abs(b - c) > Math.abs(a - d) + TERRAIN_FLIP_MARGIN_M && Math.abs(a + d - b - c) > TERRAIN_FLIP_FOLD_M;
+}
+/** A cell's height at (u, v) in [0, 1]² on the split the rule picks (a, b = +x, c = +z, d = +x+z). */
+export function terrainCellHeight(a: number, b: number, c: number, d: number, u: number, v: number, flipped: boolean): number {
+  if (!flipped) return u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
+  return u >= v ? a + (b - a) * u + (d - b) * v : a + (c - a) * v + (d - c) * u;
+}
 const CELLS = SIZE / CHUNK * SEGMENTS, N = CELLS + 1;
 const STEP = CHUNK / SEGMENTS;
 
@@ -25,6 +47,8 @@ export interface TerrainContactSampler {
    */
   seedGrid(x0: number, z0: number, step: number, pn: number, grid: ArrayLike<number>,
     source: (x: number, z: number) => number): number;
+  /** (2026-10-15) Whether the cell under (x, z) takes the a–d diagonal (terrainCellFlipped); false off the square. */
+  cellFlippedAt(x: number, z: number): boolean;
 }
 
 export function createTerrainContactSampler(
@@ -63,14 +87,14 @@ export function createTerrainContactSampler(
     const ix = cell(x), iz = cell(z);
     const u = (x - coordinates[ix]) / (coordinates[ix + 1] - coordinates[ix]);
     const v = (z - coordinates[iz]) / (coordinates[iz + 1] - coordinates[iz]);
-    const b = vertex(ix + 1, iz), c = vertex(ix, iz + 1);
-    if (u + v <= 1) {
-      const a = vertex(ix, iz);
-      return a + (b - a) * u + (c - a) * v;
-    }
-    const d = vertex(ix + 1, iz + 1);
-    return d + (c - d) * (1 - u) + (b - d) * (1 - v);
+    const a = vertex(ix, iz), b = vertex(ix + 1, iz), c = vertex(ix, iz + 1), d = vertex(ix + 1, iz + 1);
+    return terrainCellHeight(a, b, c, d, u, v, terrainCellFlipped(a, b, c, d));
   }) as TerrainContactSampler;
+  sample.cellFlippedAt = (x, z) => {
+    if (!Number.isFinite(x) || !Number.isFinite(z) || x < -HALF || x > HALF || z < -HALF || z > HALF) return false;
+    const ix = cell(x), iz = cell(z);
+    return terrainCellFlipped(vertex(ix, iz), vertex(ix + 1, iz), vertex(ix, iz + 1), vertex(ix + 1, iz + 1));
+  };
   /** The vertex index whose exact coordinate is `value`, or -1. */
   const exactIndex = (value: number): number => {
     const i = Math.round((value + HALF) / STEP);
@@ -102,15 +126,13 @@ export function createTerrainContactSampler(
     const ix = cell(x), iz = cell(z);
     const dx = coordinates[ix + 1] - coordinates[ix], dz = coordinates[iz + 1] - coordinates[iz];
     const u = (x - coordinates[ix]) / dx, v = (z - coordinates[iz]) / dz;
-    const b = vertex(ix + 1, iz), c = vertex(ix, iz + 1);
+    const a = vertex(ix, iz), b = vertex(ix + 1, iz), c = vertex(ix, iz + 1), d = vertex(ix + 1, iz + 1);
     let sx: number, sz: number;
-    if (u + v <= 1) {
-      const a = vertex(ix, iz);
-      sx = (b - a) / dx; sz = (c - a) / dz;
-    } else {
-      const d = vertex(ix + 1, iz + 1);
-      sx = (d - c) / dx; sz = (d - b) / dz;
-    }
+    if (!terrainCellFlipped(a, b, c, d)) {
+      if (u + v <= 1) { sx = (b - a) / dx; sz = (c - a) / dz; }
+      else { sx = (d - c) / dx; sz = (d - b) / dz; }
+    } else if (u >= v) { sx = (b - a) / dx; sz = (d - b) / dz; }
+    else { sx = (d - c) / dx; sz = (c - a) / dz; }
     const inverse = 1 / Math.hypot(sx, 1, sz);
     out.x = -sx * inverse; out.y = inverse; out.z = -sz * inverse;
     return out;

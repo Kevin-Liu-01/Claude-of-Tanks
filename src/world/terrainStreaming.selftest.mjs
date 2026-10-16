@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
+import { terrainCellFlipped, terrainCellHeight } from './terrainContactSurface.ts';
 import {
   chooseTerrainLodBuild, initialTerrainLods, terrainLodForDistance, warmTerrainLodBuilds,
 } from './terrainLodPolicy.ts';
@@ -20,7 +21,7 @@ let clockStepMs = 0;
 const measuredClock = { now() { const value = clockMs; clockMs += clockStepMs; return value; } };
 const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance',
   'warmTerrainLodBuilds', 'chooseTerrainLodBuild', 'registerRetainedObject3DResources',
-  'performance', stripTypeScriptTypes(`
+  'performance', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
   // (2026-10-08, the ring worker) the ring's hook (horizonRingHook.ts) installs a ring that is an empty group here — the
@@ -40,7 +41,7 @@ const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistan
   ${chunkSource.replace(/^export /gm, '')}
 `) + 'return { terrainBuildSteps, buildFineGridSteps, buildChunkGeometrySteps };');
 const api = compile(THREE, initialTerrainLods, terrainLodForDistance,
-  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, measuredClock);
+  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, measuredClock, terrainCellFlipped, terrainCellHeight);
 
 function drain(generator) {
   let result = generator.next();
@@ -255,7 +256,14 @@ function buildCheckedChunk(hf, x, z, pool, label, hash = null) {
     const live = drainWithCount(api.buildChunkGeometrySteps(hf, x, z, segs, grid, null, pool, 1));
     assert.equal(eager.checkpoints, Math.floor((segs + 1) / 8));
     assert.equal(live.checkpoints, segs + 1, 'live geometry yields every surface row before atomic finalization');
-    assert.equal(eager.value.index, live.value.index, 'streamed geometry retains shared world-local topology');
+    // (2026-10-15) a chunk whose surface holds a steep cell (terrainContactSurface.ts terrainCellFlipped) takes its own
+    // copy of the pooled index with those cells split a–d; both builds take the same one
+    const pooled = pool ? pool.get(segs)?.attribute : undefined;
+    if (eager.value.index === pooled || live.value.index === pooled) {
+      assert.equal(eager.value.index, live.value.index, 'streamed geometry retains shared world-local topology');
+    } else {
+      assert.deepEqual(bytes(live.value.index.array), bytes(eager.value.index.array), `${label}: a steep chunk's own index matches`);
+    }
     const eagerArrays = geometryArrays(eager.value);
     geometryArrays(live.value).forEach((array, index) => {
       assert.deepEqual(bytes(array), bytes(eagerArrays[index]), `${label}: live/startup bytes match`);

@@ -93,6 +93,8 @@ interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
   /** The contact surface on the 1.333 m lattice the drawn LOD0 shares (terrainContactSurface.ts). */
   getContactHeightAt?(x: number, z: number): number;
+  /** That surface's steep-cell split (terrainContactSurface.ts terrainCellFlipped), which the overlay rides. */
+  getContactCellFlippedAt?(x: number, z: number): boolean;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
@@ -111,7 +113,7 @@ export interface FxWorldSeam {
   raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
     { dist: number; normal?: { x: number; y: number; z: number } | null } | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
-  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number; readonly revision?: number } | null;
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number, flipped?: boolean): number; readonly revision?: number } | null;
   /** the static records the presentation's rigid bodies meet (world/map.ts bodyRecordQuery: shell bands and solid records) */
   bodyRecordQuery?(): (minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]) => CollisionRecord[];
   /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
@@ -1186,7 +1188,7 @@ function* createFxSteps(
     if (overlay !== groundOverlayRef || heightField !== groundFieldRef) { groundOverlayRef = overlay; groundFieldRef = heightField; groundEpoch++; }
     return groundEpoch * 1e6 + (overlay?.revision ?? 0);
   };
-  const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision);
+  const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision, (x, z) => baseCellFlipped(x, z));
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
@@ -2079,7 +2081,11 @@ function* createFxSteps(
     const overlay = world?.()?.groundOverlay?.() ?? null;
     const base = heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z);
     if (!overlay) return base;
-    return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z) : overlay.offsetAt(x, z));
+    return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z, baseCellFlipped(x, z)) : overlay.offsetAt(x, z));
+  }
+  /** (ground lane, 2026-10-15) the base surface's steep-cell split, the one the drawn mesh and the sim's overlay take. */
+  function baseCellFlipped(x: number, z: number): boolean {
+    return heightField?.getContactCellFlippedAt ? heightField.getContactCellFlippedAt(x, z) : false;
   }
   /** The map's ground climate for a mark's soil (world/groundRedux.ts; the caldera's ash). */
   function groundClimate(): CraterClimate {
