@@ -13,7 +13,7 @@ import { buildHouse, holedPolygon, wallPolygon, windowRhythm, type FaceName, typ
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
-import { beam } from './millWorks.ts';
+import { beam, weatherboards } from './millWorks.ts';
 
 /** Painted trim and doors: white, the company's green, a barn red, a faded blue. */
 const TRIM: readonly Rgb[] = [0xe2ddd0, 0xe2ddd0, 0x3f5e45, 0x8a3a2c, 0x5a7488].map(rgb);
@@ -292,10 +292,14 @@ const managerHouse: RegionalBuilder = (ctx) => {
     const W = turned ? Wf - gD - 0.1 : Wf - 0.1, D = turned ? Df - 0.1 : Df - gD - 0.1;
     const bx = turned ? gD / 2 : 0, bz = turned ? 0 : -gD / 2;
     const streetLen = turned ? D : W;
+    // (props census #15, Lane C 2026-10-16: the piers stood 0.1 m over the ground, and a board house "with reveal 0.08 and
+    // NO battens or weatherboards") the piers from below the ground to the sill; a board house in lapped weatherboards
+    // round its openings in 0.14 m reveals
+    sink.placed(0, bx, 0, bz, () => piers(sink, W, D, lift));
+    const boards = rng() >= 0.6;
     sink.placed(0, bx, lift, bz, () => {
-      piers(sink, W, D, 0);
       const frame = buildHouse(sink, {
-        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: rng() < 0.6 ? 'plaster' : 'wood' }], roof: tin('hip', 30, 0.6, 0.6),
+        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: boards ? 'wood' : 'plaster' }], roof: tin('hip', 30, 0.6, 0.6),
         roofColour: sheet, gableBucket: 'wood',
         openings: [
           { face: street, storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.4 },
@@ -305,8 +309,12 @@ const managerHouse: RegionalBuilder = (ctx) => {
           ...windowRhythm(turned ? 'right' : 'back', 0, streetLen, { w: 0.95, h: 1.9, sill: 0.4, spacing: 2.6, margin: 1.2, max: 3 }),
         ],
         chimneys: [-1, 1].map((s) => ({ x: turned ? -W * 0.15 : s * W * 0.28, z: turned ? s * D * 0.28 : -D * 0.15, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'stone' as RegionalBucket, cap: 'slab' as const })),
-        gutters: null, verge: null, reveal: 0.08, spall: null,
+        gutters: null, verge: null, reveal: boards ? 0.14 : 0.08, spall: null,
       }, dialect(st, WHITE));
+      if (boards) {
+        for (const name of ['front', 'right', 'back', 'left'] as FaceName[]) weatherboards(sink, frame.faces[name], 0.02, wallH - 0.05, holesOf(frame, name), 0.2, WHITE, look);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureWood', sx * W / 2 - 0.06, 0, sz * D / 2 - 0.06, sx * W / 2 + 0.06, wallH, sz * D / 2 + 0.06, { colour: WHITE, decor: true });
+      }
       porch(sink, frame.faces[street], 0, wallH, streetLen, gD, st, -lift);
       if (look() < 0.6) bench(sink, frame.faces[street], streetLen * 0.3, 1.5, WHITE);
     });
@@ -419,7 +427,22 @@ const commissary: RegionalBuilder = (ctx) => {
         // (free-standing spans: the false front is seen from behind over the roof, so it keeps its back face)
         const top = frame.roof.ridgeY + 0.8;
         sink.span('wood', -W / 2, frame.eaveY, D / 2, W / 2, top, D / 2 + 0.16);
-        sink.span('structureWood', -W / 2 - 0.1, top - 0.12, D / 2 - 0.02, W / 2 + 0.1, top, D / 2 + 0.26, { colour: WHITE, decor: true });
+        // (props census #15, Lane C 2026-10-16: "a single plain 16 cm slab with a cap strip, no boarding, battens,
+        // bracketed cornice or back bracing") its battens up the street face, the cornice on its brackets, the corner
+        // boards, and the raking braces from its back down to the roof
+        const ff: Face = { origin: [0, 0, D / 2 + 0.16], u: [1, 0, 0], out: [0, 0, 1], width: W };
+        battens(sink, ff, frame.eaveY + 0.05, top - 0.35, 0.55, BATTEN);
+        sink.span('structureWood', -W / 2 - 0.18, top - 0.16, D / 2 - 0.02, W / 2 + 0.18, top, D / 2 + 0.42, { colour: WHITE, decor: true });
+        sink.span('structureWood', -W / 2 - 0.06, top - 0.34, D / 2 + 0.16, W / 2 + 0.06, top - 0.24, D / 2 + 0.24, { colour: WHITE, decor: true });
+        for (let k = 0, n = Math.max(3, Math.round(W / 1.2)); k <= n; k++) {
+          const u = -W / 2 + 0.1 + (W - 0.2) * k / n;
+          faceBox(sink, 'structureWood', ff, u, top - 0.25, 0.13, 0.08, 0.18, 0.26, { colour: WHITE, decor: true });
+        }
+        for (const sx of [-1, 1]) sink.span('structureWood', sx * W / 2 - 0.08, frame.eaveY, D / 2 + 0.1, sx * W / 2 + 0.08, top - 0.16, D / 2 + 0.22, { colour: WHITE, decor: true });
+        for (const u of [-W * 0.3, W * 0.3]) {
+          const yb = frame.roof.topAt(u, D / 2 - 1.6) ?? frame.eaveY;
+          beam(sink, 'structureWood', [u, top - 0.4, D / 2 - 0.04], [u, yb + 0.05, D / 2 - 1.6], 0.1, { colour: shade(WEATHERED, 0.85), decor: true });
+        }
       }
       faceBox(sink, 'structureWood', sf, 0, plat + h + (turned ? 0.25 : 0.9), 0.2, Math.min(streetLen - 1, 7), 0.9, 0.06, { colour: SIGN, decor: true });
       faceBox(sink, 'structureWood', sf, 0, plat + h + (turned ? 0.25 : 0.9), 0.235, Math.min(streetLen - 1.4, 6.4), 0.3, 0.01, { colour: WHITE, decor: true, fine: true });
