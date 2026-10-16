@@ -5,7 +5,7 @@
 // Each kit file keeps one re-pointing line; a builder that needs the kit's own joinery takes its state and dialect from
 // the kit's call (no import back into the kit).
 import { LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
 import { archHead } from './sarajevoParts.ts';
@@ -206,27 +206,35 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
         }
         doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'structureWood', width: 0.08, out: 0.05, colour: timber }, steps: null, leafKind: 'plank' }, frame.floors[o.storey] + o.y0);
       },
-      // the boards over the frame: upright, their gaps, broken round the openings
-      dressWall: (s, face, rect, ops) => {
-        if (mobile) return;
-        const holes = ops.map((o) => [o.u - o.w / 2 - 0.04, o.u + o.w / 2 + 0.04, rect.y0 + o.y0 - 0.04, rect.y0 + o.y0 + o.h + 0.04] as const);
-        for (let u = rect.u0 + 0.12; u < rect.u1 - 0.1; u += 0.24) {
-          const cut = holes.filter(([a, b]) => u > a - 0.1 && u < b + 0.1);
-          let cur = rect.y0 + 0.02;
-          for (const [, , a, b] of [...cut.sort((p, q) => p[2] - q[2]), [0, 0, rect.y1, rect.y1] as const]) {
-            if (a - cur > 0.15) faceBox(s, 'structureWood', face, u, (cur + a) / 2, 0.012, 0.215, a - cur, 0.024, { colour: shade(plank, 0.84 + look() * 0.26), decor: true, fine: true }, 'caps');
-            cur = Math.max(cur, b);
-          }
+    };
+    // the boards over the frame: upright, their gaps, broken round the openings (laid over the house's plank walls after
+    // it is built: a plank wall reads and breaks as planks, so its storey is no framed one of the damage kit's)
+    const boards = (s: PartSink, face: Face, rect: { u0: number; u1: number; y0: number; y1: number }, ops: readonly Opening[]) => {
+      if (mobile) return;
+      const holes = ops.map((o) => [o.u - o.w / 2 - 0.04, o.u + o.w / 2 + 0.04, rect.y0 + o.y0 - 0.04, rect.y0 + o.y0 + o.h + 0.04] as const);
+      for (let u = rect.u0 + 0.12; u < rect.u1 - 0.1; u += 0.24) {
+        const cut = holes.filter(([a, b]) => u > a - 0.1 && u < b + 0.1);
+        let cur = rect.y0 + 0.02;
+        for (const [, , a, b] of [...cut.sort((p, q) => p[2] - q[2]), [0, 0, rect.y1, rect.y1] as const]) {
+          if (a - cur > 0.15) faceBox(s, 'structureWood', face, u, (cur + a) / 2, 0.012, 0.215, a - cur, 0.024, { colour: shade(plank, 0.84 + look() * 0.26), decor: true, fine: true }, 'caps');
+          cur = Math.max(cur, b);
         }
-      },
+      }
     };
     sink.paint = shade(plank, 0.95);
     try {
-      sink.placed(0, 0, floor, 0, () => buildHouse(sink, {
-        w: W, d: D, plinth: null, storeys: [{ h: 3.0, wall: 'structureWood', framed: true }], roof: { ...tole(16), eave: 0.6 }, gableBucket: 'structureWood',
-        openings, chimneys: [], gutters: null, verge: { colour: timber, bucket: 'structureWood' }, reveal: 0.08, spall: null, rafters: timber,
-        roofColour: pick(look, RUSTED),
-      }, dialect));
+      sink.placed(0, 0, floor, 0, () => {
+        const frame = buildHouse(sink, {
+          w: W, d: D, plinth: null, storeys: [{ h: 3.0, wall: 'structureWood' }], roof: { ...tole(16), eave: 0.6 }, gableBucket: 'structureWood',
+          openings, chimneys: [], gutters: null, verge: { colour: timber, bucket: 'structureWood' }, reveal: 0.08, spall: null, rafters: timber,
+          roofColour: pick(look, RUSTED),
+        }, dialect);
+        const faces = storeyFaces(frame, 0), body = frame.bodies[0];
+        for (const name of ['front', 'back', 'left', 'right'] as const) {
+          const face = faces[name];
+          boards(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 }, openings.filter((o) => o.face === name && o.storey === 0));
+        }
+      });
     } finally { sink.paint = null; }
   });
   // the landing before the hall: its deck on posts, the tarpaulin over it, the goods; the sampan at its end
