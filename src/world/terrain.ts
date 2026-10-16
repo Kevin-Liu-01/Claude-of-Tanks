@@ -61,6 +61,8 @@ import { createBorderLandform, resolveBorderLandform, type BorderLandformSetting
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
+import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
+  resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
@@ -369,6 +371,12 @@ interface TerrainSettings {
    * sheet lies on it at the level. Unset: no query calls in.
    */
   canals?: readonly CanalConfig[];
+  /**
+   * 2026-10-12 (item 4, the owner: "we need real water"): flooded paddies (paddies.ts) — level basins cut and filled into
+   * the ground, each held by a bund, its water a square-ended canal at its floor (the floors resolve on the finished
+   * ground, then the paddies' canals join the compiled set). Unset: no query calls in.
+   */
+  paddies?: readonly PaddyConfig[];
   /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
   bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
   hillScale: number;
@@ -625,6 +633,10 @@ export interface HeightField {
   getWaterMaskAt(x: number, z: number): number;
   /** Authored shallow depth used to build the sheet. Zero on ice/dry ground. */
   getWaterDepthAt?(x: number, z: number): number;
+  /** (2026-10-12, item 4) A paddy's water level over its water and bund, NaN elsewhere; only on a map with paddies. */
+  getPaddyWaterLevelAt?(x: number, z: number): number;
+  /** (item 4) Each paddy's own level water surface (paddies.ts paddyWaterQuads); only on a map with paddies. */
+  getPaddyWaterQuads?(): readonly PaddyWaterQuad[];
   /** Exact rendered triangle height, installed when the liquid mesh is built. */
   getWaterSurfaceHeightAt?(x: number, z: number): number;
   /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
@@ -659,6 +671,12 @@ export interface HeightField {
   _landUseProfile?: LandUseProfile | null;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
+  /** (2026-10-15, the paddies' look pass) Trees and shrubs keep off a paddy's water, bund and bank (paddies.ts
+   *  inPaddyClearing); only on a map with paddies. */
+  _treeClearAt?(x: number, z: number): boolean;
+  /** (the paddies' look pass) The rice hill a paddy plants nearest (x, z), null off its planted water (paddies.ts
+   *  paddyRiceAt); the tall-grass tier grows its rice there. Only on a map with paddies. */
+  _paddyRiceAt?(x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null;
   /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt, 0..1) — present only on a
    * map whose ground profile floors its village in cinder; the tall grass and the tufts keep to them inside the yard. */
   _yardWeedsAt?(x: number, z: number): number;
@@ -1368,7 +1386,9 @@ function* heightFieldBuildSteps(
   const mounds = T.mounds ?? [];
   let moundCrestYs: Float64Array | null = null;
   // (the map-revival lane, 2026-10-07) the canals, compiled once; null on every map without one
-  const compiledCanals = compileCanals(T.canals);
+  let compiledCanals = compileCanals(T.canals);
+  // (2026-10-12, item 4) the paddies: their floors resolve on the finished ground below, then their water joins the canals
+  const compiledPaddies = compilePaddies(T.paddies);
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const terraceZones = prepareTerraceZones(T.terraces);
@@ -1478,7 +1498,7 @@ function* heightFieldBuildSteps(
     // trenches (lines × five samples × every marsh's shoreline distance): 11.8 µs per sample against
     // 1.0 µs at deploy 66, a 9.9 s world build. The bank-band-1 plan IS a dry map's final plan (nothing
     // later changes it), so it is cached like every other map's — byte-identical heights and plan.
-    const provisional = liquidWater && !liquidSurfaces && _MARSHES.length > 0;
+    const provisional = marshLiquid && !liquidSurfaces && _MARSHES.length > 0;
     const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
       _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
     const sectors = trenchPlan();
@@ -1673,7 +1693,10 @@ function* heightFieldBuildSteps(
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
-  const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;
+  // (2026-10-15, Caldera's paddies) a map's marshes and lakes hold liquid water on a sea-or-lake map only; its paddies hold
+  // theirs on any map that is not frozen (Caldera's ash marshes stay dry while its paddies are flooded)
+  const marshLiquid = !!cfg?.splat?.seaLake && !T.frozenMarshes;
+  const liquidWater = marshLiquid || (!!T.paddies?.length && !T.frozenMarshes);
   const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
   const waterRampStart = cfg?.splat?.seaRamp?.[0] ?? 0.40;
   const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
@@ -2028,7 +2051,7 @@ function* heightFieldBuildSteps(
     for (const line of roadExitLines) {
       const { xs, zs, ss } = line;
       // a road that reaches a shore past the edge ends there (no carriageway on the sea floor)
-      if (liquidWater && (outlandWaterAt(xs[1], zs[1])?.wetness ?? 0) > 0.2) continue;
+      if (marshLiquid && (outlandWaterAt(xs[1], zs[1])?.wetness ?? 0) > 0.2) continue;
       // the grade: the square's road at the edge, then the outland smoothed along the line, at most 7 %
       const ys = new Float64Array(ROAD_EXIT_STEPS + 1), raw = new Float64Array(ROAD_EXIT_STEPS + 1);
       for (let i = 0; i <= ROAD_EXIT_STEPS; i++) raw[i] = outlandBaseHeightAt(xs[i], zs[i]);
@@ -2363,6 +2386,8 @@ function* heightFieldBuildSteps(
     // (the map-revival lane, 2026-10-07) the canals carved to their profiles, a road keeping its ground over each (a
     // culvert: full inside 6 m of its line, fading out by 10 m) except under a bridge's span (the water runs under the
     // deck), on final queries only
+    // (2026-10-12, item 4) the paddies' floors cut and filled level, their bunds raised (their water is carved with the canals)
+    if (compiledPaddies !== null && roadsOn && padsOn) h = levelPaddies(compiledPaddies, x, z, h);
     if (compiledCanals !== null && roadsOn && padsOn) {
       const culvert = 1 - smoothstep(6, 10, gridSample(gRoadDist, x, z));
       h = carveCanals(compiledCanals, x, z, h, liquidDepthM, bridgeDecks.length ? culvert * (1 - bridgeTermsAt(x, z).span) : culvert);
@@ -2625,9 +2650,9 @@ function* heightFieldBuildSteps(
   initializeSpawnPadLevels();
   // Freeze authored road/pad support first, then resolve liquid joins in the
   // existing buffer. Frozen sheets retain their original independent levels.
-  if (liquidWater && _LAKES.length) alignLiquidLakeLevels(_LAKES, lakeLevels);
-  const liquidLakes = liquidWater ? _LAKES.map((lake, index) => ({ ...lake, level: lakeLevels[index] })) : [];
-  if (liquidWater && _MARSHES.length) {
+  if (marshLiquid && _LAKES.length) alignLiquidLakeLevels(_LAKES, lakeLevels);
+  const liquidLakes = marshLiquid ? _LAKES.map((lake, index) => ({ ...lake, level: lakeLevels[index] })) : [];
+  if (marshLiquid && _MARSHES.length) {
     // Fit against the old dry/road/pad pipeline before activating the policy.
     // Roads and spawn pads keep their original levels and final priority.
     liquidSurfaces = buildLiquidMarshSurfaces(_MARSHES,
@@ -2739,6 +2764,15 @@ function* heightFieldBuildSteps(
     const phase = landformPhase;
     landformPhase = 'authored-relief';
     moundCrestYs = Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height);
+    landformPhase = phase;
+  }
+  // (2026-10-12, item 4) the paddies' floors: the finished ground's median over each (sampled before any paddy is built),
+  // then their water joins the canals at those floors
+  if (compiledPaddies !== null) {
+    const phase = landformPhase;
+    landformPhase = 'authored-relief';
+    resolvePaddyFloors(compiledPaddies, (x, z) => heightAt(x, z, true, true));
+    compiledCanals = compileCanals([...(T.canals ?? []), ...paddyCanals(compiledPaddies)]);
     landformPhase = phase;
   }
   // Explicit second phase: all legacy support targets above are frozen.
@@ -2888,7 +2922,7 @@ function* heightFieldBuildSteps(
     // Lake/marsh placement bands include dry sand, road shoulders and pads.
     // Release their water resistance at the same liquid boundary as wakes.
     // Ordinary bogs, ice, roads and bridge decks keep their authored traction.
-    return ground === 'soft' && liquidWater && getWaterMaskAt(x, z) <= 0.02
+    return ground === 'soft' && marshLiquid && getWaterMaskAt(x, z) <= 0.02
       ? 'medium' : ground;
   }
 
@@ -2912,6 +2946,11 @@ function* heightFieldBuildSteps(
   }
 
   function getWaterDepthAt(x: number, z: number): number {
+    // (the paddies' look pass) a paddy's water stands its own quarter metre, not the map's river depth
+    if (compiledPaddies !== null && liquidDepthM) {
+      const level = paddyWaterLevelAt(compiledPaddies, x, z);
+      if (level === level) return Math.min(PADDY_DEPTH_M, shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM));
+    }
     return liquidDepthM ? shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM) : 0;
   }
 
@@ -2936,6 +2975,8 @@ function* heightFieldBuildSteps(
   }
 
   function waterWetnessAt(x: number, z: number): number {
+    // (Caldera's paddies) a map whose only liquid water is its paddies' reads their canals alone
+    if (!marshLiquid) return compiledCanals === null ? 0 : canalWetness(compiledCanals, x, z) * smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z));
     let wetness = liquidIndex
       ? sampleIndexedMarshWetness(_MARSHES, liquidIndex,
         liquidMarshIndexBucket(x, z, MAP_SIZE, liquidIndexWords), liquidIndexWords, x, z)
@@ -2970,6 +3011,7 @@ function* heightFieldBuildSteps(
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
     if (compiledCanals !== null && inCanal(compiledCanals, x, z)) return true; // the map-revival lane: a canal and its banks' foot
+    if (compiledPaddies !== null && inPaddy(compiledPaddies, x, z)) return true; // (item 4) a paddy's water and its bund
     if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
     // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
     if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines)) {
@@ -2992,8 +3034,8 @@ function* heightFieldBuildSteps(
       // maps r1 (ADDITIVE): river maps keep the CHANNEL clear — tufts spawned
       // mid-stream read as flooded stubble. The outer soft band keeps its
       // sparse bank reeds. Default off => pre-existing maps unchanged.
-      const clearRadius = m.r * (liquidWater ? 1 : 0.55);
-      if ((T.clearMarshVeg || liquidWater) && distanceSquared < clearRadius * clearRadius) return true;
+      const clearRadius = m.r * (marshLiquid ? 1 : 0.55);
+      if ((T.clearMarshVeg || marshLiquid) && distanceSquared < clearRadius * clearRadius) return true;
     }
     // maps lane B (2026-10-03, the capture: tall grass stood in the salt): nothing grows on a sor's crust — the floor at
     // its flat's level (read on the 1 m fast grid: the tall-grass tier asks per blade) — while its damp margin keeps the
@@ -3082,6 +3124,9 @@ function* heightFieldBuildSteps(
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
+    // (2026-10-12, item 4) the paddies' water level, for the shallow-water sheet (only on a map with paddies)
+    ...(compiledPaddies !== null ? { getPaddyWaterLevelAt: (x: number, z: number): number => paddyWaterLevelAt(compiledPaddies, x, z),
+      getPaddyWaterQuads: () => paddyWaterQuads(compiledPaddies) } : {}),
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
@@ -3116,6 +3161,8 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    ...(compiledPaddies !== null ? { _treeClearAt: (x: number, z: number): boolean => inPaddyClearing(compiledPaddies, x, z),
+      _paddyRiceAt: (x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null => paddyRiceAt(compiledPaddies, x, z, out) } : {}),
     // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
     // ground profile asks it; `?ground=legacy` keeps the even carpet
     ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {
@@ -8901,7 +8948,8 @@ function* terrainBuildSteps(
   // terrainCraterMesh.ts on them (syncGroundOverlay / adoptTerrainGeometry hooks below; its lattice constants are this
   // file's, pinned by terrainCraterMesh.selftest)
   group.userData.terrainChunks = chunks;
-  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
+  // (2026-10-15) a map with paddies builds the sheet for their water even off the sea-and-lake maps (Caldera)
+  if (cfg && cfg.splat && (cfg.splat.seaLake || heightField._layout.terrain.paddies?.length) && !heightField._layout.terrain.frozenMarshes) {
     const waterSteps = shallowWaterGeometrySteps(heightField);
     let step = waterSteps.next();
     while (!step.done) {

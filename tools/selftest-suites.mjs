@@ -1473,6 +1473,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
     'src/world/terrainMounds.selftest.mjs', // 2026-10-07: built mounds (Polders' molenbergen) level on their crests over the finished ground
     'src/world/canals.selftest.mjs', // 2026-10-07: canals (the shared linear water primitive; Polders' vaart and weteringen) at one level, and every map without one identical to the terrain before it
+    'src/world/paddies.selftest.mjs', // 2026-10-12 (item 4): real paddies — level basins held by bunds, their water square-ended canals; Delta's ten level, wet bund to bund and paired about the char
     'src/world/roadCrownLift.selftest.mjs', // 2026-10-07: a styled road path's crown lift (Polders' lanes on the dyke crowns), and every map that lifts no path identical to the terrain before it
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terraceBenches.selftest.mjs', // 2026-10-07: Orchard's terrace zones cut after the near-field relief, the benches at their levels

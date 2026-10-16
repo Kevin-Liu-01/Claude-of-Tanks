@@ -30,6 +30,23 @@ const river = [
     [129.4, 149.3, 28]],
 ].flatMap((reach) => createMarshChannel(reach.map(station)));
 
+// The flooded paddies (2026-10-12, item 4; the owner: "we need real water"): level basins of water held by their bunds
+// (terrain.paddies, paddies.ts), in terraced rows on the open floodplain, turned with the bunds (yaw -11) and off the roads,
+// the river, the village and both deployments. Two rows on alpha's bank — a pair a hundred metres in front of the deployment
+// and a row of three on the way to the char — and their rotations about the char on bravo's. (Found by a site probe over
+// the finished ground: each paddy's floor varies under 3.6 m before it is levelled, its twin as well.)
+const PADDY_W = 30, PADDY_L = 44, PADDY_YAW = -11, PADDY_STEP = PADDY_W + 3.2;
+const paddyRow = (x: number, z: number, count: number) => {
+  const yaw = PADDY_YAW * Math.PI / 180;
+  return Array.from({ length: count }, (_, k) => {
+    const off = (k - (count - 1) / 2) * PADDY_STEP;
+    return { x: x + Math.cos(yaw) * off, z: z - Math.sin(yaw) * off };
+  });
+};
+const paddies = [...paddyRow(-45, -310, 2), ...paddyRow(-10, -215, 3)]
+  .flatMap(({ x, z }) => [[x, z], [-8 - x, 28 - z]])
+  .map(([x, z]) => ({ x, z, widthM: PADDY_W, lengthM: PADDY_L, yawDeg: PADDY_YAW }));
+
 export default {
   id: 'delta',
   name: 'Jade River Delta',
@@ -45,6 +62,7 @@ export default {
       [[-396, 72], [-286, 52], [-144, 34], [8, 54], [162, 38], [302, 8]],
     ] },
     marshes: river,
+    paddies,
     // The market square on the char and a rice-drying yard on each bank: level aprons the zone-control discs seat on.
     hardstands: [
       { x: -4, z: 14, width: 50, length: 50, yawDeg: 45, grade: 0 },
