@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
+import { roughenChunk } from './maps/regional/ruinGrammar.ts'; // (props census #7 moved the masonry roughening out of props.ts)
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
@@ -595,9 +596,8 @@ const groundOriginal = groundCandidate
 // scheduling yields; the sha256 pin of that derived body froze every decal formula and is gone. Formula changes are
 // owned by the decal receipts, scheduling by the comparisons below.
 const mathStart = source.indexOf('function clamp('), mathEnd = source.indexOf('\n// ---', mathStart);
-const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.indexOf('\n  function addRubblePile(', rubbleStart);
-assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
-const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
+assert.ok(mathEnd > mathStart);
+const groundHelpers = source.slice(mathStart, mathEnd);
 
 function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
   buildings = 1, crushables = 1, stacks = 1, rocks = 0, rejectCourtyards = false, disposeFailureAt = -1,
@@ -671,6 +671,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
     // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
     drawnPlanRecord: () => null, craterClodFootprints: [],
+    roughenChunk, // (props census #7: ruinGrammar.ts)
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
     groundHelpers + '\nlet reconformFoundryFoundations = null;\n' + code)
