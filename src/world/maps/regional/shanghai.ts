@@ -777,7 +777,10 @@ const fireStation: RegionalBuilder = (ctx) => {
     }
     pyramid(sink, 'roof', cx, cz, half + 0.35, half + 0.35, tTop + 2.42, tTop + 3.9, SHADOWED);
     sink.cylinder('structureMetal', [cx, tTop + 3.85, cz], 'y', 2.4, 0.04, 4, { colour: IRON, decor: true, fine: true });
-    sink.dressing(mobile, () => pocks(sink, frame.faces.front, -W / 2 + tw + 0.4, W / 2 - 0.3, 0.4, eaveY, 6 + Math.floor(look() * 8), look));
+    // (the integrity gate, 2026-10-15: a pock fell in a cut door and hung in it) clear of the front's openings
+    const doors = frame.spec.openings.filter((o) => o.face === 'front').map((o) => ({ u0: o.u - o.w / 2 - 0.1, u1: o.u + o.w / 2 + 0.1,
+      y0: frame.floors[o.storey] + o.y0 - 0.1, y1: frame.floors[o.storey] + o.y0 + o.h + 0.4 }));
+    sink.dressing(mobile, () => pocks(sink, frame.faces.front, -W / 2 + tw + 0.4, W / 2 - 0.3, 0.4, eaveY, 6 + Math.floor(look() * 8), look, doors));
   });
   return sink.finish();
 };
