@@ -15,20 +15,21 @@ const DRAFT: HinterlandConfig = {
   outland: {woods: 0.2, hedges: 0.85, fields: 0.75, settle: {villages: 3, hamlets: 4, farms: 12}},
   landforms: [
     // the long low swells of the plateau (the brief's keep: "a 40–58 m swell at 1.3–1.4 km giving 13 summits"): twelve
-    // swells round the compass, tangential, 800–1000 m long, with the Psel's valley and bluff in the north-west sector
+    // swells round the compass, tangential, 800–1000 m long, 20-26 m over the plateau's own 20-40 m relief there (at their
+    // full 44-57 m the skyline stood to 4°, twice the ring's), with the Psel's valley and bluff in the north-west sector
     // where the ring had its thirteenth
-    { kind: 'ridge', at: { azDeg: 2, distM: 1274 }, heightM: 52, lengthM: 980, widthM: 500, strikeDeg: 92 },
-    { kind: 'ridge', at: { azDeg: 25, distM: 1349 }, heightM: 46, lengthM: 920, widthM: 500, strikeDeg: 115 },
-    { kind: 'ridge', at: { azDeg: 54, distM: 1312 }, heightM: 49, lengthM: 980, widthM: 500, strikeDeg: 144 },
-    { kind: 'ridge', at: { azDeg: 85, distM: 1318 }, heightM: 51, lengthM: 860, widthM: 500, strikeDeg: 175 },
-    { kind: 'ridge', at: { azDeg: 105, distM: 1426 }, heightM: 48, lengthM: 920, widthM: 500, strikeDeg: 195 },
-    { kind: 'ridge', at: { azDeg: 143, distM: 1406 }, heightM: 46, lengthM: 860, widthM: 500, strikeDeg: 233 },
-    { kind: 'ridge', at: { azDeg: 170, distM: 1346 }, heightM: 46, lengthM: 980, widthM: 500, strikeDeg: 260 },
-    { kind: 'ridge', at: { azDeg: 196, distM: 1390 }, heightM: 51, lengthM: 920, widthM: 500, strikeDeg: 286 },
-    { kind: 'ridge', at: { azDeg: 218, distM: 1418 }, heightM: 44, lengthM: 800, widthM: 500, strikeDeg: 308 },
-    { kind: 'ridge', at: { azDeg: 244, distM: 1308 }, heightM: 57, lengthM: 860, widthM: 500, strikeDeg: 334 },
-    { kind: 'ridge', at: { azDeg: 276, distM: 1275 }, heightM: 56, lengthM: 800, widthM: 500, strikeDeg: 6 },
-    { kind: 'ridge', at: { azDeg: 356, distM: 1277 }, heightM: 48, lengthM: 860, widthM: 500, strikeDeg: 86 },
+    { kind: 'ridge', at: { azDeg: 2, distM: 1274 }, heightM: 23, lengthM: 980, widthM: 500, strikeDeg: 92 },
+    { kind: 'ridge', at: { azDeg: 25, distM: 1349 }, heightM: 21, lengthM: 920, widthM: 500, strikeDeg: 115 },
+    { kind: 'ridge', at: { azDeg: 54, distM: 1312 }, heightM: 22, lengthM: 980, widthM: 500, strikeDeg: 144 },
+    { kind: 'ridge', at: { azDeg: 85, distM: 1318 }, heightM: 23, lengthM: 860, widthM: 500, strikeDeg: 175 },
+    { kind: 'ridge', at: { azDeg: 105, distM: 1426 }, heightM: 22, lengthM: 920, widthM: 500, strikeDeg: 195 },
+    { kind: 'ridge', at: { azDeg: 143, distM: 1406 }, heightM: 21, lengthM: 860, widthM: 500, strikeDeg: 233 },
+    { kind: 'ridge', at: { azDeg: 170, distM: 1346 }, heightM: 21, lengthM: 980, widthM: 500, strikeDeg: 260 },
+    { kind: 'ridge', at: { azDeg: 196, distM: 1390 }, heightM: 23, lengthM: 920, widthM: 500, strikeDeg: 286 },
+    { kind: 'ridge', at: { azDeg: 218, distM: 1418 }, heightM: 20, lengthM: 800, widthM: 500, strikeDeg: 308 },
+    { kind: 'ridge', at: { azDeg: 244, distM: 1308 }, heightM: 26, lengthM: 860, widthM: 500, strikeDeg: 334 },
+    { kind: 'ridge', at: { azDeg: 276, distM: 1275 }, heightM: 25, lengthM: 800, widthM: 500, strikeDeg: 6 },
+    { kind: 'ridge', at: { azDeg: 356, distM: 1277 }, heightM: 22, lengthM: 860, widthM: 500, strikeDeg: 86 },
     // north-west: the Psel's valley below the plateau, and its right bank's wooded bluff over it (the brief)
     { kind: 'valley', at: { azDeg: 316, distM: 2500 }, heightM: 30, lengthM: 9000, widthM: 1400, strikeDeg: 46, name: 'the Psel valley' },
     { kind: 'escarpment', at: { azDeg: 316, distM: 3500 }, heightM: 60, lengthM: 8000, widthM: 1600, strikeDeg: 46,
