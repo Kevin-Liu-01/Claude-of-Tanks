@@ -15,17 +15,17 @@
     "ua_t72b3m_hetman_ii": {
       "id": "ua_t72b3m_hetman_ii",
       "ring": [
-        0.008,
-        1.445,
-        0.114315
+        7.2471277e-06,
+        1.52948397398,
+        0.1143146502203
       ],
       "gunLocal": [
-        0,
-        0.43,
-        0.9
+        0.0014239406586,
+        0.2925099909400002,
+        1.2198708767647
       ],
-      "barrelLengthM": 5.2,
-      "barrelRadiusM": 0.105,
+      "barrelLengthM": 5.2533308821319995,
+      "barrelRadiusM": 0.1,
       "pitchDeg": [
         -6,
         14
@@ -33,19 +33,19 @@
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
       "hullLengthM": 7.509,
-      "hullWidthM": 4.60824,
-      "widthM": 4.6082,
-      "overallLengthM": 9.8892,
-      "tallestM": 3.31,
+      "hullWidthM": 4.972951,
+      "widthM": 4.926,
+      "overallLengthM": 10.2615,
+      "tallestM": 3.402,
       "specDimensions": {
         "hullLengthM": 7.509,
-        "overallLengthM": 9.968815,
-        "widthM": 4.60824,
-        "heightM": 3.31
+        "overallLengthM": 10.342016409117,
+        "widthM": 4.972951,
+        "heightM": 3.402
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "A Ukrainian command modernization retaining the original Hetman’s broad welded turret and long clipped bustle lineage. Its custom split-arrowhead cheeks, separate command roof, open service channels, fitted heavy skirts, rear field screens and supported camouflage distinguish it from the T-90SM and the compact cast-turret Hetman. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
+      "silhouette": "Ukrainian T-72B3M command modernization carrying the complete T-72B3M (2016) turret inside squared flank armour cabinets with two wall courses and a lid course of ERA, an open command basket behind the bustle with slat walls, a rear cable drum and stowage, wider cage wings on the cabinet lids, slit lamps, twin sensor heads, a scanner, two panoramas, the 30 mm wedge station on the commander's cupola and its own field net. The native T-72B3M hull keeps its heavy fitted skirts, joint caps and camouflage carriers."
     },
     "pl_t72b3_zubr_ii": {
       "id": "pl_t72b3_zubr_ii",

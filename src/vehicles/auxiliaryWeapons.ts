@@ -94,7 +94,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3_zubr_ii:cannon,
   t80u_zoria:b32Heavy,
   t72b3m_hetman:ubr6,
-  t72b3_sich:b32Heavy,
+  t72b3_sich:ubr6,
   t80u_husarz:heavy,
   t72b3m_wilk:cannon,
   t72b3_zubr:heavy,
