@@ -469,6 +469,18 @@ does. The presentation's running gear and the Studio's hulls stand on the same d
 The drawn bowl is the lattice's: its deepest point reaches 78 % of the law's depth for a 125 mm crater (R 1.67 m), 89 %
 for a 152 mm shell and 95 % for the gunship's howitzer (R 3.44 m), the rim all of its height.
 
+**A map's pre-placed craters are real bowls (DST-04, 2026-10-15).** The battlefield's old shell scars (props.ts
+`tryPlaceBattleScar`, the props stream as before) are recorded as sites, not drawn as flat discs. `world/mapCraters.ts`
+decides each site once on the built world's own records: a bowl (rim crest 0.7 r of the scar's disc, a weathered
+0.28 R deep, the scar's own rim) or a mark — where the bowl would reach under any record but a tree (nothing that stands
+on the ground hangs over a hole), on hard ground or water, under the dig radius, or past 160 bowls. The collision shards
+carry the decided stamps (`craters`), so the authority lays exactly what every seat built (layout identity; the drift
+receipt keeps the shards equal to the build). Every match lays them into its ground before anything else: the solo step
+each battle, the authority (fresh, and a standby host's prepared ground, before the bot navigation grid reads it), a
+seat's mirror and the Studio's every scene; they take overlay bucket slots but not the match's 160 dug craters. The
+presentation lays their surfaces from the bound ground (`fx/effects.ts layMapCraters`: craterMarks in a slot set of its
+own, an hour old). Receipt: `world/mapCraters.selftest.mjs`.
+
 **Render (P3).** The ground mesh is updated in place: the lattice vertices inside a stamp's influence, on every
 terrain LOD level that covers them, take `offsetAt(vertex)`, their normals are recomputed locally, and the position
 and normal attributes are uploaded with `addUpdateRange` (scratch arrays sized once; no per-frame allocation). Crater
