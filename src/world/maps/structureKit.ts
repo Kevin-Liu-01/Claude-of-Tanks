@@ -236,7 +236,11 @@ function mbeam(a: readonly [number, number, number], b: readonly [number, number
  * corner moved a shallow skillion's reading by 0.0067).
  */
 function mroof(w: number, h: number, d: number): THREE.BufferGeometry {
-  return mbox(w, h, d, 0.006, 0.45, true);
+  // (the 226 roofs, 2026-10-15) a sheet over 8 m long eases its edges by a thousandth of its length and more: a 6 mm
+  // chamfer strip down a 16 m eave is a sliver to the building-integrity gate (a face longer than 0.5 m narrower than a
+  // thousandth of its length), so the catalog's long roofs had gone back to plain slabs
+  const length = Math.max(w, h, d);
+  return mbox(w, h, d, length > 8 ? 0.00106 * length : 0.006, 0.45, true);
 }
 
 /**
@@ -743,7 +747,7 @@ export function makeTavern(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'pl
     // Posts reach the balcony bearer instead of stopping 30 cm below it.
     out.wood.push(box(0.10, 3.05, 0.10).translate(x, 1.525, d / 2 + 1.25));
   }
-  out.roof.push(pitchSkillionRoof(slab(w * 0.88, 0.11, 2.1), 'z', 1, 0.15)
+  out.roof.push(pitchSkillionRoof(mroof(w * 0.88, 0.11, 2.1), 'z', 1, 0.15)
     .translate(0, 5.05, d / 2 + 0.72));
   out.dark.push(box(1.6, 0.95, 0.10).translate(-w / 2 - 0.08, 3.1, d * 0.2));
   out.stone.push(box(0.72, 2.5, 0.72).translate(2.6, wallH + roofH - 0.3, -2.7));
@@ -769,7 +773,7 @@ export function makeSchoolhouse(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   cap.rotateY(Math.PI / 4); cap.translate(0, wallH + roofH + 2.6, 1.0); out.roof.push(cap);
   out.wood.push(box(3.5, 0.18, 2.0).translate(0, 0.18, d / 2 + 1.0));
   for (const x of [-1.35, 1.35]) out.wood.push(box(0.13, 2.7, 0.13).translate(x, 1.5, d / 2 + 1.65));
-  out.roof.push(pitchSkillionRoof(slab(4.1, 0.12, 2.4), 'z', 1, 0.14)
+  out.roof.push(pitchSkillionRoof(mroof(4.1, 0.12, 2.4), 'z', 1, 0.14)
     .translate(0, 3.0, d / 2 + 0.95));
   for (const z of [-4.4, -1.5, 1.4]) for (const side of [-1, 1]) addWindow(out, side * (w / 2 + 0.04), 2.35, z, 'x', 1.25, 1.55);
   addConnectedExterior(out, { id: 'schoolhouse', w, d, wallH, profile: 'civic', variant: 2 });
@@ -836,7 +840,7 @@ export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimen
   out.dark.push(box(0.22, 6.2, 0.22).rotateZ(-0.38).translate(5.6, 3.35, d / 2 + 1.0));
   out.dark.push(box(0.06, 3.0, 0.06).translate(6.75, 1.5, d / 2 + 1.0));
   out.stone.push(box(4.2, 3.4, 5.0).translate(-w / 2 - 1.5, 1.7, -2.4));
-  out.roof.push(pitchRoofPlane(slab(4.6, 0.16, 5.4), 'x', -1, 0.12, 'skillion')
+  out.roof.push(pitchRoofPlane(mroof(4.6, 0.16, 5.4), 'x', -1, 0.12, 'skillion')
     .translate(-w / 2 - 1.5, 3.75, -2.4));
   for (const x of [-2.8, 0, 2.8]) addWindow(out, x, 2.4, d / 2 + 0.04, 'z', 1.1, 1.1);
   // (the garage critic, 2026-10-15, Saltmere: "a plain box: no eaves, gutters, doors or windows legible") the shed's long
@@ -995,7 +999,7 @@ export function makeCaravanserai(_rng: Rng, buckets: GeometryBuckets, wallBucket
   // The courtyard posts carry a continuous shade arcade back into the north
   // wing. Besides giving the 21 m facade a readable rhythm, this closes the
   // former one-metre air gap between every post and the actual structure.
-  out.wood.push(pitchSkillionRoof(slab(16.4, 0.18, 1.25), 'z', 1, 0.045)
+  out.wood.push(pitchSkillionRoof(mroof(16.4, 0.18, 1.25), 'z', 1, 0.045)
     .translate(0, 2.86, -d / 2 + 4.48));
   for (const x of [-8.2, -4.1, 0, 4.1, 8.2]) {
     out.stone.push(box(0.42, wallH - 0.25, 0.38)
@@ -1053,7 +1057,7 @@ export function makeRangerLodge(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   // Full porch, stone fireplace and observation cupola.
   out.wood.push(box(w + 1.8, 0.18, 2.6).translate(0, 0.24, d / 2 + 1.3));
   for (const x of [-5.2, -2.6, 0, 2.6, 5.2]) out.wood.push(box(0.16, 2.8, 0.16).translate(x, 1.55, d / 2 + 2.25));
-  out.roof.push(pitchSkillionRoof(slab(w + 2.0, 0.13, 3.1), 'z', 1, 0.17)
+  out.roof.push(pitchSkillionRoof(mroof(w + 2.0, 0.13, 3.1), 'z', 1, 0.17)
     .translate(0, 3.25, d / 2 + 1.25));
   out.stone.push(box(1.35, 5.8, 1.35).translate(-3.4, wallH + 0.9, -2.2));
   // (the buildings stream, 2026-10-13) the cupola's walls run down to the slope (they stood 1.8 m over it on the downhill
