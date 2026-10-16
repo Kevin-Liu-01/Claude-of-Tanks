@@ -5,6 +5,7 @@ import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome }
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { SWARD_TONE, swardCellSeed, swardNoise, swardPatchAt, type SwardPatch } from './swardPatch.ts';
+import type { PaddyRiceSeat } from './paddies.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -45,7 +46,14 @@ interface TallGrassField {
   _yardWeedsAt?(x: number, z: number): number;
   /** Ground lane (2026-10-08): the sward follows its ground — the map's sun (unit xz) and the law's strength. */
   _swardSlope?: readonly [number, number, number];
+  /** (2026-10-15, the paddies' look pass) A paddy's water level over its water and bund (NaN elsewhere), and the rice
+   *  hill it plants nearest a point (terrain.ts, paddies.ts); only on a map with paddies. */
+  getPaddyWaterLevelAt?(x: number, z: number): number;
+  _paddyRiceAt?(x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null;
 }
+
+/** (the paddies' look pass) Young rice's linear albedo: a fresh yellow-green standing out of the water. */
+const RICE_RGB = [0.10, 0.23, 0.045] as const;
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
 
@@ -575,6 +583,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const _field = createLandFieldSample();
   const _contactN = { x: 0, y: 1, z: 0 }; // (the rendered near terrain's normal, reused)
   const _patch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
+  const _rice: PaddyRiceSeat = { x: 0, z: 0, depthM: 0, level: 0 };
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -664,6 +673,23 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const b = biome!;
     const roll = rng(), yawR = rng(), hR = rng(), wR = rng(), tintR = rng(), rnd = rng();
     if (Math.max(Math.abs(x), Math.abs(z)) > 474) return;
+    // (2026-10-15, the paddies' look pass; the coordinator: "rice shoots") a flooded paddy is planted: a rice hill at the
+    // planting lattice's node nearest the candidate (rows across the paddy, paddies.ts), rooted on the mud and standing a
+    // third to a half metre out of its quarter metre of water, young rice's green; a stride inside the bund unplanted
+    if (field._paddyRiceAt) {
+      const seat = field._paddyRiceAt(x, z, _rice);
+      if (seat) {
+        if (roll > 0.92) return; // a missing hill here and there
+        const out = 0.32 + 0.16 * hR;
+        const lumR = 0.88 + 0.24 * tintR;
+        list.push(seat.x + (wR - 0.5) * 0.06, heightAt(seat.x, seat.z), seat.z + (tintR - 0.5) * 0.06, yawR * Math.PI * 2,
+          seat.depthM + out, 0.026 * (ring.far ? TALL_GRASS.farWidth : 1), Math.min(rnd, 0.9995), // (grass r2: code 0, the sward's)
+          Math.min(1.6, RICE_RGB[0] / b.tip[0] * lumR), Math.min(1.6, RICE_RGB[1] / b.tip[1] * lumR), Math.min(1.6, RICE_RGB[2] / b.tip[2] * lumR));
+        return;
+      }
+    }
+    // (a paddy's bund keeps its sward: the vegetation exclusion over it is for the trees and props)
+    const onPaddy = field.getPaddyWaterLevelAt ? field.getPaddyWaterLevelAt(x, z) : NaN;
     let keep = 1;
     const roadD = field._roadDist ? field._roadDist(x, z) : 1e9;
     // ground lane (2026-10-03): the sward meets a road on a ragged line — it stands back from the carriageway by up to
@@ -671,7 +697,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const keepOut = TALL_GRASS.roadKeepOutM + (roadD < TALL_GRASS.roadShoulderM + 3 ? swardNoise(x, z, 2.2, 0x7a11) * 2.2 : 0);
     if (roadD < keepOut) return;
     if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - keepOut) / (TALL_GRASS.roadShoulderM - keepOut);
-    if (field._noVeg && field._noVeg(x, z)) return;
+    if (field._noVeg && field._noVeg(x, z) && !(onPaddy === onPaddy)) return;
     const ground = field.getGroundType ? field.getGroundType(x, z) : 'medium';
     if (ground === 'hard') return;
     const water = field.getWaterMaskAt ? field.getWaterMaskAt(x, z) : 0;

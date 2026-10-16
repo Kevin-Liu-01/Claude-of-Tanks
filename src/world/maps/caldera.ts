@@ -103,6 +103,19 @@ export default {
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
     ],
+    // (2026-10-15, the ground lane; the maps critics' wave on round 6: "the fields are flat texture blocks without water or
+    // bunds") Aso's paddies flooded for the late transplanting (paddies.ts: level basins held by bunds, a quarter metre of
+    // silty water, the rice in rows): five rows of two or three, 28 x 44 m each, turned with the land use's grid (10.3 deg)
+    // or across it, 10 m and more off every road within 8 m of their water, off the yards and both deployments. Found by a
+    // site probe over this map's own ground (the ground lane's scratch): each paddy's floor varies under 1.3 m before it
+    // is levelled.
+    paddies: ([
+      [100.3, [[-39.2, -2.7], [-44.8, -33.3]]],
+      [100.3, [[134.8, 93.3], [129.2, 62.7]]],
+      [100.3, [[158.8, -32.7], [153.2, -63.3]]],
+      [10.3, [[-168.7, 113.6], [-138, 108], [-107.3, 102.4]]],
+      [10.3, [[14.7, -123.2], [45.3, -128.8]]],
+    ] as const).flatMap(([yawDeg, row]) => row.map(([x, z]) => ({ x, z, widthM: 28, lengthM: 44, yawDeg }))),
     // (Caldera round 3, wave 131: "inside a perfectly octagonal ring road") the mining loop bends between its corners —
     // each long side bowed 8-10 m off its chord (inward where the west and east roads run beside it; the north-east side
     // keeps its line over the loading road's levelled bump); its corners stay where they were graded (rounding them ran
