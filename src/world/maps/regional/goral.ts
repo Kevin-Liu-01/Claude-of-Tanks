@@ -17,7 +17,7 @@ import {
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
-import { coveringRise, openShed } from './outbuildings.ts';
+import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
@@ -603,12 +603,11 @@ const drewutnia: RegionalBuilder = (ctx) => {
   const mobile = ctx.tier === 'mobile';
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     const pile = 1.5 + look() * 0.4;
-    const shed = openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile }, {
+    openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile, snow: ctx.snowCap ? { t: 0.26, bucket: 'plaster' } : null }, {
       timber: LOG, post: 0.16, pad: { bucket: 'stone', size: 0.34, top: 0.18 },
       cladding: 'gapped', boards: [LOG_AGED, shade(LOG_AGED, 1.12), shade(LOG, 1.05)], boardW: 0.19, gap: 0.03, trim: LOG_DARK,
       covering: 'shingle', roofBucket: 'roof', eave: 0.25, verge: 0.18,
     }, look);
-    if (ctx.snowCap) roofSnowOn(sink, W, D, shed.roof.eaveY + coveringRise('shingle'), shed.roof.spec);
   });
   return sink.finish();
 };
