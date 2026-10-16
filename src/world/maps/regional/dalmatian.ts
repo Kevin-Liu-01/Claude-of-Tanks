@@ -314,19 +314,43 @@ const depot: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A small stone storehouse (no staddles on the coast): one storey, a low tiled roof. */
+/**
+ * A small stone storehouse (no staddles on the coast): one storey, a low tiled roof. (Props census #22, Lane C
+ * 2026-10-16: "no stone door surround or lintel, no quoins and no step".) It stands on a plinth course sunk into the
+ * ground, its door framed in dressed jambs under a monolith lintel and a stone step, its corners in long-and-short
+ * quoins, its vent cut through the side wall.
+ */
 const granary: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
-  const W = Math.max(3.4, ctx.info.w - 0.6), D = Math.max(4.2, ctx.info.d - 1.6);
+  const W = Math.max(3.4, ctx.info.w - 0.6), D = Math.max(4.2, ctx.info.d - 1.6), plinth = 0.3, dw = 0.95, dh = 1.95;
+  const base = dialect({ ...st, litShare: 0 });
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: null, storeys: [{ h: 2.6, wall: 'stone' }],
+    w: W, d: D, plinth: { h: plinth, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.4, wall: 'stone' }],
     roof: { kind: 'gable', pitchDeg: 22, eave: 0.18, verge: 0.06, thickness: 0.14, bucket: 'roof', ridge: 'round' },
-    gableBucket: 'stone', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 0.95, y0: 0, h: 1.95 },
-      { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.4, y0: 1.6, h: 0.4 }],
-    chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
+    gableBucket: 'stone', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: dh },
+      { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.4, y0: 1.4, h: 0.4 }],
+    chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'rubble',
+  }, {
+    ...base,
+    // the vent is left empty, its reveal and the store's dark; the door's leaf in the reveal, its dressed stone round it
+    window: (s, face, o, y0, fr) => { if (o.kind !== 'loft') base.window(s, face, o, y0, fr); },
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: st.door, frame: { bucket: 'stone', width: 0.2, out: 0.05 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+    }, plinth),
+  });
   eaveCourse(sink, frame);
+  const f = frame.faces.front, y0 = frame.floors[0];
+  // the monolith lintel over the jambs, a hand wider than them each side
+  faceBox(sink, 'stone', f, 0, y0 + dh + 0.2 + 0.14, 0.04, dw + 0.4 + 0.3, 0.28, 0.09, { decor: true, fineSides: true, shade: 1.06 });
+  // the quoins up the four corners from the plinth to the eaves, long and short in turn
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    const x = sx * W / 2, z = sz * D / 2;
+    for (let y = y0, k = 0; y < frame.eaveY - 0.2; y += 0.36, k++) {
+      const lx = k % 2 ? 0.24 : 0.46, lz = k % 2 ? 0.46 : 0.24;
+      sink.quoin('stone', x - sx * lx, y, z - sz * lz, x + sx * 0.035, Math.min(frame.eaveY, y + 0.34), z + sz * 0.035, sx, sz, { decor: true, shade: 1.05 });
+    }
+  }
   return sink.finish();
 };
 

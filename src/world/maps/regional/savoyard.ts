@@ -9,6 +9,7 @@
 // (the plateau was Italian until 1947: rendered in ochre, regular windows, grey shutters); and the works of the 1930s
 // Alpine line (the Vallo Alpino) — concrete blockhouses with their slit embrasures and observation cupolas. Some
 // houses stand roofless after the April 1945 fighting.
+import { logWork } from './goral.ts';
 import {
   LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade,
   type Face, type Rgb, type Vec3,
@@ -256,6 +257,9 @@ const grange: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/** What the mazot's log courses stop at round its door (goral.ts logWork reads only a door's frame). */
+const MAZOT_LIGHT: WindowStyle = { frame: LARCH_DARK, frameWidth: 0.05, frameOut: 0.03, bars: 'none', surround: null, sill: null, shutters: null };
+
 /**
  * The mazot (granary): a box of larch logs raised on stone mushrooms (a post and a flat cap slab against the rats),
  * a heavy plank door with iron strap hinges, a lauze roof with deep verges.
@@ -285,13 +289,9 @@ const mazot: RegionalBuilder = (ctx) => {
         },
       });
       purlins(sink, frame, LARCH_DARK);
-      // the logs' notched corners
-      const b = frame.bodies[0];
-      for (let y = 0.12; y < 2.0; y += 0.24) {
-        for (const [x, z] of [[b.x0, b.z0], [b.x1, b.z0], [b.x0, b.z1], [b.x1, b.z1]] as const) {
-          sink.span('structureWood', x - 0.2, y - 0.1, z - 0.2, x + 0.2, y + 0.1, z + 0.2, { colour: shade(LARCH_DARK, 0.9 + look() * 0.2), decor: true, fine: true });
-        }
-      }
+      // (props census #22, Lane C 2026-10-16: "between the corner stubs every wall is a flat larch print") the walls laid
+      // in hewn larch courses, saddle-notched, their ends running past the corners, cut at the door (goral.ts logWork)
+      logWork(sink, frame, [0], look, MAZOT_LIGHT, ctx.tier === 'mobile', 0.24);
     });
     // the step up to the door: a stone block
     sink.span('stone', -0.5, -0.3, D / 2 + 0.05, 0.5, lift - 0.25, D / 2 + 0.7);

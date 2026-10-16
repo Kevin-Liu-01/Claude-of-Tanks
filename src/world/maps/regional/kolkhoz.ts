@@ -16,6 +16,7 @@ import { hollyhocks } from './dressing.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder, SurfaceTone } from './types.ts';
 import { buildPostMill } from './windmills.ts';
+import { logWork } from './goral.ts';
 
 const PAINTS: readonly Rgb[] = [0x4a7aa8, 0x5a8fb8, 0x4f8a5a, 0x3f6f8f, 0x6b8a4a].map(rgb);
 const WHITE_FRAME = rgb(0xd0ccc0);
@@ -293,25 +294,33 @@ const korovnik: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The ambar: a plank granary on stone pads, its gable roof carried forward over the door on two posts. */
+/**
+ * The ambar, the log granary of the kolkhoz yards (props census #22, Lane C 2026-10-16: "nothing is log"): hewn courses
+ * saddle-notched at the corners, their ends running past them (goral.ts logWork), on two sill logs over its stone pads,
+ * the gable boarded, the plank door in its frame cut through the courses, the gable roof carried forward over the door
+ * on two posts, the treads up to the sill.
+ */
 const ambar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const W = Math.max(3.2, ctx.info.w - 0.6), D = Math.max(4.0, ctx.info.d - 2.0);
-  const raise = 0.55;
+  const raise = 0.55, sill = 0.26, lift = raise + sill;
   for (const sx of [-1, 1]) for (const sz of [-1, 0, 1]) sink.span('stone', sx * (W / 2 - 0.25) - 0.22, -0.3, sz * (D / 2 - 0.25) - 0.22, sx * (W / 2 - 0.25) + 0.22, raise, sz * (D / 2 - 0.25) + 0.22);
-  sink.placed(0, 0, raise, 0, () => {
-    buildHouse(sink, {
+  // the two sill logs along the pads, the body's floor on them (its underside shows between them)
+  for (const sx of [-1, 1]) sink.cylinder('structureWood', [sx * (W / 2 - 0.25), raise + sill / 2, -D / 2 - 0.22], 'z', D + 0.44, sill / 2 + 0.01, 8, { colour: shade(PLANK, 0.72) });
+  sink.placed(0, 0, lift, 0, () => {
+    const frame = buildHouse(sink, {
       w: W, d: D, plinth: null, storeys: [{ h: 2.2, wall: 'wood' }],
       roof: { kind: 'gable', pitchDeg: 38, eave: 0.3, verge: 1.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
       gableBucket: 'wood', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 1.8 }],
-      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood', carved: shade(PLANK, 1.15) },
+      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood', carved: shade(PLANK, 1.15) }, reveal: 0.2,
     }, dialect({ ...st, litShare: 0 }));
+    logWork(sink, frame, [0], ctx.variant, st.window, ctx.tier === 'mobile', 0.25);
   });
   // the posts under the projecting gable
-  for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.1) - 0.08, 0, D / 2 + 1.0 - 0.08, sx * (W / 2 - 0.1) + 0.08, raise + 2.2, D / 2 + 1.0 + 0.08, { colour: PLANK });
+  for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.1) - 0.08, 0, D / 2 + 1.0 - 0.08, sx * (W / 2 - 0.1) + 0.08, lift + 2.2, D / 2 + 1.0 + 0.08, { colour: PLANK });
   // three plank treads up to the door
-  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.5, raise * (k / 3) - 0.05, D / 2 + 0.25 + (2 - k) * 0.28, 0.5, raise * ((k + 1) / 3), D / 2 + 0.25 + (3 - k) * 0.28, { colour: PLANK, decor: true });
+  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.5, lift * (k / 3) - 0.05, D / 2 + 0.25 + (2 - k) * 0.28, 0.5, lift * ((k + 1) / 3), D / 2 + 0.25 + (3 - k) * 0.28, { colour: PLANK, decor: true });
   return sink.finish();
 };
 
