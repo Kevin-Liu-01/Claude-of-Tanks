@@ -66,6 +66,7 @@ import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaB
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
+import { drawIceCracks } from './iceCracks.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -3532,49 +3533,8 @@ export function makeIceLayer(seed: number, anisotropy: number): TerrainTextureLa
       ctx.fill();
     });
   }
-  // Three dominant stress seams, each with at most one short secondary fork.
-  // This same atlas is sampled at 5 m and 75 m: many recursively branching
-  // strokes became a uniformly scratched print at both scales.
-  ctx.lineCap = 'round';
-  function crack(x: number, y: number, a: number, segs: number, w: number): void {
-    const ptsX = [x], ptsY = [y];
-    for (let q = 0; q < segs; q++) {
-      a += (rng() - 0.5) * 0.65;
-      const step = (22 + rng() * 14) * unit;
-      x += Math.cos(a) * step;
-      y += Math.sin(a) * step;
-      ptsX.push(x); ptsY.push(y);
-    }
-    drawWrapped(ctx, s, () => {
-      // dark stress shadow under a BRIGHT refrozen core: from distance real
-      // pressure cracks read as white veins across darker ice (the old dark-
-      // core version read as mud cracks). Both desaturated (r5).
-      ctx.strokeStyle = _css(0.58, 0.10, 0.36);
-      ctx.lineWidth = w + 1.8 * unit;
-      ctx.globalAlpha = 0.30;
-      ctx.beginPath();
-      ctx.moveTo(ptsX[0], ptsY[0]);
-      for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
-      ctx.stroke();
-      ctx.strokeStyle = _css(0.575, 0.05, 0.90);
-      ctx.lineWidth = w;
-      ctx.globalAlpha = 0.86;
-      ctx.beginPath();
-      ctx.moveTo(ptsX[0], ptsY[0]);
-      for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-    if (segs > 3 && rng() < 0.35) {
-      const heading = Math.atan2(ptsY[2] - ptsY[1], ptsX[2] - ptsX[1]);
-      crack(ptsX[2], ptsY[2], heading + (rng() < 0.5 ? 0.8 : -0.8), 2, w * 0.45);
-    }
-  }
-  for (let k = 0; k < 3; k++) {
-    crack(((k + 0.2 + rng() * 0.5) / 3) * s, rng() * s,
-      k * 2.1 + rng() * 0.6, 6, (2.6 + rng() * 0.8) * unit);
-  }
-  ctx.globalAlpha = 1;
+  // the pressure cracks (iceCracks.ts, the looks lane's own file)
+  drawIceCracks(ctx, s, unit, rng, drawWrapped, _css);
   const out = ctx.getImageData(0, 0, s, s);
   const px = new Uint8ClampedArray(out.data);
   for (let i = 0; i < s * s; i++) {
