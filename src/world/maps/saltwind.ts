@@ -122,6 +122,8 @@ export default {
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): acacia x0.80, pine x1.19 of the one mean
+    ringStature: 'species',
     // map pass 2026-09-12: limestone-terrace identity — scrub, pale rock and
     // outcrops instead of a green pasture (establishing shot read as generic);
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.

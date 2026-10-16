@@ -65,7 +65,9 @@ try {
     settle(world, new THREE.Vector3(0, y0 + 3, 0)); // the build's own partition first: adoption seeds into a live world
     // the binding with the adoption, as map.ts wires it
     // (GND, 2026-10-15: the forest over the line takes its own mix, as map.ts wires it — `ringMix`, else the rim's)
-    const options = { library, rimMix: world._ringMix, rimTreeHeightM: world._rimTreeHeightM, rimTreeTint: world._rimTreeTint, setupMaterial() {} };
+    // (and, 2026-10-15, each species at its own stature where the map's ring says so — VegetationConfig `ringStature`)
+    const options = { library, rimMix: world._ringMix, rimTreeHeightM: world._rimTreeHeightM, speciesHeightM: world._ringSpeciesHeightM,
+      rimTreeTint: world._rimTreeTint, setupMaterial() {} };
     const resolved = resolveHorizonForestTrees(forest, library, { ...options, formVariant: world._treeFormVariant });
     if (id === 'longleaf') {
       // the blind critics' Longleaf backdrop ("a broadleaf band that doesn't match the longleaf pines"): past the line the

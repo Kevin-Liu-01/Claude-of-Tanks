@@ -541,6 +541,8 @@ function assembleWorld(
     bindHorizonForestImpostors(ringForest, {
       // GND (2026-10-15): the forest over the line takes its own mix (VegetationConfig `ringMix`, else the rim's)
       library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): a map whose ring stands each species at its own stature (VegetationConfig `ringStature`)
+      speciesHeightM: vegetation._ringSpeciesHeightM,
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),

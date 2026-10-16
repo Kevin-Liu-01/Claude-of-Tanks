@@ -128,6 +128,8 @@ export default {
   vegetation: {
     species: ['palm', 'willow', 'eucalyptus', 'oak'], clusterMix: [['willow', 0.35], ['palm', 0.28], ['eucalyptus', 0.22], ['oak', 0.15]],
     loneMix: [['palm', 0.30], ['willow', 0.30], ['eucalyptus', 0.25], ['oak', 0.15]], rimMix: [['willow', 0.38], ['eucalyptus', 0.28], ['palm', 0.20], ['oak', 0.14]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): eucalyptus x1.30 of the one mean
+    ringStature: 'species',
     clusterCount: 96, loneCount: 214, rimCount: 112, grassDensity: 1.22,
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },
