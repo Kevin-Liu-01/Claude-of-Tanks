@@ -10395,6 +10395,18 @@ function* createTankOwnedSteps(
     // the core's own list would have placed them (after the armour it picked).
     if (assembledChildren) {
       const made = yield* runDeferredAssembly(deferredAssembly, assembledChildren, { root, hullG, turretG, gunG, recoilG });
+      // the geometry receipt's caster work was measured over the hull and turret with the assembly's meshes casting
+      const casterWork = root.userData.shadowReplacementReceipt as ReturnType<typeof measureNearShadowCasterWork> | undefined;
+      if (casterWork) {
+        const laid = made.filter((object) => {
+          let owner: THREE.Object3D | null = object.parent;
+          while (owner && owner !== hullG && owner !== turretG) owner = owner.parent;
+          return !!owner;
+        });
+        const added = measureNearShadowCasterWork(laid);
+        root.userData.shadowReplacementReceipt = Object.freeze({ ...casterWork,
+          draws: casterWork.draws + added.draws, triangles: casterWork.triangles + added.triangles });
+      }
       // the core's shadow proxies stand in for what the assembly put under the hull, turret and recoil groups
       for (const object of made) {
         let owner: THREE.Object3D | null = object.parent;
