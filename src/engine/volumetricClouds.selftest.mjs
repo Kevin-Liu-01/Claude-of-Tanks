@@ -336,7 +336,7 @@ for (const id of MAP_IDS) {
 assert.deepEqual(table, {
   verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, contrails: 2, rain: 0.3, virga: 0.85, fogBank: 0 },
-  winter: { regime: 'stratocumulus-deck', coverage: 0.86, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  winter: { regime: 'stratocumulus-deck', coverage: 0.92, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   urban: { regime: 'altocumulus', coverage: 0.55, baseM: 2800, thicknessM: 380, shadow: false, streets: 0.1, cirrus: 0.3, farBand: 0.35, contrails: 4, rain: 0, virga: 0, fogBank: 0 },
   coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65, contrails: 0, rain: 0, virga: 0, fogBank: 0.45 },
   autumn: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
@@ -351,9 +351,10 @@ assert.deepEqual(table, {
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
   alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, contrails: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
-  foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  foundry: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
-  blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-15: Suzhou Creek's ash veil, a low broken cell deck, moved to Verdant's cumulus — the 10-13 ruling on every map)
+  blackglass: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-04: a dense overcast is closed — Titan Gorge's deck opened a blue hole at 0.96 under a light model at overcast 1)
   // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley under fair-weather cumulus, the deck opened)
   titan_gorge: { regime: 'fair-weather-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -813,7 +814,7 @@ assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIG
 assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', CLOUD2_LOW_SUN_EXTRA_STEPS\)/, 'on by default (2026-10-15)');
 // (2026-10-15) the Beer map's share off at the horizon, on from 17 degrees; the deck tune the critic picked on Frosthollow
 assert.match(layerSource, /lightTune\('CLOUD_BSM_LOWSUN', 0\), lightTune\('CLOUD_BSM_LOWSUN_UP', 0\.3\)/);
-assert.match(readFileSync(new URL('./cloudLayers.ts', import.meta.url), 'utf8'), /CLOUD_DECK_FILTER: 1\.6, CLOUD_DECK_COVER: 0\.92, CLOUD_DECK_SHAPE: 1\.4, CLOUD_DECK_DETAIL: 1\.4,/, 'the tune lives in the light stack module (the world reads it: cloudBase.ts)');
+assert.match(readFileSync(new URL('./cloudLayers.ts', import.meta.url), 'utf8'), /CLOUD_DECK_FILTER: 1\.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1\.4, CLOUD_DECK_DETAIL: 1\.4,/, 'the tune lives in the light stack module (the world reads it: cloudBase.ts)');
 assert.match(layerSource, /if \(lane\.flat >= 0\.5 && \(lane\.cells >= 0\.5 \|\| lightTune\(knob, -1\) !== -1\)\)/, 'a stratocumulus deck\'s lanes only, unless a knob is set');
 assert.match(layerSource, /const k = lightTune\(knob, CLOUD_DECK_TUNE\[knob\] \?\? 1\);/);
 assert.ok(shadersSource.includes('#define CL2_SUN_STEPS ${defs.sunSteps + CLOUD2_LOW_SUN_EXTRA_STEPS}'), 'the loop has room for them');

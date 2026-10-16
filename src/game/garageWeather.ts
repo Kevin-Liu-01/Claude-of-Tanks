@@ -26,7 +26,8 @@ type GarageWeather = Readonly<Partial<MapSkyConfig>>;
 
 /** The fair-weather cumulus row, as the battle resolver resolves it on these skies (the cover varies per place). */
 const cumulus = (coverage: number, shadowThreshold: number): Readonly<Partial<CloudLayerPreset>> => Object.freeze({
-  regime: 'fair-weather-cumulus', coverage, thicknessM: 820, towers: 0.15, stratiform: 0.08, density: 0.12, shadowThreshold,
+  // (deckBeam: shadows r1's deck field, 0 for a cumulus sky — the resolver writes it, so the override carries it)
+  regime: 'fair-weather-cumulus', coverage, thicknessM: 820, towers: 0.15, stratiform: 0.08, density: 0.12, shadowThreshold, deckBeam: 0,
   typeRange: [0.3, 0.62] as [number, number], wispiness: 0.35, shearM: 123, streets: 0.35, cirrus: 0.12, cirrusAltM: 9500,
   ambientScale: 0.9, farBand: 0.25, farBandAltM: 1810, cluster: 0.6, baseFlat: 1, deckDetail: 0,
 });
