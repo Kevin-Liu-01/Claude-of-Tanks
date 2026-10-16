@@ -16,6 +16,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { bench, floweringShrub, wallLantern } from './dressing.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
 import { dressedQuoin } from './facade.ts'; // the dressed quoins (facade craft, desktop)
 
 const PAINTS: readonly Rgb[] = [0x3f78a6, 0x4f88aa, 0x3f7a60, 0x9a3a32, 0x7a8890, 0x3e6688].map(rgb);
@@ -531,53 +532,27 @@ const cannery: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The covered market (halles) on the base market plot: oak posts on granite plinths, knee-braced to the wall plates
- * and tie beams, under a steep hipped slate roof that comes down low; trestle tables of Léon cauliflowers and
- * artichokes down the middle (Le Faouët, Questembert, Saint-Pol-de-Léon).
+ * The covered market (halles) on the base market plot (props census #23, the looks lane 2026-10-15: "plain unchamfered
+ * dés, a one-slab floor, no rafters, purlins or truss, default destruction"): oak posts on chamfered granite dés,
+ * knee-braced both ways to the wall plates and tie beams, king-post trusses with their purlins and common rafters and the
+ * hip rafters under a steep hipped slate roof that comes down low; a setts floor inside its granite kerb; trestle tables
+ * of Léon cauliflowers and artichokes, baskets, crates, sacks and a beam scale (Le Faouët, Questembert,
+ * Saint-Pol-de-Léon). The frame falls as its posts and its roof (marketHall.ts).
  */
 const halles: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
   const W = Math.max(4.8, Math.min(6.4, ctx.info.w - 0.3)), D = Math.max(3.8, Math.min(5.0, ctx.info.d - 0.3));
-  const floor = 0.1, plinth = 0.62, plate = 2.3;
-  const oak = rgb(0x5a4a3a);
-  // a floor of granite setts
-  sink.span('stone', -W / 2 - 0.1, -0.3, -D / 2 - 0.1, W / 2 + 0.1, floor, D / 2 + 0.1);
-  const px = W / 2 - 0.25, pz = D / 2 - 0.25;
-  for (const sz of [-1, 1]) for (let k = 0; k < 3; k++) {
-    const x = -px + px * k, z = sz * pz;
-    sink.span('stone', x - 0.25, floor, z - 0.25, x + 0.25, floor + plinth, z + 0.25);
-    sink.span('structureWood', x - 0.12, floor + plinth, z - 0.12, x + 0.12, plate, z + 0.12, { colour: oak, uv: UV_MEMBER });
-    // knee braces up to the wall plate
-    for (const dx of [-1, 1]) {
-      if (Math.abs(x + dx * 0.75) > px + 0.01) continue;
-      sink.member('structureWood', [x + dx * 0.1, plate - 0.75, z], [x + dx * 0.75, plate - 0.02, z], 0.1, 0.1, [0, 0, sz], { colour: shade(oak, 0.95) });
-    }
-  }
-  // the wall plates along the long sides, the tie beams across on the posts
-  for (const sz of [-1, 1]) sink.span('structureWood', -px - 0.22, plate, sz * pz - 0.13, px + 0.22, plate + 0.22, sz * pz + 0.13, { colour: oak, uv: UV_MEMBER });
-  for (let k = 0; k < 3; k++) sink.span('structureWood', -px + px * k - 0.11, plate + 0.22, -pz - 0.15, -px + px * k + 0.11, plate + 0.44, pz + 0.15, { colour: oak, uv: UV_MEMBER });
-  // the roof: steep slate on four slopes, laid along the long side, its eaves low over the plates
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: 47, eave: 0.42, verge: 0.42, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
-  sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(2 * pz + 0.3, 2 * px + 0.5, plate + 0.22, roof), roof));
-  // trestle tables down the middle: boards on splayed trestles, heaped with cauliflowers and artichokes
-  const board = rgb(0x8a7a64), cauli = rgb(0xe2dcc4), leaf = rgb(0x5d7042), artichoke = rgb(0x4e5e44);
-  for (const sz of [-1, 1]) {
-    const z = sz * Math.min(0.62, pz - 0.75), L = 2 * px - 1.2;
-    sink.span('structureWood', -L / 2, floor + 0.72, z - 0.36, L / 2, floor + 0.77, z + 0.36, { colour: board });
-    for (const sx of [-1, 1]) for (const dz of [-1, 1]) {
-      sink.member('structureWood', [sx * (L / 2 - 0.3), floor, z + dz * 0.34], [sx * (L / 2 - 0.3), floor + 0.72, z + dz * 0.18], 0.06, 0.06, [1, 0, 0], { colour: shade(board, 0.8) });
-    }
-    for (let k = 0, n = 5 + Math.floor(look() * 3); k < n; k++) {
-      const x = -L / 2 + 0.3 + (L - 0.6) * k / (n - 1), zz = z + (look() - 0.5) * 0.3;
-      if (look() < 0.6) {
-        sink.cylinder('structureWood', [x, floor + 0.77, zz], 'y', 0.1, 0.17, 6, { colour: leaf, decor: true }, 0.15);
-        sink.cylinder('structureWood', [x, floor + 0.87, zz], 'y', 0.08, 0.13, 6, { colour: cauli, decor: true }, 0.06);
-      } else {
-        sink.cylinder('structureWood', [x, floor + 0.77, zz], 'y', 0.14, 0.08, 6, { colour: artichoke, decor: true }, 0.03);
-      }
-    }
-  }
+  const spec: HalleSpec = {
+    W: D + 0.2, D: W + 0.2, H: 2.3, roof: { kind: 'hip', pitchDeg: 47, eave: 0.42, verge: 0.42, thickness: 0.12, bucket: 'roof', ridge: 'saddle' },
+    timber: rgb(0x5a4a3a), bays: 2, mobile: ctx.tier === 'mobile', look,
+    produce: [rgb(0xe2dcc4), rgb(0x5d7042), rgb(0x4e5e44), rgb(0xb8452e), rgb(0xc89a42)],
+  };
+  // its length along the plot's longer side (x: the base stall's plot is wider than deep)
+  sink.placed(Math.PI / 2, 0, 0, 0, () => {
+    timberHalle(sink, spec);
+    hallStalls(sink, spec, { tables: 1, scaleZ: 0 });
+  });
   return sink.finish();
 };
 
