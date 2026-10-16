@@ -1564,6 +1564,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vegetationLighting.selftest.mjs',
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
+    'src/world/canopyNeedleTransmit.selftest.mjs', // GND (2026-10-15): a back-lit needle crown transmits its needles' dulled green, never a lime glow (Kestrel chase-s)
     'src/world/vegetationResources.selftest.mjs',
     'src/world/foliageOcclusionSweep.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',

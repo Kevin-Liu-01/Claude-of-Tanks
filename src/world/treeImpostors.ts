@@ -60,6 +60,9 @@ export interface TreeImpostorRowSource {
   cards: THREE.BufferGeometry;
   /** The species' leaf atlas (alpha-tested at the near material's threshold in the bake). */
   foliage: THREE.Texture;
+  /** GND (2026-10-15): a needle crown (canopyLighting.ts NEEDLE_TRANSMIT_*): its quads carry aImpNeedle = 1, so the
+   * far tier transmits its needles' dulled green when back-lit, as its near cards do. */
+  needle?: boolean;
 }
 
 export interface TreeImpostorRow {
@@ -308,6 +311,8 @@ uniform vec4 uImpRows[ ${TREE_IMPOSTOR_MAX_ROWS} ];
 uniform vec4 uImpAtlas;
 attribute float aImpRow;
 attribute vec4 aImpCell;
+attribute float aImpNeedle;
+varying float vCotNeedle;
 varying vec2 vImpUv0;
 varying vec2 vImpUv1;
 varying vec2 vImpUvE0;
@@ -367,6 +372,7 @@ varying vec3 vImpFE;`);
       vImpUvE1 = vec2( ( impD1 + impU ) * uImpAtlas.x, ( max( impElRow, 0.0 ) + uv.y ) * uImpAtlas.y );
       vImpW = impW;
       vImpWE = impWE;
+      vCotNeedle = aImpNeedle; // GND (2026-10-15): the species' needle share (a geometry without it reads 0: a broadleaf)
       float impCe = cos( uImpAtlas.w ), impSe = sin( uImpAtlas.w );
       mat3 impView = mat3( viewMatrix );
       vImpR = impView * ( impRight * mix( 1.0, -1.0, impMir ) );
@@ -377,6 +383,7 @@ varying vec3 vImpFE;`);
     }`);
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>', `#include <common>
 uniform sampler2D uImpNormal;
+varying float vCotNeedle;
 varying vec2 vImpUv0;
 varying vec2 vImpUv1;
 varying vec2 vImpUvE0;
@@ -449,6 +456,8 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
   const normal = makeAtlasTarget(width / 2, height / 2, anisotropy, 'treeImpostorNormal');
   const rowBaseOf = new Map<string, number>();
   rows.forEach((row, index) => { if (!rowBaseOf.has(row.species)) rowBaseOf.set(row.species, index); });
+  const needleOf = new Map<string, boolean>();
+  for (const source of sources) if (source.needle) needleOf.set(source.species, true);
   const elevatedRowOf = new Map<string, number>();
   if (elevated) speciesOrder.forEach((species, index) => elevatedRowOf.set(species, groundRows + index));
   const rowVectors: THREE.Vector4[] = [];
@@ -580,6 +589,8 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       const e = elevatedRowOf.get(species) ?? -1;
       const cell = [base, m, variants, e];
       geometry.setAttribute('aImpCell', new THREE.BufferAttribute(new Float32Array([...cell, ...cell, ...cell, ...cell]), 4));
+      // GND (2026-10-15): the species' needle share, constant over the quad (canopyLighting.ts cotCanopyTransmit)
+      geometry.setAttribute('aImpNeedle', new THREE.BufferAttribute(new Float32Array(4).fill(needleOf.get(species) ? 1 : 0), 1));
       geometry.setIndex([0, 1, 2, 0, 2, 3]);
       geometry.computeBoundingSphere();
       geometry.userData.treeImpostor = { species, base, mirror, variants, elevatedRow: e };

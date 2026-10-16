@@ -4867,6 +4867,10 @@ function* vegetationBuildSteps(
     fullFade = false,
     matteCanopy = false,
     thin = 0, // round 77: leaf translucency (canopyLighting.ts), 0 for bark
+    // GND (2026-10-15): where the crown's needle share comes from (canopyLighting.ts NEEDLE_TRANSMIT_*): 'uniform' — a
+    // near card material's own uCotNeedle (0 here, 1 on a needle species' material); 'impostor' — the far tier's
+    // per-species varying (treeImpostors.ts aImpNeedle); null — none (bark, the far lobes, the phones)
+    needle: 'uniform' | 'impostor' | null = null,
   ): MaterialShaderHook => (shader: MaterialShader): void => {
     shader.uniforms.uWindTime = uWindTime;
     shader.uniforms.uWindDir = uWindDir; // round 77
@@ -5041,13 +5045,23 @@ function* vegetationBuildSteps(
         `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
     }
     // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
-    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
+    // GND (2026-10-15; Kestrel chase-s: back-lit pines "a saturated lime green"): a needle crown transmits its needles'
+    // dulled green (canopyLighting.ts cotCanopyTransmit; desktop tiers, the phones keep their fragment)
+    const needleOn = needle !== null && thin > 0 && !mobileTier;
+    if (needleOn && needle === 'uniform') {
+      shader.uniforms.uCotNeedle = { value: 0 }; // a needle species' material sets its own (needleFoliageHook)
+      shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uCotNeedle;');
+    }
+    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null,
+      needleOn ? (needle === 'uniform' ? 'uCotNeedle' : 'vCotNeedle') : null);
   };
   const treeWindHook = makeTreeWindHook(BARK_NEAR_DISSOLVE[0], BARK_NEAR_DISSOLVE[1], 0.30); // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
   // Round 77: the near cards transmit 45 % of the (shadowed) direct light when back-lit, the far lobes 18 %.
-  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45); // matte canopy cards
+  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45, 'uniform'); // matte canopy cards
   const farCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18); // matte far lobes
+  // GND (2026-10-15): the far tier's impostors — the far lobes' law, the needle share per species from the quad
+  const impostorCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18, 'impostor');
   // Round 77: moss on the shaded side of the trunk bases, by the map's climate (uMoss, treeClimate.ts). Grows in the
   // bark's fissures (the sheet's darker texels), thickest at the ground and gone by 3 m, on the side turned from the
   // sun; a faint lichen dusting on the temperate maps, a full collar on the wet ones, none on the arid and frozen.
@@ -5697,6 +5711,13 @@ function* vegetationBuildSteps(
     return veg.palettes.oak || {};
   };
 
+  /** GND (2026-10-15): a needle crown — its leaf-scale detail is needles (the grown form's family: a holm oak on a cedar
+   * slot is leaves, a longleaf pine on a pine slot needles) — transmits its needles' dulled green when back-lit. */
+  const needleCrown = (sp: Species): boolean => leafDetail.classOf(SPECIES[sp].detailSpecies ?? sp, palOf(sp)) === 'conifer';
+  const needleFoliageHook = (shader: MaterialShader): void => {
+    foliageWindHook(shader);
+    if (shader.uniforms.uCotNeedle) shader.uniforms.uCotNeedle = { value: 1 };
+  };
   const foliageTex = {} as Record<Species, THREE.Texture>;
   const foliageMats = {} as Record<Species, THREE.MeshStandardMaterial>;
   const foliageDepthMats = {} as Record<Species, THREE.MeshDepthMaterial>;
@@ -5719,7 +5740,8 @@ function* vegetationBuildSteps(
         fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
           COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
       }
-      engineCtx.setupShadowMaterial(fm, foliageWindHook);
+      // GND (2026-10-15): a needle species' cards transmit the needles' dulled green (a uniform: the one program)
+      engineCtx.setupShadowMaterial(fm, needleCrown(sp) ? needleFoliageHook : foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
@@ -5799,7 +5821,7 @@ function* vegetationBuildSteps(
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
     rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
-      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
+      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp], needle: needleCrown(sp),
     }))),
     bark: barkTex.albedo,
     flood: (() => {
@@ -5817,7 +5839,7 @@ function* vegetationBuildSteps(
       return n > 0 ? new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace)
         : new THREE.Color(0.06, 0.077, 0.021);
     })(),
-    hook: farCanopyWindHook,
+    hook: impostorCanopyWindHook,
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial(material, hook),
     renderer: bakeRenderer,
   }) : null;
