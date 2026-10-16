@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Committed rendered regression; accepts an existing dev server and Playwright.
 // node tools/battle-hud-layout.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/hud-check
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const arg = (name, fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { chromium } = await import(arg('playwright-module','playwright'));
@@ -17,9 +17,186 @@ const cases = [
   ['tiny-landscape',568,320,true],['browser-landscape',844,300,true],['wide-landscape',932,430,true],
   ['chinese-landscape',667,375,true,'zh-CN'],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
+  // The rest of the mouse census (desk-notices 2026-10-16), lite: the centre-notice checks alone (they stage every
+  // state that moves a notice and check it against every HUD part; the full state list runs on the cases above).
+  ...[[1000,600],[1024,768],[1152,648],[1280,800],[1440,900],[1536,864],[1600,900],[1680,1050],[2560,1440],[3440,1440],[768,1024]]
+    .map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
+  ['chinese-small-desktop',1024,600,false,'zh-CN',{lite:true}],['chinese-short-mouse',844,390,false,'zh-CN',{lite:true}],
+  ['chinese-phone-mouse',390,844,false,'zh-CN',{lite:true}],
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
+// MOUSE CENTRE NOTICES (desk-notices, 2026-10-16: "Keep desktop centre notices off the crosshair"). On every mouse case
+// the detection, the alert (all 26 kinds; the four longest in every context), the countdown, the medal card and the
+// revive count are staged with 0 and 3 kill rows, in a kill burst, with 14 v 14 rosters, without an objective and in
+// capture the flag, in the battle sight and the scope. Each must
+// - cover no reticle ink where the plan reports a clear place (body[data-hud-notice-tiers], mouseNoticePlan.ts): the
+//   ink is the canvas's own pixels (alpha >= 12), the union of both sights at rest and at full bloom with the magazine,
+//   SWITCHING and gun-limit readouts (tier 2), the battle sight alone at full bloom (tier 1) or at rest (tier 0);
+// - never cover more of it, nor of the resting crosshair, than main does in the same stage (main's numbers are pinned
+//   in tools/fixtures/battle-hud-layout.main-notices.json; --record-main=<file> --main-label=<commit> against a server
+//   of main's tree measures them again);
+// - show its whole text (no clamp, nothing outside its six-sided frame; the detection's second line wherever main shows
+//   it, above 550 px tall);
+// - keep its box through a kill burst (k0, k3 and the burst stage the same box);
+// - overlap no other HUD part (rosters, score, objective, kill lanes, damage toasts, chat, minimap, damage panel, drive,
+//   systems, ammunition, consumables, report, network readouts) and no other notice it is shown with.
+const recordMain = arg('record-main','');
+const MAIN_NOTICES = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-notices.json', import.meta.url),'utf8'));
+const mainRecord = {};
+const noticeTable = [];
+// [label, event, payload]: the census's 26 alert kinds (payload tokens resolved in the page).
+const NOTICE_ALERTS = [
+  ['wave12','mode:wave_cleared',{wave:12,nextWaveInS:30}],['wave123','mode:wave_cleared',{wave:123,nextWaveInS:120}],
+  ['ammoEmpty','ammo:empty','self'],['flagDroppedEnemy','mode:flag_dropped','ours'],['flagDroppedAllied','mode:flag_dropped','theirs'],
+  ['reload','ui:magazineReloadStarted',{}],['atgmDeselected','ui:specialActionResult',{kind:'guided_missile',active:false}],
+  ['atgmSelected','ui:specialActionResult',{kind:'guided_missile',active:true}],['suspension','ui:specialActionResult',{kind:'hydropneumatic_aim',active:false}],
+  ['ammoDepletedNext','ammo:depleted','next'],['allAmmoDepleted','ammo:depleted','all'],['missilesDenied','ui:ammoSelectionDenied',{slot:0,guided:true}],
+  ['lineTaken','mode:line_advanced',{line:2,total:3}],['consumablesOff','ui:consumableDenied',{slot:0,reason:'RULESET'}],
+  ['readyIn','ui:consumableDenied',{slot:0,reason:'COOLDOWN',remainingS:118}],['ammoAcquired','mode:pickup_collected','pickup'],
+  ['autoAimLong','ui:autoAimState','longspec'],['autoAimOff','ui:autoAimState',{on:false,reason:'AUTO-AIM OFF'}],
+  ['moduleLong','module:state','longmodule'],['ending','ending:begin',{captionKey:'ending.scoreReached'}],
+  ['endingWave','ending:begin',{captionKey:'ending.lastStand',captionValues:{wave:'123'}}],['waveInbound','mode:wave_started',{wave:123}],
+  ['flagTaken','mode:flag_taken','ours'],['reloadDenied','ui:magazineReloadDenied',{reason:'MAGAZINE_RELOADING'}],
+  ['specialDenied','ui:specialActionDenied',{reason:'OTHER'}],['crewUnharmed','ui:consumableDenied',{slot:1,reason:'NOTHING'}],
+];
+const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
+// [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set, sight]
+function noticeStages(){
+  const out=[];
+  const sets=['det',...LONG_ALERTS.map(k=>`det+alert:${k}`),'countdown','medal','det+medal','revive'];
+  for(const [ctx,state,kills,rosters] of [['k0','idle',0,null],['k3','idle',null,null],['burst','feed-burst',null,null],
+    ['r14','idle',null,14],['std','mode-standard',null,null],['ctf','mode-capture_the_flag',null,null]])
+    for(const set of sets)out.push([`${ctx}|${set}|battle`,state,kills,rosters,set,'battle']);
+  for(const set of ['det+alert:wave123','countdown','medal','revive'])for(const ctx of ['k0','k3','burst'])
+    out.push([`${ctx}|${set}|scope`,ctx==='burst'?'feed-burst':'idle',ctx==='k0'?0:null,null,set,'scope']);
+  for(const [k] of NOTICE_ALERTS)if(!LONG_ALERTS.includes(k))out.push([`k3|alert:${k}|battle`,'idle',null,null,`alert:${k}`,'battle']);
+  // the revive count needs a reviving mode's rules, which also reshape the systems strip: stage those last
+  return [...out.filter(s=>!s[4].includes('revive')),...out.filter(s=>s[4].includes('revive'))];
+}
+async function noticePrep(alerts){
+  const f=window.__HUD_LAYOUT;
+  const {TANK_SPECS}=await import('/src/vehicles/specs.ts');
+  const reg=await import('/src/ui/moduleRegistry.ts');
+  const {MEDALS}=await import('/src/game/serviceRecord.ts');
+  const {t}=await import('/src/ui/i18n.ts');
+  const rules=await import('/src/sim/matchRuleset.ts');
+  const names=Object.values(TANK_SPECS).map(s=>s.name).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const mods=['engine','ammoRack','gun','turret','fuelTank','transmission','radio','trackL','turretRing','gunBreech','driver','commander','gunner','loader','optics','fireControl'];
+  const labels=mods.map(m=>[m,reg.moduleAlertLabel(m)]).sort((a,b)=>b[1].length-a[1].length);
+  const medals=MEDALS.map(m=>[m.id,t(`service.medal.${m.id}.name`)]).sort((a,b)=>b[1].length-a[1].length);
+  window.__NOTICE={alerts,longSpec:names[0],longModule:labels[0][0],medal:medals[0][0],reviveRules:rules.matchRulesetFor('capture_the_flag'),
+    restingAim:{...f.frame.aim},restingTime:f.frame.timeS};
+  window.__stretchTimers=true;
+  return true;
+}
+// The reticle's ink, once per case: hud.ts paints .cot-ret at the screen-centre aim point; the scope's vignette
+// (two full-canvas gradient fills) is shade, not ink, and is skipped while the masks are read.
+async function noticeMasks(){
+  const f=window.__HUD_LAYOUT,N=window.__NOTICE,c=document.querySelector('.cot-ret'),ctx=c.getContext('2d',{willReadFrequently:true});
+  const cssW=c.getBoundingClientRect().width,W=c.width,H=c.height,n=W*H;
+  const proto=CanvasRenderingContext2D.prototype,fill=proto.fillRect;
+  proto.fillRect=function(x,y,w,h){if(this.canvas===c&&this.fillStyle instanceof CanvasGradient&&w>=cssW-1)return;return fill.call(this,x,y,w,h);};
+  const union=new Uint8Array(n),battle=new Uint8Array(n),rest=new Uint8Array(n);
+  const restAim=()=>{for(const k of Object.keys(f.frame.aim))if(!(k in N.restingAim))delete f.frame.aim[k];Object.assign(f.frame.aim,N.restingAim);};
+  try{
+    f.state('idle');
+    for(const sight of ['battle','scope'])for(const bloom of ['rest','full'])for(const readout of ['none','magazine','switching','warn']){
+      f.frame.mode=sight==='scope'?'sniper':'battle';f.hud.setMode(f.frame.mode);restAim();
+      Object.assign(f.frame.aim,{zoom:sight==='scope'?25:1,distM:1500,dispersionRadM:bloom==='full'?1e4:1e-4,
+        magazine:readout==='magazine'?{capacity:12,rounds:7}:null,
+        reload:readout==='magazine'?{t:12.6,totalS:15,kind:'magazine'}:readout==='switching'?{t:2,totalS:4,kind:'shell'}:{t:0,totalS:6},
+        ammoSelectionPending:readout==='switching',gunLimitSpec:readout==='warn'});
+      for(let i=0;i<150;i++){f.frame.timeS+=1/60;f.hud.update(f.frame);}
+      await new Promise(r=>setTimeout(r,170)); // the scope's fade-in runs on the wall clock
+      f.frame.aim.distM+=.3;f.frame.timeS+=1/60;f.hud.update(f.frame);
+      const d=ctx.getImageData(0,0,W,H).data;
+      for(let i=0;i<n;i++)if(d[i*4+3]>=12){union[i]=1;if(sight==='battle'){battle[i]=1;if(bloom==='rest')rest[i]=1;}}
+    }
+  }finally{
+    proto.fillRect=fill;restAim();f.frame.timeS=N.restingTime;f.frame.mode='battle';f.hud.setMode('battle');f.hud.update(f.frame);
+  }
+  window.__noticeMasks={W,H,scale:W/cssW,union,battle,rest};
+  let count=0;for(let i=0;i<n;i++)count+=union[i];
+  return Math.round(count/(W/cssW)**2);
+}
+function noticeStage([state,kills,rosters,set,sight]){
+  const f=window.__HUD_LAYOUT,N=window.__NOTICE;
+  f.bus.emit('battle:presented');
+  f.frame.mode='battle';
+  f.state(state);
+  f.frame.mode='battle';
+  if(rosters){f.roster(rosters,rosters);}
+  if(kills!==null)for(const lane of document.querySelectorAll('.cot-kill-lane'))while(lane.children.length>kills)lane.lastElementChild.remove();
+  for(const part of set.split('+')){
+    if(part==='det'){f.bus.emit('player:spotted',{timeS:f.frame.timeS-4});f.hud.update(f.frame);}
+    else if(part.startsWith('alert:')){
+      const [,ev,payload]=N.alerts.find(a=>a[0]===part.slice(6));let p=payload;
+      if(payload==='self')p={id:f.frame.player.id};
+      if(payload==='ours')p={team:f.frame.player.team};
+      if(payload==='theirs')p={team:f.frame.player.team==='player'?'enemy':'player'};
+      if(payload==='next')p={id:f.frame.player.id,slot:1,fallbackSlot:0};
+      if(payload==='all')p={id:f.frame.player.id,slot:1,fallbackSlot:-1};
+      if(payload==='pickup')p={by:f.frame.player.id,kind:'ammo',ammoAdded:120};
+      if(payload==='longspec')p={on:true,targetId:'x',targetName:N.longSpec,reason:''};
+      if(payload==='longmodule')p={id:f.frame.player.id,module:N.longModule,state:'red'};
+      f.bus.emit(ev,p);
+    }
+    else if(part==='countdown')f.hud.preBattleCountdown(5);
+    else if(part==='medal')f.bus.emit('service:medal',{id:N.medal});
+    else if(part==='revive'){f.hud.setPreBattleRules(N.reviveRules);f.frame.player.combat.destroyed=true;
+      f.bus.emit('tank:destroyed',{id:f.frame.player.id,killerId:f.tanks[8].id,cause:'fire'});f.hud.update(f.frame);}
+  }
+  if(sight==='scope'){f.frame.mode='sniper';f.hud.setMode('sniper');f.hud.update(f.frame);}
+  window.dispatchEvent(new Event('cot-hud-relayout'));
+}
+function noticeMeasure(){
+  const m=window.__noticeMasks;
+  const vis=e=>!!e&&e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&e.getBoundingClientRect().width>1&&e.getBoundingClientRect().height>1;
+  const ink=(bits,r)=>{let n=0;const s=m.scale;
+    const xa=Math.max(0,Math.floor(r.x*s)),xb=Math.min(m.W,Math.ceil((r.x+r.w)*s)),ya=Math.max(0,Math.floor(r.y*s)),yb=Math.min(m.H,Math.ceil((r.y+r.h)*s));
+    for(let y=ya;y<yb;y++){const o=y*m.W;for(let x=xa;x<xb;x++)n+=bits[o+x];}
+    return Math.round(n/s/s);};
+  // text outside the element's six-sided frame (corner cut `cut` px at the top and bottom, 0 at mid-height)
+  const clipped=(e,host,cut)=>{
+    if(!e||!e.getClientRects().length)return 0;
+    const b=host.getBoundingClientRect(),mid=b.top+b.height/2,half=b.height/2,range=document.createRange();range.selectNodeContents(e);
+    let worst=0;
+    for(const r of range.getClientRects()){
+      if(r.width<.5)continue;
+      const inset=cut*Math.min(1,Math.max(Math.abs(r.top-mid),Math.abs(r.bottom-mid))/half);
+      worst=Math.max(worst,b.left+inset-r.left,r.right-(b.right-inset),b.top-r.top-.5,r.bottom-b.bottom-.5,-r.left,r.right-innerWidth);
+    }
+    const style=getComputedStyle(e);
+    if((style.overflowX!=='visible'&&e.scrollWidth>e.clientWidth+1)||(style.overflowY!=='visible'&&e.scrollHeight>e.clientHeight+1))worst=Math.max(worst,99);
+    return Math.round(worst*10)/10;
+  };
+  const els={d:document.querySelector('.cot-sixth.on'),a:document.querySelector('.cot-alert.show'),c:document.querySelector('.cot-prebattle.on'),
+    m:document.querySelector('.cot-medal-toasts[data-placement="ready"] .cot-medal-toast'),r:document.querySelector('.cot-revive.on')};
+  const out={tiers:document.body.dataset.hudNoticeTiers||'',notices:{},failures:[]};
+  const OTHERS=['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp',
+    '.cot-minimap','.cot-si-toasthost','.cot-si-cardhost:not(:empty)','.cot-room-chat:not([hidden])','.cot-spec.show','.cot-shell','.cot-con',
+    '.cot-vehicle-controls','.cot-mp-status.battle'];
+  const others=[];
+  for(const s of OTHERS)for(const e of document.querySelectorAll(s))if(vis(e)&&!(s==='.cot-kill-lane.l'||s==='.cot-kill-lane.r')||(vis(e)&&e.children.length&&[...e.children].some(c=>!c.hidden)))others.push([s,e.getBoundingClientRect()]);
+  const R=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
+  const inter=(a,b)=>Math.min(a.x+a.w,b.x+b.width)-Math.max(a.x,b.x)>1&&Math.min(a.y+a.h,b.y+b.height)-Math.max(a.y,b.y)>1;
+  for(const [k,e] of Object.entries(els)){
+    if(!vis(e))continue;
+    const box=R(e);
+    const n={box:[box.x,box.y,box.w,box.h].map(v=>Math.round(v*10)/10),union:ink(m.union,box),battle:ink(m.battle,box),rest:ink(m.rest,box),hits:[],clip:0};
+    for(const [s,r] of others)if(inter(box,r))n.hits.push(s);
+    for(const [k2,e2] of Object.entries(els))if(k2!==k&&vis(e2)&&inter(box,e2.getBoundingClientRect()))n.hits.push(`notice ${k2}`);
+    if(k==='d'){n.clip=Math.max(clipped(e.querySelector('.lb'),e,12),clipped(e.querySelector('.sub'),e,12));
+      const sub=e.querySelector('.sub');n.sub=!!sub&&sub.getClientRects().length>0&&getComputedStyle(sub).display!=='none';}
+    if(k==='a'){const copy=e.querySelector('.cot-alert-copy');n.clip=clipped(copy,e,12);n.font=parseFloat(getComputedStyle(e).fontSize);
+      n.clamp=getComputedStyle(copy).webkitLineClamp;}
+    if(k==='m')n.clip=Math.max(...['strong','small','.ey'].map(q=>clipped(e.querySelector(q),e,14)));
+    out.notices[k]=n;
+  }
+  return out;
+}
+
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
   // Node-side closure. Preserve selector/DOM order for overlap diagnostics.
@@ -63,10 +240,15 @@ function measure(state){
   return {failures,rects,body:document.body.dataset,ammoTransitions};
 }
 try {
-  for (const [name,width,height,touch,locale='en-US'] of cases) {
+  for (const [name,width,height,touch,locale='en-US',options={}] of cases) {
     if(arg('case','')&&!arg('case','').split(',').includes(name))continue;
+    if(recordMain&&touch)continue;
     const context = await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,
       deviceScaleFactor:1,reducedMotion:arg('motion','reduce')});
+    // The notice checks hold alerts (2.4 s), medals (3.4 s) and kill rows (5.2 / 6.2 s) for 50 times as long so a busy
+    // machine cannot expire one between staging and measuring; placement code is untouched.
+    await context.addInitScript(()=>{const later=window.setTimeout;
+      window.setTimeout=function(fn,ms,...rest){if(window.__stretchTimers&&[2400,3400,5200,6200].includes(ms))ms*=50;return later.call(this,fn,ms,...rest);};});
     const page=await context.newPage();
     page.on('pageerror',error=>errors.push(`${name}: ${error.message}`));
     await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}`,{waitUntil:'networkidle'});
@@ -91,6 +273,63 @@ try {
       } finally { root.getClientRects=original; }
     });
     if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD caused ${idleLayoutReads} layout measurements`);
+    // The centre notices on a fresh page (record mode measures main's on one too).
+    async function centreNotices(){
+      await page.evaluate(noticePrep,NOTICE_ALERTS);
+      const inked=await page.evaluate(noticeMasks);
+      if(inked<200)errors.push(`${name}: the reticle drew too little ink (${inked} px) to weigh the notices against`);
+      const pinned=MAIN_NOTICES?.cases?.[name];
+      if(!recordMain&&!pinned)errors.push(`${name}: no main notice numbers pinned (tools/fixtures/battle-hud-layout.main-notices.json)`);
+      const seen=new Map();
+      for(const [key,...stage] of noticeStages()){
+        await page.evaluate(noticeStage,stage);
+        await page.evaluate(async()=>{for(let i=0;i<3;i++)await new Promise(requestAnimationFrame);
+          const running=document.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getComputedTiming().endTime));
+          await Promise.race([Promise.all(running.map(a=>a.finished.catch(()=>{}))),new Promise(r=>setTimeout(r,1500))]);
+          await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+        const got=await page.evaluate(noticeMeasure);
+        const set=stage[3];
+        const want={d:set.includes('det'),a:set.includes('alert:'),c:set.includes('countdown'),r:set.includes('revive')};
+        if(recordMain){
+          const rec=mainRecord[name]??={};const pick={};
+          for(const [k,n] of Object.entries(got.notices))if(n.union||n.battle||n.rest)pick[k]=[n.union,n.battle,n.rest];
+          if(Object.keys(pick).length)rec[key]=pick;
+          continue;
+        }
+        const failures=[];
+        for(const [k,shown] of Object.entries(want))if(shown&&!got.notices[k])failures.push(`${k} was staged but is not shown`);
+        const tier=k=>{const m=got.tiers.match(new RegExp(`${k}(\\d|-)`));return m&&m[1]!=='-'?Number(m[1]):-1;};
+        for(const [k,n] of Object.entries(got.notices)){
+          const what={d:'detection',a:'alert',c:'countdown',m:'medal',r:'revive count'}[k];
+          const t=tier(k),main=pinned?.[key]?.[k]??[0,0,0];
+          const own=t===2?n.union:t===1?n.battle:t===0?n.rest:0;
+          if(t>=0&&own>0)failures.push(`the ${what} covers ${own} px of reticle ink its plan clears (tier ${t}; ${n.box.join(',')})`);
+          if(n.union>main[0]||n.rest>main[2])failures.push(`the ${what} covers more reticle ink than main (${n.union}/${n.rest} px; main ${main[0]}/${main[2]})`);
+          if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');
+          // The pre-battle count takes its own cheapest place (no notice shares it in a real battle); the revive count
+          // keeps off the notices unless its plan found no such place (tiers 'r<n>s').
+          const sharing=hit=>(k==='c'&&hit==='notice d')||(k==='d'&&hit==='notice c')||
+            (/r\ds/.test(got.tiers)&&((k==='r'&&/^notice [da]$/.test(hit))||((k==='d'||k==='a')&&hit==='notice r')));
+          for(const hit of n.hits)if(!sharing(hit))failures.push(`the ${what} overlaps ${hit}`);
+          if(n.clip>.75)failures.push(`the ${what}'s text runs ${n.clip} px outside its frame`);
+          if(k==='a'&&(n.font<9||(n.clamp&&n.clamp!=='none')))failures.push(`the alert is clamped or under 9 px (${n.font} px, clamp ${n.clamp})`);
+          if(k==='d'&&n.sub!==(height>550))failures.push(`the detection's second line is ${n.sub?'shown':'hidden'} at ${height} px tall (main: ${height>550?'shown':'hidden'})`);
+          noticeTable.push({name,key,k,box:n.box,union:n.union,rest:n.rest,main:main[0],tier:t});
+        }
+        // a kill burst moves nothing: the same set and sight in k0, k3 and the burst share every box
+        const [ctx,,sight]=key.split('|');
+        if(['k0','k3','burst'].includes(ctx)){
+          const sig=`${set}|${sight}`,boxes=JSON.stringify(Object.fromEntries(Object.entries(got.notices).map(([k,n])=>[k,n.box])));
+          const before=seen.get(sig);
+          if(before&&before.boxes!==boxes)failures.push(`a notice moved between ${before.ctx} and ${ctx}: ${before.boxes} -> ${boxes}`);
+          if(!before)seen.set(sig,{ctx,boxes});
+        }
+        reports.push({name,...page.viewportSize(),touch,locale,state:`notices-${key}`,failures,rects:[],notices:got.notices,tiers:got.tiers});
+        if(failures.length){console.log(`${name}/notices ${key}: ${failures.join('; ')}`);await page.screenshot({path:resolve(out,`${name}-notices-${key.replaceAll('|','-').replaceAll(':','_')}.png`)});}
+      }
+      await page.evaluate(()=>{window.__stretchTimers=false;window.__HUD_LAYOUT.bus.emit('battle:presented');window.__HUD_LAYOUT.state('idle');});
+    }
+    if(!touch&&(recordMain||options.lite)){await centreNotices();await context.close();continue;}
     async function check(state){
       const result=await page.evaluate(measure,state);
       const score=result.rects.find(r=>r.name==='cot-top');
@@ -114,7 +353,7 @@ try {
         for(const toast of document.querySelectorAll('.cot-si-toast')){
           if(!toast.checkVisibility({checkVisibilityCSS:true}))continue;
           const icon=toast.querySelector('.si'),name=toast.querySelector('.attacker'),value=toast.querySelector('b');
-          if(!icon||!getComputedStyle(icon).maskImage.includes('t90m_side_silhouette.png')){
+          if(!icon||!getComputedStyle(icon).maskImage.includes('t90am_side_silhouette.png')){
             failures.push('incoming damage must use the attacking tank silhouette');continue;
           }
           const a=icon.getBoundingClientRect(),b=name.getBoundingClientRect(),c=value.getBoundingClientRect();
@@ -375,11 +614,25 @@ try {
       return leaks;
     });
     if(veilLeaks.length)errors.push(`${name}: cinematic veil leaked ${veilLeaks.join(', ')}`);
+    if(!touch){
+      await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}`,{waitUntil:'networkidle'});
+      await page.waitForFunction(()=>!!window.__HUD_LAYOUT);
+      await page.waitForTimeout(180);
+      await centreNotices();
+    }
     await context.close();
   }
 } finally {
   await browser.close();
   await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors},null,2));
+  if(recordMain)await writeFile(resolve(recordMain),JSON.stringify({label:arg('main-label','main'),
+    note:'Main\'s reticle ink under each centre notice per mouse case and stage: [union of both sights at rest and full bloom with readouts, battle sight, resting battle sight] px; stages with none are omitted.',
+    cases:mainRecord})+'\n');
+}
+if(!recordMain&&noticeTable.length){
+  const inked=noticeTable.filter(r=>r.union>0);
+  console.log(`centre notices: ${noticeTable.length} boxes, ${inked.length} on reticle ink (main: ${noticeTable.filter(r=>r.main>0).length})`+
+    (inked.length?`: ${inked.slice(0,8).map(r=>`${r.name}/${r.key}/${r.k} ${r.union}`).join('; ')}`:''));
 }
 const failed=reports.filter(r=>r.failures.length);
 console.log(`${reports.length} state/viewport checks; ${failed.length} failed; ${errors.length} browser errors. ${out}`);
