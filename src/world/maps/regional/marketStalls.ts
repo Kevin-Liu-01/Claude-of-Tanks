@@ -376,6 +376,23 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
       sink.cylinder('structureWood', [cx, y, cz], 'y', 0.7, 0.04, 8, { colour: [0.6, 0.48, 0.3], decor: true }, 0.26);
     }
   });
+  // (Lane C 2026-10-16, building-integrity: the sky showed through the open ends over the counter, 2.53 m2 seen from the
+  // quarter) a Kohima stall's ends boarded as its back is: a rail between each end's posts at the counter's height, the
+  // boards nailed to it from there up under the shed's rafter (each board's head on the rafter's line), the end open
+  // below the rail as the counter's legs are
+  if (opts.shedRoof) {
+    const yr = y + (d.counter === 'machan' ? 0.62 : 0.82), z0 = -pz + 0.075, z1 = pz - 0.075;
+    const under = (z: number) => front + 0.05 + (backH - front) * (pz - z) / (2 * pz);
+    const n = Math.max(2, Math.round((z1 - z0) / 0.25)), pitch = (z1 - z0) / n;
+    for (const sx of [-1, 1]) {
+      const x = sx * px, xi = x - sx * 0.0125;
+      sink.span('structureWood', Math.min(xi, xi - sx * 0.06), yr - 0.08, -pz, Math.max(xi, xi - sx * 0.06), yr, pz, { colour: shade(d.timber, 0.85) });
+      for (let k = 0; k < n; k++) {
+        const zc = z0 + pitch * (k + 0.5), top = under(zc), bot = yr - 0.08;
+        freeBox(sink, 'structureWood', [x, (bot + top) / 2, zc], [pitch - 0.02, top - bot, 0.025], { colour: shade(d.backColour ?? d.timber, 0.84 + d.look() * 0.26) }, [0, 0, 1]);
+      }
+    }
+  }
   recordLattice(sink, legs, [front], 0.12, 'structureWood', d.timber, {
     x0: -0.9, x1: 0.9, y0: front, y1: Math.min(crownTop, front + 1.6), z0: -0.9, z1: 0.9, bucket: d.cover === 'nipa' ? 'straw' : 'structureMetal', tint: d.coverColour ?? [0.6, 0.52, 0.36],
   });
