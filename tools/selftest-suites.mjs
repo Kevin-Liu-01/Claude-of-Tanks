@@ -1446,6 +1446,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapQuality.selftest.mjs',
     'src/world/waterMobility.selftest.mjs',
     'src/world/terrainContactSurface.selftest.mjs',
+    // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
+    'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
     'tools/environment-shot-camera.selftest.mjs',
     'tools/water-shore-camera.selftest.mjs',

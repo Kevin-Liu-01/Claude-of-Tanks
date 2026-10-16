@@ -28,9 +28,11 @@ export interface LatticeGround {
 
 /**
  * `sample` is the ground as drawn (lattice-linear); `revision()` changes whenever it does (the overlay's stamp count, a
- * world swap), and the held vertices are forgotten then. Off the lattice the sampler answers directly.
+ * world swap), and the held vertices are forgotten then. Off the lattice the sampler answers directly. `flippedAt`: the
+ * base surface's steep-cell split (terrain.ts getContactCellFlippedAt).
  */
-export function createLatticeGround(sample: (x: number, z: number) => number, revision: () => number): LatticeGround {
+export function createLatticeGround(sample: (x: number, z: number) => number, revision: () => number,
+  flippedAt?: (x: number, z: number) => boolean): LatticeGround {
   const held = new Map<number, number>();
   let seen = Number.NaN;
   function vertex(ix: number, iz: number): number {
@@ -48,6 +50,14 @@ export function createLatticeGround(sample: (x: number, z: number) => number, re
     const gx = (x + HALF) / STEP, gz = (z + HALF) / STEP;
     const ix = Math.min(CELLS - 1, Math.floor(gx)), iz = Math.min(CELLS - 1, Math.floor(gz));
     const u = gx - ix, v = gz - iz;
+    // (2026-10-15) the steep-cell split the drawn ground takes (world/terrainContactSurface.ts terrainCellFlipped): the
+    // base surface's own (`flippedAt`), which a crater's offsets ride; without one, every cell's b–c as before
+    if (flippedAt !== undefined && flippedAt(x, z)) {
+      const a = vertex(ix, iz), d = vertex(ix + 1, iz + 1);
+      if (u >= v) { const b = vertex(ix + 1, iz); return a + (b - a) * u + (d - b) * v; }
+      const c = vertex(ix, iz + 1);
+      return a + (c - a) * v + (d - c) * u;
+    }
     const b = vertex(ix + 1, iz), c = vertex(ix, iz + 1);
     if (u + v <= 1) {
       const a = vertex(ix, iz);
