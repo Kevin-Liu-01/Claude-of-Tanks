@@ -18,9 +18,9 @@ import {
 } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
-import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import type { RegionalParts } from './geometry.ts';
+import { openShed } from './outbuildings.ts';
 
 const WHITE = rgb(0xece9e1), RED = rgb(0x8c3326), OCHRE = rgb(0xc89a42), TAR = rgb(0x2a2622);
 const DARK_GREEN = rgb(0x2e4639), BOARD = rgb(0x7d6a55), CHAR = rgb(0x231f1c), IRON = rgb(0x2b2d2e), FISH = rgb(0xb7a78a);
