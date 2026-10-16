@@ -394,4 +394,8 @@ export default {
     roadCasing: 'rgba(67,42,32,.94)', roadFill: 'rgba(190,137,104,.96)', buildingFill: '#d6b294',
   },
   shot: { pos: [-236, 48, -226], look: [38, 5, 54] },
+  // the horizons stream (2026-10-15, C-map-briefs §2): the Hinterland past the red line (hinterland/drafts/badlands.ts) —
+  // Jebel Rum's and Jebel um Ishrin's walls behind the canyon's benches with siqs between, the mouths' sand valleys
+  // running on north and south to the jebels standing alone 2-8 km out; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;
