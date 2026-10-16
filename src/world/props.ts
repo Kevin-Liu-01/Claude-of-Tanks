@@ -161,7 +161,7 @@ import {
 } from './autumnHeadlands.ts';
 import { placeCropFieldsOf } from './maps/cropKit.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  DESTRUCTIBLE_BUILDING_TYPES, MAP_DESTRUCTIBLE_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -4479,6 +4479,8 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (the r2 sweep, 2026-10-16) a map with no kit its own (Mars's stations): structureKit MAP_DESTRUCTIBLE_TYPES
+    ...(MAP_DESTRUCTIBLE_TYPES[mapId] ?? {}),
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
     ...civilianVehicleTypes(mapId, mobileProps),
     // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
