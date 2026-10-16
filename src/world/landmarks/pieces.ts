@@ -106,6 +106,11 @@ export function finishLandmark(sink: PartSink): RegionalParts {
         triangles += pos.count / 3;
         geometry.userData.damagePiece = spec.name;
         if (spec.dressing) geometry.userData.noCollision = true;
+        // (E12, the re-film: a fallen mast's guys and its fine members stood on in the air) a piece draws in its bucket's
+        // plain mesh, never the fine-detail batch (props.ts mergeMaterialBuckets: receive-only dressing and fine joinery
+        // go to a BatchedMesh): the stage that lays a piece down hides its spans there, as the film shows it does for the
+        // plain mesh's members
+        geometry.userData.castsShadow = true;
         parts[bucket].push(geometry);
       }
     }
