@@ -4,6 +4,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField, sampleSplatNoise } from './terrain.ts';
 import { buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
+import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { swardPatchAt } from './swardPatch.ts';
 import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts';
 import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees } from './groundCoverCraters.ts';
@@ -29,7 +31,7 @@ const stages = [
 // omitted: this is renderer-free placement evidence, not an atlas/GPU test.
 function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
-  return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry',
+  return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry', 'resolveGroundReduxProfile', 'swardPatchAt',
     'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork',
     'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
@@ -37,6 +39,9 @@ function compile(legacy) {
       ${section('const HALF = 512;', 'function treePositionNoise(')}
       const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation }, deferFarGrass = false;
       const L = heightField._layout, noVeg = heightField._noVeg, _c = new THREE.Color();
+      // (grass r2) the shared sward patch, the fixture's map's own kind (vegetation.ts reads it beside applySnowGrassLaw)
+      const swardKindOf = resolveGroundReduxProfile(config.id ?? null).grass?.kind ?? null;
+      const swardKind = swardKindOf === 'tundra' ? null : swardKindOf, _swardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
       ${section('  const grassPerChunk =', '  const uWindTime =')}
       const grassVariants = [], grassTex = [null, null], grassFadeEnd = GRASS_FADE_END;
       const makeTuftFarGeometry = (w, h) => buildGrassTuftGeometry(w, h, 1, 1.5);
@@ -55,7 +60,7 @@ function compile(legacy) {
       const carpetCell = (ix, iz) => carpetCache.get(ix + ',' + iz);
       return { chunk, carpetCell, rebuildCarpet, carpetSets, carpetWork, group, grassVariants, stubbleHeightScale, makeTuft };
     }
-  `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry,
+  `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry, resolveGroundReduxProfile, swardPatchAt,
     advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork,
     createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees);
 }
