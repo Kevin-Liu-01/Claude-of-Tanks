@@ -32,7 +32,9 @@ export type HinterlandSettlementPattern =
 export type HinterlandVerticalKind =
   | 'churchTower' | 'spire' | 'onionDome' | 'campanile' | 'minaret' | 'pagoda' | 'elevator' | 'waterTower' | 'windmill'
   | 'postMill' | 'chimney' | 'headframe' | 'coolingTower' | 'slagTip' | 'radome' | 'mast' | 'pylonLine' | 'lighthouse'
-  | 'castle' | 'kurgan' | 'tvTower' | 'kilnChimney' | 'lookoutTower' | 'burnerCone' | 'damWall';
+  | 'castle' | 'kurgan' | 'tvTower' | 'kilnChimney' | 'lookoutTower' | 'burnerCone' | 'damWall'
+  // (Suzhou Creek: the Bund's 1930s towers — a block in setbacks, Sassoon House's pyramid, the Customs House's clock)
+  | 'decoTower' | 'pyramidTower' | 'clockTower';
 
 /** The far country's form (bands D–E): the panorama's regional classes, carried over as geometry (B-arch §4.6). */
 export type HinterlandFarForm =
