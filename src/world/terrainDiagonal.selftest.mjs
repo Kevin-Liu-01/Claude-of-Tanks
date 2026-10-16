@@ -3,7 +3,8 @@
 // drawn mesh, the contact surface the simulation drives on, the battle's ground overlay and the debris ground take it on
 // the same Float32 corner heights, so what is drawn is what is driven.
 //
-// 1. the rule: a cliff's lip flips; a plane (however steep) and ordinary ground keep b–c; symmetric in its corners;
+// 1. the rule: a steep convex fold flips when its centre lies nearer a–d's midpoint (a cliff's lip, a knife ridge); a
+//    gully, a pit at a corner, a plane (however steep), ordinary ground and a near tie keep b–c; symmetric in its corners;
 // 2. the two splits agree on every cell border (a flipped cell opens no crack with its neighbours), and a flipped lip
 //    keeps its crest where b–c sawed it down;
 // 3. the contact sampler on a synthetic lip: the flip, the surface and its normal on both triangles;
@@ -17,32 +18,44 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField, terrainNearMeshHeightAt } from './terrain.ts';
-import {
-  createTerrainContactSampler, terrainCellFlipped, terrainCellHeight, TERRAIN_FLIP_FOLD_M, TERRAIN_FLIP_MARGIN_M,
-} from './terrainContactSurface.ts';
+import * as contactSurface from './terrainContactSurface.ts';
 import { getMapConfig } from './maps/index.ts';
+const {
+  createTerrainContactSampler, terrainCellFlipped, terrainCellFoldCandidate, terrainCellHeight,
+  TERRAIN_FLIP_FOLD_M, TERRAIN_FLIP_PREFER_M, TERRAIN_FLIP_STEEP_M,
+} = contactSurface;
 import { createDeformedHeightField, createTerrainDeformation } from '../sim/terrainDeformation.ts';
 import { createLatticeGround } from '../fx/latticeGround.ts';
 
 // ---- 1. the rule
-assert.equal(TERRAIN_FLIP_MARGIN_M, 1);
-assert.equal(TERRAIN_FLIP_FOLD_M, 0.5);
-assert.equal(terrainCellFlipped(0, 0, -4, 0), true, 'a lip along a–d (plateau b, drop c) flips');
-assert.equal(terrainCellFlipped(0, -4, 0, 0), true, 'and mirrored');
-assert.equal(terrainCellFlipped(0, 3, -3, 0), false, 'a steep plane draws the same either way: no flip');
-assert.equal(terrainCellFlipped(0, 0.2, 0.3, 0.5), false, 'ordinary ground keeps b–c');
-assert.equal(terrainCellFlipped(0, 0, -1.4, 0), true, 'just past both thresholds');
-assert.equal(terrainCellFlipped(0, 0, -0.9, 0), false, 'under the margin');
-assert.equal(terrainCellFlipped(0, 1.2, -0.2, 0.75), false, 'a b–c pair 1.4 m apart over a–d 0.75 m: under the margin');
-assert.equal(terrainCellFlipped(-4, 0, 0, 0), false, 'a pit at a corner: b–c is already the short diagonal');
+assert.equal(TERRAIN_FLIP_STEEP_M, 0.75);
+assert.equal(TERRAIN_FLIP_FOLD_M, 1.0);
+assert.equal(TERRAIN_FLIP_PREFER_M, 0.1);
+assert.equal(terrainCellFlipped(0, 0, -4, 0, 0), true, 'a lip along a–d (plateau b, drop c), its centre on the lip: flips');
+assert.equal(terrainCellFlipped(0, -4, 0, 0, 0), true, 'and mirrored');
+assert.equal(terrainCellFlipped(0, 0, -4, 0, -2), false, 'the same corners with the centre half way down: the b–c midpoint is the land');
+assert.equal(terrainCellFlipped(0, -2, -2, 0, 0), true, 'a knife ridge along a–d, its centre on the crest');
+assert.equal(terrainCellFlipped(-2, 0, 0, -2, 0), false, 'a ridge along b–c keeps b–c');
+assert.equal(terrainCellFlipped(-2, 0, 0, -2, -2), false, 'a gully along a–d keeps b–c: only crests and lips flip (the census: a ditch dug true jolts a track)');
+assert.equal(terrainCellFlipped(1.85, 0.31, 2.14, 1.94, 1.2), false, 'a pit at one corner keeps the split its centre agrees with');
+assert.equal(terrainCellFlipped(0, 3, -3, 0, 0), false, 'a steep plane draws the same either way: no flip');
+assert.equal(terrainCellFoldCandidate(0, 3, -3, 0), false, 'and is no candidate');
+assert.equal(terrainCellFlipped(0, 0.2, 0.3, 0.9, 0.9), false, 'ordinary ground keeps b–c (not steep, barely folded)');
+assert.equal(terrainCellFlipped(0, 0, -0.6, 0, 0), false, 'under the steepness');
+assert.equal(terrainCellFlipped(0, 0, -0.9, 0, 0), false, 'a lip folded under a metre keeps b–c');
+assert.equal(terrainCellFlipped(0, 0.2, -0.2, 0.4, 0.4), false, 'under the fold');
+assert.equal(terrainCellFoldCandidate(-2, 0, 0, -2), false, 'a concave fold is no candidate');
+assert.equal(terrainCellFlipped(0, 0, -1.2, 0, -0.35), false, 'a near tie keeps b–c (the preference)');
 let rs = 0x7e11;
 const rnd = () => ((rs = (Math.imul(rs, 1664525) + 1013904223) >>> 0) / 4294967296);
 for (let i = 0; i < 2000; i++) {
-  const a = (rnd() - .5) * 8, b = (rnd() - .5) * 8, c = (rnd() - .5) * 8, d = (rnd() - .5) * 8;
-  const f = terrainCellFlipped(a, b, c, d);
-  assert.equal(terrainCellFlipped(a, c, b, d), f, 'symmetric in b, c');
-  assert.equal(terrainCellFlipped(d, b, c, a), f, 'symmetric in a, d');
-  assert.equal(terrainCellFlipped(a + 7, b + 7, c + 7, d + 7), f, 'blind to the cell\'s height');
+  const a = (rnd() - .5) * 8, b = (rnd() - .5) * 8, c = (rnd() - .5) * 8, d = (rnd() - .5) * 8, h = (rnd() - .5) * 8;
+  const f = terrainCellFlipped(a, b, c, d, h);
+  assert.equal(terrainCellFlipped(a, c, b, d, h), f, 'symmetric in b, c');
+  if (f) assert.ok(a + d > b + c, 'only a convex fold flips');
+  assert.equal(terrainCellFlipped(d, b, c, a, h), f, 'symmetric in a, d');
+  assert.equal(terrainCellFlipped(a + 7, b + 7, c + 7, d + 7, h + 7), f, 'blind to the cell\'s height');
+  if (f) assert.ok(terrainCellFoldCandidate(a, b, c, d), 'only a candidate flips');
 }
 
 // ---- 2. the surface: corners, borders, the crest
@@ -93,16 +106,23 @@ for (let i = 0; i < 500; i++) {
     assert.ok(Math.abs(contact((x0 + x0 + STEP) / 2, (z0 + z0 + STEP) / 2)) < 1e-4, 'the crest between a and d is the lip');
   }
   assert.equal(contact.cellFlippedAt(9999, 0), false, 'off the square: no cell');
-  console.log(`terrainDiagonal: rule, borders and the synthetic lip (${flippedLip} lip cells, ${kept} kept, ${normals} normals)`);
+  // a knife ridge along x = z (1.5:1 flanks both ways): b–c sawed its crest to 2 m under it every cell; a–d keeps it
+  const ridge = createTerrainContactSampler((x, z) => -1.5 * Math.abs(x - z));
+  for (let i = 200; i < 260; i++) {
+    const x0 = -512 + i * STEP;
+    assert.equal(ridge.cellFlippedAt(x0 + .3 * STEP, x0 + .6 * STEP), true, `the ridge cell ${i} flips`);
+    assert.ok(Math.abs(ridge(x0 + .5 * STEP, x0 + .5 * STEP)) < 1e-4, 'the crest holds its height');
+  }
+  console.log(`terrainDiagonal: rule, borders, the synthetic lip (${flippedLip} lip cells, ${kept} kept, ${normals} normals) and a knife ridge`);
 }
 
 // ---- 4. a real steep map: the built LOD0 carries the contact surface's split
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const chunks = source.slice(source.indexOf('const CHUNKS = 8'));
-const api = new Function('THREE', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
+const api = new Function('THREE', ...Object.keys(contactSurface), stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   ${chunks.replace(/^export /gm, '')}
-`) + 'return { buildFineGridSteps, buildChunkGeometrySteps, acquireTerrainChunkIndex };')(THREE, terrainCellFlipped, terrainCellHeight);
+`) + 'return { buildFineGridSteps, buildChunkGeometrySteps, acquireTerrainChunkIndex };')(THREE, ...Object.values(contactSurface));
 const drain = (steps) => { let r; do { r = steps.next(); } while (!r.done); return r.value; };
 const STEP = 128 / 96;
 const redrock = createHeightField(1337, getMapConfig('badlands'));
@@ -128,7 +148,7 @@ const chunkSplits = (hf, cx0, cz0) => {
 };
 {
   const { geometry, flipped, cells } = chunkSplits(redrock, 384, -512);
-  assert.ok(flipped > 200, `Redrock's south-east chunk holds steep cells (${flipped})`);
+  assert.ok(flipped > 20, `Redrock's south-east chunk holds steep crests that flip (${flipped})`);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.updateMatrixWorld();
   let hits = 0, worst = 0, nearWorst = 0;
@@ -185,7 +205,7 @@ const chunkSplits = (hf, cx0, cz0) => {
     checked++;
     if (flipped) flippedChecked++;
   }
-  assert.ok(flippedChecked > 100, `the craters lie over flipped cells (${flippedChecked} of ${checked} points)`);
+  assert.ok(flippedChecked > 30, `the craters lie over flipped cells (${flippedChecked} of ${checked} points)`);
   assert.ok(worst < 2e-4, `the deformed contact height is base + overlay on the base's split (worst ${worst.toExponential(2)} m)`);
   assert.ok(latticeWorst < 2e-4, `the debris ground reads the same surface (worst ${latticeWorst.toExponential(2)} m)`);
   console.log(`terrainDiagonal: craters over steep cells — ${checked} points (${flippedChecked} flipped), worst ${worst.toExponential(2)} m, lattice ${latticeWorst.toExponential(2)} m`);

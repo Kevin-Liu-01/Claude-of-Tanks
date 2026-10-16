@@ -12,8 +12,6 @@
  * a lookup a read. Presentation only (the sim reads its own ground); allocation-free once its vertices are warm.
  */
 
-import { terrainCellFlipped, terrainCellHeight } from '../world/terrainContactSurface.ts';
-
 /** The terrain contact lattice (terrainContactSurface.ts): 1,024 m in 768 cells of 128/96 m. */
 const HALF = 512;
 const STEP = 128 / 96;
@@ -53,12 +51,8 @@ export function createLatticeGround(sample: (x: number, z: number) => number, re
     const ix = Math.min(CELLS - 1, Math.floor(gx)), iz = Math.min(CELLS - 1, Math.floor(gz));
     const u = gx - ix, v = gz - iz;
     // (2026-10-15) the steep-cell split the drawn ground takes (world/terrainContactSurface.ts terrainCellFlipped): the
-    // base surface's own (`flippedAt`), which a crater's offsets ride; without one, read on these vertices
-    if (flippedAt === undefined) {
-      const a = vertex(ix, iz), b = vertex(ix + 1, iz), c = vertex(ix, iz + 1), d = vertex(ix + 1, iz + 1);
-      return terrainCellHeight(a, b, c, d, u, v, terrainCellFlipped(Math.fround(a), Math.fround(b), Math.fround(c), Math.fround(d)));
-    }
-    if (flippedAt(x, z)) {
+    // base surface's own (`flippedAt`), which a crater's offsets ride; without one, every cell's b–c as before
+    if (flippedAt !== undefined && flippedAt(x, z)) {
       const a = vertex(ix, iz), d = vertex(ix + 1, iz + 1);
       if (u >= v) { const b = vertex(ix + 1, iz); return a + (b - a) * u + (d - b) * v; }
       const c = vertex(ix, iz + 1);

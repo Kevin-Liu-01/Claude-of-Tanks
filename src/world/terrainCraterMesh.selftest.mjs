@@ -5,7 +5,11 @@ import * as THREE from 'three';
 import { initialTerrainLods, terrainLodForDistance, warmTerrainLodBuilds, chooseTerrainLodBuild } from './terrainLodPolicy.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { createHeightField } from './terrain.ts';
-import { terrainCellFlipped, terrainCellHeight } from './terrainContactSurface.ts';
+import { terrainCellHeight } from './terrainContactSurface.ts';
+import * as contactSurface from './terrainContactSurface.ts';
+// (2026-10-15) the chunk builder reads the steep-cell split's names (terrainContactSurface.ts) as terrain.ts imports them:
+// the whole module goes into the sandbox's scope, so a new name there needs no edit here
+const SPLIT_NAMES = Object.keys(contactSurface), SPLIT_VALUES = Object.values(contactSurface);
 import { installTerrainCraterMesh, TERRAIN_CRATER_LATTICE } from './terrainCraterMesh.ts';
 import { createDeformedHeightField, createTerrainDeformation, stampBounds } from '../sim/terrainDeformation.ts';
 import verdant from './maps/verdant.ts';
@@ -32,7 +36,7 @@ for (const line of ['const HALF = 512;', 'const MAP_SIZE = 1024;', 'const CHUNKS
 assert.deepEqual([...TERRAIN_CRATER_LATTICE.lodSegs], [96, 48, 24]);
 assert.deepEqual([TERRAIN_CRATER_LATTICE.chunkSize, TERRAIN_CRATER_LATTICE.half, TERRAIN_CRATER_LATTICE.skirtDrop], [128, 512, 6.5]);
 const api = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance', 'warmTerrainLodBuilds',
-  'chooseTerrainLodBuild', 'registerRetainedObject3DResources', 'performance', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
+  'chooseTerrainLodBuild', 'registerRetainedObject3DResources', 'performance', ...SPLIT_NAMES, stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
   // (the ring worker, perf/ring-deferred: the chunk section reaches the ring through its hook and asks it for a supplied
@@ -50,7 +54,7 @@ const api = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance',
   }
   ${chunkSource.replace(/^export /gm, '')}
 `) + 'return { terrainBuildSteps, terrainNearMeshHeightAt };')(THREE, initialTerrainLods, terrainLodForDistance,
-  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, performance, terrainCellFlipped, terrainCellHeight);
+  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, performance, ...SPLIT_VALUES);
 
 function drain(generator) {
   let result = generator.next();

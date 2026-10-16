@@ -4,20 +4,32 @@
 const SIZE = 1024, HALF = SIZE / 2, CHUNK = 128, SEGMENTS = 96;
 
 /**
- * The steep-cell diagonal (the ground lane, 2026-10-15; the maps critics on Aegis' gorge: "a sawtooth crest"). A cell
- * (a at its own corner, b = +x, c = +z, d = +x+z) is split along its b–c diagonal, as every cell always was, unless the
- * a–d diagonal joins corners closer in height by more than TERRAIN_FLIP_MARGIN_M and the cell is folded — its two splits
- * part by over a quarter metre at its centre (|a + d − b − c| / 2 > TERRAIN_FLIP_FOLD_M / 2): then a cliff's lip or a
- * wall's foot runs along the triangles' shared edge instead of sawing across them. A plane (or nearly one) draws the
- * same on either split and keeps b–c, so ordinary ground does not move by a bit. The render mesh (terrain.ts
- * buildChunkGeometrySteps, terrainNearMeshHeightAt), this contact surface, the battle's ground overlay
- * (sim/terrainDeformation.ts contactOffsetAt) and the debris ground (fx/latticeGround.ts) all split by this one rule, on
- * the same Float32 corner heights where they share the lattice.
+ * The steep-cell diagonal (the ground lane, 2026-10-15; the maps critics on Aegis' gorge and Redrock: "a sawtooth
+ * crest"). A cell (a at its own corner, b = +x, c = +z, d = +x+z) is split along its b–c diagonal, as every cell always
+ * was, unless it is a steep convex fold — one of its edges rises over TERRAIN_FLIP_STEEP_M (~29°), its a–d pair stands
+ * above its b–c pair and the two splits part by over half a metre at its centre (a + d − b − c > TERRAIN_FLIP_FOLD_M):
+ * a crest or a cliff's lip running along a–d, which b–c sawed down into teeth — and its true centre (the height field
+ * there, Float32) lies nearer the a–d midpoint than the b–c one by over TERRAIN_FLIP_PREFER_M. Then the crest runs along
+ * the triangles' shared edge, drawn and driven as the land holds it. Gullies, ditches and wall feet (concave folds) keep
+ * b–c: lowering them into the true notch gave a track a felt jolt the contact census counts (orchard's terrace ditch),
+ * so the split only ever raises a sawn crest. Planes, gentle ground and every tie keep b–c, so ordinary ground does not
+ * move by a bit. The render mesh (terrain.ts buildChunkGeometrySteps, terrainNearMeshHeightAt), this contact surface, the
+ * battle's ground overlay (sim/terrainDeformation.ts contactOffsetAt) and the debris ground (fx/latticeGround.ts) all
+ * split by this one rule, on the same Float32 corner heights and the same centre (the cell's own corner coordinate +
+ * half a step) where they share the lattice.
  */
-export const TERRAIN_FLIP_MARGIN_M = 1.0;
-export const TERRAIN_FLIP_FOLD_M = 0.5;
-export function terrainCellFlipped(a: number, b: number, c: number, d: number): boolean {
-  return Math.abs(b - c) > Math.abs(a - d) + TERRAIN_FLIP_MARGIN_M && Math.abs(a + d - b - c) > TERRAIN_FLIP_FOLD_M;
+export const TERRAIN_FLIP_STEEP_M = 0.75;
+export const TERRAIN_FLIP_FOLD_M = 1.0;
+export const TERRAIN_FLIP_PREFER_M = 0.1;
+/** Whether a cell is a steep convex fold, the only cells whose split the centre decides (cheap: the corners alone). */
+export function terrainCellFoldCandidate(a: number, b: number, c: number, d: number): boolean {
+  return a + d - b - c > TERRAIN_FLIP_FOLD_M
+    && Math.max(Math.abs(b - a), Math.abs(c - a), Math.abs(d - b), Math.abs(d - c)) > TERRAIN_FLIP_STEEP_M;
+}
+/** A steep convex fold's split: a–d when its centre's Float32 height lies nearer a–d's midpoint by the preference. */
+export function terrainCellFlipped(a: number, b: number, c: number, d: number, centre: number): boolean {
+  return terrainCellFoldCandidate(a, b, c, d)
+    && Math.abs(centre - (a + d) * 0.5) + TERRAIN_FLIP_PREFER_M < Math.abs(centre - (b + c) * 0.5);
 }
 /** A cell's height at (u, v) in [0, 1]² on the split the rule picks (a, b = +x, c = +z, d = +x+z). */
 export function terrainCellHeight(a: number, b: number, c: number, d: number, u: number, v: number, flipped: boolean): number {
@@ -81,6 +93,19 @@ export function createTerrainContactSampler(
     else if (i < CELLS - 1 && value > coordinates[i + 1]) i++;
     return i;
   }
+  // (2026-10-15) a steep fold's split, decided once per cell on its centre's height (terrainCellFlipped; rare cells)
+  const foldSplit = new Map<number, boolean>();
+  function flippedCell(ix: number, iz: number, a: number, b: number, c: number, d: number): boolean {
+    if (!terrainCellFoldCandidate(a, b, c, d)) return false;
+    const key = iz * N + ix;
+    let flipped = foldSplit.get(key);
+    if (flipped === undefined) {
+      const centre = Math.fround(heightAt(exactCoordinates[ix] + STEP * 0.5, exactCoordinates[iz] + STEP * 0.5));
+      flipped = terrainCellFlipped(a, b, c, d, centre);
+      foldSplit.set(key, flipped);
+    }
+    return flipped;
+  }
   const sample = ((x: number, z: number): number => {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return 0;
     if (x < -HALF || x > HALF || z < -HALF || z > HALF) return heightAt(x, z);
@@ -88,12 +113,12 @@ export function createTerrainContactSampler(
     const u = (x - coordinates[ix]) / (coordinates[ix + 1] - coordinates[ix]);
     const v = (z - coordinates[iz]) / (coordinates[iz + 1] - coordinates[iz]);
     const a = vertex(ix, iz), b = vertex(ix + 1, iz), c = vertex(ix, iz + 1), d = vertex(ix + 1, iz + 1);
-    return terrainCellHeight(a, b, c, d, u, v, terrainCellFlipped(a, b, c, d));
+    return terrainCellHeight(a, b, c, d, u, v, flippedCell(ix, iz, a, b, c, d));
   }) as TerrainContactSampler;
   sample.cellFlippedAt = (x, z) => {
     if (!Number.isFinite(x) || !Number.isFinite(z) || x < -HALF || x > HALF || z < -HALF || z > HALF) return false;
     const ix = cell(x), iz = cell(z);
-    return terrainCellFlipped(vertex(ix, iz), vertex(ix + 1, iz), vertex(ix, iz + 1), vertex(ix + 1, iz + 1));
+    return flippedCell(ix, iz, vertex(ix, iz), vertex(ix + 1, iz), vertex(ix, iz + 1), vertex(ix + 1, iz + 1));
   };
   /** The vertex index whose exact coordinate is `value`, or -1. */
   const exactIndex = (value: number): number => {
@@ -128,7 +153,7 @@ export function createTerrainContactSampler(
     const u = (x - coordinates[ix]) / dx, v = (z - coordinates[iz]) / dz;
     const a = vertex(ix, iz), b = vertex(ix + 1, iz), c = vertex(ix, iz + 1), d = vertex(ix + 1, iz + 1);
     let sx: number, sz: number;
-    if (!terrainCellFlipped(a, b, c, d)) {
+    if (!flippedCell(ix, iz, a, b, c, d)) {
       if (u + v <= 1) { sx = (b - a) / dx; sz = (c - a) / dz; }
       else { sx = (d - c) / dx; sz = (d - b) / dz; }
     } else if (u >= v) { sx = (b - a) / dx; sz = (d - b) / dz; }

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
-import { terrainCellFlipped, terrainCellHeight } from './terrainContactSurface.ts';
+import * as contactSurface from './terrainContactSurface.ts';
+// (2026-10-15) the chunk builder reads the steep-cell split's names (terrainContactSurface.ts) as terrain.ts imports them:
+// the whole module goes into the sandbox's scope, so a new name there needs no edit here
+const SPLIT_NAMES = Object.keys(contactSurface), SPLIT_VALUES = Object.values(contactSurface);
 import {
   chooseTerrainLodBuild, initialTerrainLods, terrainLodForDistance, warmTerrainLodBuilds,
 } from './terrainLodPolicy.ts';
@@ -21,7 +24,7 @@ let clockStepMs = 0;
 const measuredClock = { now() { const value = clockMs; clockMs += clockStepMs; return value; } };
 const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance',
   'warmTerrainLodBuilds', 'chooseTerrainLodBuild', 'registerRetainedObject3DResources',
-  'performance', 'terrainCellFlipped', 'terrainCellHeight', stripTypeScriptTypes(`
+  'performance', ...SPLIT_NAMES, stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
   // (2026-10-08, the ring worker) the ring's hook (horizonRingHook.ts) installs a ring that is an empty group here — the
@@ -41,7 +44,7 @@ const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistan
   ${chunkSource.replace(/^export /gm, '')}
 `) + 'return { terrainBuildSteps, buildFineGridSteps, buildChunkGeometrySteps };');
 const api = compile(THREE, initialTerrainLods, terrainLodForDistance,
-  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, measuredClock, terrainCellFlipped, terrainCellHeight);
+  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, measuredClock, ...SPLIT_VALUES);
 
 function drain(generator) {
   let result = generator.next();
