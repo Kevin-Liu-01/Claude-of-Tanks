@@ -149,8 +149,11 @@ function seatEnv(frames: SeatFrames, frame: 'hull' | 'turret', region: THREE.Box
       ...moved(frames.gun, new THREE.Matrix4().multiplyMatrices(turretToHull, gunToTurret), true)]
     : [...frames.turret, ...moved(frames.gun, gunToTurret, false),
       ...moved(frames.hull, turretToHull.clone().invert(), true)];
-  return { frame, soup: new SeatSoup(sources, region.clone().expandByScalar(SOUP_MARGIN_M)), motion };
+  return { frame, soup: new SeatSoup(sources, region.clone().expandByScalar(SOUP_MARGIN_M)), motion, markings: markingBoxes[frame] };
 }
+
+/** The current build's marking keep-outs per frame (set by seatAuthoredSpareTracks, read by seatEnv). */
+let markingBoxes: Record<'hull' | 'turret', THREE.Box3[]> = { hull: [], turret: [] };
 
 // ------------------------------------------------------------------------------------------------ S2/S3 (factory)
 
@@ -166,6 +169,8 @@ export interface AuthoredSeatArgs {
   turretG: THREE.Group;
   gunG: THREE.Group;
   fixedMount: boolean;
+  /** The builder's queued markings (decal stations, frame coordinates, edge `size`), kept clear by chosen seats. */
+  markings?: ReadonlyArray<{ parent: 'hull' | 'turret'; pos: readonly number[]; size: number }>;
 }
 
 interface AuthoredRun {
@@ -191,6 +196,13 @@ const r2 = (x: number): string => (Math.round(x * 100) / 100).toFixed(2);
 /** Discover, measure and (re)seat or drop every authored run of a built-but-unmerged tank. */
 export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatReport {
   const report: SpareTrackSeatReport = { runs: [], rejected: [] };
+  // each marking a square of its edge, 3 cm clear all round
+  markingBoxes = { hull: [], turret: [] };
+  for (const m of a.markings ?? []) {
+    const half = m.size / 2 + 0.03;
+    markingBoxes[m.parent].push(new THREE.Box3(new THREE.Vector3(m.pos[0] - half, m.pos[1] - half, m.pos[2] - half),
+      new THREE.Vector3(m.pos[0] + half, m.pos[1] + half, m.pos[2] + half)));
+  }
   a.root.updateMatrixWorld(true);
   const frameOf = (o: THREE.Object3D): 'hull' | 'turret' | null =>
     under(o, a.gunG) ? null : under(o, a.turretG) ? 'turret' : under(o, a.hullG) ? 'hull' : null;
@@ -662,7 +674,8 @@ export function decorSeatEnv(spec: SeatSpec, hullG: THREE.Group, turretG: THREE.
         if (!frames[f].some((s) => s.geometry === geometry)) frames[f].push({ geometry, matrix: null, role: 'decor', owner: 0 });
       }
     }
-    return seatEnv(frames, frame, region, motion);
+    // the decor's own stations keep their own marking rules; the authored pass's keep-outs belong to its build
+    return { ...seatEnv(frames, frame, region, motion), markings: undefined };
   };
 }
 
