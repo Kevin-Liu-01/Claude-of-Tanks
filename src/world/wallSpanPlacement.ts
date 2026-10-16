@@ -1,5 +1,5 @@
 import { Euler, Matrix4, Quaternion, Vector3, type BufferGeometry } from 'three';
-import { setObbShape, type CollisionRecord } from './collision.ts';
+import { setCompoundShape, setObbShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';
 
 interface HeightSampler { getHeightAt(x: number, z: number): number }
 
@@ -147,15 +147,20 @@ const MAX_SHEAR = 0.45;
 /** Match slope-following visible cover, including the high endpoint. The
  * footprint stays a thin wall aligned with the authored run; no circular
  * blocker or AABB-wide route exclusion is introduced. */
+/** The parts a module's shell record stands along its length (physics stream DST-03, 2026-10-16). */
+const WALL_SHELL_PARTS = 3;
+let _local = new Float32Array(0);
 function refitWallSpanCollision(matrix: Matrix4, geometry: BufferGeometry, instance: WallInstance): void {
   const vertices = geometry.getAttribute('position');
   const sin = Math.sin(instance.yaw), cos = Math.cos(instance.yaw);
   let minY = Infinity, maxY = -Infinity;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  if (_local.length < vertices.count * 3) _local = new Float32Array(vertices.count * 3);
   for (let index = 0; index < vertices.count; index++) {
     point.fromBufferAttribute(vertices, index).applyMatrix4(matrix);
     const dx = point.x - instance.x, dz = point.z - instance.z;
     const x = dx * cos - dz * sin, z = dx * sin + dz * cos;
+    _local[index * 3] = x; _local[index * 3 + 1] = point.y; _local[index * 3 + 2] = z;
     minX = Math.min(minX, x); maxX = Math.max(maxX, x);
     minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
     minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
@@ -169,4 +174,29 @@ function refitWallSpanCollision(matrix: Matrix4, geometry: BufferGeometry, insta
     setObbShape(collider, instance.x + x * cos + z * sin, instance.z - x * sin + z * cos,
       (maxX - minX) * .5, (maxZ - minZ) * .5, instance.yaw);
   }
+  // (physics stream DST-03, 2026-10-16; the world collider audit on integ/226: 10-15 % of the rounds at a wall module
+  // stopped in the air over it) a module sheared down a slope rises along its length, and one box from its lowest vertex
+  // to its highest stood up to 0.7 m of air over its low end: its shell record stands WALL_SHELL_PARTS parts along it,
+  // each from its own lowest vertex to its own highest (the hull's record keeps the box: a crush reads it whole)
+  if (!instance.col) return;
+  const parts: SimpleCollisionShape[] = [];
+  const step = (maxZ - minZ) / WALL_SHELL_PARTS;
+  for (let k = 0; k < WALL_SHELL_PARTS; k++) {
+    const z0 = minZ + step * k, z1 = k === WALL_SHELL_PARTS - 1 ? maxZ : z0 + step;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let index = 0; index < vertices.count; index++) {
+      const vz = _local[index * 3 + 2];
+      if (vz < z0 - 1e-4 || vz > z1 + 1e-4) continue;
+      const vx = _local[index * 3], vy = _local[index * 3 + 1];
+      if (vx < x0) x0 = vx; if (vx > x1) x1 = vx;
+      if (vy < y0) y0 = vy; if (vy > y1) y1 = vy;
+    }
+    if (!(x1 > x0) || !(y1 > y0)) continue;
+    const corner = (lx: number, lz: number): [number, number] => [instance.x + lx * cos + lz * sin, instance.z - lx * sin + lz * cos];
+    const points = [...corner(x0, z0), ...corner(x1, z0), ...corner(x1, z1), ...corner(x0, z1)];
+    parts.push({ kind: 'convex', cx: 0, cz: 0, points, y0, y1 });
+  }
+  if (parts.length < 2) return;
+  setCompoundShape(instance.col, parts);
+  instance.col.min[1] = minY; instance.col.max[1] = maxY;
 }
