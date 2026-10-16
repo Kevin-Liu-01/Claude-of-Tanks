@@ -1777,6 +1777,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
+    // 2026-10-15: the versus stills, the social cards' and marketing's foundations (public/media/versus-r1)
+    'tools/marketing-shots/versus-media.selftest.mjs',
     'src/ui/studioSiteTakes.selftest.mjs',
     // 2026-10-12: every tank's own take (src/ui/fleetTakes.ts) in the Gallery, the manual, the Garage and the Director
     'src/ui/fleetTakes.selftest.mjs',

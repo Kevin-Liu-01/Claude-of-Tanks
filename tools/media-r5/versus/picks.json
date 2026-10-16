@@ -1,0 +1,14 @@
+{
+ "collection": "versus-r1",
+ "libraryId": "claude-of-tanks-versus-r1",
+ "ship": [
+  "f6-leo2a6-steinburg-r6",
+  "f7-t90m-column-r5",
+  "vs01-desert-abrams-t90m",
+  "vs02-verdant-challenger-t80u",
+  "vs03-reservoir-k2-type99a",
+  "vs05-oasis-merkava-t72b3",
+  "vs06-coastal-type10-ztz99a2",
+  "vs08-winter-cv90-bmp3"
+ ]
+}
