@@ -184,6 +184,9 @@ interface DressingContext {
   /** (destruction stream, 2026-10-13) the props' sink for dressing a hull or a round flattens (crushableClutter.ts): the
    *  rail yard's coal stockpiles. Omitted, it stays solid. */
   clutter?: (clutter: CrushableClutter) => void;
+  /** the buildings placed so far (props.ts buildingFeatures: the plan's with their structure kind), for a kit that dresses
+   *  a landmark's ground (Suzhou's North Station) */
+  buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
 
 type FocusedDressingContext = Pick<
@@ -1198,6 +1201,7 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
+  buildings,
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
   obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible,
 }: DressingContext): void {
@@ -1222,7 +1226,7 @@ export function dressMapExtras({
   if (kits.includes('shanghai')) {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
     // the tram line down the Settlement's avenue, the bridgeheads' sandbagged posts, the creek's sampans (their own streams)
-    dressShanghai(focused, mapId);
+    dressShanghai({ ...focused, buildings }, mapId);
   }
   // the map-revival lane (2026-10-05): Ruinspires as Sarajevo — the boulevard's tram line, catenary, burnt trams and the
   // container screens at its crossings, the hillside cemeteries (maps/sarajevoStreets.ts; its own streams, never this one)

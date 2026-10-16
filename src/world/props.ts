@@ -156,6 +156,7 @@ import {
   LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
+import { townRowPlotClear } from './townRowAdditions.ts';
 import {
   cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
   setObbShape, type SimpleCollisionShape,
@@ -497,6 +498,8 @@ interface PropsSettings {
    * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
    * the street-row pass draws nothing. */
   townRowPlan?: readonly TownRowEntry[];
+  /** Rows the record never held, replayed after the recorded rows where their plot is clear (townRowAdditions.ts). */
+  townRowPlanAdditions?: readonly TownRowEntry[];
   /**
    * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
    * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
@@ -5410,7 +5413,9 @@ ${snowCap ? `
     // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
     // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
     if (P.townRowPlan) {
-      for (const entry of P.townRowPlan) {
+      const rows = [...P.townRowPlan.map((entry) => ({ entry, added: false })), ...(P.townRowPlanAdditions ?? []).map((entry) => ({ entry, added: true }))];
+      for (const { entry, added } of rows) {
+        if (added && (footprintWet(entry.x, entry.z, entry.w, entry.d, entry.rot) || !townRowPlotClear(entry, heightField._roadDist, obstacles))) continue;
         const stream = mulberry32(entry.rng);
         let tmp: PropsBuckets = {
           plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
@@ -10052,6 +10057,7 @@ ${snowCap ? `
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
+    buildings: buildingFeatures,
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
     setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
