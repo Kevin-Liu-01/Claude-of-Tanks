@@ -3450,22 +3450,6 @@ function updateRigidAttitude(
   }
 }
 
-/**
- * A plane the hull is far from is one it lies onto, not one it snaps to (physics stream F9, 2026-10-14; the coordinator:
- * "level hulls snapping onto 50-62 degree faces at 9-11 rad/s"): past PLANE_FAR_RAD of it the springs turn the hull
- * toward it no faster than PLANE_TURN_MAX_RADPS (scaled by the ruleset's gravity, as a hull's fall onto a face is), the
- * rate a hull set level across a 50-degree face reaches lying onto it under gravity, about its uphill track. The full
- * spring turned an Abrams set level on a 62-degree roof onto it at 11 rad/s, past it, and over onto its back.
- */
-const PLANE_FAR_RAD = 0.25;
-const PLANE_TURN_MAX_RADPS = 4;
-/** This step's PLANE_TURN_MAX_RADPS at the ruleset's gravity (updateHullAttitude). */
-let _planeTurnMax = PLANE_TURN_MAX_RADPS;
-function limitPlaneTurn(rate: number, error: number, cap: number): number {
-  if (!(Math.abs(error) > PLANE_FAR_RAD) || !(rate * error > 0) || !(Math.abs(rate) > cap)) return rate;
-  return Math.sign(rate) * cap;
-}
-
 function updateSupportedAttitude(
   state: TankState,
   body: RigidBodyState,
@@ -3499,7 +3483,6 @@ function updateSupportedAttitude(
     const pitchZeta = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
     spring.pitchV += (pitchOmega * pitchOmega * (targetPitch - spring.pitch) -
       2 * pitchZeta * pitchOmega * spring.pitchV) * dt;
-    spring.pitchV = limitPlaneTurn(spring.pitchV, targetPitch - spring.pitch, _planeTurnMax);
     // the other side's contact (physics lane round 4, LANDING_ALIGN_MIN_S): while a landing settles, a turn that would
     // carry the hull past the ground plane ends on it this step — the end that lands stops it
     if (body.landingBlendS > 0) {
@@ -3514,7 +3497,6 @@ function updateSupportedAttitude(
     const rollOmega = SPRING_OMEGA * springScale;
     spring.rollV += (rollOmega * rollOmega * (targetRoll - spring.roll) -
       2 * SPRING_ZETA * rollOmega * spring.rollV) * dt;
-    spring.rollV = limitPlaneTurn(spring.rollV, targetRoll - spring.roll, _planeTurnMax);
     if (body.landingBlendS > 0) {
       spring.rollV = landOnPlane(clampTurn(spring.rollV, targetRoll - spring.roll, _landingTurn.halfWidth),
         targetRoll - spring.roll, dt);
@@ -3550,7 +3532,6 @@ function updateHullAttitude(
   if (!groundedAtStart || body.tumbling) {
     updateRigidAttitude(state, body, groundedAtStart, landingImpact, dt, drive);
   } else {
-    _planeTurnMax = PLANE_TURN_MAX_RADPS * Math.sqrt(clamp(drive.gravityScale, 0.1, 3));
     updateSupportedAttitude(state, body, targetPitch, targetRoll, perch, dt);
   }
   state.visualPitch = state._spring.pitch;
