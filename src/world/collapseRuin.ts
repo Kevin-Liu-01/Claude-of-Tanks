@@ -192,8 +192,7 @@ function fillMound(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
 const _ids: number[] = [];
 
 /** The corners' L piers: two legs along the corner's faces, stepped at the top (three courses, each shorter). */
-function cornerPiers(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
-  mesh: DamageMeshWriter, share: number): void {
+function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, share: number): void {
   if (!roomFor(mesh, 4 * 6) || !mesh.begin(slot.bucket, 'remnant')) return;
   const hw = fhw, hd = fhd;
   const t = Math.max(0.3, Math.min(0.8, slot.thicknessM > 0.05 ? slot.thicknessM * 1.6 : 0.45));
@@ -219,8 +218,7 @@ function cornerPiers(anatomy: StructureDamageAnatomy, rng: () => number, slot: F
 }
 
 /** Ragged wall stubs along each face between its corner piers, a breach of a fifth of the face left open in each. */
-function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
-  mesh: DamageMeshWriter, share: number): void {
+function wallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, share: number): void {
   if (!mesh.begin(slot.bucket, 'remnant')) return;
   const hw = fhw, hd = fhd;
   const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
@@ -247,8 +245,7 @@ function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
  * A standing wall fragment on a face (its `k`-th of a seeded walk round the plan): a ragged run of the wall, 1–2.5 m long,
  * two or three courses stepping down to one side, 50–80 % of the ruin's scale (never past `cap`).
  */
-function wallFragment(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
-  mesh: DamageMeshWriter, k: number): void {
+function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, k: number): void {
   if (!roomFor(mesh, 3) || !mesh.begin(slot.bucket, 'remnant')) return;
   const hw = fhw, hd = fhd;
   const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
@@ -494,10 +491,10 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     }
     // the height: the corners, then wall fragments round the plan until it stands (a heap of a great many pieces needs
     // more of them), the fallen covering's slabs once
-    if (wall && heightP90() < target) cornerPiers(anatomy, rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
-    if (wall && heightP90() < target) wallStubs(anatomy, rng, wall, cap, measuringWriter, 0.32);
+    if (wall && heightP90() < target) cornerPiers(rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
+    if (wall && heightP90() < target) wallStubs(rng, wall, cap, measuringWriter, 0.32);
     if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
-    for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(anatomy, rng, wall, cap, measuringWriter, k);
+    for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(rng, wall, cap, measuringWriter, k);
   } finally {
     kitPhase = false;
     measuring = false;
