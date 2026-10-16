@@ -511,8 +511,14 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   if (plan.pile > 0) {
     sink.dressing(plan.mobile, () => {
       const backIn: Face = { origin: [xb + half + 0.02, lift, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-      const lim = D / 2 - s - 0.12;
-      woodpile(sink, backIn, -lim, lim, Math.min(plan.pile, backTop - ph - 0.25 - lift), look);
+      const lim = D / 2 - s - 0.12, pileH = Math.min(plan.pile, backTop - ph - 0.25 - lift);
+      woodpile(sink, backIn, -lim, lim, pileH, look);
+      // (Lane C 2026-10-16, regionalArchitecture's ray audit: with no back wall the stack's courses showed their open backs)
+      // the stack's back face, its butts toward the open back
+      if (!plan.back) {
+        const xb2 = xb + half + 0.019, top = Math.max(3, Math.round(pileH / 0.17)) * 0.17;
+        sink.quad('structureWood', [xb2, lift, -lim], [xb2, lift, lim], [xb2, lift + top, lim], [xb2, lift + top, -lim], { colour: shade(d.timber, 0.7), decor: true });
+      }
     });
   }
   if (plan.block) {

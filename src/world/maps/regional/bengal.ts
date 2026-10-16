@@ -91,12 +91,13 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   });
   // the bhiti's edge slumped: a skirt of mud from its top edge out and down to the ground round it, and its steps
   sink.dressing(mobile, () => {
+    // (Lane C 2026-10-16, regionalArchitecture's ray audit: the skirt's quads were wound inward) each wound to face out and up
     const slump = 0.45;
     const P = (x: number, y: number, z: number): [number, number, number] => [x, y, z];
-    sink.quad('plaster3', P(bx0, plinth, bz1), P(bx1, plinth, bz1), P(bx1 + slump, -0.05, bz1 + slump), P(bx0 - slump, -0.05, bz1 + slump), { decor: true, shade: 0.92 });
-    sink.quad('plaster3', P(bx1, plinth, bz0), P(bx0, plinth, bz0), P(bx0 - slump, -0.05, bz0 - slump), P(bx1 + slump, -0.05, bz0 - slump), { decor: true, shade: 0.92 });
-    sink.quad('plaster3', P(bx1, plinth, bz1), P(bx1, plinth, bz0), P(bx1 + slump, -0.05, bz0 - slump), P(bx1 + slump, -0.05, bz1 + slump), { decor: true, shade: 0.92 });
-    sink.quad('plaster3', P(bx0, plinth, bz0), P(bx0, plinth, bz1), P(bx0 - slump, -0.05, bz1 + slump), P(bx0 - slump, -0.05, bz0 - slump), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx0 - slump, -0.05, bz1 + slump), P(bx1 + slump, -0.05, bz1 + slump), P(bx1, plinth, bz1), P(bx0, plinth, bz1), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx1 + slump, -0.05, bz0 - slump), P(bx0 - slump, -0.05, bz0 - slump), P(bx0, plinth, bz0), P(bx1, plinth, bz0), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx1 + slump, -0.05, bz1 + slump), P(bx1 + slump, -0.05, bz0 - slump), P(bx1, plinth, bz0), P(bx1, plinth, bz1), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx0 - slump, -0.05, bz0 - slump), P(bx0 - slump, -0.05, bz1 + slump), P(bx0, plinth, bz1), P(bx0, plinth, bz0), { decor: true, shade: 0.92 });
     // the mud steps up to the veranda from its middle, a tread a rise
     const n = Math.max(2, Math.round(plinth / 0.26)), r = plinth / n, sz = turned ? 0 : 1;
     for (let k = 0; k < n; k++) {

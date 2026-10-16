@@ -13,7 +13,7 @@ import {
 import { buildHouse, recordShaft, roofCrown, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
-import { bloomDisc, pottedPlant, washingLine } from './dressing.ts';
+import { pottedPlant, washingLine } from './dressing.ts';
 import { recordShed } from './shedFall.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
@@ -630,8 +630,18 @@ const arisha: RegionalBuilder = (ctx) => {
           const tilt = (look() - 0.5) * 1.1, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
           const nrm = normalize3([Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)]);
           const c: Vec3 = [cx + (look() - 0.5) * 0.35, cy + (look() - 0.5) * 0.08, cz + (look() - 0.5) * 0.35];
-          bloomDisc(sink, c, nrm, r, shade(colour, 0.85 + look() * 0.3), { decor: true }, yaw);
-          bloomDisc(sink, c, [-nrm[0], -nrm[1], -nrm[2]], r, shade(colour, 0.7), { decor: true }, yaw);
+          // (Lane C 2026-10-16, regionalArchitecture's ray audit: the leaf was two faces in one plane, so a view met its back
+          // as often as its front) each leaf a thin closed blade: its five-pointed outline (bloomDisc's) as a slab 6 mm thick
+          const ref: Vec3 = Math.abs(nrm[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+          const ea = normalize3([ref[1] * nrm[2] - ref[2] * nrm[1], ref[2] * nrm[0] - ref[0] * nrm[2], ref[0] * nrm[1] - ref[1] * nrm[0]]);
+          const eb: Vec3 = [nrm[1] * ea[2] - nrm[2] * ea[1], nrm[2] * ea[0] - nrm[0] * ea[2], nrm[0] * ea[1] - nrm[1] * ea[0]];
+          const blade: Vec3[] = [];
+          for (let q = 0; q < 5; q++) {
+            const t = yaw + q * 2 * Math.PI / 5, rr = r * (q % 2 ? 0.86 : 1);
+            blade.push([c[0] + (ea[0] * Math.cos(t) + eb[0] * Math.sin(t)) * rr - nrm[0] * 0.003, c[1] + (ea[1] * Math.cos(t) + eb[1] * Math.sin(t)) * rr - nrm[1] * 0.003,
+              c[2] + (ea[2] * Math.cos(t) + eb[2] * Math.sin(t)) * rr - nrm[2] * 0.003]);
+          }
+          sink.prism('structureWood', blade, nrm, 0.006, { colour: shade(colour, 0.85 + look() * 0.3), decor: true });
         }
         if (look() < 0.25) sink.cylinder('structureWood', [cx, H - 0.05, cz], 'y', 0.22, 0.05, 6, { colour: GRAPE, decor: true, fine: true }, 0.08);
       }
