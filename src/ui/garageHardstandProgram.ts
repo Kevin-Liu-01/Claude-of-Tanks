@@ -434,14 +434,22 @@ diffuseColor.rgb *= mix(vec3(1.0), texture2D(hardstandGrain, vHardstandGround * 
   hardstandGrainStrength);
 vec4 hardstandDetailTexel = texture2D(hardstandDetail, vHardstandGround * hardstandDetailParams.x);
 diffuseColor.rgb *= mix(1.0, hardstandDetailTexel.b * 2.0, hardstandDetailParams.z);
+// a large-scale tone in world space that never repeats with the apron's mirrored canvas, so its marks do not read as one
+// set of stains tiled across the yard (rejudge6, 2026-10-15: "repeated identical oil stains")
+diffuseColor.rgb *= 0.87 + 0.26 * (hardstandNoise(vHardstandGround * 0.045 + 3.1) * 0.65
+  + hardstandNoise(vHardstandGround * 0.13 + 9.7) * 0.35);
 #ifdef USE_MAP
-float hardstandWater = hardstandWet * texture2D(hardstandWetMask, vMapUv).r;
+vec2 hardstandWetTexel = texture2D(hardstandWetMask, vMapUv).rg;
+float hardstandWater = hardstandWet * smoothstep(0.3, 0.8, hardstandWetTexel.r);
+float hardstandDamp = hardstandWet * hardstandWetTexel.g;
 #else
 float hardstandWater = 0.0;
+float hardstandDamp = 0.0;
 #endif
-// standing water takes the sky's grey-blue over the mud below it (ticket 6, 2026-10-15: the puddles read as "flat matte
-// dark blobs": at the Garage camera's angles a dielectric's 4 % reflection alone leaves them mud-dark)
-diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 - 0.2 * hardstandWater), vec3(0.34, 0.4, 0.45), hardstandWater * 0.55);`)
+// the wet rim: the ground darker where it is soaked round the water and along the ruts; the water itself is turbid and
+// dark, and reads by what it mirrors (rejudge6, 2026-10-15: a pale-blue tint read as "opaque pale-blue oval puddles")
+diffuseColor.rgb *= 1.0 - 0.34 * hardstandDamp;
+diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.3 + vec3(0.012, 0.010, 0.008), hardstandWater);`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 {
   vec2 hardstandCrystal = floor(vHardstandGround * 34.0);
@@ -450,18 +458,32 @@ diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 - 0.2 * hardstandWater), vec3(0.3
   totalEmissiveRadiance += vec3(1.5) * hardstandGlint * hardstandSparkle * (1.0 - smoothstep(9.0, 30.0, length(vViewPosition)));
 }`)
     .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-roughnessFactor = mix(roughnessFactor * (1.0 - 0.28 * hardstandWet), 0.06, hardstandWater);`)
+roughnessFactor = mix(roughnessFactor * (1.0 - 0.28 * hardstandWet) * (1.0 - 0.3 * hardstandDamp), 0.05, hardstandWater);`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 {
   vec2 hardstandSlope = (hardstandDetailTexel.rg * 2.0 - 1.0) * hardstandDetailParams.y;
   normal = normalize(normal + vHardstandAxisX * hardstandSlope.x + vHardstandAxisZ * hardstandSlope.y);
-  normal = normalize(mix(normal, nonPerturbedNormal, hardstandWater * 0.92)); // standing water lies flat
+  normal = normalize(mix(normal, nonPerturbedNormal, hardstandWater * 0.96)); // standing water lies flat
+  // the rain's rings on it: a ring spreading from a drop in each 0.6 m cell, a few cells at a time
+  vec2 hardstandCell = floor(vHardstandGround / 0.6);
+  vec2 hardstandDrop = (hardstandCell + vec2(hardstandHash(hardstandCell), hardstandHash(hardstandCell + 5.7))) * 0.6;
+  vec2 hardstandFrom = vHardstandGround - hardstandDrop;
+  float hardstandRadius = length(hardstandFrom);
+  float hardstandRingR = 0.08 + 0.2 * hardstandHash(hardstandCell + 2.3);
+  float hardstandRing = step(0.55, hardstandHash(hardstandCell + 9.1))
+    * exp(-pow((hardstandRadius - hardstandRingR) / 0.018, 2.0)) * (1.0 - hardstandRingR * 2.5);
+  vec2 hardstandRipple = hardstandFrom / max(hardstandRadius, 1e-3) * hardstandRing * 0.35 * hardstandWater;
+  normal = normalize(normal + vHardstandAxisX * hardstandRipple.x + vHardstandAxisZ * hardstandRipple.y);
 }`)
     .replace('#include <alphamap_fragment>', `#include <alphamap_fragment>
 {
   float hardstandBreak = hardstandNoise(vHardstandGround * 0.42) * 0.62 + hardstandNoise(vHardstandGround * 1.9 + 17.0) * 0.28
     + hardstandNoise(vHardstandGround * 7.3 + 41.0) * 0.1;
-  diffuseColor.a *= smoothstep(0.36, 0.64, vHardstandBlend + (hardstandBreak - 0.5) * 0.72);
+  float hardstandEdge = vHardstandBlend + (hardstandBreak - 0.5) * 0.72;
+  // a trodden verge of grit and mud where the pad gives way to the ground, not clean paving cut against bright grass
+  // (rejudge6, 2026-10-15)
+  diffuseColor.rgb = mix(diffuseColor.rgb * vec3(0.62, 0.6, 0.56), diffuseColor.rgb, smoothstep(0.42, 0.85, hardstandEdge));
+  diffuseColor.a *= smoothstep(0.36, 0.64, hardstandEdge);
 }`);
   };
 }

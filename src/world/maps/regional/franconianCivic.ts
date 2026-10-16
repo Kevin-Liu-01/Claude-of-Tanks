@@ -15,6 +15,12 @@
 //                doors, a rendered upper storey with sandstone string course, quoins and window hoods, a half-hipped roof
 //                with dormers, and the hose-drying tower (Schlauchturm) with its louvred top stage, its clock and a
 //                pyramid roof;
+//   - stadtkirche the town church (the maps lane, 2026-10-15): a sandstone hall nave between buttresses under its steep
+//                tiled roof, and the west tower of five stages with its clock, bell chamber, corner turrets and spire;
+//   - bergfried  the castle keep (the maps lane, 2026-10-15): a five-stage sandstone shaft, the high door on its landing,
+//                the corbel course under a steep hipped cap of tiles;
+//   - palas      the castle's palace range: a sandstone ground storey under two rendered ones, a half-hipped roof, the
+//                octagonal stair tower in its court front;
 //   - fabrik     the works (a Spinnerei or a Ziegelei by the valley road): a long two-storey sandstone hall, pilaster
 //                strips between tall segment-headed windows, a gable front with its round window, a roof lantern along
 //                the ridge, a lower engine house with its tall arched window and the round chimney on its square base.
@@ -391,9 +397,221 @@ const fabrik: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/** A parapet round a flat top (hx, hz its half-widths), `h` high and `t` thick, its four runs closed boxes (dressing). */
+function parapetRing(sink: PartSink, hx: number, hz: number, y: number, h: number, t: number): void {
+  sink.span('stone', -hx, y - 0.02, hz - t, hx, y + h, hz + 0.01, DECOR);
+  sink.span('stone', -hx, y - 0.02, -hz - 0.01, hx, y + h, -hz + t, DECOR);
+  sink.span('stone', -hx - 0.01, y - 0.02, -hz + t, -hx + t, y + h, hz - t, DECOR);
+  sink.span('stone', hx - t, y - 0.02, -hz + t, hx + 0.01, y + h, hz - t, DECOR);
+}
+
+/**
+ * The town church (Stadtkirche; Kronach's St. Johannes, the hall churches of the Franconian towns): the nave's ashlar on
+ * its plinth between stepped buttresses, tall windows in dressed surrounds, its steep tiled roof hipped over the choir,
+ * and the west tower over the square — a stone shaft of five stages with its arched door, slit lights, the clock stage
+ * and the louvred bell chamber, a parapet with its four corner turrets and the octagonal slated spire. (The maps lane,
+ * 2026-10-15; the critics on Steinburg: "no hill, castle or church mass": the framed village church the kit drew stood
+ * no higher than the houses round the square.) The nave and the tower are buildHouse bodies, so the kit's damage plan
+ * describes them; the dressing is decor. Both keep to the plot (the base church's footprint).
+ */
+const stadtkirche: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(houseUvOffset(ctx));
+  const st = stateFor(ctx, ctx.rng);
+  const plotW = ctx.bounds.maxX - ctx.bounds.minX, plotD = ctx.bounds.maxZ - ctx.bounds.minZ;
+  const cx = (ctx.bounds.maxX + ctx.bounds.minX) / 2, cz = (ctx.bounds.maxZ + ctx.bounds.minZ) / 2;
+  // (the nave's buttresses stand 0.5 m out of its flanks, its eaves 0.4 m: all inside the plot)
+  const W = Math.max(7.0, Math.min(8.6, plotW - 1.4)), T = Math.max(5.2, Math.min(6.6, W - 1.6));
+  const tz = cz + plotD / 2 - 0.35 - T / 2;
+  const naveZ0 = cz - plotD / 2 + 0.6, naveZ1 = tz - T / 2 + 0.5, D = Math.max(10, naveZ1 - naveZ0), nz = (naveZ0 + naveZ1) / 2;
+  const wallH = 8.6;
+  const sandstone: HouseDialect = {
+    ...hessianDialect(st),
+    window: (s, face, o, y0) => {
+      windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        frame: rgb(0x3b3a36), frameWidth: 0.05, frameOut: 0.03, bars: 'six',
+        surround: { bucket: 'stone', width: 0.22, out: 0.08 }, sill: { bucket: 'stone', out: 0.14 }, shutters: null,
+        head: { kind: 'segment', bucket: 'stone', h: 0.28, out: 0.09, ext: 0.08, rise: o.w * 0.5 },
+      }, st.rng, 0.1);
+    },
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: rgb(0x4a3020), frame: { bucket: 'stone', width: 0.34, out: 0.18, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
+    }, y0),
+  };
+  // the nave
+  sink.placed(0, cx, 0, nz, () => {
+    const openings: Opening[] = [];
+    for (const face of ['right', 'left'] as const) {
+      for (const u of [-D * 0.36, -D * 0.12, D * 0.12, D * 0.36]) openings.push({ face, storey: 0, kind: 'window', u, w: 1.3, y0: 2.5, h: 4.5 });
+    }
+    openings.push({ face: 'back', storey: 0, kind: 'window', u: 0, w: 1.6, y0: 2.7, h: 4.4 });
+    const roof: RoofSpec = { kind: 'halfhip', pitchDeg: 56, eave: 0.4, verge: 0.25, thickness: 0.18, bucket: 'roof', ridge: 'round', hipFrac: 0.5 };
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.6, out: 0.12, bucket: 'stone' }, storeys: [{ h: wallH, wall: 'stone' }], roof,
+      gableBucket: 'stone', openings, chimneys: [], gutters: { colour: ZINC }, verge: null, reveal: 0.42,
+    }, sandstone);
+    for (const face of ['right', 'left'] as const) {
+      const f = frame.faces[face];
+      buttresses(sink, f, [-D / 2 + 0.45, -D * 0.24, 0, D * 0.24, D / 2 - 0.45], wallH);
+      trimRun(sink, 'stone', f, -D / 2, D / 2, wallH + 0.6 - 0.26, [{ h: 0.1, out: 0.06 }, { h: 0.16, out: 0.16 }], { ret: 0.3 });
+    }
+    const b = frame.faces.back;
+    buttresses(sink, b, [-W / 2 + 0.45, W / 2 - 0.45], wallH);
+  });
+  // the west tower over the square
+  sink.placed(0, cx, 0, tz, () => {
+    const sts: HouseSpec['storeys'] = [{ h: 5.4, wall: 'stone' }, { h: 4.6, wall: 'stone' }, { h: 4.6, wall: 'stone' }, { h: 4.2, wall: 'stone' }, { h: 4.6, wall: 'stone' }];
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.8, y0: 0, h: 3.4 }];
+    for (const face of ['front', 'right', 'left'] as const) {
+      for (const i of [1, 2]) openings.push({ face, storey: i, kind: 'window', u: 0, w: 0.6, y0: 1.5, h: 1.6 });
+    }
+    const roof: RoofSpec = { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.22, bucket: 'stone', parapet: 0 };
+    const frame = buildHouse(sink, {
+      w: T, d: T, plinth: { h: 0.6, out: 0.14, bucket: 'stone' }, storeys: sts, roof,
+      gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.5,
+    }, sandstone);
+    const b0 = frame.bodies[0];
+    quoins(sink, b0.x0, b0.x1, b0.z0, b0.z1, 0.6, frame.eaveY - 0.1);
+    for (const face of ['front', 'right', 'back', 'left'] as const) {
+      // the string courses between the stages
+      for (const i of [1, 3, 4]) {
+        const f = storeyFaces(frame, i)[face];
+        trimRun(sink, 'stone', f, -f.width / 2, f.width / 2, frame.floors[i] - 0.14, [{ h: 0.1, out: 0.06 }, { h: 0.14, out: 0.14 }], { ret: 0.2 });
+      }
+      // the clock on the fourth stage
+      const fc = storeyFaces(frame, 3)[face], cy = frame.floors[3] + 2.1;
+      faceBox(sink, SW, fc, 0, cy, 0.04, 1.7, 1.7, 0.05, { colour: CLOCK, decor: true });
+      faceBox(sink, 'dark', fc, 0, cy + 0.32, 0.08, 0.07, 0.64, 0.01, DECOR);
+      faceBox(sink, 'dark', fc, 0.2, cy, 0.08, 0.46, 0.06, 0.01, DECOR);
+      // the bell chamber's two louvred openings on each face, in their dressed surrounds
+      const fb = storeyFaces(frame, 4)[face], by = frame.floors[4] + 0.8;
+      for (const u of [-T * 0.2, T * 0.2]) {
+        faceBox(sink, 'stone', fb, u, by + 1.45, 0.02, 1.25, 3.1, 0.06, DECOR);
+        faceBox(sink, 'dark', fb, u, by + 1.4, 0.06, 0.85, 2.7, 0.01, DECOR);
+        for (let k = 0; k < 7; k++) faceBox(sink, SW, fb, u, by + 0.3 + k * 0.36, 0.08, 0.8, 0.06, 0.06, { colour: st.timber, decor: true });
+      }
+    }
+    // the parapet round the top, closed stone (a flat roof's own parapet is a single skin, its inner face open to view),
+    // the corner turrets on it and the octagonal spire, slated
+    const top = frame.eaveY + 0.22, k = T / 2 - 0.42;
+    parapetRing(sink, T / 2, T / 2, top, 0.9, 0.42);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+      sink.cylinder('stone', [sx * k, top - 0.1, sz * k], 'y', 1.9, 0.42, 8, DECOR);
+      sink.cylinder('roof', [sx * k, top + 1.8, sz * k], 'y', 2.2, 0.5, 8, { colour: SLATE, decor: true }, 0.03);
+    }
+    sink.cylinder('roof', [0, top - 0.05, 0], 'y', 14.5, T * 0.43, 8, { colour: SLATE }, 0.05);
+    finial(sink, 0, top + 14.4, 0, 1.6);
+  });
+  return sink.finish();
+};
+
+/**
+ * The keep (Bergfried) on the castle rock: a square shaft of sandstone on its plinth, five stages, the high door a
+ * storey up on its timber landing, slit lights and putlog holes, the corbel course and the steep hipped cap of
+ * tiles over it, its finial. (The maps lane, 2026-10-15: Steinburg's castle, built as a set piece — a houseRow of
+ * one, `structure: 'bergfried'` — so the rock carries a keep's mass, not the wall towers' 9 m.)
+ */
+const bergfried: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(houseUvOffset(ctx));
+  const st = stateFor(ctx, ctx.rng);
+  const rng = st.rng;
+  const plotW = ctx.bounds.maxX - ctx.bounds.minX, plotD = ctx.bounds.maxZ - ctx.bounds.minZ;
+  const S = Math.max(6, Math.min(9, Math.min(plotW, plotD) - 1.2));
+  const sts: HouseSpec['storeys'] = [5.6, 5.0, 5.0, 4.8, 4.2].map((h) => ({ h, wall: 'stone' as RegionalBucket }));
+  const openings: Opening[] = [{ face: 'front', storey: 1, kind: 'door', u: S * 0.18, w: 1.1, y0: 0.4, h: 2.2 }];
+  for (const face of ['front', 'right', 'back', 'left'] as const) {
+    for (const i of [2, 3]) openings.push({ face, storey: i, kind: 'window', u: (rng() - 0.5) * S * 0.3, w: 0.42, y0: 1.4, h: 1.3 });
+    openings.push({ face, storey: 4, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.4 });
+  }
+  // (the steep hipped cap straight over the corbel course, as the wall tower's: a cap stood inside a parapet walk read
+  // open from above — bld-integrity)
+  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: 0.4, verge: 0.4, thickness: 0.16, bucket: 'roof', ridge: 'round' };
+  const frame = buildHouse(sink, {
+    w: S, d: S, plinth: { h: 0.9, out: 0.22, bucket: 'stone' }, storeys: sts, roof,
+    gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.6,
+  }, {
+    ...hessianDialect({ ...st, window: { ...st.window, shutters: null }, litShare: 0.03 }),
+    door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: st.door, frame: { bucket: 'stone', width: 0.26, out: 0.12, arch: true }, steps: null, leafKind: 'plank',
+    }, y0),
+  });
+  const b0 = frame.bodies[0];
+  quoins(sink, b0.x0, b0.x1, b0.z0, b0.z1, 0.9, frame.eaveY - 0.2);
+  for (const face of ['front', 'right', 'back', 'left'] as const) {
+    // (the shaft is one plane to its eaves; no hole in an opening)
+    const inOpen = (u: number, y: number) => frame.spec.openings.some((o) => o.face === face && Math.abs(u - o.u) < o.w / 2 + 0.15
+      && y > frame.floors[o.storey] + o.y0 - 0.15 && y < frame.floors[o.storey] + o.y0 + o.h + 0.15);
+    putlogs(sink, () => storeyFaces(frame, 0)[face], 1.8, frame.floors[4] - 0.4, 6, rng, inOpen);
+    gunLoop(sink, storeyFaces(frame, 0)[face], (rng() - 0.5) * S * 0.3, 1.6, 1.0);
+    // the corbel band under the eaves
+    const f = storeyFaces(frame, 4)[face];
+    trimRun(sink, 'stone', f, -f.width / 2, f.width / 2, frame.eaveY - 0.5, [{ h: 0.16, out: 0.08 }, { h: 0.18, out: 0.2 }, { h: 0.2, out: 0.32 }], { ret: 0.35 });
+  }
+  // the high door's timber landing on its two posts (dressing; the ladder up to it long drawn in)
+  const front = frame.faces.front, du = S * 0.18, landY = frame.floors[1] + 0.4;
+  const timber = { colour: st.timber, decor: true };
+  faceBox(sink, SW, front, du, landY - 0.08, 0.55, 1.7, 0.16, 1.1, timber);
+  for (const pu of [du - 0.7, du + 0.7]) faceBox(sink, SW, front, pu, (landY - 0.16) / 2, 0.95, 0.16, landY - 0.16, 0.16, timber);
+  finial(sink, 0, frame.roof.ridgeTopY + 0.05, 0, 1.4);
+  return sink.finish();
+};
+
+/**
+ * The palace range (Palas) of the castle: a long hall of three storeys — the sandstone ground storey with its small
+ * barred lights and arched door, the rendered upper storeys with dressed windows and quoins — under a steep half-hipped
+ * tile roof with dormers and two stacks, an octagonal stair tower engaged in its court front. A set piece (a houseRow of
+ * one, `structure: 'palas'`).
+ */
+const palas: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(houseUvOffset(ctx));
+  const st = stateFor(ctx, ctx.rng);
+  const plotW = ctx.bounds.maxX - ctx.bounds.minX, plotD = ctx.bounds.maxZ - ctx.bounds.minZ;
+  // the range along the plot's x, its court front to +z: built eaves-fronted (along its own z) and turned a quarter
+  const R = 1.6, L = Math.max(8, plotW - 0.9), D = Math.max(7, Math.min(12, plotD - 2 * R - 0.9));
+  const render: RegionalBucket = 'plaster2';
+  const sts: HouseSpec['storeys'] = [{ h: 4.0, wall: 'stone' }, { h: 3.4, wall: render }, { h: 3.2, wall: render }];
+  // (in the build frame the long faces are 'left', the court front once turned, and 'right'; the gable ends 'front', 'back')
+  const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: L * 0.22, w: 1.5, y0: 0, h: 2.8 }];
+  const n = Math.max(3, Math.round(L / 3.2));
+  for (const face of ['left', 'right'] as const) {
+    for (let i = 0; i < 3; i++) {
+      for (let k = 0; k < n; k++) {
+        const u = -L / 2 + (k + 0.5) * L / n;
+        if (face === 'left' && (Math.abs(u) < R + 0.8 || (i === 0 && Math.abs(u - L * 0.22) < 1.4))) continue;
+        openings.push({ face, storey: i, kind: 'window', u, w: i === 0 ? 0.7 : 1.0, y0: i === 0 ? 1.7 : 0.85, h: i === 0 ? 1.0 : 1.6 });
+      }
+    }
+  }
+  for (const face of ['front', 'back'] as const) for (const i of [1, 2]) for (const u of [-D * 0.22, D * 0.22]) openings.push({ face, storey: i, kind: 'window', u, w: 1.0, y0: 0.85, h: 1.6 });
+  const roof: RoofSpec = { kind: 'halfhip', pitchDeg: 54, eave: 0.4, verge: 0.3, thickness: 0.18, bucket: 'roof', ridge: 'round', hipFrac: 0.4 };
+  const cz = (ctx.bounds.maxZ + ctx.bounds.minZ) / 2 - R / 2;
+  sink.placed(Math.PI / 2, 0, 0, cz, () => {
+    const frame = buildHouse(sink, {
+      w: D, d: L, plinth: { h: 0.6, out: 0.1, bucket: 'stone' }, storeys: sts, roof,
+      openings, chimneys: [{ x: D * 0.15, z: -L * 0.3, sx: 0.7, sz: 0.7, above: 1.0, bucket: 'stone', cap: 'slab' }, { x: D * 0.15, z: L * 0.3, sx: 0.7, sz: 0.7, above: 1.0, bucket: 'stone', cap: 'slab' }],
+      gutters: { colour: ZINC }, verge: null, reveal: 0.32,
+    }, hessianDialect({ ...st, window: { ...st.window, shutters: null } }));
+    const b1 = frame.bodies[1];
+    quoins(sink, b1.x0, b1.x1, b1.z0, b1.z1, frame.floors[1], frame.eaveY - 0.1);
+    const f = frame.faces.left;
+    trimRun(sink, 'stone', f, -L / 2, L / 2, frame.floors[1] - 0.16, [{ h: 0.1, out: 0.06 }, { h: 0.16, out: 0.15 }], { ret: 0.4 });
+    // the stair tower engaged in the court front, its slit lights climbing, its slated cap
+    const tx = -(D / 2 + R * 0.55), H = frame.eaveY + 2.4;
+    sink.cylinder('stone', [tx, -0.3, 0], 'y', H + 0.3, R, 8, {});
+    for (let k = 0; k < 4; k++) faceBox(sink, 'dark', { origin: [tx - R * 0.96, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 1 }, 0, 2.6 + k * 2.6, 0.01, 0.22, 0.9, 0.01, DECOR);
+    sink.cylinder('roof', [tx, H - 0.05, 0], 'y', 3.6, R * 1.15, 8, { colour: SLATE }, 0.04);
+    finial(sink, tx, H + 3.55, 0, 1.1);
+  });
+  return sink.finish();
+};
+
 /** The kit's civic builders, by plan structure id (franconian.ts binds them to its palette). */
 export const FRANCONIAN_CIVIC: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   tower: mauerturm, chapel: kapelle, firestation: feuerwache, factory: fabrik,
+  // (the maps lane, 2026-10-15) the town church: the sandstone hall church with its west tower, in place of the framed
+  // village church the Fachwerk kit drew
+  church: stadtkirche,
+  // (the maps lane, 2026-10-15) the castle's keep and palace range, set pieces on the castle rock (houseRow `structure`)
+  bergfried, palas,
 });
 export type { RegionalParts, RegionalBuildContext, Vec3, Rgb };
 void shade; void IRON; void SLATE;

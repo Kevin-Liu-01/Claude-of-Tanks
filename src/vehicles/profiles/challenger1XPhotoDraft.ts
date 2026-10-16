@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addChallenger1XRearEquipment } from './challenger1XRearEquipment.ts';
 import { addChallenger1XDeckFittings, addChallenger1XLouvreBanks } from './challenger1XDeckFittings.ts';
@@ -265,7 +266,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.023, .53, 16), x, 2.90, z + .46);
   mg.add('turretDark', box(.088, .076, .19), x, 2.87, z - .23);
   mg.add('turretDetail', box(.13, .17, .18), x + .12, 2.86, z + .04);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'challenger1XDraftGpmg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {

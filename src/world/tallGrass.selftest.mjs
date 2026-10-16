@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  SHADED_SWARD_GLSL, TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
+  SHADED_SWARD_GLSL, TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, publishTrim, tallGrassRank,
+  tallGrassShaderSource,
 } from './tallGrass.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
@@ -28,11 +29,11 @@ const field = {
 const blocked = (x, y, z) => Math.hypot(x - 20, z + 10) < 5;                // a sealed building footprint
 const meadow = resolveGroundReduxProfile('verdant').grass;
 const settle = (grass, camera, n = 600) => {
-  // at least one update (a knob or camera change is only noticed there), then until both rings are published and idle
+  // at least one update (a knob or camera change is only noticed there), then until every ring is published and idle
   for (let i = 0; i < n; i++) {
     grass.update(1 / 60, camera, null, null);
     const s = grass.getState();
-    if (s.near.publishes && s.far.publishes && !s.near.pending && !s.far.pending) break;
+    if (s.near.publishes && s.mid.publishes && s.far.publishes && !s.near.pending && !s.mid.pending && !s.far.pending) break;
   }
 };
 const roots = (mesh) => {
@@ -74,7 +75,7 @@ const cam = new THREE.Vector3(0, 2, 0);
 // 2. Gates: the mobile tier, a map without a sward, a zero quality knob.
 {
   const mobile = createTallGrass(field, { tier: 'mobile', biome: meadow, qualityScale: () => 1 });
-  assert.equal(mobile.group.visible, false); assert.equal(mobile.pressure, null);
+  assert.equal(mobile.group.visible, false); assert.equal(mobile.pressure, null); assert.equal(mobile.pressureFine, null);
   mobile.update(1 / 60, cam); assert.equal(mobile.getState().enabled, false); assert.equal(mobile.near.count, 0);
   mobile.dispose();
   const desert = createTallGrass(field, { tier: 'desktop', mapId: 'desert', qualityScale: () => 1 });
@@ -90,8 +91,8 @@ const cam = new THREE.Vector3(0, 2, 0);
 // 3. A settled ring under the camera: counts, exclusions, ground fit, the hollow, the blade attribute.
 const grass = createTallGrass(field, { seed: 11, tier: 'desktop', biome: meadow, blocked, qualityScale: () => 1 });
 assert.equal(grass.group.name, 'tall-grass');
-assert.deepEqual(grass.group.children.map((m) => m.name), ['tall-grass-near', 'tall-grass-far']);
-for (const mesh of [grass.near, grass.far]) {
+assert.deepEqual(grass.group.children.map((m) => m.name), ['tall-grass-near', 'tall-grass-mid', 'tall-grass-far']);
+for (const mesh of [grass.near, grass.mid, grass.far]) {
   assert.equal(mesh.castShadow, false, 'blades cast no shadow');
   assert.equal(mesh.receiveShadow, true, 'blades receive shadow (at the root)');
   assert.equal(mesh.frustumCulled, false);
@@ -99,22 +100,26 @@ for (const mesh of [grass.near, grass.far]) {
   assert.equal(mesh.material.map, null); assert.equal(mesh.material.alphaTest, 0);
 }
 assert.equal(grass.near.material.customProgramCacheKey(), TALL_GRASS.near.programKey);
+assert.equal(grass.mid.material.customProgramCacheKey(), TALL_GRASS.mid.programKey);
 assert.equal(grass.far.material.customProgramCacheKey(), TALL_GRASS.far.programKey);
 grass.update(1 / 60, cam);
 assert.ok(grass.getState().near.pending > 0, 'a fresh ring builds over several updates');
 settle(grass, cam);
 const state = grass.getState();
-assert.equal(state.near.pending, 0); assert.equal(state.far.pending, 0);
-assert.equal(state.near.cells, (TALL_GRASS.near.ring * 2 + 1) ** 2); assert.equal(state.far.cells, (TALL_GRASS.far.ring * 2 + 1) ** 2);
-assert.equal(state.near.builds, state.near.cells); assert.equal(state.far.builds, state.far.cells);
-assert.ok(state.near.publishes >= 1 && state.far.publishes >= 1);
+for (const ring of ['near', 'mid', 'far']) {
+  assert.equal(state[ring].pending, 0);
+  assert.equal(state[ring].cells, (TALL_GRASS[ring].ring * 2 + 1) ** 2);
+  assert.equal(state[ring].builds, state[ring].cells);
+  assert.ok(state[ring].publishes >= 1);
+  assert.equal(state[ring].truncated, 0);
+  assert.equal(grass[ring].count, state[ring].count);
+}
 assert.ok(state.near.count > 2000, `the near ring carries thousands of clumps (${state.near.count})`);
+assert.ok(state.mid.count > 1000, `the mid ring carries thousands of clumps (${state.mid.count})`);
 assert.ok(state.far.count > 300, `the far ring carries hundreds of blades (${state.far.count})`);
-assert.equal(state.near.truncated, 0); assert.equal(state.far.truncated, 0);
-assert.equal(grass.near.count, state.near.count); assert.equal(grass.far.count, state.far.count);
-const nearRoots = roots(grass.near), farRoots = roots(grass.far);
-const nearHalf = (TALL_GRASS.near.ring + 1) * TALL_GRASS.near.cellM, farHalf = (TALL_GRASS.far.ring + 1) * TALL_GRASS.far.cellM;
-for (const [list, half] of [[nearRoots, nearHalf], [farRoots, farHalf]]) {
+const nearRoots = roots(grass.near), midRoots = roots(grass.mid), farRoots = roots(grass.far);
+const halfOf = (ring) => (TALL_GRASS[ring].ring + 1) * TALL_GRASS[ring].cellM;
+for (const [list, half] of [[nearRoots, halfOf('near')], [midRoots, halfOf('mid')], [farRoots, halfOf('far')]]) {
   for (const [x, y, z] of list) {
     assert.ok(Math.abs(x - 5) >= TALL_GRASS.roadKeepOutM, `off the carriageway (${x.toFixed(2)})`);
     assert.ok(z >= -20, 'off water');
@@ -139,14 +144,94 @@ assert.ok(shoulder < verge * 0.7, `the shoulder thins toward the road (${shoulde
 const nearBlades = blades(grass.near);
 let hollowHeight = 0, hollowN = 0, openHeight = 0, openN = 0;
 nearBlades.forEach(([yaw, h, w, r], i) => {
-  assert.ok(yaw >= 0 && yaw < Math.PI * 2 + 1e-6 && h > 0.3 && h <= 1.9 && w > 0.02 && w < 0.12 && r >= 0 && r < 1, 'blade yaw / height / width / random inside their bands');
+  // (grass r2: the fourth value is the species code + the clump's random; no herb grows without a canopy)
+  assert.ok(yaw >= 0 && yaw < Math.PI * 2 + 1e-6 && h > 0.3 && h <= 1.9 && w > 0.02 && w < 0.12 && r >= 0 && r < 5 && r % 1 < 0.9996, 'blade yaw / height / width / code + random inside their bands');
   const [x, , z] = nearRoots[i];
   if (Math.hypot(x + 8, z - 8) < 5) { hollowHeight += h; hollowN++; } else if (Math.hypot(x - 15, z - 20) < 8) { openHeight += h; openN++; }
 });
 assert.ok(hollowHeight / hollowN > openHeight / openN * 1.1, 'blades stand taller in the hollow');
 const colors = grass.near.instanceColor.array;
-for (let i = 0; i < grass.near.count * 3; i++) assert.ok(colors[i] > 0.4 && colors[i] <= 1.6, 'tints jitter inside their band');
-assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.farWidth * 0.8 - 1e-9), 'far blades are wider (one strip carries the read)');
+// (grass r2: the clump's jitter times its patch's colour and light)
+for (let i = 0; i < grass.near.count * 3; i++) assert.ok(colors[i] > 0.3 && colors[i] <= 1.6 + 1e-6, 'tints jitter inside their band (the 1.6 cap as a float32)');
+for (const ring of [grass.mid, grass.far]) {
+  assert.ok(blades(ring).every(([, , w]) => w > meadow.widthM * TALL_GRASS.farWidth * 0.8 - 1e-9), 'mid and far blades are wider (one strip carries the read)');
+}
+
+// 3b. grass r2 (2026-10-15, the blind critics: "blades only in a ~15 m band, then crumpled bladeless ground behind a hard
+//     line"; "one species and one colour … no seed heads, flowers or height variety"). The mid ring holds the cover the
+//     near ring hands over: its cells are published in rank order as the prefix their nearest camera position shows
+//     ((keepRef / d)² beyond keepRef), none inside its dissolve-in, and every clump the shader would show is published.
+{
+  assert.deepEqual([...TALL_GRASS.near.dissolve], [-1, -1, 30, 46], 'the near clumps leave by rank across 30–46 m');
+  assert.deepEqual([...TALL_GRASS.mid.dissolve], [30, 46, -1, -1], 'the mid clumps arrive by rank across the same band');
+  assert.ok(TALL_GRASS.mid.fade[2] > TALL_GRASS.far.fade[0] && TALL_GRASS.mid.fade[3] > TALL_GRASS.far.fade[1], 'the far ring comes in under the mid ring\'s fade-out');
+  // the trim: the camera anywhere in its cell, any point of the target cell — the published share covers the shown one
+  const show = (d) => (d < 46 ? (d <= 30 ? 0 : ((d - 30) / 16) ** 2 * (3 - 2 * (d - 30) / 16)) : 1) * Math.min(1, (46 / Math.max(d, 1)) ** 2);
+  for (let k = 0; k < 4000; k++) {
+    const cm = TALL_GRASS.mid.cellM, gx = Math.floor((k * 7919) % 13) - 6, gz = Math.floor((k * 104729) % 13) - 6;
+    const camX = ((k * 0.6180339) % 1) * cm, camZ = ((k * 0.4142135) % 1) * cm;
+    const px = gx * cm + ((k * 0.7320508) % 1) * cm, pz = gz * cm + ((k * 0.2360679) % 1) * cm;
+    const centre = Math.hypot(gx, gz) * cm, d = Math.hypot(px - camX, pz - camZ);
+    const kept = publishTrim(1000, centre, cm, TALL_GRASS.mid.keepRefM, 30) / 1000;
+    assert.ok(kept >= show(d) - 1e-9, `a mid cell ${centre.toFixed(0)} m out keeps every rank a camera ${d.toFixed(1)} m from its clump shows`);
+  }
+  assert.equal(publishTrim(500, 0, 16, 46, 30), 0, 'the camera\'s own cell shows no mid blade');
+  assert.equal(publishTrim(500, 200, 24, 0, 88), 500, 'a far cell past the fade-in publishes whole');
+  assert.ok(publishTrim(500, 96, 16, 46, 30) < 250, 'an outer mid cell publishes a fraction (its nearest point 73 m out: 39 % + the soft edge)');
+  // the published mid clumps follow the law on open level ground: the clumps the shader shows thin as (46 / d)² past 46 m
+  const open = createTallGrass({ getHeightAt: () => 0 }, { seed: 11, tier: 'desktop', biome: meadow, qualityScale: () => 1 });
+  settle(open, cam);
+  const or = roots(open.mid), ob = blades(open.mid);
+  const showing = (d0, d1) => {
+    let n = 0;
+    or.forEach(([x, , z], i) => { const d = Math.hypot(x - cam.x, z - cam.z); if (d >= d0 && d < d1 && tallGrassRank(ob[i][3]) < show(d)) n++; });
+    return n / (Math.PI * (d1 * d1 - d0 * d0));
+  };
+  const at50 = showing(46, 56), at90 = showing(84, 96);
+  assert.ok(at50 > 0.3 && at90 > 0.05 && at50 > at90 * 2.4, `the mid ring thins with distance (${at50.toFixed(2)} vs ${at90.toFixed(2)} per m² shown)`);
+  open.dispose();
+  // the cells are kept in rank order: a published prefix is a rank prefix
+  for (const ring of [grass.mid]) {
+    const b = blades(ring);
+    let ordered = 0;
+    for (let i = 1; i < b.length; i++) if (tallGrassRank(b[i][3]) >= tallGrassRank(b[i - 1][3])) ordered++;
+    assert.ok(ordered > b.length * 0.97, 'mid cells publish in rank order (descending only at a cell boundary)');
+  }
+  // the species: seed-bearing grasses and flowering herbs on a meadow, no herb layer without a canopy
+  const codes = [0, 0, 0, 0, 0, 0];
+  for (const [, , , w] of nearBlades) codes[Math.floor(w)]++;
+  const total = nearBlades.length;
+  assert.ok(codes[1] / total > 0.06 && codes[1] / total < 0.30, `a meadow seeds in places (${(codes[1] / total * 100).toFixed(1)} %)`);
+  const flowers = codes[2] + codes[3] + codes[4];
+  assert.ok(flowers / total > 0.015 && flowers / total < 0.15, `and flowers in its flower patches (${(flowers / total * 100).toFixed(1)} %)`);
+  assert.ok(codes[2] > 0 && codes[3] > 0 && codes[4] > 0, 'white, yellow and purple heads');
+  assert.equal(codes[5], 0, 'no herb layer in the open');
+  // the colour wanders patch by patch: 8 m patches' mean tints spread far wider than one clump's jitter would average to
+  const cells = new Map();
+  nearRoots.forEach(([x, , z], i) => {
+    const key = `${Math.floor(x / 8)},${Math.floor(z / 8)}`, c = cells.get(key) ?? [0, 0, 0];
+    c[0] += colors[i * 3 + 1] / colors[i * 3]; c[1] += colors[i * 3] + colors[i * 3 + 1]; c[2]++; cells.set(key, c);
+  });
+  const hue = [...cells.values()].filter((c) => c[2] > 40).map((c) => c[0] / c[2]);
+  const meanHue = hue.reduce((a, b) => a + b, 0) / hue.length;
+  const sdHue = Math.sqrt(hue.reduce((a, b) => a + (b - meanHue) ** 2, 0) / hue.length);
+  assert.ok(sdHue > 0.04, `patches of fresh and cured sward (8 m patch hue sd ${sdHue.toFixed(3)})`);
+  // the woods' herb layer: fronds in patches under a closed canopy, broad and short, the sward thinned there
+  const woodsField = { getHeightAt: () => 0, _woodsAt: (x, z) => (Math.hypot(x - 20, z - 25) < 14 ? 0.9 : 0) };
+  const wood = createTallGrass(woodsField, { seed: 11, tier: 'desktop', biome: meadow, blocked, qualityScale: () => 1 });
+  settle(wood, cam);
+  const wr = roots(wood.near), wb = blades(wood.near);
+  let herbs = 0, herbOut = 0, herbW = 0, grassIn = 0, grassOut = 0;
+  wr.forEach(([x, , z], i) => {
+    const inside = Math.hypot(x - 20, z - 25) < 14, out = Math.hypot(x - 20, z - 25) > 15 && Math.hypot(x - 20, z - 25) < 28;
+    if (Math.floor(wb[i][3]) === 5) { if (inside) { herbs++; herbW += wb[i][2]; } else herbOut++; }
+    else if (inside) grassIn++; else if (out) grassOut++;
+  });
+  assert.ok(herbs > 60 && herbOut === 0, `the herb layer grows under the canopy and only there (${herbs} in, ${herbOut} out)`);
+  assert.ok(herbW / herbs > 0.10, 'its fronds are broad');
+  assert.ok(grassIn / (Math.PI * 14 * 14) < grassOut / (Math.PI * (28 * 28 - 15 * 15)) * 0.4, 'the sward thins in the stand\'s shade');
+  wood.dispose();
+}
 
 // 4. Determinism and seeds; the quality knob halves the sward.
 {
@@ -275,9 +360,26 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
     'vec3 up = vec3(pdir.x * sin(ang), cos(ang), pdir.y * sin(ang));', 'worldPosition = modelMatrix * cotGrassShadowWorld;',
     'fade *= mix(1.0, nearBand * rayBand, uSniperFade);', `smoothstep(${TALL_GRASS.lensClearM[0].toFixed(2)}, ${TALL_GRASS.lensClearM[1].toFixed(2)}, dCam)`,
     'float hgt = aBlade.y * fade;', 'float taper = 1.0 - 0.72 * t;',
+    // grass r2: the rank dissolve and the distance law (the CPU's tallGrassRank hashes the same fraction), the species
+    'float cotRank = fract(cotRnd * 61.73 + 0.37);', 'fade *= clamp((cotShow - cotRank) * 20.0, 0.0, 1.0);',
+    'float cotK = uGrassKeep.x / max(dCam, 1.0); cotShow *= min(1.0, cotK * cotK);',
+    'if (uGrassKeep.x > 0.0) wid *= clamp(dCam / uGrassKeep.x, 1.0, uGrassKeep.y);',
+    'float cotRnd = fract(aBlade.w);', 'float cotCode = floor(aBlade.w);',
   ]) assert.ok(vertexShader.includes(term), `vertex: ${term}`);
+  assert.ok(!/aBlade\.w \*/.test(vertexShader), 'every random reads the fraction, never the species code');
+  assert.ok(fragmentShader.includes('float head = smoothstep(vHeadT0, vHeadT0 + 0.04, vBladeT); diffuseColor.rgb = mix(diffuseColor.rgb, vHeadCol * uBladeLift, head);'), 'a seed spike or a flower head over the blade\'s top');
+  assert.ok(fragmentShader.includes('(1.0 - vHerb)'), 'a frond never cures to straw');
+  for (const w of [0.123, 1.5, 4.9995, 5.25]) assert.ok(Math.abs(tallGrassRank(w) - (((w % 1) * 61.73 + 0.37) % 1)) < 1e-9, 'the CPU rank is the shader\'s');
   assert.ok(vertexShader.indexOf('float cotYaw = aBlade.x + position.z;') < vertexShader.indexOf('vec3 transformed;'), 'the yaw is set with the normal, before the strip');
-  assert.ok(fragmentShader.includes(`diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`), 'dark roots, lit tips (per-ring gradient and lift), bruised where crushed');
+  // (contact round 5) the fine near field read inside its window after the coarse one, eased in from its outer band
+  for (const term of [
+    'uniform sampler2D uPressFine; uniform vec4 uPressFineParams;', 'if (uPressFineParams.w > 0.5) {',
+    'float winF = 1.0 - smoothstep(0.30, 0.38, max(offF.x, offF.y));', 'vec4 pf = texture2D(uPressFine, fract(root.xz / uPressFineParams.x));',
+    'press = mix(press, clamp(pf.r, 0.0, 1.0), winF);', 'crush = mix(crush, clamp(pf.a, 0.0, 1.0), winF);',
+  ]) assert.ok(vertexShader.includes(term), `vertex (fine field): ${term}`);
+  assert.ok(vertexShader.indexOf('vec4 pf = texture2D(uPressFine') > vertexShader.indexOf('vec4 p = texture2D(uPress,')
+    && vertexShader.indexOf('vec4 pf = texture2D(uPressFine') < vertexShader.indexOf('float ang = press * uBend;'), 'after the coarse read, before the bend');
+  assert.ok(fragmentShader.includes(`diffuseColor.rgb *= mix(uGrassBase * (1.0 - 0.22 * uSwardTone), uGrassTip * (1.0 + 0.06 * uSwardTone), pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`), 'dark roots, lit tips (per-ring gradient and lift, the sward\'s depth), bruised where crushed');
   assert.ok(TALL_GRASS.crushDarken >= 0.2 && TALL_GRASS.crushDarken <= 0.4, 'a bruise, not a burn');
   assert.ok(fragmentShader.includes('normal = normalize( vNormal );'), 'both faces of a strip light the same way');
   assert.ok(!vertexShader.includes('uv.'), 'no uv attribute: the height fraction is position.y');
@@ -288,15 +390,23 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
   const calls = [], released = [];
   const csm = createTallGrass(field, { seed: 5, tier: 'desktop', biome: meadow, qualityScale: () => 1,
     setupMaterial: (material, hook) => { calls.push({ material, hook }); material.onBeforeCompile = hook; }, releaseMaterial: (m) => released.push(m) });
-  assert.equal(calls.length, 2, 'the near and the far material are set up once each');
-  assert.deepEqual(calls.map((c) => c.material), [csm.near.material, csm.far.material]);
+  assert.equal(calls.length, 3, 'the near, the mid and the far material are set up once each');
+  assert.deepEqual(calls.map((c) => c.material), [csm.near.material, csm.mid.material, csm.far.material]);
   const freshShader = () => ({ uniforms: {}, vertexShader: '#include <common>\n#include <beginnormal_vertex>\n#include <begin_vertex>\n#include <shadowmap_vertex>', fragmentShader: '#include <common>\n#include <normal_fragment_begin>\n#include <color_fragment>' });
   const shader = freshShader();
   calls[0].hook(shader);
   assert.deepEqual(shader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.near.fade], 'the near ring fades out at 38–46 m');
+  const midShader = freshShader();
+  calls[1].hook(midShader);
   const farShader = freshShader();
-  calls[1].hook(farShader);
-  assert.deepEqual(farShader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.far.fade], 'the far ring fades in at 34–46 m and out at 192–240 m');
+  calls[2].hook(farShader);
+  assert.deepEqual(farShader.uniforms.uGrassFade.value.toArray(), [...TALL_GRASS.far.fade], 'the far ring fades in at 88–102 m and out at 192–240 m');
+  assert.deepEqual(shader.uniforms.uGrassDissolve.value.toArray(), [...TALL_GRASS.near.dissolve], 'the near clumps leave by rank');
+  assert.deepEqual(midShader.uniforms.uGrassDissolve.value.toArray(), [...TALL_GRASS.mid.dissolve], 'the mid clumps arrive by rank');
+  assert.deepEqual(midShader.uniforms.uGrassKeep.value.toArray(), [TALL_GRASS.mid.keepRefM, TALL_GRASS.mid.widthGrow, 1], 'the mid ring\'s distance law, its blades widening, heads over the upper half');
+  assert.deepEqual(shader.uniforms.uGrassKeep.value.toArray(), [0, 1, 0], 'no distance law on the near ring');
+  assert.equal(midShader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.far, 'the mid blade is a far blade');
+  assert.deepEqual(shader.uniforms.uGrassSeed.value.toArray(), [...TALL_GRASS.species.meadow.seedRgb], 'the biome kind\'s seed colour');
   assert.equal(shader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.near, 'the near clump keeps a dark root');
   assert.equal(farShader.uniforms.uBladeGamma.value, TALL_GRASS.bladeGamma.far, 'the far blade takes its tip colour early (seen from above it is mostly root)');
   assert.ok(TALL_GRASS.bladeGamma.far < TALL_GRASS.bladeGamma.near && TALL_GRASS.farWidth > 1 && TALL_GRASS.farWidth < 2.5);
@@ -308,7 +418,7 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
   csm.setSniperFade(0); csm.update(1, cam); assert.ok(shader.uniforms.uSniperFade.value < 0.01, 'the fade eases out');
   csm.setWindTime(7); assert.equal(shader.uniforms.uWindTime.value, 7);
   csm.dispose();
-  assert.deepEqual(released, [csm.near.material, csm.far.material], 'dispose releases both materials from the shadow setup');
+  assert.deepEqual(released, [csm.near.material, csm.mid.material, csm.far.material], 'dispose releases every material from the shadow setup');
   assert.equal(csm.group.parent, null);
 }
 grass.dispose();
@@ -347,4 +457,4 @@ assert.equal(PRESETS.mobile.tallGrass, undefined, 'the mobile tier keeps today\'
       'appended after the chunk (after the engine\'s shadow dim and bounce), not before it');
   }
 }
-console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the engine hooks and the world wiring passed');
+console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), the mid ring (rank dissolve, distance law, publish trim), species, colour patches and the herb layer, determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the engine hooks and the world wiring passed');

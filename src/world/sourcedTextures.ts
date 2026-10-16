@@ -326,7 +326,10 @@ const TERRAIN_PLAN = {
     // (Caldera round 2, item 5, wave 114: the Black Shelves "need a dark, rough, blocky material, not grey"): the rock
     // set's fractured blocks — the lava flows' whole surface and the steep rock — near-black basalt, a breath warm,
     // lifted just off black (was 0.62 grey)
-    R: { set: 'rock', desat: 0.75, tint: [0.36, 0.35, 0.34], lift: 0.015, roughMul: 1.3 }, M: null,
+    // (Caldera round 6, waves 412/414: the rise's faces "near-black featureless soil faces with ragged white speckle") the
+    // steep ground a weathered andesite and welded tuff, dark grey-brown under lichen, lifted off near-black (the lava
+    // shelves keep their blocks, a step lighter; was 0.36 / 0.35 / 0.34)
+    R: { set: 'rock', desat: 0.6, tint: [0.52, 0.50, 0.46], lift: 0.025, roughMul: 1.3 }, M: null,
   },
   foundry: {
     G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },

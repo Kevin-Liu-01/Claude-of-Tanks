@@ -7,6 +7,10 @@
 //    Studio's chunk (main.ts) and merges into the resident dictionaries.
 // The build and the dev server split alike. Node code (the Vite config, the middleware, tools and selftests) imports
 // the JSON directly and keeps the full catalogs; public pages load their own page catalogs, which hold no Studio key.
+// 2026-10-15 (the perf lane): in the build the game's catalog modules also leave out every key the game's document and
+// its workers cannot show (`gameKeys`, the page catalog scan's `game` key set, tools/viteI18nPageCatalogs.ts): the page
+// and the worker builds serve the same subset, so both still emit the same catalog files. The dev server (gameKeys null)
+// serves them whole.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
@@ -28,7 +32,18 @@ export function splitStudioCatalog(dictionary: Dictionary): { game: Record<strin
   return { game, studio };
 }
 
-export function i18nStudioCatalog(): Plugin {
+/** A catalog restricted to a key set, in the catalog's own order. */
+function restrictCatalog(dictionary: Readonly<Record<string, string>>, keys: Iterable<string>): Record<string, string> {
+  const keep = new Set(keys);
+  return Object.fromEntries(Object.entries(dictionary).filter(([key]) => keep.has(key)));
+}
+
+interface StudioCatalogOptions {
+  /** The keys the game's document and workers can show (the build's page catalog scan); null or absent keeps every key. */
+  readonly gameKeys?: () => readonly string[] | null;
+}
+
+export function i18nStudioCatalog(options: StudioCatalogOptions = {}): Plugin {
   let root = process.cwd();
   const catalogFile = (locale: CatalogLocale): string => resolve(root, `src/ui/i18nCatalog.${locale}.json`);
   const split = (locale: CatalogLocale) => splitStudioCatalog(JSON.parse(readFileSync(catalogFile(locale), 'utf8')) as Dictionary);
@@ -52,7 +67,10 @@ export function i18nStudioCatalog(): Plugin {
         return `export default ${JSON.stringify(split(locale).studio)};\n`;
       }
       const catalog = CATALOG_FILE.exec(id.split('?', 1)[0]!);
-      return catalog ? JSON.stringify(split(catalog[1] as CatalogLocale).game) : null;
+      if (!catalog) return null;
+      const { game } = split(catalog[1] as CatalogLocale);
+      const shown = options.gameKeys?.() ?? null;
+      return JSON.stringify(shown ? restrictCatalog(game, shown) : game);
     },
   };
 }

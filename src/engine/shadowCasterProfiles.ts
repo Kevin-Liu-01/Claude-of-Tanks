@@ -16,13 +16,15 @@
 //    noise. A low sun lengthens every shadow and lifts the rule by itself.
 // 3. REACH: a near-tier caster (its owner reports the farthest planar camera distance its pieces stand at this frame)
 //    is hidden from a cascade whose sampled range starts beyond that distance plus its shadow footprint and a margin.
-//    Three's CSM with `fade` samples a cascade from its break start x less the fade half-margin 0.125·x² (CSMShader:
-//    margin = 0.25·closestEdge², csmx = x − margin / 2; linearDepth = viewZ / (shadowFar − cameraNear)).
+//    Three's CSM with `fade` samples a cascade from its break start x less the fade's half-band (2026-10-14: the linear
+//    law of shadowCascadeFade.ts, 6 % of x, patched over CSMShader's 0.25·closestEdge²; linearDepth = viewZ / (shadowFar −
+//    cameraNear)).
 import { Frustum, Matrix4, Sphere, Vector3, type InstancedMesh, type Object3D } from 'three';
 import {
   forEachShadowCasterProfile, setShadowCasterDynamicMask, shadowCasterDynamicMaskOf, SHADOW_CASTER_ALL_CASCADES,
   type ShadowCasterProfile,
 } from './renderLayers.ts';
+import { csmSliceFromM } from './renderLayers.ts'; // (the fade law, shadowCascadeFade.ts, through its one import path)
 
 /** A ground shadow shorter than this many texels of a cascade's map cannot survive its PCF kernel. */
 export const SHADOW_FOOTPRINT_MIN_TEXELS = 2;
@@ -50,11 +52,11 @@ interface ShadowCasterEvaluation {
 
 /**
  * The view depth from which three's CSM samples cascade i whose break starts at fraction `breakStart` of
- * (far − near): with `fade` the fragment test is `linearDepth >= x − 0.125·x²`, without it `linearDepth >= x`.
+ * (far − near): with `fade` the slice reaches back over the fade's half-band (shadowCascadeFade.ts, 2026-10-14: the one
+ * law the shader, the boxes and the held poses read), without it the break itself.
  */
 export function csmSampledFromM(breakStart: number, near: number, far: number, fade: boolean): number {
-  const x = Math.max(0, breakStart);
-  return (fade ? x - 0.125 * x * x : x) * Math.max(0, far - near);
+  return csmSliceFromM(breakStart, near, far, fade);
 }
 
 /** The ground shadow length of a caster `heightM` tall under a sun at `sunElevationRad` (Infinity under the law's floor). */
@@ -121,7 +123,10 @@ export function evaluateShadowCasterMask(
     if (!cascade.scheduled) continue;
     const bit = 1 << i;
     let shown = true;
-    if (footprint > 0 && cascade.texelM > 0 && footprint < SHADOW_FOOTPRINT_MIN_TEXELS * cascade.texelM) shown = false;
+    // (2026-10-14, SKY shadows r2a: cascade 0 holds the footprint law at cascade 1's texel — High's 3.6 cm near cascade
+    // would otherwise draw a class of small caster inside 30 m that vanishes beyond it; lowering it is its own step)
+    const lawTexelM = i === 0 && cascades.length > 1 ? Math.max(cascade.texelM, cascades[1].texelM) : cascade.texelM;
+    if (footprint > 0 && lawTexelM > 0 && footprint < SHADOW_FOOTPRINT_MIN_TEXELS * lawTexelM) shown = false;
     if (shown && profile.reachM !== undefined && footprint > 0
       && profile.reachM + SHADOW_REACH_MARGIN_M + footprint < cascade.sampledFromM) shown = false;
     if (shown && cascade.frustum) {

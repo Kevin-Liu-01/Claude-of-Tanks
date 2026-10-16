@@ -261,11 +261,14 @@ const state = (s) => JSON.stringify({ holes: [...s.holes], down: [...s.down], co
   assert.ok(late.colliders.every((record) => record.openings), 'and its shell bands read them');
 }
 
-// ---- the switch: off in every mode until the gates pass; without it nothing opens
-for (const mode of GAME_MODE_IDS) assert.equal(matchRulesetFor(mode).destruction.sections, false, `${mode}: sections off`);
+// ---- the switch: on wherever structures are (DST-04, 2026-10-15); without it nothing opens
+for (const mode of GAME_MODE_IDS) {
+  const rules = matchRulesetFor(mode).destruction;
+  assert.equal(rules.sections, rules.structures, `${mode}: sections follow structures`);
+}
 {
   const { obstacles, colliders } = house();
-  const match = createDestructionMatch({ rules: matchRulesetFor('standard').destruction, obstacles, colliders });
+  const match = createDestructionMatch({ rules: { ...matchRulesetFor('standard').destruction, sections: false }, obstacles, colliders });
   match.shellWorldHit({ type: 'HE', caliberMm: 125 }, colliders[0], 4, 2, 0, -1, 0);
   match.step();
   assert.equal(match.drainBreaches([]), 0, 'no breach events');

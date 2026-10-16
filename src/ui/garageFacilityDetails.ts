@@ -17,6 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
+import { GARAGE_FACILITY_GRIME_KEY, garageFacilityGrimeHook } from './garageGrimeProgram.ts';
 import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron, buildTropicalPlants } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
@@ -55,7 +56,7 @@ type SurfaceMaps = Readonly<{ color: THREE.Texture | null; normal: THREE.Texture
 interface FacilityBuildOptions {
   readonly buckets: GeometryBuckets;
   readonly engineCtx: Readonly<{
-    setupShadowMaterial?(material: THREE.Material): void;
+    setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
   }>;
   readonly surfaceMaps?: Readonly<Record<
     PrimitiveInstance['materialClass'],
@@ -139,8 +140,10 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
       // 2026-10-14: "the coastal lighthouse rising out of the turret ... set the gantry on crane rails")
       // the drydock itself in the frame's right third, its mouth on the shore (the re-judge, 2026-10-15: "the hero frame
       // shows no drydock"), the crane on its rails beside it
-      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it)
-      feature: [23.6, 22], featureRadius: [2.4, 4.5],
+      // the facility's own level is the crane's paving beside the dock (the dock itself is cut below it), narrower and a
+      // metre further out since the dry dock's floor cut reaches 5.95 m from its centre line (garage r8): its ground
+      // samples clear the cut by a terrain cell, and its footprint clears the harbour boatshed
+      feature: [24.6, 22], featureRadius: [1.2, 4.5],
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
@@ -263,12 +266,19 @@ export function garageDrydockGround(basin: GarageDrydockBasin, side: number, dep
   if (Math.abs(lateral) >= reach || depth <= basin.depth0 - 1.8) return null;
   const inward = basin.halfWidth - Math.abs(lateral);
   const cut = Math.min(ground, basin.pavingY - 0.02, basin.pavingY - DRYDOCK_STEP_RISE - (DRYDOCK_STEP_RISE / DRYDOCK_STEP_IN) * inward);
+  // the dock pumped dry (garage r8): within a terrain diagonal (3.4 m) of the floor's edge the ground lies under the
+  // floor, so no grid edge rises through it beside the altars' feet (the brute-force check: no poke, no ditch)
+  if (Math.abs(lateral) <= basin.halfWidth - 3 * DRYDOCK_STEP_IN + 3.4 && depth >= basin.depth0 - 0.1 && depth <= basin.depth1 + 1.0) {
+    return Math.min(cut, basin.floorY - 0.45);
+  }
   // past the caisson, between the pierheads, the channel lies under the sea
   return depth > basin.depth1 && inward > 0 ? Math.min(cut, basin.waterY - 0.6) : cut;
 }
 
 /** Glacier's cliff and its tunnel in the face's frame (view side, depth of the face; u along the face from faceSide). */
-const ROCK_CAVERN = Object.freeze({ faceSide: -1, faceDepth: 27.5, mouthU: 9.5, half: 3.6, spring: 3.2, tunnelLength: 14 });
+// the bore 12 m deep, so its carve (3 m past the bulkhead: a terrain diagonal) ends inside the cliff's 16 m (rejudge6,
+// 2026-10-15: "the far end opens onto bright snow, so the cavern is see-through")
+const ROCK_CAVERN = Object.freeze({ faceSide: -1, faceDepth: 27.5, mouthU: 9.5, half: 3.6, spring: 3.2, tunnelLength: 12 });
 
 /**
  * Glacier's tunnel bore in view coordinates (the kit lowers the ground in it to the mouth's level: the re-judge,
@@ -377,15 +387,18 @@ export function addGarageFacilityDetails({
   const shelter = GARAGE_SHELTER_FINISHES[variant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
   const steel = new THREE.Color(shelter.frame);
   const roofing = new THREE.Color(shelter.roof);
-  const accent = new THREE.Color(variant.accent).lerp(steel, 0.45);
+  // the kit's colours weathered rather than a toy's (rejudge6, 2026-10-15: "flat saturated primitive props such as the
+  // orange cylinders and red cubes", "the saturated red cabinet"): the accent drawn further toward the frame's steel, the
+  // safety yellow and the enamel red faded
+  const accent = new THREE.Color(variant.accent).lerp(steel, 0.6);
   const dark = new THREE.Color(0x171b1d);
   // the machinery's plinths are weathered concrete (the re-judge, 2026-10-15: the black plinths under the pump and the
   // trailers read as "crisp-edged flat charcoal rectangles")
   const plinthConcrete = new THREE.Color(0x77746c);
-  const safety = new THREE.Color(0xd19a2e);
+  const safety = new THREE.Color(0xb08a3c);
   const timber = new THREE.Color(0x685035);
   const rubber = new THREE.Color(0x151719);
-  const primer = new THREE.Color(0x8a3026); // tool-chest red enamel
+  const primer = new THREE.Color(0x7a3a2e); // tool-chest red enamel, faded
   const unitCylinders = new Map<number, THREE.CylinderGeometry>();
   const boxInstances: PrimitiveInstance[] = [];
   const cylinderInstances = new Map<number, PrimitiveInstance[]>();
@@ -2686,7 +2699,10 @@ export function addGarageFacilityDetails({
     // ash apron, no oil-soaked ground and no drift at the plinth"): a draped ground of cinder, darker and oily before the
     // doors and along the roads, a pale ash drift banked against the plinth ------------------------------------------
     {
-      const cell = 1.5, l0 = -halfW - 7.5, l1 = halfW + 7.5, f0 = -halfL - 7.5, f1 = halfL + 1.2;
+      // (inside the shed's level yard, the flat core of FACILITY_LAYOUTS.rail_roundhouse's terrace: past it the yard's
+      // relief stood up through the drape as "sharp polygon grass patches pasted on asphalt", rejudge6; a wider terrace
+      // met the freight warehouse's footprint)
+      const cell = 1.5, l0 = -halfW - 3.2, l1 = halfW + 3.2, f0 = -halfL - 2.6, f1 = halfL + 1.2;
       const cols = Math.round((l1 - l0) / cell), rows = Math.round((f1 - f0) / cell);
       const positions: number[] = [], colors: number[] = [], indices: number[] = [];
       const cinder = new THREE.Color(0x3f3a35), oily = new THREE.Color(0x2a2724), ash = new THREE.Color(0x7c766c), tone = new THREE.Color();
@@ -3168,10 +3184,10 @@ export function addGarageFacilityDetails({
       servicePurposeTags.add('graving-dock');
       // Saltmere's graving dock (garage round 7; the re-judge, 2026-10-15: "the hero frame shows no drydock (no basin,
       // water or caisson)"): a basin cut into the quay in the frame's right third, its mouth on the shore closed by a
-      // steel caisson with the harbour beyond, the water let in to the sea's level. Stepped granite altars run down its
+      // steel caisson with the harbour beyond, pumped dry for a refit (garage r8). Stepped granite altars run down its
       // sides, a plain head wall closes it toward the yard, granite paving with a raised coping and bollards runs round
-      // it, and a patrol craft lies in it bow-on to the yard, moored and with a gangway down, its deckhouse, bridge and
-      // mast over the coping. The portal jib crane runs on two rails set in the paving along the basin, its jib slewed
+      // it, and a patrol craft stands in it on keel blocks bow-on to the yard, shored and with a gangway down, its
+      // deckhouse, bridge and mast over the coping. The portal jib crane runs on two rails set in the paving along the basin, its jib slewed
       // over the ship. The kit cuts the terrain under all of it (garageDrydockGround).
       const basin = DRYDOCK_BASIN;
       const middle = (basin.depth0 + basin.depth1) / 2, halfLen = (basin.depth1 - basin.depth0) / 2;
@@ -3216,16 +3232,28 @@ export function addGarageFacilityDetails({
             k % 3 === 1 ? graniteDark : granite, 'masonry');
         }
       }
-      // the harbour's water in the basin, at the sea's level
-      clusterBox(dock, 0, 0, (basin.floorY + basin.waterY) / 2, 2 * (basin.halfWidth - 2 * DRYDOCK_STEP_IN) - 0.02,
-        basin.waterY - basin.floorY, 2 * halfLen - 0.02, new THREE.Color(0x24474d), 'equipment');
+      // the dock pumped dry for the refit (rejudge6, 2026-10-15: "the dock has no caisson, steps or keel blocks": the
+      // harbour water stood over all of them): a granite floor between the lowest altars, a film of seep water down its
+      // centre drain, wet dark stone along the foot of the caisson where it weeps
+      const floorHalf = basin.halfWidth - 3 * DRYDOCK_STEP_IN;
+      clusterSurface(dock, 'setts', 0, 0, basin.floorY - 0.2, 2 * floorHalf + 0.1, 0.4, 2 * halfLen);
+      clusterBox(dock, 0, 0, basin.floorY + 0.012, 0.9, 0.024, 2 * halfLen - 0.4, new THREE.Color(0x26302f), 'equipment'); // the drain's seep
+      clusterBox(dock, 0, -halfLen + 1.2, basin.floorY + 0.01, 2 * floorHalf - 0.2, 0.02, 2.2, new THREE.Color(0x3a403d), 'equipment');
       // the caisson: a steel box gate across the mouth, its walkway a step over the paving, ribs and handrails
       {
         const width = 2 * basin.halfWidth + 1.4, at = -halfLen - basin.caisson / 2, steelGrey = new THREE.Color(0x4a4f52);
         clusterBox(dock, 0, at, (basin.floorY + top + 0.3) / 2, width, top + 0.3 - basin.floorY, basin.caisson, steelGrey, 'structure');
-        for (let k = -3; k <= 3; k += 1) {
-          clusterBox(dock, k * 1.15, -halfLen + 0.05, (basin.waterY + top + 0.3) / 2, 0.14, top + 0.3 - basin.waterY, 0.1, iron, 'structure');
+        for (let k = -3; k <= 3; k += 1) { // its ribs down the dry inner face, the stiffening strakes across them
+          clusterBox(dock, k * 1.15, -halfLen + 0.05, (basin.floorY + top + 0.3) / 2, 0.14, top + 0.3 - basin.floorY, 0.1, iron, 'structure');
         }
+        for (const y of [basin.floorY + 1.4, basin.waterY, basin.waterY + 1.4]) {
+          clusterBox(dock, 0, -halfLen + 0.06, y, width - 0.6, 0.12, 0.08, iron, 'structure');
+        }
+        // the sea's line on the gate and the weeping below it: rust and wet stain from the floor to the outside water level
+        clusterBox(dock, 0, -halfLen + 0.012, (basin.floorY + basin.waterY) / 2, width - 0.4, basin.waterY - basin.floorY, 0.02,
+          new THREE.Color(0x3b3430), 'painted');
+        clusterBox(dock, 2.3, -halfLen + 0.12, basin.floorY + 0.9, 0.3, 0.3, 0.2, iron, 'structure'); // the flooding sluice's valve
+        clusterCylinder(dock, 2.3, -halfLen + 0.3, basin.floorY + 0.9, 0.32, 0.05, new THREE.Color(0x8a2e22), Math.PI / 2, 14);
         clusterBox(dock, 0, -halfLen + 0.05, top - 0.25, width, 0.16, 0.1, iron, 'structure'); // the top strake
         for (const edge of [-1, 1]) {
           for (let k = -4; k <= 4; k += 2) clusterBox(dock, k * 1.1, at + edge * 1.0, top + 0.82, 0.05, 1.04, 0.05, iron, 'structure');
@@ -3234,15 +3262,66 @@ export function addGarageFacilityDetails({
         }
         structuralConnections += 12;
       }
-      // the patrol craft: grey over red antifouling with the boot top just clear of the water, a raked bow, a deckhouse
+      // the patrol craft: grey over red antifouling and a black boot top, a raked bow, a deckhouse
       // with its funnel aft and the bridge forward, a pole mast with its yard and radar, a gun on the forecastle, deck
       // rails, mooring lines to the bollards and a gangway down from the near coping
       {
         const grey = new THREE.Color(0x6b7276), red = new THREE.Color(0x7a2e26), deckTone = new THREE.Color(0x4e5458);
         const keel = -4.0, boot = basin.waterY + 0.15, deck = -0.2, beam = 4.4, aft = -8.2, shoulder = 3.0, stem = 6.4;
         const length = shoulder - aft, mid = (shoulder + aft) / 2;
-        clusterBox(dock, 0, mid, (keel + boot) / 2, beam - 0.6, boot - keel, length, red, 'painted');
-        clusterBox(dock, 0, mid, (boot + deck) / 2, beam, deck - boot, length, grey, 'painted');
+        // the hull in the dry dock seen whole (rejudge6, 2026-10-15: "flat-shaded primitive boxes"): a flat keel plate, the
+        // bottom raised in a V to the chine on each side, the topsides plumb to the deck with a rubbing strake at the
+        // sheer, the boot top and the antifouling below it, a transom across the stern
+        const chineY = boot - 0.5, chineHalf = beam / 2 - 0.15, keelHalf = 0.35;
+        clusterBox(dock, 0, mid, keel + 0.08, 2 * keelHalf, 0.16, length, red, 'painted'); // the keel plate
+        {
+          const dy = chineY - keel, dx = chineHalf - keelHalf, plate = Math.hypot(dx, dy), tilt = Math.atan2(dy, dx);
+          for (const sign of [-1, 1]) {
+            clusterBox(dock, sign * (keelHalf + chineHalf) / 2, mid, (keel + chineY) / 2, plate, 0.08, length, red, 'painted', sign * tilt);
+          }
+        }
+        clusterBox(dock, 0, mid, (chineY + boot) / 2, 2 * chineHalf, boot - chineY, length, red, 'painted');
+        clusterBox(dock, 0, mid, boot + 0.12, beam + 0.02, 0.24, length, new THREE.Color(0x232628), 'painted'); // the boot top
+        clusterBox(dock, 0, mid, (boot + 0.24 + deck) / 2, beam, deck - boot - 0.24, length, grey, 'painted');
+        clusterBox(dock, 0, mid, deck - 0.18, beam + 0.12, 0.14, length, new THREE.Color(0x3d4245), 'painted'); // the rubbing strake
+        clusterBox(dock, 0, aft - 0.04, (keel + deck) / 2 + 0.6, beam - 0.3, deck - keel - 1.2, 0.08, grey, 'painted'); // the transom
+        // portholes along the topsides, the hull number forward, scuppers' rust streaks down from the deck edge
+        for (const sign of [-1, 1]) {
+          for (let k = 0; k < 7; k += 1) {
+            clusterCylinder(dock, sign * (beam / 2 + 0.01), aft + 1.2 + k * 1.15, boot + 0.95, 0.12, 0.03,
+              new THREE.Color(0x1c2326), 0, 10, Math.PI / 2);
+          }
+          for (const at of [-6.5, -3.9, -1.1, 1.6]) {
+            clusterBox(dock, sign * (beam / 2 + 0.012), at, deck - 0.75, 0.01, 1.1, 0.08, new THREE.Color(0x5e4536), 'painted');
+          }
+          for (const [dz, w] of [[0, 0.32], [0.55, 0.32], [1.1, 0.32]] as const) { // the hull number, three white figures
+            clusterBox(dock, sign * (beam / 2 + 0.014), shoulder - 1.6 + dz * sign, boot + 1.0, 0.01, 0.62, w, new THREE.Color(0xd9dbd6), 'painted');
+          }
+        }
+        // the propeller shafts in their brackets under the stern and the rudder behind them
+        for (const sign of [-1, 1]) {
+          clusterCylinder(dock, sign * 0.95, aft + 1.6, keel + 0.75, 0.09, 3.2, iron, Math.PI / 2, 10);
+          clusterCylinder(dock, sign * 0.95, aft + 0.25, keel + 0.75, 0.42, 0.14, new THREE.Color(0x8a6a3c), Math.PI / 2, 12);
+          clusterBox(dock, sign * 0.95, aft + 1.1, keel + 1.05, 0.08, 0.55, 0.3, red, 'painted');
+        }
+        clusterBox(dock, 0, aft + 0.35, keel + 0.95, 0.12, 1.3, 0.9, red, 'painted'); // the rudder
+        // keel blocks every 1.3 m under the keel, concrete bases capped with timber; bilge shores from the altars' steps
+        // to the chine, wedged at both ends
+        const timberCap = new THREE.Color(0x6b5a44), blockConcrete = new THREE.Color(0x8b8a84);
+        for (let along = aft + 0.6; along <= shoulder + 1.6; along += 1.3) {
+          clusterBox(dock, 0, along, basin.floorY + 0.45, 1.1, 0.9, 0.7, blockConcrete, 'masonry');
+          clusterBox(dock, 0, along, basin.floorY + 1.0, 1.0, 0.2, 0.6, timberCap, 'equipment');
+          clusterBox(dock, 0, along, basin.floorY + 1.25, 0.9, 0.3, 0.55, timberCap.clone().multiplyScalar(0.86), 'equipment');
+          looseParts += 1;
+        }
+        for (const sign of [-1, 1]) {
+          for (const along of [aft + 1.4, mid - 1.2, mid + 1.6, shoulder - 0.4]) {
+            const step = basin.halfWidth - DRYDOCK_STEP_IN * 2; // the second altar's edge
+            clusterBeam(dock, [sign * step, along, top - 2 * DRYDOCK_STEP_RISE], [sign * (chineHalf + 0.05), along, chineY + 0.15], 0.11,
+              timberCap, 'equipment');
+            looseParts += 1;
+          }
+        }
         clusterBox(dock, 0, mid, deck + 0.05, beam - 0.1, 0.1, length, deckTone, 'painted');
         // the bow: each side a plate raked in from the shoulder to the stem, the forecastle's deck stepped in between
         const rake = Math.atan2(beam / 2 - 0.12, stem - shoulder), plate = Math.hypot(beam / 2 - 0.12, stem - shoulder);
@@ -3266,13 +3345,26 @@ export function addGarageFacilityDetails({
         clusterCylinder(dock, 0, shoulder + 1.2, deck + 0.75, 0.5, 0.55, grey, 0, 16); // the gun's mount
         clusterBox(dock, 0, shoulder + 1.2, deck + 1.25, 1.0, 0.6, 1.2, grey, 'painted'); // its shield
         clusterBox(dock, 0, shoulder + 2.6, deck + 1.3, 0.11, 0.11, 2.0, iron, 'structure'); // its barrel
+        // the superstructure's fittings: scuttles along the deckhouse, a door each side, the bridge wings and their
+        // screens, life rings, whip aerials on the bridge roof, a searchlight, the anchors in their hawses
+        for (const sign of [-1, 1]) {
+          for (let k = 0; k < 4; k += 1) {
+            clusterCylinder(dock, sign * 1.61, -3.7 + k * 0.95, deck + 1.55, 0.13, 0.03, new THREE.Color(0x1c2326), 0, 10, Math.PI / 2);
+          }
+          clusterBox(dock, sign * 1.615, -0.45, deck + 0.95, 0.03, 1.5, 0.7, new THREE.Color(0x4f5659), 'painted');
+          clusterBox(dock, sign * 1.9, -0.75, deck + 2.25, 0.7, 0.06, 1.0, grey, 'painted');
+          clusterBox(dock, sign * 2.22, -0.75, deck + 2.55, 0.04, 0.6, 1.0, grey, 'painted');
+          clusterCylinder(dock, sign * 1.63, -3.95, deck + 1.0, 0.3, 0.07, new THREE.Color(0xc9542e), 0, 14, Math.PI / 2);
+          clusterCylinder(dock, sign * 1.2, 0.0, deck + 4.4, 0.025, 2.4, iron, 0, 6);
+          clusterBox(dock, sign * 1.1, shoulder + 1.9, deck - 0.6, 0.06, 0.5, 0.7, iron, 'structure');
+        }
+        clusterCylinder(dock, 0, 0.3, deck + 3.45, 0.22, 0.3, iron, Math.PI / 2, 12);
         for (const sign of [-1, 1]) {
           clusterBox(dock, sign * (beam / 2 - 0.05), mid + 0.4, deck + 0.95, 0.04, 0.04, length - 1.2, iron, 'structure'); // deck rails
           clusterBox(dock, sign * (beam / 2 - 0.05), mid + 0.4, deck + 0.6, 0.03, 0.03, length - 1.2, iron, 'structure');
           clusterCylinder(dock, sign * 1.0, -3.4, deck + 2.5, 0.28, 0.9, new THREE.Color(0xd7d9d4), Math.PI / 2, 10); // a raft canister
-          // mooring lines from the bollards to the deck edge, bow and quarter
-          clusterBeam(dock, [sign * (basin.halfWidth + 1.35), 7.2, top + 0.55], [sign * (beam / 2 - 0.1), shoulder - 0.4, deck + 0.3], 0.05, rope, 'equipment');
-          clusterBeam(dock, [sign * (basin.halfWidth + 1.35), -8.4, top + 0.55], [sign * (beam / 2 - 0.1), aft + 0.8, deck + 0.3], 0.05, rope, 'equipment');
+          // breast lines from the bollards hold her square on the blocks while the shores go in
+          clusterBeam(dock, [sign * (basin.halfWidth + 1.35), -3.2, top + 0.55], [sign * (beam / 2 - 0.1), -3.2, deck + 0.3], 0.04, rope, 'equipment');
         }
         // the gangway, from the near coping down to the deck, its two rails
         const drop = Math.atan2(top + 0.24 - (deck + 0.1), basin.halfWidth - beam / 2);
@@ -3339,6 +3431,33 @@ export function addGarageFacilityDetails({
       clusterBox(house, 1.2, 2.4, houseY + 1.6, 1.3, 1.8, 1.4, houseTone, 'painted'); // the cab
       clusterBox(house, 1.2, 3.12, houseY + 1.85, 1.1, 1.0, 0.04, new THREE.Color(0x2a3438), 'painted'); // its glazing
       clusterBox(house, 0, -3.8, houseY + 1.2, 3.2, 2.0, 1.4, new THREE.Color(0x5a5f60), 'painted'); // the counterweight
+      // the house built up from plate (rejudge6, 2026-10-15: "the crane is a flat-shaded primitive box"): its walls in
+      // stiffened panels with a drip rail under the eaves, every window framed with a mullion, louvres to the motor
+      // room, a door with its landing and handrail onto the deck, a ladder up the portal leg, the deck's guardrail and
+      // a salt-rusted counterweight
+      const frame = new THREE.Color(0x2e3436), louvre = new THREE.Color(0x5d676a);
+      for (const side of [-1, 1]) {
+        for (let k = 0; k < 6; k += 1) clusterBox(house, side * 1.815, -3.0 + k * 0.96, houseY + 1.4, 0.05, 2.7, 0.06, frame, 'structure'); // stiffeners
+        clusterBox(house, side * 1.84, -0.6, houseY + 2.72, 0.07, 0.07, 5.3, frame, 'structure'); // the drip rail
+        for (const dz of [-2.0, -0.6, 0.8]) {
+          clusterBox(house, side * 1.83, dz, houseY + 2.22, 0.05, 0.06, 0.9, frame, 'structure');
+          clusterBox(house, side * 1.83, dz, houseY + 1.58, 0.05, 0.06, 0.9, frame, 'structure');
+          clusterBox(house, side * 1.83, dz, houseY + 1.9, 0.05, 0.66, 0.05, frame, 'structure'); // the mullion
+        }
+        for (let k = 0; k < 5; k += 1) clusterBox(house, side * 1.83, -2.95 + k * 0.11, houseY + 0.7, 0.05, 0.05, 0.9, louvre, 'structure', 0, 0.5);
+      }
+      clusterBox(house, 1.81, 1.6, houseY + 1.0, 0.05, 1.9, 0.8, new THREE.Color(0x3a4245), 'painted'); // the door
+      clusterBox(house, 2.3, 1.6, houseY - 0.02, 0.9, 0.06, 1.0, frame, 'structure'); // its landing
+      clusterBox(house, 2.72, 1.6, houseY + 0.5, 0.04, 1.0, 1.0, frame, 'structure');
+      clusterBox(house, 1.2, 3.13, houseY + 1.85, 0.05, 1.0, 0.05, frame, 'structure'); // the cab glazing's mullion
+      clusterBox(house, 1.2, 3.13, houseY + 2.37, 1.14, 0.06, 0.05, frame, 'structure');
+      clusterBox(house, 0, -4.52, houseY + 1.2, 3.0, 1.6, 0.02, new THREE.Color(0x6a4a34), 'painted'); // rust on the counterweight
+      for (const lz of [-gauge / 2, gauge / 2]) { // the deck's guardrail, two courses
+        for (const y of [portalY + 0.85, portalY + 1.4]) clusterBox(quay, lz + Math.sign(lz) * 0.45, 0, y, 0.04, 0.04, 2 * legX + 0.9, frame, 'structure');
+      }
+      const ladderAt = legX - 0.75; // the ladder up the outer face of a leg, stiles and rungs
+      for (const df of [-0.2, 0.2]) clusterBox(quay, gauge / 2 + 0.38, ladderAt + df, (0.8 + portalY) / 2, 0.04, portalY - 0.8, 0.04, iron, 'structure');
+      for (let y = 1.1; y < portalY; y += 0.3) clusterBox(quay, gauge / 2 + 0.38, ladderAt, y, 0.03, 0.03, 0.42, iron, 'structure');
       for (const side of [-1, 1]) {
         clusterBeam(house, [side * 1.2, 1.4, houseY + 3.0], [side * 0.4, -0.4, houseY + 6.6], 0.22, portalBlue, 'structure');
         clusterBeam(house, [side * 1.2, -2.6, houseY + 3.0], [side * 0.4, -0.4, houseY + 6.6], 0.22, portalBlue, 'structure');
@@ -3392,7 +3511,9 @@ export function addGarageFacilityDetails({
       // the engine shed straddles the rail fan's three roads (GA.04); the shed's own stores stand clear of its walls
       addEngineShed(featureSide, featureDepth);
       addDrums(featureSide - 13.2, featureDepth - 7.5, 6);
-      addPoweredWinch(fixedCluster(featureSide + 12.8, featureDepth - 1.5), 0, 0, new THREE.Color(0xa56b34));
+      // the shunting winch in the railway's dark green, not a toy's orange (rejudge6, 2026-10-15: "a tiny toy machine
+      // against the wall")
+      addPoweredWinch(fixedCluster(featureSide + 12.8, featureDepth - 1.5), 0, 0, new THREE.Color(0x4f5b4c));
   };
   const addRainCanopy = (): void => {
       environmentSpecificAssemblies += 1;
@@ -3580,7 +3701,7 @@ export function addGarageFacilityDetails({
         for (const du of [-0.7, 0.7]) clusterCylinder(portal, leafU + du, leafW, 0.12, 0.13, 0.24, ribSteel, Math.PI / 2, 10); // its rollers
       }
       // steel arch ribs down the tunnel on base plates, lagging boards over the crown between them
-      for (let rib = 0; rib < 7; rib += 1) {
+      for (let rib = 0; rib < 6; rib += 1) {
         const w = -0.9 - rib * 2.0;
         const ribTone = inBore(ribSteel, w);
         for (const side of [-1, 1]) {
@@ -3593,7 +3714,7 @@ export function addGarageFacilityDetails({
           clusterBox(portal, Math.cos(am) * r, w, spring + Math.sin(am) * r, 2 * r * Math.sin((a1 - a0) / 2) + 0.04, 0.2, 0.18,
             ribTone, 'structure', am + Math.PI / 2);
         }
-        if (rib < 6) {
+        if (rib < 5) {
           for (let i = 2; i < 7; i += 1) { // lagging between this rib and the next over the crown
             const am = Math.PI * (i + 0.5) / 8, r = half - 0.24;
             clusterBox(portal, Math.cos(am) * r, w - 1.0, spring + Math.sin(am) * r, 0.36, 0.06, 1.8,
@@ -3603,9 +3724,16 @@ export function addGarageFacilityDetails({
       }
       // the floor slab, the vent duct along the crown on hangers out to its fan housing on the headwall, warm lamps on
       // the ribs, the bulkhead dark at the end with its lit door
-      for (let k = 0; k < 7; k += 1) { // the floor slab in bays, each a step darker
-        const w0 = 0.4 - k * 2.0, w1 = w0 - 2.0;
-        clusterBox(portal, 0, (w0 + w1) / 2, 0.06, 2 * half - 0.1, 0.12, 2.0 - 0.02, inBore(concreteDark, (w0 + w1) / 2, 0.03), 'masonry');
+      // the floor slab in bays, each a step darker, its top flush with the yard (rejudge6, 2026-10-15: "a raised slab with
+      // a hard edge"): it runs out under the headwall to a steel nosing at the threshold, and trodden slush, grey with
+      // grit, lies between the threshold and the drain instead of clean snow against the concrete
+      for (let k = 0; k < 6; k += 1) {
+        const w0 = (k === 0 ? wallFront : 0.4) - k * 2.0, w1 = 0.4 - (k + 1) * 2.0;
+        clusterBox(portal, 0, (w0 + w1) / 2, -0.17, 2 * half - 0.1, 0.4, w0 - w1 - 0.02, inBore(concreteDark, (w0 + w1) / 2, 0.03), 'masonry');
+      }
+      clusterBox(portal, 0, wallFront - 0.04, 0.02, 2 * half - 0.1, 0.04, 0.08, ribSteel, 'structure'); // the nosing
+      for (const [dw, len, tone] of [[1.0, 1.9, 0x8a8c8c], [2.95, 2.2, 0xb7bcbf]] as const) {
+        clusterBox(portal, 0, wallFront + dw, 0.012, 2 * half + 1.6 - dw * 0.5, 0.024, len, new THREE.Color(tone), 'masonry');
       }
       // the vent duct (the re-judge: it "ends in mid-air"): from the bulkhead at the back along the crown on hangers,
       // through its inline fan, to a bend that takes it up into the shaft in the crown two metres in from the mouth,
@@ -3615,7 +3743,7 @@ export function addGarageFacilityDetails({
         const w0 = ductFront - k * (ductFront - ductBack) / 6, w1 = ductFront - (k + 1) * (ductFront - ductBack) / 6;
         clusterCylinder(portal, ductU, (w0 + w1) / 2, ductY, 0.36, w0 - w1, inBore(new THREE.Color(0x5e6266), (w0 + w1) / 2), Math.PI / 2, 16);
       }
-      for (let k = 0; k < 4; k += 1) {
+      for (let k = 0; k < 3; k += 1) {
         clusterBox(portal, ductU, -3.4 - k * 3.0, ductY + 0.55, 0.05, 0.4, 0.05, inBore(ribSteel, -3.4 - k * 3.0), 'structure');
       }
       clusterCylinder(portal, ductU, -6.4, ductY, 0.58, 1.1, inBore(new THREE.Color(0x4f5458), -6.4), Math.PI / 2, 16); // the fan
@@ -4032,6 +4160,9 @@ export function addGarageFacilityDetails({
     // re-judge, 2026-10-15: "a black bench or crate and a red bollard float on the lawn ... delete them"; ticket 6: "a
     // cart with a tall red post and two stray bars sits on the lawn"); the Zeughaus's loading dock carries its kit
     if (variant.architecture === 'brick_arsenal') return;
+    // nor does Redrock: its recovery gear lies on the recovery yard's own pallet, and the vignette here read as "toy-like
+    // scattered props (a black puck disc, a plank with two sticks, little red cylinders)" (rejudge6, 2026-10-15)
+    if (variant.architecture === 'recovery_yard') return;
     const at = fixedCluster(floor.side, floor.depth);
     const olive = new THREE.Color(0x4f5536), rope = new THREE.Color(0x8c7a55);
     const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);
@@ -4115,15 +4246,6 @@ export function addGarageFacilityDetails({
         clusterBox(at, -2.0, 0.2, 0.45, 0.6, 0.9, 0.6, red, 'painted'); // the heater
         clusterCylinder(at, -2.0, 0.2, 1.05, 0.06, 0.3, black, 0, 10);
         looseParts += 5;
-        break;
-      }
-      case 'recovery_yard': { // the recovery gear laid out on a pallet: tow bars, a chain coil, shackles, a snatch block
-        pallet(0, 0);
-        for (const dl of [-0.3, 0.3]) clusterBox(at, dl, 0, 0.2, 0.08, 0.08, 2.4, steel, 'structure'); // tow bars
-        clusterCylinder(at, -1.3, 0.3, 0.12, 0.4, 0.22, black, 0, 16); // the chain coil
-        for (let k = 0; k < 3; k += 1) clusterBox(at, 1.2, -0.4 + k * 0.3, 0.1, 0.16, 0.18, 0.06, red, 'equipment'); // shackles
-        clusterCylinder(at, 1.3, 0.6, 0.18, 0.2, 0.12, red, Math.PI / 2, 16); // the snatch block
-        looseParts += 6;
         break;
       }
       case 'factory_line': { // a scrap skip and a small ladle on its cart
@@ -4221,7 +4343,9 @@ export function addGarageFacilityDetails({
       ),
     });
     material.name = `garage-facility:${renderClass.name}`;
-    engineCtx.setupShadowMaterial?.(material);
+    // the working yard's grime and weathered paint on every part (rejudge6, 2026-10-15: "sterile, toy-like props")
+    engineCtx.setupShadowMaterial?.(material, garageFacilityGrimeHook() as THREE.Material['onBeforeCompile']);
+    material.customProgramCacheKey = () => GARAGE_FACILITY_GRIME_KEY;
     materials.push(material);
     if (instances.length) {
       makeInstances(`garage_facility_${renderClass.name}_boxes`,

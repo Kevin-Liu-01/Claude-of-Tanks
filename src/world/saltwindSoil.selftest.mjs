@@ -13,12 +13,12 @@
 //   5. half the karst's walled ground is garrigue grazing (cured grass, its red soil between the tussocks), and the
 //      place's sward and tufts are cured yellow-grey, thinner.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { LAND_CROP, createLandFieldSample, landUseAt, resolveLandUseProfile } from './landUse.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { getMapConfig } from './maps/index.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 const compact = (s) => s.replace(/\s+/g, ' ');
 
 // 1. one hue, a dusty brick over the coast's sand (saltwind.ts: the dirt layer's photo mean, ~0.55 / 0.42 / 0.22)

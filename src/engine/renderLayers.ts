@@ -11,6 +11,17 @@ import type { Camera, Object3D, Scene, WebGLRenderer } from 'three';
  */
 export const SHADOW_ONLY_LAYER = 29;
 
+/*
+ * 2026-10-15 (SKY shadows r2a): the cascades' fade law (shadowCascadeFade.ts) reaches lighting.ts, the caster profiles and
+ * the static cache through this module alone. Imported directly from those three, whose chunks differ in reach, the law
+ * became a chunk of its own and the game page one more up-front request than its budget (128, tools/bundle-budget.json);
+ * re-exported here it rides this module's chunk.
+ */
+export {
+  CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, csmSliceFromM, csmSliceToM,
+  pushCustomCascadeBreaks,
+} from './shadowCascadeFade.ts';
+
 export function markShadowOnly<T extends Object3D>(object: T): T {
   object.layers.set(SHADOW_ONLY_LAYER);
   object.userData.shadowOnly = true;

@@ -1,6 +1,7 @@
-import { initializeAerial, stepAerial, isGunship, droneTankAlong, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
+import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
-import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
+import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
@@ -411,6 +412,8 @@ interface SoloWorld {
   getConcealment?(): ConcealerDisc[];
   /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
   bindGroundOverlay?(overlay: TerrainDeformation | null): void;
+  /** DST-04: the map's pre-placed craters (world/mapCraters.ts). */
+  getMapCraters?(): readonly MapCraterStamp[];
   crushObstacle?(
     obstacle: SoloObstacle,
     dirX: number,
@@ -753,11 +756,13 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 }
 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
+  const groundHeightAt = groundFor(world).field.getHeightAt;
   return createSpottingSystem({
     getTanks: () => game.tanks as SpottingTank[],
     alwaysVisible: !!game.ruleset.alwaysVisible,
     raycast: world.raycast,
-    opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt),
+    // the match's ground (its craters and heaps), as the authority's spotting reads it
+    opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,groundHeightAt),
     concealers: world.getConcealment?.() || [],
     getCamoBonus: (tank) => {
       const entity = tank as SpottingTank & { specId: string };
@@ -1235,6 +1240,8 @@ export function setupBattle(
   resetStructureRecords(world.getObstacles(), worldColliders);
   const ground = groundFor(world);
   ground.overlay.reset();
+  // DST-04: the map's pre-placed craters, laid first (the authority and every seat lay the same; world/mapCraters.ts)
+  stampMapCraters(ground.overlay, mapCraterStampsOf(world));
   world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
@@ -2945,13 +2952,18 @@ const auxiliaryContexts=new WeakMap<SoloGameState, Parameters<typeof stepRoofGun
 function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventBus): void {
   if (game.result) return;
   let context=auxiliaryContexts.get(game);
-  if(!context){context = {
+  if(!context){const groundHeightAt = groundFor(world).field.getHeightAt;context = {
     entities: game.tanks,
     visible: (target: {id:string}, shooter: import('../sim/spotting.ts').SpottingTank) => !!game.spotting?.isSpotted(target.id, shooter.team, shooter),
     clear: (a: THREE.Vector3,b: THREE.Vector3) => {
-      if (smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt)) return false;
+      if (smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,groundHeightAt)) return false;
       auxiliaryRay.copy(b).sub(a); const distance=auxiliaryRay.length(); auxiliaryRay.normalize();
       const hit=world.raycast(a,auxiliaryRay,distance); return !hit || hit.dist>=distance-.5;
+    },
+    // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the drone flight (sim/aerialCombat.ts)
+    counterDrone: game.ruleset.counterDrone === true,
+    droneHit: (carrier: SoloEntity, chance: number, shooter: SoloEntity) => {
+      if (strikeDrone(carrier, chance)) bus.emit('drone:down', { id: carrier.id, killerId: shooter.id });
     },
   };auxiliaryContexts.set(game,context);}
   context.entities=game.tanks;
@@ -2963,7 +2975,8 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
     // (2026-10-09) the canisters fly through the world's own collision: they bounce off walls, and the clouds stay out
     // of the houses beside them
-    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt,world)){
+    // the canister lands on the match's ground (its craters and heaps), as the authority's does
+    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,groundFor(world).field.getHeightAt,world)){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();
       bus.emit('auxiliary:smokeScreens',{screens});
@@ -2971,12 +2984,17 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     if(bits&128)requestAuxiliary(entity,'lights',game.timeS);
     if(bits&512)requestAuxiliary(entity,'lightsOff',game.timeS);
     if(bits&256)requestAuxiliary(entity,'roofGun',game.timeS);
-    if(stepRoofGun(entity,game.timeS,SIM_DT,context)) {
-      const shell=acquireShell(auxiliaryShot.shell,entity.id,entity.isPlayer,auxiliaryShot.origin,auxiliaryShot.direction,game.nextShellId++);
-      shell.rocket=false;shell.gravityMps2*=entity.modeGravityScale??1;game.shells.push(shell);
-      game.spotting?.notifyFired(entity.id,game.timeS,auxiliaryShot.shell.caliberMm);
-    }
+    if(stepRoofGun(entity,game.timeS,SIM_DT,context))fireAuxiliaryShot(game,entity);
+    // VH.02: a multi-station vehicle's later roof stations (the M551A1 TTS's M2 beside its 30 mm), in station order
+    for(let station=1,stations=roofStationCount(entity.spec);station<stations;station++)
+      if(stepRoofStation(entity,station,game.timeS,SIM_DT,context))fireAuxiliaryShot(game,entity);
   }
+}
+/** The shell a roof station just fired (auxiliaryShot), in the solo battle. */
+function fireAuxiliaryShot(game: SoloGameState, entity: SoloEntity): void {
+  const shell=acquireShell(auxiliaryShot.shell,entity.id,entity.isPlayer,auxiliaryShot.origin,auxiliaryShot.direction,game.nextShellId++);
+  shell.rocket=false;shell.gravityMps2*=entity.modeGravityScale??1;game.shells.push(shell);
+  game.spotting?.notifyFired(entity.id,game.timeS,auxiliaryShot.shell.caliberMm);
 }
 
 function stepFireDamage(game: SoloGameState, bus: EventBus): void {

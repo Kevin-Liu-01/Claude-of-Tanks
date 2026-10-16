@@ -3,10 +3,13 @@
 // deep verandas; the bazaar's timber shops under sheet roofs; the mission church of rough stone under a red tin roof;
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
-import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
+import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import {
+  buildHouse, closeGables, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec,
+} from './house.ts';
+import { doorUnit, freeBox, openShop, windowUnit, type WindowStyle } from './openings.ts';
+import { openShed } from './outbuildings.ts';
+import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, veranda } from './vernacular.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -60,54 +63,114 @@ function boardRuns(sink: PartSink, face: Face, y0: number, y1: number, colour: R
 }
 
 /**
- * One shop: plank walls on a low plinth, its front open as a shopfront with the shutters hinged up as an awning
- * (`awning` deep), a tin roof. (Props census BS-3, lane B 2026-10-14; the 10-12 plan's face pass, its first adopter: the
- * walls were a span box with the shop front a dark plate laid on it.) The house grammar's walls, cut by the shopfront
- * and the back door in their reveals, the counter in the front and the shutters over it, the gables boarded under the tin;
- * the boards run on the walls between the openings.
+ * One shop: a Kohima bazaar shop of 1944 (props census #29, lane B 2026-10-15; the judges: "a plank-print box with a painted
+ * dark opening and a flat board", the owner's counter-example). A timber frame on stone pads: the sole plates on the
+ * pads, posts at the corners and the jambs, the wall plate round their heads, braces in the corners; board walls between
+ * them (each board panel cut by its openings, its inside a room: house.ts holedPolygon with backs); the raised plank floor.
+ * Its front open as the shop (openings.ts openShop: the counter, the shelves and their goods behind it, the shutter
+ * boards hinged up from the head and propped on two poles as the awning, `awning` deep); a back door and a shuttered side
+ * window; the tin roof on its gable ends with the rafter feet under the eaves; a signboard over the front, sacks and
+ * baskets out before it. The shop is a house body for the damage (recordBody).
  */
 function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D: number, awning: number): void {
-  const rng = ctx.rng;
-  const plank = pick(rng, WEATHERED_PLANK), roofColour = pick(rng, TIN);
-  const front = W - 1.2;
-  const openings: Opening[] = [
-    { face: 'front', storey: 0, kind: 'shopfront', u: 0, w: front, y0: 0, h: 2.2 },
-    { face: 'back', storey: 0, kind: 'door', u: W * 0.2, w: 0.85, y0: 0, h: 2.0 },
-  ];
-  const dialect: HouseDialect = {
-    window: () => {},
-    door: (s, face, o, y0) => {
-      if (o.kind !== 'shopfront') {
-        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0);
-        return;
-      }
-      // the counter across the front at the riser's top, the shutters hinged up from the head as the awning
-      faceBox(s, 'structureWood', face, o.u, y0 + 0.55, 0.1, o.w + 0.1, 0.06, 0.45, { colour: shade(plank, 1.05), decor: true });
-      faceBox(s, 'structureWood', face, o.u, y0 + o.h + 0.03, awning / 2 + 0.05, o.w + 0.2, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
-      for (const sx of [-1, 1]) s.member('structureWood', [face.origin[0] + face.u[0] * (o.u + sx * (o.w / 2)), y0 + o.h - 0.6, face.origin[2] + face.u[2] * (o.u + sx * (o.w / 2))],
-        [face.origin[0] + face.u[0] * (o.u + sx * (o.w / 2)) + face.out[0] * awning, y0 + o.h, face.origin[2] + face.u[2] * (o.u + sx * (o.w / 2)) + face.out[2] * awning],
-        0.05, 0.05, [face.u[0], 0, face.u[2]], { colour: shade(plank, 0.8), decor: true, exposed: true }, 0);
-    },
-  };
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+  const plank = pick(rng, WEATHERED_PLANK), roofColour = pick(rng, TIN), frameC = shade(plank, 0.62);
+  const F = 0.45, H = 2.75, t = 0.06, top = F + H;
+  const front = W - 1.2, shopH = 2.2, doorU = W * 0.2;
   sink.placed(0, x, 0, 0, () => {
-    sink.paint = shade(plank, 0.9);
-    try {
-      const frame = buildHouse(sink, {
-        w: W, d: D, plinth: { h: 0.45, out: 0.1, bucket: 'stone' }, storeys: [{ h: 2.75, wall: 'structureWood' }],
-        // (the tea shop's hearth: a brick stack through the tin at the back)
-        roof: tin(26), roofColour, gableBucket: 'structureWood', openings, chimneys: [{ x: W * 0.28, z: -D * 0.22, sx: 0.42, sz: 0.42, above: 0.7, bucket: 'stone', cap: 'slab' }],
-        gutters: null, verge: null, reveal: 0.08, spall: null,
-      }, dialect);
-      if (ctx.tier !== 'mobile') {
-        const y0 = frame.floors[0] + 0.05, y1 = frame.eaveY - 0.05;
-        boardRuns(sink, frame.faces.front, y0, y1, plank, [[-front / 2, front / 2]]);
-        boardRuns(sink, frame.faces.back, y0, y1, plank, [[-W * 0.2 - 0.43, -W * 0.2 + 0.43]]);
-        boardRuns(sink, frame.faces.left, y0, y1, plank, []);
-        boardRuns(sink, frame.faces.right, y0, y1, plank, []);
+    const timber = { colour: frameC };
+    // the stone pads, the sole plates on them, the raised plank floor
+    const nx = Math.max(2, Math.round(W / 2.0) + 1), nz = Math.max(2, Math.round(D / 2.0) + 1);
+    const posts: Array<[number, number]> = [];
+    for (let i = 0; i < nx; i++) for (let k = 0; k < nz; k++) {
+      if (i > 0 && i < nx - 1 && k > 0 && k < nz - 1) continue;
+      posts.push([-W / 2 + 0.07 + (W - 0.14) * i / (nx - 1), -D / 2 + 0.07 + (D - 0.14) * k / (nz - 1)]);
+    }
+    for (const [px, pz] of posts) sink.span('stone', px - 0.2, -0.3, pz - 0.2, px + 0.2, 0.2, pz + 0.2);
+    sink.span('structureWood', -W / 2, 0.2, -D / 2, W / 2, F - 0.08, -D / 2 + 0.14, timber);
+    sink.span('structureWood', -W / 2, 0.2, D / 2 - 0.14, W / 2, F - 0.08, D / 2, timber);
+    sink.span('structureWood', -W / 2, 0.2, -D / 2 + 0.14, -W / 2 + 0.14, F - 0.08, D / 2 - 0.14, timber);
+    sink.span('structureWood', W / 2 - 0.14, 0.2, -D / 2 + 0.14, W / 2, F - 0.08, D / 2 - 0.14, timber);
+    sink.span('structureWood', -W / 2 + 0.14, F - 0.08, -D / 2 + 0.14, W / 2 - 0.14, F, D / 2 - 0.14, { colour: shade(plank, 0.8) });
+    // the board walls, each cut by its openings, their insides the shop's
+    const faces = {
+      front: { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W } as Face,
+      right: { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D } as Face,
+      back: { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W } as Face,
+      left: { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } as Face,
+    };
+    const winU = (look() - 0.5) * (D - 2.4);
+    const holes = {
+      front: [{ u0: -front / 2, u1: front / 2, y0: F, y1: F + shopH }],
+      back: [{ u0: doorU - 0.43, u1: doorU + 0.43, y0: F, y1: F + 2.0 }],
+      right: [{ u0: winU - 0.4, u1: winU + 0.4, y0: F + 0.95, y1: F + 1.75 }],
+      left: [] as Array<{ u0: number; u1: number; y0: number; y1: number }>,
+    };
+    const wallC = { colour: shade(plank, 0.9) };
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const f = faces[name], half = f.width / 2 - (name === 'right' || name === 'left' ? t : 0);
+      holedPolygon(sink, 'structureWood', f, [[-half, F], [half, F], [half, top], [-half, top]], holes[name], t, 0, wallC, [], [], true);
+    }
+    // the frame over the boards: the posts at the corners and the jambs, the wall plate, the braces in the corners
+    const fr = { colour: frameC, decor: true, fineSides: true } as const;
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const f = faces[name], half = f.width / 2;
+      const at = [-half + 0.07, half - 0.07, ...holes[name].flatMap((h) => [h.u0 - 0.06, h.u1 + 0.06])];
+      for (const u of at) faceBox(sink, 'structureWood', f, u, (F + top) / 2, 0.04, 0.12, H, 0.08, fr, 'caps');
+      faceBox(sink, 'structureWood', f, 0, top - 0.07, 0.045, f.width, 0.14, 0.09, fr, 'ends');
+      if (!mobile && name !== 'front') for (const s of [-1, 1]) {
+        const a = facePoint(f, s * (half - 0.13), F + 0.15, 0.03), b = facePoint(f, s * (half - 0.95), top - 0.2, 0.03);
+        sink.member('structureWood', a, b, 0.09, 0.05, f.out, { colour: frameC, decor: true }, 0);
       }
-    } finally { sink.paint = null; }
+    }
+    if (!mobile) {
+      boardRuns(sink, faces.back, F + 0.05, top - 0.15, plank, [[doorU - 0.55, doorU + 0.55]]);
+      boardRuns(sink, faces.left, F + 0.05, top - 0.15, plank, []);
+    }
+    // the tin roof on its closed gables, the rafter feet under the eaves
+    const roof = tin(26), rg = roofGeometry(W, D, top, roof);
+    emitRoof(sink, rg, roof, roofColour);
+    closeGables(sink, rg, 'structureWood', { colour: shade(plank, 0.85) });
+    // the rafter feet under the eaves, down the slope from the wall plate
+    if (!mobile) {
+      const tanP = Math.tan(26 * Math.PI / 180);
+      for (const f of [faces.right, faces.left]) {
+        for (let k = 0; k < Math.round(D / 0.9); k++) {
+          const u = -D / 2 + 0.45 + k * 0.9, a = facePoint(f, u, top - 0.03, 0), b = facePoint(f, u, top - 0.03 - 0.52 * tanP, 0.52);
+          sink.member('structureWood', a, b, 0.06, 0.08, [-f.out[0] * Math.sin(Math.atan(tanP)), Math.cos(Math.atan(tanP)), -f.out[2] * Math.sin(Math.atan(tanP))],
+            { colour: frameC, decor: true, fine: true, exposed: true }, 0.08);
+        }
+      }
+    }
+    // the shop: its counter, shelves and goods, the shutter boards propped up as the awning
+    openShop(sink, faces.front, 0, F, front, shopH, { wall: t, depth: D - 2 * t, width: W - 2 * t, height: H },
+      { timber: shade(plank, 1.0), shutters: { colour: shade(plank, 1.08), mode: look() < 0.15 ? 'stacked' : 'propped' }, goods: BAZAAR_GOODS }, look);
+    faceBox(sink, 'structureWood', faces.front, 0, F + shopH + 0.24, 0.03, Math.min(front, 2.6), 0.36, 0.04, { colour: pick(look, SIGNS), decor: true });
+    // the steps up to the floor, the sacks and the baskets out before the shop
+    freeBox(sink, 'stone', faces.front, (look() - 0.5) * (front - 1.2), 0.1, 0.25, 1.1, 0.3, 0.5, { decor: true });
+    sink.dressing(mobile, () => {
+      for (let k = 0; k < 4; k++) {
+        const u = (look() - 0.5) * (W - 0.8), o = 0.45 + look() * Math.max(0.2, awning - 0.6);
+        const p = facePoint(faces.front, u, 0, o);
+        if (look() < 0.5) sink.cylinder('structureWood', [p[0], -0.02, p[2]], 'y', 0.42, 0.24, 8, { colour: rgb(0x9a7a4a), decor: true, fine: true }, 0.3, true);
+        else faceBox(sink, 'structureWood', faces.front, u, 0.24, o, 0.45, 0.5, 0.32, { colour: pick(look, BAZAAR_GOODS), decor: true, fine: true });
+      }
+    });
+    // the back door and the side window's closed plank shutters, in their boards' thickness (whole boxes: the shop's inside
+    // sees their backs), the door's battens and its steps down to the ground
+    const leafC = { colour: shade(plank, 0.75), decor: true };
+    freeBox(sink, 'structureWood', faces.back, doorU, F + 1.0, -t / 2, 0.84, 1.98, 0.035, leafC);
+    for (const y of [F + 0.3, F + 1.7]) faceBox(sink, 'structureWood', faces.back, doorU, y, 0.012, 0.8, 0.1, 0.024, { colour: shade(plank, 0.62), decor: true, fine: true });
+    freeBox(sink, 'stone', faces.back, doorU, 0.12, 0.25, 1.1, 0.3, 0.5, { decor: true });
+    for (const s of [-1, 1]) freeBox(sink, 'structureWood', faces.right, winU + s * 0.2, F + 1.35, -t / 2, 0.39, 0.78, 0.03, { colour: shade(plank, 0.8), decor: true });
+    recordBody(sink, 0, 0, W, D, rg.ridgeTopY, 'structureWood');
   });
 }
+
+/** A bazaar's goods: rice and dal sacks, tea, cloth, tins. */
+const BAZAAR_GOODS: readonly Rgb[] = [0xc8b88a, 0xa89068, 0x6a7a4a, 0x8a3a2e, 0x3a4a6a, 0xd0c4a0, 0x7a5a3a].map(rgb);
+/** The shops' painted signboards. */
+const SIGNS: readonly Rgb[] = [0x2f4f6a, 0x7a2e26, 0x3f5f46, 0xc0a040].map(rgb);
 
 /** A bazaar shop: one shop on its plot. */
 const bazaarShop: RegionalBuilder = (ctx) => {
@@ -212,17 +275,32 @@ const nagaHouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A bamboo granary on posts under a small thatch. */
+/**
+ * The Naga granary (the props census #22 and #17, 2026-10-15, the judges: "round posts with rat-guard discs, a bamboo
+ * floor frame and joists, woven-mat walls as panels in a bamboo frame, a low door with depth, and a notched-log ladder; a
+ * thatch roof with a ridge, an eave fringe and horn finials"): the bin a metre up on round posts with a disc round each
+ * under the floor's girders, the joists and the deck, the walls of woven mat in their bamboo frames, the low door shut in
+ * its frame at the ladder's head, the thatch steep over it in its courses with the crossed horns over the gable
+ * (outbuildings.ts openShed, gable form on a raised floor). The granary, the woodshed and the yards' shed are it.
+ */
 const granary: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const W = Math.max(2.8, Math.min(4, ctx.info.w - 1)), D = Math.max(3.2, Math.min(5, ctx.info.d - 1.5));
-  stilts(sink, W, D, 1.0, rgb(0x6a5a46), { brace: false });
-  sink.span('structureWood', -W / 2 + 0.05, 1.16, -D / 2 + 0.05, W / 2 - 0.05, 2.9, D / 2 - 0.05, { colour: BAMBOO_MAT });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.5, verge: 0.4, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'rows' };
-  const rg = roofGeometry(W, D, 2.9, roof);
-  emitRoof(sink, rg, roof);
-  // (the integrity check, 2026-10-12: sky through the thatch's open ends) the gables in the bin's bamboo mat
-  closeGables(sink, rg, 'structureWood', { colour: BAMBOO_MAT });
+  const post = rgb(0x6a5a46), look = ctx.variant;
+  const shed = openShed(sink, {
+    W, D, hLo: 2.85, pitchDeg: 48, gable: true, lift: 1.0, back: true, ends: true, pile: 0, ratGuards: true, ladder: true,
+    front: { u: 0, w: 0.7, h: 1.15, leaf: shade(post, 0.85) }, mobile: ctx.tier === 'mobile',
+  }, {
+    timber: post, post: 0.14, round: true, pad: null,
+    cladding: 'batten', boards: [BAMBOO_MAT, shade(BAMBOO_MAT, 0.92), shade(BAMBOO_MAT, 1.07)], boardW: 0.62, batten: shade(post, 1.15), trim: shade(post, 1.1),
+    covering: 'thatch', roofBucket: 'straw', thatch: 'rows', eave: 0.5, verge: 0.4,
+  }, look);
+  // the crossed horns (kika) over the +z gable: the barge boards run on up past the apex, crossing in their heads
+  const apex = roofGeometry(W, D, shed.roof.eaveY, shed.roof.spec).ridgeTopY, z = D / 2 + 0.3;
+  for (const side of [-1, 1]) {
+    sink.member('structureWood', [side * W * 0.34, apex - W * 0.34 * Math.tan(48 * Math.PI / 180) - 0.05, z], [-side * 0.35, apex + 0.75, z], 0.16, 0.1, [0, 0, 1],
+      { colour: rgb(0x5a4636), decor: true, exposed: true });
+  }
   return sink.finish();
 };
 

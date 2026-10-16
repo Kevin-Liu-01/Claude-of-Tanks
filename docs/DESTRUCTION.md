@@ -144,7 +144,7 @@ Stages only advance. A blow that crosses two thresholds emits one event per stag
 ### 3.4 Sections (P2)
 
 Landed off on `feature/destruction-sections` (2026-10-08) behind the ruleset's `sections` flag (§9:
-`SECTIONS_SWITCH`, off in every mode until its gates pass). `sim/structureSections.ts` derives a structure's sections
+`SECTIONS_SWITCH`); on in every mode that plays destruction since DST-04 (2026-10-15). `sim/structureSections.ts` derives a structure's sections
 from its collision records alone (a host has no rendered kit), on its first blow:
 
 - **The eaves**: the top of the highest half metre whose shell bands' plan area is at least ¾ of the widest (a pitched
@@ -454,12 +454,32 @@ the same ground; a peer stamps each crater once, from its event or, settled, fro
 from taking it), and its prediction rides the bowl. No route-grid refresh: a bowl 1.6–6 m wide under a 25 m cell's
 sample point changes nothing a route reads. Receipt: `sim/destructionCraters.selftest.mjs`.
 
-Every mode's ruleset keeps `craters: false` until the drawn terrain follows the overlay (the render below): a bowl the
-simulation digs under a flat drawn ground would sink hulls into it. A tool or a test passes its own rules to try them.
+Every mode that plays destruction digs craters since DST-04 (2026-10-15; `CRATERS_SWITCH` on, §9): the drawn terrain
+follows the overlay (the render below) and so does every ray. A tool or a test passes its own rules to try others.
 
-**Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
-nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
-hull height, so P1 lives with it; P3 hands the deformed field to the world's terrain march.
+**The world's rays read the dug ground (DST-04, 2026-10-15).** Both worlds' ray marches — `world/map.ts` (solo, a
+network seat, the Studio) and `world/headlessCollisionWorld.ts` (the authority) — sample the base's fast height plus the
+bound overlay as drawn (`contactOffsetAt`, the lattice the terrain mesh follows); the march's upward ceiling counts the
+overlay's raise and a terrain hit takes the dug ground's normal. Shells, spotting's `hardLos`, the bots' looks and gun
+lanes, the drones' avoidance, the roof gun's check and the aim all read it: a heap stops what passes into it, a gun in
+a bowl fires out of it, a hull in a bowl is seen and struck over the rim, never through phantom ground. The authority
+binds its match's ground on its own (match-local) world; the solo smoke reads the match's ground as the authority's
+does. The presentation's running gear and the Studio's hulls stand on the same dug ground
+(`world/liveHeightFieldProxy.ts createDugHeightFieldProxy`). Receipt: `world/groundOverlayRaycast.selftest.mjs`.
+The drawn bowl is the lattice's: its deepest point reaches 78 % of the law's depth for a 125 mm crater (R 1.67 m), 89 %
+for a 152 mm shell and 95 % for the gunship's howitzer (R 3.44 m), the rim all of its height.
+
+**A map's pre-placed craters are real bowls (DST-04, 2026-10-15).** The battlefield's old shell scars (props.ts
+`tryPlaceBattleScar`, the props stream as before) are recorded as sites, not drawn as flat discs. `world/mapCraters.ts`
+decides each site once on the built world's own records: a bowl (rim crest 0.7 r of the scar's disc, a weathered
+0.28 R deep, the scar's own rim) or a mark — where the bowl would reach under any record but a tree (nothing that stands
+on the ground hangs over a hole), on hard ground or water, under the dig radius, or past 160 bowls. The collision shards
+carry the decided stamps (`craters`), so the authority lays exactly what every seat built (layout identity; the drift
+receipt keeps the shards equal to the build). Every match lays them into its ground before anything else: the solo step
+each battle, the authority (fresh, and a standby host's prepared ground, before the bot navigation grid reads it), a
+seat's mirror and the Studio's every scene; they take overlay bucket slots but not the match's 160 dug craters. The
+presentation lays their surfaces from the bound ground (`fx/effects.ts layMapCraters`: craterMarks in a slot set of its
+own, an hour old). Receipt: `world/mapCraters.selftest.mjs`.
 
 **Render (P3).** The ground mesh is updated in place: the lattice vertices inside a stamp's influence, on every
 terrain LOD level that covers them, take `offsetAt(vertex)`, their normals are recomputed locally, and the position
@@ -611,7 +631,8 @@ P2 (2026-10-08): the audit logs `structure_breach` keyed by what it names (`brea
 fall's hole 255) and judges it as it judges a stage: missing, duplicate, late, a breach older than the view animated, a
 breach the host never sent, and one the new host re-sends after the migration. With the switch flipped (sections on),
 the scripted ram's breaches presented on 3 views, 3 of 3, none re-sent by the new host; its stages 18 of 18 as before.
-With sections off (every mode today) the host sends none and the earlier judgments are unchanged.
+With sections off (every mode before DST-04, 2026-10-15; a ruleset may still turn them off) the host sends none and the
+earlier judgments are unchanged.
 
 ## 9. Per-mode rules
 
@@ -627,12 +648,14 @@ readonly destruction: {
 };
 ```
 
-Craters stay off in every mode behind one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`, until the switch-on gates
-pass. The column says what each mode takes once they ship. **Sections**
-(`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`, off until their
-gates pass (the receipts below, paired pacing and fairness, the determinism and world-events audits with sections on,
-the cost of the openings-aware rays, and the motion strips of a wall panel coming down from a metre up, storeys dropping
-and a round through a hole).
+Craters follow one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`: on since DST-04 (2026-10-15), after the switch-on
+gates below. The column says what each mode takes. **Sections**
+(`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`: on since DST-04
+(2026-10-15; the owner's "explosions that should be destructive and leave holes"), so a battle's HE holes the wall it
+strikes, a section at zero falls and a collapse comes down storey by storey, as the Studio's films have shown since
+2026-10-08. The receipts and both audits ran with sections on in P2; the paired pacing and fairness, the cost of the
+openings-aware rays and the motion strips (a wall panel coming down from a metre up, storeys dropping, a round through a
+hole) run in the 225/226 final pass.
 
 **The switch-on gates (crater-render-spec §F), on feature/destruction-craters (2026-10-08).** This branch is the core plus
 the drawn terrain and ground cover (the ground lane, §B/§C) and the crater surface (the FX lane, §D). The surface drapes on
@@ -644,8 +667,8 @@ the contact surface plus the overlay's `contactOffsetAt`, which is what the draw
 | World-events audit (live, rejoin, reconnect, migration, return), terrain_crater judged like a stage | 4 dug, presented 12/12 on 4 views; 6 laid down settled for later views; none re-sent by the new host |
 | battlePacing, paired against craters off on the same seeds | 127 of 132 matches identical; 5 change duration only, no winner; median 199.2 s and p10 154.6 s unchanged |
 | Fairness, paired, 40 games a side on the three maps with the most HE ground bursts | Whiteout +5.0 points (2 winners changed), Polders 0 (0), Saltwind −2.5 (1); 26–31 craters per map |
-| Barrage cost (ABCCBA off/on, live lighting, scene-pass guard) | queued |
-| Motion strips (125 mm, the gunship's 152 mm and its walk, FPV, ATGM, a settled field at 30 and 80 m, snow, sand) | queued |
+| Barrage cost (ABCCBA off/on, live lighting, scene-pass guard) | the 225/226 final pass (switched on 2026-10-15 under the owner's build-first rule) |
+| Motion strips (125 mm, the gunship's 152 mm and its walk, FPV, ATGM, a settled field at 30 and 80 m, snow, sand) | the 225/226 final pass (scenes: the destruction lane's `scenes/craters.mjs`) |
 
 All-bot standard play digs few craters: bots fire HE at the ground rarely (0.1–0.8 craters a game). The AC-130's
 howitzer and players' HE are where craters come from. A shaped charge (an ATGM, an FPV drone) leaves a mark and no bowl:

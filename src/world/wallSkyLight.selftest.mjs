@@ -6,8 +6,9 @@
 // 33, lit faces unchanged to 0.1 luma, flat ground untouched. This receipt pins the contract, not the pixels.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const compact = (text) => text.replace(/\s+/g, ' ');
 
 // 1. The weight: slope from ~28° (1 - n.y = 0.12) to 60° (0.50), times how far the face turns from the sun.

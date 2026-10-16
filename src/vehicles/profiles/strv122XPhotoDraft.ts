@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addStrv122XGalix } from './strv122XGalix.ts';
 import { addStrv122XBustle } from './strv122XBustle.ts';
@@ -248,7 +249,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.022, .50, 16), x, 2.870, z + .44);
   mg.add('turretDark', box(.094, .073, .14), x, 2.84, z - .13);
   mg.add('turretDetail', box(.13, .13, .15), x - .12, 2.86, z + .035);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'strv122XDraftMg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {

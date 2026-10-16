@@ -41,6 +41,14 @@ const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 /** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
 const matchBuild = resolveMatchBuild(dirname(fileURLToPath(import.meta.url)), appVersion);
 
+/**
+ * The page catalog plugin (tools/viteI18nPageCatalogs.ts). Its build scan also reads the game's whole graph and every
+ * worker's: the Studio catalog split of the page and of the worker builds serves the game's catalogs restricted to the
+ * keys that scan finds (2026-10-15, the perf lane), so both builds emit the same, smaller catalog files.
+ */
+const pageCatalogs = i18nPageCatalogs();
+const gameCatalogKeys = (): readonly string[] | null => pageCatalogs.api.gameCatalogKeys();
+
 /** The telemetry sink origin for the inline watchdog: an http(s) origin without a trailing slash, else empty (the Vercel fallback). */
 function telemetrySinkOrigin(value: string | undefined): string {
   const url = String(value ?? '').trim().replace(/\/+$/, '');
@@ -214,7 +222,7 @@ export default defineConfig({
   // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
   // The match host's catalog chunks split like the page's (tools/viteI18nStudioCatalog.ts), so both builds emit the same
   // catalog files.
-  worker: { format: 'es', plugins: () => [i18nStudioCatalog()], rollupOptions: { output: { hashCharacters: 'base36' } } },
+  worker: { format: 'es', plugins: () => [i18nStudioCatalog({ gameKeys: gameCatalogKeys })], rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
     // 2026-10-02 (tools/viteSharedWorkers.ts): the wreck bake and Garage workshop workers are entries of the page
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
@@ -270,9 +278,10 @@ export default defineConfig({
     // into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's request-time ones), so
     // English visitors never fetch Chinese and Chinese pages never flash English.
     // 2026-10-05 (tools/viteI18nStudioCatalog.ts): the game's catalogs leave the Scene Studio's strings out; each
-    // locale's Studio slice loads with the Studio's chunk.
-    i18nStudioCatalog(),
-    i18nPageCatalogs(),
+    // locale's Studio slice loads with the Studio's chunk. 2026-10-15 (the perf lane): in the build they also leave out
+    // every string the game's graph and its workers cannot show (the docs, home, gallery and media pages' strings).
+    i18nStudioCatalog({ gameKeys: gameCatalogKeys }),
+    pageCatalogs,
     {
       name: 'cot-site-entry-output',
       enforce: 'post',

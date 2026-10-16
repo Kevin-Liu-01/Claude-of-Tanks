@@ -4,7 +4,6 @@
 // tier / renderer / float-buffer gates, the pass sequence and target hand-over on a recording renderer, the frame
 // stride of the lower presets, the sheet's side of the handshake, the terrain wiring and the maps' authored sea states.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   OCEAN_BAND_WAVELENGTHS, OCEAN_CASCADES, OCEAN_FFT_SIZE, buildOceanSpectrum, inverseDftReference, oceanBands,
@@ -15,6 +14,7 @@ import { createOceanField, oceanFieldSupported, oceanFrameStride, oceanGridSize 
 import { createShallowWaterSurface } from './shallowWater.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { waterContactProfile } from './waterContact.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 const TWO_PI = Math.PI * 2;
 function pseudoRandom(count, seed) {
@@ -254,7 +254,7 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
   sheet.mesh.material.dispose(); plain.mesh.material.dispose(); field.dispose();
 }
 {
-  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrain = terrainSourceText();
   for (const line of ['if (oceanFieldSupported(engineCtx.renderer)) {',
     "const oceanState = resolveOceanState(waterContactProfile(cfg.id || '').kind, cfg.ocean);",
     'for (const slice of oceanSpectrumSteps(oceanState, oceanGridSize(oceanPreset))) {',

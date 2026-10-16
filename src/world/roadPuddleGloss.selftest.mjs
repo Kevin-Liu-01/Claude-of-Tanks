@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { getMapConfig } from './maps/index.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Ground lane (2026-10-05, Longleaf's wave: "a mirror-like specular streak baked into the centre of every dirt road
 // regardless of viewing angle"; mr4 traced it to the ruts' puddles, gRoadPuddle at a mirror's roughness 0.12, on every
@@ -10,7 +10,7 @@ import { MAP_IDS } from './maps/mapIds.ts';
 // its default, the share on the puddles and the mud, the roughness ramp and its numbers, every map's share in range.
 // No GPU or art claim.
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+const source = terrainSourceText().replace(/\s+/g, ' ');
 for (const line of [
   'uniform float uRoadPuddle;',
   'shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 };',

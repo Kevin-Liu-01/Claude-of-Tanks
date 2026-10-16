@@ -64,8 +64,19 @@ try {
     const y0 = field.getHeightAt(0, 0);
     settle(world, new THREE.Vector3(0, y0 + 3, 0)); // the build's own partition first: adoption seeds into a live world
     // the binding with the adoption, as map.ts wires it
-    const options = { library, rimMix: world._rimMix, rimTreeHeightM: world._rimTreeHeightM, rimTreeTint: world._rimTreeTint, setupMaterial() {} };
+    // (GND, 2026-10-15: the forest over the line takes its own mix, as map.ts wires it — `ringMix`, else the rim's)
+    const options = { library, rimMix: world._ringMix, rimTreeHeightM: world._rimTreeHeightM, rimTreeTint: world._rimTreeTint, setupMaterial() {} };
     const resolved = resolveHorizonForestTrees(forest, library, { ...options, formVariant: world._treeFormVariant });
+    if (id === 'longleaf') {
+      // the blind critics' Longleaf backdrop ("a broadleaf band that doesn't match the longleaf pines"): past the line the
+      // flatwoods are longleaf alone — every ring tree, adopted or a quad, is the pine slot (its longleaf form)
+      assert.deepEqual(world._ringMix, [['pine', 1]], 'longleaf: the ring mix is the pines alone');
+      assert.ok(world._rimMix.some(([sp]) => sp === 'oak'), 'longleaf: the rim inside the line keeps the creek bottom\'s oaks');
+      const offPine = resolved.trees.filter(t => t.species !== 'pine').length;
+      assert.equal(offPine, 0, `longleaf: every ring tree is a longleaf pine (${offPine} are not)`);
+    } else {
+      assert.strictEqual(world._ringMix, world._rimMix, `${id}: without a ring mix the ring takes the rim's`);
+    }
     const within = resolved.trees.filter(t => outlandAdoptable(t.x, t.z));
     const receipt = bindHorizonForestImpostors(forest, {
       ...options, formVariant: world._treeFormVariant, adoptWithin: t => outlandAdoptable(t.x, t.z), adopt: trees => world.adoptOutlandTrees(trees),
@@ -170,7 +181,7 @@ try {
       outland.userData.hinterlandNearTrees = { trees: packed, species: [sample[0].species], pyramid: null };
       object.add(outland);
       const h = applyHinterlandTreeImpostors(object, {
-        library, rimMix: world._rimMix, rimTreeTint: world._rimTreeTint, setupMaterial() {},
+        library, rimMix: world._ringMix, rimTreeTint: world._rimTreeTint, setupMaterial() {},
         formVariant: world._treeFormVariant, adoptWithin: t => outlandAdoptable(t.x, t.z), adopt: trees => world.adoptOutlandTrees(trees),
       });
       const expected = sample.filter(t => outlandAdoptable(t.x * 1.06, t.z * 1.06)).length;
