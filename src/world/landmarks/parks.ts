@@ -7,6 +7,7 @@ import { LIMEWASH_UV, archedSlab, bar, cross, moulding, railing, revolve, smooth
 import { drapedPath, drapedRect, enclosure, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
 import { figure } from './monuments.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
 const SANDSTONE = rgb(0xb59a7c);
@@ -32,16 +33,22 @@ export const fountain: LandmarkBuilder = (ctx) => {
   let y = 0.42, r = Math.min(0.5, R * 0.14);
   for (let k = 0; k < tiers; k++) {
     const shaft = 1.0 + (tiers - k) * 0.25, bowl = R * (0.62 - k * 0.17);
-    revolve(sink, 'stone', 0, 0, [[r * 1.4, y], [r * 1.2, y + 0.2], [r, y + 0.35], [r * 0.8, y + shaft - 0.2], [r * 1.05, y + shaft]], 12);
+    // the shaft and the bowl on it: its underside swelling out to the lip, the water lying in it (the top tier comes off
+    // when the fountain is breached: props lane A, E12, landmarks/pieces.ts)
+    const ys = y, rs = r, emitTier = (s: PartSink) => {
+      revolve(s, 'stone', 0, 0, [[rs * 1.4, ys], [rs * 1.2, ys + 0.2], [rs, ys + 0.35], [rs * 0.8, ys + shaft - 0.2], [rs * 1.05, ys + shaft]], 12);
+      const yb = ys + shaft;
+      revolve(s, 'stone', 0, 0, [[rs * 1.05, yb], [bowl * 0.55, yb + 0.12], [bowl, yb + 0.32], [bowl, yb + 0.42], [bowl - 0.12, yb + 0.42], [bowl - 0.12, yb + 0.32]], 20);
+      revolve(s, 'glass', 0, 0, [[bowl - 0.12, yb + 0.38], [rs * 0.9, yb + 0.38]], 20, { decor: true });
+    };
+    if (k === tiers - 1) piece(sink, { name: 'bowl', kind: 'detach', at: 'breached', fall: 'drop' }, emitTier);
+    else emitTier(sink);
     y += shaft;
-    // the bowl: its underside swelling out to the lip, the water lying in it
-    revolve(sink, 'stone', 0, 0, [[r * 1.05, y], [bowl * 0.55, y + 0.12], [bowl, y + 0.32], [bowl, y + 0.42], [bowl - 0.12, y + 0.42], [bowl - 0.12, y + 0.32]], 20);
-    revolve(sink, 'glass', 0, 0, [[bowl - 0.12, y + 0.38], [r * 0.9, y + 0.38]], 20, { decor: true });
     y += 0.32;
     r *= 0.75;
   }
-  revolve(sink, 'stone', 0, 0, [[r * 1.3, y], [r * 1.1, y + 0.4], [r * 1.6, y + 0.6], [0, y + 0.95]], 10);
-  return { parts: sink.finish() };
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) => revolve(s, 'stone', 0, 0, [[r * 1.3, y], [r * 1.1, y + 0.4], [r * 1.6, y + 0.6], [0, y + 0.95]], 10));
+  return { parts: finishLandmark(sink) };
 };
 
 /**
@@ -59,7 +66,8 @@ function marktFountain(sink: PartSink, R: number, base: number): ReturnType<Land
   const shaftTop = 4.7;
   revolve(sink, 'stone', 0, 0, [[0.66, 0.5], [0.66, 1.25], [0.54, 1.38], [0.4, 1.48], [0.33, 1.62], [0.29, shaftTop - 0.3], [0.38, shaftTop - 0.2],
     [0.52, shaftTop], [0.52, shaftTop + 0.18], [0, shaftTop + 0.19]], 8, {}, oct);
-  figure(sink, shaftTop + 0.18, 1.85, SANDSTONE, shade(SANDSTONE, 0.78), 'robe');
+  // the saint topples off the column when the fountain is breached (props lane A, E12)
+  piece(sink, { name: 'figure', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => figure(s, shaftTop + 0.18, 1.85, SANDSTONE, shade(SANDSTONE, 0.78), 'robe'));
   // (the looks lane, 2026-10-13; LOOKS-BRIEF item 3: "the water is a flat blue disc ... wants a sandstone basin with
   // carved panels ... and spout jets") each of the trough's eight faces a sunk panel in a moulded frame, a ringed boss
   // on four of them; the pedestal's acanthus band; the water's surface rings where the jets land
@@ -104,7 +112,7 @@ function marktFountain(sink: PartSink, R: number, base: number): ReturnType<Land
         [rc[0] + Math.cos(t1) * r2, rc[1], rc[2] + Math.sin(t1) * r2], [rc[0] + Math.cos(t1) * r1, rc[1], rc[2] + Math.sin(t1) * r1], { colour: WATER_JET, decor: true });
     }
   }
-  return { parts: sink.finish(), tints: { stone: [1.04, 0.95, 0.85] } };
+  return { parts: finishLandmark(sink), tints: { stone: [1.04, 0.95, 0.85] } };
 }
 
 /**
@@ -153,7 +161,7 @@ export const bandstand: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [x, top - 0.7, z], [x * 0.82, top, z * 0.82], 0.05, { colour: IRON_GREEN, decor: true });
     // the railing round the deck, open over the steps
     const b = (i + 1) * Math.PI / 4 + oct;
-    if (i !== 7) railing(sink, [x, z], [Math.sin(b) * (Rc - 0.2), Math.cos(b) * (Rc - 0.2)], 0.9, IRON_GREEN, { base: deck, pitch: 1.4 });
+    if (i !== 7) railing(sink, [x, z], [Math.sin(b) * (Rc - 0.2), Math.cos(b) * (Rc - 0.2)], 0.9, IRON_GREEN, { base: deck, pitch: 1.4, module: false });
   }
   // the roof: an eave ring, the bell-shaped sweep, a lantern and finial
   revolve(sink, 'structureMetal', 0, 0, [[Rc + 0.4, top], [Rc + 0.4, top + 0.16], [Rc * 0.86, top + 0.55], [Rc * 0.55, top + 1.35], [Rc * 0.28, top + 2.0],
@@ -192,7 +200,7 @@ export const parkGate: LandmarkBuilder = (ctx) => {
       pier(x1 + sx * 0.45, 1.9);
     }
   }
-  return { parts: sink.finish() };
+  return { parts: finishLandmark(sink) };
 };
 
 /**
@@ -270,7 +278,7 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
   // (`inscription`: the centre piece's, an obelisk's plaque)
   const inscription = ctx.params.inscription ? { inscription: String(ctx.params.inscription) } : {};
   if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight, ...inscription } : centreHeight });
-  return { parts: sink.finish(), tints: { plaster3: [0.95, 0.86, 0.68] }, destructibles, children };
+  return { parts: finishLandmark(sink), tints: { plaster3: [0.95, 0.86, 0.68] }, destructibles, children };
 };
 
 /** A painted picket fence from a to b: posts, two rails and the pickets (fine), a hull's height. */

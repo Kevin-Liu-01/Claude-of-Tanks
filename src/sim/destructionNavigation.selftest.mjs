@@ -6,7 +6,7 @@ import { Vector3 } from 'three';
 import { createBotNavigationGrid } from './botRoutePlanner.ts';
 import { createObstacleGrid, setCompoundShape, setObbShape } from '../world/collision.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
-import { createStructureDamage } from './structureDamage.ts';
+import { createStructureDamage, structureRubbleHeightM } from './structureDamage.ts';
 import { bushBonusBetween, fellConcealersAt, restoreConcealers } from './spotting.ts';
 
 const up = new Vector3(0, 1, 0);
@@ -73,6 +73,39 @@ const digest = (grid) => [grid.heights, grid.blocked, grid.groundTypes, grid.hul
   assert.ok(Math.abs(grid.heights[cell(0, 0)] - (height(0, 0) + overlay.offsetAt(0, 0))) < 1e-5, 'and the cell reads them');
 }
 
+// ---- a light set piece (props lane A, E12): a guyed mast across a track falls to a hull; its low heap and the open
+// ground where it stood read as a fresh build's, and nothing of it is left to block a route (the fallen mast the
+// presentation lays is drawn only: no record)
+{
+  const obstacles = [], colliders = [];
+  const contact = setObbShape({ min: [0, -0.5, 0], max: [0, 1.8, 0], kind: 'structure', structureIdx: 0, structureRole: 'setpiece' }, 0, 0, 1.6, 1.6, 0);
+  const shell = setCompoundShape({ min: [0, -0.5, 0], max: [0, 31, 0], kind: 'structure', structureIdx: 0, structureRole: 'setpiece' },
+    [{ kind: 'obb', cx: 0, cz: 0, hw: 0.4, hl: 0.4, yaw: 0 }]);
+  obstacles.push(contact); colliders.push(shell);
+  const overlay = createTerrainDeformation();
+  const field = createDeformedHeightField(baseField, overlay);
+  const grid = gridOver(field, obstacles);
+  const cell = (x, z) => Math.round((z + 500) / 25) * 41 + Math.round((x + 500) / 25);
+  let heap = -1;
+  const damage = createStructureDamage(obstacles, colliders, {
+    onCollapse(structure) {
+      heap = structureRubbleHeightM(structure);
+      overlay.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw, heap);
+      const reach = rubbleFalloffM(structure.hw, structure.hd, heap);
+      grid.refreshArea(structure.cx - structure.hw - reach, structure.cz - structure.hd - reach, structure.cx + structure.hw + reach, structure.cz + structure.hd + reach);
+    },
+  });
+  const mast = damage.byId(0);
+  assert.equal(mast.massClass, 'shed', 'a light set piece');
+  damage.applyRam(mast, 50, 10, 0, { cause: 'ram', munition: null, x: 0, y: 1, z: -1.6, dirX: 0, dirZ: 1 });
+  for (let i = 0; i < 4; i++) damage.step();
+  assert.equal(obstacles[0].crushed && colliders[0].dead, true, 'its records swap');
+  assert.ok(heap > 0 && heap < rubbleHeightFor(31), `a low heap (${heap.toFixed(2)} m, not a 31 m house's ${rubbleHeightFor(31)} m)`);
+  const [a, b] = [digest(grid), digest(gridOver(field, obstacles))];
+  for (let i = 0; i < a.length; i++) assert.equal(a[i], b[i], 'the refreshed grid equals a fresh build\'s');
+  assert.equal(grid.blocked[cell(0, 0)], 0, 'the track through where it stood is open');
+}
+
 // ---- concealment: a felled tree's canopy stops concealing until the battle resets
 {
   const concealers = [{ x: 10, z: 0, r: 4, add: 0.08 }, { x: 10, z: 0.5, r: 2, add: 0.35 }, { x: -10, z: 0, r: 4, add: 0.08 }];
@@ -86,4 +119,4 @@ const digest = (grid) => [grid.heights, grid.blocked, grid.groundTypes, grid.hul
 }
 
 console.log('destructionNavigation: a refresh round a fallen house and its heap equals a fresh build (cells, heights, '
-  + 'grades, hull edges, bends, components), the street opens, a felled canopy stops concealing PASS');
+  + 'grades, hull edges, bends, components), the street opens, a light set piece falls open, a felled canopy stops concealing PASS');

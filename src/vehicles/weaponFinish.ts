@@ -420,7 +420,7 @@ export function prepareWeaponFinishGeometry(geometry: THREE.BufferGeometry,
 // of dark steel"): a vehicle whose main weapon is a machine gun carries a bare steel barrel too (the Ares APC's L111A1
 // 12.7 mm). A main-gun thermal sleeve stays painted.
 const WEAPON_STEEL_MAIN_BARRELS: ReadonlySet<string> = new Set(['m2a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker',
-  'ares_apc_x']);
+  'ares_apc']);
 export function mainBarrelIsWeaponSteel(specId: string): boolean { return WEAPON_STEEL_MAIN_BARRELS.has(specId); }
 
 // ---- exact-weapon link -----------------------------------------------------------------------------------------------

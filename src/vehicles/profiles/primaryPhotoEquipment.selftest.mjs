@@ -8,7 +8,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Keep the original photo construction contract independent of the newly
 // source-authored actual Mk5. Its source model has separate acceptance tests.
-registerProfiledBuilders({ chieftain5_x: buildChieftain5XPhotoDraft, strv122_x: buildStrv122X });
+registerProfiledBuilders({ chieftain5: buildChieftain5XPhotoDraft, strv122: buildStrv122X });
 
 function cast(meshes, frame, point, axis, far = 5) {
   return new THREE.Raycaster(new THREE.Vector3(...point).applyMatrix4(frame),
@@ -89,11 +89,11 @@ function mk5Checks(tank) {
   }
 }
 
-for (const quality of ['high', 'low']) for (const id of ['strv122_x', 'chieftain5_x']) {
+for (const quality of ['high', 'low']) for (const id of ['strv122', 'chieftain5']) {
   const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);
-    if (id === 'strv122_x') strvChecks(tank); else mk5Checks(tank);
+    if (id === 'strv122') strvChecks(tank); else mk5Checks(tank);
   } finally { tank.dispose(); }
 }
 console.log('primaryPhotoEquipment.selftest: high/low attached bustle bins, open handles and independent pitched auxiliary forms pass');

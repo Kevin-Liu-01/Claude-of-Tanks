@@ -22,12 +22,12 @@ assert.ok(!/type100|Type 100|T-90|T-14|leopard/i.test(profileSource.replace(/^\/
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]).sort(),
   ['../factoryGeometry.ts', '../nationWheelConstructions.ts', '../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleAuxiliaryGeometry.ts', '../vehicleNightLighting.ts', './abramsSourceXTrackShoe.ts', './auxiliaryStation.ts', './kit.ts', './lathedWheelStock.ts', './sectionSolid.ts', 'three'], 'only shared procedural primitives, lighting and roof articulation modules (no donor profile)');
 const record = JSON.parse(readFileSync(new URL('../../../docs/references/tanks/ztz100_x.source-measurements.json', import.meta.url), 'utf8'));
-const spec = TANK_SPECS.ztz100_x;
+const spec = TANK_SPECS.ztz100;
 assert.equal(spec.name, 'ZTZ-100'); assert.equal(spec.nation, 'China'); assert.equal(spec.era, 'next-generation');
-assert.equal(spec.role, 'mbt'); assert.equal(spec.gun.caliberMm, 105); assert.equal(tankTier('ztz100_x'), 10);
-assert.equal(vehicleEraForId('ztz100_x'), 'next-generation'); assert.equal(FLEET_GROUP_BY_ID.ztz100_x, 'modern2');
+assert.equal(spec.role, 'mbt'); assert.equal(spec.gun.caliberMm, 105); assert.equal(tankTier('ztz100'), 10);
+assert.equal(vehicleEraForId('ztz100'), 'next-generation'); assert.equal(FLEET_GROUP_BY_ID.ztz100, 'modern2');
 assert.equal(tankLabelRecord(spec).shortName, 'ZTZ-100');
-assert.equal(MODEL_SOURCE.ztz100_x.source, 'procedural', 'the oracle never enters the runtime');
+assert.equal(MODEL_SOURCE.ztz100.source, 'procedural', 'the oracle never enters the runtime');
 assert.equal(spec.visual.scheme, 'digital');
 assert.deepEqual(spec.armor.turretPivot, [...record.turretPivotM], 'turret pivot from the measured record');
 assert.deepEqual(spec.armor.gunPivot, [0, +(record.gunAxisM[1] - record.turretPivotM[1]).toFixed(4), +(record.gunAxisM[2] - record.turretPivotM[2]).toFixed(4)], 'trunnion from the measured gun axis');
@@ -48,7 +48,7 @@ assert.equal(ZTZ100_X_DATUMS.muzzleZ, record.muzzleZM);
 assert.equal(record.localOracleSha256.length, 64, 'the quarantined oracle is hash-pinned');
 
 const parts = [];
-registerProfiledBuilders({ ztz100_x: (P) => ZTZ100_X_PROFILES.ztz100_x.build(new Proxy(P, {
+registerProfiledBuilders({ ztz100: (P) => ZTZ100_X_PROFILES.ztz100.build(new Proxy(P, {
   get(target, key) {
     if (['add', 'addEquipment', 'addExternalArmor', 'addCupola', 'addGunExtra', 'addGunExtraDark', 'addModuleVisual'].includes(key)) {
       return (...args) => {
@@ -70,7 +70,7 @@ registerProfiledBuilders({ ztz100_x: (P) => ZTZ100_X_PROFILES.ztz100_x.build(new
 
 for (const quality of ['high', 'low']) {
   parts.length = 0;
-  const tank = createTank('ztz100_x', null, { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false });
+  const tank = createTank('ztz100', null, { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);
     const count = (part) => parts.filter((p) => p.part === part).length;
@@ -240,7 +240,7 @@ for (const quality of ['high', 'low']) {
     assert.ok(Math.abs(rwsTop - record.dimensionsM.highestFitting) < 0.08, `weapon station top ${rwsTop.toFixed(3)} at the measured ${record.dimensionsM.highestFitting}`);
     assert.ok(bounds.max.x <= 1.87 && bounds.min.x >= -1.87, 'width over skirts');
     assert.ok(bounds.max.z <= record.muzzleZM + 0.05, 'nothing ahead of the muzzle');
-    console.log(JSON.stringify({ id: 'ztz100_x', quality, parts: parts.length, width: +(bounds.max.x - bounds.min.x).toFixed(3), height: +bounds.max.y.toFixed(3), length: +(bounds.max.z - bounds.min.z).toFixed(3) }));
+    console.log(JSON.stringify({ id: 'ztz100', quality, parts: parts.length, width: +(bounds.max.x - bounds.min.x).toFixed(3), height: +bounds.max.y.toFixed(3), length: +(bounds.max.z - bounds.min.z).toFixed(3) }));
   } finally { tank.dispose(); }
 }
 console.log('ztz100X: PASS');

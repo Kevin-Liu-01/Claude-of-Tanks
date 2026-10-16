@@ -47,7 +47,7 @@ function evidence(tank,pose=identity) {
   }
 }
 for(const quality of['high','low']) {
-  const tank=createTank('type10_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
+  const tank=createTank('type10',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);evidence(tank);
     const turret=tank.root.getObjectByName('rig_turret');

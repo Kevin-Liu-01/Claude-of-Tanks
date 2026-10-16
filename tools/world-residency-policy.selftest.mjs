@@ -38,7 +38,7 @@ function fixture() {
           initialGeometryCount: 64, streamedGeometryCount: 42, indexReferences: 106 },
       },
       sceneIdentity: {
-        protocol: PINNED_SCENE.protocol, selectedSpecId: 'm1a2', playerEntityId: 'm1a2', playerSpecId: 'm1a2',
+        protocol: PINNED_SCENE.protocol, selectedSpecId: 'm1a1_abrams_hc', playerEntityId: 'm1a1_abrams_hc', playerSpecId: 'm1a1_abrams_hc',
         entities: PINNED_SCENE.roster.map((specId, index) => ({
           entityId: specId, team: index < 4 ? 'player' : 'enemy', specId,
           isPlayer: index === 0, visualSpecId: specId,
@@ -163,7 +163,7 @@ for (const damage of [
   report => { report.samples[0].sceneIdentity.playerSpecId = 'm1a3'; },
   report => { report.samples[0].sceneIdentity.entities.reverse(); },
   report => { report.samples[0].sceneIdentity.entities[1].team = 'enemy'; },
-  report => { report.samples[0].sceneIdentity.entities[1].visualSpecId = 'm1a2'; },
+  report => { report.samples[0].sceneIdentity.entities[1].visualSpecId = 'm1a1_abrams_hc'; },
   report => { delete report.samples[0].sceneIdentity.entities[1].entityId; },
   report => { delete report.scenario.scene; },
   report => { report.scenario.scene = { ...PINNED_SCENE, playerSpecId: 'm1a3' }; },

@@ -6,7 +6,7 @@ import { createTankState } from '../sim/movement.ts';
 import { KIT, trackPatternWithDimensions } from './tankFactoryCore.ts';
 import { TRACK_PATTERN_IDS, trackPatternFor } from './trackPatterns.ts';
 
-// Russian X track standard 2026-09-12 (owner decision, applied to t90m_x too):
+// Russian X track standard 2026-09-12 (owner decision, applied to t90m too):
 // the measured T-90M shoe carries the .036 pad and .018 web; horn, grouser,
 // pin radius and pin centre are the source values.
 const dimensions=Object.freeze({
@@ -26,7 +26,7 @@ for(const id of TRACK_PATTERN_IDS) {
     assert.equal(measured[key],Object.hasOwn(dimensions,key)?dimensions[key]:original[key]);
   }
 }
-const family=trackPatternFor({id:'t90m'});
+const family=trackPatternFor({id:'t90am'});
 for(const invalid of [{padHeight:0},{hornHeight:-.1},{pinRadius:NaN},
   {webHeight:Infinity},{grouserHeight:.51},{pinCentreY:.51},{surface:.1}]) {
   assert.throws(()=>trackPatternWithDimensions(family,invalid),/native track-shoe|Native track-shoe/);
@@ -35,7 +35,7 @@ for(const invalid of [{padHeight:0},{hornHeight:-.1},{pinRadius:NaN},
 // 2026-10-01 (owner: retire frozen pins): the pinned shoe, road-wheel and m60a1 return-roller buffer
 // digests (frozen before the optional core APIs) are gone; the fleet geometry ledger owns whole-tank
 // change detection. Each default construction still emits exactly its own native stock.
-const WHEEL_INSETS={t90m:true,t90a:true,m1a2:false,leo2a5:false};
+const WHEEL_INSETS={t90am:true,t90a_2004:true,m1a1_abrams_hc:false,leo2a4_v:false};
 for(const [id,insets] of Object.entries(WHEEL_INSETS)) {
   const tank=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
@@ -62,7 +62,7 @@ for(const invalid of [{returnRollerWidthM:0},{returnRollerWidthM:NaN},{returnRol
       idler:{z:2,y:.7,r:.3},trackW:.5,topY:1,...invalid}),/Native return-roller/);
 }
 
-const tank=createTank('t90m_x',null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
+const tank=createTank('t90m',null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
 try {
   const shoes=tank.root.getObjectByName('gearTrackPads');
   assert.ok(shoes?.isInstancedMesh&&shoes.count>=80);
@@ -72,7 +72,7 @@ try {
   const bounds=geometry.boundingBox;
   // Canonical owner source: complete radial shoe/guide span .087072 m;
   // outer shoe only .03338 m. Russian X track standard 2026-09-12 (owner
-  // decision: applied to t90m_x too): the .036 pad and .018 web raise the
+  // decision: applied to t90m too): the .036 pad and .018 web raise the
   // complete span to .110 m while the guide horn and shoe width are unchanged.
   assert.ok(Math.abs(bounds.max.y-bounds.min.y-.110)<.005);
   assert.ok(Math.abs(bounds.max.x-bounds.min.x-.58976)<.002);
@@ -100,7 +100,7 @@ try {
 // Actual added faces remain on the original suspension entries. Source
 // outboard tire/hub witnesses are independent local-oracle measurements;
 // the wider shoe envelope is not used as a target for wheel-face growth.
-for(const [id,sourceFaceX] of [['t90a_x',1.7089],['t90m_x',1.66133],['t90sm_x',1.6334]]) {
+for(const [id,sourceFaceX] of [['t90a',1.7089],['t90m',1.66133],['t90sm',1.6334]]) {
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     const tire=visual.root.getObjectByName('gearRoadWheelTires');
@@ -114,7 +114,7 @@ for(const [id,sourceFaceX] of [['t90a_x',1.7089],['t90m_x',1.66133],['t90sm_x',1
       for(let i=0;i<layer.count;i++) {
         layer.getMatrixAt(i,matrix);
         box.copy(layer.geometry.boundingBox).applyMatrix4(matrix);
-        assert.ok(Math.max(Math.abs(box.min.x),Math.abs(box.max.x))<sourceFaceX+(id==='t90sm_x'?.006:.037),
+        assert.ok(Math.max(Math.abs(box.min.x),Math.abs(box.max.x))<sourceFaceX+(id==='t90sm'?.006:.037),
           `${id}: source-measured face stays within its small hardware-depth tolerance`);
       }
     }
@@ -148,8 +148,8 @@ for(const [id,sourceFaceX] of [['t90a_x',1.7089],['t90m_x',1.66133],['t90sm_x',1
 // Russian X track standard 2026-09-12: outer casting = pad .036 + web .018
 // plus each class's grouser; the full span keeps each source guide horn.
 for(const [id,outerSpan,fullSpan] of [
-  ['t90a_x',.0630,.1610],['t90a_vladimir_x',.0650,.1880],
-  ['t90m_x',.0580,.1100],['t90sm_x',.0635,.1468],
+  ['t90a',.0630,.1610],['t90a_vladimir',.0650,.1880],
+  ['t90m',.0580,.1100],['t90sm',.0635,.1468],
 ]) {
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
@@ -166,7 +166,7 @@ for(const [id,outerSpan,fullSpan] of [
 // FSP-03 2026-09-25 (owner: rollers wherever the real vehicle has them): the T-72/T-90 family carries three return
 // rollers per side (FAS T-72 entry; the T-90A X source `support wheels` node), so the round-46b rollerless assertion is
 // reversed — the T-90A X and T-90A Vladimir X carry their six source-measured rollers again.
-for(const id of ['t90a_x','t90a_vladimir_x']) {
+for(const id of ['t90a','t90a_vladimir']) {
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {
     const discs=visual.root.getObjectByName('gearReturnRollerDiscs');

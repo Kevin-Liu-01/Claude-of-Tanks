@@ -54,15 +54,15 @@ function wire(tanks, seedBase = 41) {
 /** A 3+human v 3 fixture on a zone map: the enemy team is spotted except one hull the spotting sim hides. */
 function fixture() {
   const tanks = wire([
-    entity('m1a2', 'm1a2', 'player', 0, 0, { isPlayer: true }),
-    entity('leo2a6', 'leo2a6', 'player', -30, 10),
-    entity('t90m', 't90m', 'player', 30, 5, { hp: 420 }),
-    entity('strv103', 'strv103', 'player', -10, -40),
-    entity('t72b3m', 't72b3m', 'enemy', 40, 300, { yaw: Math.PI }),
+    entity('m1a1_abrams_hc', 'm1a1_abrams_hc', 'player', 0, 0, { isPlayer: true }),
+    entity('leo2a4', 'leo2a4', 'player', -30, 10),
+    entity('t90am', 't90am', 'player', 30, 5, { hp: 420 }),
+    entity('strv103b', 'strv103b', 'player', -10, -40),
+    entity('t72b3m_2022', 't72b3m_2022', 'enemy', 40, 300, { yaw: Math.PI }),
     entity('kv2', 'kv2', 'enemy', -60, 320, { yaw: Math.PI / 2 }),
-    entity('t90ms', 't90ms', 'enemy', 0, 700, { yaw: Math.PI }),
+    entity('t90ms_2011', 't90ms_2011', 'enemy', 0, 700, { yaw: Math.PI }),
   ]);
-  const hidden = new Set(['t90ms']);
+  const hidden = new Set(['t90ms_2011']);
   const zones = [
     { id: 'A', x: 0, z: 150, owner: 'bravo', contested: true },
     { id: 'B', x: -200, z: 100, owner: null, contested: false },
@@ -127,19 +127,19 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(validateJevState(state).ok, true, `the document validates: ${JSON.stringify(validateJevState(state))}`);
   assert.equal(validateJevRequest({ v: 1, sid: 'session-test-0001', kind: 'team_orders', state }).ok, true);
   assert.deepEqual(Object.keys(state.our_tanks), ['b1', 'b2', 'b3'], 'three bots, the human player is not a bot');
-  assert.deepEqual([...player.labels.botIds.entries()], [['b1', 'leo2a6'], ['b2', 'strv103'], ['b3', 't90m']], 'labels are assigned in id order');
+  assert.deepEqual([...player.labels.botIds.entries()], [['b1', 'leo2a4'], ['b2', 'strv103b'], ['b3', 't90am']], 'labels are assigned in id order');
   assert.deepEqual(Object.keys(state.enemies), ['e1', 'e2'], 'the hidden enemy is not in the document');
-  assert.deepEqual([...player.labels.enemyIds.entries()], [['e1', 'kv2'], ['e2', 't72b3m']]);
+  assert.deepEqual([...player.labels.enemyIds.entries()], [['e1', 'kv2'], ['e2', 't72b3m_2022']]);
   assert.equal(state.battle.alive.theirs, 3, 'the count of living enemies is a fact the team knows; their positions are not');
   assert.equal(state.battle.mode, 'zone_control');
   assert.match(state.battle.goal, /750 points/);
   assert.deepEqual(state.battle.score, { ours: 120, theirs: 90, target: 750 }, 'the player side is alpha');
   assert.equal(state.battle.elapsed_s, 245);
   assert.equal(state.battle.remaining_s, 655);
-  assert.equal(state.battle.human_ally.vehicle, getSpec('m1a2').name, 'the allied view names the human as a teammate');
+  assert.equal(state.battle.human_ally.vehicle, getSpec('m1a1_abrams_hc').name, 'the allied view names the human as a teammate');
   assert.equal(state.battle.human_ally.hp, 1);
   const b3 = state.our_tanks.b3;
-  assert.equal(b3.vehicle, getSpec('t90m').name);
+  assert.equal(b3.vehicle, getSpec('t90am').name);
   assert.equal(b3.class, 'main battle tank');
   assert.equal(b3.hp, 0.42);
   assert.equal(b3.ammo, 0.75);
@@ -150,7 +150,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(b3.nearest_ally_m, 30);
   assert.equal(b3.under_fire, false, 'no previous snapshot: nothing is under fire yet');
   const e2 = state.enemies.e2;
-  assert.equal(e2.vehicle, getSpec('t72b3m').name);
+  assert.equal(e2.vehicle, getSpec('t72b3m_2022').name);
   assert.equal(e2.human_player, false);
   assert.equal(e2.bearing, 'N');
   assert.equal(e2.facing, 'toward us', 'a hull whose nose points at the team centroid faces us');
@@ -161,21 +161,21 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(state.objectives.zone_c.owner, 'ours');
   const text = JSON.stringify(state);
   assert.doesNotMatch(text, /"(x|z|pos|name|nick|playerName|room)":/, 'no coordinate or name field leaves the browser');
-  assert.doesNotMatch(text, /m1a2|t90m|leo2a6|IronMaus|Claude/, 'no entity id or nickname either — labels and vehicle names only');
+  assert.doesNotMatch(text, /m1a2|t90am|leo2a4|IronMaus|Claude/, 'no entity id or nickname either — labels and vehicle names only');
   const enemyView = buildJevTeamState(f.view, 'enemy', null).state;
   assert.deepEqual(Object.keys(enemyView.our_tanks), ['b1', 'b2', 'b3']);
   assert.equal(enemyView.battle.human_ally, null);
   const human = Object.values(enemyView.enemies).find((row) => row.human_player);
-  assert.ok(human && human.vehicle === getSpec('m1a2').name, 'the enemy view lists the human player as such');
+  assert.ok(human && human.vehicle === getSpec('m1a1_abrams_hc').name, 'the enemy view lists the human player as such');
   assert.equal(enemyView.battle.score.ours, 90, 'the enemy side is bravo');
   assert.equal(enemyView.objectives.zone_a.owner, 'ours');
   assert.match(enemyView.battle.goal, /750 points/);
   // under fire: a hull that lost hit points since the previous document
-  f.byId('t90m').combat.hp = 300;
+  f.byId('t90am').combat.hp = 300;
   const next = buildJevTeamState(f.view, 'player', player.hp).state;
   assert.equal(next.our_tanks.b3.under_fire, true);
   assert.equal(next.our_tanks.b1.under_fire, false);
-  f.byId('t90m').combat.hp = 420;
+  f.byId('t90am').combat.hp = 420;
   // the questions the proxy builds from it: one fan-out per team
   const questions = buildJevQuestions(state);
   assert.deepEqual(Object.keys(questions).sort(), ['focus', 'posture_b1', 'posture_b2', 'posture_b3',
@@ -192,9 +192,9 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(buildJevQuestions(standard).focus, undefined);
   assert.equal(standard.our_tanks.b1.objective, null);
   // a team with no living bot builds nothing
-  for (const id of ['t72b3m', 'kv2', 't90ms']) f.byId(id).combat.destroyed = true;
+  for (const id of ['t72b3m_2022', 'kv2', 't90ms_2011']) f.byId(id).combat.destroyed = true;
   assert.equal(buildJevTeamState(f.view, 'enemy', null), null);
-  for (const id of ['t72b3m', 'kv2', 't90ms']) f.byId(id).combat.destroyed = false;
+  for (const id of ['t72b3m_2022', 'kv2', 't90ms_2011']) f.byId(id).combat.destroyed = false;
 }
 
 {
@@ -202,9 +202,9 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   const f = fixture();
   const fake = fakeTransport();
   const commander = createJevCommander({ transport: fake.transport, teams: ['enemy', 'player'], cadenceS: 2, orderTtlS: 5, now: () => 0 });
-  assert.equal(commander.commands(f.byId('t72b3m')), true);
-  assert.equal(commander.commands(f.byId('leo2a6')), true);
-  assert.equal(commander.commands(f.byId('m1a2')), false, 'the human player is never commanded');
+  assert.equal(commander.commands(f.byId('t72b3m_2022')), true);
+  assert.equal(commander.commands(f.byId('leo2a4')), true);
+  assert.equal(commander.commands(f.byId('m1a1_abrams_hc')), false, 'the human player is never commanded');
   commander.step(f.view);
   assert.equal(fake.requests.length, 2, 'one request per team, each in flight on its own');
   assert.equal(fake.requests[0].body.sid, 'session-test-0001');
@@ -223,18 +223,18 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   commander.step(f.view);
   assert.equal(commander.stats('player').answered, 1);
   assert.equal(commander.stats('player').ordersApplied, 0);
-  // the enemy answer: b1 (kv2) pushes at the human, b2 (t72b3m) flanks left, b3 (t90ms) holds without confidence
-  const enemyLabels = { kv2: 'b1', t72b3m: 'b2', t90ms: 'b3' };
+  // the enemy answer: b1 (kv2) pushes at the human, b2 (t72b3m_2022) flanks left, b3 (t90ms_2011) holds without confidence
+  const enemyLabels = { kv2: 'b1', t72b3m_2022: 'b2', t90ms_2011: 'b3' };
   const humanLabel = Object.entries(fake.requests[0].body.state.enemies).find(([, row]) => row.human_player)[0];
   f.set(2.5);
   fake.answer((id, question) => {
     if (id === `posture_${enemyLabels.kv2}`) return confident('push', Object.keys(question.criteria));
     if (id === `target_${enemyLabels.kv2}`) return confident(humanLabel, Object.keys(question.criteria), 0.8);
     if (id === `fire_${enemyLabels.kv2}`) return { type: 'noul', noul: 0.9 };
-    if (id === `posture_${enemyLabels.t72b3m}`) return confident('flank_left', Object.keys(question.criteria));
-    if (id === `target_${enemyLabels.t72b3m}`) return confident(JEV_TARGET_NONE, Object.keys(question.criteria));
-    if (id === `fire_${enemyLabels.t72b3m}`) return { type: 'noul', noul: 0.2 };
-    if (id === `posture_${enemyLabels.t90ms}`) return confident('hold', Object.keys(question.criteria), 0.2);
+    if (id === `posture_${enemyLabels.t72b3m_2022}`) return confident('flank_left', Object.keys(question.criteria));
+    if (id === `target_${enemyLabels.t72b3m_2022}`) return confident(JEV_TARGET_NONE, Object.keys(question.criteria));
+    if (id === `fire_${enemyLabels.t72b3m_2022}`) return { type: 'noul', noul: 0.2 };
+    if (id === `posture_${enemyLabels.t90ms_2011}`) return confident('hold', Object.keys(question.criteria), 0.2);
     if (id.startsWith('threat_')) return scoreAnswer(2.6);
     if (id === 'focus') return confident('zone_a', Object.keys(question.criteria));
     return null;
@@ -250,23 +250,23 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(enemyStats.lastLatencyMs, 0);
   const kv2 = f.byId('kv2').aiCtl.debugInfo();
   assert.equal(kv2.orderPosture, 'push');
-  assert.equal(kv2.orderTarget, 'm1a2', 'the target label resolved back to the entity id');
+  assert.equal(kv2.orderTarget, 'm1a1_abrams_hc', 'the target label resolved back to the entity id');
   assert.equal(kv2.orderFire, null, 'no speculative firing order without a locally clear shot');
   assert.equal(kv2.ordersTaken, 1);
-  const t72 = f.byId('t72b3m').aiCtl.debugInfo();
+  const t72 = f.byId('t72b3m_2022').aiCtl.debugInfo();
   assert.equal(t72.orderPosture, 'flank_left');
   assert.equal(t72.orderTarget, null, 'a none target keeps the classic pick');
   assert.equal(t72.orderFire, null);
-  assert.equal(f.byId('t90ms').aiCtl.debugInfo().orderPosture, null);
-  assert.equal(f.byId('leo2a6').aiCtl.debugInfo().orderPosture, null, 'the other team took no order from this answer');
+  assert.equal(f.byId('t90ms_2011').aiCtl.debugInfo().orderPosture, null);
+  assert.equal(f.byId('leo2a4').aiCtl.debugInfo().orderPosture, null, 'the other team took no order from this answer');
   // the controllers act on the orders: the pushed bot claims the ordered target on its next perception tick
   for (let i = 0; i < 30; i++) f.byId('kv2').aiCtl.update(SIM_DT, f.view.timeS + i * SIM_DT);
-  assert.equal(f.byId('kv2').aiCtl.targetId, 'm1a2', 'the ordered target takes the slot');
+  assert.equal(f.byId('kv2').aiCtl.targetId, 'm1a1_abrams_hc', 'the ordered target takes the slot');
   assert.ok(f.byId('kv2').aiCtl.debugInfo().pressing, 'a push order presses');
   const applied = commander.orderLog.filter((entry) => entry.applied);
   assert.deepEqual(applied.map((entry) => [entry.team, entry.id, entry.posture, entry.target, entry.fire]),
-    [['enemy', 'kv2', 'push', 'm1a2', null], ['enemy', 't72b3m', 'flank_left', null, null]]);
-  assert.equal(commander.orderLog.find((entry) => entry.id === 't90ms').reason, 'low_confidence');
+    [['enemy', 'kv2', 'push', 'm1a1_abrams_hc', null], ['enemy', 't72b3m_2022', 'flank_left', null, null]]);
+  assert.equal(commander.orderLog.find((entry) => entry.id === 't90ms_2011').reason, 'low_confidence');
   assert.equal(applied[0].threat, jevLocalThreat(fake.requests[0].body.state.our_tanks.b1));
   // orders expire on their own: after the ttl the controllers are classic again
   f.set(2.5 + SIM_DT + 5.01);
@@ -297,7 +297,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   f.set(9);
   commander.step(f.view);
   f.byId('kv2').combat.destroyed = true;              // one bot died while the request was out
-  f.byId('t72b3m').combat.hp = 300;                    // one lost 70% of its hull
+  f.byId('t72b3m_2022').combat.hp = 300;                    // one lost 70% of its hull
   f.set(9.5);
   answerAll('push');
   await tick();
@@ -306,15 +306,15 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(stats.discardedDead, 1);
   assert.equal(stats.discardedChanged, 1);
   assert.equal(stats.ordersApplied, 1, 'only the untouched bot took the order');
-  assert.equal(f.byId('t90ms').aiCtl.debugInfo().orderPosture, 'push');
-  assert.equal(f.byId('t72b3m').aiCtl.debugInfo().orderPosture, null);
+  assert.equal(f.byId('t90ms_2011').aiCtl.debugInfo().orderPosture, 'push');
+  assert.equal(f.byId('t72b3m_2022').aiCtl.debugInfo().orderPosture, null);
   // a target that died or fell out of the team's spotting before the answer landed is dropped, the posture kept
   f.byId('kv2').combat.destroyed = false;
-  f.byId('t72b3m').combat.hp = 1000;
+  f.byId('t72b3m_2022').combat.hp = 1000;
   f.set(12);
   commander.step(f.view);
   const targetLabel = Object.entries(fake.requests.at(-1).body.state.enemies).find(([, row]) => row.human_player)[0];
-  f.byId('m1a2').combat.destroyed = true;
+  f.byId('m1a1_abrams_hc').combat.destroyed = true;
   fake.answer((id, question) => {
     if (id.startsWith('posture_')) return confident('hold', Object.keys(question.criteria));
     if (id.startsWith('target_')) return question.criteria[targetLabel] ? confident(targetLabel, Object.keys(question.criteria)) : null;
@@ -322,9 +322,9 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   });
   await tick();
   commander.step(f.view);
-  assert.equal(f.byId('t72b3m').aiCtl.debugInfo().orderPosture, 'hold');
-  assert.equal(f.byId('t72b3m').aiCtl.debugInfo().orderTarget, null, 'a dead target is never ordered');
-  f.byId('m1a2').combat.destroyed = false;
+  assert.equal(f.byId('t72b3m_2022').aiCtl.debugInfo().orderPosture, 'hold');
+  assert.equal(f.byId('t72b3m_2022').aiCtl.debugInfo().orderTarget, null, 'a dead target is never ordered');
+  f.byId('m1a1_abrams_hc').combat.destroyed = false;
   // a weak posture with a confident target is a target-only order: the target claim, no posture effect
   // (the request issued while the human was dead is answered empty first, so the next document lists it again)
   if (fake.pending) { fake.answer(() => null); await tick(); }
@@ -338,14 +338,14 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   });
   await tick();
   commander.step(f.view);
-  const targetOnly = f.byId('t72b3m').aiCtl.debugInfo();
+  const targetOnly = f.byId('t72b3m_2022').aiCtl.debugInfo();
   assert.equal(targetOnly.orderPosture, null, 'no posture effect below the bar');
-  assert.equal(targetOnly.orderTarget, 'm1a2', 'the confident target is still ordered');
+  assert.equal(targetOnly.orderTarget, 'm1a1_abrams_hc', 'the confident target is still ordered');
   assert.equal(commander.stats('enemy').targetOnly >= 1, true);
   assert.equal(commander.orderLog.filter((entry) => entry.reason === 'target_only').length >= 1, true);
   // capture without any objective and support without a teammate keep the classic brain
   const lone = fixture();
-  for (const id of ['kv2', 't90ms']) lone.byId(id).combat.destroyed = true;
+  for (const id of ['kv2', 't90ms_2011']) lone.byId(id).combat.destroyed = true;
   const loneFake = fakeTransport();
   const loneCommander = createJevCommander({ transport: loneFake.transport, teams: ['enemy'], now: () => 0 });
   const loneView = { ...lone.view, mode: 'standard', modeState: null, objectiveFor: () => null, get timeS() { return lone.view.timeS; } };
@@ -379,16 +379,16 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   });
   await tick();
   commander.step(f.view);
-  const leo = f.byId('leo2a6').aiCtl.debugInfo();
+  const leo = f.byId('leo2a4').aiCtl.debugInfo();
   assert.equal(leo.orderPosture, 'capture');
-  assert.equal(commander.orderLog.find((entry) => entry.id === 'leo2a6').applied, true);
+  assert.equal(commander.orderLog.find((entry) => entry.id === 'leo2a4').applied, true);
   assert.equal(leo.wpCount, 1, 'a capture order routes the idle bot to the focus objective');
-  f.byId('leo2a6').aiCtl.update(SIM_DT, f.view.timeS);
-  const t90 = f.byId('t90m').aiCtl.debugInfo();
-  assert.equal(t90.orderPosture, 'support');
-  // the support point is the weakest living teammate — with the fixture's t90m ordered, that is the human at full
-  // hull or the two bots; the weakest is chosen deterministically (t90m itself is excluded)
-  assert.equal(t90.wpCount, 1, 'a support order routes to the weakest teammate');
+  f.byId('leo2a4').aiCtl.update(SIM_DT, f.view.timeS);
+  const t90_1992 = f.byId('t90am').aiCtl.debugInfo();
+  assert.equal(t90_1992.orderPosture, 'support');
+  // the support point is the weakest living teammate — with the fixture's t90am ordered, that is the human at full
+  // hull or the two bots; the weakest is chosen deterministically (t90am itself is excluded)
+  assert.equal(t90_1992.wpCount, 1, 'a support order routes to the weakest teammate');
   commander.dispose();
 }
 
@@ -476,7 +476,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 {
   console.log('[6] the quiet cadence: a team that sees nothing asks less often');
   const f = fixture();
-  for (const id of ['t72b3m', 'kv2', 't90ms']) f.byId(id).state.pos.set(0, 0, 2000);
+  for (const id of ['t72b3m_2022', 'kv2', 't90ms_2011']) f.byId(id).state.pos.set(0, 0, 2000);
   const view = { ...f.view, spotting: { isSpotted: () => false }, get timeS() { return f.view.timeS; } };
   const fake = fakeTransport();
   const commander = createJevCommander({ transport: fake.transport, teams: ['player'], cadenceS: 2, quietCadenceS: 8, now: () => 0 });
@@ -536,10 +536,10 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
 {
   console.log('[8] every bot gets orders in a large team; requests remain bounded');
   const f = fixture();
-  const tanks = Array.from({length: 41}, (_, i) => entity(`bot-${String(i).padStart(2, '0')}`, 'm1a2', 'player', i * 6, 0));
+  const tanks = Array.from({length: 41}, (_, i) => entity(`bot-${String(i).padStart(2, '0')}`, 'm1a1_abrams_hc', 'player', i * 6, 0));
   const orders = new Map();
   for (const tank of tanks) tank.aiCtl = { setOrder: order => orders.set(tank.id, order) };
-  tanks.push(entity('visible-enemy', 't90m', 'enemy', 0, 100));
+  tanks.push(entity('visible-enemy', 't90am', 'enemy', 0, 100));
   const view = {...f.view, tanks, mode: 'standard', modeState: null, objectiveFor: () => null, timeS: 0};
   const fake = fakeTransport();
   const commander = createJevCommander({transport: fake.transport, teams: ['player'], now: () => 0});
@@ -559,10 +559,10 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
 {
   console.log('[9] current abilities, local fire lanes, custom scores and legacy wire compatibility');
   const f = fixture();
-  const bot = f.byId('t90m');
+  const bot = f.byId('t90am');
   bot.modeJumpMps = 6; bot.state.grounded = false;
   bot.combat.fire.burning = true;
-  bot.aiCtl.hasClearShot = id => id === 't72b3m';
+  bot.aiCtl.hasClearShot = id => id === 't72b3m_2022';
   f.view.modeState.target = 1250;
   const snapshot = buildJevTeamState(f.view, 'player', null);
   const state = snapshot.state;

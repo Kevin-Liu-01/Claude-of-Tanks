@@ -31,7 +31,7 @@ function fixture(quality,options={}){
  const material=new T.MeshStandardMaterial();
  const mats=Object.fromEntries(['hull','detail','dark','shadow','trackLink','spareTrack','burnt','trackL','trackR'].map(k=>[k,material]));
  Object.assign(mats,{wheels:paint,wheelsRecessed:paint,rubber:neutral,trackTexL:new T.Texture(),trackTexR:new T.Texture()});
- const P={spec:{id:'t90sm'},disposables:[],mats,hullG:new T.Group(),geometryReceipt:true,q:quality==='high',batchStatic:false,add(){}};
+ const P={spec:{id:'t90sm_2013'},disposables:[],mats,hullG:new T.Group(),geometryReceipt:true,q:quality==='high',batchStatic:false,add(){}};
  P.hullG.name='rig_hull';
  try{const gear=KIT.buildRunningGear(P,{...BASE,...options});gear.update(0,0);return{P,gear,dispose};}
  catch(error){dispose();throw error;}
@@ -110,23 +110,23 @@ for(const value of[null,{},true]){assert.throws(()=>fixture('high',{returnRoller
 // Real factory lifecycle/material/frame integration, not an activated A6M
 // profile or a new claim that its inherited roller station/contact fits.
 for(const quality of['high','low']){
- const base=createTank('leo2a6m_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+ const base=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
  const build=KIT.buildRunningGear;let captured,rotor,rotorDisposed=0;
  KIT.buildRunningGear=(P,cfg)=>{
-  if(P.spec.id!=='leo2a6m_x')return build(P,cfg);
+  if(P.spec.id!=='leo2a6m')return build(P,cfg);
   const leaf=efficientReturnRoller({quality,radiusM:cfg.rollerR??.09,axialWidthM:cfg.returnRollerWidthM,
    spindleRadiusM:.026,spindleLengthM:.2});
   leaf.spindle.dispose();rotor=leaf.rotor;rotor.addEventListener('dispose',()=>rotorDisposed++);captured=P;
   return build(P,{...cfg,returnRollerGeometry:rotor});
  };
  let tank;
- try{tank=createTank('leo2a6m_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});}
+ try{tank=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});}
  finally{KIT.buildRunningGear=build;}
  try{
   const im=tank.root.getObjectByName('gearReturnRollerRotors');assert.equal(im.geometry,rotor);assert.equal(im.count,8);
   assert.deepEqual(im.material,[captured.mats.rubber,captured.mats.wheels]);assert.equal(im.parent.name,'rig_hull');
   assert.deepEqual(auditTankWheelQuality(tank.root).issues,[],'Real two-finish factory rotor passes the unchanged wider mechanical checks');
-  const state=createTankState(getSpec('leo2a6m_x'),new T.Vector3(),.12);
+  const state=createTankState(getSpec('leo2a6m'),new T.Vector3(),.12);
   for(const distance of[15,75,200]){
    state.trackScroll.l=.37;state.trackScroll.r=-.29;
    for(const t of[base,tank])t.syncFromState(state,1/60,distance);

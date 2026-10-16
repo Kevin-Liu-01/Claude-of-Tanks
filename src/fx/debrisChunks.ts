@@ -104,8 +104,14 @@ void main() {
   }
   vec3 wpos = center + p;
   vNormalW = rot * normal;
-  vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 );
-  vHeat = aCH.w * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 );
+  // (HE look v2 follow-up, the coordinator 2026-10-14: a kill's hull pieces "read as flat cardboard shards with bright
+  // faces, especially in the upper half") a piece the blast threw hot is wreckage: it takes the soot as it flies out of
+  // the core and its glow stays near the fire, so far out against the sky it is a dark, smeared fragment, never a lit
+  // card; a cold piece (a wall's bricks, a field's clods) keeps its own material's colour
+  float dCore = length( center - aPB.xyz );
+  float sootK = smoothstep( 1.5, 7.0, dCore ) * clamp( aCH.w * 2.0, 0.0, 1.0 );
+  vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 ) * ( 1.0 - 0.55 * sootK );
+  vHeat = aCH.w * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 ) * ( 1.0 - 0.9 * smoothstep( 2.0, 6.5, dCore ) );
   vWorldPos = wpos;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   #ifdef USE_FOG
@@ -216,12 +222,18 @@ function shapeGeometry(shape: ChunkShape, rand: () => number): THREE.BufferGeome
     }
     case 'sheet':
     default: {
-      // a bent sheet: a plane folded along its middle
-      const g = new THREE.PlaneGeometry(1, 0.7, 2, 1).toNonIndexed();
+      // a torn, crumpled sheet: folded along its middle and buckled across it, every corner pushed off the plane (shared
+      // corners move together). (HE look v2 follow-up, the coordinator 2026-10-14: the plane folded once read face-on as
+      // "flat cardboard shards with bright faces"; twelve facets at different angles never show one flat face)
+      const g = new THREE.PlaneGeometry(1, 0.7, 3, 2).toNonIndexed();
       const p = g.getAttribute('position');
+      const moved = new Map<string, number>();
       for (let i = 0; i < p.count; i++) {
-        const x = p.getX(i);
-        p.setXYZ(i, x, p.getY(i), Math.abs(x) * 0.45 + (rand() - 0.5) * 0.05);
+        const x = p.getX(i), y = p.getY(i);
+        const key = `${x.toFixed(3)}|${y.toFixed(3)}`;
+        let j = moved.get(key);
+        if (j === undefined) { j = (rand() - 0.5) * 0.16; moved.set(key, j); }
+        p.setXYZ(i, x, y, Math.abs(x) * 0.45 - Math.abs(y) * 0.32 + j);
       }
       g.computeVertexNormals();
       return g;

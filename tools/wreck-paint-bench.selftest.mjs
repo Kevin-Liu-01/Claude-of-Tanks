@@ -103,7 +103,7 @@ assert.throws(() => summarize(samples.slice(1)), /Every planned/);
 const reordered = structuredClone(samples); [reordered[0], reordered[1]] = [reordered[1], reordered[0]];
 assert.throws(() => summarize(reordered));
 const mismatch = structuredClone(samples); mismatch[1].output.details.h = 4;
-assert.throws(() => summarize(mismatch), /Exact t90m output differs/);
+assert.throws(() => summarize(mismatch), /Exact t90am output differs/);
 const unstable = structuredClone(samples); unstable[4].paintRows++;
 assert.throws(() => summarize(unstable), /deterministic/);
 

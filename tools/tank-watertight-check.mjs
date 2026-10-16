@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Watertight check for tank bodies: "pour water into the turret or hull and it must not spill out".
 //
-//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills] [--no-lanes] [--no-bores] [--no-moving] [--full-body]
+//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc_s2 [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills] [--no-lanes] [--no-bores] [--no-moving] [--full-body]
 //   node tools/tank-watertight-check.mjs --self-test
 //
 // The built tank's body triangles (running gear, decals, shadow proxies, wires and soft goods excluded) are

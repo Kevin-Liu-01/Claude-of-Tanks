@@ -70,10 +70,12 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // bBarrel is a coopered wooden barrel (staves and hoops), not a steel drum
   barrel: WOOD_SMASH,
   fenceplank: WOOD_FENCE, fencepicket: WOOD_FENCE, fencewattle: WOOD_FENCE, fencerail: WOOD_FENCE, gate: WOOD_FENCE,
+  // (props lane A, E12) a set piece's wrought-iron ground railing bends and tears off its post
+  fenceiron: recipe(layer('fence_metal')),
   // (the looks lane: each fence family's own gate, maps/gateKit.ts; the stone and mud walls' gates go as their piers)
   gatepicket: WOOD_FENCE, gatewattle: WOOD_FENCE, gatestone: STONE, gateadobe: MASONRY,
   // straw
-  bale: STRAW, stook: STRAW, haystack: STRAW, strawstack: STRAW,
+  bale: STRAW, stook: STRAW, haystack: STRAW, strawstack: STRAW, strawrick: STRAW,
   // carts: the haycart's load goes down under its wheels
   handcart: CART, haycart: recipe(layer('cart_break'), layer('straw_crush', 0.08, -5)),
   // canvas: tents, the laundry line's two posts and sheets, and the market stall's awning over its wooden frame

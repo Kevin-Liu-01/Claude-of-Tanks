@@ -10,8 +10,8 @@ const RUSSIAN_FRONTLINE_SPECS = {
   // Owner-authored missile hunter (2026-09-19): retained Object chassis with
   // a raised twelve-cell launcher and a 30 mm backup cannon. This concept
   // deliberately differs from the source-based Kurganets-25 Epokha module.
-  object695_x: {
-    id: 'object695_x', name: 'Object 695', nation: 'Russia', era: 'next-generation', role: 'ifv',
+  object695: {
+    id: 'object695', name: 'Object 695', nation: 'Russia', era: 'next-generation', role: 'ifv',
     // Missile-primary output is not an autocannon-belt peer; explicit concept budgets are regression-tested.
     balanceCohort: 'missile-carrier',
     hp: 2150,

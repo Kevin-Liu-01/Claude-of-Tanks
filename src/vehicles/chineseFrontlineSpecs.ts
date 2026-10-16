@@ -107,8 +107,8 @@ const CHINESE_FRONTLINE_SPECS = {
   // docs/references/tanks/ztz100_x.source-measurements.json). Seven road wheels, a 105 mm autoloaded gun in a
   // faceted unmanned turret with two sensor towers, a rear weapon station, a right-cheek missile bank and a stern
   // slat cage. First-party procedural build (profiles/ztz100X.ts).
-  ztz100_x: {
-    id: 'ztz100_x', name: 'ZTZ-100', nation: 'China', era: 'next-generation', role: 'mbt',
+  ztz100: {
+    id: 'ztz100', name: 'ZTZ-100', nation: 'China', era: 'next-generation', role: 'mbt',
     hp: 2600,
     enginePowerHp: 1200, weightTons: 42, topSpeedKmh: 72, reverseSpeedKmh: 30,
     hullTraverseDegS: 48,

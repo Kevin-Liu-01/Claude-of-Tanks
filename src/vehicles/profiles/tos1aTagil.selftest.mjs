@@ -16,7 +16,7 @@ import {findStaticMergePart,staticMergePartForFace} from '../staticMergeParts.ts
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
 // The donor T-90MS X is built live in the same run: the TOS-1A chassis must carry its physical attributes unchanged
-// (same-run comparison below). Whole-tank change detection of t90ms_x itself is the fleet geometry ledger's job.
+// (same-run comparison below). Whole-tank change detection of t90ms_tagil itself is the fleet geometry ledger's job.
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{
@@ -248,7 +248,7 @@ const options=quality=>({quality,geometryReceipt:true,proceduralOnly:true,batchS
 const results=[];
 if(process.argv.includes('--filled'))await ensureInteriorFills(['tos1a_tagil']);
 for(const quality of ['high','low']){
-  const donor=createTank('t90ms_x',null,options(quality));const hull=payload(donor.root,true);donor.dispose();
+  const donor=createTank('t90ms_tagil',null,options(quality));const hull=payload(donor.root,true);donor.dispose();
   cleanParts();const tank=createTank('tos1a_tagil',null,options(quality));
   try{
     assert.deepEqual(geometryOnly(payload(tank.root,true)),geometryOnly(hull),'actual complete chassis/ERA/gear physical attributes retained; paint UV projection is independent');

@@ -72,4 +72,12 @@ presentation must key/dedupe them. Scope is an interior/headset perspective,
 never a mute. Keep the occupied rig regardless of distance, rank remote rigs
 by proximity under the LOD budget, and tear all world loops down when leaving
 battle. Node selftests run under type stripping: no enums or parameter
-properties in these modules.
+properties in these modules. The countdown is live audio (only weapons wait
+for the rollout): a sound heard from its first frame belongs in the battle
+warm's presence set (`presenceAssets`, decoded first in the library's front
+lane), never at the back of the bulk; `countdownAudio.selftest.mjs` checks the
+decode order and the once-a-battle edges, and `presenceFamilies.selftest.mjs`
+that every vehicle warms the bank its rig plays (resolve a hull from its whole
+spec, `getVehicleSpec`, never its id alone). A network seat's tank list is what
+its team spots: never count a side from it (the crew's side counts read
+`getTeamRoster`, the roster with the authority's deaths, where a death is final).

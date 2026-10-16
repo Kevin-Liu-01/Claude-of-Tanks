@@ -35,10 +35,10 @@ try {
   const { bakeTankWreck } = await import('./wrecks.ts');
   assert.equal(hooks, 1);
   const fixtures = [
-    { specId: 't90m', seed: 2526, pop: false },
-    { specId: 'k2', seed: 2002, pop: true },
+    { specId: 't90am', seed: 2526, pop: false },
+    { specId: 'xk2_black_panther', seed: 2002, pop: true },
     { specId: 'm1a1', seed: 2002, pop: true },
-    { specId: 'type10', seed: 2133, pop: true },
+    { specId: 'type10_tk_x', seed: 2133, pop: true },
   ];
   const receipts = [];
   for (const fixture of fixtures) {
@@ -68,7 +68,7 @@ try {
   // Geometry-receipt inspection deliberately avoids Canvas but retains the
   // default rendered mode. Its UV/dirt behavior must remain default-on.
   reset(false);
-  const inspection = createTank('t90m', null, {
+  const inspection = createTank('t90am', null, {
     quality: 'low', geometryQuality: 'low', geometryReceipt: true,
     proceduralOnly: true, eraVisualBindingReceipt: false,
   });
@@ -143,15 +143,15 @@ try {
     assert.ok(geometries.length > 0 && materials.length > 0, 'actual Garage donor has transferable content');
     return { hierarchy, geometries, materials };
   };
-  await ensureTankBuilder('m1a2');
+  await ensureTankBuilder('m1a1_abrams_hc');
   let oldGarage, newGarage;
   try {
     reset(true);
-    oldGarage = createTank('m1a2', {}, garageOptions);
+    oldGarage = createTank('m1a1_abrams_hc', {}, garageOptions);
     const expectedGarage = garageSnapshot(oldGarage.root);
     assert.ok(state.bucketCalls > 0 && state.paintedRows > 1000, 'old Garage worker path performs bucket paint');
     reset(false);
-    newGarage = createTank('m1a2', {}, garageOptions);
+    newGarage = createTank('m1a1_abrams_hc', {}, garageOptions);
     assert.equal(state.bucketCalls, 0, 'new Garage worker path skips discarded bucket paint');
     assert.equal(state.paintedRows, 0);
     assert.deepEqual(garageSnapshot(newGarage.root), expectedGarage,

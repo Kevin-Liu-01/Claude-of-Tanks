@@ -14,8 +14,8 @@ if (!globalThis.gc) {
   } = await import('./dedicatedWorldCollision.ts');
   const { createAuthoritativeMatch, authoritativeTerrainCacheStats } = await import('../src/sim/authoritativeMatch.ts');
   const players = [
-    { id: 'memory-alpha', specId: 'm1a2', team: 'alpha' },
-    { id: 'memory-bravo', specId: 'm1a2', team: 'bravo' },
+    { id: 'memory-alpha', specId: 'm1a1_abrams_hc', team: 'alpha' },
+    { id: 'memory-bravo', specId: 'm1a1_abrams_hc', team: 'bravo' },
   ];
   const settle = async () => {
     await new Promise(setImmediate);

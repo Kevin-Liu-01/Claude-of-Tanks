@@ -221,7 +221,7 @@ Copy data emits `claude-of-tanks/gallery-spec@1`:
 ```json
 {
   "schema": "claude-of-tanks/gallery-spec@1",
-  "id": "m1a2",
+  "id": "m1a1_abrams_hc",
   "name": "M1A2 Abrams",
   "authorship": {
     "creator": "Kevin B. Liu",
@@ -268,7 +268,7 @@ The page exposes a small inspection API for verification:
 ```js
 window.__TANK_GALLERY.ready
 window.__TANK_GALLERY.count
-await window.__TANK_GALLERY.loadTank('m1a2')
+await window.__TANK_GALLERY.loadTank('m1a1_abrams_hc')
 window.__TANK_GALLERY.setMode('armor')
 window.__TANK_GALLERY.frameView('front')
 window.__TANK_GALLERY.setMode('markup')

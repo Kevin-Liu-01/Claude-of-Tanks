@@ -6,7 +6,7 @@ import {trackPatternFor} from '../trackPatterns.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The frozen legacy shoe-primitive digests, shoe instance-matrix digest and wheel/carrier position digests are
-// retired: whole-tank change detection of leclerc_x is the fleet geometry ledger's.
+// retired: whole-tank change detection of leclerc_xlr is the fleet geometry ledger's.
 const material=new THREE.MeshBasicMaterial();
 const cast=(mesh,p,d,far=2)=>new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d),0,far).intersectObject(mesh,false)[0];
@@ -34,7 +34,7 @@ function checkLink(g){
 }
 try{
   for(const quality of['high','low']){
-    const tank=createTank('leclerc_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    const tank=createTank('leclerc_xlr',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       const root=tank.root;root.updateMatrixWorld(true);
       for(const name of['gearTrackPads','gearTrackPadsSimplified']){
@@ -61,7 +61,7 @@ try{
       const section=root.getObjectByName('rig_hull').userData.runningGearReceipts[0].trackLinkCrossSection;
       for(const bad of[{...section,padWidthM:0},{...section,connectorInnerM:1},
         {...section,pinCapLengthM:NaN},{...section,connectorDepthM:.5},{...section,pinHalfSpacingM:.1}])
-        assert.throws(()=>KIT.trackShoeGeometry(.636079,.1642,trackPatternFor({id:'leclerc'}),.3180395,1,1,bad),
+        assert.throws(()=>KIT.trackShoeGeometry(.636079,.1642,trackPatternFor({id:'leclerc_s2'}),.3180395,1,1,bad),
           /native track-link|Native track-link/);
       assert.ok(section.connectorInnerM<section.padWidthM/2-.004,'connector overlaps the physical pad');
       assert.ok(section.connectorOuterM>.3180395-section.pinCapLengthM+.03,'connector engages both pin-cap solids');
@@ -71,7 +71,7 @@ try{
   // primitive. Keep this second scope explicit instead of testing only one
   // caller and claiming the whole optimization was verified.
   for(const quality of['high','low']){
-    const tank=createTank('leclerc_classic_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    const tank=createTank('amx56',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       for(const [name,budget]of[['gearTrackPads',276],['gearTrackPadsSimplified',174]]){
         const shoes=tank.root.getObjectByName(name);

@@ -5,7 +5,7 @@ import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 
-await ensureInteriorFills(['leo2a7v', 'leo2a7v_x']);
+await ensureInteriorFills(['leo2_improved', 'leo2a7v']);
 
 const near = (actual, expected, label, tolerance = 2e-4) =>
   assert.ok(Math.abs(actual - expected) < tolerance, `${label}: ${actual} vs ${expected}`);
@@ -14,7 +14,7 @@ const size = (object) => new THREE.Box3().setFromObject(object, true).getSize(ne
 // Measured pre-edit envelopes: hull 4.005512 m across fitted skirts,
 // 7.820 m long; turret 3.017523 m across. Only the first dimension changes.
 for (const quality of ['high', 'low']) {
-  const tank = createTank('leo2a7v', null, { proceduralOnly: true, quality, geometryReceipt: true });
+  const tank = createTank('leo2_improved', null, { proceduralOnly: true, quality, geometryReceipt: true });
   const hull = tank.root.getObjectByName('rig_hull');
   const turret = tank.root.getObjectByName('rig_turret');
   const gun = tank.root.getObjectByName('rig_gun');
@@ -25,8 +25,8 @@ for (const quality of ['high', 'low']) {
   near(hullSize.z, 7.820000, `${quality}: hull length retained`);
   near(size(turret).x, 3.017523, `${quality}: turret retains its width`);
   near(size(gun.getObjectByName('gunMount')).x, 0.620000, `${quality}: mantlet retains its width`);
-  near(getSpec('leo2a7v').dims.widthM, 3.6, 'declared hull width');
-  const armor = getSpec('leo2a7v').armor;
+  near(getSpec('leo2_improved').dims.widthM, 3.6, 'declared hull width');
+  const armor = getSpec('leo2_improved').armor;
   const collisionHalfWidth = Math.max(...armor.collisionShells.hull.flatMap(cell =>
     cell.vertices.map(point => Math.abs(point[0]))));
   assert.ok(collisionHalfWidth > 1.75 && collisionHalfWidth < 1.81,
@@ -37,8 +37,8 @@ for (const quality of ['high', 'low']) {
   // 2026-10-04 (aa5fdca05): the published track run is read off the drawn band; the narrowed hull's band measures
   // 2.6772 m (the profile's pinned flat run was 2.6975 m), and the build publishes what the combat anatomy records.
   near(tank.contactGeom.halfLenM, 2.6772, 'ground contact length retained');
-  near(tank.contactGeom.halfLenM, getSpec('leo2a7v').armor.trackContact.halfLenM, 'ground contact length published', 6e-5);
-  const tracks = getSpec('leo2a7v').armor.trackShapes;
+  near(tank.contactGeom.halfLenM, getSpec('leo2_improved').armor.trackContact.halfLenM, 'ground contact length published', 6e-5);
+  const tracks = getSpec('leo2_improved').armor.trackShapes;
   assert.equal(tracks.length, 2, 'one collision lane on each side');
   for (const track of tracks) {
     near(track.x1 - track.x0, .594, 'track hitbox follows visible band width');
@@ -70,7 +70,7 @@ for (const quality of ['high', 'low']) {
   const tires = hull.getObjectByName('gearRoadWheelTires');
   const restTireSize = size(tires);
   const restTireMatrices = Array.from(tires.instanceMatrix.array);
-  const state = createTankState(getSpec('leo2a7v'), new THREE.Vector3(), 0);
+  const state = createTankState(getSpec('leo2_improved'), new THREE.Vector3(), 0);
   state.trackScroll.l = 2.3;
   state.trackScroll.r = -1.1;
   state.turretYaw = Math.PI / 2;
@@ -87,9 +87,9 @@ for (const quality of ['high', 'low']) {
 
 // This independently authored vehicle copies combat metadata from the
 // Improved, but must not inherit its owner-requested width change.
-const source = createTank('leo2a7v_x', null, { proceduralOnly: true, geometryReceipt: true });
+const source = createTank('leo2a7v', null, { proceduralOnly: true, geometryReceipt: true });
 source.root.updateMatrixWorld(true);
-near(getSpec('leo2a7v_x').dims.widthM, 4, '2A7V retains its own dimensions');
+near(getSpec('leo2a7v').dims.widthM, 4, '2A7V retains its own dimensions');
 // 2026-10-10 (the netting lane, the owner's order of 2026-10-09: "a ton more netting and camo leaves" on the 2A7V): the
 // field net's skirt drapes hang outside the hull; the hull's own width is measured without them
 const bare = (object) => {

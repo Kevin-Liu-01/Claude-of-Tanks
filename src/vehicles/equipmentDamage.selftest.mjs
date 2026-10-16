@@ -278,12 +278,12 @@ function restHash(visual) {
 // the T-90M lamp-seat revision rows are gone; the fleet geometry ledger owns whole-tank change detection
 // and historicalT90MLamps.selftest.mjs owns the reseated T-90M lamps. Damage, wreck, rematch and Garage
 // reuse are compared with each vehicle's own intact rest captured in this run.
-for (const id of ['leo2a6', 't90m', 'm1a2']) {
+for (const id of ['leo2a4', 't90am', 'm1a1_abrams_hc']) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const rest = restHash(visual);
   const contact = hit([0.26, 0.405, -2.485]);
-  assert.equal(visual.applyEquipmentDamage(contact), id === 'leo2a6');
-  if (id === 'leo2a6') {
+  assert.equal(visual.applyEquipmentDamage(contact), id === 'leo2a4');
+  if (id === 'leo2a4') {
     assert.notEqual(restHash(visual), rest, 'real supported vehicle visibly changes vertex content');
     visual.resetDestroyed();
     assert.equal(restHash(visual), rest, 'survivor rematch restores exact rest');

@@ -87,12 +87,12 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
   try {
     // ---- create, join, ready, start: every seat welcomed and presenting frames
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId, botsFill: false } });
+    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId, botsFill: false } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
     const p4 = spawn('p4', 'Four', memoryStorage(), 3);
-    for (const entry of [p2, p3, p4]) await entry.headless.room.join({ roomCode: code, selection: { specId: 't90m' } });
+    for (const entry of [p2, p3, p4]) await entry.headless.room.join({ roomCode: code, selection: { specId: 't90am' } });
     await until(() => p1.headless.room.room?.players.length === 4, 'four seats', 10_000);
     await Promise.all(sessions.map((entry) => entry.headless.room.setReady(true)));
     await until(() => p1.headless.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);
@@ -171,7 +171,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     retire(p4);
     let p4b = spawn('p4', 'Four again', memoryStorage(), 3);
     let refused = null;
-    try { await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a2' } }); } catch (error) { refused = error?.code ?? String(error); }
+    try { await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a1_abrams_hc' } }); } catch (error) { refused = error?.code ?? String(error); }
     report.steps.roomLeave = { roomPhase: roomSnapshot()?.phase ?? null, seatGone: !roomSnapshot()?.players.some((player) => player.id === 'p4'), freshJoinRefused: refused, actorClients: actor()?.stats().clients ?? 0 };
     log(`p4 left the room: seat gone ${report.steps.roomLeave.seatGone}, a fresh join by code while ${report.steps.roomLeave.roomPhase} → ${refused}`);
     if (!report.steps.roomLeave.seatGone) failures.push('room leave: the seat stayed');
@@ -193,7 +193,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     await until(() => roomSnapshot()?.phase === 'waiting', 'room back to waiting', 20_000);
     for (const entry of survivors()) await entry.headless.session.leaveMatch('result screen');
     p4b = spawn('p4', 'Four again', memoryStorage(), 3);
-    await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a2' } });
+    await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a1_abrams_hc' } });
     report.steps.rejoin = { roomPhase: roomSnapshot()?.phase ?? null, seated: !!roomSnapshot()?.players.some((player) => player.id === 'p4'), matchStart: p4b.headless.room.matchStart !== null, sessionPhase: p4b.headless.session.phase };
     log(`p4 joined again by code after the verdict: room ${report.steps.rejoin.roomPhase}, seated ${report.steps.rejoin.seated}, match_start ${report.steps.rejoin.matchStart}, session ${report.steps.rejoin.sessionPhase}`);
     if (!report.steps.rejoin.seated || report.steps.rejoin.matchStart || report.steps.rejoin.sessionPhase !== 'lobby') failures.push(`rejoin: ${JSON.stringify(report.steps.rejoin)}`);

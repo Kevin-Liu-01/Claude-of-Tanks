@@ -70,73 +70,73 @@ const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],
 ]);
 const tiers = new Map([
-  ['challenger', 8], ['t72bu', 8], ['m1a2', 10], ['t90', 9],
-  ['t72b3m', 9], ['m1a1', 9],
+  ['challenger', 8], ['t72bu_1989', 8], ['m1a1_abrams_hc', 10], ['t90_1992', 9],
+  ['t72b3m_2022', 9], ['m1a1', 9],
 ]);
 const tierOf = (id) => tiers.get(id) ?? 6;
 const cards = [
   { id: 'challenger', nation: 'UK', name: 'Challenger' },
-  { id: 't72bu', nation: 'USSR/Russia', name: 'T-72BU' },
-  { id: 'm1a2', nation: 'USA', name: 'M1A2 Abrams' },
-  { id: 't90', nation: 'Russia', name: 'T-90' },
-  { id: 't72b3m', nation: 'Russia', name: 'T-72B3M obr. 2022' },
+  { id: 't72bu_1989', nation: 'USSR/Russia', name: 'T-72BU' },
+  { id: 'm1a1_abrams_hc', nation: 'USA', name: 'M1A2 Abrams' },
+  { id: 't90_1992', nation: 'Russia', name: 'T-90' },
+  { id: 't72b3m_2022', nation: 'Russia', name: 'T-72B3M obr. 2022' },
   { id: 'm1a1', nation: 'USA', name: 'M1A1 Abrams' },
 ];
 
 assert.deepEqual(
   cards.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
-  ['m1a2', 'm1a1', 't90', 't72b3m', 't72bu', 'challenger'],
+  ['m1a1_abrams_hc', 'm1a1', 't90_1992', 't72b3m_2022', 't72bu_1989', 'challenger'],
   'garage cards sort by country first, then descending tier and display name',
 );
 
 const usTopRun = [
-  'm1a2_x', 'm3a3_bradley', 'm1a2_sepv2_x', 'm1a3', 'griffin50_x',
-  'm1a2_tusk_x', 'abramsx', 'm551a1_tts', 'm1a2_sepv3_x', 'griffin_viper', 'm6_linebacker',
+  'm1a2_abrams', 'm3a3_bradley', 'm1a2_abrams_sepv2', 'm1a3', 'griffin50mm',
+  'm1a2_abrams_tusk', 'abramsx', 'm551a1_tts', 'm1a2_abrams_sepv3', 'griffin_viper', 'm6_linebacker',
 ].map(id => ({ id, nation: 'USA', name: id }));
 assert.deepEqual(
   usTopRun.sort((a, b) => compareCountryThenTierThenName(a, b, rank, () => 10))
     .map(card => card.id),
-  ['m1a3', 'm1a2_sepv3_x', 'm1a2_sepv2_x', 'm1a2_tusk_x', 'abramsx', 'm551a1_tts', 'm6_linebacker', 'griffin50_x', 'griffin_viper', 'm3a3_bradley', 'm1a2_x'],
+  ['m1a3', 'm1a2_abrams_sepv3', 'm1a2_abrams_sepv2', 'm1a2_abrams_tusk', 'abramsx', 'm551a1_tts', 'm6_linebacker', 'griffin50mm', 'griffin_viper', 'm3a3_bradley', 'm1a2_abrams'],
   'the American showcase preserves the Abrams leaders, then follows the owner’s October 4 order',
 );
 
 const nationalShowcaseCases = [
   {
     nation: 'Japan', filler: 'type90a',
-    expected: ['type10_x', 'type10b', 'type89_light_tiger', 'type89_x', 'type90_x'],
+    expected: ['type10', 'type10b', 'raiju_ifv', 'type89', 'type90'],
   },
   {
     nation: 'Sweden', filler: 'strv81',
-    expected: ['strv122_x', 'cv90_mkiv_x', 'strv103', 'strv122', 'cv90_mkiv', 'cv90', 'cv90_x'],
+    expected: ['strv122', 'cv90_mk4', 'strv103b', 'strv121', 'cv90_mk4_concept', 'cv90', 'cv9040c'],
   },
   {
-    nation: 'Germany', filler: 'leo2a6',
+    nation: 'Germany', filler: 'leo2a4',
     // owner 2026-09-16: Panther, 2A7V, Revolution, 2A6M, 2A6, 2A5M, 2A5, KF51 EVO, KF51-U, Puma S1, MBT-70, then the rest
     expected: [
-      'kf51_x', 'leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a6_x', 'leo2a4m_x', 'leo2a5_x',
-      'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1_x', 'spz_puma_s1', 'marder2', 'mbt70', 'leo2a7v',
+      'kf51_panther', 'leo2a7v', 'leo2_revolution', 'leo2a6m', 'leo2a6', 'leo2a5m', 'leo2a5',
+      'kf41_lynx', 'kf51_evo', 'kf51_u', 'puma_s1', 'spz_wotan', 'marder2', 'mbt70', 'leo2_improved',
     ],
   },
   {
     nation: 'China', filler: 'unlisted_chinese_vehicle',
-    expected: ['vt4a1', 'ztz99a2', 'ztz99a2_prototype', 'cn_t72b3_modern', 'cn_t72b3m_modern', 'cn_t80u_modern', 'type96b_x', 'type96_80_feng', 'type96_72m_lei', 'aft10_x', 'ztz100_x', 'type100', 'ztz100_prototype', 'type96_72_long', 'type99a', 'ztz85_iii', 'type59'],
+    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
-    expected: ['t90m_x', 't90sm_x', 't90ms_x', 't90a_burlak_x', 't14_x', 'ru_t80u_modern', 'ru_t72b3m_modern', 'ru_t72b3_modern', 'kurganets25_x', 'bmp3m_dragun125_x', 't90a_vladimir_x', 't90a_x', 'object695_x', 'tos1a_tagil', 't14', 't90ms'],
+    expected: ['t90m', 't90sm', 't90ms_tagil', 't90a_burlak', 't14_armata', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m', 'kurganets25', 'bmp3m_dragun125', 't90a_vladimir', 't90a', 'object695', 'tos1a_tagil', 'object148_proto', 't90ms_2011'],
   },
   {
-    nation: 'USSR/Russia', filler: 't90a_burlak',
-    expected: ['t90_x', 't80u_x', 't72bu_x', 't72b_1987_x', 't62mv1_x'],
+    nation: 'USSR/Russia', filler: 't90a_burlak_proto',
+    expected: ['t90', 't80u', 't72bu', 't72b_1987', 't62mv1'],
   },
   {
-    nation: 'UK', filler: 'challenger_3',
+    nation: 'UK', filler: 'challenger3_proto',
     // 2026-10-13 (VEH-11): the tier-X Warrior TES(H) follows the Challenger 3.
-    expected: ['challenger_3x', 'warrior_tes_h', 'challenger1_x', 'chieftain_mk10_x', 'chieftain5_x'],
+    expected: ['challenger3', 'warrior_tes_h', 'challenger1_mk3', 'chieftain_mk10', 'chieftain5'],
   },
   {
-    nation: 'France', filler: 'leclerc',
-    expected: ['leclerc_x', 'leclerc_classic_x', 'amx40_x', 'amx30_x'],
+    nation: 'France', filler: 'leclerc_s2',
+    expected: ['leclerc_xlr', 'amx56', 'amx40', 'amx30b'],
   },
 ];
 
@@ -169,13 +169,13 @@ assert.equal(
 
 assert.deepEqual(
   [
-    { id: 'leo2a5', nation: 'Germany', name: 'Leopard 2A5' },
-    { id: 'spz_puma_s1', nation: 'Germany', name: 'Puma S1' },
-    { id: 'kf51b', nation: 'Germany', name: 'KF51B' },
+    { id: 'leo2a4_v', nation: 'Germany', name: 'Leopard 2A5' },
+    { id: 'spz_wotan', nation: 'Germany', name: 'Puma S1' },
+    { id: 'kf51_u', nation: 'Germany', name: 'KF51B' },
   ].sort((a, b) => compareCountryThenTierThenName(
-    a, b, rank, (id) => id === 'leo2a5' ? 9 : 10,
+    a, b, rank, (id) => id === 'leo2a4_v' ? 9 : 10,
   )).map((spec) => spec.id),
-  ['kf51b', 'spz_puma_s1', 'leo2a5'],
+  ['kf51_u', 'spz_wotan', 'leo2a4_v'],
   'descending tier remains authoritative even when a lower-tier tank belongs to a hero run',
 );
 
@@ -184,21 +184,21 @@ assert.deepEqual(
 // duplicate public names must not change it or lose stable selection IDs.
 const chineseRun = nationalShowcaseCases.find(row => row.nation === 'China').expected;
 assert.deepEqual(chineseRun.toReversed().map(id => ({id, nation:'China', name:'same'}))
- .sort((a,b) => compareCountryThenTierThenName(a,b,rank,id => id === 'ztz99a2_prototype' ? 9 : 10))
+ .sort((a,b) => compareCountryThenTierThenName(a,b,rank,id => id === 'ztz99a' ? 9 : 10))
  .map(row => row.id), chineseRun);
-const polishRun = ['pl_t72b3_modern','pl01','pl_t80u_modern','pl01_105','pl_t72b3_zubr_ii']
+const polishRun = ['t72b3_zubr','pl01','t80u_husarz','pl01_105','t72b3_zubr_ii']
  .map(id => ({id,nation:'Poland',name:id}));
 assert.deepEqual(polishRun.sort((a,b) => compareCountryThenTierThenName(a,b,rank,() => 10))
  .slice(0,2).map(row=>row.id), ['pl01_105','pl01']);
-const mixedRussian = ['t90ms','ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern','t14','t90ms_x','t90_x']
+const mixedRussian = ['t90ms_2011','t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m','object148_proto','t90ms_tagil','t90']
  .map((id,i) => ({id, nation: i % 2 ? 'Russia' : 'USSR/Russia', name:id}));
 const compareRussian = (a,b) => compareCountryThenTierThenName(a,b,rank,() => 10);
 for (const a of mixedRussian) for (const b of mixedRussian) {
  assert.equal(Math.sign(compareRussian(a,b))+Math.sign(compareRussian(b,a)),0,'shared flag comparator is antisymmetric');
 }
 const russianOrder = mixedRussian.toSorted(compareRussian).map(row=>row.id);
-for (const id of ['ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern','t14'])
- assert.ok(russianOrder.indexOf(id)<russianOrder.indexOf('t90ms'), `${id} precedes T-90MS`);
+for (const id of ['t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m','object148_proto'])
+ assert.ok(russianOrder.indexOf(id)<russianOrder.indexOf('t90ms_2011'), `${id} precedes T-90MS`);
 assert.deepEqual(mixedRussian.toReversed().sort(compareRussian).map(row=>row.id),russianOrder);
 
 let storedSelections = null;
@@ -239,9 +239,9 @@ assert.equal(invalidSelectionMemory.preferredSpec('se')?.id, 'se_left',
   'stale stored ids safely fall back to the current leftmost vehicle');
 
 const combinedEras = [
-  { id: 'm1a2', nation: 'USA', era: 'modern' },
+  { id: 'm1a1_abrams_hc', nation: 'USA', era: 'modern' },
   { id: 'm4a3', nation: 'USA', era: 'ww2' },
-  { id: 't90', nation: 'Russia', era: 'modern' },
+  { id: 't90_1992', nation: 'Russia', era: 'modern' },
   { id: 't34', nation: 'USSR', era: 'ww2' },
 ];
 const countryCode = (spec) => spec.nation === 'USA' ? 'us' : 'ru';

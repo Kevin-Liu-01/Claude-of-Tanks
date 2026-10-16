@@ -1,5 +1,5 @@
 // Frozen pre-cupola digests (non-target meshes of a historical wheel replay, 173 equipment emissions) are retired:
-// whole-tank change detection of strv122_x is the fleet geometry ledger's. The physical source/air/contact/wiring proofs stay.
+// whole-tank change detection of strv122 is the fleet geometry ledger's. The physical source/air/contact/wiring proofs stay.
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
@@ -129,7 +129,7 @@ function nightMasks(root){
 }
 const parts=capturedParts();
 try{for(const quality of ['high','low']){
-  const t=createTank('strv122_x',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242});
+  const t=createTank('strv122',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242});
   try{
     t.root.updateMatrixWorld(true);const all=[],probes=[];
     t.root.traverse(m=>{if(!m.isMesh||m.userData.shadowOnly||m.userData.vehicleMarking||/Proxy|procShadow/.test(m.name))return;

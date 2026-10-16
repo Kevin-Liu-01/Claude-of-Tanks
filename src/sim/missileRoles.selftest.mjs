@@ -10,12 +10,12 @@ import { createTankState } from './movement.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
 const flat={getHeightAt:()=>0,getGroundType:()=>'hard',getNormalAt:()=>new Vector3(0,1,0)};
 const input={throttle:0,steer:0,brake:true,fire:true,aimYaw:0,aimPitch:.25,aimDistance:300,shellSlot:0,actionBits:0};
-const roles={ztz100_prototype:[0,21,741,762],object695_x:[0,39,78,117,957,996],griffin_viper:Array.from({length:18},(_,i)=>i*60)};
+const roles={ztz100_prototype:[0,21,741,762],object695:[0,39,78,117,957,996],griffin_viper:Array.from({length:18},(_,i)=>i*60)};
 for(const [id,expected]of Object.entries(roles)){
   const match=createAuthoritativeMatch({mapId:'verdant',countdownS:0,seed:12,
     worldCollision:{mapId:'verdant',heightField:flat,obstacles:[]},players:[
       {id:'shooter',specId:id,team:'alpha',spawn:{x:0,z:0,yaw:0}},
-      {id:'target',specId:'m1a2',team:'bravo',spawn:{x:400,z:-400,yaw:0}},
+      {id:'target',specId:'m1a1_abrams_hc',team:'bravo',spawn:{x:400,z:-400,yaw:0}},
     ]});
   match.onMatchReady();const entity=match.entityById.get('shooter'),events=[];
   entity.state.gunPitch=.25; entity.combat.equipMults={};
@@ -39,7 +39,7 @@ for(const [id,expected]of Object.entries(roles)){
   console.log(id,expected,'DPM',sustainedPrimaryDpm(getSpec(id)));
 }
 // Switching warhead or to the backup gun cannot reset a salvo or skip rack cooldown.
-for(const id of ['ztz100_prototype','object695_x']){
+for(const id of ['ztz100_prototype','object695']){
   const spec=getSpec(id),c=createCombatState(spec);
   startPostShotReload(c,spec);const progress=c.launcherSalvoShots;
   assert.equal(c.reload.kind,'intraClip');

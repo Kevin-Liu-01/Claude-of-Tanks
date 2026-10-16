@@ -56,8 +56,8 @@ function checkArmor(armor) {
     .some(hit => hit.kind === 'module' && hit.module === 'gun'), 'unchanged physical barrel remains hittable');
 }
 
-checkArmor(TANK_SPECS.jpz_e100_x.armor);
-const armor = TANK_SPECS.jpz_e100_x.armor;
+checkArmor(TANK_SPECS.jpz_e100.armor);
+const armor = TANK_SPECS.jpz_e100.armor;
 
 // Counterfactual: resurrecting the historical roof must reproduce the miss
 // assertion's failure; the negative test is not hidden by bounding clipping.
@@ -71,7 +71,7 @@ assert.ok(trace(mutant, [0, 7, 0], [0, 3.8, 0]).some(hit => hit.kind === 'plate'
 
 for (const quality of ['high', 'low']) {
   const options = { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 };
-  const tank = createTank('jpz_e100_x', null, options);
+  const tank = createTank('jpz_e100', null, options);
   try {
     const mount = tank.root.getObjectByName('gunMount');
     const yaw = tank.root.getObjectByName('rig_turret');
@@ -133,8 +133,8 @@ const capBefore = hash(capFaces(armor));
 // runtime behavior is not a synchronization mutation; pin this exact state.
 const donorsBeforeSync = hash(donorRows());
 synchronizeSecondWaveXCombatMetadata();
-assert.equal(hash(capFaces(TANK_SPECS.jpz_e100_x.armor)), capBefore,
+assert.equal(hash(capFaces(TANK_SPECS.jpz_e100.armor)), capBefore,
   'combat synchronization reapplies the exact authored cap');
-assert.equal(TANK_SPECS.jpz_e100_x.armor.turretPlates.length, 0);
+assert.equal(TANK_SPECS.jpz_e100.armor.turretPlates.length, 0);
 assert.equal(hash(donorRows()), donorsBeforeSync, 'synchronization cannot mutate original donors');
 console.log('jagdpanzerE100XArmor: no ghost armor; fixed casemate/barrel preserved; one native 48-edge 420mm moving cap seated at high/low; synchronization idempotent and donor-safe');

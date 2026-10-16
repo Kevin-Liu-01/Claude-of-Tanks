@@ -49,7 +49,7 @@ try {
   assert.ok(turret.position.lengthSq() === 0 && turret.scale.x === 1, 'merged turret stock is authored in the turret frame');
 
   // Rebuild record and frames.
-  assert.deepEqual(turretRig.userData.oplotRebuild, { donorHull: 't72b3m_x', revision: 'angular-20261002', gunOpeningM: .80 },
+  assert.deepEqual(turretRig.userData.oplotRebuild, { donorHull: 't72b3m_2016', revision: 'angular-20261002', gunOpeningM: .80 },
     'T-84 exposes its angular rebuild record');
   assert.deepEqual(turretRig.position.toArray(), [...OPLOT_FRAME.turret], 'turret ring at the rebuilt frame');
   assert.deepEqual(gunRig.position.toArray(), [...OPLOT_FRAME.gun], 'gun trunnion at the rebuilt frame');

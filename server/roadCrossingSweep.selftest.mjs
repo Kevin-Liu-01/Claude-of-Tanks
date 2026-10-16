@@ -89,7 +89,7 @@ function drive(mapId, path) {
   const world = createDedicatedWorldCollision(mapId);
   const [sx, sz] = path[0], [tx, tz] = path[Math.min(3, path.length - 1)];
   const match = createAuthoritativeMatch({ mapId, seed: 4242, countdownS: 0, worldCollision: world,
-    players: [{ id: 'driver', specId: 'm551_sheridan', team: 'alpha' }, { id: 'idle', specId: 't90m', team: 'bravo' }] });
+    players: [{ id: 'driver', specId: 'm551_sheridan', team: 'alpha' }, { id: 'idle', specId: 't90am', team: 'bravo' }] });
   match.onMatchReady();
   const driver = match.entityById.get('driver'), idle = match.entityById.get('idle');
   for (const entity of match.entities) entity.combat.hp = entity.combat.maxHp = 1e7;

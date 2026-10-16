@@ -55,7 +55,7 @@ function returnWitnesses(meshes, label) {
 
 for (const quality of ['high', 'low']) {
   const captured = [], bindings = [];
-  registerProfiledBuilders({ m1a2_sepv2_x: port => buildAbramsX(new Proxy(port, {
+  registerProfiledBuilders({ m1a2_abrams_sepv2: port => buildAbramsX(new Proxy(port, {
     get(target, key) {
       if (key === 'addEquipment') return (bucket, geometry, ...args) => {
         if (geometry.userData.abramsSourceReturn) {
@@ -74,7 +74,7 @@ for (const quality of ['high', 'low']) {
   })) });
   let tank;
   try {
-    tank = createTank('m1a2_sepv2_x', null,
+    tank = createTank('m1a2_abrams_sepv2', null,
       { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false });
     tank.root.updateMatrixWorld(true);
     assert.equal(captured.length, 4, 'exactly four source curved returns');
@@ -91,7 +91,7 @@ for (const quality of ['high', 'low']) {
       assert.ok(xRay(physicalMeshes(tank), side, .7, 3.1, 1.23).length,
         'real aft receiving stock remains in front of its rising lower edge');
     }
-    const plates = getSpec('m1a2_sepv2_x').armor.hullPlates;
+    const plates = getSpec('m1a2_abrams_sepv2').armor.hullPlates;
     for (const suffix of ['_skirt_era_L', '_skirt_era_R']) {
       const plate = plates.find(p => p.kind === 'era' && p.name.endsWith(suffix));
       assert.ok(plate && bindings.includes(plate.name), 'actual gameplay ERA name binds source cassettes');
@@ -110,7 +110,7 @@ for (const quality of ['high', 'low']) {
   } finally {
     tank?.dispose();
     for (const mesh of captured) mesh.geometry.dispose();
-    registerProfiledBuilders({ m1a2_sepv2_x: buildAbramsX });
+    registerProfiledBuilders({ m1a2_abrams_sepv2: buildAbramsX });
   }
 }
 material.dispose();

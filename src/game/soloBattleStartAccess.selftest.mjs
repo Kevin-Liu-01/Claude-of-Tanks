@@ -20,7 +20,7 @@ const access = createSoloBattleStartAccess({
   },
 });
 
-assert.throws(() => access.start('m1a2'), /not ready/);
+assert.throws(() => access.start('m1a1_abrams_hc'), /not ready/);
 await assert.rejects(access.preload(), /start chunk failed/);
 fail = false;
 const requests = [access.preload(), access.preload()];
@@ -28,7 +28,7 @@ assert.strictEqual(requests[0], requests[1]);
 assert.strictEqual(await requests[0], runtime);
 assert.equal(loads, 2);
 assert.equal(optionReads, 1);
-access.start('m1a2', 'winter', { deferVisuals: true });
-assert.deepEqual(starts, [['m1a2', 'winter', { deferVisuals: true }]]);
+access.start('m1a1_abrams_hc', 'winter', { deferVisuals: true });
+assert.deepEqual(starts, [['m1a1_abrams_hc', 'winter', { deferVisuals: true }]]);
 
 console.log('soloBattleStartAccess.selftest: retry, coalescing, and sync handoff pass');

@@ -96,8 +96,8 @@ function variant(
 
 // Type 90 is the mobile Tier IX three-round autoloader. Type 10 is the Tier X
 // single-shot vehicle with stronger fire control, ammunition and protection.
-const type90 = registries.tankSpecs.type90;
-Object.assign(type90, {
+const type90_kyumaru = registries.tankSpecs.type90_kyumaru;
+Object.assign(type90_kyumaru, {
   hp: 2250,
   enginePowerHp: 1500,
   reverseSpeedKmh: 25,
@@ -105,36 +105,36 @@ Object.assign(type90, {
   turretTraverseDegS: 40,
   gunPitchDegS: 30,
 });
-Object.assign(type90.gun, {
+Object.assign(type90_kyumaru.gun, {
   reloadS: 18.5,
   baseAccuracy: 0.30,
   aimTimeS: 1.8,
   autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
 });
-Object.assign(type90.gun.shells[0], {
+Object.assign(type90_kyumaru.gun.shells[0], {
   name: 'JM33 APFSDS', dmg: 500,
   pen100Mm: 806, pen1000Mm: 733, pen2000Mm: 660,
 });
 
-const type10 = registries.tankSpecs.type10;
-Object.assign(type10, {
+const type10_tk_x = registries.tankSpecs.type10_tk_x;
+Object.assign(type10_tk_x, {
   hp: 2550,
   reverseSpeedKmh: 35,
   hullTraverseDegS: 48,
   turretTraverseDegS: 46,
   gunPitchDegS: 36,
 });
-Object.assign(type10.gun, {
+Object.assign(type10_tk_x.gun, {
   reloadS: 5.2,
   baseAccuracy: 0.27,
   aimTimeS: 1.5,
 });
-delete type10.gun.autoloader;
-Object.assign(type10.gun.shells[0], {
+delete type10_tk_x.gun.autoloader;
+Object.assign(type10_tk_x.gun.shells[0], {
   name: 'Type 10 APFSDS', dmg: 540,
   pen100Mm: 891, pen1000Mm: 811, pen2000Mm: 730,
 });
-scaleNonExternalArmor(type10, 1.12);
+scaleNonExternalArmor(type10_tk_x, 1.12);
 
 const JAPAN_SPECS = {
   stb1: variant('stb1', 'type74', {
@@ -146,7 +146,7 @@ const JAPAN_SPECS = {
       reverseSpeedKmh: 20, turretTraverseDegS: 32, gunPitchDegS: 27 },
     reloadS: 7.2, shellName: 'Type 93 APFSDS', armorFactor: 1.03,
   }),
-  type90a: variant('type90a', 'type90', {
+  type90a: variant('type90a', 'type90_kyumaru', {
     name: 'Type 90A', number: '90-A', scheme: 'stripes',
     base: '#3f4c39', weather: '#5c624d', patches: ['#253127', '#6b5d3c', '#807458'],
     camoScale: 0.44,
@@ -164,7 +164,7 @@ const JAPAN_SPECS = {
     },
     armorFactor: 1.12,
   }),
-  type10b: variant('type10b', 'type10', {
+  type10b: variant('type10b', 'type10_tk_x', {
     name: 'Type 10B', number: '10-B', scheme: 'stripes',
     base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'],
     camoScale: 0.40,
@@ -205,9 +205,9 @@ const TYPE10_PAIR_RIG: Readonly<{
   gunPivot: TYPE10_GUN_SEAT.turretLocalPivot,
 });
 
-for (const id of ['type10', 'type10b'] as const) {
+for (const id of ['type10_tk_x', 'type10b'] as const) {
   const armor = registries.tankSpecs[id]?.armor;
-  if (!armor) throw new Error(`type10 pair rig re-auth: ${id} spec missing`);
+  if (!armor) throw new Error(`type10_tk_x pair rig re-auth: ${id} spec missing`);
   armor.turretPivot = [...TYPE10_PAIR_RIG.turretPivot];
   armor.gunPivot = [...TYPE10_PAIR_RIG.gunPivot];
 }

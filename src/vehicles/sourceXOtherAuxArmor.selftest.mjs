@@ -10,7 +10,7 @@ import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 import { near } from '../../tools/receipt-kit.test-support.mjs';
 import { fieldKitCensus, fieldKitFilter } from './fieldKitSurface.test-support.mjs';
-const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
+const DONORS={k1a1:'k1e1',amx30b:'amx30',leclerc_xlr:'leclerc_s2',amx56:'leclerc_s2',type10:'type10_tk_x',type90:'type90_kyumaru',amx40:'amx40_proto'};
 // 2026-10-01 (owner: retire frozen pins): the fourteen pinned whole-model digests, the historical
 // finish/gear/tint inverses that reached them and their oracle-only negative controls are gone; the
 // fleet geometry ledger owns whole-tank change detection. Every check below runs on the actual model.
@@ -95,7 +95,7 @@ function preservation(id,donor){
 let kit;
 function facets(id,spec,meshes){
   const plates=spec.armor.hullPlates.filter(p=>p.name.includes('_source_'));
-  if(['k1a1_x','amx30_x'].includes(id)){assert.equal(plates.length,0);return;}
+  if(['k1a1','amx30b'].includes(id)){assert.equal(plates.length,0);return;}
   assert.ok(plates.length>0,'actual factory spec is wired');
   let maximumError=0;const kitCovered={[-1]:0,[1]:0};
   for(const p of plates){
@@ -106,12 +106,12 @@ function facets(id,spec,meshes){
     const nativeHits=kit.hits(new THREE.Raycaster(from,new THREE.Vector3(-side,0,0),0,.23),meshes);
     // Fascia sits behind separate unarmored U straps. Verify the outward
     // physical sheet at its own depth, not an unrelated protruding fastener.
-    let native=id==='type10_x'?nativeHits.find(h=>Math.abs(h.point.x-point.x)<=.003
+    let native=id==='type10'?nativeHits.find(h=>Math.abs(h.point.x-point.x)<=.003
       &&h.face.normal.clone().transformDirection(h.object.matrixWorld).x*side>.5):nativeHits[0];
     // 2026-10-02: the owner's AMX 56 field kit (6e8c2fbd3) mounts thick folded side modules outside the
     // retained source skirt. Where one covers a source face, the outermost stock is that module and must carry
     // its own spaced kit plate (leclercClassicXKitArmor.ts); the source face is then witnessed at its own depth.
-    if(id==='leclerc_classic_x'&&native&&Math.abs(native.point.x-point.x)>.00015){
+    if(id==='amx56'&&native&&Math.abs(native.point.x-point.x)>.00015){
       assert.equal(native.object.name,'hullExternalArmor',`${id}/${p.name}: the covering stock is the installed field-kit module`);
       const kit=traceTank(native.point.clone().add(new THREE.Vector3(side*.01,0,0)),
         native.point.clone().add(new THREE.Vector3(-side*.01,0,0)),pose,spec.armor)
@@ -123,15 +123,15 @@ function facets(id,spec,meshes){
     }
     assert.ok(native,`${id}/${p.name} faces real installed armor`);
     const error=Math.abs(native.point.x-point.x);maximumError=Math.max(maximumError,error);
-    near(native.point.x,point.x,id==='type10_x'?.003:.00015,`${id}/${p.name} actual physical outer face`);
+    near(native.point.x,point.x,id==='type10'?.003:.00015,`${id}/${p.name} actual physical outer face`);
     const hits=plateHits(spec.armor,point,side);
     assert.equal(hits.length,1,`${id}/${p.name} one physical protection layer at facet center`);
     const template=getSpec(DONORS[id]).armor.hullPlates.find(t=>t.name===`skirt_${side<0?'L':'R'}`);
     assert.deepEqual([p.physicalMm,p.keMm,p.ceMm],[template.physicalMm,template.keMm,template.ceMm],'unchanged donor protection family');
   }
-  if(id==='leclerc_classic_x')assert.ok(kitCovered[-1]>0&&kitCovered[1]>0,
+  if(id==='amx56')assert.ok(kitCovered[-1]>0&&kitCovered[1]>0,
     `${id}: both field-kit modules cover source faces with their own plates (${JSON.stringify(kitCovered)})`);
-  console.log(`${id}: ${plates.length} actual auxiliary faces, maximum transverse surface error ${maximumError}${id==='leclerc_classic_x'?`, ${kitCovered[-1]}+${kitCovered[1]} under the field kit`:''}`);
+  console.log(`${id}: ${plates.length} actual auxiliary faces, maximum transverse surface error ${maximumError}${id==='amx56'?`, ${kitCovered[-1]}+${kitCovered[1]} under the field kit`:''}`);
 }
 function seams(id,spec){
   const edges=new Map();let count=0;
@@ -175,18 +175,18 @@ function actualProtection(spec){
     assert.equal(event.damage,0);assert.equal(target.combat.hp,spec.hp);
   }
 }
-const GHOSTS={k1a1_x:[1.746005,.7272969,0],amx30_x:[1.570467,.706122,-.078675],
-  leclerc_x:[1.82,.794545,-.089129],leclerc_classic_x:[1.82,.828757,-.092991],
-  type10_x:[1.713668,.664817,0],type90_x:[1.829209,.738238,0],amx40_x:[1.67925,.98,-2.7]};
+const GHOSTS={k1a1:[1.746005,.7272969,0],amx30b:[1.570467,.706122,-.078675],
+  leclerc_xlr:[1.82,.794545,-.089129],amx56:[1.82,.828757,-.092991],
+  type10:[1.713668,.664817,0],type90:[1.829209,.738238,0],amx40:[1.67925,.98,-2.7]};
 function air(id,spec){
   for(const side of[-1,1]){
     const p=[...GHOSTS[id]];p[0]*=side;
     assert.equal(plateHits(spec.armor,vec(p),side,.01).length,0,`${id}: former donor ghost point has no spaced protection`);
   }
-  if(id==='type90_x')for(const side of[-1,1])for(const z of[-1.60,-.56,.49,1.55,2.57])
+  if(id==='type90')for(const side of[-1,1])for(const z of[-1.60,-.56,.49,1.55,2.57])
     assert.equal(plateHits(spec.armor,new THREE.Vector3(side*1.786824,.90,z),side).length,0,'real 14mm inter-panel slit stays open');
-  if(id==='leclerc_x'||id==='leclerc_classic_x')for(const side of[-1,1]){
-    const z=id==='leclerc_x'?1.936:2.02;
+  if(id==='leclerc_xlr'||id==='amx56')for(const side of[-1,1]){
+    const z=id==='leclerc_xlr'?1.936:2.02;
     assert.equal(plateHits(spec.armor,new THREE.Vector3(side*1.8,1.20,z),side).length,0,'true separated front-block gap stays open');
   }
 }
@@ -233,7 +233,7 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
       tank.root.updateMatrixWorld(true);
       const shoeMaterial=trackShoeMaterial(tank.root);
       assertNightMasks(tank.root);
-      if(id==='k1a1_x'&&quality==='high'){
+      if(id==='k1a1'&&quality==='high'){
         // Negative controls: the shoe-material gate rejects a dark base and an unrelated material user.
         const color=shoeMaterial.color.clone();
         try{
@@ -247,7 +247,7 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
         finally{tank.root.remove(unrelated);}
         assert.equal(trackShoeMaterial(tank.root),shoeMaterial,'negative controls leave the actual shoe material intact');
       }
-      if(['leclerc_x','amx40_x','type10_x'].includes(id)){
+      if(['leclerc_xlr','amx40','type10'].includes(id)){
         const painted=tank.root.getObjectByName('hullPaintedDetail');
         // The rendered texture/name/UV contract is checked by registeredGuardPaint.
         assert.equal(painted?.material,tank.root.getObjectByName('hull').material);
@@ -257,7 +257,7 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
       const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!m.userData.vehicleMarking)meshes.push(m);});
       const spec=getSpec(id);facets(id,spec,meshes);air(id,spec);const count=seams(id,spec);
       const halfOpen=openBoundaries(id,spec);
-      if(id==='type10_x')type10HeldOut(spec,meshes);
+      if(id==='type10')type10HeldOut(spec,meshes);
       actualProtection(spec);
       console.log(`sourceXOtherAuxArmor: ${id}/${quality} physical panels, air, donor values, ${count} seams/${halfOpen} owned edges, shoe material and night masks PASS`);
     }finally{tank.dispose();kit.dispose();}

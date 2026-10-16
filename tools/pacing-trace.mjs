@@ -30,7 +30,7 @@ const teamFilter = option('team', '');
 const matchSeed = 21000 + MAP_IDS.indexOf(mapId) * 1000 + sample;
 const lobby = {
   phase: 'starting', matchSeed, mapId, teamSize: 2,
-  players: [{ id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha' }],
+  players: [{ id: 'host', name: 'Host', specId: 'm1a1_abrams_hc', team: 'alpha' }],
 };
 const match = createAuthoritativeMatch({
   players: await preparePacingRoster(lobby), mapId, seed: matchSeed, countdownS: 0,

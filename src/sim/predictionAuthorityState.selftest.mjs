@@ -10,7 +10,7 @@ import {
   capturePredictionAuthorityState,
 } from './predictionAuthorityState.ts';
 
-await ensureTankBuilder('m1a2');
+await ensureTankBuilder('m1a1_abrams_hc');
 await ensureTankBuilder('udes03');
 
 const normal = new Vector3(0, 1, 0);
@@ -21,7 +21,7 @@ const terrain = {
   getGroundType: () => 'hard',
 };
 
-function tank(specId = 'm1a2') {
+function tank(specId = 'm1a1_abrams_hc') {
   const spec = getSpec(specId);
   const combat = createCombatState(spec);
   combat.equipMults = { traverse: 1, turret: 1, aimTime: 1, bloom: 1 };
@@ -134,7 +134,7 @@ test('invalid field values remain bounded without creating unauthored modules', 
 });
 
 test('all replicated damage, crew, equipment and mode fields preserve shared movement parity', () => {
-  for (const specId of ['m1a2', 'udes03']) {
+  for (const specId of ['m1a1_abrams_hc', 'udes03']) {
     for (const phase of ['damaged', 'immobilized', 'healthy']) {
       const authority = tank(specId);
       const predicted = tank(specId);

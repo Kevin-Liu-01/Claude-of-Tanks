@@ -1260,7 +1260,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function addActor(cfg: StudioActorInput = {}): StudioActor {
-    const specId = cfg.id || cfg.specId || 'm1a2';
+    const specId = cfg.id || cfg.specId || 'm1a1_abrams_hc';
     const spec = getSpec(specId); // throws on unknown id (deliberate)
     const engineCtx = game._engineCtx;
     const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;
@@ -2431,13 +2431,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /**
    * A battle round passes light cover (world/collision.ts shellPassesThroughCollisionRecord, restated here: the Studio
    * reaches the world through what it is handed, never a new static import; studioStrikeCover.selftest.mjs holds the
-   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover, a stone or a pillbox.
+   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover, a stone, a pillbox or heavy
+   * plant (collision.ts DENSE_SET_PIECE_KINDS: Lane C, item 7).
    */
   function strikePassesRecord(record: { crushable?: boolean; kind?: string } | null | undefined): boolean {
     if (record?.crushable !== true) return false;
     const kind = record.kind;
     return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall'
-      || kind === 'small-rock' || kind === 'bunker');
+      || kind === 'small-rock' || kind === 'bunker' || /^setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)$/.test(kind ?? ''));
   }
   /**
    * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
@@ -2465,6 +2466,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       sh.dead = true;
       sh.pos.copy(hit.point);
+      // (Lane C, item 7) a gun round that stops on heavy plant wrecks it there, as a battle round's does (state.ts
+      // crushWorldPropFromShell; collision.ts shellSparesStoppedRecord: a machine-gun bullet leaves it standing)
+      const plant = hit.record as { crushable?: boolean; crushed?: boolean; kind?: string } | null | undefined;
+      if (plant?.crushable === true && !plant.crushed && /^setpiece_/.test(plant.kind ?? '') && world.crushObstacle
+        && (Number(sh.spec?.caliberMm) || 0) >= 20) {
+        world.crushObstacle(hit.record, _strikeDir.x, _strikeDir.z, Number(sh.spec?.velocityMps) || 0, 'shell');
+      }
       strikeWorld(sh, hit, _strikeDir);
       return true;
     }
@@ -4869,6 +4877,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       progress(0.92, 'Settling actors');
       for (const actor of actors) settleActor(actor);
+      // (2026-10-09, the shadows lane) the ground occlusion's bake (structureGroundOcclusion.ts) lands before the scene is
+      // ready, at full strength: a film never shows it fading in
+      const groundOcclusion = getWorld()?.groundOcclusion ?? null;
+      if (groundOcclusion) {
+        groundOcclusion.setInstant(true);
+        await Promise.race([groundOcclusion.whenReady(), new Promise((resolve) => { setTimeout(resolve, 30000); })]);
+      }
       const world = getWorld();
       if (world) world.setWindTime(0.35 + clockMs / 1000);
       panel.refreshAll();

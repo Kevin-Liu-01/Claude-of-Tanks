@@ -22,7 +22,7 @@ import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
 // conserved against the plain measurement; (5) a real hull hole beside it is still a leak; (6) the generator leaves
 // the bore open, its record passes the build's own bore check, and main's former capping record (245aa4e4e, one
 // gun-frame column over the same six voxels) still fails that check, with every one of its voxels inside the rule.
-const id = 'bmp3m_dragun125_x', VOXEL = WATERTIGHT_VOXEL;
+const id = 'bmp3m_dragun125', VOXEL = WATERTIGHT_VOXEL;
 
 // (1) wiring
 const read = (path) => readFileSync(path, 'utf8');
@@ -142,7 +142,7 @@ try {
 
 // 2026-10-10: a tank without a declared bore still has the owner's carved bore (a28e4d8e6) as its bore air, read from
 // its carved frame's seat receipt; a root with neither has none
-const plainTank = createTank('m1a2', null, { proceduralOnly: true });
+const plainTank = createTank('m1a1_abrams_hc', null, { proceduralOnly: true });
 try {
   const carved = physicalBoreAir(plainTank.root);
   let frame = null;

@@ -112,7 +112,7 @@ export const UA_ERA_PLATE_NAMES = Object.freeze([
   ...UA_KONTAKT1_COURSES.map((course) => course.name), 'ua_m1a1_x_skirt_era_L', 'ua_m1a1_x_skirt_era_R',
 ]);
 
-/** Add the eight kit zones to a fresh ua_m1a1_x armor clone; an already-kitted record is
+/** Add the eight kit zones to a fresh ua_m1a2_abrams armor clone; an already-kitted record is
  * accepted unchanged, a partial one is refused. */
 export function applyAbramsSourceXUkraineEraArmor(armor: ArmorEnvelope): void {
   const present = [...armor.hullPlates, ...armor.turretPlates].filter((plate) => UA_ERA_PLATE_NAMES.includes(plate.name));

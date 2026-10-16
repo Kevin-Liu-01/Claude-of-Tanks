@@ -15,7 +15,7 @@ import {
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a2_prototype', 'ztz99a2'] as const);
+const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a', 'ztz99a2'] as const);
 
 type ChinaStatOverrides = Partial<Pick<FleetTankSpec,
   | 'hp'
@@ -93,7 +93,7 @@ const CHINA_SPECS = {
     },
     armorFactor: 1.14,
   }),
-  ztz99a2_prototype: variant('ztz99a2_prototype', 'type99a', {
+  ztz99a: variant('ztz99a', 'ztz99_longwei', {
     name: 'ZTZ-99A', number: '99A', base: '#35453a', weather: '#4a5847',
     patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43,
     dims: {
@@ -106,10 +106,10 @@ const CHINA_SPECS = {
       reverseSpeedKmh: 28, turretTraverseDegS: 40, gunPitchDegS: 32,
     },
     reloadS: 6.6,
-    armor: createType99Armor('ztz99a2_prototype'),
+    armor: createType99Armor('ztz99a'),
     armorFactor: 1.12,
   }),
-  ztz99a2: variant('ztz99a2', 'type99a', {
+  ztz99a2: variant('ztz99a2', 'ztz99_longwei', {
     name: 'ZTZ-99A2', number: '99A2', base: '#36463a', weather: '#4c5a49',
     patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43,
     // The rear fuel rack participates in silhouette measurements while UI

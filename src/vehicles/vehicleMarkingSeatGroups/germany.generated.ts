@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "leo2a4_otco": {
+  "leo2a3": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -69,7 +69,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7069985
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a4_otco",
+        "anchorProfile": "leo2a3",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

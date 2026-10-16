@@ -108,7 +108,7 @@ import {
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
-  shellPassesThroughCollisionRecord,
+  shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -140,8 +140,9 @@ import {
   FUEL_CHARGE_KG, PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, cookOffChargeKg, munitionBlastEventFor, propFellRadiusM,
 } from '../sim/munitionBlast.ts';
 import {
-  createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor, type TerrainDeformation,
+  createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, type TerrainDeformation,
 } from '../sim/terrainDeformation.ts';
+import { structureRubbleHeightM } from '../sim/structureDamage.ts';
 import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
@@ -1242,7 +1243,7 @@ export function setupBattle(
     ground: ground.overlay,
     // the bots' grid re-reads the ground round the heap, as the authority's does
     onCollapse: (structure) => {
-      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
       const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
       const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
       game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
@@ -2208,6 +2209,8 @@ function crushWorldPropFromShell(
   if (!record?.crushable || !world.crushObstacle) return;
   // a pillbox stops the round and falls only to accumulated heavy damage (sim/fortifiedCover.ts), as the authority's
   if (isFortifiedCoverRecord(record) && !fortified?.shellHit(record, shell.spec)) return;
+  // (Lane C, item 7) heavy plant: a machine-gun bullet stops on it and leaves it standing; a gun round wrecks it
+  if (shellSparesStoppedRecord(record, shell.spec.caliberMm)) return;
   const crushed = world.crushObstacle(
     record,
     _seg.x,

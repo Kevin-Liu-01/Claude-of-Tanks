@@ -456,7 +456,7 @@ export default {
     // tanks), convoy dressing + defended-crossroads clutter
     // the map-vehicles lane (2026-10-06, the period ruling): the Maghreb: Tunisia's M60A3s and M48s, the T-55s and
     // T-62s over the Libyan border
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48', 't62mv1'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48a5_patton', 't62_1975'] },
     sandbagLines: 12,
     hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall

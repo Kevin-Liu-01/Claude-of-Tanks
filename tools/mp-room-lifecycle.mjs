@@ -250,7 +250,7 @@ const rejects = async (promise, code) => {
   return 'accepted';
 };
 const readyAll = (seats) => Promise.all(seats.map((seat) => seat.setReady(true)));
-const lobbyRoom = (s) => ({ mode: 'private', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: true } });
+const lobbyRoom = (s) => ({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: true } });
 
 /** Three lobby seats (p1 admin, p2, p3) ready in one room; returns them with the code. */
 async function lobbyTrio(s, { teamSize = 2 } = {}) {
@@ -258,8 +258,8 @@ async function lobbyTrio(s, { teamSize = 2 } = {}) {
   const room = await s.step('create', 10_000, p1.create({ ...lobbyRoom(s), settings: { teamSize, mapId: 'verdant', botsFill: true } }));
   const p2 = s.lobbySeat('p2', 'Two');
   const p3 = s.lobbySeat('p3', 'Three');
-  await s.step('p2 joins', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }));
-  await s.step('p3 joins', 10_000, p3.join({ roomCode: room.roomCode, selection: { specId: 'leo2a7v' } }));
+  await s.step('p2 joins', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
+  await s.step('p3 joins', 10_000, p3.join({ roomCode: room.roomCode, selection: { specId: 'leo2_improved' } }));
   await s.step('three seats seen by everyone', 5_000, () => [p1, p2, p3].every((seat) => seat.room?.players.length === 3));
   return { p1, p2, p3, code: room.roomCode };
 }
@@ -271,12 +271,12 @@ const reportAs = (seat, phase, tick, verdict) => seat.reportMatch({ matchId: sea
 async function playingMatch(s, specs, { watcher = false } = {}) {
   const entries = specs.map((spec, index) => s.sessionSeat(spec.id, spec.name ?? spec.id, index, { canHost: spec.canHost ?? true }));
   const [first, ...rest] = entries;
-  const room = await s.step('create', 10_000, first.headless.room.create({ mode: 'private', selection: { specId: 'm1a2' }, settings: { teamSize: Math.max(1, Math.ceil(specs.length / 2)), mapId: 'verdant', botsFill: true } }));
-  for (const entry of rest) await s.step(`${entry.id} joins`, 10_000, entry.headless.room.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }));
+  const room = await s.step('create', 10_000, first.headless.room.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: Math.max(1, Math.ceil(specs.length / 2)), mapId: 'verdant', botsFill: true } }));
+  for (const entry of rest) await s.step(`${entry.id} joins`, 10_000, entry.headless.room.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
   let seated = entries.length;
   if (watcher) {
     s.watcher = s.lobbySeat('w', 'Watcher');
-    await s.step('a spectator joins to observe', 10_000, s.watcher.join({ roomCode: room.roomCode, selection: { specId: 'm1a2' }, team: 'spectator' }));
+    await s.step('a spectator joins to observe', 10_000, s.watcher.join({ roomCode: room.roomCode, selection: { specId: 'm1a1_abrams_hc' }, team: 'spectator' }));
     seated++;
   }
   await s.step('every seat in the room', 5_000, () => entries.every((entry) => entry.headless.room.room?.players.length === seated));
@@ -291,7 +291,7 @@ async function playingMatch(s, specs, { watcher = false } = {}) {
 /** A brand-new seat joins the code, owns the room (or becomes admin within the admin grace) and starts a match that goes live. */
 async function newSeatStarts(s, code, { adminBudgetMs = SLACK_MS } = {}) {
   const p4 = s.sessionSeat('p4', 'Fresh', 3);
-  await s.step('a brand-new seat joins the same code', 10_000, p4.headless.room.join({ roomCode: code, selection: { specId: 'm1a2' } }));
+  await s.step('a brand-new seat joins the same code', 10_000, p4.headless.room.join({ roomCode: code, selection: { specId: 'm1a1_abrams_hc' } }));
   const joinedAt = performance.now();
   await s.step('the new seat is the admin', adminBudgetMs, () => p4.headless.room.isAdmin);
   s.note('adminAfterMs', Math.round(performance.now() - joinedAt));
@@ -311,7 +311,7 @@ async function runScenario(id, s) {
       await s.step('the creator leaves', 10_000, p1.leave());
       s.check(p1.phase === 'closed' && p1.lastClosedReason === 'left_room', `the creator's client closed (${p1.phase}/${p1.lastClosedReason})`);
       const p2 = s.lobbySeat('p2', 'Late');
-      const joined = await s.step('a new seat joins the same code', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }));
+      const joined = await s.step('a new seat joins the same code', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
       s.resolution(performance.now() - t0, 'joined, admin, started');
       s.check(joined.adminId === 'p2' && p2.isAdmin, `the next seat owns the room (admin ${joined.adminId})`);
       s.check(joined.players.length === 1 && joined.phase === 'waiting', `an empty waiting room, one seat (${joined.phase}, ${joined.players.length})`);
@@ -394,7 +394,7 @@ async function runScenario(id, s) {
       const p1 = s.lobbySeat('p1', 'Creator');
       const room = await s.step('create', 10_000, p1.create(lobbyRoom(s)));
       const p2 = s.lobbySeat('p2', 'Two');
-      await s.step('p2 joins', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }));
+      await s.step('p2 joins', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
       await s.step('ready', 10_000, readyAll([p1, p2]));
       await s.step('start', 15_000, p1.start());
       await s.step('match_start on both', 10_000, () => p1.matchStart && p2.matchStart);
@@ -413,7 +413,7 @@ async function runScenario(id, s) {
       const p1 = s.lobbySeat('p1', 'Creator');
       const room = await s.step('create', 10_000, p1.create(lobbyRoom(s)));
       const p2 = s.sessionSeat('p2', 'Peer', 1, { canHost: false });
-      await s.step('the peer joins', 10_000, p2.headless.room.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }));
+      await s.step('the peer joins', 10_000, p2.headless.room.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
       await s.step('ready', 10_000, readyAll([p1, p2.headless.room]));
       await s.step('start', 15_000, p1.start());
       await s.step('the peer entered the match', 10_000, () => p2.headless.session.round);
@@ -523,10 +523,10 @@ async function runScenario(id, s) {
     case 'f1': {
       const p = s.lobbySeat('p1', 'Lost');
       const t0 = performance.now();
-      const bogus = await s.step('a bogus code is refused', 10_000, rejects(p.join({ roomCode: 'ZZZZZZ', selection: { specId: 'm1a2' } }), 'room_not_found'));
+      const bogus = await s.step('a bogus code is refused', 10_000, rejects(p.join({ roomCode: 'ZZZZZZ', selection: { specId: 'm1a1_abrams_hc' } }), 'room_not_found'));
       s.check(bogus === true, `bogus code: ${bogus === true ? 'room_not_found' : bogus}`);
       s.check(p.phase === 'idle', `the client is free again (${p.phase})`);
-      const malformed = await s.step('a malformed code is refused before any socket', 5_000, rejects(p.join({ roomCode: 'NOPE', selection: { specId: 'm1a2' } }), 'invalid_room_code'));
+      const malformed = await s.step('a malformed code is refused before any socket', 5_000, rejects(p.join({ roomCode: 'NOPE', selection: { specId: 'm1a1_abrams_hc' } }), 'invalid_room_code'));
       s.check(malformed === true, `malformed code: ${malformed === true ? 'invalid_room_code' : malformed}`);
       s.resolution(performance.now() - t0, 'clean refusals');
       return;
@@ -541,14 +541,14 @@ async function runScenario(id, s) {
       await s.step('the room is playing', SLACK_MS, () => p1.room?.phase === 'playing');
       const t0 = performance.now();
       const p2 = s.lobbySeat('p2', 'Latecomer');
-      const commander = await s.step('a commander joining a playing room is refused', 10_000, rejects(p2.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }), 'room_locked'));
+      const commander = await s.step('a commander joining a playing room is refused', 10_000, rejects(p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }), 'room_locked'));
       s.check(commander === true, `commander: ${commander === true ? 'room_locked' : commander}`);
-      const spectator = await s.step('a spectator joining a playing room is refused too', 10_000, rejects(p2.join({ roomCode: room.roomCode, selection: { specId: 't90m' }, team: 'spectator' }), 'room_locked'));
+      const spectator = await s.step('a spectator joining a playing room is refused too', 10_000, rejects(p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' }, team: 'spectator' }), 'room_locked'));
       s.check(spectator === true, `spectator: ${spectator === true ? 'room_locked' : spectator}`);
       s.resolution(performance.now() - t0, 'refused as room_locked (spectators too)');
       await s.step('the host ends the match', 10_000, reportAs(p1, 'ended', 600, { result: 'alpha', reason: 'elimination' }));
       await s.step('the room waits again', SLACK_MS, () => p1.room?.phase === 'waiting');
-      await s.step('the latecomer joins the lobby', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90m' } }));
+      await s.step('the latecomer joins the lobby', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
       s.cleanup(async () => { await p2.leave(); await p1.leave(); });
       return;
     }

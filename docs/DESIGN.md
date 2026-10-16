@@ -58,7 +58,7 @@ Flow:
    and `modern3.ts`, plus `PROFILED_BUILDERS` (`profiledProcedurals.ts` →
    `src/vehicles/profiles/`, the
    program's family files; PROFILED_BUILDERS wins over legacy tankFactory builders —
-   the leo2a4/ww2.ts override mechanism).
+   the leo2a2/ww2.ts override mechanism).
 3. **Bucket grammar**: builders never touch meshes — they call
    `P.add(bucket, geo, x,y,z, rx,ry,rz, s)`. `BUCKET_DEF` in
    `tankFactoryCore.ts` maps bucket name → (parent rig group, material slot); e.g.

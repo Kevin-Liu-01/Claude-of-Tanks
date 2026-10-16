@@ -91,8 +91,8 @@ for (const id of ids) {
         const count = round.launcherTubes || 1;
         const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 9, countdownS: 0,
           worldCollision: { mapId: 'verdant', heightField: flat, obstacles: [] },
-          players: [{ id: 'launcher', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: 0, yaw: 0 } },
-            { id: 'opponent', specId: 'm1a2', team: 'bravo', spawn: { x: 400, z: -400, yaw: 0 } }] });
+          players: [{ id: 'launcher', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: 0, yaw: 0 } },
+            { id: 'opponent', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 400, z: -400, yaw: 0 } }] });
         const entity = match.entities[0]; entity.spec = structuredClone(source);
         entity.spec.gun.baseAccuracy = 0;
         entity.state = createTankState(entity.spec, new Vector3(3, 0, 7), .35);

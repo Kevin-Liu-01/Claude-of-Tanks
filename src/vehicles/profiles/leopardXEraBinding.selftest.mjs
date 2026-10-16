@@ -10,8 +10,8 @@ function top(z,rows){for(let i=1;i<rows.length;i++)if(z<=rows[i][0]){
 }throw new Error('station outside source span');}
 let samples=0;
 for(const quality of ['high','low'])for(const [id,name,rows] of [
-  ['leo2a7v_x','a7v_upper_glacis_era',[[1.64,1.785],[2.43,1.628],[3.21,1.48155]]],
-  ['leo2a6m_x','a6m_upper_glacis_era',[[1.52,1.72],[2.63,1.58],[3.15,1.52003]]],
+  ['leo2a7v','a7v_upper_glacis_era',[[1.64,1.785],[2.43,1.628],[3.21,1.48155]]],
+  ['leo2a6m','a6m_upper_glacis_era',[[1.52,1.72],[2.63,1.58],[3.15,1.52003]]],
 ]){
   const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try{
@@ -29,7 +29,7 @@ for(const quality of ['high','low'])for(const [id,name,rows] of [
     assert.deepEqual(hull.geometry.attributes.position.array,positions,'depletion never edits permanent backing');
     assert.equal(tank.resetEra(),true);
     for(const [x,z,expected]of witnesses)near(hit([hull,cover],x,z),expected,`${id}: exact reset source roof`);
-    if(id==='leo2a6m_x'){
+    if(id==='leo2a6m'){
       const turret=tank.root.getObjectByName('turret'),skin=tank.root.getObjectByName('turretExternalArmor');
       const pivot=tank.root.getObjectByName('rig_turret').position;
       for(const side of ['L','R']){

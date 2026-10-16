@@ -7,6 +7,7 @@ import { railing, revolve, smoothRender, star, steppedBase, cross, moulding, LIM
 import type { Vec3 } from '../maps/regional/geometry.ts';
 import { letterText, measureText } from './lettering.ts';
 import type { LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const STAR_RED = rgb(0xb3221c), IRON = rgb(0x26282a), GILT = rgb(0xb8933e);
 const BRONZE = rgb(0x4f5a45), BRONZE_DARK = rgb(0x3a4134), SILVER = rgb(0xb9bcba), PLAQUE = rgb(0x2a2c2b);
@@ -52,15 +53,18 @@ export const obelisk: LandmarkBuilder = (ctx) => {
   const shaftY = steps + dieH + 0.16, shaftH = H - shaftY - 0.9, b0 = dieW * 0.7, b1 = b0 * 0.66;
   revolve(sink, body, 0, 0, [[b0 * Math.SQRT1_2, shaftY], [b1 * Math.SQRT1_2, shaftY + shaftH], [0, shaftY + shaftH + b1 * 1.1]], 4, {}, Math.PI / 4);
   const top = shaftY + shaftH + b1 * 1.1;
-  if (finial === 'star') {
-    // (the mast runs up into the star and holds it at its middle)
-    sink.span('structureMetal', -0.03, top - 0.05, -0.03, 0.03, top + 0.35 + 0.42, 0.03, { colour: IRON, decor: true });
-    star(sink, 'structureMetal', 0, top + 0.35 + 0.42, 0, 0.42, 0.08, { colour: STAR_RED, decor: true });
-  } else if (finial === 'cross' || finial === 'latin') {
-    cross(sink, 'structureMetal', 0, top - 0.05, 0, 1.0, finial === 'cross' ? 'orthodox' : 'latin', GILT);
-  } else if (finial === 'ball') {
-    revolve(sink, 'structureMetal', 0, 0, [[0.06, top - 0.04], [0.16, top + 0.06], [0.2, top + 0.2], [0.16, top + 0.34], [0, top + 0.4]], 10, { colour: GILT, decor: true });
-  }
+  // (props lane A, E12: the finial comes off at the first damage, landmarks/pieces.ts)
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) => {
+    if (finial === 'star') {
+      // (the mast runs up into the star and holds it at its middle)
+      s.span('structureMetal', -0.03, top - 0.05, -0.03, 0.03, top + 0.35 + 0.42, 0.03, { colour: IRON, decor: true });
+      star(s, 'structureMetal', 0, top + 0.35 + 0.42, 0, 0.42, 0.08, { colour: STAR_RED, decor: true });
+    } else if (finial === 'cross' || finial === 'latin') {
+      cross(s, 'structureMetal', 0, top - 0.05, 0, 1.0, finial === 'cross' ? 'orthodox' : 'latin', GILT);
+    } else if (finial === 'ball') {
+      revolve(s, 'structureMetal', 0, 0, [[0.06, top - 0.04], [0.16, top + 0.06], [0.2, top + 0.2], [0.16, top + 0.34], [0, top + 0.4]], 10, { colour: GILT, decor: true });
+    }
+  });
   if (ctx.params.railing) {
     const r = 1.5 + H * 0.12 + 1.1;
     const corners: Array<[number, number]> = [[-r, -r], [r, -r], [r, r], [-r, r]];
@@ -73,7 +77,7 @@ export const obelisk: LandmarkBuilder = (ctx) => {
       } else railing(sink, a, b, 0.85, IRON);
     }
   }
-  return { parts: smoothRender(sink.finish(), LIMEWASH_UV) };
+  return { parts: smoothRender(finishLandmark(sink), LIMEWASH_UV) };
 };
 
 /** A stylised standing figure (feet at y, facing +z): a greatcoat or a robe, the head 1/7.5 of its height. */
@@ -120,8 +124,9 @@ export const statue: LandmarkBuilder = (ctx) => {
   const face: Face = { origin: [0, 0, pw / 2], u: [1, 0, 0], out: [0, 0, 1], width: pw };
   sink.quad('structureMetal', facePoint(face, -pw * 0.3, steps + plinth * 0.35, 0.012), facePoint(face, pw * 0.3, steps + plinth * 0.35, 0.012),
     facePoint(face, pw * 0.3, steps + plinth * 0.7, 0.012), facePoint(face, -pw * 0.3, steps + plinth * 0.7, 0.012), { colour: PLAQUE, decor: true });
-  figure(sink, steps + plinth + 0.17, h, c, d, String(ctx.params.pose));
-  return { parts: sink.finish() };
+  // (props lane A, E12: the figure topples off its plinth when the statue is breached)
+  piece(sink, { name: 'figure', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => figure(s, steps + plinth + 0.17, h, c, d, String(ctx.params.pose)));
+  return { parts: finishLandmark(sink) };
 };
 
 /**
@@ -147,8 +152,8 @@ export const columnMonument: LandmarkBuilder = (ctx) => {
   const capY = y0 + shaftH + 0.45;
   sink.span('stone', -r * 1.4, capY, -r * 1.4, r * 1.4, capY + 0.32, r * 1.4);
   revolve(sink, 'structureMetal', 0, 0, [[r * 0.7, capY + 0.32], [r * 0.6, capY + 0.62], [r * 0.5, capY + 0.66]], 10, { colour: GILT });
-  figure(sink, capY + 0.66, figureH, GILT, shade(GILT, 0.75), 'robe');
-  return { parts: sink.finish() };
+  piece(sink, { name: 'figure', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => figure(s, capY + 0.66, figureH, GILT, shade(GILT, 0.75), 'robe'));
+  return { parts: finishLandmark(sink) };
 };
 
 /**
@@ -239,7 +244,9 @@ export const equestrianStatue: LandmarkBuilder = (ctx) => {
   sink.member('structureMetal', [0, belly + barrelR, -1.3 * S], [0, belly - wither * 0.3, -1.6 * S], 0.12 * S, 0.12 * S, [1, 0, 0], { ...dark, exposed: true }, 0.06 * S);
   // the rider: the torso upright over the saddle, the legs down the horse's flanks, the arm raised
   const seat = belly + barrelR * 1.25;
-  figure(sink, seat - 0.85 * S, 1.75 * S, BRONZE, BRONZE_DARK, 'greatcoat');
-  for (const sx of [-1, 1]) sink.member('structureMetal', [sx * 0.2 * S, seat, 0.05], [sx * 0.34 * S, seat - 0.75 * S, 0.25 * S], 0.15 * S, 0.15 * S, [0, 0, 1], { ...dark, exposed: true }, 0.075 * S);
-  return { parts: sink.finish() };
+  piece(sink, { name: 'rider', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
+    figure(s, seat - 0.85 * S, 1.75 * S, BRONZE, BRONZE_DARK, 'greatcoat');
+    for (const sx of [-1, 1]) s.member('structureMetal', [sx * 0.2 * S, seat, 0.05], [sx * 0.34 * S, seat - 0.75 * S, 0.25 * S], 0.15 * S, 0.15 * S, [0, 0, 1], { ...dark, exposed: true }, 0.075 * S);
+  });
+  return { parts: finishLandmark(sink) };
 };

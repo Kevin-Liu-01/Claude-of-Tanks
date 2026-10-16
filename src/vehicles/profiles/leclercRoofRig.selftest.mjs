@@ -31,7 +31,7 @@ const localRayHits = (mesh, origin, direction, far = 4) => {
     .intersectObject(mesh, false)
     .map((hit) => mesh.worldToLocal(hit.point.clone()));
 };
-for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
+for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_s1']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -104,7 +104,7 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
     // keeps its ANF1; the S1 and the XLR carry the owner's roof RWS instead, activated as their working station, and no
     // Leclerc keeps the second roof gun (the old §5.14 M2, latterly a GPMG).
     const anf1 = turretRig.getObjectByName('leclercRoofAnf1');
-    if (id === 'leclerc_xlr' || id === 'amx56') {
+    if (id === 'leclerc_sxxi' || id === 'leclerc_s1') {
       assert.equal(anf1, undefined, `${id} carries no ANF1: its roof RWS takes the roof 7.62's place`);
     } else {
       assert.ok(anf1?.userData.barrelBridge,
@@ -114,7 +114,7 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
     }
     assert.equal(turretRig.getObjectByName('leclercRoofGpmg'), undefined, `${id} carries no second roof gun`);
 
-    if (id === 'leclerc_xlr' || id === 'amx56') {
+    if (id === 'leclerc_sxxi' || id === 'leclerc_s1') {
       assert.deepEqual(turretRig.userData.leclercVariantRoofStations, {
         leftPadCenterX: -0.67,
         rightPadCenterX: 0.67,
@@ -130,7 +130,7 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       `${id} physically places both hatch rings around the marked pad centers`);
     }
 
-    if (id === 'leclerc_xlr') {
+    if (id === 'leclerc_sxxi') {
       assert.deepEqual(turretRig.userData.leclercXlrRoofAssembly, {
         padCenterX: -0.67,
         padCenterZ: -0.33,
@@ -154,7 +154,7 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
         'Leclerc XLR roof RWS is its working station (the owner\'s 2A5M precedent)');
     }
 
-    if (id === 'amx56') {
+    if (id === 'leclerc_s1') {
       assert.deepEqual(turretRig.userData.amx56RoofAssembly, {
         gunnerSightRoofY: 0.610,
         gunnerSightBottomY: 0.610,

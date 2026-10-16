@@ -7,9 +7,9 @@ function fixture(countdownS) {
     mapId: 'verdant', seed: 123,
     ...(countdownS === undefined ? {} : { countdownS }),
     players: [
-      { id: 'bot', specId: 'm1a2', team: 'alpha', bot: true,
+      { id: 'bot', specId: 'm1a1_abrams_hc', team: 'alpha', bot: true,
         spawn: { x: 0, z: 0, yaw: 1 } },
-      { id: 'human', specId: 't90m', team: 'bravo',
+      { id: 'human', specId: 't90am', team: 'bravo',
         spawn: { x: 50, z: 90, yaw: Math.PI } },
     ],
   });

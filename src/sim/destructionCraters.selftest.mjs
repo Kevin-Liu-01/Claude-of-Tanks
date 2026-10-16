@@ -96,8 +96,8 @@ function run(seed) {
   const ruleset = { ...matchRulesetFor('standard'), destruction: RULES };
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed, countdownS: 0, ruleset,
     players: [
-      { id: 'gun', specId: 'm1a2', team: 'alpha', spawn: { x: -150, z: -150, yaw: 0 } },
-      { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: 150, z: 200, yaw: Math.PI } },
+      { id: 'gun', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: -150, z: -150, yaw: 0 } },
+      { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 150, z: 200, yaw: Math.PI } },
     ] });
   match.onMatchReady();
   // the HE round (slot 2), the gun depressed into open ground ahead
@@ -127,7 +127,7 @@ function run(seed) {
   assert.deepEqual(a.farCraters.map(strip), a.craters.map(strip), 'the far side receives every crater');
   assert.equal(a.farSeesGun, false, 'the far side does not see the gun here');
   assert.ok(a.farCraters.every((e) => !('munition' in e)), 'so it is never told the munition (hiddenWorldEvents)');
-  assert.ok(Math.abs(c.radiusM - craterFor(munitionChargeKg(getSpec('m1a2').gun.shells[2]), 'he', 1, { radiusM: 0, depthM: 0, rimM: 0 }).radiusM) < 0.006);
+  assert.ok(Math.abs(c.radiusM - craterFor(munitionChargeKg(getSpec('m1a1_abrams_hc').gun.shells[2]), 'he', 1, { radiusM: 0, depthM: 0, rimM: 0 }).radiusM) < 0.006);
   assert.deepEqual(a.log.filter((e) => e.kind === 'crater').map((e) => e.craterId), a.craters.map((e) => e.craterId), 'logged in order');
   assert.deepEqual(a.impacts.map((e) => e.craterId), a.craters.map((e) => e.craterId), 'each crater rides the impact that dug it');
   assert.ok(a.impacts.every((e, i) => Math.abs(e.x - a.craters[i].x) < 0.001 && Math.abs(e.z - a.craters[i].z) < 0.001));

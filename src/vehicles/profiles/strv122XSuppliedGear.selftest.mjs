@@ -11,7 +11,7 @@ function fixture(high){
  const mats=Object.fromEntries(['hull','wheels','wheelsRecessed','rubber','detail','dark','shadow',
   'trackLink','spareTrack','burnt','trackL','trackR'].map(k=>[k,material]));
  mats.trackTexL=new T.Texture();mats.trackTexR=new T.Texture();
- const port={spec:{id:'strv122_x'},disposables:[],mats,hullG:new T.Group(),geometryReceipt:true,q:high,batchStatic:false,add(){}};
+ const port={spec:{id:'strv122'},disposables:[],mats,hullG:new T.Group(),geometryReceipt:true,q:high,batchStatic:false,add(){}};
  port.hullG.name='rig_hull';
  try{addStrv122XSuppliedGear(port);port.gear.update(0,0);port.hullG.updateMatrixWorld(true);return{port,dispose};}
  catch(error){dispose();throw error;}

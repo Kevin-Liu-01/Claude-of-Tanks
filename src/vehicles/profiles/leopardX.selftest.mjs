@@ -4,24 +4,25 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { isOpenLatticeMesh } from '../../../tools/standard-continuity-policy.mjs';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
 // Fixed measurements came from the owner source BEFORE authoring (see each
 // reference packet and source-measurements.json). Do not replace these with
 // LEOPARD_X_DATUMS or geometry/attachment receipts written by the builder.
 const sources = {
-  leo2a7v_x: { roof:2.67624, rear:-2.794, front:3.110, width:3.0947,
+  leo2a7v: { roof:2.67624, rear:-2.794, front:3.110, width:3.0947,
     bore:[0,2.032625,6.968598,.19814], wheelR:.375,
     stations:[-2.379,-1.569,-.759,.049,.858,1.667,2.476],
     roofProbes:[[-2.5,2.62586],[-1.5,2.65858],[-.5,2.68415],[.5,2.64631],[1.5,2.57985],[2.5,2.30606]] },
-  leo2a6m_x: { roof:2.54631, rear:-2.702, front:3.281, width:2.5542,
+  leo2a6m: { roof:2.54631, rear:-2.702, front:3.281, width:2.5542,
     bore:[-.00051,2.089435,7.02546,.18485], wheelR:.357885,
     stations:[-2.38862,-1.59159,-.80394,.02123,.82764,1.62467,2.42169],
     roofProbes:[[-2.5,1.97827],[-1.5,2.55136],[-.5,2.54629],[.5,2.54630],[1.5,2.47661],[2.5,2.28960]] },
-  leo2a4m_x: { roof:2.44859, rear:-2.833, front:3.024, width:2.9421,
+  leo2a5m: { roof:2.44859, rear:-2.833, front:3.024, width:2.9421,
     bore:[-.12731,1.90798,6.10,.16260], wheelR:.34591,
     stations:[-2.46924,-1.69277,-.84589,-.05430,.71890,1.51565,2.35278],
     roofProbes:[[-2.5,2.39353],[-1.5,2.44278],[-.5,2.44597],[.5,2.43936],[1.5,2.33162],[2.5,2.03443]] },
-  leo2a5_x: { roof:2.63149, rear:-2.725, front:3.236, width:3.0467,
+  leo2a5: { roof:2.63149, rear:-2.725, front:3.236, width:3.0467,
     bore:[.023815,1.99791,6.11,.16382], wheelR:.35159,
     stations:[-2.252,-1.414,-.580,.287,1.048,1.850,2.694],
     roofProbes:[[-1.5,2.51290],[-.5,2.51306],[.5,2.51868],[1.5,2.40398],[2.5,2.2139]] },
@@ -88,7 +89,7 @@ for (const [id, source] of Object.entries(sources)) {
     // Owner 2026-10-01: remove the central fixed nose through the gun sweep.
     // These are the remaining outboard cheek ends, not revised source data.
     // The original complete-source envelope stays in sources above.
-    const openedCheekFront={leo2a7v_x:3.04354,leo2a6m_x:3.1764,leo2a4m_x:2.94327};
+    const openedCheekFront={leo2a7v:3.04354,leo2a6m:3.1764,leo2a5m:2.94327};
     near(shellBox.max.z,openedCheekFront[id]??source.front,
       openedCheekFront[id]!==undefined?.01:.065,`${id}: front cheek station after scoped gun opening`);
     near(shellBox.max.x-shellBox.min.x,source.width,.085,`${id}: shell width`);
@@ -134,7 +135,7 @@ for (const [id, source] of Object.entries(sources)) {
       `${id}: actual lowest linked shoe meets source ground zero`);
     assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined,`${id}: no second static shoe course`);
 
-    const roofGun=get(`${id}RoofMachineGun`);
+    const roofGun=get(`${tankSeedId(id)}RoofMachineGun`);
     const crewFixture=roofGun;
     let owner=crewFixture;
     while(owner && owner!==turret)owner=owner.parent;
@@ -153,11 +154,11 @@ for (const [id, source] of Object.entries(sources)) {
     assert.ok(muzzle.getWorldPosition(new THREE.Vector3()).distanceTo(flat)>.4,`${id}: gun pitch moves the physical muzzle`);
     turret.rotation.y=0;gun.rotation.x=0;tank.root.updateMatrixWorld(true);
 
-    if(id!=='leo2a4m_x') {
+    if(id!=='leo2a5m') {
       const ropes=[];
       hull.traverse(o=>{if(o.userData?.sourceEquipment==='recovery-cable')ropes.push(o);});
       assert.deepEqual(ropes.map(o=>o.name).sort(),
-        [`${id}RecoveryCable_-1`,`${id}RecoveryCable_1`],`${id}: only two source-identified recovery ropes`);
+        [`${tankSeedId(id)}RecoveryCable_-1`,`${tankSeedId(id)}RecoveryCable_1`],`${id}: only two source-identified recovery ropes`);
       for(const rope of ropes) {
         assert.equal(rope.geometry.type,'TubeGeometry',`${id}: exterior role belongs to actual thin rope, not armor`);
         assert.ok(rope.geometry.parameters.radius<=.018,`${id}: no broad surface hidden in the cable role`);
@@ -180,7 +181,7 @@ for (const [id, source] of Object.entries(sources)) {
       });
     }
 
-    if(id==='leo2a7v_x') {
+    if(id==='leo2a7v') {
       for(const [z,y] of [[3.3,1.43897],[3.4,1.35682],[3.5,1.27468],[3.6,1.19254]])
         near(ray(body,[0,4,z],[0,-1,0])?.y??NaN,y,.003,`${id}: source supporting glacis at z=${z}`);
       for(const x of [-.911,.911])near(ray(get('hullGlass'),[x,1.2872,5],[0,0,-1])?.z??NaN,
@@ -248,7 +249,7 @@ for (const [id, source] of Object.entries(sources)) {
       const hits=new THREE.Raycaster(new THREE.Vector3(-.8,2.5,2.4),new THREE.Vector3(0,0,-1),0,.8).intersectObjects(visible,false);
       assert.ok(hits.length&&hits[0].point.z<1.73,`${id}: no glass decal or cover mesh fills the optic's exterior air`);
     }
-    if(id==='leo2a6m_x') {
+    if(id==='leo2a6m') {
       for(const [z,y] of [[3.3,1.47173],[3.4,1.38043],[3.5,1.28914],[3.6,1.19784]])
         near(ray(body,[0,4,z],[0,-1,0])?.y??NaN,y,.003,`${id}: measured bow core support at z=${z}`);
       for(const [z,y] of [[3.3,1.48430],[3.4,1.39340],[3.5,1.30249]])
@@ -315,12 +316,12 @@ for (const [id, source] of Object.entries(sources)) {
       const hits=new THREE.Raycaster(new THREE.Vector3(1.88,4,-1.30),new THREE.Vector3(0,-1,0),0,5).intersectObjects(visible,false);
       assert.equal(hits.length,0,`${id}: stand-off space between cage and side armor is actual exterior air`);
     }
-    if(id==='leo2a4m_x') {
+    if(id==='leo2a5m') {
       // Main's field corrections (6763d7cc0, the owner's): the duplicate 30 mm cannon is gone and the original 7.62 mm
       // station is the live remote weapon, its support stock (cradle, cheeks, outboard receiver, sensor box) captured with
       // it (auxiliaryStation.ts captureAuxiliaryStock). That stock is now the station's own yawing mesh rather than part of
       // the turret's merged detail, and the mount's bounds include it; the same geometry is measured where it now lives.
-      const stationDetail=get(`${id}RoofMachineGun_yaw_turretDetail`);
+      const stationDetail=get(`${tankSeedId(id)}RoofMachineGun_yaw_turretDetail`);
       for(const [x,y] of [[.90,3.03976],[1.00,3.01360],[1.10,2.97733]])
         near(ray(stationDetail,[x,4,-.90],[0,-1,0])?.y??NaN,y,.004,
           `${id}: source separate RWS outboard sloping body at x=${x}`);
@@ -333,9 +334,9 @@ for (const [id, source] of Object.entries(sources)) {
       near(weaponBounds.max.z,-.087,.022,`${id}: source RWS full barrel station`);
       near(weaponBounds.max.y,3.03048,.02,`${id}: source RWS receiver elevation`);
     }
-    if(id==='leo2a5_x') {
+    if(id==='leo2a5') {
       for(const side of [-1,1]) {
-        const eye=get(`${id}BowTowEye_${side}`),bounds=new THREE.Box3().setFromPoints(vertices(eye));
+        const eye=get(`${tankSeedId(id)}BowTowEye_${side}`),bounds=new THREE.Box3().setFromPoints(vertices(eye));
         near(bounds.max.x-bounds.min.x,.09870,.0015,`${id}: source forged shackle transverse width`);
         near(bounds.min.y,1.04676,.006,`${id}: source hanging shackle lower envelope`);
         near(bounds.max.y,1.26149,.012,`${id}: source vertical shackle upper envelope`);

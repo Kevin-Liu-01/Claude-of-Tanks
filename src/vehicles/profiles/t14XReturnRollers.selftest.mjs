@@ -11,7 +11,7 @@ import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {matrix,finiteClearance,continuousShoeClearance,moving} from '../returnRollerPhysicsTest.mjs';
 
 // The literal published 6aa3bb6bf gear inputs (a frozen preservation witness) are retired: whole-tank change
-// detection of t14_x is the fleet geometry ledger's. Four rollers/side is an inferred T14 layout; this test
+// detection of t14_armata is the fleet geometry ledger's. Four rollers/side is an inferred T14 layout; this test
 // certifies physical construction. The roller-free twin below is a live same-run build of the current builder.
 const stats={builds:0,poses:0,negativeControls:0,rows:[]};
 // Finite-stock and continuous near/far proof reuses the maintained four-
@@ -87,7 +87,7 @@ function mounts(c,bounds){
 }
 
 for(const quality of['high','low']){
- const old=capture('t14_x',buildT14X,quality,true),current=capture('t14_x',buildT14X,quality,false);
+ const old=capture('t14_armata',buildT14X,quality,true),current=capture('t14_armata',buildT14X,quality,false);
  try{
   assert.equal(old.port.hullG.getObjectByName('gearReturnRollerTires'),undefined);
   assert.equal(old.port.hullG.getObjectByName('gearReturnRollerRotors'),undefined);
@@ -139,13 +139,13 @@ for(const quality of['high','low']){
   const perRollerTriangles=triangles('gearReturnRollerRotors')+triangles('gearReturnRollerSpindles');
   const budget=quality==='high'?160:80;
   assert.equal(perRollerTriangles,budget,'Complete closed rotor plus finite spindle meets unchanged cost budget');
-  stats.rows.push({id:'t14_x',quality,rollerInstances:8,minimumRoadWheelClearanceLowerBoundM:movingResult.roadMinimum,minimumTrackClearanceM:clearance,continuousShoeClearanceM:continuous,perRollerTriangles,budget,performance:perRollerTriangles<=budget?'PASS':'FAIL'});
+  stats.rows.push({id:'t14_armata',quality,rollerInstances:8,minimumRoadWheelClearanceLowerBoundM:movingResult.roadMinimum,minimumTrackClearanceM:clearance,continuousShoeClearanceM:continuous,perRollerTriangles,budget,performance:perRollerTriangles<=budget?'PASS':'FAIL'});
   stats.rows.at(-1).measuredSuspensionStrokes=movingResult.strokes;
   console.log(JSON.stringify(stats.rows.at(-1)));
  }finally{old.dispose();current.dispose();}
  let battle,battleGear;const buildBattleGear=KIT.buildRunningGear;
  KIT.buildRunningGear=(P,cfg)=>battleGear=buildBattleGear(P,cfg);
- try{battle=createTank('t14_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true,camoSeed:4242});stats.builds++;}
+ try{battle=createTank('t14_armata',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true,camoSeed:4242});stats.builds++;}
  finally{KIT.buildRunningGear=buildBattleGear;}
  const disposal=['gearReturnRollerRotors','gearReturnRollerSpindles'].map(name=>{
   const mesh=battle.root.getObjectByName(name),count={name,geometry:0,instances:0};
@@ -154,7 +154,7 @@ for(const quality of['high','low']){
  });
  try{
   if(quality==='high')assert.ok(battle.root.userData.battleDetailGroupCount>0);
-  const state=createTankState(getSpec('t14_x'),new T.Vector3(),0);
+  const state=createTankState(getSpec('t14_armata'),new T.Vector3(),0);
   for(const distance of[150,300,15])for(const yaw of[0,Math.PI/2,Math.PI]){
    state.turretYaw=yaw;
    battle.syncFromState(state,1/60,distance);
@@ -168,7 +168,7 @@ for(const quality of['high','low']){
   stats.rows.at(-1).visibleSupport=contacts.map(row=>({distance:row.distance,phases:row.phases,
    maximumGapM:row.maximumVisibleSupportGapM,shoeOnlyMaximumGapM:row.shoeOnlyMaximumGapM,owner:row.worst?.owner}));
   for(const row of contacts){
-   assert.equal(row.contact,'PASS',`t14_x/${quality}: actual visible stock gap ${row.maximumVisibleSupportGapM} m exceeds 6 mm at ${row.distance} m`);
+   assert.equal(row.contact,'PASS',`t14_armata/${quality}: actual visible stock gap ${row.maximumVisibleSupportGapM} m exceeds 6 mm at ${row.distance} m`);
    assert.ok(row.eligibility.filter(e=>e.name.startsWith('gearTrackBand')).every(e=>e.drawable&&e.effectiveElements>0&&e.instanceCount===1),
     'Supporting bands retain nonzero real draw ranges at every native shoe LOD');
    if(row.distance<150)assert.ok(row.shoeOnlyMaximumGapM>.006,'Shoe-only negative evidence cannot substitute for the visible supporting band');
@@ -186,17 +186,17 @@ for(const quality of['high','low']){
    const {returnRollerGeometry,...cfg}=input;returnRollerGeometry.dispose();
    return legacyGear=nativeBuild(P,cfg);
   };
-  try{legacy=createTank('t14_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true,camoSeed:4242});stats.builds++;}
+  try{legacy=createTank('t14_armata',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true,camoSeed:4242});stats.builds++;}
   finally{KIT.buildRunningGear=nativeBuild;}
   try{
-   const state=createTankState(getSpec('t14_x'),new T.Vector3(),0);
+   const state=createTankState(getSpec('t14_armata'),new T.Vector3(),0);
    const rows=auditVisibleReturnRollerContact(legacy,legacyGear,state,{radiusM:.09});
    for(const row of rows)assert.equal(row.contact,'FAIL','Actual legacy LOW crown remains a failing visible-support control');
    stats.rows.at(-1).legacyLowSupportGapM=rows.map(row=>row.maximumVisibleSupportGapM);
    stats.negativeControls++;
   }finally{legacy.dispose();}
  }
- const control=createTank('t14',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});stats.builds++;
+ const control=createTank('object148_proto',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});stats.builds++;
  try{
   const rollers=control.root.getObjectByName('gearReturnRollerTires');assert.equal(rollers.count,8,'Original T14 control remains untouched; not historical count proof');
   const actual=[];for(let i=0;i<rollers.count;i++){const m=new T.Matrix4();rollers.getMatrixAt(i,m);actual.push(new T.Vector3().setFromMatrixPosition(m).toArray());}

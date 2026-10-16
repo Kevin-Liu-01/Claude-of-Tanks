@@ -132,7 +132,7 @@ for (const id of ALL_TANK_IDS) {
 const salvoIds = [...new Set(groups.filter((g) => g.kind === 'salvo').map((g) => g.id))].sort();
 const autoloaderIds = [...new Set(groups.filter((g) => g.kind === 'autoloader').map((g) => g.id))].sort();
 assert.ok(salvoIds.includes('ztz100_prototype'), 'the ZTZ-100 prototype twin HJ-P9 rack is a salvo group');
-assert.ok(salvoIds.includes('object695_x'), 'the Object 695 quad rack is a salvo group');
+assert.ok(salvoIds.includes('object695'), 'the Object 695 quad rack is a salvo group');
 assert.ok(autoloaderIds.length >= 10, `cannon autoloaders remain covered (${autoloaderIds.length})`);
 for (const g of groups.filter((g) => g.kind === 'salvo')) {
   assert.ok(g.intervalS < 1 && g.groupReloadS > 5, `${g.id}[${g.slot}]: a salvo cycles quickly and reloads slowly`);

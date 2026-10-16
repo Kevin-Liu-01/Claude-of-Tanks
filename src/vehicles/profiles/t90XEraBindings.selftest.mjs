@@ -9,7 +9,7 @@ import {addT90AXFenderClosures} from './t90AXFenderClosures.ts';
 // whole-tank change detection of the four T-90 X hulls is the fleet geometry ledger's. Kept: the independently
 // tested V guards and A fender closures really are in the built tank (exact vertex multiplicity), the inherited ERA
 // gameplay zones, donor ERA values, removable-facet registration, fixed backing, reset and rig anchors.
-const IDS=['t90a_x','t90a_vladimir_x','t90m_x','t90sm_x'];
+const IDS=['t90a','t90a_vladimir','t90m','t90sm'];
 
 function visible(object) {
   for(let cursor=object;cursor;cursor=cursor.parent)if(!cursor.visible)return false;
@@ -121,14 +121,14 @@ function assertActualFacet(surface,triangles,pivot,label) {
 }
 
 function expectedZones(id) {
-  const sectors=id==='t90sm_x'?['glacis','turret']:['glacis','skirt','turret'];
-  if(id==='t90m_x')sectors.push('side');
+  const sectors=id==='t90sm'?['glacis','turret']:['glacis','skirt','turret'];
+  if(id==='t90m')sectors.push('side');
   return sectors.flatMap(sector=>['L','R'].map(side=>`${sector}_era_${side}`)).sort();
 }
 
 function assertDonorValues(id,plates) {
   for(const plate of plates) {
-    const classic=id==='t90a_x'||id==='t90a_vladimir_x';
+    const classic=id==='t90a'||id==='t90a_vladimir';
     const side=/^(skirt|side)_/.test(plate.name);
     assert.equal(plate.era.keReduction,classic?.2:side?.18:.3,`${id}/${plate.name}: donor KE unchanged`);
     assert.equal(plate.era.ceFlatMm,classic||side?400:600,`${id}/${plate.name}: donor CE unchanged`);
@@ -156,8 +156,8 @@ for(const id of IDS)for(const quality of ['high','low']) {
   try {
     const label=`${id}/${quality}`,spec=getSpec(id);
     // The independently tested repair solids are physically present in the actual build, with exact multiplicity.
-    if(id==='t90a_vladimir_x')subtractExactVertices(worldVertices(tank.root),currentVGuardVertices());
-    if(id==='t90a_x')subtractExactVertices(worldVertices(tank.root),currentAFenderVertices());
+    if(id==='t90a_vladimir')subtractExactVertices(worldVertices(tank.root),currentVGuardVertices());
+    if(id==='t90a')subtractExactVertices(worldVertices(tank.root),currentAFenderVertices());
     const rows=tank.root.userData.eraVisualBindingReceipt.plates;
     assert.deepEqual(rows.map(row=>row.name).sort(),expectedZones(id),`${label}: exactly inherited gameplay zones`);
     assertDonorValues(id,[...spec.armor.hullPlates,...spec.armor.turretPlates].filter(plate=>plate.kind==='era'));

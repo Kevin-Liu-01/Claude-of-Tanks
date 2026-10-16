@@ -14,7 +14,7 @@ try{
    const {page,errors}=await openGamePage(browser,{port,viewport});
    page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
    await page.evaluate(async()=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement('ac130',{allies:4,enemies:4});});
-   await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:'ac130'});
+   await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:'verdant',gameMode:'ac130'});
    if(!viewport.hasTouch){await page.mouse.click(viewport.width/2,viewport.height/2);await page.waitForFunction(()=>document.pointerLockElement!==null,{timeout:5000});}
    for(const slot of [0,1,2]){
     await page.evaluate(slot=>{

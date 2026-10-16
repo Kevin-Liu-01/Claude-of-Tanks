@@ -65,10 +65,10 @@ assert.equal(registry.ztz100_prototype,undefined,'new concept cannot use the his
 const ztz = {source:'glb',qualityBar:'preservation',comparisonPurpose:'preservation',preservation:ZTZ100_PROTOTYPE_BASELINE};
 assert.equal(requiredMinimumForQualityBar(ztz.qualityBar),99,'historical floor itself is unchanged');
 assert.equal(ZTZ100_PROTOTYPE_BASELINE.sourceCommit,'31d08f67378cd2bc5b883de3e0eba10513784612');
-assert.equal(ZTZ100_PROTOTYPE_BASELINE.sourceId,'ztz100_x');
+assert.equal(ZTZ100_PROTOTYPE_BASELINE.sourceId,'ztz100');
 assert.equal(ZTZ100_PROTOTYPE_BASELINE.glbSha256,'ffbc0a0709328f693597054cfe048fcc0d7e289f720d9c777ffaf585722e86b6');
 assert.equal(ZTZ100_PROTOTYPE_BASELINE.geometrySha256,'50d6b799d51ab196f9991dba5ba390daae3849fc2de72205f027583cd1dd0f7a');
-for(const id of ['ztz100_prototype','ztz100_x','type100','toString','__proto__','unregistered']) {
+for(const id of ['ztz100_prototype','ztz100','type100','toString','__proto__','unregistered']) {
   assert.throws(()=>validatedPreservationOracle(ztz,id),/invalid or unpinned/,'retired record cannot authorize any current vehicle');
 }
 for(const key of Object.keys(ZTZ100_PROTOTYPE_BASELINE)) {
@@ -76,8 +76,8 @@ for(const key of Object.keys(ZTZ100_PROTOTYPE_BASELINE)) {
 }
 assert.throws(()=>validatedPreservationOracle({...ztz,preservation:REVOLUTION_PROTO_BASELINE},'ztz100_prototype'),/invalid or unpinned/);
 assert.throws(()=>validatedPreservationOracle({...preserved,preservation:ZTZ100_PROTOTYPE_BASELINE},'leo2_revolution_proto'),/invalid or unpinned/);
-assert.equal(validatedPreservationOracle(registry.ztz100_x,'ztz100_x'),null);
-assert.equal(requiredMinimumForQualityBar(registry.ztz100_x.qualityBar),92,'service source fidelity is unchanged');
+assert.equal(validatedPreservationOracle(registry.ztz100,'ztz100'),null);
+assert.equal(requiredMinimumForQualityBar(registry.ztz100.qualityBar),92,'service source fidelity is unchanged');
 await assert.rejects(verifyPreservationBytes(new ArrayBuffer(8),ZTZ100_PROTOTYPE_BASELINE),/hash mismatch/);
 const ztzOracle=new URL('../public/models/community-candidates/ztz100_prototype_preservation.glb',import.meta.url);
 if(fs.existsSync(ztzOracle)) {

@@ -71,3 +71,17 @@ export function shadowDepthBiasForTexel(worldUnitsPerTexel: number, filterRadius
  * margin, only a hair over the depth's own precision. It takes no receiver normal offset either.
  */
 export const SHADOW_RECEIVER_ONLY_BIAS_M = 0.02;
+
+/**
+ * 2026-10-10 (the shadows lane, the Whiteout round; the gauntlet's wave 342a: Whiteout "flips between flat shadowless snow
+ * and sharp sunny-day shadows under the same closed overcast"): under a closed deck the light that still casts is a wide
+ * bright patch, not the sun's disk. A cascade's PCF radius widens by the deck's uniform share of the cut (the light
+ * model's overcast × closure) × DECK_PENUMBRA_K, never below its own radius and never past DECK_PENUMBRA_MAX_TEXELS (the
+ * five-tap disk hatches past about three texels: lighting.ts r8). A deck with gaps (closure 0) and an open sky keep it.
+ */
+export const DECK_PENUMBRA_K = 1;
+export const DECK_PENUMBRA_MAX_TEXELS = 3;
+export function deckPenumbraRadius(baseTexels: number, deckShare: number, k = DECK_PENUMBRA_K, maxTexels = DECK_PENUMBRA_MAX_TEXELS): number {
+  const widen = 1 + Math.max(0, k) * Math.min(1, Math.max(0, deckShare));
+  return widen > 1 ? Math.max(baseTexels, Math.min(baseTexels * widen, maxTexels)) : baseTexels;
+}

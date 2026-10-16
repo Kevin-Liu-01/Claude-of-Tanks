@@ -18,7 +18,7 @@ try{
   await context.addInitScript(()=>{
    const at=Date.UTC(2026,9,5,10);
    const medals=Object.fromEntries(['chain_of_thought','few_shot','first_blood','ace_gunner','steel_wall','long_shot','flag_runner','gunship_ace'].map((id,i)=>[id,{count:i+1,first:at-86400000,last:at}]));
-   localStorage.setItem('cot.service.v1',JSON.stringify({version:1,medals,stats:{battles:120,wins:78,kills:420,damage:456780,bestChain:5,bestStreak:8,bestKills:9,longestKillM:1340},achievements:{chain_thinker:{tier:2,at}},unseen:['medal:chain_of_thought'],history:[{id:'test-battle',at,vehicleId:'m1a2',mapId:'verdant',mode:'standard',result:'victory',durationS:320,kills:4,damage:8240,shots:10,hits:8,bestChain:3,medals:['chain_of_thought','ace_gunner'],achievements:[],trace:[{t:30,specId:'t90m',distM:820,cause:'shot'},{t:38,specId:'leo2a5',distM:340,cause:'ammorack'}]}]}));
+   localStorage.setItem('cot.service.v1',JSON.stringify({version:1,medals,stats:{battles:120,wins:78,kills:420,damage:456780,bestChain:5,bestStreak:8,bestKills:9,longestKillM:1340},achievements:{chain_thinker:{tier:2,at}},unseen:['medal:chain_of_thought'],history:[{id:'test-battle',at,vehicleId:'m1a1_abrams_hc',mapId:'verdant',mode:'standard',result:'victory',durationS:320,kills:4,damage:8240,shots:10,hits:8,bestChain:3,medals:['chain_of_thought','ace_gunner'],achievements:[],trace:[{t:30,specId:'t90am',distM:820,cause:'shot'},{t:38,specId:'leo2a4_v',distM:340,cause:'ammorack'}]}]}));
    localStorage.setItem('cot.profile.v2',JSON.stringify({version:2,matches:120,wins:78,losses:40,draws:2,kills:420,damage:456780,bestDamage:14230}));
   });
   await page.goto(`${url}/tools/fixtures/mobile-surfaces.html?locale=${locale}`,{waitUntil:'networkidle'});

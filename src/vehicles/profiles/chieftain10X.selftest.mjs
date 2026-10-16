@@ -132,7 +132,7 @@ function measuredTank(quality) {
   const build = KIT.buildRunningGear;
   KIT.buildRunningGear = (...args) => { gear = build(...args); return gear; };
   try {
-    return { tank: createTank('chieftain_mk10_x', null, { proceduralOnly: true,
+    return { tank: createTank('chieftain_mk10', null, { proceduralOnly: true,
       geometryReceipt: true, quality, batchStatic: false }), gear };
   } finally { KIT.buildRunningGear = build; }
 }

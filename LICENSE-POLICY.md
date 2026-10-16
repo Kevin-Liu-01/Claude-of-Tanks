@@ -34,11 +34,22 @@ docs/SHOWCASE-LIBRARY.md
 docs/MARKETING-BATTLE-CAMPAIGN.md
 public/audio/**
 public/brand/**
+public/field-guide/**
 public/fx/**
 public/icons/**
 public/maps/**
 public/media/**
+public/minimaps/**
+server/world-collision-manifests/**
+src/audio/*.generated.ts
+src/docs/*.generated.json
+src/fx/*.ledger.json
+src/sim/*.generated.ts
+src/ui/*.generated.ts
+tools/audio/**
 tools/marketing-shots/**
+tools/media-production/**
+tools/media-r5/**
 ```
 
 Reserved Content includes procedural vehicle geometry and profiles; vehicle
@@ -46,7 +57,9 @@ specifications, balance data, and calibrations; procedural battlefields,
 terrain, structures, props, vegetation, wrecks, placement rules, and world
 composition; fleet materials and markings; vehicle and map production records;
 capture recipes; generated tank renders and technical diagrams; screenshots
-and video; original audio and effects; and first-party branding. Substantially
+and video; map plates and field-guide images; world collision manifests and
+generated vehicle, audio, effects and interface data; original audio and
+effects and their production records; and first-party branding. Substantially
 identical copies and generated forms retain the same status wherever they
 appear in the repository or a build artifact.
 

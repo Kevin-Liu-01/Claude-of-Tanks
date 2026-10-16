@@ -4,5 +4,5 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "bmp3m_dragun125_x": { v: 0.025, o: [-1.605, 0.3966, -3.5994], t: [0, 1.8, -1.08], g: [0, 2.03265, 0.387] },
+  "bmp3m_dragun125": { v: 0.025, o: [-1.605, 0.3966, -3.5994], t: [0, 1.8, -1.08], g: [0, 2.03265, 0.387] },
 });

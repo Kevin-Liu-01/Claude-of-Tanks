@@ -14,19 +14,19 @@ import {
 } from './profiles/leopardImprovedHull.ts';
 
 const entries = [
-  ['leo2a7v_x', 'leo2a7v', 'Leopard 2A7V'],
-  ['leo2a6m_x', 'leo2a6m', 'Leopard 2A6M'],
-  ['leo2a4m_x', 'leo2a4m', 'Leopard 2A5M'],
-  ['leo2a5_x', 'leo2a5', 'Leopard 2A5'],
-  ['merkava4_x', 'merkava4', 'Merkava Mk 4'],
-  ['merkava3d_x', 'merkava3d', 'Merkava Mk 3D'],
-  ['k2_x', 'k2', 'K2 Black Panther'],
-  ['kf51_x', 'kf51', 'KF51 Panther'],
-  ['t90a_x', 't90a', 'T-90A'],
-  ['t90a_vladimir_x', 't90a_vladimir', 'T-90A Vladimir'],
-  ['t90m_x', 't90m', 'T-90M'],
-  ['t90sm_x', 't90sm', 'T-90SM'],
-  ['t14_x', 't14', 'T-14 Armata'],
+  ['leo2a7v', 'leo2_improved', 'Leopard 2A7V'],
+  ['leo2a6m', 'leo2a4_otco', 'Leopard 2A6M'],
+  ['leo2a5m', 'leo2a4m_can', 'Leopard 2A5M'],
+  ['leo2a5', 'leo2a4_v', 'Leopard 2A5'],
+  ['merkava4', 'merkava4', 'Merkava Mk 4'],
+  ['merkava3d', 'merkava3_baz', 'Merkava Mk 3D'],
+  ['k2_black_panther', 'xk2_black_panther', 'K2 Black Panther'],
+  ['kf51_panther', 'kf51_evo', 'KF51 Panther'],
+  ['t90a', 't90a_2004', 'T-90A'],
+  ['t90a_vladimir', 't90a_2006', 'T-90A Vladimir'],
+  ['t90m', 't90am', 'T-90M'],
+  ['t90sm', 't90sm_2013', 'T-90SM'],
+  ['t14_armata', 'object148_proto', 'T-14 Armata'],
 ] as const;
 
 export const SOURCE_X_IDS = Object.freeze(entries.map(([id]) => id));
@@ -35,31 +35,31 @@ export const SOURCE_X_DONORS = Object.freeze(Object.fromEntries(entries.map(([id
 // exterior lengths include fitted rear stowage; hullLengthM is the structural
 // hull datum. Differences from published configurations are in source packets.
 const dimensions: Readonly<Record<string, FleetDimensions>> = Object.freeze({
-  leo2a7v_x: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4, heightM: 2.64,
+  leo2a7v: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4, heightM: 2.64,
     silhouetteHeightM: 3.415 },
-  leo2a6m_x: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.98, heightM: 3.03, silhouetteHeightM: 2.800 },
-  leo2a4m_x: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 3.77, heightM: 2.62,
+  leo2a6m: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.98, heightM: 3.03, silhouetteHeightM: 2.800 },
+  leo2a5m: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 3.77, heightM: 2.62,
     silhouetteHeightM: 3.120 },
-  leo2a5_x: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64,
+  leo2a5: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64,
     silhouetteHeightM: 3.005, silhouetteHullLengthM: 7.814 },
-  merkava4_x: { hullLengthM: 7.60, overallLengthM: 8.705, widthM: 3.77689, heightM: 2.565,
+  merkava4: { hullLengthM: 7.60, overallLengthM: 8.705, widthM: 3.77689, heightM: 2.565,
     // Source-only P95 at the gate's fixed 1024 raster: four whips occupy
     // enough 96-column bins to enter this statistic. It is NOT roof height;
     // actual 2.565 m armor roof remains an independent geometric assertion.
     silhouetteHeightM: 4.655 },
-  merkava3d_x: { hullLengthM: 7.9645, overallLengthM: 8.8382, widthM: 3.976352, heightM: 2.59, silhouetteHeightM: 3.016 },
-  k2_x: { hullLengthM: 7.3418, overallLengthM: 10.8448, widthM: 3.71906, heightM: 2.369,
+  merkava3d: { hullLengthM: 7.9645, overallLengthM: 8.8382, widthM: 3.976352, heightM: 2.59, silhouetteHeightM: 3.016 },
+  k2_black_panther: { hullLengthM: 7.3418, overallLengthM: 10.8448, widthM: 3.71906, heightM: 2.369,
     silhouetteHeightM: 3.020, silhouetteHullLengthM: 7.566 },
-  kf51_x: { hullLengthM: 7.70, overallLengthM: 10.7497, widthM: 3.5603123, heightM: 2.5603, silhouetteHeightM: 3.093 },
-  t90a_x: { hullLengthM: 6.86, overallLengthM: 10.4586, widthM: 3.78, heightM: 2.2049,
+  kf51_panther: { hullLengthM: 7.70, overallLengthM: 10.7497, widthM: 3.5603123, heightM: 2.5603, silhouetteHeightM: 3.093 },
+  t90a: { hullLengthM: 6.86, overallLengthM: 10.4586, widthM: 3.78, heightM: 2.2049,
     silhouetteHullLengthM: 7.888, silhouetteHeightM: 2.727 },
-  t90a_vladimir_x: { hullLengthM: 6.86, overallLengthM: 10.7863, widthM: 3.78, heightM: 2.2595,
+  t90a_vladimir: { hullLengthM: 6.86, overallLengthM: 10.7863, widthM: 3.78, heightM: 2.2595,
     silhouetteHullLengthM: 8.016, silhouetteHeightM: 2.881 },
-  t90m_x: { hullLengthM: 6.86, overallLengthM: 10.3513, widthM: 3.78, heightM: 2.0309,
+  t90m: { hullLengthM: 6.86, overallLengthM: 10.3513, widthM: 3.78, heightM: 2.0309,
     silhouetteHullLengthM: 7.686, silhouetteHeightM: 2.828 },
-  t90sm_x: { hullLengthM: 6.86, overallLengthM: 11.1371, widthM: 3.78, heightM: 2.2893,
+  t90sm: { hullLengthM: 6.86, overallLengthM: 11.1371, widthM: 3.78, heightM: 2.2893,
     silhouetteHullLengthM: 7.770, silhouetteHeightM: 3.113 },
-  t14_x: { hullLengthM: 8.65425, overallLengthM: 9.9701, widthM: 3.9, heightM: 2.75,
+  t14_armata: { hullLengthM: 8.65425, overallLengthM: 9.9701, widthM: 3.9, heightM: 2.75,
     // Fixed source P95 occupied height includes the remote weapon station;
     // structural roof height remains separate. Never fit this to the candidate.
     silhouetteHeightM: 3.176 },
@@ -70,19 +70,19 @@ const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 // rigs. Donor pivots would put damage rays in a different place from the tank.
 type SourceFrame = { turret: [number, number, number]; gun: [number, number, number]; muzzleZ: number };
 const sourceFrames: Readonly<Record<string, SourceFrame>> = Object.freeze({
-  leo2a7v_x: { turret: [0, 1.79, .52], gun: [0, 2.0326, 2.02], muzzleZ: 6.969 },
-  leo2a6m_x: { turret: [.006, 1.719, .508], gun: [-.0005, 2.0894, 1.95], muzzleZ: 7.025 },
-  leo2a4m_x: { turret: [-.05, 1.65, .36], gun: [-.1273, 1.908, 1.91], muzzleZ: 6.10 },
-  leo2a5_x: { turret: [0, 1.662, .661], gun: [.0238, 1.9979, 1.659], muzzleZ: 6.11 },
-  merkava4_x: { turret: [0, 1.605, -.3906], gun: [0, 1.9934619, 1.93], muzzleZ: 4.8055 },
-  merkava3d_x: { turret: [0, 1.68034, -.72418], gun: [0, 2.0898, 1.4258], muzzleZ: 4.8560 },
-  k2_x: { turret: [0, 1.5945, .21815], gun: [0, 1.99253, 1.36815], muzzleZ: 6.91805 },
-  kf51_x: { turret: [0, 1.4596, .5185], gun: [0, 1.85491175, 1.3478], muzzleZ: 6.8997 },
-  t90a_x: { turret: [.010, 1.468, -.0039], gun: [.005, 1.8174, 1.30], muzzleZ: 6.2642 },
-  t90a_vladimir_x: { turret: [0, 1.416, .298], gun: [0, 1.7287, 1.34], muzzleZ: 6.5964 },
-  t90m_x: { turret: [.018092, 1.336748, -.104459], gun: [.001973, 1.608251, 1.140604], muzzleZ: 6.2542 },
-  t90sm_x: { turret: [.008, 1.532, .359], gun: [.001, 1.90309, 1.56], muzzleZ: 7.0399 },
-  t14_x: { turret: [0, 1.69, -.22], gun: [0, 2.051, 1.00], muzzleZ: 5.643 },
+  leo2a7v: { turret: [0, 1.79, .52], gun: [0, 2.0326, 2.02], muzzleZ: 6.969 },
+  leo2a6m: { turret: [.006, 1.719, .508], gun: [-.0005, 2.0894, 1.95], muzzleZ: 7.025 },
+  leo2a5m: { turret: [-.05, 1.65, .36], gun: [-.1273, 1.908, 1.91], muzzleZ: 6.10 },
+  leo2a5: { turret: [0, 1.662, .661], gun: [.0238, 1.9979, 1.659], muzzleZ: 6.11 },
+  merkava4: { turret: [0, 1.605, -.3906], gun: [0, 1.9934619, 1.93], muzzleZ: 4.8055 },
+  merkava3d: { turret: [0, 1.68034, -.72418], gun: [0, 2.0898, 1.4258], muzzleZ: 4.8560 },
+  k2_black_panther: { turret: [0, 1.5945, .21815], gun: [0, 1.99253, 1.36815], muzzleZ: 6.91805 },
+  kf51_panther: { turret: [0, 1.4596, .5185], gun: [0, 1.85491175, 1.3478], muzzleZ: 6.8997 },
+  t90a: { turret: [.010, 1.468, -.0039], gun: [.005, 1.8174, 1.30], muzzleZ: 6.2642 },
+  t90a_vladimir: { turret: [0, 1.416, .298], gun: [0, 1.7287, 1.34], muzzleZ: 6.5964 },
+  t90m: { turret: [.018092, 1.336748, -.104459], gun: [.001973, 1.608251, 1.140604], muzzleZ: 6.2542 },
+  t90sm: { turret: [.008, 1.532, .359], gun: [.001, 1.90309, 1.56], muzzleZ: 7.0399 },
+  t14_armata: { turret: [0, 1.69, -.22], gun: [0, 2.051, 1.00], muzzleZ: 5.643 },
 });
 function applySourceFrame(spec: FleetTankSpec, id: string): void {
   const frame = sourceFrames[id];
@@ -95,7 +95,7 @@ const specs: Record<string, FleetTankSpec> = {};
 
 function fitSourceArmor(spec: FleetTankSpec, donorDimensions: FleetDimensions): void {
   let baseDimensions = donorDimensions;
-  if (spec.id === 'leo2a7v_x') {
+  if (spec.id === 'leo2a7v') {
     // The independent 2A7V retains its original hull and turret proportions.
     // Undo the Improved donor's hull-only edit before fitting its source frame.
     scaleLeopardImprovedHullArmor(spec.armor, 1 / LEOPARD_IMPROVED_HULL_WIDTH_SCALE);
@@ -134,7 +134,7 @@ export function synchronizeSourceXCombatMetadata(): void {
     'gunPitchDegS', 'gunElevationDeg', 'gunDepressionDeg', 'gun'] as const;
   for (const [id, donorId] of entries) {
     const target = registries.tankSpecs[id], registered = donorSpec(registries.tankSpecs, donorId);
-    const donor = donorId === 'k2' ? { ...registered, ...k2SourceMetadata() } : registered;
+    const donor = donorId === 'xk2_black_panther' ? { ...registered, ...k2SourceMetadata() } : registered;
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
     fitSourceArmor(target, donor.dims);

@@ -20,7 +20,7 @@ const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { wheelPatternFor } = await import('../src/vehicles/wheelPatterns.ts');
 const { resolveNationWheel } = await import('../src/vehicles/nationWheelSets.ts').catch(() => ({ resolveNationWheel: null }));
 // tankFactory.ts registers the whole roster for node tools; fleetFactory (the browser's lazy owner) must not be imported here.
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a2,challenger2,t90m').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a1_abrams_hc,challenger2,t90am').split(',').filter(Boolean);
 
 const ROAD_WHEEL_LAYER = /^(gearRoadWheel|.*[Ww]heel(Face|Steel|Tire|Groove|Fastener|Hardware|Rim|Dish|Hub|Bolt|Recess|Pressed|Detail|Paired|Forged|Service|Annul))/;
 function triangles(geometry) {

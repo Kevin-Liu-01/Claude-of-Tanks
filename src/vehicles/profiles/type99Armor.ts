@@ -578,10 +578,10 @@ function vt4A1Armor(): ArmorEnvelope {
 }
 
 export function createType99Armor(
-  variant: 'type99a' | 'ztz99a2_prototype' | 'ztz99a2' | 'vt4a1',
+  variant: 'ztz99_longwei' | 'ztz99a' | 'ztz99a2' | 'vt4a1',
 ): ArmorEnvelope {
-  if (variant === 'type99a') return type99AArmor();
-  if (variant === 'ztz99a2_prototype') return ztz99A2PrototypeArmor();
+  if (variant === 'ztz99_longwei') return type99AArmor();
+  if (variant === 'ztz99a') return ztz99A2PrototypeArmor();
   if (variant === 'ztz99a2') return ztz99A2Armor();
   if (variant === 'vt4a1') return vt4A1Armor();
   throw new Error(`Unknown Type 99 armor variant: ${variant}`);

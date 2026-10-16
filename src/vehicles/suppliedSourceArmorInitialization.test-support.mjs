@@ -12,7 +12,7 @@ const {synchronizeSuppliedSourceCombatMetadata:sync}=await import('./suppliedSou
 assert.equal(isFleetBalanceFinalized(TANK_SPECS),false,'pre-finalization path is exercised');
 const saved=new Map(Object.entries(TANK_SPECS).map(([id,s])=>[id,structuredClone(s)]));
 const owners=['hull','turret'];
-const cases=[['type96b_x','type99a'],['aft10_x','m551_sheridan'],['sabra_mk2_x','m60a3']].map(([id,donorId])=>({id,spec:TANK_SPECS[id],donor:TANK_SPECS[donorId]}));
+const cases=[['type96b','ztz99_longwei'],['aft10','m551_sheridan'],['sabra_mk2','m60a3']].map(([id,donorId])=>({id,spec:TANK_SPECS[id],donor:TANK_SPECS[donorId]}));
 function check({id,spec,donor,frame,donorBefore}){
  assert.equal(spec.hp,donor.hp,`${id}: fresh donor tuning copied`);
  const ratios=['widthM','heightM','hullLengthM'].map(k=>spec.dims[k]/donor.dims[k]);

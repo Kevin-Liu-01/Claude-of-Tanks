@@ -8,7 +8,7 @@ import { createWreckEnvironment, createWreckTurrets, wreckTurretProfile } from '
 // authority offers one, a local body of the same engine in a composition, and the authority's motion carried on when it
 // goes quiet mid-flight (a killcam freezes the simulation) — never a table pose, never a jump.
 
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 const profile = wreckTurretProfile(spec);
 const GROUND = 2;
 

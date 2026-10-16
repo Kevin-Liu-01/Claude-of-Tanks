@@ -24,7 +24,7 @@ const assertOverlaps = (a, b, message, epsilon = 1e-5) => {
       `${message} on ${['x', 'y', 'z'][axis]} (${overlapM(a, b, axis).toFixed(6)} m)`);
   }
 };
-const tank = createTank('t90a', null, {
+const tank = createTank('t90a_2004', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
@@ -32,7 +32,7 @@ const tank = createTank('t90a', null, {
 });
 
 try {
-  assert.equal(TANK_SPECS.t90a.visual.number, '112',
+  assert.equal(TANK_SPECS.t90a_2004.visual.number, '112',
     'RU-112 resolves to the base T-90A profile');
 
   const turret = tank.root.getObjectByName('rig_turret');
@@ -227,7 +227,7 @@ try {
   tank.dispose();
 }
 
-const burlak = createTank('t90a_burlak', null, {
+const burlak = createTank('t90a_burlak_proto', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
@@ -237,7 +237,7 @@ try {
   const burlakTurret = burlak.root.getObjectByName('rig_turret');
   // The accepted seat is a source-frame station; main's owner-directed 1.05 T-90 family size (245aa4e4e) bakes the
   // Burlak's installed turret frame by its factor (the base T-90A above is not resized).
-  const burlakSeat = () => near(burlakTurret.position.z, 0.12 * (VEHICLE_SIZE_FACTORS.t90a_burlak ?? 1),
+  const burlakSeat = () => near(burlakTurret.position.z, 0.12 * (VEHICLE_SIZE_FACTORS.t90a_burlak_proto ?? 1),
     'Burlak preserves its independently accepted turret seat');
   burlakSeat();
   // Seeded defect: the installed seat moved by one millimetre must fail.

@@ -59,7 +59,7 @@ function rootEngagement(t){
   }
 }
 for(const quality of ['high','low']){
-  const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const meshes=visibleMeshes(t);exhaust(meshes);cradles(meshes);skirts(meshes);rootEngagement(t);}
   finally{t.dispose();}
 }

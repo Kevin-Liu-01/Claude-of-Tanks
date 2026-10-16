@@ -597,7 +597,7 @@ export function readCells(parts: ShellParts): CellReading[] | null {
 // ---------------------------------------------------------------------------------------------------- a ruin
 
 /** A wall piece of a ruin read off its parts: its base's middle, its axes, its half length and thickness, its top. */
-interface WallPieceReading {
+export interface WallPieceReading {
   c: Vec3;
   along: Vec3;
   out: Vec3;
@@ -607,6 +607,33 @@ interface WallPieceReading {
   top: number[];
   bucket: string;
   tint: Rgb;
+}
+
+/**
+ * A ruin builder's own account of the walls it left standing (props census E11, lane B 2026-10-14): each wall a piece
+ * in the building's frame, recorded while the kit builds (index.ts buildRegionalParts keeps them in the kit's plan) so
+ * the damage reading (damage.ts describeRuin) takes them as built instead of reading them back off the merged parts.
+ */
+let ruinWalls: WallPieceReading[] | null = null;
+export function withRuinWalls<T>(build: () => T): [T, WallPieceReading[]] {
+  const prior = ruinWalls, walls: WallPieceReading[] = [];
+  ruinWalls = walls;
+  try { return [build(), walls]; } finally { ruinWalls = prior; }
+}
+
+/**
+ * Record one standing wall of a ruin: its base line from `a` to `b` (its middle line, in the emitting frame: `frame`
+ * maps it into the building's — PartSink.framePoint), its foot `y0`, thickness, the tops over its foot at even steps
+ * along it, its bucket and tint. A no-op outside a kit build.
+ */
+export function ruinWall(frame: (p: Vec3) => Vec3, a: Vec3, b: Vec3, y0: number, thick: number, top: readonly number[], bucket: string, tint: Rgb): void {
+  if (!ruinWalls) return;
+  const pa = frame([a[0], y0, a[2]]), pb = frame([b[0], y0, b[2]]);
+  const dx = pb[0] - pa[0], dz = pb[2] - pa[2], len = Math.hypot(dx, dz);
+  if (len < 0.3) return;
+  const along: Vec3 = [dx / len, 0, dz / len], out: Vec3 = [-along[2], 0, along[0]];
+  ruinWalls.push({ c: [(pa[0] + pb[0]) / 2, pa[1], (pa[2] + pb[2]) / 2], along, out, hl: len / 2, ht: thick / 2,
+    top: top.length >= 2 ? top.map((y) => Math.max(0.3, y)) : [Math.max(0.3, top[0] ?? 0.3), Math.max(0.3, top[0] ?? 0.3)], bucket, tint });
 }
 
 /**
@@ -636,20 +663,28 @@ export function readWallPieces(parts: ShellParts): WallPieceReading[] | null {
   // (the pieces must be most of the masonry's standing faces: a ruin whose walls read otherwise stays the default's)
   const upright = (list: readonly Tri[]) => list.reduce((a, t) => a + (Math.abs(t.n[1]) < 0.3 ? t.area : 0), 0);
   let pieceArea = 0;
-  for (const [, list] of [...comps].sort((p, q) => p[0] - q[0])) {
-    // the face normal's main horizontal axis (a 2 x 2 tensor of the vertical faces' normals, by area)
+  /** A strip's axes: the face normal's main horizontal axis (a 2 x 2 tensor of the vertical faces' normals, by area). */
+  const axesOf = (list: readonly Tri[]): { out: Vec3; along: Vec3 } | null => {
     let xx = 0, xz = 0, zz = 0;
     for (const t of list) if (Math.abs(t.n[1]) < 0.3) { xx += t.area * t.n[0] * t.n[0]; xz += t.area * t.n[0] * t.n[2]; zz += t.area * t.n[2] * t.n[2]; }
-    if (xx + zz < 1e-6) continue;
+    if (xx + zz < 1e-6) return null;
     const ang = 0.5 * Math.atan2(2 * xz, xx - zz);
-    const out: Vec3 = [Math.cos(ang), 0, Math.sin(ang)], along: Vec3 = [-out[2], 0, out[0]];
+    const out: Vec3 = [Math.cos(ang), 0, Math.sin(ang)];
+    return { out, along: [-out[2], 0, out[0]] };
+  };
+  /** One wall strip measured on its axes: null when it is not a wall piece; 'ring' when it is pieces joined round a corner. */
+  const measure = (list: readonly Tri[]): WallPieceReading | null | 'ring' => {
+    const ax = axesOf(list);
+    if (!ax) return null;
+    const { out, along } = ax;
     let a0 = Infinity, a1 = -Infinity, o0 = Infinity, o1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     for (const t of list) for (const v of [t.a, t.b, t.c]) {
       const pa = v[0] * along[0] + v[2] * along[2], po = v[0] * out[0] + v[2] * out[2];
       a0 = Math.min(a0, pa); a1 = Math.max(a1, pa); o0 = Math.min(o0, po); o1 = Math.max(o1, po); y0 = Math.min(y0, v[1]); y1 = Math.max(y1, v[1]);
     }
     const len = a1 - a0, thick = o1 - o0, h = y1 - y0;
-    if (thick < 0.15 || thick > 1.2 || len < 0.8 || len < 1.5 * thick || h < 0.6) continue;
+    if (thick > 1.2 && len >= 0.8 && h >= 0.6) return 'ring';
+    if (thick < 0.15 || thick > 1.2 || len < 0.8 || len < 1.5 * thick || h < 0.6) return null;
     const n = Math.max(2, Math.min(12, Math.round(len / 0.75)));
     const top = new Array<number>(n).fill(0);
     for (const t of list) for (const v of [t.a, t.b, t.c]) {
@@ -662,9 +697,55 @@ export function readWallPieces(parts: ShellParts): WallPieceReading[] | null {
     let bucket = '', most = 0;
     for (const [b, a] of byBucket) if (a > most) { most = a; bucket = b; }
     const ca = (a0 + a1) / 2, co = (o0 + o1) / 2;
-    pieceArea += upright(list);
-    pieces.push({ c: [along[0] * ca + out[0] * co, y0, along[2] * ca + out[2] * co], along, out, hl: len / 2, ht: thick / 2,
-      top: top.map((y) => Math.max(0.3, y)), bucket, tint: meanColour(list.filter((t) => t.bucket === bucket)) });
+    return { c: [along[0] * ca + out[0] * co, y0, along[2] * ca + out[2] * co], along, out, hl: len / 2, ht: thick / 2,
+      top: top.map((y) => Math.max(0.3, y)), bucket, tint: meanColour(list.filter((t) => t.bucket === bucket)) };
+  };
+  /**
+   * (Props census E11, lane B 2026-10-14: wall strips that touch at a corner joint welded into one ring or L, whose
+   * thickness on its own axes passed 1.2 m, and the whole ring was dropped — most ruins read nothing.) A ring splits by
+   * the run of each triangle — a standing face by its normal, a top by its longest edge — into the walls running each
+   * way, each welded again on its own.
+   */
+  const split = (list: readonly Tri[]): Tri[][] => {
+    const ax = axesOf(list);
+    if (!ax) return [];
+    const runsAlong = (t: Tri): boolean => {
+      if (Math.abs(t.n[1]) < 0.3) return Math.abs(t.n[0] * ax.out[0] + t.n[2] * ax.out[2]) >= Math.SQRT1_2;
+      let best = 0, dir: Vec3 = [1, 0, 0];
+      for (const [p, q] of [[t.a, t.b], [t.b, t.c], [t.c, t.a]] as const) {
+        const d: Vec3 = [q[0] - p[0], 0, q[2] - p[2]], l = Math.hypot(d[0], d[2]);
+        if (l > best) { best = l; dir = d; }
+      }
+      return Math.abs(dir[0] * ax.along[0] + dir[2] * ax.along[2]) >= Math.SQRT1_2 * best;
+    };
+    const out: Tri[][] = [];
+    for (const way of [true, false]) {
+      const sub = list.filter((t) => runsAlong(t) === way);
+      if (!sub.length) continue;
+      const own = sub.map((_, i) => i);
+      const root = (i: number): number => { while (own[i] !== i) { own[i] = own[own[i]]; i = own[i]; } return i; };
+      const seen = new Map<string, number>();
+      sub.forEach((t, i) => {
+        for (const v of [t.a, t.b, t.c]) {
+          const key = `${Math.round(v[0] * 100)},${Math.round(v[1] * 100)},${Math.round(v[2] * 100)}`;
+          const j = seen.get(key);
+          if (j === undefined) seen.set(key, i); else { const a = root(i), b = root(j); if (a !== b) own[Math.max(a, b)] = Math.min(a, b); }
+        }
+      });
+      const groups = new Map<number, Tri[]>();
+      sub.forEach((t, i) => { const r = root(i); const g = groups.get(r) ?? []; g.push(t); groups.set(r, g); });
+      for (const [, g] of [...groups].sort((p, q) => p[0] - q[0])) out.push(g);
+    }
+    return out;
+  };
+  for (const [, list] of [...comps].sort((p, q) => p[0] - q[0])) {
+    const m = measure(list);
+    if (m && m !== 'ring') { pieceArea += upright(list); pieces.push(m); continue; }
+    if (m !== 'ring') continue;
+    for (const sub of split(list)) {
+      const r = measure(sub);
+      if (r && r !== 'ring') { pieceArea += upright(sub); pieces.push(r); }
+    }
   }
   return pieces.length >= 2 && pieceArea >= 0.5 * upright(tris) ? pieces : null;
 }

@@ -32,7 +32,7 @@ for (const mapId of MAP_IDS) {
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = { root: {}, setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = 1;
-  setupBattle(game, 'm1a2', world, { gameMode: 'standard', random: true, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
+  setupBattle(game, 'm1a1_abrams_hc', world, { gameMode: 'standard', random: true, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
   const soloSides = { alpha: game.tanks.filter((entity) => entity.team === 'player'), bravo: game.tanks.filter((entity) => entity.team === 'enemy') };
   assert.equal(soloSides.alpha[0], game.tanks[0], `${mapId}: the player leads the allied side`);
   // the hosted battle: seven a side, the same hulls in the same slots

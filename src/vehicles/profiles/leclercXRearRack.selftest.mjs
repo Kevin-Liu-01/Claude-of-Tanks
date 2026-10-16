@@ -51,7 +51,7 @@ function sourceBox(all, detail, turret) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('leclerc_x', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false});
+  const tank = createTank('leclerc_xlr', null, {quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false});
   try {
     tank.root.updateMatrixWorld(true);
     const all = [];

@@ -10,7 +10,7 @@ import {KIT} from './kit.ts';
 import {buildKurganets25X} from './kurganetsX.ts';
 import {buildKurganets25X as original} from './kurganetsX.ts';
 import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
-const id='kurganets25_x',front=new T.MeshBasicMaterial({side:T.FrontSide}),double=new T.MeshBasicMaterial({side:T.DoubleSide});
+const id='kurganets25',front=new T.MeshBasicMaterial({side:T.FrontSide}),double=new T.MeshBasicMaterial({side:T.DoubleSide});
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the installed
 // frame at this factor. Witnesses stay source calipers; probes of the installed scene map them by `f`. Recorded builder parts
 // are captured before the bake, so seats() stays in the source frame and moving() bakes their bounds like the shoes.

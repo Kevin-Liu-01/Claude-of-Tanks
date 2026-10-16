@@ -189,7 +189,7 @@ export default {
     rockSink: 0.34,
     rubblePiles: 10,
     // the map-vehicles lane (2026-10-06, the period ruling): Olympus Basin: the next generation's hulls
-    tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 't14', 'challenger_3', 'm1a3', 'kf51'] },
+    tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 'object148_proto', 'challenger3_proto', 'm1a3', 'kf51_evo'] },
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,

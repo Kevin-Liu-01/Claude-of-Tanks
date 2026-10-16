@@ -24,7 +24,7 @@ function checkFrames(tank){
     const position=tank.root.getObjectByName(name).getWorldPosition(new THREE.Vector3());
     expected.forEach((v,i)=>near(position.getComponent(i),v,.000002,`${name} source datum`));
   }
-  near(getSpec('t72b3_x').dims.heightM,SOURCE.roof,.000002,'physical cast roof, not5.457m whip');
+  near(getSpec('t72b3').dims.heightM,SOURCE.roof,.000002,'physical cast roof, not5.457m whip');
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
   for(const yaw of [0,-1.3,.8])for(const pitch of [0,-.08,.18]){
     turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
@@ -101,7 +101,7 @@ function checkGearAndMachineGun(tank){
   near(new THREE.Box3().setFromObject(gunMesh).min.z,-2.2026498318,.00002,'independently measured source aft-pointing AA muzzle end');
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);checkFrames(tank);checkBore(tank);checkCassettePlanes(tank);checkGearAndMachineGun(tank);}
   finally{tank.dispose();}
 }

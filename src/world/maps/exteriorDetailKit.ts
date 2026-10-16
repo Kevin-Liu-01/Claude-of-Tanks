@@ -780,6 +780,8 @@ interface WindowPane {
   side: number;
   center: THREE.Vector3;
   size: THREE.Vector3;
+  /** A pane new to its builder (uvJitter 'none'): its joinery is new too and draws nothing from the placement stream. */
+  fresh?: boolean;
 }
 
 const MAX_JOINERY_PANES = 12;
@@ -840,7 +842,7 @@ function collectWindowPanes(
         return enclosesY && enclosesAcross;
       });
       if (alreadyFramed) continue;
-      panes.push({ axis, side: Math.sign(along) || 1, center, size });
+      panes.push({ axis, side: Math.sign(along) || 1, center, size, ...(geo.userData?.uvJitter === 'none' ? { fresh: true } : {}) });
     }
   }
   return panes.slice(0, MAX_JOINERY_PANES);
@@ -863,7 +865,13 @@ function addWindowJoinery(
   const material = timber ? 'wood' : 'stone';
   const shutters = timber && variant % 2 === 1;
   const t = 0.09, depth = 0.11;
-  panes.forEach(({ axis, side, center, size }, index) => {
+  panes.forEach(({ axis, side, center, size, fresh }, index) => {
+    // (the garage fixes, 2026-10-15) a fresh pane's jambs, head, sill and shutters are fresh dressing as well: no draws
+    // (the later placements keep their seats) and no collision part (the building's footprint stays its own)
+    const add = (partId: string, bucket: string, geo: THREE.BufferGeometry): void => {
+      const g = author.add(partId, bucket, geo);
+      if (fresh) { g.userData.uvJitter = 'none'; g.userData.noCollision = true; }
+    };
     const openW = axis === 'x' ? size.z : size.x;
     const faceAlong = axis === 'x' ? Math.abs(center.x) : Math.abs(center.z);
     // Wall face from the pane: builders seat panes 1-2 cm proud of the face.
@@ -878,16 +886,16 @@ function addWindowJoinery(
     );
     const frameOut = face - 0.01 + depth * 0.5;
     for (const sign of [-1, 1]) {
-      author.add(`window-${index}-jamb-${sign}`, material,
+      add(`window-${index}-jamb-${sign}`, material,
         place(piece(t, size.y + 2 * t, depth), sign * (openW * 0.5 + t * 0.5), center.y, frameOut));
     }
-    author.add(`window-${index}-head`, material,
+    add(`window-${index}-head`, material,
       place(piece(openW + 2 * t, t, depth), 0, center.y + size.y * 0.5 + t * 0.5, frameOut));
-    author.add(`window-${index}-sill`, material,
+    add(`window-${index}-sill`, material,
       place(piece(openW + 0.30, 0.09, 0.20), 0, center.y - size.y * 0.5 - 0.045, face - 0.01 + 0.10));
     if (shutters && index % 3 !== 2) {
       for (const sign of [-1, 1]) {
-        author.add(`window-${index}-shutter-${sign}`, 'wood',
+        add(`window-${index}-shutter-${sign}`, 'wood',
           place(piece(0.30, size.y * 0.94, 0.05), sign * (openW * 0.5 + t + 0.17), center.y, face - 0.005 + 0.025));
       }
     }

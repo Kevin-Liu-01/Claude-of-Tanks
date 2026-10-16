@@ -4,5 +4,5 @@ import {buildChallenger1Supplied} from './challenger1XSupplied.ts';
 import {CHALLENGER1_SUPPLIED_DATUMS} from './challenger1XSuppliedFrame.ts';
 
 export const buildChallenger1X=buildChallenger1Supplied;
-export const CHALLENGER1_X_DATUMS=Object.freeze({challenger1_x:CHALLENGER1_SUPPLIED_DATUMS});
-export const CHALLENGER1_X_PROFILES=Object.freeze({challenger1_x:{build:buildChallenger1Supplied}});
+export const CHALLENGER1_X_DATUMS=Object.freeze({challenger1_mk3:CHALLENGER1_SUPPLIED_DATUMS});
+export const CHALLENGER1_X_PROFILES=Object.freeze({challenger1_mk3:{build:buildChallenger1Supplied}});
