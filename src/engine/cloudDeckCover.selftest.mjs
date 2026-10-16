@@ -197,8 +197,9 @@ for (const id of MAP_IDS) {
   if (lane.flat < 0.45 || p.coverage < 0.6) continue;
   rows.push({ id, ...domeCover(id) });
 }
-// (2026-10-14: four decks since the broken deck's retirement on 2026-10-13 — fjord, polders and copper_mesa are cumulus)
-assert.ok(rows.length >= 4, `the decks priced (${rows.map((r) => r.id).join(', ')})`);
+// (2026-10-14: four decks since the broken deck's retirement on 2026-10-13 — fjord, polders and copper_mesa are cumulus;
+// 2026-10-16: three — Cinder Junction on cumulus too, the coordinator's ruling)
+assert.ok(rows.length >= 3, `the decks priced (${rows.map((r) => r.id).join(', ')})`);
 if (process.env.COT_DECK_COVER_PRINT) for (const r of rows) console.log(r.id, r.cover.toFixed(3), r.coverage.toFixed(2), r.closing.toFixed(2));
 for (const r of rows) {
   const tag = `${r.id}: dome cover ${r.cover.toFixed(2)} at coverage ${r.coverage.toFixed(2)} (closing ${r.closing.toFixed(2)})`;
