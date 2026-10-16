@@ -330,6 +330,9 @@ assert.deepEqual(results.collapse.result.hides, [{ section: null, partClass: nul
         assert.equal(tag.getX(v), id + 1, `structure ${id}'s vertices carry its tag (${span.bucket})`);
         const x = span.position.getX(v), y = span.position.getY(v), z = span.position.getZ(v);
         sampled++;
+        // (the maps lane, 2026-10-14: a set piece's records are its standing masses, not its every part — the churchyard's
+        // railings and crosses, a windmill's sails reach past them; its tag above is its span's proof, the box a building's)
+        if (own[0].structureRole === 'setpiece') { sampled--; continue; }
         if (x > box[0] - 4 && x < box[3] + 4 && z > box[2] - 4 && z < box[5] + 4 && y > box[1] - 3 && y < box[4] + 12) inside++;
       }
     }

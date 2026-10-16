@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
-import { roughenChunk } from './maps/regional/ruinGrammar.ts';
+import { roughenChunk } from './maps/regional/ruinGrammar.ts'; // (props census #7 moved the masonry roughening out of props.ts)
 import { craterEjectaPiece } from './maps/groundDressing.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
@@ -459,6 +459,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     },
     planGroundedObbPose: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
+    // (Lane C, #8 r2) a bake with its ground contact seats on its tracks (wrecks.ts seatHulk): the same fixture pose
+    seatHulk: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
+      min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
     // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
     // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
@@ -594,9 +597,8 @@ const groundOriginal = groundCandidate
 // scheduling yields; the sha256 pin of that derived body froze every decal formula and is gone. Formula changes are
 // owned by the decal receipts, scheduling by the comparisons below.
 const mathStart = source.indexOf('function clamp('), mathEnd = source.indexOf('\n// ---', mathStart);
-const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.indexOf('\n  function addRubblePile(', rubbleStart);
-assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
-const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
+assert.ok(mathEnd > mathStart);
+const groundHelpers = source.slice(mathStart, mathEnd);
 
 function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
   buildings = 1, crushables = 1, stacks = 1, rocks = 0, rejectCourtyards = false, disposeFailureAt = -1,
@@ -634,9 +636,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
     nearMeshVertexHeight: (px, pz) => dependencies.heightField.getHeightAt(px, pz), // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
     THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
-    // (props #7 moved the clod's roughening to ruinGrammar.ts; props lane A #19, 2026-10-15: a clod draws the map's ejecta
-    // in the baked bucket, its box the collision proxy)
-    roughenChunk, craterEjectaPiece, mapId: 'verdant',
+    // (props lane A #19, 2026-10-15: a clod draws the map's ejecta in the baked bucket, its box the collision proxy)
+    craterEjectaPiece, mapId: 'verdant',
     rng() { const value = random(); randoms.push(value); return value; },
     mulberry32(seed) {
       const next = seededRandom(seed);
@@ -666,11 +667,14 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     rockBedShades: [],
+    // (round 3, rubbleKit.ts LowStones) no crushable low stone here: no scuff to conform, release or lay
+    lowStones: { *collectScuffs() {}, releasePendingDiscs() {}, layScuffs() {} },
     // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
     contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
     // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
     drawnPlanRecord: () => null, craterClodFootprints: [],
+    roughenChunk, // (props census #7: ruinGrammar.ts)
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
     groundHelpers + '\nlet reconformFoundryFoundations = null;\n' + code)

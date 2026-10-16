@@ -129,10 +129,12 @@ function fly(world, entity, aim, seconds, { boxes = [], throttleAfter = 1 } = {}
   assert.ok(a.every((p, i) => p.x === b[i].x && p.y === b[i].y && p.z === b[i].z), 'fixed-step avoidance is deterministic');
 }
 
-// 7. No world (fixtures, legacy callers): flight is unchanged from the open-air controller.
+// 7. No world (fixtures, legacy callers): flight is unchanged from the open-air controller. DR.06: a bot flies the top
+// attack (DRONE_BOT_ATTACK), nosing over at its dive radius onto the aim point; aimed 13 m up, that dive rightly met the
+// probe's ground plane. Aimed 40 m up the whole sortie stays in open air, where the probe must change nothing.
 {
-  const free = fly(null, carrier('pilot', 0, 0), new Vector3(0, 13, 140), 6).track;
-  const open = fly(boxWorld([]), carrier('pilot', 0, 0), new Vector3(0, 13, 140), 6).track;
+  const free = fly(null, carrier('pilot', 0, 0), new Vector3(0, 40, 140), 6).track;
+  const open = fly(boxWorld([]), carrier('pilot', 0, 0), new Vector3(0, 40, 140), 6).track;
   assert.equal(free.length, open.length);
   assert.ok(free.every((p, i) => p.distanceTo(open[i]) < 1e-9), 'open air: the world probe never perturbs flight');
 }

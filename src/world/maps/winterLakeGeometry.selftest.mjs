@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { createHash } from 'node:crypto';
 import { createHeightField, mulberry32 } from '../terrain.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
@@ -240,6 +241,59 @@ function auditReeds(geometries, field) {
   }
 }
 
+// 226 (the reeds pair's critics, 2026-10-15): the frozen river's reed beds stand at the waterline (maps/frozenRiverBanks.ts):
+// every stem's and blade's foot within 0.6 m into the ice's margin and 1.5 m up the bank, none on the dry snow beyond;
+// every seed spike on a stem near its tip, every snow cap on a spike; the shelf's plates seated on the ice.
+function riverEdge(field) {
+  const stations = field._layout.marshes;
+  return (x, z) => { let d = Infinity; for (const s of stations) d = Math.min(d, Math.hypot(x - s.x, z - s.z) - s.r * 0.96); return d; };
+}
+function footOf(geometry) {
+  const p = geometry.attributes.position;
+  let low = 0;
+  for (let i = 1; i < p.count; i++) if (p.getY(i) < p.getY(low)) low = i;
+  return [p.getX(low), p.getY(low), p.getZ(low)];
+}
+function auditShelf(geometry, field) {
+  const p = geometry.attributes.position;
+  let seated = false;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) <= field.getHeightAt(p.getX(i), p.getZ(i)) + 0.005) seated = true;
+  assert.ok(seated, 'a shelf plate rests on the ice, not over it');
+}
+function auditRiverBanks(buckets, field) {
+  const edge = riverEdge(field);
+  let stems = 0, blades = 0, heads = 0, caps = 0;
+  const tips = [];
+  for (const g of buckets.straw) {
+    if (!['winter-cattail', 'winter-sedge', 'winter-cattail-leaf'].includes(g.name)) continue;
+    const [x, , z] = footOf(g), d = edge(x, z);
+    assert.ok(d >= -0.62 && d <= 1.52, `a ${g.name} stands at the waterline (${d.toFixed(2)} m from the ice's edge)`);
+    if (g.name === 'winter-cattail') {
+      stems++;
+      const p = g.attributes.position, t = p.count - 1;
+      tips.push([p.getX(t), p.getY(t), p.getZ(t)]);
+    } else blades++;
+  }
+  const headTops = [];
+  for (const g of buckets.wood) {
+    if (g.name !== 'winter-cattail-head') continue;
+    heads++;
+    g.computeBoundingBox();
+    const c = g.boundingBox.getCenter(new THREE.Vector3());
+    assert.ok(tips.some(([x, y, z]) => Math.hypot(x - c.x, z - c.z) < 0.12 && y > c.y && y - c.y < 0.45), 'a seed spike rides its stem just under the tip');
+    headTops.push([c.x, g.boundingBox.max.y, c.z]);
+  }
+  for (const g of buckets.plaster) {
+    if (g.name !== 'winter-cattail-cap') continue;
+    caps++;
+    g.computeBoundingBox();
+    const b = g.boundingBox;
+    assert.ok(headTops.some(([x, y, z]) => Math.hypot(x - (b.min.x + b.max.x) / 2, z - (b.min.z + b.max.z) / 2) < 0.06 && Math.abs(b.min.y - y) < 0.05), 'a snow cap sits on its spike');
+  }
+  assert.ok(stems >= 200 && blades >= 400 && heads >= 0.5 * stems && caps === heads,
+    `the reed beds' population (${stems} stems, ${blades} blades, ${heads} spikes, ${caps} caps)`);
+}
+
 let berms = 0, wedges = 0;
 for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
   const built = build(mapId, seed), stats = inventory(built.buckets);
@@ -248,22 +302,26 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
       `${mapId}/${seed}: winter kit storage stays inside its ceiling (${stats.bytes} bytes)`);
     assert.ok(built.buckets.straw.length > 0, `${mapId}/${seed}: the authored reed/head population exists`);
     const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
-    // (#19 x LOOKS goral, 2026-10-15: the frozen river's shore plates are slabs on the baked family too, so Frosthollow's
-    // kit may lay no snow at all: its plaster draw is the props' own)
-    const used = names.filter(name => built.buckets[name].length);
-    const allowed = mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw', 'baked'] : ['plaster', 'wood', 'straw', 'baked']; // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood
-    assert.ok(used.every(name => allowed.includes(name)) && used.includes('straw') && used.includes('baked') && (mapId === 'winter' || used.includes('plaster')),
-      `${mapId}/${seed}: kit reuses the already-populated plaster draw (the snow) and the baked one (the ice); its obsolete stone batch is eliminated (${used})`);
+    assert.deepEqual(names.filter(name => built.buckets[name].length),
+      // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood; 2026-10-15 (226): the river's cattails carry their
+      // seed spikes on the wood the map already draws; the lakes' ice slabs in the baked draw (props #19; Frosthollow's
+      // shore ice is the frozen river's shelf, on the snow)
+      mapId === 'whiteout' ? ['plaster', 'straw', 'baked'] : mapId === 'winter' ? ['plaster', 'wood', 'straw'] : ['plaster', 'wood', 'straw', 'baked'],
+      'kit reuses the already-populated plaster draw (the snow) and the baked one (the ice); its obsolete stone batch is eliminated');
     let mapBerms = 0, mapWedges = 0;
     for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
     for (const geometry of built.buckets.stone) {
       assert.notEqual(geometry.name, 'winter-pressure-berm', 'accepted snow berm stays out of masonry');
       assert.notEqual(geometry.name, 'winter-ice-wedge', 'no snow-dusted fracture retains mortar relief');
     }
-    for (const geometry of built.buckets.plaster) assert.notEqual(geometry.name, 'winter-ice-slab', 'the ice is off the snow');
+    for (const geometry of built.buckets.plaster) {
+      assert.notEqual(geometry.name, 'winter-ice-slab', 'the ice is off the snow');
+      if (geometry.name === 'winter-shore-shelf') { auditShelf(geometry, built.field); mapWedges++; }
+    }
     for (const geometry of built.buckets.baked) {
       if (geometry.name === 'winter-ice-slab') { auditSlab(geometry, built.field); mapWedges++; }
     }
+    if (mapId === 'winter') auditRiverBanks(built.buckets, built.field);
     assert.equal(mapBerms, built.field._layout.lakes.reduce((n, lake) => n + (lake.r >= 80 ? 7 : 2), 0),
       `${mapId}: every authored pressure ridge still exists`);
     assert.ok(mapWedges > mapBerms * 4, `${mapId}/${seed}: the shore's slabs and the ridges' piles are populated (${mapWedges})`);

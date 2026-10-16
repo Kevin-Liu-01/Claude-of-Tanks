@@ -32,14 +32,17 @@ const GARAGE = { camoSeed: 4200, quality: 'ai', staticPreview: true, batchStatic
 // turret, turretDetail and turretFittingPaint (the tubes); at range turretDetail now detaches.
 const PINNED = {
   ua_m1a2_abrams: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
-  leo2a7v: { saved: 2, owners: { rig_hull: 1, leo2a7v_xRoofMachineGun: 1 } },
+  // VH.14 (2026-10-15): the roof MG is a working station, so its can-and-rounds fold rides the gun's own pitch rig
+  leo2a7v: { saved: 2, owners: { rig_hull: 1, auxiliaryWeaponPitch: 1 } },
   challenger3: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
   // 2026-10-06 (main's M1A1 mantlet and throat rebuild, ce9f55959..030b3ff96): the m1a1_abrams_hc turretDark bucket is now created after
   // turretCloth, so turret and turretDetail formed one contiguous layer run and merged; round 4's matte discharger tubes
   // (above) leave turretDetail cosmetic, so that fold is gone again. The round-3 machine gun's fitting-paint can and
   // rounds fold one run on the commander MAG.
-  m1a1_abrams_hc: { saved: 2, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1, fitting_browningDerived_mag: 1 } },
-  t90am: { saved: 1, owners: { t90mProryvRemoteKord: 1 } },
+  // VH.14 (2026-10-15): the M1A2's loader M240 and the T-90M's Kord are working stations, so each folds its can and
+  // rounds on the gun's own pitch rig; the M1A2's second (decorative) MAG fold is gone with that gun
+  m1a1_abrams_hc: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  t90am: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
   // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both
   strv122: { saved: 0, owners: {} },
 };

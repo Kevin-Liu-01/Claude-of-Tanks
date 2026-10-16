@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
   createGroundPressureField, groundPressAt, GROUND_PRESSURE_WINDOW_M, GROUND_PRESSURE_TEXELS, GROUND_PRESSURE_RECOVER_S,
   GROUND_PRESSURE_CRUSH_S, GROUND_PRESSURE_FEATHER_M, GROUND_PRESSURE_MOVING_MPS, GROUND_PRESSURE_SETTLED_STRIDE,
+  GROUND_PRESSURE_FINE_WINDOW_M,
 } from './groundPressure.ts';
 
 function recordingRenderer() {
@@ -46,6 +47,13 @@ assert.equal(field.steps, 0);
 const dx = GROUND_PRESSURE_WINDOW_M / GROUND_PRESSURE_TEXELS;
 assert.ok(dx <= 0.4, `a track lane spans several texels (dx ${dx} m)`);
 assert.ok(GROUND_PRESSURE_WINDOW_M >= 80, 'the window covers the chase view around the focus');
+// (contact round 5) the fine near field: the same texels over a small window, a texel well under the feather (a crisp edge)
+const dxFine = GROUND_PRESSURE_FINE_WINDOW_M / GROUND_PRESSURE_TEXELS;
+assert.ok(dxFine <= 0.1 && dxFine < GROUND_PRESSURE_FEATHER_M / 4, `the fine field resolves a track's edge (dx ${dxFine.toFixed(3)} m)`);
+assert.ok(GROUND_PRESSURE_FINE_WINDOW_M >= 16 && GROUND_PRESSURE_FINE_WINDOW_M < GROUND_PRESSURE_WINDOW_M / 2, 'round the focus, inside the coarse window');
+const fine = createGroundPressureField(recordingRenderer(), { tier: 'desktop', windowM: GROUND_PRESSURE_FINE_WINDOW_M });
+assert.ok(fine && fine.params.x === GROUND_PRESSURE_FINE_WINDOW_M, 'the fine field is the same field on its own window');
+fine.dispose();
 assert.ok(GROUND_PRESSURE_RECOVER_S >= 15 && GROUND_PRESSURE_RECOVER_S <= 30, 'the sward stands up again over ~20 s');
 assert.ok(GROUND_PRESSURE_CRUSH_S > GROUND_PRESSURE_RECOVER_S, 'crushed blades stay bruised longer than they stay flat');
 assert.ok(GROUND_PRESSURE_FEATHER_M > 0.2 && GROUND_PRESSURE_FEATHER_M < 1, 'the press feathers past the skirt, not across the meadow');

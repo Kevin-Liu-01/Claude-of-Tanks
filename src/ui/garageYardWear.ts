@@ -105,43 +105,86 @@ function px(xM: number, zM: number): [number, number] {
 
 /**
  * Monsoon's standing water (garage round 7, place-truth; the critic panel, 2026-10-14: "a dry, sunny dirt yard with no
- * wet sheen, puddles"): the laterite yard's puddles in the view's frame (side, depth, radius m, squash, along the view's
- * depth axis or across it), most in the camera's foreground and beside the hero, two lying in the hull ruts.
- * Each is a main pool and two lobes. The albedo darkens them under a dried rim; the wet mask (garageHardstandWetMask)
- * lets the graded floor program polish them flat and glossy.
+ * wet sheen, puddles"; rejudge6, 2026-10-15: "about 15 opaque pale-blue oval puddles scattered evenly like polka dots,
+ * with no reflection and no wet rim"). Water lies where a yard holds it: in the two track ruts the hulls cut from the
+ * turntable toward the gate, broken into the ruts' low spots, and in a few hollows of different sizes, most of them in
+ * the camera's foreground and none alone mid-yard. Pools are (side, depth, radius m, squash, along the view's depth
+ * axis); ruts are (side, depth from, depth to, width m).
  */
-const MONSOON_PUDDLES: ReadonlyArray<readonly [number, number, number, number, boolean]> = [
-  [-4.6, -9.2, 1.7, 0.55, true], [3.9, -10.6, 1.15, 0.6, false], [6.8, -7.2, 1.9, 0.5, true], [-8.2, -5.4, 1.35, 0.6, false],
-  [1.2, -12.4, 0.85, 0.7, true], [-1.9, -7.6, 0.6, 0.7, false], [9.2, -2.8, 1.45, 0.55, true], [-10.6, 1.2, 1.7, 0.5, false],
-  [10.8, 3.6, 1.2, 0.6, true], [-6.2, 6.8, 1.0, 0.65, false], [5.2, 8.2, 1.5, 0.55, true], [-1.4, 9.8, 0.9, 0.7, false],
-  // the ruts the hulls leave between the causeway and the turntable, water lying in them
-  [-2.4, -11.6, 0.7, 0.32, true], [2.2, -13.0, 0.6, 0.3, true],
+const MONSOON_POOLS: ReadonlyArray<readonly [number, number, number, number, boolean]> = [
+  [-6.8, -8.6, 2.1, 0.55, true], [5.4, -10.6, 1.25, 0.62, false], [9.6, -3.2, 0.95, 0.7, true],
+  [-10.2, 1.6, 1.5, 0.5, false], [4.8, 7.8, 1.7, 0.55, true], [-3.6, -14.6, 0.8, 0.6, false],
 ];
+const MONSOON_RUTS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [-1.55, -13.9, -11.8, 0.5], [-1.5, -9.7, -8.6, 0.42], [1.5, -15.3, -13.5, 0.52], [1.55, -11.1, -10.0, 0.44],
+  [1.5, -7.7, -6.9, 0.36],
+];
+/** The track ruts themselves (side, depth from, depth to): pressed mud the water lies in. */
+const MONSOON_TRACKS: ReadonlyArray<readonly [number, number, number]> = [[-1.55, -17, -5.6], [1.5, -17, -5.6]];
 
-interface PuddleLobe { readonly x: number; readonly z: number; readonly r: number; readonly squash: number; readonly angle: number }
+/** A water outline in the pack's x/z metres (the apron canvas's frame: x = (side - depth) / sqrt 2, z = -(side + depth) / sqrt 2). */
+type WaterShape = ReadonlyArray<readonly [number, number]>;
+const viewToPack = (side: number, depth: number): [number, number] => [(side - depth) * Math.SQRT1_2, -(side + depth) * Math.SQRT1_2];
 
-function monsoonPuddleLobes(): PuddleLobe[] {
-  const lobes: PuddleLobe[] = [];
-  MONSOON_PUDDLES.forEach(([side, depth, r, squash, alongDepth], index) => {
-    // the apron canvas is in the pack's x/z (garageViewPoint: x = (side - depth) / sqrt 2, z = -(side + depth) / sqrt 2)
-    const x = (side - depth) * Math.SQRT1_2, z = -(side + depth) * Math.SQRT1_2;
-    const angle = alongDepth ? Math.PI / 4 : -Math.PI / 4;
-    lobes.push({ x, z, r, squash, angle });
-    for (const k of [0, 1]) {
-      const turn = angle + (index * 2.4 + k * 2.2), reach = r * (0.38 + 0.08 * k); // lobes that round the pool, no corners
-      lobes.push({ x: x + Math.cos(turn) * reach, z: z + Math.sin(turn) * reach * squash, r: r * (0.55 - 0.1 * k), squash, angle: angle + 0.4 * (k - 0.5) });
-    }
+function monsoonWater(): WaterShape[] {
+  const rng = mulberry(20261015);
+  const shapes: WaterShape[] = [];
+  MONSOON_POOLS.forEach(([side, depth, r, squash, alongDepth]) => {
+    // an irregular shoreline: two or three low harmonics and a little noise, smoothed, never an oval
+    const n = 30, p1 = rng() * 6.3, p2 = rng() * 6.3, p3 = rng() * 6.3, a2 = 0.16 + rng() * 0.14, a3 = 0.1 + rng() * 0.1;
+    const radii = Array.from({ length: n }, (_, i) => {
+      const t = (i / n) * Math.PI * 2;
+      return 1 + a2 * Math.sin(2 * t + p1) + a3 * Math.sin(3 * t + p2) + 0.07 * Math.sin(5 * t + p3) + (rng() - 0.5) * 0.08;
+    });
+    const smooth = radii.map((v, i) => (radii[(i + n - 1) % n] + 2 * v + radii[(i + 1) % n]) / 4);
+    const along = alongDepth ? 1 : 0;
+    const shape: Array<[number, number]> = smooth.map((k, i) => {
+      const t = (i / n) * Math.PI * 2;
+      const u = Math.cos(t) * r * k, w = Math.sin(t) * r * k * squash; // u along the pool's long axis
+      const ds = along ? w : u, dd = along ? u : w;
+      return viewToPack(side + ds, depth + dd);
+    });
+    shapes.push(shape);
   });
-  return lobes;
+  MONSOON_RUTS.forEach(([side, d0, d1, width]) => {
+    // water in a rut's low spot: a strip whose width wanders and whose ends taper
+    const n = 14, left: Array<[number, number]> = [], right: Array<[number, number]> = [];
+    for (let i = 0; i <= n; i++) {
+      const f = i / n, depth = d0 + (d1 - d0) * f;
+      const half = (width / 2) * Math.sqrt(Math.sin(Math.PI * f)) * (0.8 + rng() * 0.35);
+      const wobble = (rng() - 0.5) * 0.08;
+      left.push(viewToPack(side - half + wobble, depth));
+      right.push(viewToPack(side + half + wobble, depth));
+    }
+    shapes.push([...left, ...right.reverse()]);
+  });
+  return shapes;
+}
+
+/** Trace a water outline on a canvas (pixels from pack metres, `scale` the canvas's share of the apron's) through its midpoints. */
+function traceWater(g: CanvasRenderingContext2D, shape: WaterShape, scale: number, grow = 1): void {
+  let cx = 0, cz = 0;
+  for (const [x, z] of shape) { cx += x / shape.length; cz += z / shape.length; }
+  const pts = shape.map(([x, z]) => px(cx + (x - cx) * grow, cz + (z - cz) * grow)).map(([x, y]) => [x * scale, y * scale]);
+  g.beginPath();
+  const mid = (a: number[], b: number[]): [number, number] => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const start = mid(pts[pts.length - 1], pts[0]);
+  g.moveTo(start[0], start[1]);
+  for (let i = 0; i < pts.length; i++) {
+    const next = mid(pts[i], pts[(i + 1) % pts.length]);
+    g.quadraticCurveTo(pts[i][0], pts[i][1], next[0], next[1]);
+  }
+  g.closePath();
 }
 
 /**
- * The yard's wet mask (garageHardstandGradedHook's standing water): white in the puddles, a faint damp halo round them,
- * on the apron canvas's frame and wrapping. Null for every dry yard and in plain Node.
+ * The yard's wet mask (garageHardstandGradedHook's standing water) on the apron canvas's frame and wrapping: red is
+ * standing water, a crisp shoreline; green is the damp ground round it and along the ruts, the wet rim. Null for every
+ * dry yard and in plain Node.
  */
 export function garageHardstandWetMask(style: GarageHardstandStyle): THREE.CanvasTexture | null {
   if (style !== 'earth-wet' || typeof document === 'undefined') return null;
-  const scale = 0.25;
+  const scale = 0.5;
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(CANVAS_W * scale);
   canvas.height = Math.round(CANVAS_H * scale);
@@ -149,24 +192,24 @@ export function garageHardstandWetMask(style: GarageHardstandStyle): THREE.Canva
   if (!g) return null;
   g.fillStyle = '#000';
   g.fillRect(0, 0, canvas.width, canvas.height);
-  for (const lobe of monsoonPuddleLobes()) {
-    const [x, y] = px(lobe.x, lobe.z);
-    for (const [reach, core, halo] of [[1.5, 0.3, 0.0], [1.0, 1.0, 0.85]] as const) {
-      const r = Math.max(1, lobe.r * reach * PX_PER_M * scale);
-      g.save();
-      g.translate(x * scale, y * scale);
-      g.rotate(lobe.angle);
-      g.scale(1, lobe.squash);
-      const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
-      grad.addColorStop(0, `rgba(255,255,255,${core})`);
-      grad.addColorStop(0.62, `rgba(255,255,255,${halo})`);
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grad;
-      g.globalCompositeOperation = 'lighten';
-      g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
-      g.restore();
-    }
+  g.globalCompositeOperation = 'lighten'; // per channel: the water's white keeps the damp's green under it
+  // the damp: wide and soft round each pool and strip, and the ruts' pressed mud wet along their whole run
+  g.filter = `blur(${(5 * scale).toFixed(1)}px)`;
+  for (const shape of monsoonWater()) {
+    g.fillStyle = 'rgb(0,150,0)'; traceWater(g, shape, scale, 1.55); g.fill();
+    g.fillStyle = 'rgb(0,235,0)'; traceWater(g, shape, scale, 1.2); g.fill();
   }
+  g.strokeStyle = 'rgb(0,120,0)';
+  g.lineWidth = 0.55 * PX_PER_M * scale;
+  for (const [side, d0, d1] of MONSOON_TRACKS) {
+    const a = px(...viewToPack(side, d0)), b = px(...viewToPack(side, d1));
+    g.beginPath(); g.moveTo(a[0] * scale, a[1] * scale); g.lineTo(b[0] * scale, b[1] * scale); g.stroke();
+  }
+  // the water: a crisp shoreline
+  g.filter = `blur(${(0.8 * scale).toFixed(1)}px)`;
+  g.fillStyle = '#fff';
+  for (const shape of monsoonWater()) { traceWater(g, shape, scale); g.fill(); }
+  g.filter = 'none';
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.NoColorSpace;
   texture.wrapS = THREE.MirroredRepeatWrapping;
@@ -417,14 +460,21 @@ function drawHardstand(
     }
   };
   const [ax, az] = dir(toward);
-  // hulls up the approach road onto the turntable
-  wheelPath([ax * 16, az * 16], [ax * 11 + az * 0.9, az * 11 - ax * 0.9], [ax * 6.9, az * 6.9], 2.85, 0.62, earth ? 0.32 : 0.2);
+  // hulls up the approach road onto the turntable; on a slab their tracks polish and blacken the lanes they use (rejudge6,
+  // 2026-10-15: "a huge, empty, clean pad ... no rails or wear paths"), so the slab's lanes are as plain as the earth's
+  wheelPath([ax * 16, az * 16], [ax * 11 + az * 0.9, az * 11 - ax * 0.9], [ax * 6.9, az * 6.9], 2.85, 0.62, earth ? 0.32 : 0.34);
   // and round it to the bays either side
   for (const turn of [-1, 1]) {
     const [bx, bz] = dir(toward + turn * 0.55);
     const [cx, cz] = dir(toward + turn * 1.55);
     const [ex, ez] = dir(toward + turn * 2.35);
-    wheelPath([bx * 15, bz * 15], [cx * 10.5, cz * 10.5], [ex * 16, ez * 16], 2.85, 0.6, earth ? 0.26 : 0.16);
+    wheelPath([bx * 15, bz * 15], [cx * 10.5, cz * 10.5], [ex * 16, ez * 16], 2.85, 0.6, earth ? 0.26 : 0.28);
+  }
+  // a second pass off the turntable straight toward the lens, where the hulls leave for the yard gate
+  {
+    const [bx, bz] = dir(toward + Math.PI);
+    wheelPath([bx * 6.9, bz * 6.9], [bx * 11 + bz * 0.6, bz * 11 - bx * 0.6], [bx * 16.5 + bz * 1.4, bz * 16.5 - bx * 1.4], 2.85, 0.62,
+      earth ? 0.24 : 0.26);
   }
   // a wheeled truck's tighter line across one side of the yard
   {
@@ -433,6 +483,18 @@ function drawHardstand(
     const [cx, cz] = dir(toward + turn * 1.9);
     const [ex, ez] = dir(toward + turn * 2.9);
     wheelPath([bx * 16, bz * 16], [cx * 12.5, cz * 12.5], [ex * 16, ez * 16], 1.95, 0.32, earth ? 0.24 : 0.14);
+  }
+  // dirt banked against the turntable's plinth, uneven, heavier where the hulls roll on and off it (rejudge6, 2026-10-15:
+  // "the turntable looks like a pasted disc", "a hard clean ring")
+  {
+    const [tx, tz] = dir(toward);
+    for (let i = 0; i < 90; i++) {
+      const a = rng() * Math.PI * 2, ca = Math.sin(a) * tx + Math.cos(a) * tz;
+      const lanes = Math.max(ca, -ca) ** 8; // the approach lane and the gate lane
+      const r = 6.45 + rng() * 0.5;
+      blot(Math.sin(a) * r, Math.cos(a) * r, 0.35 + rng() * 0.6, rgba([58, 52, 46], 0.16 + 0.16 * lanes), rgba([58, 52, 46], 0.05),
+        0.5 + rng() * 0.4, a);
+    }
   }
   // footfall round the turntable and the bays' approaches: small prints in short trails, scuffed in loose ground
   for (let trail = 0; trail < 42; trail++) {
@@ -539,13 +601,20 @@ function drawHardstand(
     case 'slab-quay': {
       // a little salt in the joints, standing water, rust bleeding from quay steel (waves 408 and 419: the old white bloom
       // and drying rings read as "frost or snow crust" and "painted circle arcs")
-      alongJoints(130, 0.35, 'rgba(226,224,214,0.16)', 'rgba(226,224,214,0.05)');
+      // (the salt held to a few dull runs: rejudge6, 2026-10-15, "slab joints drawn as bright, clean, perfectly regular
+      // white strips")
+      alongJoints(50, 0.3, 'rgba(206,204,194,0.09)', 'rgba(206,204,194,0.03)');
       for (let i = 0; i < 14; i++) {
         const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M, r = 0.6 + rng() * 1.6;
         blotWrapped(xM, zM, r, 'rgba(40,46,50,0.26)', 'rgba(40,46,50,0.1)', 0.5 + rng() * 0.4);
         rng(); // (the ring's angle; its stroke is gone)
       }
       scatter(44, 0.2, 0.8, 'rgba(126,66,34,0.3)', 'rgba(126,66,34,0.08)', [0.2, 0.5]);
+      // a working quay's dirt (rejudge6, 2026-10-15: "the quay paving is clean"): diesel and hydraulic oil where the
+      // crane and the trucks stand, green slime and weed in the joints toward the water, big dull grime
+      scatter(20, 1.8, 4.6, 'rgba(46,48,46,0.2)', 'rgba(46,48,46,0.06)', [0.3, 0.7]);
+      alongJoints(70, 0.18, 'rgba(58,70,48,0.3)', 'rgba(58,70,48,0.08)');
+      scatter(26, 0.4, 1.2, 'rgba(22,22,22,0.3)', 'rgba(22,22,22,0.1)', [0.4, 0.9]);
       break;
     }
     case 'slab-urban': {
@@ -574,8 +643,12 @@ function drawHardstand(
       break;
     }
     case 'slab-cinder': {
-      // coal dust and cinders worked into the slabs from the rail roads
+      // coal dust and cinders worked into the slabs from the rail roads; big dull soot patches and pale ash blown across
+      // the slab and swept into its joints, so it never reads as "a huge clean concrete pad" (rejudge6, 2026-10-15)
       scatter(90, 0.6, 2.4, 'rgba(26,24,24,0.24)', 'rgba(26,24,24,0.08)');
+      scatter(22, 2.2, 5.2, 'rgba(28,26,25,0.2)', 'rgba(28,26,25,0.06)', [0.3, 0.7]);
+      scatter(36, 0.9, 2.4, 'rgba(128,120,108,0.16)', 'rgba(128,120,108,0.05)', [0.3, 0.8]);
+      alongJoints(90, 0.22, 'rgba(24,22,21,0.32)', 'rgba(24,22,21,0.1)');
       aggregate(2600, ['14,13,13', '120,70,44'], [0.6, 2.6], [0.1, 0.3], 0.85);
       break;
     }
@@ -594,13 +667,29 @@ function drawHardstand(
       break;
     }
     case 'earth-wet': {
-      // monsoon laterite: the puddles (MONSOON_PUDDLES) dark under lighter dried rims, the wet ground darker round them,
-      // gravel worked into the ruts
-      for (const lobe of monsoonPuddleLobes()) {
-        blot(lobe.x, lobe.z, lobe.r * 1.5, 'rgba(96,68,48,0.26)', 'rgba(96,68,48,0.08)', lobe.squash, lobe.angle);
-        blot(lobe.x, lobe.z, lobe.r * 1.18, 'rgba(176,132,96,0.2)', 'rgba(176,132,96,0.06)', lobe.squash, lobe.angle);
-        blot(lobe.x, lobe.z, lobe.r, 'rgba(52,44,36,0.5)', 'rgba(60,48,38,0.32)', lobe.squash, lobe.angle);
+      // monsoon laterite: the hulls' two track ruts pressed dark into the mud with their grousers' ribs, the ground darker
+      // and wet round the water (no dried pale ring: the rim of a puddle in the rain is wet), the water's bed silt
+      g.save();
+      g.filter = 'blur(3px)';
+      for (const shape of monsoonWater()) {
+        g.fillStyle = 'rgba(70,46,32,0.3)'; traceWater(g, shape, 1, 1.5); g.fill();
+        g.fillStyle = 'rgba(62,42,30,0.34)'; traceWater(g, shape, 1, 1.18); g.fill();
       }
+      g.filter = 'none';
+      for (const [side, d0, d1] of MONSOON_TRACKS) {
+        const a = px(...viewToPack(side, d0)), b = px(...viewToPack(side, d1));
+        g.strokeStyle = 'rgba(66,44,30,0.34)'; g.lineWidth = 0.62 * PX_PER_M;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+        g.strokeStyle = 'rgba(48,32,22,0.3)'; g.lineWidth = 0.07 * PX_PER_M;
+        for (let t = 0; t < len; t += 0.16 * PX_PER_M) { // the grousers' ribs across the rut
+          const x = a[0] + ux * t, y = a[1] + uy * t, h = 0.27 * PX_PER_M;
+          g.beginPath(); g.moveTo(x - uy * h, y + ux * h); g.lineTo(x + uy * h, y - ux * h); g.stroke();
+        }
+      }
+      g.fillStyle = 'rgba(54,40,30,0.55)';
+      for (const shape of monsoonWater()) { traceWater(g, shape, 1); g.fill(); }
+      g.restore();
       aggregate(2600, ['150,140,128', '60,44,34'], [0.6, 2.8], [0.1, 0.28], 0.85);
       break;
     }

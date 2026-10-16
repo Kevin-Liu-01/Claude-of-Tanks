@@ -5,6 +5,8 @@
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { filteredStill, masterFilter } from '../media-r5/master-filter.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -45,8 +47,9 @@ const images = captures.map(([id, title, source]) => {
     throw new Error(`${basename(source)}: expected 3840x2160, got ${sourceSize.width}x${sourceSize.height}`);
   }
   const target = join(outputDir, `${id}.webp`);
+  const master = filteredStill(source, join(tmpdir(), 'cot-master-filter', 'gallery'), `gallery-${id}`, masterFilter());
   run('cwebp', [
-    '-quiet', '-mt', '-m', '6', '-q', '90', '-sharp_yuv', source, '-o', target,
+    '-quiet', '-mt', '-m', '6', '-q', '90', '-sharp_yuv', master, '-o', target,
   ]);
   const publicSize = dimensions(target);
   if (publicSize.width !== 3840 || publicSize.height !== 2160) {

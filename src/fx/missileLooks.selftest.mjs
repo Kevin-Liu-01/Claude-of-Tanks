@@ -8,7 +8,7 @@ import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import { MISSILE_LOOKS, missileLookFor, firedIsMissile, missileWobble, missileFlicker, missileSpin } from './missileLooks.ts';
-import { missileLaunch, missileIgnition, missileTrailPuff } from './missileRecipes.ts';
+import { missileLaunch, missileIgnition } from './missileRecipes.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import { makeVolumePuff } from './volumeMedia.ts';
 import { makeChunkPiece } from './debrisChunks.ts';
@@ -135,14 +135,14 @@ assert.ok(can.fire >= 2 && can.media.length >= can.media.filter((m) => m.aspect 
   const c = ctx();
   missileIgnition(c.C, puffRandom(7), L.spike, 8, 2.2, 0, 1, 0, 0, -0.02);
   assert.ok(c.log.flash === 1 && c.log.media.length === 3, 'a coasting motor lights with a pop and a burst of smoke');
-  const t1 = ctx(), t2 = ctx();
-  missileTrailPuff(t1.C, puffRandom(5), L.tow, 10, 2, 0, 1, 0, 0, 0.5, -0.1);
-  missileTrailPuff(t2.C, puffRandom(5), L.tow, 10, 2, 0, 1, 0, 0, 0.5, -0.1);
-  assert.deepEqual(t1.log.media, t2.log.media, 'a trail puff is a function of its seed');
-  assert.ok(t1.log.media[0].vx < 0 && t1.log.media[0].birthOffset === -0.1, 'it leaves backward, born when the motor passed');
+  const i1 = ctx(), i2 = ctx();
+  missileIgnition(i1.C, puffRandom(5), L.tow, 10, 2, 0, 1, 0, 0, -0.1);
+  missileIgnition(i2.C, puffRandom(5), L.tow, 10, 2, 0, 1, 0, 0, -0.1);
+  assert.deepEqual(i1.log.media, i2.log.media, 'an ignition is a function of its seed');
+  assert.ok(i1.log.media[0].vx < 0, 'its smoke leaves backward');
   const none = ctx();
-  missileTrailPuff(none.C, puffRandom(5), L.mrm, 10, 2, 0, 1, 0, 0, 0, 0);
-  assert.equal(none.log.media.length, 0, 'no smoke, no puff');
+  missileIgnition(none.C, puffRandom(5), L.mrm, 10, 2, 0, 1, 0, 0, 0);
+  assert.equal(none.log.media.length, 0, 'no smoke, no puff (a flash only)');
 }
 
 // ---- 5. the live runtime: body, motor, wires and a trail born along the flight -----------------------------------------
@@ -160,13 +160,20 @@ try {
   const camera = new PerspectiveCamera(50, 16 / 9, 0.5, 3000); camera.position.set(-30, 6, 40); camera.lookAt(80, 2, 0);
   camera.updateMatrixWorld();
   const named = (n) => { let o = null; fx.group.traverse((c) => { if (!o && c.name === n && c.geometry) o = c; }); return o; };
-  // (EF.04) the smoke ribbon's joined segments (non-degenerate quads in its index)
-  const ribbonQuads = () => {
-    const r = named('fx-smoke-ribbons');
-    if (!r) return -1;
-    const a = r.geometry.index.array; let q = 0;
-    for (let o = 0; o < a.length; o += 6) if (a[o] !== a[o + 2]) q++;
+  // (FX lane 10-14) the smoke trail's laid segments
+  const trailSegs = () => {
+    const r = named('fx-missile-trails');
+    if (!r || !r.visible) return 0;
+    const a = r.geometry.getAttribute('iA'); let q = 0;
+    for (let i = 0; i < a.count; i++) if (a.getW(i) > -1e8) q++;
     return q;
+  };
+  const wirePoints = () => {
+    const m = named('fx-missile-wires');
+    if (!m || !m.visible) return 0;
+    const a = m.geometry.getAttribute('aP'); let n = 0;
+    for (let v = 0; v < a.count; v += 2) if (a.getW(v) > 0) n++;
+    return n;
   };
   const fly = (name, sound, speed, frames) => {
     fx.resetAll();
@@ -180,22 +187,24 @@ try {
       shell.prevPos.copy(shell.pos); shell.pos.x += speed * dt; shell.distM += speed * dt; shell.ageS += dt;
       fx.update(dt, [shell], camera);
       out.push({ dbg: fx.getGuidedMissileDebug(), tracers: named('Projectile tracers')?.geometry.instanceCount ?? 0,
-        media: named('fx-volume-media')?.geometry.instanceCount ?? 0, ribbon: ribbonQuads() });
+        media: named('fx-volume-media')?.geometry.instanceCount ?? 0, trail: trailSegs(), wires: wirePoints() });
     }
     return out;
   };
   const tow = fly('BGM-71E TOW-2A', 'tow-launch', 195, 12);
   assert.ok(tow.every((f) => f.dbg.bodies === 1), 'a TOW in flight draws its body');
   assert.ok(tow.at(-1).dbg.trailSegments > 0, 'its motor and plume once lit');
-  assert.ok(tow.at(-1).tracers >= 1 + 2 * 6, `its motor and two wires of six stretches (${tow.at(-1).tracers} capsules)`);
+  assert.ok(tow.at(-1).tracers >= 1, `its motor (${tow.at(-1).tracers} capsules)`);
+  // (FX lane 10-14) its two wires are their own lines from the launcher (missileWires.selftest)
+  assert.ok(tow.at(-1).wires >= 2 * 4, `and its two wires paid out (${tow.at(-1).wires} points)`);
   const kornet = fly('Kornet guided missile', 'spike-launch', 240, 12);
-  assert.ok(kornet.at(-1).tracers >= 1 && kornet.at(-1).tracers < 6, 'a beam-rider trails no wires');
+  assert.ok(kornet.at(-1).tracers >= 1 && kornet.at(-1).wires === 0, 'a beam-rider trails no wires');
   if (named('fx-volume-media')) {
     assert.ok(tow.at(-1).media > kornet.at(-1).media, `a TOW's launch outweighs a Kornet's (${tow.at(-1).media} vs ${kornet.at(-1).media})`);
-    // (EF.04) its smoke trail is one ribbon joined point to point along the flight (12 frames at 195 m/s: ~78 m), not
-    // a string of media puffs
-    assert.ok(tow.at(-1).ribbon >= 20, `the TOW lays a continuous ribbon (${tow.at(-1).ribbon} joined segments)`);
   }
+  // (FX lane 10-14) its smoke trail is one chain of segments along the flight on every tier (12 frames at 195 m/s: ~78 m
+  // past the motor lighting at 9 m), not a string of media puffs
+  assert.ok(tow.at(-1).trail >= 20, `the TOW lays a continuous trail (${tow.at(-1).trail} segments)`);
   const spike = fly('Spike LR', 'spike-launch', 117, 2);
   assert.equal(spike[0].dbg.trailSegments, 0, 'a soft-launched Spike coasts unlit for its first metres');
 } finally {

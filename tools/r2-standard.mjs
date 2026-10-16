@@ -70,6 +70,9 @@ export const R2 = Object.freeze({
   plate: Object.freeze({
     maxThickM: 0.10, flat: 0.5, minSpanM: 0.06, minAreaM2: 0.012, maxNy: 0.35, aspect: 12, memberAspect: 5, frameAspect: 3, frameFill: 0.6, memberWidthM: 0.26,
     behindM: 0.06, hits: 3, aroundM: 0.03, around: 4, revealM: 0.10, revealReachM: 0.3, darkRel: 0.62, darkAbs: 0.05,
+    // (Lane B's false positives, 2026-10-15) a ring (a door's frame over its leaf) covers under `ringFill` of its box; an
+    // open shutter lies beside an opening: no host within `shutterHoleM` of its side, the wall again within `shutterWallM`
+    ringFill: 0.5, shutterHoleM: [0.12, 0.3], shutterWallM: [0.7, 1.0, 1.3, 1.6, 2.0],
   }),
   boxShareMax: 0.6,
   chunky: 0.25,
@@ -318,15 +321,26 @@ export function paintedOpenings(input, opts = {}) {
     }
     const thick = n1 - n0;
     const bucket = parts[isl.part].bucket;
-    // its own axes in the face plane (a Fachwerk brace runs diagonal): the principal axis of its corners in the plane
+    // its own axes in the face plane (a Fachwerk brace runs diagonal): the principal axis of its area in the plane — each
+    // triangle's exact second moment weighted by its area there (Lane B, 2026-10-15: a corner's covariance counted the
+    // shared diagonal twice, so a 3.0 x 0.7 m two-triangle pane read 3.05 x 0.94 skewed and its samples left it)
     const uc = (u0 + u1) / 2, vc = (v0 + v1) / 2;
-    let suu = 0, svv = 0, suv = 0;
-    for (const t of isl.tris) for (let j = 0; j < 3; j++) {
-      const x = P[t * 9 + j * 3], y = P[t * 9 + j * 3 + 1], z = P[t * 9 + j * 3 + 2];
-      const du = x * ux + y * uy + z * uz - uc, dv = x * vx + y * vy + z * vz - vc;
-      suu += du * du; svv += dv * dv; suv += du * dv;
+    let am0 = 0, cu = 0, cv = 0, muu = 0, mvv = 0, muv = 0;
+    for (const t of isl.tris) {
+      const q = [0, 1, 2].map((j) => {
+        const x = P[t * 9 + j * 3], y = P[t * 9 + j * 3 + 1], z = P[t * 9 + j * 3 + 2];
+        return [x * ux + y * uy + z * uz - uc, x * vx + y * vy + z * vz - vc];
+      });
+      const a = Math.abs((q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[2][0] - q[0][0]) * (q[1][1] - q[0][1])) / 2;
+      if (a < 1e-12) continue;
+      const su = q[0][0] + q[1][0] + q[2][0], sv = q[0][1] + q[1][1] + q[2][1];
+      am0 += a; cu += a * su / 3; cv += a * sv / 3;
+      muu += a / 12 * (q[0][0] ** 2 + q[1][0] ** 2 + q[2][0] ** 2 + su * su);
+      mvv += a / 12 * (q[0][1] ** 2 + q[1][1] ** 2 + q[2][1] ** 2 + sv * sv);
+      muv += a / 12 * (q[0][0] * q[0][1] + q[1][0] * q[1][1] + q[2][0] * q[2][1] + su * sv);
     }
-    const theta = 0.5 * Math.atan2(2 * suv, suu - svv);
+    if (am0 > 0) { cu /= am0; cv /= am0; muu -= am0 * cu * cu; mvv -= am0 * cv * cv; muv -= am0 * cu * cv; }
+    const theta = 0.5 * Math.atan2(2 * muv, muu - mvv);
     let A = [Math.cos(theta), Math.sin(theta)], B = [-Math.sin(theta), Math.cos(theta)];
     let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
     for (const t of isl.tris) for (let j = 0; j < 3; j++) {
@@ -363,6 +377,12 @@ export function paintedOpenings(input, opts = {}) {
         hostBucket = parts[part[hit]].bucket;
       }
       if (hits < S.hits) continue;
+      // a ring — a door's frame over its leaf — covers a fraction of its box: no plate
+      {
+        let front = 0;
+        for (const t of isl.tris) if (nrm[t * 3] * nx * sign + nrm[t * 3 + 1] * ny * sign + nrm[t * 3 + 2] * nz * sign > 0.7) front += area[t];
+        if (front < S.ringFill * la * lb) break;
+      }
       if (timber) {
         // a frame of timbers welded at their joints (a Fachwerk panel's posts, rails and braces in one island) covers a
         // fraction of its box; a short rail between posts on render is a member too (a plate of timber on render, three
@@ -380,6 +400,20 @@ export function paintedOpenings(input, opts = {}) {
         if (cast(ox, oy, oz, dx, dy, dz, thick + S.behindM + 0.01, ii, nx, ny, nz) >= 0) round++;
       }
       if (round < S.around) continue;
+      // an open shutter lies flat on the wall beside its opening: along the level at either side, no host face near the
+      // plate (the opening) and the wall again beyond it
+      {
+        const vm = (v0 + v1) / 2, hv = (v1 - v0) / 2;
+        const point = (du, dv) => [nx * front + ux * du + vx * dv, ny * front + uy * du + vy * dv, nz * front + uz * du + vz * dv];
+        const host = (du, dv) => { const [ox, oy, oz] = point(du, dv); return cast(ox, oy, oz, dx, dy, dz, thick + S.behindM + 0.01, ii, nx, ny, nz) >= 0; };
+        let shutter = false;
+        for (const side of [-1, 1]) {
+          const edge = side > 0 ? u1 : u0;
+          const hole = S.shutterHoleM.every((off) => [-0.3, 0, 0.3].every((k) => !host(edge + side * off, vm + k * hv)));
+          if (hole && S.shutterWallM.some((off) => host(edge + side * off, vm))) { shutter = true; break; }
+        }
+        if (shutter) break;
+      }
       // nor at the back of a reveal: from `revealM` in front of it, faces across the plate's normal close it in on three
       // of four sides (an embrasure's stepped throat, a niche's back) — a trim proud of the face is no reveal
       const [cx, cy, cz] = at(front + sign * S.revealM, 0, 0);

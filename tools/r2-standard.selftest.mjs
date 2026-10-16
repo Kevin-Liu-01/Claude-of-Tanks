@@ -77,6 +77,37 @@ const DARK = [0.05, 0.045, 0.04], LIGHT = [0.7, 0.66, 0.6];
   assert.equal(buckets[0].hostBucket, 'stone');
 }
 
+// ------------------------------------------------------------------------------- 1b. Lane B's false positives (2026-10-15)
+{
+  // a window cut through a wall 4 x 2.5 m (its hole 1.0 x 1.2 m at x 0, y 0.9..2.1), a dark shutter leaf opened flat on the
+  // wall beside it: the leaf lies beside an opening, never painted
+  const wallAround = (hw, y0, y1) => [block(1.5, 2.5, 0.2, -2 + 0.75, 1.25, 0), block(1.5, 2.5, 0.2, 2 - 0.75, 1.25, 0),
+    block(1.0, y0, 0.2, 0, y0 / 2, 0), block(1.0, 2.5 - y1, 0.2, 0, (y1 + 2.5) / 2, 0)];
+  const shutter = paintedOpenings([...wallAround(0.5, 0.9, 2.1), block(0.5, 1.2, 0.03, 0.55 + 0.26, 1.5, 0.115, DARK)]);
+  assert.equal(shutter.length, 0, `an open shutter flat on the wall beside its window is no painted opening (found ${JSON.stringify(shutter)})`);
+  // the same dark leaf on a blank wall is still painted (no opening beside it)
+  assert.equal(paintedOpenings([block(4, 2.5, 0.2, 0, 1.25, 0), block(0.5, 1.2, 0.03, 0.81, 1.5, 0.115, DARK)]).length, 1, 'a dark leaf on a blank wall is painted');
+
+  // a door's frame: a dark ring 1.1 x 2.2 m, 9 cm wide, over a lighter leaf on the wall — a ring, never a plate
+  const ringShape = new THREE.Shape([new THREE.Vector2(-0.55, 0), new THREE.Vector2(0.55, 0), new THREE.Vector2(0.55, 2.2), new THREE.Vector2(-0.55, 2.2)]);
+  ringShape.holes.push(new THREE.Path([new THREE.Vector2(-0.46, 0.0001), new THREE.Vector2(-0.46, 2.11), new THREE.Vector2(0.46, 2.11), new THREE.Vector2(0.46, 0.0001)]));
+  const ring = new THREE.ExtrudeGeometry(ringShape, { depth: 0.03, bevelEnabled: false }).translate(0, 0, 0.13).toNonIndexed();
+  const rc = new Float32Array(ring.getAttribute('position').count * 3); for (let i = 0; i < rc.length; i += 3) rc.set(DARK, i);
+  ring.setAttribute('color', new THREE.BufferAttribute(rc, 3));
+  const framedLeaf = paintedOpenings([block(3, 2.5, 0.2, 0, 1.25, 0), block(0.92, 2.11, 0.03, 0, 1.055, 0.115, LIGHT), ring]);
+  assert.equal(framedLeaf.filter((p) => p.span[0] > 1 && p.span[1] > 2).length, 0, `a door frame's ring over its leaf is no plate (found ${JSON.stringify(framedLeaf)})`);
+
+  // a long pane of two triangles (its diagonal shared): read 3.0 x 0.7 m, not skewed by the diagonal
+  const pane = new THREE.PlaneGeometry(3.0, 0.7).translate(0, 1.4, 0.105).toNonIndexed();
+  const stuck = paintedOpenings({ stone: [block(4, 2.5, 0.2, 0, 1.25, 0)], glass: [pane] });
+  assert.equal(stuck.length, 1, 'a glass pane stuck on a stone wall is painted');
+  assert.ok(Math.abs(stuck[0].span[0] - 3.0) < 0.01 && Math.abs(stuck[0].span[1] - 0.7) < 0.01, `its span read straight (${stuck[0].span})`);
+  // the same pane set in its cut opening: its samples stay on it (behind it the hole), no painted opening
+  const glazed = paintedOpenings({ stone: [block(0.5, 2.5, 0.2, -1.75, 1.25, 0), block(0.5, 2.5, 0.2, 1.75, 1.25, 0),
+    block(3.0, 1.05, 0.2, 0, 0.525, 0), block(3.0, 0.75, 0.2, 0, 2.125, 0)], glass: [new THREE.PlaneGeometry(3.0, 0.7).translate(0, 1.4, 0).toNonIndexed()] });
+  assert.equal(glazed.length, 0, `a long pane in its cut opening is no painted opening (found ${JSON.stringify(glazed)})`);
+}
+
 // ------------------------------------------------------------------------------------------- 2. the barns' wicket; the Fachwerk
 {
   // the old painted wicket (gateUnit before Lane B's E2, regional/openings.ts): a near-black 0.7 x 1.75 m plate 2 cm thick

@@ -32,17 +32,18 @@ const clone = value => JSON.parse(JSON.stringify(value));
 // law counts the kit parts, at or under the three donors'. Footprint, collider, RNG and record laws are unchanged.
 // 2026-10-07 (round 3c; the coordinator's ruling): the kit's own parts — now the roof (regionalRoof), the dark glazing
 // (glass), the lantern's lit glass (curtain), the painted door (structureWood) and the painted iron of the gutters and
-// the penstock (steel) as well, each family already standing on Reservoir — draw under a ceiling of their own
+// the penstock (steel; props lane A #2, 2026-10-15: the baked family, with the yards' drums and tanks) as well, each
+// family already standing on Reservoir — draw under a ceiling of their own
 // (KIT_TRIANGLE_CEILING, 1500), the rest of the works at or under the donors as before.
 const KIT_MESHES = { 'props-bucket-regionalStone': 'regionalStone', 'props-bucket-curtain': 'curtain', 'props-bucket-glass': 'glass',
-  'props-bucket-regionalRoof': 'regionalRoof', 'props-bucket-structureWood': 'structureWood', 'props-bucket-steel': 'steel' };
+  'props-bucket-regionalRoof': 'regionalRoof', 'props-bucket-structureWood': 'structureWood', 'props-bucket-baked': 'baked' };
 /** The kit's parts' vertices by family: the walls with their reveals (94 triangles) and their dressing (280: the sills, the
  * plinth course, the quoins, the cornice, the damp, the lantern's warmth, the step, the vent's hood); the lantern's glass
  * (8); the windows' glass (4); the roof (80); the door (72); the gutters and the downpipe (84) and the penstock (492). */
-const KIT_VERTICES = { regionalStone: (94 + 280) * 3, curtain: 8 * 3, glass: 4 * 3, regionalRoof: 80 * 3, structureWood: 72 * 3, steel: (84 + 492) * 3 };
+const KIT_VERTICES = { regionalStone: (94 + 280) * 3, curtain: 8 * 3, glass: 4 * 3, regionalRoof: 80 * 3, structureWood: 72 * 3, baked: (84 + 492) * 3 };
 const KIT_PARTS = { 'reservoir-kiosk-body': 'regionalStone', 'reservoir-kiosk-dressing': 'regionalStone',
   'reservoir-kiosk-lantern': 'curtain', 'reservoir-kiosk-glazing': 'glass', 'reservoir-kiosk-roof': 'regionalRoof',
-  'reservoir-kiosk-door': 'structureWood', 'reservoir-kiosk-gutters': 'steel', 'reservoir-connected-penstock': 'steel',
+  'reservoir-kiosk-door': 'structureWood', 'reservoir-kiosk-gutters': 'baked', 'reservoir-connected-penstock': 'baked',
   'reservoir-kiosk-ironwork': 'dark', 'reservoir-kiosk-timber': 'wood' };
 /** How far each kit part may reach past the hard plan (m) and its heights over the plan's top: the walls on the plan, the
  * dressing out to the door's step, the roof and its gutters out to the eaves, the lantern on its bracket. */
@@ -249,7 +250,7 @@ function validateKitFamily(name, before, after, parts, expected) {
  * within its reach: KIT_REACH), the penstock along its route over the ground. */
 function validateKitKiosk(body, buckets, geometry, field) {
   const colour = ['color', 'normal', 'position', 'uv'], plain = ['normal', 'position', 'uv'];
-  const attributes = { regionalStone: colour, regionalRoof: colour, structureWood: colour, steel: colour, curtain: ['nightEmissionMask', 'normal', 'position', 'uv'],
+  const attributes = { regionalStone: colour, regionalRoof: colour, structureWood: colour, baked: colour, curtain: ['nightEmissionMask', 'normal', 'position', 'uv'],
     glass: plain, dark: plain, wood: plain };
   for (const [name, family] of Object.entries(KIT_PARTS)) {
     const parts = geometry.filter(g => g.name === name);
@@ -337,6 +338,17 @@ function validateAssembly(receipt, buckets, field) {
     const ring = receipt.pipe.find(v => Math.hypot(v[0] - x, v[2] - z) < 1e-5);
     assert.ok(ring && b.max.y > ring[1] - Math.sin(Math.PI / 3) * 0.34, 'brace intersects its connected pipe ring');
   }
+  // (props lane A, #21, 2026-10-14, Lane B's round 5 lifted: "unsupported pipes", the bank "a roofless box") a pier under
+  // every inner ring of the penstock, an iron strap over each; the bank's parapets and coping on its head
+  assert.equal(geometry.filter(g => g.name === 'reservoir-penstock-support').length, 6, 'a pier under every inner ring');
+  const straps = geometry.find(g => g.name === 'reservoir-penstock-straps');
+  assert.ok(straps && buckets.dark.includes(straps), 'the straps over the piers, in iron');
+  const head = geometry.find(g => g.name === 'reservoir-bank-parapets');
+  assert.ok(head && buckets.stone.includes(head), 'the bank\'s parapets and coping, in its stone');
+  const bankBody = geometry.find(g => g.name === 'reservoir-bank-body').boundingBox;
+  assert.ok(head.boundingBox.min.y < bankCap.max.y && head.boundingBox.max.y > bankCap.max.y + 0.5, 'the parapets stand on the bank\'s head');
+  assert.ok(head.boundingBox.min.x >= bankBody.min.x - 0.1 && head.boundingBox.max.x <= bankBody.max.x + 0.1
+    && head.boundingBox.min.z >= bankBody.min.z - 0.1 && head.boundingBox.max.z <= bankBody.max.z + 0.1, 'within a hand of its edges');
 }
 
 function meshDistance(geometries, origin, direction) {
@@ -528,7 +540,7 @@ function validateIntake(receipt, geometry, collider) {
 
 function fixture() {
   const buckets = { stone: [], wood: [], dark: [slabBox(1, 1, 1)], regionalStone: [slabBox(1, 1, 1)], curtain: [slabBox(1, 1, 1)],
-    glass: [slabBox(1, 1, 1)], regionalRoof: [slabBox(1, 1, 1)], structureWood: [slabBox(1, 1, 1)], steel: [slabBox(1, 1, 1)] };
+    glass: [slabBox(1, 1, 1)], regionalRoof: [slabBox(1, 1, 1)], structureWood: [slabBox(1, 1, 1)], baked: [slabBox(1, 1, 1)] };
   const donors = Array.from({ length: 3 }, (_, i) => {
     const stone = Array.from({ length: 13 }, () => slabBox(1, 1, 1).translate(-200 + i * 10, 0, 160));
     buckets.stone.push(...stone);
@@ -551,7 +563,7 @@ if (process.argv[2] === '--world') {
     assert.deepEqual(geometry.map(geometryHash), hashes, `${id}: byte-identical despite supplied opt-in`);
     geometry.forEach(g => g.dispose());
   }
-  for (const failure of ['unavailable', 'occupied', 'wet-kiosk', 'steep-kiosk', 'budget', 'no-kit', 'no-kit-family', 'no-steel-family']) {
+  for (const failure of ['unavailable', 'occupied', 'wet-kiosk', 'steep-kiosk', 'budget', 'no-kit', 'no-kit-family', 'no-iron-family']) {
     const f = fixture(); let terrain = field;
     if (failure === 'unavailable') f.donors.pop();
     if (failure === 'occupied') f.blockers.push({ min: [43, -8, 97], max: [44, 2, 98] });
@@ -561,14 +573,13 @@ if (process.argv[2] === '--world') {
     // geometries against the works' 288 and 24)
     if (failure === 'budget') for (const donor of f.donors) donor.stone.splice(0, 9);
     if (failure === 'no-kit-family') f.buckets.curtain.length = 0;
-    // (the steel family empty when the waterworks composes and the map not drawing it: no pump house; Reservoir's own
-    // steel pieces come after it, and props.ts says the map draws the family — `steel` on the kit, below)
-    if (failure === 'no-steel-family') f.buckets.steel.length = 0;
+    // (a caller without the iron's baked family: no pump house)
+    if (failure === 'no-iron-family') delete f.buckets.baked;
     const geometry = Object.values(f.buckets).flat(), hashes = geometry.map(geometryHash), records = clone(f.blockers);
     const result = composeReservoirWaterworks('reservoir', cfg, terrain, f.donors, f.buckets, f.blockers,
       failure === 'no-kit' ? null : KIT);
     assert.equal(result.status, { unavailable: 'unavailable', occupied: 'unsafe', 'wet-kiosk': 'unsafe', 'steep-kiosk': 'unsafe',
-      budget: 'budget', 'no-kit': 'unavailable', 'no-kit-family': 'unavailable', 'no-steel-family': 'unavailable' }[failure], `${failure}: ${result.status}`);
+      budget: 'budget', 'no-kit': 'unavailable', 'no-kit-family': 'unavailable', 'no-iron-family': 'unavailable' }[failure], `${failure}: ${result.status}`);
     assert.deepEqual(Object.values(f.buckets).flat(), geometry, `${failure}: no partial replacement`);
     assert.deepEqual(geometry.map(geometryHash), hashes); assert.deepEqual(f.blockers, records);
     geometry.forEach(g => g.dispose());

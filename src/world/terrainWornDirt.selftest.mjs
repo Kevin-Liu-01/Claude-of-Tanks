@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { historicalPaletteConfig } from './shorelineHistoryTestOracle.mjs';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 const compact = text => text.replace(/\s+/g, '');
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));

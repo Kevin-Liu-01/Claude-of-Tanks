@@ -30,6 +30,7 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -610,12 +611,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // sweeps measured −0.2 whole each under the documented dAlong 0.739
     // registration residual — receipts banked, this seat is the measured
     // dims-100 + curve-neutral exchange (§5.265/§5.290).
-    if (!c2) {
-      const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
-        elev: 0, shield: false, scale: 0.62, seed: 44 });
-      commanderMg.name = 'arieteC1CommanderMg';
-      addFitting(P, 'turret', commanderMg, 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
-    }
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Ariete's
+    // AA MG 42/59 is the loader's, worked from his hatch; the commander's cupola gun is gone.
     cupolaRing(P, -0.42, 0.86, L(-0.62), 0.23);                                  // loader hatch ring
     P.add('turret', box(0.34, 0.022, 0.30), -0.42, 0.925, L(-0.62), 0, 0.10, 0);
     for (let k = 0; k < 3; k++) periscope(P, 'turretDetail', 0.30 + k * 0.16, 0.90, L(-0.10), 0.1);
@@ -788,8 +785,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       buildArieteMkMarkingsCourse1();
     } else {
       const buildArieteMkMarkingsCourse2 = (): void => {
+        // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA MG 42/59)
         const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
-          elev: 0, shield: false, scale: 0.62, seed: 45 });
+          elev: 0, shield: false, scale: 0.62, seed: 45, working: true });
         loaderMg.name = 'arieteC1LoaderMg';
         addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
         P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
@@ -828,8 +826,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       rotatingShoulderModules: 4,
       rotatingApuAssembly: true,
     } : {
-      roofWeaponStations: 2,
-      manualPintles: 2,
+      // VH.14: the C1's one roof gun is the loader's AA MG 42/59 (the commander's cupola gun is gone)
+      roofWeaponStations: 1,
+      manualPintles: 1,
       remoteControlled: false,
       rotatingShoulderModules: 4,
       rotatingApuAssembly: false,
@@ -966,11 +965,13 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.add('hull', box(2.80, 0.05, 0.19), 0, 1.518, -2.885);                      // step 1.543
     P.add('hull', box(2.80, 0.05, 0.28), 0, 1.484, -2.53);                       // step 1.509
     P.add('hull', box(2.80, 0.045, 0.14), 0, 1.474, -2.32);                      // step to the main deck
-    // engine deck dressing: grille fields + fuel caps (§B3.2 density)
-    P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
-    for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
-    P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
+    // engine deck dressing: grille fields + fuel caps (§B3.2 density); VEH-13: the fields are no seat for spare links
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
+      for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
+      P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
+      for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
+    });
     for (const s of [-1, 1]) P.add('hullDetail', cylY(0.09, 0.09, 0.025, 12), s * 1.05, 1.508, -1.32);
     // ---- stern (tail 1.42-1.45 @ -3.42..-3.48, raked plate; plan rear center
     // -3.42..-3.49) -------------------------------------------------------------
@@ -1168,8 +1169,9 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.30, d: 0.14,
       h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, -1.86,
       [0, Math.PI, 0]);                                                          // rear rack: embedded feet, open face points outboard (-Z)
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.50, seed: 72 }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
+      elev: 0, shield: false, scale: 0.50, seed: 72, working: true }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
     // Canted corner launchers retain broad shoes seated on each roof shoulder.
     for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.95,

@@ -270,6 +270,8 @@ assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
     const skyOwner = mainCallback('applySkyPreset', {
       battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, selectedGarageVariantId: 'verdant',
       getGarageVariant: () => ({ mapId: 'verdant' }), getGarageSkyPreset: () => garagePreset,
+      // (2026-10-15) the Garage's fair weather (garageWeather.ts): Verdant's yard is its battlefield's sky
+      withGarageWeather: (_mapId, preset) => preset,
       worldRuntime: { invalidateSkyPresentation() { skyInvalidations++; } },
       sky: { applyPresentationPreset(preset) {
         h.applied.push(preset); h.scene.fog = new THREE.FogExp2(0xaaaaaa, preset.fogDensity);

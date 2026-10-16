@@ -250,25 +250,6 @@ function smoke(
   }), side * x, y, z);
 }
 
-function roofWeapon(
-  P: JapaneseBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  seed: number,
-  scale = 0.78,
-  yaw = 0,
-  s = 1,
-): void {
-  P.add('turret', KIT.box(0.46 * s, 0.075 * s, 0.43 * s), x, y, z);
-  P.add('turretDark', KIT.box(0.36 * s, 0.020 * s, 0.33 * s), x, y + 0.048 * s, z);
-  P.add('turret', KIT.cylY(0.19 * s, 0.21 * s, 0.070 * s, 16), x, y + 0.085 * s, z);
-  mount(P, FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale, elev: 0.10,
-    shield: true, ammo: true, ring: { r: 0.16 * s, stubs: 3 }, seed,
-  }), x, y + 0.105 * s, z, [0, yaw, 0]);
-}
-
 function joinedBasket(
   P: JapaneseBuilderPort,
   width: number,
@@ -612,9 +593,10 @@ function addSTB1RoofEquipment(P: JapaneseBuilderPort): void {
   }
   for (const [x, z, yaw] of [[0.14, 0.38, 0], [-0.22, 0.34, 0.15], [0.69, -0.05, -0.2]])
     periscope(P, 'turretDetail', x, 1.04, z, yaw);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   mount(P, FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.82, elev: 0.06,
-    shield: false, ammo: true, ring: { r: 0.15, stubs: 3 }, seed: 1110,
+    shield: false, ammo: true, ring: { r: 0.15, stubs: 3 }, seed: 1110, working: true,
   }), 0.43, 1.11, -0.38, [0, -0.05, 0]);
   P.add('turretDark', box(0.12, 0.11, 0.34), 0.43, 1.25, -0.20);
   P.add('turretDark', cylZ(0.020, 0.64, 10), 0.43, 1.27, 0.26, -0.05, 0, 0);
@@ -894,8 +876,7 @@ function addType10BPackage(P: JapaneseBuilderPort): void {
   P.add('turretDark', box(0.264, 0.143, 0.0286), 0.77, 0.99 + rightDeltaY, 0.3135);
   P.add('turretGlass', box(0.176, 0.0825, 0.0198), 0.77, 0.99 + rightDeltaY, 0.3366);
 
-  const rwsBaseY = roofY + (0.075 * 1.1) * 0.5 - roofEmbed;
-  roofWeapon(P, 0.462, rwsBaseY, -0.638, 10010, 0.858, 0.045, 1.1);
+  // VH.14 (coordinator ruling 2026-10-14): the Type 10's one roof gun is its M2, a working station; the GPMG here is gone
   smoke(P, 1.353, roofY, 0.055, 6, 10020, -0.45, 1.1);
   const kaiBasketZ = -1.789;
   joinedBasket(P, 2.772, 0.528, kaiBasketZ, 0.77, 10030, 1.1);

@@ -29,6 +29,10 @@ export interface AerialView {
   kind: 'drone' | 'gunship'; active: boolean; launching: boolean;
   x: number; y: number; z: number; yaw: number; pitch: number;
   batteryS: number; cooldownS: number;
+  /** A drone in flight: seconds until a recall is accepted (0 once the pilot is in its feed; sim/droneRecall.ts). */
+  recallS?: number;
+  /** A recalled drone: seconds until it is parked on its dock after flying home and landing (0 otherwise). */
+  returnS?: number;
 }
 
 export const GAME_MODE_IDS = Object.freeze([

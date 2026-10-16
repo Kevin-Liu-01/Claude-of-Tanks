@@ -189,7 +189,8 @@ export default {
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-09, the shadows lane: deckBeam — the cells passed a tenth of the sun over 88 % of the works)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.88, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40, deckBeam: 0.35 },
+  // 2026-10-15 (the SKY lane; the 10-13 ruling on every map): the works' overcast closed (0.88 left breaks: the banned deck)
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40, deckBeam: 0.35 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and
@@ -198,7 +199,7 @@ export default {
     // scatter blue least), the bird view no longer a grey wash
     mieCoefficient: 0.006, mieDirectionalG: 0.88, fogDensity: 0.00052,
     fogTintHex: 0x858384, fogMix: 0.45, envIntensity: 0.22,
-    atmosphere: { mieTintHex: 0xd2b28c },
+    atmosphere: { mieTintHex: 0xd2b28c, horizonTintHex: 0xd0c6b6, horizonTintAmount: 0.5, horizonBandDeg: 11, zenithTintHex: 0x889ab0, zenithTintAmount: 0.3 },
     cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
     // shadow-audit r2: the 24° key was too weak after haze/ACES on the
     // mobile-low path (3.95 changed-pixel luma against the 4.0 contract), so
