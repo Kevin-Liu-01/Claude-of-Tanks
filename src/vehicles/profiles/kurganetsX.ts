@@ -372,9 +372,9 @@ export function buildKurganets25X(P: TankBuilderPort): void {
     P.topY = 4.02 - P.turretG.position.y;
     preserveSourceStudyGunMountAppearance(P);
     P.hullG.userData.xRebuild = {
-        candidate: 'kurganets25_x', independent: true, sourceLocalOnly: true, datumVersion: 1,
+        candidate: 'kurganets25', independent: true, sourceLocalOnly: true, datumVersion: 1,
     };
 }
 export const KURGANETS_X_PROFILES = {
-    kurganets25_x: { build: buildKurganets25X },
+    kurganets25: { build: buildKurganets25X },
 } as const;

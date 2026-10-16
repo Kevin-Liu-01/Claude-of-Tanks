@@ -261,6 +261,7 @@ function solveProfileMarkingSeat(
   avoid: readonly VehicleDecal[] = [],
   vertical = profile.vertical,
   mustExceedClear = -1,
+  reach: MarkingReach | null = null,
 ): MarkingCandidate | null {
   const bounds = markingLocalBounds(owner, meshes);
   if (bounds.isEmpty()) return null;
@@ -282,6 +283,7 @@ function solveProfileMarkingSeat(
     const position = hit.pointLocal.clone().addScaledVector(
       hit.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM);
     const quaternion = markingQuaternion(hit.normalLocal, tangent);
+    if (reach && position.distanceTo(reach.point) > reach.maxM) continue;
     if (markingSeatOverlaps(position, quaternion, size, ownerName, avoid)) continue;
     // 2026-10-05 (leo2a6_ua: 724 candidates, 6,525 visibility rays per receipt build). A candidate stops casting its
     // visibility rays once it can no longer be chosen, which leaves every seat exactly as the full search chose it: a
@@ -413,6 +415,82 @@ function findProfileMarkingSeat(
   return selected;
 }
 
+/**
+ * netting-225 (2026-10-14, seat stability; the coordinator's ruling on the netted hulls): a re-solve starts from the
+ * vehicle's own verified seats. The search runs outward from the profile's anchor and takes the first candidate that
+ * reads best, so a change elsewhere on a vehicle (a camouflage suit laid differently, a fitting) moved markings that
+ * still read clear, by up to 3.6 m (25 seats on the netted hulls). Now a profile seat that still sits on its armour and
+ * reads at least its recorded clear count stands as it was; one that reads fewer is searched again round where it
+ * stood, never farther than MARKING_RESEAT_REACH_M; only where nothing within that reach reads the minimum does the
+ * profile's own search range further.
+ */
+const MARKING_RESEAT_REACH_M = 0.5;
+/** How far a standing seat may lie off the armour it was solved on (its lift aside), and turn off its normal. */
+const MARKING_STANDING_SURFACE_M = 0.002;
+const MARKING_STANDING_NORMAL_COS = Math.cos(THREE.MathUtils.degToRad(5));
+
+interface MarkingReach {
+  readonly point: THREE.Vector3;
+  readonly maxM: number;
+}
+
+/** The prior seat's visibility receipt when it still stands (on its armour, clear of the others, as clear as recorded). */
+function standingMarkingSeat(
+  prior: VerifiedMarkingSeat,
+  owner: THREE.Object3D,
+  meshes: VehicleMesh[],
+  occluders: VehicleMesh[],
+  avoid: readonly VehicleDecal[],
+): MarkingVisibilityReceipt | null {
+  const position = new THREE.Vector3(...prior.pos);
+  const quaternion = new THREE.Quaternion(...prior.quaternion);
+  const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
+  const hit = raySeatMarking(owner, meshes, position.clone().addScaledVector(normal, 0.12), normal.clone().negate(), 0.42);
+  if (!hit || hit.object.name !== prior.surfaceMesh) return null;
+  const seated = hit.pointLocal.clone().addScaledVector(hit.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM);
+  if (seated.distanceTo(position) > MARKING_STANDING_SURFACE_M
+      || hit.normalLocal.dot(normal) < MARKING_STANDING_NORMAL_COS) return null;
+  if (markingSeatOverlaps(position, quaternion, prior.size, prior.parent, avoid)) return null;
+  const receipt = markingVisibilityReceipt(owner, position, quaternion, prior.size, occluders);
+  return receipt.visibilityVerified && receipt.visibilityClearSamples >= prior.visibilityClearSamples ? receipt : null;
+}
+
+/** The best seat within MARKING_RESEAT_REACH_M of the prior one (its owner, either side, its size or smaller). */
+function reseatNearPriorMarking(
+  profile: VehicleMarkingAnchor,
+  prior: VerifiedMarkingSeat,
+  owners: Record<VehicleOwner, THREE.Group>,
+  surfaces: Record<VehicleOwner, VehicleMesh[]>,
+  occluders: VehicleMesh[],
+  avoid: readonly VehicleDecal[],
+): ProfileMarkingSeat | null {
+  const ownerName = prior.parent;
+  const owner = owners[ownerName];
+  const bounds = markingLocalBounds(owner, surfaces[ownerName]);
+  if (bounds.isEmpty()) return null;
+  const point = new THREE.Vector3(...prior.pos);
+  const reach = { point, maxM: MARKING_RESEAT_REACH_M };
+  const share = (value: number, min: number, max: number): number => (max - min > 1e-6 ? (value - min) / (max - min) : 0.5);
+  const longitudinal = share(point.z, bounds.min.z, bounds.max.z);
+  const vertical = share(point.y, bounds.min.y, bounds.max.y);
+  const near: VehicleMarkingAnchor['side'] = point.x >= (bounds.min.x + bounds.max.x) / 2 ? 'right' : 'left';
+  const sizes = [...new Set([prior.size, prior.size * 0.88, SURFACE_MARKING_STYLE.minimumReadableSizeM])]
+    .filter((size) => size >= SURFACE_MARKING_STYLE.minimumReadableSizeM && size <= prior.size);
+  let selected: ProfileMarkingSeat | null = null;
+  for (const size of sizes) {
+    for (const side of [near, near === 'right' ? 'left' : 'right'] as const) {
+      const candidate = solveProfileMarkingSeat(
+        { ...profile, owner: ownerName, side }, owner, ownerName, surfaces[ownerName], occluders,
+        longitudinal, size, avoid, vertical, selected ? selected.candidate.visibilityClearSamples : -1, reach);
+      if (candidate && (!selected || candidate.visibilityClearSamples > selected.candidate.visibilityClearSamples)) {
+        selected = { candidate, owner: ownerName, size };
+      }
+    }
+    if (selected && selected.candidate.visibilityClearSamples >= prior.visibilityClearSamples) break;
+  }
+  return selected?.candidate.visibilityVerified ? selected : null;
+}
+
 function addProfileVehicleDecal(
   spec: FactoryTankSpec,
   marking: VehicleMarkingRecord,
@@ -424,11 +502,41 @@ function addProfileVehicleDecal(
   kind: string,
   longitudinal: number,
   size: number,
+  prior: VerifiedMarkingSeat | null = null,
 ): boolean {
   const avoid = decals.filter((decal) => decal.kind === 'insignia'
     || decal.kind === 'designation');
-  const selected = findProfileMarkingSeat(
-    profile, owners, surfaces, occluders, longitudinal, size, avoid);
+  if (prior) {
+    const standing = standingMarkingSeat(prior, owners[prior.parent], surfaces[prior.parent], occluders, avoid);
+    if (standing) {
+      // as recorded, unless it now reads clearer (a re-measure of the same seat never rewrites it by rounding noise)
+      const was = prior.maximumSurfaceErrorM ?? Infinity, now = standing.maximumSurfaceErrorM;
+      const same = standing.visibilityClearSamples === prior.visibilityClearSamples
+        && (Number.isFinite(was) ? Math.abs(now - was) < 1e-6 : !Number.isFinite(now));
+      decals.push({
+        parent: prior.parent,
+        kind,
+        text: kind === 'designation' ? marking.tacticalNumber : null,
+        size: prior.size,
+        pos: [...prior.pos],
+        rotY: 0, rotX: 0, rotZ: 0,
+        quaternion: new THREE.Quaternion(...prior.quaternion),
+        surfaceSupported: true,
+        supportGapM: SURFACE_MARKING_STYLE.surfaceLiftM,
+        surfaceMesh: prior.surfaceMesh,
+        anchorProfile: spec.id,
+        visibilitySamples: standing.visibilitySamples,
+        visibilityClearSamples: standing.visibilityClearSamples,
+        visibilityRatio: same ? prior.visibilityRatio : standing.visibilityRatio,
+        // (a record's unbounded error is written null: it stays unbounded)
+        maximumSurfaceErrorM: same ? was : standing.maximumSurfaceErrorM,
+        visibilityVerified: true,
+      });
+      return true;
+    }
+  }
+  const selected = (prior && reseatNearPriorMarking(profile, prior, owners, surfaces, occluders, avoid))
+    || findProfileMarkingSeat(profile, owners, surfaces, occluders, longitudinal, size, avoid);
   if (!selected) return false;
   const seat = selected.candidate;
   decals.push({
@@ -481,8 +589,15 @@ export function finalizeVehicleMarkingSeats(
   root: THREE.Object3D,
   hullG: THREE.Group,
   turretG: THREE.Group,
+  priorSeats: readonly RuntimeValue[] | null = null,
 ): void {
   const owners: Record<VehicleOwner, THREE.Group> = { hull: hullG, turret: turretG };
+  // netting-225 seat stability: the vehicle's seat of a kind as last verified (the generator's registry): its profile
+  // seat, else a builder's station the solver must now replace (searched round where it stood)
+  const priorProfileSeat = (kind: string): VerifiedMarkingSeat | null => {
+    const prior = (priorSeats ?? []).filter((seat): seat is VerifiedMarkingSeat => isVerifiedMarkingSeat(seat) && seat.kind === kind);
+    return prior.find((seat) => seat.anchorProfile === spec.id) ?? prior[0] ?? null;
+  };
   const surfaces: Record<VehicleOwner, VehicleMesh[]> = {
     hull: markingArmorMeshes(hullG, 'hull', vehicleMarkingIncludesPermanentHullArmor(spec.id)),
     turret: markingArmorMeshes(turretG, 'turret'),
@@ -494,11 +609,18 @@ export function finalizeVehicleMarkingSeats(
   // their chosen historical stations, but are snapped to the actual armor
   // below them. Unsupported legacy planes are discarded rather than allowed
   // to hover beside a reshaped turret.
+  // netting-225 seat stability: where the last verified seats solved a kind on the profile (the builder's own station
+  // read too faint then), that station stays retired while the profile's seat stands (the Type 90A's two, revived when
+  // its suit's garnish came to lie flat, moved both its markings by 0.4 to 0.7 m)
+  const profileSolved = (kind: string): boolean => {
+    const prior = (priorSeats ?? []).filter((seat): seat is VerifiedMarkingSeat => isVerifiedMarkingSeat(seat) && seat.kind === kind);
+    return prior.length > 0 && prior.every((seat) => seat.anchorProfile === spec.id);
+  };
   for (let index = decals.length - 1; index >= 0; index -= 1) {
     const decal = decals[index];
     if (decal.kind !== 'insignia' && decal.kind !== 'designation') continue;
     const ownerName = decal.parent === 'turret' ? 'turret' : 'hull';
-    if (!reseatAuthoredMarking(
+    if (profileSolved(decal.kind) || !reseatAuthoredMarking(
       decal, owners[ownerName], surfaces[ownerName], occluders)) {
       decals.splice(index, 1);
     } else {
@@ -511,14 +633,14 @@ export function finalizeVehicleMarkingSeats(
   if (!decals.some((decal) => decal.kind === 'insignia')) {
     addProfileVehicleDecal(
       spec, marking, decals, profile, owners, surfaces, occluders,
-      'insignia', profile.longitudinal, profile.sizeM);
+      'insignia', profile.longitudinal, profile.sizeM, priorProfileSeat('insignia'));
   }
   if (!decals.some((decal) => decal.kind === 'designation')) {
     const textZ = THREE.MathUtils.clamp(
       profile.longitudinal + profile.designationDirection * 0.11, 0.10, 0.90);
     addProfileVehicleDecal(
       spec, marking, decals, profile, owners, surfaces, occluders,
-      'designation', textZ, profile.sizeM);
+      'designation', textZ, profile.sizeM, priorProfileSeat('designation'));
   }
   } finally {
     restoreMaterialSides();

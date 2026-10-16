@@ -427,7 +427,7 @@ function buildBMPT2(P: AfvBuilderPort): void {
   buildT80UXHull(P);
   P.turretG.position.set(0,1.565,.39187);
   addTerminatorStation(P);
-  P.hullG.userData.familyRebuild={donor:'t80u_x',revision:2};
+  P.hullG.userData.familyRebuild={donor:'t80u',revision:2};
 
 }
 
@@ -1406,11 +1406,11 @@ function buildPumaOracle(P: AfvBuilderPort): void {
 // =============================== BMPT T-90 ==================================
 // §5.363 OWNER ORDER (verbatim): "add a bmp terminator 2 where it has an even
 // crazier beefier two autocannon turret with even more equipment and
-// decorations and even some era on a t90 hull".
+// decorations and even some era on a t90_1992 hull".
 // NEW id `bmpt_t90` ("BMPT T-90", Russia, tier 10) — FALSE-0/photo-class: no
 // oracle exists and none is invented; the id is never gated (the
 // bmpt_terminator2/kf51b ledger-absence class).
-// HULL: the certified T-90A donor (T90_PROFILES.t90a — the T72_PROFILES
+// HULL: the certified T-90A donor (T90_PROFILES.t90a_2004 — the T72_PROFILES
 // precedent import): K-5 glacis cassette courses, §5.262 six-wheel rubber
 // course, guarded bow/stern light clusters, split unditching log + stern
 // drums, fender kit, ruSkirtBand. This build adds the §5.350-class flank
@@ -1517,7 +1517,7 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   weaponAssembly(P, () => addTerminatorT90MissileRacks(P));
 
   // STATION ERA ("even some era"): K-5 class wedge clamshells hugging both
-  // front cheeks (the t90a eraRuCheeks read, station-local), a staggered
+  // front cheeks (the t90a_2004 eraRuCheeks read, station-local), a staggered
   // brick cassette course on the sloped face, and flank tiles on the walls.
   for (const side of [-1, 1]) {
     const suffix = side > 0 ? 'R' : 'L';
@@ -1634,7 +1634,7 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
 }
 
 function buildBMPTT90(P: AfvBuilderPort): void {
-  T90_PROFILES.t90a.build(P);
+  T90_PROFILES.t90a_2004.build(P);
   addTerminatorT90Station(P);
   // §5.350-class flank program over the donor's certified thin skirt band:
   // 8 ERA panels per side (bottoms hold the certified 0.98 line — §B9 wheel

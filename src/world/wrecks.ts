@@ -513,7 +513,7 @@ function wreckBakeResult(
  * hull origin, facing local +z like the live tank).
  *
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
- * @param {string} specId roster vehicle id ('kv2', 'm1a2', ...)
+ * @param {string} specId roster vehicle id ('kv2', 'm1a1_abrams_hc', ...)
  * @param {{seed?: number, pop?: boolean}} [opts] pop=true = ammo-rack wreck
  *   (turret tossed beside the ring), else unseated-askew turret
  * @returns {?{geo: THREE.BufferGeometry, hx: number, hz: number, h: number,

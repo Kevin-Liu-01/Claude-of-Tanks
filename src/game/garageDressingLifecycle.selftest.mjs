@@ -355,11 +355,11 @@ for (let bay = 1; bay <= 5; bay++) {
   await f.runtime.pump(); // first builder
   const scheduled = f.runtime.pump(() => true);
   await Promise.resolve();
-  assert.equal(requests.get('t90a_burlak'), 1);
+  assert.equal(requests.get('t90a_burlak_proto'), 1);
   const captureA = f.runtime.ensureBuilt(), captureB = f.runtime.ensureBuilt();
   assert.equal(f.runtime.pump(), scheduled);
   await Promise.resolve();
-  assert.equal(requests.get('t90a_burlak'), 1, 'capture overlap cannot duplicate a transfer');
+  assert.equal(requests.get('t90a_burlak_proto'), 1, 'capture overlap cannot duplicate a transfer');
   firstTransfer.resolve();
   await Promise.all([scheduled, captureA, captureB]);
   assert.equal(f.runtime.isBuilt(), true);

@@ -158,8 +158,9 @@ function wireHome() {
   swap(H, /(<div class="v5-shot-rail" data-shot-rail[^>]*>\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/,
     (_, open, close) => `${open}${rail.join('')}${close}`, 'screenshot rail');
   swap(H, /(<span data-shot-position aria-live="polite">)1 \/ \d+(<\/span>)/, (_, open, close) => `${open}1 / ${PICKS.home.rail.length}${close}`, 'screenshot position');
+  // the feature reel: its 900p VP9 webm, the same in H.264 for a browser that plays no VP9 (2026-10-14), the phone's mp4
   swap(H, /(<section class="v5-film"[^>]*>\n[ \t]*)<video [^\n]*?<\/video>/,
-    (_, open) => `${open}<video muted loop playsinline preload="none" data-poster="${built(`${C}/films/reel.jpg`)}" data-autoplay-video data-label="Claude of Tanks battle reel, rendered in the game engine" aria-hidden="true"><source data-src="${built(`${C}/films/reel.mp4`)}" data-type="video/mp4" data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`, 'feature reel');
+    (_, open) => `${open}<video muted loop playsinline preload="none" data-poster="${built(`${C}/films/reel.jpg`)}" data-autoplay-video data-label="Claude of Tanks battle reel, rendered in the game engine" aria-hidden="true"><source data-src="${built(`${C}/films/reel.webm`)}" data-type="video/webm" data-fallback-src="${built(`${C}/films/reel.mp4`)}" data-fallback-type="video/mp4" data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`, 'feature reel');
   swap(H, /(<section class="v5-destruction"[^>]*>)<video [^\n]*?<\/video>/, (_, open) => `${open}${loopVideo(PICKS.home.destruction)}`, 'destruction loop');
   const paths = PICKS.home.paths.map((id) => `        <article>${loopVideo(id)}<div><p data-i18n="${titleKey(id)}">${esc(take(id).en)}</p></div></article>\n`);
   swap(H, /(<div class="v5-rail-grid">\n)(?:[ \t]*<article>[^\n]*<\/article>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${paths.join('')}${close}`, 'camera-path grid');

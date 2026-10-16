@@ -36,11 +36,18 @@ import {
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
 import {
+  GARAGE_HARDSTAND_FEATHER_M,
+  GARAGE_HARDSTAND_PROGRAM_KEY,
+  garageHardstandGradedHook,
+} from './garageHardstandProgram.ts';
+import {
   GARAGE_HARDSTAND_STYLES,
+  GARAGE_SHEETING_TILE_M,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
   garageHardstandNormal,
   garageHardstandNormalKind,
+  garageSheeting,
 } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
@@ -49,7 +56,7 @@ import {
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
-  setupShadowMaterial?(material: THREE.Material): void;
+  setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
 }
 
 interface GarageEnvironmentStats {
@@ -722,7 +729,15 @@ function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: numb
   return garageViewPoint(side, depth);
 }
 
-function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array): THREE.BufferGeometry {
+/**
+ * Metres per texture repeat on the terrain, per surface (2026-10-11, wave 398: "a hugely over-scaled cobblestone
+ * texture whose setts are nearly a soldier's height across"): every surface used to repeat about every 9.6 m.
+ */
+const TERRAIN_TILE_M: Readonly<Partial<Record<GarageSurfaceKey, number>>> = Object.freeze({
+  cobble: 1.8, grass: 4, rock: 6, sand: 8, snow: 8,
+});
+
+function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array, tileM = 9.6): THREE.BufferGeometry {
   const positions = new Float32Array(patch.width * patch.height * 3);
   const uvs = new Float32Array(patch.width * patch.height * 2);
   let vertex = 0;
@@ -732,8 +747,8 @@ function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array):
       positions[vertex * 3] = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
       positions[vertex * 3 + 1] = values[index];
       positions[vertex * 3 + 2] = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      uvs[vertex * 2] = (column / (patch.width - 1)) * 10;
-      uvs[vertex * 2 + 1] = (row / (patch.height - 1)) * 9;
+      uvs[vertex * 2] = ((column / (patch.width - 1)) * patch.sizeXM) / tileM;
+      uvs[vertex * 2 + 1] = ((row / (patch.height - 1)) * patch.sizeZM) / tileM;
       vertex += 1;
     }
   }
@@ -1140,7 +1155,7 @@ export function buildGarageEnvironment(
   };
   const { placementOverlaps, maxGroundContactErrorM } = measurePlacementQuality();
 
-  const terrainGeometry = track(createTerrainGeometry(patch, heights));
+  const terrainGeometry = track(createTerrainGeometry(patch, heights, TERRAIN_TILE_M[recipe.terrainSurface] ?? 9.6));
   const terrain = new THREE.Mesh(terrainGeometry, texturedMaterial(recipe.terrainSurface, {
     color: recipe.terrainTint, roughness: 0.94, metalness: 0,
   }));
@@ -1152,60 +1167,105 @@ export function buildGarageEnvironment(
   // the old 29 x 24 m box's corner standing proud over a dip). Inside the podium's terrain-clear ring it lies at the
   // canonical ground surface as before; beyond, 2 cm over the terrain, so no edge ever floats. Paved slabs under the
   // four fleet exhibits' pads join it in the same mesh and mapping (wave 338: "bay lines painted onto grass").
-  const apronHeightAt = (x: number, z: number): number => (
-    Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02
-  );
+  // Where the ground rises more than 0.45 m above the datum the pavement stops: its vertices there sink 6 cm under the
+  // terrain, so the visible edge is the line where the two surfaces cross, following the slope's contour (2026-10-11,
+  // wave 398: the old cut left "jagged polygon edges" and "blotchy slabs with ragged hard rims").
+  const APRON_RISE_LIMIT_M = 0.45;
+  const apronHeightAt = (x: number, z: number): number => {
+    const ground = samplePatch(patch, heights, x, z);
+    if (ground > APRON_RISE_LIMIT_M) return ground - 0.06;
+    return Math.max(ground, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02;
+  };
   const apronGeometry = new THREE.PlaneGeometry(29, 24, 29, 24);
   apronGeometry.rotateX(-Math.PI / 2);
   {
+    // The worked yard thins out into the terrain (wave 408: "a ruler-straight seam ... where the textured foreground
+    // snow meets a flat, pale, untextured snow plane"): each vertex's share of worked ground falls to nothing over the
+    // apron's outer 2.4 m and as the ground climbs toward the rise limit, so neither the rectangle's edge nor the
+    // slope's crossing line shows; garageHardstandGradedHook breaks the ramp into an irregular margin.
     const positions = apronGeometry.getAttribute('position');
+    const blend = new Float32Array(positions.count);
     for (let index = 0; index < positions.count; index += 1) {
-      positions.setY(index, apronHeightAt(positions.getX(index), positions.getZ(index)));
+      const x = positions.getX(index), z = positions.getZ(index);
+      positions.setY(index, apronHeightAt(x, z));
+      const edge = Math.min(14.5 - Math.abs(x), 12 - Math.abs(z)) / GARAGE_HARDSTAND_FEATHER_M;
+      const ground = samplePatch(patch, heights, x, z);
+      const rise = 1 - THREE.MathUtils.smoothstep(ground, 0.18, APRON_RISE_LIMIT_M - 0.01);
+      blend[index] = THREE.MathUtils.clamp(edge, 0, 1) * rise;
     }
+    apronGeometry.setAttribute('hardstandBlend', new THREE.BufferAttribute(blend, 1));
   }
   const slabGeometries: THREE.BufferGeometry[] = [];
+  // Every fleet exhibit stands on worked ground (wave 408, Ironworks' K2: "an open-earth yard still needs a compacted
+  // working surface ... graded into the terrain, with no hard slab edge"): the yard's own floor reaches 1.32 radii over
+  // each pad, draped on the levelled core and its feather, and thins out from 0.9 radii (the slab kinds' joints, the
+  // earth kinds' ruts and grit). The old pads were cut discs (wave 402: "a hard-edged darker sand patch").
+  const PAD_REACH = 1.32;
+  const PAD_RINGS = [[0, 1], [0.5, 1], [0.68, 1], [0.84, 0.45], [1, 0]] as const;
   for (const terrace of terraceRecords) {
     if (!terrace.label.startsWith('fleet-service-')) continue;
-    // the pad's flat full-strength core is 1.2 radii; the slab covers 1.12, on the pad's datum
-    const slab = new THREE.CircleGeometry(1, 40);
-    slab.rotateX(-Math.PI / 2);
-    {
-      // a worn, irregular slab edge rather than a cut disc (wave 377: "a hard-edged disc of dirt cut into a lawn")
-      const ring = slab.getAttribute('position');
-      for (let index = 1; index < ring.count; index += 1) {
-        const angle = Math.atan2(ring.getZ(index), ring.getX(index));
-        const wobble = 1 + 0.07 * Math.sin(angle * 3 + terrace.side) + 0.05 * Math.sin(angle * 7 + terrace.depth)
-          + 0.03 * Math.sin(angle * 13);
-        ring.setXYZ(index, ring.getX(index) * wobble, 0, ring.getZ(index) * wobble);
+    const segments = 48;
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const blends: number[] = [];
+    const ringPoint = (ring: number, segment: number): [number, number, number, number] => {
+      const angle = (segment / segments) * Math.PI * 2;
+      // a broad, even irregularity only (wave 398: no ragged rim)
+      const wobble = 1 + 0.05 * Math.sin(angle * 2 + terrace.side) + 0.025 * Math.sin(angle * 3 + terrace.depth);
+      const [radius, share] = PAD_RINGS[ring];
+      const lx = Math.cos(angle) * radius * wobble * terrace.radiusSide * PAD_REACH;
+      const lz = Math.sin(angle) * radius * wobble * terrace.radiusDepth * PAD_REACH;
+      const cos = Math.cos(GARAGE_CAMERA_AZIMUTH_RAD), sin = Math.sin(GARAGE_CAMERA_AZIMUTH_RAD);
+      const x = terrace.x + lx * cos + lz * sin;
+      const z = terrace.z - lx * sin + lz * cos;
+      return [x, z, share, radius];
+    };
+    const push = ([x, z, share, radius]: [number, number, number, number]): void => {
+      // the level core (1.2 radii, wobble included) lies on the pad's datum; the margin drapes over the terrain's feather
+      const y = (radius * PAD_REACH * 1.075 <= 1.2 ? terrace.y : samplePatch(patch, heights, x, z)) + 0.02;
+      positions.push(x, y, z);
+      uvs.push(x / 29 + 0.5, 0.5 - z / 24);
+      blends.push(share);
+    };
+    for (let ring = 0; ring < PAD_RINGS.length - 1; ring += 1) {
+      for (let segment = 0; segment < segments; segment += 1) {
+        const a = ringPoint(ring, segment), b = ringPoint(ring, segment + 1);
+        const c = ringPoint(ring + 1, segment), d = ringPoint(ring + 1, segment + 1);
+        // counter-clockwise seen from above, so the floor faces up
+        if (ring > 0) { push(a); push(b); push(c); }
+        push(b); push(d); push(c);
       }
     }
-    slab.scale(terrace.radiusSide * 1.08, 1, terrace.radiusDepth * 1.08);
-    slab.rotateY(GARAGE_CAMERA_AZIMUTH_RAD);
-    slab.translate(terrace.x, terrace.y + 0.02, terrace.z);
-    const uv = slab.getAttribute('uv');
-    const positions = slab.getAttribute('position');
-    for (let index = 0; index < positions.count; index += 1) {
-      uv.setXY(index, positions.getX(index) / 29 + 0.5, 0.5 - positions.getZ(index) / 24);
-    }
-    slabGeometries.push(slab.toNonIndexed());
-    slab.dispose();
+    const slab = new THREE.BufferGeometry();
+    slab.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    slab.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    slab.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(positions.length), 3));
+    slab.setAttribute('hardstandBlend', new THREE.Float32BufferAttribute(blends, 1));
+    slabGeometries.push(slab);
   }
   // The pavement stops at the foot of a rise (2026-10-10, wave 357: Saltmere's draped apron climbed a hill behind the
-  // hero as "a shapeless grey tarp heap"): an apron cell whose ground stands more than 0.45 m above the datum is
-  // left to the terrain.
+  // hero as "a shapeless grey tarp heap"): above 0.45 m the apron sinks under the terrain (apronHeightAt), so the slope
+  // keeps its own ground and the pavement's edge follows its contour.
   const apronNonIndexed = (() => {
     const flat = apronGeometry.toNonIndexed();
     const positions = flat.getAttribute('position');
     const uvs = flat.getAttribute('uv');
+    const blends = flat.getAttribute('hardstandBlend');
     const keptPositions: number[] = [];
     const keptUvs: number[] = [];
+    const keptBlends: number[] = [];
     for (let triangle = 0; triangle < positions.count; triangle += 3) {
       let highest = -Infinity;
-      for (let corner = 0; corner < 3; corner += 1) highest = Math.max(highest, positions.getY(triangle + corner));
-      if (highest > 0.45 + 0.02) continue;
+      let worked = 0;
+      for (let corner = 0; corner < 3; corner += 1) {
+        highest = Math.max(highest, positions.getY(triangle + corner));
+        worked = Math.max(worked, blends.getX(triangle + corner));
+      }
+      if (highest > 6 || worked === 0) continue; // a cliff cell or ground the yard never reaches: nothing to pave
       for (let corner = 0; corner < 3; corner += 1) {
         keptPositions.push(positions.getX(triangle + corner), positions.getY(triangle + corner), positions.getZ(triangle + corner));
         keptUvs.push(uvs.getX(triangle + corner), uvs.getY(triangle + corner));
+        keptBlends.push(blends.getX(triangle + corner));
       }
     }
     flat.dispose();
@@ -1213,6 +1273,7 @@ export function buildGarageEnvironment(
     trimmed.setAttribute('position', new THREE.Float32BufferAttribute(keptPositions, 3));
     trimmed.setAttribute('uv', new THREE.Float32BufferAttribute(keptUvs, 2));
     trimmed.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(keptPositions.length), 3));
+    trimmed.setAttribute('hardstandBlend', new THREE.Float32BufferAttribute(keptBlends, 1));
     return trimmed;
   })();
   apronGeometry.dispose();
@@ -1230,8 +1291,16 @@ export function buildGarageEnvironment(
     engineCtx.anisotropy ?? 4);
   const hardstandNormalKind = garageHardstandNormalKind(hardstandStyle);
   const hardstandNormal = garageHardstandNormal(hardstandNormalKind, engineCtx.anisotropy ?? 4);
+  // The graded floor (garageHardstandGradedHook) blends over the terrain: transparent, writing no depth, drawn before the
+  // floor decals (renderOrder -1), on its own program, which garageStage.ts compiles with the outdoor seeds.
+  const gradedMaterial = (options: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial => {
+    const material = new THREE.MeshStandardMaterial({ ...options, transparent: true, depthWrite: false });
+    engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook);
+    material.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
+    return track(material);
+  };
   const hardstandMaterial = hardstandAlbedo && hardstandNormal
-    ? plainMaterial({
+    ? gradedMaterial({
       map: track(hardstandAlbedo), normalMap: hardstandNormal,
       normalScale: hardstandNormalKind === 'slab' ? new THREE.Vector2(0.6, 0.6)
         : hardstandNormalKind === 'snow' ? new THREE.Vector2(0.3, 0.3) : new THREE.Vector2(0.45, 0.45),
@@ -1243,7 +1312,9 @@ export function buildGarageEnvironment(
   hardstandMaterial.polygonOffsetUnits = -1;
   const hardstand = new THREE.Mesh(hardstandGeometry, hardstandMaterial);
   hardstand.name = 'connected_service_hardstand';
+  hardstand.renderOrder = -1;
   hardstand.userData.drapedOnTerrain = true;
+  hardstand.userData.gradedEdges = hardstandMaterial.transparent;
   hardstand.userData.fleetPadSlabs = slabGeometries.length;
   hardstand.userData.hardstandStyle = hardstandStyle;
   root.userData.serviceYardWear = hardstandStyle;
@@ -1416,6 +1487,12 @@ export function buildGarageEnvironment(
           )) as Parameters<typeof addGarageFacilityDetails>[0]['surfaceMaps'],
           groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
           variant,
+          // building surfaces at their real size: trapezoidal sheeting (render and planks join the pack's own plaster and
+          // wood buckets, so they add no draw)
+          surfaces: {
+            sheeting: { color: garageSheeting('albedo', anisotropy), normal: garageSheeting('normal', anisotropy) },
+          },
+          sheetingTileM: GARAGE_SHEETING_TILE_M,
         });
     const approachDetails: GarageApproachStats = variant.architecture === 'field_shed'
       ? Object.freeze({
@@ -1516,18 +1593,12 @@ export function buildGarageEnvironment(
     const up = new THREE.Vector3(0, 1, 0);
     const groveCount = Math.ceil(recipe.treeCount / 2);
     const grovePoints: Array<{ x: number; z: number }> = [];
-    for (let attempt = 0;
-      attempt < groveCount * 80 && grovePoints.length < groveCount;
-      attempt += 1) {
-      const angle = rng() * Math.PI * 2;
-      const radiusScale = 0.90 + rng() * 0.10;
-      const x = Math.cos(angle) * 42 * radiusScale;
-      const z = Math.sin(angle) * 36 * radiusScale;
+    const groveSiteFree = (x: number, z: number, self: { x: number; z: number } | null = null): boolean => {
       const { side, depth } = garageWorldPointToView(x, z);
       // Preserve only the narrow canonical approach lane. The old whole-half-
       // plane exclusion left alternate orbit angles looking unfinished even
       // though the environment owned enough vegetation for a complete ring.
-      if (depth < 5 && Math.abs(side) < 16) continue;
+      if (depth < 5 && Math.abs(side) < 16) return false;
       const nearStructure = structureRecords.some((record) => {
         const radius = Math.hypot(
           record.dimensions.w * record.placement.scale,
@@ -1539,21 +1610,65 @@ export function buildGarageEnvironment(
         Math.hypot(x - terrace.x, z - terrace.z)
           < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
       ));
-      if (nearStructure || nearFacility
-          || grovePoints.some((point) => Math.hypot(x - point.x, z - point.z) < 7.0)) continue;
+      return !nearStructure && !nearFacility
+        && !grovePoints.some((point) => point !== self && Math.hypot(x - point.x, z - point.z) < 7.0);
+    };
+    for (let attempt = 0;
+      attempt < groveCount * 80 && grovePoints.length < groveCount;
+      attempt += 1) {
+      const angle = rng() * Math.PI * 2;
+      const radiusScale = 0.90 + rng() * 0.10;
+      const x = Math.cos(angle) * 42 * radiusScale;
+      const z = Math.sin(angle) * 36 * radiusScale;
+      if (!groveSiteFree(x, z)) continue;
       grovePoints.push({ x, z });
     }
+    // No grove stands straight behind a fleet exhibit (2026-10-11, wave 408: "a leafy plant sprouts straight through
+    // the left side of the turret", a birch 25 m behind the Leopard): seen from a point 45 % of the way out from the
+    // turntable to the exhibit, where its bay camera stands (the opening camera sees none of the exhibits), a grove
+    // inside the exhibit's silhouette turns along its ring to the nearest clear site, keeping every other rule, or stays
+    // out.
+    const exhibits = terraceRecords.filter((terrace) => terrace.label.startsWith('fleet-service-'));
+    const behindExhibit = (x: number, z: number): boolean => exhibits.some((exhibit) => {
+      const viewX = exhibit.x * 0.45, viewZ = exhibit.z * 0.45;
+      const reach = Math.hypot(exhibit.x - viewX, exhibit.z - viewZ);
+      if (Math.hypot(x - viewX, z - viewZ) < reach) return false;
+      const gap = Math.atan2(z - viewZ, x - viewX) - Math.atan2(exhibit.z - viewZ, exhibit.x - viewX);
+      // the hull's half-length: a tree anywhere behind the hull rises out of its silhouette
+      return Math.abs(Math.atan2(Math.sin(gap), Math.cos(gap))) < Math.atan2(3.6, reach) + 0.04;
+    });
+    let grovesTurned = 0;
+    for (const point of grovePoints) {
+      if (!behindExhibit(point.x, point.z)) continue;
+      const radius = Math.hypot(point.x, point.z);
+      const start = Math.atan2(point.z, point.x);
+      search: for (let step = 1; step <= 90; step += 1) {
+        for (const sign of [1, -1]) {
+          const angle = start + sign * step * 0.035;
+          const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+          if (behindExhibit(x, z) || !groveSiteFree(x, z, point)) continue;
+          point.x = x;
+          point.z = z;
+          grovesTurned += 1;
+          break search;
+        }
+      }
+    }
+    root.userData.grovesTurnedFromExhibits = grovesTurned;
     for (let index = 0; index < groveCount; index += 1) {
       const fallbackSide = THREE.MathUtils.lerp(-31, 31,
         groveCount <= 1 ? 0.5 : index / (groveCount - 1));
       const fallbackDepth = 38 + Math.sin((index / Math.max(1, groveCount - 1)) * Math.PI) * 7;
       const fallback = cameraPoint(fallbackSide, fallbackDepth);
       const { x, z } = grovePoints[index] || fallback;
-      const y = samplePatch(patch, heights, x, z);
       const size = 0.82 + rng() * 0.26;
+      const heading = rng() * Math.PI * 2;
+      const stretch = 0.94 + rng() * 0.12;
+      if (behindExhibit(x, z)) continue; // it could not turn clear
+      const y = samplePatch(patch, heights, x, z);
       position.set(x, y, z);
-      quaternion.setFromAxisAngle(up, rng() * Math.PI * 2);
-      scale.set(size, size * (0.94 + rng() * 0.12), size);
+      quaternion.setFromAxisAngle(up, heading);
+      scale.set(size, size * stretch, size);
       matrices[index % treeKits.length].push(matrix.compose(position, quaternion, scale).clone());
     }
     treeKits.forEach((kit, kitIndex) => {

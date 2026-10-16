@@ -33,8 +33,8 @@ for (const id of HISTORICAL_COLD_WAR_CANDIDATE_IDS) {
 // themselves retired from the saved fleet on 2026-09-23).
 assert.equal(isRetiredHistoricalTank({ id: 'unretained_ww2_study', era: 'ww2' }), true);
 assert.equal(isRetiredHistoricalTank({ id: 'kv2', era: 'ww2' }), false);
-assert.equal(isRetiredHistoricalTank({ id: 'm1a2', era: 'modern' }), false);
-assert.equal(isRetiredHistoricalTank({ id: 't80u', era: 'modern' }), false);
+assert.equal(isRetiredHistoricalTank({ id: 'm1a1_abrams_hc', era: 'modern' }), false);
+assert.equal(isRetiredHistoricalTank({ id: 't80uk', era: 'modern' }), false);
 assert.equal(developmentFleetEnabled({ DEV: true, VITE_COT_DEV_FLEET_KEY: DEV_FLEET_KEY }), true);
 assert.equal(developmentFleetEnabled({ DEV: false, VITE_COT_DEV_FLEET_KEY: DEV_FLEET_KEY }), false,
   'production ignores the local development key');

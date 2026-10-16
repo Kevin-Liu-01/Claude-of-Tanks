@@ -201,11 +201,21 @@ function mountViewportVideo(video: HTMLVideoElement): void {
     if (control) control.hidden = !show;
   };
 
+  /** The file to load: a phone's own mp4; else the desktop file, or its fallback (data-fallback-src, else the phone's
+   *  mp4) where the browser plays no VP9, so a WebM never leaves a blank frame. */
+  const pickSource = (): [string, string] => {
+    const d = source.dataset;
+    if (isCompactSurface() && d.mobileSrc) return [d.mobileSrc, d.mobileType || 'video/mp4'];
+    if (d.type && video.canPlayType(d.type) === '') {
+      if (d.fallbackSrc) return [d.fallbackSrc, d.fallbackType || 'video/mp4'];
+      if (d.mobileSrc) return [d.mobileSrc, d.mobileType || 'video/mp4'];
+    }
+    return [d.src || '', d.type || ''];
+  };
+
   const loadSource = (): void => {
     if (loaded) return;
-    const mobileSource = isCompactSurface() ? source.dataset.mobileSrc : undefined;
-    source.src = mobileSource || source.dataset.src || '';
-    source.type = mobileSource ? (source.dataset.mobileType || 'video/mp4') : (source.dataset.type || '');
+    [source.src, source.type] = pickSource();
     video.load();
     loaded = true;
   };

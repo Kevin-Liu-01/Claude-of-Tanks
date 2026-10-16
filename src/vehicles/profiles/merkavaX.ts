@@ -389,7 +389,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     // Inferred supports occupy existing axle gaps at full suspension stroke.
     topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true},[-1.8821825,-.8756825,.9765675,1.8323175],1.075,.25,.0027));
   merkava3HullDetails(P);
-  addMerkavaXShoulderReturns(P, 'merkava3d_x');
+  addMerkavaXShoulderReturns(P, 'merkava3d');
   addMerkava3dXFrontReturns(P);
   P.add('turret',merkava3Shell());
   P.add('turret',cylY(1.07,.23,40),0,.09,0);
@@ -406,10 +406,10 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
   const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.073,seed:333,tone:'two-tone',ammo:true,shield:false,ring:false});
   coax.position.set(.17,.2967,-.16);P.gunG.add(coax);
   P.muzzleZ=3.4302;P.topY=3.04-MK3.y;
-  P.hullG.userData.xRebuild={candidate:'merkava3d_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate:'merkava3d',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'|'namer_ifv'): void {
+function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy'|'merkava4_barak'|'namer_ifv'): void {
   for(const side of[-1,1]){
     for(let i=0;i<8;i++){
       const z=-2.98+i*.75,hem=.65+(i%2)*.018;
@@ -501,7 +501,7 @@ function merkava4BarakRoof(P: TankBuilderPort): void {
   addBarakCrewRoof(P);
 }
 
-function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {
+function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy'|'merkava4_barak'): void {
   if(candidate==='merkava4_barak'){
     merkava4BarakRoof(P);
     return;
@@ -602,7 +602,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
   const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
-  const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];
+  const mgSeatY={merkava4:2.577,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
 
@@ -1079,7 +1079,7 @@ function trophyMerkava4Hull(): THREE.BufferGeometry {
   return merged;
 }
 
-function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {
+function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy'|'merkava4_barak'): void {
   // The Trophy study's canonical ground recipe seats the complete assembly
   // 10 mm above the clean family datum; retain that measured registration.
   const sourceY=candidate==='merkava4_trophy'?.01:0;
@@ -1096,7 +1096,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR,wheelW:.34,wheelY,xc:1.444,
     // LOW keeps the family shoe envelope with coarser relief; HIGH and the
     // established Mk.4 X retain their original native shoe construction.
-    ...(!P.q && candidate!=='merkava4_x'?{trackShoeBuilder:buildFleetTrackShoe}:{}),
+    ...(!P.q && candidate!=='merkava4'?{trackShoeBuilder:buildFleetTrackShoe}:{}),
     ...barakEndStock(Boolean(P.q),barakGear),
     wheelZs,trackW:.548,trackTh:.064,
     sprocket:trophyGear?{z:3.267,y:.787,r:.359}:barakGear?{z:3.2069,y:.830,r:.353,trackR:.2575,axleOutsetM:.0183909,toothTipRadiusM:.347}:{z:3.285,y:.761,r:.336},
@@ -1106,7 +1106,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     topY:trophyGear?1.125:barakGear?1.1325:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);
   merkava4HullDetails(P,candidate);
-  addMerkavaXShoulderReturns(P, 'merkava4_x');
+  addMerkavaXShoulderReturns(P, 'merkava4');
   addMerkava4XEndReturns(P);
   P.add('turret',merkava4Shell());
   // The source has a raised asymmetric central roof, not one flat turtle
@@ -1177,10 +1177,10 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // Barak's visibly tighter side envelope.
     P.hullG.scale.x=.972;
   }
-  P.hullG.userData.xRebuild={candidate,independent:candidate==='merkava4_x',familyRecipe:'merkava4-first-party',datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate,independent:candidate==='merkava4',familyRecipe:'merkava4-first-party',datumVersion:1,sourceLocalOnly:true};
 }
 
-export function buildMerkava4X(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_x'); }
+export function buildMerkava4X(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4'); }
 export function buildMerkava4Trophy(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_trophy'); }
 export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_barak'); }
 
@@ -1225,7 +1225,7 @@ export function buildNamerIfv(P: TankBuilderPort): void {
 }
 
 export const MERKAVA_X_PROFILES = {
-  merkava4_x: { build: buildMerkava4X }, merkava3d_x: { build: buildMerkava3DX },
+  merkava4: { build: buildMerkava4X }, merkava3d: { build: buildMerkava3DX },
   merkava4_trophy: { build: buildMerkava4Trophy },
   merkava4_barak: { build: buildMerkava4Barak },
   namer_ifv: { build: buildNamerIfv },

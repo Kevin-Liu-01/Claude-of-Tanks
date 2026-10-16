@@ -55,8 +55,8 @@ function expectedMouth(entity, index) {
 function authorityRun() {
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 9, countdownS: 0,
     worldCollision: { mapId: 'verdant', heightField: flat, obstacles: [] },
-    players: [{ id: 'rocket', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: 0, yaw: 0 } },
-      { id: 'opponent', specId: 'm1a2', team: 'bravo', spawn: { x: 400, z: -400, yaw: 0 } }] });
+    players: [{ id: 'rocket', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: 0, yaw: 0 } },
+      { id: 'opponent', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 400, z: -400, yaw: 0 } }] });
   const entity = match.entities[0]; entity.spec = structuredClone(spec); entity.combat = createCombatState(entity.spec);
   entity.state = createTankState(entity.spec, new Vector3(), 0); entity.state.gunPitch = .15;
   match.onMatchReady();
@@ -89,7 +89,7 @@ assert.deepEqual(authorityRun(), authorityRun(), 'equal fixed steps and seed pro
 
 // Full local sim integration, with a Three.js articulated visual fixture.
 const game = createGameState(), events = [], kicks = [];
-const entity = { id: 'solo-rocket', specId: 'm1a2', spec, isPlayer: true, team: 'player',
+const entity = { id: 'solo-rocket', specId: 'm1a1_abrams_hc', spec, isPlayer: true, team: 'player',
   state: createTankState(spec, new Vector3(), 0), combat: createCombatState(spec), input: { ...input },
   visual: { root: new Group(), gunMuzzleWorld(out, index, launcher) {
     assert.equal(launcher, true); return out.copy(expectedMouth(entity, index));
@@ -135,7 +135,7 @@ function directHit(id, y) {
   assert.equal(events.length, 1);
   return { target, plate, event: events[0] };
 }
-const heavy = directHit('m1a2', .75), light = directHit('bmp2', 1.2);
+const heavy = directHit('m1a1_abrams_hc', .75), light = directHit('bmp2', 1.2);
 assert.equal(heavy.plate.plate.name, 'lower_front');
 assert.equal(light.plate.plate.name, 'upper_glacis');
 assert.equal(heavy.event.kind, 'he_splash'); assert.equal(heavy.event.damage, 0, 'thick frontal armor absorbs the blast');
@@ -143,7 +143,7 @@ assert.equal(light.event.kind, 'he_pen'); assert.equal(light.event.damage, 240, 
 const lightSlope = directHit('bmp2', .65);
 assert.equal(lightSlope.event.kind, 'he_splash');
 near(lightSlope.event.damage, 91.4, 'a steep light-hull plate resists direct HE penetration');
-const slope = directHit('m1a2', 1.4);
+const slope = directHit('m1a1_abrams_hc', 1.4);
 assert.equal(slope.event.kind, 'he_splash');
 assert.ok(slope.event.damage > 0 && slope.event.damage < light.event.damage, 'sloped thin upper glacis takes reduced surface blast');
 assert.equal(blastRadiusM(rocket.caliberMm), 8, 'existing bounded caliber radius is retained');

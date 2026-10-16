@@ -18,7 +18,7 @@ for (const [id, full] of Object.entries(MISSION_ATTACHMENT_SEATS)) {
   assert.deepEqual(MISSION_DOCK_SEATS[id], seat, `${id}: the dock seat is the record without its audit keys`);
 }
 // a negative control: a moved datum is stale
-const moved = { ...MISSION_ATTACHMENT_SEATS, m1a2: { ...MISSION_ATTACHMENT_SEATS.m1a2, y: MISSION_ATTACHMENT_SEATS.m1a2.y + 0.01 } };
+const moved = { ...MISSION_ATTACHMENT_SEATS, m1a1_abrams_hc: { ...MISSION_ATTACHMENT_SEATS.m1a1_abrams_hc, y: MISSION_ATTACHMENT_SEATS.m1a1_abrams_hc.y + 0.01 } };
 assert.notEqual(missionDockSeatsSource(moved), text, 'a moved seat datum makes the projection stale');
 
 const decorations = readFileSync(new URL('../vehicles/decorations.ts', import.meta.url), 'utf8');

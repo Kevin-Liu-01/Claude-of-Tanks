@@ -32,7 +32,7 @@ import {
 
 function parseArgs(argv) {
   const o = { root: null, maps: ['verdant'], out: path.resolve('.qa-dev', 'reports', 'shadow-cache-truth'), port: 5395,
-    sessionMutex: null, query: '', gate: false, tolerance: 0, viewport: [1600, 900], spec: 't90m_x', sides: [6, 7],
+    sessionMutex: null, query: '', gate: false, tolerance: 0, viewport: [1600, 900], spec: 't90m', sides: [6, 7],
     temporal: false, flickerFrames: 90, flicker: true };
   for (const arg of argv) {
     const m = /^--([a-z-]+)(?:=(.*))?$/.exec(arg);

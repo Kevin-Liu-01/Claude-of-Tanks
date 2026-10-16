@@ -42,12 +42,12 @@ const sizeArg = arg('size');
 const CHECK = process.argv.includes('--check');
 
 // ---- HARD/flag thresholds (calibrated 2026-08-06 on the validation set:
-// ariete/leclerc clean controls read <=51 px / <=0.09% deficit and 0 yaw
-// candidates; the real one-sided remnants on t80u/challenger1 read ~200 px /
-// 0.31-0.33%; t72b3m (owner case) reads 11227 yaw-candidate px vs <=72 on
+// c1_ariete_preserie/leclerc clean controls read <=51 px / <=0.09% deficit and 0 yaw
+// candidates; the real one-sided remnants on t80uk/challenger1 read ~200 px /
+// 0.31-0.33%; t72b3m_2022 (owner case) reads 11227 yaw-candidate px vs <=72 on
 // every negative control) ----
 const DEF_HARD_FRAC = 0.02;    // worst-view deficit >= 2% of the gate silhouette
-const DEF_FLAG_FRAC = 0.0025;  // >= 0.25% (t80u/challenger1 class ~0.31%)
+const DEF_FLAG_FRAC = 0.0025;  // >= 0.25% (t80uk/challenger1 class ~0.31%)
 const DEF_MIN_PX = 100;        // absolute speckle floor at 768^2
 const YAW_HARD_PX = 900;       // adjudication-candidate pixels (768^2 top view)
 const YAW_FLAG_PX = 250;
@@ -159,7 +159,7 @@ try {
     generated: new Date().toISOString(),
     size: S,
     views: viewsArg || 'all',
-    note: 'BUILD-STANDARD §C.1 render-truth audit. Mode 1: REVERSED/MIXED = closed connected pieces wound inside-out/partially (invisible or holed in every FrontSide render, fully visible to the gate DoubleSide masks); deficitPx = per-view pixels the gate silhouette has that the game render lacks (catches ANY game-vs-gate divergence, incl. open one-sided planes the census cannot classify). REVERSED with deficit 0 = latent occluded core (merkava4 class). slabCalls are call-site ATTRIBUTION HINTS via the leftprobe centroid heuristic — it misfires on concave/tall rings (type90/leo2_revolution calibration); the mesh census (edge balance + signed volume) is authoritative. Mode 2 (amendment 8e1de63): yaw-stranded CANDIDATES (adjudicate, never automatic defects) — pixel-static mass across turret yaw 0/90/180 inside the ring-centered plan disc at h >= ringY+0.20 (engine decks sit at/just above ring height fleet-wide; deck band counted as deckStaticPx), id-attributed; turret-subtree/same-camo statics = coincidencePx (§J false-flag law); vertex census per candidate. Merkava tail packs are the documented ORACLE-REGISTRATION-PINNED certified class — adjudicate as certified when flagged. NEVER a ledger writer; census reflects the live tree at generation time.',
+    note: 'BUILD-STANDARD §C.1 render-truth audit. Mode 1: REVERSED/MIXED = closed connected pieces wound inside-out/partially (invisible or holed in every FrontSide render, fully visible to the gate DoubleSide masks); deficitPx = per-view pixels the gate silhouette has that the game render lacks (catches ANY game-vs-gate divergence, incl. open one-sided planes the census cannot classify). REVERSED with deficit 0 = latent occluded core (merkava4 class). slabCalls are call-site ATTRIBUTION HINTS via the leftprobe centroid heuristic — it misfires on concave/tall rings (type90_kyumaru/leo2_revolution calibration); the mesh census (edge balance + signed volume) is authoritative. Mode 2 (amendment 8e1de63): yaw-stranded CANDIDATES (adjudicate, never automatic defects) — pixel-static mass across turret yaw 0/90/180 inside the ring-centered plan disc at h >= ringY+0.20 (engine decks sit at/just above ring height fleet-wide; deck band counted as deckStaticPx), id-attributed; turret-subtree/same-camo statics = coincidencePx (§J false-flag law); vertex census per candidate. Merkava tail packs are the documented ORACLE-REGISTRATION-PINNED certified class — adjudicate as certified when flagged. NEVER a ledger writer; census reflects the live tree at generation time.',
     thresholds: { DEF_HARD_FRAC, DEF_FLAG_FRAC, DEF_MIN_PX, YAW_HARD_PX, YAW_FLAG_PX },
     rankedByDeficit: byDeficit.map((r) => r.id),
     rankedByYaw: byYaw.map((r) => r.id),

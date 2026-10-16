@@ -498,7 +498,7 @@ export function createShotViews({
     // lighting_post r4: elev 9 -> 15, dist 7 -> 8 — the extra elevation puts
     // the hull-adjacent contact shadow above the hull's own horizon so the
     // closeup actually shows the vehicle grounded (shadow-read fix).
-    const hero = game.tankById.get('m1a2');
+    const hero = game.tankById.get('m1a1_abrams_hc');
     // tank_models r6 (minor): a flat background bot ("312") parked right
     // behind the hero undercut the closeup — push any OTHER vehicle inside
     // 55 m a further 30 m out along its own bearing (deterministic, no rng;
@@ -532,12 +532,12 @@ export function createShotViews({
     hud.setMode('hidden');
     // tank_models r3: every core roster tank gets a judged closeup — the
     // T-90M shipped unauditable as a carousel thumb.
-    closeupStage(game.tankById.get('t90m'));
-    orbitPose(game.tankById.get('t90m'), 8, -38, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
+    closeupStage(game.tankById.get('t90am'));
+    orbitPose(game.tankById.get('t90am'), 8, -38, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   tank_closeup_leo2a7() {
     hud.setMode('hidden');
-    const leopard = game.tankById.get('leo2a7v');
+    const leopard = game.tankById.get('leo2_improved');
     closeupStage(leopard);
     orbitPose(leopard, 8, -35, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
@@ -608,8 +608,8 @@ export function createShotViews({
   },
   async garage() {
     hud.setMode('hidden');
-    await setPedestalTank('m1a2');
-    garage.show('m1a2');
+    await setPedestalTank('m1a1_abrams_hc');
+    garage.show('m1a1_abrams_hc');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
     await garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
     showroom.reset();

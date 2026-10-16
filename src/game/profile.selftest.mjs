@@ -31,14 +31,14 @@ assert.deepEqual(getPlayerRecord(), {
 
 installBattleRecords(bus);
 installBattleRecords(bus);
-bus.emit('ui:battleStart', { playerId: 'player-7', specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { playerId: 'player-7', specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emit('shell:hit', { attackerId: 'player-7', targetId: 'enemy-1', damage: 431.4 });
 bus.emit('shell:hit', { attackerId: 'enemy-1', targetId: 'player-7', damage: 900 });
 bus.emit('tank:destroyed', { killerId: 'player-7', id: 'enemy-1' });
 bus.emit('battle:ended', { result: 'victory', durationS: 123.2 });
 
 assert.deepEqual(getLastBattleRecord(), {
-  result: 'victory', kills: 1, damage: 431, vehicleId: 'm1a2', mapId: 'desert',
+  result: 'victory', kills: 1, damage: 431, vehicleId: 'm1a1_abrams_hc', mapId: 'desert',
   durationS: 123, completedAt: getLastBattleRecord().completedAt,
 });
 assert.deepEqual(getPlayerRecord(), {

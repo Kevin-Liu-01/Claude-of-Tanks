@@ -39,7 +39,7 @@ the same artist. The historical scheme remains available to material policy.
   world-scale, seed, worker lifecycle and swatch-access tests passed.
 - Type checking and public production build passed. New painter: no explicit
   `any`/`unknown` or complexity violations under the repository's metrics gate.
-- Real Garage before/after captures on M1A3 and the legacy `m1a2_sepv3` hull:
+- Real Garage before/after captures on M1A3 and the legacy `m1a1_abrams_fep` hull:
   twelve paints selected through the normal picker on each, no browser errors.
   Stable Garage drawing counts matched (377 on M1A3, 388 on the legacy hull).
   Bare M1A3 armour was reviewed in addition to the legacy hull's physical netting.

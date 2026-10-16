@@ -32,7 +32,7 @@ import type { Transport, Unsubscribe } from '../transport/transport.ts';
 import { CLOSE_REASON, TICK_MS, VERDICT } from '../wire/index.ts';
 import type { CloseReasonId, VerdictId, WelcomeMessage } from '../wire/index.ts';
 import type { RoomClient } from '../room/roomClient.ts';
-import { parseP2pMatchUrl, ROOM_MATCH_REPORT_INTERVAL_MS } from '../room/protocol.ts';
+import { parseP2pMatchUrl, ROOM_HOST_UNREACHABLE_AFTER_MS, ROOM_HOST_UNREACHABLE_REPEAT_MS, ROOM_MATCH_REPORT_INTERVAL_MS } from '../room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomSnapshot } from '../room/protocol.ts';
 import { createMatchHost } from '../host/matchHost.ts';
 import { createHostHeadroomMonitor } from './hostHeadroom.ts';
@@ -106,8 +106,17 @@ export interface MatchSessionP2pOptions {
    * and offers again once it recovers (under 25 ms). Fed by `observeFrame`; false turns it off.
    */
   hostHeadroom?: HostHeadroomOptions | false;
+  /**
+   * The standby host (2026-10-14, §13.21): a seat that may host prepares a host thread — the battlefield's collision world
+   * and the roster's fleet — `delayMs` after it is welcomed as a peer (STANDBY_HOST_DELAY_MS, 20 s: after its own entry),
+   * so an election boots the actor at once. False turns it off.
+   */
+  standbyHost?: { delayMs?: number } | false;
   onLog?: (level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>) => void;
 }
+
+/** A peer prepares its standby host this long after its welcome: past its own covered entry (§13.21). */
+export const STANDBY_HOST_DELAY_MS = 20_000;
 
 export type SessionRole = 'host' | 'peer' | null;
 
@@ -222,6 +231,17 @@ export class MatchSession {
   private headroom: HostHeadroomMonitor | null = null;
   /** The elected host's entry reports while its world loads (null when none run). */
   private entryReports: { stop(reason: string): void } | null = null;
+  /** A peer's standby host thread (§13.21): prepared after its welcome, taken by the next boot of this seat's host. */
+  private standby: { port: HostPort<HostToWorkerMessage, WorkerToHostMessage>; unsubscribe: Unsubscribe; matchId: string; prepared: boolean } | null = null;
+  private standbyTimer: ReturnType<typeof setTimeout> | null = null;
+  // host-loss evidence (§13.22): when this peer last heard its host (a snapshot accepted), its last claim, its claims
+  private hostHeardAt = 0;
+  private hostHeardCount = -1;
+  private lastUpdateAt = 0;
+  private hostClaimAt = Number.NEGATIVE_INFINITY;
+  private hostClaims = 0;
+  /** The host generation this seat was last welcomed by (a lost link clears the client's welcome; this stays). */
+  private welcomedGeneration = -1;
   /** The host generation this seat's link (or host) runs; an election with a newer one is a migration (P1: compare generations, never the reason). */
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
@@ -403,7 +423,9 @@ export class MatchSession {
     client.onWelcome((welcome) => {
       if (this.matchClient !== client) return;
       if (this.migrationActive) this.endMigration('welcomed');
+      this.welcomedGeneration = this.room.generation;
       this.withdrawReentryDecline();
+      this.scheduleStandby(client, round, welcome);
       void Promise.resolve(presentation.onWelcome?.(welcome)).then(() => {
         if (this.matchClient === client && !round.spectator && presentation.prediction) client.enablePrediction(presentation.prediction);
       }).catch(() => { /* the presentation reports its own failures */ });
@@ -531,18 +553,22 @@ export class MatchSession {
    * (10 s on the e2e of 2026-10-13, 13.75 s from the close to the new host's first report): when another seat can take
    * the match, this seat now declines inside the event (`host_decline`, a preference: with no candidate after all the
    * room keeps it, and its lease runs as before) and steps down at once — its actor stopped, the seat a peer — so a page
-   * restored from the back-forward cache never thinks it still hosts. When no other seat is willing (a solo room with
-   * bots, every other seat declined, unable or gone), nothing is sent: the lease and the resume hold run as they did, so
-   * the same player can come back. Synchronous by design: nothing is awaited. True when it handed the match on.
+   * restored from the back-forward cache never thinks it still hosts. "Another seat" is the room's own candidate set: any
+   * connected commander, a seat that declined hosting included (2026-10-14): the room's ladder takes a declined
+   * commander as the last resort, at once on this decline and after the lease without it, so waiting out the lease
+   * elected the same seat 8 s later — and a slow machine declines in the lobby (host headroom, §13.18), so under load
+   * every other seat had declined and the hand-off never ran. With no other connected commander (a solo room with bots,
+   * the others gone or spectating), nothing is sent: the lease and the resume hold run as they did, so the same player
+   * can come back. Synchronous by design: nothing is awaited. True when it handed the match on.
    */
   handOffHosting(reason: string): boolean {
     const host = this.host;
     if (!host || host.state === 'stopped' || host.state === 'failed' || this.handedOff) return false;
     if (this.room.phase !== 'joined' || this.room.hostId !== this.room.playerId) return false;
     const me = this.room.playerId;
-    const successor = this.room.room?.players.some((player) => player.id !== me && player.team !== 'spectator' && player.connected && !player.hostDeclined) ?? false;
+    const successor = this.room.room?.players.some((player) => player.id !== me && player.team !== 'spectator' && player.connected) ?? false;
     if (!successor) {
-      this.log('info', 'hosting tab going away with no other seat willing to host: the room keeps it (the lease)', { reason });
+      this.log('info', 'hosting tab going away with no other commander connected: the room keeps it (the lease)', { reason });
       return false;
     }
     this.handedOff = true;
@@ -555,6 +581,64 @@ export class MatchSession {
   /** The tab's frame headroom as the host choice reads it (diagnostics). */
   get hostHeadroom(): { weak: boolean; p50FrameMs: number | null; declined: boolean } | null {
     return this.headroom ? { weak: this.headroom.weak, p50FrameMs: this.headroom.p50FrameMs, declined: this.declinedForHeadroom } : null;
+  }
+
+  /**
+   * The standby host (§13.21): a peer that may host prepares a host thread `delayMs` after its welcome — the world and
+   * the fleet a boot of this match needs — so an election boots its actor at once rather than loading them while every
+   * seat waits. Once per match; a later welcome (a reconnect, a migration onto another host) keeps the one it has.
+   */
+  private scheduleStandby(client: MatchClient, round: SessionRound, welcome: WelcomeMessage): void {
+    const p2p = this.p2pOptions;
+    if (!p2p || p2p.standbyHost === false || !this.canHost || this.host || round.spectator) return;
+    if (!parseP2pMatchUrl(round.matchStart.matchUrl)) return;
+    if (this.standby?.matchId === round.matchStart.matchId || this.standbyTimer !== null) return;
+    const delayMs = Math.max(0, (p2p.standbyHost ? p2p.standbyHost.delayMs : undefined) ?? STANDBY_HOST_DELAY_MS);
+    this.standbyTimer = setTimeout(() => {
+      this.standbyTimer = null;
+      if (this.disposed || this.matchClient !== client || this.currentRound !== round || this.host || !this.canHost) return;
+      this.closeStandby('replaced');
+      const plan = planFromRoster(welcome.roster, this.room.room);
+      const specIds = [...new Set([...plan.seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.specId), ...plan.bots.map((bot) => bot.specId)])];
+      let port: HostPort<HostToWorkerMessage, WorkerToHostMessage>;
+      try { port = p2p.createHostPort!(); } catch (error) {
+        this.log('warn', 'standby host thread unavailable', { error: error instanceof Error ? error.message : String(error) });
+        return;
+      }
+      const standby = { port, unsubscribe: (() => {}) as Unsubscribe, matchId: round.matchStart.matchId, prepared: false };
+      standby.unsubscribe = port.onMessage((message) => {
+        if (message.type !== 'prepared') return;
+        standby.prepared = message.ok;
+        this.log(message.ok ? 'info' : 'warn', 'standby host prepared', { ok: message.ok, ms: message.ms, ...(message.error ? { error: message.error } : {}) });
+      });
+      this.standby = standby;
+      port.post({ type: 'prepare', prepare: { mapId: round.matchStart.mapId, mode: round.matchStart.mode, manifestBase: p2p.manifestBase ?? null, specIds, bots: plan.bots.length > 0 } });
+    }, delayMs);
+  }
+
+  /** The standby's port for this match's boot (its listener released: the host runtime subscribes its own), or null. */
+  private takeStandby(): HostPort<HostToWorkerMessage, WorkerToHostMessage> | null {
+    const standby = this.standby;
+    this.standby = null;
+    if (!standby) return null;
+    standby.unsubscribe();
+    if (standby.matchId !== this.currentRound?.matchStart.matchId) { standby.port.close(); return null; }
+    return standby.port;
+  }
+
+  private closeStandby(reason: string): void {
+    if (this.standbyTimer !== null) { clearTimeout(this.standbyTimer); this.standbyTimer = null; }
+    const standby = this.standby;
+    this.standby = null;
+    if (!standby) return;
+    standby.unsubscribe();
+    standby.port.close();
+    this.log('info', 'standby host released', { reason });
+  }
+
+  /** Diagnostics: this seat's standby host thread (null: none). */
+  get standbyHost(): { matchId: string; prepared: boolean } | null {
+    return this.standby ? { matchId: this.standby.matchId, prepared: this.standby.prepared } : null;
   }
 
   private withdrawReentryDecline(): void {
@@ -588,7 +672,7 @@ export class MatchSession {
           throw error;
         }); },
       },
-      createPort: p2p.createHostPort!, ice: p2p.ice, createPeerConnection: p2p.createPeerConnection,
+      createPort: () => this.takeStandby() ?? p2p.createHostPort!(), ice: p2p.ice, createPeerConnection: p2p.createPeerConnection,
       ...(p2p.maxPeers !== undefined ? { maxPeers: p2p.maxPeers } : {}),
       clock: this.clock, ...(timers.setTimer ? { setTimer: timers.setTimer } : {}), ...(timers.clearTimer ? { clearTimer: timers.clearTimer } : {}),
       onLog: (level, message, fields) => this.log(level, message, fields),
@@ -824,8 +908,38 @@ export class MatchSession {
   /** One display frame: pump the host (when this seat hosts) and the match client; the bound presentation receives the frame. */
   update(nowMs: number, elapsedS: number): MatchFrame | null {
     this.host?.pump(nowMs);
-    return this.matchClient ? this.matchClient.update(nowMs, elapsedS) : null;
+    const frame = this.matchClient ? this.matchClient.update(nowMs, elapsedS) : null;
+    this.watchHostSilence(nowMs);
+    return frame;
   }
+
+  /**
+   * Host-loss evidence (2026-10-14, the MP stream; §13.22): a peer welcomed by the current host that has accepted no
+   * snapshot for ROOM_HOST_UNREACHABLE_AFTER_MS tells the room (`host_unreachable`), again every
+   * ROOM_HOST_UNREACHABLE_REPEAT_MS while the silence lasts. The room acts on it only when the host's room socket is gone
+   * too — a crashed or killed host tab then costs its peers the claim's 1.5 s rather than the 8 s socket lease. A page
+   * that itself stalled (a frame gap over 500 ms) restarts the count: its silence is its own, not the host's.
+   */
+  private watchHostSilence(nowMs: number): void {
+    const client = this.matchClient;
+    const stalled = nowMs - this.lastUpdateAt > 500;
+    this.lastUpdateAt = nowMs;
+    const count = client?.snapshotsAcceptedCount ?? -1;
+    if (!client || this.host || !this.peerTransport || this.currentPhase !== 'match' || this.migrationActive
+        || this.welcomedGeneration !== this.room.generation || this.room.phase !== 'joined' || stalled || count !== this.hostHeardCount) {
+      this.hostHeardCount = count;
+      this.hostHeardAt = nowMs;
+      return;
+    }
+    const silentMs = nowMs - this.hostHeardAt;
+    if (silentMs < ROOM_HOST_UNREACHABLE_AFTER_MS || nowMs - this.hostClaimAt < ROOM_HOST_UNREACHABLE_REPEAT_MS) return;
+    this.hostClaimAt = nowMs;
+    this.hostClaims++;
+    void this.room.reportHostUnreachable(this.room.generation, silentMs).catch(() => { /* a room that predates the claim */ });
+  }
+
+  /** Diagnostics: `host_unreachable` claims this seat sent (§13.22). */
+  get hostUnreachableClaims(): number { return this.hostClaims; }
 
   /** Leave the match (the seat stays in the room) and release the presentation. A hosting seat hands the match on. */
   async leaveMatch(reason = 'leave', closeReason: CloseReasonId = CLOSE_REASON.CLIENT_LEAVE): Promise<void> {
@@ -835,6 +949,7 @@ export class MatchSession {
     const handedOff = this.handedOff;
     this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
+    this.closeStandby(`leave: ${reason}`);
     this.matchClient = null;
     this.presentation = null;
     this.currentRound = null;

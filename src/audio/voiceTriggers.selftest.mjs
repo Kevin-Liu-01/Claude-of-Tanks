@@ -44,7 +44,7 @@ const GUNSHIP = [
   { type: 'HE', caliberMm: 152, soundProfile: 'gunship-howitzer' },
   { type: 'HE', caliberMm: 180, guided: true, soundProfile: 'gunship-missile' },
 ];
-function tank(id, { x = 0, z = 0, team = 'player', isPlayer = false, specId = 't72b3m', nation = 'Russia' } = {}) {
+function tank(id, { x = 0, z = 0, team = 'player', isPlayer = false, specId = 't72b3m_2022', nation = 'Russia' } = {}) {
   return {
     id, team, isPlayer, specId,
     spec: { id: specId, nation, role: 'mbt', weightTons: 46.5, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 15, gun: { caliberMm: 125, shells: SHELLS } },
@@ -71,7 +71,7 @@ async function startBattle(mode = 'standard') {
   roster();
   bus.emit('phase:change', { phase: 'garage' });
   bus.emit('phase:change', { phase: 'battle' });
-  await audio.warmBattleEvents(['t72b3m']);
+  await audio.warmBattleEvents(['t72b3m_2022']);
   for (let i = 0; i < 8; i++) frame(1 / 60);
   await flush();
   for (let i = 0; i < 2000 && (probe.library().pending > 0 || !probe.voicesLoaded); i++) await new Promise((resolve) => setTimeout(resolve, 5));
@@ -201,7 +201,7 @@ moment('target_locked', () => bus.emit('ui:autoAimState', { on: true }), { heard
 moment('target_lost', () => bus.emit('ui:autoAimState', { on: false, reason: 'lost' }), { heard: false });
 
 // Our own systems: every switch the sim accepts is heard, and the crew confirms it.
-moment('smoke_out', () => bus.emit('auxiliary:smokeScreens', { screens: [{ born: 30, x: 4, y: 2, z: 12, source: ['t72b3m', 0.5, 2, 0.5] }] }));
+moment('smoke_out', () => bus.emit('auxiliary:smokeScreens', { screens: [{ born: 30, x: 4, y: 2, z: 12, source: ['t72b3m_2022', 0.5, 2, 0.5] }] }));
 moment('roof_gun_on', () => { me.combat.auxiliary = { ...me.combat.auxiliary, gunOn: true }; frame(); });
 {
   const since = probe.sfxLog.at(-1)?.seq ?? 0;
@@ -488,7 +488,7 @@ moment('gunship_missile', () => bus.emit('ui:shellSelectionChanged', { slot: 2 }
 await startBattle();
 {
   const since = probe.sfxLog.at(-1)?.seq ?? 0;
-  bus.emit('auxiliary:smokeScreens', { screens: [{ born: 2, x: 4, y: 2, z: 12, source: ['t72b3m', 0.5, 2, 0.5] }] });
+  bus.emit('auxiliary:smokeScreens', { screens: [{ born: 2, x: 4, y: 2, z: 12, source: ['t72b3m_2022', 0.5, 2, 0.5] }] });
   const names = probe.sfxLog.filter((e) => e.seq > since).map((e) => e.n);
   assert.ok(names.includes('smoke_launcher'), `a second battle's smoke is heard (${names})`);
 }

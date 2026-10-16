@@ -42,8 +42,8 @@ function request(specId, options) {
 const dispose = baked => { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); };
 try {
   const receipts = [];
-  for (const fixture of [{ specId: 't90m', seed: 2526, pop: false },
-    { specId: 'k2', seed: 2002, pop: true }]) {
+  for (const fixture of [{ specId: 't90am', seed: 2526, pop: false },
+    { specId: 'xk2_black_panther', seed: 2002, pop: true }]) {
     await ensureTankBuilder(fixture.specId);
     const control = bakeTankWreck({}, fixture.specId, fixture);
     let transferred = null;

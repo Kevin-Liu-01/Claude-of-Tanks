@@ -165,8 +165,8 @@ await ensureAuthorityFleet();
     roomId: 'room-build-check', mapId: 'verdant', seed: 7, countdownS: 0.5, world: 'terrain', now: () => nowMs, schedule: () => () => {},
     build: hostLine, log, autoStart: false,
     seats: [
-      { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
-      { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90m' },
+      { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' },
+      { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90am' },
     ],
   });
   const join = (seat, playerId, clientBuild) => {
@@ -180,7 +180,7 @@ await ensureAuthorityFleet();
     });
     link.client.onClose((reason, detail) => { seen.closed ??= { reason, detail }; });
     const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 1, token: 'issued-elsewhere', clientBuild };
-    const claims = { v: 1, roomId: 'room-build-check', seat, playerId, name: playerId, team: seat ? 'bravo' : 'alpha', specId: seat ? 't90m' : 'm1a2', iat: 0, exp: 1 };
+    const claims = { v: 1, roomId: 'room-build-check', seat, playerId, name: playerId, team: seat ? 'bravo' : 'alpha', specId: seat ? 't90am' : 'm1a1_abrams_hc', iat: 0, exp: 1 };
     seen.attached = actor.attach(link.server, hello, claims);
     return seen;
   };
@@ -285,11 +285,11 @@ await ensureAuthorityFleet();
   };
   try {
     const p1 = spawn('p1', 0, HOST);
-    const created = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 1, mapId: 'verdant', botsFill: false } });
+    const created = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 1, mapId: 'verdant', botsFill: false } });
     const p2 = spawn('p2', 1, OTHER);
     const p2Phases = [];
     p2.session.onPhase(({ phase, detail }) => p2Phases.push({ phase, detail }));
-    await p2.room.join({ roomCode: created.roomCode, selection: { specId: 't90m' } });
+    await p2.room.join({ roomCode: created.roomCode, selection: { specId: 't90am' } });
     await until(() => p1.room.room?.players.length === 2, 'two seats', 10_000);
     await Promise.all(sessions.map((entry) => entry.room.setReady(true)));
     await until(() => p1.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);

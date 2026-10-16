@@ -105,7 +105,7 @@ even though the silhouette views see it fine. Author such kit
 segmented (per-bin boxes with real end faces, like actual stowage) or
 give it front-facing geometry. This is a build defect pattern, not a
 measurement artifact — the pipeline measures correctly (probe:
-`tools/tmp-r7ru-stations.mjs` precedent, t62mv1 stations 54.2 → 76.1
+`tools/tmp-r7ru-stations.mjs` precedent, t62_1975 stations 54.2 → 76.1
 from segmentation alone).
 
 ### Dims — the published-spec anchor
@@ -205,7 +205,7 @@ ledger.
 ### Orientation truth (v11, owner bug 2026-08-01)
 
 Translation-only registration is blind to a fore-aft mirrored build:
-t62mv1 shipped with its hull backwards and turret seated at the stern
+t62_1975 shipped with its hull backwards and turret seated at the stern
 while scoring ~70 — the bulk silhouette still overlapped. v11 adds a
 mirror check (side+plan hull curves re-scored with the proc curve
 mirrored about its span midpoint; a decisively better mirror fit
@@ -284,7 +284,7 @@ That is the point: it is the definition of done, not a description of today.
 
 2. **NO EMPTY AREAS / TURRET CONTIGUITY (fleet-wide).** Tanks must not
    render with hollow pockets, gaps between shapes, or see-through
-   voids (owner example: leo2a6 turret side/rear showed dark empty
+   voids (owner example: leo2a4 turret side/rear showed dark empty
    areas between masses). Turrets are CONTIGUOUS volumes for the most
    part — no "shaping for the sake of shaping": every standoff mass
    must read as attached (mounts, brackets, contact shadows), not
@@ -326,8 +326,8 @@ Enforcement: critics add four checks to every verdict — FRONT-SLOPE
 (abrams only), CONTIGUITY (all angles), DECORATION MINIMUM (roof MGs
 present? flat areas dressed?), TRACK-CONTAINMENT (bow/stern wraps clear
 of hull solids). Builders treat missing MGs as a work-order item of the
-same rank as a failed view. Graduates are not exempt: leo2a6 is flagged
-for a contiguity fix round (leopard lane, after kf51 r7); the m1a1-line
+same rank as a failed view. Graduates are not exempt: leo2a4 is flagged
+for a contiguity fix round (leopard lane, after kf51_evo r7); the m1a1-line
 graduates queue for a front-slope + decoration audit.
 
 
@@ -347,9 +347,9 @@ nulled into fake cover (the centurion push-2 find: dAlong at half-pitch
 parity paired the ref gun's last trim-window columns 1-4mm past the last
 proc column; ~2.9 pts of phantom turret_side cover). interp() now clamps
 to the edge column INSIDE the already-declared tolerance; beyond it
-stays null. Fleet A/B at the change: centurion5 87.2 -> 90.5 PASS,
+stays null. Fleet A/B at the change: centurion5_2 87.2 -> 90.5 PASS,
 centurion3 87.7 -> 91.1 PASS (the priced artifact released exactly);
-graduates m47 90.5 -> 91.0, merkava3d 90.2 -> 90.4, t84/leo2a5
+graduates m47 90.5 -> 91.0, merkava3_baz 90.2 -> 90.4, t84/leo2a5
 bit-identical — held-or-up across the board, no regression possible by
 construction (lenient only where the span check already said in-span).
 Frozen graduate rows that drift UP from this amendment refresh in the
@@ -359,6 +359,6 @@ ledger without re-certification (scores changed, builds did not).
 When retiring a registration into the three override maps, mirror the
 FULLY-EXPANDED runtime config, never the surface call site: userdrops
 helpers inject fields (the `articulated` helper includes `gunNode:'^Gun'`)
-and dropping one cratered a graduate to min 0 at load-prove (the leo2a5
+and dropping one cratered a graduate to min 0 at load-prove (the leo2a4_v
 gunNode incident). Dump the runtime truth with tools/tmp-modelsource-dump
 (full-chain import required for donor order) and mirror THAT.

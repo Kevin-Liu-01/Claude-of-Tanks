@@ -9,8 +9,8 @@ import { createShell } from '../sim/ballistics.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { createCombatState, resolveShellHit } from '../sim/damage.ts';
 
-const DEFAULT_IDS=['leo2a7v_x','leo2a6m_x','merkava3d_x','kf51_x',
-  't90a_x','t90a_vladimir_x','t90m_x','t90sm_x','t14_x'];
+const DEFAULT_IDS=['leo2a7v','leo2a6m','merkava3d','kf51_panther',
+  't90a','t90a_vladimir','t90m','t90sm','t14_armata'];
 const arg=process.argv.find(a=>a.startsWith('--ids='));
 const ids=arg?arg.slice(6).split(','):DEFAULT_IDS;
 const auditShell={name:'X ERA exact-face audit',type:'APFSDS',caliberMm:120,

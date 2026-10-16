@@ -168,7 +168,7 @@ export default {
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,
     // the map-vehicles lane (2026-10-06, the period ruling): Hostomel, February 2022: the T-72B3, T-80BV and BMP-2,
     // and Ukraine's T-64BV
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'] },
+    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 7, jeeps: 5, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): an airfield plain: low swells,

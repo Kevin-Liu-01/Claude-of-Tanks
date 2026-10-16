@@ -7,7 +7,7 @@ import { createBattleLoadScreen } from '../../src/ui/battleLoad.ts';
 installResponsiveLayout();
 const screen = createBattleLoadScreen();
 const vehicles = [
-  ['m1a2', 'M1A2 Abrams'], ['leo2a5', 'Leopard 2A5'], ['t90m', 'T-90M'],
+  ['m1a1_abrams_hc', 'M1A2 Abrams'], ['leo2a4_v', 'Leopard 2A5'], ['t90am', 'T-90M'],
 ];
 const rows = (count, ally) => Array.from({length:count}, (_,i) => ({
   id:vehicles[i%vehicles.length][0], name:vehicles[i%vehicles.length][1],

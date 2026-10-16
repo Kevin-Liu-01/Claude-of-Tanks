@@ -36,7 +36,7 @@ function build(quality, previous = false) {
     return original(p, cfg);
   };
   try {
-    const tank = createTank('t90_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
+    const tank = createTank('t90', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
     tank.root.updateMatrixWorld(true);
     return { tank, added, hash: hash.digest('hex') };
   } finally { KIT.buildRunningGear = original; }

@@ -45,7 +45,7 @@ function ownership(tank){
   assert.equal(mount.geometry,geometry,'pose updates preserve cold-created mesh buffers');
 }
 for(const quality of ['high','low']){
-  const t=createTank('t90ms_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90ms_tagil',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const meshes=visibleMeshes(t.root);sourceTops(meshes);frontSurfaces(meshes);openings(meshes);ownership(t);}
   finally{t.dispose();}
 }

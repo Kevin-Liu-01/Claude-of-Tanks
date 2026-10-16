@@ -4,7 +4,7 @@ import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
-// AND exact geometric comparison with the 3d models... leclerc highest
+// AND exact geometric comparison with the 3d models... leclerc_s2 highest
 // standards"). The previous module cloned complete donor hulls (buildK2 /
 // buildT72B87Native / buildPT91M) and overlaid decoration packages; every
 // builder below is a fresh §K measured-loft construction against its own
@@ -393,7 +393,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
     P.add('hull', box(0.16, 0.05, 5.7), s * 1.70, 1.215, 0.30);
     // fender-slot §B2 floor: a REAL dark slot plate riding 6 cm above the
     // idler wrap arc at its z (strict clip audit proof; the v2 hole scan
-    // hides /shadow/ meshes so the leclerc shadow device cannot close B2)
+    // hides /shadow/ meshes so the leclerc_s2 shadow device cannot close B2)
     P.add('hullDark', box(0.24, 0.01, 0.28), s * 1.53, 1.10, 3.00);
   }
 
@@ -661,7 +661,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   P.decal('turret', 'number', 'PT-91', 0.24, [-1.32, 0.42, -0.98], -Math.PI / 2);
   P.decal('turret', 'number', 'PT-91', 0.24, [1.32, 0.42, -0.98], Math.PI / 2);
   addVehicleGhillieSuit(P);
-  addMissionAttachmentReceiver(P, 'pt91_twardy');
+  addMissionAttachmentReceiver(P, 'pt91a_twardy');
   P.topY = Math.max(P.topY || 0, 1.35);
 }
 
@@ -765,7 +765,7 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
     // 0.63 @ -3.23 -> 1.21 @ -3.43 -> 1.46 @ -3.53)
     belly: [[-3.35, 0.92], [-3.10, 0.50], [-2.85, 0.34], [-2.60, 0.30],
       [2.35, 0.30], [2.90, 0.76], [3.425, 1.29]],
-    // containment (leclerc glacis-taper precedent + this round's strict
+    // containment (leclerc_s2 glacis-taper precedent + this round's strict
     // sweep 3445): the ascending idler band crosses the glacis plane past
     // z~2.6 — the full-width plate tapers to ±0.94 there; the lower band
     // stays inboard of the 0.955 course wall; the sponson floor rides above
@@ -777,7 +777,7 @@ function addPL01HullBody(P: PolishBuilderPort, context: PL01BuildContext): void 
   // The bow is one continuous raised wedge. Its center prow meets the skirt
   // shoulders at y=1.46 instead of collapsing beneath them. FULL WIDTH only
   // continues to z 2.60 —
-  // past it the plate tapers to ±0.94 (leclerc containment precedent: the
+  // past it the plate tapers to ±0.94 (leclerc_s2 containment precedent: the
   // ascending idler band crosses the plane there; the plan bow at |x|
   // 0.96..1.60 is carried by the course itself, exactly like the print).
   segmentedStrip(P, 'hull',
@@ -1417,7 +1417,7 @@ function buildPL01(P: PolishBuilderPort): void {
 
 export const POLAND_PROFILES = {
   t72m1_jaguar: { build: buildJaguarModern },
-  pt91_twardy: { build: buildPT91Twardy },
+  pt91a_twardy: { build: buildPT91Twardy },
   pl01: { build: buildPL01 },
   pl01_105: { build: buildPL01 },
 } satisfies VehicleProfileRecord;

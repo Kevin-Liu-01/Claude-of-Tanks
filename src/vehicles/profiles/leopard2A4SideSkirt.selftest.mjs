@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
-const ids = ['leo2a4', 'leo2a4_otco'];
+const ids = ['leo2a2', 'leo2a3'];
 const EPS = 1e-9;
 
 for (const id of ids) {

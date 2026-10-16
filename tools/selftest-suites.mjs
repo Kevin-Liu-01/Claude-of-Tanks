@@ -44,6 +44,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/localLights.selftest.mjs',
     'src/fx/worldWindPalette.selftest.mjs',
     'src/fx/salvoGovernor.selftest.mjs',
+    'src/fx/heLookV2.selftest.mjs',
+    'src/fx/killGlow.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
@@ -594,8 +596,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/world-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
+    'tools/media-r5/site-video-budget.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
+    'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',
@@ -652,6 +656,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
     'src/engine/contactShadows.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane, contact r2): the scene alpha's snow band — the terrain's own snow cover for the ground occlusion
+    'src/engine/sceneAlpha.selftest.mjs',
     'src/engine/vehicleOcclusion.selftest.mjs',
     'src/engine/groundBounce.selftest.mjs',
     'src/engine/sunShafts.selftest.mjs',
@@ -960,6 +966,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/textureUnits.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
+    // 2026-10-09 (the shadows lane): the ground's sky beside the world's solids; the thin deck's beam
+    'src/engine/structureGroundOcclusion.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
+    // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
+    'tools/studio-snow-contact.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
     'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
@@ -1011,6 +1022,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/interfacePress.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
+    // 2026-10-14: the countdown is heard (the hull, the tanks, the world, once; 3-2-1 and one horn, solo and network)
+    'src/audio/countdownAudio.selftest.mjs',
+    // 2026-10-14: every vehicle's countdown bank is the one its rig plays (the warm resolves each hull from its whole spec)
+    'src/audio/presenceFamilies.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
@@ -1037,6 +1052,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/hostStopRace.selftest.mjs', // 2026-10-13 the MP stream: a core stopped during its world load starts no actor
+    'src/mp/host/hostStandby.selftest.mjs', // 2026-10-14 the MP stream: a standby host thread boots on the world it prepared (§13.21)
+    'src/sim/preparedAuthorityGround.selftest.mjs', // 2026-10-14 the MP stream: a prepared navigation ground plays digest for digest as a fresh one (§13.21)
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
@@ -1066,6 +1083,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
     'tools/mp-p2p-headless.selftest.mjs',
+    'tools/mp-p2p-headless-crash.selftest.mjs', // 2026-10-14 the MP stream: a crashed host's peers elect at once on their evidence (§13.22)
     'tools/mp-world-events-audit.selftest.mjs',
     // 2026-10-02 (ghost-crunch lane): the audit's ghost findings as deterministic authority → presentation scenarios.
     'tools/mp-world-events-scenarios.selftest.mjs',
@@ -1165,6 +1183,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/roof-decks.selftest.mjs',
     // 2026-10-14 (physics stream F4(b)): a hull at rest on a roof holds its attitude (no flipping between plane fits)
     'tools/roof-rest.selftest.mjs',
+    // 2026-10-14 (physics stream F5): a hull on its shell rests and rebounds off still ground, no springs
+    'tools/shell-contact.selftest.mjs',
+    // 2026-10-14 (physics stream F6): a hull at a roof's edge stands on it or rolls off it by its centre of mass
+    'tools/roof-edge.selftest.mjs',
+    // 2026-10-14 (physics stream F7a): roof pivots no longer hop: a support step is position, a rebound no launch
+    'tools/roof-hops.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
@@ -1178,6 +1202,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionParity.selftest.mjs',
     // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
     'src/sim/fortifiedCover.selftest.mjs',
+    'src/sim/setPieceShellBreak.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
@@ -1295,6 +1320,14 @@ export const SELFTEST_SUITES = Object.freeze({
     // gallery URL, room seat, telemetry) resolve swapped ids by schema.
     'src/vehicles/tankIdAliases.selftest.mjs',
     'src/game/tankIdBoundaries.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.04/05): the tank id codemod renames a tree once and, as the lanes' merge helper, converts
+    // only a lane's own old-id lines and id-only conflicts; a second run changes nothing.
+    'tools/tank-id-codemod.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.04/05): id-named icons, thumbnails and geometry gate records move through swaps once.
+    'tools/tank-id-move-files.selftest.mjs',
+    // 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduces
+    // the browser generator's id-bearing fields byte for byte.
+    'tools/tank-id-rekey-assets.selftest.mjs',
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
@@ -1312,6 +1345,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
+    // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
+    // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
+    'src/vehicles/ghillieGarnishLie.selftest.mjs',
+    // 2026-10-14 (netting-225; the coordinator's seat-stability ruling): a marking re-solve keeps every seat that still
+    // reads its recorded count, and searches one that does not within 0.5 m of where it stood
+    'src/vehicles/markingSeatStability.selftest.mjs',
     // 2026-10-11 (netting lane): the runtime keeps camouflage out of hits, scars, contact and LOD, as the receipts do
     'src/vehicles/camouflageRuntime.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
@@ -1441,6 +1480,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane; media wave f1 "concentric contour rings on snow"): the snow maps' drift and sastrugi
+    // phases monotone along the wind over the whole square (no rings), the sunset terminator kept, the GLSL's law
+    'src/world/snowDrifts.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
@@ -1503,6 +1545,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
     'src/world/maps/fortKit.selftest.mjs',
+    'src/world/maps/lightWreck.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
@@ -1550,6 +1593,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
+    'src/world/outlandTreeAdoption.selftest.mjs', // GND (2026-10-14): the ring's and the Hinterland's trees near the square drawn by the battlefield's tiers
     // trees round 2 (2026-10-03): the ring forest's shapes keep their own streams (a taller ring moves trees, not shapes)
     'src/world/horizonForestShapes.selftest.mjs',
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
@@ -1663,7 +1707,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/structureConnectivity.selftest.mjs',
     // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
     'src/world/kitConnectivity.selftest.mjs',
+    'src/world/buildingDetail.selftest.mjs', // 2026-10-14 BLD-04/HB-1b: the building-detail census's ratchet (tools/building-detail-census.mjs)
     'src/world/structureCollision.selftest.mjs',
+    // (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process
+    'tools/worldBuildIndependence.selftest.mjs',
     'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
@@ -1673,6 +1720,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exteriorDetailKit.selftest.mjs',
     'src/world/destructibleRenderPolicy.selftest.mjs',
     'src/world/destructibles.selftest.mjs',
+    'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
@@ -1723,6 +1771,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudMagazine.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
+    // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
+    'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',

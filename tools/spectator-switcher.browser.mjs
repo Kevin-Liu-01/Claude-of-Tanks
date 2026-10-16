@@ -18,7 +18,7 @@ try{
   await page.waitForFunction(()=>!!window.__HUD_LAYOUT,{timeout:60000});
   await page.evaluate(()=>{
    const {hud,bus,state}=window.__HUD_LAYOUT;state('spectator');
-   hud.stageSpectateBar({name:'OldNikolai',vehicle:'T-72B3',specId:'t72b3_x',count:3,index:1});
+   hud.stageSpectateBar({name:'OldNikolai',vehicle:'T-72B3',specId:'t72b3',count:3,index:1});
    window.__spectatorCycles=[];bus.on('spectate:cycle',p=>window.__spectatorCycles.push(p.direction));
   });
   await page.waitForFunction(()=>{const img=document.querySelector('.cot-spec .portrait img');return img?.complete&&img.naturalWidth>0;});
@@ -41,7 +41,7 @@ try{
   assert.deepEqual(check.issues,[],`${width}x${height}/${touch}`);
   await page.click('.cot-spec .next');await page.click('.cot-spec .prev');
   assert.deepEqual(await page.evaluate(()=>window.__spectatorCycles),[1,-1]);
-  await page.evaluate(()=>window.__HUD_LAYOUT.hud.stageSpectateBar({name:'AnExtremelyLongCommanderNameForTruncation',vehicle:'M1A2 Abrams SEP v3 with a long designation',specId:'m1a2_sepv3_x',count:42,index:42}));
+  await page.evaluate(()=>window.__HUD_LAYOUT.hud.stageSpectateBar({name:'AnExtremelyLongCommanderNameForTruncation',vehicle:'M1A2 Abrams SEP v3 with a long designation',specId:'m1a2_abrams_sepv3',count:42,index:42}));
   assert.equal(await page.$eval('.cot-spec .idx',el=>el.textContent),'42 / 42');
   assert.equal(await page.$eval('.cot-spec .idx',el=>el.scrollWidth<=el.clientWidth),true,'large count fits between controls');
   await page.evaluate(()=>window.__HUD_LAYOUT.hud.stageSpectateBar({count:1,index:1}));

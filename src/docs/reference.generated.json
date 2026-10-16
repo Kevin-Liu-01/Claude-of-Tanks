@@ -43,7 +43,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2",
+      "id": "m1a1_abrams_hc",
       "name": "M1A1 Abrams HC",
       "nation": "USA",
       "role": "mbt",
@@ -64,7 +64,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_tusk",
+      "id": "m1a1_abrams_sa",
       "name": "M1A1 Abrams SA",
       "nation": "USA",
       "role": "mbt",
@@ -85,7 +85,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_sepv2",
+      "id": "m1a1_abrams_aim",
       "name": "M1A1 Abrams AIM",
       "nation": "USA",
       "role": "mbt",
@@ -106,7 +106,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_sepv3",
+      "id": "m1a1_abrams_fep",
       "name": "M1A1 Abrams FEP",
       "nation": "USA",
       "role": "mbt",
@@ -169,7 +169,7 @@
       "suspension": false
     },
     {
-      "id": "t62mv1",
+      "id": "t62_1975",
       "name": "T-62 obr. 1975",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -211,7 +211,7 @@
       "suspension": false
     },
     {
-      "id": "t72b3m",
+      "id": "t72b3m_2022",
       "name": "T-72B3M obr. 2022",
       "nation": "Russia",
       "role": "mbt",
@@ -232,7 +232,7 @@
       "suspension": false
     },
     {
-      "id": "t72bu",
+      "id": "t72bu_1989",
       "name": "T-72BU obr. 1989",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -337,7 +337,7 @@
       "suspension": false
     },
     {
-      "id": "t80u",
+      "id": "t80uk",
       "name": "T-80UK",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -379,7 +379,7 @@
       "suspension": false
     },
     {
-      "id": "t90",
+      "id": "t90_1992",
       "name": "T-90 obr. 1992",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -400,7 +400,7 @@
       "suspension": false
     },
     {
-      "id": "t90a",
+      "id": "t90a_2004",
       "name": "T-90A obr. 2004",
       "nation": "Russia",
       "role": "mbt",
@@ -421,7 +421,7 @@
       "suspension": false
     },
     {
-      "id": "t90a_vladimir",
+      "id": "t90a_2006",
       "name": "T-90A obr. 2006",
       "nation": "Russia",
       "role": "mbt",
@@ -442,7 +442,7 @@
       "suspension": false
     },
     {
-      "id": "t90a_burlak",
+      "id": "t90a_burlak_proto",
       "name": "T-90A Burlak Prototype",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -463,7 +463,7 @@
       "suspension": false
     },
     {
-      "id": "t90sm",
+      "id": "t90sm_2013",
       "name": "T-90SM obr. 2013",
       "nation": "Russia",
       "role": "mbt",
@@ -484,7 +484,7 @@
       "suspension": false
     },
     {
-      "id": "t90m",
+      "id": "t90am",
       "name": "T-90AM",
       "nation": "Russia",
       "role": "mbt",
@@ -505,7 +505,7 @@
       "suspension": false
     },
     {
-      "id": "t90ms",
+      "id": "t90ms_2011",
       "name": "T-90MS obr. 2011",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -610,7 +610,7 @@
       "suspension": true
     },
     {
-      "id": "strv103",
+      "id": "strv103b",
       "name": "Stridsvagn 103B",
       "nation": "Sweden",
       "role": "td",
@@ -652,7 +652,7 @@
       "suspension": false
     },
     {
-      "id": "cv90_x",
+      "id": "cv9040c",
       "name": "CV9040C",
       "nation": "Sweden",
       "role": "ifv",
@@ -673,7 +673,7 @@
       "suspension": false
     },
     {
-      "id": "cv90105_tml_x",
+      "id": "cv90105_tml",
       "name": "CV90105 TML",
       "nation": "Sweden",
       "role": "light",
@@ -694,7 +694,7 @@
       "suspension": false
     },
     {
-      "id": "strv122",
+      "id": "strv121",
       "name": "Stridsvagn 121",
       "nation": "Sweden",
       "role": "mbt",
@@ -715,7 +715,7 @@
       "suspension": false
     },
     {
-      "id": "cv90_mkiv",
+      "id": "cv90_mk4_concept",
       "name": "CV90 Mk 4 Concept",
       "nation": "Sweden",
       "role": "ifv",
@@ -736,7 +736,7 @@
       "suspension": false
     },
     {
-      "id": "cv90_mkiv_x",
+      "id": "cv90_mk4",
       "name": "CV90 Mk 4",
       "nation": "Sweden",
       "role": "ifv",
@@ -778,7 +778,7 @@
       "suspension": false
     },
     {
-      "id": "chieftain5",
+      "id": "chieftain3",
       "name": "Chieftain Mk 3",
       "nation": "UK",
       "role": "mbt",
@@ -799,7 +799,7 @@
       "suspension": false
     },
     {
-      "id": "chieftain_mk10",
+      "id": "chieftain_mk9",
       "name": "Chieftain Mk 9",
       "nation": "UK",
       "role": "mbt",
@@ -820,7 +820,7 @@
       "suspension": false
     },
     {
-      "id": "challenger1",
+      "id": "challenger1_mk2",
       "name": "Challenger 1 Mk 2",
       "nation": "UK",
       "role": "mbt",
@@ -925,7 +925,7 @@
       "suspension": false
     },
     {
-      "id": "challenger_3",
+      "id": "challenger3_proto",
       "name": "Challenger 3 Prototype",
       "nation": "UK",
       "role": "mbt",
@@ -946,7 +946,7 @@
       "suspension": false
     },
     {
-      "id": "challenger_3x",
+      "id": "challenger3",
       "name": "Challenger 3",
       "nation": "UK",
       "role": "mbt",
@@ -967,7 +967,7 @@
       "suspension": false
     },
     {
-      "id": "k2",
+      "id": "xk2_black_panther",
       "name": "XK2 Black Panther",
       "nation": "South Korea",
       "role": "mbt",
@@ -988,7 +988,7 @@
       "suspension": false
     },
     {
-      "id": "k1a1",
+      "id": "k1e1",
       "name": "K1E1",
       "nation": "South Korea",
       "role": "mbt",
@@ -1051,7 +1051,7 @@
       "suspension": true
     },
     {
-      "id": "type90",
+      "id": "type90_kyumaru",
       "name": "Type 90 Kyū-maru",
       "nation": "Japan",
       "role": "mbt",
@@ -1093,7 +1093,7 @@
       "suspension": false
     },
     {
-      "id": "type10",
+      "id": "type10_tk_x",
       "name": "Type 10 (TK-X)",
       "nation": "Japan",
       "role": "mbt",
@@ -1198,7 +1198,7 @@
       "suspension": false
     },
     {
-      "id": "spz_puma_s1",
+      "id": "spz_wotan",
       "name": "SPz Wotan",
       "nation": "Germany",
       "role": "ifv",
@@ -1219,7 +1219,7 @@
       "suspension": false
     },
     {
-      "id": "type89_light_tiger",
+      "id": "raiju_ifv",
       "name": "Raijū IFV",
       "nation": "Japan",
       "role": "ifv",
@@ -1240,7 +1240,7 @@
       "suspension": false
     },
     {
-      "id": "type89",
+      "id": "hayate_ifv",
       "name": "Hayate IFV",
       "nation": "Japan",
       "role": "ifv",
@@ -1324,7 +1324,7 @@
       "suspension": false
     },
     {
-      "id": "ariete",
+      "id": "c1_ariete_preserie",
       "name": "C1 Ariete Preserie",
       "nation": "Italy",
       "role": "mbt",
@@ -1345,7 +1345,7 @@
       "suspension": false
     },
     {
-      "id": "ariete_c1",
+      "id": "c1_ariete_proto_serie1",
       "name": "C1 Ariete Prototype (Serie 1)",
       "nation": "Italy",
       "role": "mbt",
@@ -1366,7 +1366,7 @@
       "suspension": false
     },
     {
-      "id": "ariete_c2",
+      "id": "c2_ariete_proto",
       "name": "C2 Ariete Prototype",
       "nation": "Italy",
       "role": "mbt",
@@ -1387,7 +1387,7 @@
       "suspension": false
     },
     {
-      "id": "ariete_c1_x",
+      "id": "c1_ariete",
       "name": "C1 Ariete",
       "nation": "Italy",
       "role": "mbt",
@@ -1408,7 +1408,7 @@
       "suspension": false
     },
     {
-      "id": "ariete_c2_x",
+      "id": "c2_ariete",
       "name": "C2 Ariete",
       "nation": "Italy",
       "role": "mbt",
@@ -1429,7 +1429,7 @@
       "suspension": false
     },
     {
-      "id": "amx40",
+      "id": "amx40_proto",
       "name": "AMX-40 Prototype",
       "nation": "France",
       "role": "mbt",
@@ -1492,7 +1492,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a4",
+      "id": "leo2a2",
       "name": "Leopard 2A2",
       "nation": "Germany",
       "role": "mbt",
@@ -1513,7 +1513,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a4_otco",
+      "id": "leo2a3",
       "name": "Leopard 2A3",
       "nation": "Germany",
       "role": "mbt",
@@ -1534,7 +1534,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a4m",
+      "id": "leo2a4m_can",
       "name": "Leopard 2A4M CAN",
       "nation": "Germany",
       "role": "mbt",
@@ -1555,7 +1555,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a5",
+      "id": "leo2a4_v",
       "name": "Leopard 2A4 V",
       "nation": "Germany",
       "role": "mbt",
@@ -1576,7 +1576,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a5_a5nl",
+      "id": "leo2a4m",
       "name": "Leopard 2A4M",
       "nation": "Germany",
       "role": "mbt",
@@ -1597,7 +1597,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a6",
+      "id": "leo2a4",
       "name": "Leopard 2A4",
       "nation": "Germany",
       "role": "mbt",
@@ -1618,7 +1618,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a6m",
+      "id": "leo2a4_otco",
       "name": "Leopard 2A4 OTCO",
       "nation": "Germany",
       "role": "mbt",
@@ -1681,7 +1681,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a7v",
+      "id": "leo2_improved",
       "name": "Leopard 2 Improved",
       "nation": "Germany",
       "role": "mbt",
@@ -1702,7 +1702,7 @@
       "suspension": false
     },
     {
-      "id": "leclerc",
+      "id": "leclerc_s2",
       "name": "Leclerc S2",
       "nation": "France",
       "role": "mbt",
@@ -1723,7 +1723,7 @@
       "suspension": false
     },
     {
-      "id": "leclerc_xlr",
+      "id": "leclerc_sxxi",
       "name": "Leclerc SXXI",
       "nation": "France",
       "role": "mbt",
@@ -1744,7 +1744,7 @@
       "suspension": false
     },
     {
-      "id": "amx56",
+      "id": "leclerc_s1",
       "name": "Leclerc S1",
       "nation": "France",
       "role": "mbt",
@@ -1807,7 +1807,7 @@
       "suspension": false
     },
     {
-      "id": "type99a",
+      "id": "ztz99_longwei",
       "name": "ZTZ-99 Longwei",
       "nation": "China",
       "role": "mbt",
@@ -1828,7 +1828,7 @@
       "suspension": false
     },
     {
-      "id": "type96b_x",
+      "id": "type96b",
       "name": "Type 96B",
       "nation": "China",
       "role": "mbt",
@@ -1912,7 +1912,7 @@
       "suspension": false
     },
     {
-      "id": "aft10_x",
+      "id": "aft10",
       "name": "AFT-10",
       "nation": "China",
       "role": "td",
@@ -1933,7 +1933,7 @@
       "suspension": false
     },
     {
-      "id": "ztz99a2_prototype",
+      "id": "ztz99a",
       "name": "ZTZ-99A",
       "nation": "China",
       "role": "mbt",
@@ -2017,7 +2017,7 @@
       "suspension": false
     },
     {
-      "id": "ztz100_x",
+      "id": "ztz100",
       "name": "ZTZ-100",
       "nation": "China",
       "role": "mbt",
@@ -2080,7 +2080,7 @@
       "suspension": true
     },
     {
-      "id": "t14",
+      "id": "object148_proto",
       "name": "Object 148 Proto",
       "nation": "Russia",
       "role": "mbt",
@@ -2101,7 +2101,7 @@
       "suspension": false
     },
     {
-      "id": "kf51",
+      "id": "kf51_evo",
       "name": "KF51 EVO",
       "nation": "Germany",
       "role": "mbt",
@@ -2122,7 +2122,7 @@
       "suspension": false
     },
     {
-      "id": "kf51b",
+      "id": "kf51_u",
       "name": "KF51-U",
       "nation": "Germany",
       "role": "mbt",
@@ -2206,7 +2206,7 @@
       "suspension": false
     },
     {
-      "id": "ajax_x",
+      "id": "ajax",
       "name": "Ajax",
       "nation": "UK",
       "role": "ifv",
@@ -2227,7 +2227,7 @@
       "suspension": false
     },
     {
-      "id": "ares_apc_x",
+      "id": "ares_apc",
       "name": "Ares APC",
       "nation": "UK",
       "role": "ifv",
@@ -2332,7 +2332,7 @@
       "suspension": false
     },
     {
-      "id": "sabra_mk2_x",
+      "id": "sabra_mk2",
       "name": "Sabra Mk 2",
       "nation": "Israel",
       "role": "mbt",
@@ -2374,7 +2374,7 @@
       "suspension": false
     },
     {
-      "id": "merkava3d",
+      "id": "merkava3_baz",
       "name": "Merkava Mk 3 Baz",
       "nation": "Israel",
       "role": "mbt",
@@ -2395,7 +2395,7 @@
       "suspension": false
     },
     {
-      "id": "merkava3d_x",
+      "id": "merkava3d",
       "name": "Merkava Mk 3D",
       "nation": "Israel",
       "role": "mbt",
@@ -2416,7 +2416,7 @@
       "suspension": false
     },
     {
-      "id": "merkava4_x",
+      "id": "merkava4",
       "name": "Merkava Mk 4",
       "nation": "Israel",
       "role": "mbt",
@@ -2563,7 +2563,7 @@
       "suspension": false
     },
     {
-      "id": "m48",
+      "id": "m48a5_patton",
       "name": "M48A5 Patton",
       "nation": "USA",
       "role": "mbt",
@@ -2647,7 +2647,7 @@
       "suspension": false
     },
     {
-      "id": "centurion5",
+      "id": "centurion5_2",
       "name": "Centurion Mk 5/2",
       "nation": "UK",
       "role": "mbt",
@@ -2731,7 +2731,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t64bv",
+      "id": "t64bv_donbas",
       "name": "T-64BV Donbas",
       "nation": "Ukraine",
       "role": "mbt",
@@ -2773,7 +2773,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t80u_kursk",
+      "id": "t80u_kursk",
       "name": "T-80U Kursk",
       "nation": "Ukraine",
       "role": "mbt",
@@ -2794,7 +2794,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t84_oplot_m",
+      "id": "t84bm_oplot_m",
       "name": "T-84BM Oplot-M",
       "nation": "Ukraine",
       "role": "mbt",
@@ -2857,7 +2857,7 @@
       "suspension": false
     },
     {
-      "id": "object695_x",
+      "id": "object695",
       "name": "Object 695",
       "nation": "Russia",
       "role": "ifv",
@@ -2920,7 +2920,7 @@
       "suspension": false
     },
     {
-      "id": "pt91_twardy",
+      "id": "pt91a_twardy",
       "name": "PT-91A Twardy",
       "nation": "Poland",
       "role": "mbt",
@@ -3172,7 +3172,7 @@
       "suspension": false
     },
     {
-      "id": "bmp3m_dragun125_x",
+      "id": "bmp3m_dragun125",
       "name": "BMP-3M Dragun 125",
       "nation": "Russia",
       "role": "light",
@@ -3193,7 +3193,7 @@
       "suspension": false
     },
     {
-      "id": "kurganets25_x",
+      "id": "kurganets25",
       "name": "Kurganets-25",
       "nation": "Russia",
       "role": "ifv",
@@ -3319,7 +3319,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a7v_x",
+      "id": "leo2a7v",
       "name": "Leopard 2A7V",
       "nation": "Germany",
       "role": "mbt",
@@ -3340,7 +3340,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a6m_x",
+      "id": "leo2a6m",
       "name": "Leopard 2A6M",
       "nation": "Germany",
       "role": "mbt",
@@ -3361,7 +3361,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a4m_x",
+      "id": "leo2a5m",
       "name": "Leopard 2A5M",
       "nation": "Germany",
       "role": "mbt",
@@ -3382,7 +3382,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a5_x",
+      "id": "leo2a5",
       "name": "Leopard 2A5",
       "nation": "Germany",
       "role": "mbt",
@@ -3403,7 +3403,7 @@
       "suspension": false
     },
     {
-      "id": "k2_x",
+      "id": "k2_black_panther",
       "name": "K2 Black Panther",
       "nation": "South Korea",
       "role": "mbt",
@@ -3424,7 +3424,7 @@
       "suspension": false
     },
     {
-      "id": "kf51_x",
+      "id": "kf51_panther",
       "name": "KF51 Panther",
       "nation": "Germany",
       "role": "mbt",
@@ -3445,7 +3445,7 @@
       "suspension": false
     },
     {
-      "id": "t90a_x",
+      "id": "t90a",
       "name": "T-90A",
       "nation": "Russia",
       "role": "mbt",
@@ -3466,7 +3466,7 @@
       "suspension": false
     },
     {
-      "id": "t90a_vladimir_x",
+      "id": "t90a_vladimir",
       "name": "T-90A Vladimir",
       "nation": "Russia",
       "role": "mbt",
@@ -3487,7 +3487,7 @@
       "suspension": false
     },
     {
-      "id": "t90m_x",
+      "id": "t90m",
       "name": "T-90M",
       "nation": "Russia",
       "role": "mbt",
@@ -3508,7 +3508,7 @@
       "suspension": false
     },
     {
-      "id": "t90sm_x",
+      "id": "t90sm",
       "name": "T-90SM",
       "nation": "Russia",
       "role": "mbt",
@@ -3529,7 +3529,7 @@
       "suspension": false
     },
     {
-      "id": "t14_x",
+      "id": "t14_armata",
       "name": "T-14 Armata",
       "nation": "Russia",
       "role": "mbt",
@@ -3550,7 +3550,7 @@
       "suspension": false
     },
     {
-      "id": "griffin50_x",
+      "id": "griffin50mm",
       "name": "Griffin 50 mm",
       "nation": "USA",
       "role": "ifv",
@@ -3571,7 +3571,7 @@
       "suspension": false
     },
     {
-      "id": "kf41_lynx_x",
+      "id": "kf41_lynx",
       "name": "KF41 Lynx",
       "nation": "Germany",
       "role": "ifv",
@@ -3592,7 +3592,7 @@
       "suspension": false
     },
     {
-      "id": "k21_x",
+      "id": "k21",
       "name": "K21",
       "nation": "South Korea",
       "role": "ifv",
@@ -3613,7 +3613,7 @@
       "suspension": false
     },
     {
-      "id": "leo2a6_x",
+      "id": "leo2a6",
       "name": "Leopard 2A6",
       "nation": "Germany",
       "role": "mbt",
@@ -3634,7 +3634,7 @@
       "suspension": false
     },
     {
-      "id": "k1a1_x",
+      "id": "k1a1",
       "name": "K1A1",
       "nation": "South Korea",
       "role": "mbt",
@@ -3655,7 +3655,7 @@
       "suspension": false
     },
     {
-      "id": "amx30_x",
+      "id": "amx30b",
       "name": "AMX-30B",
       "nation": "France",
       "role": "mbt",
@@ -3676,7 +3676,7 @@
       "suspension": false
     },
     {
-      "id": "t62mv1_x",
+      "id": "t62mv1",
       "name": "T-62MV-1",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -3697,7 +3697,7 @@
       "suspension": false
     },
     {
-      "id": "t72b_1987_x",
+      "id": "t72b_1987",
       "name": "T-72B obr. 1987",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -3718,7 +3718,7 @@
       "suspension": false
     },
     {
-      "id": "t80u_x",
+      "id": "t80u",
       "name": "T-80U",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -3739,7 +3739,7 @@
       "suspension": false
     },
     {
-      "id": "leclerc_x",
+      "id": "leclerc_xlr",
       "name": "Leclerc XLR",
       "nation": "France",
       "role": "mbt",
@@ -3760,7 +3760,7 @@
       "suspension": false
     },
     {
-      "id": "leclerc_classic_x",
+      "id": "amx56",
       "name": "AMX 56",
       "nation": "France",
       "role": "mbt",
@@ -3781,7 +3781,7 @@
       "suspension": false
     },
     {
-      "id": "chieftain_mk10_x",
+      "id": "chieftain_mk10",
       "name": "Chieftain Mk 10",
       "nation": "UK",
       "role": "mbt",
@@ -3802,7 +3802,7 @@
       "suspension": false
     },
     {
-      "id": "t72b3_x",
+      "id": "t72b3",
       "name": "T-72B3",
       "nation": "Russia",
       "role": "mbt",
@@ -3823,7 +3823,7 @@
       "suspension": false
     },
     {
-      "id": "jpz_e100_x",
+      "id": "jpz_e100",
       "name": "Jagdpanzer E100",
       "nation": "Germany",
       "role": "td",
@@ -3844,7 +3844,7 @@
       "suspension": false
     },
     {
-      "id": "type10_x",
+      "id": "type10",
       "name": "Type 10",
       "nation": "Japan",
       "role": "mbt",
@@ -3865,7 +3865,7 @@
       "suspension": false
     },
     {
-      "id": "type90_x",
+      "id": "type90",
       "name": "Type 90",
       "nation": "Japan",
       "role": "mbt",
@@ -3886,7 +3886,7 @@
       "suspension": false
     },
     {
-      "id": "amx40_x",
+      "id": "amx40",
       "name": "AMX-40",
       "nation": "France",
       "role": "mbt",
@@ -3907,7 +3907,7 @@
       "suspension": false
     },
     {
-      "id": "strv122_x",
+      "id": "strv122",
       "name": "Stridsvagn 122",
       "nation": "Sweden",
       "role": "mbt",
@@ -3928,7 +3928,7 @@
       "suspension": false
     },
     {
-      "id": "t72b3m_x",
+      "id": "t72b3m_2016",
       "name": "T-72B3M obr. 2016",
       "nation": "Russia",
       "role": "mbt",
@@ -3949,7 +3949,7 @@
       "suspension": false
     },
     {
-      "id": "challenger1_x",
+      "id": "challenger1_mk3",
       "name": "Challenger 1 Mk 3",
       "nation": "UK",
       "role": "mbt",
@@ -3970,7 +3970,7 @@
       "suspension": false
     },
     {
-      "id": "t72bu_x",
+      "id": "t72bu",
       "name": "T-72BU",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -3991,7 +3991,7 @@
       "suspension": false
     },
     {
-      "id": "chieftain5_x",
+      "id": "chieftain5",
       "name": "Chieftain Mk 5",
       "nation": "UK",
       "role": "mbt",
@@ -4012,7 +4012,7 @@
       "suspension": false
     },
     {
-      "id": "t90_x",
+      "id": "t90",
       "name": "T-90",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -4033,7 +4033,7 @@
       "suspension": false
     },
     {
-      "id": "t90a_burlak_x",
+      "id": "t90a_burlak",
       "name": "T-90A Burlak",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -4054,7 +4054,7 @@
       "suspension": false
     },
     {
-      "id": "t90ms_x",
+      "id": "t90ms_tagil",
       "name": "T-90MS Tagil",
       "nation": "USSR/Russia",
       "role": "mbt",
@@ -4075,7 +4075,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_x",
+      "id": "m1a2_abrams",
       "name": "M1A2 Abrams",
       "nation": "USA",
       "role": "mbt",
@@ -4096,7 +4096,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_tusk_x",
+      "id": "m1a2_abrams_tusk",
       "name": "M1A2 Abrams TUSK",
       "nation": "USA",
       "role": "mbt",
@@ -4117,7 +4117,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_sepv2_x",
+      "id": "m1a2_abrams_sepv2",
       "name": "M1A2 Abrams SEPv2",
       "nation": "USA",
       "role": "mbt",
@@ -4138,7 +4138,7 @@
       "suspension": false
     },
     {
-      "id": "m1a2_sepv3_x",
+      "id": "m1a2_abrams_sepv3",
       "name": "M1A2 Abrams SEPv3",
       "nation": "USA",
       "role": "mbt",
@@ -4159,7 +4159,7 @@
       "suspension": false
     },
     {
-      "id": "ua_m1a1_x",
+      "id": "ua_m1a2_abrams",
       "name": "M1A2 Abrams UA",
       "nation": "Ukraine",
       "role": "mbt",
@@ -4201,7 +4201,7 @@
       "suspension": false
     },
     {
-      "id": "spz_puma_s1_x",
+      "id": "puma_s1",
       "name": "Puma S1",
       "nation": "Germany",
       "role": "ifv",
@@ -4222,7 +4222,7 @@
       "suspension": false
     },
     {
-      "id": "type89_x",
+      "id": "type89",
       "name": "Type 89",
       "nation": "Japan",
       "role": "ifv",
@@ -4327,7 +4327,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t80u_modern",
+      "id": "t80u_zoria",
       "name": "T-80U Zoria (Concept)",
       "nation": "Ukraine",
       "role": "mbt",
@@ -4348,7 +4348,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t72b3m_modern",
+      "id": "t72b3m_hetman",
       "name": "T-72B3M Hetman (Concept)",
       "nation": "Ukraine",
       "role": "mbt",
@@ -4369,7 +4369,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t72b3m_hetman_ii",
+      "id": "t72b3m_hetman_ii",
       "name": "T-72B3M Hetman II (Concept)",
       "nation": "Ukraine",
       "role": "mbt",
@@ -4390,7 +4390,7 @@
       "suspension": false
     },
     {
-      "id": "ua_t72b3_modern",
+      "id": "t72b3_sich",
       "name": "T-72B3 Sich (Concept)",
       "nation": "Ukraine",
       "role": "mbt",
@@ -4411,7 +4411,7 @@
       "suspension": false
     },
     {
-      "id": "pl_t80u_modern",
+      "id": "t80u_husarz",
       "name": "T-80U Husarz (Concept)",
       "nation": "Poland",
       "role": "mbt",
@@ -4432,7 +4432,7 @@
       "suspension": false
     },
     {
-      "id": "pl_t72b3m_modern",
+      "id": "t72b3m_wilk",
       "name": "T-72B3M Wilk (Concept)",
       "nation": "Poland",
       "role": "mbt",
@@ -4453,7 +4453,7 @@
       "suspension": false
     },
     {
-      "id": "pl_t72b3_modern",
+      "id": "t72b3_zubr",
       "name": "T-72B3 Zubr (Concept)",
       "nation": "Poland",
       "role": "mbt",
@@ -4474,7 +4474,7 @@
       "suspension": false
     },
     {
-      "id": "pl_t72b3_zubr_ii",
+      "id": "t72b3_zubr_ii",
       "name": "T-72B3 Zubr II (Concept)",
       "nation": "Poland",
       "role": "mbt",
@@ -4495,7 +4495,7 @@
       "suspension": false
     },
     {
-      "id": "cn_t80u_modern",
+      "id": "t80u_yun",
       "name": "T-80U Yun (Concept)",
       "nation": "China",
       "role": "mbt",
@@ -4516,7 +4516,7 @@
       "suspension": false
     },
     {
-      "id": "cn_t72b3m_modern",
+      "id": "t72b3m_kunlun",
       "name": "T-72B3M Kunlun (Concept)",
       "nation": "China",
       "role": "mbt",
@@ -4537,7 +4537,7 @@
       "suspension": false
     },
     {
-      "id": "cn_t72b3_modern",
+      "id": "t72b3_qilin",
       "name": "T-72B3 Qilin (Concept)",
       "nation": "China",
       "role": "mbt",
@@ -4558,7 +4558,7 @@
       "suspension": false
     },
     {
-      "id": "ru_t80u_modern",
+      "id": "t80u_bars_m",
       "name": "T-80U Bars-M (Concept)",
       "nation": "Russia",
       "role": "mbt",
@@ -4579,7 +4579,7 @@
       "suspension": false
     },
     {
-      "id": "ru_t72b3m_modern",
+      "id": "t72b3m_bulat_m",
       "name": "T-72B3M Bulat-M (Concept)",
       "nation": "Russia",
       "role": "mbt",
@@ -4600,7 +4600,7 @@
       "suspension": false
     },
     {
-      "id": "ru_t72b3_modern",
+      "id": "t72b3_bastion_m",
       "name": "T-72B3 Bastion-M (Concept)",
       "nation": "Russia",
       "role": "mbt",

@@ -57,7 +57,7 @@ function expandedArmor(armor, receipt, reverse = false) {
 // a generated-file edit. Every exact source face survives in its owner zone;
 // each zone is computed/stored once even with hundreds of input plate rows.
 for (const quality of ['high', 'low']) {
-  const spec = getSpec('t90sm_x'), original = spec.armor;
+  const spec = getSpec('t90sm'), original = spec.armor;
   try {
     const canonical = canonicalArmor(original);
     spec.armor = canonical;
@@ -99,8 +99,8 @@ for (const quality of ['high', 'low']) {
 const legacyFrame = [[-1.5, 1.4717770034843207, 2.1], [1.5, 1.4717770034843207, 2.1],
   [1.5, 1.3154006968641117, 2.8399999999999994], [-1.5, 1.3154006968641114, 2.84]];
 for (const quality of ['high', 'low']) for (const mode of ['legacy', 'mixed']) {
-  const spec = getSpec('leo2a7v_x'), original = spec.armor;
-  registerProfiledBuilders({ leo2a7v_x: port => {
+  const spec = getSpec('leo2a7v'), original = spec.armor;
+  registerProfiledBuilders({ leo2a7v: port => {
     buildLeopard2A7VX(port);
     let part = 0;
     port.forEachBucketPart('hullExternalArmor', geometry => {
@@ -122,7 +122,7 @@ for (const quality of ['high', 'low']) for (const mode of ['legacy', 'mixed']) {
       `${mode}: each authored frame yields real finite fitted surfaces`);
   } finally {
     spec.armor = original;
-    registerProfiledBuilders({ leo2a7v_x: buildLeopard2A7VX });
+    registerProfiledBuilders({ leo2a7v: buildLeopard2A7VX });
   }
 }
 console.log('eraBindingReceipt: high/low exact expanded-state equivalence, 231 retained faces, unchanged geometry, legacy and mixed fitting frames pass');

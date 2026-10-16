@@ -149,7 +149,7 @@ const neverSettles = async (promise) => {
 
 // ?gate=fresh forces the probe and clears the record
 {
-  for (const [search, forced] of [['?gate=fresh', true], ['?tank=k2&gate=FRESH', true], ['?gate=0', false], ['?gate', false], ['', false]]) {
+  for (const [search, forced] of [['?gate=fresh', true], ['?tank=xk2_black_panther&gate=FRESH', true], ['?gate=0', false], ['?gate', false], ['', false]]) {
     assert.equal(capabilityProbeForced(search), forced, search || '(empty)');
   }
   const store = new Map();

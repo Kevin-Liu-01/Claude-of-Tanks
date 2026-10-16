@@ -64,7 +64,7 @@ const finiteUnit = (normal, label) => {
 }
 
 // ---- the baked hulks ------------------------------------------------------------------------------------------------
-for (const [specId, seed, pop] of [['t90m', 2526, false], ['m1a2', 2002, true]]) {
+for (const [specId, seed, pop] of [['t90am', 2526, false], ['m1a1_abrams_hc', 2002, true]]) {
   await ensureTankBuilder(specId);
   const visual = createTank(specId, {}, { camoSeed: 4532, quality: 'low', geometryQuality: 'low', materialMode: 'geometry-only',
     eraVisualBindingReceipt: false, proceduralOnly: true });

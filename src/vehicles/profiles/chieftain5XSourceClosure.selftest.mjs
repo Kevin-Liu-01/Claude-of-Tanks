@@ -62,7 +62,7 @@ function fixedHull(all) {
   assert.equal(hit(all, [.95, 1.175, 3.04], [0, 1, 0], .4), undefined, 'air above inclined web remains open');
 }
 function movingRoll(tank, all) {
-  const p = CHIEFTAIN5_X_DATUMS.chieftain5_x.turretPivot;
+  const p = CHIEFTAIN5_X_DATUMS.chieftain5.turretPivot;
   const frame = tank.root.getObjectByName('rig_turret').matrixWorld.clone()
     .multiply(new THREE.Matrix4().makeTranslation(-p[0], -p[1], -p[2]));
   const cast = (point, direction, far) => hit(all, new THREE.Vector3(...point).applyMatrix4(frame).toArray(),
@@ -105,7 +105,7 @@ for (const quality of ['high', 'low']) {
   let gear; const original = KIT.buildRunningGear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   let tank;
-  try { tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false }); }
+  try { tank = createTank('chieftain5', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false }); }
   finally { KIT.buildRunningGear = original; }
   try {
     const all = [];

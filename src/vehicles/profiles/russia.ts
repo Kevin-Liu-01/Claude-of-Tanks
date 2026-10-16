@@ -396,7 +396,7 @@ const nonUniformXform = KIT.xform as (
   scale?: GeometryScale,
 ) => THREE.BufferGeometry;
 
-// THREE is used only for the t72b3m r23 light-immune flat class (kf51 r7
+// THREE is used only for the t72b3m_2022 r23 light-immune flat class (kf51_evo r7
 // precedent, leopard.js): MeshBasicMaterial renders its albedo flat from
 // every view — the only route below the ~52 hemi vertical-face floor. The
 // gate's white-mask overrideMaterial replaces it in the mask pass (proven).
@@ -439,7 +439,7 @@ function lerpPts(pts: ProfileCurve, z: number): number {
 export function loftHull(P: RussiaGeometryPort, o: LoftHullOptions): void {
   const { slab } = KIT;
   // sponsonY: scalar (fleet default, byte-identical) OR [[z, y]] profile
-  // (t72b3m §B4: the track-bay roof lifts above the idler/sprocket wrap
+  // (t72b3m_2022 §B4: the track-bay roof lifts above the idler/sprocket wrap
   // crowns so the band never buries into the sponson slab — merkava
   // sponson-floor-station recipe). Profile z-knots join the station cuts
   // so the knees land exactly.
@@ -623,7 +623,7 @@ function applyCurvedDomeNormals(
   normal.needsUpdate = true;
 }
 
-// r15 CURVED DOME SHELL (t72b3m visual r4 item 1, opt-in — siblings keep
+// r15 CURVED DOME SHELL (t72b3m_2022 visual r4 item 1, opt-in — siblings keep
 // meshDome). The certified ring polyline is geometrically near-flat across
 // the crown (4 cm rise over 0.84 m), so the lathe renders as conical plates
 // while the ref's cast shell reads dome through continuously CURVED normals.
@@ -635,7 +635,7 @@ function applyCurvedDomeNormals(
 // radius capR would have at that ring radius. Shading-only geometry — the
 // gate masks cannot see normals; the luminance gradient is tuned BY SAMPLE
 // against the ref half (shaded-parity r3 done-gate).
-// o.bucket (t72b3m r18 item 5b, opt-in): the crown cap can render in a
+// o.bucket (t72b3m_2022 r18 item 5b, opt-in): the crown cap can render in a
 // non-camo family — the shared per-spec camo canvas drops a giant dark
 // patch exactly on the cap's camera face in both heroes (box-UV accident
 // of the cap mesh; the ref GLB's own UVs sample a clean region). Siblings
@@ -715,7 +715,7 @@ export function domeBoxPlanSeat(rings: readonly DomeRing[], sz: number, o: DomeB
   });
 }
 
-// r15 item 6 (t72b3m): chamfered roof plate — same outer face planes and
+// r15 item 6 (t72b3m_2022): chamfered roof plate — same outer face planes and
 // top/bottom as a plain box, but the plan corners are cut 45° by c (center
 // box + two trapezoid prisms). Every certified face keeps a full-width /
 // full-depth run inside its own column band (c stays well under half a
@@ -750,14 +750,14 @@ export function chamferBox(
 // segs: [[zStart, zEnd, radius, radius2?, cx?, cy?, legacyPlanR?]]
 // in gun-local z (0 at the gun pivot). Dark seam rings close each diameter
 // break so sleeve/tube stages read as separate fittings (r3 language).
-// cx (r9): tiny lateral seat for warp-biased reference tubes (t72b3m ref
+// cx (r9): tiny lateral seat for warp-biased reference tubes (t72b3m_2022 ref
 // tube spans x -0.05..+0.17): the tube stays a TRUE CYLINDER (top-down
 // circle law) — only its axis shifts a few cm, invisible at tank scale but
 // it decides which 0.107 m plan columns the tube owns.
 export function tubeGun(P: RussiaGunPort, segs: readonly GunSegment[], opts: TubeGunOptions = {}): void {
   const { cylZ } = KIT;
   const seg = P.q ? 24 : 12;
-  // cy (r10f): tiny per-segment vertical seat — the t72b3m ref's printed
+  // cy (r10f): tiny per-segment vertical seat — the t72b3m_2022 ref's printed
   // band RISES toward the muzzle (mid/tip centers 1.577/1.583 vs axis
   // 1.5695); the segments stay true cylinders, only their centers step.
   // The legacy seventh value widened only the horizontal radius and baked
@@ -944,7 +944,7 @@ export function ruGlacisKit(P: RussiaGeometryPort, o: GlacisKitOptions): void {
   for (const s of [-1, 1]) {
     addRuGlacisSide(P, o, s);
   }
-  // hlX (t90sm r12, opt-in): the default w*0.44 seat lands INSIDE the track
+  // hlX (t90sm_2013 r12, opt-in): the default w*0.44 seat lands INSIDE the track
   // lane on wide hulls — with a low hlY the housings share §B4 boundary
   // voxels with the idler wrap. Default byte-identical.
   // lights:false (§4.999991 fix-round, opt-in): skip the bucket headlights
@@ -962,15 +962,15 @@ export function ruGlacisKit(P: RussiaGeometryPort, o: GlacisKitOptions): void {
 export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
   const { box, cylY } = KIT;
   // hatchY (r10): hatch seat on the LOCAL deck line when it differs from the
-  // grille plateau (t72b3m glacis hatch sits at 1.34, plateau 1.40)
+  // grille plateau (t72b3m_2022 glacis hatch sits at 1.34, plateau 1.40)
   const hY = o.hatchY ?? o.deckY;
   P.add('hull', cylY(0.24, 0.24, 0.04, 14), o.hatchX ?? 0, hY + 0.025, o.hatchZ);
   P.add('hullDark', cylY(0.247, 0.247, 0.012, 14), o.hatchX ?? 0, hY + 0.032, o.hatchZ);
-  // periY: near-flush driver periscopes (t72b3m r6 — ref deck line is clean)
+  // periY: near-flush driver periscopes (t72b3m_2022 r6 — ref deck line is clean)
   KIT.periscope(P, 'hullDetail', (o.hatchX ?? 0) - 0.16, o.periY ?? (o.deckY + 0.05), o.hatchZ + 0.30);
   KIT.periscope(P, 'hullDetail', (o.hatchX ?? 0) + 0.16, o.periY ?? (o.deckY + 0.05), o.hatchZ + 0.30);
-  // gY/ribY (t90m PERFECTION r3, opt-in): explicit grille-plate / rib seats
-  // for refs whose engine deck reads FLUSH (the t90m ref holds a clean
+  // gY/ribY (t90am PERFECTION r3, opt-in): explicit grille-plate / rib seats
+  // for refs whose engine deck reads FLUSH (the t90am ref holds a clean
   // 1.365-1.368 line over its whole grille run; the default +0.026 ribs
   // printed 1.402 across five side cols). Defaults byte-identical.
   for (let i = 0; i < (o.grilles ?? 6); i++) {
@@ -981,7 +981,7 @@ export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
 
 // Segmented rubber skirt band with dark inset lip (r3 language, explicit y).
 // o.th: panel thickness (default 0.04) — front-view columns only register
-// the band when the face is >1-2 mask pixels deep (t62mv1 r6 lesson).
+// the band when the face is >1-2 mask pixels deep (t62_1975 r6 lesson).
 function addRuSkirtPanel(
   P: RussiaGeometryPort,
   options: SkirtBandOptions,
@@ -1526,9 +1526,9 @@ export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: 
 // ±3.43 = pub 6.86). PUB SOVEREIGN: width 3.78, height 2.23 (roof plateau
 // 2.24-2.25 rides the 1% grace), muzzle +6.20 (9.63 overall).
 // Decode (world): flat deck 1.35-1.39; glacis corner prongs 3.44 over a 3.20
-// center V-bow (t90sm bow-notch class); rear plate -2.90 full width with the
+// center V-bow (t90sm_2013 bow-notch class); rear plate -2.90 full width with the
 // drum/log RACK to -3.43 at |x|<=0.99 (tops 1.84, floor 1.23-1.44); WELDED
-// turret vs the t90a cast dome — flat cheeks (plan front 1.91 center ->
+// turret vs the t90a_2004 cast dome — flat cheeks (plan front 1.91 center ->
 // 0.92@|x|1.74, chamfered corners), broad roof plateau 2.24-2.25 over z
 // -1.2..+0.5, turret-node APRON bottoming 0.88 across z -0.8..+0.9 (print
 // carries hull-side kit in the turret node — hidden carrier, t80 pattern);
@@ -1565,7 +1565,7 @@ export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: 
 // -3.48..+3.38 (6.86 = pub), deck plateau 1.545 over z -2.55..+0.95, glacis
 // break ~2.30 falling to the 0.99 nose at 3.29, belly 0.44 flat, rear rake
 // 0.70@-3.40; rear rack band to -3.76 + split-log tail to -4.18 (matched as
-// thin slivers only — hullLengthM sovereign, the t90sm tail-sliver class);
+// thin slivers only — hullLengthM sovereign, the t90sm_2013 tail-sliver class);
 // skirt-front ERA x 1.83..1.91 / y 0.83..1.43 / z 0.59..2.58 (3 per side);
 // glacis K-5 rows y 0.84..1.13 @ z 2.26..2.84 + y 1.11..1.33 @ z 1.80..2.27.
 // Turret casting z -1.23..+1.16 (max halfW 1.66 @ -0.27, nose 0.69 @ +1.12),
@@ -1573,29 +1573,29 @@ export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: 
 // §5.29 tip read: inner plates flank the gun (|x| 0.34..0.59, z to 1.34),
 // mid leaves |x| 0.83..1.44 z to 1.21, outer leaves |x| 1.00..1.74 z
 // 0.07..0.87 — one V line (±0.30, 1.42) -> (±1.62, 0.45); roof plates to
-// 2.32 (authored 2.24 tops — dims p95 cap, the t90sm mushroom class); NSVT
+// 2.32 (authored 2.24 tops — dims p95 cap, the t90sm_2013 mushroom class); NSVT
 // mass to 2.86 over z -0.57..+0.16 (matched to the dims budget only —
-// t62mv1 DShK certified-cap class, §5.37 NSVT-prominence ASK-OWNER trade);
+// t62_1975 DShK certified-cap class, §5.37 NSVT-prominence ASK-OWNER trade);
 // rear bustle rack to -2.15 (halfW 0.76), whip antenna at (-0.27, -1.22).
 // Gun axis 1.72, print muzzle 5.99 -> authored 6.10 (overall 9.53
 // sovereign). Authored frame = print +0.05 z (body ±3.43), ground y=0.
-// FAMILY LAW §5.13: the landed t90a kit grammar (K-5 chevron front, round
+// FAMILY LAW §5.13: the landed t90a_2004 kit grammar (K-5 chevron front, round
 // red Shtora eyes, saddle/collar/boot gun assembly, glacis kit) on the base
 // mark's own CAST dome — the print is cast (the 1992 turret); the §5.13
-// welded-rebase order named t90a/vladimir; the t72 graduates keep the
+// welded-rebase order named t90a_2004/vladimir; the t72 graduates keep the
 // fleet's cast grammar. SPIN §5.31: pivot at the casting plan-chord center
 // (chord -1.18..+1.21 authored -> center ~0 = turretG z 0).
 // ---- T-90MS Tagil (export demonstrator) — §5.38 owner priority wave --------
 // Print: public/models/community-candidates/t90ms_kojf.glb (LOCAL-ONLY
 // quarantine, semantic OBJ re-bake; vertex REG + harness maps, 7b45f13).
 // Probe receipts (tmp-t90fam-probe, raw ~1:1; authored frame = print
-// +0.09 z, body ±3.43, ground y=0 — hull family byte-shared with the t90
+// +0.09 z, body ±3.43, ground y=0 — hull family byte-shared with the t90_1992
 // print, same gear/tread nodes): turret prism body world -1.6..+1.05
 // (halfW 1.48..1.61, roof 2.23..2.29), BIG bustle world -1.6..-2.79 (halfW
 // ~1.0..1.24, roof 2.14..2.19, underside 1.62..1.72), rear slat cage to
 // world -3.27, bustle-side stowage modules x ±1.33 / y 1.68..2.12 /
 // z -3.05..-0.88, RWS+pano tower cluster ON the bustle roof (print 2.93..
-// 3.03 — matched to the dims budget only, the certified t90sm tower-cap
+// 3.03 — matched to the dims budget only, the certified t90sm_2013 tower-cap
 // class), ejection-port roof plate x ±0.19 z -1.41..-0.93, smoke banks
 // x ±1.48 z -0.84..-0.38, whip antenna (0.56, -1.77). Cheek Relikt: inner
 // chevron pair era06/07 (|x| 0.29..0.99, z to 1.46 world) + outer sets
@@ -1606,9 +1606,9 @@ export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: 
 // (rear reach authored sliver-class, hullLengthM sovereign); glacis rows
 // era07-10 (upper y 1.08..1.43 z 1.78..2.46, lower y 0.85..1.23 z
 // 2.44..2.94). Gun 2A46M-5: axis 1.82, print muzzle 6.05 -> authored 6.10.
-// FAMILY LAW §5.13: the t90sm welded grammar (polyTurret prism + squared
+// FAMILY LAW §5.13: the t90sm_2013 welded grammar (polyTurret prism + squared
 // removable bustle + slat + RWS/pano/Sosna ensemble) re-lofted to THIS
-// print's staircase; garage tells vs t90sm: desert-sand factory paint
+// print's staircase; garage tells vs t90sm_2013: desert-sand factory paint
 // (spec), hull perimeter cage, taller skirt ERA, bustle-side module rows.
 // SPIN §5.31: pivot at the prism plan-chord center (turretG z -0.19).
 // ---- T-90A Burlak (experimental bustle-autoloader turret) — §5.38 ----------
@@ -1616,7 +1616,7 @@ export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: 
 // (LOCAL-ONLY quarantine, flat Object_N; vertex REG + harness maps,
 // 7b45f13). Probe receipts (tmp-t90fam-probe; authored frame = print
 // +0.05 z, body ±3.43 — the hull/tread/suspension nodes are BYTE-IDENTICAL
-// to the t90 print's: one T-90 hull family): turret shell Object_2 world
+// to the t90_1992 print's: one T-90 hull family): turret shell Object_2 world
 // -3.66..+1.52 / roof band 2.21..2.31 / ring skirt 1.388; casting z
 // -1.55..+1.05 with the ROUNDED plan front (staircase 1.77@-1.06 ->
 // 1.60@+0.35 -> 1.06@+0.81 -> 0.77@+1.04, mantlet cheeks ±0.28 to +1.52);
@@ -1631,7 +1631,7 @@ export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: 
 // (hull kit — the §B2 bustle-overhang air is turret-bearing class), right
 // fender bins Object_25 (the t90-print seat), bow center splash strip
 // Object_12. Gun Object_15: axis 1.78, print muzzle 5.93 -> authored 6.10.
-// FAMILY LAW §5.13: t90a hull + family prism grammar; the Burlak turret's
+// FAMILY LAW §5.13: t90a_2004 hull + family prism grammar; the Burlak turret's
 // own identity = rounded front + the big squared rear bustle (the print is
 // the authority on its unusual shape). SPIN §5.31: pivot at the CASTING
 // plan-chord center (turretG z -0.25; the bustle is rear kit, not chord).
@@ -1682,7 +1682,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
   // rCz (r9): seat the ERA ring around the DOME's plan center. The lathe is
   // authored at (cx, cz) but this ring used to revolve around z=0 — on a
   // cz -0.20 dome every front-arc cassette floated 0.2 m proud of the skin
-  // in plan (t72b3m r9 workorder: 8 columns x 0.1-0.25).
+  // in plan (t72b3m_2022 r9 workorder: 8 columns x 0.1-0.25).
   const put = (
     t: number,
     y: number,
@@ -1708,7 +1708,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
       // hanging to just above the fender line).
       const buildRussianEraCheekClusterTurretCourse1 = (): void => {
         for (const s of [1, -1]) {
-          // k5T/k5Out (r10): arc seat + standoff — the t90a clamshell leaves
+          // k5T/k5Out (r10): arc seat + standoff — the t90a_2004 clamshell leaves
           // reach 0.4 m proud of the cheeks toward the mantlet (ref plan front
           // 2.48-2.53 at |x| 0.7-0.9)
           const buildRussianEraCheekClusterTurretCourse1Iteration1 = (): void => {
@@ -1717,13 +1717,13 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
             const D = skinD(t, yc) + (p.k5Out ?? -0.04);
             const x = Math.cos(t) * D, z = Math.sin(t) * D;
             // k5Yaw (r12): rake the leaf forward-inboard toward the mantlet
-            // (t90a ref: leaf runs (±1.29, 1.36) -> (±0.61, 2.35)); k5Rise lifts
+            // (t90a_2004 ref: leaf runs (±1.29, 1.36) -> (±0.61, 2.35)); k5Rise lifts
             // the inner end (ref upper edge 2.004 at the cheek).
             const ry = Math.PI / 2 - t - s * (p.k5Yaw ?? 0);
             const L = p.k5Len ?? 1.30;
             const H = p.k5H ?? 0.40;
             const rz = s * (p.k5Rise ?? 0);
-            // k5Pitch / k5TileY (t90a_vladimir rTAIL r13b, opt-in): leaf pitch and
+            // k5Pitch / k5TileY (t90a_2006 rTAIL r13b, opt-in): leaf pitch and
             // flank-tile seat height — defaults byte-identical for every caller.
             const px5 = p.k5Pitch ?? -0.40;
             // k5D (§4.999991 russia fix-round, opt-in): leaf DEPTH along its own
@@ -1741,7 +1741,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
             const dzy = -Math.cos(ry) * Math.sin(px5) * dGrow;
             const dzz = Math.cos(ry) * Math.cos(px5) * dGrow;
             // k5Bucket (§4.999991, opt-in): the real K-5 wedges wear the SCHEME
-            // PAINT (t72b3m rBucket law — the spareTrack slot reads grey-steel);
+            // PAINT (t72b3m_2022 rBucket law — the spareTrack slot reads grey-steel);
             // material-only, mask-identical. Default byte-identical.
             const k5B = p.k5Bucket ?? 'turretTrack';
             // TIP §5.29 k5LeafOff (opt-in): the clamshell leaves are replaced by
@@ -1765,7 +1765,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
                   }
                   P.add('turretDark', KIT.xform(box(L - 0.03, 0.03, 0.008), 0, -H / 2 + 0.035, H / 2 - 0.004), x, yc, z, px5, ry, rz);
                 }
-                // k5Lower (§4.999991 t90a fix-round, opt-in): the real clamshell is
+                // k5Lower (§4.999991 t90a_2004 fix-round, opt-in): the real clamshell is
                 // TWO leaves — a steeper lower plate under the upper one doubles the
                 // wedge face (the verdict's "broad plates" read) while both stay
                 // inside the certified rotated x-envelope (a broad-H single plank
@@ -1781,8 +1781,8 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
                   P.add('turretDark', box(L * 0.94 + 0.01, 0.03, hl - 0.03), Math.cos(t) * Dl, yl - hl / 2, Math.sin(t) * Dl, px5 + (p.k5Lower.dPitch ?? 0.35), ry, rz);
                 }
                 const bx = Math.cos(ry), bz = -Math.sin(ry);
-                // k5CapIn (t90a turret-lane 2026-08-06, opt-in): end-cap seat along
-                // the leaf axis — default +0.02 byte-identical; t90a pulls the outer
+                // k5CapIn (t90a_2004 turret-lane 2026-08-06, opt-in): end-cap seat along
+                // the leaf axis — default +0.02 byte-identical; t90a_2004 pulls the outer
                 // cap in so its corner stops partial-lighting the ±1.46 plan window.
                 const capIn = p.k5CapIn ?? 0.02;
                 for (const e of [-1, 1]) {
@@ -1903,7 +1903,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
     } else if (kind === 'k1') {
       // K-1 brick field over the whole front arc, ring to shoulder (the MV
       // turret wears 3 tall courses wrapping the sight housings).
-      // k1OutI (t62mv1 r3, opt-in): PER-ARC-INDEX skin offsets — the ref K-1
+      // k1OutI (t62_1975 r3, opt-in): PER-ARC-INDEX skin offsets — the ref K-1
       // front courses stand proud toward the mantlet (plan 2.03-2.16 at
       // |x| 0.3-0.6) while the flank arcs tuck to the casting; one scalar
       // k1Out cannot follow it. Default byte-identical for every caller.
@@ -2110,9 +2110,9 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
       };
       buildRussianEraCheekClusterTurretCourse4();
     } else if (kind === 'relikt') {
-      // optional squeeze params (t72b3m r4): rT0/rStep arc seats, rDist skin
+      // optional squeeze params (t72b3m_2022 r4): rT0/rStep arc seats, rDist skin
       // offset, rD depth, rY row base, rH height — defaults = legacy behavior
-      // r11: rTilt (base course tilt — the default -0.34 spread the t72b3m
+      // r11: rTilt (base course tilt — the default -0.34 spread the t72b3m_2022
       // pair-0/1 top corners 0.08 proud and poked bottoms 0.06 under the
       // 1.42 skirt line) + rDists (PER-CASSETTE skin offsets: the ref Relikt
       // front is a flat wedge wall — plan staircase 0.13-0.19 proud at
@@ -2121,12 +2121,12 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
         const rT0 = p.rT0 ?? 0.28, rStep = p.rStep ?? 0.28, rDist = p.rDist ?? -0.05;
         const rD = p.rD ?? 0.22, rY = p.rY ?? 0.06, rH = p.rH ?? 0.27;
         const rTilt = p.rTilt ?? -0.34;
-        // rBucket (t72b3m visual r1, opt-in): the ref Relikt course renders in
+        // rBucket (t72b3m_2022 visual r1, opt-in): the ref Relikt course renders in
         // the SCHEME PAINT (pale olive like the dome) — the spareTrack steel
         // bucket read as maroon-brown inset wedges at critic zoom. Legacy
-        // builds (t90sm) keep turretTrack.
+        // builds (t90sm_2013) keep turretTrack.
         const rBucket = p.rBucket ?? 'turretTrack';
-        // rGapBucket (t72b3m visual r5, opt-in): the ring GAP plates used to be
+        // rGapBucket (t72b3m_2022 visual r5, opt-in): the ring GAP plates used to be
         // hard 'turretDark' — at the flat board light they rendered as void-black
         // trapezoids flanking the crown (critic r4 item 6: deep-shade floor is
         // reserved for ref-black elements). Scheme-shadow cloth keeps the
@@ -2134,7 +2134,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
         // builds keep turretDark.
         const rGapBucket = p.rGapBucket ?? 'turretDark';
         const rowSeats = (p.rRows ?? 2) === 1 ? [[0, rY]] : [[0, rY], [1, 0.34]];
-        // rDeep (t72b3m visual r2, opt-in): deepen each cassette INWARD keeping
+        // rDeep (t72b3m_2022 visual r2, opt-in): deepen each cassette INWARD keeping
         // the calibrated outer face plane — the extra depth widens the bright
         // TOP trapezoid so the ring reads from plan/tilt (the r13 0.14-deep
         // boxes rendered as a thin line; the ref ring reads via wide tops).
@@ -2149,13 +2149,13 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
                 const dI = p.rDists ? p.rDists[i] : rDist;
                 for (const [row, y0] of rowSeats) {
                   // rY0 (r10f): the FIRST (front-most) cassette pair can seat lower —
-                  // the t72b3m ref's mantlet-dip cols read 1.637-1.663 where a
+                  // the t72b3m_2022 ref's mantlet-dip cols read 1.637-1.663 where a
                   // uniform course crested 1.70-1.72
                   const buildRussianEraCheekClusterTurretCourse17 = (): void => {
                     const yc = (i === 0 && p.rY0 != null ? p.rY0 : y0) + 0.13;
                     const dd = skinD(t, yc) + dI;
                     put(t, yc, 0.48, rH, rD + rDeep, rTilt + row * 0.10, rBucket, dd - rDeep / 2);
-                    // rChev (t90m r8 ORDER 4, opt-in): Relikt tile-course relief —
+                    // rChev (t90am r8 ORDER 4, opt-in): Relikt tile-course relief —
                     // the oracle's cheek arrays read bold diagonal chevron courses
                     // (§B3 ERA grammar; the flat cassettes read "faint seams" at
                     // graduation zoom). Face seams/crests ride +0.8 mm proud of the
@@ -2163,7 +2163,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
                     // course ribs live on the tilted TOP shoulder (§B3.1
                     // 45°-shoulder free lane; rib crowns stay within +2 mm of the
                     // cassette's own certified corner envelope). Defaults
-                    // byte-identical for every legacy caller (only t90m passes it).
+                    // byte-identical for every legacy caller (only t90am passes it).
                     if (p.rChev) {
                       const tiltR = rTilt + row * 0.10;
                       const D0 = dd - rDeep / 2;
@@ -2202,7 +2202,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
                       // GAP = a full-depth DARK standing plate at the pair boundary —
                       // its dark top trapezoid alternates with the pale lids (the r13
                       // thin seam strips + sunk backdrops never reached pixels).
-                      // rGapH (t72b3m r24, opt-in): cap the gap-plate heights so the
+                      // rGapH (t72b3m_2022 r24, opt-in): cap the gap-plate heights so the
                       // ring reads lid-over-notch relief instead of a flush collar —
                       // entries without it are byte-identical (Infinity min).
                       const tg = Math.PI / 2 + s * (rT0 + (i + 0.5) * rStep);
@@ -2215,12 +2215,12 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
                   buildRussianEraCheekClusterTurretCourse17();
                 }
                 // rStrip:false — on a squat dome the tilted strip corners rise to a
-                // 1.85 canopy 0.2 proud of the roof (t72b3m r7 whatsat verdict)
+                // 1.85 canopy 0.2 proud of the roof (t72b3m_2022 r7 whatsat verdict)
                 if (p.rStrip !== false) put(t, 0.34, 0.50, 0.032, 0.20, -0.30, 'turretDark', skinD(t, 0.34) - 0.03, false);
               };
               buildRussianEraCheekClusterTurretCourse12();
             }
-            // rXPairs (t72b3m visual r1, opt-in; r2 REBUILT): flank/rear ring
+            // rXPairs (t72b3m_2022 visual r1, opt-in; r2 REBUILT): flank/rear ring
             // continuation — standing cassettes at wider arc seats so every
             // quarter reads the ref's ~15-cassette dome ring. Plates stay sunk
             // inside the lathe plan (dI<0); heights are now REAL (0.20-0.27, the
@@ -2228,8 +2228,8 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
             // local dome/basket side lines; entry [tOff, dI, h, w, yc?].
             // gapH (7th entry, r22 opt-in): caps the auto-gap plate height where
             // the gap azimuth lands in a LOWER certified row than the pair itself
-            // (t72b3m 0.62-pair: its 0.465-rad gap sits in the mantlet-dip cols).
-            // Entries without it are byte-identical (only t72b3m passes rXPairs).
+            // (t72b3m_2022 0.62-pair: its 0.465-rad gap sits in the mantlet-dip cols).
+            // Entries without it are byte-identical (only t72b3m_2022 passes rXPairs).
             for (const [tOff, dI, h, w, ycX, lean, gapH] of p.rXPairs ?? []) {
               const buildRussianEraCheekClusterTurretCourse13 = (): void => {
                 const t = Math.PI / 2 + s * tOff;
@@ -2274,7 +2274,7 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
 
 // Shtora dazzler pair seated on the measured skin (THE T-90 cue).
 // p.eyeZ (r9): absolute local-z seat for prints whose eyes ride the mantlet
-// plane forward of the dome skin (t72bu: ref plan front 1.89-1.92 at
+// plane forward of the dome skin (t72bu_1989: ref plan front 1.89-1.92 at
 // |x| 0.4..0.65); the caller adds a bracket back to the skin.
 export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void {
   const r = ringSkin(p.rings, y), x = p.eyeX ?? 0.52;
@@ -2289,7 +2289,7 @@ export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void
 // turretPivotZ stays hull-center relative; gun muzzle = zC+pivotZ+gunZ+len.
 // ---------------------------------------------------------------------------
 export const RUSSIA_PROFILES = {
-  t62mv1: { build: buildT62Obr1975 },
+  t62_1975: { build: buildT62Obr1975 },
   t64bv1: { build: (P: TankBuilderPort) => buildT64Modern(P) },
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from

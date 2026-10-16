@@ -42,7 +42,8 @@ const until = async (predicate, label, timeoutMs) => {
   }
 };
 
-export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs = 4000, world = 'terrain', mapId = 'verdant', log = () => {} } = {}) {
+// standbyDelayMs (2026-10-14, §13.21): a peer prepares its standby host this long after its welcome; false: no standby
+export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs = 4000, world = 'terrain', mapId = 'verdant', standbyDelayMs = 300, log = () => {} } = {}) {
   const SECRET = 'mp-p2p-headless-seat-secret-0123456789abcdef';
   const events = [];
   // the room's relay grant (§13.14): test values the scripted links carry in their configuration, never a real credential
@@ -80,7 +81,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
           ice: () => resolveIce(),
           createPeerConnection: rtc.createPeerConnection,
           ...(canHost ? { createHostPort: createInProcessHostPort({ world, onCore: (core) => cores.push({ id, core }), keyframeIntervalMs: 500, reportIntervalMs: 1000 }) } : {}),
-          manifestBase: null, tier: 'desktop', countdownS: 1,
+          manifestBase: null, tier: 'desktop', countdownS: 1, standbyHost: standbyDelayMs === false ? false : { delayMs: standbyDelayMs },
           onLog: (level, message, fields) => {
             if (message === 'host live' && fields && entry.hostLiveTick === null) entry.hostLiveTick = fields.tick;
             log(`[${id}] ${level}: ${message} ${fields ? JSON.stringify(fields) : ''}`);
@@ -101,14 +102,14 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
   try {
     // ---- 1. create, join, ready, start → rtc:// with p1 as host; channels open; welcomes
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId, botsFill: true } });
+    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId, botsFill: true } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
     // p1 (the first host) sits on bravo; p2 and p3 are allies on alpha, so each sees the other's hull at full rate
     await p1.headless.room.setTeam('bravo');
-    await p2.headless.room.join({ roomCode: code, selection: { specId: 't90m' }, team: 'alpha' });
-    await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2a7v' }, team: 'alpha' });
+    await p2.headless.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
+    await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
     await until(() => p1.headless.room.room?.players.length === 3, 'three seats', 10_000);
     await Promise.all(sessions.map((entry) => entry.headless.room.setReady(true)));
     await until(() => p1.headless.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);
@@ -187,8 +188,12 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     const electedAfterMs = Math.round(performance.now() - closedAt);
     log(`host_changed → ${election.hostId} generation ${election.generation} (${election.reason}) after ${electedAfterMs} ms, resumeTick ${election.resumeTick}`);
     if (election.hostId !== 'p2' || election.generation !== 2 || election.reason !== 'timeout') failures.push(`election ${JSON.stringify(election)}`);
-    if (electedAfterMs < hostGraceMs) failures.push(`the election came before the grace (${electedAfterMs} ms)`);
+    // (2026-10-14, §13.22) a peer that hears nothing from a host whose socket is gone elects at once: only an election on
+    // the lease is bound by the grace
+    const hostLost = events.some((event) => event.kind === 'host_lost');
+    if (electedAfterMs < hostGraceMs && !hostLost) failures.push(`the election came before the grace (${electedAfterMs} ms)`);
     await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', 20_000);
+    const hostLiveAfterElectionMs = Math.round(performance.now() - closedAt) - electedAfterMs;
     const core2 = cores.find((entry) => entry.id === 'p2')?.core;
     await until(() => p2.headless.session.stats().p2p?.migrating === false && p2.headless.session.match?.phase === 'live', 'p2 live on its own actor', 15_000);
     await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.migrating === false, 'p3 live on p2', 20_000);
@@ -206,10 +211,12 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     const discontinuityM = Math.max(0, worstJumpM - 10 * drivenAfterLiveS);
     const reportsBy = events.filter((event) => event.kind === 'match_report').map((event) => event.from);
     report.steps.migration = {
-      electedAfterMs, generation: election.generation, resumeTickRoom: election.resumeTick, coreResumedAt: core2.actor.resumedBattleTimeMs, hostTickAfter: resumedTick, oldHostTick,
+      electedAfterMs, hostLost, claims: { p2: p2.headless.session.hostUnreachableClaims, p3: p3.headless.session.hostUnreachableClaims }, generation: election.generation, resumeTickRoom: election.resumeTick, coreResumedAt: core2.actor.resumedBattleTimeMs, hostTickAfter: resumedTick, oldHostTick,
       p2Role: p2.headless.session.role, p3Role: p3.headless.session.role, p3Target: p3.headless.session.stats().p2p?.hostId ?? null,
       peersOnP2: p2.headless.session.matchHost.peersConnected, comparedHulls: compared, worstJumpM, drivenAfterLiveS, discontinuityM, lastTickBefore3, firstTickAfter3, reportsFromP2: reportsBy.filter((from) => from === 'p2').length,
       resumeHold: core2.stats()?.resumeHold ?? null,
+      // the standby host (§13.21): p2's one host thread was prepared while it played as a peer and booted on that world
+      hostLiveAfterElectionMs, p2Cores: cores.filter((entry) => entry.id === 'p2').length, bootedPrepared: core2.bootedPrepared,
       p2Events: p2.p2pEvents.map((event) => `${event.kind}${event.phase ? ':' + event.phase : ''}${event.role ? ':' + event.role : ''}`),
       p3Events: p3.p2pEvents.map((event) => `${event.kind}${event.phase ? ':' + event.phase : ''}${event.role ? ':' + event.role : ''}`),
     };

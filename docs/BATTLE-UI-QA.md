@@ -103,6 +103,10 @@ by eight pixels. The layout probe checks those corners, not just total widths.
 Vehicle controls have transparent backgrounds, active underlines, no OFF labels,
 and replace Smoke/ATGM labels with their remaining cooldown. Exhausted smoke
 shows 0/3; it does not promise a fourth salvo. Damage notifications have no heading.
+In a jump mode (Turbo Ball, Mars in every gravity world) the jump is always the
+leftmost vehicle control, on desktop and touch, whatever the loadout or its
+cooldowns; other modes keep the loadout order. `src/ui/vehicleControlOrder.ts`
+is the row's one ordering and `vehicleControlOrder.selftest.mjs` its receipt.
 
 Zone Control and Gravity award 25 points per confirmed enemy destruction, once
 per vehicle life. Friendly fire, self-destruction and duplicate receipts do not

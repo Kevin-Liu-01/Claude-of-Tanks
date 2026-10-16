@@ -11,7 +11,7 @@ import {initializeAerial,stepAerial} from '../sim/aerialCombat.ts';
 import {matchRulesetFor} from '../sim/matchRuleset.ts';
 import {PLAYER_ACTION_BITS} from '../sim/playerActions.ts';
 import { collectMissionStock,nativeMissionCollision,nativeSupportedSeat,nativeRoofHeight } from '../../tools/mission-attachment-geometry.mjs';
-for(const id of ['m1a2','kf41_lynx_x','strv103'])for(const scale of [1,.8]){
+for(const id of ['m1a1_abrams_hc','kf41_lynx','strv103b'])for(const scale of [1,.8]){
  const spec=TANK_SPECS[id],seat=missionAttachmentFor(spec),root=new Group(),turret=new Group();
  root.position.set(10,2,20);root.rotation.set(-.12,.6,-.08,'YXZ');
  turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));turret.scale.setScalar(scale);root.add(turret);
@@ -64,7 +64,7 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
  assert.equal(droneArrivalHeight(0),DRONE_ARRIVAL.heightM);assert.equal(droneArrivalHeight(1),0,'touchdown exactly on the pads');
  const slope=(u,h=1e-5)=>(droneArrivalHeight(u+h)-droneArrivalHeight(u-h))/(2*h);
  assert.ok(Math.abs(slope(.75))<1e-3&&Math.abs(slope(1-1e-4))<1e-2,'braking hover and touchdown arrive without a velocity jump');
- const spec=TANK_SPECS.m1a2,root=new Group(),turret=new Group();turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));root.add(turret);
+ const spec=TANK_SPECS.m1a1_abrams_hc,root=new Group(),turret=new Group();turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));root.add(turret);
  const view={kind:'drone',active:false,cooldownS:0},dt=1/60;
  syncMissionAttachment(root,spec,view,false,dt);
  const drone=root.getObjectByName('Docked FPV mission payload'),detail=root.getObjectByName('Docked FPV airframe detail'),datum=drone.position.clone();
@@ -113,7 +113,7 @@ console.log('missionAttachmentVisual: resupply landing down the certified column
 
 // Use real factory rigs, not a rig synthesized from the same armor pivot as the
 // authority. Legacy armor reference pivots differ from the visible owner.
-for(const id of ['m1a2','t90m','amx56','strv103','leo2a7v']){
+for(const id of ['m1a1_abrams_hc','t90am','leclerc_s1','strv103b','leo2_improved']){
  const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000});
  tank.root.position.set(10,2,20);tank.root.rotation.set(-.12,.6,-.08,'YXZ');
  const turret=tank.root.getObjectByName('rig_turret');

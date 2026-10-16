@@ -9,7 +9,7 @@
 //
 //   node tools/fleet-geometry-ledger.mjs --check [--jobs=4]           # fail when a row moved (default)
 //   node tools/fleet-geometry-ledger.mjs --update [--jobs=4]          # re-pin the whole fleet
-//   node tools/fleet-geometry-ledger.mjs --update --ids=t90m,leclerc_x [--quality=high]   # re-pin some rows
+//   node tools/fleet-geometry-ledger.mjs --update --ids=t90am,leclerc_xlr [--quality=high]   # re-pin some rows
 import { writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

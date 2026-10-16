@@ -12,7 +12,7 @@ import {
 // hull, while the old readout treated the long forward gun as if it moved the
 // image centre 1.5 m forward. A real rear-plate hit consequently plotted off
 // the silhouette in both views.
-const amx56 = {
+const leclerc_s1 = {
   dims: { hullLengthM: 6.88, overallLengthM: 9.87, widthM: 3.72, heightM: 2.88 },
   armor: {
     turretPivot: [0, 1.6, -0.1],
@@ -26,12 +26,12 @@ const amx56 = {
   },
 };
 
-const projection = createShotDiagramProjection(amx56, {
+const projection = createShotDiagramProjection(leclerc_s1, {
   topSize: 96,
   sideWidth: 184,
   sideHeight: 92,
-  presentationAnchor: presentationAnchorFor('amx56'),
-  presentationProjection: presentationProjectionFor('amx56'),
+  presentationAnchor: presentationAnchorFor('leclerc_s1'),
+  presentationProjection: presentationProjectionFor('leclerc_s1'),
 });
 const topRear = projection.topPoint(0, -3.54);
 const sideRear = projection.sidePoint(1.05, -3.54);
@@ -50,7 +50,7 @@ const turretImpact = impactForShotDiagram({
   // Deliberately wrong legacy coordinates prove the exact payload wins.
   localPos: [8, 8, 8],
   localDir: [1, 0, 0],
-}, amx56.armor);
+}, leclerc_s1.armor);
 assert.deepEqual(turretImpact.point, [0.25, 2, 1],
   'turret-local impact is placed in the neutral hull schematic');
 assert.deepEqual(turretImpact.direction, [0, 0, -1],
@@ -59,13 +59,13 @@ assert.deepEqual(turretImpact.direction, [0, 0, -1],
 const gunImpact = impactForShotDiagram({
   impactFrame: 'gun',
   impactLocalPos: [-0.2, 0.3, 1.7],
-}, amx56.armor);
+}, leclerc_s1.armor);
 assert.ok(Math.abs(gunImpact.point[0] + 0.2) < 1e-12 &&
   Math.abs(gunImpact.point[1] - 1.9) < 1e-12 &&
   Math.abs(gunImpact.point[2] - 1.6) < 1e-12,
   'gun-follow armor uses turret-origin coordinates in the neutral diagram');
 
-const legacyImpact = impactForShotDiagram({ localPos: [1, 2, 3], localDir: [0, 1, 0] }, amx56.armor);
+const legacyImpact = impactForShotDiagram({ localPos: [1, 2, 3], localDir: [0, 1, 0] }, leclerc_s1.armor);
 assert.deepEqual(legacyImpact, { point: [1, 2, 3], direction: [0, 1, 0] },
   'legacy hull-local events remain compatible');
 

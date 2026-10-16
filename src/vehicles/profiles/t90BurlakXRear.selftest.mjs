@@ -63,7 +63,7 @@ function interior(mesh,p,axis,reach=.3){
   const a=hit([mesh],p,axis,reach),b=hit([mesh],p,axis.map(n=>-n),reach);mesh.material.side=old;return Boolean(a&&b&&a.distance>0&&b.distance>0);
 }
 function fittedSpec(t){
-  const original=getSpec('t90a_burlak_x'),done=new Set();
+  const original=getSpec('t90a_burlak'),done=new Set();
   const hullPlates=original.armor.hullPlates.flatMap(p=>{
     if(p.kind!=='era')return[p];if(done.has(p.name))return[];done.add(p.name);
     return t.root.userData.eraVisualBindingReceipt.plates.find(r=>r.owner==='hull'&&r.name===p.name).fittedSurfaces.map(verts=>({...p,verts}));
@@ -114,7 +114,7 @@ function helperClosure(){
 }
 helperClosure();
 for(const quality of ['high','low']){
-  const t=createTank('t90a_burlak_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90a_burlak',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const m=visible(t);cradles(m);cables(m);eyes(m);skirts(t,m);gameplay(t);physicalSeats(t);
     const b=boundsWithoutCamouflage(t.root);near(b.min.x,-2.05973503,.000002,'unchanged full model left extremum');near(b.max.x,2.05073503,.000002,'unchanged full model right extremum');
   }finally{t.dispose();}

@@ -310,6 +310,6 @@ function buildJagdpanzerE100X(P:TankBuilderPort):void {
     topY:1.299,botY:.0465,rollers:[],paintedEnds:true,arms:true,coveredTop:true,
   });
   P.topY=JPZE100_X_DATUMS.roofEquipmentTopM-PITCH[1];
-  P.hullG.userData.xRebuild={candidate:'jpz_e100_x',independent:true,datumVersion:1,sourceLocalOnly:true,fixedCasemate:true};
+  P.hullG.userData.xRebuild={candidate:'jpz_e100',independent:true,datumVersion:1,sourceLocalOnly:true,fixedCasemate:true};
 }
-export const JPZE100_X_PROFILES={jpz_e100_x:{build:buildJagdpanzerE100X}} as const;
+export const JPZE100_X_PROFILES={jpz_e100:{build:buildJagdpanzerE100X}} as const;

@@ -862,11 +862,11 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
       let [z1, y1] = bandDeck[i + 1];
       if (z0 <= bandEnd) continue;
       if (z1 < bandEnd) { y1 = y0 + (y1 - y0) * ((bandEnd - z0) / (z1 - z0)); z1 = bandEnd; }
-      // H.flatDeck opt-in (m48 r3, station slice-paint parity): keep exactly
+      // H.flatDeck opt-in (m48a5_patton r3, station slice-paint parity): keep exactly
       // level deck pairs EXACTLY level — a nudged (+0.006) quad rasterizes a
       // 1-2 px top line in every station z-slab while a true-flat quad is
       // edge-on invisible, exactly like the reference prints' own flat decks
-      // (m48 ref st1/st2 read their fender fragments 1.56-1.60, not their
+      // (m48a5_patton ref st1/st2 read their fender fragments 1.56-1.60, not their
       // 1.82 deck; my nudged deck painted 1.828 -> topPct 8-10 on two
       // slices). Default byte-identical (the nudge stands for every sibling).
       if (Math.abs(y1 - y0) < 0.004) y1 = H.flatDeck ? y0 : y0 + 0.006;
@@ -1097,7 +1097,7 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
       // default 0.055 hangs link pads ~15 mm below y0 and the dims heightM
       // read (p95 top - min bot) pays it. Undefined = byte-identical.
       botY: G.botY,
-      // m48 r8 opt-in pass-through: sprocket carrier-ring span (see
+      // m48a5_patton r8 opt-in pass-through: sprocket carrier-ring span (see
       // tankFactory buildRunningGear). Undefined = byte-identical.
       endRingSpan: G.endRingSpan,
       // M48A5 oracle correction: retain the authored linked course and smart
@@ -2625,7 +2625,7 @@ function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
   };
   pattonGunGunStage2();
   // §B3.1 MUZZLE BORE (owner 2026-08-06; MANDATORY shadow-named mechanism
-  // per the leclerc landing 3fca39b — kit.js muzzleBore, mask/frame-excluded
+  // per the leclerc_s2 landing 3fca39b — kit.js muzzleBore, mask/frame-excluded
   // by construction): rim torus + recessed shadow disc on every device's
   // FRONT face — m3 exit collar (face len+0.01), m36 rounded exit
   // (len+0.01), m3a1 muzzle-face ellipse (len+0.003), howitzer collar
@@ -3048,7 +3048,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       //      shadow clone + ambient rehook — clones drop onBeforeCompile,
       //      merkava gearFloor law): the shared 'detail' bucket ceilings ~67
       //      where the ref crests read the 84-96 class. The 32 identical
-      //      crowns emit as ONE InstancedMesh (the t90m ERA-brick pattern):
+      //      crowns emit as ONE InstancedMesh (the t90am ERA-brick pattern):
       //      deck furniture the casting merely OVERHANGS is correct hull
       //      parenting, but a separate merged mesh's AABB sits >=25% inside
       //      the turret-parent audit's casting envelope and reads stranded —
@@ -3130,7 +3130,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // B.x0 < 0 = one full-width bank; B.x0 >= 0 =
       // mirrored side pair. Pale = the sampled deck-lane dial (per-build
       // shadow clone + ambient rehook; clones drop onBeforeCompile), emitted
-      // as ONE InstancedMesh per bank (t90m ERA-brick pattern). Default
+      // as ONE InstancedMesh per bank (t90am ERA-brick pattern). Default
       // absent — every sibling (m45/m46/m47/m60s) byte-identical.
       const dAt = hull.deckAt;
       const rbPale = P.mats.shadow.clone();
@@ -7102,7 +7102,7 @@ export const PATTON_PROFILES = {
         rings: [[2.50, 0.121, 0.035], [2.72, 0.1205, 0.028], [2.94, 0.121, 0.035]] },
     }),
   },
-  m48: {
+  m48a5_patton: {
     // NEW BUILD r1 (§5.45 queue, 2026-08-08): M48A5 authored 1:1 from the
     // vertex extract in the z' = extract+1.413 frame (docs/references/
     // tanks/m48.md). Ring at the extract turretPivot (1.578, z' 0.679);

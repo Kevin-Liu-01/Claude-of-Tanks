@@ -12,7 +12,7 @@ import { boundsWithoutCamouflage } from '../camouflageBounds.test-support.mjs';
 const F=.90; // whole-vehicle reduction, independent of the earlier turret proportion
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 const spec=getSpec('griffin_viper');
-assert.equal(spec.nation,'USA');assert.equal(spec.variantOf,'griffin50_x');
+assert.equal(spec.nation,'USA');assert.equal(spec.variantOf,'griffin50mm');
 assert.equal(spec.gun.reloadS,1);assert.equal(spec.gun.autoloader,undefined);
 assert.equal(spec.gun.shells[0].count,64);assert(spec.gun.shells.every(s=>s.guided));
 const racks=spec.armor.modules.filter(m=>m.module==='missileRack');
@@ -20,10 +20,10 @@ assert.equal(racks.length,1,'one shared launcher damage state');
 assert.equal(racks[0].parts.length,16,'sixteen separately measured canister volumes');
 assert(racks[0].parts.every(p=>p.max[0]<0||p.min[0]>0),'no missile damage volume crosses the central gap');
 for(const filled of [false,true]) {
-if(filled)await ensureInteriorFills(['griffin_viper','griffin50_x']);
+if(filled)await ensureInteriorFills(['griffin_viper','griffin50mm']);
 for(const quality of ['high','low']){
   const options={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
-  const tank=createTank(spec.id,null,options),donor=createTank('griffin50_x',null,options);
+  const tank=createTank(spec.id,null,options),donor=createTank('griffin50mm',null,options);
   try{
     tank.prepareForSimulation();tank.root.updateMatrixWorld(true);donor.root.updateMatrixWorld(true);
     for(const name of ['hull','hullExternalArmor','gearRoadWheelDiscs','gearTrackBandL','gearTrackBandR']){

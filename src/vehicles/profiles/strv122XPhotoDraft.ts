@@ -19,7 +19,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, width: number, bottom: number, shoulder: number, top: number];
 
 export const STRV122_X_DATUMS = Object.freeze({
-  strv122_x: {
+  strv122: {
     // FMV gives overall length/width. Hull length and armor roof are explicitly
     // photo-estimated; its 3.00 m reported equipment height is NOT armor roof.
     dims: { hullLengthM: 7.70, overallLengthM: 9.97, widthM: 3.78, heightM: 2.533 },
@@ -30,7 +30,7 @@ export const STRV122_X_DATUMS = Object.freeze({
     muzzleZ: 6.12,
   },
 });
-const D = STRV122_X_DATUMS.strv122_x;
+const D = STRV122_X_DATUMS.strv122;
 
 function local(geometry: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return geometry.translate(-p[0], -p[1], -p[2]);
@@ -300,4 +300,4 @@ export function buildStrv122X(P: TankBuilderPort): void {
   gun(P);
 }
 
-export const STRV122_X_PROFILES = Object.freeze({ strv122_x: { build: buildStrv122X } });
+export const STRV122_X_PROFILES = Object.freeze({ strv122: { build: buildStrv122X } });

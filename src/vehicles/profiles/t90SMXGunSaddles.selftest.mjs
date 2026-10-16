@@ -80,7 +80,7 @@ function testPoseOwnership(tank,gun,label) {
   assert.equal(gun.geometry,geometry,`${label}: pitch and recoil preserve creation-time buffers`);
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),helper=helperParts(material);
   try {
     tank.root.updateMatrixWorld(true);

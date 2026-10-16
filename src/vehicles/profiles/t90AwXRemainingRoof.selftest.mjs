@@ -54,7 +54,7 @@ try{
   for(const p of [[-.66315,2.67533,.20082],[-.5090,2.67533,.20082]])assert.ok(own.meshes.some(m=>inside(m,p)),'transverse pin reaches the actual fork interface');
   for(const p of [[-.45,2.706,.258],[-.45,2.65,.263]])assert.ok(own.meshes.filter(m=>inside(m,p)).length>=2,`actual guard/chute/receiver contact: ${p}`);
   for(const quality of['high','low']){
-    const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       t.root.updateMatrixWorld(true);const ms=[],weapons=[];
       t.root.traverseVisible(m=>{

@@ -44,11 +44,11 @@ try {
     const { createPlayMenu } = await import('/src/ui/playMenu.ts');
     window.__reloads = 0;
     const menu = createPlayMenu({
-      getSelection: () => ({ specId: 'm1a2', equipment: [], camo: 'factory', mapId: null }),
+      getSelection: () => ({ specId: 'm1a1_abrams_hc', equipment: [], camo: 'factory', mapId: null }),
       onSolo: () => {}, onNetworkStart: () => {}, reloadPage: () => { window.__reloads++; },
     });
     document.body.appendChild(menu.root);
-    const player = (id, name, isHost) => ({ id, name, team: 'alpha', specId: 'm1a2', equipment: [], camo: 'factory', ready: true, connected: true, isHost, rating: null });
+    const player = (id, name, isHost) => ({ id, name, team: 'alpha', specId: 'm1a1_abrams_hc', equipment: [], camo: 'factory', ready: true, connected: true, isHost, rating: null });
     const state = { roomCode: 'ABC123', mode: 'private', gameMode: 'standard', phase: 'playing', hostId: 'p2', maxPlayers: 6, maxSpectators: 2,
       allowTeamSwitch: true, locked: false, mapId: 'verdant', teamSize: 3, arrangement: null, campaignOperationId: null, revision: 1,
       matchSeed: 7, round: 1, lastResult: null, players: [player('p1', 'Me', false), player('p2', 'Host', true)] };

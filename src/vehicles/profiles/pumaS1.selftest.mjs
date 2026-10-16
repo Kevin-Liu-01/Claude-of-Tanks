@@ -6,7 +6,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 
-const spec = getSpec('spz_puma_s1');
+const spec = getSpec('spz_wotan');
 assert.ok(spec, 'SPz Puma S1 is registered');
 assert.equal(spec.name, 'SPz Wotan');
 assert.equal(tankTier(spec.id), 10, 'Puma S1 is Tier X');

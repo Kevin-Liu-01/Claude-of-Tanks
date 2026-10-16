@@ -6,7 +6,7 @@
 // identically on all of them, and the authority must hold the player's catalogs in the player's order. Before this
 // receipt the eager facade (then the host Worker's and the Node service's fleet) gave the Type 96B X and the three
 // Type 96 concepts other turret plates, modules, crew boxes and hit shells than the player's: it registered
-// modern2.ts's live type99a, whose plates share vertex arrays, and in-place armor fitting moved a shared vertex of
+// modern2.ts's live ztz99_longwei, whose plates share vertex arrays, and in-place armor fitting moved a shared vertex of
 // the clone twice. Every facade now registers the generated metadata (asserted below with the legacy builder files
 // imported first).
 import assert from 'node:assert/strict';
@@ -18,7 +18,7 @@ import { stableDigest } from './fleetParity.test-support.mjs';
 
 const run = promisify(execFile);
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
-const ROSTER = ['type96b_x', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'm1a2', 'strv122_x', 'ua_t72b3m_hetman_ii', 'pl_t72b3_zubr_ii'];
+const ROSTER = ['type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'm1a1_abrams_hc', 'strv122', 't72b3m_hetman_ii', 't72b3_zubr_ii'];
 const LOADS = {
   player: `const fleet = await import('./src/vehicles/fleetFactory.ts'); await fleet.ensureFullFleet();`,
   playerRoster: `const fleet = await import('./src/vehicles/fleetFactory.ts'); await fleet.ensureTankBuilders(${JSON.stringify(ROSTER)});`,
@@ -69,7 +69,7 @@ const ids = Object.keys(player.specs);
 // it 219 on 2026-10-02, and main's M6 Linebacker 220 on 2026-10-04); every facade must hold exactly the same ids, checked below.
 assert.ok(ids.length > 200, `the saved fleet (${ids.length} specs)`);
 
-assert.ok(Object.keys(legacy).includes('type99a') && Object.keys(legacy).includes('leo2a6'));
+assert.ok(Object.keys(legacy).includes('ztz99_longwei') && Object.keys(legacy).includes('leo2a4'));
 for (const [id, row] of Object.entries(legacy)) {
   assert.equal(row.registeredLive, false, `${id}: the registry never holds the legacy file's live row`);
   assert.equal(row.sameData, true, `${id}: the generated row carries the live row's data`);

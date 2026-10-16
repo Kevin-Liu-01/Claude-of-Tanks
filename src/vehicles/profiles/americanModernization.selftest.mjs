@@ -169,10 +169,10 @@ for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
 
 const abramsStations = new Map();
 for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] of [
-  ['m1a2', 'standard', 'm1a2-split-loader', 'split', [0.80, 0.288, 0.224, 0.336]],
-  ['m1a2_tusk', 'tusk-urban', 'tusk-lags-loader', 'open', [1.00, 0.36, 0.28, 0.42]],
-  ['m1a2_sepv2', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
-  ['m1a2_sepv3', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
+  ['m1a1_abrams_hc', 'standard', 'm1a2-split-loader', 'split', [0.80, 0.288, 0.224, 0.336]],
+  ['m1a1_abrams_sa', 'tusk-urban', 'tusk-lags-loader', 'open', [1.00, 0.36, 0.28, 0.42]],
+  ['m1a1_abrams_aim', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
+  ['m1a1_abrams_fep', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
@@ -187,7 +187,7 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
     `${id}: Abrams gun uses painted sleeve relief instead of black rings`);
   assert.equal(gunFinish?.muzzleBoresDark, true,
     `${id}: Abrams keeps only the true muzzle opening dark`);
-  const hasFullCommanderTower = id === 'm1a2_tusk' || id === 'm1a2_sepv3';
+  const hasFullCommanderTower = id === 'm1a1_abrams_sa' || id === 'm1a1_abrams_fep';
   const compactStation = fittings(tank.root,
     (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
   const fullStation = fittings(tank.root,
@@ -309,7 +309,7 @@ for (const [id, expectedLoader, expectedShield] of [
 }
 
 for (const id of [
-  'm1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+  'm1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');

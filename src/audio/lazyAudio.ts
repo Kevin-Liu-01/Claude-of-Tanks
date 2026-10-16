@@ -32,6 +32,8 @@ interface AudioMixerModule {
     getLandmarks?: () => readonly AudioLandmark[] | null;
     getStructureMakeup?: (structureId: number) => AudioStructureMakeup | null;
     getWorld?: () => AudioWorld | null;
+    getTeamRoster?: () => readonly RuntimeValue[] | null;
+    getVehicleSpec?: (specId: string) => RuntimeValue;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -49,6 +51,10 @@ interface LazyAudioOptions {
   getStructureMakeup?(structureId: number): AudioStructureMakeup | null;
   /** The battlefield (its landmarks and structures), read by the mixer where a narrower getter is not given. */
   getWorld?(): AudioWorld | null;
+  /** The field by side a network seat counts by (its spotted list never is one): the crew's team-count calls. */
+  getTeamRoster?(): readonly RuntimeValue[] | null;
+  /** A vehicle's whole spec by id: the battle warm resolves each roster hull's powertrain as its rig will. */
+  getVehicleSpec?(specId: string): RuntimeValue;
   hasStickyActivation?(): boolean;
 }
 
@@ -93,7 +99,7 @@ export function createLazyAudio({
     const AC = scope.AudioContext || scope.webkitAudioContext;
     return AC ? new AC({ latencyHint: 'interactive' }) : null;
   },
-  // the world and game getters (map, mode, objective side, terrain, the world), handed to the mixer
+  // the world and game getters (map, mode, objective side, terrain, the world, the counted roster, the fleet), handed to the mixer
   ...world
 }: LazyAudioOptions = {}): LazyAudio {
   let context: AudioContext | null = null;

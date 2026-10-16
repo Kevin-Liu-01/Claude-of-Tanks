@@ -67,7 +67,7 @@ function hullClearanceAft(probes, sweep) {
 const hits = (meshes, p, d) => new THREE.Raycaster(new THREE.Vector3(...p), new THREE.Vector3(...d), 0, 10).intersectObjects(meshes, false);
 const hullBucket = (o) => /^hull/.test(o.name) && !/shadow|proxy/i.test(o.name);
 
-for (const id of ['t90a', 't90a_burlak', 'bmpt_t90']) {
+for (const id of ['t90a_2004', 't90a_burlak_proto', 'bmpt_t90']) {
   const f = VEHICLE_SIZE_FACTORS[id] ?? 1;
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   const disposables = [];
@@ -92,7 +92,7 @@ for (const id of ['t90a', 't90a_burlak', 'bmpt_t90']) {
     unNotched.updateMatrixWorld(true);
     disposables.push(unNotched.geometry, unNotched.material);
     assert.ok(hullClearanceAft([...probes, unNotched], sweep) < 0, `${id}: an un-notched seat would enter the shoe sweep`);
-    if (id === 't90a_burlak') continue;
+    if (id === 't90a_burlak_proto') continue;
 
     const front = T90A_REAR_SEAT_FRONT_Z_M * f, limit = sweep.cz - sweep.reach;
     assert.ok(limit - front >= CLEARANCE_M,

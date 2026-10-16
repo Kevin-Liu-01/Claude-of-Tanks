@@ -13,7 +13,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylY}=KIT;
 type Variant='long'|'feng'|'lei';
 function build(P:TankBuilderPort,variant:Variant):void {
-  const frame=EASTERN_SOURCE_STUDIES.type96b_x.frame;
+  const frame=EASTERN_SOURCE_STUDIES.type96b.frame;
   if(variant==='feng')buildT80UXHull(P);
   else if(variant==='lei')buildT72B3MXHull(P);
   else buildT72B3XHull(P);
@@ -59,7 +59,7 @@ function build(P:TankBuilderPort,variant:Variant):void {
   }
   if(variant==='feng')addRearFieldStowage(P);
   P.topY=3.016-frame.turret[1];
-  P.hullG.userData.familyRebuild={donor:variant==='long'?'t72b3_x':variant==='feng'?'t80u_x':'t72b3m_x',turret:'type96b_x',variant,revision:1};
+  P.hullG.userData.familyRebuild={donor:variant==='long'?'t72b3':variant==='feng'?'t80u':'t72b3m_2016',turret:'type96b',variant,revision:1};
 }
 export const SINO_SOVIET_CONCEPT_PROFILES={
   type96_72_long:{build:(P:TankBuilderPort)=>build(P,'long')},

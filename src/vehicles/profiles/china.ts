@@ -7,7 +7,7 @@
 // prints carry silhouette/proportion truth only).  No donor build is called:
 // hulls are station lofts, turrets are connected welded polyMultiLoft
 // shells, and every fitting seats on real geometry per BUILD-STANDARD §B.
-// The type99a oracle package below is a RESIDENT of this module riding the
+// The ztz99_longwei oracle package below is a RESIDENT of this module riding the
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
@@ -510,7 +510,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // W-85 12.7 mm at the commander ring (MG law).  The cluster is seated so
   // its columns land inside the print's own 2.5-2.75 roof-cluster band —
   // heightM keeps the published 2.30 crown while silhouetteHeightM carries
-  // the mounted-MG convention (t62mv1 precedent).
+  // the mounted-MG convention (t62_1975 precedent).
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.06,
@@ -669,7 +669,7 @@ function crownRimTrim(
 // +1.7 nose, bustle roof 2.45 running to -2.7, forward-left sight head
 // (print 2.79), rear-right mast cluster (print 2.99), gun axis 1.95, twin
 // rear fuel drums hanging 1.5..2.1 behind the transom.  This tank is
-// DISTINCT from the resident type99a: longer/deeper cheek wedge, revised
+// DISTINCT from the resident ztz99_longwei: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
@@ -1646,7 +1646,7 @@ export const CHINA_PROFILES = {
   ztz85_iii: { build: buildZTZ85III },
   // Type 99A is registered by chineseFrontline.ts so its certified hull can
   // receive the VT-derived rotating assembly from the same authored family.
-  ztz99a2_prototype: { build: buildZTZ99A2Prototype },
+  ztz99a: { build: buildZTZ99A2Prototype },
   ztz99a2: { build: buildZTZ99A2 },
   // §5.304 redesign: Type 59 on the widened obr-1975 chassis (owner order).
   type59: { build: buildType59 },

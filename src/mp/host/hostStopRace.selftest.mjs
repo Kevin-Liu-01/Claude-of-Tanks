@@ -22,12 +22,12 @@ const memoryGuard = setInterval(() => { if (process.memoryUsage().rss > 1.5e9) {
 memoryGuard.unref();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const room = createRoom({ roomCode: 'STOPRC', mode: 'lan', creator: { id: 'me', name: 'Me' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false }, now: 1000 });
-joinRoom(room, { player: { id: 'other', name: 'Other' }, selection: { specId: 't90m' }, team: null, now: 1001 });
+const room = createRoom({ roomCode: 'STOPRC', mode: 'lan', creator: { id: 'me', name: 'Me' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false }, now: 1000 });
+joinRoom(room, { player: { id: 'other', name: 'Other' }, selection: { specId: 't90am' }, team: null, now: 1001 });
 const matchId = 'm1-0000570p';
 const plan = planHostBoot(room, { matchId, round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', hostId: 'me' }, 'me');
 const secret = createHash('sha256').update('host-stop-race').digest('hex');
-const token = signSeatToken(secret, { v: 1, roomId: 'STOPRC', seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a2', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+const token = signSeatToken(secret, { v: 1, roomId: 'STOPRC', seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
 const hello = encodeMessage({ type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 0, token, clientBuild: 'stop-race' });
 const bootConfig = { roomId: 'STOPRC', matchId, generation: 1, mapId: 'verdant', mode: 'standard', seed: 7, seats: plan.seats, bots: plan.bots, countdownS: 1, hostSecret: secret, manifestBase: null, resume: null };
 

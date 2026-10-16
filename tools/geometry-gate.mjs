@@ -85,7 +85,7 @@ page.on('console', message => {
 });
 page.setDefaultTimeout(150000);
 const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
-const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a2&registry=1`;
+const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&registry=1`;
 
   // Discover eligible IDs without loading an optional local comparison file.
   // Worktrees intentionally omit quarantined GLBs, so registry discovery must
@@ -100,7 +100,7 @@ const registryUrl = `http://localhost:${server.config.server.port}/tools/procedu
   for (const id of ids) {
     try {
       let rawSourceComparison=null;
-      if(id==='k1a1_x'){
+      if(id==='k1a1'){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded'});
         await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{polling:60});
         const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);

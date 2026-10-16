@@ -28,7 +28,7 @@ function inspect(id) {
   return { tank, hullRig, turretRig, gunRig, hull, turret, equipment, detail, dark };
 }
 
-const prototype = inspect('ztz99a2_prototype');
+const prototype = inspect('ztz99a');
 const production = inspect('ztz99a2');
 const vt4a1 = inspect('vt4a1');
 

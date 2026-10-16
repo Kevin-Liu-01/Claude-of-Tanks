@@ -1,7 +1,7 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { weaponAssembly } from './weaponStock.ts';
-// Independent owner-source CV90 Mk.IV; existing cv90_mkiv stays untouched.
+// Independent owner-source CV90 Mk.IV; existing cv90_mk4_concept stays untouched.
 import * as THREE from 'three';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import { KIT } from './kit.ts';
@@ -290,5 +290,5 @@ export function buildCv90MkivX(P: TankBuilderPort): void {
   buildCv90Cannon(P);
   preserveSourceStudyGunMountAppearance(P);
   P.topY=2.82-py;
-  P.hullG.userData.xRebuild={candidate:'cv90_mkiv_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

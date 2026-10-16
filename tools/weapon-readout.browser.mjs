@@ -44,7 +44,7 @@ try {
   }
   await page.evaluate(()=>{
    const f=window.__HUD_LAYOUT;
-   const missile={attackerId:f.frame.player.id,targetId:f.tanks[8].id,targetSpecId:'leo2a5',targetName:'Target',shellId:999,
+   const missile={attackerId:f.frame.player.id,targetId:f.tanks[8].id,targetSpecId:'leo2a4_v',targetName:'Target',shellId:999,
     caliberMm:150,guided:true,shellType:'HEAT',shellName:'Guided missile',kind:'pen',damage:400,dmgRoll:450,
     penRollMm:700,effectiveMm:300,flightDistM:240,localPos:[0,1,2],localDir:[0,0,-1]};
    f.bus.emit('shell:hit',missile);

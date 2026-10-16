@@ -256,4 +256,4 @@ export function buildT72BUX(P:TankBuilderPort):void{buildT72BURecipe(P,true);}
 /** Owner-selected donor for Pendekar: exact tub, crown fenders, complete
  * running gear, deck/rear furniture, cast turret and articulated main gun. */
 export function buildT72BUXCore(P:TankBuilderPort):void{buildT72BURecipe(P,false);}
-export const T72BU_X_PROFILES={t72bu_x:{build:buildT72BUX}} as const;
+export const T72BU_X_PROFILES={t72bu:{build:buildT72BUX}} as const;

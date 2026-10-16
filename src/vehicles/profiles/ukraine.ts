@@ -7,10 +7,10 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // Every build below is a first-party procedural §K construction measured from
 // its OWN registered print (docs/references/vertex/<id>.json extracts +
 // tools/tmp-ua-digest.mjs mappings) with PUBLISHED dims sovereign:
-//   ua_t64bv       <- t64bv_donbass_manako.glb  (CC-BY-NC kitbash, local-only)
+//   t64bv_donbas       <- t64bv_donbass_manako.glb  (CC-BY-NC kitbash, local-only)
 //   ua_t80bv       <- t80bv_ua_manako.glb       (WT-fingerprint, local-only)
-//   ua_t80u_kursk  <- t80u_kursk_manako.glb     (viewer-rip suspect, local-only)
-//   ua_t84_oplot_m <- oplot_m_manako.glb        (CC-BY-NC, local-only)
+//   t80u_kursk  <- t80u_kursk_manako.glb     (viewer-rip suspect, local-only)
+//   t84bm_oplot_m <- oplot_m_manako.glb        (CC-BY-NC, local-only)
 // No source vertex, index, texture or topology ships — prints are measured
 // visual/metric oracles only (docs/ATTRIBUTION.md §5.248). The previous
 // donor-clone builders (variantOf composition over t64bv1/t80bv/t80u/t84)
@@ -473,7 +473,7 @@ function addModernizedT80TurretSuite(
   const frontReceipt = P.turretG.userData.uaT80FrontERAReceipt;
   const surfaceGaps = [-0.040, -0.0325, ...returnSurfaceGaps];
   P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
-    profile: variant === 'kursk' ? 'ua_t80u_kursk' : 'ua_t80bv',
+    profile: variant === 'kursk' ? 't80u_kursk' : 'ua_t80bv',
     cassetteSeats: frontReceipt.cheekCassettes
       + frontReceipt.mantletCassettes
       + frontReceipt.shoulderReturnCassettes + 6,
@@ -691,8 +691,8 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // panels per side at the §5.272-proven 1.7435/0.028 deep-class face,
   // front pair deep to 0.74, the rest to the 0.87 K-1 band — all clear of
   // the 0.775 wheel tops so the six dished wheels keep reading, §B9), a
-  // skirt-top ERA cassette strip rides the band lip (t90 skirt-ERA
-  // grammar) and rubber fore-sections hang at the idler lane (t90 rubber
+  // skirt-top ERA cassette strip rides the band lip (t90_1992 skirt-ERA
+  // grammar) and rubber fore-sections hang at the idler lane (t90_1992 rubber
   // fronts; faces inside the ±1.76 width guard, §5.263 — nothing rescales).
   ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -2.66, z1: 2.90, yTop: 1.17, yBot: 1.03, panels: 8, lipX: 1.737, lipY: 1.045 });
   // (panel run clamped INSIDE the band span — the first 0.705-pitch lay
@@ -835,7 +835,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
 }
 
 // ---------------------------------------------------------------------------
-// ua_t80u_kursk — UA-service T-80U (print: t80u_kursk_manako.glb, whole-view
+// t80u_kursk — UA-service T-80U (print: t80u_kursk_manako.glb, whole-view
 // oracle). Print frame (yawOffset +90 registration): overall -2.6%, width
 // -1.8% — near-true instrument. Identities: Kontakt-5 wedge shoulders +
 // glacis wedge, tall right-forward gunner sight, asymmetric rear roof
@@ -945,7 +945,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   // T-80U running gear (published chassis constants, frame +-3.505).
   // §5.272 fix (1): wheel rim/hub contrast lifted (tireHex/wheelHex law —
   // the six dished wheels read as a black smear behind the old deep skirt;
-  // the resident t80u guard proves the pipeline bar).
+  // the resident t80uk guard proves the pipeline bar).
   buildRunningGear(P, {
     style: 'dished', wheelR: 0.335, wheelW: 0.21, wheelY: 0.44, xc: 1.345, dishR: 0.80,
     wheelZs: [-1.66, -0.93, -0.20, 0.53, 1.26, 1.99],
@@ -958,7 +958,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   // and more era"): the §5.272 §B9-proven band + rubber fore-sections
   // stay; SIX armored K-1 panels per side now run the full hull (bottoms
   // 0.84 front pair / 0.87 aft — all above the 0.775 wheel tops, §B9) and
-  // a skirt-top ERA cassette strip rides the lip (t90 skirt-ERA grammar).
+  // a skirt-top ERA cassette strip rides the lip (t90_1992 skirt-ERA grammar).
   // Faces stay inside the ±1.80 width guard (§5.263 — nothing rescales).
   ruSkirtBand(P, { x: 1.755, th: 0.05, z0: -2.74, z1: 2.98, yTop: 1.17, yBot: 1.02, panels: 8, lipX: 1.775, lipY: 1.03 });
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
@@ -1089,7 +1089,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
 }
 
 // ---------------------------------------------------------------------------
-// ua_t84_oplot_m — BM Oplot / Oplot-M (print: oplot_m_manako.glb).
+// t84bm_oplot_m — BM Oplot / Oplot-M (print: oplot_m_manako.glb).
 // Print frame map: zBuild = (zPrint + 4.393) * 1.1166 - 3.54 (print hull
 // -10.4% short; the z-warp plan is banked, the build is published-true).
 // Measured identities: KMDB WELDED turret (prism loft, not a cast dome)
@@ -1870,7 +1870,7 @@ function addAbramsCageRearPayload(P: UkraineBuilderPort, thickness: number): voi
   }
 }
 
-/** Fine rod lattice (owner 2026-09-16: "add the smaller thinner cage layers from the m1a2 abrams ua
+/** Fine rod lattice (owner 2026-09-16: "add the smaller thinner cage layers from the m1a1_abrams_hc abrams ua
  * cages to the M1A1 SA"): 6 mm rods at 155 mm pitch — longitudinal rods per bay following the pitched
  * canopy, transverse rods along the bays, vertical rods hanging on both flanks and across the rear wall —
  * welded into the 32 mm frame (rod centres sit inside the frame's half-thickness). The front bay keeps
@@ -1979,9 +1979,9 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
 }
 
 export const UKRAINE_PROFILES = {
-  ua_t64bv: { build: (P: TankBuilderPort) => buildT64Modern(P, true) },
+  t64bv_donbas: { build: (P: TankBuilderPort) => buildT64Modern(P, true) },
   ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
-  ua_t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
-  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as TankBuilderPort) },
+  t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
+  t84bm_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as TankBuilderPort) },
   ua_m1a1: { build: (builder: ProfileBuilderPort) => buildUAM1A1(builder as UkraineBuilderPort) },
 } satisfies VehicleProfileRecord;

@@ -76,7 +76,7 @@ for (const [tab, leaf, leg, mapX] of [[24, 26, 27, x => x], [25, 28, 29, x => -x
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('t90sm_x', null, { quality, proceduralOnly: true, geometryReceipt: true });
+  const tank = createTank('t90sm', null, { quality, proceduralOnly: true, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);
     const hull = tank.root.getObjectByName('rig_hull');

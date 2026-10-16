@@ -14,13 +14,13 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   ua_m2a3_bradley: bradley,
   bmp2: [turret(.06, .655 + .025 * Math.sin(.02), .155 + .025 * Math.cos(.02), .02)],
   spz_puma: [mouth(1.19, -.02, .465), mouth(1.41, -.02, .465)],
-  spz_puma_s1_x: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
+  puma_s1: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
   borsuk: [.545,.795].map(y => turret(1.34,y,.91)),
-  type89_x: [-1,1].map(side => turret(side*1.25,.63,.36)),
-  spz_puma_s1: [.36, .59].map(y => turret(-1.02 * .9, y * .9, .839 * .9)),
-  type89_light_tiger: [-1, 1].flatMap(s => [.32, .56].map(y => turret(s * 1.39 * .9, y * .9, .7175 * .9))),
-  cv90_mkiv: [.42, .70].map(y => turret(-1.20 * .9, y * .9, .68 * .9)),
-  type89: [-1, 1].map(s => turret(s * .92, .385 + .02 * Math.sin(.14), .285 + .02 * Math.cos(.14), .14)),
+  type89: [-1,1].map(side => turret(side*1.25,.63,.36)),
+  spz_wotan: [.36, .59].map(y => turret(-1.02 * .9, y * .9, .839 * .9)),
+  raiju_ifv: [-1, 1].flatMap(s => [.32, .56].map(y => turret(s * 1.39 * .9, y * .9, .7175 * .9))),
+  cv90_mk4_concept: [.42, .70].map(y => turret(-1.20 * .9, y * .9, .68 * .9)),
+  hayate_ifv: [-1, 1].map(s => turret(s * .92, .385 + .02 * Math.sin(.14), .285 + .02 * Math.cos(.14), .14)),
   fv510_milan: [turret(.56 * 1.1, (.92 + .0125 * Math.sin(.04)) * 1.1 * .84,
     (.927 + .0125 * Math.cos(.04)) * 1.1, Math.atan(Math.tan(.04) * .84))],
   bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * Math.sin(.035)), y, .668 + .011 * Math.cos(.035), 0, s * .035))),
@@ -30,7 +30,7 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   upior: [turret(1.10, .37, .83)],
   bmpt_t90: [-1, 1].flatMap(s => [1.005, 1.245].flatMap(x => [.35, .60].map(y => turret(s * (x + .011 * Math.sin(.03)), y, .724 + .011 * Math.cos(.03), 0, s * .03)))),
   // Preserve the source battery's left-to-right, lower/upper firing order.
-  aft10_x: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
+  aft10: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
 };
 
 /** Install after donor/spec synchronization, without loading visual builders. */
@@ -39,15 +39,15 @@ export function applyFleetLauncherMuzzles(spec: FleetTankSpec): void {
   const [px, py, pz] = spec.armor.turretPivot;
   const world = (x: number, y: number, z: number, pitch = 0): LauncherMuzzle => turret(x - px, y - py, z - pz, pitch);
   if (spec.id === 'warrior_tes_h') tips = [world(-.64, 2.955, .482)];
-  if (spec.id === 'cv90_mkiv_x') tips = [-1.0525, -1.3769].map(x => world(x, 2.275 + .007 * Math.sin(.085), .303 + .007 * Math.cos(.085), .085));
-  if (spec.id === 'k21_x') {
+  if (spec.id === 'cv90_mk4') tips = [-1.0525, -1.3769].map(x => world(x, 2.275 + .007 * Math.sin(.085), .303 + .007 * Math.cos(.085), .085));
+  if (spec.id === 'k21') {
     const angle = Math.PI / 9;
     // Front of the housing's two apertures, in its measured 20-degree frame.
     tips = [2.71787735, 2.90094968].map(v => world(1.254325 - .01195,
       v * Math.cos(angle) + .4243 * Math.sin(angle) - .0138,
       -v * Math.sin(angle) + .4243 * Math.cos(angle), angle));
   }
-  if (spec.id === 'kurganets25_x') {
+  if (spec.id === 'kurganets25') {
     tips = [
       ...[-1, 1].flatMap(s => [1.281, 1.474].map(x => ({ ...world(s * x, 2.869, -.698), shellSlots: [1] }))),
       // the rear-roof launcher's eight Bulat mouths, the container's measured exits (epokhaTurret.ts)

@@ -7,7 +7,7 @@ import { buildStrv122X } from './strv122XPhotoDraft.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Historical photo contract only; actual supplied-ID tests are separate.
-registerProfiledBuilders({ strv122_x: buildStrv122X });
+registerProfiledBuilders({ strv122: buildStrv122X });
 
 // Independent FMV envelope values. Individual fittings below are explicit
 // photo-led construction contracts, never assertions against the AI source.
@@ -89,7 +89,7 @@ for (const quality of ['high', 'low']) {
   let gear, tank;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   try {
-    tank = createTank('strv122_x', null, { quality, proceduralOnly: true,
+    tank = createTank('strv122', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false });
   } finally { KIT.buildRunningGear = original; }
   try {

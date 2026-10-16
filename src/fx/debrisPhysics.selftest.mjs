@@ -59,7 +59,7 @@ function collapse(dts) {
 {
   const pool = createDebrisPhysics({ capacity: 8 });
   pool.bind(flat);
-  const tank = { id: 'h', spec: getSpec('m1a2'), combat: { destroyed: false },
+  const tank = { id: 'h', spec: getSpec('m1a1_abrams_hc'), combat: { destroyed: false },
     state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, speed: 0, verticalSpeed: 0, yawRate: 0 } };
   pool.setHulls([tank]);
   const slab = pool.spawn(createRigidBox(0.8, 0.12, 0.8, 1900), { x: 0, y: 6, z: -2.6 });

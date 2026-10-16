@@ -41,8 +41,8 @@ assert.doesNotMatch(check, /function clusterLeaks|voxelise\(/, 'the check keeps 
 // (2) fixture: lanes per hull sorted left to right, [minX, minY, minZ, maxX, maxY, maxZ], captured 2026-09-21 from the
 // d0cbb9fcd inline function at 0.025 m voxels (band pad 0.05, shoe pad 0.025), rounded to 0.1 mm.
 const FIXTURE = {
-  jpz_e100_x: [[-2.0723, -0.025, -3.6564, -1.1068, 1.357, 4.0103], [1.1068, -0.025, -3.6564, 2.0723, 1.357, 4.0103]],
-  leclerc_classic_x: [[-1.6602, -0.025, -3.1142, -1.0092, 1.2785, 3.4342], [0.9376, -0.025, -3.1142, 1.5886, 1.2785, 3.4342]],
+  jpz_e100: [[-2.0723, -0.025, -3.6564, -1.1068, 1.357, 4.0103], [1.1068, -0.025, -3.6564, 2.0723, 1.357, 4.0103]],
+  amx56: [[-1.6602, -0.025, -3.1142, -1.0092, 1.2785, 3.4342], [0.9376, -0.025, -3.1142, 1.5886, 1.2785, 3.4342]],
 };
 const flat = (box) => [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z];
 const _m = new THREE.Matrix4(), _w = new THREE.Matrix4();
@@ -134,15 +134,15 @@ try {
   const besideLeak = Number(beside[1]), besideLane = Number(beside[2]);
   assert.ok(besideLeak > 0 && besideLane > 0 && Math.abs(besideLeak + besideLane - plainHole) <= 0.02, `synthetic hole beside a lane: leak ${besideLeak} + lane ${besideLane} = plain ${plainHole}`);
   assert.match(selfTest, /^\[self-test\] PASS/m);
-  // 2026-10-02: the AMX 56 (leclerc_classic_x) keeps its part-(2) lane fixture but left this watertight half.
+  // 2026-10-02: the AMX 56 (amx56) keeps its part-(2) lane fixture but left this watertight half.
   // 6e8c2fbd3 (owner's field kit) put it under the primary-body fill policy (interior-fill-body-policy.mjs), which
   // deliberately leaves external-optic and kit cargo/standoff air unfilled: the check reads 61.81 L there, the same
-  // accepted check-versus-generator difference as the other primary-body hulls (t72b3m 145.64 L, namer_ifv 133.73 L),
+  // accepted check-versus-generator difference as the other primary-body hulls (t72b3m_2022 145.64 L, namer_ifv 133.73 L),
   // and a fills-to-zero regeneration (--rounds=8 --min-fine=1) under the policy reproduces the shipped record byte
   // for byte. The kit's fastener heads also widened its voxel grid by 10.5 voxels, so its 0.80 L of lane air now
   // sits on the other half-voxel phase (0 L; the same tree with the grid shifted back half a voxel reads 0.80 L).
   // The Type 10 X, a full-body hull whose skirts enclose 14.73 L of lane air, takes its place.
-  const ids = ['jpz_e100_x', 'type10_x'];
+  const ids = ['jpz_e100', 'type10'];
   const lanesOut = run(`--ids=${ids.join(',')}`, `--json=${join(tmp, 'lanes.json')}`);
   const plainOut = run(`--ids=${ids.join(',')}`, '--no-lanes', `--json=${join(tmp, 'plain.json')}`);
   const lanesReport = JSON.parse(readFileSync(join(tmp, 'lanes.json'), 'utf8')).report, plainReport = JSON.parse(readFileSync(join(tmp, 'plain.json'), 'utf8')).report;
@@ -162,7 +162,7 @@ try {
   // 2026-10-01: the owner's underbody removal (4c34b3e8b, docs/tank-generation/underbody-removal-20260930.md) took out
   // the E100 X's two hullShadow walls (inner X +-0.9768), the inboard boundary of the lane air under the hull; with
   // the walls restored in an A/B the same tree reads 4.53 L again, without them 2.97 L (fills regenerated to zero).
-  assert.ok(Math.abs(litres.jpz_e100_x.lane - 2.97) <= 0.3, `E100 X lane air ${litres.jpz_e100_x.lane} L (pinned 2.97 L since the 2026-09-30 wall removal)`);
-  assert.ok(Math.abs(litres.type10_x.lane - 14.73) <= 0.3, `Type 10 X lane air ${litres.type10_x.lane} L (pinned 14.73 L, 2026-10-02)`);
+  assert.ok(Math.abs(litres.jpz_e100.lane - 2.97) <= 0.3, `E100 X lane air ${litres.jpz_e100.lane} L (pinned 2.97 L since the 2026-09-30 wall removal)`);
+  assert.ok(Math.abs(litres.type10.lane - 14.73) <= 0.3, `Type 10 X lane air ${litres.type10.lane} L (pinned 14.73 L, 2026-10-02)`);
 } finally { rmSync(tmp, { recursive: true, force: true }); }
-console.log(`track-lane-boxes.selftest: generator + check wiring, d0cbb9fcd lane fixture, band/shoe structure, mask == point test (${maskVoxels} lane voxels), synthetic branches, watertight lane exclusion (E100 X ${litres.jpz_e100_x.lane} L, Type 10 X ${litres.type10_x.lane} L lane air reported, 0 L leak; --no-lanes ${litres.jpz_e100_x.plain} / ${litres.type10_x.plain} L) and self-test hole conservation PASS`);
+console.log(`track-lane-boxes.selftest: generator + check wiring, d0cbb9fcd lane fixture, band/shoe structure, mask == point test (${maskVoxels} lane voxels), synthetic branches, watertight lane exclusion (E100 X ${litres.jpz_e100.lane} L, Type 10 X ${litres.type10.lane} L lane air reported, 0 L leak; --no-lanes ${litres.jpz_e100.plain} / ${litres.type10.plain} L) and self-test hole conservation PASS`);

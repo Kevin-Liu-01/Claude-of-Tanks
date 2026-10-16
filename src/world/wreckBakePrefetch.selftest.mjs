@@ -33,14 +33,14 @@ const tick = () => new Promise((r) => setImmediate(r));
 
 {
   const f = fakeClient();
-  const p = startWreckBakePrefetch([['m60a2', 2002, 1], ['merkava4b', 2133, 1], ['m60a2', 2002, 1], ['t72b3m', 2264, 0]], () => f.client, () => 0);
+  const p = startWreckBakePrefetch([['m60a2', 2002, 1], ['merkava4b', 2133, 1], ['m60a2', 2002, 1], ['t72b3m_2022', 2264, 0]], () => f.client, () => 0);
   await tick();
   assert.deepEqual(f.log, ['prepare', 'bake m60a2 2002 1'], 'the first planned bake starts at once; the next waits for it');
   assert.equal(p.stats.planned, 3, 'a repeated row is one bake');
   const first = p.take('m60a2', { seed: 2002, pop: true });
   assert.ok(first, 'a planned bake is taken');
   assert.equal(p.take('m60a2', { seed: 2002, pop: true }), null, 'and only once');
-  assert.equal(p.take('m1a2', { seed: 9, pop: false }), null, 'a request the plan does not hold bakes on demand');
+  assert.equal(p.take('m1a1_abrams_hc', { seed: 9, pop: false }), null, 'a request the plan does not hold bakes on demand');
   f.gates[0].ok();
   assert.equal((await first).specId, 'm60a2');
   await tick();
@@ -51,7 +51,7 @@ const tick = () => new Promise((r) => setImmediate(r));
   // while the props build waits on it: the rest of the plan is not started and fails where it is taken
   assert.equal(f.log.at(-1), 'bake merkava4b 2133 1', 'a failed bake stops the rest: no further worker job starts');
   await assert.rejects(p.take('merkava4b', { seed: 2133, pop: true }), /failed/, 'a failed planned bake surfaces where it is taken');
-  await assert.rejects(p.take('t72b3m', { seed: 2264, pop: false }), /stopped after a failed bake/,
+  await assert.rejects(p.take('t72b3m_2022', { seed: 2264, pop: false }), /stopped after a failed bake/,
     'the rest of the plan fails at once where it is taken');
   p.dispose();
   await tick(); await tick();
@@ -110,6 +110,6 @@ const tick = () => new Promise((r) => setImmediate(r));
     assert.ok(MAP_IDS.includes(mapId) && ['mobile', 'assault', 'assault-mobile'].includes(variant), `${key} names a map and a variant`);
   }
 }
-assert.equal(wreckBakeKey('m1a2', 2002, true), wreckBakeKey('m1a2', 2002, 1));
-assert.notEqual(wreckBakeKey('m1a2', 2002, true), wreckBakeKey('m1a2', 2002, false));
+assert.equal(wreckBakeKey('m1a1_abrams_hc', 2002, true), wreckBakeKey('m1a1_abrams_hc', 2002, 1));
+assert.notEqual(wreckBakeKey('m1a1_abrams_hc', 2002, true), wreckBakeKey('m1a1_abrams_hc', 2002, false));
 console.log('wreckBakePrefetch: planned bakes at once in plan order, one at a time, taken once, misses on demand, failures where taken and stopping the rest, disposal releases; the plan by tier and terrain resolves every recorded key PASS');

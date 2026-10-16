@@ -2,7 +2,7 @@
 
 ## Included
 
-- Functional independently aimed 30 mm roof cannons for Griffin 50 mm, Leopard 2A5M (legacy ID `leo2a4m_x`) and Leopard 2A5. Existing primary weapons retained.
+- Functional independently aimed 30 mm roof cannons for Griffin 50 mm, Leopard 2A5M (legacy ID `leo2a5m`) and Leopard 2A5. Existing primary weapons retained.
 - Distinct Chinese chevron ERA and corrected Russian chevron attachment/carrier clearance.
 - Ukrainian roof cages; Oplot-M equipment/protection and 10% enlarged hull.
 - Rear fuel cans, recovery logs and stowage for Type 96B, Feng, Qilin, Kunlun, Yun, C2 Ariete, Leclerc XLR, Abrams HC and Bulat-M.

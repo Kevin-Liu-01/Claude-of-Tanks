@@ -16,7 +16,7 @@ function load(source, ports) {
   }).outputText;
   return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS', 'createGunshipBattleVisual',
     'rosterVisualAttempts', `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
-    ports.sync, ports.steps, ports.tier, new Set(['m1a2', 't90m']), createGunshipBattleVisual, rosterVisualAttempts);
+    ports.sync, ports.steps, ports.tier, new Set(['m1a1_abrams_hc', 't90am']), createGunshipBattleVisual, rosterVisualAttempts);
 }
 function fixture({ mobile = false, player = false, pooled = false, fail = null } = {}) {
   const scene = new THREE.Scene(), trace = [], created = [], ground = () => 0;
@@ -97,7 +97,7 @@ for (const mutate of [
   f => { f.game.battleCount++; },
   f => { f.game._engineCtx = { scene: new THREE.Scene() }; },
   f => { f.game.tanks.splice(1, 1); },
-  f => { f.ent.specId = 't90'; },
+  f => { f.ent.specId = 't90_1992'; },
   f => { f.ent._camoSeed++; },
   f => { f.ent.state = {}; },
   f => { f.ent.isPlayer = !f.ent.isPlayer; },

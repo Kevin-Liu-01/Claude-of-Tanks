@@ -4,7 +4,7 @@ import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The replayed pre-repair hull (literal legacy section rows) and the comparisons against it (untouched meshes,
-// forward triangles, lower keel, track contact) are retired: whole-tank change detection of merkava4_x is the
+// forward triangles, lower keel, track contact) are retired: whole-tank change detection of merkava4 is the
 // fleet geometry ledger's. The held-out source rays, folded air and seating proofs stay.
 
 // Held-out canonical-source rays, not evaluated from builder stations. The
@@ -58,7 +58,7 @@ function sourceAndAir(tank,quality) {
 }
 
 for(const quality of['high','low']){
-  const tank=createTank('merkava4_x',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
+  const tank=createTank('merkava4',null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
   try{
     tank.root.updateMatrixWorld(true);
     sourceAndAir(tank,quality);

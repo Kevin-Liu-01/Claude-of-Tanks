@@ -23,7 +23,7 @@ for (const id of ALL_TANK_IDS) {
   assert.equal(baseCamoOf(s, false), p.still);
   assert.ok(s.hullTraverseDegS > 0 && s.turretTraverseDegS >= 0);
 }
-const scout = TANK_SPECS.m551_sheridan, assault = TANK_SPECS.t90m;
+const scout = TANK_SPECS.m551_sheridan, assault = TANK_SPECS.t90am;
 assert.equal(baseCamoOf(scout, true), baseCamoOf(scout, false), 'scout retains concealment while relocating');
 assert.ok(baseCamoOf(assault, true) < baseCamoOf(assault, false));
 assert.ok(spotRangeM(viewRangeOf(scout), .3) > spotRangeM(viewRangeOf(assault), .3), 'same concealed target is detected earlier by a scout');
@@ -38,7 +38,7 @@ assert.ok(Math.abs((equipped - 1) / (stock - 1) - .8) < 1e-10, 'stabilizer reduc
 // its clone has a different aim time. Include a known outlier as a negative control.
 const rows = {};
 for (const [id,pen] of [['a',100],['b',200],['c',300],['d',400],['bad',2000]]) {
-  const s=structuredClone(TANK_SPECS.m1a2); s.id=id; s.gun.shells[0].pen100Mm=pen; rows[id]=s;
+  const s=structuredClone(TANK_SPECS.m1a1_abrams_hc); s.id=id; s.gun.shells[0].pen100Mm=pen; rows[id]=s;
 }
 rows.copy=structuredClone(rows.a); rows.copy.id='copy'; rows.copy.balancePeerOf='a';
 const penetration = () => auditFleetBalance(Object.keys(rows),rows,()=>10).filter(x=>x.metric==='penetration');
@@ -64,8 +64,8 @@ console.log('tacticalRoles: 220 profiles, scouting/handling tradeoffs, equipment
 // Same battlefield witness, rather than only a range formula comparison.
 const entity=(id,spec,z)=>({id,team:id==='target'?'enemy':'player',spec,state:{pos:{x:0,y:0,z},speed:0},combat:{destroyed:false}});
 const scoutEntity=entity('scout',TANK_SPECS.m551_sheridan,0);
-const assaultEntity=entity('assault',TANK_SPECS.t90m,0);
-const targetEntity=entity('target',TANK_SPECS.m1a2,360);
+const assaultEntity=entity('assault',TANK_SPECS.t90am,0);
+const targetEntity=entity('target',TANK_SPECS.m1a1_abrams_hc,360);
 const spotting=createSpottingSystem({getTanks:()=>[scoutEntity,assaultEntity,targetEntity],rng:()=>.5});
 assert.equal(spotting.testSpot(scoutEntity,targetEntity,1),true,'scout detects concealed vehicle at 360m');
 assert.equal(spotting.testSpot(assaultEntity,targetEntity,1),false,'assault optics cannot resolve same target');

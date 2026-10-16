@@ -3,7 +3,7 @@
 // Examples:
 //   node tools/fleet-geometry-audit.mjs
 //   node tools/fleet-geometry-audit.mjs --modes=gallery,battle-bot-far
-//   node tools/fleet-geometry-audit.mjs --ids=m1a2,t90m --out=/tmp/audit.json
+//   node tools/fleet-geometry-audit.mjs --ids=m1a1_abrams_hc,t90am --out=/tmp/audit.json
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';

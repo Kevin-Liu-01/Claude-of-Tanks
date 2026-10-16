@@ -1,12 +1,12 @@
 import { buildObject148Prototype } from './profiles/object148Prototype.ts';
 // src/vehicles/modern2.ts — HD procedural builders + specs for the modern
 // roster expansion, wave 2 (docs/history/research/modern-roster.md):
-//   leo2a4  Leopard 2A4        (§9,  priority 3)
-//   t80u    T-80U              (§15, priority 3)
-//   leclerc Leclerc S2         (§20, priority 3)
-//   type99a Type 99A / ZTZ-99A (§22, priority 3)
+//   leo2a2  Leopard 2A4        (§9,  priority 3)
+//   t80uk    T-80U              (§15, priority 3)
+//   leclerc_s2 Leclerc S2         (§20, priority 3)
+//   ztz99_longwei Type 99A / ZTZ-99A (§22, priority 3)
 //   leo1a5  Leopard 1A5        (§10, priority 4)
-//   t14     T-14 Armata        (§16, priority 4)
+//   object148_proto     T-14 Armata        (§16, priority 4)
 //
 // Registration pattern (established by modern1.ts): tankFactory.ts passes
 // MODERN2_BUILDERS through the checked factory-configuration gate; builders
@@ -172,7 +172,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 const MODERN_TR = { hard: 0.7, medium: 0.8, soft: 1.5 };
 
 // ---------------------------------------------------------------------------
-// Parametric modern-MBT armor layout (t90m template, tunable per vehicle).
+// Parametric modern-MBT armor layout (t90am template, tunable per vehicle).
 // Geometry follows the visual builders below; values are roster RHAe.
 // ---------------------------------------------------------------------------
 function mbtArmor(o: MbtArmorOptions): ArmorEnvelope {
@@ -285,7 +285,7 @@ function liftHullAssemblyAboveTracks(armor: ArmorEnvelope, liftM: number): Armor
 
 const T80U_HULL_LIFT_M = 0.18;
 
-// ERA behavior packs (t90m precedent: keReduction fraction + flat CE add).
+// ERA behavior packs (t90am precedent: keReduction fraction + flat CE add).
 const KONTAKT5 = { keReduction: 0.20, ceFlatMm: 400 };
 const MALACHIT = { keReduction: 0.25, ceFlatMm: 450 };
 
@@ -328,14 +328,14 @@ function mbt70Armor() {
 // ---------------------------------------------------------------------------
 // Specs (the generator's source; the registry holds modern2Specs.generated.ts)
 // ---------------------------------------------------------------------------
-// type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
-// custom type99a based on this model" — the Type 99A2 print drop VOIDS the
+// ztz99_longwei RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
+// custom ztz99_longwei based on this model" — the Type 99A2 print drop VOIDS the
 // 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
 // oracle (community-candidates quarantine, registered in the three harness
 // maps + vertex REG); the playable stays procedural (buildType99A below).
 export const MODERN2_SPECS: TankSpecRegistry = {
-  leo2a4: {
-    id: 'leo2a4', name: 'Leopard 2A2', nation: 'Germany', era: 'modern', role: 'mbt',
+  leo2a2: {
+    id: 'leo2a2', name: 'Leopard 2A2', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2200,
     enginePowerHp: 1500, weightTons: 55.15, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -373,8 +373,8 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     },
   },
 
-  t80u: {
-    id: 't80u', name: 'T-80UK', nation: 'USSR/Russia', era: 'modern', role: 'mbt',
+  t80uk: {
+    id: 't80uk', name: 'T-80UK', nation: 'USSR/Russia', era: 'modern', role: 'mbt',
     hp: 1900,
     enginePowerHp: 1250, weightTons: 46, topSpeedKmh: 70, reverseSpeedKmh: 11,
     hullTraverseDegS: 43,
@@ -421,8 +421,8 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     },
   },
 
-  leclerc: {
-    id: 'leclerc', name: 'Leclerc S2', nation: 'France', era: 'modern', role: 'mbt',
+  leclerc_s2: {
+    id: 'leclerc_s2', name: 'Leclerc S2', nation: 'France', era: 'modern', role: 'mbt',
     hp: 2350,
     enginePowerHp: 1500, weightTons: 54.5, topSpeedKmh: 71, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,
@@ -516,8 +516,8 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     },
   },
 
-  type99a: {
-    id: 'type99a', name: 'ZTZ-99 Longwei', nation: 'China', era: 'modern', role: 'mbt',
+  ztz99_longwei: {
+    id: 'ztz99_longwei', name: 'ZTZ-99 Longwei', nation: 'China', era: 'modern', role: 'mbt',
     description: 'Original Chinese game concept: the retained ZTZ-99A-derived Longwei design.',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 12,
@@ -555,7 +555,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     // Type 99-specific segmented combat envelope. The rendered vehicle is a
     // measured multi-course hull/welded-arrow turret; the old generic MBT
     // slabs were visibly shallow and no longer followed this build.
-    armor: createType99Armor('type99a'),
+    armor: createType99Armor('ztz99_longwei'),
     visual: {
       // PLA woodland digital splinter (tight micro-square scale)
       scheme: 'digital', base: '#4d573f', weather: '#57614a',
@@ -602,8 +602,8 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     },
   },
 
-  t14: {
-    id: 't14', name: 'Object 148 Proto', nation: 'Russia', era: 'modern', role: 'mbt',
+  object148_proto: {
+    id: 'object148_proto', name: 'Object 148 Proto', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 75, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,
@@ -677,7 +677,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
 // AMX 56 is the heavier ERA/gun-plant branch requested from the second
 // Leclerc oracle.
 {
-  const base = MODERN2_SPECS.leclerc;
+  const base = MODERN2_SPECS.leclerc_s2;
   const cloneVec3 = (point: Vec3Tuple): MutableVec3Tuple => [point[0], point[1], point[2]];
   const cloneArmor = (armor: ArmorEnvelope): ArmorEnvelope => ({
     ...armor,
@@ -702,9 +702,9 @@ export const MODERN2_SPECS: TankSpecRegistry = {
   const passive = { keReduction: 0.08, ceFlatMm: 180 };
   const galixEra = { keReduction: 0.18, ceFlatMm: 330 };
   const xlrArmor = cloneArmor(base.armor);
-  MODERN2_SPECS.leclerc_xlr = {
+  MODERN2_SPECS.leclerc_sxxi = {
     ...base,
-    id: 'leclerc_xlr', name: 'Leclerc SXXI', hp: 2650, // owner 2026-09-16: swapped with the leclerc_x study
+    id: 'leclerc_sxxi', name: 'Leclerc SXXI', hp: 2650, // owner 2026-09-16: swapped with the leclerc_xlr study
     weightTons: 57.4, topSpeedKmh: 70,
     gun: {
       ...base.gun,
@@ -742,9 +742,9 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     visual: { ...base.visual, number: '104' },
   };
   const amx56Armor = cloneArmor(base.armor);
-  MODERN2_SPECS.amx56 = {
+  MODERN2_SPECS.leclerc_s1 = {
     ...base,
-    id: 'amx56', name: 'Leclerc S1', hp: 2750, // owner 2026-09-16: swapped with the leclerc_classic_x study
+    id: 'leclerc_s1', name: 'Leclerc S1', hp: 2750, // owner 2026-09-16: swapped with the amx56 study
     enginePowerHp: 1550, weightTons: 58.8, topSpeedKmh: 68,
     gun: {
       ...base.gun,
@@ -851,7 +851,7 @@ function muzzleBore99(
 
 // ---------------------------------------------------------------------------
 // Type 99A / ZTZ-99A — §5.38 PRINT-LOFT REBUILD (owner priority wave
-// 2026-08-08: "fully model a custom type99a based on this model"). The
+// 2026-08-08: "fully model a custom ztz99_longwei based on this model"). The
 // Type 99A2 print (community-candidates, LOCAL-ONLY measurement/render
 // oracle) supplies dimensions and silhouettes only. Every playable triangle
 // below is repository-authored from KIT primitives/lofts; no print vertex,
@@ -1040,7 +1040,7 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
   {
     // Round 3 (2026-10-07, critics: "a stiff bent tube hanging across the stowage with neither end secured"): the
     // loop lies flat in its tray (top 1.47) instead of arching 14 cm over it. The -4.24 m rear extremum is unchanged.
-    // Round 4 (2026-10-07, wave 215: "the tow cable passes through a strap band on the stowage drum"): the type99a's
+    // Round 4 (2026-10-07, wave 215: "the tow cable passes through a strap band on the stowage drum"): the ztz99_longwei's
     // rear fuel drums (china.ts addRearFuelDrums: axis y 1.56, z -3.68, r 0.25) fill the tray's forward half, so the
     // loop runs in the strip behind them, its ends turned outboard along the tray's rear lip so each eye lies on the
     // tray (x <= 0.86) 5 cm clear of the drum skins; the eyes and the run are clipped down.
@@ -1151,7 +1151,7 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
   // ---- GLACIS ERA — the DISTINCTIVE ARROW/CHEVRON FIELD on the 16.3-deg
   // plane (owner identity headline; §5.29 chevron-tip kinship: the two
   // half-fields angle toward a forward center tip). Dark mounting bed
-  // first (t14 r5 lesson — tile gaps read as recessed seams). -------------
+  // first (object148_proto r5 lesson — tile gaps read as recessed seams). -------------
   const zOf = (y: number) => 2.02 + (1.50 - y) / 0.284 + 0.045;                // plane + 4.5 cm proud
   for (const s of [-1, 1]) {
     P.add('hullDark', box(1.42, 0.64, 0.02), s * 0.76, 1.33, zOf(1.33) - 0.035, -73.7 * D2R, 0, 0);
@@ -1936,5 +1936,5 @@ function buildMBT70(P: Modern2BuilderPort) {
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const MODERN2_BUILDERS = {
   mbt70: buildMBT70,
-  t14: buildObject148Prototype,
+  object148_proto: buildObject148Prototype,
 };

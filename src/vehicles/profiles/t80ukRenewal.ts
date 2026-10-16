@@ -16,5 +16,5 @@ export function buildT80UK(P:TankBuilderPort):void {
   for(let i=0;i<6;i++)P.addEquipment('hullDark',box(.39,.012,.024),-1.15,1.823,-2.63+i*.07);
   attachedCage(P,'turret',[0,.22,-1.98],1.72,.38,.36);
   strappedPack(P,'turret',[0,.32,-1.77],[.90,.18,.29]);
-  P.hullG.userData.familyRebuild={donor:'t80u_x',revision:1,variant:'command'};
+  P.hullG.userData.familyRebuild={donor:'t80u',revision:1,variant:'command'};
 }

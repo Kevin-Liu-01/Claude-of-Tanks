@@ -23,5 +23,5 @@ export function buildT62MV1Modern(P:TankBuilderPort):void {
   attachedCage(P,'turret',[0,.23,-2.14],1.86,.42,.40);
   for(const side of [-1,1])P.addEquipment('turretDetail',beamBetween([side*.6696,.083,-1.74],[side*.30,.25,-1.62],.028));
   strappedPack(P,'turret',[0,.34,-1.92],[.96,.22,.28]);
-  P.hullG.userData.familyRebuild={donor:'t62mv1',turret:'t72b_1987_x',revision:2,features:['kontakt-cheeks','glacis-era','side-era','thermal','rear-cage']};
+  P.hullG.userData.familyRebuild={donor:'t62_1975',turret:'t72b_1987',revision:2,features:['kontakt-cheeks','glacis-era','side-era','thermal','rear-cage']};
 }

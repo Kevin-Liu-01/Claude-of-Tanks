@@ -35,7 +35,7 @@ function mk4Variant(
   number: string,
   barak: boolean,
 ): FleetTankSpec {
-  const spec = cloneFleetVariant(registries.tankSpecs, id, 'merkava4_x', {
+  const spec = cloneFleetVariant(registries.tankSpecs, id, 'merkava4', {
     name,
     nation: 'Israel',
     era: 'modern',
@@ -96,7 +96,7 @@ function mk4Variant(
 }
 
 function namerSpec(): FleetTankSpec {
-  const spec = cloneFleetVariant(registries.tankSpecs, 'namer_ifv', 'merkava4_x', {
+  const spec = cloneFleetVariant(registries.tankSpecs, 'namer_ifv', 'merkava4', {
     name: 'Namer IFV',
     nation: 'Israel',
     era: 'modern',

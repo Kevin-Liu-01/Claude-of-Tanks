@@ -86,7 +86,7 @@ function capture(helper, ...args) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   const upper = capture(addChieftain10XUpperFittings, [0, 0, 0]);
   const bow = capture(addChieftain10XBowLights);

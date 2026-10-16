@@ -12,11 +12,11 @@ const EXPECTED = Object.freeze({
   bmp2:               { hp: 1050, speed: 65, reverse: 12, traverse: 53, damage: 42, pen: [74, 66, 58], reload: 0.28, sound: '2a42', missile: [430, 'konkurs-launch'] },
   spz_puma:           { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
   marder2: { hp:2750,speed:60,reverse:27,traverse:44.5,damage:135,pen:[185,170,155],reload:.55,sound:'xm913-50',missile:null },
-  spz_puma_s1:        { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
-  type89_light_tiger: { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
+  spz_wotan:        { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
+  raiju_ifv: { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   cv90:               { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
-  cv90_mkiv:          { hp: 2825, speed: 74, reverse: 42, traverse: 55.1, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: [760, 'spike-launch'] },
-  type89:             { hp: 1450, speed: 70, reverse: 16, traverse: 48.8, damage: 82, pen: [112, 100, 88], reload: 0.52, sound: 'kde-35', missile: [500, 'jyu-mat-launch'] },
+  cv90_mk4_concept:          { hp: 2825, speed: 74, reverse: 42, traverse: 55.1, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: [760, 'spike-launch'] },
+  hayate_ifv:             { hp: 1450, speed: 70, reverse: 16, traverse: 48.8, damage: 82, pen: [112, 100, 88], reload: 0.52, sound: 'kde-35', missile: [500, 'jyu-mat-launch'] },
   fv510:              { hp: 1400, speed: 75, reverse: 20, traverse: 47.7, damage: 90, pen: [96, 86, 76], reload: 0.75, sound: 'rarden-l21a1', missile: null },
   fv510_milan:        { hp: 1750, speed: 68, reverse: 20, traverse: 45.6, damage: 88, pen: [120, 108, 96], reload: 0.60, sound: 'rarden-l21a1', missile: [520, 'milan-launch'] },
   bmp3_rok:           { hp: 1700, speed: 70, reverse: 20, traverse: 50.9, damage: 60, pen: [165, 150, 135], reload: 0.45, sound: '2a72', missile: [500, 'arkan-launch'] },
@@ -31,25 +31,25 @@ const EXPECTED = Object.freeze({
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 30.1, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
   // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
   type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 57.2, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },
-  kurganets25_x:      { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
+  kurganets25:      { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
   // 2026-10-13: the Tier X Warrior TES(H) envelope (FLEET_BALANCE_REVISION.warrior_tes_h): TES(H) armour, hotter L14A2.
   warrior_tes_h:      { hp: 2300, speed: 68, reverse: 20, traverse: 45.6, damage: 88, pen: [150, 135, 120], reload: 0.60, sound: 'rarden-l21a1', missile: [520, 'milan-launch'] },
-  griffin50_x:        { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: null },
-  kf41_lynx_x:        { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: null },
-  k21_x:             { hp: 2425, speed: 70, reverse: 40, traverse: 54.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: [500, 'jyu-mat-launch'] },
-  ajax_x:            { hp: 2425, speed: 70, reverse: 40, traverse: 54.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
-  cv90_mkiv_x:       { hp: 2825, speed: 74, reverse: 42, traverse: 55.1, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
+  griffin50mm:        { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: null },
+  kf41_lynx:        { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: null },
+  k21:             { hp: 2425, speed: 70, reverse: 40, traverse: 54.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: [500, 'jyu-mat-launch'] },
+  ajax:            { hp: 2425, speed: 70, reverse: 40, traverse: 54.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
+  cv90_mk4:       { hp: 2825, speed: 74, reverse: 42, traverse: 55.1, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   // 2026-09-19 owner: missile-primary Object concept trades protection for handling.
-  object695_x:      { hp: 2150, speed: 84, reverse: 36, traverse: 63.6, damage: 320, pen: [880, 880, 880], reload: 14, sound: 'konkurs-launch', missile: [320, 'konkurs-launch'] },
+  object695:      { hp: 2150, speed: 84, reverse: 36, traverse: 63.6, damage: 320, pen: [880, 880, 880], reload: 14, sound: 'konkurs-launch', missile: [320, 'konkurs-launch'] },
   griffin_viper:    { hp: 2050, speed: 68, reverse: 30, traverse: 48.8, damage: 140, pen: [650, 650, 650], reload: 1, sound: 'konkurs-launch', missile: [140, 'konkurs-launch'] },
   namer_ifv:           { hp: 2650, speed: 54, reverse: 20, traverse: 32, damage: 70, pen: [180, 164, 148], reload: 0.35, sound: 'mk30-2', missile: null },
-  ares_apc_x:          { hp: 1800, speed: 70, reverse: 30, traverse: 50.4, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
+  ares_apc:          { hp: 1800, speed: 70, reverse: 30, traverse: 50.4, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
   // 2026-09-25 IFV identity batch: the three X replicas inherit their kept originals' combat tuning
   // (docs/references/batches/ifv-replicas-20260925.md); the CV9040C carries no missile rack. The three
   // photographic additions are authored in europePhotoIfvSpecs.ts (docs/references/batches/europe-ifvs-20260925.md).
-  spz_puma_s1_x:       { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
-  cv90_x:              { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
-  type89_x:            { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
+  puma_s1:       { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
+  cv9040c:              { hp: 2425, speed: 70, reverse: 40, traverse: 51.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
+  type89:            { hp: 2700, speed: 78, reverse: 32, traverse: 57.2, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
   dardo:               { hp: 2150, speed: 70, reverse: 25, traverse: 48.8, damage: 68, pen: [185, 167, 149], reload: 0.42, sound: 'm242-bushmaster', missile: null },
   lrmv_lynx:           { hp: 2900, speed: 70, reverse: 30, traverse: 44.8, damage: 90, pen: [225, 207, 189], reload: 0.38, sound: 'kde-35', missile: null },
   borsuk:              { hp: 2650, speed: 65, reverse: 30, traverse: 51.5, damage: 84, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [650, 'spike-launch'] },
@@ -131,9 +131,9 @@ for (const id of ['bmpt_terminator2', 'bmpt_t90']) {
     `${id}: authentic twin-barrel fire axes`);
 }
 
-const abrams = TANK_SPECS.m1a2;
+const abrams = TANK_SPECS.m1a1_abrams_hc;
 const abramsBefore = JSON.stringify({ hp: abrams.hp, gun: abrams.gun, armor: abrams.armor });
-getSpec('m1a2');
+getSpec('m1a1_abrams_hc');
 assert.equal(JSON.stringify({ hp: abrams.hp, gun: abrams.gun, armor: abrams.armor }), abramsBefore,
   'IFV balancing never leaks into an MBT');
 

@@ -6,7 +6,7 @@ import {createTank} from '../tankFactory.ts';
 const close=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,
   `${label}: ${a}, expected ${b}`);
 for(const quality of ['high','low']) {
-  const tank=createTank('amx40_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('amx40',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try {
     tank.root.updateMatrixWorld(true);
     const ray=(p,d,far=12)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObject(tank.root,true)[0];

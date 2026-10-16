@@ -5,7 +5,7 @@
 // the primary-body and launcher hulls of tools/interior-fill-body-policy.mjs against their authored boundary only,
 // leaving the air of external optics, cages, cargo and launchers open on purpose, and keeps the Barak's measured
 // rear bay as air (tools/barak-rear-bay-fill-policy.mjs). Measuring those hulls against every body mesh read that
-// deliberate air as leaks (t72b3m 145.6 L, merkava4_trophy 276.6 L) and hid real drift among them. The check now
+// deliberate air as leaks (t72b3m_2022 145.6 L, merkava4_trophy 276.6 L) and hid real drift among them. The check now
 // voxelises the same boundary the generator filled plus the shipped fill solids, and reports retained air apart,
 // as it reports track-lane air; tank-watertight-check --full-body restores the all-mesh measurement.
 // Declared physical bores (2026-10-03, tools/physical-bore-air.mjs) are open air by contract. Water in a bore column

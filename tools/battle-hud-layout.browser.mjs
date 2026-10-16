@@ -222,7 +222,8 @@ try {
           await button.click();
         }
         const events=await page.evaluate(()=>window.__controlEvents);
-        if(events.join(',')!=='ui:specialAction,ui:selfRight,ui:smoke,ui:lightsToggle,ui:roofGun')
+        // Mars is a jump mode: the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
+        if(events.join(',')!=='ui:selfRight,ui:specialAction,ui:smoke,ui:lightsToggle,ui:roofGun')
           errors.push(`${name}: vehicle control activation mismatch: ${events}`);
         await page.evaluate(()=>document.querySelector('.cot-vehicle-controls').scrollLeft=0);
       }

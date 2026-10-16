@@ -119,7 +119,7 @@ function sourceWrapAndFolds(tank,quality) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('type90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('type90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try {tank.root.updateMatrixWorld(true);basicChecks(tank,quality);physicalOpenings(tank,quality);gunOwnership(tank,quality);sourceWrapAndFolds(tank,quality);sourceFrameSurfaces(tank,quality);}
   finally {tank.dispose();}
 }

@@ -4,8 +4,8 @@
 // (measure -> loft to measured lines -> close with real geometry -> prove in
 // pixels) from the two LOCAL-ONLY §5.248 batch-B prints:
 //   ariete_c1_arrafi.glb  (CC-BY-4.0 M. M. Arrafi; semantic material split
-//     Hull/Turret/Cannon/SideSkirts/Applique/Glass/Gear) — governs ariete_c1
-//     and serves as the ariete_c2 influence print.
+//     Hull/Turret/Cannon/SideSkirts/Applique/Glass/Gear) — governs c1_ariete_proto_serie1
+//     and serves as the c2_ariete_proto influence print.
 //   carro45t_hlebov.glb   (CC-BY-4.0 D. Hlebov; paper vehicle — the print IS
 //     the primary source; orientation heuristic misfire adjudicated: gun end
 //     carries the glacis+casemate, sprocket at the stern).
@@ -15,7 +15,7 @@
 // Object_2/6, so raw-extract splits are cited only where the gate agrees).
 // No source object, topology, texture, or converted vertex payload ships.
 //
-// FRAME LAW (packet-documented): every ariete_c1/_c2 coordinate below is the
+// FRAME LAW (packet-documented): every c1_ariete_proto_serie1/_c2 coordinate below is the
 // arrafi print's measured line with z normalized x1.08803 (published hull
 // 7.59 / print hull-mask 6.976 — the print is uniformly z-compressed; y/x
 // carried at width-anchored print scale, which reads height/width right).
@@ -25,7 +25,7 @@
 // Carro's chassis retains its source dimensions (6.98/10.60/3.43 m).
 // Its turret is the owner-approved continuous-roof redesign of 2026-09-29;
 // the dated concept packet governs that shape, not the historical print gate.
-// The base `ariete` (Preserie) stays its own graduated tank in misc.ts —
+// The base `c1_ariete_preserie` (Preserie) stays its own graduated tank in misc.ts —
 // UNTOUCHED donor, byte-held.
 
 import * as THREE from 'three';
@@ -420,7 +420,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const buildArieteMkRunningGearStage1 = (): void => {
     // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): r 0.38 on the
     // 0.71 gate-ref pitch put 2R/pitch at 1.07 — the seven tires overlapped by 5 cm. The Ariete's
-    // wheels are the ~650-710 mm Leopard-1 class (ariete_c1_x source r 0.29 x 1.232 rig), so the
+    // wheels are the ~650-710 mm Leopard-1 class (c1_ariete source r 0.29 x 1.232 rig), so the
     // seven wheels shrink to r 0.325 (2R/pitch 0.92, a 6 cm gap); stations, end wheels and the three
     // return rollers the real Ariete carries are unchanged.
     buildRunningGear(P, {
@@ -629,7 +629,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       P.add('turretDetail', box(w * 0.8, 0.016, 0.026), px, 0.888, L(pz + dd * 0.38));
     }
     P.addEquipment('turret', box(0.30, 0.145, 0.26), 0.10, 0.93, L(0.30));                // gunner's aux sight hood (front_whole 2.31 @ x +0.14)
-    // crosswind mast folded low on the rear roof (k2 height-law: no p95 spike)
+    // crosswind mast folded low on the rear roof (xk2_black_panther height-law: no p95 spike)
     P.addEquipment('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
     P.add('turretDetail', cylZ(0.02, 0.55, 8), -0.30, 0.915, L(-1.38), 0.10, 0, 0);
     // s5322-B5 wind-sensor head at the folded mast tip — T-crossbar + vane
@@ -1029,7 +1029,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         for (let k = 0; k < 14; k++) {                                             // fender plane + hem + apron in 0.46 m bays (edge-on prism law:
           const bz = -3.345 + 0.4596 * k + 0.2298;                                 // every 0.50 station slab contains a real end face); the run ENDS at
           const fy = k >= 13 ? 1.40 : k >= 12 ? 1.475                              // +3.09 like the print's fender line (plan front 3.005-3.093), TAPERING
-            : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (k2 sweep law)
+            : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (xk2_black_panther sweep law)
           P.add('hull', box(0.27, 0.032, 0.4476), s * 1.545, fy, bz);              // toward the bow (gate tops 1.38-1.42 over the nose)
           P.add('hull', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
           if (bz > -3.16 && bz < 2.88) P.add('hull', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
@@ -1234,8 +1234,8 @@ function buildCarro45T(P: ItalyBuilderPort): void {
 }
 
 export const ITALY_PROFILES = {
-  ariete: { build: buildAriete },
-  ariete_c1: { build: buildArieteC1 },
-  ariete_c2: { build: buildArieteC2 },
+  c1_ariete_preserie: { build: buildAriete },
+  c1_ariete_proto_serie1: { build: buildArieteC1 },
+  c2_ariete_proto: { build: buildArieteC2 },
   carro45t: { build: buildCarro45T },
 } satisfies VehicleProfileRecord;

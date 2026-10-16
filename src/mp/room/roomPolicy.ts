@@ -535,7 +535,7 @@ function botSpecFor(plan: RoomStartPlan['seats'], team: 'alpha' | 'bravo', fallb
  * spectators seated as spectators. The room moves to `starting` and the round
  * advances; the caller records the match once the host accepted it.
  */
-export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1a2' }: { seed: number; now: number; botSpecFallback?: string }): RoomStartPlan {
+export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1a1_abrams_hc' }: { seed: number; now: number; botSpecFallback?: string }): RoomStartPlan {
   assertStartable(room);
   if (room.phase !== 'waiting') throw new RoomError('match_running');
   const seats: RoomStartPlan['seats'] = [];

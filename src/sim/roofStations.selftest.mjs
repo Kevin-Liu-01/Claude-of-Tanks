@@ -23,7 +23,7 @@ for (const gun of [cannon, mg]) assert.ok(gun.yawArc && gun.yawArc[0] < 0 && gun
 assert.ok(cannon.depressionByYaw?.length, 'the 30 mm carries the turret front depression table');
 // One-station vehicles have no extra station state and no arc. (VH.14: the Abrams loaders' M240s now work, so the
 // controls are vehicles with one real roof weapon.)
-for (const id of ['abramsx', 'k2_x', 't90m']) {
+for (const id of ['abramsx', 'k2_black_panther', 't90am']) {
   assert.equal(AUXILIARY_INVENTORY[id].guns.length, 1, `${id}: one station`);
   assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations, undefined, `${id}: no extra station state`);
   assert.equal(AUXILIARY_INVENTORY[id].guns[0].yawArc, undefined, `${id}: full traverse`);
@@ -128,7 +128,7 @@ function run({ shooter, context }, seconds = 12) {
 //    and no MBT is engaged head-on.
 {
   const duel = (targetId, distanceM, targetYaw = 0) => {
-    const shooter = { id: 'k1', team: 'blue', spec: TANK_SPECS.k1a1, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
+    const shooter = { id: 'k1', team: 'blue', spec: TANK_SPECS.k1e1, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
     const target = { id: 'enemy', team: 'red', spec: TANK_SPECS[targetId], state: { pos: { x: 0, y: 0, z: distanceM }, yaw: targetYaw, turretYaw: 0 }, combat: {} };
     const context = { entities: [shooter, target], visible: () => true, clear: () => true }, shots = [0, 0];
     for (let i = 0; i < 8 * 60; i++) {
@@ -137,12 +137,12 @@ function run({ shooter, context }, seconds = 12) {
     }
     return shots;
   };
-  const k1 = AUXILIARY_INVENTORY.k1a1.guns;
+  const k1 = AUXILIARY_INVENTORY.k1e1.guns;
   assert.deepEqual(k1.map((g) => g.caliberMm), [12.7, 7.62], 'the K1 carries its K6 and M60 stations, heaviest first');
-  assert.ok(thinnestVerticalArmourMm(TANK_SPECS.bmp2) <= 16 && thinnestVerticalArmourMm(TANK_SPECS.m1a2) > 26, 'armour reads');
+  assert.ok(thinnestVerticalArmourMm(TANK_SPECS.bmp2) <= 16 && thinnestVerticalArmourMm(TANK_SPECS.m1a1_abrams_hc) > 26, 'armour reads');
   const [k6, m60] = duel('bmp2', 100);
   assert.ok(k6 > 0 && m60 === 0, `vs a BMP-2 at 100 m the K6 fires (${k6}), the M60 holds (${m60})`);
-  assert.deepEqual(duel('m1a2', 100), [0, 0], 'neither gun wastes fire (and its flash) on an Abrams');
+  assert.deepEqual(duel('m1a1_abrams_hc', 100), [0, 0], 'neither gun wastes fire (and its flash) on an Abrams');
   // aspect: the rule reads the plates turned towards the station, hull plates by the hull's yaw, turret plates by the
   // turret's too; a target that turns its front to the K6 is engaged only if that front is defeatable
   const heavy = auxiliaryWeaponProfile(12.7), pen100 = penAtDistanceMm(heavy.shell, 100), at = (spec, yaw, turretYaw = 0) =>
@@ -160,7 +160,7 @@ function run({ shooter, context }, seconds = 12) {
 //    T-62MV's DShK stands beside its drone stand: its stand clears the gun's whole sweep docked and the gun at rest
 //    launching (missionAttachmentMotionClear).
 {
-  const shooter = { id: 't62', team: 'blue', spec: TANK_SPECS.t62mv1, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
+  const shooter = { id: 't62', team: 'blue', spec: TANK_SPECS.t62_1975, state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
   const target = { id: 'apc', team: 'red', spec: { id: 'target', dims: { heightM: 2.5 } },
     state: { pos: { x: 45, y: 0, z: 60 }, yaw: 0, turretYaw: 0 }, combat: {} };
   const context = { entities: [shooter, target], visible: () => true, clear: () => true };
@@ -180,7 +180,7 @@ function run({ shooter, context }, seconds = 12) {
   assert.ok(after > 0, 'fires again once the launch is over');
   const { missionAttachmentMotionClear } = await import('./missionAttachment.ts');
   const { MISSION_ATTACHMENT_SEATS } = await import('./missionAttachmentSeats.generated.ts');
-  for (const id of ['t62mv1', 'type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
+  for (const id of ['t62_1975', 'type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
     `${id}: the drone stand clears its DShK (whole sweep docked, at rest launching)`);
 }
 console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt; the launch interlock parks every station while its drone launches');

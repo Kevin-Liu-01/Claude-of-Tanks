@@ -34,7 +34,7 @@ const leafWitnesses=[
 ];
 for(const quality of ['high','low']){
  const stock=[],hull=[],beforeRows=[];
- registerProfiledBuilders({m1a2_sepv2_x:P=>buildAbramsX(new Proxy(P,{get(target,key){
+ registerProfiledBuilders({m1a2_abrams_sepv2:P=>buildAbramsX(new Proxy(P,{get(target,key){
   if(key==='addEquipment'||key==='add')return(bucket,g,...args)=>{
    const list=g.userData.abramsSourceRearGrille?stock:key==='add'&&bucket==='hull'?hull:null;
    if(g.userData.abramsSourceRearGrille)beforeRows.push({index:beforeRows.length,bucket,tag:g.userData.abramsSourceRearGrille});
@@ -45,7 +45,7 @@ for(const quality of ['high','low']){
  }}))});
  let tank;
  try{
-  tank=createTank('m1a2_sepv2_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
+  tank=createTank('m1a2_abrams_sepv2',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   tank.root.updateMatrixWorld(true);const physical=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!/marking|shadow/i.test(m.name))physical.push(m);});
   const nonLeaves=beforeRows.filter(p=>p.tag!=='hinge-leaf');
   // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of these 127 pre-edit primitives is gone; the
@@ -107,6 +107,6 @@ for(const quality of ['high','low']){
   }
   for(const m of stock){m.geometry.computeBoundingBox();const b=m.geometry.boundingBox;
    assert.ok(b.min.z> -4.011&&b.max.z< -3.60&&b.min.y>.94&&b.max.y<1.63,'grille-only source bounded extent');}
- }finally{tank?.dispose();for(const m of [...stock,...hull])m.geometry.dispose();registerProfiledBuilders({m1a2_sepv2_x:buildAbramsX});}
+ }finally{tank?.dispose();for(const m of [...stock,...hull])m.geometry.dispose();registerProfiledBuilders({m1a2_abrams_sepv2:buildAbramsX});}
 }
 material.dispose();console.log('Abrams rear grilles PASS:high/low6poses,8closed asymmetric source leaves,0.51mm wall laps,127 non-leaf primitives,3unequal screens/15blades/source held-outs and real air');
