@@ -437,6 +437,10 @@ const fort: RegionalBuilder = (ctx) => {
   }
   // the tympanum: the arch's head closed by a recessed stone panel over the doors
   sink.span(wall, -gateW / 2, gateH - 0.05, D / 2 - t + 0.2, gateW / 2, gateH + archR + 0.3, D / 2 - t + 0.45, { tint: lot() });
+  // (the looks lane, 2026-10-16, the integrity ledger: the arch's void ran on behind the tympanum to the court face, a
+  // sealed pocket seen through the render's lost patches there) the masonry fills it behind the tympanum, under the court
+  // face's flat head (dressing: the passage under it and the tower's collision as before; no draw)
+  sink.span(wall, -gateW / 2, gateH - 0.05, D / 2 - t - 0.6, gateW / 2, gateH + archR + 0.3, D / 2 - t + 0.2, { tint: [0.96, 0.94, 0.9], decor: true });
   // the arch's head: the opening narrowing in four courses to the crown (each course's half-width the circle's at its
   // middle), the stone beside it filled through the tower's depth
   for (let k = 0; k < 4; k++) {
