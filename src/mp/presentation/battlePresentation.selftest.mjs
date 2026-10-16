@@ -5,6 +5,7 @@ import { getSpec } from '../../vehicles/specs.ts';
 import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizePosition, quantizeReloadS, zeroEntityRow } from '../wire/index.ts';
 import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
+import { prewarmRosterVisuals } from './battlePresentation.ts';
 
 // ------------------------------------------------------------ fixtures
 const visuals = [];
@@ -552,3 +553,31 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
  assert.deepEqual(painted,[roster[1].specId],'only the ground escort prepares camouflage');
  p.dispose();
 }
+
+// ---- the roster prewarm (2026-10-15, the MP stream): the seats the room names warm their builders and textures before
+// the WELCOME — once per vehicle, paint and quality, this viewer's at its own quality; a failure never escapes; an
+// aborted round stops warming
+{
+  const built = [], baked = [];
+  const ensureBuilder = async (specId) => { built.push(specId); };
+  const prepareVisualTextures = async (spec, anisotropy, quality, tick, camo) => {
+    baked.push(`${spec.id}:${camo}:${quality}:${anisotropy}`);
+    if (camo === 'broken') throw new Error('a bake that fails');
+  };
+  const specA = 'm1a2', specB = getSpec('t90m') ? 't90m' : 'm1a2';
+  const warmed = await prewarmRosterVisuals([
+    { specId: specA, camo: 'summer', isViewer: true },
+    { specId: specB, camo: 'winter', isViewer: false },
+    { specId: specB, camo: 'winter', isViewer: false },
+    { specId: specA, camo: 'broken', isViewer: false },
+  ], { anisotropy: 8, ensureBuilder, prepareVisualTextures });
+  assert.equal(warmed, 3, 'one warm per vehicle, paint and quality');
+  assert.deepEqual(baked, [`${specA}:summer:high:8`, `${specB}:winter:ai:8`, `${specA}:broken:ai:8`], 'this viewer\'s vehicle at its own quality; the failing bake did not escape');
+  const abort = new AbortController();
+  const stopped = [];
+  await prewarmRosterVisuals([{ specId: specA, camo: 'a', isViewer: false }, { specId: specB, camo: 'b', isViewer: false }], {
+    ensureBuilder: async (specId) => { stopped.push(specId); abort.abort(); }, prepareVisualTextures, signal: abort.signal,
+  });
+  assert.deepEqual(stopped, [specA], 'an aborted round stops warming');
+}
+

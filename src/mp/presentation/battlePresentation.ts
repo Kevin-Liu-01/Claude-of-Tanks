@@ -250,6 +250,49 @@ function textureQuality(isViewer: boolean): 'high' | 'ai' {
   return isViewer ? 'high' : 'ai';
 }
 
+/** A seat the room already names before the WELCOME (its vehicle, its paint, whether it is this viewer's). */
+export interface RosterPrewarmSeat {
+  specId: string;
+  camo: string;
+  isViewer: boolean;
+}
+
+/**
+ * 2026-10-15 (the MP stream, the §7 side-by-side's rejoin row): the builders and the textures of the seats the room
+ * already names, warmed beside the world load instead of after the WELCOME. The roster's painting took 6-7 s of every
+ * main rejoin after the battlefield had loaded; its texture bakes run in a worker where the browser has one, so this
+ * work overlaps the world rather than queueing behind it. The same caches serve prepareRoster (the builders' module
+ * cache, prebakeSharedTextures' coalesced entries by vehicle and paint); the bots arrive with the WELCOME and are painted
+ * then. Never refuses: a failure leaves prepareRoster's own path to do the work.
+ */
+export async function prewarmRosterVisuals(
+  seats: readonly RosterPrewarmSeat[],
+  {
+    anisotropy = 4,
+    tick = () => Promise.resolve(),
+    prepareVisualTextures = prebakeSharedTextures as PrepareVisualTextures,
+    ensureBuilder = ensureTankBuilder,
+    signal = null,
+  }: {
+    anisotropy?: number; tick?: () => Promise<void>; prepareVisualTextures?: PrepareVisualTextures;
+    ensureBuilder?: (specId: string) => Promise<void>; signal?: AbortSignal | null;
+  } = {},
+): Promise<number> {
+  const warmed = new Set<string>();
+  for (const seat of seats) {
+    if (signal?.aborted) break;
+    const key = `${seat.specId}:${seat.camo}:${textureQuality(seat.isViewer)}`;
+    if (!seat.specId || warmed.has(key)) continue;
+    warmed.add(key);
+    try {
+      await ensureBuilder(seat.specId);
+      if (signal?.aborted) break;
+      await prepareVisualTextures(getSpec(seat.specId), anisotropy, textureQuality(seat.isViewer), tick, seat.camo);
+    } catch { /* prepareRoster's own path repeats it */ }
+  }
+  return warmed.size;
+}
+
 export function createBattlePresentation({
   engineCtx,
   game,
