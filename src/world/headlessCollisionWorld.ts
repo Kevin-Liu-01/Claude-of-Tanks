@@ -2,6 +2,8 @@ import { Vector3 } from 'three';
 import { convexOutlineInPlace, createObstacleGrid, nearestColliderHitAlongRay as nearestRecordHitAlongRay } from './collision.ts';
 import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
+import { createDeformedHeightField, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { unpackMapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 
 /**
  * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
@@ -46,6 +48,9 @@ export interface CollisionManifest {
   obstacles: PackedCollisionRecord[];
   colliders: PackedCollisionRecord[];
   concealers?: Array<readonly [number, number, number, number]>;
+  /** DST-04 (2026-10-15): the map's pre-placed craters as its build decided them (world/mapCraters.ts
+   *  packMapCraterStamps: [x, z, radius, depth, rim, deforms]); absent in a shard captured before them. */
+  craters?: Array<readonly [number, number, number, number, number, number]>;
 }
 
 interface HeadlessCollisionWorldOptions {
@@ -66,6 +71,10 @@ interface HeadlessCollisionWorld {
   mapId?: string;
   heightField: HeightField;
   raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null;
+  /** The match's ground overlay (docs/DESTRUCTION.md §7): the ray march reads it as the rendered world's does. */
+  bindGroundOverlay(overlay: TerrainDeformation | null): void;
+  /** The map's pre-placed craters from the shard (world/mapCraters.ts). */
+  getMapCraters(): readonly MapCraterStamp[];
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];
   getConcealment(): ConcealmentRecord[];
@@ -162,6 +171,7 @@ export function createHeadlessCollisionWorld(
     }
   }
   const concealers = (manifest.concealers || []).map(([x, z, r, add]) => ({ x, z, r, add }));
+  const mapCraters = unpackMapCraterStamps(manifest.craters);
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
   const candidates: CollisionRecord[] = [];
@@ -170,6 +180,13 @@ export function createHeadlessCollisionWorld(
   const bestNormal = new Vector3();
   const nearestHit: ColliderRayHit = { distance: Infinity, record: null };
   const fastHeightAt = worldHeightField.getHeightAtFast || worldHeightField.getHeightAt;
+  // destruction (docs/DESTRUCTION.md §6, §7; 2026-10-15): the match's ground overlay as drawn (world/map.ts's march, the
+  // same law), bound by the authority that owns it
+  let rayOverlay: TerrainDeformation | null = null;
+  let rayNormalField: HeightField = worldHeightField;
+  const rayHeightAt = (x: number, z: number): number => (
+    rayOverlay ? fastHeightAt(x, z) + rayOverlay.contactOffsetAt(x, z) : fastHeightAt(x, z)
+  );
 
   function nearestColliderHit(
     origin: Vector3,
@@ -193,21 +210,21 @@ export function createHeadlessCollisionWorld(
       for (let index = 0; index < 6; index++) {
         const mid = (low + high) * 0.5;
         bisectPoint.copy(direction).multiplyScalar(mid).add(origin);
-        if (bisectPoint.y - fastHeightAt(bisectPoint.x, bisectPoint.z) <= 0) high = mid;
+        if (bisectPoint.y - rayHeightAt(bisectPoint.x, bisectPoint.z) <= 0) high = mid;
         else low = mid;
       }
       return (low + high) * 0.5;
     };
     let distance = 0;
-    let clearance = origin.y - fastHeightAt(origin.x, origin.z);
+    let clearance = origin.y - rayHeightAt(origin.x, origin.z);
     if (clearance <= 0) return 0;
     while (distance < maxDistance) {
       const step = Math.min(Math.max(clearance * 0.5, 0.5), 2);
       const priorDistance = distance;
       distance = Math.min(distance + step, maxDistance);
       point.copy(direction).multiplyScalar(distance).add(origin);
-      if (direction.y > 0 && point.y > worldHeightField.maxY + 2) return -1;
-      clearance = point.y - fastHeightAt(point.x, point.z);
+      if (direction.y > 0 && point.y > worldHeightField.maxY + (rayOverlay ? rayOverlay.maxRaiseM : 0) + 2) return -1;
+      clearance = point.y - rayHeightAt(point.x, point.z);
       if (clearance <= 0) return refineHit(priorDistance, distance);
       if (distance >= maxDistance) return -1;
     }
@@ -235,7 +252,7 @@ export function createHeadlessCollisionWorld(
     }
     const hitPoint = new Vector3().copy(direction).multiplyScalar(hitDistance).add(origin);
     const normal = kind === 'terrain'
-      ? worldHeightField.getNormalAt(hitPoint.x, hitPoint.z).clone()
+      ? rayNormalField.getNormalAt(hitPoint.x, hitPoint.z).clone()
       : bestNormal.clone();
     return {
       point: hitPoint,
@@ -272,9 +289,14 @@ export function createHeadlessCollisionWorld(
     mapId,
     heightField: worldHeightField,
     raycast,
+    bindGroundOverlay(overlay: TerrainDeformation | null) {
+      rayOverlay = overlay;
+      rayNormalField = overlay ? createDeformedHeightField(worldHeightField, overlay) : worldHeightField;
+    },
     getObstacles: () => obstacles,
     getColliders: () => colliders,
     getConcealment: () => concealers,
+    getMapCraters: () => mapCraters,
     queryObstacles,
     crushObstacle,
   };

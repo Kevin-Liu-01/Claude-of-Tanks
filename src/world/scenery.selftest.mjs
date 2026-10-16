@@ -23,10 +23,10 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon } from './maps/sceneryKit.ts';
 import {
-  SANDBAG_WEAVE_UV, SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap,
-  sandbagBag,
-} from './maps/sceneryKit.ts';
+  SANDBAG_WEAVE_UV, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap, sandbagBag,
+} from './maps/fieldworksKit.ts';
 import {
   BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
   sceneryClearances, withGroundCoverHoles,
@@ -59,7 +59,8 @@ const FORMS = [
   ['scree', 'slate', 10, 0, 3500, 1500, false],
   ['menhir', 'granite', 1.2, 4.5, 1200, 500, true],
   ['cairn', 'limestone', 4.2, 2.6, 6000, 1400, true],
-  ['calvary', 'granite', 1.6, 5.6, 1200, 400, true],
+  // (props census #11, 2026-10-15: the calvary laid stone by stone — its steps' slabs, socle, écots, cross and figures)
+  ['calvary', 'granite', 1.6, 5.6, 1600, 500, true],
   ['hoodoo', 'sandstone', 3.2, 6, 3000, 1500, true],
   // (the hitbox lane, round 2: a field of fractured blocks, the cover a map places on open ground)
   ['blocks', 'breccia', 6, 2.6, 4500, 2000, true],
@@ -712,7 +713,7 @@ const yard = propsSource.indexOf('  yield* placeYardDressing();'), pass = propsS
 const merge = propsSource.indexOf('  yield* mergeMaterialBuckets();');
 assert.ok(yard > 0 && pass > yard && merge > pass, 'the pass runs after every placement and before the bucket merge');
 assert.match(propsSource, /new THREE\.Mesh\(merged, mats\.rock\)/, 'the rock forms draw on the props rock material (its cascade setup and hook)');
-const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks();');
+const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks({');
 assert.ok(pools > merge && works > pools, 'the field works build once the pools\' refit has made every solid final (the placement they keep off reads those)');
 assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the field walls\' print');
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
@@ -733,8 +734,8 @@ assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
 assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
-assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook : grimeHook/,
-  'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14)');
+assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook\s*(?:: clutterLod \? \(shader\) => \{ grimeHook\(shader\); clutterLodHook\(shader\); \}\s*)?: grimeHook/,
+  'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14); the baked clutter pools fold their near and far forms over the grime (props lane A #2)');
 assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
 assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');

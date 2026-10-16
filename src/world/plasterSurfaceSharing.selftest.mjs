@@ -17,13 +17,15 @@ import { resolveStructureWindowStyle } from './structureInstanceAppearance.ts';
 import { applyRockShaderHook, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { STONE_SETTLE_M, applyStoneWallHook } from './stoneWallShader.ts'; // b14: the dry-stone walls' world-space hook
 import { MUD_SLUMP_M, applyMudWallHook } from './mudWallShader.ts'; // b14: the mud walls' world-space hook
+import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook } from './maps/clutterKit.ts'; // props lane A #2: the baked material's clutter LOD hook
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be an embedded copy of the 465a68f7c painter, tone, normal and
 // surface formulas plus a copy of that commit's palette call sites, so any intended plaster repaint failed here. The
 // control is now the CURRENT production palette with relief sharing disabled (every family paints its own normal and
 // surface): sharing must be a pure allocation saving, with identical pixels, noise order, checkpoints and materials.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 const sourced = readFileSync(new URL('./sourcedTextures.ts', import.meta.url), 'utf8');
 function section(text, start, end) {
   const a = text.indexOf(start), b = text.indexOf(end, a + start.length);
@@ -131,7 +133,7 @@ const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
 const remaining = ['roofT', 'stone', 'fieldStone', 'fieldMud', 'wood', 'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook',
-  'STONE_SETTLE_M', 'applyStoneWallHook', 'MUD_SLUMP_M', 'applyMudWallHook', `${stripTypeScriptTypes(`
+  'STONE_SETTLE_M', 'applyStoneWallHook', 'MUD_SLUMP_M', 'applyMudWallHook', 'CLUTTER_LOD_KEY', 'clutterLodDefaults', 'clutterLodHook', `${stripTypeScriptTypes(`
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
     const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
@@ -139,7 +141,7 @@ const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'ma
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,
   (text, anchor, replacement) => { assert.ok(text.includes(anchor)); return text.replace(anchor, replacement); }, rockDressingFor, applyRockShaderHook,
-  STONE_SETTLE_M, applyStoneWallHook, MUD_SLUMP_M, applyMudWallHook);
+  STONE_SETTLE_M, applyStoneWallHook, MUD_SLUMP_M, applyMudWallHook, CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook);
 function materialFixture(palette, mapId = 'verdant', attached = false) {
   const group = new THREE.Group(), scene = new THREE.Scene(); scene.add(group);
   const dummy = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1);
@@ -272,8 +274,42 @@ try {
   image.data[0] ^= 1; context.putImageData(image, 0, 0);
   assert.throws(() => assert.equal(reliefHash(shared.palette), reliefHash(right.palette)), assert.AssertionError,
     'the relief parity comparison detects a one-byte change');
+  // (2026-10-15, the perf lane) a props program key names the hook a material wears (props.ts propsProgramFamily), so
+  // every material of one key and type must compile the same code from the same three source: their shared program
+  // is then theirs exactly. Compared on both shader stages and the uniform names, per map (winter: the snow cap).
+  const shaderSnapshot = (material) => {
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader,
+      fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    material.onBeforeCompile(shader, null);
+    return { vertexShader: shader.vertexShader, fragmentShader: shader.fragmentShader,
+      uniformNames: Object.keys(shader.uniforms).sort() };
+  };
+  let familyPairs = 0;
+  for (const mapId of ['verdant', 'winter']) {
+    const fixture = materialFixture(build(generate, samples[0]).palette, mapId);
+    const groups = new Map();
+    for (const [kind, material] of Object.entries(fixture.mats)) {
+      if (typeof material?.customProgramCacheKey !== 'function') continue;
+      const key = `${material.type}|${material.customProgramCacheKey()}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push([kind, material]);
+    }
+    for (const [key, members] of groups) {
+      if (members.length < 2) continue; // (a kind alone on its key shares nothing; the rock's hook reads the props build)
+      const [[firstKind, first], ...rest] = members.map(([kind, material]) => [kind, shaderSnapshot(material)]);
+      for (const [kind, snapshot] of rest) {
+        assert.equal(snapshot.vertexShader, first.vertexShader, `${mapId}: ${kind} and ${firstKind} share ${key}: one vertex code`);
+        assert.equal(snapshot.fragmentShader, first.fragmentShader, `${mapId}: ${kind} and ${firstKind} share ${key}: one fragment code`);
+        assert.deepEqual(snapshot.uniformNames, first.uniformNames, `${mapId}: ${kind} and ${firstKind} share ${key}: one uniform set`);
+        familyPairs++;
+      }
+    }
+    for (const material of Object.values(fixture.mats)) { releaseCsmShaderMaterial(fixture.csm, material); material.dispose(); }
+    fixture.dummy.dispose(); ownedTextures.delete(fixture.dummy);
+  }
+  assert.ok(familyPairs >= 10, `the hook families pair ${familyPairs} kinds (expected the grime family's many kinds)`);
   console.log(JSON.stringify({ ok: true, evidence: 'native Canvas CPU pixels/materials; no GPU or frame timing claim',
-    rasterizer: { name: rasterizer.name, version: rasterizer.version }, receipts, ownershipCases: 2 }, null, 2));
+    rasterizer: { name: rasterizer.name, version: rasterizer.version }, receipts, ownershipCases: 2, familyPairs }, null, 2));
 } finally {
   for (const texture of ownedTextures) texture.dispose();
   for (const [key, descriptor] of globals) {

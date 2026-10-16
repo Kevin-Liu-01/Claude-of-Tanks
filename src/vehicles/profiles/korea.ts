@@ -62,25 +62,6 @@ function addRoofWhips(
   }
 }
 
-function addRoofRWS(
-  P: ProceduralBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  seed: number,
-  scale = 0.82,
-  yaw = 0.04,
-): void {
-  const { box, cylY } = KIT;
-  P.add('turret', box(0.48, 0.075, 0.46), x, y, z);
-  P.add('turretDark', box(0.38, 0.020, 0.36), x, y + 0.048, z);
-  P.add('turret', cylY(0.20, 0.22, 0.075, 16), x, y + 0.085, z);
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale, elev: 0.11,
-    shield: true, ammo: true, ring: { r: 0.17, stubs: 3 }, seed,
-  }), x, y + 0.11, z, [0, yaw, 0]);
-}
-
 function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
   const x = 0.70;
   const y = 0.70;
@@ -182,7 +163,8 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
     }
     P.add('turretDetail', box(0.035, 0.22, 0.30), side * 0.96, 0.75, 0.18);
   }
-  addRoofRWS(P, -0.28, 0.77, -0.94, 1020, 0.78, 0.03);
+  // VH.14 (coordinator ruling 2026-10-14): the K2's one roof gun is the loader's K6 on its working open-yoke station;
+  // the second roof RWS gun is gone
   addOpenYokeAuxRWS(P);
   addRoofWhips(P, 0.64, -1.72, 1030, 1.00);
 

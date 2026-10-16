@@ -23,6 +23,7 @@ import {
   boulderKindFor, boulderSectionRadius, boulderSections, boulderVariantForms, buildBoulderForm, createRockDepthMaterial, legacyRockVariant,
   makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const noise = new SimplexNoise({ random: mulberry32(1337 + 7) });
@@ -537,7 +538,8 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
 // on: each kind's strength in its patch's vertex RGB, the material a multiplicative darkening, unlit, no fog of its own,
 // gone by 160 m, no shadow — and its output law: the target × mix(1, the grey, a)
 {
-  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+) \}\);/.exec(source);
+  // (round 3: and a crushed stone's scuff, laid at its crush)
+  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+)(?:, scuff: [\d.]+)? \}\);/.exec(source);
   assert.ok(strength, 'a strength for every kind of contact');
   const [rock, prop, stack, foundation] = strength.slice(1).map(Number);
   assert.ok(rock === 1 && prop < rock && stack < rock && foundation < prop, `a boulder's foot full, a prop's and a stack's less, a foundation's least (${rock}, ${prop}, ${stack}, ${foundation})`);
@@ -591,7 +593,7 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
 // (wave 74, Coastal boulder-a: a patch conformed to the analytic height floated over a bank's drawn lip): the patch lies
 // on the nearest terrain mesh — its grid and its diagonal those terrain.ts draws
 {
-  const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrainSource = terrainSourceText();
   assert.match(terrainSource, /const MAP_SIZE = 1024;/);
   assert.match(terrainSource, /const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE \/ CHUNKS;\nconst LOD_SEGS = \[96, 48, 24\];/);
   assert.match(terrainSource, /idx\[ii\+\+\] = a; idx\[ii\+\+\] = c; idx\[ii\+\+\] = b;\n\s*idx\[ii\+\+\] = b; idx\[ii\+\+\] = c; idx\[ii\+\+\] = d;/,
@@ -705,12 +707,15 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockBedShades = [];
     // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
     const fixtureField = { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) };
+    // (round 3: a low crushable stone keeps its bed — lowStones.placements, empty here: the crushable fixture is a small
+    // rock's; rubbleKit.ts LowStones)
+    const lowStones = { placements: new Set() };
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'nearMeshVertexHeight', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
-      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
+      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare', 'lowStones',
       `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, fixtureField,
       (px, pz) => fixtureField.getHeightAt(px, pz),
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
-      rockContact, rockSpotOf, rockBedShades, contactShare);
+      rockContact, rockSpotOf, rockBedShades, contactShare, lowStones);
     const it = fn();
     let r = it.next();
     while (!r.done) r = it.next();

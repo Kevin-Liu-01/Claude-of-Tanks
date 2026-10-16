@@ -41,7 +41,7 @@ function checkSourceConfigurations() {
   assert.equal(TANK_SPECS.ajax.balanceCohort, 'cannon-only',
     'Ajax is compared as an IFV without a guided anti-armor channel');
   const configurations = {
-    kurganets25: [57, [4, 8]], ztz100: [105, []], warrior_tes_h: [30, [1]],
+    kurganets25: [30, [4, 8]], ztz100: [105, []], warrior_tes_h: [30, [1]],
     griffin50mm: [50, []], ajax: [40, []], aft10: [170, [8]],
     bmp3m_dragun125: [125, []], k21: [40, [2]], type96b: [125, []],
     kf41_lynx: [35, []], cv90_mk4: [50, [2]], cv90105_tml: [105, []], sabra_mk2: [120, []],
@@ -80,14 +80,19 @@ function checkKurganetsLoadout() {
   const [primary, kornet, bulat] = kurganets.gun.shells;
   assert.equal(kurganets.balancePeerOf,'spz_wotan','tier-X gameplay peer does not replace the source turret/frame');
   const peer = TANK_SPECS.spz_wotan.gun;
-  assert.deepEqual(primary, { ...peer.shells[0], name: '57 mm APFSDS', caliberMm: 57 },
-    'the short 57 mm main gun preserves declared primary gameplay tuning');
+  // coordinator ruling 2026-10-15: one real configuration, the Bumerang-BM's 30 mm 2A42 (the Puma S1 peer's numbers);
+  // owner ruling 2026-10-15: the rear-roof launcher and its Bulat channel stay, properly mounted
+  assert.deepEqual(primary, { ...peer.shells[0], name: '30 mm APFSDS', caliberMm: 30 },
+    'the 30 mm 2A42 keeps the declared primary gameplay tuning');
   assert.deepEqual(kornet, { ...peer.shells[1], name: 'Kornet guided missile', count: 4, launcherTubes: 4 },
     'four source-visible Kornet tubes retain the declared guided balance channel');
   assert.deepEqual(bulat, { ...peer.shells[2], name: 'Bulat guided missile', caliberMm: 70, guided: true,
     count: 8, launcherTubes: 8, velocityMps: peer.shells[1].velocityMps, reloadS: peer.shells[1].reloadS,
     soundProfile: peer.shells[1].soundProfile }, 'Bulat uses documented HE effect and guided-motion tuning');
   assert.equal(guidedMissileSlot(kurganets), 1, 'special action selects the first actual launcher');
+  const mouths = kurganets.gun.launcherMuzzles;
+  assert.equal(mouths.filter((m) => m.shellSlots?.[0] === 1).length, 4, 'four Kornet mouths in the flank housings');
+  assert.equal(mouths.filter((m) => m.shellSlots?.[0] === 2).length, 8, 'eight Bulat mouths at the roof launcher');
   const state = createCombatState(kurganets);
   assert.deepEqual(state.ammo, [peer.shells[0].count, 4, 8], 'source-visible launcher counts do not invent hidden reserves');
   assert.equal(new Set(state.reloadChannels).size, 3, 'cannon, Kornet and Bulat cycles are distinct');
@@ -103,7 +108,7 @@ function checkKurganetsLoadout() {
     state.ammo[slot] = 0;
     assert.equal(selectShell(state, slot, kurganets), false, `launcher ${slot}: exhausted channel rejected`);
   }
-  assert.equal(selectShell(state, 0, kurganets), true, '57 mm cannon remains selectable after both launchers exhaust');
+  assert.equal(selectShell(state, 0, kurganets), true, '30 mm cannon remains selectable after both launchers exhaust');
 }
 checkLoadout();
 checkObject695Loadout();

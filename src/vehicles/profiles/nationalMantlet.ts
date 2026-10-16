@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 // Fitted, pitching receiver covers for the twelve cast-core national concepts.
 // Every country retains its turret and weapon datums; the cover follows its
 // own armor nose instead of stopping at the same short barrel sleeve.
@@ -47,7 +48,10 @@ export function addNationalMantlet(P:TankBuilderPort,c:NationalModernizationConf
     // Flush fasteners on the moving face, kept out of the cheek seam.
     for(const y of [-.10,.10])P.addEquipment('gunMountDark',KIT.cylZ(.013,.009,8),side*.17,y,nose+.005);
   }
-  P.add('gunMountDark',KIT.cylZ(.181,.035,32),0,0,nose+.013);
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics on the Hetman II: "the barrel enters a dark ring gap in a
+  // plain box face"): the gland round the gun is a painted armour collar with only a thin dark seal hugging the barrel,
+  // not a dark disc that read as a gap round it (the coordinator: close dark gaps with armour; no coax is added).
+  nationalGland(P,nose+.013,.035);
   if(c.package==='ru')P.add('gunMount',KIT.cylZ(.225,.105,32),0,0,nose-.015);
   else {
     // Country-specific service covers sit on the upper receiving surface.
@@ -56,4 +60,13 @@ export function addNationalMantlet(P:TankBuilderPort,c:NationalModernizationConf
     P.addEquipment('gunMount',KIT.box(c.package==='pl'?.47:.31,.018,length),0,y+.004,z,
       Math.atan(.18*crown/(nose*.52)),0,0);
   }
+}
+
+/** The mantlet's gland: a painted 181 mm collar on the face (`front` its centre station) and a dark 13 mm seal ring
+ * hugging the 139 mm barrel root half a millimetre proud of the collar's face. */
+export function nationalGland(P:TankBuilderPort,front:number,length:number):void {
+  P.add('gunMount',KIT.cylZ(.181,length,32),0,0,front);
+  const seal=new THREE.LatheGeometry([new THREE.Vector2(.139,0),new THREE.Vector2(.152,0),new THREE.Vector2(.152,.006),
+    new THREE.Vector2(.139,.006),new THREE.Vector2(.139,0)],32).rotateX(Math.PI/2);
+  P.add('gunMountDark',seal,0,0,front+length/2+.0005);
 }

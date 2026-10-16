@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync, existsSync, statSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { basename, join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { requireReview, sourceDigest, digest } from './pipeline.mjs';
 import { requireNative4kPng } from '../map-art-guards.mjs';
 import { mergePublication } from './mergePublication.mjs';
+import { filteredStill, masterFilter } from '../media-r5/master-filter.mjs';
 
 const args=Object.fromEntries(process.argv.slice(2).map(value=>{
   const match=/^--(receipt|review|min-quality)=(.+)$/.exec(value);
@@ -31,7 +32,9 @@ const target=path=>{const file=join(stage,path);mkdirSync(dirname(file),{recursi
 const minQuality=Number(args['min-quality']??76);
 if(!(minQuality>=50&&minQuality<=88))throw Error(`--min-quality=${args['min-quality']}: 50-88`);
 const QUALITIES=[88,85,82,79,76,73,70,67,64,61,58,55,52].filter(q=>q>=minQuality);
-const webp=(file,path,w,h)=>{
+const FILTER=masterFilter(); // optional local pass over the 4K masters (media-r5/master-filter.mjs)
+const webp=(master,path,w,h)=>{
+  const file=filteredStill(master,join(stage,'masters'),`map-${basename(master).replace(/\.png$/i,'')}`,FILTER);
   const out=target(path),old=join(process.cwd(),'public',path),limit=existsSync(old)?statSync(old).size:Infinity;
   for(const q of QUALITIES){
     execFileSync('cwebp',['-quiet','-m','6','-sharp_yuv','-q',String(q),'-resize',String(w),String(h),file,'-o',out]);

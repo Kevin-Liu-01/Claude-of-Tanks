@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import {
@@ -7,12 +6,13 @@ import {
 } from './terrainLodPolicy.ts';
 import { registerRetainedObject3DResources, releaseObject3DGpuResources,
   disposeObject3DResources } from '../engine/resourceLifetime.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 
 // Execute the actual chunk generators, startup and live scheduler. Only the
 // unrelated canvas material/horizon builders are stubbed; real Three buffers,
 // shared topology, bounds and retained-resource ownership remain in use.
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const chunkSource = source.slice(source.indexOf('const CHUNKS = 8'));
 assert.ok(chunkSource.startsWith('const CHUNKS = 8'), 'chunk source boundary is exact');
 let clockMs = 0;

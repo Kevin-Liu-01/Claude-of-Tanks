@@ -78,9 +78,10 @@ function coalStrip(field) {
 function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) {
   assert.equal(geometry.index, null);
   const position = geometry.attributes.position, normal = geometry.attributes.normal;
-  assert.equal(position.count,216,'72 flat-shaded triangles per stockpile versus100 on the old ellipsoid');
-  assert.equal(Object.values(geometry.attributes).reduce((n, attr)=>n+attr.array.byteLength,0),9504,
-    'including color, merged vertex bytes do not exceed the old 9600-byte nonindexed sphere');
+  // (props census #3, lane B 2026-10-14: the heap's 72 facets and the 20 lumps and loose coal on them, 5 faces each)
+  assert.equal(position.count,516,'172 flat-shaded triangles per stockpile: the heap\'s 72 and its lumps\' 100');
+  assert.equal(Object.values(geometry.attributes).reduce((n, attr)=>n+attr.array.byteLength,0),22704,
+    'including color, merged vertex bytes: 44 a vertex (position, normal, color, uv), 516 vertices');
   assert.deepEqual(collider,obstacle);assert.notEqual(collider,obstacle);
   assert.notEqual(collider.shape2,obstacle.shape2);
   assert.equal(obstacle.kind,'coal-heap');assert.equal(obstacle.shape2.kind,'convex');
@@ -168,7 +169,9 @@ for(const mapId of MAP_IDS) {
       assert.ok(parts.length>3,'the deck, abutments, piers, vault bands and two parapets');
       assert.equal(body.y1,deck.deckY,'the deck part\'s top is the deck plane');assert.ok(body.y0<deck.deckY-0.9,'the deck part is a standable floor (round 63: from the crown line)');
       assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the deck spans the road and its abutments');
-      assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw===deck.halfWidth),'the abutments are footed below the bed');
+      // (Lane C #27, 2026-10-15) Suzhou Creek's girder abutments carry their granite 0.3 m past the deck each side: an
+      // abutment covers the road's width at least
+      assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw>=deck.halfWidth),'the abutments are footed below the bed');
       for(const record of records){
         assert.equal(Math.min(...parts.map(part=>part.y0)),record.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),record.max[1]);
       }

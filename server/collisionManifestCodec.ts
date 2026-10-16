@@ -3,7 +3,7 @@ import type {
   CollisionManifest, PackedCollisionRecord, PackedSimpleShape,
 } from '../src/world/headlessCollisionWorld.ts';
 import {
-  isPackedCollisionMetadata, isSimpleShape, readCollisionConcealers, readCollisionManifest,
+  isPackedCollisionMetadata, isSimpleShape, readCollisionConcealers, readCollisionCraters, readCollisionManifest,
 } from './collisionManifestFormat.ts';
 
 const LEGACY_ENCODING = 'primitive-dict-v1';
@@ -37,6 +37,7 @@ interface EncodedManifest {
   obstacles: EncodedRecord[];
   colliders: EncodedRecord[];
   concealers?: CollisionManifest['concealers'];
+  craters?: CollisionManifest['craters'];
 }
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
@@ -169,6 +170,7 @@ export function encodeCollisionManifest(
     ...(encoding !== LEGACY_ENCODING ? { kinds } : {}),
     obstacles: manifest.obstacles.map(record), colliders: manifest.colliders.map(record),
     concealers: manifest.concealers,
+    ...(manifest.craters ? { craters: manifest.craters } : {}),
   };
 }
 
@@ -267,5 +269,6 @@ export function decodeCollisionManifest(value: RuntimeValue): CollisionManifest 
   return {
     obstacles: resolveRecords(value.obstacles, shapes, kinds, compact),
     colliders: resolveRecords(value.colliders, shapes, kinds, compact), concealers: readCollisionConcealers(value.concealers),
+    ...(value.craters !== undefined ? { craters: readCollisionCraters(value.craters) } : {}),
   };
 }

@@ -11,6 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.ts';
+import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
@@ -419,6 +420,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hullDark', box(0.70, 0.025, 0.040), 0.52, 1.48, -3.372);
     P.add('hullDark', box(0.030, 0.34, 0.040), 0.12, 1.29, -3.372);
   for (const xc2 of [0.28, 0.72]) P.add('hullDetail', box(0.055, 0.10, 0.042), xc2, 1.25, -3.374); // door handles/latches survive rear camera
+  // VEH-13: the louvre field, the radiator/service field and its bays' slats are grilles to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.72, 0.022, 0.042), 0.52, 1.17 + k * 0.065, -3.376); // right service-door louvre field
   P.add('hullDark', box(0.42, 0.20, 0.038), 1.10, 1.12, -3.374);               // outer transmission service cover
   for (const xc2 of [-1.38, -1.18, 0.98, 1.20, 1.40]) P.add('hullDetail', box(0.035, 0.24, 0.040), xc2, 1.10, -3.376); // full-width rear partition rhythm
@@ -432,6 +435,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (const yy of [1.15 + yo, 1.50 + yo]) P.add('hullDetail', box(w * 0.92, 0.018, 0.010), xc2, yy, -3.384);
   }
   for (const xc2 of [-1.39, -0.58, 0.31, 1.20]) P.add('hullDetail', box(0.030, 0.50, 0.010), xc2, 1.34, -3.384); // unequal service-bay dividers
+  });
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.20, 0.12, 0.040), s * 1.30, 1.50, -3.374);          // taillight clusters
     P.add('hullDetail', box(0.24, 0.025, 0.044), s * 1.30, 1.575, -3.376);      // light guards
@@ -443,7 +447,10 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hullDetail', box(1.10, 0.055, 0.042), -0.18, 0.78, -3.372, 0, 0, 0.08); // lower recovery/tow bar
   P.add('hullDark', box(0.055, 0.34, 0.044), -0.86, 0.86, -3.373, 0, 0, -0.34); // unequal pipe/service drops
   P.add('hullDark', box(0.055, 0.29, 0.044), 0.78, 0.84, -3.373, 0, 0, 0.28);
-  for (let k = 0; k < 3; k++) P.add('hullTrack', box(0.18, 0.18, 0.040), 1.00 + k * 0.19, 1.22, -3.375); // individually hung spare links
+  // individually hung spare links; VEH-13: one registered run on the rear plate (spareTrackSeat.ts)
+  withSpareTrackRun(P, { site: 'amx40-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
+    for (let k = 0; k < 3; k++) P.add('hullTrack', box(0.18, 0.18, 0.040), 1.00 + k * 0.19, 1.22, -3.375);
+  });
   P.decal('hull', 'soot', null, 0.5, [-0.55, 1.30, -3.392], Math.PI);
   // French registration + the Satory demonstrator skirt branding
   P.decal('hull', 'number', '675 0102', 0.16, [0, 1.142, 3.368], 0, -0.60);       // on the leaning beak face (flush — decals are mask geometry)
@@ -707,7 +714,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     // (CROWS-forward law; type10_tk_x precedent: receiver at the published
     // height line so heightM p95 stays on the roof plateau)
     // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the roof detail beside the cupola (feed-side collision census).
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true, feed: 'right' });
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the AANF1 is a working station
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true, feed: 'right',
+      working: true });
     mg.position.set(-0.46, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section
     P.turretG.add(mg);
     P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal

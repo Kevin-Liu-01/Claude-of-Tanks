@@ -10,6 +10,7 @@ import { withOwnerSizeTargets } from './owner-size-targets.ts';
 import { SOURCE_WORLD_FRAMES, AUTHORING_SOURCE_WORLD_FRAMES, validateSourceWorldFrame } from './source-world-registration.mjs';
 import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
+import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
@@ -150,7 +151,9 @@ try {
   const legacy = Object.fromEntries(legacyIds.map(id => [id, AUTHORING_SOURCE_WORLD_FRAMES[id]]));
   assert.deepEqual(SOURCE_WORLD_FRAMES, withOwnerSizeTargets(AUTHORING_SOURCE_WORLD_FRAMES));
   checkArieteRegistrationRecipe();
-  assert.equal(sha(Buffer.from(JSON.stringify(restoreArieteRegistration(legacy)))), "55524fedcd0cc405dce90f47795ce6753c9bcd5dd1e6245473d1f2a45f2f0f7e", 'all historical certificates remain exact after reversing only the authenticated C1 enlargement');
+  // The certificate names each vehicle by the id it was issued under (schema 1, tankIdAliases.ts, SSOT 2.19).
+  const certified = (frames) => Object.fromEntries(Object.entries(frames).map(([id, frame]) => [tankSeedId(id), frame]));
+  assert.equal(sha(Buffer.from(JSON.stringify(certified(restoreArieteRegistration(legacy))))), "55524fedcd0cc405dce90f47795ce6753c9bcd5dd1e6245473d1f2a45f2f0f7e", 'all historical certificates remain exact after reversing only the authenticated C1 enlargement');
   for (const mutate of [frame => { frame.sha256 = originalArieteFrame.sha256; },
     frame => { frame.turret[1] += .001; }, frame => { frame.gun[2] *= 1.01; },
     frame => { frame.fused = false; }]) {
@@ -192,7 +195,8 @@ try {
   }
   assert.equal(assembledSourcePath('m1a1_abrams_hc', 'unchanged.glb'), 'unchanged.glb');
   for (const [id, reference] of Object.entries(SUPPLIED_SOURCE_REFERENCE_OVERRIDES)) {
-    if (!SUPPLIED_SOURCE_ASSEMBLIES[id]) assert.equal(reference.glb.path, `/models/community-candidates/${id}_source.glb`);
+    // source models keep the file name they were registered under (schema 1, tankIdAliases.ts)
+    if (!SUPPLIED_SOURCE_ASSEMBLIES[id]) assert.equal(reference.glb.path, `/models/community-candidates/${tankSeedId(id)}_source.glb`);
   }
   console.log('source-assembly-replay: literal component/node fixtures, hash/selector/transform negatives, five source-only references and unchanged legacy datums pass');
 } finally {

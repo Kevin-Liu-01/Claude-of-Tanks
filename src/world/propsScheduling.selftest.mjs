@@ -4,6 +4,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
+import { roughenChunk } from './maps/regional/ruinGrammar.ts'; // (props census #7 moved the masonry roughening out of props.ts)
+import { craterEjectaPiece } from './maps/groundDressing.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
@@ -457,6 +459,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     },
     planGroundedObbPose: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
+    // (Lane C, #8 r2) a bake with its ground contact seats on its tracks (wrecks.ts seatHulk): the same fixture pose
+    seatHulk: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
+      min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
     // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
     // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
@@ -592,14 +597,13 @@ const groundOriginal = groundCandidate
 // scheduling yields; the sha256 pin of that derived body froze every decal formula and is gone. Formula changes are
 // owned by the decal receipts, scheduling by the comparisons below.
 const mathStart = source.indexOf('function clamp('), mathEnd = source.indexOf('\n// ---', mathStart);
-const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.indexOf('\n  function addRubblePile(', rubbleStart);
-assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
-const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
+assert.ok(mathEnd > mathStart);
+const groundHelpers = source.slice(mathStart, mathEnd);
 
 function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
   buildings = 1, crushables = 1, stacks = 1, rocks = 0, rejectCourtyards = false, disposeFailureAt = -1,
 } = {}) {
-  const group = new THREE.Group(), buckets = { stone: [] }, commands = [], randoms = [], textures = [];
+  const group = new THREE.Group(), buckets = { stone: [], baked: [] }, commands = [], randoms = [], textures = [];
   const inputs = [], disposedInputs = [], heightQueries = [], privateRandoms = [];
   class InputGeometry extends THREE.BufferGeometry {
     constructor() {
@@ -632,6 +636,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
     nearMeshVertexHeight: (px, pz) => dependencies.heightField.getHeightAt(px, pz), // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
     THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
+    // (props lane A #19, 2026-10-15: a clod draws the map's ejecta in the baked bucket, its box the collision proxy)
+    craterEjectaPiece, mapId: 'verdant',
     rng() { const value = random(); randoms.push(value); return value; },
     mulberry32(seed) {
       const next = seededRandom(seed);
@@ -661,11 +667,14 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     rockBedShades: [],
+    // (round 3, rubbleKit.ts LowStones) no crushable low stone here: no scuff to conform, release or lay
+    lowStones: { *collectScuffs() {}, releasePendingDiscs() {}, layScuffs() {} },
     // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
     contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
     // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
     drawnPlanRecord: () => null, craterClodFootprints: [],
+    roughenChunk, // (props census #7: ruinGrammar.ts)
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
     groundHelpers + '\nlet reconformFoundryFoundations = null;\n' + code)
@@ -675,7 +684,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
   return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs,
     foundationCount: buildings + crushables + stacks + rocks + (streetRows && !rejectCourtyards ? 84 : 0),
     kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
-    snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
+    snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.baked.map(geometry),
       meshes: group.children.map(mesh => ({ geometry: geometry(mesh.geometry), data: mesh.userData,
         receiveShadow: mesh.receiveShadow, castShadow: mesh.castShadow, order: mesh.renderOrder,
         map: mesh.material.map.name, transparent: mesh.material.transparent, depthWrite: mesh.material.depthWrite })) }),
@@ -683,7 +692,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
       for (const mesh of group.children) {
         mesh.geometry.dispose(); textures.push(mesh.material.map); mesh.material.dispose();
       }
-      for (const geo of buckets.stone) geo.dispose();
+      for (const geo of [...buckets.stone, ...buckets.baked]) geo.dispose();
       for (const texture of new Set(textures)) texture.dispose();
     },
   };
@@ -727,7 +736,7 @@ for (const [streetRows, foundry, options] of [
     assert.equal(after.commands.some(command => command[0] === 'clear'), false, 'churn painter has not started');
     assert.equal(iterator.next().done, true);
     assert.equal(after.kinds().includes('churn'), !options.rejectCourtyards);
-    assert.equal(after.buckets.stone.length > 0, !options.rejectCourtyards);
+    assert.equal(after.buckets.baked.length > 0, !options.rejectCourtyards, 'the craters threw their ejecta');
     assert.ok(after.randoms.length > 0);
     assert.deepEqual(after.snapshot(), before.snapshot(), 'exact geometry, RNG, material policy and canvas command/alpha parity');
     if (foundry) {

@@ -4,6 +4,7 @@ import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import { getLocale, t } from './i18n.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
+import { resolveTankId } from '../vehicles/tankIdAliases.ts';
 
 /**
  * The site's takes (owner 2026-10-12: "show them as presets u can access in /studio"): the fifty takes filmed for the
@@ -11,6 +12,17 @@ import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
  * collection and site-media-wire.mjs keeps this path on the current one.
  */
 const SITE_TAKES_INDEX = '/media/site50-r14/scenes/index.json';
+
+interface SiteTakesIndex { takes: SiteTake[]; tankIdSchema?: unknown }
+/**
+ * The index's fleet takes with each vehicle in today's spelling: the media index names vehicles under the tank id schema
+ * it was written in (`tankIdSchema`, missing = 1), so a renamed tank keeps its take and a swapped id never offers
+ * another tank's (SSOT 2.19, tankIdAliases.ts).
+ */
+function siteFleetTakes(index: SiteTakesIndex): SiteTake[] {
+  return index.takes.filter((take) => take.group === 'fleet' && typeof take.vehicle === 'string')
+    .map((take) => ({ ...take, vehicle: resolveTankId(take.vehicle as string, index.tankIdSchema) }));
+}
 interface SiteTake {
   id: string; title: { en: string; zh: string }; short: { en: string; zh: string };
   map: string; durationMs: number | null; scene: string; thumb?: string;
@@ -261,11 +273,11 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
     fetch(SITE_TAKES_INDEX)
       .then((response) => {
         if (!response.ok) throw new Error(`${SITE_TAKES_INDEX}: HTTP ${response.status}`);
-        return response.json() as Promise<{ takes: SiteTake[] }>;
+        return response.json() as Promise<SiteTakesIndex>;
       })
       .then((index) => {
         for (const take of index.takes) if (take.group !== 'fleet') takesLibrary.append(takeCard(take));
-        listFleetTakes(index.takes.filter((take) => take.group === 'fleet' && typeof take.vehicle === 'string'));
+        listFleetTakes(siteFleetTakes(index));
         takeStatus('');
         refresh();
       })

@@ -6,9 +6,11 @@
 // the colliery's headframe over its shaft hall with the winding-engine house behind it (the Saar coalfield at the works'
 // gate); the works office in brick with yellow-brick bands under slate. The workers' terraces, the station, the water
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
-import { PartSink, alongPlot, faceBox, facePanel, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { PartSink, alongPlot, faceBox, facePanel, pick, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, emitRoof, recordShaft, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { facadeOn, roofDormers, shopDisplay } from './facade.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { recordLattice } from './lattice.ts';
 import { RUHR_BUILDERS } from './ruhr.ts';
 import { factoryStack } from './shared.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -119,9 +121,13 @@ const blastFurnace: RegionalBuilder = (ctx) => {
     sink.member('structureMetal', [0, top + 5.7, fz], [dcx, ch + 4.5, dcz], 0.7, 0.7, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
     sink.cylinder('structureMetal', [dcx, ch + 0.5, dcz], 'y', 4.2, 1.2, 10, { colour: STOVE, decor: true }, 1.2);
     sink.cylinder('structureMetal', [dcx, ch - 1.5, dcz], 'y', 2.0, 0.3, 8, { colour: STOVE, decor: true }, 1.2, false);
+    // (props census #13, lane B 2026-10-15) the furnace and the stoves recorded as tower bodies of their girth: each
+    // topples in its courses beside the casting house (they went down with it)
+    recordShaft(sink, 0, fz, 2 * fr, fh, 'structureMetal');
     // the Cowper stoves behind the furnace, domed, the hot-blast main to the bustle pipe round the furnace
     for (const s of [-1, 1]) {
       const sx = s * (sr + 0.3);
+      recordShaft(sink, sx, stz, 2 * sr, sh + sr * 0.9, 'structureMetal');
       sink.cylinder('structureMetal', [sx, -0.4, stz], 'y', sh + 0.4, sr, 12, { colour: STOVE });
       // the dome: three frusta closing over the shell
       let dy = sh;
@@ -131,6 +137,66 @@ const blastFurnace: RegionalBuilder = (ctx) => {
       }
       if (!mobile) for (let y = 3; y < sh - 1; y += 3.5) ring(sink, sx, y, stz, sr, 0.2);
     }
+    // (props census #13, lane B 2026-10-15; the judges: "the stoves and furnace are bare cylinders (no plate seams,
+    // platforms, railings, ladders)") the furnace's working platform round its stack and the charging platform's rail;
+    // the stack's and each stove's plate seams; each stove's ladder up its outer side to its top platform and rail
+    const deck = { colour: TRUSS, decor: true, exposed: true }, rail = { colour: OXIDE, decor: true, exposed: true };
+    const seam = { colour: shade(PLATE, 0.78), decor: true, fine: true, exposed: true };
+    // (a deck a closed disc through the shaft it rings, as the bands are: its plate meets the shell all round)
+    const ringDeck = (cx: number, cz: number, y: number, r1: number) => {
+      const n = 12;
+      sink.cylinder('structureMetal', [cx, y, cz], 'y', 0.08, r1 + 0.03, n, deck, r1 + 0.03, true);
+      for (let k = 0; k < n; k++) {
+        const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2, rr = r1 * Math.cos(Math.PI / n) - 0.03;
+        const P = (r: number, a: number, yy: number): Vec3 => [cx + Math.cos(a) * r, yy, cz + Math.sin(a) * r];
+        sink.member('structureMetal', P(rr, a0, y + 0.08), P(rr, a0, y + 1.1), 0.05, 0.05, [Math.cos(a0), 0, Math.sin(a0)], rail, 0);
+        sink.member('structureMetal', P(rr, a0, y + 1.08), P(rr, a1, y + 1.08), 0.05, 0.05, [0, 1, 0], rail, 0);
+      }
+    };
+    const stackR = (y: number): number => fr * (1.05 - 0.33 * Math.max(0, Math.min(1, (y - ch - 1.2) / (fh - ch - 1.2))));
+    const py = ch + 1.2 + (fh - ch - 1.2) * 0.45;
+    ringDeck(0, fz, py, stackR(py) + 1.2);
+    for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
+      const e = fr * 0.72 + 0.66;
+      sink.member('structureMetal', [ax * e, top + 1.3, fz + az * e], [bx * e, top + 1.3, fz + bz * e], 0.05, 0.05, [0, 1, 0], rail, 0);
+      sink.member('structureMetal', [ax * e, top + 0.3, fz + az * e], [ax * e, top + 1.32, fz + az * e], 0.05, 0.05, [ax, 0, 0], rail, 0);
+    }
+    // (seams and stiles in lengths of 4 m at most: a long thin member is a sliver to the integrity gate)
+    const lengths = (y0: number, y1: number): Array<[number, number]> => {
+      const n = Math.max(1, Math.ceil((y1 - y0) / 4));
+      return Array.from({ length: n }, (_, i) => [y0 + (y1 - y0) * i / n, y0 + (y1 - y0) * (i + 1) / n]);
+    };
+    if (!mobile) for (let k = 0; k < 12; k++) {
+      const a = (k + 0.5) / 12 * Math.PI * 2;
+      for (const [y0, y1] of lengths(ch + 1.3, fh - 0.2)) {
+        sink.member('structureMetal', [Math.cos(a) * (stackR(y0) + 0.01), y0, fz + Math.sin(a) * (stackR(y0) + 0.01)],
+          [Math.cos(a) * (stackR(y1) + 0.01), y1, fz + Math.sin(a) * (stackR(y1) + 0.01)], 0.05, 0.025, [Math.cos(a), 0, Math.sin(a)], seam, 0);
+      }
+    }
+    for (const sd of [-1, 1]) {
+      const sx = sd * (sr + 0.3);
+      if (!mobile) for (let k = 0; k < 8; k++) {
+        const a = (k + 0.5) / 8 * Math.PI * 2;
+        for (const [y0, y1] of lengths(0.4, sh - 0.15)) {
+          sink.member('structureMetal', [sx + Math.cos(a) * (sr + 0.01), y0, stz + Math.sin(a) * (sr + 0.01)], [sx + Math.cos(a) * (sr + 0.01), y1, stz + Math.sin(a) * (sr + 0.01)],
+            0.05, 0.025, [Math.cos(a), 0, Math.sin(a)], seam, 0);
+        }
+      }
+      const lx = sx + sd * (sr + 0.28);
+      for (const dz of [-0.22, 0.22]) for (const [y0, y1] of lengths(0, sh - 0.05)) sink.member('structureMetal', [lx, y0, stz + dz], [lx, y1, stz + dz], 0.05, 0.05, [sd, 0, 0], rail, 0);
+      if (!mobile) for (let y = 0.3; y < sh - 0.2; y += 0.3) sink.span('structureMetal', lx - 0.02, y - 0.015, stz - 0.22, lx + 0.02, y + 0.015, stz + 0.22, { colour: OXIDE, decor: true, fine: true });
+    }
+    // the stoves' shared top platform (one deck through both shells, clear of the furnace) and its rail
+    {
+      const y = sh - 0.1, xe = 2 * sr + 0.3 + 0.9, z0 = stz - sr - 0.9, z1 = Math.min(stz + sr + 0.9, fz - stackR(y) - 0.25);
+      sink.span('structureMetal', -xe, y, z0, xe, y + 0.08, z1, deck);
+      const c: Array<[number, number]> = [[-xe + 0.03, z0 + 0.03], [xe - 0.03, z0 + 0.03], [xe - 0.03, z1 - 0.03], [-xe + 0.03, z1 - 0.03]];
+      for (let k = 0; k < 4; k++) {
+        const [ax, az] = c[k], [bx, bz] = c[(k + 1) % 4];
+        sink.member('structureMetal', [ax, y + 1.08, az], [bx, y + 1.08, bz], 0.05, 0.05, [0, 1, 0], rail, 0);
+        sink.member('structureMetal', [ax, y + 0.08, az], [ax, y + 1.1, az], 0.05, 0.05, [1, 0, 0], rail, 0);
+      }
+    }
     sink.member('structureMetal', [-(sr + 0.3), 9.5, stz + sr], [0, 9.5, fz - fr - 0.4], 1.0, 1.0, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true }, 0);
     for (let k = 0; k < 8; k++) {
       const a0 = k / 8 * Math.PI * 2, a1 = (k + 1) / 8 * Math.PI * 2, rr = fr + 1.0;
@@ -138,21 +204,31 @@ const blastFurnace: RegionalBuilder = (ctx) => {
         { colour: OXIDE, decor: true, exposed: true }, 0);
     }
     // the bunkers and their bins; the wagon arches through them
-    sink.span('stone', -W / 2, -0.4, bz0, W / 2, bh, D / 2);
+    // (props census #13, lane B 2026-10-14; the judges: "the wagon arches dark plates on a brick block") the wagon
+    // passages run through the bunkers' brick: the piers between them, the deck over each on its brick head band
+    const arches = Math.max(2, Math.round(W / 4.2)), bayW = W / arches, aw = Math.min(2.8, bayW - 0.9), ah = 3.1;
+    let x = -W / 2;
+    for (let k = 0; k < arches; k++) {
+      const c = -W / 2 + bayW * (k + 0.5);
+      sink.span('stone', x, -0.4, bz0, c - aw / 2, bh, D / 2);
+      sink.span('stone', c - aw / 2, ah, bz0, c + aw / 2, bh, D / 2);
+      for (const [z, out] of [[D / 2, 1], [bz0, -1]] as const) {
+        const bf: Face = { origin: [0, 0, z], u: [out, 0, 0], out: [0, 0, out], width: W };
+        faceBox(sink, YELLOW_BRICK, bf, out * c, ah + 0.18, 0.04, aw + 0.5, 0.36, 0.08, { decor: true });
+      }
+      x = c + aw / 2;
+    }
+    sink.span('stone', x, -0.4, bz0, W / 2, bh, D / 2);
     sink.span('structureMetal', -W / 2 + 0.3, bh, bz0 + 0.3, W / 2 - 0.3, bh + 2.6, D / 2 - 0.3, { colour: SHEET });
     sink.span('structureMetal', -W / 2 + 0.2, bh + 2.6, bz0 + 0.2, W / 2 - 0.2, bh + 2.8, D / 2 - 0.2, { colour: TRUSS, decor: true });
     sink.band(YELLOW_BRICK, -W / 2 - 0.04, bh - 0.5, bz0 - 0.04, W / 2 + 0.04, bh - 0.25, D / 2 + 0.04, { decor: true });
-    const arches = Math.max(2, Math.round(W / 4.2));
-    for (const [z, out] of [[D / 2, 1], [bz0, -1]] as const) {
-      const bf: Face = { origin: [0, 0, z], u: [out, 0, 0], out: [0, 0, out], width: W };
-      for (let k = 0; k < arches; k++) facePanel(sink, 'dark', bf, -W / 2 + W * (k + 0.5) / arches, 1.6, 0.02, Math.min(2.8, W / arches - 0.9), 3.0, { decor: true });
-    }
     // the skip hoist: an inclined bridge from the bunkers' pit up to the charging platform, on its trestle
     const za = (bz0 + D / 2) / 2, ya = bh + 2.8, zb = fz + fr * 0.72 + 0.7, yb = top + 0.6;
     truss(sink, [0, ya, za], [0, yb, zb], 1.6, [0, 1, 0], 10, OXIDE, mobile);
     const zl = za - (za - zb) * 0.4, yl = ya + (yb - ya) * 0.4;
     for (const s of [-1, 1]) sink.member('structureMetal', [s * 0.8, 0, zl], [s * 0.8, yl, zl], 0.3, 0.3, [0, 0, 1], { colour: TRUSS, exposed: true }, 0);
-    if (look() < 0.5) facePanel(sink, 'dark', { origin: [(W - 1) / 2, 0, (cz0 + cz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: cz1 - cz0 }, (look() - 0.5) * 3, ch * 0.6, 0.02, 1.6, 1.2, { decor: true });
+    // (the cast house's side once carried a dark plate for a hole: its draws kept, the plate gone)
+    if (look() < 0.5) look();
   });
   return sink.finish();
 };
@@ -240,20 +316,22 @@ function gasHolder(ctx: RegionalBuildContext): RegionalParts {
       // (the lift is a 16-sided drum: the patch lies on the flat side nearest where it falls, at that side's distance)
       const seg = Math.PI / 8, th = Math.PI / 2 - Math.asin(Math.max(-0.95, Math.min(0.95, u / rr)));
       const a = Math.PI / 2 - (Math.floor(th / seg) + 0.5) * seg, ap = rr * Math.cos(seg / 2);
-      facePanel(sink, 'dark', { origin: [Math.sin(a) * ap, 0, Math.cos(a) * ap], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.004, Math.min(pw, 2 * ap * Math.sin(seg / 2) - 0.05), ph, { decor: true });
+      // (props census #4, lane B 2026-10-14: a near-black patch read as a hole) a patch sheet in red lead, rust-run
+      facePanel(sink, 'structureMetal', { origin: [Math.sin(a) * ap, 0, Math.cos(a) * ap], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.004, Math.min(pw, 2 * ap * Math.sin(seg / 2) - 0.05), ph, { colour: rgb(0x8a4a32), decor: true });
     }
     // the station's wall round the lot under a brick coping, the gate's leaves shut in its front run
-    const wy = 2.0;
-    const runs: Array<[number, number, number, number]> = [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, W / 2, D / 2],
+    // (the front run parted for the gate: its iron leaves hang shut in the gap between the piers, not on the brick)
+    const wy = 2.0, gw = Math.min(4.2, W * 0.3);
+    const runs: Array<[number, number, number, number]> = [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, -gw / 2, D / 2], [gw / 2, D / 2 - t, W / 2, D / 2],
       [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t]];
     for (const [x0, z0, x1, z1] of runs) {
       sink.span('stone', x0, -0.4, z0, x1, wy, z1);
       sink.band('stone', x0 - 0.04, wy, z0 - 0.04, x1 + 0.04, wy + 0.14, z1 + 0.04, { decor: true });
     }
     const gate: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const gw = Math.min(4.2, W * 0.3);
     for (const s of [-1, 1]) {
-      faceBox(sink, 'structureMetal', gate, s * gw / 4, 1.2, 0.04, gw / 2 - 0.06, 2.3, 0.06, { colour: IRON, decor: true });
+      faceBox(sink, 'structureMetal', gate, s * gw / 4, 1.2, -t / 2, gw / 2 - 0.03, 2.3, 0.06, { colour: IRON });
+      if (!mobile) for (const y of [0.5, 1.9]) faceBox(sink, 'structureMetal', gate, s * gw / 4, y, -t / 2 + 0.05, gw / 2 - 0.15, 0.08, 0.04, { colour: IRON, decor: true, fine: true });
       faceBox(sink, 'stone', gate, s * (gw / 2 + 0.3), 1.3, 0.12, 0.6, 2.6, 0.24, { decor: true });
     }
     // the valve house at the long end, where the lot leaves room beside the frame
@@ -287,32 +365,103 @@ const conveyor: RegionalBuilder = (ctx) => {
   const L = Math.max(8, turned ? f.w : f.d), Wd = Math.max(2.8, turned ? f.d : f.w);
   const gw = Math.min(2.2, Wd - 0.6), y0 = 2.2, y1 = Math.min(13, 6 + L * 0.3) + rng() * 1.5;
   const at = (t: number): Vec3 => [0, y0 + (y1 - y0) * t, -L / 2 + L * t];
+  // (props census #3, lane B 2026-10-14; the judges: "the gallery is ONE 2.2 x 2.2 m member box along the incline with a
+  // painted dark window band ... the transfer house a blank stone span shaft ... each trestle two members") the gallery
+  // a truss of chords and posts clad in sheet, its window band glazed between the sheets, set back; the transfer house
+  // a brick tower with pilasters and cut windows and doors under its sheet head house; the trestles braced lattice
+  // towers on brick piers; the hopper on its legs with its stiffeners
   sink.placed(0, f.cx, 0, f.cz, () => alongPlot(sink, turned, () => {
-    // the gallery: a box section along the incline (sheet walls, a roof), its windows a dark band
-    const a = at(0.08), b = at(0.86);
-    sink.member('structureMetal', a, b, gw, 2.2, [0, 1, 0], { colour: SHEET, exposed: true }, 0);
-    if (!mobile) sink.member('structureWood', [a[0], a[1] + 1.3, a[2]], [b[0], b[1] + 1.3, b[2]], gw + 0.02, 0.4, [0, 1, 0], { colour: [0.05, 0.05, 0.05], decor: true, exposed: true, fine: true }, 0);
-    // the transfer house at the top end: a brick tower the lot's width, the sheet housing on it under a gable
-    const hd = Math.min(3.6, L * 0.2), hy = y1 - 1.2;
-    sink.span('stone', -Wd / 2, -0.4, L / 2 - hd, Wd / 2, hy, L / 2);
-    sink.span('structureMetal', -Wd / 2 + 0.3, hy, L / 2 - hd + 0.1, Wd / 2 - 0.3, hy + 3.2, L / 2 - 0.1, { colour: SHEET });
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
-    sink.placed(0, 0, 0, L / 2 - hd / 2, () => emitRoof(sink, roofGeometry(Wd - 0.6, hd - 0.2, hy + 3.2, cap), cap));
-    const hf: Face = { origin: [0, 0, L / 2], u: [1, 0, 0], out: [0, 0, 1], width: Wd };
-    gateUnit(sink, hf, 0, 0, Math.min(2.4, Wd - 1.2), 2.8, DOOR, { bucket: YELLOW_BRICK, width: 0.2, out: 0.06 });
-    // the trestles under the gallery: lattice legs on brick feet
-    for (const t of [0.34, 0.62]) {
-      const p = at(t), h = p[1] - 0.2;
-      for (const s of [-1, 1]) {
-        sink.span('stone', s * gw / 2 - 0.35, -0.4, p[2] - 0.35, s * gw / 2 + 0.35, 0.6, p[2] + 0.35);
-        sink.member('structureMetal', [s * gw / 2, 0.6, p[2]], [s * gw / 2 * 0.8, h, p[2]], 0.3, 0.3, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
+    const a = at(0.08), b = at(0.86), len = Math.hypot(b[1] - a[1], b[2] - a[2]);
+    const dy = (b[1] - a[1]) / len, dz = (b[2] - a[2]) / len;
+    // a point of the gallery: s metres along its floor's centre line, x across, h up from its floor (normal to it)
+    const G = (s: number, x: number, h: number): Vec3 => [x, a[1] + dy * s + dz * h, a[2] + dz * s - dy * h];
+    const nUp: Vec3 = [0, dz, -dy], H = 2.2;
+    // the cladding: the sheets below the window band and over it, the roof and the floor, a shade apart
+    const panel = (x: number, h0: number, h1: number, colour: Rgb, decor = false) => {
+      sink.member('structureMetal', G(0, x, (h0 + h1) / 2), G(len, x, (h0 + h1) / 2), h1 - h0, 0.05, [Math.sign(x), 0, 0],
+        { colour, ...(decor ? { decor: true } : {}), exposed: true }, 0.025);
+    };
+    for (const side of [-1, 1]) {
+      panel(side * gw / 2, 0, 1.0, SHEET);
+      panel(side * gw / 2, 1.75, H, shade(SHEET, 1.05));
+      // the window band set back between the sheets: the glazing and its mullions, the sill and head rails
+      // (in lengths of at most 8 m: the integrity gate reads a 1 cm pane's edge 18 m long as a sliver)
+      for (let k = 0, nG = Math.ceil(len / 8); k < nG; k++) {
+        sink.member('glass', G(len * k / nG, side * (gw / 2 - 0.06), 1.375), G(len * (k + 1) / nG, side * (gw / 2 - 0.06), 1.375), 0.75, 0.01, [side, 0, 0], { decor: true, exposed: true }, 0);
       }
-      if (!mobile) for (let y = 1.4; y < h - 0.6; y += 1.6) sink.member('structureWood', [-gw / 2, y, p[2]], [gw / 2, y + 1.2, p[2]], 0.08, 0.08, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+      if (!mobile) {
+        for (let s = 0.6; s < len; s += 1.2) sink.member('structureMetal', G(s, side * (gw / 2 - 0.04), 1.0), G(s, side * (gw / 2 - 0.04), 1.75), 0.05, 0.04, [side, 0, 0], { colour: TRUSS, decor: true, fine: true }, 0);
+      }
+      // the truss's chords and posts outside the sheets
+      for (const h of [0, H]) sink.member('structureMetal', G(0, side * (gw / 2 + 0.06), h), G(len, side * (gw / 2 + 0.06), h), 0.16, 0.12, [side, 0, 0], { colour: TRUSS, decor: true }, 0);
+      for (let s = 0; s <= len + 0.01; s += len / Math.max(2, Math.round(len / 2.6))) {
+        sink.member('structureMetal', G(s, side * (gw / 2 + 0.06), 0), G(s, side * (gw / 2 + 0.06), H), 0.12, 0.1, [side, 0, 0], { colour: TRUSS, decor: true }, 0);
+      }
     }
-    // the receiving hopper at the low end: its brick pit walls the lot's width, the steel hopper over the belt's tail
+    sink.member('structureMetal', G(0, 0, H + 0.03), G(len, 0, H + 0.03), gw + 0.3, 0.06, nUp, { colour: shade(SHEET, 0.85), exposed: true }, 0);
+    sink.member('structureMetal', G(0, 0, -0.03), G(len, 0, -0.03), gw + 0.1, 0.08, nUp, { colour: TRUSS, exposed: true }, 0);
+    // the transfer house at the top end: a brick tower the lot's width, pilastered, its windows and door cut; the sheet
+    // head house on it under a gable
+    const hd = Math.min(3.6, L * 0.2), hy = y1 - 1.2;
+    sink.placed(0, 0, 0, L / 2 - hd / 2, () => {
+      const lower = Math.max(2.8, hy / 2), upper = Math.max(2.4, hy - lower);
+      const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.2 }];
+      for (const face of ['left', 'right'] as const) openings.push({ face, storey: 1, kind: 'window', u: 0, w: 0.8, y0: 0.9, h: 1.2 });
+      openings.push({ face: 'front', storey: 1, kind: 'window', u: 0, w: 0.8, y0: 0.9, h: 1.2 });
+      buildHouse(sink, {
+        w: Wd, d: hd, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: lower - 0.3, wall: 'stone' }, { h: upper, wall: 'stone' }],
+        roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.2, bucket: 'stone', decor: true }, gableBucket: 'stone',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.2,
+      }, {
+        window: (s, face, o, yy) => windowUnit(s, face, o.u, yy + o.y0, o.w, o.h, HALL_WINDOW, rng, 0),
+        door: (s, face, o, yy) => doorUnit(s, face, o.u, yy + o.y0, o.w, o.h, { leaf: DOOR, frame: { bucket: YELLOW_BRICK, width: 0.18, out: 0.06 }, steps: null, leafKind: 'plank' }),
+      });
+      if (!mobile) {
+        for (const [px, pz] of [[-Wd / 2, hd / 2], [Wd / 2, hd / 2], [-Wd / 2, -hd / 2], [Wd / 2, -hd / 2]] as const) {
+          sink.span(YELLOW_BRICK, px - 0.18, 0.3, pz - 0.18, px + 0.18, hy, pz + 0.18, { decor: true });
+        }
+      }
+      sink.span('structureMetal', -Wd / 2 + 0.3, hy, -hd / 2 + 0.1, Wd / 2 - 0.3, hy + 3.2, hd / 2 - 0.1, { colour: SHEET });
+      if (!mobile) {
+        for (let y = hy + 0.3; y < hy + 3.1; y += 0.4) sink.span('structureMetal', -Wd / 2 + 0.27, y, hd / 2 - 0.1, Wd / 2 - 0.27, y + 0.03, hd / 2 - 0.07, { colour: shade(SHEET, 0.85), decor: true, fine: true });
+      }
+      const cap: RoofSpec = { kind: 'gable', pitchDeg: 20, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
+      emitRoof(sink, roofGeometry(Wd - 0.6, hd - 0.2, hy + 3.2, cap), cap);
+    });
+    // the trestles under the gallery: braced lattice towers of four legs on brick piers, each leg up into the gallery's
+    // floor where it passes over it, the girts and braces between the legs' own lines (the connectivity receipt)
+    const floorY = (z: number) => y0 + (y1 - y0) * (z + L / 2) / L;
+    for (const t of [0.34, 0.62]) {
+      const p = at(t);
+      const foot = (s: number, e: number): Vec3 => [s * gw / 2, 0.6, p[2] + e * 0.55];
+      const head = (s: number, e: number): Vec3 => [s * gw / 2 * 0.85, floorY(p[2] + e * 0.4) - 0.04, p[2] + e * 0.4];
+      const legAt = (s: number, e: number, y: number): Vec3 => {
+        const f0 = foot(s, e), h0 = head(s, e), k = (y - f0[1]) / (h0[1] - f0[1]);
+        return [f0[0] + (h0[0] - f0[0]) * k, y, f0[2] + (h0[2] - f0[2]) * k];
+      };
+      const h = Math.min(head(1, -1)[1], head(1, 1)[1]);
+      for (const s of [-1, 1]) for (const e of [-1, 1]) {
+        sink.span('stone', s * gw / 2 - 0.3, -0.4, p[2] + e * 0.55 - 0.3, s * gw / 2 + 0.3, 0.6, p[2] + e * 0.55 + 0.3);
+        sink.member('structureMetal', foot(s, e), head(s, e), 0.18, 0.18, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
+      }
+      if (!mobile) {
+        for (let y = 1.6; y < h - 0.4; y += 1.7) {
+          const yb = Math.min(h - 0.1, y + 1.4);
+          for (const e of [-1, 1]) sink.member('structureWood', legAt(-1, e, y), legAt(1, e, y), 0.07, 0.07, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+          for (const s of [-1, 1]) sink.member('structureWood', legAt(s, -1, y), legAt(s, 1, yb), 0.06, 0.06, [s, 0, 0], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+          sink.member('structureWood', legAt(-1, -1, y), legAt(1, -1, yb), 0.06, 0.06, [0, 0, 1], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
+        }
+      }
+    }
+    // the receiving hopper at the low end: its brick pit walls the lot's width, the steel hopper on four legs over the
+    // belt's tail, tapering to its gate, its stiffeners down its sides
     const pd = Math.min(2.4, L * 0.14);
-    sink.span('stone', -Wd / 2, -0.4, -L / 2, Wd / 2, 1.4, -L / 2 + pd);
-    sink.span('structureMetal', -gw / 2 - 0.4, 1.4, -L / 2 + 0.2, gw / 2 + 0.4, y0 + 0.9, -L / 2 + pd - 0.2, { colour: OXIDE });
+    sink.span('stone', -Wd / 2, -0.4, -L / 2, Wd / 2, 1.0, -L / 2 + pd);
+    const hz = -L / 2 + pd / 2, hw = gw / 2 + 0.4, hh = Math.min(1.0, pd / 2 - 0.15);
+    sink.span('structureMetal', -hw, y0 + 0.2, hz - hh, hw, y0 + 0.9, hz + hh, { colour: OXIDE });
+    sink.prism('structureMetal', [[-0.3, 1.25, hz - 0.2], [0.3, 1.25, hz - 0.2], [hw, y0 + 0.2, hz - hh], [-hw, y0 + 0.2, hz - hh]], [0, 0, 1], 2 * hh * 0.9, { colour: shade(OXIDE, 0.9) });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureMetal', sx * hw - 0.06, 1.0, hz + sz * hh - 0.06, sx * hw + 0.06, y0 + 0.9, hz + sz * hh + 0.06, { colour: TRUSS });
+    if (!mobile) for (const x of [-hw / 2, 0, hw / 2]) sink.span('structureMetal', x - 0.03, y0 + 0.2, hz + hh, x + 0.03, y0 + 0.9, hz + hh + 0.05, { colour: shade(OXIDE, 0.8), decor: true, fine: true });
   }, 1));
   return sink.finish();
 };
@@ -334,12 +483,22 @@ const headframe: RegionalBuilder = (ctx) => {
   // with no room for the engine house the hall runs to the lot's back (the winding engine inside it)
   const hb = engine ? hz0 : -D / 2 + 0.35;
   sink.placed(0, f.cx, 0, f.cz, () => {
-    sink.span('stone', -W / 2 + 0.25, -0.4, hb, W / 2 - 0.25, 6.5, hz1);
-    const cap: RoofSpec = { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.2, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
-    sink.placed(Math.PI / 2, 0, 0, (hb + hz1) / 2, () => emitRoof(sink, roofGeometry(hz1 - hb, W - 0.5, 6.5, cap), cap));
-    const front: Face = { origin: [0, 0, hz1], u: [1, 0, 0], out: [0, 0, 1], width: W - 0.5 };
-    gateUnit(sink, front, 0, 0, Math.min(3, W * 0.4), 3.4, DOOR, { bucket: YELLOW_BRICK, width: 0.24, out: 0.08 });
-    for (const u of [-W / 2 + 1.4, W / 2 - 1.4]) windowUnit(sink, front, u, 2.4, 1.0, 2.2, HALL_WINDOW, rng, 0.2);
+    // the shaft hall, a body of its own (the winding house's wing, falling into its own heap): its eave on the lot's
+    // front edge, its gables on the sides; its gate and windows cut through its front, the units at the back of the
+    // reveals (they were laid on a solid front)
+    const gw = Math.min(3, W * 0.4);
+    const hallDialect: HouseDialect = {
+      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, HALL_WINDOW, rng, 0.2),
+      door: (s, face, o, y0) => gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, DOOR, { bucket: YELLOW_BRICK, width: 0.24, out: 0.08 }),
+    };
+    // (turned a quarter: its left face the street front)
+    sink.placed(Math.PI / 2, 0, 0, (hb + hz1) / 2, () => buildHouse(sink, {
+      w: hz1 - hb, d: W - 0.5, plinth: null, storeys: [{ h: 6.5, wall: 'stone' }],
+      roof: { kind: 'gable', pitchDeg: 26, eave: 0.3, verge: 0.2, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone',
+      openings: [{ face: 'left', storey: 0, kind: 'gate', u: 0, w: gw, y0: 0, h: 3.4 },
+        ...[-W / 2 + 1.4, W / 2 - 1.4].map((u): Opening => ({ face: 'left', storey: 0, kind: 'window', u, w: 1.0, y0: 2.4, h: 2.2 }))],
+      chimneys: [], gutters: null, verge: null, reveal: 0.28, rafters: null, spall: null,
+    }, hallDialect));
     // the tower: four legs, cross-braced, the sheave platform
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       sink.member('structureMetal', [sx * tw / 2, 0.2, tz + sz * tw / 2], [sx * tw * 0.4, th, tz + sz * tw * 0.4], 0.32, 0.32, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
@@ -349,6 +508,13 @@ const headframe: RegionalBuilder = (ctx) => {
       sink.member('structureWood', [ax * tw * k, y, tz + az * tw * k], [bx * tw * k, y + 2.4, tz + bz * tw * k], 0.09, 0.09, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true, fine: true }, 0);
     }
     sink.span('structureMetal', -tw * 0.55, th, tz - tw * 0.55, tw * 0.55, th + 0.4, tz + tw * 0.55, { colour: TRUSS, decor: true });
+    // (props census #13, lane B 2026-10-15) the headframe recorded as an open frame: it falls as its members, the sheave
+    // platform and wheels its crown (damage.ts lattice, a body beside the halls)
+    const girts: number[] = [];
+    for (let y = 7; y < th - 1; y += 2.6) girts.push(y);
+    recordLattice(sink, ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sz]) => ({ foot: [sx * tw / 2, 0.2, tz + sz * tw / 2] as Vec3,
+      head: [sx * tw * 0.4, th, tz + sz * tw * 0.4] as Vec3 })), girts, 0.32, 'structureMetal', OXIDE,
+    { x0: -tw * 0.55, x1: tw * 0.55, y0: th, y1: th + 4.1, z0: tz - tw * 0.55, z1: tz + tw * 0.55, bucket: 'structureMetal', tint: TRUSS });
     const ropeTo = engine ? ez1 : hb + 1;
     for (const s of [-1, 1]) {
       sink.cylinder('structureMetal', [s * 0.7, th + 2.1, tz - 0.1], 'x', 0.18, 2.0, 14, { colour: TRUSS, decor: true }, 2.0, true);
@@ -406,6 +572,10 @@ const worksOffice: RegionalBuilder = (ctx) => {
 // ------------------------------------------------------------------------------------------------ the miners' houses
 
 const SANDSTONE = rgb(0x9a5f4c), WHITE_FRAME = rgb(0xe4dfd2);
+/** The Kolonialwaren shop's paint. */
+const SHOP_PAINT: readonly Rgb[] = [0x3d5c45, 0x6e2a22, 0x2c3a52, 0x5a4030].map(rgb);
+/** A u along a front `len` long, kept clear of its ends. */
+const clampU = (u: number, len: number): number => Math.max(-len / 2 + 1.6, Math.min(len / 2 - 1.6, u));
 const MINER_WINDOW: WindowStyle = { frame: WHITE_FRAME, frameWidth: 0.06, frameOut: 0.04, bars: 'cross', surround: { bucket: 'stone', width: 0.15, out: 0.05, lintel: 0.2 }, sill: { bucket: 'stone', out: 0.08 }, shutters: null };
 const LEAVES: readonly Rgb[] = [0x3e4e44, 0x5a3a2a, 0x2f3f52, 0x6b5a3c].map(rgb);
 
@@ -431,6 +601,16 @@ const minersHouse: RegionalBuilder = (ctx) => {
   const doorU = stable ? -stable * len * 0.12 : (rng() - 0.5) * len * 0.3;
   openings.push({ face: 'left', storey: 0, kind: 'door', u: doorU, w: 1.0, y0: 0, h: 2.15 });
   const avoid: Array<[number, number]> = [[doorU - 0.8, doorU + 0.8]];
+  // (props census #29, lane B 2026-10-15; the judges: "on a cornershop plot it builds the house with no shop") the corner
+  // plot's Kolonialwaren shop in the street bay beside the door: its window divided under a transom, the goods in it, a
+  // fascia over it
+  const shopPlot = ctx.structureId === 'cornershop';
+  const shopU = shopPlot ? clampU(doorU + (doorU < 0 ? 1 : -1) * 2.0, len) : 0;
+  if (shopPlot) {
+    // (the opening over the stall riser, which stands on the wall under it)
+    openings.push({ face: 'left', storey: 0, kind: 'shopfront', u: shopU, w: 2.3, y0: 0.55, h: 1.85 });
+    avoid.push([shopU - 1.45, shopU + 1.45]);
+  }
   if (stable) {
     const su = stable * (len / 2 - 1.7);
     openings.push({ face: 'left', storey: 0, kind: 'gate', u: su, w: 2.4, y0: 0, h: 2.5 });
@@ -442,9 +622,21 @@ const minersHouse: RegionalBuilder = (ctx) => {
   for (const o of windowRhythm('right', 0, len, { w: 0.8, h: 1.1, sill: 1.0, spacing: 2.4, margin: 1.2 })) openings.push(o);
   const houseDialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, MINER_WINDOW, look, 0.25),
-    door: (s, face, o, y0) => {
+    door: (s, face, o, y0, frame) => {
       if (o.kind === 'gate') { gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(leaf, 0.85), { bucket: 'stone', width: 0.2, out: 0.06 }); return; }
-      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'stone', width: 0.18, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0);
+      if (o.kind === 'shopfront') {
+        // the shop window over the masonry stall riser, divided in two under a transom, the goods in it, the fascia over it
+        const y = y0 + o.y0, paint = pick(look, SHOP_PAINT);
+        windowUnit(s, face, o.u, y, o.w, o.h, { ...MINER_WINDOW, bars: 'two', surround: { bucket: 'stone', width: 0.2, out: 0.08 } }, look, 0.5);
+        faceBox(s, 'structureWood', face, o.u, y + o.h - 0.42, -s.recess + 0.03, o.w - 0.1, 0.07, 0.05, { colour: WHITE_FRAME, decor: true, fine: 'near' }, 'ends');
+        if (facadeOn()) shopDisplay(s, face, o.u, y, o.w, o.h, -s.recess);
+        const top = Math.min(frame.bodies[o.storey].y1 - 0.1, y + o.h + 0.62);
+        faceBox(s, 'structureWood', face, o.u, top - 0.18, 0.05, o.w + 0.8, 0.34, 0.1, { colour: paint, decor: true, fineSides: 'near' });
+        faceBox(s, 'structureWood', face, o.u, top + 0.02, 0.09, o.w + 0.94, 0.06, 0.18, { colour: shade(paint, 0.8), decor: true, fineSides: 'near' });
+        return;
+      }
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'stone', width: 0.18, out: 0.06 }, transom: false, steps: { bucket: 'stone' },
+        leafKind: shopPlot && Math.abs(o.u - doorU) < 0.01 ? 'glazed' : 'panel' }, y0 + o.y0);
     },
   };
   sink.placed(0, f.cx, 0, f.cz, () => {
@@ -455,9 +647,18 @@ const minersHouse: RegionalBuilder = (ctx) => {
         chimneys: [{ x: (rng() - 0.5) * 0.6, z: (stable ? -stable : 1) * len * 0.18, sx: 0.5, sz: 0.6, above: 0.8, bucket: 'stone', cap: 'pots' }],
         gutters: mobile ? null : { colour: rgb(0x6a6e70) }, verge: null, reveal: 0.2, rafters: null, spall: null,
       }, houseDialect);
-      // the plinth band in the dressed stone, a soot shadow over the stable door
+      // the plinth band in the dressed stone (on every house: the rubble ones' in the coursed stone)
       const b = frame.bodies[0];
-      if (plaster) sink.band('stone', b.x0 - 0.03, 0.3, b.z0 - 0.03, b.x1 + 0.03, 0.62, b.z1 + 0.03, { decor: true, colour: SANDSTONE });
+      sink.band('stone', b.x0 - 0.03, 0.3, b.z0 - 0.03, b.x1 + 0.03, 0.62, b.z1 + 0.03, { decor: true, colour: SANDSTONE });
+      // (props census #29; the judges: "a plain slab roof with no verge, rafters or dormer") a dormer on the street slope
+      // over the knee wall's attic, clear of the stack
+      if (len > 5.6 && look() < 0.75) {
+        const zs = [(look() - 0.5) * Math.max(0, len - 4.4)];
+        roofDormers(sink, frame.roof, [-1], zs, {
+          kind: look() < 0.6 ? 'gable' : 'shed', wall: plaster ? 'plaster' : 'stone', covering: 'roof',
+          window: (face, u, y, w, h) => windowUnit(sink, face, u, y, w, h, { ...MINER_WINDOW, surround: null, sill: null }, look, 0.25),
+        });
+      }
     }));
     // the yard behind the house, walled to the lot's back and sides
     const yard = zc - depth / 2 - over, back = -f.d / 2;
@@ -465,11 +666,27 @@ const minersHouse: RegionalBuilder = (ctx) => {
       const t = 0.3, wy = 1.8;
       sink.span('stone', -len / 2, -0.4, back, len / 2, wy, back + t);
       for (const s of [-1, 1]) sink.span('stone', s > 0 ? len / 2 - t : -len / 2, -0.4, back + t, s > 0 ? len / 2 : -len / 2 + t, wy, yard + over);
-      if (look() < 0.7) sink.dressing(mobile, () => {
-        // a lean-to shed against the back wall: the coal, the goat
-        const sw = Math.min(3.2, len * 0.4), sx = (look() - 0.5) * (len - sw - 1);
-        sink.span('structureWood', sx - sw / 2, -0.3, back + t, sx + sw / 2, 2.2, back + t + 1.6, { colour: shade(rgb(0x5a4a3a), 0.8 + look() * 0.3), decor: true });
-      });
+      if (look() < 0.7) {
+        // a lean-to shed against the back wall, the coal and the goat (props census #29; the judges: "one plain span box with
+        // no roof, door or boards"): a board shed under its mono-pitch roof falling to the yard, its door cut in its front
+        const sw = Math.min(3.2, len * 0.4), sx = (look() - 0.5) * (len - sw - 1), sd = 1.6, hi = wy + 0.05, lo = 1.95;
+        const colour = shade(rgb(0x5a4a3a), 0.8 + look() * 0.3), pitchDeg = Math.atan2(hi - lo, sd) * 180 / Math.PI;
+        sink.placed(-Math.PI / 2, sx, 0, back + t + sd / 2, () => {
+          sink.paint = colour;
+          try {
+            const shed = buildHouse(sink, {
+              w: sd, d: sw, plinth: { h: 0.1, out: 0.03, bucket: 'stone' }, storeys: [{ h: lo - 0.1, wall: 'structureWood' }],
+              roof: { kind: 'shed', pitchDeg, eave: 0.12, verge: 0.06, thickness: 0.06, bucket: 'structureMetal' }, roofColour: shade(SHEET, 0.9),
+              gableBucket: 'structureWood', openings: [{ face: 'right', storey: 0, kind: 'door', u: (look() - 0.5) * Math.max(0, sw - 1.6), w: 0.85, y0: 0, h: 1.75 }],
+              chimneys: [], gutters: null, verge: null, reveal: 0.06, spall: null,
+            }, { window: () => {}, door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(colour, 0.85), frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(colour, 0.7) }, steps: null, leafKind: 'plank' }, y0 + o.y0) });
+            // its side walls carried up under the pent
+            const rise = sd * Math.tan(pitchDeg * Math.PI / 180), h2 = sd / 2;
+            wallPolygon(sink, 'structureWood', shed.faces.front, [[h2, lo], [-h2, lo + rise], [-h2, lo]], 0.06, { colour });
+            wallPolygon(sink, 'structureWood', shed.faces.back, [[-h2, lo], [h2, lo], [h2, lo + rise]], 0.06, { colour });
+          } finally { sink.paint = null; }
+        });
+      }
     }
   });
   return sink.finish();
@@ -497,8 +714,14 @@ export const SAAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   region: 'The Völklingen ironworks on the Saar: blast furnaces and Cowper stoves, sawtooth rolling mills, gas holders, a colliery headframe, brick and steel',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.36, 0.37, 0.37] },
-    stone: { kind: 'brick', tint: [0.47, 0.26, 0.2] },
-    sourced: { plaster: true, wood: true },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.47, 0.26, 0.2], weathered: true },
+    sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimeRender), every family under the kit's and the map's
+    // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
+    render: { kind: 'limeRender', seed: 0x5aa1 },
     // the yellow brick of the bands and the dressings (foundry.ts carries it in the map's own tones)
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l + 0.05)] },
   },

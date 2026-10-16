@@ -52,7 +52,8 @@ its scenes index (`group: 'fleet'`);
 `i18nCatalog.<locale>.json` files are the reviewed local source of truth and the
 General Translation CLI boundary documented in `docs/LOCALIZATION.md`.
 `i18nDictionaries.ts` ships no catalog: each document loads its own (the game the
-full catalogs, a public page the page catalog its HTML declares, built from
+full catalogs, which the build restricts to the keys the game's graph and workers
+can show, a public page the page catalog its HTML declares, built from
 `tools/i18n-page-catalogs.mjs`, and its lazy chunk before each module it reaches
 only through `import()`); a key a public page could show raw fails the build.
 
@@ -87,6 +88,14 @@ Euler-rotated floating bar. Preserve four PBR material readings, two heavy-lift
 systems, at least three assembled operating machines, and all four manual orbit
 captures. `garageQualityRubric.ts` must remain an all-or-nothing 90+ approval
 gate rather than a metadata-only average.
+The four instanced facility classes share one working-yard grime program
+(`garageGrimeProgram.ts`, world-space dirt, streaks and faded paint); keep new
+kit colours weathered, never toy-saturated. Saltmere's harbour is a lit sea
+(`garageSea.ts`) over the backdrop's painted one; it and the backdrop discard
+over the graving dock, which stands pumped dry (its floor cut is
+`garageDrydockGround`: re-check terrain triangles against the floor after any
+change to the basin). Monsoon's standing water lives in the yard wet mask
+(red = water, green = the damp rim) and lies only in ruts and hollows.
 Verdant's room shell and
 supported interior dressing use one static half-turn around the turntable;
 exclude the podium, hero, canonical camera, shared maintenance graph, and
@@ -105,6 +114,29 @@ and the hero tank share one deliberate service-yard grid. Never radially aim an
 individual structure at the turntable before merging. Preserve the shared
 albedo and normal texture residency for plaster, masonry, timber, and roofs
 rather than replacing close Garage structures with flat colors.
+The hero's outline from the Garage camera stays clear (garage critic panel and
+ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
+the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses
+the hull or turret, a light, calm value stands behind the turret line, and a
+signature facility sits in a third of the frame or frames the hero. Per Garage:
+- Sirocco: the shade depot at view (20, 22), the water tower beyond it, the container line low behind the hero; the
+  guard tower and its HESCO line in the left third at (-15.5, 17).
+- Saltmere: the graving dock in the right third (centre line side 14.6, head 14.5, mouth 33.8), the crane on its rails
+  along the dock's far side, its jib slewed down the dock to sea; the lighthouse to the far left.
+- Redrock: the recovery yard and its gantry at (16, 17), its span turned 45 degrees so the whole gantry stays in the
+  frame; the guard tower and sandbag wall at (-15.5, 17); the warehouse off the turret at (9, 44), smaller; the map's
+  grey heavy-lift gantry behind the lens at (17, -38), clear of the yard's own.
+- Frosthollow: the bunker square to the view at side 9.5, its portal beside the turret, its light facade behind it; the
+  spruce right of the turret; the chalet left of it at (-10, 44), the chapel whole in the right third at (24, 30).
+- Glacier: a 68 m cliff across the frame, the tunnel mouth beside the turret at side 8.5.
+- Ironworks: the crane bay square, its column lines 25.6 m apart framing the hero; crab and booth racked right; the
+  6 m of back wall behind the turret plain sheeting.
+- Monsoon: the covered bay square, its column lines 24 m apart framing the hero; the banana and bamboo in the thirds.
+- Steinburg: the Zeughaus 7 m back at the yard's level, its roofline against the sky; the fire station off the left;
+  the yard piece on the forecourt at (9, 17.5).
+- Cinder: the engine shed at the yard's level; its bracket signals gone, the water crane off the facade.
+Ground that must stay clear of scatter (Saltmere's dock) answers through its own predicate in the kit; anything the
+kit lays down by sampling the ground (groves, tufts) asks it first.
 The shared turntable dimensions, ground elevations, and terrain exclusion live
 in `garagePresentationPose.ts`. Keep terrain and hardstands below the complete
 platform base, including one terrain-cell safety margin. Recolor the existing
@@ -112,7 +144,10 @@ shared turntable materials per location; never create a new texture or shader
 program during an environment switch.
 The separate merged service-facility pack follows that same hero axis; never
 use `GARAGE_CAMERA_AZIMUTH_RAD` as its yaw or the bays will stare face-on at the
-opening camera instead of showing three-quarter depth beside the tank.
+opening camera instead of showing three-quarter depth beside the tank. The one
+exception is a signature building the approach runs into or through (Cinder's
+engine shed over the rail fan): it is squared on its road, its yaw derived from
+the road's own points, never from the camera constant.
 The public and Studio capture gallery shares `presentation/mediaArchive.ts`;
 keep manifest transfer lazy, pagination bounded, and lightbox cleanup explicit.
 `presentation/publicPages.ts` owns typed, save-data-aware hero, screenshot-rail,

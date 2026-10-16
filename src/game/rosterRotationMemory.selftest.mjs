@@ -34,10 +34,10 @@ let memory = rememberBattleBots(null, ['t90am', 'leo2a4', 'm1a1_abrams_hc']);
 assert.deepEqual([...memory.recent].sort(), ['leo2a4', 'm1a1_abrams_hc', 't90am'], 'first battle: its own bots are recent');
 assert.deepEqual([...memory.previous].sort(), ['leo2a4', 'm1a1_abrams_hc', 't90am']);
 memory = rememberBattleBots(memory.previous, ['xk2_black_panther', 'type10_tk_x', 'm1a1_abrams_hc']);
-assert.deepEqual([...memory.recent].sort(), ['xk2_black_panther', 'leo2a4', 'm1a1_abrams_hc', 't90am', 'type10_tk_x'], 'second battle: both battles\' bots are recent');
-assert.deepEqual([...memory.previous].sort(), ['xk2_black_panther', 'm1a1_abrams_hc', 'type10_tk_x'], 'only the latest battle carries forward');
+assert.deepEqual([...memory.recent].sort(), ['leo2a4', 'm1a1_abrams_hc', 't90am', 'type10_tk_x', 'xk2_black_panther'], 'second battle: both battles\' bots are recent');
+assert.deepEqual([...memory.previous].sort(), ['m1a1_abrams_hc', 'type10_tk_x', 'xk2_black_panther'], 'only the latest battle carries forward');
 memory = rememberBattleBots(memory.previous, ['challenger3_proto']);
-assert.deepEqual([...memory.recent].sort(), ['challenger3_proto', 'xk2_black_panther', 'm1a1_abrams_hc', 'type10_tk_x'], 'the battle before last has dropped out of the memory');
+assert.deepEqual([...memory.recent].sort(), ['challenger3_proto', 'm1a1_abrams_hc', 'type10_tk_x', 'xk2_black_panther'], 'the battle before last has dropped out of the memory');
 
 // (3) Real-catalog diversity: fresh own-era hulls lead each draw, then fresh
 // modern contemporaries fill the remaining seats before a recent hull repeats.

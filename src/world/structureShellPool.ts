@@ -28,8 +28,16 @@ export interface StructureShellPool {
   wire(job: number): StructureShellWire;
   /** Settles when every posted job has answered (or failed), or after `timeoutMs`. */
   settled(timeoutMs: number): Promise<void>;
+  /**
+   * 2026-10-15 (the perf lane): the newest job no answer has reached yet, now the caller's to derive (it calls
+   * `complete` with the bands in the same task), or null when none is left. The workers take their jobs in posting
+   * order, so the main thread works from the other end while it would otherwise wait at the join.
+   */
+  steal(): { job: number; wire: StructureShellWire } | null;
+  /** The caller's own derivation of a stolen job: it stands as that job's answer. */
+  complete(job: number, bands: StructureCollisionRuntimeBand[]): void;
   dispose(): void;
-  readonly stats: { posted: number; answered: number; failed: number; packMs: number };
+  readonly stats: { posted: number; answered: number; failed: number; packMs: number; stolen?: number };
 }
 
 interface Job { wire: StructureShellWire; bands: StructureCollisionRuntimeBand[] | null; done: boolean }
@@ -44,7 +52,7 @@ function createWorkerStructureShellPool(
 ): StructureShellPool {
   const jobs = new Map<number, Job>();
   const workers: WorkerPort[] = [];
-  const stats = { posted: 0, answered: 0, failed: 0, packMs: 0 };
+  const stats = { posted: 0, answered: 0, failed: 0, packMs: 0, stolen: 0 };
   let serial = 0, cursor = 0, dead = false;
   const waiters: Array<() => void> = [];
   const wake = (): void => {
@@ -106,6 +114,23 @@ function createWorkerStructureShellPool(
       if (!entry) throw new Error(`structure shell job ${job} is unknown`);
       return entry.wire;
     },
+    steal() {
+      for (let id = serial; id > 0; id--) {
+        const job = jobs.get(id);
+        if (job && !job.done) return { job: id, wire: job.wire };
+      }
+      return null;
+    },
+    complete(id, bands) {
+      const job = jobs.get(id);
+      if (!job || job.done) return;
+      // a worker's later reply for this job finds it done and is dropped (onmessage); the bands are the same function's
+      job.done = true;
+      job.bands = bands;
+      stats.answered++;
+      stats.stolen++;
+      wake();
+    },
     settled(timeoutMs) {
       if (stats.answered + stats.failed >= stats.posted) return Promise.resolve();
       return new Promise<void>((resolve) => {
@@ -133,6 +158,8 @@ export function createDeferredStructureShellPool(): StructureShellPool {
     take() { return null; },
     wire(job) { const wire = jobs.get(job); if (!wire) throw new Error(`structure shell job ${job} is unknown`); return wire; },
     settled() { return Promise.resolve(); },
+    steal() { return null; },
+    complete() { /* every take derives from the wire */ },
     dispose() { jobs.clear(); },
   };
 }

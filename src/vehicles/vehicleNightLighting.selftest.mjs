@@ -7,6 +7,7 @@ import {
 } from './vehicleNightLighting.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { createNightLightingRuntime, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
+import { tankSeedId } from './tankIdAliases.ts'; // the t90 family prefix is schema-1 vocabulary
 
 const close = (actual, expected, message) => assert.ok(actual.distanceTo(expected) < 2e-6, message);
 const material = new THREE.MeshStandardMaterial({ emissive: 0x010203, emissiveIntensity: .2 });
@@ -321,9 +322,9 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
           }
         });
         assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
-        if (physicalIds.includes(id)) assert.equal(checked, id.startsWith('t90_1992') ? 4 : 2,
+        if (physicalIds.includes(id)) assert.equal(checked, tankSeedId(id).startsWith('t90') ? 4 : 2,
           `${id}/${quality} restores only the existing lamp apertures`);
-        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,id.startsWith('t90_1992')?120:72);
+        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,tankSeedId(id).startsWith('t90')?120:72);
       }
     }
     const hull = visual.root.getObjectByName('hull'), hullHash = createHash('sha256');

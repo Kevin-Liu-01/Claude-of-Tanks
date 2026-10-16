@@ -8,9 +8,9 @@
 // piers, board-and-batten under tin roofs, front porches and a brick chimney; the mule barn under its hay hood; the
 // railroad's water tank on its trestle; privies and woodsheds; a house burnt to its chimney. Galvanised sheet roofs
 // over everything (the mill's fires took the shingles), the boards weathered silver or whitewashed, the trim painted.
-import { PartSink, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
-import { buildHouse, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
-import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -573,38 +573,92 @@ const depot: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The mule barn: a board-and-batten barn under a tin gable, the hay hood over the loft door, the aisle doors at the ends. */
+/**
+ * A board shutter hung open against the wall beside a loft opening (the mule barn's loft windows), its casing round the
+ * cut opening, its ledges and Z-brace, its strap hinges on the casing: the dark of the loft shows through.
+ */
+function loftShutter(sink: PartSink, face: Face, o: Opening, y0: number, leaf: Rgb, casing: Rgb): void {
+  const y = y0 + o.y0, cas = { colour: casing, decor: true, fineSides: true } as const;
+  for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, o.u + side * (o.w / 2 + 0.045), y + o.h / 2, 0.03, 0.09, o.h + 0.18, 0.04, cas, 'caps');
+  for (const dy of [-0.045, o.h + 0.045]) faceBox(sink, 'structureWood', face, o.u, y + dy, 0.03, o.w + 0.18, 0.09, 0.04, cas, 'ends');
+  // the leaf swung back flat against the boards on the hinge side, a hand off the wall on its hinges
+  const lu = o.u - o.w - 0.1, lc = { colour: leaf, decor: true, uv: UV_MEMBER } as const;
+  faceBox(sink, 'structureWood', face, lu, y + o.h / 2, 0.075, o.w, o.h, 0.035, lc);
+  for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, lu, y + o.h * t, 0.105, o.w - 0.06, 0.08, 0.025, { colour: shade(leaf, 0.85), decor: true, fine: true }, 'ends');
+  sink.member('structureWood', facePoint(face, lu - o.w / 2 + 0.06, y + o.h * 0.22, 0.093), facePoint(face, lu + o.w / 2 - 0.06, y + o.h * 0.78, 0.093), 0.07, 0.025, face.out,
+    { colour: shade(leaf, 0.85), decor: true, fine: true }, 0);
+}
+
+/**
+ * The mule barn (the props census #17, 2026-10-15, the judges: "cut real openings: the loft door as a reveal with a
+ * hinged plank leaf or an open loft showing hay and joists, and the loft windows with board shutters or open frames that
+ * show depth; the aisle gates need two leaves of boards with Z-braces and strap hinges; a hay hood with a ridge beam,
+ * brackets and a pulley, rafter tails under the tin eaves"): board-and-batten on its plinth under a tin gable, the aisle
+ * gates hung in their reveals as ledged-and-braced leaves on strap hinges, the loft windows cut deep with their shutters
+ * swung back, the hay door cut through the front gable onto the hay in the loft, the hood carried out on the ridge beam
+ * over two brackets with its pulley and rope, the rafter tails out under both eaves.
+ */
 const muleBarn: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), rng = st.rng;
   const fp = footprint(ctx);
   const sheet = pick(rng, TIN);
+  const mobile = ctx.tier === 'mobile';
   onLot(sink, fp, (Wf, Df) => {
-    const W = Wf - 0.1, D = Df - 0.1, h = 3.6;
+    const W = Wf - 0.1, D = Df - 0.1, h = 3.6, pitch = 36, tanP = Math.tan(pitch * Math.PI / 180);
+    const gateLeaf = rng() < 0.5 ? RUST : shade(WEATHERED, 0.85);
+    const hay = { u0: -0.65, u1: 0.65, y0: 0.3 + h + 0.3, y1: 0.3 + h + 1.65 };
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h, wall: 'wood' }], roof: tin('gable', 36, 0.5, 0.25), roofColour: sheet, gableBucket: 'wood',
+      w: W, d: D, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h, wall: 'wood' }], roof: tin('gable', pitch, 0.5, 0.25), roofColour: sheet, gableBucket: 'wood',
       openings: [
         { face: 'front', storey: 0, kind: 'gate', u: 0, w: Math.min(3.2, W * 0.4), y0: 0, h: 3.0 },
         { face: 'back', storey: 0, kind: 'gate', u: 0, w: Math.min(3.2, W * 0.4), y0: 0, h: 3.0 },
         ...windowRhythm('left', 0, D, { w: 0.6, h: 0.6, sill: 1.8, spacing: 2.4, margin: 1.2 }).map((o): Opening => ({ ...o, kind: 'loft' })),
         ...windowRhythm('right', 0, D, { w: 0.6, h: 0.6, sill: 1.8, spacing: 2.4, margin: 1.2 }).map((o): Opening => ({ ...o, kind: 'loft' })),
       ],
-      chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.1, spall: null,
+      chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.2, spall: null,
     }, {
-      window: (s, face, o, y0) => faceBox(s, 'dark', face, o.u, y0 + o.y0 + o.h / 2, -0.05, o.w, o.h, 0.02, {}),
+      window: (s, face, o, y0) => loftShutter(s, face, o, y0, shade(WEATHERED, 0.9 + rng() * 0.15), WHITE),
       door: (s, face, o, y0) => {
-        const r = s.recess, go = r > 0 ? -r + 0.04 : 0.02;
-        faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.06, { colour: rng() < 0.5 ? RUST : shade(WEATHERED, 0.85) });
-        // the Z brace across the leaves
-        s.member('structureWood', [o.u - o.w / 2 + 0.1, y0 + o.y0 + 0.2, 0], [o.u + o.w / 2 - 0.1, y0 + o.y0 + o.h - 0.2, 0], 0.12, 0.04, face.out, { colour: WHITE, decor: true, fine: true });
+        gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, gateLeaf, { bucket: 'structureWood', width: 0.14, out: 0.05, colour: WHITE }, { wicket: false });
       },
+      gableOpenings: (face) => (face.out[2] > 0.5 ? [hay] : []),
     });
     battenHouse(sink, frame, 0.3, 0.3 + h, 0.7);
-    // the hay hood: the ridge carried out over the loft door in the front gable (dressing), the loft door under it
     const top = frame.roof.ridgeY, z = D / 2;
-    sink.span('structureMetal', -0.9, top - 0.9, z - 0.2, 0.9, top - 0.75, z + 1.2, { colour: sheet, decor: true });
     const gf: Face = { origin: [0, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    faceBox(sink, 'dark', gf, 0, frame.eaveY + 0.9, 0.02, 1.3, 1.4, 0.02, { decor: true });
+    // the hay door: its casing, its leaf hung open on the gable, the hay heaped on the loft floor behind it, a joist's end
+    sink.recess = frame.gableReveal;
+    try {
+      loftShutter(sink, gf, { face: 'front', storey: 0, kind: 'loft', u: 0, w: hay.u1 - hay.u0, y0: hay.y0, h: hay.y1 - hay.y0 }, 0, shade(WEATHERED, 0.95), WHITE);
+    } finally { sink.recess = 0; }
+    sink.dressing(mobile, () => {
+      faceBox(sink, 'straw', gf, 0, hay.y0 + 0.32, -frame.gableReveal - 0.35, 1.25, 0.64, 0.6, { decor: true });
+      faceBox(sink, 'structureWood', gf, 0, hay.y0 - 0.07, -frame.gableReveal - 0.2, 1.4, 0.14, 0.4, { colour: shade(WEATHERED, 0.7), decor: true });
+    });
+    // the hood: the ridge beam run out over the hay door on two brackets, a tin gable over it, the pulley and its rope
+    const beamY = top - 0.3, out = 1.3;
+    sink.member('structureWood', [0, beamY, z - 0.4], [0, beamY, z + out], 0.16, 0.2, [0, 1, 0], { colour: shade(WEATHERED, 0.8), decor: true, exposed: true }, 0.1);
+    for (const sx of [-1, 1]) {
+      sink.member('structureWood', [sx * 0.75, beamY - 1.05, z + 0.02], [sx * 0.08, beamY - 0.1, z + out * 0.75], 0.1, 0.1, [sx, 0, 0], { colour: shade(WEATHERED, 0.8), decor: true, exposed: true }, 0);
+    }
+    const hood: RoofSpec = { ...tin('gable', pitch, 0.08, 0.02), decor: true };
+    const hw = 0.95, hEave = beamY + 0.12 - hw * tanP;
+    sink.placed(0, 0, 0, z + out / 2 - 0.1, () => emitRoof(sink, roofGeometry(2 * hw, out + 0.2, hEave, hood), hood, sheet));
+    sink.dressing(mobile, () => {
+      sink.cylinder('structureMetal', [0, beamY - 0.42, z + out - 0.15], 'x', 0.06, 0.12, 8, { colour: IRON, decor: true }, 0.12, true);
+      sink.member('structureWood', [0, beamY - 0.1, z + out - 0.15], [0, beamY - 0.36, z + out - 0.15], 0.03, 0.03, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      sink.member('structureWood', [0.1, beamY - 0.46, z + out - 0.15], [0.1, hay.y0 - 0.2, z + out - 0.1], 0.025, 0.025, [0, 0, 1], { colour: shade(WEATHERED, 1.1), decor: true, exposed: true }, 0);
+      // the rafter tails out under both tin eaves, every 85 cm
+      const eave = 0.5, cosP = Math.cos(pitch * Math.PI / 180), sinP = Math.sin(pitch * Math.PI / 180);
+      for (const side of [-1, 1]) {
+        for (let zz = -D / 2 + 0.4; zz < D / 2 - 0.2; zz += 0.85) {
+          const ya = frame.eaveY - 0.13 / cosP + 0.01, xa = side * (W / 2 - 0.02), xb = side * (W / 2 + eave - 0.06);
+          sink.member('structureWood', [xa, ya, zz], [xb, ya - (Math.abs(xb) - Math.abs(xa)) * tanP, zz], 0.06, 0.12, [side * sinP, cosP, 0],
+            { colour: shade(WEATHERED, 0.75), decor: true, fine: true, exposed: true }, 0);
+        }
+      }
+    });
   });
   return sink.finish();
 };
@@ -634,7 +688,13 @@ const waterTank: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The privy or woodshed behind a house: planks under a lean-to of tin, a plank door; it fills its plot. */
+/**
+ * The privy or woodshed behind a house (the props census #17, 2026-10-15, the judges: "keep the house plan; put it on
+ * brick piers or skids with a sill, add corner boards, a crescent or slot vent, a Z-braced door with strap hinges in a
+ * deeper frame, and rafter tails or a fascia under a corrugated tin roof with a drip edge"): board-and-batten on a
+ * fieldstone sill under its tin lean-to, white corner boards, the plank door hung deep in its batten frame with its
+ * ledges, Z-brace and strap hinges, the vent slot cut high in the side, the fascia and the drip edge along the low eave.
+ */
 const woodshed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), rng = st.rng;
@@ -642,18 +702,41 @@ const woodshed: RegionalBuilder = (ctx) => {
   const W = Math.max(1.6, fp.w - 0.06), D = Math.max(1.4, fp.d - 0.06), h = 2.1 + rng() * 0.3;
   const sheet = pick(rng, TIN);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
+    const sill = 0.22;
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: null, storeys: [{ h, wall: 'wood' }], roof: tin('shed', 10, 0.2, 0.15), roofColour: sheet,
-      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: 1.85 }],
-      chimneys: [], gutters: null, verge: null, reveal: 0.04, spall: null,
+      w: W, d: D, plinth: { h: sill, out: 0.02, bucket: 'stone', course: false }, storeys: [{ h, wall: 'wood' }], roof: tin('shed', 10, 0.2, 0.15), roofColour: sheet,
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: 1.85 },
+        { face: 'right', storey: 0, kind: 'loft', u: 0, w: Math.min(0.5, D - 0.6), y0: h - 0.42, h: 0.14 }],
+      chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
     }, {
       window: () => {},
-      door: (s, face, o, y0, fr) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
-        leaf: WEATHERED, frame: { bucket: 'structureWood', width: 0.06, out: 0.03, colour: BATTEN }, steps: null, leafKind: 'plank',
-      }, fr.floors[o.storey] + o.y0),
+      door: (s, face, o, y0, fr) => {
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: WEATHERED, frame: { bucket: 'structureWood', width: 0.08, out: 0.04, colour: BATTEN }, steps: null, leafKind: 'plank',
+        }, fr.floors[o.storey] + o.y0);
+        // the ledges, the Z-brace between them and the strap hinges on the leaf at the back of the frame
+        const go = (s.recess > 0 ? -s.recess + 0.03 : 0.02) + 0.045, y = y0 + o.y0, l0 = o.u - o.w / 2 + 0.06, l1 = o.u + o.w / 2 - 0.06;
+        const ledge = { colour: shade(WEATHERED, 0.82), decor: true, fine: true } as const;
+        for (const t of [0.16, 0.84]) {
+          faceBox(s, 'structureWood', face, o.u, y + o.h * t, go, o.w - 0.12, 0.1, 0.025, ledge);
+          faceBox(s, 'structureMetal', face, l0 + 0.2, y + o.h * t, go + 0.017, 0.4, 0.035, 0.008, { colour: IRON, decor: true, fine: true });
+        }
+        s.member('structureWood', facePoint(face, l0 + 0.04, y + o.h * 0.2, go - 0.012), facePoint(face, l1 - 0.04, y + o.h * 0.8, go - 0.012), 0.08, 0.024, face.out, ledge, 0);
+      },
     });
     shedGables(sink, W, D, frame.eaveY, Math.tan(10 * Math.PI / 180), 'wood');
-    battenHouse(sink, frame, 0, h, 0.5);
+    battenHouse(sink, frame, sill, sill + h, 0.5);
+    sink.dressing(ctx.tier === 'mobile', () => {
+      // the corner boards
+      for (const name of ['front', 'back'] as const) {
+        const f = frame.faces[name];
+        for (const side of [-1, 1]) faceBox(sink, 'structureWood', f, side * (f.width / 2 - 0.05), sill + h / 2, 0.025, 0.1, h, 0.03, { colour: WHITE, decor: true }, 'caps');
+      }
+      // the fascia board along the low eave (+x) under the sheet's edge, and the drip edge folded over it
+      const r = frame.faces.right, ex = 0.2, ey = frame.eaveY - ex * Math.tan(10 * Math.PI / 180);
+      faceBox(sink, 'structureWood', r, 0, ey - 0.06, ex - 0.02, D + 0.3, 0.12, 0.025, { colour: WHITE, decor: true });
+      faceBox(sink, 'structureMetal', r, 0, ey + 0.005, ex + 0.005, D + 0.3, 0.04, 0.01, { colour: shade(sheet, 0.9), decor: true, fine: true });
+    });
   });
   return sink.finish();
 };
@@ -671,7 +754,12 @@ const burnt: RegionalBuilder = (ctx) => {
       sink.span('structureWood', x0, 0.6, z0, x1, 0.85, z1, { colour: CHAR });
     }
     // the chimney standing whole, a corner of the wall frame, the fallen roof sheet
-    sink.span('stone', -0.35, -0.5, -0.35, 0.35, 5.6 + rng(), 0.35);
+    // (props census #7, lane B 2026-10-14: the stack a bare box) the chimney standing whole over its firebox, cut
+    // through its face to the hearth's dark
+    const ch = 5.6 + rng();
+    sink.span('stone', -0.35, -0.5, -0.35, 0.35, ch, -0.05);
+    holedPolygon(sink, 'stone', { origin: [0, 0, 0.35], u: [1, 0, 0], out: [0, 0, 1], width: 0.7 }, [[-0.35, -0.5], [0.35, -0.5], [0.35, ch], [-0.35, ch]],
+      [{ u0: -0.2, u1: 0.2, y0: 0.62, y1: 1.2 }], 0.4, 0.34);
     sink.member('structureWood', [-W / 2 + 0.15, 0.85, D / 2 - 0.15], [-W / 2 + 0.15, 2.4 + rng() * 0.8, D / 2 - 0.15], 0.12, 0.12, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
     // (the buildings stream, 2026-10-12, the integrity check: the sheet hung over the burnt-out floor on nothing) the
     // fallen sheet lying across the front corner from the side sill to the front one, clear of the stack

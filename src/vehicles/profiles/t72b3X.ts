@@ -9,6 +9,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import {addT72B3Stowage,addT72B3MgMount,addT72B3MgBracket,addT72B3Optics} from './t72b3XEquipment.ts';
 import {addT72B3RearDrums} from './t72b3XRearDrums.ts';
@@ -310,6 +311,8 @@ function machineGun(P:TankBuilderPort):void {
   // own frame truthful. Counter-rotation leaves every world-space solid fixed.
   for(const child of group.children)if(child instanceof THREE.Mesh)child.geometry.rotateY(Math.PI);
   group.rotation.y=Math.PI;
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(group,{name:'t72b3XRoofNsvt',caliberMm:12.7});
 }
 
 function mainGun(P:TankBuilderPort):void {

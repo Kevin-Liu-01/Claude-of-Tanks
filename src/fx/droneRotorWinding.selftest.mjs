@@ -23,7 +23,10 @@ import { acquireDroneModelKit, droneRotorDirection, mirroredRotorGeometry, poseD
   assert.equal(blades.count, 2, 'a spooling airframe draws its two plain blades');
   assert.equal(counter.count, 2, 'and its two counter-rotating blades, pre-mirrored');
   assert.equal(discs.count, 4, 'an airframe at speed draws four discs');
-  for (const pool of [blades, counter, discs]) for (let i = 0; i < pool.count; i++) {
+  // round 4b: from FAINT_DISC_S the spooling airframe also draws four faint discs over its blades (symmetric, unmirrored)
+  const faint = mesh('FPV fading rotor discs');
+  assert.equal(faint?.count, 4, 'the spooling airframe draws four faint discs over its quickening blades');
+  for (const pool of [blades, counter, discs, faint]) for (let i = 0; i < pool.count; i++) {
     pool.getMatrixAt(i, m);
     assert.ok(m.determinant() > 0, `${pool.name} #${i}: no mirrored instance transform (a back-lit, near-black rotor)`);
   }
@@ -64,4 +67,4 @@ import { acquireDroneModelKit, droneRotorDirection, mirroredRotorGeometry, poseD
   assert.ok(Math.abs(original - flipped) < 1e-9, `winding agrees with the normals as on the original (${original.toFixed(3)} vs ${flipped.toFixed(3)})`);
   mirrored.dispose(); lease.release();
 }
-console.log('droneRotorWinding: every flight-pool rotor instance unmirrored (2 plain + 2 pre-mirrored blades, 4 discs); counter-rotating props unchanged in place with outward winding');
+console.log('droneRotorWinding: every flight-pool rotor instance unmirrored (2 plain + 2 pre-mirrored blades, 4 discs, 4 faint discs); counter-rotating props unchanged in place with outward winding');

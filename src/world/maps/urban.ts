@@ -30,6 +30,8 @@
 // open west ridge, the town's streets, and the east gap under the castle rock; the garage yards and the farmsteads mark
 // them off.
 
+import { STEINBURG_ROWS } from './steinburgRows.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
@@ -57,7 +59,10 @@ for (let i = 0; i < 108; i++) {
   // a battle-ready map ("rubble/destruction dressing too sparse"); ~1 in 3.5
   // interior slots is now a shelled ruin, clustering into visibly collapsed
   // blocks where the two cadences overlap
-  else if (i % 5 === 2 || i % 9 === 5) PLAN.push('ruin');
+  // (the maps lane, 2026-10-15, the Verdant process; the blind critics on Steinburg: "a town sitting flat on a plain with
+  // detached houses and grass between them", "lanes opening onto empty lots") a Franconian town's blocks stand closed:
+  // one interior plot in nine a shelled ruin, not one in three
+  else if (i % 9 === 5) PLAN.push('ruin');
   else PLAN.push('rowhouse');
 }
 
@@ -213,6 +218,12 @@ export default {
       { kind: 'townGate', x: -51.839, z: 100.564, yawDeg: 2, ground: 'veto', name: 'the north gate', params: { passage: 8.2, wallsLeft: 5.67, wallsRight: 9.35, height: 22 } },
       { kind: 'townGate', x: -48.339, z: -101.256, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 8.2, wallsLeft: 3.87, wallsRight: 11.21, height: 22 } },
       { kind: 'fountain', x: -62, z: 47, yawDeg: 6, ground: 'veto', name: 'the Marktbrunnen before the church', params: { style: 'markt', radius: 2.6 } },
+      // (the maps lane, 2026-10-15, the Verdant process; the blind critics: "no hill, castle or church mass": the Burgberg
+      // carried two 9 m wall towers and a chapel) the castle's mass — the keep (Bergfried) on the rock's crown, five
+      // stages of sandstone to its corbelled parapet and tiled cap, 31 m; the palace range (Palas) along the court's south
+      // side, three storeys under a half-hipped roof, its stair tower to the court — each in the town's Franconian kit
+      { kind: 'houseRow', x: 153, z: 8, yawDeg: 200, ground: 'reserve', name: 'the castle keep', params: { kit: 'franconian', structure: 'bergfried', count: 1, width: 10, depth: 10 } },
+      { kind: 'houseRow', x: 152, z: -10, yawDeg: 0, ground: 'reserve', name: 'the castle palace range', params: { kit: 'franconian', structure: 'palas', count: 1, width: 19, depth: 13 } },
     ],
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
@@ -241,9 +252,9 @@ export default {
       { structure: 'rowhouse', x: -94, z: 272, yawDeg: 180 },
       { structure: 'rowhouse', x: -20, z: 270, yawDeg: 180 },
       { structure: 'cottage', x: -136, z: 222, yawDeg: 0 },
-      // the castle on the Burgberg: the keep, a second tower on the ring's south-east corner, the chapel by the keep (a
-      // church's 23 m nave spreads past the plot law on the rock's crown)
-      { structure: 'tower', x: 156, z: 12, yawDeg: 0 },
+      // the castle on the Burgberg: a wall tower on the ring's south-east corner, the chapel by the keep (a church's 23 m
+      // nave spreads past the plot law on the rock's crown); (the maps lane, 2026-10-15) the keep and the palace range are
+      // set pieces now (landmarks above), the wall tower that stood for the keep gone
       { structure: 'tower', x: 166, z: -12, yawDeg: 18 },
       { structure: 'chapel', x: 145, z: 18, yawDeg: 96 },
       // the farmsteads on the castle rock's lower slopes, one in each valley
@@ -251,7 +262,7 @@ export default {
       { structure: 'farmhouse', x: 152, z: -136, yawDeg: 10 },
       { structure: 'barn', x: 160, z: 114, yawDeg: 170 },
       { structure: 'farmhouse', x: 152, z: 136, yawDeg: 170 },
-      { structure: 'ruin', x: 140, z: -4, yawDeg: 30 },
+      { structure: 'ruin', x: 136, z: 8, yawDeg: 30 }, // (2026-10-15: off the palace range's court, was 140, -4)
       // the town church on the market square's north side (the map-revival lane, 2026-10-06; wave 150 found the church
       // on bare ground): its tower and west door face the square, its front square to the apron's turned north edge
       // (yawDeg 6) and 4 m off the paving (the layout brief keeps every solid 3.5 m out of a road's core, and an apron is
@@ -261,6 +272,12 @@ export default {
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
     streetRows: true,
+    // (the maps lane, 2026-10-15, the Verdant process; the blind critics: "a town sitting flat on a plain with detached
+    // houses and grass between them", "lanes opening onto empty lots": the street pass's skips and dropped slots left 95
+    // of its 120 row houses standing free) the street rows as an authored plan: wall to wall along both sides of every
+    // street at one building line, a gap only where a lane, a planned building, a set piece, the square or the town wall
+    // stops the row (tools/plan-street-rows.mjs, steinburgRows.ts)
+    townRowPlan: STEINBURG_ROWS,
     curbs: true,
     monument: true,
     blockFill: true,
@@ -293,7 +310,10 @@ export default {
       wood: null,
       straw: null,
     },
-    ruinChance: 0.38, // r1: street-front collapse rate up (war-torn read)
+    // r1: street-front collapse rate up (war-torn read); (the maps lane, 2026-10-15) 0.38 -> 0.1: two street fronts in
+    // five stood collapsed, so the rows read as detached houses between rubble lots; the street walls now run closed,
+    // the odd shelled house breaking them
+    ruinChance: 0.1,
     townCraters: true, // shell holes pock the streets/squares inside the rect
     // r1 (content_breadth): darker, slightly warm-grey rubble — the old pale
     // near-white smooth boulders read as "grey tent blobs" in the foreground
@@ -387,7 +407,9 @@ export default {
   // the sun over half the town while the camera metered open sun; a mid-level cell is thin and passes half the beam
   // (cloudscapes.ts deckBeam); (2026-10-10, wave 342b's after-defects: "cloud-shaded Steinburg variants go flat and murky with
   // few readable shadows") its cells pass two thirds of the beam, so the town keeps its shadows under a passing cell
-  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a, deckBeam: 0.65 },
+  // 2026-10-15 (the coordinator's ruling under the owner's 10-13 bar): the altocumulus' broken 0.60 cell layer read close
+  // enough to the banned Fjord deck in stills — Verdant's fair-weather cumulus over the town, its cirrus and contrails kept
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.38, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a },
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
     // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->
@@ -402,6 +424,8 @@ export default {
     sunIntensity: 4.2, sunColorHex: 0xffedd6, hemiIntensity: 0.36,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x736f69 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a central European town's light coal-smoke haze — a soft grey band, a mild blue overhead
+    atmosphere: { horizonTintHex: 0xd4d4d0, horizonTintAmount: 0.35, horizonBandDeg: 10, zenithTintHex: 0x6f94c4, zenithTintAmount: 0.15 },
   },
 
   minimap: {

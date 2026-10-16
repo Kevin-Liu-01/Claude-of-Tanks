@@ -260,7 +260,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [Math.max(num(p, 'length'), num(p, 'canopy')) / 2 + 2.2, num(p, 'depth') / 2 + 5.4] },
   marketHall: { family: 'civic', defaults: { length: 26, width: 13, bays: 6 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, num(p, 'length') / 2 + 0.8] },
-  grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38 },
+  grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38, style: 'soviet' },
     // the silos along x, the head house at their +x end
     footprint: (p) => [num(p, 'cols') * num(p, 'radius') + 9.0, num(p, 'rows') * num(p, 'radius') + 1.4] },
   // ------------------------------------------------------------------------------------------------ colonial
@@ -328,6 +328,15 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [Math.max(2.6, num(p, 'width') / 2 + 0.9), num(p, 'length') / 2 + 0.3] },
   oreCars: { family: 'works', drapes: true, defaults: { cars: 6, gauge: 1.067 },
     footprint: (p) => [1.3, (Math.round(num(p, 'cars')) * 3 + 4.6) / 2 + 1.6] },
+  // ------------------------------------------------------------------------------------------------ a fjord farm's works
+  // (fjordWorks.ts, the map-content lane, 2026-10-10): the hay rack is all dressing (low, a hull drives through it); the
+  // stockfish rack's frames are solid; the stabbur stands on its stilts
+  hayRack: { family: 'civic', drapes: true, dressing: () => true, defaults: { length: 24 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.3, 0.6] },
+  fishRack: { family: 'harbour', drapes: true, defaults: { length: 15, height: 4 },
+    footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'height') * 0.42 + 0.3] },
+  stabbur: { family: 'civic', defaults: { width: 3.6, depth: 3.6 },
+    footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 2.0] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

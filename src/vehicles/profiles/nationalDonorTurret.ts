@@ -28,7 +28,7 @@ export function buildNationalDonorTurret(P:TankBuilderPort,id:string):NationalDo
     const frame=EASTERN_SOURCE_STUDIES.type96b.frame;
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(0,frame.gun[1]-frame.turret[1],frame.gun[2]-frame.turret[2]);
-    buildType96Turret(P);
+    buildType96Turret(P,{...d.builderOptions});
     preserveSourceStudyGunMountAppearance(P);
   }else if(d.donor==='ztz99a2')buildZTZ99A2ProductionTurret(P,{roofGun:false,decals:false,...d.builderOptions});
   // The concept's station on the commander's cupola sweeps the donor's rear roof masts/whips: each kit fits its own

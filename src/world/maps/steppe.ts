@@ -368,11 +368,12 @@ export default {
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
     // railway workers' houses along the station road and the east track.
-    // (2026-10-07, gauntlet wave 204: "shipping containers" in a 1950s sovkhoz) no container rows: an implement shed and
-    // a store in their places
+    // (2026-10-07, gauntlet wave 204: "shipping containers" in a 1950s sovkhoz; the 225 gate, 2026-10-15) the two
+    // container rows hold the period's freight (maps/periodFreight.ts FREIGHT_MIX.steppe: tarpaulined stacks, sawn
+    // lumber, crates), as on every battlefield before the ISO box (periodFreight.selftest)
     plan: ['watertower', 'warehouse', 'depot', 'granary', 'gantry', 'warehouse', 'cornershop',
-      'shed', 'shed', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
-      'cottage', 'ruin', 'barn', 'granary', 'cottage'],
+      'shed', 'containerRow', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
+      'cottage', 'ruin', 'barn', 'containerRow', 'cottage'],
     // (wave 204: "a patio awning") no desert tents or Quonset huts: the field brigades' huts and lean-tos
     destructibleBuildings: ['longhouse', 'motorpool', 'fieldhut', 'leanto'],
     // rail-kit stores are wide: the same lateral step and ground-fit tolerance
@@ -520,13 +521,15 @@ export default {
     sunIntensity: 4.25, sunColorHex: 0xfff0d6, hemiIntensity: 0.30,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x898165 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): the continental steppe's big dry sky — a straw dust band under a deep blue dome
+    atmosphere: { horizonTintHex: 0xe0d4b8, horizonTintAmount: 0.4, horizonBandDeg: 7, zenithTintHex: 0x3e72c0, zenithTintAmount: 0.3 },
   },
 
   minimap: {
     base: [140, 124, 74], hard: [126, 116, 96], soft: [110, 102, 64],
     forest: 'rgba(74,88,40,0.85)', forestStroke: 'rgba(44,54,24,0.9)',
-    // round 48: the only "water" is the salt pan — a pale crust on the plate
-    water: 'rgba(216,210,190,0.78)', waterStroke: 'rgba(150,142,118,0.7)',
+    // round 48: the only "water" is the salt pan — a pale crust on the plate (2026-10-14: painted as ground, no waterline)
+    bog: 'rgba(216,210,190,0.78)', bogStroke: 'rgba(150,142,118,0.7)',
     roadCasing: 'rgba(70,58,38,0.9)', roadFill: 'rgba(212,192,148,0.95)',
     buildingFill: '#e8e2d0',
   },

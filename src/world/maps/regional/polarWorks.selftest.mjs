@@ -14,8 +14,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { STRUCTURE_VARIANTS } from './ksarGate.ts';
 import { POLAR_WALL_PLANS } from './polarWorks.ts';
-import { DESTRUCTIBLE_TYPES, bSandbagBroken } from '../inhabitKit.ts';
-import { buildSandbagStack } from '../sceneryKit.ts';
+import { DESTRUCTIBLE_TYPES } from '../inhabitKit.ts';
+import { bSandbagBroken, buildSandbagStack } from '../fieldworksKit.ts';
 import { getMapConfig } from '../index.ts';
 
 const FORMS = { sandbagwall: 'polardrumwall', sandbagbig: 'polardrumwallbig', sandbagsmall: 'polardrumwallsmall', barbedwire: 'polardriftfence', barrier: 'polardrumrow' };

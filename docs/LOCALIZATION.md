@@ -69,7 +69,8 @@ The following content intentionally remains source-language content:
 Each document loads only the catalog it needs. Every HTML entry declares one with
 `<meta name="cot-i18n-catalog" content="…">`: the game (`index.html`) declares
 `game` and loads the full catalogs (`i18nCatalogEnUS.ts`, and
-`i18nCatalogZhCN.ts` on demand); the public pages declare `home`, `docs`,
+`i18nCatalogZhCN.ts` on demand; in the build both hold only the keys the game
+can show, below); the public pages declare `home`, `docs`,
 `docsTopic` (the twelve manual topics and their fallback share one), `notFound`
 and `gallery`. The i18n runtime awaits the document's English dictionary and its
 boot locale before any module that imports it evaluates, so `t()` stays
@@ -95,11 +96,22 @@ lazy chunk first (`loadLazyCatalog` in `src/ui/i18nDictionaries.ts`, reached
 through `globalThis.__cotI18nLazy`), so the module's strings are resident when it
 evaluates; a document without a lazy chunk, such as the game, passes straight
 through. The dev server serves a page's boot and lazy keys as one subset from
-`/@cot-i18n/` and rewrites nothing. The locale runtime, static-markup
+`/@cot-i18n/` and rewrites nothing.
+
+The game's catalogs are pruned the same way, as one set (2026-10-15): the scan
+also reads the game's whole graph (its module scripts, every static and literal
+`import()` target, and every worker entry `new URL('./w.ts', import.meta.url)`
+that the game or a public page reaches, since workers load the full catalogs),
+and the build serves `i18nCatalogEnUS.ts` / `i18nCatalogZhCN.ts` (page and worker
+builds alike, so they emit the same files) restricted to the keys that graph can
+show. The strings only the docs, home, gallery and media pages show never reach
+the game's boot. The dev server keeps the whole catalogs. The rules below apply
+to the game's graph too: a key reaching `t()` only through runtime data must be
+spelled as a literal somewhere in the game's code. The locale runtime, static-markup
 localization and responsive layout share one boot chunk so every page keeps its
 request count.
 
-A way for a public page to show a raw key fails the build and
+A way for a public page (or the game) to show a raw key fails the build and
 `tools/i18n-page-catalogs.selftest.mjs`: a `t()` key template or concatenation
 without a leading namespace (`` t(`${area}.title`) ``), a literal or `data-i18n`
 key the catalog lacks, a computed `import()` or `import.meta.glob` in a page's

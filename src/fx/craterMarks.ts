@@ -36,13 +36,18 @@ const MARK_REACH = 2.4;
 const CRATER_REACH = 2.4;
 
 /** What kind of mark a burst leaves (round 7, wave 276): a kinetic gouge, an HE round's crater or mark, a shaped
- *  charge's scar (no bowl: the core never digs one), HESH's shallow scorch (never dug either). */
-export type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh';
-const KIND_INDEX: Readonly<Record<CraterMarkKind, number>> = Object.freeze({ gouge: 0, he: 1, scar: 2, hesh: 3 });
+ *  charge's scar (no bowl: the core never digs one), HESH's shallow scorch (never dug either); (FX lane 10-15, FX-05) a
+ *  heavy shell's rayed crater (the gunship's howitzer and missile: long dark rays of thrown soil out past the apron, a
+ *  wider scorch) and a drone warhead's pocked scorch (a small black blast spot, a dense ring of fragment pocks, the
+ *  battery's melted black patch beside it). */
+export type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh' | 'rayed' | 'drone';
+const KIND_INDEX: Readonly<Record<CraterMarkKind, number>> = Object.freeze({ gouge: 0, he: 1, scar: 2, hesh: 3, rayed: 4, drone: 5 });
 /** The mark a munition leaves (sim/destructionEvents.ts MunitionClass). */
 export function markKindFor(munition: string, explosive: boolean): CraterMarkKind {
   if (!explosive) return 'gouge';
-  if (munition === 'heat' || munition === 'atgm' || munition === 'drone_fpv') return 'scar';
+  if (munition === 'drone_fpv') return 'drone';
+  if (munition === 'heat' || munition === 'atgm') return 'scar';
+  if (munition === 'howitzer' || munition === 'missile') return 'rayed';
   return munition === 'hesh' ? 'hesh' : 'he';
 }
 
@@ -133,10 +138,13 @@ void main() {
   // (2026-10-08) atan(0, 0) is undefined (NaN on some drivers) at the disc's centre
   float ang = r > 1e-5 ? atan( vDisc.y, vDisc.x ) : 0.0;
   bool crater = vShape.w > 0.0;
-  // the mark's kind: 0 a kinetic gouge, 1 an HE burst (a crater or its mark), 2 a shaped charge's scar, 3 HESH's mark
+  // the mark's kind: 0 a kinetic gouge, 1 an HE burst (a crater or its mark), 2 a shaped charge's scar, 3 HESH's mark,
+  // 4 a heavy shell's rayed crater, 5 a drone warhead's pocked scorch
   float kind = vInfo.z;
   bool scar = kind > 1.5 && kind < 2.5;
-  bool hesh = kind > 2.5;
+  bool hesh = kind > 2.5 && kind < 3.5;
+  bool rayed = kind > 3.5 && kind < 4.5;
+  bool drone = kind > 4.5;
   float explosive = kind > 0.5 ? 1.0 : 0.0;
   float rimShare = crater ? vShape.w : ${(1 / MARK_REACH).toFixed(5)};
   float q = r / rimShare;
@@ -165,7 +173,27 @@ void main() {
   vec3 col;
   float a;
   vec3 n = vec3( 0.0, 1.0, 0.0 );
-  if ( scar ) {
+  if ( drone ) {
+    // (FX-05) a drone warhead's pocked scorch: a small black blast spot, a dense ring of the fragment sleeve's pocks round
+    // it, and the battery's melted cells, a glossy black patch beside the spot; no star, no bowl
+    float spot = 1.0 - smoothstep( 0.1, 0.34 + 0.08 * lumps, qw );
+    float halo = ( 1.0 - smoothstep( 0.25, 0.85 + 0.2 * lumps, qw ) ) * 0.4;
+    vec2 cp = wp * 6.5 + so;
+    vec2 ci = floor( cp ), cf = fract( cp ) - 0.5;
+    vec2 co = vec2( h21( ci + 2.3 ), h21( ci + 6.1 ) ) - 0.5;
+    float pockF = step( 0.5, h21( ci + 13.7 ) ) * smoothstep( 0.3, 0.5, q ) * ( 1.0 - smoothstep( 1.3, 2.0, q ) );
+    float pockD = pockF * ( 1.0 - smoothstep( 0.07, 0.14, length( cf - co * 0.5 ) ) );
+    vec2 melt0 = vec2( cos( seed * 6.2832 ), sin( seed * 6.2832 ) ) * 0.42;
+    float melt = 1.0 - smoothstep( 0.1, 0.2 + 0.06 * fine, length( ( vDisc / rimShare - melt0 ) * vec2( 1.0, 1.35 ) ) );
+    float soot = clamp( spot * 0.95 + halo, 0.0, 1.0 ) * ( 0.45 + 0.55 * fresh );
+    col = mix( soil * ( 0.9 + 0.3 * fine ), vec3( 0.016, 0.014, 0.012 ), soot );
+    col = mix( col, soil * 0.22, pockD * 0.95 );
+    col = mix( col, vec3( 0.008, 0.008, 0.009 ), melt );
+    if ( surf == 2 ) col = mix( col, vec3( 0.42, 0.43, 0.45 ), ( 1.0 - max( soot, max( pockD, melt ) ) ) * 0.5 );
+    a = max( max( soot * 0.95, pockD * 0.85 ), melt * 0.95 );
+    // the melted cells catch the sun: a glossy patch
+    n = normalize( vec3( 0.0, 1.0, 0.0 ) + vec3( fine - 0.5, 0.0, lumps - 0.5 ) * 0.4 * melt );
+  } else if ( scar ) {
     // a shaped charge's scar (wave 276: it left a bowl): a small black pit, a star of soot thrown out of it in streaks of
     // different lengths, a scorched halo, a thin scatter of fine soil; no bowl, no rim
     float star = fbm( vec2( ang * 9.0, 1.3 ) + so );
@@ -228,6 +256,18 @@ void main() {
     float soot = explosive * ( ( 1.0 - smoothstep( 0.0, 0.6, qw ) ) * 0.7 + halo * ( hesh ? 0.75 : 0.55 ) )
       * ( 0.75 + 0.25 * fine ) * ( 0.35 + 0.65 * fresh );
     col = mix( col, vec3( 0.016, 0.014, 0.012 ), clamp( soot, 0.0, 0.85 ) );
+    // (FX-05) a heavy shell's rays: the soil it threw out low in streaks, long and dark out past the apron to the disc's
+    // edge, thinning and breaking up as they go, and a wider scorch over the rim
+    float rayK = 0.0;
+    if ( rayed ) {
+      float band = smoothstep( 0.64, 0.76, fbm( vec2( ang * 11.0, 0.7 ) + so ) );
+      float reach = 1.7 + 0.65 * fbm( vec2( ang * 3.1, 4.4 ) + so.yx );
+      rayK = band * smoothstep( 0.75, 1.05, q ) * ( 1.0 - smoothstep( reach * 0.75, reach, q ) ) * ( 0.6 + 0.4 * smoothstep( 0.35, 0.6, fine ) );
+      col = mix( col, mix( thrown * 0.55, pitC, 0.5 ), rayK );
+      float wide = ( 1.0 - smoothstep( 1.0, 1.7 + 0.3 * lumps, qw ) ) * smoothstep( 0.4, 0.6, fbm( vec2( ang * 4.0, 9.1 ) + so ) );
+      col = mix( col, vec3( 0.02, 0.018, 0.016 ), wide * 0.45 * ( 0.35 + 0.65 * fresh ) );
+      soot = max( soot, wide * 0.45 );
+    }
     // (fx 9c, the owner: "hit marks all look better") an explosive's fragment field: fine pits peppered over the apron and
     // past it where the casing's fragments struck the ground — on rock and road pale pulverized chips round each pit
     vec2 fp = wp * 4.2 + so * 1.3;
@@ -243,6 +283,7 @@ void main() {
     a = max( a, apron * ( 0.92 - 0.25 * ( 1.0 - fresh ) ) );
     a = max( a, max( pock, soot ) * 0.9 );
     a = max( a, max( frag * 0.85, chip * 0.55 ) );
+    a = max( a, rayK * 0.9 );
     // a faint stain over the whole apron ties its lumps together (broken by the grain: no clean edge)
     a = max( a, apronT * 0.3 * smoothstep( 0.25, 0.6, fine ) );
   }

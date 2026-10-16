@@ -79,5 +79,24 @@ for (const list of Object.values(bed)) for (const g of list) {
 }
 assert.ok(tris > 20 && tris < 1200, `a bed is a few hundred triangles (${tris})`);
 assert.ok(minY <= -0.3, 'the raised bed reaches down to the ground on its low side');
+// (props lane A, #18b) each country's kitchen garden: dressing, inside its bed (a hand over its edge for the hedge or the
+// hurdle), within its budget, and its own (no two countries' gardens the same)
+const sizes = new Map();
+for (const mapId of ['verdant', 'frontier', 'polders', 'coastal', 'cliffbridge', 'monsoon', 'caldera', 'longleaf']) {
+  const g = gardenParts(4.2, 2.6, streamFrom(7), 0, mapId);
+  let n = 0;
+  for (const list of Object.values(g)) for (const geo of list) {
+    assert.equal(geo.userData.noCollision, true, `${mapId}: its garden is dressing`);
+    const p = geo.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      assert.ok(Math.abs(p.getX(i)) <= 2.1 + 0.25 && Math.abs(p.getZ(i)) <= 1.3 + 0.25, `${mapId}: inside its bed`);
+      assert.ok(p.getY(i) <= 2.6, `${mapId}: nothing over a sunflower's head`);
+    }
+    n += p.count / 3;
+  }
+  assert.ok(n > 300 && n < 1500, `${mapId}: its garden ${n} triangles`);
+  sizes.set(mapId, n);
+}
+assert.ok(new Set([...sizes.values()]).size >= 6, 'the countries keep their gardens their own ways');
 console.log(`yards.selftest: ${plan.side} yard ${plan.depth} m deep, ${plan.modules.length} modules, gate, outbuilding and beds; `
-  + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles`);
+  + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles; 8 countries' gardens ${[...sizes.values()].join('/')}`);

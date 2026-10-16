@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 
 assert.deepEqual(spectatorCardModel({ count: 7, index: 3, specId: 'm1a1_abrams_fep' }), {
-  icon: '/icons/m1a2_sepv3_angle.webp',
+  icon: '/icons/m1a1_abrams_fep_angle.webp',
   position: '3 / 7',
 });
 assert.equal(spectatorCardModel({ specId: '../bad' }).icon, '', 'icon paths reject unsafe ids');

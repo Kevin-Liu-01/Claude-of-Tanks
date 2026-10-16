@@ -13,6 +13,7 @@ import { cinderYardWeedsAt, groundReduxProfileIds, resolveGroundReduxProfile } f
 import { TALL_GRASS, createTallGrass } from './tallGrass.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 1. The profile: Cinder Junction's yard, and no other map's.
 for (const id of groundReduxProfileIds()) {
@@ -133,7 +134,7 @@ assert.equal(resolveGroundReduxProfile('no-such-map').cinderYard ?? 0, 0, 'an un
 // 6. The material: the cinder block gated on its uniform (0 on every other map: skipped), bound from the profile and off
 //    under the legacy A/B; the D layer's consumers as they were; the oil a satin off the roads.
 {
-  const src = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const src = terrainSourceText();
   assert.ok(src.includes('uniform float uYardCinder;'), 'the uniform (a scalar: no sampler)');
   assert.equal(src.split('float yardW = uYardCinder * smoothstep(0.10, 0.55, mk.a);').length, 2, 'the yard is the village mask');
   assert.ok(src.includes('if (yardW > 0.002) {\n      vec3 dM = uMeanD.rgb * uSoilTint;'), 'the cinder block runs only in a yard');

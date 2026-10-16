@@ -7,10 +7,12 @@ import {
   PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { facadeOn, trimRun, windowHead } from './facade.ts';
+import { facadeOn, thatchCourses, trimRun, windowHead } from './facade.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { polderPakhuis } from './harbourSheds.ts'; // props #25: the fish trade's pakhuis
 
 const GREENS: readonly Rgb[] = [0x2f6a46, 0x3c7a52, 0x2a5a40].map(rgb);
 const WHITE = rgb(0xd6d2c8);
@@ -105,6 +107,12 @@ function zeelandEaves(sink: PartSink, frame: HouseFrame): void {
   }
 }
 
+/** The attic light in a brick gable over 2 m tall (brickHouse lays its unit; the house cuts it, gableOpenings). */
+function atticLight(poly: Array<[number, number]>): HoleRect[] {
+  const base = poly[0][1], top = Math.max(...poly.map(([, y]) => y));
+  return top - base > 2.0 ? [{ u0: -0.31, u1: 0.31, y0: base + 0.55, y1: base + 1.35 }] : [];
+}
+
 /** The labourer's cottage / farmhouse: brick, one storey and attic, gable to the road, pantiles. */
 function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?: number } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
@@ -127,52 +135,136 @@ function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?:
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: sts, roof, gableBucket: 'stone', openings,
     chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: roof.kind === 'gable' ? { colour: WHITE, bucket: 'structureWood' } : null,
-  }, dialect(st));
+    // (props census E2, lane B 2026-10-14: the attic lights were glass laid on the gable's brick) cut through the gable
+  }, { ...dialect(st), gableOpenings: (_face, poly) => atticLight(poly) });
   gableStacks(sink, frame.roof, opts.farm === true || rng() < 0.4, frame.eaveY);
   if (facadeOn()) zeelandEaves(sink, frame);
   if (frame.roof.gable) {
     const g = frame.roof.gable, top = Math.max(...g.map(([, y]) => y));
     if (top - frame.eaveY > 2.0) {
       for (const name of ['front', 'back'] as const) {
-        windowUnit(sink, frame.faces[name], 0, frame.eaveY + 0.55, 0.62, 0.8, { ...st.window, shutters: null }, st.rng, 0.25);
+        sink.recess = frame.gableReveal;
+        try {
+          windowUnit(sink, frame.faces[name], 0, frame.eaveY + 0.55, 0.62, 0.8, { ...st.window, shutters: null }, st.rng, 0.25);
+        } finally { sink.recess = 0; }
       }
     }
   }
   return sink.finish();
 }
 
-/** The Zeeuwse schuur: black-tarred weatherboard under a high hipped thatch with a pantile foot, white-framed doors. */
+/**
+ * The tarred boards of a timber body (potdekselwerk; the props census #17, 2026-10-15): each lapped board's lower edge a
+ * shadow line every 19 cm, broken round the openings and their white frames, raked under a gable's verges, and a tarred
+ * corner board at every corner (dressing: the body's wall carries the collision).
+ */
+function tarBoards(sink: PartSink, frame: HouseFrame, mobile: boolean): void {
+  const y0 = frame.floors[0], y1 = frame.eaveY;
+  const line = { colour: shade(TAR, 0.62), decor: true, fine: true } as const;
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    faceBox(sink, 'structureWood', face, -half + 0.08, (y0 + y1) / 2, 0.025, 0.16, y1 - y0, 0.04, { colour: shade(TAR, 0.85), decor: true }, 'caps');
+    faceBox(sink, 'structureWood', face, half - 0.08, (y0 + y1) / 2, 0.025, 0.16, y1 - y0, 0.04, { colour: shade(TAR, 0.85), decor: true }, 'caps');
+    if (mobile) continue;
+    const holes = frame.spec.openings.filter((o) => o.face === name)
+      .map((o) => [o.u - o.w / 2 - 0.16, o.u + o.w / 2 + 0.16, frame.floors[o.storey] + o.y0 - 0.12, frame.floors[o.storey] + o.y0 + o.h + 0.16] as const);
+    for (let y = y0 + 0.19; y < y1 - 0.06; y += 0.19) {
+      const cuts = holes.filter(([, , a, b]) => y > a && y < b).map(([a, b]) => [a, b] as const).sort((p, q) => p[0] - q[0]);
+      let cur = -half + 0.17;
+      for (const [a, b] of [...cuts, [half - 0.17, half - 0.17] as const]) {
+        if (a - cur > 0.15) faceBox(sink, 'structureWood', face, (cur + a) / 2, y, 0.01, a - cur, 0.024, 0.02, line, 'ends');
+        cur = Math.max(cur, b);
+      }
+    }
+  }
+  const g = frame.roof.gable;
+  if (!g || mobile) return;
+  const top = Math.max(...g.map(([, y]) => y)), s = frame.roof.s, tanP = frame.roof.tanP;
+  for (const name of ['front', 'back'] as const) {
+    const face = frame.faces[name];
+    for (let y = y1 + 0.19; y < top - 0.25; y += 0.19) {
+      const half = Math.min(s, s - (y - y1) / tanP) - 0.12;
+      if (half > 0.2) faceBox(sink, 'structureWood', face, 0, y, 0.01, 2 * half, 0.024, 0.02, line, 'ends');
+    }
+  }
+}
+
+/**
+ * A stall hatch shut in its white frame at the back of the opening's reveal (the schuur's and the tar shed's windows):
+ * two tarred ledged leaves, their strap hinges, the bar across them.
+ */
+function stallHatch(sink: PartSink, face: Face, o: Opening, y0: number): void {
+  const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.02, y = y0 + o.y0, w = o.w, h = o.h, u = o.u;
+  const fo = { colour: WHITE, decor: true, fineSides: true as const };
+  for (const side of [-1, 1]) {
+    faceBox(sink, 'structureWood', face, u + side * (w / 2 - 0.04), y + h / 2, go + 0.03, 0.08, h, 0.06, fo);
+    faceBox(sink, 'structureWood', face, u + side * w / 4, y + h / 2, go, w / 2 - 0.09, h - 0.12, 0.035, { colour: shade(TAR, 0.95 + side * 0.04), decor: true, uv: UV_MEMBER });
+    for (const t of [0.22, 0.78]) faceBox(sink, 'structureMetal', face, u + side * (w / 2 - 0.2), y + h * t, go + 0.022, 0.24, 0.035, 0.01, { colour: [0.15, 0.14, 0.13], decor: true, fine: true });
+  }
+  for (const dy of [0.04, h - 0.04]) faceBox(sink, 'structureWood', face, u, y + dy, go + 0.03, w, 0.08, 0.06, fo);
+  faceBox(sink, 'structureWood', face, u, y + h * 0.5, go + 0.035, w - 0.1, 0.07, 0.03, { colour: shade(TAR, 0.85), decor: true, uv: UV_MEMBER });
+}
+
+/** A tarred timber body's dialect: the green cart doors and the plank doors in white frames, the hatches shut. */
+function tarDialect(st: PolderState): HouseDialect {
+  return {
+    window: (s, face, o, y0) => stallHatch(s, face, o, y0),
+    door: (s, face, o, y0, frame) => {
+      if (o.kind === 'gate') { dialect(st).door(s, face, o, y0, frame); return; }
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(TAR, 1.2), frame: { bucket: 'structureWood', width: 0.1, out: 0.06, colour: WHITE }, steps: null, leafKind: 'plank' },
+        frame.floors[o.storey] + o.y0);
+    },
+  };
+}
+
+/**
+ * The Zeeuwse schuur (the props census #17, 2026-10-15, the judges: "build it on the house grammar ... keep the tar
+ * weatherboard as separate boards and cut the openings: the cart gates hung at the back of a reveal with real leaves
+ * and a wicket made of boards, and the stable door and windows recessed; give the thatch a ridge, a cut eave fringe and
+ * a defined pantile foot course; a house plan then breaks it"): a tarred timber body on a brick plinth sunk to the
+ * frost, the boards lapped, the cart doors in the street end, the stable door and the stall hatches in the long side
+ * cut through it, under the towering hipped thatch that rides over its foot of pantiles at the eaves, its eave courses
+ * beaten in steps and its ridge rolled.
+ */
 const schuur: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const W = Math.max(7.0, ctx.info.w - 0.3), D = Math.max(10.5, ctx.info.d - 0.3);
-  const wallH = 3.2;
-  sink.span('stone', -W / 2 - 0.05, -0.3, -D / 2 - 0.05, W / 2 + 0.05, 0.35, D / 2 + 0.05);
-  // the boarded walls: a structural box in tar, vertical boards dressed proud of it
-  sink.span('structureWood', -W / 2, 0.35, -D / 2, W / 2, 0.35 + wallH, D / 2, { colour: TAR, uv: UV_MEMBER });
-  const faces: Face[] = [
-    { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
-    { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D },
+  const wallH = 3.2, mobile = ctx.tier === 'mobile';
+  const openings: Opening[] = [
+    { face: 'front', storey: 0, kind: 'gate', u: 0, w: 3.0, y0: 0, h: 2.85 },
+    { face: 'right', storey: 0, kind: 'door', u: -D * 0.25, w: 1.0, y0: 0, h: 1.9 },
   ];
-  if (ctx.tier !== 'mobile') {
-    for (const f of faces) for (let u = -f.width / 2 + 0.15; u < f.width / 2 - 0.1; u += 0.32) {
-      faceBox(sink, 'structureWood', f, u, 0.35 + wallH / 2, 0.012, 0.09, wallH - 0.06, 0.024, { colour: shade(TAR, 1.15), decor: true, uv: UV_MEMBER });
+  for (const u of [D * 0.05, D * 0.3]) {
+    st.rng(); // (the glazed unit's pane draw, kept: the build stream after it is unchanged)
+    openings.push({ face: 'right', storey: 0, kind: 'window', u, w: 0.7, y0: 1.35, h: 0.6 });
+  }
+  // the roof's foot: pantiles on the hip's lowest metre, the house's own covering (its collision and its plan's roof)
+  const foot: RoofSpec = { kind: 'hip', pitchDeg: 48, eave: 0.45, verge: 0.45, thickness: 0.12, bucket: 'roof', ridge: null };
+  sink.paint = TAR;
+  let frame: HouseFrame;
+  try {
+    frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: wallH, wall: 'structureWood' }], roof: foot,
+      gableBucket: 'structureWood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.14, spall: null,
+    }, tarDialect(st));
+  } finally { sink.paint = null; }
+  tarBoards(sink, frame, mobile);
+  // the thatch rides over the tiled slab from a line a metre in (dressing: the tiles carry the collision), its eave courses
+  // beaten in steps along both long slopes, its ridge rolled
+  const inset = 1.0, thatchEave = frame.eaveY + inset * Math.tan(48 * Math.PI / 180);
+  const straw: RoofSpec = { kind: 'hip', pitchDeg: 52, eave: 0.25, verge: 0.25, thickness: 0.4, bucket: 'straw', ridge: 'round', decor: true };
+  const rg = roofGeometry(W - 2 * inset, D - 2 * inset, thatchEave, straw);
+  emitRoof(sink, rg, straw);
+  if (!mobile) {
+    const sinP = Math.sin(52 * Math.PI / 180), cosP = Math.cos(52 * Math.PI / 180), t = straw.thickness;
+    const lo = thatchEave - straw.eave * rg.tanP, Dz = rg.halfD + straw.verge;
+    for (const side of [1, -1]) {
+      const n: Vec3 = [side * sinP, cosP, 0], up = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
+      thatchCourses(sink, 'straw', up([side * (rg.s + straw.eave), lo, side * Dz * 0.82]), up([side * (rg.s + straw.eave), lo, -side * Dz * 0.82]),
+        up([0, rg.ridgeY, side * rg.ridgeHalf]), up([0, rg.ridgeY, -side * rg.ridgeHalf]), n, { stepped: true });
     }
   }
-  // doors: the high cart doors in the street end and a stable door on the side, framed white
-  gateUnit(sink, faces[0], 0, 0.35, 3.0, 2.85, TAR, { bucket: 'structureWood', width: 0.14, out: 0.07, colour: WHITE });
-  doorUnit(sink, faces[1], -D * 0.25, 0.35, 1.0, 1.9, { leaf: TAR, frame: { bucket: 'structureWood', width: 0.1, out: 0.06, colour: WHITE }, steps: null, leafKind: 'plank' });
-  for (const u of [D * 0.05, D * 0.3]) windowUnit(sink, faces[1], u, 1.7, 0.7, 0.6, { ...st.window, shutters: null, bars: 'cross' }, st.rng, 0);
-  // the roof: a steep hipped thatch above a pantile foot at the eaves
-  const eaveY = 0.35 + wallH;
-  const foot: RoofSpec = { kind: 'hip', pitchDeg: 48, eave: 0.45, verge: 0.45, thickness: 0.12, bucket: 'roof', ridge: null };
-  const footG = roofGeometry(W, D, eaveY, foot);
-  // pantiles cover the lowest metre: emit the hipped slab, then the thatch from a raised wall-plate line inboard
-  emitRoof(sink, footG, foot);
-  const inset = 1.0, thatchEave = eaveY + inset * Math.tan(48 * Math.PI / 180);
-  // the thatch rides over the full tiled slab: dressing only, the tiles carry the collision
-  const straw: RoofSpec = { kind: 'hip', pitchDeg: 52, eave: 0.25, verge: 0.25, thickness: 0.4, bucket: 'straw', ridge: 'round', decor: true };
-  emitRoof(sink, roofGeometry(W - 2 * inset, D - 2 * inset, thatchEave, straw), straw);
   return sink.finish();
 };
 
@@ -249,50 +341,55 @@ const pakhuis: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A tarred timber lean-to shed (woodshed, fish shed). */
+/**
+ * The tarred shed (schuurtje: the woodshed, the granary's store, the yards' shed; the props census #17, 2026-10-15, the
+ * judges: "tarred weatherboard as separate boards on a frame, a plinth sunk to -0.6 m, the doors hung in a cut opening
+ * with board leaves (no painted wicket) in white frames, a pantile roof with eave and verge courses, and raked (not
+ * stepped) gable boarding"): the schuur's craft at shed scale on the house grammar — a tarred timber body on its brick
+ * plinth, the boards lapped and raked up the gables, the green doors hung in a cut opening in a white frame on the +x
+ * side, a stall hatch in the back, pantiles with white verge boards. Its house plan breaks it.
+ */
 const tarShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
   const W = Math.max(3.4, ctx.info.w - 0.4), D = Math.max(4.4, ctx.info.d - 0.4);
-  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.2, D / 2);
-  sink.span('structureWood', -W / 2, 0.2, -D / 2, W / 2, 2.6, D / 2, { colour: TAR, uv: UV_MEMBER });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.25, verge: 0.2, thickness: 0.1, bucket: 'roof', ridge: 'round' };
-  const rg = roofGeometry(W, D, 2.6, roof);
-  emitRoof(sink, rg, roof);
-  for (const end of [1, -1]) {
-    const f: Face = { origin: [0, 0, end * D / 2], u: [end, 0, 0], out: [0, 0, end], width: W };
-    // the boarded gable triangle
-    for (let u = -W / 2 + 0.2; u < W / 2 - 0.1; u += 0.3) {
-      const top = 2.6 + (W / 2 - Math.abs(u)) * Math.tan(40 * Math.PI / 180) - 0.1;
-      faceBox(sink, 'structureWood', f, u, (2.6 + top) / 2, -0.05, 0.28, top - 2.6, 0.1, { colour: TAR, uv: UV_MEMBER });
-    }
-  }
-  const front: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-  gateUnit(sink, front, 0, 0.2, 2.0, 2.1, shade(TAR, 1.2), { bucket: 'structureWood', width: 0.1, out: 0.05, colour: WHITE });
+  const openings: Opening[] = [
+    { face: 'right', storey: 0, kind: 'gate', u: 0, w: 2.0, y0: 0, h: 2.05 },
+    { face: 'left', storey: 0, kind: 'window', u: D * 0.2, w: 0.6, y0: 1.2, h: 0.55 },
+  ];
+  sink.paint = TAR;
+  let frame: HouseFrame;
+  try {
+    frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.25, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.35, wall: 'structureWood' }], roof: { ...pantiles(40), verge: 0.2 },
+      gableBucket: 'structureWood', openings, chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.12, spall: null,
+    }, tarDialect(st));
+  } finally { sink.paint = null; }
+  tarBoards(sink, frame, ctx.tier === 'mobile');
   return sink.finish();
 };
 
 /** A shelled brick farmhouse: the gable standing with its stack, the roof gone, rubble inside. */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(7.4, ctx.info.d - 0.3), t = 0.35;
-  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, -W / 2 + t, D / 2], [W / 2 - t, -D / 2, W / 2, D / 2], [-W / 2 + t, -D / 2, W / 2 - t, -D / 2 + t]] as const) {
-    const along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-    for (let k = 0; k < 4; k++) {
-      if (rng() < 0.25) continue;
-      const a = k / 4, b = (k + 1) / 4, top = 0.8 + rng() * 2.0;
-      if (along) sink.span('stone', x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1);
-      else sink.span('stone', x0, -0.3, z0 + (z1 - z0) * a, x1, top, z0 + (z1 - z0) * b);
-    }
-  }
   const apex = 2.9 + (W / 2) * Math.tan(50 * Math.PI / 180);
-  const f: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  const gable: Vec3[] = [[-W / 2, -0.3, D / 2 - t], [W / 2, -0.3, D / 2 - t], [W * 0.18, apex - W * 0.18 * 1.2, D / 2 - t], [-W * 0.3, 2.9 + W * 0.2, D / 2 - t]];
-  sink.prism('stone', gable, [0, 0, 1], t);
+  // (props census #7, lane B 2026-10-14; the judges: "slices of span boxes, the gable's window a dark plate") the ruin
+  // grammar: the farmhouse's own brick walls broken low with a gap or two, the steep gable standing to its stack with
+  // its window and the door under it cut through, the hearth against its inside, the pantiles slid in over the heaps
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'window', u: -0.9, w: 0.9, y0: 0.95, h: 1.3 },
+    { face: 'front', storey: 0, kind: 'door', u: W * 0.25, w: 0.95, y0: 0, h: 2.1 }];
+  for (const face of ['right', 'left'] as const) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * 2, w: 0.9, y0: 0.9, h: 1.2 });
+  const low = (): RuinHead => ({ a: 0.8 + rng() * 2.0, b: 0.8 + rng() * 2.0, at: 0.15 + rng() * 0.7, dip: rng() < 0.5 ? 0.8 : 0.3, ragged: 0.3 });
+  ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: null, storeys: [2.7], openings,
+    heads: { front: { a: 2.9, b: 2.9, at: 0.42, dip: -(apex - 2.9) / 2.9, ragged: 0.15 }, right: low(), left: low(), back: low() }, stub: 0.4,
+    lintel: { bucket: 'stone' }, roof: { bucket: 'roof', piece: [0.4, 0.3, 0.02] }, timber: rgb(0x2b2621), hearth: { face: 'front', u: 0.6, w: 1.3 },
+    mobile: ctx.tier === 'mobile',
+  }, rng, look);
+  // the stack on the gable
   sink.span('stone', -0.45, 2.4, D / 2 - t, 0.35, apex + 0.7, D / 2);
-  faceBox(sink, 'dark', f, -0.9, 1.6, 0.005, 0.9, 1.3, 0.02, { decor: true });
-  sink.span('stone', -W * 0.3, -0.2, -D * 0.2, W * 0.25, 0.8, D * 0.25, { decor: true });
-  sink.span('roof', -W * 0.2, 0.75, -D * 0.1, W * 0.15, 0.95, D * 0.12, { decor: true });
   return sink.finish();
 };
 
@@ -307,7 +404,7 @@ export const POLDER_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   woodshed: tarShed,
   ruin,
   // the fish auction and mussel sheds of the Scheldt harbours: a brick pakhuis
-  fishery: pakhuis,
+  fishery: (ctx) => polderPakhuis(ctx, { st: stateFor(ctx), dialect }),
 });
 
 export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

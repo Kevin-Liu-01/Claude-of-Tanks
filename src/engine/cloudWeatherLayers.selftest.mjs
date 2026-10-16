@@ -58,11 +58,12 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 
 // ---- the GLSL: every layer gated by its own uniform, no pow on a signed base, the mipmapped fields at level zero in loops
 {
-  // (the layers' GLSL is written in the trace program, so the build's minifier strips its comments with the program's)
+  // (the layers' GLSL is written in the trace program, so the build's minifier strips its comments with the program's;
+  // Clouds 2.0: the sky beyond the medium is volumetricClouds.ts's CLOUD_SKY_WEATHER_GLSL, handed to the trace's builder)
   const src = here('./volumetricClouds.ts');
-  const trace = src.slice(src.indexOf('const TRACE_FRAGMENT'), src.indexOf('const RESOLVE_FRAGMENT'));
-  const glsl = trace.slice(trace.indexOf('// ---- the weather layers'), trace.indexOf('// ---- the far band'));
-  assert.ok(glsl.length > 2500, 'the trace program carries the weather layers ahead of the far band');
+  const sky = src.slice(src.indexOf('const CLOUD_SKY_WEATHER_GLSL'), src.indexOf('const COPY_FRAGMENT'));
+  const glsl = sky.slice(sky.indexOf('// ---- the weather layers'), sky.indexOf('vec4 cirrusLayer('));
+  assert.ok(glsl.length > 2500, 'the trace program carries the weather layers');
   for (const name of ['contrailDepth', 'slabRain', 'cloudPrecip', 'seaFogBank', 'cloudOver']) {
     assert.ok(new RegExp(`\\b${name}\\(`).test(glsl), `the weather GLSL defines ${name}`);
   }
@@ -75,6 +76,10 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.match(glsl, /float w = mix\( 40\.0, 1500\.0, age \* age \);/, 'a fresh trail 40 m wide');
   assert.match(glsl, /float peak = B\.w \* sqrt\( 40\.0 \/ w \) \* \( w \/ wf \);/, 'its depth spreads with its width');
   assert.match(glsl, /if \( uRain\.x <= 0\.0/, 'the rain by its amount');
+  // 2026-10-15 (Monsoon's "see-through box"): the rain's run follows the ray down to the scene, ramps in, out and under the base
+  assert.ok(glsl.includes("dir.y < ( uRainSoft > 0.5 ? -0.3 : -0.03 )"), 'no level cut under the eye');
+  assert.ok(glsl.includes('if ( uRainSoft > 0.5 ) rho *= smoothstep( tStart, tStart + 1500.0, t ) * ( 1.0 - smoothstep( ${f(CLOUD_RAIN_RANGE_M[1] * 0.75)}, ${f(CLOUD_RAIN_RANGE_M[1])}, t ) )'), 'no near or far wall');
+  assert.ok(glsl.includes('* smoothstep( 0.0, 60.0, fall );'), 'no hard top at the base plane');
   assert.match(glsl, /if \( uFogBank\.x <= 0\.0/, 'the fog bank by its amount');
   assert.doesNotMatch(glsl, /pow\( \(/, 'no pow of a signed difference (undefined in GLSL for a negative base)');
   assert.doesNotMatch(glsl, /texture\( tWeather|texture\( tStreets|texture2D\( tWeather/, 'the mipmapped weather fields are read at level zero (divergent loops pick unrelated mips)');
@@ -87,13 +92,16 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 // ---- the trace: the layered composite, the halo without pow, placement once per preset, the sky light dimmed once
 {
   const layer = here('./volumetricClouds.ts');
-  assert.ok(/const TRACE_FRAGMENT[\s\S]*\/\/ ---- the weather layers[\s\S]*void main\(\)[\s\S]*const RESOLVE_FRAGMENT/.test(layer), 'the weather GLSL is part of the trace program, ahead of its main');
-  assert.ok(layer.includes('acc = cloudOver( cloudOver( fogL, rainL ), acc );'), 'the fog bank and the rain stand in front of the slab');
-  assert.ok(layer.includes('acc = cloudOver( acc, farBandLayer( dir, cosT, rayDx, rayDy, sceneT, tB ) );'), 'the far band composites behind it');
-  assert.ok(layer.includes('acc = cloudOver( acc, cirrusLayer( dir, cosT, rayDx, rayDy, sceneT ) );'), 'the cirrus (with the trails) last');
-  assert.ok(layer.includes('vec4 fogL = seaFogBank( dir, jitter, sceneT );') && layer.includes('vec4 rainL = slabRain( dir, cosT, jitter, sceneT, tRain );'), 'the bank and the rain end at the scene (2026-10-03)');
+  const shaders = here('./cloudShaders.ts');
+  const trace = shaders.slice(shaders.indexOf('export function cloud2TraceFragment'), shaders.indexOf('export const CLOUD2_RESOLVE_FRAGMENT'));
+  assert.ok(trace.indexOf('${weatherGlsl}') > 0 && trace.indexOf('${weatherGlsl}') < trace.indexOf('void main()'), 'the weather GLSL is part of the trace program, ahead of its main');
+  assert.ok(layer.includes('fragmentShader: cloud2TraceFragment(defs, ATMOSPHERE_SKY_GLSL, weather),') && layer.includes('const weather = CLOUD_SKY_WEATHER_GLSL;'), 'the trace is built with the sky beyond the medium');
+  assert.ok(trace.includes('acc = cloudOver( cloudOver( fogL, rainL ), acc );'), 'the fog bank and the rain stand in front of the medium');
+  assert.ok(trace.includes('acc = cloudOver( acc, cirrusLayer( dir, cosT, rayDx, rayDy, sceneT ) );'), 'the cirrus (with the trails) last');
+  assert.ok(!layer.includes('farBandLayer') && !trace.includes('farBandLayer'), 'no far band: the curved shells carry the field to the horizon (2026-10-06)');
+  assert.ok(trace.includes('vec4 fogL = seaFogBank( dir, jitter, sceneT );') && trace.includes('vec4 rainL = slabRain( dir, cosT, jitter, sceneT, tRain );'), 'the bank and the rain end at the scene (2026-10-03)');
   assert.ok(layer.includes('float halo = exp( -hx * hx ) * 0.10;'), 'the 22° halo squares its argument');
-  assert.ok(layer.includes('if (preset) applyCloudWeatherPreset(this.traceMaterial.uniforms, preset);'), 'the trails are placed once per preset');
+  assert.match(layer, /if \(key !== this\.presetKey\) \{[\s\S]*?if \(preset\) \{\s*applyCloudWeatherPreset\(this\.traceMaterial\.uniforms, preset\);/, 'the trails are placed once per preset');
   assert.equal(layer.match(/applyCloudWeatherPreset\(/g)?.length, 1, 'never per frame');
   assert.ok(layer.includes('const undim = 1 / Math.max(1e-3, a.skyIntensity);'), 'the summary\'s sky intensity is undone before the composite applies it once');
   assert.ok(layer.includes('...createCloudWeatherUniforms(),'));
@@ -121,18 +129,25 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   layer.dispose();
   const layerSrc = here('./volumetricClouds.ts');
   assert.ok(layerSrc.includes('uniform vec4 uFlash;') && layerSrc.includes('this.updateLightning(preset, step);'), 'the flash is drawn in the composite at the frame rate');
-  assert.ok(!/TRACE_FRAGMENT[\s\S]*uFlash[\s\S]*const RESOLVE_FRAGMENT/.test(layerSrc), 'never in the trace (the history would smear it)');
-  assert.ok(layerSrc.includes('if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );'), 'a front\'s clear radius holds the cloud shadows off the camera like its towers (the shade map)');
-  assert.ok(layerSrc.includes('(g.uClear.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM);'), 'the clear centre follows the camera');
+  const shadersSrc = here('./cloudShaders.ts');
+  assert.ok(!shadersSrc.includes('uFlash'), 'never in the trace (the history would smear it)');
+  // Clouds 2.0: a front's clear radius is the medium's (its weather fades to nothing near the camera), so the towers and
+  // their shadows, which the Beer shadow map marches from the same medium, stand off alike
+  assert.ok(shadersSrc.includes('if ( uClear2.z > 0.0 ) w *= smoothstep( uClear2.z * 0.6, uClear2.z * 1.4, length( xz - uClear2.xy ) );'), 'a front\'s clear radius holds the towers and their shadows off the camera');
+  assert.ok(layerSrc.includes("(m.uClear2.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM * lightTune('CLOUD_CLEAR_RADIUS_SHARE', CLOUD_CLEAR_RADIUS_SHARE));"), 'the clear centre follows the camera');
+  // (2026-10-07, waves 198 and W on Monsoon: the towers stood round a sunlit field) no clear zone: the towers over the
+  // battlefield shade it
+  assert.match(layerSrc, /export const CLOUD_CLEAR_RADIUS_SHARE = 0;/);
   assert.ok(layerSrc.includes('float patchC = 0.35 + 1.3 * cw.b;'), 'the cirrus comes in patches (the same mean coverage)');
-  assert.ok(layerSrc.includes('tauAbove *= mix( 1.0, 0.2 + 1.6 * ( mo.b * 0.6 + mo.a * 0.4 ), 0.75 * uCells );'), 'a deck\'s underside mottles with its rolls');
+  assert.ok(shadersSrc.includes('vec4 base = uLayerBase - thick * uLayerHang * k;'), 'a deck\'s cell cores hang under its base (a lumpy underside)');
   assert.ok(layerSrc.includes('ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S'), 'the billows boil');
   // (2026-10-02: a capture zeroes the drifts; the positive modulo jumped a whole wrap on the next frame — a seam for the
   // boiling noise, whose vertical period follows the slab's thickness — and every captured cloud ghosted)
   assert.ok(!/% (CLOUD_[A-Z_]+_M|wrap) \+ (CLOUD_[A-Z_]+_M|wrap)\)/.test(layerSrc), 'no drift wraps by a positive modulo');
-  // (2026-10-09, media r5's scene-time clouds: a scene-timed boil is set through wrapDrift too, so the frame step's eight
-  // and the scene setter's one make nine)
-  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 9, 'the weather, noise (with the boil), cirrus and upper drifts run through zero');
+  // (2026-10-09, media r5's scene-time clouds: Clouds 2.0's scene setter wraps every drift with wrapDrift inside
+  // .set(...) calls, so the frame step's eight assignments stay the count)
+  assert.equal(layerSrc.match(/= wrapDrift\(/g)?.length, 8, 'the weather, noise (with the boil), cirrus and upper drifts run through zero');
+  assert.ok(layerSrc.includes('(m.uShapeShift.value as THREE.Vector3).copy(ns);'), 'the medium\'s shape rides the same drift');
 }
 
 // ---- every path that shows a map's sky carries its cloudscape (the battle's getAuthoredPreset, and the world activation's

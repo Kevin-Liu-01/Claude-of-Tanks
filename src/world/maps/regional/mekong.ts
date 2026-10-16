@@ -7,8 +7,10 @@ import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type EmitOpti
 import { hash01 } from './facade.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
 
@@ -241,6 +243,35 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 
 }
 
 /**
+ * The delta's outbuildings member by member (the props census #17 and #22, 2026-10-15, the judges on the woodshed: "a
+ * delta shelter: posts with braces on a raised plank floor or stilts, a roof frame (rafters, purlins, ridge), nipa thatch
+ * with a ridge and eave fringe or corrugated tole with laps, and woven bamboo mat walls as panels in a frame"): the
+ * woodshed on a low plank floor on its posts, open to its yard, its mat panels framed in bamboo on three sides; the rice
+ * granary on stilts a man's height up with rat guards round them, boarded all round with its door at the ladder's head.
+ * Both under nipa (its eave course beaten thick) or tole with its laps (outbuildings.ts openShed, gable form).
+ */
+function deltaShed(ctx: RegionalBuildContext, granary: boolean): RegionalParts {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+  const W = Math.max(3.6, Math.min(7, ctx.info.w - 0.8)), D = Math.max(5, Math.min(11, ctx.info.d - 0.8));
+  const post = pick(rng, WEATHERED_PLANK);
+  const thatched = rng() < 0.5;
+  const sheet = rng() < 0.5 ? BAMBOO_MAT : shade(post, 0.9);
+  const lift = granary ? 1.05 : 0.45;
+  if (granary) wetYard(sink, ctx);
+  openShed(sink, {
+    W, D, hLo: lift + (granary ? 2.0 : 2.1), pitchDeg: thatched ? 30 : 18, gable: true, lift, back: true, ends: true, pile: granary ? 0 : 1.1 + look() * 0.3,
+    ratGuards: granary, ladder: granary, front: granary ? { u: 0, w: 0.85, h: 1.55, leaf: shade(post, 0.8) } : null, mobile,
+  }, {
+    timber: shade(post, 0.85), post: 0.15, round: true, pad: null,
+    cladding: granary ? 'lapped' : 'batten', boards: [sheet, shade(sheet, 0.93), shade(sheet, 1.06)], boardW: granary ? 0.34 : 0.85, batten: shade(post, 0.75), trim: shade(post, 0.75),
+    covering: thatched ? 'thatch' : 'sheet', roofBucket: thatched ? 'straw' : 'structureMetal', ...(thatched ? { thatch: 'nipa' as const } : { roofColour: pick(rng, RUSTED) }),
+    eave: thatched ? 0.6 : 0.45, verge: thatched ? 0.4 : 0.3,
+  }, look);
+  return sink.finish();
+}
+
+/**
  * A tin-roofed market hall: open sides, concrete posts, a long sheet roof, stall counters. On a market row's plot (wider
  * than deep) the hall lies along it (plotAxes): it no longer reaches 2.4 m past the plot's long sides.
  */
@@ -278,14 +309,21 @@ const collapsed: RegionalBuilder = (ctx) => {
   }
   // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
   // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
-  const under = (px: number, pz: number): number => (Math.abs(px) <= W * 0.3 && Math.abs(pz) <= D * 0.25 ? 0.47 : 0.02);
+  // (the thatch's mound under them: its slope's height where they reach it, the ground elsewhere)
+  const moundR = Math.min(W * 0.32, D * 0.27), moundTop = Math.min(W, D) * 0.1;
+  const under = (px: number, pz: number): number => {
+    const r = Math.hypot(px, pz);
+    return r >= moundR ? 0.02 : r <= moundTop ? 0.47 : 0.02 + 0.45 * (moundR - r) / (moundR - moundTop);
+  };
   for (let k = 0; k < 4; k++) {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
     const ax = x - Math.cos(a) * 1.6, az = z - Math.sin(a) * 1.6; rng();
     const bx = x + Math.cos(a) * 1.6, bz = z + Math.sin(a) * 1.6; rng();
     sink.member('roof', [ax, under(ax, az), az], [bx, under(bx, bz), bz], 1.6, 0.05, [0, 1, 0], { decor: true, exposed: true });
   }
-  sink.span('straw', -W * 0.3, -0.1, -D * 0.25, W * 0.3, 0.45, D * 0.25, { decor: true });
+  // (props census #7, lane B 2026-10-14; the judges: "the thatch a straw box") the fallen thatch slumped in a low mound
+  // under the sheets, its ends ragged
+  sink.cylinder('straw', [0, -0.1, 0], 'y', 0.57, moundR, 9, { decor: true }, moundTop, true, rng() * 3);
   return sink.finish();
 };
 
@@ -316,8 +354,8 @@ export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   // boat shelters walled at the back, stores and rice houses walled on three sides (they keep the cover of the base
   // sheds), the depot a rendered shophouse
   boatshed: (ctx) => shelter(ctx, { walls: 3 }),
-  granary: (ctx) => shelter(ctx, { deck: true, walls: 2 }),
-  woodshed: (ctx) => shelter(ctx, { walls: 2 }),
+  granary: (ctx) => deltaShed(ctx, true),
+  woodshed: (ctx) => deltaShed(ctx, false),
   marketRow: marketHall,
   depot: (ctx) => groundHouse(ctx),
   ruin: collapsed,
@@ -341,7 +379,7 @@ export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
       straw: (h, s, l) => [h - 0.025, Math.min(1, s * 0.45), Math.min(1, l * 0.78)],
     },
   },
-  builders: MEKONG_BUILDERS,
+  builders: { ...MEKONG_BUILDERS, boatshed: mekongBoatShelter, fishery: mekongFishShed },
   // the yards: a woven-bamboo fence round raised vegetable beds, an open gap for a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: null, shed: null, garden: true },
 });

@@ -119,7 +119,8 @@ failed criterion. The rubric checks:
 - readable maintenance purpose, four real fleet exhibits, and a full 360-degree
   service story;
 - map-specific terrain, vegetation, structures, materials, skyline, and route;
-- no more than 50,000 triangles and 25 draw calls per outdoor environment;
+- no more than 64,000 triangles and 25 draw calls per outdoor environment (64k since
+  garage round 7: buildings at the props standard need real members and cut openings);
 - normal-speed environment switches below the 80 ms maximum-frame-gap gate;
 - bounded texture residency, two-pack caching, and no retained heap growth after
   repeated complete cycles.

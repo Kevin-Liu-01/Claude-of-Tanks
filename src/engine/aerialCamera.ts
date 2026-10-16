@@ -23,7 +23,8 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
   function aimDrone(view:AerialView,dx:number,dy:number,dt:number):void {
         yaw-=dx*.0022;pitch=THREE.MathUtils.clamp(pitch-dy*.0022,-1.35,1.1);
         if(view.launching){launchBlend=1;yaw=view.yaw;}
-        else launchBlend=Math.max(0,launchBlend-dt*1.8);
+        // The lens hand-over: the sim accepts a recall once it completes (AERIAL_RULES.drone.recall.feedS, sim/droneRecall.ts).
+        else launchBlend=Math.max(0,launchBlend-dt/AERIAL_RULES.drone.recall.feedS);
         offset.set(-Math.sin(view.yaw)*4,1.4,-Math.cos(view.yaw)*4).multiplyScalar(launchBlend);
         camera.position.add(offset);
         target.set(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch)).multiplyScalar(1000).add(camera.position);

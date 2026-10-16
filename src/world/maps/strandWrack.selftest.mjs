@@ -82,7 +82,8 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
   try {
     const { buckets, receipts, field, config } = built;
     // the painted boat hulls share the baked bucket (maps/boatHulls.ts, the map-vehicles lane): the wrack is the rest
-    const wrack = buckets.baked.filter((g) => !g.userData.boat);
+    // #16 r2: a jetty's tide bands and iron, the driftwood and the buoys are their own (waterside.ts, jettyKit.ts)
+    const wrack = buckets.baked.filter((g) => !g.userData.boat && !g.userData.jetty && !g.userData.driftwood && !g.userData.buoy);
     assert.ok(wrack.length >= 200, `${mapId}/${seed}: a wrack line was laid (${wrack.length} pieces)`);
     assert.ok(wrack.length <= 1400, `${mapId}/${seed}: bounded (${wrack.length} pieces)`);
     let triangles = 0;
@@ -91,7 +92,8 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
       triangles += g.index.count / 3;
     }
     assert.ok(triangles <= 18000, `${mapId}/${seed}: the whole line stays under 18k triangles (${triangles})`);
-    for (const name of names) if (name !== 'wood' && name !== 'baked' && name !== 'straw' && name !== 'plaster') {
+    // #16 r2 (Lane C, 2026-10-14): a crib pier's fill and a riva's masonry and stair are stone (jettyKit.ts)
+    for (const name of names) if (name !== 'wood' && name !== 'baked' && name !== 'straw' && name !== 'plaster' && name !== 'stone') {
       assert.equal(buckets[name].length, 0, `${mapId}/${seed}: no new material family (${name})`);
     }
     pieces += wrack.length;

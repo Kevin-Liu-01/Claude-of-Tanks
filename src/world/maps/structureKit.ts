@@ -8,11 +8,13 @@ import * as THREE from 'three';
 import { createOrbitalStructures } from './orbitalStructures.ts';
 import { autoCraftPieces, craftAnatomy, piece } from './craftAnatomy.ts'; // props #1: a light build's pieces
 import { HUT_DIALECTS, HUT_KITS_PENDING, REGIONAL_HUTS, buildRegionalHut, type HutTools } from './hutKit.ts'; // props #1: the kits' huts
+import { SPACE_KINDS, buildSpaceKind, type SpaceWorld } from './spaceKit.ts'; // props #12: the stations, member by member
 import type { FractureMaterial } from '../destructionKit.ts';
 import type { FractureRole } from '../fractureAnatomy.ts';
 import { bar, buildFallenMast, buildLatticeMast, corrugatedFace } from './mastKit.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { INDUSTRIAL_CLADDING, addConnectedExterior, structureBuildContext } from './exteriorDetailKit.ts';
+import { buildMangroveFishShed } from './mangroveFishShed.ts'; // props #25: the Mangrove wharf's fish shed
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { ensureWorldNightEmissionMask, markWorldAperture, markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 import {
@@ -235,7 +237,11 @@ function mbeam(a: readonly [number, number, number], b: readonly [number, number
  * corner moved a shallow skillion's reading by 0.0067).
  */
 function mroof(w: number, h: number, d: number): THREE.BufferGeometry {
-  return mbox(w, h, d, 0.006, 0.45, true);
+  // (the 226 roofs, 2026-10-15) a sheet over 8 m long eases its edges by a thousandth of its length and more: a 6 mm
+  // chamfer strip down a 16 m eave is a sliver to the building-integrity gate (a face longer than 0.5 m narrower than a
+  // thousandth of its length), so the catalog's long roofs had gone back to plain slabs
+  const length = Math.max(w, h, d);
+  return mbox(w, h, d, length > 8 ? 0.00106 * length : 0.006, 0.45, true);
 }
 
 /**
@@ -435,10 +441,14 @@ let craftCapture: { bucket: string; material: FractureMaterial } | null = null;
 function withCraftCapture<T>(capture: { bucket: string; material: FractureMaterial }, build: () => T): T {
   const prior = craftCapture;
   craftCapture = capture;
-  try { return build(); } finally { craftCapture = prior; }
+  partTag = null;
+  try { return build(); } finally { craftCapture = prior; partTag = null; }
 }
 
 function mergeConnectedStructure(id: string, given: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  // (the 225 determinism fix: a build's part tag ends with it — the field hospital's leaked into every build after it in
+  // the process, so a world's light kinds read their pieces by the maps built before it)
+  partTag = null;
   const capture = craftCapture;
   const parts = capture ? autoCraftPieces(given, capture.material) : given;
   const connectivity = certifyGroundedStructureParts(id, parts);
@@ -670,6 +680,19 @@ function addGableRoof(
   out.roof.push(slab(0.34, 0.14, d + over * 2).translate(0, wallH + roofH + 0.04, 0));
 }
 
+/**
+ * (the garage critic, 2026-10-15) Parts a builder adds inside `body` are dressing new to the building: no uv jitter (the
+ * placement stream's draws stay the building's) and no collision part (its footprint, its decks and every placement
+ * that reads them stay what they were).
+ */
+function freshParts(out: StructureParts, body: () => void): void {
+  const before = new Map(Object.entries(out).map(([k, v]) => [k, v.length]));
+  body();
+  for (const [k, list] of Object.entries(out)) {
+    for (let i = before.get(k) ?? 0; i < list.length; i++) { list[i].userData.uvJitter = 'none'; list[i].userData.noCollision = true; }
+  }
+}
+
 function addWindow(
   out: StructureParts,
   x: number,
@@ -771,6 +794,33 @@ export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   const tx = 4.0, towerH = 11.8;
   out.stone.push(box(3.0, towerH, 3.0).translate(tx, towerH / 2, -3.7));
   for (const face of [-1, 1]) out.dark.push(box(1.65, 2.1, 0.08).translate(tx, towerH - 2.1, -3.7 + face * 1.52));
+  // (the garage critic, 2026-10-15, Steinburg: "an untextured grey box tower") the hose tower's drying loft opened on all
+  // four faces in louvred openings — a frame, the dark of the loft (the two openings it had keep their panels: their
+  // draws), the louvre boards — under a cornice; a slit window lights the stair above the station's roof; the station's
+  // flanks and back lit by windows
+  freshParts(out, () => {
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const cx = tx + nx * 1.52, cz = -3.7 + nz * 1.52, alongX = nz !== 0, y = towerH - 2.1;
+      const frameBox = (fw: number, fh: number, oy: number, ox: number): THREE.BufferGeometry =>
+        (alongX ? box(fw, fh, 0.14) : box(0.14, fh, fw)).translate(cx + (alongX ? ox : 0), y + oy, cz + (alongX ? 0 : ox));
+      out.stone.push(frameBox(1.95, 0.16, 1.13, 0), frameBox(1.95, 0.16, -1.13, 0), frameBox(0.16, 2.1, 0, -0.9), frameBox(0.16, 2.1, 0, 0.9));
+      if (!alongX) out.dark.push(box(0.06, 2.1, 1.65).translate(cx - nx * 0.06, y, cz));
+      for (let k = 0; k < 6; k++) {
+        const louvre = alongX ? box(1.62, 0.05, 0.22) : box(0.22, 0.05, 1.62);
+        if (alongX) louvre.rotateX(nz * 0.6); else louvre.rotateZ(-nx * 0.6);
+        out.wood.push(louvre.translate(cx - nx * 0.02, y - 0.85 + k * 0.33, cz - nz * 0.02));
+      }
+      for (const sy of [7.0]) { // (the storeys below stand inside the station: the stair's light above its roof)
+        out.dark.push((alongX ? box(0.32, 1.0, 0.06) : box(0.06, 1.0, 0.32)).translate(cx + nx * 0.01, sy, cz + nz * 0.01));
+      }
+    }
+    out.stone.push(detailUv(box(3.4, 0.24, 3.4).translate(tx, towerH - 0.2, -3.7)));
+    for (const sx of [-1, 1]) for (const z of [-5.0, -1.8, 1.6, 4.6]) {
+      if (sx > 0 && z < -2) continue; // (the tower stands at that corner)
+      addWindow(out, sx * (w / 2 + 0.04), 3.0, z, 'x', 1.0, 1.4);
+    }
+    for (const x of [-3.6, -0.6]) addWindow(out, x, 3.0, -d / 2 - 0.04, 'z', 1.0, 1.4);
+  });
   const towerCap = new THREE.ConeGeometry(2.25, 2.2, 4, 1);
   towerCap.rotateY(Math.PI / 4); towerCap.translate(tx, towerH + 1.1, -3.7); out.roof.push(towerCap);
   out.plaster3.push(box(4.8, 0.85, 0.12).translate(-1.0, 4.7, d / 2 + 0.1));
@@ -780,6 +830,9 @@ export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket 
 }
 
 export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimensions {
+  // (props census #25) Mangrove's wharf fishery is a Cà Mau fish shed of its own (mangroveFishShed.ts: the same stream
+  // draws, reach and wharf members)
+  if (structureBuildContext(buckets)?.mapId === 'mangrove') return buildMangroveFishShed(buckets);
   const out = parts(), w = 10.2, d = 15.5, wallH = 4.4, roofH = 1.8;
   out.wood.push(box(w, wallH, d).translate(0, wallH / 2 + 0.35, 0));
   out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, d / 2 - 0.15));
@@ -794,6 +847,25 @@ export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimen
   out.roof.push(pitchRoofPlane(mroof(4.6, 0.16, 5.4), 'x', -1, 0.12, 'skillion')
     .translate(-w / 2 - 1.5, 3.75, -2.4));
   for (const x of [-2.8, 0, 2.8]) addWindow(out, x, 2.4, d / 2 + 0.04, 'z', 1.1, 1.1);
+  // (the garage critic, 2026-10-15, Saltmere: "a plain box: no eaves, gutters, doors or windows legible") the shed's long
+  // sides lit and opened — a row of windows down each, the sliding door to the quay on its rail — its eaves boarded with
+  // a fascia under a gutter, downpipes at the corners, the ridge capped
+  freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-5.2, -1.7, 1.8, 5.3]) {
+      if (sx > 0 && Math.abs(z - 1.8) < 0.1) continue;
+      addWindow(out, sx * (w / 2 + 0.04), 2.6, z, 'x', 1.0, 1.0, 'wood');
+    }
+    out.dark.push(box(0.1, 3.0, 3.0).translate(w / 2 + 0.03, 0.35 + 1.5, 1.8));
+    out.wood.push(box(0.08, 2.9, 1.6).translate(w / 2 + 0.12, 0.35 + 1.5, 2.6));
+    out.dark.push(box(0.1, 0.1, 6.6).translate(w / 2 + 0.04, 0.35 + 3.08, 1.8)); // (the door's rail on the wall)
+    const eaveY = wallH + 0.35 - 0.06, eaveX = w / 2 + 0.55;
+    for (const sx of [-1, 1]) {
+      out.wood.push(box(0.05, 0.24, d + 1.4).translate(sx * eaveX, eaveY - 0.02, 0));
+      out.dark.push(box(0.16, 0.12, d + 1.4).translate(sx * (eaveX + 0.08), eaveY - 0.16, 0));
+      for (const sz of [-1, 1]) out.dark.push(box(0.09, eaveY - 0.15, 0.09).translate(sx * (eaveX + 0.08), (eaveY - 0.15) / 2, sz * (d / 2 + 0.55)));
+    }
+    out.roof.push(box(0.44, 0.12, d + 1.44).translate(0, wallH + 0.35 + roofH + 0.1, 0));
+  });
   addConnectedExterior(out, { id: 'fishery', w, d, wallH: wallH + 0.35, profile: 'timber', variant: 1 });
   finish(buckets, out);
   return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
@@ -874,8 +946,8 @@ export function makeBathhouse(
     // Three low domes, lantern vents and an arched entry vestibule.
     for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
       const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
-      dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
-      out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+      dome.scale(1, 0.58, 1); dome.translate(x, wallH + 0.55, z); out.roof.push(dome);
+      out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + 0.55 + r * 0.58 + 0.25, z));
     }
   }
   const vestibule = box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9);
@@ -883,11 +955,29 @@ export function makeBathhouse(
   out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
   for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25,
     style === 'timber' ? 'wood' : 'stone');
+  // (the garage critic, 2026-10-15, Monsoon: "a long blank white wall with two domes on top, a billboard") the domed hall
+  // lit down both flanks (its back has the civic pass's windows; the timber hall's flanks its catalog openings), a cornice
+  // under the roof's edge, a parapet with its coping and each dome raised on its drum
+  if (style !== 'timber') freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-3.6, 0, 3.6]) addWindow(out, sx * (w / 2 + 0.04), 2.25, z, 'x', 0.7, 1.25, 'stone');
+    out.stone.push(detailUv(box(w + 0.3, 0.22, d + 0.3).translate(0, wallH - 0.2, 0)));
+    {
+      for (const [sx, sz, len, alongX] of [[0, 1, w + 0.3, true], [0, -1, w + 0.3, true], [1, 0, d + 0.3, false], [-1, 0, d + 0.3, false]] as const) {
+        const wall = alongX ? box(len, 0.55, 0.22) : box(0.22, 0.55, len);
+        out[walls].push(wall.translate(sx * (w / 2 + 0.04), wallH + 0.15 + 0.275, sz * (d / 2 + 0.04)));
+        const coping = alongX ? box(len + 0.1, 0.08, 0.32) : box(0.32, 0.08, len + 0.1);
+        out.stone.push(coping.translate(sx * (w / 2 + 0.04), wallH + 0.15 + 0.59, sz * (d / 2 + 0.04)));
+      }
+      for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
+        out[walls].push(cylinder(r * 1.02, r * 1.04, 0.45, 12).translate(x, wallH + 0.15 + 0.22, z));
+      }
+    }
+  });
   addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3,
     bathhouseStyle: style === 'timber' ? 'timber' : undefined,
     timberBathhouseEntry: style === 'timber' ? vestibule : undefined });
   finish(buckets, out);
-  return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
+  return { w: w + 0.5, d: d + 2.2, h: wallH + 3.75 };
 }
 
 /** Explicit map variant, not an extra catalog family or a material-name signal. */
@@ -1409,6 +1499,10 @@ export function makeCivicHall(_rng: Rng, buckets: GeometryBuckets, wallBucket = 
     const rib = box(0.18, 7.0, 0.18); rib.rotateZ(-0.42 + i * 0.16);
     out.dark.push(rib.translate(-3.0 + (i - 2.5) * 0.7, h + 2.1, -1.0));
   }
+  // (the garage critic, 2026-10-15, Steinburg: blank flanks seen from the yard) two storeys of windows down both flanks
+  freshParts(out, () => {
+    for (const sx of [-1, 1]) for (const z of [-5.6, -1.9, 1.9, 5.6]) for (const y of [3.0, 7.0]) addWindow(out, sx * (w / 2 + 0.04), y, z, 'x', 1.2, 1.9);
+  });
   addConnectedExterior(out, { id: 'civichall', w, d, wallH: h, profile: 'civic', variant: 4 });
   finish(buckets, out);
   return { w: w + 2.2, d: d + 4.8, h: h + 4.2 };
@@ -1957,6 +2051,7 @@ function makeFieldHospitalCraft(rng: Rng, style?: TentStyle): THREE.BufferGeomet
   colored(out, mslab(1.1, 0.06, 1.1).rotateX(Math.PI / 2).translate(0.75, 2.0, 4.55), white, r, 0.03);
   colored(out, mbox(0.22, 0.05, 0.82).rotateX(Math.PI / 2).translate(0.75, 2.0, 4.59), red, r, 0.02);
   colored(out, mbox(0.82, 0.05, 0.22).rotateX(Math.PI / 2).translate(0.75, 2.0, 4.6), red, r, 0.02);
+  tagParts(null);
   return mergeConnectedStructure('fieldhospital', out);
 }
 
@@ -3334,8 +3429,9 @@ function lightMeta(
     contact: 'ob' as const, collider: true as const,
     hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5,
     // (props #1: the build reads its pieces as it merges, withCraftCapture)
-    // (the space and polar stations are their own family, #12: they keep their broken builds until it lands)
-    build: family === 'orbital' ? build : (rng: Rng) => withCraftCapture({ bucket: surfaceMaterial, material: debrisMaterial === 'metal' ? 'metal' : debrisMaterial === 'canvas' ? 'canvas' : 'timber' }, () => build(rng)),
+    // (the space and polar stations are their own family, #12: they keep their broken builds until each is rebuilt
+    // member by member, spaceKit.ts)
+    build: family === 'orbital' && !SPACE_KINDS.includes(id) ? build : (rng: Rng) => withCraftCapture({ bucket: surfaceMaterial, material: debrisMaterial === 'metal' ? 'metal' : debrisMaterial === 'canvas' ? 'canvas' : 'timber' }, () => build(rng)),
     instanceTintStrength,
   };
   return {
@@ -3373,16 +3469,17 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
-  missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, orbital.missioncontrol, 'metal'),
-  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, orbital.greenhouse, 'metal', orbital.greenhouseBroken),
-  ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, orbital.ascentlander, 'metal'),
-  rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, orbital.rovergarage, 'metal'),
-  habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, makeHabDome, 'metal'),
-  habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, makeHabModule, 'metal'),
-  commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, makeCommsMast, 'metal'),
-  solararray: lightMeta('solararray', 'orbital', 4.7, 4.2, 3.2, PAL.orbital, makeSolarArray, 'metal'),
-  fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, makeFuelTanks, 'metal'),
-  landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, makeLandingPad, 'metal'),
+  missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, (rng) => { orbital.missioncontrol(rng).dispose(); return spaceCraftBuild('missioncontrol', 'moon'); }, 'metal'),
+  // (props #12: Mars's greenhouse is the only one placed; its film pillows and ribs break in its settled wreck)
+  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, (rng) => { orbital.greenhouse(rng).dispose(); return spaceCraftBuild('greenhouse', 'mars'); }, 'metal'),
+  ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, (rng) => { orbital.ascentlander(rng).dispose(); return spaceCraftBuild('ascentlander', 'moon'); }, 'metal'),
+  rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, (rng) => { orbital.rovergarage(rng).dispose(); return spaceCraftBuild('rovergarage', 'moon'); }, 'metal'),
+  habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, (rng) => { makeHabDome(rng).dispose(); return spaceCraftBuild('habdome', 'moon'); }, 'metal'),
+  habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, (rng) => { makeHabModule(rng).dispose(); return spaceCraftBuild('habmodule', 'moon'); }, 'metal'),
+  commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, (rng) => { makeCommsMast(rng).dispose(); return spaceCraftBuild('commsmast', 'moon'); }, 'metal'),
+  solararray: lightMeta('solararray', 'orbital', 4.7, 4.2, 3.2, PAL.orbital, (rng) => { makeSolarArray(rng).dispose(); return spaceCraftBuild('solararray', 'moon'); }, 'metal'),
+  fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, (rng) => { makeFuelTanks(rng).dispose(); return spaceCraftBuild('fueltanks', 'moon'); }, 'metal'),
+  landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, (rng) => { makeLandingPad(rng).dispose(); return spaceCraftBuild('landingpad', 'moon'); }, 'metal'),
 };
 
 // ------------------------------------------------------------------------------------------ regional light variants
@@ -3870,6 +3967,21 @@ function hutTools(out: THREE.BufferGeometry[], rng: Rng): HutTools {
   };
 }
 
+/** (props #12) A station's kind as `world` builds it (spaceKit.ts): member by member, on its own stream, its pieces
+ *  named for the wreck (the receipt builds Mars's while the Olympus kit is pending). */
+export function spaceCraft(kind: string, world: SpaceWorld): THREE.BufferGeometry {
+  return withCraftCapture({ bucket: 'structureMetal', material: 'metal' }, () => spaceCraftBuild(kind, world));
+}
+function spaceCraftBuild(kind: string, world: SpaceWorld): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [];
+  buildSpaceKind(hutTools(out, kindStream(`${kind}@${world}`)), kind, world);
+  return mergeConnectedStructure(kind, out);
+}
+
+/** (props #12) The kits whose stations wait for their architecture to land (the Olympus kit, item/looks-mars): the
+ *  integrator empties this when it does, and Mars draws its own forms. */
+const SPACE_KITS_PENDING: ReadonlySet<string> = new Set(['olympus']);
+
 /** A kit's hut (hutKit.ts): built member by member on its own stream. */
 function regionalHut(kit: string, kind: string): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [];
@@ -4064,6 +4176,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     savoyard: { alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal') },
   };
   for (const kit of Object.keys(REGIONAL_HUTS)) if (!HUT_KITS_PENDING.has(kit)) table[kit] = { ...(table[kit] ?? {}), ...huts(kit) };
+  // (props #12) Mars's stations (Olympus, 2100): each spends its family's build, then builds as Mars does
+  if (!SPACE_KITS_PENDING.has('olympus')) {
+    table.olympus = { ...(table.olympus ?? {}), ...Object.fromEntries(SPACE_KINDS.map((kind) => [kind,
+      variant(kind, PAL.orbital, (rng) => { B[kind].build(rng).dispose(); return spaceCraftBuild(kind, 'mars'); }, 'metal')])) };
+  }
   // (the props census, 2026-10-14; integ/225 with props #1) the Virgin Lands: the field hut is the brigade's vagonchik,
   // the lean-to of saman (item/looks-tselina), beside the hut kit's tselina long house and motor pool
   table.tselina = {

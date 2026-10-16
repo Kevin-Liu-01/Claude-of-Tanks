@@ -7,12 +7,14 @@
 // souk's vaulted shops behind their arches; the sabil fountain under its dome; a stone church with its open bell arch;
 // the terraces' vaulted stone stores and stables; a shelled house.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, recordShaft, roofCrown, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
-import { pottedPlant, washingLine } from './dressing.ts';
+import { bloomDisc, pottedPlant, washingLine } from './dressing.ts';
+import { recordShed } from './shedFall.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** Shutters and doors: the Lebanese green, a blue-grey, a turquoise, a brown. */
@@ -429,19 +431,14 @@ function campanile(sink: PartSink, W: number, D: number, naveTop: number, look: 
   const T = Math.min(3.6, W * 0.42), x0 = W / 2 - T, x1 = W / 2, z0 = D / 2 - T, z1 = D / 2;
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const shaftTop = naveTop + 5.2 + look() * 1.4;
-  sink.span('stone', x0, 0, z0, x1, shaftTop, z1);
-  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
-  const faces: Face[] = [
-    { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: T },
-    { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: T },
-    { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: T },
-    { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: T },
-  ];
+  // (props census #5, lane B 2026-10-15) the belfry open through the shaft (its openings were dark plates on a solid
+  // span): the shaft to the openings' sill, the four corner piers and the head over them, the bell on its beam; the
+  // shaft recorded as a tower body (it topples in its courses)
   const ow = T * 0.42, oy = shaftTop - 3.2, oh = 1.9;
-  for (const f of faces) {
-    sink.quad('dark', facePoint(f, -ow / 2, oy, 0.02), facePoint(f, ow / 2, oy, 0.02), facePoint(f, ow / 2, oy + oh, 0.02), facePoint(f, -ow / 2, oy + oh, 0.02), { decor: true });
-    roundHead(sink, f, 0, oy + oh, ow, 'dark', 0.14);
-  }
+  sink.span('stone', x0, 0, z0, x1, oy, z1);
+  openBelfry(sink, 'stone', cx, cz, T, oy, oy + oh + ow / 2, shaftTop, ow, rgb(0x6a5a3a), rgb(0x4a3a2a));
+  recordShaft(sink, cx, cz, T, shaftTop + 0.3 + T * 0.95, 'stone');
+  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
   sink.span('stone', x0 - 0.15, shaftTop, z0 - 0.15, x1 + 0.15, shaftTop + 0.3, z1 + 0.15, { decor: true });
   const base = shaftTop + 0.3, apex: Vec3 = [cx, base + T * 0.95, cz];
   const corners: Array<[number, number]> = [[x0 - 0.1, z0 - 0.1], [x1 + 0.1, z0 - 0.1], [x1 + 0.1, z1 + 0.1], [x0 - 0.1, z1 + 0.1]];
@@ -465,9 +462,12 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
   onLot(sink, fp, (Wf, Df, turned) => {
     const W = Math.max(5, Wf - 0.1), D = Math.max(8, Df - 0.1);
     const doorFace: FaceName = turned ? 'left' : 'front';
-    const lights = (face: FaceName, avoid: Array<[number, number]>) => windowRhythm(face, 0, D, { w: 0.8, h: 1.9, sill: 2.0, spacing: 2.8, margin: 1.3, avoid });
+    // (props census #5) the round heads cut through the wall with the rest of the opening (they were glass fans laid on
+    // it over the cut light): the glazing in the head at the back of the reveal, the stone ring round it
+    const lights = (face: FaceName, avoid: Array<[number, number]>) => windowRhythm(face, 0, D, { w: 0.8, h: 1.9, sill: 2.0, spacing: 2.8, margin: 1.3, avoid })
+      .map((o): Opening => ({ ...o, arch: {} }));
     const openings: Opening[] = [
-      { face: doorFace, storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.6 },
+      { face: doorFace, storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.6, arch: {} },
       ...lights('left', turned ? [[-1.2, 1.2]] : []),
       ...lights('right', []),
     ];
@@ -475,19 +475,36 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
       w: W, d: D, plinth: { h: 0.7, out: 0.1, bucket: 'stone' }, storeys: [{ h: 5.6, wall: 'stone' }],
       roof: { kind: 'gable', pitchDeg: 28, eave: 0.35, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, { ...dialect(st), window: (s, face, o, y0) => { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3); roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass'); } });
+    }, {
+      ...dialect(st),
+      window: (s, face, o, y0) => {
+        windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, st.window.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.13, 6);
+      },
+      door: (s, face, o, y0, fr) => {
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
+        }, fr.floors[o.storey] + o.y0);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, st.window.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2 + 0.05, 'stone', 0.18, 7);
+      },
+    });
     if (withCampanile) { campanile(sink, W, D, frame.eaveY, st.look); return; }
     // the bell arch over the front gable: two piers and their arch, the bell, the cross
     const top = frame.roof.ridgeY, z = D / 2 - 0.3;
-    sink.span('stone', -1.1, top - 1.0, z - 0.3, -0.55, top + 2.0, z + 0.3);
-    sink.span('stone', 0.55, top - 1.0, z - 0.3, 1.1, top + 2.0, z + 0.3);
-    sink.span('stone', -1.2, top + 2.0, z - 0.34, 1.2, top + 2.5, z + 0.34);
-    archHaunches(sink, { origin: [0, 0, z + 0.3], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, 0, top + 1.4, 0.55, 0.55, top + 2.0, 0.6);
-    sink.cylinder('structureMetal', [0, top + 0.75, z], 'y', 0.6, 0.3, 10, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
-    // (the buildings stream, 2026-10-12, the integrity check: the bell hung between the piers on nothing) its yoke
-    sink.span('structureMetal', -0.6, top + 1.35, z - 0.04, 0.6, top + 1.43, z + 0.04, { colour: IRON, decor: true });
-    sink.span('structureMetal', -0.035, top + 2.5, z - 0.035, 0.035, top + 3.5, z + 0.035, { colour: IRON, decor: true });
-    sink.span('structureMetal', -0.25, top + 3.05, z - 0.03, 0.25, top + 3.13, z + 0.03, { colour: IRON, decor: true });
+    // (props census #5: the bell arch a crown of the roof in the house's plan: it falls with its roof section)
+    roofCrown(sink, frame, { kind: 'bellcote', x0: -1.2, x1: 1.2, z0: z - 0.34, z1: z + 0.34, y0: top - 1.0, y1: top + 3.5, bucket: 'stone' }, () => {
+      sink.span('stone', -1.1, top - 1.0, z - 0.3, -0.55, top + 2.0, z + 0.3);
+      sink.span('stone', 0.55, top - 1.0, z - 0.3, 1.1, top + 2.0, z + 0.3);
+      sink.span('stone', -1.2, top + 2.0, z - 0.34, 1.2, top + 2.5, z + 0.34);
+      archHaunches(sink, { origin: [0, 0, z + 0.3], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, 0, top + 1.4, 0.55, 0.55, top + 2.0, 0.6);
+      sink.cylinder('structureMetal', [0, top + 0.75, z], 'y', 0.6, 0.3, 10, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
+      // (the buildings stream, 2026-10-12, the integrity check: the bell hung between the piers on nothing) its yoke
+      sink.span('structureMetal', -0.6, top + 1.35, z - 0.04, 0.6, top + 1.43, z + 0.04, { colour: IRON, decor: true });
+      sink.span('structureMetal', -0.035, top + 2.5, z - 0.035, 0.035, top + 3.5, z + 0.035, { colour: IRON, decor: true });
+      sink.span('structureMetal', -0.25, top + 3.05, z - 0.03, 0.25, top + 3.13, z + 0.03, { colour: IRON, decor: true });
+    });
   }, -1);
   return sink.finish();
 };
@@ -532,22 +549,68 @@ const stable: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A grape arbor (arisha): a frame of posts and rails over a stone terrace, the vine's leaves over it (open). */
+/**
+ * The grape arbour (arisha; the props census #17, 2026-10-15, the judges: "hewn or round posts on stone bases with
+ * notched beams and a lattice of rails; a vine with trunks climbing the posts and leaf clusters following the lattice;
+ * a dressed stone terrace edge; destroyed: the frame racks over into its own posts and beams, and the leaves scatter"):
+ * the terrace slab with its dressed edge, round posts on stone bases, the two beams laid in notches over their heads and
+ * run out past them, the rails across the beams and the battens along the rails (the lattice), the old vine's trunk
+ * twisting up a post and out along a beam, its leaves in clusters over the lattice and the grapes hanging under it.
+ * It falls as a shed does (shedFall.ts): the posts snapped, the lattice down in lengths, the leaves thrown.
+ */
 const arisha: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile';
   const fp = footprint(ctx);
   const W = Math.max(2.4, fp.w - 0.05), D = Math.max(2.4, fp.d - 0.05), H = 2.5;
+  const LEAVES: readonly Rgb[] = [0x4f6a2e, 0x5f7a34, 0x3f5a26, 0x6a7a3a].map(rgb), GRAPE = rgb(0x3a2a40), BARK = rgb(0x4a3a2c);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.2, D / 2);
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('structureWood', sx * (W / 2 - 0.12) - 0.08, 0.2, sz * (D / 2 - 0.12) - 0.08, sx * (W / 2 - 0.12) + 0.08, H, sz * (D / 2 - 0.12) + 0.08, { colour: TIMBER });
-    for (const sz of [-1, 1]) sink.span('structureWood', -W / 2, H - 0.12, sz * (D / 2 - 0.12) - 0.06, W / 2, H, sz * (D / 2 - 0.12) + 0.06, { colour: TIMBER });
-    for (let x = -W / 2 + 0.4; x < W / 2 - 0.2; x += 0.6) sink.span('structureWood', x - 0.03, H, -D / 2, x + 0.03, H + 0.05, D / 2, { colour: TIMBER, decor: true, fine: true });
-    // the vine canopy in loose clumps
-    for (let k = 0; k < 9; k++) {
-      const x = (look() - 0.5) * (W - 0.6), z = (look() - 0.5) * (D - 0.6), s = 0.6 + look() * 0.7;
-      sink.span('structureWood', x - s / 2, H + 0.02, z - s / 2, x + s / 2, H + 0.18 + look() * 0.12, z + s / 2, { colour: shade(rgb(0x4f6a2e), 0.8 + look() * 0.4), decor: true });
+    // the terrace's dressed edge: a coping course a hand proud all round its top
+    sink.band('stone', -W / 2 - 0.04, 0.08, -D / 2 - 0.04, W / 2 + 0.04, 0.22, D / 2 + 0.04, { decor: true, shade: 0.92 });
+    // the posts on their stone bases (the corners, and a middle one on a long side)
+    const xs = W > 3.4 ? [-1, 0, 1] : [-1, 1], legs: Array<{ foot: Vec3; head: Vec3 }> = [], posts: Array<[number, number, number, number]> = [];
+    for (const sz of [-1, 1]) for (const k of xs) {
+      const x = k * (W / 2 - 0.15), z = sz * (D / 2 - 0.15);
+      sink.span('stone', x - 0.15, 0.2, z - 0.15, x + 0.15, 0.42, z + 0.15, { shade: 0.88 });
+      sink.cylinder('structureWood', [x, 0.42, z], 'y', H - 0.42, 0.08, 8, { colour: TIMBER }, 0.075);
+      legs.push({ foot: [x, 0.42, z], head: [x, H, z] }); posts.push([x, z, 0.42, H]);
     }
+    // the two beams in their notches over the post heads, run out past them; the rails across; the battens along
+    for (const sz of [-1, 1]) sink.span('structureWood', -W / 2 - 0.15, H - 0.14, sz * (D / 2 - 0.15) - 0.07, W / 2 + 0.15, H + 0.02, sz * (D / 2 - 0.15) + 0.07, { colour: TIMBER, uv: UV_MEMBER });
+    for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) sink.span('structureWood', x - 0.035, H + 0.02, -D / 2 - 0.1, x + 0.035, H + 0.09, D / 2 + 0.1, { colour: shade(TIMBER, 1.08), decor: true, uv: UV_MEMBER });
+    sink.dressing(mobile, () => {
+      for (let z = -D / 2 + 0.3; z < D / 2 - 0.15; z += 0.6) sink.span('structureWood', -W / 2, H + 0.09, z - 0.02, W / 2, H + 0.13, z + 0.02, { colour: shade(TIMBER, 1.12), decor: true, fine: true });
+      // the vine: its trunk twisting up the corner post, out along the beam and over the rails
+      const px = -(W / 2 - 0.15), pz = -(D / 2 - 0.15), pts: Vec3[] = [];
+      for (let k = 0; k <= 5; k++) {
+        const t = k / 5, a = t * Math.PI * 1.6;
+        pts.push([px + Math.cos(a) * 0.13, 0.22 + t * (H - 0.3), pz + Math.sin(a) * 0.13]);
+      }
+      pts.push([px + W * 0.35, H + 0.16, pz + 0.1], [px + W * 0.7, H + 0.18, pz + D * 0.3], [px + W * 0.45, H + 0.17, pz + D * 0.75]);
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const r = k < 6 ? 0.07 - k * 0.006 : 0.035;
+        sink.member('structureWood', pts[k], pts[k + 1], r, r, [0, 0, 1], { colour: shade(BARK, 0.9 + look() * 0.2), decor: true, exposed: true }, 0);
+      }
+      // the leaves in clusters over the lattice (each a few leaves at their own tilts, seen from above and below)
+      const n = Math.round(W * D * 2.6);
+      for (let k = 0; k < n; k++) {
+        const cx = (look() - 0.5) * (W - 0.3), cz = (look() - 0.5) * (D - 0.3), cy = H + 0.2 + look() * 0.12, colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
+        for (let j = 0; j < 3; j++) {
+          const tilt = (look() - 0.5) * 1.1, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
+          const nrm = normalize3([Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)]);
+          const c: Vec3 = [cx + (look() - 0.5) * 0.35, cy + (look() - 0.5) * 0.08, cz + (look() - 0.5) * 0.35];
+          bloomDisc(sink, c, nrm, r, shade(colour, 0.85 + look() * 0.3), { decor: true }, yaw);
+          bloomDisc(sink, c, [-nrm[0], -nrm[1], -nrm[2]], r, shade(colour, 0.7), { decor: true }, yaw);
+        }
+        if (look() < 0.25) sink.cylinder('structureWood', [cx, H - 0.05, cz], 'y', 0.22, 0.05, 6, { colour: GRAPE, decor: true, fine: true }, 0.08);
+      }
+    });
+    recordShed(sink, legs, {
+      W: W + 0.3, D: D + 0.2, pitchDeg: 4, eaveY: H + 0.1, eave: 0.1, verge: 0.1, deck: 0.08, post: 0.16, posts,
+      pad: { size: 0.3, top: 0.42, bucket: 'stone', colour: null }, timber: TIMBER, boards: null, boardW: 0.2, back: false, ends: false,
+      roof: { bucket: 'structureWood', colour: LEAVES[0], shape: 'splinter', lattice: true }, stone: null, pile: 0,
+    });
   });
   return sink.finish();
 };

@@ -269,7 +269,9 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 1.35, angleHigh: 0.5,
     droop: 0.40, upturn: 0.0, sidePerM: 2.4, sideAngle: 0.65, sideRatio: 0.7, sideDroop: 1.5, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.2, spray: [0.62, 0.94], aspect: 0.68, habit: 'spray', tipSprays: 2,
-    cardBend: 0.34, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.92, 0.91, 0.88], barkTopTint: null,
+    // (the maps lane, 2026-10-15; the blind critics on Verdant v2: the birch trunks "plastic tubes") a birch's foot dark and
+    // fissured, its white climbing the stem (was one near-white tint, 0.92, that glared and bloomed in the sun)
+    cardBend: 0.34, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.6, 0.58, 0.54], barkTopTint: [0.84, 0.83, 0.79],
   }),
   aspen: P({
     family: 'birch', height: 7.6, heightSpread: 0.12, trunkR: 0.13, form: 'excurrent',

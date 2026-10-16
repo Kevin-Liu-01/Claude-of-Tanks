@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { isMapId, type MapId } from './maps/catalog.ts';
 import { emitBreakFx, emitDestroyed, registerWorldDestructibles } from './destructibles.ts';
 import { buildFlyover, flyoversForMap, type FlyoverType } from './flyoverAircraft.ts';
+import { buildAaGun } from './maps/fieldworksKit.ts';
 
 interface FrontlineEventBus {
   emit(event: string, payload: unknown): void;
@@ -350,20 +351,16 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   }
 
   // ---- anti-air guns (campaign slice 2) -----------------------------------
-  const aaBaseGeometry = mergeBoxGeometries([
-    new THREE.BoxGeometry(1.6, 0.35, 1.6).translate(0, 0.17, 0),
-    new THREE.BoxGeometry(0.7, 0.9, 0.7).translate(0, 0.8, 0),
-    new THREE.BoxGeometry(0.5, 0.25, 2.2).translate(0, 0.3, 0),
-    new THREE.BoxGeometry(2.2, 0.25, 0.5).translate(0, 0.3, 0),
-  ]);
-  const aaHeadGeometry = mergeBoxGeometries([
-    new THREE.BoxGeometry(0.9, 0.5, 0.9),
-    new THREE.BoxGeometry(1.7, 1.1, 0.08).translate(0, 0.25, 0.35),
-    new THREE.BoxGeometry(0.12, 0.12, 2.7).translate(-0.22, 0.1, 1.6),
-    new THREE.BoxGeometry(0.12, 0.12, 2.7).translate(0.22, 0.1, 1.6),
-    new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0.55, 0.0, -0.2),
-  ]);
-  const aaMaterial = new THREE.MeshStandardMaterial({ color: 0x4a4f44, roughness: 0.82, metalness: 0.18 });
+  // (props census #10, 2026-10-14) each front's own gun in its pit of sandbags (maps/fieldworksKit.ts buildAaGun: the
+  // Bofors, the Flak 38, the 61-K, the S-60, the M45, the ZU-23-2), built once a map and painted in vertex colours
+  const aaGunGeometries = new Map<string, { base: THREE.BufferGeometry; head: THREE.BufferGeometry }>();
+  const aaGunFor = (mapId: string): { base: THREE.BufferGeometry; head: THREE.BufferGeometry } => {
+    let gun = aaGunGeometries.get(mapId);
+    if (!gun) { gun = buildAaGun(mapId); aaGunGeometries.set(mapId, gun); }
+    return gun;
+  };
+  const aaBaseGeometry = aaGunFor('').base, aaHeadGeometry = aaGunFor('').head;
+  const aaMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.18 });
   options.setupMaterial?.(aaMaterial); // outside the cascade setup every cascade light strikes it at once
   const aaCap = FRONTLINE_LIMITS.aaGunsCap;
   const aaBases = new THREE.InstancedMesh(aaBaseGeometry, aaMaterial, aaCap);
@@ -649,9 +646,9 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     gun.shotsLeft = 0;
     gun.pitch = -0.55;                       // barrel dropped onto the mount
     gun.yaw += (rng() - 0.5) * 0.9;
-    // the base slumps toward the hit
+    // the base slumps toward the hit (a little: its pit of sandbags slumps with it)
     const lean = Math.atan2(dirX, dirZ);
-    _m.compose(gun.pos, _q.setFromEuler(_e.set(0.32, lean, 0.18, 'YXZ')), _one);
+    _m.compose(gun.pos, _q.setFromEuler(_e.set(0.12, lean, 0.07, 'YXZ')), _one);
     aaBases.setMatrixAt(index, _m);
     aaBases.instanceMatrix.needsUpdate = true;
     writeAaHeads();
@@ -698,6 +695,8 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     rng = mulberry32(((seed ?? 0) * 7919 + hashId(mapId)) | 0);
     bearingDeg = resolveFrontBearingDeg(getSpawns?.(), rng() * 360);
     layoutFront();
+    const gun = aaGunFor(mapId);
+    aaBases.geometry = gun.base; aaHeads.geometry = gun.head;
     layoutAaGuns();
     registerAaDestructibles(mapId);
     nextArtillery = 2 + rng() * 4;
@@ -746,7 +745,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     parent.remove(group);
     quad.dispose();
     flashes.mesh.geometry.dispose(); flak.mesh.geometry.dispose();
-    aircraftGeometry.dispose(); aaBaseGeometry.dispose(); aaHeadGeometry.dispose(); tracerGeometry.dispose();
+    aircraftGeometry.dispose(); for (const gun of aaGunGeometries.values()) { gun.base.dispose(); gun.head.dispose(); } tracerGeometry.dispose();
     for (const g of flyoverGeometries.values()) g.dispose();
     flyoverGeometries.clear();
     flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();

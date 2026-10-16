@@ -53,8 +53,8 @@
 // (followed by a file extension), a hyphenated slug (mesh labels, media file
 // names), SVG files (path data such as `m1a2` is a moveto and an arc), Studio
 // scenes (public/field-guide, tools/marketing-shots: unstamped scenes resolve
-// as schema 1 at load), a link's `id=` parameter (links without `ids=` are read
-// as schema 1 and resolve themselves), any line carrying the marker
+// as schema 1 at load), a gallery link's `id=` parameter (links without `ids=`
+// are read as schema 1 and resolve themselves; QA page links are renamed), any line carrying the marker
 // `tank-ids:keep` (an old id kept on purpose, or a token that only looks like
 // an id), and the files in SKIP_EXACT whose id vocabulary is schema 1 on
 // purpose (they test tankSeedId(id), so a rename never changes how a vehicle
@@ -134,7 +134,11 @@ function rewrite(text) {
     const to = pairs.get(token);
     if (to === undefined) return token;
     if (text[offset - 1] === '/') return token; // inside a path
-    if (text.slice(Math.max(0, offset - 3), offset) === 'id=') return token; // a link parameter (schema 1)
+    // A gallery link's `id=` stays as written: the gallery reads an unstamped link as schema 1 (linkTankId). QA pages
+    // (tools/*.html) read `?id=` raw in today's ids, so their links are renamed like any other id (225 gate).
+    if (text.slice(Math.max(0, offset - 3), offset) === 'id=' && /gallery[^'"`\s]*$/.test(text.slice(Math.max(0, offset - 160), offset))) {
+      return token;
+    }
     // A hyphen next to the token makes it part of a slug, never an id: a mesh label (`t90-front-mudguard`), a media
     // file name (`studio-leclerc-knockout.jpg`) or a CSS class.
     if (text[offset - 1] === '-' || text[offset + token.length] === '-') return token;

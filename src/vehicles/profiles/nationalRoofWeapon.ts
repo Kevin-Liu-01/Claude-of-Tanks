@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {KIT} from './kit.ts';
+import {KIT,orientedSlab} from './kit.ts';
 import {boxSections,blindTube,beamBetween} from './measuredPrimitives.ts';
 import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machinedRing,type MgClassKey} from '../machineGunGeometry.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -21,7 +21,13 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  const cannon=l.caliber===30,w=cannon?.245:.185,half=supportHalfWidth(l,w);
  gun.stage('yaw');
  gun.add('turretDetail',cylY(.21,.26,.13,32),x,b+.055,z);
- gun.add('turretDetail',cylY(.095,.14,l.axisHeight-.42,20),x,b+(l.axisHeight-.42)/2+.09,z);
+ // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a camo-painted drum on a U-shaped yoke on a cone",
+ // "a camo box on a plain U-shaped yoke over a smooth cone"): the station stands on a tapered armoured pedestal from its
+ // bearing ring up to the yoke's cross-beam (half a millimetre under it), not a round cone.
+ const pb=b+.10,pt=y-.38-.0005;
+ gun.add('turretDetail',orientedSlab(
+  [x-.15,pb,z-.14],[x+.15,pb,z-.14],[x+.15,pb,z+.14],[x-.15,pb,z+.14],
+  [x-.12,pt,z-.06],[x+.12,pt,z-.06],[x+.12,pt,z+.06],[x-.12,pt,z+.06]),0,0,0);
  gun.add('turretDetail',box(half*2+.10,.08,.12),x,y-.34,z);
  for(const side of [-1,1]) {
   gun.add('turretDetail',box(.044,.40,.12),x+side*(half+.028),y-.16,z);
@@ -111,23 +117,27 @@ function housing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number
  } else if(l.mount==='wedge') {
   g.add('turretDetail',boxSections([[z-.39,w*.72,y+.12,y-.14],[z+.24,w*.65,y+.19,y-.11],[z+.53,w*.31,y+.055,y-.055]]),x,0,0);
   for(const at of [-.21,-.08,.05,.18])g.add('turretDark',box(w*.95,.009,.025),x,y+.193,z+at);
- } else {
+ } else if(l.caliber===30) {
   g.add('turretDetail',cylZ(w*.69,.43,24),x,y,z-.12);
   g.add('turretDetail',cylZ(w*.43,.35,24),x,y,z+.22);
   for(const at of [-.30,-.05,.32])g.add('turretDark',cylZ(w*(at===.32?.47:.73),.026,24),x,y,z+at);
  }
+ // round 4 (wave 386 on the T-72B3's station: "the machine gun is reduced to a thin rod with a knob, with no receiver,
+ // feed or ammunition box"): a drum-fed 12.7 mm gun lies open in its cradle, its receiver, feed cover and barrel in
+ // view; the round shroud that hid all but the muzzle is gone and the drum is its ammunition.
 }
 
 function feed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const half=supportHalfWidth(l,w);
  const side=l.feedSide,fx=x+side*(half+.18),cannon=l.caliber===30;
+ // round 4: the ammunition drum and box are issue drab, not the hull's camouflage ('turretAmmo', rendered builds)
  if(l.mount==='drum') {
-  g.add('turretDetail',cylX(cannon?.205:.165,.25,24),fx,y+.005,z-.10);
+  g.add('turretAmmo',cylX(cannon?.205:.165,.25,24),fx,y+.005,z-.10);
   g.add('turretDark',cylX(cannon?.153:.115,.018,24),fx+side*.126,y+.005,z-.10);
  } else {
   const h=cannon?.30:.23;
-  g.add('turretDetail',box(.25,h,.38),fx,y+.045,z-.15);
-  g.add('turretDetail',box(.269,.026,.399),fx,y+.045+h/2,z-.15);
+  g.add('turretAmmo',box(.25,h,.38),fx,y+.045,z-.15);
+  g.add('turretAmmo',box(.269,.026,.399),fx,y+.045+h/2,z-.15);
   for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
  }
  g.add('turretDark',box(.22,.07,.12),x+side*(half+.06),y+(l.mount==='drum'?.17:.19),z-.05);
