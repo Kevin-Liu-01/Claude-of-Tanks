@@ -8,9 +8,17 @@
 // or the concrete slab) laid inside it, the kerb's footing sunk 0.4 m. Dressing, as before (the yards' collision is their
 // structures').
 import type { EmitOptions, PartSink, RegionalBucket, Vec3 } from './geometry.ts';
+import { recordBody } from './house.ts';
 
 /** The kerb's width and its rise over the bed (m). */
 const KERB_W = 0.25, KERB_RISE = 0.08;
+/**
+ * (the looks lane's r2 sweep, polar, 2026-10-16: the yards' damage reading was their control house alone, so a yard's
+ * collapse laid its ruin over a fifth of the yard) the yard recorded as a body of its own, the whole pad by the fence's
+ * height (the kerb wall's 0.9 m and the chain-link's 2.1 m) in the kerb's concrete: the largest body, so the reading is
+ * the yard's and the control house falls as its own body beside it. Drawn nothing (house.ts recordBody).
+ */
+const YARD_H = 3.0, YARD_WALL: RegionalBucket = 'plaster2';
 
 /** A yard's pad over its plot, W x D: the kerb round it from 0.4 m down to its head, the bed inside at 8 cm over the grade. */
 export function yardPad(sink: PartSink, bucket: RegionalBucket, W: number, D: number, opts: EmitOptions): void {
@@ -28,4 +36,5 @@ export function yardPad(sink: PartSink, bucket: RegionalBucket, W: number, D: nu
   // the bed inside the kerb, the footing's underside closing it
   sink.polygon(bucket, rings[rings.length - 1], opts);
   sink.polygon(bucket, [...rings[0]].reverse(), opts);
+  recordBody(sink, 0, 0, W, D, YARD_H, YARD_WALL);
 }
