@@ -13,7 +13,7 @@ import {
   PartSink, faceBox, facePanel, facePoint, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { bench } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -189,13 +189,24 @@ function settlerHouse(ctx: RegionalBuildContext): RegionalParts {
       chimneys: [{ x: (rng() - 0.5) * 0.6, z: -D * 0.15, sx: 0.5, sz: 0.62, above: 0.7, bucket: 'stone', cap: 'slab' }],
       gutters: null, verge: { colour: rng() < 0.5 ? WHITE : st.paint, bucket: 'structureWood' },
       spall: brick ? undefined : null,
-    }, dialect(st));
-    // the attic vent in the street gable: a louvred board hatch (a hipped roof has none)
+    }, {
+      ...dialect(st),
+      // (props census #15, Lane C 2026-10-16: the vent was a dark plate in a board frame) the attic vent cut through
+      // the street gable with its reveal
+      gableOpenings: (face, poly) => {
+        if (hip || face.out[2] <= 0) return [];
+        const base = poly[0][1], vy = base + (Math.max(...poly.map(([, y]) => y)) - base) * 0.38;
+        return [{ u0: -0.275, u1: 0.275, y0: vy - 0.21, y1: vy + 0.21 }];
+      },
+    });
+    // the attic vent in the street gable: its louvre boards across the cut and its painted board frame (a hipped roof has
+    // none)
     const gf: Face = { origin: [0, 0, (D - 0.1) / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
     if (!hip) {
       const ventY = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.38;
-      faceBox(sink, 'dark', gf, 0, ventY, 0.01, 0.55, 0.42, 0.02, { decor: true });
-      faceBox(sink, 'structureWood', gf, 0, ventY, 0.03, 0.72, 0.6, 0.04, { colour: st.paint, decor: true }, { back: true });
+      for (let k = 0; k < 3; k++) faceBox(sink, 'structureWood', gf, 0, ventY - 0.13 + k * 0.13, -0.06, 0.55, 0.05, 0.08, { colour: shade(st.paint, 0.8), decor: true, fine: true });
+      for (const side of [-1, 1]) faceBox(sink, 'structureWood', gf, side * 0.32, ventY, 0.02, 0.09, 0.6, 0.04, { colour: st.paint, decor: true });
+      for (const side of [-1, 1]) faceBox(sink, 'structureWood', gf, 0, ventY + side * 0.255, 0.02, 0.72, 0.09, 0.04, { colour: st.paint, decor: true });
     }
     // (2026-10-11, kitConnectivity: no TV aerial — the virgin-land settlements of the late 1950s had the wired radio, not
     // a television mast on every roof, and the aerial's elements are bars with two free ends)
@@ -216,7 +227,7 @@ function settlerHouse(ctx: RegionalBuildContext): RegionalParts {
   sink.placed(Math.PI / 2, fp.cx, 0, z0 + vD / 2, () => {
     const vf = buildHouse(sink, {
       w: vD - 0.06, d: W - 0.06, plinth: { h: vPlinth, out: 0.03, bucket: 'stone' }, storeys: [{ h: vH, wall: 'wood' }],
-      roof: vRoof, roofColour: sheet ? livery : undefined, openings: veranda, chimneys: [], gutters: null, verge: null, reveal: 0.05, spall: null,
+      roof: vRoof, roofColour: sheet ? livery : undefined, openings: veranda, chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
     }, {
       window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, glazed, rng, 0.35),
       door: (s, face, o, y0, frame) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -274,7 +285,7 @@ function twoFamilyHouse(ctx: RegionalBuildContext): RegionalParts {
       const v = buildHouse(sink, {
         w: vD - 0.06, d: L - 0.06, plinth: { h: 0.5, out: 0.03, bucket: 'stone' }, storeys: [{ h: 2.3, wall: 'wood' }],
         roof: sheetRoof('shed', 12, sheet, 0.25, 0.2), roofColour: sheet ? livery : undefined, openings: vf, chimneys: [], gutters: null, verge: null,
-        reveal: 0.05, spall: null,
+        reveal: 0.1, spall: null,
       }, {
         window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, glazed, rng, 0.35),
         door: (s, face, o, y0, frame) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -526,6 +537,11 @@ const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
         // the ramp from the yard to the threshold (the plinth's height), its kerbs either side
         ramp(s, face, o.u, o.w + 0.6, plinth, 0.5, 'plaster2');
       },
+      // (props census #15, Lane C 2026-10-16: each gable's vent was a dark plate under its slats) cut through the gable
+      gableOpenings: (_face, poly) => {
+        const base = poly[0][1], vy = base + (Math.max(...poly.map(([, y]) => y)) - base) * 0.4;
+        return [{ u0: -0.6, u1: 0.6, y0: vy - 0.35, y1: vy + 0.35 }];
+      },
     });
     // the buttresses: on the long walls, between the doors and at the ends, stepped back once and weathered
     for (const name of ['left', 'right'] as const) {
@@ -547,8 +563,7 @@ const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
     }
     for (const f of [frame.faces.front, frame.faces.back]) {
       const vy = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.4;
-      faceBox(sink, 'dark', f, 0, vy, 0.01, 1.2, 0.7, 0.02, { decor: true });
-      for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, vy - 0.27 + k * 0.18, 0.06, 1.2, 0.07, 0.06, { colour: PLANK, decor: true, fine: true });
+      for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, vy - 0.27 + k * 0.18, -0.04, 1.2, 0.07, 0.08, { colour: PLANK, decor: true, fine: true });
     }
   });
   return sink.finish();
@@ -598,11 +613,12 @@ const conveyor: RegionalBuilder = (ctx) => {
     sink.span('plaster2', -binS / 2, 2.2, z0 - binS / 2, binS / 2, binH, z0 + binS / 2);
     sink.span('plaster2', -binS / 2 - 0.15, binH, z0 - binS / 2 - 0.15, binS / 2 + 0.15, binH + 0.3, z0 + binS / 2 + 0.15);
     const shedL = Math.min(4.5, Ll * 0.22), zi = half - shedL / 2;
-    sink.span('plaster', -hw, -0.4, zi - shedL / 2, hw, 3.2, half);
+    // (props census #15, Lane C 2026-10-16: the intake's open front was a dark plate on a box) its front cut open, the
+    // dark of the intake behind it
+    holedBox(sink, 'plaster', -hw, zi - shedL / 2, hw, half, -0.4, 3.2, { front: [{ u0: -(Wl - 1.0) / 2, u1: (Wl - 1.0) / 2, y0: 0.2, y1: 2.6 }] }, 0.3, 0.3);
     sink.band('stone', -hw - 0.04, -0.1, zi - shedL / 2 - 0.04, hw + 0.04, 0.45, half + 0.04, { decor: true });
     sink.band('plaster2', -hw - 0.08, 2.95, zi - shedL / 2 - 0.08, hw + 0.08, 3.2, half + 0.08, { decor: true, shade: 0.9 });
     sink.span('roof', -hw - 0.25, 3.2, zi - shedL / 2 - 0.2, hw + 0.25, 3.36, half + 0.25);
-    faceBox(sink, 'dark', { origin: [0, 0, half], u: [1, 0, 0], out: [0, 0, 1], width: Wl }, 0, 1.4, 0.01, Wl - 1.0, 2.4, 0.02, { decor: true });
     const a: Vec3 = [-1.0, 2.9, zi - shedL / 2 + 0.6], b: Vec3 = [-1.0, binH - 2.2, z0 + binS / 2 - 0.4];
     sink.member('structureMetal', a, b, 1.9, 2.0, [1, 0, 0], { colour: rgb(0x8e9490), exposed: true }, 0);
     // the portal trestles: a leg at each side of the lot, a crossbeam under the gallery, a brace
