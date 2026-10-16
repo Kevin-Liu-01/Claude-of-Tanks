@@ -307,10 +307,23 @@ export function buildT72B3MXHull(P:TankBuilderPort):void {
 
 export function buildT72B3MX(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
-  P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T72B3M_X_DATUMS.highestFittingM-YAW[1];
-  buildT72B3MXHull(P);turret(P);
-  cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
+  buildT72B3MXHull(P);buildT72B3MXTurret(P);
+}
+
+/** Options for reusing the T-72B3M turret on another hull. A vehicle whose own
+ * fitted remote station replaces the commander's Kord omits it and its drum
+ * (one working roof gun, never a duplicate). */
+export interface T72B3MXTurretOptions { commanderGun?:boolean }
+
+/** The complete T-72B3M (2016) turret in its own turret frame (the turret ring
+ * centre is the origin): cast shell, Relikt cheek and roof cassettes, bustle
+ * screen boxes, roof equipment, smoke, the commander's gun and the main gun.
+ * The caller places P.turretG on its hull's ring. */
+export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOptions={}):void {
+  P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
+  turret(P);
+  cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
 }
 export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
 

@@ -11,8 +11,10 @@ type Gun=ReturnType<typeof sourceMachineGun>;
 const {box,cylX,cylY,cylZ}=KIT;
 
 /** All pieces share an actual yaw/pitch owner, including the feed and sight.
- * The pedestal and fork stay below pitch stock; the trunnion passes through it. */
-export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point,l:NationalRoofLoadout):void {
+ * The pedestal and fork stay below pitch stock; the trunnion passes through it.
+ * A null cupola leaves the turret's own commander's cupola (a donor turret's)
+ * as the station's seat instead of adding a second one. */
+export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null,l:NationalRoofLoadout):void {
  const [x,b,z]=rws,y=b+l.axisHeight;
  const gun=sourceMachineGun(P,[0,0,0],{name:l.name,caliberMm:l.caliber,
   yaw:rws,pivot:[x,y,z],muzzle:[x,y,z+l.muzzleZ]});
@@ -38,6 +40,7 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point,l:Na
  feed(gun,l,x,y,z,w);
  sight(gun,l,x,y,z,w);
  const root=gun.finish();root.userData.nationalRoofLoadout=l.name;
+ if(!cupola)return;
  const [cx,cy,cz]=cupola;KIT.cupola(P,'turret',cx,cy-.006,cz,.27,.11,8);
 }
 

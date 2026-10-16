@@ -396,6 +396,12 @@ function nationalRoofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):
 }
 
 function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  chinaHullEquipment(P,c);
+  turretEquipment(P,c);
+}
+
+/** Driver's hatch, periscopes and the armoured front lamps on the native glacis. */
+function chinaHullEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
   const driverZ=c.model===1?1.72:1.61,driverY=receivingRoof(P,'hull',0,driverZ);
   P.addHatch('hullHatch',cylY(.28,.28,.032,24),0,driverY+.012,driverZ);
   for(const x of [-.17,0,.17]){
@@ -423,6 +429,9 @@ function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
     for(const dx of [-.12,.12])P.addEquipment('hullDetail',beamBetween([x+dx,y-.005,front],[x+dx,y+.175,front],.012));
     P.addEquipment('hullDetail',box(.265,.020,.16),x,y+.18,front);
   }
+}
+
+function turretEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
   // The central sight is retained in a low armored housing beneath the RWS
   // depression envelope; its new finite adapter is fitted to the cast crown.
   lowOptic(P,permanentParts(P,['turret','turretExternalArmor']),0,-.08,.28,.11,.24,false);
@@ -523,6 +532,24 @@ function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):vo
     P.addEquipment('hullDark',upright,root.x,foot.y+.010,foot.z);
   }
   P.hullG.userData.chineseConceptFuelDrums={centers:[[-center,y,z],[center,y,z]],radius,length,roots:roots.map(r=>r.toArray())};
+}
+
+/** The hull half of the Kunlun and Qilin packages, unchanged beneath their donor
+ * turrets (nationalDonorTurret.ts): engine-deck cooling panels, heavy skirts,
+ * glacis cassettes, the driver's station, armoured lamps and rear fuel drums. */
+export function chinaDonorHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  if(c.model===1){
+    for(const side of [-1,1])coolingPanel(P,side*.52,-2.49,.85,.88,9);
+    skirts(P,c,7,-2.65,3.08,1.98,.74);
+    frontTiles(P,2.19,3,.68,.29);
+  }else if(c.model===2){
+    coolingPanel(P,-.46,-2.49,.73,.83,7);
+    coolingPanel(P,.46,-2.38,.73,1.00,8);
+    skirts(P,c,5,-2.35,2.67,1.93,.85);
+    frontTiles(P,2.06,2,.57,.38);
+  }else throw new Error(`${c.id}: no donor-turret hull package`);
+  chinaHullEquipment(P,c);
+  addConceptFuelDrums(P,c);
 }
 
 export function buildNationalChina(P:TankBuilderPort,c:NationalModernizationConfig):void {

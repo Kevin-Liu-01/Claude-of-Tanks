@@ -159,8 +159,10 @@ export function ukrainianSkirtEra(P:TankBuilderPort,side:number,z:number,step:nu
     eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*(outer+.028),1.09+dy,z+dz],[.075,.217,step*.405]);
 }
 
-export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):void{
+/** The hull screens, skirt-return ERA and (unless a donor-turret kit fits its own) the turret screens. */
+export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,options:{turretScreens?:boolean}={}):void{
   const d=NATIONAL_UKRAINE_PROTECTION[id],hull=permanentStock(P,'hull'),turret=permanentStock(P,'turret');
+  const turretScreens=options.turretScreens!==false;
   for(const side of [-1,1]){
     // Four independently framed side screens retain real service gaps. All
     // feet are above the ERA lids. 2026-10-09 (owner): every bay carries a net,
@@ -188,6 +190,7 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):
     // Aft flank sections join the bustle screen below all roof stations.
     // Cast shoulders, hatch circles and the gun aperture stay uncovered.
     const supportZ=id==='t72b3m_hetman_ii'?[-2.04,-.85]:id==='t72b3m_hetman'?[-1.52,-.73]:[-1.22,-.70];
+    if(turretScreens){
     for(const z of supportZ){
       foot(P,'turret',turret,[side*3,d.bottom+.08,z],[-side,0,0],[side*d.turretX,d.bottom+.08,z]);
       rod(P,'turret',[side*d.turretX,d.bottom,z],[side*d.turretX,d.top,z],.017);
@@ -205,6 +208,7 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):
       const t=i/returnCount,x=side*(d.turretX+(d.rearHalf-d.turretX)*t),z=d.sideBack+(d.rearZ-d.sideBack)*t;
       rod(P,'turret',[x,d.bottom+.012,z],[x,d.top-.012,z],.008);
     }
+    }
     // Forward/rear skirt returns receive their own short ERA banks, seated
     // by ray onto finite armor stock rather than floating past the fenders.
     for(const z of [-2.96,-2.65,2.65,2.96]){
@@ -213,6 +217,7 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):
       eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,hit.point.clone().addScaledVector(hit.normal,.030).toArray(),[.076,.22,.21],[rotation.x,rotation.y,rotation.z]);
     }
   }
+  if(!turretScreens)return;
   for(const y of [d.bottom,d.top])rod(P,'turret',[-d.rearHalf,y,d.rearZ],[d.rearHalf,y,d.rearZ],.018);
   for(const x of [-d.rearHalf,d.rearHalf])rod(P,'turret',[x,d.bottom,d.rearZ],[x,d.top,d.rearZ],.018);
   for(let i=1;i<29;i++){const x=-d.rearHalf+2*d.rearHalf*i/29;rod(P,'turret',[x,d.bottom+.012,d.rearZ],[x,d.top-.012,d.rearZ],.008);}

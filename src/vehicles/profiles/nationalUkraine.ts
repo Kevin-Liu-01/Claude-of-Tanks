@@ -159,10 +159,30 @@ function sich(P:TankBuilderPort,c:NationalModernizationConfig):void {
   skirtPackage(P,c,6);
   glacisTiles(P,[2.00,2.47,2.87],.61,.52,.30);
   attachedCage(P,'turret',[0,.49,-1.85],1.41,.37,.33);
+  sichHullRails(P);
+}
+
+/** Sich's long side rails on the skirt carrier's outboard face. */
+function sichHullRails(P:TankBuilderPort):void {
   for(const side of [-1,1]) {
     P.addEquipment('hullDetail',box(.026,.026,3.82),side*2.19,1.36,-.15);
     for(const z of [-1.85,-.37,1.11])P.addEquipment('hullDetail',box(.15,.022,.033),side*2.12,1.36,z);
   }
+}
+
+/** The hull half of the Hetman and Sich packages, unchanged beneath their donor
+ * turrets (nationalDonorTurret.ts): skirts, glacis cassettes, rails, lamps and
+ * deck fittings in the same order the cast-turret builds emitted them. */
+export function ukrainianDonorHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  if(c.model===1){
+    skirtPackage(P,c,7);
+    glacisTiles(P,[2.15,2.59,3.04],.63,.55,.33);
+  }else if(c.model===2){
+    skirtPackage(P,c,6);
+    glacisTiles(P,[2.00,2.47,2.87],.61,.52,.30);
+    sichHullRails(P);
+  }else throw new Error(`${c.id}: no donor-turret hull package`);
+  hullEquipment(P,c);
 }
 
 /** A permanent carrier backs each removable face. Chamfered front/rear

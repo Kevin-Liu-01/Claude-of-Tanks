@@ -1058,7 +1058,15 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   P.topY = 1.30;
 }
 
-function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
+/** Options for reusing the production ZTZ-99A2 turret on another hull: a
+ * vehicle with its own fitted remote station omits the commander's QJC-88 (one
+ * working roof gun, never a duplicate), and one with its own marking seats
+ * omits the 99A2's painted star and number. */
+export interface ZTZ99A2TurretOptions { roofGun?: boolean; decals?: boolean }
+
+/** The production ZTZ-99A2 turret in its own turret frame. It places P.turretG
+ * at the 99A2 hull's ring; a reusing caller moves the group onto its own ring. */
+export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99A2TurretOptions = {}): void {
   const { box, cylY, torus, periscope, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
   P.gunG.position.set(0, .38, .78);
@@ -1168,7 +1176,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.add('turretDark', torus(0.265, 0.014, seg), 0.52, 0.885, -0.88);
   periscope(P, 'turretDetail', 0.30, 0.90, -0.88);
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
-  mount(P, 'turret', FITTINGS.pintleMG({
+  if (options.roofGun !== false) mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.08,
     shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed: 9990,
   }), 0.52, 0.89, -0.88);
@@ -1193,8 +1201,10 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   ], { rings: [[1.58, 0.108], [3.03, 0.121], [3.72, 0.121], [5.90, 0.094]], muzzle: 6.42 });
   muzzleBore(P, { r: 0.088 });
 
-  P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
+  if (options.decals !== false) {
+    P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
+    P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
+  }
   P.turretG.userData.ztz99a2ProductionReceipt = Object.freeze({
     architecture: 'ztz99a2-production-arrow-r4',
     independentProductionTurret: true,
