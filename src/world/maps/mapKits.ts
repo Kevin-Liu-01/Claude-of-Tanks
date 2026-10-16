@@ -1627,15 +1627,32 @@ function dressAutumnRiver(ctx: FocusedDressingContext): void {
 // =============================================================================
 
 
-function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null, heightField: DressingHeightField,
-  rng: Rng, buckets: DressingBuckets, ctx: FocusedDressingContext): void {
-  // the reach six links upstream of the bridge (the SW end of the chain is upstream)
+/** The river link the weir stands on: the reach six links upstream of the bridge (the SW end of the chain is upstream). */
+function weirLinkIndex(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null): number {
   let bridgeIndex = 0, bestDistance = Infinity;
   if (crossing) for (let i = 0; i < links.length; i++) {
     const d = Math.hypot(links[i].x - crossing.x, links[i].z - crossing.z);
     if (d < bestDistance) { bestDistance = d; bridgeIndex = i; }
   }
-  const index = Math.max(1, Math.min(links.length - 2, (crossing ? bridgeIndex : Math.floor(links.length * 0.4)) - 6));
+  return Math.max(1, Math.min(links.length - 2, (crossing ? bridgeIndex : Math.floor(links.length * 0.4)) - 6));
+}
+
+/**
+ * (Lane C 2026-10-16, the map-layout brief's solidPropsInWater) the structures a map stands in its river by design, as
+ * discs: Amberford's weir and its sluice across the channel. The one derivation the dressing and the layout metric share.
+ */
+export function riverStructureSites(mapId: string, L: { marshes?: readonly LayoutDisc[] }, decks: readonly { x: number; z: number }[]): Array<{ x: number; z: number; r: number }> {
+  if (mapId !== AMBERFORD) return [];
+  const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
+  if (links.length < 3) return [];
+  const link = links[weirLinkIndex(links, decks[0] ?? null)];
+  return [{ x: link.x, z: link.z, r: link.r * 0.65 + 1.5 }];
+}
+
+function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null, heightField: DressingHeightField,
+  rng: Rng, buckets: DressingBuckets, ctx: FocusedDressingContext): void {
+  // the reach six links upstream of the bridge (the SW end of the chain is upstream)
+  const index = weirLinkIndex(links, crossing);
   const link = links[index], before = links[index - 1], after = links[index + 1];
   const tl = Math.hypot(after.x - before.x, after.z - before.z) || 1;
   const tx = (after.x - before.x) / tl, tz = (after.z - before.z) / tl; // downstream tangent
