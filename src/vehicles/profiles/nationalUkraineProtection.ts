@@ -16,6 +16,10 @@ interface ProtectionLayout {
   bottom:number; top:number; rearHalf:number; hullPanels:readonly(readonly[number,number])[];
 }
 
+// Owner 2026-10-15 (VEH-21): the Hetman, Hetman II and Sich carry their donor turrets (nationalDonorTurrets.ts); their
+// hull screens are laid from these rows, while their turret screens, cages and turret nets are the donor-turret kit's
+// (ukraineDonorTurretKit.ts, ukraineDonorSuit): the turret fields of those three rows describe the retired cast and
+// welded concept turrets and are no longer laid.
 export const NATIONAL_UKRAINE_PROTECTION:Readonly<Record<ProtectionId,ProtectionLayout>>={
   t80u_zoria:{hullX:2.34,turretX:1.87,rearZ:-2.12,sideBack:-1.51,sideFront:-.52,bottom:.28,top:.72,rearHalf:1.43,
     hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},

@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {TANK_SPECS} from '../specs.ts';
 import {MISSION_ATTACHMENT_SEATS} from '../../sim/missionAttachmentSeats.generated.ts';
 import {NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
+import {ukraineDonorSuit} from './ukraineDonorTurretKit.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../../tools/mission-attachment-geometry.mjs';
 import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
@@ -108,7 +109,9 @@ for(const quality of ['high','low'])for(const id of ids){
   },
  });
  try{
-  assert.equal(pads.length,22,id+': all side and bustle cage supports emitted');
+  // Owner 2026-10-15 (VEH-21): the donor-turret kits fit their own bustle screens (ukraineDonorTurretKit.ts): Hetman's
+  // and Sich's on six arms into the casting, Hetman II's command basket bolted into its two flank cabinets.
+  assert.equal(pads.length,{t72b3m_hetman_ii:18}[id]??22,id+': all side and bustle cage supports emitted');
   assert(rods>225&&lashings>=35,id+': substantial framed screens with attached net headers');
   const ray=new Raycaster();
   for(const pad of pads){
@@ -148,7 +151,8 @@ for(const quality of ['high','low'])for(const id of ids){
    const leaf=tank.root.getObjectByName(tankSeedId(id)+'_ghillie_'+owner+'_leaves');
    assert(leaf?.geometry.attributes.position.count>(quality==='low'?150:300),id+': physical leaves tied on, not only painted net');
   }
-  const cfg=NATIONAL_UKRAINE_GHILLIE[id];
+  // the donor-turret concepts wear the kit's turret half over the national hull half
+  const cfg=ukraineDonorSuit(id)??NATIONAL_UKRAINE_GHILLIE[id];
   // 2026-10-12 (cam-netting; the owner, 10-09 and again 10-12: "a ton more netting and camo leaves all over the zoria and
   // hetman and sich"): the glacis and the turret roof are netted too (the engine deck lies inside the continuous main-gun
   // envelope below and stays bare), each laid on the armour and opened

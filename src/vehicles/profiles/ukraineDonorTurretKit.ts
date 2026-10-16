@@ -502,14 +502,24 @@ function flankCabinet(P:TankBuilderPort,S:TurretStock,side:number,f0:number,f1:n
 
 /** Hetman II's open command basket: a floor and slat walls hung behind the rear boxes from a front beam bolted into
  * both cabinets, with goose-neck stays over the rear boxes into the casting. */
-const HETMAN_II_BEAM:Path=[[-1.22,-1.45],[-1.02,-1.82],[-.55,-2.02],[0,-2.08],[.55,-2.02],[.98,-1.82],[1.19,-1.60]];
+const HETMAN_II_BEAM:Path=[[-1.22,-1.45],[-1.02,-1.82],[-.55,-2.02],[0,-2.08],[.55,-2.02],[.98,-1.82],[1.14,-1.60]];
 const HETMAN_II_BASKET:Path=[[-1.30,-1.47],[-1.30,-2.28],[-1.00,-2.62],[1.00,-2.62],[1.28,-2.28],[1.26,-1.63]];
 function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   const floor=.24,top=.66,F=HETMAN_II_BEAM,O=HETMAN_II_BASKET;
   const beam=(a:V3,b:V3,r=.022)=>P.addEquipment('turretDetail',beamBetween(a,b,r,10));
   for(let i=1;i<F.length;i++)beam([F[i-1][0],floor,F[i-1][1]],[F[i][0],floor,F[i][1]],.026);
-  // The beam's ends are bolted into the cabinets' rear flanges.
-  for(const [x,z]of [F[0],F[F.length-1]])P.addEquipment('turretDetail',box(.09,.10,.09),x,floor,z);
+  // The beam's ends are bolted into the cabinets' rear flanges: a bolting pad on each flange's rear face (found by ray
+  // forward along the flank) and a short stub from the beam's end to it.
+  for(const [i,side]of [[0,-1],[F.length-1,1]] as const){
+    const [x,z]=F[i],fl=b3mFlank(side),from=new THREE.Vector3(x,floor,z);
+    const hit=S.cast(from.clone().addScaledVector(fl.f,-.05),fl.f,['turretExternalArmor'],.40);
+    if(!hit)throw new Error(`${P.spec.id}: basket beam has no cabinet flange ahead of ${x},${z}`);
+    const plate=box(.10,.024,.10).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP,hit.n));
+    plate.userData.ukrainianProtection={role:'support-pad',owner:'turret',contact:hit.point.toArray(),normal:hit.n.toArray()};
+    P.addEquipment('turretDetail',plate,...hit.point.clone().addScaledVector(hit.n,.008).toArray());
+    beam([x,floor,z],hit.point.clone().addScaledVector(hit.n,.015).toArray() as unknown as V3,.024);
+    P.addEquipment('turretDetail',box(.07,.07,.07),x,floor,z);
+  }
   // Floor: stringers from the beam to the outer frame, slats across them.
   const stringers:[V3,V3][]=[];
   const outerAt=(x:number,z:number):[number,number]=>{
@@ -759,10 +769,15 @@ export function buildHetmanIIDonorKit(P:TankBuilderPort):void {
   fitUkraineDonorTurret(P,'t72b3m_hetman_ii');
 }
 
+/** The suit a donor-turret concept wears: the national hull half and this kit's turret half (undefined otherwise). */
+export function ukraineDonorSuit(id:string):GhillieConfig|undefined {
+  return id==='t72b3m_hetman'?hetmanNet():id==='t72b3m_hetman_ii'?hetmanIINet():id==='t72b3_sich'?sichNet():undefined;
+}
+
 function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
   turretUpArmour(P,id);
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
   addNationalUkraineProtection(P,id,{turretScreens:false});
-  addVehicleGhillieSuit(P,id==='t72b3m_hetman'?hetmanNet():id==='t72b3m_hetman_ii'?hetmanIINet():sichNet());
+  addVehicleGhillieSuit(P,ukraineDonorSuit(id)!);
 }
 void markSmokeTube;void blindTube;void cylX;void torus;
