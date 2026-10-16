@@ -22,7 +22,8 @@ import {
   BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect,
   sandbags, uvOffset,
 } from './shanghaiParts.ts';
-import { decoTower, stationHall } from './skyline.ts';
+import { stationHall } from './skyline.ts';
+import { decoTower } from './skylineDeco.ts'; // (looks r2 b-east, 2026-10-16: the Bund towers' own deco tower)
 
 const DEC = { decor: true } as const;
 const SHADOWED = { decor: true, shadow: true } as const;
