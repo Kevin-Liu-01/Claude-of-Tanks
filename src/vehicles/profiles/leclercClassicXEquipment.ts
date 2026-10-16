@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { classicTurret, classicGun, LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylZ } = KIT;
@@ -90,7 +91,8 @@ function mountedGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.016, .39, 20), .88, 2.553, .58);
   const tube = new THREE.CylinderGeometry(.012, .012, .035, 20, 1, true).rotateX(Math.PI / 2);
   mg.add('turretDark', tube, .88, 2.553, .7925);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'leclercClassicXRoofGpmg', caliberMm: 7.62 });
 }
 
 function mount(P: TankBuilderPort): void {

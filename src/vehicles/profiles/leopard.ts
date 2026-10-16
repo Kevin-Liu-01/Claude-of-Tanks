@@ -145,6 +145,8 @@ interface ChevronSurfacePanelOptions {
   readonly ridgeMargin?: number;
   readonly rootMargin?: number;
   readonly thickness?: number;
+  readonly seatM?: number;
+  readonly rootClearZ?: number;
 }
 
 interface LeopardGearConfig {
@@ -1064,6 +1066,46 @@ function interpolateChevronStation(
   return stations[stations.length - 1];
 }
 
+// The bent form of a cheek cassette: rings [root base, ridge base, ridge face,
+// root face] per section, so each underside course splits along the same
+// upper-to-ridge diagonal as the parent cheek beneath it.
+function conformingChevronSurfacePanel(
+  sections: readonly ChevronSurfaceStation[],
+  onFace: (station: ChevronSurfaceStation, t: number) => THREE.Vector3,
+  rootFraction: (station: ChevronSurfaceStation) => number,
+  options: { ridgeMargin: number; thickness: number; seat: number },
+) {
+  const ridge = sections.map((section) => onFace(section, options.ridgeMargin));
+  const root = sections.map((section) => onFace(section, rootFraction(section)));
+  const courseNormals = sections.slice(0, -1).map((_, index) => {
+    const normal = root[index + 1].clone().sub(ridge[index])
+      .cross(root[index].clone().sub(ridge[index + 1])).normalize();
+    if (normal.y < 0) normal.negate();
+    return normal;
+  });
+  const rings = sections.map((_, index) => {
+    const before = courseNormals[Math.max(0, index - 1)];
+    const after = courseNormals[Math.min(courseNormals.length - 1, index)];
+    const normal = before.clone().add(after).normalize();
+    const mitre = 1 / Math.max(0.5, Math.min(normal.dot(before), normal.dot(after)));
+    const lift = normal.clone().multiplyScalar(options.thickness * mitre);
+    const seat = normal.clone().multiplyScalar(-options.seat * mitre);
+    return [
+      root[index].clone().add(seat).toArray(), ridge[index].clone().add(seat).toArray(),
+      ridge[index].clone().add(lift).toArray(), root[index].clone().add(lift).toArray(),
+    ] as unknown as FourPointRing;
+  });
+  const across = ridge[ridge.length - 1].clone().sub(ridge[0]);
+  const rearward = root[0].clone().sub(ridge[0]);
+  const normal = across.cross(rearward).normalize();
+  if (normal.y < 0) normal.negate();
+  const geometry = closedFourPointLoft(rings);
+  return Object.freeze({
+    geometry, normal: Object.freeze(normal.toArray()), thickness: options.thickness,
+    triangleCount: geometry.getAttribute('position').count / 3,
+  });
+}
+
 // Shallow, closed armor cassette seated directly on the uninterrupted upper
 // cheek. These are surface panels, not replacement structural courses: the
 // narrow gaps expose the parent armor as real seams while the proud perimeter
@@ -1102,7 +1144,47 @@ function leopardChevronSurfacePanel(
     base[0].toArray(), base[1].toArray(), base[2].toArray(), base[3].toArray(),
     top[0].toArray(), top[1].toArray(), top[2].toArray(), top[3].toArray(),
   );
-  return Object.freeze({ geometry, normal: Object.freeze(normal.toArray()), thickness });
+  return Object.freeze({ geometry, normal: Object.freeze(normal.toArray()), thickness, triangleCount: 12 });
+}
+
+// One cheek cassette over the band [x0, x1] of a wedgeTurretV3 chevron.
+function leopardChevronBandPanel(
+  stations: readonly ChevronSurfaceStation[],
+  x0: number,
+  x1: number,
+  side: Side,
+  options: ChevronSurfacePanelOptions = {},
+) {
+  const ridgeMargin = options.ridgeMargin ?? 0.075;
+  const rootMargin = options.rootMargin ?? 0.085;
+  const thickness = options.thickness ?? 0.022;
+  const onFace = (station: ChevronSurfaceStation, t: number) => new THREE.Vector3(
+    side * (station.ridgeX ?? station.x), station.ridgeY, station.ridgeZ,
+  ).lerp(new THREE.Vector3(side * (station.upperX ?? station.x), station.upperY, station.upperZ), t);
+  const a = interpolateChevronStation(stations, x0);
+  const b = interpolateChevronStation(stations, x1);
+  // A cheek station inside the band is a kink in the parent armor. One flat
+  // cassette across it let the parent facets cut up through the panel face at
+  // 8-17 degrees (the 2A7V's "ghost facets": interpenetrating shells that
+  // z-fight). Such a panel bends with the cheek instead: one closed loft through
+  // the band ends and every interior station, its face lifted along the mitred
+  // facet normal and its underside seated a few millimetres into the parent.
+  // Near the terminal the cheek's upper root runs back over the turret body's
+  // shoulder, where its face and the body chamfer meet at a few degrees. A panel
+  // root that followed it there crossed the chamfer (10.6 degrees on the 2A6), so
+  // the root edge stops at the body's front plane, leaving a strip of bare cheek.
+  const rootFraction = (station: ChevronSurfaceStation): number => {
+    const nominal = 1 - rootMargin;
+    const span = station.ridgeZ - station.upperZ;
+    if (options.rootClearZ == null || span <= 1e-6) return nominal;
+    return Math.max(ridgeMargin + 0.25, Math.min(nominal, (station.ridgeZ - options.rootClearZ) / span));
+  };
+  const interior = stations.filter((station) => station.x > x0 + 1e-6 && station.x < x1 - 1e-6);
+  const clipped = [a, ...interior, b].some((station) => rootFraction(station) < 1 - rootMargin - 1e-9);
+  if (interior.length || clipped) return conformingChevronSurfacePanel([a, ...interior, b], onFace, rootFraction, {
+    ridgeMargin, thickness, seat: options.seatM ?? 0.004,
+  });
+  return leopardChevronSurfacePanel(a, b, side, options);
 }
 
 // Leopard 2 running gear: 7 dual rubber-tired wheels (dark tire rim + hub
@@ -1194,18 +1276,23 @@ function leoMantletGun(P: TankBuilderPort, G: LeopardMantletGunConfig): void {
 // optional front width lets applique packages meet their own cheek opening.
 function leopardA6MantletRoofBridge(
   P: TankBuilderPort,
-  o: { readonly frontHalfWidth?: number; readonly ribs?: boolean } = {},
+  o: { readonly frontHalfWidth?: number; readonly ribs?: boolean; readonly cheekInnerX?: number } = {},
 ): void {
   const { box, polyMultiLoft } = KIT;
   const frontZ = 2.20;
   const rearZ = 0.50;
   const frontHalfWidth = o.frontHalfWidth ?? 0.39;
   const rearHalfWidth = 0.28;
+  // (r4b) The chevron cheeks' inner ends stand at cheekInnerX. A bridge wider
+  // than that lay over the cheek at the front and under its roof bridge at the
+  // rear, the two crossing at 6-8 degrees (the 2A6 roof-centre ghost facets);
+  // it now stops at the cheek's inner end plane.
+  const clampX = (x: number): number => (o.cheekInnerX == null ? x : Math.min(x, o.cheekInnerX));
   const plan = [
-    [-frontHalfWidth, frontZ],
-    [frontHalfWidth, frontZ],
-    [rearHalfWidth, rearZ],
-    [-rearHalfWidth, rearZ],
+    [-clampX(frontHalfWidth), frontZ],
+    [clampX(frontHalfWidth), frontZ],
+    [clampX(rearHalfWidth), rearZ],
+    [-clampX(rearHalfWidth), rearZ],
   ];
 
   P.add('turret', polyMultiLoft(plan, [
@@ -1215,7 +1302,7 @@ function leopardA6MantletRoofBridge(
 
   const rise = Math.atan2(0.175, frontZ - rearZ);
   const topAt = (z: number): number => 0.68 - (z - rearZ) * (0.175 / (frontZ - rearZ));
-  const widthAt = (z: number): number => 2 * (
+  const widthAt = (z: number): number => 2 * clampX(
     rearHalfWidth
     + (z - rearZ) * ((frontHalfWidth - rearHalfWidth) / (frontZ - rearZ))
   );
@@ -1234,6 +1321,7 @@ function leopardA6MantletRoofBridge(
       frontHalfWidth,
       rearHalfWidth,
       ribZ,
+      ...(o.cheekInnerX == null ? {} : { cheekInnerX: o.cheekInnerX }),
     };
   }
 }
@@ -2403,19 +2491,18 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
                   const surfacePanels = panelBands.map(([from, to]) => {
                     const x0 = THREE.MathUtils.lerp(minimumX, maximumX, from);
                     const x1 = THREE.MathUtils.lerp(minimumX, maximumX, to);
-                    const a = interpolateChevronStation(stations, x0);
-                    const b = interpolateChevronStation(stations, x1);
-                    const panel = leopardChevronSurfacePanel(a, b, s, {
+                    const panel = leopardChevronBandPanel(stations, x0, x1, s, {
                       thickness: panelThicknessM,
                       ridgeMargin: chevron.panelRidgeMargin ?? 0.075,
                       rootMargin: chevron.panelRootMargin ?? 0.085,
+                      rootClearZ: T.body[0].z1,
                     });
                     P.add('turret', panel.geometry);
                     return Object.freeze({
                       from, to, x0, x1,
                       thicknessM: panel.thickness,
                       normal: panel.normal,
-                      triangleCount: 12,
+                      triangleCount: panel.triangleCount,
                     });
                   });
                   const wedgeTurretV3AssemblyStage4 = (): void => {
@@ -2562,10 +2649,10 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
                     closedCheekVolumes: true,
                     internalCourseCaps: false,
                     faceLayersPerSide: 1,
-                    surfacePanelLayerCount: 1,
+                    surfacePanelLayerCount: chevronSides.some((side) => side.surfacePanels.length) ? 1 : 0,
                     surfacePanelCount: chevronSides.reduce((sum, side) => sum + side.surfacePanels.length, 0),
                     surfacePanelsStructuralReplacement: false,
-                    exposedPanelSeams: true,
+                    exposedPanelSeams: chevronSides.some((side) => side.surfacePanels.length),
                     roofSightlineClosed: true,
                     roofBridgeVolumes: 2,
                     roofBridgeStructural: true,
@@ -2739,8 +2826,28 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
   const wedgeTurretV3TurretStage7 = (): void => {
     for (const [st, lo] of wedgeHatchStations) {
       const wedgeTurretV3TurretCourse3 = (): void => {
-        P.add('turret', cylY(lo ? 0.21 : 0.23, lo ? 0.21 : 0.23, 0.035, 14), st.x, h + 0.017, st.z);
-        P.add('turretDark', box((lo ? 0.32 : 0.36), 0.012, 0.03), st.x, h + 0.042, st.z);
+        // A hatch over a V-trough roof course: the level ring's top cap lay inside the sloping
+        // roof (4.5 degrees on the 2A7V commander), the two upward faces crossing in a z-fighting
+        // band. That ring follows the local roof slope and stands at least 9 mm proud of it; the
+        // hinge bar rides the tilted ring. Hatches over flat courses keep the level ring.
+        const trough = T.body.find((B) => B.vT != null && st.z >= B.z0 && st.z <= B.z1);
+        const ringR = lo ? 0.21 : 0.23;
+        const s = st.x < 0 ? -1 : 1;
+        const xt = trough ? (s < 0 ? trough.xtL : null) ?? trough.xt ?? Math.min(trough.x, T.roofX ?? trough.x * 0.76) : 0;
+        const roofTop = trough ? (s < 0 ? trough.topL : null) ?? trough.top ?? h : 0;
+        const slope = trough?.vT != null ? (roofTop - trough.vT) / Math.max(1e-6, xt - 0.10) : 0;
+        const roofAt = (x: number): number => (trough?.vT ?? 0) + (Math.min(x, xt) - 0.10) * slope;
+        // only where the roof actually rises through the level ring's top cap (a ring standing clear of its roof,
+        // as on the 2A6M, keeps the level ring: tilting it there would cut its own drum and lid instead)
+        if (trough?.vT != null && roofAt(Math.abs(st.x) + ringR) > h + 0.0335) {
+          const tilt = Math.atan(s * slope);
+          const ringTop = Math.max(h + 0.0345, roofAt(Math.abs(st.x)) + 0.009);
+          P.add('turret', cylY(ringR, ringR, 0.035, 14).rotateZ(tilt), st.x, ringTop - 0.0175, st.z);
+          P.add('turretDark', box((lo ? 0.32 : 0.36), 0.012, 0.03).rotateZ(tilt), st.x, ringTop + 0.0075, st.z);
+        } else {
+          P.add('turret', cylY(lo ? 0.21 : 0.23, lo ? 0.21 : 0.23, 0.035, 14), st.x, h + 0.017, st.z);
+          P.add('turretDark', box((lo ? 0.32 : 0.36), 0.012, 0.03), st.x, h + 0.042, st.z);
+        }
         const hatchTop = T.hatchTop;
         const hatchTopL = T.hatchTopL;
         if (hatchTop) {
@@ -2771,7 +2878,11 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
               // circular on light AND dark camo patches (a dark-only rim vanished
               // into the dark blotch under the loader in the r2 top view)
               const wedgeTurretV3TurretCourse7 = (): void => {
-                const lidR = lo ? 0.145 : 0.185;
+                // (r4b) the drum flares toward hT (radius drumR1 -> drumR0); a lid wider than the drum
+                // at its own underside poked a 1-3 mm lip out through the flared wall, the two walls
+                // crossing at 14 degrees round the 2A7V commander's hatch. The lid now fits the drum.
+                const drumRadiusAt = (y: number): number => drumR1 + (y - (h + 0.05)) / drumH * (drumR0 - drumR1);
+                const lidR = drumH > 0 ? Math.min(lo ? 0.145 : 0.185, drumRadiusAt(hT - 0.032) - 0.002) : (lo ? 0.145 : 0.185);
                 P.add('turret', cylY(lidR, lidR, 0.016, P.q ? 24 : 16), st.x, hT - 0.024, st.z);
                 P.add('turretDark', cylY(lidR - 0.042, lidR - 0.042, 0.008, P.q ? 20 : 14), st.x, hT - 0.018, st.z);
                 P.add('turretDetail', torus(lidR + 0.022, 0.014, P.q ? 26 : 18), st.x, hT - 0.014, st.z);
@@ -3733,7 +3844,7 @@ function buildLeo2A6(P: TankBuilderPort) {
       // the launchers as MISSING. Replaced by the proud chamfer-slope banks
       // below (T.smoke omitted -> the shared block skips).
     });
-    leopardA6MantletRoofBridge(P);
+    leopardA6MantletRoofBridge(P, { cheekInnerX: 0.26 });
     // r3 #2 (owner circularity law, 3rd round on this item): the r2 raised
     // rims sat half BURIED in the sloped roof V (commander rim top 0.780 vs
     // its local roof 0.776 — the "dashed engraving" read; the loader's dark
@@ -3798,10 +3909,12 @@ function buildLeo2A6(P: TankBuilderPort) {
     // is deliberately sunk into the local roof slope; its two-tone MAG-class
     // silhouette replaces the old collection of unmarked hand-built pieces.
     {
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6,
-        rotation: [0, Math.PI, 0],
+        rotation: [0, Math.PI, 0], working: true,
       });
+      mg.name = 'leo2LoaderMg3';
       // Sink the canonical foot 12 cm into the sloped plate: its post still
       // emerges visibly, while the receiver/cap stays inside the measured
       // Leopard 2A6 roof-height envelope.
@@ -5065,97 +5178,24 @@ export function buildLeo2A5(builder: object) {
   // r3 POST-WARP: whole assembly dropped ~0.045 with the 2.697→2.653 line.
   const buildLeo2A5MarkingsStage2 = (): void => {
     {
-      const { box, cylY, cylZ } = KIT;
+      const { cylY } = KIT;
       // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent: activate the original station,
       // don't remove it; the coordinator's ruling on the lane's audit): on leo2a4m the loader's gun is the hull's
       // working roof weapon, a remote-controlled MAG on its loader-ring pintle with the post as its stock, and the A5NL's
-      // duplicate open-yoke tower is gone. Gameplay: functional roof guns stay 1 (12.7 -> 7.62 mm). Every other A5 keeps
-      // the certified exact loader gun below.
-      if (P.spec.id === 'leo2a4m') {
-        const finishLoaderStation = captureAuxiliaryStock(P, 'leo2a5_loader_machine_gun');
-        P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
-        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
-          remoteControlled: true, seed: 5087 });
-        loaderMg.name = 'leo2a5_loader_machine_gun';
-        loaderMg.position.set(-0.50, 0.81, -0.06);
-        P.turretG.add(loaderMg);
-        finishLoaderStation();
-      } else {
-        P.add('turretDetail', cylY(0.018, 0.018, 0.10, 8), -0.52, 0.815, -0.10);  // pintle post on the loader ring
-        // VISUAL r6 3a (owner-law-mandatory MG READ): the r5 verdict measured the
-        // barrel at 1.5 px — no gun read in any view. Upscaled to the MG-physics
-        // floor (barrel Ø 0.038 = 2.1 px at the 54 px/m side rigs, receiver
-        // MASS): every top stays under the certified 2.638/2.653 lines (receiver
-        // 2.635w, barrel 2.645w, hider ends 0.49L inside the 0.79w col).
-        // The loader gun predates KIT.fittings, but its source-measured receiver
-        // is already the real visible load-bearing core of the assembly.  Keep
-        // that exact certified mesh and register it as the fitting root instead
-        // of adding a second generic gun or a marker-only escape hatch.
-        {
-          const exactLoaderMg = new THREE.Group();
-          const receiverGeometry = box(0.075, 0.062, 0.46);
-          const receiver = new THREE.Mesh(receiverGeometry, P.mats.dark);
-          receiver.position.set(-0.50, 0.824, 0.02);
-          receiver.castShadow = true;
-          receiver.receiveShadow = true;
-          receiver.userData.appearanceRole = 'machineGun';
-          exactLoaderMg.add(receiver);
-          exactLoaderMg.userData.hasConnectedFeed = true;
-          exactLoaderMg.userData.hasEngineeredCradle = true;
-          exactLoaderMg.userData.weaponClass = 'mag58';
-          FITTINGS.markExact(exactLoaderMg, 'pintleMG');
-          exactLoaderMg.name = 'leo2a5_loader_machine_gun';
-          P.turretG.add(exactLoaderMg);
-          P.disposables.push(receiverGeometry);
-        }
-        // barrel flat-forward (an AA-elevated cut was tried and REVERTED: a
-        // diagonal rod above the 2.6564 anchor lights a STAIRCASE of side
-        // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
-        // generalizes: any above-anchor member must fit ONE column of z).
-        P.add('turretDark', cylZ(0.019, 0.40, 8), -0.50, 0.846, 0.27);            // barrel to 0.77w (clear of the 0.86 col)
-        for (const z of [0.12, 0.20, 0.28]) {
-          P.add('turretDark', cylZ(0.023, 0.018, 12), -0.50, 0.846, z);           // jacket reinforcing rings
-        }
-        P.add('turretDark', box(0.045, 0.045, 0.07), -0.50, 0.846, 0.455);        // flash hider (stays inside 0.79w)
-        P.add('turretDark', box(0.068, 0.012, 0.39), -0.50, 0.861, 0.02);         // hinged receiver top cover
-        P.add('turretDark', box(0.012, 0.045, 0.25), -0.457, 0.824, 0.01);        // removable receiver side plate
-        P.add('turretDark', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);         // neutral gunmetal ammo box
-        P.add('turretDark', box(0.10, 0.010, 0.13), -0.615, 0.872, -0.02);        // ammo lid
-        for (let i = 0; i < 5; i++) {
-          const t = i / 4;
-          P.add('turretDark', box(0.022, 0.020, 0.018),
-            -0.590 + t * 0.070, 0.850 - Math.sin(t * Math.PI) * 0.010,
-            0.030 + t * 0.035, 0, 0, -0.10 + t * 0.14);                           // connected feed
-        }
-        P.add('turretDark', box(0.024, 0.11, 0.18), -0.50, 0.80, -0.21);          // grip frame + stock
-        for (const side of [-1, 1]) {
-          P.add('turretDark', box(0.018, 0.060, 0.018), -0.50 + side * 0.034,
-            0.798, -0.305, -0.18, 0, side * 0.08);                                // paired spade grips
-        }
-        P.add('turretDark', box(0.03, 0.032, 0.03), -0.50, 0.852, 0.10);          // rear sight block (top 0.868L < the 0.873 anchor line)
-      }
-      // VISUAL r6 3a STOWED MG3 on the certified mount (top 2.55w) — the ref's
-      // own spare gun reads from rear/left. Laid TRANSVERSE (along x) so the
-      // rear/top rigs see the full 0.55 m run at 146 px/m while the side rig
-      // sees only rows the mount already owns (barrel 2.512..2.550w, receiver
-      // top 2.55w exact — zero new silhouette).
-      P.add('turretDark', box(0.30, 0.05, 0.068), 0.30, 0.745, -1.55, 0, -0.25, 0); // receiver angled off the mount (top 0.77L = mount top)
-      // barrel DIAGONAL across the bustle roof (ry -0.6): a transverse cut
-      // read as one more horizontal line among the stern rails — the
-      // diagonal-on-roof pose is the identity cue the ref's own stowed MG3
-      // carries (rear/top/close-roof reads; zero height: tip rides the
-      // 0.735L slice-5 roofline, tops hold the mount's 0.77L line).
-      P.add('turretDark', KIT.cylZ(0.019, 0.38, 8), 0.023, 0.751, -1.313, 0, -0.6, 0);
-      P.add('turretDark', box(0.05, 0.042, 0.042), -0.10, 0.751, -1.145, 0, -0.6, 0);  // flash hider at the diagonal tip
-      P.add('turretDetail', box(0.024, 0.012, 0.05), -0.038, 0.762, -1.222, 0, -0.6, 0); // front sight + gas block
-      P.add('turretDark', box(0.16, 0.036, 0.03), 0.315, 0.742, -1.505, 0, -0.25, 0);  // grip frame under
-      // r8 3a MG READ HARDENING (critic order — make the delivered read
-      // unambiguous): receiver/grip MASS mid-rod on the diagonal stowed MG3
-      // (the top/rear 2x reads want a lump, not a bare rod). Below the anchor
-      // line (top 0.7695 < the 0.77L mount-top law); pale cover rides via the
-      // mgPale overlay block. Dark grip hangs under the receiver.
-      P.add('turretDark', box(0.055, 0.030, 0.115), 0.023, 0.7545, -1.313, 0, -0.6, 0); // receiver mass mid-rod
-      P.add('turretDark', box(0.020, 0.026, 0.045), 0.055, 0.732, -1.360, 0, -0.6, 0);  // pistol grip under
+      // duplicate open-yoke tower is gone. Gameplay: functional roof guns stay 1 (12.7 -> 7.62 mm).
+      // 2026-10-14 (VH.14, the coordinator's ruling "roof weapons match the real vehicle and every drawn gun works"):
+      // every A5 host's loader gun is a working station on its loader-ring pintle — the A5NL's remote-controlled MAG
+      // (above), the others' crew MAG with its grips and sights — and the exact receiver with its hand-built barrel,
+      // which could not turn, and the spare MG3 laid across the bustle are gone.
+      const finishLoaderStation = captureAuxiliaryStock(P, 'leo2a5_loader_machine_gun');
+      P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
+      const a5nl = P.spec.id === 'leo2a4m';
+      const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
+        remoteControlled: a5nl, working: !a5nl, seed: 5087 });
+      loaderMg.name = 'leo2a5_loader_machine_gun';
+      loaderMg.position.set(-0.50, 0.81, -0.06);
+      P.turretG.add(loaderMg);
+      finishLoaderStation();
     }
     // hatch/PERI cluster at the POST-WARP 2.653 line (see peri note): left
     // block spans the loader zone (warped ref side band 2.639-2.695, front
@@ -5244,8 +5284,13 @@ export function buildLeo2A5(builder: object) {
     // raised 2.46 → 2.47 authored now that the crest tail cleared the dip)
     P.add('turret', box(0.50, 0.10, 0.22), 0.68, 0.64, 0.74);
     // r6 nose saddle: the ref side steps DOWN to a 2.355 plateau over w
-    // 2.15..2.37 (the noseUpper pull-back opened it); rooted on the apex tier
-    P.add('turret', box(1.10, 0.265, 0.22), 0, 0.4425, 1.96);
+    // 2.15..2.37 (the noseUpper pull-back opened it); rooted on the apex tier.
+    // (r4b) Its rear 13 cm lay inside the nose-cap wedge below, the plateau
+    // crossing the cap's 9-degree slope (a z-fighting band at z 1.98): the box
+    // now starts where the plateau emerges from the cap (z 1.9845), so every
+    // visible face and the stepped silhouette are unchanged.
+    const saddleRearZ = 1.55 + (0.645 - 0.575) * (2.45 - 1.55) / (0.645 - 0.50);
+    P.add('turret', box(1.10, 0.265, 2.07 - saddleRearZ), 0, 0.4425, (saddleRearZ + 2.07) / 2);
     // nose cap wedge: ref side falls 2.31@2.43w → 2.28@2.77w over the apex
     // (LOCAL z — world −0.30); r6 raised to the fresh saddle-to-mantlet trace
     P.add('turret', slab(
@@ -6884,7 +6929,9 @@ export function buildLeo2A4(builder: object) {
     // loader MG3 on its pintle at the hatch rim — the §B3 census fitting
     // (the mg3 class since 2026-10-08, round 5: the MG3's perforated jacket and muzzle booster; two-tone per MG PHYSICS).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
+      mg.name = 'leo2LoaderMg3';
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }
@@ -7473,7 +7520,9 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // under the 2.6664 grace line (EMES hood keeps the anchor).
     P.add('turret', cylY(0.075, 0.095, 0.055, P.q ? 16 : 12), -0.40, 0.795, -0.05); // mount collar
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0], working: true });
+      mg.name = 'leo2LoaderMg3';
       mg.position.set(-0.40, 0.70, -0.05);
       P.turretG.add(mg);
     }
@@ -7891,7 +7940,9 @@ function buildLeo2Proto(P: TankBuilderPort) {
   }
   // loader MG3 pintle at the hatch rim (§B3 census weapon, the mg3 class since 2026-10-08, round 5)
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0] });
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0], working: true });
+    mg.name = 'leo2LoaderMg3';
     // mount LOW (0.54): the mag receiver band spans several side columns —
     // at a 0.65 mount it wrote heightM p95 2.59 (dims -27.7); at 0.54 the
     // receiver rides ~2.48 and the p95 falls back to the cupola crown.
@@ -7965,9 +8016,10 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // + bolt heads retire (buried inside the restored base, torus top was
   // coplanar with the base-plate top = z-fight).
   P.add('turret', cylY(0.31, 0.31, 0.016, P.q ? 20 : 14), 0.02, 0.658, -1.58); // OWS mount-ring flange
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the owner's station is a working remote station
   leoFLW200(P, { x: 0.02, y: 0.65, z: -1.58, s: 1.1, gunY: 0.46, gunScale: 0.92,
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
-    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
+    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17, automatic: true });
 
   // Owner-directed replacement: a finite, clipped welded shield with a
   // real recoil passage and split journals, seated in the original gun frame.
@@ -12302,10 +12354,12 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       // beside the hatch.
       P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, 0.86, -0.30);
       P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, 0.91, -0.30);
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
-        scale: 0.96, seed: 15, shield: true, ammo: true,
+        scale: 0.96, seed: 15, shield: true, ammo: true, working: true,
       });
+      mg.name = 'leo1LoaderMg3';
       mg.position.set(-0.45, 0.91, -0.30);
       mg.rotation.y = 0.34;
       P.turretG.add(mg);
@@ -12671,7 +12725,10 @@ function leo2A6MCheekSurfaceAtPlanPoint(side: Side, targetAbsX: number, targetZ:
     const courseFraction = THREE.MathUtils.clamp(
       (targetZ - ridge.z) / (upper.z - ridge.z), 0.04, 0.96,
     );
-    return leo2A6MCheekSurface(side, stationX, courseFraction);
+    return {
+      ...leo2A6MCheekSurface(side, stationX, courseFraction),
+      stationX, courseFraction, ridgeZ: ridge.z, upperZ: upper.z,
+    };
   };
   let lowerX = THREE.MathUtils.clamp(
     targetAbsX, LEO2A6M_CHEVRON.sideBlendStartX, LEO2A6M_CHEVRON.upperTaperEndX,
@@ -12686,6 +12743,21 @@ function leo2A6MCheekSurfaceAtPlanPoint(side: Side, targetAbsX: number, targetZ:
     surface = candidate;
   }
   return surface;
+}
+
+// Whether one of the A6 cassettes that wedgeTurretV3 lays on this cheek covers a cheek point: the default
+// LEO_CHEVRON_PANEL_BANDS over the nose span, ridge margin 0.075 and root margin 0.085, the root edge held at the
+// body front (z 0.55). A head there rides the cassette's 22 mm face, which bends with the cheek.
+function leo2A6MCassetteCovers(
+  surface: { stationX: number; courseFraction: number; ridgeZ: number; upperZ: number }, cassettes: boolean,
+): boolean {
+  if (!cassettes) return false;
+  const minX = LEO2A6M_CHEEK_NOSE[0][0], maxX = LEO2A6M_CHEEK_NOSE[LEO2A6M_CHEEK_NOSE.length - 1][0];
+  const span = surface.ridgeZ - surface.upperZ;
+  const root = span > 1e-6 ? Math.max(0.325, Math.min(0.915, (surface.ridgeZ - 0.55) / span)) : 0.915;
+  return surface.courseFraction >= 0.075 && surface.courseFraction <= root
+    && LEO_CHEVRON_PANEL_BANDS.some(([from, to]) => surface.stationX >= THREE.MathUtils.lerp(minX, maxX, from)
+      && surface.stationX <= THREE.MathUtils.lerp(minX, maxX, to));
 }
 
 function addLeo2A6MCheekCage(P: TankBuilderPort) {
@@ -13265,6 +13337,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
         verticalTerminalSideClosure: true, terminalSideBodyOverlapM: 0.025,
         rootDepthM: [0.90, 0.82, 0.68, 0.66, 0.52, 0.34],
         rootY: [-0.07, -0.07, -0.07, -0.07, 0.05, 0.12],
+        // (r4b) Under the field ERA the cassette layer is the ERA field itself: cassettes that
+        // bend with the cheek stood through the flat tiles' edges (7.7 mm proud at (1.18, 1.43)).
+        ...(fieldEra ? { panelBands: [] } : {}),
       },
       underride: false,
       // Keep the compact right tip support. The two left-side plates at
@@ -13303,7 +13378,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       // spikes: the whole-mask bbox needs them, the p95 law ignores them)
       whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
     });
-    leopardA6MantletRoofBridge(P, { frontHalfWidth: 0.13 });
+    leopardA6MantletRoofBridge(P, { frontHalfWidth: 0.13, cheekInnerX: 0.26 });
     // The helper's dark basket stopped 35-40 mm above the A6M deck and made
     // the complete rotating package read as a floating shell from the user's
     // front-quarter angle.  This closed bearing collar is buried into both
@@ -13320,11 +13395,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       P.add('turret', leopardThermalSkin([
         [s * 0.37, 0.318, 2.46], [s * 0.91, 0.328, 2.01], [s * 0.91, 0.423, 1.72], [s * 0.40, 0.448, 2.17],
       ], [0, -0.018, 0.010]));
-      // Outboard skin follows the falling crest and terminates before the
-      // real 2A6 tip pad so the characteristic arrow point remains visible.
-      P.add('turret', slab(
-        [s * 0.94, 0.330, 1.83], [s * 1.28, 0.300, 1.54], [s * 1.28, 0.350, 1.24], [s * 0.94, 0.400, 1.55],
-        [s * 0.94, 0.347, 1.82], [s * 1.28, 0.317, 1.53], [s * 1.28, 0.367, 1.23], [s * 0.94, 0.417, 1.54]));
+      // (r4b) The flat outboard skin is retired: the A6 cassettes that
+      // wedgeTurretV3 now bends over this cheek cover its whole footprint, so
+      // it only showed where the cheek's facets cut up through both layers.
       // Half-buried clamps and a short dark mounting rail make the M package
       // legible without widening or flattening the base cheek.
       P.add('turretDark', box(0.030, 0.10, 0.50), s * 0.925, 0.385, 1.78, 0, s * 0.68, 0);
@@ -13332,14 +13405,24 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
         P.add('turretDetail', box(0.048, 0.048, 0.030),
           s * (0.39 + 0.82 * t), 0.40 - 0.08 * t, 2.36 - 0.93 * t, 0, s * 0.65, s * 0.08);
       }
-      // Closed crown return: the applique used to end at z~1.7 while the
-      // welded roof began at z~0.55, exposing an open black triangle between
-      // them.  The lower face overlaps the applique by 20 mm and the rear
-      // edge overlaps the V-roof by 50 mm.  It remains split around the real
-      // gun channel instead of laying a decorative sheet over the mantlet.
+      // Closed crown return, cut back (r4b) to the gap it still closes: the
+      // strip between the narrowed brow's edge and the cheek's inner end
+      // (x 0.26), held at the former return's height so the narrow brow still
+      // stands proud. Over the cheek the cassettes and the chevron roof bridge
+      // own the closure; the old flat sheet there only showed as the cheek's
+      // facets cutting through it. It stays split around the gun channel and
+      // runs 30 mm under the brow, ending where the brow reaches the cheek.
+      // the brow's edge as leopardA6MantletRoofBridge cuts it (0.13 at z 2.20 to the cheek's 0.26 at z 0.50)
+      const browEdgeX = (z: number): number => 0.13 + (2.20 - z) * ((0.26 - 0.13) / (2.20 - 0.50));
+      const crownTopY = (z: number): number => 0.448 + (2.18 - z) * ((0.655 - 0.448) / (2.18 - 0.49));
+      const crownMeetZ = 0.50;
+      // underside 12 mm under the brow's own underside at the rear, where the two would otherwise run 1.5 degrees apart
+      const crownRearUnderY = Math.min(crownTopY(crownMeetZ) - 0.05, 0.60 - 0.012);
       P.add('turret', slab(
-        [s * 0.13, 0.405, 2.20], [s * 0.93, 0.382, 1.69], [s * 0.99, 0.605, 0.50], [s * 0.28, 0.595, 0.50],
-        [s * 0.13, 0.448, 2.18], [s * 0.93, 0.425, 1.67], [s * 0.99, 0.665, 0.49], [s * 0.28, 0.655, 0.49]));
+        [s * (browEdgeX(2.20) - 0.03), crownTopY(2.20) - 0.043, 2.20], [s * 0.26, crownTopY(2.20) - 0.043, 2.20],
+        [s * 0.26, crownRearUnderY, crownMeetZ], [s * (browEdgeX(crownMeetZ) - 0.03), crownRearUnderY, crownMeetZ],
+        [s * (browEdgeX(2.18) - 0.03), crownTopY(2.18), 2.18], [s * 0.26, crownTopY(2.18), 2.18],
+        [s * 0.26, crownTopY(crownMeetZ), crownMeetZ], [s * (browEdgeX(crownMeetZ) - 0.03), crownTopY(crownMeetZ), crownMeetZ]));
 
       // Shallow side cassettes sit six millimetres proud of the structural
       // side band and overlap it through their full height.  The former dark
@@ -13449,9 +13532,11 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     // hardware line, inside the print's own 2.55-2.66 bustle band).
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.30, 0.645, -2.62);
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.86, 0.645, -2.62);
-    {
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Ukrainian 2A6's MAG on this bustle mount is its
+    // remote station; on the 2A6M the MG3 laid here was a spare gun beside its remote station, and it is gone.
+    if (P.spec.id === 'leo2a6_ua') {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: P.spec.id==='leo2a6_ua' ? 'mag' : 'mg3', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
+        mats: P.mats, cls: 'mag', remoteControlled: true, tone: 'two-tone', scale: 0.66, elev: 0,
         shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
       });
       mg.position.set(-0.58, 0.67, -2.62);
@@ -13479,11 +13564,18 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
         [0.47, 2.30], [0.62, 2.17], [0.79, 2.02], [1.00, 1.67], [1.18, 1.43],
       ]) {
         const surface = leo2A6MCheekSurfaceAtPlanPoint(s, x, targetZ);
-        // The inner three positions cross the visible 20 mm cheek cassette;
-        // lift their heads onto that outer skin. Outboard positions land in
-        // the exposed seams and remain directly on the continuous armor face.
+        // The inner three positions cross the thermal skin; lift their heads
+        // onto that outer skin. Outboard positions land in the exposed seams
+        // and remain directly on the continuous armor face, unless one of the
+        // A6 cassettes covers them (none under the field ERA): those now bend
+        // with the cheek (r4b), so such a head rises straight up over its own
+        // plan point (a lift along the steep outboard normal would carry it
+        // 2 cm off that point) and sits 4 mm into the 22 mm cassette face.
         const surfaceLiftM = x <= 0.65 ? 0.028 : x <= 0.85 ? 0.017 : 0.004;
-        const center = surface.point.clone().addScaledVector(surface.normal, surfaceLiftM);
+        const onCassette = x > 0.85 && leo2A6MCassetteCovers(surface, !fieldEra);
+        const center = onCassette
+          ? surface.point.clone().setY(surface.point.y + 0.026 / Math.max(0.3, surface.normal.y))
+          : surface.point.clone().addScaledVector(surface.normal, surfaceLiftM);
         P.add('turretDetail', cylZ(0.018, 0.020, 8),
           center.x, center.y, center.z,
           surface.rotation.x, surface.rotation.y, surface.rotation.z);
@@ -14388,7 +14480,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // 6763d7cc0: true to calibre and reference): Canada's C6 is the FN MAG, so this gun takes the MAG class (round 5 had
     // given the German crew guns' MG3 class to this Canadian mark too).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's C6)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
+      mg.name = 'leo2LoaderC6';
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }

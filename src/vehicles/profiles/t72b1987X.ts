@@ -9,6 +9,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[-.0000548974,1.4040902854,-.0343498434];
@@ -210,7 +211,8 @@ function machineGun(P:TankBuilderPort):void {
   gun.add('turretDark',box(.245,.177,.079),-.741,2.38,-.394);
   // round 5 (contact receipt): the front sight post stands on the barrel's crown instead of passing through it
   gun.add('turretDetail',box(.032,.06,.035),-.587,2.497,.548);
-  gun.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(gun.finish(),{name:'t72b1987XRoofNsvt',caliberMm:12.7});
 }
 
 function mainGun(P:TankBuilderPort):void {

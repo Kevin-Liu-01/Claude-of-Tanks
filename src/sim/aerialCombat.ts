@@ -23,6 +23,8 @@ export interface AerialEntity {
 interface Flight {
   view: AerialView; shell: ShellEntity<ShellSpec> | null; shellId: number; readyAt: number;
   born: number; center: Vector3; launch: Vector3;
+  /** VH.15: the strikes the airframe has taken this flight (roof stations' rounds, in shares of a strike). */
+  strikes: number;
   /** A recalled airframe: the sim time it is parked on its dock after flying home and landing (0 when none). */
   dockAt: number;
 }
@@ -51,6 +53,30 @@ export const DRONE_AVOIDANCE = Object.freeze({
   /** Horizontal side-step yaws (rad), each tried on the side with more room first; never a turn back. */
   sideRad: [.55, 1.1] as readonly number[],
 });
+/**
+ * DR.06 (#100: "smarter bot drones, more than aim at target"): a bot flies the FPV top attack crews fly. Far from the
+ * target it closes at a cruise height over the aim point (above trees and roofs, where a roof gun has the least
+ * time on it); inside the dive radius it noses over onto the target's roof line, so the warhead meets the thin roof
+ * armour from above instead of the frontal plate in a level run. Deterministic: geometry of the aim point only.
+ */
+export const DRONE_BOT_ATTACK = Object.freeze({
+  /** Cruise height over the aim point while closing (m): high enough that the dive from the dive radius is ~37 degrees. */
+  cruiseM: 24,
+  /** Horizontal distance at which the dive begins: the cruise height plus the airframe's turn radius at full speed
+   * (42 m/s at 2.8 rad/s, 15 m) less a little, so the nose-over completes into a steep final run (m). */
+  diveRadiusM: 32,
+  /** The dive's aim point stands this far above the bot's aim point (its centre of mass): the roof line (m). */
+  roofLiftM: 0.85,
+});
+const _botAim = new Vector3();
+/** The point a bot's airframe steers at: over the target while closing, its roof line in the dive. */
+export function botDroneAim(position: Point3, aim: Point3, out: Vector3): Vector3 {
+  const horizontal = Math.hypot(aim.x - position.x, aim.z - position.z);
+  if (horizontal > DRONE_BOT_ATTACK.diveRadiusM) {
+    return out.set(aim.x, Math.max(aim.y + DRONE_BOT_ATTACK.cruiseM, Math.min(position.y, aim.y + DRONE_BOT_ATTACK.cruiseM * 1.5)), aim.z);
+  }
+  return out.set(aim.x, aim.y + DRONE_BOT_ATTACK.roofLiftM, aim.z);
+}
 const _probe = new Vector3(), _escape = new Vector3(), _axis = new Vector3(), _flat = new Vector3(), _q = new Quaternion();
 const WORLD_UP = new Vector3(0, 1, 0);
 function probeClear(world: AerialWorldQuery, origin: Vector3, dir: Vector3, reach: number): number {
@@ -118,6 +144,20 @@ export function avoidDroneObstacles(world: AerialWorldQuery, ownerId: string, po
   if (hit.dist < rules.clearanceM * 1.5 && hit.normal) commanded.set(hit.normal.x, hit.normal.y, hit.normal.z).multiplyScalar(2);
   return true;
 }
+/**
+ * VH.15 counter-drone (coordinator ruling 2026-10-15): a roof station's round charged to the drone `carrier` has in
+ * flight: `chance`, the round's share of a strike at its range (vehicles/auxiliaryWeapons.ts droneHitAt100). The shares
+ * add up (no draw: both authorities agree) and the airframe falls at AERIAL_RULES.drone.hitsToDown, ending the flight
+ * as a spent battery does (its cooldown follows). True when this round brought it down.
+ */
+export function strikeDrone(carrier: AerialEntity, chance: number): boolean {
+  const flight = flights.get(carrier), shell = flight?.shell;
+  if (!flight || !shell || shell.dead || shell.id !== flight.shellId || flight.view.launching) return false;
+  flight.strikes += chance;
+  if (flight.strikes < AERIAL_RULES.drone.hitsToDown) return false;
+  shell.dead = true;
+  return true;
+}
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
 export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): void {
@@ -127,7 +167,8 @@ export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): v
   const view: AerialView = { kind: ruleset.aerial === 'drone' ? 'drone' : 'gunship', active: ruleset.aerial === 'gunship', launching: false,
     x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z, yaw: entity.state.yaw, pitch: -.6, batteryS: 0, cooldownS: 0 };
   entity.aerial = view;
-  const flight = { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3(), dockAt: 0 };
+  const flight = { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3(), dockAt: 0,
+    strikes: 0 };
   flights.set(entity, flight);
   if(view.kind === 'gunship') positionGunship(entity, flight, 0);
 }
@@ -148,7 +189,8 @@ function launchOrigin(entity:AerialEntity,out:Vector3):void {
 }
 function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<ShellSpec>, dt: number): void {
   const rules = AERIAL_RULES.drone;
-  direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
+  if (entity.bot) direction.copy(botDroneAim(shell.pos, entity.input.aimPoint, _botAim)).sub(shell.pos).normalize();
+  else direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
   const wantedYaw = Math.atan2(direction.x, direction.z), wantedPitch = Math.asin(Math.max(-1, Math.min(1, direction.y)));
   const delta = Math.atan2(Math.sin(wantedYaw - v.yaw), Math.cos(wantedYaw - v.yaw));
   v.yaw += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, delta));
@@ -214,7 +256,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     direction.set(Math.sin(launchYaw), .4, Math.cos(launchYaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
     shell.gravityMps2 = 0; shell.vel.set(0,0,0);
-    flight.shell = shell; flight.shellId = shell.id; flight.born = timeS; flight.dockAt = 0;
+    flight.shell = shell; flight.shellId = shell.id; flight.born = timeS; flight.dockAt = 0; flight.strikes = 0;
     v.active = true; v.launching = true; v.yaw = launchYaw; v.pitch = .2;
     launchShell(shell);
   }
@@ -271,17 +313,20 @@ export interface AerialCheckpoint {
   view: AerialView; readyAt: number; born: number; dockAt?: number;
   center: number[]; launch: number[];
   shell: { pos: number[]; velocity: number[]; ageS: number; distM: number } | null;
+  /** VH.15: the airframe's strikes this flight (absent in a checkpoint written before counter-drone: none). */
+  strikes?: number;
 }
 export function captureAerial(entity: AerialEntity): AerialCheckpoint | null {
   const flight = flights.get(entity); if (!flight) return null;
   const shell = flight.shell;
-  return { view: { ...flight.view }, readyAt: flight.readyAt, born: flight.born, dockAt: flight.dockAt,
+  return { view: { ...flight.view }, readyAt: flight.readyAt, born: flight.born, dockAt: flight.dockAt, strikes: flight.strikes,
     center: flight.center.toArray(), launch: flight.launch.toArray(),
     shell: shell && !shell.dead && shell.id === flight.shellId ? { pos: shell.pos.toArray(), velocity: shell.vel.toArray(), ageS: shell.ageS, distM: shell.distM } : null };
 }
 export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint, nextId: () => number, launchShell: (shell: ShellEntity<ShellSpec>) => void): void {
   const flight = flights.get(entity); if (!flight) return;
   Object.assign(flight.view, checkpoint.view); flight.readyAt = checkpoint.readyAt; flight.born = checkpoint.born; flight.dockAt = checkpoint.dockAt ?? 0;
+  flight.strikes = checkpoint.strikes ?? 0;
   flight.center.fromArray(checkpoint.center); flight.launch.fromArray(checkpoint.launch);
   flight.shell = null;
   if (checkpoint.shell) {

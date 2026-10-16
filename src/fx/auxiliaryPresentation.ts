@@ -294,16 +294,22 @@ interface MediaScreenState {
   walls: (BankWalls | null)[];
   seen: boolean;
 }
-interface Actor {
-  root: THREE.Object3D;
+/** One roof station's moving stock (VH.02: a multi-station vehicle has one per gun). */
+interface StationActor {
   gun: THREE.Object3D | null;
   weapon: THREE.Object3D | null;
   rest: THREE.Quaternion;
   restWeapon: THREE.Vector3;
   muzzle: THREE.Vector3;
+  caliberMm: number;
   shots: number;
-  smokeBorn: number;
   recoil: number;
+}
+interface Actor extends StationActor {
+  root: THREE.Object3D;
+  smokeBorn: number;
+  /** The second and later stations (guns[1..]), driven by AuxiliaryState.stations. */
+  stations: StationActor[];
 }
 /** Fixed pools for brass and full-size smoke canisters; no per-frame construction. */
 export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
@@ -324,29 +330,47 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const item=pool[cursor++%pool.length]!;item.p.copy(p);item.age=0;
     item.v.set(d.z*2.4,1.7,-d.x*2.4);
   }
-  function prepare(entity:AuxiliaryVisualEntity,root:THREE.Object3D):Actor{
-    const kit=auxiliaryCapabilities(entity.spec), mount=kit?.guns[0];
+  function stationActor(root:THREE.Object3D,mount:NonNullable<ReturnType<typeof auxiliaryCapabilities>>['guns'][number]|undefined,shots:number):StationActor{
     const gun=mount ? root.getObjectByName(mount.name)??null : null;
-    const actor:Actor={root,gun,weapon:gun?.getObjectByName('auxiliaryWeaponPitch')??null,rest:gun?.quaternion.clone()??new THREE.Quaternion(),
-      restWeapon:new THREE.Vector3(),muzzle:new THREE.Vector3(...(mount?.muzzle as [number,number,number]??[0,.35,1.22])),shots:entity.combat?.auxiliary?.shots??0,smokeBorn:-1,recoil:0};
-    if(actor.weapon)actor.restWeapon.copy(actor.weapon.position);actors.set(entity.id,actor);return actor;
+    const station:StationActor={gun,weapon:gun?.getObjectByName('auxiliaryWeaponPitch')??null,rest:gun?.quaternion.clone()??new THREE.Quaternion(),
+      restWeapon:new THREE.Vector3(),muzzle:new THREE.Vector3(...(mount?.muzzle as [number,number,number]??[0,.35,1.22])),
+      caliberMm:mount?.caliberMm??12.7,shots,recoil:0};
+    if(station.weapon)station.restWeapon.copy(station.weapon.position);return station;
+  }
+  function prepare(entity:AuxiliaryVisualEntity,root:THREE.Object3D):Actor{
+    const guns=auxiliaryCapabilities(entity.spec)?.guns??[],state=entity.combat?.auxiliary;
+    const actor:Actor={...stationActor(root,guns[0],state?.shots??0),root,smokeBorn:-1,
+      stations:guns.slice(1).map((mount,i)=>stationActor(root,mount,state?.stations?.[i]?.shots??0))};
+    actors.set(entity.id,actor);return actor;
+  }
+  function restStation(station:StationActor){
+    if(station.gun)station.gun.quaternion.copy(station.rest);
+    if(station.weapon){station.weapon.rotation.x=0;station.weapon.position.copy(station.restWeapon);}
+    station.shots=0;station.recoil=0;
+  }
+  /** One station's yaw, pitch and recoil, and on a new shot its flash, report and ejected case. */
+  function animateStation(entity:AuxiliaryVisualEntity,actor:StationActor,yaw:number,pitch:number,shots:number,visible:boolean,dt:number){
+    if(!actor.gun)return;
+    actor.gun.quaternion.copy(actor.rest).multiply(turn.setFromAxisAngle(yAxis,yaw));
+    actor.recoil=Math.max(0,actor.recoil-dt*4);
+    if(actor.weapon){actor.weapon.rotation.x=-pitch;actor.weapon.position.z=actor.restWeapon.z-actor.recoil*.025;}
+    if(visible&&shots!==actor.shots){
+      actor.gun.updateWorldMatrix(true,true);
+      position.copy(actor.muzzle);
+      // The muzzle rotates around the weapon's authored trunnion, not the floor of the pedestal.
+      if(actor.weapon){position.sub(actor.restWeapon);actor.weapon.localToWorld(position);}
+      else actor.gun.localToWorld(position);
+      direction.set(0,0,1).applyQuaternion((actor.weapon??actor.gun).getWorldQuaternion(q));
+      ports.flash(position,direction,actor.caliberMm);ports.report(entity.id,position,actor.caliberMm);
+      position.addScaledVector(direction,-Math.max(.3,actor.muzzle.z-.2));eject(position,direction);actor.recoil=1;
+    }
   }
   function animateRoofWeapon(entity:AuxiliaryVisualEntity,actor:Actor,state:AuxiliaryState,visible:boolean,dt:number){
-    if(actor.gun){
-      actor.gun.quaternion.copy(actor.rest).multiply(turn.setFromAxisAngle(yAxis,state.gunYaw));
-      actor.recoil=Math.max(0,actor.recoil-dt*4);
-      if(actor.weapon){actor.weapon.rotation.x=-state.gunPitch;actor.weapon.position.z=actor.restWeapon.z-actor.recoil*.025;}
-      if(visible&&state.shots!==actor.shots){
-        actor.gun.updateWorldMatrix(true,true);
-        position.copy(actor.muzzle);
-        // The muzzle rotates around the weapon's authored trunnion, not the floor of the pedestal.
-        if(actor.weapon){position.sub(actor.restWeapon);actor.weapon.localToWorld(position);}
-        else actor.gun.localToWorld(position);
-        direction.set(0,0,1).applyQuaternion((actor.weapon??actor.gun).getWorldQuaternion(q));
-        const caliber=auxiliaryCapabilities(entity.spec)?.guns[0]?.caliberMm??12.7;
-        ports.flash(position,direction,caliber);ports.report(entity.id,position,caliber);
-        position.addScaledVector(direction,-Math.max(.3,actor.muzzle.z-.2));eject(position,direction);actor.recoil=1;
-      }
+    animateStation(entity,actor,state.gunYaw,state.gunPitch,state.shots,visible,dt);
+    for(let i=0;i<actor.stations.length;i++){
+      const station=actor.stations[i]!,s=state.stations?.[i];
+      animateStation(entity,station,s?.gunYaw??0,s?.gunPitch??0,s?.shots??station.shots,visible,dt);
+      station.shots=s?.shots??station.shots;
     }
   }
   function actorFrame(entity:AuxiliaryVisualEntity,dt:number){
@@ -355,9 +379,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     const state=entity.combat?.auxiliary;
     if (entity.state) { entity.state.roofGunYaw=state?.gunYaw ?? 0; entity.state.roofGunPitch=state?.gunPitch ?? 0; }
     if(!state){
-      if(actor.gun)actor.gun.quaternion.copy(actor.rest);
-      if(actor.weapon){actor.weapon.rotation.x=0;actor.weapon.position.copy(actor.restWeapon);}
-      actor.shots=0;actor.recoil=0;actor.smokeBorn=-1;
+      restStation(actor);for(let i=0;i<actor.stations.length;i++)restStation(actor.stations[i]!);
+      actor.smokeBorn=-1;
       return;
     }
     const visible=(ports.visible?.(entity)??true)&&entity.networkVisible!==false&&root.visible&&!!root.parent&&!entity.combat?.destroyed;

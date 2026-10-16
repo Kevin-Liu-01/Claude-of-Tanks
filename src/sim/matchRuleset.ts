@@ -21,7 +21,9 @@ export const GUN_GAME_WEAPONS = Object.freeze([
 ]);
 export const AERIAL_RULES = Object.freeze({
   // `cooldownS` follows an airframe lost or spent (an impact, the battery, the link's range); a recall has its own below.
-  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12,
+  // hitsToDown (VH.15 counter-drone): the strikes a drone's airframe takes before it falls (the roof stations' rounds
+  // land shares of a strike by range: vehicles/auxiliaryWeapons.ts droneHitAt100)
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12, hitsToDown: 1,
     /**
      * The recall (owner 2026-10-14: "dont be able to instantly call it back, only be able to call back once weve entered
      * screen, and if we do, show the landing animation and we should be able to launch it again after a shorter
@@ -40,11 +42,11 @@ export const AERIAL_RULES = Object.freeze({
       /** The flight home's fixed beats: the hold for an impact in flight, the approach to the dock's column and its descent. */
       approachS: 4.4,
       /** The landing on the dock: the descent onto the pads and the rotor spin-down (fx/droneArrival.ts fits inside). */
-      landingS: 3.4,
+      landingS: 4.6,
       /** The relaunch wait after a recalled airframe is parked on its dock (`cooldownS` above follows a loss). From
        *  anywhere, a recall relaunches within maxTransitS + approachS + landingS + cooldownS = 19.8 s of the press,
        *  over 5 s sooner than the 25 s after a loss (sim/droneRecall.selftest.mjs sweeps the reachable envelope). */
-      cooldownS: 5,
+      cooldownS: 3.8,
     }),
   }),
   gunship: Object.freeze({ altitudeM: 240, radiusM: 90, orbitRadS: .09 }),
@@ -261,6 +263,8 @@ export interface MatchRuleset {
   readonly infection?: { readonly infectedSpeed: number; readonly infectedRespawnS: number; readonly survivorHpScale: number; readonly infectedHpScale: number; readonly infectedReloadScale: number };
   readonly gunGame?: { readonly killsPerWeapon: number };
   readonly aerial?: 'drone' | 'gunship';
+  /** VH.15: the roof stations engage enemy drones in flight (sim/auxiliarySystems.ts; the drone mode). */
+  readonly counterDrone?: boolean;
   readonly scoreTarget?: number | null;
   readonly mode: GameModeId;
   /** Multiplies 9.81 m/s² for hulls in the air, shells in flight and the ball. */
@@ -428,7 +432,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),

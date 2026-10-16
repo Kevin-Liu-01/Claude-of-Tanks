@@ -1,8 +1,8 @@
 import type { ModeCheckpoint } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
-import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
+import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -2511,18 +2511,28 @@ export function createAuthoritativeMatch({
       auxRay.copy(b).sub(a); const distance=auxRay.length(); auxRay.normalize();
       const hit=spottingRaycast(a,auxRay,distance); return !hit || hit.dist>=distance-.5;
     },
+    // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the authority's drone flight
+    counterDrone: ruleset.counterDrone === true,
+    droneHit: (carrier: AuthoritativeEntity, chance: number, shooter: AuthoritativeEntity) => {
+      if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id });
+    },
   };
+  /** The shell a roof station just fired (auxiliaryShot). */
+  function fireAuxiliaryShot(entity: AuthoritativeEntity): void {
+    const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
+    shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
+    spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
+  }
   function advanceWeapons(dt: number): void {
     for(let i=auxiliarySmokeScreens.length-1;i>=0;i--)if(timeS-auxiliarySmokeScreens[i]!.born>18)auxiliarySmokeScreens.splice(i,1);
     for (const entity of entities) {
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       tickReload(entity.combat, dt);
       tryFire(entity);
-      if (!result && stepRoofGun(entity,timeS,dt,auxContext)) {
-        const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
-        shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
-        spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
-      }
+      if (!result && stepRoofGun(entity,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
+      // VH.02: a multi-station vehicle's later roof stations (the M551A1 TTS's M2 beside its 30 mm), in station order
+      if (!result) for (let station=1,stations=roofStationCount(entity.spec);station<stations;station++)
+        if (stepRoofStation(entity,station,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
     }
     stepShells(dt);
   }

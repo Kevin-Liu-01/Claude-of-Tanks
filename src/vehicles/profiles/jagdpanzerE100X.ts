@@ -9,6 +9,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { beamBetween, blindTube } from './measuredPrimitives.ts';
 import { jagdpanzerBell, jagdpanzerFixedCollar, jagdpanzerBearingDome } from './jagdpanzerE100XGun.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 const PITCH = [-.0007, 2.33805, .20] as const;
@@ -201,6 +202,9 @@ function cupolaWeapon(P:TankBuilderPort):void {
   station.userData.supportAssembly='enclosed-cupola';
   station.userData.sourceGeometryBasis='measured receiver/jacket; inferred8mm blind muzzle recess';
   P.hullG.add(station);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station: the cupola's MG 42 turns with the cupola
+  // and fires (a hull-owned station, auxiliaryStation.ts)
+  stationFromDrawnGun(station,{name:'jpze100XCupolaStation',caliberMm:7.92});
 }
 
 function rearEquipment(P:TankBuilderPort):void {

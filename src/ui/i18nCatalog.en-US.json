@@ -4041,6 +4041,7 @@
   "flight.hint.gunship": "Mouse aim · Click fire · 1 / 2 / 3 weapons · Scroll zoom",
   "flight.climb": "Climb",
   "flight.thermal": "THERMAL FEED",
+  "flight.altitude": "Height above ground",
   "flight.link": "Carrier link distance",
   "flight.speed": "Airspeed",
   "flight.zoom": "Scope magnification",

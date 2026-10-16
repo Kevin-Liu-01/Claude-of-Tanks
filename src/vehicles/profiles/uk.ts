@@ -1923,11 +1923,11 @@ const CENTURION_HULL = {
 };
 
 /**
- * `stowedLoaderMag` (default true): the Mk.3's low-stowed MAG. 2026-10-08 (the owner's field standard in main 6763d7cc0,
- * the coordinator's ruling on the lane's audit): the Strv 81 mounts its one roof gun, the Ksp 58, on its Swedish
- * commander's cupola, so it builds without the stowed MAG that would be a second roof gun for that crew.
+ * The Centurion Mk 3 and Mk 5. 2026-10-14 (VH.14): the Mk 3's low-stowed MAG is gone from every host (the Strv 81
+ * already built without it, 2026-10-08); the Strv 81 mounts its one roof gun, the Ksp 58, on its Swedish commander's
+ * cupola.
  */
-export function centurionBuild(P: UKCenturionPort, mk: 3 | 5, { stowedLoaderMag = true }: { stowedLoaderMag?: boolean } = {}): void {
+export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
@@ -2650,6 +2650,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5, { stowedLoaderMag 
         ammo: true,
         shield: 'low',
         barrelBridge: true,
+        working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
       });
       mg.name = 'centurion5_loader_roof_machine_gun';
       mg.position.set(0.42, 0.838, -0.35);
@@ -2665,14 +2666,9 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5, { stowedLoaderMag 
         forwardFacing: true,
         armorEnvelopeExcluded: true,
       });
-    } else if (stowedLoaderMag) {
-      const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, scale: 0.8, seed: 9,
-      });
-      mg.position.set(-0.10, 0.53, -0.62);
-      mg.rotation.y = Math.PI + 0.35;
-      P.turretG.add(mg);
     }
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Mk 3's
+    // low-stowed MAG is gone — the Mk 3 carried its 7.92 mm Besa coaxially and no roof gun (roofWeaponPolicy.ts).
     liftEye(P, 'turretDetail', -0.80, 0.36, 1.05, 0.5);
     liftEye(P, 'turretDetail', 0.80, 0.36, 1.05, -0.5);
     liftEye(P, 'turretDetail', -0.88, mk === 5 ? 0.80 : 0.74, -0.70, 2.6);
@@ -3534,14 +3530,9 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.turretG.add(waShoulder);
   };
   fv510PhotoBuildAssemblyStage7();
-  // ---- pintle GPMG at the commander's station (§B3 decoration minimum;
-  // sky-backed -> two-tone per MG PHYSICS) ----
-  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the turret roof behind the commander's station (feed-side collision census).
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10, scale: 0.85, seed: 3, feed: 'right' });
+  // VH.14 (coordinator ruling 2026-10-14): the Warrior carries its 30 mm RARDEN and a coaxial L94A1 chain gun and no
+  // roof machine gun (roofWeaponPolicy.ts), so the commander's pintle GPMG of the old decoration minimum is gone.
   const fv510PhotoBuildMarkingsStage1 = (): void => {
-    mg.position.set(0.50, 0.50, -0.44);
-    mg.rotation.y = Math.PI * 0.82;
-    P.turretG.add(mg);
     liftEye(P, 'turretDetail', -0.72, 0.44, 0.30, 0.5);
     liftEye(P, 'turretDetail', 0.72, 0.44, 0.30, -0.5);
     P.decal('turret', 'number', num, 0.22, [0.82, 0.24, -0.10], Math.PI / 2);
@@ -3704,7 +3695,7 @@ function fv510MilanBuild(P: UKBuilderPort): void {
 
   });
   // ---- populated roof: armored rectangular hatch, panoramic head, paired
-  // periscope hoods, a shielded second GPMG and compact stowage/radio boxes.
+  // periscope hoods and compact stowage/radio boxes.
   P.addEquipment('turret', box(0.46, 0.045, 0.42), -0.29, 0.61, -0.49, 0, 0.08, 0);
   P.addEquipment('turretDark', box(0.38, 0.018, 0.035), -0.29, 0.642, -0.30, 0, 0.08, 0);
   P.addEquipment('turret', cylY(0.14, 0.16, 0.16, 14), -0.55, 0.68, -0.10);
@@ -3716,16 +3707,8 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   }
   P.addEquipment('turret', box(0.30, 0.20, 0.28), 0.54, 0.62, -0.80);
   P.addEquipment('turretDetail', box(0.27, 0.030, 0.30), 0.54, 0.735, -0.80);
-  const roofMg = FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.16, scale: 0.82, seed: 29,
-  });
-  roofMg.position.set(-0.34, 0.67, -0.58);
-  roofMg.rotation.y = 0.16;
-  P.turretG.add(roofMg);
-  for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.035, 0.24, 0.30), -0.34 + s * 0.22, 0.76, -0.50,
-      0, s * 0.08, 0);
-  }
+  // VH.14 (coordinator ruling 2026-10-14): no roof machine gun on the real Warrior (roofWeaponPolicy.ts) — the shielded
+  // second GPMG and its shield cheeks are gone.
 
   // Dense but supported designation grammar.  The custom fleet marking uses
   // a different hull-side anchor; these builder decals identify the upgrade.
@@ -4051,6 +4034,7 @@ function vickersMk1Build(P: UKBuilderPort): void {
       ammo: true,
       shield: 'low',
       barrelBridge: true,
+      working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     });
     mg.name = 'vickers_mk1_loader_roof_machine_gun';
     mg.position.set(-0.42, 1.118, -0.35);
@@ -4586,8 +4570,10 @@ function buildChieftainUpper2026(
     periscope(P, 'turretDetail', 0.20, periscopeCenterY, -0.03, 0.08);
     periscope(P, 'turretDetail', 0.43, periscopeCenterY, -0.05, -0.10);
     {
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's cupola L37)
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-        elev: 0.08, scale: 0.84, seed: stillbrew ? 17 : 15, ammo: true });
+        elev: 0.08, scale: 0.84, seed: stillbrew ? 17 : 15, ammo: true, working: true });
+      mg.name = 'chieftainCommanderL37';
       mg.position.set(-0.49, cupolaY(1.12), -0.20);
       mg.rotation.y = 0;
       P.turretG.add(mg);

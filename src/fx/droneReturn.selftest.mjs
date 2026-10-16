@@ -91,7 +91,8 @@ function scene({ blockColumn = false } = {}) {
   const detail = tank.root.getObjectByName('Docked FPV airframe detail');
   assert.ok(detail.visible && tank.root.getObjectByName('Docked FPV mission payload').visible, 'the airframe sits on its cradle after the landing');
   assert.ok(tank.view.cooldownS > 0, 'it landed inside the cooldown, which ran unchanged');
-  for (let i = 0; i < 20; i++) s.frame();
+  // the clamps flip down over the skids in their swing time (round 4b: 0.45 s, readable in 0.1 s stills)
+  for (let i = 0; i < Math.ceil(.5 / dt) + 2; i++) s.frame();
   assert.equal(missionHoldDownOpen(tank.root), 0, 'the clamps close on the airframe that came home');
   // At the cooldown's end the airframe that came home is the ready one: no second landing.
   while (tank.view.cooldownS > 0) { s.frame(); tank.view.cooldownS = Math.max(0, tank.view.cooldownS - dt * 8); }

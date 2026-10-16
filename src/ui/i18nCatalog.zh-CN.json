@@ -4041,6 +4041,7 @@
   "flight.hint.gunship": "鼠标瞄准 · 点击开火 · 1 / 2 / 3武器 · 滚轮缩放",
   "flight.climb": "爬升",
   "flight.thermal": "热成像画面",
+  "flight.altitude": "离地高度",
   "flight.link": "载车链路距离",
   "flight.speed": "空速",
   "flight.zoom": "瞄具倍率",

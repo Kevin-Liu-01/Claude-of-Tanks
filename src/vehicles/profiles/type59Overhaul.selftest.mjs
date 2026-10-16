@@ -95,40 +95,31 @@ try {
   assert.ok(turret.getObjectByName('type59RearStowageRack'),
     'populated rear rack remains attached to the turret');
   const loaderMG = turret.getObjectByName('type59RoofDShK');
-  const commanderMG = turret.getObjectByName('type59CommanderCupolaMG');
   assert.equal(loaderMG?.parent, turret,
     'loader DShK yaws with the turret');
-  assert.equal(commanderMG?.parent, turret,
-    'commander machine gun yaws with the turret');
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Type 59's
+  // one roof gun is the loader's DShK, a working station; the commander's cupola carries none
+  assert.equal(turret.getObjectByName('type59CommanderCupolaMG'), undefined, 'no commander cupola gun');
+  assert.ok(loaderMG.userData.remoteControlled && loaderMG.getObjectByName('auxiliaryWeaponPitch'),
+    'loader DShK is a working station');
   assert.deepEqual(loaderMG?.position.toArray(), [0.55, 1.021, 0.36],
     'loader DShK foot sits on the forward rim of the loader cupola');
-  assert.deepEqual(commanderMG?.position.toArray(), [-0.605, 1.111, 0.13],
-    'commander machine-gun foot sits on the forward rim of the commander cupola');
   assert.equal(loaderMG?.userData.cupolaSeat, 'loader');
-  assert.equal(commanderMG?.userData.cupolaSeat, 'commander');
   const loaderEnvelope = loaderMG.userData.aabb;
-  const commanderEnvelope = commanderMG.userData.aabb;
   assert.ok(loaderEnvelope.max[2] - loaderEnvelope.min[2] >= 1.25,
     'loader DShK retains a full-size heavy-machine-gun silhouette');
-  assert.ok(commanderEnvelope.max[2] - commanderEnvelope.min[2] >= 0.84,
-    'commander gun is visibly enlarged from the former compact fitting');
   assert.ok(loaderMG.position.z + loaderEnvelope.min[2] <= 0.15,
     'loader DShK grips reach aft over the loader opening');
-  assert.ok(commanderMG.position.z + commanderEnvelope.min[2] <= 0.00,
-    'commander gun grips reach aft over the commander opening');
   assert.ok(near(gun.position.y, 0.3666),
     'gun pivot preserves the raised local axis inside the scaled turret rig');
   assert.equal(turret.getObjectByName('type59RearRadioWhip')?.parent, turret,
     'new rear radio whip yaws with the turret');
 
   const dshkPosition = loaderMG.position.clone();
-  const commanderPosition = commanderMG.position.clone();
   turret.rotation.y = Math.PI / 2;
   tank.root.updateMatrixWorld(true);
   assert.ok(loaderMG.position.equals(dshkPosition),
     'DShK preserves its turret-local seat through yaw');
-  assert.ok(commanderMG.position.equals(commanderPosition),
-    'commander MG preserves its turret-local seat through yaw');
 } finally {
   tank.dispose();
 }

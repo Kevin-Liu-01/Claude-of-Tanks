@@ -31,7 +31,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
@@ -563,6 +563,7 @@ interface GunBuildConfig {
   collar?: boolean;
   baseR?: number;
   evacR?: number;
+
 }
 
 type StowageSpot = readonly [number, number, number, number, number, number];
@@ -6070,7 +6071,10 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
   g.push(xform(cylZ(baseR, 0.55, seg, baseR * 1.15), 0, 0, 0.2));           // mantlet root / breech collar
-  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - 0.02;
+  // VH.04 (2026-10-14): a plain tube runs to the muzzle face. It stopped 20 mm short for the factory's old seated bore
+  // lip; since the carved cannon bores (a28e4d8e6) cut the aperture into the tube's own face and add no lip, every plain
+  // buildGun tube ended 20 mm short of its muzzle marker (the fleet census found 92 ids short by 3-25 mm).
+  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
   if (sleeve) addThermalSleeve(g, gd, len, r, seg, paintSleeveBands);
   if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);
@@ -8207,7 +8211,10 @@ function* createTankOwnedSteps(
       // Round 35 (owner 2026-09-21: "the look of identical camos looks completely different if you switch between
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
-      boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      // 2026-10-11 (r4c): the axis per triangle from its face normal (faceBoxUV). Rounded boxes' bevel normals are
+      // blended, so a per-vertex axis landed one triangle's corners on different projections and the mips smeared the
+      // pattern to one flat darker tone on 165 hulls (the T-90AM's "second hull"); camo now stays crisp to every edge.
+      faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
