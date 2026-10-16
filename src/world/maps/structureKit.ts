@@ -2740,56 +2740,139 @@ function makeServiceGarageCraft(rng: Rng): THREE.BufferGeometry {
 }
 
 /**
- * The security office: a panel-clad cabin on its concrete plinth — the panel seams all round, windows set in deep
- * surrounds with sills and heads (bars on the back), the door under a canopy on two posts with its fascia and sign, the
- * service counter at the front window, awnings over the side windows on brackets, a parapet with its coping round a
- * gravel deck, the rooftop unit with its louvres and vents, downpipes at the corners, the wall unit, the lamp, the steps
- * and the condenser on its pad at the back.
+ * A kit's security office (the r2 sweep, 2026-10-16: "one form on 4 regions, identical geometry"): the shade over its
+ * windows, how it is shut up, the plant on its roof and the region's own work round it.
  */
-function makeSecurityOfficeCraft(rng: Rng, style?: Palette): THREE.BufferGeometry {
+interface SecurityForm {
+  /** awnings on brackets over the side windows, a roller-shutter box over every window (the back ones half down), none */
+  shade: 'awnings' | 'shutters' | 'none';
+  /** the windows each side wall */
+  side: 1 | 2;
+  /** the back and side windows boarded up inside their cuts */
+  boarded?: boolean;
+  /** the air-handling unit with its louvres, or an evaporative cooler with its duct */
+  roof: 'unit' | 'cooler';
+  /** outdoor air-conditioner units on their pads, sandbags piled under the front windows, a flagpole by the porch */
+  extra?: 'aircon' | 'sandbags' | 'flagpole';
+}
+const SECURITY_DEFAULT: SecurityForm = { shade: 'awnings', side: 2, roof: 'unit' };
+const SECURITY_FORMS: Readonly<Record<string, SecurityForm>> = {
+  // Kyushu: the works' gatehouse, three outdoor air-conditioners on their pads along its flank
+  kyushu: { shade: 'none', side: 2, roof: 'unit', extra: 'aircon' },
+  // the Saar: a brick gatehouse, a Rollladen box over every window
+  saar: { shade: 'shutters', side: 2, roof: 'unit' },
+  // Sarajevo, the siege: its back and side windows boarded up, sandbags piled under the front ones
+  sarajevo: { shade: 'none', side: 1, boarded: true, roof: 'unit', extra: 'sandbags' },
+  // Glen Canyon: the dam's guard post, awnings against the sun, a swamp cooler on the roof
+  glencanyon: { shade: 'awnings', side: 2, roof: 'cooler' },
+  // Franconia, 1984: the prefab border post, its Rollladen boxes, one window a side, the flag by the porch
+  franconian: { shade: 'shutters', side: 1, roof: 'unit', extra: 'flagpole' },
+};
+
+/**
+ * The security office (the r2 sweep, 2026-10-16: its windows, door and transom were dark plates in surrounds): a
+ * panel-clad cabin on its concrete plinth, its four walls cut for their openings (cutWallSlab) — the panel seams all
+ * round, the windows in their casings with sills and the glass set back in the cut (bars on the back), the door set back
+ * in its frame under its transom, the canopy on two posts with its fascia and sign box, the service counter at the front
+ * window, a parapet with its coping round a gravel deck over the walls, the rooftop plant, downpipes at the corners, the
+ * wall unit, the lamp, the steps and the condenser on its pad at the back; a kit's form (SecurityForm) on top.
+ */
+function makeSecurityOfficeCraft(rng: Rng, style?: Palette, form: SecurityForm = SECURITY_DEFAULT): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = style ?? PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.4, r = rng;
   // (a kit's office keeps within the family's footprint and its 0.4 m margin: its porch 1.1 m deep, its unit lower)
   const porch = style ? 1.1 : 1.5, unit = style ? 0.7 : 0.8;
-  const conc = 0x8a8780, pane = 0x58737b, frame = 0x2f3437, seam = 0x474e52, gravel = 0x6f7275;
-  const pl = 0.45;
+  const conc = 0x8a8780, pane = 0x58737b, frame = 0x2f3437, seam = 0x474e52, gravel = 0x6f7275, sillTone = 0xb9bab4;
+  const pl = 0.45, t = 0.25, set = 0.14;
   colored(out, mbox(w + 0.3, pl, d + 0.3).translate(0, pl / 2, 0), conc, r, 0.04);
-  colored(out, mbox(w, h - pl, d).translate(0, pl + (h - pl) / 2, 0), p[0], r, 0.06);
-  for (const y of [1.15, 2.95]) {
-    for (const s of [-1, 1]) colored(out, mbox(w + 0.04, 0.04, 0.04).translate(0, y, s * (d / 2 + 0.01)), seam, r, 0.02);
-    for (const s of [-1, 1]) colored(out, mbox(0.04, 0.04, d + 0.04).translate(s * (w / 2 + 0.01), y, 0), seam, r, 0.02);
+  // the openings, each face's (onFace: u along the face)
+  const sideU = form.side === 2 ? [-2.0, 2.0] : [0];
+  const front: WallOpening[] = [-2.3, 2.3].map((u) => ({ u, y: 2.05, w: 1.4, h: 1.3 }));
+  const back: WallOpening[] = [-1.8, 1.8].map((u) => ({ u, y: 2.05, w: 1.3, h: 1.2 }));
+  const sides: WallOpening[] = sideU.map((u) => ({ u, y: 2.05, w: 1.4, h: 1.2 }));
+  const door: WallOpening = { u: 0, y: pl + 1.15, w: 1.2, h: 2.3 }, transom: WallOpening = { u: 0, y: pl + 2.53, w: 1.2, h: 0.3 };
+  const rel = (o: WallOpening): WallOpening => ({ ...o, y: o.y - pl });
+  const FACES: Array<{ axis: 'x' | 'z'; side: 1 | -1; at: number; half: number; holes: WallOpening[]; doors: WallOpening[] }> = [
+    { axis: 'z', side: 1, at: d / 2, half: w / 2, holes: [...front, transom], doors: [door] },
+    { axis: 'z', side: -1, at: d / 2, half: w / 2, holes: back, doors: [] },
+    { axis: 'x', side: 1, at: w / 2, half: d / 2 - t, holes: sides, doors: [] },
+    { axis: 'x', side: -1, at: w / 2, half: d / 2 - t, holes: sides, doors: [] },
+  ];
+  for (const face of FACES) {
+    const top: Array<[number, number]> = [[face.half, h - pl], [-face.half, h - pl]];
+    colored(out, cutWallSlab(face.axis, face.side, face.at, face.half, top, face.doors.map(rel), face.holes.map(rel), t).translate(0, pl, 0), p[0], r, 0.06);
   }
-  // the parapet and its coping round the gravel deck; the rooftop unit, its louvres, two vents
+  // the panel seams round the walls (the front's either side of the door)
+  for (const y of [1.15, 2.95]) {
+    for (const [x0, x1] of [[-w / 2 - 0.02, -0.72], [0.72, w / 2 + 0.02]]) colored(out, box(x1 - x0, 0.04, 0.04).translate((x0 + x1) / 2, y, d / 2 + 0.01), seam, r, 0.02);
+    colored(out, box(w + 0.04, 0.04, 0.04).translate(0, y, -d / 2 - 0.01), seam, r, 0.02);
+    for (const s of [-1, 1]) colored(out, box(0.04, 0.04, d + 0.04).translate(s * (w / 2 + 0.01), y, 0), seam, r, 0.02);
+  }
+  // the parapet and its coping round the gravel deck over the walls; the rooftop plant
   for (const s of [-1, 1]) {
     colored(out, mbox(w + 0.1, 0.55, 0.2).translate(0, h + 0.275, s * (d / 2 - 0.05)), p[0], r, 0.05);
     colored(out, mbox(0.2, 0.55, d + 0.1).translate(s * (w / 2 - 0.05), h + 0.275, 0), p[0], r, 0.05);
-    colored(out, mbox(w + 0.34, 0.08, 0.36).translate(0, h + 0.59, s * (d / 2 - 0.05)), 0xb9bab4, r, 0.02);
-    colored(out, mbox(0.36, 0.08, d + 0.34).translate(s * (w / 2 - 0.05), h + 0.59, 0), 0xb9bab4, r, 0.02);
+    colored(out, mbox(w + 0.34, 0.08, 0.36).translate(0, h + 0.59, s * (d / 2 - 0.05)), sillTone, r, 0.02);
+    colored(out, mbox(0.36, 0.08, d + 0.34).translate(s * (w / 2 - 0.05), h + 0.59, 0), sillTone, r, 0.02);
   }
   colored(out, mslab(w - 0.1, 0.08, d - 0.1).translate(0, h + 0.04, 0), gravel, r, 0.06);
-  colored(out, mbox(1.6, unit, 1.2).translate(1.4, h + 0.08 + unit / 2, -1.6), p[1], r, 0.03);
-  for (let k = 0; k < 5; k++) colored(out, mbox(1.4, 0.05, 0.04).translate(1.4, h + 0.2 + k * 0.13, -2.22), p[2], r, 0.02);
-  for (const [x, z] of [[-1.8, 1.4], [-2.4, -2.6]] as const) colored(out, cylinder(0.11, 0.11, 0.7, 8).translate(x, h + 0.39, z), p[2], r, 0.02);
-  // the windows: two at the front (the counter at the right one), two at the back with bars, two each side under awnings
-  for (const x of [-2.3, 2.3]) framedWindow(out, 'z', 1, d / 2, x, 2.05, 1.4, 1.3, frame, pane, r);
-  colored(out, mbox(1.6, 0.06, 0.5).translate(2.3, 1.18, d / 2 + 0.25), 0xb9bab4, r, 0.02);
-  for (const x of [1.75, 2.85]) colored(out, mbeam([x, 0.95, d / 2 + 0.01], [x, 1.15, d / 2 + 0.42], 0.04, 0.04), frame, r, 0.02);
-  for (const x of [-1.8, 1.8]) framedWindow(out, 'z', -1, d / 2, x, 2.05, 1.3, 1.2, frame, pane, r, 3);
-  for (const side of [-1, 1] as const) for (const z of [-2.0, 2.0]) {
-    framedWindow(out, 'x', side, w / 2, z, 2.05, 1.4, 1.2, frame, pane, r);
-    colored(out, pitchSkillionRoof(mroof(0.62, 0.05, 1.8), 'x', side, 0.2).translate(side * (w / 2 + 0.31), 3.08, z), p[1], r, 0.03);
-    for (const dz of [-0.75, 0.75]) colored(out, mbeam([side * (w / 2 + 0.01), 2.72, z + dz], [side * (w / 2 + 0.56), 3.02, z + dz], 0.04, 0.04), frame, r, 0.02);
+  if (form.roof === 'unit') {
+    colored(out, mbox(1.6, unit, 1.2).translate(1.4, h + 0.08 + unit / 2, -1.6), p[1], r, 0.03);
+    for (let k = 0; k < 5; k++) colored(out, mbox(1.4, 0.05, 0.04).translate(1.4, h + 0.2 + k * 0.13, -2.22), p[2], r, 0.02);
+  } else {
+    // the evaporative cooler on its curb, its pads' louvres each side, the duct down through the deck
+    colored(out, mbox(1.3, 0.12, 1.3).translate(1.4, h + 0.14, -1.6), p[2], r, 0.02);
+    colored(out, mbox(1.1, 0.62, 1.1).translate(1.4, h + 0.51, -1.6), 0xc8c4b4, r, 0.03);
+    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) colored(out, box(0.04, 0.05, 0.95).translate(1.4 + sx * 0.57, h + 0.32 + k * 0.17, -1.6), 0x8a8676, r, 0.02);
+    colored(out, mbox(0.6, 0.5, 0.6).translate(0.4, h + 0.33, -1.6), 0xb0ad9e, r, 0.02);
   }
-  // the door in its frame with its transom, the canopy on two posts with its fascia and the sign, the lamp, the steps
-  colored(out, mbox(1.2, 2.3, 0.06).translate(0, pl + 1.15, d / 2 + 0.03), p[2], r, 0.03);
+  for (const [x, z] of [[-1.8, 1.4], [-2.4, -2.6]] as const) colored(out, cylinder(0.11, 0.11, 0.7, 8).translate(x, h + 0.39, z), p[2], r, 0.02);
+  // the windows in their cuts: two at the front (the counter at the right one), two at the back with bars, the sides'
+  const boarded = form.boarded === true;
+  for (const o of front) cutWindow(out, 'z', 1, d / 2, o, set, frame, pane, sillTone, r);
+  colored(out, mbox(1.6, 0.06, 0.5).translate(2.3, 1.18, d / 2 + 0.25), sillTone, r, 0.02);
+  for (const x of [1.75, 2.85]) colored(out, mbeam([x, 0.95, d / 2 + 0.01], [x, 1.15, d / 2 + 0.42], 0.04, 0.04), frame, r, 0.02);
+  for (const o of back) cutWindow(out, 'z', -1, d / 2, o, set, frame, pane, sillTone, r, { bars: boarded ? 0 : 3 });
+  for (const side of [-1, 1] as const) for (const o of sides) {
+    cutWindow(out, 'x', side, w / 2, o, set, frame, pane, sillTone, r, { mullion: !boarded });
+    if (form.shade === 'awnings') {
+      colored(out, pitchSkillionRoof(mroof(0.62, 0.05, 1.8), 'x', side, 0.2).translate(side * (w / 2 + 0.31), 3.08, o.u), p[1], r, 0.03);
+      for (const dz of [-0.75, 0.75]) colored(out, mbeam([side * (w / 2 + 0.01), 2.72, o.u + dz], [side * (w / 2 + 0.56), 3.02, o.u + dz], 0.04, 0.04), frame, r, 0.02);
+    }
+  }
+  if (boarded) {
+    // the boards across the back and side windows, nailed inside their cuts before the glass
+    const boards = (axis: 'x' | 'z', side: 1 | -1, at: number, o: WallOpening) => {
+      const f = onFace(axis, side, at);
+      for (let k = 0; k < 3; k++) colored(out, f(o.w, 0.26, 0.04, o.u, o.y - o.h / 2 + 0.2 + k * (o.h - 0.4) / 2, -0.06), toneOf(0x7a6a52, 1 - k * 0.06), r, 0.05);
+    };
+    for (const o of back) boards('z', -1, d / 2, o);
+    for (const side of [-1, 1] as const) for (const o of sides) boards('x', side, w / 2, o);
+  }
+  if (form.shade === 'shutters') {
+    // a roller-shutter box over every window, the back windows' shutters half down in their cuts
+    const shutter = 0xb8b4a8;
+    const boxOver = (axis: 'x' | 'z', side: 1 | -1, at: number, o: WallOpening, down: boolean) => {
+      const f = onFace(axis, side, at);
+      colored(out, mbox(axis === 'z' ? o.w + 0.16 : 0.2, 0.24, axis === 'z' ? 0.2 : o.w + 0.16)
+        .translate(axis === 'z' ? o.u : side * (at + 0.1), o.y + o.h / 2 + 0.21, axis === 'z' ? side * (at + 0.1) : o.u), shutter, r, 0.02);
+      if (down) colored(out, f(o.w, o.h / 2, 0.02, o.u, o.y + o.h / 4, -0.05), toneOf(shutter, 0.94), r, 0.02);
+    };
+    for (const o of front) boxOver('z', 1, d / 2, o, false);
+    for (const o of back) boxOver('z', -1, d / 2, o, true);
+    for (const side of [-1, 1] as const) for (const o of sides) boxOver('x', side, w / 2, o, false);
+  }
+  // the door set back in its cut under its transom, its frame, the canopy on two posts with its fascia and the sign box,
+  // the lamp, the steps
+  colored(out, onFace('z', 1, d / 2)(1.18, 2.29, 0.05, 0, pl + 1.145, -set), p[2], r, 0.03);
   for (const s of [-1, 1]) colored(out, mbox(0.12, 2.75, 0.14).translate(s * 0.66, pl + 1.375, d / 2 + 0.07), frame, r, 0.02);
   colored(out, mbox(1.44, 0.12, 0.14).translate(0, pl + 2.32, d / 2 + 0.07), frame, r, 0.02);
-  colored(out, markWorldAperture(box(1.2, 0.3, 0.04), [0, 0, 1]).translate(0, pl + 2.53, d / 2 + 0.03), pane, r, 0.02);
+  colored(out, markWorldAperture(box(1.2, 0.3, 0.03), [0, 0, 1]).translate(0, pl + 2.53, d / 2 - set), pane, r, 0.02);
   colored(out, mbox(1.44, 0.1, 0.14).translate(0, pl + 2.73, d / 2 + 0.07), frame, r, 0.02);
-  colored(out, mbox(0.05, 0.16, 0.04).translate(0.45, pl + 1.05, d / 2 + 0.08), 0xb3b8b9, r, 0.02);
+  colored(out, box(0.05, 0.16, 0.04).translate(0.42, pl + 1.05, d / 2 - set + 0.045), 0xb3b8b9, r, 0.02);
   colored(out, pitchSkillionRoof(mroof(3.0, 0.12, porch), 'z', 1, 0.07).translate(0, 3.42, d / 2 + porch / 2), p[1], r, 0.03);
   for (const x of [-1.3, 1.3]) colored(out, mbox(0.12, 3.36, 0.12).translate(x, 1.68, d / 2 + porch - 0.12), p[2], r, 0.02);
   colored(out, mbox(3.04, 0.22, 0.05).translate(0, 3.33, d / 2 + porch), p[2], r, 0.02);
-  colored(out, mbox(1.8, 0.36, 0.04).translate(0, 3.6, d / 2 + porch), 0x2f4a5c, r, 0.02);
+  colored(out, mbox(1.8, 0.36, 0.12).translate(0, 3.6, d / 2 + porch + 0.04), 0x2f4a5c, r, 0.02);
   colored(out, mbox(0.14, 0.2, 0.18).translate(0.95, 2.6, d / 2 + 0.09), 0xd8cf9a, r, 0.02);
   colored(out, mbox(1.6, pl, 0.7).translate(0, pl / 2, d / 2 + 0.5), conc, r, 0.04);
   // the downpipes at the corners from the parapet's scuppers, the wall unit, the condenser on its pad at the back
@@ -2797,7 +2880,26 @@ function makeSecurityOfficeCraft(rng: Rng, style?: Palette): THREE.BufferGeometr
   colored(out, mbox(0.28, 0.45, 0.7).translate(w / 2 + 0.14, 3.0, -3.4), 0x9a9d98, r, 0.02);
   colored(out, mbox(1.2, 0.12, 0.8).translate(1.8, 0.06, -d / 2 - 0.55), conc, r, 0.03);
   colored(out, mbox(1.0, 0.85, 0.6).translate(1.8, 0.545, -d / 2 - 0.55), 0x9a9d98, r, 0.03);
-  colored(out, mbeam([1.8, 0.8, -d / 2 - 0.25], [1.8, 1.4, -d / 2 + 0.0], 0.06, 0.06), frame, r, 0.02);
+  colored(out, mbeam([1.8, 0.8, -d / 2 - 0.25], [1.8, 1.3, -d / 2 + 0.0], 0.06, 0.06), frame, r, 0.02);
+  // the region's own work round it
+  if (form.extra === 'aircon') {
+    // three outdoor units on their pads along the -x flank, their pipes up into the wall
+    for (const z of [-1.1, 0, 1.1]) {
+      colored(out, box(0.42, 0.08, 0.9).translate(-w / 2 - 0.23, 0.04, z), conc, r, 0.03);
+      colored(out, mbox(0.32, 0.62, 0.82).translate(-w / 2 - 0.2, 0.39, z), 0xd2d2cc, r, 0.02);
+      colored(out, box(0.05, 1.0, 0.05).translate(-w / 2 - 0.05, 1.0, z + 0.3), frame, r, 0.02);
+    }
+  } else if (form.extra === 'sandbags') {
+    // sandbags piled under the front windows, three courses
+    for (const o of front) for (let k = 0; k < 3; k++) colored(out, mbox(o.w + 0.4, 0.24, 0.4, 0.07).translate(o.u, 0.12 + k * 0.24, d / 2 + 0.22), toneOf(0x8e7f5e, 1 - (k % 2) * 0.05), r, 0.06);
+  } else if (form.extra === 'flagpole') {
+    // the flagpole on its footing by the porch, the flag hanging from its head
+    colored(out, mbox(0.5, 0.2, 0.5).translate(w / 2 + 0.45, 0.1, d / 2 + 0.6), conc, r, 0.03);
+    colored(out, cylinder(0.04, 0.065, 5.0, 6).translate(w / 2 + 0.45, 2.7, d / 2 + 0.6), 0xc8c8c4, r, 0.02);
+    for (const [k, c] of [[0, 0x1a1a1a], [1, 0xc8262a], [2, 0xe8b820]] as const) {
+      colored(out, box(0.02, 0.17, 0.82).translate(w / 2 + 0.45, 5.0 - k * 0.17, d / 2 + 0.6 - 0.45), c, r, 0.02);
+    }
+  }
   return mergeConnectedStructure('securityoffice', out);
 }
 
@@ -4576,7 +4678,7 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
         ? variant(kind, style, (rng) => makeRelayStation(rng, style, RELAY_FORMS[kit]), 'metal', (rng) => makeRelayStationBroken(rng, style, RELAY_FORMS[kit]))
         : kind === 'corneroffice'
           ? variant(kind, style, (rng) => makeCornerOffice(rng, style), 'metal')
-          : variant(kind, style, (rng) => { B.securityoffice.build(rng).dispose(); return makeSecurityOfficeCraft(kindStream(`securityoffice@${kit}`), style); }, 'metal');
+          : variant(kind, style, (rng) => { B.securityoffice.build(rng).dispose(); return makeSecurityOfficeCraft(kindStream(`securityoffice@${kit}`), style, SECURITY_FORMS[kit]); }, 'metal');
       table[kit] = { ...(table[kit] ?? {}), [kind]: meta };
     }
   }
