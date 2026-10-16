@@ -295,4 +295,38 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   assert.deepEqual(setting, ['steppe'], 'Tarkhan is the only map that sets it');
 }
 
-console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet, the coarse apron opt-in');
+// (props lane A #6, 2026-10-15) a breach's remnants in the wall's own section: stepped toward the lip they stand by,
+// their feet sunk, the field walls' attributes, deterministic at their place, under their caps; the spilled units
+{
+  const flatGround = { getHeightAt: () => 0 };
+  const caps = { drystone: 300, adobe: 30, brick: 24 };
+  for (const snow of [false, true]) {
+    const d = createWallDressing({ ground: flatGround, snow, mobile: false, adobeBucket: 'fieldMud', mudUv: 0.33 });
+    for (const kind of ['drystone', 'adobe', 'brick']) {
+      for (const toward of [-1, 1]) {
+        const g = d.breach(kind, 4, -0.15, 7, 0, 0.48, 0.45, toward), p = g.attributes.position, n = (g.index ? g.index.count : p.count) / 3;
+        assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${kind}: the field walls' attributes`);
+        if (!(kind === 'drystone' && snow)) assert.ok(n <= caps[kind], `${kind}: ${n} triangles (cap ${caps[kind]})`);
+        let lo = Infinity, hiNear = -Infinity, hiFar = -Infinity;
+        for (let i = 0; i < p.count; i++) {
+          const y = p.getY(i), along = (p.getZ(i) - 7) * toward;
+          lo = Math.min(lo, y);
+          if (along > 0.15) hiNear = Math.max(hiNear, y); else if (along < -0.15) hiFar = Math.max(hiFar, y);
+        }
+        assert.ok(lo <= -0.14, `${kind}: its foot sunk (${lo.toFixed(2)})`);
+        assert.ok(hiNear > hiFar + 0.08, `${kind}: stepped down from the lip (${hiNear.toFixed(2)} over ${hiFar.toFixed(2)})`);
+        assert.ok(hiNear < (snow ? 0.66 : 0.5), `${kind}: a remnant, not a wall (${hiNear.toFixed(2)} m${snow ? ', its snow load on it' : ''})`);
+        assert.deepEqual(d.breach(kind, 4, -0.15, 7, 0, 0.48, 0.45, toward).attributes.position.array, p.array, `${kind}: deterministic`);
+      }
+    }
+    const spill = d.breachTumble(false, 4, 7, 1, 0, 0.24);
+    if (snow) assert.equal(spill, null, 'no stones strewn on the snow');
+    else assert.ok(spill && spill.attributes.position.count / 3 <= 90, 'the breach spills a few of its stones');
+    assert.ok(d.breachTumble(true, 4, 7, 1, 0, 0.26), 'a mud wall spills its lumps');
+  }
+  const propsSource = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  const breach = propsSource.slice(propsSource.indexOf('function addBrokenBreach('), propsSource.indexOf('function isGapModule('));
+  assert.ok(breach.includes('buckets[wallB].push(wallDressing.breach(breachKind,') && breach.includes('stub.dispose();'), 'props.ts draws the remnants, the boxes its seat proxies');
+}
+
+console.log('fieldWallDressing self-test passed: the breaches stepped in their own section, the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet, the coarse apron opt-in');

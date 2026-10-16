@@ -6202,6 +6202,9 @@ ${snowCap ? `
         .translate(px, py + ph + 0.05, pz)); // cap slab
     }
     function addBrokenBreach(t0: number, t1: number): void {
+      // (props lane A #6: the boxes are the seat proxies and keep the draws; the breach draws the wall's own stepped
+      // section and its spilled units — fieldWallDressing.ts breach, breachTumble)
+      const breachKind = style === 'adobe' ? 'adobe' : sourcedStoneIsBrick(mapId) ? 'brick' : 'drystone';
       for (const breachT of [0.18, 0.82]) {
         const x = x0 + tx * (t0 + breachT * (t1 - t0));
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
@@ -6210,10 +6213,16 @@ ${snowCap ? `
         const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
         if (wallB === 'fieldStone') wallDressing.stoneUv(stub, rng); else jitterUV(stub, rng);
         stub.rotateY(yaw);
-        buckets[wallB].push(stub.translate(x, y + height / 2, z));
+        stub.translate(x, y + height / 2, z);
+        buckets[wallB].push(wallDressing.breach(breachKind, x, y, z, yaw, thick, height, breachT < 0.5 ? -1 : 1));
         const drawn = drawnPlanRecord([stub], y + 0.15, 0.05);
+        stub.dispose();
         if (drawn) breachRubbleFootprints.push(drawn);
       }
+      const mid = (t0 + t1) / 2;
+      const spill = breachKind === 'brick' ? null
+        : wallDressing.breachTumble(style === 'adobe', x0 + tx * mid, z0 + tz * mid, tz, -tx, thick * 0.5);
+      if (spill) buckets[wallB].push(spill);
       for (let blockIndex = 0; blockIndex < 5; blockIndex++) {
         const breachT = 0.2 + rng() * 0.6;
         const x = x0 + tx * (t0 + breachT * (t1 - t0)) + (rng() - 0.5) * 1.6;
@@ -6226,8 +6235,8 @@ ${snowCap ? `
         block.rotateY(rng() * Math.PI);
         const groundY = heightField.getHeightAt(x, z);
         block.translate(x, groundY + size * 0.3, z);
-        buckets[wallB].push(block);
         const drawn = drawnPlanRecord([block], groundY, 0.05);
+        if (spill) block.dispose(); else buckets[wallB].push(block);
         if (drawn) breachRubbleFootprints.push(drawn);
       }
     }
