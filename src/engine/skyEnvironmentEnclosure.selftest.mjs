@@ -3,8 +3,8 @@
 // boulders glowing white and the meadow washed out: the battle kept the bay's bake (its sun disc folded into PMREM's
 // diffuse mip, texel max 65254 against 0.9) at the open sky's intensity — the chalk's scene radiance 3.14 (bloom from
 // 1.78), the meadow's 0.40, against 0.57 and 0.08 after a re-bake on the open flip. Pins the three owners' contract:
-// lighting publishes every enclosure flip after the first rig, the sky re-bakes a bake made enclosed on the open flip
-// (and only then), and main.ts wires the two.
+// lighting publishes every enclosure flip after the first rig, the sky re-bakes a full-dome bake (the bay's, or the
+// boot's before the atmosphere showed) on the open flip under the atmosphere (and only then), and main.ts wires the two.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -31,18 +31,19 @@ assert.match(lighting, /setFarCascadeDormant\(on: boolean\): void \{[\s\S]{0,260
 const bakeAt = sky.indexOf('bakeEnvironment(): void {');
 const bake = sky.slice(bakeAt, sky.indexOf('\n    },\n', bakeAt));
 assert.ok(bake.indexOf('environments.install(') > 0
-  && bake.indexOf('installedEnclosed = physicalEnvIntensity != null && !!scene.userData.lightEnclosed;') > bake.indexOf('environments.install('),
-  'the installed bake\'s enclosure is recorded after it installs');
+  && bake.indexOf('installedPhysical = physicalEnvBake();') > bake.indexOf('environments.install('),
+  'whether the installed bake is the grounded model\'s is recorded after it installs');
 // (the enclosed bake is the full dome: the physical bake only off the bay)
 assert.match(sky, /const physicalEnvBake = \(\): boolean => physicalEnvIntensity != null && !scene\.userData\.lightEnclosed;/);
 assert.match(sky, /atmosphereMaterial\.uniforms\.uEnvBake\.value = physicalEnvBake\(\) \? 1 : 0;/);
-assert.match(sky, /syncEnvironmentEnclosure\(\): boolean \{\s*if \(!installedEnclosed \|\| scene\.userData\.lightEnclosed\) return false;\s*rig\.bakeEnvironment\(\);\s*return true;\s*\}/,
-  'the sync re-bakes a bake made enclosed once the scene is open, and nothing else');
+assert.match(sky, /syncEnvironmentEnclosure\(\): boolean \{\s*if \(installedPhysical \|\| scene\.userData\.lightEnclosed\) return false;\s*if \(!refreshAtmosphere\(\) \|\| physicalEnvIntensity == null\) return false;\s*rig\.bakeEnvironment\(\);\s*return true;\s*\}/,
+  'the sync re-bakes a full-dome bake once the scene is open under the atmosphere, and nothing else');
 assert.match(sky, /syncEnvironmentEnclosure\(\): boolean;/, 'the rig interface carries it');
 
-// the decision, modelled: [installed enclosed, enclosed now] -> re-bake
-const decide = (installed, now) => installed && !now;
-assert.deepEqual([[false, false], [false, true], [true, true], [true, false]].map(([a, b]) => decide(a, b)), [false, false, false, true]);
+// the decision, modelled: [installed physical, enclosed now, atmosphere showing] -> re-bake
+const decide = (physical, enclosed, atmo) => !physical && !enclosed && atmo;
+assert.deepEqual([[true, false, true], [false, true, true], [false, false, false], [false, false, true]].map((c) => decide(...c)),
+  [false, false, false, true]);
 
 // 3. main.ts: the open flip calls the sync, wired right after the boot's own dormancy request (before any battle)
 const dormantAt = main.indexOf('if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);');
@@ -50,4 +51,4 @@ const wireAt = main.indexOf('lighting.onEnclosureChange((enclosed) => { if (!enc
 assert.ok(dormantAt > 0 && wireAt > dormantAt && wireAt - dormantAt < 600, 'main.ts wires the open flip to the sky');
 assert.equal(main.split('onEnclosureChange(').length - 1, 1, 'one subscriber');
 
-console.log('skyEnvironmentEnclosure.selftest: lighting publishes enclosure flips, the sky re-bakes an enclosed bake on the open flip, main.ts wires them PASS');
+console.log('skyEnvironmentEnclosure.selftest: lighting publishes enclosure flips, the sky re-bakes a full-dome bake on the open flip, main.ts wires them PASS');
