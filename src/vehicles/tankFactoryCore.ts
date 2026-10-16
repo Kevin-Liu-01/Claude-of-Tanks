@@ -42,7 +42,7 @@ import {
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
-import { applyInteriorFills } from './interiorFills.ts';
+import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
@@ -9104,6 +9104,11 @@ function* createTankOwnedSteps(
   // rusty"): the hull's and the turret's dents ride the burn hook (materials.ts), the gun's bend is a bent copy of each of
   // its meshes' geometry, swapped in at the kill and back at a rematch
   const liveBentGun: [THREE.Mesh, THREE.BufferGeometry][] = [];
+  // (tank-opt HIDDEN, 2026-10-16) an intact tank draws its interior fills as their boundary surface (interiorFills.ts);
+  // a wreck draws the closed boxes it always drew, swapped in at the kill (before the gun's bend copies them) and back
+  // at a rematch, so its dents, its x-ray and its hulk are the fills' own
+  let interiorFillMeshes: THREE.Mesh[] = [];
+  const wreckFills: [mesh: THREE.Mesh, drawn: THREE.BufferGeometry, closed: THREE.BufferGeometry][] = [];
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -9313,6 +9318,23 @@ function* createTankOwnedSteps(
       liveBentGun.push([object, object.geometry]);
       object.geometry = bent;
     });
+  }
+
+  function closeInteriorFills(): void {
+    for (const mesh of interiorFillMeshes) {
+      const closed = closedInteriorFillGeometry(mesh);
+      if (!closed) continue;
+      wreckFills.push([mesh, mesh.geometry, closed]);
+      mesh.geometry = closed;
+    }
+  }
+
+  function reopenInteriorFills(): void {
+    for (const [mesh, drawn, closed] of wreckFills) {
+      mesh.geometry = drawn;
+      closed.dispose();
+    }
+    wreckFills.length = 0;
   }
 
   function resetLiveCrumple(): void {
@@ -10065,6 +10087,7 @@ function* createTankOwnedSteps(
       // noise front with a glowing ignition edge (uniforms driven in
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
+      closeInteriorFills();
       applyWreckMaterials();
       planLiveCrumple(!!(opts && opts.pop));
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
@@ -10156,6 +10179,7 @@ function* createTankOwnedSteps(
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
+      reopenInteriorFills();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -10237,6 +10261,7 @@ function* createTankOwnedSteps(
 
     dispose() {
       equipmentDamage.dispose();
+      reopenInteriorFills();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.
@@ -10311,7 +10336,10 @@ function* createTankOwnedSteps(
 
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
-    applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
+    // 2026-10-16 (tank-opt HIDDEN): drawn as their conforming boundary surface (a wreck swaps the closed boxes back in,
+    // closeInteriorFills); a geometry-only build (a map hulk's bake, the workshop dressing) keeps the closed boxes, so
+    // its baked triangles and budgets are unchanged.
+    interiorFillMeshes = applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables, closed: geometryOnly }).meshes;
     if (physicalBore) {
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.

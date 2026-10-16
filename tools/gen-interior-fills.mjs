@@ -18,9 +18,9 @@
 // the air this generator leaves for the moving gun apart from a leak.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
-// Drawn triangles (2026-10-16, tank-opt HIDDEN): the factory draws only the box faces a component's own solid does not
-// bury (src/vehicles/interiorFillFaces.ts), so `tris` reports those, not twelve a box; the boxes themselves, and so the
-// generated modules, are unchanged by the face cull.
+// Drawn triangles (2026-10-16, tank-opt HIDDEN): the factory draws each component's boundary surface, conforming on the
+// voxel lattice (src/vehicles/interiorFillSurface.ts), or its closed boxes where those are fewer, so `tris` reports
+// that, not twelve a box; the boxes themselves, and so the generated modules, are the mesher's unchanged input.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { stripTypeScriptTypes } from 'node:module';
@@ -39,10 +39,10 @@ import { createM1A1FillClearance } from './m1a1-fill-clearance.mjs';
 import { insideTrackLane, trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
 import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 import { CLEARANCE_AIR_FILE, encodeSpans, insideSpan, movingClearanceSpans, underMovingPart, writeDeclaredClearance } from './moving-clearance-air.mjs';
-import { drawnFillFaces, internalFillFaces } from '../src/vehicles/interiorFillFaces.ts';
+import { drawnFillTriangles as drawnComponentTriangles } from '../src/vehicles/interiorFills.ts';
 
-/** Triangles the factory draws for these components' boxes (two a face its own solid leaves exposed). */
-const drawnFillTriangles = (components) => components.reduce((n, spans) => n + (spans?.length ? 2 * drawnFillFaces(internalFillFaces(spans)) : 0), 0);
+/** Triangles a rendered tank draws for these components' boxes (interiorFills.ts drawnFillTriangles). */
+const drawnFillTriangles = (components) => components.reduce((n, spans) => n + (spans?.length ? drawnComponentTriangles(spans) : 0), 0);
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };

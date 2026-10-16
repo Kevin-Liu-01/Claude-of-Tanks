@@ -206,22 +206,33 @@ probe's default five-second ceiling is a diagnostic timeout/budget, not the
 owner's definition of smooth switching. Do not invent favorable thresholds
 after seeing a candidate or count an unrun browser benchmark as a pass.
 
-**Interior-fill face cull (2026-10-16, tank-opt HIDDEN; owner 2026-10-15: "inside the tanks where we cant see, we
-dont have unneeded geometry").** `interiorFills.ts` no longer draws a fill box face whose outer voxel layer lies
-wholly inside its own component's solid (`interiorFillFaces.ts`); every other face keeps its exact triangles. Fleet
-fill triangles 751,644 → 607,646 (−143,998, 19.2 %; 27 tanks have nothing to cut); per tank mean −654, median −236,
-largest −5,538 (leo2a6_ua). Fills are their own draws and never detail-LOD objects, so a 1 + 15 battle saves the sum of
-its 16 tanks at every distance: about 10.5k triangles a frame for an average roster, 55.8k for the 16 heaviest.
-Exactness: `interiorFillFaces.selftest.mjs` checks every record against a voxel oracle and the mesh against the old
-six-face mesher minus the culled faces, bit for bit; `tools/interior-fill-surface-compare.mjs` `dump`/`compare`
-(battle builds of all 220 tanks, HIGH and LOW: every non-fill triangle, header and side table unchanged, removals
-equal to the prediction) and `raster` (each fill alone, 96 directions: a culled face is never the nearest surface);
-the watertight and sealed checks give identical leaks, lanes, bores, clearance and openings across the fleet (only
-`bodyTris`/`tris` and the informational `deepL`/`enclosedL` move). Two looks change, neither the outer surface: the
-killcam x-ray ghost (double-sided, no depth write) loses the culled layers inside fill volumes, and a dented wreck
-(the live-crumple vertex shader moves face corners, so T-junction seams in the fill open hairline cracks the culled
-faces used to back) changes about 12 ppm of a popped hull's pixels and 5 ppm of the turret's (worst view 97 px at
-512²). The pose-dependent trims (roof guns, belly, turret tail) failed their verify and are not part of this.
+**Interior-fill boundary surface (2026-10-16, tank-opt HIDDEN; owner 2026-10-15: "inside the tanks where we cant see,
+we dont have unneeded geometry").** An intact rendered tank draws each fill component (hull, turret, gun) as the
+boundary surface of its generated boxes on the voxel lattice (`interiorFillSurface.ts`), or as its closed boxes where
+those are no more triangles. The surface is exact (every boundary cell covered once, nothing buried) and conforming:
+each planar region is ear-clipped through every surface vertex on its outline (a region with a hole is cut into
+rectangles split at every vertex on their edges), and each vertex is one lattice point computed once, so no vertex
+sits on another triangle's edge. The first cut of the day only dropped wholly buried box faces; its adversarial verify
+found the T-junctions that left open into the solid, cracking under the GPU's sub-pixel snapping and the wreck's
+per-vertex dents (map hulks up to about 690 ppm, see-through on 12 of 50 tanks). A conforming surface stays closed
+under any per-vertex motion, but its few vertices also sample a dent coarsely, so a wreck draws the closed boxes it
+always drew: `setDestroyed` swaps them in (before the gun's bend copies them), `resetDestroyed` swaps the surface back,
+and a geometry-only build (a map hulk's bake, the workshop dressing) keeps them from the start, so hulks, their
+`WRECK_TRIS_BUDGET` counts and map placement are byte-identical. Fleet fill triangles 751,644 → 615,356 (−136,288,
+18.1 %; 33 tanks have nothing to cut, 17 of them no fill at all); per tank mean −619, median −200, largest −6,476
+(t90sm_2013): about 9.9k triangles a frame for an average 1 + 15 roster, 55.8k for the 16 heaviest, about 9.8 MB of
+vertex data fleet-wide. Receipts: `interiorFillSurface.selftest.mjs` (every record: the triangles' boundary chain
+equals a voxel oracle's on every plane and direction, every directed edge meets its reverse on the float32 vertex bits,
+closed boxes bit for bit wherever drawn) and `interiorFillWreck.selftest.mjs` (a battle tank's kill draws the shipped
+closed boxes bit for bit, its rematch the surface); `tools/interior-fill-surface-compare.mjs` `dump`/`compare` (battle
+builds HIGH and LOW: only fill triangles change, in the predicted counts; `--geometry-only` dumps unchanged) and
+`raster` (each fill alone, 96 directions: the surface's nearest depth is the closed boxes' at every pixel; snapped to
+1/256 px with the top-left rule, front and back coverings balance at every pixel, where the same surface without its
+conforming split breaks at its T-junctions). The mesher costs about 3 ms of CPU a tank build (worst component about
+17 ms, measured on a heavily loaded machine), build time only; a kill builds its closed boxes once (about 0.15 ms of
+CPU a hundred boxes: 3.4 ms for leo2a6_ua's 1,924, same machine) beside the gun's bend copies. The killcam x-ray of an intact tank loses the buried layers inside fill volumes (lighter frost there);
+a wreck's is unchanged. The pose-dependent trims (roof guns, belly, turret tail) failed their verify and are not part of
+this.
 
 ### FSP-02 — reusable primitives, not a generic donor vehicle
 

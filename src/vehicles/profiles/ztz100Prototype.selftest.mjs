@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { TANK_SPECS } from '../specs.ts';
-import { ensureInteriorFills, hasInteriorFills, interiorFillRecord, interiorFillBoxes, interiorFillFaceCounts } from '../interiorFills.ts';
+import { ensureInteriorFills, hasInteriorFills, interiorFillRecord, interiorFillBoxes, interiorFillTriangleCounts } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
   ZTZ100_PROTOTYPE_LAUNCHER as L } from './ztz100Prototype.ts';
@@ -179,10 +179,9 @@ assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loade
 const fillRecord = interiorFillRecord(id);
 const fillBoxes = Object.fromEntries(['hull', 'turret', 'gun'].map(key =>
   [key, interiorFillBoxes(fillRecord,key).length]));
-// 2026-10-16 (tank-opt HIDDEN): a box face its own fill solid buries is never drawn (interiorFillFaces.ts)
-const fillTriangles = Object.fromEntries(['hull', 'turret', 'gun'].map(key => {
-  const counts = interiorFillFaceCounts(fillRecord, key); return [key, 2 * (counts.faces - counts.internal)];
-}));
+// 2026-10-16 (tank-opt HIDDEN): a rendered tank draws each fill as its boundary surface (interiorFillSurface.ts)
+const fillTriangles = Object.fromEntries(['hull', 'turret', 'gun'].map(key =>
+  [key, interiorFillTriangleCounts(fillRecord, key).drawn]));
 function fillBounds(record) {
   return ['hull','turret','gun'].flatMap(owner=>interiorFillBoxes(record,owner).map(box=>({
     min:box.slice(0,3).map((c,k)=>c-box[k+3]/2),
@@ -220,7 +219,7 @@ try {
       for (const [owner, count] of Object.entries(fillTriangles)) {
         const fill = tank.root.getObjectByName(`${owner}InteriorFill`);
         assert.equal(fill?.geometry.attributes.position.count / 3 || 0, count,
-          'runtime emits exactly the loaded generated fill boxes\' drawn faces');
+          'runtime emits exactly the loaded generated fill boxes\' drawn surface');
       }
       tank.root.traverse(o => { if (o.isMesh) {
         materials.set(o, o.material); o.material = front;
