@@ -3440,6 +3440,13 @@ function* buildAxisSurfaceIndexSteps(
   };
 }
 
+/** Run an axis-index build to completion in the caller's task (a lazily built prober cannot yield). */
+function drainSurfaceIndex(steps: Generator<DecorationWorkSlice, AxisSurfaceIndex | null, void>): AxisSurfaceIndex | null {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
 function makeProber(
   group: THREE.Group,
   targets: SurfaceMesh[],
@@ -6238,13 +6245,17 @@ export function* attachTankDecorationsSteps(
 
     // The turret's solid surfaces for a rigid fitting's seat: soft cover (a ghillie suit's net and garnish, named
     // by ghillieSuit.ts; their alpha cut exists only where a canvas does, so it cannot be the test) is left out.
-    // Built once, on first use, as a plain raycast prober (a handful of rays).
+    // Built once, on first use. 2026-10-15 (the perf lane): it carries its own axis index like the full probers. The
+    // plain raycast prober it used to be ran every load seat's nine rays through three's whole-mesh raycast: 1.7 s of
+    // a profiled Verdant entry went to seatLoad > supportedSeat > top > legacyCast on the roster's suited tanks. The
+    // index answers each axis ray with Mesh.raycast's own first triangle (decorprobe parity), so every seat is the same.
     let _solidTurP: SurfaceProber | null = null;
     function solidTurretProber(): SurfaceProber {
       if (_solidTurP) return _solidTurP;
       const solid = turretProbeTargets.filter((mesh) => mesh.userData.vehicleFoliage === undefined
         && !mesh.name.includes('_ghillie_'));
-      _solidTurP = solid.length === turretProbeTargets.length ? turP : makeProber(turretG, solid, null);
+      _solidTurP = solid.length === turretProbeTargets.length ? turP
+        : makeProber(turretG, solid, drainSurfaceIndex(buildAxisSurfaceIndexSteps(turretG, solid, work)));
       return _solidTurP;
     }
     // The hull's solid surfaces likewise (round 4, 2026-10-07: the Strv 103A's suit net and garnish stand 2-36 cm off
@@ -6254,7 +6265,8 @@ export function* attachTankDecorationsSteps(
       if (_solidHullP) return _solidHullP;
       const solid = hullProbeTargets.filter((mesh) => mesh.userData.vehicleFoliage === undefined
         && !mesh.name.includes('_ghillie_'));
-      _solidHullP = solid.length === hullProbeTargets.length ? hullP : makeProber(hullG, solid, null);
+      _solidHullP = solid.length === hullProbeTargets.length ? hullP
+        : makeProber(hullG, solid, drainSurfaceIndex(buildAxisSurfaceIndexSteps(hullG, solid, work)));
       return _solidHullP;
     }
 
