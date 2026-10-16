@@ -503,14 +503,20 @@ room reconnects, drops, the last drop, the milliseconds spent below `good`.
 
 ### 12.2 The surface (`src/ui/multiplayerStatus.ts`)
 
-- **The strip** (health glyph · ping · `SEAT n` · seated/28) mounts with every activated v2 round,
-  top-right under the fps/ping plate, and follows the touch lanes `.cot-net` uses through the
-  responsive body attributes (no width media queries; `body.cot-touch-layout` gives it a 44 px
-  target). Its ping is the window-minimum round trip; the HUD's own ping cell reads the same number
-  through a new HUD-frame port. The strip lives outside the HUD root and asks the HUD's measured
-  lanes (`battleHudLayout.ts`) for a relayout when it mounts: while it sits in the right roster's
-  column the enemies roster takes the lane below it (`--hud-roster-top-right`) and the side lane
-  under the roster follows — no fixed offset was added to either component.
+- **The strip** (health glyph · ping · `SEAT n` · seated/28) mounts with every activated v2 round
+  as bare HUD text (no box, no border; the HUD's text shadow) in the top-right corner row, level
+  with the fps/ping plate and left of it when the plate is on, so the enemies roster keeps its own
+  lane, level with the allies roster (owner review, 2026-10-16). It follows the touch lanes
+  `.cot-net` uses through the responsive body attributes (no width media queries;
+  `body.cot-touch-layout` gives it a 44 px target beside the map; a phone-width mouse window folds
+  it into the right lane under the objective). Its ping is the window-minimum round trip; the HUD's
+  own ping cell reads the same number through a new HUD-frame port. The strip lives outside the HUD
+  root and asks the HUD's measured lanes (`battleHudLayout.ts`) for a relayout when it mounts: they
+  set its right edge (`--hud-network-corner-right`) and fold it to its ping (`data-compact`) when
+  the row between the score and the plate is too narrow for every cell. Only its open details panel
+  reaches the roster's lane, and then the enemies roster takes the lane below the panel
+  (`--hud-roster-top-right`) and the side lane under the roster follows — no fixed offset was
+  added to either component.
 - **The panel** opens on a tap of the strip or the new rebindable `networkPanel` action (F3, v1's
   diagnostics key): link, round trip (floor, median, spread), updates (measured of 30 Hz), last
   update, buffer, loss, corrections, traffic, reconnects, room (phase and round trip), region,

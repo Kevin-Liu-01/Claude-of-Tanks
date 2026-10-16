@@ -33,7 +33,7 @@ interface StorageLike {
 export type MultiplayerStatusHost = 'battle' | 'lobby';
 
 export interface MultiplayerStatusSurfaceOptions {
-  /** `battle`: fixed top-right under the fps/ping plate; `lobby`: inline in `container`. */
+  /** `battle`: fixed bare text in the top-right corner row, beside the fps/ping plate; `lobby`: inline in `container`. */
   host?: MultiplayerStatusHost;
   container?: HTMLElement | null;
   /** The Leave battle control (absent in the lobby: the lobby has its own leave). */
@@ -56,7 +56,7 @@ export interface MultiplayerStatusSurface {
 
 // ------------------------------------------------------------ style
 
-export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:38px;right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;right:var(--hud-network-corner-right,10px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;
   font-family:${FONT_COND};font-variant-numeric:tabular-nums;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);pointer-events:none}
 .cot-mp-status.lobby{position:static;align-items:flex-start;text-shadow:none}
 .cot-mp-strip{display:inline-flex;align-items:center;gap:8px;min-height:28px;padding:3px 9px;border:1px solid rgba(174,193,207,.22);border-radius:0;
@@ -76,6 +76,20 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:38px;
 .cot-mp-strip .unit i{font-style:normal;font-size:6.5px;font-weight:800;line-height:1;letter-spacing:.13em;color:#8494a0}
 .cot-mp-strip.good .ping b{color:#b9e7c0}.cot-mp-strip.degraded .ping b{color:#ffd27a}.cot-mp-strip.bad .ping b,.cot-mp-strip.offline .ping b{color:#ff8c82}
 .cot-mp-strip .unit.host b{color:#ffd27a;letter-spacing:.12em}
+.cot-mp-strip .unit[hidden]{display:none!important}
+/* In battle the strip is bare HUD text (no box, no border). On mouse layouts it sits in the top-right
+   corner row: the HUD's measured lanes (battleHudLayout.ts) set its right edge beside the fps/ping
+   plate and fold it to the ping when that row is too narrow, so the enemies roster keeps its own
+   lane below it. Touch layouts keep its 44 px control beside the map. */
+.cot-mp-status.battle .cot-mp-strip{gap:10px;padding:3px 0;border:0;background:none;box-shadow:none;text-shadow:0 1px 3px #000,0 0 5px #000}
+.cot-mp-status.battle .cot-mp-strip .glyph svg{filter:drop-shadow(0 1px 2px #000)}
+.cot-mp-status.battle .cot-mp-strip .unit{display:inline-flex;align-items:baseline;gap:3px}
+.cot-mp-status.battle .cot-mp-strip .unit+.unit{padding-left:0;border-left:0}
+.cot-mp-status.battle .cot-mp-strip .unit i{color:#b4c2cc}
+.cot-mp-status.battle[data-compact] .unit:not(.ping){display:none}
+/* A phone-width mouse window has no room beside the score: the folded strip takes the right lane under it. */
+body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
+body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle .unit:not(.ping){display:none}
 .cot-mp-banner.migrating{color:#cbeaff;border-color:rgba(174,193,207,.55)}
 .cot-mp-banner{position:fixed;left:50%;top:88px;transform:translate(-50%,0);z-index:91;min-width:220px;max-width:calc(100vw - 32px);box-sizing:border-box;
   padding:8px 16px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;
@@ -113,6 +127,7 @@ body.cot-touch-layout[data-cot-width][data-cot-height] .cot-mp-status.battle{
   left:var(--hud-network-left,116px);top:var(--hud-network-top,112px);right:auto;align-items:flex-start}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;width:44px;height:44px;padding:3px;gap:2px;flex-wrap:wrap;justify-content:center;font-size:9px}
 body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping),body.cot-touch-layout .cot-mp-status.battle .unit i{display:none}
+body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
 body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:9px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}

@@ -36,6 +36,9 @@ export function battleSideStack(height: number, chat: boolean, toastCount: numbe
 }
 
 export const REPORT_MAP_GAP = 12;
+/** The network strip's corner row (multiplayerStatus.ts: `top:8px`, level with the fps/ping plate) and its edge gap. */
+const NETWORK_CORNER_TOP = 8;
+const NETWORK_CORNER_RIGHT = 10;
 /** A bottom-anchored report budget; notification counts never enter this policy. */
 export function battleReportDock(bottom: number, ceiling: number, compact: boolean) {
   const height = Math.min(compact ? 160 : 260, Math.max(0, bottom - ceiling));
@@ -109,6 +112,28 @@ export function installBattleHudLayout(root: HTMLElement): void {
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
       read('.cot-drive')?.top ?? height) - 8;
   }
+  // The multiplayer v2 network strip with every cell shown, measured whenever it is not folded to its ping.
+  let networkFullWidth = 0;
+  /**
+   * The mouse layouts' network strip: bare text in the top-right corner row, left of the fps/ping plate when the
+   * plate holds that row, folded to its ping when the row between the score and the corner is too narrow for all of
+   * its cells. Returns its right offset. Touch layouts give the strip a lane beside the map instead, and a phone-width
+   * mouse window (no corner beside its score) folds it into the right lane under the objective.
+   */
+  function networkCornerRight(width: number, touch: boolean, telemetry: DOMRect | null, score: DOMRect | null): number {
+    const network = document.querySelector<HTMLElement>('.cot-mp-status.battle');
+    const corner = !touch && document.body.dataset.cotWidth !== 'phone';
+    const cells = network && corner ? read('.cot-mp-status.battle .cot-mp-strip') : null;
+    if (!network || !cells) return NETWORK_CORNER_RIGHT;
+    const folded = network.hasAttribute('data-compact');
+    if (!folded) networkFullWidth = cells.width;
+    let right = NETWORK_CORNER_RIGHT;
+    if (telemetry && telemetry.top < NETWORK_CORNER_TOP + cells.height && telemetry.bottom > NETWORK_CORNER_TOP
+      && telemetry.right > width - right - networkFullWidth - 8) right = Math.ceil(width - telemetry.left) + 16;
+    const fold = width - right - networkFullWidth < (score?.right ?? width / 2) + 8;
+    if (fold !== folded) network.toggleAttribute('data-compact', fold);
+    return right;
+  }
   function rightFloor(height: number, width: number, map: DOMRect | null): number {
     const ammo = read('.cot-shells');
     const flight = read('.cot-flight-hud:not([hidden]) .flight-console');
@@ -130,7 +155,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
-    // asks for a relayout when it mounts, and the right roster takes the lane below it.
+    // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
     observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
     // The lanes are placed in layout-viewport coordinates (getBoundingClientRect, fixed positioning), so they
     // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
@@ -212,19 +237,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
     const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
     const earRight = read('.cot-ear.r');
+    const networkRight = networkCornerRight(width, touch, telemetry, score);
     const strip = read('.cot-mp-status.battle');
-    // A strip in the right roster's column pushes the roster below it (the roster's own top is otherwise its CSS lane).
+    // The strip's corner row stays above the right roster's lane. Only its open details reader reaches into the
+    // roster's column, and then the roster takes the lane below it (the roster's own top is otherwise its CSS lane).
     const rosterTopRight = strip && earRight && strip.right > earRight.left && strip.bottom > earRight.top - 8 ? Math.ceil(strip.bottom) + 6 : null;
     const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
     const chrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
-    const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
+    // A phone-width mouse window has no roster above the right-hand feeds: they start below the strip's lane, which
+    // follows the objective's bottom measured in this pass.
+    const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
+    const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;
     const report = battleReportDock(rightBottom,
-      Math.max(top + 12, rosterStart + rosterMinimum + (earRight ? 32 : 0)),
+      Math.max(top + 12, rosterStart + rosterMinimum + (earRight ? 32 : 0), networkBottom + 8),
       root.classList.contains('compact-shot-report'));
     const dockReport = !touch;
     root.classList.toggle('tight-shot-report', dockReport && report.height < 220);
@@ -286,6 +316,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'aim-warning-top': width > height ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
+      'network-corner-right': networkRight,
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
