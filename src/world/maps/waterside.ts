@@ -11,6 +11,7 @@
 // the form.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { bevelBox } from './bevelBox.ts';
 
 type BG = THREE.BufferGeometry;
 type Rgb = readonly [number, number, number];
@@ -239,13 +240,15 @@ export function fordMarker(style: FordStyle, x: number, y: number, z: number, v:
   // the timber: the post's foot to the bands and the bare bands between the painted ones, the cap
   const timber: BG[] = [], paintCoat: BG[] = [];
   const seg = (y0: number, y1: number, grow: number, list: BG[]) => {
-    const g = new THREE.BoxGeometry(half * 2 + grow, y1 - y0, half * 2 + grow);
+    // (props census r2 sweep, Lane C 2026-10-16: the post's lengths plain boxes, its box-only share 100 %) a sawn post's
+    // arrises eased
+    const g = bevelBox(half * 2 + grow, y1 - y0, half * 2 + grow, 0.018, 1);
     g.translate(0, (y0 + y1) / 2, 0);
     list.push(g);
   };
   seg(-0.25, h - 1.0, 0, timber);
   for (let k = 0; k < 5; k++) seg(h - 1.0 + k * 0.2, h - 0.8 + k * 0.2, k % 2 ? 0 : 0.006, k % 2 ? timber : paintCoat);
-  const cap = new THREE.BoxGeometry(0.18, 0.04, 0.18);
+  const cap = bevelBox(0.18, 0.04, 0.18, 0.012, 1);
   cap.translate(0, h + 0.02, 0);
   timber.push(cap);
   return [{ bucket: 'wood', geometry: pose(merged(timber)) }, { bucket: 'plaster', geometry: pose(merged(paintCoat)) }];
