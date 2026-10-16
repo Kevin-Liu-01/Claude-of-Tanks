@@ -1409,6 +1409,69 @@ const GRADE_SATURATION = 1.0;
  */
 const GRADE_TOE_SLOPE = 0.7;
 const GRADE_TOE_STOPS = 2.5;
+/**
+ * 2026-10-15 (the SKY lane, tone r1; the coordinator's global look item: grass luma contrast halved from deploy 205 to main
+ * on every map — Autumn 42 -> 20, Verdant 35 -> 20, Steppe 25 -> 19 — the likeliest root of the owner's "where did grass
+ * go" and the older "washed out, not crisp camo"). The 2026-10-01 chain (0e034511c / 341defc43: AgX with a 1.4 linear
+ * saturation and a 1.28 log slope round the card, chosen in a nine-map A/B of four looks) keeps about 65 % of the ACES
+ * chain's local contrast at the card (13.2 display levels per +25 % radiance against 20.8) and caps a sunlit green's
+ * display saturation near 0.6: AgX compresses the gamut before its curve, so the scene-referred saturation cannot give the
+ * colour back (1.4 -> 1.68 moved it 0.612 -> 0.614). Tone r1:
+ * - a steeper log-space slope round the card (1.28 -> 1.45; mid-grey stays put) whose photographic toe eases sooner
+ *   (to 0.8 over 1.5 stops: deep shade lands where it did), with the luminance shoulder on from 0.6 stops over the card
+ *   (easing to 0.5 over 2.5 stops), so a sunlit white wall and the sky sit at or under the old levels with their detail;
+ * - a saturation step inside AgX's encoded space after its sigmoid, where Blender's AgX looks put theirs (1.25), easing
+ *   to none from 0.75 of the way to white, so foliage and camo regain colour and highlights stay neutral.
+ * Modelled on the CPU (toneR1.selftest.mjs ports the chain): local contrast +13 % at the card and +21 % on sunlit grass,
+ * a sunlit green's display saturation 0.69 -> 0.94, green camo 0.45 -> 0.63, tan 0.32 -> 0.41; the card holds its level,
+ * a white wall 212 -> 210, a blue sky 204 -> 206 (its brightest channel 244, no clip), deep shade 28 -> 25.
+ * The lever TONE_R1 (QA: 0 = the 2026-10-01 look, every knob at its old default) A/Bs the whole look on one page, and
+ * GRADE_CONTRAST, GRADE_SHOULDER_*, TONE_LOOK_SAT and TONE_LOOK_SAT_WHITE still tune on top of either.
+ */
+const TONE_R1: ToneLook = Object.freeze({
+  contrast: 1.45, toeSlope: 0.8, toeStops: 1.5, shoulderSlope: 0.5, shoulderStops: 2.5, shoulderStart: 0.6, lookSat: 1.25, lookSatWhite: 0.75,
+});
+/** The look by the light: tone r1 by day (QA: TONE_R1 0 = the 2026-10-01 look), easing to the 2026-10-01 look with the night. */
+interface ToneLook {
+  readonly contrast: number; readonly toeSlope: number; readonly toeStops: number; readonly shoulderSlope: number;
+  readonly shoulderStops: number; readonly shoulderStart: number; readonly lookSat: number; readonly lookSatWhite: number;
+}
+function toneFor(night: number): ToneLook {
+  const r1 = lightTune('TONE_R1', 1) > 0 ? TONE_R1 : TONE_R0;
+  const n = Math.min(1, Math.max(0, night));
+  if (n <= 0 || r1 === TONE_R0) return r1;
+  const out = { ...r1 } as Record<keyof ToneLook, number>;
+  for (const k of Object.keys(TONE_R0) as (keyof ToneLook)[]) out[k] = r1[k] + (TONE_R0[k] - r1[k]) * n;
+  return out as ToneLook;
+}
+const TONE_R0: ToneLook = Object.freeze({
+  contrast: GRADE_CONTRAST, toeSlope: GRADE_TOE_SLOPE, toeStops: GRADE_TOE_STOPS, shoulderSlope: 0.6, shoulderStops: 0, shoulderStart: 2,
+  lookSat: 1.0, lookSatWhite: 0.8,
+});
+/**
+ * three's AgX (tonemapping_pars_fragment), renamed, with tone r1's look after its sigmoid: the colour around the
+ * encoded luminance scaled by uLook.x, easing to none from uLook.y of the way to white (a highlight stays neutral).
+ */
+const COT_AGX_GLSL = (() => {
+  const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
+  const start = chunk.indexOf('vec3 AgXToneMapping( vec3 color ) {');
+  const sigmoid = 'color = agxDefaultContrastApprox( color );';
+  if (start < 0 || chunk.indexOf(sigmoid, start) < 0) throw new Error('post.ts: three\'s AgX anchors not found');
+  let depth = 0, end = -1;
+  for (let i = chunk.indexOf('{', start); i < chunk.length; i++) {
+    if (chunk[i] === '{') depth++;
+    else if (chunk[i] === '}' && --depth === 0) { end = i + 1; break; }
+  }
+  if (end < 0) throw new Error('post.ts: three\'s AgX body not closed');
+  return chunk.slice(start, end).replace('vec3 AgXToneMapping( vec3 color ) {', 'vec3 cotAgXToneMapping( vec3 color ) {')
+    .replace(sigmoid, `${sigmoid}
+	{
+		// (tone r1) the look in AgX's encoded space
+		float cotLookL = dot( color, vec3( 0.2126, 0.7152, 0.0722 ) );
+		float cotLookK = mix( uLook.x, 1.0, smoothstep( uLook.y, 1.0, cotLookL ) );
+		color = max( vec3( cotLookL ) + ( color - vec3( cotLookL ) ) * cotLookK, vec3( 0.0 ) );
+	}`);
+})();
 const GRADE_TOE_CHANNEL_FROM = 1.0;
 const GRADE_TOE_CHANNEL_TO = 2.5;
 // The enclosed Garage (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to near-white" on
@@ -1494,6 +1557,8 @@ const GradeShader = {
     uToe: { value: new THREE.Vector4(0, 0, 0, 0) },
     // 2026-10-04: a luminance shoulder (QA: GRADE_SHOULDER_SLOPE / _STOPS / _START; off at stops 0)
     uShoulder: { value: new THREE.Vector4(0, 0, 0, 0) },
+    // 2026-10-15 (tone r1): the saturation inside AgX's encoded space, and where it eases off toward white
+    uLook: { value: new THREE.Vector2(1, 0.8) },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
@@ -1659,7 +1724,9 @@ function createOutputGradePass(): OutputGradePass {
     uniform float uContrast;
     uniform vec4 uToe;
     uniform vec4 uShoulder;
+    uniform vec2 uLook;
     #include <tonemapping_pars_fragment>
+    ${COT_AGX_GLSL}
     #include <colorspace_pars_fragment>
 
     float thermalHeat(vec2 sampleUv) {
@@ -1708,7 +1775,7 @@ function createOutputGradePass(): OutputGradePass {
       #elif defined( ACES_FILMIC_TONE_MAPPING )
         outputColor.rgb = ACESFilmicToneMapping( outputColor.rgb );
       #elif defined( AGX_TONE_MAPPING )
-        outputColor.rgb = AgXToneMapping( outputColor.rgb );
+        outputColor.rgb = cotAgXToneMapping( outputColor.rgb );
       #elif defined( NEUTRAL_TONE_MAPPING )
         outputColor.rgb = NeutralToneMapping( outputColor.rgb );
       #elif defined( CUSTOM_TONE_MAPPING )
@@ -2763,7 +2830,11 @@ export function createPost(
   function updateOutputGrade(): void {
     const model = scene.userData.lightModel as LightModel | undefined;
     const u = grade.uniforms;
-    const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST);
+    // (2026-10-15) tone r1, or the 2026-10-01 look under the lever (QA: TONE_R1 0); each knob still tunes on top. The
+    // night keeps the 2026-10-01 look (its lens programs hold their display level through it: nightEmissionMaterial.ts)
+    const tone = toneFor(model?.night ?? 0);
+    const contrast = lightTune('GRADE_CONTRAST', tone.contrast);
+    (u.uLook.value as THREE.Vector2).set(lightTune('TONE_LOOK_SAT', tone.lookSat), lightTune('TONE_LOOK_SAT_WHITE', tone.lookSatWhite));
     const satLinear = model?.mode === 'physical'
       ? lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR) : lightTune('GRADE_SAT_LINEAR_LEGACY', GRADE_SAT_LINEAR_LEGACY);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
@@ -2778,9 +2849,9 @@ export function createPost(
       // the photographic toe on the grounded rig by day (GRADE_TOE_SLOPE): its slope returns to the constant one with the
       // night (off at full night), the legacy rig keeps the constant slope; the toe's slope follows the map's contrast
       const toeOn = model.mode === 'physical' && model.night < 0.999;
-      const toeSlope = THREE.MathUtils.lerp(lightTune('GRADE_TOE_SLOPE', GRADE_TOE_SLOPE) * model.contrast, u.uContrast.value as number,
+      const toeSlope = THREE.MathUtils.lerp(lightTune('GRADE_TOE_SLOPE', tone.toeSlope) * model.contrast, u.uContrast.value as number,
         THREE.MathUtils.clamp(model.night, 0, 1));
-      u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', GRADE_TOE_STOPS) : 0,
+      u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', tone.toeStops) : 0,
         lightTune('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM), lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));
     } else {
       u.uToe.value.set(0, 0, 0, 0);
@@ -2808,8 +2879,10 @@ export function createPost(
     bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
     bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
-    (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', 0.6), lightTune('GRADE_SHOULDER_STOPS', 0),
-      lightTune('GRADE_SHOULDER_START', 2), 0);
+    // (2026-10-15) the shoulder's defaults follow the look (tone r1 turns it on; TONE_R1 0 = off, as before)
+    const shoulderTone = toneFor((scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
+    (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', shoulderTone.shoulderSlope),
+      lightTune('GRADE_SHOULDER_STOPS', shoulderTone.shoulderStops), lightTune('GRADE_SHOULDER_START', shoulderTone.shoulderStart), 0);
     aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
     aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeWeight;
     aerial.uniforms.uHazeZoom.value *= 1 - 0.30 * scopeWeight;
