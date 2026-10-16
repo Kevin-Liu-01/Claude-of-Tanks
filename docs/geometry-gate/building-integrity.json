@@ -3376,6 +3376,15 @@
    "gapM2": 1.296,
    "invertedM2": 0
   },
+  "landmark/verdant:kolkhozArch#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 1.3,
+   "invertedM2": 0
+  },
   "landmark/delta:path#0": {
    "floating": 0,
    "sliver": 0,
@@ -4239,16 +4248,7 @@
    "insideM2": 0.504,
    "gapM2": 3.923,
    "invertedM2": 0
-  },
-  "landmark/verdant:kolkhozArch#7": {
-   "floating": 0,
-   "sliver": 0,
-   "floatingM2": 0,
-   "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 1.3,
-   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T12:28:24.546Z"
+ "updatedAt": "2026-10-16T10:43:41.253Z"
 }
