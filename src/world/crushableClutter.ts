@@ -33,6 +33,11 @@ export class CrushableClutter {
   readonly x: number; readonly y: number; readonly z: number;
   readonly r: number; readonly h: number;
   readonly obstacles: CollisionRecord[]; readonly colliders: CollisionRecord[];
+  /** (the hitbox lane, 2026-10-10) a crushed instance's pose from its standing one, in place of the flattening (a
+   * crushed stone splits and presses into the ground: crushedStones.ts), and what else a crush lays and a rematch takes
+   * back (a stone's flakes and chips, its scuff). */
+  pressedPose: ((home: Matrix4, out: Matrix4) => void) | null = null;
+  readonly crushHooks: Array<(crushed: boolean) => void> = [];
   constructor(
     kind: ClutterKind,
     x: number, y: number, z: number, r: number, h: number,
@@ -66,9 +71,11 @@ export class CrushableClutter {
     for (const span of this.spans) this.poseSpan(span, crushed);
     for (const {mesh, slot, home} of this.instances) {
       const matrix = home.clone();
-      if (crushed) { matrix.scale(flatScale); matrix.elements[13] = this.y + .02; }
+      if (crushed && this.pressedPose) this.pressedPose(home, matrix);
+      else if (crushed) { matrix.scale(flatScale); matrix.elements[13] = this.y + .02; }
       mesh.setMatrixAt(slot, matrix); mesh.instanceMatrix.needsUpdate = true;
     }
+    for (const hook of this.crushHooks) hook(crushed);
   }
 
   private poseSpan(span: VertexSpan, crushed: boolean): void {

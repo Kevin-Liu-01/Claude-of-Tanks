@@ -664,6 +664,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     rockBedShades: [],
+    // (round 3, rubbleKit.ts LowStones) no crushable low stone here: no scuff to conform, release or lay
+    lowStones: { *collectScuffs() {}, releasePendingDiscs() {}, layScuffs() {} },
     // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
     contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
