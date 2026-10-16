@@ -2801,84 +2801,306 @@ function makeSecurityOfficeCraft(rng: Rng, style?: Palette): THREE.BufferGeometr
   return mergeConnectedStructure('securityoffice', out);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// (the looks lane's r2 sweep, 2026-10-16: "no dark quads standing in for openings") a wall cut for its openings — the
+// slab's own sides are the reveals — and what sits in each cut: the casing round it, its sill, the glass or the leaf set
+// back into the reveal, so nothing dark lies on a face with the wall right behind it.
+
+/** An opening in a wall: `u` along the face (onFace's frame), `y` its centre (a door's foot is the ground), `w` x `h`. */
+interface WallOpening { u: number; y: number; w: number; h: number }
+
 /**
- * A kit's Quonset (props #1, the huts' r2 round, 2026-10-14): its sheet's paint or rust and its end walls' boards, brick
- * or block (a Nissen's brick ends on the Saar and the Ruhr).
+ * A wall slab cut for its openings, laid on a face as onFace lays its parts: its foot from -half to +half on the ground,
+ * `top` its head back from +half to -half (symmetric about u = 0: a level head or an arch), `doors` notched up from the
+ * foot, `holes` cut through. Its outer face on the face's plane (`at`), its inner face `t` behind; the cut's own sides are
+ * the openings' reveals.
+ */
+function cutWallSlab(axis: 'x' | 'z', side: 1 | -1, at: number, half: number, top: ReadonlyArray<readonly [number, number]>,
+  doors: readonly WallOpening[], holes: readonly WallOpening[], t: number): THREE.BufferGeometry {
+  // (built facing +z, then turned onto its face: two of the four turns mirror u, so the openings are mirrored first)
+  const m = (axis === 'z') === (side > 0) ? 1 : -1;
+  const pts = [new THREE.Vector2(-half, 0)];
+  for (const o of [...doors].map((o) => ({ ...o, u: o.u * m })).sort((a, b) => a.u - b.u)) {
+    pts.push(new THREE.Vector2(o.u - o.w / 2, 0), new THREE.Vector2(o.u - o.w / 2, o.h),
+      new THREE.Vector2(o.u + o.w / 2, o.h), new THREE.Vector2(o.u + o.w / 2, 0));
+  }
+  pts.push(new THREE.Vector2(half, 0));
+  for (const [u, y] of top) pts.push(new THREE.Vector2(u, y));
+  const shape = new THREE.Shape(pts);
+  for (const o of holes) {
+    const x0 = o.u * m - o.w / 2, x1 = o.u * m + o.w / 2, y0 = o.y - o.h / 2, y1 = o.y + o.h / 2;
+    shape.holes.push(new THREE.Path([new THREE.Vector2(x0, y0), new THREE.Vector2(x1, y0), new THREE.Vector2(x1, y1), new THREE.Vector2(x0, y1)]));
+  }
+  const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, -t);
+  g.rotateY(axis === 'z' ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2));
+  if (axis === 'z') g.translate(0, 0, side * at); else g.translate(side * at, 0, 0);
+  return scaleUV(g, 0.55, 0.55);
+}
+
+/**
+ * A window in its cut (cutWallSlab): the casing standing proud round it, the sill under it, the glass set back `set`
+ * into the reveal (a night aperture unless `dark`), a mullion before the glass and `bars` bars across the cut.
+ */
+function cutWindow(out: THREE.BufferGeometry[], axis: 'x' | 'z', side: 1 | -1, at: number, o: WallOpening, set: number,
+  frame: number, pane: number, sill: number, r: Rng, opts: { bars?: number; dark?: boolean; mullion?: boolean } = {}): void {
+  const f = onFace(axis, side, at), normal: [number, number, number] = axis === 'z' ? [0, 0, side] : [side, 0, 0];
+  const glass = f(o.w, o.h, 0.03, o.u, o.y, -set);
+  colored(out, opts.dark ? glass : markWorldAperture(glass, normal), pane, r, 0.03);
+  for (const s of [-1, 1]) colored(out, f(0.09, o.h + 0.18, 0.07, o.u + s * (o.w / 2 + 0.045), o.y, 0.035), frame, r, 0.02);
+  colored(out, f(o.w + 0.18, 0.09, 0.07, o.u, o.y + o.h / 2 + 0.045, 0.035), frame, r, 0.02);
+  colored(out, f(o.w + 0.3, 0.06, set + 0.2, o.u, o.y - o.h / 2 - 0.03, 0.2 - (set + 0.2) / 2), sill, r, 0.02);
+  if (opts.mullion !== false) colored(out, f(0.05, o.h, 0.05, o.u, o.y, -set + 0.04), frame, r, 0.02);
+  for (let k = 0; k < (opts.bars ?? 0); k++) colored(out, f(0.025, o.h, 0.025, o.u - o.w / 2 + (k + 1) * o.w / ((opts.bars ?? 0) + 1), o.y, -0.04), 0x2a2d30, r, 0.02);
+}
+
+/** A hue scaled in value (a leaf, a lintel or a ledge painted near its wall's tone, never a dark patch on it). */
+function toneOf(hex: number, k: number): number {
+  _color.set(hex).multiplyScalar(k);
+  return _color.getHex();
+}
+
+/**
+ * The Quonset's skin: the corrugated sheet round the arch as a band `skin` thick (the arch's polygon, archShell's), open
+ * at its ends to the end walls set in it; its sides' UVs run the sheet's ribs across the length (archShellSheet's).
+ */
+function quonsetShell(R: number, H: number, skin: number, d: number): THREE.BufferGeometry {
+  const pts: THREE.Vector2[] = [];
+  for (let i = 0; i <= 10; i++) { const a = Math.PI - i * Math.PI / 10; pts.push(new THREE.Vector2(Math.cos(a) * R, Math.sin(a) * H)); }
+  for (let i = 10; i >= 0; i--) { const a = Math.PI - i * Math.PI / 10; pts.push(new THREE.Vector2(Math.cos(a) * (R - skin), Math.sin(a) * (H - skin))); }
+  const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: d, bevelEnabled: false, curveSegments: 1 });
+  geo.translate(0, 0, -d / 2);
+  scaleUV(geo, 0.55, 0.55);
+  const sides = geo.groups.find((group) => group.materialIndex === 1), uv = geo.attributes.uv;
+  if (sides) for (let i = sides.start; i < sides.start + sides.count; i++) uv.setXY(i, uv.getY(i), uv.getX(i));
+  geo.clearGroups();
+  return geo;
+}
+
+/**
+ * A rib round the Quonset's arch, `width` along the hut and standing `proud` off the sheet: its crown and its two flanks
+ * on the arch's own polygon (the sheet's face under it is the shell's), non-indexed.
+ */
+function archBand(R: number, H: number, width: number, proud: number): THREE.BufferGeometry {
+  const pos: number[] = [], z0 = -width / 2, z1 = width / 2;
+  const at = (a: number, k: number): [number, number] => [Math.cos(a) * (R + k), Math.sin(a) * (H + k)];
+  const quad = (a: number[], b: number[], c: number[], e: number[]) => pos.push(...a, ...b, ...c, ...a, ...c, ...e);
+  for (let i = 0; i < 10; i++) {
+    const a0 = Math.PI - i * Math.PI / 10, a1 = Math.PI - (i + 1) * Math.PI / 10;
+    const [ox0, oy0] = at(a0, proud), [ox1, oy1] = at(a1, proud), [ix0, iy0] = at(a0, 0), [ix1, iy1] = at(a1, 0);
+    quad([ox0, oy0, z1], [ox1, oy1, z1], [ox1, oy1, z0], [ox0, oy0, z0]);
+    quad([ix0, iy0, z1], [ix1, iy1, z1], [ox1, oy1, z1], [ox0, oy0, z1]);
+    quad([ox0, oy0, z0], [ox1, oy1, z0], [ix1, iy1, z0], [ix0, iy0, z0]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  const uvs: number[] = [];
+  for (let i = 0; i < pos.length; i += 3) uvs.push((pos[i] + pos[i + 2]) * 0.55, pos[i + 1] * 0.55);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  return g;
+}
+
+/**
+ * A kit's Quonset (props #1, the huts' r2 round, 2026-10-14; the r2 sweep, 2026-10-16: "one form on 9 regions"): its sheet's
+ * paint or rust, and its region's own build — the ends' construction, the door end's doors, the windows, the vents, how
+ * deep the ends stand in the arch, the stoves' flues, the work round it.
  */
 interface QuonsetStyle {
   sheet: Palette;
   end: number;
+  /** the ends: timber studs under battens, concrete block on its piers, brick with its piers and lintels, sheet on a frame */
+  ends: 'board' | 'block' | 'brick' | 'sheet';
+  /** the door end's doors: a hinged pair, a sliding leaf on its track, a wicket door, a roller shutter */
+  door: 'double' | 'sliding' | 'wicket' | 'roller';
+  /** the windows in the door end and in the back end */
+  windows: readonly [number, number];
+  /** a louvre under the crown in each end, or ventilator cowls on the crown */
+  vent: 'louvre' | 'cowl';
+  /** how far the ends stand inside the arch's mouth (its hood over the door) */
+  recess: number;
+  flues: number;
+  /** the region's own work round it: sandbag blast walls, the windows bagged up, snow drifts, a stone skirt */
+  extra?: 'blastwalls' | 'baggedwindows' | 'drifts' | 'skirt';
 }
+const QUONSET_DEFAULT: QuonsetStyle = {
+  sheet: PAL.steel, end: 0x5b6264, ends: 'board', door: 'double', windows: [2, 2], vent: 'louvre', recess: 0.05, flues: 1,
+};
 const QUONSET_STYLES: Readonly<Record<string, QuonsetStyle>> = {
-  hostomel: { sheet: [0x4f5a44, 0x56614a, 0x3e4636], end: 0x6a6a5e },
-  kyushu: { sheet: [0xa8acae, 0xb4b8ba, 0x8a8e90], end: 0x8a8c88 },
-  queenstown: { sheet: [0x7a5a46, 0x8a6a50, 0x6a4c3c], end: 0x5a4a3a },
-  saar: { sheet: [0x3e3e3c, 0x464644, 0x343432], end: 0x7a4232 },
-  ruhr: { sheet: [0x3e3e3c, 0x464644, 0x343432], end: 0x6e3a2e },
-  sarajevo: { sheet: [0xd8d6ce, 0xcecbc2, 0x8a8a84], end: 0xb8b6ae },
-  glencanyon: { sheet: [0xa8acae, 0xb4b8ba, 0x8a8e90], end: 0xb4ad9f },
-  arctic: { sheet: [0xa23a2c, 0xa8402f, 0x963428], end: 0xd8d8d0 },
-  nordland: { sheet: [0x3e3e3c, 0x464644, 0x343432], end: 0x8a2e22 },
-  tselina: { sheet: [0x9c9b93, 0x8d8c85, 0xa8a69d], end: 0xd8d0bc },
+  // Hostomel, 2022: a Soviet store's silicate-brick ends, its hinged steel doors, sandbag blast walls either side of them
+  hostomel: { sheet: [0x4f5a44, 0x56614a, 0x3e4636], end: 0x6a6a5e, ends: 'brick', door: 'double', windows: [2, 2], vent: 'louvre', recess: 0.05, flues: 1, extra: 'blastwalls' },
+  // Kyushu: the occupation's hut, timber ends set back under the arch's hood, a sliding door on its track, a cowl
+  kyushu: { sheet: [0xa8acae, 0xb4b8ba, 0x8a8e90], end: 0x8a8c88, ends: 'board', door: 'sliding', windows: [1, 4], vent: 'cowl', recess: 0.55, flues: 1 },
+  // Queenstown: the mine's store in rusted iron, its ends sheeted on a frame, a wicket door, the forge's and the stove's flues
+  queenstown: { sheet: [0x7a5a46, 0x8a6a50, 0x6a4c3c], end: 0x5a4a3a, ends: 'sheet', door: 'wicket', windows: [2, 2], vent: 'louvre', recess: 0.05, flues: 2 },
+  // the Saar: a Nissen's brick ends, four lights at the back, its foot on a brick skirt
+  saar: { sheet: [0x3e3e3c, 0x464644, 0x343432], end: 0x7a4232, ends: 'brick', door: 'double', windows: [2, 4], vent: 'louvre', recess: 0.05, flues: 1, extra: 'skirt' },
+  // the Ruhr: the works' store, its brick end shut by a roller shutter, cowls on the crown
+  ruhr: { sheet: [0x3e3e3c, 0x464644, 0x343432], end: 0x6e3a2e, ends: 'brick', door: 'roller', windows: [0, 2], vent: 'cowl', recess: 0.05, flues: 1 },
+  // Sarajevo, the siege: block ends rendered pale, a wicket door, the windows bagged up to their sills
+  sarajevo: { sheet: [0xd8d6ce, 0xcecbc2, 0x8a8a84], end: 0xb8b6ae, ends: 'block', door: 'wicket', windows: [2, 2], vent: 'louvre', recess: 0.05, flues: 1, extra: 'baggedwindows' },
+  // Glen Canyon, the dam's camp: the stock Quonset, plywood ends on studs, its double doors, no stove in the desert
+  glencanyon: { sheet: [0xa8acae, 0xb4b8ba, 0x8a8e90], end: 0xb4ad9f, ends: 'board', door: 'double', windows: [2, 4], vent: 'louvre', recess: 0.05, flues: 0 },
+  // the arctic station: insulated sheet ends deep under the hood, a wicket door, two stoves, the drifts banked on it
+  arctic: { sheet: [0xa23a2c, 0xa8402f, 0x963428], end: 0xd8d8d0, ends: 'sheet', door: 'wicket', windows: [2, 0], vent: 'cowl', recess: 0.7, flues: 2, extra: 'drifts' },
+  // Nordland: red-painted panel ends set under the arch, double doors, the foot on a dry-stone skirt against the frost
+  nordland: { sheet: [0x3e3e3c, 0x464644, 0x343432], end: 0x8a2e22, ends: 'board', door: 'double', windows: [2, 2], vent: 'louvre', recess: 0.3, flues: 1, extra: 'skirt' },
+  tselina: { sheet: [0x9c9b93, 0x8d8c85, 0xa8a69d], end: 0xd8d0bc, ends: 'block', door: 'double', windows: [2, 2], vent: 'louvre', recess: 0.05, flues: 1 },
 };
 
 /**
- * The Quonset hut: the corrugated arch with its ribs standing proud every bay and its seams along the length, and each
- * end a framed wall in the arch — the edge rib round it, the studs, the girt, the front's double doors in their frame with
- * their braces and hinges, the windows each side in surrounds with sills, the louvred vent under the crown; the base
- * skirts, the threshold plate, the stovepipe through the shell.
+ * The Quonset hut: the corrugated arch with its ribs standing proud every bay and its seams along the length, open at its
+ * mouths to the ends set in them; each end a wall cut for its openings (its region's boards, block, brick or sheet), the
+ * door end's doors in their frame, the windows in their casings with sills and the glass set back, the louvre under the
+ * crown; the stoves' flues through the shell, the base skirts, the threshold, the region's work round it.
  */
-function makeQuonsetHutCraft(rng: Rng, style?: QuonsetStyle): THREE.BufferGeometry {
-  const out: THREE.BufferGeometry[] = [], p = style?.sheet ?? PAL.steel, w = 6.8, d = 11.5, h = 3.8, r = rng;
-  const end = style?.end ?? 0x5b6264, frame = 0x2c3236, pane = 0x6f8790, rib = 0x3b4246;
-  const R = w / 2, H = h - 0.12, archY = (x: number) => H * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
-  colored(out, archShellSheet(w, h, d), p[0], r, 0.1);
-  for (let z = -d / 2 + 0.6; z < d / 2 - 0.3; z += 1.15) colored(out, archShell(w + 0.26, h + 0.16, 0.13).translate(0, 0, z), rib, r, 0.04);
-  // the sheet seams along the length
+function makeQuonsetHutCraft(rng: Rng, style: QuonsetStyle = QUONSET_DEFAULT): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], s = style, p = s.sheet, w = 6.8, d = 11.5, h = 3.8, r = rng;
+  const frame = 0x2c3236, pane = 0x6f8790, rib = 0x3b4246, steel = 0x1f2326;
+  const R = w / 2, H = h - 0.12, skin = 0.06, Ri = R - skin, Hi = H - skin;
+  const archY = (x: number) => H * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
+  const innerY = (x: number) => Hi * Math.sqrt(Math.max(0, 1 - (x / Ri) ** 2));
+  colored(out, quonsetShell(R, H, skin, d), p[0], r, 0.1);
+  for (let k = 0; k < 7; k++) colored(out, archBand(R, H, 0.13, 0.06).translate(0, 0, -d / 2 + 1.0 + k * (d - 2.0) / 6), rib, r, 0.04);
+  for (const zs of [-1, 1]) colored(out, archBand(R, H, 0.16, 0.08).translate(0, 0, zs * (d / 2 - 0.08)), frame, r, 0.02);
   for (const a of [0.42, 0.85, 1.25, 1.57, 1.89, 2.29, 2.72]) {
     colored(out, mbox(0.05, 0.05, d - 0.05).translate(Math.cos(a) * (R + 0.02), Math.sin(a) * (H + 0.02), 0), p[1], r, 0.02);
   }
-  for (const zs of [-1, 1]) {
-    const ez = zs * (d / 2);
-    const f = onFace('z', zs as 1 | -1, d / 2);
-    // the end's edge rib round the arch
-    for (let i = 0; i < 12; i++) {
-      const a0 = Math.PI - i * Math.PI / 12, a1 = Math.PI - (i + 1) * Math.PI / 12;
-      colored(out, mbeam([Math.cos(a0) * (R + 0.04), Math.sin(a0) * (H + 0.04), ez + zs * 0.05], [Math.cos(a1) * (R + 0.04), Math.sin(a1) * (H + 0.04), ez + zs * 0.05], 0.14, 0.12), frame, r, 0.02);
-    }
-    // the studs and the girt
-    for (const x of [-2.6, -1.35, 1.35, 2.6]) {
-      const top = archY(x) - 0.05;
-      colored(out, f(0.1, top, 0.08, x, top / 2, 0.04), end, r, 0.02);
-    }
-    const gy = 2.55, gx = R * Math.sqrt(1 - (gy / H) ** 2) - 0.05;
-    colored(out, f(2 * gx, 0.1, 0.08, 0, gy, 0.04), end, r, 0.02);
-    // the louvred vent under the crown
-    colored(out, f(0.9, 0.55, 0.06, 0, H - 0.75, 0.05), frame, r, 0.02);
-    for (let k = 0; k < 4; k++) colored(out, f(0.8, 0.05, 0.1, 0, H - 0.95 + k * 0.13, 0.08), end, r, 0.02);
-    // the windows either side
-    for (const x of [-2.0, 2.0]) framedWindow(out, 'z', zs as 1 | -1, d / 2, x, 1.75, 0.75, 0.8, frame, pane, r);
-    if (zs > 0) {
-      // the double doors: the frame, two leaves with their ledges and braces, hinges and the bar
-      colored(out, f(0.16, 2.6, 0.16, -1.36, 1.3, 0.08), frame, r, 0.02);
-      colored(out, f(0.16, 2.6, 0.16, 1.36, 1.3, 0.08), frame, r, 0.02);
-      colored(out, f(2.88, 0.16, 0.16, 0, 2.6, 0.08), frame, r, 0.02);
-      for (const s of [-1, 1]) {
-        const cx = s * 0.64;
-        colored(out, f(1.24, 2.45, 0.06, cx, 1.24, 0.05), end, r, 0.03);
-        for (const y of [0.35, 1.25, 2.15]) colored(out, f(1.18, 0.12, 0.05, cx, y, 0.1), frame, r, 0.02);
-        colored(out, mbeam([cx - 0.52, 0.4, ez + zs * 0.1], [cx + 0.52, 1.2, ez + zs * 0.1], 0.08, 0.04), frame, r, 0.02);
-        colored(out, mbeam([cx - 0.52, 1.3, ez + zs * 0.1], [cx + 0.52, 2.1, ez + zs * 0.1], 0.08, 0.04), frame, r, 0.02);
-        for (const y of [0.5, 2.0]) colored(out, f(0.3, 0.05, 0.03, s * 1.18, y, 0.1), 0x1f2326, r, 0.02);
+  // the ends: each a wall set `recess` into the arch's mouth, cut for its openings, `t` thick
+  const t = s.ends === 'brick' ? 0.34 : s.ends === 'block' ? 0.26 : 0.2, set = t * 0.55, at = d / 2 - s.recess;
+  const top: Array<[number, number]> = [];
+  for (let i = 1; i < 10; i++) { const a = i * Math.PI / 10; top.push([Math.cos(a) * Ri, Math.sin(a) * Hi]); }
+  const DOORS = { double: { u: 0, w: 2.5, h: 2.5 }, sliding: { u: -1.0, w: 2.0, h: 2.3 }, wicket: { u: 0, w: 0.95, h: 2.1 }, roller: { u: 0, w: 3.0, h: 2.8 } };
+  const dr = DOORS[s.door], door: WallOpening = { u: dr.u, y: dr.h / 2, w: dr.w, h: dr.h };
+  const lights = (n: number, front: boolean): WallOpening[] => (n === 1 ? [{ u: 2.3, y: 1.6, w: 0.6, h: 0.7 }]
+    : n === 2 ? [-2.0, 2.0].map((u) => ({ u, y: 1.75, w: 0.75, h: 0.8 }))
+      : n === 4 && !front ? [-2.35, -0.95, 0.95, 2.35].map((u) => ({ u, y: Math.abs(u) > 2 ? 1.55 : 1.75, w: 0.62, h: 0.72 })) : []);
+  const endTone = s.end, trim = toneOf(s.end, 0.88), leaf = toneOf(s.end, 0.92), sillTone = s.ends === 'brick' || s.ends === 'block' ? 0x9a9890 : trim;
+  for (const zs of [-1, 1] as const) {
+    const front = zs > 0, f = onFace('z', zs, at);
+    const wins = lights(s.windows[front ? 0 : 1], front);
+    const ventY = front ? Math.max(3.0, dr.h + 0.665) : 3.0;
+    const vent: WallOpening | null = s.vent === 'louvre' && ventY + 0.37 < innerY(0.54) ? { u: 0, y: ventY, w: 0.9, h: 0.55 } : null;
+    const holes = [...wins, ...(vent ? [vent] : [])];
+    colored(out, cutWallSlab('z', zs, at, Ri, top, front ? [door] : [], holes, t), endTone, r, 0.05);
+    // the end's own construction on its face, round its openings
+    const cuts = [...holes, ...(front ? [door] : [])];
+    /** The free spans of a member up the face at `u` (`hw` its half width), from the ground to `y1`, between the openings. */
+    const spans = (u: number, hw: number, y1: number): Array<[number, number]> => {
+      let runs: Array<[number, number]> = [[0, y1]];
+      for (const o of cuts) {
+        if (Math.abs(u - o.u) >= o.w / 2 + 0.12 + hw) continue;
+        const c0 = o.y - o.h / 2 - 0.1, c1 = o.y + o.h / 2 + 0.12;
+        runs = runs.flatMap(([a, b]) => [[a, Math.min(b, c0)], [Math.max(a, c1), b]] as Array<[number, number]>).filter(([a, b]) => b - a > 0.3);
       }
-      colored(out, f(0.5, 0.06, 0.05, 0, 1.25, 0.13), 0x1f2326, r, 0.02);
-      colored(out, mbox(3.6, 0.1, style ? 0.5 : 0.9).translate(0, 0.05, ez + (style ? 0.25 : 0.5)), 0x6f7275, r, 0.03);
+      return runs;
+    };
+    if (s.ends === 'board') {
+      // the cover battens over the boards' joints
+      for (let u = -Ri + 0.32; u < Ri - 0.3; u += 0.78) {
+        for (const [a, b] of spans(u, 0.035, innerY(Math.abs(u) + 0.035) - 0.02)) colored(out, f(0.07, b - a, 0.04, u, (a + b) / 2, 0.02), trim, r, 0.03);
+      }
+    } else if (s.ends === 'sheet') {
+      // the frame the sheet is fixed to: two posts to the arch, the girt either side of them
+      for (const u of [-1.2, 1.2]) for (const [a, b] of spans(u, 0.06, innerY(Math.abs(u) + 0.06) - 0.02)) colored(out, f(0.12, b - a, 0.08, u, (a + b) / 2, 0.04), frame, r, 0.02);
+      for (const sg of [-1, 1]) colored(out, f(1.04, 0.1, 0.08, sg * 1.78, 2.45, 0.04), frame, r, 0.02);
+    } else {
+      // the piers at the end's edges and the lintels over its openings
+      const pier = s.ends === 'brick' ? 0.5 : 0.42;
+      for (const sg of [-1, 1]) {
+        const u = sg * (Ri - pier / 2 - 0.04), y1 = innerY(Math.abs(u) + pier / 2) - 0.02;
+        colored(out, f(pier, y1, 0.12, u, y1 / 2, 0.06), trim, r, 0.04);
+      }
+      // (over the casing; a lintel the arch would cut is left out)
+      for (const o of cuts) {
+        if (o === vent || o.y + o.h / 2 + 0.31 > innerY(Math.abs(o.u) + o.w / 2 + 0.18)) continue;
+        colored(out, f(o.w + 0.36, 0.18, 0.1, o.u, o.y + o.h / 2 + 0.21, 0.05), s.ends === 'brick' ? trim : 0x9a9890, r, 0.03);
+      }
     }
+    for (const o of wins) cutWindow(out, 'z', zs, at, o, set, frame, pane, sillTone, r, { mullion: o.w > 0.65 });
+    if (vent) {
+      // the louvre: its casing and three blades tipped out and down across the cut
+      for (const sg of [-1, 1]) colored(out, f(0.08, vent.h + 0.16, 0.07, sg * (vent.w / 2 + 0.04), vent.y, 0.035), frame, r, 0.02);
+      for (const sg of [-1, 1]) colored(out, f(vent.w, 0.08, 0.07, 0, vent.y + sg * (vent.h / 2 + 0.04), 0.035), frame, r, 0.02);
+      for (let k = 0; k < 3; k++) {
+        const blade = box(vent.w, 0.17, 0.025);
+        blade.rotateX(-0.6 * zs);
+        colored(out, blade.translate(0, vent.y - 0.17 + k * 0.17, zs * (at - set)), trim, r, 0.02);
+      }
+    }
+    if (!front) continue;
+    // the door end's doors in their frame
+    const dw = dr.w, dh = dr.h, du = dr.u;
+    for (const sg of [-1, 1]) colored(out, f(0.12, dh + 0.12, 0.1, du + sg * (dw / 2 + 0.06), (dh + 0.12) / 2, 0.05), frame, r, 0.02);
+    colored(out, f(dw + 0.24, 0.12, 0.1, du, dh + 0.06, 0.05), frame, r, 0.02);
+    if (s.door === 'double') {
+      for (const sg of [-1, 1]) {
+        const cx = du + sg * dw / 4, lw = dw / 2 - 0.01;
+        colored(out, f(lw, dh - 0.02, 0.05, cx, (dh - 0.02) / 2, -set), leaf, r, 0.03);
+        for (const y of [0.35, 1.25, 2.15]) colored(out, box(lw - 0.12, 0.12, 0.05).translate(cx, y, zs * (at - set + 0.05)), toneOf(leaf, 0.86), r, 0.02);
+        for (const [y0, y1] of [[0.42, 1.18], [1.32, 2.08]]) colored(out, mbeam([cx - sg * 0.5, y0, zs * (at - set + 0.045)], [cx + sg * 0.5, y1, zs * (at - set + 0.045)], 0.08, 0.04), toneOf(leaf, 0.86), r, 0.02);
+        for (const y of [0.5, 2.0]) colored(out, f(0.3, 0.05, 0.03, du + sg * (dw / 2 - 0.17), y, -set + 0.04), steel, r, 0.02);
+      }
+      colored(out, f(0.5, 0.06, 0.05, du, 1.25, -set + 0.07), steel, r, 0.02);
+    } else if (s.door === 'sliding') {
+      // the leaf hung on the face from its track, slid half open over the wall beside the opening
+      const lw = dw + 0.2, cx = du + 0.95;
+      colored(out, f(3.9, 0.1, 0.1, du + 0.85, dh + 0.18, 0.05), frame, r, 0.02);
+      colored(out, f(lw, dh + 0.02, 0.05, cx, (dh + 0.02) / 2, 0.125), leaf, r, 0.03);
+      for (const y of [0.4, dh - 0.4]) colored(out, box(lw - 0.1, 0.1, 0.05).translate(cx, y, zs * (at + 0.175)), toneOf(leaf, 0.86), r, 0.02);
+      for (const sg of [-1, 1]) colored(out, f(0.06, 0.24, 0.06, cx + sg * (lw / 2 - 0.25), dh + 0.12, 0.13), steel, r, 0.02);
+      colored(out, f(0.05, 0.4, 0.05, cx - lw / 2 + 0.15, 1.1, 0.175), steel, r, 0.02);
+    } else if (s.door === 'wicket') {
+      colored(out, f(dw - 0.02, dh - 0.02, 0.05, du, (dh - 0.02) / 2, -set), leaf, r, 0.03);
+      for (const y of [0.4, 1.7]) colored(out, box(dw - 0.14, 0.12, 0.05).translate(du, y, zs * (at - set + 0.05)), toneOf(leaf, 0.86), r, 0.02);
+      colored(out, f(0.05, 0.16, 0.06, du + dw / 2 - 0.14, 1.05, -set + 0.055), steel, r, 0.02);
+    } else {
+      // the roller shutter: its box over the head, the guides either side, the curtain down to a metre off the ground
+      colored(out, f(dw + 0.4, 0.42, 0.36, du, dh + 0.33, 0.18), frame, r, 0.02);
+      colored(out, f(dw - 0.02, dh - 1.0, 0.04, du, 1.0 + (dh - 1.0) / 2, -set), leaf, r, 0.03);
+      colored(out, f(dw - 0.02, 0.08, 0.08, du, 1.0, -set), toneOf(leaf, 0.86), r, 0.02);
+      for (let k = 1; k < 4; k++) colored(out, box(dw - 0.06, 0.035, 0.03).translate(du, 1.0 + k * (dh - 1.0) / 4, zs * (at - set + 0.035)), toneOf(leaf, 0.86), r, 0.02);
+    }
+    colored(out, mbox(Math.max(dw + 0.6, 3.0), 0.1, 0.5).translate(du, 0.05, zs * (at + 0.25)), 0x6f7275, r, 0.03);
   }
-  for (const side of [-1, 1]) colored(out, mbox(0.08, 0.34, d - 0.1).translate(side * (w / 2 - 0.02), 0.17, 0), p[2], r, 0.03);
-  const flueX = 1.5, flueZ = -d * 0.28, shellY = archY(flueX);
-  colored(out, cylinder(0.09, 0.09, 0.8, 8).translate(flueX, shellY + 0.2, flueZ), p[2], r, 0.03);
-  colored(out, cylinder(0.16, 0.16, 0.12, 8).translate(flueX, shellY + 0.64, flueZ), p[2], r, 0.03);
+  // the base skirts along the sheet's foot (a stone one where the region lays it)
+  for (const side of [-1, 1]) {
+    if (s.extra === 'skirt') colored(out, mbox(0.32, 0.5, d - 0.3).translate(side * (R + 0.14), 0.25, 0), 0x7d7a72, r, 0.05);
+    else colored(out, mbox(0.08, 0.34, d - 0.1).translate(side * (w / 2 - 0.02), 0.17, 0), p[2], r, 0.03);
+  }
+  // the stoves' flues through the shell and the ventilator cowls on the crown
+  for (const [fx, fz] of [[1.5, -d * 0.28], [-1.6, d * 0.12]].slice(0, s.flues)) {
+    const shellY = archY(fx);
+    colored(out, cylinder(0.09, 0.09, 0.8, 8).translate(fx, shellY + 0.2, fz), p[2], r, 0.03);
+    colored(out, cylinder(0.16, 0.16, 0.12, 8).translate(fx, shellY + 0.64, fz), p[2], r, 0.03);
+  }
+  if (s.vent === 'cowl') for (const z of [-d * 0.22, d * 0.22]) {
+    colored(out, cylinder(0.2, 0.24, 0.27, 8).translate(0, H + 0.105, z), p[2], r, 0.03);
+    colored(out, cylinder(0.32, 0.32, 0.06, 8).translate(0, H + 0.27, z), p[1], r, 0.03);
+  }
+  const bag = 0x8e7f5e;
+  if (s.extra === 'blastwalls') {
+    // the blast walls: sandbags three courses high either side of the doors, and along the door half's flanks
+    for (const sg of [-1, 1]) {
+      for (let k = 0; k < 3; k++) colored(out, mbox(1.6, 0.22, 0.4, 0.07).translate(sg * 2.45, 0.11 + k * 0.22, at + 0.22), toneOf(bag, 1 - k * 0.04), r, 0.06);
+      for (let k = 0; k < 2; k++) colored(out, mbox(0.4, 0.22, 4.6, 0.07).translate(sg * (R + 0.24), 0.11 + k * 0.22, at - 2.6), toneOf(bag, 1 - k * 0.05), r, 0.06);
+    }
+  } else if (s.extra === 'baggedwindows') {
+    // the windows bagged up to their sills
+    for (const zs of [-1, 1]) for (const o of lights(s.windows[zs > 0 ? 0 : 1], zs > 0)) {
+      for (let k = 0; k < 4; k++) colored(out, mbox(o.w + 0.5, 0.26, 0.42, 0.07).translate(o.u, 0.13 + k * 0.26, zs * (at + 0.22)), toneOf(bag, 1 - (k % 2) * 0.05), r, 0.06);
+    }
+  } else if (s.extra === 'drifts') {
+    // the drifts banked against both flanks and the back end
+    for (const side of [-1, 1]) {
+      const profile = [[R - 0.3, 0], [R + 0.45, 0], [R - 0.12, 0.85], [R - 0.3, 0.9]].map(([x, y]) => new THREE.Vector2(side * x, y));
+      const drift = new THREE.ExtrudeGeometry(new THREE.Shape(profile), { depth: d - 1.2, bevelEnabled: false });
+      colored(out, scaleUV(drift.translate(0, 0, -(d - 1.2) / 2), 0.4, 0.4), 0xe4eaec, r, 0.03);
+    }
+    const back = new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0.45, 0), new THREE.Vector2(0, 0.7)]), { depth: 2 * Ri - 0.6, bevelEnabled: false });
+    back.translate(0, 0, -(2 * Ri - 0.6) / 2).rotateY(Math.PI / 2).translate(0, 0, -at);
+    colored(out, scaleUV(back, 0.4, 0.4), 0xe4eaec, r, 0.03);
+  }
   return mergeConnectedStructure('quonsethut', out);
 }
 
