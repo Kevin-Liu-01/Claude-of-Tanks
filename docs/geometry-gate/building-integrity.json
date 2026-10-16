@@ -780,8 +780,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.986,
-   "gapM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.374,
    "invertedM2": 0
   },
   "dalmatian/bathhouse": {
@@ -1923,9 +1923,9 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.23,
    "gapM2": 0,
-   "invertedM2": 0
+   "invertedM2": 0.072
   },
   "mekong/woodshed": {
    "floating": 0,
@@ -1950,7 +1950,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.281,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -4241,5 +4241,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T10:43:41.253Z"
+ "updatedAt": "2026-10-16T13:25:17.290Z"
 }

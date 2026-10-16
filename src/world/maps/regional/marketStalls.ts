@@ -337,6 +337,15 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
       const rg = cover(sink, d, 2 * pz + 0.1, 2 * px + 0.2, front + 0.1);
       rafters(sink, d, rg, 0.4, 2 * px + 0.2);
       crownTop = rg.ridgeTopY;
+      // (Lane C 2026-10-16, building-integrity: the sky showed through both open gables, 2 m2 from the side) the gable
+      // triangles closed over the end plates, a woven screen under a thatch or canvas, a sheet under a sheet roof
+      if (rg.gable) {
+        const sheet = d.cover === 'sheet';
+        const opts = { colour: sheet ? shade(d.coverColour ?? [0.55, 0.55, 0.55], 0.9) : shade(d.backColour ?? d.timber, 0.92) };
+        for (const end of [1, -1]) {
+          sink.prism(sheet ? 'structureMetal' : 'structureWood', rg.gable.map(([u, yy]): Vec3 => [u, yy, end > 0 ? rg.halfD - 0.03 : -rg.halfD]), [0, 0, 1], 0.03, opts);
+        }
+      }
     });
   }
   if (d.back) screen(sink, d, -px + 0.05, -pz, px - 0.05, -pz, y - 0.005, backH + 0.005);
@@ -345,8 +354,15 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
   sink.dressing(d.mobile, () => {
     if (d.goods.hats) for (const [sx, k] of [[-1, 0], [-1, 1], [1, 0]] as const) {
       const hy = front - 0.35 - k * 0.42;
-      sink.cylinder('straw', [sx * (px + 0.07), hy, pz], 'x', sx * 0.02, 0.2, 9, { decor: true }, 0.2);
-      sink.cylinder('straw', [sx * (px + 0.09), hy, pz], 'x', sx * 0.12, 0.2, 9, { decor: true }, 0.01);
+      // (Lane C 2026-10-16, building-integrity: a negative length turned the left-hand hats inside out) each run from its
+      // inboard end outward along +x, the crown's radii swapped on the left
+      if (sx > 0) {
+        sink.cylinder('straw', [px + 0.07, hy, pz], 'x', 0.02, 0.2, 9, { decor: true }, 0.2);
+        sink.cylinder('straw', [px + 0.09, hy, pz], 'x', 0.12, 0.2, 9, { decor: true }, 0.01);
+      } else {
+        sink.cylinder('straw', [-(px + 0.09), hy, pz], 'x', 0.02, 0.2, 9, { decor: true }, 0.2);
+        sink.cylinder('straw', [-(px + 0.21), hy, pz], 'x', 0.12, 0.01, 9, { decor: true }, 0.2);
+      }
     }
     if (d.goods.bananas) {
       for (const x of [-px * 0.5, px * 0.4]) {
