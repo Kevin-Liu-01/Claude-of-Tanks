@@ -8,6 +8,7 @@ import {
   installResponsiveLayout,
   isPinchZoomed,
   layoutViewportSize,
+  pinchFactor,
   viewportHeightBand,
   viewportWidthBand,
 } from './responsiveLayout.ts';
@@ -150,9 +151,11 @@ for (const [width, height, widthBand, heightBand, orientation, overlayPanels, fo
   const doc = {
     body: { dataset: {} },
     documentElement: {
+      clientWidth: 430,
       style: { setProperty(name, value) { properties.set(name, value); } },
     },
   };
+  win.document = doc;
 
   const handle = installResponsiveLayout(win, doc);
   assert.equal(properties.get('--cot-viewport-height'), '613px',
@@ -205,25 +208,60 @@ for (const [width, height, widthBand, heightBand, orientation, overlayPanels, fo
 // causes a bunch of weirdness and layout shifts"). Chrome, Firefox and Safari zoom the VISUAL viewport: its scale
 // rises, its width and height shrink to the layout size / scale, its offsets follow the pan, and window 'resize'
 // never fires. Nothing about the layout may move: no size variable, band, panel policy or cot:layoutchange.
+// a window as the browser reports it: the root's clientWidth is the layout viewport, which no pinch changes
+const browserWindow = (innerWidth, innerHeight, visualViewport, clientWidth = innerWidth) => ({
+  innerWidth, innerHeight, visualViewport, document: { documentElement: { clientWidth } },
+});
 assert.deepEqual(layoutViewportSize({ innerWidth: 1440, innerHeight: 900 }),
-  { width: 1440, height: 900, offsetLeft: 0, offsetTop: 0, visualScale: 1 }, 'no visualViewport: the window size');
-assert.deepEqual(layoutViewportSize({
-  innerWidth: 1440, innerHeight: 900,
-  visualViewport: { width: 720, height: 450, offsetLeft: 360, offsetTop: 225, scale: 2 },
-}), { width: 1440, height: 900, offsetLeft: 0, offsetTop: 0, visualScale: 2 },
-'a 2x pinch measures the visible area unzoomed, with no offsets');
-assert.equal(layoutViewportSize({ innerWidth: 1440, innerHeight: 900,
-  visualViewport: { width: 2880, height: 1800, scale: 0.5 } }).width, 1440,
-'a page zoomed out below 1 (Android fitting wide content) also lays out at its real width');
-assert.equal(layoutViewportSize({ innerWidth: 1440, innerHeight: 900,
-  visualViewport: { width: 1440, height: 900, scale: Number.NaN } }).width, 1440, 'a nonsense scale reads as 1');
-assert.equal(layoutViewportSize({ innerWidth: 215, innerHeight: 400,
-  visualViewport: { width: 215, height: 366.5, scale: 2 } }).width, 430,
-'WebKit iOS shrinks innerWidth under a pinch: the visual viewport, not innerWidth, gives the real width');
-assert.equal(isPinchZoomed({ scale: 1 }), false);
-assert.equal(isPinchZoomed({ scale: 1.005 }), false);
-assert.equal(isPinchZoomed({ scale: 1.3 }), true);
-assert.equal(isPinchZoomed(null), false);
+  { width: 1440, height: 900, offsetLeft: 0, offsetTop: 0, visualScale: 1, pinchFactor: 1 },
+  'no visualViewport: the window size');
+assert.deepEqual(layoutViewportSize(browserWindow(1440, 900,
+  { width: 720, height: 450, offsetLeft: 360, offsetTop: 225, scale: 2 })),
+{ width: 1440, height: 900, offsetLeft: 0, offsetTop: 0, visualScale: 2, pinchFactor: 2 },
+'a 2x pinch measures the visible area unmagnified, with no offsets');
+assert.equal(layoutViewportSize(browserWindow(1440, 900, { width: 1425, height: 900, scale: 1 }, 1425)).width, 1425,
+  'a classic scrollbar: the visual viewport and clientWidth both exclude it');
+assert.equal(layoutViewportSize(browserWindow(1440, 900, { width: 712.50037, height: 450.0002, scale: 2 }, 1425)).width,
+  1425, 'and a pinch over it measures that same width (Chrome: 712.50037 x 2)');
+assert.equal(layoutViewportSize(browserWindow(1440, 900, { width: 1440, height: 900, scale: Number.NaN })).width, 1440,
+  'a nonsense scale changes nothing');
+assert.equal(layoutViewportSize(browserWindow(215, 400, { width: 215, height: 366.5, scale: 2 }, 430)).width, 430,
+  'WebKit iOS shrinks innerWidth under a pinch: the visual viewport and clientWidth, not innerWidth, give the real width');
+// iOS rests at a page scale other than 1 with no pinch (2026-10-16 iOS 26.5 simulator review). The factor is the
+// layout viewport over the visual one, never visualViewport.scale: visual size x scale oversized or shrank the app.
+{
+  const pageZoom = browserWindow(322, 571, { width: 322, height: 571, scale: 1.25 }, 322);
+  assert.deepEqual(layoutViewportSize(pageZoom),
+    { width: 322, height: 571, offsetLeft: 0, offsetTop: 0, visualScale: 1.25, pinchFactor: 1 },
+    'Safari page zoom 125 % at rest (scale 1.25, no pinch) lays out at the visible 322x571, not 403x714');
+  assert.equal(isPinchZoomed(pageZoom), false, 'page zoom alone is not a pinch');
+  const pinchedFromPageZoom = browserWindow(161, 285.5, { width: 161, height: 285.5, scale: 2.5 }, 322);
+  assert.deepEqual([layoutViewportSize(pinchedFromPageZoom).width, layoutViewportSize(pinchedFromPageZoom).height],
+    [322, 571], 'a pinch from that rest (1.25 -> 2.5) still measures 322x571');
+  assert.equal(isPinchZoomed(pinchedFromPageZoom), true);
+  const minimumEffectiveWidth = browserWindow(1024, 2226, { width: 1024, height: 2226, scale: 0.392578 }, 1024);
+  assert.deepEqual([layoutViewportSize(minimumEffectiveWidth).width, layoutViewportSize(minimumEffectiveWidth).height],
+    [1024, 2226], 'an iPad window shrunk to fit Safari\'s 1024 px minimum effective width (rest scale 0.39) lays out at 1024, not 402');
+  const pinchedFromShrink = browserWindow(1024, 2226, { width: 512, height: 1113, scale: 0.785156 }, 1024);
+  assert.deepEqual([layoutViewportSize(pinchedFromShrink).width, layoutViewportSize(pinchedFromShrink).height],
+    [1024, 2226], 'a 2x pinch from that shrunk rest measures the same 1024x2226');
+  assert.equal(layoutViewportSize(browserWindow(1440, 900, { width: 1440, height: 900, scale: 2 })).width, 1440,
+    'a scale above 1 whose visual width did not shrink is no pinch (no engine can inflate the layout)');
+  assert.equal(layoutViewportSize(browserWindow(402, 700, { width: 500, height: 870.6, scale: 0.804 }, 402)).width, 402,
+    'a page zoomed out past its layout (wide content fitted to the screen) still lays out at its real width');
+}
+assert.equal(pinchFactor(1440, 1440), 1);
+assert.equal(pinchFactor(1439.28, 1440), 1, 'within a pixel of the layout width the page is at rest (clientWidth is whole pixels)');
+assert.equal(pinchFactor(411.4286, 411), 1, 'a fractional device-pixel ratio at rest');
+assert.equal(pinchFactor(720, 1440), 2);
+assert.equal(pinchFactor(720, 0), 1, 'no layout reading: the measurement before 2026-10-16');
+assert.equal(pinchFactor(undefined, 1440), 1);
+assert.equal(isPinchZoomed(browserWindow(1440, 900, { width: 1440, scale: 1 })), false);
+assert.equal(isPinchZoomed(browserWindow(1440, 900, { width: 1432.8, scale: 1.005 })), true,
+  'a pinch of more than a pixel is a pinch');
+assert.equal(isPinchZoomed(browserWindow(1440, 900, { width: 1107.7, scale: 1.3 })), true);
+assert.equal(isPinchZoomed(browserWindow(1440, 900, null)), false);
+assert.equal(isPinchZoomed(undefined), false);
 
 {
   const viewportListeners = new Map();
@@ -255,9 +293,12 @@ assert.equal(isPinchZoomed(null), false);
   const doc = {
     body: { dataset },
     documentElement: {
+      // the layout viewport: the window (no classic scrollbar), whatever the pinch does
+      get clientWidth() { return win.innerWidth; },
       style: { setProperty(name, value) { propertyWrites++; properties.set(name, value); } },
     },
   };
+  win.document = doc;
   const handle = installResponsiveLayout(win, doc);
   const desktop = { width: '1440px', height: '900px', bands: 'desktop/tall/persistent' };
   const state = () => ({
@@ -274,8 +315,10 @@ assert.equal(isPinchZoomed(null), false);
     runFrame();
   };
 
-  // the gesture: every zoom step on the way in and out, the same measurements the probe recorded on 1440x900
-  for (const scale of [1.05, 1.15, 1.31, 1.363, 1.7, 1.875, 2, 2.9, 3, 2, 1.4, 1.01, 1]) {
+  // the gesture: every zoom step on the way in and out, the same measurements the probe recorded on 1440x900. Its
+  // first and last steps sit within a pixel of rest (1440 / 1.0005 = 1439.28): the rounding pixel is held because the
+  // scale moved with it.
+  for (const scale of [1.0005, 1.05, 1.15, 1.31, 1.363, 1.7, 1.875, 2, 2.9, 3, 2, 1.4, 1.01, 1.0004, 1]) {
     pinch(scale, { left: (1440 - 1440 / scale) / 2, top: (900 - 900 / scale) / 2 });
     assert.deepEqual(state(), desktop, `a ${scale}x pinch leaves the size variables and bands alone`);
   }
@@ -333,6 +376,53 @@ assert.equal(isPinchZoomed(null), false);
   assert.equal(windowListeners.size, 0);
 }
 
+// iOS Safari page zoom (aA 125 %) rests at visualViewport.scale 1.25 with no pinch: the app lays out at the visible
+// 322x571, the keyboard still measures at that rest, and a pinch from it only magnifies
+{
+  const viewportListeners = new Map();
+  const properties = new Map();
+  const events = [];
+  let queuedFrame = null;
+  const runFrame = () => { const frame = queuedFrame; queuedFrame = null; frame?.(); };
+  const visualViewport = {
+    width: 322, height: 571, offsetLeft: 0, offsetTop: 0, scale: 1.25,
+    addEventListener(type, callback) { viewportListeners.set(type, callback); },
+    removeEventListener(type, callback) { if (viewportListeners.get(type) === callback) viewportListeners.delete(type); },
+  };
+  const win = {
+    innerWidth: 322, innerHeight: 571, visualViewport,
+    matchMedia(query) { return { matches: query === '(pointer: coarse)', addEventListener() {}, removeEventListener() {} }; },
+    addEventListener() {}, removeEventListener() {},
+    requestAnimationFrame(callback) { queuedFrame = callback; return 1; },
+    cancelAnimationFrame() { queuedFrame = null; },
+    dispatchEvent(event) { events.push(event); return true; },
+  };
+  const doc = {
+    body: { dataset: {} },
+    documentElement: { clientWidth: 322, style: { setProperty(name, value) { properties.set(name, value); } } },
+  };
+  win.document = doc;
+  const handle = installResponsiveLayout(win, doc);
+  const size = () => [properties.get('--cot-viewport-width'), properties.get('--cot-viewport-height')];
+  assert.deepEqual(size(), ['322px', '571px'], 'page zoom at rest: the visible size, not visual size x scale (403x714)');
+  assert.equal(doc.body.dataset.cotWidth, 'phone');
+  Object.assign(visualViewport, { height: 300, offsetTop: 0 });
+  viewportListeners.get('scroll')();
+  assert.ok(queuedFrame, 'at the page-zoom rest a visual viewport scroll still measures (the keyboard)');
+  runFrame();
+  assert.deepEqual(size(), ['322px', '300px']);
+  assert.equal(events.length, 2);
+  Object.assign(visualViewport, { width: 161, height: 150, offsetLeft: 80, offsetTop: 60, scale: 2.5 });
+  viewportListeners.get('resize')();
+  runFrame();
+  assert.deepEqual(size(), ['322px', '300px'], 'a pinch from the page-zoom rest only magnifies');
+  visualViewport.offsetLeft = 120;
+  viewportListeners.get('scroll')();
+  assert.equal(queuedFrame, null, 'and its pan schedules nothing');
+  assert.equal(events.length, 2);
+  handle.destroy();
+}
+
 // index.html seeds the first paint with the same rule before any module loads: a page loaded (or restored by
 // history navigation) pinch-zoomed still paints at its real size
 {
@@ -340,20 +430,33 @@ assert.equal(isPinchZoomed(null), false);
   assert.ok(seed?.includes('const viewport = window.visualViewport;'), 'the first plain head script is the seed');
   const properties = new Map();
   const target = { addEventListener() {}, removeEventListener() {} };
-  const run = (innerWidth, innerHeight, visualViewport) => {
+  const run = (innerWidth, innerHeight, visualViewport, clientWidth = innerWidth) => {
     properties.clear();
+    const documentElement = { clientWidth, style: { setProperty: (name, value) => properties.set(name, value) } };
     runInNewContext(seed, {
       window: { ...target, innerWidth, innerHeight, visualViewport },
-      document: { ...target, documentElement: { style: { setProperty: (name, value) => properties.set(name, value) } } },
+      document: { ...target, documentElement },
       Symbol, Number, Math,
     });
-    return [properties.get('--cot-viewport-width'), properties.get('--cot-viewport-height')];
+    const seeded = [properties.get('--cot-viewport-width'), properties.get('--cot-viewport-height')];
+    const measured = layoutViewportSize({ innerWidth, innerHeight, visualViewport, document: { documentElement } });
+    assert.deepEqual(seeded, [`${measured.width}px`, `${measured.height}px`], 'the seed and layoutViewportSize agree');
+    return seeded;
   };
   assert.deepEqual(run(1440, 900, { width: 720, height: 450, scale: 2, offsetLeft: 360, offsetTop: 225 }),
     ['1440px', '900px'], 'a zoomed first paint seeds the unzoomed size');
-  assert.deepEqual(run(430, 733, { width: 430, height: 613, scale: 1 }), ['430px', '613px'],
+  assert.deepEqual(run(430, 733, { width: 430, height: 613, scale: 1 }, 430), ['430px', '613px'],
     'the iOS third-party browser mismatch at scale 1 still seeds the visible height');
+  assert.deepEqual(run(322, 571, { width: 322, height: 571, scale: 1.25 }), ['322px', '571px'],
+    'Safari page zoom at rest seeds the visible size');
+  assert.deepEqual(run(1024, 2226, { width: 1024, height: 2226, scale: 0.392578 }), ['1024px', '2226px'],
+    'an iPad window shrunk to its minimum effective width seeds the layout size');
+  assert.deepEqual(run(1440, 900, { width: 1439.28, height: 899.55, scale: 1.0005 }), ['1439px', '900px'],
+    'within a pixel of rest: the visual viewport as it is');
   assert.deepEqual(run(1280, 720, null), ['1280px', '720px'], 'no visualViewport: the window size');
+  assert.deepEqual(run(1280, 720, { width: 640, height: 360, scale: 2 }, 0), ['640px', '360px'],
+    'no layout reading: the visual viewport as it is (the measurement before 2026-10-16)');
+  assert.doesNotMatch(seed, /viewport(\?)?\.scale/, 'the seed never multiplies by visualViewport.scale');
 }
 
 assert.match(RESPONSIVE_SURFACES_CSS, /body\[data-cot-width='tablet'\] \.cot-set-panel/,

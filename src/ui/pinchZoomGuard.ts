@@ -15,20 +15,27 @@
 // - Listeners run in the capture phase, so no element's stopPropagation (the Studio dock stops 'wheel') can let a
 //   pinch past.
 // - A page that is already zoomed in (a pinch from before the guard, a page scale the browser restored) may always
-//   zoom back OUT; only zooming in is cancelled.
-// A pinch that does get through is harmless: responsiveLayout.ts measures the viewport as it is at pinch scale 1,
-// so a zoomed page is a magnifier and nothing relayouts. The public pages (home, docs, gallery, 404) keep browser
+//   zoom back OUT; only zooming in is cancelled. "Zoomed in" is responsiveLayout.ts pinchZoomFactor() above 1 (the
+//   layout viewport wider than the visual one by more than a pixel), never visualViewport.scale: iOS page zoom
+//   rests at scale 1.25 with no pinch. pinchRestoresPage() names that zoom-out half for the canvases that read a
+//   pinch as camera zoom (garage showroom, Studio, gallery orbit), so a zoomed page un-zooms over them as well.
+// A pinch that does get through is harmless: responsiveLayout.ts measures the viewport unmagnified, so a zoomed
+// page is a magnifier and nothing relayouts. The public pages (home, docs, gallery, 404) keep browser
 // pinch-zoom (an accessibility feature) for the same reason. One-finger scrolling and keyboard zoom are untouched;
 // two-finger touchmove on gameplay surfaces stays with the touch controls, which know the live layout.
+
+import { pinchFactor, pinchZoomFactor } from './responsiveLayout.ts';
 
 interface GuardListenerTarget {
   addEventListener: (type: string, listener: (event: Event) => void, options?: AddEventListenerOptions) => void;
   removeEventListener: (type: string, listener: (event: Event) => void, options?: EventListenerOptions) => void;
 }
 interface GuardWindow extends GuardListenerTarget {
-  readonly visualViewport?: { readonly scale?: number } | null;
+  readonly visualViewport?: { readonly width?: number } | null;
 }
-type GuardDocument = GuardListenerTarget;
+interface GuardDocument extends GuardListenerTarget {
+  readonly documentElement?: { readonly clientWidth?: number } | null;
+}
 
 interface PinchZoomGuardHandle {
   /** false when the guard was already installed on this window. */
@@ -48,8 +55,6 @@ export const PINCH_GESTURE_EVENTS = Object.freeze(['gesturestart', 'gesturechang
 const PINCH_ZOOM_GUARD_HANDLE = Symbol.for('claude-of-tanks.pinch-zoom-guard');
 /** index.html's inline boot guard leaves its remover here; the module guard calls it once it is listening. */
 export const PINCH_ZOOM_BOOT_GUARD = Symbol.for('claude-of-tanks.pinch-zoom-boot-guard');
-/** Above this visual-viewport scale the page counts as zoomed in (the inline boot guard uses the same number). */
-export const ZOOMED_IN_SCALE = 1.01;
 const LISTENER_OPTIONS: AddEventListenerOptions = Object.freeze({ passive: false, capture: true });
 
 type GuardedWindow = GuardWindow & {
@@ -63,17 +68,35 @@ export function isBrowserZoomWheel(event: { ctrlKey?: boolean }): boolean {
 }
 
 /**
- * Whether the guard cancels this event at the given visual-viewport scale. A ctrl+wheel and every Safari gesture
- * event zooms in from scale 1, so each is cancelled; once the page is zoomed in, the zoom-out half of a pinch
- * (a positive ctrl+wheel deltaY, a gesturechange scale below 1) passes, and so do the gesture's start and end.
+ * Whether the guard cancels this event at the given pinch factor (responsiveLayout.ts pinchFactor(): 1 at rest,
+ * above 1 while pinch-zoomed in). A ctrl+wheel and every Safari gesture event zooms in from rest, so each is
+ * cancelled; once the page is zoomed in, the zoom-out half of a pinch (a positive ctrl+wheel deltaY, a gesturechange
+ * scale below 1) passes, and so do the gesture's start and end.
  */
-export function cancelsPinch(event: PinchEventLike, visualScale: number): boolean {
-  const zoomedIn = Number.isFinite(visualScale) && visualScale > ZOOMED_IN_SCALE;
+export function cancelsPinch(event: PinchEventLike, factor: number): boolean {
+  const zoomedIn = Number.isFinite(factor) && factor > 1;
   if (event.type === 'wheel') {
     return isBrowserZoomWheel(event) && !(zoomedIn && (event.deltaY ?? 0) > 0);
   }
   if (!zoomedIn) return true;
   return event.type === 'gesturechange' && !((event.scale ?? 1) < 1);
+}
+
+const isPinchEvent = (event: PinchEventLike): boolean =>
+  event.type === 'wheel' ? isBrowserZoomWheel(event) : event.type.startsWith('gesture');
+
+/**
+ * True for a pinch event that returns a pinch-zoomed-in page toward rest: the guard lets it through, and a canvas
+ * that reads a pinch as camera zoom returns without preventDefault for it, so a zoomed page always un-zooms first.
+ * A plain wheel is never one, and is answered before anything is measured.
+ */
+export function pinchRestoresPage(
+  event: PinchEventLike,
+  win: Parameters<typeof pinchZoomFactor>[0] = globalThis.window,
+): boolean {
+  if (!isPinchEvent(event)) return false;
+  const factor = pinchZoomFactor(win);
+  return factor > 1 && !cancelsPinch(event, factor);
 }
 
 export function installPinchZoomGuard(
@@ -85,7 +108,11 @@ export function installPinchZoomGuard(
   const existing = guarded[PINCH_ZOOM_GUARD_HANDLE];
   if (existing) return { installed: false, destroy: () => existing.destroy() };
   const guard = (event: Event): void => {
-    if (cancelsPinch(event as Event & PinchEventLike, win.visualViewport?.scale ?? 1)) event.preventDefault();
+    const pinch = event as Event & PinchEventLike;
+    if (!isPinchEvent(pinch)) return;
+    if (cancelsPinch(pinch, pinchFactor(win.visualViewport?.width, doc.documentElement?.clientWidth))) {
+      event.preventDefault();
+    }
   };
   for (const type of PINCH_GESTURE_EVENTS) doc.addEventListener(type, guard, LISTENER_OPTIONS);
   win.addEventListener('wheel', guard, LISTENER_OPTIONS);

@@ -83,8 +83,9 @@ try {
   const special=node({class:'cot-special deny'});
   const visibleNodes=[special];
   const viewport={height:768,width:1366,addEventListener:(type,fn)=>listeners.set(`viewport:${type}`,fn)};
-  globalThis.document={body,querySelector:()=>null,querySelectorAll:()=>visibleNodes};
-  globalThis.window={innerHeight:768,innerWidth:1366,visualViewport:viewport,
+  // documentElement.clientWidth is the layout viewport a pinch leaves alone
+  globalThis.document={body,documentElement:{clientWidth:1366},querySelector:()=>null,querySelectorAll:()=>visibleNodes};
+  globalThis.window={innerHeight:768,innerWidth:1366,visualViewport:viewport,document:globalThis.document,
     addEventListener:(type,fn)=>listeners.set(type,fn)};
   globalThis.getComputedStyle=()=>({visibility:'visible'});
   globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
@@ -133,6 +134,9 @@ try {
   const beforePinch=writes;
   Object.assign(viewport,{scale:2,width:683,height:384});listeners.get('cot:layoutchange')();flush();
   assert.equal(writes,beforePinch,'a 2x pinch leaves every HUD lane where it was');
+  // iOS page zoom rests at a scale above 1 with no pinch: the lanes use the visible size as it is
+  Object.assign(viewport,{scale:1.25,width:1366,height:768});listeners.get('cot:layoutchange')();flush();
+  assert.equal(writes,beforePinch,'a resting page scale is not a pinch either');
   Object.assign(viewport,{scale:1,width:1366,height:768});
   assert.equal(listeners.has('viewport:resize'),false,'no direct visual viewport listener: cot:layoutchange carries real changes');
   const before=properties.get('--hud-right-height');

@@ -143,14 +143,11 @@ export function classifyViewport({
 }
 
 /**
- * A pinch (a trackpad spread, a two-finger zoom on a phone) zooms the VISUAL viewport: its scale rises above 1,
- * its width and height shrink to the layout size divided by that scale, its offsets follow the pan, and window
- * 'resize' never fires. It is a magnifier, never a different screen (2026-10-15, owner: "using both my fingers on
- * track pad to like expand the screen in landing causes a bunch of weirdness and layout shifts"). A scale this far
- * from 1 counts as zoomed.
+ * A pinch (a trackpad spread, a two-finger zoom on a phone) zooms the VISUAL viewport: its width and height shrink
+ * to the layout size divided by the zoom, its offsets follow the pan, and window 'resize' never fires. It is a
+ * magnifier, never a different screen (2026-10-15, owner: "using both my fingers on track pad to like expand the
+ * screen in landing causes a bunch of weirdness and layout shifts").
  */
-const PINCH_SCALE_EPSILON = 0.01;
-
 interface VisualViewportLike {
   readonly width?: number;
   readonly height?: number;
@@ -163,63 +160,86 @@ interface LayoutViewportWindow {
   readonly innerWidth?: number;
   readonly innerHeight?: number;
   readonly visualViewport?: VisualViewportLike | null;
+  readonly document?: { readonly documentElement?: { readonly clientWidth?: number } | null } | null;
 }
 
 interface LayoutViewportSize {
-  /** CSS px the page lays out across: the visible width as it is at pinch scale 1. */
+  /** CSS px the page lays out across: the visible width as it is unmagnified. */
   readonly width: number;
   readonly height: number;
-  /** Visual-viewport offsets at pinch scale 1 (on-screen keyboard, iOS toolbars); 0 while pinch-zoomed. */
+  /** Visual-viewport offsets at rest (on-screen keyboard, iOS toolbars); 0 while pinch-zoomed. */
   readonly offsetLeft: number;
   readonly offsetTop: number;
-  /** The live pinch scale, informational only: no layout reads it. */
+  /** visualViewport.scale, informational only: no layout reads it (see pinchZoomFactor). */
   readonly visualScale: number;
+  /** How far a pinch magnifies the page (pinchZoomFactor); 1 at rest. */
+  readonly pinchFactor: number;
 }
 
 const finitePositive = (value: number | undefined): number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 
-/** The visual viewport's pinch scale (1 when the browser has none or reports nonsense). */
-function pinchScale(viewport: VisualViewportLike | null | undefined): number {
-  return finitePositive(viewport?.scale) || 1;
+/**
+ * How far a pinch magnifies the page: the layout viewport's width over the visual viewport's, exactly 1 at rest.
+ *
+ * Not visualViewport.scale: that is the page scale, and iOS gives it a resting value other than 1 with no pinch at
+ * all. Safari's per-site page zoom (the aA menu, Settings > Safari > Page Zoom, the SFSafariViewController in-app
+ * browser) rests at the zoom factor (a 322 px visual viewport at scale 1.25 on a 402 pt iPhone), and an iPad window
+ * narrower than Safari's minimum effective device width lays out 1024 px wide and rests shrunk to fit (scale 0.39).
+ * Visual size x scale oversized or shrank the whole app there (2026-10-16 iOS simulator review). The root's
+ * clientWidth is the layout viewport, the span the visual viewport covers at rest (both exclude a classic
+ * scrollbar), and no pinch changes it. It is a whole-pixel rounding, so within a pixel the page is at rest; with no
+ * reading (no document, a 0 before layout) the factor is 1, the measurement before 2026-10-16.
+ */
+export function pinchFactor(visualWidth: number | undefined, layoutWidth: number | undefined): number {
+  const visual = finitePositive(visualWidth);
+  const layout = finitePositive(layoutWidth);
+  if (!visual || !layout || Math.abs(layout - visual) <= 1) return 1;
+  return layout / visual;
 }
 
-/** True while a pinch has zoomed the page in or out (the visual viewport is a magnified part of the layout). */
-export function isPinchZoomed(viewport: VisualViewportLike | null | undefined): boolean {
-  return Math.abs(pinchScale(viewport) - 1) > PINCH_SCALE_EPSILON;
+/** pinchFactor() of a window: its visual viewport against its root's clientWidth. */
+export function pinchZoomFactor(win: LayoutViewportWindow | undefined = globalThis.window): number {
+  return pinchFactor(win?.visualViewport?.width, win?.document?.documentElement?.clientWidth);
 }
 
 /**
  * The one viewport measurement every layout reader shares.
  *
- * At pinch scale 1 it is the visual viewport, exactly as before: iOS third-party browsers can report a layout
- * viewport taller or shorter than the visible page, and the on-screen keyboard shrinks the visible height.
- * Under a pinch it is that same visible area unzoomed (visual size × scale), which keeps the keyboard-shrunk
- * height and equals the unchanged layout viewport on desktop, so a pinch never moves a band, a size variable or
- * the renderer. innerWidth is not used while zoomed: WebKit on iOS reports a zoom-dependent innerWidth.
+ * At rest it is the visual viewport, exactly as before: iOS third-party browsers can report a layout viewport taller
+ * or shorter than the visible page, and the on-screen keyboard shrinks the visible height. Under a pinch it is that
+ * same visible area unmagnified (visual size x pinchZoomFactor): the layout width, and the visible height at that
+ * width, which keeps the keyboard-shrunk height. So a pinch never moves a band, a size variable or the renderer.
+ * innerWidth is not used while zoomed: WebKit on iOS reports a zoom-dependent innerWidth.
  */
 export function layoutViewportSize(
   win: LayoutViewportWindow | undefined = globalThis.window,
 ): LayoutViewportSize {
   const viewport = win?.visualViewport;
-  const scale = pinchScale(viewport);
-  const zoomed = isPinchZoomed(viewport);
+  const factor = pinchZoomFactor(win);
+  const zoomed = factor !== 1;
   const visualWidth = finitePositive(viewport?.width);
   const visualHeight = finitePositive(viewport?.height);
   return {
-    width: Math.max(1, Math.round(visualWidth ? visualWidth * scale : finitePositive(win?.innerWidth) || 1)),
-    height: Math.max(1, Math.round(visualHeight ? visualHeight * scale : finitePositive(win?.innerHeight) || 1)),
+    width: Math.max(1, Math.round(visualWidth ? visualWidth * factor : finitePositive(win?.innerWidth) || 1)),
+    height: Math.max(1, Math.round(visualHeight ? visualHeight * factor : finitePositive(win?.innerHeight) || 1)),
     offsetLeft: zoomed ? 0 : Math.round(viewport?.offsetLeft || 0),
     offsetTop: zoomed ? 0 : Math.round(viewport?.offsetTop || 0),
-    visualScale: scale,
+    visualScale: finitePositive(viewport?.scale) || 1,
+    pinchFactor: factor,
   };
+}
+
+/** True while a pinch magnifies the page in or out (the visual viewport is a part of the layout, or beyond it). */
+export function isPinchZoomed(win: LayoutViewportWindow | undefined = globalThis.window): boolean {
+  return pinchZoomFactor(win) !== 1;
 }
 
 function measureViewport(
   win: Window,
   pointerQuery: MediaQueryList | undefined,
   hoverQuery: MediaQueryList | undefined,
-): Required<ViewportMeasurements> {
+): Required<ViewportMeasurements> & { readonly pinchFactor: number } {
   return {
     ...layoutViewportSize(win),
     coarsePointer: !!pointerQuery?.matches,
@@ -264,8 +284,11 @@ export function installResponsiveLayout(
   const apply = () => {
     frame = 0;
     const measured = measureViewport(win, pointerQuery, hoverQuery);
-    // visual size × scale is exact to a float's rounding; a pinch must not wobble the layout by a pixel
-    if (current && measured.visualScale !== 1 && Math.abs(measured.width - current.width) <= 1
+    // A pixel of change that comes with a pinch (the page is magnified, or its scale just moved) is the rounding of
+    // visual size x factor, or the last rounding pixel before the factor leaves 1: never a new size. At rest and a
+    // steady scale (iOS page zoom included) a pixel is real, an iOS toolbar settling.
+    const pinching = measured.pinchFactor !== 1 || (!!current && measured.visualScale !== current.visualScale);
+    if (current && pinching && Math.abs(measured.width - current.width) <= 1
       && Math.abs(measured.height - current.height) <= 1) {
       measured.width = current.width;
       measured.height = current.height;
@@ -295,10 +318,10 @@ export function installResponsiveLayout(
     if (frame) return;
     frame = win.requestAnimationFrame(apply);
   };
-  // A pan inside a pinch-zoomed page moves only the offsets; at scale 1 a scroll can carry an iOS keyboard or
+  // A pan inside a pinch-zoomed page moves only the offsets; at rest a scroll can carry an iOS keyboard or
   // toolbar height change, so it still measures.
   const onVisualScroll = () => {
-    if (!isPinchZoomed(win.visualViewport)) refresh();
+    if (!isPinchZoomed(win)) refresh();
   };
 
   win.addEventListener('resize', refresh, { passive: true });

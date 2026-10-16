@@ -409,7 +409,10 @@ zoomed corner (2026-09-20). Keyboard zoom stays available. Since 2026-10-15
 index.html's inline head script carries the same rule from first paint (the
 module guard takes over from it), the listeners run in the capture phase (the
 Studio dock's `stopPropagation` let a pinch past), and a page that is already
-zoomed in may always pinch back out. The Studio canvas zoom follows the same
+zoomed in may always pinch back out ("zoomed in" is `pinchZoomFactor()` above 1,
+never `visualViewport.scale`, which iOS page zoom leaves at 1.25 with no pinch;
+the showroom, Studio and gallery canvases yield that zoom-out half too,
+`pinchRestoresPage()`). The Studio canvas zoom follows the same
 `wheelNotches.ts` travel model; DOM rails and the key-binding capture ignore
 ctrl+wheel. Pinch-zoom itself is no longer a layout event anywhere: see
 `responsiveLayout.ts` in PERFORMANCE.md.

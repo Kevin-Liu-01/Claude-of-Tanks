@@ -749,6 +749,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/responsiveLayout.selftest.mjs',
     'src/ui/pinchZoomGuard.selftest.mjs',
     'tools/pinch-zoom-probe.selftest.mjs',
+    'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',

@@ -104,28 +104,40 @@
     // shorter than the actually visible page. Seed the real visual dimensions
     // before first paint; responsiveLayout.ts keeps these values live once the
     // application module has loaded. A pinch only magnifies: the visible area
-    // is measured as it is at pinch scale 1 (visual size x scale), the rule of
-    // responsiveLayout.ts layoutViewportSize(), so a page loaded or restored
-    // zoomed still lays out at its real size.
+    // is measured unmagnified, by the pinch factor (the root's clientWidth over
+    // the visual viewport's width, 1 within a pixel), the rule of
+    // responsiveLayout.ts pinchFactor()/layoutViewportSize(). Not by
+    // visualViewport.scale: iOS page zoom and iPad narrow windows rest at a
+    // scale other than 1 with no pinch. A page loaded or restored zoomed still
+    // lays out at its real size.
     (() => {
       const viewport = window.visualViewport;
       const root = document.documentElement;
-      const scale = viewport && Number.isFinite(viewport.scale) && viewport.scale > 0 ? viewport.scale : 1;
-      const width = Math.max(1, Math.round(viewport?.width ? viewport.width * scale : window.innerWidth || 1));
-      const height = Math.max(1, Math.round(viewport?.height ? viewport.height * scale : window.innerHeight || 1));
+      const visualWidth = viewport?.width || 0;
+      const layoutWidth = root.clientWidth || 0;
+      const factor = visualWidth > 0 && layoutWidth > 0 && Math.abs(layoutWidth - visualWidth) > 1
+        ? layoutWidth / visualWidth : 1;
+      const width = Math.max(1, Math.round(visualWidth ? visualWidth * factor : window.innerWidth || 1));
+      const height = Math.max(1, Math.round(viewport?.height ? viewport.height * factor : window.innerHeight || 1));
       root.style.setProperty('--cot-viewport-width', `${width}px`);
       root.style.setProperty('--cot-viewport-height', `${height}px`);
     })();
     // The game's pinch guard from first paint (ui/pinchZoomGuard.ts, the same
     // rule: a ctrl+wheel or Safari gesture* pinch never zooms the page in; a
-    // page already zoomed in may zoom back out). main.ts only evaluates after
-    // its whole import graph has loaded; installPinchZoomGuard() then takes
-    // over and calls the remover left under the boot-guard symbol.
+    // page already pinch-zoomed in, by the same pinch factor, may zoom back
+    // out). main.ts only evaluates after its whole import graph has loaded;
+    // installPinchZoomGuard() then takes over and calls the remover left under
+    // the boot-guard symbol. A plain wheel returns before anything is measured.
     (() => {
-      const zoomedIn = () => (window.visualViewport?.scale || 1) > 1.01;
+      const zoomedIn = () => {
+        const visualWidth = window.visualViewport?.width || 0;
+        const layoutWidth = document.documentElement.clientWidth || 0;
+        return visualWidth > 0 && layoutWidth - visualWidth > 1;
+      };
       const guard = (event) => {
+        if (event.type === 'wheel' && event.ctrlKey !== true) return;
         const cancel = event.type === 'wheel'
-          ? event.ctrlKey === true && !(zoomedIn() && event.deltaY > 0)
+          ? !(event.deltaY > 0 && zoomedIn())
           : !zoomedIn() || (event.type === 'gesturechange' && !(event.scale < 1));
         if (cancel) event.preventDefault();
       };

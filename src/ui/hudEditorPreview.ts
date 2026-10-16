@@ -17,6 +17,10 @@ import { ensureFonts } from './fonts.ts';
 const params = new URLSearchParams(location.search);
 const touch = params.get('profile') !== 'desktop';
 const focus=params.get('focus');
+// The preview frame loads only the base spec table (vehicles/specs.ts), not the fleet factory that registers the
+// rest of the roster: each id here must be in that table. 'leo2a5' was not (2026-10-16: createTankState threw
+// "malformed TankSpec", and the HUD editor reported cot:hud-preview-error); hudEditorPreview.selftest.mjs checks it.
+const PREVIEW_SPEC_IDS = ['m1a2','strv103','t90m'] as const;
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
 async function imageAt(src: string): Promise<HTMLImageElement> {
@@ -54,7 +58,7 @@ async function prepare(): Promise<void> {
     isBattleActive:()=>true,isSniper:()=>false,onOpenSettings:()=>{},onToggleSound:()=>false});
   const names = ['Vanguard','LongStop','SteppeWolf','OldNikolai','TotTokkie','PakWagen','SteelFox'];
   const tanks = Array.from({length:14},(_,i)=>{
-    const spec = TANK_SPECS[['m1a2','leo2a5','t90m'][i%3]!]!;
+    const spec = TANK_SPECS[PREVIEW_SPEC_IDS[i%PREVIEW_SPEC_IDS.length]!]!;
     return {id:`preview-${i}`,isPlayer:i===0,team:i<7?'player':'enemy',displayName:names[i%7]!,spec,
       state:createTankState(spec,new Vector3((i%7-3)*24,0,i<7?90:-150),0),combat:createCombatState(spec)};
   });
