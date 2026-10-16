@@ -4,7 +4,7 @@
 // representative was a tiled block): the oculus a dark oval laid on the attic gable, each dormer's casement a pane laid
 // on its plaster front. The oculus now has its moulded surround standing 14 cm off the gable, the reveal running back
 // inside it to the glass; each dormer's front is a wall with the casement cut through it, 12 cm deep, the casement set back.
-import { faceBox, facePoint, type Face, type PartSink, type Rgb, type Vec3 } from './geometry.ts';
+import { LocalFrame, facePoint, type Face, type PartSink, type Rgb, type Vec3 } from './geometry.ts';
 import { emitRoof, holedPolygon, roofGeometry, type RoofSpec } from './house.ts';
 import { windowUnit, type WindowStyle } from './openings.ts';
 
@@ -55,16 +55,33 @@ export function mansardDormer(sink: PartSink, x0: number, x1: number, e: number,
   } finally { sink.recess = prior; }
 }
 
-/** The mahala house's doksat (its bay of windows under the eaves, `dd` out of the upper storey): its box, its panes. */
+/** The doksat's casements' reveal (m). */
+const BAY_REVEAL = 0.1;
+
+/**
+ * The mahala house's doksat (its bay of windows under the eaves, `dd` out of the upper storey): its box less its front,
+ * the front a wall with a casement cut through it a pane, each casement set back in its reveal (they were panes laid on
+ * the bay's plaster: the rowhouse forms the sweep did not grade).
+ */
 export function doksatBay(sink: PartSink, up: Face, du: number, dw: number, dd: number, yb: number, yt: number, look: () => number, lit: number,
   DARK_FRAME: Rgb): Face {
-      faceBox(sink, 'plaster', up, du, (yb + yt) / 2, dd / 2, dw, yt - yb, dd, { decor: true });
-      const bay: Face = { origin: [up.origin[0] + up.out[0] * dd, 0, up.origin[2] + up.out[2] * dd], u: up.u, out: up.out, width: dw };
-      const panes = Math.max(3, Math.round(dw / 0.62));
-      for (let k = 0; k < panes; k++) {
-        const pu = du - dw / 2 + (k + 0.5) * dw / panes;
-        windowUnit(sink, bay, pu, yb + 0.55, dw / panes - 0.16, Math.min(1.05, yt - yb - 0.8),
-          { frame: DARK_FRAME, frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null }, look, lit);
-      }
-      return bay;
+  // the box's sides, top and foot (faceBox's frame: x along the face, y up, z out; its back is the wall, its front the cut wall)
+  const centre = facePoint(up, du, (yb + yt) / 2, dd / 2);
+  sink.box('plaster', centre, [dw / 2, (yt - yb) / 2, dd / 2], { decor: true }, new LocalFrame(up.u, [0, 1, 0], up.out, [0, 0, 0]), { pz: true, nz: true });
+  const bay: Face = { origin: [up.origin[0] + up.out[0] * dd, 0, up.origin[2] + up.out[2] * dd], u: up.u, out: up.out, width: dw };
+  const panes = Math.max(3, Math.round(dw / 0.62)), pw = dw / panes - 0.16, ph = Math.min(1.05, yt - yb - 0.8), py = yb + 0.55;
+  const holes = Array.from({ length: panes }, (_, k) => {
+    const pu = du - dw / 2 + (k + 0.5) * dw / panes;
+    return { u0: pu - pw / 2, u1: pu + pw / 2, y0: py, y1: py + ph };
+  });
+  holedPolygon(sink, 'plaster', bay, [[du - dw / 2, yb], [du + dw / 2, yb], [du + dw / 2, yt], [du - dw / 2, yt]], holes, BAY_REVEAL + 0.02, BAY_REVEAL, { decor: true });
+  const prior = sink.recess;
+  sink.recess = BAY_REVEAL;
+  try {
+    for (let k = 0; k < panes; k++) {
+      const pu = du - dw / 2 + (k + 0.5) * dw / panes;
+      windowUnit(sink, bay, pu, py, pw, ph, { frame: DARK_FRAME, frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null }, look, lit);
+    }
+  } finally { sink.recess = prior; }
+  return bay;
 }

@@ -557,8 +557,8 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
           // wall carried over the gate through its thickness (dressing: the runs keep their collision)
           const gIn: Face = { origin: [s * (W / 2 - t), 0, gz], u: [0, 0, s], out: [-s, 0, 0], width: gw };
           sink.placed(0, 0, 0, -zc, () => {
-            gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
-            gateUnit(sink, gIn, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
+            gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }, { ledge: 0.12 }); // (looks r2 forms: 12 cm ledges)
+            gateUnit(sink, gIn, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }, { ledge: 0.12 }); // (looks r2 forms: 12 cm ledges)
             sink.span('plaster', x0, 2.13, gz - gw / 2, x1, Math.max(2.16, wallH), gz + gw / 2, { decor: true });
           });
         } else runs.push([x0, ga + t, x1, gb]);
