@@ -48,9 +48,15 @@ const DRAFT: HinterlandConfig = {
     { azDeg: [160, 210], distKm: [6, 18], reliefM: 420, form: 'iceSheet', layers: 1, name: 'the plateau running on south' },
   ],
   landmarks: [
-    // the Lower Camp's masts at the plateau's edge over the strait, the DEW line's link south
-    { kind: 'mast', at: { azDeg: 96, distM: 1800 }, heightM: 70, name: 'the Lower Camp mast' },
-    { kind: 'radome', at: { azDeg: 118, distM: 2100 }, name: 'the North Warning radome' },
+    // the station's marks on the plateau (the brief: "DEW masts, the radome, the tropo-scatter billboard antennas, fuel
+    // farms"): east by the lip over the strait the Lower Camp's mast, the North Warning radome and a fuel farm; north the
+    // billboards of the long link south; south a relay mast (the radome and the farm moved up from the fall's face, where
+    // the lip at ~1.1 km now hides them)
+    { kind: 'mast', at: { azDeg: 96, distM: 1450 }, heightM: 70, name: 'the Lower Camp mast' },
+    { kind: 'radome', at: { azDeg: 124, distM: 1250 }, name: 'the North Warning radome' },
+    { kind: 'fuelTanks', at: { azDeg: 106, distM: 1150 }, name: 'the fuel farm' },
+    { kind: 'tropoScatter', at: { azDeg: 18, distM: 1700 }, name: 'the tropo-scatter billboards' },
+    { kind: 'mast', at: { azDeg: 194, distM: 2200 }, heightM: 85, name: 'the south relay mast' },
   ],
   exceptions: {
     C6: 'Cape Dyer: east of the station the eye falls 700 m to the strait\'s pack ice and runs to a horizon with no land on it; the far layer stands west and north-west only',

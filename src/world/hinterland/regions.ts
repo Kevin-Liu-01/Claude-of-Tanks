@@ -32,7 +32,9 @@ export type HinterlandSettlementPattern =
 export type HinterlandVerticalKind =
   | 'churchTower' | 'spire' | 'onionDome' | 'campanile' | 'minaret' | 'pagoda' | 'elevator' | 'waterTower' | 'windmill'
   | 'postMill' | 'chimney' | 'headframe' | 'coolingTower' | 'slagTip' | 'radome' | 'mast' | 'pylonLine' | 'lighthouse'
-  | 'castle' | 'kurgan' | 'tvTower' | 'kilnChimney' | 'lookoutTower' | 'burnerCone' | 'damWall';
+  | 'castle' | 'kurgan' | 'tvTower' | 'kilnChimney' | 'lookoutTower' | 'burnerCone' | 'damWall'
+  // (HOR-05, Whiteout: the DEW Line station's tropospheric-scatter billboards and its fuel farm)
+  | 'tropoScatter' | 'fuelTanks';
 
 /** The far country's form (bands D–E): the panorama's regional classes, carried over as geometry (B-arch §4.6). */
 export type HinterlandFarForm =

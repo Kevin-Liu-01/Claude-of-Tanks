@@ -322,6 +322,43 @@ function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number,
       box(S, f, -r * 0.35, r * 0.35, -1.5, H, -r * 0.35, r * 0.35, STONE);
       return;
     }
+    case 'radome': {
+      // a radome (HOR-05): the white ball on its equipment building, read as a sphere, not the stone block the default
+      // drew — the DEW Line's and the North Warning System's mark on every station's skyline
+      const r = half, cy = H - r;
+      box(S, f, -r * 1.15, r * 1.15, -1.5, H * 0.36, -r * 1.15, r * 1.15, lin([206, 204, 198]), lin([150, 150, 148]));
+      const lats = [-0.42, -0.1, 0.25, 0.55, 0.8, 1.0, 1.25, Math.PI / 2];
+      for (let k = 0; k + 1 < lats.length; k++) {
+        prism(S, f, 14, r * Math.cos(lats[k]), r * Math.cos(lats[k + 1]), cy + r * Math.sin(lats[k]), cy + r * Math.sin(lats[k + 1]), WHITE);
+      }
+      return;
+    }
+    case 'tropoScatter': {
+      // the tropospheric-scatter billboards (the DEW Line's long links south): two great reflectors side by side,
+      // each bowed back toward its middle, on their steel frames, facing out along the frame's w
+      for (const side of [-1, 1]) {
+        const cu = side * half * 0.55, pw = half * 0.45;
+        for (let k = 0; k < 5; k++) {
+          const u0 = cu - pw + (2 * pw * k) / 5, u1 = cu - pw + (2 * pw * (k + 1)) / 5, um = (u0 + u1) / 2;
+          const bow = -0.22 * pw * (1 - ((um - cu) / pw) ** 2);
+          box(S, f, u0, u1, H * 0.14, H, bow - 0.35, bow + 0.35, lin([224, 226, 224]), null);
+        }
+        for (const lu of [cu - pw * 0.8, cu + pw * 0.8]) beam(S, f, [lu, -1, H * 0.22], [lu, H * 0.96, 0.6], 0.5, STEEL);
+        beam(S, f, [cu, -1, H * 0.3], [cu, H * 0.72, 0.6], 0.5, STEEL);
+        beam(S, f, [cu - pw * 0.8, H * 0.14, 0.4], [cu + pw * 0.8, H * 0.14, 0.4], 0.45, STEEL);
+      }
+      return;
+    }
+    case 'fuelTanks': {
+      // a fuel farm: squat white tanks in a bermed yard
+      for (const [u, w, s] of [[-0.62, -0.3, 1], [0.08, 0.36, 0.9], [0.66, -0.22, 1.05], [-0.1, -0.62, 0.8]] as const) {
+        const tr = half * 0.27 * s;
+        prism(S, (a, v, b) => f(a + u * half, v, b + w * half), 14, tr, tr, -1.5, H * s, lin([214, 216, 210]));
+        prism(S, (a, v, b) => f(a + u * half, v, b + w * half), 14, tr, tr * 0.86, H * s, H * s + tr * 0.12, lin([190, 192, 188]));
+      }
+      box(S, f, -half, half, -1.5, 1.2, -half, half, lin([120, 118, 112]), lin([150, 146, 138]));
+      return;
+    }
     default:
       box(S, f, -half, half, -1.5, H, -half, half, STONE);
   }
