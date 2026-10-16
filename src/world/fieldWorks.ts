@@ -129,7 +129,7 @@ export interface FieldWorksBuilt {
   receipt: FieldWorksReceipt;
   /** (b17) The source of the cells' stone forms (desktop; null on a phone or without walls). */
   fine: FieldWallFineSource | null;
-  /** (physics stream, PH.15) The wall lines this tier laid and the noise they were laid with (fieldWallCollision.ts). */
+  /** (physics stream, PH.15) The wall lines (the desktop's on every tier) and the noise they were laid with (fieldWallCollision.ts). */
   walls?: { lines: number[][]; noise: SimplexNoise } | null;
 }
 
@@ -879,7 +879,10 @@ export function* buildFieldWorks(
     }
     return false;
   };
-  const step = options.mobile ? 2 : 1.5;
+  // (physics stream PH.15) a phone scans the walls' lines at the desktop's step: the walls stand crushable records
+  // (fieldWallCollision.ts), and a phone's build must stand the desktop's records index for index (the committed shards,
+  // which every host's authority plays on, are the desktop's: tools/capture-world-collision-manifests.mjs --tier=mobile)
+  const step = options.mobile && !options.walls ? 2 : 1.5;
   // the feet on a 2 m hash: one foot a metre or so along a line
   const cell = 2, hash = new Map<number, number[]>();
   const key = (x: number, z: number) => (Math.floor(x / cell) + 4096) * 8192 + (Math.floor(z / cell) + 4096);

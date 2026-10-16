@@ -84,10 +84,10 @@ export function* placeFieldBoundaryWorks(context: FieldBoundaryWorksContext): Ge
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
     // (physics stream PH.15) the walls' crushable spans: shells and sight stop on the stone, a hull crushes it and is never
-    // stopped (fieldWallCollision.ts), the walls this tier draws; appended after every other destructible
+    // stopped (fieldWallCollision.ts), the desktop's records on every tier; appended after every other destructible
     const wallGround = (x: number, z: number): number => (heightField.getHeightAtFast ? heightField.getHeightAtFast(x, z) : heightField.getHeightAt(x, z));
     const wallCrush = new FieldWallCrush(wallGround);
-    for (const span of built.walls ? fieldWallSpans(built.walls.lines, built.walls.noise, wallGround, mobileProps) : []) {
+    for (const span of built.walls ? fieldWallSpans(built.walls.lines, built.walls.noise, wallGround) : []) {
       const clutter = new CrushableClutter('field-wall', span.cx, span.y, span.cz, span.halfAlong, span.h, [span.obstacle], [span.collider]);
       obstacles.push(span.obstacle); colliders.push(span.collider);
       if (!clutter.activate(destructibles.length)) continue;
