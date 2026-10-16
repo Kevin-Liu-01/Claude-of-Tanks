@@ -1,7 +1,7 @@
 // src/world/landmarks/parks.ts — parks and squares (the landmarks lane, 2026-10-05): the fountain, the bandstand, the
 // park gate with its railings, and the square that gathers them — a green with its paths and railing, the props'
 // destructible benches and lamps along the paths, and a centre piece (an obelisk, a statue, a fountain, a bandstand).
-import { PartSink, rgb, shade, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { LIMEWASH_UV, archedSlab, bar, cross, moulding, railing, revolve, smoothRender } from './kit.ts';
 import { drapedPath, drapedRect, enclosure, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
@@ -24,8 +24,8 @@ export const fountain: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const R = Math.max(2, Number(ctx.params.radius)), tiers = Math.max(1, Math.min(3, Math.round(Number(ctx.params.tiers))));
   const base = -0.6 - ctx.groundFall;
-  if (String(ctx.params.style) === 'ottoman') return ottomanFountain(sink, R, base);
-  if (String(ctx.params.style) === 'markt') return marktFountain(sink, R, base);
+  if (String(ctx.params.style) === 'ottoman') return ottomanFountain(sink, R, base, ctx.variant);
+  if (String(ctx.params.style) === 'markt') return marktFountain(sink, R, base, ctx.variant);
   // the basin wall: a ring with its coping (outer face, top, inner face down to the water)
   revolve(sink, 'stone', 0, 0, [[R, base], [R, 0.55], [R + 0.08, 0.55], [R + 0.08, 0.7], [R - 0.42, 0.7], [R - 0.42, 0.42]], 28);
   // the water (dark glass, the sky in it) and the basin floor under it
@@ -52,36 +52,88 @@ export const fountain: LandmarkBuilder = (ctx) => {
 };
 
 /**
+ * A ring of `n` slabs round a regular polygon (apothems rIn to rOut, from y0 to y1), each its own stone with a joint
+ * either side: the polygon's corners at `phase` + k·2π/n, a corner at (sin a, cos a) (kit.ts ringY's octagon at its
+ * phase π/8 is this one at π/8).
+ */
+function polySlabs(sink: PartSink, bucket: RegionalBucket, n: number, rIn: number, rOut: number, y0: number, y1: number, phase: number,
+  opts: (k: number) => EmitOptions, joint = 0.008): void {
+  const k0 = 1 / Math.cos(Math.PI / n), ci = rIn * k0, co = rOut * k0, dj = joint / Math.max(0.3, co);
+  const P = (a: number, r: number): Vec3 => [Math.sin(a) * r, y0, Math.cos(a) * r];
+  for (let k = 0; k < n; k++) {
+    const a0 = phase + k * Math.PI * 2 / n + dj, a1 = phase + (k + 1) * Math.PI * 2 / n - dj;
+    sink.prism(bucket, [P(a0, ci), P(a0, co), P(a1, co), P(a1, ci)], [0, 1, 0], y1 - y0, opts(k));
+  }
+}
+
+/** A point on the k-th face of a regular n-gon (corners at `phase` + k·2π/n): `u` along the face (left to right seen
+ *  from outside), `y` up, `o` out from the apothem `r`. */
+function polyFace(n: number, phase: number, k: number, r: number): (u: number, y: number, o: number) => Vec3 {
+  const a = phase + (k + 0.5) * Math.PI * 2 / n, ox = Math.sin(a), oz = Math.cos(a);
+  return (u, y, o) => [ox * (r + o) + oz * u, y, oz * (r + o) - ox * u];
+}
+
+/**
+ * A panel's moulded frame proud of a face (the field inside it the face itself, so it reads sunk): its sill, jambs and
+ * head, square or pointed (an Ottoman niche's), each strip `fw` wide and `out` proud.
+ */
+function panelFrame(sink: PartSink, bucket: RegionalBucket, at: (u: number, y: number, o: number) => Vec3, pw: number, y0: number, y1: number,
+  fw: number, out: number, pointed: boolean, opts: EmitOptions): void {
+  const strip = (u0: number, ya0: number, u1: number, ya1: number) => {
+    // a strip from (u0, ya0) to (u1, ya1) on the face, fw wide, its face and its upper edge back to the wall
+    const du = u1 - u0, dy = ya1 - ya0, l = Math.hypot(du, dy) || 1, nu = -dy / l * fw / 2, ny = du / l * fw / 2;
+    sink.quad(bucket, at(u0 - nu, ya0 - ny, out), at(u1 - nu, ya1 - ny, out), at(u1 + nu, ya1 + ny, out), at(u0 + nu, ya0 + ny, out), opts);
+    sink.quad(bucket, at(u1 + nu, ya1 + ny, 0), at(u0 + nu, ya0 + ny, 0), at(u0 + nu, ya0 + ny, out), at(u1 + nu, ya1 + ny, out), opts);
+  };
+  const h = pw / 2, spring = pointed ? y1 - pw * 0.55 : y1;
+  strip(-h - fw / 2, y0, h + fw / 2, y0);
+  strip(-h, y0, -h, spring);
+  strip(h, spring, h, y0);
+  if (!pointed) { strip(h + fw / 2, y1, -h - fw / 2, y1); return; }
+  // the pointed head: two arcs each in two chords from the springs to the apex
+  const apex = y1, mid = (t: number) => spring + (apex - spring) * Math.sin(t * Math.PI / 2);
+  strip(-h, spring, -h * 0.55, mid(0.62));
+  strip(-h * 0.55, mid(0.62), 0, apex);
+  strip(0, apex, h * 0.55, mid(0.62));
+  strip(h * 0.55, mid(0.62), h, spring);
+}
+
+/**
  * The Franconian market fountain (Marktbrunnen: Rothenburg's St George's, Dinkelsbühl's; gauntlet wave 156: Steinburg's
  * Brunnen "a generic Italianate tiered fountain; a Franconian Marktbrunnen is a column on an octagonal basin"): an
  * octagonal trough of dressed sandstone on a step, its coping waist-high, the water in it; from its middle a moulded
  * pedestal carrying a slender column, its capital, and the saint standing on it; four iron spouts from the pedestal
  * into the trough.
+ * (the looks lane, 2026-10-15; WORKLIST #11 r2) built as it is built: the step eight stones, the trough a sandstone slab
+ * a side under a coping slab a side, the iron clamps leaded across the coping's joints, each stone its own tone and
+ * the lichen in the shade of the step.
  */
-function marktFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
+function marktFountain(sink: PartSink, R: number, base: number, look: () => number): ReturnType<LandmarkBuilder> {
   const oct = Math.PI / 8, Ro = R / Math.cos(oct);
-  revolve(sink, 'stone', 0, 0, [[Ro + 0.6, base], [Ro + 0.6, 0.18], [Ro, 0.18]], 8, {}, oct);
-  revolve(sink, 'stone', 0, 0, [[Ro, 0.18], [Ro, 0.82], [Ro + 0.12, 0.82], [Ro + 0.12, 1.0], [Ro - 0.3, 1.0], [Ro - 0.3, 0.5]], 8, {}, oct);
+  polySlabs(sink, 'stone', 8, R - 0.06, R + 0.55, base, 0.18, oct, () => ({ tint: stoneTone(look, 0.12, 0.3) }));
+  polySlabs(sink, 'stone', 8, R - 0.28, R, 0.18, 0.82, oct, () => ({ tint: stoneTone(look, 0.14, 0.12) }));
+  polySlabs(sink, 'stone', 8, R - 0.34, R + 0.12, 0.82, 1.0, oct, () => ({ tint: stoneTone(look, 0.1, 0.18) }));
+  // the trough's floor under the water, and the water
+  revolve(sink, 'stone', 0, 0, [[Ro - 0.29, 0.42], [0.62, 0.42]], 8, { decor: true, shade: 0.55 }, oct);
   revolve(sink, 'glass', 0, 0, [[Ro - 0.3, 0.72], [0.62, 0.72]], 8, { decor: true }, oct);
+  // the iron clamps across the coping's joints, leaded into the stone
+  for (let k = 0; k < 8; k++) {
+    const a = oct + k * Math.PI / 4, r = (R - 0.11) / Math.cos(oct), tx = Math.cos(a), tz = -Math.sin(a);
+    const c: Vec3 = [Math.sin(a) * r, 1.006, Math.cos(a) * r];
+    sink.member('structureMetal', [c[0] - tx * 0.13, c[1], c[2] - tz * 0.13], [c[0] + tx * 0.13, c[1], c[2] + tz * 0.13], 0.05, 0.014, [0, 1, 0],
+      { colour: IRON, decor: true, exposed: true }, 0.004);
+  }
   const shaftTop = 4.7;
-  revolve(sink, 'stone', 0, 0, [[0.66, 0.5], [0.66, 1.25], [0.54, 1.38], [0.4, 1.48], [0.33, 1.62], [0.29, shaftTop - 0.3], [0.38, shaftTop - 0.2],
+  revolve(sink, 'stone', 0, 0, [[0.66, 0.42], [0.66, 1.25], [0.54, 1.38], [0.4, 1.48], [0.33, 1.62], [0.29, shaftTop - 0.3], [0.38, shaftTop - 0.2],
     [0.52, shaftTop], [0.52, shaftTop + 0.18], [0, shaftTop + 0.19]], 8, {}, oct);
   // the saint topples off the column when the fountain is breached (props lane A, E12)
   piece(sink, { name: 'figure', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => figure(s, shaftTop + 0.18, 1.85, SANDSTONE, shade(SANDSTONE, 0.78), 'robe'));
   // (the looks lane, 2026-10-13; LOOKS-BRIEF item 3: "the water is a flat blue disc ... wants a sandstone basin with
   // carved panels ... and spout jets") each of the trough's eight faces a sunk panel in a moulded frame, a ringed boss
   // on four of them; the pedestal's acanthus band; the water's surface rings where the jets land
-  const apothem = Ro * Math.cos(oct);
   for (let k = 0; k < 8; k++) {
-    const a = k * Math.PI / 4 + Math.PI / 8 + oct, c = Math.sin(a), s = Math.cos(a), tu: Vec3 = [s, 0, -c];
-    const side = 2 * Ro * Math.sin(oct), pw = side * 0.62, ph = 0.42, cy = 0.52;
-    const at = (u: number, y: number, o: number): Vec3 => [c * (apothem + o) + tu[0] * u, y, s * (apothem + o) + tu[2] * u];
-    // the frame: four mouldings proud of the face round the sunk field
-    for (const [u0, u1, y0, y1] of [[-pw / 2, pw / 2, cy - ph / 2 - 0.05, cy - ph / 2], [-pw / 2, pw / 2, cy + ph / 2, cy + ph / 2 + 0.05],
-      [-pw / 2 - 0.05, -pw / 2, cy - ph / 2 - 0.05, cy + ph / 2 + 0.05], [pw / 2, pw / 2 + 0.05, cy - ph / 2 - 0.05, cy + ph / 2 + 0.05]] as const) {
-      sink.quad('stone', at(u0, y0, 0.035), at(u1, y0, 0.035), at(u1, y1, 0.035), at(u0, y1, 0.035), { decor: true });
-      sink.quad('stone', at(u0, y1, 0.0), at(u1, y1, 0.0), at(u1, y1, 0.035), at(u0, y1, 0.035), { decor: true });
-    }
+    const at = polyFace(8, oct, k, R), side = 2 * R * Math.tan(oct), pw = side * 0.62, cy = 0.5;
+    panelFrame(sink, 'stone', at, pw, cy - 0.21, cy + 0.21, 0.05, 0.035, false, { decor: true });
     if (k % 2 === 0) {
       // a boss in the field: the town's arms in a ring
       const r0 = 0.13, n = 8;
@@ -99,8 +151,8 @@ function marktFountain(sink: PartSink, R: number, base: number): ReturnType<Land
     bar(sink, 'structureMetal', [c * 0.6, 1.05, s * 0.6], [c * 1.15, 0.98, s * 1.15], 0.05, { colour: IRON, decor: true });
     // the jet: an arc of water from the spout's mouth to the trough, pale and catching the light, and its ring of ripples
     let prev: Vec3 = [c * 1.17, 0.97, s * 1.17];
-    for (let i = 1; i <= 6; i++) {
-      const t = i / 6, d = 1.17 + t * 0.55, y = 0.97 + 0.12 * t - 0.36 * t * t;
+    for (let i = 1; i <= 5; i++) {
+      const t = i / 5, d = 1.17 + t * 0.55, y = 0.97 + 0.12 * t - 0.36 * t * t;
       const p: Vec3 = [c * d, y, s * d];
       bar(sink, 'structureMetal', prev, p, 0.032 - t * 0.008, { colour: WATER_JET, decor: true });
       prev = p;
@@ -119,25 +171,63 @@ function marktFountain(sink: PartSink, R: number, base: number): ReturnType<Land
  * The Ottoman village fountain (a Levantine market square's, Deir el Qamar's on its Midan): an octagonal basin of dressed
  * sandstone with its moulded coping, the water in it, and from its middle an octagonal pillar carrying the brass spouts
  * on each face, a carved band, a moulded cornice and a small ribbed dome with its finial.
+ * (the looks lane, 2026-10-15; WORKLIST #11 r2: "arches and niches cut", members and construction) the basin on a step
+ * of eight stones, its walls a slab a side under a coping slab a side, a pointed niche framed on each face; the pillar's
+ * faces each a pointed niche, the stalactite corbels (muqarnas) stepping out under its cornice, the dome's eight ribs to
+ * the finial; the water arcing from the spouts. The dome and its finial come off as the fountain's own pieces (E12).
  */
-function ottomanFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
+function ottomanFountain(sink: PartSink, R: number, base: number, look: () => number): ReturnType<LandmarkBuilder> {
   const oct = Math.PI / 8, Ro = R / Math.cos(oct);
-  revolve(sink, 'stone', 0, 0, [[Ro, base], [Ro, 0.62], [Ro + 0.1, 0.62], [Ro + 0.1, 0.78], [Ro - 0.36, 0.78], [Ro - 0.36, 0.45]], 8, {}, oct);
-  revolve(sink, 'glass', 0, 0, [[Ro - 0.36, 0.55], [0.6, 0.55]], 8, { decor: true }, oct);
-  // the pillar: its foot, the shaft, the band where the spouts come out, the cornice and the dome
-  const p = Math.max(0.45, R * 0.16) / Math.cos(oct);
-  revolve(sink, 'stone', 0, 0, [[p * 1.35, 0.45], [p * 1.35, 0.85], [p, 1.0], [p, 1.9], [p * 1.12, 1.95], [p * 1.12, 2.25], [p, 2.3], [p, 2.6],
+  polySlabs(sink, 'stone', 8, R - 0.05, R + 0.5, base, 0.16, oct, () => ({ tint: stoneTone(look, 0.12, 0.2) }));
+  polySlabs(sink, 'stone', 8, R - 0.3, R, 0.16, 0.64, oct, () => ({ tint: stoneTone(look, 0.12, 0.1) }));
+  polySlabs(sink, 'stone', 8, R - 0.36, R + 0.1, 0.64, 0.8, oct, () => ({ tint: stoneTone(look, 0.1, 0.14) }));
+  revolve(sink, 'stone', 0, 0, [[Ro - 0.31, 0.4], [0.6, 0.4]], 8, { decor: true, shade: 0.55 }, oct);
+  revolve(sink, 'glass', 0, 0, [[Ro - 0.32, 0.56], [0.6, 0.56]], 8, { decor: true }, oct);
+  // a pointed niche framed on each of the basin's faces
+  for (let k = 0; k < 8; k++) panelFrame(sink, 'stone', polyFace(8, oct, k, R), 2 * R * Math.tan(oct) * 0.5, 0.24, 0.56, 0.045, 0.03, true, { decor: true });
+  // the pillar: its foot, the shaft, the band where the spouts come out, the cornice
+  const p = Math.max(0.45, R * 0.16) / Math.cos(oct), ap = p * Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[p * 1.35, 0.4], [p * 1.35, 0.85], [p, 1.0], [p, 1.9], [p * 1.12, 1.95], [p * 1.12, 2.25], [p, 2.3], [p, 2.6],
     [p * 1.32, 2.78], [p * 1.32, 2.92], [p * 0.95, 2.95]], 8, {}, oct);
-  revolve(sink, 'stone', 0, 0, [[p * 0.95, 2.95], [p * 0.92, 3.25], [p * 0.7, 3.55], [p * 0.36, 3.75], [0, 3.8]], 8, {}, oct);
-  revolve(sink, 'structureMetal', 0, 0, [[0.04, 3.78], [0.11, 3.88], [0.12, 4.0], [0.05, 4.1], [0.03, 4.45], [0, 4.5]], 8,
-    { colour: rgb(0xa98a46), decor: true });
-  // a brass spout from the middle of each face of the band, over the water
+  // a pointed niche on each face of the shaft, over the spouts' band the stalactite corbels in two tiers
+  for (let k = 0; k < 8; k++) panelFrame(sink, 'stone', polyFace(8, oct, k, ap), ap * 2 * Math.tan(oct) * 0.56, 1.06, 1.82, 0.035, 0.025, true, { decor: true });
+  for (let tier = 0; tier < 2; tier++) {
+    const y = 2.6 + tier * 0.09, r = ap + 0.02 + tier * 0.07;
+    for (let k = 0; k < 16; k++) {
+      const a = (k + (tier ? 0.5 : 0)) / 16 * Math.PI * 2, x = Math.sin(a) * r, z = Math.cos(a) * r;
+      sink.placed(a, x, 0, z, () => sink.span('stone', -0.06, y, -0.06, 0.06, y + 0.09, 0.06, { decor: true, fine: true, shade: 0.85 }));
+    }
+  }
+  // the dome and its ribs, the finial (the dome comes off when the fountain is breached, the finial at the first damage)
+  piece(sink, { name: 'dome', kind: 'detach', at: 'breached', fall: 'drop' }, (s) => {
+    const prof: Array<[number, number]> = [[p * 0.95, 2.95], [p * 0.92, 3.25], [p * 0.7, 3.55], [p * 0.36, 3.75], [0, 3.8]];
+    revolve(s, 'stone', 0, 0, prof, 8, {}, oct);
+    for (let k = 0; k < 8; k++) {
+      const a = oct + k * Math.PI / 4 + Math.PI / 2;
+      for (let i = 0; i + 1 < prof.length - 1; i++) {
+        const [r0, y0] = prof[i], [r1, y1] = prof[i + 1];
+        bar(s, 'stone', [Math.cos(-a) * r0 * 1.01, y0, Math.sin(-a) * r0 * 1.01], [Math.cos(-a) * r1 * 1.01, y1, Math.sin(-a) * r1 * 1.01], 0.05, { decor: true });
+      }
+    }
+  });
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
+    revolve(s, 'structureMetal', 0, 0, [[0.04, 3.78], [0.11, 3.88], [0.12, 4.0], [0.05, 4.1], [0.03, 4.45], [0, 4.5]], 8, { colour: BRASS, decor: true }));
+  // a brass spout from the middle of each face of the band, over the water, and the water arcing from it
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4, cs = Math.sin(a), cc = Math.cos(a), r0 = p * Math.cos(oct) * 1.12;
-    bar(sink, 'structureMetal', [cs * r0, 2.1, cc * r0], [cs * (r0 + 0.32), 2.04, cc * (r0 + 0.32)], 0.05, { colour: rgb(0xa98a46), decor: true });
+    bar(sink, 'structureMetal', [cs * r0, 2.1, cc * r0], [cs * (r0 + 0.32), 2.04, cc * (r0 + 0.32)], 0.05, { colour: BRASS, decor: true });
+    let prev: Vec3 = [cs * (r0 + 0.33), 2.03, cc * (r0 + 0.33)];
+    const fall = Math.min(0.6, Math.max(0.3, R - 0.6 - (r0 + 0.33)));
+    for (let i = 1; i <= 4; i++) {
+      const t = i / 4, d = r0 + 0.33 + t * fall, y = 2.03 + 0.06 * t - (2.03 - 0.56) * t * t;
+      const q: Vec3 = [cs * d, Math.max(0.57, y), cc * d];
+      bar(sink, 'structureMetal', prev, q, 0.028 - t * 0.008, { colour: WATER_JET, decor: true, fine: true });
+      prev = q;
+    }
   }
-  return { parts: sink.finish() };
+  return { parts: finishLandmark(sink), tints: { stone: [1.02, 0.96, 0.88] } };
 }
+const BRASS = rgb(0xa98a46);
 
 /**
  * The bandstand (a spa park's or a garrison town's music pavilion): an octagonal plinth with its steps, eight slender
@@ -298,6 +388,225 @@ function picketRun(sink: PartSink, a: readonly [number, number], b: readonly [nu
   }
 }
 
+// ---------------------------------------------------------------------------------------------------------- paving
+// (the looks lane, 2026-10-15; WORKLIST #11, the r2 standard: "setts and kerbs as units", "kerbed gravel beds",
+// "feathered path edges"; the bunker r2 rule 2, "a plank print does not count as a member") a square's or a path's
+// paving laid as what it is: each flag, sett or brick bay its own unit over the ground at its corners, its own tone and
+// window of the print, a hair of heave, the joints between them showing the bedding under; kerbs as dressed blocks, each
+// its own length and tone; gravel and beaten earth with ragged, feathered edges that fade into the ground. Dressing all
+// (a hull drives over it as over the ground); a unit's sides are fine joinery (a phone and a long view keep the tops).
+
+/** The ground over the piece's base (0 where the builder has none). */
+type Ground = (x: number, z: number) => number;
+const flatGround: Ground = () => 0;
+
+interface UnitLook {
+  /** the unit's top over the ground (m) */
+  lift: number;
+  /** its own rise or fall (m, ±half) */
+  heave?: number;
+  /** its tone: an rgb multiplier on the bucket's paint */
+  tint: Rgb;
+  /** the print's window: its origin in the piece's frame and its axes (u along `u`, v across) */
+  uv?: { x: number; z: number; turn?: boolean };
+}
+
+/**
+ * One unit of paving over [x0, x1] × [z0, z1] (the piece's frame): its top over the ground at each corner + lift, its four
+ * sides carried down 4 cm under the ground (fine), the print's window its own.
+ */
+function paveUnit(sink: PartSink, bucket: RegionalBucket, ground: Ground, x0: number, x1: number, z0: number, z1: number, look: UnitLook): void {
+  const h = look.lift + (look.heave ?? 0);
+  const top = (x: number, z: number): Vec3 => [x, ground(x, z) + h, z];
+  const low = (x: number, z: number): Vec3 => [x, ground(x, z) - 0.04, z];
+  const o = look.uv ?? { x: x0, z: z0 };
+  const uv = o.turn ? { kind: 'plane' as const, origin: [o.x, 0, o.z] as Vec3, u: [0, 0, 1] as Vec3, v: [1, 0, 0] as Vec3 }
+    : { kind: 'plane' as const, origin: [o.x, 0, o.z] as Vec3, u: [1, 0, 0] as Vec3, v: [0, 0, 1] as Vec3 };
+  // counter-clockwise from above; a unit over 1.2 m a side follows the ground on a grid (a brick court's bay), so the
+  // bedding under it never shows through its middle
+  const nx = Math.max(1, Math.ceil((x1 - x0) / 1.2 - 1e-6)), nz = Math.max(1, Math.ceil((z1 - z0) / 1.2 - 1e-6));
+  const X = (i: number) => x0 + (x1 - x0) * i / nx, Zc = (j: number) => z0 + (z1 - z0) * j / nz;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    sink.quad(bucket, top(X(i), Zc(j)), top(X(i), Zc(j + 1)), top(X(i + 1), Zc(j + 1)), top(X(i + 1), Zc(j)), { decor: true, uv, tint: look.tint });
+  }
+  const side = { decor: true, fine: true, tint: look.tint, shade: 0.82 } as const;
+  for (let i = 0; i < nx; i++) {
+    sink.quad(bucket, top(X(i + 1), z0), low(X(i + 1), z0), low(X(i), z0), top(X(i), z0), side);
+    sink.quad(bucket, top(X(i), z1), low(X(i), z1), low(X(i + 1), z1), top(X(i + 1), z1), side);
+  }
+  for (let j = 0; j < nz; j++) {
+    sink.quad(bucket, top(x0, Zc(j)), low(x0, Zc(j)), low(x0, Zc(j + 1)), top(x0, Zc(j + 1)), side);
+    sink.quad(bucket, top(x1, Zc(j + 1)), low(x1, Zc(j + 1)), low(x1, Zc(j)), top(x1, Zc(j)), side);
+  }
+}
+
+/** A stone's tone: a warm-grey spread, a share of them lichened or stained (from the look stream). */
+function stoneTone(look: () => number, spread = 0.18, lichen = 0.12): Rgb {
+  const t = 0.9 + (look() - 0.5) * spread, l = look();
+  if (l < lichen) return [t * 0.9, t * 0.97, t * 0.8];
+  if (l > 0.94) return [t * 0.8, t * 0.79, t * 0.78];
+  return [t, t * 0.985, t * 0.955];
+}
+
+interface FlagOptions {
+  /** the courses run along x (rows stacked along z), or along z */
+  along: 'x' | 'z';
+  /** a course's depth (m: min, max) and a unit's length along it */
+  course: readonly [number, number];
+  length: readonly [number, number];
+  joint?: number;
+  lift?: number;
+  heave?: number;
+  lichen?: number;
+}
+
+/**
+ * Flags or setts laid in courses over the rectangle [x0, x1] × [z0, z1]: each course its own depth, each unit its own
+ * length (the joints broken course to course), the bedding under them a darker sheet a little lower.
+ */
+function layFlags(sink: PartSink, bucket: RegionalBucket, ground: Ground, x0: number, x1: number, z0: number, z1: number,
+  o: FlagOptions, look: () => number): void {
+  const joint = o.joint ?? 0.012, lift = o.lift ?? 0.06;
+  // the bedding: the joints' sand and mortar, dark, under the units
+  drapedRect(sink, bucket, ground, { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, hw: (x1 - x0) / 2, hd: (z1 - z0) / 2 },
+    { lift: lift - 0.032, cell: 1, skirt: 0.2, emit: { tint: [0.55, 0.53, 0.5], shade: 0.8 } });
+  const [a0, a1, b0, b1] = o.along === 'x' ? [x0, x1, z0, z1] : [z0, z1, x0, x1];
+  for (let b = b0; b < b1 - 0.05;) {
+    let depth = o.course[0] + look() * (o.course[1] - o.course[0]);
+    if (b1 - (b + depth) < o.course[0] * 0.6) depth = b1 - b;
+    const bb = Math.min(b1, b + depth);
+    for (let a = a0 + (look() < 0.5 ? 0 : -o.length[0] * 0.5); a < a1 - 0.05;) {
+      let len = o.length[0] + look() * (o.length[1] - o.length[0]);
+      if (a1 - (a + len) < o.length[0] * 0.5) len = a1 - a;
+      const aa = Math.max(a0, a), ab = Math.min(a1, a + len);
+      const tint = stoneTone(look, 0.2, o.lichen ?? 0.12), heave = (look() - 0.5) * (o.heave ?? 0.02), ux = look() * 3, uz = look() * 3;
+      if (ab - aa > 0.08) {
+        const [ux0, ux1, uz0, uz1] = o.along === 'x' ? [aa + joint / 2, ab - joint / 2, b + joint / 2, bb - joint / 2] : [b + joint / 2, bb - joint / 2, aa + joint / 2, ab - joint / 2];
+        paveUnit(sink, bucket, ground, ux0, ux1, uz0, uz1, { lift, heave, tint, uv: { x: ux0 - ux, z: uz0 - uz } });
+      }
+      a += len;
+    }
+    b = bb;
+  }
+}
+
+/**
+ * Kerb blocks round the rectangle [x0, x1] × [z0, z1] (its outside the outline), `k` wide: each block its own length
+ * and tone, a hand over the paving, its outer face carried down past the ground's lowest point under it. `open`: the
+ * sides left unkerbed ('+z' the front ...).
+ */
+function kerbRing(sink: PartSink, bucket: RegionalBucket, ground: Ground, x0: number, x1: number, z0: number, z1: number, k: number,
+  o: { top: number; length: readonly [number, number]; joint?: number; foot?: number; open?: ReadonlyArray<'+x' | '-x' | '+z' | '-z'> }, look: () => number): void {
+  const joint = o.joint ?? 0.012, foot = o.foot ?? 0.35, open = new Set(o.open ?? []);
+  const block = (xa: number, xb: number, za: number, zb: number) => {
+    const gs = [ground(xa, za), ground(xb, za), ground(xb, zb), ground(xa, zb)];
+    const t = stoneTone(look, 0.16, 0.1);
+    sink.span(bucket, xa, Math.min(...gs) - foot, za, xb, Math.max(...gs) + o.top, zb, { decor: true, tint: t });
+  };
+  const run = (a: number, b: number, at: (t0: number, t1: number) => void) => {
+    for (let t = a; t < b - 0.05;) {
+      const len = o.length[0] + look() * (o.length[1] - o.length[0]);
+      const t1 = b - (t + len) < o.length[0] * 0.5 ? b : t + len;
+      at(t, t1);
+      t = t1 + joint;
+    }
+  };
+  // the front and back runs carry the corners; the sides run between them
+  if (!open.has('+z')) run(x0, x1, (t0, t1) => block(t0, t1, z1 - k, z1));
+  if (!open.has('-z')) run(x0, x1, (t0, t1) => block(t0, t1, z0, z0 + k));
+  const s0 = open.has('-z') ? z0 : z0 + k + joint, s1 = open.has('+z') ? z1 : z1 - k - joint;
+  if (!open.has('+x')) run(s0, s1, (t0, t1) => block(x1 - k, x1, t0, t1));
+  if (!open.has('-x')) run(s0, s1, (t0, t1) => block(x0, x0 + k, t0, t1));
+}
+
+/**
+ * A Bengal temple court's brick paving (Bishnupur's, Kalna's): bays of bricks laid flat, framed by bands of bricks on
+ * edge (their courses turned across the band, a hair proud), the court's edge a soldier course carried down to the
+ * ground. Over [x0, x1] × [z0, z1], `bay` the bays' side.
+ */
+function brickCourt(sink: PartSink, ground: Ground, x0: number, x1: number, z0: number, z1: number, bay: number, lift: number, look: () => number): void {
+  const band = 0.13, edge = 0.25;
+  drapedRect(sink, 'stone', ground, { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, hw: (x1 - x0) / 2 - edge, hd: (z1 - z0) / 2 - edge },
+    { lift: lift - 0.035, cell: 1.2, skirt: 0.15, emit: { tint: [0.5, 0.46, 0.42], shade: 0.8 } });
+  const ix0 = x0 + edge, ix1 = x1 - edge, iz0 = z0 + edge, iz1 = z1 - edge;
+  const nx = Math.max(1, Math.round((ix1 - ix0) / bay)), nz = Math.max(1, Math.round((iz1 - iz0) / bay));
+  const bx = (ix1 - ix0) / nx, bz = (iz1 - iz0) / nz;
+  // (a bay's bricks vary brick by brick in the print; a bay its own firing and wear, a few lichened in the shade or
+  // stained dark)
+  const brick = (): Rgb => { const t = 0.93 + look() * 0.11, l = look(); return l < 0.06 ? [t * 0.88, t * 0.94, t * 0.82] : l > 0.95 ? [t * 0.8, t * 0.77, t * 0.75] : [t, t * 0.98, t * 0.95]; };
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    // a bay inside its bands (the bands are the bays' shared edges, half each side)
+    const xa = ix0 + i * bx + (i === 0 ? 0 : band / 2), xb = ix0 + (i + 1) * bx - (i === nx - 1 ? 0 : band / 2);
+    const za = iz0 + j * bz + (j === 0 ? 0 : band / 2), zb = iz0 + (j + 1) * bz - (j === nz - 1 ? 0 : band / 2);
+    paveUnit(sink, 'stone', ground, xa + 0.004, xb - 0.004, za + 0.004, zb - 0.004, { lift, heave: (look() - 0.5) * 0.025, tint: brick(), uv: { x: xa, z: za } });
+  }
+  // the bands of bricks on edge between the bays: along x at each inner z line, along z at each inner x line (in lengths
+  // between the crossings), their print turned across them
+  for (let j = 1; j < nz; j++) {
+    const z = iz0 + j * bz;
+    for (let i = 0; i < nx; i++) {
+      const xa = ix0 + i * bx + (i === 0 ? 0 : band / 2), xb = ix0 + (i + 1) * bx - (i === nx - 1 ? 0 : band / 2);
+      paveUnit(sink, 'stone', ground, xa, xb, z - band / 2 + 0.003, z + band / 2 - 0.003, { lift: lift + 0.012, tint: brick(), uv: { x: xa, z: z, turn: true } });
+    }
+  }
+  for (let i = 1; i < nx; i++) {
+    const x = ix0 + i * bx;
+    for (let j = 0; j < nz; j++) {
+      const za = iz0 + j * bz - (j === 0 ? 0 : band / 2), zb = iz0 + (j + 1) * bz + (j === nz - 1 ? 0 : band / 2);
+      paveUnit(sink, 'stone', ground, x - band / 2 + 0.003, x + band / 2 - 0.003, za, zb, { lift: lift + 0.012, tint: brick(), uv: { x, z: za } });
+    }
+  }
+  // the soldier course round the edge: bricks on end in pairs, their tops a hair over the court, carried to the ground
+  kerbRing(sink, 'stone', ground, x0, x1, z0, z1, edge, { top: lift + 0.03, length: [0.46, 0.5], joint: 0.008, foot: 0.25 }, look);
+}
+
+/**
+ * Gravel or beaten earth draped over [-w/2, w/2] × [z0, z1] with ragged, feathered edges: the outline's points pushed in
+ * and out a hand and brought down to the ground, so the surface thins into the field instead of ending on a straight
+ * hard edge; worn darker down the middle (a trodden line, or a yard's wheel ruts `ruts` m either side of the middle);
+ * a few loose stones in it (earth) or spilt over its edges (gravel).
+ */
+function featheredStrip(sink: PartSink, ground: Ground, w: number, z0: number, z1: number, o: { lift: number; surface: 'gravel' | 'earth'; ruts?: number; ends?: boolean; stones?: boolean },
+  look: () => number): void {
+  const cell = 0.5, nx = Math.max(2, Math.ceil(w / cell)), nz = Math.max(2, Math.ceil((z1 - z0) / 1.0));
+  const jx: number[] = [], jz: number[] = [];
+  for (let j = 0; j <= nz; j++) jx.push((look() - 0.5) * 0.45, (look() - 0.5) * 0.45);
+  for (let i = 0; i <= nx; i++) jz.push((look() - 0.5) * 0.4, (look() - 0.5) * 0.4);
+  const at = (i: number, j: number): Vec3 => {
+    let x = -w / 2 + w * i / nx, z = z0 + (z1 - z0) * j / nz;
+    // (`ends: false`: a lane's landing meets its flights square, its ends neither ragged nor feathered)
+    const ends = o.ends !== false;
+    const edge = i === 0 || i === nx || (ends && (j === 0 || j === nz)), near = i === 1 || i === nx - 1 || (ends && (j === 1 || j === nz - 1));
+    if (i === 0) x += jx[j * 2]; else if (i === nx) x += jx[j * 2 + 1];
+    if (ends && j === 0) z += jz[i * 2]; else if (ends && j === nz) z += jz[i * 2 + 1];
+    const lift = edge ? 0.006 : near ? o.lift * 0.6 : o.lift;
+    return [x, ground(x, z) + lift, z];
+  };
+  // the wear: darker down the middle (a path's trodden line) or in the ruts, lighter where it thins at the edges
+  const wear = (p: Vec3): Rgb => {
+    const across = Math.abs(p[0]);
+    let k = 1;
+    if (o.ruts !== undefined) { for (const r of [-o.ruts, o.ruts]) k = Math.min(k, 0.8 + 0.2 * Math.min(1, Math.abs(p[0] - r) / 0.35)); }
+    else k = 0.86 + 0.14 * Math.min(1, across / Math.max(0.4, w * 0.22));
+    const thin = Math.max(0, across - (w / 2 - 0.5)) / 0.5;
+    const t = k * (1 + thin * 0.08);
+    return [t, t * 0.99, t * 0.97];
+  };
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const p00 = at(i, j), p01 = at(i, j + 1), p11 = at(i + 1, j + 1), p10 = at(i + 1, j);
+    sink.polygon('plaster3', [p00, p01, p11], { decor: true, tintAt: wear });
+    sink.polygon('plaster3', [p00, p11, p10], { decor: true, tintAt: wear });
+  }
+  // loose stones: bedded in beaten earth along its length, spilt round a gravel bed's edges (fine)
+  const n = o.stones === false ? 0 : Math.round((z1 - z0) * w * (o.surface === 'earth' ? 0.35 : 0.12));
+  for (let k = 0; k < n; k++) {
+    const spill = o.surface === 'gravel';
+    const x = spill ? (look() < 0.5 ? -1 : 1) * (w / 2 + (look() - 0.3) * 0.5) : (look() - 0.5) * (w - 0.6), z = z0 + 0.3 + look() * (z1 - z0 - 0.6);
+    const s = spill ? 0.05 + look() * 0.06 : 0.08 + look() * 0.14, y = ground(x, z);
+    sink.span('stone', x - s, y - 0.05, z - s * 0.8, x + s, y + o.lift + 0.015 + look() * 0.025, z + s * 0.8, { decor: true, fine: true, tint: stoneTone(look, 0.25, 0.2) });
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------- paths
 
 /** The tints of a path's surfaces in the plaster3 bucket (the props' gravel convention: parkSquare's paths). */
@@ -316,8 +625,23 @@ export const path: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = Math.max(1, Number(ctx.params.length)), w = Math.max(0.6, Number(ctx.params.width)), surface = String(ctx.params.surface);
   if (surface === 'ground') return { parts: sink.finish() };
-  const bucket: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
-  drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045 });
+  const ground = ctx.ground ?? flatGround, look = ctx.variant;
+  if (surface === 'stone') {
+    // (the looks lane, 2026-10-15; WORKLIST #11 "path setts per kit") a square (both sides over 5 m) kerbed round, a path
+    // not; the paving each kit's: a brick kit's court in bays of flat brick framed by bricks on edge (the Jamuna char's
+    // temple court), a stone kit's in flags laid in courses (Chouf limestone, the Franconian sandstone)
+    const square = w >= 5 && L >= 5;
+    if (ctx.brick) brickCourt(sink, ground, -w / 2, w / 2, -L / 2, L / 2, square ? 2.4 : Math.max(0.8, Math.min(w - 0.5, 2.4)), 0.07, look);
+    else {
+      const k = square ? 0.32 : 0, j = 0.01;
+      if (k > 0) kerbRing(sink, 'stone', ground, -w / 2, w / 2, -L / 2, L / 2, k, { top: 0.12, length: [0.7, 1.3] }, look);
+      layFlags(sink, 'stone', ground, -w / 2 + k + j, w / 2 - k - j, -L / 2 + k + j, L / 2 - k - j, square
+        ? { along: 'x', course: [0.42, 0.62], length: [0.55, 1.0], lift: 0.07 }
+        : { along: 'x', course: [0.36, 0.52], length: [0.42, 0.8], lift: 0.05 }, look);
+    }
+    return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
+  }
+  featheredStrip(sink, ground, w, -L / 2, L / 2, { lift: surface === 'earth' ? 0.03 : 0.045, surface: surface === 'earth' ? 'earth' : 'gravel' }, look);
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
 };
 
@@ -361,10 +685,18 @@ export const stairway: LandmarkBuilder = (ctx) => {
   }
   for (const f of flights) { f.i0 = Math.max(0, f.i0 - 2); f.i1 = Math.min(N, f.i1 + 2); }
   // the landings between the flights (and from the lane's ends), paved over the ground
-  const lift = surface === 'earth' ? 0.03 : 0.045;
+  // (the looks lane, 2026-10-15; WORKLIST #11 r2: "setts and kerbs as units", "feathered path edges") a stone landing
+  // laid in flags, each its own; gravel and earth thinning into the ground at the lane's sides; every step and kerb block
+  // its own stone and tone
+  const lift = surface === 'earth' ? 0.03 : 0.045, look = ctx.variant;
   let from = 0;
   for (const f of [...flights, { i0: N, i1: N }]) {
-    if (zAt(f.i0) - zAt(from) >= 0.3) drapedPath(sink, paving, ground, [0, zAt(from)], [0, zAt(f.i0)], w, { lift });
+    const za = zAt(from), zb = zAt(f.i0);
+    if (zb - za >= 0.3) {
+      if (paving === 'stone') layFlags(sink, 'stone', ground, -hw, hw, za, zb, { along: 'x', course: [0.36, 0.52], length: [0.42, 0.8], lift: 0.05 }, look);
+      // (no loose stones on a lane's landings: its steps alone are its stone, as the flights receipt reads them)
+      else featheredStrip(sink, ground, w, za, zb, { lift, surface: surface === 'earth' ? 'earth' : 'gravel', ends: false, stones: false }, look);
+    }
     from = f.i1;
   }
   const kerbW = 0.22, curbD = 0.26;
@@ -394,11 +726,11 @@ export const stairway: LandmarkBuilder = (ctx) => {
       if (cordonata && hi - lo > curbD + 0.2) {
         // the curb across the lane at the riser, and the tread behind it in the landing's surface
         const curb0 = dir > 0 ? lo : hi - curbD, curb1 = dir > 0 ? lo + curbD : hi;
-        sink.span('stone', -hw, bottom, curb0, hw, top, curb1, { decor: true });
-        sink.span(paving, -hw, bottom, dir > 0 ? curb1 : lo, hw, top - 0.02, dir > 0 ? hi : curb0, { decor: true });
-      } else sink.span('stone', -hw, bottom, lo, hw, top, hi, { decor: true });
-      // the kerbs: a low stone edge either side, its top a hand over the step
-      if (kerbs) for (const s of [-1, 1]) sink.span('stone', s > 0 ? hw : -hw - kerbW, bottom, lo, s > 0 ? hw + kerbW : -hw, top + 0.16, hi, { decor: true });
+        sink.span('stone', -hw, bottom, curb0, hw, top, curb1, { decor: true, tint: stoneTone(look, 0.16, 0.14) });
+        sink.span(paving, -hw, bottom, dir > 0 ? curb1 : lo, hw, top - 0.02, dir > 0 ? hi : curb0, { decor: true, tint: [0.92 + look() * 0.12, 0.92, 0.9] });
+      } else sink.span('stone', -hw, bottom, lo, hw, top, hi, { decor: true, tint: stoneTone(look, 0.16, 0.14) });
+      // the kerbs: a low stone edge either side, its top a hand over the step, each its own block
+      if (kerbs) for (const s of [-1, 1]) sink.span('stone', s > 0 ? hw : -hw - kerbW, bottom, lo, s > 0 ? hw + kerbW : -hw, top + 0.16, hi, { decor: true, tint: stoneTone(look, 0.18, 0.2) });
     }
   }
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
@@ -438,38 +770,46 @@ const WET_RUNNEL: Rgb = rgb(0x2b3330);
 
 /**
  * A town's paved square (the landmarks lane, 2026-10-07, Saltwind round 4: the campanile's piazza was "a thin raised
- * sheet… ends in a straight hard edge on bare dirt"; it needs "a kerb, thickness and contact"): the map's masonry flags
- * draped a step over the ground inside a kerb of dressed blocks round its edge — each block its own length and tone,
- * a hand proud of the flags, its outer face carried down past the ground's lowest point under it, so the square is set
+ * sheet… ends in a straight hard edge on bare dirt"; it needs "a kerb, thickness and contact"): the map's masonry
+ * paving a step over the ground inside a kerb of dressed blocks round its edge — each block its own length and tone,
+ * a hand proud of the paving, its outer face carried down past the ground's lowest point under it, so the square is set
  * into the field rather than laid on it. The frame: `width` across x, `depth` along z, the kerb's outside the outline.
- * Dressing: a hull drives over it as over the ground.
+ * (the looks lane, 2026-10-15; WORKLIST #11 r2, "setts and kerbs as units") the paving a Venetian Dalmatian square's
+ * (Trogir's, Korčula's): the field divided into panels by liste — bands of pale dressed stone, each stone its own —
+ * and each panel laid in courses of limestone slabs, every slab its own unit over the ground, its own tone and heave,
+ * the joints showing the bedding. Dressing: a hull drives over it as over the ground.
  */
 export const piazza: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const W = Math.max(4, Number(ctx.params.width)), D = Math.max(4, Number(ctx.params.depth)), K = Math.max(0.2, Number(ctx.params.kerb) || 0.38);
-  const ground = ctx.ground ?? ((): number => 0);
-  const FLAGS = 0.12, KERB_TOP = 0.17, FOOT = 0.35, JOINT = 0.012, look = ctx.variant;
-  // the flags, a step over the ground inside the kerb (their skirts behind it)
-  drapedRect(sink, 'stone', ctx.ground, { cx: 0, cz: 0, hw: W / 2 - K, hd: D / 2 - K }, { lift: FLAGS, cell: 1.5, skirt: 0.25 });
-  /** One kerb block over the rectangle [x0, x1] × [z0, z1]: from under its lowest ground to a hand over its highest. */
-  const block = (x0: number, x1: number, z0: number, z1: number) => {
-    const gs = [ground(x0, z0), ground(x1, z0), ground(x1, z1), ground(x0, z1)];
-    const tone = 0.9 + look() * 0.16;
-    sink.span('stone', x0, Math.min(...gs) - FOOT, z0, x1, Math.max(...gs) + KERB_TOP, z1, { decor: true, tint: [tone, tone * 0.99, tone * 0.96] });
-  };
-  /** A run of blocks from a to b along one axis (0.9 to 1.5 m each, a joint between). */
-  const run = (a: number, b: number, at: (t0: number, t1: number) => void) => {
+  const ground = ctx.ground ?? flatGround, look = ctx.variant;
+  const FLAGS = 0.12, KERB_TOP = 0.17, JOINT = 0.012, LISTA = 0.32;
+  kerbRing(sink, 'stone', ground, -W / 2, W / 2, -D / 2, D / 2, K, { top: KERB_TOP, length: [0.9, 1.5], joint: JOINT, foot: 0.35 }, look);
+  const ix0 = -W / 2 + K + JOINT, ix1 = W / 2 - K - JOINT, iz0 = -D / 2 + K + JOINT, iz1 = D / 2 - K - JOINT;
+  const nx = Math.max(1, Math.round((ix1 - ix0) / 4.6)), nz = Math.max(1, Math.round((iz1 - iz0) / 4.6));
+  const px = (ix1 - ix0) / nx, pz = (iz1 - iz0) / nz;
+  const pale = (): Rgb => { const t = 1.08 + (look() - 0.5) * 0.08; return [t, t * 0.99, t * 0.96]; };
+  /** One lista from a to b along `axis` at `at` across it: its stones 0.9 to 1.5 m each. */
+  const lista = (axis: 'x' | 'z', at: number, a: number, b: number) => {
     for (let t = a; t < b - 0.05;) {
-      const t1 = Math.min(b, t + 0.9 + look() * 0.6);
-      at(t, b - t1 < 0.4 ? b : t1);
-      t = (b - t1 < 0.4 ? b : t1) + JOINT;
+      const len = 0.9 + look() * 0.6, t1 = b - (t + len) < 0.45 ? b : t + len;
+      if (axis === 'x') paveUnit(sink, 'stone', ground, t + 0.006, t1 - 0.006, at - LISTA / 2, at + LISTA / 2, { lift: FLAGS + 0.006, heave: (look() - 0.5) * 0.01, tint: pale(), uv: { x: t, z: at, turn: true } });
+      else paveUnit(sink, 'stone', ground, at - LISTA / 2, at + LISTA / 2, t + 0.006, t1 - 0.006, { lift: FLAGS + 0.006, heave: (look() - 0.5) * 0.01, tint: pale(), uv: { x: at, z: t } });
+      t = t1;
     }
   };
-  // the long runs on the front and back carry the corners; the sides run between them
-  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, D / 2 - K, D / 2));
-  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, -D / 2, -D / 2 + K));
-  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(W / 2 - K, W / 2, t0, t1));
-  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(-W / 2, -W / 2 + K, t0, t1));
+  // the liste: across the square at each inner line, the long ones running through, the short ones between them
+  for (let i = 1; i < nx; i++) lista('z', ix0 + i * px, iz0, iz1);
+  for (let j = 1; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const xa = ix0 + i * px + (i === 0 ? 0 : LISTA / 2), xb = ix0 + (i + 1) * px - (i === nx - 1 ? 0 : LISTA / 2);
+    lista('x', iz0 + j * pz, xa, xb);
+  }
+  // each panel's slabs in courses
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const xa = ix0 + i * px + (i === 0 ? 0 : LISTA / 2), xb = ix0 + (i + 1) * px - (i === nx - 1 ? 0 : LISTA / 2);
+    const za = iz0 + j * pz + (j === 0 ? 0 : LISTA / 2), zb = iz0 + (j + 1) * pz - (j === nz - 1 ? 0 : LISTA / 2);
+    layFlags(sink, 'stone', ground, xa, xb, za, zb, { along: 'x', course: [0.5, 0.75], length: [0.75, 1.3], lift: FLAGS, heave: 0.015, lichen: 0.06 }, look);
+  }
   return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
 };
 
@@ -567,9 +907,15 @@ export const garden: LandmarkBuilder = (ctx) => {
     fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd]);
     fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
   }
-  if (pathW > 0) drapedPath(sink, 'plaster3', ctx.ground, [0, hd + 0.3], [0, -hd - 0.6], pathW, { lift: 0.04 });
-  // the borders: beds a metre wide inside the fence, their brick edging, the bushes in them
   const look = ctx.variant;
+  if (pathW > 0) drapedPath(sink, 'plaster3', ctx.ground, [0, hd + 0.3], [0, -hd - 0.6], pathW, { lift: 0.04 });
+  else {
+    // (the looks lane, 2026-10-15; WORKLIST #11 r2 "feathered path edges") a working yard's gateway (a mill's, a
+    // lookout's compound): no laid path, the ground trodden bare through the gate and a few metres in and out of it, its
+    // edges thinning into the grass, a few stones worked up through it
+    featheredStrip(sink, ctx.ground ?? flatGround, 3.4, hd - Math.min(3.2, D * 0.3), hd + 1.1, { lift: 0.025, surface: 'earth' }, look);
+  }
+  // the borders: beds a metre wide inside the fence, their brick edging, the bushes in them
   const bed = (cx: number, cz: number, bw: number, bd: number) => {
     drapedRect(sink, 'structureWood', ctx.ground, { cx, cz, hw: bw / 2, hd: bd / 2 }, { lift: 0.07, cell: 1.5, emit: { colour: SOIL_DARK } });
     for (const [ex, ez, ew, ed] of [[cx, cz - bd / 2, bw / 2 + 0.06, 0.06], [cx, cz + bd / 2, bw / 2 + 0.06, 0.06], [cx - bw / 2, cz, 0.06, bd / 2], [cx + bw / 2, cz, 0.06, bd / 2]] as const) {
@@ -601,5 +947,5 @@ export const garden: LandmarkBuilder = (ctx) => {
       sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
     }
   }
-  return { parts: sink.finish(), tints: { plaster3: PATH_TINT.gravel }, destructibles };
+  return { parts: sink.finish(), tints: { plaster3: pathW > 0 ? PATH_TINT.gravel : PATH_TINT.earth }, destructibles };
 };
