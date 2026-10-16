@@ -79,6 +79,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/nationalUkraineProtection.selftest.mjs',
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
+    // 2026-10-16 (release 227, CN track): the Yun's and Qilin's add-ons wrapped round their base turrets, the Qilin 10 %
+    // shorter, the clearances; the three roof stations calibre-true and automatic inside their arcs
+    'src/vehicles/cnAddOns.selftest.mjs',
+    'src/vehicles/cnStations.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',

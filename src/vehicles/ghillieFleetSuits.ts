@@ -439,7 +439,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       top: [laid({ x0: -1.75, x1: 1.75, z0: -2.25, z1: 1.95, nx: 44, nz: 52, y: 0.70,
         holes: [rect(0.06, 0.74, -0.96, -0.28), rect(-1.012, -0.172, -0.315, 0.525), rect(0.18, 1.00, -0.36, 0.23)],
         garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-1.84, -1.30, 0.66, 0.34, 1.62, 17),
+      // the marking boards on the housings' bare rear walls (behind the flat tiles) stay clear
+      side: flanks(-1.84, -1.28, 0.66, 0.34, 1.62, 17, {}, () => [cut(-1.50, -1.10, 0.30, 0.70)]),
       face: [face({ z: -2.24, x0: -1.20, x1: 1.20, y0: 0.24, y1: 0.58, nx: 24, ny: 6, seed: 23 })],
     },
     hull: {

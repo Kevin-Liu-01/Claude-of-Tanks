@@ -436,7 +436,7 @@ function qilinRack(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[],plateT
 }
 
 /** Qilin's small open tool basket on the cut 99A2's rear armour box; its roots end inside that permanent box, its rear
- * 0.27 m behind it. */
+ * 0.46 m behind it, and the drone's landing plate rides two bearers across its top rails. */
 function qilinRearBasket(P:TankBuilderPort):void {
   const shell=new Stock(P,['turret','turretExternalArmor']);
   try {
@@ -446,7 +446,7 @@ function qilinRearBasket(P:TankBuilderPort):void {
       return hit.point.z;
     };
     // Struts pass under the 99A2's dark rear plate and between its vertical ribs (x = -0.9 + 0.3 i).
-    const half=.52,bottom=.45,top=.70,rear=wall(0,bottom)-.27;
+    const half=.52,bottom=.45,top=.70,rear=wall(0,bottom)-.46;
     const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:QILIN_MODEL,role};P.addEquipment('turretOpenLattice',g);};
     for(const side of [-1,1]){
       const x=side*half;
@@ -456,8 +456,17 @@ function qilinRearBasket(P:TankBuilderPort):void {
     }
     for(const y of [bottom,(bottom+top)/2,top])put(beamBetween([-half,y,rear],[half,y,rear],y===bottom||y===top?.019:.012),'cage-rear-rail');
     for(const x of [-.45,-.15,.15,.45])put(beamBetween([x,bottom,wall(x,bottom)+.03],[x,bottom,rear],.013),'cage-floor');
+    // The drone's landing (the cut bustle's roof is the emplacement's sweep and the field fit): a flat steel plate on two
+    // bearers across the basket's top rails (tools/mission-attachment-geometry.mjs registers it as the dock's support).
+    const [lx,ly,lz,lw,ld]=QILIN_DOCK_LANDING,bearer=.016;
+    for(const z of [lz-ld/2+.04,lz+ld/2-.04])put(beamBetween([-half,top,z],[half,top,z],bearer),'dock-bearer');
+    const plate=box(lw,ly-(top+bearer)+.002,ld);plate.userData.chineseModernization={model:QILIN_MODEL,role:'dock-landing'};
+    P.addExternalArmor('turret',plate,lx,(ly+top+bearer-.002)/2,lz);
   }finally{shell.dispose();}
 }
+
+/** The Qilin's drone landing plate on its basket: [x, top, z, width, depth] (turret frame). */
+export const QILIN_DOCK_LANDING=[0,.732,-2.125,.40,.34] as const;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Yun (release 227, owner 2026-10-16: "make the yun keep all its extra add ons and modifications but altered slightly to
@@ -532,8 +541,34 @@ function yunCage(P:TankBuilderPort):void {
       put(beamBetween([-half,y,rear],[half,y,rear],row===0||row===3?.020:.012),'cage-rear-rail');
     }
     for(const x of [-.36,0,.36])put(beamBetween([x,bottom,wall(x,bottom)+.03],[x,bottom,rear],.014),'cage-floor');
+    // The drone's landing on the cage roof (the Yun's roof is the station's sweep): two bearers across the top rails
+    // carry a flat steel plate (tools/mission-attachment-geometry.mjs registers it as the dock's support).
+    const [lx,ly,lz,lw,ld]=YUN_DOCK_LANDING,bearer=.016;
+    for(const z of [lz-ld/2+.04,lz+ld/2-.04])put(beamBetween([-half,top,z],[half,top,z],bearer),'dock-bearer');
+    const plate=box(lw,ly-(top+bearer)+.002,ld);plate.userData.chineseModernization={model:YUN_MODEL,role:'dock-landing'};
+    P.addExternalArmor('turret',plate,lx,(ly+top+bearer-.002)/2,lz);
   }finally{shell.dispose();}
 }
+
+/** A bolted marking board on each housing's bare rear wall, behind the flat tiles (the turret's national markings sit
+ * on it: vehicleMarkingSeating.ts reads 'turretPermanentMarkingSurface'), its back 4 mm into the wall. */
+function yunMarkingBoards(P:TankBuilderPort,armour:readonly THREE.BufferGeometry[]):void {
+  const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+  try {
+    for(const side of [-1,1]){
+      const z=-1.29,y=.48,ray=new THREE.Raycaster(new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0),0,3);
+      let hit:THREE.Intersection|undefined;
+      for(const g of armour){const m=new THREE.Mesh(g,mat);m.updateMatrixWorld(true);const h=ray.intersectObject(m,false)[0];if(h&&(!hit||h.distance<hit.distance))hit=h;}
+      if(!hit?.face)throw new Error(`${P.spec.id}: no housing wall for the marking board`);
+      const n=hit.face.normal.clone();if(n.x*side<0)n.negate();
+      const yaw=Math.atan2(n.z,n.x*side)*-side,centre=hit.point.clone().addScaledVector(n,.003);
+      P.addEquipment('turretPermanentMarkingSurface',box(.014,.26,.30),centre.x,centre.y,centre.z,0,yaw,0);
+    }
+  } finally {mat.dispose();}
+}
+
+/** The Yun's drone landing plate on its cage roof: [x, top, z, width, depth] (turret frame). */
+export const YUN_DOCK_LANDING=[0,.772,-2.26,.40,.34] as const;
 
 /** Four roof smoke tubes a side behind the cheeks on shaped feet, firing out over the housing shelf. */
 function yunSmoke(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
@@ -570,7 +605,8 @@ function yun(P:TankBuilderPort):void {
   // then three flat tiles a side on the frozen housing's outer wall.
   for(const side of [-1,1])addChineseChevronBank(tagged(P,YUN_MODEL,'chevron'),side,YUN_WRAP.slice(3),.10);
   const armour=permanentParts(P,['turretExternalArmor']);
-  for(const side of [-1,1])for(const z of [-1.10,-.70,-.30])seatCheekTile(tagged(P,YUN_MODEL,'flank-tile'),armour,side,z,.48,[.24,.075,.30]);
+  for(const side of [-1,1])for(const z of [-1.00,-.62,-.24])seatCheekTile(tagged(P,YUN_MODEL,'flank-tile'),armour,side,z,.48,[.24,.075,.30]);
+  yunMarkingBoards(tagged(P,YUN_MODEL,'marking-board'),armour);
   yunCage(P);
   const roof=permanentParts(P,['turret','turretExternalArmor']);
   yunSmoke(tagged(P,YUN_MODEL,'smoke-tube'),roof);

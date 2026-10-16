@@ -1095,14 +1095,14 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
   // The identity when nothing is cut (the fleet 99A2 stays byte-identical).
   const bz = (z: number): number => (cut > 0 ? bustleCutZ(z, cut) : z);
   const rearFlank = options.rearFlank !== false;
-  const plan: Vec2Tuple[] = ([
+  const plan: Vec2Tuple[] = [
     // Stop the primary shell behind the ridge. The closed chevrons below
     // own the complete frontal projection, matching the VT-4A1 hierarchy.
     [0.30, 0.62], [0.82, 0.52], [1.40, 0.28], [1.56, -0.30],
     [1.50, -1.50], [1.18, -2.22], [0.82, -2.22],
     [-0.82, -2.22], [-1.18, -2.22], [-1.50, -1.50],
     [-1.56, -0.30], [-1.40, 0.48], [-0.82, 1.15], [-0.30, 1.43],
-  ] as Vec2Tuple[]).map(([x, z]) => [x, bz(z)] as Vec2Tuple);
+  ];
   const lower = [0.02, 0.02, 0.03, 0.05, 0.18, 0.44, 0.44,
     0.44, 0.44, 0.18, 0.05, 0.03, 0.02, 0.02];
   const belt = [0.32, 0.32, 0.34, 0.36, 0.43, 0.49, 0.49,
@@ -1111,11 +1111,21 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
     0.80, 0.80, 0.82, 0.82, 0.79, 0.76, 0.76];
   const crownInset = [0.63, 0.66, 0.80, 0.87, 0.90, 0.93, 0.94,
     0.94, 0.93, 0.90, 0.87, 0.80, 0.66, 0.63];
-  addChineseThroatStock(P, KIT.polyMultiLoft(plan, [
+  const shell = KIT.polyMultiLoft(plan, [
     { height: lower, inset: 1 },
     { height: belt, inset: 1 },
     { height: crown, inset: crownInset, centerHeight: 0.80 },
-  ]));
+  ]);
+  if (cut > 0) {
+    // The loft's crown ring is inset towards the plan's centroid, so cutting the plan itself would pull the front
+    // crown edge forward with the moved centroid: the shell is lofted on its own plan and every vertex then maps
+    // through the cut (vertices ahead of the band stay exactly where they are).
+    const position = shell.getAttribute('position');
+    for (let i = 0; i < position.count; i++) position.setZ(i, bz(position.getZ(i)));
+    position.needsUpdate = true;
+    shell.computeVertexNormals();
+  }
+  addChineseThroatStock(P, shell);
   P.add('turret', cylY(1.08, 1.14, 0.10, seg), 0, -0.03, -0.12);
 
   // Leopard-class chevrons are the production shell's primary frontal
