@@ -52,26 +52,6 @@ function box(w: number, h: number, d: number, uv = 0.55): THREE.BufferGeometry {
   for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * Math.max(w, d) * uv, a.getY(i) * h * uv);
   return g.toNonIndexed();
 }
-/** A board: a box without its top and bottom (it stands on a sill under a plate: they are never seen). */
-function board(w: number, h: number, d: number, uv = 0.55): THREE.BufferGeometry {
-  const g = box(w, h, d, uv), keep = [0, 1, 2, 3, 8, 9, 10, 11];
-  const out = new THREE.BufferGeometry();
-  for (const [name, a] of Object.entries(g.attributes)) {
-    const size = a.itemSize, src = a.array as Float32Array, dst = new Float32Array(keep.length * 3 * size);
-    keep.forEach((t, k) => dst.set(src.subarray(t * 3 * size, (t + 1) * 3 * size), k * 3 * size));
-    out.setAttribute(name, new THREE.BufferAttribute(dst, size));
-  }
-  g.dispose();
-  return out;
-}
-/** A member from a to b, `w` x `t` in section (its length along its own y before it is turned). */
-function beam(a: V3, b: V3, w: number, t: number): THREE.BufferGeometry {
-  const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-  const len = dir.length();
-  const g = box(w, len, t);
-  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
-  return g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-}
 // ---- (r2, 2026-10-16) the shed's members as they are cut: the sweep read it 88 % plain boxes and its front lining a dark
 // plate on the boards. The boards, decks and lining are drawn in their real sections below; every solid part keeps its
 // box's bounds (its collision hull, and the wharf composer's finds by box), the stream its 21 parts.
@@ -130,7 +110,7 @@ function prism(section: Sec, A: Axis, B: Axis, L: Axis, l0: number, l1: number, 
 /**
  * An upright wall board `w` wide (along x when `alongX`, else along z), `h` high and `t` thick, its outer face (toward
  * `out` along its thickness) eased at both arrises by `c` (a hexagonal section), open at its foot and head (it stands on
- * a sill under a plate) — what board() drew, in the board's section.
+ * a sill under a plate) — the plain board box it replaced, in the board's section.
  */
 function easedBoard(w: number, h: number, t: number, alongX: boolean, out: 1 | -1, c = 0.008): THREE.BufferGeometry {
   const ha = w / 2, hb = t / 2, k = Math.min(c, 0.3 * t);
