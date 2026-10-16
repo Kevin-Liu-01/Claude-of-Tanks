@@ -213,6 +213,28 @@ export function makeGantry(
   return { w: span + 5, d: 5.4, h: legH + girderH + 0.8 };
 }
 
+// ------------------------------------------------------------------------------------------------ the halls' r2 parts
+
+/**
+ * A hall's plinth (the brick halls' r2 parts: the warehouse and the factory, the Ironworks court's donors; the looks lane's
+ * r2 sweep, 2026-10-16): a w x d course from y0 up `h`, its top's long arrises splayed 8 cm as a weathered plinth course is
+ * (the water thrown off its top), its band y0..y0 + h exactly the box's (the court's support census). One stream part
+ * with UVs (it takes the box's draws), centred on the origin in x and z.
+ */
+export function hallPlinth(w: number, h: number, d: number, y0: number, uv = 0.5): THREE.BufferGeometry {
+  const a = w / 2, y1 = y0 + h, s = Math.min(0.08, h * 0.3, a * 0.3);
+  return bar([[-a, y0], [a, y0], [a, y1 - s], [a - s, y1], [-a + s, y1], [-a, y1 - s]], [0, 0, -d / 2], [0, 0, d / 2], [0, 1, 0], uv);
+}
+
+/**
+ * A roof slab `len` (down the slope, x) by `thick` by `depth` (along the ridge, z), its four long arrises eased (a
+ * symmetric section: the pitch receipt regresses its vertices), centred on the origin as the box was: one stream part
+ * with UVs at `uv` a metre, for the caller to pitch (pitchRoofPlane) and seat.
+ */
+export function hallSlab(len: number, thick: number, depth: number, uv = 0.35): THREE.BufferGeometry {
+  return bar(chamferSec(len, thick, Math.min(0.04, thick * 0.3)), [0, 0, -depth / 2], [0, 0, depth / 2], [0, 1, 0], uv);
+}
+
 /** A timber from a to b, its section w (across, square to `up`) x h (toward `up`), its four arrises chamfered c. */
 function timber(a: P3, b: P3, w: number, h: number, c = 0.015, up: P3 = [0, 1, 0]): THREE.BufferGeometry {
   return bar(chamferSec(w, h, Math.min(c, 0.3 * Math.min(w, h))), a, b, up, 1.0);

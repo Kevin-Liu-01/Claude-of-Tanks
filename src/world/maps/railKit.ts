@@ -22,7 +22,7 @@ import {
 // (the container rows' own kit: maps/containerRowKit.ts; the row stays in this kit's table and is re-exported)
 import { makeContainerRow } from './containerRowKit.ts';
 // (the gantry and the shed are rebuilt in their own file: maps/railYardR2.ts; the looks lane's r2 sweep, 2026-10-16)
-import { makeGantry, makeShed } from './railYardR2.ts';
+import { hallPlinth, hallSlab, makeGantry, makeShed } from './railYardR2.ts';
 import { terraceLayout, terraceUnits } from './terraceLayout.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
@@ -379,7 +379,7 @@ export function makeWarehouse(
   // maps lane B (2026-10-03): an authored plot sets the footprint (Kestrel Airfield's cargo-hangar plot); the draws stay
   const w = context?.plot?.w ?? drawnW, d = context?.plot?.d ?? drawnD;
   const local = forkRng((drawnW - 13.5) / 3 * 0.61 + (drawnD - 21) / 5 * 0.29 + (wallH - 5.4) / 0.8 * 0.07);
-  parts.stone.push(box(w + 0.4, 1.1, d + 0.4).translate(0, -0.1, 0));
+  parts.stone.push(hallPlinth(w + 0.4, 1.1, d + 0.4, -0.65));
   const wallBucket = steelClad ? parts.structureMetal! : parts.stone;
   const cladHex = snowClad ? WAREHOUSE_CLADDING_HEX_SNOW : WAREHOUSE_CLADDING_HEX;
   // (props census #4/#13, lane B 2026-10-15; the Ironworks court's donor) the walls stand round the hall's core with the
@@ -401,7 +401,7 @@ export function makeWarehouse(
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13), ang = seat.pitch;
   parts.dark.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length, 0.13, d + 0.7, 0.35);
+    const slab = hallSlab(seat.length, 0.13, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
