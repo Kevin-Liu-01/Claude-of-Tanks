@@ -16,6 +16,7 @@ import {
 import { buildHouse, emitRoof, holedBox, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { bench } from './dressing.ts';
+import { recordLattice } from './lattice.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** Window frames, shutters and doors: the settlements' blue, turquoise, green and sky blue, a brown. */
@@ -800,6 +801,7 @@ const rozhnovsky: RegionalBuilder = (ctx) => {
       sink.member('structureMetal', [Math.cos(a0) * rr, coneY - 0.04, Math.sin(a0) * rr], [Math.cos(a0) * rr, ry + 0.02, Math.sin(a0) * rr], 0.03, 0.03, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
     }
     sink.cylinder('structureMetal', [0, H + 0.95, 0], 'y', 0.3, Rt + 0.02, 14, { colour: rgb(0x7a5a44), decor: true }, Rt + 0.02, false);
+    recordLattice(sink, [{ foot: [0, hp + 0.25, 0], head: [0, H, 0] }], [], 2 * R, 'structureMetal', paint, { x0: -Rt, x1: Rt, y0: H, y1: H + 2 + Ht, z0: -Rt, z1: Rt, bucket: 'structureMetal', tint: paint }); // (227, lane B co-hold: the column falls as its frame, latticeFall.ts)
   });
   return sink.finish();
 };

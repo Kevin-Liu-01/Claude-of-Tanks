@@ -30,6 +30,7 @@ import {
   type DebrisShape, type FractureMaterial, type FractureSlot,
 } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
+import { toppleHingeM } from '../world/toppleHinge.ts';
 import { breachBlowFor } from './structureFx.ts';
 import {
   COLLAPSE_S, MAX_HOLES, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
@@ -119,8 +120,6 @@ interface StructureTopple {
   /** how far along the ground it reaches from its foot (m) */
   lengthM: number;
 }
-/** The hinge a shaft breaks at over its foot (the kit's stump stands 1.2 to 3.5 m: the shaft goes over above it). */
-const TOPPLE_HINGE_M = 1.5;
 /**
  * A collapse that topples (dcore 2026-10-09): a shaft (the regional kit's stack, water tower, minaret or tower: its
  * anatomy carries a shaft plan) goes over toward the blow (against the event's direction: the struck side's foot is
@@ -140,7 +139,8 @@ export function structureTopple(anatomy: StructureDamageSeam['anatomy'] | null |
     const ang = damageRng(damageSeed(anatomy.seed, 11))() * Math.PI * 2;
     dx = Math.cos(ang); dz = Math.sin(ang); dl = 1;
   }
-  const hingeM = Math.min(TOPPLE_HINGE_M, H * 0.2);
+  // (an open frame buckles over its standing bays, a shaft above its stump: world/toppleHinge.ts, the collapse's rule too)
+  const hingeM = toppleHingeM(H, (plan.damage.shaft as { lattice?: boolean }).lattice === true);
   return { hingeM, dirX: dx / dl, dirZ: dz / dl, landS: toppleLandS(H, hingeM), lengthM: H - hingeM };
 }
 
