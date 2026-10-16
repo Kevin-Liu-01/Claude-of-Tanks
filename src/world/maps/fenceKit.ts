@@ -31,7 +31,7 @@
 // (FENCE_TRIANGLE_CAP), the guardrail maps within an r2 allowance of the legacy counts (fenceKit.selftest). Pure geometry;
 // no draws from any stream (hash noise).
 import * as THREE from 'three';
-import { FENCE_SEG, type DestructiblePropType } from './inhabitKit.ts';
+import { FENCE_SEG, bFenceIronR2, type DestructiblePropType } from './inhabitKit.ts';
 import { gateStyleFor, type GateStyle } from './gateKit.ts';
 import { Mesh, WOOD_UV_PER_M, X, Y, Z, hexLin, member, mix, mul, norm, pole, stream, type Rgb, type UvMode, type V3 } from './craftMesh.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
@@ -507,4 +507,24 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
     out[kind] = Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
   }
   return out;
+}
+
+/**
+ * A set piece's wrought-iron railing module (inhabitKit fenceiron) at the r2 bar (bFenceIronR2): the legacy build still runs
+ * first on the pool's stream (its paint draws), its contact band frozen as the pool's collision, its fixed-seed build the
+ * placement footprint; its own broken build unchanged.
+ */
+export function ironRailingType(legacy: DestructiblePropType, footprintRng: () => () => number): DestructiblePropType {
+  let band: StructureCollisionRuntimeBand | undefined;
+  const entry: DestructiblePropType = {
+    ...legacy,
+    build: (rng) => {
+      const old = legacy.build(rng);
+      band = deriveRuntimeStructureContactBand({ baked: [old] });
+      old.dispose();
+      return bFenceIronR2();
+    },
+    footprintBuild: () => legacy.build(footprintRng()),
+  };
+  return Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
 }

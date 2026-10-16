@@ -460,6 +460,33 @@ function stallAwning(rng: Rng): THREE.BufferGeometry[] {
   out.push(valance(0.004, false), valance(-0.004, true));
   return out;
 }
+/** (props lane A, r2 sweep 2026-10-16) the stall's last intact build, for its wreck (the pool builds the intact first). */
+let lastStall: THREE.BufferGeometry | null = null;
+function bStallKept(rng: Rng): THREE.BufferGeometry {
+  const g = bStall(rng);
+  lastStall?.dispose();
+  lastStall = g.clone();
+  return g;
+}
+/**
+ * The stall at the r2 bar (the sweep: PROP_FRACTURE's raft stood 11 % of its height in 2.2x its triangles): knocked over
+ * by a hull — its own build tipped forward onto its counter's front edge and a little turned, the awning down over it —
+ * in its own triangles. The legacy broken builder's draws are spent first.
+ */
+function bStallTipped(rng: Rng): THREE.BufferGeometry {
+  bStallBroken(rng).dispose();
+  const g = (lastStall ?? bStall(dryStoneRng(0x57a1))).clone();
+  g.translate(0, 0, -0.94);
+  g.rotateX(1.0);
+  g.translate(0, 0, 0.94);
+  g.rotateY(0.18);
+  const p = g.attributes.position;
+  let lo = Infinity;
+  for (let i = 0; i < p.count; i++) lo = Math.min(lo, p.getY(i));
+  g.translate(0, -lo - 0.02, 0);
+  g.computeVertexNormals();
+  return g;
+}
 function bStallBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const counter = box(2.4, 0.09, 1.2);
@@ -915,6 +942,29 @@ function bFenceIron(rng: Rng): THREE.BufferGeometry {
   for (const y of [0.14, 0.95]) parts.push(P(box(0.024, 0.045, FENCE_SEG).translate(0, y, 0), IRON, 0.03, rng));
   const n = Math.round(FENCE_SEG / RAILING_BAR);
   for (let k = 1; k < n; k++) parts.push(...ironBar(z0 + (k * FENCE_SEG) / n, 0.11, 1.06, rng));
+  return merge(parts);
+}
+/**
+ * The railing at the r2 bar (props lane A, r2 sweep 2026-10-16: its post, rails and bars were bare boxes, boxShare 0.98):
+ * the post octagonal under its cast cap, the rails round, every bar square with its spear point welded on its own top.
+ * Its own stream (no draws from the pool's): fenceKit.ts ironRailingType still runs the legacy build first for its draws,
+ * its contact band and its footprint.
+ */
+export function bFenceIronR2(): THREE.BufferGeometry {
+  const rng = dryStoneRng(0x1e0f), parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  parts.push(P(new THREE.CylinderGeometry(0.04, 0.042, 1.2, 8).rotateY(Math.PI / 8).translate(0, 0.55, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.025, 0.06, 0.1, 8).translate(0, 1.2, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.035, 0.012, 0.09, 8).translate(0, 1.29, z0), IRON, 0.04, rng));
+  for (const y of [0.14, 0.95]) parts.push(P(new THREE.CylinderGeometry(0.016, 0.016, FENCE_SEG, 6).rotateX(Math.PI / 2).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG / RAILING_BAR), hb = 0.009;
+  for (let k = 1; k < n; k++) {
+    const z = z0 + (k * FENCE_SEG) / n, y0 = 0.11, y1 = 1.06;
+    // the bar and its point as one welded piece: the point's foot the bar's own top corners
+    const bar = box(hb * 2, y1 - y0, hb * 2).translate(0, (y0 + y1) / 2, z);
+    const tip = new THREE.ConeGeometry(hb * Math.SQRT2, 0.07, 4, 1, true).rotateY(Math.PI / 4).translate(0, y1 + 0.035, z);
+    parts.push(P(merge([bar, tip]), IRON, 0.05, rng));
+  }
   return merge(parts);
 }
 function bFenceIronBroken(rng: Rng): THREE.BufferGeometry {
@@ -1958,7 +2008,7 @@ export const DESTRUCTIBLE_TYPES = {
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, hw: 0.36, hl: 1.0, build: bTrough, broken: bTroughBroken },
   // (2026-10-11: the stall wears the structures' canvas print — its awning real canvas; its counter, posts and goods take
   // their tones under the same weave)
-  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStall, broken: bStallBroken },
+  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStallKept, broken: bStallTipped, ownBroken: true },
   bench:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.0,  hw: 0.88, hl: 0.28, build: bBench, broken: bBenchBroken },
   churn:       { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null, bodyR: 0.23, mass: 0.65, bounce: 0.38 },
   lamp:        { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.30, h: 4.7,  shape: 'circle', collisionR: 0.20, groundR: 0.22, build: bLamp, broken: null },
