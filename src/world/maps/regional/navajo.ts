@@ -16,6 +16,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { latticeFrame } from './lattice.ts';
 import { sheetHall } from './hall.ts';
+import { recordShed } from './shedFall.ts';
 
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
@@ -322,6 +323,14 @@ const hogan: RegionalBuilder = (ctx) => {
 function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () => number): void {
   const post = pick(look, JUNIPER);
   const px = W / 2 - 0.15, pz = D / 2 - 0.15;
+  // (the looks lane, 2026-10-16; WORKLIST #26 "ramada posts snap and drop the bough mat") recorded as an open shed
+  // (shedFall.ts): a blow passes between its posts; it falls with its posts snapped over their feet and its bough mat
+  // down on them in its lengths, not as an adobe heap
+  const posts: Array<[number, number, number, number]> = [[-px, -pz, -0.3, H], [px, -pz, -0.3, H], [-px, pz, -0.3, H], [px, pz, -0.3, H]];
+  recordShed(sink, posts.map(([x, z, f, h]) => ({ foot: [x, f, z] as Vec3, head: [x, h, z] as Vec3 })), {
+    W, D, pitchDeg: 2, eaveY: H + 0.06, eave: 0.3, verge: 0.3, deck: 0.1, post: 0.17, posts, pad: null, timber: post, boards: null, boardW: 0.2,
+    back: false, ends: false, roof: { bucket: 'structureWood', colour: [0.42, 0.39, 0.26], shape: 'splinter', lattice: true }, stone: null, pile: 0,
+  });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const lean = (look() - 0.5) * 0.12;
     const tone = shade(post, 0.9 + look() * 0.2);
