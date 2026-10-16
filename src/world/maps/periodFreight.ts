@@ -102,6 +102,108 @@ function pick<T>(list: readonly T[], u: number): T {
   return list[Math.min(list.length - 1, (u * list.length) | 0)];
 }
 
+// ------------------------------------------------------------------------------------------------- the dressing
+// (the r2 sweep, 2026-10-16: the rows graded box share 0.92-0.97, the crates' upper courses and the sheets' lashings
+// floating) The stacks' solids — every part above, its size, its paint and its draws — are the movement and shot solids
+// structureCollision.ts derives, so they stay exactly as they were. What is new is dressing (userData.noCollision: the
+// derivation skips it) that takes no draw from the seat's stream: the crates' corner posts between their battens, the
+// billets' sheared ends, the deal's sawn ends, the dunnage under every upper course, the sheet folded over onto its top
+// and the hitch at each lashing's foot. A corner post, an end, a fold shares its corners with the solids it dresses, so
+// the merged bucket draws them as one piece of joinery.
+
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _n = new THREE.Vector3();
+/** Triangles in one geometry: flat normals, a planar uv at the stack's print density, one colour (no draw). */
+class Dressing {
+  private pos: number[] = [];
+  /** a triangle wound to face `out` */
+  tri(a: readonly number[], b: readonly number[], c: readonly number[], out: readonly number[]): void {
+    _a.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    _b.set(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
+    _n.crossVectors(_a, _b);
+    if (_n.x * out[0] + _n.y * out[1] + _n.z * out[2] >= 0) this.pos.push(...a, ...b, ...c);
+    else this.pos.push(...a, ...c, ...b);
+  }
+  quad(a: readonly number[], b: readonly number[], c: readonly number[], d: readonly number[], out: readonly number[]): void {
+    this.tri(a, b, c, out); this.tri(a, c, d, out);
+  }
+  /** an axis-aligned block's five faces that show (no underside) */
+  quadBox(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void {
+    const lx = Math.min(x0, x1), hx = Math.max(x0, x1);
+    const c = (i: number, j: number, k: number) => [i ? hx : lx, j ? y1 : y0, k ? z1 : z0];
+    this.quad(c(0, 1, 0), c(1, 1, 0), c(1, 1, 1), c(0, 1, 1), [0, 1, 0]);
+    this.quad(c(0, 0, 0), c(1, 0, 0), c(1, 1, 0), c(0, 1, 0), [0, 0, -1]);
+    this.quad(c(0, 0, 1), c(1, 0, 1), c(1, 1, 1), c(0, 1, 1), [0, 0, 1]);
+    this.quad(c(0, 0, 0), c(0, 0, 1), c(0, 1, 1), c(0, 1, 0), [-1, 0, 0]);
+    this.quad(c(1, 0, 0), c(1, 0, 1), c(1, 1, 1), c(1, 1, 0), [1, 0, 0]);
+  }
+  get empty(): boolean { return this.pos.length === 0; }
+  /** the dressing as a part: new to the stream and to the collision */
+  geometry(hex: number, k = 1): THREE.BufferGeometry {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
+    g.computeVertexNormals();
+    const n = this.pos.length / 3, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), nor = g.attributes.normal;
+    _c.set(hex);
+    for (let i = 0; i < n; i++) {
+      const x = this.pos[i * 3], y = this.pos[i * 3 + 1], z = this.pos[i * 3 + 2];
+      const ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i));
+      uv[i * 2] = (ax >= ay && ax >= az ? z : x) * 0.55; uv[i * 2 + 1] = (ay > ax && ay > az ? z : y) * 0.55;
+      col[i * 3] = Math.min(1, _c.r * k); col[i * 3 + 1] = Math.min(1, _c.g * k); col[i * 3 + 2] = Math.min(1, _c.b * k);
+    }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.userData.uvJitter = 'none';
+    g.userData.noCollision = true;
+    return g;
+  }
+}
+
+/**
+ * A bar's two ends crowned `crown` out from their faces (a billet's sheared end, a deal board's sawn end): each end face's
+ * four corners to a point on its axis, the bar (`sx` x `sy` x `sz`, centred at `c`, its length along z) unchanged.
+ */
+function crownEnds(d: Dressing, c: readonly number[], sx: number, sy: number, sz: number, crown: number): void {
+  const hx = sx / 2, hy = sy / 2;
+  for (const e of [-1, 1]) {
+    const z = c[2] + e * sz / 2, tip = [c[0], c[1], z + e * crown];
+    const q = [[c[0] - hx, c[1] - hy, z], [c[0] + hx, c[1] - hy, z], [c[0] + hx, c[1] + hy, z], [c[0] - hx, c[1] + hy, z]];
+    for (let k = 0; k < 4; k++) d.tri(q[k], q[(k + 1) % 4], tip, [0, 0, e]);
+  }
+}
+
+/**
+ * A crate's four corner posts between its battens (the case's corner strips, 7 cm a leg, as proud as its battens), in its
+ * own frame (its foot at y = 0, its corners at ±hx, ±hz; the battens' bands [0.02, 0.10] and [hh - 0.10, hh - 0.02]):
+ * each post's outer corner on the battens' corners, and at one corner its foot run down to the case's own corner.
+ */
+function cornerPosts(d: Dressing, hx: number, hz: number, hh: number): void {
+  const t = 0.01, a = Math.min(0.07, hx * 0.4, hz * 0.4);
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+    const P = [[sx * hx, sz * (hz - a)], [sx * (hx + t), sz * (hz - a)], [sx * (hx + t), sz * (hz + t)], [sx * (hx - a), sz * (hz + t)],
+      [sx * (hx - a), sz * hz], [sx * hx, sz * hz]];
+    const at = (k: number, y: number) => [P[k][0], y, P[k][1]];
+    const outs = [[0, 0, -sz], [sx, 0, 0], [0, 0, sz], [-sx, 0, 0]];
+    // (its two outer faces; the legs' 1 cm ends only at its foot)
+    const piece = (y0: number, y1: number, from = 1, to = 3) => {
+      for (let k = from; k < to; k++) d.quad(at(k, y0), at(k + 1, y0), at(k + 1, y1), at(k, y1), outs[k]);
+    };
+    piece(0.1, hh - 0.1);
+    if (sx === 1 && sz === 1) {
+      // its foot under the lower batten, its sole on the case's corner
+      piece(0, 0.02, 0, 4);
+      d.quad(at(0, 0), at(1, 0), at(2, 0), at(5, 0), [0, -1, 0]);
+      d.quad(at(5, 0), at(2, 0), at(3, 0), at(4, 0), [0, -1, 0]);
+    }
+  }
+}
+
+/** Turn a frame's dressing points about y and move them (as the stack's parts are posed). */
+function posed(g: THREE.BufferGeometry, yaw: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  g.rotateY(yaw);
+  g.translate(x, y, z);
+  return g;
+}
+
 /** One stack's parts by bucket, in the seat's local frame (x across, z along, y up from the ground). */
 interface StackParts { baked: THREE.BufferGeometry[]; structureWood: THREE.BufferGeometry[]; structureMetal: THREE.BufferGeometry[] }
 
@@ -118,7 +220,9 @@ function cores(parts: StackParts, local: Rng, w: number, h: number, l: number, u
   g.userData.structureSupport = { part: 'freight-core' };
   parts.baked.push(g);
   if (!upper) return;
-  const inner = paint(box(w * 0.8, h * 0.8, l * 0.8, 0.5), local, CORE, 0.04);
+  // (the r2 sweep, 2026-10-16) the second core only takes the stacked box's four draws: a 4 cm block at the first's heart
+  // (its 24 paint draws as before; under the collision's least solid, and wholly inside the first as it always was)
+  const inner = paint(box(0.04, 0.04, 0.04, 0.5), local, CORE, 0.04);
   inner.translate(0, h / 2, 0);
   inner.userData.uvJitter = 'consume';
   parts.baked.push(inner);
@@ -172,8 +276,17 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
   const top = gablePrism(w * 0.94 + 0.06, ridge, l * 0.94 + 0.06, 0.4);
   top.translate(0, h + BEARER_H, 0);
   parts.baked.push(fresh(paint(top, local, tone, 0.07)));
+  // the sheet folded over onto the top: its top ring's corners to the top's foot (closing the crack between the two)
+  const fold = new Dressing(), ring = corners(body, h + BEARER_H), foot = corners(top, h + BEARER_H);
+  if (ring.length === 4 && foot.length === 4) {
+    for (let k = 0; k < 4; k++) {
+      const j = (k + 1) % 4, mid = [(ring[k][0] + ring[j][0]) / 2, 0, (ring[k][2] + ring[j][2]) / 2];
+      fold.quad(ring[k], ring[j], foot[j], foot[k], [mid[0], 4, mid[2]]);
+    }
+    parts.baked.push(fold.geometry(pick(tones, 0.5), 0.92));
+  }
   // the lashings: over the ridge (two slanted pieces) and down each side to the bearer end
-  const lashes = 3 + (local() < 0.5 ? 1 : 0);
+  const lashes = 3 + (local() < 0.5 ? 1 : 0), hitches = new Dressing();
   const halfTop = (w * 0.94 + 0.06) / 2, slope = Math.atan2(ridge, halfTop), run = Math.hypot(halfTop, ridge);
   for (let i = 0; i < lashes; i++) {
     const z = -l / 2 + 0.6 + (l - 1.2) * (i / (lashes - 1)) + (local() - 0.5) * 0.2;
@@ -186,8 +299,23 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
       down.rotateZ(s * 0.025);
       down.translate(s * ((w + 0.06) / 2 + 0.012), BEARER_H + (h - 0.02) / 2, z);
       parts.baked.push(fresh(down));
+      // the lashing's hitch at its foot: the rope turned through an eyelet in the sheet's hem
+      const footX = s * ((w + 0.06) / 2 + 0.012 + Math.sin(0.025) * (h - 0.02) / 2);
+      hitches.quadBox(s * ((w + 0.06) / 2 - 0.02), footX + s * 0.012, BEARER_H - 0.01, BEARER_H + 0.07, z - 0.028, z + 0.028);
     }
   }
+  if (!hitches.empty) parts.baked.push(hitches.geometry(ROPE, 0.85));
+}
+
+/** The distinct corners of a part's positions at height `y` (to the millimetre), in order round the y axis. */
+function corners(g: THREE.BufferGeometry, y: number): number[][] {
+  const p = g.attributes.position, seen = new Map<string, number[]>();
+  for (let i = 0; i < p.count; i++) {
+    if (Math.abs(p.getY(i) - y) > 1e-4) continue;
+    const key = `${Math.round(p.getX(i) * 1000)},${Math.round(p.getZ(i) * 1000)}`;
+    if (!seen.has(key)) seen.set(key, [p.getX(i), p.getY(i), p.getZ(i)]);
+  }
+  return [...seen.values()].sort((a, b) => Math.atan2(a[2], a[0]) - Math.atan2(b[2], b[0]));
 }
 
 /** A crate stack: a full course of wooden cases on the bearers, the next course full only on a stacked seat. */
@@ -220,6 +348,12 @@ function crateStack(parts: StackParts, local: Rng, upper: boolean): void {
         batten.translate(x, y + by, z);
         parts.structureWood.push(fresh(batten));
       }
+      // its corner posts; above the bottom course, the two dunnage skids it stands on (the course under it stands 2 cm
+      // short of this one's foot)
+      const posts = new Dressing();
+      cornerPosts(posts, ww / 2, ll / 2, hh);
+      if (c > 0) for (const sx of [-1, 1]) posts.quadBox(sx * ww * 0.28 - 0.04, sx * ww * 0.28 + 0.04, -0.02, 0, -ll / 2 + 0.06, ll / 2 - 0.06);
+      parts.structureWood.push(posed(posts.geometry(0x6f5d44, 0.95), yaw, x, y, z));
     }
     y += ch;
   }
@@ -234,7 +368,7 @@ function billetStack(parts: StackParts, local: Rng, upper: boolean): void {
   const l = SEAT_L - 0.6 - local() * 0.4, courses = (upper ? 6 : 4) + (local() < 0.4 ? 1 : 0);
   const span = bars * side + (bars - 1) * gap, spacer = 0.1;
   bearers(parts, local, span + 0.2, l, 3);
-  const pitch = side + spacer;
+  const pitch = side + spacer, sheared = new Dressing();
   cores(parts, local, span - 0.14, BEARER_H + courses * pitch - spacer - 0.06, l - 0.5, upper);
   for (let c = 0; c < courses; c++) {
     const y = BEARER_H + c * pitch;
@@ -242,8 +376,11 @@ function billetStack(parts: StackParts, local: Rng, upper: boolean): void {
     for (let b = 0; b < bars; b++) {
       const bl = l - local() * 0.25;
       const bar = paint(box(side, side, bl, 0.55), local, pick(c === courses - 1 ? BILLET_RUST : BILLET_SCALE, local()), 0.14);
-      bar.translate(-span / 2 + side / 2 + b * (side + gap) + shift, y + side / 2, (local() - 0.5) * 0.12);
+      const at = [-span / 2 + side / 2 + b * (side + gap) + shift, y + side / 2, (local() - 0.5) * 0.12];
+      bar.translate(at[0], at[1], at[2]);
       parts.structureMetal.push(fresh(bar));
+      // its sheared ends, crowned by the shear
+      crownEnds(sheared, at, side, side, bl, 0.016);
     }
     if (c === courses - 1) break;
     for (const z of [-l * 0.38, 0, l * 0.38]) {
@@ -252,6 +389,7 @@ function billetStack(parts: StackParts, local: Rng, upper: boolean): void {
       parts.structureWood.push(fresh(sp));
     }
   }
+  parts.structureMetal.push(sheared.geometry(0x6a625c));
 }
 
 /** Sawn timber in a stickered stack: courses of deal with stickers across between them, the top course short. */
@@ -259,7 +397,7 @@ function lumberStack(parts: StackParts, local: Rng, upper: boolean): void {
   const w = SEAT_W - 0.2 - local() * 0.15, l = SEAT_L - 0.4 - local() * 0.3;
   const courses = (upper ? 9 : 6) + (local() < 0.5 ? 1 : 0), courseH = 0.2 + local() * 0.04, sticker = 0.045;
   bearers(parts, local, w, l, 3);
-  const pitch = courseH + sticker;
+  const pitch = courseH + sticker, sawn = new Dressing();
   cores(parts, local, w - 0.1, BEARER_H + (courses - 1) * pitch - sticker - 0.03, l - 0.5, upper);
   for (let c = 0; c < courses; c++) {
     const y = BEARER_H + c * pitch;
@@ -268,8 +406,11 @@ function lumberStack(parts: StackParts, local: Rng, upper: boolean): void {
     for (let p = 0; p < planks; p++) {
       const pw = w / planks - 0.015, pl = l - (c === courses - 1 ? local() * 1.2 : local() * 0.25);
       const board = paint(box(pw, courseH, pl, 0.55), local, DEAL, 0.1);
-      board.translate(-w / 2 + (p + 0.5) * (w / planks), y + courseH / 2, (local() - 0.5) * 0.18);
+      const at = [-w / 2 + (p + 0.5) * (w / planks), y + courseH / 2, (local() - 0.5) * 0.18];
+      board.translate(at[0], at[1], at[2]);
       parts.structureWood.push(fresh(board));
+      // its sawn ends, the end grain a shade darker and a hair proud
+      crownEnds(sawn, at, pw, courseH, pl, 0.008);
     }
     if (c === courses - 1) break;
     for (const z of [-l * 0.42, -l * 0.14, l * 0.14, l * 0.42]) {
@@ -278,6 +419,7 @@ function lumberStack(parts: StackParts, local: Rng, upper: boolean): void {
       parts.structureWood.push(fresh(st));
     }
   }
+  parts.structureWood.push(sawn.geometry(0xa8915f));
 }
 
 /**
