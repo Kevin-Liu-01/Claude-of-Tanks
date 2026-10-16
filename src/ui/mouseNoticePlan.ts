@@ -318,8 +318,22 @@ function freeIn(env: Env, code: number, half: number, lo: number, hi: number, ta
   return freeNear(A, at(code), count(code), half, other, 0, other.length, otherHalf, lo, hi, target);
 }
 
-/** Where each lane must start for boxes that cross its column, and the cost of the rows it loses (Infinity where it
- *  would lose its last row). */
+/** How far down a lane's rows stay clear of the battle sight at full bloom (its ring, readouts and chip): main's rows
+ *  below that already meet the ring, so a moved lane is priced by the clear rows it loses. */
+function clearBottom(lane: PlanLane, keep: readonly PlanKeepOut[]): number {
+  let bottom = lane.bottom;
+  for (const k of keep) {
+    if ('r' in k) {
+      const dx = Math.max(lane.x - k.cx, 0, k.cx - (lane.x + lane.w));
+      if (dx < k.r) bottom = Math.min(bottom, k.cy - Math.sqrt(k.r * k.r - dx * dx));
+    } else if (lane.x < k.x + k.w && lane.x + lane.w > k.x) bottom = Math.min(bottom, k.y);
+  }
+  return bottom;
+}
+const laneClear: [number, number] = [NaN, NaN];
+
+/** Where each lane must start for boxes that cross its column, and the cost of the rows it loses: its rows clear of
+ *  the battle sight (laneClear), and Infinity where it would lose its last row of all. */
 function laneShift(input: MouseNoticeInput, boxes: readonly PlanRect[], out: [number, number]): number {
   let cost = 0;
   const g = MOUSE_NOTICE_GAP_PX;
@@ -332,8 +346,9 @@ function laneShift(input: MouseNoticeInput, boxes: readonly PlanRect[], out: [nu
     }
     out[side] = top;
     if (top <= lane.top) continue;
-    const before = rowsIn(lane.bottom - lane.top), after = rowsIn(lane.bottom - top);
-    if (after === 0 && before > 0) return Infinity;
+    if (rowsIn(lane.bottom - top) === 0 && rowsIn(lane.bottom - lane.top) > 0) return Infinity;
+    const clear = Number.isNaN(laneClear[side]) ? lane.bottom : laneClear[side];
+    const before = rowsIn(clear - lane.top), after = rowsIn(clear - top);
     cost += ROW_COST * (before - after) + LANE_PX_COST * (top - lane.top);
   }
   return cost;
@@ -580,6 +595,10 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   let pair: PairResult | null = null;
   let clearance: MouseNoticePlan['clearance'] = -1;
   const keeps = TIERS.map((tier) => mouseReticleFootprint(input.width, input.height, tier));
+  for (let side = 0; side < 2; side++) {
+    const lane = input.lanes[side];
+    laneClear[side] = lane ? clearBottom(lane, keeps[1]) : NaN;
+  }
   for (let i = 0; i < TIERS.length && !pair; i++) {
     pair = searchPair(input, keeps[i]);
     if (pair) clearance = TIERS[i];
