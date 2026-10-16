@@ -1916,8 +1916,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   // outside this owner block) and its key carries the atmosphere parameters; null keeps the Preetham bake.
   let atmosphereBake: (() => THREE.WebGLRenderTarget) | null = null;
   let atmosphereKeySuffix = '';
-  /** 2026-10-16: the installed environment is the enclosed Garage's full-dome bake (syncEnvironmentEnclosure). */
-  let installedEnclosed = false;
+  /** 2026-10-16: the installed environment is the grounded model's own bake (syncEnvironmentEnclosure). */
+  let installedPhysical = false;
   const environments = new SkyEnvironmentCache(renderer, scene);
   const environmentGenerator = (): THREE.PMREMGenerator => {
     const context = renderer.getContext();
@@ -2055,21 +2055,23 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         environmentIntensityFor(),
         () => enforceEnvValidity(renderer, scene, preset.envValidityScale ?? preset.skyIntensity),
       ));
-      installedEnclosed = physicalEnvIntensity != null && !!scene.userData.lightEnclosed;
+      installedPhysical = physicalEnvBake();
     },
 
     /**
      * 2026-10-16 (the engine-cs lane; media wave on Verdant: white glowing chalk boulders and washed-out ground, on prod
-     * 224 too): the environment follows the enclosure. The Garage's sealed bay keeps the full dome's bake its rig was
-     * tuned under (keyed |enclosed: the raw dome with the sun's disc and its glow, which PMREM folds into the diffuse
-     * mip). Leaving the bay re-applied the grounded rig (lighting.ts applyRig: the model's environment intensity) but
-     * never re-baked, so a battle whose sky last baked inside the bay lit its open ground with that bake at the open
-     * sky's intensity: the sun once more as a shadowless fill on every surface. On the flip to the open sky
-     * (lighting.onEnclosureChange, main.ts) a bake made enclosed re-bakes as the grounded model's (an exact retained hit
-     * when that target is still cached). Returns whether it re-baked.
+     * 224 too): the open sky lights with the grounded model's own bake. The full dome's bake — the raw dome with the
+     * sun's disc and its glow, which PMREM folds into the diffuse mip — is what the Garage's sealed bay keeps (keyed
+     * |enclosed) and what a bake makes before the atmosphere first shows (the boot's). Leaving the bay re-applied the
+     * grounded rig (lighting.ts applyRig: the model's environment intensity) but never re-baked, so a battle whose sky
+     * had not re-keyed since lit its open ground with that bake at the open sky's intensity: the sun once more as a
+     * shadowless fill on every surface. On the flip to the open sky (lighting.onEnclosureChange, main.ts) a full-dome
+     * bake re-bakes as the grounded model's (an exact retained hit when that target is still cached); the Preetham dome
+     * (no atmosphere) keeps its full-dome bake by design. Returns whether it re-baked.
      */
     syncEnvironmentEnclosure(): boolean {
-      if (!installedEnclosed || scene.userData.lightEnclosed) return false;
+      if (installedPhysical || scene.userData.lightEnclosed) return false;
+      if (!refreshAtmosphere() || physicalEnvIntensity == null) return false;
       rig.bakeEnvironment();
       return true;
     },
