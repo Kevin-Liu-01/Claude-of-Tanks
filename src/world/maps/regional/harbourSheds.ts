@@ -5,7 +5,7 @@
 // Each kit file keeps one re-pointing line; a builder that needs the kit's own joinery takes its state and dialect from
 // the kit's call (no import back into the kit).
 import { LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, type WindowStyle } from './openings.ts';
 import { recordLattice } from './lattice.ts';
 import { archHead } from './sarajevoParts.ts';
@@ -272,7 +272,7 @@ export interface KitJoinery<S> { st: S; dialect: (st: S) => HouseDialect }
 export function dalmatianBoathouse<S extends { door: Rgb; window: WindowStyle; litShare: number; rng: () => number }>(
   ctx: RegionalBuildContext, kit: KitJoinery<S>): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile', bb = ctx.bounds;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile', bb = ctx.bounds;
   const W = clamp(ctx.info.w - 3.2, 5.6, 8.4), D = clamp(ctx.info.d - 2.7, 8, 12.5);
   const plinth = 0.3, wallH = 3.8, gw = Math.min(3.0, W - 2.0), r = gw / 2, spring = 2.2;
   const openings: Opening[] = [
