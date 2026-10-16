@@ -183,7 +183,7 @@ assert.match(layout,/new ResizeObserver\(schedule\)/,'map zoom and roster size c
 assert.match(layout,/visualViewport\?\.addEventListener\('resize'/,'virtual keyboard/visual viewport changes reflow');
 assert.match(layout,/window\.addEventListener\('cot-hud-relayout', schedule\)/,'the network strip can request a relayout from outside the root');
 assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,52px\);\}/,'the right roster reads its lane from the layout, with its own lane as the fallback');
-assert.match(hud,/installBattleHudLayout\(root\)/);
+assert.match(hud,/installBattleHudLayout\(root(?:, dockYield)?\)/);
 const shot=readFileSync(new URL('./shotInfo.ts',import.meta.url),'utf8');
 assert.doesNotMatch(shot,/t\('shotInfo\.(yourShots|yourShotsLast|damageReceived)'/,'log headings use existing GT catalog entries');
 

@@ -194,8 +194,17 @@ body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>.cot-dock-more{displa
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button[data-dock-overflow]{visibility:hidden;pointer-events:none}
 body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-vehicle-controls>button[data-dock-overflow]{visibility:visible;pointer-events:auto;z-index:2;box-shadow:0 6px 18px rgba(0,0,0,.62),0 0 0 1px rgba(240,173,69,.45)}
 body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-vehicle-controls>.cot-dock-more{color:#ffd27a;border-color:#f0ad45}
-/* The open panel may lie over the score plate and objective (layer 30) for that moment: lift the row above them. */
+/* Nothing the reticle draws is ever under a tile (touchDockYield.ts): the dock sits in the sight's layer, under the
+   reticle canvas (.cot-ret, layer 8) and over the scope's lens shading (.cot-ret-lens, earlier in the HUD), so the ring
+   and gun mark wherever the gun lags or is pinned, the incoming-hit wedges and their damage figures all draw over it;
+   a tile the live ink reaches dims (data-ret-yield) so that ink reads clearly, and still takes taps. */
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls{z-index:calc(var(--hud-layer-sight) - 1)}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button{transition-property:border-color,color,filter;transition-duration:90ms,90ms,140ms}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button[data-ret-yield]{filter:opacity(.38)}
+/* The open panel may lie over the score plate and objective (layer 30) for that moment: lift the row above them, and the
+   reticle canvas above the row, so ink still draws over every tile. */
 body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-vehicle-controls{z-index:calc(var(--hud-layer-score) + 2)}
+body.cot-touch-layout[data-hud-dock][data-hud-dock-open] .cot-ret{z-index:calc(var(--hud-layer-score) + 3)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background:conic-gradient(transparent calc((1 - var(--cd,0)) * 360deg),rgba(2,6,9,.74) 0)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;position:relative;z-index:1}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
@@ -378,3 +387,28 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:#291717eb;border:1px solid #d79568}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:#ffbc83;font-weight:800}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:#ffb25e}
+
+/* TOUCH CENTRE NOTICES AND COUNTDOWN (centreNotices.ts, applied by battleHudLayout.ts). They take the place the plan
+   gives them, clear of the reticle (its crosshair, its ring at full bloom and every scope readout wherever the screen
+   allows): each notice's centre x, top and width; flanking puts the alert's left edge just right of the reticle's
+   column; compact takes the 299 px landscape notices' small type wherever full-size ones find no clear place. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-sixth{left:var(--hud-notice-x);top:var(--hud-notice-top);width:var(--hud-notice-w);max-width:var(--hud-notice-w);transform:translate(-50%,-6px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-sixth.on{transform:translate(-50%,0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert{left:var(--hud-alert-x);top:var(--hud-alert-top);bottom:auto;width:auto;max-width:var(--hud-alert-w);white-space:normal;transform:translate(-50%,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert.show{transform:translate(-50%,0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert-copy{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;white-space:normal}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices][data-hud-notices-flank] .cot-alert{transform:translate(0,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices][data-hud-notices-flank] .cot-alert.show{transform:translate(0,0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth{grid-template-columns:20px minmax(0,1fr);gap:6px;min-height:32px;padding:4px 10px;font-size:9px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth .sig svg{width:20px;height:20px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth .lb{font-size:10px;letter-spacing:.12em}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth .sub{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-alert{box-sizing:border-box;gap:6px;min-height:28px;padding:4px 10px;font-size:8px;line-height:1.2}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-alert-icon,
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-alert-icon svg{width:12px;height:12px}
+/* The countdown: its centre x and top, scaled from the top centre; compact, one 40 px line (the 299 px rule's). */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown] .cot-prebattle{left:var(--hud-countdown-x);top:var(--hud-countdown-top);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle{width:var(--hud-countdown-w);height:40px;min-height:40px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;transform:translateX(-50%)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle .k{font-size:10px;letter-spacing:.1em;text-indent:.1em;padding:4px 4px;white-space:nowrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle .n{width:auto;height:36px;font-size:30px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-countdown='compact'] .cot-prebattle .r{display:none}

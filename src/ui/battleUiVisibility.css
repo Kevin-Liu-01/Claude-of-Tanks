@@ -1,6 +1,6 @@
 /* Minimal HUD retains real ballistic aiming, range/reload/zoom and vision controls.
    Keep the root alive: its reticle canvas is authoritative aiming presentation. */
-body.cot-battle-ui-hidden .cot-hud > :not(.cot-ret,.cot-scope-vision,.cot-flight-hud,.cot-drone-signal-loss){display:none!important}
+body.cot-battle-ui-hidden .cot-hud > :not(.cot-ret,.cot-ret-lens,.cot-scope-vision,.cot-flight-hud,.cot-drone-signal-loss){display:none!important}
 body.cot-battle-ui-hidden :is(.cot-dp,.cot-si-stats,.cot-hints,.cot-room-chat,.cot-mp-status.battle,.cot-network-diagnostics,#cot-perfhud):not(.cot-hud-editor *){display:none!important}
 /* Touch navigation stays usable; desktop retains Esc and its settings button. */
 body.cot-battle-ui-hidden .cot-touch .aimhint{display:none!important}

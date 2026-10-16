@@ -19,7 +19,47 @@ const cases = [
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
-const reports=[];const errors=[];const reticleReach=[];const swipes=[];const droneCues=[];
+const reports=[];const errors=[];const reticleReach=[];const swipes=[];const droneCues=[];const liveInk=[];
+// The centre notices and the countdown against the reticle (round 4; centreNotices.ts): the widest keep-out each box
+// clears, 3 everything the reticle draws at any bloom, 2 the battle sight at full bloom, 1 the crosshair core, 0 none.
+// Each touch screen of the receipt must reach its floor (centreNotices.selftest.mjs pins the same table; main reaches 0
+// on every phone); a size outside the table (a rotation mid-check) is recorded only.
+const CENTRE_FLOOR={'360x640':[3,3],'390x844':[3,3],'844x390':[3,3],'667x375':[3,3],'320x568':[2,3],'568x256':[0,0],'568x320':[1,2],
+  '844x300':[3,3],'932x430':[3,3],'1024x768':[3,3],'768x1024':[3,3]};
+function centreClearance(){
+  const tiers=window.__HUD_LAYOUT.reticleTiers(innerWidth,innerHeight);
+  const hits=(r,k)=>'r' in k?Math.hypot(Math.max(r.left-k.x,0,k.x-r.right),Math.max(r.top-k.y,0,k.y-r.bottom))<k.r
+    :r.left<k.x+k.w&&r.right>k.x&&r.top<k.y+k.h&&r.bottom>k.y;
+  const level=el=>{
+    if(!el||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;
+    const r=el.getBoundingClientRect();
+    for(let l=3;l>=1;l--)if(tiers[l-1].every(k=>!hits(r,k)))return l;
+    return 0;
+  };
+  return {detection:level(document.querySelector('.cot-sixth.on')),alert:level(document.querySelector('.cot-alert.show')),
+    countdown:level(document.querySelector('.cot-prebattle.on'))};
+}
+// Live reticle ink against the touch action dock (round 4; touchDockYield.ts). The gun mark rides the gun's own point and
+// the incoming-hit wedges and their figures circle the centre far beyond any static keep-out, so the dock sits under the
+// reticle canvas and each tile the ink reaches dims. Read from the canvas's own pixels: every visible tile with reticle
+// ink under it (alpha >= 12/255) must be dimmed (data-ret-yield), and the canvas must stack above the row (also with the
+// More panel open), so no tile ever covers that ink.
+function inkUnderTiles(){
+  const canvas=document.querySelector('.cot-ret'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const scale=canvas.width/(canvas.clientWidth||innerWidth);
+  const row=document.querySelector('.cot-vehicle-controls');
+  const tiles=[...row.children].filter(tile=>tile.checkVisibility({checkVisibilityCSS:true})).map(tile=>{
+    const r=tile.getBoundingClientRect();
+    const x0=Math.max(0,Math.floor(r.left*scale)),y0=Math.max(0,Math.floor(r.top*scale));
+    const w=Math.min(canvas.width-x0,Math.ceil(r.width*scale)),h=Math.min(canvas.height-y0,Math.ceil(r.height*scale));
+    let ink=0;
+    if(w>0&&h>0){const data=ctx.getImageData(x0,y0,w,h).data;for(let i=3;i<data.length;i+=4)if(data[i]>=12)ink++;}
+    return {name:tile.className.split(' ')[0]||'tile',x:r.left,y:r.top,w:r.width,h:r.height,ink:Math.round(ink/scale/scale),
+      dimmed:tile.hasAttribute('data-ret-yield'),panel:tile.hasAttribute('data-dock-overflow')};
+  });
+  const z=el=>Number(getComputedStyle(el).zIndex);
+  return {tiles,ret:z(canvas),row:z(row),lens:z(document.querySelector('.cot-ret-lens')),open:document.body.hasAttribute('data-hud-dock-open')};
+}
 function measure(state){
   // Kept inside the serialized page callback so browser execution needs no
   // Node-side closure. Preserve selector/DOM order for overlap diagnostics.
@@ -142,7 +182,16 @@ try {
     // `state` names the report (with -6-controls / -7-controls when the kit grew); `base` is the fixture state.
     async function check(state,base=state){
       const result=await page.evaluate(measure,base);
-      if(touch)result.failures.push(...await page.evaluate(dockIssues));
+      if(touch){
+        result.failures.push(...await page.evaluate(dockIssues));
+        result.centre=await page.evaluate(centreClearance);
+        const viewport=page.viewportSize();
+        const [noticeFloor,countdownFloor]=CENTRE_FLOOR[`${viewport.width}x${viewport.height}`]??[0,0];
+        for(const [what,level] of Object.entries(result.centre)){
+          const floor=what==='countdown'?countdownFloor:noticeFloor;
+          if(level!==null&&level<floor)result.failures.push(`the ${what} reaches the reticle (clears keep-out ${level}, needs ${floor})`);
+        }
+      }
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
       if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
@@ -493,6 +542,72 @@ try {
           if(!cue.overflow)await page.screenshot({path:resolve(out,`${name}-${count}-drone-returning.png`)});
         } else droneCues.push(`${name}/${count}: ${cue?`no returning phase on this branch (${cue.phase})`:'drone tile hidden'}`);
       }
+      await liveInkCheck(count);
+    }
+    // The gun mark away from the crosshair (a lagging, pinned or blocked gun) on every tile in turn, in the battle sight
+    // and the scope at full bloom, a turretless sight (its readouts move with it), a panel tile behind an open More; then
+    // an incoming penetration from each of eight bearings, its wedge and "-420" figure round the centre (one with CRIT).
+    async function liveInkCheck(count){
+      await enter('idle');
+      await page.evaluate(count=>window.__HUD_LAYOUT.controls(count),count);
+      await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+      const judge=(label,result)=>{
+        const failures=[];
+        if(!(result.ret>result.row))failures.push(`the reticle canvas (z ${result.ret}) is not above the dock (z ${result.row})`);
+        if(!(result.lens<result.ret))failures.push(`the scope lens (z ${result.lens}) is not under the reticle (z ${result.ret})`);
+        for(const tile of result.tiles)if(tile.ink>0&&!tile.dimmed)failures.push(`${tile.name} at (${tile.x.toFixed(0)},${tile.y.toFixed(0)}) has ${tile.ink} px of reticle ink and is not dimmed`);
+        const inked=result.tiles.filter(t=>t.ink>0).length,dimmed=result.tiles.filter(t=>t.dimmed).length;
+        liveInk.push(`${label}: ${inked} tile(s) under ink, ${dimmed} dimmed`);
+        reports.push({name,...page.viewportSize(),touch,locale,state:`live-${label.split('/').slice(1).join('-')}`,failures,rects:[],tiles:result.tiles});
+        if(failures.length)console.log(`${label}: ${failures.join('; ')}`);
+        return inked;
+      };
+      const tiles=await page.evaluate(()=>[...document.querySelectorAll('.cot-vehicle-controls>button')]
+        .filter(t=>t.checkVisibility({checkVisibilityCSS:true})).map(t=>{const r=t.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};}));
+      let shot=false;
+      for(const [i,gun] of tiles.entries()){
+        for(const [sight,single] of i===0?[['battle',false],['scope',false],['battle',true]]:[['battle',false]]){
+          await page.evaluate(({gun,sight,single})=>{const f=window.__HUD_LAYOUT;f.aimAt(gun,{single});f.reticle({sight,bloom:'full'});},{gun,sight,single});
+          await page.waitForTimeout(sight==='scope'?160:0);
+          await page.evaluate(()=>window.__HUD_LAYOUT.repaint());
+          const result=await page.evaluate(inkUnderTiles);
+          const inked=judge(`${name}/${count}/gun-tile${i}-${sight}${single?'-single':''}`,result);
+          if(!inked)errors.push(`${name}/${count}: the gun mark on tile ${i} (${sight}) left no ink on any tile`);
+          if(!shot&&!single&&sight==='battle'){await page.screenshot({path:resolve(out,`${name}-${count}-gun-on-tile.png`)});shot=true;}
+        }
+      }
+      // A control behind More: the gun mark on its tile while the panel is open.
+      const more=page.locator('.cot-vehicle-controls > .cot-dock-more:not([hidden])');
+      if(await more.count()){
+        await page.evaluate(()=>window.__HUD_LAYOUT.aimAt(null));
+        await press(more);
+        const panelTile=await page.evaluate(()=>{const t=[...document.querySelectorAll('.cot-vehicle-controls>button[data-dock-overflow]')].find(t=>t.checkVisibility({checkVisibilityCSS:true}));
+          if(!t)return null;const r=t.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};});
+        if(panelTile){
+          await page.evaluate(gun=>{const f=window.__HUD_LAYOUT;f.aimAt(gun);f.reticle({sight:'battle',bloom:'full'});},panelTile);
+          const result=await page.evaluate(inkUnderTiles);
+          if(!result.open)errors.push(`${name}/${count}: the More panel closed while the gun mark moved`);
+          judge(`${name}/${count}/gun-panel-open`,result);
+          await page.screenshot({path:resolve(out,`${name}-${count}-gun-on-panel.png`)});
+        } else errors.push(`${name}/${count}: More opened no panel tile`);
+        await press(more);
+      }
+      await page.evaluate(()=>{const f=window.__HUD_LAYOUT;f.aimAt(null);f.restAim();});
+      let worst=null;
+      for(const bearing of [0,45,90,135,180,225,270,315]){
+        const arcs=await page.evaluate(bearing=>window.__HUD_LAYOUT.hitFrom(bearing,{crit:bearing===45}),bearing);
+        if(!arcs.length)errors.push(`${name}/${count}: no wedge drawn for a hit from ${bearing} deg`);
+        const result=await page.evaluate(inkUnderTiles);
+        const text=await page.evaluate(()=>{const ctx=document.querySelector('.cot-ret').getContext('2d');const seen=[];const fill=ctx.fillText;
+          ctx.fillText=function(t,...a){seen.push(String(t));return fill.call(this,t,...a);};try{window.__HUD_LAYOUT.repaint();}finally{delete ctx.fillText;}return seen;});
+        if(!text.includes('-420'))errors.push(`${name}/${count}: the hit from ${bearing} deg drew no "-420" figure (${text.join(', ')})`);
+        if(bearing===45&&!text.includes('CRIT'))errors.push(`${name}/${count}: the critical hit drew no CRIT`);
+        const inked=judge(`${name}/${count}/hit-${bearing}`,result);
+        if(inked&&(!worst||inked>worst.inked))worst={bearing,inked};
+        if(worst?.bearing===bearing)await page.screenshot({path:resolve(out,`${name}-${count}-hit.png`)});
+      }
+      if(!worst)liveInk.push(`${name}/${count}: no wedge reached a tile`);
+      await page.evaluate(()=>window.__HUD_LAYOUT.clearHits());
     }
     for(const count of touch?[5,6,7]:[])await reticleCheck(count);
     // Same-density count changes used to leave a stale tall container and stretch rows.
@@ -632,7 +747,7 @@ try {
   }
 } finally {
   await browser.close();
-  await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues},null,2));
+  await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues,liveInk},null,2));
 }
 const failed=reports.filter(r=>r.failures.length);
 console.log(`reticle reach per case: ${reticleReach.join(', ')}\nswipes: ${swipes.join(', ')}\ndrone cue: ${droneCues.join(', ')}`);

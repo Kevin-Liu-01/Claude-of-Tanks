@@ -12,11 +12,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  placeTouchActionDock, createCooldownSweep, touchReticleKeepOut, touchAimWarningSlot, touchReservedLanes, touchCountdownEstimate,
+  placeTouchActionDock, createCooldownSweep, touchReticleKeepOut, touchAimWarningSlot,
   touchReticleFootprint, touchAimKeepOut,
   TOUCH_ACTION_TILE_PX, TOUCH_ACTION_MIN_TILE_PX, TOUCH_ACTION_GAP_PX, TOUCH_ACTION_CLEARANCE_PX, TOUCH_ACTION_RETICLE,
   TOUCH_ACTION_RETICLE_READOUTS,
 } from './touchActionDock.ts';
+import { alertReserve, planTouchCentre } from './centreNotices.ts';
 import { arrangeVehicleControls } from './vehicleControlOrder.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -135,44 +136,51 @@ const HARD = /^(joy|fire|fireAlt|scope|autoaim|chrome|con\d|ammo)$/;
 const OWNER = new Set(['small-phone', 'phone', 'landscape']);
 const summary = [];
 let placements = 0;
+/** The layout's own inputs for one fixture viewport (battleHudLayout.ts placeTouchCentre), with or without the
+ *  objective plate (Standard has none: the score's bottom is the objective bottom, and portrait phones lift their
+ *  settings trio and minimap to it, battleHudLayout.css). */
+function centreInputs(viewport, objective, count) {
+  const { width, height } = viewport;
+  const o = structuredClone(viewport.obstacles);
+  const scoreBottom = o.top.y + o.top.h;
+  if (!objective) {
+    delete o.mode;
+    if (width < height && width < 520) { o.chrome.y = scoreBottom + 8; o.minimap.y = Math.max(108, scoreBottom + 8); }
+  }
+  const objectiveBottom = objective ? o.mode.y + o.mode.h : scoreBottom;
+  const minimapBottom = o.minimap.y + o.minimap.h;
+  return { width, height, top: objectiveBottom + 8, count,
+    controls: Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r),
+    instruments: Object.entries(o).filter(([k]) => !HARD.test(k) && k !== 'ammoDrawerOpen').map(([, r]) => r),
+    drawer: o.ammoDrawerOpen ? [o.ammoDrawerOpen] : [], lanes: [touchAimWarningSlot(width, height, minimapBottom)],
+    keepOut: touchAimKeepOut(width, height, minimapBottom),
+    anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 },
+    detection: viewport.centre.detection, alert: alertReserve(width, viewport.centre.alertLine), countdown: viewport.centre.countdown };
+}
 for (const viewport of VIEWPORTS) {
   const { width, height } = viewport;
   const name = viewport.cases.join('/');
-  const landscape = width > height;
   for (const objective of [true, false]) {
-    // Without an objective plate (Standard) the score's bottom is the objective bottom, and portrait phones lift their
-    // settings trio and minimap to it (battleHudLayout.css).
-    const o = structuredClone(viewport.obstacles);
-    const scoreBottom = o.top.y + o.top.h;
-    if (!objective) {
-      delete o.mode;
-      if (!landscape && width < 520) { o.chrome.y = scoreBottom + 8; o.minimap.y = Math.max(108, scoreBottom + 8); }
-    }
-    const objectiveBottom = objective ? o.mode.y + o.mode.h : scoreBottom;
-    const hard = Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r);
-    const instruments = Object.entries(o).filter(([k]) => !HARD.test(k)).map(([, r]) => r);
-    for (const countdown of landscape ? [null, viewport.countdown] : [null]) {
-      const minimapBottom = o.minimap.y + o.minimap.h;
-      const lanes = touchReservedLanes({ width, height, objectiveBottom, scoreBottom, minimapBottom, countdown, sixthHeight: 32 });
-      const soft = instruments;
-      const keep = touchAimKeepOut(width, height, minimapBottom);
-      const anchor = { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 };
-      const label = `${name} ${objective ? 'objective' : 'standard'}${landscape ? countdown ? ' countdown-seen' : ' countdown-unseen' : ''}`;
-      const row = [];
-      for (let count = 1; count <= 7; count++) {
-        const dock = placeTouchActionDock({ width, height, count, obstacles: hard, soft, lanes, keepOut: keep, anchor });
-        checkDock(`${label} x${count}`, { width, height, hard, soft, lanes, keep, anchor }, count, dock);
-        placements++;
-        // The owner's phones: every control on the dock itself, but seven on 360 x 640 (its only room clear of the
-        // reticle is the band under the minimap: six tiles there, the seventh behind More).
-        if (viewport.cases.some((c) => OWNER.has(c)) && (count <= 6 || !viewport.cases.includes('small-phone'))) {
-          assert.equal(dock.more, false, `${label}: the owner's phones show all ${count} controls`);
-        }
-        if (viewport.cases.includes('landscape')) assert.equal(dock.rows, 1, `${label}: 844 x 390 keeps one row`);
-        if (count >= 5) row.push(`${count}:${dock.tile}px ${dock.columns}x${dock.rows}@${dock.x},${dock.y}${dock.more ? ` +More(${dock.flyout.length})` : ''}`);
+    const label = `${name} ${objective ? 'objective' : 'standard'}`;
+    const row = [];
+    for (let count = 1; count <= 7; count++) {
+      const input = centreInputs(viewport, objective, count);
+      const plan = planTouchCentre(input);
+      const dock = plan.dock;
+      // Reserved lanes: the gun-limit warning's place, and the notices' place when the plan reserved it first.
+      const lanes = [...input.lanes, ...(plan.order === 'notices' && plan.notices ? [plan.notices.detection, plan.notices.alert] : [])];
+      checkDock(`${label} x${count}`, { width, height, hard: input.controls, soft: [...input.instruments, ...input.drawer], lanes,
+        keep: input.keepOut, anchor: input.anchor }, count, dock);
+      placements++;
+      // The owner's phones: every control on the dock itself, but seven on 360 x 640 (its only room clear of the
+      // reticle and the notices is the block under the settings trio: six tiles there, the seventh behind More).
+      if (viewport.cases.some((c) => OWNER.has(c)) && (count <= 6 || !viewport.cases.includes('small-phone'))) {
+        assert.equal(dock.more, false, `${label}: the owner's phones show all ${count} controls`);
       }
-      if (objective && !countdown) summary.push(`${name} ${row.join(' ')}`);
+      if (viewport.cases.includes('landscape')) assert.equal(dock.rows, 1, `${label}: 844 x 390 keeps one row`);
+      if (count >= 5) row.push(`${count}:${dock.tile}px ${dock.columns}x${dock.rows}@${dock.x},${dock.y}${dock.more ? ` +More(${dock.flyout.length})` : ''}`);
     }
+    if (objective) summary.push(`${name} ${row.join(' ')}`);
   }
 }
 
@@ -248,21 +256,13 @@ assert.ok(TOUCH_ACTION_RETICLE_READOUTS.zoomHalfWidthPx >= 53 && TOUCH_ACTION_RE
 {
   const v = VIEWPORTS.find((viewport) => viewport.cases.includes('phone'));
   const plate = { x: 195 - 50, y: 542 - 12, w: 100, h: 555 + 4 - (542 - 12) };
-  const o = v.obstacles;
   for (let count = 1; count <= 7; count++) {
-    const dock = placeTouchActionDock({ width: 390, height: 844, count,
-      obstacles: Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r), soft: Object.entries(o).filter(([k]) => !HARD.test(k)).map(([, r]) => r),
-      lanes: touchReservedLanes({ width: 390, height: 844, objectiveBottom: o.mode.y + o.mode.h, scoreBottom: o.top.y + o.top.h, minimapBottom: o.minimap.y + o.minimap.h, countdown: null, sixthHeight: 32 }),
-      keepOut: touchAimKeepOut(390, 844, o.minimap.y + o.minimap.h), anchor: v.anchor });
+    const { dock } = planTouchCentre(centreInputs(v, true, count));
     for (const r of [...dock.tiles, ...dock.flyout]) assert.ok(!overlaps(r, plate), `390x844 x${count}: no tile on the scope's zoom plate`);
   }
 }
 
-// The countdown estimate is the stylesheet's own placement: it reproduces both measured countdown boxes.
-for (const viewport of VIEWPORTS.filter((v) => v.source === 'measured' && v.countdown)) {
-  const estimate = touchCountdownEstimate(viewport.width, viewport.height, viewport.obstacles.mode.y + viewport.obstacles.mode.h);
-  for (const key of ['x', 'y', 'w', 'h']) assert.ok(Math.abs(estimate[key] - viewport.countdown[key]) < .5, `${viewport.width}x${viewport.height}: countdown ${key}`);
-}
+// Without a plan (no touch dock) the stylesheet's own countdown and notice places still apply.
 assert.match(css, /\.cot-touch-layout\[data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-prebattle\{width:calc\(100vw - 420px\)\}/);
 assert.match(css, /\[data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-prebattle\{top:calc\(var\(--hud-objective-bottom,64px\) \+ 8px\)\}/);
 assert.match(read('./responsiveSurfaces.css'), /body\[data-cot-height='short'\] \.cot-prebattle\{top:16%;transform:translateX\(-50%\) scale\(\.82\)\}/);
@@ -458,7 +458,12 @@ try {
   shells.classList.contains = (c) => c === 'cot-shells';
   for (let i = 0; i < 3; i++) { const shell = new FakeElement(['.cot-shell'], o.ammo); shell.classList.contains = (c) => c === 'cot-shell'; shells.append(shell); }
   for (const [key, selector] of [['dp', '.cot-dp'], ['drive', '.cot-drive'], ['minimap', '.cot-minimap'], ['top', '.cot-top'], ['mode', '.cot-mode-status.show'], ['net', '.cot-net']]) el([selector], o[key]);
-  el(['.cot-sixth'], { x: 73, y: 111, w: 214, h: 42 });
+  // The centre notices and the countdown: their natural boxes (the measured 320 x 568 phone's) are the plan's inputs.
+  for (const [selector, box] of [['.cot-sixth', v.centre.detection], ['.cot-alert', { w: 160, h: v.centre.alertLine }], ['.cot-prebattle', v.centre.countdown]]) {
+    const node = el([selector], { x: (v.width - box.w) / 2, y: 111, ...box });
+    node.offsetWidth = box.w; node.offsetHeight = box.h;
+    root.append(node);
+  }
   // touchControls.ts: the swipe-to-aim pad, the right 62 % of the screen below 18 % of its height.
   const aimPad = el(['.cot-touch-aim.on .aimpad'], { x: v.width * .38, y: v.height * .18, w: v.width * .62, h: v.height * .82 });
   const row = el(['.cot-vehicle-controls'], { x: 12, y: 300, w: 300, h: 44 });
@@ -491,11 +496,20 @@ try {
   const tileSize = Number.parseFloat(body.style.getPropertyValue('--hud-systems-tile'));
   const dockLeft = Number.parseFloat(body.style.getPropertyValue('--hud-systems-left'));
   const dockTop = Number.parseFloat(body.style.getPropertyValue('--hud-systems-top'));
-  const expected = placeTouchActionDock({ width: v.width, height: v.height, count: 7,
-    obstacles: [o.joy, o.fire, o.fireAlt, o.scope, o.autoaim, o.chrome, { x: o.con0.x, y: o.con0.y, w: o.con0.w, h: o.con2.y + o.con2.h - o.con0.y }, o.ammo],
-    soft: [o.dp, o.drive, o.minimap, o.top, o.mode, o.net, o.ammoDrawerOpen], lanes: touchReservedLanes({ width: v.width, height: v.height,
-      objectiveBottom: o.mode.y + o.mode.h, scoreBottom: o.top.y + o.top.h, minimapBottom: o.minimap.y + o.minimap.h, countdown: null, sixthHeight: 42 }),
-    keepOut: touchAimKeepOut(v.width, v.height, o.minimap.y + o.minimap.h), anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 } });
+  const cons0 = { x: o.con0.x, y: o.con0.y, w: o.con0.w, h: o.con2.y + o.con2.h - o.con0.y };
+  const plan = planTouchCentre({ width: v.width, height: v.height, top: o.mode.y + o.mode.h + 8, count: 7,
+    controls: [o.joy, o.fire, o.fireAlt, o.scope, o.autoaim, o.chrome, cons0, o.ammo], instruments: [o.dp, o.drive, o.minimap, o.top, o.mode, o.net],
+    drawer: [o.ammoDrawerOpen], lanes: [touchAimWarningSlot(v.width, v.height, o.minimap.y + o.minimap.h)],
+    keepOut: touchAimKeepOut(v.width, v.height, o.minimap.y + o.minimap.h), anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 },
+    detection: v.centre.detection, alert: alertReserve(v.width, v.centre.alertLine), countdown: v.centre.countdown });
+  const expected = plan.dock;
+  // The notices and the countdown take the plan's places (applyCentre: centre x, top, width; compact when needed).
+  assert.equal(body.getAttribute('data-hud-notices'), plan.notices.compact ? 'compact' : 'full', 'the page applies the notices\' plan');
+  assert.equal(body.style.getPropertyValue('--hud-notice-x'), `${Math.round((plan.notices.detection.x + plan.notices.detection.w / 2) * 10) / 10}px`);
+  assert.equal(body.style.getPropertyValue('--hud-notice-top'), `${Math.floor(plan.notices.detection.y)}px`);
+  assert.equal(body.style.getPropertyValue('--hud-alert-top'), `${Math.floor(plan.notices.alert.y)}px`);
+  assert.equal(body.getAttribute('data-hud-countdown'), plan.countdown.compact ? 'compact' : 'full', 'and the countdown\'s');
+  assert.equal(body.style.getPropertyValue('--hud-countdown-top'), `${Math.round(plan.countdown.y * 10) / 10}px`);
   assert.deepEqual([tileSize, dockLeft, dockTop], [expected.tile, Math.floor(expected.x), Math.floor(expected.y)], 'the page uses the solver\'s placement');
   for (const [i, tile] of tiles.entries()) {
     const slot = i < expected.shown ? expected.tiles[i] : expected.flyout[i - expected.shown];
@@ -608,4 +622,4 @@ assert.match(layout, /if \(dockKey\.length !== dockInputs\.length \|\| dockKey\.
 assert.match(read('./i18nCatalog.en-US.json'), /"systems\.more": "\{count\} more vehicle controls",/);
 assert.match(read('./i18nCatalog.zh-CN.json'), /"systems\.more": "另外 \{count\} 个车辆控制",/);
 
-console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/countdown states = ${placements} placements keep the rule (tiles >= 44 px, no scroll, no control or instrument covered, the reticle's whole footprint in every sight at every bloom and the gun-limit warning's place clear, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);
+console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/standard = ${placements} placements (planTouchCentre) keep the rule (tiles >= 44 px, no scroll, no control or instrument covered, the reticle's whole footprint in every sight at every bloom and the gun-limit warning's place clear, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);

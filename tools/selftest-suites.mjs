@@ -1725,6 +1725,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/battleHudLayout.selftest.mjs',
     // 2026-10-14 (owner: a better mobile action row): the touch action dock's rule on every touch viewport of the HUD receipt.
     'src/ui/touchActionDock.selftest.mjs',
+    // 2026-10-15 (round 4): the centre notices and the countdown clear the reticle; the dock yields to its live ink.
+    'src/ui/centreNotices.selftest.mjs',
+    'src/ui/touchDockYield.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',

@@ -379,88 +379,165 @@ up: the first control (the jump, in a jump mode) is the bottom-left tile, neares
 the thumbs; one row when it fits, at most three. The dock goes to the free spot
 nearest the point between the joystick and FIRE with 8 px clearance (6 px for 44
 px tiles) from every touch control, instrument, the open ammo drawer, the safe
-areas, and these reserved lanes: the gun-limit warning's own place (48 px under
-the crosshair; 326 px down on 340 px phones; under the minimap on landscape
-phones), and in landscape the pre-battle countdown (the stylesheet's own box
-until the first countdown is measured) and the centre notices' lane. Only a screen
-with no room even for a lone More tile clear of those lanes (568×320 and 568×256)
-stands the dock in a lane; there (`data-hud-dock-lane`) a notice or the countdown
-shown in that lane draws over the More tile for its few seconds and a tap still
-reaches the tile through it. At 300–340 px tall the notices' lane is their two
-boxes (detection, then the alert under it), not their common box. The aim keep-out (2 px hairline, dock and More panel
-alike, never relaxed) is everything the reticle canvas draws around the screen
-centre, where touch aim raycasts, in the battle sight and the scope, at every ring
-radius from rest (11 px) to full bloom (15% of the shorter side): the full-bloom
-ring (never under the 64 px crosshair area), the scope's cross arms (to 1.55 r +
-3 px, with their mil ticks), the autoloader rack and the reload countdown (or
-SWITCHING) under the marker, the scope's ammunition line and zoom plate with its
-rules, its range tag riding the ring's 4:30 point outward, and the gun-limit
-warning's place. Each piece restates one hud.ts placement, pinned by the selftest.
-A 44 px row by the thumbs beats a 48 px block across the screen. When the whole row
-does not fit, the last slot is **More** (`⋯ +n`): it opens the remaining controls
-beside it, clear of the touch controls, the dock and the aim keep-out (the open
-panel may lie over instruments for that moment; on a screen too crowded even for
-that, clear of the dock and the aim keep-out alone); the next tap anywhere closes
-it, after the control it lands on has acted. Every control is one tap away, or two
-through More. A touch on a tile acts when it lifts within 10 px; a touch that
-travels farther acts on nothing and, begun over the aim pad, becomes the pad's
-swipe from where it began, so a swipe to aim that starts on a tile still aims (a
-mouse keeps acting on press). A cooldown clears a
-shadow off the tile clockwise and fills an amber ring while the caption counts
-seconds; smoke charges are a corner badge. The gun-limit warning never moves (it
-used to be pushed onto the crosshair); portrait centre notices and the portrait
-countdown make room for the dock; side feeds end above the notices while one
-shows; when notices below a portrait dock would land on the reticle they stack above
-it from under the touch chrome instead. Touch buttons and tiles are watched by size
-only, so a FIRE press (down/aiming/autofire classes) never relayouts the HUD, a
-pressed button keeps its resting box (holding FIRE through a hit notice keeps an
+areas, and the reserved lanes: the gun-limit warning's own place (48 px under the
+crosshair; 326 px down on 340 px phones; under the minimap on landscape phones), and
+the centre notices' place when the plan reserves it first (below). Only a screen
+with no room even for a lone More tile clear of those lanes (568×256) stands the
+dock in a lane; there (`data-hud-dock-lane`) a notice shown in that lane draws over
+the More tile for its few seconds and a tap still reaches the tile through it. The
+aim keep-out (2 px hairline, dock and More panel alike, never relaxed) is
+everything the reticle canvas draws around the screen centre, where touch aim
+raycasts, in the battle sight and the scope, at every ring radius from rest (11 px)
+to full bloom (15% of the shorter side): the full-bloom ring (never under the 64 px
+crosshair area), the scope's cross arms (to 1.55 r + 3 px, with their mil ticks),
+the autoloader rack and the reload countdown (or SWITCHING) under the marker, the
+scope's ammunition line and zoom plate with its rules, its range tag riding the
+ring's 4:30 point outward, and the gun-limit warning's place. Each piece restates
+one hud.ts placement, pinned by the selftest. A 44 px row by the thumbs beats a 48
+px block across the screen. When the whole row does not fit, the last slot is
+**More** (`⋯ +n`): it opens the remaining controls beside it, clear of the touch
+controls, the dock and the aim keep-out (the open panel may lie over instruments
+for that moment; on a screen too crowded even for that, clear of the dock and the
+aim keep-out alone); the next tap anywhere closes it, after the control it lands on
+has acted. Every control is one tap away, or two through More. A touch on a tile
+acts when it lifts within 10 px; a touch that travels farther acts on nothing and,
+begun over the aim pad, becomes the pad's swipe from where it began, so a swipe to
+aim that starts on a tile still aims (a mouse keeps acting on press). A cooldown
+clears a shadow off the tile clockwise and fills an amber ring while the caption
+counts seconds; smoke charges are a corner badge. The gun-limit warning never moves
+(it used to be pushed onto the crosshair). Touch buttons and tiles are watched by
+size only, so a FIRE press (down/aiming/autofire classes) never relayouts the HUD,
+a pressed button keeps its resting box (holding FIRE through a hit notice keeps an
 open More panel), and the search reruns only when its inputs change. Desktop is
 unchanged.
+
+**The reticle away from the centre** (round 4, verifier 2026-10-15): the keep-out
+above is centred, but hud.ts draws the dispersion ring and the physical gun mark at
+the gun's own point (`view.gunX/gunY`), which leaves the crosshair whenever the
+turret or gun lags the camera, a limit pins it or the gun line is blocked; a
+turretless sight (Strv 103, UDES 03, Jagdpanzer E100) moves its whole sight there,
+readouts included, held 40 px inside the screen edge. The incoming-hit wedges circle
+the centre from max(0.185 × shorter side, ring + 26) px, about 64 px thick, with the
+"-420" / CRIT figure beyond them. Measured drift envelopes (fleet: 220 specs,
+turret traverse 9.2–94.1°/s, median 41.6°/s; gun depression 5–14°; fixed-mount
+arcs ±3–12°; touch aim turns the camera 0.149° per px of swipe, the same on-screen
+distance in the scope; vertical field of view 60°, divided by the zoom in the scope):
+
+| Viewport | px per degree (battle / ×8 / ×25) | Nearest tile beyond the full-bloom ring | 300 px flick in 0.15 s, slowest / median turret | 60 px drag in 0.5 s, slowest turret | Gun pinned 6° below |
+|---|---|---|---|---|---|
+| 360×640 | 9.7 / 77 / 242 | 9 px (0.9° / 0.11° / 0.04°) | 418 / 371 px | 42 px | 58 px |
+| 390×844 | 12.8 / 102 / 319 | 38 px (3.0° / 0.37° / 0.12°) | 552 / 490 px | 55 px | 77 px |
+| 844×390 | 5.9 / 47 / 147 | 39 px (6.6° / 0.83° / 0.26°) | 255 / 226 px | 25 px | 35 px |
+| 667×375 | 5.7 / 45 / 142 | 37 px (6.4° / 0.80° / 0.26°) | 245 / 218 px | 25 px | 34 px |
+| 320×568 | 8.6 / 69 / 215 | 139 px | 371 / 330 px | 37 px | 52 px |
+| 568×320 | 4.8 / 39 / 121 | 17 px | 209 / 186 px | 21 px | 29 px |
+| 844×300 | 4.5 / 36 / 113 | 38 px | 196 / 174 px | 20 px | 27 px |
+| 932×430 | 6.5 / 52 / 162 | 47 px | 281 / 249 px | 28 px | 39 px |
+| 1024×768 | 11.6 / 93 / 290 | 163 px | 502 / 446 px | 50 px | 70 px |
+
+Any quick flick puts the gun mark off the screen (a turreted sight drops it, a
+turretless one rides the edge), and an ordinary drag or a depression limit moves it
+past the nearest tile on every phone: a static envelope for it is the whole screen
+and would leave no room for a single tile. So the dock reacts live instead
+(`touchDockYield.ts`): it sits under the reticle canvas (`.cot-ret`, the sight
+layer; while the More panel is open the canvas is lifted above the panel), so the
+ring, gun mark, a turretless sight's readouts, the wedges and their figures always
+draw over the tiles; and each tile the live ink reaches dims (`data-ret-yield`,
+opacity .38) so that ink reads clearly over it, while it stays where it is and still
+takes taps. hud.ts reports the ink of each painted frame (the ring at the gun's
+point and the gun mark, a turretless sight's whole footprint moved with it, each
+wedge's sector, each figure's and CRIT's box, the hit-confirm shards); a tile dims
+once ink comes within 2 px and clears only when all ink is 10 px away, so a ring
+breathing at a tile's edge cannot flicker it; attributes are written only on change
+and nothing is allocated per frame. The scope's lens shading moved to its own canvas
+(`.cot-ret-lens`) under the dock, painted only when the zoom, size or fade-in
+changes, so tiles are not darkened in the scope.
+
+**Centre notices and the countdown** (round 4): on 390×844 round 3's dock pushed
+the detection notice and the alert down to 11 px above the aim point and the
+countdown across the crosshair (333–469); main itself puts them on the crosshair of
+most phones (the kill feeds push the notices down, the countdown sits at fixed
+percentages). `centreNotices.ts` now places them on every touch screen: the
+cheapest place (highest, then most central) that clears the widest of the reticle's
+keep-outs any place clears (3: everything either sight draws at any bloom; 2: the
+battle sight at full bloom; 1: the crosshair core, the 64 px round the aim point and
+the magazine and countdown under it), stacked (detection over the alert) or flanking
+the reticle's column on one line, at full size or compact (the 299 px landscape
+type, 120 px wide); the countdown scaled down to 60% or as one compact 40 px line.
+The alert's box is a reserve (260 px, two lines, clamped), not its text, so nothing
+moves while notices come and go; notices are never pushed by the feeds, which end
+above the notices while one shows. `planTouchCentre` tries the notices' place
+reserved before the dock and the dock placed first, and keeps whichever leaves the
+notices and the countdown clearer of the reticle, then shows more controls, then 48
+px tiles. Keep-out each screen clears (worst state, 1–7 controls; main measured in
+the same fixture states):
+
+| Viewport | Notices: branch / main | Countdown: branch / main |
+|---|---|---|
+| 360×640 | 3 / 0 | 3 / 0 |
+| 390×844 (+zh) | 3 / 1 | 3 / 0 |
+| 844×390 | 3 / 0 | 3 / 0 |
+| 667×375 (+zh) | 3 / 0 | 3 / 0 |
+| 320×568 | 2 / 0 | 3 / 0 |
+| 568×256 | 0, least covering / 0 | 0, least covering / 0 |
+| 568×320 | 1 / 0 | 2 / 0 |
+| 844×300 | 3 / 0 | 3 / 0 |
+| 932×430 | 3 / 0 | 3 / 0 |
+| 1024×768 | 3 / 2 | 3 / 1 |
+| 768×1024 | 3 / 1 | 3 / 2 |
+
+320×568, 568×320 and 568×256 have no place left that clears more: their objective
+plate, minimap, settings trio, joystick, drive gauge and consumables leave no band
+above the ring at full bloom wide enough for even the compact notices (the solver
+searches every position, size and arrangement). Mouse layouts are unchanged.
 
 Placements from the layout code for the receipt's 13 touch cases (11 sizes; Mars
 objective shown):
 
 | Viewport | 5 controls | 6 | 7 | Where |
 |---|---|---|---|---|
-| 360×640 | 44px 3×2 | 44px 3×2 | 5 + More (2) | under the settings trio, right of the minimap |
-| 390×844 (+zh) | 48px row | 48px row | 44px row | above the reticle (y 277) |
-| 844×390 | 44px row | 44px row | 44px row | by the thumbs, under the scope's lower arm |
-| 667×375 (+zh) | 2 + More (3) | 2 + More (4) | 2 + More (5) | left of the reticle, above the joystick |
+| 360×640 | 44px 3×2 | 44px 3×2 | 5 + More (2) | under the settings trio; notices compact under the minimap |
+| 390×844 (+zh) | 48px row | 48px row | 44px row | above the reticle (y 277); notices above it from y 163 |
+| 844×390 | 44px row | 44px row | 44px row | by the thumbs; notices flank the reticle's column |
+| 667×375 (+zh) | 48px 2×3 | 48px 2×3 | 5 + More (2) | left of the reticle, above the joystick |
 | 320×568 | 1 + More (4) | 1 + More (5) | 1 + More (6) | by the thumbs |
 | 568×256 | More (5) | More (6) | More (7) | in the notices' lane, left of the reticle |
-| 568×320 | 1 + More (4) | 1 + More (5) | 1 + More (6) | a column left of the reticle, beside the notices |
-| 844×300 | 3 + More (2) | 3 + More (3) | 3 + More (4) | 2×2 right of the reticle |
+| 568×320 | 1 + More (4) | 1 + More (5) | 1 + More (6) | left of the reticle, by the joystick |
+| 844×300 | 48px 2×3 | 48px 2×3 | 5 + More (2) | left of the reticle |
 | 932×430 | 48px row | 48px row | 48px row | by the thumbs |
 | 1024×768, 768×1024 | 48px row | 48px row | 48px row | by the thumbs |
 
-Keeping the scope's readouts and arms clear (2026-10-15) cost room on the smaller
-screens: before it, 667×375 and 844×300 held five tiles by the thumbs and the
-portrait phones docked just under the reticle, over the scope's zoom plate. Touch
-portrait centre notices now take the lane at the side feeds' start (under the touch
-chrome and the minimap), never pushed down by kill rows onto the crosshair or the
-controls; above the dock when it is in the way and there is room, else below it;
-the side feeds end above them while one shows.
-
-Receipts: `touchActionDock.selftest.mjs` places 1–7 controls on every touch case
-of the browser receipt, with and without an objective and with the landscape
-countdown seen or not (252 placements), and checks the rule tile by tile (size,
+Receipts: `touchActionDock.selftest.mjs` plans 1–7 controls on every touch case of
+the browser receipt with and without an objective (the layout's own
+`planTouchCentre` call, 154 placements), and checks the rule tile by tile (size,
 screen, clearance, aim keep-out, order, More panel, a lane given up only when no
 placement clears the lanes), a seeded sweep of 600 random screens, the footprint
 against each readout placed independently from hud.ts's formulas (and those hud.ts
 lines pinned), the gun-limit warning's distance from the crosshair, and the layout
-owner on a scripted page (slots written, More opens and closes, a tap acts on the
-lift, a swipe from a tile reaches the aim pad, a FIRE hold keeps the placement,
-FIRE presses never watched, no search when nothing changed). `touchActionDock.fixture.json`
-holds the touch-control rects: measured in Chromium touch emulation for 360×640,
-390×844, 844×390, 667×375 and 320×568; derived from the stylesheet rules for the
-other six sizes (the derivation reproduces the measured countdown boxes).
-`tools/battle-hud-layout.browser.mjs` checks the same rule rendered, in every
-state of every touch case with five, six and seven controls, taps every control
-with a touch (through More where needed), swipes from a tile and checks it aims
-without acting, toggles FIRE's press classes in its no-relayout check, and records
-every glyph and stroke the reticle canvas draws in the battle sight and the scope
-at rest and at full bloom (magazine, countdown, range and zoom at their widest) to
-check none lies under a tile and all lie inside the footprint. Re-measure the
+owner on a scripted page (slots and the notices' and countdown's places written,
+More opens and closes, a tap acts on the lift, a swipe from a tile reaches the aim
+pad, a FIRE hold keeps the placement, FIRE presses never watched, no search when
+nothing changed). `centreNotices.selftest.mjs` checks every plan's notices and
+countdown (on screen, off every control, instrument, warning place and tile, the
+clearance table above) and the solver's cases. `touchDockYield.selftest.mjs` checks
+the sector geometry against brute force, the hysteresis, the More panel and the
+wiring in hud.ts and the stylesheets. `touchActionDock.fixture.json` holds the
+touch-control rects and the notices' and countdown's natural boxes: measured in
+Chromium touch emulation for 360×640, 390×844, 844×390, 667×375 and 320×568 (the
+boxes for all eleven); derived from the stylesheet rules for the other six sizes.
+`tools/battle-hud-layout.browser.mjs` checks the same rule rendered, in every state
+of every touch case with five, six and seven controls (the seventh from a real kit:
+the M1A3 with the MBT-70's hydropneumatic gear shows a missile beside its special
+action, so every HUD update keeps it), measures the notices and countdown against
+the reticle's keep-outs in every state, taps every control with a touch (through
+More where needed), swipes from a tile and checks it aims without acting, toggles
+FIRE's press classes in its no-relayout check, records every glyph and stroke the
+reticle canvas draws in the battle sight and the scope at rest and at full bloom to
+check none lies under a tile and all lie inside the footprint, puts the gun mark on
+every tile (battle sight and scope at full bloom, a turretless sight, a panel tile
+behind an open More) and stages an incoming penetration from eight bearings (one
+with CRIT), reading the reticle canvas's own pixels under each tile: every tile with
+ink under it must be dimmed and the canvas must stack above the dock. Re-measure the
 fixture when a touch control moves.
 
 ## Font delivery — 2026-10-01

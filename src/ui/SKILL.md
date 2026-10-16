@@ -149,7 +149,11 @@ its spot from the measured touch controls, instruments and reserved lanes (tiles
 48 px, never under 44, bottom row first, never scrolled, off everything the reticle
 draws in either sight at any bloom (`touchReticleFootprint`, pinned to hud.ts) and the
 gun-limit warning's place; More beyond what fits; a tile acts on a tap's lift and a
-swipe from it aims). Re-measure
+swipe from it aims). `centreNotices.ts` plans it together with the centre notices and
+the pre-battle countdown (`planTouchCentre`: they clear as much of the reticle as the
+screen allows, never pushed by the feeds). The dock sits under the reticle canvas and
+dims each tile the live ink reaches (`touchDockYield.ts`: the ring and gun mark at the
+gun's own point, a turretless sight, incoming-hit wedges and figures). Re-measure
 `touchActionDock.fixture.json` when a touch control moves.
 
 ## Gotchas

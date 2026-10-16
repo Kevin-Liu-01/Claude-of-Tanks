@@ -7,8 +7,9 @@ import '../../src/ui/hudCustomization.css';
 import '../../src/ui/responsiveSurfaces.css';
 // The HUD's own lazy sheet (battleHudAccess.ts loads it with hud.ts): the flight console and the drone tile's phases.
 import '../../src/ui/aerialHud.css';
-import { Vector3 } from 'three';
+import { PerspectiveCamera, Vector3 } from 'three';
 import { touchReticleFootprint } from '../../src/ui/touchActionDock.ts';
+import { reticleTiers } from '../../src/ui/centreNotices.ts';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
 import { createInput } from '../../src/game/input.ts';
@@ -66,6 +67,7 @@ function multiplayer(kind='healthy') {
 function state(name) {
   network?.dispose();network=null;
   delete player.aerial;
+  delete frame.camera; delete frame.aim.point; delete frame.aim.gunMarker; delete frame.aim.singleReticle;
   delete frame.rosterTanks; frame.tanks=tanks;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
@@ -119,19 +121,64 @@ function roster(allies, enemies) {
   frame.rosterTanks=entries; frame.tanks=entries;
   hud.update(frame);
 }
-// A richer kit for the vehicle-controls layout: six controls add the drone (the HUD's own path); the seventh, the extra
-// ATGM, belongs to kits whose special action is not a missile, so it is shown directly for the layout check.
+// A richer kit for the vehicle-controls layout: six controls add the drone (the HUD's own path). The seventh, a
+// gun-launched missile beside a special action that is not the missile (the MBT-70's pairing: hydropneumatic aim and
+// the Shillelagh), comes from the kit itself, so every hud.update keeps it shown (round 4: un-hiding the button by hand
+// lasted only until the next update re-hid it, and the "seven-control" reticle stages ran with six). SEVEN_KIT is the
+// M1A3 (smoke, lights, roof gun, a guided round among conventional ones) with the MBT-70's hydropneumatic gear.
+const SEVEN_KIT = {...TANK_SPECS.m1a3, hydropneumaticAim:{noseDownDeg:10, noseUpDeg:10, rateDegS:8, compressionM:.65, droopM:.65}};
 function controls(count) {
   if (count >= 6) player.aerial = {kind:'drone', active:false, cooldownS:0}; else delete player.aerial;
-  hud.update(frame);
-  if (count >= 7) {
-    const row = document.querySelector('.cot-vehicle-controls');
-    const missile = [...row.children].find(button=>button.classList.contains('cot-auxiliary')&&!button.classList.contains('cot-drone-control')&&button.hidden);
-    if (missile) missile.hidden = false;
+  const spec = count >= 7 ? SEVEN_KIT : TANK_SPECS.m1a3;
+  if (player.spec !== spec) {
+    player.spec = spec;
+    player.combat = createCombatState(spec);
+    player.specialAction = createSpecialActionState(spec);
   }
+  hud.update(frame);
   window.dispatchEvent(new Event('cot-hud-relayout'));
   return [...document.querySelector('.cot-vehicle-controls').children].filter(button=>!button.classList.contains('cot-dock-more')&&button.getClientRects().length).length;
 }
+// The world camera for the stages that need one (the fixture otherwise has none: the aim point is the screen centre).
+// Behind the player, looking down +Z, so a point's bearing from the player is its bearing on the hit indicator ring.
+const camera = new PerspectiveCamera(60, 1, .1, 4000);
+function withCamera() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  const p = player.state.pos;
+  camera.position.set(p.x, p.y + 3, p.z - 8);
+  camera.lookAt(p.x, p.y + 1.5, p.z + 60);
+  camera.updateMatrixWorld();
+  frame.camera = camera;
+}
+const unproject = (sx, sy) => new Vector3(sx / innerWidth * 2 - 1, 1 - sy / innerHeight * 2, .5).unproject(camera);
+// The gun's own point away from the crosshair (a lagging or pinned gun): the ring and gun mark draw at (gx, gy); with
+// `single` (a turretless sight: Strv 103, Jagdpanzer E100) the whole sight, readouts included, moves there. The camera's
+// aim point stays the screen centre. aimAt(null) puts the gun back on the crosshair and drops the camera.
+function aimAt(gun, {single=false}={}) {
+  if (!gun) { delete frame.aim.point; delete frame.aim.gunMarker; delete frame.aim.singleReticle; delete frame.camera; hud.update(frame); return; }
+  withCamera();
+  frame.aim.point = unproject(innerWidth / 2, innerHeight / 2);
+  frame.aim.gunMarker = unproject(gun.x, gun.y);
+  frame.aim.singleReticle = single;
+  for (let i = 0; i < 20; i++) { frame.timeS += 1 / 60; hud.update(frame); }
+}
+// An incoming penetration from `bearingDeg` (0 ahead of the camera, clockwise from above), 120 m out: the HUD draws its
+// wedge round the screen centre and its damage figure beyond it. Earlier wedges are expired first (six seconds on).
+function hitFrom(bearingDeg, {crit=false}={}) {
+  withCamera();
+  frame.timeS += 6; hud.update(frame);
+  const attacker = tanks[8], p = player.state.pos, a = bearingDeg * Math.PI / 180;
+  attacker.state.pos.set(p.x - Math.sin(a) * 120, p.y, p.z + Math.cos(a) * 120);
+  bus.emit('shell:hit',{attackerId:attacker.id,targetId:player.id,attackerName:'Commander_Long_Name_8',targetName:'M1A3',
+    targetSpecId:player.spec.id,attackerSpecId:'t90m',kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,
+    impactAngleDeg:34,shellType:'APFSDS',zone:'hullFront',flightDistM:120,timeS:frame.timeS,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1],
+    ...(crit ? {modulesHit:[{module:'engine',newState:'red'}]} : {})});
+  // Past the wedge's 0.12 s attack, so it draws at full size and strength.
+  for (let i = 0; i < 15; i++) { frame.timeS += 1 / 60; hud.update(frame); }
+  return window.__HUD_DEBUG?.getHitArcs?.() ?? [];
+}
+function clearHits() { frame.timeS += 6; hud.update(frame); delete frame.camera; hud.update(frame); }
 // The reticle as the dock's keep-out check needs it: the battle sight or the scope, the ring at rest or at full bloom
 // (the fixture has no camera, so the aim point is the screen centre and the ring's px size follows dispersionRadM and
 // distM), the readouts at their widest: x25.0, a 1500 m range, a twelve-round magazine reloading (rack, +8, 13 s) or
@@ -151,7 +198,7 @@ function restAim() { for(const key of Object.keys(frame.aim))if(!(key in resting
 // The drone tile while a recalled drone flies home (droneControlState.ts reads returnS; item/drone-recall).
 function droneReturning() { player.aerial = {kind:'drone', active:false, cooldownS:14, recallS:0, returnS:5}; hud.update(frame); }
 window.__HUD_LAYOUT = {multiplayer,state, roster, controls, hud, bus, touch, settings, hit, frame, tanks, input,
-  reticle, repaint, restAim, droneReturning, touchReticleFootprint};
+  reticle, repaint, restAim, droneReturning, touchReticleFootprint, reticleTiers, aimAt, hitFrom, clearHits};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

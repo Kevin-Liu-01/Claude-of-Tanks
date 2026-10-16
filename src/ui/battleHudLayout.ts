@@ -1,7 +1,7 @@
 import { t } from './i18n.ts';
-import {
-  placeTouchActionDock, touchAimKeepOut, touchReservedLanes, type TouchDockPlacement, type TouchDockRect,
-} from './touchActionDock.ts';
+import { touchAimKeepOut, touchAimWarningSlot, type TouchDockPlacement, type TouchDockRect } from './touchActionDock.ts';
+import { alertReserve, planTouchCentre, type NoticeSize, type TouchCentrePlan } from './centreNotices.ts';
+import type { DockYield, DockYieldTile } from './touchDockYield.ts';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -92,7 +92,7 @@ function installTileGate(): void {
   document.addEventListener('pointercancel', liftTile, true);
 }
 
-export function installBattleHudLayout(root: HTMLElement): void {
+export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield): void {
   let frame = 0;
   const observed = new Set<Element>();
   const attributes = new WeakMap<Element, Map<string, string | null>>();
@@ -180,12 +180,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       read('.cot-spec.show')?.top ?? height,
       width < 768 ? read('.cot-drive')?.top ?? height : height);
   }
-  // The touch action dock's inputs (touchActionDock.ts): the touch controls neither the dock nor its More panel ever
-  // covers; the instruments (and the open ammo drawer) the dock never covers; the reserved lanes (the gun-limit
-  // warning's place, the landscape countdown and notices) it keeps clear unless a screen has no other room; and the
-  // aim keep-out (everything the reticle draws in any sight at any bloom, and the gun-limit warning's place), which
-  // neither the dock nor its panel ever covers. The lanes that make room for the dock (kill feeds, centre notices, the
-  // status strip, the portrait countdown) are placed after it and are never inputs, or the two would chase each other.
+  // The touch centre plan's inputs (centreNotices.ts planTouchCentre, touchActionDock.ts): the touch controls nothing
+  // placed here ever covers; the instruments (and the open ammo drawer) the dock never covers and the notices keep
+  // clear of; the gun-limit warning's place, a lane for all of them; the aim keep-out (everything the reticle draws in
+  // any sight at any bloom), which neither the dock nor its panel ever covers; and the natural sizes of the notices and
+  // the countdown. The feeds and the status strip make room afterwards and are never inputs, or they would chase.
   const dockControlSelector = '.cot-touch.on .joy,.cot-touch.on .round,.cot-touch.on .mobile-chrome,.cot-cons,.cot-shells';
   const dockInstrumentSelector = '.cot-dp,.cot-drive,.cot-minimap,.cot-top,.cot-mode-status.show,.cot-net';
   const dockControls: TouchDockRect[] = [];
@@ -197,20 +196,38 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // reads as a moved control, re-places the dock or closes an open More panel.
   const restingBoxes = new WeakMap<Element, TouchDockRect>();
   let safeProbe: HTMLElement | null = null;
-  // Landscape shows the pre-battle countdown in the centre lane the dock may want. Its box is remembered from the
-  // countdown that opens every battle (per viewport size; the stylesheet's own placement until then), so the dock
-  // keeps clear of it without moving when it ends.
-  let countdownSlot: { width: number; height: number; box: TouchDockRect } | null = null;
   // The last placement and the inputs it was solved from: a relayout that changes none of them (a kill notice, a
   // roster row, a tile's cooldown) reuses it instead of searching again.
   const dockKey: number[] = [];
   let dockInputs: number[] = [];
-  let dockPlacement: TouchDockPlacement | null = null;
+  let centrePlan: TouchCentrePlan | null = null;
   let moreTile: HTMLButtonElement | null = null;
+  // The tiles last published to the live yield (touchDockYield.ts): republished only when the placement or the row's
+  // controls change.
+  let yieldPlacement: TouchDockPlacement | null = null;
+  let yieldNodes: Element[] = [];
+  function publishYield(placement: TouchDockPlacement | null, controls: readonly HTMLElement[], more: HTMLElement | null): void {
+    if (!dockYield) return;
+    const nodes = placement && more ? [...controls, more] : [];
+    if (placement === yieldPlacement && nodes.length === yieldNodes.length && nodes.every((node, i) => node === yieldNodes[i])) return;
+    yieldPlacement = placement;
+    yieldNodes = nodes;
+    const tiles: DockYieldTile[] = [];
+    if (placement && more) {
+      for (const [i, el] of controls.entries()) {
+        const slot = i < placement.shown ? placement.tiles[i] : placement.flyout[i - placement.shown];
+        if (slot) tiles.push({ el, x: slot.x, y: slot.y, w: slot.w, h: slot.h, panel: i >= placement.shown });
+      }
+      const moreSlot = placement.more ? placement.tiles[placement.shown] : null;
+      if (moreSlot) tiles.push({ el: more, x: moreSlot.x, y: moreSlot.y, w: moreSlot.w, h: moreSlot.h, panel: false });
+    }
+    dockYield.setTiles(tiles);
+  }
   const MORE_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2.1" fill="currentColor"/>'
     + '<circle cx="12" cy="12" r="2.1" fill="currentColor"/><circle cx="19" cy="12" r="2.1" fill="currentColor"/></svg>';
   installTileGate();
   function setDockOpen(open: boolean): void {
+    dockYield?.setOpen(open);
     if (document.body.hasAttribute('data-hud-dock-open') !== open) document.body.toggleAttribute('data-hud-dock-open', open);
     if (moreTile && moreTile.getAttribute('aria-expanded') !== String(open)) moreTile.setAttribute('aria-expanded', String(open));
   }
@@ -242,7 +259,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (node.style.getPropertyValue(property) === value) return;
     if (value) node.style.setProperty(property, value); else node.style.removeProperty(property);
   }
-  function placeDock(row: HTMLElement, width: number, height: number, top: number, scoreBottom: number): TouchDockPlacement | null {
+  function placeTouchCentre(row: HTMLElement, width: number, height: number, top: number): TouchCentrePlan | null {
     const more = ensureMoreTile(row);
     // A control behind More stays laid out (visibility only), so it still counts here.
     const controls: HTMLElement[] = [];
@@ -269,16 +286,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     instrumentCount = dockInstruments.length;
     if (drawer) dockInstruments.push(drawer);
-    let countdown: TouchDockRect | null = null;
-    if (width > height) {
-      const shown = read('.cot-prebattle.on');
-      if (shown) countdownSlot = { width, height, box: { x: shown.left, y: shown.top, w: shown.width, h: shown.height } };
-      if (countdownSlot?.width === width && countdownSlot.height === height) countdown = countdownSlot.box;
-    }
-    const laneStart = dockInstruments.length;
     const minimapBottom = read('.cot-minimap')?.bottom ?? 114;
-    dockInstruments.push(...touchReservedLanes({ width, height, objectiveBottom: top, scoreBottom,
-      minimapBottom, countdown, sixthHeight: read('.cot-sixth')?.height ?? 32 }));
+    const warning = touchAimWarningSlot(width, height, minimapBottom);
+    // The network strip (multiplayerStatus.ts) lives outside the HUD; the notices keep clear of it too.
+    const strip = read('.cot-mp-status.battle');
+    const noticeObstacles = strip ? [...dockInstruments.slice(0, instrumentCount), { x: strip.left, y: strip.top, w: strip.width, h: strip.height }]
+      : dockInstruments.slice(0, instrumentCount);
+    const sizes = naturalCentreSizes(width, height);
     if (!safeProbe) {
       safeProbe = document.createElement('div');
       safeProbe.setAttribute('aria-hidden', 'true');
@@ -291,19 +305,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
       bottom: parseFloat(safe.paddingBottom) || 0, left: parseFloat(safe.paddingLeft) || 0 };
     const anchor = joy && fire ? { x: (joy.x * 2 + joy.w + fire.x * 2 + fire.w) / 4, y: (joy.y * 2 + joy.h + fire.y * 2 + fire.h) / 4 } : null;
     dockKey.length = 0;
-    dockKey.push(width, height, controls.length, insets.top, insets.right, insets.bottom, insets.left, anchor?.x ?? -1, anchor?.y ?? -1);
-    for (const list of [dockControls, dockInstruments]) {
+    dockKey.push(width, height, top, controls.length, insets.top, insets.right, insets.bottom, insets.left, anchor?.x ?? -1, anchor?.y ?? -1,
+      sizes.detection.w, sizes.detection.h, sizes.alert.w, sizes.alert.h, sizes.countdown.w, sizes.countdown.h);
+    for (const list of [dockControls, dockInstruments, noticeObstacles]) {
       dockKey.push(list.length);
       for (const o of list) dockKey.push(o.x, o.y, o.w, o.h);
     }
     if (dockKey.length !== dockInputs.length || dockKey.some((value, i) => value !== dockInputs[i])) {
       dockInputs = dockKey.slice();
-      dockPlacement = placeTouchActionDock({ width, height, count: controls.length, obstacles: dockControls,
-        soft: dockInstruments.slice(0, laneStart), lanes: dockInstruments.slice(laneStart),
-        keepOut: touchAimKeepOut(width, height, minimapBottom), anchor, insets });
+      centrePlan = planTouchCentre({ width, height, top: top + 8, count: controls.length, controls: dockControls,
+        instruments: noticeObstacles, drawer: dockInstruments.slice(instrumentCount), lanes: [warning],
+        keepOut: touchAimKeepOut(width, height, minimapBottom), anchor, insets,
+        detection: sizes.detection, alert: sizes.alert, countdown: sizes.countdown });
       setDockOpen(false);
     }
-    const placement = dockPlacement;
+    const plan = centrePlan;
+    const placement = plan?.dock ?? null;
+    applyCentre(plan);
     setStyle(document.body, '--hud-systems-tile', placement ? `${placement.tile}px` : '');
     // Each tile sits at its slot (bottom row first); a control behind More sits at its place in the open panel.
     for (const [i, control] of controls.entries()) {
@@ -329,19 +347,49 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (document.body.hasAttribute('data-hud-dock') !== !!placement) document.body.toggleAttribute('data-hud-dock', !!placement);
     // Standing in a notices' lane (568 x 256): a notice shown there draws over the dock (battleHudLayout.css).
     if (document.body.hasAttribute('data-hud-dock-lane') !== !!placement?.inLane) document.body.toggleAttribute('data-hud-dock-lane', !!placement?.inLane);
-    return placement;
+    publishYield(placement, controls, more);
+    return plan;
   }
-  // The portrait countdown keeps its place under the minimap unless the dock is there; then it takes the first of
-  // below or above the dock that clears the dock and the touch controls (a shell drawer opened over it is the
-  // player's own, passing gesture), else keeps its place.
-  function portraitCountdownTop(dock: TouchDockPlacement, width: number): number {
-    const box = read('.cot-prebattle');
-    const h = box?.height || 112, w = box?.width || 228, x = (width - w) / 2;
-    const clear = (y: number) => [dock, ...dockControls, ...dockInstruments.slice(0, instrumentCount)].every(o =>
-      !(x < o.x + o.w + 4 && x + w > o.x - 4 && y < o.y + o.h + 4 && y + h > o.y - 4));
-    for (const y of [255, dock.y + dock.h + 8, dock.y - 8 - h]) if (y >= 12 && clear(y)) return y;
-    return 255;
+  // The natural boxes of detection, the alert and the countdown at this viewport (centreNotices.ts places them; the
+  // compact notices and countdown are its fallback, so these are read with them off and remembered per viewport, or a
+  // compact box would feed back into the next placement). The alert's box is a reserve, not its current text
+  // (alertReserve), so the lane never moves with the copy.
+  let centreSizes: { width: number; height: number; detection: NoticeSize; alert: NoticeSize; countdown: NoticeSize } | null = null;
+  function naturalCentreSizes(width: number, height: number): NonNullable<typeof centreSizes> {
+    if (centreSizes?.width === width && centreSizes.height === height) return centreSizes;
+    const body = document.body;
+    for (const name of ['data-hud-notices', 'data-hud-countdown']) if (body.hasAttribute(name)) body.toggleAttribute(name, false);
+    const sixth = root.querySelector<HTMLElement>('.cot-sixth'), alert = root.querySelector<HTMLElement>('.cot-alert');
+    const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
+    centreSizes = { width, height,
+      detection: { w: sixth?.offsetWidth || Math.min(248, width - 28), h: sixth?.offsetHeight || 48 },
+      alert: alertReserve(width, alert?.offsetHeight || 38),
+      countdown: { w: countdown?.offsetWidth || Math.min(390, width - 32), h: countdown?.offsetHeight || 136 } };
+    return centreSizes;
   }
+  // Where the plan puts the notices and the countdown (battleHudLayout.css body[data-hud-notices] /
+  // [data-hud-countdown]): each notice's centre x, top and width, flanking or compact; the countdown's centre x, top
+  // and scale, or its compact line.
+  function applyCentre(plan: TouchCentrePlan | null): void {
+    const body = document.body;
+    const notices = plan?.notices ?? null, countdown = plan?.countdown ?? null;
+    const attribute = (name: string, value: string | null) => {
+      if (value === null) { if (body.hasAttribute(name)) body.toggleAttribute(name, false); } else if (body.getAttribute(name) !== value) body.setAttribute(name, value);
+    };
+    attribute('data-hud-notices', notices ? notices.compact ? 'compact' : 'full' : null);
+    attribute('data-hud-notices-flank', notices?.arrangement === 'flank' ? '' : null);
+    const px = (value: number | undefined) => value === undefined ? '' : `${Math.round(value * 10) / 10}px`;
+    setStyle(body, '--hud-notice-x', px(notices ? notices.detection.x + notices.detection.w / 2 : undefined));
+    setStyle(body, '--hud-notice-w', px(notices?.detection.w));
+    setStyle(body, '--hud-alert-x', px(notices ? notices.arrangement === 'flank' ? notices.alert.x : notices.alert.x + notices.alert.w / 2 : undefined));
+    setStyle(body, '--hud-alert-w', px(notices?.alert.w));
+    attribute('data-hud-countdown', countdown ? countdown.compact ? 'compact' : 'full' : null);
+    setStyle(body, '--hud-countdown-x', px(countdown ? countdown.x + countdown.w / 2 : undefined));
+    setStyle(body, '--hud-countdown-top', px(countdown?.y));
+    setStyle(body, '--hud-countdown-w', px(countdown?.compact ? countdown.w : undefined));
+    setStyle(body, '--hud-countdown-scale', countdown && !countdown.compact ? String(countdown.scale) : '');
+  }
+
   function refresh() {
     frame = 0;
     const visible = !!root.getClientRects().length;
@@ -388,7 +436,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // Touch: the action dock (touchActionDock.ts) lays the controls out as tiles (48 px, never under 44) at the free
     // spot nearest the thumbs, clear of the crosshair, and never scrolls; when the whole row does not fit its last
     // tile is More. The older strip placement below remains only for a screen without room for a single tile.
-    const dock = touch && systems && systemsElement ? placeDock(systemsElement, width, height, top, scoreBottom) : null;
+    const centre = touch && systems && systemsElement ? placeTouchCentre(systemsElement, width, height, top) : null;
+    if (!centre) { publishYield(null, [], null); applyCentre(null); }
+    const dock = centre?.dock ?? null;
     if (dock) {
       systemsLeft = dock.x; systemsTop = dock.y; systemsWidth = dockWidth = dock.w; systemsHeight = dock.h;
     } else if (touch && height < 550 && width > height) {
@@ -427,31 +477,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     const killLeft = root.querySelector('.cot-kill-lane.l');
     const killRight = root.querySelector('.cot-kill-lane.r');
-    // Touch dock: where the dock takes the centre notices' place (detection and the system alert), they stack directly
-    // above it, and while one shows the side feeds end above that stack; when the space above is too short the stack
-    // goes below the dock instead. The gun-limit warning keeps its own place: the dock never covers it
-    // (touchAimWarningSlot), so it never moves, least of all onto the crosshair.
+    // Touch: the centre notices own the lane centreNotices.ts gave them, clear of the reticle (they are never pushed
+    // down by the feeds, which used to put them on the crosshair of most phones); while one shows, a side feed whose
+    // column reaches that lane ends above it.
     const alertShown = read('.cot-alert.show');
-    const centerStack = (read('.cot-sixth')?.height ?? 48) + (alertShown ? 8 + alertShown.height : 0);
-    const dockNoticeTop = dock && dock.y - 8 - centerStack >= Math.max(top + 8, leftAnchor, (touchChrome?.bottom ?? 0) + 8)
-      ? dock.y - 8 - centerStack : null;
-    // Touch portrait (2026-10-15): the centre notices take the lane at the side feeds' start, never pushed down by the
-    // feeds (on 320 x 568 and 360 x 640 a few kills put them on the crosshair, the drive gauge, the second FIRE and the
-    // gun-limit warning's place); above the dock where it is in the way and there is room, else below it. While one
-    // shows, the side feeds end above the notices.
-    const noticeWidth = read('.cot-sixth')?.width ?? 248;
-    const noticeX = (width - noticeWidth) / 2;
-    let portraitNoticeTop: number | null = null;
-    if (touch && width < height) {
-      const base = Math.max(top + 8, height * .12, (touchChrome?.bottom ?? 0) + 8, noticeX < sideWidth + 14 ? leftAnchor : 0);
-      const onDock = dock && base < dock.y + dock.h + 8 && base + centerStack > dock.y - 8
-        && noticeX < dock.x + dock.w && width - noticeX > dock.x;
-      portraitNoticeTop = !onDock || !dock ? base : dock.y - 8 - centerStack >= base ? dock.y - 8 - centerStack : dock.y + dock.h + 8;
-    }
     const noticeShown = !!(read('.cot-sixth.on') || alertShown);
-    const noticeFloor = noticeShown && portraitNoticeTop !== null ? portraitNoticeTop - 8
-      : noticeShown && dockNoticeTop !== null ? dockNoticeTop - 8 : height;
-    const leftBottom = Math.min(leftFloor(height, touch), noticeFloor,
+    const noticeLane = centre?.notices ?? null;
+    let noticeFloorLeft = height, noticeFloorRight = height;
+    if (noticeLane && noticeShown) {
+      for (const box of [noticeLane.detection, noticeLane.alert]) {
+        if (box.x < sideWidth + 12) noticeFloorLeft = Math.min(noticeFloorLeft, box.y - 8);
+        if (box.x + box.w > width - sideWidth - 12) noticeFloorRight = Math.min(noticeFloorRight, box.y - 8);
+      }
+    }
+    const leftBottom = Math.min(leftFloor(height, touch), noticeFloorLeft,
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
     const countdown = read('.cot-prebattle.on');
     const leftKillBottom = countdown && countdown.left < sideWidth
@@ -472,7 +511,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
     const chrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
     const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
-    const rightBottom = Math.min(rightFloor(height, width, map), noticeFloor,
+    const rightBottom = Math.min(rightFloor(height, width, map), noticeFloorRight,
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
@@ -501,15 +540,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
       noticeTop = systemsTop + systemsHeight + 8;
     }
-    if (dock && noticeTop < dock.y + dock.h + 8 && noticeTop + centerStack > dock.y - 8
-      && noticeLeft < dock.x + dock.w && width - noticeLeft > dock.x) {
-      noticeTop = dockNoticeTop ?? dock.y + dock.h + 8;
-    }
-    if (portraitNoticeTop !== null) noticeTop = portraitNoticeTop;
     const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
     if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
     if (sideNotices) noticeTop = Math.max(top + 8, leftBottom - noticeReserve + 8);
+    // Touch: the lane centreNotices.ts placed (applyCentre set each notice's centre x and width).
+    const alertTop = noticeLane ? noticeLane.alert.y : noticeTop + (notice?.height ?? 48) + 8;
+    if (noticeLane) noticeTop = noticeLane.detection.y;
     // Awards use the center lane only when the actual visible HUD leaves room.
     // Keep the card measurable while deferred; no per-frame polling is needed.
     const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
@@ -548,8 +585,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft, 'systems-height': systemsHeight,
-      'portrait-countdown-top': dock ? portraitCountdownTop(dock, width) : systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
-      'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
+      'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
+      'notice-top': noticeTop, 'alert-top': alertTop,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,

@@ -7,7 +7,8 @@ import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
-import { createCooldownSweep } from './touchActionDock.ts';
+import { createCooldownSweep, touchReticleFootprint, type TouchDockKeepOut } from './touchActionDock.ts';
+import { createDockYield } from './touchDockYield.ts';
 import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
@@ -1256,6 +1257,8 @@ const HUD_CSS = `
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
+.cot-ret-lens{position:absolute;z-index:calc(var(--hud-layer-sight) - 1);inset:0;width:100%;height:100%;display:block;pointer-events:none;}
+.cot-ret-lens[hidden]{display:none;}
 .cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
   min-height:62px;display:grid;grid-template-columns:minmax(78px,1fr) 86px minmax(78px,1fr);
   align-items:stretch;padding:0 25px 8px;isolation:isolate;overflow:hidden;
@@ -1479,7 +1482,7 @@ ${spectatorSwitcherStyles}
    information a spectator wants). Removed with the bar (spectate:end). */
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
-body.cot-spectating .cot-ret{display:none !important;}
+body.cot-spectating :is(.cot-ret,.cot-ret-lens){display:none !important;}
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:900;font-size:18px;
   letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
@@ -1802,11 +1805,22 @@ export function initHud(bus: EventBus): HudRuntime {
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
-  installBattleHudLayout(root);
+  // The touch action dock sits under the reticle canvas and dims each tile the live reticle ink reaches
+  // (touchDockYield.ts): the layout owner publishes the tiles, the reticle paint reports its ink.
+  const dockYield = createDockYield();
+  installBattleHudLayout(root, dockYield);
 
   const touchAimWarning = el('div', 'cot-aim-warning', root);
   touchAimWarning.hidden = true;
   touchAimWarning.setAttribute('role', 'status');
+  // The scope's lens shading lives on its own canvas under the touch action dock and the reticle (the dock sits
+  // between them, battleHudLayout.css), so a tile is never darkened by it; it repaints only when the scope's zoom, size
+  // or fade-in changes.
+  const lensCanvas = el('canvas', 'cot-ret-lens', root);
+  lensCanvas.hidden = true;
+  const lensCtx = requireCanvasContext(lensCanvas);
+  // What the lens canvas holds: its size, zoom and fade alpha (NaN: nothing painted).
+  let lensW = NaN, lensH = NaN, lensZoom = NaN, lensAlpha = NaN;
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = requireCanvasContext(retCanvas);
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
@@ -2624,6 +2638,10 @@ export function initHud(bus: EventBus): HudRuntime {
     retCanvas.width = Math.round(w * dpr);
     retCanvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // A smooth gradient: the lens needs no retina raster.
+    lensCanvas.width = Math.round(w);
+    lensCanvas.height = Math.round(h);
+    lensAlpha = NaN;
     scopeGrad = null;
     scopeChromGrad = null;
     scopeGradZoom = -1;
@@ -3118,11 +3136,11 @@ export function initHud(bus: EventBus): HudRuntime {
     if (scopeGrad && scopeChromGrad && scopeGradZoom === zoom) return;
     const deep = 0.48;
     const innerRadius = w * (0.30 - 0.012 * Math.log2(zoom));
-    scopeGrad = ctx.createRadialGradient(0, 0, innerRadius, 0, 0, w * 0.62);
+    scopeGrad = lensCtx.createRadialGradient(0, 0, innerRadius, 0, 0, w * 0.62);
     scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
     scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.34).toFixed(3)})`);
     scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
-    scopeChromGrad = ctx.createRadialGradient(0, 0, w * 0.40, 0, 0, w * 0.66);
+    scopeChromGrad = lensCtx.createRadialGradient(0, 0, w * 0.40, 0, 0, w * 0.66);
     scopeChromGrad.addColorStop(0, 'rgba(84,118,205,0)');
     scopeChromGrad.addColorStop(0.72, 'rgba(88,122,210,0.055)');
     scopeChromGrad.addColorStop(1, 'rgba(104,130,225,0.15)');
@@ -3138,18 +3156,32 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintScopeVignette(alpha: number): void {
     if (!scopeGrad || !scopeChromGrad) return;
+    // The lens canvas (under the dock and the reticle) keeps its pixels until the shading itself changes.
+    if (lensCanvas.hidden) lensCanvas.hidden = false;
+    if (lensW === w && lensH === h && lensZoom === scopeGradZoom && Math.abs(lensAlpha - alpha) < 1e-3) return;
+    lensW = w; lensH = h; lensZoom = scopeGradZoom; lensAlpha = alpha;
     const lensCx = w / 2;
     const lensCy = h / 2;
     const scaleY = h / w;
-    ctx.save();
-    ctx.translate(lensCx, lensCy);
-    ctx.scale(1, scaleY);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = scopeGrad;
-    ctx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
-    ctx.fillStyle = scopeChromGrad;
-    ctx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
-    ctx.restore();
+    lensCtx.setTransform(1, 0, 0, 1, 0, 0);
+    lensCtx.clearRect(0, 0, lensCanvas.width, lensCanvas.height);
+    lensCtx.save();
+    lensCtx.translate(lensCx, lensCy);
+    lensCtx.scale(1, scaleY);
+    lensCtx.globalAlpha = alpha;
+    lensCtx.fillStyle = scopeGrad;
+    lensCtx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
+    lensCtx.fillStyle = scopeChromGrad;
+    lensCtx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
+    lensCtx.restore();
+  }
+
+  function clearScopeLens(): void {
+    if (lensCanvas.hidden) return;
+    lensCanvas.hidden = true;
+    lensAlpha = NaN;
+    lensCtx.setTransform(1, 0, 0, 1, 0, 0);
+    lensCtx.clearRect(0, 0, lensCanvas.width, lensCanvas.height);
   }
 
   function appendHorizontalScopeRun(
@@ -3576,6 +3608,7 @@ export function initHud(bus: EventBus): HudRuntime {
       fontPx + 8,
     ), h - fontPx - 8);
     ctx.globalAlpha = Math.min(1, 0.98 * paint.alpha);
+    if (dockYield.active) dockYield.rect(x - labelHalf - 3, y - fontPx / 2 - 3, labelHalf * 2 + 6, fontPx + 6);
     ctx.lineWidth = indicator.numeric ? 4.6 : 4;
     ctx.strokeStyle = 'rgba(5,8,11,0.94)';
     ctx.strokeText(label, x, y);
@@ -3594,6 +3627,7 @@ export function initHud(bus: EventBus): HudRuntime {
         frame.centerY + Math.sin(paint.angle) * critRadius,
         critFontPx + 8,
       ), h - critFontPx - 8);
+      if (dockYield.active) dockYield.rect(critX - critHalf - 3, critY - critFontPx / 2 - 3, critHalf * 2 + 6, critFontPx + 6);
       ctx.lineWidth = 3.4;
       ctx.strokeText('CRIT', critX, critY);
       ctx.fillStyle = '#ffd0a8';
@@ -3611,6 +3645,11 @@ export function initHud(bus: EventBus): HudRuntime {
       const indicator = hitDirs[i];
       const paint = prepareHitIndicatorPaint(indicator, timeS, frame);
       if (!paint) continue;
+      // The wedge's crescent lies within this sector (its rim stroke reaches 2.3 px inside the inner radius).
+      if (dockYield.active && paint.alpha > 0.02) {
+        dockYield.sector(frame.centerX, frame.centerY, frame.radius - 3, frame.radius + paint.thickness + 1,
+          paint.angle, paint.halfAngle);
+      }
       paintHitIndicatorBody(frame, paint);
       paintHitIndicatorRim(indicator, frame, paint);
       paintHitIndicatorLabel(indicator, frame, paint);
@@ -3627,6 +3666,10 @@ export function initHud(bus: EventBus): HudRuntime {
       age, !!reducedMotionQuery?.matches, hitConfirmScratch);
     if (!visual.visible) { hitMark = null; return; }
 
+    if (dockYield.active) {
+      dockYield.disc(view.cx, view.cy, visual.radius + visual.length + 3);
+      if (hitMark.blockedRapid) dockYield.disc(view.cx + 30, view.cy - 30, 9);
+    }
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
     const highlightColor = hitMark.bounced ? '241,247,252' : '255,235,190';
     ctx.save();
@@ -4125,9 +4168,30 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'center';
   }
 
+  // The touch dock's live yield (touchDockYield.ts): the ring and the physical gun mark ride the gun's own point; a
+  // single sight (a turretless vehicle) carries all its readouts there too, so its whole footprint is reported moved
+  // with it. Readouts around the camera's crosshair never reach a tile (touchActionDock.ts keeps the dock off them).
+  let yieldFootprint: TouchDockKeepOut[] = [];
+  let yieldFootprintW = 0, yieldFootprintH = 0;
+  function reportReticleInk(view: HudAimView, draw: ReticleDrawState): void {
+    dockYield.disc(draw.circleX, draw.circleY, draw.radius + 4);
+    if (!draw.single && view.gunX != null && view.gunY != null) dockYield.disc(view.gunX, view.gunY, 18);
+    if (!draw.single) return;
+    if (yieldFootprintW !== w || yieldFootprintH !== h) {
+      yieldFootprint = touchReticleFootprint(w, h);
+      yieldFootprintW = w; yieldFootprintH = h;
+    }
+    const dx = draw.cx - w / 2, dy = draw.cy - h / 2;
+    for (const k of yieldFootprint) {
+      if ('r' in k) dockYield.disc(k.x + dx, k.y + dy, k.r);
+      else dockYield.rect(k.x + dx, k.y + dy, k.w, k.h);
+    }
+  }
+
   function drawReticle(view: HudAimView, dt: number): void {
     const draw = prepareReticleDraw(view, dt);
     const { cx, cy, radius: r, circleX: ccx, circleY: ccy } = draw;
+    if (dockYield.active) reportReticleInk(view, draw);
     // Conventional tanks keep a screen-center CAMERA marker plus the physical
     // gun mark. A hydraulic fixed gun collapses both onto the reachable shot
     // point because there is no independent turret lay to communicate.
@@ -6195,18 +6259,24 @@ export function initHud(bus: EventBus): HudRuntime {
   function renderCanvas(dt: number, force = false): void {
     if (!force && reticleCanReuse(aimView)) return;
     ctx.clearRect(0, 0, w, h);
+    const yieldInk = dockYield.active;
+    if (yieldInk) dockYield.begin();
     // Clearing for a cinematic/garage invalidates the pixels represented by
     // the last battle signature. Without this reset, returning to an
     // otherwise-identical aim state could reuse the signature while the
     // actual canvas remained blank.
     if (mode === 'hidden') {
       reticlePaint.valid = false;
+      clearScopeLens();
+      if (yieldInk) dockYield.commit();
       return;
     }
     if (mode === 'sniper' && !playerRef?.aerial?.active) drawScope(aimView);
+    else clearScopeLens();
     drawHitIndicators(lastTimeS);
     if (!playerRef?.aerial?.active) drawReticle(aimView, dt);
     drawHitMark(aimView, lastTimeS);
+    if (yieldInk) dockYield.commit();
     captureReticlePaint(aimView);
   }
 

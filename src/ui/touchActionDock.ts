@@ -22,10 +22,15 @@
  *   reticle's footprint or the gun-limit warning's place, and never over a touch control unless the screen leaves no
  *   other room (then it clears only the dock and the aim keep-out). Every control is one tap away, or two through
  *   More; none is ever off-screen.
+ * - What the reticle draws away from the centre (the ring and gun mark riding a lagging, pinned or blocked gun; a
+ *   turretless sight with all its readouts; the incoming-hit wedges and their damage figures) is never under a tile
+ *   either: the dock sits under the reticle canvas and each tile that ink reaches dims (touchDockYield.ts).
  *
  * Rows fill from the bottom: the first control is the bottom-left tile, nearest the thumbs, and a second or third row
- * stacks above it. DOM-free and deterministic, so placement is checked in plain Node (touchActionDock.selftest.mjs)
- * for every touch viewport of the browser receipt, and recomputed by battleHudLayout.ts only when its inputs change.
+ * stacks above it. The dock shares the space above the reticle with the centre notices and the pre-battle countdown
+ * (centreNotices.ts planTouchCentre decides which is placed first). DOM-free and deterministic, so placement is checked
+ * in plain Node (touchActionDock.selftest.mjs, centreNotices.selftest.mjs) for every touch viewport of the browser
+ * receipt, and recomputed by battleHudLayout.ts only when its inputs change.
  */
 
 export interface TouchDockRect { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
@@ -48,7 +53,7 @@ export interface TouchDockPlacement extends TouchDockRect {
   /** One rect per control behind More, in the row's order (empty when everything fits). */
   readonly flyout: readonly TouchDockRect[];
   /** The dock stands in a reserved lane: no room at all cleared the lanes (568 x 256). A notice shown there draws over
-   *  it, and a tap still reaches the tile through the notice. */
+   *  it (the dock sits under the notices' layer), and a tap still reaches the tile through the notice. */
   readonly inLane: boolean;
 }
 
@@ -61,8 +66,9 @@ interface TouchDockInput {
   readonly obstacles: readonly TouchDockRect[];
   /** Instruments the dock never covers; the More panel may lie over them while it is open. */
   readonly soft?: readonly TouchDockRect[];
-  /** Lanes reserved for passing notices (touchReservedLanes): kept clear like instruments, unless the screen leaves no
-   *  room for even a lone More tile (568 x 320 and 568 x 256 landscape); then the dock may stand in them. */
+  /** Lanes reserved for passing notices (the gun-limit warning's place; the centre notices' place when centreNotices.ts
+   *  reserves it): kept clear like instruments, unless the screen leaves no room for even a lone More tile (568 x 256);
+   *  then the dock may stand in them. */
   readonly lanes?: readonly TouchDockRect[];
   /** The reticle's footprint and the gun-limit warning's place (touchAimKeepOut): neither the dock nor its More panel
    *  comes within a 2 px hairline of them, even in the panel's last resort. */
@@ -190,49 +196,6 @@ export function touchAimWarningSlot(width: number, height: number, minimapBottom
   return { x: width / 2 - 90, y: height / 2 + 48, w: 180, h: 36 };
 }
 
-/**
- * The landscape pre-battle countdown's box before it has been seen at this size (battleHudLayout.ts remembers the
- * measured one from the countdown that opens every battle). It mirrors the stylesheet: on short landscape screens
- * (519 px tall and less) objective bottom + 8, 100vw - 420 wide, the 30 + 7 + 92 px rows scaled .82 (20 + 3 + 48
- * unscaled at 340 px and less; one 40 px row at 299 px and less); taller screens 22% down, min(390, 100vw - 32) x 136.
- */
-export function touchCountdownEstimate(width: number, height: number, objectiveBottom: number): TouchDockRect {
-  if (height <= 519) {
-    const w = width - 420, y = objectiveBottom + 8;
-    if (height <= 299) return { x: (width - w) / 2, y, w, h: 40 };
-    if (height <= 340) return { x: (width - w) / 2, y, w, h: 74 };
-    return { x: (width - w * .82) / 2, y: y + 136 * .09, w: w * .82, h: 136 * .82 };
-  }
-  const w = Math.min(390, width - 32);
-  return { x: (width - w) / 2, y: height * .22, w, h: 136 };
-}
-
-/**
- * Lanes the dock keeps clear of although nothing may be showing there yet, so it never has to move when they appear:
- * the gun-limit warning's place, and in landscape the pre-battle countdown and the centre notices' lane (detection
- * over the system alert under the objective; at 340 px tall and less their fixed band, side by side at 299 px and
- * less). The alert's lane holds two lines of its copy: 8 px type at 299 px and less (30 px with padding), else 34 px.
- * Portrait notices make room for the dock instead (battleHudLayout.ts).
- */
-export function touchReservedLanes({ width, height, objectiveBottom, scoreBottom, minimapBottom, countdown, sixthHeight }: {
-  readonly width: number; readonly height: number; readonly objectiveBottom: number; readonly scoreBottom: number;
-  readonly minimapBottom: number; readonly countdown: TouchDockRect | null; readonly sixthHeight: number;
-}): TouchDockRect[] {
-  const lanes = [touchAimWarningSlot(width, height, minimapBottom)];
-  if (width > height) {
-    lanes.push(countdown ?? touchCountdownEstimate(width, height, objectiveBottom));
-    const y = height <= 340 ? Math.max(objectiveBottom + 16, scoreBottom + 52) : Math.max(objectiveBottom + 8, height * .12);
-    if (height <= 299) lanes.push({ x: 122, y, w: 278, h: Math.max(sixthHeight, 30) });
-    else if (height <= 340) {
-      // Detection min(214, 100vw - 28) wide, the alert (180 at most) 8 px under it, each centred: two boxes, not
-      // their 248 px common box, so a tile can stand in the corner they leave (568 x 320).
-      const sixthW = Math.min(214, width - 28);
-      lanes.push({ x: (width - sixthW) / 2, y, w: sixthW, h: sixthHeight }, { x: width / 2 - 90, y: y + sixthHeight + 8, w: 180, h: 34 });
-    } else lanes.push({ x: width / 2 - 124, y, w: 248, h: sixthHeight + 8 + 34 });
-  }
-  return lanes;
-}
-
 const extent = (count: number, tile: number) => count * tile + Math.max(0, count - 1) * TOUCH_ACTION_GAP_PX;
 
 interface Block { x: number; y: number; columns: number; rows: number; cost: number }
@@ -297,22 +260,32 @@ function searchBlock(width: number, height: number, insets: TouchDockInput['inse
   return best;
 }
 
-/** The integer x in [lo, hi] outside every open interval (the first `n` entries of `blocked`, in pairs) nearest `target`. */
+/** The integer x in [lo, hi] outside every open interval (the first `n` entries of `blocked`, in pairs) nearest `target`;
+ *  the smaller one on a tie. Walks outward from the target, jumping past each interval that holds the walker, so a call
+ *  costs a few passes over the intervals rather than one per candidate edge. */
 function nearestFreeX(n: number, lo: number, hi: number, target: number): number | null {
   if (lo > hi) return null;
-  let best = NaN;
-  // Candidates: the target itself, the bounds, and both integer edges of every blocked interval.
-  for (let k = -3; k < n; k++) {
-    const raw = k === -3 ? Math.round(target) : k === -2 ? lo : k === -1 ? hi
-      : (k & 1) === 0 ? Math.floor(blocked[k]) : Math.ceil(blocked[k]);
-    const x = raw < lo ? lo : raw > hi ? hi : raw;
-    let free = true;
-    for (let i = 0; i < n; i += 2) if (x > blocked[i] && x < blocked[i + 1]) { free = false; break; }
-    if (!free) continue;
-    const distance = Math.abs(x - target), bestDistance = Math.abs(best - target);
-    if (Number.isNaN(best) || distance < bestDistance || (distance === bestDistance && x < best)) best = x;
+  const start = Math.min(hi, Math.max(lo, Math.round(target)));
+  let right: number | null = start;
+  for (let jumped = true; jumped && right !== null;) {
+    jumped = false;
+    for (let i = 0; i < n; i += 2) {
+      if (right > blocked[i] && right < blocked[i + 1]) { right = Math.ceil(blocked[i + 1]); jumped = true; break; }
+    }
+    if (right > hi) right = null;
   }
-  return Number.isNaN(best) ? null : best;
+  let left: number | null = start;
+  for (let jumped = true; jumped && left !== null;) {
+    jumped = false;
+    for (let i = 0; i < n; i += 2) {
+      if (left > blocked[i] && left < blocked[i + 1]) { left = Math.floor(blocked[i]); jumped = true; break; }
+    }
+    if (left < lo) left = null;
+  }
+  if (left === null) return right;
+  if (right === null) return left;
+  const dl = Math.abs(left - target), dr = Math.abs(right - target);
+  return dr < dl ? right : left;
 }
 
 /** Slot rects of a block, filled from the bottom row up, left to right: slot 0 is the bottom-left tile. */
