@@ -984,6 +984,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
     'src/engine/shadeFill.selftest.mjs',
+    'src/engine/toneR1.selftest.mjs',
     // 2026-10-04 (the sun-bloom lane): the sun's glow a gradient toward a visible disc — only the disc HDR, the glow under the
     // knee, the knee as the camera shows the dome
     'src/engine/sunGlare.selftest.mjs',

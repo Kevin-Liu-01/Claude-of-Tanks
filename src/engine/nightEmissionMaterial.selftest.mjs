@@ -105,7 +105,8 @@ inOrder(post, [
   'vec3 cotLift = ( uContrast - uToe.x ) * mix( vec3( cotLiftL ), cotLiftC, smoothstep( uToe.z, uToe.w, -cotUL ) );',
   'outputColor.rgb = 0.18 * exp2( uContrast * cotU + cotLift );',
   'outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );',
-  'outputColor.rgb = AgXToneMapping( outputColor.rgb );',
+  // (2026-10-15) tone r1's AgX: three's with a look after the sigmoid, none at night (post.ts toneFor)
+  'outputColor.rgb = cotAgXToneMapping( outputColor.rgb );',
   'outputColor = sRGBTransferOETF( outputColor );',
 ], 'the output pass\'s scene-referred chain');
 inOrder(post, [
