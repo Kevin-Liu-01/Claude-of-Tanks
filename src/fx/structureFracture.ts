@@ -208,10 +208,13 @@ interface Live {
   lastAt: number;
 }
 
-const BAKE_STILL_S = 1.5;
-/** A fracture body's rigid shape options: masonry lands dead and grips; one that still creeps 6 s on sleeps where it lies
- *  (integ's engine: rubbleBodies' law), so a heap leaves the solver within seconds. */
-const BODY_SHAPE = { restitution: 0.12, friction: 0.75, rolling: 0.5, linearDrag: 0.04, angularDrag: 0.3, forceSleepS: 6 };
+const BAKE_STILL_S = 1;
+/** A fracture body's rigid shape options: masonry lands dead and grips, rolls little and stops turning soon; one that
+ *  still creeps four seconds on sleeps where it lies (integ's engine: rubbleBodies' law), so a heap leaves the solver
+ *  within seconds (2026-10-15, the port's house probe: a heap of a hundred awake clumps was most of the frame). */
+const BODY_SHAPE = { restitution: 0.12, friction: 0.78, rolling: 0.6, linearDrag: 0.05, angularDrag: 0.45, forceSleepS: 4 };
+/** Clumps a chunk cracks into at most on a landing (each one more body for the solver). */
+const CRACK_CLUMPS_MAX = 3;
 /** Cracks an update performs at most (each makes a few bodies' geometry): the rest wait a frame, still whole. */
 const CRACKS_PER_UPDATE = 1;
 /** Work units an update spends by default (WORK_* below). */
@@ -252,12 +255,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const layouts = new WeakMap<THREE.BufferGeometry, Layout>();
   // (the coordinator's budget test, 2026-10-11: the house came down as whole slabs and a bare frame once the hitch's cuts
   // were in) ten bodies a round, as wave 397 judged it
-  const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 10);
+  const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 8);
   // (wave 422: the house's upper storey and roof stood on a bare frame over the heap from 7 s to 12 s, its collapse
   // waiting outside a pool its cracked clumps had filled) the fracture holds half the pool at most: a round's body past
   // that takes the place of one that has lain still a while (baked into the heap a little early), else it is lost in
   // the round's dust; a chunk cracks into no more clumps than the share has room for
-  const poolShare = Math.max(2, o.poolShare ?? 64);
+  const poolShare = Math.max(2, o.poolShare ?? 48);
   let skipped = 0;
   const outcome = createWallStrikeOutcome();
   let lastSoundS = -1;
@@ -1018,13 +1021,25 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         j = i;
       }
     }
+    // (2026-10-15, the port's house probe: on integ's engine a pair of bodies costs its spheres times the other's solids,
+    // and a heap of hundred-sphere clumps of a dozen boxes each was 40 ms a step) a body is two boxes at most: a clump of
+    // more runs is the box round them all (what it draws stays inside it), with a dozen or sixteen contact spheres
+    if (runs.length > 2) {
+      const all = runs[0];
+      for (let i = 1; i < runs.length; i++) {
+        const r = runs[i];
+        all.u0 = Math.min(all.u0, r.u0); all.u1 = Math.max(all.u1, r.u1); all.v0 = Math.min(all.v0, r.v0); all.v1 = Math.max(all.v1, r.v1);
+        all.d0 = Math.min(all.d0, r.d0 + r.dd - all.dd); all.d1 = Math.max(all.d1, r.d1 + r.dd - all.dd); all.mass += r.mass;
+      }
+      runs.length = 1;
+    }
     const parts: RigidPartSpec[] = runs.map((run) => ({
       kind: 'box' as const,
       center: [(run.u0 + run.u1) / 2 - cu, (run.v0 + run.v1) / 2 - cv, (run.d0 + run.d1) / 2 + run.dd + T / 2] as [number, number, number],
       half: [Math.max(0.04, (run.u1 - run.u0) / 2), Math.max(0.04, (run.v1 - run.v0) / 2), Math.max(0.04, (run.d1 - run.d0) / 2)] as [number, number, number],
       mass: run.mass,
     }));
-    const shape = createRigidShape(parts.slice(0, 24), { ...BODY_SHAPE, maxSpheres: Math.min(40, 14 + parts.length * 3) });
+    const shape = createRigidShape(parts, { ...BODY_SHAPE, maxSpheres: parts.length > 1 ? 16 : 12 });
     // the body's culling sphere (body frame, round its centre): the farthest corner of its parts, and a margin
     let bodyRadius = 0.3;
     for (const part of parts) {
@@ -1244,7 +1259,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     // fracture's share of it, the chunk's own place counted), neighbours merged, never left whole while there is room for two
     const room = Math.min(capacity - o.pool.world.awakeCount, poolShare - bodies.size) + 1;
     if (room < 2) return;
-    while (clumps.length > room) { const last = clumps.pop()!; clumps[clumps.length - 1].push(...last); }
+    while (clumps.length > Math.min(room, CRACK_CLUMPS_MAX)) { const last = clumps.pop()!; clumps[clumps.length - 1].push(...last); }
     if (!o.pool.framePoseAt(b.handle, _pose)) return;
     o.pool.velocity(b.handle, _crackVel);
     // where its cells lie now: the chunk's pose through its body frame

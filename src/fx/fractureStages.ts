@@ -101,7 +101,7 @@ export interface FractureStagesOptions {
   onShards?(x: number, y: number, z: number, vx: number, vy: number, vz: number, massKg: number, structureIdx: number): void;
   /** The vehicles drawn this frame (they shove the pieces). */
   hulls?(): Iterable<unknown> | null;
-  /** Live bodies (default 128) and the wall cells' share of them (default 64). */
+  /** Live bodies (default 96) and the wall cells' share of them (default 48). */
   capacity?: number;
   poolShare?: number;
 }
@@ -142,7 +142,9 @@ function shapeOfMaterial(m: FractureMaterial): DebrisShape {
 interface Refused { x: number; y: number; z: number; size: number; slot: FractureSlot; vx: number; vy: number; vz: number }
 
 export function createFractureStages(o: FractureStagesOptions): FractureStages {
-  const pool = createDebrisPhysics({ capacity: Math.max(16, o.capacity ?? 128) });
+  // (2026-10-15: 96 bodies, the walls' cells half of them — r2's 128 and 64 on its box-manifold engine, which stepped a
+  // body at about half integ/226's cost)
+  const pool = createDebrisPhysics({ capacity: Math.max(16, o.capacity ?? 96) });
   let host: FractureHost | null = null;
   /** Structures whose match plays sections (their stage events say so). */
   const sectionsOn = new Set<number>();
@@ -204,7 +206,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const versionOf = (idx: number): number => fracture.version(idx) * 4096 + (events.get(idx) ?? 0);
 
   const fracture: StructureFracture = createStructureFracture({
-    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 64,
+    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 48,
     keepSpan: (span) => host?.keep(span),
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),
     materialFor: (seam, bucket) => resolverOf(seam)(bucket),

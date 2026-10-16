@@ -33,9 +33,9 @@
  * same), and the per-frame loops allocate nothing (2026-10-15 port onto integ/226: the house hitch).
  */
 import * as THREE from 'three';
-import type { RigidEnvironment } from '../sim/rigidBody.ts';
+import { createRigidShape, type RigidEnvironment, type RigidShape } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
-import type { StructureDamageSeam } from '../world/structureDamageSeam.ts';
+import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { StructureDamageAnatomy } from '../world/destructionKit.ts';
 import { rubbleMoundHeightAt, type RubbleMound } from '../sim/terrainDeformation.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
@@ -143,20 +143,33 @@ interface Layout {
   stride: number;
 }
 
-/** One source of a building's triangles: a span of a merged bucket, or a stage run. */
+/**
+ * One source of a building's triangles: a span of a merged bucket (cut once: a triangle flattened out of its bucket since
+ * — its face taken by the wall fracture, a damaged stage's glass — is left out of the build), or a stage run or a
+ * redrawn face (cut again whenever the building's version moves: 2026-10-15, the port's house probe — a cut laid ahead
+ * was thrown away whole at every strike, so a struck building's collapse waited for all of it in its own frames).
+ */
 interface Source {
   geometry: THREE.BufferGeometry;
   material: THREE.Material;
   first: number;
   count: number;
   world: THREE.Matrix4 | null;
+  /** A span's own: its positions read at the build; null for a run. */
+  span: StructureSpan | null;
+  /** The cut's number of its first triangle (spans), −1 a run's. */
+  tri0: number;
 }
 
 interface Group {
   material: THREE.Material;
   layout: Layout;
-  /** Partitioned triangles by key (piece × PART_STRIDE + part, or STATIC_PIECE), body frame. */
-  lists: Map<number, number[]>;
+  /** Partitioned triangles by key (piece × PART_STRIDE + part, or STATIC_PIECE), body frame, each vertex its layout's
+   *  floats and its triangle's number in the cut (−1: a run's or a cap's): the spans' (kept, typed once cut), the runs'
+   *  (cut again with the version) and the caps' (laid at each build). */
+  lists: Map<number, number[] | Float32Array>;
+  runLists: Map<number, number[]>;
+  capLists: Map<number, number[]>;
 }
 
 /** A building's cut, laid ahead: its plan's geometry, its sources and how far through them it is. */
@@ -168,6 +181,14 @@ interface Prepared {
   sources: Source[];
   source: number;
   tri: number;
+  /** Its runs (the stage runs and redrawn faces standing with it at `version`) and how far through them it is. */
+  runs: Source[];
+  run: number;
+  runTri: number;
+  spansDone: boolean;
+  /** The spans' triangles, and those flattened out of their buckets as of the last build. */
+  spanTris: number;
+  dead: Uint8Array | null;
   done: boolean;
   /** For the eviction of a cut never used. */
   touched: number;
@@ -196,6 +217,8 @@ interface LivePart {
   dusts: number;
   /** Looked at once it first lay still: tipped over if it stood on its edge. */
   tipped: boolean;
+  /** Its own body's shape once it breaks off when what it draws reaches past its planned box (a roof's eave boards). */
+  shape: RigidShape | null;
 }
 
 interface LivePiece {
@@ -221,6 +244,8 @@ interface LivePiece {
   spawn: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; wx?: number; wz?: number } | null;
   /** Laid at rest on the ground (the pool never took it): static, still. */
   rested: boolean;
+  /** Its body's shape: the plan's, or the box round what it draws when that reaches past it. */
+  shape: RigidShape | null;
 }
 
 interface LiveCollapse {
@@ -251,8 +276,8 @@ const RISE_FROM_S = 0.7;
 const RISE_TO_S = 3.4;
 /** A collapse whose pieces have all lain still this long is baked; one this old whose pieces only creep (under these
  *  speeds: a slab easing on a wedge) is too; any collapse this old is. */
-const BAKE_STILL_S = 2;
-const BAKE_SLOW_AGE_S = 7;
+const BAKE_STILL_S = 1.2;
+const BAKE_SLOW_AGE_S = 4.5;
 const SLOW_MPS = 0.3;
 const SLOW_RADS = 0.5;
 const BAKE_AGE_S = 40;
@@ -266,7 +291,8 @@ const DUST_GAP_S = 0.05;
  *  this (a step costs ~0.016 ms an awake body; at most four steps a frame). */
 const BREAK_MPS = 3.4;
 // (the coordinator's budget test, 2026-10-11) back to wave 397's: under 56 a busy house kept its panels whole
-const BREAK_AWAKE_MAX = 72;
+// (2026-10-15, integ/226's engine without the box manifold: a step costs its awake bodies' contacts) back under 56
+const BREAK_AWAKE_MAX = 56;
 /** (dcore 2026-10-11, waves 385/388a: "the roof lies as one flat intact lid"; "the tower lands whole") a roof slab
  *  cracks on any real landing, whatever else is awake, and a shaft breaks into its drums at its first touch of the
  *  ground once it leans this far (rad): the impact report alone missed both. */
@@ -508,7 +534,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     for (let j = 0; j < part.meshes.length; j++) { const mesh = part.meshes[j]; mesh.matrix.compose(_p, _q, _s); mesh.matrixWorldNeedsUpdate = true; }
   }
 
-  /** A cap quad's two triangles into a material's list (its layout: uv and colour where it has them, 0 elsewhere). */
+  /** A cap quad's two triangles into a material's list (its layout: uv and colour where it has them, 0 elsewhere; then
+   *  the cut's triangle number, −1). */
   function pushCap(list: number[], layout: Layout, cap: CapQuad): void {
     const [a, b, c, d] = cap.corners;
     const n = cap.n;
@@ -524,6 +551,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         else if (name === 'color') { list.push(tint[0] * k, tint[1] * k, tint[2] * k); for (let j = 3; j < size; j++) list.push(1); }
         else for (let j = 0; j < size; j++) list.push(neutral(name));
       }
+      // (no triangle of the cut's: a cap is never dead)
+      list.push(-1);
     };
     // each half wound to face n
     const tri = (p: readonly number[], q: readonly number[], r: readonly number[]): void => {
@@ -541,14 +570,15 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     return { c: Math.cos(placement.yaw), s: Math.sin(placement.yaw), x: placement.x, y: placement.y, z: placement.z };
   }
 
-  /** A building's sources: its spans, then any stage runs given; each material's layout the union of its sources'. */
-  function addSources(job: Prepared, sources: Source[]): void {
+  /** A building's sources into their material's groups (each layout the union of its sources' before any is cut). */
+  function addSources(job: Prepared, sources: Source[], runs: boolean): void {
     for (const src of sources) {
       const layout = layoutOf(src.geometry);
       const g = job.groups.get(src.material);
-      if (!g) job.groups.set(src.material, { material: src.material, layout, lists: new Map() });
-      else if (g.lists.size === 0) g.layout = unionLayout(g.layout, layout);
-      job.sources.push(src);
+      if (!g) job.groups.set(src.material, { material: src.material, layout, lists: new Map(), runLists: new Map(), capLists: new Map() });
+      else if (g.lists.size === 0 && g.runLists.size === 0) g.layout = unionLayout(g.layout, layout);
+      if (runs) job.runs.push(src);
+      else { src.tri0 = job.spanTris; job.spanTris += Math.floor(src.count / 3); job.sources.push(src); }
     }
   }
   /** The standing runs and redrawn faces as sources (world matrices; indexed runs expanded, disposed once cut). */
@@ -561,7 +591,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const flat = geometry.getIndex() ? geometry.toNonIndexed() : geometry;
       if (flat !== geometry) job.expanded.push(flat);
       runs.push({ geometry: flat, material: run.material as THREE.Material, first: 0, count: flat.getAttribute('position').count,
-        world: run.matrixWorld.clone() });
+        world: run.matrixWorld.clone(), span: null, tri0: -1 });
     }
     return runs;
   }
@@ -569,25 +599,26 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   /** The soup a chunk is read into (grown, never shrunk: no array a chunk). */
   let soupBuf = new Float64Array(PREPARE_CHUNK * 3 * 24);
   const _cv = new THREE.Vector3(), _cn = new THREE.Vector3(), _nm = new THREE.Matrix3();
-  /** Cut `count` triangles of a source from `tri` on into the job's lists. */
+  /** Cut `count` triangles of a source from `tri` on into the job's lists (a run's into its run lists). */
   function cutChunk(job: Prepared, src: Source, tri: number, count: number): void {
     const g = job.groups.get(src.material)!;
-    const layout = g.layout;
+    const layout = g.layout, S = layout.stride + 1;
     const geometry = src.geometry;
     const f = frameOf(job.seam.anatomy);
     const pos = geometry.getAttribute('position'), nrm = geometry.getAttribute('normal');
     const attrs = layout.names.map((name) => (geometry.getAttribute(name) as THREE.BufferAttribute | undefined) ?? null);
-    if (soupBuf.length < count * 3 * layout.stride) soupBuf = new Float64Array(count * 3 * layout.stride * 2);
+    if (soupBuf.length < count * 3 * S) soupBuf = new Float64Array(count * 3 * S * 2);
     const soup = soupBuf;
     if (src.world) _nm.getNormalMatrix(src.world);
     // a roof-only cut (sections on) keeps what reaches over the eaves
     const eave = job.roofOnly ? job.plan.eaveY - 0.4 : -Infinity;
     let kept = 0;
     for (let t = 0; t < count; t++) {
-      const o2t = kept * 3 * layout.stride;
+      const o2t = kept * 3 * S;
       let top = -Infinity;
+      const tid = src.tri0 >= 0 ? src.tri0 + tri + t : -1;
       for (let k = 0; k < 3; k++) {
-        const at = src.first + (tri + t) * 3 + k, o2 = o2t + k * layout.stride;
+        const at = src.first + (tri + t) * 3 + k, o2 = o2t + k * S;
         _cv.set(pos.getX(at), pos.getY(at), pos.getZ(at));
         if (src.world) _cv.applyMatrix4(src.world);
         if (nrm) { _cn.set(nrm.getX(at), nrm.getY(at), nrm.getZ(at)); if (src.world) _cn.applyMatrix3(_nm).normalize(); } else _cn.set(0, 1, 0);
@@ -600,23 +631,25 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           const attr = attrs[a], size = layout.sizes[a];
           for (let j = 0; j < size; j++) soup[kk++] = attr && j < attr.itemSize ? attr.getComponent(at, j) : neutral(layout.names[a]);
         }
+        soup[kk] = tid;
       }
       if (top >= eave) kept++;
     }
     if (!kept) return;
-    const parts = partitionTriangles(job.plan, soup.subarray(0, kept * 3 * layout.stride), kept, layout.stride);
+    const parts = partitionTriangles(job.plan, soup.subarray(0, kept * 3 * S), kept, S);
+    const lists = src.tri0 >= 0 ? g.lists : g.runLists;
     for (const [key, list] of parts) {
-      const into = g.lists.get(key);
-      if (into) for (let i = 0; i < list.length; i++) into.push(list[i]); else g.lists.set(key, list);
+      const into = lists.get(key) as number[] | undefined;
+      if (into) for (let i = 0; i < list.length; i++) into.push(list[i]); else lists.set(key, list);
     }
   }
 
-  /** Advance a job by up to `budget` triangles (Infinity: to the end); the triangles it took. */
+  /** Advance a job by up to `budget` triangles (Infinity: to the end), its spans then its runs; the triangles it took. */
   function advanceJob(job: Prepared, budget: number): number {
     let spent = 0;
-    while (!job.done && spent < budget) {
+    while (!job.spansDone && spent < budget) {
       const src = job.sources[job.source];
-      if (!src) { job.done = true; break; }
+      if (!src) { finishSpans(job); break; }
       const tris = Math.floor(src.count / 3);
       const count = Math.min(PREPARE_CHUNK, tris - job.tri, Math.max(1, budget - spent));
       if (count > 0) cutChunk(job, src, job.tri, count);
@@ -624,9 +657,39 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       spent += Math.max(1, count);
       if (job.tri >= tris) { job.source++; job.tri = 0; }
     }
-    if (!job.sources[job.source]) job.done = true;
-    if (job.done && job.expanded.length) { for (const g of job.expanded) g.dispose(); job.expanded.length = 0; }
+    if (!job.spansDone && !job.sources[job.source]) finishSpans(job);
+    while (job.spansDone && !job.done && spent < budget) {
+      const src = job.runs[job.run];
+      if (!src) break;
+      const tris = Math.floor(src.count / 3);
+      const count = Math.min(PREPARE_CHUNK, tris - job.runTri, Math.max(1, budget - spent));
+      if (count > 0) cutChunk(job, src, job.runTri, count);
+      job.runTri += Math.max(0, count);
+      spent += Math.max(1, count);
+      if (job.runTri >= tris) { job.run++; job.runTri = 0; }
+    }
+    if (job.spansDone && !job.runs[job.run]) {
+      job.done = true;
+      if (job.expanded.length) { for (const g of job.expanded) g.dispose(); job.expanded.length = 0; }
+    }
     return spent;
+  }
+  /** The spans are cut: their lists kept typed (half the memory, and nothing a build appends to them). */
+  function finishSpans(job: Prepared): void {
+    job.spansDone = true;
+    for (const g of job.groups.values()) for (const [key, list] of g.lists) if (Array.isArray(list)) g.lists.set(key, Float32Array.from(list));
+  }
+  /** The building's version moved: its runs are cut again (its spans' cut holds), its geometries built again. */
+  function restartRuns(job: Prepared, standing: readonly THREE.Mesh[], version: number): void {
+    for (const g of job.groups.values()) g.runLists.clear();
+    for (const g of job.expanded) g.dispose();
+    job.expanded.length = 0;
+    job.runs = [];
+    addSources(job, runSources(job, standing), true);
+    job.run = 0; job.runTri = 0;
+    job.done = false;
+    job.version = version;
+    disposeBuilt(job);
   }
 
   function newJob(seam: StructureDamageSeam, resolve: (bucket: string) => THREE.Material | null, standing: readonly THREE.Mesh[],
@@ -635,7 +698,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (!anatomy.storeys.length || !seam.spans.length) return null;
     // the cut does not depend on the blow: a neutral one
     const plan = planCollapsePieces(anatomy, { cause: null, dirX: 0, dirZ: 0, point: null }, { cap: o.cap });
-    const job: Prepared = { structureIdx: seam.structureIdx, seam, plan, groups: new Map(), sources: [], source: 0, tri: 0, done: false,
+    const job: Prepared = { structureIdx: seam.structureIdx, seam, plan, groups: new Map(), sources: [], source: 0, tri: 0,
+      runs: [], run: 0, runTri: 0, spansDone: false, spanTris: 0, dead: null, done: false,
       touched: ++touch, resolve, built: null, queue: null, version, used: new Set(), roofOnly, expanded: [] };
     const sources: Source[] = [];
     for (const span of seam.spans) {
@@ -644,41 +708,47 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const material = resolve(span.bucket);
       if (!material) continue;
       // the merged buckets are in world space (identity matrices under the world root)
-      sources.push({ geometry, material, first: span.first, count: span.count, world: null });
+      sources.push({ geometry, material, first: span.first, count: span.count, world: null, span, tri0: 0 });
     }
-    addSources(job, sources);
-    if (standing.length) addSources(job, runSources(job, standing));
+    addSources(job, sources, false);
+    if (standing.length) addSources(job, runSources(job, standing), true);
     return job;
   }
   function jobFor(seam: StructureDamageSeam, resolve: (bucket: string) => THREE.Material | null, standing: readonly THREE.Mesh[] = [],
     version = 0, roofOnly = false): Prepared | null {
     const existing = prepared.get(seam.structureIdx);
-    if (existing && existing.version === version && existing.roofOnly === roofOnly) { existing.touched = ++touch; return existing; }
-    if (existing) { prepared.delete(seam.structureIdx); disposeBuilt(existing); }
+    if (existing && existing.roofOnly === roofOnly) {
+      existing.touched = ++touch;
+      // (another version: its runs again, its spans' cut kept)
+      if (existing.version !== version) restartRuns(existing, standing, version);
+      return existing;
+    }
+    if (existing) { prepared.delete(seam.structureIdx); disposeJob(existing); }
     const job = newJob(seam, resolve, standing, version, roofOnly);
     if (!job) return null;
     // a cut never used gives way to a newer one
     if (prepared.size >= PREPARED_MAX) {
       let oldest: Prepared | null = null;
       for (const j of prepared.values()) if (!oldest || j.touched < oldest.touched) oldest = j;
-      if (oldest) { prepared.delete(oldest.structureIdx); disposeBuilt(oldest); }
+      if (oldest) { prepared.delete(oldest.structureIdx); disposeJob(oldest); }
     }
     prepared.set(seam.structureIdx, job);
     return job;
   }
 
   /** A laid cut's caps: each piece's (each part's) broken edges and back, the remnant's broken tops, in their slots'
-   *  materials. */
+   *  materials (laid again at each build into the caps' lists). */
   function addCaps(job: Prepared): void {
     const plan = job.plan, groups = job.groups;
     const defaultLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
+    for (const g of groups.values()) g.capLists.clear();
     const capInto = (key: number, cap: CapQuad): void => {
       const material = job.resolve(cap.slot.bucket);
       let g = material ? groups.get(material) : groups.values().next().value as Group | undefined;
-      if (!g && material) { g = { material, layout: defaultLayout, lists: new Map() }; groups.set(material, g); }
+      if (!g && material) { g = { material, layout: defaultLayout, lists: new Map(), runLists: new Map(), capLists: new Map() }; groups.set(material, g); }
       if (!g) return;
-      let list = g.lists.get(key);
-      if (!list) { list = []; g.lists.set(key, list); }
+      let list = g.capLists.get(key);
+      if (!list) { list = []; g.capLists.set(key, list); }
       pushCap(list, g.layout, cap);
     };
     for (const piece of plan.pieces) {
@@ -687,34 +757,69 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     if (!job.roofOnly) for (const cap of capStubs(plan)) capInto(STATIC_PIECE, cap);
   }
+  /** The spans' triangles flattened out of their buckets since they were cut (their faces drawn by the wall fracture now,
+   *  a damaged stage's glass): left out of the build. */
+  function deadTriangles(job: Prepared): Uint8Array {
+    const dead = job.dead && job.dead.length === job.spanTris ? job.dead : new Uint8Array(job.spanTris);
+    dead.fill(0);
+    for (const src of job.sources) {
+      const arr = (src.span?.position?.array ?? src.geometry.getAttribute('position').array) as Float32Array;
+      const n = Math.floor(src.count / 3);
+      for (let t = 0; t < n; t++) {
+        const i = (src.first + t * 3) * 3;
+        if (arr[i] === arr[i + 3] && arr[i + 1] === arr[i + 4] && arr[i + 2] === arr[i + 5]
+          && arr[i] === arr[i + 6] && arr[i + 1] === arr[i + 7] && arr[i + 2] === arr[i + 8]) dead[src.tri0 + t] = 1;
+      }
+    }
+    job.dead = dead;
+    return dead;
+  }
   const _v = new THREE.Vector3(), _iq = new THREE.Quaternion();
-  /** One list's geometry: the remnant's in world space, a piece's part in its own frame. */
-  function geometryOfList(job: Prepared, g: Group, key: number, list: number[]): THREE.BufferGeometry {
-    const plan = job.plan, layout = g.layout, f = frameOf(job.seam.anatomy);
-    const verts = list.length / layout.stride;
+  /** One key's geometry from its lists (the spans' less their dead triangles, the runs', the caps'): the remnant's in
+   *  world space, a piece's part in its own frame. */
+  function geometryOfList(job: Prepared, g: Group, key: number): THREE.BufferGeometry {
+    const plan = job.plan, layout = g.layout, f = frameOf(job.seam.anatomy), S = layout.stride + 1;
+    const dead = job.dead;
+    const sources = [g.lists.get(key), g.runLists.get(key), g.capLists.get(key)];
+    let verts = 0;
+    for (const list of sources) {
+      if (!list) continue;
+      for (let t = 0; t + 3 * S <= list.length; t += 3 * S) {
+        const tid = list[t + S - 1];
+        if (!(tid >= 0 && dead && dead[tid])) verts += 3;
+      }
+    }
     const pos = new Float32Array(verts * 3), nrm = new Float32Array(verts * 3);
     const extra = layout.sizes.map((size) => new Float32Array(verts * size));
     const piece = key >= 0 ? plan.pieces[Math.floor(key / PART_STRIDE)] : null;
     const off = piece ? piece.parts[key % PART_STRIDE]?.center ?? [0, 0, 0] : [0, 0, 0];
     if (piece) _iq.set(-piece.rotation[0], -piece.rotation[1], -piece.rotation[2], piece.rotation[3]);
-    for (let i = 0; i < verts; i++) {
-      const at = i * layout.stride, o3 = i * 3;
-      if (piece) {
-        const pc = piece.center;
-        _v.set(list[at] - pc[0], list[at + 1] - pc[1], list[at + 2] - pc[2]).applyQuaternion(_iq);
-        pos[o3] = _v.x - off[0]; pos[o3 + 1] = _v.y - off[1]; pos[o3 + 2] = _v.z - off[2];
-        _v.set(list[at + 3], list[at + 4], list[at + 5]).applyQuaternion(_iq);
-        nrm[o3] = _v.x; nrm[o3 + 1] = _v.y; nrm[o3 + 2] = _v.z;
-      } else {
-        const x = list[at], y = list[at + 1], z = list[at + 2];
-        pos[o3] = f.x + x * f.c + z * f.s; pos[o3 + 1] = f.y + y; pos[o3 + 2] = f.z - x * f.s + z * f.c;
-        const nx = list[at + 3], ny = list[at + 4], nz = list[at + 5];
-        nrm[o3] = nx * f.c + nz * f.s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * f.s + nz * f.c;
-      }
-      let k = at + 6;
-      for (let a = 0; a < layout.sizes.length; a++) {
-        const size = layout.sizes[a];
-        for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
+    let i = 0;
+    for (const list of sources) {
+      if (!list) continue;
+      for (let t = 0; t + 3 * S <= list.length; t += 3 * S) {
+        const tid = list[t + S - 1];
+        if (tid >= 0 && dead && dead[tid]) continue;
+        for (let v = 0; v < 3; v++, i++) {
+          const at = t + v * S, o3 = i * 3;
+          if (piece) {
+            const pc = piece.center;
+            _v.set(list[at] - pc[0], list[at + 1] - pc[1], list[at + 2] - pc[2]).applyQuaternion(_iq);
+            pos[o3] = _v.x - off[0]; pos[o3 + 1] = _v.y - off[1]; pos[o3 + 2] = _v.z - off[2];
+            _v.set(list[at + 3], list[at + 4], list[at + 5]).applyQuaternion(_iq);
+            nrm[o3] = _v.x; nrm[o3 + 1] = _v.y; nrm[o3 + 2] = _v.z;
+          } else {
+            const x = list[at], y = list[at + 1], z = list[at + 2];
+            pos[o3] = f.x + x * f.c + z * f.s; pos[o3 + 1] = f.y + y; pos[o3 + 2] = f.z - x * f.s + z * f.c;
+            const nx = list[at + 3], ny = list[at + 4], nz = list[at + 5];
+            nrm[o3] = nx * f.c + nz * f.s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * f.s + nz * f.c;
+          }
+          let k = at + 6;
+          for (let a = 0; a < layout.sizes.length; a++) {
+            const size = layout.sizes[a];
+            for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
+          }
+        }
       }
     }
     // (dcore 2026-10-11, wave 388a: "carton-like sections", "clean, saturated debris") a falling piece wears the grit of
@@ -725,7 +830,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const hv = hash01(key, plan.pieces.length, 31), hw = hash01(key, plan.pieces.length, 37);
       dustCoat(extra[ci], layout.sizes[ci], 0.26 + 0.24 * hv);
       const value = 0.86 + 0.2 * hw, col = extra[ci], size = layout.sizes[ci];
-      for (let i = 0; i + 2 < col.length; i += size) { col[i] *= value; col[i + 1] *= value; col[i + 2] *= value; }
+      for (let q = 0; q + 2 < col.length; q += size) { col[q] *= value; col[q + 1] *= value; col[q + 2] *= value; }
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -734,30 +839,33 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     geometry.computeBoundingSphere();
     return geometry;
   }
-  /** Build a laid cut's geometries, up to `budget` of them (Infinity: all); its lists are let go as built. The count
-   *  built (its caps the first). */
+  /** Build a laid cut's geometries, up to `budget` of them (Infinity: all); its lists are kept (a later version builds
+   *  again). The count built (its caps and dead triangles the first). */
   function buildJob(job: Prepared, budget = Infinity, caps = true): number {
     if (!job.queue) {
       if (caps) addCaps(job);
+      deadTriangles(job);
       job.built = new Map();
       job.queue = [];
-      for (const g of job.groups.values()) for (const [key, list] of g.lists) {
-        if (!list.length || key < STATIC_PIECE) continue;
-        // a roof-only cut builds its roof's pieces alone (the rest stands in the world's buckets)
-        if (job.roofOnly && (key === STATIC_PIECE || job.plan.pieces[Math.floor(key / PART_STRIDE)]?.kind !== 'roof')) continue;
-        job.queue.push([g, key]);
+      for (const g of job.groups.values()) {
+        const keys = new Set<number>([...g.lists.keys(), ...g.runLists.keys(), ...g.capLists.keys()]);
+        for (const key of keys) {
+          if (key < STATIC_PIECE) continue;
+          // a roof-only cut builds its roof's pieces alone (the rest stands in the world's buckets)
+          if (job.roofOnly && (key === STATIC_PIECE || job.plan.pieces[Math.floor(key / PART_STRIDE)]?.kind !== 'roof')) continue;
+          job.queue.push([g, key]);
+        }
       }
     }
     let made = 0;
     while (job.queue.length && made < budget) {
       const [g, key] = job.queue.pop()!;
-      const list = g.lists.get(key)!;
-      const geometry = geometryOfList(job, g, key, list);
-      g.lists.delete(key);
+      const geometry = geometryOfList(job, g, key);
+      made++;
+      if (!geometry.getAttribute('position').count) { geometry.dispose(); continue; }
       let entry = job.built!.get(key);
       if (!entry) { entry = []; job.built!.set(key, entry); }
       entry.push({ material: g.material, geometry });
-      made++;
     }
     return Math.max(1, made);
   }
@@ -765,8 +873,13 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (job.built) for (const list of job.built.values()) for (const { geometry } of list) geometry.dispose();
     job.built = null;
     job.queue = null;
+  }
+  /** A cut given up whole: its geometries, its expanded runs and its lists. */
+  function disposeJob(job: Prepared): void {
+    disposeBuilt(job);
     for (const g of job.expanded) g.dispose();
     job.expanded.length = 0;
+    job.groups.clear();
   }
   const isReady = (job: Prepared): boolean => job.done && !!job.queue && !job.queue.length;
 
@@ -779,7 +892,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const plan = job.plan;
     if (plan.shaft ? !((plan.pieces[0]?.parts.length ?? 0) >= 2) : plan.pieces.length < 3) {
       prepared.delete(seam.structureIdx);
-      disposeBuilt(job);
+      disposeJob(job);
       return false;
     }
     // its cut laid ahead: down now; felled before: it waits for its cut, a little an update
@@ -830,9 +943,22 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const m of meshes) m.castShadow = big;
       const offset = new THREE.Vector3(off[0], off[1], off[2]);
       parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false });
+        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null });
     }
     if (!parts.some((pp) => pp.meshes.length)) return;
+    // (2026-10-15, the port's receipt: a hip roof's slab, its eave boards and verges past its banded boxes, lay a metre
+    // into the ground) a body reaches as far as what it draws: a roof slab's or part's box grown to its triangles
+    let shape: RigidShape | null = null;
+    if (piece.kind === 'roof') {
+      const whole = boundsOf(parts, false);
+      if (whole && reachesPast(whole, piece.boxes)) shape = boxShapeOf(whole, piece.massKg);
+      parts.forEach((pp, k) => {
+        const spec = piece.parts[k];
+        if (!spec) return;
+        const b = boundsOf([pp], true);
+        if (b && reachesPast(b, [{ center: [0, 0, 0], half: spec.half }])) pp.shape = boxShapeOf(b, spec.massKg);
+      });
+    }
     const spawn = pieceSpawn(piece, placement);
     // (the physics lane, 2026-10-11, wave 409: "a released piece with zero kick, perfectly upright, stays balanced unless
     // something hits it") a piece let go without a shove (a floor, a panel that waits for its support) leaves with a
@@ -844,10 +970,40 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       tumble = { wx: Math.cos(a) * w, wz: Math.sin(a) * w };
     }
     const lp: LivePiece = { piece, com: [0, 0, 0], handle: -1, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false,
-      shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false };
+      shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false, shape };
     writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
     lc.pieces.push(lp);
     if (now) spawnBody(lc, lp); else lc.spawnQueue.push(lp);
+  }
+  /** What a piece's (or a part's) meshes draw, in its frame (`own`: a part's about its own centre) as [x0, y0, z0, x1, y1,
+   *  z1]; null for none. */
+  function boundsOf(parts: readonly LivePart[], own: boolean): number[] | null {
+    const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (const pp of parts) for (const m of pp.meshes) {
+      const p = m.geometry.getAttribute('position'), a = p.array as Float32Array;
+      const ox = own ? 0 : pp.offset.x, oy = own ? 0 : pp.offset.y, oz = own ? 0 : pp.offset.z;
+      for (let i = 0; i < p.count * 3; i += 3) {
+        const x = a[i] + ox, y = a[i + 1] + oy, z = a[i + 2] + oz;
+        if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (z < b[2]) b[2] = z;
+        if (x > b[3]) b[3] = x; if (y > b[4]) b[4] = y; if (z > b[5]) b[5] = z;
+      }
+    }
+    return b[3] >= b[0] ? b : null;
+  }
+  /** Whether bounds reach more than 5 cm past every box's (in the same frame). */
+  function reachesPast(b: number[], boxes: ReadonlyArray<{ center: readonly number[]; half: readonly number[] }>): boolean {
+    const u = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (const box of boxes) for (let k = 0; k < 3; k++) {
+      u[k] = Math.min(u[k], box.center[k] - box.half[k]); u[k + 3] = Math.max(u[k + 3], box.center[k] + box.half[k]);
+    }
+    for (let k = 0; k < 3; k++) if (b[k] < u[k] - 0.05 || b[k + 3] > u[k + 3] + 0.05) return true;
+    return false;
+  }
+  /** A box body round bounds (its frame's), of a mass. */
+  function boxShapeOf(b: number[], massKg: number): RigidShape {
+    return createRigidShape([{ kind: 'box', center: [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2],
+      half: [Math.max(0.05, (b[3] - b[0]) / 2), Math.max(0.05, (b[4] - b[1]) / 2), Math.max(0.05, (b[5] - b[2]) / 2)], mass: Math.max(20, massKg) }],
+    { restitution: 0.14, friction: 0.72, rolling: 0.15, angularDrag: 0.2, forceSleepS: 5, maxSpheres: 24 });
   }
   /** A piece's body (asleep, solid, waiting for its release); the pool refusing it: it bursts or lies at rest. */
   function spawnBody(lc: LiveCollapse, lp: LivePiece): void {
@@ -855,7 +1011,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (!sp) return;
     lp.spawn = null;
     const age = clockS - lc.t0;
-    const shape = pieceShape(lp.piece);
+    const shape = lp.shape ?? pieceShape(lp.piece);
     lp.com = [shape.com[0], shape.com[1], shape.com[2]];
     const handle = pool.spawn(shape, { x: sp.x, y: sp.y, z: sp.z, qx: sp.qx, qy: sp.qy, qz: sp.qz, qw: sp.qw,
       ...(sp.wx !== undefined ? { wx: sp.wx, wz: sp.wz } : {}), asleep: true }, Math.max(0, lp.piece.releaseS - age));
@@ -968,7 +1124,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       addPiece(lc, job, piece, e, n++ < SPAWNS_PER_UPDATE);
     }
     // a roof-only cut serves nothing more (the walls fall as their cells, the collapse lays the pile)
-    if (job.roofOnly) { prepared.delete(seam.structureIdx); disposeBuilt(job); }
+    if (job.roofOnly) { prepared.delete(seam.structureIdx); disposeJob(job); }
     if (!lc.pieces.length) return false;
     falling.add(seam.structureIdx);
     live.push(lc);
@@ -1116,7 +1272,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       // a drum parts from its neighbours at the break: a few centimetres along the shaft from its middle
       const gap = kind === 'drum' ? (k - (p.parts.length - 1) / 2) * 0.07 : 0;
       const gx = kind === 'drum' ? _p.x * gap : 0, gy = kind === 'drum' ? _p.y * gap : 0, gz = kind === 'drum' ? _p.z * gap : 0;
-      const h = pool.spawn(partShape(spec), {
+      const h = pool.spawn(part.shape ?? partShape(spec), {
         x: pose[0] + _o.x + gx, y: pose[1] + _o.y + gy, z: pose[2] + _o.z + gz, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
         vx, vy, vz, wx, wy, wz,
       });
@@ -1393,7 +1549,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const job = prepared.get(structureIdx);
       if (!job) return;
       prepared.delete(structureIdx);
-      disposeBuilt(job);
+      disposeJob(job);
     },
     reset() {
       for (const c of live) {
@@ -1402,7 +1558,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
       live.length = 0;
       byHandle.clear();
-      for (const job of prepared.values()) disposeBuilt(job);
+      for (const job of prepared.values()) disposeJob(job);
       prepared.clear();
       falling.clear();
       floors.clear();

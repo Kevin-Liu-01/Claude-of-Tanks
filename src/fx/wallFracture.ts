@@ -216,8 +216,15 @@ function gableOver(anatomy: StructureDamageAnatomy, storeyIndex: number, face: D
     for (const c of slab.corners) { minX = Math.min(minX, c[0]); maxX = Math.max(maxX, c[0]); minZ = Math.min(minZ, c[2]); maxZ = Math.max(maxZ, c[2]); }
     return { p: c0, nx, ny, nz, minX, maxX, minZ, maxZ };
   });
-  // the slopes fall across the face's normal (a gable end), never toward it (an eaves wall)
-  const along = slabs.every((sl) => sl.ny < 0.999 && Math.abs(face.out[0] * sl.nx + face.out[2] * sl.nz) < 0.35 * Math.hypot(sl.nx, sl.nz) + 1e-6);
+  // the slopes fall across the face's normal (a gable end), never toward it (an eaves wall); a half-hip's read by its two
+  // main slopes (its small hips fall toward its ends: the end wall under them is its gable, to the hip's foot)
+  const area = (i: number) => {
+    const [c0, c1, , c3] = roof.slabs[i].corners;
+    return Math.hypot(c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]) * Math.hypot(c3[0] - c0[0], c3[1] - c0[1], c3[2] - c0[2]);
+  };
+  const main = roof.kind === 'halfhip' && slabs.length > 2
+    ? slabs.map((sl, i) => ({ sl, a: area(i) })).sort((p, q) => q.a - p.a).slice(0, 2).map((x) => x.sl) : slabs;
+  const along = main.every((sl) => sl.ny < 0.999 && Math.abs(face.out[0] * sl.nx + face.out[2] * sl.nz) < 0.35 * Math.hypot(sl.nx, sl.nz) + 1e-6);
   if (!along) return null;
   const top = new Float32Array(GABLE_SAMPLES);
   let apex = 0;

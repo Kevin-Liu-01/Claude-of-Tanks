@@ -187,8 +187,10 @@ for (const b of A.onFloor) assert.ok(b.min.y < floorY + 0.9, `a roof slab lies o
 assert.ok(A.onFloor.some((b) => b.min.y < floorY + 0.3 && b.max.y > floorY - 0.1), 'the upper floor holds slabs while its storey stands');
 assert.ok(A.down.length >= 1, 'its slabs are still there, lying or baked');
 const eaveWorld = GROUND + H.anatomy.roof.eaveY;
+// (baked, a heap is one mesh a material: a piece stacked on others lies over the ground by their height)
+assert.ok(Math.min(...A.down.map((b) => b.min.y)) < GROUND + 0.3, 'what fell lies on the ground');
 for (const b of A.down) {
-  assert.ok(b.min.y < GROUND + 1.0, `its storey dropped, what fell lies on the ground (${(b.min.y - GROUND).toFixed(2)} m)`);
+  assert.ok(b.min.y < GROUND + 2.0, `its storey dropped, nothing of it hovers (its lowest ${(b.min.y - GROUND).toFixed(2)} m over the ground)`);
   assert.ok(b.max.y < eaveWorld - 0.5, `it came down from the eaves (its top ${(b.max.y - GROUND).toFixed(2)} m, the eaves ${(eaveWorld - GROUND).toFixed(2)} m)`);
 }
 assert.equal(A.facesAfter, 0, 'the final collapse lets the redrawn faces go (the kit\'s remnant stands)');

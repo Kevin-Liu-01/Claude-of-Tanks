@@ -411,8 +411,12 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   if (roof && (roof.kind === 'gable' || roof.kind === 'halfhip') && slabs.length && storeys.length) {
     // the top storey's faces along which the slopes do not fall (their out normal across every slab's fall line)
     const top = storeys[storeys.length - 1];
+    // (a half-hip's small hips fall toward its ends: its gables are read against its two main slopes, else its end walls
+    // over the eaves went with a slope and hung metres under it — 2026-10-15, the port's receipt)
+    const area = (sl: RoofSlabPlan) => (sl.e1 - sl.e0) * (sl.f1 - sl.f0);
+    const main = roof.kind === 'halfhip' && slabs.length > 2 ? [...slabs].sort((p, q) => area(q) - area(p)).slice(0, 2) : slabs;
     for (const face of top.faces) {
-      const along = slabs.every((s) => Math.abs(dot(face.out, [s.f[0], 0, s.f[2]])) < 0.35 * Math.hypot(s.f[0], s.f[2]) + 1e-6);
+      const along = main.every((s) => Math.abs(dot(face.out, [s.f[0], 0, s.f[2]])) < 0.35 * Math.hypot(s.f[0], s.f[2]) + 1e-6);
       if (along && roof.ridgeY - eaveY > 0.8) gableFaces.push({ face, thickness: wallThickness(face), piece: -1 });
     }
   }
@@ -1797,12 +1801,15 @@ export function pieceShape(piece: CollapsePiece): RigidShape {
   const volume = piece.boxes.reduce((a, b) => a + 8 * b.half[0] * b.half[1] * b.half[2], 0) || 1;
   const density = Math.max(60, Math.min(4000, piece.massKg / volume));
   const q = (v: number) => Math.round(v * 100);
-  const key = `${Math.round(density / 10)}|${piece.boxes.map((b) => `${b.center.map(q).join(',')}:${b.half.map(q).join(',')}${b.rotation ? `@${b.rotation.map((v) => Math.round(v * 1e4)).join(',')}` : ''}`).join(';')}`;
+  const key = `${piece.kind === 'drum' || piece.kind === 'crown' ? 'd' : 'p'}${Math.round(density / 10)}|${piece.boxes.map((b) => `${b.center.map(q).join(',')}:${b.half.map(q).join(',')}${b.rotation ? `@${b.rotation.map((v) => Math.round(v * 1e4)).join(',')}` : ''}`).join(';')}`;
   const hit = shapeCache.get(key);
   if (hit) return hit;
   // masonry lands dead (restitution 0.12-0.18, the physics lane's reading) and grips (0.7): a slab lies where it falls
-  // (integ/226: one that still creeps seven seconds on sleeps where it lies, rubbleBodies' law, so a heap leaves the solver)
-  const opts = { restitution: 0.14, friction: 0.72, rolling: 0.15, forceSleepS: 7 };
+  // (integ/226: one that still creeps six seconds on sleeps where it lies, rubbleBodies' law, so a heap leaves the solver;
+  // a shaft's slow topple over its stump keeps a dozen, or it would sleep in the air on its way over)
+  // (and two dozen contact spheres at most: a pair of pieces costs one's spheres times the other's solids)
+  const opts = { restitution: 0.14, friction: 0.72, rolling: 0.15, angularDrag: 0.2,
+    forceSleepS: piece.kind === 'drum' || piece.kind === 'crown' ? 12 : 6, maxSpheres: 24 };
   let shape: RigidShape;
   const one = piece.boxes.length === 1 && !piece.boxes[0].rotation && piece.boxes[0].center.every((v) => Math.abs(v) < 1e-6);
   if (one) {
@@ -1862,7 +1869,8 @@ export function partShape(part: CollapsePart): RigidShape {
   const key = `part|${Math.round(density / 10)}|${part.half.map((v) => Math.round(v * 100)).join(',')}`;
   const hit = shapeCache.get(key);
   if (hit) return hit;
-  const shape = createRigidBox(Math.max(0.03, hx), Math.max(0.03, hy), Math.max(0.03, hz), density, { restitution: 0.14, friction: 0.72, rolling: 0.15, forceSleepS: 7 });
+  const shape = createRigidBox(Math.max(0.03, hx), Math.max(0.03, hy), Math.max(0.03, hz), density, { restitution: 0.14, friction: 0.72, rolling: 0.3,
+    angularDrag: 0.3, forceSleepS: 4, maxSpheres: 16 });
   if (shapeCache.size >= SHAPE_CACHE_MAX) shapeCache.delete(shapeCache.keys().next().value!);
   shapeCache.set(key, shape);
   return shape;
