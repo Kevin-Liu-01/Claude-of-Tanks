@@ -152,10 +152,10 @@
       "concealers": 3381
     },
     "copper_mesa": {
-      "bytes": 1923290,
-      "sha256": "f6c8db11aa694d347f9701861357b5987546882da5cd9ff84ba61d0a5659dda0",
-      "obstacles": 2056,
-      "colliders": 2564,
+      "bytes": 1916981,
+      "sha256": "c8083bdb0ced3b2327628c1699afd75e6124cdf5956967574706b8cd3c1bcd24",
+      "obstacles": 2053,
+      "colliders": 2561,
       "concealers": 964
     },
     "airfield": {
@@ -386,10 +386,10 @@
         "concealers": 3550
       },
       "copper_mesa": {
-        "bytes": 2032210,
-        "sha256": "4ddd578299cf652bec9b2a865615925e47d82ed69435231879627e3b7723d1dc",
-        "obstacles": 2231,
-        "colliders": 2606,
+        "bytes": 2024499,
+        "sha256": "2580c72293e7899734937e8af671e05a060e22ae50aa1d78a69282aea2b76be4",
+        "obstacles": 2224,
+        "colliders": 2599,
         "concealers": 944
       },
       "airfield": {
