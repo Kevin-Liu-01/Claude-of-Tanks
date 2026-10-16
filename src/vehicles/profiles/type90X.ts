@@ -346,7 +346,7 @@ function buildType90X(P:TankBuilderPort):void {
   });
   turretArmor(P);basket(P);optic(P);roofWeapon(P);smokeBank(P,-1);smokeBank(P,1);antennas(P);mainGun(P);
   P.topY=3.153229-PIVOT[1];
-  P.hullG.userData.xRebuild={candidate:'type90_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'type90',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const TYPE90_X_PROFILES={type90_x:{build:buildType90X}} as const;
+export const TYPE90_X_PROFILES={type90:{build:buildType90X}} as const;

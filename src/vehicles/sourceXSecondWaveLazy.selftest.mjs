@@ -18,13 +18,13 @@ for(const id of SECOND_WAVE_X_IDS){
   assert.equal(isTankBuilderReady(id),true,`${id}: complete playable loading path`);
   assert.ok(combatAnatomyCalibration(id),`${id}: real generated anatomy group`);
   assert.ok(vehicleMarkingSeats(id),`${id}: real generated marking group`);
-  if(id==='leclerc_x')assert.equal(isTankBuilderReady('leclerc_classic_x'),false,
+  if(id==='leclerc_xlr')assert.equal(isTankBuilderReady('amx56'),false,
     'the separately requested older Leclerc has its own lazy owner');
   const tank=createTank(id,null,{quality:'low',proceduralOnly:true,geometryReceipt:true});
   try{
     for(const name of ['hull','rig_hull','rig_turret','rig_gun'])
       assert.ok(tank.root.getObjectByName(name),`${id}: loaded native ${name}`);
-    if(id==='jpz_e100_x'){
+    if(id==='jpz_e100'){
       assert.equal(tank.root.getObjectByName('turret'),undefined,
         'the E100 casemate is fixed hull stock, not a rotating turret');
       const hull=tank.root.getObjectByName('hull');

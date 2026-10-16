@@ -66,11 +66,11 @@ const REPO_ROOT = resolve(dirname(TOOL), '..');
 export const FLEET_COST_CENSUS = 'docs/history/research/fleet-continuation-20260921-census.csv';
 
 /** The five Garage exhibit vehicles named by the FSP-01 brief. */
-export const GARAGE_FIVE = Object.freeze(['t90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2']);
+export const GARAGE_FIVE = Object.freeze(['t90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther']);
 
 /** Receipt warm pass: with the desktop pedestal LRU of four, D C B E after
  * A B C D E are all cache hits (E is the current hero, so D leads). */
-export const RECEIPT_WARM_PASS = Object.freeze(['t90m', 'leo2a5_a5nl', 'm1a2', 'k2']);
+export const RECEIPT_WARM_PASS = Object.freeze(['t90am', 'leo2a4m', 'm1a1_abrams_hc', 'xk2_black_panther']);
 
 export const WARM_SWITCH_BUDGET = Object.freeze({ longTaskP95Ms: 120, paintP95Ms: 250, minWarm: 4 });
 

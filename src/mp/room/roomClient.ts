@@ -18,7 +18,7 @@ import {
   parseP2pMatchUrl, parseRoomEnvelope, randomRoomCode, readRoomRelayPayload, readRoomSignalPayload, readRoomSnapshot, roomSocketPath, utf8ByteLength,
 } from './protocol.ts';
 import type {
-  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomHostDeclineCommand, RoomHostInfo, RoomMatchReportCommand,
+  RoomChatEntry, RoomCreateSettings, RoomEnvelope, RoomHostChangedPayload, RoomHostDeclineCommand, RoomHostInfo, RoomHostUnreachableCommand, RoomMatchReportCommand,
   RoomMatchStartPayload, RoomMatchStatusPayload, RoomMode, RoomPlayer, RoomRelayPayload, RoomSelection, RoomSignalPayload, RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 
@@ -319,6 +319,15 @@ export class RoomClient {
    */
   declineHost(declined: boolean, { unable = false }: { unable?: boolean } = {}): Promise<Record<string, unknown>> {
     const command: RoomHostDeclineCommand = { type: 'host_decline', declined, ...(unable ? { unable: true } : {}) };
+    return this.command({ ...command });
+  }
+
+  /**
+   * This peer has heard nothing from the host of `generation` for `silentMs` (2026-10-14, §13.22): with the host's room
+   * socket gone too, the room elects at once rather than after the lease. A room that predates it refuses the command.
+   */
+  reportHostUnreachable(generation: number, silentMs: number): Promise<Record<string, unknown>> {
+    const command: RoomHostUnreachableCommand = { type: 'host_unreachable', generation, silentMs: Math.max(0, Math.round(silentMs)) };
     return this.command({ ...command });
   }
 

@@ -10,7 +10,7 @@ import { initializeAerial, stepAerial } from './aerialCombat.ts';
 import { createShell, stepShell } from './ballistics.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 function tank(id,team='alpha') {
- const spec=getSpec('m1a2');return {id,team,spec,bot:false,state:{pos:new Vector3(0,0,team==='alpha'?-100:100),yaw:0,speed:0},combat:createCombatState(spec),input:{shellSlot:0,throttle:0,steer:0,brake:false,fire:false,aimPoint:new Vector3(0,10,200),auxiliaryBits:0}};
+ const spec=getSpec('m1a1_abrams_hc');return {id,team,spec,bot:false,state:{pos:new Vector3(0,0,team==='alpha'?-100:100),yaw:0,speed:0},combat:createCombatState(spec),input:{shellSlot:0,throttle:0,steer:0,brake:false,fire:false,aimPoint:new Vector3(0,10,200),auxiliaryBits:0}};
 }
 function mode(id,entities,arrangement=null){return createMatchModeController({mode:id,entities,ruleset:matchRulesetFor(id,null,arrangement),setWeaponStage:setModeWeapon,revive(e,p){e.state.pos.set(p.x,0,p.z);e.combat=createCombatState(e.spec);}});}
 {
@@ -29,7 +29,7 @@ function mode(id,entities,arrangement=null){return createMatchModeController({mo
 }
 {
  const a=tank('winner'),b=tank('target','bravo');const source=a.spec;const m=mode('gun_game',[a,b]);
- assert.equal(source.gun.shells[0].name,getSpec('m1a2').gun.shells[0].name,'catalog unchanged');
+ assert.equal(source.gun.shells[0].name,getSpec('m1a1_abrams_hc').gun.shells[0].name,'catalog unchanged');
  for(let kill=1;kill<=10;kill++){
   b.combat.destroyed=true;m.recordDestruction(b.id,a.id);m.recordDestruction(b.id,a.id);
   assert.equal(m.state.score.alpha,kill,'one reward per life');

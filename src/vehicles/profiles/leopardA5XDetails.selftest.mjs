@@ -19,7 +19,7 @@ const coverWitnesses = [
 ];
 
 // The frozen pre-repair world-vertex fingerprint (replayed through the A5 return-roller history) is retired:
-// whole-tank change detection of leo2a5_x is the fleet geometry ledger's.
+// whole-tank change detection of leo2a5 is the fleet geometry ledger's.
 
 function basketChecks(mesh, quality) {
   const points=[],positions=mesh.geometry.attributes.position;
@@ -136,7 +136,7 @@ function roofChecks(tank, quality) {
 }
 
 for (const quality of ['high','low']) {
-  const tank=createTank('leo2a5_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('leo2a5',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   const disposed=new Map();
   try {
     tank.root.updateMatrixWorld(true);

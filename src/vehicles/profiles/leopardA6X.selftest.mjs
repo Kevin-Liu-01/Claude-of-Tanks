@@ -117,7 +117,7 @@ for (const quality of ['high', 'low']) {
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   try {
-    tank = createTank('leo2a6_x', null, { proceduralOnly: true, geometryReceipt: true,
+    tank = createTank('leo2a6', null, { proceduralOnly: true, geometryReceipt: true,
       quality, batchStatic: false });
   } finally { KIT.buildRunningGear = original; }
   try {

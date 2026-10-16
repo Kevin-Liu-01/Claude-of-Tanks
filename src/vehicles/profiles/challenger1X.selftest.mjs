@@ -12,9 +12,9 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Historical photo-primitive regression only. The current supplied-file model
 // is accepted exclusively by its separate actual-ID tests and raw source gates.
 function createTank(...args) {
-  registerProfiledBuilders({challenger1_x:photoDraft});
+  registerProfiledBuilders({challenger1_mk3:photoDraft});
   try { return createPlayableTank(...args); }
-  finally { registerProfiledBuilders({challenger1_x:supplied}); }
+  finally { registerProfiledBuilders({challenger1_mk3:supplied}); }
 }
 
 // Fixed public-handbook values, printed xiii, not measurements from AI input.
@@ -71,7 +71,7 @@ for (const quality of ['high', 'low']) {
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   try {
-    tank = createTank('challenger1_x', null, { quality, proceduralOnly: true,
+    tank = createTank('challenger1_mk3', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false });
   } finally { KIT.buildRunningGear = original; }
   try {

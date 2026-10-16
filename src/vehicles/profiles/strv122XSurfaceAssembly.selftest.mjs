@@ -6,7 +6,7 @@ import {buildStrv122X} from './strv122XPhotoDraft.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Preserve the photo-draft contract without qualifying the supplied-file ID.
-registerProfiledBuilders({strv122_x:buildStrv122X});
+registerProfiledBuilders({strv122:buildStrv122X});
 
 // These are photo-led assembly/air contracts, not millimetric measurements
 // invented from a photograph. Primary FMV envelope tests remain separate.
@@ -33,7 +33,7 @@ function roofAir(meshes,turret) {
   }
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('strv122_x',null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('strv122',null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m);});

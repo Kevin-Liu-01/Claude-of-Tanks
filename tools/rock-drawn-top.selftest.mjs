@@ -15,7 +15,7 @@ import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import { collisionPartTopAt } from '../src/world/collision.ts';
 import { applyRockCollisionProfile, rockCollisionProfile, rockFormOf } from '../src/world/rockCollision.ts';
 
-await ensureAuthorityFleet(['t90m', 'm1a2', 'bmp2']);
+await ensureAuthorityFleet(['t90am', 'm1a1_abrams_hc', 'bmp2']);
 
 const flat = () => 0;
 const sphere = rockFormOf(mergeVertices(new THREE.IcosahedronGeometry(1, 4)));
@@ -50,7 +50,7 @@ const domeTop = collisionPartTopAt(dome, dome.shape2, 0, 12), round8Top = collis
 assert.ok(domeTop > 0.55 && domeTop < 0.7, `the dome's top (${domeTop.toFixed(2)} m)`);
 assert.ok(round8Top > 0.75 && round8Top < 0.85, `the stone's top (${round8Top.toFixed(2)} m)`);
 for (const [record, name, rides] of [[dome, 'dome', 0.3], [round8, '0.8 m stone', 0.45]]) {
-  for (const [hull, opts, label] of [['t90m', { governMps: 2.5 }, 'crawl'], ['m1a2', { governMps: 8, speed: 8, seconds: 6 }, 'at 8 m/s']]) {
+  for (const [hull, opts, label] of [['t90am', { governMps: 2.5 }, 'crawl'], ['m1a1_abrams_hc', { governMps: 8, speed: 8, seconds: 6 }, 'at 8 m/s']]) {
     const { metrics, lift, z } = drive(record, hull, opts);
     const at = `${name}, ${label}`;
     assert.ok(z > 16, `${at}: the hull goes over it (z ${z.toFixed(1)})`);
@@ -67,7 +67,7 @@ for (const [record, name, rides] of [[dome, 'dome', 0.3], [round8, '0.8 m stone'
 // 2. a rounded 1.0 m stone (past the climb), a 1.4 m ball (its equator 0.4 m up: steep from the ground) and a 2.1 m
 // boulder: they stop a hull, cleanly
 for (const [record, label] of [[stone(1.4, 1.2, -0.2), 'rounded 1.0 m stone'], [stone(1, 1, 0.4), '1.4 m ball'], [stone(1.6, 1.5, 0.6), '2.1 m boulder']]) {
-  const { metrics, lift, z } = drive(record, 'm1a2', { governMps: 4 });
+  const { metrics, lift, z } = drive(record, 'm1a1_abrams_hc', { governMps: 4 });
   assert.ok(z < 12, `${label}: the hull is stopped short of its middle (z ${z.toFixed(2)})`);
   assert.ok(lift < 0.25, `${label}: it does not climb it (${lift.toFixed(2)} m)`);
   assert.ok(metrics.popXZMaxM <= 0.12 && metrics.popYMaxM <= 0.12, `${label}: no pops (${metrics.popXZMaxM.toFixed(3)} / ${metrics.popYMaxM.toFixed(3)} m)`);
@@ -79,7 +79,7 @@ for (const [record, label] of [[stone(1.4, 1.2, -0.2), 'rounded 1.0 m stone'], [
 // T-90M rests with its glacis 0.28-0.29 m in these for 3 s, and one in the census 1.1 m inside a 2.4 m boulder)
 const downhill = (x, z) => -0.45 * z;
 for (const record of [stone(2, 1.6, 0, -0.3, downhill), stone(1.8, 2.2, -0.2, -0.3, downhill)]) {
-  for (const hull of ['t90m']) {
+  for (const hull of ['t90am']) {
     const { metrics, z } = drive(record, hull, { governMps: 8, speed: 8, seconds: 4, terrain: downhill });
     assert.ok(z < 12, `${hull} downhill: the boulder stops it (z ${z.toFixed(2)})`);
     assert.ok(metrics.bodyPenMaxM <= 0.1, `${hull} downhill: its nose stays out of the boulder (${metrics.bodyPenMaxM.toFixed(3)} m)`);

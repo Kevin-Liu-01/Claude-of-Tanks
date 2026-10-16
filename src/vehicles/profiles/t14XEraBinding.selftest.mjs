@@ -21,15 +21,15 @@ function fingerprint(root){
 function ray(mesh,origin,direction){return new THREE.Raycaster(new THREE.Vector3(...origin),
   new THREE.Vector3(...direction),0,12).intersectObject(mesh,false)[0]?.point;}
 for(const quality of ['high','low']){
-  registerProfiledBuilders({t14_x:P=>{
+  registerProfiledBuilders({t14_armata:P=>{
     const original=P.destructibleCluster;P.destructibleCluster=(_name,fill)=>fill();
     try{buildT14X(P);}finally{P.destructibleCluster=original;}
   }});
   let expected;
-  try{const old=createTank('t14_x',null,{quality,geometryReceipt:true,proceduralOnly:true,camoSeed:4242});
+  try{const old=createTank('t14_armata',null,{quality,geometryReceipt:true,proceduralOnly:true,camoSeed:4242});
     try{expected=fingerprint(old.root);}finally{old.dispose();}
-  }finally{registerProfiledBuilders({t14_x:buildT14X});}
-  const tank=createTank('t14_x',null,{quality,geometryReceipt:true,proceduralOnly:true,camoSeed:4242});
+  }finally{registerProfiledBuilders({t14_armata:buildT14X});}
+  const tank=createTank('t14_armata',null,{quality,geometryReceipt:true,proceduralOnly:true,camoSeed:4242});
   try{
     assert.equal(fingerprint(tank.root),expected,'binding preserves every visible source triangle');
     const hull=tank.root.getObjectByName('hull'),turret=tank.root.getObjectByName('turret');

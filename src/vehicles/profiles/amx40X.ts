@@ -262,7 +262,7 @@ function buildAmx40X(P:TankBuilderPort):void {
     topY:1.151,botY,arms:true,paintedEnds:true,coveredTop:true,
   });
   P.topY=AMX40_X_DATUMS.highestFittingM-YAW[1];
-  P.hullG.userData.xRebuild={candidate:'amx40_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate:'amx40',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-export const AMX40_X_PROFILES={amx40_x:{build:buildAmx40X}} as const;
+export const AMX40_X_PROFILES={amx40:{build:buildAmx40X}} as const;

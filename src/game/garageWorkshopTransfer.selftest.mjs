@@ -241,12 +241,12 @@ try {
   transfer = createGarageWorkshopTransfer({});
   // Construct successively: the second visual must reuse the completed first
   // visual's worker and palette lease, not merely join a concurrent request.
-  visuals.push(await transfer.createVisual('m1a2', 4200));
-  visuals.push(await transfer.createVisual('m1a2', 4201));
+  visuals.push(await transfer.createVisual('m1a1_abrams_hc', 4200));
+  visuals.push(await transfer.createVisual('m1a1_abrams_hc', 4201));
   assert.equal(workers.length, 1, 'one native module worker is reused');
   assert.deepEqual(workers[0].requests.map(({ requestId, specId, camoSeed, spec }) =>
-    [requestId, specId, camoSeed, spec === TANK_SPECS.m1a2]),
-  [[1, 'm1a2', 4200, true], [2, 'm1a2', 4201, true]]);
+    [requestId, specId, camoSeed, spec === TANK_SPECS.m1a1_abrams_hc]),
+  [[1, 'm1a1_abrams_hc', 4200, true], [2, 'm1a1_abrams_hc', 4201, true]]);
   visuals.forEach((visual, index) => verifyTransferredAttributes(visual, workers[0].fixtures[index]));
   const [first, second] = visuals;
   const sharedMaterial = first.root.children[0].material;

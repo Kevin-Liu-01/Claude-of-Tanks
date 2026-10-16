@@ -48,7 +48,7 @@ import {createMatchPlacement,matchPlacementAnchors} from '../../sim/matchPlaceme
 const world=createDedicatedWorldCollision('cliffbridge'), field=world.heightField;
 const support=createStructureSupportField(field,world);
 for(const direction of [1,-1]) {
- const spec=TANK_SPECS.m1a2;
+ const spec=TANK_SPECS.m1a1_abrams_hc;
  const e={id:'drive',spec,state:createTankState(spec,new Vector3(0,field.getHeightAt(0,-direction*180),-direction*180),direction===1?0:Math.PI),input:{throttle:0,steer:0,brake:false,aimPoint:null},combat:null};
  for(let tick=0;tick<3000;tick++){
   e.input.throttle=tick<120?0:.6;

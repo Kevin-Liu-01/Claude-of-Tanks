@@ -6,9 +6,9 @@ import {decorManifestFor} from './decorations.ts';
 import {penAtDistanceMm,createShell} from '../sim/ballistics.ts';
 import {traceTank,tankPoseFromState} from '../sim/armor.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
-const ares=getSpec('ares_apc_x'),ap=ares.gun.shells[0];
+const ares=getSpec('ares_apc'),ap=ares.gun.shells[0];
 assert.equal(ares.gun.reloadS,.14);assert.equal(ap.dmg,24);
-for(const id of ['m1a2','t90m','leo2a6','challenger_3','k2_x']){
+for(const id of ['m1a1_abrams_hc','t90am','leo2a4','challenger3_proto','k2_black_panther']){
  const spec=getSpec(id),rear=spec.armor.hullPlates.find(p=>p.name==='hull_rear');assert.ok(rear);
  // Exercise the actual authored rear plate and combat resolver at 500 m.
  const center=rear.verts.reduce((v,p)=>v.add(new Vector3(...p)),new Vector3()).multiplyScalar(1/rear.verts.length);

@@ -56,7 +56,7 @@ function cases(mesh){
   }
 }
 for(const quality of ['high','low']){
-  const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const mesh=t.root.getObjectByName('turretDetail');sensor(mesh);sideArmor(t);cases(mesh);}
   finally{t.dispose();}
 }

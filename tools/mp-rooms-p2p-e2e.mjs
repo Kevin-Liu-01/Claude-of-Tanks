@@ -120,12 +120,12 @@ export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {})
   try {
     // ---- 1. seats, the admin's decline, the start
     const p1 = await seat('p1');
-    const created = await p1.request('room_create', { roomCode: code, mode: 'lan', player: { id: 'p1', name: 'One' }, resumeToken: token('1'), nextResumeToken: token('2'), selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId, botsFill: false } });
+    const created = await p1.request('room_create', { roomCode: code, mode: 'lan', player: { id: 'p1', name: 'One' }, resumeToken: token('1'), nextResumeToken: token('2'), selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId, botsFill: false } });
     if (!check(created.type === 'room_created', `room_create: ${JSON.stringify(created.payload)}`)) throw new Error('no room');
     code = created.payload.room.roomCode;
     const join = async (id, team = null, resume = token('a'), next = token('b')) => {
       const entry = await seat(id);
-      const joined = await entry.request('room_join', { roomCode: code, player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 't90m' }, ...(team ? { team } : {}) });
+      const joined = await entry.request('room_join', { roomCode: code, player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 't90am' }, ...(team ? { team } : {}) });
       check(joined.type === 'room_joined', `${id} joins: ${JSON.stringify(joined.payload)}`);
       return entry;
     };

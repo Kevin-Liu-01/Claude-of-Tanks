@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { tankSeedId } from '../tankIdAliases.ts';
 
 const marks = Object.freeze({
   merkava1b: 16,
   merkava2b: 20,
   merkava2d: 30,
   merkava3c: 36,
-  merkava3d: 36,
+  merkava3_baz: 36,
   merkava4b: 20,
 });
 
@@ -98,8 +99,8 @@ for (const [id, expectedTiles] of Object.entries(marks)) {
   assert.deepEqual(position.array, beforeStrip,
     `${id} round reset restores the two-layer ERA field exactly`);
 
-  if (id === 'merkava3c' || id === 'merkava3d') {
-    const rails = turret.userData[`${id}TurretRailSeatReceipt`];
+  if (id === 'merkava3c' || id === 'merkava3_baz') {
+    const rails = turret.userData[`${tankSeedId(id)}TurretRailSeatReceipt`]; // receipt keys keep schema-1 names
     assert.ok(rails, `${id} publishes its turret-side rail seats`);
     assert.equal(rails.revision, 'outer-carrier-conformal-r1');
     assert.equal(rails.maximumSurfaceGapM, 0);

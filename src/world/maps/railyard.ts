@@ -296,7 +296,7 @@ export default {
     // the armor that fought over the railhead
     // the map-vehicles lane (2026-10-06, the period ruling): a German coalfield junction in the 1960s: the
     // Bundeswehr's M48s and M47s, the Rhine Army's Centurions
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48', 'centurion5', 'm47_patton'] },
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48a5_patton', 'centurion5_2', 'm47_patton'] },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot
@@ -331,7 +331,8 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-03, the gauntlet's wave 27: the deck's kilometre-scale relief as fp14's dk3 shot it — cells 0.9 → 1, cellM
   // 1300 → 2400, undulatus 0.35 → 0.7)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 1, cellM: 2400, undulatus: 0.7, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050 },
+  // (2026-10-09, the shadows lane: deckBeam — the cells passed a tenth of the sun over 92 % of the yard)
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 1, cellM: 2400, undulatus: 0.7, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050, deckBeam: 0.35 },
   sky: {
     // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill

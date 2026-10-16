@@ -342,10 +342,10 @@ describe('cot-rooms Worker with the peer-to-peer match host (the deployed shape)
     expect(new Set(acks).size).toBe(toggles);
     // a join inside a window broadcasts at once, with every coalesced change folded in
     const third = await connect('ROOM18', 'ROOM18-third');
-    expect((await guest.command({ type: 'select_vehicle', specId: 't90m' })).type).toBe('room_ack');
+    expect((await guest.command({ type: 'select_vehicle', specId: 't90am' })).type).toBe('room_ack');
     expect((await third.request('room_join', identity('third', token('1'), token('2')))).type).toBe('room_joined');
     const joined = (await admin.next((message) => message.type === 'room_state' && (message.payload.room as RoomSnapshot).players.length === 4)).payload.room as RoomSnapshot;
-    expect(joined.players.find((player) => player.id === 'guest')?.specId).toBe('t90m');
+    expect(joined.players.find((player) => player.id === 'guest')?.specId).toBe('t90am');
   });
 
   // ---- the lifecycle proofs (2026-09-30, docs/MULTIPLAYER-V2.md §13.11): rooms never hang

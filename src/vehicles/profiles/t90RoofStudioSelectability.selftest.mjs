@@ -5,13 +5,13 @@ import { createTank } from '../tankFactory.ts';
 const EPSILON = 1e-6;
 
 const ROOF_WEAPONS = Object.freeze({
-  t90: 't90Ru417AutomatedKord',
-  t90a: 't90aRemoteNsvt',
-  t90sm: 't90smRemoteNsvt',
-  t90a_vladimir: 't90aVladimirRemoteKord',
-  t90a_burlak: 't90aBurlakCommanderNsvt',
-  t90ms: 't90msTagilRemoteKord',
-  t90m: 't90mProryvRemoteKord',
+  t90_1992: 't90Ru417AutomatedKord',
+  t90a_2004: 't90aRemoteNsvt',
+  t90sm_2013: 't90smRemoteNsvt',
+  t90a_2006: 't90aVladimirRemoteKord',
+  t90a_burlak_proto: 't90aBurlakCommanderNsvt',
+  t90ms_2011: 't90msTagilRemoteKord',
+  t90am: 't90mProryvRemoteKord',
   t90m_proryv: 't90mProryvRemoteKord',
 });
 
@@ -52,7 +52,7 @@ for (const [id, weaponName] of Object.entries(ROOF_WEAPONS)) {
   }
 }
 
-for (const id of ['t90', 't90a', 't90a_burlak', 't90sm', 't90ms']) {
+for (const id of ['t90_1992', 't90a_2004', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -86,7 +86,7 @@ for (const id of ['t90', 't90a', 't90a_burlak', 't90sm', 't90ms']) {
 }
 
 {
-  const tank = createTank('t90ms', null, {
+  const tank = createTank('t90ms_2011', null, {
     proceduralOnly: true,
     quality: 'high',
     camoSeed: 4242,
@@ -95,28 +95,28 @@ for (const id of ['t90', 't90a', 't90a_burlak', 't90sm', 't90ms']) {
   try {
     const turret = tank.root.getObjectByName('rig_turret');
     const tower = turret?.getObjectByName('t90msTagilWeaponTower');
-    assert.ok(tower, 't90ms: exposes one coherent named Tagil weapon-tower assembly');
+    assert.ok(tower, 't90ms_2011: exposes one coherent named Tagil weapon-tower assembly');
     const pickTargets = new Set(collectSurfacePickTargets(tank.root));
     const names = new Set();
     tower?.traverse((node) => {
       if (!node.isMesh) return;
       names.add(node.name);
       assert.equal(node.userData.combatHitboxRole, 'equipment',
-        `t90ms: ${node.name} remains external equipment rather than turret armor`);
-      assert.ok(pickTargets.has(node), `t90ms: ${node.name} is Studio-selectable`);
+        `t90ms_2011: ${node.name} remains external equipment rather than turret armor`);
+      assert.ok(pickTargets.has(node), `t90ms_2011: ${node.name} is Studio-selectable`);
     });
     assert.ok(names.has('t90msTagilTowerAlignedArmoredHead'),
-      't90ms: selected armored head rises from the exact marked support interface');
+      't90ms_2011: selected armored head rises from the exact marked support interface');
     assert.ok(names.has('t90msTagilTowerThermalWindow'),
-      't90ms: tower includes its thermal optic');
+      't90ms_2011: tower includes its thermal optic');
     assert.ok(names.has('t90msTagilTowerDayWindow'),
-      't90ms: tower includes its day optic');
+      't90ms_2011: tower includes its day optic');
     assert.ok(names.has('t90msTagilTowerWorkLight'),
-      't90ms: tower includes a protected work light');
+      't90ms_2011: tower includes a protected work light');
     assert.ok(names.has('t90msTagilTowerAmmoBox'),
-      't90ms: tower includes its ammunition box');
+      't90ms_2011: tower includes its ammunition box');
     assert.equal([...names].filter((name) => name.startsWith('t90msTagilTowerFeedLink')).length, 7,
-      't90ms: tower exposes seven selectable ammunition-feed links');
+      't90ms_2011: tower exposes seven selectable ammunition-feed links');
   } finally {
     tank.dispose();
   }

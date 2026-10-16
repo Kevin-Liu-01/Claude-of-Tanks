@@ -76,7 +76,7 @@ function fixture({ memory = true, phase = 'garage' } = {}) {
     },
   };
   const game = { phase, preBattleS: 0, timeS: 0,
-    player: { specId: 'm1a2' }, tanks: [{ id: 'player', specId: 'm1a2', team: 0 }] };
+    player: { specId: 'm1a1_abrams_hc' }, tanks: [{ id: 'player', specId: 'm1a1_abrams_hc', team: 0 }] };
   const performance = { now: () => now, timeOrigin: 123456 };
   if (memory) performance.memory = {
     get usedJSHeapSize() { counts.heapReads++; return heapBytes; },
@@ -140,8 +140,8 @@ function fixture({ memory = true, phase = 'garage' } = {}) {
   assert.equal(f.counts.receipts, 1);
   assert.equal(f.intervals.size, 1);
   assert.deepEqual(plain(f.perf.environmentStart), {
-    marker: 1000, phase: 'battle', preBattleS: 0, timeS: 0, playerSpecId: 'm1a2',
-    roster: [{ id: 'player', specId: 'm1a2', team: 0 }],
+    marker: 1000, phase: 'battle', preBattleS: 0, timeS: 0, playerSpecId: 'm1a1_abrams_hc',
+    roster: [{ id: 'player', specId: 'm1a1_abrams_hc', team: 0 }],
   });
   f.game.tanks[0].specId = 'tiger2';
   f.game.timeS = 0.016;
@@ -162,7 +162,7 @@ function fixture({ memory = true, phase = 'garage' } = {}) {
   assert.equal(f.perf.endedAt, 1048);
   assert.equal(f.perf.deltas.length, 2, 'the completion RAF lies outside the requested window');
   assert.deepEqual(plain(f.perf.info), { geometries: 7, textures: 11, programs: 2 });
-  assert.equal(f.perf.environmentStart.roster[0].specId, 'm1a2', 'start receipt copies mutable roster rows');
+  assert.equal(f.perf.environmentStart.roster[0].specId, 'm1a1_abrams_hc', 'start receipt copies mutable roster rows');
   assert.equal(f.perf.environmentEnd.roster[0].specId, 'tiger2');
   assert.equal(f.counts.receipts, 2, 'environment receipts run only at the two edges');
   assert.equal(f.counts.gc, 0, 'the sampler never forces collection');
@@ -252,7 +252,7 @@ for (const [fpsTarget, seconds] of [[60, 60], [120, 20]]) {
 }
 assert.match(source, /trianglesMedianMax: 6_000_000/);
 const arm = source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution, schedulerTrace })');
-const enter = source.indexOf("await D.beginBattleEntry('m1a2', map)");
+const enter = source.indexOf("await D.beginBattleEntry('m1a1_abrams_hc', map)");
 assert.ok(arm > 0 && arm < enter, 'early acquisition is armed before awaiting normal player entry');
 const armBlock = source.slice(source.lastIndexOf('  if (earlyWindow) {', arm), arm);
 assert.match(armBlock, /setSamples\(samples\)/, 'forced AA is configured before opening the early window');
@@ -313,14 +313,14 @@ for (const field of ['windowMode', 'production', 'distPath', 'cadence', 'buildIn
   assert.match(trend, new RegExp(`\\b${field}\\b`), `trend rows distinguish ${field}`);
 }
 
-const available = ['m1a2', ...REFERENCE_MIXED_ROSTER, 'extra'].map(id => ({ id, specId: id }));
+const available = ['m1a1_abrams_hc', ...REFERENCE_MIXED_ROSTER, 'extra'].map(id => ({ id, specId: id }));
 const request = createPerfRosterRequest();
-const snapshot = (ids = ['m1a2', ...REFERENCE_MIXED_ROSTER]) => ({ phase: 'battle', preBattleS: 0, playerSpecId: 'm1a2',
+const snapshot = (ids = ['m1a1_abrams_hc', ...REFERENCE_MIXED_ROSTER]) => ({ phase: 'battle', preBattleS: 0, playerSpecId: 'm1a1_abrams_hc',
   roster: ids.map((id, index) => ({ id, specId: id, team: index < 7 ? 'player' : 'enemy' })) });
 assert.equal(request.label, 'reference-mixed-13-opponents');
 assert.equal(request.expectedCount, 14);
 assert.deepEqual(request.requestedOpponents, [
-  'fv510_milan', 'bwp1', 'amx40', 'strv103a', 't80b', 't80bv', 'type90',
+  'fv510_milan', 'bwp1', 'amx40_proto', 'strv103a', 't80b', 't80bv', 'type90_kyumaru',
   'm60a2', 'type90a', 'm1a1ha', 'carro45t', 'ztz85_iii', 'm2a2_bradley',
 ]);
 {
@@ -339,7 +339,7 @@ for (const [option, pattern] of [
   [REFERENCE_MIXED_ROSTER.slice(1).join(','), /requires 13 opponents; requested 12/],
   [REFERENCE_MIXED_ROSTER.join(',') + ',extra', /requires 13 opponents; requested 14/],
   [REFERENCE_MIXED_ROSTER[1] + ',' + REFERENCE_MIXED_ROSTER.slice(1).join(','), /Duplicate/],
-  ['m1a2,' + REFERENCE_MIXED_ROSTER.slice(1).join(','), /Duplicate/],
+  ['m1a1_abrams_hc,' + REFERENCE_MIXED_ROSTER.slice(1).join(','), /Duplicate/],
   [',' + REFERENCE_MIXED_ROSTER.slice(1).join(','), /tank ID ""/],
 ]) {
   const provenance = inspectPerfRosterEligibility(createPerfRosterRequest(option), available);
@@ -347,7 +347,7 @@ for (const [option, pattern] of [
   assert.throws(() => requirePerfRoster(provenance.eligibility), pattern);
   assert.equal(provenance.checkpoints.length, 0, 'preflight rejects before any entry sample');
 }
-assert.throws(() => requirePerfRoster(inspectPerfRosterEligibility(request, available.slice(1)).eligibility), /"m1a2"/);
+assert.throws(() => requirePerfRoster(inspectPerfRosterEligibility(request, available.slice(1)).eligibility), /"m1a1_abrams_hc"/);
 for (const mutate of [
   actual => actual.roster.pop(),
   actual => actual.roster.push({ id: 'extra', specId: 'extra', team: 'enemy' }),
@@ -422,7 +422,7 @@ for (const readEdges of [
   assert.equal(provenance.mode, 'random-seeded');
   assert.equal(provenance.expected, null);
   assert.equal(provenance.requestedOpponents, null);
-  const actual = snapshot(['m1a2', ...REFERENCE_MIXED_ROSTER.slice().reverse()]);
+  const actual = snapshot(['m1a1_abrams_hc', ...REFERENCE_MIXED_ROSTER.slice().reverse()]);
   requirePerfRoster(recordPerfRosterCheckpoint(provenance, 'entry', actual));
   requirePerfRoster(recordPerfRosterCheckpoint(provenance, 'sample-start', actual));
   [actual.roster[1], actual.roster[2]] = [actual.roster[2], actual.roster[1]];
@@ -430,9 +430,9 @@ for (const readEdges of [
   assert.equal(provenance.pass, false, 'random is not pinned, but cannot silently change its initial identities/order mid-sample');
 }
 for (const badIds of [
-  ['m1a2', ...REFERENCE_MIXED_ROSTER.slice(1)],
-  ['m1a2', 'unknown', ...REFERENCE_MIXED_ROSTER.slice(1)],
-  ['m1a2', REFERENCE_MIXED_ROSTER[1], ...REFERENCE_MIXED_ROSTER.slice(1)],
+  ['m1a1_abrams_hc', ...REFERENCE_MIXED_ROSTER.slice(1)],
+  ['m1a1_abrams_hc', 'unknown', ...REFERENCE_MIXED_ROSTER.slice(1)],
+  ['m1a1_abrams_hc', REFERENCE_MIXED_ROSTER[1], ...REFERENCE_MIXED_ROSTER.slice(1)],
 ]) {
   const provenance = inspectPerfRosterEligibility(createPerfRosterRequest('random'), available);
   assert.throws(() => requirePerfRoster(recordPerfRosterCheckpoint(provenance, 'entry', snapshot(badIds))), /Roster acquisition mismatch/);
@@ -442,7 +442,7 @@ for (const badIds of [
   const aliased = available.map(row => ({ ...row, specId: `spec-${row.specId}` }));
   const provenance = inspectPerfRosterEligibility(request, aliased);
   const actual = snapshot();
-  actual.playerSpecId = 'spec-m1a2';
+  actual.playerSpecId = 'spec-m1a1_abrams_hc';
   actual.roster.forEach(row => { row.specId = `spec-${row.specId}`; });
   requirePerfRoster(recordPerfRosterCheckpoint(provenance, 'entry', actual));
 }

@@ -3,15 +3,15 @@ import { createTank } from '../tankFactory.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 
 // 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md; cdbfe54dc) rebuilt
-// all four T-72-derived running gears on detailed source studies: t72b3m on t72b3m_x, t72bu on t72bu_x,
-// t72m1_jaguar on t72b3_x and bmpt_terminator2 on t80u_x. They now wear their donor study's X-standard track steel
+// all four T-72-derived running gears on detailed source studies: t72b3m_2022 on t72b3m_2016, t72bu_1989 on t72bu,
+// t72m1_jaguar on t72b3 and bmpt_terminator2 on t80u. They now wear their donor study's X-standard track steel
 // (2026-09-17) instead of the retired legacy builders' T72_TRACK_FINISH override. The law stays the same: one
 // continuous band a side, neutral track steel that no camouflage map or scheme tint reaches, the donor's own finish.
 const T72_DERIVED = Object.freeze({
-  t72b3m: FLEET_RENEWAL_DONORS.t72b3m, t72bu: FLEET_RENEWAL_DONORS.t72bu,
-  t72m1_jaguar: FLEET_RENEWAL_DONORS.t72m1_jaguar, bmpt_terminator2: 't80u_x',
+  t72b3m_2022: FLEET_RENEWAL_DONORS.t72b3m_2022, t72bu_1989: FLEET_RENEWAL_DONORS.t72bu_1989,
+  t72m1_jaguar: FLEET_RENEWAL_DONORS.t72m1_jaguar, bmpt_terminator2: 't80u',
 });
-assert.deepEqual(T72_DERIVED, { t72b3m: 't72b3m_x', t72bu: 't72bu_x', t72m1_jaguar: 't72b3_x', bmpt_terminator2: 't80u_x' });
+assert.deepEqual(T72_DERIVED, { t72b3m_2022: 't72b3m_2016', t72bu_1989: 't72bu', t72m1_jaguar: 't72b3', bmpt_terminator2: 't80u' });
 
 const finishOf = (id) => {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });

@@ -19,7 +19,7 @@ const RGB_MIN = [0.015, 0.015, 0.012];
 const RGB_MAX = [(0.085 + 0.075) * 1.75, (0.085 + 0.075) * 0.9,
   (0.046 + 0.022 + 0.017 + 0.020) * 0.93];
 const REPEATS = [
-  { specId: 'leo2a7v', seed: 2401, pop: false },
+  { specId: 'leo2_improved', seed: 2401, pop: false },
   { specId: 'm551_sheridan', seed: 2402, pop: true },
   { specId: 'marder1a3', seed: 2403, pop: false },
   { specId: 'bmpt_t90', seed: 2404, pop: true },

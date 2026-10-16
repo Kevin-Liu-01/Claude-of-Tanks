@@ -79,7 +79,7 @@ function articulation(t){
 }
 
 for(const quality of ['high','low']){
-  const t=createTank('strv122_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('strv122',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     t.root.updateMatrixWorld(true);const all=[];
     t.root.traverse(o=>{if(o.isMesh&&!o.name.startsWith('procShadow_')&&!o.userData.vehicleMarking)all.push(o);});

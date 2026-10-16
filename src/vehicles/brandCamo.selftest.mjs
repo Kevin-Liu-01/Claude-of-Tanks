@@ -56,7 +56,7 @@ for (const [brand, file, hash, path] of sources) {
   assert.ok(alphaAgreement(pixels(substitute), pixels(reference)) < .9, 'solid generic substitute is rejected');
 }
 const painter = createMaterialPainter(createCanvas);
-const spec = { id: 'sabra_mk2_x', nation: 'Israel', era: 'modern', visual: {} };
+const spec = { id: 'sabra_mk2', nation: 'Israel', era: 'modern', visual: {} };
 const hashes = new Set(), swatchHashes = new Set();
 for (const pattern of ['gt', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'sig_sabra_mk2_x']) {
   const request = { identity: `brand-test:${pattern}`, visual: resolveCamoVisual(spec, pattern), seed: 4242,

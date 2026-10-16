@@ -10,6 +10,7 @@ import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { SHARED_CAMO_PRESETS, camoNationTag } from '../src/vehicles/camoPolicy.ts';
 import { tankDisplayName } from '../src/vehicles/tankLabels.ts';
+import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
 
 const PAINT_ID_PREFIX = 'paint_';
 const SCHEME_WORD = {
@@ -78,7 +79,8 @@ for (const id of ALL_TANK_IDS) {
   cluster.ids.push(id);
 }
 // lead vehicle: the first non-X, non-legacy, non-variant id in fleet order; fall back to the first id
-const leadOf = (ids) => ids.find((id) => !/_x$/.test(id) && !/legacy|_proto|_prototype/.test(id)) || ids[0];
+// The `_x` suffix is schema-1 vocabulary (tankIdAliases.ts): a rename that drops it never changes the lead.
+const leadOf = (ids) => ids.find((id) => !/_x$/.test(tankSeedId(id)) && !/legacy|_proto|_prototype/.test(id)) || ids[0];
 const NATION_WORD = {
   USA: 'US Army', Germany: 'Bundeswehr', Russia: 'Russian', USSR: 'Soviet', 'USSR/Russia': 'Soviet', UK: 'British', France: 'French',
   China: 'PLA', Italy: 'Italian', Japan: 'JGSDF', Poland: 'Polish', 'South Korea': 'ROK', Sweden: 'Swedish', Israel: 'IDF',
@@ -148,7 +150,9 @@ const entries = [...groups.values()].map(({ recipe, ids }) => {
   const env = environmentOf(recipe), style = styleOf(recipe);
   const tags = [nationTag, env, style, 'signature'].filter(Boolean);
   const parts = nameParts(recipe, spec.nation, env, spec.era);
-  return { id: `${PAINT_ID_PREFIX}${lead}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
+  // A paint id is a saved and wire-sent camo id: it keeps the lead's schema-1 spelling (tankIdAliases.ts), so a rename
+  // never orphans a player's paint or a room's allowlist.
+  return { id: `${PAINT_ID_PREFIX}${tankSeedId(lead)}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
 }).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 // two paints of one nation with the same words: the paint worn by the most hulls keeps the bare name, the others
 // take numerals (ties in id order), so a one-off concept never displaces a fleet-wide coat's name

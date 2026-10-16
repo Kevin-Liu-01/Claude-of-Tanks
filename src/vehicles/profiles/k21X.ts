@@ -486,7 +486,7 @@ export function buildK21X(P: TankBuilderPort): void {
     P.additionalShadowSources = {
         hull: ['hullExternalArmor'],
     };
-    const frame = EASTERN_SOURCE_STUDIES.k21_x.frame;
+    const frame = EASTERN_SOURCE_STUDIES.k21.frame;
     P.hullG.position.set(0, 0, 0);
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
@@ -495,5 +495,5 @@ export function buildK21X(P: TankBuilderPort): void {
     buildK21Turret(P);
     P.topY = 3.057 - frame.turret[1];
     preserveSourceStudyGunMountAppearance(P);
-    P.hullG.userData.xRebuild = { candidate: 'k21_x', independent: true, sourceLocalOnly: true };
+    P.hullG.userData.xRebuild = { candidate: 'k21', independent: true, sourceLocalOnly: true };
 }

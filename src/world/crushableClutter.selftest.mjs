@@ -73,12 +73,12 @@ for(const kind of ['rubble','hedgehog','small-rock']) {
   assert.ok(picked,`native map includes ${kind}`);
   const packet={obstacles:manifest.obstacles.filter(r=>r.p===picked.p),colliders:manifest.colliders.filter(r=>r.p===picked.p)};
   const x=(picked.b[0]+picked.b[3])/2,z=(picked.b[2]+picked.b[5])/2;
-  for(const specId of ['m1a2','m551_sheridan']) for(const direction of [1,-1]) for(const throttle of [.15,1]) {
+  for(const specId of ['m1a1_abrams_hc','m551_sheridan']) for(const direction of [1,-1]) for(const throttle of [.15,1]) {
     const ground={getHeightAt:()=>picked.b[1],getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)};
     const world=createHeadlessCollisionWorld({mapId:'verdant',heightField:ground,manifest:packet});
     const match=createAuthoritativeMatch({mapId:'verdant',countdownS:0,worldCollision:world,players:[
       {id:'driver',specId,team:'alpha',spawn:{x,z:z-12*direction,yaw:0}},
-      {id:'other',specId:'m1a2',team:'bravo',spawn:{x:x+80,z:z+80,yaw:0}},
+      {id:'other',specId:'m1a1_abrams_hc',team:'bravo',spawn:{x:x+80,z:z+80,yaw:0}},
     ]});
     match.onMatchReady();
     const tank=match.entityById.get('driver');

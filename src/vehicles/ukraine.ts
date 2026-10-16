@@ -16,7 +16,7 @@ import {
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const UKRAINE_IDS = Object.freeze([
-  'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1',
+  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1',
 ] as const);
 
 type UkraineStatOverrides = Partial<Pick<FleetTankSpec,
@@ -71,7 +71,7 @@ function variant(
 }
 
 const UKRAINE_SPECS = {
-  ua_t64bv: variant('ua_t64bv', 't64bv1', {
+  t64bv_donbas: variant('t64bv_donbas', 't64bv1', {
     name: 'T-64BV Donbas', number: 'UA 64', base: '#46503d', weather: '#5a604d',
     patches: ['#30382f', '#655f49', '#776c52'], camoScale: 0.48,
     dims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 },
@@ -82,13 +82,13 @@ const UKRAINE_SPECS = {
     patches: ['#263329', '#5c5942', '#71644b'], camoScale: 0.56,
     stats: { hp: 2150, enginePowerHp: 1100, weightTons: 44.5, topSpeedKmh: 70 },
   }),
-  ua_t80u_kursk: variant('ua_t80u_kursk', 't80u', {
+  t80u_kursk: variant('t80u_kursk', 't80uk', {
     name: 'T-80U Kursk', number: 'KURSK', base: '#4b5039', weather: '#5c5b45',
     patches: ['#303329', '#6b634a', '#80745a'], camoScale: 0.64,
     stats: { hp: 2350, enginePowerHp: 1250, weightTons: 46.0, topSpeedKmh: 70 },
     armorFactor: 1.04,
   }),
-  ua_t84_oplot_m: variant('ua_t84_oplot_m', 't84', {
+  t84bm_oplot_m: variant('t84bm_oplot_m', 't84', {
     name: 'T-84BM Oplot-M', number: 'OPLOT', base: '#42483a', weather: '#56594a',
     patches: ['#2d3029', '#77705b', '#8a8068'], camoScale: 0.42,
     dims: { heightM: 2.285, widthM: 3.775 },
@@ -106,7 +106,7 @@ const UKRAINE_SPECS = {
 // Oplot-M is the tier-X end state of this family, with its own ammunition and
 // cycle rather than the inherited tier-IX T-84 values.
 {
-  const spec = UKRAINE_SPECS.ua_t84_oplot_m;
+  const spec = UKRAINE_SPECS.t84bm_oplot_m;
   // Owner-requested 10% larger chassis; the turret retains its local size.
   const originalHullLength=spec.dims.hullLengthM;
   spec.dims.hullLengthM*=1.10;spec.dims.widthM*=1.10;

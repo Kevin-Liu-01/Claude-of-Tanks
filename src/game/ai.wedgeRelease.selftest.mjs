@@ -22,10 +22,10 @@ const FIELD = { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }),
 const BUILDING = { kind: 'structure', min: [-6, 0, 8], max: [6, 6, 14] };
 
 function setup() {
-  const spec = getSpec('leo2a5');
+  const spec = getSpec('leo2a4_v');
   const state = createTankState(spec, new Vector3(0, 0, 0), 0);
   const bot = {
-    id: 'bot', specId: 'leo2a5', spec, team: 'bravo', state,
+    id: 'bot', specId: 'leo2a4_v', spec, team: 'bravo', state,
     combat: {
       hp: spec.hp, maxHp: spec.hp, destroyed: false,
       reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' }, shellSlot: 0,

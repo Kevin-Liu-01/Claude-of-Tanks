@@ -8,11 +8,11 @@ import {M1A1_GUN_PITCH_BY_YAW} from '../m1a1GunLimits.ts';
 import {near} from '../../../tools/receipt-kit.test-support.mjs';
 import {measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
 
-const ids=['m1a1','m1a1ha','m1a2','m1a2_tusk','m1a2_sepv2','m1a2_sepv3','ua_m1a1'];
+const ids=['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1'];
 assert.deepEqual(ALL_TANK_IDS.filter(id=>/^M1A1\b/.test(getSpec(id).name)).sort(),[...ids].sort(),
   'Every playable M1A1 configuration participates in the fit checks');
 assert.deepEqual(Object.keys(M1A1_GUN_PITCH_BY_YAW).sort(),[...ids].sort());
-for(const id of ['m1a2_x','m1a2_tusk_x','m1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x','abramsx','m1a3','mbt70'])
+for(const id of ['m1a2_abrams','m1a2_abrams_tusk','m1a2_abrams_sepv2','m1a2_abrams_sepv3','ua_m1a2_abrams','abramsx','m1a3','mbt70'])
   assert.equal(getSpec(id).gunPitchByYawDeg,undefined,`${id}: legacy donor stops do not leak to unrelated frames`);
 const flatField={getHeightAt:()=>-20,getGroundType:()=>'dirt',getNormalAt:()=>new Vector3(0,1,0)};
 const mat=new MeshBasicMaterial({side:DoubleSide});

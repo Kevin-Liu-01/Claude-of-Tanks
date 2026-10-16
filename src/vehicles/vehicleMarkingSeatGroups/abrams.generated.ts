@@ -104,7 +104,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "m1a2": {
+  "m1a1_abrams_hc": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -123,7 +123,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6978234
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2",
+        "anchorProfile": "m1a1_abrams_hc",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -145,7 +145,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6978234
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2",
+        "anchorProfile": "m1a1_abrams_hc",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -153,7 +153,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "m1a2_tusk": {
+  "m1a1_abrams_sa": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -172,7 +172,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6978234
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2_tusk",
+        "anchorProfile": "m1a1_abrams_sa",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -194,7 +194,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7037666
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2_tusk",
+        "anchorProfile": "m1a1_abrams_sa",
         "visibilitySamples": 9,
         "visibilityClearSamples": 8,
         "visibilityRatio": 0.8888889,
@@ -202,7 +202,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "m1a2_sepv2": {
+  "m1a1_abrams_aim": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -221,7 +221,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6978234
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2_sepv2",
+        "anchorProfile": "m1a1_abrams_aim",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -243,7 +243,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7037666
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2_sepv2",
+        "anchorProfile": "m1a1_abrams_aim",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -251,7 +251,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "m1a2_sepv3": {
+  "m1a1_abrams_fep": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -270,7 +270,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "m1a2_sepv3",
+        "anchorProfile": "m1a1_abrams_fep",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
@@ -292,7 +292,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6978234
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m1a2_sepv3",
+        "anchorProfile": "m1a1_abrams_fep",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

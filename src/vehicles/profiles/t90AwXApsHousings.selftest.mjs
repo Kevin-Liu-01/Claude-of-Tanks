@@ -51,9 +51,9 @@ function helper(){
 }
 helper();assert.equal(packet.rays.length,83);
 for(const quality of ['high','low']){
-  // The 83 held-out source shell/lead rays now run on the actual current t90_x scene (formerly on a replay with the
+  // The 83 held-out source shell/lead rays now run on the actual current t90 scene (formerly on a replay with the
   // previous projector recipe and without the NSVT). Canonical red apertures/native articulation have dedicated tests.
-  const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});
     for(const r of packet.rays){const h=hit(ms,r.origin,r.direction);assert.ok(h&&h.point.distanceTo(new THREE.Vector3(...r.point))<=.006,`source APS shell/lead ${r.origin}: ${h?.point.toArray()} vs ${r.point}`);
       if(r.direction[1]===-1&&Math.abs(r.normal[0])>.3&&r.normal[1]>.91)

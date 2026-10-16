@@ -81,20 +81,20 @@ function m60a3Armor(): ArmorEnvelope {
 }
 
 const SPECS: FleetTankSpec[] = [
-  make('chieftain_mk10', 'centurion3', 'Centurion Mk.3', 'UK',
+  make('chieftain_mk9', 'centurion3', 'Centurion Mk.3', 'UK',
     { hp: 1500, weightTons: 51, topSpeedKmh: 35, gun: { caliberMm: 84, reloadS: 7.0 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
-  make('chieftain_mk10', 'centurion5', 'Centurion Mk.5/2', 'UK',
+  make('chieftain_mk9', 'centurion5_2', 'Centurion Mk.5/2', 'UK',
     { hp: 1650, weightTons: 52, topSpeedKmh: 35, gun: { caliberMm: 105, reloadS: 7.4 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),
-  make('leo2a4', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
+  make('leo2a2', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
     {
       hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
       dims: { hullLengthM: 7.72, overallLengthM: 10.67, widthM: 3.70, heightM: 2.48 },
       // The prototype now owns its elongated visual rig instead of silently
       // inheriting the production A4 pivot and bustle envelope.
       armor: {
-        ...requireFleetSpec('leo2a4').armor,
+        ...requireFleetSpec('leo2a2').armor,
         turretPivot: [0, 1.72, 0.55], gunPivot: [0, 0.26, 1.00],
         barrelLenM: 5.26, tHalfW: 1.22, tFrontZ: 1.18, tRearZ: -2.75,
       },

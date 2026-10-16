@@ -14,7 +14,7 @@ try{
   for(const scenario of cases){
    const {page,errors}=await openGamePage(browser,{port,viewport:{width:1440,height:900}});
    await page.evaluate(({size})=>{localStorage.setItem('cot.game.teams.v1',JSON.stringify({standard:{allies:size-1,enemies:size}}));localStorage.setItem('cot.game.brain.v1',JSON.stringify({opponent:'classic',allies:false}));localStorage.setItem('cot.battle.times.v2',JSON.stringify(['day']));},scenario);
-   await beginSoloBattle(page,{specId:'m1a2',mapId:scenario.map});
+   await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:scenario.map});
    await page.evaluate(()=>{
     const D=window.__DEBUG,g=D.game;
     window.__botObservation={shots:[],hits:[],samples:[],roster:g.tanks.map(t=>({id:t.id,team:t.team,spec:t.specId,isPlayer:!!t.isPlayer}))};

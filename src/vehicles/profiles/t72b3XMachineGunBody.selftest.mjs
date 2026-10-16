@@ -47,7 +47,7 @@ function ownerAndContact(tank){
   assert.ok(before.distanceTo(local.clone().applyMatrix4(mesh.matrixWorld))>.4,'AA physical owner follows turret yaw');
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{tank.root.updateMatrixWorld(true);const meshes=visible(tank.root);stockAndReceiver(meshes);boreAndAir(meshes);ownerAndContact(tank);}
   finally{tank.dispose();}
 }

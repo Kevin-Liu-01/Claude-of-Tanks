@@ -264,5 +264,5 @@ function buildObject695X(P: TankBuilderPort): void {
 }
 
 export const OBJECT695_X_PROFILES = Object.freeze({
-  object695_x: Object.freeze({ build: buildObject695X }),
+  object695: Object.freeze({ build: buildObject695X }),
 }) satisfies VehicleProfileRecord;

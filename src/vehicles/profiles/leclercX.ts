@@ -26,7 +26,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, left: number, right: number, floor: number, roof: number];
 
 const LECLERC_X_DATUMS = Object.freeze({
-  leclerc_x: {
+  leclerc_xlr: {
     dims: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494 },
     structuralRoofY: 2.36494, fixedOpticHeightM: 2.764625, highestFittingM: 3.0665927,
     turretPivot: [-.00215336, 1.40294995, .72122934] as Point,
@@ -36,7 +36,7 @@ const LECLERC_X_DATUMS = Object.freeze({
     muzzleZ: 6.239235,
   },
 });
-const D = LECLERC_X_DATUMS.leclerc_x;
+const D = LECLERC_X_DATUMS.leclerc_xlr;
 
 function local(g: THREE.BufferGeometry, origin: Point): THREE.BufferGeometry {
   return g.translate(-origin[0], -origin[1], -origin[2]);
@@ -329,4 +329,4 @@ export function buildLeclercX(P: TankBuilderPort): void {
   addRearFieldStowage(P);
 }
 
-export const LECLERC_X_PROFILES = Object.freeze({ leclerc_x: { build: buildLeclercX } });
+export const LECLERC_X_PROFILES = Object.freeze({ leclerc_xlr: { build: buildLeclercX } });

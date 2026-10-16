@@ -7,19 +7,19 @@ import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
 
 // 2026-10-01: the owner's September renewal (4c34b3e8b, docs/tank-generation/fleet-renewal-publication-20260930.md:
 // "Rebuild T-72M1 Jaguar around the new T-72B3") replaced the former Jaguar builder, its PT-91A stance, ERAWA glacis,
-// WKM-B, lockers and fuel barrels, with the complete t72b3_x donor plus a Polish fit (profiles/t72ModernVariants.ts
+// WKM-B, lockers and fuel barrels, with the complete t72b3 donor plus a Polish fit (profiles/t72ModernVariants.ts
 // buildJaguarModern: cheek receivers, panoramic sight, rear rack, enclosed stowage). The receipts of the retired
 // builder left with it; this receipt holds the rebuild to its own contract and the owner's standing rulings.
 const options = { proceduralOnly: true, geometryReceipt: true };
 const tank = createTank('t72m1_jaguar', null, options);
-const donor = createTank('t72b3_x', null, options);
+const donor = createTank('t72b3', null, options);
 try {
   const spec = getSpec('t72m1_jaguar');
   const hull = tank.root.getObjectByName('rig_hull');
   const turret = tank.root.getObjectByName('rig_turret');
   const gun = tank.root.getObjectByName('rig_gun');
-  assert.equal(FLEET_RENEWAL_DONORS.t72m1_jaguar, 't72b3_x', 'the renewal builds the Jaguar on the T-72B3 study');
-  assert.deepEqual(hull.userData.familyRebuild, { donor: 't72b3_x', revision: 1, variant: 'jaguar' },
+  assert.equal(FLEET_RENEWAL_DONORS.t72m1_jaguar, 't72b3', 'the renewal builds the Jaguar on the T-72B3 study');
+  assert.deepEqual(hull.userData.familyRebuild, { donor: 't72b3', revision: 1, variant: 'jaguar' },
     'Jaguar is the owner-directed T-72B3 family rebuild, not a half-retired builder');
 
   // Running gear: the donor's six T-72 stations, three return rollers per side (FSP-03 ruling), one band per side.
@@ -27,7 +27,7 @@ try {
   const [donorGear] = donor.root.getObjectByName('rig_hull').userData.runningGearReceipts || [];
   assert.ok(gear && donorGear, 'both hulls publish their running-gear receipt');
   for (const key of ['wheelZs', 'wheelY', 'wheelR', 'idler', 'sprocket', 'topY', 'botY', 'trackTh']) {
-    assert.deepEqual(gear[key], donorGear[key], `Jaguar ${key} is the t72b3_x donor's`);
+    assert.deepEqual(gear[key], donorGear[key], `Jaguar ${key} is the t72b3 donor's`);
   }
   assert.equal(gear.wheelZs.length, 6, 'Jaguar keeps the native six-station T-72 suspension');
   assert.equal(hull.getObjectByName('gearReturnRollerTires')?.count, 6,

@@ -589,7 +589,7 @@ function buildK1A1X(P: TankBuilderPort): void {
   });
   skirtsAndGuards(P);engineDeck(P);bowFurniture(P);
   buildK1A1XTurret(P);
-  P.hullG.userData.xRebuild={candidate:'k1a1_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'k1a1',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const K1A1_X_PROFILES={k1a1_x:{build:buildK1A1X}} as const;
+export const K1A1_X_PROFILES={k1a1:{build:buildK1A1X}} as const;

@@ -292,7 +292,7 @@ export default {
     rockSoilTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.15 + l * 0.74)],
     // the map-vehicles lane (2026-10-06, the period ruling): Jordan: the Al-Hussein (Challenger 1), the M60A3, the
     // Khalid's Chieftain and the Tariq's Centurion
-    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['challenger1', 'm60a3', 'chieftain5', 'centurion5'] },
+    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['challenger1_mk2', 'm60a3', 'chieftain3', 'centurion5_2'] },
     inhabit: {
       stalls: 4, benches: 2, coreClutter: 26, drums: 12, pots: 7,
       trucks: 7, jeeps: 5, drumClusters: 8, camps: 5, modernClutter: 28,

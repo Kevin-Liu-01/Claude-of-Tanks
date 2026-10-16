@@ -343,8 +343,8 @@ export function createCombatAnatomyAudit() {
       assert(hatchMeshes > 0, 'authored structural hatches are represented separately from broad roof armor');
       assert(segmentedModules > 0, 'visible module geometry publishes segmented hit volumes');
 
-      const sepv2Calibration = COMBAT_ANATOMY_CALIBRATIONS.m1a2_sepv2;
-      const sepv2Spec = getSpec('m1a2_sepv2');
+      const sepv2Calibration = COMBAT_ANATOMY_CALIBRATIONS.m1a1_abrams_aim;
+      const sepv2Spec = getSpec('m1a1_abrams_aim');
       const sepv2Optics = sepv2Spec.armor.modules.find((box) => box.module === 'optics');
       assert(sepv2Calibration.turret.max[1] <= 0.8,
         'SEPv2 broad turret roof stops at the actual welded shell instead of the roof weapon');
@@ -366,7 +366,7 @@ export function createCombatAnatomyAudit() {
       assert(sepv2BaseRoofY <= sepv2Calibration.turret.max[1] + 1e-6,
         'SEPv2 base turret plates do not climb roof decorations');
 
-      const autoSpec = getSpec('t90m');
+      const autoSpec = getSpec('t90am');
       const autoCombat = createCombatState(autoSpec);
       autoCombat.modules.autoloader.state = 'yellow';
       startReload(autoCombat, autoSpec);

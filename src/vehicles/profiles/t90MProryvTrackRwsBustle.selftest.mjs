@@ -9,7 +9,7 @@ const near = (value, target, epsilon = 1e-6) => Math.abs(value - target) <= epsi
 // (wheel stations and terminal wheels respaced, wheels kept round) before the uniform 1.05 family size `f` the
 // factory bakes into the installed frame. The builder's track receipt records the authored (pre-`f`) stations, so its
 // longitudinal stations carry `h`; installed bounds and the published dimensions carry `f`.
-const h = VEHICLE_HULL_LENGTH_FACTORS.t90m ?? 1, f = VEHICLE_SIZE_FACTORS.t90m ?? 1;
+const h = VEHICLE_HULL_LENGTH_FACTORS.t90am ?? 1, f = VEHICLE_SIZE_FACTORS.t90am ?? 1;
 const longHull = (track, id) => {
   const hullLength = VEHICLE_HULL_LENGTH_FACTORS[id] ?? 1;
   assert.ok(near(track.roadWheelSpanM, 3.60 * hullLength), `${id}: six road-wheel stations use the corrected long T-90 wheelbase`);
@@ -17,7 +17,7 @@ const longHull = (track, id) => {
     `${id}: terminal wheels occupy the corrected long-hull stations`);
   assert.ok(near(track.structuralHullLengthM, 6.86 * hullLength), `${id}: structural hull spans the shared RU-417/Burlak length`);
 };
-const tank = createTank('t90m', null, {
+const tank = createTank('t90am', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
@@ -32,14 +32,14 @@ try {
   const track = hullRig.userData.t90mProryvTrackReceipt;
   assert.ok(track, 'T-90M exposes its installed running-gear receipt');
   assert.ok(near(track.roadWheelRadiusM, 0.31), 'road wheels use the non-overlapping 310-mm radius');
-  longHull(track, 't90m');
+  longHull(track, 't90am');
   // Seeded defect: the former unstretched stations must fail the owner's long chassis.
   if (h !== 1) assert.throws(() => longHull({ ...track, roadWheelSpanM: 3.60, sprocketZ: -2.46, idlerZ: 2.54,
-    structuralHullLengthM: 6.86 }, 't90m'), assert.AssertionError, 'the unstretched T-90M wheelbase is rejected');
+    structuralHullLengthM: 6.86 }, 't90am'), assert.AssertionError, 'the unstretched T-90M wheelbase is rejected');
   assert.ok(near(track.trackEnvelopeHeightM, 0.93), 'linked course spans the 930-mm vertical envelope');
   assert.ok(near(track.rideHeightIncreaseM, 0.16), 'finished hull and turret gain 160 mm of ride height');
   assert.equal(track.roadWheelStations, 6, 'native six-station cadence is preserved');
-  assert.ok(near(getSpec('t90m').dims.heightM, 2.39 * f), 'published vehicle height follows the raised ride datum');
+  assert.ok(near(getSpec('t90am').dims.heightM, 2.39 * f), 'published vehicle height follows the raised ride datum');
   const finalGear = hullRig.userData.runningGearReceipts.at(-1);
   assert.ok(near(finalGear.wheelR, 0.31), 'canonical gear receipt records the smaller wheels');
   assert.ok(near(Math.max(...finalGear.wheelZs) - Math.min(...finalGear.wheelZs), 3.60 * h),

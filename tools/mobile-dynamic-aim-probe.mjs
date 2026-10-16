@@ -206,7 +206,7 @@ try {
 
   // Universal behavior: the alternate fire button on a conventional MBT
   // follows the exact same drag/release contract.
-  await readyTank('m1a2');
+  await readyTank('m1a1_abrams_hc');
   await page.evaluate(() => { window.__DA.aim.length = 0; });
   const mbt = await armDragRelease('.cot-touch .fire.alt', 51, 28, -16);
 

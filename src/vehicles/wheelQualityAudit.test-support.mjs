@@ -52,20 +52,20 @@ export function createWheelQualityAudit() {
       assert.equal(patternUse.size, WHEEL_PATTERN_IDS.length - VOCABULARY_ONLY.size,
         'every other authored wheel pattern is represented by the selectable fleet');
       assert(patternUse.size >= 10, 'fleet exposes at least ten distinct mechanical wheel patterns');
-      assert.equal(wheelPatternFor(getSpec('m1a2')).id, 'split-rim-ten', 'Abrams split-rim identity');
-      assert.equal(wheelPatternFor(getSpec('t90m')).id, 'pressed-six', 'T-90 pressed-wheel identity');
+      assert.equal(wheelPatternFor(getSpec('m1a1_abrams_hc')).id, 'split-rim-ten', 'Abrams split-rim identity');
+      assert.equal(wheelPatternFor(getSpec('t90am')).id, 'pressed-six', 'T-90 pressed-wheel identity');
       assert.equal(wheelPatternFor(getSpec('merkava4b')).id, 'deep-dish-eight', 'Merkava deep-dish identity');
-      assert.equal(wheelPatternFor(getSpec('kf51b')).id, 'plain-dish-twelve', 'Leopard-hull family uses the plain dished disc');
+      assert.equal(wheelPatternFor(getSpec('kf51_u')).id, 'plain-dish-twelve', 'Leopard-hull family uses the plain dished disc');
       assert.equal(wheelPatternFor(getSpec('m60a1')).id, 'cast-five-spoke', 'Patton cast-wheel identity');
       // Nation wheel sets (owner 2026-09-22, "standardize our wheels across NATIONS"; nationWheelSets.ts):
-      assert.equal(wheelPatternFor(getSpec('k21_x')).id, 'armored-hub-six', 'owner 2026-09-23: the K21 draws the BMP-3 ROK (Dragun) wheel');
-      assert.equal(wheelPatternFor(getSpec('k2_x')).id, 'flanged-twelve', 'K2 retains its own wheel family');
+      assert.equal(wheelPatternFor(getSpec('k21')).id, 'armored-hub-six', 'owner 2026-09-23: the K21 draws the BMP-3 ROK (Dragun) wheel');
+      assert.equal(wheelPatternFor(getSpec('k2_black_panther')).id, 'flanged-twelve', 'K2 retains its own wheel family');
       assert.equal(wheelPatternFor(getSpec('type100')).id, 'pressed-six', 'Chinese Type 100 IFV is a donor and keeps its pressed wheel');
-      assert.equal(wheelPatternFor(getSpec('type10_x')).id, 'flanged-twelve', 'Japanese Type 10 retains its own wheel family');
-      assert.equal(wheelPatternFor(getSpec('sabra_mk2_x')).id, 'cast-five-spoke', 'owner 2026-09-22: "sabra uses the m60a3 wheels"');
+      assert.equal(wheelPatternFor(getSpec('type10')).id, 'flanged-twelve', 'Japanese Type 10 retains its own wheel family');
+      assert.equal(wheelPatternFor(getSpec('sabra_mk2')).id, 'cast-five-spoke', 'owner 2026-09-22: "sabra uses the m60a3 wheels"');
       assert.equal(wheelPatternFor(getSpec('mbt70')).id, 'plain-dish-twelve', 'German-registered MBT-70 draws the Leopard 2A6 wheel');
       assert.equal(wheelPatternFor(getSpec('type59')).id, 'armored-hub-six', 'Chinese MBT hulls draw the ZTZ-100 wheel');
-      assert.equal(wheelPatternFor(getSpec('ajax_x')).id, 'armored-hub-six', 'UK IFV hulls draw the Warrior Milan X wheel');
+      assert.equal(wheelPatternFor(getSpec('ajax')).id, 'armored-hub-six', 'UK IFV hulls draw the Warrior Milan X wheel');
       assert.equal(wheelPatternFor(getSpec('bmp2')).id, 'armored-hub-six', 'USSR-registered BMP-2 draws the Russia light wheel (Dragun)');
       assert.equal(wheelPatternFor(getSpec('strv81')).id, 'plain-dish-twelve', 'Swedish Centurion draws the Strv 122 wheel');
       assert.equal(wheelPatternFor(getSpec('kv2')).id, 'christie-six', 'pre-1950 hulls keep their period wheel construction');

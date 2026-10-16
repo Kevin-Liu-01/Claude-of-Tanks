@@ -46,8 +46,8 @@ function eventFor(spec,from,to,shellSpec,hits) {
 }
 
 function actualSmSeam(quality) {
-  const original=getSpec('t90sm_x');
-  const visual=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true});
+  const original=getSpec('t90sm');
+  const visual=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true});
   try {
     const spec=fittedSpec(original,visual.root.userData.eraVisualBindingReceipt);
     // Fixed measured seam through two adjacent actual right-cheek triangles.
@@ -79,7 +79,7 @@ function plate(name,z,kind='era') {
 }
 
 function fixture(plates) {
-  const original=getSpec('t90sm_x');
+  const original=getSpec('t90sm');
   return {...original,armor:{...original.armor,hullPlates:[...plates,plate('main',0,'main')],
     turretPlates:[],turretPivot:[0,0,0],gunPivot:[0,0,0],gunBarrel:null,
     collisionShells:null,trackShapes:null,modules:[],crew:[]}};

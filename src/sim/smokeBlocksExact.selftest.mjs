@@ -50,7 +50,7 @@ function referenceBlocks(screens, a, b, now, groundAt) {
 // real screens: tanks launch their smoke at various places and headings; half the banks walled (decimetres per bearing)
 const screens = [];
 for (let i = 0; i < 12; i++) {
-  const tank = { id: `t${i}`, team: 'alpha', spec: { id: 'm1a2', dims: { heightM: 2.8 }, armor: { turretPivot: [0, 1.4, 0] } },
+  const tank = { id: `t${i}`, team: 'alpha', spec: { id: 'm1a1_abrams_hc', dims: { heightM: 2.8 }, armor: { turretPivot: [0, 1.4, 0] } },
     state: { pos: { x: between(-300, 300), y: 0, z: between(-300, 300) }, yaw: between(0, Math.PI * 2), turretYaw: between(-1, 1), visualPitch: 0, visualRoll: 0 },
     combat: { destroyed: false, reload: { t: 4 }, ammo: [7, 8, 9] } };
   tank.state.pos.y = ground(tank.state.pos.x, tank.state.pos.z);

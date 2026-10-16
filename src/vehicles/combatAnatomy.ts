@@ -856,7 +856,7 @@ function fitFixedBoxes(
 // rig_hull/rig_turret). Remapping a pivot through the plate->receipt map
 // therefore moves the rendered turret off its authored ring wherever the
 // authored plate bounds differ from the measured envelope (§5.356 fleet
-// floating-turret regression: pl01 +0.63 m, pt91_twardy +0.28 m). Plates and
+// floating-turret regression: pl01 +0.63 m, pt91a_twardy +0.28 m). Plates and
 // boxes calibrate; pivots stay profile-authored.
 function reconcileFrame(
   plates: readonly ArmorPlate[],

@@ -179,7 +179,7 @@ function mainGun(P:TankBuilderPort):void{
   // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
   // 125 mm bore (radius .0625) down to the source opaque floor 5.964219808578489, a 0.4063 m recess
   // that sat entirely behind the factory's dark mouth disc; the depth stays recorded here, in
-  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90_x.floor) and docs/references/tanks/t90_x.source-measurements.json.
+  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90.floor) and docs/references/tanks/t90_x.source-measurements.json.
   const profile=[[0,1.71802],[.1267,1.71802],[.10921,2.28012],[.10034,3.98762],[.11787,3.98762],
     [.120615,4.92322],[.09160,4.92322],[.093205,6.12832],[.086625,6.12832],[.086745,6.25722],
     [.093375,6.27282],[.093505,tip],[0,tip]];
@@ -192,4 +192,4 @@ export function buildT90AWX(P:TankBuilderPort):void{
   P.topY=T90_AW_X_DATUMS.highestFittingM-YAW[1];
   hull(P);runningGear(P);hullEra(P);deck(P);rear(P);turret(P);cheeks(P);roofEra(P);casesAndOptics(P);smokeAndAA(P);mainGun(P);
 }
-export const T90_AW_X_PROFILES={t90_x:{build:buildT90AWX}} as const;
+export const T90_AW_X_PROFILES={t90:{build:buildT90AWX}} as const;

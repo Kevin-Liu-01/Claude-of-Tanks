@@ -60,9 +60,9 @@ function houseRecords(id, cx, cz, w, d, h, baseY = 0) {
   const { contact, shell } = houseRecords(0, 0, 0, 10, 8, 7);
   const match = createDestructionMatch({ rules: matchRulesetFor('standard').destruction, obstacles: [contact], colliders: [shell] });
   const house = match.structures.byId(0);
-  const t90 = getSpec('t90m');
-  const he = t90.gun.shells.find((round) => round.type === 'HE');
-  const apfsds = t90.gun.shells.find((round) => round.type === 'APFSDS');
+  const t90_1992 = getSpec('t90am');
+  const he = t90_1992.gun.shells.find((round) => round.type === 'HE');
+  const apfsds = t90_1992.gun.shells.find((round) => round.type === 'APFSDS');
   match.shellWorldHit(apfsds, shell, 0, 2, -4, 0, 1);
   assert.ok(Math.abs((house.maxHp - house.hp) - kineticStructurePoints(apfsds)) < 1e-9, 'an APFSDS strike deals its kinetic points');
   const before = house.hp;
@@ -81,7 +81,7 @@ function houseRecords(id, cx, cz, w, d, h, baseY = 0) {
 // A 24 × 6 m house, 6 m tall (864 m³: a house of 94 hit points) across the hull's path on verdant, as impactParity's wall,
 // standing on the ground there (its contact record from the ground line to 1.8 m above it, as the build seats one).
 const groundProbe = createAuthoritativeMatch({ mapId: 'verdant', seed: 1, countdownS: 0,
-  players: [{ id: 'probe', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
+  players: [{ id: 'probe', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
 let houseBase = Infinity;
 for (let x = -12; x <= 12; x += 2) for (let z = -38; z <= -32; z += 1) houseBase = Math.min(houseBase, groundProbe.heightField.getHeightAt(x, z));
 const { contact: houseContact, shell: houseShell } = houseRecords(0, 0, -35, 24, 6, 6, houseBase - 0.2);
@@ -100,8 +100,8 @@ function houseMatch(seed = 7) {
   const match = createAuthoritativeMatch({
     mapId: 'verdant', seed, countdownS: 0, worldCollision: world,
     players: [
-      { id: 'ram-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } },
-      { id: 'ram-b', specId: 'm1a2', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
+      { id: 'ram-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } },
+      { id: 'ram-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
     ],
   });
   match.onMatchReady();
@@ -153,8 +153,8 @@ function run(seed, steps, onTick = () => {}) {
     manifest: { obstacles: [packCollisionRecord(houseContact)], colliders: [packCollisionRecord(houseShell)], concealers: [] } });
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 3, countdownS: 0, worldCollision: world,
     players: [
-      { id: 'ram-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -68, yaw: 0 } },
-      { id: 'ram-b', specId: 'm1a2', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
+      { id: 'ram-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -68, yaw: 0 } },
+      { id: 'ram-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
     ] });
   match.onMatchReady();
   const fire = new Map([['ram-a', { throttle: 0, steer: 0, brake: true, fire: true, aimYaw: 0, aimPitch: 0, shellSlot: 2 }]]);
@@ -166,7 +166,7 @@ function run(seed, steps, onTick = () => {}) {
   }
   assert.ok(impact, 'the M1A2\'s HE round met the house');
   assert.equal(impact.munition, 'he');
-  assert.ok(Math.abs(impact.chargeKg - munitionChargeKg(getSpec('m1a2').gun.shells[2])) < 1e-9, 'its charge');
+  assert.ok(Math.abs(impact.chargeKg - munitionChargeKg(getSpec('m1a1_abrams_hc').gun.shells[2])) < 1e-9, 'its charge');
   assert.equal(impact.structureId, 0, `the struck structure (${JSON.stringify(impact)})`);
   assert.ok(impact.z > -38.5 && impact.z < -37, `on the house's south wall (z ${impact.z.toFixed(2)})`);
 }

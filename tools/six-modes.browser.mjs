@@ -35,7 +35,7 @@ try{
   for(const mode of battleModes){
    if(!remote)await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,mode==='ac130'?{allies:4,enemies:8}:{allies:1,enemies:2});},mode);
    console.log('six-modes: entering',mode,suffix);
-   await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:mode});
+   await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:'verdant',gameMode:mode});
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
    if(mode==='drone'){
     assert.equal(await page.evaluate(()=>!!window.__DEBUG.game.player.visual.root.getObjectByName('Docked FPV mission payload')?.visible),true,'drone starts on the carrier');

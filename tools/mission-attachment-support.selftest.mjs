@@ -10,13 +10,13 @@ import {collectMissionStock,nativeRoofHeight,nativeSupportedSeat,nativeMissionCo
 // facets, not values imported from the tool's support-permission atlas. The
 // Bars and Bastion intentionally retain two shoes on the original cast roof.
 const cases=[
- {id:'ru_t80u_modern',x:-1.05,z:-.70,rise:.085,region:[-1.22,-1.09,-.86,-.54],
+ {id:'t80u_bars_m',x:-1.05,z:-.70,rise:.085,region:[-1.22,-1.09,-.86,-.54],
   roof:p=>.71-(.01/1.05)*(p.z+1.02),expectedHousingFeet:2},
- {id:'ru_t72b3m_modern',x:-1.45,z:.45,rise:.045,offset:[-.24,0],region:[-1.615,-1.28,.28,.62],
+ {id:'t72b3m_bulat_m',x:-1.45,z:.45,rise:.045,offset:[-.24,0],region:[-1.615,-1.28,.28,.62],
   roof:p=>.77-(.07/.74)*(p.z-.14),expectedHousingFeet:4},
- {id:'ru_t72b3_modern',x:-1.05,z:-.60,rise:.085,region:[-1.22,-1.085,-.77,-.44],
+ {id:'t72b3_bastion_m',x:-1.05,z:-.60,rise:.085,region:[-1.22,-1.085,-.77,-.44],
   roof:p=>.67-(.02/.98)*(p.z+.79),expectedHousingFeet:2},
- {id:'pl_t72b3m_modern',x:-1.51,z:-.02,rise:.125,region:[-1.69,-1.28,-.22,.28],
+ {id:'t72b3m_wilk',x:-1.51,z:-.02,rise:.125,region:[-1.69,-1.28,-.22,.28],
   roof:()=>.740,expectedHousingFeet:4},
 ];
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
@@ -119,7 +119,7 @@ for(const witness of cases) {
    assert(seat,`${label}: four native support hits`);reference??=seat;
    for(let i=0;i<4;i++)assert(Math.abs(reference.supportY[i]-seat.supportY[i])<.001,`${label}: quality/seed-stable native roof`);
    fullShoeContact(stock,seat,witness);assertClear(stock,spec,seat,label);
-   if(witness.id==='ru_t72b3_modern'&&quality==='high'&&seed===4000) {
+   if(witness.id==='t72b3_bastion_m'&&quality==='high'&&seed===4000) {
     // The earlier z=-.65 trial missed a 0.467 mm cast-roof step above its
     // inner shoe. The final finite patch excludes that trial's rear shoe,
     // rejecting it before a center-only contact exception can certify it.

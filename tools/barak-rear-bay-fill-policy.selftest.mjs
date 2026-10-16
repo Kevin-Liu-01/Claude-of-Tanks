@@ -11,7 +11,7 @@ for(const key of['axes','translation','scale']){
  const config=structuredClone(BARAK_SOURCE_CONFIGURATION);config.registration[key]=key==='scale'?1:[0,0,0];
  assert.throws(()=>verifyBarakBayIdentity(config,config.source.sha256),/configuration\/registration changed/);
 }
-for(const id of['merkava4_x','merkava4_trophy','namer_ifv','constructor','__proto__'])assert.equal(createBarakBayFillPolicy(id,null),null);
+for(const id of['merkava4','merkava4_trophy','namer_ifv','constructor','__proto__'])assert.equal(createBarakBayFillPolicy(id,null),null);
 const cell=(x,y,z,size=.01)=>barakBayIntersectsCell([x,y,z],[x+size,y+size,z+size]);
 for(const p of[[0,.9,-2.54],[0,.9,-2],[.5,.9,-1],[0,1.3,-1.3]])assert.ok(cell(...p),'source-backed finite bay air behind the closed leaf');
 for(const p of[[0,.9,-2.58],[0,.45,-2],[0,1.52,-2],[.94,.9,-2],[0,.9,-.65],[0,.9,-2.7],[.268,.595,-2.57],[0,1.40,-.95]])assert.ok(!cell(...p),'door/finite stock/corner/outside stays eligible for ordinary fill');

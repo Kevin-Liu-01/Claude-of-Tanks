@@ -17,7 +17,7 @@ const settle = async (times = 6) => { for (let index = 0; index < times; index++
 
 function snapshot({ roomCode = 'ABC123', adminId = 'me', phase = 'waiting', round = 0, mapId = 'verdant', mode = 'lan', lastResult = null } = {}) {
   const player = (id, name, team, seat, camo, isAdmin) => ({
-    id, name, team, seat, specId: 'm1a2', equipment: [], camo, ready: true, connected: true, isAdmin, joinedAt: 1,
+    id, name, team, seat, specId: 'm1a1_abrams_hc', equipment: [], camo, ready: true, connected: true, isAdmin, joinedAt: 1,
   });
   return {
     v: 2, roomCode, mode, phase, adminId, revision: 1, round,
@@ -77,8 +77,8 @@ function welcomeMessage() {
     type: 3, protocolVersion: PROTOCOL_VERSION, tickHz: 60, snapshotHz: 30, seat: 0, entityId: 1, team: TEAM.ALPHA, serverTick: 0, serverTimeMs: 0, seed: 99,
     capabilities: 0, roomId: 'ABC123', mapId: 'alpine', mode: 'standard', rulesetJson: '{}',
     roster: [
-      { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a2' },
-      { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'foe', name: 'Foe', specId: 'm1a2' },
+      { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'me', name: 'Me', specId: 'm1a1_abrams_hc' },
+      { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'foe', name: 'Foe', specId: 'm1a1_abrams_hc' },
     ],
   };
 }
@@ -424,10 +424,10 @@ const sessionPresentation = await owner.enter(round1);
 assert.equal(composition.active, true);
 assert.equal(composition.inMatch, false);
 assert.ok(calls.includes('loadModules') && calls.includes('ensureBattleVisuals') && calls.includes('loadWorld:alpine:null'), 'modules, visuals and the round map load together');
-assert.ok(calls.indexOf('battleStart:me:m1a2:alpine') < calls.indexOf('loadWorld:alpine:null'), 'the battle-start intent precedes the world load');
+assert.ok(calls.indexOf('battleStart:me:m1a1_abrams_hc:alpine') < calls.indexOf('loadWorld:alpine:null'), 'the battle-start intent precedes the world load');
 assert.equal(harness.battleLoad.shows.at(-1).mapName, 'Map alpine', 'the loader names the concrete battlefield of match_start, not the room default');
 assert.equal(harness.battleLoad.shows.at(-1).allies[0].isPlayer, true);
-assert.equal(harness.battleLoad.shows.at(-1).enemies[0].id, 'm1a2');
+assert.equal(harness.battleLoad.shows.at(-1).enemies[0].id, 'm1a1_abrams_hc');
 assert.equal(harness.presentations.length, 1);
 const recorded = harness.presentations[0];
 assert.equal(recorded.options.spectator, false);
@@ -439,14 +439,14 @@ assert.deepEqual([...recorded.actors.values()].map((actor) => actor.camo), ['sum
 assert.ok(calls.includes('ground:me:function') && calls.includes('ground:foe:function'), 'every actor gets the ground sampler');
 assert.ok(sessionPresentation.prediction, 'prediction is enabled once the own actor and the world are known');
 assert.equal(sessionPresentation.prediction.world.heightField, harness.ports.scene.getWorldCollision().heightField);
-assert.equal(sessionPresentation.prediction.specFor('m1a2').id, 'm1a2', 'the own spec comes from the actor');
+assert.equal(sessionPresentation.prediction.specFor('m1a1_abrams_hc').id, 'm1a1_abrams_hc', 'the own spec comes from the actor');
 assert.equal(composition.inMatch, false, 'nothing activates before the first frame');
 owner.frame(frame());
 await settle(12);
 const warmOrder = calls.filter((call) => typeof call === 'string' && (call.startsWith('warm.') || call.startsWith('activate:') || call === 'primeReveal' || call === 'load.hide' || call === 'blackWatchdog' || call.startsWith('garageLighting') || call.startsWith('waiting')));
 assert.deepEqual(warmOrder, [
-  'garageLighting:false', 'warm.atmosphere:99', 'warm.nightLighting', 'warm.terrain:2', 'warm.wrecks:2', 'warm.panel:m1a2', 'warm.compile',
-  'warm.fx:function:2', 'warm.shotCards:m1a2,m1a2', 'activate:me:m1a2:alpine:false', 'waiting:false', 'warm.presentation', 'warm.finalShadows',
+  'garageLighting:false', 'warm.atmosphere:99', 'warm.nightLighting', 'warm.terrain:2', 'warm.wrecks:2', 'warm.panel:m1a1_abrams_hc', 'warm.compile',
+  'warm.fx:function:2', 'warm.shotCards:m1a1_abrams_hc,m1a1_abrams_hc', 'activate:me:m1a1_abrams_hc:alpine:false', 'waiting:false', 'warm.presentation', 'warm.finalShadows',
   'blackWatchdog', 'primeReveal', 'load.hide',
 ], 'v1\'s covered order: warm, activate, opening ground cover, final shadows, the black watchdog, the reveal barrier, the loader fade');
 assert.equal(await entry, true, 'beginRoom resolves once the battle is revealed');
@@ -465,7 +465,7 @@ assert.equal(harness.menu.attached, null, 'the lobby stays off the menu while th
 // ------------------------------------------------------------ the network status strip: mounted with the activation, painted from the pumps
 await settle();
 assert.equal(harness.statusSurfaces.length, 1, 'the strip mounts once the round is activated');
-assert.ok(calls.indexOf('status.mount') > calls.indexOf('activate:me:m1a2:alpine:false'), 'the strip mounts after activation');
+assert.ok(calls.indexOf('status.mount') > calls.indexOf('activate:me:m1a1_abrams_hc:alpine:false'), 'the strip mounts after activation');
 const statusSurface = harness.statusSurfaces[0];
 assert.equal(statusSurface.sets.length, 1, 'the mounted strip paints the current snapshot at once');
 assert.deepEqual(statusSurface.sets[0].slice(0, 3), ['good', 'joined', null], 'a joined room (the scripted owner carries no match link) reads good with no banner');
@@ -593,7 +593,7 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.deepEqual(surface.sets.at(-1).slice(0, 3), ['good', 'joined', null], 'the scripted owner\'s stub is not attached to the model (no transport events), so the paint carries the room verdict');
   assert.equal(harness.timers.length, 1, 'the return waits for the notice to be read');
   assert.equal(harness.timers[0].delayMs, 3000);
-  assert.ok(!calls.includes('endDisconnected') || calls.lastIndexOf('endDisconnected') < calls.lastIndexOf('activate:me:m1a2:verdant:false'), 'a seat drop is not presented as a disconnect result');
+  assert.ok(!calls.includes('endDisconnected') || calls.lastIndexOf('endDisconnected') < calls.lastIndexOf('activate:me:m1a1_abrams_hc:verdant:false'), 'a seat drop is not presented as a disconnect result');
   assert.equal(composition.stats().lastFailure.reason, 'seat_idle_timeout');
   harness.timers[0].fire();
   await settle();

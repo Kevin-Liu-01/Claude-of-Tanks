@@ -4,12 +4,12 @@ import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 //
 // Owner 2026-09-22: "im going to give 2 wheel variations for each nation: china uses ztz-100 wheels or type 100
 // ifv wheels. israel uses merkava mk 4b or namer wheels. sabra gets an exception … sweden uses the strv 122 or
-// cv90 mk 4 x wheels. korea uses the k2 or k1a1 wheels. poland uses the pl-01 or bwp-1 wheels. japan uses the
-// type 10 or type 90 wheels. italy uses the c1 ariete wheels. france uses the leclerc xlr or amx 40 wheels. UK
-// uses the challenger 3, challenger 2e, or warrior milan x wheels. russia uses the t-90, t-90m, t14 armata, and
-// bmp 3m dragun wheels. germany uses the kf51 panther, leopard 2a6, lynx wheels. usa uses the m1a2 abrams,
+// cv90 mk 4 x wheels. korea uses the xk2_black_panther or k1e1 wheels. poland uses the pl-01 or bwp-1 wheels. japan uses the
+// type 10 or type 90 wheels. italy uses the c1 c1_ariete_preserie wheels. france uses the leclerc_s2 xlr or amx 40 wheels. UK
+// uses the challenger 3, challenger 2e, or warrior milan x wheels. russia uses the t-90, t-90m, object148_proto armata, and
+// bmp 3m dragun wheels. germany uses the kf51_evo panther, leopard 2a6, lynx wheels. usa uses the m1a1_abrams_hc abrams,
 // m551a1 tts wheels. standardize our wheels across NATIONS! then we can delete any wheels we dont use anymore".
-// Correction the same day: "sabra uses the m60a3 wheels" — the USA set therefore holds three donors (m1a2 for
+// Correction the same day: "sabra uses the m60a3 wheels" — the USA set therefore holds three donors (m1a1_abrams_hc for
 // modern MBTs, m551a1_tts for light hulls, m60a3 for the Sabra and the Patton-era hulls).
 //
 // A donor's construction is its FACE construction (dish, spokes, fasteners, hub, tire profile), never its
@@ -27,18 +27,18 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { WheelPatternId } from './wheelPatterns.ts';
 
 type WheelDonorId =
-  | 'ztz100_x' | 'type100'
+  | 'ztz100' | 'type100'
   | 'merkava4b' | 'namer_ifv'
-  | 'strv122' | 'cv90_mkiv_x'
-  | 'k2' | 'k1a1'
+  | 'strv121' | 'cv90_mk4'
+  | 'xk2_black_panther' | 'k1e1'
   | 'pl01' | 'bwp1'
-  | 'type10' | 'type90'
-  | 'ariete_c1'
-  | 'leclerc_xlr' | 'amx40'
-  | 'challenger_3' | 'challenger2e' | 'warrior_tes_h'
-  | 't90' | 't90m' | 't14' | 'bmp3m_dragun125_x'
-  | 'kf51' | 'leo2a6' | 'kf41_lynx_x'
-  | 'm1a2' | 'm551a1_tts' | 'm60a3';
+  | 'type10_tk_x' | 'type90_kyumaru'
+  | 'c1_ariete_proto_serie1'
+  | 'leclerc_sxxi' | 'amx40_proto'
+  | 'challenger3_proto' | 'challenger2e' | 'warrior_tes_h'
+  | 't90_1992' | 't90am' | 'object148_proto' | 'bmp3m_dragun125'
+  | 'kf51_evo' | 'leo2a4' | 'kf41_lynx'
+  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3';
 
 /** Road-wheel face constructions; nationWheelConstructions.ts builds the ones a non-donor hull consumes. */
 export type WheelConstructionId =
@@ -65,7 +65,7 @@ interface NationWheelDonor {
 }
 
 export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Object.freeze({
-  ztz100_x: Object.freeze({ donor: 'ztz100_x', self: ['ztz100_x'], pattern: 'armored-hub-six', construction: 'ztz100-recessed-web',
+  ztz100: Object.freeze({ donor: 'ztz100', self: ['ztz100'], pattern: 'armored-hub-six', construction: 'ztz100-recessed-web',
     note: 'Objects 7/17 raised hub, recessed web and curved rim shoulder over paired tire bands, with the twelve hub hexes and eight web fasteners (ztz100X.ts).' }),
   type100: Object.freeze({ donor: 'type100', self: ['type100'], pattern: 'pressed-six', construction: 'type100-paired-pressed',
     note: 'Two pressed six-rib dishes and two tires around a real guide channel (type100RunningGear.ts).' }),
@@ -73,49 +73,49 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet deep-dish eight-fastener disc at dish 0.78 r under the Mk 4B five-layer dished face stack — pale dish ring, dark break, mid dish, dark inner dish, hub cap (merkava.ts wheelFace).' }),
   namer_ifv: Object.freeze({ donor: 'namer_ifv', self: ['namer_ifv'], pattern: 'deep-dish-eight', construction: 'namer-stepped-hub',
     note: 'Source wheel18 stepped hub, recessed web and outward rim (namerWheelStock.ts); the only Israeli IFV, so no other hull draws it.' }),
-  strv122: Object.freeze({ donor: 'strv122', self: ['strv122_x'], pattern: 'plain-dish-twelve', construction: 'strv122-pressed-recess',
-    note: 'The source-measured Strv 122 X bowl with six pressed recesses defines the Stridsvagn 122 wheel; the base strv122 draws it through the standard (strv122XSuppliedGear.ts).' }),
-  cv90_mkiv_x: Object.freeze({ donor: 'cv90_mkiv_x', self: ['cv90_mkiv_x'], pattern: 'armored-hub-six', construction: 'cv90-armoured-hub',
+  strv121: Object.freeze({ donor: 'strv121', self: ['strv122'], pattern: 'plain-dish-twelve', construction: 'strv122-pressed-recess',
+    note: 'The source-measured Strv 122 X bowl with six pressed recesses defines the Stridsvagn 122 wheel; the base strv121 draws it through the standard (strv122XSuppliedGear.ts).' }),
+  cv90_mk4: Object.freeze({ donor: 'cv90_mk4', self: ['cv90_mk4'], pattern: 'armored-hub-six', construction: 'cv90-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (cv90MkivSourceX.ts draws the generic stock).' }),
-  k2: Object.freeze({ donor: 'k2', self: ['k2', 'k2_x'], pattern: 'flanged-twelve', construction: 'k2-flanged',
+  xk2_black_panther: Object.freeze({ donor: 'xk2_black_panther', self: ['xk2_black_panther', 'k2_black_panther'], pattern: 'flanged-twelve', construction: 'k2-flanged',
     note: 'Fleet flanged twelve-fastener disc (both K2 studies draw the generic stock).' }),
-  k1a1: Object.freeze({ donor: 'k1a1', self: ['k1a1_x'], pattern: 'flanged-twelve', construction: 'k1a1-deep-bowl',
-    note: 'The K1A1 X small hub, deep dish and rolled rim (k1a1XWheels.ts); the base k1a1 and the Korean IFVs draw it through the standard.' }),
+  k1e1: Object.freeze({ donor: 'k1e1', self: ['k1a1'], pattern: 'flanged-twelve', construction: 'k1a1-deep-bowl',
+    note: 'The K1A1 X small hub, deep dish and rolled rim (k1a1XWheels.ts); the base k1e1 and the Korean IFVs draw it through the standard.' }),
   pl01: Object.freeze({ donor: 'pl01', self: ['pl01', 'pl01_105'], pattern: 'plain-dish-twelve', construction: 'pl01-plain-dish',
     note: 'Fleet plain twelve-fastener dish at the PL-01 dish 0.60 r (poland.ts).' }),
   bwp1: Object.freeze({ donor: 'bwp1', self: ['bwp1'], pattern: 'armored-hub-six', construction: 'bwp1-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (afvFamily.ts draws the generic stock).' }),
-  type10: Object.freeze({ donor: 'type10', self: ['type10_x'], pattern: 'flanged-twelve', construction: 'type10-paired',
+  type10_tk_x: Object.freeze({ donor: 'type10_tk_x', self: ['type10'], pattern: 'flanged-twelve', construction: 'type10-paired',
     note: 'Paired turned halves with a recessed hub and a real guide channel (pairedRunningGearStock.ts, the Type 10 X fitted course).' }),
-  type90: Object.freeze({ donor: 'type90', self: ['type90_x'], pattern: 'flanged-twelve', construction: 'type90-recessed-forging',
+  type90_kyumaru: Object.freeze({ donor: 'type90_kyumaru', self: ['type90'], pattern: 'flanged-twelve', construction: 'type90-recessed-forging',
     note: 'Lathed forging with the dish 120 mm behind the rubber face and a clipped hub over an open tire annulus (type90X.ts).' }),
-  ariete_c1: Object.freeze({ donor: 'ariete_c1', self: ['ariete_c1_x', 'ariete_c2_x'], pattern: 'split-rim-ten', construction: 'ariete-recessed-dish',
+  c1_ariete_proto_serie1: Object.freeze({ donor: 'c1_ariete_proto_serie1', self: ['c1_ariete', 'c2_ariete'], pattern: 'split-rim-ten', construction: 'ariete-recessed-dish',
     note: 'Recessed dish with a proud axle cap over paired tire bands (arieteXSuppliedGear.ts, the owner-approved Ariete frame).' }),
-  leclerc_xlr: Object.freeze({ donor: 'leclerc_xlr', self: ['leclerc_x'], pattern: 'scalloped-six', construction: 'leclerc-stepped-plate',
+  leclerc_sxxi: Object.freeze({ donor: 'leclerc_sxxi', self: ['leclerc_xlr'], pattern: 'scalloped-six', construction: 'leclerc-stepped-plate',
     note: 'Stepped steel plate and grooved paired tires measured from the Leclerc source (leclercXWheels.ts); XLR and S2 share the wheel.' }),
-  amx40: Object.freeze({ donor: 'amx40', self: ['amx40_x'], pattern: 'scalloped-six', construction: 'amx40-pressed-face',
+  amx40_proto: Object.freeze({ donor: 'amx40_proto', self: ['amx40'], pattern: 'scalloped-six', construction: 'amx40-pressed-face',
     note: 'Fleet scalloped disc behind the AMX-40 X pressed face (rim ring, six ribs and bolts) over an open tire annulus (amx40X.ts).' }),
-  challenger_3: Object.freeze({ donor: 'challenger_3', self: ['challenger_3', 'challenger_3x'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
+  challenger3_proto: Object.freeze({ donor: 'challenger3_proto', self: ['challenger3_proto', 'challenger3'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Hollow paired rubber-tyred halves with eight hub fasteners as insets (hollowRoadWheelStock.ts); the Challenger 2 and 3 share this construction and differ only in size.' }),
   challenger2e: Object.freeze({ donor: 'challenger2e', self: ['challenger2', 'challenger2e', 'fv4034', 'ua_challenger2'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Same hollow paired construction as the Challenger 3; every other UK MBT hull draws it.' }),
   warrior_tes_h: Object.freeze({ donor: 'warrior_tes_h', self: ['warrior_tes_h'], pattern: 'armored-hub-six', construction: 'warrior-plain-web',
     note: 'Object_33 deep plain steel web over paired tire bands (fv510MilanX.ts).' }),
-  t90: Object.freeze({ donor: 't90', self: [], pattern: 'pressed-six', construction: 't90-pressed-source-face',
+  t90_1992: Object.freeze({ donor: 't90_1992', self: [], pattern: 'pressed-six', construction: 't90-pressed-source-face',
     note: 'In this fleet the T-90 and T-90M wheels are one construction (the T-90M X source-pressed face); the older T-series hulls draw it through the standard.' }),
-  t90m: Object.freeze({ donor: 't90m', self: ['t90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'], pattern: 'pressed-six', construction: 't90-pressed-source-face',
+  t90am: Object.freeze({ donor: 't90am', self: ['t90a', 't90a_vladimir', 't90m', 't90sm'], pattern: 'pressed-six', construction: 't90-pressed-source-face',
     note: 'Fleet pressed six-rib disc under the T-90 X source-pressed face: six-hole plate, rim ring, hub and bolt heads (t90X.ts).' }),
-  t14: Object.freeze({ donor: 't14', self: ['t14', 't14_x'], pattern: 'armored-hub-six', construction: 't14-armoured-hub',
+  object148_proto: Object.freeze({ donor: 'object148_proto', self: ['object148_proto', 't14_armata'], pattern: 'armored-hub-six', construction: 't14-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (t14X.ts draws the generic stock); no other Russian next-generation MBT hull exists.' }),
-  bmp3m_dragun125_x: Object.freeze({ donor: 'bmp3m_dragun125_x', self: ['bmp3m_dragun125_x'], pattern: 'armored-hub-six', construction: 'dragun-rolled-lip',
+  bmp3m_dragun125: Object.freeze({ donor: 'bmp3m_dragun125', self: ['bmp3m_dragun125'], pattern: 'armored-hub-six', construction: 'dragun-rolled-lip',
     note: 'Source hub, web and rolled outer lip over separated paired tire bands (bmp3mDragun125X.ts).' }),
-  kf51: Object.freeze({ donor: 'kf51', self: ['kf51', 'kf51b', 'kf51_x'], pattern: 'plain-dish-twelve', construction: 'kf51-forged-face',
+  kf51_evo: Object.freeze({ donor: 'kf51_evo', self: ['kf51_evo', 'kf51_u', 'kf51_panther'], pattern: 'plain-dish-twelve', construction: 'kf51-forged-face',
     note: 'Fleet plain dish under the Panther forged face stack (leopard.ts); the KF51 family is the only German next-generation MBT hull.' }),
-  leo2a6: Object.freeze({ donor: 'leo2a6', self: ['leo2a6_x'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
+  leo2a4: Object.freeze({ donor: 'leo2a4', self: ['leo2a6'], pattern: 'plain-dish-twelve', construction: 'leo2a6-paired-dish',
     note: 'The source-measured Leopard 2A6 X paired pressed dishes and tire bands define the Leopard 2 wheel (leopardA6XWheels.ts); every other Leopard hull draws it.' }),
-  kf41_lynx_x: Object.freeze({ donor: 'kf41_lynx_x', self: ['kf41_lynx_x'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
+  kf41_lynx: Object.freeze({ donor: 'kf41_lynx', self: ['kf41_lynx'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
     note: 'Source-measured KF41 stamped webs, web and hub fasteners over paired tire bands (kf41LynxWheelStock.ts).' }),
-  m1a2: Object.freeze({ donor: 'm1a2', self: ['m1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3', 'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1', 'ua_m1a1_x'],
+  m1a1_abrams_hc: Object.freeze({ donor: 'm1a1_abrams_hc', self: ['m1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a1', 'ua_m1a2_abrams'],
     pattern: 'split-rim-ten', construction: 'abrams-hollow-paired',
     note: 'Hollow paired road wheel from the SEP v2 source measurements (hollowRoadWheelStock.ts / abramsSourceXWheels.ts).' }),
   m551a1_tts: Object.freeze({ donor: 'm551a1_tts', self: ['m551a1_tts'], pattern: 'cast-five-spoke', construction: 'sheridan-pressed-rim',
@@ -144,7 +144,7 @@ interface NationWheelRule {
 /** Ordered rules per nation key; the first match wins. The last rule of a set matches every remaining hull. */
 export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule[]>> = Object.freeze({
   china: [
-    { donor: 'ztz100_x', roles: MBT_HULL_ROLES, reason: 'China MBT hull → ZTZ-100 wheel' },
+    { donor: 'ztz100', roles: MBT_HULL_ROLES, reason: 'China MBT hull → ZTZ-100 wheel' },
     { donor: 'type100', reason: 'China IFV/light hull → Type 100 IFV wheel' },
   ],
   israel: [
@@ -152,47 +152,47 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
     { donor: 'namer_ifv', reason: 'Israel IFV/APC hull → Namer wheel' },
   ],
   sweden: [
-    { donor: 'strv122', roles: MBT_HULL_ROLES, reason: 'Sweden MBT/tank-destroyer hull → Strv 122 wheel' },
-    { donor: 'cv90_mkiv_x', reason: 'Sweden IFV/light hull → CV90 Mk IV X wheel' },
+    { donor: 'strv121', roles: MBT_HULL_ROLES, reason: 'Sweden MBT/tank-destroyer hull → Strv 122 wheel' },
+    { donor: 'cv90_mk4', reason: 'Sweden IFV/light hull → CV90 Mk IV X wheel' },
   ],
   'south korea': [
-    { donor: 'k1a1', ids: ['k1a1'], reason: 'the K1A1 draws its own wheel' },
-    { donor: 'k2', roles: MBT_HULL_ROLES, reason: 'South Korea MBT hull → K2 wheel' },
-    { donor: 'k1a1', reason: 'South Korea IFV hull → the smaller K1A1 wheel (the owner listed no Korean IFV donor; recorded as a choice — the K21 is redirected to the BMP-3 ROK wheel in WHEEL_STANDARD_EXCEPTIONS, owner 2026-09-23)' },
+    { donor: 'k1e1', ids: ['k1e1'], reason: 'the K1A1 draws its own wheel' },
+    { donor: 'xk2_black_panther', roles: MBT_HULL_ROLES, reason: 'South Korea MBT hull → K2 wheel' },
+    { donor: 'k1e1', reason: 'South Korea IFV hull → the smaller K1A1 wheel (the owner listed no Korean IFV donor; recorded as a choice — the K21 is redirected to the BMP-3 ROK wheel in WHEEL_STANDARD_EXCEPTIONS, owner 2026-09-23)' },
   ],
   poland: [
     { donor: 'pl01', roles: MBT_HULL_ROLES, reason: 'Poland MBT hull → PL-01 wheel' },
     { donor: 'bwp1', reason: 'Poland IFV hull → BWP-1 wheel' },
   ],
   japan: [
-    { donor: 'type10', eras: LATE_ERAS, reason: 'Japan modern/next-generation hull → Type 10 wheel' },
-    { donor: 'type90', reason: 'Japan cold-war hull → Type 90 wheel' },
+    { donor: 'type10_tk_x', eras: LATE_ERAS, reason: 'Japan modern/next-generation hull → Type 10 wheel' },
+    { donor: 'type90_kyumaru', reason: 'Japan cold-war hull → Type 90 wheel' },
   ],
   italy: [
-    { donor: 'ariete_c1', reason: 'Italy → C1 Ariete wheel (the only Italian donor)' },
+    { donor: 'c1_ariete_proto_serie1', reason: 'Italy → C1 Ariete wheel (the only Italian donor)' },
   ],
   france: [
-    { donor: 'leclerc_xlr', eras: LATE_ERAS, reason: 'France modern hull → Leclerc XLR wheel' },
-    { donor: 'amx40', reason: 'France cold-war hull → AMX-40 wheel' },
+    { donor: 'leclerc_sxxi', eras: LATE_ERAS, reason: 'France modern hull → Leclerc XLR wheel' },
+    { donor: 'amx40_proto', reason: 'France cold-war hull → AMX-40 wheel' },
   ],
   uk: [
-    { donor: 'challenger_3', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'UK next-generation MBT hull → Challenger 3 wheel' },
+    { donor: 'challenger3_proto', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'UK next-generation MBT hull → Challenger 3 wheel' },
     { donor: 'challenger2e', roles: MBT_HULL_ROLES, reason: 'UK MBT hull → Challenger 2E wheel' },
     { donor: 'warrior_tes_h', reason: 'UK IFV/APC hull → Warrior Milan X wheel' },
   ],
   russia: [
-    { donor: 't14', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'Russia next-generation MBT hull → T-14 Armata wheel' },
-    { donor: 't90m', roles: MBT_HULL_ROLES, eras: ['modern'], reason: 'Russia modern MBT hull → T-90M wheel' },
-    { donor: 't90', roles: MBT_HULL_ROLES, reason: 'Russia cold-war MBT hull → T-90 wheel' },
-    { donor: 'bmp3m_dragun125_x', reason: 'Russia IFV/light hull → BMP-3M Dragun wheel' },
+    { donor: 'object148_proto', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'Russia next-generation MBT hull → T-14 Armata wheel' },
+    { donor: 't90am', roles: MBT_HULL_ROLES, eras: ['modern'], reason: 'Russia modern MBT hull → T-90M wheel' },
+    { donor: 't90_1992', roles: MBT_HULL_ROLES, reason: 'Russia cold-war MBT hull → T-90 wheel' },
+    { donor: 'bmp3m_dragun125', reason: 'Russia IFV/light hull → BMP-3M Dragun wheel' },
   ],
   germany: [
-    { donor: 'kf51', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'Germany next-generation MBT hull → KF51 Panther wheel' },
-    { donor: 'leo2a6', roles: MBT_HULL_ROLES, reason: 'Germany MBT hull → Leopard 2A6 wheel' },
-    { donor: 'kf41_lynx_x', reason: 'Germany IFV hull → Lynx wheel' },
+    { donor: 'kf51_evo', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'Germany next-generation MBT hull → KF51 Panther wheel' },
+    { donor: 'leo2a4', roles: MBT_HULL_ROLES, reason: 'Germany MBT hull → Leopard 2A6 wheel' },
+    { donor: 'kf41_lynx', reason: 'Germany IFV hull → Lynx wheel' },
   ],
   usa: [
-    { donor: 'm1a2', roles: MBT_HULL_ROLES, eras: LATE_ERAS, reason: 'USA modern/next-generation MBT hull → M1A2 Abrams wheel' },
+    { donor: 'm1a1_abrams_hc', roles: MBT_HULL_ROLES, eras: LATE_ERAS, reason: 'USA modern/next-generation MBT hull → M1A2 Abrams wheel' },
     { donor: 'm60a3', roles: MBT_HULL_ROLES, reason: 'USA Patton-era MBT hull → M60A3 wheel (owner 2026-09-22: fits better than the Abrams disc)' },
     { donor: 'm551a1_tts', reason: 'USA light/IFV hull → M551A1 TTS wheel' },
   ],
@@ -209,28 +209,28 @@ type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
 
 /** Per-hull redirects that the nation rule alone would get wrong, each with its reason. */
 export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardException>> = Object.freeze({
-  pt91m: { donor: 't90', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
-  sabra_mk2_x: { donor: 'm60a3', reason: 'owner 2026-09-22: "sabra uses the m60a3 wheels" (Magach/M60 hull under Israeli armour)' },
-  aft10_x: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
-  bmpt_terminator2: { donor: 't90m', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
-  bmpt_t90: { donor: 't90m', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
-  bmp2: { donor: 'bmp3m_dragun125_x', reason: 'nation USSR, cold-war IFV → the Russia light set' },
-  ua_t64bv: { donor: 't90', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
-  ua_t80bv: { donor: 't90', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
-  ua_t80u_kursk: { donor: 't90', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
-  t84: { donor: 't90', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
-  ua_t84_oplot_m: { donor: 't90', reason: 'Ukraine: T-84 Oplot-M base hull → Russia older T-series donor' },
+  pt91m: { donor: 't90_1992', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
+  sabra_mk2: { donor: 'm60a3', reason: 'owner 2026-09-22: "sabra uses the m60a3 wheels" (Magach/M60 hull under Israeli armour)' },
+  aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
+  bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
+  bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
+  bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
+  t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
+  ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
+  t80u_kursk: { donor: 't90_1992', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
+  t84: { donor: 't90_1992', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
+  t84bm_oplot_m: { donor: 't90_1992', reason: 'Ukraine: T-84 Oplot-M base hull → Russia older T-series donor' },
   ua_m2a3_bradley: { donor: 'm551a1_tts', reason: 'Ukraine: Bradley base hull → USA light donor' },
-  bmp3_rok: { donor: 'bmp3m_dragun125_x', reason: 'round 40 axial fit: a Korean-marked Russian BMP-3 hull draws the BMP-3 family wheel like bmp2/bmp3 (the K1A1 bowl fit 0.69 in its 0.30 track)' },
-  k21_x: { donor: 'bmp3m_dragun125_x', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
-  griffin_viper: { donor: 'm1a2', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
-  griffin50_x: { donor: 'm1a2', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
-  leo2a6_ua: { donor: 'leo2a6', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
+  bmp3_rok: { donor: 'bmp3m_dragun125', reason: 'round 40 axial fit: a Korean-marked Russian BMP-3 hull draws the BMP-3 family wheel like bmp2/bmp3 (the K1A1 bowl fit 0.69 in its 0.30 track)' },
+  k21: { donor: 'bmp3m_dragun125', reason: 'owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel — the same Dragun rolled-lip construction bmp3_rok draws, instead of the Korean IFV rule\'s K1A1 bowl' },
+  griffin_viper: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
+  griffin50mm: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
+  leo2a6_ua: { donor: 'leo2a4', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */
 export const PERIOD_WHEEL_HULLS: readonly string[] = Object.freeze([
-  'jpz_e100_x', 'kv2',
+  'jpz_e100', 'kv2',
 ]);
 
 interface NationWheelSpec {
@@ -271,7 +271,7 @@ export function resolveNationWheel(spec: NationWheelSpec | null | undefined): Na
   const id = String(spec?.id || '').toLowerCase();
   if (!id) return Object.freeze({ kind: 'keep', reason: 'no vehicle id' });
   const concept=NATIONAL_MODERNIZATION_CONFIG.find(c=>c.id===id);
-  if(concept||NATIONAL_LEGACY_IDS.some(legacyId=>legacyId===id))return resolved('standard','t90','Owner-selected Russian donor chassis retains its pressed running gear');
+  if(concept||NATIONAL_LEGACY_IDS.some(legacyId=>legacyId===id))return resolved('standard','t90_1992','Owner-selected Russian donor chassis retains its pressed running gear');
   const self = DONOR_OF_SELF.get(id);
   if (self) return resolved('donor', self, `${id} draws the ${self} construction natively`);
   const era = String(spec?.era || '').toLowerCase();

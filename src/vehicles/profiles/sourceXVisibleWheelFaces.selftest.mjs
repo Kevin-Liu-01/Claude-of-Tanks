@@ -2,41 +2,41 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 // Source axle/radius witnesses are independent of the runtime receipt.
-// 2026-09-22 (owner: "russia uses the t-90, t-90m, t14 armata, and bmp 3m dragun wheels"): every Soviet-pattern
+// 2026-09-22 (owner: "russia uses the t-90, t-90m, object148_proto armata, and bmp 3m dragun wheels"): every Soviet-pattern
 // MBT hull below draws the T-90 nation construction (the T-90M X source-pressed face over the fleet pressed disc,
-// nationWheelSets.ts) fitted into its own wheel envelope; only the donor t90sm_x keeps its own fitted annular
+// nationWheelSets.ts) fitted into its own wheel envelope; only the donor t90sm keeps its own fitted annular
 // opening. The axles, radii and painted-face read stay this receipt's contract for both kinds.
 const CASES = {
-  t90sm_x: {radius:.3981, opening:.342366, width:.40954, zScale:1.05575,
+  t90sm: {radius:.3981, opening:.342366, width:.40954, zScale:1.05575,
     // 2026-09-17 ground datum re-seats the T-90 X road wheels (pre-datum ys in git history)
     ys:[.48649001121520996,.46959999203681946,.46959999203681946,.46959999203681946,.46959999203681946,.5290799736976624],
     xLeft:1.423315, xRight:1.4199, faceName:'gearRoadWheelSourcePressedFaces',
     zs:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061]},
-  t72b_1987_x: {radius:.360825, standard:'t90m', y:.43082499504089355,
+  t72b_1987: {radius:.360825, standard:'t90am', y:.43082499504089355,
     xLeft:1.375065, xRight:1.359965,
     zs:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465]},
-  t72b3_x: {radius:.3568, standard:'t90m', y:.423799991607666,
+  t72b3: {radius:.3568, standard:'t90am', y:.423799991607666,
     xLeft:1.4518, xRight:1.4464,
     zs:[-1.70205,-.91970,-.12865,.67990,1.47690,2.28460]},
-  t72bu_x: {radius:.380115, standard:'t90', y:.4471150040626526,
+  t72bu: {radius:.380115, standard:'t90_1992', y:.4471150040626526,
     xLeft:1.424, xRight:1.424,
     zs:[-1.58720,-.72760,.14085,1.00566,1.85831,2.72517]},
   // 2026-09-17 ground datum: the shared T-90 / Burlak source axle re-seats (.44845 → .46205)
-  t90a_burlak_x: {radius:.39405, standard:'t90m', y:0.4620499908924103,
+  t90a_burlak: {radius:.39405, standard:'t90am', y:0.4620499908924103,
     xLeft:1.4426, xRight:1.4426,
     zs:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996]},
-  t90_x: {radius:.39405, standard:'t90m', y:0.4620499908924103,
+  t90: {radius:.39405, standard:'t90am', y:0.4620499908924103,
     xLeft:1.4426, xRight:1.4426,
     zs:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996]},
-  t90ms_x: {radius:.3884, standard:'t90m', y:.4564000070095062,
+  t90ms_tagil: {radius:.3884, standard:'t90am', y:.4564000070095062,
     xLeft:1.437, xRight:1.437,
     zsLeft:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     zsRight:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706]},
   // 2026-10-01: the owner's rebuild (4c34b3e8b, fleet-renewal-publication-20260930.md) puts the T-62MV-1 on the
   // T-62 obr. 1975 chassis; the supplied fused-FBX witnesses (r .391615, x 1.199465, five source stations) left
   // with the source build. The rebuild runs its chassis donor's five-wheel course (proved equal to the live
-  // t62mv1 below) under the same Russia nation face.
-  t62mv1_x: {radius:.42, standard:'t90', y:.491,
+  // t62_1975 below) under the same Russia nation face.
+  t62mv1: {radius:.42, standard:'t90_1992', y:.491,
     xLeft:1.397, xRight:1.397,
     zs:[-1.933,-.791,.293,1.297,2.235]},
 };
@@ -77,7 +77,7 @@ function check(id,fixture,quality) {
       assert.equal(patternReceipt.construction,'nation:t90-pressed-source-face',`${id}: draws the Russia nation wheel construction`);
       assert.equal(patternReceipt.nationStandard?.donor,fixture.standard,`${id}: nation donor`);
     } else {
-      assert.equal(patternReceipt.nationDonor,'t90m',`${id}: the T-90M X family defines the Russia wheel`);
+      assert.equal(patternReceipt.nationDonor,'t90am',`${id}: the T-90M X family defines the Russia wheel`);
       assert.equal(patternReceipt.openAnnulus,true,`${id}: the donor keeps its fitted annular opening`);
     }
     const tires=tank.root.getObjectByName('gearRoadWheelTires');
@@ -137,5 +137,5 @@ for(const quality of ['high','low']) {
     try{const mesh=tank.root.getObjectByName('gearRoadWheelTires');
       return{matrices:Array.from(mesh.instanceMatrix.array.subarray(0,mesh.count*16)),
         positions:Array.from(mesh.geometry.attributes.position.array)};}finally{tank.dispose();}};
-  assert.deepEqual(tires('t62mv1_x'),tires('t62mv1'),`t62mv1_x/${quality}: the rebuild runs the T-62 obr. 1975 donor's own road wheels`);
+  assert.deepEqual(tires('t62mv1'),tires('t62_1975'),`t62mv1/${quality}: the rebuild runs the T-62 obr. 1975 donor's own road wheels`);
 }

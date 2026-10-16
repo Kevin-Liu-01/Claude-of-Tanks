@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90ms_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90ms_tagil',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const yaw=tank.root.getObjectByName('rig_turret');

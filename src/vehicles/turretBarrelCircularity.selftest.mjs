@@ -47,8 +47,8 @@ assert.ok(Math.abs((offAxisResult.worstAxis?.lateralAxisOffsetM ?? 0) - 0.045) <
   `off-axis fixture exposes its 45 mm lateral error (${offAxisResult.worstAxis?.lateralAxisOffsetM})`);
 
 for (const id of [
-  't90a_vladimir',
-  't90sm',
+  't90a_2006',
+  't90sm_2013',
   'fv4034',
   'challenger2',
   'challenger2e',
@@ -57,17 +57,17 @@ for (const id of [
   'm60a2',
   'bmpt_terminator2',
   'bmpt_t90',
-  'type89',
+  'hayate_ifv',
   'm551_sheridan',
   'm551a1_tts',
-  'leclerc',
-  'leclerc_xlr',
-  'amx56',
-  't72b3m',
-  't72bu',
-  'ariete',
-  'kf51',
-  'merkava3d',
+  'leclerc_s2',
+  'leclerc_sxxi',
+  'leclerc_s1',
+  't72b3m_2022',
+  't72bu_1989',
+  'c1_ariete_preserie',
+  'kf51_evo',
+  'merkava3_baz',
 ]) {
   const visual = createTank(id, null, {
     proceduralOnly: true,
@@ -95,7 +95,7 @@ for (const id of [
       assert.ok(maximumSleeveDiameterM <= 0.23,
         `${id} L30 sleeve must stay at a normal diameter (${maximumSleeveDiameterM} m)`);
     }
-    if (id === 't90sm') {
+    if (id === 't90sm_2013') {
       let maximumJacketDiameterM = 0;
       for (const sample of result.samples) {
         if (sample.source === 'barrel') {
@@ -107,7 +107,7 @@ for (const id of [
         }
       }
       assert.ok(maximumJacketDiameterM <= 0.26,
-        `t90sm thermal jacket must stay at a normal diameter (${maximumJacketDiameterM} m)`);
+        `t90sm_2013 thermal jacket must stay at a normal diameter (${maximumJacketDiameterM} m)`);
     }
   } finally {
     visual.dispose();

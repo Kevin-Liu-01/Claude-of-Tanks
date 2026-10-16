@@ -295,5 +295,5 @@ export function buildKf41LynxX(P: TankBuilderPort): void {
   buildLynxCannon(P);
   preserveSourceStudyGunMountAppearance(P);
   P.topY=3.49-py;
-  P.hullG.userData.xRebuild={candidate:'kf41_lynx_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'kf41_lynx',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

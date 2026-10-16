@@ -480,7 +480,7 @@ export function buildType10X(P:TankBuilderPort):void {
   });
   turretArmor(P);rearRack(P);roofEquipment(P);mainGun(P);
   P.topY=2.989-PIVOT[1];
-  P.hullG.userData.xRebuild={candidate:'type10_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'type10',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const TYPE10_X_PROFILES={type10_x:{build:buildType10X}} as const;
+export const TYPE10_X_PROFILES={type10:{build:buildType10X}} as const;

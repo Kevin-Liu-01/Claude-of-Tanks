@@ -9,7 +9,7 @@ import { endWrapRows, endWrapFlags, measureEndWrap, bandCentrelineCells, running
 // staggers its axles), which is what the older midpoint-station review could not see: the T-90MS X course wrapped a
 // station 38 mm from either side's wheel, cut 16–23 mm into one end tire of each side and floated ~20 mm off the other.
 // Dead-track ends whose drive / idler wrap crosses the ground run ('ground-level') carry no wheel wrap and are exempt.
-const STAGGERED = ['tos1a_tagil', 't90ms_x', 'cv90105_tml_x', 'cv90_mkiv_x', 'ztz100_x'];
+const STAGGERED = ['tos1a_tagil', 't90ms_tagil', 'cv90105_tml', 'cv90_mk4', 'ztz100'];
 const EXEMPT_STATUSES = new Set(['ok', 'ground-level']);
 export function createTrackEndWrapAudit() {
   const statuses = {};

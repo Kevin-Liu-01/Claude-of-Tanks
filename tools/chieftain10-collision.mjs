@@ -7,7 +7,7 @@ import {registerProfiledBuilders} from '../src/vehicles/tankFactoryCore.ts';
 import {buildChieftainMk10X} from '../src/vehicles/profiles/chieftain10X.ts';
 import {KIT} from '../src/vehicles/profiles/kit.ts';
 
-const ID='chieftain_mk10_x';
+const ID='chieftain_mk10';
 const key=p=>p.join(',');
 const sub=(a,b)=>a.map((v,i)=>v-b[i]);
 const dot=(a,b)=>a.reduce((sum,v,i)=>sum+v*b[i],0);
@@ -340,7 +340,7 @@ export function chieftain10StockCells(stock) {
   });
 }
 
-/** createCallback is synchronous and constructs ONLY chieftain_mk10_x.
+/** createCallback is synchronous and constructs ONLY chieftain_mk10.
  * Import this module after enabling the generator's authoring-measurement
  * context. The returned stocks are private inspection clones; dispose owns
  * those clones and the actual tank, never a renderer-global resource. */

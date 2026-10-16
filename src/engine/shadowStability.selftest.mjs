@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -149,4 +150,21 @@ assert.equal(blendVisibility(0.95, 1, 0.95), 0.9975,
 assert.equal(blendVisibility(1, 0, 1), 0,
   'a fully owned shadow remains fully dark');
 
+// (2026-10-10, the shadows lane, the Whiteout round) a closed deck widens the cascades' filter: × (1 + k · overcast · closure),
+// never below the cascade's own radius, never past the five-tap disk's three texels; a deck with gaps or an open sky keep it
+{
+  const { DECK_PENUMBRA_K, DECK_PENUMBRA_MAX_TEXELS, deckPenumbraRadius } = await import('./shadowStability.ts');
+  assert.equal(deckPenumbraRadius(1.25, 0), 1.25, 'an open sky keeps the radius');
+  assert.equal(deckPenumbraRadius(1.25, 1), Math.min(1.25 * (1 + DECK_PENUMBRA_K), DECK_PENUMBRA_MAX_TEXELS), 'a closed deck widens it');
+  assert.equal(deckPenumbraRadius(1.6, 1), DECK_PENUMBRA_MAX_TEXELS, 'never past the disk\'s limit');
+  assert.equal(deckPenumbraRadius(3.4, 1), 3.4, 'never below the cascade\'s own radius');
+  assert.equal(deckPenumbraRadius(1.25, 1, 0), 1.25, 'the QA knob at 0 restores it');
+  assert.ok(deckPenumbraRadius(1.25, 0.5) > 1.25 && deckPenumbraRadius(1.25, 0.5) < deckPenumbraRadius(1.25, 1), 'by the deck\'s share');
+  const lightingSrc = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(lightingSrc, /const share = model\?\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast \* model\.deckClosure\)\) : 0;/,
+    'the share is the closed part of the deck (a deck with gaps casts its cells sharp)');
+  assert.match(lightingSrc, /rigModel = model;\s*applyDeckPenumbra\(model\);/, 'every rig re-applies it');
+  assert.match(lightingSrc, /shadow\.radius = deckPenumbraRadius\(baseShadowRadius\[i\], deckShare, lightTune\('DECK_PENUMBRA', DECK_PENUMBRA_K\)\);/,
+    'a resized cascade keeps it');
+}
 console.log(`shadowStability.selftest: texel snapping, cascade-scaled biases on the live rig (worst ${worstTexels.toFixed(2)} texels), and weighted overlap pass\n  ${rows.join('\n  ')}`);

@@ -36,7 +36,7 @@ function faceMatches(root, frame, min, max) {
   return matches;
 }
 
-for (const id of ['ariete_c1', 'ariete_c2']) {
+for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
   await ensureInteriorFills(id);
   for (const quality of ['high', 'low']) {
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });

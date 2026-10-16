@@ -13,7 +13,7 @@ import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 const restoreCanvas = installCanvasFixture();
 
 const results = [];
-for (const id of ['t90m', 'm1a2', 'bmp2']) {
+for (const id of ['t90am', 'm1a1_abrams_hc', 'bmp2']) {
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
   try {

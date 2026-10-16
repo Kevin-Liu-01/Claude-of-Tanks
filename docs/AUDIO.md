@@ -46,12 +46,28 @@ embedded file, and decodes each asset on an `OfflineAudioContext` at the rate
 the build chose (24 kHz for assets with almost no energy above 12 kHz, else
 48 kHz; mobile caps everything at 24 kHz and keeps one variant per asset).
 Crew packs decode on their own lane so the first radio call never waits behind
-a battle's worth of sound effects.
+a battle's worth of sound effects. Sound effects share six decode slots in two
+lanes: the front lane is served first, and an asset joins it when it is loaded
+`{ front: true }` or the first time something asks to play it before it has
+decoded (a rig's loop, an ambience bed, a report), so a sound wanted now never
+waits behind banks queued for later.
 
 At every battle phase edge, and when it is adopted after that edge has passed, the engine warms and **pins** its battle set: every
 weapon report bank, the combat, occupied-hull, interface and mode sets, the
 map's scene, running gear, and the roster's powertrains (the solo loader also
-awaits this, bounded to 3.5 s, before the reveal). Pinned assets and live loops
+awaits this, bounded to 3.5 s, before the reveal; a network round passes its
+lobby roster as it starts loading, and every later warm of the battle keeps the
+roster it was given). Its **presence set** decodes first, in the front lane:
+each powertrain's start-up and idle, the map's beds, the running gear, the
+other engine bands, every loop a rig can start, then the count's tick, the
+mode's opener, the hatch and the horn, so the countdown is heard from its first
+frame (on Verdant with six tanks: 44 assets, 45 files, 2.1 MB of the about 670
+files a cold entry queues; our idle used to decode 638th, now 7th). Each roster
+hull's powertrain is resolved from its whole spec (`getVehicleSpec`, the
+fleet's `getSpec`), as its rig will be: a family turns on role and weight too,
+and by id alone every IFV warmed another family's bank
+(`presenceFamilies.selftest.mjs` checks all 220 vehicles). Pinned
+assets and live loops
 are never evicted; the decoded budget (200 MB desktop, 96 MB mobile) only caps
 the unpinned extras. One battle's working set is about 120–140 MB decoded on
 desktop and 65–80 MB on mobile.
@@ -403,7 +419,14 @@ behind "Firing". Every main-gun result is called; only flavour (firing, reload
 done, allies' kills, near misses, autocannon and machine-gun results) is
 probability-gated, and spot calls are throttled to one per five seconds unless
 several contacts appear at once. The team's count (last tank, last enemy,
-outnumbered) waits out the kill call that usually comes with it.
+outnumbered) waits out the kill call that usually comes with it. It counts the
+whole field, never what a seat can see: a solo battle's list is the field; a
+network seat is sent only the hulls its team spots, so it counts the lobby
+roster with the authority's deaths (`getTeamRoster`, the roster the HUD's team
+tally reads; every seat is sent every destroyed hull), and only where a death is
+final (`deathsAreFinal` in `src/sim/matchRuleset.ts`: no respawn, no waves). In
+a respawn or wave mode, or with no roster wired, a network battle (its hulls
+carry `networkVisible`) calls no side counts at all.
 
 What the crew says for the tank's own systems and the modes (2026-10-04):
 
@@ -422,7 +445,8 @@ What the crew says for the tank's own systems and the modes (2026-10-04):
 | Our gunship's supply drop (`mode_pickup_spawned` with `by`) | cache | "Ammo crate away" / "Repair crate away" |
 | Enemy on a point we hold (`mode_zone_contested`) | — | "They're contesting the point" |
 | Respawn | respawn | "Back in the fight" (and the one-per-life calls re-armed) |
-| Rollout | mode opener, hatch | "All crews, advance" |
+| Countdown (3, 2, 1, never while PREPARING holds it) | a tick each second | — |
+| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance" |
 | A reasoning medal (`service:medal` Chain of Thought or Let Me Think Step by Step), or 3 % of first shots | — | "Let me think step by step." then the gunner: "Step one: aim. Step two: fire." |
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
@@ -879,6 +903,24 @@ crew-lines.json ─┐                    crew-voices.json
   refM 56, was 35): the next probe (6d7a1ebd4) read the 150 m shot 2.3 dB
   louder (the CPU estimate was 2.29), 10.9 dB over a bed that ran 0.9 dB louder
   than the run before, 15 m −0.5 dB and 400 m +0.5 dB, GREEN.
+- **2026-10-14, the countdown.** The owner: the tanks and the world were not
+  heard until after the countdown. Nothing gated them: every countdown sound
+  ran, but on a cold entry its recordings sat at the back of one first-in,
+  first-out decode queue behind the whole combat set (our idle 638th of 673
+  files on Verdant, the bed 603rd, the horn 500th), so the first sounds of a
+  battle were the horn and the crew's start call. The battle warm now queues its presence set
+  first in a front lane, a sound asked for before it decodes jumps the bulk,
+  network rounds warm their lobby roster, and the start-up waits up to a second
+  for its recording (the bank held down) instead of being lost. With it: the
+  count ticks its last three seconds, a network battle rolls out when its count
+  reaches 0 (it never did, so its horn, start call, bells, team counts and
+  quiet-stretch radio were all off), a battle rolls out once, and the loader
+  keeps its bed from the battle phase edge to the reveal. Two verifier
+  counterexamples followed: the network rollout turned the side counts on over
+  a seat's spotted list (the first enemy spotted read as "last enemy" with four
+  alive and hidden), so they now count the roster where a death is final and
+  nothing otherwise; and the warm resolved engine families by id alone, so 40
+  of 220 vehicles (every IFV) warmed a heavy's diesel instead of their own.
 
 ### Cost
 
@@ -947,6 +989,7 @@ Headless selftests (all in `npm test`):
 | `src/audio/voiceTriggers.selftest.mjs` | all 109 crew lines from their game moments through the real engine (shot results back to back, the reasoning exchange after a Chain of Thought, our systems, the drone, the gunship, supply drops, objectives, hits, mobility, the count, results), a second battle's smoke, and no sound or crew chained in for another |
 | `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, the punch and low layers, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, the cabin alarms, the sixth-sense lamp and the loading bed, no oscillator in a whole session, rig ownership near our hull, late adoption, pause, garage |
 | `src/audio/lazyAudio.selftest.mjs` | deferred engine; the facade makes no sound of its own |
+| `src/audio/countdownAudio.selftest.mjs` | the countdown through the real frame owner, rollout runtime and engine: our hull (its start-up once), the other tanks and the world sound from the count, master and channel volume and mute apply during it, nothing of a weapon before the rollout, 3-2-1 ticks and one horn solo and network, a late join rolling out silently, the presence set decoding before the combat banks, the front lane, the start-up waiting for its recording, the loader's bed kept to the reveal |
 | `src/audio/propSounds.selftest.mjs` | every world kind (the kits, the light buildings, the sandbags, the poles, the AA guns, the trees) has its own prop sound and every asset ships; the old regex's slips stay fixed; topples land with the hinge; `props.ts` reports the poles and the loose knocks through the seam |
 | `src/audio/audioRevival.selftest.mjs` | the engine on the shipped manifests: a pole's snap, wires and landing in time, a haycart, a knocked drum (and its rate), the fuel drum, a silent cone; the rebuilt maps' beds and layers; flyovers by era and by named type; bells from the nearest tower in earshot, rare, held by the fighting until 25 s of quiet, Orthodox and campanile bells, none where none ring or in the garage |
 | `src/audio/sfxLoudness.selftest.mjs` | each measured asset's files against `tools/audio/sfx-loudness.json` by SHA-256: duration, channels, WebM/Opus container, loudness and true peak on the mastering preset |

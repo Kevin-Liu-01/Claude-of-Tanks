@@ -24,7 +24,7 @@ const { expectedMuzzleBoreCount } = await import('../src/vehicles/tankAssets.ts'
 let fills = null;
 try { fills = await import('../src/vehicles/interiorFills.ts'); } catch { fills = null; }
 
-const ids = flag('all') ? [...DEVELOPMENT_TANK_IDS] : opt('ids', 'm1a2,k2,kf41_lynx_x').split(',').map((s) => s.trim()).filter(Boolean);
+const ids = flag('all') ? [...DEVELOPMENT_TANK_IDS] : opt('ids', 'm1a1_abrams_hc,xk2_black_panther,kf41_lynx').split(',').map((s) => s.trim()).filter(Boolean);
 const qualities = opt('quality', 'high,low').split(',').map((s) => s.trim()).filter(Boolean);
 const debug = flag('debug');
 /** Every playable cannon needs a verified physical opening; sealed canisters are exempt. */

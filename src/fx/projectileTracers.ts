@@ -27,6 +27,7 @@
  */
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
+import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 
 type ShellKey = number | string;
 
@@ -127,7 +128,8 @@ const MIXED_NATIONS = new Set(['Ukraine', 'UA', 'Poland', 'PL']);
 export function tracerLineage(shooter: TracerShooter | null | undefined): 'east' | 'nato' {
   const nation = shooter?.nation ?? '';
   if (EAST_NATIONS.has(nation)) return 'east';
-  if (MIXED_NATIONS.has(nation) && SOVIET_DESIGN.test(shooter?.id ?? '')) return 'east';
+  // SOVIET_DESIGN reads the schema-1 id vocabulary (tankIdAliases.ts): a rename never changes a tracer's colour.
+  if (MIXED_NATIONS.has(nation) && SOVIET_DESIGN.test(tankSeedId(String(shooter?.id ?? '')))) return 'east';
   return 'nato';
 }
 

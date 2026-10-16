@@ -5,7 +5,7 @@ import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 
 // Source-only datums from the canonical supplied files. Complete native rays
 // include the loaded interior stock, so a later shell/fill cannot hide a lens.
-const ids = ['cv90105_tml_x', 'sabra_mk2_x'];
+const ids = ['cv90105_tml', 'sabra_mk2'];
 await ensureInteriorFills(ids);
 const material = new THREE.MeshBasicMaterial({ side: THREE.FrontSide });
 function firstHit(tank, owner, x, y, z, direction) {
@@ -27,7 +27,7 @@ for (const quality of ['high','low']) for (const id of ids) {
     tank.root.traverse(object=>{if(object.isMesh && object.material?.colorWrite!==false) object.material=material;});
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret'), gun=tank.root.getObjectByName('rig_gun');
-    if(id==='cv90105_tml_x') {
+    if(id==='cv90105_tml') {
       for(const [yaw,pitch] of [[0,0],[.65,-.12],[-.55,.20]]) {
         turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
         for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.1435]]) {

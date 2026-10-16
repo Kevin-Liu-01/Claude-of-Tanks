@@ -6,10 +6,10 @@ import { createTankState } from '../../sim/movement.ts';
 
 // Frozen authored dimensions, not values read back from the shoe generator.
 const studies = [
-  ['kf41_lynx_x', .590, .036, .013, .025, .100],
-  ['cv90_mkiv_x', .550, .022, .008, .016, .070],
-  ['cv90105_tml_x', .523, .022, .008, .016, .070],
-  ['sabra_mk2_x', .586, .017, .006, .012, .067],
+  ['kf41_lynx', .590, .036, .013, .025, .100],
+  ['cv90_mk4', .550, .022, .008, .016, .070],
+  ['cv90105_tml', .523, .022, .008, .016, .070],
+  ['sabra_mk2', .586, .017, .006, .012, .067],
 ];
 const material = new THREE.MeshBasicMaterial({side: THREE.FrontSide});
 for (const quality of ['high', 'low']) for (const [id, width, pad, grouser, web, horn] of studies) {
@@ -34,7 +34,7 @@ for (const quality of ['high', 'low']) for (const [id, width, pad, grouser, web,
     assert.equal(gap.intersectObject(mesh).length, 0, 'paired pad air remains along the complete link');
     assert.ok(tank.root.userData.physicalMuzzleBoreVerification?.minimumDepthM > .05,
       'running gear optimization must preserve the actual cannon bore');
-    if (id !== 'kf41_lynx_x') continue;
+    if (id !== 'kf41_lynx') continue;
     const tire = tank.root.getObjectByName('gearRoadWheelTires');
     const layers = [];
     tank.root.traverse(o => { if (/^kf41SourceWheel/.test(o.name)) layers.push(o); });

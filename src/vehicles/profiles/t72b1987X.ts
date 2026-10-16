@@ -246,4 +246,4 @@ export function buildT72B1987XTurret(P:TankBuilderPort):void {
   casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
 
-export const T72B1987_X_PROFILES={t72b_1987_x:{build:buildT72B1987X}} as const;
+export const T72B1987_X_PROFILES={t72b_1987:{build:buildT72B1987X}} as const;

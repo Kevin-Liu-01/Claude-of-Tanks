@@ -6,9 +6,9 @@ import { ensureInteriorFills } from './interiorFills.ts';
 import { SURFACE_MARKING_STYLE as STYLE, vehicleMarkingIncludesPermanentHullArmor } from './vehicleMarkings.ts';
 import { createTankState } from '../sim/movement.ts';
 
-const ids = ['ztz100_prototype', 'object695_x'];
+const ids = ['ztz100_prototype', 'object695'];
 const results = [];
-assert.deepEqual(ALL_TANK_IDS.filter(vehicleMarkingIncludesPermanentHullArmor).sort(), ['amx10p_25', 'object695_x'],
+assert.deepEqual(ALL_TANK_IDS.filter(vehicleMarkingIncludesPermanentHullArmor).sort(), ['amx10p_25', 'object695'],
   'only explicitly fitted permanent side armor can receive hull markings');
 assert.equal(vehicleMarkingIncludesPermanentHullArmor('unknown'), false);
 assert.equal(vehicleMarkingIncludesPermanentHullArmor(null), false);
@@ -29,7 +29,7 @@ function marksOf(root) {
 }
 
 function checkPaint(root, id, fullSceneVisibility = true) {
-  const owner = id === 'object695_x' ? 'hull' : 'turret';
+  const owner = id === 'object695' ? 'hull' : 'turret';
   const receiver = owner === 'hull' ? 'hullExternalArmor' : 'turret';
   const marks = marksOf(root), surfaces = [];
   assert.deepEqual(marks.map(mark => mark.userData.markingKind).sort(), ['designation', 'insignia']);
@@ -108,7 +108,7 @@ try {
       tank.root.getObjectByName(owner.name === 'rig_hull' ? 'rig_turret' : 'rig_hull').attach(first); tank.root.updateMatrixWorld(true);
       assert.throws(() => checkPaint(tank.root, id), assert.AssertionError, 'wrong articulation owner fails');
       owner.attach(first); tank.root.updateMatrixWorld(true); checkPaint(tank.root, id);
-      const armor = tank.root.getObjectByName(id === 'object695_x' ? 'hullExternalArmor' : 'turret');
+      const armor = tank.root.getObjectByName(id === 'object695' ? 'hullExternalArmor' : 'turret');
       armor.visible = false;
       assert.throws(() => checkPaint(tank.root, id), assert.AssertionError, 'air without its actual receiving armor fails');
       armor.visible = true; checkPaint(tank.root, id);

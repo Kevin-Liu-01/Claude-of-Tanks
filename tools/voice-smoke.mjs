@@ -121,7 +121,7 @@ async function openPage() {
 async function bootIntoBattle() {
   await page.mouse.click(640, 360);
   await sleep(300);
-  await page.evaluate(() => window.__DEBUG.startBattle('t90m'));
+  await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },
@@ -187,7 +187,7 @@ try {
       emit: (ev, p) => D.bus.emit(ev, p),
     };
     window.__P.emit('phase:change', { phase: 'garage' });
-    window.__P.emit('ui:battleStart', { specId: 't90m', mapId: null });
+    window.__P.emit('ui:battleStart', { specId: 't90am', mapId: null });
     window.__P.emit('phase:change', { phase: 'battle' });
     window.__P.emit('battle:rollout', {});
   });

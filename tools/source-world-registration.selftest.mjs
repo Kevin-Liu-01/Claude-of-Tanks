@@ -13,11 +13,11 @@ assert.equal(enlargedAriete.scale,originalAriete.scale*(1.12*1.10),'prescribed u
 assert.deepEqual(enlargedAriete.translation,originalAriete.translation.map(v=>v*(1.12*1.10)),'ground frame scales with source');
 for(const key of ['includeRoots','exactDuplicateMeshes','omitIslandsBelowY','omitIslandsInside'])
   assert.equal(enlargedAriete[key],undefined,'enlargement never drops source parts');
-assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.turret,[0,1.306227824,.328028885].map(v=>v*(1.12*1.10)));
-assert.deepEqual(SOURCE_WORLD_FRAMES.ariete_c1_x.gun,[0,1.651499209,1.3415539].map(v=>v*(1.12*1.10)));
-assert.equal(SOURCE_WORLD_FRAMES.ariete_c1_x.sha256,'1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177');
+assert.deepEqual(SOURCE_WORLD_FRAMES.c1_ariete.turret,[0,1.306227824,.328028885].map(v=>v*(1.12*1.10)));
+assert.deepEqual(SOURCE_WORLD_FRAMES.c1_ariete.gun,[0,1.651499209,1.3415539].map(v=>v*(1.12*1.10)));
+assert.equal(SOURCE_WORLD_FRAMES.c1_ariete.sha256,'1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177');
 
-const certificate=SOURCE_WORLD_FRAMES.leo2a5_x;
+const certificate=SOURCE_WORLD_FRAMES.leo2a5;
 const frame=()=>({rootMatrix:[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
   hull:[0,0,0],turret:[...certificate.turret],gun:[...certificate.gun]});
 const sample=()=>({reference:frame(),procedural:frame()});
@@ -56,7 +56,7 @@ for(const id of Object.keys(SOURCE_WORLD_FRAMES))for(const query of ['', 'geo=1'
   assert.equal(select(id,new URLSearchParams(query),SOURCE_WORLD_FRAMES),SOURCE_WORLD_FRAMES[id],
     `${id}/${query}: fidelity and geometry use the same verified frame`);
 }
-assert.equal(select('m1a2',new URLSearchParams(),SOURCE_WORLD_FRAMES),null);
+assert.equal(select('m1a1_abrams_hc',new URLSearchParams(),SOURCE_WORLD_FRAMES),null);
 const fitStart=html.indexOf('if (!preservation && !sourceWorldCertificate) {');
 const fitEnd=html.indexOf('\n}',fitStart)+2;
 assert.ok(fitStart>=0&&fitEnd>fitStart);
@@ -65,7 +65,7 @@ const fit=Function('preservation','sourceWorldCertificate','reference','procedur
 const root=()=>({root:{scale:{value:1,multiplyScalar(n){this.value*=n;}}}});
 for(const certified of [true,false]) {
   const ref=root(),proc=root();
-  fit(false,certified?SOURCE_WORLD_FRAMES.kf51_x:null,ref,proc,(target,current)=>target/current,
+  fit(false,certified?SOURCE_WORLD_FRAMES.kf51_panther:null,ref,proc,(target,current)=>target/current,
     3.5603123,3.5603123,3.56422358396);
   assert.equal(ref.root.scale.value,1);
   if(certified)assert.equal(proc.root.scale.value,1,'marking extent cannot rescale verified metre geometry');
@@ -86,13 +86,13 @@ assert.ok(score(source,vertical,3.2,fixed).score<92,'real vertical shape displac
 const longitudinal=source.map(([x,t,b])=>[x+.10,t,b]);
 assert.ok(score(source,longitudinal,3.2,fixed).score<92,'real longitudinal outline displacement must fail');
 assert.ok(Math.abs(score(source,vertical,3.2).score-100)<1e-10,'legacy translation behavior is preserved');
-assert.equal(SOURCE_WORLD_FRAMES.m1a2,undefined,'old fleet cannot silently change registration');
+assert.equal(SOURCE_WORLD_FRAMES.m1a1_abrams_hc,undefined,'old fleet cannot silently change registration');
 console.log('source-world-registration: hashes/datums fail closed; exact scorer self100, displaced geometry fails92, legacy preserved');
 
 // Mk3D's source file is already normalized. Preserve the measured source
 // datums and expose only this missing evaluator row, never all WEST overrides.
 const mk3Packet=JSON.parse(readFileSync(new URL('../docs/references/tanks/merkava3d_x.source-measurements.json',import.meta.url),'utf8'));
-const mk3=SOURCE_WORLD_FRAMES.merkava3d_x;
+const mk3=SOURCE_WORLD_FRAMES.merkava3d;
 assert.deepEqual(mk3,{sha256:'68aab556c5202455881862e5beae79fbe6b6dec4cf690ab3f1c73716e3bb3a5c',
   fused:true,turret:mk3Packet.turretPivotM,gun:mk3Packet.gunAxisM});
 assert.deepEqual(mk3Packet.normalization,{translationM:[0,.02034,.2258175],uniformScale:1,axes:'+Y up, +Z forward'});
@@ -110,9 +110,9 @@ for(const owner of ['reference','procedural'])for(const index of [0,5,10,12,13,1
   assert.equal(mk3Verify(f).passed,false,'No additional scale, centering or ground correction');
 }
 const evaluator=readFileSync(new URL('./visual-evaluator-page.html',import.meta.url),'utf8');
-assert.equal([...evaluator.matchAll(/^  ariete_c1_x: SECOND_WAVE_X_REFERENCE_OVERRIDES\.ariete_c1_x,$/gm)].length,1,
+assert.equal([...evaluator.matchAll(/^  c1_ariete: SECOND_WAVE_X_REFERENCE_OVERRIDES\.c1_ariete,$/gm)].length,1,
   'the Ariete critic uses the same complete fused source as fidelity');
-const mk3Rows=[...evaluator.matchAll(/^  merkava3d_x: (.+),$/gm)];assert.equal(mk3Rows.length,1,'one explicit Mk3 evaluator route');
+const mk3Rows=[...evaluator.matchAll(/^  merkava3d: (.+),$/gm)];assert.equal(mk3Rows.length,1,'one explicit Mk3 evaluator route');
 const mk3Route=Function(`return (${mk3Rows[0][1]});`)();
 assert.deepEqual(mk3Route,{source:'glb',qualityBar:'exemplar',glb:{path:'/models/community-candidates/merkava3d_x_source.glb',fixedMount:true,componentMasks:false,paintUntextured:true}});
 assert.ok(!evaluator.includes('WEST_X_REFERENCE_OVERRIDES'),'This registration does not add unrelated WEST routes');
@@ -124,7 +124,7 @@ assert.equal(griffin.inputSha256,'1aef6401c01b5d9a6adfc65838c94d350f4aa39afa0397
 assert.equal(griffin.hullLengthScale,1.1);assert.equal(griffin.turretScale,.9);
 assert.equal(griffin.removedTriangles,0);assert.equal(griffin.candidateGeometryUsed,false);
 assert.equal(griffin.meshes.length,25);
-assert.equal(SOURCE_WORLD_FRAMES.griffin50_x.sha256,griffin.outputSha256);
-assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.turret,[0,2.07,-.396].map(v=>v*.90));
-assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50_x.gun,[0,2.547,.594].map(v=>v*.90));
-assert.equal(SOURCE_WORLD_FRAMES.griffin50_x.ownerSizeFactor,.90,'later whole-vehicle shrink retains earlier body/turret proportions');
+assert.equal(SOURCE_WORLD_FRAMES.griffin50mm.sha256,griffin.outputSha256);
+assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50mm.turret,[0,2.07,-.396].map(v=>v*.90));
+assert.deepEqual(SOURCE_WORLD_FRAMES.griffin50mm.gun,[0,2.547,.594].map(v=>v*.90));
+assert.equal(SOURCE_WORLD_FRAMES.griffin50mm.ownerSizeFactor,.90,'later whole-vehicle shrink retains earlier body/turret proportions');

@@ -78,5 +78,5 @@ export function buildOplotModern(P:TankBuilderPort):void {
   addVehicleGhillieSuit(P);
   P.decal('turret','number','084',.24,[1.49,.34,-.94],Math.PI/2);
   P.topY=1.62;
-  P.turretG.userData.oplotRebuild={donorHull:'t72b3m_x',revision:'angular-20261002',gunOpeningM:.80};
+  P.turretG.userData.oplotRebuild={donorHull:'t72b3m_2016',revision:'angular-20261002',gunOpeningM:.80};
 }

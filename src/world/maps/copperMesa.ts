@@ -196,7 +196,7 @@ export default {
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): Australia in the 1970s: the Centurion and the Leopard
     // AS1
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5', 'leo1a5'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5_2', 'leo1a5'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 6, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
     // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
     // empty"; the census: the town stood in the east corner and 42 % of the playable square lay more than 30 m from

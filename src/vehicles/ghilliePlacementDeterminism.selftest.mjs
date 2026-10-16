@@ -1,7 +1,7 @@
 // A camouflage suit lays the same cloth however busy the process and the machine are (2026-10-11, the coordinator's
 // determinism ruling on the netting lane's finding): ghillieSuit.ts's armour probe used to size its grids from a measured
 // bounds pass, and a suit built after other tanks in the same process, on a loaded machine, intermittently came out with
-// cloth missing or moved (leclerc_xlr's deck nets lost their left halves; m1a2_sepv3's turret net hung into the gun
+// cloth missing or moved (leclerc_sxxi's deck nets lost their left halves; m1a1_abrams_fep's turret net hung into the gun
 // corridor in a loaded fleet run). The probe now uses one fixed window round the owner's origin.
 //
 // This receipt builds each suited hull twice, in separate child processes: alone on an idle process (the reference),
@@ -13,9 +13,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SELF = fileURLToPath(import.meta.url);
-const TARGETS = ['m1a2_sepv3', 'leo2a6_ua', 'pt91_twardy'];
+const TARGETS = ['m1a1_abrams_fep', 'leo2a6_ua', 'pt91a_twardy'];
 // built first in the loaded child: suited and unsuited hulls of every family the fleet's suits sit on
-const OTHERS = ['ua_m1a1', 'leo2a4', 't90m', 'strv103', 'm1a2', 't84', 'ua_t84_oplot_m', 'strv122'];
+const OTHERS = ['ua_m1a1', 'leo2a2', 't90am', 'strv103b', 'm1a1_abrams_hc', 't84', 't84bm_oplot_m', 'strv121'];
 const BURNERS = 3;
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);

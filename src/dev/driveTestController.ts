@@ -441,7 +441,7 @@ export function createDriveTestController({
     const world = getWorld();
     const player = game.player;
     if (!world || !isLiveDriveTestTank(player) || player.combat.destroyed) return false;
-    const preferred = game.tankById.get('t90m');
+    const preferred = game.tankById.get('t90am');
     const shooter = preferred?.team === 'enemy' && isLiveDriveTestTank(preferred)
       && !preferred.combat.destroyed
       ? preferred

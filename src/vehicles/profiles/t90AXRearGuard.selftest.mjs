@@ -16,7 +16,7 @@ function near(hit,target,tolerance,label) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90a_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90a',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     for(const side of [-1,1]) {

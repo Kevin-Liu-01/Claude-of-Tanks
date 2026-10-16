@@ -1,7 +1,7 @@
 // Local QA registration for the owner's complete ARES APC comparison model.
 // The source is never part of playable loading or public model provenance.
 export const ARES_APC_X_REFERENCE_OVERRIDES = Object.freeze({
-  ares_apc_x: Object.freeze({
+  ares_apc: Object.freeze({
     source: 'glb',
     qualityBar: 'exemplar',
     glb: Object.freeze({

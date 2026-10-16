@@ -10,11 +10,11 @@ import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.t
 // records (and the later-addition bookkeeping that isolated them) are gone. The live contract is that
 // every registered tank keeps its own explicit anchor; the footprint checks below are unchanged.
 const newIds=new Set(SECOND_WAVE_X_IDS);
-const laterAbramsIds=new Set(['m1a2_x','m1a2_tusk_x',
-  'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x']);
+const laterAbramsIds=new Set(['m1a2_abrams','m1a2_abrams_tusk',
+  'm1a2_abrams_sepv2','m1a2_abrams_sepv3','ua_m1a2_abrams']);
 assert.equal(newIds.size,23,'the C2 addition does not change the original second-wave batch');
-assert.equal(newIds.has('ariete_c2_x'),false);
-assert.deepEqual(VEHICLE_MARKING_ANCHORS.ariete_c2_x,{
+assert.equal(newIds.has('c2_ariete'),false);
+assert.deepEqual(VEHICLE_MARKING_ANCHORS.c2_ariete,{
   schemaVersion:1,owner:'turret',side:'left',longitudinal:.31,vertical:.43,sizeM:.24,designationDirection:1,
 },'C2 has its own explicit permanent-armor anchor, separately from the historical151');
 assert.ok(VEHICLE_MARKING_ANCHORS.griffin_viper, 'new American concept has its own anchor');
@@ -25,7 +25,7 @@ for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: lat
 for(const id of ['amx10p','amx10p_25'])assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new French IFV anchor is present`);
 for(const id of ALL_TANK_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: every registered tank keeps its own explicit marking anchor`);
 // Owner 2026-09-21: XK2 now wears the current K1A1 turret and its marking seat.
-assert.deepEqual(VEHICLE_MARKING_ANCHORS.k2, VEHICLE_MARKING_ANCHORS.k1a1_x);
+assert.deepEqual(VEHICLE_MARKING_ANCHORS.xk2_black_panther, VEHICLE_MARKING_ANCHORS.k1a1);
 
 function markingNodes(mesh) {
   const p=mesh.geometry.attributes.position,index=mesh.geometry.index,nodes=new Map();
@@ -181,7 +181,7 @@ function verify(id,quality) {
 }
 
 const selectedFlag=process.argv.find(arg=>arg.startsWith('--ids='));
-const checkedIds=new Set([...SECOND_WAVE_X_IDS,'ariete_c2_x']);
+const checkedIds=new Set([...SECOND_WAVE_X_IDS,'c2_ariete']);
 const selected=selectedFlag?selectedFlag.slice(6).split(','):[...checkedIds];
 assert.ok(selected.length>0&&selected.every(id=>checkedIds.has(id)),
   'only explicit second-wave IDs and the separately registered C2 upgrade may be selected');

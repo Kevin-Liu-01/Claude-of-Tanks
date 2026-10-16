@@ -96,7 +96,7 @@ for (const nation of Object.keys(droneModel.DRONE_DESIGNS)) for (const detail of
   record(offenders('drone:flight-pool', group));
   pool.reset();
 }
-for (const id of ['m1a2', 'bmpt_t90', 'ua_m1a1']) {
+for (const id of ['m1a1_abrams_hc', 'bmpt_t90', 'ua_m1a1']) {
   const tank = createTank(id, null, { quality: 'high', camoSeed: 4242 });
   syncMissionAttachment(tank.root, TANK_SPECS[id], { kind: 'drone', active: false, cooldownS: 0 }, false);
   const dock = tank.root.getObjectByName('Reusable mission payload rail');
