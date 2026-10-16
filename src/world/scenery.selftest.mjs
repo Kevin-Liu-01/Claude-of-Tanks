@@ -732,7 +732,10 @@ assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe
 assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
-assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
+// (2026-10-15, the perf lane) a props program is keyed by the family of the hook its material wears (props.ts
+// propsProgramFamily): the hessian and the canvas both wear the grime hook, so they share one program
+assert.match(propsSource, /const propsProgramFamily = \(kind: string\): string => \(tileBiased\(kind\) \? 'tile' : isKitWall\(kind\) \? 'wall'\n\s*: kind === 'dark' \|\| kind === 'glass' \? 'plain'\n\s*: kind === 'rock' \|\| kind === 'fieldStone' \|\| kind === 'pole' \|\| kind === 'ballast' \|\| kind === 'fieldMud' \? kind\n\s*: 'grime'\);/,
+  'the hessian shares the canvas program (one hook, one family)');
 assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook : grimeHook/,
   'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14)');
 assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
