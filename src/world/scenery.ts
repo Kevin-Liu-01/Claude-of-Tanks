@@ -418,7 +418,12 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const built = buildCastleRock(rock, ground, noise, mulberry32(ctx.seed + 17301 + 131 * ci), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'no wall to skin'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
     rockPieces.push(built.geometry);
-    for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
+    // (a castle's masses are convex columns: one tier and one shell band each, from its foot to its top — the port onto
+    // the formation collision's profile, Skybridge round 5 on integ/226)
+    for (const mass of built.masses) {
+      const band = { points: mass.points, y0: mass.y0, y1: mass.y1 };
+      addMass({ y0: mass.y0, profile: { contact: [mass.points], tiers: [band], caps: null, bands: [band], top: mass.y1, low: mass.y0 } });
+    }
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
     receipt.placed++;

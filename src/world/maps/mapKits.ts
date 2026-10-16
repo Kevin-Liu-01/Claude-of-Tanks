@@ -31,8 +31,6 @@ import {
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
 import { addWinterPressureRidges, addWinterShoreIce } from './lakeIce.ts';
-import { dressReservoirDam } from './reservoirDam.ts';
-import { SKYBRIDGE_DAM } from './skybridge.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
 // #16 r2 (Lane C, 2026-10-14): the waterside family's kits, their forms keyed on the coast's boats
 import { dressReedClump, reedFormForBoat, type ReedForm } from './reedBeds.ts';
@@ -53,6 +51,8 @@ import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
+import { dressReservoirDam } from './reservoirDam.ts';
+import { SKYBRIDGE_DAM } from './skybridge.ts';
 import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength, railStockPlacements,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
