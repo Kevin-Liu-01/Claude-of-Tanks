@@ -2221,6 +2221,26 @@ with the production lease: the host's socket and links drop at once, both peers 
 against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
 program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
 
+**The browser's wake order (2026-10-15, the §7 side-by-side).** The receipt's seat read the authority only after its
+waking frame, and dropped what reached it while stalled. A browser queues those rows as message tasks, and they run
+before the waking frame or after it. On the e2e's seat-pause probe (built site, B's main thread blocked while it drives)
+the hull was still corrected by 2.8 m after a 0.3 s stall and by 7.8 m, with a hard snap, after 0.7 s. That matches the
+side-by-side's own-prediction outliers on main (6.6-8.2 m), which came with 300-700 ms page stalls. There were two
+causes:
+
+- **Rows first.** The newest queued row is newer than anything the stalled seat sampled, so its reconcile is a tick jump
+  that seats the hull on the authority's pose at that tick. `skipTicks` then stepped the whole skipped range again from
+  there, and the hull ran ahead by the overlap.
+- **Frame first.** Every queued row is older than the replay window (`maxReplayTicks`, 24). Each one rewound the hull and
+  replayed only the window's newest ticks, leaving the hull behind by the rest.
+
+`skipTicks` now steps only the ticks after the hull's current one. `MatchClient` holds the newest own row and reconciles
+it once, at the next frame before its sampler (`reconcilePending`); the rows it supersedes carry nothing the newest does
+not. The receipt now queues the stalled seat's rows and runs both wake orders: the largest correction after a
+0.3-2 s stall is 0.2-5 cm. Its control, every row reconciled as it arrives after the waking frame, corrects 2.86 m after
+0.6 s. Ablating either half fails the receipt: rows first reads 1.71 m after 0.3 s; frame first, with per-row reconcile,
+reads 2.86 m after 0.6 s.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
