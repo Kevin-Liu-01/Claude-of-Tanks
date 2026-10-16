@@ -785,9 +785,12 @@ const woodshed: RegionalBuilder = (ctx) => {
   const sheet = pick(rng, TIN);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const sill = 0.22;
+    // (props census r2 sweep, Lane C 2026-10-16: over a 1.85 m door the batten broke off a hand above its head casing, a
+    // dark 6 x 29 cm stub lying on the boards) the door framed up close under the wall plate, as a shed door is: no stub
+    // of batten over its head
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: sill, out: 0.02, bucket: 'stone', course: false }, storeys: [{ h, wall: 'wood' }], roof: tin('shed', 10, 0.2, 0.15), roofColour: sheet,
-      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: 1.85 },
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: h - 0.25 },
         { face: 'right', storey: 0, kind: 'loft', u: 0, w: Math.min(0.5, D - 0.6), y0: h - 0.42, h: 0.14 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
     }, {
