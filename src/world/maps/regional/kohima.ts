@@ -5,7 +5,8 @@
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
 import { PartSink, alongPlot, faceBox, facePoint, facePoint as facePointOn, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
 import {
-  buildHouse, closeGables, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec,
+  buildHouse, closeGables, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type Opening, type RoofSpec,
+  type WallRect,
 } from './house.ts';
 import { doorUnit, freeBox, openShop, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
@@ -240,9 +241,10 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0),
     // (the looks lane, 2026-10-15; WORKLIST #15 "kohima nagaHouse from members": the boards were one printed panel a run)
     // the walls in the Angami's broad adzed planks, each its own, battens over their joints, a rail at foot and head
-    dressWall: (s2, face, rect, own) => boardCladding(s2, face, rect, own, (k) => shade(plank, 0.82 + ((k * 7919 + Math.round(W * 13)) % 23) / 23 * 0.26),
-      shade(plank, 0.72), { mobile: ctx.tier === 'mobile', width: face.out[2] > 0.5 ? 0.42 : 0.3 }),
   };
+  const cladding = (s2: PartSink, face: Face, rect: WallRect, own: readonly Opening[]) => boardCladding(s2, face, rect, own,
+    (k) => shade(plank, 0.82 + ((k * 7919 + Math.round(W * 13)) % 23) / 23 * 0.26), shade(plank, 0.72),
+    { mobile: ctx.tier === 'mobile', width: face.out[2] > 0.5 ? 0.42 : 0.3 });
   // the thatch: steep, deep eaves sweeping down to near a metre off the ground
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
   alongPlot(sink, plot.turned, () => {
@@ -250,9 +252,15 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     let frame;
     try {
       frame = buildHouse(sink, {
-        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood', framed: true }], roof, gableBucket: 'structureWood',
+        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
         openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
       }, dialect);
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a plank wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its planks laid over the walls after the house is built, face by face round each face's openings
+      const faces = storeyFaces(frame, 0), body = frame.bodies[0];
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = faces[name];
+        cladding(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 }, openings.filter((o) => o.face === name && o.storey === 0));
+      }
       // the front planks beside the door carved in relief: the mithun's head with its horns (the feast of merit's mark)
       // over the door's side planks, and the moon disc; and before the house the sitting stones of its forecourt
       const f = frame.faces.front, y0 = frame.floors[0];

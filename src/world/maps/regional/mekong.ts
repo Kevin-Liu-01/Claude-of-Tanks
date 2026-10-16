@@ -6,7 +6,7 @@
 import { PartSink, alongPlot, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
 import { mekongChoStall, mekongMarketHall } from './marketKits.ts'; // props #23: the chợ stall and the market hall
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec, type WallRect } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, ladder, stilts, veranda } from './vernacular.ts';
@@ -59,18 +59,25 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   const dialect: HouseDialect = {
     window: (s, face, o, y0) => proppedShutter(s, face, o.u, y0 + o.y0, o.w, o.h, shutter, mobile),
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(wallColour, 0.8), frame: { bucket: 'structureWood', width: 0.08, out: 0.06, colour: shade(post, 0.8) }, steps: null, leafKind: 'plank' }, y0),
-    dressWall: (s, face, rect, own) => (mat ? matCladding(s, face, rect, own, (k) => shade(BAMBOO_MAT, 0.86 + hash01(k, D, 1.7) * 0.22), shade(post, 0.9), { mobile })
-      : boardCladding(s, face, rect, own, plank, shade(post, 0.85), { mobile })),
   };
+  const cladding = (s: PartSink, face: Face, rect: WallRect, own: readonly Opening[]) => (mat
+    ? matCladding(s, face, rect, own, (k) => shade(BAMBOO_MAT, 0.86 + hash01(k, D, 1.7) * 0.22), shade(post, 0.9), { mobile })
+    : boardCladding(s, face, rect, own, plank, shade(post, 0.85), { mobile }));
   sink.placed(0, 0, lift + 0.16, 0, () => {
     const prior = sink.paint;
     // (the framed wall behind the cladding a shade under it: its joints read dark)
     sink.paint = shade(wallColour, 0.55);
     try {
-      buildHouse(sink, {
-        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: 'structureWood', framed: true }], roof, gableBucket: 'structureWood',
+      const hf = buildHouse(sink, {
+        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
         openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null, skirt: null, rafters: shade(post, 0.8),
       }, dialect);
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a plank wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its boards or mats laid over the walls after the house is built, face by face round each face's openings
+      const faces = storeyFaces(hf, 0), body = hf.bodies[0];
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = faces[name];
+        cladding(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 }, openings.filter((o) => o.face === name && o.storey === 0));
+      }
     } finally { sink.paint = prior; }
   });
   look();

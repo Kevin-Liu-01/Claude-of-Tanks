@@ -6,7 +6,7 @@
 // (gola) under conical thatch; the river ghat's boat sheds.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, veranda } from './vernacular.ts';
@@ -42,9 +42,12 @@ function tinHouse(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Regi
 }
 
 function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => number, turned: boolean, W: number, D: number, plinth: number): void {
-  // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster), under the veranda too
-  const bx0 = -W / 2 - (turned ? 1.6 : 1.2), bx1 = W / 2 + 1.2, bz0 = -D / 2 - 1.2, bz1 = D / 2 + 1.2;
-  sink.span('plaster3', bx0, -0.4, bz0, bx1, plinth, bz1);
+  // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster), under the veranda too. (Lane
+  // C 2026-10-16, the building-detail ratchet: drawn beside a plinthless house spec the census and the damage plan never
+  // saw it, and the kit's mid detail read 2 -> 1) it is the house's own plinth, 1.2 m out all round with no dressed course,
+  // and a turned house's veranda side 0.4 m wider again
+  const bOut = 1.2, bx0 = -W / 2 - (turned ? 1.6 : 1.2), bx1 = W / 2 + 1.2, bz0 = -D / 2 - 1.2, bz1 = D / 2 + 1.2;
+  if (turned) sink.span('plaster3', bx0, -0.6, bz0, -W / 2 - bOut, plinth, bz1);
   const wallH = 2.5, walls = sheetColour(rng), frame = pick(rng, WEATHERED_PLANK);
   const mobile = ctx.tier === 'mobile', look = ctx.variant;
   // (the looks lane, 2026-10-15; WORKLIST #15: "bengal tinHouse rebuilt on buildHouse (framed board or mat panels, cut
@@ -76,20 +79,27 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   const dialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.3),
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shutter, frame: { bucket: 'structureWood', width: 0.09, out: 0.05, colour: frame }, steps: null, leafKind: 'plank' }, y0),
-    dressWall: (s, face, rect, own) => corrugatedCladding(s, face, rect, own, livery, frame, { mobile }),
   };
-  sink.placed(0, 0, plinth, 0, () => {
+  {
     // (the frame's sheet wall behind the cladding, a shade under its sheets: the joints read dark, and no sheet stands
     // darker than the wall it is nailed to)
     const prior = sink.paint;
     sink.paint = shade(walls, 0.5);
     try {
-      buildHouse(sink, {
-        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: 'structureMetal', framed: true }], roof, roofColour: roofLivery, gableBucket: 'structureMetal',
+      const hf = buildHouse(sink, {
+        w: W, d: D, plinth: { h: plinth, out: bOut, bucket: 'plaster3', course: false }, storeys: [{ h: wallH, wall: 'structureMetal' }],
+        roof, roofColour: roofLivery, gableBucket: 'structureMetal',
         openings, chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null, skirt: null, rafters: null,
       }, dialect);
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a sheet wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its sheets laid over the walls after the house is built, face by face round each face's openings
+      const faces = storeyFaces(hf, 0), body = hf.bodies[0];
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = faces[name];
+        corrugatedCladding(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 },
+          openings.filter((o) => o.face === name && o.storey === 0), livery, frame, { mobile });
+      }
     } finally { sink.paint = prior; }
-  });
+  }
   // the bhiti's edge slumped: a skirt of mud from its top edge out and down to the ground round it, and its steps
   sink.dressing(mobile, () => {
     // (Lane C 2026-10-16, regionalArchitecture's ray audit: the skirt's quads were wound inward) each wound to face out and up
@@ -269,13 +279,23 @@ const bazaarStall: RegionalBuilder = (ctx) => {
   for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
     sink.cylinder('structureWood', [x * (W / 2 - 0.15), floor, z * (D / 2 - 0.15)], 'y', h - floor, 0.07, 8, { colour: BAMBOO_MAT });
   }
-  // the back wall: corrugated tin, its facets welded into one sheet (front and back)
+  // the back wall: corrugated tin, its facets welded into one sheet, its outer face a sheet's thickness behind the inner
+  // (regionalArchitecture's ray audit: the two faces laid on one plane read as inverted from either side)
   const tin = sheetColour(rng), zb = -D / 2 + 0.12, ribs = Math.max(8, Math.round((W - 0.16) / 0.15)), xa = -W / 2 + 0.08, xb = W / 2 - 0.08;
+  const t = 0.012;
   for (let i = 0; i < ribs; i++) {
     const u0 = xa + (xb - xa) * i / ribs, u1 = xa + (xb - xa) * (i + 1) / ribs, z0 = zb + (i % 2 ? 0.03 : 0), z1 = zb + (i % 2 ? 0 : 0.03);
     sink.quad('structureMetal', [u0, floor, z0], [u1, floor, z1], [u1, back - 0.12, z1], [u0, back - 0.12, z0], { colour: tin });
-    sink.quad('structureMetal', [u1, floor, z1], [u0, floor, z0], [u0, back - 0.12, z0], [u1, back - 0.12, z1], { colour: shade(tin, 0.8) });
+    sink.quad('structureMetal', [u1, floor, z1 - t], [u0, floor, z0 - t], [u0, back - 0.12, z0 - t], [u1, back - 0.12, z1 - t], { colour: shade(tin, 0.8) });
   }
+  // the sheet's top edge and its two ends closed
+  for (let i = 0; i < ribs; i++) {
+    const u0 = xa + (xb - xa) * i / ribs, u1 = xa + (xb - xa) * (i + 1) / ribs, z0 = zb + (i % 2 ? 0.03 : 0), z1 = zb + (i % 2 ? 0 : 0.03), y = back - 0.12;
+    sink.quad('structureMetal', [u0, y, z0], [u1, y, z1], [u1, y, z1 - t], [u0, y, z0 - t], { colour: shade(tin, 0.9) });
+  }
+  sink.quad('structureMetal', [xa, floor, zb - t], [xa, floor, zb], [xa, back - 0.12, zb], [xa, back - 0.12, zb - t], { colour: shade(tin, 0.85) });
+  const zEnd = zb + (ribs % 2 ? 0.03 : 0);
+  sink.quad('structureMetal', [xb, floor, zEnd], [xb, floor, zEnd - t], [xb, back - 0.12, zEnd - t], [xb, back - 0.12, zEnd], { colour: shade(tin, 0.85) });
   // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z), its
   // front edge turned down in a drip welded to the sheet
   const roofColour = sheetColour(rng);
