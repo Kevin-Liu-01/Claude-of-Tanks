@@ -9,7 +9,6 @@ import {buildT72B3MXRunningGear,buildT72B3MXFenders,buildT72B3MXHullCore} from '
 import {buildT72B3XRunningGear,buildT72B3XFenders,buildT72B3XHullCore} from './t72b3X.ts';
 import {buildNationalUkraine} from './nationalUkraine.ts';
 import {buildNationalPoland} from './nationalPoland.ts';
-import {buildNationalChina} from './nationalChina.ts';
 import {buildNationalRussia} from './nationalRussia.ts';
 import {buildHetmanII} from './hetmanII.ts';
 import {buildZubrII} from './zubrII.ts';
@@ -98,7 +97,9 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
    primaryTurret:`${donor.donor}-turret-with-national-up-armour`,turretDonor:donor.donor};
   return;
  }
- ({ua:buildNationalUkraine,pl:buildNationalPoland,cn:buildNationalChina,ru:buildNationalRussia}[c.package])(P,c);
+ // Release 227: every Chinese concept carries a donor fleet turret (nationalDonorTurrets.ts); the cast CN turrets are gone.
+ if(c.package==='cn')throw new Error(`${c.id}: the Chinese concepts carry donor turrets (nationalDonorTurrets.ts)`);
+ ({ua:buildNationalUkraine,pl:buildNationalPoland,ru:buildNationalRussia}[c.package])(P,c);
  P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
  mainWeapon(P,c);
  const d=nationalModernizationDesign(c),l=NATIONAL_ROOF_LOADOUTS[c.id];
@@ -107,7 +108,7 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  // Zoria's roof gun sweeps all of its roof inboard of the left cage wing, so
  // its drone rides on a receiver laid across that wing (missionAttachmentReceiver.ts).
  if(c.id==='t80u_zoria')addMissionAttachmentReceiver(P,'t80u_zoria');
- if(c.package==='cn'||c.id==='t72b3m_bulat_m')addRearFieldStowage(P,c.package==='cn');
+ if(c.id==='t72b3m_bulat_m')addRearFieldStowage(P,false);
  P.topY=nationalModernizationDesign(c).roofY;
  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:6,concept:true,
   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};

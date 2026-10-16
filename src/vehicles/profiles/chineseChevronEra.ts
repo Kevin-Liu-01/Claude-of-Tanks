@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {orientedSlab} from './kit.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
-import type {FlankStation} from './weldedFlankHousing.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 type Point=readonly[number,number,number];
@@ -50,26 +49,4 @@ function addFacet(P:Port,f:Facet,side:number,depth:number,cassettes?:number):voi
  * faces outward), `height` its height; each cassette rides its own 22 mm seat pad in sector turret_era_L/R. */
 export function addChineseChevronFacet(P:Port,f:Facet,side:number,depth:number,cassettes:number):void{
  addFacet(P,f,side,depth,cassettes);
-}
-
-export function addChineseChevronBank(P:Port,side:number,rows:readonly FlankStation[],depth:number):void{
- for(let i=1;i<rows.length;i++){
-  const raw=rows[i-1],b=rows[i];
-  // Rear flanks overlap the cheek root; begin on the exposed forward wall.
-  const startZ=Math.max(raw[0],rows[0][0]>.7?.94:.28);
-  if(b[0]<=startZ)continue;
-  const t=(startZ-raw[0])/(b[0]-raw[0]);
-  const a:FlankStation=[startZ,raw[1]+(b[1]-raw[1])*t,raw[2]+(b[2]-raw[2])*t,raw[3]+(b[3]-raw[3])*t,raw[4]+(b[4]-raw[4])*t];
-  const bevel=(r:FlankStation)=>Math.min(.035,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
-  const low=Math.max(a[3]+bevel(a),b[3]+bevel(b))+.012;
-  const top=Math.min(a[4]-bevel(a),b[4]-bevel(b))-.012;
-  if(top-low<.06)continue;
-  // Travel from bow towards rear so the right-hand normal is outward.
-  addFacet(P,{a:[b[2],low,b[0]],b:[a[2],low,a[0]],height:top-low},side,Math.min(depth,(top-low)*.43));
- }
- const nose=rows[rows.length-1];
- if(nose[0]>1.25){
-  const low=nose[3]+.045,top=nose[4]-.045;
-  addFacet(P,{a:[nose[1]+.04,low,nose[0]],b:[nose[2]-.04,low,nose[0]],height:top-low},side,Math.min(depth,(top-low)*.43));
- }
 }
