@@ -159,6 +159,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
     'tools/physical-bore-air.selftest.mjs',
+    // 2026-10-16 (tank-opt WRECK): no shipped fill voxel in open bore air (the turret-frame rods left where a bent or
+    // elevated gun's muzzle was; tools/interior-fill-bore-air.mjs --all --gate is the fleet census)
+    'tools/interior-fill-bore-air.selftest.mjs',
     // 2026-10-06: moving-part clearance air (pockets under the gun group, declared clearance cells) is reported apart
     'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
@@ -1850,6 +1853,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckFleet.selftest.mjs',
     // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
     'src/world/wreckCrumple.selftest.mjs',
+    // 2026-10-15 (tank-opt): one barrel per real gun on every wreck, bent at its bend point — the gun cut at its kink's
+    // planes, live and baked (the whole fleet: tools/wreck-barrel-census.mjs --all --gate)
+    'src/vehicles/wreckGunSingleBarrel.selftest.mjs',
     // (dcore 2026-10-10) a prop gives where a hull meets it: pressed from contact, pancaked, never rising, the same twice;
     // the presentation's copy keeps its livery, the sim's crush swaps nothing, unseen crushes sweep, heaps flatten again.
     'src/world/propCrush.selftest.mjs',

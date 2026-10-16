@@ -18,7 +18,7 @@
 // Deterministic in (hierarchy, seed, pop) on its own random stream; no allocation per vertex.
 
 import * as THREE from 'three';
-import { bendAngle, planBend, planCreases, planDents, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
+import { bendAngle, cutAtBend, planBend, planCreases, planDents, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
 
 type PartName = 'hull' | 'gear' | 'turret' | 'gun';
 
@@ -408,12 +408,16 @@ function evaluate(plan: PartPlan, x: number, y: number, z: number): boolean {
  */
 export function refineForCrumple(plan: WreckCrumplePlan | null, geometry: THREE.BufferGeometry, mesh: THREE.Object3D,
   maxEdge = 0.4): THREE.BufferGeometry {
-  if (!plan || /InteriorFill/.test(mesh.name)) return geometry;
+  if (!plan) return geometry;
+  const part = plan.parts[plan.partOf(mesh)];
+  // the gun's kink is exact only where no triangle spans its hinge (wreckDents.ts cutAtBend): cut there first — the
+  // gun's interior fill too (a bore-long fill bent uncut leaves the bent tube's wall), whatever the budget leaves
+  if (part?.bend) geometry = cutAtBend(geometry, part.bend, part.toFrame);
+  if (/InteriorFill/.test(mesh.name)) return geometry;
   // the budget (a map draws its hulks in one mesh): the armour shell and the gun take most, the tracks some, the dressing
   // little — a wreck grows by about a sixth
   const maxTriangles = /^(hull|turret|hullExternalArmor|turretExternalArmor|gun|gunMount)$/.test(mesh.name) ? 2500
     : /^gearTrackBand/.test(mesh.name) ? 900 : 400;
-  const part = plan.parts[plan.partOf(mesh)];
   if (!part) return geometry;
   // where the field acts, in the part's frame: a sphere per feature (a triangle outside them all keeps its corners; the
   // field is nil at their rims, so the refined patch meets its unrefined neighbours without a gap)

@@ -45,6 +45,7 @@ visual.setGroundSampler(() => 1.4);
 for (let i = 0; i < 10; i++) visual.syncFromState(state, 0.08, 150);
 visual.recoilKick();
 visual.syncFromState(state, 0.12, 150);
+assert.ok(Math.abs(recoil.position.z) > 0.05, 'battle recoil leaves the gun out of battery');
 visual.hitFlinch(0.8, -0.2, 2.4, state.yaw);
 visual.setTrackState('trackL', true);
 // (physics lane, 2026-10-11) a battle loads the wreck turret's physics under its cover (wreckTurretDriverLoader.ts)
@@ -58,7 +59,9 @@ assert.ok(Math.abs(root.rotation.x) > 0.05 && Math.abs(root.rotation.z) > 0.05,
 const turretTurn = 2 * Math.acos(Math.min(1, Math.abs(turret.quaternion.w)));
 assert.ok(turret.position.distanceTo(restTurretPosition) > 0.3 && turretTurn > 0.4 && Math.abs(gun.rotation.x) > 0.05,
   'battle pose articulates the turret and gun');
-assert.ok(Math.abs(recoil.position.z) > 0.05, 'battle recoil leaves the gun out of battery');
+// (tank-opt WRECK 2026-10-16) the wreck's bent gun cannot slide: the kill seats the stroke before the gun's kink is cut
+// (wreckGunSingleBarrel.selftest.mjs holds the barrel itself)
+assert.ok(Math.abs(recoil.position.z) < 1e-9, 'the wreck seats its gun in battery');
 assert.notDeepEqual(Array.from(wheelMesh.instanceMatrix.array), restWheels,
   'terrain conformance and track scroll move the running gear');
 assert.notDeepEqual(Array.from(trackBand.geometry.getAttribute('position').array), restBand,
@@ -86,6 +89,13 @@ assert.ok(detailGroups.every(({ object, parent }) => object.parent === parent),
   'garage reset restores inspection-quality cosmetic detail');
 assert.equal(trackBand.visible, true, 'garage reset restores a thrown track');
 assert.equal(visual.isDestroyed(), false, 'garage reset restores an intact tank');
+// the wreck above seats its stroke itself: a live gun out of battery is the garage reset's own case
+visual.recoilKick();
+visual.syncFromState(state, 0.12, 150);
+assert.ok(Math.abs(recoil.position.z) > 0.05, 'a live shot leaves the gun out of battery');
+visual.resetForGaragePresentation();
+assert.ok(Math.abs(recoil.position.z) < 1e-9 && Math.abs(recoil.rotation.z) < 1e-9,
+  'garage reset returns a live gun to battery');
 
 visual.dispose();
 

@@ -40,7 +40,7 @@ import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS,
 } from './materials.ts';
-import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { bendGeometry, cutAtBend, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { createTurretRingPresentation, type TurretRingSeat } from './turretRingWell.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
@@ -9323,13 +9323,21 @@ function* createTankOwnedSteps(
     box.copy(bore.geometry.boundingBox!).applyMatrix4(toGun.multiplyMatrices(gunInv, bore.matrixWorld));
     const bend = planBend(box.min.z, box.max.z, rng, pop);
     if (!bend) return;
+    // the kink in the gun's frame, for the wreck's receipts (wreckBarrel.test-support.mjs: the drawn barrel follows it)
+    gunG.userData.wreckBend = bend;
     gunG.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;
+      // a batch's shared buffer is drawn by index range: the cut below re-triangulates, so it is never cut
+      if (isVehicleBatchedMesh(object)) return;
       // (f17, 218: articulatedShadowBatchIntegration) the authored shadow proxies are never mutated: the articulated
       // shadow batch holds their packed copies, so the bend stays on the drawn gun
       if (object.userData.authoredShadowProxy) return;
       toGun.multiplyMatrices(gunInv, object.matrixWorld);
-      const bent = object.geometry.clone();
+      // cut at the kink's planes first (wreckDents.ts cutAtBend): the bend moves corners only, and a tube with no corner
+      // near the hinge would draw as a straight chord out through the pieces that follow the kink (two barrels). A mesh
+      // no plane crosses comes back as it is and is bent as a plain copy.
+      const cut = cutAtBend(object.geometry, bend, toGun);
+      const bent = cut === object.geometry ? cut.clone() : cut;
       bendGeometry(bent, bend, toGun, toGun.clone().invert());
       bent.computeBoundingBox();
       bent.computeBoundingSphere();
@@ -9355,8 +9363,23 @@ function* createTankOwnedSteps(
     wreckFills.length = 0;
   }
 
+  /**
+   * The recuperator stroke over, every tube in battery. A bent gun cannot slide in its cradle, and planLiveCrumple
+   * cuts and bends each gun mesh where it stands: killed inside its own shot (the tube up to REC_AMP out of battery),
+   * the recoiling tube kept its kink a stroke further out than the cradle's sleeves once the return ran, 2-3.5 cm
+   * apart past it (two barrels; tank-opt WRECK verify 2026-10-16). setDestroyed seats it before the crumple; a
+   * wreck's recoilKick starts no stroke.
+   */
+  function seatRecoilStroke(): void {
+    recoilT = 1e9;
+    recoilG.position.z = 0;
+    recoilG.rotation.z = 0;
+    for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
+  }
+
   function resetLiveCrumple(): void {
     burnU.uCrOn.value = 0;
+    delete gunG.userData.wreckBend;
     for (const [mesh, original] of liveBentGun) {
       const bent = mesh.geometry;
       mesh.geometry = original;
@@ -9941,7 +9964,8 @@ function* createTankOwnedSteps(
         const index = muzzleIndex ?? launcherCursor++;
         return ((index % launcherTips.length) + launcherTips.length) % launcherTips.length;
       }
-      recoilT = Math.max(0, ageS);
+      // a wreck's bent gun stays in battery (seatRecoilStroke): a replayed or late shot still picks its muzzle
+      recoilT = destroyed ? 1e9 : Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;
       recoilPendingScale = recoilScale;
@@ -10097,6 +10121,9 @@ function* createTankOwnedSteps(
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
       destroyed = true;
+      // the gun in battery before planLiveCrumple cuts its kink: the cradle's sleeves and the recoiling tube bend at
+      // one point
+      seatRecoilStroke();
       captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
@@ -10239,7 +10266,7 @@ function* createTankOwnedSteps(
       popT = 0;
       popTrailAcc = 0;
       popScale = 1;
-      recoilT = 1e9;
+      seatRecoilStroke();
       recoilPending = false;
       recoilScale = 1;
       recoilPendingScale = 1;
@@ -10247,9 +10274,6 @@ function* createTankOwnedSteps(
       recoilYawAmp = 0;
       recoilRollAmp = 0;
       recoilBarrelIndex = -1;
-      recoilG.position.z = 0;
-      recoilG.rotation.z = 0;
-      for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
       sway = 0;
       wreckAge = -1;
       mats.burnt.emissiveIntensity = 0.018;
