@@ -567,7 +567,10 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
   // forward fuselage: the nose to the break; the aft section slewed and dropped when wrecked
   fuselage(11.9, -3.6, coarse ? 14 : 26);
   mesh.push();
-  if (wrecked) mesh.translate(0.3, -0.25, -0.9).rotateY(0.22).rotateX(-0.06);
+  // (props r2, Lane C) the tail section slewed and canted about the break itself and down on its broken end, its skin
+  // torn open on one side and crushed into the forward section's on the other (it was swung about the nose's frame
+  // 0.9 m astern of the break and sunk 0.3 m under the apron, leaving the forward fuselage hanging over the ground)
+  if (wrecked) mesh.translate(0, -0.169, -3.6).rotateY(0.22).rotateX(-0.06).translate(0, 0, 3.6);
   fuselage(-3.6, -11.9, coarse ? 8 : 14);
   // the fin and the tailplane on the tail section
   const finBase = an26Section(-9.5);
@@ -586,7 +589,9 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
   for (const sx of [1, -1]) mesh.dressing(() => {
     const broken = wrecked && sx < 0;
     mesh.push();
-    if (broken) mesh.translate(sx * 8.5, wingY, 0).rotateZ(0.38).translate(-sx * 8.5, -wingY, 0);
+    // (props r2, Lane C) snapped at its root joint and hanging from it, the tip down on the apron (it pivoted 4 m out,
+    // lifting its root off the centre section)
+    if (broken) mesh.translate(sx * 4.6, wingY, 0).rotateZ(-sx * 0.257).translate(-sx * 4.6, -wingY, 0);
     wingPanel(mesh, sx * 4.6, sx * 14.6, rootLead, rootChord, rootLead - 0.9, 1.45, wingY, wingY - 10 * Math.tan(0.035), 0.12, AN26_GREY, coarse);
     mesh.pop();
     // the nacelle under the wing, its spinner and four blades (bent in the wreck)
@@ -607,7 +612,8 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
     mesh.pop();
     // the roundel under the outer wing (a flat disc: the lathe's axis turned upright)
     if (!coarse && !(wrecked && sx < 0)) {
-      mesh.push().translate(sx * 11.5, wingY - 0.42, rootLead - 1.6).rotateZ(Math.PI / 2);
+      // (props r2, Lane C) on the outer panel's lower skin (it hung 7 cm under it)
+      mesh.push().translate(sx * 11.5, wingY - 0.335, rootLead - 1.6).rotateZ(Math.PI / 2);
       mesh.lathe([[0.0001, -0.01], [0.55, -0.01], [0.55, 0.01], [0.0001, 0.01]], 12, () => ROUNDEL_YELLOW);
       mesh.lathe([[0.0001, -0.022], [0.32, -0.022], [0.32, 0.0], [0.0001, 0.0]], 12, () => ROUNDEL_BLUE);
       mesh.pop();
