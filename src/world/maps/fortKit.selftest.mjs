@@ -59,7 +59,22 @@ for (const [mapId, entry] of Object.entries(FORT_MAPS)) {
       assert.ok(b.max.y <= 0.9, `${mapId} destroyed: its bars too (${b.max.y.toFixed(2)} m)`);
     } else {
       assert.ok(b.max.y > 1.6 && b.max.y < 3.5, `${mapId}: a pillbox's height (${b.max.y.toFixed(2)} m)`);
-      assert.ok(Math.max(-b.min.x, b.max.x) < 4 && Math.max(-b.min.z, b.max.z) < 4.8, `${mapId}: the body (the bank is not the destructible's)`);
+      // (r2 sweep, 2026-10-16: the bags' beds of spoil, the 'footing' pieces, lie under the grade and outreach the body
+      // where their flanks run down under the ground: measured apart, never over the grade nor past the work's ground)
+      const footing = (g.userData.fracture?.pieces ?? []).filter((q) => q.role === 'footing');
+      const inFooting = (t) => footing.some((q) => t >= q.tri0 && t < q.tri0 + q.triN);
+      const body = [Infinity, -Infinity, Infinity, -Infinity];
+      for (let i = 0; i < p.count; i++) {
+        const fy = p.getY(i);
+        if (inFooting(Math.floor(i / 3))) {
+          assert.ok(fy < FORT_GRADE, `${mapId}: a bag's bed under the grade (${fy.toFixed(3)} m)`);
+          assert.ok(Math.hypot(p.getX(i), p.getZ(i)) < 5.8, `${mapId}: a bag's bed within the work's ground`);
+          continue;
+        }
+        body[0] = Math.min(body[0], p.getX(i)); body[1] = Math.max(body[1], p.getX(i));
+        body[2] = Math.min(body[2], p.getZ(i)); body[3] = Math.max(body[3], p.getZ(i));
+      }
+      assert.ok(Math.max(-body[0], body[1]) < 4 && Math.max(-body[2], body[3]) < 4.8, `${mapId}: the body (the bank is not the destructible's)`);
     }
   }
 }

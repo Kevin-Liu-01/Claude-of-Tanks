@@ -32,6 +32,12 @@ function cropDeclaration(name) {
   visit(cropTree); assert.equal(found.length, 1, `one actual ${name}`); return found[0].getText(cropTree);
 }
 const variable = name => one(n => ts.isVariableDeclaration(n) && n.name.getText(tree) === name, name);
+/** A variable declared in the crop fields' owner (maps/cropKit.ts: the land-use sample moved there with its fields). */
+function cropVariable(name) {
+  const found = [];
+  function visit(node) { if (ts.isVariableDeclaration(node) && node.name.getText(cropTree) === name) found.push(node); ts.forEachChild(node, visit); }
+  visit(cropTree); assert.equal(found.length, 1, `one actual ${name}`); return found[0].getText(cropTree);
+}
 const composition = one(n => ts.isIfStatement(n) && n.expression.getText(tree) === 'autumnCropRows && autumnFieldContext', 'composition/release');
 const callAt = source.indexOf(composition);
 assert.ok(callAt > source.indexOf('  composeAuthoredFisheryWharf();') && callAt < source.indexOf('  yield* mergeMaterialBuckets();'),
@@ -96,8 +102,9 @@ async function fixtureModule(mode = 'current') {
     const ${variable('autumnCropRows')};
     let ${variable('autumnFieldContext')}, ${variable('autumnFieldStart')}, ${variable('autumnFieldEnd')};
     const ${variable('placeFieldObjects')};
-    // the crop plots' land-use sample (props.ts: a map with fields seats its standing grain in a wheat or barley field)
-    const ${variable('cropLandSample')};
+    // the crop plots' land-use sample (maps/cropKit.ts, moved with the fields from props.ts: a map with fields seats its
+    // standing grain in a wheat or barley field)
+    const ${cropVariable('cropLandSample')};
     ${nested}
     ${cropDeclaration('appendCropRows')}
     ${finalizer}

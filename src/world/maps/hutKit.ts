@@ -34,6 +34,8 @@ export interface HutTools {
   pitch<T extends THREE.BufferGeometry>(geo: T, axis: 'x' | 'z', outward: -1 | 1, angle: number, kind: 'gable' | 'skillion'): T;
   /** markWorldAperture: a pane that glows at night when the kind is manned */
   aperture<T extends THREE.BufferGeometry>(geo: T, normal: V3): T;
+  /** markWorldBeacon: a lamp that burns at night, manned or not (a mast's beacon) */
+  beacon<T extends THREE.BufferGeometry>(geo: T): T;
   /** paint and keep a part, named by the last tag */
   put<T extends THREE.BufferGeometry>(geo: T, color: number, jitter?: number): T;
   /** name the parts put from here on: their piece of the wreck (a group is one piece), its role and its material */
@@ -215,6 +217,9 @@ function around(u0: number, u1: number, y0: number, y1: number, holes: readonly 
 
 const tone = (tones: readonly number[], i: number) => tones[((i % tones.length) + tones.length) % tones.length];
 
+/** (the triage round, 2026-10-16) A part drawn as dressing: no collision part (structureKit's merge, noCollisionVertices). */
+function dressing<T extends THREE.BufferGeometry>(geo: T): T { geo.userData.noCollision = true; return geo; }
+
 /** How far a sunk post goes into the ground (the families' height band starts 5 cm under it). */
 const SUNK = 0.04;
 
@@ -259,6 +264,14 @@ function logMember(len: number, dia: number): THREE.BufferGeometry {
 function cladPiece(k: HutTools, d: HutDialect, f: Face, u0: number, u1: number, y0: number, y1: number, i: number, step = 0.6): void {
   const lu = u1 - u0, h = y1 - y0, uc = (u0 + u1) / 2, p = d.paint;
   if (lu < 0.04 || h < 0.04) return;
+  // (the triage round, 2026-10-16: a thin cladding member the length of a whole wall — 2.5 cm of boards over 10 m — is
+  // a slice the collision's certification grid cannot see, 0 on the Navajo motor pool's wall band) a thin covering is
+  // laid in lengths of at most 4 m, butted, as boards, mats and laps are
+  if (lu > 4.0 && (d.cladding === 'batten' || d.cladding === 'lap' || d.cladding === 'mat')) {
+    const n = Math.ceil(lu / 4.0), run = lu / n;
+    for (let q = 0; q < n; q++) cladPiece(k, d, f, u0 + q * run, u0 + (q + 1) * run, y0, y1, i, step);
+    return;
+  }
   k.tag('wall', wallGroup(f, uc), wallMat(d));
   switch (d.cladding) {
     case 'batten': {
@@ -285,7 +298,8 @@ function cladPiece(k: HutTools, d: HutDialect, f: Face, u0: number, u1: number, 
         const rail = k.cylinder(0.028, 0.028, lu, 5);
         rail.rotateZ(Math.PI / 2);
         if (f.u[0] === 0) rail.rotateY(Math.PI / 2);
-        put(k, rail, at(f, uc, yy, 0.055), p.frame, 0.05);
+        // (the triage round: the rails are dressing on the mat, which collides)
+        put(k, dressing(rail), at(f, uc, yy, 0.055), p.frame, 0.05);
       }
       return;
     }
@@ -571,6 +585,9 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
             // slope (its fall along x) or a skillion's (along z)
             const sheet = prism(sec, sl.len + 0.04, 0.6);
             if (sl.axis === 'x') sheet.rotateY(Math.PI / 2);
+            // (the triage round, 2026-10-16: the crimps' sloped slices merged into parts that overran them, 84-88 on the
+            // motor pools' top bands) a sheet collides as its hull, the slope's plan between its eave and its high edge
+            sheet.userData.collisionHull = true;
             k.put(across(onSlope(sheet, sl, 0, lift + (q % 2) * 0.006), sl, c0 + (q + 0.5) * ew), (q + j) % 2 ? tone0 : tone1, 0.06);
           }
           lift += 0.045;
@@ -595,7 +612,8 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
           // the thatch laid thick in two coats, the lower one's butts proud along the eave
           const t = 0.26;
           k.put(across(onSlope(slopeGeo(k, sl, sl.len - 0.15, t, sw + 0.01, 'mbox', 0.09), sl, -0.075, lift + t / 2), sl, cm), tone0, 0.08);
-          k.put(across(onSlope(slopeGeo(k, sl, sl.len * 0.36, t * 0.8, sw + 0.05, 'mbox', 0.08), sl, sl.len / 2 - sl.len * 0.18, lift + t + t * 0.25), sl, cm), tone1, 0.08);
+          // (the triage round: the eave's second coat is dressing over the main coat, which collides)
+          k.put(dressing(across(onSlope(slopeGeo(k, sl, sl.len * 0.36, t * 0.8, sw + 0.05, 'mbox', 0.08), sl, sl.len / 2 - sl.len * 0.18, lift + t + t * 0.25), sl, cm)), tone1, 0.08);
           lift += t * 1.6;
           break;
         }
@@ -610,12 +628,14 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
         ridgeLift = on + sn;
       }
       // the fascia along the eave
-      k.put(across(onSlope(slopeGeo(k, sl, 0.03, 0.17, sw + 0.01, 'box'), sl, sl.len / 2 - 0.015, -0.02), sl, cm), p.trim, 0.03);
+      // (the triage round, 2026-10-16: the trim's 3 cm slices alone made a band the collision could not certify — 0 on the
+      // motor pools: the fascia and the barge boards are dressing, drawn and no collision part; the covering collides)
+      k.put(dressing(across(onSlope(slopeGeo(k, sl, 0.03, 0.17, sw + 0.01, 'box'), sl, sl.len / 2 - 0.015, -0.02), sl, cm)), p.trim, 0.03);
       // the barge board up the rake at the section's end of the roof (a skillion's verge)
       for (const e of [-1, 1]) {
         if ((e < 0 && j !== 0) || (e > 0 && j !== nsec - 1)) continue;
         const board = sl.axis === 'x' ? k.mbox(sl.len + 0.04, 0.18, 0.03) : k.mbox(0.03, 0.18, sl.len + 0.04);
-        k.put(across(onSlope(board, sl, 0, 0.02), sl, e * (sl.across / 2 + (sl.axis === 'x' ? 0.015 : 0))), p.trim, 0.03);
+        k.put(dressing(across(onSlope(board, sl, 0, 0.02), sl, e * (sl.across / 2 + (sl.axis === 'x' ? 0.015 : 0)))), p.trim, 0.03);
       }
     }
   }

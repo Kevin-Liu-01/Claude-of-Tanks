@@ -777,6 +777,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/imagePreload.selftest.mjs',
     'src/ui/responsiveLayout.selftest.mjs',
     'src/ui/pinchZoomGuard.selftest.mjs',
+    'tools/pinch-zoom-probe.selftest.mjs',
+    'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
@@ -1010,8 +1012,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
     // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
     'tools/studio-snow-contact.selftest.mjs',
-    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
-    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
     'src/engine/shadeFill.selftest.mjs',
     'src/engine/toneR1.selftest.mjs',
@@ -1272,6 +1272,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverCraters.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2; wave 277): the collapse comes down storey by storey before its swap
     'src/sim/collapseCascade.selftest.mjs',
+    // 2026-10-16 (destruction lane): a collapse leaves a ruin, never a raft (the r2 sweep's anti-raft floors), every kit
+    'src/world/collapseRuin.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',
@@ -1609,6 +1611,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
+    'src/world/maps/sceneryR2.selftest.mjs', // 2026-10-16 props lane A, the r2 sweep: the scenery and field-stack kinds to the bunker r2 standard
     'src/world/maps/periodClutter.selftest.mjs',
     'src/world/maps/recordClearance.selftest.mjs', // 2026-10-13 (the perf stream): the street kits' clearance from a grid, as the walk
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock

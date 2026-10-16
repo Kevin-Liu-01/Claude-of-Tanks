@@ -1,5 +1,5 @@
 /** Reservoir-only construction: exchange accepted rubble for working waterworks. */
-import { BufferGeometry, ExtrudeGeometry, Matrix4, Shape, Vector2, Vector3 } from 'three';
+import { BufferGeometry, ExtrudeGeometry, Float32BufferAttribute, Matrix4, Shape, Vector2, Vector3 } from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { setObbShape, type CollisionRecord } from './collision.ts';
 import { slabBox } from './propGeometry.ts';
@@ -206,11 +206,55 @@ function planWorks(config: ReservoirWaterworksConfig, field: WaterworksTerrain,
 }
 
 function piece(out: Piece[], bucket: BucketName, name: string,
-  width: number, height: number, depth: number, x: number, y: number, z: number): BufferGeometry {
+  width: number, height: number, depth: number, x: number, y: number, z: number, quoin = 0): BufferGeometry {
   const geometry = slabBox(width, height, depth, 0.65);
   geometry.name = `reservoir-${name}`;
   geometry.translate(x, y, z);
   out.push({ bucket, geometry });
+  if (quoin > 0) {
+    // (the r2 sweep, 2026-10-16: the bank and the intake were plain boxes) the dressed quoins up each corner of the
+    // masonry, `quoin` along each face and 3 cm proud of the hard plan (shallow trim, no collision slot: the body's OBB
+    // stays the record), their heads at the body's top under the cap's edge; each strip meets the body at its corner's
+    // head, so the body and its quoins are one piece of masonry. Its own geometry: the body keeps the exact plan.
+    const t = 0.03, w = width / 2, d = depth / 2, y0 = y - height / 2, y1 = y + height / 2;
+    const pos: number[] = [], uv: number[] = [];
+    const tri = (a: Vec3, b: Vec3, c: Vec3) => {
+      for (const p of [a, b, c]) pos.push(p[0], p[1], p[2]);
+      // the slabs' metric density on the face the triangle lies in
+      const ux = Math.abs(b[2] - a[2]) + Math.abs(c[2] - a[2]) > Math.abs(b[0] - a[0]) + Math.abs(c[0] - a[0]);
+      for (const p of [a, b, c]) uv.push((ux ? p[2] : p[0]) * 0.65, (a[1] === b[1] && b[1] === c[1] ? (ux ? p[0] : p[2]) : p[1]) * 0.65);
+    };
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      // the strip's section round the corner (outer corner, legs back to the faces), counter-clockwise seen from above
+      // when sx * sz > 0
+      const P: Array<[number, number]> = [[sx * w, sz * (d - quoin)], [sx * (w + t), sz * (d - quoin)], [sx * (w + t), sz * (d + t)],
+        [sx * (w - quoin), sz * (d + t)], [sx * (w - quoin), sz * d], [sx * w, sz * d]];
+      const at = (k: number, yy: number): Vec3 => [x + P[k][0], yy, z + P[k][1]];
+      const wind = (a: Vec3, b: Vec3, c: Vec3, out: Vec3) => {
+        const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+          (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+        if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] >= 0) tri(a, b, c); else tri(a, c, b);
+      };
+      // the four faces that show (the leg ends and the two outer faces); the two on the body's faces are inside it
+      for (const [k, out] of [[0, [0, 0, -sz]], [1, [sx, 0, 0]], [2, [0, 0, sz]], [3, [-sx, 0, 0]]] as Array<[number, Vec3]>) {
+        wind(at(k, y0), at(k + 1, y0), at(k + 1, y1), out);
+        wind(at(k, y0), at(k + 1, y1), at(k, y1), out);
+      }
+      // its head: the L in two quads, the inner corner on the body's own corner
+      for (const q of [[0, 1, 2, 5], [5, 2, 3, 4]]) {
+        wind(at(q[0], y1), at(q[1], y1), at(q[2], y1), [0, 1, 0]);
+        wind(at(q[0], y1), at(q[2], y1), at(q[3], y1), [0, 1, 0]);
+      }
+    }
+    const strips = new BufferGeometry();
+    strips.setAttribute('position', new Float32BufferAttribute(pos, 3));
+    strips.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+    strips.computeVertexNormals();
+    const quoins = mergeVertices(strips);
+    strips.dispose();
+    quoins.name = `reservoir-${name}-quoins`;
+    out.push({ bucket, geometry: quoins });
+  }
   return geometry;
 }
 
@@ -534,11 +578,17 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
     quad('dark', [at(south, dU0 + 0.06, thr, d + 0.01), at(south, dU1 - 0.06, thr, d + 0.01), at(south, dU1 - 0.06, head - 0.06, d + 0.01),
       at(south, dU0 + 0.06, head - 0.06, d + 0.01)], south.n, { decor: true });
     // two strap hinges from the hinge side (the door's +u jamb), their pintles in the frame, and the latch
+    // (the r2 sweep, 2026-10-16: each strap was a 7 cm dark plate laid on the planks) a forged strap 5 cm wide at its
+    // knuckle tapering to 3.5 cm at its tip, 6 mm proud of the planks with its edges, on a pintle plate 5 cm wide
     for (const y of [thr + 0.32, head - 0.4]) {
-      const u1 = dU1 - 0.07, u0 = u1 - 0.78, f = d - 0.012 - 0.035 - 0.012;
-      quad('dark', [at(south, u0, y - 0.03, f), at(south, u1, y - 0.035, f), at(south, u1, y + 0.035, f), at(south, u0, y + 0.03, f)], south.n, { decor: true });
-      quad('dark', [at(south, u1 - 0.02, y - 0.06, f - 0.005), at(south, u1 + 0.04, y - 0.06, f - 0.005), at(south, u1 + 0.04, y + 0.06, f - 0.005),
-        at(south, u1 - 0.02, y + 0.06, f - 0.005)], south.n, { decor: true });
+      const u1 = dU1 - 0.07, u0 = u1 - 0.78, f = d - 0.012 - 0.035, t = 0.006, iron = { decor: true };
+      const s0 = at(south, u0, y - 0.0175, f - t), s1 = at(south, u1, y - 0.025, f - t), s2 = at(south, u1, y + 0.025, f - t), s3 = at(south, u0, y + 0.0175, f - t);
+      quad('dark', [s0, s1, s2, s3], south.n, iron);
+      quad('dark', [at(south, u0, y - 0.0175, f), at(south, u1, y - 0.025, f), s1, s0], DOWN, iron);
+      quad('dark', [at(south, u0, y + 0.0175, f), s3, s2, at(south, u1, y + 0.025, f)], UP, iron);
+      quad('dark', [at(south, u0, y - 0.0175, f), s0, s3, at(south, u0, y + 0.0175, f)], [-south.r[0], 0, -south.r[2]], iron);
+      quad('dark', [at(south, u1 - 0.01, y - 0.06, f - 0.017), at(south, u1 + 0.04, y - 0.06, f - 0.017), at(south, u1 + 0.04, y + 0.06, f - 0.017),
+        at(south, u1 - 0.01, y + 0.06, f - 0.017)], south.n, iron);
     }
     const lu = dU0 + 0.16, ly = thr + 1.0, lf = d - 0.012 - 0.035 - 0.015;
     quad('dark', [at(south, lu, ly - 0.07, lf), at(south, lu + 0.05, ly - 0.07, lf), at(south, lu + 0.05, ly + 0.09, lf), at(south, lu, ly + 0.09, lf)], south.n, { decor: true });
@@ -675,7 +725,7 @@ function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalet
   for (const body of plan.bodies) {
     // (the pump house's walls are the kit's masonry, buildKitKiosk; the bank and the intake keep their stone bodies)
     if (body.name !== 'kiosk') piece(out, 'stone', `${body.name}-body`, body.width, body.top - body.bottom,
-      body.depth, body.x, (body.top + body.bottom) / 2, body.z);
+      body.depth, body.x, (body.top + body.bottom) / 2, body.z, 0.3);
     // The ordinary cap overlaps by6cm. The intake reuses that same geometry
     // for a taller full-footprint closed hood, still inside one exact hard OBB.
     const cap = piece(out, 'dark', `${body.name}-cap`, body.width, 0.12,

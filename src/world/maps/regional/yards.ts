@@ -11,8 +11,8 @@
 // and the beds are checked on their own and left out where they do not fit. The planner is pure (numbers in,
 // placements out): props.ts places the modules as destructibles, builds the outbuilding with the kit and merges the
 // beds as dressing.
-import { PartSink, rgb, shade, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { bloomDisc, mound, ridge } from './dressing.ts';
+import { PartSink, normalize3, rgb, shade, type EmitOptions, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { mound, ridge } from './dressing.ts';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../../sim/matchPlacement.ts';
@@ -275,6 +275,35 @@ const CROP: readonly Rgb[] = [0x4f6b2e, 0x5f7f34, 0x6b8a3a, 0x3e5a2a, 0x7a8a3e].
 /** a cabbage's waxy blue-green */
 const CABBAGE: Rgb = rgb(0x7f9a74);
 
+/**
+ * A block with its top edges eased (the r2 sweep, 2026-10-16: the bed was one plain box, the kerb's stones too): its
+ * sides up to `ease` under its top, then a bevel in by `ease` to the top — dug soil slumped at its edges, a rough stone
+ * worn round. No underside (it stands in the ground); twelve corners welded into one piece.
+ */
+function easedBlock(sink: PartSink, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, ease: number, opts: EmitOptions): void {
+  const e = Math.max(0.005, Math.min(ease, (x1 - x0) / 3, (z1 - z0) / 3, (y1 - y0) / 2));
+  const ys = y1 - e, mid: Vec3 = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+  const foot: Vec3[] = [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]];
+  const shoulder = foot.map((p): Vec3 => [p[0], ys, p[2]]);
+  const top: Vec3[] = [[x0 + e, y1, z0 + e], [x1 - e, y1, z0 + e], [x1 - e, y1, z1 - e], [x0 + e, y1, z1 - e]];
+  // each face wound to face out from the block's axis
+  const face = (pts: Vec3[]) => {
+    const [a, b, c] = pts;
+    const nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
+    const ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+    const nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+    let outward = 0;
+    for (const q of pts) outward += nx * (q[0] - mid[0]) + ny * (q[1] - mid[1]) + nz * (q[2] - mid[2]);
+    sink.polygon('structureWood', outward >= 0 ? pts : [...pts].reverse(), opts);
+  };
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    face([foot[i], foot[j], shoulder[j], shoulder[i]]);
+    face([shoulder[i], shoulder[j], top[j], top[i]]);
+  }
+  face(top);
+}
+
 /** A kitchen garden's make by its country (props lane A, #18b, 2026-10-14; WORKLIST.md #18: "Kitchen gardens by kit
  *  (beds, wattle edging, bean poles, cold frames)"). */
 type GardenStyle = 'german' | 'dutch' | 'slavic' | 'french' | 'med' | 'monsoon' | 'japan' | 'american';
@@ -304,7 +333,7 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0, 
   // the dug ground a few centimetres over the yard's; on a slope the bed is raised to its high side, its soil carried
   // down to the ground (`drop`); a monsoon bed stands a hand higher inside its bund
   const bedTop = style === 'monsoon' ? 0.12 : 0.05;
-  sink.span('structureWood', -w / 2, -0.12 - drop, -d / 2, w / 2, bedTop, d / 2, { ...dec, colour: soil });
+  easedBlock(sink, -w / 2, -0.12 - drop, -d / 2, w / 2, bedTop, d / 2, 0.06, { ...dec, colour: soil });
   edging(sink, style, w, d, drop, bedTop, soil, look);
   const X: Vec3 = [1, 0, 0], Z: Vec3 = [0, 0, 1];
   // the end kept for the garden's furniture (a cold frame, the cloches, an arbour), when the bed is long enough
@@ -336,14 +365,22 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0, 
       // clumps smaller toward its top, a low ridge of leaves along the row's foot
       const leaf = shade(crop, 0.85 + look() * 0.2);
       ridge(sink, [x0 - 0.08, base, z], [last + 0.08, base, z], frame ? 0.42 : 0.3, 0.32, shade(leaf, 0.9), dec);
+      const clumps: Array<[number, number, number, number]> = [];
       for (let x = x0; x <= last + 1e-6; x += 0.45) {
         for (const [y, r] of [[0.45, 0.17], [0.85, 0.15], [1.2, 0.12]] as const) {
-          mound(sink, [x + (look() - 0.5) * 0.08, base + y - r * 0.6, z + (look() - 0.5) * 0.1], X, Z, r, r * 0.9, r * 1.5, shade(leaf, 0.85 + look() * 0.3), dec, look() * 6, 4);
+          // (the lowest clump sits down into the row's leafy foot: the r2 sweep found it a few centimetres over it)
+          const c: Vec3 = [x + (look() - 0.5) * 0.08, base + y - r * (y < 0.5 ? 0.9 : 0.6), z + (look() - 0.5) * 0.1];
+          mound(sink, c, X, Z, r, r * 0.9, r * 1.5, shade(leaf, 0.85 + look() * 0.3), dec, look() * 6, 4);
+          if (y < 1.2) clumps.push([c[0], c[1], c[2], r]);
         }
       }
       if (style === 'med') {
-        // the tomatoes ripening on them
-        for (let x = x0 + 0.2; x < last; x += 0.5 + look() * 0.3) mound(sink, [x, base + 0.5 + look() * 0.5, z + (look() - 0.5) * 0.3], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
+        // the tomatoes ripening on them, hung at a clump's foot (the r2 sweep: they hung in the air between the clumps)
+        for (const [cx, cy, cz, r] of clumps) {
+          if (look() < 0.55) continue;
+          const side = look() < 0.5 ? -1 : 1;
+          mound(sink, [cx + (look() - 0.5) * r * 0.6, cy - 0.02, cz + side * r * 0.5], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
+        }
       }
       continue;
     }
@@ -404,7 +441,7 @@ function edging(sink: PartSink, style: GardenStyle, w: number, d: number, drop: 
         if (look() < 0.08) continue;
         const t0 = (k + 0.06) / n, t1 = (k + 0.94) / n, h = 0.12 + look() * 0.08;
         const xa = a[0] + (b[0] - a[0]) * t0, za = a[2] + (b[2] - a[2]) * t0, xb = a[0] + (b[0] - a[0]) * t1, zb = a[2] + (b[2] - a[2]) * t1;
-        sink.span('structureWood', Math.min(xa, xb) - 0.07, -0.08, Math.min(za, zb) - 0.07, Math.max(xa, xb) + 0.07, h, Math.max(za, zb) + 0.07, { ...dec, colour: shade(KERB, 0.8 + look() * 0.35) });
+        easedBlock(sink, Math.min(xa, xb) - 0.07, -0.08, Math.min(za, zb) - 0.07, Math.max(xa, xb) + 0.07, h, Math.max(za, zb) + 0.07, 0.035, { ...dec, colour: shade(KERB, 0.8 + look() * 0.35) });
       }
     }
     return;
@@ -447,8 +484,7 @@ function furnish(sink: PartSink, style: GardenStyle, w: number, d: number, top: 
       const h = 1.7 + look() * 0.5, z = d / 2 - 0.18;
       sink.span('structureWood', x - 0.025, top, z - 0.025, x + 0.025, top + h, z + 0.025, { ...dec, colour: rgb(0x5a7a34) });
       for (const y of [0.6, 1.1]) mound(sink, [x, top + h * (y / 1.8), z], X, Z, 0.14, 0.08, 0.05, rgb(0x4a6a2c), dec, look() * 6, 4);
-      bloomDisc(sink, [x, top + h, z - 0.05], [0, -0.2, -1], 0.17, BLOOM, dec, look());
-      bloomDisc(sink, [x, top + h, z - 0.06], [0, -0.2, -1], 0.09, rgb(0x3a2614), dec);
+      sunflowerHead(sink, [x, top + h, z - 0.05], 0.17, look());
     }
     return;
   }
@@ -489,7 +525,44 @@ function furnish(sink: PartSink, style: GardenStyle, w: number, d: number, top: 
     // the vine over it and up a post
     ridge(sink, [xa + 0.1, top + h + 0.04, 0], [xb - 0.1, top + h + 0.04, 0], ad * 0.9, 0.18, shade(GOURD, 0.75), dec);
     ridge(sink, [xa, top, za], [xa, top + h, za + 0.01], 0.2, 0.15, shade(GOURD, 0.7), dec);
-    if (style === 'monsoon') for (let k = 0; k < 4; k++) mound(sink, [xa + 0.2 + look() * (aw - 0.4), top + h - 0.35, za + 0.2 + look() * (ad - 0.4)], X, Z, 0.08, 0.08, 0.28, shade(GOURD, 1.1), dec, look() * 6, 4);
+    if (style === 'monsoon') {
+      for (let k = 0; k < 4; k++) {
+        // a gourd hung on its stalk from one of the grid's inner bars (the r2 sweep: they hung a hand under the grid with
+        // nothing holding them)
+        const gx = xa + (aw * (look() < 0.5 ? 1 : 2)) / 3, gz = za + 0.2 + look() * (ad - 0.4);
+        mound(sink, [gx, top + h - 0.35, gz], X, Z, 0.08, 0.08, 0.28, shade(GOURD, 1.1), dec, look() * 6, 4);
+        sink.member('structureWood', [gx, top + h - 0.1, gz], [gx, top + h + 0.07, gz], 0.018, 0.018, [1, 0, 0], { ...dec, colour: shade(GOURD, 0.6), exposed: true }, 0.009);
+      }
+    }
+  }
+}
+
+/**
+ * A sunflower's head turned to the yard (the r2 sweep, 2026-10-16: the dark seed disc was painted flush on a yellow
+ * disc): a ring of ten petals round the seed head, the seed head a low dome standing out of the ring, welded to it at
+ * its rim (one piece, nothing laid on a face).
+ */
+function sunflowerHead(sink: PartSink, c: Vec3, r: number, twist: number): void {
+  const n = normalize3([0, -0.2, -1]), a = normalize3([-n[2], 0, n[0]]);
+  const b: Vec3 = [n[1] * a[2] - n[2] * a[1], n[2] * a[0] - n[0] * a[2], n[0] * a[1] - n[1] * a[0]];
+  const at = (t: number, rr: number, out = 0): Vec3 => [c[0] + (a[0] * Math.cos(t) + b[0] * Math.sin(t)) * rr + n[0] * out,
+    c[1] + (a[1] * Math.cos(t) + b[1] * Math.sin(t)) * rr + n[1] * out, c[2] + (a[2] * Math.cos(t) + b[2] * Math.sin(t)) * rr + n[2] * out];
+  // every face wound to face the yard (along n)
+  const front = (pts: Vec3[], colour: Rgb) => {
+    const [p, q, w] = pts;
+    const u: Vec3 = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], v: Vec3 = [w[0] - p[0], w[1] - p[1], w[2] - p[2]];
+    const f = (u[1] * v[2] - u[2] * v[1]) * n[0] + (u[2] * v[0] - u[0] * v[2]) * n[1] + (u[0] * v[1] - u[1] * v[0]) * n[2];
+    sink.polygon('structureWood', f >= 0 ? pts : [...pts].reverse(), { decor: true, colour });
+  };
+  const k = 10, seed = r * 0.5, dome = at(0, 0, 0.035), SEED = rgb(0x3a2614), CROWN = rgb(0x4a3018);
+  const t = (i: number) => twist + i * 2 * Math.PI / k;
+  for (let i = 0; i < k; i++) {
+    const r0 = at(t(i), seed), r1 = at(t(i + 1), seed), m0 = at(t(i), seed * 0.55, 0.026), m1 = at(t(i + 1), seed * 0.55, 0.026);
+    // a petal from the seed head's rim out to its tip, cupped a little toward the yard
+    front([r0, at(t(i + 0.5), r, 0.012), r1], shade(BLOOM, 0.92 + (i % 2) * 0.1));
+    // the seed head: its shoulder from the rim, its crown over it
+    front([r0, r1, m1, m0], SEED);
+    front([m0, m1, dome], CROWN);
   }
 }
 

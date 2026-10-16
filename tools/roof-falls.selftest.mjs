@@ -16,8 +16,14 @@ import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
 await ensureAuthorityFleet(['t90am', 'bmp2', 'jpz_e100', 'm1a1_abrams_hc']);
 
+// (physics, 2026-10-16; the integrator's conflict 6) Copper Mesa's tower is pinned by what it is — the edge site on the
+// 22.35 m top at (141.78, -191.67) — not by its place in the sample's list: Lane B's towers (f91a63de2) moved it from
+// edge/5 to edge/7. Its id is read back for the receipt's lines.
+const TOWER = { x: 141.78, z: -191.67, top: 22.35 };
+const tower = (id, site) => id.endsWith('/edge-drop') && site.sub === 'edge'
+  && Math.hypot(site.x - TOWER.x, site.z - TOWER.z) < 6 && Math.abs(site.top - TOWER.top) < 1.5;
 const CASES = [
-  ['copper_mesa', 'copper_mesa/roofs/edge/5/edge-drop', "a T-90 dropped across the edge of Copper Mesa's 22 m tower"],
+  ['copper_mesa', tower, "a T-90 dropped across the edge of Copper Mesa's 22 m tower"],
   ['cliffbridge', 'cliffbridge/roofs/flat/0/drive-off', 'an E-100 driven off a Cliffbridge roof at an angle'],
   ['airfield', 'airfield/roofs/flat/3/drive-off', 'an E-100 driven off an Airfield roof at an angle'],
   ['frontier', 'frontier/roofs/edge/11/edge-stand', "a BMP-2 set down on a Frontier roof's edge"],
@@ -26,13 +32,14 @@ const fmt = (m) => `pop ${m.popXZMaxM.toFixed(2)} m, overlap ${m.obstaclePenMaxM
   + `inside a solid ${m.insideSolidM.toFixed(2)} m, takeoff ${m.takeoffMaxMps.toFixed(2)} m/s`;
 const runs = [];
 for (const [map, id, what] of CASES) {
-  const [row] = await censusMap(map, { classes: ['roofs'], only: id });
-  assert.ok(row, `${id}: the census still samples this run`);
+  const found = await censusMap(map, { classes: ['roofs'], only: id });
+  assert.equal(found.length, 1, `${typeof id === 'string' ? id : `${map}'s tower`}: the census samples this run, once (${found.map((r) => r.id).join(', ')})`);
+  const [row] = found;
   const m = row.m;
   assert.ok(m.popXZMaxM <= 0.12 && m.obstaclePenMaxM <= 0.15, `${what} is pushed out of nothing (${fmt(m)})`);
   assert.ok(m.roofSinkMaxM <= 0.25 && m.insideSolidM <= 0.3, `${what} never stands into the roof (${fmt(m)})`);
   assert.ok(m.takeoffMaxMps <= 2.5, `${what} is thrown by nothing (${fmt(m)})`);
-  runs.push([id, row]);
+  runs.push([row.id ?? id, row]);
 }
 // exact: the same fall twice ends on the same pose to the bit
 const [again] = await censusMap('cliffbridge', { classes: ['roofs'], only: 'cliffbridge/roofs/flat/0/drive-off' });

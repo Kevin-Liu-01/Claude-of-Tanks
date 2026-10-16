@@ -132,8 +132,10 @@ if (process.argv[2] === '--fixture') {
       `${mapId}: palette fold does not replace geometry or bucket identities`));
   }
   const build = control => {
+    // (2026-10-16, the triage's flake class) each child builds Delta's props: about 16-18 s of CPU, which a loaded host
+    // stretched past the old 60 s and failed for time, not for a wrong answer. The timeout only guards a hung child.
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--fixture', control],
-      { encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+      { encoding: 'utf8', timeout: 180_000, maxBuffer: 8 * 1024 * 1024 });
     assert.equal(child.status, 0, child.stderr || String(child.error));
     return JSON.parse(child.stdout);
   };

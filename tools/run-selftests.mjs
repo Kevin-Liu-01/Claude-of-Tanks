@@ -55,6 +55,9 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   // This short wall-clock cadence assertion must observe current scheduling,
   // without complete fleet constructors delaying its 250 ms timer sample.
   'server/match/loop.selftest.mjs',
+  // (2026-10-16, integ/226 triage) the real-socket service's 20 Hz snapshot cadence over a measured window: beside
+  // seven fleet builders its timers measure the contention, not the cadence.
+  'server/match/service.selftest.mjs',
 ]);
 
 // A functional fleet sweep may reuse a source proof. Real frame/clock/heap

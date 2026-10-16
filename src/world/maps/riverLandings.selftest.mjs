@@ -104,7 +104,9 @@ for (const [bucket, geometries] of Object.entries(buckets)) {
 // 'stilts': leaning poles, lashed bearers and runners, rough boards, the handrail, sway braces, the tide sleeves) —
 // about 2,500 triangles a landing where the old kit's piles and slabs were 168; and the bank's reeds are the Ca Mau
 // nipa over its sedge (reedBeds.ts: three pinnate fronds a clump, ~350 triangles): the bound moves from 8,000 to 16,000
-assert.ok(triangles <= 16000, `landing kit stays bounded, got ${triangles} triangles`);
+// (r2 sweep, Lane C 2026-10-16: the kit's squared members' long arrises eased, bevelBox's 28 triangles a member where a box
+// had 12) the bound moves from 16,000 to 18,500
+assert.ok(triangles <= 18500, `landing kit stays bounded, got ${triangles} triangles`);
 console.log(`riverLandings.selftest: Mangrove's landings ${triangles} triangles`);
 const repeated = build();
 assert.deepEqual(repeated.receipts, receipts, 'landing placement and support receipts are deterministic');

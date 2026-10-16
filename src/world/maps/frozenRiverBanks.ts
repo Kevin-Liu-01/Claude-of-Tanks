@@ -15,6 +15,7 @@
 // 0.96, the shoreline the terrain draws): a point's signed distance to it is the least of its distances to their rims.
 
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { jitterUV } from '../propGeometry.ts';
 
 type Rng = () => number;
@@ -97,6 +98,56 @@ function mound(name: string, r: number, h: number, segments = 6): THREE.BufferGe
   return g;
 }
 
+/**
+ * A plate of the shore ice as the river breaks it (r2, 2026-10-16: the sweep read the shelf's plates plain boxes): an
+ * irregular six-sided slab `w` along the edge, `dep` across the bank and `th` thick, centred as the box it replaced and
+ * inside its w x dep plan, its broken outline from a hash of where it lies (`seed`), never the stream; flat faces, its
+ * uvs a plate's width across each face as the box's were.
+ */
+function shelfPlate(w: number, th: number, dep: number, seed: number): THREE.BufferGeometry {
+  const j = (k: number): number => {
+    let q = Math.imul(seed ^ Math.imul(k, 0x9e3779b1), 0x85ebca6b);
+    q ^= q >>> 13; q = Math.imul(q, 0xc2b2ae35); q ^= q >>> 16;
+    return (q >>> 0) / 4294967296;
+  };
+  const hw = w / 2, hd = dep / 2, hy = th / 2;
+  const ring: Array<[number, number]> = [
+    [-hw + w * 0.18 * j(1), -hd], [hw * (0.3 + 0.45 * j(2)), -hd + dep * 0.14 * j(3)], [hw, -hd * (0.1 + 0.5 * j(4))],
+    [hw - w * 0.22 * j(5), hd], [-hw * (0.1 + 0.5 * j(6)), hd - dep * 0.16 * j(7)], [-hw, hd * (0.15 + 0.55 * j(8))],
+  ];
+  const pos: number[] = [], uv: number[] = [];
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), n = new THREE.Vector3(), c = new THREE.Vector3();
+  const tri = (a: THREE.Vector3, b: THREE.Vector3, d: THREE.Vector3, out: THREE.Vector3, ua: number[], ub: number[], ud: number[]): void => {
+    e1.subVectors(b, a); e2.subVectors(d, a);
+    const ok = n.crossVectors(e1, e2).dot(out) >= 0;
+    for (const [q, t] of (ok ? [[a, ua], [b, ub], [d, ud]] : [[a, ua], [d, ud], [b, ub]]) as Array<[THREE.Vector3, number[]]>) {
+      pos.push(q.x, q.y, q.z); uv.push(t[0], t[1]);
+    }
+  };
+  const P = (k: number, y: number) => new THREE.Vector3(ring[k % 6][0], y, ring[k % 6][1]);
+  // the broken sides, each wound out from the slab's middle
+  for (let k = 0; k < 6; k++) {
+    const a0 = P(k, -hy), a1 = P(k + 1, -hy), b1 = P(k + 1, hy), b0 = P(k, hy);
+    c.set((a0.x + a1.x) / 2, 0, (a0.z + a1.z) / 2);
+    const u0 = k / 6, u1 = (k + 1) / 6;
+    tri(a0, a1, b1, c, [u0, 0], [u1, 0], [u1, 1]);
+    tri(a0, b1, b0, c, [u0, 0], [u1, 1], [u0, 1]);
+  }
+  // its top and its underside
+  const faces = THREE.ShapeUtils.triangulateShape(ring.map(([x, z]) => new THREE.Vector2(x, z)), []);
+  for (const [y, out] of [[hy, new THREE.Vector3(0, 1, 0)], [-hy, new THREE.Vector3(0, -1, 0)]] as const) {
+    for (const [a, b, d] of faces) {
+      const t = (k: number) => [ring[k][0] / w + 0.5, ring[k][1] / dep + 0.5];
+      tri(P(a, y), P(b, y), P(d, y), out, t(a), t(b), t(d));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return mergeVertices(g);
+}
+
 /** A seed spike's cap of snow: a low four-sided cone, open beneath (the spike's top under it). */
 function snowCap(r: number, h: number): THREE.BufferGeometry {
   const g = new THREE.ConeGeometry(r, h, 3, 1, true);
@@ -134,7 +185,7 @@ export function dressFrozenRiverBanks(stations: readonly Station[], field: BankF
         const heave = 0.18 + rng() * 0.35, roll = (rng() - 0.5) * 0.3, yawJ = (rng() - 0.5) * 0.5;
         const [px, pz] = at(out, along);
         if (!clear(px, pz) || edge(px, pz) > 0.3) continue;
-        const plate = new THREE.BoxGeometry(w, th, dep);
+        const plate = shelfPlate(w, th, dep, (Math.imul(Math.round(px * 100), 73856093) ^ Math.imul(Math.round(pz * 100), 19349663) ^ k) | 0);
         plate.name = 'winter-shore-shelf';
         // heaved: its bank side up, set on the ice where it lies
         // (its depth across the bank: the heave lifts its bank side, its width along the edge)

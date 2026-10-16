@@ -573,6 +573,9 @@ export function signNear(f: SignForm, rng: Rng): THREE.BufferGeometry {
         const y = 1.2 + k * 0.28, yaw = (rng() - 0.5) * 0.5 + (k % 2 ? Math.PI : 0), w = 0.36 + rng() * 0.2, from = m.mark;
         plate(m, 0.05 + w / 2, y, 0.05, w, 0.18, 0.015, k % 3 === 0 ? f.plate : mix(f.plate, f.border, 0.5), f.border, k % 2 === 0);
         bar(m, [0.12, y, 0.062], [0.12 + w * 0.5, y, 0.062], 0.04, 0.006, Z, f.legend, 0, false);
+        // (the r2 sweep, 2026-10-16: a board stood 2 cm off the pole with nothing holding it) the cleat it is nailed to the
+        // pole through, wedged between the two
+        bar(m, [0.035, y - 0.06, 0.033], [0.035, y + 0.06, 0.033], 0.03, 0.02, Z, mul(post, 0.8), 0, false);
         place(m, from, yaw, 0, 0, 0);
       }
       break;

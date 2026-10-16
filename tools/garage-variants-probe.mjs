@@ -389,7 +389,7 @@ try {
       }
     } else if (architecture.source !== 'authentic-garage-scene-pack'
         || architecture.drawCalls < 8 || architecture.drawCalls > 25
-        || architecture.triangles <= 0 || architecture.triangles > 64_000
+        || architecture.triangles <= 0 || architecture.triangles > 72_000 // 72k since 2026-10-16 (garageQualityRubric.ts)
         || architecture.terrainVertices !== 1517
         || architecture.distinctiveElements?.length < 4
         || architecture.facilityProps < 100 || architecture.facilityStations !== 2

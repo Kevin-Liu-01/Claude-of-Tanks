@@ -5,7 +5,7 @@
 // the planner's family radius. First-party generated geometry; no model is loaded.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { YardFamily } from '../yardDressing.ts';
 import { hexLin, mul, type Mesh as CraftMesh, type Rgb, type V3 } from './craftMesh.ts';
 import { bar, crateNear, drumNear, extrude, finish, lathe, newMesh, palletNear, place, tip, type PalletForm } from './clutterForms.ts';
@@ -68,22 +68,80 @@ function at(g: THREE.BufferGeometry, yaw: number, x: number, y: number, z: numbe
 }
 
 /** A stacked pallet below the top one: its deck's edge and its blocks or stringers, its bottom boards (the deck's face
- *  is under the next). */
-function palletLayer(m: CraftMesh, f: PalletForm, y: number, yaw: number, dx: number, dz: number): void {
+ *  is under the next). `ease` the arrises of its deck and bottom boards (0: the legacy stack's plain slabs). */
+function palletLayer(m: CraftMesh, f: PalletForm, y: number, yaw: number, dx: number, dz: number, ease = 0): void {
   const from = m.mark, W = f.kind === 'gma' ? 1.22 : 1.2, D = f.kind === 'gma' ? 1.02 : 0.8;
-  bar(m, [-W / 2, y + 0.133, 0], [W / 2, y + 0.133, 0], D, 0.022, [0, 0, 1], f.wood, 0, false);
+  bar(m, [-W / 2, y + 0.133, 0], [W / 2, y + 0.133, 0], D, 0.022, [0, 0, 1], f.wood, ease * 0.6, false);
   // (above the lowest, a pallet's bottom boards lie on the deck under it: its blocks reach down to that deck)
   const foot = y === 0 ? 0.022 : 0;
   for (const z of [-D / 2, D / 2]) for (const x of [-W / 2 + 0.07, 0, W / 2 - 0.07]) bar(m, [x, y + foot, z], [x, y + 0.122, z], 0.13, 0.1, [1, 0, 0], f.dark, 0, true);
-  if (y === 0) bar(m, [-W / 2, 0.011, 0], [W / 2, 0.011, 0], D * 0.9, 0.022, [0, 0, 1], mul(f.wood, 0.92), 0, false);
+  if (y === 0) bar(m, [-W / 2, 0.011, 0], [W / 2, 0.011, 0], D * 0.9, 0.022, [0, 0, 1], mul(f.wood, 0.92), ease * 0.6, false);
   place(m, from, yaw, dx, 0, dz);
 }
-function palletStackOf(mapId: string | undefined, count: number): THREE.BufferGeometry {
-  const f = (mapId && palletFormOf(mapId)) || palletFormOf('railyard')!;
+function palletStack(f: PalletForm, count: number, ease: number): THREE.BufferGeometry {
   const m = newMesh();
-  for (let k = 0; k + 1 < count; k++) palletLayer(m, f, k * 0.144, Math.sin(k * 3.1) * 0.06, Math.sin(k * 2.7) * 0.04, Math.cos(k * 1.9) * 0.03);
+  for (let k = 0; k + 1 < count; k++) palletLayer(m, f, k * 0.144, Math.sin(k * 3.1) * 0.06, Math.sin(k * 2.7) * 0.04, Math.cos(k * 1.9) * 0.03, ease);
   const k = count - 1;
   return merge([finish(m), at(palletNear(f, mulberry(0x9a11e7 + count)), Math.sin(k * 3.1) * 0.06, Math.sin(k * 2.7) * 0.04, k * 0.144, Math.cos(k * 1.9) * 0.03)]);
+}
+/**
+ * (the r2 sweep, 2026-10-16: the stacks graded box share 0.90, their lower pallets' decks, blocks and bottom boards plain
+ * boxes) The stack drawn with its lower pallets' decks and bottom boards eased (6 mm arrises: the slabs were the stack's
+ * area), its record the legacy stack's: Lane C's break path (smallPropBreak.ts breakableSmallProp, PRP-02) makes the
+ * piece's record from every `max(1, floor(n / 400))`-th entry of its position attribute — the hull, the heights and the
+ * centre of those samples — so the drawn stack is indexed over a pool of the legacy stack's length whose sampled entries
+ * keep the legacy positions (the record, the clutter's centre and reach byte for byte); a drawn vertex standing on a
+ * sample takes that entry, the rest take the others.
+ */
+function palletStackOf(mapId: string | undefined, count: number): THREE.BufferGeometry {
+  const f = (mapId && palletFormOf(mapId)) || palletFormOf('railyard')!;
+  const legacy = palletStack(f, count, 0), eased = palletStack(f, count, 0.01), drawn = mergeVertices(eased);
+  const pooled = withRecordOf(legacy, drawn);
+  legacy.dispose(); eased.dispose(); drawn.dispose();
+  return pooled;
+}
+
+/** `drawn` (indexed, its shared corners welded) indexed over a pool of `legacy`'s length whose record samples (every
+ *  stride-th entry) keep `legacy`'s positions. */
+function withRecordOf(legacy: THREE.BufferGeometry, drawn: THREE.BufferGeometry): THREE.BufferGeometry {
+  const lp = legacy.getAttribute('position'), size = lp.count, s = Math.max(1, Math.floor(size / 400));
+  const names = Object.keys(drawn.attributes), dp = drawn.getAttribute('position'), verts = dp.count;
+  const key = (x: number, y: number, z: number) => `${Math.fround(x)},${Math.fround(y)},${Math.fround(z)}`;
+  // the samples by position (the unassigned ones a drawn vertex standing there may take)
+  const open = new Map<string, number[]>();
+  for (let slot = 0; slot < size; slot += s) {
+    const k = key(lp.getX(slot), lp.getY(slot), lp.getZ(slot));
+    const list = open.get(k);
+    if (list) list.push(slot); else open.set(k, [slot]);
+  }
+  const slotOf = new Int32Array(verts).fill(-1), taken = new Uint8Array(size);
+  for (let v = 0; v < verts; v++) {
+    const list = open.get(key(dp.getX(v), dp.getY(v), dp.getZ(v)));
+    const slot = list?.pop();
+    if (slot !== undefined) { slotOf[v] = slot; taken[slot] = 1; }
+  }
+  let free = 0;
+  for (let v = 0; v < verts; v++) {
+    if (slotOf[v] >= 0) continue;
+    while (free < size && (free % s === 0 || taken[free])) free++;
+    if (free >= size) throw new Error(`yard clutter: the record pool of ${size} cannot hold the stack's ${verts} vertices`);
+    slotOf[v] = free; taken[free] = 1;
+  }
+  const out = new THREE.BufferGeometry();
+  for (const name of names) {
+    const a = drawn.getAttribute(name), k = a.itemSize, data = new Float32Array(size * k);
+    // (an entry no drawn vertex takes: a sample keeps its legacy position, every other attribute the first vertex's)
+    for (let slot = 0; slot < size; slot++) for (let c = 0; c < k; c++) data[slot * k + c] = a.array[c];
+    for (let v = 0; v < verts; v++) for (let c = 0; c < k; c++) data[slotOf[v] * k + c] = a.array[v * k + c];
+    if (name === 'position') for (let slot = 0; slot < size; slot += s) { data[slot * 3] = lp.getX(slot); data[slot * 3 + 1] = lp.getY(slot); data[slot * 3 + 2] = lp.getZ(slot); }
+    out.setAttribute(name, new THREE.BufferAttribute(data, k));
+  }
+  const di = drawn.getIndex()!, index = new Uint32Array(di.count);
+  for (let i = 0; i < di.count; i++) index[i] = slotOf[di.getX(i)];
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  out.computeBoundingBox();
+  out.computeBoundingSphere();
+  return out;
 }
 
 function cratesOf(mapId: string | undefined): THREE.BufferGeometry {
@@ -197,9 +255,10 @@ export const YARD_FAMILY_MATERIAL: Readonly<Record<YardFamily, YardMaterial>> = 
   tyres: 'baked',
 });
 
-/** Triangle caps the receipt holds each family to (a stack of six pallets is the largest wooden piece). */
+/** Triangle caps the receipt holds each family to (a stack of six pallets is the largest wooden piece; the r2 sweep's
+ *  eased decks, 2026-10-16, +48 a stack of three, +96 of six). */
 export const YARD_FAMILY_TRIANGLE_CAP: Readonly<Record<YardFamily, number>> = Object.freeze({
-  pallets: 380, palletsTall: 560, crates: 620, drum: 210, drumRank: 340, cableDrum: 300, tyres: 300, fuelTank: 320, skip: 220,
+  pallets: 420, palletsTall: 650, crates: 620, drum: 210, drumRank: 340, cableDrum: 300, tyres: 300, fuelTank: 320, skip: 220,
 });
 
 /** Build one family's geometry in the map's forms (the caller owns and disposes it; one per family per battlefield). */

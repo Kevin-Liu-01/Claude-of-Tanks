@@ -7758,7 +7758,7 @@ function* createTankOwnedSteps(
   const spareTrackStartedAt = performance.now();
   try {
     const spareTrackSeats = seatAuthoredSpareTracks({
-      spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart,
+      spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart, markings: decals,
       bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
     });
     root.userData.spareTrack = spareTrackSeats.runs;
