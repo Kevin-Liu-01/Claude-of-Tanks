@@ -142,9 +142,9 @@ anatomy.intact = intact;
 // ---- an open frame falls as its own lattice, a skin wall stands no masonry (the LOOKS gate 2026-10-16: a 5.71 m pier
 // run stood on navajo's collapsed steel water tower)
 {
-  const raftWith = (anatomy, seed = 5) => {
+  const raftWith = (anatomy, seed = 5, builder = null) => {
     const writer = recorder();
-    keepRuinStanding(anatomy, seed, { mesh: writer, pieces }, (w) => raftKit(anatomy, w));
+    keepRuinStanding(anatomy, seed, { mesh: writer, pieces }, (w) => raftKit(anatomy, w), builder);
     return writer;
   };
   const kitAlone = (anatomy) => { const writer = recorder(); raftKit(anatomy, { mesh: writer, pieces }); return writer; };
@@ -155,7 +155,8 @@ anatomy.intact = intact;
   assert.equal(ruinKind(framed), 'frame');
   const masonryAdded = (writer, alone) => writer.runs.slice(alone.runs.length).filter((r) => r.role === 'remnant' && r.bucket !== 'structureMetal');
   {
-    const writer = raftWith(framed), alone = kitAlone(framed);
+    // (a tower by its builder: a dense intact plan would otherwise read as a roofed hall's)
+    const writer = raftWith(framed, 5, 'watertower'), alone = kitAlone(framed);
     assert.equal(masonryAdded(writer, alone).length, 0, 'a lattice frame stands no masonry');
     assert.ok(writer.runs.slice(alone.runs.length).every((r) => r.bucket === 'structureMetal' && r.role === 'remnant'), 'only its own legs');
     const { p90 } = measure(writer.tris, 0.25, 5, 4);
@@ -163,7 +164,7 @@ anatomy.intact = intact;
     assert.ok(!writer.runs.some((r) => r.role === 'rubble' && r.bucket === 'regionalStone' && writer.runs.indexOf(r) >= alone.runs.length), 'no heap where it drew nothing');
   }
   {
-    const hall = { ...house(), intact, kitPlan: framed.kitPlan };
+    const hall = { ...house(), intact, kitPlan: framed.kitPlan }; // (a market hall: its roof over its plan)
     const writer = raftWith(hall), alone = kitAlone(hall);
     assert.equal(masonryAdded(writer, alone).length, 0, 'a roofed open hall stands no masonry either');
     assert.ok(writer.runs.slice(alone.runs.length).some((r) => r.role === 'rubble'), 'its fallen roof heaped over its plan');
