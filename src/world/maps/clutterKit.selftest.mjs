@@ -195,9 +195,8 @@ for (const mapId of Object.keys(YARD_CENSUS)) {
   }
 }
 for (const family of Object.keys(YARD_FAMILY_RADIUS)) {
-  const pallets = family === 'pallets' || family === 'palletsTall';
+  // (the r2 sweep, 2026-10-16: the pallet stacks' 0.9 box-share allowance is gone with their plain decks)
   const r = r2Check({ kind: `yard:${family}`, maps: Object.keys(YARD_CENSUS), route: 'crush', noBroken: true, caps: { near: YARD_FAMILY_TRIANGLE_CAP[family] },
-    limits: pallets ? { boxShareMax: 0.9, reason: 'a pallet stack is boards and blocks: below the top pallet, a deck and its blocks' } : undefined,
     resolve: (mapId) => ({ form: `${family}:${mapId}`, build: () => buildYardFamily(family, mapId).geometry }) });
   problems.push(...r.problems);
   forms += r.forms.length;
