@@ -116,25 +116,59 @@ export const windmill: LandmarkBuilder = (ctx) => {
   // sail tip sweeps clear over the stage's railing (1.7 m: the railing and the miller's reach to set the cloth)
   const sailLen = tower ? Math.min(11.5, capY * 0.6) : 0, towerR = (y: number) => r0 - 0.26 * r0 * Math.max(0, y - 0.6) / (capY - 0.6);
   if (tower) {
+    // (props census #22, Lane C 2026-10-16: "the brick tower is one smooth 16-gon stone revolve with no courses and no
+    // plinth chamfer") the tower in three named pieces of brick (pieces.ts): the shaft to the stage stands, the upper
+    // shaft over the stage topples when the mill is breached and the stage itself slumps with it; the plinth with its
+    // chamfered water table and the tarred foot, a band of brick every course of the shaft, the door in a brick doorcase
+    // with its leaf set back in it, the windows in brick surrounds.
     // (a facet, not a corner, to the front and to each quarter: the door and the windows sit flat on the brick)
-    revolve(sink, 'stone', 0, 0, [[r0 + 0.2, base], [r0 + 0.2, 0.6], [r0, 0.6], [r0 * 0.74, capY]], 16, {}, Math.PI / 16);
-    // the stage (stelling) round the tower at a third of its height, its railing and the struts under it
     const sy = Math.min(capY * 0.42, capY + 1.3 - sailLen - 1.7), rs = r0 * (1 - 0.26 * sy / capY) + 2.2;
-    // the deck: its soffit, its edge and its boards (a closed ring round the tower)
-    revolve(sink, 'structureWood', 0, 0, [[0.5, sy], [rs, sy], [rs, sy + 0.18], [0.5, sy + 0.18]], 16, { colour: TIMBER });
-    for (let k = 0; k < 8; k++) {
-      const a = k / 8 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), rr = r0 * (1 - 0.26 * (sy - 2.2) / capY);
-      bar(sink, 'structureWood', [ca * rr, sy - 2.2, sa * rr], [ca * (rs - 0.2), sy, sa * (rs - 0.2)], 0.14, { colour: TIMBER_DARK, decor: true });
-      const b = (k + 1) / 8 * Math.PI * 2;
-      railing(sink, [Math.cos(a) * rs, Math.sin(a) * rs], [Math.cos(b) * rs, Math.sin(b) * rs], 0.95, TIMBER_DARK, { pitch: 1.8, base: sy + 0.18 });
-    }
-    for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-      // (each on the tapering wall at its own height, the 16-sided tower's facet a little inside its corner radius)
-      const rw = towerR(capY * 0.62 + 0.6) * Math.cos(Math.PI / 16) + 0.02;
-      const f: Face = { origin: [Math.sin(a) * rw, 0, Math.cos(a) * rw], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
-      archWindow(sink, f, { u: 0, w: 0.7, y0: capY * 0.62, spring: capY * 0.62 + 1.0, form: 'segmental', rise: 0.18 }, 0, FRAME_WHITE, false, { bars: false });
-    }
-    plankDoor(sink, { origin: [0, 0, towerR(1.6) * Math.cos(Math.PI / 16) + 0.02], u: [1, 0, 0], out: [0, 0, 1], width: 1 }, 0, 0.6, 1.1, 2.1, IRON_GREEN, 0.02);
+    const F = Math.PI / 16, shaft = (y: number): readonly [number, number] => [r0 - 0.26 * r0 * Math.max(0, y - 0.62) / (capY - 0.62), y];
+    // (the shaft's head under the upper shaft: its wall's top and inside, which the toppled top leaves open)
+    const head = shaft(sy + 0.3), inner = head[0] - 0.6;
+    revolve(sink, 'stone', 0, 0, [[r0 + 0.3, base], [r0 + 0.3, 0.32], [r0 + 0.05, 0.62], shaft(0.62), head, [inner, head[1]], [inner, head[1] - 0.9]], 16, {}, F);
+    // the tarred foot of the shaft, a skin over the brick from the water table up
+    revolve(sink, 'stone', 0, 0, [[shaft(0.62)[0] + 0.025, 0.62], [shaft(1.5)[0] + 0.025, 1.5], [shaft(1.5)[0], 1.53]], 16,
+      { decor: true, tint: [0.36, 0.34, 0.32] }, F);
+    const band = (y: number, s: PartSink, out = 0.045, h = 0.12): void => {
+      const r = shaft(y)[0] + out;
+      revolve(s, 'stone', 0, 0, [[r - out, y - h / 2], [r, y - h / 2 + 0.02], [r, y + h / 2], [r - out, y + h / 2]], 16, { decor: true, tint: [0.92, 0.88, 0.84] }, F);
+    };
+    for (let y = 2.6; y < sy - 0.6; y += 2.2) band(y, sink);
+    band(sy - 0.08, sink, 0.09, 0.22);
+    piece(sink, { name: 'tower-top', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
+      revolve(s, 'stone', 0, 0, [[0, sy + 0.3], shaft(sy + 0.3), shaft(capY), [0, capY]], 16, {}, F);
+      band((sy + capY) / 2, s);
+      band(capY - 0.18, s, 0.08, 0.26);
+      for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+        // (each on the tapering wall at its own height, the 16-sided tower's facet a little inside its corner radius)
+        const y0 = capY * 0.62, rw = towerR(y0 + 0.6) * Math.cos(F) + 0.02;
+        const f: Face = { origin: [Math.sin(a) * rw, 0, Math.cos(a) * rw], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
+        // its brick surround standing out of the wall: the jambs, the arch's soffit over the head, the sill
+        for (const side of [-1, 1]) faceBox(s, 'stone', f, side * 0.45, y0 + 0.62, 0.08, 0.2, 1.4, 0.16, { decor: true });
+        faceBox(s, 'stone', f, 0, y0 + 1.36, 0.08, 1.1, 0.24, 0.16, { decor: true });
+        faceBox(s, 'stone', f, 0, y0 - 0.05, 0.1, 1.0, 0.1, 0.2, { decor: true });
+        archWindow(s, f, { u: 0, w: 0.7, y0, spring: y0 + 1.0, form: 'segmental', rise: 0.18 }, 0, FRAME_WHITE, false, { bars: false, coarse: true });
+      }
+    });
+    // the stage (stelling) round the tower at a third of its height, its railing and the struts under it
+    piece(sink, { name: 'stage', kind: 'detach', at: 'breached', fall: 'slump' }, (s) => {
+      // the deck: its soffit, its edge and its boards (a closed ring round the tower)
+      revolve(s, 'structureWood', 0, 0, [[0.5, sy], [rs, sy], [rs, sy + 0.18], [0.5, sy + 0.18]], 16, { colour: TIMBER });
+      for (let k = 0; k < 8; k++) {
+        const a = k / 8 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), rr = r0 * (1 - 0.26 * (sy - 2.2) / capY);
+        bar(s, 'structureWood', [ca * rr, sy - 2.2, sa * rr], [ca * (rs - 0.2), sy, sa * (rs - 0.2)], 0.14, { colour: TIMBER_DARK, decor: true });
+        const b = (k + 1) / 8 * Math.PI * 2;
+        railing(s, [Math.cos(a) * rs, Math.sin(a) * rs], [Math.cos(b) * rs, Math.sin(b) * rs], 0.95, TIMBER_DARK, { pitch: 1.8, base: sy + 0.18 });
+      }
+    });
+    // the door in its brick doorcase: two jambs and the head standing out of the shaft, the leaf set back between them
+    const rd = towerR(1.6) * Math.cos(F) + 0.02;
+    const df: Face = { origin: [0, 0, rd], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
+    for (const side of [-1, 1]) faceBox(sink, 'stone', df, side * 0.72, 1.65, 0.16, 0.3, 2.1, 0.36);
+    faceBox(sink, 'stone', df, 0, 2.86, 0.16, 1.74, 0.36, 0.36);
+    faceBox(sink, 'stone', df, 0, 0.55, 0.3, 1.5, 0.14, 0.6, { decor: true });
+    plankDoor(sink, df, 0, 0.62, 1.14, 2.08, IRON_GREEN, 0.03);
   } else {
     revolve(sink, 'stone', 0, 0, [[r0 / Math.cos(OCT), base], [r0 / Math.cos(OCT), 1.6], [(r0 - 0.15) / Math.cos(OCT), 1.6]], 8, {}, OCT);
     const body = ctx.mapId === 'polders' ? 'straw' : 'structureWood';
