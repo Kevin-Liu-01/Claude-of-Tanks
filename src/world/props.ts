@@ -99,7 +99,7 @@ import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M 
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
-import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
+import { brickPierCapFor, buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { WaterDisturbance } from './shallowWater.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -119,6 +119,7 @@ import {
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { fenceTypes } from './maps/fenceKit.ts';
+import { coursedWallType } from './maps/coursedWallKit.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
@@ -741,6 +742,8 @@ interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'
   instanceTintStrength?: number;
   /** (E1) the kind's broken builder is its own (structureKit lightMeta's brokenBuild): never replaced by a fracture */
   ownBroken?: boolean;
+  /** (props lane A #6) the module a wall run's terrain fit reads in place of the drawn one (coursedWallKit.ts: the legacy) */
+  fitGeometry?: THREE.BufferGeometry;
 }
 
 interface PropsCollisionRecord extends CollisionRecord {
@@ -4456,7 +4459,8 @@ ${snowCap ? `
     // coursed module on the stone print
     // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
     // top, so a breached module loses it with its stones)
-    ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
+    // (props lane A #6: the coursed module in its region's build, maps/coursedWallKit.ts: the legacy collision and fit)
+    ...(sourcedStoneIsBrick(mapId) ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
@@ -6166,6 +6170,7 @@ ${snowCap ? `
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     adobeApronCoarse: P.adobeApronCoarse === true,
+    pierCap: brickPierCapFor(regionalArchitecture?.id),
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
       meshAt: (x, z) => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z), foldAt: turfFoldAt,
@@ -6234,13 +6239,14 @@ ${snowCap ? `
         if (fallen) buckets[wallB].push(fallen);
         return;
       }
-      const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
-      jitterUV(post, rng);
-      buckets[wallB].push(post.translate(px, py + ph / 2, pz));
-      buckets[wallB].push(box(thick + 0.34, 0.12, thick + 0.34, 0.8)
-        .translate(px, py + ph + 0.05, pz)); // cap slab
+      // (props lane A #6) the brick wall's pier and its region's coping (fieldWallDressing.ts pier); the old post's draws
+      jitterUV(box(thick + 0.22, ph, thick + 0.22, 0.7), rng).dispose();
+      buckets[wallB].push(wallDressing.pier(px, py, pz, yaw, thick, ph + 0.11));
     }
     function addBrokenBreach(t0: number, t1: number): void {
+      // (props lane A #6: the boxes are the seat proxies and keep the draws; the breach draws the wall's own stepped
+      // section and its spilled units — fieldWallDressing.ts breach, breachTumble)
+      const breachKind = style === 'adobe' ? 'adobe' : sourcedStoneIsBrick(mapId) ? 'brick' : 'drystone';
       for (const breachT of [0.18, 0.82]) {
         const x = x0 + tx * (t0 + breachT * (t1 - t0));
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
@@ -6249,10 +6255,16 @@ ${snowCap ? `
         const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
         if (wallB === 'fieldStone') wallDressing.stoneUv(stub, rng); else jitterUV(stub, rng);
         stub.rotateY(yaw);
-        buckets[wallB].push(stub.translate(x, y + height / 2, z));
+        stub.translate(x, y + height / 2, z);
+        buckets[wallB].push(wallDressing.breach(breachKind, x, y, z, yaw, thick, height, breachT < 0.5 ? -1 : 1));
         const drawn = drawnPlanRecord([stub], y + 0.15, 0.05);
+        stub.dispose();
         if (drawn) breachRubbleFootprints.push(drawn);
       }
+      const mid = (t0 + t1) / 2;
+      const spill = breachKind === 'brick' ? null
+        : wallDressing.breachTumble(style === 'adobe', x0 + tx * mid, z0 + tz * mid, tz, -tx, thick * 0.5);
+      if (spill) buckets[wallB].push(spill);
       for (let blockIndex = 0; blockIndex < 5; blockIndex++) {
         const breachT = 0.2 + rng() * 0.6;
         const x = x0 + tx * (t0 + breachT * (t1 - t0)) + (rng() - 0.5) * 1.6;
@@ -6265,8 +6277,8 @@ ${snowCap ? `
         block.rotateY(rng() * Math.PI);
         const groundY = heightField.getHeightAt(x, z);
         block.translate(x, groundY + size * 0.3, z);
-        buckets[wallB].push(block);
         const drawn = drawnPlanRecord([block], groundY, 0.05);
+        if (spill) block.dispose(); else buckets[wallB].push(block);
         if (drawn) breachRubbleFootprints.push(drawn);
       }
     }
@@ -10752,7 +10764,7 @@ ${snowCap ? `
         if (!span) continue;
         // Complete each terrain fit in the original order; only the boundary
         // between records changes. Micro-batches do not advance loading progress.
-        fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG);
+        fitWallSpan(pool.mats4[record.slot], pool.meta.fitGeometry ?? geoI, heightField, span, record, WALL_SEG);
         if (++fitted % 8 === 0 && index + 1 < pool.records.length) {
           yield { fine: true, progress: false, stage: 'wall-fit-' + kind };
         }

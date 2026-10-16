@@ -1808,6 +1808,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
     'src/world/maps/fenceKit.selftest.mjs', // 2026-10-15 props lane A #6: the timber fences in their region's build, legacy collision
+    'src/world/maps/coursedWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the brick-print field walls by region, legacy collision and fit
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
     'src/world/maps/clutterKit.selftest.mjs', // 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k a map)

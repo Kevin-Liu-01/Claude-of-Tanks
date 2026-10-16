@@ -12,6 +12,7 @@
 // geometry carries position, normal and uv only (the props buckets merge them with the kit's own parts).
 import * as THREE from 'three';
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
+import { buildDryStoneWallHead } from './inhabitKit.ts';
 
 export interface DressingGround { getHeightAt(x: number, z: number): number }
 
@@ -485,6 +486,12 @@ export interface WallDressingOptions {
   adobeApronCoarse?: boolean;
   plainV?: readonly [number, number];
   /**
+   * (props lane A #6) the coping a brick-print map's wall piers carry, by its region (brickPierCapFor): the Ruhr's and
+   * the Saar's Rollschicht of bricks on edge, the Franconian ashlar's saddleback, Jiangnan's hipped cap, Glen Canyon's
+   * block cap, a slab with its drip elsewhere.
+   */
+  pierCap?: BrickPierCap;
+  /**
    * (b18) The ground the turf banks against the dry-stone walls' feet: the nearest terrain mesh's height and the
    * ground's fold (buildWallTurf). Absent: no turf (a snow map's drifts and the phones' walls go without).
    */
@@ -511,6 +518,149 @@ export interface WallDressing {
    * the props stream, its v window placed inside the field print's face band (wave 34: the hearting band is the core's).
    */
   stoneUv<T extends THREE.BufferGeometry>(g: T, rng: () => number): T;
+  /**
+   * (props lane A #6, 2026-10-15; WORKLIST #6 site:wall-breach: "masonry takes a stepped bite through its own courses
+   * with loose units spilled (not a box stub)") a breach's remnant in the wall's own section, its foot at (x, y, z) and
+   * turned by `yaw` (the run along local +z): the dry-stone wall's racked stones in two steps (and its snow load on a
+   * snow map), the mud wall's slumped stub, the brick wall's courses stepped down; higher toward `toward` (the lip it
+   * stands by). Its own stream (named by its place): props.ts keeps the old box stub as the seat proxy and its draws.
+   */
+  breach(kind: 'drystone' | 'adobe' | 'brick', x: number, y: number, z: number, yaw: number, thick: number, height: number,
+    toward: 1 | -1): THREE.BufferGeometry;
+  /**
+   * (props lane A #6; WORKLIST #6 site:wall-end-post) a brick-print wall's pier where a run ends or opens, its foot at
+   * (x, y, z): a plinth a brick proud, the shaft, a string course under the coping of its region (WallDressingOptions
+   * pierCap). props.ts spends the old post's draws.
+   */
+  pier(x: number, y: number, z: number, yaw: number, thick: number, height: number): THREE.BufferGeometry;
+  /** The units a breach spilled (the dry-stone wall's stones, the mud wall's lumps) about (x, z); null on the snow. */
+  breachTumble(adobe: boolean, x: number, z: number, ox: number, oz: number, half: number): THREE.BufferGeometry | null;
+}
+
+export type BrickPierCap = 'rollschicht' | 'saddleback' | 'hipped' | 'block' | 'slab';
+const PIER_CAPS: Readonly<Record<string, BrickPierCap>> = Object.freeze({
+  ruhr: 'rollschicht', saar: 'rollschicht', franconian: 'saddleback', shanghai: 'hipped', glencanyon: 'block',
+});
+/** A brick-print map's pier coping by its architecture kit. */
+export function brickPierCapFor(architectureId: string | null | undefined): BrickPierCap {
+  return (architectureId ? PIER_CAPS[architectureId] : undefined) ?? 'slab';
+}
+
+/** A box on the brick print (its faces' uvs by place on the face, the print's 0.7 a metre; `soldier` turns its courses
+ *  upright: the Rollschicht's bricks on edge), its bottom face left out. */
+function printedBox(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(cx, y0 + h / 2, cz);
+  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
+    let u = ay > 0.5 ? p.getX(i) : ax > 0.5 ? p.getZ(i) : p.getX(i), v = ay > 0.5 ? p.getZ(i) : p.getY(i);
+    if (soldier && ay < 0.5) [u, v] = [v, u];
+    uv.setXY(i, u * 0.7, v * 0.7);
+  }
+  // (the bottom face, -y: the box's fourth group)
+  const index = g.index!, keep: number[] = [];
+  for (let t = 0; t < index.count; t += 3) {
+    const a = index.getX(t);
+    if (n.getY(a) < -0.5) continue;
+    keep.push(index.getX(t), index.getX(t + 1), index.getX(t + 2));
+  }
+  g.setIndex(keep);
+  g.clearGroups();
+  return g;
+}
+
+/** A gabled or hipped coping over a pier `w` square at height y (rise `rise`), on the brick print. */
+function copingRoof(w: number, y: number, rise: number, hipped: boolean): THREE.BufferGeometry {
+  const h = w / 2, pos: number[] = [], uv: number[] = [];
+  const put = (q: readonly number[]) => { pos.push(q[0], q[1], q[2]); uv.push((q[0] + q[2]) * 0.7, q[1] * 0.7); };
+  const c: number[][] = [[h, y, h], [-h, y, h], [-h, y, -h], [h, y, -h]];
+  if (hipped) {
+    const apex = [0, y + rise, 0];
+    for (let k = 0; k < 4; k++) { put(c[k]); put(apex); put(c[(k + 1) % 4]); }
+  } else {
+    // the saddleback: its ridge along z, two slopes and two gable ends
+    const r0 = [0, y + rise, h], r1 = [0, y + rise, -h];
+    for (const q of [c[0], r0, r1, c[0], r1, c[3], c[1], c[2], r1, c[1], r1, r0]) put(q);
+    for (const q of [c[0], c[1], r0, c[2], c[3], r1]) put(q);
+  }
+  // every face wound out from a point inside the coping
+  const inside = [0, y + rise * 0.3, 0];
+  for (let t = 0; t < pos.length; t += 9) {
+    const ax = pos[t], ay = pos[t + 1], az = pos[t + 2];
+    const ux = pos[t + 3] - ax, uy = pos[t + 4] - ay, uz = pos[t + 5] - az, vx = pos[t + 6] - ax, vy = pos[t + 7] - ay, vz = pos[t + 8] - az;
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const cx = (ax + pos[t + 3] + pos[t + 6]) / 3 - inside[0], cy = (ay + pos[t + 4] + pos[t + 7]) / 3 - inside[1], cz = (az + pos[t + 5] + pos[t + 8]) / 3 - inside[2];
+    if (nx * cx + ny * cy + nz * cz < 0) {
+      for (let k = 0; k < 3; k++) [pos[t + 3 + k], pos[t + 6 + k]] = [pos[t + 6 + k], pos[t + 3 + k]];
+      const ut = (t / 3) * 2;
+      for (let k = 0; k < 2; k++) [uv[ut + 2 + k], uv[ut + 4 + k]] = [uv[ut + 4 + k], uv[ut + 2 + k]];
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** A slumped mud stub `thick` across and `len` long (y 0..h), its top stepped down from the `toward` end to a broken bite. */
+function mudStub(thick: number, len: number, h: number, toward: 1 | -1, uvPerM: number, seed: number): THREE.BufferGeometry {
+  const r = dressingRng(seed), hw = thick / 2, z0 = -len / 2, z1 = len / 2;
+  // the profile along the run: full height at the lip's end, a slumped shoulder, the bite's low floor
+  const hi = h, mid = h * (0.62 + r() * 0.12), lo = h * (0.28 + r() * 0.1), zs = toward * len * (0.05 + r() * 0.1);
+  const prof: Array<[number, number]> = toward > 0
+    ? [[z0, lo], [zs, lo * 1.05], [zs + 0.04, mid], [z1 - 0.12, hi * 0.97], [z1, hi]]
+    : [[z0, hi], [z0 + 0.12, hi * 0.97], [zs - 0.04, mid], [zs, lo * 1.05], [z1, lo]];
+  const pos: number[] = [], uv: number[] = [];
+  const put = (x: number, y: number, z: number, u: number, v: number) => { pos.push(x, y, z); uv.push(u * uvPerM, v * uvPerM); };
+  // the two faces, a little battered (narrower at the top), wound out
+  for (const side of [1, -1]) {
+    for (let k = 0; k + 1 < prof.length; k++) {
+      const [za, ya] = prof[k], [zb, yb] = prof[k + 1];
+      const xa = side * (hw - ya * 0.04), xb = side * (hw - yb * 0.04), xf = side * hw;
+      const quad: Array<[number, number, number]> = [[xf, 0, za], [xf, 0, zb], [xb, yb, zb], [xa, ya, za]];
+      const order = side > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+      for (const i of order) put(quad[i][0], quad[i][1], quad[i][2], quad[i][2], quad[i][1]);
+    }
+  }
+  // the top, slumped across (its crown a little high), and the two ends
+  for (let k = 0; k + 1 < prof.length; k++) {
+    const [za, ya] = prof[k], [zb, yb] = prof[k + 1];
+    const a: [number, number, number] = [hw - ya * 0.04, ya, za], b: [number, number, number] = [-(hw - ya * 0.04), ya, za];
+    const c: [number, number, number] = [-(hw - yb * 0.04), yb, zb], d: [number, number, number] = [hw - yb * 0.04, yb, zb];
+    for (const q of [a, b, c, a, c, d]) put(q[0], q[1] + (Math.abs(q[0]) < hw * 0.5 ? 0.02 : 0), q[2], q[0], q[2]);
+  }
+  for (const [z, y, s] of [[z0, prof[0][1], -1], [z1, prof[prof.length - 1][1], 1]] as const) {
+    const xt = hw - y * 0.04;
+    const e: Array<[number, number, number]> = [[hw, 0, z], [-hw, 0, z], [-xt, y, z], [xt, y, z]];
+    const order = s > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3];
+    for (const i of order) put(e[i][0], e[i][1], e[i][2], e[i][0], e[i][1]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** The brick wall's courses stepped down toward the bite: two lifts of its own section (the print's courses). */
+function brickStub(thick: number, len: number, h: number, toward: 1 | -1, seed: number): THREE.BufferGeometry {
+  const r = dressingRng(seed), parts: THREE.BufferGeometry[] = [];
+  const upper = len * (0.45 + r() * 0.15), hLow = h * (0.45 + r() * 0.1);
+  const low = new THREE.BoxGeometry(thick, hLow, len);
+  low.translate(0, hLow / 2, 0);
+  const high = new THREE.BoxGeometry(thick * 0.98, h - hLow, upper);
+  high.translate(0, hLow + (h - hLow) / 2, toward * (len - upper) / 2);
+  for (const g of [low, high]) {
+    const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+    for (let i = 0; i < p.count; i++) {
+      const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
+      uv.setXY(i, (ay > 0.5 ? p.getX(i) : ax > 0.5 ? p.getZ(i) : p.getX(i)) * 0.7, (ay > 0.5 ? p.getZ(i) : p.getY(i)) * 0.7);
+    }
+    parts.push(g);
+  }
+  return mergeParts(parts);
 }
 
 /** jitterUV's draws (offset u, offset v, scale u, scale v), the v window fitted inside the field print's face band. */
@@ -583,6 +733,50 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
       return loaded;
     },
     stoneUv: jitterFieldStoneUV,
+    breach(kind, x, y, z, yaw, thick, height, toward) {
+      const seed = placeSeed(x, z, 0xb7ea), r = dressingRng(seed);
+      const len = 1.2;
+      let g: THREE.BufferGeometry;
+      if (kind === 'drystone') {
+        // the stones racked in two steps: the lift by the lip at the remnant's height, the bite's half as high
+        // (on a snow map each step its own load, so the snow lies in the bite rather than bridging it)
+        const step = (h: number, s: number, z: number) => {
+          const head = buildDryStoneWallHead(s, thick, h).translate(0, 0, z);
+          return o.snow ? mergeParts([head, buildSnowLoad(head, s ^ 0x5a0c, { bin: 0.08 })]) : head;
+        };
+        g = mergeParts([step(height + 0.15, seed, toward * 0.3), step((height + 0.15) * 0.55, seed ^ 0x51, -toward * 0.25)]);
+        jitterFieldStoneUV(g, r);
+      } else if (kind === 'adobe') {
+        g = mudStub(thick, len, height + 0.15, toward, o.mudUv, seed);
+      } else {
+        g = brickStub(thick, len, height + 0.15, toward, seed);
+      }
+      g.rotateY(yaw);
+      return g.translate(x, y, z);
+    },
+    pier(x, y, z, yaw, thick, height) {
+      const w = thick + 0.22, cap = o.pierCap ?? 'slab', parts: THREE.BufferGeometry[] = [];
+      const plinth = 0.32, string = height - 0.2;
+      parts.push(printedBox(w + 0.1, plinth, w + 0.1, 0, 0, 0));
+      parts.push(printedBox(w, string - plinth, w, 0, plinth, 0));
+      parts.push(printedBox(w + 0.06, 0.07, w + 0.06, 0, string, 0));
+      parts.push(printedBox(w, 0.13, w, 0, string + 0.07, 0));
+      const top = string + 0.2;
+      if (cap === 'rollschicht') parts.push(printedBox(w + 0.04, 0.14, w + 0.04, 0, top, 0, true));
+      else if (cap === 'saddleback' || cap === 'hipped') {
+        parts.push(printedBox(w + 0.12, 0.06, w + 0.12, 0, top, 0));
+        parts.push(copingRoof(w + 0.12, top + 0.06, cap === 'hipped' ? 0.2 : 0.16, cap === 'hipped'));
+      } else if (cap === 'block') parts.push(printedBox(w + 0.04, 0.12, w + 0.04, 0, top, 0));
+      else parts.push(printedBox(w + 0.14, 0.08, w + 0.14, 0, top, 0));
+      const g = mergeParts(parts);
+      g.rotateY(yaw);
+      return g.translate(x, y, z);
+    },
+    breachTumble(adobe, x, z, ox, oz, half) {
+      if (o.snow && !adobe) return null;
+      return buildWallTumble(o.ground, x, z, ox, oz, half, placeSeed(x, z, adobe ? 0xb7a3 : 0xb71e),
+        adobe ? { mobile: true, uvPerM: o.mudUv, mudV: o.plainV ? (o.plainV[0] + o.plainV[1]) / 2 : undefined } : { mobile: true });
+    },
     tumble(adobe, x, z, ox, oz, half) {
       if (o.snow && !adobe) return null; // (wave 48: on the snow the fallen stones read as "loose slabs strewn on it")
       return buildWallTumble(o.ground, x, z, ox, oz, half, placeSeed(x, z, adobe ? 0x7a3b : 0x7b1e),
