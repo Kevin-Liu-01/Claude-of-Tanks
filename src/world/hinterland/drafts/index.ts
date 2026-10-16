@@ -9,7 +9,8 @@ import winter from './winter.ts';
 import railyard from './railyard.ts';
 import ruinspires from './ruinspires.ts';
 import mars from './mars.ts';
+import orchard from './orchard.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ airfield, alpine, cliffbridge, mars, polders, railyard, ruinspires, verdant, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ airfield, alpine, cliffbridge, mars, orchard, polders, railyard, ruinspires, verdant, winter });
