@@ -102,7 +102,7 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   s.armor.gunPivot=[...turret.armor.gunPivot];
   s.armor.gunBarrel={...turret.armor.gunBarrel};
   s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??design.width,
-    heightM:design.heightM,
+    heightM:d.heightM??design.heightM,
     overallLengthM:design.hullLength/2+d.pivot[2]+turret.armor.gunPivot[2]+turret.armor.gunBarrel.lengthM};
   stripSilhouetteDimensions(s.dims);
   s.visual={...s.visual,trackWidthM:hull.visual.trackWidthM,

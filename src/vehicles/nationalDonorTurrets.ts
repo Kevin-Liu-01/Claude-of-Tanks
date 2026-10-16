@@ -23,6 +23,8 @@ export interface NationalDonorTurret {
   station: readonly [number, number];
   /** National turret ERA sectors the kit adds where the donor turret has no ERA plate of that name. */
   addedTurretEra?: readonly string[];
+  /** Listed overall height (ground to the tallest fitting, the roof weapon included), measured on the built concept. */
+  heightM?: number;
 }
 
 // The T-72B3 and T-72B3M rings sit exactly where their own hulls carry them. A T-72B3M turret on the T-72B3 hull keeps

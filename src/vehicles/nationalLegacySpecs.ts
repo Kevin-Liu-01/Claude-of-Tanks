@@ -31,8 +31,8 @@ export function synchronizeNationalLegacyMetadata():void {
     s.armor.turretPivot=donorTurret?[...donorTurret.pivot]:[.008,c.y,c.z];
     const reach=donorTurret?donorTurret.pivot[2]+s.armor.gunPivot[2]+s.armor.gunBarrel.lengthM
       :c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH;
-    s.dims={...s.dims,hullLengthM:d.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??d.width,heightM:d.heightM,
-      overallLengthM:d.hullLength/2+reach};
+    s.dims={...s.dims,hullLengthM:d.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??d.width,
+      heightM:donorTurret?.heightM??d.heightM,overallLengthM:d.hullLength/2+reach};
     stripSilhouetteDimensions(s.dims);
     s.visual={...s.visual,number:String(830+index)};
     s.description='Original game concept. '+d.description+' Separate development of the earlier welded-turret design; the current '+TANK_SPECS[c.predecessor].name+' remains available.';

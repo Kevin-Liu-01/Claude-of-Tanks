@@ -6,6 +6,7 @@ import {getSpec,ALL_TANK_IDS,TANK_SPECS} from './specs.ts';
 import {auditFleetBalance} from './balanceAudit.ts';
 import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 import {NATIONAL_LEGACY_CONFIG} from './nationalLegacyConfig.ts';
+import {NATIONAL_DONOR_TURRETS} from './nationalDonorTurrets.ts';
 const configs=[...NATIONAL_MODERNIZATION_CONFIG,...NATIONAL_LEGACY_CONFIG.map(c=>({...c,model:c.donor==='t72b3m_2016'?1:2}))];
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
@@ -44,7 +45,26 @@ const skirtProbeStations={
  cn:[[-1.26,-.38,.5],[-.604,.215,1.034],[-.844,.16,1.164]],
  ru:[[-1.17,-.35,.47],[-.643,.06,.763],[-1.17,-.35,.47]],
 };
+// Owner 2026-10-15 (VEH-19..VEH-22): seven concepts carry a donor fleet turret (nationalDonorTurrets.ts). Its shell,
+// mantlet, trunnion and gun are the donor's own (witnessed by the donor's receipts); here the station must sit on the
+// donor's commander cupola, and no turret yaw may sink the turret deeper into the hull than its authored ring seat.
+function donorStationSeat(tank,c){
+ const turret=tank.root.getObjectByName('rig_turret'),station=turret.userData.nationalDonorStation;
+ assert(station,`${c.id}: donor-turret station receipt`);
+ const [x,y,z]=station.seat,[sx,sz]=NATIONAL_DONOR_TURRETS[c.id].station;
+ assert(Math.abs(x-sx)<1e-9&&Math.abs(z-sz)<1e-9,`${c.id}: the station stands on its listed cupola seat`);
+ const mat=new MeshBasicMaterial({side:DoubleSide}),stock=[];
+ for(const name of ['turret','turretCupola','turretHatch','turretDetail','turretEquipment']){
+  const o=turret.getObjectByName(name);if(o?.isMesh){const m=new Mesh(o.geometry,mat);m.updateMatrixWorld(true);stock.push(m);}
+ }
+ const hits=[0,.12,-.12].map(dx=>new Raycaster(new Vector3(x+dx,y+.20,z),new Vector3(0,-1,0),0,.45).intersectObjects(stock,false)[0]);
+ assert(hits.every(h=>h&&h.point.y<=y+.009),`${c.id}: the remote station's pedestal rests on its cupola, not in air`);
+ assert(hits.some(h=>Math.abs(h.point.y-y)<.009),`${c.id}: the station seat is the cupola's real top`);
+ mat.dispose();
+ return station.seat;
+}
 function physicalMounts(tank,c){
+ const donor=NATIONAL_DONOR_TURRETS[c.id];
  const shell=tank.root.getObjectByName('turret'),hull=tank.root.getObjectByName('hull'),d=c.design??nationalModernizationDesign(c);
  const mat=new MeshBasicMaterial({side:DoubleSide}),target=new Mesh(shell.geometry,mat),body=new Mesh(hull.geometry,mat);
  target.updateMatrixWorld(true);body.updateMatrixWorld(true);const ray=new Raycaster();
@@ -57,19 +77,20 @@ function physicalMounts(tank,c){
   const proxy=new Mesh(o.geometry,mat);proxy.updateMatrixWorld(true);skirtStock.push(proxy);
  }});
  try {
-  for(const p of [d.rws,d.cupola]){
+  if(donor)donorStationSeat(tank,c);
+  else for(const p of [d.rws,d.cupola]){
    ray.set(new Vector3(p[0],p[1]+.20,p[2]),new Vector3(0,-1,0));
    const hit=ray.intersectObject(target)[0];assert(hit&&Math.abs(hit.point.y-p[1])<.009,`${c.id} roof weapon/cupola sits on its actual roof`);
   }
   // The bearing is allowed to enter the two cheeks; the barrel's central
   // pitch corridor must remain open ahead of the transverse rear bulkhead.
-  for(const x of [-.34,0,.34])for(const y of [.14,.43,.71]){
+  if(!donor)for(const x of [-.34,0,.34])for(const y of [.14,.43,.71]){
    ray.set(new Vector3(x,y,3),new Vector3(0,0,-1));const hit=ray.intersectObjects(receiving,false)[0];
    assert(!hit||hit.point.z<=(c.design?.36:.56),`${c.id} primary gun aperture is real air ahead of its rear receiver`);
   }
   const mount=tank.root.getObjectByName('gunMount');mount.geometry.computeBoundingBox();
   const moving=new Mesh(mount.geometry,mat);moving.updateMatrixWorld(true);
-  for(const side of [-1,1]){
+  if(!donor)for(const side of [-1,1]){
    ray.set(new Vector3(0,.43,.84),new Vector3(side,0,0));const hit=ray.intersectObject(target)[0];
    assert(hit&&Math.abs(hit.point.x)<.419,`${c.id} bearing enters its receiving cheek`);
    assert(mount.geometry.boundingBox.max.x>=.419&&mount.geometry.boundingBox.min.x<=-.419,'full cross-turret bearing axle');
@@ -78,7 +99,7 @@ function physicalMounts(tank,c){
   // cheek wall. The former narrow sleeve left 125 mm of visible daylight.
   // Probe the lower shield seat shared by even the shortest Chinese cheeks;
   // a raised muzzle ahead of a cheek is intentionally no longer beside it.
-  for(const pitch of [-.24435,0,.10472])for(const z of [.14,.20,.25])for(const side of [-1,1]){
+  if(!donor)for(const pitch of [-.24435,0,.10472])for(const z of [.14,.20,.25])for(const side of [-1,1]){
    ray.set(new Vector3(0,-.10,z),new Vector3(side,0,0));
    const movingHit=ray.intersectObject(moving)[0];assert(movingHit,'solid elevating shield');
    ray.set(new Vector3(0,.43-.10*Math.cos(pitch)-z*Math.sin(pitch),.90-.10*Math.sin(pitch)+z*Math.cos(pitch)),new Vector3(side,0,0));
@@ -86,7 +107,7 @@ function physicalMounts(tank,c){
    const seam=Math.abs(fixedHit.point.x)-Math.abs(movingHit.point.x);
    assert(seam>=.002&&seam<=.020,`${c.id}: mantlet/cheek seam ${seam}m at pitch ${pitch}, z ${z}`);
   }
-  if(!c.design) {
+  if(!c.design&&!donor) {
    const movingStock=[moving];
    tank.root.traverse(o=>{if(o.isMesh&&/^(gunMount|gunInteriorFill)/.test(o.name)&&o.name!=='gunMount')movingStock.push(new Mesh(o.geometry,mat));});
    let rearSamples=0;
@@ -144,13 +165,22 @@ function physicalMounts(tank,c){
   }
   assert(samples.length>12,'sweep samples actual underside faces');
   let positiveControl=0;
-  for(let yaw=0;yaw<360;yaw+=15){const angle=yaw*Math.PI/180;
+  const [px,py,pz]=donor?donor.pivot:[.008,c.y,c.z];
+  const sink=angle=>{
+   let deepest=-Infinity,controls=0;
    for(const v of samples){
-    const x=.008+v.x*Math.cos(angle)+v.z*Math.sin(angle),z=c.z-v.x*Math.sin(angle)+v.z*Math.cos(angle),y=c.y+v.y;
+    const x=px+v.x*Math.cos(angle)+v.z*Math.sin(angle),z=pz-v.x*Math.sin(angle)+v.z*Math.cos(angle),y=py+v.y;
     ray.set(new Vector3(x,5,z),new Vector3(0,-1,0));const hit=ray.intersectObject(body)[0];if(!hit)continue;
-    assert(hit.point.y-y<=.004,`${c.id} turret penetrates hull at yaw ${yaw}: ${hit.point.y-y}m`);
-    if(hit.point.y+.5-y>0)positiveControl++;
+    deepest=Math.max(deepest,hit.point.y-y);if(hit.point.y+.5-y>0)controls++;
    }
+   return {deepest,controls};
+  };
+  // A donor casting keeps its own authored ring seat (the T-72B3's lower edge rests 11 mm into its collar); turning
+  // it must never sink it deeper. The cast-core concepts sit clear of the hull outright.
+  const seat=donor?Math.max(0,sink(0).deepest):0;
+  for(let yaw=0;yaw<360;yaw+=15){
+   const {deepest,controls}=sink(yaw*Math.PI/180);positiveControl+=controls;
+   assert(deepest-seat<=.004,`${c.id} turret penetrates hull at yaw ${yaw}: ${deepest-seat}m past its ring seat`);
   }
   assert(positiveControl>20,'raising hull .5m would fail the sweep');
  }finally{tank.resetEra();mat.dispose();}
@@ -170,7 +200,10 @@ for(const quality of ['high','low']) {
   const baseStock=[];
   const tank=createTank(c.id,null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242,
    partCensus(bucket,g,source){
+    // A donor turret's own casting is witnessed by its donor's receipts (the T-72B3 casting is deliberately fuller on
+    // its right); the concept's own permanent stock is audited here.
     if(legacyIds.has(c.id)||source!=='add'||!['hull','turret','hullExternalArmor','turretExternalArmor'].includes(bucket)
+      ||(bucket==='turret'&&NATIONAL_DONOR_TURRETS[c.id])
       ||Array.isArray(g.userData.eraHitFaceVertexStarts))return;
     const part=shellPart(g,{bucket,ordinal:baseStock.length});
     if(Math.max(...part.size.toArray())>=.75&&part.area>=.35)baseStock.push(part);
@@ -196,7 +229,10 @@ for(const quality of ['high','low']) {
     assert(guards.every(r=>r.supported),`${c.id}: native ${label} guards connect to rebuilt bodywork`);
    }
    physicalMounts(tank,c);
-   silhouettes.add(fingerprint(tank.root.getObjectByName('turret').geometry));
+   // Four concepts share the T-72B3M (2016) turret by the owner's order; each concept's structural turret together with
+   // its own permanent up-armour stock is still distinct.
+   silhouettes.add(fingerprint(tank.root.getObjectByName('turret').geometry)
+    +fingerprint(tank.root.getObjectByName('rig_turret').getObjectByName('turretExternalArmor')?.geometry??tank.root.getObjectByName('turret').geometry));
    turret.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.turretPivot[i])<.001));
    gun.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.gunPivot[i])<.001));
    assert.equal(censusEquipment(tank.root).mg,1,`${c.id}: one physical machine gun, separate support mount`);
@@ -204,7 +240,7 @@ for(const quality of ['high','low']) {
    // had a 45 mm gap, and the Russian sensor saddle/outer guard connections.
    tank.root.updateMatrixWorld(true);
    assert(Math.abs(new Box3().setFromObject(tank.root).getSize(new Vector3()).y-spec.dims.heightM)<.005,`${c.id}: listed height includes roof weapon and tallest fitting`);
-   const rws=(c.design??nationalModernizationDesign(c)).rws,stock=[];
+   const rws=NATIONAL_DONOR_TURRETS[c.id]?turret.userData.nationalDonorStation.seat:(c.design??nationalModernizationDesign(c)).rws,stock=[];
    tank.root.traverse(o=>{if(o.isMesh&&o.name.startsWith('sourceMachineGun_')&&o.name!=='sourceMachineGun_yawSupport')stock.push(o);});
    const loadout=NATIONAL_ROOF_LOADOUTS[c.id];
    const contactRay=new Raycaster(),localPoints=[[rws[0],rws[1]+loadout.axisHeight,rws[2]+.255]];
