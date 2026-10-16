@@ -155,6 +155,127 @@ export function kinkDirection(bend: WreckBend, t: number, n: THREE.Vector3): voi
   n.x += bend.ux * (a1 - a); n.y += bend.uy * (a1 - a); n.z = z1;
 }
 
+/** Whether a triangle of `geometry` (its corners taken to the gun's frame by `toGun`) crosses a plane of the kink. */
+function crossesBendPlanes(geometry: THREE.BufferGeometry, bend: WreckBend, toGun: THREE.Matrix4): boolean {
+  const position = geometry.attributes.position;
+  if (!position) return false;
+  const index = geometry.index, e = toGun.elements, p0 = bend.z0, p1 = bend.z0 + bend.ramp;
+  const corners = index ? index.count : position.count;
+  const zAt = (k: number): number => {
+    const i = index ? index.getX(k) : k;
+    return e[2] * position.getX(i) + e[6] * position.getY(i) + e[10] * position.getZ(i) + e[14];
+  };
+  for (let k = 0; k + 2 < corners; k += 3) {
+    const a = zAt(k), b = zAt(k + 1), c = zAt(k + 2);
+    const lo = Math.min(a, b, c), hi = Math.max(a, b, c);
+    if ((lo < p0 - 1e-7 && hi > p0 + 1e-7) || (lo < p1 - 1e-7 && hi > p1 + 1e-7)) return true;
+  }
+  return false;
+}
+
+/**
+ * A copy of `geometry` cut at the kink's two planes (z = z0 and z = z0 + ramp in the gun's frame, `toGun` taking its
+ * stored corners there): non-indexed, every attribute interpolated along the cut edges, its material groups kept.
+ * bendGeometry moves corners only. A barrel tube authored as one cylinder has corners only at its breech and muzzle
+ * rings, so bent uncut it draws as a straight chord from the unmoved breech to the kinked muzzle, up to 0.2 m off the
+ * true kink — out through the sleeve sections, evacuator, collars and bands concentric with it, which do have corners
+ * past the hinge and follow it: two barrels on the wreck (tank-opt 2026-10-15). Cut, no drawn triangle spans the
+ * hinge: everything behind z0 stays, everything past z0 + ramp turns rigidly, and the 6 cm crease between is linear.
+ * A geometry no triangle of which crosses either plane needs no cut: `geometry` itself comes back (indexed as it was).
+ */
+export function cutAtBend(geometry: THREE.BufferGeometry, bend: WreckBend, toGun: THREE.Matrix4): THREE.BufferGeometry {
+  if (!crossesBendPlanes(geometry, bend, toGun)) return geometry;
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  const names = Object.keys(source.attributes);
+  const sizes: number[] = [];
+  const arrays: ArrayLike<number>[] = [];
+  for (const name of names) {
+    const attribute = source.getAttribute(name);
+    sizes.push(attribute.itemSize);
+    if ((attribute as THREE.BufferAttribute).isBufferAttribute && !attribute.normalized) { arrays.push(attribute.array); continue; }
+    const copy = new Float32Array(attribute.count * attribute.itemSize);
+    for (let i = 0; i < attribute.count; i++) for (let c = 0; c < attribute.itemSize; c++) copy[i * attribute.itemSize + c] = attribute.getComponent(i, c);
+    arrays.push(copy);
+  }
+  const count = source.attributes.position.count, triangles = Math.floor(count / 3);
+  const position = arrays[names.indexOf('position')], e = toGun.elements;
+  const z = new Float64Array(count);
+  for (let i = 0; i < count; i++) z[i] = e[2] * position[i * 3] + e[6] * position[i * 3 + 1] + e[10] * position[i * 3 + 2] + e[14];
+  const planes = [bend.z0, bend.z0 + bend.ramp];
+  const spans = (t: number): boolean => {
+    const lo = Math.min(z[3 * t], z[3 * t + 1], z[3 * t + 2]), hi = Math.max(z[3 * t], z[3 * t + 1], z[3 * t + 2]);
+    return planes.some((plane) => lo < plane - 1e-7 && hi > plane + 1e-7);
+  };
+  const ranges: [number, number, number | undefined][] = source.groups.length
+    ? source.groups.map((g) => [Math.floor(g.start / 3), Math.min(triangles, Math.floor((g.start + g.count) / 3)), g.materialIndex])
+    : [[0, triangles, undefined]];
+  // a triangle cut by both planes leaves at most three convex pieces of seven corners: five triangles
+  let kept = 0, cutCount = 0;
+  for (const [t0, t1] of ranges) for (let t = t0; t < t1; t++) { if (spans(t)) cutCount++; else kept++; }
+  const capacity = 3 * kept + 15 * cutCount;
+  const outs = sizes.map((size) => new Float32Array(capacity * size));
+  let n = 0;
+  const copyCorner = (i: number): void => {
+    for (let k = 0; k < arrays.length; k++) {
+      const size = sizes[k], src = arrays[k], dst = outs[k];
+      for (let c = 0; c < size; c++) dst[n * size + c] = src[i * size + c];
+    }
+    n++;
+  };
+  // the few triangles that span a plane: their corners as attribute vectors, clipped plane by plane
+  const stride = sizes.reduce((a, b) => a + b, 0);
+  const at = sizes.slice(0, names.indexOf('position')).reduce((a, b) => a + b, 0);
+  const zOf = (v: Float64Array): number => e[2] * v[at] + e[6] * v[at + 1] + e[10] * v[at + 2] + e[14];
+  const corner = (i: number): Float64Array => {
+    const v = new Float64Array(stride);
+    for (let k = 0, o = 0; k < arrays.length; o += sizes[k], k++) for (let c = 0; c < sizes[k]; c++) v[o + c] = arrays[k][i * sizes[k] + c];
+    return v;
+  };
+  const emitPoint = (v: Float64Array): void => {
+    for (let k = 0, o = 0; k < arrays.length; o += sizes[k], k++) for (let c = 0; c < sizes[k]; c++) outs[k][n * sizes[k] + c] = v[o + c];
+    n++;
+  };
+  const cutTriangle = (t: number): void => {
+    let polys = [[corner(3 * t), corner(3 * t + 1), corner(3 * t + 2)]];
+    for (const plane of planes) {
+      const next: Float64Array[][] = [];
+      for (const poly of polys) {
+        const d = poly.map((v) => zOf(v) - plane);
+        // a piece on one side of the plane (corners on it included) stays whole
+        if (!d.some((x) => x < -1e-9) || !d.some((x) => x > 1e-9)) { next.push(poly); continue; }
+        const below: Float64Array[] = [], above: Float64Array[] = [];
+        for (let i = 0; i < poly.length; i++) {
+          const j = (i + 1) % poly.length, a = poly[i], b = poly[j], da = d[i], db = d[j];
+          if (da <= 1e-9) below.push(a);
+          if (da >= -1e-9) above.push(a);
+          if ((da < -1e-9 && db > 1e-9) || (da > 1e-9 && db < -1e-9)) {
+            const s = da / (da - db), m = new Float64Array(stride);
+            for (let k = 0; k < stride; k++) m[k] = a[k] + (b[k] - a[k]) * s;
+            below.push(m); above.push(m);
+          }
+        }
+        next.push(below, above);
+      }
+      polys = next;
+    }
+    for (const poly of polys) for (let i = 1; i + 1 < poly.length; i++) { emitPoint(poly[0]); emitPoint(poly[i]); emitPoint(poly[i + 1]); }
+  };
+  const cut = new THREE.BufferGeometry();
+  for (const [t0, t1, materialIndex] of ranges) {
+    const start = n;
+    for (let t = t0; t < t1; t++) {
+      if (spans(t)) cutTriangle(t);
+      else { copyCorner(3 * t); copyCorner(3 * t + 1); copyCorner(3 * t + 2); }
+    }
+    if (source.groups.length) cut.addGroup(start, n - start, materialIndex);
+  }
+  names.forEach((name, k) => cut.setAttribute(name, new THREE.BufferAttribute(outs[k].slice(0, n * sizes[k]), sizes[k])));
+  cut.name = geometry.name;
+  cut.userData = geometry.userData;
+  if (source !== geometry) source.dispose();
+  return cut;
+}
+
 /**
  * Kink a geometry by `bend` in the gun's frame: `toGun` takes its stored corners into that frame, `fromGun` back. The
  * normals turn with the barrel (the crease's two runs catch the light differently). In place.

@@ -1831,6 +1831,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckFleet.selftest.mjs',
     // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
     'src/world/wreckCrumple.selftest.mjs',
+    // 2026-10-15 (tank-opt): one barrel per real gun on every wreck, bent at its bend point — the gun cut at its kink's
+    // planes, live and baked (the whole fleet: tools/wreck-barrel-census.mjs --all --gate)
+    'src/vehicles/wreckGunSingleBarrel.selftest.mjs',
     // (dcore 2026-10-10) a prop gives where a hull meets it: pressed from contact, pancaked, never rising, the same twice;
     // the presentation's copy keeps its livery, the sim's crush swaps nothing, unseen crushes sweep, heaps flatten again.
     'src/world/propCrush.selftest.mjs',
