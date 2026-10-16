@@ -18,10 +18,7 @@ import {
   createCombatWarmCoordinator,
   type CombatWarmCoordinator,
 } from '../game/combatWarmCoordinator.ts';
-import {
-  createDeferredCombatWarmRuntime,
-  type DeferredCombatWarmRuntime,
-} from '../game/deferredCombatWarmRuntime.ts';
+import type { DeferredCombatWarmRuntime } from '../game/deferredCombatWarmRuntime.ts';
 import type { BattleVisualStreamer } from '../game/battleVisualStreamer.ts';
 import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
 import type {
@@ -195,7 +192,11 @@ export function createCombatWarmComposition({
     createRare: (execution) => battleWarm.requireRuntime().createCombatRareWarmSteps(createContext(), execution),
   });
 
-  const deferred: DeferredCombatWarmRuntime = createDeferredCombatWarmRuntime({
+  // (2026-10-16, the perf lane: 226's game entry budget) the deferred warm's owner is battle-only: its module is its own
+  // chunk, fetched once the boot is idle and at the latest when a battle schedules it. A stale schedule (the battle gone
+  // before the module landed) does nothing, and the hold it would have released belongs to the newer battle; a module
+  // that fails to load releases the countdown's hold rather than holding it forever.
+  const deferredOptions: Parameters<typeof import('../game/deferredCombatWarmRuntime.ts').createDeferredCombatWarmRuntime>[0] = {
     game,
     renderer,
     camera,
@@ -213,7 +214,36 @@ export function createCombatWarmComposition({
     setPending,
     prepareNextOpeningRoute,
     devTrace,
-  });
+  };
+  let deferredRuntime: DeferredCombatWarmRuntime | null = null;
+  let deferredModule: Promise<typeof import('../game/deferredCombatWarmRuntime.ts')> | null = null;
+  const loadDeferred = () => {
+    deferredModule ??= import('../game/deferredCombatWarmRuntime.ts').catch((error: unknown) => {
+      deferredModule = null;
+      throw error;
+    });
+    return deferredModule;
+  };
+  {
+    const host = globalThis as { requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number };
+    const prefetch = (): void => { void loadDeferred().catch(() => { /* retried by the battle that schedules it */ }); };
+    if (typeof host.requestIdleCallback === 'function') host.requestIdleCallback(prefetch, { timeout: 4000 });
+    else setTimeout(prefetch, 1500);
+  }
+  const deferred: DeferredCombatWarmRuntime = {
+    schedule(generation) {
+      return loadDeferred().then((module) => {
+        deferredRuntime ??= module.createDeferredCombatWarmRuntime(deferredOptions);
+        if (generation !== getGeneration()) return undefined;
+        return deferredRuntime.schedule(generation);
+      }, (error: unknown) => {
+        console.warn('[warm] the deferred warm did not load (the countdown goes on without it):', error);
+        if (generation === getGeneration()) setPending(false);
+      });
+    },
+    cancel() { deferredRuntime?.cancel(); },
+    isActive: () => deferredRuntime?.isActive() ?? false,
+  };
 
   // A Studio take stages its kills as soon as this resolves: its turrets pop as bodies (wreckTurretDriverLoader.ts), and
   // a physics that cannot load leaves the scripted pop rather than failing the take.

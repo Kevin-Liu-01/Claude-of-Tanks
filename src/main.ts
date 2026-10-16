@@ -1169,7 +1169,10 @@ battleHudRuntime = createMainBattleHudRuntime({
 });
 async function ensureBattleHud() {
   if (!battleHudRuntime) throw new Error('battle HUD runtime is not initialized');
-  return battleHudRuntime.preload();
+  // (2026-10-16, the perf lane) the mode objectives' presentation is its own chunk (matchModeWorldLazy.ts): every battle's
+  // interface load (solo, network, debug) waits for it here, so its markers are in from the battle's first frame
+  const [hud] = await Promise.all([battleHudRuntime.preload(), matchModeWorld.ready()]);
+  return hud;
 }
 // Preserve the staged progress contract without transferring battle-only UI
 // into a garage first visit. Battle intent/entry joins ensureBattleHud().

@@ -6,7 +6,9 @@
 // modeObjects.ts, objectivePosts.ts and captureFlag.ts) are drawn only in a battle with a mode, never in the Garage. Their
 // module loads as its own chunk: fetched once the boot is idle, and at once if a mode's state arrives first. Until it
 // is in, the presentation draws nothing and keeps the latest state, which it hands over the moment the module lands.
-// Its root is this wrapper's, so the scene sees one stable group (the minimap bake excludes it, main.ts).
+// Its root is this wrapper's, so the scene sees one stable group (the minimap bake excludes it, main.ts). Every battle's
+// interface load awaits ready() (main.ts ensureBattleHud: the solo, network and debug entries all join it), so the
+// markers are in from the battle's first frame on any network; the idle fetch only makes that wait free.
 import * as THREE from 'three';
 import type { createMatchModeWorldPresentation, MatchModeWorldPresentation } from './matchModeWorldPresentation.ts';
 
@@ -26,6 +28,11 @@ const defaultWhenIdle = (load: () => void): void => {
   else setTimeout(load, 1500);
 };
 
+/** The presentation and the promise of its module: resolved once it is in (or its load failed and was logged). */
+export interface LazyMatchModeWorldPresentation extends MatchModeWorldPresentation {
+  ready(): Promise<void>;
+}
+
 /** The mode world presentation behind its own chunk: the same interface, a stable root. */
 export function createLazyMatchModeWorldPresentation(
   scene: THREE.Object3D,
@@ -33,7 +40,7 @@ export function createLazyMatchModeWorldPresentation(
   { whenIdle = defaultWhenIdle, load = () => import('./matchModeWorldPresentation.ts'), onError = (error) => {
     console.warn('[mode objectives] the presentation module did not load (retrying with the next mode state):', error);
   } }: LazyPresentationHooks = {},
-): MatchModeWorldPresentation {
+): LazyMatchModeWorldPresentation {
   const root = new THREE.Group();
   root.name = 'match-mode-objectives-host';
   scene.add(root);
@@ -57,6 +64,7 @@ export function createLazyMatchModeWorldPresentation(
   whenIdle(() => { if (!disposed) void start(); });
   return {
     root,
+    ready: () => (presentation || disposed ? Promise.resolve() : start()),
     update(state, timeS) {
       if (presentation) { presentation.update(state, timeS); return; }
       pending = { state, timeS };
