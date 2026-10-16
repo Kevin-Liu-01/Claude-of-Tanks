@@ -59,7 +59,8 @@ const FORMS = [
   ['scree', 'slate', 10, 0, 3500, 1500, false],
   ['menhir', 'granite', 1.2, 4.5, 1200, 500, true],
   ['cairn', 'limestone', 4.2, 2.6, 6000, 1400, true],
-  ['calvary', 'granite', 1.6, 5.6, 1200, 400, true],
+  // (props census #11, 2026-10-15: the calvary laid stone by stone — its steps' slabs, socle, écots, cross and figures)
+  ['calvary', 'granite', 1.6, 5.6, 1600, 500, true],
   ['hoodoo', 'sandstone', 3.2, 6, 3000, 1500, true],
   // (the hitbox lane, round 2: a field of fractured blocks, the cover a map places on open ground)
   ['blocks', 'breccia', 6, 2.6, 4500, 2000, true],
