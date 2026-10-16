@@ -120,7 +120,7 @@ import {
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { fenceTypes } from './maps/fenceKit.ts';
 import { coursedWallType } from './maps/coursedWallKit.ts';
-import { adobeWallType } from './maps/adobeWallKit.ts';
+import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
@@ -6227,7 +6227,7 @@ ${snowCap ? `
         // (a pier stands a stone's breadth proud of both faces and a course over the tallest module: the module is 1.15 m
         // at its family height, scaled up to 6 % more)
         let head = style === 'adobe'
-          ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1))
+          ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1), adobeCrownFor(regionalArchitecture?.id))
           : buildDryStoneWallHead(seedAt, pier ? thick * 2.1 : thick, pier ? runH * 1.15 * 1.06 + 0.24 : runH * 0.98 + 0.12);
         if (wallB === 'fieldStone') wallDressing.stoneUv(head, rng); else jitterUV(head, rng);
         if (corner && !pier) { head.dispose(); return; }

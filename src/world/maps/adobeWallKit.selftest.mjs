@@ -67,6 +67,21 @@ assert.equal(bA, bB, 'the legacy broken draws are spent exactly');
 assert.deepEqual(t.footprintBuild().attributes.position.array, legacyType.build(mulberry32(0x0f0f7)).attributes.position.array, 'the legacy footprint');
 built.dispose(); old.dispose();
 
+// the mud walls' piers (inhabitKit buildAdobePilaster): about half the old 224 triangles, the region's crown on the dome
+{
+  const { buildAdobePilaster } = await import('./inhabitKit.ts');
+  const top = (g) => { let y = -Infinity; for (let i = 0; i < g.attributes.position.count; i++) y = Math.max(y, g.attributes.position.getY(i)); return y; };
+  const worn = buildAdobePilaster(1234, 0.52, 1.2), tw = (worn.index ? worn.index.count : worn.attributes.position.count) / 3;
+  assert.ok(tw <= 130, `the pier's ${tw} triangles`);
+  for (const crown of ['pinnacles', 'ridge']) {
+    const g = buildAdobePilaster(1234, 0.52, 1.2, crown);
+    assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${crown}: the mud print's attributes`);
+    assert.ok(top(g) > top(worn) + 0.08, `${crown}: the crown on the pier (${top(g).toFixed(2)} over ${top(worn).toFixed(2)})`);
+  }
+  assert.equal(buildAdobePilaster(1234, 0.52, 1.2, 'kershef').attributes.position.count, worn.attributes.position.count, 'the kershef pier is the worn one');
+}
+
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+assert.ok(props.includes('adobeCrownFor(regionalArchitecture?.id))'), 'props.ts crowns the mud walls\' piers');
 assert.ok(props.includes('walladobe: adobeWallType(regionalArchitecture?.id, { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket }, () => mulberry32(0x0f0f7)),'), 'props.ts lays the mud walls');
 console.log(`adobeWallKit.selftest: 5 crowns on the legacy section (${legacyTris} -> ~120 triangles), broken low, kits mapped, legacy collision/fit/footprint, wired`);
