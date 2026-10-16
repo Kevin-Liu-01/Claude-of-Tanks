@@ -183,6 +183,17 @@ Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;
 never restore eager wreck-map creation to ordinary vehicle construction.
+The ring a kill leaves (`turretRingWell.ts`, tank-opt RING 2026-10-16) follows
+the same rule: `setDestroyed()` puts one plate on `rig_hull` (the fleet's one
+ring material, one draw) that fakes the well by tracing the view ray against a
+virtual cylinder, and `resetDestroyed()`/`dispose()` remove it, so an intact
+build holds no ring mesh and its fingerprint and sealed ledgers never see it.
+Its seat is the anatomy receipt's `turretRing` (gen-combat-anatomy measures the
+built seat, the deck under it, the race inside the turret base and the floor;
+`alignTurretRing` centres the turretRing volume on it); a missing or stale
+receipt measures the build once. A cook-off hulk's bake cuts its deck inside the
+ring and merges the well's real geometry with its placement budget unchanged.
+`node tools/turret-ring-census.mjs --all --gate` is the fleet receipt.
 Camouflaged roof fittings, sights, smoke dispensers, stowage, and machine guns
 must use `P.addEquipment()` so they never expand the main armor shell. Offensive
 rocket/missile launchers are damageable: scope their housings, canisters and

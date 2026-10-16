@@ -2646,7 +2646,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 // Probe each context once so every material takes the correct registration
 // path without duplicating capability checks at material creation sites.
 const SHADOW_CONTEXT_SUPPORT = new WeakMap<object, boolean>();
-function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): boolean {
+export function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): boolean {
   if (!engineCtx || typeof engineCtx.setupShadowMaterial !== 'function') return false;
   const cached = SHADOW_CONTEXT_SUPPORT.get(engineCtx);
   if (cached !== undefined) return cached;

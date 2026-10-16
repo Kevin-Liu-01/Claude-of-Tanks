@@ -41,6 +41,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { createTurretRingPresentation, type TurretRingSeat } from './turretRingWell.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -1206,6 +1207,9 @@ interface TankVisual {
   prewarmBurn(): THREE.Object3D[];
   getWreckFallbackMaterial(): THREE.Material;
   stageBattleDetailsForWarm(): () => void;
+  /** The turret ring as built, hull frame (turretRingWell.ts): what a wreck's ring plate and a hulk's well are sized
+   *  from. Measured once while the turret is seated; null on a turretless hull. */
+  turretRingSeat(): TurretRingSeat | null;
   resetDestroyed(): void;
   resetForGaragePresentation(): void;
   setVisible(visible: boolean): void;
@@ -9104,6 +9108,20 @@ function* createTankOwnedSteps(
   // rusty"): the hull's and the turret's dents ride the burn hook (materials.ts), the gun's bend is a bent copy of each of
   // its meshes' geometry, swapped in at the kill and back at a rematch
   const liveBentGun: [THREE.Mesh, THREE.BufferGeometry][] = [];
+  // (tank-opt RING, 2026-10-16; the owner: "give tanks proper turret ring areas because when the turret blows off we
+  // should see that") the ring a kill leaves on the hull: a plate made at the kill on the deck under the turret, removed
+  // again at a rematch, so an intact tank holds no mesh of it (turretRingWell.ts)
+  const turretRing = createTurretRingPresentation({
+    specId,
+    root,
+    hull: hullG,
+    turret: turretG,
+    armor,
+    engineCtx,
+    high: geometryQuality !== 'low',
+    rendered: !geometryOnly,
+    dents: () => (burnU.uCrOn.value ? { centres: burnU.uCrHull.value, dirs: burnU.uCrHullDir.value } : null),
+  });
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -10067,6 +10085,9 @@ function* createTankOwnedSteps(
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
       planLiveCrumple(!!(opts && opts.pop));
+      // the ring plate: after the sweep captured the live materials (the plate keeps the fleet's ring material), on the
+      // planned dents, while the turret is still seated
+      turretRing.show();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
       // the turret's body driver, if its physics has loaded by this kill (wreckTurretDriverLoader.ts); before the
       // wreck presentation, which reads whether a body drives the turret
@@ -10139,8 +10160,15 @@ function* createTankOwnedSteps(
     stageBattleDetailsForWarm() {
       const wasAttached = battleDetailsAttached;
       setBattleDetailsAttached(true);
-      return () => setBattleDetailsAttached(wasAttached);
+      // the ring plate's program compiles behind the same cover (one fleet material: the first wreck warms it)
+      const restoreRing = turretRing.stageWarm();
+      return () => {
+        restoreRing();
+        setBattleDetailsAttached(wasAttached);
+      };
     },
+
+    turretRingSeat() { return turretRing.seat(); },
 
     applyEquipmentDamage(event) {
       return !destroyed && equipmentDamage.apply(event);
@@ -10156,6 +10184,7 @@ function* createTankOwnedSteps(
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
+      turretRing.hide();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -10237,6 +10266,7 @@ function* createTankOwnedSteps(
 
     dispose() {
       equipmentDamage.dispose();
+      turretRing.hide();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.

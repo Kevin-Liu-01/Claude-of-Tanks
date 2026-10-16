@@ -38,10 +38,15 @@ import { resolveWreckRoster } from './wreckRoster.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
+import {
+  buildTurretRingWellGeometry, cutTurretRingAperture, turretRingCut, type TurretRingCut,
+} from '../vehicles/turretRingWell.ts';
 
 export interface WreckOptions {
   seed?: number;
   pop?: boolean;
+  /** (tank-opt RING) false bakes a cook-off's hulk without its ring well (the receipts' A/B); default on. */
+  ring?: boolean;
   /** The paint the tank wore (sRGB hex; the map's camouflage family, wreckRemnantPaint): patches survive the burn on
    * the lower flanks. Unset: char and oxide only. */
   remnant?: number;
@@ -83,6 +88,44 @@ interface WreckBakeOwner {
   geometries: Set<THREE.BufferGeometry>;
 }
 
+/** A cook-off hulk's ring (tank-opt RING, 2026-10-16): the deck cut inside it (hull-owned parts, in the hull frame) and
+ *  the well merged in as real geometry (turretRingWell.ts), so the hulk's one mesh shows the ring its turret left. */
+interface WreckRingStage {
+  hull: THREE.Object3D;
+  well: THREE.Mesh;
+  cut: TurretRingCut;
+  /** The bake's root frame to the hull frame (the cut's). */
+  toHull: THREE.Matrix4;
+}
+
+/** A material the bake never renders (it reads only the well's geometry). */
+const WRECK_RING_BAKE_MATERIAL = new THREE.MeshBasicMaterial({ name: 'TurretRingWellBake' });
+
+function stageWreckRing(visual: TankWreckVisual, root: THREE.Object3D, owner: WreckBakeOwner): WreckRingStage | null {
+  const seat = visual.turretRingSeat?.();
+  const hull = root.getObjectByName('rig_hull');
+  if (!seat || !hull) return null;
+  const geometry = buildTurretRingWellGeometry(seat, false);
+  owner.geometries.add(geometry);
+  const well = new THREE.Mesh(geometry, WRECK_RING_BAKE_MATERIAL);
+  well.name = 'turretRingWell';
+  well.userData.turretRingWell = true;
+  hull.add(well);
+  well.updateMatrixWorld(true);
+  const toHull = hull.matrixWorld.clone().invert().multiply(root.matrixWorld);
+  return { hull, well, cut: turretRingCut(seat), toHull };
+}
+
+function ownedByRig(object: THREE.Object3D, rig: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object.parent; node && node !== root; node = node.parent) {
+    if (node === rig) return true;
+    if (node.name === 'rig_turret' || node.name === 'rig_gun') return false;
+  }
+  return false;
+}
+
+const triangleCount = (geometry: THREE.BufferGeometry): number =>
+  ((geometry.index?.count ?? geometry.attributes.position.count) / 3) | 0;
 
 interface WreckGeometrySet {
   geos: THREE.BufferGeometry[];
@@ -224,6 +267,7 @@ function* appendWreckMeshGeometrySteps(
   size: THREE.Vector3,
   owner: WreckBakeOwner,
   crumple: WreckCrumplePlan | null,
+  ring: WreckRingStage | null = null,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   if (!mesh.geometry?.attributes?.position || isDiscardedWreckPart(mesh, root)) return;
   if (WRECK_BURNT_AWAY.test(mesh.name || '')) {
@@ -267,8 +311,22 @@ function* appendWreckMeshGeometrySteps(
   if (small && !mesh.userData.carvedBoreStock) return;
   const clone = cloneWreckGeometry(mesh.geometry, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld), owner);
   // the plates get corners to bend first (a box plate's middle has none), then the crumple moves them
-  const refined = refineForCrumple(crumple, clone, mesh);
+  let refined = refineForCrumple(crumple, clone, mesh);
   if (refined !== clone) owner.geometries.add(refined);
+  if (ring) {
+    if (mesh === ring.well) {
+      // the well joins the hulk's mesh; the placement budget counts the hulk as it always has
+      target.budgetTriDelta -= triangleCount(refined);
+    } else if (ownedByRig(mesh, ring.hull, root)) {
+      // the deck (and anything of the hull's) inside the ring, cut before the crumple bends it with the well
+      const cut = cutTurretRingAperture(refined, ring.cut, ring.toHull, !!mesh.userData.interiorFill);
+      if (cut !== refined) {
+        owner.geometries.add(cut);
+        target.budgetTriDelta -= triangleCount(cut) - triangleCount(refined);
+        refined = cut;
+      }
+    }
+  }
   crumpleWreckGeometry(crumple, refined, mesh);
   target.geos.push(refined);
   // integ/218 (sealed r1 over destruction 350): the kept muzzle walls and the canvas's second faces stay out of the
@@ -287,6 +345,7 @@ function* collectWreckGeometrySteps(
   rootInv: THREE.Matrix4,
   owner: WreckBakeOwner,
   crumple: WreckCrumplePlan | null = null,
+  ring: WreckRingStage | null = null,
 ): Generator<WreckGeometryBuildSlice, WreckGeometrySet, void> {
   const target: WreckGeometrySet = { geos: [], proxyGeos: [], burntAway: new THREE.Box3(), budgetTriDelta: 0 };
   const size = new THREE.Vector3();
@@ -297,7 +356,7 @@ function* collectWreckGeometrySteps(
   while (stack.length) {
     const object = stack.pop()!;
     if (object instanceof THREE.Mesh) {
-      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner, crumple);
+      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner, crumple, ring);
     }
     for (let index = object.children.length - 1; index >= 0; index--) stack.push(object.children[index]);
     if (++visited % 16 === 0 || !stack.length) {
@@ -608,8 +667,13 @@ function* buildTankWreckSteps(
     // skirts, a slack track, a bent barrel — planned from the posed hierarchy on the wreck's own seed, applied part by
     // part as the bake collects it; the solids above are the posed hierarchy's, so collision does not move
     const crumple = planWreckCrumple(root, seed, !!opts.pop);
+    // (tank-opt RING, 2026-10-16; the owner: "when the turret blows off we should see that") a cook-off's hulk shows the
+    // ring its turret left: staged after the solids and the crumple plan (neither moves), merged into the one mesh; a
+    // plain kill's turret still covers its ring, so its hulk keeps the deck as it was
+    const ring = opts.pop && opts.ring !== false ? stageWreckRing(visual, root, owner) : null;
     yield { fine: true, stage: 'construct' };
-    const { geos, proxyGeos, burntAway, budgetTriDelta } = yield* collectWreckGeometrySteps(root, rootInv, owner, crumple);
+    const { geos, proxyGeos, burntAway, budgetTriDelta } = yield* collectWreckGeometrySteps(
+      root, rootInv, owner, crumple, ring);
     if (!geos.length) throw new Error('no bakeable geometry');
     const normalized = yield* normalizeGeometrySetSteps(geos, true, owner);
     const merged = mergeRequired(normalized, 'merge failed');

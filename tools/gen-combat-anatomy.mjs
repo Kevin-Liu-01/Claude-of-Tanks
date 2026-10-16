@@ -27,6 +27,7 @@ const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
+const { measureTurretRing, turretRingRadius } = await import('../src/vehicles/turretRingWell.ts');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -579,6 +580,11 @@ function receiptFor(id) {
     }
     const trackL = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandL']));
     const trackR = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandR']));
+    // (tank-opt RING, 2026-10-16) the turret ring as built (turretRingWell.ts): the seat, the deck under it and the
+    // race's reach inside the turret base, rig_hull frame. The anatomy's turretRing volume centres on it
+    // (combatAnatomy.ts alignTurretRing); a wreck's ring plate and a hulk's well are sized from it.
+    const turretRing = turret
+      ? measureTurretRing(hullRig, turretRig, turretRingRadius(TANK_SPECS[id]?.armor)) : null;
     if (!hull) throw new Error(`${id}: main hull receipt missing`);
     if (!trackL || !trackR) throw new Error(`${id}: running-gear receipt missing`);
     const hullStructures = structureReceipts(tank.root, hullRig, 'hull');
@@ -608,6 +614,7 @@ function receiptFor(id) {
         ? { externalWeapons: weaponCollisionReceipts(tank.root, hullRig, turretRig) } : {}),
       tracks: { left: trackL, right: trackR },
       trackContact: trackContactReceipt(tank.contactGeom, id),
+      ...(turretRing ? { turretRing } : {}),
     };
   } finally {
     if (stockCapture) stockCapture.dispose();
