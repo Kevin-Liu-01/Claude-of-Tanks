@@ -113,7 +113,7 @@ import { t } from './ui/i18n.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
-import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
+import { createDugHeightFieldProxy, createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import type { WaterDisturbance } from './world/shallowWater.ts';
 import { waterContactMaskAt } from './world/waterContactMask.ts';
 import { sceneWindOf } from './world/sceneWind.ts';
@@ -742,7 +742,10 @@ function requireFxRuntime() {
 // The wheels and track debris also stand on the standable collision tops the
 // movement solve stands hulls on (bridge decks, roofs, slabs): see
 // world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
-const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
+// The ground the battle dug (DST-04): the running gear stands on the craters' bowls and the heaps the simulation's hulls
+// ride (the world's bound overlay as drawn, world/liveHeightFieldProxy.ts createDugHeightFieldProxy).
+const hfDug = createDugHeightFieldProxy(hfProxy, () => currentWorld()?.groundOverlay?.() ?? null);
+const groundSampler = createVehicleGroundSampler((x, z) => hfDug.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;

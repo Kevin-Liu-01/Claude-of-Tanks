@@ -1221,6 +1221,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
     'src/sim/destructionCraters.selftest.mjs',
+    // 2026-10-15 (destruction lane, DST-04): the world's ray march reads the dug ground (craters' bowls, heaps), both worlds
+    'src/world/groundOverlayRaycast.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',

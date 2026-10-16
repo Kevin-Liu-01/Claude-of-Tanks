@@ -139,7 +139,7 @@ import type {
 import { shellHitsWater } from './shellSurface.ts';
 import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
-import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM } from './terrainDeformation.ts';
+import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, type TerrainDeformation } from './terrainDeformation.ts';
 import { structureRubbleHeightM } from './structureDamage.ts';
 import { fellConcealersAt } from './spotting.ts';
 
@@ -284,6 +284,8 @@ export interface AuthoritativeWorldCollision {
     direction: SpottingVector3,
     maxDistance: number,
   ): AuthoritativeWorldRayHit | null;
+  /** The match's ground overlay (docs/DESTRUCTION.md §6, §7): the world's ray march reads it (match-local worlds only). */
+  bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   crushObstacle?(
     obstacle: AuthoritativeObstacle,
     directionX: number,
@@ -833,6 +835,8 @@ export function createAuthoritativeMatch({
     : null;
   const ground = preparedGround?.ground ?? createTerrainDeformation();
   const heightField = preparedGround?.heightField ?? createDeformedHeightField(baseHeightField, ground);
+  // the world's shells, sight lines and drones march this match's ground (a crater's bowl, a heap), as the solo world's do
+  worldCollision?.bindGroundOverlay?.(ground);
   const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];

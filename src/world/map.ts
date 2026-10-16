@@ -66,7 +66,7 @@ import {
   createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
 } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
-import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { createDeformedHeightField, rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
 import { createGroundCoverCraters, type GroundCoverStaticLift } from './groundCoverCraters.ts';
 
@@ -700,6 +700,14 @@ function assembleWorld(
   // analytic, tighter than the rendered mesh itself) serves it. Spawn seating
   // above keeps the exact analytic query.
   const hAtF = heightField.getHeightAtFast || heightField.getHeightAt;
+  // destruction (docs/DESTRUCTION.md §6, §7; 2026-10-15): the march reads the battle's ground overlay as it is drawn
+  // (the contact lattice's offsets: a crater's bowl, a heap), so a round, a sight line and the aim meet the ground the
+  // eye sees and the hulls drive on; one bucket read where no stamp reaches. Bound with the overlay (bindGroundOverlay).
+  let rayOverlay: TerrainDeformation | null = null;
+  let rayNormalField: typeof heightField = heightField;
+  const rayHeightAt = (x: number, z: number): number => (
+    rayOverlay ? hAtF(x, z) + rayOverlay.contactOffsetAt(x, z) : hAtF(x, z)
+  );
 
   function nearestPropHit(
     origin: THREE.Vector3,
@@ -723,21 +731,21 @@ function assembleWorld(
       for (let index = 0; index < 6; index++) {
         const mid = (low + high) * 0.5;
         _bisA.copy(dir).multiplyScalar(mid).add(origin);
-        if (_bisA.y - hAtF(_bisA.x, _bisA.z) <= 0) high = mid;
+        if (_bisA.y - rayHeightAt(_bisA.x, _bisA.z) <= 0) high = mid;
         else low = mid;
       }
       return (low + high) * 0.5;
     };
     let distance = 0;
-    let clearance = origin.y - hAtF(origin.x, origin.z);
+    let clearance = origin.y - rayHeightAt(origin.x, origin.z);
     if (clearance <= 0) return 0;
     while (distance < maxDist) {
       const step = Math.min(Math.max(clearance * 0.5, 0.5), 2.0);
       const priorDistance = distance;
       distance = Math.min(distance + step, maxDist);
       _pt.copy(dir).multiplyScalar(distance).add(origin);
-      if (dir.y > 0 && _pt.y > heightField.maxY + 2) return -1;
-      clearance = _pt.y - hAtF(_pt.x, _pt.z);
+      if (dir.y > 0 && _pt.y > heightField.maxY + (rayOverlay ? rayOverlay.maxRaiseM : 0) + 2) return -1;
+      clearance = _pt.y - rayHeightAt(_pt.x, _pt.z);
       if (clearance <= 0) return refineHit(priorDistance, distance);
       if (distance >= maxDist) return -1;
     }
@@ -758,7 +766,7 @@ function assembleWorld(
     else return null;
     const point = new THREE.Vector3().copy(dir).multiplyScalar(hitT).add(origin);
     const normal = kind === 'terrain'
-      ? heightField.getNormalAt(point.x, point.z).clone()
+      ? rayNormalField.getNormalAt(point.x, point.z).clone()
       : _bestNrm.clone();
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
@@ -861,7 +869,11 @@ function assembleWorld(
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bodyRecordQuery: getBodyRecordQuery,
-    bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    bindGroundOverlay: (overlay) => {
+      boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay;
+      rayOverlay = overlay;
+      rayNormalField = overlay ? createDeformedHeightField(heightField, overlay) : heightField;
+    },
     groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (

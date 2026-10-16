@@ -753,11 +753,13 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 }
 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
+  const groundHeightAt = groundFor(world).field.getHeightAt;
   return createSpottingSystem({
     getTanks: () => game.tanks as SpottingTank[],
     alwaysVisible: !!game.ruleset.alwaysVisible,
     raycast: world.raycast,
-    opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt),
+    // the match's ground (its craters and heaps), as the authority's spotting reads it
+    opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,groundHeightAt),
     concealers: world.getConcealment?.() || [],
     getCamoBonus: (tank) => {
       const entity = tank as SpottingTank & { specId: string };
@@ -2945,11 +2947,11 @@ const auxiliaryContexts=new WeakMap<SoloGameState, Parameters<typeof stepRoofGun
 function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventBus): void {
   if (game.result) return;
   let context=auxiliaryContexts.get(game);
-  if(!context){context = {
+  if(!context){const groundHeightAt = groundFor(world).field.getHeightAt;context = {
     entities: game.tanks,
     visible: (target: {id:string}, shooter: import('../sim/spotting.ts').SpottingTank) => !!game.spotting?.isSpotted(target.id, shooter.team, shooter),
     clear: (a: THREE.Vector3,b: THREE.Vector3) => {
-      if (smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt)) return false;
+      if (smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,groundHeightAt)) return false;
       auxiliaryRay.copy(b).sub(a); const distance=auxiliaryRay.length(); auxiliaryRay.normalize();
       const hit=world.raycast(a,auxiliaryRay,distance); return !hit || hit.dist>=distance-.5;
     },
@@ -2963,7 +2965,8 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
     // (2026-10-09) the canisters fly through the world's own collision: they bounce off walls, and the clouds stay out
     // of the houses beside them
-    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt,world)){
+    // the canister lands on the match's ground (its craters and heaps), as the authority's does
+    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,groundFor(world).field.getHeightAt,world)){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();
       bus.emit('auxiliary:smokeScreens',{screens});
