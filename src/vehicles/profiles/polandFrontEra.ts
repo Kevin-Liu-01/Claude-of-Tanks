@@ -446,12 +446,14 @@ function facing(p: readonly THREE.Vector3[], i: number): THREE.Vector3 {
 }
 
 /** The front bay's fitted cassette grid between permanent bars, and brick-bond cassettes on the front return's falling
- * face. The Zubr's grid leaves a slot round its hull screen's support arm and shoe (z 2.30): two columns of two. */
+ * face. The Zubr's grid leaves a slot round its hull screen's support arm and shoe (z 2.30): two columns of three. */
 export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: PolishFrontSkirt): void {
   const id = idOf(level), b = s.bay, thick = level === 1 ? .06 : .09;
   const columns: [number, number][] = level === 1 ? [[b.flat[0] + .01, 2.215], [2.385, b.flat[1] - .01]]
     : [[b.flat[0] + .01, b.flat[0] + .17], [b.flat[0] + .185, b.flat[0] + .345], [b.flat[0] + .36, 2.65]];
-  const rows: [number, number][] = level === 1 ? [[b.low + .006, (b.low + b.high) / 2 - .008], [(b.low + b.high) / 2 + .008, b.high - .006]]
+  // the Zubr: three courses of two (6 a side, the plan's count) round the screen-arm slot; the Zubr II: three of three
+  const zubrRow = (b.high - b.low - .012 - 2 * .016) / 3;
+  const rows: [number, number][] = level === 1 ? [0, 1, 2].map(k => [b.low + .006 + k * (zubrRow + .016), b.low + .006 + k * (zubrRow + .016) + zubrRow] as [number, number])
     : [[b.low + .006, b.low + .196], [b.low + .211, b.low + .401], [b.low + .416, Math.min(b.high, 1.33) - .006]];
   for (const side of SIDES) {
     const n = new THREE.Vector3(side, 0, 0);

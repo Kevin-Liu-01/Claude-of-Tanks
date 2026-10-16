@@ -35,7 +35,7 @@ const SECTORS = ['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', '
 /** New ERA modules per sector (both sides alike), as built. */
 const MODULES = {
   t72b3m_hetman_ii: {glacis_era: 4, skirt_era: 1, turret_era: 11},
-  t72b3_zubr: {glacis_era: 18, skirt_era: 8, turret_era: 18},
+  t72b3_zubr: {glacis_era: 18, skirt_era: 10, turret_era: 18},
   t72b3_zubr_ii: {glacis_era: 15, skirt_era: 13, turret_era: 48},
 };
 /** The gatefix2 baseline (integ/226 c3cc76fa8, this receipt's census): drawn triangles HIGH/LOW and draws HIGH/LOW. */
