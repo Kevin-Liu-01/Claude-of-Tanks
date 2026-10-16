@@ -4210,6 +4210,11 @@ ${snowCap ? `
   // softer (applyTileLodBias)
   const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
   const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
+  // the hook a kind wears (installSurfaceShaderHooks), which is all of its code beside three's own parameters
+  const propsProgramFamily = (kind: string): string => (tileBiased(kind) ? 'tile' : isKitWall(kind) ? 'wall'
+    : kind === 'dark' || kind === 'glass' ? 'plain'
+      : kind === 'rock' || kind === 'fieldStone' || kind === 'pole' || kind === 'ballast' || kind === 'fieldMud' ? kind
+        : 'grime');
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
@@ -4222,11 +4227,16 @@ ${snowCap ? `
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
-      // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
-      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
+      // 2026-10-15 (the perf lane): the program key names the hook the material wears, not its kind. Kinds wearing one
+      // hook compile one program between them wherever three's own parameters (maps, vertex colours, side, batching)
+      // agree, as the hessian and the hay always did: the 10-15 link census had 9 of the 32-34 props programs on
+      // Verdant and Urban linking identical code under their kinds' names (the four kit walls, stone and wood, steel and
+      // structure wood...). A biased roof (round 7) and a kit wall (round 10) keep programs of their own, so a map
+      // without a kit never reuses a kit map's. The kind stays readable as userData.propsKind.
+      material.userData.propsKind = materialKind;
+      const family = propsProgramFamily(materialKind);
       material.customProgramCacheKey = () =>
-        'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
+        'world-props-' + family + '-v8' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
   }
   installSurfaceShaderHooks();
@@ -4249,7 +4259,8 @@ ${snowCap ? `
     });
     fortConcrete.aoMapIntensity = 0.82;
     engineCtx.setupShadowMaterial(fortConcrete, grimeHook);
-    fortConcrete.customProgramCacheKey = () => 'world-props-fortConcrete-v7' + (snowCap ? 's' : '');
+    fortConcrete.userData.propsKind = 'fortConcrete';
+    fortConcrete.customProgramCacheKey = () => 'world-props-grime-v8' + (snowCap ? 's' : ''); // the grime hook's program
     mats.fortConcrete = fortConcrete;
     retainedSurfaceMaterials.push(fortConcrete);
   }
@@ -10543,7 +10554,8 @@ ${snowCap ? `
         roughnessMap: thatch.surface, aoMap: thatch.surface, roughness: 1, metalness: 0 });
       material.aoMapIntensity = 0.82;
       engineCtx.setupShadowMaterial(material, grimeHook);
-      material.customProgramCacheKey = () => 'world-props-straw-v7' + (snowCap ? 's' : '');
+      material.userData.propsKind = 'thatch';
+      material.customProgramCacheKey = () => 'world-props-grime-v8' + (snowCap ? 's' : ''); // the grime hook's program
       mats.thatch = material;
       retainedSurfaceMaterials.push(material);
     }
@@ -10662,7 +10674,9 @@ ${snowCap ? `
       // (round 10) a kit wall's batch wears its walls' grime (wallGrimeHook), as its plain mesh does
       const wallBatch = isKitWall(key);
       engineCtx.setupShadowMaterial(batchMaterial, wallBatch ? wallGrimeHook : grimeHook);
-      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch' + (wallBatch ? '-wall' : '');
+      // (2026-10-15) by its hook, like the plain buckets: three's batching parameter keeps the batch programs apart
+      batchMaterial.userData.propsKind = key;
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + (wallBatch ? 'wall' : 'grime') + '-v8' + (snowCap ? 's' : '');
       retainedSurfaceMaterials.push(batchMaterial);
       const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
       batch.name = 'props-bucket-' + key + '-batch';

@@ -272,8 +272,42 @@ try {
   image.data[0] ^= 1; context.putImageData(image, 0, 0);
   assert.throws(() => assert.equal(reliefHash(shared.palette), reliefHash(right.palette)), assert.AssertionError,
     'the relief parity comparison detects a one-byte change');
+  // (2026-10-15, the perf lane) a props program key names the hook a material wears (props.ts propsProgramFamily), so
+  // every material of one key and type must compile the same code from the same three source: their shared program
+  // is then theirs exactly. Compared on both shader stages and the uniform names, per map (winter: the snow cap).
+  const shaderSnapshot = (material) => {
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader,
+      fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    material.onBeforeCompile(shader, null);
+    return { vertexShader: shader.vertexShader, fragmentShader: shader.fragmentShader,
+      uniformNames: Object.keys(shader.uniforms).sort() };
+  };
+  let familyPairs = 0;
+  for (const mapId of ['verdant', 'winter']) {
+    const fixture = materialFixture(build(generate, samples[0]).palette, mapId);
+    const groups = new Map();
+    for (const [kind, material] of Object.entries(fixture.mats)) {
+      if (typeof material?.customProgramCacheKey !== 'function') continue;
+      const key = `${material.type}|${material.customProgramCacheKey()}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push([kind, material]);
+    }
+    for (const [key, members] of groups) {
+      if (members.length < 2) continue; // (a kind alone on its key shares nothing; the rock's hook reads the props build)
+      const [[firstKind, first], ...rest] = members.map(([kind, material]) => [kind, shaderSnapshot(material)]);
+      for (const [kind, snapshot] of rest) {
+        assert.equal(snapshot.vertexShader, first.vertexShader, `${mapId}: ${kind} and ${firstKind} share ${key}: one vertex code`);
+        assert.equal(snapshot.fragmentShader, first.fragmentShader, `${mapId}: ${kind} and ${firstKind} share ${key}: one fragment code`);
+        assert.deepEqual(snapshot.uniformNames, first.uniformNames, `${mapId}: ${kind} and ${firstKind} share ${key}: one uniform set`);
+        familyPairs++;
+      }
+    }
+    for (const material of Object.values(fixture.mats)) { releaseCsmShaderMaterial(fixture.csm, material); material.dispose(); }
+    fixture.dummy.dispose(); ownedTextures.delete(fixture.dummy);
+  }
+  assert.ok(familyPairs >= 10, `the hook families pair ${familyPairs} kinds (expected the grime family's many kinds)`);
   console.log(JSON.stringify({ ok: true, evidence: 'native Canvas CPU pixels/materials; no GPU or frame timing claim',
-    rasterizer: { name: rasterizer.name, version: rasterizer.version }, receipts, ownershipCases: 2 }, null, 2));
+    rasterizer: { name: rasterizer.name, version: rasterizer.version }, receipts, ownershipCases: 2, familyPairs }, null, 2));
 } finally {
   for (const texture of ownedTextures) texture.dispose();
   for (const [key, descriptor] of globals) {
