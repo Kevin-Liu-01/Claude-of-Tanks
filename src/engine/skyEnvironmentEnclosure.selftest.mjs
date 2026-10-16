@@ -3,7 +3,7 @@
 // boulders glowing white and the meadow washed out: the battle kept the bay's bake (its sun disc folded into PMREM's
 // diffuse mip, texel max 65254 against 0.9) at the open sky's intensity — the chalk's scene radiance 3.14 (bloom from
 // 1.78), the meadow's 0.40, against 0.57 and 0.08 after a re-bake on the open flip. Pins the three owners' contract:
-// lighting publishes every enclosure flip after the first rig, the sky re-bakes a full-dome bake (the bay's, or the
+// lighting publishes every enclosure flip (the first rig's included), the sky re-bakes a full-dome bake (the bay's, or the
 // boot's before the atmosphere showed) on the open flip under the atmosphere (and only then), and main.ts wires the two.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -13,15 +13,15 @@ const lighting = read('./lighting.ts');
 const sky = read('./sky.ts');
 const main = read('../main.ts');
 
-// 1. lighting: applyRig writes the enclosure, then notifies on a change (the first rig only records it)
+// 1. lighting: applyRig writes the enclosure, then notifies on a change (the first rig included)
 const rigAt = lighting.indexOf('function applyRig(opts: SunPreset): void {');
 assert.ok(rigAt > 0, 'applyRig present');
 const rig = lighting.slice(rigAt, lighting.indexOf('\n  }\n', rigAt));
 const writeAt = rig.indexOf('scene.userData.lightEnclosed = farCascadeDormant;');
 const notifyAt = rig.indexOf('for (const listener of enclosureListeners) listener(farCascadeDormant);');
 assert.ok(writeAt > 0 && notifyAt > writeAt, 'the listeners hear the flip after the scene records it');
-assert.match(rig, /if \(publishedEnclosed !== farCascadeDormant\) \{\s*const first = publishedEnclosed === null;\s*publishedEnclosed = farCascadeDormant;\s*if \(!first\)/,
-  'only a change notifies, and never the first rig');
+assert.match(rig, /if \(publishedEnclosed !== farCascadeDormant\) \{\s*publishedEnclosed = farCascadeDormant;\s*for \(const listener of enclosureListeners\) listener\(farCascadeDormant\);/,
+  'only a change notifies (the first rig\'s included: a Studio boot opens on the sky)');
 assert.match(lighting, /onEnclosureChange\(listener: \(enclosed: boolean\) => void\): \(\) => void \{\s*enclosureListeners\.add\(listener\);\s*return \(\) => \{ enclosureListeners\.delete\(listener\); \};/,
   'onEnclosureChange subscribes and returns the unsubscribe');
 // the dormancy switch is the flip's path out of the Garage: it re-applies the rig
