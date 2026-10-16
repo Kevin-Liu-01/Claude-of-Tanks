@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_INTACT, CELL_OPENING, CELL_SPALLED, CELL_VOID, cellRect, createWallFracture,
-  createWallStrikeOutcome, strikeWall, struckFace, wallFractureCensus,
+  createWallStrikeOutcome, dropFace, strikeWall, struckFace, wallFractureCensus,
 } from './wallFracture.ts';
 
 const brick = { material: 'brick', bucket: 'brick', tint: [1, 1, 1], thicknessM: 0.3, share: 1 };
@@ -211,6 +211,37 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.equal(left.length, 0, `nothing of the gable hangs over the blown-out wall (${left.length} of ${gableCells.length} still up)`);
 }
 
+// ---- sections on: a wall section's fall (dropFace) --------------------------------------------------------------
+// (2026-10-15, the port onto integ/226) the ground storey's front falls above its stub; its door goes down to the sill
+// (wave 422's barn door stood 3.2 s in the stub's lower metre); the storey over it stands on its floor, as the sim holds it
+{
+  const wall = createWallFracture(house());
+  wall.floorsHold = true;
+  const out = createWallStrikeOutcome();
+  const g = wall.faces[front0];
+  const stub = 0.9;
+  const fell = dropFace(wall, front0, stub, out);
+  assert.ok(fell > 40 && out.fallen.length >= 1, `the face above its stub comes down as clusters (${fell} cells, ${out.fallen.length} clusters)`);
+  let standingLow = 0, standingHigh = 0, doorLeft = 0;
+  for (let r = 0; r + 1 < g.rowY.length; r++) for (let c = g.rowStart[r]; c < g.rowStart[r + 1]; c++) {
+    const up = g.state[c] <= CELL_SPALLED;
+    const mid = (g.rowY[r] + g.rowY[r + 1]) / 2;
+    if (up && mid < stub) standingLow++;
+    if (up && mid >= stub) standingHigh++;
+    // the door's cells (an opening down to the floor) never stand, however low
+    if (g.opening[c] && centreOf(g, c)[0] < -1.9 && centreOf(g, c)[0] > -3.1 && g.state[c] === CELL_OPENING) doorLeft++;
+  }
+  assert.ok(standingLow > 20, `the stub stands (${standingLow} cells under ${stub} m)`);
+  assert.equal(standingHigh, 0, 'nothing of the face over its stub stands');
+  assert.equal(doorLeft, 0, 'the door goes down to its sill with its panel: the stub has a gap there');
+  const upper = wall.faces[front1];
+  assert.ok(Array.from(upper.state).every((st) => st !== CELL_FALLEN), 'the storey over it stands on its floor (sections on)');
+  const again = createWallFracture(house());
+  again.floorsHold = true;
+  dropFace(again, front0, stub, createWallStrikeOutcome());
+  assert.deepEqual(again.faces.map((f) => Array.from(f.state).join('')), wall.faces.map((f) => Array.from(f.state).join('')), 'the same twice');
+}
+
 // ---- the same twice -------------------------------------------------------------------------------------------
 {
   const run = () => {
@@ -227,4 +258,4 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
 }
 console.log('wallFracture.selftest: a round breaks its wall at its point (through, recess, cracks), damage adds up, the courses '
   + 'over a breach fall in a triangle, a lintel goes with its jamb, a dart holes a door under its lintel, a breach at the foot drops the storey over it, a gable falls '
-  + 'with the wall under it, the same twice');
+  + 'with the wall under it, a section fall keeps its stub and gaps its door while the storey over it holds, the same twice');

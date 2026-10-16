@@ -16,6 +16,7 @@ import { PartSink, rgb, shade, type RegionalBucket } from '../maps/regional/geom
 import type { SimpleCollisionShape } from '../collision.ts';
 import { archedSlab, bar, extrude, moulding, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const STEEL_GREY = rgb(0x6f777b), STEEL_GREEN = rgb(0x4d5a4e), BAILEY_GREEN = rgb(0x4e5638), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const DECK_BOARD = rgb(0x7a6a55), IRON = rgb(0x2b2d2e), PAINT_WHITE = rgb(0xe6e3da), PAINT_BLACK = rgb(0x262624);
@@ -359,7 +360,7 @@ export const ENTRY_CLIMB_M = 0.45;
  * the white edge beams and the railing. */
 function liftLeaves(sink: PartSink, span: number, W: number, top: (z: number) => number): void {
   const white = { colour: PAINT_WHITE };
-  for (const zs of [-1, 1]) {
+  for (const zs of [-1, 1]) piece(sink, { name: `deck-${(zs + 1) / 2}`, kind: 'detach', at: 'collapse' }, (sink) => {
     const zA = zs * span / 2, zB = 0;
     // (the stringers and the ribs reach up under the boards, which lie on them — they stood 10-12 cm under them — and
     // down onto the abutment's seat at the hinge)
@@ -388,7 +389,7 @@ function liftLeaves(sink: PartSink, span: number, W: number, top: (z: number) =>
       bar(sink, 'structureWood', [x, top(zA) + 1.05, zA], [x, top(zB) + 1.05, zB], 0.09, { ...white, decor: true });
       bar(sink, 'structureWood', [x, top(zA) + 0.55, zA], [x, top(zB) + 0.55, zB], 0.06, { ...white, decor: true, fine: true });
     }
-  }
+  });
 }
 
 /** The portals over the piers (or the abutments) at ±(span/2 + 0.55) and the balances on them. */
@@ -470,7 +471,7 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
     }
     return parts;
   })();
-  return { parts: sink.finish(), movement };
+  return { parts: finishLandmark(sink), movement };
 };
 
 /** The lift bridge's long form (liftBridge's note): the lift span, its piers, the fixed spans, the abutments, the ramps. */
@@ -667,5 +668,5 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
     }
     return parts;
   })();
-  return { parts: sink.finish(), movement };
+  return { parts: finishLandmark(sink), movement };
 }

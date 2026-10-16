@@ -65,6 +65,9 @@ export interface StructureFractureOptions {
   /** Work units an update spends on the strikes' drawing (sorting a triangle 1, cutting one 3, a body 240, a face's
    *  redraw 320); default 3600. */
   workUnits?: number;
+  /** A body lain still at this height that must stay a body (it rests on a floor its storey may yet drop from under it:
+   *  baked, it would stay in the air). */
+  holdBake?(structureIdx: number, y: number): boolean;
 }
 
 export interface StructureFracture {
@@ -791,6 +794,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.userData.structureFractureFace = true;
+      mesh.name = `fx-fracture-face-${live.seam.structureIdx}`;
       o.group.add(mesh);
       draw.meshes.push(mesh);
     }
@@ -852,6 +856,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     q([-hw, y0, -hd], [hw, y0, -hd], [hw, y0, hd], [-hw, y0, hd], [0, 1, 0], 1.3);
     q([-hw, y1, -hd], [hw, y1, -hd], [hw, y1, hd], [-hw, y1, hd], [0, -1, 0], 0.7);
     const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
+    mesh.name = `fx-fracture-room-${live.seam.structureIdx}`;
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
     mesh.matrixWorldNeedsUpdate = true;
@@ -1114,6 +1119,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const geometry = interleavedOf(layout, list, new THREE.Sphere(new THREE.Vector3(centre[0], centre[1], centre[2]), bodyRadius));
       partsOut.push({ material, geometry });
       const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = `fx-fracture-body-${live.seam.structureIdx}`;
       mesh.matrixAutoUpdate = false;
       // (the decisive wave's hitch probe: 2400 draw calls at a house's collapse) a clump of three cells or fewer casts no
       // shadow of its own while it flies (the heap it bakes into does)
@@ -1179,7 +1185,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   /** (the share full) the body that has lain still longest, half a second at least, bakes into its heap now. */
   function bakeStillest(): boolean {
     let pick: LiveBody | null = null;
-    for (let i = 0; i < list.length; i++) { const b = list[i]; if (b.still >= SHARE_STILL_S && (!pick || b.still > pick.still)) pick = b; }
+    for (let i = 0; i < list.length; i++) {
+      const b = list[i];
+      if (b.still >= SHARE_STILL_S && (!pick || b.still > pick.still) && !o.holdBake?.(b.structureIdx, b.pose[1])) pick = b;
+    }
     if (!pick) return false;
     bake(pick);
     return true;
@@ -1343,6 +1352,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       }
       geometry.computeBoundingSphere();
       const mesh = new THREE.Mesh(geometry, g.material);
+      mesh.name = `fx-fracture-heap-${live.seam.structureIdx}`;
       mesh.matrixAutoUpdate = false;
       mesh.matrixWorldNeedsUpdate = true;
       mesh.castShadow = true;
@@ -1641,7 +1651,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         b.age += dt;
         b.still = o.pool.asleep(b.handle) ? b.still + dt : 0;
         if (!b.tipped && b.still > 0.25) { b.tipped = true; if (tipIfStanding(b, _pose)) { b.still = 0; continue; } }
-        if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) bake(b);
+        if ((b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) && !o.holdBake?.(b.structureIdx, b.pose[1])) bake(b);
       }
       profEnd('fr.poses', tPose);
     },

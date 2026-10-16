@@ -892,6 +892,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/structureStages.selftest.mjs',
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
+    // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
+    // gaps its doors; a building cut into its own pieces (doors gapped in the stubs), brought down as bodies; the stages
+    // driving both, sections on and off, every piece at rest on what is under it, a lift bridge's named pieces as bodies
+    'src/fx/wallFracture.selftest.mjs',
+    'src/fx/structureFracture.selftest.mjs',
+    'src/fx/collapsePieces.selftest.mjs',
+    'src/fx/collapseBodies.selftest.mjs',
+    'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each

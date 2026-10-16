@@ -103,7 +103,7 @@ export interface CollapseBodies {
    * Sections on: the roof fell (its section's event). Its slabs come down as bodies from the cut laid ahead (finished
    * now if it was not); the caller hides the standing roof as before. False when there is no roof to throw.
    */
-  fallRoof(seam: StructureDamageSeam, e: CollapseBodiesEvent, materialFor?: (bucket: string) => THREE.Material | null): boolean;
+  fallRoof(seam: StructureDamageSeam, e: CollapseBodiesEvent, materialFor?: (bucket: string) => THREE.Material | null, version?: number): boolean;
   /**
    * The building comes down as bodies: false when it cannot (no storeys, too few pieces) and the caller keeps its
    * scripted collapse. `standing` are the stage runs and redrawn faces that stood with it: they are cut with it (a cut
@@ -118,6 +118,9 @@ export interface CollapseBodies {
   markFalling(seam: StructureDamageSeam, floors: boolean): void;
   /** Sections on: a storey dropped (its floor line `storey`'s floor goes): what lay on it falls on. */
   dropFloor(structureIdx: number, storey: number): void;
+  /** Whether a body lain still at height `y` rests on a floor of the building still standing (it stays a body: baked, it
+   *  would stay in the air once that storey drops). */
+  floorHolds(structureIdx: number, y: number): boolean;
   /** The fx clock's delta: the pool steps, every piece follows its body; preparations advance within their budget. */
   update(dtS: number): void;
   /** Collapses in flight (their pieces not all baked). */
@@ -945,9 +948,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   }
 
   /** Sections on: the roof's slabs from the cut (the rest of it kept for the building's later falls). */
-  function fallRoof(seam: StructureDamageSeam, e: CollapseBodiesEvent, resolve: (bucket: string) => THREE.Material | null = o.materialFor): boolean {
+  function fallRoof(seam: StructureDamageSeam, e: CollapseBodiesEvent, resolve: (bucket: string) => THREE.Material | null = o.materialFor,
+    version = 0): boolean {
+    // the cut laid ahead when it is of the building as it stands now (its walls' cells since drawn out of the buckets would
+    // fall with its roof), else laid now
     const existing = prepared.get(seam.structureIdx);
-    const job = existing ?? jobFor(seam, resolve, [], 0, true);
+    const job = existing && existing.version === version ? existing : jobFor(seam, resolve, [], version, true);
     if (!job || !job.plan.roof.length) return false;
     const tProf = profStart();
     bind();
@@ -1258,6 +1264,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         }
       }
     }
+    // (a roof come down onto a floor still standing stays bodies, asleep, until that floor goes: baked it would hang)
+    if (c.partial && floors.get(c.structureIdx)?.length) return;
     if (allStill || (allSlow && age > BAKE_SLOW_AGE_S) || age > BAKE_AGE_S) { const tBake = profStart(); bake(c); profEnd('cb.bake', tBake); }
   }
 
@@ -1272,7 +1280,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const f of st.faces) t = Math.max(t, f.layers.reduce((sum, l) => sum + (l.thicknessM || 0), 0));
       const hw = a.w / 2 - t - 0.05, hl = a.d / 2 - t - 0.05;
       if (!(hw > 0.4 && hl > 0.4)) continue;
-      const y1 = placement.y + st.y0, y0 = y1 - 0.25;
+      const y1 = placement.y + st.y0, y0 = y1 - 0.5;
       // obb: hw along right (cos yaw, −sin yaw), hl along forward (sin yaw, cos yaw): the body frame's x and z
       const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl;
       const record = {
@@ -1304,6 +1312,20 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         // what lay on it falls on (its sleepers woken over the footprint)
         pool.world.wakeInBox(r.min[0] - 1, r.min[1] - 0.5, r.min[2] - 1, r.max[0] + 1, r.max[1] + 30, r.max[2] + 1);
       }
+      // a roof's fall that lay on it starts its settling over (woken, its pieces are still before they fall: the slow
+      // rule would bake them where they hung)
+      for (let i = 0; i < live.length; i++) {
+        const c = live[i];
+        if (c.done || !c.partial || c.structureIdx !== structureIdx) continue;
+        c.t0 = clockS;
+        for (const p of c.pieces) p.still = 0;
+      }
+    },
+    floorHolds(structureIdx, y) {
+      const list = floors.get(structureIdx);
+      if (!list) return false;
+      for (let i = 0; i < list.length; i++) if (y >= list[i].record.max[1] - 0.4) return true;
+      return false;
     },
     update(dtS) {
       clockWait += Math.max(0, dtS);

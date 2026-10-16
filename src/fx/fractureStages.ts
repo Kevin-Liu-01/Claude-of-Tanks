@@ -33,6 +33,7 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import { createCollapseBodies, type CollapseBodies, type CollapseBodiesEvent } from './collapseBodies.ts';
 import type { CollapsePiece } from './collapsePieces.ts';
 import { createDebrisPhysics, type DebrisPhysics } from './debrisPhysics.ts';
+import { createLandmarkBodies, type LandmarkBodies } from './landmarkBodies.ts';
 import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
 import { breachBlowFor } from './structureFx.ts';
 import { STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
@@ -116,7 +117,7 @@ export interface FractureStages {
   update(): void;
   shiftTime(delta: number): void;
   reset(): void;
-  stats(): { bodies: number; awake: number; fracture: number; collapses: number; prepared: number; skipped: number };
+  stats(): { bodies: number; awake: number; fracture: number; collapses: number; prepared: number; skipped: number; landmark: number };
   readonly pool: DebrisPhysics;
 }
 
@@ -164,6 +165,35 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const clamps: Array<{ seam: StructureDamageSeam; storey: number; faceIndex: number; face: DamageFace; stubTop: number; top: number }> = [];
   const refused = new Map<StructureDamageSeam, Refused[]>();
   let last = o.now();
+  /** Record boxes of a structure that no longer hold its pieces (a lift bridge's leaves over their gap): world x/z. */
+  const passes = new Map<number, number[]>();
+  let envBase: RigidEnvironment | null = null, envWrapped: RigidEnvironment | null = null;
+  const environment = (): RigidEnvironment | null => {
+    const b = o.environment();
+    if (!b) return null;
+    if (b !== envBase || !envWrapped) {
+      envBase = b;
+      const solid = b.isSolid;
+      envWrapped = {
+        groundAt: b.groundAt,
+        ...(b.queryStatic ? { queryStatic: b.queryStatic } : {}),
+        isSolid(record) {
+          if (solid ? !solid(record) : (record.crushed || record.dead)) return false;
+          const idx = record.structureIdx;
+          if (idx === undefined || !passes.size) return true;
+          const list = passes.get(idx);
+          if (!list) return true;
+          const cx = (record.min[0] + record.max[0]) / 2, cz = (record.min[2] + record.max[2]) / 2;
+          for (let i = 0; i < list.length; i += 4) if (cx >= list[i] && cx <= list[i + 2] && cz >= list[i + 1] && cz <= list[i + 3]) return false;
+          return true;
+        },
+      };
+    }
+    return envWrapped;
+  };
+  /** Landmarks never fracture their walls (their named pieces are E12's: landmarks/damage.ts), but for the pieces a
+   *  builder gives the bodies (landmarkBodies.ts: the lift bridge). */
+  const isLandmark = (seam: StructureDamageSeam): boolean => seam.anatomy.massClass === 'landmark';
 
   const resolverOf = (seam: StructureDamageSeam): ((bucket: string) => THREE.Material | null) => {
     const byBucket = host ? host.spanMaterials(seam) : new Map<string, THREE.Material>();
@@ -176,6 +206,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const fracture: StructureFracture = createStructureFracture({
     pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 64,
     keepSpan: (span) => host?.keep(span),
+    holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),
     materialFor: (seam, bucket) => resolverOf(seam)(bucket),
     roomMaterial: (seam, bucket) => (host ? host.roomMaterialFor(resolverOf(seam)(bucket)) : null),
     onLanding: o.onLanding,
@@ -195,10 +226,19 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       }
     },
   });
+  const landmarks: LandmarkBodies = createLandmarkBodies({
+    pool, group: o.group, groundAt: o.groundAt, onLanding: o.onLanding,
+    keepSpan: (span) => host?.keep(span),
+    pass(structureIdx, minX, minZ, maxX, maxZ) {
+      let list = passes.get(structureIdx);
+      if (!list) { list = []; passes.set(structureIdx, list); }
+      list.push(minX, minZ, maxX, maxZ);
+    },
+  });
   const bodies: CollapseBodies = createCollapseBodies({
-    pool, group: o.group, materialFor: o.materialFor, groundAt: o.groundAt, environment: o.environment,
+    pool, group: o.group, materialFor: o.materialFor, groundAt: o.groundAt, environment,
     onLanding: o.onLanding, onShards: o.onShards, hulls: o.hulls,
-    alsoLive: () => fracture.liveBodies() > 0,
+    alsoLive: () => fracture.liveBodies() + landmarks.liveBodies() > 0,
   });
   bodies.onShatter(shatterPanel);
 
@@ -292,9 +332,10 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     refused.clear();
   }
 
-  /** A building whose walls broke: its records leave its pieces' way, its upper floors catch what falls inside it. */
+  /** A building whose walls broke: its records leave its pieces' way (a body born inside its wall would be thrown out).
+   *  (Its upper floors catch only its roof's slabs, from its fall on: a cell knocked in under a floor would lodge in it.) */
   function afterStrike(seam: StructureDamageSeam): void {
-    bodies.markFalling(seam, true);
+    bodies.markFalling(seam, false);
     bump(seam.structureIdx);
   }
 
@@ -331,7 +372,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         seams.set(seam.structureIdx, seam);
         // (declined, the stages lay the kit's hole: a run the cut laid ahead must hold too)
         bump(seam.structureIdx);
-        if (sectionsOn.has(seam.structureIdx)) return false;
+        if (sectionsOn.has(seam.structureIdx) || isLandmark(seam)) return false;
         const faces = fracture.strike(seam, p.x, p.y, p.z, p.dirX, p.dirZ, p.munition, p.chargeKg, p.caliberMm);
         if (!faces) return false;
         afterStrike(seam);
@@ -342,6 +383,10 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         const idx = seam.structureIdx;
         const sections = (e as StructureStageEvent & { sections?: boolean }).sections === true;
         const settled = e.settled === true;
+        if (isLandmark(seam)) {
+          if (landmarks.handles(seam.builder)) landmarks.stage(seam, e.stage, e.dirX, e.dirZ, settled);
+          return 0;
+        }
         seams.set(idx, seam);
         // (the stage lays its runs after this: a cut laid before them is stale; a collapse lays none before its own)
         if (e.stage !== 'collapsed') bump(idx);
@@ -370,6 +415,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       hole(e, seam) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
+        if (isLandmark(seam)) return false;
         sectionsOn.add(idx);
         fracture.holdStoreys(idx, seam);
         bump(idx);
@@ -385,12 +431,12 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fallPanel(e, seam, storey, face, stubTop, top) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
+        if (isLandmark(seam)) return false;
         sectionsOn.add(idx);
         fracture.holdStoreys(idx, seam);
         bump(idx);
         const faceIndex = storey.faces.indexOf(face);
         if (faceIndex < 0) return false;
-        bodies.markFalling(seam, true);
         if (!fracture.dropFace(seam, storey.index, faceIndex, stubTop - face.origin[1], 0, 0)) return false;
         afterStrike(seam);
         // (the last face of a storey drops it: the stages' fall moves the band from where it stood, so the face is taken
@@ -405,11 +451,12 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fallRoof(e, seam) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
+        if (isLandmark(seam)) return false;
         sectionsOn.add(idx);
         bump(idx);
         bodies.markFalling(seam, true);
         const event: CollapseBodiesEvent = { structureId: e.structureId, cause: null, x: e.x, y: e.y, z: e.z, dirX: 0, dirZ: 0 };
-        return bodies.fallRoof(seam, event, resolverOf(seam));
+        return bodies.fallRoof(seam, event, resolverOf(seam), versionOf(idx));
       },
     };
   };
@@ -434,6 +481,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       last = now;
       fracture.update();
       bodies.update(dt);
+      landmarks.update(dt);
       flushRefused();
       // a cut laid ahead gone stale (the walls redrawn, a stage laid since): laid again once the walls' drawing is done,
       // one building an update
@@ -449,7 +497,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     shiftTime(delta) { last += delta; },
     reset() {
       fracture.reset();
+      landmarks.reset();
       bodies.reset();
+      passes.clear();
       sectionsOn.clear();
       wantCut.length = 0;
       seams.clear();
@@ -459,8 +509,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       last = o.now();
     },
     stats() {
-      const ps = pool.stats(), fs = fracture.stats(), cs = bodies.stats();
-      return { bodies: ps.bodies, awake: ps.awake, fracture: fs.bodies, collapses: cs.collapses, prepared: cs.prepared, skipped: fs.skipped };
+      const ps = pool.stats(), fs = fracture.stats(), cs = bodies.stats(), ls = landmarks.stats();
+      return { bodies: ps.bodies, awake: ps.awake, fracture: fs.bodies, collapses: cs.collapses, prepared: cs.prepared, skipped: fs.skipped,
+        landmark: ls.bodies + ls.baked };
     },
   };
 }
