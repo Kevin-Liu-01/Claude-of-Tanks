@@ -2304,7 +2304,7 @@ function* createFxSteps(
           const kind = markKindFor(info.munition, true);
           craters.stamp(pos.x, pos.z, _crater.radiusM, surface, kind, rng(), particles.getTime() + birthOffset, deformedGroundY,
             groundClimate());
-          clearCover(pos.x, pos.z, _crater.radiusM * (kind === 'scar' ? 0.55 : 0.9));
+          clearCover(pos.x, pos.z, _crater.radiusM * (kind === 'scar' || kind === 'drone' ? 0.55 : 0.9));
         }
       }
     } else {
