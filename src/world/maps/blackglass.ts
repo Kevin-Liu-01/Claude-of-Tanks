@@ -158,6 +158,10 @@ export default {
     ],
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 124, outcrops: 18, craters: 116, rubblePiles: 164,
+    // (the hitbox lane, round 3, 2026-10-12: once a pile's records follow its chunks, the piles leaning to the south of
+    // the fight zone leaned the swap test, 51 -> 40 % north over 80 paired games; the street rubble balances band by
+    // band, 75 m bands along the deployments' axis, about their midpoint: map revival's banded halves)
+    rubbleHalvesAbout: { x: -117.9, z: 2.4 },
     hedgehogs: 34, sandbagLines: 28, townCraters: true,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
