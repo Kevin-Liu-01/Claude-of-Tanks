@@ -149,6 +149,17 @@ const live = (patch = {}) => ({
   assert.match(MP_STATUS_CSS, /\.cot-mp-strip\{[^}]*pointer-events:auto/, 'the strip is the tap target');
   assert.match(MP_STATUS_CSS, /\.cot-mp-banner\.leaving \.leave\{display:block\}/, 'the leave control shows in the banner only once leaving is on');
   assert.match(MP_STATUS_CSS, /body\.cot-debug-hud \.cot-mp-status\.battle\{display:none!important\}/, 'the engineering dashboard folds the strip in');
+  // The battle strip is bare text in the top-right corner row, level with the fps/ping plate (2026-10-16 owner
+  // review: it pushed the enemies roster down and was drawn as a boxed pill): it never stacks under the plate.
+  assert.match(MP_STATUS_CSS, /\.cot-mp-status\{[^}]*top:8px;right:var\(--hud-network-corner-right,10px\)/, 'the corner row; the HUD lanes set its right edge');
+  assert.doesNotMatch(MP_STATUS_CSS, /top:38px/, 'no lane under the fps/ping plate');
+  assert.match(MP_STATUS_CSS, /\.cot-mp-status\.battle \.cot-mp-strip\{[^}]*border:0;background:none;box-shadow:none;text-shadow:0 1px 3px #000,0 0 5px #000\}/,
+    'in battle: no box, no border, the bare HUD text shadow');
+  assert.match(MP_STATUS_CSS, /\.cot-mp-strip\{[^}]*background:linear-gradient/, 'the lobby strip keeps its plate');
+  assert.match(MP_STATUS_CSS, /\.cot-mp-status\.battle\[data-compact\] \.unit:not\(\.ping\)\{display:none\}/, 'a narrow corner row folds the strip to its ping');
+  assert.match(MP_STATUS_CSS, /\.cot-mp-strip \.unit\[hidden\]\{display:none!important\}/, 'a hidden cell (the host badge off) takes no room');
+  assert.match(MP_STATUS_CSS, /body:not\(\.cot-touch-layout\)\[data-cot-width='phone'\] \.cot-mp-status\.battle\{top:calc\(var\(--hud-objective-bottom,64px\) \+ 8px\)\}/,
+    'a phone-width mouse window: the right lane under the objective');
 }
 
 // ------------------------------------------------------------ the surface on the stub document

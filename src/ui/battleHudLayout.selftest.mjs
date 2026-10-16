@@ -156,24 +156,61 @@ try {
   listeners.get('transitionend')({target:special});
   assert.equal(frames.size,1,'settled panel transforms update lane position');flush();
   listeners.get('transitioncancel')({target:special});assert.equal(frames.size,1);flush();
-  // The multiplayer v2 network strip mounts outside the HUD root and asks for a relayout: while it sits in the
-  // right roster's column the roster takes the lane below it, and the side lane below the roster follows.
-  const rect=(top,bottom,left,right)=>({top,bottom,left,right});
-  const earRight=node({class:'cot-ear r'});earRight.getBoundingClientRect=()=>rect(52,120,900,1094);
-  const strip=node({class:'cot-mp-status battle'});strip.getBoundingClientRect=()=>rect(38,66,860,1014);
-  let stripMounted=true;
-  globalThis.document.querySelector=selector=>selector==='.cot-ear.r'?earRight:selector==='.cot-mp-status.battle'&&stripMounted?strip:null;
+  // The multiplayer v2 network strip mounts outside the HUD root and asks for a relayout. It is bare text in the
+  // top-right corner row (multiplayerStatus.ts: top 8px), above the enemies roster's own lane, so the roster stays
+  // level with the allies roster; only the strip's open details reader reaches into that lane and pushes it down.
+  const rect=(top,bottom,left,right)=>({top,bottom,left,right,width:right-left,height:bottom-top});
+  const earRight=node({class:'cot-ear r'});earRight.getBoundingClientRect=()=>rect(52,120,1172,1366);
+  const strip=node({class:'cot-mp-status battle'});strip.getBoundingClientRect=()=>rect(8,36,1210,1356);
+  const stripButton=node({class:'cot-mp-strip good'});stripButton.getBoundingClientRect=()=>rect(8,36,1210,1356);
+  const plate=node({class:'cot-net'});const score=node({class:'cot-top'});score.getBoundingClientRect=()=>rect(0,64,511,855);
+  let stripMounted=true;let plateShown=false;
+  const mounted={'.cot-ear.r':()=>earRight,'.cot-mp-status.battle':()=>stripMounted?strip:null,
+    '.cot-mp-status.battle .cot-mp-strip':()=>stripMounted?stripButton:null,'.cot-net':()=>plateShown?plate:null,'.cot-top':()=>score};
+  globalThis.document.querySelector=selector=>mounted[selector]?.()??null;
   assert.equal(properties.has('--hud-roster-top-right'),false,'no strip, no roster lane variable');
   listeners.get('cot-hud-relayout')();assert.equal(frames.size,1,'the strip\'s relayout request schedules one measurement');flush();
-  assert.equal(properties.get('--hud-roster-top-right'),'72px','the roster takes the lane 6 px below the strip');
-  assert.equal(properties.get('--hud-right-top'),'126px','network header reserves roster space above the anchored report');
+  assert.equal(properties.has('--hud-roster-top-right'),false,'the corner-row strip leaves the enemies roster on its own lane');
+  assert.equal(properties.get('--hud-right-top'),'106px','the report budget keeps the default roster start');
+  assert.equal(properties.get('--hud-network-corner-right'),'10px','without the fps/ping plate the strip takes the corner itself');
+  plateShown=true;plate.getBoundingClientRect=()=>rect(8,36,1248,1356);
+  callbacks.resize();flush();
+  assert.equal(properties.get('--hud-network-corner-right'),'134px','the strip sits 16 px left of a shown fps/ping plate, in the same row');
+  assert.equal(properties.has('--hud-roster-top-right'),false);
+  assert.equal(strip.hasAttribute('data-compact'),false,'room for every cell between the score and the plate');
+  score.getBoundingClientRect=()=>rect(0,64,300,1100);
+  callbacks.resize();flush();
+  assert.equal(strip.hasAttribute('data-compact'),true,'a row too narrow for every cell folds the strip to its ping');
+  stripButton.getBoundingClientRect=()=>rect(8,36,1258,1313);
+  callbacks.resize();flush();
+  assert.equal(strip.hasAttribute('data-compact'),true,'the folded strip keeps its full width as the measure: no fold/unfold flicker');
+  score.getBoundingClientRect=()=>rect(0,64,511,855);stripButton.getBoundingClientRect=()=>rect(8,36,1210,1356);
+  callbacks.resize();flush();
+  assert.equal(strip.hasAttribute('data-compact'),false,'a wide enough row unfolds it');
+  strip.getBoundingClientRect=()=>rect(8,360,1066,1356);
+  callbacks.resize();flush();
+  assert.equal(properties.get('--hud-roster-top-right'),'366px','the open details reader pushes the roster 6 px below itself');
+  plateShown=false;
   strip.getBoundingClientRect=()=>rect(140,168,20,180);
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'a strip on the left lane (touch portrait) leaves the right roster alone');
   assert.equal(properties.get('--hud-right-top'),'106px','the report budget returns to the default roster start');
+  // A phone-width mouse window has no roster: the folded strip takes the right lane under the objective, and the
+  // right kill feed starts below it.
+  body.dataset.cotWidth='phone';mounted['.cot-ear.r']=()=>null;
+  viewport.width=390;globalThis.document.documentElement.clientWidth=390;
+  strip.getBoundingClientRect=()=>rect(72,100,325,380);
+  listeners.get('cot-hud-relayout')();flush();
+  assert.equal(properties.get('--hud-kill-right-top'),'108px','the right feed clears the strip under the 64 px objective');
+  assert.equal(properties.get('--hud-network-corner-right'),'10px','the phone lane is not the corner row');
   stripMounted=false;
   listeners.get('cot-hud-relayout')();flush();
+  assert.equal(properties.get('--hud-kill-right-top'),'72px','without the strip the feed returns under the objective');
+  delete body.dataset.cotWidth;mounted['.cot-ear.r']=()=>earRight;
+  viewport.width=1366;globalThis.document.documentElement.clientWidth=1366;
+  listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'the strip\'s dispose removes the variable');
+  assert.equal(properties.get('--hud-network-corner-right'),'10px','and returns the corner offset');
   const map=node({class:'cot-minimap'});
   globalThis.document.querySelector=selector=>selector==='.cot-minimap'?map:null;
   for(const size of [160,220,300]){
