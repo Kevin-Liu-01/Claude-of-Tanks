@@ -31,7 +31,7 @@ type Slab = readonly [z: number, left: number, right: number, bottom: number, to
 type CastRow = readonly [z: number, width: number, crown: number, shoulder: number];
 
 export const CHIEFTAIN10_X_DATUMS = Object.freeze({
-  chieftain_mk10_x: {
+  chieftain_mk10: {
     dims: { hullLengthM: 7.38869, overallLengthM: 10.803698, widthM: 3.678103, heightM: 2.453337 },
     structuralRoofY: 2.453337, fixedOpticHeightM: 3.091425, highestFittingM: 4.249091,
     // Flattened source hierarchy contains no valid mechanical object origins.
@@ -42,7 +42,7 @@ export const CHIEFTAIN10_X_DATUMS = Object.freeze({
     muzzleZ: 7.093385,
   },
 });
-const D = CHIEFTAIN10_X_DATUMS.chieftain_mk10_x;
+const D = CHIEFTAIN10_X_DATUMS.chieftain_mk10;
 
 function local(g: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return g.translate(-p[0], -p[1], -p[2]);
@@ -400,4 +400,4 @@ export function buildChieftainMk10X(P: TankBuilderPort): void {
   addChieftain10XGun(P, D.trunnion, D.muzzleZ);
 }
 
-export const CHIEFTAIN10_X_PROFILES = Object.freeze({ chieftain_mk10_x: { build: buildChieftainMk10X } });
+export const CHIEFTAIN10_X_PROFILES = Object.freeze({ chieftain_mk10: { build: buildChieftainMk10X } });

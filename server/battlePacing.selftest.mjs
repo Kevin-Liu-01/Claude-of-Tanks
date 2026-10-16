@@ -53,7 +53,7 @@ async function playMaps(maps, samples, onLine = () => {}) {
         matchSeed,
         mapId,
         teamSize: 2,
-        players: [{ id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha' }],
+        players: [{ id: 'host', name: 'Host', specId: 'm1a1_abrams_hc', team: 'alpha' }],
       };
       const players = await preparePacingRoster(lobby);
       const match = createAuthoritativeMatch({

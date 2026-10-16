@@ -10,8 +10,8 @@ import { applyRoomCommand, createRoom, joinRoom, markMatchPlaying, planStart, re
 const T0 = 1_700_000_000_000;
 
 function roomWith(seats) {
-  const room = createRoom({ roomCode: 'ROOM01', mode: 'private', creator: { id: seats[0].id, name: seats[0].id }, selection: { specId: 'm1a2' }, settings: { teamSize: 7 }, now: T0 });
-  for (const seat of seats.slice(1)) joinRoom(room, { player: { id: seat.id, name: seat.id }, selection: { specId: 'm1a2' }, team: seat.team ?? null, now: T0 + room.players.length });
+  const room = createRoom({ roomCode: 'ROOM01', mode: 'private', creator: { id: seats[0].id, name: seats[0].id }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 7 }, now: T0 });
+  for (const seat of seats.slice(1)) joinRoom(room, { player: { id: seat.id, name: seat.id }, selection: { specId: 'm1a1_abrams_hc' }, team: seat.team ?? null, now: T0 + room.players.length });
   for (const seat of seats) {
     const player = room.players.find((p) => p.id === seat.id);
     if (seat.connected === false) player.connected = false;

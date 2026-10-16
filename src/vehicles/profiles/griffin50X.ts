@@ -487,5 +487,5 @@ export function buildGriffin50X(P:TankBuilderPort):void {
   buildGriffin50Chassis(P);turret(P);P.topY=3.01-2.07;
   preserveSourceStudyGunMountAppearance(P);
   reduceGriffinTurret(P);
-  P.hullG.userData.xRebuild={candidate:'griffin50_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'griffin50mm',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

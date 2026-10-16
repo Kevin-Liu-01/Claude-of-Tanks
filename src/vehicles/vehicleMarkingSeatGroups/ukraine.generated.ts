@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "ua_t64bv": {
+  "t64bv_donbas": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -25,7 +25,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6573549
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ua_t64bv",
+        "anchorProfile": "t64bv_donbas",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -47,7 +47,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.5801568
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ua_t64bv",
+        "anchorProfile": "t64bv_donbas",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -104,7 +104,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ua_t80u_kursk": {
+  "t80u_kursk": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -123,7 +123,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.5238794
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ua_t80u_kursk",
+        "anchorProfile": "t80u_kursk",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -145,7 +145,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6183172
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ua_t80u_kursk",
+        "anchorProfile": "t80u_kursk",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -153,7 +153,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ua_t84_oplot_m": {
+  "t84bm_oplot_m": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -172,7 +172,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ua_t84_oplot_m",
+        "anchorProfile": "t84bm_oplot_m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -194,7 +194,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.5463823
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ua_t84_oplot_m",
+        "anchorProfile": "t84bm_oplot_m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

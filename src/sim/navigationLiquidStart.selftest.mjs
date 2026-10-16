@@ -28,7 +28,7 @@ const field = {
   getGroundType: () => 'medium',
   getWaterMaskAt: mask,
 };
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 const safe = createNavigationLiquidSafety(field, spec);
 const START = { x: 14, z: 0 };
 const WEST = -Math.PI / 2, EAST = Math.PI / 2;
@@ -61,7 +61,7 @@ console.log('[3] a bot starting in the refused cell, facing the lake, gets out a
     combat: { hp: spec.hp, maxHp: spec.hp, destroyed: false, reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' },
       shellSlot: 0, modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 }, magazine: null },
     input: { throttle: 0, steer: 0, brake: false, fire: false, aimPoint: new Vector3(), shellSlot: 0, actionBits: 0 } };
-  const host = { id: 'host', specId: 'm1a2', spec, team: 'player', isPlayer: true,
+  const host = { id: 'host', specId: 'm1a1_abrams_hc', spec, team: 'player', isPlayer: true,
     state: createTankState(spec, new Vector3(-200, 0, 0), 0),
     combat: { hp: spec.hp, maxHp: spec.hp, destroyed: false, reload: { t: 0, totalS: 6, kind: 'ready' } } };
   const searchRng = mulberry32(431);

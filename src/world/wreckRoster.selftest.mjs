@@ -16,7 +16,7 @@ for (const id of unavailable) {
   assert.equal(isPublicWreckDonor(id), false, `${id}: retired/unknown is not public`);
   assert.equal(SAVED_TANK_IDS.includes(id), false, `${id}: no saved record remains`);
 }
-assert.ok(isPublicWreckDonor('leo2a7v'), 'public Leopard 2A7V replaces the retired 2A7 wreck');
+assert.ok(isPublicWreckDonor('leo2_improved'), 'public Leopard 2A7V replaces the retired 2A7 wreck');
 assert.ok(Object.isFrozen(WRECK_ROSTER_POOLS));
 
 const allDonors = new Set();
@@ -38,7 +38,7 @@ for (const era of VEHICLE_ERA_ORDER) {
 
 // 35 since the period ruling (2026-10-06): the T-72M1, T-72B3 and T-64BV of the 1990s and 2022 maps
 assert.equal(WRECK_ROSTER_POOLS.modern.length, 35, 'expanded modern cast stays bounded');
-assert.deepEqual(resolveWreckRoster('ww2'), ['kv2', 'jpz_e100_x'],
+assert.deepEqual(resolveWreckRoster('ww2'), ['kv2', 'jpz_e100'],
   'historical cast never resurrects hidden/archived tanks to satisfy a size target');
 for (const era of ['ww2', 'cold-war', 'next-generation']) {
   for (const id of WRECK_ROSTER_POOLS[era]) {
@@ -46,13 +46,13 @@ for (const era of ['ww2', 'cold-war', 'next-generation']) {
   }
 }
 for (const id of ['m551_sheridan', 'm60a2', 'm60a3', 'marder1a3', 'bmpt_t90',
-  'bmp3', 'm2a2_bradley', 'pl01', 'cv90', 'ua_t84_oplot_m', 'leclerc_xlr', 'type90']) {
+  'bmp3', 'm2a2_bradley', 'pl01', 'cv90', 't84bm_oplot_m', 'leclerc_sxxi', 'type90_kyumaru']) {
   assert.ok(resolveWreckRoster('modern').includes(id), `${id}: distinct public silhouette retained`);
 }
 
-const cast = Object.freeze(['leo2a7', 'm1a2', 'tiger1', 'leo2a7v', 'm1a2', 't90m']);
+const cast = Object.freeze(['leo2a7', 'm1a1_abrams_hc', 'tiger1', 'leo2_improved', 'm1a1_abrams_hc', 't90am']);
 const castBefore = [...cast];
-assert.deepEqual(resolveWreckRoster('modern', cast), ['m1a2', 'leo2a7v', 't90m'],
+assert.deepEqual(resolveWreckRoster('modern', cast), ['m1a1_abrams_hc', 'leo2_improved', 't90am'],
   'eligible authored order survives filtering and stable deduplication');
 assert.deepEqual(cast, castBefore, 'caller cast is never mutated');
 for (const era of ['future-era', '', '__proto__', 'constructor']) {
@@ -68,14 +68,14 @@ assert.deepEqual(resolveWreckRoster('modern'), WRECK_ROSTER_POOLS.modern,
 // entries inside this isolated test, then restore the exact original order.
 const originalPublic = [...PRODUCTION_TANK_IDS];
 try {
-  PRODUCTION_TANK_IDS.splice(PRODUCTION_TANK_IDS.indexOf('leo2a7v'), 1);
-  assert.equal(isPublicWreckDonor('leo2a7v'), false, 'eligibility is not an import-time snapshot');
-  assert.ok(!resolveWreckRoster('modern').includes('leo2a7v'));
-  assert.deepEqual(resolveWreckRoster('modern', ['leo2a7v', 'm1a2']), ['m1a2']);
+  PRODUCTION_TANK_IDS.splice(PRODUCTION_TANK_IDS.indexOf('leo2_improved'), 1);
+  assert.equal(isPublicWreckDonor('leo2_improved'), false, 'eligibility is not an import-time snapshot');
+  assert.ok(!resolveWreckRoster('modern').includes('leo2_improved'));
+  assert.deepEqual(resolveWreckRoster('modern', ['leo2_improved', 'm1a1_abrams_hc']), ['m1a1_abrams_hc']);
   PRODUCTION_TANK_IDS.splice(0, PRODUCTION_TANK_IDS.length);
   for (const era of VEHICLE_ERA_ORDER) {
     assert.deepEqual(resolveWreckRoster(era), [], 'no eligible fleet means no invalid fallback');
-    assert.deepEqual(resolveWreckRoster(era, ['m1a2', 'leo2a7']), []);
+    assert.deepEqual(resolveWreckRoster(era, ['m1a1_abrams_hc', 'leo2a7']), []);
   }
 } finally {
   PRODUCTION_TANK_IDS.splice(0, PRODUCTION_TANK_IDS.length, ...originalPublic);

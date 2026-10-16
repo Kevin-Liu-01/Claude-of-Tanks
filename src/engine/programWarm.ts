@@ -176,6 +176,14 @@ interface SceneProgramCompileOptions {
   initializeUniforms?: boolean;
   /** Interleave bounded admission and actual first use; implies initializeUniforms. */
   strict?: boolean;
+  /**
+   * Strict only: stop draining once no program of the cohort has finished linking for this long (opt-in; none by
+   * default). The covered network entry's compile windows take STRICT_DRAIN_STALL_MS: their stalled cohort links at the
+   * covered reveal anyway (2026-10-14, the MP stream). Never the Garage: a hero revealed with links pending makes its first
+   * render read every link synchronously, which a shared, busy GPU process turned into 100-160 s main-thread freezes (the
+   * 224 returning tab's Garage boot).
+   */
+  stallMs?: number;
 }
 
 interface CapturedProgram {
@@ -797,13 +805,14 @@ function pendingProgramNotes(pending: readonly CapturedProgram[]): PendingProgra
 
 /** Budget native queries and reflection together; indivisible native calls can exceed one slice. */
 /**
- * A strict drain stops waiting once no program of its cohort has finished for this long (2026-10-14, the MP stream:
- * deploy 223's rejoin spent its compile window and the retry window, 5 s each, with the main thread idle and the same
- * 37 programs never reporting a finished link; they linked only at the first real draw, under the loader). A cohort
- * that keeps linking keeps its window; a stalled one returns `budget` at once, and the caller's next window or the
- * covered reveal links the rest exactly as before.
+ * A strict drain that opts in (SceneProgramCompileOptions.stallMs) stops waiting once no program of its cohort has
+ * finished for this long (2026-10-14, the MP stream: deploy 223's rejoin spent its compile window and the retry window,
+ * 5 s each, with the main thread idle and the same 37 programs never reporting a finished link; they linked only at the
+ * first real draw, under the loader). A cohort that keeps linking keeps its window; a stalled one returns `budget` at
+ * once, and the caller's next window or the covered reveal links the rest exactly as before. Opt-in since the 224
+ * returning-tab freeze: the Garage hero's drain cut short left its links to a synchronous first render.
  */
-const STRICT_DRAIN_STALL_MS = 2_000;
+export const STRICT_DRAIN_STALL_MS = 2_000;
 
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
@@ -872,6 +881,7 @@ function* drainStrictPrograms(
   cohort: MaterialProgramCohort,
   budget: ProgramPreparationBudget,
   sliceMs?: number,
+  stallMs?: number,
 ): Generator<void, ProgramPreparationResult, void> {
   if (!context.valid()) return incompletePreparation('invalidated');
   const current = materialPreparationResult(context, [...cohort.values()]);
@@ -898,7 +908,7 @@ function* drainStrictPrograms(
   const pending = new Map([...cohort].filter(([, entry]) => !entry.initialized));
   try {
     const result = yield* initializeMaterialProgramSteps(
-      context, pending, context.lifetime.parallelCompile ?? null, sliceMs, budget, STRICT_DRAIN_STALL_MS);
+      context, pending, context.lifetime.parallelCompile ?? null, sliceMs, budget, stallMs);
     if (context.valid()) recordFirstUsePending(context, [...cohort.values()]);
     return result.status === 'complete' ? materialPreparationResult(context, [...cohort.values()]) : result;
   } finally { pending.clear(); }
@@ -921,7 +931,7 @@ function* prepareStrictScenePrograms(
     // preserve all of them and drain before submitting another batch.
     const pending = [...cohort.values()].filter((entry) => !entry.initialized);
     if (pending.length < 32) return true;
-    state.result = yield* drainStrictPrograms(context, cohort, budget, compileOptions.sliceMs);
+    state.result = yield* drainStrictPrograms(context, cohort, budget, compileOptions.sliceMs, compileOptions.stallMs);
     return state.result.status === 'complete';
   };
   try {
@@ -939,7 +949,7 @@ function* prepareStrictScenePrograms(
       recordUnfinishedPreparation(context, cohort);
       return incompletePreparation('budget');
     }
-    const result = yield* drainStrictPrograms(context, cohort, budget, compileOptions.sliceMs);
+    const result = yield* drainStrictPrograms(context, cohort, budget, compileOptions.sliceMs, compileOptions.stallMs);
     if (result.status === 'incomplete') recordUnfinishedPreparation(context, cohort);
     return result;
   } finally { cohort.clear(); }

@@ -15,8 +15,8 @@ Run any two saved vehicles against each other with the same authoritative
 range model:
 
 ```sh
-node tools/balance-matchups.mjs --a=challenger1 --b=t90a --seeds=101,211
-node tools/balance-matchups.mjs --a=spz_puma_s1 --b=bmpt_t90 \
+node tools/balance-matchups.mjs --a=challenger1_mk2 --b=t90a_2004 --seeds=101,211
+node tools/balance-matchups.mjs --a=spz_wotan --b=bmpt_t90 \
   --a-shell=2 --b-shell=2 --advance-to=60
 ```
 

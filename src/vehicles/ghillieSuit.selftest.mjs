@@ -3,25 +3,27 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { addVehicleGhillieSuit, blowOffPanel, ghillieBlowOffPanels, GHILLIE_SUIT_CONFIGS, suitDockBoxes } from './ghillieSuit.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
+import { NATIONAL_POLAND_GHILLIE_CONFIGS } from './nationalPolandProtectionConfig.ts';
 import { applyCamoPatterns, setCamoOverride } from './materials.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
+import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 const ids = [
-  'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
-  'strv103a', 'strv103', 't84', 'ua_m1a1', 'leo2a6_ua',
+  't64bv_donbas', 'pt91a_twardy', 'm1a1_abrams_fep',
+  'strv103a', 'strv103b', 't84', 'ua_m1a1', 'leo2a6_ua',
 ];
 
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
 // net (ghillieFleetSuits.ts) and left this control list; the others stay net-free
-for (const id of ['t90a', 'strv122', 'ua_t84_oplot_m']) {
+for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m']) {
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
     quality: 'high',
   });
-  assert.equal(control.root.getObjectByName(`${id}_ghillie_hull_net`), undefined,
+  assert.equal(control.root.getObjectByName(`${tankSeedId(id)}_ghillie_hull_net`), undefined,
     `${id} remains net-free instead of inheriting a generic family blanket`);
   control.dispose();
 }
@@ -119,8 +121,8 @@ function suitContact(tank, id) {
   const report = [];
   for (const owner of ['hull', 'turret', 'gun']) {
     const rig = tank.root.getObjectByName(`rig_${owner}`);
-    const net = tank.root.getObjectByName(`${id}_ghillie_${owner}_net`);
-    const leaves = tank.root.getObjectByName(`${id}_ghillie_${owner}_leaves`);
+    const net = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_net`);
+    const leaves = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_leaves`);
     if (!rig || !net) continue;
     const skip = owner === 'hull' ? tank.root.getObjectByName('rig_turret') : owner === 'turret' ? tank.root.getObjectByName('rig_gun') : null;
     const armour = ownerTriangles(rig, skip, (o) => !/_ghillie_|procShadow|InteriorFill/.test(o.name));
@@ -164,7 +166,7 @@ for (const id of ids) {
     // 2026-10-05 (tank-accessories lane): the garnish is one spray-card draw per owner (vehicleFoliage.ts)
     const expectedLayers = cfg.foliage === false ? ['net'] : ['net', 'leaves'];
     for (const layer of expectedLayers) {
-      const name = `${id}_ghillie_${owner}_${layer}`;
+      const name = `${tankSeedId(id)}_ghillie_${owner}_${layer}`;
       const mesh = tank.root.getObjectByName(name);
       assert.ok(mesh?.isMesh && mesh.geometry, `${name} is a merged equipment mesh`);
       assert.ok(belongsTo(mesh, rig), `${name} follows its canonical owner rig`);
@@ -173,7 +175,7 @@ for (const id of ids) {
     }
     if (cfg.foliage === false) {
       for (const layer of ['leaves']) {
-        assert.equal(tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`), undefined,
+        assert.equal(tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`), undefined,
           `${id} keeps the carrier net but has no artificial leaf layer`);
       }
     }
@@ -182,13 +184,13 @@ for (const id of ids) {
   const floating = suitContact(tank, id);
   assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
 
-  const hullNet = tank.root.getObjectByName(`${id}_ghillie_hull_net`);
+  const hullNet = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_hull_net`);
   const hullBounds = new THREE.Box3().setFromObject(hullNet);
   assert.ok(hullBounds.min.y > 0.52, `${id} ghillie stays above the live track corridor`);
-  if (id === 'ua_t64bv') {
-    // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "ua_t64bv with supported foliage, net and cages";
+  if (id === 't64bv_donbas') {
+    // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "t64bv_donbas with supported foliage, net and cages";
     // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
-    // ERA cassettes (z -1.9..1.7 on the t72b3_x hull) and a bustle cover behind the open sights and hatches.
+    // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches.
     const cover = turretRig.userData.fieldCover;
     assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
       `${id} field cover is carried on real rails with sights and hatches open`);
@@ -201,7 +203,7 @@ for (const id of ids) {
   }
 
   if (cfg.turret) {
-    const turretNet = tank.root.getObjectByName(`${id}_ghillie_turret_net`);
+    const turretNet = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_turret_net`);
     // The exact center of each authored face is the reserved cannon corridor.
     // A forward-to-rear ray may meet bustle cloth, but never the front face.
     const gunWorldY = turretRig.position.y + 0.38;
@@ -239,7 +241,7 @@ for (const id of ids) {
   if (cfg.gun) {
     // 2026-10-08 (round 5; the coordinator after wave 269 on the Leopard 2A6 UA: the barrel "left mostly clear (real
     // crews wrap only short sections)"): the gun carries short wraps along the tube, never a sleeve the length of it
-    const gunNet = tank.root.getObjectByName(`${id}_ghillie_gun_net`);
+    const gunNet = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_gun_net`);
     const gunBounds = new THREE.Box3().setFromObject(gunNet);
     const toGun = new THREE.Matrix4().copy(gunRig.matrixWorld).invert(), at = gunNet.geometry.getAttribute('position');
     const wrapped = new Set();
@@ -257,7 +259,7 @@ for (const id of ids) {
 
 // the suits with their own receipts (the A4) or their own field configs (the Ukrainian national rebuilds, push 3:
 // nationalUkraineProtection.ts) are held to the same contact rule
-for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_modern', 'ua_t72b3m_modern']) {
+for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
@@ -305,7 +307,7 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
     }
     return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
   };
-  for (const id of ['ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_modern', 'ua_t72b3m_modern']) {
+  for (const id of ['t72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72b3m_hetman']) {
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
     tank.root.updateMatrixWorld(true);
     const turret = tank.root.getObjectByName('rig_turret');
@@ -320,7 +322,7 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
       for (let k = 0; k < n; k++) out.push(new THREE.Vector3().fromBufferAttribute(pos, index ? index.getX(k) : k).applyMatrix4(m));
       return out;
     };
-    const net = local(`${id}_ghillie_turret_net`), leaves = local(`${id}_ghillie_turret_leaves`);
+    const net = local(`${tankSeedId(id)}_ghillie_turret_net`), leaves = local(`${tankSeedId(id)}_ghillie_turret_leaves`);
     // a wing the roof gun traverses low over is left bare for its field of fire (nationalRoof.selftest holds the sweep
     // clear of the suit); every other wing carries its net
     let netted = 0;
@@ -396,14 +398,14 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const tank = createTank('leo2a4', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
+    const tank = createTank('leo2a2', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
     const net = tank.root.getObjectByName('leo2a4_ghillie_turret_net');
     assert.match(net?.material?.map?.name ?? '', /^ghillieNet:woodland:/, 'the A4 wears a woodland net on its woodland scheme');
-    setCamoOverride('leo2a4', 'desert');
-    applyCamoPatterns('leo2a4');
+    setCamoOverride('leo2a2', 'desert');
+    applyCamoPatterns('leo2a2');
     assert.match(net.material.map.name, /^ghillieNet:desert:/, 'a switch to a desert scheme carries the net to the desert');
-    setCamoOverride('leo2a4', null);
-    applyCamoPatterns('leo2a4');
+    setCamoOverride('leo2a2', null);
+    applyCamoPatterns('leo2a2');
     assert.match(net.material.map.name, /^ghillieNet:woodland:/, 'and back');
     tank.dispose();
     // the decor's rolled nets follow too: the M60A1's sand roll turns woodland on a woodland scheme
@@ -427,8 +429,13 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
 // real suit per configured owner (net and garnish, detailed geometry), rests on its armour or hangs from its own net
 // (garnish on its net or the armour) within 15 mm, keeps its hull hems above the hull's hem floor and the track
 // corridor, fires no smoke discharger into itself, lays nothing of an owner over that owner's hatch lids and cupolas,
-// and leaves the mantlet and gun corridor open.
-for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
+// and leaves the mantlet and gun corridor open. 2026-10-13 (netting-pl; the owner: "also add a bunch of ghillie on the
+// husarz and zubr polish tanks"): the Husarz's and both Zubrs' field suits (nationalPolandProtectionConfig.ts, built with
+// their slat screens) are held to every rule here too.
+const POLISH_FIELD_SUITS = Object.fromEntries(Object.entries(NATIONAL_POLAND_GHILLIE_CONFIGS).filter(([, cfg]) => cfg.fieldClearanceM !== undefined));
+assert.deepEqual(Object.keys(POLISH_FIELD_SUITS), ['t80u_husarz', 't72b3_zubr', 't72b3_zubr_ii'],
+  'the Husarz and both Zubrs wear the Polish field suit');
+for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD_SUITS })) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const rigs = { hull: tank.root.getObjectByName('rig_hull'), turret: tank.root.getObjectByName('rig_turret'), gun: tank.root.getObjectByName('rig_gun') };
@@ -436,7 +443,7 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
   for (const owner of ['hull', 'turret', 'gun']) {
     if (!cfg[owner]) continue;
     for (const layer of cfg.foliage === false ? ['net'] : ['net', 'leaves']) {
-      const mesh = tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`);
+      const mesh = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`);
       assert.ok(mesh?.isMesh && belongsTo(mesh, rigs[owner]), `${id}: ${owner} ${layer} is a merged mesh on its owner rig`);
       assert.ok(mesh.geometry.getAttribute('position').count > 120, `${id}: ${owner} ${layer} is detailed geometry`);
       assert.equal(mesh.userData.fieldSuit, true, `${id}: ${owner} ${layer} is marked for the decor's turret-load guard`);
@@ -535,7 +542,7 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
   tank.dispose();
 }
 
-const twardy = GHILLIE_SUIT_CONFIGS.pt91_twardy;
+const twardy = GHILLIE_SUIT_CONFIGS.pt91a_twardy;
 const twardyTop = twardy.turret.top[0];
 assert.ok(twardyTop.yAt(0, 0) > 0.82 && twardyTop.yAt(0, 0) < 0.86,
   'Twardy net keeps a small suspended air layer over the dome crown');

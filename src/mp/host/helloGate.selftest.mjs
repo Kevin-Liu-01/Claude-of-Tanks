@@ -32,10 +32,10 @@ const matchId = 'm1-0be11001';
 const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
 const tokenFor = (seat, playerId, team, specId) => signSeatToken(hostSecret, { v: 1, roomId: 'ROOM03', seat, playerId, name: playerId, team, specId, iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
 const seats = [
-  { seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a2', spawn: { x: -40, z: 0, yaw: 0 } },
-  { seat: 1, playerId: 'bob', name: 'Bob', team: 'alpha', specId: 't90m', spawn: { x: 0, z: 0, yaw: 0 } },
+  { seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: -40, z: 0, yaw: 0 } },
+  { seat: 1, playerId: 'bob', name: 'Bob', team: 'alpha', specId: 't90am', spawn: { x: 0, z: 0, yaw: 0 } },
   // an enemy that never connects keeps the match running (one side alone would end it)
-  { seat: 2, playerId: 'dave', name: 'Dave', team: 'bravo', specId: 't90m', spawn: { x: 600, z: 600, yaw: Math.PI } },
+  { seat: 2, playerId: 'dave', name: 'Dave', team: 'bravo', specId: 't90am', spawn: { x: 600, z: 600, yaw: Math.PI } },
 ];
 const idle = () => ({ throttle: 0, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 });
 
@@ -96,7 +96,7 @@ async function helloCase({ label, holdHelloMs, helloTimeoutMs, scenario = null }
   const starting = alice.start({ roomId: 'ROOM03', matchId, generation: 1, mapId: 'verdant', mode: 'standard', seed: 9, seats, bots: [], countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: null });
   await settle(12);
   await starting;
-  const aliceClient = new MatchClient({ transport: alice.transport, token: tokenFor(0, 'alice', 'alpha', 'm1a2'), clock: time.clock, controls: idle });
+  const aliceClient = new MatchClient({ transport: alice.transport, token: tokenFor(0, 'alice', 'alpha', 'm1a1_abrams_hc'), clock: time.clock, controls: idle });
   clients.push(aliceClient);
   aliceClient.connect();
   await advance(TICK_MS * 6);
@@ -111,7 +111,7 @@ async function helloCase({ label, holdHelloMs, helloTimeoutMs, scenario = null }
     return pc;
   };
   const bobRtc = new WebRtcTransport({ signaler: relay.signalerFor('bob'), createPeerConnection: bobPeerConnection, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, random: () => 0.5 });
-  const bobClient = new MatchClient({ transport: bobRtc, token: tokenFor(1, 'bob', 'alpha', 't90m'), clock: time.clock, controls: idle });
+  const bobClient = new MatchClient({ transport: bobRtc, token: tokenFor(1, 'bob', 'alpha', 't90am'), clock: time.clock, controls: idle });
   clients.push(bobClient);
   const closes = [];
   bobClient.onPhase((phase) => { if (phase === 'closed') closes.push(bobClient.lastCloseReason); });

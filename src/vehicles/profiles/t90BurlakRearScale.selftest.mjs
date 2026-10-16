@@ -24,13 +24,13 @@ const inspect = (id) => {
   }
 };
 
-const production = inspect('t90');
+const production = inspect('t90_1992');
 assert.equal(production.scale, 1,
   'T-90 production bustle retains its established envelope');
 near(production.rearZ, -3.30,
   'T-90 production bustle rear station remains unchanged');
 
-const burlak = inspect('t90a_burlak');
+const burlak = inspect('t90a_burlak_proto');
 assert.equal(burlak.scale, 1,
   'Burlak rear magazine restores its full authored scale');
 near(burlak.rootZ, -1.08,

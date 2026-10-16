@@ -18,8 +18,8 @@ assert.equal(isShadowHelper({name:'shadow',userData:{shadowOnly:true,cannonBoreP
 assert.match(html,/baseVisible\.set\(o, effectivelyVisible\(o\) && !isShadowHelper\(o\) && !isCamouflageSuit\(o\)\)/,
   'actual mask visibility uses the tested helper classification');
 
-const ids=['leo2a7v_x','leo2a6m_x','leo2a4m_x','leo2a5_x','merkava4_x','merkava3d_x',
-  'k2_x','kf51_x','t90a_x','t90a_vladimir_x','t90m_x','t90sm_x','t14_x'];
+const ids=['leo2a7v','leo2a6m','leo2a5m','leo2a5','merkava4','merkava3d',
+  'k2_black_panther','kf51_panther','t90a','t90a_vladimir','t90m','t90sm','t14_armata'];
 for(const id of ids)for(const quality of ['high','low']) {
   const v=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {

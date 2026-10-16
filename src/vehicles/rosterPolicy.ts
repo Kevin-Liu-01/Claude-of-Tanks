@@ -55,7 +55,7 @@ export function isProductionHiddenTankId(id: RuntimeValue): boolean {
 
 export const RETAINED_WW2_IDS = Object.freeze([
   // Explicitly requested independent reconstruction of the archived original.
-  'jpz_e100_x',
+  'jpz_e100',
   'kv2',
 ]);
 
@@ -63,21 +63,21 @@ export const RETAINED_WW2_IDS = Object.freeze([
 // as modern by that catalog (Abrams, T-80/T-90, post-1991 T-72s, Challengers,
 // Merkavas and IFVs) remain in the modern fleet.
 export const HISTORICAL_COLD_WAR_CANDIDATE_IDS = Object.freeze([
-  'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
+  'm46_patton', 'm47_patton', 'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
   'leo1a5',
-  'type59', 't62mv1', 't64bv1',
-  'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
+  'type59', 't62_1975', 't64bv1',
+  'centurion3', 'centurion5_2', 'chieftain3', 'chieftain_mk9', 'vickers_mk1',
   'amx30', 'amx30b2',
-  'udes03', 'strv103', 'strv103a', 'type74',
+  'udes03', 'strv103b', 'strv103a', 'type74',
 ]);
 
 export const RETAINED_COLD_WAR_IDS = Object.freeze([
-  'centurion3', 'centurion5',
-  'chieftain5', 'chieftain_mk10', 'vickers_mk1',
+  'centurion3', 'centurion5_2',
+  'chieftain3', 'chieftain_mk9', 'vickers_mk1',
   'amx30', 'amx30b2',
-  'type59', 'type74', 'udes03', 'strv103', 'strv103a',
-  't62mv1', 't64bv1', 'leo1a5',
-  'm46_patton', 'm47_patton', 'm48',
+  'type59', 'type74', 'udes03', 'strv103b', 'strv103a',
+  't62_1975', 't64bv1', 'leo1a5',
+  'm46_patton', 'm47_patton', 'm48a5_patton',
   'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',
 ]);
 

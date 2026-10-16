@@ -21,6 +21,6 @@ export function buildStrv122XSupplied(P: TankBuilderPort): void {
   addStrv122XSuppliedEquipment(P);
   addStrv122XSuppliedHullEquipment(P);
   addStrv122XSuppliedGun(P);
-  P.hullG.userData.xRebuild={candidate:'strv122_x',independent:true,
+  P.hullG.userData.xRebuild={candidate:'strv122',independent:true,
     sourceLocalOnly:true,datumVersion:2,target:'owner-selected-supplied-file'};
 }

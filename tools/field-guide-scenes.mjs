@@ -20,7 +20,7 @@ export async function stageFieldGuide(job) {
   const S=window.__STUDIO,D=window.__DEBUG;
   if(!S?.active||!D)throw new Error('Field guide capture requires Studio and explicit debug intent');
   window.__fieldGuideOverlay?.clear();window.__fieldGuideOverlay=null;
-  const scene={map:'verdant',seed:5126,timeOfDay:'day',actors:[{id:'m1a2_x',name:'hero',pos:[-56,-14],facingDeg:0,turretDeg:-12,gunDeg:job.gunDeg??0,camo:'summer',camoSeed:261}],effects:job.fire?[{type:'fire',actor:'hero',tMs:100,params:{slot:0,tracer:true,recoil:true}}]:[],fxTime:job.fire?155:0,timeScale:0};
+  const scene={map:'verdant',seed:5126,timeOfDay:'day',actors:[{id:'m1a2_abrams',name:'hero',pos:[-56,-14],facingDeg:0,turretDeg:-12,gunDeg:job.gunDeg??0,camo:'summer',camoSeed:261}],effects:job.fire?[{type:'fire',actor:'hero',tMs:100,params:{slot:0,tracer:true,recoil:true}}]:[],fxTime:job.fire?155:0,timeScale:0};
   await S.load(scene);
   D.post.pinDynScale?.(1);
   const {awaitMapCaptureReadiness}=await import('/src/dev/mapCaptureReadiness.ts');

@@ -123,7 +123,7 @@ function armorM1A3(): ArmorEnvelope {
 
 const m1a3: AbramsConceptSpec = {
   id: 'm1a3', name: 'M1A3 Abrams', nation: 'USA', era: 'next-generation', role: 'mbt',
-  variantOf: 'm1a2',
+  variantOf: 'm1a1_abrams_hc',
   hp: 2950,
   enginePowerHp: 1800, weightTons: 61.5, topSpeedKmh: 75, reverseSpeedKmh: 40,
   hullTraverseDegS: 48,
@@ -145,7 +145,7 @@ const m1a3: AbramsConceptSpec = {
   gun: {
     caliberMm: 130, reloadS: 17.5, baseAccuracy: 0.23, aimTimeS: 1.25,
     autoloader: { magazineSize: 4, intraClipS: 2.25, fullReloadS: 17.5 },
-    bloom: { ...tankSpecs.m1a2.gun.bloom, move: 0.045, hullRot: 0.055, turret: 0.04, afterShot: 1.8 },
+    bloom: { ...tankSpecs.m1a1_abrams_hc.gun.bloom, move: 0.045, hullRot: 0.055, turret: 0.04, afterShot: 1.8 },
     shells: [
       shell('XM1301 APFSDS-T', 'APFSDS', 130,
         apfsdsPens(840)[0], apfsdsPens(840)[1], 620, 1900,
@@ -164,7 +164,7 @@ const m1a3: AbramsConceptSpec = {
   },
 };
 
-const abramsx: AbramsConceptSpec = clone(tankSpecs.m1a2);
+const abramsx: AbramsConceptSpec = clone(tankSpecs.m1a1_abrams_hc);
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
 // AbramsX carries its own passive modular armor shell.  Do not inherit the
@@ -186,7 +186,7 @@ abramsx.armor.gunPivot = [0, -0.02, 2.189];
 // value described only the bare turret roof and caused batch-20 to crush the
 // defining AbramsX superstructure into a box.
 abramsx.dims = { ...abramsx.dims, heightM: 3.47 };
-abramsx.variantOf = 'm1a2';
+abramsx.variantOf = 'm1a1_abrams_hc';
 abramsx.hp = 2750;
 abramsx.weightTons = 49;
 abramsx.enginePowerHp = 1500;

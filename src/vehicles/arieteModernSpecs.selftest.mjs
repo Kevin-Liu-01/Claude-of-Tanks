@@ -1,3 +1,4 @@
+// Surface groups keep their schema-1 names (arieteModernSpecs, sourceXWesternAuxArmor; SSOT 2.19), tank-ids:keep
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { traceTank, tankPoseFromState } from '../sim/armor.ts';
@@ -17,18 +18,18 @@ import { compareCountryThenTierThenName } from '../ui/garageOrder.ts';
 import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of the four legacy Italian specs' non-label
-// metadata (ariete, ariete_c1, ariete_c2, carro45t) is gone; identity, tier, datum, armor, balance,
+// metadata (c1_ariete_preserie, c1_ariete_proto_serie1, c2_ariete_proto, carro45t) is gone; identity, tier, datum, armor, balance,
 // order, paint and lazy-registration contracts below are live.
-assert.equal(TANK_SPECS.ariete_c1.name, 'C1 Ariete Prototype (Serie 1)');
-assert.equal(TANK_SPECS.ariete_c2.name, 'C2 Ariete Prototype');
-assert.equal(tankTier('ariete_c1'), 9);
-assert.equal(tankTier('ariete_c2'), 10);
+assert.equal(TANK_SPECS.c1_ariete_proto_serie1.name, 'C1 Ariete Prototype (Serie 1)');
+assert.equal(TANK_SPECS.c2_ariete_proto.name, 'C2 Ariete Prototype');
+assert.equal(tankTier('c1_ariete_proto_serie1'), 9);
+assert.equal(tankTier('c2_ariete_proto'), 10);
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
-assert.ok(!SECOND_WAVE_X_IDS.includes('ariete_c2_x'), 'new C2 is not inserted into the historical source wave');
-assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['ariete_c1_x', 'ariete_c2_x']);
+assert.ok(!SECOND_WAVE_X_IDS.includes('c2_ariete'), 'new C2 is not inserted into the historical source wave');
+assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['c1_ariete', 'c2_ariete']);
 
 assert.equal(ARIETE_X_FAMILY_SCALE, 1.12 * 1.10, 'fixed owner-directed enlargement');
-const c1 = TANK_SPECS.ariete_c1_x, c2 = TANK_SPECS.ariete_c2_x;
+const c1 = TANK_SPECS.c1_ariete, c2 = TANK_SPECS.c2_ariete;
 for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
   assert.equal(ALL_TANK_IDS.filter(id => id === spec.id).length, 1);
   assert.ok(PRODUCTION_TANK_IDS.includes(spec.id));
@@ -46,12 +47,12 @@ for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
   assert.equal(spec.gun.caliberMm, 120);
   assert.equal(spec.gun.autoloader, undefined);
   assert.ok(!spec.gun.shells.some(s => s.guided || s.launcherTubes));
-  assert.equal(spec.armor.hullPlates.concat(spec.armor.turretPlates).filter(p => p.era).length, spec.id === 'ariete_c2_x' ? 20 : 0);
+  assert.equal(spec.armor.hullPlates.concat(spec.armor.turretPlates).filter(p => p.era).length, spec.id === 'c2_ariete' ? 20 : 0);
   assert.equal(spec.gunDepressionDeg, 9); assert.equal(spec.gunElevationDeg, 20);
   assert.equal(internalLayoutFor(spec.id).layoutKey, 'arieteManual');
   assert.equal(internalLayoutFor(spec.id).crew.length, 4);
 }
-assert.equal(c2.variantOf, 'ariete_c1_x');
+assert.equal(c2.variantOf, 'c1_ariete');
 assert.equal(c2.balancePeerOf, undefined);
 assert.equal(c2.enginePowerHp, 1500);
 assert.ok(c2.enginePowerHp / c2.weightTons > c1.enginePowerHp / c1.weightTons);
@@ -62,7 +63,7 @@ assert.deepEqual(c2.gun.shells, c1.gun.shells, 'all three main-gun rounds retain
 assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.09);
 assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.10);
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
-  .filter(row => row.id === 'ariete_c2_x'), [], 'new upgrade remains within the unmodified peer gates');
+  .filter(row => row.id === 'c2_ariete'), [], 'new upgrade remains within the unmodified peer gates');
 
 function assertUpgradeFaces(spec) {
   const expected = arieteC2ArmorFaces();
@@ -189,15 +190,15 @@ assert.equal(c1.visual.trackWidthM, C1.trackWidthM);
 
 const italian = PRODUCTION_TANK_IDS.map(id => TANK_SPECS[id]).filter(s => s.nation === 'Italy')
   .sort((a, b) => compareCountryThenTierThenName(a, b, new Map([['Italy', 0]]), tankTier));
-assert.deepEqual(italian.slice(0, 2).map(s => s.id), ['ariete_c2_x', 'ariete_c1_x']);
-assert.ok(italian.findIndex(s => s.id === 'ariete_c2') > 1);
+assert.deepEqual(italian.slice(0, 2).map(s => s.id), ['c2_ariete', 'c1_ariete']);
+assert.ok(italian.findIndex(s => s.id === 'c2_ariete_proto') > 1);
 const storage = new Map();
 const priorStorage = globalThis.localStorage;
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
 try {
   for (const spec of [c1, c2]) {
     assert.equal(defaultCamoPatternId(spec.id), 'factory');
-    assert.equal(stockCamoPatternIdFor(spec.id), spec.id === 'ariete_c1_x' ? 'service_ariete_c1' : 'sig_ariete_c2');
+    assert.equal(stockCamoPatternIdFor(spec.id), spec.id === 'c1_ariete' ? 'service_ariete_c1' : 'sig_ariete_c2');
     assert.equal(getCamoSelection(spec.id), 'factory');
     setCamoSelection(spec.id, 'winter');
     assert.equal(getCamoSelection(spec.id), 'winter', 'explicit saved paint overrides new default');

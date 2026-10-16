@@ -127,7 +127,7 @@ function rollerSupports(tank,quality) {
 
 primitiveEfficiency();
 for(const quality of ['high','low']) {
-  const tank=createTank('type10_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
+  const tank=createTank('type10',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
   try {tank.root.updateMatrixWorld(true);sheetFaces(tank.root,quality);airAndSupport(tank,quality);rollerSupports(tank,quality);}
   finally {tank.dispose();}
 }

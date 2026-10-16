@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { KIT } from '../tankFactoryCore.ts';
 import { rollerSuspensionFixtures } from '../returnRollerPhysicsTest.mjs';
 
-const IDS = ['challenger_3', 'challenger_3x'];
+const IDS = ['challenger3_proto', 'challenger3'];
 const EXPECTED_WHEEL_ZS = [2.65, 1.74, 0.83, -0.08, -0.99, -1.90];
 const EPSILON = 1e-6;
 

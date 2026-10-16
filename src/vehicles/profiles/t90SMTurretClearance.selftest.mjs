@@ -6,9 +6,9 @@ import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 // Owner-directed 1.05 T-90 family size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed turret frame, so every source-frame anchor (present or removed) and the deck height map by `f`. The fit
 // and family-gun receipts are the builder's source-frame records and stay exact.
-const f = VEHICLE_SIZE_FACTORS.t90sm ?? 1;
+const f = VEHICLE_SIZE_FACTORS.t90sm_2013 ?? 1;
 
-const tank = createTank('t90sm', null, {
+const tank = createTank('t90sm_2013', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,

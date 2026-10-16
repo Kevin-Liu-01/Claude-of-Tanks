@@ -12,7 +12,7 @@ function cast(root,origin,direction) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90m_x',null,{proceduralOnly:true,geometryReceipt:true,quality});
+  const tank=createTank('t90m',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     tank.root.updateMatrixWorld(true);
     const hull=tank.root.getObjectByName('rig_hull'),armor=tank.root.getObjectByName('hull');

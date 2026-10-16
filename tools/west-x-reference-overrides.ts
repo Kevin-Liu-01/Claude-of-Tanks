@@ -14,10 +14,10 @@ const fusedOracle = (id: string) => ({
 export const WEST_X_REFERENCE_OVERRIDES = {
   // Mk4 is one fused mesh. Its 25-degree displayed turret yaw is neutralized
   // by complete connected islands in the local oracle; no axis is stretched.
-  merkava4_x: fusedOracle('merkava4_x'),
+  merkava4: fusedOracle('merkava4'),
   // Mk3D's nominal bone_turret includes internal hull geometry, and its
   // flat ex_armor material meshes mix owners. No false disjoint masks.
-  merkava3d_x: fusedOracle('merkava3d_x'),
+  merkava3d: fusedOracle('merkava3d'),
   // The supplied Mark IV hierarchy is semantic, but each wheel axle and some
   // side equipment are fused across both sides.  The source-only bake keeps
   // the complete Trophy-equipped print while avoiding invented masks.
@@ -38,8 +38,8 @@ export const WEST_X_REFERENCE_OVERRIDES = {
     glb: { ...fusedOracle('namer_ifv_x').glb, componentMasks: false },
   },
   // Object_19 mixes gun with suspension and Object_22 mixes turret/skirts.
-  k2_x: fusedOracle('k2_x'),
-  kf51_x: {
+  k2_black_panther: fusedOracle('k2_black_panther'),
+  kf51_panther: {
     // 2026-09-14 owner-directed tangent track wrap (tankFactoryCore roadWheelWrap): the source
     // GLB's track ramp starts at the old contact pins, so the right-view registration now puts
     // component.turret.right at 91.8 (was 92.8 at 88f235a41; whole right view 97.4 -> 95.7).

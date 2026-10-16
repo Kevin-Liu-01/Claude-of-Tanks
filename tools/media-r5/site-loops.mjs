@@ -28,6 +28,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFi
 import { join, resolve } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { SHOTS } from './paths.mjs';
+import { filterStill, filteredFilm, masterFilter } from './master-filter.mjs';
 import { XFADE_MS } from './site50.mjs';
 
 const argv = process.argv.slice(2), flags = new Set(argv.filter(a => a.startsWith('--'))), pos = argv.filter(a => !a.startsWith('--'));
@@ -39,6 +40,7 @@ const probe = f => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries
 const heightOf = f => Number(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=height', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim());
 const pick = (dir, re) => existsSync(dir) ? readdirSync(dir).filter(f => re.test(f)).sort().map(f => join(dir, f))[0] : null;
 const DOWN = w => `scale=${w}:-2:flags=lanczos`;
+const FILTER = masterFilter(); // optional local pass over the masters (master-filter.mjs)
 // [label, file suffix, filter after the loop graph, encoder args, needs a 2160p take]
 const VIDEO = [
   ['master', '-loop-master.mov', 'format=yuv420p10le', ['-c:v', 'libx265', '-preset', 'medium', '-crf', '10', '-pix_fmt', 'yuv420p10le', '-tag:v', 'hvc1', '-x265-params', 'log-level=error']],
@@ -94,7 +96,8 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   // input 1 seeked to L (frame-exact: L is a whole number of frames).
   const loop = `[0:v]split=2[a][b];[a]trim=start=0:end=${X},setpts=PTS-STARTPTS[head];[b]trim=start=${X}:end=${L},setpts=PTS-STARTPTS[body];` +
     `[1:v]trim=start=0:end=${X},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0[loop]`;
-  const inputs = ['-i', master, '-ss', String(L), '-i', master];
+  const film = filteredFilm(master, join(deliver, '.master-work'), `${id}-film`, FILTER);
+  const inputs = ['-i', film, '-ss', String(L), '-i', film];
   for (const [key, suffix, post, enc, needsUhd] of VIDEO) {
     if (key === 'master' && !flags.has('--loop-master')) continue;
     if (needsUhd && !uhd) continue;
@@ -113,6 +116,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   }
   ff(...inputs, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
   files.poster = `${id}/${id}.jpg`;
+  if (film !== master) unlinkSync(film);
   } else {
     if (!existsSync(join(out, `${id}.mp4`))) { console.log(`${id}: no formats delivered yet (--stills-only)`); continue; }
     L = +(probe(join(out, `${id}.mp4`))).toFixed(3);
@@ -120,7 +124,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   const scene = join(renders, 'films', 'scenes', `${id}.json`);
   if (existsSync(scene)) { copyFileSync(scene, join(out, `${id}.scene.json`)); files.scene = `${id}/${id}.scene.json`; }
   if (still) {
-    const png = join(out, `${id}-4k.png`); copyFileSync(still, png);
+    const png = filterStill(still, join(out, `${id}-4k.png`), `${id}-still`, FILTER);
     const im = await loadImage(readFileSync(png));
     const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
     writeFileSync(join(out, `${id}-4k.jpg`), full.toBuffer('image/jpeg', 95));
@@ -131,7 +135,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   }
   if (closeStill) {
     // the close portrait (owner 2026-10-06): the 4K master, a q95 JPEG and a 1920 px WebP beside the still
-    const png = join(out, `${id}-close-4k.png`); copyFileSync(closeStill, png);
+    const png = filterStill(closeStill, join(out, `${id}-close-4k.png`), `${id}-close`, FILTER);
     const im = await loadImage(readFileSync(png));
     const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
     writeFileSync(join(out, `${id}-close-4k.jpg`), full.toBuffer('image/jpeg', 95));

@@ -1470,12 +1470,12 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // dominate"): USSR/Russia vehicles get a 4BO-dominant summer — green
     // field base with a darker green shadow tone and one muted earth accent
     // (the NATO black chip is a Western signature). Other nations keep the
-    // NATO 3-color, pulled a half-step deeper with the m1a2 factory greens.
-    // camo_spotting r6 (critic: m1a2 summer "reads monotone olive at mid
+    // NATO 3-color, pulled a half-step deeper with the m1a1_abrams_hc factory greens.
+    // camo_spotting r6 (critic: m1a1_abrams_hc summer "reads monotone olive at mid
     // distance, black component underweighted"): black '#2e2e2e'->'#292929'
     // and brown '#423a30'->'#3e352a' — one value step down each so both
     // pattern tones separate from the green base at 50-150 m. Still well off
-    // the '#26291f' floor that clipped to unlit pure black (r1); the m1a2's
+    // the '#26291f' floor that clipped to unlit pure black (r1); the m1a1_abrams_hc's
     // Keep the Tiger's already-good summer patch geometry unchanged.
     if (spec.nation === 'USSR' || spec.nation === 'Russia') {
       o = { scheme: 'nato', base: '#4a5638', weather: '#556042', patches: ['#333d2a', '#4a3f2e'] };
@@ -1489,9 +1489,9 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     // wash at garage distance — the geometry has to survive at 12 m).
     // r9: highlight pulled down '#e4d3a8' -> '#d3bf92' — under the warm
     // garage key the old chip blew out toward pure white on tiger1/strv103/
-    // m1a2 and the scheme read as high-contrast "chocolate chip" dazzle
+    // m1a1_abrams_hc and the scheme read as high-contrast "chocolate chip" dazzle
     // (coverage is also trimmed ~25% in the desert painter above).
-    // camo_spotting r6 (critic: m1a2 desert "near-white cream blobs against
+    // camo_spotting r6 (critic: m1a1_abrams_hc desert "near-white cream blobs against
     // mid-brown ... read as dazzle/giraffe patches rather than a low-contrast
     // military desert scheme"): the AUTHORED ladder is now the ON-TEXTURE
     // ladder — the painter's darkHC 0.74x push and paleHC white lift are
@@ -1560,7 +1560,7 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     if (patternId === 'merdc') {
     // MERDC US 4-color (Summer Verdant table): forest-green field + light
     // green second dominant, sand + black accents. Light green kept muted
-    // ('#5f6a4c' family — the calibrated factory-patch value from the m1a2
+    // ('#5f6a4c' family — the calibrated factory-patch value from the m1a1_abrams_hc
     // work) so the warm garage key can't push it minty; sand sits a step
     // under the desert mid so it reads accent, never highlight bloom.
     o = { scheme: 'merdc', base: '#44513a', weather: '#4e5b41',
@@ -2914,7 +2914,7 @@ export function createTankMaterials(
   // under the ~4.5x warm key + ACES it tonemapped to flat CREAM while the
   // hull camo stayed green, so every canvas bundle read as an unpainted
   // placeholder primitive. OD canvas is duller, darker and green-biased.
-  const usesSchemeTintedCanvas = spec.id === 't72b3m' || spec.id === 'bmpt_terminator2';
+  const usesSchemeTintedCanvas = spec.id === 't72b3m_2022' || spec.id === 'bmpt_terminator2';
   const canvasCloth = track(setup(new THREE.MeshStandardMaterial({
     color: usesSchemeTintedCanvas
       ? new THREE.Color(cssRGB(canvasRgbOf(patVis)))

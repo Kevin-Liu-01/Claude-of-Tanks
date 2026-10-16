@@ -80,7 +80,7 @@ function controlsFor(index, aimAt) {
 
 function seatList(clientCount) {
   return Array.from({ length: clientCount }, (_, index) => ({
-    seat: index, entityId: index + 1, specId: 'm1a2', playerId: `p${index + 1}`, name: `Player ${index + 1}`,
+    seat: index, entityId: index + 1, specId: 'm1a1_abrams_hc', playerId: `p${index + 1}`, name: `Player ${index + 1}`,
     team: index % 2 === 0 ? 'alpha' : 'bravo', token: `tok-${index + 1}`,
     x: (index % 4) * 40 - 60, z: Math.floor(index / 4) * 40, yaw: index,
   }));
@@ -129,7 +129,7 @@ async function createActorServer({ clock, clientCount, seats, mapId, seed, snaps
   }
   const bots = Array.from({ length: Math.max(0, 8 - clientCount) }, (_, index) => ({
     playerId: `bot${index + 1}`, name: `Bot ${index + 1}`, team: index % 2 === 0 ? 'alpha' : 'bravo',
-    specId: index % 2 ? 't90m' : 'm1a2', difficulty: 'normal',
+    specId: index % 2 ? 't90am' : 'm1a1_abrams_hc', difficulty: 'normal',
   }));
   const actor = createMatchActor({
     roomId: 'soak', mapId, seed, seats: actorSeats, bots, world: 'terrain', countdownS: 2,

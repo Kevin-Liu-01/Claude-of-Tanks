@@ -38,7 +38,7 @@ export const MOTION_CASES = Object.freeze([
 function prepareLivePan({ mapId }) {
   const D = window.__DEBUG, world = D.world, hf = world.heightField;
   if (D.shotMode || D.game.phase !== 'battle' || world.mapId !== mapId
-      || D.game.player.specId !== 'm1a2') throw new Error('Live pan needs the requested real M1A2 battle');
+      || D.game.player.specId !== 'm1a1_abrams_hc') throw new Error('Live pan needs the requested real M1A2 battle');
   const water = [...(world.config.terrain.lakes || []), ...(world.config.terrain.marshes || [])]
     .sort((a, b) => b.r - a.r)[0];
   const x = water ? water.x - Math.max(22, water.r * 0.92) : -40;
@@ -139,7 +139,7 @@ export function validateMotionReceipt(receipt, testCase, { live = true } = {}) {
   const errors = [];
   const dimensions = [testCase.width, testCase.height];
   const same = value => JSON.stringify(value) === JSON.stringify(dimensions);
-  if (receipt.mapId !== testCase.mapId || receipt.playerSpecId !== 'm1a2') errors.push('map/player mismatch');
+  if (receipt.mapId !== testCase.mapId || receipt.playerSpecId !== 'm1a1_abrams_hc') errors.push('map/player mismatch');
   if (receipt.phase !== 'battle' || (live && (receipt.shotMode !== false
       || receipt.externalActive !== true || receipt.scoped !== false))) errors.push('not live battle');
   if (!same(receipt.viewport) || receipt.dpr !== testCase.dpr) errors.push('viewport/DPR mismatch');
@@ -422,7 +422,7 @@ export function contextOptions(testCase, base, videoDir) {
     isMobile: testCase.tier === 'mobile', hasTouch: testCase.tier === 'mobile',
     recordVideo: { dir: videoDir, size: videoSize },
     storageState: { cookies: [], origins: [{ origin: base, localStorage: [
-      { name: 'cot.lastTank.v1', value: 'm1a2' }, { name: 'cot.gfxPreset', value: 'high' },
+      { name: 'cot.lastTank.v1', value: 'm1a1_abrams_hc' }, { name: 'cot.gfxPreset', value: 'high' },
       { name: 'cot.gfxMobilePreset', value: 'mobile-high' },
     ] }] } };
 }
@@ -539,7 +539,7 @@ async function acquireCase(page, context, testCase, base, row, saveCapture, writ
   await page.waitForFunction(() => window.__GAME_READY === true && !!window.__DEBUG?.beginSoloBattle);
   row.boot = await evaluate(browserLayoutReceipt); write(`${row.id}-boot.json`, row.boot);
   await evaluate(() => window.__DEBUG.bus.emit('ui:debugHud', { on: false }));
-  await evaluate(({ mapId }) => window.__DEBUG.beginSoloBattle({ specId: 'm1a2', mapId, randomRoster: false }), testCase, 180000);
+  await evaluate(({ mapId }) => window.__DEBUG.beginSoloBattle({ specId: 'm1a1_abrams_hc', mapId, randomRoster: false }), testCase, 180000);
   await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle'
     && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.timeS > 0);
   await evaluate(async () => {

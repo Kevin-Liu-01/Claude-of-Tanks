@@ -25,7 +25,7 @@ function assertPlanar(id, plate) {
 }
 
 for (const [id, authoredPivotY, authoredPivotZ] of [
-  ['type99a', 1.57, 0.64], ['ztz99a2_prototype', 1.56, -0.15],
+  ['ztz99_longwei', 1.57, 0.64], ['ztz99a', 1.56, -0.15],
   ['ztz99a2', 1.56, 0.12], ['vt4a1', 1.56, 0.40],
 ]) {
   const armor = createType99Armor(id);
@@ -36,7 +36,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
   assert.equal(armor.crew.length, 3, `${id}: three-person autoloader crew`);
   assert.equal(armor.turretPivot[1], authoredPivotY, `${id}: authored ring datum`);
   assert.equal(armor.turretPivot[2], authoredPivotZ, `${id}: authored fore/aft ring datum`);
-  if (id !== 'ztz99a2_prototype') {
+  if (id !== 'ztz99a') {
     const ring = armor.modules.find((box) => box.module === 'turretRing');
     assert(Math.abs((ring.min[2] + ring.max[2]) / 2 - authoredPivotZ) < 1e-8,
       `${id}: combat turret-ring volume follows the fore/aft pivot`);
@@ -44,7 +44,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
 }
 
 {
-  const armor = createType99Armor('type99a');
+  const armor = createType99Armor('ztz99_longwei');
   const hull = plateHits(armor, [4, 1.40, 0], [-4, 1.40, 0]).map((hit) => hit.plate.name);
   assert.deepEqual(hull.slice(0, 2), ['skirt_front_R', 'hull_side_upper_center_R'],
     'Type 99A flank crosses the visible skirt and outer sponson before the interior');
@@ -68,7 +68,7 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
 
 // Integration: registration uses each distinct envelope, keeps the A2 armor
 // factor, and publishes the runtime-derived track prisms used by shell traces.
-for (const id of ['type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1']) {
+for (const id of ['ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
   const calibration = combatAnatomyCalibration(id);

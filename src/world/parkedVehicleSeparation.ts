@@ -166,6 +166,10 @@ export const CART_SLIDE_MAX_M = 3;
  * rubble, a truck 0.9 m into a sandbag emplacement at Verdant): a vehicle is longer than a cart, so it may go further.
  */
 export const VEHICLE_SLIDE_MAX_M = 6;
+/** (Lane C, 2026-10-14) How far a cart, and a parked vehicle, may be relocated on its own lot when nothing within its slide
+ *  cleared and its old seat was not invalid (seatCartsClear relocateReach): the owner wants lived-in maps. */
+export const CART_RELOCATE_MAX_M = 10;
+export const VEHICLE_RELOCATE_MAX_M = 16;
 const CART_SLIDE_STEP_M = 0.25;
 const CART_SLIDE_HEADINGS = 16;
 
@@ -182,13 +186,22 @@ export interface CartSeatOptions<T extends ParkedVehicle> {
   drop(cart: T): void;
   /** How far this one may slide (CART_SLIDE_MAX_M unless given: a vehicle's VEHICLE_SLIDE_MAX_M). */
   maxSlide?(cart: T): number;
+  /** (Lane C, 2026-10-14) What its seat meets (kinds), for the receipt of a cart that found no seat. */
+  why?(cart: T): string[];
+  /** (Lane C, 2026-10-14; the coordinator: relocate rather than leave out, unless the old seat was invalid) A further
+   *  reach to try, in the same rings, when nothing within maxSlide cleared and the seat met nothing that makes it
+   *  invalid (a rail bed, a building, another vehicle): 0 or absent, none. `prepare` runs once before that search. */
+  relocateReach?(cart: T, why: readonly string[]): number;
+  prepareRelocation?(cart: T, reach: number): void;
 }
 
 export interface CartSeatReceipt {
   carts: number;
   blocked: number;
   slid: { kind: string; from: [number, number]; to: [number, number]; by: number }[];
-  dropped: { kind: string; at: [number, number] }[];
+  dropped: { kind: string; at: [number, number]; why?: string[] }[];
+  /** (Lane C) the carts no slide within maxSlide cleared that a further search seated (relocateReach) */
+  relocated?: { kind: string; from: [number, number]; to: [number, number]; by: number; why: string[] }[];
 }
 
 /**
@@ -220,8 +233,29 @@ export function seatCartsClear<T extends ParkedVehicle>(carts: readonly T[], o: 
     if (seat) {
       receipt.slid.push({ kind: cart.kind, from: [round2(cart.x), round2(cart.z)], to: [round2(seat[0]), round2(seat[1])], by });
       o.move(cart, seat[0], seat[1]);
+      continue;
+    }
+    // (Lane C) no seat within reach: what the seat meets decides whether it is relocated further (the same rings, out to
+    // relocateReach, on its own lot) or left out (a seat on a rail bed, in a building, in another vehicle was invalid)
+    const why = o.why?.(cart) ?? [];
+    const far = o.relocateReach?.(cart, why) ?? 0;
+    if (far > reach) {
+      o.prepareRelocation?.(cart, far);
+      for (let ring = Math.floor(reach / CART_SLIDE_STEP_M) + 1; !seat && ring * CART_SLIDE_STEP_M <= far + 1e-9; ring++) {
+        const r = ring * CART_SLIDE_STEP_M;
+        for (const h of headings) {
+          const x = cart.x + Math.sin(h) * r, z = cart.z + Math.cos(h) * r;
+          if (o.blocked(cart, x, z) || !o.seatOk(cart, x, z)) continue;
+          seat = [x, z]; by = r;
+          break;
+        }
+      }
+    }
+    if (seat) {
+      (receipt.relocated ??= []).push({ kind: cart.kind, from: [round2(cart.x), round2(cart.z)], to: [round2(seat[0]), round2(seat[1])], by, why });
+      o.move(cart, seat[0], seat[1]);
     } else {
-      receipt.dropped.push({ kind: cart.kind, at: [round2(cart.x), round2(cart.z)] });
+      receipt.dropped.push({ kind: cart.kind, at: [round2(cart.x), round2(cart.z)], why });
       o.drop(cart);
     }
   }

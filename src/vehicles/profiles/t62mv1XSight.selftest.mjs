@@ -47,10 +47,10 @@ function build(quality,omit){
     };
   }}));
   try{
-    const native=()=>createTank('t62mv1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
-    registerProfiledBuilders({t62mv1_x:observe(buildT62MV1X)});const tank=native();
+    const native=()=>createTank('t62mv1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+    registerProfiledBuilders({t62mv1:observe(buildT62MV1X)});const tank=native();
     tank.root.updateMatrixWorld(true);return{tank,count,emissionHash:hash.digest('hex')};
-  }finally{registerProfiledBuilders({t62mv1_x:buildT62MV1X});}
+  }finally{registerProfiledBuilders({t62mv1:buildT62MV1X});}
 }
 function fixture(){
   const parts=[],material=new THREE.MeshBasicMaterial();

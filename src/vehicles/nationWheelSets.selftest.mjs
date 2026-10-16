@@ -75,48 +75,48 @@ const expect = (id, donor, kind = 'standard') => {
   const r = resolveNationWheel(TANK_SPECS[id]);
   assert.equal(`${r.kind}:${r.donor}`, `${kind}:${donor}`, `${id} → ${kind}:${donor} (got ${r.kind}:${r.donor}; ${r.reason})`);
 };
-expect('sabra_mk2_x', 'm60a3');                 // owner 2026-09-22 correction
-expect('m60a1', 'm60a3'); expect('m48', 'm60a3'); expect('m46_patton', 'm60a3');
-expect('m1a3', 'm1a2'); expect('abramsx', 'm1a2'); // m1a2_legacy retired 2026-09-23 (owner: "no hidden tanks")
-expect('m1a2', 'm1a2', 'donor'); expect('ua_m1a1', 'm1a2', 'donor');
+expect('sabra_mk2', 'm60a3');                 // owner 2026-09-22 correction
+expect('m60a1', 'm60a3'); expect('m48a5_patton', 'm60a3'); expect('m46_patton', 'm60a3');
+expect('m1a3', 'm1a1_abrams_hc'); expect('abramsx', 'm1a1_abrams_hc'); // m1a2_legacy retired 2026-09-23 (owner: "no hidden tanks")
+expect('m1a1_abrams_hc', 'm1a1_abrams_hc', 'donor'); expect('ua_m1a1', 'm1a1_abrams_hc', 'donor');
 expect('m551_sheridan', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
-expect('griffin_viper', 'm1a2'); expect('griffin50_x', 'm1a2'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
-expect('type59', 'ztz100_x'); expect('ztz100_prototype', 'ztz100_x'); expect('aft10_x', 'type100');
+expect('griffin_viper', 'm1a1_abrams_hc'); expect('griffin50mm', 'm1a1_abrams_hc'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
+expect('type59', 'ztz100'); expect('ztz100_prototype', 'ztz100'); expect('aft10', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
-expect('strv81', 'strv122'); expect('strv103', 'strv122'); expect('strv122', 'strv122'); expect('cv90', 'cv90_mkiv_x');
-expect('k1a1', 'k1a1'); expect('k2b', 'k2'); expect('bmp3_rok', 'bmp3m_dragun125_x'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
-expect('k21_x', 'bmp3m_dragun125_x'); // owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel construction
-expect('pt91m', 't90'); // owner 2026-10-06: actual T-72BU donor running gear
-assert.equal(resolveNationWheel(TANK_SPECS.pt91m).donor, resolveNationWheel(TANK_SPECS.t72bu_x).donor);
+expect('strv81', 'strv121'); expect('strv103b', 'strv121'); expect('strv121', 'strv121'); expect('cv90', 'cv90_mk4');
+expect('k1e1', 'k1e1'); expect('k2b', 'xk2_black_panther'); expect('bmp3_rok', 'bmp3m_dragun125'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
+expect('k21', 'bmp3m_dragun125'); // owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel construction
+expect('pt91m', 't90_1992'); // owner 2026-10-06: actual T-72BU donor running gear
+assert.equal(resolveNationWheel(TANK_SPECS.pt91m).donor, resolveNationWheel(TANK_SPECS.t72bu).donor);
  expect('t72m1_jaguar', 'pl01'); expect('upior', 'bwp1');
-expect('type10', 'type10'); expect('type89_light_tiger', 'type10'); expect('type74', 'type90'); expect('type89', 'type90');
-expect('carro45t', 'ariete_c1'); expect('ariete', 'ariete_c1'); expect('ariete_c2_x', 'ariete_c1', 'donor');
-expect('leclerc', 'leclerc_xlr'); expect('leclerc_xlr', 'leclerc_xlr'); expect('amx56', 'leclerc_xlr'); expect('leclerc_classic_x', 'leclerc_xlr');
-expect('amx30', 'amx40'); expect('amx40', 'amx40'); expect('amx40_x', 'amx40', 'donor');
-expect('chieftain5', 'challenger2e'); expect('challenger1_x', 'challenger2e'); expect('centurion3', 'challenger2e');
-expect('challenger_3x', 'challenger_3', 'donor'); expect('ua_challenger2', 'challenger2e', 'donor');
-expect('fv510', 'warrior_tes_h'); expect('ajax_x', 'warrior_tes_h'); expect('ares_apc_x', 'warrior_tes_h');
-expect('t62mv1', 't90'); expect('t80u_x', 't90m'); expect('t72b3m', 't90m'); expect('t90', 't90m'); expect('t90_x', 't90m');
-expect('t90m_x', 't90m', 'donor'); expect('t14_x', 't14', 'donor'); expect('t14', 't14', 'donor');
-expect('bmpt_terminator2', 't90m'); expect('bmpt_t90', 't90m'); expect('tos1a_tagil', 't90m');
-expect('bmp3', 'bmp3m_dragun125_x'); expect('bmp2', 'bmp3m_dragun125_x'); expect('kurganets25_x', 'bmp3m_dragun125_x'); expect('object695_x', 'bmp3m_dragun125_x');
-expect('ua_t64bv', 't90'); expect('t84', 't90'); expect('ua_t80u_kursk', 't90');
-expect('kf51b', 'kf51', 'donor'); expect('leo2a4', 'leo2a6'); expect('leo2a6', 'leo2a6'); expect('mbt70', 'leo2a6'); expect('leo2a6_ua', 'leo2a6');
-expect('spz_puma', 'kf41_lynx_x'); expect('marder1a3', 'kf41_lynx_x'); expect('leo2a6_x', 'leo2a6', 'donor');
+expect('type10_tk_x', 'type10_tk_x'); expect('raiju_ifv', 'type10_tk_x'); expect('type74', 'type90_kyumaru'); expect('hayate_ifv', 'type90_kyumaru');
+expect('carro45t', 'c1_ariete_proto_serie1'); expect('c1_ariete_preserie', 'c1_ariete_proto_serie1'); expect('c2_ariete', 'c1_ariete_proto_serie1', 'donor');
+expect('leclerc_s2', 'leclerc_sxxi'); expect('leclerc_sxxi', 'leclerc_sxxi'); expect('leclerc_s1', 'leclerc_sxxi'); expect('amx56', 'leclerc_sxxi');
+expect('amx30', 'amx40_proto'); expect('amx40_proto', 'amx40_proto'); expect('amx40', 'amx40_proto', 'donor');
+expect('chieftain3', 'challenger2e'); expect('challenger1_mk3', 'challenger2e'); expect('centurion3', 'challenger2e');
+expect('challenger3', 'challenger3_proto', 'donor'); expect('ua_challenger2', 'challenger2e', 'donor');
+expect('fv510', 'warrior_tes_h'); expect('ajax', 'warrior_tes_h'); expect('ares_apc', 'warrior_tes_h');
+expect('t62_1975', 't90_1992'); expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
+expect('t90m', 't90am', 'donor'); expect('t14_armata', 'object148_proto', 'donor'); expect('object148_proto', 'object148_proto', 'donor');
+expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('tos1a_tagil', 't90am');
+expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
+expect('t64bv_donbas', 't90_1992'); expect('t84', 't90_1992'); expect('t80u_kursk', 't90_1992');
+expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4');
+expect('spz_puma', 'kf41_lynx'); expect('marder1a3', 'kf41_lynx'); expect('leo2a6', 'leo2a4', 'donor');
 // tiger1, t95 and m26_pershing retired 2026-09-23 (owner: "no hidden tanks"); the two period hulls left keep their wheels.
-for (const id of ['kv2', 'jpz_e100_x']) {
+for (const id of ['kv2', 'jpz_e100']) {
   assert.equal(resolveNationWheel(TANK_SPECS[id]).kind, 'keep', `${id} keeps its period wheels`);
 }
 
 // wheelPatternFor: the table wins; a profile may only restate it.
-assert.equal(wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'plain-dish-twelve').id, 'plain-dish-twelve');
-assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'pressed-six'), /contradicts the nation standard/);
-// jpz_e100_x carries the interleaved period rule since its tiger1 exemplar retired on 2026-09-23 (owner: "no hidden tanks").
-assert.equal(wheelPatternFor(TANK_SPECS.jpz_e100_x, 'dished').id, 'interleaved-dish', 'period rule');
-assert.equal(wheelPatternFor(TANK_SPECS.jpz_e100_x, 'dished', 'christie-six').id, 'christie-six', 'period hulls may still override');
+assert.equal(wheelPatternFor(TANK_SPECS.leo2a2, 'rubber', 'plain-dish-twelve').id, 'plain-dish-twelve');
+assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a2, 'rubber', 'pressed-six'), /contradicts the nation standard/);
+// jpz_e100 carries the interleaved period rule since its tiger1 exemplar retired on 2026-09-23 (owner: "no hidden tanks").
+assert.equal(wheelPatternFor(TANK_SPECS.jpz_e100, 'dished').id, 'interleaved-dish', 'period rule');
+assert.equal(wheelPatternFor(TANK_SPECS.jpz_e100, 'dished', 'christie-six').id, 'christie-six', 'period hulls may still override');
 // No community placeholder hull remains (recon_tank / q_heavy retired 2026-09-23); the resolver branch is exercised with a synthetic record.
 assert.equal(wheelPatternFor({ id: 'community_fixture', nation: 'Community', era: 'modern', role: 'light' }).id, 'split-rim-ten', 'community placeholder default');
-assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a4, 'rubber', 'no-such-pattern'), /Unknown wheel pattern/);
+assert.throws(() => wheelPatternFor(TANK_SPECS.leo2a2, 'rubber', 'no-such-pattern'), /Unknown wheel pattern/);
 
 // Every buildable construction draws at a foreign size at both tiers: closed solids, a radius that matches the
 // request, layers with paints and roles, an axial fit inside the window and a width between the hull's tire
@@ -158,7 +158,7 @@ assert.deepEqual(NATION_WHEEL_AXIAL_FIT, { min: 0.85, max: 1.15 }, 'no construct
   assert.ok(Math.abs(fitted.axialScale - 1) < 0.02 && Math.abs(fitted.axialFitRequested - fitted.axialScale) < 1e-9, `the track-width cap lets the Leclerc face keep its proportion (${fitted.axialScale})`);
   for (const b of [squashed, fitted]) for (const g of [b.tire, b.disc, b.dark, ...b.layers.map((l) => l.geometry)]) g?.dispose();
 }
-// Offset-seated dressing keeps its protrusion proportional to the radius under an axial stretch (the former griffin50_x envelope, 2026-09-22).
+// Offset-seated dressing keeps its protrusion proportional to the radius under an axial stretch (the former griffin50mm envelope, 2026-09-22).
 {
   const built = buildNationWheel('sheridan-pressed-rim', { radiusM: .3225, tireWidthM: .547, maxWidthM: .547 * 1.48, high: true, segments: 26 });
   assert.equal(built.axialScale, NATION_WHEEL_AXIAL_FIT.max, 'a 0.55 m lower bound on the single Sheridan rim hits the fit ceiling');

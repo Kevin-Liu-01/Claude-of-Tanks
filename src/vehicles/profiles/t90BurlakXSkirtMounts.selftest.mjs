@@ -20,7 +20,7 @@ function inside(mesh,p){
   }finally{material.dispose();}
 }
 for(const quality of ['high','low']){
-  const t=createTank('t90a_burlak_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90a_burlak',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     t.root.updateMatrixWorld(true);const all=[];
     // camouflage excluded on the coordinator's ruling (2026-10-11): a real vehicle's geometry never includes its nets

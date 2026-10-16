@@ -33,7 +33,7 @@ try{
   // Actual battlefield meshes and shaders, including instancing and wind.
   const game=await openGamePage(browser,{port,viewport:{width:1440,height:900}});
   await game.page.evaluate(()=>localStorage.setItem('cot.battle.times.v2',JSON.stringify(['day'])));
-  await beginSoloBattle(game.page,{specId:'m1a2',mapId:'verdant'});
+  await beginSoloBattle(game.page,{specId:'m1a1_abrams_hc',mapId:'verdant'});
   const pose=await game.page.evaluate(()=>{
    const D=window.__DEBUG, meshes=[];D.scene.traverse(o=>{if(o.isInstancedMesh&&o.geometry.userData.crownAttachments?.length)meshes.push(o);});
    const m=meshes.find(o=>o.count>0);if(!m)throw new Error('No connected battle tree instances');

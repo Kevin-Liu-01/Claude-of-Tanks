@@ -19,7 +19,7 @@ const corners = [
   ['independent front optic', 'fixed', [.86, .28, .89]],
 ];
 
-for (const id of ['challenger_3', 'challenger_3x']) for (const quality of ['high', 'low']) {
+for (const id of ['challenger3_proto', 'challenger3']) for (const quality of ['high', 'low']) {
   const tank = createTank(id, null, {proceduralOnly:true, geometryReceipt:true, quality, batchStatic:true});
   try {
     const turret = tank.root.getObjectByName('rig_turret');

@@ -8,7 +8,7 @@ import {shellPart,auditShellParts} from '../../../tools/base-shell-audit-math.mj
 const spec = getSpec('m1a3');
 assert.equal(spec.name, 'M1A3 Abrams');
 assert.equal(spec.label.shortName, 'M1A3 Abrams');
-assert.equal(spec.variantOf, 'm1a2');
+assert.equal(spec.variantOf, 'm1a1_abrams_hc');
 assert.equal(spec.era, 'next-generation');
 assert.equal(tankTier('m1a3'), 10);
 
@@ -77,7 +77,7 @@ const tank = createTank('m1a3', null, {
 for(const pair of auditShellParts(baseStock).mirroredPairs){
   assert.ok(pair.maxM<.005,`M1A3 primary mirrored surface mismatch ${pair.maxM}m`);
 }
-const baseline = createTank('m1a2', null, {
+const baseline = createTank('m1a1_abrams_hc', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,

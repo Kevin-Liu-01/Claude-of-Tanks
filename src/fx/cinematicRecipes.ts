@@ -231,6 +231,9 @@ function jet(
   ctx.sink.jet(J);
 }
 
+/** A chunk's heat flag for thrown earth (clods, grit): the debris pool draws it dark soil, not charred metal. */
+const EARTH = -1;
+
 function chunk(
   ctx: CineCtx, x: number, y: number, z: number, vx: number, vy: number, vz: number,
   life: number, scale: number, groundY: number, hot: number, birthOffset: number,
@@ -288,6 +291,27 @@ function glowShare(ctx: CineCtx, k: number): number {
 function toneAt(ctx: CineCtx, x: number, z: number): GroundTone {
   return ctx.world.tone(x, z, TONE);
 }
+
+// (HE look v2, the coordinator's combat review of integ/224: "the HE bursts, barrage and cook-off alike, still read as
+// clusters of round orange balls ... still orange 1-2 s later") a burst's fire is its first ~0.1-0.2 s (the flash and a
+// short core); after it the cloud is earth and soot: the ground's own dust (the map's tone) round a dark grey-brown
+// sooty heart, never peach or orange past ~0.3 s except embers
+const _sootEarth: Vec3 = [0, 0, 0], _sootEarthAged: Vec3 = [0, 0, 0];
+/** soot with the ground's dark in it (k: the ground's share) */
+function sootEarth(out: Vec3, tone: GroundTone, k: number, aged = false): Vec3 {
+  const s0 = aged ? SOOT1 : SOOT0;
+  out[0] = s0[0] + (tone.dark[0] - s0[0]) * k; out[1] = s0[1] + (tone.dark[1] - s0[1]) * k; out[2] = s0[2] + (tone.dark[2] - s0[2]) * k;
+  return out;
+}
+const _darkSoil: Vec3 = [0, 0, 0];
+/** the ground's dark, darker still: the soil a burst throws up its spikes */
+function darkSoil(tone: GroundTone): Vec3 {
+  _darkSoil[0] = tone.dark[0] * 0.5; _darkSoil[1] = tone.dark[1] * 0.48; _darkSoil[2] = tone.dark[2] * 0.46;
+  return _darkSoil;
+}
+/** (HE look v2: "the snow-dust puffs read as flat white cotton") powder thrown off snow is low, fast and settling: its
+ *  life, size, height and opacity scaled down and a settling fall in place of the dust's lift */
+const SNOW_DUST = Object.freeze({ life: 0.45, size: 0.62, lift: 0.4, alpha: 0.7, grav: -1.4 });
 
 // ---------------------------------------------------------------------------
 // One-shot recipes
@@ -401,7 +425,7 @@ export function muzzleBlast(
     const ox = px + fx * (1 + r() * 2), oz = pz + fz * (1 + r() * 2);
     const g = ctx.world.groundY(ox, oz);
     chunk(ctx, ox, g + 0.15, oz, rx * (4 + r() * 6), 2 + r() * 4, rz * (4 + r() * 6),
-      0.9 + r() * 0.5, 0.025 + r() * 0.035, g, 0, 0);
+      0.9 + r() * 0.5, 0.025 + r() * 0.035, g, EARTH, 0);
   }
   // hanging haze that drifts for seconds after the shot: six broad, faint veils
   for (let i = 0; i < 6; i++) {
@@ -446,19 +470,22 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     puff(ctx, 'flash', x + (r() - 0.5) * k, y + r() * k, z + (r() - 0.5) * k, 0, 2, 0,
       0.08 + r() * 0.06, (2.4 + r()) * k, (5.8 + r() * 2.0) * k, WHITE_HOT, FLAME_Y, 0.85, 0, d - r() * 0.01);
   }
-  // incandescent core: fast radial burst, additive
-  const coreN = Math.round(13 + 8 * Math.min(k, 2));
+  // incandescent core: fast radial burst, additive; (HE look v2) gone within ~0.25 s, smaller
+  const coreN = Math.round(9 + 5 * Math.min(k, 2));
   for (let i = 0; i < coreN; i++) {
     const a = r() * TAU, b = Math.acos(1 - 2 * r()) * 0.75;
     const sp = (5 + r() * 9) * k;
     const sx = Math.sin(b) * Math.cos(a), sy = Math.abs(Math.cos(b)), sz = Math.sin(b) * Math.sin(a);
     puff(ctx, 'fire', x + sx * 0.6 * k, y + sy * 0.4 * k, z + sz * 0.6 * k,
       sx * sp, sy * sp * 0.7 + 2.2 * rise, sz * sp,
-      (0.55 + r() * 0.75) * cool, (1.4 + r() * 0.9) * k, (3.6 + r() * 2.2) * k,
-      i < coreN / 5 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.42 + r() * 0.26, 2.4 * rise, d + r() * 0.12);
+      (0.1 + r() * 0.14) * cool, (1.0 + r() * 0.6) * k, (2.4 + r() * 1.4) * k,
+      i < coreN / 5 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.42 + r() * 0.26, 2.4 * rise, d + r() * 0.06);
   }
-  // billow body: occluding fire-in-smoke lobes rolling upward
-  const bodyN = Math.round(14 + 8 * Math.min(k, 2));
+  // billow body: occluding fire-in-smoke lobes rolling upward; (HE look v2) more, smaller lobes of soot with the ground's
+  // earth in it (a dark grey-brown, never a round orange ball)
+  const bodyN = Math.round(18 + 10 * Math.min(k, 2));
+  const fbTone = toneAt(ctx, x, z);
+  const body0 = sootEarth(_sootEarth, fbTone, 0.3), body1 = sootEarth(_sootEarthAged, fbTone, 0.25, true);
   for (let i = 0; i < bodyN; i++) {
     const a = r() * TAU;
     const out = (0.4 + r() * 1.2) * k;
@@ -466,10 +493,11 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     const sp = (2.2 + r() * 4.2) * k;
     puff(ctx, 'billow', x + Math.cos(a) * out, y + (crown ? 0.8 + r() * 1.4 : r() * 0.8) * k, z + Math.sin(a) * out,
       Math.cos(a) * sp, (crown ? 4.5 + r() * 3.5 : 1.6 + r() * 2.4) * k * rise, Math.sin(a) * sp,
-      (1.5 + r() * 1.3 + 0.4 * rise) * cool, (2.4 + r() * 1.2) * k, (6.4 + r() * 3.2) * k,
-      SOOT0, SOOT1, 0.9 + r() * 0.08, 1.6 * rise, d + 0.02 + r() * 0.2);
+      (1.5 + r() * 1.3 + 0.4 * rise) * cool, (1.8 + r() * 1.0) * k, (4.2 + r() * 2.4) * k,
+      body0, body1, 0.88 + r() * 0.08, 1.6 * rise, d + 0.02 + r() * 0.2);
   }
-  // dark smoke roll boiling out of the crown (normal-blended, long)
+  // dark smoke roll boiling out of the crown (normal-blended, long); (HE look v2) plain smoke: the fire's light on it
+  // (a long fire-lit glow kept the column peach for seconds) is only the few short puffs low at the base
   const smokeN = Math.round((16 + 10 * Math.min(k, 2.2)) * (o.smoke ?? 1));
   const glow = glowShare(ctx, 0.55);
   for (let i = 0; i < smokeN; i++) {
@@ -477,10 +505,16 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     const out = r() * 1.5 * k;
     const lift = (1.2 + r() * 2.6) * k;
     const birth = d + 0.35 + r() * 1.4;
-    glowPuff(ctx, 'smoke', x + Math.cos(a) * out, y + lift, z + Math.sin(a) * out,
+    puff(ctx, 'smoke', x + Math.cos(a) * out, y + lift, z + Math.sin(a) * out,
       Math.cos(a) * (0.8 + r() * 1.6) * k + WIND_X * 0.5, (2.6 + r() * 3.2) * k * rise, Math.sin(a) * (0.8 + r() * 1.6) * k + WIND_Z * 0.5,
       5.5 + r() * 4.5 + 2 * rise, (3.2 + r() * 1.4) * k, (8.5 + r() * 4.5) * k,
-      FIRE_LIGHT, glow * 0.6 * cool * (1 - i / smokeN), SMOKE_DARK0, 0.62 + r() * 0.18, 0.9 * rise, birth);
+      SMOKE_DARK0, SMOKE_DARK1, 0.62 + r() * 0.18, 0.9 * rise, birth);
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = r() * TAU;
+    glowPuff(ctx, 'smoke', x + Math.cos(a) * 0.6 * k, y + 0.3 * k, z + Math.sin(a) * 0.6 * k,
+      Math.cos(a) * 0.6, 1.2 * rise, Math.sin(a) * 0.6, 0.7 + r() * 0.3, 1.4 * k, (3.0 + r()) * k,
+      FIRE_LIGHT, glow * 0.6 * cool, SMOKE_DARK0, 0.5, 0.6 * rise, d + 0.05 + r() * 0.1);
   }
   if (o.ground !== false) {
     shockwave(ctx, x, z, 10 + 9 * k, 0.8 + 0.4 * Math.min(k, 1.5), d);
@@ -504,13 +538,15 @@ export function shockwave(ctx: CineCtx, x: number, z: number, radiusM: number, s
     const ca = Math.cos(a), sa = Math.sin(a);
     const v = radiusM * 1.4 * (0.75 + r() * 0.4);
     const ox = x + ca * 0.8, oz = z + sa * 0.8;
-    puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.45 + r() * 0.5, oz,
-      ca * v, 0.4 + r() * 1.2, sa * v,
-      1.4 + r() * 1.6, 0.9 + r() * 0.5, (2.8 + r() * 2.0) * Math.max(0.7, radiusM / 14),
-      tone.light, tone.dark, (0.30 + r() * 0.16) * clamp(strength, 0.2, 1.6), 0.12, delayS - r() * 0.02);
+    // (HE look v2) on snow the ring is low powder that settles (SNOW_DUST)
+    const sn = tone.snow ? SNOW_DUST : null;
+    puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + (0.45 + r() * 0.5) * (sn ? sn.lift : 1), oz,
+      ca * v, (0.4 + r() * 1.2) * (sn ? sn.lift : 1), sa * v,
+      (1.4 + r() * 1.6) * (sn ? sn.life : 1), (0.9 + r() * 0.5) * (sn ? sn.size : 1), (2.8 + r() * 2.0) * Math.max(0.7, radiusM / 14) * (sn ? sn.size : 1),
+      tone.light, tone.dark, (0.30 + r() * 0.16) * clamp(strength, 0.2, 1.6) * (sn ? sn.alpha : 1), sn ? sn.grav : 0.12, delayS - r() * 0.02);
   }
-  // inner billow of thrown-up soil
-  for (let i = 0; i < Math.round(n * 0.4); i++) {
+  // inner billow of thrown-up soil (none on snow: the powder ring is the burst's white)
+  for (let i = 0; i < (tone.snow ? 0 : Math.round(n * 0.4)); i++) {
     const a = r() * TAU;
     const v = radiusM * (0.3 + r() * 0.5);
     puff(ctx, 'dust', x + Math.cos(a) * 1.2, ctx.world.groundY(x, z) + 0.8, z + Math.sin(a) * 1.2,
@@ -553,9 +589,11 @@ export function debrisBurst(
           1.2 + r() * 0.8, 0.4, (big ? 2.4 : 1.3) + r() * 0.6, tone.light, tone.dark, 0.32, -0.2, bo + t);
         break;
       }
-      if (isHot >= 1 && r() < 0.55) {
+      // (HE look v2 follow-up, 2026-10-14: round bright dots all through the cloud 0.7 s after a kill) a burning piece
+      // trails flame only while it is near the fire, fading as it flies out; then smoke alone
+      if (isHot >= 1 && t < 0.45 && r() < 0.55) {
         puff(ctx, 'fire', x + sx, py, z + sz, (r() - 0.5) * 0.4, 0.3, (r() - 0.5) * 0.4,
-          0.22 + r() * 0.18, (big ? 0.7 : 0.4) * sizeK, (big ? 0.35 : 0.2) * sizeK, FLAME_Y, FLAME_R, 0.8, 0, bo + t);
+          0.22 + r() * 0.18, (big ? 0.7 : 0.4) * sizeK, (big ? 0.35 : 0.2) * sizeK, FLAME_Y, FLAME_R, 0.8 * (1 - t / 0.6), 0, bo + t);
       }
       puff(ctx, 'smoke', x + sx, py, z + sz, (r() - 0.5) * 0.3, 0.4 + r() * 0.3, (r() - 0.5) * 0.3,
         0.9 + r() * 0.8, (big ? 0.45 : 0.25) * sizeK, (big ? 2.0 : 1.1) * sizeK,
@@ -649,12 +687,35 @@ export function heBurst(ctx: CineCtx, x: number, z: number, scale: number, delay
     return;
   }
   const tone = toneAt(ctx, x, z);
-  // flash + short fire
+  const snow = tone.snow;
+  // flash + short fire; (HE look v2) the fire is the burst's first ~0.15 s: a few small tongues, never a ball
   puff(ctx, 'flash', x, y + 0.6 * k, z, 0, 1, 0, 0.07, 1.8 * k, 4.8 * k, WHITE_HOT, FLAME_Y, 1, 0, delayS);
-  for (let i = 0; i < Math.round(6 + 6 * fireK); i++) {
+  for (let i = 0; i < Math.round(4 + 3 * fireK); i++) {
     const a = r() * TAU, sp = (3 + r() * 7) * k;
     puff(ctx, 'fire', x, y + 0.5 * k, z, Math.cos(a) * sp, (4 + r() * 6) * k, Math.sin(a) * sp,
-      0.16 + r() * 0.22 + fireK * 0.25, 1.1 * k, (2.6 + r() * 1.4) * k, FLAME_Y, FLAME_O, 0.7 + r() * 0.25, 1, delayS + r() * 0.03);
+      0.07 + r() * 0.08 + fireK * 0.06, 0.9 * k, (1.8 + r() * 0.8) * k, FLAME_Y, FLAME_O, 0.65 + r() * 0.25, 1, delayS + r() * 0.02);
+  }
+  // (HE look v2) the sooty heart: dark grey-brown smoke with the ground's earth in it, rising out of the crater as a
+  // column (the fountain's soil arcs and falls round it)
+  const heart0 = sootEarth(_sootEarth, tone, 0.5), heart1 = sootEarth(_sootEarthAged, tone, 0.45, true);
+  for (let i = 0; i < Math.round(5 + 3 * Math.min(k, 1.6)); i++) {
+    const a = r() * TAU, rr = r() * 0.6 * k;
+    puff(ctx, 'smoke', x + Math.cos(a) * rr, y + 0.4 + r() * 1.2 * k, z + Math.sin(a) * rr,
+      Math.cos(a) * (0.6 + r()) * k, (4 + r() * 4) * k, Math.sin(a) * (0.6 + r()) * k,
+      2.4 + r() * 1.6, 1.0 * k, (2.8 + r() * 1.4) * k, heart0, heart1, 0.78 + r() * 0.12, 0.6, delayS + 0.03 + r() * 0.12);
+  }
+  // (HE look v2: "no spheres ... lateral jets of dirt and debris spikes") spikes: lines of small soil puffs born together
+  // along rays thrown up and out of the crater, each a narrow jet that falls back, so the burst's silhouette is spiked
+  const spikeN = Math.round(5 + 2 * Math.min(k, 1.6));
+  for (let i = 0; i < spikeN; i++) {
+    const a = (i / spikeN) * TAU + (r() - 0.5) * 0.7, el = 0.75 + r() * 0.55;
+    const sp = (13 + r() * 9) * k, ca = Math.cos(a) * Math.cos(el), sa = Math.sin(a) * Math.cos(el), su = Math.sin(el);
+    for (let j = 0; j < 6; j++) {
+      const f = 0.35 + 0.65 * (j / 5);
+      puff(ctx, 'smoke', x + ca * 0.3 * j, y + 0.2 + su * 0.3 * j, z + sa * 0.3 * j,
+        ca * sp * f, su * sp * f, sa * sp * f,
+        0.9 + r() * 0.5, 0.25 * k, (0.9 + 0.5 * f) * k, darkSoil(tone), tone.dark, 0.8, snow ? -8 : -9.5, delayS + 0.01 * j);
+    }
   }
   // ejecta fountain (dark soil column that arcs and falls back)
   const darkA: Vec3 = [tone.dark[0] * 0.42, tone.dark[1] * 0.40, tone.dark[2] * 0.38];
@@ -666,12 +727,15 @@ export function heBurst(ctx: CineCtx, x: number, z: number, scale: number, delay
       1.5 + r() * 1.3, (0.8 + r() * 0.5) * k, (3.6 + r() * 2.2) * k,
       darkA, tone.dark, 0.82 + r() * 0.12, -7.5, delayS + r() * 0.05);
   }
-  // radial skirt rolling along the ground
+  // radial skirt rolling along the ground (a low ring of rolling dust at the base); (HE look v2) on snow, powder that
+  // stays low and settles fast
+  const sn = snow ? SNOW_DUST : null;
   for (let i = 0; i < 14; i++) {
     const a = (i / 14) * TAU + r() * 0.4, sp = (5 + r() * 4) * k;
-    puff(ctx, 'smoke', x + Math.cos(a) * 0.6 * k, y + 0.3, z + Math.sin(a) * 0.6 * k,
-      Math.cos(a) * sp, 2 + r() * 2.2, Math.sin(a) * sp,
-      1.2 + r() * 1.1, 0.8 * k, (2.8 + r()) * k, tone.dark, tone.light, 0.62, -2.6, delayS + r() * 0.04);
+    puff(ctx, 'smoke', x + Math.cos(a) * 0.6 * k, y + 0.3 * (sn ? sn.lift : 1), z + Math.sin(a) * 0.6 * k,
+      Math.cos(a) * sp, (2 + r() * 2.2) * (sn ? sn.lift : 1), Math.sin(a) * sp,
+      (1.2 + r() * 1.1) * (sn ? sn.life : 1), 0.8 * k * (sn ? sn.size : 1), (2.8 + r()) * k * (sn ? sn.size : 1),
+      tone.dark, tone.light, 0.62 * (sn ? sn.alpha : 1), sn ? sn.grav : -2.6, delayS + r() * 0.04);
   }
   shockwave(ctx, x, z, 9 * k + 3, 0.7 + 0.3 * Math.min(k, 1.5), delayS);
   // clods
@@ -680,7 +744,7 @@ export function heBurst(ctx: CineCtx, x: number, z: number, scale: number, delay
     const sp = (9 + r() * 12) * k;
     const vx = Math.cos(a) * Math.sin(tilt) * sp, vy = (8 + r() * 10) * k, vz = Math.sin(a) * Math.sin(tilt) * sp;
     const bo = delayS + r() * 0.03;
-    chunk(ctx, x, y, z, vx, vy, vz, 2.4, (0.07 + r() * 0.12) * k, gy, 0, bo);
+    chunk(ctx, x, y, z, vx, vy, vz, 2.4, (0.07 + r() * 0.12) * k, gy, EARTH, bo);
     for (let t = 0.06; t < 1.4; t += 0.09) {
       const py = y + dragTravel(vy, 0.12, t) - 10.8 * t * t;
       if (py < gy + 0.3) break;
@@ -689,12 +753,13 @@ export function heBurst(ctx: CineCtx, x: number, z: number, scale: number, delay
         tone.dark, tone.light, 0.62, -1.4, bo + t);
     }
   }
-  // lingering cloud drifting off the crater
+  // lingering cloud drifting off the crater (the ground's own dust); on snow a low powder veil that settles in seconds
   for (let i = 0; i < 10; i++) {
     const a = r() * TAU, dd = r() * 2.6 * k;
-    puff(ctx, 'dust', x + Math.cos(a) * dd, gy + 0.9 + r() * 1.4 * k, z + Math.sin(a) * dd,
-      Math.cos(a) * (0.8 + r()) + WIND_X * 0.6, 0.45 + r() * 0.6, Math.sin(a) * (0.8 + r()) + WIND_Z * 0.6,
-      5 + r() * 4, 1.6 * k, (5.6 + r() * 2.2) * k, tone.light, tone.dark, 0.26 + r() * 0.1, 0.08, delayS + 0.25 + r() * 0.6);
+    puff(ctx, 'dust', x + Math.cos(a) * dd, gy + (0.9 + r() * 1.4 * k) * (sn ? sn.lift : 1), z + Math.sin(a) * dd,
+      Math.cos(a) * (0.8 + r()) + WIND_X * 0.6, (0.45 + r() * 0.6) * (sn ? 0.3 : 1), Math.sin(a) * (0.8 + r()) + WIND_Z * 0.6,
+      (5 + r() * 4) * (sn ? sn.life : 1), 1.6 * k * (sn ? sn.size : 1), (5.6 + r() * 2.2) * k * (sn ? sn.size : 1),
+      tone.light, tone.dark, (0.26 + r() * 0.1) * (sn ? sn.alpha : 1), sn ? sn.grav * 0.3 : 0.08, delayS + 0.25 + r() * 0.6);
   }
   ctx.scorch(x, z, 1.8 + 1.4 * k, delayS);
   ctx.pulse(x, y + 1.5 * k, z, 0.4 + 0.25 * fireK, delayS);
@@ -732,17 +797,18 @@ export function cookOffs(ctx: CineCtx, x: number, y: number, z: number, count: n
     const big = r() < 0.35;
     const k = big ? 0.55 + r() * 0.25 : 0.28 + r() * 0.18;
     puff(ctx, 'flash', px, py + 0.4, pz, 0, 2, 0, 0.08, 1.6 * k * 2, 4.2 * k * 2, WHITE_HOT, FLAME_Y, 1, 0, t);
-    for (let j = 0; j < (big ? 12 : 6); j++) {
+    // (HE look v2) each pop's fire a short spit (~0.2 s), not a ball that hangs for most of a second
+    for (let j = 0; j < (big ? 7 : 4); j++) {
       const a = r() * TAU, sp = (2.5 + r() * 5) * k * 2;
       puff(ctx, 'fire', px, py + 0.3, pz, Math.cos(a) * sp, (3 + r() * 6) * k * 2, Math.sin(a) * sp,
-        0.35 + r() * 0.5, 1.0 * k * 2, (2.6 + r() * 1.4) * k * 2, FLAME_Y, FLAME_O, 0.75, 2.2, t + r() * 0.05);
+        0.12 + r() * 0.14, 0.8 * k * 2, (1.8 + r() * 1.0) * k * 2, FLAME_Y, FLAME_O, 0.72, 2.2, t + r() * 0.04);
     }
     if (big || r() < 0.4) {
       // hatch blowtorch: a roaring vertical tongue of flame
-      jet(ctx, px, py, pz, (r() - 0.5) * 0.3, 1, (r() - 0.5) * 0.3, 0.45 + r() * 0.5, 0.5 + r() * 0.3, 1.2, 4.5 + r() * 4, FLAME_Y, 0.9, t);
-      for (let j = 0; j < 8; j++) {
+      jet(ctx, px, py, pz, (r() - 0.5) * 0.3, 1, (r() - 0.5) * 0.3, 0.25 + r() * 0.2, 0.5 + r() * 0.3, 1.2, 4.5 + r() * 4, FLAME_Y, 0.9, t);
+      for (let j = 0; j < 5; j++) {
         puff(ctx, 'fire', px, py + j * 0.5, pz, (r() - 0.5) * 0.8, 6 + r() * 6, (r() - 0.5) * 0.8,
-          0.3 + r() * 0.35, 0.9, 2.2 + r(), FLAME_Y, FLAME_O, 0.8, 3, t + j * 0.04);
+          0.14 + r() * 0.12, 0.8, 1.6 + r() * 0.8, FLAME_Y, FLAME_O, 0.78, 3, t + j * 0.03);
       }
     }
     sparkShower(ctx, px, py + 0.4, pz, 0, 1, 0, big ? 40 : 18, big ? 22 : 14, 1.1, t);
@@ -791,13 +857,15 @@ export function burningEmitter(
       const glow = glowShare(ctx, 1.0);
       for (let i = 0; i < src.length; i++) {
         const s = src[i];
-        // licks: born on the deck, rising fast, shrinking as they burn off
-        const licks = r() < 0.35 * k ? 2 : 1;
+        // licks: born on the deck, rising fast, shrinking as they burn off; (kill glow, 10-14: the media lane's combat
+        // review, a white-hot hold over a knocked-out hull at ~1.3 s) burning fuel and stowage are orange tongues, not a
+        // white-hot core: few white licks, and additive licks thin enough that thirty overlapping never sheet to white
+        const licks = r() < 0.25 * k ? 2 : 1;
         for (let j = 0; j < licks; j++) {
           puff(ctx, 'fire', s.x + (r() - 0.5) * s.size, s.y + r() * 0.25, s.z + (r() - 0.5) * s.size,
             (r() - 0.5) * 0.6 + WIND_X * 0.25, 1.6 + r() * 1.8, (r() - 0.5) * 0.6 + WIND_Z * 0.25,
-            0.38 + r() * 0.42, (0.9 + r() * 0.6) * s.size * (0.7 + 0.3 * k), (0.45 + r() * 0.35) * s.size,
-            r() < 0.25 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.85 + r() * 0.15, 3.4, off - r() * 0.03);
+            0.34 + r() * 0.36, (0.75 + r() * 0.45) * s.size * (0.7 + 0.3 * k), (0.4 + r() * 0.3) * s.size,
+            r() < 0.05 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.5 + r() * 0.2, 3.4, off - r() * 0.03);
         }
         // occasional tall tongue
         if (r() < 0.06 * k) {
@@ -1086,17 +1154,18 @@ export function trackDustPacket(
   puff(ctx, 'dust', x + (r() - 0.5) * 0.4, gy + 0.25 + r() * 0.2, z + (r() - 0.5) * 0.4,
     -dirX * (1.5 + sp * 3) + (r() - 0.5) * 1.2, 0.8 + sp * 1.4 + r() * 0.6, -dirZ * (1.5 + sp * 3) + (r() - 0.5) * 1.2,
     0.9 + r() * 0.7, 0.3 * sizeK, (1.2 + sp * 1.4) * sizeK, tone.light, tone.dark, (0.30 + 0.25 * sp) * dustK, -0.6, off);
-  // billowing wake that rises, spreads and drifts downwind for seconds
+  // billowing wake that rises, spreads and drifts downwind for seconds; (HE look v2) on snow a low powder that settles
   if (r() < 0.55 + 0.35 * sp) {
-    puff(ctx, 'dust', x + (r() - 0.5) * 0.8, gy + 0.6 + r() * 0.5, z + (r() - 0.5) * 0.8,
-      dirX * sp * 1.2 + (r() - 0.5) * 1.1 + WIND_X * 0.7, 0.6 + r() * 0.9 * sp, dirZ * sp * 1.2 + (r() - 0.5) * 1.1 + WIND_Z * 0.7,
-      3.2 + r() * 2.8, (0.6 + 0.5 * sp) * sizeK, (3.0 + sp * 3.2 + r() * 1.4) * sizeK,
-      tone.light, tone.dark, (0.18 + 0.22 * sp) * dustK, 0.05, off - r() * 0.02);
+    const sn = tone.snow ? SNOW_DUST : null;
+    puff(ctx, 'dust', x + (r() - 0.5) * 0.8, gy + (0.6 + r() * 0.5) * (sn ? sn.lift : 1), z + (r() - 0.5) * 0.8,
+      dirX * sp * 1.2 + (r() - 0.5) * 1.1 + WIND_X * 0.7, (0.6 + r() * 0.9 * sp) * (sn ? sn.lift : 1), dirZ * sp * 1.2 + (r() - 0.5) * 1.1 + WIND_Z * 0.7,
+      (3.2 + r() * 2.8) * (sn ? sn.life : 1), (0.6 + 0.5 * sp) * sizeK * (sn ? sn.size : 1), (3.0 + sp * 3.2 + r() * 1.4) * sizeK * (sn ? sn.size : 1),
+      tone.light, tone.dark, (0.18 + 0.22 * sp) * dustK * (sn ? sn.alpha : 1), sn ? sn.grav * 0.4 : 0.05, off - r() * 0.02);
   }
   // thrown clods on soft ground at speed
   if (!tone.snow && sp > 0.45 && r() < 0.25) {
     chunk(ctx, x, gy + 0.3, z, -dirX * (3 + r() * 3) + (r() - 0.5) * 2, 2 + r() * 2.5, -dirZ * (3 + r() * 3) + (r() - 0.5) * 2,
-      0.9, 0.035 + r() * 0.04, gy, 0, off);
+      0.9, 0.035 + r() * 0.04, gy, EARTH, off);
   }
 }
 

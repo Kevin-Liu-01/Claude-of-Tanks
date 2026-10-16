@@ -81,7 +81,7 @@ await page.evaluate(() => {
 const fail = (msg) => { console.error(`FAIL: ${msg}`); process.exitCode = 1; };
 
 async function freshBattle() {
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await page.waitForFunction(
     () => window.__DEBUG.game.phase === 'battle' && window.__DEBUG.game.player,
     { timeout: 30000 });

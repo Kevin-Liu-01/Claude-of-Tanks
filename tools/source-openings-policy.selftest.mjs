@@ -2,7 +2,7 @@ import {BARAK_SOURCE_CONFIGURATION} from './barak-source-openings.mjs';
 import assert from 'node:assert/strict';
 import {sourceOpeningsVerdict,approvedOpeningRegion,AFT_SOURCE_SLOTS} from './source-openings-policy.mjs';
 import {sourceOpeningWitnesses} from './source-opening-witnesses.mjs';
-const id='aft10_x',source={path:'source.glb',sha256:'a'.repeat(64)},configuration={id,source},sourceReceipt={id,...source,verified:true};
+const id='aft10',source={path:'source.glb',sha256:'a'.repeat(64)},configuration={id,source},sourceReceipt={id,...source,verified:true};
 const sample={x:-.46435,z:-3.55565,gx:1,gy:2,sourceAir:true,nativeAir:true};
 const valid={id,configuration,sourceReceipt,scan:{holeCells:1,gridW:4,gridH:4,bounds:{x0:sample.x-.015,x1:sample.x+.025,z0:sample.z-.015,z1:sample.z+.025},samples:[{...sample}]},samples:[{...sample}],guards:sourceOpeningWitnesses(id).map(w=>{const point=w.expect==='air'?null:w.origin.map((v,i)=>i===w.axis?w.value:v);return {key:w.key,passed:true,measurements:['source','native'].map(owner=>({owner,passed:true,point,mesh:point?'fixture':null}))};})};
 assert.equal(sourceOpeningsVerdict(valid).passed,true);

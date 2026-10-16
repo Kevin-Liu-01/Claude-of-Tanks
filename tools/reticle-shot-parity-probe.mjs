@@ -65,7 +65,7 @@ try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
 
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await sleep(500);
   const target = await page.evaluate(() => {
     const D = window.__DEBUG;

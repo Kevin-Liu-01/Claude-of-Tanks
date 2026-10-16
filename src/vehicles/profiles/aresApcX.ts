@@ -1,5 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-// ARES APC (`ares_apc_x`) is an independent first-party procedural build.
+// ARES APC (`ares_apc`) is an independent first-party procedural build.
 // The owner's CC-BY-NC reference GLB is a hash-pinned, offline comparison
 // oracle only; no source vertex, material, texture, node, or topology enters
 // the playable runtime. Scalar dimensions below come from the assembled model
@@ -332,5 +332,5 @@ function buildAresApcX(P: TankBuilderPort): void {
 }
 
 export const ARES_APC_X_PROFILES = Object.freeze({
-  ares_apc_x: Object.freeze({ build: buildAresApcX }),
+  ares_apc: Object.freeze({ build: buildAresApcX }),
 }) satisfies VehicleProfileRecord;

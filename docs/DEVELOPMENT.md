@@ -49,6 +49,9 @@ Before publishing:
    (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
    that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
    (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
+   Since 2026-10-14 (shard codec v3) the capture writes the newest exact encoding (server/collisionManifestCodec.ts);
+   `node tools/transcode-collision-manifests.mjs [--check]` re-encodes the committed shards without building a world, each
+   decoded back bit for bit before the index is rewritten.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
@@ -64,6 +67,25 @@ or deploy. Both agents must invoke it; it cannot establish that a test was run
 or that an overlap was reviewed honestly. Its regression test uses two local
 clones to exercise stale remote data, stale validation and an accidental
 whole-file rollback that Git would otherwise allow.
+
+### Merging a tank id rename (2026-10-13)
+
+When main carries a tank id rename (a commit whose message has the trailer
+`Tank-Id-Schema: N`; schema 3 is the bulk rename of SSOT 2.19), do not
+hand-merge id conflicts. Commit your work, `git merge main`, then run
+`NODE_OPTIONS=--max-old-space-size=4096 node tools/tank-id-codemod.mjs --apply --schema=N`.
+During the merge it re-merges each conflicted text file from the converted base
+and your converted side against main's side: a conflict that was only the
+rename resolves and is staged, and a real one keeps its markers for you. It
+then converts every line that `git blame` gives to your own commits from
+before the rename; lines from main or from the rename, and uncommitted lines,
+are never touched. The map has swaps (one vehicle's new id is the id another
+vehicle gave up), so this provenance rule is what makes the tool idempotent:
+run it again during or after the merge and it changes nothing. On a
+branch without the rename it refuses and changes nothing. It never edits
+generated files, icons, media or dated records: it lists the generated files
+to regenerate with their own tools. Review the diff before committing. The
+rename branch itself uses `--initial` on a clean tree, once.
 
 ### The versioned gate: `tools/gate.mjs` (2026-10-01)
 
@@ -452,7 +474,7 @@ The builds stay separate where the checks read different models: camo seeds move
 and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
 preview. `fleetLazy` keeps its own sweep through the demand-loaded facade in a child process. Every audit keeps all of
 its assertions and negative controls and reads the build as its receipt did: synchronous checks run back to back
-before the build's microtasks (kf51, kf51b and the PT-91M rewrite UVs or vertex colours in one), async checks after
+before the build's microtasks (kf51_evo, kf51_u and the PT-91M rewrite UVs or vertex colours in one), async checks after
 one microtask turn. An audit that poses the model restores it or is declared last; after every other audit the pass
 compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
 audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go

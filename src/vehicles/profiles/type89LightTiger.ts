@@ -323,7 +323,7 @@ function addTurret(P: LightTigerBuilderPort): void {
     seed: 899,
   });
   tigerRoofOptics.name = 'type89K2bStyleRoofOptics';
-  tigerRoofOptics.userData.hostVariant = 'type89_light_tiger';
+  tigerRoofOptics.userData.hostVariant = 'raiju_ifv';
   tigerRoofOptics.userData.sensorRole = 'commander-panoramic';
   mount(P, 'turret', tigerRoofOptics, -0.36, 0.76, -0.56, [0, 0.04, 0]);
   P.turretG.userData.type89RoofOpticsReceipt = Object.freeze({
@@ -357,7 +357,7 @@ function addTurret(P: LightTigerBuilderPort): void {
     seed: 900,
   });
   tigerRoofRws.name = 'type89LightTigerCompactRoofRws';
-  tigerRoofRws.userData.hostVariant = 'type89_light_tiger';
+  tigerRoofRws.userData.hostVariant = 'raiju_ifv';
   mount(P, 'turret', tigerRoofRws, 0.42, 0.76, -0.94, [0, 0.04, 0]);
   P.turretG.userData.type89RoofRwsReceipt = Object.freeze({
     designFamily: tigerRoofRws.userData.designFamily,
@@ -459,5 +459,5 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
 }
 
 export const TYPE89_LIGHT_TIGER_PROFILES = Object.freeze({
-  type89_light_tiger: Object.freeze({ build: buildType89LightTiger }),
+  raiju_ifv: Object.freeze({ build: buildType89LightTiger }),
 }) satisfies VehicleProfileRecord;

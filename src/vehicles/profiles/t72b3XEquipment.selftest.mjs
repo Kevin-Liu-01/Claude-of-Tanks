@@ -86,7 +86,7 @@ function checkAntennas(meshes){
   }
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);const meshes=opaqueMeshes(tank.root);checkCases(meshes);checkRoof(meshes);checkDrumAir(meshes);checkDrumAttachment(tank);checkAntennas(meshes);}
   finally{tank.dispose();}
 }

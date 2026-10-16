@@ -37,7 +37,7 @@ function seamsAndAir(gun,label){
   assert.equal(new T.Raycaster(new T.Vector3(-.2,1.945,6.10),new T.Vector3(1,0,0),0,.4).intersectObject(gun,true).length,0,`${label} removed false near-muzzle MRS box is genuine source air`);
 }
 for(const quality of['high','low']){
-  const tank=createTank('t90a_x',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
+  const tank=createTank('t90a',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);
     const recoil=tank.root.getObjectByName('rig_recoil'),gun=recoil.getObjectByName('gun');

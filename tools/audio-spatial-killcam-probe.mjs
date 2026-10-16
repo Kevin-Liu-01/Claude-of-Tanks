@@ -86,7 +86,7 @@ try {
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
   await page.mouse.click(640, 360); // real user gesture -> AudioContext.resume
   await sleep(250);
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },

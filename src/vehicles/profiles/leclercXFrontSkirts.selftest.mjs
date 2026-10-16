@@ -12,7 +12,7 @@ const ray = (meshes, p, d, far = 5) => kit.hits(new THREE.Raycaster(new THREE.Ve
 
 for (const quality of ['high', 'low']) {
   const census = fieldKitCensus();
-  const tank = createTank('leclerc_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('leclerc_xlr', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false, partCensus: census.partCensus });
   kit = fieldKitFilter(tank.root, census);
   try {

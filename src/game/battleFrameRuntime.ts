@@ -34,7 +34,13 @@ interface BattleFrameCountdownPort {
   isWarmPending(): boolean;
   advance(seconds: number, wallDtSeconds: number, warmPending: boolean): number;
   show(seconds: number, warmPending?: boolean): void;
-  rollout(): void;
+  /**
+   * The battle rolls out: once a battle. `late` when this client never saw the count run (a network battle joined
+   * after its countdown: a late join, a rejoin, a host migration), so the rollout's cues stay silent.
+   */
+  rollout(late?: boolean): void;
+  /** A whole second of the running count begins (presentation only; never while PREPARING holds the count). */
+  second?(seconds: number): void;
 }
 
 interface BattleFramePresentationPort {
@@ -107,6 +113,11 @@ export function createBattleFrameRuntime({
 
   let simulationAccumulator = 0;
   let networkBattleOwned = false;
+  // The countdown's presentation edges, once a battle: the rollout, whether a running count was seen, the last whole
+  // second reported (the count only falls, so 3, 2, 1 are each reported once even across a PREPARING hold).
+  let rolledOut = false;
+  let countSeen = false;
+  let lastWholeSecond = Infinity;
   const pauseInfo: BattlePauseInfo = {
     paused: false,
     resumes: 0,
@@ -131,9 +142,30 @@ export function createBattleFrameRuntime({
     player: null,
   };
 
+  const resetCountdownEdges = (): void => {
+    rolledOut = false;
+    countSeen = false;
+    lastWholeSecond = Infinity;
+  };
+
   const resetSimulationAccumulator = (): void => {
     simulationAccumulator = 0;
     networkBattleOwned = false;
+    resetCountdownEdges();
+  };
+
+  const rollout = (late: boolean): void => {
+    rolledOut = true;
+    countdown.rollout(late);
+  };
+
+  const reportSecond = (seconds: number, warmPending: boolean): void => {
+    if (warmPending || !(seconds > 0) || !Number.isFinite(seconds)) return;
+    countSeen = true;
+    const whole = Math.ceil(seconds);
+    if (whole >= lastWholeSecond) return;
+    lastWholeSecond = whole;
+    countdown.second?.(whole);
   };
 
   const applyPauseEdge = (livePaused: boolean, dtSeconds: number): number => {
@@ -167,7 +199,8 @@ export function createBattleFrameRuntime({
   };
 
   const advanceCountdown = (wallDtSeconds: number): void => {
-    if (game.preBattleS === Infinity) return;
+    // armed, not yet opened: a new battle's count
+    if (game.preBattleS === Infinity) { resetCountdownEdges(); return; }
     const heldSeconds = game.preBattleS;
     const warmPending = countdown.isWarmPending();
     game.preBattleS = countdown.advance(
@@ -178,7 +211,21 @@ export function createBattleFrameRuntime({
     // Countdown 2026-09-14 (owner: "seems to stall at 3"): the presentation is told when the
     // count is held for warm work, so it shows PREPARING instead of a frozen numeral.
     countdown.show(game.preBattleS, warmPending);
-    if (heldSeconds > 0 && game.preBattleS === 0) countdown.rollout();
+    reportSecond(game.preBattleS, warmPending);
+    if (heldSeconds > 0 && game.preBattleS === 0) rollout(false);
+  };
+
+  /**
+   * A network battle's count arrives in snapshots (the authority's countdown phase; 0 once it plays). Its fall to 0
+   * rolls the battle out; a battle first seen already at 0 was joined after its count and rolls out late. Infinity is a
+   * round armed before its first snapshot.
+   */
+  const followNetworkCountdown = (): void => {
+    const seconds = game.preBattleS;
+    if (seconds === Infinity) { resetCountdownEdges(); return; }
+    if (!Number.isFinite(seconds)) return;
+    if (seconds > 0) { reportSecond(seconds, false); return; }
+    if (!rolledOut) rollout(!countSeen);
   };
 
   const advanceSoloSimulation = (appliedDtSeconds: number): void => {
@@ -200,6 +247,7 @@ export function createBattleFrameRuntime({
   ): void => {
     if (networkActive) {
       countdown.show(game.preBattleS);
+      followNetworkCountdown();
       simulationAccumulator = 0;
     } else if (game.preBattleS > 0) {
       advanceCountdown(wallDtSeconds);
@@ -245,7 +293,7 @@ export function createBattleFrameRuntime({
     cameraLocked: boolean,
   ): BattleFrameReceipt => {
     const inBattle = game.phase === 'battle';
-    if (!inBattle) networkBattleOwned = false;
+    if (!inBattle) { networkBattleOwned = false; resetCountdownEdges(); }
     // Transport teardown is synchronous; restoring the Garage is not. A
     // retired network battlefield never becomes a solo simulation in between.
     if (inBattle && network.isActive()) networkBattleOwned = true;

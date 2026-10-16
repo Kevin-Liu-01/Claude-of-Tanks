@@ -619,7 +619,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     weaponName: 'CV90 Mk IV Ksp 88 RWS', seed: 944,
   });
   rws.name = 'cv90MkivK2bStyleRws';
-  rws.userData.hostVariant = 'cv90_mkiv';
+  rws.userData.hostVariant = 'cv90_mk4_concept';
   mount(P, 'turret', rws, 0.68, 0.88, -1.19, [0, -0.04, 0]);
   P.add('turret', cylY(0.22, 0.25, 0.11, 20), -0.58, 0.88, -0.50);
   P.addEquipment('turret', box(0.37, 0.34, 0.34), -0.58, 1.10, -0.50);
@@ -677,14 +677,14 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
       equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
-      host: 'cv90_mkiv', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
+      host: 'cv90_mk4_concept', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
       movingWithGun: true, surroundsMainBarrel: true, openFrontRear: false, closedNoseFace: true,
       rootJoinedToTurretFace: true, sideOnlyOpenings: true, rootRearZM: -.34,
       diagonalSidePortsPerSide: 3, mainGunCaliberMm: 50, barrelLengthM: 3.76,
       trunnionRecessM: gunTrunnionRecessM,
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
-      host: 'cv90_mkiv', designFamily: rws.userData.designFamily,
+      host: 'cv90_mk4_concept', designFamily: rws.userData.designFamily,
       variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.68, 0.88, -1.19]),
       scale: rws.userData.scale, sizeStandard: rws.userData.sizeStandard,
       towerRiseM: rws.userData.towerRise, caliberMm: rws.userData.caliberMm,
@@ -702,7 +702,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
     [2.11, 1.28, 0.84], Math.PI / 2);
   if (P.geometryReceipt) {
     P.hullG.userData.cv90MkivIndependentHullReceipt = Object.freeze({
-      id: 'cv90_mkiv', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
+      id: 'cv90_mk4_concept', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
       sharedStructuralBuilder: false, designLineage: 'independent-tier10-cv90-mkiv-v2',
       hullConstruction: 'cv90-mkiv-raised-troop-roof-v7', roadWheelsPerSide: 7,
       canonicalTrackCourses: 1, duplicateTrackMeshes: 0,
@@ -723,5 +723,5 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
 
 export const CV90_PROFILES = Object.freeze({
   cv90: Object.freeze({ build: buildCv90 }),
-  cv90_mkiv: Object.freeze({ build: buildCv90Mkiv }),
+  cv90_mk4_concept: Object.freeze({ build: buildCv90Mkiv }),
 }) satisfies VehicleProfileRecord;

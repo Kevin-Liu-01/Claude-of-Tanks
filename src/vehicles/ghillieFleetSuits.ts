@@ -138,8 +138,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // the whip bases; flank drapes over the turret's side bins, behind the front smoke banks; a rear drape. The troop roof
   // netted behind the turret round its four hatches (the builder opens them); the skirts hung in three drapes a side,
   // the right flank's exhaust outlet (z -0.5 to 0.6) left bare.
-  cv90_x: {
-    id: 'cv90_x', seed: 9041, style: 'leafy', ...FULL, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
+  cv9040c: {
+    id: 'cv9040c', seed: 9041, style: 'leafy', ...FULL, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
     turret: {
       top: [laid({
@@ -245,8 +245,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // below stay visible, the owner's 2026-09-15 rule for cages), the bustle behind the cage netted, drapes down the turret
   // flanks over the ARAT tiles outboard of the cage, a rear drape; both decks netted (the driver's hatch, the gun's arc
   // and the exhaust end bare), four drapes a side over the skirts.
-  ua_m1a1_x: {
-    id: 'ua_m1a1_x', seed: 1103, style: 'leafy', ...DENSE, ...WOODLAND,
+  ua_m1a2_abrams: {
+    id: 'ua_m1a2_abrams', seed: 1103, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
     turret: {
       top: [
@@ -345,8 +345,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // C2 Ariete: the roof netted round both hatches and their MGs, the commander's and gunner's sights, drapes down the
   // turret's rear walls behind the two discharger rows, a rear drape; the engine deck netted round its fan grille, the
   // glacis over its appliqué, four drapes a side over the skirts.
-  ariete_c2_x: {
-    id: 'ariete_c2_x', seed: 2042, style: 'leafy', ...DENSE, ...WOODLAND,
+  c2_ariete: {
+    id: 'c2_ariete', seed: 2042, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.42, hemFloorM: 0.78,
     turret: {
       top: [laid({
@@ -369,8 +369,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // C2 Ariete Prototype: the roof netted round the commander's sight, the gunner's sight and the roof periscopes, drapes
   // behind the side discharger banks, a rear drape; the engine deck netted short of the rear exhaust, the front deck
   // round the driver's periscope, four drapes a side.
-  ariete_c2: {
-    id: 'ariete_c2', seed: 2043, style: 'leafy', ...DENSE, ...WOODLAND,
+  c2_ariete_proto: {
+    id: 'c2_ariete_proto', seed: 2043, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.8,
     turret: {
       top: [laid({
@@ -430,8 +430,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // T-80U Yun: the roof netted round its faceted station (the builder), sights and hatches, drapes down the flanks behind
   // the roof smoke banks, a rear drape; the engine deck netted short of the turbine exhaust, the front deck, four drapes
   // a side.
-  cn_t80u_modern: {
-    id: 'cn_t80u_modern', seed: 8031, style: 'leafy', ...DENSE, ...WOODLAND,
+  t80u_yun: {
+    id: 't80u_yun', seed: 8031, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.37, hemFloorM: 0.93,
     turret: {
       // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
@@ -454,8 +454,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   },
   // Type 96B: the roof netted round its sights, hatches and roof gun, drapes behind the low side smoke banks, a rear
   // drape; the engine deck netted (the left rear exhaust bare) and the front deck, four drapes a side.
-  type96b_x: {
-    id: 'type96b_x', seed: 9602, style: 'leafy', ...DENSE, ...WOODLAND,
+  type96b: {
+    id: 'type96b', seed: 9602, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 1.07,
     turret: {
       // open round the rounded secondary hatch on the right of the roof (its stepped lid is turret detail, not a hatch
@@ -476,8 +476,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // Leclerc SXXI: the roof netted round the commander's HL-70 and the gunner's sight (their lenses opened by the
   // builder), the hatches and the roof gun, drapes ahead of the rear GALIX launchers, a rear drape over the bustle; the
   // engine deck netted short of the rear exhaust, the front deck, four drapes a side.
-  leclerc_xlr: {
-    id: 'leclerc_xlr', seed: 5502, style: 'leafy', ...DENSE, ...WOODLAND,
+  leclerc_sxxi: {
+    id: 'leclerc_sxxi', seed: 5502, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.86,
     turret: {
       top: [laid({ x0: -1.68, x1: 1.58, z0: -2.63, z1: 1.99, nx: 41, nz: 58, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
@@ -495,8 +495,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each
   // side's smoke bank, a rear drape; the engine deck netted short of the turbine exhaust, the front deck, four drapes a
   // side.
-  ru_t80u_modern: {
-    id: 'ru_t80u_modern', seed: 8032, style: 'leafy', ...DENSE, ...WOODLAND,
+  t80u_bars_m: {
+    id: 't80u_bars_m', seed: 8032, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.43, hemFloorM: 0.84,
     turret: {
       // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
@@ -519,8 +519,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // boxes, drapes down the walls behind the smoke banks and down the bustle box, a rear drape; the engine deck netted
   // (the left fender's exhaust and the stern drums bare) and the front deck, four drapes a side (the left one cut round
   // the exhaust).
-  t90m: {
-    id: 't90m', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
+  t90am: {
+    id: 't90am', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
     turret: {
       top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
@@ -539,8 +539,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // Leopard 2A7V: the arrowhead roof netted round the PERI, the EMES head, the hatches and the remote station (the
   // builder), drapes down the walls ahead of and behind the rear smoke banks, a rear drape over the basket; the engine
   // deck netted short of the rear exhaust louvres, the front deck, four drapes a side.
-  leo2a7v_x: {
-    id: 'leo2a7v_x', seed: 2704, style: 'leafy', ...DENSE, ...WOODLAND,
+  leo2a7v: {
+    id: 'leo2a7v', seed: 2704, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 1.01,
     turret: {
       top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.16, seed: 11 })],
@@ -561,8 +561,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // Leopard 2A5: the wedge roof netted round the PERI, the EMES head, the hatches and the roof gun, drapes down the walls
   // ahead of and behind the rear smoke banks, a rear drape; the engine deck netted short of the rear louvres, the front
   // deck, four drapes a side.
-  leo2a5_x: {
-    id: 'leo2a5_x', seed: 2505, style: 'leafy', ...DENSE, ...WOODLAND,
+  leo2a5: {
+    id: 'leo2a5', seed: 2505, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 0.97,
     turret: {
       top: [laid({ x0: -1.55, x1: 1.56, z0: -3.53, z1: 2.40, nx: 39, nz: 74, y: 0.86, garnishRiseM: 0.16, seed: 11 })],
@@ -580,8 +580,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // KF51-U: the roof netted round the commander's and gunner's sights, the hatches and the roof station (the builder),
   // drapes ahead of and behind the smoke banks, a rear drape; the engine deck netted short of the rear louvres, the
   // front deck, four drapes a side.
-  kf51b: {
-    id: 'kf51b', seed: 5101, style: 'leafy', ...DENSE, ...WOODLAND,
+  kf51_u: {
+    id: 'kf51_u', seed: 5101, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.1, hemFloorM: 0.68,
     turret: {
       // the fore-roof over the moving gun housing stays open air (kf51bTurretCenter.selftest: x +-0.40, z 0.92-1.85)
@@ -603,8 +603,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // SPz Wotan: the offset turret's roof netted round its sights and the remote station (the builder), drapes behind the
   // side smoke banks, a rear drape; the troop roof and the front deck netted, four drapes a side (the right one cut
   // round the front exhaust).
-  spz_puma_s1: {
-    id: 'spz_puma_s1', seed: 1501, style: 'leafy', ...DENSE, ...WOODLAND,
+  spz_wotan: {
+    id: 'spz_wotan', seed: 1501, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.04, hemFloorM: 0.67,
     turret: {
       top: [laid({ x0: -1.23, x1: 1.22, z0: -1.57, z1: 1.22, nx: 31, nz: 35, y: 0.67, garnishRiseM: 0.16, seed: 11 })],
@@ -628,8 +628,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // M1A2 TUSK: the turret roof and bustle under one net round the CROWS (the builder), the sights and both hatches,
   // drapes down the flanks over the ARAT, a rear drape over the bustle rack; the UA Abrams' hull frame exactly (both
   // decks netted, the driver's hatch and the exhaust end bare), four drapes a side over the ARAT skirts.
-  m1a2_tusk_x: {
-    id: 'm1a2_tusk_x', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND,
+  m1a2_abrams_tusk: {
+    id: 'm1a2_abrams_tusk', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
     turret: {
       top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.62, nx: 44, nz: 60, y: 0.92, garnishRiseM: 0.16, seed: 11 })],
@@ -707,8 +707,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // T-90A Burlak: the turret roof netted round its cupolas, sights and the roof station (the builder), the long
   // Burlak bustle netted to its rails with drapes down its sides, the cheeks' drapes behind the smoke banks, a rear
   // drape; the engine deck (the left rear exhaust bare) and the front deck, four drapes a side.
-  t90a_burlak_x: {
-    id: 't90a_burlak_x', seed: 9005, style: 'leafy', ...DENSE, ...WOODLAND,
+  t90a_burlak: {
+    id: 't90a_burlak', seed: 9005, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
     turret: {
       // open round the commander's sight (its stack carries no glass bucket, so the lens slot is authored: the window
@@ -736,8 +736,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // cradle and launch column); a corridor only over the fixed gun's barrel where it lies along the deck (z 1.05 on), the
   // commander's cupola with its machine gun and the driver's hatch opened as the round-5 suit had them, the lens slots
   // by the builder; each flank one drape from the deck edge over the upper running gear.
-  strv103: {
-    id: 'strv103', seed: 1032, style: 'leafy', density: 1.25, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
+  strv103b: {
+    id: 'strv103b', seed: 1032, style: 'leafy', density: 1.25, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.95,
     hull: {
       top: [laid({

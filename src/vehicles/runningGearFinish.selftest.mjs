@@ -87,12 +87,12 @@ import { createTank } from './tankFactory.ts';
 
 // ---- built hulls, both tiers: every family that used to retone its wheels now audits clean
 const SAMPLE = [
-  't62mv1', 't90ms', 't90', 'type59',          // per-hull wheelHex dishes (the saturated pale olive the owner saw)
-  'challenger2', 'chieftain5', 'centurion3',   // UK/Challenger wheelTone/drumTone/ringMat kits
-  'merkava4b', 'merkava3d', 'merkava4_x',      // Merkava darkDish/darkDrum and the fitting-paint dish rings
-  'leo2a6', 'leo2a5', 'm1a2_x', 'abramsx',     // Leopard wornDish/wornDrum + cover discs, Abrams wornDrum
-  'strv103', 'jpz_e100_x', 'bmpt_terminator2', 't72b3m', 't90m_proryv', // casemate / in-place retints
-  'kv2', 'type74', 'fv510', 'leclerc_x', 'namer_ifv', 'k21_x', 'm47_patton', // period, donors, mapped paint
+  't62_1975', 't90ms_2011', 't90_1992', 'type59',          // per-hull wheelHex dishes (the saturated pale olive the owner saw)
+  'challenger2', 'chieftain3', 'centurion3',   // UK/Challenger wheelTone/drumTone/ringMat kits
+  'merkava4b', 'merkava3_baz', 'merkava4',      // Merkava darkDish/darkDrum and the fitting-paint dish rings
+  'leo2a4', 'leo2a4_v', 'm1a2_abrams', 'abramsx',     // Leopard wornDish/wornDrum + cover discs, Abrams wornDrum
+  'strv103b', 'jpz_e100', 'bmpt_terminator2', 't72b3m_2022', 't90m_proryv', // casemate / in-place retints
+  'kv2', 'type74', 'fv510', 'leclerc_xlr', 'namer_ifv', 'k21', 'm47_patton', // period, donors, mapped paint
 ];
 let audited = 0;
 for (const id of SAMPLE) {

@@ -92,7 +92,7 @@ import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
-import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
+import { STRICT_DRAIN_STALL_MS, createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
 import { renderCoveredComposerWarm, type CoveredComposerWarmTiming } from './engine/coveredComposerWarm.ts';
 import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
@@ -237,7 +237,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -1411,7 +1411,16 @@ const audio = await bootStage('audio', () => {
   // Surface under each hull (track sounds), water depth and terrain occlusion.
   getTerrain: () => (currentWorld() ? hfProxy : null),
   // The world: the churches, belfries and campanile the bells ring from, and what each structure is built of.
-  getWorld: currentWorld });
+  getWorld: currentWorld,
+  // The crew's side counts in a network battle (last tank, last enemy, outnumbered): the lobby roster with the
+  // authority's deaths, where a death is final; never the spotted list (2026-10-14). Solo: none (its list is the field).
+  getTeamRoster: () => {
+    if (!game.rosterTanks) return null;
+    const mode = normalizeGameMode(game.gameMode);
+    return deathsAreFinal(game.ruleset?.mode === mode ? game.ruleset : matchRulesetFor(mode)) ? game.rosterTanks : null;
+  },
+  // Each warmed hull's powertrain from its whole spec, as its rig will resolve it (an IFV's diesel turns on its role).
+  getVehicleSpec: getSpec });
   a.bindBus(bus);
   return a;
 });
@@ -2561,7 +2570,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             ] : undefined;
             // Strict preparation admits bounded groups and returns an explicit
             // first-use result. Covered entry checks it before any real draw.
-            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true });
+            // (2026-10-14) the covered network entry alone stops a stalled window 2 s after its last link (programWarm)
+            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true, stallMs: STRICT_DRAIN_STALL_MS });
             try {
               while (true) {
                 const step = steps.next();
@@ -3002,7 +3012,10 @@ const battleFrame = createBattleFrameRuntime({
         missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
-    rollout: () => bus.emit('battle:rollout', {}),
+    // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)
+    rollout: (late = false) => bus.emit('battle:rollout', late ? { late: true } : {}),
+    // the running count's whole seconds (the audio ticks 3, 2, 1)
+    second: (seconds: number) => bus.emit('battle:countdown', { seconds }),
   },
   presentation: {
     captureSoloPose: battlePresentation.captureSoloPoses,
@@ -3148,7 +3161,7 @@ window.__SHOTS = {
     const [{ setShotView }] = await Promise.all([import('./dev/shotRuntime.ts'), loadGroundedLightModel(), loadCloudscapeLayers()]);
     // (the staged map's open sky takes the grounded light model and its cloudscape, as a battle's does: the boot weight)
     type ShotRuntimeContext = Parameters<typeof setShotView>[1];
-    return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
+    const staged = await setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,
       preloadBattleClientRuntime,
       ensureBattleHud,
@@ -3220,6 +3233,14 @@ window.__SHOTS = {
       'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
       'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
     ]));
+    // (2026-10-09, the shadows lane) a staged map's ground occlusion (structureGroundOcclusion.ts) lands before any frame
+    // is taken, at full strength: the worker's bake is what the capture waits for, never a fade
+    const groundOcclusion = currentWorld()?.groundOcclusion ?? null;
+    if (groundOcclusion) {
+      groundOcclusion.setInstant(true);
+      await Promise.race([groundOcclusion.whenReady(), new Promise((resolve) => { setTimeout(resolve, 30000); })]);
+    }
+    return staged;
   },
   /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
    *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */

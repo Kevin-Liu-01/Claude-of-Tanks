@@ -8,7 +8,7 @@ import {vehicleNightLightEmittersFor} from './vehicleNightLighting.ts';
 // four reseated T-90M headlights (repair 37de0b6aa) and the negative controls proving it bites.
 const rows=[];
 for(const quality of ['high','low']){
-  const current=createTank('t90m',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
+  const current=createTank('t90am',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try{
     rows.push({quality,actualLampPositions:assertCurrentT90MLampSeats(current)});
     let lamp;current.root.traverse(m=>{lamp??=vehicleNightLightEmittersFor(m).find(l=>l.kind==='headlight');});

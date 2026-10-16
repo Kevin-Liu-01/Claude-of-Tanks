@@ -79,6 +79,9 @@ export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' |
 export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
+  /** map revival lane 2 (2026-10-06, Frosthollow's cost): 0 leaves out the wood and the joinery's cavity map (the AO
+   * sample over a village of log walls; an in-page toggle read it at ~2 ms of the chase view). Absent, unchanged. */
+  woodAo?: 0;
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
   /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
   stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
@@ -112,6 +115,12 @@ export interface ArchitectureStyle {
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
   wear?: number;
+  /**
+   * The map-revival lane (2026-10-07): draw the third plaster paint from the second's bucket under a colour ratio
+   * (weather.ts WeatherOptions.plaster3Fold; the two procedural renders share one relief): one draw and one shadow caster
+   * fewer. Absent, the kit's three plaster buckets stay as they are.
+   */
+  foldThirdPlaster?: boolean;
   /**
    * the churchyard round the kit's church (the facades lane, 2026-10-06; wave 150: "both German churches stand on bare
    * dirt"): a yard on the church's freest side walled like a house's, its graves in place of the beds. A map opts in

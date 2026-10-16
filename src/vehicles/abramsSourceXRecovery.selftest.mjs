@@ -9,7 +9,7 @@ import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts'
 import { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 import { decorManifestFor } from './decorations.ts';
 
-const untouched = ['m1a1','m1a1ha','m1a2','m1a2_tusk','m1a2_sepv2','m1a2_sepv3','ua_m1a1','abramsx','m1a3'];
+const untouched = ['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','ua_m1a1','abramsx','m1a3'];
 for (const id of [...ABRAMS_SOURCE_X_IDS, ...untouched]) assert.equal(isTankBuilderReady(id), false);
 const originalFetch = globalThis.fetch;
 globalThis.fetch = () => { throw new Error('Recovered procedural tanks must not fetch a source mesh'); };

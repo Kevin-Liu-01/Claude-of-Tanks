@@ -336,5 +336,5 @@ export function buildSabraMk2X(P: TankBuilderPort): void {
   buildSabraCannon(P);
   preserveSourceStudyGunMountAppearance(P);
   P.topY=3.11-py;
-  P.hullG.userData.xRebuild={candidate:'sabra_mk2_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'sabra_mk2',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

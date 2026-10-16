@@ -17,12 +17,12 @@ import { TANK_SPECS } from '../vehicles/specs.ts';
 // A renderer may add running-gear bookkeeping after authority registration;
 // it must never move the drone's shared launch point. Real roof/datum changes
 // must invalidate the record so the native audit is rerun.
-const signatureFixture=structuredClone(TANK_SPECS.m1a2),baseSignature=missionAttachmentSignature(signatureFixture);
+const signatureFixture=structuredClone(TANK_SPECS.m1a1_abrams_hc),baseSignature=missionAttachmentSignature(signatureFixture);
 signatureFixture.armor.trackShapes=[{min:[-9,-9,-9],max:[9,9,9]}];
 assert.equal(missionAttachmentSignature(signatureFixture),baseSignature,'renderer track bookkeeping cannot invalidate a launch datum');
 signatureFixture.armor.turretPivot[1]+=.02;
 assert.notEqual(missionAttachmentSignature(signatureFixture),baseSignature,'changed turret pivot invalidates native support');
-const roofFixture=structuredClone(TANK_SPECS.m1a2);
+const roofFixture=structuredClone(TANK_SPECS.m1a1_abrams_hc);
 roofFixture.armor.turretPlates[0].verts[0][1]+=.02;
 assert.notEqual(missionAttachmentSignature(roofFixture),baseSignature,'changed roof stock invalidates native support');
 // Load the authority's spec-only facade in a fresh process. Registration order
@@ -37,7 +37,7 @@ for(const spec of Object.values(TANK_SPECS)){
  assert.equal(record.signature,missionAttachmentSignature(spec),spec.id+': stale native seat; regenerate after geometry changes');
  const seat=missionAttachmentFor(spec);assert.equal(seat,record,spec.id+': authority uses certified native datum');assert.ok(Number.isFinite(seat.y),spec.id);
  if(spec.armor.turretless)assert.equal(seat.frame,'hull',spec.id);
- if(spec.id==='m1a2')assert.equal(seat.frame,'turret');
+ if(spec.id==='m1a1_abrams_hc')assert.equal(seat.frame,'turret');
  assert.ok(missionAttachmentMotionClear(spec,seat),spec.id+': native-certified finite payload and cradle clear complete roof-gun sweep');
  // Buried-payload rejection is verified against actual filled render stock by
  // the native generator and visual fixture. Armor reference proxies can sit
@@ -90,7 +90,7 @@ for(const spec of Object.values(TANK_SPECS)){
 }
 // Adversarial fixture: a low gun can cross a roof seat between its cardinal yaw
 // poses. A complete swept-volume policy must reject that otherwise supported seat.
-const armed=TANK_SPECS.m1a2,gun=auxiliaryCapabilities(armed).guns[0];
+const armed=TANK_SPECS.m1a1_abrams_hc,gun=auxiliaryCapabilities(armed).guns[0];
 {
  // The replay places each part where its turned mount carries it (the 2026-10-08 OBB-centre defect mirrored a
  // rear-facing barrel forward through T-72B3M's dock): the turned centre is exact and a dock on it is hit.

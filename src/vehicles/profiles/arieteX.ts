@@ -11,7 +11,7 @@ function buildEnlargedArieteC1(P: TankBuilderPort): void {
   enlargeArieteXFamily(P);
 }
 
-export const ARIETE_X_DATUMS = Object.freeze({ ariete_c1_x: ARIETE_C1_X_DATUMS,
-  ariete_c2_x: ARIETE_C2_X_DATUMS });
-export const ARIETE_X_PROFILES = Object.freeze({ ariete_c1_x: { build: buildEnlargedArieteC1 },
-  ariete_c2_x: { build: buildArieteC2X } });
+export const ARIETE_X_DATUMS = Object.freeze({ c1_ariete: ARIETE_C1_X_DATUMS,
+  c2_ariete: ARIETE_C2_X_DATUMS });
+export const ARIETE_X_PROFILES = Object.freeze({ c1_ariete: { build: buildEnlargedArieteC1 },
+  c2_ariete: { build: buildArieteC2X } });

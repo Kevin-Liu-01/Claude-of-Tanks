@@ -28,15 +28,15 @@ for (const id of ALL_TANK_IDS) {
 }
 for (const [id, count] of counts) assert.ok(count > 0, `${id}: exercised by playable fleet`);
 
-assert.equal(suspensionPatternFor(getSpec('m1a2')).id, 'abrams-torsion-arm');
+assert.equal(suspensionPatternFor(getSpec('m1a1_abrams_hc')).id, 'abrams-torsion-arm');
 assert.equal(suspensionPatternFor(getSpec('t64bv1')).id, 't64-torsion-arm');
-assert.equal(suspensionPatternFor(getSpec('ua_t64bv')).id, 't64-torsion-arm');
-assert.equal(suspensionPatternFor(getSpec('centurion5')).id, 'paired-bogie');
+assert.equal(suspensionPatternFor(getSpec('t64bv_donbas')).id, 't64-torsion-arm');
+assert.equal(suspensionPatternFor(getSpec('centurion5_2')).id, 'paired-bogie');
 assert.equal(suspensionPatternFor(getSpec('strv103a')).id, 'hydropneumatic-link');
-assert.equal(suspensionPatternFor(getSpec('k2')).id, 'hydropneumatic-link');
+assert.equal(suspensionPatternFor(getSpec('xk2_black_panther')).id, 'hydropneumatic-link');
 assert.equal(suspensionPatternFor(getSpec('challenger2')).id, 'hydropneumatic-link');
-assert.equal(suspensionPatternFor(getSpec('chieftain5')).id, 'paired-bogie');
-assert.throws(() => suspensionPatternFor(getSpec('m1a2'), null, 'missing'),
+assert.equal(suspensionPatternFor(getSpec('chieftain3')).id, 'paired-bogie');
+assert.throws(() => suspensionPatternFor(getSpec('m1a1_abrams_hc'), null, 'missing'),
   /Unknown suspension pattern/);
 
 console.log(`[suspension-patterns] PASS — ${ALL_TANK_IDS.length} tanks across `

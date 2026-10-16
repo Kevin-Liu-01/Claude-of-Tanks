@@ -11,7 +11,7 @@
 // printed too, as a cross-check.
 //
 // Sequence: 10 switches — representative cold and warm modern/WW2 swaps,
-// including m1a1, leclerc, kv2 and leo2a6, plus warm revisits that exercise
+// including m1a1, leclerc_s2, kv2 and leo2a4, plus warm revisits that exercise
 // the pedestal LRU. Reports per-switch ms + median/p95.
 //
 // Usage: node tools/switch-latency-probe.mjs [--root <dir>] [--dwell 500]
@@ -38,10 +38,10 @@ const screenshotPath = opt('screenshot', '');
 const verifyDecorationProbe = args.includes('--decor-probe');
 
 const DEFAULT_SEQUENCE = [
-  'm1a1', 'leclerc', 'jpz_e100_x',       // cold representatives (tiger1 retired 2026-09-23)
-  'm1a1', 'leclerc',                     // warm revisits (LRU hits)
-  't90m', 'kv2', 'jpz_e100_x',           // cold proc, cold period proc, warm proc
-  'm1a2', 'leo2a6',                      // warm boot hero, cold GLB
+  'm1a1', 'leclerc_s2', 'jpz_e100',       // cold representatives (tiger1 retired 2026-09-23)
+  'm1a1', 'leclerc_s2',                     // warm revisits (LRU hits)
+  't90am', 'kv2', 'jpz_e100',           // cold proc, cold period proc, warm proc
+  'm1a1_abrams_hc', 'leo2a4',                      // warm boot hero, cold GLB
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

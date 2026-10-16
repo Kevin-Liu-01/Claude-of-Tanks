@@ -25,7 +25,7 @@ function buffers(hash, g) {
 function build(quality, omit) {
   let count = 0;
   const hash = createHash('sha256');
-  registerProfiledBuilders({ t90_x: p => buildT90AWX(new Proxy(p, { get(target, key) {
+  registerProfiledBuilders({ t90: p => buildT90AWX(new Proxy(p, { get(target, key) {
     if (['add', 'addEquipment', 'addExternalArmor', 'addCupola'].includes(key)) return (bucket, g, ...args) => {
       if (g.userData.t90AwSmallOptic) {
         assert.equal(key, 'addEquipment', 'entire optic is permanently owned equipment, never an expendable ERA cover');
@@ -37,9 +37,9 @@ function build(quality, omit) {
     return Reflect.get(target, key);
   } })) });
   try {
-    const tank = createTank('t90_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
+    const tank = createTank('t90', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
     tank.root.updateMatrixWorld(true); return { tank, count, hash: hash.digest('hex') };
-  } finally { registerProfiledBuilders({ t90_x: buildT90AWX }); }
+  } finally { registerProfiledBuilders({ t90: buildT90AWX }); }
 }
 
 function fixture() {
@@ -126,5 +126,5 @@ try {
       after.tank.dispose(); after.tank = null; assert.equal(disposed, 2, 'both merged optic material buffers dispose');
     } finally { before.tank.dispose(); after.tank?.dispose(); }
   }
-} finally { own.dispose(); registerProfiledBuilders({ t90_x: buildT90AWX }); }
+} finally { own.dispose(); registerProfiledBuilders({ t90: buildT90AWX }); }
 console.log('t90AwXSmallOptics: high/low source crown/glass/jamb/under-hood air, actual base contact, exact non-target preservation, yaw/pitch and disposal pass');

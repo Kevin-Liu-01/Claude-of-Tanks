@@ -52,9 +52,9 @@ function verifyBandSeparation(root) {
 }
 let checks=0;
 for(const filled of [false,true]){
-  if(filled)await ensureInteriorFills(['griffin50_x']);
+  if(filled)await ensureInteriorFills(['griffin50mm']);
   for(const quality of ['high','low']){
-    const tank=createTank('griffin50_x',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
+    const tank=createTank('griffin50mm',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
     try{
       const root=tank.root;root.scale.setScalar(1 / .90);root.updateMatrixWorld(true);
       // 2026-09-22 nation wheel standard: the Sheridan construction's tire is a 26-sided lathe whose vertices miss one

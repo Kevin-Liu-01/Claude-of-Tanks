@@ -20,7 +20,7 @@ installResponsiveLayout();
 const bus=createBus(), input=createInput();
 const full=new URLSearchParams(location.search).has('full');
 const maps=full?[{id:'random',name:'Random'},...MAP_IDS.map(id=>({id,name:getMapName(id),thumb:MAP_THUMBS[id],hero:MAP_HEROES[id]}))]:[{id:'random',name:'Random'},{id:'verdant',name:'Verdant Fields'},{id:'desert',name:'Sirocco Wadi'},{id:'winter',name:'Frosthollow'}];
-const specs=full?PRODUCTION_TANK_IDS.map(id=>TANK_SPECS[id]):Object.values(TANK_SPECS).filter(spec=>['m1a3','m1a2','m2a2_bradley','sheridan','leo2a5','t90m'].includes(spec.id));
+const specs=full?PRODUCTION_TANK_IDS.map(id=>TANK_SPECS[id]):Object.values(TANK_SPECS).filter(spec=>['m1a3','m1a1_abrams_hc','m2a2_bradley','sheridan','leo2a4_v','t90am'].includes(spec.id));
 const paint=new Map(),customPaint=new Map();
 const menu=createPlayMenu({maps,vehicles:specs,getSelection:()=>({specId:'m1a3',mapId:'verdant',equipment:[],camo:'factory'})});
 const garage=createGarage({specs,maps,bus,garageVariants:full?GARAGE_VARIANTS.map(v=>({...v,thumb:MAP_THUMBS[v.mapId]})):[],onPlayRequest:request=>menu.show(request.mode),camo:{...(full?{getCustom:id=>customPaint.get(id)||null,setCustom:(id,value)=>customPaint.set(id,value)}:{}),patterns:CAMO_CATALOG_PATTERN_IDS,label:CAMO_PATTERN_LABEL,get:id=>paint.get(id)||'factory',set:(id,value)=>paint.set(id,value)}});

@@ -1,0 +1,954 @@
+{
+ "media/site50-r14/films/reel.mp4": {
+  "settings": {
+   "codec": "h264",
+   "size": [
+    1600,
+    900
+   ],
+   "audio": "none",
+   "floor": 93,
+   "shipAtCap": true,
+   "crfs": [
+    20,
+    22,
+    24,
+    26,
+    28
+   ],
+   "capKbps": 4300
+  },
+  "source": "shots/media-r5/tmp/site-media-build/reel-master.mp4",
+  "crf": 24,
+  "kbps": 4416,
+  "vmaf": {
+   "mean": 84.17,
+   "harmonic": 83.72,
+   "min": 54.72
+  },
+  "bytes": 15493259,
+  "tried": [
+   [
+    24,
+    4416,
+    84.17,
+    54.72
+   ],
+   [
+    22,
+    4415,
+    84.16,
+    55.05
+   ],
+   [
+    20,
+    4411,
+    84.11,
+    53.16
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/films/reel.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1600,
+    900
+   ],
+   "audio": "none",
+   "floor": 93,
+   "shipAtCap": true,
+   "crfs": [
+    40
+   ],
+   "capKbps": 4300,
+   "cpuUsed": 1
+  },
+  "source": "shots/media-r5/tmp/site-media-build/reel-master.mp4",
+  "crf": 40,
+  "kbps": 4302,
+  "vmaf": {
+   "mean": 91.49,
+   "harmonic": 91.03,
+   "min": 60.94
+  },
+  "bytes": 15094482,
+  "tried": [
+   [
+    40,
+    4302,
+    91.49,
+    60.94
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/loops/s04-column-under-fire.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 10000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.mp4",
+  "crf": 36,
+  "kbps": 10207,
+  "vmaf": {
+   "mean": 90.64,
+   "harmonic": 89.74,
+   "min": 70.78
+  },
+  "bytes": 7741899,
+  "tried": [
+   [
+    40,
+    9455,
+    89.97,
+    69.38
+   ],
+   [
+    38,
+    9856,
+    90.47,
+    69.75
+   ],
+   [
+    36,
+    10207,
+    90.64,
+    70.78
+   ],
+   [
+    34,
+    9812,
+    89.55,
+    68.89
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/loops/s05-barn-advance-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
+  "crf": 42,
+  "kbps": 1967,
+  "vmaf": {
+   "mean": 88.13,
+   "harmonic": 87.75,
+   "min": 71.78
+  },
+  "bytes": 1478914,
+  "tried": [
+   [
+    42,
+    1967,
+    88.13,
+    71.78
+   ],
+   [
+    39,
+    1981,
+    88,
+    76.27
+   ],
+   [
+    36,
+    1987,
+    87.61,
+    72.47
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/loops/s05-barn-advance.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
+  "crf": 42,
+  "kbps": 6870,
+  "vmaf": {
+   "mean": 93.93,
+   "min": 76.21
+  },
+  "bytes": 5236359,
+  "tried": [
+   [
+    40,
+    6928,
+    94.52,
+    null
+   ],
+   [
+    42,
+    6870,
+    93.93,
+    76.21
+   ],
+   [
+    44,
+    6408,
+    92.82,
+    null
+   ]
+  ],
+  "rebuilt": "from the 2026-10-14 12:01 run log"
+ },
+ "media/site50-r14/loops/s07-lake-shellfire-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.mp4",
+  "crf": 42,
+  "kbps": 1526,
+  "vmaf": {
+   "mean": 91.75,
+   "harmonic": 91.59,
+   "min": 77.13
+  },
+  "bytes": 1147804,
+  "tried": [
+   [
+    42,
+    1526,
+    91.75,
+    77.13
+   ],
+   [
+    45,
+    1278,
+    89.94,
+    75.4
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s07-lake-shellfire.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.mp4",
+  "crf": 44,
+  "kbps": 3849,
+  "vmaf": {
+   "mean": 93.04,
+   "harmonic": 92.91,
+   "min": 78.03
+  },
+  "bytes": 2967217,
+  "tried": [
+   [
+    40,
+    4948,
+    95.23,
+    82.86
+   ],
+   [
+    42,
+    4350,
+    94.23,
+    80.5
+   ],
+   [
+    44,
+    3849,
+    93.04,
+    78.03
+   ],
+   [
+    46,
+    3385,
+    91.72,
+    76
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s18-street-knockout-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.mp4",
+  "crf": 39,
+  "kbps": 1991,
+  "vmaf": {
+   "mean": 88.33,
+   "harmonic": 88.02,
+   "min": 75.48
+  },
+  "bytes": 1497042,
+  "tried": [
+   [
+    42,
+    1963,
+    87.63,
+    73.06
+   ],
+   [
+    39,
+    1991,
+    88.33,
+    75.48
+   ],
+   [
+    36,
+    1975,
+    87.95,
+    78.13
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/loops/s18-street-knockout.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.mp4",
+  "crf": 38,
+  "kbps": 7642,
+  "vmaf": {
+   "mean": 93.5,
+   "harmonic": 93.24,
+   "min": 78.53
+  },
+  "bytes": 5806035,
+  "tried": [
+   [
+    40,
+    7202,
+    92.77,
+    75.9
+   ],
+   [
+    38,
+    7642,
+    93.5,
+    78.53
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s20-road-return-fire.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.mp4",
+  "crf": 40,
+  "kbps": 7524,
+  "vmaf": {
+   "mean": 93.31,
+   "harmonic": 93.06,
+   "min": 78.07
+  },
+  "bytes": 5722120,
+  "tried": [
+   [
+    40,
+    7524,
+    93.31,
+    78.07
+   ],
+   [
+    42,
+    6979,
+    91.83,
+    73.29
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s21-fields-assault.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault.mp4",
+  "crf": 42,
+  "kbps": 7452,
+  "vmaf": {
+   "mean": 93.01,
+   "harmonic": 92.62,
+   "min": 77.07
+  },
+  "bytes": 5667442,
+  "tried": [
+   [
+    40,
+    7807,
+    93.26,
+    78.56
+   ],
+   [
+    42,
+    7452,
+    93.01,
+    77.07
+   ],
+   [
+    44,
+    7119,
+    92.63,
+    72.37
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s23-village-crossroads.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads.mp4",
+  "crf": 44,
+  "kbps": 6597,
+  "vmaf": {
+   "mean": 93.76,
+   "harmonic": 93.55,
+   "min": 77.67
+  },
+  "bytes": 5026653,
+  "tried": [
+   [
+    40,
+    6604,
+    94.65,
+    82.66
+   ],
+   [
+    42,
+    6462,
+    94.09,
+    80.08
+   ],
+   [
+    44,
+    6597,
+    93.76,
+    77.67
+   ],
+   [
+    46,
+    5843,
+    92.22,
+    75.15
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s24-ice-duel.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.mp4",
+  "crf": 38,
+  "kbps": 6769,
+  "vmaf": {
+   "mean": 93.5,
+   "harmonic": 93.34,
+   "min": 82.46
+  },
+  "bytes": 5151491,
+  "tried": [
+   [
+    40,
+    6413,
+    92.5,
+    79.75
+   ],
+   [
+    38,
+    6769,
+    93.5,
+    82.46
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s26-minaret-fire-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.mp4",
+  "crf": 42,
+  "kbps": 1835,
+  "vmaf": {
+   "mean": 90.75,
+   "harmonic": 90.49,
+   "min": 75.9
+  },
+  "bytes": 1380114,
+  "tried": [
+   [
+    42,
+    1835,
+    90.75,
+    75.9
+   ],
+   [
+    45,
+    1769,
+    89.23,
+    68.5
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s26-minaret-fire.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.mp4",
+  "crf": 44,
+  "kbps": 5622,
+  "vmaf": {
+   "mean": 93.82,
+   "harmonic": 93.6,
+   "min": 75.09
+  },
+  "bytes": 4296931,
+  "tried": [
+   [
+    40,
+    6601,
+    95.76,
+    80.32
+   ],
+   [
+    42,
+    6273,
+    95.17,
+    77.02
+   ],
+   [
+    44,
+    5622,
+    93.82,
+    75.09
+   ],
+   [
+    46,
+    5002,
+    92.24,
+    71.14
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s27-caravanserai-kill.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill.mp4",
+  "crf": 38,
+  "kbps": 8173,
+  "vmaf": {
+   "mean": 94.23,
+   "min": 80.52
+  },
+  "bytes": 6212871,
+  "tried": [
+   [
+    40,
+    7387,
+    92.79,
+    null
+   ],
+   [
+    38,
+    8173,
+    94.23,
+    80.52
+   ]
+  ],
+  "rebuilt": "from the 2026-10-14 12:01 run log"
+ },
+ "media/site50-r14/loops/s33-water-tower.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.mp4",
+  "crf": 40,
+  "kbps": 7765,
+  "vmaf": {
+   "mean": 91,
+   "harmonic": 90.35,
+   "min": 74.1
+  },
+  "bytes": 5914015,
+  "tried": [
+   [
+    40,
+    7765,
+    91,
+    74.1
+   ],
+   [
+    38,
+    7930,
+    91,
+    75.39
+   ],
+   [
+    36,
+    7944,
+    90.8,
+    74.86
+   ],
+   [
+    34,
+    7970,
+    90.89,
+    71.72
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/loops/s34-furnace-salvo.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo.mp4",
+  "crf": 44,
+  "kbps": 4079,
+  "vmaf": {
+   "mean": 93.31,
+   "harmonic": 93.06,
+   "min": 74.85
+  },
+  "bytes": 3137584,
+  "tried": [
+   [
+    40,
+    5075,
+    95.47,
+    80.92
+   ],
+   [
+    42,
+    4557,
+    94.5,
+    78.42
+   ],
+   [
+    44,
+    4079,
+    93.31,
+    74.85
+   ],
+   [
+    46,
+    3609,
+    91.96,
+    72.98
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s39-lakeside-village.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village.mp4",
+  "crf": 42,
+  "kbps": 6474,
+  "vmaf": {
+   "mean": 93.49,
+   "harmonic": 93.2,
+   "min": 74.2
+  },
+  "bytes": 4936772,
+  "tried": [
+   [
+    40,
+    7010,
+    94.64,
+    77.71
+   ],
+   [
+    42,
+    6474,
+    93.49,
+    74.2
+   ],
+   [
+    44,
+    6147,
+    92.6,
+    70.33
+   ]
+  ]
+ }
+}

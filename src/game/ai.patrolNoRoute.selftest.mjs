@@ -24,13 +24,13 @@ function ok(cond, label) {
 
 console.log('[1] Aegis Crossing: the Type 96 at rest in the gorge pocket, on its no-contact search');
 {
-  await ensureAuthorityFleet(['m1a2', 'type96_72m_lei']);
+  await ensureAuthorityFleet(['m1a1_abrams_hc', 'type96_72m_lei']);
   // the pose the plane-attitude run left it in (4549734b3, 102 s on), held there tick by tick — re-seated on the new
   // gorge (2026-10-06): the north wall's toe by the viaduct (ground -37.6 m), the same heading
   const POSE = { x: -33, y: -37.0, z: 68, yaw: -64.8 * Math.PI / 180 };
   const match = createAuthoritativeMatch({
     players: [
-      { id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha', bot: false },
+      { id: 'host', name: 'Host', specId: 'm1a1_abrams_hc', team: 'alpha', bot: false },
       { id: 'type96', name: 'B2', specId: 'type96_72m_lei', team: 'bravo', bot: true, difficulty: 'normal',
         spawn: { x: POSE.x, z: POSE.z, yaw: POSE.yaw } },
     ],

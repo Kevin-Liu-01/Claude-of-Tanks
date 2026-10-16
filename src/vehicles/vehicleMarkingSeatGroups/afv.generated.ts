@@ -121,7 +121,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "spz_puma_s1": {
+  "spz_wotan": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -140,11 +140,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6946317
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "spz_puma_s1",
+        "anchorProfile": "spz_wotan",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.1066302
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
@@ -162,7 +162,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7137534
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "spz_puma_s1",
+        "anchorProfile": "spz_wotan",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -170,7 +170,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "type89_light_tiger": {
+  "raiju_ifv": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -189,7 +189,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "type89_light_tiger",
+        "anchorProfile": "raiju_ifv",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -211,7 +211,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "type89_light_tiger",
+        "anchorProfile": "raiju_ifv",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

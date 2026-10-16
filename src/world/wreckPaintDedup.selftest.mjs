@@ -79,7 +79,7 @@ function originalControl(fixture) {
 }
 
 assert.equal(typeof globalThis.document, 'undefined', 'wreck work does not acquire Canvas or texture painters');
-const fixtures = [{ specId: 't90m', seed: 2526, pop: false }, { specId: 'k2', seed: 2002, pop: true }];
+const fixtures = [{ specId: 't90am', seed: 2526, pop: false }, { specId: 'xk2_black_panther', seed: 2002, pop: true }];
 for (const fixture of fixtures) await ensureTankBuilder(fixture.specId);
 const controls = fixtures.map(originalControl), receipts = [];
 const jobs = fixtures.map(fixture => {

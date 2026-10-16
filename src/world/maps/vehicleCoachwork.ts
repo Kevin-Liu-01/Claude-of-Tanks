@@ -22,7 +22,9 @@ export const PAINT = material('paint', [0.80, 0.80, 0.80], 0.44, 0.0, 1, 1);
 export function fixedPaint(hex: number, rough = 0.5, weather = 1): VehicleMaterial {
   return material('paint', linearHex(hex), rough, 0, 0, weather);
 }
-export const GLASS = material('glass', [0.018, 0.022, 0.026], 0.05, 0, 0, 0.15);
+// (sealed lane 2026-10-10, round 2; wave 368: windscreens "opaque black slabs") the glass a tinted dark grey-blue that takes
+// the sky in its gloss, not a void: opaque glass with no cabin behind it reads as a hole at near-black
+export const GLASS = material('glass', [0.055, 0.065, 0.078], 0.05, 0, 0, 0.15);
 export const CHROME = material('chrome', [0.60, 0.60, 0.58], 0.22, 1, 0, 0.5);
 export const BRIGHT = material('chrome', [0.48, 0.48, 0.46], 0.34, 0.85, 0, 0.6);
 export const RUBBER = material('rubber', [0.028, 0.027, 0.026], 0.92, 0, 0, 0.9);

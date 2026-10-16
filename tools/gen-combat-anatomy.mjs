@@ -536,15 +536,15 @@ function eraPlateReceipts(root) {
 
 function receiptFor(id) {
   const create = () => createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  const stockCapture = id === 'chieftain_mk10_x' ? captureChieftain10Collision(create)
+  const stockCapture = id === 'chieftain_mk10' ? captureChieftain10Collision(create)
     : id === 'tos1a_tagil' ? captureTos1aTagilCollision(create)
-      : id === 'ariete_c2_x' ? captureArieteC2Collision(create) : null;
+      : id === 'c2_ariete' ? captureArieteC2Collision(create) : null;
   const tank = stockCapture?.tank ?? create();
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
     if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
-    if (id === 'leo2a7v') {
+    if (id === 'leo2_improved') {
       // The Improved's owner-requested narrowing lives on the hull rig so
       // suspension also samples the narrower lane. Combat coordinates have
       // no scale, so measure its children in a rigid metre frame. Preserve

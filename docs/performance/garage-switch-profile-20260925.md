@@ -32,11 +32,11 @@ are pasted from the tool's own markdown output.
   rAF interval; optionally a CDP sampling profile per named switch.
 - Classes: **cold** = first construction of that hull in the session;
   **rebuild** = revisit after LRU eviction; **warm** = pedestal cache hit.
-- `fsp01` sequence (22 switches): `t90a_burlak, m1a2, leo2a5_a5nl, t90m, k2`;
+- `fsp01` sequence (22 switches): `t90a_burlak_proto, m1a1_abrams_hc, leo2a4m, t90am, xk2_black_panther`;
   the twelve heaviest playable hulls by stored high-LOD triangles in
   `docs/history/research/fleet-continuation-20260921-census.csv`
-  (`m1a2_sepv2_x, m1a2_sepv3_x, ua_m1a1, leo2a6_ua, ua_m1a1_x, strv122_x,
-  m1a2_tusk_x, m1a2_sepv3, merkava3d, m1a2_tusk, leclerc_classic_x, kf51` —
+  (`m1a2_abrams_sepv2, m1a2_abrams_sepv3, ua_m1a1, leo2a6_ua, ua_m1a2_abrams, strv122,
+  m1a2_abrams_tusk, m1a1_abrams_fep, merkava3_baz, m1a1_abrams_sa, amx56, kf51_evo` —
   `isu152`/`isu122s` are census rows without a Garage card); the five again.
   `walk` (12 switches): six `@next` then six `@prev` through the selected
   nation from the default hero (USA rail), resolved from
@@ -62,7 +62,7 @@ change) attributes the same behaviour.
 | rebuild (9b5563d61) | 5 | 168 / 193 / 193 | 180 / 205 / 205 | 196 / 221 / 221 | 33 / 58 / 58 | 0 / 50 / 50 | 0 / 50 / 50 | 0 / 1 / 1 | 0 / 0 / 0 | 0 / 2 / 2 |
 
 "Painted" is the first rAF after reveal and lands on either side of the
-stalled frame depending on where in the frame the reveal happened (m1a2:
+stalled frame depending on where in the frame the reveal happened (m1a1_abrams_hc:
 painted 285 / presented 1085 on `1179f1013`, painted 792 / presented 809 on
 `9b5563d61`); "presented" (the following rAF) always contains the stall and
 is the conservative time-to-first-painted-frame used below.
@@ -88,11 +88,11 @@ Stages of the 22 built switches on `9b5563d61` (ms; `build*` from the runtime,
 
 1. **The first frame with the new hero blocked on its shader links.** Every
    row whose switch created programs carried one task of 258–1104 ms that
-   started exactly at `painted` (m1a2 Δprograms +7 → 801 ms, merkava3d +8 →
-   1104 ms, ua_m1a1 +6 → 349, leo2a5_a5nl +3 → 344, t90a_burlak +4 → 258);
+   started exactly at `painted` (m1a1_abrams_hc Δprograms +7 → 801 ms, merkava3_baz +8 →
+   1104 ms, ua_m1a1 +6 → 349, leo2a4m +3 → 344, t90a_burlak_proto +4 → 258);
    every row with Δprograms ≤ 0 stayed ≤ 70 ms. The dev-server CPU profile
-   put the self time in `getProgramParameter` (516 ms for m1a2, 919 ms for
-   merkava3d) plus native `(program)` time (447 / 147 ms). Mechanism:
+   put the self time in `getProgramParameter` (516 ms for m1a1_abrams_hc, 919 ms for
+   merkava3_baz) plus native `(program)` time (447 / 147 ms). Mechanism:
    `src/game/garagePedestalRuntime.ts` `warmPrograms` submitted
    `forwardProgramWarm.compile(root)` (`src/engine/programWarm.ts`
    `compileForRenderTarget` → `renderer.compile`, 20–44 ms) and waited two
@@ -112,7 +112,7 @@ Stages of the 22 built switches on `9b5563d61` (ms; `build*` from the runtime,
    bucket bind/merge and the assembly run before the first `yield`
    (line 10443); decoration after it is already sliced into 199–316
    checkpoints. This is the 50–130 ms task at ~80–100 ms after the click on
-   every built switch (`m1a2_sepv2_x`: authored 95.6 ms, task 127 ms).
+   every built switch (`m1a2_abrams_sepv2`: authored 95.6 ms, task 127 ms).
 3. **Revisits rebuilt and adjacent cards were cold.** The desktop pedestal LRU
    held four visuals (`src/engine/resourceLifetime.ts`), so browsing five or
    more hulls rebuilt every revisit (the five `rebuild` rows: reveal 218 / 274
@@ -150,7 +150,7 @@ A/B `fsp01`, `9b5563d61` → `ac0049ac8`:
 Link wait 23.8 / 93.2 / 467.3 ms (p50 / p95 / max) over 22 switches, 1–29
 frames; completion queries cost ≤ 0.2 ms each (the old "status reads block for
 hundreds of milliseconds" caveat did not reproduce on this driver); uniform
-reflection ≤ 7.3 ms. Reveal moves later by the link wait (kf51: two programs
+reflection ≤ 7.3 ms. Reveal moves later by the link wait (kf51_evo: two programs
 took 29 frames in the background with no long task, versus a 232 ms block
 before), which is the intended trade: the outgoing hero keeps rendering.
 

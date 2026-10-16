@@ -55,6 +55,7 @@ import {
 } from './blastRecipes.ts';
 import { createTrailCadence } from './trailCadence.ts';
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
+import { registerGroundKeyLight } from '../engine/groundKeyLights.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
@@ -1315,6 +1316,9 @@ function* createFxSteps(
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
+  // (2026-10-14, contact r2) unshadowed, so the near hulls shadow them on the ground in the aerial pass (groundKeyLights.ts)
+  registerGroundKeyLight(muzzleLight);
+  registerGroundKeyLight(explosionLight);
   // pow: temporal decay exponent — explosion uses 3 (front-loaded punch that
   // collapses fast, see EXPLOSION_LIGHT_PEAK note), muzzle keeps 2.
   // r1 CLOCK-BASED AGING: lights (and rings below) age against the SHARED

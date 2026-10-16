@@ -11,22 +11,22 @@ const retiredEraSectorNames = [
   'a6m_turret_side_era_R', 'a6m_turret_side_era_L',
   'a6m_skirt_era_R', 'a6m_skirt_era_L',
 ];
-const spec = getSpec('leo2a6m');
+const spec = getSpec('leo2a4_otco');
 const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => eraSectorNames.includes(plate.name));
 assert.deepEqual(new Set(eraSectors.map((plate) => plate.name)), new Set(eraSectorNames),
-  'leo2a6m exposes only the requested frontal ERA sectors to combat');
+  'leo2a4_otco exposes only the requested frontal ERA sectors to combat');
 assert.equal(spec.dims.widthM, 3.98,
-  'leo2a6m restores the certified ISAF cage width after removing skirt ERA');
+  'leo2a4_otco restores the certified ISAF cage width after removing skirt ERA');
 assert.equal([...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => retiredEraSectorNames.includes(plate.name)).length, 0,
-  'leo2a6m no longer carries the inherited turret-side or skirt ERA sectors');
+  'leo2a4_otco no longer carries the inherited turret-side or skirt ERA sectors');
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable rather than permanent armor`);
   assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} retains the UA chemical protection`);
 }
 
-const visual = createTank('leo2a6m', null, {
+const visual = createTank('leo2a4_otco', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
@@ -34,14 +34,14 @@ visual.root.updateMatrixWorld(true);
 
 const turretRig = visual.root.getObjectByName('rig_turret');
 const hullRig = visual.root.getObjectByName('rig_hull');
-assert.ok(turretRig && hullRig, 'leo2a6m keeps the canonical hull/turret rig');
+assert.ok(turretRig && hullRig, 'leo2a4_otco keeps the canonical hull/turret rig');
 
 const findMesh = (root, name) => {
   let found = null;
   root.traverse((node) => {
     if (!found && node.isMesh && node.name === name) found = node;
   });
-  assert.ok(found, `leo2a6m has merged ${name} geometry`);
+  assert.ok(found, `leo2a4_otco has merged ${name} geometry`);
   return found;
 };
 
@@ -51,9 +51,9 @@ const equipment = findMesh(turretRig, 'turretEquipment');
 const hull = findMesh(hullRig, 'hull');
 
 const eraReceipt = turretRig.userData.leopard2A6MERAReceipt;
-assert.ok(eraReceipt, 'leo2a6m publishes its fitted ERA receipt');
+assert.ok(eraReceipt, 'leo2a4_otco publishes its fitted ERA receipt');
 assert.equal(eraReceipt.totalTiles, 162,
-  'leo2a6m receives the expanded cheeks and upper-glacis field only');
+  'leo2a4_otco receives the expanded cheeks and upper-glacis field only');
 assert.deepEqual(new Set(eraReceipt.sectors), new Set(eraSectorNames),
   'visual ERA clusters map one-to-one to the standard tank sectors');
 assert.equal(eraReceipt.cheekEraSeats.length, 112,
@@ -98,7 +98,7 @@ assert.equal(turretEra.geometry.getAttribute('position').count, 8064,
   'one hundred twelve cheek cassettes and lids are merged into turret external armor');
 
 const cageReceipt = eraReceipt.cheekCage;
-assert.ok(cageReceipt, 'leo2a6m publishes its conformal cheek-cage receipt');
+assert.ok(cageReceipt, 'leo2a4_otco publishes its conformal cheek-cage receipt');
 assert.equal(cageReceipt.rows, 6, 'cheek cage has six face-following horizontal rails');
 assert.equal(cageReceipt.contourStations, 6,
   'each cheek-cage row follows all six arrowhead contour stations');
@@ -114,7 +114,7 @@ assert.equal(cageReceipt.turretOwned, true,
   'cheek cage follows turret traverse');
 
 const remoteWeaponReceipt = eraReceipt.roofRemoteWeapon;
-assert.ok(remoteWeaponReceipt, 'leo2a6m publishes its roof remote-weapon receipt');
+assert.ok(remoteWeaponReceipt, 'leo2a4_otco publishes its roof remote-weapon receipt');
 assert.equal(remoteWeaponReceipt.weaponClass, 'remote-machine-gun',
   'roof station is classified as a compact RCWS');
 assert.equal(remoteWeaponReceipt.caliberMm, 12.7,
@@ -274,7 +274,7 @@ const expectedA6MBridge = {
 assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, expectedA6MBridge,
   'A6M uses the narrowed fitted mantlet-roof bridge');
 
-const a6 = createTank('leo2a6', null, {
+const a6 = createTank('leo2a4', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
@@ -283,7 +283,7 @@ const a6TurretRig = a6.root.getObjectByName('rig_turret');
 const a6GunRig = a6.root.getObjectByName('rig_gun');
 const a6MuzzleRig = a6.root.getObjectByName('rig_muzzle');
 assert.ok(a6TurretRig && a6GunRig && a6MuzzleRig,
-  'leo2a6 keeps its canonical turret, gun, and muzzle rigs');
+  'leo2a4 keeps its canonical turret, gun, and muzzle rigs');
 assert.deepEqual(a6TurretRig.userData.leopardA6MantletRoofBridge, {
   ...expectedA6MBridge,
   frontHalfWidth: 0.39,

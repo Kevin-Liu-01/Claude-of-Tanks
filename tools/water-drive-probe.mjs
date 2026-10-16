@@ -8,7 +8,7 @@
 // receipt records each shot's hull position, speed and water mask. Enemies stay alive (ending the battle would raise
 // the report card).
 //
-//   node tools/water-drive-probe.mjs --root=<worktree> --out=<dir> --maps=reservoir,coastal [--spec=t90m_x] [--speed=7] --tag=a
+//   node tools/water-drive-probe.mjs --root=<worktree> --out=<dir> --maps=reservoir,coastal [--spec=t90m] [--speed=7] --tag=a
 //
 // Hold the probe mutex and run under nice -n 19 (header of tools/map-probe-runtime.mjs). Exit 1 when a map failed or
 // the hull never reached the water.

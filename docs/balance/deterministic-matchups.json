@@ -50,7 +50,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "amx56",
+      "id": "leclerc_s1",
       "revision": "make headline reload match its magazine and establish assault-branch output",
       "tier": 9,
       "era": "modern",
@@ -170,7 +170,7 @@
       ]
     },
     {
-      "id": "centurion5",
+      "id": "centurion5_2",
       "revision": "remove the Tier VIII Centurion survivability and mobility trough",
       "tier": 8,
       "era": "cold-war",
@@ -204,7 +204,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "challenger1",
+      "id": "challenger1_mk2",
       "revision": "promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile",
       "tier": 9,
       "era": "cold-war",
@@ -238,7 +238,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "challenger_3",
+      "id": "challenger3_proto",
       "revision": "restore the base Challenger 3 firepower and mobility envelope",
       "tier": 10,
       "era": "next-generation",
@@ -272,7 +272,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "challenger_3x",
+      "id": "challenger3",
       "revision": "retain a measured protection and fire-control step over the base vehicle",
       "tier": 10,
       "era": "next-generation",
@@ -306,7 +306,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "chieftain_mk10",
+      "id": "chieftain_mk9",
       "revision": "restore the late Chieftain as a competitive protected Tier VIII MBT",
       "tier": 8,
       "era": "cold-war",
@@ -417,7 +417,7 @@
       ]
     },
     {
-      "id": "k2",
+      "id": "xk2_black_panther",
       "revision": "trade excess paper DPM for realized frontal protection and ammunition",
       "tier": 9,
       "era": "modern",
@@ -519,7 +519,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "leclerc",
+      "id": "leclerc_s2",
       "revision": "improve the Tier IX ready-rack cycle while retaining burst downtime",
       "tier": 9,
       "era": "modern",
@@ -553,7 +553,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "leclerc_xlr",
+      "id": "leclerc_sxxi",
       "revision": "add a real Tier X ammunition, protection and ready-rack step",
       "tier": 9,
       "era": "modern",
@@ -587,7 +587,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "leo2a4m",
+      "id": "leo2a4m_can",
       "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection",
       "tier": 9,
       "era": "modern",
@@ -621,7 +621,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "leo2a5_a5nl",
+      "id": "leo2a4m",
       "revision": "trim the enhanced Leopard package to the Strv 122 peer envelope",
       "tier": 10,
       "era": "modern",
@@ -655,7 +655,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "leo2a6",
+      "id": "leo2a4",
       "revision": "exchange excess stationary protection for its intended mobile Tier IX identity",
       "tier": 9,
       "era": "modern",
@@ -766,7 +766,7 @@
       ]
     },
     {
-      "id": "m48",
+      "id": "m48a5_patton",
       "revision": "restore the M48 baseline so M60 upgrades are meaningful rather than mandatory",
       "tier": 8,
       "era": "cold-war",
@@ -1013,7 +1013,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "pt91_twardy",
+      "id": "pt91a_twardy",
       "revision": "improve the Tier IX Polish protection and feed-system step",
       "tier": 9,
       "era": "modern",
@@ -1124,7 +1124,7 @@
       ]
     },
     {
-      "id": "spz_puma_s1",
+      "id": "spz_wotan",
       "revision": "remove the Tier X autocannon ceiling while retaining anti-armor utility",
       "tier": 10,
       "era": "modern",
@@ -1167,7 +1167,7 @@
       ]
     },
     {
-      "id": "t14",
+      "id": "object148_proto",
       "revision": "bring next-generation fire control above the severe peer floor",
       "tier": 10,
       "era": "next-generation",
@@ -1201,7 +1201,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "t62mv1",
+      "id": "t62_1975",
       "revision": "raise the early Cold War baseline without erasing its handling limits",
       "tier": 7,
       "era": "cold-war",
@@ -1269,7 +1269,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "t72b3m",
+      "id": "t72b3m_2022",
       "revision": "modernize the Tier IX fire-control floor without erasing Soviet handling",
       "tier": 9,
       "era": "modern",
@@ -1405,7 +1405,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "t90",
+      "id": "t90_1992",
       "revision": "replace the stale Tier IX donor envelope used by the Tier X production tank",
       "tier": 10,
       "era": "modern",
@@ -1439,7 +1439,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "t90a",
+      "id": "t90a_2004",
       "revision": "give the base T-90A handling value beside the faster Vladimir package",
       "tier": 9,
       "era": "modern",
@@ -1473,7 +1473,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "t90a_burlak",
+      "id": "t90a_burlak_proto",
       "revision": "price the bustle autoloader as a faster Tier X feed system",
       "tier": 10,
       "era": "modern",
@@ -1541,7 +1541,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "t90ms",
+      "id": "t90ms_2011",
       "revision": "give the export demonstrator a distinct Tier X protection/firepower step",
       "tier": 10,
       "era": "modern",
@@ -1643,7 +1643,7 @@
       "guidedWeapons": []
     },
     {
-      "id": "type89_light_tiger",
+      "id": "raiju_ifv",
       "revision": "close the next-generation IFV anti-armor and protection gap",
       "tier": 10,
       "era": "next-generation",
@@ -1686,7 +1686,7 @@
       ]
     },
     {
-      "id": "type90",
+      "id": "type90_kyumaru",
       "revision": "make the base Type 90 the mobility alternative to the protected Type 90A",
       "tier": 9,
       "era": "cold-war",
@@ -1763,7 +1763,7 @@
       ]
     },
     {
-      "id": "ua_t64bv",
+      "id": "t64bv_donbas",
       "revision": "modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling",
       "tier": 8,
       "era": "modern",
@@ -1805,8 +1805,8 @@
         0.35,
         0.65
       ],
-      "aId": "m1a2",
-      "bId": "m1a2",
+      "aId": "m1a1_abrams_hc",
+      "bId": "m1a1_abrams_hc",
       "seeds": [
         101,
         211,
@@ -1833,8 +1833,8 @@
         0.35,
         0.65
       ],
-      "aId": "m1a2",
-      "bId": "m1a2",
+      "aId": "m1a1_abrams_hc",
+      "bId": "m1a1_abrams_hc",
       "seeds": [
         101,
         211,
@@ -1861,8 +1861,8 @@
         0.2,
         0.8
       ],
-      "aId": "challenger1",
-      "bId": "t90m",
+      "aId": "challenger1_mk2",
+      "bId": "t90am",
       "seeds": [
         101,
         211,
@@ -1889,8 +1889,8 @@
         0.2,
         0.8
       ],
-      "aId": "challenger_3",
-      "bId": "challenger_3x",
+      "aId": "challenger3_proto",
+      "bId": "challenger3",
       "seeds": [
         101,
         211,
@@ -1945,8 +1945,8 @@
         0.2,
         0.8
       ],
-      "aId": "t90",
-      "bId": "t90ms",
+      "aId": "t90_1992",
+      "bId": "t90ms_2011",
       "seeds": [
         101,
         211,
@@ -1973,7 +1973,7 @@
         0.2,
         0.8
       ],
-      "aId": "chieftain_mk10",
+      "aId": "chieftain_mk9",
       "bId": "fv4034",
       "seeds": [
         101,
@@ -2001,8 +2001,8 @@
         0.2,
         0.8
       ],
-      "aId": "k2",
-      "bId": "leo2a6",
+      "aId": "xk2_black_panther",
+      "bId": "leo2a4",
       "seeds": [
         101,
         211,
@@ -2029,8 +2029,8 @@
         0.2,
         0.8
       ],
-      "aId": "k2",
-      "bId": "leo2a6",
+      "aId": "xk2_black_panther",
+      "bId": "leo2a4",
       "seeds": [
         101,
         211,
@@ -2058,7 +2058,7 @@
         0.8
       ],
       "aId": "k2b",
-      "bId": "type10",
+      "bId": "type10_tk_x",
       "seeds": [
         101,
         211,
@@ -2086,7 +2086,7 @@
         0.8
       ],
       "aId": "t90m_proryv",
-      "bId": "m1a2",
+      "bId": "m1a1_abrams_hc",
       "seeds": [
         101,
         211,
@@ -2114,7 +2114,7 @@
         0.8
       ],
       "aId": "merkava1b",
-      "bId": "t62mv1",
+      "bId": "t62_1975",
       "seeds": [
         101,
         211,
@@ -2169,7 +2169,7 @@
         0.2,
         0.8
       ],
-      "aId": "spz_puma_s1",
+      "aId": "spz_wotan",
       "bId": "bmpt_t90",
       "seeds": [
         101,
@@ -2233,7 +2233,7 @@
         0.2,
         0.8
       ],
-      "aId": "spz_puma_s1",
+      "aId": "spz_wotan",
       "bId": "bmpt_t90",
       "seeds": [
         101,
@@ -2297,7 +2297,7 @@
         0.2,
         0.8
       ],
-      "aId": "spz_puma_s1",
+      "aId": "spz_wotan",
       "bId": "bmpt_t90",
       "seeds": [
         101,
@@ -2361,8 +2361,8 @@
         0.2,
         0.8
       ],
-      "aId": "leo2a5_a5nl",
-      "bId": "strv122",
+      "aId": "leo2a4m",
+      "bId": "strv121",
       "seeds": [
         101,
         211,
@@ -2389,8 +2389,8 @@
         0.2,
         0.8
       ],
-      "aId": "leo2a4m",
-      "bId": "t90a",
+      "aId": "leo2a4m_can",
+      "bId": "t90a_2004",
       "seeds": [
         101,
         211,
@@ -2417,8 +2417,8 @@
         0.2,
         0.8
       ],
-      "aId": "type89_light_tiger",
-      "bId": "cv90_mkiv",
+      "aId": "raiju_ifv",
+      "bId": "cv90_mk4_concept",
       "seeds": [
         101,
         211,
@@ -2446,7 +2446,7 @@
         0.8
       ],
       "aId": "m60a2",
-      "bId": "t90a",
+      "bId": "t90a_2004",
       "seeds": [
         101,
         211,

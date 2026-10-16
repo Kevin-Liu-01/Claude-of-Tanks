@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES } from './source-world-registration.mjs';
 
-const override = ARES_APC_X_REFERENCE_OVERRIDES.ares_apc_x;
-const certificate = SOURCE_WORLD_FRAMES.ares_apc_x;
+const override = ARES_APC_X_REFERENCE_OVERRIDES.ares_apc;
+const certificate = SOURCE_WORLD_FRAMES.ares_apc;
 assert.equal(override.source, 'glb');
 assert.equal(override.qualityBar, 'exemplar');
 assert.equal(override.glb.fixedMount, true);

@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import {Vector3} from 'three';
 import {ensureAuthorityFleet} from '../vehicles/authorityFleet.ts';
 import {createAuthoritativeMatch} from './authoritativeMatch.ts';
-await ensureAuthorityFleet(['m1a2']);
+await ensureAuthorityFleet(['m1a1_abrams_hc']);
 const world={mapId:'verdant',heightField:{size:1024,getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0),getWaterMaskAt:()=>0},getObstacles:()=>[]};
 for(const kind of ['heal','ammo']){
  const match=createAuthoritativeMatch({gameMode:'ac130',countdownS:0,mapId:'verdant',seed:23,worldCollision:world,
- players:[{id:'pilot',specId:'m1a2',team:'alpha',spawn:{x:-30,z:-200,yaw:0}},{id:'escort',specId:'m1a2',team:'alpha',bot:true,spawn:{x:0,z:-200,yaw:0}},{id:'hostile',specId:'m1a2',team:'bravo',spawn:{x:350,z:300,yaw:0}}]});
+ players:[{id:'pilot',specId:'m1a1_abrams_hc',team:'alpha',spawn:{x:-30,z:-200,yaw:0}},{id:'escort',specId:'m1a1_abrams_hc',team:'alpha',bot:true,spawn:{x:0,z:-200,yaw:0}},{id:'hostile',specId:'m1a1_abrams_hc',team:'bravo',spawn:{x:350,z:300,yaw:0}}]});
  match.onMatchReady();const escort=match.entityById.get('escort'),pilot=match.entityById.get('pilot');
  if(kind==='heal')escort.combat.hp=escort.combat.maxHp*.5;else escort.combat.ammo.fill(0);
  const before=escort.combat.hp;pilot.input.aimPoint.set(65,0,-190);

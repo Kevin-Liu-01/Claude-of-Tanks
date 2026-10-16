@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
-const tank = createTank('t90a_burlak', null, {
+const tank = createTank('t90a_burlak_proto', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,

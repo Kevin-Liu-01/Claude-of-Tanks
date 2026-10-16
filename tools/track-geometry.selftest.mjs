@@ -106,7 +106,7 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
       trackTexR: { offset: { y: 0 } },
     },
     hullG: new THREE.Group(),
-    spec: { id: 'm1a2', nation: 'USA' },
+    spec: { id: 'm1a1_abrams_hc', nation: 'USA' },
     q: false,
     geometryReceipt: true,
     disposables: [],

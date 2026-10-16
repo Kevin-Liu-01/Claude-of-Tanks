@@ -47,9 +47,9 @@ for (const id of Object.keys(BASE_CAMO)) {
   ok(c.moving <= c.still, `${id}: moving camo <= stationary`);
   ok(c.still > 0 && c.still < 0.5, `${id}: stationary camo in (0, 0.5)`);
 }
-ok(BASE_CAMO.m1a2.still < BASE_CAMO.t90m.still, 'Abrams rates below T-90M');
-ok(VIEW_RANGE_M.m551a1_tts > VIEW_RANGE_M.t90m, 'dedicated Sheridan scouting out-spots assault MBTs');
-ok(VIEW_RANGE_M.m1a2 > viewRangeOf({ id: 'kv2', role: 'heavy' }), 'modern optics out-spot the WW2 role fallback');
+ok(BASE_CAMO.m1a1_abrams_hc.still < BASE_CAMO.t90am.still, 'Abrams rates below T-90M');
+ok(VIEW_RANGE_M.m551a1_tts > VIEW_RANGE_M.t90am, 'dedicated Sheridan scouting out-spots assault MBTs');
+ok(VIEW_RANGE_M.m1a1_abrams_hc > viewRangeOf({ id: 'kv2', role: 'heavy' }), 'modern optics out-spot the WW2 role fallback');
 ok(viewRangeOf({ id: 'nope', role: 'heavy' }) === 360, 'role view fallback');
 near(baseCamoOf({ id: 'nope', role: 'td' }, false), 0.30, 1e-9, 'role camo fallback');
 
@@ -109,11 +109,11 @@ function mkSys(concealers, tanks, extra = {}) {
 
 console.log('[7] paint bonus shifts the margin');
 {
-  // m1a2 still camo 0.17; spotter t90m vr 430 -> spotRange = 356.9.
+  // m1a1_abrams_hc still camo 0.17; spotter t90am vr 430 -> spotRange = 356.9.
   // at 355 m: spotted bare, hidden with +3.5% paint (spotRange 341.85).
   // (The archived tiger1 / panther_g rows retired on 2026-09-23.)
-  const spotter = tank('e1', 'enemy', 0, 0, { specId: 't90m', cls: 'mbt' });
-  const target = tank('p1', 'player', 0, 355, { specId: 'm1a2', role: 'mbt' });
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 't90am', cls: 'mbt' });
+  const target = tank('p1', 'player', 0, 355, { specId: 'm1a1_abrams_hc', role: 'mbt' });
   const bare = mkSys([], [spotter, target]);
   bare.forceCheck(1);
   ok(bare.isSpotted('p1', 'enemy'), 'no paint @355 m: spotted');
@@ -300,7 +300,7 @@ console.log('[16] armor doc §9: damaged radio halves intel share range');
 
 console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
 {
-  // m4a3e8 (still camo 0.24) at 435 m from an m1a2 spotter (vr 445):
+  // m4a3e8 (still camo 0.24) at 435 m from an m1a1_abrams_hc spotter (vr 445):
   // cold: spotRange 350.2 < 435 -> hidden. Firing bloom-strips own camo to
   // 0.0432 -> spotRange 427.9, STILL < 435 — the formula alone never reveals
   // this shooter, which is exactly where the old ai.ts hard bypass lived.
@@ -317,7 +317,7 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
 
   // r5 WoT-parity clamp: firing only strips camo — the flash must never
   // extend detection past the SPOTTER'S view range. A tiger1 (vr 370) at
-  // 400 m does NOT get the reveal an m1a2 (vr 445) gets.
+  // 400 m does NOT get the reveal an m1a1_abrams_hc (vr 445) gets.
   const spotterVr = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
   const pastVr = mkSys([], [spotterVr, tank('p1', 'player', 0, 400)]);
   pastVr.notifyFired('p1', 2);
@@ -365,7 +365,7 @@ console.log('[18] notifyFired pulls the shooter\'s next check in (no cadence wai
 {
   // At 435 m the check cadence is 2 s. Without the pull-in, a shot fired
   // right after a scheduled check would stay unresolved for up to 2 s; the
-  // reveal must land on the very next update() tick. (m1a2 spotter: the
+  // reveal must land on the very next update() tick. (m1a1_abrams_hc spotter: the
   // shooter sits inside its 445 m view range for the r5-clamped flash.)
   const spotter = tank('e1', 'enemy', 0, 0, { specId: 'abramsx', cls: 'mbt' });
   const shooter = tank('p1', 'player', 0, 435);
