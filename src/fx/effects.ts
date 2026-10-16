@@ -54,7 +54,8 @@ import {
   type BlastContext,
 } from './blastRecipes.ts';
 import { createTrailCadence } from './trailCadence.ts';
-import { craterWobblePhases } from '../sim/terrainDeformation.ts';
+import { craterWobblePhases, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { mapCratersOn } from '../world/mapCraters.ts';
 import { registerGroundKeyLight } from '../engine/groundKeyLights.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
@@ -1199,6 +1200,10 @@ function* createFxSteps(
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
   const craters: CraterMarks | null = createCraterMarks();
+  // DST-04 (2026-10-15): the map's pre-placed craters' surfaces (world/mapCraters.ts) in slots of their own, so a
+  // battle's craters never recycle them: laid once the world's bound ground holds them, again after every reset
+  const mapCraterMarks: CraterMarks | null = createCraterMarks();
+  let mapCratersLaidEpoch = -1;
   // a mark that dug nothing clears the cover it blew away, through the world's presentation-only seam (a dug crater's
   // cover is the overlay's own law, on every peer: the core, 2026-10-08)
   const clearCover = (x: number, z: number, radiusM: number): void => {
@@ -1292,6 +1297,7 @@ function* createFxSteps(
   if (ribbons) group.add(ribbons.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
+  if (mapCraterMarks) group.add(mapCraterMarks.mesh);
 
   let rng = mulberry32(seed);
   let frozen = false;
@@ -2084,6 +2090,34 @@ function* createFxSteps(
     const base = heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z);
     if (!overlay) return base;
     return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z) : overlay.offsetAt(x, z));
+  }
+  /** An old crater's age at its laying (s): weathered (craterMarks fades the fresh look by 300 s). */
+  const MAP_CRATER_AGE_S = 3600;
+  /** DST-04: lay the map's pre-placed craters' surfaces once the world's bound ground holds them (world/mapCraters.ts):
+   *  a bowl's surface draped on the dug ground, a mark on the undug; again whenever they are laid anew. */
+  function layMapCraters(): void {
+    if (!mapCraterMarks) return;
+    const laid = mapCratersOn((world?.()?.groundOverlay?.() ?? null) as TerrainDeformation | null);
+    if (!laid) {
+      if (mapCratersLaidEpoch !== -1) { mapCraterMarks.reset(); mapCratersLaidEpoch = -1; }
+      return;
+    }
+    if (laid.epoch === mapCratersLaidEpoch) return;
+    mapCraterMarks.reset();
+    mapCratersLaidEpoch = laid.epoch;
+    const birth = particles.getTime() - MAP_CRATER_AGE_S, climate = groundClimate();
+    for (let i = 0; i < laid.stamps.length; i++) {
+      const s = laid.stamps[i]!;
+      const surface = classifyTerrain(heightField, s.x, s.z);
+      const seed = (s.seed % 65536) / 65536;
+      if (laid.dug[i]) {
+        const [p1, p2, p3] = craterWobblePhases(s.seed);
+        mapCraterMarks.crater({ x: s.x, z: s.z, radiusM: s.radiusM, p1, p2, p3, surface, climate, explosive: true, kind: 'he',
+          seed, birth }, deformedGroundY);
+      } else {
+        mapCraterMarks.stamp(s.x, s.z, s.radiusM, surface, 'he', seed, birth, deformedGroundY, climate);
+      }
+    }
   }
   /** The map's ground climate for a mark's soil (world/groundRedux.ts; the caldera's ash). */
   function groundClimate(): CraterClimate {
@@ -5260,6 +5294,7 @@ function* createFxSteps(
     ribbons?.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
+    mapCraterMarks?.shiftTime(delta);
     structMask?.shiftTime(delta);
     structDebris?.shiftTime(delta);
     rubble?.shiftTime(delta);
@@ -5965,6 +6000,8 @@ function* createFxSteps(
       }
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
+      layMapCraters();
+      mapCraterMarks?.update(particles.getTime(), engineCtx.scene ?? null);
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
@@ -7003,6 +7040,7 @@ function* createFxSteps(
       ribbons?.reset();
       chunks?.reset();
       craters?.reset();
+      mapCraterMarks?.reset(); mapCratersLaidEpoch = -1;
       structMask?.reset();
       structDebris?.reset();
       rubble?.reset();

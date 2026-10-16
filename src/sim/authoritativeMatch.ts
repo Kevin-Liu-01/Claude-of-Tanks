@@ -141,6 +141,7 @@ import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.t
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, type TerrainDeformation } from './terrainDeformation.ts';
 import { structureRubbleHeightM } from './structureDamage.ts';
+import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
 
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
@@ -286,6 +287,8 @@ export interface AuthoritativeWorldCollision {
   ): AuthoritativeWorldRayHit | null;
   /** The match's ground overlay (docs/DESTRUCTION.md §6, §7): the world's ray march reads it (match-local worlds only). */
   bindGroundOverlay?(overlay: TerrainDeformation | null): void;
+  /** The map's pre-placed craters from the world's shard (world/mapCraters.ts), laid into the match's ground first. */
+  getMapCraters?(): readonly MapCraterStamp[];
   crushObstacle?(
     obstacle: AuthoritativeObstacle,
     directionX: number,
@@ -779,12 +782,20 @@ export function prepareAuthorityGround(worldCollision: AuthoritativeWorldCollisi
   const base = worldCollision.heightField;
   if (!base || preparedMatchGround.has(worldCollision)) return;
   const obstacles = typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : [];
-  const ground = createTerrainDeformation();
+  const ground = freshMatchGround(worldCollision);
   const heightField = createDeformedHeightField(base, ground);
   const navigation = createBotNavigationGrid({
     heightField, queryObstacles: worldCollision.queryObstacles || null, getObstacles: () => obstacles as AuthoritativeObstacle[],
   });
   preparedMatchGround.set(worldCollision, { base, obstacles, query: worldCollision.queryObstacles || null, ground, heightField, navigation });
+}
+
+/** A match's ground overlay with its map's pre-placed craters laid first (DST-04; world/mapCraters.ts): the bowls every
+ *  seat lays on its own world, so the navigation grid, the hulls and the rays meet them from the first tick. */
+function freshMatchGround(worldCollision: AuthoritativeWorldCollision | null): TerrainDeformation {
+  const ground = createTerrainDeformation();
+  stampMapCraters(ground, mapCraterStampsOf(worldCollision));
+  return ground;
 }
 
 /** Whether a prepared ground waits for the next authority on this world (the receipt's probe). */
@@ -833,7 +844,7 @@ export function createAuthoritativeMatch({
   const preparedGround = suppliedHeightField
     ? takePreparedGround(worldCollision, worldCollision && typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : [])
     : null;
-  const ground = preparedGround?.ground ?? createTerrainDeformation();
+  const ground = preparedGround?.ground ?? freshMatchGround(worldCollision);
   const heightField = preparedGround?.heightField ?? createDeformedHeightField(baseHeightField, ground);
   // the world's shells, sight lines and drones march this match's ground (a crater's bowl, a heap), as the solo world's do
   worldCollision?.bindGroundOverlay?.(ground);

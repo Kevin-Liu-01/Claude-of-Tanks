@@ -1,3 +1,4 @@
+import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { initializeAerial, stepAerial, isGunship, droneTankAlong, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
@@ -411,6 +412,8 @@ interface SoloWorld {
   getConcealment?(): ConcealerDisc[];
   /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
   bindGroundOverlay?(overlay: TerrainDeformation | null): void;
+  /** DST-04: the map's pre-placed craters (world/mapCraters.ts). */
+  getMapCraters?(): readonly MapCraterStamp[];
   crushObstacle?(
     obstacle: SoloObstacle,
     dirX: number,
@@ -1237,6 +1240,8 @@ export function setupBattle(
   resetStructureRecords(world.getObstacles(), worldColliders);
   const ground = groundFor(world);
   ground.overlay.reset();
+  // DST-04: the map's pre-placed craters, laid first (the authority and every seat lay the same; world/mapCraters.ts)
+  stampMapCraters(ground.overlay, mapCraterStampsOf(world));
   world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
