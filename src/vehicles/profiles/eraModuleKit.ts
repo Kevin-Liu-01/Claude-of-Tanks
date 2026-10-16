@@ -212,15 +212,17 @@ export function hardwareBlock(at: V3, size: V3, axes?: {x: V3; y: V3}): THREE.Bu
   return g.translate(...at);
 }
 
-/** Pure, Node-testable brick bond: rows of [start, end] pieces along `length` at `pitch` (gap included), every other
- * row offset by `stagger`; pieces shorter than `minPiece` are dropped (never a sliver tile). */
-export function mosaicLayout(length: number, pitch: number, rows: number, stagger: number, minPiece: number, gap = .02):
+/** Pure, Node-testable fitted brick bond: rows of [start, end] pieces filling `length`, about `pitch` long each (gap
+ * included; the pitch is fitted so a row of whole pieces fills the length exactly); every odd row is offset by
+ * `stagger` of a step, its end pieces cut there; pieces shorter than `minPiece` are dropped (never a sliver tile). */
+export function mosaicLayout(length: number, pitch: number, rows: number, stagger: number, minPiece: number, gap = .015):
   {row: number; start: number; end: number}[] {
+  const n = Math.max(1, Math.round((length + gap) / pitch)), piece = (length - (n - 1) * gap) / n, step = piece + gap;
   const out: {row: number; start: number; end: number}[] = [];
   for (let r = 0; r < rows; r++) {
-    const offset = r % 2 ? stagger : 0;
-    for (let s = -offset; s < length - 1e-9; s += pitch) {
-      const a = Math.max(0, s), b = Math.min(length, s + pitch - gap);
+    const offset = r % 2 ? stagger * step : 0;
+    for (let s = -offset; s < length - 1e-9; s += step) {
+      const a = Math.max(0, s), b = Math.min(length, s + piece);
       if (b - a >= minPiece - 1e-9) out.push({row: r, start: a, end: b});
     }
   }

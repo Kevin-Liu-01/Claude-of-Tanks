@@ -11,6 +11,8 @@ import {mount} from './fittingMount.ts';
 import {addPolishProtection} from './nationalPolandProtection.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {ZUBR_II_DESIGN} from '../zubrIIDesign.ts';
+import type {PolishFrontSkirt} from './nationalPoland.ts';
+import {polishGlacis,polishLowerPlate,polishFrontSkirt,polishHullSurface} from './polandFrontEra.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box, cylY, cylZ, torus} = KIT;
 type Point = readonly [number, number, number];
@@ -40,9 +42,9 @@ function interpolate(rows:readonly (readonly [number,number])[],z:number):number
   return rows[rows.length-1][1];
 }
 
+// Release 227: the Krata-2 glacis terraces, LED clusters, lower-plate fields and front-skirt grid (polandFrontEra.ts)
+// replace the small glacis tiles, the guarded glacis lamps and the front bay's tiles.
 function hullEquipment(P:TankBuilderPort):void {
-  for(const side of [-1,1])for(const z of [2.15,2.41,2.67,2.91])for(const x of [.23,.56,.86])
-    glacisEraCassette(P,`glacis_era_${side<0?'L':'R'}`,side*x,z,[.265,.088,.23]);
   const hatchY=topOn(P,'hull',0,1.59);
   P.addHatch('hull',cylY(.29,.29,.034,24),0,hatchY+.014,1.59);
   for(const x of [-.16,0,.16]){
@@ -56,12 +58,6 @@ function hullEquipment(P:TankBuilderPort):void {
     for(let i=0;i<12;i++)P.addEquipment('hullDark',box(.76,.010,.025),x,y+.033,-2.80+i*.081);
   }
   for(const side of [-1,1]){
-    const x=side*.91,z=2.77,y=topOn(P,'hull',x,z);
-    P.addEquipment('hullDetail',box(.20,.072,.14),x,y+.033,z);
-    P.addEquipment('hullDetail',cylZ(.073,.085,16),x,y+.082,z+.054);
-    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.056,.012,16),'headlight'),x,y+.082,z+.103);
-    for(const dx of [-.103,.103])P.addEquipment('hullDark',beamBetween([x+dx,y,z-.10],[x+dx,y+.18,z+.095],.009));
-    P.addEquipment('hullDark',beamBetween([x-.103,y+.18,z+.095],[x+.103,y+.18,z+.095],.009));
     deckCabinet(P,side*1.40,-2.56,.40,.60,.105);
     deckCabinet(P,side*1.43,-1.75,.33,.48,.075);
     P.addEquipment('hullDetail',box(.12,.082,.085),side*.67,.805,3.157);
@@ -84,9 +80,11 @@ function deckCabinet(P:TankBuilderPort,x:number,z:number,w:number,d:number,h:num
 }
 
 /** Distinct deep Polish side modules: real .24m stock, upper attachment rail,
- * four ERAWA courses and chamfered returns outside the native track sweep. */
-function skirts(P:TankBuilderPort):void {
+ * four ERAWA courses and chamfered returns outside the native track sweep. `frontBay: false` (release 227) leaves the
+ * front bay's tiles to the frontal package (polandFrontEra.ts); returns its faces as nationalPoland.ts skirts does. */
+function skirts(P:TankBuilderPort,options:{frontBay?:boolean}={}):PolishFrontSkirt {
   const inside=1.86,outside=2.10,low=.67,count=7,length=5.40,rear=-2.58,front=2.82,pitch=length/count;
+  let last=0;
   const bevel=(a:number,b:number,lo:number,hi:number):SectionPoint[]=>[
     [a,lo+.055],[a+.026,lo],[b-.035,lo],[b,lo+.065],[b,hi-.065],[b-.035,hi],[a,hi]];
   for(const side of [-1,1]){
@@ -100,7 +98,7 @@ function skirts(P:TankBuilderPort):void {
         {z:z+half-.07,ring:mirror(bevel(inside,outside,low,high),side)},
         {z:z+half,ring:mirror(bevel(inside+.018,outside-.021,low+.025,high-.016),side)}]));
       P.addEquipment('hullDetail',box(.065,.15,pitch+.024),side*(inside+.038),high-.061,z);
-      for(let row=0;row<4;row++)for(const dz of [-.236,0,.236])
+      if(options.frontBay!==false||i<count-1)for(let row=0;row<4;row++)for(const dz of [-.236,0,.236])
         eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*(outside+.043),low+.105+row*.162,z+dz],[.095,.139,.211]);
       for(const dz of [-pitch*.32,pitch*.32])P.addEquipment('hullDark',cylZ(.025,.030,8).rotateY(Math.PI/2),side*(outside+.01),high-.035,z+dz);
     }
@@ -124,7 +122,11 @@ function skirts(P:TankBuilderPort):void {
       const out=turn+.10;
       return {z,ring:mirror([[1.50,deck-.01],[out,carrier-.028],[out,Math.max(carrier+.017,deck+.025)],[1.50,deck+.025]],side)};
     })));
+    last=heights[count-1];
   }
+  const half=pitch/2-.017,z=rear+pitch*(count-.5);
+  return {bay:{z,half,flat:[z-half+.07,z+half-.07],low:low+.065,high:last-.065,outer:outside},
+    ret:{z0:front-.04,z1:3.35,outer0:outside-.018,outer1:outside,bottom:[low+.025+.065,.63+.065],top:[last-.016-.065,1.06-.065]}};
 }
 
 function turretShell(P:TankBuilderPort):void {
@@ -249,10 +251,17 @@ function turretEquipment(P:TankBuilderPort,stock:readonly THREE.BufferGeometry[]
 
 /** Zubr II's native T-72B3 hull with its own deep ERAWA skirts and deck kit,
  * unchanged beneath its donor turret. */
+function frontPackage(P:TankBuilderPort):void {
+  hullEquipment(P);
+  const front=skirts(P,{frontBay:false}),surface=polishHullSurface(P);
+  try{polishGlacis(P,2,surface);polishLowerPlate(P,2,surface);polishFrontSkirt(P,2,front);}
+  finally{surface.dispose();}
+}
+
 export function buildZubrIIHull(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);
   buildT72B3XHullCore(P);buildT72B3XRunningGear(P);buildT72B3XFenders(P);
-  hullEquipment(P);skirts(P);
+  frontPackage(P);
 }
 
 /** Shared gun, cupola and independent RWS are added by the integrator. */
@@ -260,7 +269,7 @@ export function buildZubrII(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(.008,ZUBR_II_DESIGN.y,.065591);
   buildT72B3XHullCore(P);buildT72B3XRunningGear(P);buildT72B3XFenders(P);
-  hullEquipment(P);skirts(P);turretShell(P);
+  frontPackage(P);turretShell(P);
   const armor=armorShell(P);turretEquipment(P,armor);
   addPolishProtection(P,3,armor);
   for(const g of armor)g.dispose();
