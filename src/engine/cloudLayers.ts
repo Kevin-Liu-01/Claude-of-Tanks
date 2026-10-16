@@ -81,6 +81,15 @@ export interface CloudStack {
 }
 
 export const CLOUD_LANES_MAX = 4;
+/**
+ * 2026-10-15 (the SKY lane; the C2 diagnosis critic on Frosthollow's deck, eye, sun and air views: the plain deck 5 and,
+ * toward the sun, "exactly the featureless off-white sheet"; this tune 7, the most relief in all three, none reading as
+ * the banned broken stratocumulus): a deck lane's footprint ramp x1.6, cover x0.92, shape and detail x1.4 — scales on
+ * every cell deck's lanes (cells 0.5 or more: a stratocumulus; an overcast's faint cells and the convective lanes keep theirs); the QA knobs of the same names still override.
+ */
+export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
+  CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 0.92, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
+});
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;

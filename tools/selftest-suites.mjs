@@ -947,6 +947,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13 (the owner: "no more of the cloud type depicted in fjord"): broken-stratocumulus banned from every map, time
     // of day, weather variant, Studio plan, Garage sky and phone deck; fjord, polders and copper_mesa on fair-weather cumulus
     'src/engine/cloudsBan.selftest.mjs',
+    'src/engine/cloudBase.selftest.mjs',
     // 2026-10-06 (Clouds 2.0): every map's preset as the layered medium's lanes and their packing
     'src/engine/cloudLayers.selftest.mjs',
     'src/engine/cloudBeerShadow.selftest.mjs',

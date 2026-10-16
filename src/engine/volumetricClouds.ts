@@ -46,7 +46,7 @@ import {
   applyCloudWeatherPreset, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
 import { bakeCloudVolumes, cloudVolumeBake, type CloudVolumeTextures } from './cloudVolumeNoise.ts';
-import { cloudBsmSlices, cloudDeckTau, cloudGroundLight, cloudStackOf, packCloudStack } from './cloudLayers.ts';
+import { CLOUD_DECK_TUNE, cloudBsmSlices, cloudDeckTau, cloudGroundLight, cloudStackOf, packCloudStack } from './cloudLayers.ts';
 import {
   CLOUD2_BSM_FRAGMENT, CLOUD2_LOW_SUN_EXTRA_STEPS, CLOUD2_RESOLVE_FRAGMENT, CLOUD2_SHADE_FRAGMENT, cloud2TraceFragment, type Cloud2TraceDefines,
 } from './cloudShaders.ts';
@@ -182,15 +182,6 @@ export const CLOUD_CLEAR_RADIUS_SHARE = 0;
 export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
 export const CLOUD_BSM_SLICES = 32;
-/**
- * 2026-10-15 (the SKY lane; the C2 diagnosis critic on Frosthollow's deck, eye, sun and air views: the plain deck 5 and,
- * toward the sun, "exactly the featureless off-white sheet"; this tune 7, the most relief in all three, none reading as
- * the banned broken stratocumulus): a deck lane's footprint ramp x1.6, cover x0.92, shape and detail x1.4 — scales on
- * every deck lane (the convective lanes keep theirs); the QA knobs of the same names still override.
- */
-export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
-  CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 0.92, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
-});
 /** The march's reach on High and the dome shell radius (inside camera.far); the tiers own the step counts. */
 export const CLOUD_MARCH_MAX_M = 36000;
 export const CLOUD_DOME_RADIUS_M = 3400;
@@ -954,7 +945,8 @@ export class VolumetricCloudLayer {
           const k = lightTune(knob, CLOUD_DECK_TUNE[knob] ?? 1);
           if (k === 1) continue;
           const v = this.medium[key].value as THREE.Vector4;
-          stack.lanes.forEach((lane, i) => { if (lane.flat >= 0.5) v.setComponent(i, v.getComponent(i) * k); });
+          // (the tune's defaults scale a cell deck's lanes; a featureless overcast keeps its sheet unless a knob is set)
+          stack.lanes.forEach((lane, i) => { if (lane.flat >= 0.5 && (lane.cells >= 0.5 || lightTune(knob, -1) !== -1)) v.setComponent(i, v.getComponent(i) * k); });
         }
         // QA (the cost lab): CLOUD_ALOFT 0 draws the main lane alone (the lanes aloft without density)
         if (lightTune('CLOUD_ALOFT', 1) === 0) {

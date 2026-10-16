@@ -34,6 +34,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { CLOUDSCAPE_REGIMES } from '../../engine/cloudscapes.ts';
+import { CLOUD_BASE_NO_CAP_M, resolveCloudBase } from '../../engine/cloudBase.ts';
 import { OVERCAST_DIRECT_CUT_SHARED, resolveDeckClosure, resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
@@ -3892,11 +3893,12 @@ export function* buildHorizonRingSteps(
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
   if (vista && H.farRange !== false && reliefSettings.far) {
-    // the lower of the baked deck's altitude and the volumetric cloudscape's authored base (whichever layer is on, the
-    // peaks stay under it); a map that authors neither takes the default deck
-    const deckBaseM = Math.min(
-      (cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM ?? Infinity, cfg?.sky?.cloudAltM ?? Infinity,
-      ...((cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM === undefined && cfg?.sky?.cloudAltM === undefined ? [1400] : []));
+    // 2026-10-15 (the SKY lane, HZ.14; engine/cloudBase.ts): Clouds 2.0 draws a deck at its height with its breaks, so the
+    // far peaks stand into it and the cloud covers them where it is — capped only under a closed deck, at half its depth
+    // (resolveFarRangeAmp keeps 0.82 of the deck it is handed). The legacy cap (0.82 of the lowest authored altitude:
+    // Frosthollow's far country under 574 m, Cinder Junction's under 656 m) is gone.
+    const cloudBase = resolveCloudBase(cfg as Parameters<typeof resolveCloudBase>[0]);
+    const deckBaseM = cloudBase.closed ? cloudBase.capM / 0.82 : CLOUD_BASE_NO_CAP_M;
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
       deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(farLighting),
