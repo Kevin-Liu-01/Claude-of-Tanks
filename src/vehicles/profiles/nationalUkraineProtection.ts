@@ -169,9 +169,10 @@ export function ukrainianSkirtEra(P:TankBuilderPort,side:number,z:number,step:nu
 }
 
 /** The hull screens, skirt-return ERA and (unless a donor-turret kit fits its own) the turret screens. */
-export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,options:{turretScreens?:boolean}={}):void{
+export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,
+  options:{turretScreens?:boolean;frontReturnEra?:boolean}={}):void{
   const d=NATIONAL_UKRAINE_PROTECTION[id],hull=permanentStock(P,'hull'),turret=permanentStock(P,'turret');
-  const turretScreens=options.turretScreens!==false;
+  const turretScreens=options.turretScreens!==false,frontReturnEra=options.frontReturnEra!==false;
   for(const side of [-1,1]){
     // Four independently framed side screens retain real service gaps. All
     // feet are above the ERA lids. 2026-10-09 (owner): every bay carries a net,
@@ -221,6 +222,8 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,o
     // Forward/rear skirt returns receive their own short ERA banks, seated
     // by ray onto finite armor stock rather than floating past the fenders.
     for(const z of [-2.96,-2.65,2.65,2.96]){
+      // (release 227) a hull with its own bow modules on the front banks keeps only the rear returns
+      if(!frontReturnEra&&z>0)continue;
       const hit=seat(hull,[side*3,1.16,z],[-side,0,0]);
       const rotation=new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(side,0,0),hit.normal));
       eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,hit.point.clone().addScaledVector(hit.normal,.030).toArray(),[.076,.22,.21],[rotation.x,rotation.y,rotation.z]);
