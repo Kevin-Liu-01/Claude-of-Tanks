@@ -7859,6 +7859,33 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-14 — Redrock Divide: Rum village, built the way Verdant was (the maps lane)
+
+**The owner, 10-09: Redrock "looks really bad"; MAP-01: every map built the way Verdant was — its real place, its
+kit, a town plan with plots and yards, lived-in clutter.** The outpost stood as the roadside plan's 24 buildings, 17 of
+them placed, scattered over a 200 m sand lot: "a handful of boxes over an open lot" in every establishing frame.
+- *The place:* Rum village at the foot of Jebel Rum: one-storey and two-storey block houses with their rooftop tanks and
+  standing rebar, each in its yard behind a block wall and a steel gate (the wadirum kit's yards), in rows along the
+  valley track and the sandy lanes behind it; the Desert Patrol's fort on the square and the patrol's store yard across
+  it; the souq's shop rows and the minaret on the track north of the square.
+- *The plan* (`badlands.ts` RUM_VILLAGE, `plannedSites`; the roadside plan and its block fill retired) is authored in
+  the track's own frame, every site with its rotation twin about the outpost (8, 0), as the floor's landforms turn, so
+  the halves keep the same cover. Each compound a metre or two off its row and a few degrees off square, one in twelve
+  an abandoned ruin, one in fourteen an open lot, keyed per site so twins match.
+- *A village floor, not a field-works range* (MA.39): hedgehogs 22 -> 8, sandbag lines 24 -> 10; the village's life
+  raised (pickups and lorries, drums, pots, core clutter).
+- *Measured* (map-layout-metrics on the recaptured shard; every band holds): orphan buildings 0.031, the middle third's
+  cover 0.444 -> 0.482, the weakest sector 0.179 -> 0.208, the sightline median 114 -> 106 m, long sightlines 0.096 ->
+  0.076, rotational symmetry 1.045. Census [1726, 1431, 248] -> [2295, 1941, 248].
+- *The blind critics* (2026-10-15, FAIL -0.74: the wide view won, the close views lost) and the fixes
+  (`regional/wadirum.ts`, `badlands.ts`, a 2-line co-held `props.ts` switch): the block houses' and souq rows' render at
+  the limewash UV scale (one coat, the weathering showing, where the print read as camouflage noise); every house's dish
+  on its mast, split air conditioners with their drains, a downpipe and an electricity meter (the "blank box walls"); the
+  souq's open fronts the shop's back wall in shade with display racks of goods under the half-drawn shutter (the "flat
+  black cut-outs"); the fort's twin a souq row and the back row's store a house (no corrugated steel stores in the
+  village); no firewood stacks or woodpiles in a treeless desert (inhabit `firewood: 0`, `woodpiles: 0`). Census
+  [2295, 1941, 248] -> [2239, 1936, 248]; the brief holds (orphan 0.031, symmetry 1.018).
+
 ### 2026-10-14 — Nordhavn Fjord: the valley floor farmed (the map-content fill on the nordland kit; the maps lane)
 
 **The owner, 10-10: "the nordhavn one is very bare."** The map-content lane's fill (76dc2a52f, held for an owner
