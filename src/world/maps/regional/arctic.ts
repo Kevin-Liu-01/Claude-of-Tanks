@@ -8,7 +8,7 @@
 // sheds on skids; a module stripped and left to the wind.
 import {
   PartSink, faceBox, facePoint, rgb, shade,
-  type EmitOptions, type Face, type Rgb, type Vec3,
+  type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
