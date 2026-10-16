@@ -177,6 +177,12 @@ export interface PublishedLightRig {
   envDiffuseGain?: number;
   /** 2026-10-01: the legacy disc's shadowless fill folded into the environment (0 on the grounded model's disc-less bake). */
   envDiscFill?: number;
+  /**
+   * 2026-10-14 (SKY shadows r2a; the ENGINE lane's contact r6 contract): the residual seam the cascades leave at a contact,
+   * in metres — cascade 0's depth bias along the sun plus one of its texels — kept current on every preset or cascade
+   * table change. Contact shadows march this far (r6 falls back to 0.15 m without it).
+   */
+  readonly contactSeamM?: number;
 }
 
 const luma = (c: THREE.Color): number => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;

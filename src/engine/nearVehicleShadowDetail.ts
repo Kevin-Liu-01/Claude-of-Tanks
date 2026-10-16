@@ -37,6 +37,12 @@ interface NearVehicleShadowPolicyOptions {
   rangeM?: number;
   max?: number;
   extentM?: number;
+  /**
+   * 2026-10-14 (SKY shadows r2a): the direction FROM the sun (CSM lightDirection), so a hull's detail covers every cascade
+   * its shadow lands in — the shadow reaches NEAR_VEHICLE_SHADOW_HEIGHT_M / tan(elevation) down-sun, and under a low sun
+   * that crosses a break a hull's own depth does not (a detail / proxy seam inside one shadow at 18-24 m).
+   */
+  sunDirection?: () => Vector3;
 }
 
 interface NearVehicleSelection {
@@ -71,6 +77,26 @@ export function cascadeRangesFromBreaks(breaks: readonly number[], near: number,
   return ranges;
 }
 
+/** The hull height whose shadow the cascade mask follows (m): a turret roof, its tallest common part. */
+export const NEAR_VEHICLE_SHADOW_HEIGHT_M = 3;
+/** The shadow's reach is capped here (m): a sun near the horizon would otherwise ask for every cascade. */
+export const NEAR_VEHICLE_SHADOW_REACH_MAX_M = 40;
+
+/**
+ * The view-depth span of a hull's shadow (m, [min, max] offsets from its own depth): the shadow runs from the hull
+ * down-sun over height / tan(elevation), projected on the camera's forward. `fromSun` is the CSM light direction.
+ */
+export function shadowReachDepthSpan(fromSun: Vector3, viewMatrix: Matrix4, heightM = NEAR_VEHICLE_SHADOW_HEIGHT_M): [number, number] {
+  const horizontal = Math.hypot(fromSun.x, fromSun.z);
+  const sinElevation = -fromSun.y;
+  if (!(horizontal > 1e-6) || !(sinElevation > 0)) return [0, 0];
+  const reach = Math.min(NEAR_VEHICLE_SHADOW_REACH_MAX_M, heightM * horizontal / sinElevation);
+  _reach.set(fromSun.x / horizontal * reach, 0, fromSun.z / horizontal * reach).transformDirection(viewMatrix).multiplyScalar(reach);
+  const depthDelta = -_reach.z;
+  return [Math.min(0, depthDelta), Math.max(0, depthDelta)];
+}
+const _reach = new Vector3();
+
 /** Bit i set when a hull at `depth` (± extent) overlaps cascade i. */
 export function cascadeMaskForDepth(depth: number, extent: number, ranges: readonly CascadeRange[]): number {
   let mask = 0;
@@ -100,6 +126,7 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
     if (!ranges.length) return;
     options.camera.updateMatrixWorld();
     _view.copy(options.camera.matrixWorld).invert();
+    const span = options.sunDirection ? shadowReachDepthSpan(options.sunDirection(), _view) : [0, 0];
     candidates.length = 0;
     for (const child of options.scene.children) {
       const detail = vehicleShadowDetailOf(child);
@@ -107,7 +134,12 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
       child.getWorldPosition(_position).applyMatrix4(_view);
       const depth = -_position.z;
       if (!(depth > -extentM) || depth > rangeM) continue;
-      const cascadeMask = cascadeMaskForDepth(Math.max(0, depth), extentM, ranges);
+      // (2026-10-14: and every cascade its shadow lands in: the reach down-sun, on the view depth)
+      let cascadeMask = cascadeMaskForDepth(Math.max(0, depth), extentM, ranges);
+      if (span[0] < 0 || span[1] > 0) {
+        const lo = Math.max(0, depth + span[0]), hi = Math.max(0, depth + span[1]);
+        cascadeMask |= cascadeMaskForDepth((lo + hi) / 2, (hi - lo) / 2 + extentM, ranges);
+      }
       if (!cascadeMask) continue;
       candidates.push({ root: child, depth, cascadeMask });
     }

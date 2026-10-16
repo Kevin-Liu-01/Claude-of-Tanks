@@ -41,6 +41,7 @@
  * model underneath a running battle.
  */
 import type { WebGLRenderer } from 'three';
+import type { ShadowTentTable } from './shadowTent.ts';
 
 type DeviceTier = 'mobile' | 'desktop';
 type DesktopPresetName = 'ultralow' | 'low' | 'medium' | 'high' | 'ultra';
@@ -109,6 +110,17 @@ export interface QualityPreset {
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
   readonly shadowMaxFar: number;
+  /**
+   * 2026-10-14 (SKY shadows r2a, C1): the cascade breaks in metres (lighting.ts takes three's 'custom' split); absent, the
+   * 'practical' split (0.5 between uniform and logarithmic: 89 / 185 / 320 m over 700 m).
+   */
+  readonly shadowSplitsM?: readonly number[];
+  /**
+   * 2026-10-14 (SKY shadows r2a, P1): each cascade's tent kernel (3, 5 or 7 texels; shadowTent.ts), and the wider table a
+   * closed deck takes (its diffuse light). Absent: 3 everywhere, and the deck keeps the table.
+   */
+  readonly shadowTent?: ShadowTentTable;
+  readonly shadowTentDeck?: ShadowTentTable;
   readonly textureScale?: number;
   readonly vehicleTextureScale?: number;
   readonly textureCap?: number;
@@ -327,6 +339,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     bloomScale: 1.0,
     shadowMapSizes: [4096, 4096, 4096, 2048], // 2026-09-12: the 1049e4e 4K mid cascade is back (2K read soft at 100-330 m)
     shadowMaxFar: 700,
+    // 2026-10-14 (SKY shadows r2a, P1): tents 5 / 3 / 3 / 3 (edge ramps about 26, 32, 56, 250 cm; the disk's ghost lobes on
+    // cascades 1-3 gone), 7 on the near pair under a closed deck
+    shadowTent: [5, 3, 3, 3],
+    shadowTentDeck: [7, 7, 3, 3],
   },
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
   // reaches SMAA before the smaller native-canvas upscale instead of being
@@ -363,8 +379,16 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     rcasMinScale: 0.49,
     aoScale: 0,
     bloomScale: 0.6,
-    shadowMapSizes: [2048, 2048, 2048, 1024],
+    // 2026-10-14 (SKY shadows r2a, C1, the shadow-quality plan's P0): cascade 0 ran 0.5-89 m at 10.3 cm a texel (about 11
+    // screen pixels at the 13 m orbit: the owner's "pixelated" tank shadows). Breaks at 30 / 89 / 320 m with the third map
+    // at 4096: 0-30 m at 3.45 cm, 30-89 m about 10.9 cm (as before with its band margin), 89-185 m 18.5 cm (was 21.3),
+    // 185-320 m 18.5 cm (was 37.1), 320-700 m unchanged — no band coarser than the practical split's by more than ~6 %
+    shadowSplitsM: [30, 89, 320],
+    shadowMapSizes: [2048, 2048, 4096, 1024],
     shadowMaxFar: 700,
+    // (tents 5 / 3 / 3 / 3: edge ramps about 17, 31, 56, 490 cm; 7 on the near pair under a closed deck)
+    shadowTent: [5, 3, 3, 3],
+    shadowTentDeck: [7, 7, 3, 3],
   },
   medium: {
     label: 'Medium',
@@ -382,6 +406,9 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     bloomScale: 0.5,
     shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
     shadowMaxFar: 520, // 2026-09-12: reference texel density; 600 m spread the same 2K/1K maps thinner
+    // 2026-10-14 (SKY shadows r2a, P1): tents 5 / 3 / 3 / 3, 7 on the near pair under a closed deck (Low and below keep 3)
+    shadowTent: [5, 3, 3, 3],
+    shadowTentDeck: [7, 7, 3, 3],
   },
   low: {
     label: 'Low',
