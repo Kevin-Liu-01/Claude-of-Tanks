@@ -136,9 +136,10 @@ function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, 
   }
   for (let k = 0; k < 3; k++) {
     const z = z0 + (z1 - z0) * (k + 0.5) / 3;
-    // the string: a stack of discs on its rod hung from the bottom chord, the clamp and the bus tube along x
+    // the string: a stack of discs on its rod hung from the bottom chord, the clamp and the bus tube along x (its discs
+    // six-sided, Skybridge round 6: the switchyard inside the kit's 12,000-triangle budget with round 4's bushings)
     sink.member('structureMetal', [x, h - 0.65, z], [x, h - 1.96, z], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
-    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 8, { colour: PORCELAIN, decor: true }, 0.14);
+    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 6, { colour: PORCELAIN, decor: true }, 0.14);
     pipe(sink, 'structureMetal', [x - 2.6, h - 2.0, z], [x + 2.6, h - 2.0, z], 0.07, 6, { colour: ALUMINIUM, decor: true });
   }
 }
@@ -1011,8 +1012,9 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
       plaster2: (_h, s, l) => [0.08, Math.min(1, s * 0.18 + 0.02), Math.min(1, l * 0.88 + 0.07)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.25), Math.min(1, l * 1.2 + 0.16)],
     },
-    // (Skybridge round 2: the dam's, the powerhouse's and the Bureau's concrete is poured, board-formed, as at the dam)
-    concrete: 'boardFormed',
+    // (Skybridge round 2: the dam's, the powerhouse's and the Bureau's concrete is poured; round 4, gauntlet waves 170-171,
+    // "the board-form planks are still there": one pour, its lifts, ties, mottling and runoff, no boards)
+    concrete: 'poured',
   },
   builders: GLENCANYON_BUILDERS,
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
