@@ -5,6 +5,7 @@
 // halls; a collapsed stilt house where the shelling found it.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
+import { mekongChoStall, mekongMarketHall } from './marketKits.ts'; // props #23: the chợ stall and the market hall
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
@@ -244,27 +245,8 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 
  * A tin-roofed market hall: open sides, concrete posts, a long sheet roof, stall counters. On a market row's plot (wider
  * than deep) the hall lies along it (plotAxes): it no longer reaches 2.4 m past the plot's long sides.
  */
-const marketHall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const plot = plotAxes(ctx.info);
-  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(20, plot.d - 0.6));
-  alongPlot(sink, plot.turned, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.25, D / 2);
-    const top = 3.4;
-    for (const sx of [-1, 0, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3.5) + 1); k < n; k++) {
-      const x = sx * (W / 2 - 0.2), z = -D / 2 + 0.2 + (D - 0.4) * k / (n - 1);
-      sink.span('plaster', x - 0.14, 0.25, z - 0.14, x + 0.14, top + (sx === 0 ? (plot.turned ? 0.65 : 1.4) : 0), z + 0.14);
-    }
-    const roof = plot.turned ? { ...tole(16), eave: 0.3 } : tole(16);
-    emitRoof(sink, roofGeometry(W, D, top, roof), roof, rng() < 0.5 ? pick(rng, RUSTED) : undefined);
-    // the stall platforms: fixed counters of plank on block (they stand as the base hall's walls stood: cover)
-    for (const side of [-1, 1]) for (let z = -D / 2 + 1.2; z < D / 2 - 1; z += 2.4) {
-      sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK) });
-    }
-  });
-  return sink.finish();
-};
+// (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
+const marketHall: RegionalBuilder = (ctx) => mekongMarketHall(ctx, RUSTED);
 
 /** A collapsed stilt house: posts leaning, the deck broken, the roof sheets down. */
 const collapsed: RegionalBuilder = (ctx) => {
@@ -297,25 +279,8 @@ const collapsed: RegionalBuilder = (ctx) => {
 };
 
 /** A market stall (the base market plot): a plank platform, a bamboo frame under a nipa-thatch roof, a counter of baskets. */
-const marketStall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
-  const floor = 0.2, top = 2.5;
-  // a plank platform on the mud (the canal-side stall), not a slab of concrete
-  sink.span('structureWood', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2, { colour: shade(pick(rng, WEATHERED_PLANK), 0.82) });
-  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, top, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
-  }
-  const roof = nipa(24);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
-  const produce: readonly Rgb[] = [0x5a7a3a, 0xc0902a, 0x8a3a2a, 0xa8a090].map(rgb);
-  for (let k = 0; k < 4; k++) {
-    sink.cylinder('structureWood', [-W / 2 + 0.75 + k * (W - 1.5) / 3, floor + 0.8, D / 2 - 0.72], 'y', 0.14, 0.27, 8, { colour: pick(rng, produce), decor: true }, 0.22);
-  }
-  return sink.finish();
-};
+// (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
+const marketStall: RegionalBuilder = (ctx) => mekongChoStall(ctx);
 
 export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => stiltHouse(ctx),

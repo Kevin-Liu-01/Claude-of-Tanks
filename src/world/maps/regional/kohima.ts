@@ -9,6 +9,7 @@ import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { kohimaBazaarRow, kohimaStall } from './marketKits.ts'; // props #23: the bazaar's stall and booths
 
 const TIN: readonly Rgb[] = [0x8a3a2e, 0x7a3428, 0x4f6a4a, 0x5a7a52].map(rgb);
 const WHITE = rgb(0xd4cfc2), GREEN_TRIM = rgb(0x3f5f46);
@@ -114,19 +115,6 @@ const bazaarShop: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const W = Math.max(5, Math.min(9, ctx.info.w - 0.6)), D = Math.max(6, Math.min(10, ctx.info.d - 0.6));
   shop(sink, ctx, 0, W, D, 1.3);
-  return sink.finish();
-};
-
-/**
- * A bazaar row on the base market row's plot (12 x 5.2 m): two or three shops side by side along it under their own
- * tin gables, inside the plot (the single shop it replaces was 6 m deep on a 5.2 m plot).
- */
-const bazaarRow: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const L = ctx.info.w - 0.6, D = Math.max(3.8, Math.min(10, ctx.info.d - 1.4));
-  const n = Math.max(1, Math.min(3, Math.floor(L / 3.6)));
-  const w = L / n - 0.25;
-  for (let i = 0; i < n; i++) shop(sink, ctx, -L / 2 + (i + 0.5) * L / n, w, D, 0.9);
   return sink.finish();
 };
 
@@ -277,33 +265,11 @@ const bellTower: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A bazaar stall (the base market plot): timber posts under a painted tin roof, a plank counter of baskets. */
-const bazaarStall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
-  const floor = 0.3, back = 2.9, front = 2.35, post = pick(rng, WEATHERED_PLANK);
-  sink.span('stone', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
-  for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.08, floor, z * (D / 2 - 0.15) - 0.08, x * (W / 2 - 0.15) + 0.08, h, z * (D / 2 - 0.15) + 0.08, { colour: post });
-  }
-  sink.span('structureWood', -W / 2 + 0.1, floor, -D / 2 + 0.08, W / 2 - 0.1, back - 0.12, -D / 2 + 0.18, { colour: shade(post, 0.85) });
-  const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(back - front, D) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.05, bucket: 'structureMetal', ridge: null };
-  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, pick(rng, TIN)));
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.85, D / 2 - 0.45, { colour: shade(post, 1.1) });
-  const produce: readonly Rgb[] = [0x6a8a3a, 0xb0802a, 0x8a3a2a, 0x9a8a5a].map(rgb);
-  for (let k = 0; k < 4; k++) {
-    const x = -W / 2 + 0.75 + k * (W - 1.5) / 3;
-    sink.cylinder('structureWood', [x, floor + 0.85, D / 2 - 0.72], 'y', 0.16, 0.26, 8, { colour: pick(rng, produce), decor: true }, 0.2);
-  }
-  return sink.finish();
-};
-
 export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   bathhouse: bungalow,
   farmhouse: nagaHouse,
   cornershop: bazaarShop,
-  marketRow: bazaarRow,
+  marketRow: kohimaBazaarRow,
   depot: bazaarShop,
   chapel: church,
   granary,
@@ -311,7 +277,7 @@ export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   ruin: shelled,
   // the base plots the first kit left: the steeple and the market stalls (gauntlet wave 15)
   tower: bellTower,
-  market: bazaarStall,
+  market: kohimaStall,
 });
 
 export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
