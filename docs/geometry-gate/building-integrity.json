@@ -780,8 +780,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.986,
-   "gapM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.374,
    "invertedM2": 0
   },
   "dalmatian/bathhouse": {
@@ -1923,7 +1923,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.23,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1950,7 +1950,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.281,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2733,8 +2733,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.231,
-   "gapM2": 10.465,
+   "insideM2": 1.125,
+   "gapM2": 8.544,
    "invertedM2": 0
   },
   "navajo/factory": {
@@ -3687,7 +3687,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.086,
+   "insideM2": 0.144,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -3715,7 +3715,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 4.354,
+   "gapM2": 7.713,
    "invertedM2": 0
   },
   "tselina/depot": {
@@ -3750,8 +3750,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.795,
-   "gapM2": 0.379,
+   "insideM2": 0.933,
+   "gapM2": 0.389,
    "invertedM2": 0
   },
   "lorrain/chapel": {
@@ -4314,21 +4314,21 @@
   },
   "breton/lighthouse": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "nordland/barn": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "hostomel/cottage": {
    "floating": 0,
@@ -4350,85 +4350,112 @@
   },
   "landmark/verdant:churchyard#1": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/verdant:path#2": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/verdant:stationHall#3": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/verdant:waterTower#4": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/verdant:parkSquare#8": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/fjord:stabbur#0": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/fjord:hayRack#1": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/polders:garden#1": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
   },
   "landmark/longleaf:garden#0": {
    "floating": 0,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0,
-   "sliver": 0
+   "invertedM2": 0
+  },
+  "landmark/verdant:waterTower#6": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 24.236,
+   "invertedM2": 0
+  },
+  "landmark/fjord:fishRack#22": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 21.005,
+   "invertedM2": 0
+  },
+  "landmark/monsoon:colonialBungalow#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 5.844,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T16:21:42.214Z"
+ "updatedAt": "2026-10-16T16:32:28.171Z"
 }
