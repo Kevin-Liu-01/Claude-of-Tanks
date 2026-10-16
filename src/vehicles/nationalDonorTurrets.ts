@@ -31,8 +31,13 @@ export interface NationalDonorTurret {
 const T72B3_RING: Point3 = [.0000002374, 1.457100315, .065591405];
 const T72B3M_RING: Point3 = [.0000072471277, 1.52948397398, .1143146502203];
 const T72B3M_ON_T72B3: Point3 = [0, 1.446 + (1.52948397398 - 1.5153), .065591405];
-const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398, .1143146502203];
-const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315, .065591405];
+// CN lane 2026-10-15: the Type 96B ring rides 20 mm above the B3M roof so the 96B mantlet chin clears the driver's
+// hatch, the shoulder covers and the engine-deck louvres at the gun's full 6 degree depression at every yaw (it cut the
+// louvres by 5 mm at yaw 165); the 99A2 ring rides 54 mm above the B3 roof so the chevrons' lower returns (turret-local
+// y -0.04) clear the B3 roof by 12 mm at every yaw instead of sitting 42 mm inside it. The rings' own collars bridge
+// the running gap.
+const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
+const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .054, .065591405];
 
 // Commander's cupolas in each donor's turret frame (their builders' own datums).
 const T72B3_CUPOLA = [-.6042, -.265 - .065591405] as const;
@@ -41,8 +46,11 @@ const ZTZ99A2_CUPOLA = [.52, -.88] as const;
 const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
 
 export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
-  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA },
-  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA },
+  // The 99A2's right-rear whip stood inside the Qilin station's sweep from the cupola: it moves to the bustle corner.
+  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA,
+    builderOptions: { antennaSeats: [[-1.06, -1.58], [1.06, -2.00]] } },
+  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA,
+    addedTurretEra: ['turret_era_L', 'turret_era_R'] },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA },
   t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA },
   t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA },
