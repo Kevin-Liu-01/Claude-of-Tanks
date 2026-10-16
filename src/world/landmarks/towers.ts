@@ -445,7 +445,6 @@ export const campanile: LandmarkBuilder = (ctx) => {
 // 71 % of its surface) the frame's steel as rolled angles and its decks as boards
 
 const cross3 = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const along = (p: Vec3, d: Vec3, k: number): Vec3 => [p[0] + d[0] * k, p[1] + d[1] * k, p[2] + d[2] * k];
 
 /**
  * A rolled steel angle from a to b, its heel on the a-b line: one leg `w` wide in the frame's face (the face whose outward
