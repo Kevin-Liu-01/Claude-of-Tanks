@@ -145,9 +145,12 @@ const ZUBR_ROW = POLISH_PROTECTION_LAYOUTS[PROTECTION_MODEL.t72b3_zubr];
 const ZUBR = {
   belt: {low: .040, high: .120, origin: [0, .08, .30] as V3, start: .34, chinX: .44, inner: .035, outer: .045},
   tile: [.040, .068, .125] as const,
-  // front stanchions: right (-X) behind the right front roof cassette (z .234), left (+X) ahead of the top smoke tube
-  // (z .09) and outboard of the gunner's sight hood (x .992)
-  stanchion: {front: [[-1.14, .16], [1.14, .19]] as const, rear: [.70, -.98] as const, top: .80, arm: .755},
+  // front stanchions behind the left smoke bank's lines of fire (its brackets end at z -.18): the right one outboard of
+  // the commander's cupola (x -1.067 at z -.34), the left one between the gunner's sight hood (z -.212), his cupola and
+  // the left rear roof cassette (x 1.025); the rear ones behind both cupolas
+  stanchion: {front: [[-1.16, -.25], [.92, -.31]] as const, rear: [.70, -.98] as const, top: .80, arm: .755},
+  /** The driving lamps ride the front arms' outer ends, clear of the screen clamps. */
+  lampX: 1.80,
   screen: {x: ZUBR_ROW.turretX, front: ZUBR_ROW.turretPanels[0][1], rear: ZUBR_ROW.turretPanels[0][0],
     bottom: ZUBR_ROW.turretBottom, top: ZUBR_ROW.turretTop},
   rack: {front: -2.00, rear: ZUBR_ROW.rearZ, half: ZUBR_ROW.rearHalf, floor: ZUBR_ROW.rearBottom, top: ZUBR_ROW.rearTop,
@@ -218,7 +221,7 @@ function zubrEraBelt(P: TankBuilderPort, casting: Stock): void {
 function stanchionArm(P: TankBuilderPort, casting: Stock, side: number, px: number, pz: number, top: number,
   armY: number, toX: number): void {
   weldedBlock(P, casting, px, pz, .12, .12, top);
-  P.addEquipment('turretDetail', box(.17, .022, .17), px, top + .011, pz);
+  P.addEquipment('turretDetail', box(.15, .022, .15), px, top + .011, pz);
   lattice(P, beamBetween([px + side * .06, armY, pz], [toX, armY, pz], .022, seg(P, 8, 5)), 'side-mount');
   lattice(P, box(.07, .07, .09).translate(px + side * .085, armY, pz), 'mount-shoe');
 }
@@ -241,11 +244,12 @@ function zubrScreens(P: TankBuilderPort, casting: Stock, lamp: Parameters<typeof
     const count = Math.ceil((s.front - s.rear) / .16);
     for (let i = 1; i < count; i++) lattice(P, box(.018, s.top - s.bottom, .018).translate(x, mid, s.rear + i * (s.front - s.rear) / count), 'screen-slat');
     lattice(P, beamBetween([x, s.bottom, s.rear], [x, s.top, (s.front + s.rear) / 2], .010, 4), 'screen-brace');
-    // Round driving lamps on the front stanchions, ahead of everything on the roof and clear of the gunner's sight.
-    nationalLamp(P, front[0], front[1], st.top + .022, lamp);
-    // Laser-warning heads on the front arms' outer ends, guarded.
-    const lx = side * (s.x - .07), lz = front[1], seat = st.arm + .022, y = seat + .039;
-    P.addEquipment('turretDetail', box(.07, .036, .09), lx, seat - .012, lz);
+    // Round driving lamps on saddles at the front arms' outer ends, above the stowage boxes and every roof fitting.
+    const ax = side * ZUBR.lampX, armTop = st.arm + .022;
+    P.addEquipment('turretDetail', box(.10, .036, .10), ax, armTop - .012, front[1]);
+    nationalLamp(P, ax, front[1], armTop + .006, lamp);
+    // Guarded laser-warning heads on the front stanchions' top plates.
+    const lx = front[0], lz = front[1], seat = st.top + .022, y = seat + .042;
     P.addEquipment('turretDetail', box(.105, .084, .13), lx, y, lz);
     P.addModuleVisual('optics', 'turretGlass', box(.074, .035, .013), lx, y + .006, lz + .071);
     for (const dx of [-.068, .068]) P.addEquipment('turretDetail', beamBetween([lx + dx, seat - .008, lz - .06], [lx + dx, seat + .133, lz + .058], .008, seg(P, 10, 5)));
@@ -353,7 +357,7 @@ function buildZubrTurret(P: TankBuilderPort, casting: Stock): void {
 const ZUBR_II_ROW = POLISH_PROTECTION_LAYOUTS[PROTECTION_MODEL.t72b3_zubr_ii];
 const ZUBR_II = {
   wall: {x: 1.92, thick: .06, front: .42, knee: -.55, back: -.95, shoulder: [1.28, -1.59] as const, top: .80,
-    low: .090, lowAft: .125, lid: .37, floor: [.088, .104] as const, cap: 1.72},
+    low: .090, lowAft: .125, lid: .37, floor: [.088, .104] as const, cap: 1.78},
   tile: [.075, .19, .22] as const,
   courses: [.215, .415, .615] as const,
   columns: [.30, .055, -.19, -.435, -.68] as const,
@@ -403,7 +407,7 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
       floorRings.push([[ix, w.floor[0], z], [ox, w.floor[0], z], [ox, w.floor[1], z], [ix, w.floor[1], z]]);
     }
     P.addExternalArmor('turret', loft(floorRings));
-    // The front cap closes the wall outboard of the Relikt fan's outer lip.
+    // The front cap closes the wall outboard of the Relikt fan's outer lip and of the left smoke bank's lines of fire.
     P.addExternalArmor('turret', box(w.x - w.cap, w.top - w.low, .04), side * (w.x + w.cap) / 2, (w.top + w.low) / 2, w.front - .02);
     // Stepped ERAWA courses: the middle course staggered half a pitch; two columns on the clipped shoulder.
     const seats = new Stock(P.spec.id, [wall]);

@@ -12,7 +12,7 @@ export const POLISH_PROTECTION_LAYOUTS = [
     rearZ:-2.62, rearHalf:1.37, rearBottom:.44, rearTop:.77, rearSeatZ:-1.98, rearSeatY:.515},
   {id:'t72b3_zubr', hullX:2.30, hullBottom:.94, hullTop:1.37,
     hullPanels:[[-2.32,-.92],[-.72,.56],[.89,2.30]],
-    turretX:1.95, turretBottom:.24, turretTop:.74, turretPanels:[[-1.25,.30]],
+    turretX:1.95, turretBottom:.24, turretTop:.74, turretPanels:[[-1.25,.10]],
     rearZ:-2.34, rearHalf:.84, rearBottom:.085, rearTop:.50, rearSeatZ:-1.30, rearSeatY:.075},
   {id:'t72b3_zubr_ii', hullX:2.35, hullBottom:.72, hullTop:1.34,
     hullPanels:[[-2.43,-1.25],[-1.07,.11],[.29,1.47],[1.65,2.68]],
