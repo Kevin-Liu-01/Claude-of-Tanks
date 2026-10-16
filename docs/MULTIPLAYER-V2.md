@@ -2241,6 +2241,26 @@ not. The receipt now queues the stalled seat's rows and runs both wake orders: t
 0.6 s. Ablating either half fails the receipt: rows first reads 1.71 m after 0.3 s; frame first, with per-row reconcile,
 reads 2.86 m after 0.6 s.
 
+### 13.23 The seat's movement checkpoint as a changed-value mask (MP stream, wire 7, 2026-10-15)
+
+**Why.** The §7 side-by-side (Sept 30 against main, built sites, Verdant, two peers) read the host's uplink at 112 against
+135 kbit/s. A peer's downlink by message (the in-process P2P set-up, `$SP/mp/uplink-probe.mjs`) shows where: snapshot
+deltas averaged 329 bytes on Sept 30 and 380 on main, events and keyframes alike. The viewer section carries the
+seat's movement checkpoint whole on every snapshot. Physics versions 3-8 grew it from 45 to 63 `f32` values, which is
++72 bytes a snapshot to every seat.
+
+**What.** On a delta whose baseline holds a viewer on the same checkpoint version and length, the checkpoint is a mask
+of the values that changed since the baseline's (compared as `f32`) and those values (`src/mp/wire/README.md`). A
+driving hull changes ~36 of the 63 between 20 Hz snapshots, a stopped one ~20. Keyframes and every baseline the mask
+cannot follow write the full form. WIRE_VERSION 6 -> 7: a seat and a host on different layouts meet the same-wire build
+check's "refresh" refusal (`matchBuildGate`). The PROTOCOL_VERSION bump is the coordinator's: it rides 225's ids-bulk
+bump to 8, or takes the next one.
+
+Receipts: `viewerMask.selftest` checks exact `f32` round trips (the sign of zero kept), the full form wherever the
+baseline cannot follow, a typed `missing_baseline`, and on the real movement model the viewer at 174 bytes a snapshot
+driving and 114 stopped, against 274 whole. The probe's snapshot downlink for two peers reads Sept 30 108, main 125,
+masked 95 kbit/s (deltas 329 / 380 / 282 bytes).
+
 ### 13.24 A busy seat is not a dead host (MP stream, 2026-10-15)
 
 **Why.** Every main rejoin in the §7 side-by-side opened a second peer link about 7 s after the first. The first link
@@ -2294,25 +2314,6 @@ Receipts:
 - `garageDressingLifecycle.selftest`: the invite boot defers the work and a plain boot runs it at ready.
 - The timing is measured in the final pass (the rejoin trace).
 
-### 13.23 The seat's movement checkpoint as a changed-value mask (MP stream, wire 7, 2026-10-15)
-
-**Why.** The §7 side-by-side (Sept 30 against main, built sites, Verdant, two peers) read the host's uplink at 112 against
-135 kbit/s. A peer's downlink by message (the in-process P2P set-up, `$SP/mp/uplink-probe.mjs`) shows where: snapshot
-deltas averaged 329 bytes on Sept 30 and 380 on main, events and keyframes alike. The viewer section carries the
-seat's movement checkpoint whole on every snapshot. Physics versions 3-8 grew it from 45 to 63 `f32` values, which is
-+72 bytes a snapshot to every seat.
-
-**What.** On a delta whose baseline holds a viewer on the same checkpoint version and length, the checkpoint is a mask
-of the values that changed since the baseline's (compared as `f32`) and those values (`src/mp/wire/README.md`). A
-driving hull changes ~36 of the 63 between 20 Hz snapshots, a stopped one ~20. Keyframes and every baseline the mask
-cannot follow write the full form. WIRE_VERSION 6 -> 7: a seat and a host on different layouts meet the same-wire build
-check's "refresh" refusal (`matchBuildGate`). The PROTOCOL_VERSION bump is the coordinator's: it rides 225's ids-bulk
-bump to 8, or takes the next one.
-
-Receipts: `viewerMask.selftest` checks exact `f32` round trips (the sign of zero kept), the full form wherever the
-baseline cannot follow, a typed `missing_baseline`, and on the real movement model the viewer at 174 bytes a snapshot
-driving and 114 stopped, against 274 whole. The probe's snapshot downlink for two peers reads Sept 30 108, main 125,
-masked 95 kbit/s (deltas 329 / 380 / 282 bytes).
 
 ## 10. Decisions for the owner
 
