@@ -102,8 +102,10 @@ for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_o
   if(['t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun'].includes(id)){
    const receipt=turret.userData.cheekOptics;assert.equal(receipt.anchors.length,2);
    const lens=new Mesh(turret.getObjectByName('turretGlass').geometry,mat);lens.updateMatrixWorld();
+   // Owner 2026-10-15 (VEH-20): the Kunlun's Shtora heads flank the Type 96B mantlet (chinaDonorTurretKit.ts).
+   const [eyeX,eyeY]=id==='t72b3m_kunlun'?[.6,.205]:[.9,.43];
    for(const [x,y,z]of receipt.anchors){
-    assert.equal(Math.abs(x),.9);assert.equal(y,.43);
+    assert.equal(Math.abs(x),eyeX);assert.equal(y,eyeY);
     const hit=new Raycaster(new Vector3(x,y,z+.6),new Vector3(0,0,-1),0,.4).intersectObject(lens)[0];
     assert(hit&&hit.point.z>z+.35,`${id}: paired exposed optics beside the gun`);
    }

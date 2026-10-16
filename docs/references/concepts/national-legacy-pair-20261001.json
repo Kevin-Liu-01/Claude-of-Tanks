@@ -50,17 +50,17 @@
     "pl_t72b3_zubr_ii": {
       "id": "pl_t72b3_zubr_ii",
       "ring": [
-        0.008,
-        1.39,
-        0.065591
+        0,
+        1.4601839739799998,
+        0.065591405
       ],
       "gunLocal": [
-        0,
-        0.43,
-        0.9
+        0.0014239406586,
+        0.2925099909400002,
+        1.2198708767647
       ],
-      "barrelLengthM": 5.2,
-      "barrelRadiusM": 0.105,
+      "barrelLengthM": 5.2533308821319995,
+      "barrelRadiusM": 0.1,
       "pitchDeg": [
         -6,
         14
@@ -68,19 +68,19 @@
       "mainCaliberMm": 125,
       "roofMachineGuns": 1,
       "hullLengthM": 6.94035,
-      "hullWidthM": 4.327,
-      "widthM": 4.327,
-      "overallLengthM": 9.5268,
-      "tallestM": 3.285,
+      "hullWidthM": 4.790943,
+      "widthM": 4.734,
+      "overallLengthM": 9.8991,
+      "tallestM": 3.3227,
       "specDimensions": {
         "hullLengthM": 6.94035,
-        "overallLengthM": 9.635766,
-        "widthM": 4.327,
-        "heightM": 3.285
+        "overallLengthM": 10.008968163896698,
+        "widthM": 4.790943,
+        "heightM": 3.3227
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Polish T-72B3 Zubr II modernization concept retaining the native T-72 hull and running gear beneath a new broad welded turret. Squared side armor cabinets, clipped rear shoulders, a long bustle basket, stepped ERAWA cassette fields and independent optics distinguish its architecture from the T-90SM. Thick segmented skirts fold around both track ends and meet the native curved fenders through continuous fitted shoulders; guarded lamps, engine service fittings, tool rails, strapped stores and rear communications equipment remain physically seated. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
+      "silhouette": "Polish T-72B3 heavy modernization carrying the complete T-72B3M (2016) turret inside long squared armour cabinets with three staggered rows of large ERAWA tiles, square lamps on the cabinet fronts, a long open slatted bustle basket with strapped packs and a roll, guarded rear lights, an independent guarded sight, a monocle sensor and split-panel roof sensor, the protected 30 mm drum station and its own field suit. The native T-72B3 hull keeps deep four-course ERAWA skirts."
     }
   },
   "ownerAmendments": [
