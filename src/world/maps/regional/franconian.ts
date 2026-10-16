@@ -207,6 +207,9 @@ function townFront(sink: PartSink, frame: HouseFrame, streetFace: 'front' | 'lef
 export const FRANCONIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   rowhouse: withPalette(FRANCONIAN_PALETTE, townHouse),
   ...bindFachwerk(FRANCONIAN_PALETTE, ['tavern', 'schoolhouse', 'cornershop', 'ruin', 'church', 'depot', 'cottage', 'farmhouse', 'barn']),
+  // (props census #4, lane B 2026-10-14: the town plan's warehouse slot — Steinburg's plan lists one — is the Fachwerk
+  // storehouse on its loading platform, never the plan's brick hall: planFallbacks.selftest.mjs)
+  warehouse: bindFachwerk(FRANCONIAN_PALETTE, ['depot']).depot,
   // (the looks lane, 2026-10-13: Steinburg's uncovered types — the wall tower, the sandstone chapel, the fire station with
   // its hose tower, the works with its chimney; franconianCivic.ts)
   ...Object.fromEntries(Object.entries(FRANCONIAN_CIVIC).map(([id, builder]) => [id, withPalette(FRANCONIAN_PALETTE, builder)])),

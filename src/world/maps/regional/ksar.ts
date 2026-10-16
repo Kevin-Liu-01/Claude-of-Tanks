@@ -4,9 +4,10 @@
 // fronts; flat-roofed village houses rendered in ochre or whitewash with Tunisian blue doors and window grilles, a stair
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
-import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, holedPolygon, recordShaft, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const BLUES: readonly Rgb[] = [0x2f6a9e, 0x3a7ab0, 0x2e5f8a].map(rgb);
@@ -22,12 +23,16 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 /** One ghorfa cell: rubble walls and a barrel vault running back from its rounded front, a small door, a beam. */
 function ghorfa(sink: PartSink, x: number, y: number, z: number, w: number, h: number, d: number, rng: () => number, blue: Rgb): void {
   const r = w / 2;
-  sink.span(MUD, x - r, y, z - d, x + r, y + h, z);
+  // (props census #7, lane B 2026-10-14: the cell's door was a dark plate on its front with the leaf laid over it) the
+  // cell's body behind its front wall, the door cut through that wall into its dark, the leaf hung shut at the back of the
+  // cut
+  const fw = Math.min(0.45, d * 0.3);
+  sink.span(MUD, x - r, y, z - d, x + r, y + h, z - fw);
+  const front: Face = { origin: [x, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: w };
+  holedPolygon(sink, MUD, front, [[-r, y], [r, y], [r, y + h], [-r, y + h]], [{ u0: -0.35, u1: 0.35, y0: y + 0.15, y1: y + 1.25 }], fw, fw - 0.06);
   // the vault: a half drum along -z from the front
   sink.cylinder(MUD, [x, y + h, z - d], 'z', d, r, 8, {}, r, true, -Math.PI / 2, Math.PI);
-  const front: Face = { origin: [x, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: w };
-  faceBox(sink, 'dark', front, 0, y + 0.7, 0.005, 0.7, 1.1, 0.02, { decor: true });
-  faceBox(sink, 'structureWood', front, 0, y + 0.7, 0.03, 0.66, 1.05, 0.04, { colour: rng() < 0.5 ? blue : shade(TIMBER, 0.9), decor: true, uv: UV_MEMBER });
+  faceBox(sink, 'structureWood', front, 0, y + 0.7, -fw + 0.1, 0.66, 1.05, 0.04, { colour: rng() < 0.5 ? blue : shade(TIMBER, 0.9), decor: true, uv: UV_MEMBER });
   if (rng() < 0.6) faceBox(sink, 'structureWood', front, (rng() - 0.5) * w * 0.4, y + h + r * 0.55, 0.3, 0.12, 0.12, 0.6, { colour: TIMBER, decor: true });
 }
 
@@ -162,12 +167,14 @@ const minaret: RegionalBuilder = (ctx) => {
   sink.span('plaster', -S / 2, 0.6, -S / 2, S / 2, H, S / 2);
   sink.span('plaster', -S / 2 - 0.2, H, -S / 2 - 0.2, S / 2 + 0.2, H + 0.25, S / 2 + 0.2);
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) sink.span('plaster', sx * (S / 2 + 0.1) - 0.15, H + 0.25, sz * (S / 2 + 0.1) - 0.15, sx * (S / 2 + 0.1) + 0.15, H + 1.0, sz * (S / 2 + 0.1) + 0.15);
-  const L = S * 0.62;
-  sink.span('plaster', -L / 2, H + 0.25, -L / 2, L / 2, H + 2.4, L / 2);
-  for (const face of [{ origin: [0, 0, L / 2], u: [1, 0, 0], out: [0, 0, 1], width: L }, { origin: [L / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: L },
-    { origin: [0, 0, -L / 2], u: [-1, 0, 0], out: [0, 0, -1], width: L }, { origin: [-L / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: L }] as Face[]) {
-    faceBox(sink, 'dark', face, 0, H + 1.3, 0.005, 0.7, 1.2, 0.02, { decor: true });
+  // (props census #5, lane B 2026-10-15) the lantern open on its four corner piers under its head (its arches were dark
+  // plates on a solid block); the minaret recorded as a shaft body
+  const L = S * 0.62, pw = (L - 0.7) / 2;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    sink.span('plaster', sx < 0 ? -L / 2 : L / 2 - pw, H + 0.25, sz < 0 ? -L / 2 : L / 2 - pw, sx < 0 ? -L / 2 + pw : L / 2, H + 1.9, sz < 0 ? -L / 2 + pw : L / 2);
   }
+  sink.span('plaster', -L / 2, H + 1.9, -L / 2, L / 2, H + 2.4, L / 2);
+  recordShaft(sink, 0, 0, S, H + 3.6, 'plaster');
   sink.cylinder('plaster', [0, H + 2.4, 0], 'y', 0.6, L * 0.5, 10, {}, L * 0.42, false);
   sink.cylinder('plaster', [0, H + 3.0, 0], 'y', 0.6, L * 0.42, 10, {}, 0.05);
   // the green-tiled band under the gallery
@@ -224,7 +231,17 @@ const ruin: RegionalBuilder = (ctx) => {
     if (rng() < 0.35) continue;
     ghorfa(sink, -W / 2 + 2.5 * (i + 0.5), 0, D / 2, 2.4, 1.6 + rng() * 0.5, D * (0.4 + rng() * 0.5), rng, blue);
   }
-  sink.span(MUD, -W * 0.4, -0.2, -D * 0.3, W * 0.35, 0.9, D * 0.1, { decor: true });
+  // (props census #7, lane B 2026-10-14; the judges: "the slump a box") the fallen vaults' mud slumped in two low
+  // mounds across the range's front, the broken mud bricks of the vaults on them
+  const look = ctx.variant;
+  for (const [mx, mz, mr, mh] of [[-W * 0.22, -D * 0.12, Math.min(W, D) * 0.3, 0.85], [W * 0.18, -D * 0.05, Math.min(W, D) * 0.22, 0.6]] as const) {
+    sink.cylinder(MUD, [mx, -0.2, mz], 'y', mh + 0.2, mr, 9, { decor: true, shadow: true }, mr * 0.4, true, look() * 3);
+    for (let k = 0; k < 4; k++) {
+      const a = look() * Math.PI * 2, rr = mr * (0.2 + look() * 0.5), sz = 0.22 + look() * 0.18;
+      const hy = mh * (1 - (rr / mr) * (rr / mr)) * 0.9;
+      sink.span(MUD, mx + Math.cos(a) * rr - sz, hy - 0.06, mz + Math.sin(a) * rr - sz * 0.7, mx + Math.cos(a) * rr + sz, hy + sz * 0.6, mz + Math.sin(a) * rr + sz * 0.7, { decor: true, shade: 0.85 });
+    }
+  }
   return sink.finish();
 };
 
@@ -515,6 +532,20 @@ const shaliCluster: RegionalBuilder = (ctx) => {
  * beams and slit openings near the top) or a watch tower with its door high in the wall. Kershef the
  * colour of the town (no limewash, no cap of another colour: a tall pale taper with a coloured top reads as a lighthouse).
  */
+/**
+ * A slit or a small window in a mud wall (props census #5, lane B 2026-10-15: they were dark plates on a thin raised
+ * frame): its dark in the wall's plane and the thick mud surround round it standing 16 cm proud, so the dark is the back
+ * of a reveal. (u, y) its centre, w x h the dark.
+ */
+function slitIn(sink: PartSink, f: Face, u: number, y: number, w: number, h: number): void {
+  // (the wall leans back as it rises: the dark stands 4.5 cm off the face's plane so none of it sinks into the batter
+  // below, the surround 24 cm deep round it)
+  const t = 0.08, o = { decor: true, shade: 0.8 } as const;
+  faceBox(sink, 'dark', f, u, y, 0.045, w + 0.02, h + 0.02, 0.008, { decor: true });
+  for (const s of [-1, 1]) faceBox(sink, MUD, f, u + s * (w / 2 + t / 2), y, 0.12, t, h + 2 * t, 0.24, o);
+  for (const s of [-1, 1]) faceBox(sink, MUD, f, u, y + s * (h / 2 + t / 2), 0.12, w, t, 0.24, o, 'ends');
+}
+
 function mudTower(sink: PartSink, S: number, H: number, rng: () => number, minaret: boolean): void {
   // (round 2, the gauntlet's wave 125: "a straight-sided, crenellated castle keep") the tower is battered to its head —
   // two fifths in on a minaret, three tenths on a watch tower — its arrises rounded, a flat parapet head with a
@@ -526,22 +557,19 @@ function mudTower(sink: PartSink, S: number, H: number, rng: () => number, minar
     // the gallery's palm beams and the slit openings under the head, on all four faces
     for (const name of sides) {
       const f = sideAt(name, H - 1.6);
-      for (const u of [-0.32, 0.32]) {
-        faceBox(sink, MUD, f, u * f.width, H - 2.1 + 0.37, 0.02, 0.36, 0.9, 0.04, { decor: true, fineSides: true, shade: 0.8 });
-        faceBox(sink, 'dark', f, u * f.width, H - 2.1 + 0.37, 0.042, 0.2, 0.74, 0.004, { decor: true });
-      }
+      for (const u of [-0.32, 0.32]) slitIn(sink, f, u * f.width, H - 2.1 + 0.37, 0.2, 0.74);
       const g = sideAt(name, H - 0.75);
       for (let k = -2; k <= 2; k++) faceBox(sink, 'structureWood', g, k * g.width / 5.5, H - 0.75, 0.1, 0.11, 0.11, 0.22, { colour: PALM, decor: true, uv: UV_MEMBER });
     }
   } else {
     // the watch tower's door, high in its front wall, and a beam over it
     const f = sideAt('front', H * 0.35);
-    doorUnit(sink, f, 0, H * 0.3, 0.8, 1.6, { leaf: PALM, frame: { bucket: MUD, width: 0.2, out: 0.08 }, steps: null, leafKind: 'plank' });
+    // (the frame 22 cm proud: the leaf at the back of its reveal, not laid on the wall)
+    doorUnit(sink, f, 0, H * 0.3, 0.8, 1.6, { leaf: PALM, frame: { bucket: MUD, width: 0.2, out: 0.22 }, steps: null, leafKind: 'plank' });
     faceBox(sink, 'structureWood', f, 0, H * 0.3 + 1.75, 0.14, 1.2, 0.12, 0.28, { colour: PALM, decor: true, uv: UV_MEMBER });
     if (rng() < 0.5) for (const name of sides) {
       const g = sideAt(name, H * 0.7);
-      faceBox(sink, MUD, g, 0, H * 0.68 + 0.25, 0.02, 0.46, 0.66, 0.04, { decor: true, fineSides: true, shade: 0.8 });
-      faceBox(sink, 'dark', g, 0, H * 0.68 + 0.25, 0.042, 0.3, 0.5, 0.004, { decor: true });
+      slitIn(sink, g, 0, H * 0.68 + 0.25, 0.3, 0.5);
     }
   }
 }
@@ -551,7 +579,9 @@ const shaliMinaret: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const R = reach(ctx);
   const S = Math.max(2.6, Math.min(R.W, R.D) - 0.2);
-  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(11, Math.min(15, ctx.info.h - 0.5)), ctx.rng, true));
+  const H = Math.max(11, Math.min(15, ctx.info.h - 0.5));
+  // (props census #5) the minaret recorded as a shaft body (it topples in its courses)
+  sink.placed(0, R.cx, 0, R.cz, () => { mudTower(sink, S, H, ctx.rng, true); recordShaft(sink, 0, 0, S, H, MUD); });
   return sink.finish();
 };
 
@@ -560,7 +590,8 @@ const siwaTower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const R = reach(ctx);
   const S = Math.max(3.0, Math.min(R.W, R.D) - 0.2);
-  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(7.5, ctx.info.h - 1.5), ctx.rng, false));
+  const H = Math.max(7.5, ctx.info.h - 1.5);
+  sink.placed(0, R.cx, 0, R.cz, () => { mudTower(sink, S, H, ctx.rng, false); recordShaft(sink, 0, 0, S, H, MUD); });
   return sink.finish();
 };
 
@@ -620,20 +651,31 @@ const shaliRuin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   const R = reach(ctx);
-  const x0 = R.x0 + 0.25, x1 = R.x1 - 0.25, z0 = R.z0 + 0.25, z1 = R.z1 - 0.25, t = 0.45;
-  for (const [a, b, c, d, axis] of [[x0, z0, x1, z0 + t, 'x'], [x0, z1 - t, x1, z1, 'x'], [x0, z0 + t, x0 + t, z1 - t, 'z'], [x1 - t, z0 + t, x1, z1 - t, 'z']] as const) {
-    const len = axis === 'x' ? c - a : d - b, pieces = Math.max(3, Math.round(len / 1.3));
-    for (let k = 0; k < pieces; k++) {
-      if (rng() < 0.2) continue;
-      const p0 = k / pieces, p1 = (k + 1) / pieces, top = 0.7 + rng() * 2.4;
-      if (axis === 'x') sink.span(MUD, a + len * p0, -0.3, b, a + len * p1, top, d);
-      else sink.span(MUD, a, -0.3, b + len * p0, c, top, b + len * p1);
-      // the rain-rounded top of the stub
-      const cxm = axis === 'x' ? a + len * (p0 + p1) / 2 : (a + c) / 2, czm = axis === 'x' ? (b + d) / 2 : b + len * (p0 + p1) / 2;
-      sink.cylinder(MUD, [cxm, top, czm], 'y', 0.35, Math.min(len / pieces, t) * 0.6, 7, { decor: true }, 0.08);
-    }
-  }
-  sink.cylinder(KERSHEF_OLD, [(x0 + x1) / 2, -0.2, (z0 + z1) / 2], 'y', 0.9, Math.min(x1 - x0, z1 - z0) * 0.32, 8, { decor: true }, Math.min(x1 - x0, z1 - z0) * 0.1, true, look());
+  const W = R.x1 - R.x0 - 0.5, D = R.z1 - R.z0 - 0.5;
+  // (props census #7, lane B 2026-10-14; the judges: "span slices to random tops under cones") the ruin grammar: the
+  // kershef house's own walls slumped to heads the rain has rounded, its door and small windows cut through where they
+  // stand, the palm-trunk roof and its mud fallen in over the heaps
+  sink.placed(0, (R.x0 + R.x1) / 2, 0, (R.z0 + R.z1) / 2, () => {
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 2.2), w: 0.9, y0: 0, h: 1.8 }];
+    for (const face of ['right', 'left'] as const) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * 1.4, w: 0.45, y0: 1.2, h: 0.55 });
+    const head = (): RuinHead => ({ a: 0.7 + rng() * 2.4, b: 0.7 + rng() * 2.4, at: rng(), dip: 0.3 + rng() * 0.4, ragged: 0.2 });
+    const r = ruinHouse(sink, {
+      w: W, d: D, t: 0.45, wall: MUD, plinth: null, floor: 0.1, storeys: [2.6, 2.2], openings,
+      heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.6,
+      lintel: { bucket: 'structureWood', colour: PALM }, roof: { bucket: MUD, piece: [0.9, 0.7, 0.1] }, timber: shade(PALM, 0.55), mobile: ctx.tier === 'mobile',
+    }, rng, look);
+    // the rain-rounded heads: the slumped mud along each wall's top, a lip running the strip (dressing; spaced lumps read
+    // as battlements)
+    sink.dressing(ctx.tier === 'mobile', () => {
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const f = r.faces[name], tp = r.tops[name], n = tp.length - 1;
+        for (let k = 0; k < n; k++) {
+          const u0 = -f.width / 2 + (f.width * k) / n, u1 = -f.width / 2 + (f.width * (k + 1)) / n;
+          sink.member(MUD, facePoint(f, u0, tp[k] - 0.06, -0.225), facePoint(f, u1, tp[k + 1] - 0.06, -0.225), 0.5, 0.14, [0, 1, 0], { decor: true, exposed: true }, 0);
+        }
+      }
+    });
+  });
   return sink.finish();
 };
 

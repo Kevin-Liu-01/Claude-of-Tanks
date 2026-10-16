@@ -14,6 +14,7 @@ import { fenceRun } from './grounds.ts';
 import { letterText, measureText } from './lettering.ts';
 import { gateStubs } from './plan.ts';
 import type { LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xece8de), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const VERMILION = rgb(0xc4452c), LACQUER_BLACK = rgb(0x1e1c1b), FRAME_WHITE = rgb(0xe8e4da), GILT = rgb(0xb8933e);
@@ -71,44 +72,51 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
       moulding(sink, 'plaster', p, p, 1.4, 0.1, 0.04);
     });
     revolve(sink, 'plaster', x, 0, [[(p / 2 + 0.06) * Math.SQRT2, pillarTop + 0.12], [0.05, pillarTop + 0.75]], 4, {}, Math.PI / 4);
-    // the flag on its pole
-    sink.span('structureMetal', x - 0.025, pillarTop + 0.6, -0.025, x + 0.025, pillarTop + 3.0, 0.025, { colour: rgb(0x3a3a38), decor: true });
-    const fy = pillarTop + 2.05, fl = 1.15; // both flags stream the same way, with the wind
-    sink.quad('structureWood', [x, fy, 0.012], [x + fl * 0.5, fy - 0.06, 0.03], [x + fl * 0.5, fy + 0.84, 0.03], [x, fy + 0.9, 0.012], { colour: BANNER_RED, decor: true });
-    sink.quad('structureWood', [x + fl * 0.5, fy - 0.06, 0.03], [x + fl, fy + 0.02, 0.0], [x + fl, fy + 0.86, 0.0], [x + fl * 0.5, fy + 0.84, 0.03], { colour: shade(BANNER_RED, 0.9), decor: true });
-    sink.quad('structureWood', [x, fy + 0.9, -0.012], [x + fl * 0.5, fy + 0.84, -0.03], [x + fl * 0.5, fy - 0.06, -0.03], [x, fy, -0.012], { colour: shade(BANNER_RED, 0.8), decor: true });
-    sink.quad('structureWood', [x + fl * 0.5, fy + 0.84, -0.03], [x + fl, fy + 0.86, 0.0], [x + fl, fy + 0.02, 0.0], [x + fl * 0.5, fy - 0.06, -0.03], { colour: shade(BANNER_RED, 0.72), decor: true });
+    // the flag on its pole (it topples when the arch is breached: props lane A, E12, landmarks/pieces.ts)
+    piece(sink, { name: `flag-${sx < 0 ? 'l' : 'r'}`, kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
+      s.span('structureMetal', x - 0.025, pillarTop + 0.6, -0.025, x + 0.025, pillarTop + 3.0, 0.025, { colour: rgb(0x3a3a38), decor: true });
+      const fy = pillarTop + 2.05, fl = 1.15; // both flags stream the same way, with the wind
+      s.quad('structureWood', [x, fy, 0.012], [x + fl * 0.5, fy - 0.06, 0.03], [x + fl * 0.5, fy + 0.84, 0.03], [x, fy + 0.9, 0.012], { colour: BANNER_RED, decor: true });
+      s.quad('structureWood', [x + fl * 0.5, fy - 0.06, 0.03], [x + fl, fy + 0.02, 0.0], [x + fl, fy + 0.86, 0.0], [x + fl * 0.5, fy + 0.84, 0.03], { colour: shade(BANNER_RED, 0.9), decor: true });
+      s.quad('structureWood', [x, fy + 0.9, -0.012], [x + fl * 0.5, fy + 0.84, -0.03], [x + fl * 0.5, fy - 0.06, -0.03], [x, fy, -0.012], { colour: shade(BANNER_RED, 0.8), decor: true });
+      s.quad('structureWood', [x + fl * 0.5, fy + 0.84, -0.03], [x + fl, fy + 0.86, 0.0], [x + fl, fy + 0.02, 0.0], [x + fl * 0.5, fy - 0.06, -0.03], { colour: shade(BANNER_RED, 0.72), decor: true });
+    });
   }
   // the beam and the banner over the passage (a solid of their own, clear of the pillars' tops)
   const beamY = pillarTop - 1.35, inner = span / 2;
   sink.span('structureWood', -inner - 0.02, beamY, -0.16, inner + 0.02, beamY + 0.3, 0.16, { colour: TIMBER_DARK });
   const by0 = beamY + 0.3 + ARCH_GAP_M, by1 = by0 + 1.2;
-  sink.span('structureWood', -inner + 0.25, by0, -0.07, inner - 0.25, by1, 0.07, { colour: BANNER_RED });
-  for (const [x0, x1, y0, y1] of [[-inner + 0.15, inner - 0.15, by0 - 0.06, by0 + 0.08], [-inner + 0.15, inner - 0.15, by1 - 0.08, by1 + 0.06],
-    [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
-    sink.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
-  }
-  // the lettering: the farm's name in white sign-writer's capitals on both faces, each reading left to right from its
-  // own side (gauntlet wave 154: pseudo-glyph strokes at the same x on both faces read "garbled, mirror-reversed" from
-  // behind)
-  const sign = String(ctx.params.sign ?? '').trim();
-  if (sign) {
-    const style = { capHeight: 0.46, maxWidth: span - 1.3, colour: WHITE };
-    const { unit } = measureText(sign, style);
-    const baseline = (by0 + by1) / 2 - 3 * unit;
-    for (const face of [
-      { origin: [0, 0, 0.07], u: [1, 0, 0], out: [0, 0, 1], width: span },
-      { origin: [0, 0, -0.07], u: [-1, 0, 0], out: [0, 0, -1], width: span },
-    ] satisfies Face[]) letterText(sink, 'structureWood', face, sign, 0, baseline, style);
-  }
-  // the crest with the star
-  const cy = by1 + ARCH_GAP_M, cr = 0.95;
-  const crest: Vec3[] = [];
-  for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI; crest.push([Math.cos(a) * cr, cy + Math.sin(a) * cr, 0]); }
-  // (the crest's half disc, counter-clockwise seen from the front, extruded back through the banner's plane)
-  sink.prism('structureWood', crest.map((p): Vec3 => [p[0], p[1], 0.06]).reverse(), [0, 0, -1], 0.12, { colour: WHITE });
-  star(sink, 'structureMetal', 0, cy + 0.45, 0.09, 0.38, 0.05, { colour: STAR_RED, decor: true });
-  star(sink, 'structureMetal', 0, cy + 0.45, -0.09, 0.38, 0.05, { colour: STAR_RED, decor: true }, Math.PI);
+  // the banner, its frame and its lettering (laid flat when the arch is breached: props lane A, E12)
+  piece(sink, { name: 'banner', kind: 'detach', at: 'breached', fall: 'flat' }, (s) => {
+    s.span('structureWood', -inner + 0.25, by0, -0.07, inner - 0.25, by1, 0.07, { colour: BANNER_RED });
+    for (const [x0, x1, y0, y1] of [[-inner + 0.15, inner - 0.15, by0 - 0.06, by0 + 0.08], [-inner + 0.15, inner - 0.15, by1 - 0.08, by1 + 0.06],
+      [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
+      s.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
+    }
+    // the lettering: the farm's name in white sign-writer's capitals on both faces, each reading left to right from its
+    // own side (gauntlet wave 154: pseudo-glyph strokes at the same x on both faces read "garbled, mirror-reversed" from
+    // behind)
+    const sign = String(ctx.params.sign ?? '').trim();
+    if (sign) {
+      const style = { capHeight: 0.46, maxWidth: span - 1.3, colour: WHITE };
+      const { unit } = measureText(sign, style);
+      const baseline = (by0 + by1) / 2 - 3 * unit;
+      for (const face of [
+        { origin: [0, 0, 0.07], u: [1, 0, 0], out: [0, 0, 1], width: span },
+        { origin: [0, 0, -0.07], u: [-1, 0, 0], out: [0, 0, -1], width: span },
+      ] satisfies Face[]) letterText(s, 'structureWood', face, sign, 0, baseline, style);
+    }
+  });
+  // the crest with the star (it topples at the first damage: props lane A, E12)
+  piece(sink, { name: 'crest', kind: 'detach', at: 'damaged', fall: 'topple' }, (s) => {
+    const cy = by1 + ARCH_GAP_M, cr = 0.95;
+    const crest: Vec3[] = [];
+    for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI; crest.push([Math.cos(a) * cr, cy + Math.sin(a) * cr, 0]); }
+    // (the crest's half disc, counter-clockwise seen from the front, extruded back through the banner's plane)
+    s.prism('structureWood', crest.map((p): Vec3 => [p[0], p[1], 0.06]).reverse(), [0, 0, -1], 0.12, { colour: WHITE });
+    star(s, 'structureMetal', 0, cy + 0.45, 0.09, 0.38, 0.05, { colour: STAR_RED, decor: true });
+    star(s, 'structureMetal', 0, cy + 0.45, -0.09, 0.38, 0.05, { colour: STAR_RED, decor: true }, Math.PI);
+  });
   // the braces from the pillars to the beam
   for (const sx of [-1, 1]) {
     bar(sink, 'structureWood', [sx * inner, beamY - 1.2, 0], [sx * (inner - 1.2), beamY, 0], 0.14, { colour: TIMBER_DARK, decor: true });
@@ -121,7 +129,7 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     const kind = String(ctx.params.wingFence || 'fencepicket'), x0 = px + p / 2 + 0.25;
     for (const sx of [-1, 1]) fenceRun(destructibles, kind, [sx * x0, 0], [sx * (x0 + wings), 0]);
   }
-  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+  return { parts: smoothRender(finishLandmark(sink), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- town gate
@@ -270,8 +278,9 @@ export const townGate: LandmarkBuilder = (ctx) => {
       emitRoof(sink, roofGeometry(1.1, 1.3, top + 1.6, dRoof), dRoof);
     });
   }
-  // a finial on the roof's ridge
-  revolve(sink, 'structureMetal', 0, 0, [[0.05, rg.ridgeTopY - 0.1], [0.16, rg.ridgeTopY + 0.3], [0.05, rg.ridgeTopY + 0.5], [0.02, rg.ridgeTopY + 1.3]], 8, { colour: GILT, decor: true });
+  // a finial on the roof's ridge (it comes off at the first damage: props lane A, E12)
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
+    revolve(s, 'structureMetal', 0, 0, [[0.05, rg.ridgeTopY - 0.1], [0.16, rg.ridgeTopY + 0.3], [0.05, rg.ridgeTopY + 0.5], [0.02, rg.ridgeTopY + 1.3]], 8, { colour: GILT, decor: true }));
   // the town wall either side (each stub its own length): rubble wall, crenellations, the wall-walk on corbels behind
   for (const sx of [-1, 1]) {
     const walls = sx < 0 ? wallsLeft : wallsRight;
@@ -281,14 +290,23 @@ export const townGate: LandmarkBuilder = (ctx) => {
     // (the looks lane) the parapet's coping, the merlons each under its own capstone, a loop through every other one
     sink.span(DRESS_BUCKET, lo, wh - 0.12, -0.68, hi, wh + 0.04, 0.68, { decor: true });
     for (let x = lo + 0.3, k = 0; x + 0.9 < hi; x += 1.8, k++) {
-      sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
-      sink.span(DRESS_BUCKET, x - 0.05, wh + 0.9, 0.0, x + 0.95, wh + 1.02, 0.65, { decor: true });
-      if (k % 2 === 0) sink.span('dark', x + 0.4, wh + 0.25, 0.6, x + 0.5, wh + 0.75, 0.62, { decor: true });
+      // (props lane A, E12: every third merlon falls off the wall's face at the first damage, the next of each three when
+      // the gate is breached, each under its own capstone; landmarks/pieces.ts)
+      const emit = (s: PartSink, xm: number, km: number) => {
+        s.span(wall, xm, wh, 0.05, xm + 0.9, wh + 0.9, 0.6);
+        s.span(DRESS_BUCKET, xm - 0.05, wh + 0.9, 0.0, xm + 0.95, wh + 1.02, 0.65, { decor: true });
+        if (km % 2 === 0) s.span('dark', xm + 0.4, wh + 0.25, 0.6, xm + 0.5, wh + 0.75, 0.62, { decor: true });
+      };
+      const xm = x, km = k;
+      if (k % 3 < 2) {
+        piece(sink, { name: `merlon-${sx < 0 ? 'l' : 'r'}-${k}`, kind: 'detach', at: k % 3 === 0 ? 'damaged' : 'breached', fall: 'drop', toward: [0, 1], clear: 1.0 },
+          (s) => emit(s, xm, km));
+      } else emit(sink, xm, km);
     }
     sink.span('structureWood', lo, wh - 0.9, -1.6, hi, wh - 0.75, -0.6, { colour: TIMBER, decor: true });
     for (let x = lo + 0.6; x < hi; x += 1.5) sink.span('structureWood', x - 0.08, wh - 1.6, -1.5, x + 0.08, wh - 0.9, -1.35, { colour: TIMBER_DARK, decor: true });
   }
-  return { parts: sink.finish(), tints: { plaster3: DRESS_TINT } };
+  return { parts: finishLandmark(sink), tints: { plaster3: DRESS_TINT } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- triumphal arch

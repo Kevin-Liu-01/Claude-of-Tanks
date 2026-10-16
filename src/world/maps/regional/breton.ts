@@ -9,11 +9,12 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, wallPolygon, windowRhythm,
   type FaceName, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, floweringShrub, wallLantern } from './dressing.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { dressedQuoin } from './facade.ts'; // the dressed quoins (facade craft, desktop)
 
@@ -116,7 +117,9 @@ function dormer(sink: PartSink, frame: HouseFrame, side: 1 | -1, zc: number, st:
     : { origin: [-s, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * a };
   const uc = side > 0 ? -zc : zc;
   // the front wall continues the facade up into a little gable
-  wallPolygon(sink, st.wall, face, [[uc - a, eave - foot], [uc + a, eave - foot], [uc + a, eave + hD], [uc, eave + apex], [uc - a, eave + hD]], 0.36);
+  // (props census E2, lane B 2026-10-14: its window was glass laid on the stone) the window cut through it
+  const hole = { u0: uc - 0.33, u1: uc + 0.33, y0: eave + 0.32, y1: eave + 1.27 };
+  holedPolygon(sink, st.wall, face, [[uc - a, eave - foot], [uc + a, eave - foot], [uc + a, eave + hD], [uc, eave + apex], [uc - a, eave + hD]], [hole], 0.36, 0.22);
   // its cheeks run back until the main roof swallows them
   const depth = (apex + 0.2) / rg.tanP + 0.3;
   for (const dz of [-a + 0.1, a - 0.1]) {
@@ -128,7 +131,10 @@ function dormer(sink: PartSink, frame: HouseFrame, side: 1 | -1, zc: number, st:
   const dr: RoofSpec = { kind: 'gable', pitchDeg: 50, eave: 0.08, verge: 0.04, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
   const dg = roofGeometry(2 * a, len, eave + hD, dr);
   sink.placed(Math.PI / 2, side * (s - len / 2 + 0.05), 0, zc, () => emitRoof(sink, dg, dr));
-  windowUnit(sink, face, uc, eave + 0.32, 0.66, 0.95, { ...st.window, shutters: null }, st.rng, st.litShare);
+  sink.recess = 0.22;
+  try {
+    windowUnit(sink, face, uc, eave + 0.32, 0.66, 0.95, { ...st.window, shutters: null }, st.rng, st.litShare);
+  } finally { sink.recess = 0; }
 }
 
 /**
@@ -313,11 +319,17 @@ const barn: RegionalBuilder = (ctx) => {
       { face: 'left', storey: 0, kind: 'loft', u: 0, w: 0.55, y0: 1.9, h: 0.6 },
     ],
     chimneys: [], gutters: null, verge: null, reveal: 0.36,
-  }, dialect({ ...st, litShare: 0 }));
+    // the loft door high in the street gable (props census E2, lane B 2026-10-14: a plank leaf laid flat on the granite),
+    // cut through the gable over its foot
+  }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (face) => (face.out[2] > 0 ? [{ u0: -0.5, u1: 0.5, y0: 3.36, y1: 4.3 }] : []) });
   gableParapets(sink, frame, 0, st.rng);
-  // the loft door high in the street gable and its granite lintel
+  // its ledged leaf hung at the back of the reveal, a granite sill and lintel
   const f = frame.faces.front;
-  faceBox(sink, 'structureWood', f, 0, 3.75, 0.02, 1.0, 1.1, 0.05, { colour: shade(st.paint, 0.7), decor: true });
+  sink.recess = frame.gableReveal;
+  try {
+    doorUnit(sink, f, 0, 3.36, 1.0, 0.94, { leaf: shade(st.paint, 0.7), frame: { bucket: 'stone', width: 0.14, out: 0.05 }, steps: null, leafKind: 'plank' });
+  } finally { sink.recess = 0; }
+  faceBox(sink, 'stone', f, 0, 3.3, 0.04, 1.3, 0.12, 0.16, { decor: true });
   faceBox(sink, 'stone', f, 0, 4.45, 0.05, 1.5, 0.28, 0.12, { decor: true });
   quoins(sink, frame);
   return sink.finish();
@@ -372,32 +384,23 @@ const chapel: RegionalBuilder = (ctx) => {
 /** A granite roofless ruin with one gable standing to its stack. */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(7.4, ctx.info.d - 0.3);
-  const t = 0.55;
-  // the long walls and the back gable broken down to their lower courses, their heads in slopes, a gap or two
-  const lows: Face[] = [
-    { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D - t },
-    { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D - t },
-    { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W - 2 * t },
-  ];
-  for (const face of lows) {
-    const L = face.width, n = 6;
-    const tops = Array.from({ length: n + 1 }, () => 0.9 + rng() * 2.0);
-    if (rng() < 0.5) tops[1 + Math.floor(rng() * (n - 2))] = 0.3;
-    for (let k = 0; k < n; k++) {
-      const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
-      wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
-    }
-  }
-  // the standing gable with its stack
-  const face: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  wallPolygon(sink, 'stone', face, [[-W / 2, -0.3], [W / 2, -0.3], [W / 2, 2.8], [0.6, 2.8 + (W / 2 - 0.6) * 1.1], [-0.6, 2.8 + (W / 2 - 0.6) * 1.1], [-W / 2, 2.8]], t);
-  const ridge = 2.8 + (W / 2 - 0.6) * 1.1;
+  const t = 0.55, ridge = 2.8 + (W / 2 - 0.6) * 1.1;
+  // (props census #7, lane B 2026-10-14; the judges: "wallPolygon strips round a dark box through the gable") the ruin
+  // grammar: the granite house's own walls broken down to their lower courses with a gap or two, its door and windows cut
+  // through where they stand; the gable standing to its stack, the hearth against its inside with its firebox cut
+  const openings: Opening[] = [{ face: 'right', storey: 0, kind: 'door', u: (rng() - 0.5) * 2, w: 1.0, y0: 0, h: 1.9 }];
+  for (const face of ['right', 'left'] as const) openings.push({ face, storey: 0, kind: 'window', u: (face === 'right' ? 1 : -1) * D * 0.25, w: 0.8, y0: 0.9, h: 1.0 });
+  const low = (): RuinHead => ({ a: 0.9 + rng() * 2.0, b: 0.9 + rng() * 2.0, at: 0.15 + rng() * 0.7, dip: rng() < 0.5 ? 0.85 : 0.3, ragged: 0.3 });
+  ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: null, storeys: [2.6], openings,
+    heads: { front: { a: 2.8, b: 2.8, at: 0.5, dip: -(ridge - 2.8) / 2.8, ragged: 0.15 }, right: low(), back: low(), left: low() }, stub: 0.4,
+    lintel: { bucket: 'stone' }, roof: { bucket: 'roof', piece: [0.45, 0.3, 0.02] }, timber: rgb(0x2b2621), hearth: { face: 'front', u: 0, w: 1.5 },
+    mobile: ctx.tier === 'mobile',
+  }, rng, look);
+  // the stack on the gable's peak
   sink.span('stone', -0.5, 2.5, D / 2 - t, 0.5, ridge + 1.2, D / 2);
-  sink.span('dark', -0.45, 1.0, D / 2 - t - 0.02, 0.45, 2.1, D / 2 + 0.02, { decor: true });
-  sink.span('stone', -W * 0.3, -0.2, -D * 0.2, W * 0.25, 0.8, D * 0.25, { decor: true });
-  sink.span('roof', -W * 0.2, 0.75, -D * 0.1, W * 0.15, 0.95, D * 0.12, { decor: true });
   return sink.finish();
 };
 
@@ -406,14 +409,21 @@ const tower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const S = Math.max(3.2, Math.min(ctx.info.w, ctx.info.d) - 0.4), H = Math.max(6.8, ctx.info.h - 2.4);
   sink.span('stone', -S / 2 - 0.15, -0.4, -S / 2 - 0.15, S / 2 + 0.15, 0.5, S / 2 + 0.15);
-  sink.span('stone', -S / 2, 0.5, -S / 2, S / 2, H, S / 2);
+  // (props census #5, lane B 2026-10-15) the door and the two lights cut through the granite shaft (they were laid on a
+  // solid span), the units at the back of their reveals; the tower recorded as a shaft body under its slate cap
+  const lt = { u0: -0.25, u1: 0.25, y0: H - 2.2, y1: H - 1.2 };
+  holedBox(sink, 'stone', -S / 2, -S / 2, S / 2, S / 2, 0.5, H, { front: [{ u0: -0.475, u1: 0.475, y0: 0.5, y1: 2.5 }, lt], right: [lt] }, 0.4, 0.34);
+  recordShaft(sink, 0, 0, S, H + 0.15 + S * 0.95, 'stone');
   sink.span('stone', -S / 2 - 0.12, H - 0.1, -S / 2 - 0.12, S / 2 + 0.12, H + 0.15, S / 2 + 0.12);
   sink.cylinder('roof', [0, H + 0.15, 0], 'y', S * 0.95, S * 0.74, 4, {}, 0.04, true, Math.PI / 4);
   const st = stateFor(ctx);
-  for (const [face, k] of [[{ origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S } as Face, 0], [{ origin: [S / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: S } as Face, 1]] as const) {
-    windowUnit(sink, face, 0, H - 2.2, 0.5, 1.0, { ...st.window, shutters: null }, st.rng, 0.3);
-    if (k === 0) doorUnit(sink, face, 0, 0.5, 0.95, 2.0, { leaf: st.paint, frame: { bucket: 'stone', width: 0.24, out: 0.06 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.5);
-  }
+  sink.recess = 0.34;
+  try {
+    for (const [face, k] of [[{ origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S } as Face, 0], [{ origin: [S / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: S } as Face, 1]] as const) {
+      windowUnit(sink, face, 0, H - 2.2, 0.5, 1.0, { ...st.window, shutters: null }, st.rng, 0.3);
+      if (k === 0) doorUnit(sink, face, 0, 0.5, 0.95, 2.0, { leaf: st.paint, frame: { bucket: 'stone', width: 0.24, out: 0.06 }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.5);
+    }
+  } finally { sink.recess = 0; }
   return sink.finish();
 };
 

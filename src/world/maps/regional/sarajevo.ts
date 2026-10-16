@@ -27,10 +27,11 @@ import { PartSink, faceBox, facePoint, rgb, shade, type Face, type RegionalBucke
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { tvAerial, woodpile, pottedPlant } from './dressing.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, ROLL_SHUTTER, TIMBER, ZINC,
-  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellHole, shellPocks, sootBand, unhcrSheet, type Keep,
+  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellPocks, sootBand, unhcrSheet, type Keep,
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
@@ -201,6 +202,20 @@ function keepsOf(openings: readonly Opening[], face: Opening['face'], frame: Hou
   });
 }
 
+/**
+ * A shell's breach in a block's street front (props census #7, lane B 2026-10-14: it was a dark plate on the render),
+ * decided before the house is built so its wall is cut through: with `chance`, on an upper storey, 1.2-1.3 m over that
+ * storey's floor, clear of the front's openings by half a metre; null otherwise.
+ */
+function streetBreach(openings: readonly Opening[], n: number, len: number, look: () => number, chance: number, y: number, r0: number, rs: number):
+  NonNullable<HouseSpec['breaches']> {
+  if (n < 2 || look() >= chance) return [];
+  const storey = 1 + Math.floor(look() * (n - 1)), u = (look() - 0.5) * len * 0.7, r = r0 + look() * rs, seed = Math.floor(look() * 1e9);
+  const clear = openings.filter((o) => o.face === 'left' && o.storey === storey)
+    .every((o) => u < o.u - o.w / 2 - 0.75 || u > o.u + o.w / 2 + 0.75 || y < o.y0 - 0.7 || y > o.y0 + o.h + 0.95);
+  return clear ? [{ face: 'left', storey, u, y, r, seed, spall: 'stone' }] : [];
+}
+
 const SIGNS: readonly Rgb[] = [0x2f4f3f, 0x6a2e26, 0x2c3d57, 0x7a6a3a, 0x3c3c3c].map(rgb);
 
 // ------------------------------------------------------------------------------------------------ the valley blocks
@@ -238,7 +253,8 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   // the street front ('left'): the entrance or the carriage passage, the shops, the casements above
   const openings: Opening[] = [];
   const doorU = (rng() - 0.5) * len * 0.3;
-  const entrance: Opening = passage ? { face: 'left', storey: 0, kind: 'gate', u: doorU, w: 2.6, y0: 0, h: 3.3 }
+  // (E10) the carriage passage's round head, cut: it springs over the leaves (the dialect's gate is h - 0.6 tall)
+  const entrance: Opening = passage ? { face: 'left', storey: 0, kind: 'gate', u: doorU, w: 2.6, y0: 0, h: 3.3, arch: { spring: 3.3 - 0.58 } }
     : { face: 'left', storey: 0, kind: 'door', u: doorU, w: 1.4, y0: 0, h: 2.9 };
   openings.push(entrance);
   for (const side of [-1, 1]) {
@@ -266,10 +282,11 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     { x: (rng() - 0.5) * 0.8, z: len / 2 - 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
     { x: (rng() - 0.5) * 0.8, z: -len / 2 + 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
   ];
+  const breaches = streetBreach(openings, n, len, look, 0.22, 1.2, 0.35, 0.3);
   sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => sink.placed(0, 0, 0, zc, () => {
     const frame = buildHouse(sink, {
       w: D, d: len, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys, roof, gableBucket: 'plaster', openings, chimneys,
-      gutters: roofKind === 'mansard' ? null : { colour: ZINC }, verge: null, reveal: 0.22, rafters: null, spall: 'stone',
+      gutters: roofKind === 'mansard' ? null : { colour: ZINC }, verge: null, reveal: 0.22, rafters: null, spall: 'stone', breaches,
     }, ahDialect(rng, door, h, sign));
     const b = frame.bodies[0], eave = frame.eaveY;
     // string course over the shops, the piano nobile's sill course, the crowning cornice
@@ -327,11 +344,6 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     const pocks = 8 + look() * 30;
     shellPocks(sink, street, { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: 0.5, y1: eave - 0.7 }, Math.round(pocks), keeps, look, 'stone',
       Math.round((mobile ? 0.4 : 1) * pocks));
-    if (look() < 0.22) {
-      const hy = frame.floors[Math.min(n - 1, 1 + Math.floor(look() * (n - 1)))] + 1.2;
-      const hu = (look() - 0.5) * len * 0.7;
-      if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.35 + look() * 0.3, look);
-    }
     if (collapse) collapsedEnd(sink, frame, collapse, cut, len, groundH, look, mobile);
   })));
   return sink.finish();
@@ -430,11 +442,12 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   openings.push({ face: 'right', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.3 });
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, W, { w: 1.1, h: 1.2, sill: 1.0, spacing: 2.4, margin: 0.9 })) openings.push(o);
   if (look() < 0.15) for (const o of openings) if (o.storey === n - 2 && o.face === 'left' && o.kind === 'window') o.state = 'burnt';
+  const breaches = streetBreach(openings, n, W, look, 0.28, 1.3, 0.4, 0.35);
   sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: D, d: W, plinth: { h: 0.25, out: 0.04, bucket: 'plaster3' }, storeys,
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.3, bucket: 'plaster3', parapet: 0.45 }, gableBucket: 'plaster3',
-      openings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: 'stone',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: 'stone', breaches,
     }, yuDialect(h, sign));
     const b = frame.bodies[0], street = frame.faces.left;
     // the slab edges banding the street and court fronts
@@ -465,10 +478,6 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     const pocks = 10 + look() * 26;
     shellPocks(sink, street, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.6, y1: frame.eaveY - 0.4 }, Math.round(pocks), keeps, look, 'stone',
       Math.round((mobile ? 0.4 : 1) * pocks));
-    if (look() < 0.28) {
-      const hy = frame.floors[1 + Math.floor(look() * (n - 1))] + 1.3, hu = (look() - 0.5) * W * 0.7;
-      if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.4 + look() * 0.35, look);
-    }
   }));
   return sink.finish();
 }
@@ -611,56 +620,32 @@ function ahShell(ctx: RegionalBuildContext): RegionalParts {
   const f = rowFill(ctx), W = clampTo(f.w, 4.6, 30), D = clampTo(f.d, 5.0, 30), t = 0.4;
   const storeys = 2 + (rng() < 0.45 ? 1 : 0), gH = 4.0, uH = 3.3;
   const wall: RegionalBucket = rng() < 0.3 ? 'stone' : 'plaster';
-  const zf = D / 2 - t;
-  // the low plinth of the fallen interior (the base ruin's slab: one ground-contact record as before)
-  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.35, D / 2);
+  // (props census #7, lane B 2026-10-14; the judges: "span boxes to level tops, the floors one box, the windows gaps
+  // between boxes") the ruin grammar (ruinGrammar.ts): the block's own walls, storeys and windows broken — the street
+  // front standing to a ragged head over its empty windows with their lintels and sills, the side walls falling from the
+  // front to the court, a stub of the back; the floors fallen into the heaps with the joists broken off at the storey
+  // lines, the roof's tiles slid in, a slab hanging from the front
   const bays = W > 6.6 ? 3 : 2, bw = W / bays;
-  const keeps: Keep[] = [];
-  let y = 0.35;
+  const heights = Array.from({ length: storeys }, (_, s) => (s === 0 ? gH - 0.35 : uH));
+  const openings: Opening[] = [];
   for (let s = 0; s < storeys; s++) {
-    const sh = s === 0 ? gH - 0.35 : uH;
-    const top = s === storeys - 1;
     const ow = s === 0 ? Math.min(1.9, bw - 0.9) : Math.min(1.1, bw - 0.8), sill = s === 0 ? 0.25 : 0.8, oh = s === 0 ? 2.9 : 1.85;
-    for (let k = 0; k < bays; k++) {
-      const u0 = -W / 2 + k * bw, u1 = u0 + bw, cu = (u0 + u1) / 2;
-      // the head of a top storey's bay breaks off at its own height
-      const head = top ? y + sh * (0.45 + rng() * 0.75) : y + sh;
-      sink.span(wall, u0, y, zf, cu - ow / 2, head, zf + t);
-      sink.span(wall, cu + ow / 2, y, zf, u1, top ? y + sh * (0.4 + rng() * 0.7) : head, zf + t);
-      sink.span(wall, cu - ow / 2, y, zf, cu + ow / 2, y + sill, zf + t);
-      if (head > y + sill + oh + 0.25) sink.span(wall, cu - ow / 2, y + sill + oh, zf, cu + ow / 2, head, zf + t);
-      keeps.push({ u0: cu - ow / 2 - 0.2, u1: cu + ow / 2 + 0.2, y0: y + sill - 0.15, y1: y + sill + oh + 0.3 });
-      // the soot over the opening
-      if (look() < 0.5 && head > y + sill + oh + 0.6) sootBand(sink, wall, { origin: [0, 0, zf + t], u: [1, 0, 0], out: [0, 0, 1], width: W }, cu - ow / 2 - 0.2, cu + ow / 2 + 0.2, y + sill + oh, Math.min(head, y + sill + oh + 1.6));
-    }
-    if (!top) faceBox(sink, 'stone', { origin: [0, 0, zf + t], u: [1, 0, 0], out: [0, 0, 1], width: W }, 0, y + sh - 0.12, 0.05, W + 0.1, 0.26, 0.1, { decor: true });
-    y += sh;
+    for (let k = 0; k < bays; k++) openings.push({ face: 'front', storey: s, kind: s === 0 ? 'shopfront' : 'window', u: -W / 2 + (k + 0.5) * bw, w: ow, y0: sill, h: oh });
   }
-  // the side walls stepping down from the front toward the court, a stub of the back wall
-  for (const s of [-1, 1]) {
-    const x0 = s < 0 ? -W / 2 : W / 2 - t;
-    let zTop = zf, hgt = y * (0.75 + rng() * 0.2);
-    while (zTop > -D / 2 + 0.3) {
-      const seg = 1.2 + rng() * 1.8, z0 = Math.max(-D / 2, zTop - seg);
-      if (hgt > 0.6) sink.span(wall, x0, 0.35, z0, x0 + t, hgt, zTop);
-      zTop = z0; hgt *= 0.45 + rng() * 0.4;
-    }
-  }
-  sink.span(wall, -W / 2 + t, 0.35, -D / 2, -W / 2 + t + W * (0.25 + rng() * 0.3), 0.9 + rng() * 1.6, -D / 2 + t);
-  // the heap of the fallen floors, a slab hanging from the front, charred joists
-  sink.span('stone', -W / 2 + 0.5, 0.2, -D / 2 + 0.6, W / 2 - 0.5, 1.4 + rng(), zf - 0.6, { decor: true });
-  sink.member('stone', [0, gH, zf - 0.1], [0.4, 1.2, zf - D * 0.45], W * 0.55, 0.22, [0, 1, 0.3], { decor: true, exposed: true });
-  sink.dressing(mobile, () => {
-    for (let k = 0; k < 4; k++) {
-      const x = (look() - 0.5) * (W - 1.2);
-      // (the buildings stream, 2026-10-12, the integrity check: a joist's foot past the heap's edge hung in the air) each
-      // joist's foot in the heap, leaning up to the front
-      sink.member('structureWood', [x, 1.3, zf - 0.7 - look() * 2], [x + (look() - 0.5) * 1.5, 2.6 + look() * 2.4, zf - 0.1], 0.16, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
-    }
-  });
-  const pocks = 10 + look() * 14;
-  shellPocks(sink, { origin: [0, 0, zf + t], u: [1, 0, 0], out: [0, 0, 1], width: W }, { u0: -W / 2 + 0.2, u1: W / 2 - 0.2, y0: 0.6, y1: y - 0.8 },
-    Math.round(pocks), keeps, look, wall === 'stone' ? 'plaster' : 'stone', Math.round((mobile ? 0.4 : 1) * pocks));
+  const total = heights.reduce((x, y) => x + y, 0);
+  const front = total * (0.82 + rng() * 0.18);
+  ruinHouse(sink, {
+    w: W, d: D, t, wall, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: heights, openings,
+    heads: {
+      front: { a: front * (0.85 + rng() * 0.15), b: front * (0.7 + rng() * 0.3), at: 0.2 + rng() * 0.6, dip: 0.25 + rng() * 0.35, ragged: 0.6 },
+      right: { a: front * (0.75 + rng() * 0.2), b: 0.9 + rng() * 1.2, ragged: 0.5 },
+      left: { a: 0.9 + rng() * 1.2, b: front * (0.75 + rng() * 0.2), ragged: 0.5 },
+      back: rng() < 0.5 ? { a: 0.9 + rng() * 1.6, b: 0.6 + rng() * 0.8, ragged: 0.4 } : null,
+    },
+    stub: 0.55, lintel: { bucket: 'stone' }, roof: { bucket: 'roof', piece: [0.9, 0.6, 0.04] }, timber: CHAR, mobile,
+  }, rng, look);
+  // the slab hanging from the front over the heap
+  sink.member('stone', [0, 0.35 + gH - 0.35, D / 2 - t - 0.1], [0.4, 1.2, D / 2 - t - D * 0.45], W * 0.55, 0.22, [0, 1, 0.3], { decor: true, exposed: true });
   return sink.finish();
 }
 
@@ -673,28 +658,19 @@ function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
   const f = rowFill(ctx), W = clampTo(f.w, 4.6, 30), D = clampTo(f.d, 5.0, 30), t = 0.5;
   const gH = 2.5 + rng() * 0.3;
-  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.3, D / 2);
-  const walls: Array<[number, number, number, number, boolean]> = [
-    [-W / 2, D / 2 - t, W / 2, D / 2, true], [-W / 2, -D / 2, W / 2, -D / 2 + t, true],
-    [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t, false], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t, false],
-  ];
-  for (const [x0, z0, x1, z1, alongX] of walls) {
-    const len = alongX ? x1 - x0 : z1 - z0, n = Math.max(3, Math.round(len / 1.3));
-    const gap = Math.floor(rng() * n);
-    for (let k = 0; k < n; k++) {
-      if (k === gap) { if (rng() < 0.7) continue; }
-      const a = k / n, b = (k + 1) / n, top = 0.3 + gH * (0.45 + rng() * 0.6);
-      if (alongX) sink.span('stone', x0 + len * a, 0.3, z0, x0 + len * b, top, z1);
-      else sink.span('stone', x0, 0.3, z0 + len * a, x1, top, z0 + len * b);
-    }
-  }
-  // the chimney standing alone over the ruin
+  // (props census #7, lane B 2026-10-14; the judges: "a ring of boxes to toothed tops, a toy brick wall") the ruin
+  // grammar: the stone ground storey's own walls broken to heads falling from the corners to the breach, the door and
+  // the windows cut through them, the chimney stack standing with its firebox, the tiles fallen in over the heaps
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * (W - 2.4), w: 1.0, y0: 0, h: 2.0 }];
+  for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D - 2 * t, { w: 0.8, h: 0.9, sill: 0.9, spacing: 2.4, margin: 0.9, max: 2 })) openings.push(o);
+  const head = (lo: number): RuinHead => ({ a: gH * (lo + rng() * 0.35), b: gH * (lo + rng() * 0.35), at: 0.2 + rng() * 0.6, dip: 0.2 + rng() * 0.5, ragged: 0.3 });
   const cx = (rng() - 0.5) * W * 0.4, cz = (rng() - 0.5) * D * 0.4;
-  sink.span('plaster', cx - 0.32, 0.3, cz - 0.32, cx + 0.32, gH + 3.4, cz + 0.32);
-  sink.span('plaster', cx - 0.4, gH + 3.4, cz - 0.4, cx + 0.4, gH + 3.55, cz + 0.4, { shade: 0.5 });
-  // the tiles fallen in, the charred posts and a beam of the upper floor
-  sink.span('stone', -W / 2 + 0.6, 0.1, -D / 2 + 0.6, W / 2 - 0.6, 0.95, D / 2 - 0.6, { decor: true });
-  sink.member('roof', [-W * 0.3, 0.7, -D * 0.2], [W * 0.25, 2.0, D * 0.15], Math.min(3.2, W * 0.5), 0.12, [0, 1, 0], { decor: true, exposed: true });
+  ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [gH], openings,
+    heads: { front: head(0.7), right: head(0.6), back: head(0.55), left: head(0.6) },
+    stub: 0.5, lintel: { bucket: 'structureWood', colour: CHAR }, roof: { bucket: 'roof', piece: [0.5, 0.35, 0.03] }, timber: CHAR,
+    chimney: { x: cx, z: cz, w: 0.64, h: gH + 3.4, bucket: 'plaster' }, mobile,
+  }, rng, look);
   sink.dressing(mobile, () => {
     for (let k = 0; k < 5; k++) {
       const x = (look() < 0.5 ? -1 : 1) * (W / 2 - 0.3), z = (look() - 0.5) * (D - 1);
@@ -702,7 +678,6 @@ function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
       // the fallen tiles' heap at the wall's foot
       sink.member('structureWood', [x, 0.2, z], [x + (look() - 0.5) * 0.4, gH + 0.8 + look() * 1.8, z + (look() - 0.5) * 0.4], 0.16, 0.16, [1, 0, 0], { colour: CHAR, decor: true, exposed: true }, 0);
     }
-    sink.member('structureWood', [-W / 2 + 0.3, gH + 0.3, D / 2 - 0.3], [W / 2 - 0.3, gH * 0.6, D / 2 - 0.5], 0.18, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
   });
   return sink.finish();
 }

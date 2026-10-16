@@ -301,9 +301,10 @@ export function minimumAreaRectangle(points: ReadonlyArray<readonly [number, num
   return best;
 }
 
-/** Mass class from the built volume and the group's role (§3.2). */
+/** Mass class from the built volume and the group's role (§3.2; a light set piece: setPieceMassClass). */
 export function structureMassClass(volumeM3: number, role: StructureState['role']): StructureMassClass {
-  if (role === 'setpiece' || volumeM3 >= LARGE_MAX_M3) return 'landmark';
+  if (role === 'setpiece') return setPieceMassClass(volumeM3);
+  if (volumeM3 >= LARGE_MAX_M3) return 'landmark';
   if (volumeM3 < SHED_MAX_M3) return 'shed';
   if (volumeM3 < HOUSE_MAX_M3) return 'house';
   return 'large';
@@ -359,6 +360,38 @@ function topHeavyShare(records: readonly CollisionRecord[]): number {
   return total > 0 ? heavy / total : 0;
 }
 
+// ---- Light set pieces (props lane A, E12, 2026-10-14) ----------------------------------------------------------
+/**
+ * A set piece under this built volume is light — a statue, a stele, a fountain, a guyed mast, a lookout's frame, an
+ * arch over a track: it takes damage as a shed and comes down to a hull at speed or a round, its collision swapping
+ * like a house's (the owner: "make sure all props below a certain size are destructible whether from ramming or
+ * shooting"). A larger set piece stays a landmark, breach-only (§3.2: a map's anchor and its routes' reference).
+ */
+export const LIGHT_SETPIECE_MAX_M3 = SHED_MAX_M3;
+/** A set piece's mass class: a light one a shed, else a landmark. */
+export function setPieceMassClass(volumeM3: number): StructureMassClass {
+  return volumeM3 < LIGHT_SETPIECE_MAX_M3 ? 'shed' : 'landmark';
+}
+/** A light set piece's stuff (stone, bronze, iron), no softer than masonry: never a timber shed's scuff. */
+export function lightSetPieceMaterial(wallMaterial: StructureMaterial): StructureMaterial {
+  return wallMaterial === 'concrete' ? 'concrete' : 'masonry';
+}
+/** The heap of a light set piece: a third of its built volume spread over its plan, at least this (m). */
+const LIGHT_HEAP_MIN_M = 0.3;
+const LIGHT_HEAP_SHARE = 0.35;
+/**
+ * The heap a collapsed structure leaves (m; the onCollapse callers raise it, sim/terrainDeformation.ts): a building's
+ * by its height (rubbleHeightFor: 0.18 of it, 0.6-2.6 m); a light set piece's by what it was built of — a felled mast or
+ * an open frame leaves a low spread of steel, never a house's mound — at most its height law's.
+ */
+export function structureRubbleHeightM(structure: Pick<StructureState, 'role' | 'massClass' | 'volumeM3' | 'hw' | 'hd' | 'topY' | 'baseY'>): number {
+  // (terrainDeformation.ts rubbleHeightFor's law, kept here so this module stays three-free; the selftest pins the two)
+  const byHeight = Math.max(0.6, Math.min(2.6, 0.18 * Math.max(0, structure.topY - structure.baseY)));
+  if (structure.role !== 'setpiece' || structure.massClass === 'landmark') return byHeight;
+  const plan = Math.max(1, 4 * structure.hw * structure.hd);
+  return Math.min(byHeight, Math.max(LIGHT_HEAP_MIN_M, LIGHT_HEAP_SHARE * structure.volumeM3 / plan));
+}
+
 /** Hit points from the built volume: 0.72 · V^0.72, at least 10 (§3.2). */
 export function structureHitPoints(volumeM3: number): number {
   return Math.max(HP_FLOOR, HP_SCALE * Math.pow(Math.max(0, volumeM3), HP_EXPONENT));
@@ -403,10 +436,12 @@ function buildState(id: number, group: Group, wallMaterial: StructureMaterial): 
   }
   const slender = structureSlenderness(Number.isFinite(baseY) && Number.isFinite(topY) ? topY - baseY : 0, footprint.hw, footprint.hd);
   let massClass = structureMassClass(volume, role);
-  // a slender body in a stone town is a tower of the town's stone, not a timber shed
-  if (massClass === 'shed' && slender >= SLENDER_FROM && (wallMaterial === 'masonry' || wallMaterial === 'concrete')) massClass = 'house';
-  const material = structureMaterialFor(massClass, wallMaterial);
-  const maxHp = structureHitPoints(volume) * slenderMasonryFactor(material, slender, topHeavyShare(group.colliders) >= TOP_HEAVY_SHARE);
+  // a slender body in a stone town is a tower of the town's stone, not a timber shed (a set piece keeps its own class)
+  if (massClass === 'shed' && role === 'building' && slender >= SLENDER_FROM && (wallMaterial === 'masonry' || wallMaterial === 'concrete')) massClass = 'house';
+  // a light set piece (E12) is stone or iron, and no thick-walled tower however slender (a guyed mast)
+  const light = role === 'setpiece' && massClass !== 'landmark';
+  const material = light ? lightSetPieceMaterial(wallMaterial) : structureMaterialFor(massClass, wallMaterial);
+  const maxHp = structureHitPoints(volume) * (light ? 1 : slenderMasonryFactor(material, slender, topHeavyShare(group.colliders) >= TOP_HEAVY_SHARE));
   return {
     id, role, massClass, material,
     destructible: role !== 'fixed',

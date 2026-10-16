@@ -260,7 +260,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [Math.max(num(p, 'length'), num(p, 'canopy')) / 2 + 2.2, num(p, 'depth') / 2 + 5.4] },
   marketHall: { family: 'civic', defaults: { length: 26, width: 13, bays: 6 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, num(p, 'length') / 2 + 0.8] },
-  grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38 },
+  grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38, style: 'soviet' },
     // the silos along x, the head house at their +x end
     footprint: (p) => [num(p, 'cols') * num(p, 'radius') + 9.0, num(p, 'rows') * num(p, 'radius') + 1.4] },
   // ------------------------------------------------------------------------------------------------ colonial

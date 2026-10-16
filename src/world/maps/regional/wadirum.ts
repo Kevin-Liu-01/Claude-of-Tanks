@@ -6,7 +6,9 @@
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { sheetHall } from './hall.ts';
 
 const STEEL_DOORS: readonly Rgb[] = [0x3f6a5a, 0x3e5f86, 0x6a6e70, 0x8a6a3e].map(rgb);
 const TANK = rgb(0x262626), REBAR = rgb(0x5a3e2e);
@@ -73,16 +75,12 @@ const steelStore: RegionalBuilder = (ctx) => {
   const rng = ctx.rng;
   const W = Math.max(8, Math.min(18, ctx.info.w - 0.6)), D = Math.max(10, Math.min(28, ctx.info.d - 0.6));
   const livery = pick(rng, SAND_SHEET);
-  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 1.2, D / 2);
-  sink.span('structureMetal', -W / 2, 1.2, -D / 2, W / 2, 5.2, D / 2, { colour: livery });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 8, eave: 0.35, verge: 0.25, thickness: 0.08, bucket: 'structureMetal', ridge: 'saddle' };
-  emitRoof(sink, roofGeometry(W, D, 5.2, roof), roof, rgb(0xb4b0a6));
-  const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  gateUnit(sink, front, 0, 0, Math.min(4.2, W - 2), 4.0, rgb(0x8a8e90), { bucket: 'structureMetal', width: 0.2, out: 0.06, colour: rgb(0x6a6e70) });
-  for (const side of [-1, 1]) {
-    const f: Face = { origin: [side * W / 2, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D };
-    for (let u = -D / 2 + 2; u < D / 2 - 1; u += 4) faceBox(sink, 'glass', f, u, 4.4, 0.01, 2.0, 0.6, 0.02, { decor: true });
-  }
+  // (props census #4, lane B 2026-10-14; the judges: "a span box with a gate laid on its face and glass strips stuck on")
+  // the shared sheet hall (hall.ts): sand-coloured sheet on its block kerb, the apron gate's leaves on their tracks over
+  // the cut opening onto the store's floor, its lights under the eaves in their frames, a side door, the gutters
+  sheetHall(sink, { w: W, d: D, eave: 5.2, pitchDeg: 8, kerb: 1.2, livery, doorLivery: rgb(0x8a8e90), trim: rgb(0x6a6e70), doors: 'sliding',
+    doorW: Math.min(4.2, W - 2), doorH: 4.0, open: 0.15 + rng() * 0.35, backDoor: null, sideDoor: D * 0.25, clerestory: true, roofLights: false, ridgeVent: false,
+    gutters: true, mobile: ctx.tier === 'mobile', roof: { bucket: 'structureMetal', colour: rgb(0xb4b0a6) } }, ctx.variant);
   return sink.finish();
 };
 
@@ -314,21 +312,22 @@ const fort: RegionalBuilder = (ctx) => {
 /** A shelled block house: walls broken to stumps, the slab fallen in, rebar curling from the breaks. */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(6, ctx.info.d - 0.3), t = 0.25;
-  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, W / 2, D / 2], [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t]] as const) {
-    const along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-    for (let k = 0; k < 4; k++) {
-      if (rng() < 0.3) continue;
-      const a = k / 4, b = (k + 1) / 4, top = 0.6 + rng() * 2.4;
-      if (along) sink.span('stone', x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1);
-      else sink.span('stone', x0, -0.3, z0 + (z1 - z0) * a, x1, top, z0 + (z1 - z0) * b);
-    }
-  }
-  sink.member('plaster', [-W * 0.35, 0.2, -D * 0.2], [W * 0.3, 1.6, D * 0.25], 2.2, 0.2, [0, 1, 0], { decor: true, exposed: true });
-  // the fallen roof's furniture on the floor among the stumps: its rebar sticking up from the rubble, its tank stand on
-  // the ground (the connectivity sweep: they stood on nothing, 20 cm up)
-  rooftop(sink, W * 0.5, D * 0.5, -0.05, rng);
+  // (props census #7, lane B 2026-10-14; the judges: "four slices a side to random tops") the ruin grammar: the block
+  // house's own walls broken to stumps, its door and windows cut through, the bars curling from the heads, the slab
+  // fallen in, the roof's furniture down among the heaps
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * (W - 2.4), w: 1.0, y0: 0, h: 2.1 }];
+  for (const face of ['right', 'left', 'back'] as const) openings.push({ face, storey: 0, kind: 'window', u: (rng() - 0.5) * 2, w: 1.0, y0: 1.0, h: 1.0 });
+  const head = (): RuinHead => ({ a: 0.6 + rng() * 2.4, b: 0.6 + rng() * 2.4, at: rng(), dip: 0.3 + rng() * 0.4, ragged: 0.3 });
+  const r = ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: { h: 0.2, out: 0.04, bucket: 'stone' }, storeys: [3.0], openings,
+    heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.5, lintel: { bucket: 'plaster' }, roof: null,
+    timber: rgb(0x2e2a26), rebar: rgb(0x6a3a22), mobile: ctx.tier === 'mobile',
+  }, rng, look);
+  sink.member('plaster', [-W * 0.35, r.floor, -D * 0.2], [W * 0.3, r.restOn(W * 0.3, D * 0.25) + 0.3, D * 0.25], 2.2, 0.2, [0, 1, 0], { decor: true, exposed: true });
+  // the fallen roof's furniture on the floor among the heaps: its rebar sticking up from the rubble, its tank stand
+  rooftop(sink, W * 0.5, D * 0.5, r.floor - 0.02, rng);
   return sink.finish();
 };
 

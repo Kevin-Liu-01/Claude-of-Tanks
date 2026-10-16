@@ -4,9 +4,9 @@
 // a vertex livery — galvanised, rust or paint — so every house differs without a new material.
 import {
   PartSink, faceBox, rgb, shade, UV_MEMBER,
-  type Face, type RegionalBucket, type Rgb, type Vec3,
+  type Face, type RegionalBucket, type Rgb,
 } from './geometry.ts';
-import { emitRoof, roofGeometry, type RoofSpec } from './house.ts';
+import { leanTo, type RoofSpec } from './house.ts';
 
 export const GALVANISED: readonly Rgb[] = [0x9aa0a2, 0x8a9092, 0xa8aaa6].map(rgb);
 export const RUSTED: readonly Rgb[] = [0x8a5a3e, 0x7a4c34, 0x96684a].map(rgb);
@@ -47,33 +47,33 @@ export function boardWall(sink: PartSink, face: Face, u0: number, u1: number, y0
   for (const y of [y0 + 0.06, y1 - 0.06]) faceBox(sink, 'structureWood', face, (u0 + u1) / 2, y, 0.05, u1 - u0, 0.1, 0.03, { colour: shade(colour, 0.85), decor: true });
 }
 
-/** A veranda: a deck along a face, posts, a rail and a lean-to roof from the wall head. */
+/**
+ * A veranda: a deck along a face, posts, a rail and a lean-to roof from the wall head. (Props census E3, lane B
+ * 2026-10-14: the posts ran to the wall head's height and pierced the lean-to by its rise.) The lean-to is house.ts
+ * leanTo: it falls from the wall head to a plate over the post line, and every post stands from the ground (through a
+ * raised deck) or the deck up to the plate. `under`, the house's own roof: the lean-to passes under its eave.
+ */
 export function veranda(sink: PartSink, face: Face, floorY: number, wallTop: number, width: number, depth: number, post: Rgb,
-  roof: { bucket: RegionalBucket; colour?: Rgb; thatch?: RoofSpec['thatch'] }, rail = true): void {
+  roof: { bucket: RegionalBucket; colour?: Rgb; thatch?: RoofSpec['thatch'] }, rail = true,
+  under?: { eaveY: number; eave: number; tanP: number }): void {
   faceBox(sink, 'structureWood', face, 0, floorY + 0.08, depth / 2, width, 0.16, depth, { colour: shade(post, 1.05), uv: UV_MEMBER });
   const n = Math.max(2, Math.round(width / 2.2) + 1);
-  for (let i = 0; i < n; i++) {
-    const u = -width / 2 + 0.12 + (width - 0.24) * i / (n - 1);
-    faceBox(sink, 'structureWood', face, u, (floorY + wallTop) / 2, depth - 0.1, 0.14, wallTop - floorY, 0.14, { colour: post, uv: UV_MEMBER });
-    if (floorY > 0.3) faceBox(sink, 'structureWood', face, u, (floorY - 0.4) / 2, depth - 0.1, 0.14, floorY + 0.4, 0.14, { colour: post, uv: UV_MEMBER });
-  }
+  const at: number[] = [];
+  for (let i = 0; i < n; i++) at.push(-width / 2 + 0.12 + (width - 0.24) * i / (n - 1));
   if (rail) {
     faceBox(sink, 'structureWood', face, 0, floorY + 0.9, depth - 0.1, width - 0.2, 0.07, 0.07, { colour: post, decor: true });
     for (let u = -width / 2 + 0.3; u < width / 2 - 0.2; u += 0.3) {
       faceBox(sink, 'structureWood', face, u, floorY + 0.5, depth - 0.1, 0.05, 0.75, 0.05, { colour: shade(post, 0.9), decor: true });
     }
   }
-  // the lean-to: a shed slab from the wall head out over the posts
+  // the lean-to: a shed slab from the wall head out over the posts, on a plate over the post line
   const rise = Math.max(0.25, wallTop - floorY - 2.1);
   const pitch = Math.atan2(rise, depth) * 180 / Math.PI;
-  const spec: RoofSpec = { kind: 'shed', pitchDeg: Math.max(6, pitch), eave: 0.3, verge: 0.2, thickness: 0.07, bucket: roof.bucket,
-    ...(roof.thatch ? { thatch: roof.thatch } : {}) };
-  const rg = roofGeometry(depth, width, wallTop - rise, spec);
-  // a shed rises toward its local -x: turn it so the high side meets the wall
-  // local +x (the low side) turned onto the face's outward normal
-  const yaw = Math.atan2(-face.out[2], face.out[0]);
-  const c: Vec3 = [face.origin[0] + face.out[0] * depth / 2, 0, face.origin[2] + face.out[2] * depth / 2];
-  sink.placed(yaw, c[0], 0, c[2], () => emitRoof(sink, rg, spec, roof.colour));
+  leanTo(sink, { face, u0: -width / 2, u1: width / 2, depth: depth - 0.1, highY: wallTop, ...(under ? { under } : {}),
+    roof: { pitchDeg: Math.max(6, pitch), eave: 0.3, verge: 0.2, thickness: 0.07, bucket: roof.bucket, ...(roof.thatch ? { thatch: roof.thatch } : {}) },
+    ...(roof.colour ? { roofColour: roof.colour } : {}),
+    posts: { at, size: 0.14, bucket: 'structureWood', colour: post, foot: floorY > 0.3 ? -0.4 : floorY },
+    plate: { h: 0.12, w: 0.14, bucket: 'structureWood', colour: shade(post, 0.92) } });
 }
 
 /** A ladder of rungs between two rails, from the ground to a floor (decor). */

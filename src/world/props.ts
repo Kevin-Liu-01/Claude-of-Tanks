@@ -136,6 +136,7 @@ import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } fro
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
+import { settleCatalogCuts } from './maps/railKit.ts';
 import {
   captureAutumnCropRow, autumnHeadlandSite, autumnHeadlandClearsRows,
   type AutumnCropRow, type AutumnHeadlandSite,
@@ -210,6 +211,7 @@ import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import { createLoosePropBodies } from './loosePropBodies.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
+import { makeRuin, roughenChunk, rubblePileParts } from './maps/regional/ruinGrammar.ts'; // props census #7: the plan ruin and the street rubble pile
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
@@ -2017,37 +2019,6 @@ function makeTower(rng: Rng, buckets: PropsBuckets): StructureDimensions {
   addConnectedExterior(parts, { id: 'tower', w, d, wallH, profile: 'civic', variant: 1 });
   mergeInto(buckets, parts);
   return { w: w + 0.4, d: d + 0.4, h: wallH + 2.6 };
-}
-
-function makeRuin(rng: Rng, buckets: PropsBuckets): StructureDimensions {
-  const w = 6.0 + rng(), d = 8.0 + rng() * 1.5;
-  const parts: PropsBuckets = {
-    plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-  };
-  parts.stone.push(box(w + 0.3, 1.0, d + 0.3).translate(0, -0.1, 0));
-  // four broken walls: sequences of piers with varying heights
-  const t = 0.5;
-  const walls = [
-    { len: d, rot: 0, ox: -w / 2 + t / 2, oz: 0 },
-    { len: d, rot: 0, ox: w / 2 - t / 2, oz: 0 },
-    { len: w - 2 * t, rot: Math.PI / 2, ox: 0, oz: -d / 2 + t / 2 },
-    { len: w - 2 * t, rot: Math.PI / 2, ox: 0, oz: d / 2 - t / 2 },
-  ];
-  for (const wl of walls) {
-    const segs = 3 + ((rng() * 3) | 0);
-    const segLen = wl.len / segs;
-    for (let k = 0; k < segs; k++) {
-      if (rng() < 0.3) continue; // collapsed gap
-      const hh = 0.9 + rng() * 2.1;
-      const b = box(t, hh, segLen * 0.94, 0.7);
-      b.translate(0, hh / 2, -wl.len / 2 + (k + 0.5) * segLen);
-      if (wl.rot) b.rotateY(wl.rot);
-      b.translate(wl.ox, 0, wl.oz);
-      parts.stone.push(b);
-    }
-  }
-  mergeInto(buckets, parts);
-  return { w: w + 0.3, d: d + 0.3, h: 3.0 };
 }
 
 // flat-roofed adobe house (desert maps): parapet, wood roof beams, viga ends
@@ -5103,6 +5074,7 @@ ${snowCap ? `
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
+    settleCatalogCuts(tmp);
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     // (the buildings stream, 2026-10-13, the weird-buildings survey) a block-fill building, or a road building with no
@@ -5317,6 +5289,7 @@ ${snowCap ? `
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + entry.structure);
     addCatalogExterior(tmp, { id: entry.structure, info, variant: entry.planIndex,
       bathhouseStyle: entry.structure === 'bathhouse' ? P.bathhouseStyle : undefined });
+    settleCatalogCuts(tmp);
     jitterBuildingUvs(tmp, stream);
     const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
     // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
@@ -5389,22 +5362,6 @@ ${snowCap ? `
   // gets a consistent PER-CORNER offset (shared corners move together, so
   // faces stay welded) turning it into an irregular broken-masonry
   // hexahedron; a scatter of small brick shards rings the pile base.
-  const _rubbleOff = new Float32Array(24);
-  function roughenChunk<T extends THREE.BufferGeometry>(chunk: T, rrng: Rng, amt: number): T {
-    for (let c = 0; c < 8; c++) {
-      _rubbleOff[c * 3] = (rrng() - 0.5) * amt;
-      _rubbleOff[c * 3 + 1] = (rrng() - 0.5) * amt * 0.7;
-      _rubbleOff[c * 3 + 2] = (rrng() - 0.5) * amt;
-    }
-    const cp = chunk.attributes.position;
-    for (let i = 0; i < cp.count; i++) {
-      const ci = (cp.getX(i) > 0 ? 1 : 0) + (cp.getY(i) > 0 ? 2 : 0) + (cp.getZ(i) > 0 ? 4 : 0);
-      cp.setXYZ(i, cp.getX(i) + _rubbleOff[ci * 3], cp.getY(i) + _rubbleOff[ci * 3 + 1],
-        cp.getZ(i) + _rubbleOff[ci * 3 + 2]);
-    }
-    chunk.computeVertexNormals();
-    return chunk;
-  }
   // (sealed lane 2026-10-11: a Caldera and a Ruinspires flatbed stood through a rubble pile's metre-high block) a pile's
   // record is the circle its chunks' centres fall in; each chunk reaches past it by up to its own size, and its charred
   // beam further: its masonry and the beam stand in the parked vehicles' and carts' seat passes as drawn
@@ -5413,41 +5370,11 @@ ${snowCap ? `
   function addRubblePile(x: number, z: number, pr: number, rrng: Rng): void {
     const y = heightField.getHeightAt(x, z);
     const stoneStart = buckets.stone.length, woodStart = buckets.wood.length;
-    const n = 6 + ((rrng() * 5) | 0);
-    for (let k = 0; k < n; k++) {
-      const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
-      const cs = 0.35 + rrng() * 0.8;
-      // mix chunk classes: blocky masonry / flat slab / brick-proportioned
-      const cls = rrng();
-      const chunk = cls < 0.55
-        ? box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9)
-        : cls < 0.8
-          ? box(cs * 1.3, cs * 0.22, cs * (0.8 + rrng() * 0.5), 0.9)   // wall slab
-          : box(cs * 0.7, cs * 0.3, cs * 0.35, 0.9);                    // brick clump
-      roughenChunk(chunk, rrng, cs * 0.34);
-      jitterUV(chunk, rrng);
-      chunk.rotateY(rrng() * Math.PI);
-      chunk.rotateX((rrng() - 0.5) * 0.5);
-      chunk.translate(x + Math.cos(a) * rr, y + 0.12 + (1 - rr / pr) * pr * 0.35, z + Math.sin(a) * rr);
-      buckets.stone.push(chunk);
-    }
-    // brick-shard apron: small debris feathering the pile into the ground
-    for (let k = 0; k < 7; k++) {
-      const a = rrng() * Math.PI * 2, rr = pr * (0.8 + rrng() * 0.6);
-      const bs = 0.10 + rrng() * 0.16;
-      const shard = roughenChunk(box(bs * 1.7, bs * 0.7, bs, 1.2), rrng, bs * 0.4);
-      shard.rotateY(rrng() * Math.PI);
-      shard.translate(x + Math.cos(a) * rr, y + 0.05, z + Math.sin(a) * rr);
-      buckets.stone.push(shard);
-    }
-    if (rrng() < 0.6) { // charred beam jutting out
-      const beam = box(0.14, 0.14, 2.2 + rrng() * 1.4, 1.0);
-      beam.rotateX(-0.5 - rrng() * 0.4);
-      beam.rotateY(rrng() * Math.PI * 2);
-      beam.translate(x, y + pr * 0.4, z);
-      buckets.wood.push(beam);
-    }
-    const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + n), ...buckets.wood.slice(woodStart)], y, 0.05);
+    // (props census #7: the pile's pieces are the ruin grammar's, drawn from the same stream as before)
+    const pile = rubblePileParts(x, y, z, pr, rrng);
+    buckets.stone.push(...pile.stone);
+    buckets.wood.push(...pile.wood);
+    const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + pile.chunks), ...buckets.wood.slice(woodStart)], y, 0.05);
     if (drawn) rubbleDrawnFootprints.push(drawn);
     const ob = setCircleShape({ min: [x - pr, y, z - pr],
       max: [x + pr, y + pr * .7, z + pr], kind: 'rubble' }, x, z, pr);

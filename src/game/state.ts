@@ -140,8 +140,9 @@ import {
   FUEL_CHARGE_KG, PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, cookOffChargeKg, munitionBlastEventFor, propFellRadiusM,
 } from '../sim/munitionBlast.ts';
 import {
-  createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor, type TerrainDeformation,
+  createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, type TerrainDeformation,
 } from '../sim/terrainDeformation.ts';
+import { structureRubbleHeightM } from '../sim/structureDamage.ts';
 import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
@@ -1242,7 +1243,7 @@ export function setupBattle(
     ground: ground.overlay,
     // the bots' grid re-reads the ground round the heap, as the authority's does
     onCollapse: (structure) => {
-      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
       const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
       const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
       game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);

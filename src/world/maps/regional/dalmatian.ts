@@ -9,10 +9,11 @@ import {
   PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
 import { balconette, dressedQuoin, facadeOn, facadeRng, trimRun } from './facade.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
@@ -384,43 +385,23 @@ const boathouse: RegionalBuilder = (ctx) => {
  */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(5.4, ctx.info.w - 0.3), D = Math.max(7.4, ctx.info.d - 0.3);
   const t = 0.5, H1 = 5.2;
-  const faces: Array<{ face: Face; gable: boolean }> = [
-    { face: { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, gable: true },
-    { face: { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, gable: true },
-    { face: { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D - 2 * t }, gable: false },
-    { face: { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D - 2 * t }, gable: false },
-  ];
-  for (const { face, gable } of faces) {
-    const L = face.width, n = 8;
-    // the broken head: a height at every station, the gable's slope kept on most of a gable wall
-    const tops: number[] = [];
-    for (let k = 0; k <= n; k++) {
-      const u = -L / 2 + L * k / n, mid = Math.abs(u) / (L / 2);
-      let h = H1 * (0.58 + rng() * 0.38);
-      if (gable && rng() < 0.75) h = Math.max(h, H1 + (1 - mid) * W * 0.18 * (0.6 + rng() * 0.4));
-      tops.push(h);
-    }
-    // a breach: two or three neighbouring stations down near the sill
-    if (rng() < 0.6) { const k = 1 + Math.floor(rng() * (n - 2)); tops[k] = 0.8 + rng() * 0.7; tops[k + 1] = Math.min(tops[k + 1], 1.6 + rng()); }
-    for (let k = 0; k < n; k++) {
-      const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
-      wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
-    }
-    // window holes where the wall still stands to the lintel
-    if (!gable) {
-      for (const u of [-L * 0.25, L * 0.25]) {
-        const k = Math.min(n - 1, Math.max(0, Math.floor((u + L / 2) / (L / n))));
-        if (Math.min(tops[k], tops[k + 1]) < 4.4) continue;
-        faceBox(sink, 'dark', face, u, 3.6, -t / 2, 0.7, 1.0, t + 0.02, { decor: true });
-      }
-    }
+  // (props census #7, lane B 2026-10-14; the judges: "the windows dark boxes through the wall") the ruin grammar: the
+  // two storeys' own walls standing to the gables with a breach toward the sill, the door and the windows of both storeys
+  // cut through where the wall still stands over them, the tiles slid in over the heaps
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * (W - 2.4), w: 1.0, y0: 0, h: 2.1 }];
+  for (const s of [0, 1]) for (const face of ['right', 'left'] as const) for (const u of [-(D - 2 * t) * 0.25, (D - 2 * t) * 0.25]) {
+    openings.push({ face, storey: s, kind: 'window', u, w: 0.7, y0: s === 0 ? 0.9 : 0.6, h: 1.0 });
   }
-  // the fallen roof: a heap of rubble and tiles inside the shell
-  sink.span('stone', -W * 0.3, -0.2, -D * 0.25, W * 0.3, 0.9, D * 0.2, { decor: true });
-  sink.span('roof', -W * 0.25, 0.85, -D * 0.1, W * 0.2, 1.1, D * 0.15, { decor: true });
+  const side = (): RuinHead => ({ a: H1 * (0.6 + rng() * 0.36), b: H1 * (0.6 + rng() * 0.36), at: 0.15 + rng() * 0.7, dip: rng() < 0.6 ? 0.75 : 0.2, ragged: 0.35 });
+  const gable = (): RuinHead => (rng() < 0.75 ? { a: H1, b: H1, at: 0.5, dip: -(W * 0.18) / H1, ragged: 0.3 } : side());
+  ruinHouse(sink, {
+    w: W, d: D, t, wall: 'stone', plinth: null, storeys: [2.8, 2.4], openings,
+    heads: { front: gable(), back: gable(), right: side(), left: side() }, stub: 0.6,
+    lintel: { bucket: 'stone' }, roof: { bucket: 'roof', piece: [0.45, 0.3, 0.02] }, timber: rgb(0x2b2621), mobile: ctx.tier === 'mobile',
+  }, rng, look);
   return sink.finish();
 };
 
