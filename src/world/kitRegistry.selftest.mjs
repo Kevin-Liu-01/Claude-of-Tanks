@@ -1,7 +1,7 @@
 // The kit registries (2026-10-15, the perf lane): maps/regional/index.ts STYLE_TABLE and landmarks/index.ts
 // LANDMARK_TABLE hold every architecture style and every set-piece builder as one row each; the browser loads a map's
 // kits when its world build starts (worldKits.ts loadMapKits from map.ts createMapAsync), Node loads every kit at once.
-// 1. The table law: every row's module path is its loader's own import, every exported style and every planned kind
+// 1. The table law: every row is one line (its export and its loader), every exported style and every planned kind
 //    has its row, and no module but a registry loads a kit lazily.
 // 2. Node: every kit loaded, in the order the static imports gave (ARCHITECTURE_STYLES, LANDMARK_BUILDERS' keys).
 // 3. The browser's way (a child under COT_KITS_LAZY=1): nothing loaded until asked, a table kit read before it loads
@@ -18,16 +18,21 @@ const regionalSource = readFileSync(here('./maps/regional/index.ts'), 'utf8');
 const landmarkSource = readFileSync(here('./landmarks/index.ts'), 'utf8');
 
 // ---- 1. the table law
-const rowsOf = (source, start) => {
+const tableOf = (source, start) => {
   const from = source.indexOf(start);
   assert.ok(from > 0, `the table ${start}`);
-  const body = source.slice(from, source.indexOf('\n});', from));
-  return [...body.matchAll(/^ {2}([a-zA-Z]+): \{ file: '([^']+)',(?: name: '([A-Z_]+)',)? load: \(\) => import\('([^']+)'\)/gm)]
-    .map(([, id, file, name, loaded]) => ({ id, file, name, loaded }));
+  return source.slice(from, source.indexOf('\n});', from));
+};
+const rowsOf = (source, start) => {
+  const body = tableOf(source, start);
+  return [...body.matchAll(/^ {2}([a-zA-Z]+): \{ (?:name: '([A-Z_]+)', )?load: \(\) => import\('([^']+)'\)/gm)]
+    .map(([, id, name, file]) => ({ id, name, file }));
 };
 const styleRows = rowsOf(regionalSource, 'const STYLE_TABLE');
 const landmarkRows = rowsOf(landmarkSource, 'const LANDMARK_TABLE');
-for (const row of [...styleRows, ...landmarkRows]) assert.equal(row.loaded, row.file, `${row.id}: its module path is its loader's import`);
+assert.equal(styleRows.length, (tableOf(regionalSource, 'const STYLE_TABLE').match(/^ {2}[a-zA-Z]+: \{ /gm) ?? []).length,
+  'every style row is one line: its export and its loader');
+assert.ok(styleRows.every((row) => row.name), 'every style row names its export');
 // every style a kit module exports has its row (a new kit file is one row), and only those
 const regionalDir = fileURLToPath(here('./maps/regional/'));
 const exported = [];
