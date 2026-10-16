@@ -20,17 +20,21 @@ interface SpanOwner { readonly spans: VertexSpan[] }
 const pieceOwners = new WeakMap<BufferGeometry, SpanOwner>();
 const flatScale = new Vector3(1, .14, 1);
 
+/** The clutter's kinds: the rubble heaps, the hedgehogs, the loose rocks, the coal heaps, and (Lane C, PRP-02) the small
+ *  dressing props given their break path (maps/smallPropBreak.ts), each `prop-<what>`. */
+export type ClutterKind = 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap' | `prop-${string}`;
+
 /** Preserve the existing material batches/rock instances: collapse only this
  * object's vertices or instance, with no new draw calls or frame-loop work. */
 export class CrushableClutter {
   readonly spans: VertexSpan[] = [];
   readonly instances: InstanceSlot[] = [];
-  readonly kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap';
+  readonly kind: ClutterKind;
   readonly x: number; readonly y: number; readonly z: number;
   readonly r: number; readonly h: number;
   readonly obstacles: CollisionRecord[]; readonly colliders: CollisionRecord[];
   constructor(
-    kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap',
+    kind: ClutterKind,
     x: number, y: number, z: number, r: number, h: number,
     obstacles: CollisionRecord[], colliders: CollisionRecord[],
   ) {
