@@ -98,7 +98,10 @@ export default {
     // (2026-10-11, the map-revival lane; gauntlet wave 395a: "a long straight dark bank band that reads as a stretched
     // skirt") the rim inside the playable square half as high: its inner face rose 23 m over the last 45 m (~34 deg at its
     // steepest), a straight dark bank along every edge; now ~12 m at ~16 deg, the caldera wall left to the horizon
-    hillScale: 0.55, microScale: 0.6, rimH: 28,
+    // (rimH 28 -> 8, the horizons stream's Caldera item HZ.20, 2026-10-15: the Hinterland's somma rings the floor 6-8 km
+    // out; from the edge eyes the 28 m rim's last 60 m stood 3.5-10.7° up and hid the somma (4-5°) and half the central
+    // cones — the brief: "the floor runs on for 3-8 km to the rim", "lowered to the floor carrying on")
+    hillScale: 0.55, microScale: 0.6, rimH: 8,
     mesas: null,
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
@@ -312,4 +315,7 @@ export default {
     roadCasing: 'rgba(30,29,27,.96)', roadFill: 'rgba(112,104,94,.94)', buildingFill: '#aaa7a1',
   },
   shot: { pos: [-238, 50, -230], look: [42, 6, 66] },
+  // the horizons stream's Caldera item (HZ.20, 2026-10-15): the Hinterland past the red line (hinterland/drafts/caldera.ts)
+  // — the somma ringing the floor 6-8 km out and the central cones over it; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;
