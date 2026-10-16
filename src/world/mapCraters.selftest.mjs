@@ -89,8 +89,8 @@ import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollis
     const bowl = stamps.find((s) => s.deforms);
     const down = new Vector3(0, -1, 0);
     const base = real.heightField.getHeightAtFast(bowl.x, bowl.z);
-    const players = [{ id: 'a', specId: 'm1a2', team: 'alpha', spawn: { x: -150, z: -150, yaw: 0 } },
-      { id: 'b', specId: 'm1a2', team: 'bravo', spawn: { x: 150, z: 200, yaw: Math.PI } }];
+    const players = [{ id: 'a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: -150, z: -150, yaw: 0 } },
+      { id: 'b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 150, z: 200, yaw: Math.PI } }];
     createAuthoritativeMatch({ mapId: 'verdant', seed: 3, countdownS: 0, worldCollision: real, players });
     const fresh = real.raycast(new Vector3(bowl.x, base + 6, bowl.z), down, 20);
     assert.ok(fresh && fresh.point.y < base - 0.3, `the authority's ground holds the map's bowl (${(fresh?.point.y - base).toFixed(2)} m)`);

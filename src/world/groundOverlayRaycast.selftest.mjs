@@ -85,7 +85,7 @@ assert.equal(world.raycast(at(0, -0.6, 0), east, 10)?.dist, 0, 'unbound again: t
   }
   assert.match(mapSource, /bindGroundOverlay: \(overlay\) => \{[^}]*rayOverlay = overlay;/, 'map.ts: the battle\'s overlay binds the march');
   const authority = readFileSync(new URL('../sim/authoritativeMatch.ts', import.meta.url), 'utf8');
-  assert.match(authority, /const heightField = createDeformedHeightField\(baseHeightField, ground\);[^\n]*\n[^\n]*\n\s*worldCollision\?\.bindGroundOverlay\?\.\(ground\);/,
+  assert.match(authority, /const heightField = [^\n]*createDeformedHeightField\(baseHeightField, ground\);[^\n]*\n[^\n]*\n\s*worldCollision\?\.bindGroundOverlay\?\.\(ground\);/,
     'the authority binds its match\'s ground on its world');
   // the solo smoke reads the match's ground, as the authority's does
   const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
@@ -104,8 +104,8 @@ assert.equal(world.raycast(at(0, -0.6, 0), east, 10)?.dist, 0, 'unbound again: t
   assert.equal(ruleset.destruction.craters, true, 'craters are on (DST-04)');
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 9, countdownS: 0, ruleset, worldCollision,
     players: [
-      { id: 'gun', specId: 'm1a2', team: 'alpha', spawn: { x: -150, z: -150, yaw: 0 } },
-      { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: 150, z: 200, yaw: Math.PI } },
+      { id: 'gun', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: -150, z: -150, yaw: 0 } },
+      { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 150, z: 200, yaw: Math.PI } },
     ] });
   assert.equal(bound.length, 1, 'the authority binds its ground once');
   const overlay = bound[0];
