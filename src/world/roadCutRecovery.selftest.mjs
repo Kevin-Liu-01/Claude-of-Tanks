@@ -136,8 +136,13 @@ const failures = [
   // 2026-10-03 (bravo's block, docs/MAP-LAYOUT-BRIEF.md "Equivalent deployments"): the block's pads and corridor move
   // the ground at both north witnesses by a hair, so they are re-measured (were 2.15548358326841 and 1.4196802831775939);
   // the predecessor still fails both gates.
-  { id: 'alpine', seed: 2025, x: -50, z: 510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.15548238855496 },
-  { id: 'alpine', seed: 2025, x: -28, z: 472, nx: 1, nz: 0, span: 2, limit: 1.4, old: 1.419265858748627 },
+  // 2026-10-15 (the horizons stream's Glacier item: Glacier Pass's rim 52 -> 30 m under its Hinterland): the
+  // predecessor's compounded banks come down with the rim, so both north witnesses retire. On the 30 m rim it no longer
+  // fails either gate: 1.4597 at (-50, 510) under the limit 2 (was 2.1555) and 1.0502 at (-28, 472) under 1.4 (was
+  // 1.4193). A search of every metre within 70 m across and 90 m along each alpine gate in the rim band (both seeds,
+  // both axes) finds it failing only around (-50, 509) on seed 2025, against 1.4 (at most 1.300 on seed 1337); that
+  // witness carries the negative, where the program reads 1.073 and the border landform 0.489.
+  { id: 'alpine', seed: 2025, x: -50, z: 509, nx: 1, nz: 0, span: 2, limit: 1.4, old: 1.4819366374570073 },
   // 2026-10-02 (the apron bank law): Highland Reservoir's western apron now rises 5 % to the west with its hillside
   // (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"), so the plane its west gate continues is the hill's own. The predecessor
   // program no longer fails there: 0.080 and 0.050 at (-446, -72), and at most 0.092 and 0.120 anywhere on the road
