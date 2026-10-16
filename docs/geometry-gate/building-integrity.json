@@ -4239,7 +4239,34 @@
    "insideM2": 0.504,
    "gapM2": 3.923,
    "invertedM2": 0
+  },
+  "landmark/fjord:fishRack#22": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 21.005,
+   "invertedM2": 0
+  },
+  "landmark/fjord:stabbur#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/fjord:hayRack#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T10:43:41.253Z"
+ "updatedAt": "2026-10-16T12:02:09.313Z"
 }
