@@ -563,7 +563,10 @@ interface GunBuildConfig {
   collar?: boolean;
   baseR?: number;
   evacR?: number;
-
+  /** Metres a plain tube stops short of the muzzle plane, for a gun whose own tip collar caps that plane (default 0).
+   * 2026-10-16: the 20-pdr's tube ran to its collar's cap plane after VH.04, the bore carver merged the two coplanar
+   * caps into one ring at the tube's radius, and the collar's outer annulus went missing (strv81 open 0 -> 14 px). */
+  tubeInset?: number;
 }
 
 type StowageSpot = readonly [number, number, number, number, number, number];
@@ -6066,7 +6069,7 @@ function addMuzzleBrake(
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
-    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false } = cfg;
+    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, tubeInset = 0 } = cfg;
   const seg = P.q ? 28 : 12;
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
@@ -6074,7 +6077,7 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   // VH.04 (2026-10-14): a plain tube runs to the muzzle face. It stopped 20 mm short for the factory's old seated bore
   // lip; since the carved cannon bores (a28e4d8e6) cut the aperture into the tube's own face and add no lip, every plain
   // buildGun tube ended 20 mm short of its muzzle marker (the fleet census found 92 ids short by 3-25 mm).
-  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len;
+  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - tubeInset;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
   if (sleeve) addThermalSleeve(g, gd, len, r, seg, paintSleeveBands);
   if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);
