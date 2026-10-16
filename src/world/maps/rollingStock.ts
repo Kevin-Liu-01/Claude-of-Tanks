@@ -287,7 +287,7 @@ function walkwayRails(mesh: VehicleMesh, coarse: boolean, xs: readonly number[],
  * relief at two scales, `lumps` irregular lumps (rough octahedra, never cubes) bedded over it, and coal spilled on the
  * top rails and its dust streaked down the sides (`spill`: the walls' outer face, x).
  */
-interface CoalHeapOptions { grid?: readonly [number, number]; peaks?: number; lumps?: number; spill?: number }
+interface CoalHeapOptions { grid?: readonly [number, number]; peaks?: number; lumps?: number; spill?: number; inset?: number }
 
 /** A rough lump: an octahedron with every vertex pulled in or out, flat-shaded facets (8 triangles). */
 function coalLump(mesh: VehicleMesh, x: number, y: number, z: number, r: number, seed: number, m: Mat, m2: Mat): void {
@@ -312,7 +312,7 @@ function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: nu
   o: CoalHeapOptions = {}): void {
   const [gu, gv] = o.grid ?? [22, 12];
   const nu = coarse ? 6 : gu, nv = coarse ? 6 : gv, peaks = o.peaks ?? 0;
-  const lenZ = frameHalf * 2 - 0.25, widX = W - 0.2;
+  const lenZ = frameHalf * 2 - 0.25, widX = W - (o.inset ?? 0.2);
   const heightAt = (x: number, z: number): number => {
     const u = z / lenZ + 0.5, v = x / widX + 0.5;
     const along = Math.pow(Math.sin(Math.min(1, Math.max(0, u)) * Math.PI), 0.4)
@@ -422,13 +422,20 @@ function wheelset(mesh: VehicleMesh, z: number, r: number, spoked: boolean, gaug
   mesh.pop();
 }
 
-/** An axle box outside each wheel under its leaf spring, hung from the solebar. */
-function axleBox(mesh: VehicleMesh, z: number, r: number, solebarY: number, springLen: number): void {
+/**
+ * An axle box outside each wheel under its leaf spring, hung from the solebar (its web at x = ±`solebarX`).
+ * (props r2, Lane C 2026-10-16: the census found the spring hangers, the pull rods and on the G 10 the whole spring
+ * floating clear of what should carry them) the spring's leaves stacked on the box, the shortest on it and the main
+ * leaf on top, its eyes in the shackles up to the spring bracket that runs in to the solebar's web; the horn guides up
+ * to the same bracket; the pull rods between the brake beams that join the blocks across the axle.
+ */
+function axleBox(mesh: VehicleMesh, z: number, r: number, solebarY: number, springLen: number, solebarX: number): void {
+  const leaf = 0.035, leafY0 = r + 0.18, leafTop = leafY0 + 4 * leaf, bracketY = solebarY - 0.03;
   for (const side of [1, -1]) {
     const x = side * 1.0;
     mesh.box(x, r, z, 0.24, 0.36, 0.32, GEAR_STEEL, 0.02);
-    // the leaf spring: a stack of leaves, its eyes up to the hangers on the solebar
-    for (let k = 0; k < 4; k++) mesh.box(x, r + 0.22 + k * 0.04, z, 0.12, 0.035, springLen - k * 0.18, GEAR_STEEL, 0);
+    // the leaf spring: a stack of leaves on the box, its main leaf's eyes up to the shackles
+    for (let k = 0; k < 4; k++) mesh.box(x, leafY0 + leaf / 2 + k * leaf, z, 0.12, leaf, springLen - (3 - k) * 0.18, GEAR_STEEL, 0);
     // (round 3, wave 234: "brake rigging") the brake blocks against the tread fore and aft, each on its hanger up to the
     // frame (one piece), and the pull rod between them inboard of the wheel
     for (const s2 of [-1, 1]) {
@@ -436,10 +443,16 @@ function axleBox(mesh: VehicleMesh, z: number, r: number, solebarY: number, spri
       mesh.box(x * 0.76, (y0 + y1) / 2, z + s2 * (r + 0.05), 0.09, y1 - y0, 0.07, GEAR_STEEL, 0);
     }
     mesh.box(x * 0.5, r * 0.45, z, 0.04, 0.04, 2 * r + 0.1, GEAR_STEEL, 0);
-    for (const s of [-1, 1]) beam(mesh, [x, r + 0.34, z + s * springLen / 2], [x, solebarY - 0.12, z + s * (springLen / 2 + 0.06)], 0.06, 0.06, FRAME_BLACK);
+    for (const s of [-1, 1]) beam(mesh, [x, leafTop - leaf / 2, z + s * springLen / 2], [x, bracketY - 0.03, z + s * (springLen / 2 + 0.06)], 0.06, 0.06, FRAME_BLACK);
+    // the spring bracket: a pressed plate under the frame from over the spring in to the solebar's web, the shackles'
+    // and the horn guides' seat
+    const xi = x - side * 0.1, xo = side * solebarX;
+    mesh.box((xi + xo) / 2, bracketY, z, Math.abs(xo - xi), 0.06, springLen + 0.24, FRAME_BLACK, 0.01);
     // the horn guides either side of the box
     for (const s of [-1, 1]) mesh.box(x, (r + solebarY) / 2, z + s * 0.22, 0.18, solebarY - r, 0.05, FRAME_BLACK, 0);
   }
+  // the brake beams across the axle between its blocks, fore and aft
+  for (const s2 of [-1, 1]) beam(mesh, [-0.76, r * 0.45, z + s2 * (r + 0.05)], [0.76, r * 0.45, z + s2 * (r + 0.05)], 0.05, 0.06, GEAR_STEEL);
 }
 
 /** The underframe: two solebars, the headstocks, buffers and screw couplings at both ends, a brake hand wheel. */
@@ -664,7 +677,7 @@ function tem1(mesh: VehicleMesh, coarse: boolean): void {
 function omm(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const L = ROLLING_STOCK_LENGTH.omm, W = ROLLING_STOCK_BODY.omm.w, frameHalf = 4.35, floorY = 1.28, top = 2.83;
   const r = 0.5;
-  for (const z of [-3.0, 3.0]) { wheelset(mesh, z, r, true); axleBox(mesh, z, r, floorY - 0.02, 1.6); }
+  for (const z of [-3.0, 3.0]) { wheelset(mesh, z, r, true); axleBox(mesh, z, r, floorY - 0.02, 1.6, W / 2 - 0.08); }
   underframe(mesh, frameHalf, W, floorY, 0.32, L);
   // the body: steel side and end walls, the floor, the top rails
   const hw = W / 2, h = top - floorY;
@@ -672,7 +685,8 @@ function omm(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
     // (Lane C, #24 wreck) the right side's door blown open: the wall either side of it, the door hanging from its foot
     const breach = wrecked && side > 0;
     for (const [z0, z1] of breach ? [[-frameHalf + 0.02, -0.78], [0.78, frameHalf - 0.02]] : [[-frameHalf + 0.02, frameHalf - 0.02]]) {
-      mesh.box(side * (hw - 0.02), floorY + h / 2, (z0 + z1) / 2, 0.03, h, z1 - z0, DB_BROWN, 0);
+      // (props r2, Lane C 2026-10-16: the body was all sharp boxes, 84 % of its surface) the side sheets' rolled edges
+      mesh.box(side * (hw - 0.02), floorY + h / 2, (z0 + z1) / 2, 0.03, h, z1 - z0, DB_BROWN, 0.01);
       mesh.box(side * (hw - 0.07), floorY + h / 2, (z0 + z1) / 2, 0.01, h, z1 - z0 - 0.08, DB_BROWN, 0);
     }
     if (breach) {
@@ -699,21 +713,22 @@ function omm(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
     }
   }
   for (const end of [1, -1]) {
-    mesh.box(0, floorY + h / 2, end * (frameHalf - 0.02), W - 0.04, h, 0.03, DB_BROWN, 0);
+    mesh.box(0, floorY + h / 2, end * (frameHalf - 0.02), W - 0.04, h, 0.03, DB_BROWN, 0.01);
     mesh.box(0, floorY + h / 2, end * (frameHalf - 0.08), W - 0.14, h, 0.01, DB_BROWN, 0);
     for (const x of [-0.9, 0, 0.9]) mesh.box(x, floorY + h / 2, end * (frameHalf + 0.03), 0.09, h, 0.06, DB_BROWN, 0);
   }
-  mesh.box(0, floorY + 0.03, 0, W - 0.06, 0.06, frameHalf * 2 - 0.06, FRAME_BLACK, 0);
+  mesh.box(0, floorY + 0.03, 0, W - 0.06, 0.06, frameHalf * 2 - 0.06, FRAME_BLACK, 0.01);
   // the load: coal heaped over the top rails, a ridge along the middle; round 5 (wave 278: "a flat dark-grey lid flush
   // with the sides… black cubes"): it comes up to the rims and crowns 0.35 m over them in three chute dumps, granular,
   // its lumps rough, some spilled on the rails and its dust down the sides
-  coalHeap(mesh, coarse, top, frameHalf, W, 0.05, 0.42, 1, { grid: [34, 16], peaks: 3, lumps: 96, spill: hw + 0.07 });
+  // (props r2, Lane C 2026-10-16: the heap stood 2.5 cm clear of the walls, floating) heaped against the side sheets
+  coalHeap(mesh, coarse, top, frameHalf, W, 0.05, 0.42, 1, { grid: [34, 16], peaks: 3, lumps: 96, spill: hw + 0.07, inset: 0.16 });
 }
 
 function g10(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const L = ROLLING_STOCK_LENGTH.g10, W = ROLLING_STOCK_BODY.g10.w, frameHalf = 3.85, floorY = 1.25, eave = 3.3, ridge = 3.9;
   const r = 0.5;
-  for (const z of [-2.0, 2.0]) { wheelset(mesh, z, r, true); axleBox(mesh, z, r, floorY - 0.02, 1.6); }
+  for (const z of [-2.0, 2.0]) { wheelset(mesh, z, r, true); axleBox(mesh, z, r, floorY - 0.02, 1.6, W / 2 - 0.08); }
   underframe(mesh, frameHalf, W, floorY, 0.3, L);
   const hw = W / 2, h = eave - floorY, bodyL = frameHalf * 2 + 0.1;
   // the planked sides and ends: vertical boards on a steel frame, the frame's diagonals outside
@@ -721,7 +736,8 @@ function g10(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
     // (Lane C, #24 wreck) the right side blown through at its door: the planking either side, boards hanging in the gap
     const breach = wrecked && side > 0;
     for (const [z0, z1] of breach ? [[-bodyL / 2, -1.0], [1.0, bodyL / 2]] : [[-bodyL / 2, bodyL / 2]]) {
-      mesh.box(side * (hw - 0.03), floorY + h / 2, (z0 + z1) / 2, 0.05, h, z1 - z0, DB_BROWN_WOOD, 0);
+      // (props r2, Lane C 2026-10-16: sharp boxes 62 % of the van's surface) the planking's eased arrises
+      mesh.box(side * (hw - 0.03), floorY + h / 2, (z0 + z1) / 2, 0.05, h, z1 - z0, DB_BROWN_WOOD, 0.01);
     }
     if (breach) for (const [z, len, lean] of [[-0.82, h * 0.7, 0.35], [-0.6, h * 0.45, -0.5], [0.7, h * 0.6, 0.6]] as const) {
       mesh.push().translate(side * (hw - 0.03), eave - 0.05, z).rotateX(lean).rotateZ(-side * 0.25);
@@ -777,7 +793,7 @@ function g10(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
     mesh.box(side * (hw + 0.1), floorY + 0.12, 0, 0.05, 0.05, 4.2, FRAME_BLACK, 0);
   }
   for (const end of [1, -1]) {
-    mesh.box(0, floorY + h / 2, end * (bodyL / 2 - 0.03), W - 0.06, h, 0.05, DB_BROWN_WOOD, 0);
+    mesh.box(0, floorY + h / 2, end * (bodyL / 2 - 0.03), W - 0.06, h, 0.05, DB_BROWN_WOOD, 0.01);
     // the gable under the roof's arch
     const pts: Vec3[] = [];
     const n = coarse ? 4 : 8;
@@ -809,7 +825,7 @@ function g10(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
 function tank(mesh: VehicleMesh, coarse: boolean): void {
   const L = ROLLING_STOCK_LENGTH.tank, W = 2.6, frameHalf = 3.8, floorY = 1.25, R = 1.05, axisY = floorY + 0.2 + R;
   const r = 0.5;
-  for (const z of [-2.25, 2.25]) { wheelset(mesh, z, r, false); axleBox(mesh, z, r, floorY - 0.02, 1.5); }
+  for (const z of [-2.25, 2.25]) { wheelset(mesh, z, r, false); axleBox(mesh, z, r, floorY - 0.02, 1.5, W / 2 - 0.08); }
   underframe(mesh, frameHalf, W, floorY, 0.3, L);
   // the barrel with its dished ends, on two cradles, held down by straps
   const half = 3.7;
@@ -1006,7 +1022,9 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
     }
     // the cab door's grab handles either side of it
     if (!coarse) mesh.dressing(() => {
-      for (const z of [cz0 + 0.12, cz1 - 0.12]) mesh.tube([[side * ((W - 0.1) / 2 + 0.06), frameTop + 0.4, z], [side * ((W - 0.1) / 2 + 0.06), frameTop + 1.7, z]], 0.018, 5, HANDRAIL, { caps: true });
+      // (props r2, Lane C 2026-10-16: they stood 4 cm off the cab, floating) bent in at both ends to their feet on the side
+      const xw = side * ((W - 0.1) / 2 - 0.01), xo = side * ((W - 0.1) / 2 + 0.06);
+      for (const z of [cz0 + 0.12, cz1 - 0.12]) mesh.tube([[xw, frameTop + 0.4, z], [xo, frameTop + 0.46, z], [xo, frameTop + 1.64, z], [xw, frameTop + 1.7, z]], 0.018, 5, HANDRAIL, { caps: true });
     });
   }
   for (const end of [1, -1]) {
@@ -1042,6 +1060,8 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   for (const end of [1, -1]) {
     const zc = (cz0 + cz1) / 2 + end * 0.32;
     mesh.box(0.55, cabTop + 0.22, zc, 0.07, 0.07, 0.34, RAIL_GREY, 0);
+    // (props r2, Lane C 2026-10-16: the horns floated over the roof) the horn's stem down to the roof plate
+    mesh.box(0.55, cabTop + 0.11, zc, 0.04, 0.16, 0.04, RAIL_GREY, 0);
     mesh.box(0.55, cabTop + 0.22, zc + end * 0.19, 0.15, 0.15, 0.04, RAIL_GREY, 0);
   }
   if (!coarse) mesh.dressing(() => {
