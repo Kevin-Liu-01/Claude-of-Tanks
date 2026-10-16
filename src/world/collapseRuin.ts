@@ -6,14 +6,14 @@
  * Every kit's collapse (destructionKit.ts StructureDamageKit.collapse: the default kit and the regional ones) runs
  * through `keepRuinStanding` from the world seam (structureDamageSeam.ts). The kit writes what it writes; this pass
  * measures it as it is written — the area-weighted height of its triangles (64 bins: no sort, no allocation) and the
- * share of the body's plan it covers (a 24 × 24 grid) — and then adds, in the building's own buckets and tints, only
+ * share of the body's plan it covers (a 48 × 48 grid) — and then adds, in the building's own buckets and tints, only
  * what the ruin still lacks:
  *
  * - the storey interior heaped (a fill mound draped on the simulation's heap, ragged at its edge) where the plan is
  *   bare, so the ruin covers at least ~70 % of the plan (the check's floor: 60 %);
  * - the corners standing: an L-shaped pier at each corner of the ground storey in its structural layer, stepped and
  *   ragged at the top, 42–60 % of the building's height (never past its eaves);
- * - then, while the ruin still stands lower than 27 % of the building's height (the check's floor: 25 % of the
+ * - then, while the ruin still stands lower than 30 % of the intact's p90 height (the check's floor: 25 % of the
  *   intact's area-weighted 90th percentile, which is never above the top), ragged wall stubs between the piers with a
  *   breach in each face, and the fallen roof's covering as slabs leaning on the heap.
  *
@@ -28,10 +28,10 @@ import {
 } from './destructionKit.ts';
 
 /** The ruin's floors (the sweep's: 25 % and 60 %, with margin). */
-export const RUIN_HEIGHT_SHARE = 0.27;
+export const RUIN_HEIGHT_SHARE = 0.3;
 export const RUIN_PLAN_SHARE = 0.72;
 const BINS = 64;
-const GRID = 24;
+const GRID = 48;
 /** A box's 24 vertices. */
 const BOX_VERTS = 24;
 
@@ -44,8 +44,8 @@ let runBase = -1;
 let inner: DamageMeshWriter | null = null;
 let measuring = false;
 let kitPhase = false;
-/** Vertices kept free for the ruin while the kit writes (120 boxes). */
-const RUIN_RESERVE_VERTS = 120 * 24;
+/** Vertices kept free for the ruin while the kit writes (200 boxes). */
+const RUIN_RESERVE_VERTS = 200 * 24;
 /** The height the ruin's pieces scale by: the intact's p90 over its share (about its eaves), set per collapse. */
 let ruinScale = 1;
 
@@ -411,7 +411,7 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     if (wall && heightP90() < target) cornerPiers(anatomy, rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
     if (wall && heightP90() < target) wallStubs(anatomy, rng, wall, cap, measuringWriter, 0.32);
     if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
-    for (let k = 0; k < 28 && wall && heightP90() < target; k++) wallFragment(anatomy, rng, wall, cap, measuringWriter, k);
+    for (let k = 0; k < 48 && wall && heightP90() < target; k++) wallFragment(anatomy, rng, wall, cap, measuringWriter, k);
   } finally {
     kitPhase = false;
     measuring = false;

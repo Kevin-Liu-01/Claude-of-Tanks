@@ -131,7 +131,7 @@ anatomy.intact = intact;
   const writer = recorder(6000);
   let seen = 0;
   keepRuinStanding(anatomy, 3, { mesh: writer, pieces }, (w) => { seen = w.mesh.capacity; return raftKit(anatomy, w); });
-  assert.equal(seen, 6000 - 120 * 24, 'the kit sees the capacity less the reserve');
+  assert.equal(seen, 6000 - 200 * 24, 'the kit sees the capacity less the reserve');
   assert.ok(writer.vertices <= 6000, 'and the ruin stays inside the real one');
 }
 

@@ -1047,12 +1047,12 @@ The owner ruled flat rafts out, and the LOOKS r2 sweep's anti-raft check found 1
 stood under 25 % of their intact height (the destroyed state's area-weighted 90th percentile of its triangles' heights
 against the intact's; its plan at least 60 % of the intact's cells). `world/collapseRuin.ts keepRuinStanding` runs every
 kit's collapse (the default kit and every regional one) from the world seam: it measures what the kit writes as it is
-written (64 height bins, a 24 × 24 plan grid, no sort and no allocation) against the intact form as drawn (its p90
+written (64 height bins, a 48 × 48 plan grid, no sort and no allocation) against the intact form as drawn (its p90
 height, top and plan box, measured once from the parts at describe: `StructureDamageAnatomy.intact`), and adds in the
 building's own buckets and tints only what the ruin lacks — the storey interior heaped (a fill draped on the
 simulation's heap, ragged at its edge, no deeper than tracks sink), an L pier standing at each corner in the ground
 storey's structural layer (stepped and ragged, 42–60 % of the intact's p90 over its share), then ragged wall stubs with
-a breach in each face and the fallen covering's slabs leaning on the heap, until the ruin stands at 27 % and covers
-72 %. The kit writes with 120 boxes' room kept free for it. Seeded from the collapse's own seed (the same ruin on every
+a breach in each face and the fallen covering's slabs leaning on the heap, until the ruin stands at 30 % and covers
+72 %. The kit writes with 200 boxes' room kept free for it. Seeded from the collapse's own seed (the same ruin on every
 peer and tier); a kit whose ruin already stands is left as it wrote it. Presentation only: the piers and stubs are drawn,
 not records (the simulation's heap and the swap are unchanged). Receipt: `world/collapseRuin.selftest.mjs`.
