@@ -47,7 +47,8 @@ interface StreetContext {
   colliders?: CollisionRecord[];
   /** (Lane C, #24) a burnt tram handed to the props as a breakable Shanghai car (tramShanghai.ts) at its seat, heading
    *  along the track; omitted, the tram is drawn from its parts with its static record as before. */
-  tramDestructible?: (tram: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }) => void;
+  tramDestructible?: (tram: { kind: 'k2' | 'shanghai'; // tank-ids:keep
+    x: number; z: number; yaw: number }) => void;
   /** the buildings placed (props.ts buildingFeatures, the plan's with their structure kind): the station's seat */
   buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
@@ -507,8 +508,8 @@ function dressCreekQuays(ctx: StreetContext): void {
         sink.cylinder('stone', [px, py, pz], 'y', 0.55, 0.14, 6, { decor: true }, 0.12);
       }
       if (i % 20 === 7 && look() < 0.6) {
-        for (let xk2_black_panther = 0; xk2_black_panther < 5; xk2_black_panther++) {
-          const f = 1 - (xk2_black_panther + 1) / 6, [sx, sy, sz] = pt(a, ea, f);
+        for (let k = 0; k < 5; k++) {
+          const f = 1 - (k + 1) / 6, [sx, sy, sz] = pt(a, ea, f);
           sink.span('stone', sx - 0.6, sy - 0.25, sz - 0.6, sx + 0.6, sy + 0.08, sz + 0.6, { decor: true });
         }
       }
