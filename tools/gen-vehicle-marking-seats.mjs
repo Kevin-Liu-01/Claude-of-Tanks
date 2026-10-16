@@ -13,11 +13,19 @@ const outputPath = path.join(root, 'src/vehicles/vehicleMarkingSeats.generated.t
 const groupOutputDir = path.join(root, 'src/vehicles/vehicleMarkingSeatGroups');
 const loaderOutputPath = path.join(root, 'src/vehicles/vehicleMarkingSeatLoaders.generated.ts');
 const check = process.argv.includes('--check');
+// --ids=a,b re-solves only those tanks and keeps every other record as generated (a targeted lane update).
+const onlyIds = (() => {
+  const arg = process.argv.find((a) => a.startsWith('--ids='));
+  return arg ? new Set(arg.slice(6).split(',').filter(Boolean)) : null;
+})();
+const previous = onlyIds ? (await import('../src/vehicles/vehicleMarkingSeats.generated.ts')).VEHICLE_MARKING_SEATS : {};
+for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(`[marking-seats] unknown id ${id}`);
 const round = (value) => Number(Number(value).toFixed(7));
 const vector = (values) => values.map(round);
 const records = {};
 
 for (const id of ALL_TANK_IDS) {
+  if (onlyIds && !onlyIds.has(id) && previous[id]) { records[id] = previous[id]; continue; }
   // the one caller of the live surface solver: every other build applies the seats this file writes
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, solveMarkingSeats: true });
   const seats = [];
