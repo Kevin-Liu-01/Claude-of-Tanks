@@ -5,7 +5,7 @@
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedPolygon, recordShaft, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -182,20 +182,61 @@ const minaret: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The borj: a tapering mud-plastered watch tower with a crenellated top and a timber door high in its wall. */
+/**
+ * The borj: a mud-plastered watch tower with a crenellated top and a timber door high in its wall. (Props census #5, lane
+ * B 2026-10-15; the judges: "the buried door": its leaf stood inside the battered wall's foot, laid on nothing) a battered
+ * talus round its foot; the shaft in two stages, the upper set back over a band, its walls cut: the door raised over the
+ * talus with its steps up, loopholes in every face of both stages and a lookout window under the parapet; the palm-trunk
+ * beam ends (toron) through the walls under the parapet, its merlons over a parapet band. The shaft is a tower body
+ * (it topples in its courses).
+ */
 const borj: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const S = Math.max(3.2, Math.min(ctx.info.w, ctx.info.d) - 0.6), H = Math.max(7.5, ctx.info.h - 1.5);
-  sink.cylinder(MUD, [0, -0.3, 0], 'y', H + 0.3, S * 0.72, 4, {}, S * 0.6, true, Math.PI / 4);
-  const top = H, s = S * 0.6 * Math.SQRT1_2;
-  for (let k = -2; k <= 2; k++) for (const [ax, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]] as const) {
-    if (k % 2 !== 0) continue;
-    const c = k * s / 2.5;
-    if (ax === 'x') sink.span(MUD, sgn * s - 0.18, top, c - 0.25, sgn * s + 0.18, top + 0.6, c + 0.25);
-    else sink.span(MUD, c - 0.25, top, sgn * s - 0.18, c + 0.25, top + 0.6, sgn * s + 0.18);
+  const t = 0.55, cut = 0.42, reveal = 0.34, mid = Math.round(H * 0.55 * 10) / 10, S2 = S - 0.4;
+  // the talus, its foot sunk
+  sink.cylinder(MUD, [0, -0.3, 0], 'y', 0.8 + 0.3, (S / 2 + 0.3) * Math.SQRT2, 4, {}, (S / 2 + 0.02) * Math.SQRT2, true, Math.PI / 4);
+  const loop = (y: number, u = 0): HoleRect => ({ u0: u - 0.09, u1: u + 0.09, y0: y, y1: y + 0.7 });
+  const door: HoleRect = { u0: -0.45, u1: 0.45, y0: t + 0.25, y1: t + 0.25 + 1.85 };
+  const low = holedBox(sink, MUD, -S / 2, -S / 2, S / 2, S / 2, t, mid, {
+    front: [door, loop(mid - 1.4, 0.95)], right: [loop(2.2), loop(mid - 1.2, -0.6)], back: [loop(2.8)], left: [loop(2.0, 0.5), loop(mid - 1.3)],
+  }, cut, reveal);
+  // the band at the setback
+  sink.span(MUD, -S / 2 - 0.05, mid, -S / 2 - 0.05, S / 2 + 0.05, mid + 0.18, S / 2 + 0.05);
+  const look: HoleRect = { u0: -0.3, u1: 0.3, y0: H - 1.5, y1: H - 0.65 };
+  const high = holedBox(sink, MUD, -S2 / 2, -S2 / 2, S2 / 2, S2 / 2, mid + 0.18, H, {
+    front: [look, loop(mid + 1.0, -0.7)], right: [loop(mid + 1.4)], back: [loop(mid + 0.9, 0.4), loop(H - 1.6, -0.4)], left: [loop(mid + 1.2)],
+  }, cut - 0.06, reveal - 0.06);
+  // the parapet: its band and the merlons along it, corner horns taller
+  sink.span(MUD, -S2 / 2 - 0.06, H, -S2 / 2 - 0.06, S2 / 2 + 0.06, H + 0.3, S2 / 2 + 0.06);
+  const e = S2 / 2 + 0.06 - 0.15;
+  for (const [ax, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]] as const) {
+    for (let k = -2; k <= 2; k++) {
+      const c = k * e / 2, tall = Math.abs(k) === 2 ? 0.85 : 0.55;
+      if (ax === 'x') sink.span(MUD, sgn * e - 0.15, H + 0.3, c - 0.2, sgn * e + 0.15, H + 0.3 + tall, c + 0.2);
+      else if (Math.abs(k) < 2) sink.span(MUD, c - 0.2, H + 0.3, sgn * e - 0.15, c + 0.2, H + 0.3 + tall, sgn * e + 0.15);
+    }
   }
-  const face: Face = { origin: [0, 0, S * 0.66 * Math.SQRT1_2], u: [1, 0, 0], out: [0, 0, 1], width: S };
-  doorUnit(sink, face, 0, 0, 0.9, 1.9, { leaf: TIMBER, frame: { bucket: MUD, width: 0.2, out: 0.08 }, steps: null, leafKind: 'plank' });
+  // the toron: palm-trunk beam ends through the upper walls under the parapet
+  const beam = { colour: shade(TIMBER, 0.7), decor: true } as const;
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    for (const u of [-S2 * 0.3, 0, S2 * 0.3]) faceBox(sink, 'structureWood', high[name], u, H - 0.3, 0.2, 0.14, 0.14, 0.4, beam);
+  }
+  // the door at the back of its reveal (the steps up from the talus), the loopholes' dark frames
+  sink.recess = reveal;
+  try {
+    doorUnit(sink, low.front, 0, door.y0, door.u1 - door.u0, door.y1 - door.y0, { leaf: TIMBER, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(TIMBER, 0.8) },
+      steps: null, leafKind: 'plank' }, door.y0);
+  } finally { sink.recess = 0; }
+  // its two steps up from the talus, inside the plot
+  sink.span(MUD, -0.55, 0.2, S / 2 - 0.05, 0.55, t + 0.02, S / 2 + 0.42, { decor: true });
+  sink.span(MUD, -0.55, 0.2, S / 2 - 0.05, 0.55, t + 0.25, S / 2 + 0.16, { decor: true });
+  sink.recess = reveal - 0.06;
+  try {
+    windowUnit(sink, high.front, 0, look.y0, look.u1 - look.u0, look.y1 - look.y0, { frame: shade(TIMBER, 0.8), frameWidth: 0.05, frameOut: 0.03, bars: 'none',
+      surround: null, sill: { bucket: MUD, out: 0.06 }, shutters: null }, ctx.rng, 0.15);
+  } finally { sink.recess = 0; }
+  recordShaft(sink, 0, 0, S, H + 1.15, MUD, true);
   return sink.finish();
 };
 
