@@ -83,12 +83,18 @@ function deck(sink: PartSink, bucket: RegionalBucket, plan: ReadonlyArray<readon
   sink.polygon(bucket, plan.map(([x, z]): Vec3 => [x, y, z]), opts);
 }
 
-/** A column of half size r with its arrises chamfered 6 cm, its sides only (the sill and the soffit close it). */
-function pier(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, r: number, y0: number, y1: number, opts: EmitOptions = {}): void {
+/**
+ * A column of half size r with its arrises chamfered 6 cm: its sides, and its caps where it stands proud of the slab's
+ * edge (`capped`: a corner pier reaches 7.5 cm past the face line, past the soffit over it and the sill under it).
+ */
+function pier(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, r: number, y0: number, y1: number, capped = false): void {
   const c = Math.min(0.06, r * 0.3);
   const plan: Array<[number, number]> = [[cx - r + c, cz + r], [cx + r - c, cz + r], [cx + r, cz + r - c], [cx + r, cz - r + c],
     [cx + r - c, cz - r], [cx - r + c, cz - r], [cx - r, cz - r + c], [cx - r, cz + r - c]];
-  sweep(sink, bucket, plan, [[0, y0], [0, y1]], opts);
+  sweep(sink, bucket, plan, [[0, y0], [0, y1]]);
+  if (!capped) return;
+  deck(sink, bucket, plan, y1);
+  sink.polygon(bucket, plan.map(([x, z]): Vec3 => [x, y0, z]).reverse());
 }
 
 /**
@@ -148,7 +154,7 @@ function slabFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, number
     // the corner piers closing each face's bay of glazing (a bay ends at the corners: no view along the recess round them)
     plan.forEach(([x, z], k) => {
       const [ix, iz] = shallow[k];
-      pier(sink, slab, (x + ix) / 2, (z + iz) / 2, Math.max(rec * 0.6, 0.3), y + spH, y + fh);
+      pier(sink, slab, (x + ix) / 2, (z + iz) / 2, Math.max(rec * 0.6, 0.3), y + spH, y + fh, true);
     });
     // the panes on the glazing line (lit, plain) or the sheeting across a face's mouth
     planFaces(shallow).forEach((cf, fi) => {
@@ -194,6 +200,7 @@ export function parliament(ctx: RegionalBuildContext): RegionalParts {
     const plan = rect(-W / 2 + 0.2, tz0 + 0.2, W / 2 - 0.2, tz1 - 0.2);
     // the podium: a plinth with a chamfered course, the slab's floors from its top
     sweep(sink, concrete, plan, [[0.1, -0.4], [0.1, 0.35], [0, 0.45], [0, 1.2]]);
+    sink.polygon(concrete, insetPlan(plan, -0.1).map(([x, z]): Vec3 => [x, -0.4, z]).reverse());
     // (E13) the slab tower in its storey bands for the damage reading; the assembly wing its own body
     recordBody(sink, 0, (tz0 + tz1) / 2, W, tz1 - tz0, top + 3.2, concrete, false, true);
     // the fire took the floors under the top and a few here and there below (the tower burnt for days in 1992)
@@ -219,6 +226,7 @@ export function parliament(ctx: RegionalBuildContext): RegionalParts {
       const body = rect(-W / 2, wz0, W / 2, wz1 - 0.4);
       sweep(sink, concrete, body, [[0, -0.4], [0, 8.2], [-0.3, 8.2], [-0.3, 7.9]]);
       deck(sink, concrete, insetPlan(body, 0.3), 7.9);
+      sink.polygon(concrete, body.map(([x, z]): Vec3 => [x, -0.4, z]).reverse());
       const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
       holedPolygon(sink, concrete, wf, [[-W / 2, -0.4], [W / 2, -0.4], [W / 2, 8.2], [-W / 2, 8.2]],
         [{ u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 0.7, y1: 3.3 }, { u0: -(W - 1.6) / 2, u1: (W - 1.6) / 2, y0: 4.5, y1: 6.7 }], 0.4, 0.34);
