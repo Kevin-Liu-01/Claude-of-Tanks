@@ -446,14 +446,24 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
       return;
     }
     const step = d.boardW + gap, n = Math.max(1, Math.round((u1 - u0 + gap) / step)), bw = (u1 - u0 + gap) / n - gap;
+    // a board's outline from yb up to the roof line between a and b (its top over a gable's apex)
+    const boardPoly = (a: number, b: number, yb: number): Array<[number, number]> => (apex !== null && a < apex && b > apex
+      ? [[a, yb], [b, yb], [b, topAt(b)], [apex, topAt(apex)], [a, topAt(a)]] : [[a, yb], [b, yb], [b, topAt(b)], [a, topAt(a)]]);
     for (let k = 0; k < n; k++) {
       const a = u0 + k * (bw + gap), b = a + bw;
-      // a board across the door stops over its head (the lintel's top)
-      const doorHit = skip && b > skip[0] && a < skip[1];
-      const yb = doorHit && plan.front ? bottom + plan.front.h + 0.12 : bottom;
-      const poly: Array<[number, number]> = apex !== null && a < apex && b > apex
-        ? [[a, yb], [b, yb], [b, topAt(b)], [apex, topAt(apex)], [a, topAt(a)]] : [[a, yb], [b, yb], [b, topAt(b)], [a, topAt(a)]];
-      if (Math.min(topAt(a), topAt(b)) - yb > 0.05) boardOn(sink, 'structureWood', face, poly, 0, bt, { colour: boardTone() });
+      // a board across the door is cut at its frame: full height either side of it, over its head above it (the
+      // integrity check: a wide board lifted whole over the door left a slot beside the leaf)
+      const pieces: Array<[number, number, number]> = [];
+      if (skip && plan.front && b > skip[0] - 0.1 && a < skip[1] + 0.1) {
+        const c0 = skip[0] - 0.1, c1 = skip[1] + 0.1, head = bottom + plan.front.h + 0.12;
+        if (c0 - a > 0.03) pieces.push([a, Math.min(b, c0), bottom]);
+        pieces.push([Math.max(a, c0), Math.min(b, c1), head]);
+        if (b - c1 > 0.03) pieces.push([Math.max(a, c1), b, bottom]);
+      } else pieces.push([a, b, bottom]);
+      for (const [pa, pb, yb] of pieces) {
+        const tone = boardTone();
+        if (pb - pa > 0.02 && Math.min(topAt(pa), topAt(pb)) - yb > 0.05) boardOn(sink, 'structureWood', face, boardPoly(pa, pb, yb), 0, bt, { colour: tone });
+      }
       if (d.cladding === 'batten' && k > 0) {
         // the batten over the joint (dressing: it stands proud of the boards)
         const yt = Math.min(topAt(a - 0.03), topAt(a + 0.03)) - 0.04, y0 = skip && a > skip[0] - 0.03 && a < skip[1] + 0.03 && plan.front ? bottom + plan.front.h + 0.12 : bottom;
