@@ -8,6 +8,7 @@
 // did (passed as unit values), so the yard's stream keeps its place.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { bevelBox } from './bevelBox.ts';
 
 type BG = THREE.BufferGeometry;
 const _c = new THREE.Color();
@@ -38,8 +39,26 @@ function merged(parts: BG[]): BG {
   return g;
 }
 
-const FLANGE = rgb(0x6e5538), FLANGE_DARK = rgb(0x4a3a28), BARREL = rgb(0x8a7454), CABLE = rgb(0x1d1d1e), HOLE = rgb(0x121110),
+const FLANGE = rgb(0x6e5538), FLANGE_DARK = rgb(0x4a3a28), BARREL = rgb(0x8a7454), CABLE = rgb(0x1d1d1e), ARBOR = rgb(0x2e2a26),
   CREOSOTE = rgb(0x3a3027), CREOSOTE_WORN = rgb(0x5c5143);
+const ARBOR_R = 0.09;
+
+/** The geometry turned inside out: its faces wound and its normals pointing the other way (a bore's lining). */
+function inward(g: BG): BG {
+  const ix = g.index!, n = g.attributes.normal;
+  for (let i = 0; i < ix.count; i += 3) { const b = ix.getX(i + 1); ix.setX(i + 1, ix.getX(i + 2)); ix.setX(i + 2, b); }
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  return g;
+}
+/** A disc of radius `r` and `thick` (its axis y) with a hole of radius `hole` bored through it: its rim and two faces. */
+function ringFlange(r: number, hole: number, thick: number, seg: number): BG {
+  const rim = new THREE.CylinderGeometry(r, r, thick, seg, 1, true);
+  const faces = [1, -1].map((s) => new THREE.RingGeometry(hole, r, seg, 1).rotateX(-s * Math.PI / 2).translate(0, s * thick / 2, 0));
+  const g = mergeGeometries([rim, ...faces], false);
+  rim.dispose(); for (const f of faces) f.dispose();
+  if (!g) throw new Error('railYardStores: the flange does not merge');
+  return g;
+}
 
 /**
  * A cable drum of flange radius `radius` standing on its flanges at the origin (its axle along x before `yaw`), from
@@ -50,20 +69,16 @@ export function cableDrum(radius: number, yaw: number, v: readonly number[]): BG
   const W = radius * 1.1, R = radius, parts: BG[] = [];
   const axle = (g: BG) => { g.rotateZ(Math.PI / 2); g.translate(0, R, 0); return g; };
   const flangeTone = tone < 0.5 ? FLANGE : FLANGE_DARK;
-  for (const sx of [-1, 1]) {
-    const f = axle(new THREE.CylinderGeometry(R, R, 0.07, 18, 1, false));
-    f.translate(sx * (W / 2 - 0.035), 0, 0);
-    parts.push(paint(f, flangeTone, 0.3, 61 + sx));
-    // the arbor hole: a dark boss on the flange's outer face
-    const hole = axle(new THREE.CylinderGeometry(0.09, 0.09, 0.012, 8, 1, false));
-    hole.translate(sx * (W / 2 + 0.002), 0, 0);
-    parts.push(paint(hole, HOLE, 0.1, 63));
-  }
+  // (props r2, Lane C 2026-10-16: the arbor holes were dark discs stuck on the flanges, painted plates) each flange a
+  // plank disc with its arbor hole bored through, the hole lined by the steel arbor tube that runs the reel's width
+  for (const sx of [-1, 1]) parts.push(paint(axle(ringFlange(R, ARBOR_R, 0.07, 18)).translate(sx * (W / 2 - 0.035), 0, 0), flangeTone, 0.3, 61 + sx));
+  parts.push(paint(axle(inward(new THREE.CylinderGeometry(ARBOR_R, ARBOR_R, W + 0.01, 10, 1, true))), ARBOR, 0.15, 63));
   const barrelR = R * 0.48;
   parts.push(paint(axle(new THREE.CylinderGeometry(barrelR, barrelR, W - 0.14, 12, 1, true)), BARREL, 0.3, 64));
-  // the cable wound on: a full reel to most of the flange, or part paid out down toward the barrel
+  // the cable wound on: a full reel to most of the flange, or part paid out down toward the barrel (its ends against
+  // the flanges' inner faces, the arbor's way through it clear)
   const wound = barrelR + (R * 0.9 - barrelR) * (left < 0.7 ? 1 : 0.35);
-  parts.push(paint(axle(new THREE.CylinderGeometry(wound, wound, W - 0.16, 16, 1, false)), CABLE, 0.15, 65));
+  parts.push(paint(axle(new THREE.CylinderGeometry(wound, wound, W - 0.16, 16, 1, true)), CABLE, 0.15, 65));
   // the loose end: off the winding's front, hanging slack down the reel's face to the ground and lying there in a lazy
   // curve (a heavy cable's own weight: no straight runs), a metre or so out
   const a = (lie - 0.5) * 1.6, ex = (lie - 0.5) * (W - 0.4);
@@ -94,7 +109,9 @@ export function sleeperStack(v: readonly number[]): BG {
     const across = course % 2 === 1, n = course === courses - 1 ? keep : per;
     for (let k = 0; k < n; k++) {
       const off = -span / 2 + D / 2 + k * (D + gap);
-      const s = new THREE.BoxGeometry(across ? D : L, H, across ? L : D);
+      // (props r2, Lane C 2026-10-16: the stack was all sharp boxes) a sleeper's long arrises worn round by the years
+      // in the track and the yard's handling: eased 2 cm
+      const s = bevelBox(across ? D : L, H, across ? L : D, 0.02, 0.5);
       const lift = H / 2 + course * H;
       // a sleeper's ends a few centimetres out of line, its tone worn grey where it has lain in the weather
       const jog = (hash(course * 11 + k, salt) - 0.5) * 0.06;
@@ -161,8 +178,13 @@ export function bufferStopGeometry(v: readonly number[]): BG {
   parts.push(railMember([-0.72, 0.6, 0.95], [0.72, 0.6, 0.95], frame, 84));
   parts.push(block(-0.035, 0.035, beamY + 0.19, beamY + 0.95, 0.0 + lean, 0.07 + lean, frame, 94));
   parts.push(block(-0.32, 0.32, beamY + 0.42, beamY + 0.98, -0.02 + lean, 0.0 + lean, frame, 95));
-  parts.push(block(-0.31, 0.31, beamY + 0.43, beamY + 0.97, -0.03 + lean, -0.02 + lean, BEAM_WHITE, 96));
-  parts.push(block(-0.25, 0.25, beamY + 0.49, beamY + 0.91, -0.04 + lean, -0.03 + lean, BEAM_RED, 97));
+  // (props r2, Lane C 2026-10-16: the red square was a plate stuck on the white board) the sign's face in one layer on
+  // its steel back: the red square and its white border round it, flush, as the board is painted
+  const zf0 = -0.03 + lean, zf1 = -0.02 + lean;
+  parts.push(block(-0.25, 0.25, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_RED, 97));
+  parts.push(block(-0.31, 0.31, beamY + 0.43, beamY + 0.49, zf0, zf1, BEAM_WHITE, 96));
+  parts.push(block(-0.31, 0.31, beamY + 0.91, beamY + 0.97, zf0, zf1, BEAM_WHITE, 98));
+  for (const sx of [-1, 1]) parts.push(block(sx * 0.25, sx * 0.31, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_WHITE, 99 + sx));
   const bands = 7, W = 2.3;
   for (let k = 0; k < bands; k++) {
     const x0 = -W / 2 + (k * W) / bands, x1 = -W / 2 + ((k + 1) * W) / bands;
