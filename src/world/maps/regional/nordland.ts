@@ -351,6 +351,9 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
     for (const [ya, yb] of [[y0 + 0.85, frame.floors[1] - 0.14], [frame.floors[1] + 0.45, top - 0.16]] as const) {
       if (f === front && ya < y0 + 1) {
         for (const sg of [-1, 1]) facePanel(sink, 'glass', f, sg * (dh + span / 2 - 0.15) / 2, (ya + yb) / 2, -0.04, span / 2 - 0.15 - dh, yb - ya, {});
+        // the light over the door, from its frame's head to the band's top (the cut glazing left the veranda open there)
+        const th = y0 + 2.0;
+        if (yb > th + 0.05) facePanel(sink, 'glass', f, 0, (th + yb) / 2, -0.04, 2 * dh, yb - th, { decor: true });
         if (st.mobile) continue;
         for (const sg of [-1, 1]) faceBox(sink, 'structureWood', f, sg * (dh + 0.025), (ya + yb) / 2, -0.02, 0.05, yb - ya, 0.04, { colour: WHITE, decor: true, fine: true }, 'caps');
         continue;
