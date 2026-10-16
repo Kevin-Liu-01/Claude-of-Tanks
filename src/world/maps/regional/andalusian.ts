@@ -1243,7 +1243,7 @@ const palomar: RegionalBuilder = (ctx) => {
  * -x end, its mouth cut half a metre into it under a ring of brick voussoirs, the hearth's sill and the soot over the
  * mouth; the dome laid ring by ring in limewashed brick (outbuildings.ts coursedRound) to its flue under a tile cap; the
  * firewood rack on the plot's +x side, built member by member (openShed: posts on stone bases, the beam, the rafters,
- * the canal tiles in rows), its head on the oven, the wood stacked against the oven's side. It falls as its posts and
+ * the canal tiles in rows), boarded against the oven, the wood stacked along it. It falls as its posts and
  * tiles and the oven's own heap.
  */
 const horno: RegionalBuilder = (ctx) => {
@@ -1278,14 +1278,14 @@ const horno: RegionalBuilder = (ctx) => {
   sink.span('plaster', ox - 0.16, round.top - 0.25, cz - 0.16, ox + 0.16, round.top + 0.32, cz + 0.16);
   sink.span('roof', ox - 0.22, round.top + 0.32, cz - 0.22, ox + 0.22, round.top + 0.4, cz + 0.22, { decor: true });
   // the firewood rack: from the oven's side to the plot's +x edge, as long as the plot is deep less a hand (the solid
-  // within half a metre of the base's reach), its head plate resting on the oven's block
+  // within half a metre of the base's reach), its back posts close against the oven's side and boarded there, the wood
+  // stacked along the oven (the integrity check: a head plate resting on the block left the rack under a metre high,
+  // its front closed to the eye; a slot between the dome and the lean-to's head showed the stack as a pocket)
   const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = Math.max(h - 0.06, D / 2 - 0.3);
   if (sw > 0.35) {
-    const over = 0.26, RW = sw + over, pitch = 9;
-    const hLo = 1.05 + 0.16 - (RW - 0.16) * Math.tan(pitch * Math.PI / 180);
-    const rc = x1 - RW / 2;
+    const RW = sw, pitch = 14, rc = x1 - RW / 2;
     sink.placed(0, rc, 0, cz, () => {
-      openShed(sink, { W: RW, D: 2 * rz, hLo: Math.max(0.95, hLo), pitchDeg: pitch, back: false, ends: false, pile: 0.9 + look() * 0.2, noBackPosts: true, mobile,
+      openShed(sink, { W: RW, D: 2 * rz, hLo: 1.2, pitchDeg: pitch, back: true, ends: false, pile: 0.9 + look() * 0.2, pileHalf: h - 0.16, braces: false, mobile,
         masses: [{ x: ox - rc, z: 0, r: h, h: round.top, bucket: 'plaster' }] }, {
         timber: rgb(0x6a5440), post: 0.13, round: true, pad: { bucket: 'stone', size: 0.28, top: 0.14 },
         cladding: 'gapped', boards: [rgb(0x7a6450)], boardW: 0.2,

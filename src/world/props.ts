@@ -1,5 +1,6 @@
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
+import { pillboxShellBand, placeLocalShellBand } from './bandShells.ts'; // (physics: the pillbox's embrasures)
 import { rubbleCollisionRecords } from './rubbleCollision.ts'; // the hitbox lane, round 3, 2026-10-09
 import { createRubbleBalance, LowStones, lowStoneProfile, type RubbleHalvesAbout, type StoneSeat } from './rubbleKit.ts'; // round 3
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
@@ -188,7 +189,7 @@ const HEDGEHOG_SLAB_M = 0.35;
 const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
-export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', ...DENSE_HUT_SLAB_KINDS, 'bunker']); // (round 3: the heavy trucks' slabs; DST-03: the dense huts' walls)
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'truck', 'truckbox', 'truckflatbed', ...DENSE_HUT_SLAB_KINDS, 'bunker']); // (round 3: the heavy trucks' slabs; DST-03: the dense huts' walls; a concrete pillbox's authored shells win: bandShells.ts)
 import {
   appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -10676,6 +10677,7 @@ ${snowCap ? `
     const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
+    const shellBand = kind === 'bunker' && fort ? pillboxShellBand(fort.style) : null; // (bandShells.ts: its embrasures and door open)
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
@@ -10704,7 +10706,8 @@ ${snowCap ? `
       if (record.col) {
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
         // (the hitbox lane, 2026-10-07) a dense stack's shells and sight lines meet its own slabs, not the contact prism
-        if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
+        if (shellBand) placeLocalShellBand(record.col, shellBand, record.x, record.y, record.z, record.yaw);
+        else if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
       }
     }
     if (!source) return null;

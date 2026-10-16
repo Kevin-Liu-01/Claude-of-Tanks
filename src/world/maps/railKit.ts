@@ -837,8 +837,10 @@ export function makeShed(
   for (const x of xs) frame.push(memberGeo([x, under(za) - 0.07, za], [x, under(zb) - 0.07, zb], 0.14, 0.12));
   for (const z of [-d / 6, d / 6]) frame.push(memberGeo([-(w / 2 - 0.3), under(z) - 0.05, z], [w / 2 - 0.3, under(z) - 0.05, z], 0.08, 0.1));
   const top = (z: number): number => roofCenterY + Math.tan(roofAngle) * z + 0.06;
+  // (structureConnectivity: the ribs lie in the sheet's plane through the shared orientation helper, as the sheet does)
   for (let x = -(w / 2 + 0.1); x <= w / 2 + 0.1; x += 0.6) {
-    buckets.roof.push(memberGeo([x, top(-(d / 2 + 0.35)), -(d / 2 + 0.35)], [x, top(d / 2 + 0.35), d / 2 + 0.35], 0.05, 0.04));
+    const rib = pitchRoofPlane(box(0.05, 0.04, (d + 0.7) / Math.cos(roofAngle), 1.0), 'z', -1, roofAngle, 'skillion');
+    buckets.roof.push(dressing(rib.translate(x, top(0), 0)));
   }
   const low = -(d / 2 + 0.45), gy = top(low) - 0.12;
   steel.push(dressing(new THREE.CylinderGeometry(0.07, 0.07, w + 0.8, 7, 1).rotateZ(Math.PI / 2).translate(0, gy, low)));

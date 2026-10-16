@@ -341,9 +341,11 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
   }
   for (const sz of [-1, 1]) pole(sink, [-px - 0.25, H + 0.06, sz * pz], [px + 0.25, H + 0.06, sz * pz], 0.075, post, true);
   const n = Math.max(4, Math.round(W / 0.55));
+  const poleX: Array<[number, number]> = [];
   for (let k = 0; k < n; k++) {
-    const x = -W / 2 + 0.1 + (W - 0.2) * (k + 0.5) / n;
-    pole(sink, [x, H + 0.19, -pz - 0.3], [x + (look() - 0.5) * 0.1, H + 0.19, pz + 0.3], 0.05, shade(post, 1.05), true);
+    const x = -W / 2 + 0.1 + (W - 0.2) * (k + 0.5) / n, x1 = x + (look() - 0.5) * 0.1;
+    pole(sink, [x, H + 0.19, -pz - 0.3], [x1, H + 0.19, pz + 0.3], 0.05, shade(post, 1.05), true);
+    poleX.push([x, x1]);
   }
   // the boughs: a mat of juniper and cottonwood branches laid across the poles in two crossing layers, ragged at the
   // edges and hanging over them, with a few thicker bundles; the sun comes through in patches (they cast a shadow)
@@ -353,8 +355,11 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
     const across = layer === 0, len = across ? D : W, span = across ? W : D, n2 = Math.round(span / 0.16);
     for (let k = 0; k < n2; k++) {
       if (look() < 0.12) continue;
-      const t = -span / 2 - 0.15 + (span + 0.3) * (k + look() * 0.6) / n2;
-      const over0 = 0.1 + look() * 0.45, over1 = 0.1 + look() * 0.45, y = H + 0.27 + layer * 0.07 + look() * 0.04;
+      // (the looks lane, 2026-10-16, kitConnectivity: an upper bough laid past the under layer's ends stood 2.5 cm
+      // over it in the air) the upper layer lies within the under layer's lengths (each reaches 10 cm past the
+      // poles' span at least) and down on it, its ragged edge the under layer's ends and the hanging boughs
+      const inset = across ? -0.15 : 0.12, t = -span / 2 + inset + (span - 2 * inset) * (k + look() * 0.6) / n2;
+      const over0 = 0.1 + look() * 0.45, over1 = 0.1 + look() * 0.45, y = H + 0.27 + layer * 0.05 + look() * 0.04;
       const a: Vec3 = across ? [t, y, -len / 2 - over0] : [-len / 2 - over0, y, t];
       const b: Vec3 = across ? [t + (look() - 0.5) * 0.3, y + (look() - 0.5) * 0.05, len / 2 + over1] : [len / 2 + over1, y + (look() - 0.5) * 0.05, t + (look() - 0.5) * 0.3];
       bough(sink, a, b, 0.1 + look() * 0.12, 0.05, look() < 0.3 ? dry() : tone(), (look() - 0.5) * 0.12);
@@ -370,7 +375,11 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
     // (each hanging end starts on the mat over the poles' ends and falls past the eave: they started 25 cm out in the
     // air beyond the mat)
     // (the looks lane, 2026-10-15: they started 5 cm past the mat's edge, a hair off it) on the mat's last hand
-    const x = onX ? t : s * (W / 2 - 0.35), z = onX ? s * (D / 2 - 0.1) : t;
+    // (2026-10-16, kitConnectivity: one over a gap in the mat stood off it) one over the front or back eave lies on
+    // the pole nearest it, as one over a side eave lies on the last pole
+    const z = onX ? s * (D / 2 - 0.1) : t, f = (z + pz + 0.3) / (2 * pz + 0.6);
+    let x = onX ? t : s * (W / 2 - 0.35);
+    if (onX) x = poleX.map(([x0, x1]) => x0 + (x1 - x0) * f).reduce((best, p) => (Math.abs(p - t) < Math.abs(best - t) ? p : best));
     const dx = onX ? 0 : s * 0.8, dz = onX ? s * 0.65 : 0, drop = 0.25 + look() * 0.35;
     bough(sink, [x, H + 0.27, z], [x + dx, H + 0.27 - drop, z + dz], 0.18 + look() * 0.2, 0.05, tone(), (look() - 0.5) * 0.1);
   }

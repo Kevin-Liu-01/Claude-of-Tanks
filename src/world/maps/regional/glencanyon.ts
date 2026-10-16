@@ -424,10 +424,12 @@ const switchyard: RegionalBuilder = (ctx) => {
     for (const sx of [-1, 1]) latticeTower(sink, sx * W * 0.28, -D / 2 + 2.6, 1.6, 0.6, h, steel);
     // the cross-arm between the towers and the line's insulator strings
     sink.member('structureMetal', [-W * 0.28, h - 0.4, -D / 2 + 2.6], [W * 0.28, h - 0.4, -D / 2 + 2.6], 0.5, 0.7, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
+    // (kitConnectivity: the strings hung 10 cm under the arm, whose depth stands up from h - 0.4, and the outer two dropped
+    // half a metre off their bus frames: each string now hangs from the arm over its frame and drops onto its beam's top chord)
     for (let k = 0; k < 3; k++) {
-      const x = (k - 1) * W * 0.2;
-      insulatorString(sink, [x, h - 0.5, -D / 2 + 2.6], 2.1);
-      sink.member('structureMetal', [x, h - 2.6, -D / 2 + 2.6], [x, 9.4, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+      const x = (k - 1) * W * 0.22;
+      insulatorString(sink, [x, h - 0.38, -D / 2 + 2.6], 2.1);
+      sink.member('structureMetal', [x, h - 2.48, -D / 2 + 2.6], [x, 9.47, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
     }
     for (const x of [-W * 0.22, 0, W * 0.22]) busFrame(sink, x, -D / 2 + 6.8, -D / 2 + 8.4, 9.6, steel);
     const tc = pick(rng, TRANSFORMER);

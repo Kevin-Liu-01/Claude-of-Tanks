@@ -13,7 +13,8 @@
 //
 // Three families (INFRA-P10 / FE-P17, 2026-10-01 — 158,928 revalidations a week were 28 % of production requests):
 //   - /assets/<name>-<hash>.<ext> (Vite)                       → immutable for a year;
-//   - /mp-collision/<map>.<sha256[0..12]>.json (content-addressed collision manifests; the index stays default)
+//   - /mp-collision/<map>.<sha256[0..12]>.json and /mp-collision/v2/<map>.<sha256[0..12]>.json (content-addressed collision
+//     manifests: production 224's frozen files and this build's; each index stays default)
 //                                                              → immutable for a year;
 //   - images, audio and fonts under textures/, icons/, fonts/, audio/, maps/, minimaps/ (same URL across deploys)
 //                                                              → max-age=3600, stale-while-revalidate=86400.
@@ -39,7 +40,7 @@ const RUNTIME_FILE_RE = /\.(?:png|webp|jpe?g|avif|gif|svg|ktx2|ogg|mp3|wav|m4a|o
 export const DEFAULT_GROUP = 40;
 /** Keep each route's `src` well under the 4,096-character source limit Vercel documents for routing rules. */
 const MAX_SOURCE_LENGTH = 3000;
-const MANAGED_PREFIXES = ['assets', 'mp-collision', ...RUNTIME_DIRS];
+const MANAGED_PREFIXES = ['assets', 'mp-collision', 'mp-collision/v2', ...RUNTIME_DIRS];
 
 function walk(root, accept) {
   if (!existsSync(root)) return [];
@@ -60,9 +61,10 @@ export function listHashedAssets(staticDir) {
   return walk(join(staticDir, 'assets'), (name) => HASHED_ASSET_RE.test(name));
 }
 
-/** The content-addressed collision manifests under `<staticDir>/mp-collision` (never `index.json`). */
-export function listCollisionManifests(staticDir) {
-  return walk(join(staticDir, 'mp-collision'), (name) => COLLISION_MANIFEST_RE.test(name)).filter((path) => !path.includes('/'));
+/** The content-addressed collision manifests directly under `<staticDir>/<route>` (never `index.json`): `mp-collision`
+ * (production 224's frozen files) and `mp-collision/v2` (this build's, physics stream 2026-10-16). */
+export function listCollisionManifests(staticDir, route = 'mp-collision') {
+  return walk(join(staticDir, route), (name) => COLLISION_MANIFEST_RE.test(name)).filter((path) => !path.includes('/'));
 }
 
 /** `{ dir: [paths relative to dir] }` for the runtime images, audio and fonts that exist. */
@@ -76,6 +78,7 @@ export function cacheRoutePlan(staticDir) {
   return [
     { prefix: 'assets', files: listHashedAssets(staticDir), cacheControl: IMMUTABLE_CACHE_CONTROL },
     { prefix: 'mp-collision', files: listCollisionManifests(staticDir), cacheControl: IMMUTABLE_CACHE_CONTROL },
+    { prefix: 'mp-collision/v2', files: listCollisionManifests(staticDir, 'mp-collision/v2'), cacheControl: IMMUTABLE_CACHE_CONTROL },
     ...RUNTIME_DIRS.map((dir) => ({ prefix: dir, files: runtime[dir], cacheControl: RUNTIME_CACHE_CONTROL })),
   ];
 }
@@ -178,6 +181,7 @@ function summary(plan, config) {
   const runtimeRoutes = RUNTIME_DIRS.reduce((sum, dir) => sum + routeCount(dir), 0);
   return `${family('assets').files.length} hashed files under /assets → ${routeCount('assets')} immutable routes; `
     + `${family('mp-collision').files.length} collision manifests → ${routeCount('mp-collision')} immutable routes; `
+    + `${family('mp-collision/v2').files.length} v2 collision manifests → ${routeCount('mp-collision/v2')} immutable routes; `
     + `${runtimeFiles} runtime files in ${RUNTIME_DIRS.join(', ')} → ${runtimeRoutes} routes (${RUNTIME_CACHE_CONTROL})`;
 }
 

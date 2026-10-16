@@ -144,9 +144,10 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
   assert.ok(cloudGroundLight(0, 1e6, 0.99) <= 2.5 * 1e-4 + 1e-9, 'the bounce never revives a black cover');
   const w = stacks.whiteout.lanes[0];
   assert.equal(cloudDeckTau(stacks.whiteout), w.density * w.core * (w.topM - w.baseM) * CLOUD_COLUMN_SHARE);
-  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.railyard) > 10, 'a closing deck is optically thick');
+  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.foundry) > 10, 'a closing deck is optically thick');
   // the law is the closing deck's (a broken deck keeps the old law and its grey bases over snow; a convective sky too)
-  assert.ok(stacks.whiteout.closing === 1 && stacks.railyard.closing > 0.5, 'an overcast takes the light under the cover');
+  assert.ok(stacks.whiteout.closing === 1 && stacks.foundry.closing > 0.5, 'an overcast takes the light under the cover');
+  assert.equal(stacks.railyard.closing, 0, 'Cinder Junction\'s cumulus keeps the old law (2026-10-16)');
   // (2026-10-15, the 10-13 ruling enforced on every map: Frosthollow's deck closed, 0.86 -> 0.92 — it takes the closing
   // law with Cinder Junction's and Ironworks')
   assert.ok(stacks.winter.closing > 0.5 && stacks.foundry.closing > 0.5, 'the closed cell decks take the light under the cover');

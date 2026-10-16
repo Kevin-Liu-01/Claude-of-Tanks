@@ -360,7 +360,7 @@ export const ENTRY_CLIMB_M = 0.45;
  * the white edge beams and the railing. */
 function liftLeaves(sink: PartSink, span: number, W: number, top: (z: number) => number): void {
   const white = { colour: PAINT_WHITE };
-  for (const zs of [-1, 1]) {
+  for (const zs of [-1, 1]) piece(sink, { name: `deck-${(zs + 1) / 2}`, kind: 'detach', at: 'collapse' }, (sink) => {
     const zA = zs * span / 2, zB = 0;
     // (the stringers and the ribs reach up under the boards, which lie on them — they stood 10-12 cm under them — and
     // down onto the abutment's seat at the hinge)
@@ -389,7 +389,7 @@ function liftLeaves(sink: PartSink, span: number, W: number, top: (z: number) =>
       bar(sink, 'structureWood', [x, top(zA) + 1.05, zA], [x, top(zB) + 1.05, zB], 0.09, { ...white, decor: true });
       bar(sink, 'structureWood', [x, top(zA) + 0.55, zA], [x, top(zB) + 0.55, zB], 0.06, { ...white, decor: true, fine: true });
     }
-  }
+  });
 }
 
 /** The portals over the piers (or the abutments) at ±(span/2 + 0.55) and the balances on them. */

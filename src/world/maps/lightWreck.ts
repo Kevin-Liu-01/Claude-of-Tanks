@@ -128,7 +128,13 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     const ys = [0, 1, 2].map((k) => Math.abs(quatRotate(p.q, k === 0 ? [1, 0, 0] : k === 1 ? [0, 1, 0] : [0, 0, 1])[1]) * p.h[k]);
     return 2 * Math.max(...ys);
   };
-  const ceiling = Math.max(1.0, top * 0.55);
+  // (2026-10-16: a piece's half diagonal rates a wide flat one tall — the rover garage's 15 m canopy put its ceiling at
+  // 6.4 m over a 5 m station, and the canopy lay tipped up to 6.2 m on the heap: the ceiling no higher than half a metre
+  // over the station's own top)
+  const pos = intact.getAttribute('position');
+  let stood = 0;
+  for (let k = 0; k < pos.count; k++) stood = Math.max(stood, pos.getY(k));
+  const ceiling = Math.min(Math.max(1.0, top * 0.55), Math.max(1.0, stood + 0.5));
   // how far a body may tip as it settles: a stick a long way, a wall or a roof panel only a little (a long body tipped
   // steeply onto the heap stands up out of it)
   const tiltFor = (b: { tris: { p: number[] } }): number => {

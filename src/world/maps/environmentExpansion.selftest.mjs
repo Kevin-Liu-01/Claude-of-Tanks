@@ -29,7 +29,11 @@ const maps = [polders, copperMesa, airfield, oasis, whiteout,
 // First-pass authoring ceilings: the lived-in revision redistributes these
 // populations instead of hiding a geometry/query-cost increase in new roads.
 const authoredBudgets = {
-  polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18 },
+  // (the maps lane's Tidegate Polders village, 2026-10-15, item/maps-polders-village 07f61a38d: the 48-house lintdorp
+  // along the dyke road and its church, maps/poldersVillage.ts, authored after the plan's 18 — 66 sites; the ceiling is
+  // the authoring budget, its frame cost the cost probe's, as Copper Mesa's)
+  polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18,
+    settlement: 66 },
   copper_mesa: { roadNodes: 166, wallM: 405, beltTrees: 0, trees: [22, 32, 40], grass: 0.36, rocks: 224, outcrops: 42, plan: 16 },
   // (the maps lane's Kestrel rebuild, 2026-10-15, landing the map-revival lane's 1724f06a6: the Polissia pine, trimmed by the
   // coordinator on hold x9 to 9 x 9 m plantations of their rows alone, 34 woodlots and a 108 rim — 512 plantation seats

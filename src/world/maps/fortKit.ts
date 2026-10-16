@@ -2342,6 +2342,117 @@ function mulberry32(a: number): Rng {
   return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 }
 
+/** A pillbox's embrasures in its own frame: each opening's centre, half sizes and outward face normal (physics stream,
+ * 2026-10-16: the receipt that rounds go in through them reads them; no draws). */
+export function pillboxEmbrasures(style: PillboxStyle): Array<{ x: number; y: number; z: number; hw: number; hh: number; nx: number; nz: number }> {
+  return style === 'logearth'
+    ? [{ x: 0, y: LOG_SLIT_Y, z: LOG_D / 2, hw: LOG_SLIT_HW, hh: LOG_SLIT_HH, nx: 0, nz: 1 }]
+    : concreteLayout(style).slits.map((slit) => ({ ...slit }));
+}
+
+/** A concrete pillbox's doorway in its own frame: its centre on the outer face, its half width, its sill and head, its
+ * outward normal and its steel leaf's depth (physics stream, 2026-10-16: the receipt reads it; no draws). Null for the
+ * log and earth work. */
+export function pillboxDoorway(style: PillboxStyle): { x: number; z: number; hw: number; y0: number; y1: number; nx: number; nz: number; leaf: number } | null {
+  if (style === 'logearth') return null;
+  const { plan, doorEdge, doorS } = concreteLayout(style);
+  if (doorEdge < 0) return null;
+  const a = plan[doorEdge], b = plan[(doorEdge + 1) % plan.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len;
+  return { x: a[0] + ux * doorS, z: a[1] + uz * doorS, hw: 0.44, y0: GRADE, y1: GRADE + 1.66, nx: -uz, nz: ux, leaf: 0.32 };
+}
+
+/**
+ * A concrete pillbox's shell parts in its own frame, authored from its layout (physics stream, 2026-10-16; the coordinator:
+ * "rounds enter the drawn embrasures and doors"): its slab and structure-band hulls closed every embrasure and the door
+ * (a round stopped on the outer face, the drawn throat 0.9-1.05 m deeper). Each wall from its outer face to its inner one
+ * (thickness t), split round its embrasures — under the sill, over the lintel, either side — and its door; a plated
+ * embrasure's steel plate stands at the throat, where the round stops as drawn (an unplated throat stays open into the
+ * room); the roof slab over the plan and its overhang, with its earth. Null for the log and earth work (its slabs stand).
+ * Each part: a convex outline (x, z pairs) and its heights.
+ */
+export function pillboxShellParts(style: PillboxStyle): Array<{ points: number[]; y0: number; y1: number }> | null {
+  if (style === 'logearth') return null;
+  const L = concreteLayout(style);
+  const { plan, wallTop, slab, overhang, slitList, doorEdge, doorS } = L;
+  const t = style === 'dot' ? 1.05 : 0.9, doorW = 0.88, doorH = 1.66;
+  const inner = insetPlan(plan, t);
+  const k = plan.length, parts: Array<{ points: number[]; y0: number; y1: number }> = [];
+  // the inner line's point under an outer point (its edge's inner segment: the offset line clipped to the inner plan)
+  const innerOf = (i: number) => {
+    const a = plan[i], b = plan[(i + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len, nx = -uz, nz = ux;
+    // the inner plan's corners on this edge's offset line, as edge coordinates
+    const on = inner.filter((q) => Math.abs((q[0] - a[0]) * nx + (q[1] - a[1]) * nz + t) < 1e-6).map((q) => (q[0] - a[0]) * ux + (q[1] - a[1]) * uz);
+    // (a chamfer shorter than the wall is thick leaves no inner side: its wall closes on the inner corner nearest it)
+    const corner = on.length ? null : inner.reduce((best, q) => {
+      const d = Math.hypot(q[0] - (a[0] + b[0]) / 2, q[1] - (a[1] + b[1]) / 2);
+      return d < best.d ? { q, d } : best;
+    }, { q: inner[0], d: Infinity }).q;
+    const lo = on.length ? Math.min(...on) : 0, hi = on.length ? Math.max(...on) : 0;
+    return { a, ux, uz, nx, nz, len, lo, hi, corner };
+  };
+  const quad = (E: ReturnType<typeof innerOf>, s0: number, s1: number, y0: number, y1: number, d0 = 0, d1 = t) => {
+    if (s1 - s0 < 0.02 || y1 - y0 < 0.02) return;
+    // outer at depth d0, inner at d1; at an edge's end the inner side runs to the inner corner (the mitre)
+    const at = (s: number, d: number, end: number) => {
+      const ss = d >= t - 1e-6 && end !== 0 ? (end < 0 ? Math.max(s, E.lo) : Math.min(s, E.hi)) : s;
+      return [E.a[0] + E.ux * ss - E.nx * d, E.a[1] + E.uz * ss - E.nz * d];
+    };
+    const e0 = s0 <= 1e-6 ? -1 : 0, e1 = s1 >= E.len - 1e-6 ? 1 : 0;
+    if (E.corner) {
+      // a chamfer's wall: its outer face to the inner corner (a triangle), the whole edge
+      parts.push({ points: [...at(0, 0, 0), ...at(E.len, 0, 0), E.corner[0], E.corner[1]], y0, y1 });
+      return;
+    }
+    const pts = [...at(s0, d0, 0), ...at(s1, d0, 0), ...at(s1, d1, e1 ? 1 : 0), ...at(s0, d1, e0 ? -1 : 0)];
+    // (at the ends the inner side's corner is the inner plan's own: the walls meet in their mitres)
+    if (e0) { pts[6] = E.a[0] + E.ux * E.lo - E.nx * d1; pts[7] = E.a[1] + E.uz * E.lo - E.nz * d1; }
+    if (e1) { pts[4] = E.a[0] + E.ux * E.hi - E.nx * d1; pts[5] = E.a[1] + E.uz * E.hi - E.nz * d1; }
+    parts.push({ points: pts, y0, y1 });
+  };
+  for (let i = 0; i < k; i++) {
+    const E = innerOf(i);
+    const holes: Array<{ s0: number; s1: number; y0: number; y1: number; plate?: { s0: number; s1: number; y0: number; y1: number } }> = [];
+    for (const sl of slitList.filter((x) => x.edge === i)) {
+      const thw = sl.w / 2 - sl.steps * sl.w * 0.11, thh = sl.h / 2 - sl.steps * sl.h * 0.1;
+      holes.push({ s0: sl.s - sl.w / 2, s1: sl.s + sl.w / 2, y0: sl.y - sl.h / 2, y1: sl.y + sl.h / 2,
+        ...(sl.plate ? { plate: { s0: sl.s - thw, s1: sl.s + thw, y0: sl.y - thh, y1: sl.y + thh } } : {}) });
+    }
+    if (i === doorEdge) holes.push({ s0: doorS - doorW / 2, s1: doorS + doorW / 2, y0: GRADE, y1: GRADE + doorH });
+    holes.sort((p, q) => p.s0 - q.s0);
+    let s = 0;
+    for (const h of holes) {
+      quad(E, s, h.s0, FOOT, wallTop);
+      quad(E, h.s0, h.s1, FOOT, h.y0);
+      quad(E, h.s0, h.s1, h.y1, wallTop);
+      if (h.plate) quad(E, h.plate.s0, h.plate.s1, h.plate.y0, h.plate.y1, t - 0.12, t);
+      s = h.s1;
+    }
+    quad(E, s, E.len, FOOT, wallTop);
+  }
+  if (doorEdge >= 0) {
+    // the door's steel leaf in its gap, its frame's face to the leaf's back (buildConcretePillboxPieces: D = 0.32 in);
+    // the blast wall before it and its return to the body, to the bags on its top; the bags banked at its mouth
+    const E = innerOf(doorEdge);
+    quad(E, doorS - doorW / 2, doorS + doorW / 2, GRADE, GRADE + doorH, 0.25, 0.34);
+    const cx = E.a[0] + E.ux * doorS, cz = E.a[1] + E.uz * doorS;
+    const box = (x: number, z: number, wx: number, wz: number, len: number, thick: number, y0: number, y1: number) => {
+      const p = (du: number, dn: number) => [x + wx * du - wz * dn, z + wz * du + wx * dn];
+      parts.push({ points: [...p(-len / 2, -thick / 2), ...p(len / 2, -thick / 2), ...p(len / 2, thick / 2), ...p(-len / 2, thick / 2)], y0, y1 });
+    };
+    const bwDist = 1.25, bwLen = 2.5, bwT = 0.36, bwH = style === 'hex' ? 1.62 : 1.72;
+    box(cx + E.nx * (bwDist + bwT / 2) + E.ux * 0.35, cz + E.nz * (bwDist + bwT / 2) + E.uz * 0.35, E.ux, E.uz, bwLen, bwT, FOOT, bwH + 0.2);
+    box(cx + E.ux * (0.35 + bwLen / 2 - bwT / 2) + E.nx * (bwDist / 2), cz + E.uz * (0.35 + bwLen / 2 - bwT / 2) + E.nz * (bwDist / 2), E.nx, E.nz, bwDist + 0.02, bwT, FOOT, bwH);
+    const mouth = 0.35 - bwLen / 2 - 0.45;
+    box(cx + E.ux * mouth + E.nx * (bwDist + 0.3), cz + E.uz * mouth + E.nz * (bwDist + 0.3), E.nx, E.nz, 1.6, 0.4, GRADE, GRADE + 0.62);
+  }
+  // the roof slab over the plan and its overhang, with its earth
+  const coverThick = style === 'dot' ? 0.5 : style === 'hex' ? 0.16 : 0.26;
+  parts.push({ points: grow(plan, overhang).flat(), y0: wallTop, y1: wallTop + slab + coverThick });
+  return parts.map((part) => ({ points: part.points.map((v) => Math.round(v * 1000) / 1000), y0: Math.round(part.y0 * 1000) / 1000, y1: Math.round(part.y1 * 1000) / 1000 }));
+}
+
 /** A map's pillbox: its intact and destroyed states (one geometry each, in the bunker's frame). */
 export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
   const O = { tones, seed, broken };

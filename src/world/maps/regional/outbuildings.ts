@@ -72,12 +72,15 @@ export interface ShedPlan {
    * retaining wall): the wall stands from below the ground to the roof's underside, the posts and plate on its face
    */
   stoneBack?: { bucket: RegionalBucket; t: number; colour?: Rgb; coping?: RegionalBucket } | null;
-  /** the wood stacked against the back, to this height (0: none) */
+  /** the wood stacked against the back, to this height (0: none), and along this half-length of it (default the whole) */
   pile: number;
+  pileHalf?: number;
   /** a chopping block and its axe before the shed */
   block?: boolean;
   /** the back plate rests on something the kit built (an oven's block): no back posts, pads or sill under it */
   noBackPosts?: boolean;
+  /** knee braces at the open front's posts (default on; a low rack leaves them out) */
+  braces?: boolean;
   /** masonry bodies beside the shed that fall with it (shedFall.ts masses), in the shed's frame */
   masses?: ShedWreck['masses'];
   /** a gable roof (its ridge along z over the middle) instead of the lean-to; both long sides then stand as high */
@@ -89,6 +92,11 @@ export interface ShedPlan {
   lift?: number;
   ratGuards?: boolean;
   ladder?: boolean;
+  /**
+   * the winter's snow lying on the covering, `t` thick, in the bucket the kit paints snow with, its cornice rounded over the
+   * eaves and verges (dressing)
+   */
+  snow?: { t: number; bucket: RegionalBucket } | null;
   /** the front clad as well, round a door `w` wide and `h` high at `u` along it (the plank leaf hung shut in its frame) */
   front?: { u: number; w: number; h: number; leaf: Rgb } | null;
   mobile: boolean;
@@ -149,6 +157,8 @@ function boardOn(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Reado
  */
 interface SlopeFrame { at(v: number, h: number, z: number): Vec3; up: Vec3; n: Vec3; length: number; z0: number; z1: number }
 
+const f0z = (f: SlopeFrame): number => f.z0;
+
 function slopeFrame(W: number, D: number, eaveY: number, roof: RoofSpec, side: 1 | -1 = 1, gable = false): SlopeFrame {
   const tanP = Math.tan(roof.pitchDeg * DEG), cosP = Math.cos(roof.pitchDeg * DEG), sinP = Math.sin(roof.pitchDeg * DEG);
   const x0 = side * (W / 2 + roof.eave), y0 = eaveY - roof.eave * tanP + roof.thickness / cosP;
@@ -163,11 +173,36 @@ function slopeFrame(W: number, D: number, eaveY: number, roof: RoofSpec, side: 1
 function courseWedge(sink: PartSink, bucket: RegionalBucket, f: SlopeFrame, v0: number, v1: number, za: number, zb: number,
   butt: number, tail: number, opts: EmitOptions): void {
   const down: Vec3 = [-f.up[0], -f.up[1], -f.up[2]];
-  facing(sink, bucket, f.at(v0, 0, za), f.at(v0, 0, zb), f.at(v0, butt, zb), f.at(v0, butt, za), down, opts);
-  facing(sink, bucket, f.at(v0, butt, za), f.at(v0, butt, zb), f.at(v1, tail, zb), f.at(v1, tail, za), f.n, opts);
+  // (the r2 sweep: an unbevelled wedge is a plain primitive) the butt's lower part square, its arris worn to a bevel
+  const vb = Math.min(v1 - 0.01, v0 + butt * 0.8), hb = butt * 0.6;
+  const bevelN: Vec3 = normalize3([down[0] + f.n[0], down[1] + f.n[1], down[2] + f.n[2]]);
+  facing(sink, bucket, f.at(v0, 0, za), f.at(v0, 0, zb), f.at(v0, hb, zb), f.at(v0, hb, za), down, opts);
+  facing(sink, bucket, f.at(v0, hb, za), f.at(v0, hb, zb), f.at(vb, butt, zb), f.at(vb, butt, za), bevelN, opts);
+  facing(sink, bucket, f.at(vb, butt, za), f.at(vb, butt, zb), f.at(v1, tail, zb), f.at(v1, tail, za), f.n, opts);
+  // (the integrity check: a course at the slope's head showed its open end, the inside of the wedge, under a high eave)
+  if (v1 >= f.length - 1e-3) facing(sink, bucket, f.at(v1, 0, za), f.at(v1, 0, zb), f.at(v1, tail, zb), f.at(v1, tail, za), f.up, opts);
   for (const [z, s] of [[za, -1], [zb, 1]] as const) {
-    facing(sink, bucket, f.at(v0, 0, z), f.at(v1, 0, z), f.at(v1, tail, z), f.at(v0, butt, z), [0, 0, s], opts);
+    const cap = [f.at(v0, 0, z), f.at(v1, 0, z), f.at(v1, tail, z), f.at(vb, butt, z), f.at(v0, hb, z)];
+    const want: Vec3 = [0, 0, s];
+    // wound to face its end (the pentagon is convex in the slope's plane)
+    const e1 = [cap[1][0] - cap[0][0], cap[1][1] - cap[0][1], cap[1][2] - cap[0][2]], e2 = [cap[2][0] - cap[0][0], cap[2][1] - cap[0][1], cap[2][2] - cap[0][2]];
+    const nz = e1[0] * e2[1] - e1[1] * e2[0];
+    sink.polygon(bucket, nz * want[2] >= 0 ? cap : [...cap].reverse(), opts);
   }
+}
+
+/**
+ * The roof's deck on one slope, the boards the covering is laid on (the r2 sweep: a shed's plain slab carried most of its
+ * area): a slab from the eave to the slope's head, its eave edge bevelled to the drip.
+ */
+function deckSlab(sink: PartSink, bucket: RegionalBucket, f: SlopeFrame, t: number, opts: EmitOptions): void {
+  const prof: Array<[number, number]> = [[0, -t * 0.4], [0, -t], [f.length, -t], [f.length, 0], [Math.min(0.06, f.length * 0.1), 0]];
+  let pts = prof.map(([v, h]) => f.at(v, h, f.z0));
+  // the prism's points ccw seen from +z (its extrusion)
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+  if (area < 0) pts = pts.reverse();
+  sink.prism(bucket, pts, [0, 0, 1], f.z1 - f.z0, opts, { kind: 'plane', origin: f.at(0, 0, 0), u: [0, 0, 1], v: f.up });
 }
 
 /** A half-round run down the slope (a canal tile's cover row, a pantile's roll): `r` its radius, from v0 to v1 at z. */
@@ -306,11 +341,14 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   const padOf = (x: number, z: number): void => {
     if (!d.pad) return;
     const p = d.pad;
-    sink.span(p.bucket, x - p.size / 2, -0.3, z - p.size / 2, x + p.size / 2, p.top, z + p.size / 2, { ...(p.colour ? { colour: p.colour } : {}), shade: 0.9 });
+    // the pad stone dressed to an octagon (its corners knocked off), sunk in the ground
+    const r = p.size / 2 / Math.cos(Math.PI / 8);
+    sink.cylinder(p.bucket, [x, -0.3, z], 'y', p.top + 0.3, r, 8, { ...(p.colour ? { colour: p.colour } : {}), shade: 0.9 }, r * 0.92, true, Math.PI / 8);
   };
   const postAt = (x: number, z: number, y0: number, y1: number): void => {
+    // (the r2 sweep: a square post is a plain box) a hewn post's arrises chamfered: an octagon its faces square to the shed
     if (d.round) sink.cylinder('structureWood', [x, y0, z], 'y', y1 - y0, half, 8, { colour: pc });
-    else sink.span('structureWood', x - half, y0, z - half, x + half, y1, z + half, { colour: pc, uv: UV_MEMBER });
+    else sink.cylinder('structureWood', [x, y0, z], 'y', y1 - y0, half / Math.cos(Math.PI / 8), 8, { colour: pc, uv: UV_MEMBER }, half / Math.cos(Math.PI / 8), true, Math.PI / 8);
     posts.push({ foot: sink.framePoint([x, y0, z]), head: sink.framePoint([x, y1, z]) });
     local.push([x, z, y0, y1]);
     legs.push({ foot: [x, y0, z], head: [x, y1, z] });
@@ -346,7 +384,7 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     postAt(xf, z, foot, frontTop - ph);
   }
   sink.span('structureWood', xf - half - 0.01, frontTop - ph, -D / 2, xf + half + 0.01, frontTop, D / 2, member);
-  if (!plan.front) {
+  if (!plan.front && plan.braces !== false) {
     for (const z of frontZ) {
       for (const dir of [-1, 1]) {
         const zt = z + dir * 0.62;
@@ -395,9 +433,31 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     if (gable) sink.span('structureWood', -0.07, under(0) - 0.14, -D / 2, 0.07, under(0) + 0.02, D / 2, { colour: shade(d.timber, 0.92), decor: true, uv: UV_MEMBER });
   });
   const rg = roofGeometry(W, D, eaveY, spec);
-  emitRoof(sink, rg, spec, d.roofColour);
   const frames = gable ? [slopeFrame(W, D, eaveY, spec, 1, true), slopeFrame(W, D, eaveY, spec, -1, true)] : [slopeFrame(W, D, eaveY, spec)];
+  if (d.covering === 'thatch') emitRoof(sink, rg, spec, d.roofColour);
+  else {
+    // the deck in its own slabs (the same planes and reach as emitRoof's), a gable's ridge capped over them
+    const deckOpts: EmitOptions = d.roofColour ? { colour: d.roofColour } : {};
+    for (const f of frames) deckSlab(sink, d.roofBucket, f, deckT, deckOpts);
+    if (gable) {
+      const rt = frames[0].at(frames[0].length, 0, 0)[1], hw = 0.15;
+      const cap: Vec3[] = [[-hw, rt - 0.06, f0z(frames[0])], [hw, rt - 0.06, f0z(frames[0])], [hw, rt + 0.04, f0z(frames[0])], [0, rt + 0.1, f0z(frames[0])], [-hw, rt + 0.04, f0z(frames[0])]];
+      sink.prism(d.roofBucket, cap, [0, 0, 1], frames[0].z1 - frames[0].z0, { ...deckOpts, shade: 0.85 });
+    }
+  }
   sink.dressing(plan.mobile, () => { for (const f of frames) covering(sink, d, f, look); });
+  if (plan.snow) {
+    // (the r2 sweep: a snow load laid as a plain slab) the snow over the courses, its edge rounded over the eave
+    const sn = plan.snow, rise = cov.butt + 0.012, t = sn.t;
+    for (const f of frames) {
+      const prof: Array<[number, number]> = [[-0.13, rise + t * 0.15], [f.length, rise], [f.length, rise + t], [0.04, rise + t], [-0.1, rise + t * 0.7], [-0.15, rise + t * 0.42]];
+      let pts = prof.map(([v, h]) => f.at(v, h, f.z0 - 0.08));
+      let area = 0;
+      for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+      if (area < 0) pts = pts.reverse();
+      sink.prism(sn.bucket, pts, [0, 0, 1], f.z1 - f.z0 + 0.16, { decor: true });
+    }
+  }
   // the barge boards along both verges of every slope, from the roof's top down over its edge
   if (d.covering !== 'thatch') sink.dressing(plan.mobile, () => {
     const bh = deckT + cov.butt + 0.14;
@@ -441,14 +501,24 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
       return;
     }
     const step = d.boardW + gap, n = Math.max(1, Math.round((u1 - u0 + gap) / step)), bw = (u1 - u0 + gap) / n - gap;
+    // a board's outline from yb up to the roof line between a and b (its top over a gable's apex)
+    const boardPoly = (a: number, b: number, yb: number): Array<[number, number]> => (apex !== null && a < apex && b > apex
+      ? [[a, yb], [b, yb], [b, topAt(b)], [apex, topAt(apex)], [a, topAt(a)]] : [[a, yb], [b, yb], [b, topAt(b)], [a, topAt(a)]]);
     for (let k = 0; k < n; k++) {
       const a = u0 + k * (bw + gap), b = a + bw;
-      // a board across the door stops over its head (the lintel's top)
-      const doorHit = skip && b > skip[0] && a < skip[1];
-      const yb = doorHit && plan.front ? bottom + plan.front.h + 0.12 : bottom;
-      const poly: Array<[number, number]> = apex !== null && a < apex && b > apex
-        ? [[a, yb], [b, yb], [b, topAt(b)], [apex, topAt(apex)], [a, topAt(a)]] : [[a, yb], [b, yb], [b, topAt(b)], [a, topAt(a)]];
-      if (Math.min(topAt(a), topAt(b)) - yb > 0.05) boardOn(sink, 'structureWood', face, poly, 0, bt, { colour: boardTone() });
+      // a board across the door is cut at its frame: full height either side of it, over its head above it (the
+      // integrity check: a wide board lifted whole over the door left a slot beside the leaf)
+      const pieces: Array<[number, number, number]> = [];
+      if (skip && plan.front && b > skip[0] - 0.1 && a < skip[1] + 0.1) {
+        const c0 = skip[0] - 0.1, c1 = skip[1] + 0.1, head = bottom + plan.front.h + 0.12;
+        if (c0 - a > 0.03) pieces.push([a, Math.min(b, c0), bottom]);
+        pieces.push([Math.max(a, c0), Math.min(b, c1), head]);
+        if (b - c1 > 0.03) pieces.push([Math.max(a, c1), b, bottom]);
+      } else pieces.push([a, b, bottom]);
+      for (const [pa, pb, yb] of pieces) {
+        const tone = boardTone();
+        if (pb - pa > 0.02 && Math.min(topAt(pa), topAt(pb)) - yb > 0.05) boardOn(sink, 'structureWood', face, boardPoly(pa, pb, yb), 0, bt, { colour: tone });
+      }
       if (d.cladding === 'batten' && k > 0) {
         // the batten over the joint (dressing: it stands proud of the boards)
         const yt = Math.min(topAt(a - 0.03), topAt(a + 0.03)) - 0.04, y0 = skip && a > skip[0] - 0.03 && a < skip[1] + 0.03 && plan.front ? bottom + plan.front.h + 0.12 : bottom;
@@ -511,14 +581,15 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   if (plan.pile > 0) {
     sink.dressing(plan.mobile, () => {
       const backIn: Face = { origin: [xb + half + 0.02, lift, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-      const lim = D / 2 - s - 0.12, pileH = Math.min(plan.pile, backTop - ph - 0.25 - lift);
+      // (the integrity check: a stack stood higher than 1.2 m, its top within the closing's reach of the plate and the deck,
+      // read the back over it as the inside of a closed pocket) the stack to a man's chest
+      const lim = Math.min(plan.pileHalf ?? Infinity, D / 2 - s - 0.12), pileH = Math.min(plan.pile, 1.05, backTop - ph - 0.25 - lift);
+      // (the integrity check: the stack's backs are left out where they stand on its face, and the shed's back lets the
+      // eye in under its boards) a board behind the stack, from the ground to its top, closes it from behind
+      const rows = Math.max(3, Math.round(pileH / 0.17));
+      sink.span('structureWood', backIn.origin[0] - 0.045, lift, -lim - 0.02, backIn.origin[0] - 0.025, lift + rows * 0.17 + 0.04, lim + 0.02,
+        { colour: shade(d.boards[0], 0.6), decor: true, uv: UV_MEMBER });
       woodpile(sink, backIn, -lim, lim, pileH, look);
-      // (Lane C 2026-10-16, regionalArchitecture's ray audit: with no back wall the stack's courses showed their open backs)
-      // the stack's back face, its butts toward the open back
-      if (!plan.back) {
-        const xb2 = xb + half + 0.019, top = Math.max(3, Math.round(pileH / 0.17)) * 0.17;
-        sink.quad('structureWood', [xb2, lift, -lim], [xb2, lift, lim], [xb2, lift + top, lim], [xb2, lift + top, -lim], { colour: shade(d.timber, 0.7), decor: true });
-      }
     });
   }
   if (plan.block) {
@@ -526,8 +597,9 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
       // (inside the shed before the pile, by one end: a decor part, but kept off the yard's fence and the plot's edge)
       const bx = W / 2 - 0.75, bz = (look() < 0.5 ? -1 : 1) * (D / 2 - 0.75);
       sink.cylinder('structureWood', [bx, -0.05, bz], 'y', 0.55, 0.27, 9, { colour: shade(d.timber, 1.05), decor: true }, 0.25);
-      // the axe bitten into the block's top, its haft raised toward the shed
-      sink.member('structureWood', [bx, 0.48, bz], [bx - 0.45, 0.95, bz + 0.12], 0.04, 0.03, [0, 0, 1], { colour: shade(d.timber, 1.25), decor: true, exposed: true }, 0);
+      // the axe bitten into the block's top, its haft down to the ground at its knob (kitConnectivity: a haft raised into the
+      // air had a free end)
+      sink.member('structureWood', [bx, 0.48, bz], [bx - 0.62, 0.025, bz + 0.12], 0.04, 0.03, [0, 0, 1], { colour: shade(d.timber, 1.25), decor: true, exposed: true }, 0);
       sink.span('structureWood', bx - 0.02, 0.42, bz - 0.1, bx + 0.08, 0.52, bz + 0.03, { colour: [0.2, 0.2, 0.21], decor: true });
     });
   }
@@ -598,13 +670,6 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
   const ad = door ? door.angle : 0;
   sink.cylinder(bucket, [cx, base - sunk, cz], 'y', wallH - base + sunk, R - 0.03, 18, {}, R - 0.03, false, door ? gap - ad : 0, door ? Math.PI * 2 - 2 * gap : Math.PI * 2);
   if (door) sink.cylinder(bucket, [cx, base + doorTop, cz], 'y', wallH - base - doorTop, R - 0.03, 3, {}, R - 0.03, false, -(ad + gap), 2 * gap);
-  // (Lane C 2026-10-16, regionalArchitecture's ray audit: the core's ring stood open at its foot, and a view from under the
-  // ground met its inside) the core's foot closed under the ground
-  {
-    const foot: Vec3[] = [];
-    for (let k = 0; k < 18; k++) foot.push(P((k / 18) * Math.PI * 2, base - sunk, R - 0.03));
-    sink.polygon(bucket, foot, { decor: true });
-  }
   let top = wallH;
   // a ring's outer radius at fraction t of the cone's rise (straight, or a dome's quarter ellipse)
   const ringR = (t: number): number => (spec.cone?.dome ? spec.cone.cap + (R - spec.cone.cap) * Math.sqrt(Math.max(0, 1 - t * t)) : R + ((spec.cone?.cap ?? R) - R) * t);
@@ -664,6 +729,21 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
     }
   });
   if (!door) return { top, lintel: null };
+  // the hut's inside seen through its doorway (regionalArchitecture: a ray through the door met the back of the ring and
+  // the cone's core): the inner face of the wall and the cone's underside, in the dark, facing in
+  {
+    const ri = R - T + 0.02, segs = 16, rise = spec.cone ? spec.cone.rise : 0, capR = spec.cone ? Math.max(0.12, spec.cone.cap - T * 0.4) : ri;
+    const P2 = (a: number, y: number, r: number): Vec3 => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
+    for (let i = 0; i < segs; i++) {
+      const a0 = Math.PI * 2 * i / segs, a1 = Math.PI * 2 * (i + 1) / segs, am = (a0 + a1) / 2;
+      const inward: Vec3 = [-Math.cos(am), 0, -Math.sin(am)];
+      // (dressing: the ring's core keeps the collision it had)
+      facing(sink, 'dark', P2(a0, base - 0.05, ri), P2(a1, base - 0.05, ri), P2(a1, wallH, ri), P2(a0, wallH, ri), inward, { decor: true });
+      if (spec.cone) facing(sink, 'dark', P2(a0, wallH, ri), P2(a1, wallH, ri), P2(a1, wallH + rise - 0.1, capR), P2(a0, wallH + rise - 0.1, capR), [inward[0], -0.6, inward[2]], { decor: true });
+    }
+    // its floor: trodden earth closing the ring's foot (a ray from under the ground met the ring's back)
+    sink.cylinder(bucket, [cx, base - sunk - 0.02, cz], 'y', sunk + 0.02, R - 0.035, segs, { decor: true, shade: 0.6 });
+  }
   // the doorway: the reveal's sides through the wall, the jambs, the threshold and the lintel, the dark of the hut
   const out: Vec3 = [Math.cos(ad), 0, Math.sin(ad)];
   const face: Face = { origin: [cx + out[0] * R, 0, cz + out[2] * R], u: [out[2], 0, -out[0]], out, width: door.w + 0.6 };

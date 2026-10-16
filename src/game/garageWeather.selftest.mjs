@@ -8,6 +8,7 @@ import { GARAGE_SKY_PRESETS, getGarageSkyPreset } from './garageSkyPresets.ts';
 import { deriveCloudLayerPreset, loadCloudscapeLayers } from '../engine/cloudPresets.ts';
 import { resolveOvercast } from '../engine/lightModelCore.ts';
 import { CLOUDSCAPE_REGIMES } from '../engine/cloudscapes.ts';
+import { getMapConfig } from '../world/maps/index.ts';
 
 const DECLARED = ['winter', 'railyard', 'foundry'];
 assert.deepEqual(Object.keys(GARAGE_WEATHER).sort(), [...DECLARED].sort(), 'Frosthollow, Cinder Junction and Ironworks alone');
@@ -21,6 +22,11 @@ for (const [id, w] of Object.entries(GARAGE_WEATHER)) {
   assert.ok(CLOUDSCAPE_REGIMES[w.cloudscape.regime], `${id}: a known regime`);
   assert.notEqual(w.cloudscape.regime, 'broken-stratocumulus');
   assert.ok(w.cloudscape.coverage >= 0.3 && w.cloudscape.coverage <= 0.5, `${id}: scattered cumulus, not a deck`);
+  if (id === 'railyard') {
+    const pick = (c) => ['regime', 'coverage', 'baseM', 'thicknessM', 'towers', 'streets', 'cirrus'].map((k) => c[k]);
+    assert.deepEqual(pick(w.cloudscape), pick(getMapConfig('railyard').clouds), 'Cinder Junction: the yard draws the battlefield\'s own cumulus');
+    assert.equal(w.cloudTintHex, getMapConfig('railyard').sky.cloudTintHex, 'and its sky block\'s tint');
+  }
   assert.equal(w.cloudLayer.regime, w.cloudscape.regime);
   assert.equal(w.cloudLayer.coverage, w.cloudscape.coverage);
   assert.equal(w.cloudTintHex, w.cloudscape.tintHex);
@@ -49,7 +55,9 @@ for (const id of DECLARED) {
     assert.notEqual(deck.regime, 'overcast', `${id}: no stratus sheet`);
     assert.equal(resolveOvercast(sky), 0, `${id}: the sun lights the yard (the cumulus regime casts shadows)`);
     const before = getGarageSkyPreset(id);
-    assert.ok(resolveOvercast({ ...before, ...sun }) > 0.5, `${id}: (the battlefield's own sky is the overcast)`);
+    // (the battlefield's own sky block is the overcast for Frosthollow and Ironworks; Cinder Junction's battlefield is the
+    // same hazy summer cumulus its yard draws: the coordinator's ruling, 2026-10-16)
+    if (id !== 'railyard') assert.ok(resolveOvercast({ ...before, ...sun }) > 0.5, `${id}: (the battlefield's own sky is the overcast)`);
     // what the Garage draws before the cloudscape resolver is ever loaded
     garageSkies.push({ id, sun, sky, drawn: norm(deriveCloudLayerPreset(sky)) });
   }

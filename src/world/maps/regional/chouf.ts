@@ -622,32 +622,34 @@ const arisha: RegionalBuilder = (ctx) => {
         const r = k < 6 ? 0.07 - k * 0.006 : 0.035;
         sink.member('structureWood', pts[k], pts[k + 1], r, r, [0, 0, 1], { colour: shade(BARK, 0.9 + look() * 0.2), decor: true, exposed: true }, 0);
       }
-      // the leaves in clusters over the lattice (each a few leaves at their own tilts, seen from above and below)
+      // the leaves in clusters over the lattice, each lying on a rail (kitConnectivity, the integrity check: clusters
+      // laid at random stood 6-8 cm over the battens on nothing): a few leaves at their own tilts through the rail's top,
+      // seen from above and below (the under side a few millimetres beneath the upper); the grapes hang from the rail
+      // a leaf: a five-lobed card and its underside, the same outline a few millimetres beneath it, wound the other way
+      const leaf = (c: Vec3, nrm: Vec3, r: number, twist: number, top: Rgb, under: Rgb): void => {
+        const up: Vec3 = Math.abs(nrm[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+        const a = normalize3([up[1] * nrm[2] - up[2] * nrm[1], up[2] * nrm[0] - up[0] * nrm[2], up[0] * nrm[1] - up[1] * nrm[0]]);
+        const b: Vec3 = [nrm[1] * a[2] - nrm[2] * a[1], nrm[2] * a[0] - nrm[0] * a[2], nrm[0] * a[1] - nrm[1] * a[0]];
+        const pts = (o: number): Vec3[] => Array.from({ length: 5 }, (_, k) => {
+          const t = twist + k * 2 * Math.PI / 5, rr = r * (k % 2 ? 0.86 : 1);
+          return [c[0] + (a[0] * Math.cos(t) + b[0] * Math.sin(t)) * rr - nrm[0] * o, c[1] + (a[1] * Math.cos(t) + b[1] * Math.sin(t)) * rr - nrm[1] * o,
+            c[2] + (a[2] * Math.cos(t) + b[2] * Math.sin(t)) * rr - nrm[2] * o];
+        });
+        sink.polygon('structureWood', pts(0), { decor: true, colour: top });
+        sink.polygon('structureWood', pts(0.004).reverse(), { decor: true, colour: under });
+      };
+      const rails: number[] = [];
+      for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) rails.push(x);
       const n = Math.round(W * D * 2.6);
       for (let k = 0; k < n; k++) {
-        // (kitConnectivity, the leaves made blades: they hung over the lattice on nothing) each cluster laid along the
-        // batten nearest it, its blades resting on the batten's back (the vine is tied to the lattice)
-        const rx = (look() - 0.5) * (W - 0.3), cz = (look() - 0.5) * (D - 0.3); look();
-        const cx = -W / 2 + 0.3 + Math.max(0, Math.min(Math.floor((W - 0.45) / 0.55), Math.round((rx + W / 2 - 0.3) / 0.55))) * 0.55;
-        const cy = H + 0.095, colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
+        const rx = rails[Math.floor(look() * rails.length) % rails.length], cz = (look() - 0.5) * (D - 0.3), colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
         for (let j = 0; j < 3; j++) {
-          const tilt = (look() - 0.5) * 1.1, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
+          const tilt = (look() - 0.5) * 0.5, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
           const nrm = normalize3([Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)]);
-          const c: Vec3 = [cx + (look() - 0.5) * 0.04, cy + (look() - 0.5) * 0.004, cz + (look() - 0.5) * 0.35];
-          // (Lane C 2026-10-16, regionalArchitecture's ray audit: the leaf was two faces in one plane, so a view met its back
-          // as often as its front) each leaf a thin closed blade: its five-pointed outline (bloomDisc's) as a slab 6 mm thick
-          const ref: Vec3 = Math.abs(nrm[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
-          const ea = normalize3([ref[1] * nrm[2] - ref[2] * nrm[1], ref[2] * nrm[0] - ref[0] * nrm[2], ref[0] * nrm[1] - ref[1] * nrm[0]]);
-          const eb: Vec3 = [nrm[1] * ea[2] - nrm[2] * ea[1], nrm[2] * ea[0] - nrm[0] * ea[2], nrm[0] * ea[1] - nrm[1] * ea[0]];
-          const blade: Vec3[] = [];
-          for (let q = 0; q < 5; q++) {
-            const t = yaw + q * 2 * Math.PI / 5, rr = r * (q % 2 ? 0.86 : 1);
-            blade.push([c[0] + (ea[0] * Math.cos(t) + eb[0] * Math.sin(t)) * rr - nrm[0] * 0.003, c[1] + (ea[1] * Math.cos(t) + eb[1] * Math.sin(t)) * rr - nrm[1] * 0.003,
-              c[2] + (ea[2] * Math.cos(t) + eb[2] * Math.sin(t)) * rr - nrm[2] * 0.003]);
-          }
-          sink.prism('structureWood', blade, nrm, 0.006, { colour: shade(colour, 0.85 + look() * 0.3), decor: true });
+          const c: Vec3 = [rx, H + 0.095 + look() * 0.01, cz + (look() - 0.5) * 0.35];
+          leaf(c, nrm, r, yaw, shade(colour, 0.85 + look() * 0.3), shade(colour, 0.7));
         }
-        if (look() < 0.25) sink.cylinder('structureWood', [cx, H - 0.05, cz], 'y', 0.22, 0.05, 6, { colour: GRAPE, decor: true, fine: true }, 0.08);
+        if (look() < 0.25) sink.cylinder('structureWood', [rx, H + 0.02 - 0.22, cz], 'y', 0.22, 0.05, 6, { colour: GRAPE, decor: true, fine: true }, 0.08);
       }
     });
     recordShed(sink, legs, {
