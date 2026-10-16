@@ -3,8 +3,8 @@
 // deep verandas; the bazaar's timber shops under sheet roofs; the mission church of rough stone under a red tin roof;
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb, streamFrom } from './geometry.ts';
+import { buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec, closeGables } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, veranda } from './vernacular.ts';
@@ -84,6 +84,31 @@ function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D
       }
       // the counter across the front at the riser's top, the shutters hinged up from the head as the awning
       faceBox(s, 'structureWood', face, o.u, y0 + 0.55, 0.1, o.w + 0.1, 0.06, 0.45, { colour: shade(plank, 1.05), decor: true });
+      // (MAPS, 2026-10-15, ported onto this shop: Monsoon Kohima's blind critics read the open front as one flat black
+      // panel, "a missing texture") the shop inside the opening: the counter's front boarded down to the floor, the back
+      // wall in the shade under the awning with two shelves of tins and sacks, the side walls and the ceiling closing the
+      // bay, goods on the shelves and the counter. All decor (the collision is the house's); the goods draw from the
+      // shop's own stream (the kit's stream keeps its draws).
+      const bay = Math.min(1.5, D - 1.2), wd = o.w;
+      faceBox(s, 'structureWood', face, o.u, y0 + 0.26, 0.1, wd + 0.06, 0.52, 0.4, { colour: shade(plank, 1.0), decor: true });
+      faceBox(s, 'structureWood', face, o.u, y0 + o.h / 2, -bay, wd, o.h, 0.04, { colour: shade(plank, 0.3), decor: true });
+      for (const sx of [-1, 1]) faceBox(s, 'structureWood', face, o.u + sx * (wd / 2 - 0.02), y0 + o.h / 2, -bay / 2, 0.04, o.h, bay, { colour: shade(plank, 0.35), decor: true });
+      faceBox(s, 'structureWood', face, o.u, y0 + o.h - 0.02, -bay / 2, wd, 0.04, bay, { colour: shade(plank, 0.25), decor: true });
+      const shelves = [y0 + 1.33, y0 + 1.89];
+      for (const y of shelves) faceBox(s, 'structureWood', face, o.u, y, -bay + 0.16, wd - 0.2, 0.04, 0.3, { colour: shade(plank, 0.8), decor: true });
+      s.dressing(ctx.tier === 'mobile', () => {
+        const goods = streamFrom(Math.round((x + 31.7) * 997 + W * 131 + D * 17));
+        const GOODS: readonly Rgb[] = [0xc9b48a, 0xb9a072, 0xa8442f, 0x4f7a4a, 0x3f5f8a, 0xc9a23a, 0xdedad0].map(rgb);
+        for (const y of shelves) for (let u = -wd / 2 + 0.3; u < wd / 2 - 0.25; u += 0.34) {
+          if (goods() < 0.18) continue;
+          const h = 0.16 + goods() * 0.16;
+          faceBox(s, 'structureWood', face, o.u + u, y + 0.02 + h / 2, -bay + 0.16, 0.22 + goods() * 0.06, h, 0.2, { colour: pick(goods, GOODS), decor: true });
+        }
+        for (let k = 0, n = 2 + Math.floor(goods() * 2); k < n; k++) {
+          const u = (goods() - 0.5) * (wd - 0.8), h = 0.2 + goods() * 0.14;
+          faceBox(s, 'structureWood', face, o.u + u, y0 + 0.58 + h / 2, 0.1, 0.34, h, 0.3, { colour: pick(goods, GOODS), decor: true });
+        }
+      });
       faceBox(s, 'structureWood', face, o.u, y0 + o.h + 0.03, awning / 2 + 0.05, o.w + 0.2, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
       for (const sx of [-1, 1]) s.member('structureWood', [face.origin[0] + face.u[0] * (o.u + sx * (o.w / 2)), y0 + o.h - 0.6, face.origin[2] + face.u[2] * (o.u + sx * (o.w / 2))],
         [face.origin[0] + face.u[0] * (o.u + sx * (o.w / 2)) + face.out[0] * awning, y0 + o.h, face.origin[2] + face.u[2] * (o.u + sx * (o.w / 2)) + face.out[2] * awning],

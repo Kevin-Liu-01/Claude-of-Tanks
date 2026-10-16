@@ -8143,6 +8143,31 @@ village stood as a handful of roadside-plan buildings round the square.
   -> [8682, 8454, 10071].
 - *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
 
+### 2026-10-14 — Monsoon Ridge: Kohima's town on its terraces, the Deputy Commissioner's bungalow and tennis court (the maps lane)
+
+**The owner, 10-09: Monsoon Ridge among the fourteen to bring up; MAP-01: built the way Verdant was.** The hill town
+stood as the roadside plan's 26 buildings, 16 of them placed, over a 290 m saddle.
+- *The place:* Kohima in April 1944, a town of terraces on the Imphal road (the Kohima kit: bungalows under painted tin
+  with deep verandas, the bazaar's timber shops, the mission church, Angami thatched houses with their crossed gable horns
+  and their granaries, and the siege's shelled ruins).
+- *The plan* (`monsoon.ts` KOHIMA_TOWN, `plannedSites`; the roadside plan retired), authored in the road's own frame:
+  the bazaar's shop rows along the road north of its crossing with the valley road (south of it the road crosses the
+  flood channel's bottoms), the lane behind it on the east short of the channel, the bungalows in their gardens on the
+  terraces west, the Angami village on the north-west spur, the church framing the town's square from the north; one in
+  five of the town's buildings shelled to a ruin. The square's zone ring (46 m) stays free of buildings and yards.
+- *The hero:* the Deputy Commissioner's bungalow on the terrace above the square and its tennis court below it, the
+  front line the garrison held for a fortnight (`landmarks/colonial.ts`, built by the landmarks lane for this map and
+  placed nowhere until now).
+- *The terrace road* climbs from the bazaar past the bungalows and the Angami village to the north road
+  (`roadEndpoints.ts` join(1, 4)), so the upper terraces front a road (the brief's orphan band).
+- *Measured* (every band holds): orphan 0.147, the zone on its hint (398 m from alpha, 412 from bravo; symmetry 1.053),
+  the middle third's cover 0.424 -> 0.473, the weakest sector 0.267 -> 0.400, the sightline median 88 -> 80 m, long
+  sightlines 0.055 -> 0.036. 72 buildings where 16 stood; census [9351, 9146, 11650] -> [9619, 9671, 11564].
+- *The blind critics* (2026-10-15, PASS +0.58, Opus 5/1, Sonnet 5/1): the one after-defect both named, a flat black
+  rectangle on a plank shed's wall, was the Kohima bazaar shop's open front (one 'dark' panel). It opens now onto the
+  shop's back wall in shade, a framed opening, two shelves of tins and sacks and a counter across the front
+  (`regional/kohima.ts` shop; decor, no collision change; the goods from the shop's own stream).
+
 ### 2026-10-15 — Titan Gorge: the paved highways and the valley's homesites (the maps lane)
 
 **The owner, 10-09: Titan Gorge among the fourteen to bring up (new-style buildings, paved roads).** The Oljato chapter's
