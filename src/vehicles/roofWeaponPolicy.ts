@@ -22,13 +22,13 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   fv510: 'FV510 Warrior: 30 mm L21A1 RARDEN and a coaxial 7.62 mm L94A1 chain gun; no pintle or roof machine gun.',
   fv510_milan: 'FV510 Warrior with the MILAN post: 30 mm RARDEN, a coaxial L94A1 chain gun and the dismountable MILAN '
     + 'firing post; no pintle or roof machine gun.',
-  ajax_x: 'Ajax (turreted Scout SV): 40 mm CT40 and a coaxial 7.62 mm L94A1 chain gun; the Protector remote station fits '
+  ajax: 'Ajax (turreted Scout SV): 40 mm CT40 and a coaxial 7.62 mm L94A1 chain gun; the Protector remote station fits '
     + 'only on the turretless variants (or in place of the Orion sight), so the turreted Ajax carries no roof gun.',
   spz_puma: 'Schützenpanzer Puma: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS (Spike-LR) launcher in an '
     + 'unmanned turret; no roof machine gun.',
-  spz_puma_s1: 'Schützenpanzer Puma S1: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS launcher; the S1 carries no '
+  spz_wotan: 'Schützenpanzer Puma S1: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS launcher; the S1 carries no '
     + 'roof weapon station (its commander sight is the PERI RTWL head).',
-  type89: 'Type 89 IFV: 35 mm KDE, a coaxial 7.62 mm Type 74 and two Type 79 Jyu-MAT launchers; no roof machine gun.',
+  hayate_ifv: 'Type 89 IFV: 35 mm KDE, a coaxial 7.62 mm Type 74 and two Type 79 Jyu-MAT launchers; no roof machine gun.',
   tos1a_tagil: 'TOS-1A Solntsepyok: the 24-tube 220 mm launcher on a T-72 chassis; the crew relies on personal arms and '
     + 'the vehicle carries no machine gun.',
   kv2: 'KV-2: the 152 mm M-10 and three 7.62 mm DT machine guns in ball mounts (coaxial, turret rear and hull bow); no '

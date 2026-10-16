@@ -6,7 +6,7 @@ import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The held-out per-mesh preservation ledger (docs/references/tanks/t72b3m_x.side-mount-preservation.json, rewritten by
-// COT_UPDATE_LEDGER) is retired: whole-tank change detection of t72b3m_x is the fleet geometry ledger's. The marking
+// COT_UPDATE_LEDGER) is retired: whole-tank change detection of t72b3m_2016 is the fleet geometry ledger's. The marking
 // validation, source surfaces/air, helper wiring and ERA-depleted attachment proofs stay.
 function legacyAttributeNames(g){
   // Validate the semantic lamp-mask byte channel independently of the paint attributes.
@@ -194,7 +194,7 @@ function attachment(tank,all){
 }
 
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3m_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('t72b3m_2016',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{
     tank.root.updateMatrixWorld(true);const all=physicalMeshes(tank.root),detail=tank.root.getObjectByName('hullDetail');
     sourceSurfaces(all);sourceAir(all);actualWiring(detail);markings(tank,quality);

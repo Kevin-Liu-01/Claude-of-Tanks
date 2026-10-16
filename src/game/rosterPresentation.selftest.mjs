@@ -2,37 +2,37 @@ import assert from 'node:assert/strict';
 import { createRosterPresentation } from './rosterPresentation.ts';
 
 const presentation = createRosterPresentation({
-  getVehicleName: (id) => id === 'm1a2' ? 'M1A2 Abrams' : null,
-  getTier: (id) => id === 'm1a2' ? 'X' : 'IX',
+  getVehicleName: (id) => id === 'm1a1_abrams_hc' ? 'M1A2 Abrams' : null,
+  getTier: (id) => id === 'm1a1_abrams_hc' ? 'X' : 'IX',
 });
 
 assert.deepEqual(presentation.lobbyRows({ players: [
-  { id: 'viewer', team: 'alpha', specId: 'm1a2', name: 'Ignored callsign' },
-  { id: 'wing', team: 'alpha', specId: 't90m', name: 'T-90M fallback' },
-  { id: 'enemy', team: 'bravo', specId: 'leclerc' },
+  { id: 'viewer', team: 'alpha', specId: 'm1a1_abrams_hc', name: 'Ignored callsign' },
+  { id: 'wing', team: 'alpha', specId: 't90am', name: 'T-90M fallback' },
+  { id: 'enemy', team: 'bravo', specId: 'leclerc_s2' },
   { id: 'spectator', team: 'alpha' },
 ] }, 'alpha', 'viewer'), [
-  { id: 'm1a2', name: 'M1A2 Abrams', tier: 'X', isPlayer: true },
-  { id: 't90m', name: 'T-90M fallback', tier: 'IX', isPlayer: false },
+  { id: 'm1a1_abrams_hc', name: 'M1A2 Abrams', tier: 'X', isPlayer: true },
+  { id: 't90am', name: 'T-90M fallback', tier: 'IX', isPlayer: false },
 ], 'lobby rows use vehicle names, exclude other teams and ignore empty selections');
 
 assert.deepEqual(presentation.battleRows([
-  { specId: 't90m', team: 'player', spec: { name: 'T-90M' } },
-  { specId: 'm1a2', team: 'player', spec: { name: 'M1A2 Abrams' }, isPlayer: true },
-  { specId: 'leclerc', team: 'enemy', spec: { name: 'Leclerc' } },
+  { specId: 't90am', team: 'player', spec: { name: 'T-90M' } },
+  { specId: 'm1a1_abrams_hc', team: 'player', spec: { name: 'M1A2 Abrams' }, isPlayer: true },
+  { specId: 'leclerc_s2', team: 'enemy', spec: { name: 'Leclerc' } },
 ], 'player'), [
-  { id: 'm1a2', name: 'M1A2 Abrams', tier: 'X', isPlayer: true },
-  { id: 't90m', name: 'T-90M', tier: 'IX', isPlayer: false },
+  { id: 'm1a1_abrams_hc', name: 'M1A2 Abrams', tier: 'X', isPlayer: true },
+  { id: 't90am', name: 'T-90M', tier: 'IX', isPlayer: false },
 ], 'local roster puts the human first without changing teammate order');
 
 console.log('rosterPresentation.selftest: lobby/local naming and player order passed');
 
 const aircraftRow = {id:'ac130',name:'AC-130',tier:'',kind:'aircraft',isPlayer:true};
 assert.deepEqual(presentation.battleRows([
- {specId:'m1a2',team:'player',isPlayer:true,aerial:{kind:'gunship'}},
- {specId:'t90m',team:'player',spec:{name:'T-90M'}},
-], 'player'), [aircraftRow,{id:'t90m',name:'T-90M',tier:'IX',isPlayer:false}]);
+ {specId:'m1a1_abrams_hc',team:'player',isPlayer:true,aerial:{kind:'gunship'}},
+ {specId:'t90am',team:'player',spec:{name:'T-90M'}},
+], 'player'), [aircraftRow,{id:'t90am',name:'T-90M',tier:'IX',isPlayer:false}]);
 assert.deepEqual(presentation.lobbyRows({gameMode:'ac130',players:[
- {id:'viewer',specId:'m1a2',team:'alpha'},
- {id:'escort',specId:'t90m',team:'alpha',bot:true},
-]}, 'alpha', 'viewer'), [aircraftRow,{id:'t90m',name:'t90m',tier:'IX',isPlayer:false}]);
+ {id:'viewer',specId:'m1a1_abrams_hc',team:'alpha'},
+ {id:'escort',specId:'t90am',team:'alpha',bot:true},
+]}, 'alpha', 'viewer'), [aircraftRow,{id:'t90am',name:'t90am',tier:'IX',isPlayer:false}]);

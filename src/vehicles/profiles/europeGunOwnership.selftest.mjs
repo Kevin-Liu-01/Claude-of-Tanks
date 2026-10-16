@@ -9,11 +9,11 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Existing source-measured receiving stock, before its ownership correction.
 // Bounds distinguish a real cradle from an invented stub or renamed barrel.
 const cases = [
-  ['kf41_lynx_x', [-.3465,-.27766,-.16], [.289,.43164,3.57]],
-  ['cv90_mkiv_x', [-.29,-.24,-.14], [.29,.26,.42]],
-  ['cv90105_tml_x', [-.597,-.194,-.16], [.506,.249,1.215]],
-  ['sabra_mk2_x', [-.63,-.24,-.16], [.63,.35,.83]],
-  ['aft10_x', [-1.245,-.315,-.93], [1.245,-.235,.88]],
+  ['kf41_lynx', [-.3465,-.27766,-.16], [.289,.43164,3.57]],
+  ['cv90_mk4', [-.29,-.24,-.14], [.29,.26,.42]],
+  ['cv90105_tml', [-.597,-.194,-.16], [.506,.249,1.215]],
+  ['sabra_mk2', [-.63,-.24,-.16], [.63,.35,.83]],
+  ['aft10', [-1.245,-.315,-.93], [1.245,-.235,.88]],
 ];
 await ensureInteriorFills(cases.map(([id]) => id));
 const DEG = Math.PI / 180;
@@ -77,7 +77,7 @@ for(const quality of ['high','low']) for(const [id,min,max] of cases) {
     assert.equal(mount.material,barrel.material,`${id}: reuse original barrel finish without changing shared material`);
     mount.geometry.computeBoundingBox();
     for(const [which,expected] of [['min',min],['max',max]])
-      mount.geometry.boundingBox[which].toArray().forEach((v,i)=>near(v,expected[i] * (id === 'kf41_lynx_x' ? .90 : 1),.000002,`${id}: measured cradle ${which}[${i}]`));
+      mount.geometry.boundingBox[which].toArray().forEach((v,i)=>near(v,expected[i] * (id === 'kf41_lynx' ? .90 : 1),.000002,`${id}: measured cradle ${which}[${i}]`));
     const dark=gun.getObjectByName('gunMountDark');
     for(const mesh of [mount,dark].filter(Boolean)) {
       const row={name:mesh.name,count:0};disposed.push(row);
@@ -92,14 +92,14 @@ for(const quality of ['high','low']) for(const [id,min,max] of cases) {
       const turretBox=new THREE.Box3().setFromObject(turret.getObjectByName('turret')||turret,true);
       assert.ok(gap(mountBox,barrelBox)<=.10,`${id}: native cradle remains seated to the barrel`);
       assert.ok(gap(mountBox,turretBox)<=.125,`${id}: native cradle remains seated to the turret`);
-      if(id==='cv90105_tml_x') assertTmlBootContact(mount,gun,`${quality}/yaw${yaw}/pitch${pitchDeg}`);
+      if(id==='cv90105_tml') assertTmlBootContact(mount,gun,`${quality}/yaw${yaw}/pitch${pitchDeg}`);
       const fixedBefore=onGun(mount,gun),movingBefore=onGun(barrel,gun);
       const lensesBefore=dark?onGun(dark,gun):null;
       const muzzleBefore=Array.from({length:spec.gun.fixedLaunchCanisters?8:1},(_,i)=>tank.gunMuzzleWorld(new THREE.Vector3(),i).clone());
       tank.recoilKick(0,1);tank.syncFromState(state,.12);root.updateMatrixWorld(true);
       near(onGun(mount,gun).distanceTo(fixedBefore),0,1e-6,`${id}: receiving stock stays fixed in gun frame during firing`);
       if(dark)near(onGun(dark,gun).distanceTo(lensesBefore),0,1e-6,`${id}: receiver optics stay with the cradle`);
-      if(id==='cv90105_tml_x') for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.1435]]) {
+      if(id==='cv90105_tml') for(const [x,y,z] of [[-.4058,-.02445,.360],[.400,.046,.1435]]) {
         const ray=new THREE.Raycaster(gun.localToWorld(new THREE.Vector3(x,y,1.3)),
           new THREE.Vector3(0,0,-1).transformDirection(gun.matrixWorld));
         const hit=firstVisible(root,ray);
@@ -107,7 +107,7 @@ for(const quality of ['high','low']) for(const [id,min,max] of cases) {
         near(gun.worldToLocal(hit.point.clone()).z,z,.001,'source optical face depth is fixed through legal yaw/pitch and recoil');
       }
 
-      if(id==='cv90105_tml_x') assertTmlBootContact(mount,gun,`${quality}/after recoil`);
+      if(id==='cv90105_tml') assertTmlBootContact(mount,gun,`${quality}/after recoil`);
       const motion=onGun(barrel,gun).sub(movingBefore);
       near(motion.x,0,1e-6,`${id}: recoil preserves lateral axis`);near(motion.y,0,1e-6,`${id}: recoil preserves vertical axis`);
       if(spec.gun.fixedLaunchCanisters) {
@@ -117,7 +117,7 @@ for(const quality of ['high','low']) for(const [id,min,max] of cases) {
       tank.syncFromState(state,1);root.updateMatrixWorld(true);
       near(onGun(barrel,gun).distanceTo(movingBefore),0,1e-6,`${id}: barrel returns to battery`);
     }
-    if(id==='cv90105_tml_x') {
+    if(id==='cv90105_tml') {
       assert.equal(dark.parent,gun,'both recessed optical faces retain direct pitching ownership');
       const camera=new THREE.PerspectiveCamera();
       for(const distance of [2,1000,2,1000,2]) {

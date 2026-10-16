@@ -49,10 +49,10 @@ const M: Datum = { yaw: [.018092,1.336748,-.104459], gun: [.001973,1.608251,1.14
 const S: Datum = { yaw: [.008,1.532,.359], gun: [.001,1.90309,1.56], muzzle: 7.0399, roof: 2.2893, height: 3.1501 };
 
 export const T90_X_DATUMS = Object.freeze({
-  t90a_x: { ...A, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.9922, overallLengthM: 10.4586 },
-  t90a_vladimir_x: { ...V, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.1115, overallLengthM: 10.7863 },
-  t90m_x: { ...M, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.8329, overallLengthM: 10.3513 },
-  t90sm_x: { ...S, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.0598, overallLengthM: 11.1371 },
+  t90a: { ...A, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.9922, overallLengthM: 10.4586 },
+  t90a_vladimir: { ...V, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.1115, overallLengthM: 10.7863 },
+  t90m: { ...M, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 7.8329, overallLengthM: 10.3513 },
+  t90sm: { ...S, widthM: 3.78, hullLengthM: 6.86, exteriorHullLengthM: 8.0598, overallLengthM: 11.1371 },
 });
 
 function frame(P: TankBuilderPort, d: Datum): void {
@@ -187,7 +187,7 @@ function mGunBoot(P:TankBuilderPort):void {
   // Source canvas covers a longer pitching cradle than the steel trunnion.
   // Original positive U-section cloth skins keep the underside and forward
   // barrel aperture open; they do not fill a rectangular bounding volume.
-  // Owner 2026-09-16 ("fix this green mantlet on the t90m"): the Proryv's cradle cover is painted with
+  // Owner 2026-09-16 ("fix this green mantlet on the t90am"): the Proryv's cradle cover is painted with
   // the vehicle scheme like the turret around it, not left in bare olive canvas — 'gunMount' paint.
   const rows:readonly(readonly[number,number,number,number,number])[]=[
     [.987,-.4149,.3123,1.969,1.982],[1.140,-.4149,.3123,1.421,1.926],
@@ -853,28 +853,30 @@ function mSideCurtains(P:TankBuilderPort):void {
 }
 
 function mRearCage(P:TankBuilderPort):void {
-  // Native open lattice: source rack bars are 3 mm high, not solid bands.
+  // Native open lattice. Coordinator 2026-10-15 (the owner's T-90M remake still: the cage read as a solid block at mid
+  // range): the source's 3 mm bars vanished at any distance and left the hull behind them reading as one slab; the bars
+  // are 12 mm steel flats at the source's 55 mm pitch and the uprights 14 mm, so the rack reads as open bar armour.
   for(const side of [-1,1]) {
     const x=side*(side<0?1.87472:1.87455);
     for(let j=0;j<8;j++) {
       const y=.93132+j*.055017;
-      P.addEquipment('hullOpenLattice',box(.03057,.00306,.7654),x,y,-2.70352);
+      P.addEquipment('hullOpenLattice',box(.03057,.012,.7654),x,y,-2.70352);
       if(side>0&&j>=2&&j<=5) {
-        P.addEquipment('hullOpenLattice',box(.03057,.00306,.34069),x,y,-2.13459);
-        P.addEquipment('hullOpenLattice',box(.03057,.00306,.5708),x,y,-1.39344);
-      } else P.addEquipment('hullOpenLattice',box(.03057,.00306,1.19689),x,y,-1.70649);
+        P.addEquipment('hullOpenLattice',box(.03057,.012,.34069),x,y,-2.13459);
+        P.addEquipment('hullOpenLattice',box(.03057,.012,.5708),x,y,-1.39344);
+      } else P.addEquipment('hullOpenLattice',box(.03057,.012,1.19689),x,y,-1.70649);
     }
     for(const [z,low]of [[-2.9536,.92966],[-2.3902,.93022],[-2.2462,.84312],[-1.8015,.71449]] as const) {
-      P.addEquipment('hullOpenLattice',box(.02784,1.317-low,.00571),x,(1.317+low)/2,z);
+      P.addEquipment('hullOpenLattice',box(.02784,1.317-low,.014),x,(1.317+low)/2,z);
     }
     for(const [z,inset]of [[-2.8856,.198],[-2.3561,.166],[-2.2775,.166],[-1.1755,.128]] as const) {
       P.addEquipment('hullOpenLatticeDark',box(inset,.031,.03782),side*(1.8828-inset/2),1.236,z);
     }
     const dz=.9327,dy=-.27942;
-    P.addEquipment('hullOpenLattice',box(.03057,.00306,Math.hypot(dz,dy)),x,.74151,-1.8907,-Math.atan2(dy,dz));
+    P.addEquipment('hullOpenLattice',box(.03057,.012,Math.hypot(dz,dy)),x,.74151,-1.8907,-Math.atan2(dy,dz));
     for(let j=0;j<6;j++) {
       const y=.6018+j*.055017,back=-1.4244-j*.1837;
-      P.addEquipment('hullOpenLattice',box(.03057,.00306,-1.10804-back),x,y,(back-1.10804)/2);
+      P.addEquipment('hullOpenLattice',box(.03057,.012,-1.10804-back),x,y,(back-1.10804)/2);
     }
   }
 }
@@ -1047,10 +1049,12 @@ function mTurretBasket(P:TankBuilderPort):void {
   for(let row=0;row<7;row++)for(let i=0;i<path.length-1;i++) {
     const [x0,z0,top0]=path[i],[x1,z1,top1]=path[i+1],length=Math.hypot(x1-x0,z1-z0);
     const y=(top0+top1)/2-(6-row)*.0555;
-    onTurret(P,M,'turretDetail',box(.0306,.0031,length),
+    // coordinator 2026-10-15 (the owner's T-90M remake still: the basket read as a solid block at mid range): 12 mm
+    // flats, not 3 mm, so the seven rails read as open bars over the bustle at any range
+    onTurret(P,M,'turretDetail',box(.0306,.012,length),
       (x0+x1)/2,y,(z0+z1)/2,0,Math.atan2(x1-x0,z1-z0));
   }
-  for(const [x,z,top]of path)onTurret(P,M,'turretDetail',box(.0058,.333,.0306),x,top-.1665,z);
+  for(const [x,z,top]of path)onTurret(P,M,'turretDetail',box(.016,.333,.0306),x,top-.1665,z);
   for(const x of [-.60,.60])onTurret(P,M,'turretDetail',box(.046,.029,.253),x,1.581,-2.674);
 }
 
@@ -1423,7 +1427,7 @@ function modernMasts(P: TankBuilderPort,d: Datum,sm: boolean): void {
     return;
   }
   // DVE-BS wind sensor: the source model's 92-108 mm post is kept for the
-  // exemplar geometry gate (t90m_x 93.1/92 with it, 90.8 without); the real
+  // exemplar geometry gate (t90m 93.1/92 with it, 90.8 without); the real
   // mast is slimmer and reads better, recorded as an owner decision in
   // docs/research/fleet-visual-standard-20260911.md.
   onTurret(P,d,'turretDetail',cylY(.046,.482,12),x,2.260,z);
@@ -1638,6 +1642,6 @@ export function buildT90SMXTurret(P: TankBuilderPort, customBustle=false): void 
 }
 
 export const T90_X_PROFILES = {
-  t90a_x:{build:buildT90AX},t90a_vladimir_x:{build:buildT90AVladimirX},
-  t90m_x:{build:buildT90MX},t90sm_x:{build:buildT90SMX},
+  t90a:{build:buildT90AX},t90a_vladimir:{build:buildT90AVladimirX},
+  t90m:{build:buildT90MX},t90sm:{build:buildT90SMX},
 } as const;

@@ -63,12 +63,12 @@ const spawn = (id, name, index) => {
 };
 try {
   const p1 = spawn('p1', 'Admin', 0);
-  const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false } });
+  const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false } });
   const code = room.roomCode;
   const p2 = spawn('p2', 'Two', 1);
   const p3 = spawn('p3', 'Three', 2);
   await p1.headless.room.setTeam('bravo');
-  await p2.headless.room.join({ roomCode: code, selection: { specId: 't90m' }, team: 'alpha' });
+  await p2.headless.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
   await p3.headless.room.join({ roomCode: code, selection: { specId: 'kv2' }, team: 'alpha' });
   await until(() => p1.headless.room.room?.players.length === 3, 'three seats', 10_000);
   await Promise.all(sessions.map((entry) => entry.headless.room.setReady(true)));

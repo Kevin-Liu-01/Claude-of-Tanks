@@ -24,7 +24,7 @@ function cheekModule(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):voi
   const g=weldedFlankHousing(rows,side,.035);
   // Permanent armor wedge remains in place beneath the small ERA face tiles.
   P.addExternalArmor('turret',g);
-  addChineseChevronBank(P,side,rows,P.spec.id==='cn_t72b3m_modern'?.115:P.spec.id==='cn_t80u_modern'?.10:.09);
+  addChineseChevronBank(P,side,rows,P.spec.id==='t72b3m_kunlun'?.115:P.spec.id==='t80u_yun'?.10:.09);
 }
 
 function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:number):void {

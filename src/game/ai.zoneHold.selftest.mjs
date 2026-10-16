@@ -88,7 +88,7 @@ console.log('[1] an attacker holds a zone centred on a 52 degree face from the f
 {
   const field = faceField(20);
   const zone = { mission: 'assault', x: 0, z: 70, radiusM: 30 };
-  const bot = entity('attacker', 'm1a2', 'alpha', 60, 55, field, -Math.PI / 2);
+  const bot = entity('attacker', 'm1a1_abrams_hc', 'alpha', 60, 55, field, -Math.PI / 2);
   const ctl = controller(bot, field, zone);
   const run = drive(bot, ctl, field, 90);
   const info = ctl.debugInfo();
@@ -104,7 +104,7 @@ console.log('[2] a defender coming off the plateau holds a zone centred on the s
 {
   const field = faceField(20);
   const zone = { mission: 'assault', x: 0, z: 70, radiusM: 30 };
-  const bot = entity('defender', 't90m', 'bravo', 0, 160, field, Math.PI);
+  const bot = entity('defender', 't90am', 'bravo', 0, 160, field, Math.PI);
   const ctl = controller(bot, field, zone);
   const run = drive(bot, ctl, field, 90);
   const info = ctl.debugInfo();
@@ -121,7 +121,7 @@ console.log('[3] control: a zone on level ground is held at its centre');
 {
   const field = faceField(15, true);
   const zone = { mission: 'capture', x: 0, z: 67, radiusM: 30 };
-  const bot = entity('holder', 'm1a2', 'alpha', 0, -40, field, 0);
+  const bot = entity('holder', 'm1a1_abrams_hc', 'alpha', 0, -40, field, 0);
   const ctl = controller(bot, field, zone);
   drive(bot, ctl, field, 60);
   const info = ctl.debugInfo();

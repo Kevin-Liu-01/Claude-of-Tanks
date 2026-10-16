@@ -29,7 +29,7 @@ export const MAP_PROBE_BROWSER_ARGS = Object.freeze(['--use-gl=angle', '--enable
 export const MAP_PROBE_SETTLE_MS = Object.freeze({ battle: 1500, pose: 1400, recompile: 2500, toggle: 500, uniform: 400 });
 /** Desktop tier, no splash, fresh graphics settings: the query every map capture booted with. */
 const MAP_PROBE_GAME_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
-const MAP_PROBE_DEFAULT_SPEC = 't90m_x';
+const MAP_PROBE_DEFAULT_SPEC = 't90m';
 /** |x|,|z| clamp for the ground-height lookup (the playable square's height field). */
 export const MAP_PROBE_HEIGHT_CLAMP = 511;
 export const MAP_PROBE_FOV = 55;

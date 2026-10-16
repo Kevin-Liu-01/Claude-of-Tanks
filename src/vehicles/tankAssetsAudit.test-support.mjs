@@ -133,19 +133,19 @@ export function createTankAssetsAudit() {
     assert(existsSync(new URL(`../../public/icons/${thumbnail.file}`, import.meta.url)),
       `${id}: missing ${thumbnail.file}`);
   }
-  assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m')), 1,
+  assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m_2022')), 1,
     'single-cannon profiles require one bore/rim pair');
   assert.equal(expectedMuzzleBoreCount(getSpec('bmpt_terminator2')), 2,
     'twin autocannon profiles require one bore/rim pair per barrel');
 
-  assert.equal(expectedMuzzleBoreCount(getSpec('aft10_x')), 0,
+  assert.equal(expectedMuzzleBoreCount(getSpec('aft10')), 0,
     'sealed missile canisters retain firing tips without decorative cannon bores');
 
   const displayNames = new Set();
-  const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103', 'strv103a']);
+  const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103b', 'strv103a']);
   // This independently authored fixed casemate has a separate moving cannon.
   // Unlike the old donor's hull-only assembly, it needs hull + gun, no turret.
-  const FIXED_CASEMATE_GUN_SHADOW_IDS = new Set(['jpz_e100_x']);
+  const FIXED_CASEMATE_GUN_SHADOW_IDS = new Set(['jpz_e100']);
 
   for (const id of ALL_TANK_IDS) {
     const spec = getSpec(id);
@@ -183,7 +183,7 @@ export function createTankAssetsAudit() {
     assert.equal(metadataFingerprint(metadata), metadataFingerprint(tankAssetMetadata(spec)), `${id}: stable metadata hash`);
   }
 
-  const sepv2Metadata = tankAssetMetadata(getSpec('m1a2_sepv2'));
+  const sepv2Metadata = tankAssetMetadata(getSpec('m1a1_abrams_aim'));
   const sepv2OpticsMetadata = sepv2Metadata.armor.modules.find((box) => box.name === 'optics');
   assert(sepv2OpticsMetadata.parts.length >= 4,
     'SEPv2 asset metadata fingerprints the separate CROWS and sight volumes');
@@ -192,21 +192,21 @@ export function createTankAssetsAudit() {
     assert.equal(ALL_TANK_IDS.includes(id), false, `${id}: retired external placeholder is not selectable`);
   }
 
-  assert.equal(getSpec('m1a2').name, 'M1A1 Abrams HC', '2026-09-15: the Tejas hull is the M1A1 HC mark; the X study is the canonical M1A2');
+  assert.equal(getSpec('m1a1_abrams_hc').name, 'M1A1 Abrams HC', '2026-09-15: the Tejas hull is the M1A1 HC mark; the X study is the canonical M1A2');
   assert.equal(getSpec('m1a1ha').name, 'M1A1 Abrams HA', 'Abrams family naming is consistent');
-  assert.equal(getSpec('m1a2_sepv3').name, 'M1A1 Abrams FEP', 'the older SEPv3 hull carries the M1A1 FEP mark');
+  assert.equal(getSpec('m1a1_abrams_fep').name, 'M1A1 Abrams FEP', 'the older SEPv3 hull carries the M1A1 FEP mark');
   assert.equal(getSpec('bwp1').name, 'BWP-1 (Bojowy Wóz Piechoty 1)',
     'BMP-derived Upior entry is publicly named BWP-1');
   assert.equal(ALL_TANK_IDS.includes('upior_ifv'), false,
     'retired Upior IFV id is absent from the runtime roster');
   assert.equal(getSpec('upior').name, 'Upiór IFV',
     'separate ground-up Upior identity remains unchanged');
-  assert.equal(getSpec('strv122_x').name, 'Stridsvagn 122', 'the Strv 122 study carries the canonical name (owner 2026-09-15)');
-  assert.equal(getSpec('strv122').name, 'Stridsvagn 121',
+  assert.equal(getSpec('strv122').name, 'Stridsvagn 122', 'the Strv 122 study carries the canonical name (owner 2026-09-15)');
+  assert.equal(getSpec('strv121').name, 'Stridsvagn 121',
     'Swedish vehicle uses its operator-standard public name');
-  assert.equal(getSpec('k2_x').label.shortName, 'K2',
+  assert.equal(getSpec('k2_black_panther').label.shortName, 'K2',
     'the K2 study keeps the canonical designation as its concise public label (owner 2026-09-15)');
-  assert.equal(getSpec('k2').label.shortName, 'XK2', 'the older K2 hull carries the prototype designation');
+  assert.equal(getSpec('xk2_black_panther').label.shortName, 'XK2', 'the older K2 hull carries the prototype designation');
   assert.equal(getSpec('spz_puma').name, 'Schützenpanzer Puma',
     'Puma uses the Bundeswehr vehicle-class designation');
   assert.equal(getSpec('marder1a3').name, 'Schützenpanzer Marder 1A3',
@@ -294,7 +294,7 @@ export function createTankAssetsAudit() {
         assert.notDeepEqual(gunProxy.matrixWorld.toArray(), moving, 'gun shadow must follow actual limited traverse and pitch');
       } finally { yaw.rotation.y = oldYaw; gun.rotation.x = oldPitch; tank.root.updateMatrixWorld(true); }
     }
-    if (id === 'm1a2') {
+    if (id === 'm1a1_abrams_hc') {
       assert(proxyTriangles > 92,
         'authored silhouette carries more shape information than the retired box/cylinder proxy');
     }

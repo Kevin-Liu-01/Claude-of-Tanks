@@ -167,5 +167,5 @@ export function buildPT91MPendekar(P:TankBuilderPort):void{
  buildT72BUXCore(P);
  const hull=emittedShell(P,'hull'),turret=emittedShell(P,'turret');
  try{armor(P,hull,turret);roof(P,turret);rearBasketAndSmoke(P);}finally{hull.dispose();turret.dispose();}
- P.hullG.userData.pt91mDonor={id:'t72bu_x',revision:'pendekar-bu-r1',core:'hull/turret/fenders/running-gear/main-gun'};
+ P.hullG.userData.pt91mDonor={id:'t72bu',revision:'pendekar-bu-r1',core:'hull/turret/fenders/running-gear/main-gun'};
 }

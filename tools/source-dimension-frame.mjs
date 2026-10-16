@@ -4,10 +4,10 @@
 import * as THREE from 'three';
 import { SUPPLIED_SOURCE_COMPARISON_IDS } from './supplied-source-reference-overrides.mjs';
 
-const IDS=new Set(['m1a2_sepv2_x','leo2a6_x','k1a1_x','amx30_x','t62mv1_x','t72b_1987_x','t80u_x',
-  'leclerc_x','leclerc_classic_x','chieftain_mk10_x','t72b3_x','jpz_e100_x','type10_x','type90_x',
-  'amx40_x','t72b3m_x','t72bu_x','t90_x','t90a_burlak_x','t90ms_x',
-  'ariete_c1_x','challenger1_x','chieftain5_x','strv122_x', 'ztz100_x', 'ares_apc_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', ...SUPPLIED_SOURCE_COMPARISON_IDS]);
+const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1987','t80u',
+  'leclerc_xlr','amx56','chieftain_mk10','t72b3','jpz_e100','type10','type90',
+  'amx40','t72b3m_2016','t72bu','t90','t90a_burlak','t90ms_tagil',
+  'c1_ariete','challenger1_mk3','chieftain5','strv122', 'ztz100', 'ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', ...SUPPLIED_SOURCE_COMPARISON_IDS]);
 
 export function usesSourceDimensionFrame(id,registration) {
   return IDS.has(id)&&registration?.passed===true&&registration.mode==='canonical-source-world';

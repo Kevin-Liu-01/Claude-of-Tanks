@@ -268,7 +268,7 @@ function mainGun(P:TankBuilderPort):void{
   // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
   // 125 mm bore (radius .0625) down to the source opaque floor 4.99215984344482, a 1.3028 m recess
   // that sat entirely behind the factory's dark mouth disc; the depth stays recorded here, in
-  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90ms_x.floor) and docs/references/tanks/t90ms_x.source-measurements.json.
+  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90ms_tagil.floor) and docs/references/tanks/t90ms_x.source-measurements.json.
   const p=[[0,1.64246],[.1267,1.64246],[.10921,2.20456],[.10034,3.91206],[.11787,3.91206],[.120615,4.84766],
     [.09160,4.84766],[.093205,6.05276],[.086625,6.05276],[.086745,6.18166],[.093375,6.19726],[.093505,tip],[0,tip]];
   P.add('gun',new THREE.LatheGeometry(p.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
@@ -289,4 +289,4 @@ function buildT90MSX(P:TankBuilderPort):void{
   P.topY=T90MS_X_DATUMS.highestFittingM-YAW[1];
   buildT90MSXChassis(P);turret(P);cheeks(P);sideArmor(P);bustle(P);roofEquipment(P);aps(P);remoteWeapon(P);smoke(P);mainGun(P);
 }
-export const T90MS_X_PROFILES={t90ms_x:{build:buildT90MSX}} as const;
+export const T90MS_X_PROFILES={t90ms_tagil:{build:buildT90MSX}} as const;

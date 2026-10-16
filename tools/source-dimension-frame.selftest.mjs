@@ -29,19 +29,19 @@ for (const id of SUPPLIED_SOURCE_COMPARISON_IDS) {
   assert.equal(usesSourceDimensionFrame(id, {...certified, passed: false}), false,
     `${id}: an invalid source certificate cannot bypass dimensions`);
 }
-assert.equal(usesSourceDimensionFrame('t72b3_x',certified),true);
-assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',certified),true,
+assert.equal(usesSourceDimensionFrame('t72b3',certified),true);
+assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',certified),true,
   'direct supplied SEP v2 comparison uses its certified source ruler, not the unrelated published roof height');
-assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',{...certified,passed:false}),false);
-assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',{...certified,mode:'legacy'}),false);
-assert.equal(usesSourceDimensionFrame('leclerc_classic_x',certified),true,
+assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',{...certified,passed:false}),false);
+assert.equal(usesSourceDimensionFrame('m1a2_abrams_sepv2',{...certified,mode:'legacy'}),false);
+assert.equal(usesSourceDimensionFrame('amx56',certified),true,
   'older supplied Leclerc uses the same source-only ruler and physical guards');
-assert.equal(usesSourceDimensionFrame('leclerc_classic_x',{...certified,passed:false}),false);
-for(const id of ['ariete_c1_x','challenger1_x','chieftain5_x','strv122_x']) {
+assert.equal(usesSourceDimensionFrame('amx56',{...certified,passed:false}),false);
+for(const id of ['c1_ariete','challenger1_mk3','chieftain5','strv122']) {
   assert.equal(usesSourceDimensionFrame(id,certified),true,'now source-authored with complete fused owner certificates');
   assert.equal(usesSourceDimensionFrame(id,{...certified,passed:false}),false);
 }
-for (const id of ['ares_apc_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv']) {
+for (const id of ['ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv']) {
   assert.equal(usesSourceDimensionFrame(id, certified), true,
     `${id}: compare the supplied configuration with its fixed source ruler and complete equipment envelope`);
   assert.equal(usesSourceDimensionFrame(id, { ...certified, passed: false }), false,
@@ -50,6 +50,6 @@ for (const id of ['ares_apc_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv'
     `${id}: legacy alignment cannot authorize source dimensions`);
 }
 // t72b3 retired 2026-09-23 (owner: "no hidden tanks"); the T-72B3M stands for the established fleet policy.
-for(const id of ['t72b3m','leo2a5_x','leo2_revolution_proto'])assert.equal(usesSourceDimensionFrame(id,certified),false,'existing fleet keeps its established policy');
-assert.equal(usesSourceDimensionFrame('t72b3_x',{...certified,passed:false}),false);
+for(const id of ['t72b3m_2022','leo2a5','leo2_revolution_proto'])assert.equal(usesSourceDimensionFrame(id,certified),false,'existing fleet keeps its established policy');
+assert.equal(usesSourceDimensionFrame('t72b3',{...certified,passed:false}),false);
 console.log('source-dimension-frame: fixed source ruler, identical paired definitions, physical oversize guard and legacy isolation pass');

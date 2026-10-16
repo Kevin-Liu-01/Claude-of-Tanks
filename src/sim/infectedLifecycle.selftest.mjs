@@ -5,8 +5,8 @@ import {getSpec} from '../vehicles/specs.ts';
 import {createCombatState} from './damage.ts';
 import {createMatchModeController} from './matchModes.ts';
 import {matchRulesetFor} from './matchRuleset.ts';
-await ensureAuthorityFleet(['m1a2']);
-const spec=getSpec('m1a2'),rules=matchRulesetFor('infected');
+await ensureAuthorityFleet(['m1a1_abrams_hc']);
+const spec=getSpec('m1a1_abrams_hc'),rules=matchRulesetFor('infected');
 for(const size of [4,14,30,42])for(const solo of [false,true]){
  const names=solo?['player','enemy']:['alpha','bravo'];
  const entities=Array.from({length:size},(_,i)=>({id:`tank-${i}`,team:names[i<3?1:0],spec,bot:i!==3,

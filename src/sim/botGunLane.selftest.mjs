@@ -26,8 +26,8 @@ const flat = { getHeightAt: () => 0, getNormalAt: () => new Vector3(0, 1, 0),
 
 // Canonical Airfield mapIndex22 / seed43001 / shell61, 391.983333s.
 // Turret-top LOS clears the crest, but the actual lower muzzle does not.
-const shooter = entity('shooter', 'm1a2', [113.765, 4.078, -130.383], 0);
-const target = entity('target', 'strv103', [-63.781, 0.808, 183.19]);
+const shooter = entity('shooter', 'm1a1_abrams_hc', [113.765, 4.078, -130.383], 0);
+const target = entity('target', 'strv103b', [-63.781, 0.808, 183.19]);
 // Exact pre-dispersion attitude from the deterministic failed match.
 Object.assign(shooter.state, {
   yaw: -0.456, turretYaw: -0.05402412152841264, gunPitch: -0.15111017893973777,
@@ -85,8 +85,8 @@ let bermPresent = true;
 const berm = { ...flat, getHeightAt: (x, z) => bermPresent && Math.abs(x) < 5
   ? 2.4 * Math.exp(-(((z - 20) / 4) ** 2)) : 0 };
 const bermWorld = createHeadlessCollisionWorld({ heightField: berm, manifest: empty });
-const bot = entity('bot', 'm1a2', [0, 0, 0]);
-const opponent = entity('target', 'm1a2', [0, 0, 80]);
+const bot = entity('bot', 'm1a1_abrams_hc', [0, 0, 0]);
+const opponent = entity('target', 'm1a1_abrams_hc', [0, 0, 80]);
 const ai = createAI(bot, { difficulty: 'normal', rng: mulberry32(41), deps: {
   heightField: berm, raycast: bermWorld.raycast, getEnemies: () => [opponent],
   getAllies: () => [], getObstacles: () => [], spotting: { isSpotted: () => true },
@@ -126,8 +126,8 @@ const noFlatField = {
     return flatCandidatesAvailable || Math.hypot(x, z) < 8 ? upNormal : steepNormal;
   },
 };
-const pocketBot = entity('pocket', 'm1a2', [0, 0, 0]);
-const pocketTarget = entity('target', 'm1a2', [0, 0, 80]);
+const pocketBot = entity('pocket', 'm1a1_abrams_hc', [0, 0, 0]);
+const pocketTarget = entity('target', 'm1a1_abrams_hc', [0, 0, 80]);
 const pocketAI = createAI(pocketBot, { difficulty: 'normal', rng: mulberry32(41), deps: {
   heightField: noFlatField,
   raycast: (origin) => origin.z > 1 && origin.z < 10 ? laneHit : null,

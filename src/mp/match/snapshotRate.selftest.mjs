@@ -47,10 +47,10 @@ function attachClient(actor, world, seat, playerId, team = 'alpha') {
     assert.ok(decoded.ok && decoded.message.type === MESSAGE_TYPE.HELLO, 'the first frame is the HELLO');
     assert.equal(decoded.message.protocolVersion, PROTOCOL_VERSION);
     attached = true;
-    assert.ok(actor.attach(link, decoded.message, { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team, specId: 'm1a2', iat: 0, exp: 1 }));
+    assert.ok(actor.attach(link, decoded.message, { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team, specId: 'm1a1_abrams_hc', iat: 0, exp: 1 }));
   });
   pair.server.onState((change) => { if (change.state === 'closed') closeListener?.(); });
-  const spec = getSpec('m1a2');
+  const spec = getSpec('m1a1_abrams_hc');
   let live = null;
   const predictionWorld = createPredictionWorld({ worldCollision: world, ownSpec: spec, ownState: () => live?.predictionState ?? null, others: () => [], mode: 'standard' });
   assert.ok(predictionWorld, 'a prediction world on the dedicated collision');
@@ -69,7 +69,7 @@ async function run(snapshotHz) {
   const world = createDedicatedWorldCollision('verdant', { retain: true });
   const actor = createMatchActor({
     roomId: `rate-${snapshotHz}`, mapId: 'verdant', seed: 9, countdownS: 0, world, now, schedule, snapshotHz,
-    seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' }, { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a2' }],
+    seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' }, { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a1_abrams_hc' }],
   });
   const one = attachClient(actor, world, 0, 'p1');
   const two = attachClient(actor, world, 1, 'p2');
@@ -120,7 +120,7 @@ async function run(snapshotHz) {
   const pair = createLoopbackPair({ clock: now, connectDelayMs: 0 });
   pair.server.open();
   const world = createDedicatedWorldCollision('verdant', { retain: true });
-  const spec = getSpec('m1a2');
+  const spec = getSpec('m1a1_abrams_hc');
   let live = null;
   const predictionWorld = createPredictionWorld({ worldCollision: world, ownSpec: spec, ownState: () => live?.predictionState ?? null, others: () => [], mode: 'standard' });
   const client = new MatchClient({ transport: pair.client, token: 'issued-elsewhere', clock: now, prediction: { world: predictionWorld, specFor: () => spec }, controls: () => ({ throttle: 1, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }) });
@@ -134,7 +134,7 @@ async function run(snapshotHz) {
       pair.server.send(encodeMessage({
         type: MESSAGE_TYPE.WELCOME, protocolVersion: PROTOCOL_VERSION, tickHz: TICK_HZ, snapshotHz: 20, seat: 0, entityId: 1, team: TEAM.ALPHA,
         serverTick: 300, serverTimeMs: Math.round(300 * TICK_MS), seed: 1, capabilities: 1, roomId: 'carried', mapId: 'verdant', mode: 'standard', rulesetJson: '{"mode":"standard"}',
-        roster: [{ entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'p1', name: 'One', specId: 'm1a2' }],
+        roster: [{ entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'p1', name: 'One', specId: 'm1a1_abrams_hc' }],
       }));
     }
   });
@@ -175,5 +175,5 @@ async function run(snapshotHz) {
 const at20 = await run(20);
 const at30 = await run(30);
 assert.ok(at20.delayMs > at30.delayMs, `the delay is longer at 20 Hz (${at20.delayMs.toFixed(1)} vs ${at30.delayMs.toFixed(1)} ms)`);
-assert.throws(() => createMatchActor({ roomId: 'rate-bad', mapId: 'verdant', seed: 1, seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' }], world: 'terrain', now, schedule, autoStart: false, snapshotHz: 25 }), /divisor/);
+assert.throws(() => createMatchActor({ roomId: 'rate-bad', mapId: 'verdant', seed: 1, seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain', now, schedule, autoStart: false, snapshotHz: 25 }), /divisor/);
 console.log(`snapshotRate.selftest: 20 Hz — ${at20.snapshots} snapshots in 4 s, delay ${at20.delayMs.toFixed(1)} ms, misprediction ${at20.predictionErrorM.toFixed(4)} m; 30 Hz — ${at30.snapshots}, delay ${at30.delayMs.toFixed(1)} ms, misprediction ${at30.predictionErrorM.toFixed(4)} m; the client adopts the WELCOME's rate, no false gaps, the status model expects it, a carried own row reconciles at its frame's tick, 25 Hz refused`);

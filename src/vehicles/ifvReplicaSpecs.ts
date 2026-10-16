@@ -7,19 +7,19 @@ import { modernArmor } from './specHelpers.ts';
 import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
-export const IFV_REPLICA_IDS = ['spz_puma_s1_x','cv90_x','type89_x'] as const;
+export const IFV_REPLICA_IDS = ['puma_s1','cv9040c','type89'] as const;
 // Each replica keeps its original's gameplay era: identical combat tuning must
 // sit in the same matchmaking/balance bracket (balancePeerOf only substitutes a
 // vote inside one era/tier/role group).
 const entries = [
-  ['spz_puma_s1_x','spz_puma_s1','Puma S1','Germany',30,'modern'],
-  ['cv90_x','cv90','CV9040C','Sweden',40,'modern'],
-  ['type89_x','type89_light_tiger','Type 89','Japan',35,'next-generation'],
+  ['puma_s1','spz_wotan','Puma S1','Germany',30,'modern'],
+  ['cv9040c','cv90','CV9040C','Sweden',40,'modern'],
+  ['type89','raiju_ifv','Type 89','Japan',35,'next-generation'],
 ] as const;
 const registries=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);
 
 function applyReplicaFrame(spec: FleetTankSpec): void {
-  const puma=spec.id==='spz_puma_s1_x', swedish=spec.id==='cv90_x';
+  const puma=spec.id==='puma_s1', swedish=spec.id==='cv9040c';
   spec.dims=puma
     ? {hullLengthM:7.60,overallLengthM:7.60,widthM:4.056,heightM:3.647,silhouetteHeightM:3.30}
     : swedish ? {hullLengthM:6.86,overallLengthM:7.0,widthM:3.38,heightM:2.96}
@@ -43,8 +43,8 @@ function applyReplicaFrame(spec: FleetTankSpec): void {
 // suffixes. The CV9040C keeps its donor's actual Swedish round names: renaming
 // its two APFSDS natures by type would collapse them into one duplicate slot.
 const REPLICA_ROUND_NAMES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  spz_puma_s1_x: {APFSDS:'MK30-2 APFSDS-T', HE:'MK30-2 KETF ABM'},
-  type89_x: {APFSDS:'KDE 35 mm APFSDS-T', HE:'KDE 35 mm HEI-T'},
+  puma_s1: {APFSDS:'MK30-2 APFSDS-T', HE:'MK30-2 KETF ABM'},
+  type89: {APFSDS:'KDE 35 mm APFSDS-T', HE:'KDE 35 mm HEI-T'},
 };
 
 function applyReplicaArmament(spec: FleetTankSpec, caliber: number): void {
@@ -55,13 +55,13 @@ function applyReplicaArmament(spec: FleetTankSpec, caliber: number): void {
   const names=REPLICA_ROUND_NAMES[spec.id];
   for(const round of spec.gun.shells) {
     if(!round.guided){round.caliberMm=caliber;if(names?.[round.type])round.name=names[round.type];}
-    else if(spec.id==='spz_puma_s1_x') {
+    else if(spec.id==='puma_s1') {
       round.name='MELLS / Spike LR';round.caliberMm=152;round.launcherTubes=2;
-    } else if(spec.id==='type89_x') {
+    } else if(spec.id==='type89') {
       round.name='Type 79 Jyu-MAT';round.caliberMm=127;round.launcherTubes=2;round.count=6;
     }
   }
-  if(spec.id==='cv90_x')spec.gun.shells=spec.gun.shells.filter(round=>!round.guided);
+  if(spec.id==='cv9040c')spec.gun.shells=spec.gun.shells.filter(round=>!round.guided);
   applyFleetLauncherMuzzles(spec);
 }
 

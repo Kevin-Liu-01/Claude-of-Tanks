@@ -8,7 +8,7 @@ import {installCanvasFixture} from './canvasFixture.test-support.mjs';
 
 // the T-90M cradle cover is painted with the vehicle scheme since 2026-09-16 (owner: "green mantlet");
 // only the Vladimir keeps a bare canvas boot
-const targets={t90a_vladimir_x:1};
+const targets={t90a_vladimir:1};
 const methods=new Set(['add','addEquipment','addExternalArmor','addMudguard','addHatch','addCupola']);
 function digest(g){
   const h=createHash('sha256');

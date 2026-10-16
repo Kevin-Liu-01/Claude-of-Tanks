@@ -6,7 +6,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 
-const spec = getSpec('spz_puma_s1');
+const spec = getSpec('spz_wotan');
 assert.ok(spec, 'SPz Puma S1 is registered');
 assert.equal(spec.name, 'SPz Wotan');
 assert.equal(tankTier(spec.id), 10, 'Puma S1 is Tier X');
@@ -120,7 +120,7 @@ try {
     launcher: 'MELLS-Spike-LR2',
     stabilizedPanoramicSight: true,
     allAroundCameraCount: 4,
-    remoteSecondaryWeapon: '12.7mm Puma S1 compact RWS',
+    remoteSecondaryWeapon: null,
     gunCenterlineOffsetFromTurretM: 0.14,
     gunSideEquipmentPods: 2,
     gunSideOpticApertures: 4,

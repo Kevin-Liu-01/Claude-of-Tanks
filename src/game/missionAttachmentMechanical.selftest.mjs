@@ -27,7 +27,7 @@ const cases=[
  [0,0,0,2.9,1.3],[.4,-.7,.035,-1.2,2.4],
 ];
 let clipped=0,poses=0;
-for(const id of ['jpz_e100_x','strv103','strv103a','udes03','m1a2','leclerc','bmpt_t90']) {
+for(const id of ['jpz_e100','strv103b','strv103a','udes03','m1a1_abrams_hc','leclerc_s2','bmpt_t90']) {
  const spec=getSpec(id),tank=createTank(id,null,{proceduralOnly:true,quality:'low',camoSeed:4242}),state=createTankState(spec,new Vector3(1,2,3),.3);
  const beforeGeometry=geometryHash(tank),turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
  const arc=casemateGunYawLimit(spec),yaws=Number.isFinite(arc)?[-arc,0,arc]:[-2.4,.7,2.8];
@@ -48,7 +48,7 @@ assert.equal(casemateGunYaw({armor:{turretless:true},hydropneumaticAim:{}},.9),0
 assert.equal(casemateGunYawLimit({armor:{turretless:true}}),11*Math.PI/180,'same default mechanical arc as movement');
 console.log(`missionAttachmentMechanical: ${poses} native poses; ${clipped} prior casing escape witnesses rejected; normal turret/authority parity`);
 
-const signatureSpec=getSpec('jpz_e100_x'),signatureCases={
+const signatureSpec=getSpec('jpz_e100'),signatureCases={
  arc12:missionAttachmentSignature({...signatureSpec,gunArcDeg:12,hydropneumaticAim:undefined}),
  arc30:missionAttachmentSignature({...signatureSpec,gunArcDeg:30,hydropneumaticAim:undefined}),
  hydraulic:missionAttachmentSignature({...signatureSpec,gunArcDeg:12,hydropneumaticAim:{}}),
@@ -91,10 +91,10 @@ console.log('missionAttachmentMechanical: braced BMPT stand passes six filled na
 
 // The rear casemate roof stays available only because the real final visual
 // bearing is now mechanically limited. The full pitch/recoil envelope is kept.
-await ensureInteriorFills(['jpz_e100_x']);
-const jagdSpec=getSpec('jpz_e100_x'),jagdSeat={frame:'hull',x:-.8,y:3.226012887954712,z:-3.65,...DRONE_DOCK_CRADLE,supportY:Array(4).fill(3.161012887954712)};
+await ensureInteriorFills(['jpz_e100']);
+const jagdSpec=getSpec('jpz_e100'),jagdSeat={frame:'hull',x:-.8,y:3.226012887954712,z:-3.65,...DRONE_DOCK_CRADLE,supportY:Array(4).fill(3.161012887954712)};
 for(const quality of['high','low'])for(const seed of[4000,4242,8191]){
- const tank=createTank('jpz_e100_x',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:seed});tank.root.updateMatrixWorld(true);
+ const tank=createTank('jpz_e100',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:seed});tank.root.updateMatrixWorld(true);
  const stock=collectMissionStock(tank,'hull',-Infinity,false,jagdSpec),actual=nativeSupportedSeat(stock,jagdSeat,.065);
  assert.ok(actual&&actual.supportY.every((y,i)=>Math.abs(y-jagdSeat.supportY[i])<1e-6),'Jagdpanzer native receiving roof supports every foot');
  assert.ok(missionAttachmentMotionClear(jagdSpec,jagdSeat),'Jagdpanzer auxiliary weapons remain clear');

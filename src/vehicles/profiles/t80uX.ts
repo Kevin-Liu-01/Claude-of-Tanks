@@ -250,7 +250,7 @@ export function buildT80UX(P:TankBuilderPort):void {
   P.muzzleZ=T80U_X_DATUMS.muzzleZ-GUN[2];P.topY=T80U_X_DATUMS.highestFittingM-YAW[1];
   buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
-export const T80U_X_PROFILES={t80u_x:{build:buildT80UX}} as const;
+export const T80U_X_PROFILES={t80u:{build:buildT80UX}} as const;
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT80UXRunningGear(P:TankBuilderPort):void { runningGear(P); }

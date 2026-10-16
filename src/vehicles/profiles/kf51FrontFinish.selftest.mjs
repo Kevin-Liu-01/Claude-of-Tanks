@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 
-const tank = createTank('kf51', null, {
+const tank = createTank('kf51_evo', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
@@ -29,7 +29,7 @@ try {
   }, 'KF51 complete rotating assembly publishes its forward seating datum');
   assert.equal(turretRig.position.z, 0.63,
     'KF51 turret rig moves 180 mm forward as one hierarchy');
-  assert.equal(TANK_SPECS.kf51.armor.turretPivot[2], 0.70,
+  assert.equal(TANK_SPECS.kf51_evo.armor.turretPivot[2], 0.70,
     'KF51 authoritative turret frame follows the visible forward move');
 
   const lowerCollar = turretRig.userData.kf51LowerCollarReceipt;
@@ -189,9 +189,9 @@ try {
     'KF51 publishes the complete gun-rig lowering distance');
   const gunWorld = gunRig.getWorldPosition(new THREE.Vector3());
   const authoritativeGunWorld = new THREE.Vector3(
-    TANK_SPECS.kf51.armor.turretPivot[0] + TANK_SPECS.kf51.armor.gunPivot[0],
-    TANK_SPECS.kf51.armor.turretPivot[1] + TANK_SPECS.kf51.armor.gunPivot[1],
-    TANK_SPECS.kf51.armor.turretPivot[2] + TANK_SPECS.kf51.armor.gunPivot[2],
+    TANK_SPECS.kf51_evo.armor.turretPivot[0] + TANK_SPECS.kf51_evo.armor.gunPivot[0],
+    TANK_SPECS.kf51_evo.armor.turretPivot[1] + TANK_SPECS.kf51_evo.armor.gunPivot[1],
+    TANK_SPECS.kf51_evo.armor.turretPivot[2] + TANK_SPECS.kf51_evo.armor.gunPivot[2],
   );
   assert.ok(gunWorld.distanceTo(authoritativeGunWorld) < 1e-9,
     'KF51 visible and authoritative gun pivots coincide in the neutral pose');

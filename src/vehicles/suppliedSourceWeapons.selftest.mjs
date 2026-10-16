@@ -6,10 +6,10 @@ import { sustainedPrimaryDpm } from './balanceAudit.ts';
 import { guidedMissileSlot, specialActionKind } from '../sim/specialActionPolicy.ts';
 import { createCombatState, selectShell, startReload } from '../sim/damage.ts';
 
-const spec = TANK_SPECS.k21_x;
+const spec = TANK_SPECS.k21;
 const cannon = TANK_SPECS.cv90;
-const missilePeer = TANK_SPECS.type89.gun.shells.find(round => round.guided);
-const donorSnapshots = new Map(['cv90', 'type89', 'spz_puma', 'spz_puma_s1'].map(id => [id, JSON.stringify(TANK_SPECS[id])]));
+const missilePeer = TANK_SPECS.hayate_ifv.gun.shells.find(round => round.guided);
+const donorSnapshots = new Map(['cv90', 'hayate_ifv', 'spz_puma', 'spz_wotan'].map(id => [id, JSON.stringify(TANK_SPECS[id])]));
 const gunBefore = structuredClone(spec.gun);
 const suppliedGunsBefore = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, structuredClone(TANK_SPECS[id].gun)]));
 const armorBefore = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, structuredClone(TANK_SPECS[id].armor)]));
@@ -38,13 +38,13 @@ function checkLoadout() {
 }
 
 function checkSourceConfigurations() {
-  assert.equal(TANK_SPECS.ajax_x.balanceCohort, 'cannon-only',
+  assert.equal(TANK_SPECS.ajax.balanceCohort, 'cannon-only',
     'Ajax is compared as an IFV without a guided anti-armor channel');
   const configurations = {
-    kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], warrior_tes_h: [30, [1]],
-    griffin50_x: [50, []], ajax_x: [40, []], aft10_x: [170, [8]],
-    bmp3m_dragun125_x: [125, []], k21_x: [40, [2]], type96b_x: [125, []],
-    kf41_lynx_x: [35, []], cv90_mkiv_x: [50, [2]], cv90105_tml_x: [105, []], sabra_mk2_x: [120, []],
+    kurganets25: [30, [4, 8]], ztz100: [105, []], warrior_tes_h: [30, [1]],
+    griffin50mm: [50, []], ajax: [40, []], aft10: [170, [8]],
+    bmp3m_dragun125: [125, []], k21: [40, [2]], type96b: [125, []],
+    kf41_lynx: [35, []], cv90_mk4: [50, [2]], cv90105_tml: [105, []], sabra_mk2: [120, []],
   };
   for (const [id, [caliber, launcherTubes]] of Object.entries(configurations)) {
     const gun = TANK_SPECS[id].gun;
@@ -61,7 +61,7 @@ function checkSourceConfigurations() {
 }
 
 function checkObject695Loadout() {
-  const vehicle = TANK_SPECS.object695_x, state = createCombatState(vehicle);
+  const vehicle = TANK_SPECS.object695, state = createCombatState(vehicle);
   assert.deepEqual(state.ammo, [24, 12, 240], 'four-shot ripple carrier has 24 tandem missiles, 12 blast missiles and a backup belt');
   assert.strictEqual(state.reloadChannels[0], state.reloadChannels[1], 'missile types share the actual launcher cycle');
   assert.notStrictEqual(state.reloadChannels[0], state.reloadChannels[2], 'backup cannon has its own feed');
@@ -76,18 +76,23 @@ function checkObject695Loadout() {
 }
 
 function checkKurganetsLoadout() {
-  const kurganets = TANK_SPECS.kurganets25_x;
+  const kurganets = TANK_SPECS.kurganets25;
   const [primary, kornet, bulat] = kurganets.gun.shells;
-  assert.equal(kurganets.balancePeerOf,'spz_puma_s1','tier-X gameplay peer does not replace the source turret/frame');
-  const peer = TANK_SPECS.spz_puma_s1.gun;
-  assert.deepEqual(primary, { ...peer.shells[0], name: '57 mm APFSDS', caliberMm: 57 },
-    'the short 57 mm main gun preserves declared primary gameplay tuning');
+  assert.equal(kurganets.balancePeerOf,'spz_wotan','tier-X gameplay peer does not replace the source turret/frame');
+  const peer = TANK_SPECS.spz_wotan.gun;
+  // coordinator ruling 2026-10-15: one real configuration, the Bumerang-BM's 30 mm 2A42 (the Puma S1 peer's numbers);
+  // owner ruling 2026-10-15: the rear-roof launcher and its Bulat channel stay, properly mounted
+  assert.deepEqual(primary, { ...peer.shells[0], name: '30 mm APFSDS', caliberMm: 30 },
+    'the 30 mm 2A42 keeps the declared primary gameplay tuning');
   assert.deepEqual(kornet, { ...peer.shells[1], name: 'Kornet guided missile', count: 4, launcherTubes: 4 },
     'four source-visible Kornet tubes retain the declared guided balance channel');
   assert.deepEqual(bulat, { ...peer.shells[2], name: 'Bulat guided missile', caliberMm: 70, guided: true,
     count: 8, launcherTubes: 8, velocityMps: peer.shells[1].velocityMps, reloadS: peer.shells[1].reloadS,
     soundProfile: peer.shells[1].soundProfile }, 'Bulat uses documented HE effect and guided-motion tuning');
   assert.equal(guidedMissileSlot(kurganets), 1, 'special action selects the first actual launcher');
+  const mouths = kurganets.gun.launcherMuzzles;
+  assert.equal(mouths.filter((m) => m.shellSlots?.[0] === 1).length, 4, 'four Kornet mouths in the flank housings');
+  assert.equal(mouths.filter((m) => m.shellSlots?.[0] === 2).length, 8, 'eight Bulat mouths at the roof launcher');
   const state = createCombatState(kurganets);
   assert.deepEqual(state.ammo, [peer.shells[0].count, 4, 8], 'source-visible launcher counts do not invent hidden reserves');
   assert.equal(new Set(state.reloadChannels).size, 3, 'cannon, Kornet and Bulat cycles are distinct');
@@ -103,7 +108,7 @@ function checkKurganetsLoadout() {
     state.ammo[slot] = 0;
     assert.equal(selectShell(state, slot, kurganets), false, `launcher ${slot}: exhausted channel rejected`);
   }
-  assert.equal(selectShell(state, 0, kurganets), true, '57 mm cannon remains selectable after both launchers exhaust');
+  assert.equal(selectShell(state, 0, kurganets), true, '30 mm cannon remains selectable after both launchers exhaust');
 }
 checkLoadout();
 checkObject695Loadout();
@@ -117,8 +122,8 @@ combat.ammo[2] = 0;
 assert.equal(selectShell(combat, 2, spec), false, 'exhausted launcher is not selectable');
 assert.equal(selectShell(combat, 0, spec), true, 'cannon remains available after missiles are exhausted');
 assert(spec.armor.modules.some(module => module.module === 'missileRack'), 'the real launcher has a damageable missile module');
-assert(!TANK_SPECS.ajax_x.armor.modules.some(module => module.module === 'missileRack'), 'gun-only Ajax remains without phantom missile storage');
-for (const id of ['ajax_x', 'griffin50_x', 'kf41_lynx_x']) assert.equal(guidedMissileSlot(TANK_SPECS[id]), -1, `${id}: no ghost launcher`);
+assert(!TANK_SPECS.ajax.armor.modules.some(module => module.module === 'missileRack'), 'gun-only Ajax remains without phantom missile storage');
+for (const id of ['ajax', 'griffin50mm', 'kf41_lynx']) assert.equal(guidedMissileSlot(TANK_SPECS[id]), -1, `${id}: no ghost launcher`);
 try {
   for (let pass = 0; pass < 2; pass++) {
     synchronizeSuppliedSourceCombatMetadata();

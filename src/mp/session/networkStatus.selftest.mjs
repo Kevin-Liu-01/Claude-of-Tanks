@@ -66,7 +66,7 @@ const roomSnapshot = (players, phase = 'waiting', match = null) => ({
   settings: { gameMode: 'standard', mapId: 'verdant', teamSize: 14, maxSpectators: 8, botsFill: true, allowTeamSwitch: true, locked: false, arrangement: null, campaignOperationId: null },
   players, match, lastResult: null, createdAt: 0, touchedAt: 0,
 });
-const player = (id, team, seat) => ({ id, name: id, team, seat, specId: 'm1a2', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: seat === 0, joinedAt: seat });
+const player = (id, team, seat) => ({ id, name: id, team, seat, specId: 'm1a1_abrams_hc', equipment: [], camo: 'factory', ready: true, connected: true, isAdmin: seat === 0, joinedAt: seat });
 
 {
   let nowMs = 100_000;

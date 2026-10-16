@@ -48,8 +48,8 @@ const shape=tankPoseFromState(screened().state);
 assert.equal(traceTank(shortFrom,shortTo,shape,screened().spec.armor).length,0,'drone-only lattice never becomes a solid anti-bullet sheet');
 assert.equal(traceTank(new Vector3(1.2,1,1.1),new Vector3(1.2,1,.9),shape,screened().spec.armor,new Set(),true).length,0,'outside the actual cage footprint is unprotected');
 
-await ensureAuthorityFleet(['ua_m1a1','ua_m1a1_x','t90m','m1a3']);
-for(const id of ['ua_m1a1','ua_m1a1_x']){
+await ensureAuthorityFleet(['ua_m1a1','ua_m1a2_abrams','t90am','m1a3']);
+for(const id of ['ua_m1a1','ua_m1a2_abrams']){
   const spec=getSpec(id),panels=spec.armor.droneScreens?.turret;
   assert.ok(panels?.length>=8,`${id}: authored roof/flank/rear coverage is registered`);
   for(const plate of panels){
@@ -79,5 +79,5 @@ const corridor=traceTank(new Vector3(0,3,1).add(pivot),new Vector3(0,1.1,1).add(
   tankPoseFromState(make([]).state),ua.armor,new Set(),true);
 assert.ok(!corridor.some(h=>h.kind==='plate'&&h.plate.droneInterception),'open front gun corridor stays open');
 assert.ok([...getSpec('m1a3').armor.hullPlates,...getSpec('m1a3').armor.turretPlates].some(p=>p.droneInterception===.55),'M1A3: authored slat screens also intercept FPV hits');
-assert.ok(getSpec('t90m').armor.hullPlates.some(p=>p.name==='slat_cage'&&p.kind==='spaced'&&!p.droneInterception),'legacy inherited screen definitions retain normal spaced-armor protection without an unaudited interception bonus');
+assert.ok(getSpec('t90am').armor.hullPlates.some(p=>p.name==='slat_cage'&&p.kind==='spaced'&&!p.droneInterception),'legacy inherited screen definitions retain normal spaced-armor protection without an unaudited interception bonus');
 console.log('droneArmor: ERA consumption, spaced armor, cage interception/failure, short-sweep jet, gaps, both Ukrainian Abrams and articulated coverage passed');

@@ -5,7 +5,7 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftain5XPhotoDraft } from './chieftain5XPhotoDraft.ts';
 
 // Historical photo optic dimensions remain tested without retargeting them.
-registerProfiledBuilders({ chieftain5_x: buildChieftain5XPhotoDraft });
+registerProfiledBuilders({ chieftain5: buildChieftain5XPhotoDraft });
 
 const near = (a, b, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) < 2e-6,
   `${label}: ${a} versus ${b}`);
@@ -54,7 +54,7 @@ function check(root) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('chieftain5', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);

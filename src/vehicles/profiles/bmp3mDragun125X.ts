@@ -697,7 +697,7 @@ export function buildBmp3mDragun125X(P: TankBuilderPort): void {
     P.additionalShadowSources = {
         hull: ['hullExternalArmor'],
     };
-    const frame = EASTERN_SOURCE_STUDIES.bmp3m_dragun125_x.frame;
+    const frame = EASTERN_SOURCE_STUDIES.bmp3m_dragun125.frame;
     P.hullG.position.set(0, 0, 0);
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
@@ -706,5 +706,5 @@ export function buildBmp3mDragun125X(P: TankBuilderPort): void {
     buildDragunTurret(P);
     P.topY = 3.31 - frame.turret[1];
     preserveSourceStudyGunMountAppearance(P);
-    P.hullG.userData.xRebuild = { candidate: 'bmp3m_dragun125_x', independent: true, sourceLocalOnly: true };
+    P.hullG.userData.xRebuild = { candidate: 'bmp3m_dragun125', independent: true, sourceLocalOnly: true };
 }

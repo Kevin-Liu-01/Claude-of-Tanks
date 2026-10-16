@@ -6,10 +6,10 @@ import {AUXILIARY_INVENTORY} from './auxiliaryInventory.generated.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {requestAuxiliary,stepRoofGun,auxiliaryShot,auxiliaryState} from '../sim/auxiliarySystems.ts';
-const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).map(([id,l])=>[id,l.caliber])),t14_x:7.62,t90a_vladimir_x:12.7,t90a_x:12.7,t90ms:12.7,
- t90m_proryv:12.7,t90:12.7,t14:30,challenger_3x:12.7,challenger_3:12.7,
- challenger2e:7.62,ztz100_x:12.7,type10_x:12.7,k2_x:12.7,k1a1_x:12.7,
- strv122_x:7.62,merkava4_trophy:7.62,merkava4_x:7.62,leo2a6_ua:7.62,ua_challenger2:7.62};
+const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).map(([id,l])=>[id,l.caliber])),t14_armata:7.62,t90a_vladimir:12.7,t90a:12.7,t90ms_2011:12.7,
+ t90m_proryv:12.7,t90_1992:12.7,object148_proto:30,challenger3:12.7,challenger3_proto:12.7,
+ challenger2e:7.62,ztz100:12.7,type10:12.7,k2_black_panther:12.7,k1a1:12.7,
+ strv122:7.62,merkava4_trophy:7.62,merkava4:7.62,leo2a6_ua:7.62,ua_challenger2:7.62};
 const vector=a=>new THREE.Vector3(...a);
 for(const [id,caliber] of Object.entries(requested)){
  // VH.14 (2026-10-15): every drawn roof gun works, so a Challenger 2 whose loader also carries a GPMG has two
@@ -66,5 +66,5 @@ assert.notEqual(auxiliaryWeaponProfile(7.62).burstRounds,auxiliaryWeaponProfile(
 // VH.14 (the coordinator's ruling 2026-10-14, "every drawn gun works or goes"): the Ariete C2 really carries a roof
 // station, so the C2 X's commander K2 copy, once a decorative fitting, is a working 12.7 mm remote station beside its
 // loader's GPMG.
-assert.deepEqual(AUXILIARY_INVENTORY.ariete_c2_x?.guns.map((g)=>g.caliberMm),[12.7,7.62]);
+assert.deepEqual(AUXILIARY_INVENTORY.c2_ariete?.guns.map((g)=>g.caliberMm),[12.7,7.62]);
 console.log(`remoteGunFleet: all ${Object.keys(requested).length} requested mounts, muzzle metal, articulation, range and independent firing PASS`);

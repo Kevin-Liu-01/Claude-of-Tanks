@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 
 const variants = [
   ['ua_t80bv', 't80bv-ua-t90-style', 'uaT80ModernKord_bv'],
-  ['ua_t80u_kursk', 't80u-kursk-t90-style', 'uaT80ModernKord_kursk'],
+  ['t80u_kursk', 't80u-kursk-t90-style', 'uaT80ModernKord_kursk'],
 ];
 
 for (const [id, receipt, weaponName] of variants) {
@@ -72,9 +72,9 @@ for (const [id, receipt, weaponName] of variants) {
         `${id}: RWS remains attached through yaw ${yaw}`);
     }
 
-    if (id === 'ua_t80u_kursk') {
+    if (id === 't80u_kursk') {
       assert.equal(turretRig.userData.uaRearTubeAxis, 'x',
-        'ua_t80u_kursk: rear snorkel is transverse, not fore-aft');
+        't80u_kursk: rear snorkel is transverse, not fore-aft');
     }
   } finally {
     tank.dispose();

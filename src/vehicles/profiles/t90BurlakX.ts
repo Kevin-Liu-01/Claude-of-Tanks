@@ -230,7 +230,7 @@ function mainGun(P:TankBuilderPort):void{
   // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
   // 125 mm bore (radius .0625) down to the source opaque floor 5.853999853134153, a 0.4063 m recess
   // that sat entirely behind the factory's dark mouth disc; the depth stays recorded here, in
-  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90a_burlak_x.floor) and docs/references/tanks/t90a_burlak_x.source-measurements.json.
+  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90a_burlak.floor) and docs/references/tanks/t90a_burlak_x.source-measurements.json.
   const rows=[[0,1.6078],[.1267,1.6078],[.10921,2.1699],[.10034,3.8774],[.11787,3.8774],[.120615,4.813],
     [.09160,4.813],[.093205,6.0181],[.086625,6.0181],[.086745,6.1470],[.093375,6.1626],[.093505,tip],[0,tip]];
   P.add('gun',new THREE.LatheGeometry(rows.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
@@ -244,4 +244,4 @@ export function buildT90BurlakX(P:TankBuilderPort):void{
   P.topY=T90_BURLAK_X_DATUMS.highestFittingM-YAW[1];
   hull(P);runningGear(P);hullEra(P);deck(P);rear(P);turret(P);frontCurtain(P);bustleAndCases(P);roofEquipment(P);machineGun(P);smoke(P);mainGun(P);
 }
-export const T90_BURLAK_X_PROFILES={t90a_burlak_x:{build:buildT90BurlakX}} as const;
+export const T90_BURLAK_X_PROFILES={t90a_burlak:{build:buildT90BurlakX}} as const;

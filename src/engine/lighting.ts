@@ -18,13 +18,7 @@ import {
   resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 import { debugModeRequested } from '../dev/debugIntent.ts';
-import {
-  SHADOW_OPACITY,
-  SHADOW_RECEIVER_ONLY_BIAS_M,
-  shadowDepthBiasForTexel,
-  shadowNormalBiasForTexel,
-  snapShadowCoordinate,
-} from './shadowStability.ts';
+import { DECK_PENUMBRA_K, deckPenumbraRadius, SHADOW_OPACITY, SHADOW_RECEIVER_ONLY_BIAS_M, shadowDepthBiasForTexel, shadowNormalBiasForTexel, snapShadowCoordinate } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
 import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
@@ -43,6 +37,7 @@ import {
   programTextureUnits,
 } from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
+import { SCENE_ALPHA_SNOW_WRITE_GLSL } from './sceneAlpha.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
@@ -753,9 +748,17 @@ uniform float uCotReceiverOnly;
   if (!opaque.includes(opaqueAnchor)) {
     throw new Error('lighting.ts: alpha anchor not found in opaque_fragment');
   }
+  // (2026-10-14, the engine-cs lane: the ground occlusion's snow law reads each receiver's own snow) the terrain — the one
+  // material that defines COT_SNOW_COVER and sets cotSnowCover (terrain.ts) — writes a snowy pixel's visibility in the
+  // snow band between the lit band and the vehicles' (sceneAlpha.ts); every other material writes 2 + v as before
   THREE.ShaderChunk.opaque_fragment = opaque.replace(opaqueAnchor, `${opaqueAnchor}
 #if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
+#ifdef COT_SNOW_COVER
+{${SCENE_ALPHA_SNOW_WRITE_GLSL}
+}
+#else
 gl_FragColor.a = 2.0 + cotSunVis;
+#endif
 #endif`);
 }
 
@@ -957,15 +960,33 @@ export function createLighting(
     for (let i = 0; i < csm.lights.length; i++) applyShadowNormalBias(i);
   }
 
+  // 2026-10-10 (the shadows lane, the Whiteout round): each cascade's radius before a closed deck's widening, and the
+  // deck's uniform share of the cut the current rig carries (shadowStability.ts deckPenumbraRadius)
+  const baseShadowRadius: number[] = [];
+  let deckShare = 0;
+  /** Widen the cascades' PCF radius under a closed deck, and back when the deck opens. */
+  function applyDeckPenumbra(model: LightModel | null): void {
+    const share = model?.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast * model.deckClosure)) : 0;
+    if (Math.abs(share - deckShare) < 1e-3) return;
+    deckShare = share;
+    for (let i = 0; i < csm.lights.length; i++) {
+      const base = baseShadowRadius[i];
+      if (base === undefined) continue;
+      csm.lights[i].shadow.radius = deckPenumbraRadius(base, deckShare, lightTune('DECK_PENUMBRA', DECK_PENUMBRA_K));
+      applyShadowNormalBias(i);
+    }
+  }
+
   /** Resize one cascade, retaining every other live map until its own turn. */
   function applyShadowSize(i: number, size: number): void {
     const shadow = csm.lights[i].shadow;
     // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
     const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
-    shadow.radius = Math.max(
+    baseShadowRadius[i] = Math.max(
       MIN_FILTER_RADIUS_TEXELS,
       SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref),
     );
+    shadow.radius = deckPenumbraRadius(baseShadowRadius[i], deckShare, lightTune('DECK_PENUMBRA', DECK_PENUMBRA_K));
     if (shadow.mapSize.x !== size) {
       shadow.mapSize.set(size, size);
       shadowFitCache.invalidate();
@@ -1140,7 +1161,9 @@ export function createLighting(
       // (2026-10-04, the light under a closed deck: the dims fade with the overcast — groundBounce.ts uCotShadowDepth)
       // (2026-10-05: by the deck's closure — in a broken deck's gaps the circumsolar sky is out, and its cells' shade comes
       // through the cloud shade map like a cumulus's)
-      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast * model.deckClosure)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
+      // (2026-10-09, the shadows lane: a thin deck — model.deckBeam — keeps the sun's glow an occluder hides, by its beam)
+      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast * model.deckClosure * (1 - (model.deckBeam ?? 0))))
+        * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
       groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
       // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
       terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
@@ -1324,6 +1347,7 @@ export function createLighting(
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
       physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun, cloudShadeOn && !!scene.userData.volumetricClouds);
     rigModel = model;
+    applyDeckPenumbra(model); // (the Whiteout round: a closed deck's diffuse shadows)
     scene.userData.lightModel = model;
     scene.userData.lightEnclosed = farCascadeDormant;
     scene.environmentIntensity = model.envIntensity;

@@ -5,14 +5,14 @@ import { TANK_SPECS } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 
-await ensureInteriorFills(['kf51b']);
+await ensureInteriorFills(['kf51_u']);
 
 function verifyGunSeat(quality) {
-  const visual = createTank('kf51b', null, {
+  const visual = createTank('kf51_u', null, {
     proceduralOnly: true, geometryReceipt: true, quality,
   });
   try {
-    const spec = TANK_SPECS.kf51b;
+    const spec = TANK_SPECS.kf51_u;
     const state = createTankState(spec, new THREE.Vector3(), 0);
     const turret = visual.root.getObjectByName('rig_turret');
     const gun = visual.root.getObjectByName('rig_gun');
@@ -119,7 +119,7 @@ const closeTo = (actual, expected, epsilon = 1e-9) => {
     `expected ${actual} to be within ${epsilon} of ${expected}`);
 };
 
-const tank = createTank('kf51b', null, {
+const tank = createTank('kf51_u', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
@@ -145,15 +145,15 @@ try {
   closeTo(hull.scale.z, 1.05);
   closeTo(turret.scale.x, 1.05);
   closeTo(turret.position.z, 0.6825);
-  TANK_SPECS.kf51b.armor.turretPivot.forEach((value, axis) => {
+  TANK_SPECS.kf51_u.armor.turretPivot.forEach((value, axis) => {
     closeTo(value, turret.position.getComponent(axis));
   });
-  assert.deepEqual(TANK_SPECS.kf51b.armor.gunPivot, [0, 0.231, 1.239]);
-  closeTo(TANK_SPECS.kf51b.armor.gunBarrel.lengthM, 5.565);
+  assert.deepEqual(TANK_SPECS.kf51_u.armor.gunPivot, [0, 0.231, 1.239]);
+  closeTo(TANK_SPECS.kf51_u.armor.gunBarrel.lengthM, 5.565);
   closeTo(
-    TANK_SPECS.kf51b.armor.turretPivot[2]
-      + TANK_SPECS.kf51b.armor.gunPivot[2]
-      + TANK_SPECS.kf51b.armor.gunBarrel.lengthM,
+    TANK_SPECS.kf51_u.armor.turretPivot[2]
+      + TANK_SPECS.kf51_u.armor.gunPivot[2]
+      + TANK_SPECS.kf51_u.armor.gunBarrel.lengthM,
     7.4865,
   );
   assert.equal(proportions?.turretPivotLocalZ, 0.65,

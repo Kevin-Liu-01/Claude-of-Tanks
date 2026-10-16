@@ -23,8 +23,8 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 // Leopard 2 hull — the harder-hitting, slightly softer sibling of the 2A7 at
 // the top of the German MBT ladder.
 const KF51_SPEC = {
-    id: 'kf51', name: 'KF51 EVO', nation: 'Germany', era: 'modern', role: 'mbt',
-    variantOf: 'kf51',      // self-marker (m1a1 rule): stays on the nation tab
+    id: 'kf51_evo', name: 'KF51 EVO', nation: 'Germany', era: 'modern', role: 'mbt',
+    variantOf: 'kf51_evo',      // self-marker (m1a1 rule): stays on the nation tab
     hp: 2500,
     enginePowerHp: 1475, weightTons: 59, topSpeedKmh: 70, reverseSpeedKmh: 30,
     hullTraverseDegS: 44,
@@ -76,8 +76,8 @@ KF51_SPEC.armor.hullPlates.push(
 // vehicle as KF51B with its measured palette and geometry.
 const KF51B_SPEC = {
   ...KF51_SPEC,
-  id: 'kf51b', name: 'KF51-U', variantOf: 'kf51b',
-  // §5.299 fleet-integration truth-up (kf51b row ONLY — kf51's shared armor
+  id: 'kf51_u', name: 'KF51-U', variantOf: 'kf51_u',
+  // §5.299 fleet-integration truth-up (kf51_u row ONLY — kf51_evo's shared armor
   // object is untouched, this is a fresh communityArmor instance). The
   // rebuilt Panther is installed at 1.05x, so these are the final rendered
   // turret/gun coordinates rather than the unscaled authoring coordinates.
@@ -105,14 +105,14 @@ KF51B_SPEC.armor.hullPlates.push(
 );
 
 const KF51_SPECS = {
-  kf51: KF51_SPEC,
-  kf51b: KF51B_SPEC,
+  kf51_evo: KF51_SPEC,
+  kf51_u: KF51B_SPEC,
 } satisfies Readonly<Record<string, FleetTankSpec>>;
 
 // ---------------------------------------------------------------------------
 // Registration (idempotent — vite HMR can re-evaluate this module)
 // ---------------------------------------------------------------------------
-for (const id of ['kf51', 'kf51b'] as const) {
+for (const id of ['kf51_evo', 'kf51_u'] as const) {
   registries.tankSpecs[id] ||= KF51_SPECS[id];
   if (!registries.allTankIds.includes(id)) registries.allTankIds.push(id);
 }

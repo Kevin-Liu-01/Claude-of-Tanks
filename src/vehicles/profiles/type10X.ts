@@ -294,14 +294,17 @@ function rearBasketStowage(P:TankBuilderPort):void {
     for(const g of paint)turret(P,'turret',g,x/EQUIPMENT_X_DATUM,floor,z);
     for(const g of dark)turret(P,'turretDark',g,x/EQUIPMENT_X_DATUM,floor,z);
   };
-  // rear row, latches facing out of the basket's rear mesh
-  chest(.86,.36,.46,-.76,-2.935,-1);
-  chest(.52,.36,.46,.02,-2.935,-1,false);
-  chest(.74,.36,.46,.70,-2.935,-1);
-  // front row against the bustle, latches facing aft over the rear row's lids
-  chest(.62,.30,.40,-.86,-2.40,-1);
-  chest(.70,.30,.40,.70,-2.40,-1);
-  chest(.50,.26,.40,-.16,-2.40,-1,false);
+  // rear row, latches facing out of the basket's rear mesh; the chests stand side by side and the front row against
+  // the rear row, so no narrow crevice runs down between them (a 5-14 cm slot between chests under the bustle read as
+  // an opening into the hull to the watertight check: tools/track-lane-boxes.selftest)
+  // (no end handles: each chest's end stands against its neighbour's)
+  chest(.86,.36,.46,-.76,-2.935,-1,false);
+  chest(.52,.36,.46,-.07,-2.935,-1,false);
+  chest(.74,.36,.46,.56,-2.935,-1,false);
+  // front row, latches facing aft over the rear row's lids
+  chest(.62,.30,.40,-.86,-2.505,-1,false);
+  chest(.50,.26,.40,-.30,-2.505,-1,false);
+  chest(.70,.30,.40,.30,-2.505,-1,false);
   // critic panel 2026-10-15: the basket stays the chests' (the canvas loads stood here before), so the decor's loads
   // keep the seats they had (fieldChest.ts reserveDecorVolume)
   reserveDecorVolume(P.turretG,[-1.25-PIVOT[0],floor-PIVOT[1],-3.2-PIVOT[2]],[1.25-PIVOT[0],floor+.55-PIVOT[1],-2.18-PIVOT[2]]);
@@ -503,7 +506,7 @@ export function buildType10X(P:TankBuilderPort):void {
   });
   turretArmor(P);rearRack(P);roofEquipment(P);mainGun(P);
   P.topY=2.989-PIVOT[1];
-  P.hullG.userData.xRebuild={candidate:'type10_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'type10',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const TYPE10_X_PROFILES={type10_x:{build:buildType10X}} as const;
+export const TYPE10_X_PROFILES={type10:{build:buildType10X}} as const;

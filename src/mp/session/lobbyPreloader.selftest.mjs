@@ -28,7 +28,7 @@ const preloader = createLobbyPreloader({
 
 const waiting = {
   phase: 'waiting', mapId: 'fjord',
-  players: [{ id: 'a', specId: 'm1a2' }, { id: 'b', specId: 't90m' }],
+  players: [{ id: 'a', specId: 'm1a1_abrams_hc' }, { id: 'b', specId: 't90am' }],
 };
 for (const state of [null, undefined, { ...waiting, phase: 'starting' },
   { ...waiting, phase: 'battle' }]) {
@@ -61,11 +61,11 @@ assert.equal(calls.filter((entry) => entry === 'presentation').length, 2,
 preloader.preload({
   ...waiting,
   mapId: 'random',
-  players: [...waiting.players, { id: 'c', specId: 'leclerc' }],
+  players: [...waiting.players, { id: 'c', specId: 'leclerc_s2' }],
 });
 await Promise.resolve();
 assert.ok(calls.includes('cancel:null'), 'random map intent cancels fixed-map background work');
-assert.ok(calls.some((entry) => entry === 'builders:leclerc'), 'new players warm only missing builders');
+assert.ok(calls.some((entry) => entry === 'builders:leclerc_s2'), 'new players warm only missing builders');
 preloader.preload({ ...waiting, mapId: undefined });
 assert.equal(mapRequests.length, 1, 'random and absent map choices never construct a map');
 

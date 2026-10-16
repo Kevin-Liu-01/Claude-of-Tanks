@@ -17,7 +17,7 @@
 // into it. Local +Z is the nose, the footprint is XZ-centred and the lowest tyre point is y = 0.
 
 import * as THREE from 'three';
-import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { VehicleMesh, linearHex, material, vehicleWeathering } from './vehicleMesh.ts';
 import { keepStreams } from '../geometryStreams.ts';
 import { buildModel, modelWheels } from './vehicleBodies.ts';
 import {
@@ -48,7 +48,10 @@ interface RoleBox {
 /** The roles' largest boxes (the legacy kit's placement boxes): a model is scaled down into its role's; its own
  * footprint (roleFootprint) is what collides. */
 const ROLE_BOXES: Readonly<Record<CivilianVehicleKind, RoleBox>> = {
-  truck: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.30, rise: 1.05, triangleBudget: 9000 },
+  // sealed lane 2026-10-10, round 2: 9000 -> 9500 for the running gear under the trucks (leaf springs at every axle,
+  // driveshafts, the wheelbase's tanks and guards; wave 368's critics: "one thin black rail over disc wheels"). The
+  // Western 1944 GMC 6x6 went 8,704 -> 9,220
+  truck: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.30, rise: 1.05, triangleBudget: 9500 },
   // sealed lane 2026-10-10: 7000 -> 7100 for the tub's end caps and the wheels' back discs (the France 2020s jeep went
   // 6,940 -> 7,036; the open ends and hollow wheels showed the sky through every jeep)
   jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, rise: 0.35, triangleBudget: 7100 },
@@ -56,8 +59,8 @@ const ROLE_BOXES: Readonly<Record<CivilianVehicleKind, RoleBox>> = {
   wagon: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.69, rise: 0.2, triangleBudget: 8500 },
   pickup: { lane: 'light', halfWidth: 1.11, halfLength: 2.47, height: 1.77, rise: 0.3, triangleBudget: 8500 },
   van: { lane: 'light', halfWidth: 1.11, halfLength: 2.38, height: 2.08, rise: 0.25, triangleBudget: 8500 },
-  truckbox: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.47, rise: 0.85, triangleBudget: 9000 },
-  truckflatbed: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 1.96, rise: 1.1, triangleBudget: 9000 },
+  truckbox: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.47, rise: 0.85, triangleBudget: 9500 },
+  truckflatbed: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 1.96, rise: 1.1, triangleBudget: 9500 },
 };
 
 interface BuildContext {
@@ -90,10 +93,26 @@ function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox): void {
 }
 
 /** One role's geometry on a fleet: intact or burnt out. */
+/**
+ * The body paint of a fleet (sealed lane, round 2; wave 368: an olive 6x6's wings and bonnet read light grey under the
+ * sky): weathered paint loses its gloss, so a fleet's paint is as satin as the new paint (0.44) at age 0.15 and duller
+ * with its years, matte by age 0.4 (the war fleets' lusterless olive drab and feldgrau at 0.3-0.35 read flat).
+ */
+const AGED_PAINTS = new Map<number, ReturnType<typeof material>>();
+function agedPaint(age: number): ReturnType<typeof material> {
+  const key = Math.round(age * 100);
+  let paint = AGED_PAINTS.get(key);
+  if (!paint) {
+    paint = material('paint', [0.80, 0.80, 0.80], Math.min(0.82, 0.44 + Math.max(0, age - 0.15) * 1.4), 0.0, 1, 1);
+    AGED_PAINTS.set(key, paint);
+  }
+  return paint;
+}
+
 function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
   mesh.coarse = ctx.coarse;
-  buildModel(mesh, entry.model, { coarse: ctx.coarse, burnt });
+  buildModel(mesh, entry.model, { coarse: ctx.coarse, burnt, paint: agedPaint(ctx.fleet.age) });
   const geometry = mesh.build(vehicleWeathering({
     dirtRgb: linearHex(ctx.climate.dirt), dirt: ctx.climate.dirtAmount,
     dustRgb: linearHex(ctx.climate.dust), dust: ctx.climate.dustAmount,

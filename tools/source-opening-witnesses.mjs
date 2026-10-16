@@ -837,7 +837,7 @@ const WARRIOR_SOURCE_WITNESSES=[
 export function sourceOpeningWitnesses(id,quality='high'){
  if(isArieteOpeningTarget(id))return arieteOpeningWitnesses(id,quality);
  if(id==='merkava4_barak')return BARAK_OPENING_WITNESSES;
- if(id==='aft10_x')return aftWitnesses();
+ if(id==='aft10')return aftWitnesses();
  if(id==='warrior_tes_h')return WARRIOR_SOURCE_WITNESSES;
  return [];
 }

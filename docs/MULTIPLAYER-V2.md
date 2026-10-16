@@ -1069,7 +1069,7 @@ Every run: verdant, standard rules, no bots, every hull driving and firing on th
 | Migration: tick timeline continuous, every seat live, no reset | PASS (resume tick 4120 ≥ old host's 3603) | PASS | PASS (resume tick ≥ 10900) |
 | Migration: own-hull jump on the presented pose (0.0 m) — allies of the new host / enemies / the new host itself | 3.5 / 28.4 / 4.9 m — FAIL | 5.8 and 4.8 / 28.0 and 6.4 / 0.8 and 0.3 m — FAIL | 5.5 / 5.0 / 0.5 m — FAIL; on the authority rows alone 1.0 / 6.1 / 0.07 m; the prediction's lead at the loss up to 4.0 m |
 | Old host back as a peer of the new one | 709 ms | 763 / 763 ms | 762 ms |
-| Peer desync at the end: the own predicted hull against the authority's newest row for it (≤ 0.5 m) | 0.026 m — PASS (run max free 1.0 m, contact 1.6 m) | 0.013 m — PASS (run max free 3.3 m; 9 of 13 predicting: the harness's `getSpec` lacked `leo2a7v`, fixed for the later runs) | 0.088 m — PASS (27 of 27 predicting; run max free 4.0 m, contact 6.2 m, 51 hard snaps over 6 min) |
+| Peer desync at the end: the own predicted hull against the authority's newest row for it (≤ 0.5 m) | 0.026 m — PASS (run max free 1.0 m, contact 1.6 m) | 0.013 m — PASS (run max free 3.3 m; 9 of 13 predicting: the harness's `getSpec` lacked `leo2_improved`, fixed for the later runs) | 0.088 m — PASS (27 of 27 predicting; run max free 4.0 m, contact 6.2 m, 51 hard snaps over 6 min) |
 | Peer tab RSS (≤ 150 MB) | 248 MB — FAIL in this harness (JS heap 31–48 MB) | 238 MB (median 185; heap 30–68 MB) — FAIL | 290 MB (median 228; heap ≤ 70 MB); the host's renderer 939 MB — FAIL |
 | Console errors (0) | 1 (the harness page's missing favicon; fixed) | 0 — PASS | 0 — PASS |
 | Room messages per match, client→room + room→client | 106 + 166 (start 21 + 37) | 672 + 1,235 (start 81 + 137) | 1,206 + 3,018 (start 165 + 277) |
@@ -2133,19 +2133,23 @@ socket: the decline and its withdrawal, none in a match, none from the mobile ti
 2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
 
 **What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session. A seat hosting a running
-match, with another seat willing to host (connected, a commander, not declined), sends `host_decline { declined: true }`
+match, with another commander connected (any seat the room's ladder can elect), sends `host_decline { declined: true }`
 on the room socket inside the event (synchronous, nothing awaited), once, and steps down at once: its actor stops and the
-seat is a peer. The room elects the willing seat at once (its declined path); a preference decline that finds no
-candidate after all leaves this seat hosting, and its lease runs as before (roomActor.selftest: "every commander has
-stepped down … it keeps hosting"). With no willing successor (a solo room with bots, every other seat declined, unable or
-gone) nothing is sent: the lease and the resume hold run as on main, so the same player can come back. A page entering
+seat is a peer. The room elects the next seat at once (its declined path: willing first, a declined commander as the last
+resort); a preference decline that finds no candidate after all leaves this seat hosting, and its lease runs as before
+(roomActor.selftest: "every commander has stepped down … it keeps hosting"). With no other connected commander (a solo
+room with bots, the others gone or spectating) nothing is sent: the lease and the resume hold run as on main, so the same
+player can come back. *(2026-10-14)* A commander that declined hosting is a successor too: the first cut waited for a
+willing one, but the lease elects the same declined seat 8 s later, and under load every seat declines in the lobby for
+headroom (§13.18), so the hand-off never ran where it mattered most (the §7 side-by-side). A page entering
 the back-forward cache (`pagehide` with `persisted`) is handled the same way; restored, it is a peer of whoever the room
 elected and never hosts on its own. Leaving the match afterwards does not decline twice; the hand-off is per round.
 
 Receipt: `matchSessionHandOff.selftest` (the real session hosting through the in-process host against a scripted room
 socket; cases "hands on and steps down" (the decline leaves before anything is awaited, once; the back-forward-cache
-restore follows the new host), "sole host keeps the lease" (the other seat declined, gone or spectating, or a solo room:
-nothing sent, still hosting), per round, none from a peer or the lobby, no actor outlives its core).
+restore follows the new host), "a declined commander is a successor" (hands on and steps down), "sole host keeps the
+lease" (the other seat gone or spectating, or a solo room: nothing sent, still hosting), per round, none from a peer or the
+lobby, no actor outlives its core).
 
 ### 13.20 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
 
@@ -2164,6 +2168,58 @@ in the seat's own controls (`controlAt` answers the newest earlier control). The
 Receipt: `predictionStall.selftest` (the real sampler, the real authority input buffer and the real predictor on one
 movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
 against 2.1 m and 1.5 m for the two old behaviours).
+
+### 13.21 The elected seat's host thread is ready before the election (MP stream, 2026-10-14)
+
+**Why.** An election's freeze is the room's detection (the pagehide hand-off of §13.19, else the socket lease), then the
+elected seat's boot: it spawned its host Worker, loaded the module graph, fetched and built the battlefield's collision
+world and loaded the roster's combat anatomy (ed655f9de) while every seat waited for it — about 2 s on the honest e2e of
+2026-10-13 at load ~50 (`host_changed` → the host's role event), on top of the peers' re-offers.
+
+**What.** A seat that may host (a host thread, not the mobile tier, not "never host") prepares a standby host thread
+`STANDBY_HOST_DELAY_MS` (20 s) after it is welcomed as a peer of a p2p match — past its own covered entry: the session
+spawns the port and posts `prepare { mapId, mode, manifestBase, specIds }`; the core builds the world (`buildWorld`) and
+loads the fleet (`ensureAuthorityFleet`) and, when the match fields bots, the authority's ground and bot navigation grid
+on that world (`prepareAuthorityGround`: the grid was 1.2 s of a 1.8 s authority creation on Verdant, 39 ms on 09-30 —
+the edge steepness and hull edge passes), answers `prepared { ok, ms }`, and starts no actor. When the room elects this
+seat, `createHost` takes that port, and the core's `boot` takes the prepared world when it is the same battlefield,
+variant and manifests (one in flight is awaited, not rebuilt); the first authority on that world takes the prepared
+ground once (only its own world object, with the same obstacles and query); a failed preparation or another battlefield
+builds afresh, as before. Measured in Node on Verdant with 3 seats and 3 bots (cold, load ~100): the boot from 'boot' to
+'ready' 3.4-4.3 s on main, 0.46 s prepared (09-30: 1.25-1.97 s). Once per match; leaving the match (or the session) closes it; a seat that hosted and stepped down prepares a new
+one after its next welcome. `p2p.standbyHost: false` turns it off; `{ delayMs }` sets the delay. The cost is one idle
+Worker holding the battlefield's collision world on each host-capable peer for the match's length.
+
+Receipts: `preparedAuthorityGround.selftest` (two Verdant worlds, one prepared: six bots play 30 s digest for digest the
+same; taken once, by its own world only; a world whose obstacles changed builds its own), `hostStandby.selftest` (the
+core through its port: one world build when the boot follows a preparation,
+a preparation in flight awaited, a different battlefield or a failed preparation built afresh, nothing prepared after a
+boot or a stop), `mp-p2p-headless.selftest` (the elected peer hosts on the one thread it prepared: `p2Cores` 1,
+`bootedPrepared`).
+
+### 13.22 A crashed host's peers vouch for its loss (MP stream, 2026-10-14)
+
+**Why.** The pagehide hand-off (§13.19) covers a host that closes, reloads or navigates; a host whose tab crashes, whose
+browser is killed or whose machine sleeps sends nothing, and the room waited out the 8 s socket lease
+(`ROOM_HOST_DISCONNECT_GRACE_MS`) before electing — 223's production window measured 8.4 s, the headless crash 8.0 s.
+The lease exists for a room-socket blip: a host whose page lives keeps feeding its peers over WebRTC while its room
+socket reconnects, and electing then would move a healthy match.
+
+**What.** The peers tell the two cases apart. A peer welcomed by the current host that has accepted no snapshot for
+`ROOM_HOST_UNREACHABLE_AFTER_MS` (1.5 s) sends `host_unreachable { generation, silentMs }`, again every
+`ROOM_HOST_UNREACHABLE_REPEAT_MS` while the silence lasts (a page that itself stalled, a frame gap over 500 ms, restarts
+its count). The room keeps each claim for `ROOM_HOST_UNREACHABLE_TTL_MS` (3 s), and when the running host's room socket is
+gone (the lease armed) and a commander other than the host claims within that window — before or after the drop — it
+elects at once: `host_changed { reason: 'timeout', detail: 'socket_lease' }`, the election the lease would have held,
+logged as `host lost` with its witnesses. A claim with the host's socket alive (a busy host page) and a socket gone
+with no claim (a blip) change nothing; the host's own claim, another generation, a spectator, a silence under 1.5 s are
+acknowledged and ignored. Additive: a room that predates the command refuses it (the client ignores the refusal), and the
+`host_changed` it sends is one every tab already reads. The room double (`tools/mp-p2p-room-double.ts`) mirrors the rule.
+
+Receipts: `roomActor.selftest` (the rule's cases on the real actor), `mp-p2p-headless-crash.selftest` (the headless flow
+with the production lease: the host's socket and links drop at once, both peers claim, elected 2.1 s after the crash
+against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
+program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
 
 ## 10. Decisions for the owner
 

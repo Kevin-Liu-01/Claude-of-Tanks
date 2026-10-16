@@ -2,7 +2,7 @@
 // asset. This local canonical GLB preserves every source face, including
 // censused duplicate track courses and collapsed, non-visible objects.
 export const ABRAMS_X_REFERENCE_OVERRIDES = {
-  m1a2_sepv2_x: {
+  m1a2_abrams_sepv2: {
     source: 'glb', qualityBar: 'exemplar',
     glb: {
       path: '/models/community-candidates/m1a2_sepv2_dc_source.glb',

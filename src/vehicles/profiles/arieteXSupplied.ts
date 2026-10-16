@@ -21,6 +21,6 @@ export function buildArieteXSupplied(P: TankBuilderPort, boreRadiusM = .0542, mo
   addArieteXSuppliedEquipment(P, modern);
   addArieteXSuppliedHullEquipment(P);
   addArieteXSuppliedGun(P, boreRadiusM);
-  P.hullG.userData.xRebuild = { candidate: 'ariete_c1_x', independent: true,
+  P.hullG.userData.xRebuild = { candidate: 'c1_ariete', independent: true,
     sourceLocalOnly: true, datumVersion: 2, target: 'owner-selected-supplied-file' };
 }

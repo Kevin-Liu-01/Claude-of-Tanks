@@ -18,7 +18,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, halfWidth: number, bottom: number, shoulder: number, roof: number];
 
 export const ARIETE_X_DATUMS = Object.freeze({
-  ariete_c1_x: {
+  c1_ariete: {
     dims: { hullLengthM: 7.99, overallLengthM: 9.87, widthM: 3.61, heightM: 2.50 },
     structuralRoofY: 2.50, fixedOpticHeightM: 2.86, highestFittingM: 3.92,
     // Photo-estimated mechanical stations, not extracted AI object origins.
@@ -27,7 +27,7 @@ export const ARIETE_X_DATUMS = Object.freeze({
     muzzleZ: 5.875,
   },
 });
-const D = ARIETE_X_DATUMS.ariete_c1_x;
+const D = ARIETE_X_DATUMS.c1_ariete;
 
 function local(geometry: THREE.BufferGeometry, point: Point): THREE.BufferGeometry {
   return geometry.translate(-point[0], -point[1], -point[2]);
@@ -252,4 +252,4 @@ export function buildArieteX(P: TankBuilderPort): void {
   gun(P);
 }
 
-export const ARIETE_X_PROFILES = Object.freeze({ ariete_c1_x: { build: buildArieteX } });
+export const ARIETE_X_PROFILES = Object.freeze({ c1_ariete: { build: buildArieteX } });

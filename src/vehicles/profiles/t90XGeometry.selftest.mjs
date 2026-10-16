@@ -9,21 +9,21 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Numerical assertions inspect real vertices, rays and instance transforms.
 
 const SOURCE = {
-  t90a_x: { turret:[2.9522,-1.4561,1.3596], roof:2.2049, gunY:1.8174, muzzle:6.2642, height:2.8266,
+  t90a: { turret:[2.9522,-1.4561,1.3596], roof:2.2049, gunY:1.8174, muzzle:6.2642, height:2.8266,
     hullRays:[[-2.57,1.417],[-.43,1.479],[1.28,1.480],[2.57,1.235],[3.30,.893]],
     roofRays:[[0,-.58,2.2041],[0,.05,2.1464],[.45,.84,2.0562],[.45,1.18,1.9524]],
     aperture:{y:1.8174,centerZ:1.110,shoulderZ:1.360},
     wheels:[-1.848,-1.002,-.147,.728,1.590,2.464], rear:-4.1944 },
-  t90a_vladimir_x: { turret:[2.8997,-1.2180,1.4372], roof:2.2595, gunY:1.7287, muzzle:6.5964, height:3.8069,
+  t90a_vladimir: { turret:[2.8997,-1.2180,1.4372], roof:2.2595, gunY:1.7287, muzzle:6.5964, height:3.8069,
     hullRays:[[-2.57,1.514],[-.43,1.495],[1.28,1.455],[2.57,1.222],[3.30,1.036]],
     roofRays:[[.15,-.55,2.249],[.15,.12,2.227],[.15,.80,2.140],[.45,1.18,2.0171]],
     wheels:[-1.828225,-.94808,-.067935,.812205,1.69235,2.572495], rear:-4.1899 },
-  t90m_x: { turret:[2.9532,-2.5966,1.4264], roof:2.0309, gunY:1.60825, muzzle:6.2542, height:2.9739,
+  t90m: { turret:[2.9532,-2.5966,1.4264], roof:2.0309, gunY:1.60825, muzzle:6.2542, height:2.9739,
     hullRays:[[-2.57,1.165],[-.43,1.339],[1.28,1.339],[2.57,1.097],[3.30,.835]],
     roofRays:[[0,-1.90,1.9988],[0,-.61,2.0225],[0,.30,1.993],[.45,1.18,1.8766]],
     aperture:{y:1.608251,centerZ:.982,shoulderZ:1.426},
     wheels:[-1.814,-.9455,-.0512,.8188,1.6715,2.5242], rear:-4.0972 },
-  t90sm_x: { turret:[2.8712,-1.4766,1.7345], roof:2.2893, gunY:1.90309, muzzle:7.0399, height:3.1501,
+  t90sm: { turret:[2.8712,-1.4766,1.7345], roof:2.2893, gunY:1.90309, muzzle:7.0399, height:3.1501,
     hullRays:[[-2.57,1.562],[-.43,1.574],[1.28,1.571],[2.57,1.242],[3.30,.936]],
     roofRays:[[.15,-1.30,2.220],[.15,-.47,2.2893],[.15,.56,2.226],[.15,1.34,2.145]],
     wheels:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061],
@@ -43,7 +43,7 @@ function ray(mesh,x,z,up=false) {
 function pitchingMount(tank,id){
   const mount=tank.root.getObjectByName('gunMount'),parts=[mount];
   assert.ok(mount?.isMesh&&mount.geometry.attributes.position.count>0,`${id}: actual metal mantlet`);
-  if(id==='t90a_vladimir_x'){
+  if(id==='t90a_vladimir'){
     const cloth=tank.root.getObjectByName('gunMountCanvasSkin');
     assert.ok(cloth?.isMesh&&cloth.geometry.attributes.position.count>0,`${id}: actual separately finished boot`);
     assert.equal(cloth.parent,tank.root.getObjectByName('rig_gun'),'continuous boot keeps its original pitching owner');
@@ -102,7 +102,7 @@ function assertWheelInstances(tank,source,id) {
 
 function assertSourceEquipmentSections(tank,id) {
   const mesh=name=>tank.root.getObjectByName(name);
-  if(id==='t90a_x') {
+  if(id==='t90a') {
     const guard=mesh('hull');
     near(ray(guard,1.45,3.40),1.247,.018,'A: source arched front guard at idler wrap');
     const plate=mesh('hullExternalArmor');
@@ -112,10 +112,10 @@ function assertSourceEquipmentSections(tank,id) {
     near(ray(detail,-1.5327,-1.65),1.53935,.012,'A: independently raised left aft fender case and latch');
     near(ray(detail,.5956,-3.6273),1.82427,.014,'A: separate raised drum strap tensioner');
     near(ray(mesh('turretDetail'),-.390,-1.00694),2.64861,.006,'A: mast neck shoulder, not widened or translated silhouette');
-  } else if(id==='t90a_vladimir_x') {
+  } else if(id==='t90a_vladimir') {
     near(ray(mesh('gunMountCanvasSkin'),0,1.23),2.086,.020,'Vladimir: rounded rear canvas boot crown');
     near(ray(mesh('gunMountCanvasSkin'),0,1.60),1.920,.020,'Vladimir: tucked circular front canvas cuff');
-  } else if(id==='t90m_x') {
+  } else if(id==='t90m') {
     near(ray(mesh('hullExternalArmor'),.70,2.40),1.226,.025,'M: stepped measured middle glacis field');
     near(ray(mesh('turretDetail'),-1.45,.50),1.88519,.024,'M: real inner folded carrier roof');
     near(ray(mesh('turretDetail'),-1.60,.50),1.83105,.024,'M: source measured carrier crossfall');
@@ -124,7 +124,7 @@ function assertSourceEquipmentSections(tank,id) {
     near(ray(mesh('turret'),.90,-.80),1.96962,.015,'M: broad nearly level aft roof shoulder');
     near(ray(mesh('turret'),.90,.507),1.92279,.015,'M: independently inclined forward roof shoulder');
     near(ray(mesh('gunMount'),-.27,1.80),1.71804,.016,'M: source forward cradle cover, painted with the scheme');
-  } else if(id==='t90sm_x') {
+  } else if(id==='t90sm') {
     const casing=mesh('hullDetail');
     const hit=new THREE.Raycaster(new THREE.Vector3(-1.30,1.10,-2.70),new THREE.Vector3(0,1,0),0,.40)
       .intersectObject(casing,false)[0];
@@ -170,7 +170,7 @@ for(const [id,source] of Object.entries(SOURCE)) {
       // SM's real recessed carrier now supports a separately closed engine
       // cover. Test that physical cover at the same source plane, not the
       // deliberately lower hidden carrier beneath it.
-      const cover=id==='t90sm_x'&&z>=-3.142&&z<=-1.447
+      const cover=id==='t90sm'&&z>=-3.142&&z<=-1.447
         ? ray(tank.root.getObjectByName('hullDetail'),0,z) : -Infinity;
       near(Math.max(ray(hull,0,z),cover),y,.066,`${id}: source body roof station ${z}`);
       assert.ok(ray(hull,0,z)>ray(hull,0,z,true)+.001,`${id}: positive enclosed hull skin at ${z}`);

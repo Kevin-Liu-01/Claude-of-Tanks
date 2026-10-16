@@ -5,14 +5,14 @@ import { tankTier, tierNumeral } from '../tier.ts';
 
 const EPSILON = 1e-6;
 const CONFIGS = Object.freeze({
-  t90: Object.freeze({
+  t90_1992: Object.freeze({
     // owner 2026-09-23 (round 46): six 750 mm wheels on the 0.80 m T-72/T-90 pitch about the same centre (2R/pitch 0.94).
     wheelZs: [-1.95, -1.15, -0.35, 0.45, 1.25, 2.05],
     sprocket: { z: -2.52, y: 0.90, r: 0.299 },
     idler: { z: 2.70, y: 0.71, r: 0.27 },
     rearContactZ: -1.95, // 2026-09-14: the flat run ends under the rear axle (tangent wrap)
   }),
-  t90ms: Object.freeze({
+  t90ms_2011: Object.freeze({
     wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
     sprocket: { z: -2.58, y: 0.95, r: 0.20 },
     idler: { z: 2.76, y: 0.69, r: 0.25 },
@@ -44,13 +44,13 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
     assert.deepEqual(receipt.sprocket, expected.sprocket,
       `${id}: rear final-drive sprocket is seated at its authored station`);
 
-    if (id === 't90') {
+    if (id === 't90_1992') {
       near(receipt.sprocket.r / 0.23, 1.30,
-        't90: rear final-drive sprocket is exactly thirty percent larger');
+        't90_1992: rear final-drive sprocket is exactly thirty percent larger');
       assert.ok(receipt.sprocket.y < 0.98,
-        't90: enlarged rear final-drive axle is lower than its former station');
+        't90_1992: enlarged rear final-drive axle is lower than its former station');
       assert.ok(receipt.idler.y > 0.68,
-        't90: front idler axle is raised above its former station');
+        't90_1992: front idler axle is raised above its former station');
       const first = receipt.loopPoints[0];
       const second = receipt.loopPoints[1];
       const last = receipt.loopPoints.at(-1);
@@ -60,12 +60,12 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
         / (Math.hypot(inZ, inY) * Math.hypot(outZ, outY));
       const turnDeg = Math.acos(Math.max(-1, Math.min(1, cosTurn))) * 180 / Math.PI;
       assert.ok(turnDeg < 8,
-        `t90: rear wrap closes smoothly into its return run (${turnDeg.toFixed(2)} degrees)`);
+        `t90_1992: rear wrap closes smoothly into its return run (${turnDeg.toFixed(2)} degrees)`);
       const rearWrapSamples = receipt.loopPoints.filter(([z, y]) =>
         Math.abs(Math.hypot(z - expected.sprocket.z, y - expected.sprocket.y)
           - (expected.sprocket.r + trackWrapClearanceM(receipt.trackTh))) < 1e-5); // band hugs the rim: th/2 + 2 mm (2026-09-17)
       assert.ok(rearWrapSamples.length >= 18,
-        `t90: rounded rear wrap keeps at least 18 arc samples (${rearWrapSamples.length})`);
+        `t90_1992: rounded rear wrap keeps at least 18 arc samples (${rearWrapSamples.length})`);
     }
 
     const wrapTopY = expected.sprocket.y + expected.sprocket.r + receipt.trackTh / 2;
@@ -86,7 +86,7 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
   }
 }
 
-for (const id of ['t90', 't90a_burlak', 't90ms']) {
+for (const id of ['t90_1992', 't90a_burlak_proto', 't90ms_2011']) {
   assert.equal(tankTier(id), 10, `${id}: gameplay tier is X`);
   assert.equal(tierNumeral(id), 'X', `${id}: UI tier is X`);
 }

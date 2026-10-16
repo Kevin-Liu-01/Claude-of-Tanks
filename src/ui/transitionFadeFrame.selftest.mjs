@@ -154,7 +154,7 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
   const frame = name => () => frameCalls.push(name);
   const garageReturn = createGarageReturnRuntime({
     game,
-    getSelectedSpecId: () => 'm1a2',
+    getSelectedSpecId: () => 'm1a1_abrams_hc',
     presentation: {
       setAdaptiveSuspended: lifecycle('adaptive'),
       clearBattle: () => {

@@ -145,7 +145,7 @@ for (const mode of GAME_MODE_IDS) {
 {
   const director = createBattleEndingDirector();
   director.observe('mode:wave_started', { wave: 7, enemies: 11, healthScale: 1.96 });
-  director.observe('tank:destroyed', { id: 'me', specId: 't90m', pos: [12, 4, -21], killerId: 'e2', cause: 'ammorack' });
+  director.observe('tank:destroyed', { id: 'me', specId: 't90am', pos: [12, 4, -21], killerId: 'e2', cause: 'ammorack' });
   const plan = director.plan(verdict({ mode: 'endless_horde', reason: 'horde_overrun', result: 'defeat', playerDestroyed: true }), { ...modeState, id: 'endless_horde' });
   assert.equal(plan.beat, 'lastStand');
   assert.deepEqual(plan.replay, { finalKill: false }, 'the last stand is the player\'s own death, never a bot\'s kill');

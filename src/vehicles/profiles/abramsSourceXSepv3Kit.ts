@@ -1,4 +1,4 @@
-// M1A2 Abrams SEPv3 field configuration (owner 2026-09-15: "make the m1a2 sepv3 look much better and
+// M1A2 Abrams SEPv3 field configuration (owner 2026-09-15: "make the m1a1_abrams_hc sepv3 look much better and
 // much more detailed. it needs to be better than the sepv2 in terms of detail"). The M1A2C as fielded
 // from 2020: Trophy HV active protection — a launcher assembly bracketed to each inclined turret flank,
 // four radar panels at the turret corners and two counterweights hung on the bustle rack extension —

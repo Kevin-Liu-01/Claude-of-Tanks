@@ -213,4 +213,4 @@ export function buildT62MV1X(P:TankBuilderPort):void {
   addT62MV1Sight(P);
 }
 
-export const T62MV1_X_PROFILES={t62mv1_x:{build:buildT62MV1Modern}} as const;
+export const T62MV1_X_PROFILES={t62mv1:{build:buildT62MV1Modern}} as const;

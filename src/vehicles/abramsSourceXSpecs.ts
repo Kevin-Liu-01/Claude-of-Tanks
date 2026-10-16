@@ -24,11 +24,11 @@ import { turretSideX } from './abramsSourceXDatums.ts';
 export const ABRAMS_SOURCE_X_ENTRIES = Object.freeze([
   // 2026-09-15 owner roster pass: the X studies carry the canonical names (their donors moved
   // to older M1A1 marks) and the M1A1 X / M1A1 HA X studies were retired.
-  ['m1a2_x', 'm1a2', 'M1A2 Abrams'],
-  ['m1a2_tusk_x', 'm1a2_tusk', 'M1A2 Abrams TUSK'],
-  ['m1a2_sepv2_x', 'm1a2_sepv2', 'M1A2 Abrams SEPv2'],
-  ['m1a2_sepv3_x', 'm1a2_sepv3', 'M1A2 Abrams SEPv3'],
-  ['ua_m1a1_x', 'ua_m1a1', 'M1A2 Abrams UA'], // owner 2026-09-15: the kitted Ukrainian study is the M1A2 UA
+  ['m1a2_abrams', 'm1a1_abrams_hc', 'M1A2 Abrams'],
+  ['m1a2_abrams_tusk', 'm1a1_abrams_sa', 'M1A2 Abrams TUSK'],
+  ['m1a2_abrams_sepv2', 'm1a1_abrams_aim', 'M1A2 Abrams SEPv2'],
+  ['m1a2_abrams_sepv3', 'm1a1_abrams_fep', 'M1A2 Abrams SEPv3'],
+  ['ua_m1a2_abrams', 'ua_m1a1', 'M1A2 Abrams UA'], // owner 2026-09-15: the kitted Ukrainian study is the M1A2 UA
 ] as const);
 
 export const ABRAMS_SOURCE_X_IDS = Object.freeze(
@@ -62,10 +62,10 @@ function provisionalArmor(donor: FleetTankSpec, donorId: string): FleetTankSpec[
     Reflect.deleteProperty(volume, 'shapes');
   }
   applyAbramsSourceXSkirtArmor(armor, {
-    extendedFront: donorId === 'm1a2_sepv2',
-    partitionedSkin: donorId === 'm1a2', // the SEPv3's reactive skirt is its ARAT cassettes (2026-09-16)
+    extendedFront: donorId === 'm1a1_abrams_aim',
+    partitionedSkin: donorId === 'm1a1_abrams_hc', // the SEPv3's reactive skirt is its ARAT cassettes (2026-09-16)
   });
-  applyAbramsSourceXRackArmor(armor, { extended: donorId === 'm1a2_sepv2' });
+  applyAbramsSourceXRackArmor(armor, { extended: donorId === 'm1a1_abrams_aim' });
   // The Ukrainian study alone wears the field kit's reactive cassettes (owner 2026-09-15).
   if (donorId === 'ua_m1a1') {
     applyAbramsSourceXUkraineEraArmor(armor);
@@ -94,10 +94,10 @@ export function createAbramsSourceXSpecs(donors: TankSpecRegistry): TankSpecRegi
     Object.assign(spec.dims, {
       hullLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.structuralHullLengthM,
       overallLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.overallLengthM,
-      widthM: id === 'm1a2_sepv3_x' ? SEPV3_SIDE_ARMOR_WIDTH_M
-        : id === 'm1a2_sepv2_x'
+      widthM: id === 'm1a2_abrams_sepv3' ? SEPV3_SIDE_ARMOR_WIDTH_M
+        : id === 'm1a2_abrams_sepv2'
         ? ABRAMS_SOURCE_X_MEASUREMENTS.curvedUrbanArmorWidthM
-        : id === 'm1a2_tusk_x'
+        : id === 'm1a2_abrams_tusk'
           ? ABRAMS_SOURCE_X_MEASUREMENTS.rectangularUrbanArmorWidthM
         : ABRAMS_SOURCE_X_MEASUREMENTS.standardWidthM,
     });

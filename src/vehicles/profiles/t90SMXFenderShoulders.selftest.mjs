@@ -6,7 +6,7 @@ function ray(mesh,origin,direction){
   return new THREE.Raycaster(new THREE.Vector3(...origin),new THREE.Vector3(...direction),0,8).intersectObject(mesh,false)[0];
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);const hull=tank.root.getObjectByName('hull');
     for(const [x,z,y]of [[1.30,-3.45,1.32865],[1.50,-3.35,1.32844],[1.50,-3.26,1.32820],

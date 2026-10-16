@@ -130,7 +130,7 @@ const waterTower: RegionalBuilder = (ctx) => {
   sink.cylinder('stone', [0, H - 0.1, 0], 'y', 0.45, R * 0.93, 8, { decor: true }, T * 0.98, true, ph);
   sink.cylinder('roof', [0, ty, 0], 'y', th, T, 8, {}, T, true, ph);
   for (let k = 0; k < 8; k++) {
-    const a = ph / 2 + k * Math.PI / 4 + ph / 2, f: Face = { origin: [Math.cos(a) * T * 0.93, 0, Math.sin(a) * T * 0.93], u: [-Math.sin(a), 0, Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 1 };
+    const a = ph / 2 + k * Math.PI / 4 + ph / 2, f: Face = { origin: [Math.cos(a) * T * 0.93, 0, Math.sin(a) * T * 0.93], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 1 };
     if (k % 2 === 0) windowUnit(sink, f, 0, ty + 1.2, 0.5, 0.9, { ...WINDOW, shutters: null, bars: 'cross' }, rng, 0.2);
   }
   // the conical cap, the lantern and its finial

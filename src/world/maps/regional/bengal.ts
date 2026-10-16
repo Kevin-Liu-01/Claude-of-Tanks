@@ -161,9 +161,12 @@ const mosque: RegionalBuilder = (ctx) => {
     for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, 0], 'y', r * 0.26, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.26; }
     sink.cylinder('structureMetal', [x, y, 0], 'y', 0.5, 0.05, 6, { colour: rgb(0xb8933e), decor: true }, 0.02);
   }
-  // the minaret at the front corner
-  const mx = W / 2 + 0.2, mz = D / 2 + 0.2;
-  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, 0.75, 10, {}, 0.55);
+  // the minaret at a rear corner, engaged in the walls (the 225 gate, 2026-10-15: standing clear of the front corner it
+  // reached 1.1 m past the chapel's 5.7 m plot, and the front's doors leave it no room there): its shaft reaches at most
+  // 0.3 m past the plot's side and back
+  const mr = 0.75;
+  const mx = Math.min(W / 2 + 0.2, ctx.info.w / 2 + 0.3 - mr), mz = -Math.min(D / 2 + 0.2, ctx.info.d / 2 + 0.3 - mr);
+  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, mr, 10, {}, 0.55);
   sink.cylinder('plaster', [mx, 8.6, mz], 'y', 0.3, 1.05, 10, { decor: true });
   sink.cylinder('plaster', [mx, 11.5, mz], 'y', 1.3, 0.55, 10, {}, 0.05);
   return sink.finish();

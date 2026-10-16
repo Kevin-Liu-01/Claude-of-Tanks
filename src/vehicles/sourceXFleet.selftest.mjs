@@ -17,8 +17,8 @@ import { tacticalRoleHandling } from './tacticalRoleBalance.ts';
 // Every other X study still may not out-tier its donor without an explicit ruling here.
 // 2026-09-23 (owner: "no hidden tanks"): the merkava4 donor record retired, so tier.ts no longer carries the row the
 // no-implicit-increase check read for its study; the donor's last published tier (IX at a10d0a30b) is pinned here.
-const OWNER_TIER_RULINGS = Object.freeze({ k2_x: 10, t90a_x: 10, t90a_vladimir_x: 10, t90m_x: 10, t90sm_x: 10, leo2a4m_x: 10, leo2a5_x: 10,
-  merkava4_x: 9 });
+const OWNER_TIER_RULINGS = Object.freeze({ k2_black_panther: 10, t90a: 10, t90a_vladimir: 10, t90m: 10, t90sm: 10, leo2a5m: 10, leo2a5: 10,
+  merkava4: 9 });
 // Donor records retired with the hidden fleet (2026-09-23): no buildable original remains to differ from.
 const RETIRED_DONORS = new Set(['merkava4']);
 
@@ -32,14 +32,14 @@ for (const donor of new Set(Object.values(SOURCE_X_DONORS))) {
   assert.ok(ALL_TANK_IDS.includes(donor), `${donor}: registered donor`);
   const tank = createTank(donor, null, options);
   try {
-    if (donor === 't90m') assertCurrentT90MLampSeats(tank);
+    if (donor === 't90am') assertCurrentT90MLampSeats(tank);
     donorFingerprints.set(donor, geometryFingerprint(tank.root));
   } finally { tank.dispose(); }
 }
 // 2026-10-01: the role balance (0e5fc79e2, tacticalRoleBalance.ts) layers each vehicle's doctrine onto its aim time,
 // base accuracy and movement/traverse bloom after donor synchronization. A retired donor template (merkava4) or the
 // XK2 source metadata carries no doctrine, so its study must equal that pre-role gun with the study's own doctrine
-// applied (merkava4_x: assault; k2_x: flanker), field for field. A registered donor carries its own doctrine.
+// applied (merkava4: assault; k2_black_panther: flanker), field for field. A registered donor carries its own doctrine.
 const roleTuned = (id, gun) => VEHICLE_ROLE_PROFILES[id]
   ? tacticalRoleHandling({ hullTraverseDegS: 0, turretTraverseDegS: 0, gun }, VEHICLE_ROLE_PROFILES[id].doctrine).gun : gun;
 assert.equal(SOURCE_X_IDS.length, 13);
@@ -53,8 +53,11 @@ for (const id of SOURCE_X_IDS) {
   assert.equal(spec.community, undefined);
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'), `${id}: independently demand-loaded builder`);
   assert.equal(typeof PROCEDURAL_PROFILES[id].build, 'function');
-  assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
-  const templateGun = donor === 'k2' ? k2SourceMetadata().gun : RETIRED_DONORS.has(donor) ? donorRow.gun : null;
+  // An X that took its donor template's name in the schema-3 rename (merkava4_x -> merkava4, t72b3_x -> t72b3, ...)
+  // shares the donor's id string, so the donor's builder cannot be looked up by it: it must own an X builder.
+  if (donor === id) assert.match(PROCEDURAL_PROFILES[id].build.name, /X$/, `${id}: its own X builder, not its donor template's`);
+  else assert.notEqual(PROCEDURAL_PROFILES[id].build, PROCEDURAL_PROFILES[donor]?.build);
+  const templateGun = donor === 'xk2_black_panther' ? k2SourceMetadata().gun : RETIRED_DONORS.has(donor) ? donorRow.gun : null;
   assert.deepEqual(spec.gun, templateGun ? roleTuned(id, templateGun) : donorRow.gun,
     `${id}: production donor combat balance remains independent of the XK2 hybrid`);
   assert.equal(spec.hp, donorRow.hp);

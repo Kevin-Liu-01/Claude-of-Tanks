@@ -3,9 +3,9 @@ import { createTank } from '../tankFactory.ts';
 
 const EPSILON = 1e-6;
 const CASES = Object.freeze({
-  t90: Object.freeze({ variant: 't90', expectedParts: 52 }),
-  t90sm: Object.freeze({ variant: 't90sm', expectedParts: 52 }),
-  t90a_vladimir: Object.freeze({ variant: 't90a_vladimir', expectedParts: 50 }),
+  t90_1992: Object.freeze({ variant: 't90_1992', expectedParts: 52 }),
+  t90sm_2013: Object.freeze({ variant: 't90sm_2013', expectedParts: 52 }),
+  t90a_2006: Object.freeze({ variant: 't90a_2006', expectedParts: 50 }),
 });
 
 for (const [id, expected] of Object.entries(CASES)) {
@@ -41,31 +41,31 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.ok(tank.root.getObjectByName('hullExternalArmor')?.isMesh,
       `${id}: cage remains outside the base hull hit shell`);
 
-    if (id !== 't90') continue;
+    if (id !== 't90_1992') continue;
     const turret = tank.root.getObjectByName('rig_turret');
     const fit = turret?.userData.t90TurretProtectionFitReceipt;
-    assert.ok(fit, 't90: publishes turret ERA and dazzler fit receipt');
+    assert.ok(fit, 't90_1992: publishes turret ERA and dazzler fit receipt');
     assert.equal(fit.supersededExternalEraCleared, true,
-      't90: obsolete donor ERA is cleared before the final package is authored');
+      't90_1992: obsolete donor ERA is cleared before the final package is authored');
     assert.equal(fit.canonicalEraSector, 't90-k5-turret-era');
     assert.equal(fit.chevronEra.rowsPerCheek, 2,
-      't90: two joined carrier rows form the K-5 side-view chevron');
+      't90_1992: two joined carrier rows form the K-5 side-view chevron');
     assert.equal(fit.chevronEra.carriersPerRow, 2,
-      't90: every row retains inner and outer swept carriers');
+      't90_1992: every row retains inner and outer swept carriers');
     assert.equal(fit.chevronEra.tilesTotal, 24,
-      't90: three exact-surface tiles occupy every carrier face');
+      't90_1992: three exact-surface tiles occupy every carrier face');
     assert.equal(fit.chevronEra.exactSurfaceOffsets, true,
-      't90: each cassette face is derived from its carrier plane');
+      't90_1992: each cassette face is derived from its carrier plane');
     assert.equal(fit.shtoraClearsMantlet, true,
-      't90: both enlarged Shtora heads clear the mantlet');
+      't90_1992: both enlarged Shtora heads clear the mantlet');
     assert.ok(fit.mantletClearanceM >= 0.05,
-      't90: Shtora retains visible inner clearance from the mantlet');
+      't90_1992: Shtora retains visible inner clearance from the mantlet');
     assert.ok(fit.shtoraEyeX >= 0.78,
-      't90: Shtora pair is moved outward to the cheek shoulders');
+      't90_1992: Shtora pair is moved outward to the cheek shoulders');
     assert.equal(fit.shtoraClearsChevronDepth, true,
-      't90: both Shtora lenses sit ahead of the chevron tile faces');
+      't90_1992: both Shtora lenses sit ahead of the chevron tile faces');
     assert.ok(fit.shtoraChevronDepthClearanceM >= 0.04,
-      't90: Shtora retains at least 40 mm of depth clearance from the ERA');
+      't90_1992: Shtora retains at least 40 mm of depth clearance from the ERA');
   } finally {
     tank.dispose();
   }

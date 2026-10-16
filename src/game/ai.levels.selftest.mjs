@@ -103,9 +103,9 @@ function drive(bot, ctl, field, seconds, onTick) {
 console.log('[1] no way down: the deck bot leaves the floor target for one on its own level');
 {
   const field = deckField(false);
-  const floor = entity('floor', 't90m', 'player', 0, 30, field, Math.PI);
-  const rival = entity('rival', 'm1a2', 'player', 150, 150, field, Math.PI);   // on the deck, 180 m off: in the arc
-  const deck = entity('deck', 't90m', 'enemy', 0, 55, field, Math.PI);
+  const floor = entity('floor', 't90am', 'player', 0, 30, field, Math.PI);
+  const rival = entity('rival', 'm1a1_abrams_hc', 'player', 150, 150, field, Math.PI);   // on the deck, 180 m off: in the arc
+  const deck = entity('deck', 't90am', 'enemy', 0, 55, field, Math.PI);
   // the rival comes into sight only after the floor bot has been taken as the target
   let clock = 0;
   const ctl = controller(deck, field, [floor, rival],
@@ -126,8 +126,8 @@ console.log('[1] no way down: the deck bot leaves the floor target for one on it
 console.log('[2] a ramp: the floor bot changes level by the route up to the deck');
 {
   const field = deckField(true);
-  const deck = entity('deck', 't90m', 'enemy', 0, 55, field, Math.PI);
-  const floor = entity('floor', 'm1a2', 'player', 0, 30, field, 0);
+  const deck = entity('deck', 't90am', 'enemy', 0, 55, field, Math.PI);
+  const floor = entity('floor', 'm1a1_abrams_hc', 'player', 0, 30, field, 0);
   const ctl = controller(floor, field, [deck]);
   let upAt = null;
   drive(floor, ctl, field, 120, (t) => {
@@ -141,8 +141,8 @@ console.log('[2] a ramp: the floor bot changes level by the route up to the deck
 console.log('[3] no ramp and nobody else: the floor bot gives up the deck target instead of standing on it');
 {
   const field = deckField(false);
-  const deck = entity('deck', 't90m', 'enemy', 0, 55, field, Math.PI);
-  const floor = entity('floor', 'm1a2', 'player', 0, 30, field, 0);
+  const deck = entity('deck', 't90am', 'enemy', 0, 55, field, Math.PI);
+  const floor = entity('floor', 'm1a1_abrams_hc', 'player', 0, 30, field, 0);
   const ctl = controller(floor, field, [deck]);
   let engagedS = 0;
   drive(floor, ctl, field, 40, () => { if (ctl.debugInfo().targetId === 'deck') engagedS += SIM_DT; });
@@ -153,8 +153,8 @@ console.log('[3] no ramp and nobody else: the floor bot gives up the deck target
 console.log('[4] control: a target up on the deck but far off stays in the arc and keeps the slot');
 {
   const field = deckField(false);
-  const far = entity('far', 't90m', 'enemy', 0, 330, field, Math.PI);   // 25 m up at 300 m: 4.8 degrees
-  const floor = entity('floor', 'm1a2', 'player', 0, 30, field, 0);
+  const far = entity('far', 't90am', 'enemy', 0, 330, field, Math.PI);   // 25 m up at 300 m: 4.8 degrees
+  const floor = entity('floor', 'm1a1_abrams_hc', 'player', 0, 30, field, 0);
   const ctl = controller(floor, field, [far]);
   drive(floor, ctl, field, 30);
   ok(ctl.debugInfo().unbearableVerdicts === 0 && ctl.debugInfo().levelRoutes === 0, 'no verdict, no level route');

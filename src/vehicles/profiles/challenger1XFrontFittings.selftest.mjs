@@ -12,17 +12,17 @@ import {TANK_SPECS} from '../specs.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Historical photo fittings only; never current supplied-file acceptance.
 function createTank(...args) {
- const armor=TANK_SPECS.challenger1_x.armor;
+ const armor=TANK_SPECS.challenger1_mk3.armor;
  const saved={turret:armor.turretPivot,gun:armor.gunPivot};
  // The photo draft was authored in its own rig frame; build it there, not in the supplied model's joints.
  armor.turretPivot=[0,1.70,.54];armor.gunPivot=[0,.40,1.15];
- registerProfiledBuilders({challenger1_x:photoDraft});
+ registerProfiledBuilders({challenger1_mk3:photoDraft});
  try{return createPlayableTank(...args);}
- finally{armor.turretPivot=saved.turret;armor.gunPivot=saved.gun;registerProfiledBuilders({challenger1_x:supplied});}
+ finally{armor.turretPivot=saved.turret;armor.gunPivot=saved.gun;registerProfiledBuilders({challenger1_mk3:supplied});}
 }
 
 for(const quality of ['high','low']) {
- const tank=createTank('challenger1_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
+ const tank=createTank('challenger1_mk3',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true});
  try {
   tank.root.scale.setScalar(1 / 1.10); tank.root.updateMatrixWorld(true);const meshes=[];
   tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m);});

@@ -22,13 +22,13 @@ for (const [id, reason] of Object.entries(NO_ROOF_WEAPON)) {
   assert.ok(reason.length > 40, `${id}: the real vehicle's armament is stated`);
   assert.equal(AUXILIARY_INVENTORY[id]?.guns.length ?? 0, 0, `${id}: no roof weapon on the real vehicle, none drawn`);
 }
-assert.ok(carriesNoRoofWeapon('bmpt_t90') && !carriesNoRoofWeapon('m1a2'), 'the list is the exemption, not the rule');
+assert.ok(carriesNoRoofWeapon('bmpt_t90') && !carriesNoRoofWeapon('m1a1_abrams_hc'), 'the list is the exemption, not the rule');
 
 // the standard check's census: a listed vehicle needs zero, every other still needs a gun
 const census = (mg) => ({ mg, dressing: 0, invalidWeaponMarkers: 0 });
 assert.equal(roofEquipmentVerdict('bmpt_t90', census(0), null).passed, true, 'a listed vehicle passes with no roof gun');
 assert.equal(roofEquipmentVerdict('bmpt_t90', census(1), null).passed, false, 'and fails with a decorative one');
-assert.equal(roofEquipmentVerdict('m1a2', census(0), null).passed, false, 'an unlisted vehicle still needs its roof gun');
+assert.equal(roofEquipmentVerdict('m1a1_abrams_hc', census(0), null).passed, false, 'an unlisted vehicle still needs its roof gun');
 
 // Every working station is one named object the presentation finds by name (src/fx/auxiliaryPresentation.ts), and the
 // whole roof's aim and bursts ride one vehicle row: worst-case numbers (every float at its longest, a smoke screen up,

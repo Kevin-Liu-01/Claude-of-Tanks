@@ -12,7 +12,7 @@ const mouths=[
 ];
 
 for(const quality of['high','low']){
-  const tank=createTank('k2_x',null,{proceduralOnly:true,geometryReceipt:true,quality});
+  const tank=createTank('k2_black_panther',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try{
     tank.root.updateMatrixWorld(true);
     for(const y of[2.54,2.64,2.70]){

@@ -93,7 +93,7 @@ function closedSupportedTerrace() {
 closedSupportedTerrace();
 for(const quality of['high','low']) {
  const census=fieldKitCensus();
- const tank=createTank('leclerc_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,partCensus:census.partCensus});
+ const tank=createTank('leclerc_xlr',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,partCensus:census.partCensus});
  kit=fieldKitFilter(tank.root,census);
  try {
   tank.root.updateMatrixWorld(true);const all=[];

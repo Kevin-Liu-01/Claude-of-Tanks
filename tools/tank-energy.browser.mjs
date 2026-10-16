@@ -15,14 +15,14 @@ try{
   await page.exposeFunction('energyCapture',name=>page.screenshot({path:resolve(out,`${name}.png`)}));
   const reports=await page.evaluate(async baseline=>{
    const T=await import('/node_modules/three/build/three.module.js');
-   const factory=await import('/src/vehicles/fleetFactory.ts');await factory.ensureTankBuilder('m1a2');
+   const factory=await import('/src/vehicles/fleetFactory.ts');await factory.ensureTankBuilder('m1a1_abrams_hc');
    const current=await import('/src/game/juggernautVisual.ts');
    const versions=baseline?[['before',await import(baseline)],['after',current]]:[['after',current]];
    const renderer=new T.WebGLRenderer({antialias:true});renderer.setSize(1280,800);renderer.setPixelRatio(1);document.body.append(renderer.domElement);
    const scene=new T.Scene();scene.background=new T.Color(0x18242e);scene.add(new T.HemisphereLight(0xdceeff,0x605341,3));
    const light=new T.DirectionalLight(0xffe5be,3);light.position.set(20,30,10);scene.add(light);
    const camera=new T.PerspectiveCamera(38,1280/800,.1,400);
-   const visual=factory.createTank('m1a2',{}, {quality:'ai',decor:false});
+   const visual=factory.createTank('m1a1_abrams_hc',{}, {quality:'ai',decor:false});
    const roots=Array.from({length:14},()=>visual.root.clone(true));
    const gl=renderer.getContext(),timer=gl.getExtension('EXT_disjoint_timer_query_webgl2');
    const nextFrame=()=>new Promise(r=>requestAnimationFrame(r));const results=[];

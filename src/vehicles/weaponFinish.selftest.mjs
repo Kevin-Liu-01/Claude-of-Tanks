@@ -149,8 +149,8 @@ const engineCtx = {
 // VT-4A1), a measured source station (T-72B3M), the field roof weapon (Griffin 50), exact source-measured guns (Sabra,
 // BMP-3M Dragun, Ares, Merkava Barak), the Tagil tower (T-90MS). (VH.14, 2026-10-15: the M2A2 Bradley's stowed M240,
 // this list's IFV gun steel, is gone with every decorative gun; the CV90's open-yoke station is the IFV case.)
-const IDS = ['m1a1', 'm1a2', 'cv90', 'type89_light_tiger', 'vt4a1', 't72b3m', 'griffin50_x', 'sabra_mk2_x',
-  'bmp3m_dragun125_x', 'ares_apc_x', 'merkava4_barak', 't90ms'];
+const IDS = ['m1a1', 'm1a1_abrams_hc', 'cv90', 'raiju_ifv', 'vt4a1', 't72b3m_2022', 'griffin50mm', 'sabra_mk2',
+  'bmp3m_dragun125', 'ares_apc', 'merkava4_barak', 't90ms_2011'];
 const isWeaponMesh = (o) => {
   for (let q = o; q; q = q.parent) {
     const fitting = q.userData?.fitting;
@@ -232,12 +232,12 @@ try {
     assert.ok(weaponMeshes >= 1, `${id}: weapon meshes were covered (${weaponMeshes})`);
   }
   // the T-90MS Tagil tower: the optic housing projects the camouflage at the fleet density (was 4.6 a metre)
-  const t90ms = visuals[IDS.indexOf('t90ms')];
-  const housing = t90ms.root.getObjectByName('t90msTagilTowerOpticHousing');
-  assert.ok(housing, 't90ms: the Tagil optic housing exists');
+  const t90ms_2011 = visuals[IDS.indexOf('t90ms_2011')];
+  const housing = t90ms_2011.root.getObjectByName('t90msTagilTowerOpticHousing');
+  assert.ok(housing, 't90ms_2011: the Tagil optic housing exists');
   {
-    const density = uvDensityMedian(housing, t90ms.root);
-    assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < 0.05, `t90ms: the optic housing projects the camouflage at the fleet density (${density.toFixed(3)} per metre, was 4.6)`);
+    const density = uvDensityMedian(housing, t90ms_2011.root);
+    assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < 0.05, `t90ms_2011: the optic housing projects the camouflage at the fleet density (${density.toFixed(3)} per metre, was 4.6)`);
   }
 } finally {
   for (const visual of visuals) visual.dispose();
@@ -249,7 +249,7 @@ assert.equal(leaked.length, 0, 'every weapon-finish material is released on disp
 
 // ---- geometry-receipt builds are untouched ------------------------------------------------------------------------
 {
-  const receipt = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
+  const receipt = createTank('m1a1_abrams_hc', null, { proceduralOnly: true, geometryReceipt: true });
   let wear = 0, finish = 0;
   receipt.root.traverse((o) => {
     if (!o.isMesh) return;

@@ -3,7 +3,7 @@ import {Vector3,Mesh,MeshBasicMaterial,DoubleSide,Raycaster} from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
 const mat=new MeshBasicMaterial({side:DoubleSide}),ray=new Raycaster();
-for(const id of ['vt4a1','ztz99a2','ztz99a2_prototype'])for(const quality of ['high','low']){
+for(const id of ['vt4a1','ztz99a2','ztz99a'])for(const quality of ['high','low']){
  const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true}),spec=getSpec(id);
  try{
   const gun=t.root.getObjectByName('rig_gun'),turret=t.root.getObjectByName('rig_turret');

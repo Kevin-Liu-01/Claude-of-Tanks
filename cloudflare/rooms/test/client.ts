@@ -96,7 +96,7 @@ export async function connect(code: string, ip = `test-${code}`): Promise<Client
 }
 
 export function identity(id: string, resume = token('a'), next = token('b'), extra: Record<string, unknown> = {}): Record<string, unknown> {
-  return { player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 'm1a2' }, ...extra };
+  return { player: { id, name: id }, resumeToken: resume, nextResumeToken: next, selection: { specId: 'm1a1_abrams_hc' }, ...extra };
 }
 
 export async function create(code: string, settings: Record<string, unknown> = { teamSize: 2, mapId: 'verdant' }): Promise<Client> {

@@ -2,7 +2,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // Headless screenshot harness for critic agents.
 // Usage: node tools/screenshot.mjs [--out shots] [--views name1,name2]
 //   [--width 1920] [--height 1080] [--dpr 1] [--dyn-scale 0.8]
-//   [--tank k2] [--roster t90m,challenger_3,leo2a7v]
+//   [--tank xk2_black_panther] [--roster t90am,challenger3_proto,leo2_improved]
 // Starts a vite dev server, loads the game in headless Chromium, waits for
 // window.__GAME_READY, then iterates window.__SHOTS.views (or --views subset),
 // calling window.__SHOTS.set(name) before each capture.
@@ -220,16 +220,16 @@ try {
     // tank_models r3: guard against a future dead-flank/stand-in restage.
     // camo r3 amendment: the from-scratch rebuild program (owner mandate)
     // re-registers vehicles as procedural while their curve-true builds land
-    // — m1a2 flipped to {source:'procedural'} on 2026-08-04. Require the GLB
+    // — m1a1_abrams_hc flipped to {source:'procedural'} on 2026-08-04. Require the GLB
     // swap ONLY while a GLB source is registered; a procedural registration
     // gets the garage view's visible-hero check instead (real model, not a
     // stub or an empty flank).
     if (view === 'tank_closeup_modern') {
       const closeupOk = await page.evaluate(async () => {
-        const t = window.__DEBUG.game.tankById.get('m1a2');
+        const t = window.__DEBUG.game.tankById.get('m1a1_abrams_hc');
         if (!t || !t.visual) return false;
         const S = await import('/src/vehicles/specs.ts');
-        const src = (S.MODEL_SOURCE || {}).m1a2;
+        const src = (S.MODEL_SOURCE || {}).m1a1_abrams_hc;
         const wantsGlb = !!(src && src.source && src.source !== 'procedural');
         let swapped = false, vis = 0;
         t.visual.root.traverse((o) => {

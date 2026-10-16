@@ -18,13 +18,13 @@ export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 // the source study, independently of any candidate envelope fitting.
 function abramsSourceXConfiguration(id: string) {
   // 2026-09-15: the M1A1 X and M1A1 HA X studies were retired; the Ukrainian M1A1 keeps the A1 kit
-  const a1 = id === 'ua_m1a1_x';
-  const sepv3 = id === 'm1a2_sepv3_x';
-  const curvedArat = id === 'm1a2_sepv2_x';
+  const a1 = id === 'ua_m1a2_abrams';
+  const sepv3 = id === 'm1a2_abrams_sepv3';
+  const curvedArat = id === 'm1a2_abrams_sepv2';
   // owner 2026-09-16: the SEPv3 carries all the side turret and skirt armour and attachments — the
   // rectangular ARAT set with the Trophy launchers taking three stations of each rear course
-  return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_tusk_x' || sepv3,
-    ukrainian: id === 'ua_m1a1_x' };
+  return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_abrams_tusk' || sepv3,
+    ukrainian: id === 'ua_m1a2_abrams' };
 }
 
 function turretSlab(P: TankBuilderPort, corners: readonly XYZ[]): void {

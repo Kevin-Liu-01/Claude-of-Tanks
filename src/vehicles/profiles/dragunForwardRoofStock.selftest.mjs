@@ -11,7 +11,7 @@ import {KIT} from './kit.ts';
 import {buildBmp3mDragun125X as original} from './bmp3mDragun125X.ts';
 import {buildBmp3mDragun125X as candidate} from './bmp3mDragun125X.ts';
 import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
-const id='bmp3m_dragun125_x',double=new T.MeshBasicMaterial({side:T.DoubleSide});
+const id='bmp3m_dragun125',double=new T.MeshBasicMaterial({side:T.DoubleSide});
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed frame at this factor. Source calipers stay in the source frame and probes of the installed scene map them
 // by `f`; the builder parts recorded here are captured before the bake, so their seats stay in the source frame.

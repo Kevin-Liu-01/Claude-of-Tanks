@@ -19,7 +19,7 @@ assert.equal(smEngineDeckSupportRoof(-3.43, 1.317), 1.317, 'rear nose is never r
 assert.equal(smEngineDeckSupportRoof(-2.85, 1.56), 1.485, 'carrier cannot occlude the source lower deck');
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('t90sm_x', null, { quality, proceduralOnly: true, geometryReceipt: true });
+  const tank = createTank('t90sm', null, { quality, proceduralOnly: true, geometryReceipt: true });
   try {
     tank.root.updateMatrixWorld(true);
     const hull = tank.root.getObjectByName('rig_hull');

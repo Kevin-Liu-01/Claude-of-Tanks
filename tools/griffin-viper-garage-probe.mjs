@@ -54,7 +54,7 @@ try {
     }, { timeout: 60000 }, id);
   }
   for (const phase of ['first-selection', 'cached-return']) {
-    if (phase === 'cached-return') await select('griffin50_x');
+    if (phase === 'cached-return') await select('griffin50mm');
     await select('griffin_viper');
     const sample = await page.evaluate(() => {
       const d = window.__DEBUG, root = d.pedestalVisual.root;

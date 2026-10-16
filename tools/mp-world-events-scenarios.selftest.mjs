@@ -59,7 +59,7 @@ import { createMatchHost } from '../src/mp/host/matchHost.ts';
 import * as migration from '../src/mp/host/migrationState.ts';
 
 const MAP_ID = 'verdant';
-await ensureAuthorityFleet(['m1a2', 't90m']);
+await ensureAuthorityFleet(['m1a1_abrams_hc', 't90am']);
 
 const anchorOf = (o) => [(o.min[0] + o.max[0]) * 0.5, o.min[1], (o.min[2] + o.max[2]) * 0.5];
 const centreKey = (pos) => pos.map((v) => Number(v).toFixed(3)).join(',');
@@ -126,8 +126,8 @@ for (const pair of sharedGroups) {
   const match = createAuthoritativeMatch({
     mapId: MAP_ID, seed: 7, countdownS: 0, worldCollision: hostWorld,
     players: [
-      { id: 'driver', specId: 'm1a2', team: 'alpha', spawn: { x: cx, z: cz - 9, yaw: 0 } },
-      { id: 'far', specId: 't90m', team: 'bravo', spawn: { x: cx + 160, z: cz + 160, yaw: 0 } },
+      { id: 'driver', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: cx, z: cz - 9, yaw: 0 } },
+      { id: 'far', specId: 't90am', team: 'bravo', spawn: { x: cx + 160, z: cz + 160, yaw: 0 } },
     ],
   });
   match.onMatchReady();
@@ -184,8 +184,8 @@ const hostWorld = createDedicatedWorldCollision(MAP_ID, { retain: true });
 const fall = createAuthoritativeMatch({
   mapId: MAP_ID, seed: 11, countdownS: 0, worldCollision: hostWorld,
   players: [
-    { id: 'faller', specId: 'm1a2', team: 'alpha', spawn: { x: tree.anchor[0] + 2.5, z: tree.anchor[2], yaw: 0 } },
-    { id: 'viewer', specId: 't90m', team: 'bravo', spawn: { x: tree.anchor[0] + 160, z: tree.anchor[2] + 160, yaw: 0 } },
+    { id: 'faller', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: tree.anchor[0] + 2.5, z: tree.anchor[2], yaw: 0 } },
+    { id: 'viewer', specId: 't90am', team: 'bravo', spawn: { x: tree.anchor[0] + 160, z: tree.anchor[2] + 160, yaw: 0 } },
   ],
 });
 fall.onMatchReady();
@@ -223,8 +223,8 @@ assert.deepEqual(silentlyCrushed.map(({ index }) => index), [], 'the host crushe
 // the viewer's presentation: the frame shows the hull two ticks before it landed — the 2026-10-02 case
 const client = clientPresentation();
 const roster = [
-  { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'faller', name: 'Faller', specId: 'm1a2' },
-  { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'viewer', name: 'Viewer', specId: 't90m' },
+  { entityId: 1, seat: 0, team: TEAM.ALPHA, bot: false, connected: true, playerId: 'faller', name: 'Faller', specId: 'm1a1_abrams_hc' },
+  { entityId: 2, seat: 1, team: TEAM.BRAVO, bot: false, connected: true, playerId: 'viewer', name: 'Viewer', specId: 't90am' },
 ];
 await client.presentation.applyRoster(roster, { ownEntityId: 2, ownPlayerId: 'viewer', roomId: 'r', mapId: MAP_ID, mode: 'standard', rulesetJson: '{}' });
 function sample(entityId, pos, flags = 0) {
@@ -273,9 +273,9 @@ const ploughWorld = createDedicatedWorldCollision(MAP_ID, { retain: true });
 const plough = createAuthoritativeMatch({
   mapId: MAP_ID, seed: 23, countdownS: 0, worldCollision: ploughWorld,
   players: [
-    { id: 'p1', specId: 'm1a2', team: 'alpha', spawn: { x: standX + 8, z: standZ - 12, yaw: 0 } },
-    { id: 'p2', specId: 't90m', team: 'alpha', spawn: { x: standX + 20, z: standZ - 12, yaw: 0 } },
-    { id: 'p3', specId: 'm1a2', team: 'bravo', spawn: { x: standX + 32, z: standZ - 12, yaw: 0 } },
+    { id: 'p1', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: standX + 8, z: standZ - 12, yaw: 0 } },
+    { id: 'p2', specId: 't90am', team: 'alpha', spawn: { x: standX + 20, z: standZ - 12, yaw: 0 } },
+    { id: 'p3', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: standX + 32, z: standZ - 12, yaw: 0 } },
   ],
 });
 plough.onMatchReady();
@@ -451,8 +451,8 @@ async function migrationScenario({ keyframeNewer }) {
   const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
   const tokenFor = (seat, playerId, team, specId) => signSeatToken(hostSecret, { v: 1, roomId: 'ROOMD', seat, playerId, name: playerId, team, specId, iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
   const seats = [
-    { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a2', spawn: { x: -250, z: -250, yaw: 0 } },
-    { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m', spawn: { x: 250, z: 250, yaw: Math.PI } },
+    { seat: 0, playerId: 'host', name: 'Host', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: -250, z: -250, yaw: 0 } },
+    { seat: 1, playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90am', spawn: { x: 250, z: 250, yaw: Math.PI } },
   ];
   const config = { roomId: 'ROOMD', matchId, generation: 1, mapId: MAP_ID, mode: 'standard', seed: 5, seats, bots: [], countdownS: 0, battleLimitS: 600, hostSecret, manifestBase: null, resume: null };
   const host = createMatchHost({
@@ -466,7 +466,7 @@ async function migrationScenario({ keyframeNewer }) {
   // the hull stands until bob holds what a migration boots from (released below)
   let drive = false;
   const hostClient = new MatchClient({
-    transport: new MigratingTransport(host.transport), token: tokenFor(0, 'host', 'alpha', 'm1a2'), clock: time.clock,
+    transport: new MigratingTransport(host.transport), token: tokenFor(0, 'host', 'alpha', 'm1a1_abrams_hc'), clock: time.clock,
     controls: () => ({ throttle: drive ? 1 : 0, steer: 0, brake: !drive, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }),
   });
   clients.push(hostClient);
@@ -477,7 +477,7 @@ async function migrationScenario({ keyframeNewer }) {
   const rtcOnFrame = bobRtc.onFrame.bind(bobRtc);
   bobRtc.onFrame = (listener) => rtcOnFrame((bytes) => { if (!(cutSnapshots && peekMessageType(bytes) === MESSAGE_TYPE.SNAPSHOT)) listener(bytes); });
   const bobTransport = new MigratingTransport(bobRtc);
-  const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'bravo', 't90m'), clock: time.clock });
+  const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'bravo', 't90am'), clock: time.clock });
   clients.push(bobClient);
   bobClient.connect();
   /** Seal a keyframe at the host's current tick and deliver it (no virtual time passes while it is sealed and sent). */

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { installDebugSurface } from './debugSurface.ts';
 import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 
-let selected = 'm1a2';
+let selected = 'm1a1_abrams_hc';
 let shotMode = false;
 let networkState = 'connected';
 let nightLighting = null;
@@ -69,10 +69,10 @@ assert.equal(surface.nightLighting, nightLighting,
   'native probes get the actual lifecycle owner through the live diagnostic getter');
 assert.equal(surface.visitOwnedGeometries, visitOwnedObject3DGeometries,
   'explicit diagnostics expose the maintained read-only owner without a boot/frame scan');
-assert.equal(surface.selectedSpecId, 'm1a2');
-surface.selectGarageTank('t90m');
-assert.equal(surface.selectedSpecId, 't90m', 'selection getter remains live');
-assert.deepEqual(surface.pedestalCacheIds, ['t90m']);
+assert.equal(surface.selectedSpecId, 'm1a1_abrams_hc');
+surface.selectGarageTank('t90am');
+assert.equal(surface.selectedSpecId, 't90am', 'selection getter remains live');
+assert.deepEqual(surface.pedestalCacheIds, ['t90am']);
 surface.shotMode = true;
 assert.equal(surface.shotMode, true, 'shot-mode accessor preserves coercion owner');
 assert.equal(surface.network.state, 'connected');

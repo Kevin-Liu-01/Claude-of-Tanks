@@ -1,9 +1,10 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { lathedWheelSection } from './lathedWheelStock.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Leopard 2 lineage + KF51 procedural profiles (fidelity oracles:
-// leo2a6_buh, recovered leo2a5 / leo2a7v / leo2_revolution / leopard2_proto,
+// leo2a6_buh, recovered leo2a4_v / leo2_improved / leo2_revolution / leopard2_proto,
 // kf51_grip420). Owned by the Leopard family agent.
 //
 // Wave 2: fully bespoke build functions replacing the generic kit profiles
@@ -27,13 +28,13 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // - leopard2_proto's bergman print has a SUNKEN turret and a deck-level gun
 //   bar; the build makes the real proud PT turret + full 105 mm — its turret
 //   and gun component scores are knowingly oracle-capped (see packet).
-// - leo2a5's print fuses most of the turret shell into the hull node; the
+// - leo2a4_v's print fuses most of the turret shell into the hull node; the
 //   turret channel is partially degenerate (see packet).
 //
 // WIDTH GUARD: the fidelity lab width-normalizes both models to the spec
 // width and crops the gun-overhang metric at the union of both hull masks'
-// z-extent. Committed max widths: leo2a6/leo2a5 3.75, leopard2_proto 3.70,
-// kf51/leo2a7v 3.60, leo2_revolution 4.00. Nothing may stand wider, and the
+// z-extent. Committed max widths: leo2a4/leo2a5 3.75, leopard2_proto 3.70,
+// kf51_evo/leo2a7v 3.60, leo2_revolution 4.00. Nothing may stand wider, and the
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -1115,7 +1116,7 @@ function leopardChevronSurfacePanel(
 function leoGear(P: TankBuilderPort, g: LeopardGearConfig): void {
   const { buildRunningGear } = KIT;
   buildRunningGear(P, {
-    // dishR opt-in (r3 leo2a6 #1): a smaller painted dish widens the dark
+    // dishR opt-in (r3 leo2a4 #1): a smaller painted dish widens the dark
     // rubber tire ring on the wheel faces; default 0.84 keeps every sibling
     // byte-identical.
     style: 'rubber', dishR: g.dishR ?? 0.84,
@@ -1126,7 +1127,7 @@ function leoGear(P: TankBuilderPort, g: LeopardGearConfig): void {
     rollers: g.rollers ?? [{ z: 1.95, y: 0.84, r: 0.085 }, { z: 0.75, y: 0.84, r: 0.085 }, { z: -0.55, y: 0.84, r: 0.085 }, { z: -1.80, y: 0.84, r: 0.085 }],
     trackW: g.trackW, trackTh: g.trackTh, topY: g.topY,
     botY: g.botY ?? 0.075,
-    // linkPitchM opt-in (kf51 visual r1 #2): finer shoe pitch; undefined
+    // linkPitchM opt-in (kf51_evo visual r1 #2): finer shoe pitch; undefined
     // keeps the kit default so every sibling stays byte-identical.
     linkPitchM: g.linkPitchM,
     shoeRadialScale: g.shoeRadialScale,
@@ -1140,13 +1141,13 @@ function leoGear(P: TankBuilderPort, g: LeopardGearConfig): void {
     dedupeLoopPoints: g.dedupeLoopPoints,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
-    // uk.ts chieftain5 precedent): per-tank pad/chain tones + the ambient
+    // uk.ts chieftain3 precedent): per-tank pad/chain tones + the ambient
     // floor rehook. All undefined for every other caller — buildRunningGear
     // defaults stay byte-identical (a6/kf51/a5 hashes hold).
     padHex: g.padHex, chainHex: g.chainHex,
     gearFloor: g.gearFloor,
     wheelFaceLayers: g.wheelFaceLayers,
-    // r15 leo2_revolution §B6 opt-in (m1a2 contact-pin precedent, factory
+    // r15 leo2_revolution §B6 opt-in (m1a1_abrams_hc contact-pin precedent, factory
     // ~line 869): per-tank contact-patch pins — moving zF rearward flattens
     // the approach tangent to the raised idler. Undefined for every other
     // caller: buildRunningGear falls back to wheelZs ± wheelR*0.5, so
@@ -1238,7 +1239,7 @@ function leopardA6MantletRoofBridge(
 
 // ---------------------------------------------------------------------------
 // GATE-V10 measured-curve machinery for the two live-mask wedge tanks
-// (leo2a6 / leo2a5). Every constant is read off the fresh post-repair
+// (leo2a4 / leo2a4_v). Every constant is read off the fresh post-repair
 // extractions (docs/references/profiles/<id>.json decoded to world coords)
 // — the a6 whips are folded and the a5 shell fully absorbed, so the masks
 // are honest now. Original primitive lofts only.
@@ -1578,7 +1579,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       [-bkW2, tip[1] - 0.05, tip[0] - 0.04], [bkW2, tip[1] - 0.05, tip[0] - 0.04],
       [bkW2, tip[1] - 0.19, tip[0]], [-bkW2, tip[1] - 0.19, tip[0]]));
     // nose interior fill (kept above the belly line). H.noseFillZFront OPT-IN
-    // (§B8 leo2a4 bow order 2026-08-06; default byte-identical): the fill's
+    // (§B8 leo2a2 bow order 2026-08-06; default byte-identical): the fill's
     // front face at tip-0.40 painted a full-width vertical wall between the
     // tracks (the owner's bow-cliff class) — pulling it back INSIDE the beak
     // underside's belt-foot band (tip-0.52..tip-0.38) leaves the RAKED
@@ -1662,7 +1663,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
   const gRx = -Math.atan2(g[0][1] - g[1][1], g[1][0] - g[0][0]);
   const leoHullV3HullStage7 = (): void => {
     for (const s of [-1, 1] as const) {
-      // splashArms opt-out (r3 leo2a6 #10): these bare detail-grey slabs were
+      // splashArms opt-out (r3 leo2a4 #10): these bare detail-grey slabs were
       // the critic's "two untextured grey glacis slabs" — a6 replaces them
       // with scheme-camo deflector boards on the same footprint.
       if (H.splashArms !== false) {
@@ -2095,7 +2096,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       xc: H.xc, trackW: H.trackW, wheelR: H.wheelR, wheelY: H.wheelY,
       span: H.span, sprocket: H.sprocket, idler: H.idler, topY: H.topY,
       botY: H.botY ?? 0.06, rollers: H.rollers, dishR: H.dishR,
-      // §B8 leo2a4 wheel-read opt-ins (revolution B1 lineage — all undefined
+      // §B8 leo2a2 wheel-read opt-ins (revolution B1 lineage — all undefined
       // for every other caller: leoGear/buildRunningGear defaults stay
       // byte-identical, sibling hashes hold).
       gearFloor: H.gearFloor, padHex: H.padHex, chainHex: H.chainHex,
@@ -2103,7 +2104,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       shoeWidthScale: H.shoeWidthScale,
       shoeOutboardOffset: H.shoeOutboardOffset,
       wheelFaceLayers: H.wheelFaceLayers,
-      // §5.345 opt-in passthrough (kf51b leopard-descent rebase): undefined
+      // §5.345 opt-in passthrough (kf51_u leopard-descent rebase): undefined
       // for every other caller — leoGear/buildRunningGear defaults hold
       // byte-identical (guard hashes prove it).
       linkPitchM: H.linkPitchM,
@@ -2657,7 +2658,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
       P.add('turretDetail', box(0.045, 0.045, RK.z0 - RK.z1), s * RK.x, RK.bot, (RK.z0 + RK.z1) / 2);
     }
     if (RK.slats) {
-      // SLATTED floor (shaded-parity r2 #8, leo2a6): thin longitudinal slats
+      // SLATTED floor (shaded-parity r2 #8, leo2a4): thin longitudinal slats
       // over the CLOSED hull deck below — from straight top the rear-deck fan
       // arcs read complete between them (the old solid mesh-floor slab
       // occluded the fan fronts and read as a floating rectangle). FILL law
@@ -4167,7 +4168,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     // on the r2 pairs), wheels flat pale scheme-grey, saturated BLUE glass
     // dots (0x2a3540 metal 0.85 fired blue sky reflections), ORANGE wood
     // jack tab. createTankMaterials is per-instance so this scopes to
-    // leo2a6; the pad/inner-chain clones are retoned by hex match with the
+    // leo2a4; the pad/inner-chain clones are retoned by hex match with the
     // ambient floor re-hooked (clones lose onBeforeCompile).
     // r3 #1 HUE-FAMILY RETONE (fleet law, 2nd occurrence of the warm
     // overshoot): the r2 tones passed the 0.92-1.16 luminance-ratio law but
@@ -5065,7 +5066,7 @@ export function buildLeo2A5(builder: object) {
     {
       const { cylY } = KIT;
       // 2026-10-08 (the owner's field standard in main 6763d7cc0 and his 2A5M precedent: activate the original station,
-      // don't remove it; the coordinator's ruling on the lane's audit): on leo2a5_a5nl the loader's gun is the hull's
+      // don't remove it; the coordinator's ruling on the lane's audit): on leo2a4m the loader's gun is the hull's
       // working roof weapon, a remote-controlled MAG on its loader-ring pintle with the post as its stock, and the A5NL's
       // duplicate open-yoke tower is gone. Gameplay: functional roof guns stay 1 (12.7 -> 7.62 mm).
       // 2026-10-14 (VH.14, the coordinator's ruling "roof weapons match the real vehicle and every drawn gun works"):
@@ -5074,7 +5075,7 @@ export function buildLeo2A5(builder: object) {
       // which could not turn, and the spare MG3 laid across the bustle are gone.
       const finishLoaderStation = captureAuxiliaryStock(P, 'leo2a5_loader_machine_gun');
       P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
-      const a5nl = P.spec.id === 'leo2a5_a5nl';
+      const a5nl = P.spec.id === 'leo2a4m';
       const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
         remoteControlled: a5nl, working: !a5nl, seed: 5087 });
       loaderMg.name = 'leo2a5_loader_machine_gun';
@@ -5406,7 +5407,7 @@ export function buildLeo2A5(builder: object) {
           });
         };
         buildLeo2A5AssemblyStage10();
-        // MG PHYSICS pale parts (a6 r9 / kf51 r8 recipe): the loader MG3 rides
+        // MG PHYSICS pale parts (a6 r9 / kf51_evo r8 recipe): the loader MG3 rides
         // the sky-backed roofline — pale top-lit barrel + receiver cover. Both
         // overlays stay INSIDE the certified envelope (cover top 2.648w under
         // the 2.653 heightM anchor line; barrel +1.4mm co-rod shares its rows).
@@ -6217,7 +6218,7 @@ function buildLeo2A5A5NL(builder: object) {
 
   // 2026-10-08 (the owner's field standard in main 6763d7cc0; the coordinator's ruling on the lane's audit): no
   // open-yoke tower. A 2A4M carries no RWS, and the tower stood 0.98 m from the loader's gun, which is now the hull's
-  // working station (buildLeo2A5's leo2a5_a5nl branch, the owner's 2A5M precedent).
+  // working station (buildLeo2A5's leo2a4m branch, the owner's 2A5M precedent).
 
   // Roof electronics, warning beacons and whip bases add the requested
   // modern-service density while remaining attached to broad roof stations.
@@ -6255,8 +6256,8 @@ function buildLeo2A5A5NL(builder: object) {
 // ---------------------------------------------------------------------------
 // FLW 200-class REMOTE WEAPON STATION (owner order §5.09-5, 2026-08-07:
 // "put a huge automated turret crows system on the revolution and other
-// leopards too"). Shared by the four NON-GRADUATE leopards only (leo2a4 /
-// leopard2_proto / leo2a7v / leo2_revolution) — graduates a5/a6/kf51 are
+// leopards too"). Shared by the four NON-GRADUATE leopards only (leo2a2 /
+// leopard2_proto / leo2_improved / leo2_revolution) — graduates a5/a6/kf51 are
 // excluded by order. Laws carried:
 //  - §5.07 CROWS-FORWARD: rest aim is FORWARD (+z, yaw 0), slight
 //    elevation via the fitting's own elev.
@@ -6270,7 +6271,7 @@ function buildLeo2A5A5NL(builder: object) {
 //  - heightM p95 discipline: wide masses stay under each tank's grace
 //    line (o.capY bounds them, local frame); the tall optic TOWER that
 //    gives the station its garage-distance height is a NARROW z-window
-//    (o.towerW, abrams m1a2 FULL-CROWS-MAST precedent — <=3 side trace
+//    (o.towerW, abrams m1a1_abrams_hc FULL-CROWS-MAST precedent — <=3 side trace
 //    columns) parked at o.towerZ; gated ids keep their spike budgets.
 // o: { x, y (roof/base seat local y), z, s (station scale), gunY (fitting
 //      origin local y — FITTING-SINK), gunScale, towerTop (optic tower
@@ -6279,7 +6280,7 @@ function buildLeo2A5A5NL(builder: object) {
 // ---------------------------------------------------------------------------
 function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   const { box, cylY, cylZ } = KIT;
-  const gunName = `${P.spec.id}Flw200Gun`;
+  const gunName = `${tankSeedId(P.spec.id)}Flw200Gun`; // schema-1 name (tankIdAliases.ts)
   const finishStation = o.automatic ? captureAuxiliaryStock(P, gunName) : null;
   const s = o.s ?? 1.0;
   const ws = o.widthScale ?? s;
@@ -6355,7 +6356,7 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
     mg.position.set(X, o.gunY, Z);
     P.turretG.add(mg);
   }
-  // OPTIC TOWER (garage-distance height in a narrow z-window — the m1a2
+  // OPTIC TOWER (garage-distance height in a narrow z-window — the m1a1_abrams_hc
   // FULL-CROWS-MAST precedent): riser + compact panoramic head + glass.
   if (o.towerTop != null) {
     const tw = o.towerW ?? 0.16;
@@ -6386,9 +6387,9 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
 // Everything is equipment geometry, never part of an armor material bucket.
 // ---------------------------------------------------------------------------
 function leo2A4FullGhillie(P: TankBuilderPort) {
-  if (P.spec.id !== 'leo2a4') return;
+  if (P.spec.id !== 'leo2a2') return;
   // 2026-10-05 (tank-accessories lane): the suit's authored carriers now live in the shared builder
-  // (ghillieSuit.ts GHILLIE_SUIT_CONFIGS.leo2a4) with its spray-card garnish and cascade-registered cloth.
+  // (ghillieSuit.ts GHILLIE_SUIT_CONFIGS.leo2a2) with its spray-card garnish and cascade-registered cloth.
   addVehicleGhillieSuit(P);
 }
 
@@ -6580,7 +6581,7 @@ export function buildLeo2A4(builder: object) {
     // shared leoHullV3 closure above so every requested Leopard hull uses the
     // same continuous, track-safe construction.
     // §SRCFIX-0808: deflector boards REMOVED — the real Leopard 2 glacis is a
-    // CLEAN plate (the a5-recipe boards + the type90 V board read as floating
+    // CLEAN plate (the a5-recipe boards + the type90_kyumaru V board read as floating
     // pale sticks in the owner's garage view and match no 2A4 photo).
     // §B8 BOW (order 2b): the beak underside plane rendered BRIGHTER than
     // the glacis (measured 69-82 vs 53-63 — the flat-lit ambient makes the
@@ -6686,7 +6687,7 @@ export function buildLeo2A4(builder: object) {
     // material instance, zero shared-tank impact).
     P.mats.rubber.color.setHex(0x33352b);
     // §SRCFIX-0808: the §5.16 "family V splash board" is DELETED — the real
-    // Leopard 2 glacis carries NO splash deflector (the board was a type90
+    // Leopard 2 glacis carries NO splash deflector (the board was a type90_kyumaru
     // donor tell that landed on the wrong nation's hull; the packet's "the
     // real Leopard 2 carries the same board" claim does not survive the
     // photo class). Notek convoy light IS real Bundeswehr fit — kept.
@@ -6901,7 +6902,7 @@ export function buildLeo2A4(builder: object) {
       }
       P.add('turretDark', KIT.openRackGrid(2.16, 0.38, 0.018, 5, 11),
         0, rackB + 0.03, -2.49);
-      // §5.16 family: mesh back panel closing the rack rear (type90 donor's
+      // §5.16 family: mesh back panel closing the rack rear (type90_kyumaru donor's
       // low overhung basket read — frame + mesh, not floating bars)
       for (let k = 0; k < 11; k++) {
         P.add('turretDark', box(0.026, rackT - rackB - 0.14, 0.014), -1.05 + k * 0.21, (rackT + rackB) / 2, -2.725);
@@ -6929,7 +6930,7 @@ export function buildLeo2A4(builder: object) {
     // ~2.74-2.92w / cap ~3.02w over the 2.48 roof = the real ~0.6 m FLW ride
     // height (no oracle; §5.73-1 P95-envelope heightM datum note in packet).
     // 2026-10-08: the station is the A4's working roof weapon (owner order §5.09-5 put it here; his 2A5M precedent in
-    // main 6763d7cc0 activates such a station). Gameplay change: functional roof guns 0 -> 1 on leo2a4 and leo2a4_otco.
+    // main 6763d7cc0 activates such a station). Gameplay change: functional roof guns 0 -> 1 on leo2a2 and leo2a3.
     leoFLW200(P, { x: 0.78, y: 0.69, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.77, shields: true, seed: 13, automatic: true });
     // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
     // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
@@ -7869,7 +7870,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
   tarpRoll(P, 'turretCloth', 0.88, 0.52, -2.82, 0.68, 0.075, true, P.q ? 12 : 8);
   ammoCan(P, 'turretDark', -1.02, 0.50, -2.84, 0.18);
   // §5.16 family: low overhung basket frame + mesh back behind the bustle
-  // box (the type90 donor's rear-basket read; PT trials pipe-frame class)
+  // box (the type90_kyumaru donor's rear-basket read; PT trials pipe-frame class)
   P.add('turretDetail', box(2.10, 0.035, 0.035), 0, 0.49, -3.23);
   P.add('turretDetail', box(2.10, 0.035, 0.035), 0, 0.22, -3.23);
   for (const bx of [-0.78, -0.26, 0.26, 0.78]) {
@@ -8874,9 +8875,9 @@ function finishKf51RunningGearMesh(
 
 function addKF51ClosedShoulderMudguards(
   P: TankBuilderPort,
-  profile: 'kf51' | 'kf51b',
+  profile: 'kf51_evo' | 'kf51_u',
 ): void {
-  const ownerExact = profile === 'kf51b';
+  const ownerExact = profile === 'kf51_u';
   const shoulder = ownerExact
     ? { innerX: 1.50, outerX: 1.88, rearZ: 2.52, frontZ: 3.38,
       rearBottomY: 1.42, rearTopY: 1.50, frontBottomY: 1.37, frontTopY: 1.43 }
@@ -9502,7 +9503,7 @@ function buildKF51(P: TankBuilderPort) {
       equipmentOwned: true,
       duplicateTrackCourse: false,
     });
-    addKF51ClosedShoulderMudguards(P, 'kf51');
+    addKF51ClosedShoulderMudguards(P, 'kf51_evo');
     // WIDTH-SCALE CALIBRATION (fleet-critical, measured this round): the
     // harness rescales the WHOLE proc by publishedWidth/authoredBBoxWidth
     // (procedural-fidelity.html safeScale) — the authored bbox width is a
@@ -9788,7 +9789,7 @@ function buildKF51(P: TankBuilderPort) {
       // their tubes sat square inside the SHOE inner-chain CONNECTOR-RAIL
       // sweep (rails ride radial 0.2695..0.4045 / 0.2495..0.3845 off the
       // wheel centres at the rings' exact x-planes; 184+~160 exact voxels =
-      // the kf51 rear blind spot + most of the front one). Static rings must
+      // the kf51_evo rear blind spot + most of the front one). Static rings must
       // clear the MOVING chain: new tube outers 0.266/0.240 keep >=0.017
       // outside the rails' inner faces; the vacated annulus is swept by the
       // scrolling dark rails/web, so the "pale disc" stays covered by chain
@@ -10484,7 +10485,7 @@ function buildKF51(P: TankBuilderPort) {
             // run surfaces render 45-60 — under the ceiling, byte-identical: the
             // locked side-strip p90 59.5 parity class never engages the cap.
             // Chained after the fleet ambient-floor hook on these per-build
-            // materials (leo2a6 regrime precedent); own cache key; white-mask
+            // materials (leo2a4 regrime precedent); own cache key; white-mask
             // law: the gate's mask pass overrides materials — silhouette-inert.
             tm.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
               vehicleAmbientFloorHook(shader);
@@ -11180,7 +11181,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   const turretRoofCenterHeightM = 0.66;
   const multispectralSightLiftM = 0.18;
 
-  // §5.299 kf51b FLEET INTEGRATION (owner order: "make it a lot more inline
+  // §5.299 kf51_u FLEET INTEGRATION (owner order: "make it a lot more inline
   // with our visual aesthetic and tracks and hull and turret"). The
   // kf51-source-facets shader grade is RETIRED: it reproduced the FBX's
   // BAKED shading (walls crushed to 19-52% luma, roofs boosted 122%) — in
@@ -11192,14 +11193,14 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // palette lives in the typed spec visual row (kf51Specs.ts).
 
   // ---- HULL — §5.345 LEOPARD-DESCENT REBASE (owner order: "completely
-  // update our kf51 b to look actually descended from our leopard family,
+  // update our kf51_evo b to look actually descended from our leopard family,
   // keeping its general turret shaping but changing everything else in
   // terms of hull decorations equipment and cagfes"). The real KF51 rides
   // a Leopard 2 hull — the bespoke demonstrator tub/deck polyMultiLofts,
   // fender lips and lamp blade are RETIRED; the hull now builds on the
   // FAMILY RIG (leoHullV3: one-plane glacis class, leopard deck line +
   // sponson/fender run, family driver station, fan wells, leopard rear
-  // plate + grilles) at the kf51b frame: deck 1.615 crease / 1.64 mid /
+  // plate + grilles) at the kf51_u frame: deck 1.615 crease / 1.64 mid /
   // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
   // complete rotating rig moves forward to z 0.65; nose 3.84,
   // tail lip -3.82. The authored assembly is enlarged uniformly by 5% after
@@ -11340,7 +11341,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       });
     }
     P.hullG.userData.kf51bSkirtArmorReceipt = Object.freeze(skirtReceipt);
-    addKF51ClosedShoulderMudguards(P, 'kf51b');
+    addKF51ClosedShoulderMudguards(P, 'kf51_u');
     // ---- German fender/deck grammar (leo1a5/a6m census set at this frame;
     // deck kit tops <= 1.71 — the low KF51 turret's sweep plane)
     for (const s of [-1, 1] as const) {
@@ -12404,7 +12405,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
 // geometry retired). Measured lines from the LOCAL-ONLY Arrafi prints via
 // tools/vertex-extract.mjs (docs/references/vertex/leo2a6m.json /
 // leo2a4m.json) + the real-vertex _vlo shell-isolation audit
-// (docs/references/tanks/{leo2a6m,leo2a4m}.md). The prints are print-tall
+// (docs/references/tanks/{leo2a4_otco,leo2a4m_can}.md). The prints are print-tall
 // below the deck, so verticals are published-first (pt91 pattern) while
 // stations/plan cadence follow the prints. Build frame: ground 0, family
 // hull stations (bow beak 3.77, rear wall -3.62); the dims anchors live at
@@ -12488,7 +12489,7 @@ function leoSlatRear(P: TankBuilderPort, o: LeopardSlatRearOptions): void {
 }
 
 // Leopard 2A6M (mine-protection package, ISAF bar-armor fit) — §5.248
-// ground-up rebuild. Identity vs resident leo2a6: full slat cage (hull run
+// ground-up rebuild. Identity vs resident leo2a4: full slat cage (hull run
 // + stern + turret flanks), raised belly line with the bolted mine plate,
 // reinforced crew-hatch hardware, ISAF stowage density; L55 at the
 // 7.18 bore mouth (spec overall 10.97 exactly).
@@ -12802,9 +12803,9 @@ function addLeopardOpenYokeAuxRws(P: TankBuilderPort, {
     ammoSide,
     sensorSide,
     elev: variant === 'a7v-low' ? 0.035 : 0.050,
-    seed: P.spec.id === 'leo2a7v' ? 27027 : 26026,
+    seed: P.spec.id === 'leo2_improved' ? 27027 : 26026,
   });
-  station.name = `${P.spec.id}${weaponRole === 'auxiliary' ? 'Aux' : 'Roof'}OpenYokeRws`;
+  station.name = `${tankSeedId(P.spec.id)}${weaponRole === 'auxiliary' ? 'Aux' : 'Roof'}OpenYokeRws`; // schema-1 name
   station.position.set(x, y, z);
   station.rotation.y = yaw;
   station.userData.hostVariant = P.spec.id;
@@ -13911,7 +13912,7 @@ function wrapRearSlat(P: TankBuilderPort, width: number, y0: number, y1: number,
 // OWNER ORDER item 1 ("use the new hull and gun but use the turret from
 // before we were using"): the turret is the PRE-WAVE donor-wrapper turret —
 // buildLeo2A4's native welded A4 construction (verbatim; b66d6d03^ ==
-// current guarded leo2a4 text) dressed with the wrapper-era A4M package
+// current guarded leo2a2 text) dressed with the wrapper-era A4M package
 // (wrap* helpers above). Hull keeps the §5.248 rebuild: hull-flank armor
 // slabs, mine-belly, the big rear stowage rack; gun keeps the §5.248 L44
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
@@ -13951,7 +13952,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
       // §5.345 hull-quality: certified a6-class fan WELLS (raised rim curb
       // over near-black recess + blades — the flat drawn-circle read
       // retired; silhouette-free by construction) + gunmetal jack (the
-      // hullWood block fired orange — chieftain5 O3b law).
+      // hullWood block fired orange — chieftain3 O3b law).
       dishR: 0.78, splashArms: false, fanWell: true, jackDark: true,
     });
     // ---- mine-protection belly (2A4M kit)
@@ -14166,7 +14167,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // §5.345: pioneer tools re-seated on the STERN SHELF fully aft of the
     // turret casting envelope (every part z < -3.04; the jackDark tone fix
     // shrank the wood bucket to the mid-deck tools and the AABB-coarse §B5
-    // audit flagged the bucket stranded — the kf51b §5.311 shovel class;
+    // audit flagged the bucket stranded — the kf51_u §5.311 shovel class;
     // CAN refits carry the pioneer kit rear when flank racks are fitted)
     shovelTool(P, -1.30, 1.8235, -3.40, 0.60);
     P.add('hullWood', box(0.03, 0.022, 0.52), 1.30, 1.8225, -3.40);
@@ -14478,11 +14479,11 @@ export const LEOPARD_PROFILES = {
   // family map silently selected modern2.ts's early box prototype after the
   // source-backed wrapper was retired, erasing the authored hull, seven-wheel
   // course, pre-wedge turret and service geometry preserved above.
-  leo2a4: { build: buildLeo2A4 },
-  leo2a6: { build: buildLeo2A6 },
-  leo2a5: { build: buildLeo2A5 },
-  leo2a5_a5nl: { build: buildLeo2A5A5NL },
-  leo2a7v: { build: buildLeo2A7V },
+  leo2a2: { build: buildLeo2A4 },
+  leo2a4: { build: buildLeo2A6 },
+  leo2a4_v: { build: buildLeo2A5 },
+  leo2a4m: { build: buildLeo2A5A5NL },
+  leo2_improved: { build: buildLeo2A7V },
   leopard2_proto: { build: buildLeo2Proto },
   // Preserve the original authored model as Proto while the proper
   // Revolution has its independent source-based construction.
@@ -14490,15 +14491,15 @@ export const LEOPARD_PROFILES = {
   leo2_revolution: { build: buildLeopardRevolution },
   // Preserve the established KF51 exactly; the owner-source rebuild ships as
   // the additive KF51B variant requested by the project owner.
-  kf51: { build: buildKF51 },
-  kf51b: { build: buildKF51OwnerExact },
+  kf51_evo: { build: buildKF51 },
+  kf51_u: { build: buildKF51OwnerExact },
   // Owner-source rebuild (2026-08-18): articulated Leopard 1 oracle base plus
   // the complete procedural A5 cheek, optic, launcher and stowage package.
   leo1a5: { build: buildLeo1A5ArticulatedProfile },
   // §5.248 germany-leopards ground-up builds (owner order — the
   // profiles/germany.js donor-wrapper builders are retired; these rows must
   // stay ahead of any legacy same-key row in the profiledProcedurals merge).
-  leo2a4m: { build: buildLeo2A4M },
-  leo2a6m: { build: buildLeo2A6M },
+  leo2a4m_can: { build: buildLeo2A4M },
+  leo2a4_otco: { build: buildLeo2A6M },
   leo2a6_ua: { build: buildLeopard2A6UA },
 } satisfies VehicleProfileRecord;

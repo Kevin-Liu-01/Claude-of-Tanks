@@ -24,30 +24,30 @@ import { applyLeclercClassicXFieldKitArmor } from './leclercClassicXKitArmor.ts'
 import type { FleetTankSpec, FleetDimensions } from './specContracts.ts';
 
 const entries = [
-  ['leo2a6_x', 'leo2a6', 'Leopard 2A6'],
-  ['k1a1_x', 'k1a1', 'K1A1'],
-  ['amx30_x', 'amx30', 'AMX-30B'],
-  ['t62mv1_x', 't62mv1', 'T-62MV-1'],
-  ['t72b_1987_x', 't72b_1987', 'T-72B obr. 1987'],
-  ['t80u_x', 't80u', 'T-80U'],
+  ['leo2a6', 'leo2a4', 'Leopard 2A6'],
+  ['k1a1', 'k1e1', 'K1A1'],
+  ['amx30b', 'amx30', 'AMX-30B'],
+  ['t62mv1', 't62_1975', 'T-62MV-1'],
+  ['t72b_1987', 't72b_1987', 'T-72B obr. 1987'],
+  ['t80u', 't80uk', 'T-80U'],
   // owner 2026-09-16: the studies carry the newer marks (SXXI -> XLR, S1 -> AMX 56 swapped with the legacy hulls)
-  ['leclerc_x', 'leclerc', 'Leclerc XLR'],
-  ['leclerc_classic_x', 'leclerc', 'AMX 56'],
-  ['chieftain_mk10_x', 'chieftain_mk10', 'Chieftain Mk 10'],
-  ['t72b3_x', 't72b3', 'T-72B3'],
-  ['jpz_e100_x', 'jpz_e100', 'Jagdpanzer E100'],
-  ['type10_x', 'type10', 'Type 10'],
-  ['type90_x', 'type90', 'Type 90'],
-  ['amx40_x', 'amx40', 'AMX-40'],
-  ['ariete_c1_x', 'ariete_c1', 'C1 Ariete'],
-  ['strv122_x', 'strv122', 'Stridsvagn 122'],
-  ['t72b3m_x', 't72b3m', 'T-72B3M obr. 2016'],
-  ['challenger1_x', 'challenger1', 'Challenger 1 Mk 3'],
-  ['t72bu_x', 't72bu', 'T-72BU'],
-  ['chieftain5_x', 'chieftain5', 'Chieftain Mk 5'],
-  ['t90_x', 't90', 'T-90'],
-  ['t90a_burlak_x', 't90a_burlak', 'T-90A Burlak'],
-  ['t90ms_x', 't90ms', 'T-90MS Tagil'],
+  ['leclerc_xlr', 'leclerc_s2', 'Leclerc XLR'],
+  ['amx56', 'leclerc_s2', 'AMX 56'],
+  ['chieftain_mk10', 'chieftain_mk9', 'Chieftain Mk 10'],
+  ['t72b3', 't72b3', 'T-72B3'],
+  ['jpz_e100', 'jpz_e100', 'Jagdpanzer E100'],
+  ['type10', 'type10_tk_x', 'Type 10'],
+  ['type90', 'type90_kyumaru', 'Type 90'],
+  ['amx40', 'amx40_proto', 'AMX-40'],
+  ['c1_ariete', 'c1_ariete_proto_serie1', 'C1 Ariete'],
+  ['strv122', 'strv121', 'Stridsvagn 122'],
+  ['t72b3m_2016', 't72b3m_2022', 'T-72B3M obr. 2016'],
+  ['challenger1_mk3', 'challenger1_mk2', 'Challenger 1 Mk 3'],
+  ['t72bu', 't72bu_1989', 'T-72BU'],
+  ['chieftain5', 'chieftain3', 'Chieftain Mk 5'],
+  ['t90', 't90_1992', 'T-90'],
+  ['t90a_burlak', 't90a_burlak_proto', 'T-90A Burlak'],
+  ['t90ms_tagil', 't90ms_2011', 'T-90MS Tagil'],
 ] as const;
 export const SECOND_WAVE_X_IDS = Object.freeze(entries.map(([id]) => id));
 export const SECOND_WAVE_X_DONORS = Object.freeze(Object.fromEntries(entries.map(([id, donor]) => [id, donor])));
@@ -57,78 +57,78 @@ export const SECOND_WAVE_X_DONORS = Object.freeze(Object.fromEntries(entries.map
 // fields are reference-only P95 body extents measured by the geometry gate
 // from the hash-pinned oracle, never copied from candidate measurements.
 const dimensions: Readonly<Record<string, FleetDimensions>> = {
-  leo2a6_x: { hullLengthM: 7.63049, overallLengthM: 10.9547999, widthM: 3.80991006, heightM: 2.43111, silhouetteHeightM: 2.888 },
-  k1a1_x: { hullLengthM: 7.627, overallLengthM: 9.72264, widthM: 3.6758, heightM: 2.20756,
+  leo2a6: { hullLengthM: 7.63049, overallLengthM: 10.9547999, widthM: 3.80991006, heightM: 2.43111, silhouetteHeightM: 2.888 },
+  k1a1: { hullLengthM: 7.627, overallLengthM: 9.72264, widthM: 3.6758, heightM: 2.20756,
     silhouetteHeightM: 2.738168, silhouetteHullLengthM: 7.547909, silhouetteWidthM: 3.599614 },
-  amx30_x: { hullLengthM: 6.30289, overallLengthM: 9.54869, widthM: 3.11322, heightM: 2.284, silhouetteHeightM: 2.991, silhouetteHullLengthM: 6.662 },
-  t62mv1_x: { hullLengthM: 6.363553662, overallLengthM: 9.510790337, widthM: 3.30, heightM: 2.082969, silhouetteHeightM: 2.558, silhouetteHullLengthM: 6.742 },
-  t72b_1987_x: { hullLengthM: 6.737070506, overallLengthM: 9.703027867, widthM: 3.59, heightM: 2.105640266, silhouetteHeightM: 2.531, silhouetteHullLengthM: 7.243 },
-  t80u_x: { hullLengthM: 6.720291335, overallLengthM: 9.534282731, widthM: 3.6, heightM: 2.172451481, silhouetteHeightM: 2.484, silhouetteHullLengthM: 6.652 },
-  leclerc_x: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494, silhouetteHeightM: 2.75059, silhouetteHullLengthM: 6.840284 },
-  leclerc_classic_x: { ...LECLERC_CLASSIC_X_DATUMS.dims,
+  amx30b: { hullLengthM: 6.30289, overallLengthM: 9.54869, widthM: 3.11322, heightM: 2.284, silhouetteHeightM: 2.991, silhouetteHullLengthM: 6.662 },
+  t62mv1: { hullLengthM: 6.363553662, overallLengthM: 9.510790337, widthM: 3.30, heightM: 2.082969, silhouetteHeightM: 2.558, silhouetteHullLengthM: 6.742 },
+  t72b_1987: { hullLengthM: 6.737070506, overallLengthM: 9.703027867, widthM: 3.59, heightM: 2.105640266, silhouetteHeightM: 2.531, silhouetteHullLengthM: 7.243 },
+  t80u: { hullLengthM: 6.720291335, overallLengthM: 9.534282731, widthM: 3.6, heightM: 2.172451481, silhouetteHeightM: 2.484, silhouetteHullLengthM: 6.652 },
+  leclerc_xlr: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494, silhouetteHeightM: 2.75059, silhouetteHullLengthM: 6.840284 },
+  amx56: { ...LECLERC_CLASSIC_X_DATUMS.dims,
     widthM: LECLERC_CLASSIC_X_DATUMS.fieldKitWidthM },
-  chieftain_mk10_x: { hullLengthM: 7.38869, overallLengthM: 10.803698, widthM: 3.678103, heightM: 2.453337,
+  chieftain_mk10: { hullLengthM: 7.38869, overallLengthM: 10.803698, widthM: 3.678103, heightM: 2.453337,
     silhouetteHeightM:2.8486312905980586,silhouetteWidthM:3.6348535268031235,silhouetteHullLengthM:7.657120909127583 },
-  t72b3_x: { ...T72B3_X_SOURCE_DATUMS.dims, silhouetteHeightM:4.107454637245056,
+  t72b3: { ...T72B3_X_SOURCE_DATUMS.dims, silhouetteHeightM:4.107454637245056,
     silhouetteHullLengthM:7.193154389603283,silhouetteWidthM:3.7600579763835347 },
-  jpz_e100_x: {hullLengthM:8.7475677,overallLengthM:11.4206558,widthM:4.4788417,heightM:3.16101265,
+  jpz_e100: {hullLengthM:8.7475677,overallLengthM:11.4206558,widthM:4.4788417,heightM:3.16101265,
     silhouetteHeightM:3.3847075556530717,silhouetteHullLengthM:8.60631156054847},
-  type10_x: {hullLengthM:7.22996,overallLengthM:9.42,widthM:3.38929737,heightM:2.2148683143,
+  type10: {hullLengthM:7.22996,overallLengthM:9.42,widthM:3.38929737,heightM:2.2148683143,
     silhouetteHeightM:3.6465144162243215,silhouetteHullLengthM:7.630853056295037},
-  type90_x: {hullLengthM:7.798844,overallLengthM:9.80,widthM:3.61781384,heightM:2.459472,
+  type90: {hullLengthM:7.798844,overallLengthM:9.80,widthM:3.61781384,heightM:2.459472,
     silhouetteHeightM:3.5972020259823676,silhouetteHullLengthM:7.9386527469955706},
-  amx40_x: {hullLengthM:6.6816,overallLengthM:10.0588002,widthM:3.3585,heightM:2.50869,
+  amx40: {hullLengthM:6.6816,overallLengthM:10.0588002,widthM:3.3585,heightM:2.50869,
     silhouetteHeightM:3.0890287367999556,silhouetteHullLengthM:6.910507586449385},
-  ariete_c1_x: {...ARIETE_C1_X_DATUMS.dims},
-  strv122_x: {...STRV122_SUPPLIED_DATUMS.dims},
-  t72b3m_x:{...T72B3M_X_SOURCE_DATUMS.dims,
+  c1_ariete: {...ARIETE_C1_X_DATUMS.dims},
+  strv122: {...STRV122_SUPPLIED_DATUMS.dims},
+  t72b3m_2016:{...T72B3M_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:3.5952429614961154,silhouetteHullLengthM:7.509942752402276},
-  challenger1_x:{...CHALLENGER1_SUPPLIED_DATUMS.dims},
-  t72bu_x:{...T72BU_X_SOURCE_DATUMS.dims,
+  challenger1_mk3:{...CHALLENGER1_SUPPLIED_DATUMS.dims},
+  t72bu:{...T72BU_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:2.742923826724291,silhouetteHullLengthM:7.573092477768661},
-  chieftain5_x:{hullLengthM:6.57542378005239,overallLengthM:10.470842599868774,
+  chieftain5:{hullLengthM:6.57542378005239,overallLengthM:10.470842599868774,
     widthM:3.509999990463257,heightM:2.315201997756958},
-  t90_x:{...T90_AW_X_SOURCE_DATUMS.dims,
+  t90:{...T90_AW_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:3.03744235069491,silhouetteHullLengthM:7.094520826181398},
-  t90a_burlak_x:{...T90_BURLAK_X_SOURCE_DATUMS.dims,
+  t90a_burlak:{...T90_BURLAK_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:2.686041350355372,silhouetteHullLengthM:7.022989538577385},
-  t90ms_x:{...T90MS_X_SOURCE_DATUMS.dims,
+  t90ms_tagil:{...T90MS_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:2.993182508108867,silhouetteHullLengthM:7.040902625836161},
 };
 type SourceFrame = { turret: [number, number, number]; gun: [number, number, number]; muzzleZ: number };
 const frames: Readonly<Record<string, SourceFrame>> = {
-  leo2a6_x: { turret: [.000005, 2.14836, 1.047795], gun: [.000005, 1.97054, 1.419495], muzzleZ: 7.139555 },
-  k1a1_x: { turret: [0, 1.49566, .42564], gun: [.0352, 1.81797, 1.57716], muzzleZ: 5.9052399 },
-  amx30_x: { turret: [0, 1.584, .285], gun: [-.011, 1.87565, 1.60], muzzleZ: 5.99439 },
-  t62mv1_x: { turret: [0, 1.446436, .3041853764], gun: [0, 1.6650417561, 1.5303753764], muzzleZ: 5.920914939 },
-  t72b_1987_x: { turret: [-.0000548974, 1.4040902854, -.0343498434], gun: [-.0000548633, 1.6208176016, 1.2669569241], muzzleZ: 5.766827075 },
-  t80u_x: { turret: [0, 1.55158, .0718698169], gun: [0, 1.7564274071, 1.4199398169], muzzleZ: 6.002754533 },
-  leclerc_x: { turret: [-.00215336, 1.40294995, .72122934], gun: [.018886, 1.8791055, 1.998880], muzzleZ: 6.239235 },
-  leclerc_classic_x: { turret: [...LECLERC_CLASSIC_X_DATUMS.turretPivot],
+  leo2a6: { turret: [.000005, 2.14836, 1.047795], gun: [.000005, 1.97054, 1.419495], muzzleZ: 7.139555 },
+  k1a1: { turret: [0, 1.49566, .42564], gun: [.0352, 1.81797, 1.57716], muzzleZ: 5.9052399 },
+  amx30b: { turret: [0, 1.584, .285], gun: [-.011, 1.87565, 1.60], muzzleZ: 5.99439 },
+  t62mv1: { turret: [0, 1.446436, .3041853764], gun: [0, 1.6650417561, 1.5303753764], muzzleZ: 5.920914939 },
+  t72b_1987: { turret: [-.0000548974, 1.4040902854, -.0343498434], gun: [-.0000548633, 1.6208176016, 1.2669569241], muzzleZ: 5.766827075 },
+  t80u: { turret: [0, 1.55158, .0718698169], gun: [0, 1.7564274071, 1.4199398169], muzzleZ: 6.002754533 },
+  leclerc_xlr: { turret: [-.00215336, 1.40294995, .72122934], gun: [.018886, 1.8791055, 1.998880], muzzleZ: 6.239235 },
+  amx56: { turret: [...LECLERC_CLASSIC_X_DATUMS.turretPivot],
     gun: [...LECLERC_CLASSIC_X_DATUMS.trunnion], muzzleZ: LECLERC_CLASSIC_X_DATUMS.muzzleZ },
-  chieftain_mk10_x: { turret: [0, 1.512956, .595241], gun: [.000026, 1.912199, 1.550505], muzzleZ: 7.093385 },
-  t72b3_x: { turret: [...T72B3_X_SOURCE_DATUMS.turretPivot], gun: [...T72B3_X_SOURCE_DATUMS.trunnion], muzzleZ: T72B3_X_SOURCE_DATUMS.muzzleZ },
-  jpz_e100_x: {turret:[-.0007,2.33805,.20],gun:[-.0007,2.33805,.20],muzzleZ:7.04687214},
-  type10_x: {turret:[-.00275904,1.50831687,.20655021],gun:[0,1.851,2.0529],muzzleZ:5.628774},
-  type90_x: {turret:[0,1.681682,.156993],gun:[0,1.997083,1.650032],muzzleZ:5.754624},
-  amx40_x: {turret:[-.03904,1.56289,.16819],gun:[-.00005,1.94827,1.3413],muzzleZ:6.6028},
-  ariete_c1_x: {turret:[...ARIETE_C1_X_DATUMS.turretPivot],
+  chieftain_mk10: { turret: [0, 1.512956, .595241], gun: [.000026, 1.912199, 1.550505], muzzleZ: 7.093385 },
+  t72b3: { turret: [...T72B3_X_SOURCE_DATUMS.turretPivot], gun: [...T72B3_X_SOURCE_DATUMS.trunnion], muzzleZ: T72B3_X_SOURCE_DATUMS.muzzleZ },
+  jpz_e100: {turret:[-.0007,2.33805,.20],gun:[-.0007,2.33805,.20],muzzleZ:7.04687214},
+  type10: {turret:[-.00275904,1.50831687,.20655021],gun:[0,1.851,2.0529],muzzleZ:5.628774},
+  type90: {turret:[0,1.681682,.156993],gun:[0,1.997083,1.650032],muzzleZ:5.754624},
+  amx40: {turret:[-.03904,1.56289,.16819],gun:[-.00005,1.94827,1.3413],muzzleZ:6.6028},
+  c1_ariete: {turret:[...ARIETE_C1_X_DATUMS.turretPivot],
     gun:[...ARIETE_C1_X_DATUMS.trunnion],muzzleZ:ARIETE_C1_X_DATUMS.muzzleZ},
-  strv122_x: {turret:[...STRV122_SUPPLIED_DATUMS.turretPivot],
+  strv122: {turret:[...STRV122_SUPPLIED_DATUMS.turretPivot],
     gun:[...STRV122_SUPPLIED_DATUMS.trunnion],muzzleZ:STRV122_SUPPLIED_DATUMS.muzzleZ},
-  t72b3m_x:{turret:[...T72B3M_X_SOURCE_DATUMS.turretPivot],gun:[...T72B3M_X_SOURCE_DATUMS.trunnion],muzzleZ:T72B3M_X_SOURCE_DATUMS.muzzleZ},
-  challenger1_x:{turret:[...CHALLENGER1_SUPPLIED_DATUMS.turretPivot],
+  t72b3m_2016:{turret:[...T72B3M_X_SOURCE_DATUMS.turretPivot],gun:[...T72B3M_X_SOURCE_DATUMS.trunnion],muzzleZ:T72B3M_X_SOURCE_DATUMS.muzzleZ},
+  challenger1_mk3:{turret:[...CHALLENGER1_SUPPLIED_DATUMS.turretPivot],
     gun:[...CHALLENGER1_SUPPLIED_DATUMS.trunnion],muzzleZ:CHALLENGER1_SUPPLIED_DATUMS.muzzleZ},
-  t72bu_x:{turret:[...T72BU_X_SOURCE_DATUMS.turretPivot],gun:[...T72BU_X_SOURCE_DATUMS.trunnion],muzzleZ:T72BU_X_SOURCE_DATUMS.muzzleZ},
-  chieftain5_x:{turret:[.0031,1.476,.36928],gun:[-.008067,1.859441,1.570],muzzleZ:6.812053203582764},
-  t90_x:{turret:[...T90_AW_X_SOURCE_DATUMS.turretPivot],gun:[...T90_AW_X_SOURCE_DATUMS.trunnion],muzzleZ:T90_AW_X_SOURCE_DATUMS.muzzleZ},
-  t90a_burlak_x:{turret:[...T90_BURLAK_X_SOURCE_DATUMS.turretPivot],gun:[...T90_BURLAK_X_SOURCE_DATUMS.trunnion],muzzleZ:T90_BURLAK_X_SOURCE_DATUMS.muzzleZ},
-  t90ms_x:{turret:[...T90MS_X_SOURCE_DATUMS.turretPivot],gun:[...T90MS_X_SOURCE_DATUMS.trunnion],muzzleZ:T90MS_X_SOURCE_DATUMS.muzzleZ},
+  t72bu:{turret:[...T72BU_X_SOURCE_DATUMS.turretPivot],gun:[...T72BU_X_SOURCE_DATUMS.trunnion],muzzleZ:T72BU_X_SOURCE_DATUMS.muzzleZ},
+  chieftain5:{turret:[.0031,1.476,.36928],gun:[-.008067,1.859441,1.570],muzzleZ:6.812053203582764},
+  t90:{turret:[...T90_AW_X_SOURCE_DATUMS.turretPivot],gun:[...T90_AW_X_SOURCE_DATUMS.trunnion],muzzleZ:T90_AW_X_SOURCE_DATUMS.muzzleZ},
+  t90a_burlak:{turret:[...T90_BURLAK_X_SOURCE_DATUMS.turretPivot],gun:[...T90_BURLAK_X_SOURCE_DATUMS.trunnion],muzzleZ:T90_BURLAK_X_SOURCE_DATUMS.muzzleZ},
+  t90ms_tagil:{turret:[...T90MS_X_SOURCE_DATUMS.turretPivot],gun:[...T90MS_X_SOURCE_DATUMS.trunnion],muzzleZ:T90MS_X_SOURCE_DATUMS.muzzleZ},
 };
-const authoredEraZones = { t62mv1_x: createT62MV1XArmorZones,
-  t72b_1987_x: createT72B1987XArmorZones, t80u_x: createT80UXArmorZones,
-  t72b3_x: createT72B3XArmorZones,t72b3m_x:createT72B3MXArmorZones,t72bu_x:createT72BUXArmorZones,
-  t90_x:createT90AWXArmorZones,t90a_burlak_x:createT90BurlakXArmorZones,t90ms_x:createT90MSXArmorZones };
+const authoredEraZones = { t62mv1: createT62MV1XArmorZones,
+  t72b_1987: createT72B1987XArmorZones, t80u: createT80UXArmorZones,
+  t72b3: createT72B3XArmorZones,t72b3m_2016:createT72B3MXArmorZones,t72bu:createT72BUXArmorZones,
+  t90:createT90AWXArmorZones,t90a_burlak:createT90BurlakXArmorZones,t90ms_tagil:createT90MSXArmorZones };
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 function applyJagdpanzerFixedArmor(spec: FleetTankSpec): void {
@@ -153,7 +153,7 @@ function applyJagdpanzerFixedArmor(spec: FleetTankSpec): void {
 }
 
 function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
-  if (id === 'ariete_c1_x') {
+  if (id === 'c1_ariete') {
     spec.gunPitchByYawDeg = ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG;
   }
   const frame = frames[id];
@@ -161,15 +161,15 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   spec.armor.gunPivot = [frame.gun[0] - frame.turret[0],
     frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
-  if (id === 'ariete_c1_x') {
+  if (id === 'c1_ariete') {
     spec.visual.trackWidthM = ARIETE_C1_X_DATUMS.trackWidthM;
     // Widest real recoiling sleeve; the independent open bore stays 120 mm.
     spec.armor.gunBarrel.radiusM = .12248 * ARIETE_X_FAMILY_SCALE;
   }
-  if (id === 'jpz_e100_x') applyJagdpanzerFixedArmor(spec);
+  if (id === 'jpz_e100') applyJagdpanzerFixedArmor(spec);
   applySourceXAuxArmor(spec, id);
   // The AMX 56 field kit's thick side modules are installed armor stock outside the source skirt faces.
-  if (id === 'leclerc_classic_x') applyLeclercClassicXFieldKitArmor(spec);
+  if (id === 'amx56') applyLeclercClassicXFieldKitArmor(spec);
   const createZones = authoredEraZones[id as keyof typeof authoredEraZones];
   if (createZones) {
     // The retained donor is the owner's non-ERA T-62 obr.1975. The separately
@@ -189,7 +189,7 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
 function armorFitDimensions(id: string, dims: FleetDimensions): FleetDimensions {
   // The AMX 56 field kit widens the installed silhouette, not its retained
   // hull or running gear. Fit donor armor in the original structural frame.
-  return id === 'leclerc_classic_x'
+  return id === 'amx56'
     ? { ...dims, widthM: LECLERC_CLASSIC_X_DATUMS.dims.widthM } : dims;
 }
 

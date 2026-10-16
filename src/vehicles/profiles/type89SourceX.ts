@@ -95,7 +95,7 @@ function launchers(P: TankBuilderPort): void {
       for(const dx of [-.155,.155])turretEquipment(P,'turretDetail',box(.035,.33,1.19),x+dx,2.43,-1.055);
       for(const dy of [-.17,.17])turretEquipment(P,'turretDetail',box(.345,.032,1.19),x,2.43+dy,-1.055);
       turretEquipment(P,'turretDetail',box(.34,.35,.035),x,2.43,-1.667);
-      // Fleet lane 2026-10-08 (sealed gate: type89_x open px 93 > ledger 15, inverted turretDark px at the canister
+      // Fleet lane 2026-10-08 (sealed gate: type89 open px 93 > ledger 15, inverted turretDark px at the canister
       // mouths): the open canister showed its own back faces between the mouth ring and the recessed cap, and its tube
       // stopped 15 mm short of the ring and the frame, so the mouth read as a hole through the tube wall. The tube now
       // meets the ring (z -0.46), and the mouth's inner wall at the opening's radius faces inward (its winding reversed,

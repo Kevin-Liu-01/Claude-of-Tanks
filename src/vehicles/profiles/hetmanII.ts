@@ -224,6 +224,6 @@ export function buildHetmanII(P:TankBuilderPort):void {
   weldedTurret(P);turretEra(P);hullPackage(P);equipment(P);fieldCamouflage(P);
   addNationalUkraineProtection(P,D.id);addVehicleGhillieSuit(P,NATIONAL_UKRAINE_GHILLIE[D.id]);
   P.topY=D.roofY;
-  P.hullG.userData.familyRebuild={donor:'t72b3m_x',turret:'hetman-ii-custom-welded',revision:1,concept:true,
+  P.hullG.userData.familyRebuild={donor:'t72b3m_2016',turret:'hetman-ii-custom-welded',revision:1,concept:true,
     lineage:'original-hetman-t90sm-era-command-modernization'};
 }

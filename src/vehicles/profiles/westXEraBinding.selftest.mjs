@@ -7,8 +7,8 @@ import {buildMerkava3DX} from './merkavaX.ts';
 import {buildKF51X} from './kf51X.ts';
 
 const CASES=[
-  {id:'merkava3d_x',build:buildMerkava3DX,owner:'turret',prefix:'merkava_merkava3d_turret_era_',parts:3},
-  {id:'kf51_x',build:buildKF51X,owner:'hull',prefix:'kf51_skirt_era_',parts:15},
+  {id:'merkava3d',build:buildMerkava3DX,owner:'turret',prefix:'merkava_merkava3d_turret_era_',parts:3},
+  {id:'kf51_panther',build:buildKF51X,owner:'hull',prefix:'kf51_skirt_era_',parts:15},
 ];
 const point=new THREE.Vector3();
 const near=(actual,expected,label)=>assert.ok(Math.abs(actual-expected)<.000001,
@@ -44,7 +44,7 @@ function visibleVertices(mesh,sign) {
 }
 function permanentWitness(tank,c) {
   const core=tank.root.getObjectByName(c.owner);
-  if(c.id==='kf51_x') {
+  if(c.id==='kf51_panther') {
     const hit=new THREE.Raycaster(new THREE.Vector3(-2,1.50,0),new THREE.Vector3(1,0,0),0,4)
       .intersectObject(core,false)[0];
     assert.ok(hit,'KF51: independent permanent inner hull remains closed');

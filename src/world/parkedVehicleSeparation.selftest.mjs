@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
-  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, parkedFootprintsOverlap, polygonGap, seatCartsClear, separateParkedVehicles,
-  shapePolygons, VEHICLE_SLIDE_MAX_M,
+  CART_RELOCATE_MAX_M, CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, parkedFootprintsOverlap, polygonGap, seatCartsClear, separateParkedVehicles,
+  shapePolygons, VEHICLE_RELOCATE_MAX_M, VEHICLE_SLIDE_MAX_M,
 } from './parkedVehicleSeparation.ts';
 import { createCollisionManifestLoader } from '../../server/collisionManifestLoader.ts';
 import { MAP_IDS } from './maps/index.ts';
@@ -119,6 +119,26 @@ assert.equal(parkedFootprintsOverlap(car(0, 0), box, diagonal, box), parkedFootp
     maxSlide: () => VEHICLE_SLIDE_MAX_M });
   assert.equal(r2.slid.length, 1, 'a vehicle slides past the cart\'s 3 m when its seat needs it');
   assert.ok(lorry.z > 3 && r2.slid[0].by <= VEHICLE_SLIDE_MAX_M, `within its own reach (${r2.slid[0].by} m)`);
+  // (Lane C, 2026-10-14; the coordinator: relocate rather than leave out, unless the old seat was invalid) a cart with no
+  // seat within its 3 m is relocated further, out to its relocation reach, when what its seat met was no rail bed,
+  // building or vehicle; a seat on a rail bed is left out
+  const far = (why) => {
+    const c = { kind: 'handcart', x: 0, z: 0.2, yaw: Math.PI / 2, sc: 1 };
+    const receipt = run(c, { seatOk: (cc, x, z) => z > 6, why: () => why,
+      relocateReach: (cc, w) => (w.some((k) => /^(rail-bed|building|vehicle)/.test(k)) ? 0 : CART_RELOCATE_MAX_M) });
+    return { c, receipt };
+  };
+  const soft = far(['stone', 'crate']);
+  assert.equal(soft.receipt.dropped.length, 0, 'met only a stone and a crate: not left out');
+  assert.equal(soft.receipt.relocated.length, 1);
+  assert.ok(soft.c.z > 6 && soft.receipt.relocated[0].by > CART_SLIDE_MAX_M && soft.receipt.relocated[0].by <= CART_RELOCATE_MAX_M,
+    `relocated past its slide, within the further reach (${soft.receipt.relocated[0].by} m)`);
+  assert.deepEqual(soft.receipt.relocated[0].why, ['stone', 'crate'], 'the receipt says what it met');
+  const hard = far(['rail-bed']);
+  assert.equal(hard.receipt.dropped.length, 1, 'a seat on a rail bed was invalid: left out');
+  assert.deepEqual(hard.receipt.dropped[0].why, ['rail-bed']);
+  assert.ok(hard.c.dropped);
+  assert.ok(CART_RELOCATE_MAX_M > CART_SLIDE_MAX_M && VEHICLE_RELOCATE_MAX_M > VEHICLE_SLIDE_MAX_M);
 }
 
 // every map's committed collision shard: no two vehicles' ground footprints (the convex hull of their contact band)

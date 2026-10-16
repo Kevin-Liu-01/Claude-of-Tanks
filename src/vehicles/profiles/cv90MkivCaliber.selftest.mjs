@@ -8,7 +8,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // AW's supplied manned-turret configuration is explicitly 50 mm, not the 35 mm
 // real-world option. The measured outer brake and firing plane are unchanged.
-const id = 'cv90_mkiv_x', mouth = 2.80621, boreRadius = .025, depth = .065;
+const id = 'cv90_mk4', mouth = 2.80621, boreRadius = .025, depth = .065;
 const front = new THREE.MeshBasicMaterial({ side: THREE.FrontSide });
 const ray = new THREE.Raycaster();
 function cast(root, frame, origin, direction, far = 2) {

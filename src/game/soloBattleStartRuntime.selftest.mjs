@@ -15,7 +15,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
     resetDestructibles: () => events.push('world:reset'),
   };
   const player = {
-    id: 'player-1', specId: 'm1a2', spec: { id: 'm1a2' },
+    id: 'player-1', specId: 'm1a1_abrams_hc', spec: { id: 'm1a1_abrams_hc' },
     state: { yaw: 1.25 }, visual, equip: ['rammer'],
   };
   const game = { preBattleS: 0, mapId: '', phase: 'garage', player: null, tanks: [] };
@@ -52,10 +52,10 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       setCamoBiome: (id) => events.push(`camo:biome:${id}`),
       lendPlayerVisual: (id, useTank = true) => events.push(`pedestal:${useTank ? 'lend' : 'park'}:${id}`),
       setupBattle: (_game, id, activeWorld, options) => {
-        assert.equal(id, 'm1a2');
+        assert.equal(id, 'm1a1_abrams_hc');
         assert.strictEqual(activeWorld, world);
         setupOptions = options;
-        game.tanks = [{ specId: 'm1a2' }, { specId: 't90m' }];
+        game.tanks = [{ specId: 'm1a1_abrams_hc' }, { specId: 't90am' }];
         if (playerCreated) game.player = player;
         events.push('round:setup');
       },
@@ -70,8 +70,8 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       applyPlayerCamo: (id) => events.push(`camo:player:${id}`),
       applyRosterCamo: (options) => {
         assert.deepEqual(options, {
-          priorityIds: setupOptions.gameMode === 'ac130' ? [] : ['m1a2'],
-          onlySpecIds: setupOptions.gameMode === 'ac130' ? ['t90m'] : ['m1a2', 't90m'],
+          priorityIds: setupOptions.gameMode === 'ac130' ? [] : ['m1a1_abrams_hc'],
+          onlySpecIds: setupOptions.gameMode === 'ac130' ? ['t90am'] : ['m1a1_abrams_hc', 't90am'],
         });
         events.push('camo:roster');
         return Promise.resolve('painted');
@@ -119,7 +119,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
 
 {
   const harness = createHarness();
-  harness.runtime.start('m1a2', 'random', {
+  harness.runtime.start('m1a1_abrams_hc', 'random', {
     deferVisuals: true, preBattleHold: true, randomRoster: false,
   });
   assert.equal(harness.game.preBattleS, Infinity);
@@ -134,17 +134,17 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
   assert.deepEqual(harness.snap, [2, 1.25, -10 * Math.PI / 180]);
   assert.ok(harness.events.indexOf('killcam:cancel') < harness.events.indexOf('round:setup'));
   assert.ok(harness.events.indexOf('world:reset') < harness.events.indexOf('round:setup'));
-  assert.ok(harness.events.indexOf('round:setup') < harness.events.indexOf('camo:player:m1a2'));
+  assert.ok(harness.events.indexOf('round:setup') < harness.events.indexOf('camo:player:m1a1_abrams_hc'));
   assert.ok(harness.events.indexOf('fx:reset') < harness.events.indexOf('phase:battle'));
   assert.ok(!harness.events.includes('warm:drain'));
   assert.ok(!harness.events.includes('battle:open'));
-  assert.equal(harness.trace.specId, 'm1a2');
+  assert.equal(harness.trace.specId, 'm1a1_abrams_hc');
   assert.ok(harness.trace.totalMs > 0);
 }
 
 {
   const harness = createHarness();
-  harness.runtime.start('m1a2');
+  harness.runtime.start('m1a1_abrams_hc');
   assert.equal(harness.game.preBattleS, 0);
   assert.ok(harness.events.includes('world:watchdog:false'), 'legacy direct entry retains delayed scheduling');
   assert.ok(harness.events.indexOf('warm:drain') < harness.events.indexOf('battle:open'));
@@ -152,7 +152,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
 
 {
   const harness = createHarness({ playerCreated: false });
-  assert.throws(() => harness.runtime.start('m1a2'), /did not create a player/);
+  assert.throws(() => harness.runtime.start('m1a1_abrams_hc'), /did not create a player/);
   assert.ok(!harness.events.includes('phase:battle'));
 }
 
@@ -185,7 +185,7 @@ for (const deferVisuals of [false, true]) {
     },
   });
   try {
-    harness.runtime.start('m1a2', 'winter', { deferVisuals, preBattleHold: deferVisuals });
+    harness.runtime.start('m1a1_abrams_hc', 'winter', { deferVisuals, preBattleHold: deferVisuals });
     await Promise.resolve(); // the mask compile is now waiting on native readiness
     visual.prewarmBurn(); // later battle-visual streamer/combat warm
     finishMask();
@@ -203,7 +203,7 @@ for (const deferVisuals of [false, true]) {
 
 {
   const harness = createHarness({ visual: null });
-  harness.runtime.start('m1a2', 'winter', { deferVisuals: true, preBattleHold: true });
+  harness.runtime.start('m1a1_abrams_hc', 'winter', { deferVisuals: true, preBattleHold: true });
   assert.equal(harness.game.phase, 'battle', 'deferred missing visuals retain the existing mask fallback');
 }
 
@@ -215,10 +215,10 @@ assert.throws(
 console.log('soloBattleStartRuntime.selftest: activation order, covered start, and failure pass');
 
 {
- const h = createHarness();h.runtime.start('m1a2','winter',{gameMode:'ac130',deferVisuals:true});
+ const h = createHarness();h.runtime.start('m1a1_abrams_hc','winter',{gameMode:'ac130',deferVisuals:true});
  assert.equal(h.game.phase,'battle');
- for(const event of ['pedestal:lend:m1a2','camo:player:m1a2','damage:tank','damage:equipment'])
+ for(const event of ['pedestal:lend:m1a1_abrams_hc','camo:player:m1a1_abrams_hc','damage:tank','damage:equipment'])
    assert.ok(!h.events.includes(event), `aircraft entry skips ${event}`);
  assert.ok(h.events.includes('camo:roster'),'ground escorts still prepare');
- assert.ok(h.events.includes('pedestal:park:m1a2'),'garage hero stays out of the aircraft battlefield');
+ assert.ok(h.events.includes('pedestal:park:m1a1_abrams_hc'),'garage hero stays out of the aircraft battlefield');
 }

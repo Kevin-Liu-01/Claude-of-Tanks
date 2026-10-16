@@ -52,7 +52,7 @@ async function child(reference) {
   try {
     const {createTank}=await import('./tankFactory.ts');
     const rows=[];
-    for(const cycle of [0,1])for(const id of ['m1a2','challenger_3x','challenger2','leo2_revolution','t90m_x'])for(const quality of ['high','low']){
+    for(const cycle of [0,1])for(const id of ['m1a1_abrams_hc','challenger3','challenger2','leo2_revolution','t90m'])for(const quality of ['high','low']){
       active={calls:0,calculations:0,outputs:[],closed:false};
       const tank=createTank(id,null,{quality,proceduralOnly:true,materialMode:'geometry-only',camoSeed:4242,decor:true,batchStatic:true});
       try {
@@ -64,9 +64,9 @@ async function child(reference) {
       }finally{tank.dispose();active=null;}
     }
     assert.equal(served,1);
-    for(const id of ['m1a2','challenger_3x'])assert.ok(rows.filter(r=>r.id===id).every(r=>r.memo.hits>0&&r.calculations<r.calls));
+    for(const id of ['m1a1_abrams_hc','challenger3'])assert.ok(rows.filter(r=>r.id===id).every(r=>r.memo.hits>0&&r.calculations<r.calls));
     assert.ok(rows.filter(r=>r.id==='challenger2').every(r=>r.calls===0));
-    assert.ok(rows.filter(r=>r.id==='t90m_x').every(r=>r.memo.bypasses>0),'actual authored-facet bypass exercised');
+    assert.ok(rows.filter(r=>r.id==='t90m').every(r=>r.memo.bypasses>0),'actual authored-facet bypass exercised');
     console.log('ERA_WHOLE_NATIVE '+JSON.stringify(rows));
   }finally{hook.deregister();delete globalThis.__eraWholeFitCheckpoint;restoreCanvas();}
 }

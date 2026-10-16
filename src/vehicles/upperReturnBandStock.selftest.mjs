@@ -16,7 +16,7 @@ function fixture(quality,depth,options={}){
  const material=new T.MeshStandardMaterial(),mats=Object.fromEntries(
   ['hull','detail','dark','shadow','trackLink','spareTrack','burnt','trackL','trackR','wheels','rubber'].map(k=>[k,material]));
  Object.assign(mats,{trackTexL:new T.Texture(),trackTexR:new T.Texture()});
- const P={spec:{id:'merkava4_x'},disposables:[],mats,hullG:new T.Group(),geometryReceipt:true,q:quality==='high',batchStatic:false,add(){}};
+ const P={spec:{id:'merkava4'},disposables:[],mats,hullG:new T.Group(),geometryReceipt:true,q:quality==='high',batchStatic:false,add(){}};
  const gear=KIT.buildRunningGear(P,{...cfg,...options});
  const before=P.hullG.getObjectByName('gearTrackBandL').geometry.attributes.position.array.slice();
  if(depth)lineUpperReturnBand(P,stations,depth);gear.update(0,0);

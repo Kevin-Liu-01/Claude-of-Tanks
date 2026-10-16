@@ -114,7 +114,7 @@ function gunReachesHull(bot, host, ground) {
 }
 
 function idleHost(hp = null) {
-  const host = entity('host', 'm1a2', 'player', 0, 0, 0, hp);
+  const host = entity('host', 'm1a1_abrams_hc', 'player', 0, 0, 0, hp);
   host.isPlayer = true;
   return host;
 }
@@ -123,7 +123,7 @@ console.log('[1] the flank exemption needs the gun on the hull: a crest masks it
 {
   const ground = field(true);
   const host = idleHost();
-  const bot = entity('bot', 't90m', 'enemy', 60, 0, -Math.PI / 2);
+  const bot = entity('bot', 't90am', 'enemy', 60, 0, -Math.PI / 2);
   ok(!gunReachesHull(bot, host, ground), 'fixture: from the flank spot the crest masks the hull from the gun');
   const ctl = controller(bot, ground, [host]);
   let pressedAt = null;
@@ -137,7 +137,7 @@ console.log('[1] the flank exemption needs the gun on the hull: a crest masks it
 {
   const ground = field(false);
   const host = idleHost();
-  const bot = entity('bot', 't90m', 'enemy', 60, 0, -Math.PI / 2);
+  const bot = entity('bot', 't90am', 'enemy', 60, 0, -Math.PI / 2);
   const ctl = controller(bot, ground, [host]);
   drive(bot, ctl, ground, host, 40);
   ok(ctl.debugInfo().passivePresses === 0 && bot.state.pos.distanceTo(new Vector3(60, 0, 0)) < 12,
@@ -149,7 +149,7 @@ console.log('[2] three rounds in a row that do not reach the target give the spo
 {
   const ground = field(false);
   const host = idleHost();
-  const bot = entity('bot', 't90m', 'enemy', 60, 0, -Math.PI / 2);
+  const bot = entity('bot', 't90am', 'enemy', 60, 0, -Math.PI / 2);
   const ctl = controller(bot, ground, [host]);
   let verdictAt = null, leftAt = null, shotsAtVerdict = 0, spotHeld = true, shots = 0;
   shots = drive(bot, ctl, ground, host, 70, { gun: 'miss', heldS: 16, onTick: (t) => {
@@ -167,7 +167,7 @@ console.log('[2] three rounds in a row that do not reach the target give the spo
 {
   const ground = field(false);
   const host = idleHost();
-  const bot = entity('bot', 't90m', 'enemy', 60, 0, -Math.PI / 2);
+  const bot = entity('bot', 't90am', 'enemy', 60, 0, -Math.PI / 2);
   const ctl = controller(bot, ground, [host]);
   const shots = drive(bot, ctl, ground, host, 60, { gun: 'hit', heldS: 16 });
   ok(shots >= 3 && ctl.debugInfo().missVerdicts === 0 && bot.state.pos.distanceTo(new Vector3(60, 0, 0)) < 6,
@@ -180,10 +180,10 @@ console.log('[3] an empty rack finishes a passive hull with a run no faster than
 function emptyRack(hostHp, moving = false) {
   const ground = field(false);
   const host = idleHost(hostHp);
-  const bot = entity('bot', 'm1a2', 'enemy', 120, 0, -Math.PI / 2, 803);
+  const bot = entity('bot', 'm1a1_abrams_hc', 'enemy', 120, 0, -Math.PI / 2, 803);
   bot.combat.ammo = [0, 0, 0];
   bot.combat.ammoCapacity = [20, 12, 8];
-  const teammate = entity('mate', 't90m', 'enemy', -450, 450); // 726 m off: no support to retire to
+  const teammate = entity('mate', 't90am', 'enemy', -450, 450); // 726 m off: no support to retire to
   const ctl = controller(bot, ground, [host], [], [teammate]);
   let ramAt = null, contactSpeed = null, cap = null, maxDist = 0;
   drive(bot, ctl, ground, host, 70, { onTick: (t) => {
@@ -223,7 +223,7 @@ console.log('[4] a press point the hull cannot reach is given up, not driven at 
   const wall = (x0, z0, x1, z1) => ({ min: [x0, -1, z0], max: [x1, 3, z1], kind: 'building' });
   const pen = [wall(58.5, 9.7, 76.5, 10.7), wall(58.5, 26.7, 76.5, 27.7), wall(58.5, 9.7, 59.5, 27.7),
     wall(75.5, 9.7, 76.5, 27.7)];
-  const bot = entity('bot', 't90m', 'enemy', 120, -40, -Math.PI / 2);
+  const bot = entity('bot', 't90am', 'enemy', 120, -40, -Math.PI / 2);
   /** Push the hull out of the pen's walls: three discs of its half-width along its length. */
   const collide = (pos, _radius, out) => {
     const r = bot.spec.dims.widthM * 0.5, reach = Math.max(0, bot.spec.dims.hullLengthM * 0.5 - r);
@@ -299,7 +299,7 @@ function discCollider(hull, boxes) {
 function pinnedOnBank(facing) {
   const host = idleHost();
   const yaw = facing === 'host' ? Math.PI / 2 : 0;
-  const bot = entity('bot', 'ua_t64bv', 'enemy', -54, 0, yaw);
+  const bot = entity('bot', 't64bv_donbas', 'enemy', -54, 0, yaw);
   bot.state.pos.y = bank.getHeightAt(-54, 0);
   const rear = 0.5 * bot.spec.dims.hullLengthM + 0.12;
   const walls = yaw ? [{ min: [-54 - rear - 2.6, -1, -4], max: [-54 - rear, 6, 4], kind: 'building' }]
@@ -331,7 +331,7 @@ console.log('[6] press points given up unreached stay given up: two of them do n
   const pen = (a, b) => [wall(a, 9.7, b, 10.7), wall(a, 26.7, b, 27.7), wall(a, 9.7, a + 1, 27.7), wall(b - 1, 9.7, b, 27.7)];
   // closed pens round both side-aspect press points (the near side's as in [4], and the far side's)
   const pens = [...pen(58.5, 76.5), ...pen(-76.5, -58.5)];
-  const bot = entity('bot', 't90m', 'enemy', 120, -40, -Math.PI / 2);
+  const bot = entity('bot', 't90am', 'enemy', 120, -40, -Math.PI / 2);
   const ctl = controller(bot, field(false), [host], pens);
   const picks = [];
   drive(bot, ctl, field(false), host, 240, { collide: discCollider(bot, pens), onTick: (t) => {

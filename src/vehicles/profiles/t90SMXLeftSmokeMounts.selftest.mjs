@@ -70,7 +70,7 @@ function carrierCaseContact(actual,carrier,label) {
   }
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const helper=helperGeometry();
   try {
     tank.root.updateMatrixWorld(true);

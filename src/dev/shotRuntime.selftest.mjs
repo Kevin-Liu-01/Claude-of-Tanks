@@ -49,7 +49,7 @@ function createFixture(releaseTextures = false) {
       return { resourcesReleased };
     },
   });
-  const player = { spec: { id: 'm1a2' }, equip: {},
+  const player = { spec: { id: 'm1a1_abrams_hc' }, equip: {},
     input: { throttle: 1, steer: 1, brake: true, fire: true },
     visual: { setGroundSampler: noop } };
   game.player = player;
@@ -96,7 +96,7 @@ function createFixture(releaseTextures = false) {
       events.push(`dormant:${value}`);
       phase.setWorldActive(world.group, !value);
     },
-    getWorld: () => world, getSelectedSpecId: () => 'm1a2',
+    getWorld: () => world, getSelectedSpecId: () => 'm1a1_abrams_hc',
     setCamoBiome: noop, applyCamoPatterns: noop, setupBattle: noop,
     resetCombatWarm: noop,
     drainCombatWarm: () => {

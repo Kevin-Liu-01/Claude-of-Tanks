@@ -84,7 +84,7 @@ for (const [property, value] of [['trusted', false], ['coverMs', null], ['coverM
   assert.ok(checkGarageBattleActions(changed).length, `reject ${property}=${value}`);
 }
 for (const [property, value] of [['battleOrdinal', 4], ['phase', 'garage'],
-  ['playerSpecId', 't90'], ['mapId', 'desert'], ['selectedSpecId', 't90']]) {
+  ['playerSpecId', 't90_1992'], ['mapId', 'desert'], ['selectedSpecId', 't90_1992']]) {
   const changed = structuredClone(rows);
   changed[1].after[property] = value;
   assert.ok(checkGarageBattleActions(changed).length, `reject handoff ${property}=${value}`);

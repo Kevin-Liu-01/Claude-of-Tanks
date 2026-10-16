@@ -4,12 +4,12 @@ import { createTank } from '../tankFactory.ts';
 const near = (value, expected, epsilon = 1e-4) =>
   Math.abs(value - expected) <= epsilon;
 const EXPECTED_CROWS_RISER_HEIGHT_M = Object.freeze({
-  m1a2: 0.26 * (2 / 3),
-  m1a2_tusk: 0.18,
-  m1a2_sepv2: 0.30 * 0.72,
+  m1a1_abrams_hc: 0.26 * (2 / 3),
+  m1a1_abrams_sa: 0.18,
+  m1a1_abrams_aim: 0.30 * 0.72,
 });
 
-for (const id of ['m1a2', 'm1a2_tusk', 'm1a2_sepv2']) {
+for (const id of ['m1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -75,9 +75,9 @@ for (const id of ['m1a2', 'm1a2_tusk', 'm1a2_sepv2']) {
   assert.ok(gunnerSight.rearBottomY > gunnerSight.frontBottomY,
     `${id}: gunner-sight panel follows the roof pitch`);
 
-  if (id === 'm1a2_tusk') {
+  if (id === 'm1a1_abrams_sa') {
     assert.equal(loaderWeapon, null,
-      'm1a2_tusk: separate LAGS gun stays on its connected armored station');
+      'm1a1_abrams_sa: separate LAGS gun stays on its connected armored station');
   } else {
     assert.ok(loaderWeapon, `${id}: loader machine-gun seating receipt exists`);
     assert.ok(near(loaderWeapon.x, loaderMount.x)

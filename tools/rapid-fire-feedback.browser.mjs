@@ -26,7 +26,7 @@ try {
       camera.position.set(0,4,0); camera.lookAt(0,2,50); camera.updateMatrixWorld();
       f.frame.camera = camera; f.state('idle'); f.hud.update(f.frame);
       const hit = { attackerId:f.frame.player.id,targetId:f.tanks[8].id,targetName:'Leopard 2A5',
-        targetSpecId:'leo2a5',attackerSpecId:'t90m',damage:0,dmgRoll:40,penRoll:25,
+        targetSpecId:'leo2a4_v',attackerSpecId:'t90am',damage:0,dmgRoll:40,penRoll:25,
         baseArmor:200,effectiveArmor:220,impactAngleDeg:30,shellType:'AP',shellName:'M2',
         caliberMm:12.7,zone:'hullFront',flightDistM:50,timeS:60,pos:[0,1,50],
         localPos:[0,1,2],localDir:[0,0,-1],kind:'nonpen' };

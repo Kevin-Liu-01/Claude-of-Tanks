@@ -92,8 +92,9 @@ assert.throws(() => checkCoverage(source.replace(scalar(source, 'fD'),
 
 function checkMapScope(resolve) {
   // (the Redrock lane, round 10: Redrock Divide authors 0.3 — the gauntlet's wave 270 read its worn sand patches as
-  // "swirly red blotches like painted decals")
-  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'badlands', 'saltwind']);
+  // "swirly red blotches like painted decals"); mr2 round 4 (2026-10-07, wave 189: Nordhavn's fields "a dead-flat
+  // bare-earth plane"): Nordhavn authors .35, the fields' worn breakup grazed turf and the dirt on its tracks and yards
+  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'fjord', 'badlands', 'saltwind']);
   // (item 31, the map revival, 2026-10-11: Olympus Basin's tracks are its regolith packed under the wheels, splat.roadLayer
   // 'ground', and their verges keep most of it, a 0.4 bare shoulder; Earthrise Basin takes Mars's splat)
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.shoulderDirt !== undefined), ['alpine', 'mars', 'moon'],
@@ -106,7 +107,7 @@ function checkMapScope(resolve) {
   for (const id of MAP_IDS) {
     // map pass 2026-09-12: the coastal wear breakup returns toward the reference (.32,
     // short of the .45 that opened beach-sand islands); Saltwind inherits the coastal splat.
-    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : id === 'badlands' ? .3 : .84);
+    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : id === 'badlands' ? .3 : id === 'fjord' ? .35 : .84);
   }
 }
 checkMapScope(getMapConfig);

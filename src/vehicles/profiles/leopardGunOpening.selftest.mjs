@@ -4,7 +4,7 @@ import {createTank} from '../tankFactory.ts';
 
 // Independent physical witnesses for the owner's open gun approach. These
 // intentionally include generated interiors, both qualities and posed rigs.
-const datums={leo2a7v_x:[0,.2426,1.50],leo2a6m_x:[-.0065,.3704,1.442],leo2a4m_x:[-.0773,.258,1.55]};
+const datums={leo2a7v:[0,.2426,1.50],leo2a6m:[-.0065,.3704,1.442],leo2a5m:[-.0773,.258,1.55]};
 let air=0,poses=0,rearClearance=0;
 for(const [id,pivot] of Object.entries(datums))for(const quality of ['high','low']) {
   const t=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality});

@@ -98,7 +98,7 @@ for (const [id, asset] of [
 }
 
 const garageMark = await readFile(new URL('../../public/brand/nav/garage.svg', import.meta.url), 'utf8');
-if (!garageMark.includes('data-vehicle="leclerc"') || garageMark.includes('<image')) {
+if (!garageMark.includes('data-vehicle="leclerc_s2"') || garageMark.includes('<image')) {
   throw new Error('garage mark must draw the Leclerc silhouette as native vector geometry');
 }
 if (!garageMark.includes('garage-turret') || !garageMark.includes('garage-hull')) {
@@ -109,13 +109,13 @@ if ((garageMark.match(/data-separation="turret-ring"/g) || []).length !== 2) {
 }
 
 const homeMark = await readFile(new URL('../../public/brand/nav/home.svg', import.meta.url), 'utf8');
-if (!homeMark.includes('data-vehicle="m1a2"') || homeMark.includes('<image')) {
+if (!homeMark.includes('data-vehicle="m1a1_abrams_hc"') || homeMark.includes('<image')) {
   throw new Error('home mark must draw the M1A2 silhouette as native vector geometry');
 }
 if (!homeMark.includes('home-bay')) throw new Error('home mark must frame the tank inside the garage bay');
 
 const galleryMark = await readFile(new URL('../../public/brand/nav/tank-gallery.svg', import.meta.url), 'utf8');
-for (const vehicle of ['strv103a', 't90m', 'm1a2']) {
+for (const vehicle of ['strv103a', 't90am', 'm1a1_abrams_hc']) {
   if (!galleryMark.includes(`data-vehicle="${vehicle}"`)) {
     throw new Error(`tank gallery mark must include the ${vehicle} silhouette`);
   }
@@ -125,7 +125,7 @@ if (galleryMark.includes('<image') || galleryMark.includes('data:image/')) {
 }
 
 const studioMark = await readFile(new URL('../../public/brand/nav/studio.svg', import.meta.url), 'utf8');
-if (!studioMark.includes('data-vehicle="leclerc"') || studioMark.includes('<image')) {
+if (!studioMark.includes('data-vehicle="leclerc_s2"') || studioMark.includes('<image')) {
   throw new Error('scene studio mark must draw the Leclerc silhouette as native vector geometry');
 }
 if (!studioMark.includes('studio-turret') || !studioMark.includes('studio-hull')) {

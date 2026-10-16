@@ -27,10 +27,11 @@ const shownName = (id) => TANK_SPECS[id]?.label?.displayName ?? TANK_SPECS[id]?.
 // sha256 of JSON.stringify(map) for every landed map, in order. Append a row with each rename; never edit one.
 const LANDED_MAP_SHA256 = [
   '9c6b9d486a0f2b82d519a5cbdffb5f3f775e3fb8f371b5d2a5cd4979ef129dec', // schema 2 (2026-10-13): fv510_milan_x -> warrior_tes_h
+  'c28c92b974a74bedf6e088c36dd082ab6d6eaedb7d39cc277bee3f224950c9ed', // schema 3 (ID.04/05): the 130 renames of the 2026-10-13 table
 ];
 // The PROTOCOL_VERSION that first carried each tank id schema. A new schema needs a higher protocol, so builds of
 // two schemas never share a match.
-const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7 };
+const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7, 3: 8 };
 assert.equal(TANK_ID_SCHEMA, TANK_ID_RENAMES.length + 1, 'one rename map per schema step');
 assert.deepEqual(
   TANK_ID_RENAMES.map((map) => createHash('sha256').update(JSON.stringify(map)).digest('hex')),
@@ -155,7 +156,33 @@ const SEEDED = {
   '../ui/garage.ts': /\$\{spec\?\.id \? tankSeedId\(spec\.id\) : 'tank'\}:\$\{pid \|\| 'factory'\}/,
   '../ui/hud.ts': /hashStr\(String\(t\.id\) \+ \(t\.spec \? tankSeedId\(t\.spec\.id\) : ''\)\)/,
   '../audio/vehicleAudioProfiles.ts': /return tankSeedId\(String\(spec\.id \?\? ''\)\)\.toLowerCase\(\)/,
+  // Schema-1 id vocabulary tables (ID.04/05 prep): a rename keeps launcher arcs and suspension families.
+  'smokeFan.ts': /const seedId = tankSeedId\(String\(id\)\);\s+for \(const arc of FAMILY_ARCS\) if \(arc\.pattern\.test\(seedId\)\)/,
+  'suspensionPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);/,
+  'trackPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);\s+for \(const \[matcher, patternId\] of FAMILY_RULES\)/,
+  'wheelPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);\s+for \(const \[matcher, patternId\] of PERIOD_RULES\)/,
+  '../fx/projectileTracers.ts': /SOVIET_DESIGN\.test\(tankSeedId\(String\(shooter\?\.id \?\? ''\)\)\)/,
+  // Gates on the `_x` suffix and names built from an id (hit zones, ERA clusters) keep their schema-1 spelling.
+  'additionalFleetSpecs.ts': /const prefix = tankSeedId\(idPrefix\);[\s\S]*merkava_\$\{tankSeedId\(id\)\}_turret_era_R/,
+  'profiles/merkava.ts': /const sector = `merkava_\$\{tankSeedId\(id\)\}_turret_era_/,
+  'profiles/chineseFrontline.ts': /visualEraCluster\(`\$\{tankSeedId\(variant\)\}-integrated-chevron-front`/,
 };
+assert.match(readFileSync(new URL('./decorations.ts', import.meta.url), 'utf8'), /\/_x\$\/\.test\(tankSeedId\(spec\.id\)\)/,
+  'the source-study rebuild gate reads the schema-1 `_x` suffix');
+assert.match(readFileSync(new URL('./decorations.ts', import.meta.url), 'utf8'), /TANK_MANIFESTS\[resolveTankId\(decorId, 1\)\]/,
+  'the curated decor table (current ids) is read with the schema-1 decor identity resolved to the current id');
+for (const [file, pattern] of Object.entries({
+  'profiles/abrams.ts': /station\.name = `\$\{tankSeedId\(P\.spec\.id\)\}\$\{roleName\}OpenYokeRws`/,
+  'profiles/leopard.ts': /const gunName = `\$\{tankSeedId\(P\.spec\.id\)\}Flw200Gun`/,
+  'profiles/leopardX.ts': /captureAuxiliaryStock\(P,`\$\{tankSeedId\(P\.spec\.id\)\}RoofMachineGun`\)/,
+  'profiles/nationalRoofWeapon.ts': /const nation=tankSeedId\(String\(P\.spec\?\.id\?\?''\)\)\.split\('_'\)\[0\]/,
+  'ghillieSuit.ts': /`\$\{tankSeedId\(cfg\.id\)\}_ghillie_\$\{owner\}_net`/,
+  'sourceXWesternAuxArmor.ts': /`\$\{tankSeedId\(id\)\}:\$\{group\}`/,
+  'sourceXOtherAuxArmor.ts': /`\$\{tankSeedId\(id\)\}_\$\{side\}_installed_course`/,
+  'arieteModernSpecs.ts': /surfaceGroup: `ariete_c2_x:.*tank-ids:keep/,
+  'leclercClassicXKitArmor.ts': /AMX56_KIT_SURFACE_GROUP = 'amx56:fieldKit';.*tank-ids:keep/,
+  'profiles/merkava.ts': /`\$\{tankSeedId\(id\)\}RearClosureReceipt`/,
+})) assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file}: roof-gun names keep their schema-1 spelling`);
 for (const [file, pattern] of Object.entries(SEEDED)) {
   assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file} seeds from tankSeedId`);
 }

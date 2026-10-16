@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { SNAPSHOT_FLAGS, captureEntitySnapshot, captureWorldSnapshot } from './worldSnapshot.ts';
 
 const tank = (id, over = {}) => ({
-  id, specId: 'm1a2', team: 'alpha', spotted: false,
+  id, specId: 'm1a1_abrams_hc', team: 'alpha', spotted: false,
   state: { pos: { x: 12.345, y: 0.5, z: -7.891 }, speed: 3, yaw: Math.PI / 2, verticalSpeed: -0.25, visualPitch: 0.01, visualRoll: -0.02, turretYaw: 0.5, gunPitch: 0.1, grounded: true },
   combat: { hp: 1234.6, maxHp: 2000, reload: { t: 1.25, totalS: 6, kind: 'shell' }, magazine: null, shellSlot: 1, ammo: [40, 12, 8], destroyed: false, fire: null, eraSpent: new Set(['b', 'a']) },
   input: { fire: true },

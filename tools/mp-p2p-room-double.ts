@@ -37,7 +37,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import {
-  ROOM_CHAT_HISTORY, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MATCH_REPORT_STALE_AFTER_MS,
+  ROOM_CHAT_HISTORY, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_HOST_UNREACHABLE_AFTER_MS, ROOM_HOST_UNREACHABLE_TTL_MS, ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_MATCH_REPORT_STALE_AFTER_MS,
   ROOM_MAX_PAYLOAD_BYTES, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SEAT_TOKEN_TTL_MS, ROOM_SIGNAL_MAX_BYTES, ROOM_STATE_COALESCE_MS,
   RoomError, cleanId, isRecord, isRoomTeam, normalizeRoomChat, p2pMatchUrl, parseRoomEnvelope, parseRoomRoute, publicRoomError,
   readRoomMatchReport, readRoomSignalPayload, utf8ByteLength,
@@ -80,6 +80,8 @@ interface RoomState {
   reports: number;
   /** P1b: seats that stepped down from hosting this match by declining while they hosted (a decline never re-elects them). */
   steppedDown: Set<string>;
+  /** Host-loss evidence (§13.22): peers that hear nothing from the running host, playerId → when they said so. */
+  hostUnreachable: Map<string, number>;
   /** P1b: the coalesced room_state broadcast (the actor's rule: one per ROOM_STATE_COALESCE_MS, a trailing flush). */
   stateBroadcastAt: number;
   stateFlushPending: boolean;
@@ -126,7 +128,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
   const state = (code: string): RoomState => {
     let entry = rooms.get(code);
     if (!entry) {
-      entry = { code, room: null, seats: new Map(), chat: [], chatSeq: 0, host: { transport: 'p2p', hostId: null, generation: 0, since: 0 }, hostSecret: null, hostGrace: null, reportStale: null, lastTick: 0, matchUrl: '', plan: null, reports: 0, steppedDown: new Set(), stateBroadcastAt: Number.NEGATIVE_INFINITY, stateFlushPending: false, stateFlushArmed: false, seatLeases: new Map(), adminAbsentAt: null };
+      entry = { code, room: null, seats: new Map(), chat: [], chatSeq: 0, host: { transport: 'p2p', hostId: null, generation: 0, since: 0 }, hostSecret: null, hostGrace: null, reportStale: null, lastTick: 0, matchUrl: '', plan: null, reports: 0, steppedDown: new Set(), hostUnreachable: new Map(), stateBroadcastAt: Number.NEGATIVE_INFINITY, stateFlushPending: false, stateFlushArmed: false, seatLeases: new Map(), adminAbsentAt: null };
       rooms.set(code, entry);
     }
     return entry;
@@ -278,6 +280,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     }
     // (2026-10-13) the actor's explanation, mirrored: the deadline of a timeout and the seats the ladder passed over
     const passedOver = explainElection(snapshot(room), next, exclude, reason === 'declined' ? room.steppedDown : undefined);
+    room.hostUnreachable.clear();
     room.host = { transport: 'p2p', hostId: next, generation: room.host.generation + 1, since: at };
     room.matchUrl = p2pMatchUrl(room.code, room.host.generation);
     armReportStale(room);
@@ -296,6 +299,18 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       if (!seat.socketId) continue;
       send(seat.socketId, { type: 'host_changed', payload: playerId === hostId ? { ...payload, hostSecret: room.hostSecret } : { ...payload } });
     }
+  };
+
+  /** The actor's §13.22 rule, mirrored: the host's socket is gone and a peer heard nothing from it within the window. */
+  const electIfHostLost = (room: RoomState): void => {
+    const hostId = room.host.hostId;
+    if (!hostId || !matchLive(room) || room.seats.get(hostId)?.socketId) return;
+    const at = now();
+    const witnesses = [...room.hostUnreachable].filter(([playerId, claimedAt]) => playerId !== hostId && at - claimedAt <= ROOM_HOST_UNREACHABLE_TTL_MS);
+    if (!witnesses.length) return;
+    emit('host_lost', room.code, { hostId, witnesses: witnesses.map(([playerId]) => playerId) });
+    clearHostGrace(room);
+    changeHost(room, 'timeout', hostId, false, 'socket_lease');
   };
 
   const scheduleHostGrace = (room: RoomState): void => {
@@ -483,6 +498,20 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
             if (seat.declined && room.host.hostId === playerId && matchLive(room)) changeHost(room, 'declined', playerId, command.unable === true);
             return;
           }
+          if (command.type === 'host_unreachable') {
+            const generation = command.generation, silentMs = command.silentMs;
+            if (typeof generation !== 'number' || typeof silentMs !== 'number' || !Number.isFinite(silentMs) || silentMs < 0) throw new RoomError('invalid_command');
+            const hostId = room.host.hostId;
+            const team = room.room!.players.find((player) => player.id === playerId)?.team;
+            if (hostId && hostId !== playerId && team && team !== 'spectator' && matchLive(room) && generation === room.host.generation &&
+                silentMs >= ROOM_HOST_UNREACHABLE_AFTER_MS) {
+              room.hostUnreachable.set(playerId, at);
+              emit('host_unreachable', room.code, { playerId, hostId, silentMs });
+              electIfHostLost(room);
+            }
+            reply('room_ack', { revision: room.room!.revision });
+            return;
+          }
           if (command.type === 'start') {
             applyRoomCommand(room.room!, playerId, command, at, undefined);
             startMatch(room, playerId);
@@ -538,7 +567,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       if (room.room?.players.some((player) => player.id === entry.playerId)) {
         setPlayerConnected(room.room, entry.playerId, false, now());
         armSeatLease(room, entry.playerId);
-        if (room.host.hostId === entry.playerId && matchLive(room)) { emit('host_absent', room.code, { hostId: entry.playerId }); scheduleHostGrace(room); }
+        if (room.host.hostId === entry.playerId && matchLive(room)) { emit('host_absent', room.code, { hostId: entry.playerId }); scheduleHostGrace(room); electIfHostLost(room); }
         if (room.room.adminId === entry.playerId) {
           room.adminAbsentAt = now();
           setTimeout(() => { if (room.room && migrateAdminIfAbsent(room.room, now())) { room.adminAbsentAt = null; broadcastState(room); } }, hostGraceMs).unref?.();

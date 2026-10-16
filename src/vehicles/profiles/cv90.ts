@@ -434,10 +434,10 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   }
   P.add('hullDark', box(0.16, 0.12, 0.030), 0, 0.46, -3.525);
   P.add('hullDark', cylY(0.032, 0.032, 0.10, 12), 0, 0.46, -3.585);
-  // critic panel 2026-10-15: the decor's rear-rack tray hung off the door and its loads moved once the drums were gone.
-  // The decor keeps out of the envelope the drums stood in (fieldChest.ts reserveDecorVolume; hull frame), so the
-  // door stays clear and its loads keep their seats.
-  reserveDecorVolume(P.hullG, [-1.86, 0.775, -4.215], [1.86, 2.025, -3.605]);
+  // critic panel 2026-10-15: the decor's rear-rack tray hung off the door once the drums were gone. The decor keeps out
+  // of the band behind the door, its hinges and its handle (fieldChest.ts reserveDecorVolume; hull frame), so the door
+  // stays clear and opens.
+  reserveDecorVolume(P.hullG, [-0.80, 0.60, -4.05], [1.00, 1.70, -3.70]);
   for (const x of [-0.96, 0.96]) {
     P.addEquipment('hull', box(0.30, 0.28, 0.24), x, 1.91, -3.78);
     P.addModuleVisual('optics', 'hullGlass', box(0.15, 0.075, 0.014),
@@ -624,7 +624,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     weaponName: 'CV90 Mk IV Ksp 88 RWS', seed: 944,
   });
   rws.name = 'cv90MkivK2bStyleRws';
-  rws.userData.hostVariant = 'cv90_mkiv';
+  rws.userData.hostVariant = 'cv90_mk4_concept';
   mount(P, 'turret', rws, 0.68, 0.88, -1.19, [0, -0.04, 0]);
   P.add('turret', cylY(0.22, 0.25, 0.11, 20), -0.58, 0.88, -0.50);
   P.addEquipment('turret', box(0.37, 0.34, 0.34), -0.58, 1.10, -0.50);
@@ -682,14 +682,14 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
       equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
-      host: 'cv90_mkiv', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
+      host: 'cv90_mk4_concept', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
       movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
       rootJoinedToTurretFace: true, sideOnlyOpenings: true, rootRearZM: -.34,
       diagonalSidePortsPerSide: 3, mainGunCaliberMm: 50, barrelLengthM: 3.76,
       trunnionRecessM: gunTrunnionRecessM,
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
-      host: 'cv90_mkiv', designFamily: rws.userData.designFamily,
+      host: 'cv90_mk4_concept', designFamily: rws.userData.designFamily,
       variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.68, 0.88, -1.19]),
       scale: rws.userData.scale, sizeStandard: rws.userData.sizeStandard,
       towerRiseM: rws.userData.towerRise, caliberMm: rws.userData.caliberMm,
@@ -707,7 +707,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
     [2.11, 1.28, 0.84], Math.PI / 2);
   if (P.geometryReceipt) {
     P.hullG.userData.cv90MkivIndependentHullReceipt = Object.freeze({
-      id: 'cv90_mkiv', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
+      id: 'cv90_mk4_concept', firstPartyProceduralOnly: true, externalGeometryLoaded: false,
       sharedStructuralBuilder: false, designLineage: 'independent-tier10-cv90-mkiv-v2',
       hullConstruction: 'cv90-mkiv-raised-troop-roof-v7', roadWheelsPerSide: 7,
       canonicalTrackCourses: 1, duplicateTrackMeshes: 0,
@@ -728,5 +728,5 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
 
 export const CV90_PROFILES = Object.freeze({
   cv90: Object.freeze({ build: buildCv90 }),
-  cv90_mkiv: Object.freeze({ build: buildCv90Mkiv }),
+  cv90_mk4_concept: Object.freeze({ build: buildCv90Mkiv }),
 }) satisfies VehicleProfileRecord;

@@ -6,11 +6,11 @@ import { captureEntityExtras, encodeMigrationKeyframe, decodeMigrationKeyframe, 
 import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
-const seats=[{seat:0,playerId:'pilot',name:'Pilot',team:'alpha',specId:'m1a2'},{seat:1,playerId:'enemy',name:'Enemy',team:'bravo',specId:'m1a2'},{seat:2,playerId:'friend',name:'Friend',team:'alpha',specId:'m1a2'}];
+const seats=[{seat:0,playerId:'pilot',name:'Pilot',team:'alpha',specId:'m1a1_abrams_hc'},{seat:1,playerId:'enemy',name:'Enemy',team:'bravo',specId:'m1a1_abrams_hc'},{seat:2,playerId:'friend',name:'Friend',team:'alpha',specId:'m1a1_abrams_hc'}];
 await ensureAuthorityFleet(seats.map(seat=>seat.specId)); // the host is specs only: load the roster's combat anatomy first
 const world=()=>({mapId:'verdant',heightField:{getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)},getObstacles:()=>[]});
 for(const mode of ['gun_game','infected','drone','ac130','juggernaut']){
- const make=resume=>createMatchActor({roomId:'mode-migration',mapId:'verdant',mode,seed:33,seats,bots:mode==='ac130'?Array.from({length:4},(_,i)=>({playerId:'ground-'+i,name:'Escort '+i,team:'alpha',specId:'m1a2'})):[],ruleset:matchRulesetFor(mode),world:world(),countdownS:0,autoStart:false,now:()=>0,schedule:()=>()=>{},resume});
+ const make=resume=>createMatchActor({roomId:'mode-migration',mapId:'verdant',mode,seed:33,seats,bots:mode==='ac130'?Array.from({length:4},(_,i)=>({playerId:'ground-'+i,name:'Escort '+i,team:'alpha',specId:'m1a1_abrams_hc'})):[],ruleset:matchRulesetFor(mode),world:world(),countdownS:0,autoStart:false,now:()=>0,schedule:()=>()=>{},resume});
  const first=make(null),sim=first.authority;sim.onMatchReady();
  const pilot=sim.entityById.get('pilot'),enemy=sim.entityById.get('enemy');
  const input={throttle:0,steer:0,fire:false,brake:false,aimYaw:0,aimPitch:0,shellSlot:0,actionBits:0};const inputs=new Map([['pilot',input]]);

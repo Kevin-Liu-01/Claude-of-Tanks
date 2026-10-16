@@ -6,7 +6,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Full-source held-out forward rays, recorded independently before reseating
 // the buried draft lights/eyes. Source files are never needed by this test.
 for(const quality of ['high','low']){
- const t=createTank('strv122_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+ const t=createTank('strv122',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
   t.root.updateMatrixWorld(true);const meshes=[];
   t.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m);});

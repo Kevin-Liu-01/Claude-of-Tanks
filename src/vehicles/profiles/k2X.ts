@@ -522,7 +522,7 @@ export function buildK2X(P: TankBuilderPort): void {
   buildMeasuredGun(P);
   P.muzzleZ = K2_X_DATUMS.muzzleZ - GUN_Z;
   P.topY = 3.05 - YAW_Y;
-  P.hullG.userData.xRebuild = { candidate: 'k2_x', independent: true, datumVersion: 1, sourceLocalOnly: true };
+  P.hullG.userData.xRebuild = { candidate: 'k2_black_panther', independent: true, datumVersion: 1, sourceLocalOnly: true };
 }
 
-export const K2_X_PROFILES = { k2_x: { build: buildK2X } } as const;
+export const K2_X_PROFILES = { k2_black_panther: { build: buildK2X } } as const;

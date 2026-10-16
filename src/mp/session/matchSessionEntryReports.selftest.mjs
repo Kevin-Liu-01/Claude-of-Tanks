@@ -57,8 +57,8 @@ function scriptedTransport() {
 
 const SEAT_SECRET = 'entry-report-seat-secret-0123456789abcdef';
 const roomCode = 'ENTRYR';
-const room = createRoom({ roomCode, mode: 'lan', creator: { id: 'me', name: 'Me' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false }, now: 1000 });
-joinRoom(room, { player: { id: 'other', name: 'Other' }, selection: { specId: 't90m' }, team: null, now: 1001 });
+const room = createRoom({ roomCode, mode: 'lan', creator: { id: 'me', name: 'Me' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false }, now: 1000 });
+joinRoom(room, { player: { id: 'other', name: 'Other' }, selection: { specId: 't90am' }, team: null, now: 1001 });
 for (const player of room.players) player.ready = true;
 const snapshotWith = (host) => ({ ...serializeRoom(room), host });
 const world = new RtcWorld();
@@ -93,7 +93,7 @@ let matchCounter = 0;
 function start(transport, { hostId = 'me', generation = 1 } = {}) {
   const matchId = `m${++matchCounter}-0000e${matchCounter}e0`;
   const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
-  const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a2', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
   transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId, generation, since: 2000 }) } });
   transport.deliver({ type: 'match_start', payload: { matchId, round: matchCounter, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: token, matchUrl: p2pMatchUrl(roomCode, generation), hostId, ...(hostId === 'me' ? { hostSecret } : {}), expiresAt: Date.now() + 3_600_000 } });
   return { matchId, hostSecret };

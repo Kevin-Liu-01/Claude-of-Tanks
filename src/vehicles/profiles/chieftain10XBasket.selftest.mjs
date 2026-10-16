@@ -63,7 +63,7 @@ function build(quality, legacy = false) {
     return original(p, cfg);
   };
   try {
-    const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
+    const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false });
     tank.root.updateMatrixWorld(true);
     return { tank, names, submissions: submissions.digest('hex') };

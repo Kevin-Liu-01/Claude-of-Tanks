@@ -17,7 +17,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, left: number, right: number, floor: number, roof: number];
 
 export const LEOPARD_A6_X_DATUMS = Object.freeze({
-  leo2a6_x: {
+  leo2a6: {
     dims: { hullLengthM: 7.63049, overallLengthM: 10.9547999, widthM: 3.80991006, heightM: 2.43111 },
     structuralRoofY: 2.43111,
     fixedOpticHeightM: 2.89810,
@@ -29,7 +29,7 @@ export const LEOPARD_A6_X_DATUMS = Object.freeze({
     muzzleZ: 7.139555,
   },
 });
-const D = LEOPARD_A6_X_DATUMS.leo2a6_x;
+const D = LEOPARD_A6_X_DATUMS.leo2a6;
 
 function local(geometry: THREE.BufferGeometry, origin: Point): THREE.BufferGeometry {
   return geometry.translate(-origin[0], -origin[1], -origin[2]);
@@ -522,4 +522,4 @@ export function buildLeopard2A6X(P: TankBuilderPort): void {
   weapons(P);
 }
 
-export const LEOPARD_A6_X_PROFILES = Object.freeze({ leo2a6_x: { build: buildLeopard2A6X } });
+export const LEOPARD_A6_X_PROFILES = Object.freeze({ leo2a6: { build: buildLeopard2A6X } });

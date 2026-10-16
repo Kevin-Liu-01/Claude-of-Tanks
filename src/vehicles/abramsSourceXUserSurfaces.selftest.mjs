@@ -36,8 +36,8 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
   tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,batchStatic:false});
   // owner 2026-09-16: the SEPv3 wears the rectangular ARAT set too; its Trophy launchers take three
   // rear stations per side (14 rear + 14 fore bracket roots against the TUSK / SEP v2's 28 + 14)
-  const urban=id==='m1a2_tusk_x'||id==='m1a2_sepv2_x'||id==='m1a2_sepv3_x';
-  assert.equal(brackets.length,id==='m1a2_sepv3_x'?30:urban?42:0,'all rear/fore bilateral bracket roots, no additions to other variants');
+  const urban=id==='m1a2_abrams_tusk'||id==='m1a2_abrams_sepv2'||id==='m1a2_abrams_sepv3';
+  assert.equal(brackets.length,id==='m1a2_abrams_sepv3'?30:urban?42:0,'all rear/fore bilateral bracket roots, no additions to other variants');
   for(const side of[-1,1])for(const x of[1.12,1.35,1.55])for(const[z,leftY]of SOURCE_LEFT){
    const h=ray(hull,[side*x,1.73,z],[0,-1,0],.08)[0];assert.ok(h,'actual rear shoulder is closed');
    near(h.point.y,1.697365,.000002,'same flat structural roof across full shoulder');

@@ -77,7 +77,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "m48": {
+  "m48a5_patton": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -96,7 +96,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6782222
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m48",
+        "anchorProfile": "m48a5_patton",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -118,7 +118,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6576421
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "m48",
+        "anchorProfile": "m48a5_patton",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

@@ -41,8 +41,8 @@ function entity(id, spec, team, x, z, yaw) {
  */
 function fight(spec) {
   const bot = entity('bot', spec, 'alpha', 0, 0, 0);
-  const target = entity('target', getSpec('t90m'), 'bravo', 0, 70, Math.PI);
-  const flanker = entity('flanker', getSpec('t90m'), 'bravo', 60, 30, -Math.PI / 2);
+  const target = entity('target', getSpec('t90am'), 'bravo', 0, 70, Math.PI);
+  const flanker = entity('flanker', getSpec('t90am'), 'bravo', 60, 30, -Math.PI / 2);
   const enemies = [target, flanker];
   const ctl = createAI(bot, {
     difficulty: 'normal',
@@ -92,7 +92,7 @@ function fight(spec) {
 
 console.log('[1] the Strv 103 engaged: the bow stays on its target through its scoots and the flanker\'s hits');
 {
-  const spec = getSpec('strv103');
+  const spec = getSpec('strv103b');
   const run = fight(spec);
   ok(run.firstShotS !== null && run.shots >= 4, `it keeps firing (${run.shots} shots, the first at ${run.firstShotS?.toFixed(1)} s)`);
   ok(run.within(8) >= 0.9, `its gun lies within 8 degrees of its target ${(run.within(8) * 100).toFixed(0)} % of the ` +
@@ -103,7 +103,7 @@ console.log('[1] the Strv 103 engaged: the bow stays on its target through its s
 
 console.log('[2] control: a turreted sniper still relocates sideways');
 {
-  const base = getSpec('m1a2');
+  const base = getSpec('m1a1_abrams_hc');
   const run = fight({ ...base, role: 'td' });
   ok(run.relocations >= 1 && run.sideways > 25, `it scoots off the line (${run.relocations} scoots, ` +
     `${run.sideways.toFixed(0)} m sideways)`);

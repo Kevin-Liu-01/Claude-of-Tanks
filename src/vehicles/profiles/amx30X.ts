@@ -359,7 +359,7 @@ export function buildAmx30X(P: TankBuilderPort): void {
   });
   buildAmx30Casting(P); roof(P); basket(P); gun(P);
   P.topY = AMX30_X_DATUMS.overallHeightM - YAW_Y;
-  P.hullG.userData.xRebuild = { candidate: 'amx30_x', independent: true, datumVersion: 1, sourceLocalOnly: true };
+  P.hullG.userData.xRebuild = { candidate: 'amx30b', independent: true, datumVersion: 1, sourceLocalOnly: true };
 }
 
-export const AMX30_X_PROFILES = { amx30_x: { build: buildAmx30X } } as const;
+export const AMX30_X_PROFILES = { amx30b: { build: buildAmx30X } } as const;

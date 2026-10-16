@@ -8,9 +8,9 @@ import {buildT62MV1X} from './profiles/t62mv1X.ts';
 // with only those sheets routed back to rubber (a live counterfactual). 2026-10-01 (frozen pins retired): the pinned
 // pre-finish profile source digests and their authentication replay (verifyHistoricalFixedSkirtSource) are gone.
 export const FIXED_SOURCE_SKIRTS=Object.freeze({
-  t90_x:{build:buildT90AWX,label:'t90-aw-x-fixed-skirt',count:8},
-  t72bu_x:{build:buildT72BUX,label:'t72bu-x-side-leaf',count:12},
-  t62mv1_x:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20},
+  t90:{build:buildT90AWX,label:'t90-aw-x-fixed-skirt',count:8},
+  t72bu:{build:buildT72BUX,label:'t72bu-x-side-leaf',count:12},
+  t62mv1:{build:buildT62MV1X,label:'t62mv1-x-skirt',count:20},
 });
 
 export function withHistoricalFixedSkirtFinish(id,build,wrapBuilder=builder=>builder){

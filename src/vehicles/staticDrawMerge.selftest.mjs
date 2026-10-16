@@ -23,28 +23,28 @@ const GARAGE = { camoSeed: 4200, quality: 'ai', staticPreview: true, batchStatic
 // Draws saved per articulation owner. A different count means the merged set changed: review the
 // equivalence below and the census (.qa-dev f3-census / f3-equivalence in the P21 records), then re-pin.
 // 2026-10-07 (tank-accessories round 3): the shared machine gun's can and belt rounds now share the fitting paint, so
-// each roof gun folds one more contiguous run (leo2a7v_x's roof gun, the m1a2's commander MAG, the T-90M's remote
-// Kord). The m1a2's rig_turret fold already stood at the integration base 9fceb4b9b.
-// 2026-10-07 (tank-accessories round 4, ec873dc52: smoke discharger tubes in matte fitting paint): the challenger_3x
-// and m1a2 rig_turret folds (turret + turretDetail) are gone. The tubes' smoke apertures had made the whole
+// each roof gun folds one more contiguous run (leo2a7v's roof gun, the m1a1_abrams_hc's commander MAG, the T-90M's remote
+// Kord). The m1a1_abrams_hc's rig_turret fold already stood at the integration base 9fceb4b9b.
+// 2026-10-07 (tank-accessories round 4, ec873dc52: smoke discharger tubes in matte fitting paint): the challenger3
+// and m1a1_abrams_hc rig_turret folds (turret + turretDetail) are gone. The tubes' smoke apertures had made the whole
 // turretDetail combat-visible (resident at every range, like the turret shell); without them turretDetail is
 // cosmetic distance detail, a different class from the shell, so the two no longer share a run. Near the tanks draw
 // turret, turretDetail and turretFittingPaint (the tubes); at range turretDetail now detaches.
 const PINNED = {
-  ua_m1a1_x: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
+  ua_m1a2_abrams: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
   // VH.14 (2026-10-15): the roof MG is a working station, so its can-and-rounds fold rides the gun's own pitch rig
-  leo2a7v_x: { saved: 2, owners: { rig_hull: 1, auxiliaryWeaponPitch: 1 } },
-  challenger_3x: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
-  // 2026-10-06 (main's M1A1 mantlet and throat rebuild, ce9f55959..030b3ff96): the m1a2 turretDark bucket is now created after
+  leo2a7v: { saved: 2, owners: { rig_hull: 1, auxiliaryWeaponPitch: 1 } },
+  challenger3: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  // 2026-10-06 (main's M1A1 mantlet and throat rebuild, ce9f55959..030b3ff96): the m1a1_abrams_hc turretDark bucket is now created after
   // turretCloth, so turret and turretDetail formed one contiguous layer run and merged; round 4's matte discharger tubes
   // (above) leave turretDetail cosmetic, so that fold is gone again. The round-3 machine gun's fitting-paint can and
   // rounds fold one run on the commander MAG.
   // VH.14 (2026-10-15): the M1A2's loader M240 and the T-90M's Kord are working stations, so each folds its can and
   // rounds on the gun's own pitch rig; the M1A2's second (decorative) MAG fold is gone with that gun
-  m1a2: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
-  t90m: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  m1a1_abrams_hc: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  t90am: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
   // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both
-  strv122_x: { saved: 0, owners: {} },
+  strv122: { saved: 0, owners: {} },
 };
 const IDENTITY = new THREE.Matrix4();
 
@@ -207,10 +207,10 @@ for (const [id, pin] of Object.entries(PINNED)) {
   assert.deepEqual(bot.owners, pin.owners, `${id}: pinned merges per articulation owner`);
   results.push(bot);
 }
-for (const id of ['ua_m1a1_x', 'challenger_3x']) results.push(equivalent(id, PLAYER, 'player'), equivalent(id, GARAGE, 'garage'));
+for (const id of ['ua_m1a2_abrams', 'challenger3']) results.push(equivalent(id, PLAYER, 'player'), equivalent(id, GARAGE, 'garage'));
 
 // Side table: a folded source answers by name and by raycast face; a live mesh answers as itself.
-const tank = createTank('ua_m1a1_x', null, BOT);
+const tank = createTank('ua_m1a2_abrams', null, BOT);
 try {
   const merged = []; tank.root.traverse((o) => { if (staticMergePartsOf(o).length) merged.push(o); });
   const draw = merged.find((mesh) => staticMergePartsOf(mesh).length > 4);
@@ -234,11 +234,11 @@ try {
 
 // Modes: the default folds only parts already at their owner frame (every vertex byte unchanged); the opt-in
 // translation bake folds more, and is held to the same layer-by-layer equivalence; non-battle builds never merge.
-const translations = equivalent('ua_m1a1_x', { ...BOT, staticDrawMerge: 'translations' }, 'translations');
-assert.ok(translations.saved > PINNED.ua_m1a1_x.saved, 'the translation bake is a strict superset of the default merge');
+const translations = equivalent('ua_m1a2_abrams', { ...BOT, staticDrawMerge: 'translations' }, 'translations');
+assert.ok(translations.saved > PINNED.ua_m1a2_abrams.saved, 'the translation bake is a strict superset of the default merge');
 results.push(translations);
-const identity = createTank('ua_m1a1_x', null, BOT);
-const authoring = createTank('ua_m1a1_x', null, { ...BOT, batchStatic: false, battleDetailLod: false });
+const identity = createTank('ua_m1a2_abrams', null, BOT);
+const authoring = createTank('ua_m1a2_abrams', null, { ...BOT, batchStatic: false, battleDetailLod: false });
 try {
   identity.root.traverse((o) => { for (const part of staticMergePartsOf(o)) assert.ok(part.matrix.equals(IDENTITY), 'the default never bakes a translation'); });
   let folded = 0; authoring.root.traverse((o) => { folded += staticMergePartsOf(o).length; });

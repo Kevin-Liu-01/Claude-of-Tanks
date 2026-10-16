@@ -87,7 +87,7 @@ const variablePolyLoft = KIT.polyLoft as (
 // ---------------------------------------------------------------------------
 
 // ================================ K2 Black Panther ==========================
-// §5.38 PRINT REBUILD (2026-08-08, owner priority: "fully model a custom k2
+// §5.38 PRINT REBUILD (2026-08-08, owner priority: "fully model a custom xk2_black_panther
 // black panther based on this model"): re-lofted to the measured lines of
 // public/models/community-candidates/k2_black_panther_armored_warfare.glb
 // (LOCAL-ONLY quarantine; receipt docs/references/vertex/k2.json). Frame map:
@@ -450,7 +450,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.hullG.add(rack);
   }
   // deck: louvred engine field, fan rings, filler caps — ALL tops ≤1.69
-  // (the turret shell bottom rides at 1.69; sweep law, type10 precedent).
+  // (the turret shell bottom rides at 1.69; sweep law, type10_tk_x precedent).
   // Corner kit (bin, lift eyes, links) lives OUTSIDE the 2.62 swing radius.
   P.add('hullDark', box(2.40, 0.02, 1.20), 0, 1.663, -2.70);
   for (const k of KIT.grilleIndices(P.q, 5, 3)) {
@@ -754,7 +754,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // 100 -> 98.9); the broad band now sits AT the published sight-plane
   // datum so no body-population shift can lift the p95 off it. The ONLY
   // spikes stay the pano head (2 cols, 2.77) + crosswind mast (2.39 —
-  // off-budget). K6 rides a LOW right-wall swing mount (type90 height-law
+  // off-budget). K6 rides a LOW right-wall swing mount (type90_kyumaru height-law
   // precedent), FORWARD (§5.07 CROWS-FORWARD). Whips carried FOLDED (stub
   // bases) for the same datum.
   // KGPS gunner sight — a real HOODED housing (critic r1: mass, not flush
@@ -1182,7 +1182,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
 
 // ==================================== K1A1 ==================================
 // §5.38 KOREA round NEW BUILD (2026-08-08, owner priority: "fully model a
-// custom k1a1 based on this model"): the "baby Abrams" lofted to the
+// custom k1e1 based on this model"): the "baby Abrams" lofted to the
 // k1a1_kojf semantic print (LOCAL-ONLY quarantine; raw meters ×0.979 ≈ gate
 // frame — the print binds width 0% at its ±1.838 bow flares, hullLen −0.1%,
 // overall −1.9%). §5.49 NOTE: the print's turret cluster is under an
@@ -1196,8 +1196,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
 // datum includes the correctly cupola-mounted K6) with wrap-around
 // stowage baskets, gunner-sight doghouse right-front, K6 cupola right +
 // loader MG left, big protruding rotor/gunshield, bare KM256 with mid-tube
-// evacuator. §H.4 vs k2: shorter blunter turret, no KAPS cheek radars, no
-// pano tower, bare tube (k2 carries the sleeved L/55 + arrowhead wedge).
+// evacuator. §H.4 vs xk2_black_panther: shorter blunter turret, no KAPS cheek radars, no
+// pano tower, bare tube (xk2_black_panther carries the sleeved L/55 + arrowhead wedge).
 function buildK1A1Hull(P: Modern3BuilderPort) {
   const { box, buildRunningGear } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
@@ -1584,7 +1584,7 @@ function buildK1A1(P: Modern3BuilderPort) {
 // their tracks much better using our better track system and make their hulls
 // and turrets much mcuh beter" — GROUND-UP UPGRADE of the shared §5.248 base
 // at an OWNER-DECREED ×1.10 ENLARGEMENT (scale judged against the
-// owner-corrected type90 side-by-side in the live garage:
+// owner-corrected type90_kyumaru side-by-side in the live garage:
 // shots/type10-enlarge/scale-probe/pair-s11.png reads decisively larger with
 // a balanced stance; ×1.12 added no garage presence beyond it. §5.304-class
 // divergence: every §5.248 print-decoded station below is carried at ×1.10,
@@ -1606,9 +1606,9 @@ function buildK1A1(P: Modern3BuilderPort) {
 // with plan-swept cheek wedges meeting a narrow mantlet throat, JSW 120 L/44
 // (full thermal sleeve), pano sight center-LEFT-forward (JGSDF arrangement),
 // gunner sight box center-right-forward, slat-sided loaded bustle rack,
-// M2 12.7mm on a LOW right-side swing mount (type90 precedent).
+// M2 12.7mm on a LOW right-side swing mount (type90_kyumaru precedent).
 // TRACKS (§5.336 order 2): the old flattened-shoe covered course is replaced
-// by the fleet smart track/wheel system (§5.318 amx30 + §5.324 kf51b
+// by the fleet smart track/wheel system (§5.318 amx30 + §5.324 kf51_u
 // exemplar grammar): five big exposed rubber-tired wheels w/ visible torsion
 // arms, RAISED drive sprocket (rear) + RAISED idler (front) = the §B6
 // trapezoid, four return rollers, fine-pitch integrated detailed shoes with
@@ -2087,7 +2087,7 @@ function buildType10Native2026(
     periscope(P, 'turretDetail', 0.22, 0.55, -0.022);
     periscope(P, 'turretDetail', 0.792, 0.539, -0.66);
     // M2 12.7mm on the right cluster shelf (§B3 census; LOW swing mount —
-    // type90 precedent keeps the receiver under the roof-kit p95 band)
+    // type90_kyumaru precedent keeps the receiver under the roof-kit p95 band)
     P.add('turretDetail', box(0.055, 0.264, 0.242), 1.309, 0.594, -0.055);        // wall bracket
     P.add('turretDetail', box(0.242, 0.0385, 0.286), 1.276, 0.484, -0.055);       // swing platform
     {
@@ -3733,7 +3733,7 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
   });
   for (const s of [-1, 1]) {
     const m = (x: number) => s * x;
-    // §B2 DONOR BOW-CORNER CLOSURE (type89 §5.341 grammar): the bow
+    // §B2 DONOR BOW-CORNER CLOSURE (hayate_ifv §5.341 grammar): the bow
     // fender/sprocket bay read clean through at [y 0.65, z 2.99] 0.20x0.14
     // on all three ids (sweep receipts m2a2 205px / m3a3 199 / ua 203).
     // Side plate on the 1.40..1.44 plane (outboard of the 1.395 shoe reach
@@ -5211,12 +5211,12 @@ function buildType89(P: Modern3BuilderPort) {
 // ---------------------------------------------------------------------------
 export const MODERN3_BUILDERS = {
   // The Garage workshop worker builds its K2 exhibit from this table.
-  k2: buildK2,
-  type10: buildType10Native2026,
+  xk2_black_panther: buildK2,
+  type10_tk_x: buildType10Native2026,
   m2a2_bradley: buildM2A2Bradley,
   bmp2: buildBMP2,
   // AFV lane 2026-08-06 (owner order): rides the bradley recipe.
-  type89: buildType89,
+  hayate_ifv: buildType89,
   // KOREA round 2026-08-08 (§5.38): new build vs the k1a1_kojf print.
-  k1a1: buildK1A1,
+  k1e1: buildK1A1,
 };

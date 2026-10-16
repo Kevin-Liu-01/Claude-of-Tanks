@@ -5,12 +5,12 @@ import {getSpec} from './specs.ts';
 import {applySourceXOtherAuxArmor} from './sourceXOtherAuxArmor.ts';
 import {traceTank,tankPoseFromState} from '../sim/armor.ts';
 import {assertArmorTraceBounds} from '../sim/armorOutline.test-support.mjs';
-const ids=['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x','type10_x','type90_x','amx40_x'];
+const ids=['k1a1','amx30b','leclerc_xlr','amx56','type10','type90','amx40'];
 const serialize=v=>JSON.stringify(v,(key,value)=>key==='traceBounds'?undefined:value);
 // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of all seven pre-optimization armor objects,
 // the declared Type 10 track-calibration inverse that reached it and its negative control are gone. Cache
 // isolation and exact full-result trace equivalence with and without trace bounds remain the contract.
-for(const[id,donor]of[['type10_x','type10'],['leclerc_x','leclerc']]){
+for(const[id,donor]of[['type10','type10_tk_x'],['leclerc_xlr','leclerc_s2']]){
   const original=structuredClone(getSpec(donor)),first=structuredClone(original),second=structuredClone(original);
   applySourceXOtherAuxArmor(first,id);const before=serialize(first);
   for(const p of second.armor.hullPlates.filter(p=>/^skirt_[LR]$/.test(p.name))){p.physicalMm+=7;p.keMm+=11;p.ceMm+=13;}

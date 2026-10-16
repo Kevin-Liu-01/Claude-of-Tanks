@@ -14,7 +14,7 @@ import { runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfile, mergeStructureDecks } from '../src/world/structureCollision.ts';
 
-await ensureAuthorityFleet(['t90m', 'bmp2', 'm1a2']);
+await ensureAuthorityFleet(['t90am', 'bmp2', 'm1a1_abrams_hc']);
 
 const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
 const flat = () => 0;
@@ -61,17 +61,17 @@ const roofs = { parapet: parapetRoof(), gable30: gable(30), shed40: shed(40) };
 // [deck class, roof, hull, x, z, heading (deg)]
 const stands = [
   // (before the latch the oblique ones flipped between the fits: 5-11 mrad of pitch noise for as long as they stood)
-  ['parapet under the left track', 'parapet', 't90m', -6.2, 0, 0],
-  ['parapet across the left track', 'parapet', 'm1a2', -6.4, 0, 20],
-  ['parapet across the left track', 'parapet', 'm1a2', -6.4, 0, 340],
-  ['parapet across the left track', 'parapet', 'm1a2', -6.8, 0, 40],
-  ['parapet across the left track', 'parapet', 'm1a2', -7.2, 0, 40],
-  ['parapet across the left track', 'parapet', 'm1a2', -6.8, 0, 320],
-  ['gable, across its ridge', 'gable30', 't90m', 0, 0, 0],
+  ['parapet under the left track', 'parapet', 't90am', -6.2, 0, 0],
+  ['parapet across the left track', 'parapet', 'm1a1_abrams_hc', -6.4, 0, 20],
+  ['parapet across the left track', 'parapet', 'm1a1_abrams_hc', -6.4, 0, 340],
+  ['parapet across the left track', 'parapet', 'm1a1_abrams_hc', -6.8, 0, 40],
+  ['parapet across the left track', 'parapet', 'm1a1_abrams_hc', -7.2, 0, 40],
+  ['parapet across the left track', 'parapet', 'm1a1_abrams_hc', -6.8, 0, 320],
+  ['gable, across its ridge', 'gable30', 't90am', 0, 0, 0],
   ['gable, along its ridge', 'gable30', 'bmp2', 0, 0, 90],
-  ['30-degree pitch, across', 'gable30', 'm1a2', 2, -3.5, 90],
-  ['30-degree pitch, facing up it', 'gable30', 't90m', -2, -3.5, 0],
-  ['40-degree shed, downhill', 'shed40', 't90m', 0, 0, 180],
+  ['30-degree pitch, across', 'gable30', 'm1a1_abrams_hc', 2, -3.5, 90],
+  ['30-degree pitch, facing up it', 'gable30', 't90am', -2, -3.5, 0],
+  ['40-degree shed, downhill', 'shed40', 't90am', 0, 0, 180],
 ];
 
 const SIM_DT = 1 / 60;
@@ -112,7 +112,7 @@ for (const [label, roofId, hull, x, z, yawDeg] of stands) {
     `${at}: moving off, no pop and no throw (${off.metrics.popXZMaxM.toFixed(3)} / ${off.metrics.popYMaxM.toFixed(3)} m, ${off.metrics.takeoffMaxMps.toFixed(2)} m/s)`);
 }
 // exact: the same stand twice ends on the same pose to the bit
-const a = stand('parapet', 't90m', -6.2, 0, 0, { seconds: 6 }).pose.at(-1);
-const b = stand('parapet', 't90m', -6.2, 0, 0, { seconds: 6 }).pose.at(-1);
+const a = stand('parapet', 't90am', -6.2, 0, 0, { seconds: 6 }).pose.at(-1);
+const b = stand('parapet', 't90am', -6.2, 0, 0, { seconds: 6 }).pose.at(-1);
 assert.deepEqual(a, b, 'the same stand, the same pose');
 console.log(`roof-rest.selftest: ${stands.length} hulls at rest on parapets, ridges, pitches and a shed hold within ${worstAtt.toFixed(3)} mrad and ${worstY.toFixed(3)} mm over 5 s; each moves off when driven; deterministic`);

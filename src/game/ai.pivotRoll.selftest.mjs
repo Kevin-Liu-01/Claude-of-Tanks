@@ -22,11 +22,11 @@ const FIELD = { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }),
 
 /** A T-90M heading north (+z) at `speed`, its one waypoint 60 m behind it: the goal is pi rad off the bow. */
 function setup(speed, turbo = false) {
-  const spec = getSpec('t90m');
+  const spec = getSpec('t90am');
   const state = createTankState(spec, new Vector3(0, 0, 0), 0);
   state.speed = speed;
   const bot = {
-    id: 'bot', specId: 't90m', spec, team: 'bravo', state,
+    id: 'bot', specId: 't90am', spec, team: 'bravo', state,
     combat: {
       hp: spec.hp, maxHp: spec.hp, destroyed: false,
       reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' }, shellSlot: 0,
