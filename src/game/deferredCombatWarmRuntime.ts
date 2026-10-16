@@ -188,7 +188,12 @@ export function createDeferredCombatWarmRuntime<
 
       const visionStartedAt = now();
       await unlessLinksUnfinished('visionPrograms', async () => {
-        if (warmVisionSteps) for (const _ of warmVisionSteps()) await guardedYield();
+        // (2026-10-16, the perf lane) every step a real frame: the vision programs' strict preparation polls their links
+        // once a step and spends one of its finite rounds each time, so an unforced yield (a no-op until the 6 ms slice is
+        // used) burned its 1024 rounds in ~80 ms with the thermal links still in the driver's queue — 'budget', and the
+        // sights left to link at their first use. A forced yield gives the links real time (as the enemies' uniform
+        // warm does: warmNewRendererProgramUniforms forces its checkpoints).
+        if (warmVisionSteps) for (const _ of warmVisionSteps()) await guardedYield(true);
       });
       trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
 
