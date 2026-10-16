@@ -720,16 +720,8 @@ function flankHousing(P:TankBuilderPort,S:TurretStock,side:number,z0:number,z1:n
   }
 }
 
-/** Roof-edge cassettes laid straight on the cast shoulder (the casting's own slope), seated by ray toward the axis. */
-function shoulderEra(P:TankBuilderPort,S:TurretStock,side:number,zs:readonly number[],y:number):void {
-  for(const z of zs){
-    const dir=new THREE.Vector3(-side*.82,-.57,0).normalize(),origin=new THREE.Vector3(side*1.05,y,z).addScaledVector(dir,-.6);
-    seatedEra(P,S,origin,dir,new THREE.Vector3(0,0,1),[.22,.07,.16]);
-  }
-}
-
 /** Shovel and pry bar on clips along a side case's lid. */
-function lidTools(P:TankBuilderPort,S:TurretStock,side:number):void {
+function lidTools(P:TankBuilderPort,_S:TurretStock,side:number):void {
   const b=b3Case(side),yaw=Math.atan2(b.run.x,b.run.z);
   for(const [inset,len,r]of [[.15,.50,.016],[.25,.52,.013]] as const){
     const a=b.rear.clone().addScaledVector(b.run,.04).addScaledVector(b.n,-inset),e=a.clone().addScaledVector(b.run,len);

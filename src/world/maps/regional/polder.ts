@@ -6,7 +6,7 @@
 import { buildSmockMill } from './windmills.ts';
 import {
   PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
-  type Face, type RegionalParts, type Rgb,
+  type Face, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
