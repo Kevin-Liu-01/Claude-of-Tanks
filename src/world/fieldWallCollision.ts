@@ -7,8 +7,11 @@
 // crushable like the fences, never blocking") and crushes the span it drives through. A breach carries no record; a
 // fallen stretch stands at its own lower height.
 //
-// The records are read from the desktop's slot plan (fieldWorks.ts planWallSlots) on every tier, so a phone, a desktop
-// and the dedicated server's shard stand the same records whatever the phone draws. A crushed span's stone is pressed
+// Each tier stands the records of the walls it draws: its own lines and its own slot plan (fieldWorks.ts planWallSlots).
+// A phone lays its lines on a coarser scan, and laying the desktop's too cost it half its field-works build again (+4.4 s
+// on Saltwind in Node), so a phone's spans are its own; the dedicated server's shard is the desktop's, and a peer whose
+// spans differ finds a crushed one by its box centre, as it does every lighter mobile placement
+// (sim/authoritativeMatch.ts world_prop_destroyed). A crushed span's stone is pressed
 // into a low strip of rubble where it stood, in every form the walls draw (the far and mid batches, and a cell's stone
 // form when the camera is near), and stands again at a rematch.
 import * as THREE from 'three';
@@ -45,9 +48,11 @@ export interface FieldWallSpan {
 
 /**
  * The crushable spans of the field walls (props build, fieldBoundaryWorks.ts): one record pair each, kind 'field-wall',
- * from the desktop's slot plan of every line. `heightAt` is the ground the walls are laid on.
+ * from each line's slot plan on the tier that laid it (`mobile`). `heightAt` is the ground the walls are laid on.
  */
-export function fieldWallSpans(lines: readonly number[][], noise: SimplexNoise, heightAt: (x: number, z: number) => number): FieldWallSpan[] {
+export function fieldWallSpans(
+  lines: readonly number[][], noise: SimplexNoise, heightAt: (x: number, z: number) => number, mobile = false,
+): FieldWallSpan[] {
   const spans: FieldWallSpan[] = [];
   for (const pts of lines) {
     const n = pts.length / 2;
@@ -64,7 +69,7 @@ export function fieldWallSpans(lines: readonly number[][], noise: SimplexNoise, 
       out[1] = pts[k * 2 + 1] + (pts[k * 2 + 3] - pts[k * 2 + 1]) * t;
       return out;
     };
-    const { slots } = planWallSlots(pts, L, noise, false);
+    const { slots } = planWallSlots(pts, L, noise, mobile);
     // the spans: runs of standing slots (whole or fallen) at most FIELD_WALL_SPAN_M long; a breach ends one
     let first = -1;
     const close = (end: number) => {
