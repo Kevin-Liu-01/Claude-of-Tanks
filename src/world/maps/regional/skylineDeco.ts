@@ -5,14 +5,14 @@
 //
 // The r2 sweep measured the Bund towers 0.62-0.64 plain boxes by area (blackglass): every pier a bare box up the shaft,
 // every spandrel a bare slab. Their tiers are the skyline kit's (towerTier, dressFace), copied as decoTier and decoFace,
-// with the piers built as deco piers of two orders (the front order stepped in, its arrises chamfered) and each
-// spandrel a panel with its drip-nosed sill course; the dark core, the glass, the damage and every stream as before.
+// with the piers built as deco piers of two orders (the front order stepped in) and each spandrel a panel with its
+// weathered sill course; the dark core, the glass, the damage and every stream as before.
 import { faceBox, facePanel, facePoint, PartSink, type EmitOptions, type Face, type RegionalBucket } from './geometry.ts';
 import { hash01 } from './facade.ts';
 import { recordBody } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
 import {
-  BRONZE, CHAR, COPPER, DECOR, STEEL, cornerBays, cornerCut, damageOf, faceFrame, fit, inset, pierFinials, podium, pyramidCrown, rectFaces, rubble,
+  BRONZE, CHAR, COPPER, DECOR, STEEL, cornerBays, cornerCut, damageOf, fit, inset, pierFinials, podium, pyramidCrown, rectFaces, rubble,
   skylineUvOffset as uvOffset, soot, spire, tierDamage, type Rect, type SkylineOptions, type TierDamage, type TowerFacade,
 } from './skyline.ts';
 
@@ -107,19 +107,19 @@ export function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, 
 
 /**
  * A deco pier of two orders standing from y0 to y1 at u: the back order `w` wide from the wall out to 55 % of `out`, the
- * front order 9 cm narrower a side out to `out`, its two front arrises chamfered 4 cm; its sides and front, its head
+ * front order 9 cm narrower a side out to `out`; its sides and front, its head
  * capped (the foot stands on the podium or the setback).
  */
 export function steppedPier(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, w: number, out: number, opts: EmitOptions): void {
-  const h = w / 2, f = Math.max(0.08, h - 0.09), o1 = out * 0.55, c = Math.min(0.04, f * 0.3);
+  const h = w / 2, f = Math.max(0.08, h - 0.09), o1 = out * 0.55;
   // the plan section round the pier (u, o), from the wall on its left round to the wall on its right
-  const sec: Array<[number, number]> = [[-h, 0], [-h, o1], [-f, o1], [-f, out - c], [-f + c, out], [f - c, out], [f, out - c], [f, o1], [h, o1], [h, 0]];
+  const sec: Array<[number, number]> = [[-h, 0], [-h, o1], [-f, o1], [-f, out], [f, out], [f, o1], [h, o1], [h, 0]];
   const at = (s: readonly [number, number], y: number) => facePoint(face, u + s[0], y, s[1]);
   for (let i = 0; i + 1 < sec.length; i++) sink.quad(bucket, at(sec[i], y0), at(sec[i + 1], y0), at(sec[i + 1], y1), at(sec[i], y1), opts);
   // the head: the section's plan fanned (two convex parts: the back order, the front order)
   // (counter-clockwise from above: the face's u turned toward its out is clockwise, so the sections run back)
   sink.polygon(bucket, [at([-h, o1], y1), at([h, o1], y1), at([h, 0], y1), at([-h, 0], y1)], opts);
-  sink.polygon(bucket, [at([-f, out - c], y1), at([-f + c, out], y1), at([f - c, out], y1), at([f, out - c], y1), at([f, o1], y1), at([-f, o1], y1)], opts);
+  sink.polygon(bucket, [at([-f, out], y1), at([f, out], y1), at([f, o1], y1), at([-f, o1], y1)], opts);
 }
 
 /**
@@ -189,9 +189,9 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
     const flush = (b: number) => {
       if (run0 < 0) return;
       const u0 = -W / 2 + run0 * bw, u1 = -W / 2 + b * bw;
-      // (looks r2) the spandrel panel with its sill: a drip-nosed sill course along its head, 5 cm proud of the panel
-      faceSection(sink, sp.bucket, face, u0, u1, [[0, y], [sp.out, y], [sp.out, y + sp.h - 0.14], [sp.out + 0.05, y + sp.h - 0.1],
-        [sp.out + 0.05, y + sp.h], [0, y + sp.h]], { ...spOpts, ...(burnt ? { colour: CHAR, shade: 0.4 } : {}) });
+      // (looks r2) the spandrel panel with its sill: a weathered sill course along its head, its nose 5 cm proud of the panel
+      faceSection(sink, sp.bucket, face, u0, u1, [[0, y], [sp.out, y], [sp.out, y + sp.h - 0.12], [sp.out + 0.05, y + sp.h - 0.1], [0, y + sp.h]],
+        { ...spOpts, ...(burnt ? { colour: CHAR, shade: 0.4 } : {}) });
       run0 = -1;
     };
     for (let b = 0; b <= bays; b++) {
@@ -239,7 +239,7 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
       if (yTop - y0 < 0.5) continue;
       const pw = corner0 ? pier.w * 1.2 : pier.w;
       // (looks r2) a deco pier of two orders: its back order the pier's width out to 55 % of its reach, the front order
-      // stepped in 9 cm a side with its arrises chamfered (a box before)
+      // stepped in 9 cm a side (a box before)
       steppedPier(sink, pier.bucket, face, corner0 ? u - Math.sign(u) * pw / 2 : u, y0, yTop, pw, pier.out, pOpts);
     }
   }

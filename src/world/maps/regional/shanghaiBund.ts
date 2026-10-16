@@ -78,19 +78,6 @@ function deco(sink: PartSink, face: Face, y0: number, y1: number, fh: number, st
 /** The faces of a tier x0..x1, z0..z1 (front +z, right, back, left). */
 const tierFaces = (x0: number, x1: number, z0: number, z1: number): Face[] => planFaces(rect(x0, z0, x1, z1));
 
-/** The ground storey's shopfronts and doors along a podium face (dressing). */
-function podiumFront(sink: PartSink, face: Face, h: number, look: () => number, pierBucket: RegionalBucket, pierShade = 1): void {
-  // (props census #9) each shopfront set back between its piers under its bronze fascia, the piers and the fascia 0.22 m
-  // proud of the glass (they were 16 and 9 cm: the glass read laid on the wall)
-  const w = face.width - 0.8, n = Math.max(1, Math.round(w / 3.2)), pitch = w / n;
-  for (let k = 0; k < n; k++) {
-    const u = -w / 2 + pitch * (k + 0.5), gh = Math.min(h - 1.0, 3.6);
-    facePanel(sink, look() < 0.25 ? 'curtain' : 'glass', face, u, 0.3 + gh / 2, 0.012, pitch - 0.9, gh, { decor: true, window: face.out });
-    faceBox(sink, 'structureMetal', face, u, 0.3 + gh + 0.2, 0.11, pitch - 0.7, 0.3, 0.22, { colour: BRONZE, decor: true, fine: true });
-  }
-  for (let k = 0; k <= n; k++) faceBox(sink, pierBucket, face, -w / 2 + pitch * k, h / 2, 0.12, 0.7, h, 0.24, { decor: true, fineSides: true, shade: pierShade });
-}
-
 /**
  * A face's war: shell pocks over its lower storeys, a breach, sandbags along its foot (dressing: a phone draws it as the
  * desktop does and keeps none of it, PartSink.dressing).

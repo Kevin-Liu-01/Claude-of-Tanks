@@ -7,7 +7,7 @@
 // under a moulded cornice, the tower on its own base course, both swept round their plans with their decks; the piers
 // are of two orders (skylineDeco.ts steppedPier), the spandrel beams carry drip-nosed sills, the lattice band is a frieze
 // between its fillets. The streams draw as before.
-import { PartSink, faceBox, facePanel, rgb, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePanel, rgb, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { faceSection, steppedPier } from './skylineDeco.ts';
 import { emitRoof, recordBody, roofGeometry, type RoofSpec } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
