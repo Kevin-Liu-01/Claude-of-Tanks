@@ -814,8 +814,9 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     [fit(0.18), fitY(0.15), fit(0.15)], [-fit(0.18), fitY(0.15), fit(0.15)],
   ), x, foundationTopY, z + fit(0.03), 0, yaw, 0);
 
-  const finishStation = ['t90_1992','t90m_proryv'].includes(P.spec.id)
-    ? captureAuxiliaryStock(P,weaponName) : null;
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): every host's automated station works, not only the
+  // T-90's and the Proryv's — the armoured head turns with its gun and the gun fires.
+  const finishStation = captureAuxiliaryStock(P,weaponName);
   // The open bay's deck top, where its cheek plates stand (round 5).
   let deckTopY: number | null = null;
   if (openWeaponBay) {
@@ -893,11 +894,11 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     [x - fit(0.25), headCenterY + fitY(0.04), z + fit(0.15)], [x - fit(0.26), headCenterY + fitY(0.05), z + fit(0.11)]],
     fit(0.009), 6, 8));
 
-  finishStation?.();
+  finishStation();
   const weapon = FITTINGS.pintleMG({
     mats: P.mats,
     cls: weaponClass,
-    remoteControlled: ['t90_1992', 't90m_proryv'].includes(P.spec.id),
+    remoteControlled: true,
     // The weapon and yoke stay dark against the painted armored head so the
     // single automated package remains legible in the normal three-quarter
     // gallery view. A camouflage-painted receiver made the consolidated

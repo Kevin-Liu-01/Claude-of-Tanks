@@ -230,11 +230,15 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
     assert.equal(turret.userData.americanRwsReceipt?.buriedSeatM, 0.010,
       `${id}: command station is flush-seated into the existing roof carrier`);
   }
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons calibre-true and working): the loader's crew gun is the 7.62 mm
+  // M240 on the American installation, a working station
   const loader = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
-  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+    (object) => object.userData.americanWeaponStandard === 'american-m240-v1');
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served loader's M240`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
+  assert.equal(loader[0].userData.caliberMm, 7.62, `${id}: the loader's gun is calibre-true`);
+  assert.ok(loader[0].userData.remoteControlled && loader[0].getObjectByName('auxiliaryWeaponPitch'), `${id}: the loader's gun works`);
   assert.ok(loader[0].position.x > 0,
     `${id}: Browning stays on the right in a head-on view`);
   const paintedShield = loader[0].children.find(
@@ -296,8 +300,8 @@ for (const [id, expectedLoader, expectedShield] of [
 ]) {
   const tank = make(id);
   const loader = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
-  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+    (object) => object.userData.americanWeaponStandard === 'american-m240-v1');
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served loader's M240`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
   assert.equal(loader[0].userData.machineGunFinish, 'gunmetal');
@@ -343,4 +347,4 @@ for (const id of [
   tank.dispose();
 }
 
-console.log('americanModernization.selftest: full commander towers and right-side M2HB loaders verified');
+console.log('americanModernization.selftest: full commander towers and right-side working M240 loaders verified');

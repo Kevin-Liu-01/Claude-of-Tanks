@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
+import {fieldChestParts,reserveDecorVolume} from './fieldChest.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
@@ -278,10 +279,35 @@ function rearRack(P:TankBuilderPort):void {
     frameBar(P,[left,2.125,z],[right,2.125,z]);
     for(const x of [left,right])frameBar(P,[x,1.622,z],[x,2.125,z]);
   }
-  turret(P,'turretCloth',box(.37,.40,.69),-.32,1.880,-2.43);
-  turret(P,'turretCloth',cylinder(.31,.52,20),.77,1.94,-2.388);
-  turret(P,'turretCloth',box(.55,.325,.49),-.388,1.844,-2.936);
-  turret(P,'turretCloth',cylinder(.31,.52,20),.233,1.933,-2.825);
+  rearBasketStowage(P);
+}
+
+// Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the basket held two canvas blocks
+// and two upright canvas drums. The JGSDF calls the Type 10's external turret stowage its "basket": crew equipment in
+// closed steel chests (a 20 L can stands 0.49 m, taller than the basket's 0.48 m clear height). Rear row: three chests
+// across the basket; front row: three lower chests against the bustle. Every chest stands on the floor slats (y 1.622) inside the frame (x -1.268..1.12,
+// z -3.227..-2.065, top bar 2.125), clear of the bars by at least 3 cm.
+function rearBasketStowage(P:TankBuilderPort):void {
+  const floor=1.640;
+  const chest=(w:number,h:number,d:number,x:number,z:number,front:1|-1,handles=true)=>{
+    const {paint,dark}=fieldChestParts(w,h,d,{high:!!P.q,front,handles});
+    for(const g of paint)turret(P,'turret',g,x/EQUIPMENT_X_DATUM,floor,z);
+    for(const g of dark)turret(P,'turretDark',g,x/EQUIPMENT_X_DATUM,floor,z);
+  };
+  // rear row, latches facing out of the basket's rear mesh; the chests stand side by side and the front row against
+  // the rear row, so no narrow crevice runs down between them (a 5-14 cm slot between chests under the bustle read as
+  // an opening into the hull to the watertight check: tools/track-lane-boxes.selftest)
+  // (no end handles: each chest's end stands against its neighbour's)
+  chest(.86,.36,.46,-.76,-2.935,-1,false);
+  chest(.52,.36,.46,-.07,-2.935,-1,false);
+  chest(.74,.36,.46,.56,-2.935,-1,false);
+  // front row, latches facing aft over the rear row's lids
+  chest(.62,.30,.40,-.86,-2.505,-1,false);
+  chest(.50,.26,.40,-.30,-2.505,-1,false);
+  chest(.70,.30,.40,.30,-2.505,-1,false);
+  // critic panel 2026-10-15: the basket stays the chests' (the canvas loads stood here before), so the decor's loads
+  // keep the seats they had (fieldChest.ts reserveDecorVolume)
+  reserveDecorVolume(P.turretG,[-1.25-PIVOT[0],floor-PIVOT[1],-3.2-PIVOT[2]],[1.25-PIVOT[0],floor+.55-PIVOT[1],-2.18-PIVOT[2]]);
 }
 
 function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:number,d:number,glassZ:number):void {

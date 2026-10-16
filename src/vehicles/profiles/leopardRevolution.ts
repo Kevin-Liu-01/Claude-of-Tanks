@@ -276,8 +276,9 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
   equip('turretDetail', box(0.22, 0.19, 0.28), 1.083, 2.687, -1.58);
   equip('turretDark', box(0.16, 0.16, 0.24), 0.56, 2.650, -1.55);
   equip('turretGlass', box(0.12, 0.115, 0.012), 0.56, 2.650, -1.423);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the remote MG)
   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', scale: 0.74,
-    tone: 'two-tone', elev: 0, ammo: false, shield: false, ring: false, seed: 260905 });
+    tone: 'two-tone', elev: 0, ammo: false, shield: false, ring: false, seed: 260905, remoteControlled: true });
   mg.name = 'revolutionRemoteMachineGun';
   mg.position.set(0.858, 2.605 - ROOF_BASE, -1.57 - YAW_Z);
   P.turretG.add(mg);

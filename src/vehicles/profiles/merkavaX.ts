@@ -304,7 +304,9 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   put('turretDetail',box(.0581,.080,.091),1.12405,2.7567,-.7215);
   put('turretDetail',box(.0581,.052,.130),1.112,2.7758,-.6635);
   for(const [x,y,z,cls,scale]of[[-.87,2.528,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){
-    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true});
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's and loader's MAGs)
+    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true,working:true});
+    mg.name=x<0?'merkava3dXCommanderMag':'merkava3dXLoaderMag';
     mg.position.set(x,y+MK3.ground-MK3.y,z-MK3.center-MK3.z);P.turretG.add(mg);
   }
 }
@@ -837,7 +839,8 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
   const bracketTop=ay-.02, bracketIn=footX-footHalfX+.013, bracketOut=ax-.045;
   topPart(P,MK4,'turretDetail',box(bracketIn-bracketOut,.045,.07),(bracketIn+bracketOut)/2,bracketTop-.0225,az);
   topPart(P,MK4,'turretDetail',cylY(.042,.02,P.q?16:12),ax,ay-.01,az);
-  const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417});
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+  const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417,working:true});
   roofWeapon.position.set(ax,ay-MK4.y,az-MK4.z);
   roofWeapon.name='merkava4BarakArmWeapon';
   P.turretG.add(roofWeapon);
@@ -1209,7 +1212,8 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   P.add('gun',cylZ(.069,.22,18),0,0,2.40);
   P.add('gunDark',box(.16,.07,.18),0,.015,.54);
   addNamerSourceSupport(P);
-  const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false});
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's MAG)
+  const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false,working:true});
   auxiliary.position.set(.46,2.76-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
   P.muzzleZ=2.51;P.topY=1.12;
   // The Namer source is a narrower/shorter Merkava-family chassis. Its turret

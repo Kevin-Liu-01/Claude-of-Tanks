@@ -968,16 +968,9 @@ function addKV2TurretSideHardware(P: SovietHeavyBuilderPort): void {
 function addKV2TurretFastenersAndWeapon(P: SovietHeavyBuilderPort): void {
   const { box } = KIT;
 
-  // roof DShK on the bustle plateau rear-LEFT corner, pointing rearward —
-  // the print's own rear-roof MG seat (§B3 mandatory census MG; FITTINGS
-  // stamped; parented to turretG so it yaws with the slab).
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 0.95, elev: 0.10,
-      seed: 12, ring: false, ammo: true, rotation: [0, Math.PI, 0] });
-    mg.position.set(-0.55, 1.472, -1.36);
-    P.turretG.add(mg);
-    P.add('turretDetail', box(0.14, 0.016, 0.14), -0.55, 1.470, -1.36);        // pintle foot plate into the plateau
-  }
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the KV-2
+  // carried its DT machine guns in ball mounts (coaxial, turret rear, hull), never a roof gun, so the rear-roof DShK the
+  // old "every vehicle shows a roof MG" census added is gone (roofWeaponPolicy.ts).
   // rivet stud rows along the plate seams (dark studs, mask-safe buckets)
   const stud = (x: number, y: number, z: number, face: 'x' | 'z'): void => {
     if (face === 'z') P.add('turretDark', box(0.030, 0.030, 0.018), x, y, z);

@@ -202,6 +202,13 @@ interface MuzzleTipOptions {
 
 interface FittingOptions {
   remoteControlled?: boolean;
+  /**
+   * VH.14 (coordinator ruling 2026-10-14, "roof weapons match the real vehicle and every drawn gun works"): a crew-served
+   * roof gun the auxiliary roof-gun control drives. It keeps its crew construction (grips, sights, the class's feed side
+   * and crew barrel) and gains the working station's rig: the mount and shield turn on the pintle, the gun, its feed and
+   * can pitch on the trunnion (`auxiliaryWeaponPitch`), and the station publishes its pivot and muzzle.
+   */
+  working?: boolean;
   mats?: RuntimeValue;
   shadows?: boolean;
   rotation?: Vec3Tuple;
@@ -1512,15 +1519,25 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   // get the powered yaw/pitch rig used by the auxiliary auto-gun control.
   const context = createPintleMgBuildContext(opts);
   addPintleMgMount(context);
-  if (opts.remoteControlled) {
+  if (opts.remoteControlled || opts.working) {
     const weapon=fitParts(), weaponContext={...context,parts:weapon};
     addPintleMgReceiver(weaponContext);addPintleMgBarrel(weaponContext);addPintleMgAmmo(weaponContext);
     addPintleMgShield(context);addPintleMgRing(context);
     const fitting=assemblePintleMg(context);
     fitting.userData.remoteControlled=true;
     fitting.userData.barrelAxisLocalY=context.trunY;
-    fitting.userData.muzzleLocalZ=context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011;
+    // the muzzle device's front plus its 11 mm marker (machineGunGeometry.ts addPintleBarrel / muzzleMarker) on the drawn
+    // barrel: a remote station's datum barrel (its published expression, unchanged to the last bit), a crew-served gun's
+    // crew barrel, or a remote station drawing the crew barrel (datumBarrel false)
+    const datumBarrel=opts.remoteControlled&&opts.datumBarrel!==false;
+    fitting.userData.muzzleLocalZ=datumBarrel
+      ? context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011
+      : context.trunZ+.10*context.s+context.barrelLength+context.cls.flashL*context.s+.011;
     attachAuxiliaryWeapon(fitting,weapon,opts,context.recY,0,context.recZ);
+    if (!opts.remoteControlled) {
+      fitting.userData.crewServed=true;
+      nameWorkingStation(fitting,'browningDerivedMachineGunBody','browningDerivedMachineGunMount');
+    }
     return fitting;
   }
   addPintleMgReceiver(context);
@@ -1678,22 +1695,23 @@ function assembleAmericanM2(context: AmericanM2BuildContext, layout: PintleLayou
   // The named stock stays the rigid fitting stock it is (battleGeometrySharing reads `fitting_` names): the can folds
   // with its belt's rounds into one draw as every shared gun's does.
   const ammoMesh = fitting.children.find((child) => child.userData.fittingSlot === MG_AMMO_CAN_SLOT);
+  const m2 = layout.classKey === 'm2';
   if (ammoMesh) {
-    ammoMesh.name = 'sheridanCommanderM2AmmoBox';
+    ammoMesh.name = m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox';
     ammoMesh.userData.appearanceRole = 'ammoBox';
     ammoMesh.userData.staticMergeShareable = true;
   }
   const bodyMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (bodyMesh) {
-    bodyMesh.name = 'americanM2HBBody';
+    bodyMesh.name = m2 ? 'americanM2HBBody' : 'americanM240Body';
     bodyMesh.userData.appearanceRole = 'machineGun';
     bodyMesh.userData.staticMergeShareable = true;
   }
-  fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v2';
+  fitting.userData.americanWeaponStandard = m2 ? 'sheridan-m2hb-v2' : 'american-m240-v1';
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.weaponClass = layout.classKey;
-  fitting.userData.weaponName = 'Browning M2HB';
-  fitting.userData.caliberMm = 12.7;
+  fitting.userData.weaponName = m2 ? 'Browning M2HB' : 'M240 GPMG';
+  fitting.userData.caliberMm = layout.cls.caliber;
   fitting.userData.weaponScale = layout.s;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.shieldVariant = shieldVariant || 'open';
@@ -1726,22 +1744,57 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const parts = fitParts();
   // the callers' 0.58-0.72 scales draw at the crew guns' true-scale floor (machineGunGeometry.ts MG_CREW_TRUE_SHARE)
+  // VH.14 (calibre-true roof weapons): the installation also carries the 7.62 mm M240 ('mag') where the real crew
+  // station does (the Abrams loader's skate, LGS and LAGS mounts); its shield and ring keep the M2 installation's size
+  const cls = opts.cls === 'mag' ? 'mag' : 'm2';
   const layout = createPintleLayout({
-    cls: 'm2', scale: opts.scale || 1, tone: opts.tone || 'dark', ammo: opts.ammo !== false,
+    cls, scale: opts.scale || 1, tone: opts.tone || 'dark', ammo: opts.ammo !== false,
     // the can and belt on the ammo side (+1: the gunner's left, +X)
     feed: ammoSide > 0 ? 'left' : 'right',
   }, parts);
+  const installationS = cls === 'm2' ? layout.s : createPintleLayout({ cls: 'm2', scale: opts.scale || 1 }, { add() {} }).s;
   addPintleMount(layout);
-  addPintleReceiver(layout);
-  addPintleBarrel(layout);
-  addPintleAmmo(layout);
+  // VH.14: a working M2 carries its receiver, barrel and can on the trunnion's pitch rig; the cradle, ring and shield
+  // turn with the pintle (fittingPintleMG's working station)
+  const weapon = opts.working ? fitParts() : parts;
+  const weaponLayout = opts.working ? { ...layout, parts: weapon } : layout;
+  addPintleReceiver(weaponLayout);
+  addPintleBarrel(weaponLayout);
+  addPintleAmmo(weaponLayout);
   const context: AmericanM2BuildContext = {
-    opts, s: layout.s, ammoSide, parts, recY: layout.recY, recZ: layout.recZ, trunZ: layout.trunZ,
+    opts, s: installationS, ammoSide, parts, recY: layout.recY, recZ: layout.recZ, trunZ: layout.trunZ,
     shieldVariant: opts.shield === true ? 'standard' : opts.shield, aim: placeMachineGunBarrelGeometry,
   };
   addAmericanM2Ring(context);
   addAmericanM2Shield(context);
-  return assembleAmericanM2(context, layout);
+  const fitting = assembleAmericanM2(context, layout);
+  if (opts.working) {
+    fitting.userData.remoteControlled = true;
+    fitting.userData.crewServed = true;
+    fitting.userData.barrelAxisLocalY = layout.trunY;
+    fitting.userData.muzzleLocalZ = layout.trunZ + .10 * layout.s + layout.barrelLength + layout.cls.flashL * layout.s + .011;
+    attachAuxiliaryWeapon(fitting, weapon, opts, layout.recY, 0, layout.recZ);
+    const m2 = layout.classKey === 'm2';
+    nameWorkingStation(fitting, m2 ? 'americanM2HBBody' : 'americanM240Body', m2 ? 'americanM2HBMount' : 'americanM240Mount',
+      m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox');
+  }
+  return fitting;
+}
+
+/**
+ * VH.14: a working crew station's names follow its parts. The gun body is the pitching weapon's steel (its receiver and
+ * barrel), the mount's steel keeps a mount name, and the can (when the construction names it) rides the gun; the
+ * fixed construction's receipts read these names (americanModernization, awSecondWaveGeometry).
+ */
+function nameWorkingStation(fitting: THREE.Group, body: string, mount: string, ammo?: string): void {
+  for (const child of fitting.children) if (child.userData.fittingSlot === 'dark') child.name = mount;
+  const pitch = fitting.getObjectByName('auxiliaryWeaponPitch');
+  for (const child of pitch?.children ?? []) {
+    if (child.userData.fittingSlot === 'dark') { child.name = body; child.userData.appearanceRole = 'machineGun'; }
+    else if (ammo && child.userData.fittingSlot === MG_AMMO_CAN_SLOT) {
+      child.name = ammo; child.userData.appearanceRole = 'ammoBox'; child.userData.staticMergeShareable = true;
+    }
+  }
 }
 
 /**

@@ -1,4 +1,4 @@
-import { smokeScreenSummary } from '../../src/sim/smokeScreen.ts';
+import { auxiliaryRowJson } from '../../src/sim/auxiliarySystems.ts';
 /**
  * Authority entity -> wire row capture. Positions and angles are quantized
  * from the raw simulation state (mm, u16 turns); combat fields follow the
@@ -111,7 +111,7 @@ export function captureEntityRow(entity: AuthoritativeEntity, entityId: number, 
     shellSlot: Math.max(0, Math.min(2, combat.shellSlot | 0)),
     ammo0: clampU16(combat.ammo?.[0] ?? 0), ammo1: clampU16(combat.ammo?.[1] ?? 0), ammo2: clampU16(combat.ammo?.[2] ?? 0),
     flags: entityFlags(entity),
-    ...(combat.auxiliary ? { auxiliaryJson: JSON.stringify({...combat.auxiliary, smoke:combat.auxiliary.smoke ? smokeScreenSummary(combat.auxiliary.smoke) : null}) } : {}),
+    ...(combat.auxiliary ? { auxiliaryJson: auxiliaryRowJson(combat.auxiliary) } : {}),
     eraSpent: era.indices(entity),
     // physics lane (wire 5): a wreck's turret where its body lies
     ...(entity._wreckTurret ? { wreckBody: {

@@ -271,8 +271,9 @@ function roofEquipment(P: TankBuilderPort): void {
   // the gun is the fleet's 7.62 mm GPMG (receiver with feed cover, gas tube, carrying handle, pistol grip, flash hider)
   // lying in its external cradle on the same low base, its receiver centred over the base, its can on the feed side; the
   // receiver block and plain tube go. One gun, one fitting.
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the fitting is a working crew station (working: true).
   equipment(P, 'turretDetail', box(.09, .077, .12), .90, 2.410, .358);
-  const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle', ammo: true, tone: 'two-tone', seed: 3301 });
+  const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle', ammo: true, tone: 'two-tone', seed: 3301, working: true });
   gun.position.set(.90 - D.turretPivot[0], 2.4485 + .0005 - D.turretPivot[1], .438 - D.turretPivot[2]);
   gun.name = 'leclercXHatchMachineGun';
   P.turretG.add(gun);
