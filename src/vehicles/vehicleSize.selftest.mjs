@@ -16,6 +16,8 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // enlargement, measured with the current shared factory and no size override.
 // 2026-10-08: c6b60311c (main) rebuilt the KF41 Lynx X turret front after these
 // measurements; its turret max z is re-measured as the current build / factor.
+// 2026-10-16: r4b (f38db33a0) rebuilt the Ares L111A1 as the fleet M2HB receiver (gunMountDark) with a feed chute
+// and a flash hider; its gunMount min z and gun x/y extents are re-measured as the current build / factor.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];
