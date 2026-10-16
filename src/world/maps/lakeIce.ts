@@ -256,6 +256,18 @@ function pressureRidge(
   buckets.plaster.push(winterPressureBerm(heightField, rows));
 }
 
+/**
+ * One shore plate as a broken slab (#19), from the old winterIceWedge's draws: the frozen river's banks (LOOKS goral,
+ * mapKits.ts, which still called the wedge #19 retired) take it as the lakes' shores do; the old jitterUV's four draws
+ * are still made, so the stream after it is unchanged.
+ */
+export function pushShoreIceSlab(buckets: DressingBuckets, rng: Rng, heightField: DressingHeightField, px: number, pz: number,
+  width: number, height: number, depth: number, yaw: number, roll: number, pitch: number): void {
+  rng(); rng(); rng(); rng();
+  pushIce(buckets, iceSlab(heightField, px, pz, width * 1.2, width * (0.6 + Math.abs(roll) * 0.4), 0.12 + depth * 1.1,
+    yaw + pitch * 0.3, 0.18 + (height - 0.22) * 1.4, Math.floor(hash(Math.round(px * 16), Math.round(pz * 16), 0x51a) * 0x7fffffff)));
+}
+
 export function addWinterShoreIce(
   lake: LayoutDisc,
   big: boolean,

@@ -142,7 +142,8 @@ import {
 } from './roadFootprint.ts';
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
-import { placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
+import { craterEjectaPiece, placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
+import { felledPoleDebris } from './maps/felledPoles.ts';
 import { buildHardstandDressing } from './hardstandDressing.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
@@ -6914,12 +6915,13 @@ ${snowCap ? `
         const stumpSupport = sampleDiscGround(heightField, ox, oz, 0.17, 0.03);
         const oy = stumpSupport.y;
         const yawD = prng2() * Math.PI * 2;
-        // snapped stump
-        const stump = new THREE.CylinderGeometry(0.13, 0.17, 0.9 + prng2() * 0.6, 7, 1);
+        // snapped stump (props lane A #21: the cylinders and the box are the collision proxies and keep the draws; the
+        // pole's drawn debris is maps/felledPoles.ts's, in their frames)
+        const stumpH = 0.9 + prng2() * 0.6, lean = (prng2() - 0.5) * 0.24;
+        const stump = new THREE.CylinderGeometry(0.13, 0.17, stumpH, 7, 1);
         scaleUV(stump, 0.8, 1.0);
-        stump.rotateZ((prng2() - 0.5) * 0.24);
+        stump.rotateZ(lean);
         stump.translate(ox, oy + 0.45, oz);
-        buckets.wood.push(stump);
         // Felled poles are long enough to span a verge shoulder. Align the
         // rigid body to terrain at both ends instead of floating its far end
         // from the stump's one center sample.
@@ -6936,19 +6938,22 @@ ${snowCap ? `
           _posv.set(fallPose.axisX, fallPose.axisY, fallPose.axisZ));
         fall.applyQuaternion(_quat);
         fall.translate(fallPose.x, fallPose.y, fallPose.z);
-        buckets.wood.push(fall);
         decorationGroundingReceipts.push({
           kind: 'felled-utility-pole', x: fallPose.x, y: fallPose.y, z: fallPose.z,
           relief: fallPose.relief, baseClearance: -0.02,
           start: fallPose.start, end: fallPose.end,
         });
         const arm = box(1.4, 0.10, 0.09, 1.0); // crossarm knocked loose
-        arm.rotateY(yawD + 0.5 + prng2());
+        const armYaw = yawD + 0.5 + prng2();
+        arm.rotateY(armYaw);
         arm.translate(fallPose.end.x, fallPose.end.support.min + 0.05, fallPose.end.z);
-        buckets.wood.push(arm);
+        buckets.baked.push(felledPoleDebris({ mapId, ground: (x, z) => heightField.getHeightAt(x, z),
+          stump: { x: ox, y: oy + 0.45, z: oz, h: stumpH, lean }, arm: { x: fallPose.end.x, y: fallPose.end.support.min + 0.05, z: fallPose.end.z, yaw: armYaw },
+          fall: { x: fallPose.x, y: fallPose.y, z: fallPose.z, axis: [fallPose.axisX, fallPose.axisY, fallPose.axisZ], len: fallLength } }));
         for (const [part, base] of [[stump, oy], [fall, fallPose.y - 0.15], [arm, fallPose.end.support.min]] as const) {
           const drawn = drawnPlanRecord([part], base, -1);
           if (drawn) felledPoleFootprints.push(drawn);
+          part.dispose();
         }
       }
     }
@@ -9319,13 +9324,16 @@ ${snowCap ? `
         const size = 0.14 + rng() * 0.26;
         const clod = roughenChunk(box(size * 1.4, size * 0.7, size, 1.3), rng, size * 0.4);
         jitterUV(clod, rng);
-        clod.rotateY(rng() * Math.PI);
+        const yaw = rng() * Math.PI;
+        clod.rotateY(yaw);
         const clodX = x + Math.cos(angle) * distance;
         const clodZ = z + Math.sin(angle) * distance;
         const groundY = heightField.getHeightAt(clodX, clodZ);
         clod.translate(clodX, groundY + size * 0.25, clodZ);
-        buckets.stone.push(clod);
+        // (props lane A #19: the box is the collision proxy and keeps the draws; the map's ejecta draws — groundDressing.ts)
+        buckets.baked.push(craterEjectaPiece(mapId, heightField, clodX, clodZ, yaw, size));
         const drawn = drawnPlanRecord([clod], groundY, 0.05);
+        clod.dispose();
         if (drawn) craterClodFootprints.push(drawn);
       }
     }
