@@ -10,6 +10,7 @@ import { createHeightField } from './terrain.ts';
 import { MAP_IDS } from './maps/index.ts';
 import reservoir from './maps/reservoir.ts';
 import { slabBox } from './propGeometry.ts';
+import { assertR2 } from '../../tools/r2-standard.mjs';
 import { pushHullFromObstacle, rayCollisionRecord, setCircleShape,
   shellPassesThroughCollisionRecord } from './collision.ts';
 
@@ -539,11 +540,11 @@ function validateIntake(receipt, geometry, collider) {
   validateIntakeCollision(body, geometry, collider, trim);
 }
 
-function fixture() {
+function fixture(stones = 13) {
   const buckets = { stone: [], wood: [], dark: [slabBox(1, 1, 1)], regionalStone: [slabBox(1, 1, 1)], curtain: [slabBox(1, 1, 1)],
     glass: [slabBox(1, 1, 1)], regionalRoof: [slabBox(1, 1, 1)], structureWood: [slabBox(1, 1, 1)], baked: [slabBox(1, 1, 1)] };
   const donors = Array.from({ length: 3 }, (_, i) => {
-    const stone = Array.from({ length: 13 }, () => slabBox(1, 1, 1).translate(-200 + i * 10, 0, 160));
+    const stone = Array.from({ length: stones }, () => slabBox(1, 1, 1).translate(-200 + i * 10, 0, 160));
     buckets.stone.push(...stone);
     const record = () => setCircleShape({ min: [-202 + i * 10, -1, 158], max: [-198 + i * 10, 1, 162] }, -200 + i * 10, 160, 2);
     return { stone, wood: [], obstacle: record(), collider: record() };
@@ -557,6 +558,42 @@ if (process.argv[2] === '--world') {
   const { composeReservoirWaterworks } = await import('./reservoirWaterworks.ts');
   const KIT = {}; // a regional kit naming no weathering of its own (the Eifel kit): weather.ts DEFAULT_WEATHER
   const field = createHeightField(1337, reservoir), cfg = reservoir.props.reservoirWaterworks;
+  {
+    // (the r2 sweep, 2026-10-16) the bunker r2 standard on the works' own groups: the bank's masonry with its quoins, its
+    // cap and its fittings (it graded box share 1.00 as six plain slabs) and the pump house (a 7 cm dark strap hinge laid
+    // on its door's planks was a painted plate); no destroyed state. (The intake's closed trash screens, dark slabs on its
+    // faces by the hard plan's law, are not held here yet.)
+    // (donors of the whole world's size: the works stand at or under them)
+    const f = fixture(40);
+    assert.equal(composeReservoirWaterworks('reservoir', cfg, field, f.donors, f.buckets, f.blockers, KIT).status, 'built');
+    // each bucket's parts as the merged bucket draws them (one soup a bucket, as the r2 sweep reads them)
+    const soup = (list) => {
+      const flat = list.map(g => (g.index ? g.toNonIndexed() : g));
+      const coloured = flat.every(g => g.attributes.color), out = new THREE.BufferGeometry();
+      for (const [name, size] of [['position', 3], ...(coloured ? [['color', 3]] : [])]) {
+        out.setAttribute(name, new THREE.Float32BufferAttribute(flat.flatMap(g => [...g.attributes[name].array]), size));
+      }
+      return out;
+    };
+    const group = (test) => {
+      const out = {};
+      for (const [bucket, list] of Object.entries(f.buckets)) {
+        const mine = list.filter(g => test(g.name ?? ''));
+        if (mine.length) out[bucket] = [soup(mine)];
+      }
+      return out;
+    };
+    const groups = {
+      'site:reservoir-waterworks/pier@bank': group(n => /^reservoir-bank-(body|body-quoins|cap|hatch|stop)$/.test(n)),
+      'site:reservoir-waterworks/kiosk': group(n => n.startsWith('reservoir-kiosk-')),
+    };
+    for (const [kind, parts] of Object.entries(groups)) {
+      assert.ok(Object.keys(parts).length, `${kind}: its parts`);
+      assertR2({ kind, maps: ['reservoir'], route: 'landmark', caps: { near: 1500 },
+        resolve: () => ({ form: kind.split('/')[1], build: () => parts }) });
+    }
+    Object.values(f.buckets).flat().forEach(g => g.dispose());
+  }
   for (const id of MAP_IDS.filter(id => id !== 'reservoir')) {
     const f = fixture(), geometry = Object.values(f.buckets).flat(), hashes = geometry.map(geometryHash);
     assert.equal(composeReservoirWaterworks(id, cfg, field, f.donors, f.buckets, f.blockers, KIT), null);
