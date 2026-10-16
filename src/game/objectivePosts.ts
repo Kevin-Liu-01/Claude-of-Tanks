@@ -29,9 +29,9 @@ export function objectivePostFormOf(mapId: string | null | undefined): Objective
   return (mapId && FORM_OF[mapId]) || 'mast';
 }
 
-type V3 = readonly [number, number, number];
-type Rgb = readonly [number, number, number];
-const srgb = (hex: number): Rgb => {
+export type V3 = readonly [number, number, number];
+export type Rgb = readonly [number, number, number];
+export const srgb = (hex: number): Rgb => {
   const l = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   return [l(((hex >> 16) & 255) / 255), l(((hex >> 8) & 255) / 255), l((hex & 255) / 255)];
 };
@@ -41,14 +41,14 @@ const STEEL = srgb(0x7a7e7a), STEEL_DARK = srgb(0x3a3c3a), NET = srgb(0x3c4428),
 const STONE = srgb(0xa89070), STONE_DARK = srgb(0x7a6650), PANEL = srgb(0x1e2a3e), FRAME = srgb(0xb8bcc0), LAMP = srgb(0xe8c050);
 
 /** A fixed hash (0..1) of three integers. */
-function hash(a: number, b: number, c: number): number {
+export function hash(a: number, b: number, c: number): number {
   let h = (Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(c | 0, 0x9e3779b1)) >>> 0;
   h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15;
   return (h >>> 0) / 4294967296;
 }
 
-/** Flat-shaded triangles in vertex colour, each wound to face its `out`. */
-class Writer {
+/** Flat-shaded triangles in vertex colour, each wound to face its `out` (modeObjects.ts builds with it too). */
+export class Writer {
   readonly p: number[] = []; readonly n: number[] = []; readonly c: number[] = [];
   tri(a: V3, b: V3, c: V3, out: V3, col: Rgb): void {
     const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], wx = c[0] - a[0], wy = c[1] - a[1], wz = c[2] - a[2];
@@ -122,7 +122,7 @@ class Writer {
 }
 
 /** A cloth hung from a pole at `x0` (its hoist), `w` long and `h` deep, its top at `y`; a swallowtail or a plain flag. */
-function cloth(w: Writer, x0: number, y: number, len: number, h: number, swallow: boolean): void {
+export function cloth(w: Writer, x0: number, y: number, len: number, h: number, swallow: boolean): void {
   const steps = 4, white: Rgb = [1, 1, 1];
   for (let s = 0; s < steps; s++) {
     const t0 = s / steps, t1 = (s + 1) / steps;
@@ -144,7 +144,7 @@ function cloth(w: Writer, x0: number, y: number, len: number, h: number, swallow
 
 /** A sandbag: a filled sack 0.52 x 0.21 x 0.32 m laid along `yaw`, its body a slightly bulged block (its top a pillow
  *  over its sides), its tone its own. */
-function bag(w: Writer, x: number, y: number, z: number, yaw: number, seed: number): void {
+export function bag(w: Writer, x: number, y: number, z: number, yaw: number, seed: number): void {
   const k = 0.9 + 0.2 * hash(seed, 5, 9), side = [BAG[0] * k, BAG[1] * k, BAG[2] * k] as const;
   w.box([x, y + 0.1, z], [0.26, 0.1, 0.16], yaw, BAG_DARK, side);
   w.box([x, y + 0.2, z], [0.22, 0.025, 0.13], yaw, side, side);
