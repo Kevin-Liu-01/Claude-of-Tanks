@@ -3,13 +3,13 @@
 // sash frames with many lights, shutters painted green with white margins, a stack at each gable; the great
 // Zeeuwse schuur, a barn of black-tarred weatherboard under a towering hipped thatch with a band of pantiles at the
 // eaves and white-framed doors; a thatched smock mill with its stage; brick warehouses and a café on the dike road.
+import { buildSmockMill } from './windmills.ts';
 import {
   PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalParts, type Rgb,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { buildSmockMill } from './windmills.ts';
 import { facadeOn, trimRun, windowHead } from './facade.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
