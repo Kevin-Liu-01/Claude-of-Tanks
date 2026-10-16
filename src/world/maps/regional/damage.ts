@@ -32,6 +32,7 @@ import { breachCluster, cellsOf, collapseCluster, damagedCluster, sectionDownClu
 import { breachContainers, collapseContainers, containersOf, damagedContainers, readContainers, sectionDownContainers } from './container.ts';
 import { collapseShaft, shaftOf } from './shaft.ts';
 import { collapseLattice, latticeOf, noLatticeDamage } from './latticeFall.ts';
+import { authoredCollapse, authoredOf } from './navajoFall.ts';
 import type { LatticeReading } from './lattice.ts';
 import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
 
@@ -1110,8 +1111,8 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
     const kit: StructureDamageKit = {
       id: style.id,
       // a house from its plan; a body without one read off its parts (a hall, a works, the base set's buildings)
-      describe: (input) => describeHouse(style, input) ?? describeLattice(style, input) ?? describeShell(style, input) ?? describeShaft(style, input) ?? describeCluster(style, input)
-        ?? describeContainers(style, input) ?? describeRuin(style, input),
+      describe: (input) => authoredOf(input, describeHouse(style, input) ?? describeLattice(style, input) ?? describeShell(style, input) ?? describeShaft(style, input) ?? describeCluster(style, input)
+        ?? describeContainers(style, input) ?? describeRuin(style, input)),
       // a sheet-clad face tears and its frame shows (sheet.ts); every other wall breaks as a house's
       breach: (anatomy, hole, out) => (latticeOf(anatomy) ? noLatticeDamage() : ruinPiecesOf(anatomy) ? breachRuin(anatomy, hole, out) : containersOf(anatomy) ? breachContainers(anatomy, hole, out) : cellsOf(anatomy) ? breachCluster(anatomy, hole, out) : isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
         ? breachSheet(anatomy, hole, out) : breachHouse(anatomy, hole, out)),
@@ -1134,6 +1135,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       // where none is given (an offline preview, a receipt)
       collapse: (anatomy, seed, out) => {
         const mound = anatomy.mound ? (x: number, z: number) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy);
+        const own = authoredCollapse(anatomy, seed, out, mound); if (own) return own; // a build's own wreck (navajoFall.ts: the hogan)
         if (latticeOf(anatomy)) return collapseLattice(anatomy, seed, out, mound);
         const result = ruinPiecesOf(anatomy) ? collapseRuin(anatomy, seed, out, mound) : containersOf(anatomy) ? collapseContainers(anatomy, seed, out, mound) : cellsOf(anatomy) ? collapseCluster(anatomy, seed, out, mound)
           : shaftOf(anatomy) ? collapseShaft(anatomy, seed, out, mound)
