@@ -19,36 +19,7 @@ import { withRuinWalls, type WallPieceReading } from './shell.ts';
 import { withLattices, type LatticeReading } from './lattice.ts';
 import { registerHouseDamageKits } from './damage.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
-import { HESSIAN_STYLE } from './hessian.ts';
-import { SAVOYARD_STYLE } from './savoyard.ts';
-import { DALMATIAN_STYLE } from './dalmatian.ts';
-import { BRETON_STYLE } from './breton.ts';
-import { KOLKHOZ_STYLE } from './kolkhoz.ts';
-import { GORAL_STYLE } from './goral.ts';
-import { POLDER_STYLE } from './polder.ts';
-import { EIFEL_STYLE } from './eifel.ts';
-import { MEKONG_STYLE } from './mekong.ts';
-import { NORDLAND_STYLE } from './nordland.ts';
-import { BENGAL_STYLE } from './bengal.ts';
-import { FRANCONIAN_STYLE } from './franconian.ts';
-import { KSAR_STYLE, SIWA_STYLE } from './ksar.ts';
-import { ARCTIC_STYLE } from './arctic.ts';
-import { WADIRUM_STYLE } from './wadirum.ts';
-import { RUHR_STYLE } from './ruhr.ts';
-import { KOHIMA_STYLE } from './kohima.ts';
-import { HOSTOMEL_STYLE } from './hostomel.ts';
-import { KYUSHU_STYLE } from './kyushu.ts';
-import { QUEENSTOWN_STYLE } from './queenstown.ts';
-import { GLENCANYON_STYLE } from './glencanyon.ts';
-import { NAVAJO_STYLE } from './navajo.ts';
-import { SAAR_STYLE } from './saar.ts';
-import { SHANGHAI_STYLE } from './shanghai.ts';
-import { LONGLEAF_STYLE } from './longleaf.ts';
-import { SARAJEVO_STYLE } from './sarajevo.ts';
-import { ANDALUSIAN_STYLE } from './andalusian.ts';
-import { CHOUF_STYLE } from './chouf.ts';
-import { LORRAIN_STYLE } from './lorrain.ts';
-import { TSELINA_STYLE } from './tselina.ts';
+import { nodeKitRequire } from '../../kitRegistryNode.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -66,53 +37,94 @@ export function kitLegacy(mapId: string): boolean {
   return KIT_LEGACY_MAPS.has(mapId);
 }
 
-const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
-  hessian: HESSIAN_STYLE,
-  savoyard: SAVOYARD_STYLE,
-  dalmatian: DALMATIAN_STYLE,
-  breton: BRETON_STYLE,
-  kolkhoz: KOLKHOZ_STYLE,
-  goral: GORAL_STYLE,
-  polder: POLDER_STYLE,
-  eifel: EIFEL_STYLE,
-  mekong: MEKONG_STYLE,
-  nordland: NORDLAND_STYLE,
-  bengal: BENGAL_STYLE,
-  franconian: FRANCONIAN_STYLE,
-  ksar: KSAR_STYLE,
-  arctic: ARCTIC_STYLE,
-  siwa: SIWA_STYLE,
-  wadirum: WADIRUM_STYLE,
-  ruhr: RUHR_STYLE,
-  kohima: KOHIMA_STYLE,
-  hostomel: HOSTOMEL_STYLE,
-  kyushu: KYUSHU_STYLE,
-  queenstown: QUEENSTOWN_STYLE,
-  glencanyon: GLENCANYON_STYLE,
-  navajo: NAVAJO_STYLE,
-  saar: SAAR_STYLE,
-  shanghai: SHANGHAI_STYLE,
-  longleaf: LONGLEAF_STYLE,
-  sarajevo: SARAJEVO_STYLE,
-  andalusian: ANDALUSIAN_STYLE,
-  chouf: CHOUF_STYLE,
-  lorrain: LORRAIN_STYLE,
-  tselina: TSELINA_STYLE,
+// ---- THE STYLE REGISTRY (2026-10-15, the perf lane) ----------------------------------------------------------------
+// Every architecture style is ONE ROW of STYLE_TABLE: its id, its module, the export the module defines it as, and the
+// module's loader. A new kit (LOOKS, Lane C, MAPS) is one more row here; nothing else imports a style module.
+// - The browser loads a map's styles when its world build starts (map.ts createMapAsync: loadRegionalArchitectures with
+//   regionalArchitectureIdsOf), so a battle entry downloads and compiles the kits it builds, not all of them (the 10-15
+//   census: the world chunk carried every kit, 1.52 M of its 3.8 M characters, the chunk 276 KB -> 1.92 MB since Sept 30).
+// - Node (the headless collision builds, the server's world, the receipts, the bake tools) loads every style with this
+//   module, synchronously and in this table's order, exactly as the static imports did, so every synchronous builder
+//   and every receipt that iterates ARCHITECTURE_STYLES sees every kit.
+// A style asked for before it is loaded (the browser only) fails closed with its id: never a silent fallback.
+interface StyleRow { readonly file: string; readonly name: string; readonly load: () => Promise<Record<string, unknown>> }
+const STYLE_TABLE: Readonly<Record<string, StyleRow>> = Object.freeze({
+  hessian: { file: './hessian.ts', name: 'HESSIAN_STYLE', load: () => import('./hessian.ts') },
+  savoyard: { file: './savoyard.ts', name: 'SAVOYARD_STYLE', load: () => import('./savoyard.ts') },
+  dalmatian: { file: './dalmatian.ts', name: 'DALMATIAN_STYLE', load: () => import('./dalmatian.ts') },
+  breton: { file: './breton.ts', name: 'BRETON_STYLE', load: () => import('./breton.ts') },
+  kolkhoz: { file: './kolkhoz.ts', name: 'KOLKHOZ_STYLE', load: () => import('./kolkhoz.ts') },
+  goral: { file: './goral.ts', name: 'GORAL_STYLE', load: () => import('./goral.ts') },
+  polder: { file: './polder.ts', name: 'POLDER_STYLE', load: () => import('./polder.ts') },
+  eifel: { file: './eifel.ts', name: 'EIFEL_STYLE', load: () => import('./eifel.ts') },
+  mekong: { file: './mekong.ts', name: 'MEKONG_STYLE', load: () => import('./mekong.ts') },
+  nordland: { file: './nordland.ts', name: 'NORDLAND_STYLE', load: () => import('./nordland.ts') },
+  bengal: { file: './bengal.ts', name: 'BENGAL_STYLE', load: () => import('./bengal.ts') },
+  franconian: { file: './franconian.ts', name: 'FRANCONIAN_STYLE', load: () => import('./franconian.ts') },
+  ksar: { file: './ksar.ts', name: 'KSAR_STYLE', load: () => import('./ksar.ts') },
+  arctic: { file: './arctic.ts', name: 'ARCTIC_STYLE', load: () => import('./arctic.ts') },
+  siwa: { file: './ksar.ts', name: 'SIWA_STYLE', load: () => import('./ksar.ts') },
+  wadirum: { file: './wadirum.ts', name: 'WADIRUM_STYLE', load: () => import('./wadirum.ts') },
+  ruhr: { file: './ruhr.ts', name: 'RUHR_STYLE', load: () => import('./ruhr.ts') },
+  kohima: { file: './kohima.ts', name: 'KOHIMA_STYLE', load: () => import('./kohima.ts') },
+  hostomel: { file: './hostomel.ts', name: 'HOSTOMEL_STYLE', load: () => import('./hostomel.ts') },
+  kyushu: { file: './kyushu.ts', name: 'KYUSHU_STYLE', load: () => import('./kyushu.ts') },
+  queenstown: { file: './queenstown.ts', name: 'QUEENSTOWN_STYLE', load: () => import('./queenstown.ts') },
+  glencanyon: { file: './glencanyon.ts', name: 'GLENCANYON_STYLE', load: () => import('./glencanyon.ts') },
+  navajo: { file: './navajo.ts', name: 'NAVAJO_STYLE', load: () => import('./navajo.ts') },
+  saar: { file: './saar.ts', name: 'SAAR_STYLE', load: () => import('./saar.ts') },
+  shanghai: { file: './shanghai.ts', name: 'SHANGHAI_STYLE', load: () => import('./shanghai.ts') },
+  longleaf: { file: './longleaf.ts', name: 'LONGLEAF_STYLE', load: () => import('./longleaf.ts') },
+  sarajevo: { file: './sarajevo.ts', name: 'SARAJEVO_STYLE', load: () => import('./sarajevo.ts') },
+  andalusian: { file: './andalusian.ts', name: 'ANDALUSIAN_STYLE', load: () => import('./andalusian.ts') },
+  chouf: { file: './chouf.ts', name: 'CHOUF_STYLE', load: () => import('./chouf.ts') },
+  lorrain: { file: './lorrain.ts', name: 'LORRAIN_STYLE', load: () => import('./lorrain.ts') },
+  tselina: { file: './tselina.ts', name: 'TSELINA_STYLE', load: () => import('./tselina.ts') },
 });
 
-export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
-/** Every registered kit (receipts iterate it). */
-export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = Object.freeze(Object.values(STYLES));
-// the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan, and
-// the plan's reader the world's describe call sites use (kitPlanFor: the world builder imports no kit)
-registerHouseDamageKits(ARCHITECTURE_STYLES);
+const loadedStyles = new Map<string, ArchitectureStyle>();
+export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLE_TABLE));
+/** Every loaded kit in the table's order (receipts iterate it): in Node every kit; in the browser the map's. */
+export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = [];
+function admitStyle(id: string, style: ArchitectureStyle | undefined): void {
+  if (loadedStyles.has(id)) return;
+  if (!style || style.id !== id) throw new Error(`Architecture style ${id}: its module does not export it`);
+  loadedStyles.set(id, style);
+  const list = ARCHITECTURE_STYLES as ArchitectureStyle[];
+  list.length = 0;
+  for (const key of ARCHITECTURE_STYLE_IDS) { const loaded = loadedStyles.get(key); if (loaded) list.push(loaded); }
+  // the destruction seam (docs/DESTRUCTION.md §16): each style's damage kit, as it loads
+  registerHouseDamageKits([style]);
+}
+/** Load these styles (ids null/undefined are skipped); an unknown id fails as resolveRegionalArchitecture does. */
+export async function loadRegionalArchitectures(ids: Iterable<string | null | undefined>): Promise<void> {
+  const wanted = [...new Set([...ids].filter((id): id is string => id != null))];
+  for (const id of wanted) if (!STYLE_TABLE[id]) throw unknownStyle(id);
+  const modules = await Promise.all(wanted.map((id) => (loadedStyles.has(id) ? null : STYLE_TABLE[id].load())));
+  // admitted in the table's order whatever order the modules arrived in
+  wanted.forEach((id, k) => { if (modules[k]) admitStyle(id, modules[k]![STYLE_TABLE[id].name] as ArchitectureStyle); });
+}
+const unknownStyle = (id: string): Error => new Error(`Unknown architecture style ${id} (known: ${ARCHITECTURE_STYLE_IDS.join(', ')})`);
+// Node: every style now, synchronously, in the table's order (kitRegistryNode.ts: when, and in the order, the static
+// imports evaluated)
+{
+  const load = nodeKitRequire(import.meta.url);
+  if (load) for (const id of ARCHITECTURE_STYLE_IDS) admitStyle(id, load(STYLE_TABLE[id].file)[STYLE_TABLE[id].name] as ArchitectureStyle);
+}
+// the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit registers as the style loads (admitStyle:
+// its anatomy read from the house plan), and the plan's reader the world's describe call sites use (kitPlanFor: the
+// world builder imports no kit)
 setKitPlanReader((parts) => regionalKitPlanOf(parts));
 
-/** The kit a map authored (`props.architecture`), or null. An unknown id fails closed. */
+/** The kit a map authored (`props.architecture`), or null. An unknown id fails closed; so does one not loaded yet. */
 export function resolveRegionalArchitecture(id: string | null | undefined): ArchitectureStyle | null {
   if (id == null) return null;
-  const style = STYLES[id];
-  if (!style) throw new Error(`Unknown architecture style ${id} (known: ${ARCHITECTURE_STYLE_IDS.join(', ')})`);
+  if (!STYLE_TABLE[id]) throw unknownStyle(id);
+  const style = loadedStyles.get(id);
+  if (!style) {
+    throw new Error(`Architecture style ${id} is not loaded: the world build loads its map's styles first `
+      + '(maps/regional/index.ts loadRegionalArchitectures)');
+  }
   return style;
 }
 

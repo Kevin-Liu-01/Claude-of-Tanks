@@ -190,6 +190,8 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland instead of the ring; Urban keeps the ring
       selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
+      // (2026-10-15, the perf lane) the map's kits load beside the terrain (worldKits.ts): loaded at once here
+      loadMapKits: async () => {},
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
       createHeightField: () => assert.fail('fine path stays async'),
