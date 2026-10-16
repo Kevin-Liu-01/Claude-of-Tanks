@@ -161,15 +161,15 @@ function bildstockHead(m: Mesh, st: Shade, y0: number, roof: 'both' | 'one' | 'h
   const roofShade = weathered({ base: roofBase, seed: 0xb14, damp: 0, mottle: 0.15, mould: 0.25, lichen: 0.85, lichenCol: LICHEN_SAND });
   if (roof === 'hip') {
     // (the Hessian form: a hipped stone cap over the cornice, a ball on its point, the cross leaded into the ball)
-    const TOP = E + 0.3;
+    const TOP = E + 0.2;
     frustum(m, 0, 0, E, E + 0.05, 0.62, 0.52, 0.6, 0.5, roofShade, 'bottom');
     frustum(m, 0, 0, E + 0.05, TOP, 0.6, 0.5, 0.05, 0.05, roofShade, 'none');
     lathe(m, [[0, 0], [0.04, 0.005], [0.06, 0.04], [0.045, 0.08], [0.02, 0.095], [0.02, 0.1]], 8, [0, TOP - 0.01, 0], roofShade);
     if (cross) {
-      const c0 = TOP + 0.09;
-      member(m, [0, c0 - 0.01, 0], [0, c0 + 0.24, 0], 0.024, 0.024, Z, WROUGHT, FLAT);
-      member(m, [-0.09, c0 + 0.16, 0], [0.09, c0 + 0.16, 0], 0.024, 0.024, Y, WROUGHT, FLAT);
-      for (const [x, y] of [[0, c0 + 0.245], [-0.095, c0 + 0.16], [0.095, c0 + 0.16]] as const) {
+      const c0 = TOP + 0.08;
+      member(m, [0, c0 - 0.01, 0], [0, c0 + 0.2, 0], 0.024, 0.024, Z, WROUGHT, FLAT);
+      member(m, [-0.08, c0 + 0.13, 0], [0.08, c0 + 0.13, 0], 0.024, 0.024, Y, WROUGHT, FLAT);
+      for (const [x, y] of [[0, c0 + 0.205], [-0.085, c0 + 0.13], [0.085, c0 + 0.13]] as const) {
         lathe(m, [[0, -0.016], [0.012, -0.012], [0.016, 0], [0.012, 0.012], [0, 0.016]], 6, [x, y, 0], plain(WROUGHT));
       }
     }
@@ -753,15 +753,15 @@ function buildMissionCross(): THREE.BufferGeometry {
   for (const s2 of [-1, 1]) member(m, [0, HY, 0], [s2 * 0.24, HY - 0.15, 0], 0.32, 0.022, Z, mul(ZINC, 0.95), FLAT, { chamfer: 0.004 });
   // the heart at the crossing, the ladder leaning up the front, the lance and the reed with its sponge crossed behind
   lathe(m, [[0, -0.07], [0.06, -0.03], [0.075, 0.02], [0.05, 0.06], [0, 0.07]], 8, [0, BY, 0.1], plain(mix(BLOOM_RED, LARCH_DARK, 0.3)));
-  for (const s2 of [-1, 1]) member(m, [s2 * 0.11 - 0.14, 0.34, 0.095], [s2 * 0.11 + 0.08, 2.48, 0.095], 0.03, 0.03, Z, LARCH_DARK, G(0.6), { chamfer: 0.006, shade: dark });
+  for (const s2 of [-1, 1]) member(m, [s2 * 0.1 - 0.05, 0.34, 0.095], [s2 * 0.1 + 0.03, 2.48, 0.095], 0.03, 0.03, Z, LARCH_DARK, G(0.6), { chamfer: 0.006, shade: dark });
   for (let k = 0; k < 6; k++) {
-    const t = (k + 0.5) / 6, y0 = 0.34 + t * 2.14, x = -0.14 + t * 0.22;
-    member(m, [x - 0.11, y0, 0.095], [x + 0.11, y0, 0.095], 0.022, 0.022, Y, LARCH_DARK, G(0.65), { shade: dark });
+    const t = (k + 0.5) / 6, y0 = 0.34 + t * 2.14, x = -0.05 + t * 0.08;
+    member(m, [x - 0.1, y0, 0.095], [x + 0.1, y0, 0.095], 0.022, 0.022, Y, LARCH_DARK, G(0.65), { shade: dark });
   }
-  pole(m, [0.5, 0.32, -0.088], [-0.42, 3.1, -0.088], 0.016, 0.016, LARCH_DARK, 0.6, 6);
-  lathe(m, [[0, 0], [0.03, 0.02], [0.012, 0.13], [0, 0.16]], 6, [-0.42, 3.08, -0.088], plain(STEEL_GREY));
-  pole(m, [-0.48, 0.32, -0.088], [0.4, 3.0, -0.088], 0.012, 0.012, mul(LARCH, 0.95), 0.6, 6);
-  lathe(m, [[0, -0.04], [0.045, -0.02], [0.05, 0.01], [0.03, 0.04], [0, 0.045]], 6, [0.41, 3.02, -0.088], plain(mix(CLOTH_GILT, LEAF, 0.4)));
+  pole(m, [0.2, 0.32, -0.088], [-0.2, 3.1, -0.088], 0.016, 0.016, LARCH_DARK, 0.6, 6);
+  lathe(m, [[0, 0], [0.03, 0.02], [0.012, 0.13], [0, 0.16]], 6, [-0.2, 3.08, -0.088], plain(STEEL_GREY));
+  pole(m, [-0.22, 0.32, -0.088], [0.18, 3.0, -0.088], 0.012, 0.012, mul(LARCH, 0.95), 0.6, 6);
+  lathe(m, [[0, -0.04], [0.045, -0.02], [0.05, 0.01], [0.03, 0.04], [0, 0.045]], 6, [0.19, 3.02, -0.088], plain(mix(CLOTH_GILT, LEAF, 0.4)));
   return m.geometry();
 }
 
