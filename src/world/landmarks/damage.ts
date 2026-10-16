@@ -387,9 +387,9 @@ function rupture(a: StructureDamageAnatomy, p: KeptPiece, dirX: number, dirZ: nu
     }
     out.mesh.end();
   }
-  // its dark inside: a disc across the vessel behind the hole
+  // its dark inside: a disc across the vessel behind the hole (a radome's toward its far wall, behind its radar)
   if (out.mesh.begin('dark', 'rim')) {
-    const back = 0.6 * v.r, n = 10, ids: number[] = [];
+    const back = (v.insideM ?? 0.6) * v.r, n = 10, ids: number[] = [];
     const centre = out.mesh.vertex(sx - nx * back, cy, sz - nz * back, nx, 0, nz, 0.5, 0.5, 1, 1, 1);
     for (let k = 0; k <= n; k++) {
       const ang = (k / n) * Math.PI * 2;

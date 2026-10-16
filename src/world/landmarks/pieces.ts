@@ -40,7 +40,9 @@ export interface LandmarkPieceSpec {
    *  plan (a figure off its plinth). */
   clear?: number;
   /** A tank's vessel (kind 'tank'): a vertical cylinder in the set piece's frame, and what spills from it. */
-  vessel?: { x: number; z: number; y0: number; y1: number; r: number; contents: 'water' | 'fuel' | 'grain' | 'none' };
+  vessel?: { x: number; z: number; y0: number; y1: number; r: number; contents: 'water' | 'fuel' | 'grain' | 'none';
+    /** how far behind the hole its dark inside lies, a share of r (default 0.6; a radome's 1.6, behind its radar) */
+    insideM?: number };
 }
 
 /** The ground round a piece, over the set piece's base (m), on an n × n grid from (x0, z0) at `step` metres. */

@@ -122,9 +122,13 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
     profile.push([R * Math.cos(a), yc + R * Math.sin(a)]);
   }
   profile.push([0, yc + R]);
+  // (props lane A #21, 2026-10-15; WORKLIST #21: "radome panels tear and fall exposing the reflector") the search
+  // radar inside the sphere — its reflector, a wide parabolic cheese of panels on a backing frame, on its pedestal and
+  // turning gear, the feed horn on its struts at the focus — hidden while the sphere stands, laid open when it tears
+  reflector(sink, drumTop, rb, yc, R, (S * 0.37 + H * 0.23 + R * 0.11) % 1);
   // (props lane A, E12: the radome tears open on the side a round came from when the tower is breached; its whips come
-  // off at the first damage; landmarks/pieces.ts)
-  piece(sink, { name: 'radome', kind: 'tank', at: 'breached', vessel: { x: 0, z: 0, y0: drumTop, y1: yc + R, r: R, contents: 'none' } }, (sink) => {
+  // off at the first damage; landmarks/pieces.ts) (#21: its inside the radar's, deep behind the hole)
+  piece(sink, { name: 'radome', kind: 'tank', at: 'breached', vessel: { x: 0, z: 0, y0: drumTop, y1: yc + R, r: R, contents: 'none', insideM: 1.6 } }, (sink) => {
     revolve(sink, 'plaster', 0, 0, profile, 20);
     // the panel courses (fine rings) and the beacon at the crown
     for (const deg of [-10, 20, 48, 72]) {
@@ -140,6 +144,42 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
   }
   return { parts: finishLandmark(sink) };
 };
+
+/**
+ * The search radar inside the radome (an AN/FPS-19's kind): its pedestal on the drum's floor, the turning gear, the
+ * reflector — a wide shallow parabolic cheese of mesh panels in a frame, its back braced — facing `azimuth`, and the feed
+ * horn on its struts at the focus; all within the sphere (radius R about yc). Structure metal, decor: no collision.
+ */
+function reflector(sink: PartSink, floor: number, rb: number, yc: number, R: number, turn: number): void {
+  const azimuth = turn * Math.PI * 2, ca = Math.cos(azimuth), sa = Math.sin(azimuth);
+  const rot = (x: number, y: number, z: number): Vec3 => [x * ca + z * sa, y, -x * sa + z * ca];
+  const dec = { decor: true } as const;
+  // the deck across the drum, the pedestal on it and its turning gear
+  revolve(sink, 'structureMetal', 0, 0, [[rb, floor + 0.02], [0.24, floor + 0.02]], 16, { colour: STEEL_DARK, ...dec });
+  bar(sink, 'structureMetal', [0, floor, 0], [0, yc - 0.35, 0], 0.22, { colour: STEEL_DARK, ...dec });
+  revolve(sink, 'structureMetal', 0, 0, [[0.45, yc - 0.55], [0.45, yc - 0.3], [0.3, yc - 0.3]], 12, { colour: IRON, ...dec });
+  // the reflector: W wide, Hh tall, its face concave toward +z (the parabola's sag `sag` at the rim), a little behind the axis
+  const W = R * 1.6, Hh = R * 0.7, sag = R * 0.22, back = -R * 0.12, cols = 10, rows = 4;
+  const at = (i: number, j: number): Vec3 => {
+    const x = (i / cols - 0.5) * W, y = (j / rows - 0.5) * Hh;
+    return rot(x, yc + y + 0.1, back + sag * ((2 * x / W) ** 2 * 0.8 + (2 * y / Hh) ** 2 * 0.2));
+  };
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1);
+    const panel = (i + j) % 2 ? STEEL : shade(STEEL, 0.9);
+    sink.quad('structureMetal', a, b, c, d, { colour: panel, ...dec });
+    sink.quad('structureMetal', d, c, b, a, { colour: shade(STEEL_DARK, 0.9), ...dec });
+  }
+  // its frame: the rim and the ribs, and the backing struts to the turning gear
+  for (let i = 0; i <= cols; i += 2) bar(sink, 'structureMetal', at(i, 0), at(i, rows), 0.035, { colour: STEEL_DARK, ...dec });
+  for (const j of [0, rows]) for (let i = 0; i < cols; i++) bar(sink, 'structureMetal', at(i, j), at(i + 1, j), 0.04, { colour: STEEL_DARK, ...dec });
+  for (const i of [2, 5, 8]) bar(sink, 'structureMetal', at(i, rows / 2), rot(0, yc - 0.3, back - 0.4), 0.04, { colour: STEEL_DARK, ...dec });
+  // the feed horn at the focus on its two struts from the reflector's lower rim
+  const focus = rot(0, yc - 0.1, back + R * 0.62);
+  for (const i of [3, 7]) bar(sink, 'structureMetal', at(i, 0), focus, 0.03, { colour: STEEL, ...dec });
+  const f = focus;
+  sink.box('structureMetal', f, [0.16, 0.12, 0.2], { colour: IRON, ...dec }, new LocalFrame(rot(1, 0, 0), [0, 1, 0], rot(0, 0, 1), [0, 0, 0]));
+}
 
 // -------------------------------------------------------------------------------------------------------- billboards
 
