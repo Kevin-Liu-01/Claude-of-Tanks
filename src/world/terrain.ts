@@ -8015,7 +8015,13 @@ function* createSplatMaterialSteps(
     if (splatFold) shader.fragmentShader = foldSplatUniforms(shader.fragmentShader, shader.uniforms).source;
     // the perf lane (2026-10-15): the gated blocks whose conditions are false over those constants leave the source (a map
     // without fields sends no land use to the compiler; terrainSplatPrune.ts proves each removal a no-op)
-    if (splatPrune) shader.fragmentShader = pruneFoldedSplatBranches(shader.fragmentShader).source;
+    if (splatPrune) {
+      const result = pruneFoldedSplatBranches(shader.fragmentShader);
+      shader.fragmentShader = result.source;
+      // (diagnostics: the final pass's per-map census reads what left each map's program)
+      mat.userData.splatPrune = { blocks: result.pruned.length, chars: result.pruned.reduce((n, p) => n + p.chars, 0),
+        conditions: result.pruned.map((p) => p.condition) };
+    }
   };
   // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that
   // draws its faces with this material keep castShadow false), so it takes no caster's acne bias: its shadows meet each

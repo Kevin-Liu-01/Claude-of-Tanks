@@ -140,7 +140,7 @@ const constsOn = foldedSplatConstants(on);
 for (const p of onPruned.pruned) assert.equal(evaluateSplatCondition(p.condition, constsOn), false, `${p.condition} is false`);
 
 // ---- 4. the wiring
-assert.match(terrain, /if \(splatFold\) shader\.fragmentShader = foldSplatUniforms\(shader\.fragmentShader, shader\.uniforms\)\.source;\n[^\n]*\n[^\n]*\n\s*if \(splatPrune\) shader\.fragmentShader = pruneFoldedSplatBranches\(shader\.fragmentShader\)\.source;/,
+assert.match(terrain, /if \(splatFold\) shader\.fragmentShader = foldSplatUniforms\(shader\.fragmentShader, shader\.uniforms\)\.source;\n[^\n]*\n[^\n]*\n\s*if \(splatPrune\) \{\n\s*const result = pruneFoldedSplatBranches\(shader\.fragmentShader\);\n\s*shader\.fragmentShader = result\.source;/,
   'the prune runs inside the fold\'s hook, right after the fold');
 assert.match(terrain, /const splatPrune = splatFold && splatPruneEnabled\(\);/, 'never without the fold');
 assert.match(terrain, /\$\{splatFoldKey\}\$\{splatPrune \? '-p1' : ''\}/, 'the program key says the source was pruned');
