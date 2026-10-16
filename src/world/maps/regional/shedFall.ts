@@ -44,7 +44,7 @@ export interface ShedWreck {
   back: boolean;
   ends: boolean;
   /** the covering's bucket and a coloured bucket's paint; its debris shape (null: a shed with no roof of its own) */
-  roof: { bucket: RegionalBucket; colour: Rgb | null; shape: 'tile' | 'slate' | 'splinter' | 'sheet' | 'straw' } | null;
+  roof: { bucket: RegionalBucket; colour: Rgb | null; shape: 'tile' | 'slate' | 'splinter' | 'sheet' | 'straw'; lattice?: boolean } | null;
   /**
    * masonry bodies of the build (a kažun's dry-stone round, an oven's dome on its block): each slumps into a heap of its
    * own stones round a ragged stub of its lowest courses, its radius and height, the shed's frame
@@ -243,6 +243,19 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
   if (mesh.begin(roofBucket, 'rubble')) {
     for (const p of panels) {
       const th = shed.deck / 2 + 0.02, tint = mulK(roofTint, 0.86 + rng() * 0.14);
+      if (shed.roof?.lattice) {
+        // an arbour's lattice: its rails down in their length, its leaves in clumps over them
+        const at = (v: number, w: number, h: number): Vec3 => [p.c[0] + p.ux[0] * v + p.uz[0] * w + p.uy[0] * h, p.c[1] + p.ux[1] * v + p.uz[1] * w + p.uy[1] * h,
+          p.c[2] + p.ux[2] * v + p.uz[2] * w + p.uy[2] * h];
+        const o = B(0, 0, 0), q = B(p.uy[0], 0, p.uy[2]), up: Vec3 = [q[0] - o[0], p.uy[1], q[2] - o[2]];
+        for (let w = -p.hw + 0.15; w < p.hw; w += 0.55) beamBetween(mesh, B(...at(-p.hl, w, 0)), B(...at(p.hl * (0.6 + rng() * 0.4), w, 0)), 0.07, 0.07, up, mulK(timber, 1.05));
+        for (let k = 0; k < 10; k++) {
+          const v = (rng() - 0.5) * 2 * p.hl, w = (rng() - 0.5) * 2 * p.hw, r = 0.18 + rng() * 0.12, c = at(v, w, 0.06);
+          const a = B(c[0] - r, c[1], c[2] - r), b = B(c[0] + r, c[1] + 0.02, c[2] - r), cc = B(c[0] + r, c[1], c[2] + r), dd = B(c[0] - r, c[1] + 0.02, c[2] + r);
+          mesh.quadUv(a, b, cc, dd, [0, 1, 0], 0.5, mulK(roofTint, 0.8 + rng() * 0.4));
+        }
+        continue;
+      }
       box(roofBucket, p.c, p.ux, p.uy, p.uz, p.hl, th, p.hw, tint);
       // the covering's courses still on the length, a few lifted or gone
       for (let v = -p.hl + 0.25; v < p.hl - 0.1; v += 0.42) {
