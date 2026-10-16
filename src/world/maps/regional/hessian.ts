@@ -10,11 +10,12 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, holedBox, placeShed, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
+  buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
   type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
+import { openShed } from './outbuildings.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -734,37 +735,24 @@ const granary: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** An open woodshed: posts, a mono-pitch tile roof, a boarded back and stacked billets. */
+/**
+ * The woodshed (Holzschuppen; the props census #17, 2026-10-15, the judges: "a sandstone sill or pads, a timber frame
+ * (sole plate, posts, wall plate, knee braces) as members, and boarding (Bretterschalung) as separate vertical boards
+ * with gaps; rafters with tile courses, eave and verge, and a stacked log-end woodpile"): built member by member
+ * (outbuildings.ts openShed) on sandstone pads, the oak frame in the house's timber colour, the boards standing with
+ * an air gap on three sides, the beaver-tail tiles in courses; open to +x. The Eifel kit builds the same in its palette.
+ */
 const woodshed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(houseUvOffset(ctx));
   const st = stateFor(ctx, ctx.rng);
   const W = Math.max(3.4, ctx.info.w - 0.3), D = Math.max(4.4, ctx.info.d - 0.3);
-  const tc = { colour: st.timber, decor: true };
-  sink.span('stone', -W / 2 - 0.1, -0.4, -D / 2 - 0.1, W / 2 + 0.1, 0.22, D / 2 + 0.1);
-  const hLo = 2.25, hHi = 2.95;
-  // the mono-pitch roof rising to the open front (+x) (props census E4, lane B 2026-10-14: laid by its fall, not turned
-  // half round), a wall plate along each post line under it and the posts up to the plates
-  const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(hHi - hLo, W) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.12, bucket: 'roof' };
-  const shed = placeShed(sink, { cx: 0, cz: 0, run: W, span: D, fall: [-1, 0], highY: 0.2 + hHi, roof });
-  for (const sx of [-1, 1]) {
-    const x = sx * (W / 2 - 0.08), top = shed.undersideAt(x, 0) + 0.01;
-    sink.span(SW, x - 0.08, top - 0.14, -D / 2 - 0.02, x + 0.08, top, D / 2 + 0.02, { colour: shade(st.timber, 0.92), uv: UV_MEMBER });
-    // structural posts (they carry the roof: collision keeps them)
-    for (const sz of [-1, 0, 1]) {
-      sink.span(SW, x - 0.08, 0.2, sz * (D / 2 - 0.08) - 0.08, x + 0.08, top - 0.14, sz * (D / 2 - 0.08) + 0.08, { colour: st.timber });
-    }
-  }
-  // the boarded back (-x) and side walls; open to +x
-  sink.span('wood', -W / 2 - 0.02, 0.22, -D / 2, -W / 2 + 0.06, 0.22 + hLo, D / 2);
-  for (const sz of [-1, 1]) sink.span('wood', -W / 2, 0.22, sz * D / 2 - 0.04, W / 2 - 0.16, 0.22 + hLo * 0.92, sz * D / 2 + 0.04);
-  // billets: rows of logs stacked against the back wall
-  const rows = st.mobile ? 2 : 4;
-  for (let r = 0; r < rows; r++) {
-    for (let z = -D / 2 + 0.35; z < D / 2 - 0.3; z += 0.26) {
-      sink.cylinder('wood', [-W / 2 + 0.1, 0.36 + r * 0.24, z], 'x', W * 0.55, 0.12, 6, { decor: true });
-    }
-  }
-  void tc;
+  const look = st.look;
+  const boards = [shade(st.timber, 1.25), shade(st.timber, 1.4), rgb(0x6a5a4a)];
+  openShed(sink, { W, D, hLo: 2.3, pitchDeg: 14, back: true, ends: true, pile: 1.6 + look() * 0.3, block: look() < 0.6, mobile: st.mobile }, {
+    timber: st.timber, post: 0.17, pad: { bucket: 'stone', size: 0.36, top: 0.22 },
+    cladding: 'gapped', boards, boardW: 0.2, gap: 0.035, trim: shade(st.timber, 0.9),
+    covering: 'plaintile', roofBucket: 'roof', eave: 0.35, verge: 0.3,
+  }, look);
   return sink.finish();
 };
 

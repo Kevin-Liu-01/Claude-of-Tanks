@@ -19,6 +19,7 @@ import {
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
+import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** Larch weathered silver-brown, a darker larch, the old red and green paints, the barracks' grey-green. */
@@ -299,7 +300,12 @@ const mazot: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The open woodshed (bûcher): larch posts under a lauze lean-to, boarded on three sides, the wood stacked in it (open to +x). */
+/**
+ * The open woodshed (bûcher; the props census #17, 2026-10-15, the judges: "larch posts on stone pads with knee braces,
+ * a sill and wall plate, vertical larch boards with gaps as separate members on three sides, rafters, and a lauze roof
+ * of thick stone slabs in courses with a ridge; keep the woodpile"): built member by member (outbuildings.ts openShed)
+ * on stone pads, the larch boards standing with an air gap, the lauzes laid in thick irregular courses; open to +x.
+ */
 function bucher(ctx: RegionalBuildContext, yard = false): ReturnType<RegionalBuilder> {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
@@ -311,21 +317,12 @@ function bucher(ctx: RegionalBuildContext, yard = false): ReturnType<RegionalBui
 
 function bucherBody(sink: PartSink, ctx: RegionalBuildContext, look: () => number, pw: number, pd: number): void {
   const W = clamp(pw - 0.6, 2.2, 4.4), D = clamp(pd - 0.6, 2.4, 5.4);
-  const hLo = 2.1, pitch = 15, rise = W * Math.tan(pitch * Math.PI / 180), hHi = hLo + rise;
-  const c = { colour: shade(LARCH, 0.9) } as const;
-  // the back wall (-x) and the two ends, boarded; posts at the open front
-  sink.span('structureWood', -W / 2, -0.2, -D / 2, -W / 2 + 0.1, hHi, D / 2, c);
-  for (const sz of [-1, 1]) {
-    const end: Face = { origin: [0, 0, sz * D / 2], u: [sz, 0, 0], out: [0, 0, sz], width: W };
-    wallPolygon(sink, 'wood', end, sz > 0 ? [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hLo], [-W / 2, hHi]] : [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hHi], [-W / 2, hLo]], 0.08);
-  }
-  for (const sz of [-1, 0, 1]) sink.span('structureWood', W / 2 - 0.16, -0.2, sz * (D / 2 - 0.1) - 0.08, W / 2, hLo, sz * (D / 2 - 0.1) + 0.08, c);
-  const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.4, verge: 0.3, thickness: 0.18, bucket: 'roof' };
-  emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
-  sink.dressing(ctx.tier === 'mobile', () => {
-    const back: Face = { origin: [-W / 2 + 0.1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-    woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.4 + look() * 0.4, look);
-  });
+  const pile = 1.4 + look() * 0.4;
+  openShed(sink, { W, D, hLo: 2.05, pitchDeg: 20, back: true, ends: true, pile, block: look() < 0.5, mobile: ctx.tier === 'mobile' }, {
+    timber: LARCH, post: 0.18, pad: { bucket: 'stone', size: 0.38, top: 0.24 },
+    cladding: 'gapped', boards: [shade(LARCH, 0.9), shade(LARCH, 1.08), shade(LARCH_DARK, 1.2)], boardW: 0.22, gap: 0.03, trim: LARCH_DARK,
+    covering: 'lauze', roofBucket: 'roof', eave: 0.4, verge: 0.3,
+  }, look);
 }
 
 // ------------------------------------------------------------------------------------------------ the pass's buildings
