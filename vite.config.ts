@@ -141,12 +141,13 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
  * hosting.
  */
 // (physics stream, 2026-10-16; the coordinator's ruling with the MP lane) the manifests are served on two routes: this
-// build's at /mp-collision/v2/ (records of up to 256 parts: the pillboxes' embrasures), and 225's own files, frozen byte
-// for byte (server/world-collision-manifests-225, e8a8c8527's), at /mp-collision/ for one release, so a 225 tab that
-// hosts or is elected after 226 deploys still decodes its own format and its own world (collisionManifestRoutes.selftest)
+// build's at /mp-collision/v2/ (records of up to 256 parts: the pillboxes' embrasures), and production 224's own files, frozen
+// byte for byte (server/world-collision-manifests-224, 9c511dd48's: 225 deploys with 226), at /mp-collision/ through 227,
+// so a 224 tab that hosts or is elected after 226 deploys still decodes its own format and its own world
+// (collisionManifestRoutes.selftest)
 const COLLISION_MANIFEST_SOURCES: ReadonlyArray<{ route: string; dir: string }> = [
   { route: '/mp-collision/v2', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests') },
-  { route: '/mp-collision', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests-225') },
+  { route: '/mp-collision', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests-224') },
 ];
 
 function collisionManifestFiles(dir: string): Array<{ name: string; path: string }> {

@@ -17,8 +17,8 @@ import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
  * The static route the build serves the manifests under (vite.config.ts emits `server/world-collision-manifests` there:
  * `index.json`, then every map content-addressed as `<map>.<sha256[0..12]>.json` so a cached file is always the indexed one).
  */
-// (physics stream, 2026-10-16) 226's manifests (records of up to 256 parts) on their own route; /mp-collision/ keeps 225's
-// files for its tabs (vite.config.ts COLLISION_MANIFEST_SOURCES)
+// (physics stream, 2026-10-16) 226's manifests (records of up to 256 parts) on their own route; /mp-collision/ keeps production
+// 224's files for its tabs (vite.config.ts COLLISION_MANIFEST_SOURCES)
 export const COLLISION_MANIFEST_ROUTE = '/mp-collision/v2';
 
 /** The file name of a map's manifest (or of its battlefield variant's) under the route, from its index entry. */

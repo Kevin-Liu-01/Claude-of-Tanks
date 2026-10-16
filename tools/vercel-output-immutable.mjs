@@ -14,7 +14,7 @@
 // Three families (INFRA-P10 / FE-P17, 2026-10-01 — 158,928 revalidations a week were 28 % of production requests):
 //   - /assets/<name>-<hash>.<ext> (Vite)                       → immutable for a year;
 //   - /mp-collision/<map>.<sha256[0..12]>.json and /mp-collision/v2/<map>.<sha256[0..12]>.json (content-addressed collision
-//     manifests: 225's frozen files and this build's; each index stays default)
+//     manifests: production 224's frozen files and this build's; each index stays default)
 //                                                              → immutable for a year;
 //   - images, audio and fonts under textures/, icons/, fonts/, audio/, maps/, minimaps/ (same URL across deploys)
 //                                                              → max-age=3600, stale-while-revalidate=86400.
@@ -62,7 +62,7 @@ export function listHashedAssets(staticDir) {
 }
 
 /** The content-addressed collision manifests directly under `<staticDir>/<route>` (never `index.json`): `mp-collision`
- * (225's frozen files) and `mp-collision/v2` (this build's, physics stream 2026-10-16). */
+ * (production 224's frozen files) and `mp-collision/v2` (this build's, physics stream 2026-10-16). */
 export function listCollisionManifests(staticDir, route = 'mp-collision') {
   return walk(join(staticDir, route), (name) => COLLISION_MANIFEST_RE.test(name)).filter((path) => !path.includes('/'));
 }
