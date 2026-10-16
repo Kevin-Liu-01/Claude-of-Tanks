@@ -9,7 +9,8 @@
 // West and East Shelf cliffs the skyline is low (1-3°) and the buttes and mesas stand proud of it 2-8 km out with sky
 // between them: north-east the Mittens and Merrick Butte, north the lone buttes down the valley (Brigham's Tomb, the
 // Stagecoach, Eagle Mesa), east Rain God and Thunderbird Mesas, south Hunts Mesa's long rim with a butte standing in the
-// valley's mouth before it and Agathla's volcanic neck far off at about 1°, west Sentinel Mesa and Oljato Mesa with
+// valley's mouth before it and Agathla's volcanic neck far off at about 1°, south-west Mitchell Butte in the gap between
+// Mitchell and Sentinel Mesas, west Sentinel Mesa and Oljato Mesa with
 // Goulding's trading post at its foot; hogan camps on the floor. (The battlefield's own outland carries the old border's
 // hills 100-160 m high 0.6-1.3 km past the edge; the troughs below take their crowns down so the plain reads low.)
 import type { HinterlandConfig } from '../spec.ts';
@@ -51,6 +52,11 @@ const DRAFT: HinterlandConfig = {
     { kind: 'mesa', at: { azDeg: 150, distM: 3200 }, heightM: 300, lengthM: 1700, widthM: 900, strikeDeg: 100, name: 'the mesa east of the mouth' },
     { kind: 'mesa', at: { azDeg: 215, distM: 3500 }, heightM: 320, lengthM: 2000, widthM: 1000, strikeDeg: 80, name: 'Mitchell Mesa' },
     { kind: 'butte', at: { azDeg: 180, distM: 4000 }, heightM: 300, lengthM: 760, widthM: 520, strikeDeg: 90, name: 'the butte in the mouth' },
+    // south-west: Mitchell Butte off Mitchell Mesa's tip, end-on in the gap between it and Sentinel Mesa — the butte the
+    // south edge's chase camera sees framed (the 54 m rim in front of that camera hides the mouth's butte at 180°, and the
+    // edge's own ground is low on 220-250°, where the battlefield's wash leaves: the butte's wall stands 3.7° over the rim
+    // there on 232-234° from (0, -442); the coordinator's ruling 2026-10-16: Titan keeps rim 54, the butte moves in the draft)
+    { kind: 'butte', at: { azDeg: 228.6, distM: 4580 }, heightM: 300, lengthM: 760, widthM: 480, strikeDeg: 53, name: 'Mitchell Butte' },
     { kind: 'mesa', at: { azDeg: 172, distM: 9500 }, heightM: 400, lengthM: 7000, widthM: 2600, strikeDeg: 95, name: 'Hunts Mesa' },
     { kind: 'massif', at: { azDeg: 197, distM: 22000 }, heightM: 460, lengthM: 1900, widthM: 1500, strikeDeg: 30, name: 'Agathla Peak',
       peak: { along: 0.15, share: 0.55, asym: 1.5, gendarme: true }, geology: { rockHex: AGATHLA_ROCK, erosion: 0.95, gullies: 0.7 },
@@ -72,6 +78,8 @@ const DRAFT: HinterlandConfig = {
     { kind: 'valley', at: { azDeg: 270, distM: 1400 }, heightM: 50, lengthM: 3000, widthM: 1300, strikeDeg: 0, name: 'past the West Shelf' },
     // (one spike of that band, ~150 m and 200 m across, stood straight in the south mouth before the edge-s eye)
     { kind: 'valley', at: { azDeg: 182.5, distM: 1151 }, heightM: 105, lengthM: 380, widthM: 420, strikeDeg: 0, name: 'the spike in the south mouth' },
+    // (and the near band's lump in that gap, ~1.7 km on the camera's sightline, taken down like the mouths')
+    { kind: 'valley', at: { azDeg: 223.7, distM: 2000 }, heightM: 50, lengthM: 1800, widthM: 900, strikeDeg: 54, name: 'the gap toward Mitchell Butte' },
     // the washes leaving the valley north and south (the battlefield's own wash, carried on)
     { kind: 'valley', at: { azDeg: 2, distM: 2400 }, heightM: 5, lengthM: 4000, widthM: 200, strikeDeg: 4, name: 'the wash north' },
     { kind: 'valley', at: { azDeg: 182, distM: 2400 }, heightM: 5, lengthM: 4000, widthM: 200, strikeDeg: 4, name: 'the wash south' },
