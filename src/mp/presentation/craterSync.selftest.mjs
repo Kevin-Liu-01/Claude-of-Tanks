@@ -17,6 +17,7 @@ import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { isHeClass } from '../../sim/damage.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
+import { mapCratersOn } from '../../world/mapCraters.ts';
 import { createDestructionMirror } from './destructionMirror.ts';
 
 const MAP = 'verdant';
@@ -45,8 +46,10 @@ for (let tick = 1; tick <= 3000; tick++) {
 const finalLog = match.snapshot({ tick: 3001, serverTimeMs: 0, viewerId: 'h1', ackInputSeq: null }).meta.destructionLog;
 const dug = finalLog.filter((entry) => entry.kind === 'crater');
 assert.ok(dug.length >= 5, `the authority dug craters to judge (${dug.length})`);
+// (DST-04, 2026-10-15: every ground starts with the map's pre-placed craters, the same on every peer: the battle's are after)
+const battleStamps = (ground) => ground.stamps.slice(mapCratersOn(ground)?.dug.reduce((n, d) => n + d, 0) ?? 0);
 const sameStamps = (ground, label) => {
-  const stamps = ground.stamps.filter((stamp) => stamp.kind === 'crater');
+  const stamps = battleStamps(ground).filter((stamp) => stamp.kind === 'crater');
   assert.equal(stamps.length, dug.length, `${label}: one stamp per crater (${stamps.length} of ${dug.length})`);
   const key = (s) => `${s.x}|${s.z}|${s.radiusM}|${s.depthM}|${s.rimM}|${s.seed}`;
   assert.deepEqual(stamps.map(key).sort(), dug.map(key).sort(), `${label}: stamped as the authority quantized them`);

@@ -1022,6 +1022,7 @@ export interface PropsRuntime {
    * landed in the merged buckets. */
   structureDamage: Map<number, WorldStructureDamage>;
   structureSpans: Map<number, StructureSpan[]>;
+  mapCraterSites: number[]; // DST-04 (world/mapCraters.ts)
   /** Every props-bucket material with the mesh that draws it (world.patchStructureMaterials). */
   structureMaterials: StructureMaterialEntry[];
   /** (Plan W) the shell pool's counts for this build, null when every structure derived inline */
@@ -8973,6 +8974,7 @@ ${snowCap ? `
   // (sealed lane 2026-10-11: an Alpine sled stood on a crater's clod) the clods thrown round a battle scar carry no record:
   // each stands in the parked vehicles' and carts' seat passes as drawn (crushableFootprints)
   const craterClodFootprints: CollisionRecord[] = [];
+  const mapCraterSites: number[] = []; // DST-04: the scars' sites [x, z, r, rim]; world/mapCraters.ts lays their bowls
   function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void> {
     // r5 terrain_environment: TRACK-TEAR strip texture — churned dark earth
     // with two ragged tread lanes running along V; laid as conformed strips
@@ -9368,7 +9370,7 @@ ${snowCap ? `
     }
     function tryPlaceBattleScar(
       corridors: DriveCorridor[],
-      craterDiscs: THREE.BufferGeometry[],
+      _craterDiscs: THREE.BufferGeometry[], // (DST-04: crater scars are sites now: mapCraterSites)
       burnDiscs: THREE.BufferGeometry[],
     ): boolean {
       const [x, z] = randomCraterCenter(corridors);
@@ -9380,7 +9382,7 @@ ${snowCap ? `
       }
       const r = CR_R[(rng() * CR_R.length) | 0] * (0.85 + rng() * 0.3);
       const rim = 0.26 + rng() * 0.22;
-      craterDiscs.push(conformedDisc(x, z, r, [0.03, 0.02, rim, 0.02]));
+      mapCraterSites.push(x, z, r, rim); // DST-04: a real bowl and its surface (world/mapCraters.ts), not a flat disc
       if (r > 3.2) addCraterClods(x, z, r);
       return true;
     }
@@ -11852,7 +11854,7 @@ ${snowCap ? `
   mergeStructureDecks(obstacles, colliders);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
-  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
+  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials, mapCraterSites,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),
     setCrushSweeps: (on: boolean) => crushPress.setSweeps(on),

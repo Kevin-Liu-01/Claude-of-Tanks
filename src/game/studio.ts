@@ -69,6 +69,7 @@ import {
 } from './studioFilmSupport.ts';
 import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
 import { createDugHeightFieldProxy } from '../world/liveHeightFieldProxy.ts';
+import { mapCraterStampsOf, stampMapCraters } from '../world/mapCraters.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
 import {
@@ -2105,10 +2106,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   function resetStudioGround(unbind: boolean): void {
     studioCraters = 0;
-    if (!studioGround) return;
-    studioGround.reset();
     const w = getWorld();
-    if (unbind && w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
+    if (unbind) {
+      if (!studioGround) return;
+      studioGround.reset();
+      if (w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
+      return;
+    }
+    // DST-04 (2026-10-15): a scene's ground holds its map's pre-placed craters from the load, bound as a battle's is
+    // (world/mapCraters.ts), so a film's ground, hulls and rounds meet the bowls a battle has
+    if (!studioGround) studioGround = createTerrainDeformation();
+    else studioGround.reset();
+    stampMapCraters(studioGround, mapCraterStampsOf(w));
+    if (w && w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
   }
 
   /**

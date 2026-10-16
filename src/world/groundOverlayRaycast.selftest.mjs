@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import { createHeadlessCollisionWorld } from './headlessCollisionWorld.ts';
 import { createTerrainDeformation } from '../sim/terrainDeformation.ts';
+import { mapCratersOn } from './mapCraters.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
@@ -85,7 +86,7 @@ assert.equal(world.raycast(at(0, -0.6, 0), east, 10)?.dist, 0, 'unbound again: t
   }
   assert.match(mapSource, /bindGroundOverlay: \(overlay\) => \{[^}]*rayOverlay = overlay;/, 'map.ts: the battle\'s overlay binds the march');
   const authority = readFileSync(new URL('../sim/authoritativeMatch.ts', import.meta.url), 'utf8');
-  assert.match(authority, /const heightField = createDeformedHeightField\(baseHeightField, ground\);[^\n]*\n[^\n]*\n\s*worldCollision\?\.bindGroundOverlay\?\.\(ground\);/,
+  assert.match(authority, /const heightField = [^\n]*createDeformedHeightField\(baseHeightField, ground\);[^\n]*\n[^\n]*\n\s*worldCollision\?\.bindGroundOverlay\?\.\(ground\);/,
     'the authority binds its match\'s ground on its world');
   // the solo smoke reads the match's ground, as the authority's does
   const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
@@ -119,7 +120,9 @@ assert.equal(world.raycast(at(0, -0.6, 0), east, 10)?.dist, 0, 'unbound again: t
   }
   assert.ok(craters.length >= 1, 'the HE round dug a crater');
   const c = craters[0];
-  assert.equal(overlay.stamps.filter((stamp) => stamp.kind === 'crater').length, craters.length, 'on the bound ground');
+  // (the map's pre-placed craters lie first on every match's ground: world/mapCraters.ts)
+  const mapBowls = mapCratersOn(overlay)?.dug.reduce((n, d) => n + d, 0) ?? 0;
+  assert.equal(overlay.stamps.slice(mapBowls).filter((stamp) => stamp.kind === 'crater').length, craters.length, 'on the bound ground');
   const base = real.heightField.getHeightAtFast(c.x, c.z);
   const floor = base + overlay.contactOffsetAt(c.x, c.z);
   // (a 125 mm crater, R 1.65 m, spans little more than a lattice cell: its drawn bowl is shallower than its law's)
