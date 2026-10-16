@@ -48,11 +48,13 @@ function sideScreen(P:TankBuilderPort,owner:'hull'|'turret',stock:readonly THREE
 }
 
 /** Hull and turret screens and the screen scrim. A donor-turret kit that fits its own turret screens passes
- * turretScreens false: the hull screens and their scrim stay, the turret's are its own. */
+ * turretScreens false: the hull screens and their scrim stay, the turret's are its own; turretSuit true then still
+ * lays the field suit's turret half, whose drapes and roof net follow the layout row's turret numbers (the kit builds
+ * its screens and rear cage to that row). */
 export function addPolishProtection(P:TankBuilderPort,model:number,turretStock:readonly THREE.BufferGeometry[],
-  options:{turretScreens?:boolean}={}):void {
+  options:{turretScreens?:boolean;turretSuit?:boolean}={}):void {
   const d=POLISH_PROTECTION_LAYOUTS[model];if(!d)throw new Error(`Unknown Polish protection model ${model}`);
-  const turretScreens=options.turretScreens!==false;
+  const turretScreens=options.turretScreens!==false,turretSuit=options.turretSuit??turretScreens;
   const hullStock:THREE.BufferGeometry[]=[];
   P.forEachBucketPart(['hullExternalArmor'],g=>{
     if(g.userData.eraHitFaceVertexStarts===undefined)hullStock.push(g);
@@ -63,7 +65,7 @@ export function addPolishProtection(P:TankBuilderPort,model:number,turretStock:r
   }
   if(!turretScreens){
     const config=NATIONAL_POLAND_GHILLIE_CONFIGS[d.id];
-    addVehicleGhillieSuit(P,{...config,turret:undefined});
+    addVehicleGhillieSuit(P,turretSuit?config:{...config,turret:undefined});
     return;
   }
   const y=(d.rearBottom+d.rearTop)/2;
