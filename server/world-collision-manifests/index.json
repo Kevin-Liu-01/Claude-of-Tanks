@@ -26,11 +26,11 @@
       "concealers": 5626
     },
     "urban": {
-      "bytes": 3328344,
-      "sha256": "b30e77484d11e6bfc85f1aa8879fd42fec3624f747a343bc6bc9771c68c46159",
-      "obstacles": 2783,
-      "colliders": 5724,
-      "concealers": 2473
+      "bytes": 5039106,
+      "sha256": "ae18561227a6e52b86d34a21e265877d2ff401f345bed8c015ad748798960910",
+      "obstacles": 2798,
+      "colliders": 7975,
+      "concealers": 2472
     },
     "coastal": {
       "bytes": 1986062,
@@ -260,11 +260,11 @@
         "concealers": 5695
       },
       "urban": {
-        "bytes": 3474803,
-        "sha256": "2e58538a16b471e68aaa89f6aa45fba65c05a0259406c8c2deb186d75dbac506",
-        "obstacles": 2912,
-        "colliders": 5769,
-        "concealers": 2473
+        "bytes": 5222409,
+        "sha256": "048f2325b3c41a615a2d97a90d3ffdb25d10ad43468e8c6caeac12013e2bf1b5",
+        "obstacles": 2924,
+        "colliders": 8017,
+        "concealers": 2472
       },
       "coastal": {
         "bytes": 2227936,
