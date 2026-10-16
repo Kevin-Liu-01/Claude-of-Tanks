@@ -33,11 +33,11 @@ const tole = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eav
 
 /** A plastic fish basket or a foam ice box on the ground or a deck at y. Dressing. */
 function basket(sink: PartSink, x: number, y: number, z: number, colour: Rgb): void {
-  sink.cylinder('structureWood', [x, y, z], 'y', 0.34, 0.27, 9, { colour, decor: true }, 0.22, false);
-  sink.cylinder('structureWood', [x, y, z], 'y', 0.02, 0.22, 9, { colour: shade(colour, 0.7), decor: true }, 0.22, true);
+  sink.cylinder('structureWood', [x, y, z], 'y', 0.34, 0.27, 9, { colour, decor: true, fine: true }, 0.22, false);
+  sink.cylinder('structureWood', [x, y, z], 'y', 0.02, 0.22, 9, { colour: shade(colour, 0.7), decor: true, fine: true }, 0.22, true);
 }
 function foamBox(sink: PartSink, x: number, y: number, z: number, look: () => number): void {
-  sink.span('structureWood', x - 0.31, y, z - 0.21, x + 0.31, y + 0.36, z + 0.21, { colour: shade(FOAM, 0.94 + look() * 0.06), decor: true });
+  sink.span('structureWood', x - 0.31, y, z - 0.21, x + 0.31, y + 0.36, z + 0.21, { colour: shade(FOAM, 0.94 + look() * 0.06), decor: true, fine: true });
 }
 
 /**
@@ -72,8 +72,8 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   for (const sx of [-1, 1]) sink.span('structureWood', sx * px - 0.08, plate, -D / 2, sx * px + 0.08, plate + 0.14, D / 2, { colour: shade(timber, 0.9) });
   sink.dressing(mobile, () => {
     for (const z of zs) {
-      sink.span('structureWood', -px - 0.1, plate + 0.14, z - 0.06, px + 0.1, plate + 0.26, z + 0.06, { colour: shade(timber, 0.85), decor: true });
-      for (const sx of [-1, 1]) sink.member('structureWood', [sx * (px - 0.06), plate - 0.6, z], [sx * (px - 0.6), plate + 0.16, z], 0.07, 0.07, [0, 0, 1], { colour: shade(timber, 0.85), decor: true, exposed: true }, 0.035);
+      sink.span('structureWood', -px - 0.1, plate + 0.14, z - 0.06, px + 0.1, plate + 0.26, z + 0.06, { colour: shade(timber, 0.85), decor: true, fine: true });
+      for (const sx of [-1, 1]) sink.member('structureWood', [sx * (px - 0.06), plate - 0.6, z], [sx * (px - 0.6), plate + 0.16, z], 0.07, 0.07, [0, 0, 1], { colour: shade(timber, 0.85), decor: true, exposed: true, fine: true }, 0.035);
     }
   });
   // the roof: rafters, purlins and the ridge pole under the covering
@@ -83,15 +83,15 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   emitRoof(sink, rg, roof, thatched ? undefined : pick(look, RUSTED));
   const under = (x: number) => rg.ridgeY - Math.abs(x) * rg.tanP - 0.03;
   sink.dressing(mobile, () => {
-    const bam = { colour: shade(BAMBOO_MAT, 0.85), decor: true, exposed: true } as const;
+    const bam = { colour: shade(BAMBOO_MAT, 0.85), decor: true, exposed: true, fine: true } as const;
     for (let z = -D / 2; z <= D / 2 + 1e-6; z += D / Math.max(1, Math.round(D / 1.0))) {
       for (const s of [-1, 1]) sink.member('structureWood', [s * (rg.s + roof.eave * 0.85), under(rg.s + roof.eave * 0.85) - 0.05, z], [0, under(0) - 0.05, z], 0.08, 0.08, [0, 0, 1], bam, 0.04);
     }
     for (const s of [-1, 1]) for (const t of [0.35, 0.72]) {
       const x = s * rg.s * (1 - t);
-      sink.cylinder('structureWood', [x, under(x) - 0.13, -D / 2 - roof.verge + 0.1], 'z', D + 2 * roof.verge - 0.2, 0.045, 6, { colour: shade(BAMBOO_MAT, 0.9), decor: true });
+      sink.cylinder('structureWood', [x, under(x) - 0.13, -D / 2 - roof.verge + 0.1], 'z', D + 2 * roof.verge - 0.2, 0.045, 6, { colour: shade(BAMBOO_MAT, 0.9), decor: true, fine: true });
     }
-    sink.cylinder('structureWood', [0, under(0) - 0.14, -D / 2 - roof.verge + 0.05], 'z', D + 2 * roof.verge - 0.1, 0.06, 6, { colour: shade(BAMBOO_MAT, 0.8), decor: true });
+    sink.cylinder('structureWood', [0, under(0) - 0.14, -D / 2 - roof.verge + 0.05], 'z', D + 2 * roof.verge - 0.1, 0.06, 6, { colour: shade(BAMBOO_MAT, 0.8), decor: true, fine: true });
   });
   // the walls of the three closed sides: framed nipa panels, or upright planks with their gaps (structure: the cover the
   // base shed gave)
@@ -176,7 +176,7 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
     sink.dressing(mobile, () => {
       for (const sx of [-1, 1]) for (let k = 0; k + 1 < nz; k++) {
         const za = -D / 2 + 0.15 + (D - 0.3) * k / (nz - 1), zb = -D / 2 + 0.15 + (D - 0.3) * (k + 1) / (nz - 1), x = sx * (W / 2 - 0.15);
-        sink.member('structureWood', [x, 0.05, za], [x, lift - 0.15, zb], 0.09, 0.07, [sx, 0, 0], { colour: shade(timber, 0.85), decor: true, exposed: true }, 0);
+        sink.member('structureWood', [x, 0.05, za], [x, lift - 0.15, zb], 0.09, 0.07, [sx, 0, 0], { colour: shade(timber, 0.85), decor: true, exposed: true, fine: true }, 0);
       }
     });
     sink.span('structureWood', -W / 2 - 0.05, lift, -D / 2 - 0.05, W / 2 + 0.05, lift + 0.14, D / 2 + 0.05, { colour: shade(plank, 1.05) });
@@ -238,7 +238,7 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
   sink.dressing(mobile, () => {
     for (let x = cx - dw / 2 + 0.01; x < cx + dw / 2 - 0.1; x += 0.24) {
       sink.quad('structureWood', [x, floorY - 0.035, dz1], [x + 0.22, floorY - 0.035, dz1], [x + 0.22, floorY - 0.035, dz0 + 0.02], [x, floorY - 0.035, dz0 + 0.02],
-        { colour: shade(plank, 0.86 + look() * 0.24), decor: true });
+        { colour: shade(plank, 0.86 + look() * 0.24), decor: true, fine: true });
     }
     // the tarpaulin on its poles over the landing, sloping back to the hall's eave
     const yH = floorY + 2.75, yF = floorY + 2.2;
@@ -251,8 +251,8 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
     for (let k = 0; k < 9; k++) foamBox(sink, cx - dw / 2 + 0.7 + (k % 3) * 0.66, floorY - 0.04 + Math.floor(k / 3) * 0.36, dz0 + 0.8, look);
     for (let k = 0; k < 5; k++) basket(sink, cx + dw * 0.15 + k * 0.62, floorY - 0.04, dz0 + 1.2 + (k % 2) * 0.5, BASKETS[k % BASKETS.length]);
     // the platform scale
-    sink.span('structureMetal', cx - 0.35, floorY - 0.04, dz0 + 1.8, cx + 0.35, floorY + 0.08, dz0 + 2.35, { colour: rgb(0x4a5052), decor: true });
-    sink.span('structureMetal', cx - 0.03, floorY + 0.08, dz0 + 2.3, cx + 0.03, floorY + 1.05, dz0 + 2.36, { colour: rgb(0x3a3e40), decor: true });
+    sink.span('structureMetal', cx - 0.35, floorY - 0.04, dz0 + 1.8, cx + 0.35, floorY + 0.08, dz0 + 2.35, { colour: rgb(0x4a5052), decor: true, fine: true });
+    sink.span('structureMetal', cx - 0.03, floorY + 0.08, dz0 + 2.3, cx + 0.03, floorY + 1.05, dz0 + 2.36, { colour: rgb(0x3a3e40), decor: true, fine: true });
     // the sampan drawn up on the bank beside the landing's end
     const room = bb.maxX - (cx + dw / 2);
     if (room > 1.6) boatHull(sink, [cx + dw / 2 + room / 2, 0.02, dz1 - 2.0], 0.04, { length: Math.min(5.2, dz1 - dz0 + 1.5), beam: Math.min(1.35, room - 0.2), depth: 0.5, sheer: 0.34,
