@@ -43,7 +43,7 @@ for (const [index,solid] of solids.entries()) {
 }
 
 let releasedCells=0;
-for(const id of ['m1a2','t90m','k2','m551_sheridan','kv2','jpz_e100_x']) {
+for(const id of ['m1a1_abrams_hc','t90am','xk2_black_panther','m551_sheridan','kv2','jpz_e100']) {
   await ensureTankBuilder(id);
   for(const pop of [false,true]) {
     const baked=bakeTankWreck(null,id,{seed:91234,pop});

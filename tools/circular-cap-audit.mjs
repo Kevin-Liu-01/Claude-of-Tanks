@@ -44,7 +44,7 @@ export function createCircularCapAudit({ quality, out } = {}) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log('node tools/circular-cap-audit.mjs [--ids=vt4a1,t90m] [--quality=high|low|both] [--out-dir=path]\nDefault: all playable tanks, HIGH and LOW. Findings or unsupported meshes exit 1.');
+    console.log('node tools/circular-cap-audit.mjs [--ids=vt4a1,t90am] [--quality=high|low|both] [--out-dir=path]\nDefault: all playable tanks, HIGH and LOW. Findings or unsupported meshes exit 1.');
     return;
   }
   for (const arg of args) if (!/^--(ids|quality|out-dir)=.+$/.test(arg)) throw Error(`Unknown option: ${arg}`);

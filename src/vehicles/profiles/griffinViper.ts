@@ -69,6 +69,6 @@ export function buildGriffinViper(P: TankBuilderPort): void {
   weaponAssembly(P, () => launchPods(P), 'missileRack', 15); sights(P);
   P.muzzleZ=D.mouthZ/S; P.topY=1.54;
   reduceGriffinTurret(P);
-  P.hullG.userData.griffinViper={concept:true,donor:'griffin50_x',cells:16};
+  P.hullG.userData.griffinViper={concept:true,donor:'griffin50mm',cells:16};
 }
 export const GRIFFIN_VIPER_PROFILES = { griffin_viper: { build: buildGriffinViper } } as const;

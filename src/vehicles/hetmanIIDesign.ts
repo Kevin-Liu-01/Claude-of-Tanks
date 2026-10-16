@@ -1,7 +1,7 @@
 // Owner-authorized reinterpretation of the original broad welded Hetman.
 // It is a separate concept; the twelve current national designs are unchanged.
 export const HETMAN_II_DESIGN = {
-  id: 'ua_t72b3m_hetman_ii',
+  id: 't72b3m_hetman_ii',
   name: 'T-72B3M Hetman II (Concept)',
   y: 1.445, z: .114315,
   roofY: .80,

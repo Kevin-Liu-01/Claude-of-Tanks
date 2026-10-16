@@ -8,8 +8,8 @@ import {
 // The physics lane (2026-10-10): a dead hull's turret is a body the simulation owns. A cook-off throws it, any other
 // death unseats it, and it comes to rest where the physics put it — no table pose, no snap — the same way twice.
 
-const m1 = getSpec('m1a2');
-const strv = getSpec('strv103');
+const m1 = getSpec('m1a1_abrams_hc');
+const strv = getSpec('strv103b');
 
 // --- profiles: a turret box on the ring plane, a hull box under it, a gun barrel, a real mass; casemates have none
 {

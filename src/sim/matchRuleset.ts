@@ -450,6 +450,14 @@ export function isWaveMode(mode: GameModeId): mode is 'endless_horde' | 'frontli
   return mode === 'endless_horde' || mode === 'frontline_assault';
 }
 
+/**
+ * A destroyed hull stays out of the battle: no respawn, and no wave that draws the pool back in. Only then can a network
+ * seat count a side from the roster and the deaths it is sent: a hull's return out of its sight is never sent to it.
+ */
+export function deathsAreFinal(ruleset: Pick<MatchRuleset, 'mode' | 'respawnS'>): boolean {
+  return ruleset.respawnS == null && !isWaveMode(ruleset.mode);
+}
+
 /** Every registered mode arranges its sides (owner 2026-09-18); an unknown id takes none. */
 export function acceptsTeamArrangement(mode: GameModeId): boolean {
   return Object.prototype.hasOwnProperty.call(BASE_RULESETS, mode);

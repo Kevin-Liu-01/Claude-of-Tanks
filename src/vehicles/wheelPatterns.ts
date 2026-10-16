@@ -13,6 +13,7 @@
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { resolveNationWheel } from './nationWheelSets.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 
 export const WHEEL_PATTERN_DEFINITIONS = Object.freeze({
   'christie-six': Object.freeze({
@@ -116,7 +117,8 @@ export function wheelPatternFor(
     return pattern(nation.pattern);
   }
   if (override != null) return pattern(override);
-  const id = String(spec?.id || '').toLowerCase();
+  // The family rules read the schema-1 id vocabulary (tankIdAliases.ts): a rename never changes this choice.
+  const id = tankSeedId(String(spec?.id || '')).toLowerCase();
   for (const [matcher, patternId] of PERIOD_RULES) {
     if (matcher.test(id)) return pattern(patternId);
   }

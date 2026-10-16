@@ -13,8 +13,8 @@ const registry=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);
 // design like the Kurganets and Type 100 IFVs.
 const entries=[
   ['dardo','m2a2_bradley','Dardo','Italy',25,2150,23,520,70,.42,68,185,'modern'],
-  ['lrmv_lynx','kf41_lynx_x','LRMV Lynx','Italy',30,2900,44,1140,70,.38,90,225,'next-generation'],
-  ['borsuk','spz_puma_s1','Borsuk','Poland',30,2650,28,720,65,.38,84,210,'next-generation'],
+  ['lrmv_lynx','kf41_lynx','LRMV Lynx','Italy',30,2900,44,1140,70,.38,90,225,'next-generation'],
+  ['borsuk','spz_wotan','Borsuk','Poland',30,2650,28,720,65,.38,84,210,'next-generation'],
 ] as const;
 const created:Record<string,FleetTankSpec>={};
 for(const [id,donor,name,nation,caliber,hp,weight,power,speed,reload,damage,penetration,era] of entries){
@@ -29,7 +29,7 @@ for(const [id,donor,name,nation,caliber,hp,weight,power,speed,reload,damage,pene
       pen100Mm:r.type==='HE'?45:penetration,pen1000Mm:r.type==='HE'?45:penetration-18,pen2000Mm:r.type==='HE'?45:penetration-36}))};
   delete s.gun.launcherMuzzles;delete s.gun.launcherSalvo;delete s.gun.autoloader;delete s.gun.muzzles;delete s.gun.fixedLaunchCanisters;
   if(id==='borsuk'){
-    const spike=registry.tankSpecs.spz_puma_s1!.gun.shells.find(r=>r.guided)!;
+    const spike=registry.tankSpecs.spz_wotan!.gun.shells.find(r=>r.guided)!;
     s.gun.shells.splice(1,0,{...structuredClone(spike),name:'Spike LR',caliberMm:152,
       dmg:650,pen100Mm:950,pen1000Mm:950,pen2000Mm:950,reloadS:2.8,count:6,launcherTubes:2,velocityMps:180});
   }

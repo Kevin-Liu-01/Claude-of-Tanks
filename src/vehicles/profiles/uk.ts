@@ -6,10 +6,10 @@ import { weaponAssembly } from './weaponStock.ts';
 // which the per-view centroid alignment absorbs) plus the packets in
 // docs/references/tanks/<id>.md. Hulls are lofted station slabs following
 // the measured deck/belly polylines; turrets are authored from the
-// whole-minus-hull band. Oracles: recovered chieftain5 / challenger1 /
+// whole-minus-hull band. Oracles: recovered chieftain3 / challenger1_mk2 /
 // fv510 GLBs and the re-repaired m_bergman centurion / comet / charioteer /
 // A30 prints (assembled turrets — the honest curves).
-// challenger1 moved to profiles/challenger.ts (§5.75 family-module split) —
+// challenger1_mk2 moved to profiles/challenger.ts (§5.75 family-module split) —
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
@@ -531,20 +531,20 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
       const sk = g.skirt;
       const panels = g.skirtPanels ?? 6;
       const panelD = (sk.z1 - sk.z0) / panels;
-      // g.skirtW opt-in (challenger1 push-2): thin armour-sheet skirts — the
+      // g.skirtW opt-in (challenger1_mk2 push-2): thin armour-sheet skirts — the
       // CR1 ref's plane face sits at 1.578, inside the 0.05-plate's §B4
       // clearance to the 1.527/1.535 pad/band envelope. Default 0.05 =
-      // byte-identical for chieftain5/centurions/fv510.
+      // byte-identical for chieftain3/centurions/fv510.
       const skW = g.skirtW ?? 0.05;
-      // g.skirtHemSplit opt-in (centurion5 tone round, r6 O1 "expose the
-      // running gear"): per-panel hem split on the chieftain5 LEFT-HEM-PARITY
+      // g.skirtHemSplit opt-in (centurion5_2 tone round, r6 O1 "expose the
+      // running gear"): per-panel hem split on the chieftain3 LEFT-HEM-PARITY
       // precedent — panels across the wheel span raise their hem to the ref's
       // own exposed-disc line while listed keepPanels retain the low sk.bot
       // course. Front/rear rows read the MIN bottom over all z (interval-mask
       // law, chieftain r5 bank #10), so one kept panel preserves every
       // ±skirt-column read; side bottoms are track-owned under the whole
       // span; station widths ride the skirt TOP band (y max), unchanged.
-      // Default undefined -> byte-identical (chieftain5/centurion3/fv510).
+      // Default undefined -> byte-identical (chieftain3/centurion3/fv510).
       const hemBot = (k: number) => (g.skirtHemSplit && !g.skirtHemSplit.keepPanels.includes(k))
         ? g.skirtHemSplit.bot : sk.bot;
       for (const side of [-1, 1]) {
@@ -557,12 +557,12 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
             P.add('hullDetail', box(0.02, 0.05, 0.2), side * (sk.x + 0.005), sk.top - 0.1, z);
           }
         }
-        // g.skirtTrimFlush opt-in (challenger1 push-2): the rubber trim strip
+        // g.skirtTrimFlush opt-in (challenger1_mk2 push-2): the rubber trim strip
         // rode sk.top+0.02 (top face +0.0375 PROUD of the armour line) — on a
         // course-true 1.624 skirt it re-painted the fifteen mid side_hull
         // columns the top retune had just fixed. Flush mounts tuck it 0.008
         // under the top edge. Default = the original proud seat (byte-
-        // identical for chieftain5/centurions/fv510).
+        // identical for chieftain3/centurions/fv510).
         P.add('hullDark', box(0.014, 0.035, sk.z1 - sk.z0 - 0.1), side * (sk.x - 0.01),
           sk.top + (g.skirtTrimFlush ? -0.0255 : 0.02), (sk.z0 + sk.z1) / 2);
       }
@@ -575,7 +575,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
   const ukHullRunningGearStage2 = (): void => {
     buildRunningGear(P, {
       // g.wheelW is an r4 opt-in (default = the original formula, byte
-      // identical): chieftain5's pad band narrowed to the ref's measured
+      // identical): chieftain3's pad band narrowed to the ref's measured
       // 1.0765..1.4845 ground columns, and the derived wheel width would have
       // gone skinny with it.
       style: g.wheelStyle ?? 'dished', wheelR: g.wheelR, wheelW: g.wheelW ?? Math.min(0.24, g.trackW * 0.42),
@@ -586,7 +586,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
       // uk r5 opt-ins (merkava r12 gear-tone law): per-tank pad/chain/tire
       // tones + the ambient-floor re-attach (Material.clone drops the family
       // hook and the default near-black pads render ambient-dead in wheel-bay
-      // shade — the chieftain5 'teeth zipper' read). All undefined for every
+      // shade — the chieftain3 'teeth zipper' read). All undefined for every
       // other caller — buildRunningGear defaults are byte-identical.
       padHex: g.padHex, chainHex: g.chainHex,
       gearFloor: g.gearFloor,
@@ -596,7 +596,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     });
     // Mud flaps hang from the FENDER TIPS (hanging them at the hull nose/tail
     // left them floating over the raked plates -> articulation floaters).
-    // g.flapDrop is an r4 opt-in (default 0, byte identical): chieftain5's
+    // g.flapDrop is an r4 opt-in (default 0, byte identical): chieftain3's
     // front flap top read over the ref's bare 1.52 glacis-deck columns.
     for (const side of [-1, 1]) {
       if (!g.noFlaps && g.fenderY) {
@@ -613,7 +613,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
   // Side number decals. Opt-in overrides (g.numberR/g.numberL/g.numberSize)
   // let a build pin them onto real side planes — the decal quad is mask
   // geometry, so a default position off the body's silhouette band costs
-  // gate columns (chieftain5 vertex r3 finding). Defaults byte-identical.
+  // gate columns (chieftain3 vertex r3 finding). Defaults byte-identical.
   const numS = g.numberSize ?? 0.38;
   const numR: Vec3Tuple = g.numberR
     ? [g.numberR[0], g.numberR[1], g.numberR[2]]
@@ -755,7 +755,7 @@ const CHIEFTAIN_HULL = {
  */
 function addChieftainClosedShoulderMudguards(
   P: UKBuilderPort,
-  profile: 'chieftain5' | 'chieftain_mk10',
+  profile: 'chieftain3' | 'chieftain_mk9',
 ): void {
   const labels: string[] = [];
   for (const s of [-1, 1] as const) {
@@ -858,7 +858,7 @@ function chieftain5Build(P: UKBuilderPort): void {
   P.add('hull', slab(
     [1.523, 0.82, 3.755], [1.556, 0.82, 3.755], [1.556, 0.80, 3.55], [1.523, 0.80, 3.55],
     [1.523, 1.045, 3.755], [1.556, 1.045, 3.755], [1.556, 1.13, 3.55], [1.523, 1.13, 3.55]));
-  addChieftainClosedShoulderMudguards(P, 'chieftain5');
+  addChieftainClosedShoulderMudguards(P, 'chieftain3');
   for (const s of [-1, 1]) P.add('hull', box(0.21, 0.06, 0.62), s * 0.945, 1.02, 2.81);
   // Owner 2026-09-30: the segmented inner-track filler blocks are removed.
   segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, 1.4625, 0.025, -0.1);
@@ -1384,7 +1384,7 @@ function chieftain5Build(P: UKBuilderPort): void {
 // Shared UK tow cable on the glacis with clamp cleats.
 const deckAtUK = (g: Pick<UKHullOptions, 'deck'>, z: number): number => lineAt(g.deck, z);
 
-// Opt-in path/cleat overrides (uk r4): chieftain5's cable sagged over the
+// Opt-in path/cleat overrides (uk r4): chieftain3's cable sagged over the
 // ref's bare 1.49-1.55 glacis deck line once side registration was honest —
 // its call lowers the run. Defaults byte-identical for every other caller.
 function towCableUK(
@@ -1398,12 +1398,12 @@ function towCableUK(
 }
 
 // ---------------------------------------------------------------------------
-// UK TONE KIT (combined tone round 2026-08-05, challenger1 r7 O1a/O2/O4 +
-// centurion5 r6 O2/O4 + centurion3 r6 Groups 1-2). Family recipe = the
+// UK TONE KIT (combined tone round 2026-08-05, challenger1_mk2 r7 O1a/O2/O4 +
+// centurion5_2 r6 O2/O4 + centurion3 r6 Groups 1-2). Family recipe = the
 // m47/m46 gearTone lineage (patton.ts r4-r7) in the UK olive family:
 // per-instance material work only — createTankMaterials is per-build and the
 // gate renders self-lit masks, so nothing here moves a curve or a mask.
-// OPT-IN per build fn (§F.2): chieftain5 (frozen graduate 5117b9a8) does NOT
+// OPT-IN per build fn (§F.2): chieftain3 (frozen graduate 5117b9a8) does NOT
 // call this — its own r5/r6 gear tones live in CHIEFTAIN_HULL config.
 // ---------------------------------------------------------------------------
 function ukToneKit(P: UKMaterialPort, o: UKToneOptions = {}): void {
@@ -1531,7 +1531,7 @@ function ukGearAirBackers(
 // FALSE-0 law: never run the geometry gate against this id; the bar is the
 // photo class + published dims + §B battery + §B8.1 proportion gates
 // (docs/references/tanks/chieftain_mk10.md carries the target numbers).
-// Family grammar donor: the chieftain5 graduate (d4f2a9a6 — REUSED helpers
+// Family grammar donor: the chieftain3 graduate (d4f2a9a6 — REUSED helpers
 // only: ukHull / segBoxZ / towCableUK / ukToneKit; the graduate's own
 // geometry and CHIEFTAIN_HULL table are untouched).
 // Mk 10 deltas vs the Mk 5: STILLBREW armour masses on the turret front /
@@ -1540,7 +1540,7 @@ function ukGearAirBackers(
 // deleted in exchange), L11A5 with FULL thermal sleeve + fume extractor +
 // MRS + open bore, No.15 cupola LEFT with the L37 GPMG on the ring, skirt
 // band at the published 3.66 width (±1.83 EXACT — §D width anchor).
-// SYMMETRIC hull: the chieftain5 left-fender asymmetry + narrow right track
+// SYMMETRIC hull: the chieftain3 left-fender asymmetry + narrow right track
 // + 0.08 left shift are that oracle's certified print quirks, not the
 // vehicle — this build carries the published symmetric configuration.
 // ---------------------------------------------------------------------------
@@ -1571,7 +1571,7 @@ const MK10_HULL = {
   padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   wheelR: 0.33, wheelY: 0.38, wheelStyle: 'rubber',
   wheelZs: [2.3, 1.42, 0.54, -0.34, -1.22, -2.1],
-  // §B6 trapezoid (family law, banked in the chieftain5 §B6 round): BIG
+  // §B6 trapezoid (family law, banked in the chieftain3 §B6 round): BIG
   // raised front idler + HIGH rear drive sprocket. Idler r 0.30 at the
   // RAISED y 0.64 (the brief's "big idler" — the family-proven geometry;
   // an r 0.32 cut lifted the return-run segment 5-10 mm INTO the 1.02 belt
@@ -1627,7 +1627,7 @@ function chieftainMk10Build(P: UKBuilderPort): void {
       [s * 0.99, deckAtUK(g, 3.08), 3.08], [s * 1.10, deckAtUK(g, 3.08), 3.08],
       [s * 1.10, deckAtUK(g, 2.55), 2.55], [s * 0.99, deckAtUK(g, 2.55), 2.55]));
   }
-  addChieftainClosedShoulderMudguards(P, 'chieftain_mk10');
+  addChieftainClosedShoulderMudguards(P, 'chieftain_mk9');
   // ---- cast belly: center keel + shallow V (family cross-section, symmetric)
   P.add('hull', box(0.06, 0.10, 3.4), 0, 0.51, 0.2);
   for (const s of [-1, 1]) {
@@ -1932,7 +1932,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5, { stowedLoaderMag 
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
   // 0..4, with panel 5 (stern) keeping the 0.60 hem that owns the front/
-  // rear-row minima (interval-mask law — the chieftain5 LEFT-HEM-PARITY
+  // rear-row minima (interval-mask law — the chieftain3 LEFT-HEM-PARITY
   // silhouette-neutral delivery). centurion3 was NOT ordered here (its 8.6
   // side reads carry a tone lane only): mk 3 keeps the shared table
   // byte-identical.
@@ -4673,10 +4673,10 @@ function chieftainMk10OwnerRebuild2026(P: UKBuilderPort): void {
 }
 
 export const UK_PROFILES = {
-  chieftain5: { build: chieftain5OwnerRebuild2026 },
+  chieftain3: { build: chieftain5OwnerRebuild2026 },
   // BASE-21 scaffold (2026-08-07): first real Mk 10 build — photo-class, no
   // oracle (FALSE-0 law). Overrides the modern3 generic via PROFILED_BUILDERS.
-  chieftain_mk10: { build: chieftainMk10OwnerRebuild2026 },
+  chieftain_mk9: { build: chieftainMk10OwnerRebuild2026 },
   vickers_mk1: {
     build: (P: UKBuilderPort) => {
       vickersMk1Build(P);
@@ -4684,7 +4684,7 @@ export const UK_PROFILES = {
     },
   },
   centurion3: { build: (P: UKBuilderPort) => centurionBuild(P, 3) },
-  centurion5: { build: (P: UKBuilderPort) => centurionBuild(P, 5) },
+  centurion5_2: { build: (P: UKBuilderPort) => centurionBuild(P, 5) },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows

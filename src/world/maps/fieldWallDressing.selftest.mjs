@@ -21,7 +21,8 @@
 import assert from 'node:assert/strict';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 import { readFileSync } from 'node:fs';
-import { WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing } from './fieldWallDressing.ts';
+import { WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing, placeSeed } from './fieldWallDressing.ts';
+const placeSeedOf = (x, z) => placeSeed(x, z, 0xad0a);
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
 
 function mulberry32(seed) {
@@ -264,4 +265,34 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
     'a cell\'s bed and its turf one geometry');
 }
 
-console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet');
+// 8. the coarse apron (the map-revival lane, 2026-10-07, Tarkhan's cost trim): a map that opts in dresses its mud walls at
+//    the mobile tier's density on every tier — the same apron the mobile tier builds, about half the triangles; every
+//    map that does not set it builds the apron to the byte as before, and Tarkhan is the only map that sets it
+{
+  const tris = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+  const bytes = (g) => [g.attributes.position.array, g.attributes.uv.array, g.index?.array ?? []].map((a) => Array.from(a));
+  const desktop = buildMudApron(slope, 0, 0, 0, 9, 0.26, placeSeedOf(0, 0), { mobile: false, uvPerM: 1 / 3, plainV: [0.89, 0.99] });
+  const mobile = buildMudApron(slope, 0, 0, 0, 9, 0.26, placeSeedOf(0, 0), { mobile: true, uvPerM: 1 / 3, plainV: [0.89, 0.99] });
+  const base = { ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3, plainV: [0.89, 0.99] };
+  for (const unset of [base, { ...base, adobeApronCoarse: false }]) {
+    const apron = createWallDressing(unset).island(true, 0, 0, 0, 9, 0.26).wall[0];
+    assert.deepEqual(bytes(apron), bytes(desktop), 'unset (or false), the apron is the desktop apron to the byte');
+  }
+  const coarse = createWallDressing({ ...base, adobeApronCoarse: true }).island(true, 0, 0, 0, 9, 0.26).wall[0];
+  assert.deepEqual(bytes(coarse), bytes(mobile), 'opted in, the apron is the mobile tier\'s on every tier');
+  // (2026-10-10, the Tarkhan landing's trim) opted in, the foot's dressing receives shadows but casts none: tagged for
+  // the bucket's non-casting mesh (props.ts mergeMaterialBuckets); unset, nothing is tagged
+  assert.equal(coarse.userData.receiveOnly, true, 'opted in, the apron is receive-only');
+  for (const unset of [base, { ...base, adobeApronCoarse: false }]) {
+    assert.ok(createWallDressing(unset).island(true, 0, 0, 0, 9, 0.26).wall.every((g) => g.userData.receiveOnly === undefined), 'unset, nothing tagged');
+  }
+  const propsSource = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.match(propsSource, /const groundOnly = \(g: THREE\.BufferGeometry\) => g\.userData\.receiveOnly === true;\n\s*const cast = receiveOnly \? all\.filter\(\(g\) => !castsNoShadow\(g\)\) : all\.filter\(\(g\) => !culled\(g, key\) && !groundOnly\(g\)\);\n\s*const coarse = receiveOnly \? all\.filter\(\(g\) => castsNoShadow\(g\) && !culled\(g, key\)\) : all\.filter\(groundOnly\);/,
+    'a tagged piece merges into its bucket\'s non-casting mesh');
+  assert.ok(tris(coarse) < tris(desktop) * 0.6, `about half the triangles (${tris(coarse)} of ${tris(desktop)})`);
+  const { MAP_IDS, getMapConfig } = await import('./index.ts');
+  const setting = MAP_IDS.filter((id) => getMapConfig(id).props?.adobeApronCoarse !== undefined);
+  assert.deepEqual(setting, ['steppe'], 'Tarkhan is the only map that sets it');
+}
+
+console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet, the coarse apron opt-in');

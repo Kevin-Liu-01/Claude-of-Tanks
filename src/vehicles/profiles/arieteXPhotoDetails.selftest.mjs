@@ -7,7 +7,7 @@ import { buildArieteX } from './arieteXPhotoDraft.ts';
 // Isolated historical photo construction, not current supplied-file acceptance.
 // 2026-09-22: the photo-draft wheel primitives (bowl + hub nuts) left with the nation wheel standard; this
 // receipt now protects the optic, handle and rail construction only.
-registerProfiledBuilders({ ariete_c1_x: buildArieteX });
+registerProfiledBuilders({ c1_ariete: buildArieteX });
 
 // These are independent physical construction/air contracts, not a numerical
 // likeness score or invented millimetric measurements from the Army photos.
@@ -75,7 +75,7 @@ for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear; let gear;
   KIT.buildRunningGear = (port, cfg) => { gear = original(port, cfg); return gear; };
   let tank;
-  try { tank = createTank('ariete_c1_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false }); }
+  try { tank = createTank('c1_ariete', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false }); }
   finally { KIT.buildRunningGear = original; }
   try {
     tank.root.updateMatrixWorld(true); roofChecks(tank.root); assert.ok(gear, 'running gear built');

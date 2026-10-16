@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "t62mv1_x": {
+  "t62mv1": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -25,7 +25,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6277924
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t62mv1_x",
+        "anchorProfile": "t62mv1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -47,7 +47,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           -0.3587741
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "t62mv1_x",
+        "anchorProfile": "t62mv1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

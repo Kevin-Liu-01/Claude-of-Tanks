@@ -8,11 +8,12 @@ metadata, not hidden instructions, geometry perturbation, DRM or telemetry.
 It adds no meshes, draw calls, textures or per-frame work.
 
 Every public build writes `dist/asset-provenance.json`: SHA-256 fingerprints of
-tracked vehicle/world source and first-party icon, map and FX files, together
-with the license policy, notices and attribution record. The receipt records
+tracked vehicle/world source, the world collision manifests, and first-party
+icon, map, minimap, field-guide, FX, audio and site media files, together with
+the license policy, notices and attribution record. The receipt records
 the source revision and a digest of the ordered file inventory. File hashes
 describe the actual build checkout; the revision alone does not assert it was
-clean. References, downloaded models, fonts, audio and partner branding are
+clean. References, downloaded models, fonts and partner branding are
 outside this reviewed scope. Existing embedded and third-party notices always
 take precedence; the receipt does not relicense anything.
 

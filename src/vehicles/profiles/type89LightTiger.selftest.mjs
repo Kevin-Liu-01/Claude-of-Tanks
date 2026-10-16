@@ -5,7 +5,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 
-const spec = getSpec('type89_light_tiger');
+const spec = getSpec('raiju_ifv');
 assert.ok(spec, 'Type 89 Light Tiger is registered');
 assert.equal(spec.name, 'Raijū IFV');
 assert.equal(tankTier(spec.id), 10, 'Light Tiger is Tier X');

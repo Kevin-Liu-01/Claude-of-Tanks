@@ -95,6 +95,38 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
   }),
 });
 
+/**
+ * The Garage's own sun (coordinator ruling 2026-10-15, option A; the garage critic panel: "light is flat and close to
+ * noon ... sun at 30-40 degrees ... each garage its own time of day"). Each outdoor Garage keeps its battlefield's
+ * atmosphere (turbidity, scattering, fog, clouds, sun colour and strength, exposure: the sky lane's) and trims only the
+ * sun's elevation (28-38 degrees) and azimuth, chosen for a three-quarter back light on the hero from the fixed Garage
+ * camera: the camera looks from the hero's +x+z (azimuth 43 degrees seen from the hero), so a sun about 60 degrees off
+ * the back axis (azimuth 283 = back left, 163 = back right) rims the tank, lights the flank the camera sees at a glance,
+ * and throws the shadows forward across the yard floor. Verdant is indoors: its walls stop the sun, so it is untrimmed.
+ */
+export const GARAGE_SUN_TRIM = Object.freeze<Readonly<Record<string, Readonly<{ sunElevationDeg: number; sunAzimuthDeg: number }>>>>({
+  desert: Object.freeze({ sunElevationDeg: 36, sunAzimuthDeg: 283 }), // the wadi's late morning
+  winter: Object.freeze({ sunElevationDeg: 28, sunAzimuthDeg: 163 }), // a low winter sun, long shadows on the snow
+  urban: Object.freeze({ sunElevationDeg: 34, sunAzimuthDeg: 283 }),
+  coastal: Object.freeze({ sunElevationDeg: 32, sunAzimuthDeg: 163 }), // afternoon over the sea
+  railyard: Object.freeze({ sunElevationDeg: 30, sunAzimuthDeg: 283 }),
+  monsoon: Object.freeze({ sunElevationDeg: 30, sunAzimuthDeg: 163 }), // between the showers
+  alpine: Object.freeze({ sunElevationDeg: 28, sunAzimuthDeg: 283 }),
+  badlands: Object.freeze({ sunElevationDeg: 32, sunAzimuthDeg: 163 }),
+  foundry: Object.freeze({ sunElevationDeg: 30, sunAzimuthDeg: 283 }),
+});
+
+const trimmedPresets = new Map<string, Readonly<MapSkyConfig>>();
+
+/** The Garage's sky for a map: the battlefield's atmosphere with the Garage sun trim applied (one frozen copy each). */
 export function getGarageSkyPreset(mapId: string): Readonly<MapSkyConfig> {
-  return GARAGE_SKY_PRESETS[mapId] || GARAGE_SKY_PRESETS.verdant;
+  const base = GARAGE_SKY_PRESETS[mapId] || GARAGE_SKY_PRESETS.verdant;
+  const trim = GARAGE_SKY_PRESETS[mapId] ? GARAGE_SUN_TRIM[mapId] : undefined;
+  if (!trim) return base;
+  let trimmed = trimmedPresets.get(mapId);
+  if (!trimmed) {
+    trimmed = Object.freeze({ ...base, ...trim });
+    trimmedPresets.set(mapId, trimmed);
+  }
+  return trimmed;
 }

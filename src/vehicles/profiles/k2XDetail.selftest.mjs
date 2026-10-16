@@ -6,12 +6,12 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { K2_X_PROFILES } from './k2X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-registerProfiledBuilders({ k2_x: K2_X_PROFILES.k2_x.build });
+registerProfiledBuilders({ k2_black_panther: K2_X_PROFILES.k2_black_panther.build });
 const top=(root,x,z)=>new THREE.Raycaster(new THREE.Vector3(x,5,z),
   new THREE.Vector3(0,-1,0),0,6).intersectObject(root,true)[0]?.point.y;
 
 for(const quality of ['high','low']) {
-  const tank=createTank('k2_x',null,{proceduralOnly:true,geometryReceipt:true,quality});
+  const tank=createTank('k2_black_panther',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     tank.root.updateMatrixWorld(true);
     const mount=tank.root.getObjectByName('gunMount');

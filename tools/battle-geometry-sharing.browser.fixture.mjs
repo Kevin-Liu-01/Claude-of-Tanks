@@ -12,7 +12,7 @@ export function runBattleGeometrySharingFixture(){
  const camera=new T.PerspectiveCamera(36,640/480,.1,100);camera.position.set(15,8,20);camera.lookAt(0,1,0);
  const target=new T.WebGLRenderTarget(640,480,{depthBuffer:true});
  const options={quality:'high',proceduralOnly:true,camoSeed:4242,batchStatic:false};
- const one=createTank('type90',null,options),two=createTank('type90a',null,options);one.root.position.x=-3.5;two.root.position.x=3.5;scene.add(one.root,two.root);
+ const one=createTank('type90_kyumaru',null,options),two=createTank('type90a',null,options);one.root.position.x=-3.5;two.root.position.x=3.5;scene.add(one.root,two.root);
  const geometrySet=()=>{const set=new Set();for(const v of [one,two])v.root.traverse(o=>{if(o.isMesh)set.add(o.geometry);});return set;};
  const render=()=>{scene.updateMatrixWorld(true);renderer.setRenderTarget(target);renderer.render(scene,camera);const bytes=new Uint8Array(640*480*4);renderer.readRenderTargetPixels(target,0,0,640,480,bytes);return bytes;};
  const same=(a,b)=>a.every((v,i)=>v===b[i]);

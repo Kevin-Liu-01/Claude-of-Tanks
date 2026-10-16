@@ -90,8 +90,24 @@ const W = 4.2, D = 5.4, WALL = 2.75, PARAPET = 0.4, MERLON = 0.15, THICK = 0.32;
  */
 export function buildKsarGatePost(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  // the body: one battered block of render, its foot damp
-  parts.push(dampFoot(batter(block(W, WALL, D, 0, 0, 0, RENDER, rng, 0.02), 0, WALL, 0.09, W / 2, D / 2), 0.45));
+  // the body: four battered walls of render, the door and the windows cut through them (no painted opening: the r2
+  // standard, props #1), the dark of the room behind them, its foot damp
+  const wall = (w: number, h: number, d: number, x: number, y0: number, z: number) =>
+    parts.push(dampFoot(batter(block(w, h, d, x, y0, z, RENDER, rng, 0.02), 0, WALL, 0.09, W / 2, D / 2), 0.45));
+  const DOOR_W = 1.0, DOOR_H = 2.12, WIN_Z = 0.6, WIN_D = 0.45, WIN_Y0 = 1.65, WIN_Y1 = 2.2;
+  wall(W, WALL, THICK, 0, 0, -D / 2 + THICK / 2);
+  for (const sx of [-1, 1]) wall(W / 2 - DOOR_W / 2, WALL, THICK, sx * (W / 2 + DOOR_W / 2) / 2, 0, D / 2 - THICK / 2);
+  wall(DOOR_W, WALL - DOOR_H, THICK, 0, DOOR_H, D / 2 - THICK / 2);
+  for (const sx of [-1, 1]) {
+    const x = sx * (W / 2 - THICK / 2);
+    const z0 = -D / 2 + THICK, w0 = WIN_Z - WIN_D / 2 - z0, z1 = WIN_Z + WIN_D / 2, w1 = D / 2 - THICK - z1;
+    wall(THICK, WALL, w0, x, 0, z0 + w0 / 2);
+    wall(THICK, WALL, w1, x, 0, z1 + w1 / 2);
+    wall(THICK, WIN_Y0, WIN_D, x, 0, WIN_Z);
+    wall(THICK, WALL - WIN_Y1, WIN_D, x, WIN_Y1, WIN_Z);
+  }
+  // the room's dark behind the openings, a hand inside the walls
+  parts.push(block(W - 2 * THICK - 0.04, WALL - 0.12, D - 2 * THICK - 0.04, 0, 0.02, 0, OPENING, rng, 0));
   // the parapet round the roof, set on the battered wall's top, and a merlon at each corner
   const tw = W - 0.18, td = D - 0.18;
   parts.push(block(tw, PARAPET, THICK, 0, WALL, td / 2 - THICK / 2, RENDER, rng));
@@ -103,17 +119,13 @@ export function buildKsarGatePost(rng: Rng): THREE.BufferGeometry {
   }
   // the roof inside the parapet, a hand under its top
   parts.push(block(tw - 2 * THICK, 0.12, td - 2 * THICK, 0, WALL - 0.1, 0, RENDER, rng));
-  // the door on the road side: dark and unglazed, a timber lintel over it, a worn sill before it
+  // the door on the road side, open and unglazed: a timber lintel over it, a worn sill before it
   const front = D / 2 - 0.09 * 0.25; // (the battered face at a quarter of the wall's height)
-  parts.push(block(1.0, 2.0, 0.04, 0, 0.12, front + 0.01, OPENING, rng, 0));
   parts.push(block(1.45, 0.16, 0.22, 0, 2.12, front + 0.04, TIMBER, rng, 0.08));
   parts.push(block(1.5, 0.12, 0.6, 0, 0, front + 0.25, DAMP, rng, 0.03));
   // a small window in each side wall, high, under its own lintel
   const side = W / 2 - 0.09 * 0.65;
-  for (const sx of [-1, 1]) {
-    parts.push(block(0.04, 0.55, 0.45, sx * (side + 0.01), 1.65, 0.6, OPENING, rng, 0));
-    parts.push(block(0.2, 0.12, 0.75, sx * (side + 0.03), 2.22, 0.6, TIMBER, rng, 0.08));
-  }
+  for (const sx of [-1, 1]) parts.push(block(0.2, 0.12, 0.75, sx * (side + 0.03), 2.22, 0.6, TIMBER, rng, 0.08));
   // two rain spouts through the back parapet's foot
   for (const x of [-1.1, 1.1]) parts.push(block(0.12, 0.12, 0.55, x, WALL + 0.04, -(td / 2 + 0.12), TIMBER, rng, 0.1));
   return merge(parts);

@@ -30,12 +30,12 @@ const PENETRATION_M = 0.03;
 const REST_M = 0.03;
 const UPRIGHT_RAD = 4 * Math.PI / 180;
 
-// t90m: a resized hull (profiles/vehicleSize.ts samples in its authoring frame); m1a2: a plain hull; ariete_c1_x: the
+// t90am: a resized hull (profiles/vehicleSize.ts samples in its authoring frame); m1a1_abrams_hc: a plain hull; c1_ariete: the
 // Ariete family's own scaled frame (profiles/arieteXFamilyScale.ts).
 const CASES = [
-  { mapId: 'cliffbridge', deck: 'longest', hulls: ['t90m', 'm1a2', 'ariete_c1_x'] },
-  { mapId: 'autumn', deck: 'longest', hulls: ['t90m'] },
-  { mapId: 'blackglass', deck: 'longest', hulls: ['m1a2'] },
+  { mapId: 'cliffbridge', deck: 'longest', hulls: ['t90am', 'm1a1_abrams_hc', 'c1_ariete'] },
+  { mapId: 'autumn', deck: 'longest', hulls: ['t90am'] },
+  { mapId: 'blackglass', deck: 'longest', hulls: ['m1a1_abrams_hc'] },
 ];
 
 const scratch = { p: new THREE.Vector3(), m: new THREE.Matrix4(), w: new THREE.Matrix4() };
@@ -81,7 +81,7 @@ function gearGaps(visual, hf, deck, yaw) {
 
 const report = [];
 for (const { mapId, hulls } of CASES) {
-  await ensureAuthorityFleet([...hulls, 't90m']);
+  await ensureAuthorityFleet([...hulls, 't90am']);
   const world = createDedicatedWorldCollision(mapId);
   const hf = world.heightField;
   const decks = hf.bridgeDecks ?? [];
@@ -94,7 +94,7 @@ for (const { mapId, hulls } of CASES) {
     const startAlong = -deck.halfLength - 18;
     const players = [
       { id: 'subject', specId, team: 'alpha' },
-      { id: 'anchor', specId: 't90m', team: 'bravo' },
+      { id: 'anchor', specId: 't90am', team: 'bravo' },
     ];
     const match = createAuthoritativeMatch({ players, mapId, seed: 4242, countdownS: 0, worldCollision: world });
     match.onMatchReady();

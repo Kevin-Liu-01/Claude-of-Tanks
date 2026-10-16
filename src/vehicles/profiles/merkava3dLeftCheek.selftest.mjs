@@ -29,9 +29,9 @@ function assertContinuous(mesh) {
       `left shoulder ${s.z}/${x}: ${actual}, expected continuous plate ${height(s,x)}`);
   }
 }
-await ensureInteriorFills(['merkava3d_x']);
+await ensureInteriorFills(['merkava3d']);
 for (const quality of ['high','low']) {
-  const tank=createTank('merkava3d_x',null,{proceduralOnly:true,geometryReceipt:true,quality});
+  const tank=createTank('merkava3d',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     const turret=tank.root.getObjectByName('turret'),rig=tank.root.getObjectByName('rig_turret');
     assert.ok(turret?.isMesh&&rig&&turret.parent===rig,'Permanent structural armor follows turret yaw');
@@ -55,6 +55,6 @@ for (const quality of ['high','low']) {
     // The opposite-side permanent module remains intact.
     const right=castLocal(turret,1.60,.65);
     assert.ok(right>2.25&&right<2.34,'Unchanged positive-X repair');
-    console.log(`merkava3d_x/${quality}: continuous owner-selected left shoulder, yaw and real-collapse negative PASS`);
+    console.log(`merkava3d/${quality}: continuous owner-selected left shoulder, yaw and real-collapse negative PASS`);
   } finally {tank.dispose();}
 }

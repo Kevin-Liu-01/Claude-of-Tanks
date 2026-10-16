@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
-const tank = createTank('m1a2_tusk', null, {
+const tank = createTank('m1a1_abrams_sa', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });

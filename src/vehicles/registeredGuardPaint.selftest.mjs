@@ -15,10 +15,10 @@ import {installCanvasFixture} from './canvasFixture.test-support.mjs';
 // undeclared-edit negative control) are gone. The live differential stays: each build is compared with
 // the same build whose declared painted guards are returned to hullDetail, so the paint stays material-only.
 const cases=[
- {id:'leo2a6_x',build:buildLeopard2A6X,label:['a6-fixed-front-guard','a6-fixed-upper-sheet'],count:8},
- {id:'leclerc_x',build:buildLeclercX,label:'leclerc-fixed-bow-guard',count:2},
- {id:'amx40_x',build:AMX40_X_PROFILES.amx40_x.build,label:'amx40-fixed-folded-skirt',count:4},
- {id:'type10_x',build:buildType10X,label:['type10-painted-folded-skirt','type10-painted-upper-fascia','type10-painted-rear-fascia'],count:14},
+ {id:'leo2a6',build:buildLeopard2A6X,label:['a6-fixed-front-guard','a6-fixed-upper-sheet'],count:8},
+ {id:'leclerc_xlr',build:buildLeclercX,label:'leclerc-fixed-bow-guard',count:2},
+ {id:'amx40',build:AMX40_X_PROFILES.amx40.build,label:'amx40-fixed-folded-skirt',count:4},
+ {id:'type10',build:buildType10X,label:['type10-painted-folded-skirt','type10-painted-upper-fascia','type10-painted-rear-fascia'],count:14},
 ];
 const changed=new Set(['hullDetail','hullPaintedDetail']),keys=['fixedPaintedPanel','materialOnlyPaintMigration','materialOnlyPaintSourceBucket'];
 const methods=new Set(['add','addEquipment','addMudguard','addHatch','addCupola','addExternalArmor','addModuleVisual']);

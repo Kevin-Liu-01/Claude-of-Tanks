@@ -814,7 +814,7 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     [fit(0.18), fitY(0.15), fit(0.15)], [-fit(0.18), fitY(0.15), fit(0.15)],
   ), x, foundationTopY, z + fit(0.03), 0, yaw, 0);
 
-  const finishStation = ['t90','t90m_proryv'].includes(P.spec.id)
+  const finishStation = ['t90_1992','t90m_proryv'].includes(P.spec.id)
     ? captureAuxiliaryStock(P,weaponName) : null;
   // The open bay's deck top, where its cheek plates stand (round 5).
   let deckTopY: number | null = null;
@@ -897,7 +897,7 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   const weapon = FITTINGS.pintleMG({
     mats: P.mats,
     cls: weaponClass,
-    remoteControlled: ['t90', 't90m_proryv'].includes(P.spec.id),
+    remoteControlled: ['t90_1992', 't90m_proryv'].includes(P.spec.id),
     // The weapon and yoke stay dark against the painted armored head so the
     // single automated package remains legible in the normal three-quarter
     // gallery view. A camouflage-painted receiver made the consolidated
@@ -1319,7 +1319,7 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // |x| 0.7-0.9, faces 1.46@1.36); bottoms hold the 1.42 line
   // §B3.1 (prism sweep 2026-08-06): k5Seg sections the clamshell leaves
   // (flush seams), eyeKit gives the Shtora eyes their emitter grammar.
-  // T3A (turret-lane 2026-08-06, owner: "both t90a turrets are wrong"):
+  // T3A (turret-lane 2026-08-06, owner: "both t90a_2004 turrets are wrong"):
   // fresh plan digest — the ref leaf apex zone fronts 2.48-2.53w at
   // |x| 0.7-0.93 then CLIFFS to 1.54w by 1.14 (my old leaf line fronted
   // 1.84w out at 1.14-1.25 and only 2.40 at the apex): yaw steepened
@@ -1754,7 +1754,7 @@ function finishT90ALegacy(P: T90BuilderPort): void {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-1.568, 0.24, -0.50], -Math.PI / 2);
   // B2 plan-contiguity closure: bridge the single right rear fender cell.
   P.add('hull', box(0.38, 0.08, 0.20), 1.44, 1.34, -3.05);
-  // T4A SHADOW-TONE family lift (verdict order 6; t72b3m landed recipe):
+  // T4A SHADOW-TONE family lift (verdict order 6; t72b3m_2022 landed recipe):
   // dark/rubber/wood slots take the shadow-olive floor — corner brackets,
   // flaps, gear-fade strips and the log stop rendering unmovable
   // near-black / raw tan. Per-tank mats; render-only (masks override).
@@ -2083,7 +2083,7 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   });
   ruSkirtBand(P, vladimirSolidSkirt);
   addT90RearQuarterSlatCage(P, {
-    variant: 't90a_vladimir',
+    variant: 't90a_2006',
     originalSkirtRearZ: -4.00,
     originalSkirtFrontZ: 1.70,
     solidSkirtRearZ: vladimirSolidSkirt.z0,
@@ -2591,7 +2591,7 @@ function addT90MProryvHull(P: T90BuilderPort): void {
     belly: [[-2.908, 0.89], [-2.72, 0.78], [-2.60, 0.45], [-2.30, 0.365], [2.45, 0.365], [3.00, 0.50], [3.06, 0.62]],
     wUp: [[-2.908, 1.20], [-2.77, 1.60], [2.95, 1.60], [3.06, 1.52]],
     wLo: [[-2.908, 1.00], [3.06, 1.08]],
-    // §B4 containment round (t72b3m sponson-window recipe): the flat 0.81
+    // §B4 containment round (t72b3m_2022 sponson-window recipe): the flat 0.81
     // track-bay roof buried both wrap crowns in the slab — the full-width
     // upper slab's side walls (±1.60, inside the 1.185..1.685 band window)
     // and its 0.81 floor crossed the wrap arcs (audit rig_hull 145 front /
@@ -2752,15 +2752,15 @@ function addT90MProryvHull(P: T90BuilderPort): void {
     P.add('hull', box(0.165, 0.05, 0.50), s * 1.6825, 1.335, -2.60 + i * 0.545);
   }
   // r30b: periscopes near-flush (ref line 1.27 at z 2.35 vs the 1.475 heads;
-  // t72b3m periY class) and headlights re-seated 7 cm lower (ref tops
+  // t72b3m_2022 periY class) and headlights re-seated 7 cm lower (ref tops
   // 1.24-1.27 over z 2.60..2.74 vs the 1.35 lamp line).
   // PERFECTION r1: deckY rides the flattened 1.365 deck (grille/hatch skins
   // printed the old 1.383 top line the ref reads at 1.367).
   ruDeck(P, { deckY: 1.362, hatchY: 1.27, hatchZ: 2.05, gz: -1.70, grilles: 5, gw: 1.5, periY: 1.24, gY: 1.344, ribY: 1.352 });
   // §B4: eyeSplit — tori at ±1.26 are in-lane (16/17 vox vs the idler wrap);
-  // per-side buckets give the audit honest one-sided AABBs (t72b3m recipe).
+  // per-side buckets give the audit honest one-sided AABBs (t72b3m_2022 recipe).
   ruGlacisKit(P, { w: 3.5, y: 1.16, z: 2.60, eyeZ: 2.86, eyeSplit: true, hookY: 0.68, hookZ: 2.97, hlY: 1.19 });
-  // Relikt glacis wedge rows (t90sm pattern) — r30: seated 6 cm lower (tops
+  // Relikt glacis wedge rows (t90sm_2013 pattern) — r30: seated 6 cm lower (tops
   // ~1.30/1.25); the registered ref glacis-top line is 1.29@2.25 -> 1.23@2.62
   // r8 ORDER 4b (graduation verdict, §B3 ERA grammar): the glacis field
   // gets its tile-course relief — the print bakes bold ribbing where my
@@ -2786,7 +2786,7 @@ function addT90MProryvHull(P: T90BuilderPort): void {
   // clear of the -2.424 col boundary.
   stowage(P, 'hull', P.rng, [[0, 1.325, -2.27, 1.53, 0.09, 0.28]]);
   // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
-  // 1.38 deck lines (t84 recipe — no proud deck kit, t90a lesson).
+  // 1.38 deck lines (t84 recipe — no proud deck kit, t90a_2004 lesson).
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
     links.position.set(0.60, 0, 0.40);
@@ -2849,7 +2849,7 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
   // oracle's road wheels read BLACK below with lit MID upper arcs (window
   // luma p50 16; wheel columns: black 0..~0.42, mid 0.42..0.70) vs my
   // scheme discs pinned AT the ~52 hemi vertical-face floor — the
-  // ambient-floor hook itself is the ceiling blocker (t72b3m r23 class),
+  // ambient-floor hook itself is the ceiling blocker (t72b3m_2022 r23 class),
   // so these two clones deliberately run UNHOOKED (clone() drops
   // onBeforeCompile; measured: hooked 0.42x dish still read 52): plain
   // hemi shading restores the ref's dark-bottom/lit-top wheel gradient.
@@ -2873,7 +2873,7 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
       else if (object.material === P.mats.wheels) object.material = darkDish;
     });
   }
-  // r8 ORDER 1e: wheel-face packages (t72b3m hub/seam-ring precedent) so
+  // r8 ORDER 1e: wheel-face packages (t72b3m_2022 hub/seam-ring precedent) so
   // the exposed dark run reads as COUNTABLE circles — pale rim arc at the
   // dish/tire seam (the ref's circle-drawing highlight), faint mid ring,
   // hub drum + dark cap per wheel, plus idler/sprocket hub sets in the
@@ -2882,7 +2882,7 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
   // band (rim bottom 0.123 clears the pad crowns; tops <=0.85 under the
   // 0.88 wrap line).
   // Buckets: per-side in-lane track buckets (hullTrackDetailL/R pale +
-  // hullTrackTrimL/R dark — the §B4 t72b3m/pt91m in-lane dressing class;
+  // hullTrackTrimL/R dark — the §B4 t72b3m_2022/pt91m in-lane dressing class;
   // /track/i carries the trackBucket tag so the clip audit measures them
   // as the gear they ride: the wheel-1 rim arc crosses the idler-ramp
   // shoe path in 3D by construction, exactly the audit's designed
@@ -2909,7 +2909,7 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
   // 0.52@-2.68 then the 0.86 plate line; front 0.52@3.16)
   // §B4 containment round: strips are in-lane running-gear trim (x
   // 1.145..1.725 vs laneInnerX 1.185) deliberately bedded in the band (the
-  // t72b3m "strips must stay bedded" class). Merged into center-spanning
+  // t72b3m_2022 "strips must stay bedded" class). Merged into center-spanning
   // hullDark they defeated the audit's lane-local skip (44 front / 104 rear
   // vox); per-side hullTrackTrimL/R buckets keep byte-identical transforms
   // and the same 'dark' material instance — renders byte-identical.
@@ -2980,7 +2980,7 @@ function addT90MProryvSkirts(P: T90BuilderPort): void {
   // re-bucket 'hullTrack' -> 'hull' — the oracle render's Relikt bags read
   // PALE SCHEME with camo mottle (measured on the critic pair: ref side
   // pale course y 0.713..1.322 at luma 70+ vs my spareTrack mid 52-62;
-  // t72b3m rBucket scheme-paint precedent). Geometry byte-identical,
+  // t72b3m_2022 rBucket scheme-paint precedent). Geometry byte-identical,
   // bucket only; the dark battens stay.
   for (const s of [-1, 1]) {
     const chunks = s < 0
@@ -3041,7 +3041,7 @@ interface T90MProryvLegacyContext {
 
 function addT90MProryvTurret(P: T90BuilderPort): T90MProryvLegacyContext {
   const { box, cylZ, polyTurret } = KIT;
-  // ---- WELDED turret (identity delta vs the t90a cast dome): flat cheek
+  // ---- WELDED turret (identity delta vs the t90a_2004 cast dome): flat cheek
   // planform w/ chamfered corners, broad flat roof, separated furniture ----
   P.turretG.position.set(0, 1.40, 0.13);
   // r30: prism height 0.59 -> 0.44 — the ring walls topped 1.99 clear out to
@@ -3249,7 +3249,7 @@ function addT90MProryvTurretProtection(
   // old commander drum (cylY at -0.45,0.66) was BURIED inside the hump
   // volume (top 0.732 under the 0.8375 hump lid), invisible in every
   // view; deleted, replaced by two near-flush ring assemblies on the hump
-  // tops (t72b3m cupola-redress grammar: ring wall + pale rim + lid +
+  // tops (t72b3m_2022 cupola-redress grammar: ring wall + pale rim + lid +
   // dark hub + periscope studs). Ref-derived seats (view-top ring fits:
   // cupola r~0.25-0.29 at x +0.54..0.63, gunner outer ring to r~0.41 at
   // x -0.70; both z world -0.07..-0.23): seated at the certified hump
@@ -3308,7 +3308,7 @@ function addT90MProryvTurretProtection(
       [1.12, -0.12, 0.23, 0.40, 0.24, -0.10],
       [1.38, -0.14, 0.20, 0.34, 0.22, -0.06],
     ],
-    // r8 ORDER 4: rBucket -> the per-tank OD cloth (t72b3m rBucket
+    // r8 ORDER 4: rBucket -> the per-tank OD cloth (t72b3m_2022 rBucket
     // scheme-paint precedent — the oracle's chevron wedges read PALE with
     // dark course seams; turretTrack steel sat one tone-class dark).
     rChev: { lean: 0.55 }, rBucket: 'turretCloth',
@@ -3470,7 +3470,7 @@ function addT90SMLegacyHullFront(P: T90BuilderPort): void {
   // r12 §B1 SLOPE-MOTIVATES-THE-MASS: the flat 0.81 sponson floor buried
   // BOTH wrap crowns in the tub slab (sprocket wrap top 1.115 -> clip audit
   // 376 rear; idler wrap 240 front). The track-bay roof now follows the
-  // wraps (t72b3m §B4 profile recipe): raked lifts to 1.16/1.135 over the
+  // wraps (t72b3m_2022 §B4 profile recipe): raked lifts to 1.16/1.135 over the
   // sprocket/idler zones, tub face restored at the corners so the flank
   // stays closed (§B2).
   loftHull(P, {
@@ -3600,7 +3600,7 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
   // T4S RELIKT GLACIS ROWS (verdict order 3): the two lone chevrons on a
   // bare plane read grey-lavender flat — full Relikt cassette courses
   // inside the SAME certified row envelope (y/z/rake bands unchanged),
-  // SCHEME bucket instead of hullTrack steel (t72b3m rBucket law: the ref
+  // SCHEME bucket instead of hullTrack steel (t72b3m_2022 rBucket law: the ref
   // courses render in the scheme paint — the spareTrack slot is the
   // grey-lavender read the verdict retires), dark gap seams for the
   // cassette grammar. Camo per-box sampling also breaks the flat tone.
@@ -3717,7 +3717,7 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
   // quarter now occupied by the open stand-off cage, not a cage layered over
   // an opaque second curtain.
   // rear corner mud flaps: ref plan rear -3.29..-3.35 at |x| 1.26..1.69
-  // (t72bu fender-prong class), hung at the fender line so the side rack
+  // (t72bu_1989 fender-prong class), hung at the fender line so the side rack
   // band keeps its 1.0 raked floor.
   for (const s of [-1, 1]) {
     P.add('hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
@@ -4100,7 +4100,7 @@ function addT90SMLegacyBustleCageAndSystems(
   // plus diagonal joins that DOUBLED BACK rearward across the staircase
   // overlaps (join dz -0.18 and -0.08 while stepping outboard) and
   // overshot their landings by 27-50 mm — the zig-zag. Re-authored as ONE
-  // continuous monotone polyline per side per rail height (the leclerc/
+  // continuous monotone polyline per side per rail height (the leclerc_s2/
   // kf51-class flowing basket line): z strictly forward, x strictly
   // outboard, every segment sharing exact vertices with the next, 29-33°
   // chamfer diagonals riding the cell faces (each lands ON the next cell's
@@ -4245,7 +4245,7 @@ function addT90SMLegacyGunAndFinish(
   // shoulder.  Back it with a buried hull plate rather than stretching the
   // reactive cassette or changing its registered damage sector.
   for (const s of [-1, 1]) P.add('hull', box(0.16, 0.025, 0.16), s * 1.14, 1.34, 2.90);
-  // T4S: rear log off the loud tan default (t72b3m ORDER-3 recipe — the
+  // T4S: rear log off the loud tan default (t72b3m_2022 ORDER-3 recipe — the
   // ref tail is olive-brown; render-only, per-tank wood slot).
   P.mats.wood.color.setHex(0x473e32);
   if (P.mats.wood.emissive) P.mats.wood.emissive.setHex(0x0c0a07);
@@ -4340,7 +4340,7 @@ function buildT90(P: T90BuilderPort): void {
   P.add('hullDark', box(0.03, 0.05, 0.014), 1.4775, 1.46, -1.517);
   ruDeck(P, { deckY: 1.545, hatchY: 1.34, hatchZ: 2.16, gz: -1.72, grilles: 5, gw: 1.5, periY: 1.26 });  // hatch/periscopes ON the glacis slab line
   // eyeX 0.98 (§B4 fix-round: the default w*0.36=1.26 tori sat INSIDE the
-  // track lane over the idler wrap — the t90sm/pt91m lesson)
+  // track lane over the idler wrap — the t90sm_2013/pt91m lesson)
   ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, eyeSplit: true, hookX: 0.99, hookY: 0.66, hookZ: 3.05, hlY: 1.13, lights: false });
   {
     // bow light pods on rehooked shadow-olive clones — re-seated to the
@@ -4464,7 +4464,7 @@ function buildT90(P: T90BuilderPort): void {
       s * 1.86, 1.24, (t90SkirtCourse.z1 + frontSkirtZ1) * 0.5, -0.28, 0, 0);
   }
   addT90RearQuarterSlatCage(P, {
-    variant: 't90',
+    variant: 't90_1992',
     originalSkirtRearZ: -3.10,
     originalSkirtFrontZ: frontSkirtZ1,
     solidSkirtRearZ: t90SkirtCourse.z0,
@@ -4519,7 +4519,7 @@ function buildT90(P: T90BuilderPort): void {
   // CRITIC FIX ROUND (shaded-parity-t90fam-trio defects 1/2/9): the first
   // cut's under-root fills + flush tip call + eye stalks CLAD the dome into
   // one bald shield (close-front evidence) — ALL DELETED. The clamshell is
-  // now REAL LEAF BANKS standing proud of a brim-tucked dome, the t90a
+  // now REAL LEAF BANKS standing proud of a brim-tucked dome, the t90a_2004
   // T4A broad-plate grammar on the packet's own V line.
   P.turretG.position.set(0, 1.41, 0.0);
   const rings = [[1.48, 0.0], [1.62, 0.13], [1.58, 0.31], [1.42, 0.46], [1.14, 0.60], [0.80, 0.70], [0.42, 0.765], [0.02, 0.79]];
@@ -4638,7 +4638,7 @@ function buildT90(P: T90BuilderPort): void {
   // ---- 2A46M on the print contour: axis 1.72 ----
   P.gunG.position.set(0, 0.31, 0.95);
   ruSaddle(P, { rollR: 0.22, rollW: 0.62, tubeR: 0.115, rootL: 0.66 });
-  // cast collar + boot (t90a §B3.1 recipe at this print's face lines:
+  // cast collar + boot (t90a_2004 §B3.1 recipe at this print's face lines:
   // cannonbase z 0.62..1.39, y 1.52..2.08)
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.30, 16, 0.46), 0, 0, 0, 0, 0, 0, [0.56, 0.40, 1]), 0, 0.02, 0.14);
   P.addGunExtraDark(cylZ(0.020, 0.05, 8), 0.20, 0.07, 0.26);            // PKT coax port
@@ -4668,7 +4668,7 @@ function buildT90(P: T90BuilderPort): void {
   }
   // B2 plan-contiguity closure beside the right bow cheek.
   P.add('hull', box(0.10, 0.08, 0.12), 1.08, 1.20, 3.25);
-  // family shadow-tone lift (t90a T4A recipe — render-only, masks override)
+  // family shadow-tone lift (t90a_2004 T4A recipe — render-only, masks override)
   P.mats.dark.color.setHex(0x323629);
   P.mats.dark.emissive.setHex(0x0c100a);
   // CRITIC FIX (defect 4): neutral cool rubber — the warm-brown 0x453c30
@@ -5645,7 +5645,7 @@ function buildT90SM(P: T90BuilderPort): void {
   // sparse modern-family proxy.
   finishT90SMOwnerRedesign(P);
   addT90RearQuarterSlatCage(P, {
-    variant: 't90sm',
+    variant: 't90sm_2013',
     originalSkirtRearZ: -2.50,
     originalSkirtFrontZ: 3.10,
     solidSkirtRearZ: -1.10,
@@ -5689,10 +5689,10 @@ function buildT90SM(P: T90BuilderPort): void {
 function buildT90MS(P: T90BuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear, polyTurret } = KIT;
   loftHull(P, {
-    // §B4 FIX ROUND (critic defect 5, shoe 215-351 = the t90sm r12 class):
+    // §B4 FIX ROUND (critic defect 5, shoe 215-351 = the t90sm_2013 r12 class):
     // the full-width loft deck now holds the FENDER line over the track
     // bands (the steep center glacis pulled it into the idler wraps at
-    // the bow) and the sponson floor RAKES over both wrap crowns (t90sm
+    // the bow) and the sponson floor RAKES over both wrap crowns (t90sm_2013
     // §B4 recipe). The TRUE center glacis is the slab below.
     deck: [[-3.43, 1.35], [-3.20, 1.47], [-3.00, 1.52], [-2.55, 1.545], [0.95, 1.545], [1.40, 1.50], [1.75, 1.46], [2.30, 1.40], [2.90, 1.26], [3.43, 1.04]],
     belly: [[-3.43, 1.05], [-3.36, 0.86], [-3.10, 0.72], [-2.62, 0.48], [-2.40, 0.44], [2.45, 0.44], [2.80, 0.56], [3.10, 0.71], [3.43, 0.82]],
@@ -5959,7 +5959,7 @@ function buildT90MS(P: T90BuilderPort): void {
   P.add('turretDark', box(0.36, 0.016, 0.46), 0.05, 0.798, -0.98);
   P.add('turretDetail', box(0.40, 0.012, 0.05), 0.05, 0.800, -0.74);
   // commander + gunner hatch rings recessed-flush on the crown (raised
-  // drums are dims-blocked at this roof line — the t90sm T4S trade, inverted)
+  // drums are dims-blocked at this roof line — the t90sm_2013 T4S trade, inverted)
   P.add('turretDark', cylY(0.19, 0.19, 0.010, 16), -0.40, 0.804, 0.10);
   P.add('turret', cylY(0.155, 0.155, 0.014, 16), -0.40, 0.800, 0.10);
   P.add('turretDetail', box(0.09, 0.014, 0.03), -0.40, 0.804, 0.27);
@@ -5970,7 +5970,7 @@ function buildT90MS(P: T90BuilderPort): void {
   // shield (DELETED). Per side: inner + outer Relikt WEDGE modules, broad
   // deep boxes whose edges ARE the plan silhouette (proud of the prism
   // nose facets on the print's V line (±0.29,1.55)->(±1.66,0.42)), with
-  // flush seams + caps — the t90sm welded-family cheek grammar.
+  // flush seams + caps — the t90sm_2013 welded-family cheek grammar.
   P.visualEraCluster('t90ms-relikt-turret-era', 'turret', () => {
   for (const s of [-1, 1]) {
     // inner wedge: (±0.29,1.55)->(±0.95,1.18); outer: (±0.98,1.14)->(±1.62,0.46)
@@ -6037,7 +6037,7 @@ function buildT90MS(P: T90BuilderPort): void {
   [-0.72, -0.24, 0.24, 0.72].forEach((bx) => P.add('turretDark', box(0.03, 0.03, 0.34), bx, 0.43, -2.86));   // standoff struts onto the bustle tail (LADDER-R1: reach the moved-forward tail plate)
   // ---- roof ensemble ON the bustle (the Tagil read): UDP T05BV-1 RWS
   // center-right as a LOW-PROFILE station (pintle sunk into the bustle,
-  // receiver top at the 2.25w dims line — the t90a Kord recipe; the
+  // receiver top at the 2.25w dims line — the t90a_2004 Kord recipe; the
   // print's 2.93-3.03 towers are a certified tower cap, packet), pano
   // commander sight left as a thin-neck 2-col spike (p95-legal) ----
   {
@@ -8088,13 +8088,13 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
 }
 
 export const T90_PROFILES = {
-  t90a: t90Profile(buildT90A),
-  t90: t90Profile(buildT90),
-  t90ms: t90Profile(buildT90MS),
-  t90a_burlak: t90Profile(buildT90BurlakHybridNative2026),
+  t90a_2004: t90Profile(buildT90A),
+  t90_1992: t90Profile(buildT90),
+  t90ms_2011: t90Profile(buildT90MS),
+  t90a_burlak_proto: t90Profile(buildT90BurlakHybridNative2026),
   pt91m: {build:buildPT91MPendekar},
-  t90sm: t90Profile(buildT90SM),
-  t90a_vladimir: t90Profile(buildT90AVladimir),
-  t90m: t90Profile(buildT90MProryvNative2026),
+  t90sm_2013: t90Profile(buildT90SM),
+  t90a_2006: t90Profile(buildT90AVladimir),
+  t90am: t90Profile(buildT90MProryvNative2026),
   t90m_proryv: t90Profile(buildT90MProryvNative2026),
 } satisfies VehicleProfileRecord;

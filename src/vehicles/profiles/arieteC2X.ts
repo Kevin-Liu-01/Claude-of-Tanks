@@ -64,7 +64,7 @@ function commanderWeapon(P: TankBuilderPort): void {
     scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042, remoteWeapon: true });
   gun.scale.setScalar(.70 / S);
   gun.name = 'arieteC2CommanderK2';
-  gun.userData.roofWeapon = { donor: 'k2_x', relativeScale: .70, decorative: true };
+  gun.userData.roofWeapon = { donor: 'k2_black_panther', relativeScale: .70, decorative: true };
   gun.position.set(x, 2.092 - SOURCE.turretPivot[1], z - SOURCE.turretPivot[2]);
   gun.rotation.y = .28;
   P.turretG.add(gun);
@@ -136,7 +136,7 @@ export function buildArieteC2X(P: TankBuilderPort): void {
   gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P); reactiveArmor(P);
   enlargeArieteXFamily(P);
   addRearFieldStowage(P);
-  P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'ariete_c1_x',
+  P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'c1_ariete',
     originalPrimaryBodyRetained: false, unchangedPrimaryHullPieces: 9,
     primaryBodyChanges: ['closed lower-tub receiving walls', 'two skirt-carrier inner faces'],
     widerTracks: true, returnRollersPerSide: 4,

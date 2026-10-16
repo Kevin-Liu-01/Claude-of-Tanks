@@ -137,7 +137,7 @@ assert.equal(getServiceRecord().history[0].bestChain, 1);
 // ---- Battle 3: zero-shot (won without firing), a gunship ace, few-shot and Sharpshooter.
 world.hp = 1;
 bus.emitted.length = 0;
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emit('battle:ended', { result: 'victory', durationS: 240, mapId: 'desert', gameMode: 'standard', roster: [] });
 assert.ok(getLastBattleAwards().medals.includes('zero_shot'));
 world.aerial = 'gunship';
@@ -162,19 +162,19 @@ world.mode = 'standard';
 
 // ---- A dropped connection records nothing; a quit battle carries nothing into the next.
 const before = getServiceRecord().stats.battles;
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 kill('e1');
 bus.emit('battle:ended', { result: 'defeat', reason: 'network_disconnect' });
 assert.equal(getServiceRecord().stats.battles, before);
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 world.clock = 1; kill('e1'); kill('e2');
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 world.clock = 2; kill('e3');
 bus.emit('battle:ended', { result: 'draw', durationS: 30, mapId: 'desert', gameMode: 'standard', roster: [] });
 assert.equal(getServiceRecord().history[0].kills, 1, 'the abandoned battle\'s kills stayed behind');
 
 // ---- Mode medals come from the mode events: a capture is ours when we made it, a goal when it counts for our side.
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emitted.length = 0;
 bus.emit('mode:flag_captured', { team: 'alpha', by: 'ally' });
 bus.emit('mode:goal_scored', { team: 'bravo', by: 'me' });
@@ -188,7 +188,7 @@ bus.emit('battle:ended', { result: 'victory', durationS: 30, mapId: 'arctic', ga
 
 // ---- A network bravo seat: its own team reads 'player'; the mode events carry the real side.
 world.objective = 'bravo';
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emitted.length = 0;
 bus.emit('mode:goal_scored', { team: 'alpha', by: 'me' });
 assert.deepEqual(medalsLive(), [], 'a bravo seat\'s own goal (credited to alpha) earns nothing');
@@ -200,7 +200,7 @@ world.objective = null;
 
 // ---- A drone strike is not a fired round: no Zero-Shot or Few-Shot from the air.
 world.aerial = 'drone';
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emitted.length = 0;
 world.clock = 10; kill('e1'); world.clock = 40; kill('e2'); world.clock = 70; kill('e3');
 assert.ok(medalsLive().includes('drone_ace'));
@@ -210,7 +210,7 @@ assert.ok(!getLastBattleAwards().medals.includes('zero_shot'), 'a drone win is n
 world.aerial = null;
 
 // ---- Zero-Shot needs us alive at the end, not just the bots' win.
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 world.clock = 5; bus.emit('tank:destroyed', { id: 'me', killerId: 'e1', cause: 'shot' });
 bus.emit('battle:ended', { result: 'victory', durationS: 200, mapId: 'desert', gameMode: 'standard', roster: [{ id: 'me', team: 'player', alive: false, isPlayer: true }] });
 assert.ok(!getLastBattleAwards().medals.includes('zero_shot'));
@@ -219,16 +219,16 @@ assert.ok(!getLastBattleAwards().medals.includes('zero_shot'));
 {
   const battles = getServiceRecord().stats.battles;
   world.spectator = true;
-  bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+  bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
   bus.emit('battle:ended', { result: 'draw', durationS: 300, mapId: 'desert', gameMode: 'standard', roster: [{ id: 'p2', team: 'player', alive: true }] });
   world.spectator = false;
-  bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+  bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
   bus.emit('battle:ended', { result: 'draw', durationS: 300, mapId: 'desert', gameMode: 'standard', roster: [{ id: 'p2', team: 'player', alive: true }] });
   assert.equal(getServiceRecord().stats.battles, battles, 'no row of ours in the roster: we only watched');
 }
 
 // ---- A quit drops what the battle tracked; a debug start (no garage battle start) begins afresh.
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emit('phase:change', { phase: 'battle' });
 world.clock = 5; kill('e1'); world.clock = 8; kill('e2');
 bus.emit('phase:change', { phase: 'garage' });
@@ -239,7 +239,7 @@ assert.equal(getServiceRecord().history[0].kills, 1, 'the quit battle\'s kills s
 assert.equal(getServiceRecord().history[0].bestChain, 1, 'and its last kill time did not chain into the new clock');
 
 // ---- First Blood is the first hostile kill: our team kill is not it.
-bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
 bus.emitted.length = 0;
 world.clock = 3; bus.emit('tank:destroyed', { id: 'ally', killerId: 'me', cause: 'shot' });
 assert.ok(!medalsLive().includes('first_blood'));
@@ -277,7 +277,7 @@ markServiceRecordSeen();
 assert.equal(unseenAwardCount(), 0);
 assert.deepEqual(JSON.parse(store.get('cot.service.v1')).unseen, []);
 for (let i = 0; i < 30; i++) {
-  bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+  bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'desert' });
   bus.emit('battle:ended', { result: 'defeat', durationS: 10, mapId: 'desert', gameMode: 'standard', roster: [] });
 }
 assert.equal(getServiceRecord().history.length, 25, 'the history keeps the latest 25 battles');

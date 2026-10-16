@@ -6,7 +6,7 @@ import {createTankState, SIM_DT} from '../sim/movement.ts';
 import {createAI, mulberry32} from './ai.ts';
 const baseline=process.argv.includes('--baseline');
 const hf={getHeightAt:()=>0,getNormalAt:()=>({x:0,y:1,z:0}),getGroundType:()=> 'firm'};
-function tank(id,team,x,z,isPlayer=false){const spec=getSpec('m1a2');return {id,specId:spec.id,spec,team,isPlayer,state:createTankState(spec,new Vector3(x,0,z),0),combat:{hp:1000,maxHp:1000,destroyed:false,reload:{t:0,totalS:6,kind:'ready'},shellSlot:0,modules:{},crew:{},fire:{burning:false},magazine:null},input:{throttle:0,steer:0,brake:false,fire:false,aimPoint:new Vector3(),shellSlot:0,actionBits:0}};}
+function tank(id,team,x,z,isPlayer=false){const spec=getSpec('m1a1_abrams_hc');return {id,specId:spec.id,spec,team,isPlayer,state:createTankState(spec,new Vector3(x,0,z),0),combat:{hp:1000,maxHp:1000,destroyed:false,reload:{t:0,totalS:6,kind:'ready'},shellSlot:0,modules:{},crew:{},fire:{burning:false},magazine:null},input:{throttle:0,steer:0,brake:false,fire:false,aimPoint:new Vector3(),shellSlot:0,actionBits:0}};}
 function scenario(size,difficulty,marked=true){
  const foes=Array.from({length:size},(_,i)=>tank('red-'+i,'enemy',(i-(size-1)/2)*24,0));
  const friends=Array.from({length:size-1},(_,i)=>tank('blue-'+i,'player',(i-(size-2)/2)*24,85));

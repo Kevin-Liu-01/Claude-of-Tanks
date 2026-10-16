@@ -19,8 +19,8 @@ assert.equal(functions.length, 3, "the Studio's replaceLoadActors, setHydropneum
 
 const DEG = Math.PI / 180;
 const SPECS = {
-  strv103: { id: 'strv103', hydropneumaticAim: { noseDownDeg: 13, noseUpDeg: 12 } },
-  t90m_x: { id: 't90m_x' },
+  strv103b: { id: 'strv103b', hydropneumaticAim: { noseDownDeg: 13, noseUpDeg: 12 } },
+  t90m: { id: 't90m' },
 };
 
 /** A Studio around the three functions: addActor makes a plain actor record, updateTank records the aim point. */
@@ -75,7 +75,7 @@ const yieldNone = async () => {};
 // load: the Strv's sight line laid 10° up; the T-90M (no hydropneumatic aim) left alone
 {
   const s = studio();
-  await s.api.replaceLoadActors({ actors: [{ id: 'strv103', name: 'hero', pos: [3, 4], suspensionAimDeg: 10 }, { id: 't90m_x', name: 'foe0' }] }, yieldNone);
+  await s.api.replaceLoadActors({ actors: [{ id: 'strv103b', name: 'hero', pos: [3, 4], suspensionAimDeg: 10 }, { id: 't90m', name: 'foe0' }] }, yieldNone);
   assert.deepEqual(s.calls, [['hero', 10]], 'setHydropneumaticAim runs once, for the actor that names an aim');
   const [hero, foe] = s.actors;
   assert.ok(Math.abs(pitchOf(hero) - 10) < 0.01, `the solver is handed a sight line 10° up (${pitchOf(hero).toFixed(2)}°)`);
@@ -95,8 +95,8 @@ const yieldNone = async () => {};
 // the spec's travel clamps the aim; a vehicle without the system ignores the field
 {
   const s = studio();
-  await s.api.replaceLoadActors({ actors: [{ id: 'strv103', name: 'up', suspensionAimDeg: 20 }, { id: 'strv103', name: 'down', suspensionAimDeg: -30 },
-    { id: 't90m_x', name: 'mbt', suspensionAimDeg: 8 }] }, yieldNone);
+  await s.api.replaceLoadActors({ actors: [{ id: 'strv103b', name: 'up', suspensionAimDeg: 20 }, { id: 'strv103b', name: 'down', suspensionAimDeg: -30 },
+    { id: 't90m', name: 'mbt', suspensionAimDeg: 8 }] }, yieldNone);
   assert.equal(s.api.actorStateJson(s.actors[0]).suspensionAimDeg, 12, 'nose up stops at the spec\'s 12°');
   assert.equal(s.api.actorStateJson(s.actors[1]).suspensionAimDeg, -13, 'nose down stops at the spec\'s 13°');
   assert.equal(s.actors[2].authoredSuspensionAimDeg, null, 'a hull without hydropneumatics takes no aim');

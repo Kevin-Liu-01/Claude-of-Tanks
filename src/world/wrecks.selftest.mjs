@@ -4,17 +4,17 @@ import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreck, bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
 
 assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
-assert.deepEqual(wreckPool('ww2'), ['kv2', 'jpz_e100_x'],
+assert.deepEqual(wreckPool('ww2'), ['kv2', 'jpz_e100'],
   'historical wrecks use the retained public vehicles, never retired donors');
 assert.ok(wreckPool('cold-war').includes('m60a1'), 'Cold War wreck pool uses period vehicles');
-assert.ok(wreckPool('next-generation').includes('kf51'), 'next-generation maps retain current wreck language');
+assert.ok(wreckPool('next-generation').includes('kf51_evo'), 'next-generation maps retain current wreck language');
 
 // Static wreck construction must remain browser-independent. A rendered tank
 // needs Canvas2D to paint its PBR maps; this exact production wreck bake runs
 // with no document at all, proving the discarded texture pipeline is absent.
 assert.equal(typeof globalThis.document, 'undefined', 'test begins without a DOM/canvas surface');
-await ensureTankBuilder('m1a2');
-const tankWreck = bakeTankWreck(null, 'm1a2', { seed: 91234, pop: true });
+await ensureTankBuilder('m1a1_abrams_hc');
+const tankWreck = bakeTankWreck(null, 'm1a1_abrams_hc', { seed: 91234, pop: true });
 assert.ok(tankWreck, 'geometry-only production tank wreck bakes without Canvas2D');
 assert.ok(tankWreck.tris > 30000, 'wreck retains the authored tank silhouette and running gear');
 assert.equal(tankWreck.geo.index?.count ?? tankWreck.geo.attributes.position.count, tankWreck.tris * 3,
@@ -61,7 +61,7 @@ function assertPainterBranches(colors) {
 // stream sha256s captured from the original tuple-returning painter (re-pinned at every track, fill or camo change).
 // The bake is now held to its live contracts: render-ready streams, a seated finite envelope, storage no larger than
 // the expanded corners, both painter branches, a byte-identical rebuild from the same seed, and sync/step parity.
-const bakeFixtures = [{ specId: 'm1a1', seed: 2002 }, { specId: 'type10', seed: 2133 }];
+const bakeFixtures = [{ specId: 'm1a1', seed: 2002 }, { specId: 'type10_tk_x', seed: 2133 }];
 function bakeStreams(baked) {
   const attributes = ['position', 'normal', 'color'].map(name => baked.geo.attributes[name]);
   attributes.push(baked.shadowGeo.attributes.position);

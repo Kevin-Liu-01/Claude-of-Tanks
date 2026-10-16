@@ -8,7 +8,7 @@ function createHarness({ spectator = false, observerReady = true, cameraReady = 
   const game = {
     mapId: null,
     phase: 'garage',
-    player: { aerial: gunship ? {kind:'gunship'} : undefined, spec: { id: 'm1a2' }, visual: { id: 'visual' }, equip: { rammer: true }, state: { yaw: 1.2 } },
+    player: { aerial: gunship ? {kind:'gunship'} : undefined, spec: { id: 'm1a1_abrams_hc' }, visual: { id: 'visual' }, equip: { rammer: true }, state: { yaw: 1.2 } },
   };
   const bridge = { setPerspective: (id) => calls.push(['perspective', id]) };
   const runtime = createActivationRuntime({
@@ -75,7 +75,7 @@ function createHarness({ spectator = false, observerReady = true, cameraReady = 
   constructing = false;
   runtime.activate({
     viewerId: 'player-1',
-    own: { id: 'player-1', specId: 'm1a2' },
+    own: { id: 'player-1', specId: 'm1a1_abrams_hc' },
     spectator,
     mapId: 'verdant',
     bridge,
@@ -91,8 +91,8 @@ const player = createHarness();
 assert.equal(player.game.mapId, 'verdant');
 assert.equal(player.game.phase, 'battle');
 for (const expected of [
-  ['select', 'm1a2'], ['remember', 'm1a2'], ['resetWorld'],
-  ['tank', 'm1a2'], ['damageTank', 'm1a2', 'visual'],
+  ['select', 'm1a1_abrams_hc'], ['remember', 'm1a1_abrams_hc'], ['resetWorld'],
+  ['tank', 'm1a1_abrams_hc'], ['damageTank', 'm1a1_abrams_hc', 'visual'],
   ['equipment', true], ['phase', 'battle'], ['arcade', 2, 1.2, -0.5],
 ]) assert.deepEqual(player.calls.find((call) => call[0] === expected[0]), expected);
 assert.equal(player.calls.some(([name]) => name === 'observer'), false);

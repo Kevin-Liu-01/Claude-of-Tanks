@@ -21,11 +21,11 @@ import { ABRAMS_SOURCE_X_FRAME, ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSou
 
 const expected = [
   // 2026-09-15 owner roster pass: X studies carry the canonical names; M1A1 X / HA X retired
-  ['m1a2_x', 'm1a2', 'M1A2 Abrams', 'USA', 10],
-  ['m1a2_tusk_x', 'm1a2_tusk', 'M1A2 Abrams TUSK', 'USA', 10],
-  ['m1a2_sepv2_x', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA', 10],
-  ['m1a2_sepv3_x', 'm1a2_sepv3', 'M1A2 Abrams SEPv3', 'USA', 10],
-  ['ua_m1a1_x', 'ua_m1a1', 'M1A2 Abrams UA', 'Ukraine', 9],
+  ['m1a2_abrams', 'm1a1_abrams_hc', 'M1A2 Abrams', 'USA', 10],
+  ['m1a2_abrams_tusk', 'm1a1_abrams_sa', 'M1A2 Abrams TUSK', 'USA', 10],
+  ['m1a2_abrams_sepv2', 'm1a1_abrams_aim', 'M1A2 Abrams SEPv2', 'USA', 10],
+  ['m1a2_abrams_sepv3', 'm1a1_abrams_fep', 'M1A2 Abrams SEPv3', 'USA', 10],
+  ['ua_m1a2_abrams', 'ua_m1a1', 'M1A2 Abrams UA', 'Ukraine', 9],
 ];
 assert.deepEqual(ABRAMS_SOURCE_X_ENTRIES, expected.map((row) => row.slice(0, 3)));
 assert.deepEqual(ABRAMS_SOURCE_X_IDS, expected.map(([id]) => id));
@@ -77,7 +77,7 @@ for (const [, donorId] of expected) {
   donor.armor.crew[0].shapes = [{ donorOnly: true }];
   donor.dims.silhouetteHeightM = 123;
   donor.community = { path: '/models/not-a-runtime-source.glb' };
-  donor.publicVisualFallback = 'm1a2';
+  donor.publicVisualFallback = 'm1a1_abrams_hc';
 }
 const before = structuredClone(donors);
 const candidates = createAbramsSourceXSpecs(donors);

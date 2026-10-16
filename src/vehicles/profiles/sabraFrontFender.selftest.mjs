@@ -7,14 +7,14 @@ import { KIT } from './kit.ts';
 // Source Object_4 FrontSide calipers, canonical source SHA 5ea261fb70f7….
 // These are independent visible stations, not the builder's section table.
 // Check the complete native model: an AABB touching is insufficient.
-await ensureInteriorFills(['sabra_mk2_x']);
+await ensureInteriorFills(['sabra_mk2']);
 let checks=0;
 for(const quality of ['high','low']) {
   let gear;
   const buildGear=KIT.buildRunningGear;
   KIT.buildRunningGear=(...args)=>{gear=buildGear(...args);return gear;};
   let tank;
-  try {tank=createTank('sabra_mk2_x',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});}
+  try {tank=createTank('sabra_mk2',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});}
   finally {KIT.buildRunningGear=buildGear;}
   try {
     tank.root.updateMatrixWorld(true);

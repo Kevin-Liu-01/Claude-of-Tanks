@@ -58,7 +58,7 @@ function checkReturns(objects) {
   close(ray(objects, [.72, 2.05, 2.124], [0, -1, 0])?.point.y, 1.9178771580913694, 'source diagonal cap crown', .003);
 }
 // The frozen digest of every pre-existing authored primitive is retired: whole-tank change detection of
-// challenger1_x is the fleet geometry ledger's. The omit-build counterfactual stays a live same-run baseline.
+// challenger1_mk3 is the fleet geometry ledger's. The omit-build counterfactual stays a live same-run baseline.
 function crosses(a, others) {
   const p = a.geometry.attributes.position, ix = a.geometry.index, count = ix?.count ?? p.count;
   for (let i = 0; i < count; i += 3) for (let j = 0; j < 3; j++) {
@@ -82,23 +82,23 @@ function contacts(parts, base) {
 }
 for (const quality of ['high', 'low']) {
   let newCount = 0;
-  registerProfiledBuilders({ challenger1_x: p => buildChallenger1X(new Proxy(p, { get(o, key) {
+  registerProfiledBuilders({ challenger1_mk3: p => buildChallenger1X(new Proxy(p, { get(o, key) {
     if (['add', 'addEquipment', 'addCupola', 'addMudguard'].includes(key)) return (...args) => {
       const gi = key === 'addMudguard' ? 2 : 1;
       if (args[gi].userData.challenger1SourceHood) newCount++;
       return o[key](...args);
     }; return Reflect.get(o, key);
   } })) });
-  const actual = createTank('challenger1_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
+  const actual = createTank('challenger1_mk3', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   // Only the new, specifically tagged equipment is omitted from this process-
   // local counterfactual; all real core, rig, gear and old equipment remains.
-  registerProfiledBuilders({ challenger1_x: p => buildChallenger1X(new Proxy(p, { get(o, key) {
+  registerProfiledBuilders({ challenger1_mk3: p => buildChallenger1X(new Proxy(p, { get(o, key) {
     if (key === 'addEquipment') return (...args) => {
       if (args[1].userData.challenger1SourceHood) { args[1].dispose(); return; }
       return o[key](...args);
     }; return Reflect.get(o, key);
   } })) });
-  const before = createTank('challenger1_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
+  const before = createTank('challenger1_mk3', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   const parts = [], material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   addChallenger1SourceHood({ addEquipment: (bucket, g) => {
     assert.equal(bucket, 'turretDetail', 'hood remains permanent turret equipment, not armor or ERA');
@@ -127,7 +127,7 @@ for (const quality of ['high', 'low']) {
     }
   } finally {
     actual.dispose(); before.dispose(); for (const m of parts) m.geometry.dispose(); material.dispose();
-    registerProfiledBuilders({ challenger1_x: buildChallenger1X });
+    registerProfiledBuilders({ challenger1_mk3: buildChallenger1X });
   }
 }
 console.log('challenger1XSourceHood: high/low source surfaces and real air, positive geometric attachment graph and moving equipment ownership pass');

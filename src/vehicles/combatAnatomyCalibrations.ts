@@ -70,10 +70,10 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72B3MX } from './combatAna
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T72BUX } from './combatAnatomyGroups/t72buX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T80 } from './combatAnatomyGroups/t80.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T80UX } from './combatAnatomyGroups/t80uX.generated.ts';
-import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90 } from './combatAnatomyGroups/t90.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90AWX } from './combatAnatomyGroups/t90AwX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90BURLAKX } from './combatAnatomyGroups/t90BurlakX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90X } from './combatAnatomyGroups/t90X.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90_1992 } from './combatAnatomyGroups/t90_1992.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_T90MSX } from './combatAnatomyGroups/t90msX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TOS1ATAGIL } from './combatAnatomyGroups/tos1aTagil.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_TYPE10X } from './combatAnatomyGroups/type10X.generated.ts';
@@ -154,10 +154,10 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_T72BUX,
   CALIBRATIONS_T80,
   CALIBRATIONS_T80UX,
-  CALIBRATIONS_T90,
   CALIBRATIONS_T90AWX,
   CALIBRATIONS_T90BURLAKX,
   CALIBRATIONS_T90X,
+  CALIBRATIONS_T90_1992,
   CALIBRATIONS_T90MSX,
   CALIBRATIONS_TOS1ATAGIL,
   CALIBRATIONS_TYPE10X,

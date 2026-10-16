@@ -7,20 +7,23 @@ import {roofEquipmentVerdict} from './source-equipment-policy.mjs';
 import {sourceOpeningsVerdict} from './source-openings-policy.mjs';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
+import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
 const oldPath='docs/references/concepts/missile-turrets-20260919.json';
 const typePath='docs/references/concepts/type100-ifv-20260919.json';
-assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['m6_linebacker','pl_t72b3_zubr_ii','ua_t72b3m_hetman_ii','ua_t80u_modern','ua_t72b3m_modern','ua_t72b3_modern','pl_t80u_modern','pl_t72b3m_modern','pl_t72b3_modern','cn_t80u_modern','cn_t72b3m_modern','cn_t72b3_modern','ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern','type96_72_long','type96_80_feng','type96_72m_lei','t72_rys','t14','carro45t','spz_puma_s1','cv90','cv90_mkiv','type89_light_tiger','k2','griffin_viper','ariete_c2_x','tos1a_tagil','ztz100_prototype','object695_x','type100']);
+assert.deepEqual(Object.keys(FIRST_PARTY_CONCEPTS),['m6_linebacker','t72b3_zubr_ii','t72b3m_hetman_ii','t80u_zoria','t72b3m_hetman','t72b3_sich','t80u_husarz','t72b3m_wilk','t72b3_zubr','t80u_yun','t72b3m_kunlun','t72b3_qilin','t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m','type96_72_long','type96_80_feng','type96_72m_lei','t72_rys','object148_proto','carro45t','spz_wotan','cv90','cv90_mk4_concept','raiju_ifv','xk2_black_panther','griffin_viper','c2_ariete','tos1a_tagil','ztz100_prototype','object695','type100']);
 assert.equal(conceptDesignPath('ztz100_prototype'),oldPath);
-assert.equal(conceptDesignPath('object695_x'),oldPath);
+assert.equal(conceptDesignPath('object695'),oldPath);
 assert.equal(conceptDesignPath('type100'),typePath);
-assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(oldPath)).designs),['ztz100_prototype','object695_x']);
-assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(typePath)).designs),['type100']);
-assert.deepEqual(partitionConceptIds(['ztz100_x','ztz100_prototype','object695_x']),{comparisons:['ztz100_x'],concepts:['ztz100_prototype','object695_x']});
-for(const id of ['unknown','ztz100_x','toString','__proto__']) {
+// the dated documents keep their schema-1 keys; the policy reads them in today's ids
+const designIds=(file)=>{const doc=JSON.parse(fs.readFileSync(file));return Object.keys(doc.designs).map(key=>resolveTankId(key,doc.tankIdSchema));};
+assert.deepEqual(designIds(oldPath),['ztz100_prototype','object695']);
+assert.deepEqual(designIds(typePath),['type100']);
+assert.deepEqual(partitionConceptIds(['ztz100','ztz100_prototype','object695']),{comparisons:['ztz100'],concepts:['ztz100_prototype','object695']});
+for(const id of ['unknown','ztz100','toString','__proto__']) {
   assert.equal(firstPartyConcept(id),null);assert.equal(conceptDesignPath(id),null);
   assert.throws(()=>readConceptDesign(id),/no owner-authored/);
 }
-for(const ids of [[],['unknown'],['object695_x','object695_x']])assert.throws(()=>validateSelectedIds(ids,Object.keys(FIRST_PARTY_CONCEPTS)),/known playable/);
+for(const ids of [[],['unknown'],['object695','object695']])assert.throws(()=>validateSelectedIds(ids,Object.keys(FIRST_PARTY_CONCEPTS)),/known playable/);
 for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
   const design=firstPartyConcept(id),designPath=conceptDesignPath(id);
   const bytes=fs.readFileSync(designPath),record=JSON.parse(bytes),hash=createHash('sha256').update(bytes).digest('hex');
@@ -41,14 +44,14 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
   }
   // C2 retains the C1 tow-coupler air. A zero-cell scan without its complete
   // measured rear-stock receipt must not authorize filling that opening.
-  assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:0}}).passed,id !== 'ariete_c2_x');
+  assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:0}}).passed,id !== 'c2_ariete');
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'no blanket concept-hole exception');
   const dimension=quality=>({quality,passed:true,fillLoaded:true,bounds:{min:[-design.widthM/2,0,-design.overallLengthM/2],max:[design.widthM/2,design.tallestM,design.overallLengthM/2]}});
   const receipt={id,comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,score:null,passed:true,
     designPath,designSha256:hash,startedAt:new Date(2000).toISOString(),test:{path:design.test,exitCode:0},
     inputSha256Before:'a'.repeat(64),inputSha256After:'a'.repeat(64),dimensions:[dimension('high'),dimension('low')]};
   assert.equal(conceptReceiptPassed(id,receipt,1000,hash),conceptDesignReady(id));
-  for(const patch of [{score:99},{id:'ztz100_x'},{comparisonPurpose:'preservation'},{comparisonApplicable:true},
+  for(const patch of [{score:99},{id:'ztz100'},{comparisonPurpose:'preservation'},{comparisonApplicable:true},
     {passed:false},{designPath:'wrong'},{designPath:designPath===oldPath?typePath:oldPath},{designSha256:'b'.repeat(64)},{startedAt:new Date(0).toISOString()},
     {test:{path:design.test,exitCode:1}},{test:{path:'wrong',exitCode:0}},
     {inputSha256After:'c'.repeat(64)},

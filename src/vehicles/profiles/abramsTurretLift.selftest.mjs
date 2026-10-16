@@ -6,12 +6,12 @@ import { createTankState } from '../../sim/movement.ts';
 
 const LIFT_M = 0.012;
 const CASES = [
-  ['m1a2', 1.57],
+  ['m1a1_abrams_hc', 1.57],
   ['m1a1', 1.57],
   ['m1a1ha', 1.57],
-  ['m1a2_tusk', 1.57],
-  ['m1a2_sepv2', 1.57],
-  ['m1a2_sepv3', 1.57],
+  ['m1a1_abrams_sa', 1.57],
+  ['m1a1_abrams_aim', 1.57],
+  ['m1a1_abrams_fep', 1.57],
   ['ua_m1a1', 1.57],
   ['abramsx', 1.95],
 ];

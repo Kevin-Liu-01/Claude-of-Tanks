@@ -1,10 +1,10 @@
 // src/vehicles/modern1.ts — spec row of the first modern MBT roster wave.
-// Vehicle: leo2a6 (Leopard 2A6). The T-72B3 and Merkava IVm rows this pack
+// Vehicle: leo2a4 (Leopard 2A6). The T-72B3 and Merkava IVm rows this pack
 // used to register as delisted family donors moved to donorSpecs.ts on
 // 2026-09-23 (hidden-fleet cleanup). Specs per docs/history/research/modern-roster.md §8.
 // challenger2/challenger_3 moved to profiles/challenger.ts (§5.75 family-module
 // split). The canonical builders left on 2026-10-01: the Leopard family
-// profile owns leo2a6 in every factory, and the t72b3/merkava4 donors were
+// profile owns leo2a4 in every factory, and the t72b3/merkava4 donors were
 // never playable rows.
 //
 // Registration pattern: MODERN1_SPECS below is the source
@@ -105,8 +105,8 @@ function armorLeo2A6(): ArmorEnvelope {
 // generator's source, the registry holds modern1Specs.generated.ts.
 // ---------------------------------------------------------------------------
 export const MODERN1_SPECS = {
-  leo2a6: {
-    id: 'leo2a6', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
+  leo2a4: {
+    id: 'leo2a4', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 62.3, topSpeedKmh: 68, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,

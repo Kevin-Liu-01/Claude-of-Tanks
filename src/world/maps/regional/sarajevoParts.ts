@@ -47,11 +47,19 @@ export function choose<T>(r: number, list: readonly T[]): T {
  */
 export function unhcrSheet(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number): void {
   const sag = 0.02 + look() * 0.03;
-  facePanel(sink, 'structureMetal', face, u, y + h / 2, 0.025 + sag, w + 0.08, h + 0.08, { ...DECOR, colour: UNHCR_WHITE });
-  if (h > 0.7) facePanel(sink, 'structureMetal', face, u, y + h * (0.42 + look() * 0.2), 0.03 + sag, w + 0.06, Math.min(0.22, h * 0.14), { ...DECOR, colour: UNHCR_BLUE });
+  // (props census #9: the agency's band is printed on the sheet, the sheet in three runs in one plane with the blue
+  // across its middle — a blue panel laid on the white read as a dark opening on it)
+  const o = 0.025 + sag, s0 = y - 0.04, s1 = y + h + 0.04, white = { ...DECOR, colour: UNHCR_WHITE };
+  if (h > 0.7) {
+    const bc = y + h * (0.42 + look() * 0.2), bh = Math.min(0.22, h * 0.14), b0 = bc - bh / 2, b1 = bc + bh / 2;
+    facePanel(sink, 'structureMetal', face, u, (s0 + b0) / 2, o, w + 0.08, b0 - s0, white);
+    facePanel(sink, 'structureMetal', face, u, bc, o, w + 0.08, bh, { ...DECOR, colour: UNHCR_BLUE });
+    facePanel(sink, 'structureMetal', face, u, (b1 + s1) / 2, o, w + 0.08, s1 - b1, white);
+  } else facePanel(sink, 'structureMetal', face, u, y + h / 2, o, w + 0.08, h + 0.08, white);
   const batten: Rgb = [0.42, 0.35, 0.27];
-  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.05, w + 0.16, 0.06, 0.04, { ...DECOR, colour: batten, fine: true });
-  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.05, w + 0.16, 0.06, 0.04, { ...DECOR, colour: batten, fine: true });
+  // (the battens nailed to the wall: on its face, the sheet held proud by them)
+  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });
+  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });
 }
 
 /**
@@ -92,11 +100,13 @@ export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number
     if (k >= drawn) continue;
     if (keep.some((h) => cu + r > h.u0 - 0.05 && cu - r < h.u1 + 0.05 && cy + r > h.y0 - 0.05 && cy - r < h.y1 + 0.05)) continue;
     sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.8 });
+    // (props census #7, lane B 2026-10-14: a pock is the render knocked off and the brick bruised under it, not a hole:
+    // its core the masonry a shade darker, never the dark of a room)
     const c = r * 0.42;
-    sink.polygon('dark', [0, 1, 2, 3, 4].map((j) => {
+    sink.polygon(under, [0, 1, 2, 3, 4].map((j) => {
       const t = (j / 5) * Math.PI * 2 + 0.3;
       return facePoint(face, cu + Math.cos(t) * c, cy + Math.sin(t) * c, 0.016);
-    }), DECOR);
+    }), { ...DECOR, shade: 0.66 });
   }
 }
 
@@ -114,6 +124,26 @@ export function shellHole(sink: PartSink, face: Face, u: number, y: number, r: n
   }
   sink.polygon(under, [[u, y], ...outer, outer[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.016)), { ...DECOR, shade: 0.72 });
   sink.polygon('dark', [[u, y], ...inner, inner[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.02)), DECOR);
+}
+
+/**
+ * A tower's open belfry stage (props census #13, lane B 2026-10-14: the belfries were dark plates on solid shafts): its
+ * four corner piers from the shaft's top (`sill`) to the openings' heads, the openings `ow` wide between them open
+ * through the stage, the head block over them to `top`, a bell hung in it from its beam pier to pier.
+ */
+export function openBelfry(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, tw: number, sill: number, head: number, top: number, ow: number,
+  bell: Rgb, beam: Rgb): void {
+  const pw = (tw - ow) / 2, h = tw / 2;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    sink.span(bucket, cx + (sx < 0 ? -h : h - pw), sill, cz + (sz < 0 ? -h : h - pw), cx + (sx < 0 ? -h + pw : h), head, cz + (sz < 0 ? -h + pw : h));
+  }
+  sink.span(bucket, cx - h, head, cz - h, cx + h, top, cz + h);
+  // (the integrity gate, 2026-10-15: the beam ran under the head 18 cm clear of it and between the piers' faces, so the
+  // beam and the bell hung on nothing) the headstock up against the head block's soffit, the bell hung from it
+  sink.span('structureWood', cx - h + pw * 0.5, head - 0.16, cz - 0.08, cx + h - pw * 0.5, head, cz + 0.08, { colour: beam, decor: true });
+  const br = Math.min(0.55, ow * 0.32);
+  sink.cylinder('structureMetal', [cx, head - 0.16 - br * 1.5, cz], 'y', br * 1.5, br, 10, { colour: bell, decor: true }, br * 0.55, true);
+  sink.cylinder('structureMetal', [cx, head - 0.16 - br * 1.5 - 0.06, cz], 'y', 0.06, br * 1.08, 10, { colour: bell, decor: true }, br, true);
 }
 
 /**
@@ -152,24 +182,39 @@ export function nisan(sink: PartSink, x: number, z: number, h: number, turban: b
 }
 
 /**
- * A dark arch head over an opening: the half-disc of the arched glazing or void above a rectangular opening, with a
- * stone archivolt round it. (u, y) is the springing line's centre, r the arch radius.
+ * The archivolt of a round head: its stone ring over the springing line. (u, y) is the springing line's centre, r the
+ * arch's inner radius. (Props census E10, lane B 2026-10-14: it painted a dark half-disc 12 mm proud of the wall as the
+ * arch's glazing or void.) An opening whose head is round is cut so by the house (house.ts Opening.arch: the wall's
+ * hole, its intrados and the dark behind it); over a square-headed opening the ring is a relieving arch on the wall.
  */
 export function archHead(sink: PartSink, face: Face, u: number, y: number, r: number, ring: RegionalBucket | null, ringW = 0.16, segments = 7): void {
-  const fan: Array<[number, number]> = [[u, y]];
-  for (let j = 0; j <= segments; j++) {
-    const t = Math.PI * (j / segments);
-    fan.push([u + Math.cos(t) * r, y + Math.sin(t) * r]);
-  }
-  // ccw seen from outside: from the right springer over the crown to the left one
-  sink.polygon('dark', fan.map(([uu, yy]) => facePoint(face, uu, yy, 0.012)), DECOR);
   if (!ring) return;
+  // the ring stands 3 cm proud of the wall: each voussoir's face a shade apart, its feet on the springers (the inner
+  // edge is the cut head's intrados); the faces only (a civic front carries fifty of them: the regional build's cap)
+  const O = 0.03, at = (t: number, rr: number, o: number) => facePoint(face, u + Math.cos(t) * rr, y + Math.sin(t) * rr, o);
+  const r1 = r + ringW;
   for (let j = 0; j < segments; j++) {
     const a = Math.PI * (j / segments), b = Math.PI * ((j + 1) / segments);
-    const r0 = r, r1 = r + ringW;
-    sink.quad(ring, facePoint(face, u + Math.cos(a) * r0, y + Math.sin(a) * r0, 0.04), facePoint(face, u + Math.cos(a) * r1, y + Math.sin(a) * r1, 0.04),
-      facePoint(face, u + Math.cos(b) * r1, y + Math.sin(b) * r1, 0.04), facePoint(face, u + Math.cos(b) * r0, y + Math.sin(b) * r0, 0.04), { ...DECOR, shade: 0.95 });
+    sink.quad(ring, at(a, r, O), at(a, r1, O), at(b, r1, O), at(b, r, O), { ...DECOR, shade: j % 2 ? 0.88 : 0.97 });
   }
+  for (const t of [0, Math.PI]) {
+    const lo = Math.min(0, Math.cos(t)) < 0;
+    if (lo) sink.quad(ring, at(t, r1, 0), at(t, r1, O), at(t, r, O), at(t, r, 0), { ...DECOR, shade: 0.9, fine: true });
+    else sink.quad(ring, at(t, r, 0), at(t, r, O), at(t, r1, O), at(t, r1, 0), { ...DECOR, shade: 0.9, fine: true });
+  }
+}
+
+/**
+ * The glazing of a round head cut by the house (Opening.arch): a fanlight set back in the reveal (PartSink.recess) on
+ * its springing transom (fine joinery). (u, y) the springing line's centre, r the head's radius.
+ */
+export function archGlazing(sink: PartSink, face: Face, u: number, y: number, r: number, frame: Rgb): void {
+  const o = sink.recess > 0 ? -sink.recess + 0.03 : 0.02, n = r < 0.8 ? 4 : r < 1.3 ? 6 : 8;
+  const fan = [facePoint(face, u, y, o)];
+  for (let j = 0; j <= n; j++) fan.push(facePoint(face, u + Math.cos(Math.PI * j / n) * (r - 0.03), y + Math.sin(Math.PI * j / n) * (r - 0.03), o));
+  sink.polygon('glass', fan, DECOR);
+  // the springing transom (fine joinery: near the camera only, never on a phone)
+  faceBox(sink, 'structureWood', face, u, y + 0.03, o + 0.015, 2 * r, 0.06, 0.03, { colour: frame, decor: true, fine: true }, { ends: true, back: true });
 }
 
 /** A triangular pediment over a window (the piano nobile's hood), a thin prism proud of the wall. */

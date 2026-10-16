@@ -15,14 +15,14 @@ const check = process.argv.includes('--check');
 const waves = [
   {
     name: 'modern1',
-    ids: ['leo2a6'],
+    ids: ['leo2a4'],
     delisted: [],
   },
   {
     name: 'modern2',
     ids: [
-      'leo2a4', 't80u', 'leclerc', 'leclerc_xlr', 'amx56',
-      'type99a', 'leo1a5', 'mbt70', 't14',
+      'leo2a2', 't80uk', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1',
+      'ztz99_longwei', 'leo1a5', 'mbt70', 'object148_proto',
     ],
     delisted: [],
   },

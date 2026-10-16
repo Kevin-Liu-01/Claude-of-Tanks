@@ -8,7 +8,7 @@ import {createTankState,SIM_DT} from '../sim/movement.ts';
 import {conformStudioActor,resetStudioActorSupport} from './studioActorSupport.ts';
 
 function actor(x=0,z=0,yaw=0) {
-  const spec=getSpec('m1a2');
+  const spec=getSpec('m1a1_abrams_hc');
   const state=createTankState(spec,new Vector3(x,0,z),yaw);
   state.speed=4; state.yawRate=.15; state.turretYaw=.6; state.gunPitch=.07;
   state.trackScroll.l=8; state.trackScroll.r=12;
@@ -80,7 +80,7 @@ for(const rigid of [false,true])for(const height of [()=>0,(x,z)=>.1*x+.05*z]) {
 
 
 {
-  const spec=getSpec('strv103'),a=actor();a.spec=spec;
+  const spec=getSpec('strv103b'),a=actor();a.spec=spec;
   const terrain={getHeightAt:()=>0,getGroundType:()=> 'hard'};
   const solve=()=>{
     resetStudioActorSupport(a,.08);conformStudioActor(a,terrain,0);

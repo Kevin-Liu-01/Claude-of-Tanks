@@ -34,12 +34,16 @@ for (const seed of [1, 7, 2024]) {
   for (let i = 0; i < c.count; i++) {
     const r = c.getX(i), gg = c.getY(i), bl = c.getZ(i), l = 0.2126 * r + 0.7152 * gg + 0.0722 * bl;
     if (bl > r + 0.03 && bl > gg + 0.03) blue++;
-    if (l < 0.1) { dark++; if (p.getZ(i) > 2.6 && p.getY(i) < 2.2) darkFront++; }
+    // (props #1: the door is cut through the wall, the room's dark behind it — no painted opening)
+    if (l < 0.1) { dark++; if (p.getZ(i) > 2.2 && p.getY(i) < 2.2) darkFront++; }
     else if (r > gg * 1.15 && l < 0.4 && p.getY(i) > 1.9) timberHigh++;
     else if (l > 0.65) render++; // (the render, its damp foot included)
   }
   assert.equal(blue, 0, 'no glazing: no blue in its colours');
-  assert.ok(dark > 0 && darkFront >= 12, `a dark, unglazed door on the road side (${darkFront} vertices)`);
+  assert.ok(dark > 0 && darkFront >= 4, `a dark, unglazed door on the road side (${darkFront} vertices)`);
+  let inDoor = 0;
+  for (let i = 0; i < p.count; i++) if (p.getZ(i) > 2.45 && Math.abs(p.getX(i)) < 0.42 && p.getY(i) > 0.3 && p.getY(i) < 1.95) inDoor++;
+  assert.equal(inDoor, 0, 'the door open through the wall: nothing drawn across it');
   assert.ok(timberHigh >= 24, `timber lintels over the openings (${timberHigh} vertices)`);
   assert.ok(render > c.count * 0.5, 'most of it the render');
   // the parapet: render standing over the roof's edge, the roof inside it lower

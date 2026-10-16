@@ -18,7 +18,7 @@ function scriptedFactory() {
     mesh.material.map = new Texture();
     mesh.userData.weapon = { owner: 'turret', caliberMm: 12.7 };
     root.userData.receipt = { mesh, cyclic: root.userData };
-    // like kf51's builder: a microtask rewrites the merged mesh after createTank returns
+    // like kf51_evo's builder: a microtask rewrites the merged mesh after createTank returns
     queueMicrotask(() => { mesh.geometry.attributes.uv.array[0] = 0.5; mesh.userData.remapped = true; });
     return { root, mesh, turret, dispose: () => disposed.push(id) };
   };

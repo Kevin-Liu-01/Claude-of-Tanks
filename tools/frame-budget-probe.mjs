@@ -4,7 +4,7 @@
 //
 //   node tools/frame-budget-probe.mjs --roots=<treeA>,<treeB> --labels=base,new --maps=verdant,desert,whiteout,monsoon \
 //        [--pattern=ABBA] [--views=chase,centre-far] [--viewports=1600x900,1920x1080] [--frames=240] [--block=30] \
-//        [--sides=13x14] [--spec=t90m_x] [--preset=high] [--governor=pinned|live] [--emulate=<proxy>] \
+//        [--sides=13x14] [--spec=t90m] [--preset=high] [--governor=pinned|live] [--emulate=<proxy>] \
 //        [--queries=,<query>] [--toggle=<name>] [--shots] [--port=5395] [--session-mutex=<dir>] [--budget-min=18] \
 //        [--hide-bots[=0|1]] [--out=<dir>] [--tag=<tag>]
 //   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new]
@@ -62,7 +62,7 @@ import {
 const TOOL = 'frame-budget-probe';
 const DEFAULTS = Object.freeze({
   pattern: 'ABBA', views: ['chase', 'centre-far'], viewports: ['1600x900', '1920x1080'], frames: 240, block: 30,
-  sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
+  sides: '13x14', spec: 't90m', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
   twinTrisTol: 3, drawsTol: 25, stableTol: 1, sceneCheck: true,
   hideBots: 'auto',

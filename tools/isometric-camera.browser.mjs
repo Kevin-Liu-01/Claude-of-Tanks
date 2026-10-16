@@ -26,7 +26,7 @@ try {
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('cot.settings.v1')).isometricView),true);
  await page.screenshot({path:resolve(out,'settings.png')});
  await page.evaluate(()=>__DEBUG.settings.close({noRelock:true}));
- await page.evaluate(()=>__DEBUG.startBattle('m1a2','verdant'));
+ await page.evaluate(()=>__DEBUG.startBattle('m1a1_abrams_hc','verdant'));
  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && !window.__DEBUG.rig.cinematicActive && window.__DEBUG.camera.fov === 38',{timeout:180000});
  console.log('Isometric battle ready');
  await page.mouse.click(640,400);
@@ -43,7 +43,7 @@ try {
   await page.setViewport({width,height,hasTouch:nextTouch,isMobile:false});
   if(nextTouch!==touch){
    await page.waitForFunction('window.__GAME_READY && window.__DEBUG',{timeout:240000});
-   await page.evaluate(()=>__DEBUG.startBattle('m1a2','verdant'));
+   await page.evaluate(()=>__DEBUG.startBattle('m1a1_abrams_hc','verdant'));
    await page.waitForFunction('__DEBUG.game.phase === "battle" && __DEBUG.camera.fov === 38',{timeout:180000});
    touch=nextTouch;
   }

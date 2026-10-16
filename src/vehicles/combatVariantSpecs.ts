@@ -71,11 +71,11 @@ function bumpPlates(
   }
 }
 
-const m1a2 = registries.tankSpecs.m1a2;
-const t90m = registries.tankSpecs.t90m;
-if (!m1a2 || !t90m) throw new Error('Core variant donors must register first');
+const m1a1_abrams_hc = registries.tankSpecs.m1a1_abrams_hc;
+const t90am = registries.tankSpecs.t90am;
+if (!m1a1_abrams_hc || !t90am) throw new Error('Core variant donors must register first');
 
-const VARIANT_TANK_IDS = ['m1a1', 't90a', 'm1a2_tusk'] as const;
+const VARIANT_TANK_IDS = ['m1a1', 't90a_2004', 'm1a1_abrams_sa'] as const;
 type VariantTankId = typeof VARIANT_TANK_IDS[number];
 
 const VARIANT_SPECS = {
@@ -83,7 +83,7 @@ const VARIANT_SPECS = {
   m1a1: {
     id: 'm1a1', name: 'M1A1 Abrams', nation: 'USA', era: 'modern', role: 'mbt',
     // Nation-roster derivative, not a source-model loading relationship.
-    variantOf: 'm1a2',
+    variantOf: 'm1a1_abrams_hc',
     hp: 2300,
     enginePowerHp: 1500, weightTons: 62.1, topSpeedKmh: 67, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -102,7 +102,7 @@ const VARIANT_SPECS = {
     dims: { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
     // M1A1HA: same envelope as the SEPv3, pre-SEP composite ratings
     // (roster §2.2: turret ~600/1000, hull ~560/700 -> ~0.86 of SEPv3)
-    armor: derivedArmor(withoutEra(m1a2.armor), 0.86),
+    armor: derivedArmor(withoutEra(m1a1_abrams_hc.armor), 0.86),
     visual: {
       scheme: 'nato', base: '#49543c', weather: '#525f45',
       patches: ['#23261f', '#4a3a2c'],
@@ -112,9 +112,9 @@ const VARIANT_SPECS = {
   },
 
   // ---- T-90A — roster §13 (priority 2) ------------------------------------
-  t90a: {
-    id: 't90a', name: 'T-90A obr. 2004', nation: 'Russia', era: 'modern', role: 'mbt',
-    variantOf: 't90m', // see m1a1 note
+  t90a_2004: {
+    id: 't90a_2004', name: 'T-90A obr. 2004', nation: 'Russia', era: 'modern', role: 'mbt',
+    variantOf: 't90am', // see m1a1 note
     hp: 2200,
     enginePowerHp: 1000, weightTons: 46.5, topSpeedKmh: 60, reverseSpeedKmh: 5,
     hullTraverseDegS: 40,
@@ -133,12 +133,12 @@ const VARIANT_SPECS = {
     dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
     // T-90M armor layout shared (identical 6.86 m hull); base composite
     // scaled to the A's cast-turret ratings. Kontakt-5 'era' plates ride
-    // along from the t90m layout (roster: reuse the glacis two-tile pattern).
+    // along from the t90am layout (roster: reuse the glacis two-tile pattern).
     // Proryv's strengthened Relikt/composite package is intentionally not
     // inherited wholesale by the older T-90A. This explicit factor preserves
     // the A's tier-IX protection after the tier-X donor hardening pass.
     armor: (() => {
-      const armor = derivedArmor(t90m.armor, 0.80);
+      const armor = derivedArmor(t90am.armor, 0.80);
       // The T-90A model carries K-5 on the glacis, skirts and frontal turret
       // cheeks. Proryv's turret-flank Relikt plates are not present here.
       armor.turretPlates = armor.turretPlates.filter(
@@ -150,16 +150,16 @@ const VARIANT_SPECS = {
       return armor;
     })(),
     visual: {
-      // Russian dark forest green solid, matching the shipped t90m factory
+      // Russian dark forest green solid, matching the shipped t90am factory
       scheme: 'solid', base: '#3f5138', weather: '#4a5c42', patches: [],
       marking: 'number', number: '112', trackWidthM: 0.58,
     },
   },
 
   // ---- M1A2 Abrams TUSK — roster §3 (priority 3) --------------------------
-  m1a2_tusk: {
-    id: 'm1a2_tusk', name: 'M1A1 Abrams SA', nation: 'USA', era: 'modern', role: 'mbt',
-    variantOf: 'm1a2', // see m1a1 note
+  m1a1_abrams_sa: {
+    id: 'm1a1_abrams_sa', name: 'M1A1 Abrams SA', nation: 'USA', era: 'modern', role: 'mbt',
+    variantOf: 'm1a1_abrams_hc', // see m1a1 note
     hp: 2650,
     enginePowerHp: 1500, weightTons: 69.5, topSpeedKmh: 64, reverseSpeedKmh: 25,
     hullTraverseDegS: 42,
@@ -167,7 +167,7 @@ const VARIANT_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 38, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 10,
     gun: {
-      // identical M256 loadout to m1a2 (roster §3.3)
+      // identical M256 loadout to m1a1_abrams_hc (roster §3.3)
       caliberMm: 120, reloadS: 6.0, baseAccuracy: 0.30, aimTimeS: 1.8,
       bloom: BLOOM_MODERN,
       shells: [
@@ -180,7 +180,7 @@ const VARIANT_SPECS = {
     // cover measures 3.29 m on the authoritative 1024 mask.
     dims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 3.29 },
     armor: (() => {
-      const a = derivedArmor(withoutEra(m1a2.armor), 1.0);
+      const a = derivedArmor(withoutEra(m1a1_abrams_hc.armor), 1.0);
       // ARAT rows are single-use reactive zones, not permanent base-armor
       // inflation. Their seed quads are fitted to the visible cassettes by
       // the combat-anatomy generator.
@@ -203,7 +203,7 @@ const VARIANT_SPECS = {
       // (ARAT rows, loader shield, muzzle furniture) wears THIS visual's
       // shared canvas — the roster §3.4 solid desert tan made the kit read
       // as beige toy parts glued on a green tank. The TUSK now ships the
-      // m1a2 family woodland so hull and kit read as one paint job; the tan
+      // m1a1_abrams_hc family woodland so hull and kit read as one paint job; the tan
       // urban-Iraq fit stays available via the 'desert' picker pattern.
       scheme: 'nato', base: '#49543c', weather: '#525f45',
       patches: ['#23261f', '#4a3a2c'],

@@ -113,7 +113,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 //    the worker's module graph could not load). The wrapper prepares its worker up front when no prefetch holds the plan.
 {
   const calls = [];
-  const only = request('leo2a7v');
+  const only = request('leo2_improved');
   const h = harness({ steps: [{ stage: 'buildings' }, { fine: true, progress: false, wreckBake: only }],
     modes: ['startup-error'], mainBake: mainBakeOf(calls), tick: () => sleep(10) });
   const runtime = await h.run();
@@ -127,7 +127,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 // 3. The main-thread bake cannot build the donor either (its builder chunk did not load): no wreck at that site, the
 //    build still completes, and the count of missing wrecks says so.
 {
-  const only = request('t90a');
+  const only = request('t90a_2004');
   const h = harness({ steps: [{ fine: true, progress: false, wreckBake: only }], modes: ['error-reply'],
     acquire: async () => { throw new TypeError('Failed to fetch dynamically imported module'); } });
   const runtime = await h.run();
@@ -175,7 +175,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 
 // 6. A working worker is untouched: no fallback, no warning, no main-thread builder.
 {
-  const only = request('k2');
+  const only = request('xk2_black_panther');
   const h = harness({ steps: [{ fine: true, progress: false, wreckBake: only }], modes: ['ok'],
     acquire: async () => assert.fail('a working worker loads no donor on the main thread') });
   const runtime = await h.run();
@@ -189,7 +189,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 {
   let worker = null, checkpoints = 0;
   const client = createWreckBakeClient(() => (worker = new FixtureWorker('manual')), 200);
-  const pending = client.bake('t90m', {}, async () => {
+  const pending = client.bake('t90am', {}, async () => {
     if (++checkpoints !== 1) return;
     await sleep(400); // twice the timeout, with no reply yet; the reply comes in the next wait
     setTimeout(() => worker.onmessage({ data: { requestId: worker.requests[0].requestId, ok: true, wire: null } }), 5);
@@ -197,7 +197,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
   assert.equal(await pending, null, 'a paused build is not worker silence');
   assert.equal(worker.terminated, 0);
   const silent = createWreckBakeClient(() => new FixtureWorker('silent'), 40);
-  await assert.rejects(silent.bake('t90m', {}, async () => { await sleep(5); }), /timed out/, 'real silence still times out');
+  await assert.rejects(silent.bake('t90am', {}, async () => { await sleep(5); }), /timed out/, 'real silence still times out');
   client.dispose(); silent.dispose();
 }
 
@@ -234,14 +234,14 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
 //    thread, and its geometry, colours, shadow proxy and collision solids equal the worker's bake (wreckBakeWorker.ts:
 //    bakeTankWreck with an empty engine context, which wreckBakeWorker.selftest holds equal to the worker's reply).
 {
-  const real = request('t90m', 2526, true);
+  const real = request('t90am', 2526, true);
   const h = harness({ steps: [{ fine: true, progress: false, wreckBake: real }], modes: ['silent'], timeoutMs: 30,
     acquire: ensureTankBuilder, mainBake: bakeTankWreckSteps });
   const runtime = await h.run();
   assert.deepEqual(runtime.built, true);
   assert.ok(real.result?.geo, 'the real donor baked on the main thread');
-  await ensureTankBuilder('t90m');
-  const control = bakeTankWreck({}, 't90m', real.options);
+  await ensureTankBuilder('t90am');
+  const control = bakeTankWreck({}, 't90am', real.options);
   try {
     assert.deepEqual(outputIdentity(real.result), outputIdentity(control),
       'same donor, seed, pop and remnant: the same wreck as the worker bakes');

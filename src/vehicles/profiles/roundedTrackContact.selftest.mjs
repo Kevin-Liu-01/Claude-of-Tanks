@@ -17,7 +17,7 @@ function minimumShoeY(mesh) {
   }
   return low;
 }
-for(const id of['amx30_x','amx40_x'])for(const quality of['high','low']) {
+for(const id of['amx30b','amx40'])for(const quality of['high','low']) {
   // Observe the REAL running-gear unit returned to the actual factory. No
   // alternate mesh or test-only layout replaces the production geometry.
   const original=KIT.buildRunningGear;let gear,tank;

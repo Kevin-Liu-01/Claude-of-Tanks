@@ -6,7 +6,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "ariete_c1_x": {
+  "c1_ariete": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -25,7 +25,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c1_x",
+        "anchorProfile": "c1_ariete",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -47,7 +47,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c1_x",
+        "anchorProfile": "c1_ariete",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -55,7 +55,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ariete_c2_x": {
+  "c2_ariete": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -74,7 +74,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c2_x",
+        "anchorProfile": "c2_ariete",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -96,7 +96,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c2_x",
+        "anchorProfile": "c2_ariete",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

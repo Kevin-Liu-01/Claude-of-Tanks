@@ -4,7 +4,7 @@
 //
 // Usage:
 //   node tools/fleet-battle-views.mjs --out=/tmp/fleet-before
-//   node tools/fleet-battle-views.mjs --ids=m1a2,t90m --distances=40,60,90
+//   node tools/fleet-battle-views.mjs --ids=m1a1_abrams_hc,t90am --distances=40,60,90
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';

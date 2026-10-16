@@ -35,7 +35,7 @@ function inside(mesh,point,label) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const helper=new THREE.Group(),material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
   addT90SMTowCable({addEquipment(bucket,geometry,x=0,y=0,z=0){
     const mesh=new THREE.Mesh(geometry,material);mesh.name=bucket;mesh.position.set(x,y,z);helper.add(mesh);

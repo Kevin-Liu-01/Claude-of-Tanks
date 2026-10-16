@@ -16,7 +16,7 @@ export async function measureSourceOpenings(id,scan,configuration,sourceReceipt,
 }
 
 async function measureQuality(id,scan,configuration,sourceReceipt,quality){
- if(!['aft10_x','warrior_tes_h','merkava4_barak'].includes(id) && !isArieteOpeningTarget(id))return sourceOpeningsVerdict({id,scan});
+ if(!['aft10','warrior_tes_h','merkava4_barak'].includes(id) && !isArieteOpeningTarget(id))return sourceOpeningsVerdict({id,scan});
  if(!sourceReceipt?.verified)return sourceOpeningsVerdict({id,scan,configuration,sourceReceipt});
  const {scene:source,digest}=await loadSource(configuration.source.path);
  if(digest!==configuration.source.sha256)throw new Error('Opening source changed during acquisition');

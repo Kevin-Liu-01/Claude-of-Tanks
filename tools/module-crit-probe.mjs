@@ -36,8 +36,8 @@ const rng = mulberry32(SEED);
 // Era-matched target/gun pool: WW2 guns vs WW2 tanks, modern vs modern.
 const POOL = {
   // 2026-09-23 (owner: "no hidden tanks"): the retired WWII hulls and the leo2a7 donor left the pools.
-  ww2: ['kv2', 'jpz_e100_x'],
-  modern: ['m1a2', 't90m', 'k2', 'leclerc', 'type99a', 't90a', 'm60a1', 'challenger2'],
+  ww2: ['kv2', 'jpz_e100'],
+  modern: ['m1a1_abrams_hc', 't90am', 'xk2_black_panther', 'leclerc_s2', 'ztz99_longwei', 't90a_2004', 'm60a1', 'challenger2'],
 };
 
 const POSE = { pos: new Vector3(0, 0, 0), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };

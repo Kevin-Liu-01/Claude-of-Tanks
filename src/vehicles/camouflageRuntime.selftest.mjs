@@ -35,7 +35,7 @@ for (const file of readdirSync(simDir)) {
 
 const restoreCanvas = installCanvasFixture();
 // a woodland field net with a turret roof and an open-mount hull with a drape; the garage build and a desktop bot's
-const IDS = ['t90a_burlak_x', 'griffin_viper'];
+const IDS = ['t90a_burlak', 'griffin_viper'];
 const BUILDS = {
   garage: { quality: 'high' },
   bot: { quality: 'high', geometryQuality: 'low', batchStatic: true, battleDetailLod: true, eraVisualBindingReceipt: false },

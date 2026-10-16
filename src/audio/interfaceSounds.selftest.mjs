@@ -40,7 +40,7 @@ assert.equal(sound(el('button', {}, body, 'Camouflage')), 'click', 'a plain butt
 assert.equal(sound(el('span', {}, el('button', {}, body, 'Settings'))), 'click', 'a press inside a button belongs to it');
 assert.equal(sound(el('div', { role: 'tab' }, body, 'Armour')), 'tab');
 const tankList = el('div', { role: 'listbox' }, body);
-assert.equal(sound(el('div', { role: 'option', 'data-spec-id': 't90m' }, tankList, 'T-90M')), 'vehicle', 'a tank card lifts its tank');
+assert.equal(sound(el('div', { role: 'option', 'data-spec-id': 't90am' }, tankList, 'T-90M')), 'vehicle', 'a tank card lifts its tank');
 assert.equal(sound(el('div', { role: 'option' }, el('div', { role: 'listbox' }, body), 'Olympus Basin')), 'select', 'other list options select');
 assert.equal(sound(el('input', { type: 'checkbox' }, body)), 'toggle');
 assert.equal(sound(el('button', { 'aria-pressed': 'false' }, body, 'Night')), 'toggle');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
-const tank = createTank('leo2a4', null, {
+const tank = createTank('leo2a2', null, {
   proceduralOnly: true,
   geometryReceipt: true,
   quality: 'high',
@@ -91,7 +91,7 @@ const gunCorridorHits = new THREE.Raycaster(
 assert.ok(gunCorridorHits.every((hit) => hit.point.z < -1.9),
   'front ghillie leaves the complete mantlet/recoil corridor open');
 
-const otco = createTank('leo2a4_otco', null, {
+const otco = createTank('leo2a3', null, {
   proceduralOnly: true,
   geometryReceipt: true,
   quality: 'high',

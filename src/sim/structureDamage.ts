@@ -301,12 +301,95 @@ export function minimumAreaRectangle(points: ReadonlyArray<readonly [number, num
   return best;
 }
 
-/** Mass class from the built volume and the group's role (§3.2). */
+/** Mass class from the built volume and the group's role (§3.2; a light set piece: setPieceMassClass). */
 export function structureMassClass(volumeM3: number, role: StructureState['role']): StructureMassClass {
-  if (role === 'setpiece' || volumeM3 >= LARGE_MAX_M3) return 'landmark';
+  if (role === 'setpiece') return setPieceMassClass(volumeM3);
+  if (volumeM3 >= LARGE_MAX_M3) return 'landmark';
   if (volumeM3 < SHED_MAX_M3) return 'shed';
   if (volumeM3 < HOUSE_MAX_M3) return 'house';
   return 'large';
+}
+
+/**
+ * A slender body (a wall tower, a minaret, a stack: its height over the root of its footprint past 2.5) in a masonry or
+ * concrete town is built of the town's stone and carries its mass in thick walls round a small footprint, where the
+ * volume law prices it by the room it encloses (the coordinator, 2026-10-14: Steinburg's stone Mauerturm, 122 m³, was
+ * classed a timber shed and fell to two 125 mm HE rounds where the Kapelle took four). Such a body is a house, never a
+ * shed, and its points rise by 1.25 a unit of slenderness past 2.5, at most fourfold. Timber, sheet and adobe towns
+ * keep the volume law.
+ */
+const SLENDER_FROM = 2.5;
+const SLENDER_RATE = 1.25;
+const SLENDER_MAX = 4;
+/** Height over the root of the footprint's area (0 for no footprint). */
+export function structureSlenderness(heightM: number, hw: number, hd: number): number {
+  const area = 4 * hw * hd;
+  return area > 0 && heightM > 0 ? heightM / Math.sqrt(area) : 0;
+}
+/**
+ * A top-heavy slender body (a water tower: a quarter or more of its volume in a vessel half again its shaft's section,
+ * up on the shaft) stands on its shaft, and the shaft is what a gun brings down: its slender factor stops at twice the
+ * volume law's points (the coordinator's ruling, 2026-10-14: the slender towers — water towers, stacks, minarets,
+ * lighthouses — fall within seven 125 mm HE rounds; Hostomel's water tower took ten, the Ruhr's and the Saar's nine;
+ * the airfield's control tower, a building whose cab barely oversails its shaft, keeps its twelve).
+ */
+const TOP_HEAVY_SECTION = 1.5;
+const TOP_HEAVY_SHARE = 0.25;
+const TOP_HEAVY_MAX = 2;
+/** The points factor a slender masonry or concrete body takes over the volume law (1 for every other). */
+export function slenderMasonryFactor(material: StructureMaterial, slenderness: number, topHeavy = false): number {
+  if (material !== 'masonry' && material !== 'concrete') return 1;
+  return Math.min(topHeavy ? TOP_HEAVY_MAX : SLENDER_MAX, 1 + SLENDER_RATE * Math.max(0, slenderness - SLENDER_FROM));
+}
+/**
+ * The share of a body's volume in bands over half again its median band's section in its upper half (a band's volume
+ * over its height): a vessel up on its shaft, not a stack's or a minaret's broad foot.
+ */
+function topHeavyShare(records: readonly CollisionRecord[]): number {
+  if (records.length < 3) return 0;
+  let y0 = Infinity, y1 = -Infinity;
+  for (const record of records) { y0 = Math.min(y0, record.min[1]); y1 = Math.max(y1, record.max[1]); }
+  const middle = (y0 + y1) / 2;
+  const bands = records.map((record) => {
+    const volume = bandVolume(record);
+    return { volume, section: volume / Math.max(1e-6, record.max[1] - record.min[1]), high: (record.min[1] + record.max[1]) / 2 > middle };
+  });
+  const sections = bands.map((b) => b.section).sort((a, b) => a - b), median = sections[Math.floor(sections.length / 2)];
+  let total = 0, heavy = 0;
+  for (const b of bands) { total += b.volume; if (b.high && b.section > TOP_HEAVY_SECTION * median) heavy += b.volume; }
+  return total > 0 ? heavy / total : 0;
+}
+
+// ---- Light set pieces (props lane A, E12, 2026-10-14) ----------------------------------------------------------
+/**
+ * A set piece under this built volume is light — a statue, a stele, a fountain, a guyed mast, a lookout's frame, an
+ * arch over a track: it takes damage as a shed and comes down to a hull at speed or a round, its collision swapping
+ * like a house's (the owner: "make sure all props below a certain size are destructible whether from ramming or
+ * shooting"). A larger set piece stays a landmark, breach-only (§3.2: a map's anchor and its routes' reference).
+ */
+export const LIGHT_SETPIECE_MAX_M3 = SHED_MAX_M3;
+/** A set piece's mass class: a light one a shed, else a landmark. */
+export function setPieceMassClass(volumeM3: number): StructureMassClass {
+  return volumeM3 < LIGHT_SETPIECE_MAX_M3 ? 'shed' : 'landmark';
+}
+/** A light set piece's stuff (stone, bronze, iron), no softer than masonry: never a timber shed's scuff. */
+export function lightSetPieceMaterial(wallMaterial: StructureMaterial): StructureMaterial {
+  return wallMaterial === 'concrete' ? 'concrete' : 'masonry';
+}
+/** The heap of a light set piece: a third of its built volume spread over its plan, at least this (m). */
+const LIGHT_HEAP_MIN_M = 0.3;
+const LIGHT_HEAP_SHARE = 0.35;
+/**
+ * The heap a collapsed structure leaves (m; the onCollapse callers raise it, sim/terrainDeformation.ts): a building's
+ * by its height (rubbleHeightFor: 0.18 of it, 0.6-2.6 m); a light set piece's by what it was built of — a felled mast or
+ * an open frame leaves a low spread of steel, never a house's mound — at most its height law's.
+ */
+export function structureRubbleHeightM(structure: Pick<StructureState, 'role' | 'massClass' | 'volumeM3' | 'hw' | 'hd' | 'topY' | 'baseY'>): number {
+  // (terrainDeformation.ts rubbleHeightFor's law, kept here so this module stays three-free; the selftest pins the two)
+  const byHeight = Math.max(0.6, Math.min(2.6, 0.18 * Math.max(0, structure.topY - structure.baseY)));
+  if (structure.role !== 'setpiece' || structure.massClass === 'landmark') return byHeight;
+  const plan = Math.max(1, 4 * structure.hw * structure.hd);
+  return Math.min(byHeight, Math.max(LIGHT_HEAP_MIN_M, LIGHT_HEAP_SHARE * structure.volumeM3 / plan));
 }
 
 /** Hit points from the built volume: 0.72 · V^0.72, at least 10 (§3.2). */
@@ -351,10 +434,16 @@ function buildState(id: number, group: Group, wallMaterial: StructureMaterial): 
   if (!group.colliders.length) {
     for (const record of group.obstacles) volume += bandVolume(record);
   }
-  const massClass = structureMassClass(volume, role);
-  const maxHp = structureHitPoints(volume);
+  const slender = structureSlenderness(Number.isFinite(baseY) && Number.isFinite(topY) ? topY - baseY : 0, footprint.hw, footprint.hd);
+  let massClass = structureMassClass(volume, role);
+  // a slender body in a stone town is a tower of the town's stone, not a timber shed (a set piece keeps its own class)
+  if (massClass === 'shed' && role === 'building' && slender >= SLENDER_FROM && (wallMaterial === 'masonry' || wallMaterial === 'concrete')) massClass = 'house';
+  // a light set piece (E12) is stone or iron, and no thick-walled tower however slender (a guyed mast)
+  const light = role === 'setpiece' && massClass !== 'landmark';
+  const material = light ? lightSetPieceMaterial(wallMaterial) : structureMaterialFor(massClass, wallMaterial);
+  const maxHp = structureHitPoints(volume) * (light ? 1 : slenderMasonryFactor(material, slender, topHeavyShare(group.colliders) >= TOP_HEAVY_SHARE));
   return {
-    id, role, massClass, material: structureMaterialFor(massClass, wallMaterial),
+    id, role, massClass, material,
     destructible: role !== 'fixed',
     collapsible: role !== 'fixed' && massClass !== 'landmark',
     cx: footprint.cx, cz: footprint.cz, hw: footprint.hw, hd: footprint.hd, yaw: footprint.yaw,

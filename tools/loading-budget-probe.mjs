@@ -18,8 +18,8 @@
 //   node tools/loading-budget-probe.mjs --stall-limit 500
 //   node tools/loading-budget-probe.mjs --mode battle --garage-dwell 14000
 //   node tools/loading-budget-probe.mjs --mode battle --maps random --battle-intent-dwell 1200
-//   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids merkava1b,merkava3d
-//   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids m1a2,t90m --tank-intent-dwell 150
+//   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids merkava1b,merkava3_baz
+//   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids m1a1_abrams_hc,t90am --tank-intent-dwell 150
 //   node tools/loading-budget-probe.mjs --serve dev --mode studio
 
 // Exit 0 means every measured path completed in strictly less than the load
@@ -57,7 +57,7 @@ const serveMode = option('serve', 'production');
 const deviceTier = option('tier', 'desktop');
 const garageDwellMs = Math.max(0, Number(option('garage-dwell', '0')) || 0);
 const battleIntentDwellMs = Math.max(0, Number(option('battle-intent-dwell', '0')) || 0);
-const battleSpecOption = option('battle-spec', 'm1a2');
+const battleSpecOption = option('battle-spec', 'm1a1_abrams_hc');
 const requestedTankIds = option('tank-ids', 'all');
 const tankIntentDwellMs = Math.max(0, Number(option('tank-intent-dwell', '0')) || 0);
 const modes = new Set([
@@ -585,11 +585,11 @@ const SCENE_LOAD_FIXTURE = {
   map: 'desert',
   seed: 5000,
   actors: [
-    { id: 't90m', name: 'shooter', pos: [-26, -14], facingDeg: 60,
+    { id: 't90am', name: 'shooter', pos: [-26, -14], facingDeg: 60,
       turretDeg: 0, gunDeg: 1.5, camo: 'desert', state: 'intact', smoking: true },
     { id: 'kv2', name: 'victim', pos: [26, 16], facingDeg: 285,
       turretDeg: -20, gunDeg: 0, state: 'intact' },
-    { id: 'centurion5', name: 'wreck', pos: [10, -26], facingDeg: 152,
+    { id: 'centurion5_2', name: 'wreck', pos: [10, -26], facingDeg: 152,
       turretDeg: 35, gunDeg: -4, state: 'wrecked-burnt', stateAgeS: 240 },
   ],
   effects: [
@@ -688,7 +688,7 @@ async function measureTransitionsAndRematch() {
   try {
     await resetStalls(battlePage.page, 'battle-entry:urban');
     const entryStartedAt = Date.now();
-    await battlePage.page.evaluate(() => window.__DEBUG.beginBattleEntry('m1a2', 'urban'));
+    await battlePage.page.evaluate(() => window.__DEBUG.beginBattleEntry('m1a1_abrams_hc', 'urban'));
     await battlePage.page.waitForFunction(
       'window.__BATTLE_COUNTDOWN_WARM?.done === true', { timeout: pageTimeoutMs },
     );
@@ -744,10 +744,10 @@ async function measureTransitionsAndRematch() {
       errors: battlePage.errors.splice(0),
     });
 
-    await resetStalls(battlePage.page, 'battle-rematch:urban:leo2a7v');
+    await resetStalls(battlePage.page, 'battle-rematch:urban:leo2_improved');
     const rematch = await battlePage.page.evaluate(async () => {
       const startedAt = performance.now();
-      await window.__DEBUG.beginBattleEntry('leo2a7v', 'urban');
+      await window.__DEBUG.beginBattleEntry('leo2_improved', 'urban');
       return {
         ms: performance.now() - startedAt,
         phase: window.__DEBUG.game.phase,

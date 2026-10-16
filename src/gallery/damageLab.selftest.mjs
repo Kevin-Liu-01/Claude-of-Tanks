@@ -18,7 +18,7 @@ function mockVisual(spec) {
     resetForGaragePresentation() { removed.clear(); }, syncFromState() {}, setGroundSampler() {},
   };
 }
-for (const id of ['t90m', 'm1a2', 'strv103a', 'kf41_lynx_x']) {
+for (const id of ['t90am', 'm1a1_abrams_hc', 'strv103a', 'kf41_lynx']) {
   const spec = getSpec(id), before = JSON.stringify(spec.armor), visual = mockVisual(spec);
   const lab = createDamageLab(spec, visual, 0);
   const engine = lab.targets.find(t => t.module === 'engine');
@@ -59,8 +59,8 @@ console.log('damageLab: ERA lifetime, isolated state, module/crew damage, tracks
 
 // Exercise the real model binding as well as the state owner: collapsed stock
 // must actually change, restore byte-for-byte, and remain separate from another specimen.
-const realSpec = getSpec('t90m');
-const real = createTank('t90m', null, {quality:'high',proceduralOnly:true,materialMode:'geometry-only'});
+const realSpec = getSpec('t90am');
+const real = createTank('t90am', null, {quality:'high',proceduralOnly:true,materialMode:'geometry-only'});
 const realLab = createDamageLab(realSpec, real, 0);
 const era = realLab.targets.find(t => t.kind === 'era');
 assert.ok(era, 'real T-90M publishes removable ERA');
@@ -86,7 +86,7 @@ console.log('damageLab: real T-90M ERA geometry removal/restore and running-gear
 const probePlate = {name:'probe_era',kind:'era',physicalMm:10,keMm:10,ceMm:10,
   verts:[[-1,0,2],[1,0,2],[1,2,2],[-1,2,2]]};
 const screen = {...probePlate,name:'probe_screen',kind:'spaced'};
-const probeSpec = {...getSpec('m1a2'),armor:{...getSpec('m1a2').armor,hullPlates:[probePlate],
+const probeSpec = {...getSpec('m1a1_abrams_hc'),armor:{...getSpec('m1a1_abrams_hc').armor,hullPlates:[probePlate],
   turretPlates:[],collisionShells:undefined,droneScreens:{hull:[screen]}}};
 const probeVisual = mockVisual(probeSpec);probeVisual.root.userData.eraClusterNames.push(screen.name);
 const probeLab = createDamageLab(probeSpec,probeVisual,0);

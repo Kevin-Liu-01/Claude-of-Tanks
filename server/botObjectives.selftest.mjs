@@ -12,7 +12,7 @@ for (const mapId of ['verdant', 'cliffbridge']) {
       mapId, gameMode, seed: 6767, countdownS: 0, worldCollision: world,
       players: [
         { id: 'runner', specId: 'm551_sheridan', team: 'alpha', bot: true },
-        { id: 'opponent', specId: 't90m', team: 'bravo' },
+        { id: 'opponent', specId: 't90am', team: 'bravo' },
       ],
     });
     match.onMatchReady();

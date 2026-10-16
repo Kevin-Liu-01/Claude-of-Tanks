@@ -21,7 +21,7 @@ function collarVertices(gun) {
   return new THREE.Box3().setFromPoints(points);
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('kf51_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
+  const tank=createTank('kf51_panther',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const gun=tank.root.getObjectByName('gun'),recoil=tank.root.getObjectByName('rig_recoil');

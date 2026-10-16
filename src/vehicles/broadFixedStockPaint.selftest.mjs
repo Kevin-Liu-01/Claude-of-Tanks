@@ -70,7 +70,7 @@ function painted(tank,id){const names=[...directNames];
   assert.ok(o.material.map?.isTexture);const uv=o.geometry.attributes.uv;
   assert.ok(uv&&Array.from(uv.array).every(Number.isFinite)&&new Set(uv.array).size>8);return o;});}
 const restore=installCanvasFixture(),rows=[];let rays=0;
-try{for(const id of['leo2a5_x'])for(const quality of['high','low'])for(const camo of['factory','winter']){
+try{for(const id of['leo2a5'])for(const quality of['high','low'])for(const camo of['factory','winter']){
  const old=build(id,quality,camo,true),now=build(id,quality,camo);
  try{
   assert.equal(now.selected.length,2);assert.deepEqual(now.selected,old.selected);

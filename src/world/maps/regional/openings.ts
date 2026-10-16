@@ -1,7 +1,7 @@
 // src/world/maps/regional/openings.ts — window, door, gate and step units shared by the regional dialects
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
-import { faceBox, facePanel, facePoint, shade, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
+import { faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
 import { facadeOn, facadeRng, faceSlab, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
 
 export interface WindowStyle {
@@ -149,9 +149,10 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
         if (sh.paint && facadeOn()) paintedLeaf(sink, face, cu, y + h / 2, leaf, h + 0.02, front, sh.paint);
         if (sh.kind === 'louvred') {
           // two rails read the louvre frame; the detail tile's grain carries the slats
-          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true });
+          // (their ends flush with the leaf's edges: hidden — the regional builds' cap, props census lane B 2026-10-14)
+          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true, ends: true });
         } else if (sh.kind === 'plank') {
-          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true });
+          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true, ends: true });
         }
       }
     }
@@ -200,14 +201,40 @@ export interface DoorStyle {
  * A door: leaf recessed in its frame, optional transom and steps up from the ground to the storey floor `floorY`.
  * (u, y) is the bottom-centre of the opening; `ground` is the local ground height under the threshold (0).
  */
+/**
+ * A roller door in a cut opening (props census #13): its drum's box over the head, its guides down the jambs, the slatted
+ * curtain run down to `open` of the height (0 shut, 1 up in its drum) at the back of the reveal (sink.recess), the hall's
+ * dark under it. (u, y): the opening's bottom middle.
+ */
+export function rollerDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, open: number, curtain: Rgb, frame: Rgb, mobile = false): void {
+  const r = sink.recess, back = r > 0 ? -r + 0.06 : 0.05;
+  faceBox(sink, 'structureMetal', face, u, y + h + 0.32, 0.22, w + 0.4, 0.62, 0.44, { colour: shade(curtain, 0.85) });
+  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * (w / 2 + 0.06), y + h / 2, 0.06, 0.12, h, 0.12, { colour: frame, decor: true });
+  const down = h * (1 - Math.max(0, Math.min(1, open)));
+  if (down > 0.05) {
+    faceBox(sink, 'structureMetal', face, u, y + h - down / 2, back, w, down, 0.04, { colour: curtain });
+    if (!mobile) for (let yy = y + h - 0.12; yy > y + h - down; yy -= 0.12) faceBox(sink, 'structureMetal', face, u, yy, back + 0.025, w, 0.015, 0.01, { colour: shade(curtain, 0.78), decor: true, fine: true });
+    faceBox(sink, 'structureMetal', face, u, y + h - down + 0.04, back + 0.03, w, 0.08, 0.06, { colour: shade(curtain, 0.7), decor: true });
+  }
+}
+
 export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: DoorStyle, floorY = y): void {
   const leafH = style.transom ? h - 0.42 : h;
   const lc = { colour: style.leaf, decor: true, uv: UV_MEMBER };
   // in a cut opening (sink.recess) the leaf hangs at the back of the reveal
   const r = sink.recess, lo = r > 0 ? -r + 0.022 : 0.012;
-  faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, { ...lc, fineSides: true });
+  // (props census #9) a glazed leaf in a cut opening is a frame round its light — the kick panel, the stiles and the top
+  // rail — with the glass in the leaf's plane and the room's dark behind it (a pane laid on a solid leaf read as painted)
+  const framed = style.leafKind === 'glazed' && r > 0;
+  if (!framed) faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, { ...lc, fineSides: true });
   // the leaf's panels and battens are fine joinery (EmitOptions.fine): the leaf itself reads at any range
-  if (style.leafKind === 'panel') {
+  if (framed) {
+    const g0 = 0.45, g1 = 0.87, gw = w * 0.6;
+    faceBox(sink, 'structureWood', face, u, y + leafH * g0 / 2, lo, w, leafH * g0, 0.04, { ...lc, fineSides: true });
+    faceBox(sink, 'structureWood', face, u, y + leafH * (g1 + 1) / 2, lo, w, leafH * (1 - g1), 0.04, { ...lc, fineSides: true });
+    for (const s of [-1, 1]) faceBox(sink, 'structureWood', face, u + s * (gw + w) / 4, y + leafH * (g0 + g1) / 2, lo, (w - gw) / 2, leafH * (g1 - g0), 0.04, { ...lc, fineSides: true });
+    faceBox(sink, 'glass', face, u, y + leafH * (g0 + g1) / 2, lo, gw + 0.02, leafH * (g1 - g0) + 0.02, 0.01, { decor: true });
+  } else if (style.leafKind === 'panel') {
     for (const t of [0.28, 0.72]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w * 0.7, leafH * 0.34, 0.02, { ...lc, fine: true });
   } else if (style.leafKind === 'plank') {
     for (const t of [0.15, 0.85]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w - 0.08, 0.09, 0.03, { ...lc, fine: true });
@@ -242,19 +269,112 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
   }
 }
 
-/** A double barn gate of planks with battens and a diagonal brace per leaf. */
+/** Iron strap work on a gate (hinges, latch): the black iron of the regional kits' strap hinges. */
+const GATE_IRON: Rgb = [0.15, 0.14, 0.13];
+
+/** Options for a gate pair: whether a leaf wide and tall enough carries a wicket (default yes). */
+export interface GateOptions { wicket?: boolean }
+
+/**
+ * A pair of ledged-and-braced gate leaves in a wide opening (the barn, the cart shed, the yard gate). Props census E2
+ * (lane B, 2026-10-14; the owner's "flat ugly format", the census's painted wicket: a near-black 0.7 x 1.75 m plate on
+ * one leaf): every leaf is its own vertical boards, each board its own tone and a few millimetres proud or shy of its
+ * neighbour; three ledges across them, braces rising from the hinge side between the ledges, strap hinges along the top
+ * and bottom ledges from pintles on the jamb, a cover strip over the meeting stiles and a threshold under the pair. A
+ * leaf wide and tall enough carries a framed wicket: its boards cut through under a head ledge that runs the leaf's
+ * width and set back in the leaf, its own ledges, brace, hinges and latch ring. A steel frame (structureMetal) makes the
+ * leaves sheet panels in steel rails. Dressing (no collision): the building's wall carries the collision.
+ */
 export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, leaf: Rgb,
-  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb }): void {
-  const lc = { colour: leaf, decor: true, uv: UV_MEMBER };
-  // in a cut opening (sink.recess) the leaves hang at the back of the reveal
+  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb }, options: GateOptions = {}): void {
+  const steel = frame.bucket === 'structureMetal';
+  // (the iron's bucket: a timber gate's straps, hinges and latch painted iron in its own timber bucket, so a map whose
+  // buildings lay no steel draws no steel batch for them; the cost census, 2026-10-14: Verdant's korovnik gates)
+  const iron: RegionalBucket = steel ? 'structureMetal' : 'structureWood';
+  const rng = streamFrom(hashSeed('gateUnit', u, y, w, h, face.out[0], face.out[2]));
+  // in a cut opening (sink.recess) the leaves hang at the back of the reveal; T the board, L a ledge's depth
   const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.015;
+  const T = 0.04, L = steel ? 0.03 : 0.032, front = go + T / 2;
+  const foot = y + 0.06, leafH = h - 0.06, leafW = w / 2 - 0.02;
+  const boardW = steel ? 0.46 : 0.17;
+  const tone = (k: number) => shade(leaf, 0.86 + rng() * 0.2 + (k % 2) * 0.03);
+  // a board shows its edges only where it stands proud of a neighbour (or at the meeting gap): `sides`
+  const board = (bu: number, bw: number, y0: number, y1: number, o: number, colour: Rgb, sides: boolean) => {
+    if (y1 - y0 < 0.04) return;
+    faceBox(sink, 'structureWood', face, bu, (y0 + y1) / 2, o, bw, y1 - y0, T, { colour, decor: true, uv: UV_MEMBER }, { ends: !sides, top: y1 >= y + h - 0.001 });
+  };
+  const ledge = (u0: number, u1: number, yc: number, o: number, colour: Rgb, height = steel ? 0.1 : 0.14) => {
+    if (u1 - u0 < 0.12) return;
+    faceBox(sink, 'structureWood', face, (u0 + u1) / 2, yc, o + L / 2, u1 - u0, height, L, { colour, decor: true, uv: UV_MEMBER, fineSides: true });
+  };
+  const brace = (u0: number, y0: number, u1: number, y1: number, o: number, colour: Rgb) => {
+    if (Math.abs(y1 - y0) < 0.2) return;
+    sink.member('structureWood', facePoint(face, u0, y0, o), facePoint(face, u1, y1, o), steel ? 0.08 : 0.12, L, face.out,
+      { colour, decor: true, uv: UV_MEMBER }, 0);
+  };
+  const strap = (u0: number, u1: number, yc: number, o: number) => {
+    faceBox(sink, iron, face, (u0 + u1) / 2, yc, o + 0.005, Math.abs(u1 - u0), 0.05, 0.01, { colour: GATE_IRON, decor: true, fine: true });
+  };
+  const wicketFits = options.wicket !== false && !steel && leafW >= 1.15 && h >= 2.5;
   for (const side of [-1, 1]) {
-    const cu = u + side * w / 4;
-    faceBox(sink, 'structureWood', face, cu, y + h / 2, go, w / 2 - 0.02, h, 0.05, lc);
-    for (const t of [0.12, 0.5, 0.88]) faceBox(sink, 'structureWood', face, cu, y + h * t, go + 0.035, w / 2 - 0.1, 0.1, 0.03, lc);
+    const cu = u + side * w / 4, l0 = cu - leafW / 2, l1 = cu + leafW / 2;
+    // the hinge side is the jamb's (side), the meeting side the middle
+    const hingeU = side < 0 ? l0 : l1, meetU = side < 0 ? l1 : l0, inward = -side;
+    const n = Math.max(steel ? 2 : 3, Math.round(leafW / boardW)), bw = leafW / n;
+    const ledgeTone = shade(leaf, 0.9), wicket = wicketFits && side < 0;
+    // the leaf's back: one face over its boards (a gate in a gateway is seen from the court behind it as well)
+    {
+      const bo = go - T / 2, P = (uu: number, yy: number) => facePoint(face, uu, yy, bo);
+      sink.quad('structureWood', P(l1, foot), P(l0, foot), P(l0, y + h), P(l1, y + h), { colour: shade(leaf, 0.8), decor: true, uv: UV_MEMBER });
+    }
+    // the wicket: whole boards in the leaf's middle, a man's height, its head under the leaf's middle ledge
+    const nb = wicket ? Math.min(n - 2, Math.max(4, Math.round(0.82 / bw))) : 0, k0 = Math.floor((n - nb) / 2);
+    const wu0 = l0 + k0 * bw, wu1 = wu0 + nb * bw, wTop = foot + Math.min(1.85, leafH - 0.75), cut = 0.014;
+    for (let k = 0; k < n; k++) {
+      const bu = l0 + (k + 0.5) * bw, c = tone(k), o = go + (k % 2 ? 0.003 : 0);
+      const inWicket = wicket && k >= k0 && k < k0 + nb, byWicket = wicket && (k === k0 - 1 || k === k0 + nb);
+      const sides = k % 2 === 1 || k === (side < 0 ? n - 1 : 0) || byWicket;
+      if (inWicket) {
+        // the wicket's boards set back in the leaf, cut through under its head
+        board(bu, bw, foot + 0.01, wTop, o - 0.014, c, sides || k === k0 || k === k0 + nb - 1);
+        board(bu, bw, wTop + cut, y + h, o, c, sides);
+      } else board(bu, bw, foot, y + h, o, c, sides);
+    }
+    // the ledges: bottom, middle (the wicket's head where there is one) and top
+    const ledgeH = steel ? 0.1 : 0.14;
+    const yb = foot + Math.max(0.16, leafH * 0.1), yt = y + h - Math.max(0.16, leafH * 0.1);
+    const ym = wicket ? wTop + cut + ledgeH / 2 : foot + leafH * 0.5;
+    const e0 = l0 + 0.04, e1 = l1 - 0.04;
+    if (wicket) {
+      // the bottom ledge stops at the wicket's jambs; the wicket carries its own ledges and brace, set back with it
+      ledge(e0, wu0 - 0.006, yb, front, ledgeTone);
+      ledge(wu1 + 0.006, e1, yb, front, ledgeTone);
+      const wf = front - 0.014, wl0 = wu0 + 0.05, wl1 = wu1 - 0.05, wyb = foot + 0.22, wyt = wTop - 0.16;
+      ledge(wl0, wl1, wyb, wf, ledgeTone, 0.12);
+      ledge(wl0, wl1, wyt, wf, ledgeTone, 0.12);
+      brace(wl0 + 0.08, wyb + 0.06, wl1 - 0.08, wyt - 0.06, wf, ledgeTone);
+      for (const yy of [wyb, wyt]) strap(wl0 - 0.02, wl0 + 0.38, yy, wf + L);
+      // the latch ring and its keeper at the wicket's free side
+      faceBox(sink, iron, face, wl1 - 0.05, foot + (wTop - foot) * 0.52, wf + L + 0.012, 0.06, 0.09, 0.024, { colour: GATE_IRON, decor: true, fine: true });
+    } else ledge(e0, e1, yb, front, ledgeTone);
+    ledge(e0, e1, ym, front, ledgeTone);
+    ledge(e0, e1, yt, front, ledgeTone);
+    // the braces rise from the hinge side's ledge to the meeting side's (a wicket leaf keeps only the upper one)
+    const hb = hingeU + inward * 0.12, mb = meetU - inward * 0.12;
+    if (!wicket) brace(hb, yb + ledgeH / 2 + 0.02, mb, ym - ledgeH / 2 - 0.02, front, ledgeTone);
+    brace(hb, ym + ledgeH / 2 + 0.02, mb, yt - ledgeH / 2 - 0.02, front, ledgeTone);
+    // strap hinges along the top and bottom ledges from the hinge stile
+    const strapLen = Math.min(leafW * 0.62, steel ? 0.5 : 0.95);
+    for (const yy of [yb, yt]) strap(hingeU + inward * 0.01, hingeU + inward * strapLen, yy, front + L);
   }
-  // a wicket door outline in one leaf
-  faceBox(sink, 'dark', face, u - w / 4, y + 0.95, go + 0.03, 0.7, 1.75, 0.02, { decor: true });
+  // the cover strip over the meeting stiles, on the right leaf, and the drop bolt's keeper
+  faceBox(sink, 'structureWood', face, u + 0.035, y + h / 2 + 0.03, front + L + 0.01, 0.11, h - 0.06, 0.02, { colour: shade(leaf, 0.82), decor: true, uv: UV_MEMBER, fineSides: true }, { top: true });
+  faceBox(sink, iron, face, u + 0.035, y + h * 0.48, front + L + 0.028, 0.035, 0.32, 0.016, { colour: GATE_IRON, decor: true, fine: true });
+  // the threshold: a sill across the opening from the back of the reveal to a nose a hand proud
+  const masonry = frame.bucket !== 'structureWood' && frame.bucket !== 'structureMetal';
+  const sillDepth = (r > 0 ? r : 0.02) + 0.08;
+  faceBox(sink, masonry ? frame.bucket : 'structureWood', face, u, y + 0.03, 0.08 - sillDepth / 2, w + 0.02, 0.06, sillDepth,
+    { decor: true, ...(masonry ? (frame.colour ? { colour: frame.colour } : {}) : { colour: shade(leaf, 0.72), uv: UV_MEMBER }) }, { ends: true });
   const fo = { decor: true, ...(frame.colour ? { colour: frame.colour } : {}) };
   faceBox(sink, frame.bucket, face, u - w / 2 - frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
   faceBox(sink, frame.bucket, face, u + w / 2 + frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);

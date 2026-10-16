@@ -31,6 +31,17 @@ export const ROOM_ADMIN_DISCONNECT_GRACE_MS = 30_000;
  * long the room elects the next connected commander as host (shorter than the admin grace: peers are stalled meanwhile).
  */
 export const ROOM_HOST_DISCONNECT_GRACE_MS = 8_000;
+/**
+ * Host-loss evidence (2026-10-14, the MP stream; docs/MULTIPLAYER-V2.md §13.22): a peer of the running p2p match that has
+ * heard nothing from its host for this long says so (`host_unreachable`), again at most every
+ * ROOM_HOST_UNREACHABLE_REPEAT_MS while the silence lasts; the room counts a claim for ROOM_HOST_UNREACHABLE_TTL_MS. A
+ * host whose room socket is gone AND whose peers hear nothing is gone (a crashed tab, a killed browser): the room elects
+ * at once instead of waiting out ROOM_HOST_DISCONNECT_GRACE_MS. A socket blip alone (the peers still hear the host) or
+ * a silence alone (the host's page busy, its socket alive) changes nothing.
+ */
+export const ROOM_HOST_UNREACHABLE_AFTER_MS = 1_500;
+export const ROOM_HOST_UNREACHABLE_REPEAT_MS = 1_000;
+export const ROOM_HOST_UNREACHABLE_TTL_MS = 3_000;
 /** One WebRTC signal (offer / answer / candidate) relayed between two seats: SDP fits comfortably. */
 export const ROOM_SIGNAL_MAX_BYTES = 8 * 1024;
 /** The browser-hosted authority emits a keyframe snapshot at least this often so any peer can become the host. */
@@ -581,6 +592,17 @@ export interface RoomHostDeclineCommand {
    * wait out the report budget. Optional: a client that predates it declines by preference.
    */
   unable?: boolean;
+}
+
+/**
+ * `room_command { command: RoomHostUnreachableCommand }` (2026-10-14, §13.22): a peer of the running p2p match of this
+ * host `generation` has heard nothing from its host for `silentMs` (ROOM_HOST_UNREACHABLE_AFTER_MS or more). Acknowledged
+ * whatever it changes; a room that predates it refuses it, which the client ignores.
+ */
+export interface RoomHostUnreachableCommand {
+  type: 'host_unreachable';
+  generation: number;
+  silentMs: number;
 }
 
 /** The p2p match URL: `rtc://<roomId>/<generation>`; the client opens a data channel to `hostId` through `room_signal`. */

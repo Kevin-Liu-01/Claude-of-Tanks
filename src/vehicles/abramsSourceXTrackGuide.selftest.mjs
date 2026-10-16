@@ -112,7 +112,7 @@ function sweep(build,quality){
   const {tank,gear}=build,pads=tank.root.getObjectByName('gearTrackPads'),pitch=pads.userData.trackShoePitchM;
   const guide=trackGuideGeometry(pitch,PROFILE),samples=guideSamples(guide),matrix=new T.Matrix4();closure(guide);
   const failures=[];
-  const state=createTankState(getSpec('m1a2_sepv2_x'),new T.Vector3(),0);
+  const state=createTankState(getSpec('m1a2_abrams_sepv2'),new T.Vector3(),0);
   const samplers=[null,(x,z)=>.065*Math.exp(-(((z-.8)/.6)**2)),
     (x,z)=>-.07*Math.exp(-(((z+.9)/.7)**2))+.035*Math.sin(x*2+z*.6)];
   try{for(const[pose,sampler]of samplers.entries()){
@@ -158,7 +158,7 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
     assert.equal(subtract(triangles(oldLow.geometry),triangles(low.geometry)).length,0,'all old simplified pad/grouser triangles remain');
     assert.equal(low.instanceMatrix,a.instanceMatrix,'one live matrix train across both LODs');
     sourceSections(current);
-    if(id==='m1a2_sepv2_x')sweep(current,quality);
+    if(id==='m1a2_abrams_sepv2')sweep(current,quality);
     builds++;
   }finally{current.tank.dispose();old.tank.dispose();}
 }

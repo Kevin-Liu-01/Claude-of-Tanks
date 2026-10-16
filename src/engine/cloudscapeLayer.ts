@@ -116,6 +116,8 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
       : 1 - clamp((coverage - R.deckClosedCoverage[0]) / (R.deckClosedCoverage[1] - R.deckClosedCoverage[0]), 0, 1) ** 2
         * (3 - 2 * clamp((coverage - R.deckClosedCoverage[0]) / (R.deckClosedCoverage[1] - R.deckClosedCoverage[0]), 0, 1)),
     shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
+    // (2026-10-09, the shadows lane) a thin deck's beam (CloudscapeConfig.deckBeam): its cells cast at most 1 − it
+    deckBeam: clamp(scape.deckBeam ?? 0, 0, 1),
     typeRange: [clamp(typeRange[0], 0, 1), clamp(typeRange[1], 0, 1)],
     anvil: clamp(pick('anvil'), 0, 1),
     wispiness: clamp(pick('wispiness'), 0, 1),

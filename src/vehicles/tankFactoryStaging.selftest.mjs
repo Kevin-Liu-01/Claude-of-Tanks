@@ -184,7 +184,7 @@ function shadowRegistry(fail = false) {
 }
 const baseOpts = { proceduralOnly: true, geometryReceipt: true, quality: 'ai', camoSeed: 4242, decor: true };
 for (const [id, options] of [
-  ['m1a1', baseOpts], ['strv103', baseOpts],
+  ['m1a1', baseOpts], ['strv103b', baseOpts],
   ['m1a1', { ...baseOpts, geometryQuality: 'low' }],
   ['m1a1', { ...baseOpts, batchStatic: true, battleDetailLod: true }],
   ['merkava1b', { ...baseOpts, geometryQuality: 'low', batchStatic: true, battleDetailLod: true }],
@@ -295,7 +295,7 @@ equal(facadeVisual.specId, 'm1a1', 'ready demand facade delegates to the staged 
 facadeVisual.dispose();
 // Garage uses rendered paint, decorated HIGH geometry, a static rest pose and
 // articulation-local batches. Slicing must preserve this exact caller policy.
-for (const id of ['m1a1', 'challenger_3x', 'ariete_c2_x']) {
+for (const id of ['m1a1', 'challenger3', 'c2_ariete']) {
   await facade.ensureTankBuilder(id);
   const options = { camoSeed: 4200, quality: 'ai', staticPreview: true,
     batchStatic: true, eraVisualBindingReceipt: false };

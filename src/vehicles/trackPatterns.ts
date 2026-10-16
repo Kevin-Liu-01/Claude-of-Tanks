@@ -7,6 +7,7 @@
 // explicit, testable contract while preserving era-specific track identity.
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 
 export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
   'interleaved-cleat': Object.freeze({
@@ -150,7 +151,8 @@ export function trackPatternFor(
     return Object.freeze({ id: override, ...TRACK_PATTERN_DEFINITIONS[override] });
   }
 
-  const id = String(spec?.id || '').toLowerCase();
+  // The family rules read the schema-1 id vocabulary (tankIdAliases.ts): a rename never changes this choice.
+  const id = tankSeedId(String(spec?.id || '')).toLowerCase();
   for (const [matcher, patternId] of FAMILY_RULES) {
     if (matcher.test(id)) {
       return Object.freeze({ id: patternId, ...TRACK_PATTERN_DEFINITIONS[patternId] });

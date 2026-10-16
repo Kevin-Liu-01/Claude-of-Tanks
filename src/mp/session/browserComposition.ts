@@ -134,7 +134,11 @@ export interface BrowserSlowEntry {
 
 export interface BrowserLoadPorts {
   battleLoad: BrowserLoadScreen;
-  audio: { resume(): RuntimeValue; loadingOn(active: boolean): RuntimeValue; ambientOn(active: boolean): RuntimeValue };
+  audio: {
+    resume(): RuntimeValue; loadingOn(active: boolean): RuntimeValue; ambientOn(active: boolean): RuntimeValue;
+    /** Decode the round's battle sounds, the roster's powertrains first, so its countdown is heard (never awaited). */
+    warmBattleEvents?(roster: readonly string[]): RuntimeValue;
+  };
   lighting: { setFarCascadeDormant(dormant: boolean): void };
   ensureBattleVisuals(): MaybePromise<RuntimeValue>;
   /** The battle-only modules a round needs before it presents (HUD, touch controls, FX, killcam, warm owners). */
@@ -1111,6 +1115,11 @@ export function createBrowserComposition({
       showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle', sessionRound.room.settings.gameMode);
       load.audio.resume();
       load.audio.loadingOn(true);
+      // the lobby's vehicles (ours first): their engines, with the map's beds and the running gear, decode ahead of the
+      // combat banks while the round loads, so its countdown sounds (2026-10-14)
+      const rosterSpecs = [...new Set([active.spectator ? '' : active.ownSpecId,
+        ...lobbyPlayers(sessionRound.room.players).filter((player) => player.team !== 'spectator').map((player) => player.specId)])].filter(Boolean);
+      void Promise.resolve().then(() => load.audio.warmBattleEvents?.(rosterSpecs)).catch(() => {});
       load.lighting.setFarCascadeDormant(false);
       load.battleLoad.progress(0.02, 'Securing match channel');
       await load.nextFrame();

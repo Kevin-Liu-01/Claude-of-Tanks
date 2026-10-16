@@ -124,7 +124,7 @@ export default {
     rocks: 224, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48a5_patton', 'strv103b', 't80b', 'bmp2'] },
     // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
     // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
     // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below
@@ -297,7 +297,14 @@ export default {
   // the snow under it lifting its base (ambientScale, the deck path's ground bounce: a quarter-albedo ground at 1). The
   // deck's structure lands in the overcast photos' band, and its level comes down toward the snow's it lights
   clouds: { regime: 'low-stratus', baseM: 300, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
-    deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3 },
+    deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3,
+    // 2026-10-10 (the shadows lane; owner: "shadows are still really bad on maps like whiteout"): the closed deck cut the
+    // cascades' sun to 2 % of its beam — lit and shaded snow 1.02 : 1, "flat, shadowless snow, with buildings that look like
+    // they float on it". A thin polar stratus passes part of the low sun's beam (cloudscapes.ts deckBeam), and the closed
+    // deck widens the shadows' filter (shadowStability.ts deckPenumbraRadius): a faint, diffuse bearing under the same grey
+    // deck (wave 342a: 0.45 read "sharp sunny-day shadows" and raised the snow's relief into a marbled swirl; a quarter
+    // stays at or under the snow relief's limit until that relief is redone)
+    deckBeam: 0.25 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
     postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */ },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },

@@ -48,7 +48,7 @@ for (const tab of RECORD_TABS) assert.ok(recordTabMarkup(tab, names).length > 10
 assert.match(recordTabMarkup('history', names), /cot-record-empty/);
 
 // One battle: a three-kill chain, then a kill 80 s later.
-bus.emit('ui:battleStart', { specId: 'type10', mapId: 'arctic' });
+bus.emit('ui:battleStart', { specId: 'type10_tk_x', mapId: 'arctic' });
 let shell = 0;
 const kill = (target, t) => {
   clock = t;
@@ -90,7 +90,7 @@ assert.match(achievements, /role="progressbar"/);
 
 const history = recordTabMarkup('history', names, view);
 assert.equal((history.match(/<details class="cot-record-battle result-victory"/g) || []).length, 1);
-assert.match(history, /veh:type10/);
+assert.match(history, /veh:type10_tk_x/);
 assert.match(history, /map:arctic/);
 assert.equal((history.match(/<li class="linked">/g) || []).length, 2, 'the second and third kills link into a chain; the fourth stands alone');
 assert.equal((history.match(/<li class="">/g) || []).length, 2);

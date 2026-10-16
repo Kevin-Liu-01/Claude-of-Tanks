@@ -76,8 +76,8 @@ function realAir(cells){
   assert(occupied(cells,[.80,1.37,.367392],[.80,1.45,.367392]),'closed bearing annulus still receives hits');
 }
 function runtimeRays(captured){
-  const spec=JSON.parse(JSON.stringify(TANK_SPECS.ariete_c2_x));
-  const calibration={...COMBAT_ANATOMY_CALIBRATIONS.ariete_c2_x,hullCollision:captured.hullCollision};
+  const spec=JSON.parse(JSON.stringify(TANK_SPECS.c2_ariete));
+  const calibration={...COMBAT_ANATOMY_CALIBRATIONS.c2_ariete,hullCollision:captured.hullCollision};
   finalizeCombatAnatomy(spec,calibration);let count=0;
   const material=new T.MeshBasicMaterial({side:T.DoubleSide});
   const meshes=captured.stocks.map(s=>new T.Mesh(s.geometry,material));meshes.forEach(m=>m.updateMatrixWorld(true));
@@ -97,13 +97,13 @@ function runtimeRays(captured){
 const results=[];
 for(const quality of ['high','low']){
   const options={quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
-  const before=createTank('ariete_c2_x',null,options),beforeHash=snapshot(before.root);before.dispose();
-  const captured=captureArieteC2Collision(()=>createTank('ariete_c2_x',null,options));
+  const before=createTank('c2_ariete',null,options),beforeHash=snapshot(before.root);before.dispose();
+  const captured=captureArieteC2Collision(()=>createTank('c2_ariete',null,options));
   try{
     assert.equal(snapshot(captured.tank.root),beforeHash,'offline stock capture preserves scene geometry/material/rig exactly');
     const cells=captured.hullCollision;realAir(cells);const rays=stockRays(captured.stocks,cells),runtime=runtimeRays(captured);
     if(!process.argv.includes('--producer-only'))assert.deepEqual(
-      COMBAT_ANATOMY_CALIBRATIONS.ariete_c2_x.hullCollision,cells,
+      COMBAT_ANATOMY_CALIBRATIONS.c2_ariete.hullCollision,cells,
       'published calibration must contain this actual complete primary-stock union');
     const broad=convexStockCell(cells.flatMap(c=>c.vertices),'wrong-whole-hull');
     assert.throws(()=>realAir([broad]),assert.AssertionError,'whole-hull convexification must fail real air');

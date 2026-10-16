@@ -3,9 +3,9 @@ import { Box3, Mesh, MeshBasicMaterial, Raycaster, Vector3, DoubleSide } from 't
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
 
-await ensureInteriorFills(['t14']);
+await ensureInteriorFills(['object148_proto']);
 for(const quality of ['high','low']) {
-  const tank=createTank('t14',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
+  const tank=createTank('object148_proto',null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
   const root=tank.root,hull=root.getObjectByName('rig_hull'),turret=root.getObjectByName('rig_turret');
   assert.equal(hull.userData.object148Design?.revision,2,'complete new hull builder');
   assert.equal(turret.userData.object148Design?.revision,2,'complete new turret builder');

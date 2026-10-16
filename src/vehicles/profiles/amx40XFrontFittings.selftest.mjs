@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 for(const quality of ['high','low']) {
-  const tank=createTank('amx40_x',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
+  const tank=createTank('amx40',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const hull=tank.root.getObjectByName('rig_hull');

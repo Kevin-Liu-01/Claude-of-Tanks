@@ -340,7 +340,7 @@ export default {
     // the shelled-town read finally includes the armor that died taking it
     // the map-vehicles lane (2026-10-06, the period ruling): the inner-German border of the 1980s: the Bundeswehr's
     // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a4', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
     sandbagLines: 12,
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work
@@ -383,7 +383,11 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a },
+  // 2026-10-09 (the shadows lane; the gauntlet: "lighting flat and often underexposed"): the altocumulus cells took 90 % of
+  // the sun over half the town while the camera metered open sun; a mid-level cell is thin and passes half the beam
+  // (cloudscapes.ts deckBeam); (2026-10-10, wave 342b's after-defects: "cloud-shaded Steinburg variants go flat and murky with
+  // few readable shadows") its cells pass two thirds of the beam, so the town keeps its shadows under a passing cell
+  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a, deckBeam: 0.65 },
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
     // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->

@@ -8,7 +8,7 @@ import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
 
 // Source-only Object_15/23 calipers in the original canonical frame; the
 // accepted assembly changes only its detached door. No source mesh is loaded.
-const id='bmp3m_dragun125_x';
+const id='bmp3m_dragun125';
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed frame at this factor; the calipers stay in the source frame and every probe maps them by `f`.
 const f=VEHICLE_SIZE_FACTORS[id]??1,at=p=>p.map(v=>v*f);

@@ -26,7 +26,7 @@ try{
    const mobile=!!viewport.isMobile,suffix=mobile?'landscape':'desktop';
    const {page,errors}=await openGamePage(browser,{port,viewport});
    page.on('console',m=>{if(m.type()==='error'&&/THREE.WebGLProgram|Shader Error/.test(m.text()))errors.push(m.text());});
-   for(const id of mobile?['m1a2']:['m1a2_sepv3_x','kf41_lynx_x','strv103']){
+   for(const id of mobile?['m1a1_abrams_hc']:['m1a2_abrams_sepv3','kf41_lynx','strv103b']){
     await page.evaluate(id=>window.__DEBUG.selectGarageTank(id),id);
     await page.waitForFunction(id=>window.__DEBUG.pedestalVisual?.specId===id,{timeout:180000},id);
     let priorEnergy=null;
@@ -58,7 +58,7 @@ try{
    if(!mobile){
     await selectMode(page,'juggernaut');
     await page.evaluate(async()=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement('juggernaut',{allies:1,enemies:2});});
-    await beginSoloBattle(page,{specId:'m1a2_sepv3_x',mapId:'verdant',gameMode:'juggernaut'});
+    await beginSoloBattle(page,{specId:'m1a2_abrams_sepv3',mapId:'verdant',gameMode:'juggernaut'});
     const battleTime=await page.evaluate(()=>window.__DEBUG.game.timeS);
     await page.waitForFunction(start=>window.__DEBUG.game.timeS>start+1,{timeout:30000},battleTime);
     assert.deepEqual(errors,[],'SEP v3 Juggernaut advances without render exceptions');

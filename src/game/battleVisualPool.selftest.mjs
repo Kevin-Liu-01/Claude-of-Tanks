@@ -22,15 +22,15 @@ function makeVisual(specId) {
 }
 
 const pool = createBattleVisualPool({ capacity: 2 });
-const t90 = makeVisual('t90a');
-assert.equal(pool.release(t90), true, 'desktop pool accepts a clean bot visual');
-assert.equal(t90.resets, 1, 'pooled visuals are reset before storage');
-assert.equal(t90.visible, false, 'pooled visuals are hidden');
-assert.equal(t90.root.parent, null, 'pooled visuals are detached from the scene');
-assert.deepEqual(pool.stats(), { size: 1, capacity: 2, ids: ['t90a'] });
+const t90_1992 = makeVisual('t90a_2004');
+assert.equal(pool.release(t90_1992), true, 'desktop pool accepts a clean bot visual');
+assert.equal(t90_1992.resets, 1, 'pooled visuals are reset before storage');
+assert.equal(t90_1992.visible, false, 'pooled visuals are hidden');
+assert.equal(t90_1992.root.parent, null, 'pooled visuals are detached from the scene');
+assert.deepEqual(pool.stats(), { size: 1, capacity: 2, ids: ['t90a_2004'] });
 
-assert.equal(pool.take('t90a'), t90, 'the next matching battle reuses the visual');
-assert.equal(t90.prepared, 1, 'reused visuals return to simulation mode');
+assert.equal(pool.take('t90a_2004'), t90_1992, 'the next matching battle reuses the visual');
+assert.equal(t90_1992.prepared, 1, 'reused visuals return to simulation mode');
 assert.equal(pool.stats().size, 0, 'taking a visual transfers pool ownership');
 
 const a = makeVisual('a');
@@ -53,7 +53,7 @@ assert.equal(mobileVisual.disposed, 1, 'mobile release disposes immediately');
 console.log('battleVisualPool.selftest: detached visual reuse has bounded ownership');
 
 {
- const aircraft=makeVisual('m1a2');aircraft.root.userData={aircraftOnly:true};
+ const aircraft=makeVisual('m1a1_abrams_hc');aircraft.root.userData={aircraftOnly:true};
  const p=createBattleVisualPool();assert.equal(p.release(aircraft),false);
- assert.equal(aircraft.disposed,1);assert.equal(p.take('m1a2'),null,'aircraft cannot replace a tank on rematch');
+ assert.equal(aircraft.disposed,1);assert.equal(p.take('m1a1_abrams_hc'),null,'aircraft cannot replace a tank on rematch');
 }
