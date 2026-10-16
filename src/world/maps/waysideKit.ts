@@ -106,7 +106,7 @@ function bildstockShaft(m: Mesh, st: Shade, y0: number, y1: number, cartouche: b
  * and the relief, the side panels, the cornice, the gabled roof and (when `cross`) the iron cross. Returns the ridge's
  * height. `roof`: 'both' slabs, or 'one' (the other knocked off).
  */
-function bildstockHead(m: Mesh, st: Shade, y0: number, roof: 'both' | 'one', cross: boolean): number {
+function bildstockHead(m: Mesh, st: Shade, y0: number, roof: 'both' | 'one' | 'hip', cross: boolean, roofBase: Rgb = BUNT_ROOF): number {
   const inner = dim(st, 0.6), lit = bildStone(0xb13, 1.04);
   frustum(m, 0, 0, y0, y0 + 0.09, 0.27, 0.27, 0.4, 0.4, st, 'none');
   gbox(m, [-0.22, y0 + 0.09, -0.22], [0.22, y0 + 0.15, 0.22], st, 0.2);
@@ -157,16 +157,33 @@ function bildstockHead(m: Mesh, st: Shade, y0: number, roof: 'both' | 'one', cro
   frustum(m, 0, 0, HT - 0.025, HT, 0.5, 0.4, 0.58, 0.48, st, 'none');
   gbox(m, [-0.29, HT, -0.24], [0.29, HT + 0.05, 0.24], lit, 0.15, { ny: true });
   // the gable mass and the two roof slabs (overhanging the cornice), the ridge roll
-  const E = HT + 0.05, RIDGE = E + 0.17, run = 0.27, over = 0.07;
+  const E = HT + 0.05, run = 0.27, over = 0.07;
+  const roofShade = weathered({ base: roofBase, seed: 0xb14, damp: 0, mottle: 0.15, mould: 0.25, lichen: 0.85, lichenCol: LICHEN_SAND });
+  if (roof === 'hip') {
+    // (the Hessian form: a hipped stone cap over the cornice, a ball on its point, the cross leaded into the ball)
+    const TOP = E + 0.2;
+    frustum(m, 0, 0, E, E + 0.05, 0.62, 0.52, 0.6, 0.5, roofShade, 'bottom');
+    frustum(m, 0, 0, E + 0.05, TOP, 0.6, 0.5, 0.05, 0.05, roofShade, 'none');
+    lathe(m, [[0, 0], [0.04, 0.005], [0.06, 0.04], [0.045, 0.08], [0.02, 0.095], [0.02, 0.1]], 8, [0, TOP - 0.01, 0], roofShade);
+    if (cross) {
+      const c0 = TOP + 0.08;
+      member(m, [0, c0 - 0.01, 0], [0, c0 + 0.2, 0], 0.024, 0.024, Z, WROUGHT, FLAT);
+      member(m, [-0.08, c0 + 0.13, 0], [0.08, c0 + 0.13, 0], 0.024, 0.024, Y, WROUGHT, FLAT);
+      for (const [x, y] of [[0, c0 + 0.205], [-0.085, c0 + 0.13], [0.085, c0 + 0.13]] as const) {
+        lathe(m, [[0, -0.016], [0.012, -0.012], [0.016, 0], [0.012, 0.012], [0, 0.016]], 6, [x, y, 0], plain(WROUGHT));
+      }
+    }
+    return TOP;
+  }
+  const RIDGE = E + 0.17;
   prismZ(m, [[-run, E], [run, E], [0, RIDGE]], -0.235, 0.235, st, 0);
-  const roofShade = weathered({ base: BUNT_ROOF, seed: 0xb14, damp: 0, mottle: 0.15, mould: 0.25, lichen: 0.85, lichenCol: LICHEN_SAND });
   const slope = norm([run, -(RIDGE - E), 0]), up = norm([RIDGE - E, run, 0]), t = 0.055;
   for (const s of roof === 'both' ? [-1, 1] : [1]) {
     const a: V3 = [s * up[0] * t / 2, RIDGE + up[1] * t / 2, 0];
     const b: V3 = add(a, [s * slope[0] * (run + over) / slope[0], slope[1] * (run + over) / slope[0], 0]);
-    member(m, a, b, 0.6, t, Z, BUNT_ROOF, FLAT, { chamfer: 0.012, shade: roofShade });
+    member(m, a, b, 0.6, t, Z, roofBase, FLAT, { chamfer: 0.012, shade: roofShade });
   }
-  pole(m, [0, RIDGE + 0.045, -0.31], [0, RIDGE + 0.045, 0.31], 0.032, 0.032, mul(BUNT_ROOF, 0.95), 0, 8);
+  pole(m, [0, RIDGE + 0.045, -0.31], [0, RIDGE + 0.045, 0.31], 0.032, 0.032, mul(roofBase, 0.95), 0, 8);
   if (cross) {
     // the wrought-iron cross, leaded into the ridge: its ends trefoiled
     gbox(m, [-0.032, RIDGE + 0.06, -0.032], [0.032, RIDGE + 0.1, 0.032], plain(LEAD), 1);
@@ -180,29 +197,41 @@ function bildstockHead(m: Mesh, st: Shade, y0: number, roof: 'both' | 'one', cro
   return RIDGE;
 }
 
-function buildBildstock(broken: boolean): THREE.BufferGeometry {
+/** The Bildstock's regional forms: the Main valley's red Buntsandstein under its gabled niche house; the Hessian one in
+ *  the grey-yellow sandstone of the Vogelsberg's edge under a hipped cap with its ball and cross (the r2 sweep). */
+type BildstockForm = 'franconian' | 'hessian';
+const HESSIAN_STONE = hexLin(0xa0977f), HESSIAN_ROOF = hexLin(0x8a8270);
+
+function buildBildstock(broken: boolean, form: BildstockForm = 'franconian'): THREE.BufferGeometry {
   const m = new Mesh({ kind: 'render' });
-  const st = bildStone(0xb12);
+  const hess = form === 'hessian';
+  const st = hess ? weathered({ base: HESSIAN_STONE, seed: 0xb12, damp: 0.32, mottle: 0.13, mould: 0.42, lichen: 0.5, lichenCol: LICHEN_SAND }) : bildStone(0xb12);
   bildstockBase(m, st);
   if (!broken) {
     bildstockShaft(m, st, 0.69, 1.97, true);
-    bildstockHead(m, st, 1.97, 'both', true);
+    bildstockHead(m, st, 1.97, hess ? 'hip' : 'both', true, hess ? HESSIAN_ROOF : BUNT_ROOF);
     return m.geometry();
   }
   // snapped above the plinth: a ragged stub of the shaft stands; its upper drums lie where they fell, the head beyond
   // them on its side with one roof slab, the other slab and the bent iron cross on the ground, chips of the break
   const r = ownStream(0xb15), dir = 0.65, cx = Math.cos(dir), cz = Math.sin(dir);
-  const top = SHAFT.map(() => 0.96 + r() * 0.16), fresh = weathered({ base: BUNT_BREAK, seed: 0xb16, damp: 0, mottle: 0.2 });
-  raggedShaft(m, SHAFT, ring8(0.69), top, 0.69, 1.02, st, null, fresh);
+  // (the r2 sweep: the stub broke at a metre and the wreck lay a fifth of the standing height) the heavy head shears off
+  // under its capital: the shaft stands to its ragged top, the last drum's stump and the head thrown down
+  const top = SHAFT.map(() => 1.9 + r() * 0.06), fresh = weathered({ base: hess ? mix(HESSIAN_STONE, BUNT_BREAK, 0.3) : BUNT_BREAK, seed: 0xb16, damp: 0, mottle: 0.2 });
+  raggedShaft(m, SHAFT, ring8(0.69), top, 0.69, 1.96, st, null, fresh);
   let from = m.mark;
-  raggedShaft(m, SHAFT, top.map((y) => y - 0.96 + r() * 0.04), ring8(1.0), 0.08, 1.0, st, fresh, null);
+  raggedShaft(m, SHAFT, top.map((y) => y - 1.9 + r() * 0.04), ring8(0.12), 0.06, 0.12, st, fresh, null);
   layDown(m, from, new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(cx, -0.08, cz).normalize()), cx * 0.95, cz * 0.95, 0.03);
   from = m.mark;
-  bildstockHead(m, st, 0, 'one', false);
-  layDown(m, from, quat([-cz, 0, cx], 1.75).multiply(quat(Y, 0.4)), cx * 1.95 - cz * 0.15, cz * 1.95 + cx * 0.15, 0.04);
-  from = m.mark;
-  member(m, [-0.04, 0, 0], [0.34 + 0.04, -0.21, 0], 0.6, 0.055, Z, BUNT_ROOF, FLAT, { chamfer: 0.012, shade: weathered({ base: BUNT_ROOF, seed: 0xb17, damp: 0, lichen: 0.8, lichenCol: LICHEN_SAND }) });
-  layDown(m, from, quat(Z, 0.5).multiply(quat(Y, 1.2)), cx * 1.2 + cz * 0.9, cz * 1.2 - cx * 0.9, 0.02);
+  bildstockHead(m, st, 0, hess ? 'hip' : 'one', false, hess ? HESSIAN_ROOF : BUNT_ROOF);
+  layDown(m, from, quat([-cz, 0, cx], hess ? 1.75 : -0.55).multiply(quat(Y, 0.4)), cx * (hess ? 1.95 : 0.92) - cz * 0.15, cz * (hess ? 1.95 : 0.92) + cx * 0.15, 0.04);
+  // (one roof slab came off as the head fell: it leans against the Sockel)
+  if (!hess) {
+    from = m.mark;
+    member(m, [-0.04, 0, 0], [0.34 + 0.04, -0.21, 0], 0.6, 0.055, Z, BUNT_ROOF, FLAT, { chamfer: 0.012, shade: weathered({ base: BUNT_ROOF, seed: 0xb17, damp: 0, lichen: 0.8, lichenCol: LICHEN_SAND }) });
+    m.tilt(from, [0, 0, 0], Z, 1.25);
+    for (let i = from; i < m.mark; i += 3) { m.p[i] -= 0.62; m.p[i + 1] += 0.06; }
+  }
   from = m.mark;
   member(m, [0, 0, 0], [0.05, 0.13, 0], 0.024, 0.024, Z, WROUGHT, FLAT);
   member(m, [0.05, 0.13, 0], [0.02, 0.24, 0.04], 0.024, 0.024, Z, WROUGHT, FLAT);
@@ -325,7 +354,7 @@ function buildWaysideCross(): THREE.BufferGeometry {
 const LARCH = hexLin(0x857d71), LARCH_DARK = hexLin(0x5e574d), RUSHNYK = hexLin(0xe6e1d6), RUSH_RED = hexLin(0xa3302a);
 const ICON_GOLD = hexLin(0xb38d42), ICON_DARK = hexLin(0x3a2c25), KIOT_BLUE = hexLin(0x41566e);
 
-function buildOrthodoxCross(): THREE.BufferGeometry {
+function buildOrthodoxCross(rushnyk = true): THREE.BufferGeometry {
   const m = new Mesh({ kind: 'wood' });
   const larch = weathered({ base: LARCH, seed: 0x0c01, damp: 0.42, mottle: 0.07, lichen: 0.32, lichenCol: LICHEN_WOOD });
   const dark = weathered({ base: LARCH_DARK, seed: 0x0c02, damp: 0.4, mottle: 0.08, lichen: 0.5, lichenCol: LICHEN_WOOD });
@@ -372,7 +401,9 @@ function buildOrthodoxCross(): THREE.BufferGeometry {
     gbox(m, [x0, y0, kz + 0.05], [x1, y1, kz + 0.062], plain(KIOT_BLUE), 1, { nz: true });
   }
   prismZ(m, [[-0.1, ky1], [0.1, ky1], [0, ky1 + 0.06]], kz - 0.002, kz + 0.075, plain(mul(KIOT_BLUE, 0.85)), 0);
-  // the rushnyk hung over the left arm: its two falls front and back, its red-worked ends
+  // the rushnyk hung over the left arm: its two falls front and back, its red-worked ends (Ukraine's custom: the
+  // Russian poklonny krest on the kolkhoz goes without, the r2 sweep's regional form)
+  if (!rushnyk) return m.geometry();
   const rx = -0.46;
   gbox(m, [rx - 0.08, 2.645, -0.06], [rx + 0.08, 2.657, 0.085], plain(RUSHNYK), 1);
   member(m, [rx, 2.65, 0.08], [rx - 0.01, 2.0, 0.095], 0.16, 0.01, X, RUSHNYK, FLAT);
@@ -386,7 +417,7 @@ function buildOrthodoxCross(): THREE.BufferGeometry {
 
 // ---------------------------------------------------------------------------------------------- the Mekong tomb
 
-const TOMB_OCHRE = hexLin(0xd5c38e), TOMB_TRIM = hexLin(0xdedad0), TOMB_BLUE = hexLin(0x86a9b2), GRANITE_BLACK = hexLin(0x2a2c2f);
+const TOMB_OCHRE = hexLin(0xd5c38e), TOMB_TRIM = hexLin(0xdedad0), TOMB_BLUE = hexLin(0x86a9b2), GRANITE_BLACK = hexLin(0x2a2c2f), TOMB_GLAZE = hexLin(0xa9c6cc);
 const TOMB_GOLD = hexLin(0xc79f45), TILE_GREEN = hexLin(0x4c7356), LOTUS_PINK = hexLin(0xd7a8a0), LOTUS_LEAF = hexLin(0x6f8f5a);
 const DECK_GREY = hexLin(0x9a968b), INCENSE_RED = hexLin(0x9b3a2a), MOSS_DARK = hexLin(0x3a4630);
 
@@ -511,12 +542,15 @@ function buildTomb(broken: boolean): THREE.BufferGeometry {
   // the screen: three bays, the stele's in a recessed frame, the wings with their medallions and copings
   const top = broken ? 0.9 : 1.62, wingTop = broken ? 0.72 : 1.18;
   gbox(m, [-0.42, 0.28, SCREEN_Z0], [0.42, top, SCREEN_Z1 - 0.03], wall, 0.2, { ny: true, ...(broken ? { py: true } : {}) });
+  // (the r2 sweep: the stele sat 1 cm inside a 3 cm frame, a black plate on the face) its frame stands 10 cm proud: the
+  // stele set back in a niche, as the tombs' carved surrounds stand
+  const FRAME = SCREEN_Z1 + 0.1;
   for (const s of [-1, 1]) {
-    gbox(m, [s > 0 ? 0.3 : -0.42, 0.28, SCREEN_Z1 - 0.03], [s > 0 ? 0.42 : -0.3, top, SCREEN_Z1], blue, 0.4, { ny: true, nz: true, ...(broken ? { py: true } : {}) });
+    gbox(m, [s > 0 ? 0.3 : -0.42, 0.28, SCREEN_Z1 - 0.03], [s > 0 ? 0.42 : -0.3, top, FRAME], blue, 0.4, { ny: true, nz: true, ...(broken ? { py: true } : {}) });
     gbox(m, [s > 0 ? 0.42 : -1.02, 0.28, SCREEN_Z0 + 0.02], [s > 0 ? 1.02 : -0.42, wingTop, SCREEN_Z1], wall, 0.2, { ny: true, ...(broken ? { py: true } : {}) });
   }
-  gbox(m, [-0.3, 0.28, SCREEN_Z1 - 0.03], [0.3, 0.55, SCREEN_Z1], blue, 0.3, { ny: true, nz: true });
-  if (!broken) gbox(m, [-0.3, 1.4, SCREEN_Z1 - 0.03], [0.3, top, SCREEN_Z1], blue, 0.3, { nz: true });
+  gbox(m, [-0.3, 0.28, SCREEN_Z1 - 0.03], [0.3, 0.55, FRAME], blue, 0.3, { ny: true, nz: true });
+  if (!broken) gbox(m, [-0.3, 1.4, SCREEN_Z1 - 0.03], [0.3, top, FRAME], blue, 0.3, { nz: true });
   // the stele: black granite proud of the recess, three columns of gold characters
   const steleTop = broken ? 0.88 : 1.34;
   gbox(m, [-0.24, 0.6, SCREEN_Z1 - 0.03], [0.24, steleTop, SCREEN_Z1 - 0.012], plain(GRANITE_BLACK), 1, { nz: true });
@@ -533,7 +567,8 @@ function buildTomb(broken: boolean): THREE.BufferGeometry {
     for (let k = 0; k < 10; k++) disc.push([mx + Math.cos((k / 10) * Math.PI * 2) * 0.14, my + Math.sin((k / 10) * Math.PI * 2) * 0.14]);
     prismZ(m, disc, SCREEN_Z1, SCREEN_Z1 + 0.016, trim, 0, 'front');
     const inner = disc.map(([x, y]) => [mx + (x - mx) * 0.6, my + (y - my) * 0.6] as [number, number]);
-    prismZ(m, inner, SCREEN_Z1 + 0.016, SCREEN_Z1 + 0.026, blue, 0, 'front');
+    // (the roundel's pale celadon glaze: the deep blue read as a dark plate on the trim)
+    prismZ(m, inner, SCREEN_Z1 + 0.016, SCREEN_Z1 + 0.026, tombWash(TOMB_GLAZE, 0x70f5, 0.25), 0, 'front');
     if (!broken) gbox(m, [s > 0 ? 0.4 : -1.06, wingTop, SCREEN_Z0 - 0.02], [s > 0 ? 1.06 : -0.4, wingTop + 0.06, SCREEN_Z1 + 0.04], trim, 0.5);
   }
   if (!broken) gbox(m, [-0.46, top, SCREEN_Z0 - 0.02], [0.46, top + 0.05, SCREEN_Z1 + 0.04], trim, 0.5);
@@ -614,6 +649,10 @@ function buildTombFar(): THREE.BufferGeometry {
   gbox(m, [-0.42, 0.28, SCREEN_Z0], [0.42, 1.67, SCREEN_Z1], wall, big, { ny: true });
   for (const s of [-1, 1]) gbox(m, [s > 0 ? 0.42 : -1.02, 0.28, SCREEN_Z0 + 0.02], [s > 0 ? 1.02 : -0.42, 1.24, SCREEN_Z1], wall, big, { ny: true });
   gridQuad(m, [-0.24, 0.6, SCREEN_Z1 + 0.004], [0.24, 0.6, SCREEN_Z1 + 0.004], [0.24, 1.34, SCREEN_Z1 + 0.004], [-0.24, 1.34, SCREEN_Z1 + 0.004], Z, plain(GRANITE_BLACK), big);
+  // (the near form's stele frame, 10 cm proud round it)
+  for (const [x0, x1, y0, y1] of [[-0.3, -0.24, 0.55, 1.4], [0.24, 0.3, 0.55, 1.4], [-0.3, 0.3, 0.55, 0.6], [-0.3, 0.3, 1.34, 1.4]] as const) {
+    gbox(m, [x0, y0, SCREEN_Z1], [x1, y1, SCREEN_Z1 + 0.12], blue, big, { nz: true });
+  }
   const zc = (SCREEN_Z0 + SCREEN_Z1) / 2;
   for (const [xa, xb, run, ey, ry] of [[-0.56, 0.56, 0.27, 1.69, 1.93], [-1.02, -0.42, 0.22, 1.28, 1.44], [0.42, 1.02, 0.22, 1.28, 1.44]] as const) {
     const from = m.mark;
@@ -631,6 +670,142 @@ function buildTombFar(): THREE.BufferGeometry {
     frustum(m, x, z, y1 + 0.075, y1 + 0.075 + 0.31 * k, 0.17 * k, 0.17 * k, 0.02, 0.02, plain(LOTUS_PINK), 'top');
   }
   return m.geometry();
+}
+
+// ------------------------------------------------------------------------------- the crosses' regional forms (r2 sweep)
+// (the looks lane, 2026-10-16; the r2 sweep: one oak Wegkreuz stood on five regions, one Bildstock on two, one orthodox
+// cross on two) each place's wayside cross: the Hessian oak crucifix under its zinc roof stays Frontier's; the Eifel's
+// a basalt-lava cross on its pedestal; Lorraine's calvaire in Jaumont limestone on three steps, its arms in fleurons;
+// the Savoyard mission cross in larch with the instruments of the Passion; the Chouf's a white steel cross on a
+// whitewashed stone base. props.ts spreads waysideTypes over the scenery registry's entries on the map.
+
+const BASALT = hexLin(0x5d5b58), BASALT_DARK = hexLin(0x45443f), JAUMONT = hexLin(0xc4ab78), JAUMONT_DARK = hexLin(0xa88f5e);
+const LIME_WASH = hexLin(0xd9d4c6), STEEL_WHITE = hexLin(0xe4e2dc), STEEL_GREY = hexLin(0x6f706c);
+
+/** A stone wayside cross: the Eifel's in basalt lava, Lorraine's calvaire in Jaumont limestone. */
+function buildStoneCross(form: 'eifel' | 'lorrain'): THREE.BufferGeometry {
+  const m = new Mesh({ kind: 'wood' });
+  const lor = form === 'lorrain', base = lor ? JAUMONT : BASALT, dark = lor ? JAUMONT_DARK : BASALT_DARK;
+  const st = weathered({ base, seed: lor ? 0x7d01 : 0x7e01, damp: 0.45, mottle: 0.14, mould: 0.35, lichen: lor ? 0.65 : 0.4, lichenCol: LICHEN_WOOD });
+  const stD = weathered({ base: dark, seed: lor ? 0x7d02 : 0x7e02, damp: 0.5, mottle: 0.12, mould: 0.3, lichen: 0.7, lichenCol: LICHEN_WOOD });
+  // the steps (Lorraine's three, the Eifel's one footing slab), each a dressed course with its arrises cut
+  let y = -0.12;
+  for (const w of lor ? [1.0, 0.8, 0.6] : [0.76]) {
+    member(m, [0, y, 0], [0, y + 0.2, 0], w, w, X, dark, FLAT, { chamfer: 0.025, shade: stD });
+    y += 0.2;
+  }
+  // the pedestal: its splayed base, the die with its inscription panel sunk 3 cm in its front frame, the cornice
+  const pw = lor ? 0.44 : 0.5, ph = lor ? 1.0 : 0.92, d0 = y + 0.08, d1 = d0 + ph, f = pw / 2;
+  frustum(m, 0, 0, y, d0, pw + 0.12, pw + 0.12, pw, pw, st, 'none');
+  member(m, [0, d0, -0.015], [0, d1, -0.015], pw, pw - 0.03, X, base, FLAT, { chamfer: 0.012, shade: st });
+  for (const [x0, x1, ya, yb] of [[-f, -f + 0.07, d0, d1], [f - 0.07, f, d0, d1], [-f + 0.07, f - 0.07, d0, d0 + 0.12], [-f + 0.07, f - 0.07, d1 - 0.1, d1]] as const) {
+    member(m, [(x0 + x1) / 2, ya, f - 0.03], [(x0 + x1) / 2, yb, f - 0.03], x1 - x0, 0.03, X, base, FLAT, { chamfer: 0.006, shade: st });
+  }
+  // the inscription cut in the panel: three short lines of letters filled dark
+  for (const [ly, lw] of [[d1 - 0.22, 0.2], [d1 - 0.3, 0.26], [d1 - 0.38, 0.14]] as const) {
+    for (let k = 0; k < 4; k++) {
+      const x = -lw / 2 + k * lw / 4;
+      gbox(m, [x, ly, f - 0.03], [x + lw / 4 - 0.015, ly + 0.035, f - 0.026], plain(mul(dark, 0.55)), 1, { nz: true });
+    }
+  }
+  frustum(m, 0, 0, d1, d1 + 0.06, pw, pw, pw + 0.12, pw + 0.12, st, 'bottom');
+  member(m, [0, d1 + 0.06, 0], [0, d1 + 0.13, 0], pw + 0.12, pw + 0.12, X, base, FLAT, { chamfer: 0.015, shade: st });
+  // the cross on its socket: the shaft and the arms, each a dressed stone with its arrises cut back
+  const c0 = d1 + 0.13, top = 3.52, armY = top - 0.6, aw = lor ? 0.42 : 0.38, sw = lor ? 0.15 : 0.18;
+  member(m, [0, c0, 0], [0, c0 + 0.15, 0], sw + 0.1, sw + 0.08, X, base, FLAT, { chamfer: 0.02, shade: st });
+  member(m, [0, c0 + 0.15, 0], [0, top, 0], sw, sw - 0.02, X, base, FLAT, { chamfer: 0.025, shade: st });
+  member(m, [-aw, armY, 0], [aw, armY, 0], sw - 0.01, sw - 0.02, Y, base, FLAT, { chamfer: 0.022, shade: st });
+  if (lor) {
+    // the fleurons on the three ends: a bead, a swelling and its point
+    for (const [x, yy, horiz] of [[-aw, armY, true], [aw, armY, true], [0, top, false]] as const) {
+      const c: V3 = horiz ? [x + Math.sign(x) * 0.02, yy - 0.075, 0] : [0, yy - 0.01, 0];
+      lathe(m, [[0, 0], [0.07, 0.01], [0.09, 0.06], [0.06, 0.12], [0.02, 0.15], [0, 0.16]], 8, c, st);
+    }
+  } else {
+    // the Eifel cross's trefoil ends: three bosses on each arm's end
+    for (const [x, yy] of [[-aw - 0.02, armY], [aw + 0.02, armY], [0, top + 0.02]] as const) {
+      lathe(m, [[0, -0.06], [0.06, -0.05], [0.08, 0], [0.06, 0.05], [0, 0.06]], 7, [x, yy, 0], st);
+    }
+  }
+  corpus(m, armY - 0.86, (sw - 0.02) / 2 + 0.04, aw - 0.04);
+  return m.geometry();
+}
+
+/** The Savoyard mission cross: larch on a dry-stone foot, its little tin hood, and the instruments of the Passion. */
+function buildMissionCross(): THREE.BufferGeometry {
+  const m = new Mesh({ kind: 'wood' });
+  const larch = weathered({ base: LARCH, seed: 0x7f01, damp: 0.4, mottle: 0.07, lichen: 0.35, lichenCol: LICHEN_WOOD });
+  const dark = weathered({ base: LARCH_DARK, seed: 0x7f02, damp: 0.35, mottle: 0.08, lichen: 0.4, lichenCol: LICHEN_WOOD });
+  const stone = weathered({ base: FOOT_STONE, seed: 0x7f03, damp: 0.5, mottle: 0.16, lichen: 0.75, lichenCol: LICHEN_WOOD });
+  // the dry-stone foot: a squat cairn of laid stones round the post's mortise
+  frustum(m, 0, 0, -0.12, 0.34, 0.7, 0.66, 0.42, 0.4, stone, 'top');
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8 * Math.PI * 2, rr = 0.36;
+    gbox(m, [Math.cos(a) * rr - 0.08, -0.05, Math.sin(a) * rr - 0.07], [Math.cos(a) * rr + 0.08, 0.1 + (k % 3) * 0.03, Math.sin(a) * rr + 0.07], stone, 1);
+  }
+  // the post and the bar, the INRI board over them
+  member(m, [0, 0.3, 0], [0, 3.48, 0], 0.15, 0.14, X, LARCH, G(0.15), { chamfer: 0.02, shade: larch });
+  const BY = 2.6;
+  member(m, [-0.6, BY, 0.012], [0.6, BY, 0.012], 0.13, 0.12, Y, LARCH, G(0.45), { chamfer: 0.018, shade: larch });
+  member(m, [0, 2.93, 0.074], [0, 3.05, 0.074], 0.24, 0.02, X, TITLE, FLAT, { chamfer: 0.004 });
+  // the hood: two boards pitched over the head under their tin, on the post's top
+  const HY = 3.5;
+  for (const s2 of [-1, 1]) member(m, [0, HY, 0], [s2 * 0.24, HY - 0.15, 0], 0.32, 0.022, Z, mul(ZINC, 0.95), FLAT, { chamfer: 0.004 });
+  // the heart at the crossing, the ladder leaning up the front, the lance and the reed with its sponge crossed behind
+  lathe(m, [[0, -0.07], [0.06, -0.03], [0.075, 0.02], [0.05, 0.06], [0, 0.07]], 8, [0, BY, 0.1], plain(mix(BLOOM_RED, LARCH_DARK, 0.3)));
+  for (const s2 of [-1, 1]) member(m, [s2 * 0.1 - 0.05, 0.34, 0.095], [s2 * 0.1 + 0.03, 2.48, 0.095], 0.03, 0.03, Z, LARCH_DARK, G(0.6), { chamfer: 0.006, shade: dark });
+  for (let k = 0; k < 6; k++) {
+    const t = (k + 0.5) / 6, y0 = 0.34 + t * 2.14, x = -0.05 + t * 0.08;
+    member(m, [x - 0.1, y0, 0.095], [x + 0.1, y0, 0.095], 0.022, 0.022, Y, LARCH_DARK, G(0.65), { shade: dark });
+  }
+  pole(m, [0.2, 0.32, -0.088], [-0.2, 3.1, -0.088], 0.016, 0.016, LARCH_DARK, 0.6, 6);
+  lathe(m, [[0, 0], [0.03, 0.02], [0.012, 0.13], [0, 0.16]], 6, [-0.2, 3.08, -0.088], plain(STEEL_GREY));
+  pole(m, [-0.22, 0.32, -0.088], [0.18, 3.0, -0.088], 0.012, 0.012, mul(LARCH, 0.95), 0.6, 6);
+  lathe(m, [[0, -0.04], [0.045, -0.02], [0.05, 0.01], [0.03, 0.04], [0, 0.045]], 6, [0.19, 3.02, -0.088], plain(mix(CLOTH_GILT, LEAF, 0.4)));
+  return m.geometry();
+}
+
+/** The Chouf's roadside cross: a white steel cross of tube on a whitewashed base of three stone courses. */
+function buildMaroniteCross(): THREE.BufferGeometry {
+  const m = new Mesh({ kind: 'wood' });
+  const wash = weathered({ base: LIME_WASH, seed: 0x7b01, damp: 0.55, mottle: 0.12, mould: 0.4, lichen: 0.3, lichenCol: LICHEN_WOOD });
+  const stone = weathered({ base: FOOT_STONE, seed: 0x7b02, damp: 0.4, mottle: 0.15, lichen: 0.4, lichenCol: LICHEN_WOOD });
+  let y = -0.1;
+  for (const [w, h, sh] of [[0.92, 0.24, stone], [0.74, 0.26, wash], [0.56, 0.5, wash]] as const) {
+    member(m, [0, y, 0], [0, y + h, 0], w, w, X, LIME_WASH, FLAT, { chamfer: 0.02, shade: sh });
+    y += h;
+  }
+  // the steel base plate and its four bolts, the cross of 9 cm tube, its stays, the glory round the crossing
+  member(m, [0, y, 0], [0, y + 0.02, 0], 0.3, 0.3, X, STEEL_GREY, FLAT, { chamfer: 0.004 });
+  for (const [bx, bz] of [[-0.11, -0.11], [0.11, -0.11], [-0.11, 0.11], [0.11, 0.11]] as const) lathe(m, [[0, 0], [0.018, 0], [0.018, 0.02], [0, 0.03]], 6, [bx, y + 0.02, bz], plain(STEEL_GREY));
+  const top = 3.45, armY = 2.55, c0 = y + 0.02;
+  pole(m, [0, c0, 0], [0, top, 0], 0.045, 0.045, STEEL_WHITE, 0.5, 8);
+  pole(m, [-0.55, armY, 0], [0.55, armY, 0], 0.045, 0.045, STEEL_WHITE, 0.5, 8);
+  for (const [x, yy] of [[-0.55, armY], [0.55, armY], [0, top]] as const) lathe(m, [[0, -0.05], [0.055, -0.04], [0.06, 0], [0.055, 0.04], [0, 0.05]], 8, [x, yy, 0], plain(STEEL_WHITE));
+  const gl: V3[] = [[0, armY + 0.3, 0], [0.3, armY, 0], [0, armY - 0.3, 0], [-0.3, armY, 0]];
+  for (let k = 0; k < 4; k++) member(m, gl[k], gl[(k + 1) % 4], 0.03, 0.03, Z, STEEL_WHITE, FLAT, { chamfer: 0.006 });
+  for (const s2 of [-1, 1]) member(m, [s2 * 0.14, c0, 0], [0, c0 + 0.5, 0], 0.025, 0.025, Z, STEEL_WHITE, FLAT, { chamfer: 0.005 });
+  return m.geometry();
+}
+
+/** Each wayside cross's place (architecture id, else map id): the forms that are not the Hessian oak crucifix. */
+const CROSS_FORMS: Readonly<Record<string, 'eifel' | 'lorrain' | 'savoyard' | 'chouf'>> = Object.freeze({ eifel: 'eifel', lorrain: 'lorrain', savoyard: 'savoyard', chouf: 'chouf' });
+
+/**
+ * The map's wayside kinds in its region's form (props.ts LOCAL_TYPES spreads them over the scenery registry's entries):
+ * the same records, radii and contact as the registry's; the Bildstock still spends its legacy builder's draws first.
+ */
+export function waysideTypes(architectureId: string | null | undefined, mapId: string): Record<string, SceneryDestructibleType> {
+  const place = architectureId ?? mapId, out: Record<string, SceneryDestructibleType> = {};
+  const cf = CROSS_FORMS[place];
+  if (cf) out.waysidecross = { ...WAYSIDE_DESTRUCTIBLE_TYPES.waysidecross, build: () => (cf === 'savoyard' ? buildMissionCross() : cf === 'chouf' ? buildMaroniteCross() : buildStoneCross(cf)) };
+  if (place === 'kolkhoz') out.orthodoxcross = { ...WAYSIDE_DESTRUCTIBLE_TYPES.orthodoxcross, build: () => buildOrthodoxCross(false) };
+  if (place === 'hessian') {
+    out.bildstock = { ...WAYSIDE_DESTRUCTIBLE_TYPES.bildstock,
+      build: (rng: Rng) => { legacyBildstock(rng).dispose(); return buildBildstock(false, 'hessian'); },
+      broken: (rng: Rng) => { legacyBildstockBroken(rng).dispose(); return buildBildstock(true, 'hessian'); } };
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------------------------- the registry entries
