@@ -56,6 +56,9 @@ export interface ShedWreck {
   stone: { bucket: RegionalBucket; t: number; top: number } | null;
   /** the stacked wood's height (0: none) */
   pile: number;
+  /** a raised floor's height (the walls stand on it; its deck falls with them) and a gable roof (both long walls as low) */
+  lift?: number;
+  gable?: boolean;
 }
 
 /**
@@ -188,6 +191,14 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
       const a0: [number, number] = [top[0] + dx * 0.25, top[2] + dz * 0.25], a1: [number, number] = [a0[0] + dx * len, a0[1] + dz * len];
       beam([a0[0], ground(a0[0], a0[1]) + s / 2 + 0.02, a0[1]], [a1[0], ground(a1[0], a1[1]) + s / 2, a1[1]], s, s, [0, 1, 0], mulK(timber, 0.9));
     }
+    // ---- a raised floor: its deck down in two lengths on the snapped stilts, one end on the ground
+    if ((shed.lift ?? 0) > 0) {
+      for (const sz of [-1, 1]) {
+        const zc = sz * D / 4, tilt = 0.08 + rng() * 0.12, yc = ground(fx * 0.4, zc) + 0.08 + Math.sin(tilt) * W * 0.5;
+        box('structureWood', [fx * 0.4, yc, zc + fz * 0.4], [Math.cos(tilt), Math.sin(tilt) * (rng() < 0.5 ? 1 : -1), 0], [-Math.sin(tilt), Math.cos(tilt), 0], [0, 0, 1],
+          W / 2, 0.05, D / 4 - 0.05, mulK(timber, 0.95), true);
+      }
+    }
     // ---- the stack spilled: a low course left along the back, its logs rolled out of the front
     if (shed.pile > 0) {
       const xb = -W / 2 + (shed.stone ? shed.stone.t : 0) + s + 0.25, n = Math.min(28, Math.round(D * 4));
@@ -212,7 +223,7 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
     const z0 = Z0 + (Z1 - Z0) * k / lengths + (k ? 0.06 : 0), z1 = Z0 + (Z1 - Z0) * (k + 1) / lengths - (k < lengths - 1 ? 0.06 : 0);
     const zc = (z0 + z1) / 2 + (along ? fz * 0.5 : 0);
     // the low edge (the front's, or the back's when it fell backward) on the ground, the high edge propped
-    const prop = Math.min(L * 0.36, 0.55 + rng() * 0.45 + (shed.pile > 0 ? 0.2 : 0));
+    const prop = Math.min(L * 0.36, 0.55 + rng() * 0.45 + (shed.pile > 0 ? 0.2 : 0) + ((shed.lift ?? 0) > 0 ? 0.35 : 0));
     const lowX = (fwd >= 0 ? W / 2 + shed.eave : -W / 2 - shed.eave) + shift, run = Math.sqrt(Math.max(0.5, L * L - prop * prop));
     const highX = lowX - (fwd >= 0 ? 1 : -1) * run;
     const gl = ground(lowX, zc), yLow = gl + 0.06, yHigh = Math.max(gl, ground(highX, zc)) + prop;
@@ -289,7 +300,8 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
       }
       peak = Math.max(peak, height * Math.cos(tilt));
     };
-    const hBack = shed.eaveY + W * tan * 0.95, hEnd = shed.eaveY + W * tan * 0.5;
+    const lift = shed.lift ?? 0, wallH = Math.max(0.8, shed.eaveY - lift);
+    const hBack = wallH + (shed.gable ? 0 : W * tan * 0.95), hEnd = wallH + W * tan * (shed.gable ? 0.25 : 0.5);
     if (shed.back && !shed.stone) {
       // the back swung over onto the heap (forward) or flat behind (a blow from the front)
       const tilt = fwd >= 0 ? 1.0 + rng() * 0.25 : 1.45 + rng() * 0.1;

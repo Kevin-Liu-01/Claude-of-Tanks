@@ -4,9 +4,10 @@
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
+import { openShed } from './outbuildings.ts';
+import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, veranda } from './vernacular.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -212,17 +213,32 @@ const nagaHouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A bamboo granary on posts under a small thatch. */
+/**
+ * The Naga granary (the props census #22 and #17, 2026-10-15, the judges: "round posts with rat-guard discs, a bamboo
+ * floor frame and joists, woven-mat walls as panels in a bamboo frame, a low door with depth, and a notched-log ladder; a
+ * thatch roof with a ridge, an eave fringe and horn finials"): the bin a metre up on round posts with a disc round each
+ * under the floor's girders, the joists and the deck, the walls of woven mat in their bamboo frames, the low door shut in
+ * its frame at the ladder's head, the thatch steep over it in its courses with the crossed horns over the gable
+ * (outbuildings.ts openShed, gable form on a raised floor). The granary, the woodshed and the yards' shed are it.
+ */
 const granary: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const W = Math.max(2.8, Math.min(4, ctx.info.w - 1)), D = Math.max(3.2, Math.min(5, ctx.info.d - 1.5));
-  stilts(sink, W, D, 1.0, rgb(0x6a5a46), { brace: false });
-  sink.span('structureWood', -W / 2 + 0.05, 1.16, -D / 2 + 0.05, W / 2 - 0.05, 2.9, D / 2 - 0.05, { colour: BAMBOO_MAT });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.5, verge: 0.4, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'rows' };
-  const rg = roofGeometry(W, D, 2.9, roof);
-  emitRoof(sink, rg, roof);
-  // (the integrity check, 2026-10-12: sky through the thatch's open ends) the gables in the bin's bamboo mat
-  closeGables(sink, rg, 'structureWood', { colour: BAMBOO_MAT });
+  const post = rgb(0x6a5a46), look = ctx.variant;
+  const shed = openShed(sink, {
+    W, D, hLo: 2.85, pitchDeg: 48, gable: true, lift: 1.0, back: true, ends: true, pile: 0, ratGuards: true, ladder: true,
+    front: { u: 0, w: 0.7, h: 1.15, leaf: shade(post, 0.85) }, mobile: ctx.tier === 'mobile',
+  }, {
+    timber: post, post: 0.14, round: true, pad: null,
+    cladding: 'batten', boards: [BAMBOO_MAT, shade(BAMBOO_MAT, 0.92), shade(BAMBOO_MAT, 1.07)], boardW: 0.62, batten: shade(post, 1.15), trim: shade(post, 1.1),
+    covering: 'thatch', roofBucket: 'straw', thatch: 'rows', eave: 0.5, verge: 0.4,
+  }, look);
+  // the crossed horns (kika) over the +z gable: the barge boards run on up past the apex, crossing in their heads
+  const apex = roofGeometry(W, D, shed.roof.eaveY, shed.roof.spec).ridgeTopY, z = D / 2 + 0.3;
+  for (const side of [-1, 1]) {
+    sink.member('structureWood', [side * W * 0.34, apex - W * 0.34 * Math.tan(48 * Math.PI / 180) - 0.05, z], [-side * 0.35, apex + 0.75, z], 0.16, 0.1, [0, 0, 1],
+      { colour: rgb(0x5a4636), decor: true, exposed: true });
+  }
   return sink.finish();
 };
 

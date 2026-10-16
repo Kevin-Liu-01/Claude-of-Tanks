@@ -532,7 +532,7 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     timber: d.timber, boards: plan.back || plan.ends ? d.boards[0] : null, boardW: d.boardW, back: plan.back, ends: plan.ends,
     roof: { bucket: d.roofBucket, colour: d.roofColour ?? null, shape: DEBRIS[d.covering] },
     stone: plan.stoneBack ? { bucket: plan.stoneBack.bucket, t: plan.stoneBack.t, top: underRoof(-W / 2) } : null, pile: plan.pile,
-    ...(plan.masses ? { masses: plan.masses } : {}),
+    ...(plan.masses ? { masses: plan.masses } : {}), ...(lift > 0 ? { lift } : {}), ...(gable ? { gable } : {}),
   });
   return {
     W, D, posts, size: s,
