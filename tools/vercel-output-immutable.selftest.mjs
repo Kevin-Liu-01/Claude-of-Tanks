@@ -28,6 +28,7 @@ writeFileSync(join(output, 'static', 'maps', 'verdant-a1b2c3d4.png'), 'png');
 const staticFiles = ['mp-collision/index.json', 'mp-collision/verdant.3700dca0d36b.json', 'mp-collision/titan_gorge.0123456789ab.json',
   'mp-collision/verdant@assault-trenches.0123456789ab.json',
   'mp-collision/notes.json', 'mp-collision/verdant.3700DCA0D36B.json', 'mp-collision/nested/deep.0123456789ab.json',
+  'mp-collision/v2/index.json', 'mp-collision/v2/verdant.0a1b2c3d4e5f.json', 'mp-collision/v2/verdant@assault-trenches.0a1b2c3d4e5f.json',
   'textures/terrain/Grass004_1K-JPG_Color.jpg', 'icons/m1a2_sepv3_angle.webp', 'icons/pt91_side_silhouette.png', 'icons/tank-assets.json',
   'fonts/ABCMonumentGrotesk-Bold.woff2', 'fonts/inter/Inter.woff2', 'fonts/inter/OFL.txt', 'audio/shot.ogg', 'minimaps/verdant.webp',
   'media/hero.mp4', 'brand/og-image.png'];
@@ -102,6 +103,10 @@ try {
   }
   assert.equal(cacheFor('/mp-collision/verdant.3700dca0d36b.json'), IMMUTABLE_CACHE_CONTROL, 'a content-addressed manifest is immutable');
   assert.equal(cacheFor('/mp-collision/titan_gorge.0123456789ab.json'), IMMUTABLE_CACHE_CONTROL);
+  // (physics stream, 2026-10-16) this build's manifests on their own route, as immutable as 225's frozen ones
+  assert.equal(cacheFor('/mp-collision/v2/verdant.0a1b2c3d4e5f.json'), IMMUTABLE_CACHE_CONTROL, 'a v2 manifest is immutable');
+  assert.equal(cacheFor('/mp-collision/v2/verdant@assault-trenches.0a1b2c3d4e5f.json'), IMMUTABLE_CACHE_CONTROL);
+  assert.equal(cacheFor('/mp-collision/v2/index.json'), null, 'the v2 index keeps Vercel\'s default');
   assert.equal(cacheFor('/mp-collision/verdant@assault-trenches.0123456789ab.json'), IMMUTABLE_CACHE_CONTROL,
     'a battlefield variant\'s manifest is content-addressed too');
   for (const path of ['/mp-collision/index.json', '/mp-collision/notes.json', '/mp-collision/verdant.000000000000.json',
@@ -130,15 +135,15 @@ try {
   writeFileSync(join(output, 'config.json'), JSON.stringify({ version: 3, routes: [{ handle: 'filesystem' }] }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'without routes --check exits non-zero');
   const first = execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
-  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 8 runtime files in textures, icons, fonts, audio, maps, minimaps → 6 routes/);
+  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 2 v2 collision manifests → 1 immutable routes; 8 runtime files in textures, icons, fonts, audio, maps, minimaps → 6 routes/);
   const once = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
   const twice = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   assert.deepEqual(twice, once, 'running the tool again changes nothing');
   assert.equal(twice.routes.filter(isImmutableAssetRoute).length, 1);
-  assert.equal(twice.routes.filter(isManagedCacheRoute).length, 8, 'assets + collision + six runtime directories');
+  assert.equal(twice.routes.filter(isManagedCacheRoute).length, 9, 'assets + the two collision routes + six runtime directories');
   assert.equal(twice.routes[twice.routes.length - 1].handle, 'filesystem');
-  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 16 files is covered/);
+  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 18 files is covered/);
   // --check covers the new families: drop the collision route and it fails.
   writeFileSync(join(output, 'config.json'), JSON.stringify({ ...twice, routes: twice.routes.filter((route) => !route.src?.startsWith('^/mp-collision/')) }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'an uncovered collision manifest fails --check');

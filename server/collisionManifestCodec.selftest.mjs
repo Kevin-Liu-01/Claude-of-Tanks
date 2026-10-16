@@ -188,7 +188,12 @@ for (const invalid of [null, {}, [null], [0], [['m', shape]], [['v', 0, 0]], new
   const value = fresh(); value.shapes = invalid;
   assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject invalid primitive table');
 }
-for (const invalid of [['m'], ['m', -1], ['m', ['m', shape]], ['m', ...Array(65).fill(0)]]) {
+// (physics stream, 2026-10-16) a compound carries at most 256 parts (collisionManifestFormat.ts COLLISION_COMPOUND_MAX_PARTS)
+for (const valid of [['m', ...Array(65).fill(0)], ['m', ...Array(256).fill(0)]]) {
+  const value = fresh(); value.obstacles[0].s = valid;
+  assert.doesNotThrow(() => decodeCollisionManifest(value), `a compound of ${valid.length - 1} parts decodes`);
+}
+for (const invalid of [['m'], ['m', -1], ['m', ['m', shape]], ['m', ...Array(257).fill(0)]]) {
   const value = fresh(); value.obstacles[0].s = invalid;
   assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject invalid compound/ref nesting');
 }

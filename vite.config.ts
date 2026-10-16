@@ -140,15 +140,21 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
  * `/assets/`: the immutable routes stay the bundle's). About 105 MB of JSON, fetched one map at a time and only when
  * hosting.
  */
-const COLLISION_MANIFEST_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests');
-const COLLISION_MANIFEST_ROUTE = '/mp-collision';
+// (physics stream, 2026-10-16; the coordinator's ruling with the MP lane) the manifests are served on two routes: this
+// build's at /mp-collision/v2/ (records of up to 256 parts: the pillboxes' embrasures), and 225's own files, frozen byte
+// for byte (server/world-collision-manifests-225, e8a8c8527's), at /mp-collision/ for one release, so a 225 tab that
+// hosts or is elected after 226 deploys still decodes its own format and its own world (collisionManifestRoutes.selftest)
+const COLLISION_MANIFEST_SOURCES: ReadonlyArray<{ route: string; dir: string }> = [
+  { route: '/mp-collision/v2', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests') },
+  { route: '/mp-collision', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests-225') },
+];
 
-function collisionManifestFiles(): Array<{ name: string; path: string }> {
-  if (!existsSync(COLLISION_MANIFEST_DIR)) return [];
+function collisionManifestFiles(dir: string): Array<{ name: string; path: string }> {
+  if (!existsSync(dir)) return [];
   const out: Array<{ name: string; path: string }> = [];
-  for (const file of readdirSync(COLLISION_MANIFEST_DIR)) {
+  for (const file of readdirSync(dir)) {
     if (!file.endsWith('.json')) continue;
-    const path = resolve(COLLISION_MANIFEST_DIR, file);
+    const path = resolve(dir, file);
     if (file === 'index.json') { out.push({ name: 'index.json', path }); continue; }
     const hash = createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 12);
     out.push({ name: `${file.slice(0, -5)}.${hash}.json`, path });
@@ -159,13 +165,15 @@ function collisionManifestFiles(): Array<{ name: string; path: string }> {
 const collisionManifestPlugin = () => ({
   name: 'cot-mp-collision-manifests',
   configureServer(server: { middlewares: { use(handler: Connect.NextHandleFunction): void } }) {
-    let files: Map<string, string> | null = null;
+    const files = new Map<string, Map<string, string>>();
     server.middlewares.use((req, res, next) => {
       const url = req.url || '';
-      if (!url.startsWith(`${COLLISION_MANIFEST_ROUTE}/`)) { next(); return; }
-      files ??= new Map(collisionManifestFiles().map((entry) => [entry.name, entry.path]));
-      const name = url.slice(COLLISION_MANIFEST_ROUTE.length + 1).split('?', 1)[0]!;
-      const path = files.get(name);
+      // (the v2 route first: it lies under the legacy one)
+      const source = COLLISION_MANIFEST_SOURCES.find((entry) => url.startsWith(`${entry.route}/`));
+      if (!source) { next(); return; }
+      if (!files.has(source.route)) files.set(source.route, new Map(collisionManifestFiles(source.dir).map((entry) => [entry.name, entry.path])));
+      const name = url.slice(source.route.length + 1).split('?', 1)[0]!;
+      const path = files.get(source.route)!.get(name);
       if (!path) { res.statusCode = 404; res.end(); return; }
       res.setHeader('content-type', 'application/json; charset=utf-8');
       res.setHeader('cache-control', name === 'index.json' ? 'no-cache' : 'public, max-age=31536000, immutable');
@@ -173,8 +181,10 @@ const collisionManifestPlugin = () => ({
     });
   },
   generateBundle(this: { emitFile(file: { type: 'asset'; fileName: string; source: Buffer }): void }) {
-    for (const entry of collisionManifestFiles()) {
-      this.emitFile({ type: 'asset', fileName: `${COLLISION_MANIFEST_ROUTE.slice(1)}/${entry.name}`, source: readFileSync(entry.path) });
+    for (const { route, dir } of COLLISION_MANIFEST_SOURCES) {
+      for (const entry of collisionManifestFiles(dir)) {
+        this.emitFile({ type: 'asset', fileName: `${route.slice(1)}/${entry.name}`, source: readFileSync(entry.path) });
+      }
     }
   },
 });
