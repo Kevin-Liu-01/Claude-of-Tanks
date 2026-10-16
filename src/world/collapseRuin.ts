@@ -158,17 +158,19 @@ function box(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: num
 }
 
 /** The fill mound over the bare plan: a draped grid on the simulation's heap, its edge cells ragged. */
-function fillMound(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, mesh: DamageMeshWriter): void {
+function fillMound(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, mesh: DamageMeshWriter,
+  x0: number, x1: number, z0: number, z1: number): void {
   const nx = 12, nz = 12;
   if (mesh.vertices + (nx + 1) * (nz + 1) > mesh.capacity || !mesh.begin(slot.bucket, 'rubble')) return;
-  const hw = anatomy.w * 0.49, hd = anatomy.d * 0.49;
+  const cxm = (x0 + x1) / 2, czm = (z0 + z1) / 2, hw = (x1 - x0) * 0.49, hd = (z1 - z0) * 0.49;
   const ids: number[] = _ids;
   ids.length = 0;
   // a rubble surface over the simulation's heap, no deeper than a hull's tracks sink in it
   const lift = Math.min(0.25, 0.03 * anatomy.h);
   for (let k = 0; k <= nz; k++) for (let i = 0; i <= nx; i++) {
     const edge = i === 0 || k === 0 || i === nx || k === nz;
-    const x = -hw + (2 * hw * i) / nx + (edge ? 0 : (rng() - 0.5) * (hw / nx)), z = -hd + (2 * hd * k) / nz + (edge ? 0 : (rng() - 0.5) * (hd / nz));
+    const x = cxm - hw + (2 * hw * i) / nx + (edge ? 0 : (rng() - 0.5) * (hw / nx));
+    const z = czm - hd + (2 * hd * k) / nz + (edge ? 0 : (rng() - 0.5) * (hd / nz));
     const mound = bodyMoundHeightAt(anatomy, x, z);
     const y = edge ? Math.max(0.03, mound * 0.6) : Math.max(0.08, mound) + lift * (0.3 + rng() * 0.7);
     const shade = 0.72 + rng() * 0.25;
@@ -229,6 +231,35 @@ function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
       if (alongX) box(mesh, u, h / 2, side * (off - t / 2), hu, h / 2, t / 2, 0, slot.tint, shade);
       else box(mesh, side * (off - t / 2), h / 2, u, t / 2, h / 2, hu, 0, slot.tint, shade);
     }
+  }
+  mesh.end();
+}
+
+/**
+ * A standing wall fragment on a face (its `k`-th of a seeded walk round the plan): a ragged run of the wall, 1–2.5 m long,
+ * two or three courses stepping down to one side, 50–80 % of the ruin's scale (never past `cap`).
+ */
+function wallFragment(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
+  mesh: DamageMeshWriter, k: number): void {
+  if (!roomFor(mesh, 3) || !mesh.begin(slot.bucket, 'remnant')) return;
+  const hw = anatomy.w / 2, hd = anatomy.d / 2;
+  const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
+  const face = (k + Math.floor(rng() * 4)) & 3;
+  const alongX = face < 2, len = alongX ? anatomy.w : anatomy.d, off = alongX ? hd : hw, side = face & 1 ? 1 : -1;
+  const run = Math.min(len * 0.45, 1 + rng() * 1.5);
+  const u = (rng() - 0.5) * Math.max(0, len - run);
+  const height = Math.min(cap, ruinScale * (0.5 + rng() * 0.3));
+  const courses = 2 + (rng() < 0.5 ? 1 : 0);
+  const lean = rng() < 0.5 ? -1 : 1;
+  let y0 = 0;
+  for (let c = 0; c < courses; c++) {
+    const y1 = height * ((c + 1) / courses) * (c === courses - 1 ? 1 : 0.9 + rng() * 0.1);
+    const l = run * (1 - c * 0.3);
+    const uc = u + lean * (run - l) / 2;
+    const hy = (y1 - y0) / 2, shade = 0.8 + rng() * 0.18;
+    if (alongX) box(mesh, uc, y0 + hy, side * (off - t / 2), l / 2, hy, t / 2, 0, slot.tint, shade);
+    else box(mesh, side * (off - t / 2), y0 + hy, uc, t / 2, hy, l / 2, 0, slot.tint, shade);
+    y0 = y1;
   }
   mesh.end();
 }
@@ -360,7 +391,7 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
   // the plan the ruin covers: the intact's own box (about the body's origin), else the body's footprint
   const halfW = intact ? Math.max(Math.abs(intact.minX), Math.abs(intact.maxX)) : anatomy.w / 2;
   const halfD = intact ? Math.max(Math.abs(intact.minZ), Math.abs(intact.maxZ)) : anatomy.d / 2;
-  resetMeasure(top, Math.min(halfW, anatomy.w / 2 + 1.5), Math.min(halfD, anatomy.d / 2 + 1.5));
+  resetMeasure(top, halfW, halfD);
   let result: R;
   try {
     kitPhase = true;
@@ -372,14 +403,15 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     const target = RUIN_HEIGHT_SHARE * reference;
     // nothing stands past the eaves (a stub never stands over the roof line it carried)
     const cap = Math.max(1.2, reference * 0.7, anatomy.roof ? Math.min(top, anatomy.roof.eaveY) : top);
-    if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter);
+    // the plan: the interior heaped over the body's footprint, then (a row, a frame wider than its walls) the intact's box
+    if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, -anatomy.w / 2, anatomy.w / 2, -anatomy.d / 2, anatomy.d / 2);
+    if (pile && intact && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, intact.minX, intact.maxX, intact.minZ, intact.maxZ);
+    // the height: the corners, then wall fragments round the plan until it stands (a heap of a great many pieces needs
+    // more of them), the fallen covering's slabs once
     if (wall && heightP90() < target) cornerPiers(anatomy, rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
-    for (let pass = 0; pass < 6 && wall && heightP90() < target; pass++) {
-      wallStubs(anatomy, rng, wall, cap, measuringWriter, 0.3 + pass * 0.07);
-      if (heightP90() < target && pass % 2 === 1) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
-    }
-    // a ruin still lower than its floor (a heap of a great many pieces): its corners stand taller
-    if (wall && heightP90() < target) cornerPiers(anatomy, rng, wall, cap, measuringWriter, 0.72);
+    if (wall && heightP90() < target) wallStubs(anatomy, rng, wall, cap, measuringWriter, 0.32);
+    if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
+    for (let k = 0; k < 28 && wall && heightP90() < target; k++) wallFragment(anatomy, rng, wall, cap, measuringWriter, k);
   } finally {
     kitPhase = false;
     measuring = false;
