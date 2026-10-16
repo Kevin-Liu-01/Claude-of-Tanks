@@ -432,7 +432,7 @@ function footprintOf(anatomy: StructureDamageAnatomy): void {
     let mx = 0, mz = 0;
     for (const face of faces) { mx += face.origin[0]; mz += face.origin[2]; }
     mx /= faces.length; mz /= faces.length;
-    const reach = Math.max(anatomy.w, anatomy.d) / 2 + 4;
+    const reach = Math.max(anatomy.w, anatomy.d) / 2 + 5.8;
     minX = Math.max(minX, mx - reach); maxX = Math.min(maxX, mx + reach); minZ = Math.max(minZ, mz - reach); maxZ = Math.min(maxZ, mz + reach);
     reachBox[0] = mx - reach; reachBox[1] = mx + reach; reachBox[2] = mz - reach; reachBox[3] = mz + reach;
   } else {
