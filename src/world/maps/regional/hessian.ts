@@ -11,7 +11,7 @@ import {
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
-  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
+  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';

@@ -104,7 +104,7 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
   const along = Math.abs(fz) > 0.75;
   const fwd = along ? 0 : fx >= 0 ? 1 : -1;
   /** an oriented box in the shed's frame: centre, three unit axes and half sizes; its faces shaded by their facing */
-  const box = (bucket: string, c: Vec3, ux: Vec3, uy: Vec3, uz: Vec3, hx: number, hy: number, hz: number, tint: Rgb, grain = false): void => {
+  const box = (_bucket: string, c: Vec3, ux: Vec3, uy: Vec3, uz: Vec3, hx: number, hy: number, hz: number, tint: Rgb, grain = false): void => {
     if (!mesh.fits(24)) return;
     const P = (a: number, b: number, e: number): Vec3 => B(c[0] + ux[0] * a * hx + uy[0] * b * hy + uz[0] * e * hz, c[1] + ux[1] * a * hx + uy[1] * b * hy + uz[1] * e * hz,
       c[2] + ux[2] * a * hx + uy[2] * b * hy + uz[2] * e * hz);
