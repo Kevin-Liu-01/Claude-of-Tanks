@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   measureSeat, refineSeat, SeatSoup, seatAngularLow, seatRadialProfile, solveSpareTrackSeat, seatRoleForBucket,
+  rackSeat, RACK_POST_MAX_M,
 } from './spareTrackSeat.ts';
 
 const UNIT = new THREE.Vector3(1, 1, 1);
@@ -205,8 +206,25 @@ const env = (sources, frame = 'hull', motion = null) => ({
   assert.ok(r.pose.pos.y - sunk.pos.y > 0.032 && r.pose.pos.y - sunk.pos.y < 0.045, `lifted ${r.pose.pos.y - sunk.pos.y} m`);
 }
 
+// 15. fix the mount, don't remove: over a ribbed deck (4 cm ribs) no flush seat holds, a rack does: lifted clear of the
+// ribs on four posts that each find the deck, and a rack whose posts would stand on air is refused
+{
+  const deck = src(plate(3, 0.1, 3, 0, -0.05, 0), 'armor');
+  const ribs = [-0.2, 0.05, 0.3].map((z) => src(plate(0.8, 0.04, 0.05, 0, 0.02, z), 'armor'));
+  const e = env([deck, ...ribs]);
+  const pose = poseOn(0, 0, 0.05);
+  assert.equal(measureSeat(e, shape(), pose, 7, false, true).ok, false, 'no flush seat over the ribs');
+  const r = rackSeat(e, shape(), pose, 7);
+  assert.ok(r, 'a rack carries the run over the ribs');
+  assert.equal(r.posts.length, 4);
+  for (const p of r.posts) assert.ok(p.top.distanceTo(p.foot) <= RACK_POST_MAX_M, 'each post reaches the plate');
+  assert.ok(r.pose.pos.y - pose.pos.y > 0.039 && r.pose.pos.y - pose.pos.y < 0.05, `the rack clears the ribs (${r.pose.pos.y - pose.pos.y})`);
+  const edge = env([src(plate(0.3, 0.1, 3, 0, -0.05, 0), 'armor')]);
+  assert.equal(rackSeat(edge, shape(), poseOn(0, 0, 0), 7), null, 'a rack whose outer posts stand on air is refused');
+}
+
 console.log('spareTrackSeat.selftest: synthetic fixtures passed (gun, tube facet, overhang, grille, hatch, buried re-seat, '
-  + 'casemate gun, traverse step, cloth roll, well, plane fit, under the gun, crowded, lift)');
+  + 'casemate gun, traverse step, cloth roll, well, plane fit, under the gun, crowded, lift, rack)');
 
 if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
   const { readFileSync } = await import('node:fs');
@@ -270,9 +288,9 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
       }
       for (const run of runs) {
         // a kept authored seat passes the authored tier, anything the solver chose the strict one
-        const strict = run.seat === 'reseated' || run.seat === 'decor';
-        assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20) && run.exposure >= (strict ? 50 : 30),
-          `${id}/${run.site}: ${JSON.stringify(run)}`);
+        const strict = run.seat === 'reseated' || run.seat === 'decor' || run.seat === 'racked';
+        assert.ok((run.seat === 'racked' || (run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20)))
+          && run.exposure >= (strict ? 50 : 30), `${id}/${run.site}: ${JSON.stringify(run)}`);
       }
       assert.deepEqual(root.userData.spareTrackPlanAudit?.stale ?? [], [], `${id}: the recorded seat plan is current`);
       assert.equal(spareTrackGeometryDigest(root), ledger.rows[id]?.inputHash, `${id}: the ledger row is current (not STALE)`);

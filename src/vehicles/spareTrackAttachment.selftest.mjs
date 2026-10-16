@@ -88,11 +88,15 @@ for (const id of SEATED_OWNERS) {
     }
     for (const run of runs) {
       // a seat the solver chose (re-seated, decor) meets the strict tier; a kept authored seat the authored tier
-      const strict = run.seat === 'reseated' || run.seat === 'decor';
-      assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20),
-        `${id}/${run.site}: support ${run.support} %, air ${run.air} %`);
-      assert.ok((!strict || run.gapP90Cm <= 1.2) && run.maxEmbedCm <= (strict ? 1 : 5),
-        `${id}/${run.site}: gap ${run.gapP90Cm} cm beyond the standoff, embed ${run.maxEmbedCm} cm`);
+      const strict = run.seat === 'reseated' || run.seat === 'decor' || run.seat === 'racked';
+      // a racked run stands on its posts (rackSeat): no footprint support or gap rule, but nothing under it rises into it
+      if (run.seat === 'racked') assert.ok(run.maxEmbedCm <= 0.4, `${id}/${run.site}: a racked run clears its plate (${run.maxEmbedCm} cm)`);
+      else {
+        assert.ok(run.support >= (strict ? 80 : 50) && run.air <= (strict ? 10 : 20),
+          `${id}/${run.site}: support ${run.support} %, air ${run.air} %`);
+        assert.ok((!strict || run.gapP90Cm <= 1.2) && run.maxEmbedCm <= (strict ? 1 : 5),
+          `${id}/${run.site}: gap ${run.gapP90Cm} cm beyond the standoff, embed ${run.maxEmbedCm} cm`);
+      }
       assert.ok(run.clearCm === null || run.clearCm >= (strict ? 3 : 1), `${id}/${run.site}: ${run.clearCm} cm from a forbidden part`);
       assert.ok(run.sweepCm === null || run.sweepCm >= 3, `${id}/${run.site}: ${run.sweepCm} cm from the moving gun or turret`);
       assert.ok(run.exposure >= (strict ? 50 : 30), `${id}/${run.site}: exposure ${run.exposure} %`);
