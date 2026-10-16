@@ -408,14 +408,34 @@ export const outfall: LandmarkBuilder = (ctx) => {
   const z0 = -L / 2, z1 = L / 2, ground = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
   // the headwall: brick across the runnel's head, its coping proud of it, its face (+z) toward the water
   const half = w / 2 + 0.45, g0 = Math.min(ground(-half, z0), ground(half, z0), ground(0, z0)), top = g0 + 0.95;
-  sink.span('stone', -half, g0 - 0.35, z0 - 0.38, half, top, z0, { decor: true });
+  const foot = g0 - 0.35, depth = 0.38;
+  // #16 r2 (Lane C, 2026-10-14): the culvert is cut through the headwall (its mouth was a dark disc on the face): the
+  // wall's body without its face, the face laid round the mouth to its edges, the barrel's brick lining back through
+  // the wall, the pipe's dark only at its far end
+  sink.box('stone', [0, (foot + top) / 2, z0 - depth / 2], [half, (top - foot) / 2, depth / 2], { decor: true }, undefined, { pz: true });
   sink.span('stone', -half - 0.06, top, z0 - 0.44, half + 0.06, top + 0.1, z0 + 0.06, { decor: true, shade: 0.9 });
-  // the mouth: a dark disc a hair proud of the face, ringed by its voussoirs
   const r = Math.min(0.34, w * 0.42), cy = g0 + 0.12 + r, n = 12, zf = z0 + 0.006;
   const ringAt = (k: number, rr: number, dz: number): Vec3 => [Math.cos(k / n * Math.PI * 2) * rr, cy + Math.sin(k / n * Math.PI * 2) * rr, zf + dz];
-  const disc: Vec3[] = [];
-  for (let k = 0; k < n; k++) disc.push(ringAt(k, r, 0));
-  sink.polygon('dark', disc, { decor: true });
+  const face = (k: number): Vec3 => {
+    const a = k / n * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a);
+    const t = Math.min(Math.abs(ux) > 1e-9 ? half / Math.abs(ux) : Infinity, uy > 1e-9 ? (top - cy) / uy : uy < -1e-9 ? (foot - cy) / uy : Infinity);
+    return [ux * t, cy + uy * t, z0];
+  };
+  const corners: Array<[number, Vec3]> = ([[half, top], [-half, top], [-half, foot], [half, foot]] as const).map(([x, yy]) => {
+    const a = Math.atan2(yy - cy, x);
+    return [a < 0 ? a + Math.PI * 2 : a, [x, yy, z0] as Vec3];
+  });
+  for (let k = 0; k < n; k++) {
+    const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2;
+    const p0: Vec3 = [Math.cos(a0) * r, cy + Math.sin(a0) * r, z0], p1: Vec3 = [Math.cos(a1) * r, cy + Math.sin(a1) * r, z0];
+    sink.polygon('stone', [p0, face(k), face(k + 1), p1], { decor: true });
+    for (const [ca, corner] of corners) if (ca > a0 && ca < a1) sink.polygon('stone', [face(k), corner, face(k + 1)], { decor: true });
+    // the barrel's lining, facing in, back through the wall
+    sink.quad('stone', p0, p1, [p1[0], p1[1], z0 - depth], [p0[0], p0[1], z0 - depth], { decor: true, shade: 0.7 });
+  }
+  const back: Vec3[] = [];
+  for (let k = 0; k < n; k++) back.push([Math.cos(k / n * Math.PI * 2) * r, cy + Math.sin(k / n * Math.PI * 2) * r, z0 - depth + 0.01]);
+  sink.polygon('dark', back, { decor: true });
   for (let k = 0; k < n; k++) {
     sink.quad('stone', ringAt(k, r, 0.01), ringAt(k, r + 0.14, 0.03), ringAt(k + 1, r + 0.14, 0.03), ringAt(k + 1, r, 0.01), { decor: true, shade: 0.8 });
   }
