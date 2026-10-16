@@ -909,6 +909,8 @@ interface PropsBuildSlice {
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
   /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
   structureShells?: Promise<void>;
+  /** Derive the newest unanswered structure's shells on the main thread meanwhile; false when none is left. */
+  stealStructureShell?: () => boolean;
   stage?: string;
 }
 
@@ -1026,7 +1028,7 @@ export interface PropsRuntime {
   /** Every props-bucket material with the mesh that draws it (world.patchStructureMaterials). */
   structureMaterials: StructureMaterialEntry[];
   /** (Plan W) the shell pool's counts for this build, null when every structure derived inline */
-  structureShellStats?: { posted: number; answered: number; failed: number; packMs: number } | null;
+  structureShellStats?: { posted: number; answered: number; failed: number; packMs: number; stolen?: number } | null;
   _buildDetail?: PropsBuildDetail;
 }
 
@@ -3564,6 +3566,11 @@ export async function createPropsAsync(
         let settled = false;
         void step.structureShells.then(() => { settled = true; });
         while (!settled) {
+          // (2026-10-15) work at the other end of the queue instead of idling, one structure a turn
+          if (step.stealStructureShell?.()) {
+            await observeTick(awaitTimings.structureShells);
+            continue;
+          }
           await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
           if (!settled) await observeTick(awaitTimings.structureShells);
         }
@@ -9665,7 +9672,22 @@ ${snowCap ? `
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
   // below scan every record); the async build waits here for the pool's workers
-  if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
+  // (2026-10-15, the perf lane) the join's wait no longer idles: while the pool's workers finish, the main thread derives
+  // the newest unanswered structures itself (the same function on the same wire; the 10-15 Railyard probe waited 1.46 s
+  // here with its main thread idle, load ~190)
+  const stealStructureShell = (): boolean => {
+    const stolen = shellPool?.steal();
+    if (!stolen) return false;
+    try {
+      shellPool!.complete(stolen.job, deriveRuntimeStructureShellBands(unpackStructureShellWire(stolen.wire)));
+      return true;
+    } catch {
+      return false; // the join derives it again and names the structure
+    }
+  };
+  if (shellPool && pendingShells.length) {
+    yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };
+  }
   joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
