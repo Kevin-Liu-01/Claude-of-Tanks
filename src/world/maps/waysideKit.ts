@@ -36,6 +36,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DestructiblePropType } from './inhabitKit.ts';
 import { Mesh, X, Y, Z, add, hexLin, member, mix, mul, norm, pole, scl, sub, type Rgb, type V3 } from './craftMesh.ts';
+// (the Mangrove ruling: the tomb's near and far forms in one pool, folded by the baked material's distance hook)
+import { withDistanceForms } from './clutterKit.ts';
 import {
   FLAT, G, dim, frustum, gbox, gridQuad, lathe, layDown, octagon, ownStream, plain, prismZ, raggedShaft, ring, weathered,
   type Faces, type Shade,
@@ -594,6 +596,43 @@ function buildTomb(broken: boolean): THREE.BufferGeometry {
   return m.geometry();
 }
 
+/**
+ * (the coordinator's Mangrove ruling, 2026-10-16) The tomb as it reads past the distance forms' near range (clutterKit.ts
+ * CLUTTER_NEAR_M), and the light stand-in its shadows are cast from: the near form's masses in their own tones, each a
+ * single face a side and inside the near form's outline — the platform, the side walls where the balustrades stand, the
+ * grave's base and mound, the screen's three bays with the stele's black face, the three tiled roofs, the four pillars
+ * and their lotuses.
+ */
+function buildTombFar(): THREE.BufferGeometry {
+  const m = new Mesh({ kind: 'render' });
+  const deck = tombWash(DECK_GREY, 0x70f1, 0.2), wall = tombWash(TOMB_OCHRE, 0x70f2), trim = tombWash(TOMB_TRIM, 0x70f3, 0.5);
+  const blue = tombWash(TOMB_BLUE, 0x70f4, 0.4), tiles = plain(TILE_GREEN), big = 9;
+  gbox(m, [-1.3, -0.15, -1.7], [1.3, 0.28, 1.7], deck, big, { ny: true });
+  for (const s of [-1, 1]) gbox(m, [s * 1.1 - 0.07, 0.28, -1.24], [s * 1.1 + 0.07, 0.66, 1.3], trim, big, { ny: true });
+  gbox(m, [-0.62, 0.28, -1.0], [0.62, 0.52, 1.0], wall, big, { ny: true });
+  frustum(m, 0, 0.14, 0.52, 0.88, 0.96, 1.5, 0.5, 0.9, blue, 'top');
+  gbox(m, [-0.42, 0.28, SCREEN_Z0], [0.42, 1.67, SCREEN_Z1], wall, big, { ny: true });
+  for (const s of [-1, 1]) gbox(m, [s > 0 ? 0.42 : -1.02, 0.28, SCREEN_Z0 + 0.02], [s > 0 ? 1.02 : -0.42, 1.24, SCREEN_Z1], wall, big, { ny: true });
+  gridQuad(m, [-0.24, 0.6, SCREEN_Z1 + 0.004], [0.24, 0.6, SCREEN_Z1 + 0.004], [0.24, 1.34, SCREEN_Z1 + 0.004], [-0.24, 1.34, SCREEN_Z1 + 0.004], Z, plain(GRANITE_BLACK), big);
+  const zc = (SCREEN_Z0 + SCREEN_Z1) / 2;
+  for (const [xa, xb, run, ey, ry] of [[-0.56, 0.56, 0.27, 1.69, 1.93], [-1.02, -0.42, 0.22, 1.28, 1.44], [0.42, 1.02, 0.22, 1.28, 1.44]] as const) {
+    const from = m.mark;
+    prismZ(m, [[-run, ey], [run, ey], [0, ry]], xa, xb, tiles, 0);
+    // (the prism runs along z: turned a quarter about y so it runs along x over the bay, centred on the screen)
+    for (let i = from; i < m.p.length; i += 3) {
+      const x = m.p[i], z = m.p[i + 2];
+      m.p[i] = z; m.p[i + 2] = zc - x;
+      const nx = m.n[i], nz = m.n[i + 2];
+      m.n[i] = nz; m.n[i + 2] = -nx;
+    }
+  }
+  for (const [x, z, y1, w, k] of [[-1.1, 1.42, 1.0, 0.22, 0.85], [1.1, 1.42, 1.0, 0.22, 0.85], [-1.12, -1.38, 1.45, 0.24, 1], [1.12, -1.38, 1.45, 0.24, 1]] as const) {
+    gbox(m, [x - w / 2, 0.28, z - w / 2], [x + w / 2, y1 + 0.075, z + w / 2], blue, big, { ny: true });
+    frustum(m, x, z, y1 + 0.075, y1 + 0.075 + 0.31 * k, 0.17 * k, 0.17 * k, 0.02, 0.02, plain(LOTUS_PINK), 'top');
+  }
+  return m.geometry();
+}
+
 // ---------------------------------------------------------------------------------------------- the registry entries
 
 /**
@@ -618,7 +657,10 @@ export const WAYSIDE_DESTRUCTIBLE_TYPES = {
   tomb: {
     cls: 'break', mat: 'baked', contact: 'ob', r: 1.9, h: 2.4, hw: 1.3, hl: 1.7, collider: true, keep: 0.86, crushMin: 2.4,
     instanceTintStrength: 0.07,
-    build: (rng: Rng) => { legacyTomb(rng).dispose(); return buildTomb(false); },
+    // (the Mangrove ruling, 2026-10-16) its near form within the distance forms' near range, its far form past it, and
+    // its shadows cast from the far form (a stand-in on the pool's matrices); its broken build its own
+    build: (rng: Rng) => { legacyTomb(rng).dispose(); return withDistanceForms(buildTomb(false), buildTombFar()); },
+    shadowBuild: () => buildTombFar(), ownBroken: true,
     broken: (rng: Rng) => { legacyTombBroken(rng).dispose(); return buildTomb(true); },
   },
 } satisfies Record<string, SceneryDestructibleType>;
