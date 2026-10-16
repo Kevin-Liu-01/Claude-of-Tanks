@@ -6,10 +6,11 @@ import alpine from './alpine.ts';
 import delta from './delta.ts';
 import winter from './winter.ts';
 import railyard from './railyard.ts';
+import longleaf from './longleaf.ts';
 import mangrove from './mangrove.ts';
 import mars from './mars.ts';
 import monsoon from './monsoon.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, delta, mangrove, mars, monsoon, polders, railyard, verdant, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, delta, longleaf, mangrove, mars, monsoon, polders, railyard, verdant, winter });
