@@ -9,7 +9,7 @@
 // the single-wide trailer on block piers with its porch and swamp cooler; the roadside jewellery stands; the windmill
 // over its stock tank and the chapter's water tower; the BIA day school of cut sandstone under a hipped tin roof; and
 // the abandoned camps: a roofless stone house, a fallen hogan.
-import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, holedFace, leanTo, placeShed, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -184,6 +184,18 @@ function hoganBody(sink: PartSink, rng: () => number, look: () => number, o: Hog
   return mound;
 }
 
+/**
+ * A straight member along x or z from a0 to a1, its middle at (c, y) across, half sizes hw (across, level) and hh (up),
+ * its four long arrises chamfered `ch` (an octagonal section: a dressed coping, a sawn board; the looks lane 2026-10-15).
+ */
+function chamferedBeam(sink: PartSink, bucket: RegionalBucket, axis: 'x' | 'z', a0: number, a1: number, c: number, y: number, hw: number, hh: number, ch: number,
+  opts: EmitOptions): void {
+  const sec: Array<[number, number]> = [[hw, -hh + ch], [hw, hh - ch], [hw - ch, hh], [-hw + ch, hh], [-hw, hh - ch], [-hw, -hh + ch], [-hw + ch, -hh], [hw - ch, -hh]];
+  // counter-clockwise seen from the axis's plus end: along z the section's u is +x; along x it is -z
+  const pts: Vec3[] = sec.map(([u, v]) => (axis === 'z' ? [c + u, y + v, a0] : [a0, y + v, c - u]) as Vec3);
+  sink.prism(bucket, pts, axis === 'z' ? [0, 0, 1] : [1, 0, 0], a1 - a0, opts);
+}
+
 /** A juniper woodpile on the ground (dressing): split lengths stacked against each other, a few lying loose. */
 function woodpile(sink: PartSink, x: number, z: number, yaw: number, look: () => number): void {
   sink.placed(yaw, x, 0, z, () => {
@@ -335,7 +347,7 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
       const over0 = 0.1 + look() * 0.45, over1 = 0.1 + look() * 0.45, y = H + 0.27 + layer * 0.07 + look() * 0.04;
       const a: Vec3 = across ? [t, y, -len / 2 - over0] : [-len / 2 - over0, y, t];
       const b: Vec3 = across ? [t + (look() - 0.5) * 0.3, y + (look() - 0.5) * 0.05, len / 2 + over1] : [len / 2 + over1, y + (look() - 0.5) * 0.05, t + (look() - 0.5) * 0.3];
-      sink.member('structureWood', a, b, 0.1 + look() * 0.12, 0.05, [0, 1, 0], { colour: look() < 0.3 ? dry() : tone(), decor: true, exposed: true, shadow: true }, 0);
+      bough(sink, a, b, 0.1 + look() * 0.12, 0.05, look() < 0.3 ? dry() : tone(), (look() - 0.5) * 0.12);
     }
   }
   for (let k = 0; k < 7; k++) {
@@ -347,11 +359,44 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
     const onX = look() < 0.5, s = look() < 0.5 ? -1 : 1, t = (look() - 0.5) * (onX ? W : D);
     // (each hanging end starts on the mat over the poles' ends and falls past the eave: they started 25 cm out in the
     // air beyond the mat)
-    const x = onX ? t : s * (W / 2 - 0.35), z = onX ? s * (D / 2 + 0.05) : t;
-    const dx = onX ? 0 : s * 0.8, dz = onX ? s * 0.5 : 0, drop = 0.25 + look() * 0.35;
-    sink.member('structureWood', [x, H + 0.25, z], [x + dx, H + 0.25 - drop, z + dz], 0.18 + look() * 0.2, 0.05, onX ? [0, 0, s] : [s, 0, 0],
-      { colour: tone(), decor: true, exposed: true, shadow: true }, 0);
+    // (the looks lane, 2026-10-15: they started 5 cm past the mat's edge, a hair off it) on the mat's last hand
+    const x = onX ? t : s * (W / 2 - 0.35), z = onX ? s * (D / 2 - 0.1) : t;
+    const dx = onX ? 0 : s * 0.8, dz = onX ? s * 0.65 : 0, drop = 0.25 + look() * 0.35;
+    bough(sink, [x, H + 0.27, z], [x + dx, H + 0.27 - drop, z + dz], 0.18 + look() * 0.2, 0.05, tone(), (look() - 0.5) * 0.1);
   }
+}
+
+/**
+ * A bough of juniper or cottonwood laid on a ramada's poles (the looks lane, 2026-10-15; WORKLIST #26 "ramada posts
+ * with a bough mat": the boughs were plain boxes, 93 % of its surface): a flat branch from its butt at `a` to its tip at
+ * `b`, `w` across at the butt narrowing to a third at the tip, sagging `sag` at its middle and its spray spread wider
+ * there, `t` thick. Three sections, so it bends and tapers; it casts its patch of shadow.
+ */
+function bough(sink: PartSink, a: Vec3, b: Vec3, w: number, t: number, colour: Rgb, sag: number): void {
+  const dx = b[0] - a[0], dz = b[2] - a[2], l = Math.hypot(dx, dz) || 1, sx = -dz / l, sz = dx / l;
+  const at = (f: number): Vec3 => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f - sag * 4 * f * (1 - f), a[2] + (b[2] - a[2]) * f];
+  const widths = [w, w * 1.25, w * 0.35], fs = [0, 0.5, 1];
+  const ring = fs.map((f, i): Vec3[] => {
+    const c = at(f), hw = widths[i] / 2, ht = t / 2 * (i === 2 ? 0.5 : 1);
+    return [[c[0] - sx * hw, c[1] - ht, c[2] - sz * hw], [c[0] + sx * hw, c[1] - ht, c[2] + sz * hw], [c[0] + sx * hw, c[1] + ht, c[2] + sz * hw], [c[0] - sx * hw, c[1] + ht, c[2] - sz * hw]];
+  });
+  const opts = { colour, decor: true, shadow: true } as const;
+  for (let i = 0; i + 1 < ring.length; i++) {
+    const p = ring[i], q = ring[i + 1];
+    for (let k = 0; k < 4; k++) {
+      const j = (k + 1) % 4;
+      // each side wound to face out of the branch's axis
+      const m: Vec3 = [(p[k][0] + p[j][0] + q[k][0] + q[j][0]) / 4, (p[k][1] + p[j][1] + q[k][1] + q[j][1]) / 4, (p[k][2] + p[j][2] + q[k][2] + q[j][2]) / 4];
+      const c = at(fs[i] + 0.25);
+      const quad: Vec3[] = [p[k], p[j], q[j], q[k]];
+      const e1 = [quad[1][0] - quad[0][0], quad[1][1] - quad[0][1], quad[1][2] - quad[0][2]], e2 = [quad[2][0] - quad[0][0], quad[2][1] - quad[0][1], quad[2][2] - quad[0][2]];
+      const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      const outward = n[0] * (m[0] - c[0]) + n[1] * (m[1] - c[1]) + n[2] * (m[2] - c[2]) >= 0;
+      sink.quad('structureWood', ...((outward ? quad : [...quad].reverse()) as [Vec3, Vec3, Vec3, Vec3]), opts);
+    }
+  }
+  // the butt's cut end
+  sink.polygon('structureWood', ring[0], opts);
 }
 
 const ramada: RegionalBuilder = (ctx) => {
@@ -656,9 +701,16 @@ const generalStore: RegionalBuilder = (ctx) => {
     // the false front: the street wall carried up in a stepped parapet over the roof line
     const top = frame.eaveY + 0.22, step = 0.55 + rng() * 0.3;
     const zf = D / 2 - 0.25;
-    sink.span(wall, -W / 2, top, zf, W / 2, top + 0.65, D / 2);
-    sink.span(wall, -W * 0.32, top + 0.65, zf, W * 0.32, top + 0.65 + step, D / 2);
-    sink.span(wall, -W * 0.14, top + 0.65 + step, zf, W * 0.14, top + 0.95 + step, D / 2);
+    // (its three tiers the wall's own masonry, their arrises worn: no bare boxes)
+    const zm = (zf + D / 2) / 2, hz = (D / 2 - zf) / 2;
+    chamferedBeam(sink, wall, 'x', -W / 2, W / 2, zm, top + 0.325, hz, 0.325, 0.02, {});
+    chamferedBeam(sink, wall, 'x', -W * 0.32, W * 0.32, zm, top + 0.65 + step / 2, hz, step / 2, 0.02, {});
+    chamferedBeam(sink, wall, 'x', -W * 0.14, W * 0.14, zm, top + 0.8 + step, hz, 0.15, 0.02, {});
+    // (the looks lane, 2026-10-15; WORKLIST #26) each step of the false front capped by a coping of dressed stone, its
+    // arrises worn round, a hand proud of the wall either side
+    for (const [hx, yc] of [[W / 2, top + 0.65], [W * 0.32, top + 0.65 + step], [W * 0.14, top + 0.95 + step]] as const) {
+      chamferedBeam(sink, 'stone', 'x', -hx - 0.06, hx + 0.06, (zf + D / 2) / 2, yc + 0.05, (D / 2 - zf + 0.12) / 2, 0.05, 0.025, { decor: true });
+    }
     const f = frame.faces.front;
     faceBox(sink, 'structureWood', f, 0, top + 0.6, 0.04, W * 0.56, 0.7, 0.05, { colour: rgb(0xe8e1d0), decor: true });
     faceBox(sink, 'structureWood', f, 0, top + 0.66, 0.072, W * 0.46, 0.24, 0.02, { colour: rgb(0x9a2e24), decor: true });
@@ -671,7 +723,13 @@ const generalStore: RegionalBuilder = (ctx) => {
     }
     const porch: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.12, verge: 0.15, thickness: 0.07, bucket: 'roof' };
     sink.placed(-Math.PI / 2, 0, 0, D / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W, py, porch), porch));
-    sink.span('structureWood', -W / 2 + 0.1, 0.0, D / 2 + 0.02, W / 2 - 0.1, 0.3, D / 2 + depth, { colour: PLANK_GREY, decor: true });
+    // the porch deck: its sill log and the boards laid across the joists, each its own, a finger's gap between
+    sink.span('structureWood', -W / 2 + 0.1, 0.0, D / 2 + 0.02, W / 2 - 0.1, 0.22, D / 2 + depth, { colour: shade(PLANK_GREY, 0.7) });
+    for (let x = -W / 2 + 0.1, k = 0; x < W / 2 - 0.15; x += 0.21, k++) {
+      const x1 = Math.min(W / 2 - 0.1, x + 0.2);
+      chamferedBeam(sink, 'structureWood', 'z', D / 2 + 0.02, D / 2 + depth, (x + x1) / 2, 0.26, (x1 - x - 0.008) / 2, 0.04, 0.012,
+        { colour: shade(PLANK_GREY, 0.88 + ((k * 7919) % 11) / 11 * 0.24), decor: true, uv: UV_MEMBER });
+    }
     faceBox(sink, 'structureWood', f, -W * 0.3, 0.75, 0.42, 2.0, 0.08, 0.4, { colour: PLANK, decor: true });
     // (the integrity check, 2026-10-12: the bench's seat hung over the porch boards on nothing) its legs to the boards
     for (const e of [-0.9, 0.9]) faceBox(sink, 'structureWood', f, -W * 0.3 + e, 0.5, 0.42, 0.07, 0.44, 0.34, { colour: PLANK, decor: true });
@@ -681,8 +739,8 @@ const generalStore: RegionalBuilder = (ctx) => {
   {
     sink.span('stone', gx - 0.6, -0.2, gz - 1.6, gx + 0.6, 0.18, gz + 1.6);
     for (const dz of [-1.1, 1.1]) pole(sink, [gx, 0.18, gz + dz], [gx, 3.6, gz + dz], 0.09, IRON, false);
-    sink.span('structureMetal', gx - 1.6, 3.6, gz - 2.0, gx + 1.6, 3.85, gz + 2.0, { colour: rgb(0xe2ddd0) });
-    sink.span('structureMetal', gx - 1.62, 3.62, gz - 2.02, gx + 1.62, 3.72, gz + 2.02, { colour: rgb(0x9a2e24), decor: true });
+    chamferedBeam(sink, 'structureMetal', 'z', gz - 2.0, gz + 2.0, gx, 3.725, 1.6, 0.125, 0.03, { colour: rgb(0xe2ddd0) });
+    chamferedBeam(sink, 'structureMetal', 'z', gz - 2.02, gz + 2.02, gx, 3.67, 1.62, 0.05, 0.015, { colour: rgb(0x9a2e24), decor: true });
     for (const dz of [-0.45, 0.45]) {
       sink.span('structureMetal', gx - 0.25, 0.18, gz + dz - 0.2, gx + 0.25, 1.6, gz + dz + 0.2, { colour: pick(look, [rgb(0xb8302a), rgb(0x2f6a9a), rgb(0xd8d2c4)]) });
       sink.cylinder('structureMetal', [gx, 1.6, gz + dz], 'y', 0.3, 0.18, 8, { colour: rgb(0xe8e2d4), decor: true });
