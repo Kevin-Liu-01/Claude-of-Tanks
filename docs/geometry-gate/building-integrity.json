@@ -806,9 +806,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 0.072,
-   "insideM2": 0.921,
-   "gapM2": 0.202,
+   "holeM2": 0,
+   "insideM2": 0.243,
+   "gapM2": 0.972,
    "invertedM2": 0
   },
   "landmark/delta:bengalTemple#1": {
@@ -1644,7 +1644,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.343,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -3777,8 +3777,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0.477,
+   "insideM2": 0.428,
+   "gapM2": 0.828,
    "invertedM2": 0
   },
   "lorrain/marketRow": {
@@ -4302,7 +4302,16 @@
    "insideM2": 1.171,
    "gapM2": 4.173,
    "invertedM2": 0
+  },
+  "nordland/lighthouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 1.836,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T15:03:20.245Z"
+ "updatedAt": "2026-10-16T15:38:45.802Z"
 }

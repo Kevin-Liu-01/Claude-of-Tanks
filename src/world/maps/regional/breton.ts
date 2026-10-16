@@ -637,7 +637,13 @@ const cannery: RegionalBuilder = (ctx) => {
         openings: [{ face: 'front', storey: 0, kind: 'door', u: -bd * 0.12, w: 0.95, y0: 0, h: 1.95 },
           { face: 'right', storey: 0, kind: 'window', u: bw * 0.18, w: 0.8, y0: 0.9, h: 1.0 }],
         chimneys: [], gutters: null, verge: null, reveal: 0.3,
-      }, dialect({ ...st, window: { ...st.window, shutters: null, bars: 'six' }, litShare: 0.1 }));
+      }, {
+        ...dialect({ ...st, window: { ...st.window, shutters: null, bars: 'six' }, litShare: 0.1 }),
+        // (the integrity check, 2026-10-16: a glazed leaf left the boiler room open to view) its door a ledged plank leaf
+        door: (s2, face, o, y0, fr) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: shade(st.paint, 0.8), frame: { bucket: 'stone', width: 0.26, out: 0.06 }, steps: { bucket: 'stone' }, leafKind: 'plank', transom: false,
+        }, fr.floors[o.storey] + o.y0),
+      });
       // the pent's end walls carried up under it (the house shapes no gable for a pent roof)
       const rise = bd * Math.tan(pitchDeg * Math.PI / 180), s2 = bd / 2;
       wallPolygon(sink, 'stone', boiler.faces.front, [[s2, lo], [-s2, lo + rise], [-s2, lo]], 0.32);
