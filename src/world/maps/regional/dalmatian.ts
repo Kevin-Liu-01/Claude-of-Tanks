@@ -257,34 +257,33 @@ const farmhouse: RegionalBuilder = (ctx) => {
     gutters: null, verge: null, reveal: 0.32,
   }, dialect(st));
   eaveCourse(sink, frame);
-  // the stable wing on +x: one storey of rubble under a lean-to of canal tiles falling away from the house
+  // the stable wing on +x: one storey of rubble under a lean-to of canal tiles falling away from the house. (Props
+  // census #15, Lane C 2026-10-16: "two solid stone span boxes, a plank doorUnit laid on its end face (nothing cut),
+  // and a lean-to that is one slab") a house body of its own: its stable door cut through its low end, a light cut
+  // through each side, the lean-to's courses, its gutterless eave over the door; the damage reads it as its own body.
   const ww = Math.min(W * 0.7, 5.0);
-  const wx0 = W / 2, wx1 = W / 2 + wingL, wz = -D * 0.16;
-  const wallH = 2.5, wallLo = 2.1;
-  sink.span('stone', wx0 - 0.02, -0.3, wz - ww / 2, wx1, wallLo, wz + ww / 2);
-  sink.span('stone', wx0 - 0.02, wallLo, wz - ww / 2, wx0 + 0.6, wallH, wz + ww / 2);
-  const lean = { eave: 0.25, verge: 0.12 };
-  const leanFace: Face = { origin: [wx1, 0, wz], u: [0, 0, -1], out: [1, 0, 0], width: ww };
-  doorUnit(sink, leanFace, 0, 0, 1.4, 1.9, { leaf: shade(st.door, 0.9), frame: { bucket: 'stone', width: 0.2, out: 0.08 }, steps: null, leafKind: 'plank' });
-  const roofLen = wingL + 0.2;
-  const tan = (wallH + 0.15 - wallLo) / roofLen;
-  // the lean-to slab as a sloped prism from the house wall down to the outer wall
-  const t = 0.14, zA = wz - ww / 2 - lean.verge, zB = wz + ww / 2 + lean.verge;
-  const yHi = wallH + 0.12, yLo = wallLo - lean.eave * tan;
-  const xLo = wx1 + lean.eave;
-  sink.prism('roof', [[wx0, yHi, zA], [wx0, yHi, zB], [xLo, yLo, zB], [xLo, yLo, zA]], normalizeUp(tan), t, {},
-    { kind: 'plane', origin: [wx0, yHi + t, 0], u: [0, 0, 1], v: normalizeDown(tan) });
+  const wz = -D * 0.16;
+  // (its reach no further than the old wing's: its plinth and eave inside the old slab's)
+  const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.22, verge: 0.12, thickness: 0.14, bucket: 'roof' };
+  const wl = wingL - 0.04;
+  sink.placed(0, W / 2 + wl / 2, 0, wz, () => {
+    buildHouse(sink, {
+      w: wl, d: ww, plinth: { h: 0.15, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.15, wall: 'stone' }], roof: lean, gableBucket: 'stone',
+      openings: [
+        { face: 'right', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 1.85 },
+        { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.2, h: 0.45 },
+        { face: 'back', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.2, h: 0.45 },
+      ],
+      chimneys: [], gutters: null, verge: null, reveal: 0.32, core: 'rubble',
+    }, {
+      ...dialect(st),
+      door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: shade(st.door, 0.9), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, 0.15),
+    });
+  });
   return sink.finish();
 };
-
-function normalizeUp(tan: number): [number, number, number] {
-  const l = Math.hypot(tan, 1);
-  return [tan / l, 1 / l, 0];
-}
-function normalizeDown(tan: number): [number, number, number] {
-  const l = Math.hypot(1, tan);
-  return [1 / l, -tan / l, 0];
-}
 
 /** A stone storehouse with a loading quay on +x (the base depot's footprint). */
 const depot: RegionalBuilder = (ctx) => {

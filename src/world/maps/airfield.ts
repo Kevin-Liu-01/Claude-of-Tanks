@@ -264,6 +264,9 @@ export default {
     loneMix: [['birch', 0.45], ['pine', 0.45], ['poplar', 0.10]], rimMix: [['pine', 0.78], ['birch', 0.19], ['poplar', 0.03]],
     // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`; the coordinator's ruling)
     ringStature: 'species',
+    // GND (2026-10-16; the critics past the border: "no understorey"; HORIZONS' forest share 0.62): a young tree beside a
+    // third of the ring's stands, at 0.35–0.5 of its parent's height
+    ringUnderstory: { share: 0.35, stature: [0.35, 0.5] },
     clusterCount: 34, loneCount: 30, rimCount: 108, grassDensity: 0.72, bushCount: 0.7, bushSpecies: 'pine',
     belts: [...PLANTATIONS, ...PLANTATIONS.map((b) => ({ ...b, x0: -b.x0, z0: -b.z0, x1: -b.x1, z1: -b.z1 }))],
     // (2026-10-06) each plantation block holds its rows alone — no woodlot, lone tree or sapling stands inside it, so its

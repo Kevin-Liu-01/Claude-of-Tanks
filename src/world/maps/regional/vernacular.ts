@@ -57,6 +57,10 @@ export function veranda(sink: PartSink, face: Face, floorY: number, wallTop: num
   roof: { bucket: RegionalBucket; colour?: Rgb; thatch?: RoofSpec['thatch'] }, rail = true,
   under?: { eaveY: number; eave: number; tanP: number }): void {
   faceBox(sink, 'structureWood', face, 0, floorY + 0.08, depth / 2, width, 0.16, depth, { colour: shade(post, 1.05), uv: UV_MEMBER });
+  // (props census #15, Lane C 2026-10-16: "the deck is one plain slab") its boards: a seam between each pair along the
+  // face, the deck's edge board proud of them
+  for (let o = 0.16; o < depth - 0.1; o += 0.15) faceBox(sink, 'structureWood', face, 0, floorY + 0.163, o, width - 0.04, 0.008, 0.018, { colour: shade(post, 0.62), decor: true, fine: true });
+  faceBox(sink, 'structureWood', face, 0, floorY + 0.06, depth - 0.02, width + 0.04, 0.2, 0.05, { colour: shade(post, 0.96), decor: true });
   const n = Math.max(2, Math.round(width / 2.2) + 1);
   const at: number[] = [];
   for (let i = 0; i < n; i++) at.push(-width / 2 + 0.12 + (width - 0.24) * i / (n - 1));

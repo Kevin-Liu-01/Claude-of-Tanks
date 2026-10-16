@@ -1165,6 +1165,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
+    'server/collisionRestoreIndex.selftest.mjs', // 2026-10-16 physics: a whole destroyed set restores in linear time (Saltwind's walls)
     'server/convexOutlines.selftest.mjs', // 2026-10-08 the hitbox lane: every convex part holds its outline
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
@@ -1446,6 +1447,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapQuality.selftest.mjs',
     'src/world/waterMobility.selftest.mjs',
     'src/world/terrainContactSurface.selftest.mjs',
+    // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
+    'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
     'tools/environment-shot-camera.selftest.mjs',
     'tools/water-shore-camera.selftest.mjs',

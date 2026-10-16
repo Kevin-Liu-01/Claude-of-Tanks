@@ -356,26 +356,29 @@ function addUtilityApertures(
   const lane = variant % 2 === 0 ? 1 : -1;
   for (const side of [-1, 1]) {
     const x = side * w * (0.22 + lane * side * 0.025);
-    const z = -d / 2 - 0.055;
+    // (props census #15, Lane C 2026-10-16: "no opening cut and no reveal", the pane a plate proud of the wall) the
+    // surround stands 0.3 m out of the wall as the opening's reveal, its jambs, head and sill the wall's depth, the
+    // pane against the wall at its back
+    const wall = -d / 2, z = wall - 0.02, frameZ = wall - 0.15;
     author.add(`aperture-pane-${side}`, 'dark',
-      box(apertureW, apertureH, 0.08).translate(x, apertureY, z));
+      box(apertureW, apertureH, 0.04).translate(x, apertureY, z));
     author.add(`aperture-left-${side}`, material,
-      box(0.11, apertureH + 0.24, 0.13)
-        .translate(x - apertureW / 2 - 0.065, apertureY, z - 0.01));
+      box(0.11, apertureH + 0.24, 0.30)
+        .translate(x - apertureW / 2 - 0.065, apertureY, frameZ));
     author.add(`aperture-right-${side}`, material,
-      box(0.11, apertureH + 0.24, 0.13)
-        .translate(x + apertureW / 2 + 0.065, apertureY, z - 0.01));
+      box(0.11, apertureH + 0.24, 0.30)
+        .translate(x + apertureW / 2 + 0.065, apertureY, frameZ));
     author.add(`aperture-head-${side}`, material,
-      box(apertureW + 0.32, 0.12, 0.14)
-        .translate(x, apertureY + apertureH / 2 + 0.08, z - 0.01));
+      box(apertureW + 0.32, 0.12, 0.31)
+        .translate(x, apertureY + apertureH / 2 + 0.08, wall - 0.155));
     author.add(`aperture-sill-${side}`, material,
-      box(apertureW + 0.34, 0.12, 0.20)
-        .translate(x, apertureY - apertureH / 2 - 0.08, z - 0.035));
+      box(apertureW + 0.34, 0.12, 0.36)
+        .translate(x, apertureY - apertureH / 2 - 0.08, wall - 0.18));
     if (profile === 'industrial') {
       for (const offset of [-0.18, 0, 0.18]) {
         author.add(`aperture-louver-${side}-${offset}`, 'stone',
           box(apertureW - 0.12, 0.055, 0.08)
-            .translate(x, apertureY + offset, z - 0.085), `aperture-pane-${side}`);
+            .translate(x, apertureY + offset, wall - 0.08), `aperture-pane-${side}`);
       }
     }
   }
@@ -392,15 +395,18 @@ function addTimberSideApertures(author: ExteriorAuthor, w: number, d: number, wa
       geometry.rotateY(-side * Math.PI / 2).translate(side * (w / 2 + 0.035), y, 0);
       author.add(`aperture-${name}-${side}`, material, geometry);
     };
+    // (a reveal as the utility apertures' have, within the foundation's silhouette the side walls stand inside: the
+    // surround 0.18 m deep out of the wall, a hand proud of the pane at its back; local +z runs into the wall, its face
+    // at local z 0.035, every part bedded 5 mm into it)
     add('pane', 'dark', box(apertureW, apertureH, 0.08));
-    add('left', 'stone', box(0.11, apertureH + 0.24, 0.13)
-      .translate(-apertureW / 2 - 0.065, 0, -0.01));
-    add('right', 'stone', box(0.11, apertureH + 0.24, 0.13)
-      .translate(apertureW / 2 + 0.065, 0, -0.01));
-    add('head', 'stone', box(apertureW + 0.32, 0.12, 0.14)
-      .translate(0, apertureH / 2 + 0.08, -0.01));
-    add('sill', 'stone', box(apertureW + 0.34, 0.12, 0.20)
-      .translate(0, -apertureH / 2 - 0.08, -0.035));
+    add('left', 'stone', box(0.11, apertureH + 0.24, 0.18)
+      .translate(-apertureW / 2 - 0.065, 0, -0.05));
+    add('right', 'stone', box(0.11, apertureH + 0.24, 0.18)
+      .translate(apertureW / 2 + 0.065, 0, -0.05));
+    add('head', 'stone', box(apertureW + 0.32, 0.12, 0.18)
+      .translate(0, apertureH / 2 + 0.08, -0.05));
+    add('sill', 'stone', box(apertureW + 0.34, 0.12, 0.18)
+      .translate(0, -apertureH / 2 - 0.08, -0.05));
   }
 }
 
@@ -508,19 +514,20 @@ function addEntryAssembly(
   const doorH = Math.min(industrial ? 2.75 : 2.25, wallH * 0.72);
   const lane = (variant % 3) - 1;
   const x = THREE.MathUtils.clamp(lane * w * 0.19, -w * 0.28, w * 0.28);
-  const z = d / 2 + 0.055;
   const frameMaterial = timber ? 'wood' : 'stone';
   author.add('entry-threshold', frameMaterial,
     box(doorW + 0.40, 0.12, 0.42).translate(x, 0.06, d / 2 + 0.14), 'ground');
+  // (props census #15, Lane C 2026-10-16: "a 10 cm door slab proud of the wall with box jambs, lintel and threshold: no
+  // opening cut and no reveal") the leaf against the wall at the back of a 0.32 m reveal its jambs and lintel make
   author.add('entry-door', timber ? 'wood' : 'dark',
-    box(doorW, doorH, 0.10).translate(x, doorH / 2 + 0.08, z));
+    box(doorW, doorH, 0.04).translate(x, doorH / 2 + 0.08, d / 2 + 0.02));
   for (const side of [-1, 1]) {
     author.add(`entry-jamb-${side}`, frameMaterial,
-      box(0.14, doorH + 0.24, 0.14)
-        .translate(x + side * (doorW / 2 + 0.07), doorH / 2 + 0.08, z + 0.015));
+      box(0.14, doorH + 0.24, 0.32)
+        .translate(x + side * (doorW / 2 + 0.07), doorH / 2 + 0.08, d / 2 + 0.16));
   }
   author.add('entry-lintel', frameMaterial,
-    box(doorW + 0.42, 0.16, 0.16).translate(x, doorH + 0.20, z + 0.02));
+    box(doorW + 0.42, 0.16, 0.34).translate(x, doorH + 0.20, d / 2 + 0.17));
 
   // Alternate variants gain a shallow supported rain hood. Its rear edge is
   // embedded in the facade and both braces terminate at the wall.

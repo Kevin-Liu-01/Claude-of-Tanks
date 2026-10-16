@@ -4,6 +4,11 @@ import * as THREE from 'three';
 import { initialTerrainLods, terrainLodForDistance, warmTerrainLodBuilds, chooseTerrainLodBuild } from './terrainLodPolicy.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { createHeightField } from './terrain.ts';
+import { terrainCellHeight } from './terrainContactSurface.ts';
+import * as contactSurface from './terrainContactSurface.ts';
+// (2026-10-15) the chunk builder reads the steep-cell split's names (terrainContactSurface.ts) as terrain.ts imports them:
+// the whole module goes into the sandbox's scope, so a new name there needs no edit here
+const SPLIT_NAMES = Object.keys(contactSurface), SPLIT_VALUES = Object.values(contactSurface);
 import { installTerrainCraterMesh, TERRAIN_CRATER_LATTICE } from './terrainCraterMesh.ts';
 import { createDeformedHeightField, createTerrainDeformation, stampBounds } from '../sim/terrainDeformation.ts';
 import verdant from './maps/verdant.ts';
@@ -15,8 +20,8 @@ import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with
 // and horizon ring stubbed) with terrainCraterMesh.ts installed as the world installs it. Pins:
 // 1. three craters (one across a chunk border) and one rubble mound: every built LOD vertex in a stamp's reach equals
 //    base + offsetAt on the contact lattice within 1e-4 m; every vertex out of every reach keeps its bits; skirts follow;
-// 2. at 500 random points in the stamps' bounds, the patched LOD0 surface (terrainNearMeshHeightAt over its vertices)
-//    equals the simulation's contact height (createDeformedHeightField.getContactHeightAt) within 1 mm;
+// 2. at 500 random points in the stamps' bounds, the patched LOD0 surface (its vertices on its own index's triangles,
+//    the steep-cell split included) equals the simulation's contact height (createDeformedHeightField.getContactHeightAt) within 1 mm;
 // 3. a terrain whose far levels are streamed in after the stamps holds the same vertices, bit for bit;
 // 4. reset() restores every geometry, bit for bit (and its bounds);
 // 5. the cost per crater: vertices rewritten, bytes marked for upload, and the CPU time (reported).
@@ -31,7 +36,7 @@ for (const line of ['const HALF = 512;', 'const MAP_SIZE = 1024;', 'const CHUNKS
 assert.deepEqual([...TERRAIN_CRATER_LATTICE.lodSegs], [96, 48, 24]);
 assert.deepEqual([TERRAIN_CRATER_LATTICE.chunkSize, TERRAIN_CRATER_LATTICE.half, TERRAIN_CRATER_LATTICE.skirtDrop], [128, 512, 6.5]);
 const api = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance', 'warmTerrainLodBuilds',
-  'chooseTerrainLodBuild', 'registerRetainedObject3DResources', 'performance', stripTypeScriptTypes(`
+  'chooseTerrainLodBuild', 'registerRetainedObject3DResources', 'performance', ...SPLIT_NAMES, stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
   // (the ring worker, perf/ring-deferred: the chunk section reaches the ring through its hook and asks it for a supplied
@@ -49,7 +54,7 @@ const api = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance',
   }
   ${chunkSource.replace(/^export /gm, '')}
 `) + 'return { terrainBuildSteps, terrainNearMeshHeightAt };')(THREE, initialTerrainLods, terrainLodForDistance,
-  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, performance);
+  warmTerrainLodBuilds, chooseTerrainLodBuild, registerRetainedObject3DResources, performance, ...SPLIT_VALUES);
 
 function drain(generator) {
   let result = generator.next();
@@ -137,13 +142,28 @@ const lod0At = (x, z) => {
   const c = eager.chunks[cz * 8 + cx], g = c.lods[0];
   return g.getAttribute('position').array[((iz - cz * 96) * 97 + (ix - cx * 96)) * 3 + 1];
 };
+// (2026-10-15) the drawn LOD0's own triangles: its cell's index entries say which diagonal the build chose (the steep-cell
+// split, terrainContactSurface.ts terrainCellFlipped, decided on the base heights before any stamp); patching never
+// re-splits a cell, and the simulation's overlay rides the base split too
+let flippedDrawn = 0;
+const drawnLod0At = (x, z) => {
+  const ix = Math.min(767, Math.floor((x + 512) / step)), iz = Math.min(767, Math.floor((z + 512) / step));
+  const cx = Math.min(7, Math.floor(ix / 96)), cz = Math.min(7, Math.floor(iz / 96)), lx = ix - cx * 96, lz = iz - cz * 96;
+  const index = eager.chunks[cz * 8 + cx].lods[0].index.array, ii = (lz * 96 + lx) * 6;
+  const flipped = index[ii + 1] === (lz + 1) * 97 + lx + 1;
+  assert.equal(flipped, field.getContactCellFlippedAt(x, z), 'the drawn cell takes the base surface\'s split');
+  if (flipped) flippedDrawn++;
+  const x0 = -512 + ix * step, z0 = -512 + iz * step;
+  return terrainCellHeight(lod0At(x0, z0), lod0At(x0 + step, z0), lod0At(x0, z0 + step), lod0At(x0 + step, z0 + step),
+    (x - x0) / step, (z - z0) / step, flipped);
+};
 let rng = 0x5eed;
 const rnd = () => { rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0; return rng / 4294967296; };
 let contactWorst = 0;
 for (let k = 0; k < 500; k++) {
   const b = boxes[k % boxes.length];
   const x = b[0] + rnd() * (b[2] - b[0]), z = b[1] + rnd() * (b[3] - b[1]);
-  contactWorst = Math.max(contactWorst, Math.abs(api.terrainNearMeshHeightAt(lod0At, x, z) - deformed.getContactHeightAt(x, z)));
+  contactWorst = Math.max(contactWorst, Math.abs(drawnLod0At(x, z) - deformed.getContactHeightAt(x, z)));
 }
 assert.ok(contactWorst < 1e-3, `the patched LOD0 is the simulation's contact surface within 1 mm (worst ${(contactWorst * 1000).toFixed(4)} mm)`);
 const bowl = deformed.getContactHeightAt(140, -210) - field.getContactHeightAt(140, -210);

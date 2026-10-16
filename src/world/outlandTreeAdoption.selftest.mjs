@@ -67,7 +67,7 @@ try {
     // (GND, 2026-10-15: the forest over the line takes its own mix, as map.ts wires it — `ringMix`, else the rim's)
     // (and, 2026-10-15, each species at its own stature where the map's ring says so — VegetationConfig `ringStature`)
     const options = { library, rimMix: world._ringMix, rimTreeHeightM: world._rimTreeHeightM, speciesHeightM: world._ringSpeciesHeightM,
-      rimTreeTint: world._rimTreeTint, setupMaterial() {} };
+      understory: world._ringUnderstory, rimTreeTint: world._rimTreeTint, setupMaterial() {} };
     const resolved = resolveHorizonForestTrees(forest, library, { ...options, formVariant: world._treeFormVariant });
     if (id === 'longleaf') {
       // the blind critics' Longleaf backdrop ("a broadleaf band that doesn't match the longleaf pines"): past the line the
@@ -98,7 +98,9 @@ try {
       mesh.getMatrixAt(j, m4); p.setFromMatrixPosition(m4); quadCount++;
       seen.set(key(p.x, p.z), (seen.get(key(p.x, p.z)) ?? 0) + 1);
     }
-    assert.equal(quadCount + batch.trees.length, record.instances, `${id}: adopted + quads = placements`);
+    // (GND 2026-10-16: with a ring understorey, its young trees count too — resolveHorizonForestTrees after the placements)
+    assert.equal(quadCount + batch.trees.length, resolved.trees.length, `${id}: adopted + quads = placements + understorey`);
+    assert.ok(resolved.trees.length >= record.instances, `${id}: every placement resolved`);
     for (let i = 0; i < record.instances; i++) {
       const o = i * STRIDE;
       assert.equal(seen.get(key(record.placements[o], record.placements[o + 2])), 1, `${id}: placement ${i} drawn exactly once`);
