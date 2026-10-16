@@ -12,6 +12,8 @@ import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setW
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
 import { CrushableClutter, HiddenSpanPiece, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
+import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
+import { breakableSmallProp } from './maps/smallPropBreak.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -10217,6 +10219,8 @@ ${snowCap ? `
       const bucket = YARD_BUCKET[built.material];
       conformYardPiece(piece, buckets[bucket]);
       buckets[bucket].push(piece);
+      // (Lane C, PRP-02 / #2b) a hull or a round breaks it: its pieces collapse, its record after every ordinary prop
+      breakableSmallProp(`prop-yard-${p.family}`, [piece], { obstacles, colliders, clutter: (c) => pendingClutter.push(c) });
       let row = perMaterial[built.material];
       if (!row) row = perMaterial[built.material] = { bucket, pieces: 0, families: [], vertices: 0 };
       row.pieces++;
