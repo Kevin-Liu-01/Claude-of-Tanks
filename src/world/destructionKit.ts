@@ -246,6 +246,14 @@ export interface StructureDamageAnatomy {
    */
   mound?: RubbleMound;
   /**
+   * The intact form as drawn (destruction lane 2026-10-16, collapseRuin.ts): its area-weighted 90th percentile height,
+   * its top and its plan's box in the body frame, measured once from the parts at describe (structureDamageSeam.ts) —
+   * the reference a collapse keeps a ruin standing against. Absent where no parts were handed over.
+   */
+  intact?: { p90M: number; topM: number; minX: number; maxX: number; minZ: number; maxZ: number;
+    /** Its plan on a 32 × 32 grid over that box (1: drawn over), and the share drawn over. */
+    cells: Uint8Array; planFill: number };
+  /**
    * The kit's own plan of the building, opaque to the core (house.ts HouseSpec and HouseFrame, a landmark's plan): a
    * kit's builders read it back to fracture exactly what it built. Absent for the default kit.
    */

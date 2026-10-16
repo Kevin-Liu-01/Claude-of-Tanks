@@ -25,6 +25,7 @@
  */
 import type { BufferGeometry } from 'three';
 import { STRUCTURE_WALL_STUB_M } from './collision.ts';
+import { intactPlanAt } from './collapseRuin.ts';
 import {
   bodyMoundHeightAt, damageRng, holeOutlineK, registerStructureDamageKit,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
@@ -670,6 +671,8 @@ function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrit
     const wanted = Math.round((slot.share / total) * Math.min(400, (mesh.capacity - mesh.vertices) / VERTS_PER_BOX));
     for (let k = 0; k < wanted && roomFor(mesh, 1); k++) {
       const x = (rng() * 2 - 1) * reach.x, z = (rng() * 2 - 1) * reach.z;
+      // (2026-10-16) a sparse form's heap follows its own pieces (a guyed mast's, not its guys' whole square)
+      if (intactPlanAt(anatomy, x, z) === false) continue;
       const top = bodyMoundHeightAt(anatomy, x, z);
       if (top < 0.05 && rng() < 0.7) continue;
       const size = unit * (0.8 + rng() * 1.6);
