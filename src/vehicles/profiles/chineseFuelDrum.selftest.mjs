@@ -172,7 +172,10 @@ for(const quality of ['high','low'])for(const id of ids){
    const worldBefore=equipmentWorld(observations);
    const panels=parts.filter(p=>p.bucket==='hullExternalArmor'&&Array.isArray(p.g.userData.eraHitFaceVertexStarts));
    assert(panels.length>0,'physical removable hull panels remain present');
-   for(const sector of ['turret_era_L','turret_era_R','skirt_era_L','skirt_era_R'])assert(tank.stripEra(sector),`${id}: intended armor sector remains removable`);
+   // Owner 2026-10-15 (VEH-19): the Qilin's turret is the production ZTZ-99A2's, whose chevron face panels are its own
+   // turret_chevron_era sectors.
+   const turretSectors=id==='t72b3_qilin'?['turret_chevron_era_L','turret_chevron_era_R']:['turret_era_L','turret_era_R'];
+   for(const sector of [...turretSectors,'skirt_era_L','skirt_era_R'])assert(tank.stripEra(sector),`${id}: intended armor sector remains removable`);
    assert.deepEqual(equipmentWorld(observations),worldBefore,'actual rendered drums, rims, straps, caps and cradles survive ERA loss');
    assert(tank.resetEra());
    assert.deepEqual(equipmentWorld(observations),worldBefore,'ERA reset preserves actual permanent equipment');

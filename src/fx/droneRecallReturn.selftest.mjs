@@ -18,7 +18,7 @@ import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { droneReturnS, droneDockS } from '../sim/droneRecall.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 
-const spec = TANK_SPECS.m1a1_abrams_hc, RECALL = AERIAL_RULES.drone.recall, LANDING_S = DRONE_ARRIVAL.descentS + DRONE_ARRIVAL.spoolS;
+const spec = TANK_SPECS.m1a1_abrams_hc, RECALL = AERIAL_RULES.drone.recall, LANDING_S = DRONE_ARRIVAL.descentS + DRONE_ARRIVAL.spoolS + DRONE_ARRIVAL.pauseS;
 const EARLY_S = 1.6;
 /** A recall made climbing or diving flat out: the airframe's own way carries it part of the climb or sink the law
  * (which reads where it was) allots, so it may be home sooner, never later. */

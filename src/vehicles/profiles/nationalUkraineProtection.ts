@@ -35,8 +35,13 @@ export const NATIONAL_UKRAINE_PROTECTION:Readonly<Record<ProtectionId,Protection
  * Only end courses fall away; the retained armor/ERA and native gun limits
  * stay intact. The net, lashings, posts and support ends share this datum. */
 function hullCageTop(id:ProtectionId,z:number):number{
-  if(id==='t72b3_sich')return 1.42-.10*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
+  // Owner 2026-10-15 (VEH-21): the Sich's T-72B3 donor gun sits 6 cm lower than the cast concept's: the end courses fall
+  // further so its full depression clears the headers, feet and lashings over the hull ends.
+  if(id==='t72b3_sich')return 1.42-.16*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
   if(id==='t72b3m_hetman_ii')return 1.46-.11*Math.min(1,Math.max(0,(Math.abs(z)-1.55)/.75));
+  // Owner 2026-10-15 (VEH-21): the Hetman's T-72B3M (2016) donor gun sits 7 cm lower than the cast concept's, so at full
+  // depression over the hull ends its barrel sweeps lower: the end courses fall further, as the Sich's do.
+  if(id==='t72b3m_hetman')return 1.46-.10*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
   return 1.46-.055*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
 }
 
