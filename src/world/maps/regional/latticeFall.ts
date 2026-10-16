@@ -40,8 +40,9 @@ export const LATTICE_STAND_SHARE = 0.5;
 export function latticeBuckle(lat: LatticeReading): number {
   const y0 = Math.min(...lat.legs.map((l) => l.foot[1]));
   const height = Math.max(...lat.legs.map((l) => l.head[1] - l.foot[1]));
-  // (a column, one leg, stands to 80 %: a water tower's shaft standing when its tank comes off; a frame may name its own)
-  const share = lat.stand ?? (lat.legs.length === 1 ? 0.8 : LATTICE_STAND_SHARE);
+  // (a column, one leg, stands to 80 %: a water tower's shaft standing when its tank comes off; so do a low shelter's posts,
+  // under five metres, snapped under their plates as the roof comes down on them; a frame may name its own)
+  const share = lat.stand ?? (lat.legs.length === 1 || height < 5 ? 0.8 : LATTICE_STAND_SHARE);
   const want = y0 + height * share;
   let best = want;
   for (const g of lat.girts) if (Math.abs(g - want) < Math.abs(best - want) || best === want) best = g;
