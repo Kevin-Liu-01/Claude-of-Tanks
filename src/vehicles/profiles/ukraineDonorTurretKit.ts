@@ -592,7 +592,8 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   // The outer frame's front corners meet the cabinets' rear flanges.
   for(const [i,j]of [[0,0],[O.length-1,F.length-1]] as const)beam([O[i][0],floor,O[i][1]],[F[j][0],floor,F[j][1]],.020);
   // Goose-neck stays: up from the beam behind the rear boxes, over their roofs, and clamped down on the roofs' high
-  // inner ends (the casting's rear roof under them is all Relikt).
+  // inner ends (on the Hetman II the casting's rear roof under them is bare since release 227, but the stays keep their
+  // seats on the box roofs).
   for(const i of [2,3,4]){
     const [x,z]=F[i],postTop=.84,target=S.pad(x*.80,z*.80,postTop,{search:.12,radius:.022,buckets:FIXED});
     if(!target)throw new Error(`${P.spec.id}: basket stay has no pad near ${x*.8},${z*.8}`);

@@ -45,7 +45,7 @@
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Ukrainian T-72B3M command modernization carrying the complete T-72B3M (2016) turret inside squared flank armour cabinets with two wall courses and a lid course of ERA, an open command basket behind the bustle with slat walls, a rear cable drum and stowage, wider cage wings on the cabinet lids, slit lamps, twin sensor heads, a scanner, two panoramas, the 30 mm wedge station on the commander's cupola and its own field net. The native T-72B3M hull keeps its heavy fitted skirts, joint caps and camouflage carriers."
+      "silhouette": "Ukrainian T-72B3M command modernization carrying the T-72B3M (2016) turret with its own frontal package instead of Relikt: a stepped prow of three raked two-layer ERA courses on two facets a side, stepping back as they rise, on welded shelves with jaw collars round the mantlet, shoulder returns and low roof brows; squared flank armour cabinets with two wall courses and a lid course of ERA, an open command basket behind the bustle with slat walls, a rear cable drum and stowage, wider cage wings on the cabinet lids, slit lamps, twin sensor heads, a scanner, two panoramas, red infrared dazzler pods, the 30 mm wedge station on the commander's cupola and its own field net. The native T-72B3M hull carries a framed chevron glacis of three sawtooth bands a side, a nose sill with two recessed LED bars, hinged lower-plate aprons, two-layer bow modules, heavy fitted skirts, joint caps and camouflage carriers."
     },
     "pl_t72b3_zubr_ii": {
       "id": "pl_t72b3_zubr_ii",
@@ -71,16 +71,16 @@
       "hullWidthM": 4.790943,
       "widthM": 4.734,
       "overallLengthM": 9.8991,
-      "tallestM": 3.3227,
+      "tallestM": 3.1077,
       "specDimensions": {
         "hullLengthM": 6.94035,
         "overallLengthM": 10.008968163896698,
         "widthM": 4.790943,
-        "heightM": 3.3227
+        "heightM": 3.1077
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Polish T-72B3 heavy modernization carrying the complete T-72B3M (2016) turret inside long squared armour cabinets with three staggered rows of large ERAWA tiles, square lamps on the cabinet fronts, a long open slatted bustle basket with strapped packs and a roll, guarded rear lights, an independent guarded sight, a monocle sensor and split-panel roof sensor, the protected 30 mm drum station and its own field suit. The native T-72B3 hull keeps deep four-course ERAWA skirts."
+      "silhouette": "Polish T-72B3 heavy modernization carrying the T-72B3M (2016) turret: raked cheek boxes faced by a stepped terrace of two-layer ERAWA-2 cassettes funnelling into the mantlet, a four-tile roof grid, long squared armour cabinets behind three stepped courses of the same cassettes, square lamps on the cabinet fronts, a long open slatted bustle basket with strapped packs and a roll, guarded rear lights, an independent guarded sight, a monocle sensor and split-panel roof sensor, the 12.7 mm WKM-B armoured casemate emplacement with its sensor head and illuminator, and its own field suit. The native T-72B3 hull carries three stepped glacis terraces of cassettes between two LED cluster housings, framed lower-plate fields and deep four-course ERAWA skirts with a fitted front grid."
     }
   },
   "ownerAmendments": [
